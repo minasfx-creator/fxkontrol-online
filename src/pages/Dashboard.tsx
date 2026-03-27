@@ -230,6 +230,11 @@ export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const fireone = useFireOneHardware();
+  const pbus = usePBusHardware();
+  const bleConnected = bleService.isSupported;
+  const hwConnectedCount = (fireone.isConnected ? 1 : 0) + (pbus.isConnected ? 1 : 0);
+  const hwIsOnline = hwConnectedCount > 0;
   const [projects, setProjects] = useState<Project[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [showIntro, setShowIntro] = useState(() => {
