@@ -256,6 +256,8 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
                   </span>
                 )}
               </p>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => { haptics.tap(); setSimMode(!simMode); }}
