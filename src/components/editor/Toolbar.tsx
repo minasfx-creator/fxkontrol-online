@@ -4,6 +4,7 @@
  * All editing tools moved to floating docks.
  */
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle, Moon, Sun, Maximize2, Minimize2 } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
@@ -37,7 +38,7 @@ const ProjectBrowser = lz(() => import('./ProjectBrowser'));
 const CatalogImportDialog = lz(() => import('./CatalogImportDialog'));
 const FullscreenCommandMenu = lz(() => import('./FullscreenCommandMenu'));
 const ExportModal = lz(() => import('./ExportModal'));
-const QuickHardwarePanel = lz(() => import('./QuickHardwarePanel'));
+
 
 // Export functions loaded on demand
 const getExportEngine = () => import('@/lib/exportEngine');
@@ -48,7 +49,7 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
   const pbus = usePBusHardware();
   const [artnetCount, setArtnetCount] = useState(0);
   const [artnetConnected, setArtnetConnected] = useState(0);
-  const [hwPanelOpen, setHwPanelOpen] = useState(false);
+  
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -89,13 +90,14 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
     return 'text-zinc-600';
   };
 
+  const navTo = useNavigate();
   const handleDotClick = useCallback(() => {
     if (isMobile) {
-      setHwPanelOpen(true);
+      navTo('/command?mode=hardware');
     } else {
       onOpenPanel?.('easyconnect');
     }
-  }, [isMobile, onOpenPanel]);
+  }, [isMobile, onOpenPanel, navTo]);
 
   return (
     <>
@@ -119,12 +121,6 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
           </span>
         </button>
       </div>
-      {/* Mobile: QuickHardwarePanel overlay */}
-      {isMobile && (
-        <Suspense fallback={null}>
-          <QuickHardwarePanel open={hwPanelOpen} onClose={() => setHwPanelOpen(false)} />
-        </Suspense>
-      )}
     </>
   );
 }

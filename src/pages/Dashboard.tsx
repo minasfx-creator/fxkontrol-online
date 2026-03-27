@@ -98,6 +98,7 @@ const SHOW_COMMANDER_TOOLS: HubTool[] = [
   { label: 'DMX Mon', icon: Radio, panel: 'dmx_monitor' },
   { label: 'FXK-LIGHT', icon: Lightbulb, panel: 'fxk_light' },
   { label: 'Module', icon: Cpu, panel: 'module' },
+  { label: 'Hardware', icon: Radio, panel: 'hardware' },
 ];
 
 const MASTER_EDITOR_TOOLS: HubTool[] = [

@@ -30,6 +30,7 @@ const ShowControlPanel = lazy(() => import('@/components/editor/ShowControlPanel
 const FXKNetPanel = lazy(() => import('@/components/editor/live-firing/FXKNetPanel'));
 const DMXMonitorPanel = lazy(() => import('@/components/editor/DMXMonitorPanel'));
 const FieldTestDesktop = lazy(() => import('@/components/editor/FieldTestDesktop'));
+const QuickHardwarePanel = lazy(() => import('@/components/editor/QuickHardwarePanel'));
 
 function PanelLoader() {
   return (
@@ -44,7 +45,7 @@ function PanelLoader() {
 // ── Types ──
 type CommandMode =
   | 'pyro_fire' | 'super_dmx' | 'fxk_light' | 'drone_ops'
-  | 'show_control' | 'module' | 'dmx_monitor' | 'field_test';
+  | 'show_control' | 'module' | 'dmx_monitor' | 'field_test' | 'hardware';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = ['pyro_fire', 'super_dmx'];
@@ -60,6 +61,7 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   module:       { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'MODULE',      badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20', subtitle: 'FIELD HARDWARE CTRL' },
   dmx_monitor:  { color: 'hsl(120 70% 42%)',   glow: 'hsl(120 70% 42% / 0.08)',  label: 'DMX MONITOR', badge: 'bg-green-500/15 text-green-400 border-green-500/20', subtitle: 'PROTOCOL ANALYZER' },
   field_test:   { color: 'hsl(0 80% 55%)',     glow: 'hsl(0 80% 55% / 0.1)',    label: 'FIELD TEST',  badge: 'bg-red-500/15 text-red-400 border-red-500/20', subtitle: 'DIAGNOSTIC FIRE TEST' },
+  hardware:     { color: 'hsl(190 80% 50%)',   glow: 'hsl(190 80% 50% / 0.1)',  label: 'HARDWARE',    badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'DEVICE CONNECT & MONITOR' },
 };
 
 // ── Sidebar Sections ──
@@ -90,6 +92,7 @@ const MODE_SECTIONS = [
     icon: Cpu,
     modes: [
       { key: 'module' as CommandMode, label: 'MODULE', icon: Cpu },
+      { key: 'hardware' as CommandMode, label: 'HARDWARE', icon: Radio },
       { key: 'field_test' as CommandMode, label: 'FIELD TEST', icon: Target },
     ],
   },
@@ -192,6 +195,7 @@ export default function CommandCenter() {
       case 'drone_ops': return <DroneCommandPanel fs />;
       case 'show_control': return <ShowControlPanel fs />;
       case 'module': return <FXKNetPanel fs />;
+      case 'hardware': return <QuickHardwarePanel fs />;
       case 'dmx_monitor': return <DMXMonitorPanel fs />;
       case 'field_test': return <FieldTestDesktop />;
       default: return null;
