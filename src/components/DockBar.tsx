@@ -8,6 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { ambientSound } from '@/lib/ambientSound';
 import { haptics } from '@/lib/haptics';
+import { prefetchRoute } from '@/lib/prefetchRoutes';
 import {
   LayoutDashboard, Clapperboard, CalendarDays,
   Crosshair, Gamepad2, Rocket,
@@ -143,7 +144,11 @@ export default function DockBar() {
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => handleClick(item.path)}
-                      onMouseEnter={isMobile ? undefined : () => setHoveredIndex(i)}
+                      onMouseEnter={isMobile ? undefined : () => {
+                        setHoveredIndex(i);
+                        prefetchRoute(item.path);
+                      }}
+                      onTouchStart={() => prefetchRoute(item.path)}
                       className={cn(
                         "relative flex flex-col items-center justify-center rounded-xl transition-all",
                         "active:scale-90",
