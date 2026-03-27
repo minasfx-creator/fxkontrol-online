@@ -29,6 +29,8 @@ export default defineConfig(({ mode }) => ({
           'r3f': ['@react-three/fiber', '@react-three/drei'],
           'postprocessing': ['@react-three/postprocessing'],
           'recharts': ['recharts'],
+          'vendor-state': ['zustand', 'react-router-dom', 'sonner', '@tanstack/react-query'],
+          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-popover', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs', '@radix-ui/react-tooltip', '@radix-ui/react-select', '@radix-ui/react-accordion', '@radix-ui/react-slider'],
         },
       },
     },
