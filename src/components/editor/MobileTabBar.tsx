@@ -1,10 +1,10 @@
 /**
  * MobileTabBar — Unified dock bar for mobile editor.
- * Features: quick-access tabs, long-press context menu, swipe to cycle categories.
+ * Features: horizontally scrollable tabs, long-press context menu, swipe to cycle categories.
  */
 import { useCallback, useRef, useState } from 'react';
 import { haptics } from '@/lib/haptics';
-import { Sparkles, Cpu, Smartphone, Map, LayoutGrid } from 'lucide-react';
+import { Sparkles, Cpu, Smartphone, Map, LayoutGrid, Clock, Layers, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { PANEL_SECTIONS, type PanelId } from '@/components/editor/PanelTabBar';
@@ -21,10 +21,13 @@ interface MobileTabBarProps {
 }
 
 const TABS: { key: MobileTab; icon: typeof Sparkles; label: string; panelId?: PanelId; accent?: boolean }[] = [
+  { key: 'timeline', icon: Clock, label: 'Timeline' },
+  { key: 'assets', icon: Layers, label: 'Assets' },
   { key: 'livefx', icon: Sparkles, label: 'Live FX', panelId: 'livefiring', accent: true },
   { key: 'controllers', icon: Cpu, label: 'Control', panelId: 'controllers' },
   { key: 'remote', icon: Smartphone, label: 'Remote', panelId: 'remotecontrol' },
   { key: 'fieldmap', icon: Map, label: 'Map', panelId: 'fieldmap' },
+  { key: 'properties', icon: Settings2, label: 'Props' },
   { key: 'more', icon: LayoutGrid, label: 'Painéis' },
 ];
 
@@ -53,7 +56,6 @@ export default function MobileTabBar({
   const swipeRef = useRef<{ startX: number; startY: number; started: boolean }>({ startX: 0, startY: 0, started: false });
 
   const handleTabClick = useCallback((tab: MobileTab) => {
-    // Don't fire click if long-press just fired
     if (longPressFired.current) {
       longPressFired.current = false;
       return;
@@ -77,7 +79,7 @@ export default function MobileTabBar({
       return;
     }
 
-    // "More" / "Painéis"
+    // Tabs without panelId (timeline, assets, properties, more)
     if (activeTab === tab) {
       if (panelHeight === 'full') {
         onTabChange(null);
@@ -87,13 +89,13 @@ export default function MobileTabBar({
       }
     } else {
       onTabChange(tab);
-      onPanelHeightChange('full');
+      onPanelHeightChange(tab === 'more' ? 'full' : 'half');
     }
   }, [activeTab, panelHeight, onTabChange, onPanelHeightChange, onOpenPanel]);
 
   // --- Long press handlers ---
   const handleLongPressStart = useCallback((tab: MobileTab, e: React.TouchEvent | React.MouseEvent) => {
-    if (tab === 'more') return; // No context menu for "more"
+    if (tab === 'more') return;
     longPressFired.current = false;
     const target = e.currentTarget as HTMLElement;
     longPressTimer.current = setTimeout(() => {
@@ -123,21 +125,18 @@ export default function MobileTabBar({
     const dy = touch.clientY - swipeRef.current.startY;
     swipeRef.current.started = false;
 
-    // Only trigger if horizontal > vertical and > 50px
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       setCategoryIndex(prev => {
         const next = dx < 0
           ? Math.min(prev + 1, CATEGORY_NAMES.length - 1)
           : Math.max(prev - 1, 0);
 
-        // Show toast label
         setSwipeLabel(CATEGORY_NAMES[next]);
         if (swipeLabelTimeout.current) clearTimeout(swipeLabelTimeout.current);
         swipeLabelTimeout.current = setTimeout(() => setSwipeLabel(null), 1200);
 
         haptics.tap();
 
-        // Open the first panel in this category
         const section = PANEL_SECTIONS[next];
         if (section?.items[0]) {
           onOpenPanel(section.items[0].id);
@@ -155,22 +154,6 @@ export default function MobileTabBar({
     onTabChange('more');
     onPanelHeightChange('full');
   }, [onOpenPanel, onTabChange, onPanelHeightChange]);
-
-  const getScale = (index: number) => {
-    if (hoveredIndex === null) return 1;
-    const dist = Math.abs(index - hoveredIndex);
-    if (dist === 0) return 1.2;
-    if (dist === 1) return 1.08;
-    return 1;
-  };
-
-  const getTranslateY = (index: number) => {
-    if (hoveredIndex === null) return 0;
-    const dist = Math.abs(index - hoveredIndex);
-    if (dist === 0) return -5;
-    if (dist === 1) return -2;
-    return 0;
-  };
 
   return (
     <>
@@ -196,79 +179,77 @@ export default function MobileTabBar({
           </div>
         )}
 
+        {/* Horizontally scrollable tab bar */}
         <nav
-          className="pointer-events-auto glass-dock mx-3 mb-2 rounded-2xl px-2 py-1 flex items-end justify-around"
+          className="pointer-events-auto glass-dock mx-2 mb-2 rounded-2xl px-1 py-1 overflow-x-auto no-scrollbar"
           onMouseLeave={() => setHoveredIndex(null)}
           onTouchStart={handleSwipeStart}
           onTouchEnd={handleSwipeEnd}
         >
-          {TABS.map(({ key, icon: Icon, label, accent }, index) => {
-            const isActive = activeTab === key;
-            const scale = getScale(index);
-            const translateY = getTranslateY(index);
+          <div className="flex items-end justify-start gap-0.5 min-w-max">
+            {TABS.map(({ key, icon: Icon, label, accent }, index) => {
+              const isActive = activeTab === key;
 
-            return (
-              <button
-                key={key}
-                onClick={() => handleTabClick(key)}
-                onMouseEnter={() => setHoveredIndex(index)}
-                onTouchStart={(e) => {
-                  setHoveredIndex(index);
-                  handleLongPressStart(key, e);
-                }}
-                onTouchEnd={() => {
-                  handleLongPressEnd();
-                  setTimeout(() => setHoveredIndex(null), 300);
-                }}
-                onTouchCancel={() => {
-                  handleLongPressEnd();
-                  setHoveredIndex(null);
-                }}
-                className={cn(
-                  "relative flex flex-col items-center justify-center py-2 px-3 rounded-xl min-h-[52px] min-w-[48px]",
-                  "active:scale-90"
-                )}
-                style={{
-                  transform: `scale(${scale}) translateY(${translateY}px)`,
-                  transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                }}
-              >
-                <div className="relative">
-                  <Icon className={cn(
-                    "w-6 h-6 transition-colors duration-200",
+              return (
+                <button
+                  key={key}
+                  onClick={() => handleTabClick(key)}
+                  onMouseEnter={() => setHoveredIndex(index)}
+                  onTouchStart={(e) => {
+                    setHoveredIndex(index);
+                    handleLongPressStart(key, e);
+                  }}
+                  onTouchEnd={() => {
+                    handleLongPressEnd();
+                    setTimeout(() => setHoveredIndex(null), 300);
+                  }}
+                  onTouchCancel={() => {
+                    handleLongPressEnd();
+                    setHoveredIndex(null);
+                  }}
+                  className={cn(
+                    "relative flex flex-col items-center justify-center py-1.5 px-2.5 rounded-xl min-h-[48px] min-w-[44px]",
+                    "active:scale-90 transition-transform",
+                    isActive && "bg-white/[0.04]",
+                  )}
+                >
+                  <div className="relative">
+                    <Icon className={cn(
+                      "w-5 h-5 transition-colors duration-200",
+                      isActive
+                        ? accent ? "text-accent" : "text-primary"
+                        : "text-muted-foreground/50"
+                    )}
+                      style={isActive ? { filter: `drop-shadow(0 0 6px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'})` } : undefined}
+                    />
+                    {key === 'livefx' && activeEffectsCount > 0 && (
+                      <span className="absolute -top-1.5 -right-2 min-w-[14px] h-[14px] rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center px-0.5"
+                        style={{ boxShadow: '0 0 6px hsl(var(--destructive) / 0.5)' }}>
+                        {activeEffectsCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className={cn(
+                    "text-[8px] font-semibold mt-0.5 transition-colors duration-200",
                     isActive
                       ? accent ? "text-accent" : "text-primary"
-                      : "text-muted-foreground/60"
-                  )}
-                    style={isActive ? { filter: `drop-shadow(0 0 6px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'})` } : undefined}
-                  />
-                  {key === 'livefx' && activeEffectsCount > 0 && (
-                    <span className="absolute -top-1.5 -right-2 min-w-[14px] h-[14px] rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center px-0.5"
-                      style={{ boxShadow: '0 0 6px hsl(var(--destructive) / 0.5)' }}>
-                      {activeEffectsCount}
-                    </span>
-                  )}
-                </div>
-                <span className={cn(
-                  "text-[9px] font-semibold mt-0.5 transition-colors duration-200",
-                  isActive
-                    ? accent ? "text-accent" : "text-primary"
-                    : "text-muted-foreground/40"
-                )}>
-                  {label}
-                </span>
+                      : "text-muted-foreground/35"
+                  )}>
+                    {label}
+                  </span>
 
-                {isActive && (
-                  <div className="absolute -bottom-0.5 w-1 h-1 rounded-full"
-                    style={{
-                      background: accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
-                      boxShadow: `0 0 4px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'}`,
-                    }}
-                  />
-                )}
-              </button>
-            );
-          })}
+                  {isActive && (
+                    <div className="absolute -bottom-0.5 w-1 h-1 rounded-full"
+                      style={{
+                        background: accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
+                        boxShadow: `0 0 4px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'}`,
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </nav>
 
         {/* Category dots indicator */}

@@ -1,9 +1,9 @@
 /**
- * MobileQuickActions — Compact floating action buttons
- * Positioned lower-left to avoid HUD overlap. Smaller touch targets.
+ * MobileQuickActions — Compact floating action buttons with scroll support
+ * Positioned lower-left with vertical scroll when many actions exist.
  */
 import { useCallback } from 'react';
-import { MousePointer2, Plus, Undo2, Redo2, Trash2, Copy, Pencil, Compass } from 'lucide-react';
+import { MousePointer2, Plus, Undo2, Redo2, Trash2, Copy, Pencil, Compass, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -69,7 +69,7 @@ export default function MobileQuickActions() {
     setEditorMode(editorMode === 'adjust-angles' ? 'select' : 'adjust-angles');
   }, [editorMode, setEditorMode]);
 
-  const actions: { icon: typeof Pencil; label: string; onClick: () => void; variant: ActionVariant }[] = hasSelection
+  const editActions: { icon: typeof Pencil; label: string; onClick: () => void; variant: ActionVariant }[] = hasSelection
     ? [
         { icon: Pencil, label: 'Edit', onClick: () => window.dispatchEvent(new Event('position-double-click')), variant: 'primary' },
         { icon: Compass, label: 'Angle', onClick: handleToggleAngles, variant: angleVariant },
@@ -84,32 +84,58 @@ export default function MobileQuickActions() {
         { icon: Redo2, label: 'Redo', onClick: handleRedo, variant: 'default' },
       ];
 
-  return (
-    <div className="fixed left-2 z-40 pointer-events-none" style={{ bottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
-      <div className="flex flex-col gap-1.5 pointer-events-auto">
-        {actions.map(({ icon: Icon, label, onClick, variant }) => (
-          <button
-            key={label}
-            onClick={onClick}
-            className={cn(
-              "flex items-center justify-center w-10 h-10 rounded-xl glass-button transition-all active:scale-90",
-              variant === 'active' && "bg-primary/15 border-primary/30 text-primary glow-active",
-              variant === 'primary' && "bg-primary/12 border-primary/25 text-primary",
-              variant === 'danger' && "bg-destructive/15 border-destructive/30 text-destructive glow-danger",
-              variant === 'default' && "text-foreground/70"
-            )}
-            title={label}
-          >
-            <Icon className="w-4 h-4" />
-          </button>
-        ))}
+  // Viewport navigation controls
+  const viewportActions: { icon: typeof ZoomIn; label: string; onClick: () => void }[] = [
+    { icon: ZoomIn, label: 'Zoom+', onClick: () => window.dispatchEvent(new CustomEvent('viewport-zoom', { detail: 1 })) },
+    { icon: ZoomOut, label: 'Zoom-', onClick: () => window.dispatchEvent(new CustomEvent('viewport-zoom', { detail: -1 })) },
+    { icon: RotateCcw, label: 'Reset', onClick: () => window.dispatchEvent(new Event('viewport-reset-camera')) },
+  ];
 
-        {hasSelection && (
-          <div className="status-pill justify-center px-1.5 py-0.5">
-            <span className="text-[9px] font-bold text-primary tabular-nums">{selectedIds.length}</span>
-          </div>
-        )}
+  return (
+    <>
+      {/* Edit actions — left side */}
+      <div className="fixed left-2 z-40 pointer-events-none" style={{ bottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
+        <div className="flex flex-col gap-1.5 pointer-events-auto max-h-[45dvh] overflow-y-auto no-scrollbar">
+          {editActions.map(({ icon: Icon, label, onClick, variant }) => (
+            <button
+              key={label}
+              onClick={onClick}
+              className={cn(
+                "flex items-center justify-center w-10 h-10 rounded-xl glass-button transition-all active:scale-90",
+                variant === 'active' && "bg-primary/15 border-primary/30 text-primary glow-active",
+                variant === 'primary' && "bg-primary/12 border-primary/25 text-primary",
+                variant === 'danger' && "bg-destructive/15 border-destructive/30 text-destructive glow-danger",
+                variant === 'default' && "text-foreground/70"
+              )}
+              title={label}
+            >
+              <Icon className="w-4 h-4" />
+            </button>
+          ))}
+
+          {hasSelection && (
+            <div className="status-pill justify-center px-1.5 py-0.5">
+              <span className="text-[9px] font-bold text-primary tabular-nums">{selectedIds.length}</span>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Viewport navigation — right side */}
+      <div className="fixed right-2 z-30 pointer-events-none" style={{ bottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
+        <div className="flex flex-col gap-1 pointer-events-auto">
+          {viewportActions.map(({ icon: Icon, label, onClick }) => (
+            <button
+              key={label}
+              onClick={() => { haptics.tap(); onClick(); }}
+              className="w-9 h-9 flex items-center justify-center rounded-xl glass-button text-foreground/50 active:scale-90 transition-all"
+              title={label}
+            >
+              <Icon className="w-3.5 h-3.5" />
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
