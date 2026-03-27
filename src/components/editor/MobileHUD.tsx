@@ -182,6 +182,3 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
     </div>
   );
 }
-    </div>
-  );
-}
