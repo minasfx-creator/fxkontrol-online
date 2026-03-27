@@ -1383,25 +1383,35 @@ export default function SkyCanvas() {
         <FXKQualityController />
         <SceneLighting />
         <GeoTimeOfDaySync />
-        <AdaptiveExposureController />
-        {!environment.disableLighting && <GlobalIlluminationController />}
-        {!google3DTilesEnabled && <GroundReflections />}
-        {!environment.disableLighting && <LensFlareController />}
+        <Suspense fallback={null}>
+          <AdaptiveExposureController />
+          {!environment.disableLighting && <GlobalIlluminationController />}
+          {!google3DTilesEnabled && <GroundReflections />}
+          {!environment.disableLighting && <LensFlareController />}
+          <ContactShadowsLayer />
+          <DebugFeed />
+        </Suspense>
         <DelayedMount delay={2000}>
           <NiagaraVFXController />
         </DelayedMount>
 
         {/* ═══ Synthetic sky/atmosphere — suppressed in Digital Twin mode ═══ */}
-        {!google3DTilesEnabled && <EnvironmentV2SwitcherClean SkyGradientComponent={SkyGradientFallback} />}
+        <Suspense fallback={null}>
+          {!google3DTilesEnabled && <EnvironmentV2SwitcherClean SkyGradientComponent={SkyGradientFallback} />}
+          {!google3DTilesEnabled && <SceneStarsWiredClean />}
+          {!google3DTilesEnabled && <SceneFogClean />}
+        </Suspense>
 
-        {!google3DTilesEnabled && <Moon />}
-        {!google3DTilesEnabled && <SceneStarsWiredClean />}
-        {!google3DTilesEnabled && !isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
-        {!google3DTilesEnabled && <SceneFogClean />}
-        {!google3DTilesEnabled && !isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
+        <Suspense fallback={null}>
+          {!google3DTilesEnabled && <Moon />}
+          {!google3DTilesEnabled && !isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
+          {!google3DTilesEnabled && !isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
+        </Suspense>
 
         {/* ═══ Ground / Terrain ═══ */}
-        {!google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
+        <Suspense fallback={null}>
+          {!google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
+        </Suspense>
         {google3DTilesEnabled && <GoogleTilesLayer />}
         {google3DTilesEnabled && <GeoCameraController />}
         {/* Fallback grid visible while Google Earth tiles are loading */}
@@ -1419,8 +1429,10 @@ export default function SkyCanvas() {
         <DroneChoreography />
         {!isMobile && <BoidsVisualizer />}
         {!isMobile && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
-        <TimelineEffects />
-        <LiveSFXEffects />
+        <Suspense fallback={null}>
+          <TimelineEffects />
+          <LiveSFXEffects />
+        </Suspense>
         <LaserPreviewBeams />
         {!google3DTilesEnabled && <StageFixtures />}
         {!google3DTilesEnabled && !isMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
@@ -1429,13 +1441,11 @@ export default function SkyCanvas() {
         {!isMobile && <CameraPathPreview />}
         {!google3DTilesEnabled && <ViewportRulers />}
         <CameraBookmarkSaver />
-        {!google3DTilesEnabled && <ContactShadowsLayer />}
         {!isMobile && <PostProcessing activeBurstCount={_activeBurstCount} />}
         <StressTestFireworks />
         <PostExplosionSmokeManager />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
-        <DebugFeed />
 
         {/* ═══ Google Earth Geo Tools ═══ */}
         <GeoToolsScene
