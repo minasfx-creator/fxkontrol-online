@@ -641,6 +641,9 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
           </>
         )}
 
+        {/* Hardware dots — always visible on mobile for QuickHardwarePanel */}
+        {isMobile && <HardwareStatusDots onOpenPanel={onOpenPanel} />}
+
         <button onClick={signOut} className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-600 hover:text-red-400 hover:bg-red-500/5 transition-all" title="Logout">
           <LogOut className="h-3.5 w-3.5" />
         </button>
