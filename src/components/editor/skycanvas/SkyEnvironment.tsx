@@ -8,13 +8,11 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
-import {
-  createSkyAtmosphereV2,
-  createVolumetricCloudLayer,
-  createWaterSystem, WATER_PRESETS,
-  evaluateTimeOfDay,
-  createDecalSystem, updateDecals, clearDecals,
-} from '@/render_ultra';
+import { createSkyAtmosphereV2 } from '@/render_ultra/environment/skyAtmosphereV2';
+import { createVolumetricCloudLayer } from '@/render_ultra/environment/volumetricClouds';
+import { createWaterSystem, WATER_PRESETS } from '@/render_ultra/environment/waterRendering';
+import { evaluateTimeOfDay } from '@/render_ultra/environment/timeOfDay';
+import { createDecalSystem, updateDecals, clearDecals } from '@/render_ultra/environment/groundDecals';
 
 // ── Sky Atmosphere V2 ──
 export function SkyAtmosphereV2Layer() {
