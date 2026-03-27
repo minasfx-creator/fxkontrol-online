@@ -89,6 +89,9 @@ export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanel
         battery: Math.round(Math.min(100, Math.max(0, (mod.batteryVoltage - 3.0) / 1.2 * 100))),
         channelCount: mod.igniters.length || 32,
         label: mod.armed ? 'ARMED' : 'SAFE',
+        addr,
+        armed: mod.armed,
+        source: 'fireone',
       });
     });
 
