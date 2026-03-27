@@ -148,7 +148,7 @@ export default function DockBar() {
                         setHoveredIndex(i);
                         prefetchRoute(item.path);
                       }}
-                      onTouchStart={() => prefetchRoute(item.path)}
+                      
                       className={cn(
                         "relative flex flex-col items-center justify-center rounded-xl transition-all",
                         "active:scale-90",
