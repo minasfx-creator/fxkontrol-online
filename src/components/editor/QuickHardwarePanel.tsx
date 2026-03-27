@@ -170,13 +170,32 @@ export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanel
     });
   }, []);
 
+  const handleArmToggle = useCallback(async (device: HWDevice) => {
+    if (device.addr === undefined) return;
+    haptics.tap();
+    try {
+      if (device.source === 'fireone') {
+        if (device.armed) await fireone.disarmModule(device.addr);
+        else await fireone.armModule(device.addr);
+      } else if (device.source === 'pbus') {
+        if (device.armed) await pbus.disarmDevice(device.addr);
+        else await pbus.armDevice(device.addr);
+      }
+    } catch { /* ignore */ }
+  }, [fireone, pbus]);
+
   const handleScanAll = useCallback(async () => {
     haptics.tap();
     setScanning(true);
-    // Simulate scan delay
+    try {
+      await Promise.allSettled([
+        fireone.discoverModules?.(),
+        pbus.discoverDevices?.(),
+      ]);
+    } catch { /* ignore */ }
     await new Promise(r => setTimeout(r, 2000));
     setScanning(false);
-  }, []);
+  }, [fireone, pbus]);
 
   if (!open) return null;
 
