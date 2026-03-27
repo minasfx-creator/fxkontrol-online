@@ -37,6 +37,7 @@ const ProjectBrowser = lz(() => import('./ProjectBrowser'));
 const CatalogImportDialog = lz(() => import('./CatalogImportDialog'));
 const FullscreenCommandMenu = lz(() => import('./FullscreenCommandMenu'));
 const ExportModal = lz(() => import('./ExportModal'));
+const QuickHardwarePanel = lz(() => import('./QuickHardwarePanel'));
 
 // Export functions loaded on demand
 const getExportEngine = () => import('@/lib/exportEngine');
