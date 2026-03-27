@@ -126,17 +126,19 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
 
         {/* Right: LIVE mode + PANIC + Menu */}
         <div className="pointer-events-auto flex items-center gap-2">
-          {/* Connection status */}
-          <div className="flex items-center gap-1.5 mr-1">
-            <div className={cn(
-              "w-1.5 h-1.5 rounded-full transition-colors",
-              usbConnected ? "bg-[hsl(var(--success))]" : "bg-[hsl(var(--muted-foreground)/0.3)]"
-            )} />
-            <div className={cn(
-              "w-1.5 h-1.5 rounded-full transition-colors",
-              smpteRunning ? "bg-[hsl(var(--warning))]" : "bg-[hsl(var(--muted-foreground)/0.3)]"
-            )} />
-          </div>
+          {/* Hardware quick-access */}
+          <button
+            onClick={() => { haptics.tap(); setHwPanelOpen(true); }}
+            className={cn(
+              "glass-button relative flex items-center justify-center w-14 h-14 active:scale-90 transition-transform",
+              (usbConnected || smpteRunning) && "ring-1 ring-[hsl(var(--success)/0.4)]"
+            )}
+          >
+            <Radio className="w-5 h-5 text-foreground" />
+            {(usbConnected || smpteRunning) && (
+              <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[hsl(var(--success))]" />
+            )}
+          </button>
 
           {/* Night Mode toggle */}
           <button
@@ -178,6 +180,10 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
           </button>
         </div>
       </div>
+      {/* QuickHardwarePanel overlay */}
+      <Suspense fallback={null}>
+        <QuickHardwarePanel open={hwPanelOpen} onClose={() => setHwPanelOpen(false)} />
+      </Suspense>
     </div>
   );
 }
