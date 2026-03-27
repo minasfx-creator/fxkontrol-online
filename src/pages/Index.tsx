@@ -161,6 +161,14 @@ class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError:
   }
 }
 
+function PanelLoader() {
+  return (
+    <div className="w-full h-32 flex items-center justify-center">
+      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
 function CanvasLoader() {
   return (
     <div className="w-full h-full flex items-center justify-center bg-zinc-950">
