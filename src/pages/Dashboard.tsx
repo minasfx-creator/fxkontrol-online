@@ -112,39 +112,22 @@ const MASTER_EDITOR_TOOLS: HubTool[] = [
 ];
 
 /* ── Transport Availability Indicator ─────────────────── */
+const TRANSPORT_TOOLTIPS: Record<string, { desc: string; howTo: string }> = {
+  ble: { desc: 'Bluetooth Low Energy — comunicação sem fio com módulos BLE (IFMx, PyroMote)', howTo: 'Use Chrome/Edge. No iOS, use o app nativo.' },
+  usb: { desc: 'USB Serial — conexão cabeada com antenas rádio e controladores DMX', howTo: 'Conecte via USB-C. Requer Chrome/Edge desktop ou Android.' },
+  wifi: { desc: 'Wi-Fi — rede local para Art-Net, sACN e controle remoto', howTo: 'Conecte-se à mesma rede Wi-Fi dos módulos.' },
+  artnet: { desc: 'Art-Net/sACN — protocolo DMX sobre IP para iluminação e SFX', howTo: 'Requer Wi-Fi ativo na mesma sub-rede dos nós DMX.' },
+};
+
 function TransportIndicator() {
   const [transports, setTransports] = useState<{ key: string; label: string; icon: React.ElementType; available: boolean; color: string }[]>([]);
 
   useEffect(() => {
     const checks = [
-      {
-        key: 'ble',
-        label: 'BLE',
-        icon: Bluetooth,
-        available: typeof navigator !== 'undefined' && 'bluetooth' in navigator,
-        color: 'hsl(220 90% 56%)',
-      },
-      {
-        key: 'usb',
-        label: 'USB',
-        icon: Usb,
-        available: typeof navigator !== 'undefined' && 'serial' in navigator,
-        color: 'hsl(32 100% 50%)',
-      },
-      {
-        key: 'wifi',
-        label: 'Wi-Fi',
-        icon: Wifi,
-        available: typeof navigator !== 'undefined' && 'onLine' in navigator && navigator.onLine,
-        color: 'hsl(165 100% 42%)',
-      },
-      {
-        key: 'artnet',
-        label: 'Art-Net',
-        icon: Radio,
-        available: typeof navigator !== 'undefined' && 'onLine' in navigator && navigator.onLine,
-        color: 'hsl(270 60% 55%)',
-      },
+      { key: 'ble', label: 'BLE', icon: Bluetooth, available: typeof navigator !== 'undefined' && 'bluetooth' in navigator, color: 'hsl(220 90% 56%)' },
+      { key: 'usb', label: 'USB', icon: Usb, available: typeof navigator !== 'undefined' && 'serial' in navigator, color: 'hsl(32 100% 50%)' },
+      { key: 'wifi', label: 'Wi-Fi', icon: Wifi, available: typeof navigator !== 'undefined' && 'onLine' in navigator && navigator.onLine, color: 'hsl(165 100% 42%)' },
+      { key: 'artnet', label: 'Art-Net', icon: Radio, available: typeof navigator !== 'undefined' && 'onLine' in navigator && navigator.onLine, color: 'hsl(270 60% 55%)' },
     ];
     setTransports(checks);
   }, []);
@@ -155,30 +138,34 @@ function TransportIndicator() {
     <div className="flex items-center gap-1.5 flex-wrap">
       {transports.map(t => {
         const Icon = t.icon;
+        const tip = TRANSPORT_TOOLTIPS[t.key];
         return (
-          <div
-            key={t.key}
-            className="flex items-center gap-1 px-2 py-1 rounded-md border transition-all"
-            style={{
-              borderColor: t.available ? `${t.color}40` : 'hsl(0 0% 50% / 0.15)',
-              background: t.available ? `${t.color}08` : 'transparent',
-            }}
-          >
-            <Icon className="h-3 w-3" style={{ color: t.available ? t.color : 'hsl(0 0% 50% / 0.3)' }} />
-            <span
-              className="text-[8px] font-mono font-bold tracking-wider uppercase"
-              style={{ color: t.available ? t.color : 'hsl(0 0% 50% / 0.3)' }}
-            >
-              {t.label}
-            </span>
-            <div
-              className="h-1.5 w-1.5 rounded-full"
-              style={{
-                background: t.available ? t.color : 'hsl(0 0% 50% / 0.2)',
-                boxShadow: t.available ? `0 0 6px ${t.color}60` : 'none',
-              }}
-            />
-          </div>
+          <Tooltip key={t.key}>
+            <TooltipTrigger asChild>
+              <div
+                className="flex items-center gap-1 px-2 py-1 rounded-md border transition-all cursor-help"
+                style={{
+                  borderColor: t.available ? `${t.color}40` : 'hsl(0 0% 50% / 0.15)',
+                  background: t.available ? `${t.color}08` : 'transparent',
+                }}
+              >
+                <Icon className="h-3 w-3" style={{ color: t.available ? t.color : 'hsl(0 0% 50% / 0.3)' }} />
+                <span className="text-[8px] font-mono font-bold tracking-wider uppercase" style={{ color: t.available ? t.color : 'hsl(0 0% 50% / 0.3)' }}>
+                  {t.label}
+                </span>
+                <div className="h-1.5 w-1.5 rounded-full" style={{ background: t.available ? t.color : 'hsl(0 0% 50% / 0.2)', boxShadow: t.available ? `0 0 6px ${t.color}60` : 'none' }} />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[220px] p-2.5 bg-popover border-border/50">
+              <p className="text-[10px] font-semibold text-foreground mb-1">{t.label} — {t.available ? '✅ Disponível' : '❌ Indisponível'}</p>
+              {tip && (
+                <>
+                  <p className="text-[9px] text-muted-foreground leading-relaxed">{tip.desc}</p>
+                  <p className="text-[8px] text-primary/70 mt-1 font-mono">💡 {tip.howTo}</p>
+                </>
+              )}
+            </TooltipContent>
+          </Tooltip>
         );
       })}
     </div>
