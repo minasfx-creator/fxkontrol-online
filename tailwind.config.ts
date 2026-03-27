@@ -101,6 +101,13 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      transitionDuration: {
+        '600': '600ms',
+        '1000': '1000ms',
+        '1200': '1200ms',
+        '2000': '2000ms',
+        '2500': '2500ms',
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
