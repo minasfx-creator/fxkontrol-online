@@ -1,10 +1,10 @@
 import React, { lazy, Suspense, useState, useCallback, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useProjectStore } from '@/store/useProjectStore';
-import { useUndoStore } from '@/store/useUndoStore';
 import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { toast } from 'sonner';
+import { useEditorKeyboardShortcuts } from '@/hooks/useEditorKeyboardShortcuts';
+import { useViewportDrop } from '@/hooks/useViewportDrop';
 import { Upload, ZoomIn, ZoomOut, Compass, Layers, ChevronDown, Sparkles, Paintbrush, Cog, X } from 'lucide-react';
 import { useDisplayStore } from '@/store/useDisplayStore';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
