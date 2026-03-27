@@ -316,6 +316,19 @@ export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanel
                                   {device.channelCount}ch
                                 </span>
                               )}
+                              {device.label && (
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-[7px] px-1 py-0 h-3.5 font-mono",
+                                    device.label === 'ARMED'
+                                      ? "border-[hsl(var(--destructive)/0.5)] text-[hsl(var(--destructive))]"
+                                      : "border-[hsl(var(--success)/0.5)] text-[hsl(var(--success))]"
+                                  )}
+                                >
+                                  {device.label}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </div>
