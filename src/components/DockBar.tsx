@@ -8,6 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { ambientSound } from '@/lib/ambientSound';
 import { haptics } from '@/lib/haptics';
+import { prefetchRoute } from '@/lib/prefetchRoutes';
 import {
   LayoutDashboard, Clapperboard, CalendarDays,
   Crosshair, Gamepad2, Rocket,
