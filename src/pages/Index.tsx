@@ -267,6 +267,7 @@ function Index() {
     return () => window.removeEventListener('position-double-click', dblClickHandler);
   }, []);
 
+  const handleTogglePanel = useCallback((id: PanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
   }, []);
 
