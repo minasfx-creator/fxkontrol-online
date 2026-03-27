@@ -57,7 +57,7 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
     window.dispatchEvent(new Event('open-geo-setup'));
   }, []);
   const isArmed = activeEffects.length > 0;
-
+  const [hwPanelOpen, setHwPanelOpen] = useState(false);
   const countdown = useMemo(() => getCountdown(settings?.show_date ?? null), [settings?.show_date]);
 
   const handlePanic = useCallback(() => {
