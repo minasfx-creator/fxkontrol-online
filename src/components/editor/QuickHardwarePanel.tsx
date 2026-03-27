@@ -238,11 +238,24 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
             </div>
             <div>
               <h2 className="text-sm font-bold text-foreground tracking-tight">Hardware Connect</h2>
-              <p className="text-[10px] text-[hsl(var(--muted-foreground))] font-mono">
-                {totalOnline}/{totalDevices} online • {devices.filter(d => d.armed).length} armed
+              <p className="text-[10px] text-[hsl(var(--muted-foreground))] font-mono flex items-center gap-1.5 flex-wrap">
+                <span>{totalOnline}/{totalDevices} online • {devices.filter(d => d.armed).length} armed</span>
+                {activeTransport.map((t, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-wider"
+                    style={{ background: `hsl(${t.color} / 0.15)`, color: `hsl(${t.color})` }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: `hsl(${t.color})` }} />
+                    {t.label}
+                  </span>
+                ))}
+                {activeTransport.length === 0 && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-wider bg-[hsl(var(--muted)/0.2)] text-[hsl(var(--muted-foreground)/0.6)]">
+                    OFFLINE
+                  </span>
+                )}
               </p>
-            </div>
-          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => { haptics.tap(); setSimMode(!simMode); }}
