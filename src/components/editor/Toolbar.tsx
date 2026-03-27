@@ -37,7 +37,7 @@ const ProjectBrowser = lz(() => import('./ProjectBrowser'));
 const CatalogImportDialog = lz(() => import('./CatalogImportDialog'));
 const FullscreenCommandMenu = lz(() => import('./FullscreenCommandMenu'));
 const ExportModal = lz(() => import('./ExportModal'));
-const QuickHardwarePanel = lz(() => import('./QuickHardwarePanel'));
+
 
 // Export functions loaded on demand
 const getExportEngine = () => import('@/lib/exportEngine');
@@ -89,13 +89,14 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
     return 'text-zinc-600';
   };
 
+  const navTo = useNavigate();
   const handleDotClick = useCallback(() => {
     if (isMobile) {
-      setHwPanelOpen(true);
+      navTo('/command?mode=hardware');
     } else {
       onOpenPanel?.('easyconnect');
     }
-  }, [isMobile, onOpenPanel]);
+  }, [isMobile, onOpenPanel, navTo]);
 
   return (
     <>
@@ -119,12 +120,6 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
           </span>
         </button>
       </div>
-      {/* Mobile: QuickHardwarePanel overlay */}
-      {isMobile && (
-        <Suspense fallback={null}>
-          <QuickHardwarePanel open={hwPanelOpen} onClose={() => setHwPanelOpen(false)} />
-        </Suspense>
-      )}
     </>
   );
 }
