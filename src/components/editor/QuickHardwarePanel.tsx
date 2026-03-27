@@ -74,6 +74,8 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
   const [simMode, setSimMode] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<TransportGroup>>(new Set(['ble', 'usb', 'artnet', 'pbus', 'radio']));
   const [scanning, setScanning] = useState(false);
+  const [otaOpen, setOtaOpen] = useState(false);
+  const [otaDevice, setOtaDevice] = useState<{ name: string; addr?: number; target?: OTATarget } | null>(null);
   const usbDevices = useUSBDeviceStore(s => s.dmxDevices);
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
