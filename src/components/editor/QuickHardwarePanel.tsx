@@ -85,11 +85,12 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
     const modes: { label: string; color: string }[] = [];
     if (fireone.isConnected) {
       const path = fireone.connectionPath;
-      if (path === 'cable') modes.push({ label: 'WIRED', color: 'var(--success)' });
+      if (path === 'serial') modes.push({ label: 'WIRED', color: 'var(--success)' });
       else if (path === 'radio') modes.push({ label: 'RADIO', color: 'var(--destructive)' });
-      else if (path === 'wifi' || path === 'wifi-direct') modes.push({ label: 'WI-FI', color: 'var(--accent)' });
+      else if (path === 'wifi' || path === 'wifi_direct') modes.push({ label: 'WI-FI', color: 'var(--accent)' });
       else if (path === 'artnet') modes.push({ label: 'ART-NET', color: '210 100% 60%' });
-      else if (path !== 'none') modes.push({ label: path.toUpperCase(), color: 'var(--primary)' });
+      else if (path === 'cellular') modes.push({ label: 'CELLULAR', color: 'var(--warning)' });
+      else if (path !== 'none') modes.push({ label: 'CONNECTED', color: 'var(--primary)' });
     }
     if (pbus.isConnected) {
       const path = pbus.connectionPath;
