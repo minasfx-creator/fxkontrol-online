@@ -3,7 +3,7 @@
  * Dark glass aesthetic. Logo left, project name center, critical controls right.
  * All editing tools moved to floating docks.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle, Moon, Sun, Maximize2, Minimize2 } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
@@ -16,27 +16,35 @@ import { useProjectPersistence } from '@/hooks/useProjectPersistence';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { secondsToTimecode, formatTimecode } from '@/lib/smpteEngine';
-import FormationBuilder from './FormationBuilder';
-import CSVImporter from './CSVImporter';
-import VVIZImporter from './VVIZImporter';
-import UAssetImporter from './UAssetImporter';
-import GMA2PatchImporter from './GMA2PatchImporter';
-import UE5DMXPrevisImporter from './UE5DMXPrevisImporter';
-import MVRImporter from './MVRImporter';
-import UE5MapImporter from './UE5MapImporter';
-import TwinmotionImporter from './TwinmotionImporter';
-import AssetMarketplaceBrowser from './AssetMarketplaceBrowser';
-import ProjectBrowser from './ProjectBrowser';
-import CatalogImportDialog from './CatalogImportDialog';
-import ArrangePositionsDialog from './ArrangePositionsDialog';
-import { ConvertToFanDialog, ConvertToSequenceDialog } from './ScriptingDialogs';
-import { exportVVIZ, exportFiringCSV, exportSkyc, downloadFile } from '@/lib/exportEngine';
-import LanguageSwitcher from './LanguageSwitcher';
-import FullscreenCommandMenu from './FullscreenCommandMenu';
-import ExportModal from './ExportModal';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { artnetModuleService } from '@/services/artnetModuleService';
+
+// ── Lazy-loaded modals (only fetched when user opens them) ──
+const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
+const FormationBuilder = lz(() => import('./FormationBuilder'));
+const CSVImporter = lz(() => import('./CSVImporter'));
+const VVIZImporter = lz(() => import('./VVIZImporter'));
+const UAssetImporter = lz(() => import('./UAssetImporter'));
+const GMA2PatchImporter = lz(() => import('./GMA2PatchImporter'));
+const UE5DMXPrevisImporter = lz(() => import('./UE5DMXPrevisImporter'));
+const MVRImporter = lz(() => import('./MVRImporter'));
+const UE5MapImporter = lz(() => import('./UE5MapImporter'));
+const TwinmotionImporter = lz(() => import('./TwinmotionImporter'));
+const AssetMarketplaceBrowser = lz(() => import('./AssetMarketplaceBrowser'));
+const ProjectBrowser = lz(() => import('./ProjectBrowser'));
+const CatalogImportDialog = lz(() => import('./CatalogImportDialog'));
+const ArrangePositionsDialog = lz(() => import('./ArrangePositionsDialog'));
+const FullscreenCommandMenu = lz(() => import('./FullscreenCommandMenu'));
+const ExportModal = lz(() => import('./ExportModal'));
+const LanguageSwitcher = lz(() => import('./LanguageSwitcher'));
+
+// Lazy named exports
+const ConvertToFanDialog = lz(() => import('./ScriptingDialogs').then(m => ({ default: m.ConvertToFanDialog })));
+const ConvertToSequenceDialog = lz(() => import('./ScriptingDialogs').then(m => ({ default: m.ConvertToSequenceDialog })));
+
+// Export functions loaded on demand
+const getExportEngine = () => import('@/lib/exportEngine');
 
 /* ── Hardware Status Dots (live feedback) ──────────────────────── */
 function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => void }) {
