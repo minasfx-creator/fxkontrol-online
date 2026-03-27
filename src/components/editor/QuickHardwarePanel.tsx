@@ -2,17 +2,20 @@
  * QuickHardwarePanel — Mobile-first bottom sheet for instant hardware overview
  * Groups all detected devices by transport type with status, signal, and battery info
  */
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   Radio, Usb, Wifi, Bluetooth, Globe, Cpu, Cable,
   Signal, SignalLow, SignalMedium, SignalHigh, SignalZero,
   Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning,
-  ChevronDown, ChevronRight, Search, Zap, X, ToggleLeft, ToggleRight
+  ChevronDown, ChevronRight, Search, Zap, X, ToggleLeft, ToggleRight,
+  Shield, ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { Badge } from '@/components/ui/badge';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
+import { useFireOneHardware } from '@/hooks/useFireOneHardware';
+import { usePBusHardware } from '@/hooks/usePBusHardware';
 
 // ── Transport type definitions ──
 type TransportGroup = 'ble' | 'usb' | 'artnet' | 'pbus' | 'wifi' | 'radio';
@@ -60,17 +63,52 @@ interface QuickHardwarePanelProps {
 }
 
 export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanelProps) {
-  const [simMode, setSimMode] = useState(true);
+  const [simMode, setSimMode] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<TransportGroup>>(new Set(['ble', 'usb', 'artnet', 'pbus', 'radio']));
   const [scanning, setScanning] = useState(false);
   const usbDevices = useUSBDeviceStore(s => s.dmxDevices);
+  const fireone = useFireOneHardware();
+  const pbus = usePBusHardware();
 
-  // Build unified device list from real stores + SIM fallback
+  // Build unified device list from real hooks + USB store + SIM fallback
   const devices = useMemo((): HWDevice[] => {
     const list: HWDevice[] = [];
 
-    // Real USB devices
+    // Real FireOne modules
+    fireone.modules.forEach((mod, addr) => {
+      const isOnline = Date.now() - mod.lastSeen < 10000;
+      list.push({
+        id: `fireone-${addr}`,
+        name: `FireOne Module #${addr}`,
+        transport: 'usb',
+        status: isOnline ? 'online' : 'offline',
+        rssi: mod.rssiDbm ?? (mod.signalStrength > 0 ? -100 + mod.signalStrength : undefined),
+        battery: Math.round(Math.min(100, Math.max(0, (mod.batteryVoltage - 3.0) / 1.2 * 100))),
+        channelCount: mod.igniters.length || 32,
+        label: mod.armed ? 'ARMED' : 'SAFE',
+      });
+    });
+
+    // Real PBUS devices
+    pbus.devices.forEach((dev, addr) => {
+      const bestRssi = Math.max(dev.rssi433, dev.rssi868);
+      const isOnline = Date.now() - dev.lastSeen < 10000;
+      list.push({
+        id: `pbus-${addr}`,
+        name: `PBUS ${dev.type} #${addr}`,
+        transport: 'pbus',
+        status: isOnline ? 'online' : 'offline',
+        rssi: bestRssi > -999 ? bestRssi : undefined,
+        battery: Math.round(Math.min(100, Math.max(0, (dev.batteryV - 3.0) / 1.2 * 100))),
+        channelCount: dev.channels,
+        label: dev.armed ? 'ARMED' : 'SAFE',
+      });
+    });
+
+    // Real USB devices from store
     usbDevices.forEach(d => {
+      // Skip if already added as fireone/pbus
+      if (list.some(existing => existing.id.includes(d.id))) return;
       const transport: TransportGroup = d.type === 'radio' ? 'radio' : d.type === 'pbus' ? 'pbus' : 'usb';
       list.push({
         id: d.id,
@@ -90,17 +128,15 @@ export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanel
         { id: 'sim-usb-2', name: 'FXK Serial Bridge', transport: 'usb', status: 'offline' },
         { id: 'sim-artnet-1', name: 'FXK-M1 Module 01', transport: 'artnet', status: 'online', rssi: -45, battery: 92, latencyMs: 4, channelCount: 32 },
         { id: 'sim-artnet-2', name: 'FXK-M1 Module 02', transport: 'artnet', status: 'online', rssi: -58, battery: 78, latencyMs: 6, channelCount: 32 },
-        { id: 'sim-artnet-3', name: 'FXK-M1 Module 03', transport: 'artnet', status: 'connecting', rssi: -72, battery: 55, latencyMs: 15, channelCount: 16 },
         { id: 'sim-pbus-1', name: 'Showven C16 #1', transport: 'pbus', status: 'online', rssi: -61, battery: 81, channelCount: 16 },
         { id: 'sim-pbus-2', name: 'Showven X4 #1', transport: 'pbus', status: 'offline', battery: 23, channelCount: 4 },
         { id: 'sim-radio-1', name: 'CC1101 Dongle 433M', transport: 'radio', status: 'online', rssi: -55 },
-        { id: 'sim-radio-2', name: 'SX1276 Dual-Band', transport: 'radio', status: 'online', rssi: -48 },
         { id: 'sim-wifi-1', name: 'FXK Gateway AP', transport: 'wifi', status: 'online', rssi: -35, latencyMs: 3 },
       );
     }
 
     return list;
-  }, [usbDevices, simMode]);
+  }, [usbDevices, simMode, fireone.modules, pbus.devices]);
 
   // Group devices by transport
   const grouped = useMemo(() => {
@@ -279,6 +315,19 @@ export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanel
                                 <span className="text-[8px] font-mono text-[hsl(var(--muted-foreground))]">
                                   {device.channelCount}ch
                                 </span>
+                              )}
+                              {device.label && (
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-[7px] px-1 py-0 h-3.5 font-mono",
+                                    device.label === 'ARMED'
+                                      ? "border-[hsl(var(--destructive)/0.5)] text-[hsl(var(--destructive))]"
+                                      : "border-[hsl(var(--success)/0.5)] text-[hsl(var(--success))]"
+                                  )}
+                                >
+                                  {device.label}
+                                </Badge>
                               )}
                             </div>
                           </div>
