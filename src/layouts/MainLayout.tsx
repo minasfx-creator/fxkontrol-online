@@ -190,7 +190,9 @@ export default function MainLayout() {
           </main>
         </div>
 
-        <FXKAssistant />
+        <Suspense fallback={null}>
+          <FXKAssistant />
+        </Suspense>
 
         {/* Global PANIC FAB */}
         {isArmed && !commandImmersive && (

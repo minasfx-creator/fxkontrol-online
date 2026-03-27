@@ -14,7 +14,8 @@ import {
   Lightbulb, Pencil, LayoutTemplate,
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
-import CinematicIntro from '@/components/editor/CinematicIntro';
+import { lazy, Suspense } from 'react';
+const CinematicIntro = lazy(() => import('@/components/editor/CinematicIntro'));
 import { useIsMobile } from '@/hooks/use-mobile';
 
 /* ── Types ──────────────────────────────────────────── */
