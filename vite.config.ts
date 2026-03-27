@@ -44,6 +44,7 @@ export default defineConfig(({ mode }) => ({
           ],
           'vendor-supabase': ['@supabase/supabase-js'],
           'vendor-forms': ['react-hook-form', '@hookform/resolvers', 'zod'],
+          'vendor-misc': ['date-fns', 'cmdk', 'input-otp', 'embla-carousel-react', 'react-day-picker', 'vaul', 'react-resizable-panels'],
         },
       },
     },
