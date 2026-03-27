@@ -2,7 +2,7 @@
  * MobileHUD — Apple Dynamic Island–inspired top bar
  * Clean, minimal, high-information density for show operators.
  */
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { Play, Pause, Square, Menu, AlertOctagon, Zap, ShieldAlert, MapPin, Moon, Sun, Radio } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
@@ -13,6 +13,8 @@ import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { useShowSettings } from '@/hooks/useShowSettings';
 import type { PanelId } from '@/components/editor/PanelTabBar';
+
+const QuickHardwarePanel = lazy(() => import('@/components/editor/QuickHardwarePanel'));
 
 interface MobileHUDProps {
   onOpenPanel: (id: PanelId) => void;
