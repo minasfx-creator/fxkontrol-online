@@ -1,6 +1,6 @@
 /**
- * MobileQuickActions — Apple-style floating action buttons
- * Contextual, minimal, with smooth spring animations.
+ * MobileQuickActions — Compact floating action buttons
+ * Positioned lower-left to avoid HUD overlap. Smaller touch targets.
  */
 import { useCallback } from 'react';
 import { MousePointer2, Plus, Undo2, Redo2, Trash2, Copy, Pencil, Compass } from 'lucide-react';
@@ -85,14 +85,14 @@ export default function MobileQuickActions() {
       ];
 
   return (
-    <div className="fixed left-3 top-1/2 -translate-y-1/2 z-40 pointer-events-none">
-      <div className="flex flex-col gap-2.5 pointer-events-auto">
+    <div className="fixed left-2 z-40 pointer-events-none" style={{ bottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
+      <div className="flex flex-col gap-1.5 pointer-events-auto">
         {actions.map(({ icon: Icon, label, onClick, variant }) => (
           <button
             key={label}
             onClick={onClick}
             className={cn(
-              "touch-target-lg flex flex-col items-center justify-center w-14 h-14 rounded-2xl glass-button transition-all active:scale-90",
+              "flex items-center justify-center w-10 h-10 rounded-xl glass-button transition-all active:scale-90",
               variant === 'active' && "bg-primary/15 border-primary/30 text-primary glow-active",
               variant === 'primary' && "bg-primary/12 border-primary/25 text-primary",
               variant === 'danger' && "bg-destructive/15 border-destructive/30 text-destructive glow-danger",
@@ -100,15 +100,13 @@ export default function MobileQuickActions() {
             )}
             title={label}
           >
-            <Icon className="w-5 h-5" />
-            <span className="text-[8px] font-bold mt-0.5 uppercase tracking-wider opacity-70">{label}</span>
+            <Icon className="w-4 h-4" />
           </button>
         ))}
 
-        {/* Selection count badge */}
         {hasSelection && (
-          <div className="status-pill justify-center">
-            <span className="text-[10px] font-bold text-primary tabular-nums">{selectedIds.length}</span>
+          <div className="status-pill justify-center px-1.5 py-0.5">
+            <span className="text-[9px] font-bold text-primary tabular-nums">{selectedIds.length}</span>
           </div>
         )}
       </div>
