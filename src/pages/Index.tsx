@@ -244,7 +244,29 @@ function Index() {
   // Drag-drop (extracted to hook)
   const { onDragOver, onDragLeave, onDrop } = useViewportDrop(setIsDragOver);
 
-  const handleTogglePanel = useCallback((id: PanelId) => {
+  // Deep-link: auto-open panel from ?panel= query param
+  useEffect(() => {
+    const panelParam = searchParams.get('panel');
+    const modeParam = searchParams.get('mode');
+    if (panelParam) {
+      setActivePanel(panelParam as PanelId);
+      if (modeParam === 'wifi') setRemoteMode('wifi-auto');
+      else if (modeParam === 'cloud') setRemoteMode('cloud');
+      setSearchParams({}, { replace: true });
+      setAppPhase('editor');
+      if (window.innerWidth < 768) {
+        setMobileTab(null);
+        setMobilePanelHeight('full');
+      }
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const dblClickHandler = () => setShowPositionEditor(true);
+    window.addEventListener('position-double-click', dblClickHandler);
+    return () => window.removeEventListener('position-double-click', dblClickHandler);
+  }, []);
+
     setActivePanel((prev) => (prev === id ? null : id));
   }, []);
 
