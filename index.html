@@ -4,7 +4,11 @@
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon.png" type="image/png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
-    <!-- TODO: Set the document title to the name of your application -->
+    <meta name="theme-color" content="#0a0c10" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
     <title>FX KONTROL — Drone & Pyrotechnics Show Platform</title>
     <meta name="description" content="FX KONTROL — Professional drone swarm & pyrotechnics show design platform. Real-time 3D choreography, physics simulation, and live show control." />
     <meta name="author" content="Minas FX" />
@@ -17,10 +21,73 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@Lovable" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <!-- DNS prefetch for critical origins -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="dns-prefetch" href="https://kyywqpyhsgdthcqqohyv.supabase.co" />
+
+    <!-- Preconnect to font CDN (crossorigin required for CORS fonts) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Preload critical font families with display=swap -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" /></noscript>
+
+    <!-- Full font stylesheet (non-critical weights loaded async) -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" /></noscript>
+
+    <!-- Critical inline CSS for instant first paint -->
+    <style>
+      *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+      html{-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+      body{background:#0a0c10;color:#d4d8de;font-family:Outfit,system-ui,-apple-system,sans-serif;overflow:hidden}
+      #root{min-height:100dvh;display:flex;align-items:center;justify-content:center}
+      /* Splash screen */
+      #splash{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0a0c10;gap:16px;transition:opacity .4s ease-out}
+      #splash.hide{opacity:0;pointer-events:none}
+      #splash .logo{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,hsl(32 100% 50%),hsl(38 100% 58%));animation:pulse-glow 2s ease-in-out infinite}
+      #splash .bar-track{width:160px;height:3px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden}
+      #splash .bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,hsl(32 100% 50%),hsl(38 100% 58%));width:0%;transition:width .3s ease}
+      #splash .label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.3);font-family:monospace}
+      @keyframes pulse-glow{0%,100%{box-shadow:0 0 20px rgba(255,165,0,.2)}50%{box-shadow:0 0 40px rgba(255,165,0,.4)}}
+    </style>
   </head>
 
   <body>
+    <!-- Splash screen — removed by JS after React hydrates -->
+    <div id="splash">
+      <div class="logo"></div>
+      <div class="bar-track"><div class="bar-fill" id="splash-bar"></div></div>
+      <div class="label">FX KONTROL</div>
+    </div>
+
     <div id="root"></div>
+
+    <script>
+      // Splash progress animation
+      (function(){
+        var bar=document.getElementById('splash-bar');
+        if(!bar)return;
+        var p=0;
+        var iv=setInterval(function(){
+          p+=Math.random()*15+5;
+          if(p>90)p=90;
+          bar.style.width=p+'%';
+        },200);
+        window.__splashDone=function(){
+          clearInterval(iv);
+          bar.style.width='100%';
+          setTimeout(function(){
+            var s=document.getElementById('splash');
+            if(s){s.classList.add('hide');setTimeout(function(){s.remove()},500)}
+          },300);
+        };
+      })();
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
