@@ -4,6 +4,7 @@
  * All editing tools moved to floating docks.
  */
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle, Moon, Sun, Maximize2, Minimize2 } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ const ProjectBrowser = lz(() => import('./ProjectBrowser'));
 const CatalogImportDialog = lz(() => import('./CatalogImportDialog'));
 const FullscreenCommandMenu = lz(() => import('./FullscreenCommandMenu'));
 const ExportModal = lz(() => import('./ExportModal'));
+const QuickHardwarePanel = lz(() => import('./QuickHardwarePanel'));
 
 // Export functions loaded on demand
 const getExportEngine = () => import('@/lib/exportEngine');
@@ -46,6 +48,8 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
   const pbus = usePBusHardware();
   const [artnetCount, setArtnetCount] = useState(0);
   const [artnetConnected, setArtnetConnected] = useState(0);
+  const [hwPanelOpen, setHwPanelOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const update = () => {
@@ -85,27 +89,43 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
     return 'text-zinc-600';
   };
 
+  const handleDotClick = useCallback(() => {
+    if (isMobile) {
+      setHwPanelOpen(true);
+    } else {
+      onOpenPanel?.('easyconnect');
+    }
+  }, [isMobile, onOpenPanel]);
+
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/30 border border-white/5">
-      <button onClick={() => onOpenPanel?.('easyconnect')} className="flex items-center gap-0.5 group" title="FireOne">
-        <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(foConnected, foScanning))} />
-        <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(foConnected, foScanning))}>
-          FO{foCount > 0 && ` ${foCount}`}
-        </span>
-      </button>
-      <button onClick={() => onOpenPanel?.('easyconnect')} className="flex items-center gap-0.5 group" title="PBUS">
-        <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(pbConnected, pbScanning))} />
-        <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(pbConnected, pbScanning))}>
-          PB{pbCount > 0 && ` ${pbCount}`}
-        </span>
-      </button>
-      <button onClick={() => onOpenPanel?.('easyconnect')} className="flex items-center gap-0.5 group" title="Art-Net/MA3">
-        <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(maConnected, false))} />
-        <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(maConnected, false))}>
-          MA{artnetConnected > 0 && ` ${artnetConnected}`}
-        </span>
-      </button>
-    </div>
+    <>
+      <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/30 border border-white/5">
+        <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="FireOne">
+          <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(foConnected, foScanning))} />
+          <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(foConnected, foScanning))}>
+            FO{foCount > 0 && ` ${foCount}`}
+          </span>
+        </button>
+        <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="PBUS">
+          <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(pbConnected, pbScanning))} />
+          <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(pbConnected, pbScanning))}>
+            PB{pbCount > 0 && ` ${pbCount}`}
+          </span>
+        </button>
+        <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="Art-Net/MA3">
+          <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(maConnected, false))} />
+          <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(maConnected, false))}>
+            MA{artnetConnected > 0 && ` ${artnetConnected}`}
+          </span>
+        </button>
+      </div>
+      {/* Mobile: QuickHardwarePanel overlay */}
+      {isMobile && (
+        <Suspense fallback={null}>
+          <QuickHardwarePanel open={hwPanelOpen} onClose={() => setHwPanelOpen(false)} />
+        </Suspense>
+      )}
+    </>
   );
 }
 
@@ -620,6 +640,9 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
             <HardwareStatusDots onOpenPanel={onOpenPanel} />
           </>
         )}
+
+        {/* Hardware dots — always visible on mobile for QuickHardwarePanel */}
+        {isMobile && <HardwareStatusDots onOpenPanel={onOpenPanel} />}
 
         <button onClick={signOut} className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-600 hover:text-red-400 hover:bg-red-500/5 transition-all" title="Logout">
           <LogOut className="h-3.5 w-3.5" />
