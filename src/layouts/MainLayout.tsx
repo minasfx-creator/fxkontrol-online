@@ -139,8 +139,8 @@ export default function MainLayout() {
             </button>
           )}
 
-          {/* Header — Apple frosted glass bar */}
-          {!commandImmersive && (
+          {/* Header — Apple frosted glass bar (hidden on immersive routes) */}
+          {!commandImmersive && !isEditor && (
             <header
               className={`flex items-center border-b px-3 shrink-0 relative overflow-hidden ${isEditor ? 'h-8' : 'h-10'}`}
               style={{

@@ -1153,7 +1153,7 @@ export default function SkyCanvas() {
   const [canvasInstanceKey, setCanvasInstanceKey] = useState(0);
   const recoveringContextRef = useRef(false);
   const handleContextRemount = useCallback(() => setCanvasInstanceKey(prev => prev + 1), []);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768; // eslint-disable-line -- kept as static for perf-sensitive render loop; useIsMobile used at page level
   const deviceProfile = useMemo(() => getDeviceProfile(), []);
   const isLowTierMobile = isMobile && deviceProfile.tier !== 'high';
   const environment = useSceneStore(st => st.environment);
@@ -1407,8 +1407,8 @@ export default function SkyCanvas() {
 
         <Suspense fallback={null}>
           {!google3DTilesEnabled && <Moon />}
-          {!google3DTilesEnabled && !isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
-          {!google3DTilesEnabled && !isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
+          {!google3DTilesEnabled && !isLowTierMobile && !environment.lowQualityMode && <AtmosphericParticles />}
+          {!google3DTilesEnabled && !isLowTierMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
         </Suspense>
 
         {/* ═══ Ground / Terrain ═══ */}
@@ -1444,7 +1444,7 @@ export default function SkyCanvas() {
         {!isMobile && <CameraPathPreview />}
         {!google3DTilesEnabled && <ViewportRulers />}
         <CameraBookmarkSaver />
-        {!isMobile && <PostProcessing activeBurstCount={_activeBurstCount} />}
+        {!isLowTierMobile && <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />}
         {!isLowTierMobile && <StressTestFireworks />}
         {!isLowTierMobile && <PostExplosionSmokeManager />}
         <BoxSelectR3F />
