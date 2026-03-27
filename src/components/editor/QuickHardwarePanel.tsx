@@ -361,10 +361,29 @@ export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanel
                           </div>
                         </div>
 
-                        {/* Telemetry icons */}
-                        <div className="flex items-center gap-2 shrink-0">
+                        {/* Telemetry + Actions */}
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <RSSIBars rssi={device.rssi} />
                           <BatteryIcon level={device.battery} />
+
+                          {/* ARM/DISARM button for FireOne & PBUS */}
+                          {device.source && (device.source === 'fireone' || device.source === 'pbus') && device.addr !== undefined && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleArmToggle(device); }}
+                              className={cn(
+                                "ml-1 flex items-center justify-center w-8 h-8 rounded-lg transition-all active:scale-90",
+                                device.armed
+                                  ? "bg-[hsl(var(--destructive)/0.15)] text-[hsl(var(--destructive))]"
+                                  : "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]"
+                              )}
+                              title={device.armed ? 'Disarm' : 'Arm'}
+                            >
+                              {device.armed
+                                ? <ShieldAlert className="w-3.5 h-3.5" />
+                                : <Shield className="w-3.5 h-3.5" />
+                              }
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
