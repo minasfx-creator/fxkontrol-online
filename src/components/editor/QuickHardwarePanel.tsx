@@ -108,6 +108,9 @@ export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanel
         battery: Math.round(Math.min(100, Math.max(0, (dev.batteryV - 3.0) / 1.2 * 100))),
         channelCount: dev.channels,
         label: dev.armed ? 'ARMED' : 'SAFE',
+        addr,
+        armed: dev.armed,
+        source: 'pbus',
       });
     });
 
