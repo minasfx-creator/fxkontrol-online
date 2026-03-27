@@ -1,10 +1,10 @@
 import React, { lazy, Suspense, useState, useCallback, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useProjectStore } from '@/store/useProjectStore';
-import { useUndoStore } from '@/store/useUndoStore';
 import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { toast } from 'sonner';
+import { useEditorKeyboardShortcuts } from '@/hooks/useEditorKeyboardShortcuts';
+import { useViewportDrop } from '@/hooks/useViewportDrop';
 import { Upload, ZoomIn, ZoomOut, Compass, Layers, ChevronDown, Sparkles, Paintbrush, Cog, X } from 'lucide-react';
 import { useDisplayStore } from '@/store/useDisplayStore';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
@@ -180,18 +180,7 @@ function CanvasLoader() {
   );
 }
 
-const SUPPORTED_DROP_EXTENSIONS = ['mvr', 'csv', 'json', 'vviz', 'uasset', 'umap', 'copy', 't3d', 'png', 'jpg', 'jpeg', 'tif', 'tiff', 'bmp', 'udatasmith', 'ds', 'fbx', 'obj', 'gltf', 'glb', 'skp', 'ifc', '3ds', 'dae', 'dwg'];
-
-function getDropType(ext: string): 'mvr' | 'csv' | 'ue5json' | 'vviz' | 'uasset' | 'ue5map' | 'heightmap' | 'twinmotion' {
-  if (ext === 'mvr') return 'mvr';
-  if (ext === 'csv') return 'csv';
-  if (ext === 'vviz') return 'vviz';
-  if (ext === 'uasset' || ext === 'umap') return 'uasset';
-  if (['png', 'jpg', 'jpeg', 'tif', 'tiff', 'bmp'].includes(ext)) return 'heightmap';
-  if (ext === 't3d') return 'ue5map';
-  if (['udatasmith', 'ds', 'fbx', 'obj', 'gltf', 'glb', 'skp', 'ifc', '3ds', 'dae', 'dwg', 'c4d', 'rvt'].includes(ext)) return 'twinmotion';
-  return 'ue5json';
-}
+// Drop extensions and logic moved to useViewportDrop hook
 
 /* ── Nav Controls (Bottom-Right) ─────────────────────────────── */
 function ViewportNavControls({ collapsed }: { collapsed?: boolean }) {
@@ -246,21 +235,14 @@ function Index() {
     return () => document.documentElement.classList.remove('night-mode');
   }, [nightMode]);
 
-  // Viewport maximize toggle: F key to toggle, Escape to exit
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLElement && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
-      if (e.key === 'f' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && !activePanel) {
-        e.preventDefault();
-        setViewportMaximized(v => !v);
-      }
-      if (e.key === 'Escape' && viewportMaximized) {
-        setViewportMaximized(false);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [viewportMaximized, activePanel]);
+  // Keyboard shortcuts (extracted to hook)
+  useEditorKeyboardShortcuts({
+    selectedPositionId, activePanel, viewportMaximized,
+    setShowPositionEditor, setShowShortcuts, setSmartScriptOpen, setViewportMaximized,
+  });
+
+  // Drag-drop (extracted to hook)
+  const { onDragOver, onDragLeave, onDrop } = useViewportDrop(setIsDragOver);
 
   // Deep-link: auto-open panel from ?panel= query param
   useEffect(() => {
@@ -284,54 +266,6 @@ function Index() {
     window.addEventListener('position-double-click', dblClickHandler);
     return () => window.removeEventListener('position-double-click', dblClickHandler);
   }, []);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'e' && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        if (selectedPositionId) setShowPositionEditor(prev => !prev);
-      }
-      if (e.key === '?' && e.shiftKey) setShowShortcuts(prev => !prev);
-      if (!e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        if (e.key === '1') useProjectStore.getState().setSelectionMode('positions');
-        if (e.key === '2') useProjectStore.getState().setSelectionMode('events');
-        if (e.key === '3') useProjectStore.getState().setSelectionMode('both');
-      }
-      if (e.ctrlKey && e.shiftKey && e.key === 'A') { e.preventDefault(); setSmartScriptOpen(prev => !prev); }
-      if (e.key === 'i' && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        const store = useProjectStore.getState();
-        if (store.isPlaying || store.currentTime > 0) {
-          useUndoStore.getState().checkpoint();
-          store.addTimelineItem({ id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, effectId: '', startTime: store.currentTime, trackIndex: 0, position: { x: 0, y: 0, z: 0 }, notes: 'Empty cue' });
-          toast.success(`Cue inserted at ${store.currentTime.toFixed(2)}s`);
-        }
-      }
-      if (e.key === 'a' && (e.ctrlKey || e.metaKey) && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        e.preventDefault();
-        const store = useProjectStore.getState();
-        if (store.editorMode === 'select') store.selectMultiplePositions(store.positions.map(p => p.id));
-      }
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
-        const store = useProjectStore.getState();
-        if (store.selectedPositionIds.length > 0) { useUndoStore.getState().checkpoint(); store.selectedPositionIds.forEach(id => store.removePosition(id)); }
-      }
-      if (e.key === 'd' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        const store = useProjectStore.getState();
-        if (store.selectedPositionIds.length > 0) {
-          useUndoStore.getState().checkpoint();
-          const newIds: string[] = [];
-          store.selectedPositionIds.forEach(id => {
-            const pos = store.positions.find(p => p.id === id);
-            if (pos) { const newId = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`; newIds.push(newId); store.addPosition({ ...pos, id: newId, name: `${pos.name}-Copy`, x: pos.x + 2, z: pos.z + 2 }); }
-          });
-          store.selectMultiplePositions(newIds);
-        }
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [selectedPositionId]);
 
   const handleTogglePanel = useCallback((id: PanelId) => {
     setActivePanel((prev) => (prev === id ? null : id));
@@ -517,33 +451,9 @@ function Index() {
       {/* ─── Layer 0: Full-screen 3D Canvas ────────────── */}
       <div
         className="absolute inset-0 z-0 br2049-atmosphere"
-        onDragOver={(e) => {
-          if (e.dataTransfer.types.includes('application/showven-equipment')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; return; }
-          if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setIsDragOver(true); }
-        }}
-        onDragLeave={(e) => { if (e.currentTarget.contains(e.relatedTarget as Node)) return; setIsDragOver(false); }}
-        onDrop={(e) => {
-          setIsDragOver(false);
-          if (e.dataTransfer.files?.length > 0) {
-            const file = e.dataTransfer.files[0];
-            const ext = file.name.split('.').pop()?.toLowerCase() || '';
-            if (SUPPORTED_DROP_EXTENSIONS.includes(ext)) { e.preventDefault(); window.dispatchEvent(new CustomEvent('viewport-file-drop', { detail: { file, type: getDropType(ext) } })); toast.info(`📂 ${file.name} dropped — opening importer...`); return; }
-          }
-          const raw = e.dataTransfer.getData('application/showven-equipment');
-          if (!raw) return;
-          e.preventDefault();
-          try {
-            const data = JSON.parse(raw);
-            if (!data.effectType) return;
-            const store = useProjectStore.getState();
-            useUndoStore.getState().checkpoint();
-            const posId = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-            const offset = store.positions.length * 2;
-            store.addPosition({ id: posId, name: data.name, x: offset, y: 0, z: 0, type: 'pyro', color: '#ff8800', heading: 0, pitch: 0, roll: 0 });
-            store.addTimelineItem({ id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, effectId: data.effectType, startTime: store.currentTime, trackIndex: 0, position: { x: offset, y: 0, z: 0 }, notes: `Showven ${data.name}` });
-            toast.success(`${data.name} dropped na cena`);
-          } catch { /* ignore */ }
-        }}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
       >
         <CanvasErrorBoundary>
           <Suspense fallback={<CanvasLoader />}>
