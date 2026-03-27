@@ -7,8 +7,10 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { lazy, Suspense } from "react";
 import MainLayout from "@/layouts/MainLayout";
 import Auth from "./pages/Auth";
-import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+
+// Dashboard lazy-loaded — it's 658 lines with heavy imports
+const Dashboard = lazy(() => import("./pages/Dashboard"));
 
 // Lazy-loaded heavy pages
 const Index = lazy(() => import("./pages/Index"));

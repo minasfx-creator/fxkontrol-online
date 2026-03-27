@@ -1,7 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
-import { AppSidebar } from '@/components/AppSidebar';
-import { FXKAssistant } from '@/components/FXKAssistant';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PanelLeftClose, PanelLeft, AlertOctagon, Menu } from 'lucide-react';
 import minasfxLogo from '@/assets/minasfx-logo-white.png';
@@ -9,8 +7,12 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useDisplayStore } from '@/store/useDisplayStore';
 import { haptics } from '@/lib/haptics';
 import { ambientSound } from '@/lib/ambientSound';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import DockBar from '@/components/DockBar';
+
+// Lazy-load heavy components that aren't needed for initial paint
+const AppSidebar = lazy(() => import('@/components/AppSidebar').then(m => ({ default: m.AppSidebar })));
+const FXKAssistant = lazy(() => import('@/components/FXKAssistant').then(m => ({ default: m.FXKAssistant })));
 
 function SidebarToggleButton() {
   const { state, toggleSidebar } = useSidebar();
@@ -113,8 +115,11 @@ export default function MainLayout() {
         className="min-h-[100dvh] flex w-full bg-background br2049-vignette"
         style={{ filter: `brightness(${backlight / 100})` }}
       >
-        {/* Sidebar — hidden in Command Center immersive mode */}
-        {!commandImmersive && <AppSidebar />}
+        {!commandImmersive && (
+          <Suspense fallback={null}>
+            <AppSidebar />
+          </Suspense>
+        )}
 
         <div className="flex-1 flex flex-col min-w-0">
           {/* ARMED Banner */}
@@ -185,7 +190,9 @@ export default function MainLayout() {
           </main>
         </div>
 
-        <FXKAssistant />
+        <Suspense fallback={null}>
+          <FXKAssistant />
+        </Suspense>
 
         {/* Global PANIC FAB */}
         {isArmed && !commandImmersive && (
