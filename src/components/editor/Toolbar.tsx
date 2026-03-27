@@ -48,6 +48,8 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
   const pbus = usePBusHardware();
   const [artnetCount, setArtnetCount] = useState(0);
   const [artnetConnected, setArtnetConnected] = useState(0);
+  const [hwPanelOpen, setHwPanelOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const update = () => {
@@ -87,27 +89,43 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
     return 'text-zinc-600';
   };
 
+  const handleDotClick = useCallback(() => {
+    if (isMobile) {
+      setHwPanelOpen(true);
+    } else {
+      onOpenPanel?.('easyconnect');
+    }
+  }, [isMobile, onOpenPanel]);
+
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/30 border border-white/5">
-      <button onClick={() => onOpenPanel?.('easyconnect')} className="flex items-center gap-0.5 group" title="FireOne">
-        <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(foConnected, foScanning))} />
-        <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(foConnected, foScanning))}>
-          FO{foCount > 0 && ` ${foCount}`}
-        </span>
-      </button>
-      <button onClick={() => onOpenPanel?.('easyconnect')} className="flex items-center gap-0.5 group" title="PBUS">
-        <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(pbConnected, pbScanning))} />
-        <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(pbConnected, pbScanning))}>
-          PB{pbCount > 0 && ` ${pbCount}`}
-        </span>
-      </button>
-      <button onClick={() => onOpenPanel?.('easyconnect')} className="flex items-center gap-0.5 group" title="Art-Net/MA3">
-        <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(maConnected, false))} />
-        <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(maConnected, false))}>
-          MA{artnetConnected > 0 && ` ${artnetConnected}`}
-        </span>
-      </button>
-    </div>
+    <>
+      <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/30 border border-white/5">
+        <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="FireOne">
+          <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(foConnected, foScanning))} />
+          <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(foConnected, foScanning))}>
+            FO{foCount > 0 && ` ${foCount}`}
+          </span>
+        </button>
+        <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="PBUS">
+          <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(pbConnected, pbScanning))} />
+          <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(pbConnected, pbScanning))}>
+            PB{pbCount > 0 && ` ${pbCount}`}
+          </span>
+        </button>
+        <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="Art-Net/MA3">
+          <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(maConnected, false))} />
+          <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(maConnected, false))}>
+            MA{artnetConnected > 0 && ` ${artnetConnected}`}
+          </span>
+        </button>
+      </div>
+      {/* Mobile: QuickHardwarePanel overlay */}
+      {isMobile && (
+        <Suspense fallback={null}>
+          <QuickHardwarePanel open={hwPanelOpen} onClose={() => setHwPanelOpen(false)} />
+        </Suspense>
+      )}
+    </>
   );
 }
 
