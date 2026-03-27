@@ -166,7 +166,7 @@ export async function simulateOTAUpdate(
  * Protocol: [CMD_OTA_START][addr][totalLen:4] then [CMD_OTA_BLOCK][blockIdx:2][data:256] per block
  */
 export async function realOTAUpdate(
-  port: SerialPort,
+  port: any, // SerialPort from Web Serial API
   firmware: FirmwareInfo,
   moduleAddr: number,
   onProgress: OTAProgressCallback,
