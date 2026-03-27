@@ -632,21 +632,23 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
         </button>
       </div>
 
-      {/* ── Modals ──────────────────────────── */}
-      <FormationBuilder open={formationOpen} onOpenChange={setFormationOpen} />
-      <CSVImporter open={csvOpen} onOpenChange={(v) => { setCsvOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'csv' ? droppedFile.file : null} />
-      <VVIZImporter open={vvizOpen} onOpenChange={(v) => { setVvizOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'vviz' ? droppedFile.file : null} />
-      <ProjectBrowser open={browserOpen} onOpenChange={setBrowserOpen} />
-      <CatalogImportDialog open={catalogOpen} onOpenChange={setCatalogOpen} />
-      <UAssetImporter open={uassetOpen} onOpenChange={(v) => { setUassetOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'uasset' ? droppedFile.file : null} />
-      <AssetMarketplaceBrowser open={marketplaceOpen} onOpenChange={setMarketplaceOpen} />
-      <GMA2PatchImporter open={gma2Open} onOpenChange={setGma2Open} />
-      <UE5DMXPrevisImporter open={ue5DmxOpen} onOpenChange={(v) => { setUe5DmxOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5json' ? droppedFile.file : null} />
-      <MVRImporter open={mvrOpen} onOpenChange={(v) => { setMvrOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'mvr' ? droppedFile.file : null} />
-      <UE5MapImporter open={ue5MapOpen} onOpenChange={(v) => { setUe5MapOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5map' || droppedFile?.type === 'heightmap' ? droppedFile.file : null} />
-      <TwinmotionImporter open={twinmotionOpen} onOpenChange={(v) => { setTwinmotionOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'twinmotion' ? droppedFile.file : null} />
-      <FullscreenCommandMenu open={commandMenuOpen} onClose={() => setCommandMenuOpen(false)} onOpenPanel={(id) => onOpenPanel?.(id)} />
-      <ExportModal open={exportModalOpen} onOpenChange={setExportModalOpen} />
+      {/* ── Modals (lazy — only loaded when opened) ──────── */}
+      <Suspense fallback={null}>
+        {formationOpen && <FormationBuilder open={formationOpen} onOpenChange={setFormationOpen} />}
+        {csvOpen && <CSVImporter open={csvOpen} onOpenChange={(v) => { setCsvOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'csv' ? droppedFile.file : null} />}
+        {vvizOpen && <VVIZImporter open={vvizOpen} onOpenChange={(v) => { setVvizOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'vviz' ? droppedFile.file : null} />}
+        {browserOpen && <ProjectBrowser open={browserOpen} onOpenChange={setBrowserOpen} />}
+        {catalogOpen && <CatalogImportDialog open={catalogOpen} onOpenChange={setCatalogOpen} />}
+        {uassetOpen && <UAssetImporter open={uassetOpen} onOpenChange={(v) => { setUassetOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'uasset' ? droppedFile.file : null} />}
+        {marketplaceOpen && <AssetMarketplaceBrowser open={marketplaceOpen} onOpenChange={setMarketplaceOpen} />}
+        {gma2Open && <GMA2PatchImporter open={gma2Open} onOpenChange={setGma2Open} />}
+        {ue5DmxOpen && <UE5DMXPrevisImporter open={ue5DmxOpen} onOpenChange={(v) => { setUe5DmxOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5json' ? droppedFile.file : null} />}
+        {mvrOpen && <MVRImporter open={mvrOpen} onOpenChange={(v) => { setMvrOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'mvr' ? droppedFile.file : null} />}
+        {ue5MapOpen && <UE5MapImporter open={ue5MapOpen} onOpenChange={(v) => { setUe5MapOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5map' || droppedFile?.type === 'heightmap' ? droppedFile.file : null} />}
+        {twinmotionOpen && <TwinmotionImporter open={twinmotionOpen} onOpenChange={(v) => { setTwinmotionOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'twinmotion' ? droppedFile.file : null} />}
+        {commandMenuOpen && <FullscreenCommandMenu open={commandMenuOpen} onClose={() => setCommandMenuOpen(false)} onOpenPanel={(id) => onOpenPanel?.(id)} />}
+        {exportModalOpen && <ExportModal open={exportModalOpen} onOpenChange={setExportModalOpen} />}
+      </Suspense>
     </div>
   );
 }
