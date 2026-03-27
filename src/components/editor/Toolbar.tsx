@@ -34,14 +34,8 @@ const TwinmotionImporter = lz(() => import('./TwinmotionImporter'));
 const AssetMarketplaceBrowser = lz(() => import('./AssetMarketplaceBrowser'));
 const ProjectBrowser = lz(() => import('./ProjectBrowser'));
 const CatalogImportDialog = lz(() => import('./CatalogImportDialog'));
-const ArrangePositionsDialog = lz(() => import('./ArrangePositionsDialog'));
 const FullscreenCommandMenu = lz(() => import('./FullscreenCommandMenu'));
 const ExportModal = lz(() => import('./ExportModal'));
-const LanguageSwitcher = lz(() => import('./LanguageSwitcher'));
-
-// Lazy named exports
-const ConvertToFanDialog = lz(() => import('./ScriptingDialogs').then(m => ({ default: m.ConvertToFanDialog })));
-const ConvertToSequenceDialog = lz(() => import('./ScriptingDialogs').then(m => ({ default: m.ConvertToSequenceDialog })));
 
 // Export functions loaded on demand
 const getExportEngine = () => import('@/lib/exportEngine');
