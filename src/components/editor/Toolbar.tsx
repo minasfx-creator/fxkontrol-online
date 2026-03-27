@@ -3,7 +3,7 @@
  * Dark glass aesthetic. Logo left, project name center, critical controls right.
  * All editing tools moved to floating docks.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle, Moon, Sun, Maximize2, Minimize2 } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
@@ -16,27 +16,29 @@ import { useProjectPersistence } from '@/hooks/useProjectPersistence';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { secondsToTimecode, formatTimecode } from '@/lib/smpteEngine';
-import FormationBuilder from './FormationBuilder';
-import CSVImporter from './CSVImporter';
-import VVIZImporter from './VVIZImporter';
-import UAssetImporter from './UAssetImporter';
-import GMA2PatchImporter from './GMA2PatchImporter';
-import UE5DMXPrevisImporter from './UE5DMXPrevisImporter';
-import MVRImporter from './MVRImporter';
-import UE5MapImporter from './UE5MapImporter';
-import TwinmotionImporter from './TwinmotionImporter';
-import AssetMarketplaceBrowser from './AssetMarketplaceBrowser';
-import ProjectBrowser from './ProjectBrowser';
-import CatalogImportDialog from './CatalogImportDialog';
-import ArrangePositionsDialog from './ArrangePositionsDialog';
-import { ConvertToFanDialog, ConvertToSequenceDialog } from './ScriptingDialogs';
-import { exportVVIZ, exportFiringCSV, exportSkyc, downloadFile } from '@/lib/exportEngine';
-import LanguageSwitcher from './LanguageSwitcher';
-import FullscreenCommandMenu from './FullscreenCommandMenu';
-import ExportModal from './ExportModal';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { artnetModuleService } from '@/services/artnetModuleService';
+
+// ── Lazy-loaded modals (only fetched when user opens them) ──
+const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
+const FormationBuilder = lz(() => import('./FormationBuilder'));
+const CSVImporter = lz(() => import('./CSVImporter'));
+const VVIZImporter = lz(() => import('./VVIZImporter'));
+const UAssetImporter = lz(() => import('./UAssetImporter'));
+const GMA2PatchImporter = lz(() => import('./GMA2PatchImporter'));
+const UE5DMXPrevisImporter = lz(() => import('./UE5DMXPrevisImporter'));
+const MVRImporter = lz(() => import('./MVRImporter'));
+const UE5MapImporter = lz(() => import('./UE5MapImporter'));
+const TwinmotionImporter = lz(() => import('./TwinmotionImporter'));
+const AssetMarketplaceBrowser = lz(() => import('./AssetMarketplaceBrowser'));
+const ProjectBrowser = lz(() => import('./ProjectBrowser'));
+const CatalogImportDialog = lz(() => import('./CatalogImportDialog'));
+const FullscreenCommandMenu = lz(() => import('./FullscreenCommandMenu'));
+const ExportModal = lz(() => import('./ExportModal'));
+
+// Export functions loaded on demand
+const getExportEngine = () => import('@/lib/exportEngine');
 
 /* ── Hardware Status Dots (live feedback) ──────────────────────── */
 function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => void }) {
@@ -378,19 +380,22 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
     else toast.error('Erro ao salvar');
   }, [saveProject]);
 
-  const handleExportVVIZ = useCallback(() => {
+  const handleExportVVIZ = useCallback(async () => {
+    const { exportVVIZ, downloadFile } = await getExportEngine();
     const content = exportVVIZ(projectName, duration, timelineItems, positions, trajectories, droneFormations);
     downloadFile(content, `${projectName.replace(/\s+/g, '_')}.vviz`, 'application/json');
     toast.success('VVIZ exportado!');
   }, [projectName, duration, timelineItems, positions, trajectories, droneFormations]);
 
-  const handleExportSkyc = useCallback(() => {
+  const handleExportSkyc = useCallback(async () => {
+    const { exportSkyc, downloadFile } = await getExportEngine();
     const content = exportSkyc(projectName, duration, timelineItems, positions, trajectories, droneFormations, gpsOrigin);
     downloadFile(content, `${projectName.replace(/\s+/g, '_')}.skyc`, 'application/json');
     toast.success('SkyCreator .skyc exportado!');
   }, [projectName, duration, timelineItems, positions, trajectories, droneFormations, gpsOrigin]);
 
-  const handleExportFiringCSV = useCallback(() => {
+  const handleExportFiringCSV = useCallback(async () => {
+    const { exportFiringCSV, downloadFile } = await getExportEngine();
     const content = exportFiringCSV(timelineItems, positions);
     downloadFile(content, `${projectName.replace(/\s+/g, '_')}_firing.csv`, 'text/csv');
     toast.success('Firing CSV exportado!');
@@ -621,21 +626,23 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
         </button>
       </div>
 
-      {/* ── Modals ──────────────────────────── */}
-      <FormationBuilder open={formationOpen} onOpenChange={setFormationOpen} />
-      <CSVImporter open={csvOpen} onOpenChange={(v) => { setCsvOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'csv' ? droppedFile.file : null} />
-      <VVIZImporter open={vvizOpen} onOpenChange={(v) => { setVvizOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'vviz' ? droppedFile.file : null} />
-      <ProjectBrowser open={browserOpen} onOpenChange={setBrowserOpen} />
-      <CatalogImportDialog open={catalogOpen} onOpenChange={setCatalogOpen} />
-      <UAssetImporter open={uassetOpen} onOpenChange={(v) => { setUassetOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'uasset' ? droppedFile.file : null} />
-      <AssetMarketplaceBrowser open={marketplaceOpen} onOpenChange={setMarketplaceOpen} />
-      <GMA2PatchImporter open={gma2Open} onOpenChange={setGma2Open} />
-      <UE5DMXPrevisImporter open={ue5DmxOpen} onOpenChange={(v) => { setUe5DmxOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5json' ? droppedFile.file : null} />
-      <MVRImporter open={mvrOpen} onOpenChange={(v) => { setMvrOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'mvr' ? droppedFile.file : null} />
-      <UE5MapImporter open={ue5MapOpen} onOpenChange={(v) => { setUe5MapOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5map' || droppedFile?.type === 'heightmap' ? droppedFile.file : null} />
-      <TwinmotionImporter open={twinmotionOpen} onOpenChange={(v) => { setTwinmotionOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'twinmotion' ? droppedFile.file : null} />
-      <FullscreenCommandMenu open={commandMenuOpen} onClose={() => setCommandMenuOpen(false)} onOpenPanel={(id) => onOpenPanel?.(id)} />
-      <ExportModal open={exportModalOpen} onOpenChange={setExportModalOpen} />
+      {/* ── Modals (lazy — only loaded when opened) ──────── */}
+      <Suspense fallback={null}>
+        {formationOpen && <FormationBuilder open={formationOpen} onOpenChange={setFormationOpen} />}
+        {csvOpen && <CSVImporter open={csvOpen} onOpenChange={(v) => { setCsvOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'csv' ? droppedFile.file : null} />}
+        {vvizOpen && <VVIZImporter open={vvizOpen} onOpenChange={(v) => { setVvizOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'vviz' ? droppedFile.file : null} />}
+        {browserOpen && <ProjectBrowser open={browserOpen} onOpenChange={setBrowserOpen} />}
+        {catalogOpen && <CatalogImportDialog open={catalogOpen} onOpenChange={setCatalogOpen} />}
+        {uassetOpen && <UAssetImporter open={uassetOpen} onOpenChange={(v) => { setUassetOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'uasset' ? droppedFile.file : null} />}
+        {marketplaceOpen && <AssetMarketplaceBrowser open={marketplaceOpen} onOpenChange={setMarketplaceOpen} />}
+        {gma2Open && <GMA2PatchImporter open={gma2Open} onOpenChange={setGma2Open} />}
+        {ue5DmxOpen && <UE5DMXPrevisImporter open={ue5DmxOpen} onOpenChange={(v) => { setUe5DmxOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5json' ? droppedFile.file : null} />}
+        {mvrOpen && <MVRImporter open={mvrOpen} onOpenChange={(v) => { setMvrOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'mvr' ? droppedFile.file : null} />}
+        {ue5MapOpen && <UE5MapImporter open={ue5MapOpen} onOpenChange={(v) => { setUe5MapOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'ue5map' || droppedFile?.type === 'heightmap' ? droppedFile.file : null} />}
+        {twinmotionOpen && <TwinmotionImporter open={twinmotionOpen} onOpenChange={(v) => { setTwinmotionOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'twinmotion' ? droppedFile.file : null} />}
+        {commandMenuOpen && <FullscreenCommandMenu open={commandMenuOpen} onClose={() => setCommandMenuOpen(false)} onOpenPanel={(id) => onOpenPanel?.(id)} />}
+        {exportModalOpen && <ExportModal open={exportModalOpen} onOpenChange={setExportModalOpen} />}
+      </Suspense>
     </div>
   );
 }
