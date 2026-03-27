@@ -324,7 +324,7 @@ let _activeBurstCount = 0;
 const EnvironmentV2SwitcherClean = lzn(() => import('./skycanvas/SkyEnvironment'), 'EnvironmentV2Switcher');
 const SceneFogClean = lzn(() => import('./skycanvas/SkyEnvironment'), 'SceneFog');
 const SceneStarsWiredClean = lzn(() => import('./skycanvas/SkyEnvironment'), 'SceneStarsWired');
-import { evaluateTimeOfDay } from '@/render_ultra';
+import { evaluateTimeOfDay } from '@/render_ultra/environment/timeOfDay';
 
 // SkyGradient fallback for EnvironmentV2Switcher — no synthetic sky in Google Earth mode
 function SkyGradientFallback() {
