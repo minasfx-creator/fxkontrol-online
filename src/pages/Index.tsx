@@ -485,13 +485,13 @@ function Index() {
           {mobileTab === 'assets' && <EffectLibrary />}
           {mobileTab === 'properties' && <PropertiesPanel />}
           {mobileTab === 'more' && <UnifiedPanelMenu activePanel={activePanel} onSelectPanel={(id) => { handleMobileOpenPanel(id); setMobileTab(null); setMobilePanelHeight('full'); }} variant="sheet" onDismiss={handleDismissPanel} />}
-          {mobileTab && !['timeline', 'assets', 'properties', 'more'].includes(mobileTab) && activePanel && !isConsolePanel && <div className="h-full overflow-y-auto">{renderPanelContent()}</div>}
+          {mobileTab && !['timeline', 'assets', 'properties', 'more'].includes(mobileTab) && activePanel && !isConsolePanel && <div className="h-full overflow-y-auto"><Suspense fallback={<PanelLoader />}>{renderPanelContent()}</Suspense></div>}
         </MobileFloatingPanel>
 
         {/* Regular panels in floating sheet */}
         {activePanel && !isConsolePanel && mobileTab === null && mobilePanelHeight !== 'collapsed' && (
           <MobileFloatingPanel activeTab={'more' as MobileTab} height={mobilePanelHeight} onHeightChange={setMobilePanelHeight} onDismiss={handleDismissPanel}>
-            <div className="h-full overflow-y-auto">{renderPanelContent()}</div>
+            <div className="h-full overflow-y-auto"><Suspense fallback={<PanelLoader />}>{renderPanelContent()}</Suspense></div>
           </MobileFloatingPanel>
         )}
 
@@ -501,7 +501,7 @@ function Index() {
             title={activePanel}
             onClose={() => { setActivePanel(null); setMobilePanelHeight('collapsed'); }}
           >
-            {renderPanelContent()}
+            <Suspense fallback={<PanelLoader />}>{renderPanelContent()}</Suspense>
           </MobileConsoleFullscreen>
         )}
 
@@ -596,7 +596,7 @@ function Index() {
             <X className="w-3 h-3 text-muted-foreground" />
           </button>
           <div className="h-full overflow-y-auto">
-            {renderPanelContent()}
+            <Suspense fallback={<PanelLoader />}>{renderPanelContent()}</Suspense>
           </div>
         </div>
       )}
