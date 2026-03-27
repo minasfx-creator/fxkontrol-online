@@ -2,8 +2,8 @@
  * MobileHUD — Apple Dynamic Island–inspired top bar
  * Clean, minimal, high-information density for show operators.
  */
-import { useState, useCallback, useMemo } from 'react';
-import { Play, Pause, Square, Menu, AlertOctagon, Zap, ShieldAlert, MapPin, Moon, Sun } from 'lucide-react';
+import { useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { Play, Pause, Square, Menu, AlertOctagon, Zap, ShieldAlert, MapPin, Moon, Sun, Radio } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -13,6 +13,8 @@ import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { useShowSettings } from '@/hooks/useShowSettings';
 import type { PanelId } from '@/components/editor/PanelTabBar';
+
+const QuickHardwarePanel = lazy(() => import('@/components/editor/QuickHardwarePanel'));
 
 interface MobileHUDProps {
   onOpenPanel: (id: PanelId) => void;
@@ -55,7 +57,7 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
     window.dispatchEvent(new Event('open-geo-setup'));
   }, []);
   const isArmed = activeEffects.length > 0;
-
+  const [hwPanelOpen, setHwPanelOpen] = useState(false);
   const countdown = useMemo(() => getCountdown(settings?.show_date ?? null), [settings?.show_date]);
 
   const handlePanic = useCallback(() => {
@@ -124,17 +126,19 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
 
         {/* Right: LIVE mode + PANIC + Menu */}
         <div className="pointer-events-auto flex items-center gap-2">
-          {/* Connection status */}
-          <div className="flex items-center gap-1.5 mr-1">
-            <div className={cn(
-              "w-1.5 h-1.5 rounded-full transition-colors",
-              usbConnected ? "bg-[hsl(var(--success))]" : "bg-[hsl(var(--muted-foreground)/0.3)]"
-            )} />
-            <div className={cn(
-              "w-1.5 h-1.5 rounded-full transition-colors",
-              smpteRunning ? "bg-[hsl(var(--warning))]" : "bg-[hsl(var(--muted-foreground)/0.3)]"
-            )} />
-          </div>
+          {/* Hardware quick-access */}
+          <button
+            onClick={() => { haptics.tap(); setHwPanelOpen(true); }}
+            className={cn(
+              "glass-button relative flex items-center justify-center w-14 h-14 active:scale-90 transition-transform",
+              (usbConnected || smpteRunning) && "ring-1 ring-[hsl(var(--success)/0.4)]"
+            )}
+          >
+            <Radio className="w-5 h-5 text-foreground" />
+            {(usbConnected || smpteRunning) && (
+              <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[hsl(var(--success))]" />
+            )}
+          </button>
 
           {/* Night Mode toggle */}
           <button
@@ -176,6 +180,10 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
           </button>
         </div>
       </div>
+      {/* QuickHardwarePanel overlay */}
+      <Suspense fallback={null}>
+        <QuickHardwarePanel open={hwPanelOpen} onClose={() => setHwPanelOpen(false)} />
+      </Suspense>
     </div>
   );
 }
