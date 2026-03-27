@@ -1372,8 +1372,8 @@ export default function SkyCanvas() {
           logarithmicDepthBuffer: true,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
-        dpr={isMobile ? [1, 1.5] : [1.5, 2]}
-        performance={{ min: 0.5 }}
+        dpr={isLowTierMobile ? [1, 1] : isMobile ? [1, 1.25] : [1.5, 2]}
+        performance={{ min: isLowTierMobile ? 0.35 : 0.5 }}
         onCreated={() => {
           recoveringContextRef.current = false;
         }}>
