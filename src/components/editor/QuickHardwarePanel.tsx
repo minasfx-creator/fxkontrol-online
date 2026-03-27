@@ -80,6 +80,25 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
 
+  // Active transmission mode indicator
+  const activeTransport = useMemo(() => {
+    const modes: { label: string; color: string }[] = [];
+    if (fireone.isConnected) {
+      const path = fireone.connectionPath;
+      if (path === 'cable') modes.push({ label: 'WIRED', color: 'var(--success)' });
+      else if (path === 'radio') modes.push({ label: 'RADIO', color: 'var(--destructive)' });
+      else if (path === 'wifi' || path === 'wifi-direct') modes.push({ label: 'WI-FI', color: 'var(--accent)' });
+      else if (path === 'artnet') modes.push({ label: 'ART-NET', color: '210 100% 60%' });
+      else if (path !== 'none') modes.push({ label: path.toUpperCase(), color: 'var(--primary)' });
+    }
+    if (pbus.isConnected) {
+      const path = pbus.connectionPath;
+      if (path === 'wired') modes.push({ label: 'PBUS WIRED', color: 'var(--warning)' });
+      else if (path === 'radio') modes.push({ label: 'PBUS RADIO', color: 'var(--destructive)' });
+    }
+    return modes;
+  }, [fireone.isConnected, fireone.connectionPath, pbus.isConnected, pbus.connectionPath]);
+
   // Build unified device list from real hooks + USB store + SIM fallback
   const devices = useMemo((): HWDevice[] => {
     const list: HWDevice[] = [];
