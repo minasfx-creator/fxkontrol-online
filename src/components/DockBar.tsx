@@ -11,7 +11,7 @@ import { haptics } from '@/lib/haptics';
 import { prefetchRoute } from '@/lib/prefetchRoutes';
 import {
   LayoutDashboard, Clapperboard, CalendarDays,
-  Crosshair, Gamepad2, Rocket,
+  Crosshair, Gamepad2, Rocket, Activity,
   Settings, Shield,
 } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
@@ -31,6 +31,7 @@ const DOCK_MAIN: DockItem[] = [
   { icon: Clapperboard, label: 'Editor 3D', path: '/editor', accent: 'hsl(32 100% 50%)' },
   { icon: CalendarDays, label: 'Agenda', path: '/agenda' },
   { icon: Gamepad2, label: 'Training', path: '/training' },
+  { icon: Activity, label: 'Field Test', path: '/field-test', accent: 'hsl(165 100% 42%)' },
   { icon: Rocket, label: 'Show Test', path: '/show-test' },
 ];
 
