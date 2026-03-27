@@ -229,6 +229,8 @@ export default function Dashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [showIntro, setShowIntro] = useState(() => {
     if (typeof window === 'undefined') return false;
+    // Skip cinematic intro on mobile — saves 11MB of video downloads
+    if (window.matchMedia('(max-width: 768px)').matches) return false;
     const seen = sessionStorage.getItem('fxk-intro-seen');
     return !seen;
   });
