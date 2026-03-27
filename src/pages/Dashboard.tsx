@@ -505,6 +505,10 @@ export default function Dashboard() {
           <div className="h-[1px] flex-1" style={{ background: 'hsl(165 100% 42% / 0.1)' }} />
           <span className="text-[8px] font-mono text-muted-foreground/30 tracking-wider">DIAGNOSTICS & CONNECT</span>
         </div>
+        {/* Transport availability */}
+        <div className="mb-3">
+          <TransportIndicator />
+        </div>
         <div className={cn("grid gap-2", isMobile ? "grid-cols-1" : "grid-cols-2")}>
           {/* Easy Connect Card */}
           <button
