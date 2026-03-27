@@ -446,18 +446,32 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
                         <RSSIBars rssi={device.rssi} />
                         <BatteryIcon level={device.battery} />
                         {device.source && (device.source === 'fireone' || device.source === 'pbus') && device.addr !== undefined && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleArmToggle(device); }}
-                            className={cn(
-                              "ml-1 flex items-center justify-center w-8 h-8 rounded-lg transition-all active:scale-90",
-                              device.armed
-                                ? "bg-[hsl(var(--destructive)/0.15)] text-[hsl(var(--destructive))]"
-                                : "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]"
-                            )}
-                            title={device.armed ? 'Disarm' : 'Arm'}
-                          >
-                            {device.armed ? <ShieldAlert className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}
-                          </button>
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                haptics.tap();
+                                setOtaDevice({ name: device.name, addr: device.addr, target: device.source as OTATarget });
+                                setOtaOpen(true);
+                              }}
+                              className="ml-0.5 flex items-center justify-center w-8 h-8 rounded-lg bg-[hsl(var(--primary)/0.1)] text-[hsl(var(--primary))] transition-all active:scale-90"
+                              title="Firmware Update"
+                            >
+                              <HardDrive className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleArmToggle(device); }}
+                              className={cn(
+                                "flex items-center justify-center w-8 h-8 rounded-lg transition-all active:scale-90",
+                                device.armed
+                                  ? "bg-[hsl(var(--destructive)/0.15)] text-[hsl(var(--destructive))]"
+                                  : "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]"
+                              )}
+                              title={device.armed ? 'Disarm' : 'Arm'}
+                            >
+                              {device.armed ? <ShieldAlert className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
