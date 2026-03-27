@@ -476,11 +476,23 @@ export default function Dashboard() {
                 <p className="text-xs font-bold font-display text-foreground tracking-wide uppercase">Field Test</p>
                 <p className="text-[9px] text-muted-foreground/60 mt-0.5 font-mono">CDS · Continuidade · Diagnóstico · SIM</p>
               </div>
-              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-foreground transition-colors shrink-0" />
+              <div className="flex items-center gap-1.5 shrink-0">
+                {hwIsOnline ? (
+                  <Badge className="text-[8px] px-1.5 py-0 h-4 border-0 font-mono font-bold animate-pulse" style={{ background: 'hsl(142 70% 45% / 0.2)', color: 'hsl(142 70% 55%)' }}>
+                    {hwConnectedCount} ONLINE
+                  </Badge>
+                ) : (
+                  <Badge className="text-[8px] px-1.5 py-0 h-4 border-0 font-mono" style={{ background: 'hsl(0 0% 50% / 0.15)', color: 'hsl(0 0% 55%)' }}>
+                    OFFLINE
+                  </Badge>
+                )}
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-foreground transition-colors" />
+              </div>
             </div>
           </button>
         </div>
       </div>
+
 
       {/* ── Main Grid: Left (ops) + Center (feed) + Right ─ */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px_1fr] gap-6">
