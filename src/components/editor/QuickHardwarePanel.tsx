@@ -80,6 +80,26 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
 
+  // Active transmission mode indicator
+  const activeTransport = useMemo(() => {
+    const modes: { label: string; color: string }[] = [];
+    if (fireone.isConnected) {
+      const path = fireone.connectionPath;
+      if (path === 'serial') modes.push({ label: 'WIRED', color: 'var(--success)' });
+      else if (path === 'radio') modes.push({ label: 'RADIO', color: 'var(--destructive)' });
+      else if (path === 'wifi' || path === 'wifi_direct') modes.push({ label: 'WI-FI', color: 'var(--accent)' });
+      else if (path === 'artnet') modes.push({ label: 'ART-NET', color: '210 100% 60%' });
+      else if (path === 'cellular') modes.push({ label: 'CELLULAR', color: 'var(--warning)' });
+      else if (path !== 'none') modes.push({ label: 'CONNECTED', color: 'var(--primary)' });
+    }
+    if (pbus.isConnected) {
+      const path = pbus.connectionPath;
+      if (path === 'wired') modes.push({ label: 'PBUS WIRED', color: 'var(--warning)' });
+      else if (path === 'radio') modes.push({ label: 'PBUS RADIO', color: 'var(--destructive)' });
+    }
+    return modes;
+  }, [fireone.isConnected, fireone.connectionPath, pbus.isConnected, pbus.connectionPath]);
+
   // Build unified device list from real hooks + USB store + SIM fallback
   const devices = useMemo((): HWDevice[] => {
     const list: HWDevice[] = [];
@@ -218,8 +238,23 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
             </div>
             <div>
               <h2 className="text-sm font-bold text-foreground tracking-tight">Hardware Connect</h2>
-              <p className="text-[10px] text-[hsl(var(--muted-foreground))] font-mono">
-                {totalOnline}/{totalDevices} online • {devices.filter(d => d.armed).length} armed
+              <p className="text-[10px] text-[hsl(var(--muted-foreground))] font-mono flex items-center gap-1.5 flex-wrap">
+                <span>{totalOnline}/{totalDevices} online • {devices.filter(d => d.armed).length} armed</span>
+                {activeTransport.map((t, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-wider"
+                    style={{ background: `hsl(${t.color} / 0.15)`, color: `hsl(${t.color})` }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: `hsl(${t.color})` }} />
+                    {t.label}
+                  </span>
+                ))}
+                {activeTransport.length === 0 && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold tracking-wider bg-[hsl(var(--muted)/0.2)] text-[hsl(var(--muted-foreground)/0.6)]">
+                    OFFLINE
+                  </span>
+                )}
               </p>
             </div>
           </div>
