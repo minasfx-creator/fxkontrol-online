@@ -41,7 +41,7 @@ export default function ViewportTransitionOverlay() {
     <div
       className={cn(
         "fixed inset-0 z-[100] flex items-center justify-center bg-black",
-        "transition-opacity duration-[600ms] ease-in-out",
+        "transition-opacity duration-600 ease-in-out",
         phase === 'idle' ? "opacity-0 pointer-events-none" : "",
         phase === 'fade-out' && "opacity-100 pointer-events-auto",
         phase === 'hold' && "opacity-100 pointer-events-auto",
