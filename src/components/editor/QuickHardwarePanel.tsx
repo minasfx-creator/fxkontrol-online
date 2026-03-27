@@ -30,6 +30,9 @@ interface HWDevice {
   latencyMs?: number;
   channelCount?: number;
   label?: string;
+  addr?: number; // hardware address for actions
+  armed?: boolean;
+  source?: 'fireone' | 'pbus' | 'usb' | 'sim';
 }
 
 const TRANSPORT_META: Record<TransportGroup, { icon: typeof Radio; label: string; color: string }> = {
@@ -86,6 +89,9 @@ export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanel
         battery: Math.round(Math.min(100, Math.max(0, (mod.batteryVoltage - 3.0) / 1.2 * 100))),
         channelCount: mod.igniters.length || 32,
         label: mod.armed ? 'ARMED' : 'SAFE',
+        addr,
+        armed: mod.armed,
+        source: 'fireone',
       });
     });
 
@@ -102,6 +108,9 @@ export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanel
         battery: Math.round(Math.min(100, Math.max(0, (dev.batteryV - 3.0) / 1.2 * 100))),
         channelCount: dev.channels,
         label: dev.armed ? 'ARMED' : 'SAFE',
+        addr,
+        armed: dev.armed,
+        source: 'pbus',
       });
     });
 
@@ -161,13 +170,32 @@ export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanel
     });
   }, []);
 
+  const handleArmToggle = useCallback(async (device: HWDevice) => {
+    if (device.addr === undefined) return;
+    haptics.tap();
+    try {
+      if (device.source === 'fireone') {
+        if (device.armed) await fireone.disarmModule(device.addr);
+        else await fireone.armModule(device.addr);
+      } else if (device.source === 'pbus') {
+        if (device.armed) await pbus.disarmDevice(device.addr);
+        else await pbus.armDevice(device.addr);
+      }
+    } catch { /* ignore */ }
+  }, [fireone, pbus]);
+
   const handleScanAll = useCallback(async () => {
     haptics.tap();
     setScanning(true);
-    // Simulate scan delay
+    try {
+      await Promise.allSettled([
+        fireone.discoverModules?.(),
+        pbus.discoverDevices?.(),
+      ]);
+    } catch { /* ignore */ }
     await new Promise(r => setTimeout(r, 2000));
     setScanning(false);
-  }, []);
+  }, [fireone, pbus]);
 
   if (!open) return null;
 
@@ -333,10 +361,29 @@ export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanel
                           </div>
                         </div>
 
-                        {/* Telemetry icons */}
-                        <div className="flex items-center gap-2 shrink-0">
+                        {/* Telemetry + Actions */}
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <RSSIBars rssi={device.rssi} />
                           <BatteryIcon level={device.battery} />
+
+                          {/* ARM/DISARM button for FireOne & PBUS */}
+                          {device.source && (device.source === 'fireone' || device.source === 'pbus') && device.addr !== undefined && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleArmToggle(device); }}
+                              className={cn(
+                                "ml-1 flex items-center justify-center w-8 h-8 rounded-lg transition-all active:scale-90",
+                                device.armed
+                                  ? "bg-[hsl(var(--destructive)/0.15)] text-[hsl(var(--destructive))]"
+                                  : "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]"
+                              )}
+                              title={device.armed ? 'Disarm' : 'Arm'}
+                            >
+                              {device.armed
+                                ? <ShieldAlert className="w-3.5 h-3.5" />
+                                : <Shield className="w-3.5 h-3.5" />
+                              }
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -356,27 +403,72 @@ export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanel
         </div>
 
         {/* Footer Actions */}
-        <div className="flex gap-2 px-4 pt-2 pb-3 border-t border-[hsl(var(--border)/0.1)]">
-          <button
-            onClick={handleScanAll}
-            disabled={scanning}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 h-12 rounded-xl font-bold text-xs transition-all active:scale-95",
-              scanning
-                ? "bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))]"
-                : "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
-            )}
-          >
-            <Search className={cn("w-4 h-4", scanning && "animate-spin")} />
-            {scanning ? 'SCANNING...' : 'SCAN ALL'}
-          </button>
-          <button
-            onClick={() => { haptics.tap(); }}
-            className="flex-1 flex items-center justify-center gap-2 h-12 rounded-xl border border-[hsl(var(--border)/0.3)] bg-[hsl(var(--surface-0)/0.5)] font-bold text-xs text-foreground active:scale-95 transition-transform"
-          >
-            <Zap className="w-4 h-4 text-[hsl(var(--warning))]" />
-            TEST ALL
-          </button>
+        <div className="flex flex-col gap-2 px-4 pt-2 pb-3 border-t border-[hsl(var(--border)/0.1)]">
+          {/* Row 1: Connect + Scan */}
+          <div className="flex gap-2">
+            <button
+              onClick={async () => {
+                haptics.tap();
+                try {
+                  if (fireone.isConnected) await fireone.disconnect();
+                  else await fireone.connect();
+                } catch { /* ignore */ }
+              }}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 h-11 rounded-xl font-bold text-[10px] transition-all active:scale-95",
+                fireone.isConnected
+                  ? "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))] border border-[hsl(var(--success)/0.3)]"
+                  : "bg-[hsl(var(--muted)/0.2)] text-foreground border border-[hsl(var(--border)/0.3)]"
+              )}
+            >
+              <Usb className="w-3.5 h-3.5" />
+              {fireone.isConnected ? 'DISCONNECT' : 'CONNECT'}
+            </button>
+            <button
+              onClick={handleScanAll}
+              disabled={scanning}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 h-11 rounded-xl font-bold text-[10px] transition-all active:scale-95",
+                scanning
+                  ? "bg-[hsl(var(--primary)/0.15)] text-[hsl(var(--primary))]"
+                  : "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+              )}
+            >
+              <Search className={cn("w-3.5 h-3.5", scanning && "animate-spin")} />
+              {scanning ? 'SCANNING...' : 'SCAN ALL'}
+            </button>
+          </div>
+
+          {/* Row 2: Arm All / Disarm All / Test All */}
+          <div className="flex gap-2">
+            <button
+              onClick={async () => {
+                haptics.tap();
+                await Promise.allSettled([fireone.armAll?.(), pbus.armAll?.()]);
+              }}
+              className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-xl bg-[hsl(var(--destructive)/0.12)] text-[hsl(var(--destructive))] font-bold text-[10px] active:scale-95 transition-transform border border-[hsl(var(--destructive)/0.2)]"
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              ARM ALL
+            </button>
+            <button
+              onClick={async () => {
+                haptics.tap();
+                await Promise.allSettled([fireone.disarmAll?.(), pbus.disarmAll?.()]);
+              }}
+              className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-xl bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))] font-bold text-[10px] active:scale-95 transition-transform border border-[hsl(var(--success)/0.2)]"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              DISARM ALL
+            </button>
+            <button
+              onClick={() => { haptics.tap(); }}
+              className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-xl border border-[hsl(var(--border)/0.3)] bg-[hsl(var(--surface-0)/0.5)] font-bold text-[10px] text-foreground active:scale-95 transition-transform"
+            >
+              <Zap className="w-3.5 h-3.5 text-[hsl(var(--warning))]" />
+              TEST ALL
+            </button>
+          </div>
         </div>
       </div>
     </div>
