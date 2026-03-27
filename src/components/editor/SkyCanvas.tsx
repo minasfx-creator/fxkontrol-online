@@ -25,6 +25,7 @@ import Rack3DView from './Rack3DView';
 import BoidsVisualizer from './BoidsVisualizer';
 import CollisionAvoidanceOverlay from './CollisionAvoidanceOverlay';
 import PyroSafetyZones from './skycanvas/PyroSafetyZones';
+import GoogleTilesFallback from './skycanvas/GoogleTilesFallback';
 import AudioSpectrumVisualizer from './AudioSpectrumVisualizer';
 import LaserPreviewBeams from './LaserPreviewBeams';
 import { DEFAULT_AVOIDANCE } from '@/lib/collisionAvoidance';
@@ -1417,8 +1418,8 @@ export default function SkyCanvas() {
         </Suspense>
         {google3DTilesEnabled && <GoogleTilesLayer />}
         {google3DTilesEnabled && <GeoCameraController />}
-        {/* Fallback grid visible while Google Earth tiles are loading */}
-        {google3DTilesEnabled && <Grid infiniteGrid fadeDistance={2000} fadeStrength={3} cellSize={10} sectionSize={100} cellColor="#1a1a2e" sectionColor="#2a2a4e" position={[0, -0.5, 0]} />}
+        {/* Fallback grid + horizon when Google Tiles fail or timeout */}
+        {google3DTilesEnabled && <GoogleTilesFallback />}
         <GoogleEarthLighting />
         {!google3DTilesEnabled && <FinaleAxesHelper />}
         <DoubleClickFocus />

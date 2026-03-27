@@ -24,7 +24,7 @@ const LABELS: Record<TilesLoadingState, string> = {
   'fetching-key': 'Obtendo credenciais...',
   'loading-tiles': 'Carregando terreno 3D...',
   ready: 'Terreno carregado',
-  error: 'Falha ao carregar terreno',
+  error: 'Terreno indisponível — grid de referência ativo',
 };
 
 export default function GoogleTilesLoadingOverlay() {
