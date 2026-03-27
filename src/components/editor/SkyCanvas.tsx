@@ -2,7 +2,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Grid, PerspectiveCamera, ContactShadows, Sky } from '@react-three/drei';
 import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
-import React, { useRef, useMemo, useEffect, useState, useCallback, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useRef, useMemo, useEffect, useState, useCallback, Component, ErrorInfo, ReactNode, lazy, Suspense } from 'react';
 import { PerfCollector, PerformanceHUD, type PerfStats } from './PerformanceHUD';
 import ViewportTerminal, { pushLog } from './ViewportTerminal';
 import * as THREE from 'three';
@@ -103,7 +103,7 @@ import {
 } from '@/lib/hardening';
 // ═══ FXK Ultra Refinement — Adaptive Quality + Render Stability ═══
 import { useFXKUltraRefinement } from '@/hooks/useFXKUltraRefinement';
-// ═══ Shared state imported from skycanvas module ═══
+// ═══ Shared state (lightweight, no components) ═══
 import {
   getActiveBurstCount as _getActiveBurstCount,
   runActiveBurstScan,
@@ -120,22 +120,32 @@ import {
   GRAVITY,
   _posQuat, _effQuat, _pitchQuat, _posEuler, _effEuler, _launchDir, _pitchAxis,
   type ActiveBurstScanResult,
-  // ═══ Extracted modules ═══
-  Moon,
-  AtmosphericParticles,
-  StageGround,
-  FireworkBurst,
-  TimelineEffects,
-  LiveSFXEffects,
-  estimateFireworkStarCost,
-  // ═══ LightingSystem ═══
-  AdaptiveExposureController,
-  ContactShadowsLayer,
-  DebugFeed,
-  GlobalIlluminationController,
-  LensFlareController,
-  GroundReflections,
-} from './skycanvas';
+} from './skycanvas/sharedState';
+
+// ═══ Lazy-loaded subsystem chunks ═══
+const lzc = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
+const lzn = <T extends React.ComponentType<any>>(loader: () => Promise<{ [key: string]: any }>, name: string) =>
+  lazy(() => loader().then(m => ({ default: m[name] as T })));
+
+// GroundSystem chunk
+const Moon = lzn(() => import('./skycanvas/GroundSystem'), 'Moon');
+const AtmosphericParticles = lzn(() => import('./skycanvas/GroundSystem'), 'AtmosphericParticles');
+const StageGround = lzn(() => import('./skycanvas/GroundSystem'), 'StageGround');
+
+// FireworkRenderer chunk
+const TimelineEffects = lzn(() => import('./skycanvas/FireworkRenderer'), 'TimelineEffects');
+const LiveSFXEffects = lzn(() => import('./skycanvas/FireworkRenderer'), 'LiveSFXEffects');
+
+// LightingSystem chunk
+const AdaptiveExposureController = lzn(() => import('./skycanvas/LightingSystem'), 'AdaptiveExposureController');
+const ContactShadowsLayer = lzn(() => import('./skycanvas/LightingSystem'), 'ContactShadowsLayer');
+const DebugFeed = lzn(() => import('./skycanvas/LightingSystem'), 'DebugFeed');
+const GlobalIlluminationController = lzn(() => import('./skycanvas/LightingSystem'), 'GlobalIlluminationController');
+const LensFlareController = lzn(() => import('./skycanvas/LightingSystem'), 'LensFlareController');
+const GroundReflections = lzn(() => import('./skycanvas/LightingSystem'), 'GroundReflections');
+
+// estimateFireworkStarCost is a function, import eagerly from barrel (tiny)
+import { estimateFireworkStarCost } from './skycanvas/FireworkRenderer';
 
 // Re-export for external consumers
 export function getActiveBurstCount() { return _getActiveBurstCount(); }
@@ -310,13 +320,10 @@ let _activeBurstCount = 0;
 // → Extracted to skycanvas/FireworkRenderer.tsx
 
 // ════════════════════════════════════════════════════════════════════════
-// DUPLICATE ENVIRONMENT V2 + SkyGradient REMOVED — use skycanvas/SkyEnvironment.tsx
-// ════════════════════════════════════════════════════════════════════════
-import {
-  EnvironmentV2Switcher as EnvironmentV2SwitcherClean,
-  SceneFog as SceneFogClean,
-  SceneStarsWired as SceneStarsWiredClean,
-} from './skycanvas/SkyEnvironment';
+// SkyEnvironment chunk (lazy)
+const EnvironmentV2SwitcherClean = lzn(() => import('./skycanvas/SkyEnvironment'), 'EnvironmentV2Switcher');
+const SceneFogClean = lzn(() => import('./skycanvas/SkyEnvironment'), 'SceneFog');
+const SceneStarsWiredClean = lzn(() => import('./skycanvas/SkyEnvironment'), 'SceneStarsWired');
 import { evaluateTimeOfDay } from '@/render_ultra';
 
 // SkyGradient fallback for EnvironmentV2Switcher — no synthetic sky in Google Earth mode
@@ -471,10 +478,8 @@ function GoogleEarthLighting() {
   );
 }
 
-// SceneFog, SceneStars, SceneStarsWired — REMOVED duplicates, use skycanvas/SkyEnvironment.tsx
-
-// WeatherEffects extracted to skycanvas/WeatherSystem.tsx
-import { WeatherEffects } from './skycanvas/WeatherSystem';
+// WeatherSystem chunk (lazy)
+const WeatherEffects = lzn(() => import('./skycanvas/WeatherSystem'), 'WeatherEffects');
 
 // Delayed mount wrapper — lets base renderer stabilize before heavy VFX
 function DelayedMount({ delay = 2000, children }: { delay?: number; children: ReactNode }) {
@@ -1378,25 +1383,35 @@ export default function SkyCanvas() {
         <FXKQualityController />
         <SceneLighting />
         <GeoTimeOfDaySync />
-        <AdaptiveExposureController />
-        {!environment.disableLighting && <GlobalIlluminationController />}
-        {!google3DTilesEnabled && <GroundReflections />}
-        {!environment.disableLighting && <LensFlareController />}
+        <Suspense fallback={null}>
+          <AdaptiveExposureController />
+          {!environment.disableLighting && <GlobalIlluminationController />}
+          {!google3DTilesEnabled && <GroundReflections />}
+          {!environment.disableLighting && <LensFlareController />}
+          <ContactShadowsLayer />
+          <DebugFeed />
+        </Suspense>
         <DelayedMount delay={2000}>
           <NiagaraVFXController />
         </DelayedMount>
 
         {/* ═══ Synthetic sky/atmosphere — suppressed in Digital Twin mode ═══ */}
-        {!google3DTilesEnabled && <EnvironmentV2SwitcherClean SkyGradientComponent={SkyGradientFallback} />}
+        <Suspense fallback={null}>
+          {!google3DTilesEnabled && <EnvironmentV2SwitcherClean SkyGradientComponent={SkyGradientFallback} />}
+          {!google3DTilesEnabled && <SceneStarsWiredClean />}
+          {!google3DTilesEnabled && <SceneFogClean />}
+        </Suspense>
 
-        {!google3DTilesEnabled && <Moon />}
-        {!google3DTilesEnabled && <SceneStarsWiredClean />}
-        {!google3DTilesEnabled && !isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
-        {!google3DTilesEnabled && <SceneFogClean />}
-        {!google3DTilesEnabled && !isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
+        <Suspense fallback={null}>
+          {!google3DTilesEnabled && <Moon />}
+          {!google3DTilesEnabled && !isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
+          {!google3DTilesEnabled && !isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
+        </Suspense>
 
         {/* ═══ Ground / Terrain ═══ */}
-        {!google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
+        <Suspense fallback={null}>
+          {!google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
+        </Suspense>
         {google3DTilesEnabled && <GoogleTilesLayer />}
         {google3DTilesEnabled && <GeoCameraController />}
         {/* Fallback grid visible while Google Earth tiles are loading */}
@@ -1414,8 +1429,10 @@ export default function SkyCanvas() {
         <DroneChoreography />
         {!isMobile && <BoidsVisualizer />}
         {!isMobile && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
-        <TimelineEffects />
-        <LiveSFXEffects />
+        <Suspense fallback={null}>
+          <TimelineEffects />
+          <LiveSFXEffects />
+        </Suspense>
         <LaserPreviewBeams />
         {!google3DTilesEnabled && <StageFixtures />}
         {!google3DTilesEnabled && !isMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
@@ -1424,13 +1441,11 @@ export default function SkyCanvas() {
         {!isMobile && <CameraPathPreview />}
         {!google3DTilesEnabled && <ViewportRulers />}
         <CameraBookmarkSaver />
-        {!google3DTilesEnabled && <ContactShadowsLayer />}
         {!isMobile && <PostProcessing activeBurstCount={_activeBurstCount} />}
         <StressTestFireworks />
         <PostExplosionSmokeManager />
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
-        <DebugFeed />
 
         {/* ═══ Google Earth Geo Tools ═══ */}
         <GeoToolsScene
