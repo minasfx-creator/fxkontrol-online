@@ -12,6 +12,7 @@ import {
   TrendingUp, TrendingDown, Minus, Circle, Bookmark,
   Smartphone, Wand2, Layers,
   Lightbulb, Pencil, LayoutTemplate,
+  Bluetooth, Usb, Wifi,
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { lazy, Suspense } from 'react';
@@ -109,6 +110,80 @@ const MASTER_EDITOR_TOOLS: HubTool[] = [
   { label: 'Timeline', icon: Clapperboard, panel: '' },
   { label: 'Templates', icon: LayoutTemplate, panel: 'templates' },
 ];
+
+/* ── Transport Availability Indicator ─────────────────── */
+function TransportIndicator() {
+  const [transports, setTransports] = useState<{ key: string; label: string; icon: React.ElementType; available: boolean; color: string }[]>([]);
+
+  useEffect(() => {
+    const checks = [
+      {
+        key: 'ble',
+        label: 'BLE',
+        icon: Bluetooth,
+        available: typeof navigator !== 'undefined' && 'bluetooth' in navigator,
+        color: 'hsl(220 90% 56%)',
+      },
+      {
+        key: 'usb',
+        label: 'USB',
+        icon: Usb,
+        available: typeof navigator !== 'undefined' && 'serial' in navigator,
+        color: 'hsl(32 100% 50%)',
+      },
+      {
+        key: 'wifi',
+        label: 'Wi-Fi',
+        icon: Wifi,
+        available: typeof navigator !== 'undefined' && 'onLine' in navigator && navigator.onLine,
+        color: 'hsl(165 100% 42%)',
+      },
+      {
+        key: 'artnet',
+        label: 'Art-Net',
+        icon: Radio,
+        available: typeof navigator !== 'undefined' && 'onLine' in navigator && navigator.onLine,
+        color: 'hsl(270 60% 55%)',
+      },
+    ];
+    setTransports(checks);
+  }, []);
+
+  if (transports.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {transports.map(t => {
+        const Icon = t.icon;
+        return (
+          <div
+            key={t.key}
+            className="flex items-center gap-1 px-2 py-1 rounded-md border transition-all"
+            style={{
+              borderColor: t.available ? `${t.color}40` : 'hsl(0 0% 50% / 0.15)',
+              background: t.available ? `${t.color}08` : 'transparent',
+            }}
+          >
+            <Icon className="h-3 w-3" style={{ color: t.available ? t.color : 'hsl(0 0% 50% / 0.3)' }} />
+            <span
+              className="text-[8px] font-mono font-bold tracking-wider uppercase"
+              style={{ color: t.available ? t.color : 'hsl(0 0% 50% / 0.3)' }}
+            >
+              {t.label}
+            </span>
+            <div
+              className="h-1.5 w-1.5 rounded-full"
+              style={{
+                background: t.available ? t.color : 'hsl(0 0% 50% / 0.2)',
+                boxShadow: t.available ? `0 0 6px ${t.color}60` : 'none',
+              }}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 /* ── Feed Card (Instagram-style) ─────────────────────── */
 function FeedCard({ item }: { item: NewsItem }) {
@@ -429,6 +504,10 @@ export default function Dashboard() {
           </span>
           <div className="h-[1px] flex-1" style={{ background: 'hsl(165 100% 42% / 0.1)' }} />
           <span className="text-[8px] font-mono text-muted-foreground/30 tracking-wider">DIAGNOSTICS & CONNECT</span>
+        </div>
+        {/* Transport availability */}
+        <div className="mb-3">
+          <TransportIndicator />
         </div>
         <div className={cn("grid gap-2", isMobile ? "grid-cols-1" : "grid-cols-2")}>
           {/* Easy Connect Card */}
