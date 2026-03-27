@@ -270,7 +270,7 @@ export default function Dashboard() {
   const filteredNews = feedFilter === 'all' ? MOCK_NEWS : MOCK_NEWS.filter(n => n.category === feedFilter);
 
   if (showIntro) {
-    return <CinematicIntro onComplete={handleIntroComplete} />;
+    return <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><CinematicIntro onComplete={handleIntroComplete} /></Suspense>;
   }
 
   return (
