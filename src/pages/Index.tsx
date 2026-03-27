@@ -414,18 +414,18 @@ function Index() {
         </div>
         <MobileHUD onOpenPanel={handleMobileOpenPanel} onMenuOpen={() => { setMobileTab('more'); setMobilePanelHeight('full'); }} />
         <MobileQuickActions />
-        <MobileFloatingPanel activeTab={mobileTab} height={mobilePanelHeight} onHeightChange={setMobilePanelHeight} onDismiss={handleDismissPanel}>
+        <MobileFloatingPanel activeTab={mobileTab} height={mobilePanelHeight} onHeightChange={setMobilePanelHeight} onDismiss={handleDismissPanel} title={mobileTab === 'timeline' ? 'Timeline' : mobileTab === 'assets' ? 'Effects Library' : mobileTab === 'properties' ? 'Properties' : mobileTab === 'more' ? 'Painéis' : activePanel ?? undefined}>
           {mobileTab === 'timeline' && <Timeline />}
           {mobileTab === 'assets' && <EffectLibrary />}
           {mobileTab === 'properties' && <PropertiesPanel />}
           {mobileTab === 'more' && <UnifiedPanelMenu activePanel={activePanel} onSelectPanel={(id) => { handleMobileOpenPanel(id); setMobileTab(null); setMobilePanelHeight('full'); }} variant="sheet" onDismiss={handleDismissPanel} />}
-          {mobileTab && !['timeline', 'assets', 'properties', 'more'].includes(mobileTab) && activePanel && !isConsolePanel && <div className="h-full overflow-y-auto"><Suspense fallback={<PanelLoader />}>{renderPanelContent()}</Suspense></div>}
+          {mobileTab && !['timeline', 'assets', 'properties', 'more'].includes(mobileTab) && activePanel && !isConsolePanel && <Suspense fallback={<PanelLoader />}>{renderPanelContent()}</Suspense>}
         </MobileFloatingPanel>
 
         {/* Regular panels in floating sheet */}
         {activePanel && !isConsolePanel && mobileTab === null && mobilePanelHeight !== 'collapsed' && (
-          <MobileFloatingPanel activeTab={'more' as MobileTab} height={mobilePanelHeight} onHeightChange={setMobilePanelHeight} onDismiss={handleDismissPanel}>
-            <div className="h-full overflow-y-auto"><Suspense fallback={<PanelLoader />}>{renderPanelContent()}</Suspense></div>
+          <MobileFloatingPanel activeTab={'more' as MobileTab} height={mobilePanelHeight} onHeightChange={setMobilePanelHeight} onDismiss={handleDismissPanel} title={activePanel}>
+            <Suspense fallback={<PanelLoader />}>{renderPanelContent()}</Suspense>
           </MobileFloatingPanel>
         )}
 
