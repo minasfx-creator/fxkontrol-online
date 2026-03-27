@@ -356,8 +356,8 @@ function Index() {
     setMobilePanelHeight(id === 'effects' ? 'full' : 'half');
   }, []);
 
-  if (appPhase === 'cinematic') return <CinematicIntro onComplete={() => setAppPhase('splash')} />;
-  if (appPhase === 'splash') return <SplashScreen onStart={() => setAppPhase('editor')} showVideoBackground />;
+  if (appPhase === 'cinematic') return <Suspense fallback={<CanvasLoader />}><CinematicIntro onComplete={() => setAppPhase('splash')} /></Suspense>;
+  if (appPhase === 'splash') return <Suspense fallback={<CanvasLoader />}><SplashScreen onStart={() => setAppPhase('editor')} showVideoBackground /></Suspense>;
 
   const renderPanelContent = () => {
     if (!activePanel) return null;
