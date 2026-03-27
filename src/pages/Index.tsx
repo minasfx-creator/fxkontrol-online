@@ -428,33 +428,9 @@ function Index() {
       {/* ─── Layer 0: Full-screen 3D Canvas ────────────── */}
       <div
         className="absolute inset-0 z-0 br2049-atmosphere"
-        onDragOver={(e) => {
-          if (e.dataTransfer.types.includes('application/showven-equipment')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; return; }
-          if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setIsDragOver(true); }
-        }}
-        onDragLeave={(e) => { if (e.currentTarget.contains(e.relatedTarget as Node)) return; setIsDragOver(false); }}
-        onDrop={(e) => {
-          setIsDragOver(false);
-          if (e.dataTransfer.files?.length > 0) {
-            const file = e.dataTransfer.files[0];
-            const ext = file.name.split('.').pop()?.toLowerCase() || '';
-            if (SUPPORTED_DROP_EXTENSIONS.includes(ext)) { e.preventDefault(); window.dispatchEvent(new CustomEvent('viewport-file-drop', { detail: { file, type: getDropType(ext) } })); toast.info(`📂 ${file.name} dropped — opening importer...`); return; }
-          }
-          const raw = e.dataTransfer.getData('application/showven-equipment');
-          if (!raw) return;
-          e.preventDefault();
-          try {
-            const data = JSON.parse(raw);
-            if (!data.effectType) return;
-            const store = useProjectStore.getState();
-            useUndoStore.getState().checkpoint();
-            const posId = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-            const offset = store.positions.length * 2;
-            store.addPosition({ id: posId, name: data.name, x: offset, y: 0, z: 0, type: 'pyro', color: '#ff8800', heading: 0, pitch: 0, roll: 0 });
-            store.addTimelineItem({ id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, effectId: data.effectType, startTime: store.currentTime, trackIndex: 0, position: { x: offset, y: 0, z: 0 }, notes: `Showven ${data.name}` });
-            toast.success(`${data.name} dropped na cena`);
-          } catch { /* ignore */ }
-        }}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
       >
         <CanvasErrorBoundary>
           <Suspense fallback={<CanvasLoader />}>
