@@ -1154,6 +1154,8 @@ export default function SkyCanvas() {
   const recoveringContextRef = useRef(false);
   const handleContextRemount = useCallback(() => setCanvasInstanceKey(prev => prev + 1), []);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const deviceProfile = useMemo(() => getDeviceProfile(), []);
+  const isLowTierMobile = isMobile && deviceProfile.tier !== 'high';
   const environment = useSceneStore(st => st.environment);
   const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
