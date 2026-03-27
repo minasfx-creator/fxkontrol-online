@@ -76,29 +76,31 @@ export default function QuickHardwarePanel({ open, onClose }: QuickHardwarePanel
 
     // Real FireOne modules
     fireone.modules.forEach((mod, addr) => {
+      const isOnline = Date.now() - mod.lastSeen < 10000;
       list.push({
         id: `fireone-${addr}`,
         name: `FireOne Module #${addr}`,
         transport: 'usb',
-        status: mod.online ? 'online' : 'offline',
-        rssi: mod.rssi !== undefined && mod.rssi !== 0 ? mod.rssi : undefined,
-        battery: mod.batteryV !== undefined ? Math.round(Math.min(100, Math.max(0, (mod.batteryV - 3.0) / 1.2 * 100))) : undefined,
-        channelCount: mod.cueCount ?? 32,
+        status: isOnline ? 'online' : 'offline',
+        rssi: mod.rssiDbm ?? (mod.signalStrength > 0 ? -100 + mod.signalStrength : undefined),
+        battery: Math.round(Math.min(100, Math.max(0, (mod.batteryVoltage - 3.0) / 1.2 * 100))),
+        channelCount: mod.igniters.length || 32,
         label: mod.armed ? 'ARMED' : 'SAFE',
       });
     });
 
     // Real PBUS devices
     pbus.devices.forEach((dev, addr) => {
-      const bestRssi = Math.max(dev.rssi433 ?? -999, dev.rssi868 ?? -999);
+      const bestRssi = Math.max(dev.rssi433, dev.rssi868);
+      const isOnline = Date.now() - dev.lastSeen < 10000;
       list.push({
         id: `pbus-${addr}`,
-        name: dev.name || `PBUS #${addr}`,
+        name: `PBUS ${dev.type} #${addr}`,
         transport: 'pbus',
-        status: dev.online ? 'online' : 'offline',
+        status: isOnline ? 'online' : 'offline',
         rssi: bestRssi > -999 ? bestRssi : undefined,
-        battery: dev.batteryV !== undefined ? Math.round(Math.min(100, Math.max(0, (dev.batteryV - 3.0) / 1.2 * 100))) : undefined,
-        channelCount: dev.cueCount ?? 16,
+        battery: Math.round(Math.min(100, Math.max(0, (dev.batteryV - 3.0) / 1.2 * 100))),
+        channelCount: dev.channels,
         label: dev.armed ? 'ARMED' : 'SAFE',
       });
     });
