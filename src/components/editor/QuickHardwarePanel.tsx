@@ -551,8 +551,26 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
             <Zap className="w-3.5 h-3.5 text-[hsl(var(--warning))]" />
             TEST ALL
           </button>
+          <button
+            onClick={() => { haptics.tap(); setOtaDevice(null); setOtaOpen(true); }}
+            className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-xl border border-[hsl(var(--primary)/0.3)] bg-[hsl(var(--primary)/0.08)] font-bold text-[10px] text-[hsl(var(--primary))] active:scale-95 transition-transform"
+          >
+            <HardDrive className="w-3.5 h-3.5" />
+            FW UPDATE
+          </button>
         </div>
       </div>
+      {/* OTA Dialog */}
+      <Suspense fallback={null}>
+        <OTAFirmwareDialog
+          open={otaOpen}
+          onClose={() => setOtaOpen(false)}
+          deviceName={otaDevice?.name}
+          deviceAddr={otaDevice?.addr}
+          deviceTarget={otaDevice?.target}
+          simMode={simMode}
+        />
+      </Suspense>
     );
   }
 }
