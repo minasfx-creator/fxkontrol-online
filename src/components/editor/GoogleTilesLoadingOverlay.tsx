@@ -93,7 +93,20 @@ export default function GoogleTilesLoadingOverlay() {
             </span>
           )}
 
-          {/* Debug toggle */}
+          {/* Retry button on error */}
+          {isError && (
+            <button
+              onClick={() => window.location.reload()}
+              className="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-md transition-colors"
+              style={{
+                background: 'hsla(210, 70%, 50%, 0.2)',
+                color: 'hsl(210, 80%, 70%)',
+                border: '1px solid hsla(210, 70%, 50%, 0.3)',
+              }}
+            >
+              Retry
+            </button>
+          )}
           <button
             onClick={() => setShowDebug(v => !v)}
             className="ml-1 p-0.5 rounded hover:bg-white/10 transition-colors"
