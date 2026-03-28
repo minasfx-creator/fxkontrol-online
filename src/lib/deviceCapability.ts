@@ -27,8 +27,8 @@ export function getDeviceProfile(): DeviceProfile {
 
   let tier: DeviceTier = 'high';
   if (isMobile && memory <= 3)      tier = 'low';
-  else if (isMobile && memory <= 6) tier = 'medium';
-  else if (isMobile)                tier = 'medium';
+  else if (isMobile && memory <= 4) tier = 'medium';
+  else if (isMobile)                tier = 'high';
   else if (memory <= 4 || cores <= 2) tier = 'medium';
 
   const profile: DeviceProfile = {
