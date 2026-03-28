@@ -112,7 +112,7 @@ export default function MainLayout() {
   return (
     <SidebarProvider defaultOpen={!isMobile}>
       <div
-        className="min-h-[100dvh] flex w-full bg-background br2049-vignette"
+        className="h-[100dvh] flex w-full bg-background br2049-vignette overflow-hidden"
         style={{ filter: `brightness(${backlight / 100})` }}
       >
         {!commandImmersive && (
@@ -121,7 +121,7 @@ export default function MainLayout() {
           </Suspense>
         )}
 
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
           {/* ARMED Banner */}
           {isArmed && !commandImmersive && (
             <button

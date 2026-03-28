@@ -398,8 +398,8 @@ function Index() {
     const handleDismissPanel = () => { setMobileTab(null); setMobilePanelHeight('collapsed'); };
     if (operationMode === 'live') {
     return (
-      <div className="absolute inset-0 overflow-hidden bg-background">
-        <div className="absolute inset-0 br2049-atmosphere">
+       <div className="absolute inset-0 w-full h-full overflow-hidden bg-background">
+        <div className="absolute inset-0 w-full h-full br2049-atmosphere">
           <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas /></Suspense></CanvasErrorBoundary>
         </div>
         <LiveModeOverlay />
@@ -407,8 +407,8 @@ function Index() {
       );
     }
     return (
-    <div className="absolute inset-0 overflow-hidden bg-background">
-        <div className="absolute inset-0">
+    <div className="absolute inset-0 w-full h-full overflow-hidden bg-background">
+        <div className="absolute inset-0 w-full h-full">
           <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas key="mobile-skycanvas" /></Suspense></CanvasErrorBoundary>
           <BoxSelectOverlay />
         </div>
@@ -450,7 +450,7 @@ function Index() {
     <div className="absolute inset-0 overflow-hidden bg-zinc-950">
       {/* ─── Layer 0: Full-screen 3D Canvas ────────────── */}
       <div
-        className="absolute inset-0 z-0 br2049-atmosphere"
+        className="absolute inset-0 w-full h-full z-0 br2049-atmosphere"
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
