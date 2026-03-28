@@ -1,38 +1,57 @@
 
 
-## Plano: Fallback Visual (Grid + Horizonte) quando Google Tiles falha
+## Plano: Correção Definitiva do Viewport 3D no Mobile e Desktop
 
-### Situação Atual
-- Linha 1421 do `SkyCanvas.tsx` já renderiza um `<Grid>` quando `google3DTilesEnabled` é true, mas ele é **sempre visível** — não reage ao estado `error`.
-- O `GoogleTilesEngine` já expõe `getTilesDebugInfo()` com `state: 'error'` via `useSyncExternalStore`.
-- Quando tiles falham, o viewport fica com apenas o grid fino e fundo escuro — sem horizonte nem referência visual.
+### Problema Raiz
 
-### Correções
+Analisando a cadeia de layout do `/editor` no mobile:
 
-#### 1. Criar componente `GoogleTilesFallback` (novo arquivo)
-**Arquivo**: `src/components/editor/skycanvas/GoogleTilesFallback.tsx`
-
-Componente R3F que só renderiza quando `tilesState === 'error'` ou tiles ficam em `loading-tiles` por mais de 15s (timeout). Contém:
-- **Grid infinito** mais visível (cores mais claras, fade maior)
-- **Plano de horizonte** — disco circular grande (raio ~5km) com gradiente radial (centro escuro → borda azulada) simulando horizonte
-- **Linha de horizonte** — anel fino luminoso no limite do disco para dar referência de profundidade
-- **Iluminação ambiente** sutil para que o fallback não fique completamente escuro
-
-Usa `useSyncExternalStore(subscribeTilesLoading, getTilesDebugInfo)` para reagir ao estado.
-
-#### 2. Atualizar `SkyCanvas.tsx`
-**Arquivo**: `src/components/editor/SkyCanvas.tsx`
-- Importar `GoogleTilesFallback` via lazy loading
-- Substituir o grid fixo (linha 1421) pelo novo componente:
-```tsx
-{google3DTilesEnabled && <GoogleTilesFallback />}
+```text
+SidebarProvider
+  └─ div.min-h-[100dvh].flex.w-full        ← root
+       └─ div.flex-1.flex.flex-col.min-w-0  ← content column (NO height constraint)
+            └─ main.flex-1.min-h-0.overflow-hidden.relative
+                 └─ div.absolute.inset-0     ← Index mobile layout
+                      └─ div.absolute.inset-0 ← SkyCanvas wrapper
 ```
-- O fallback se auto-esconde quando tiles carregam (`state === 'ready'`)
 
-#### 3. Melhorar overlay de erro
-**Arquivo**: `src/components/editor/GoogleTilesLoadingOverlay.tsx`
-- No estado `error`, adicionar botão "Retry" que limpa o `apiKey` para re-trigger do fetch
-- Mensagem mais clara: "Terreno indisponível — exibindo grid de referência"
+**Causa**: O container intermediário `div.flex-1.flex.flex-col.min-w-0` (linha 124 do MainLayout) **não possui `min-h-0`**. Em flexbox, sem `min-h-0`, o conteúdo pode forçar o flex item a crescer além do esperado, quebrando o cálculo de `absolute inset-0` dentro do `<main>`. No mobile Safari especialmente, isso faz o Canvas receber apenas uma fração da altura disponível.
 
-### Arquivos modificados: 3 (1 novo + 2 editados)
+Além disso, o container raiz usa `min-h-[100dvh]` ao invés de `h-[100dvh]`, permitindo que o conteúdo empurre a altura para além da viewport.
+
+### Correções (2 arquivos)
+
+#### 1. MainLayout.tsx — Fixar cadeia de altura
+
+**Linha 114-115**: Mudar o container raiz de `min-h-[100dvh]` para `h-[100dvh]` e adicionar `overflow-hidden`:
+```tsx
+<div className="h-[100dvh] flex w-full bg-background br2049-vignette overflow-hidden" ...>
+```
+
+**Linha 124**: Adicionar `min-h-0` ao container de conteúdo para que o flex shrink funcione:
+```tsx
+<div className="flex-1 flex flex-col min-w-0 min-h-0">
+```
+
+#### 2. Index.tsx — Garantir altura explícita no container mobile
+
+**Linhas 401, 410**: Adicionar `h-full` como reforço ao container do editor mobile:
+```tsx
+<div className="absolute inset-0 overflow-hidden bg-background h-full">
+```
+
+**Linha 411**: Garantir que o wrapper do SkyCanvas tenha dimensões explícitas:
+```tsx
+<div className="absolute inset-0 w-full h-full">
+```
+
+Mesma correção para o desktop (linha 452-453): garantir `w-full h-full` no container do Canvas.
+
+### Resultado
+
+O Canvas de R3F receberá 100% da área disponível do `<main>`, que agora terá dimensões corretas em toda a cadeia flex. O terreno 3D ocupará a tela inteira ao invés de apenas uma faixa no topo.
+
+### Arquivos modificados: 2
+- `src/layouts/MainLayout.tsx` (2 linhas)
+- `src/pages/Index.tsx` (3-4 linhas)
 
