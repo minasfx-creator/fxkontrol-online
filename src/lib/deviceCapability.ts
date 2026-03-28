@@ -38,7 +38,7 @@ export function getDeviceProfile(): DeviceProfile {
     cores,
     maxWaypoints: tier === 'low' ? 600 : tier === 'medium' ? 900 : 1500,
     pixelRatioLimit: tier === 'low' ? 1.0 : tier === 'medium' ? 1.5 : 2.0,
-    enablePostProcessing: tier === 'high',
+    enablePostProcessing: tier !== 'low',
   };
 
   _cached = profile;
