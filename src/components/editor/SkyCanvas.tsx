@@ -1156,7 +1156,7 @@ export default function SkyCanvas() {
   const handleContextRemount = useCallback(() => setCanvasInstanceKey(prev => prev + 1), []);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768; // eslint-disable-line -- kept as static for perf-sensitive render loop; useIsMobile used at page level
   const deviceProfile = useMemo(() => getDeviceProfile(), []);
-  const isLowTierMobile = isMobile && deviceProfile.tier !== 'high';
+  const isLowTierMobile = isMobile && deviceProfile.tier === 'low';
   const environment = useSceneStore(st => st.environment);
   const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);

@@ -27,8 +27,8 @@ export function getDeviceProfile(): DeviceProfile {
 
   let tier: DeviceTier = 'high';
   if (isMobile && memory <= 3)      tier = 'low';
-  else if (isMobile && memory <= 6) tier = 'medium';
-  else if (isMobile)                tier = 'medium';
+  else if (isMobile && memory <= 4) tier = 'medium';
+  else if (isMobile)                tier = 'high';
   else if (memory <= 4 || cores <= 2) tier = 'medium';
 
   const profile: DeviceProfile = {
@@ -38,7 +38,7 @@ export function getDeviceProfile(): DeviceProfile {
     cores,
     maxWaypoints: tier === 'low' ? 600 : tier === 'medium' ? 900 : 1500,
     pixelRatioLimit: tier === 'low' ? 1.0 : tier === 'medium' ? 1.5 : 2.0,
-    enablePostProcessing: tier === 'high',
+    enablePostProcessing: tier !== 'low',
   };
 
   _cached = profile;
