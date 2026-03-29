@@ -124,6 +124,7 @@ export default function MobileHUD({ onMenuOpen }: MobileHUDProps) {
           </button>
 
         </div>
+      </div>
     </div>
   );
 }
