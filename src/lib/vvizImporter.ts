@@ -96,18 +96,20 @@ function rgbToHex(r: number, g: number, b: number): string {
   return '#' + [clamp(r), clamp(g), clamp(b)].map((v) => v.toString(16).padStart(2, '0')).join('');
 }
 
-function normalizeColorComponent(value: number | undefined): number {
-  if (!Number.isFinite(value)) return 0;
-  const v = Number(value);
-  if (v >= 0 && v <= 1) return Math.round(v * 255);
-  return Math.round(v);
+/** Finale 3D VVIZ uses integer 0-255 color values. No float normalization. */
+function normColor(value: number | undefined): number {
+  if (value === undefined || value === null || !Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(255, Math.round(Number(value))));
 }
 
 // ── Color Extraction ───────────────────────────────────────────────
 
+/**
+ * Extract dominant color weighted by frame duration.
+ * Colors with more frames (longer display time) win over brief flashes.
+ */
 function extractColor(payloads: VVIZPayload[]): string {
-  let bestR = 0, bestG = 180, bestB = 216;
-  let bestBrightness = 0;
+  let bestR = 0, bestG = 0, bestB = 0, bestWeight = 0;
 
   for (const payload of payloads) {
     if (String((payload as { type?: string }).type || '').toLowerCase() !== 'light') continue;
@@ -115,18 +117,18 @@ function extractColor(payloads: VVIZPayload[]): string {
     if (!actions) continue;
 
     for (const action of actions) {
-      const r = normalizeColorComponent(action.r ?? action.red);
-      const g = normalizeColorComponent(action.g ?? action.green);
-      const b = normalizeColorComponent(action.b ?? action.blue);
+      const r = normColor(action.r ?? action.red);
+      const g = normColor(action.g ?? action.green);
+      const b = normColor(action.b ?? action.blue);
       const brightness = r + g + b;
-      if (brightness > bestBrightness) {
-        bestBrightness = brightness;
-        bestR = r; bestG = g; bestB = b;
-      }
+      if (brightness < 10) continue; // skip near-black (off state)
+      const frames = Math.max(1, action.frames ?? 1);
+      const weight = brightness * frames;
+      if (weight > bestWeight) { bestWeight = weight; bestR = r; bestG = g; bestB = b; }
     }
   }
 
-  return bestBrightness > 0 ? rgbToHex(bestR, bestG, bestB) : '#00B4D8';
+  return bestWeight > 0 ? rgbToHex(bestR, bestG, bestB) : '#00B4D8';
 }
 
 // ── Waypoint Simplification ────────────────────────────────────────
@@ -186,7 +188,7 @@ interface ProcessResult {
   simplified: boolean;
 }
 
-function processPerformance(perf: VVIZPerformance, index: number, defaultRate: number): ProcessResult {
+function processPerformance(perf: VVIZPerformance, index: number, defaultRate: number, timeOffset = 0): ProcessResult {
   const agent = perf.agentDescription;
   if (!agent) {
     return { pos: null, traj: null, maxT: 0, error: `Performance ${perf.id}: sem agentDescription`, inputSamples: 0, outputWaypoints: 0, simplified: false };
@@ -225,7 +227,7 @@ function processPerformance(perf: VVIZPerformance, index: number, defaultRate: n
     if (!hasStarted) {
       const fromHomeSq = (x - home.x) ** 2 + (y - home.y) ** 2 + (z - home.z) ** 2;
       if (fromHomeSq < START_HOME_SKIP_SQ && i < inputSamples - 1) continue;
-      waypoints.push({ id: uid('vw'), position: { x, y, z }, time: t });
+    waypoints.push({ id: uid('vw'), position: { x, y, z }, time: t + timeOffset });
       hasStarted = true; lastX = x; lastY = y; lastZ = z; lastT = t;
       continue;
     }
@@ -235,7 +237,7 @@ function processPerformance(perf: VVIZPerformance, index: number, defaultRate: n
     const isLast = i === inputSamples - 1;
 
     if (isLast || dtSince >= simplify.maxGap || (dtSince >= simplify.minTimeStep && movedSq >= simplify.minDistanceSq)) {
-      waypoints.push({ id: uid('vw'), position: { x, y, z }, time: t });
+      waypoints.push({ id: uid('vw'), position: { x, y, z }, time: t + timeOffset });
       lastX = x; lastY = y; lastZ = z; lastT = t;
     }
   }
@@ -273,13 +275,14 @@ export function importVVIZ(jsonString: string): VVIZImportResult {
 
   const errors: string[] = [];
   const defaultRate = vviz.defaultPositionRate || 2;
+  const timeOffset = vviz.timeOffsetSecs || 0;
   const positions: Position[] = [];
   const trajectories: Trajectory[] = [];
   let maxTime = 0, totalSamples = 0, totalWaypoints = 0, simplifiedCount = 0;
 
   for (let i = 0; i < vviz.performances.length; i++) {
     try {
-      const result = processPerformance(vviz.performances[i], i, defaultRate);
+      const result = processPerformance(vviz.performances[i], i, defaultRate, timeOffset);
       if (result.error) { errors.push(result.error); continue; }
       if (result.pos) positions.push(result.pos);
       if (result.traj) trajectories.push(result.traj);
@@ -287,8 +290,8 @@ export function importVVIZ(jsonString: string): VVIZImportResult {
       totalSamples += result.inputSamples;
       totalWaypoints += result.outputWaypoints;
       if (result.simplified) simplifiedCount++;
-    } catch {
-      errors.push(`Performance ${vviz.performances[i]?.id ?? i}: falha durante parsing`);
+    } catch (e) {
+      errors.push(`Performance ${vviz.performances[i]?.id ?? i}: ${(e as Error).message || 'falha durante parsing'}`);
     }
   }
 
@@ -330,6 +333,7 @@ export async function importVVIZAsync(
 
   const errors: string[] = [];
   const defaultRate = vviz.defaultPositionRate || 2;
+  const timeOffset = vviz.timeOffsetSecs || 0;
   const totalDrones = vviz.performances.length;
   const perfs = vviz.performances;
 
@@ -346,7 +350,7 @@ export async function importVVIZAsync(
 
   for (let i = 0; i < totalDrones; i++) {
     try {
-      const result = processPerformance(perfs[i], i, defaultRate);
+      const result = processPerformance(perfs[i], i, defaultRate, timeOffset);
       if (result.error) {
         errors.push(result.error);
       } else {
@@ -357,8 +361,8 @@ export async function importVVIZAsync(
       processedSamples += result.inputSamples;
       parsedWaypoints += result.outputWaypoints;
       if (result.simplified) simplifiedCount++;
-    } catch {
-      errors.push(`Performance ${perfs[i]?.id ?? i}: falha durante parsing`);
+    } catch (e) {
+      errors.push(`Performance ${perfs[i]?.id ?? i}: ${(e as Error).message || 'falha durante parsing'}`);
     }
 
     // ★ KEY: Null out processed performance to free its traversal data

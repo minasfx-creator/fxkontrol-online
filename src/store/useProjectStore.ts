@@ -621,6 +621,12 @@ export const useProjectStore = create<ProjectState>((set) => ({
     ...(projectName && projectName !== 'Import Error' ? { projectName } : {}),
     ...(duration && duration > 0 ? { duration } : {}),
   })),
+  replaceImportVVIZ: (positions, trajectories, projectName, duration) => set((s) => ({
+    positions: [...s.positions.filter(p => p.type !== 'drone-pad'), ...positions],
+    trajectories: [...s.trajectories.filter(t => !positions.some(p => p.id === t.positionId) && !s.positions.some(sp => sp.type === 'drone-pad' && sp.id === t.positionId)), ...trajectories],
+    ...(projectName && projectName !== 'Import Error' ? { projectName } : {}),
+    ...(duration && duration > 0 ? { duration } : {}),
+  })),
   batchImportVVIZChunk: (positions, trajectories) => {
     // Mutate + new ref: push into copies for O(n_chunk) not O(n_total)
     set((s) => {
