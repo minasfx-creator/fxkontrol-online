@@ -128,13 +128,13 @@ const REALISTIC_FRAGMENT = `
     if (vAge < 0.05) {
       // Phase 1: White-hot ignition
       float flash = 1.0 - vAge / 0.05;
-      col = mix(effectColor * 1.5, whiteHot * 2.0, flash * flash);
+      col = mix(effectColor * 1.2, whiteHot * 1.0, flash * flash);
     } else if (vAge < 0.5) {
       // Phase 2: Full color with sparkle
       float sparkle = sin(vRandom * 6283.0 + uTime * 12.0) * 0.15 + 0.85;
-      col = effectColor * sparkle * 1.2;
+      col = effectColor * sparkle * 0.8;
       // Hot core white boost
-      col = mix(col, whiteHot, core * 0.3);
+      col = mix(col, whiteHot, core * 0.1);
     } else if (vAge < 0.8) {
       // Phase 3: Color → ember transition
       float emberMix = (vAge - 0.5) / 0.3;
@@ -177,7 +177,7 @@ function getGPUFireworkMaterial(): THREE.ShaderMaterial {
         uSpreadScale: { value: 1.0 },
         uColor: { value: new THREE.Color(1, 0.5, 0.1) },
         uSecondaryColor: { value: new THREE.Color(0, 0, 0) },
-uHDRMultiplier: { value: 1.8 },
+uHDRMultiplier: { value: 0.9 },
       },
       transparent: true,
       depthWrite: false,
