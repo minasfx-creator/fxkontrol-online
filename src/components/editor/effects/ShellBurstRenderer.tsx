@@ -92,8 +92,8 @@ const BURST_FRAGMENT = `
     vec3 baseHue = mix(uColor, uColor2, smoothstep(uColorChangePoint - 0.1, uColorChangePoint + 0.1, rawRatio));
     
     // Thermal color transition: white-hot → saturated → ember → charcoal
-    vec3 whiteHot = mix(vec3(1.0, 0.95, 0.8), baseHue * 1.4 + vec3(0.1), 0.5) * (0.25 + uHDRMultiplier * 0.06);
-    vec3 saturated = baseHue * 1.5;
+    vec3 whiteHot = mix(vec3(1.0, 0.95, 0.8), baseHue * 1.2 + vec3(0.08), 0.5) * (0.2 + uHDRMultiplier * 0.04);
+    vec3 saturated = baseHue * 1.15;
     vec3 ember = vec3(baseHue.r * 0.5 + 0.25, baseHue.g * 0.15 + 0.05, baseHue.b * 0.05);
     vec3 charcoal = vec3(0.12, 0.06, 0.02);
     
@@ -101,7 +101,7 @@ const BURST_FRAGMENT = `
     if (lifeRatio < 0.04) {
       thermalColor = mix(whiteHot, saturated, lifeRatio / 0.04);
     } else if (lifeRatio < 0.55) {
-      thermalColor = mix(saturated, baseHue * 1.2, (lifeRatio - 0.04) / 0.51);
+      thermalColor = mix(saturated, baseHue * 1.0, (lifeRatio - 0.04) / 0.51);
     } else if (lifeRatio < 0.80) {
       thermalColor = mix(baseHue, ember, (lifeRatio - 0.55) / 0.25);
     } else {
