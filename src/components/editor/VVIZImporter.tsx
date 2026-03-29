@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback, useEffect, startTransition } from 'react';
-import { Upload, FileJson, X, Check, AlertTriangle, Loader2 } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect, startTransition, useMemo } from 'react';
+import { Upload, FileJson, X, Check, AlertTriangle, Loader2, Replace, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -33,6 +33,7 @@ export default function VVIZImporter({
 }) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
+  const [replaceMode, setReplaceMode] = useState(true);
   const [phase, setPhase] = useState<ImportPhase>('idle');
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState('');
@@ -55,16 +56,22 @@ export default function VVIZImporter({
     };
   }, []);
 
+  const existingDroneCount = useMemo(() => {
+    return useProjectStore.getState().positions.filter(p => p.type === 'drone-pad').length;
+  }, [open]);
+
   const commitChunks = useCallback(async (
     projectName: string, duration: number, droneCount: number
   ) => {
     const { positions, trajectories } = accRef.current;
     const store = useProjectStore.getState();
 
-    // Single atomic commit — avoids repeated array copies from chunked set() calls
-    // This is O(n) once instead of O(n*chunks)
     startTransition(() => {
-      store.batchImportVVIZ(positions, trajectories, projectName, duration);
+      if (replaceMode) {
+        store.replaceImportVVIZ(positions, trajectories, projectName, duration);
+      } else {
+        store.batchImportVVIZ(positions, trajectories, projectName, duration);
+      }
     });
 
     // Cleanup accumulator
@@ -74,7 +81,7 @@ export default function VVIZImporter({
     setProgressLabel(`${droneCount} drones importados ✓`);
     setPhase('done');
     toast.success(`Importado: ${droneCount} drones, ${trajectories.length} trajetórias`);
-  }, []);
+  }, [replaceMode]);
 
   const parseFile = useCallback(async (file: File) => {
     const runId = ++parseRunRef.current;
@@ -345,6 +352,23 @@ export default function VVIZImporter({
             </div>
           )}
 
+          {hasResult && existingDroneCount > 0 && !isProcessing && phase !== 'done' && (
+            <div className="flex items-center gap-2 bg-muted/50 rounded-sm p-2">
+              <button
+                onClick={() => setReplaceMode(true)}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${replaceMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <Replace className="h-3 w-3" /> Substituir ({existingDroneCount} existentes)
+              </button>
+              <button
+                onClick={() => setReplaceMode(false)}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${!replaceMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <Plus className="h-3 w-3" /> Adicionar ao show
+              </button>
+            </div>
+          )}
+
           <div className="flex justify-end gap-2">
             <Button
               variant="ghost"
@@ -367,7 +391,7 @@ export default function VVIZImporter({
                 </>
               ) : (
                 <>
-                  <Check className="h-3 w-3 mr-1" /> Importar {previewData?.droneCount || 0} Drones
+                  <Check className="h-3 w-3 mr-1" /> {replaceMode && existingDroneCount > 0 ? 'Substituir' : 'Importar'} {previewData?.droneCount || 0} Drones
                 </>
               )}
             </Button>

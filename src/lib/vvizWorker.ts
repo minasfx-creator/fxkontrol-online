@@ -112,7 +112,7 @@ function downsample(wp: Waypoint[], limit: number): Waypoint[] {
 
 // ── Process single performance ─────────────────────────────────────
 
-function processPerf(perf: VVIZPerformance, idx: number, rate: number, maxWP: number) {
+function processPerf(perf: VVIZPerformance, idx: number, rate: number, maxWP: number, timeOffset = 0) {
   const agent = perf.agentDescription;
   if (!agent) return null;
 
@@ -145,7 +145,7 @@ function processPerf(perf: VVIZPerformance, idx: number, rate: number, maxWP: nu
     if (!started) {
       const dsq = (x - home.x) ** 2 + (y - home.y) ** 2 + (z - home.z) ** 2;
       if (dsq < HOME_SKIP_SQ && i < inputSamples - 1) continue;
-      waypoints.push({ id: uid('vw'), position: { x, y, z }, time: t });
+      waypoints.push({ id: uid('vw'), position: { x, y, z }, time: t + timeOffset });
       started = true; lx = x; ly = y; lz = z; lt = t;
       continue;
     }
@@ -155,7 +155,7 @@ function processPerf(perf: VVIZPerformance, idx: number, rate: number, maxWP: nu
     const isLast = i === inputSamples - 1;
 
     if (isLast || dtS >= cfg.maxGap || (dtS >= cfg.minTimeStep && mvSq >= cfg.minDistanceSq)) {
-      waypoints.push({ id: uid('vw'), position: { x, y, z }, time: t });
+      waypoints.push({ id: uid('vw'), position: { x, y, z }, time: t + timeOffset });
       lx = x; ly = y; lz = z; lt = t;
     }
   }
@@ -212,9 +212,16 @@ ctx.onmessage = (e: MessageEvent) => {
     return;
   }
 
+  // Validate required fields
+  if (!vviz.defaultPositionRate || vviz.defaultPositionRate <= 0) {
+    ctx.postMessage({ type: 'error', message: 'VVIZ: campo "defaultPositionRate" ausente ou inválido.' });
+    return;
+  }
+
   const perfs = vviz.performances;
   const total = perfs.length;
-  const rate = vviz.defaultPositionRate || 2;
+  const rate = vviz.defaultPositionRate;
+  const timeOffset = vviz.timeOffsetSecs || 0;
   const projectName = vviz.performanceName || 'VVIZ Import';
 
   // Pre-count samples
@@ -228,7 +235,7 @@ ctx.onmessage = (e: MessageEvent) => {
 
   for (let i = 0; i < total; i++) {
     try {
-      const r = processPerf(perfs[i], i, rate, maxWP);
+      const r = processPerf(perfs[i], i, rate, maxWP, timeOffset);
       if (!r) { errors.push(`Performance ${perfs[i]?.id ?? i}: sem agentDescription`); continue; }
       
       // Stream each drone individually to main thread
@@ -239,8 +246,8 @@ ctx.onmessage = (e: MessageEvent) => {
       processedSamples += r.inputSamples;
       totalWP += r.outputWaypoints;
       if (r.outputWaypoints < r.inputSamples) simplified++;
-    } catch {
-      errors.push(`Performance ${perfs[i]?.id ?? i}: falha durante parsing`);
+    } catch (e) {
+      errors.push(`Performance ${perfs[i]?.id ?? i}: ${(e as Error).message || 'falha durante parsing'}`);
     }
 
     // Free processed performance data

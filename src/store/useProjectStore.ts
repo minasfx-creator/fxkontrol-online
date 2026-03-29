@@ -252,6 +252,7 @@ export interface ProjectState {
   selectTimelineItemAndLinkedPosition: (itemId: string) => void;
   addTrajectory: (traj: Trajectory) => void;
   batchImportVVIZ: (positions: Position[], trajectories: Trajectory[], projectName?: string, duration?: number) => void;
+  replaceImportVVIZ: (positions: Position[], trajectories: Trajectory[], projectName?: string, duration?: number) => void;
   batchImportVVIZChunk: (positions: Position[], trajectories: Trajectory[]) => void;
   finalizeBatchImport: (projectName?: string, duration?: number) => void;
   updateTrajectory: (id: string, updates: Partial<Omit<Trajectory, 'id'>>) => void;
@@ -618,6 +619,12 @@ export const useProjectStore = create<ProjectState>((set) => ({
   batchImportVVIZ: (positions, trajectories, projectName, duration) => set((s) => ({
     positions: [...s.positions, ...positions],
     trajectories: [...s.trajectories, ...trajectories],
+    ...(projectName && projectName !== 'Import Error' ? { projectName } : {}),
+    ...(duration && duration > 0 ? { duration } : {}),
+  })),
+  replaceImportVVIZ: (positions, trajectories, projectName, duration) => set((s) => ({
+    positions: [...s.positions.filter(p => p.type !== 'drone-pad'), ...positions],
+    trajectories: [...s.trajectories.filter(t => !positions.some(p => p.id === t.positionId) && !s.positions.some(sp => sp.type === 'drone-pad' && sp.id === t.positionId)), ...trajectories],
     ...(projectName && projectName !== 'Import Error' ? { projectName } : {}),
     ...(duration && duration > 0 ? { duration } : {}),
   })),
