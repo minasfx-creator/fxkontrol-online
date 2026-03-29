@@ -14,9 +14,9 @@ const DEMO_COLORS = [
   '#ff6699', '#88ff44', '#aa44ff', '#ffaa00',
 ];
 const DEMO_CALIBERS = [75, 100, 125, 75, 150, 100, 75, 125];
-const LAUNCH_INTERVAL = 1.8; // seconds between volleys
-const VOLLEY_SIZE = 3;       // shells per volley
-const SPREAD = 200;          // horizontal spread (meters)
+const LAUNCH_INTERVAL = 2.5; // seconds between volleys
+const VOLLEY_SIZE = 2;       // shells per volley
+const SPREAD = 250;          // horizontal spread (meters)
 const MIN_HEIGHT = 80;
 const MAX_HEIGHT = 220;
 

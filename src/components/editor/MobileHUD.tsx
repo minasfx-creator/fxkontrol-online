@@ -2,21 +2,18 @@
  * MobileHUD — Apple Dynamic Island–inspired top bar
  * Compact layout optimized for 375px mobile screens.
  */
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Pause, Square, Menu, AlertOctagon, Zap, ShieldAlert, MapPin, Moon, Sun, Radio, MoreHorizontal } from 'lucide-react';
+import { Play, Pause, Square, AlertOctagon, Zap, Radio } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
-import { useDisplayStore } from '@/store/useDisplayStore';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { useShowSettings } from '@/hooks/useShowSettings';
-import type { PanelId } from '@/components/editor/PanelTabBar';
 
 interface MobileHUDProps {
-  onOpenPanel: (id: PanelId) => void;
   onMenuOpen: () => void;
 }
 
@@ -37,26 +34,17 @@ function getCountdown(showDate: string | null): string | null {
   return `T-${hours}h${mins}m`;
 }
 
-export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
+export default function MobileHUD({ onMenuOpen }: MobileHUDProps) {
   const navigate = useNavigate();
   const currentTime = useProjectStore(s => s.currentTime);
   const isPlaying = useProjectStore(s => s.isPlaying);
   const setPlaying = useProjectStore(s => s.setPlaying);
   const setCurrentTime = useProjectStore(s => s.setCurrentTime);
-  const gpsOrigin = useProjectStore(s => s.gpsOrigin);
   const activeEffects = useLiveSfxStore(s => s.activeEffects);
   const clearAll = useLiveSfxStore(s => s.clearAll);
   const usbConnected = useUSBDeviceStore(s => s.dmxDevices.length > 0);
   const smpteRunning = useSMPTEStore(s => s.running);
   const { settings } = useShowSettings();
-  const nightMode = useDisplayStore(s => s.nightMode);
-  const setNightMode = useDisplayStore(s => s.setNightMode);
-  const [showExtra, setShowExtra] = useState(false);
-
-  const openGeoSetup = useCallback(() => {
-    haptics.tap();
-    window.dispatchEvent(new Event('open-geo-setup'));
-  }, []);
   const isArmed = activeEffects.length > 0;
   const countdown = useMemo(() => getCountdown(settings?.show_date ?? null), [settings?.show_date]);
 
@@ -135,62 +123,8 @@ export default function MobileHUD({ onOpenPanel, onMenuOpen }: MobileHUDProps) {
             )}
           </button>
 
-          {/* Overflow toggle for secondary actions */}
-          <button
-            onClick={() => { haptics.tap(); setShowExtra(!showExtra); }}
-            className="glass-button flex items-center justify-center w-11 h-11 active:scale-90 transition-transform"
-          >
-            <MoreHorizontal className="w-5 h-5 text-foreground" />
-          </button>
-
-          {/* Menu */}
-          <button
-            onClick={() => { haptics.tap(); onMenuOpen(); }}
-            className="glass-button flex items-center justify-center w-11 h-11 active:scale-90 transition-transform"
-          >
-            <Menu className="w-5 h-5 text-foreground" />
-          </button>
         </div>
       </div>
-
-      {/* Expandable secondary row */}
-      {showExtra && (
-        <div className="pointer-events-auto flex items-center justify-center gap-2 px-3 pb-1 animate-in fade-in-0 slide-in-from-top-1 duration-200">
-          {/* GPS pill */}
-          <button
-            onClick={openGeoSetup}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[hsl(var(--surface-0)/0.85)] backdrop-blur-xl border border-[hsl(var(--border)/0.2)] active:scale-95 transition-transform"
-          >
-            <MapPin className="w-3 h-3 text-[hsl(var(--safety))]" />
-            <span className="text-[9px] font-mono text-[hsl(var(--foreground)/0.8)] tracking-tight">
-              {gpsOrigin.lat.toFixed(4)}°, {gpsOrigin.lng.toFixed(4)}°
-            </span>
-          </button>
-
-          {/* Night Mode */}
-          <button
-            onClick={() => { haptics.tap(); setNightMode(!nightMode); }}
-            className={cn(
-              "glass-button flex items-center justify-center w-9 h-9 active:scale-90 transition-transform",
-              nightMode && "ring-1 ring-[hsl(190_100%_50%/0.4)]"
-            )}
-          >
-            {nightMode
-              ? <Sun className="w-4 h-4 text-[hsl(var(--warning))]" />
-              : <Moon className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
-            }
-          </button>
-
-          {/* LIVE mode */}
-          <button
-            onClick={() => { haptics.showMode(true); useDisplayStore.getState().setOperationMode('live'); }}
-            className="glass-button flex items-center gap-1 px-2.5 py-1.5 active:scale-90 transition-transform"
-          >
-            <ShieldAlert className="w-3.5 h-3.5 text-[hsl(var(--warning))]" />
-            <span className="text-[9px] font-bold text-[hsl(var(--warning))] uppercase">LIVE</span>
-          </button>
-        </div>
-      )}
     </div>
   );
 }
