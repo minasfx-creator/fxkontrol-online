@@ -855,7 +855,7 @@ function ViewportPlaybackControls() {
   };
 
   return (
-    <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5">
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
       {/* Rewind */}
       <button
         onClick={() => { setCurrentTime(0); setPlaying(false); }}
@@ -1669,7 +1669,7 @@ export default function SkyCanvas() {
       )}
 
       {/* Camera Bookmarks bar */}
-      <CameraBookmarksBar setActivePreset={setActivePreset} setFreeLook={setFreeLook} />
+      {!isMobile && <CameraBookmarksBar setActivePreset={setActivePreset} setFreeLook={setFreeLook} />}
 
       {/* Site Model Transform Toolbar */}
       <SiteModelTransformToolbar />
@@ -1686,7 +1686,7 @@ export default function SkyCanvas() {
       {/* ═══ Debug tools — hidden by default, toggle with Ctrl+Shift+D ═══ */}
       {!isMobile && showDebugOverlay && <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />}
       {!isMobile && showDebugOverlay && <ViewportTerminal />}
-      <SelectionStatusBar />
+      {!isMobile && <SelectionStatusBar />}
       {!isMobile && <AlignmentTools />}
 
       {/* ═══ Finale 3D Viewport Tools ═══ */}
@@ -1698,7 +1698,7 @@ export default function SkyCanvas() {
       )}
 
       {/* ═══ Viewport Playback Controls ═══ */}
-      <ViewportPlaybackControls />
+      {!isMobile && <ViewportPlaybackControls />}
 
       {/* Fly mode HUD */}
       {flyMode && (
