@@ -14,7 +14,7 @@ import AlignmentTools from './AlignmentTools';
 import CameraAnimator, { CameraPathPreview } from './CameraAnimator';
 import { FinaleAxesHelper, DoubleClickFocus, FinaleToolbar } from './FinaleViewportTools';
 import { StressTestFireworks, StressTestButton } from './effects/GPUFireworkStressTest';
-import DemoFireworks from './effects/DemoFireworks';
+
 import PostExplosionSmokeManager from './effects/PostExplosionSmokeManager';
 import PositionTransformGizmo from './PositionTransformGizmo';
 import KeybindingCheatSheet, { KeybindingTrigger } from './KeybindingCheatSheet';
@@ -1448,7 +1448,7 @@ export default function SkyCanvas() {
         <CameraBookmarkSaver />
         {!isLowTierMobile && <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />}
         {!isLowTierMobile && <StressTestFireworks />}
-        <DemoFireworks />
+        
         {!isLowTierMobile && <PostExplosionSmokeManager />}
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />

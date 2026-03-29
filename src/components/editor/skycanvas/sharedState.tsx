@@ -138,9 +138,9 @@ export function getWindForce(): [number, number, number] {
 import { Camera, Eye, Video, Plane, Users, Crosshair, UserRound, Grid3x3, Car } from 'lucide-react';
 
 export const CAMERA_PRESETS = [
-  { id: 'free', label: 'Free', icon: Eye, position: [0, 1.7, 100] as [number, number, number], target: [0, 50, 0] as [number, number, number] },
+  { id: 'free', label: 'Free', icon: Eye, position: [0, 15, 150] as [number, number, number], target: [0, 5, 0] as [number, number, number] },
   // ── UE5-inspired modes ──
-  { id: 'first-person', label: '1st Person', icon: Crosshair, position: [0, 6, 800] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
+  { id: 'first-person', label: '1st Person', icon: Crosshair, position: [0, 1.7, 200] as [number, number, number], target: [0, 30, 0] as [number, number, number] },
   { id: 'third-person', label: '3rd Person', icon: UserRound, position: [0, 8, 1200] as [number, number, number], target: [0, 6, 1190] as [number, number, number] },
   { id: 'top-down', label: 'Top Down', icon: Grid3x3, position: [0, 4000, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
   { id: 'vehicle', label: 'Flythrough', icon: Car, position: [-2000, 50, 3000] as [number, number, number], target: [0, 200, 0] as [number, number, number] },
