@@ -352,6 +352,23 @@ export default function VVIZImporter({
             </div>
           )}
 
+          {hasResult && existingDroneCount > 0 && !isProcessing && phase !== 'done' && (
+            <div className="flex items-center gap-2 bg-muted/50 rounded-sm p-2">
+              <button
+                onClick={() => setReplaceMode(true)}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${replaceMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <Replace className="h-3 w-3" /> Substituir ({existingDroneCount} existentes)
+              </button>
+              <button
+                onClick={() => setReplaceMode(false)}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${!replaceMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <Plus className="h-3 w-3" /> Adicionar ao show
+              </button>
+            </div>
+          )}
+
           <div className="flex justify-end gap-2">
             <Button
               variant="ghost"
@@ -374,7 +391,7 @@ export default function VVIZImporter({
                 </>
               ) : (
                 <>
-                  <Check className="h-3 w-3 mr-1" /> Importar {previewData?.droneCount || 0} Drones
+                  <Check className="h-3 w-3 mr-1" /> {replaceMode && existingDroneCount > 0 ? 'Substituir' : 'Importar'} {previewData?.droneCount || 0} Drones
                 </>
               )}
             </Button>
