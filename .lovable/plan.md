@@ -1,39 +1,47 @@
 
 
-## Plano: Eliminar Redundâncias de UI e Aprimorar UX
+## Plano: Correção de Bugs e Melhorias no Importador VVIZ
 
-### Problema
+### Bugs Encontrados
 
-Existem controles duplicados e overlays desnecessários que poluem a interface, especialmente no mobile:
+**Bug 1 — Normalização de cor errada no fallback** (`vvizImporter.ts:99-104`)
+`normalizeColorComponent` trata valores 0-1 como floats e multiplica por 255. VVIZ Finale 3D usa inteiros 0-255. Um drone com `r:1` (quase preto) vira `r:255` (vermelho máximo). O worker está correto, o fallback não.
 
-```text
-Mobile (375px):
-  MobileHUD ────── Play/Pause + Stop + Timecode
-  ViewportPlaybackControls ── Play/Pause + Rewind + Stop + Timecode + Progress bar  ← DUPLICADO
-  SelectionStatusBar ── Sem guarda mobile, aparece sobre o canvas
-  CameraBookmarksBar ── Sem guarda mobile, ocupa espaço
-```
+**Bug 2 — Cor sem peso por frames** (`vvizImporter.ts:108-130`)
+Seleciona a cor mais brilhante ignorando duração (`frames`). Um flash branco de 1 frame vence sobre azul sustentado de 500 frames. O worker usa `brightness * frames` corretamente.
 
-### Alterações
+**Bug 3 — `timeOffsetSecs` ignorado** (ambos: worker e importer)
+Campo `vviz.timeOffsetSecs` nunca é aplicado — shows com offset temporal ficam dessincronizados.
 
-**1. Esconder ViewportPlaybackControls no mobile** (`src/components/editor/SkyCanvas.tsx`)
-- Linha ~1701: adicionar guarda `{!isMobile && <ViewportPlaybackControls />}` — o MobileHUD já cobre transporte
-- Linha ~1689: adicionar guarda `{!isMobile && <SelectionStatusBar />}` — no mobile, a seleção é indicada pelo badge do MobileQuickActions
-- Linha ~1672: adicionar guarda `{!isMobile && <CameraBookmarksBar ... />}` — bookmarks de câmera não são práticos em tela touch 375px
+**Bug 4 — Importação duplicada sem proteção** (`useProjectStore.ts:618`)
+`batchImportVVIZ` appende ao estado existente. Reimportar o mesmo arquivo duplica todos os drones sem aviso.
 
-**2. Simplificar Toolbar no mobile** (`src/components/editor/Toolbar.tsx`)
-- Linha 641: remover `HardwareStatusDots` do mobile na Toolbar — já existe o botão Radio no MobileHUD que cumpre a mesma função
-- Linha 643: esconder botão LogOut no mobile na Toolbar — mover para Settings/MobileTabBar (o Toolbar no mobile só aparece no desktop layout)
+**Bug 5 — Erros genéricos no catch** (worker e importer)
+`catch {}` descarta a mensagem de erro real, dificultando diagnóstico.
 
-**3. Compactar ViewportPlaybackControls no desktop** (`src/components/editor/SkyCanvas.tsx`)
-- Reduzir `bottom-14` para `bottom-4` para não sobrepor a timeline
-- Adicionar `opacity-60 hover:opacity-100` para reduzir poluição visual quando não interagido
+---
 
-**4. Limpar EngineHUD não utilizado** (`src/components/editor/EngineHUD.tsx`)
-- Componente nunca é importado/renderizado em nenhum layout — remover arquivo ou manter como dead code (preferência: deletar)
+### Correções
 
-### Arquivos modificados: 3
-- `src/components/editor/SkyCanvas.tsx` — guardas `!isMobile` em 3 componentes + compactar playback controls
-- `src/components/editor/Toolbar.tsx` — remover HardwareStatusDots no mobile
-- `src/components/editor/EngineHUD.tsx` — deletar (dead code)
+**Arquivo 1: `src/lib/vvizImporter.ts`**
+- Substituir `normalizeColorComponent` por `normColor` (clamp255 direto, sem detecção float)
+- Adicionar peso por `frames` na extração de cor (alinhar com worker)
+- Aplicar `timeOffsetSecs` ao tempo acumulado dos waypoints
+- Capturar `(e as Error).message` nos catches
+
+**Arquivo 2: `src/lib/vvizWorker.ts`**
+- Aplicar `timeOffsetSecs` ao tempo dos waypoints (passar como parâmetro para `processPerf`)
+- Capturar `(e as Error).message` no catch genérico
+- Adicionar validação de campos obrigatórios (`version`, `defaultPositionRate`)
+
+**Arquivo 3: `src/components/editor/VVIZImporter.tsx`**
+- Antes de importar, verificar se já existem posições `drone-pad` no projeto
+- Se existirem, mostrar toggle "Substituir show atual" / "Adicionar ao show"
+- Default: substituir (mais intuitivo)
+
+**Arquivo 4: `src/store/useProjectStore.ts`**
+- Adicionar action `replaceImportVVIZ` que limpa posições/trajetórias tipo `drone-pad` antes de importar
+- Manter `batchImportVVIZ` para modo "adicionar"
+
+### Arquivos modificados: 4
 
