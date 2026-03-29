@@ -115,7 +115,7 @@ export default function MainLayout() {
         className="h-[100dvh] flex w-full bg-background br2049-vignette overflow-hidden"
         style={{ filter: `brightness(${backlight / 100})` }}
       >
-        {!commandImmersive && (
+        {!commandImmersive && !isEditor && (
           <Suspense fallback={null}>
             <AppSidebar />
           </Suspense>
