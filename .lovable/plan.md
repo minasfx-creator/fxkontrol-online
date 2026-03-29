@@ -1,13 +1,12 @@
 
 
-## Plano: Eliminar Redundância de UI + Reduzir Brilho dos Fogos
+## Plano: Reduzir Brilho 50%, Eliminar Demo, Ajustar Câmera, Limpar UI
 
-### 1. MobileHUD — Remover controles duplicados
-**Arquivo**: `src/components/editor/MobileHUD.tsx`
+### 1. Reduzir brilho dos fogos em 50% (de 1.8 → 0.9)
 
-Remover do HUD:
-- Botão **Menu** (linhas 147-152) — duplicado com MobileTabBar
-- Botão **MoreHorizontal** (linhas 139-144) e toda a **secondary row expandível** (linhas 157-193) — GPS, Night Mode e LIVE mode migram para painel Settings/TabBar
-- Remover imports não utilizados (`Menu`, `MoreHorizontal`, `MapPin`, `Moon`, `Sun`, `ShieldAlert`, `useState` para `showExtra`, `useDisplayStore`, `useShowSettings`, `gpsOrigin`, `nightMode`)
+**Arquivo: `src/components/editor/effects/RealisticFirework.tsx`**
+- Linha 180: `uHDRMultiplier` de `1.8` → `0.9`
+- Shader fragment: reduzir `whiteHot * 2.0` → `whiteHot * 1.0`, sparkle `* 1.2` → `* 0.8`, core boost `0.3` → `0.1`
 
-HUD final terá apenas: **Timecode pill** | **Play/Pause + Stop** | **PANIC** (
+**Arquivo: `src/components/editor/effects/ShellBurstRenderer.tsx`**
+- Linha
