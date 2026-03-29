@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback, useEffect, startTransition } from 'react';
-import { Upload, FileJson, X, Check, AlertTriangle, Loader2 } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect, startTransition, useMemo } from 'react';
+import { Upload, FileJson, X, Check, AlertTriangle, Loader2, Replace, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -33,6 +33,7 @@ export default function VVIZImporter({
 }) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
+  const [replaceMode, setReplaceMode] = useState(true);
   const [phase, setPhase] = useState<ImportPhase>('idle');
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState('');

@@ -252,6 +252,7 @@ export interface ProjectState {
   selectTimelineItemAndLinkedPosition: (itemId: string) => void;
   addTrajectory: (traj: Trajectory) => void;
   batchImportVVIZ: (positions: Position[], trajectories: Trajectory[], projectName?: string, duration?: number) => void;
+  replaceImportVVIZ: (positions: Position[], trajectories: Trajectory[], projectName?: string, duration?: number) => void;
   batchImportVVIZChunk: (positions: Position[], trajectories: Trajectory[]) => void;
   finalizeBatchImport: (projectName?: string, duration?: number) => void;
   updateTrajectory: (id: string, updates: Partial<Omit<Trajectory, 'id'>>) => void;
