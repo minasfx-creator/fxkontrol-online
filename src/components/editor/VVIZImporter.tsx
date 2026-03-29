@@ -56,16 +56,22 @@ export default function VVIZImporter({
     };
   }, []);
 
+  const existingDroneCount = useMemo(() => {
+    return useProjectStore.getState().positions.filter(p => p.type === 'drone-pad').length;
+  }, [open]);
+
   const commitChunks = useCallback(async (
     projectName: string, duration: number, droneCount: number
   ) => {
     const { positions, trajectories } = accRef.current;
     const store = useProjectStore.getState();
 
-    // Single atomic commit — avoids repeated array copies from chunked set() calls
-    // This is O(n) once instead of O(n*chunks)
     startTransition(() => {
-      store.batchImportVVIZ(positions, trajectories, projectName, duration);
+      if (replaceMode) {
+        store.replaceImportVVIZ(positions, trajectories, projectName, duration);
+      } else {
+        store.batchImportVVIZ(positions, trajectories, projectName, duration);
+      }
     });
 
     // Cleanup accumulator
@@ -75,7 +81,7 @@ export default function VVIZImporter({
     setProgressLabel(`${droneCount} drones importados ✓`);
     setPhase('done');
     toast.success(`Importado: ${droneCount} drones, ${trajectories.length} trajetórias`);
-  }, []);
+  }, [replaceMode]);
 
   const parseFile = useCallback(async (file: File) => {
     const runId = ++parseRunRef.current;
