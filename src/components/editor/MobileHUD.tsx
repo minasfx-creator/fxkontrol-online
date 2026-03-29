@@ -13,9 +13,7 @@ import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { useShowSettings } from '@/hooks/useShowSettings';
 
-interface MobileHUDProps {
-  onMenuOpen: () => void;
-}
+export default function MobileHUD() {
 
 function formatTimecode(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -34,7 +32,7 @@ function getCountdown(showDate: string | null): string | null {
   return `T-${hours}h${mins}m`;
 }
 
-export default function MobileHUD({ onMenuOpen }: MobileHUDProps) {
+
   const navigate = useNavigate();
   const currentTime = useProjectStore(s => s.currentTime);
   const isPlaying = useProjectStore(s => s.isPlaying);

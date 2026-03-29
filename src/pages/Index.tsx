@@ -412,7 +412,7 @@ function Index() {
           <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas key="mobile-skycanvas" /></Suspense></CanvasErrorBoundary>
           <BoxSelectOverlay />
         </div>
-        <MobileHUD onMenuOpen={() => { setMobileTab('more'); setMobilePanelHeight('full'); }} />
+        <MobileHUD />
         <MobileQuickActions />
         <MobileFloatingPanel activeTab={mobileTab} height={mobilePanelHeight} onHeightChange={setMobilePanelHeight} onDismiss={handleDismissPanel} title={mobileTab === 'timeline' ? 'Timeline' : mobileTab === 'assets' ? 'Effects Library' : mobileTab === 'properties' ? 'Properties' : mobileTab === 'more' ? 'Painéis' : activePanel ?? undefined}>
           {mobileTab === 'timeline' && <Timeline />}
