@@ -177,7 +177,7 @@ function getGPUFireworkMaterial(): THREE.ShaderMaterial {
         uSpreadScale: { value: 1.0 },
         uColor: { value: new THREE.Color(1, 0.5, 0.1) },
         uSecondaryColor: { value: new THREE.Color(0, 0, 0) },
-        uHDRMultiplier: { value: 3.5 },
+uHDRMultiplier: { value: 1.8 },
       },
       transparent: true,
       depthWrite: false,
@@ -367,7 +367,7 @@ export default function RealisticFirework({
       uSpreadScale: { value: 1.0 },
       uColor: { value: new THREE.Color(color) },
       uSecondaryColor: { value: secondaryColor ? new THREE.Color(secondaryColor) : new THREE.Color(0, 0, 0) },
-      uHDRMultiplier: { value: 3.5 },
+      uHDRMultiplier: { value: 1.8 },
     };
     materialRef.current = mat;
     return mat;
