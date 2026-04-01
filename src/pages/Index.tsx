@@ -172,10 +172,10 @@ function PanelLoader() {
 
 function CanvasLoader() {
   return (
-    <div className="w-full h-full flex items-center justify-center bg-zinc-950">
+    <div className="w-full h-full flex items-center justify-center bg-background">
       <div className="text-center">
-        <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-xs text-zinc-500 font-mono">Loading 3D Engine...</p>
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-xs text-muted-foreground font-mono">Loading 3D Engine...</p>
       </div>
     </div>
   );
