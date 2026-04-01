@@ -30,7 +30,7 @@ const EffectLibrary = lz(() => import('@/components/editor/EffectLibrary'));
 const PropertiesPanel = lz(() => import('@/components/editor/PropertiesPanel'));
 const GeoLocationSetup = lz(() => import('@/components/editor/GeoLocationSetup'));
 const ViewportTransitionOverlay = lz(() => import('@/components/editor/ViewportTransitionOverlay'));
-const FXKAssistant = lz(() => import('@/components/FXKAssistant').then(m => ({ default: m.FXKAssistant })));
+
 const SmartScriptAssistant = lz(() => import('@/components/editor/SmartScriptAssistant'));
 const ShortcutsOverlay = lz(() => import('@/components/editor/PopupEditors').then(m => ({ default: m.ShortcutsOverlay })));
 
