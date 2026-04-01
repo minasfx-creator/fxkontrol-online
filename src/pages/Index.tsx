@@ -487,7 +487,7 @@ function Index() {
           {/* Close button */}
           <button
             onClick={() => setActivePanel(null)}
-            className="absolute top-2 right-2 z-10 w-6 h-6 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+            className="absolute top-2 right-2 z-10 w-6 h-6 flex items-center justify-center rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
           >
             <X className="w-3 h-3 text-muted-foreground" />
           </button>
