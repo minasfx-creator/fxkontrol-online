@@ -505,7 +505,7 @@ function Index() {
                 key={item.id}
                 onClick={() => setLeftDockOpen(leftDockOpen === item.id ? null : item.id)}
                 title={item.label}
-                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${leftDockOpen === item.id ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}`}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${leftDockOpen === item.id ? 'bg-muted/30 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/20'}`}
               >
                 <Icon className="w-4 h-4" />
               </button>
