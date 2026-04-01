@@ -560,10 +560,11 @@ function Index() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
           <button
             onClick={() => setTimelineCollapsed(!timelineCollapsed)}
-            className="w-11 h-5 flex items-center justify-center rounded-t-lg bg-zinc-800/90 border border-white/10 border-b-0 text-zinc-400 hover:text-white transition-all backdrop-blur-sm"
+            className="flex items-center gap-1 px-3 h-6 rounded-t-lg bg-muted/90 border border-border/30 border-b-0 text-muted-foreground hover:text-foreground transition-all backdrop-blur-sm"
             title={timelineCollapsed ? 'Expandir Timeline' : 'Recolher Timeline'}
           >
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${timelineCollapsed ? 'rotate-180' : ''}`} />
+            <span className="text-[9px] font-semibold uppercase tracking-wider">Timeline</span>
           </button>
         </div>
         {!timelineCollapsed && <Timeline />}
