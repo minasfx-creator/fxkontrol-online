@@ -132,10 +132,10 @@ const SkyCanvas = lazy(() =>
   import('@/components/editor/SkyCanvas').catch((err) => {
     console.error('[FXK] SkyCanvas chunk failed:', err);
     const Fallback = () => (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950 gap-3 p-8 text-center">
-        <p className="text-sm font-semibold text-white">3D Engine Unavailable</p>
-        <p className="text-xs text-zinc-500">Could not load the renderer module.</p>
-        <button className="text-xs text-cyan-400 underline" onClick={() => window.location.reload()}>Reload</button>
+      <div className="w-full h-full flex flex-col items-center justify-center bg-background gap-3 p-8 text-center">
+        <p className="text-sm font-semibold text-foreground">3D Engine Unavailable</p>
+        <p className="text-xs text-muted-foreground">Could not load the renderer module.</p>
+        <button className="text-xs text-primary underline" onClick={() => window.location.reload()}>Reload</button>
       </div>
     );
     return { default: Fallback };
