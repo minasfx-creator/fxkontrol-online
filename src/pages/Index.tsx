@@ -530,7 +530,7 @@ function Index() {
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {leftDockOpen === 'effects' ? 'Effect Library' : leftDockOpen === 'scene' ? 'Scene Editor' : 'Settings'}
             </span>
-            <button onClick={() => setLeftDockOpen(null)} className="w-5 h-5 flex items-center justify-center rounded text-zinc-500 hover:text-white hover:bg-white/10 transition-all">
+            <button onClick={() => setLeftDockOpen(null)} className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all">
               <X className="w-3 h-3" />
             </button>
           </div>
