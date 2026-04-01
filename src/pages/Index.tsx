@@ -527,7 +527,7 @@ function Index() {
           }}
         >
           <div className="flex items-center justify-between px-3 py-2 border-b border-white/5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {leftDockOpen === 'effects' ? 'Effect Library' : leftDockOpen === 'scene' ? 'Scene Editor' : 'Settings'}
             </span>
             <button onClick={() => setLeftDockOpen(null)} className="w-5 h-5 flex items-center justify-center rounded text-zinc-500 hover:text-white hover:bg-white/10 transition-all">
