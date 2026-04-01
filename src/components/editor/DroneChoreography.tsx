@@ -16,10 +16,12 @@ function ensurePositionsCacheSize(size: number) {
 
 /**
  * Computes drone positions at a given time based on the formation sequence.
- * IMPORTANT: Formations are generated as 2D (x, z) points.
- * For aerial display, we map them UPRIGHT:
+ * IMPORTANT: Formations are generated as 2D (x, z) points where:
+ *   - x = horizontal spread
+ *   - z = vertical in canvas space (positive = DOWN on screen)
+ * For aerial 3D display we NEGATE z so shapes appear right-side-up:
  *   formation.x → world X (horizontal spread)
- *   formation.z → world Y offset (vertical shape, added to base height)
+ *   -formation.z → world Y offset (vertical shape, added to base height)
  *   world Z = 0 (facing audience)
  * 
  * Zero-GC: reuses _positionsCache to avoid creating new arrays every frame.
