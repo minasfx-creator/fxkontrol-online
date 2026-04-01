@@ -499,7 +499,7 @@ function Index() {
 
       {/* ─── Layer 4: Left Dock (z-40, icons only) ─── */}
       {!viewportMaximized && (
-        <div className="absolute top-14 left-0 z-40 w-[44px] flex flex-col items-center py-2 gap-1" style={{ bottom: timelineCollapsed ? '32px' : '25vh', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)', background: 'rgba(9, 9, 11, 0.50)', backdropFilter: 'blur(8px)', borderRight: '1px solid rgba(255,255,255,0.04)' }}>
+        <div className="absolute top-14 left-0 z-40 w-[44px] flex flex-col items-center py-2 gap-1" style={{ bottom: timelineCollapsed ? '32px' : '25vh', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)', background: 'hsl(var(--background) / 0.50)', backdropFilter: 'blur(8px)', borderRight: '1px solid hsl(var(--border) / 0.2)' }}>
           {[
             { id: 'effects', icon: Sparkles, label: 'Effects' },
             { id: 'scene', icon: Paintbrush, label: 'Scene' },
