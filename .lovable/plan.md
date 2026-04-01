@@ -1,37 +1,48 @@
 
-## Plano: Otimizar Editor 3D — Timeline e Limpeza UI
+## Plano: Limpar Cores Hardcoded e Redundância Residual no Editor
 
-### Problemas Identificados
+### Problemas Encontrados
 
-**1. Timeline desktop começa recolhida (32px)** — O estado inicial `timelineCollapsed` não é definido no código visível, provavelmente começa como `false` mas a timeline de 25vh pode ser excessiva. O botão de expandir/recolher é pequeno e difícil de encontrar.
+**1. Cores hardcoded no `Index.tsx`** — 6 blocos usam `rgba(9, 9, 11, ...)` e `rgba(255,255,255,...)` inline em vez de CSS variables/semantic tokens. Os fallbacks de erro (linhas 135, 154, 175) usam `bg-zinc-950`, `text-white`, `text-zinc-500`.
 
-**2. Hardcoded colors no desktop layout** — Linhas 450-577 usam cores hardcoded (`bg-zinc-950`, `text-zinc-500`, `bg-zinc-800/90`, `rgba(9, 9, 11, ...)`) em vez de semantic tokens do design system.
+**2. `border-white/5` no left dock header** (linha 529) — Deveria ser `border-border/10` para consistência com o design system.
 
-**3. ViewportNavControls inline** — O componente (linhas 186-220) está definido inline no Index.tsx (arquivo de 607 linhas). Deveria ser extraído.
+**3. `bg-white/5` e `hover:bg-white/10`** (linha 484, close button) — Deveria usar `bg-muted/30` e `hover:bg-muted/50`.
 
-**4. MobileQuickActions referenciado mas não verificado** — Componente lazy carregado sem validação se é redundante com MobileTabBar.
+**4. Left dock e right panel abrem `effects`, `scene`, `showsettings` independentemente** — Usuário pode abrir "Effects" no dock esquerdo E no painel direito ao mesmo tempo, mostrando conteúdo duplicado. Falta guarda para fechar o oposto.
 
-**5. Redundância nos dock/sidebars laterais (desktop)** — Left dock (effects/scene/settings) + Right dock (PanelTabBar) ambos com lógica de floating panels quase idêntica.
+**5. `ViewportPlaybackControls` no desktop sobrepõe a Timeline** — Quando a timeline está expandida (25vh), os playback controls ficam em `bottom-4` DENTRO do viewport, mas visualmente colapsam sobre o toggle da timeline. Já temos playback na própria Timeline.
 
 ---
 
-### Correções Prioritárias
+### Correções
 
-**Arquivo 1: `src/pages/Index.tsx`** — Limpeza de cores hardcoded
-- Substituir `bg-zinc-950` → `bg-background`
-- Substituir `text-zinc-500` → `text-muted-foreground`
-- Substituir `text-zinc-400` → `text-muted-foreground`
-- Substituir `hover:text-zinc-300` → `hover:text-foreground`
-- Substituir `bg-zinc-800/90` → usar `bg-muted/90`
-- Substituir `rgba(9, 9, 11, ...)` inline styles → CSS variables
+**Arquivo 1: `src/pages/Index.tsx`** — Substituir todas as cores hardcoded
 
-**Arquivo 2: `src/pages/Index.tsx`** — Extrair ViewportNavControls
-- Mover componente ViewportNavControls para `src/components/editor/ViewportNavControls.tsx`
-- Reduzir tamanho do Index.tsx
+| De | Para |
+|---|---|
+| `bg-zinc-950` | `bg-background` |
+| `text-white` | `text-foreground` |
+| `text-zinc-500` | `text-muted-foreground` |
+| `border-cyan-400` | `border-primary` |
+| `text-cyan-400` | `text-primary` |
+| `rgba(9, 9, 11, 0.90)` | `hsl(var(--background) / 0.90)` |
+| `rgba(9, 9, 11, 0.50)` | `hsl(var(--background) / 0.50)` |
+| `rgba(9, 9, 11, 0.92)` | `hsl(var(--background) / 0.92)` |
+| `rgba(255,255,255,0.06)` | `hsl(var(--border) / 0.3)` |
+| `rgba(255,255,255,0.04)` | `hsl(var(--border) / 0.2)` |
+| `bg-white/5` | `bg-muted/30` |
+| `hover:bg-white/10` | `hover:bg-muted/50` |
+| `border-white/5` | `border-border/10` |
 
-**Arquivo 3: `src/pages/Index.tsx`** — Melhorar timeline visibility
-- Aumentar o botão toggle da timeline (de w-11 h-5 para w-14 h-6)
-- Adicionar label textual "Timeline" ao lado do chevron quando expandida
-- Garantir que timeline inicia EXPANDIDA por default no desktop
+**Arquivo 2: `src/pages/Index.tsx`** — Fechar dock oposto ao abrir painel
 
-### Arquivos modificados: 2 (Index.tsx + novo ViewportNavControls.tsx)
+Quando `setActivePanel` é chamado via right dock, fechar `leftDockOpen` se o ID for o mesmo (`effects`, `scene`, `showsettings`). Vice-versa: quando `setLeftDockOpen` é ativado, fechar `activePanel` se for o mesmo ID.
+
+**Arquivo 3: `src/components/editor/SkyCanvas.tsx`** — Remover `ViewportPlaybackControls` do desktop
+
+O componente é redundante com a Timeline (que já tem controles de playback). Remover a renderização na linha 1701 (`{!isMobile && <ViewportPlaybackControls />}`). O componente interno pode permanecer como código caso seja reutilizado.
+
+### Arquivos modificados: 2
+- `src/pages/Index.tsx` — theming semântico + guarda de painéis duplicados
+- `src/components/editor/SkyCanvas.tsx` — remover ViewportPlaybackControls redundante
