@@ -151,10 +151,10 @@ class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError:
   render() {
     if (this.state.hasError) {
       return (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950 gap-3 p-8 text-center">
-          <p className="text-sm font-semibold text-white">3D Engine Error</p>
-          <p className="text-xs text-zinc-500">WebGL context could not be initialized.</p>
-          <button className="text-xs text-cyan-400 underline" onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}>Reload</button>
+        <div className="w-full h-full flex flex-col items-center justify-center bg-background gap-3 p-8 text-center">
+          <p className="text-sm font-semibold text-foreground">3D Engine Error</p>
+          <p className="text-xs text-muted-foreground">WebGL context could not be initialized.</p>
+          <button className="text-xs text-primary underline" onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}>Reload</button>
         </div>
       );
     }
