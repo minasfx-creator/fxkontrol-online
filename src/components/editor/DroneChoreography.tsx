@@ -114,7 +114,7 @@ function computeDronePositions(
             const pp = formations[i - 1].points[idx];
             if (pp) {
               prevX = pp.x;
-              prevY = formations[i - 1].height + pp.z;
+              prevY = formations[i - 1].height - pp.z;
               prevZ = 0;
             } else {
               prevX = 0; prevY = 0; prevZ = 0;
