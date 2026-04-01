@@ -142,7 +142,7 @@ export default function MainLayout() {
           {/* Header — Apple frosted glass bar (hidden on immersive routes) */}
           {!commandImmersive && !isEditor && (
             <header
-              className={`flex items-center border-b px-3 shrink-0 relative overflow-hidden ${isEditor ? 'h-8' : 'h-10'}`}
+              className="flex items-center border-b px-3 shrink-0 relative overflow-hidden h-10"
               style={{
                 background: 'rgba(8, 10, 14, 0.85)',
                 backdropFilter: 'blur(48px) saturate(1.8)',
@@ -207,7 +207,7 @@ export default function MainLayout() {
             onClick={handlePanic}
             className="fixed z-[9999] flex items-center justify-center rounded-xl border-2 border-destructive/60 transition-all active:scale-90 armed-pulse"
             style={{
-              bottom: isMobile ? '80px' : '80px',
+              bottom: '80px',
               right: '16px',
               width: '64px',
               height: '64px',
@@ -223,8 +223,7 @@ export default function MainLayout() {
           </button>
         )}
 
-        {showDock && <DockBar />}
-        {showMobileDock && <DockBar />}
+        {(showDock || showMobileDock) && <DockBar />}
       </div>
     </SidebarProvider>
   );
