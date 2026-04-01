@@ -247,8 +247,14 @@ function Index() {
     return () => window.removeEventListener('position-double-click', dblClickHandler);
   }, []);
 
+  const SHARED_PANEL_IDS = new Set(['effects', 'scene', 'showsettings']);
+
   const handleTogglePanel = useCallback((id: PanelId) => {
-    setActivePanel((prev) => (prev === id ? null : id));
+    setActivePanel((prev) => {
+      const next = prev === id ? null : id;
+      if (next && SHARED_PANEL_IDS.has(next)) setLeftDockOpen(null);
+      return next;
+    });
   }, []);
 
   const handleLocationSelected = useCallback((location: { name: string; lat: number; lng: number }) => {
