@@ -527,9 +527,9 @@ function Index() {
           style={{
             bottom: timelineCollapsed ? '32px' : '25vh',
             transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            background: 'rgba(9, 9, 11, 0.92)',
+            background: 'hsl(var(--background) / 0.92)',
             backdropFilter: 'blur(16px) saturate(1.4)',
-            borderRight: '1px solid rgba(255,255,255,0.06)',
+            borderRight: '1px solid hsl(var(--border) / 0.3)',
           }}
         >
           <div className="flex items-center justify-between px-3 py-2 border-b border-white/5">
