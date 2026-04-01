@@ -532,7 +532,7 @@ function Index() {
             borderRight: '1px solid hsl(var(--border) / 0.3)',
           }}
         >
-          <div className="flex items-center justify-between px-3 py-2 border-b border-white/5">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border/10">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {leftDockOpen === 'effects' ? 'Effect Library' : leftDockOpen === 'scene' ? 'Scene Editor' : 'Settings'}
             </span>
