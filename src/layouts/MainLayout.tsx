@@ -207,7 +207,7 @@ export default function MainLayout() {
             onClick={handlePanic}
             className="fixed z-[9999] flex items-center justify-center rounded-xl border-2 border-destructive/60 transition-all active:scale-90 armed-pulse"
             style={{
-              bottom: isMobile ? '80px' : '80px',
+              bottom: '80px',
               right: '16px',
               width: '64px',
               height: '64px',
