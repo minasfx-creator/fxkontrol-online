@@ -427,7 +427,7 @@ function Index() {
 
   // ═══ DESKTOP LAYOUT — Full Immersive Viewport ═══
   return (
-    <div className="absolute inset-0 overflow-hidden bg-zinc-950">
+    <div className="absolute inset-0 overflow-hidden bg-background">
       {/* ─── Layer 0: Full-screen 3D Canvas ────────────── */}
       <div
         className="absolute inset-0 w-full h-full z-0 br2049-atmosphere"
