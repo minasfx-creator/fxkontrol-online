@@ -28,6 +28,7 @@ const navItems = [
   { title: 'Editor 3D', url: '/editor', icon: Clapperboard, desc: 'Design de show' },
   { title: 'Agenda', url: '/agenda', icon: CalendarDays, desc: 'Eventos' },
   { title: 'Training', url: '/training', icon: Gamepad2, desc: 'Simulação' },
+  { title: 'Field Test', url: '/field-test', icon: Activity, desc: 'Teste de campo' },
   { title: 'Show Test', url: '/show-test', icon: Rocket, desc: 'Teste de show' },
   { title: 'Pairing', url: '/pairing', icon: Bluetooth, desc: 'Pareamento HW' },
   { title: 'PCB Viewer', url: '/pcb-viewer', icon: Cpu, desc: 'Hardware M1' },

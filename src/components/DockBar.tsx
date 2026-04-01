@@ -164,7 +164,7 @@ export default function DockBar() {
                       <Icon
                         className={cn(
                           "transition-colors duration-200",
-                          isMobile ? "w-5 h-5" : "w-5 h-5"
+                          "w-5 h-5"
                         )}
                         style={{
                           color: isActive ? accentColor : 'hsl(var(--muted-foreground) / 0.5)',

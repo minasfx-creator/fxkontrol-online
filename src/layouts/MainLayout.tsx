@@ -223,8 +223,7 @@ export default function MainLayout() {
           </button>
         )}
 
-        {showDock && <DockBar />}
-        {showMobileDock && <DockBar />}
+        {(showDock || showMobileDock) && <DockBar />}
       </div>
     </SidebarProvider>
   );

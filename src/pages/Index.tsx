@@ -600,8 +600,6 @@ function Index() {
       <PositionContextMenu />
       <SmartScriptAssistant open={smartScriptOpen} onClose={() => setSmartScriptOpen(false)} />
 
-      {/* ─── Layer 10: AI Assistant ──────────────────── */}
-      <FXKAssistant />
     </div>
   );
 }
