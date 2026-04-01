@@ -1697,8 +1697,7 @@ export default function SkyCanvas() {
         </div>
       )}
 
-      {/* ═══ Viewport Playback Controls ═══ */}
-      {!isMobile && <ViewportPlaybackControls />}
+      {/* ViewportPlaybackControls removed — redundant with Timeline playback */}
 
       {/* Fly mode HUD */}
       {flyMode && (

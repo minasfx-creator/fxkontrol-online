@@ -132,10 +132,10 @@ const SkyCanvas = lazy(() =>
   import('@/components/editor/SkyCanvas').catch((err) => {
     console.error('[FXK] SkyCanvas chunk failed:', err);
     const Fallback = () => (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950 gap-3 p-8 text-center">
-        <p className="text-sm font-semibold text-white">3D Engine Unavailable</p>
-        <p className="text-xs text-zinc-500">Could not load the renderer module.</p>
-        <button className="text-xs text-cyan-400 underline" onClick={() => window.location.reload()}>Reload</button>
+      <div className="w-full h-full flex flex-col items-center justify-center bg-background gap-3 p-8 text-center">
+        <p className="text-sm font-semibold text-foreground">3D Engine Unavailable</p>
+        <p className="text-xs text-muted-foreground">Could not load the renderer module.</p>
+        <button className="text-xs text-primary underline" onClick={() => window.location.reload()}>Reload</button>
       </div>
     );
     return { default: Fallback };
@@ -151,10 +151,10 @@ class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError:
   render() {
     if (this.state.hasError) {
       return (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950 gap-3 p-8 text-center">
-          <p className="text-sm font-semibold text-white">3D Engine Error</p>
-          <p className="text-xs text-zinc-500">WebGL context could not be initialized.</p>
-          <button className="text-xs text-cyan-400 underline" onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}>Reload</button>
+        <div className="w-full h-full flex flex-col items-center justify-center bg-background gap-3 p-8 text-center">
+          <p className="text-sm font-semibold text-foreground">3D Engine Error</p>
+          <p className="text-xs text-muted-foreground">WebGL context could not be initialized.</p>
+          <button className="text-xs text-primary underline" onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}>Reload</button>
         </div>
       );
     }
@@ -172,10 +172,10 @@ function PanelLoader() {
 
 function CanvasLoader() {
   return (
-    <div className="w-full h-full flex items-center justify-center bg-zinc-950">
+    <div className="w-full h-full flex items-center justify-center bg-background">
       <div className="text-center">
-        <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-xs text-zinc-500 font-mono">Loading 3D Engine...</p>
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-xs text-muted-foreground font-mono">Loading 3D Engine...</p>
       </div>
     </div>
   );
@@ -247,8 +247,14 @@ function Index() {
     return () => window.removeEventListener('position-double-click', dblClickHandler);
   }, []);
 
+  const SHARED_PANEL_IDS = new Set(['effects', 'scene', 'showsettings']);
+
   const handleTogglePanel = useCallback((id: PanelId) => {
-    setActivePanel((prev) => (prev === id ? null : id));
+    setActivePanel((prev) => {
+      const next = prev === id ? null : id;
+      if (next && SHARED_PANEL_IDS.has(next)) setLeftDockOpen(null);
+      return next;
+    });
   }, []);
 
   const handleLocationSelected = useCallback((location: { name: string; lat: number; lng: number }) => {
@@ -472,16 +478,16 @@ function Index() {
           style={{
             bottom: timelineCollapsed ? '32px' : '25vh',
             transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            background: 'rgba(9, 9, 11, 0.90)',
+            background: 'hsl(var(--background) / 0.90)',
             backdropFilter: 'blur(16px) saturate(1.4)',
-            borderLeft: '1px solid rgba(255,255,255,0.06)',
-            borderBottom: '1px solid rgba(255,255,255,0.04)',
+            borderLeft: '1px solid hsl(var(--border) / 0.3)',
+            borderBottom: '1px solid hsl(var(--border) / 0.2)',
           }}
         >
           {/* Close button */}
           <button
             onClick={() => setActivePanel(null)}
-            className="absolute top-2 right-2 z-10 w-6 h-6 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+            className="absolute top-2 right-2 z-10 w-6 h-6 flex items-center justify-center rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
           >
             <X className="w-3 h-3 text-muted-foreground" />
           </button>
@@ -493,7 +499,7 @@ function Index() {
 
       {/* ─── Layer 4: Left Dock (z-40, icons only) ─── */}
       {!viewportMaximized && (
-        <div className="absolute top-14 left-0 z-40 w-[44px] flex flex-col items-center py-2 gap-1" style={{ bottom: timelineCollapsed ? '32px' : '25vh', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)', background: 'rgba(9, 9, 11, 0.50)', backdropFilter: 'blur(8px)', borderRight: '1px solid rgba(255,255,255,0.04)' }}>
+        <div className="absolute top-14 left-0 z-40 w-[44px] flex flex-col items-center py-2 gap-1" style={{ bottom: timelineCollapsed ? '32px' : '25vh', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)', background: 'hsl(var(--background) / 0.50)', backdropFilter: 'blur(8px)', borderRight: '1px solid hsl(var(--border) / 0.2)' }}>
           {[
             { id: 'effects', icon: Sparkles, label: 'Effects' },
             { id: 'scene', icon: Paintbrush, label: 'Scene' },
@@ -503,7 +509,7 @@ function Index() {
             return (
               <button
                 key={item.id}
-                onClick={() => setLeftDockOpen(leftDockOpen === item.id ? null : item.id)}
+                onClick={() => { const next = leftDockOpen === item.id ? null : item.id; setLeftDockOpen(next); if (next && SHARED_PANEL_IDS.has(next as PanelId)) setActivePanel(null); }}
                 title={item.label}
                 className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${leftDockOpen === item.id ? 'bg-muted/30 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/20'}`}
               >
@@ -521,12 +527,12 @@ function Index() {
           style={{
             bottom: timelineCollapsed ? '32px' : '25vh',
             transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            background: 'rgba(9, 9, 11, 0.92)',
+            background: 'hsl(var(--background) / 0.92)',
             backdropFilter: 'blur(16px) saturate(1.4)',
-            borderRight: '1px solid rgba(255,255,255,0.06)',
+            borderRight: '1px solid hsl(var(--border) / 0.3)',
           }}
         >
-          <div className="flex items-center justify-between px-3 py-2 border-b border-white/5">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border/10">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {leftDockOpen === 'effects' ? 'Effect Library' : leftDockOpen === 'scene' ? 'Scene Editor' : 'Settings'}
             </span>
@@ -550,9 +556,9 @@ function Index() {
         className="absolute bottom-0 left-0 right-0 z-30"
         style={{
           height: viewportMaximized ? '0px' : timelineCollapsed ? '32px' : '25vh',
-          background: 'rgba(9, 9, 11, 0.90)',
+          background: 'hsl(var(--background) / 0.90)',
           backdropFilter: 'blur(12px)',
-          borderTop: viewportMaximized ? 'none' : '1px solid rgba(255,255,255,0.06)',
+          borderTop: viewportMaximized ? 'none' : '1px solid hsl(var(--border) / 0.3)',
           transition: 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           overflow: 'hidden',
         }}
