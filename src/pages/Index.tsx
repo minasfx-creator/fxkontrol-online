@@ -509,7 +509,7 @@ function Index() {
             return (
               <button
                 key={item.id}
-                onClick={() => setLeftDockOpen(leftDockOpen === item.id ? null : item.id)}
+                onClick={() => { const next = leftDockOpen === item.id ? null : item.id; setLeftDockOpen(next); if (next && SHARED_PANEL_IDS.has(next as PanelId)) setActivePanel(null); }}
                 title={item.label}
                 className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${leftDockOpen === item.id ? 'bg-muted/30 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/20'}`}
               >
