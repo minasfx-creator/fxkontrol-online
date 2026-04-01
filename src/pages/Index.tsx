@@ -556,9 +556,9 @@ function Index() {
         className="absolute bottom-0 left-0 right-0 z-30"
         style={{
           height: viewportMaximized ? '0px' : timelineCollapsed ? '32px' : '25vh',
-          background: 'rgba(9, 9, 11, 0.90)',
+          background: 'hsl(var(--background) / 0.90)',
           backdropFilter: 'blur(12px)',
-          borderTop: viewportMaximized ? 'none' : '1px solid rgba(255,255,255,0.06)',
+          borderTop: viewportMaximized ? 'none' : '1px solid hsl(var(--border) / 0.3)',
           transition: 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           overflow: 'hidden',
         }}
