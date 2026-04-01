@@ -160,7 +160,7 @@ function computeDronePositions(
         if (!p) continue;
         const out = _positionsCache[idx];
         out.x = p.x;
-        out.y = f.height + p.z;
+        out.y = f.height - p.z;
         out.z = 0;
         out.color = targetColor;
       }
