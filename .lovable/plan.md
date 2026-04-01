@@ -1,39 +1,37 @@
 
+## Plano: Otimizar Editor 3D — Timeline e Limpeza UI
 
-## Plano: Eliminar Redundâncias e Inconsistências Restantes
+### Problemas Identificados
 
-### Problemas Encontrados
+**1. Timeline desktop começa recolhida (32px)** — O estado inicial `timelineCollapsed` não é definido no código visível, provavelmente começa como `false` mas a timeline de 25vh pode ser excessiva. O botão de expandir/recolher é pequeno e difícil de encontrar.
 
-**1. FXKAssistant renderizado DUAS VEZES** — `MainLayout.tsx` linha 201 + `Index.tsx` linha 604. Na rota `/editor`, ambas as instâncias são montadas simultaneamente, desperdiçando memória e potencialmente mostrando o assistente duplicado.
+**2. Hardcoded colors no desktop layout** — Linhas 450-577 usam cores hardcoded (`bg-zinc-950`, `text-zinc-500`, `bg-zinc-800/90`, `rgba(9, 9, 11, ...)`) em vez de semantic tokens do design system.
 
-**2. Navegação inconsistente entre Sidebar e DockBar** — A Sidebar tem "Pairing" e "PCB Viewer" que o DockBar não tem. O DockBar tem "Field Test" que a Sidebar não tem. Usuário vê rotas diferentes dependendo de qual menu usa.
+**3. ViewportNavControls inline** — O componente (linhas 186-220) está definido inline no Index.tsx (arquivo de 607 linhas). Deveria ser extraído.
 
-**3. Código morto no Header** — Linha 145: `isEditor ? 'h-8' : 'h-10'` — mas o header já está oculto quando `isEditor` é true (guarda na linha 143). O ternário nunca ativa `'h-8'`.
+**4. MobileQuickActions referenciado mas não verificado** — Componente lazy carregado sem validação se é redundante com MobileTabBar.
 
-**4. PANIC FAB ternário redundante** — Linha 210: `bottom: isMobile ? '80px' : '80px'` — valores idênticos.
-
-**5. DockBar duplicado** — Linhas 226-227: duas linhas renderizam `<DockBar />` separadamente (`showDock` e `showMobileDock`). Pode ser uma única linha.
-
-**6. Icon size redundante no DockBar** — Linha 167: `isMobile ? "w-5 h-5" : "w-5 h-5"` — mesma classe em ambos os ramos.
+**5. Redundância nos dock/sidebars laterais (desktop)** — Left dock (effects/scene/settings) + Right dock (PanelTabBar) ambos com lógica de floating panels quase idêntica.
 
 ---
 
-### Correções
+### Correções Prioritárias
 
-**Arquivo 1: `src/pages/Index.tsx`** — Remover `FXKAssistant` duplicado
-- Remover import (linha 33) e renderização (linha 604). O MainLayout já monta globalmente.
+**Arquivo 1: `src/pages/Index.tsx`** — Limpeza de cores hardcoded
+- Substituir `bg-zinc-950` → `bg-background`
+- Substituir `text-zinc-500` → `text-muted-foreground`
+- Substituir `text-zinc-400` → `text-muted-foreground`
+- Substituir `hover:text-zinc-300` → `hover:text-foreground`
+- Substituir `bg-zinc-800/90` → usar `bg-muted/90`
+- Substituir `rgba(9, 9, 11, ...)` inline styles → CSS variables
 
-**Arquivo 2: `src/components/AppSidebar.tsx`** — Sincronizar navegação com DockBar
-- Adicionar "Field Test" (`/field-test`, icon `Activity`) ao array `navItems`
-- Manter "Pairing" e "PCB Viewer" na Sidebar (rotas especializadas de hardware)
+**Arquivo 2: `src/pages/Index.tsx`** — Extrair ViewportNavControls
+- Mover componente ViewportNavControls para `src/components/editor/ViewportNavControls.tsx`
+- Reduzir tamanho do Index.tsx
 
-**Arquivo 3: `src/components/DockBar.tsx`** — Limpar redundâncias
-- Linha 167: simplificar `"w-5 h-5"` (remover ternário)
+**Arquivo 3: `src/pages/Index.tsx`** — Melhorar timeline visibility
+- Aumentar o botão toggle da timeline (de w-11 h-5 para w-14 h-6)
+- Adicionar label textual "Timeline" ao lado do chevron quando expandida
+- Garantir que timeline inicia EXPANDIDA por default no desktop
 
-**Arquivo 4: `src/layouts/MainLayout.tsx`** — Limpar código morto
-- Linha 145: remover ternário morto, usar sempre `h-10`
-- Linha 210: simplificar `bottom: '80px'` (remover ternário)
-- Linhas 226-227: unificar em `{(showDock || showMobileDock) && <DockBar />}`
-
-### Arquivos modificados: 4
-
+### Arquivos modificados: 2 (Index.tsx + novo ViewportNavControls.tsx)

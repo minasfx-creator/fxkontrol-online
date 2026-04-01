@@ -5,7 +5,8 @@ import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEditorKeyboardShortcuts } from '@/hooks/useEditorKeyboardShortcuts';
 import { useViewportDrop } from '@/hooks/useViewportDrop';
-import { Upload, ZoomIn, ZoomOut, Compass, Layers, ChevronDown, Sparkles, Paintbrush, Cog, X } from 'lucide-react';
+import { Upload, ChevronDown, Sparkles, Paintbrush, Cog, X } from 'lucide-react';
+import ViewportNavControls from '@/components/editor/ViewportNavControls';
 import { useDisplayStore } from '@/store/useDisplayStore';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { type MobileTab } from '@/components/editor/MobileTabBar';
@@ -182,28 +183,7 @@ function CanvasLoader() {
 
 // Drop extensions and logic moved to useViewportDrop hook
 
-/* ── Nav Controls (Bottom-Right) ─────────────────────────────── */
-function ViewportNavControls({ collapsed }: { collapsed?: boolean }) {
-  return (
-    <div className="absolute right-3 z-30 flex flex-col gap-1" style={{ bottom: collapsed ? '40px' : 'calc(25vh + 8px)', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
-      {[
-        { icon: ZoomIn, title: 'Zoom In', action: () => window.dispatchEvent(new CustomEvent('viewport-zoom', { detail: 1 })) },
-        { icon: ZoomOut, title: 'Zoom Out', action: () => window.dispatchEvent(new CustomEvent('viewport-zoom', { detail: -1 })) },
-        { icon: Compass, title: 'Reset Camera', action: () => window.dispatchEvent(new Event('viewport-reset-camera')) },
-        { icon: Layers, title: 'Toggle 3D/2D', action: () => window.dispatchEvent(new Event('viewport-toggle-2d')) },
-      ].map(({ icon: Icon, title, action }) => (
-        <button
-          key={title}
-          onClick={action}
-          title={title}
-          className="w-8 h-8 flex items-center justify-center rounded-lg bg-black/50 backdrop-blur-sm border border-white/5 text-zinc-400 hover:text-white hover:bg-white/10 transition-all"
-        >
-          <Icon className="w-4 h-4" />
-        </button>
-      ))}
-    </div>
-  );
-}
+/* ── Nav Controls extracted to src/components/editor/ViewportNavControls.tsx ── */
 
 /* ══════════════════════════════════════════════════════════════════
    INDEX — Immersive Full-Viewport Layout
@@ -221,7 +201,7 @@ function Index() {
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
   const [isDragOver, setIsDragOver] = useState(false);
   const [remoteMode, setRemoteMode] = useState<'cloud' | 'wifi-auto'>('cloud');
-  const [timelineCollapsed, setTimelineCollapsed] = useState(true);
+  const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [viewportMaximized, setViewportMaximized] = useState(false);
   const [leftDockOpen, setLeftDockOpen] = useState<string | null>(null);
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
@@ -447,7 +427,7 @@ function Index() {
 
   // ═══ DESKTOP LAYOUT — Full Immersive Viewport ═══
   return (
-    <div className="absolute inset-0 overflow-hidden bg-zinc-950">
+    <div className="absolute inset-0 overflow-hidden bg-background">
       {/* ─── Layer 0: Full-screen 3D Canvas ────────────── */}
       <div
         className="absolute inset-0 w-full h-full z-0 br2049-atmosphere"
@@ -525,7 +505,7 @@ function Index() {
                 key={item.id}
                 onClick={() => setLeftDockOpen(leftDockOpen === item.id ? null : item.id)}
                 title={item.label}
-                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${leftDockOpen === item.id ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'}`}
+                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${leftDockOpen === item.id ? 'bg-muted/30 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/20'}`}
               >
                 <Icon className="w-4 h-4" />
               </button>
@@ -547,10 +527,10 @@ function Index() {
           }}
         >
           <div className="flex items-center justify-between px-3 py-2 border-b border-white/5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {leftDockOpen === 'effects' ? 'Effect Library' : leftDockOpen === 'scene' ? 'Scene Editor' : 'Settings'}
             </span>
-            <button onClick={() => setLeftDockOpen(null)} className="w-5 h-5 flex items-center justify-center rounded text-zinc-500 hover:text-white hover:bg-white/10 transition-all">
+            <button onClick={() => setLeftDockOpen(null)} className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all">
               <X className="w-3 h-3" />
             </button>
           </div>
@@ -580,10 +560,11 @@ function Index() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
           <button
             onClick={() => setTimelineCollapsed(!timelineCollapsed)}
-            className="w-11 h-5 flex items-center justify-center rounded-t-lg bg-zinc-800/90 border border-white/10 border-b-0 text-zinc-400 hover:text-white transition-all backdrop-blur-sm"
+            className="flex items-center gap-1 px-3 h-6 rounded-t-lg bg-muted/90 border border-border/30 border-b-0 text-muted-foreground hover:text-foreground transition-all backdrop-blur-sm"
             title={timelineCollapsed ? 'Expandir Timeline' : 'Recolher Timeline'}
           >
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${timelineCollapsed ? 'rotate-180' : ''}`} />
+            <span className="text-[9px] font-semibold uppercase tracking-wider">Timeline</span>
           </button>
         </div>
         {!timelineCollapsed && <Timeline />}
