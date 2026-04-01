@@ -100,7 +100,7 @@ function computeDronePositions(
           const p = f.points[idx];
           if (!p) continue;
           const targetX = p.x;
-          const targetY = f.height + p.z;
+          const targetY = f.height - p.z;
           const targetZ = 0;
 
           let prevX: number, prevY: number, prevZ: number;
