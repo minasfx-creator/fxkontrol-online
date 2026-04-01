@@ -478,10 +478,10 @@ function Index() {
           style={{
             bottom: timelineCollapsed ? '32px' : '25vh',
             transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            background: 'rgba(9, 9, 11, 0.90)',
+            background: 'hsl(var(--background) / 0.90)',
             backdropFilter: 'blur(16px) saturate(1.4)',
-            borderLeft: '1px solid rgba(255,255,255,0.06)',
-            borderBottom: '1px solid rgba(255,255,255,0.04)',
+            borderLeft: '1px solid hsl(var(--border) / 0.3)',
+            borderBottom: '1px solid hsl(var(--border) / 0.2)',
           }}
         >
           {/* Close button */}
