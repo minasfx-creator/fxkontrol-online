@@ -56,7 +56,7 @@ function computeDronePositions(
       const p = lastFormation.points[idx];
       if (!p) continue;
       const uprightX = p.x;
-      const uprightY = lastFormation.height + p.z;
+      const uprightY = lastFormation.height - p.z;
       const uprightZ = 0;
 
       const row = Math.floor(idx / cols);
