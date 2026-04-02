@@ -101,7 +101,7 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
 
   return (
     <>
-      <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/30 border border-white/5">
+      <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/30 border border-border/20">
         <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="FireOne">
           <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(foConnected, foScanning))} />
           <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(foConnected, foScanning))}>
