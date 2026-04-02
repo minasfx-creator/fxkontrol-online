@@ -134,13 +134,13 @@ function TimecodeDisplay() {
   const tcStr = formatTimecode(tc);
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-black/40 border border-white/5">
+    <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-background/40 border border-border/20">
       <span className="font-mono text-xs tracking-[0.14em] text-emerald-400 font-bold tabular-nums">{tcStr}</span>
       <div className="flex items-center gap-1">
-        <div className={cn("w-1.5 h-1.5 rounded-full", isPlaying ? "bg-emerald-400 animate-pulse" : "bg-zinc-600")} />
+        <div className={cn("w-1.5 h-1.5 rounded-full", isPlaying ? "bg-emerald-400 animate-pulse" : "bg-muted")} />
         {running && <div className={cn("w-1.5 h-1.5 rounded-full", locked ? "bg-cyan-400/60" : "bg-amber-400/60 animate-pulse")} />}
       </div>
-      <span className="text-[8px] font-mono text-zinc-500 tabular-nums">{frameRate}{tc.dropFrame ? 'DF' : ''}</span>
+      <span className="text-[8px] font-mono text-muted-foreground tabular-nums">{frameRate}{tc.dropFrame ? 'DF' : ''}</span>
     </div>
   );
 }
