@@ -595,7 +595,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
             <div className="w-px h-5 bg-border/20" />
 
             {/* Command */}
-            <button onClick={() => setCommandMenuOpen(true)} className="h-7 px-2.5 flex items-center gap-1.5 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all text-[10px] font-semibold uppercase tracking-wider" title="⌘K">
+            <button onClick={() => setCommandMenuOpen(true)} className="h-7 px-2.5 flex items-center gap-1.5 rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all text-[10px] font-semibold uppercase tracking-wider" title="⌘K">
               <Command className="h-3 w-3" />
               <span>⌘K</span>
             </button>
