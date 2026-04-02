@@ -623,7 +623,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
                 useProjectStore.getState().setPlaying(false);
                 toast.error('🔴 EMERGENCY STOP');
               }}
-              className="h-9 px-4 flex items-center gap-1.5 rounded-xl bg-red-600 text-white hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.3)] transition-all text-[11px] font-black uppercase tracking-wider"
+              className="h-9 px-4 flex items-center gap-1.5 rounded-xl bg-red-600 text-red-50 hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.3)] transition-all text-[11px] font-black uppercase tracking-wider"
             >
               <AlertTriangle className="h-4 w-4" />
               E-STOP
