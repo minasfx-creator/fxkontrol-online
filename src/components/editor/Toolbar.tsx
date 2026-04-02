@@ -475,12 +475,12 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
     }}>
       {/* ─── LEFT: Logo ─────────────────────────── */}
       <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center p-0.5 bg-white/[0.04] border border-white/[0.06]">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center p-0.5 bg-muted/20 border border-border/20">
           <img src={fxkLogo} alt="FX Kontrol" className="w-full h-full object-contain opacity-90" />
         </div>
         <div className="flex flex-col leading-none">
-          <span className="text-[11px] font-bold text-white tracking-[0.18em] uppercase">FX KONTROL</span>
-          <span className="text-[7px] text-zinc-600 tracking-[0.12em] uppercase">by Minas FX</span>
+          <span className="text-[11px] font-bold text-foreground tracking-[0.18em] uppercase">FX KONTROL</span>
+          <span className="text-[7px] text-muted-foreground/60 tracking-[0.12em] uppercase">by Minas FX</span>
         </div>
       </div>
 
