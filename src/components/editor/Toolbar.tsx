@@ -87,7 +87,7 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
   const getTextClass = (connected: boolean, scanning: boolean) => {
     if (connected) return 'text-emerald-400';
     if (scanning) return 'text-amber-400';
-    return 'text-zinc-600';
+    return 'text-muted-foreground/60';
   };
 
   const navTo = useNavigate();
