@@ -164,7 +164,7 @@ function DropdownMenu({ label, icon: LabelIcon, items }: { label: string; icon?:
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute top-full left-0 mt-1 z-50 border border-white/10 rounded-xl shadow-2xl shadow-black/80 py-1 min-w-[220px] bg-zinc-950/95 backdrop-blur-2xl">
+          <div className="absolute top-full left-0 mt-1 z-50 border border-border/30 rounded-xl shadow-2xl shadow-black/80 py-1 min-w-[220px] bg-background/95 backdrop-blur-2xl">
             {items.map((item) => {
               const Icon = item.icon;
               return (
