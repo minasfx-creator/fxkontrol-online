@@ -154,12 +154,12 @@ function DropdownMenu({ label, icon: LabelIcon, items }: { label: string; icon?:
         onClick={() => setOpen(!open)}
         className={cn(
           "text-[10px] font-semibold px-2.5 py-1.5 rounded-md transition-all flex items-center gap-1.5",
-          open ? "bg-white/10 text-white" : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
+          open ? "bg-muted/50 text-foreground" : "text-muted-foreground hover:text-foreground/80 hover:bg-muted/30"
         )}
       >
-        {LabelIcon && <LabelIcon className="w-3 h-3 text-zinc-500" />}
+        {LabelIcon && <LabelIcon className="w-3 h-3 text-muted-foreground" />}
         <span className="tracking-wider uppercase">{label}</span>
-        <ChevronDown className={cn("w-2.5 h-2.5 transition-transform text-zinc-600", open && "rotate-180")} />
+        <ChevronDown className={cn("w-2.5 h-2.5 transition-transform text-muted-foreground/60", open && "rotate-180")} />
       </button>
       {open && (
         <>
