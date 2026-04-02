@@ -81,7 +81,7 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
   const getDotClass = (connected: boolean, scanning: boolean) => {
     if (connected) return 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]';
     if (scanning) return 'bg-amber-400 animate-pulse shadow-[0_0_6px_rgba(251,191,36,0.4)]';
-    return 'bg-zinc-700 border border-white/10';
+    return 'bg-muted border border-border/20';
   };
 
   const getTextClass = (connected: boolean, scanning: boolean) => {
