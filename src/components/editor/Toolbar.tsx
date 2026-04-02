@@ -249,10 +249,10 @@ function BatchAddButton() {
                 <button onClick={() => setPosType('drone-pad')} className={cn("flex-1 py-2.5 text-xs font-semibold transition-all", posType === 'drone-pad' ? "bg-cyan-500/15 text-cyan-400" : "text-muted-foreground hover:text-foreground/80")}>🛸 DRONE</button>
               </div>
               <div className="space-y-1.5">
-                <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Padrão</span>
+                <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Padrão</span>
                 <div className="flex gap-1.5">
                   {patterns.map(p => (
-                    <button key={p.id} onClick={() => setPattern(p.id)} className={cn("flex-1 py-2 rounded-xl text-[10px] border transition-all text-center", pattern === p.id ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-400 font-semibold" : "border-white/5 bg-black/30 text-zinc-500 hover:border-white/15")}>
+                    <button key={p.id} onClick={() => setPattern(p.id)} className={cn("flex-1 py-2 rounded-xl text-[10px] border transition-all text-center", pattern === p.id ? "border-primary/40 bg-primary/10 text-primary font-semibold" : "border-border/20 bg-background/30 text-muted-foreground hover:border-border/40")}>
                       <div className="text-base leading-none">{p.icon}</div>
                       <div className="text-[8px] mt-0.5 font-medium">{p.label}</div>
                     </button>
