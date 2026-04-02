@@ -104,19 +104,19 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
       <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/30 border border-border/20">
         <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="FireOne">
           <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(foConnected, foScanning))} />
-          <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(foConnected, foScanning))}>
+          <span className={cn("text-[7px] font-mono group-hover:text-foreground/80 transition-colors", getTextClass(foConnected, foScanning))}>
             FO{foCount > 0 && ` ${foCount}`}
           </span>
         </button>
         <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="PBUS">
           <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(pbConnected, pbScanning))} />
-          <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(pbConnected, pbScanning))}>
+          <span className={cn("text-[7px] font-mono group-hover:text-foreground/80 transition-colors", getTextClass(pbConnected, pbScanning))}>
             PB{pbCount > 0 && ` ${pbCount}`}
           </span>
         </button>
         <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="Art-Net/MA3">
           <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(maConnected, false))} />
-          <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(maConnected, false))}>
+          <span className={cn("text-[7px] font-mono group-hover:text-foreground/80 transition-colors", getTextClass(maConnected, false))}>
             MA{artnetConnected > 0 && ` ${artnetConnected}`}
           </span>
         </button>
