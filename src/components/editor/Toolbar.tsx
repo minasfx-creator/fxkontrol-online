@@ -261,12 +261,12 @@ function BatchAddButton() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Quantidade</label>
-                  <input type="number" value={count} onChange={e => setCount(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))} className="w-full h-9 px-3 rounded-xl text-sm bg-black/40 border border-white/10 text-white focus:border-cyan-500/50 outline-none transition-all" />
+                  <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Quantidade</label>
+                  <input type="number" value={count} onChange={e => setCount(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))} className="w-full h-9 px-3 rounded-xl text-sm bg-background/40 border border-border/30 text-foreground focus:border-primary/50 outline-none transition-all" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Espaçamento (m)</label>
-                  <input type="number" value={spacing} step={0.5} onChange={e => setSpacing(Math.max(0.5, parseFloat(e.target.value) || 1))} className="w-full h-9 px-3 rounded-xl text-sm bg-black/40 border border-white/10 text-white focus:border-cyan-500/50 outline-none transition-all" />
+                  <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Espaçamento (m)</label>
+                  <input type="number" value={spacing} step={0.5} onChange={e => setSpacing(Math.max(0.5, parseFloat(e.target.value) || 1))} className="w-full h-9 px-3 rounded-xl text-sm bg-background/40 border border-border/30 text-foreground focus:border-primary/50 outline-none transition-all" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
