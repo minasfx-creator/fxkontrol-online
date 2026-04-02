@@ -180,6 +180,7 @@ export default function GoogleTilesLayer() {
 
     const group = groupRef.current;
     group.name = 'GoogleTilesGroup';
+    group.renderOrder = -100; // Render tiles BEFORE effects so VFX always overlay
     tiles.setCamera(camera);
     tiles.setResolutionFromRenderer(camera, gl);
 
