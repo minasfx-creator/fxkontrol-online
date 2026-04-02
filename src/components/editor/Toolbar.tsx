@@ -557,10 +557,10 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       {/* ─── CENTER: Project Name + Location ────────────── */}
       <div className="flex-1 flex justify-center">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-zinc-400 font-medium truncate max-w-[200px]">{projectName}</span>
-          <div className="flex items-center gap-1.5 text-[9px] font-mono text-zinc-600">
+          <span className="text-sm text-muted-foreground font-medium truncate max-w-[200px]">{projectName}</span>
+          <div className="flex items-center gap-1.5 text-[9px] font-mono text-muted-foreground/60">
             <span>{timelineItems.length} cues</span>
-            <span className="text-zinc-700">·</span>
+            <span className="text-muted-foreground/30">·</span>
             <span>{positions.length} pos</span>
           </div>
           <LocationDisplay />
