@@ -312,8 +312,8 @@ function NightModeToggle() {
       className={cn(
         "h-7 w-7 flex items-center justify-center rounded-md transition-all",
         nightMode
-          ? "bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25"
-          : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+          ? "bg-primary/15 text-primary hover:bg-primary/25"
+          : "text-muted-foreground hover:text-foreground/80 hover:bg-muted/30"
       )}
       title={nightMode ? 'Day Mode' : 'Night Mode'}
     >
