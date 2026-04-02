@@ -508,7 +508,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
         </div>
       )}
 
-      {!isMobile && <div className="w-px h-7 bg-white/[0.06] mx-1" />}
+      {!isMobile && <div className="w-px h-7 bg-border/20 mx-1" />}
 
       {/* ─── Menus ───────────────────────────── */}
       {!isMobile && (
