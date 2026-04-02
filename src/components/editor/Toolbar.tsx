@@ -81,13 +81,13 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
   const getDotClass = (connected: boolean, scanning: boolean) => {
     if (connected) return 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]';
     if (scanning) return 'bg-amber-400 animate-pulse shadow-[0_0_6px_rgba(251,191,36,0.4)]';
-    return 'bg-zinc-700 border border-white/10';
+    return 'bg-muted border border-border/20';
   };
 
   const getTextClass = (connected: boolean, scanning: boolean) => {
     if (connected) return 'text-emerald-400';
     if (scanning) return 'text-amber-400';
-    return 'text-zinc-600';
+    return 'text-muted-foreground/60';
   };
 
   const navTo = useNavigate();
@@ -101,22 +101,22 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
 
   return (
     <>
-      <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/30 border border-white/5">
+      <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/30 border border-border/20">
         <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="FireOne">
           <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(foConnected, foScanning))} />
-          <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(foConnected, foScanning))}>
+          <span className={cn("text-[7px] font-mono group-hover:text-foreground/80 transition-colors", getTextClass(foConnected, foScanning))}>
             FO{foCount > 0 && ` ${foCount}`}
           </span>
         </button>
         <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="PBUS">
           <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(pbConnected, pbScanning))} />
-          <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(pbConnected, pbScanning))}>
+          <span className={cn("text-[7px] font-mono group-hover:text-foreground/80 transition-colors", getTextClass(pbConnected, pbScanning))}>
             PB{pbCount > 0 && ` ${pbCount}`}
           </span>
         </button>
         <button onClick={handleDotClick} className="flex items-center gap-0.5 group" title="Art-Net/MA3">
           <div className={cn("w-1.5 h-1.5 rounded-full transition-all", getDotClass(maConnected, false))} />
-          <span className={cn("text-[7px] font-mono group-hover:text-zinc-300 transition-colors", getTextClass(maConnected, false))}>
+          <span className={cn("text-[7px] font-mono group-hover:text-foreground/80 transition-colors", getTextClass(maConnected, false))}>
             MA{artnetConnected > 0 && ` ${artnetConnected}`}
           </span>
         </button>
@@ -134,13 +134,13 @@ function TimecodeDisplay() {
   const tcStr = formatTimecode(tc);
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-black/40 border border-white/5">
+    <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-background/40 border border-border/20">
       <span className="font-mono text-xs tracking-[0.14em] text-emerald-400 font-bold tabular-nums">{tcStr}</span>
       <div className="flex items-center gap-1">
-        <div className={cn("w-1.5 h-1.5 rounded-full", isPlaying ? "bg-emerald-400 animate-pulse" : "bg-zinc-600")} />
+        <div className={cn("w-1.5 h-1.5 rounded-full", isPlaying ? "bg-emerald-400 animate-pulse" : "bg-muted")} />
         {running && <div className={cn("w-1.5 h-1.5 rounded-full", locked ? "bg-cyan-400/60" : "bg-amber-400/60 animate-pulse")} />}
       </div>
-      <span className="text-[8px] font-mono text-zinc-500 tabular-nums">{frameRate}{tc.dropFrame ? 'DF' : ''}</span>
+      <span className="text-[8px] font-mono text-muted-foreground tabular-nums">{frameRate}{tc.dropFrame ? 'DF' : ''}</span>
     </div>
   );
 }
@@ -154,26 +154,26 @@ function DropdownMenu({ label, icon: LabelIcon, items }: { label: string; icon?:
         onClick={() => setOpen(!open)}
         className={cn(
           "text-[10px] font-semibold px-2.5 py-1.5 rounded-md transition-all flex items-center gap-1.5",
-          open ? "bg-white/10 text-white" : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
+          open ? "bg-muted/50 text-foreground" : "text-muted-foreground hover:text-foreground/80 hover:bg-muted/30"
         )}
       >
-        {LabelIcon && <LabelIcon className="w-3 h-3 text-zinc-500" />}
+        {LabelIcon && <LabelIcon className="w-3 h-3 text-muted-foreground" />}
         <span className="tracking-wider uppercase">{label}</span>
-        <ChevronDown className={cn("w-2.5 h-2.5 transition-transform text-zinc-600", open && "rotate-180")} />
+        <ChevronDown className={cn("w-2.5 h-2.5 transition-transform text-muted-foreground/60", open && "rotate-180")} />
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute top-full left-0 mt-1 z-50 border border-white/10 rounded-xl shadow-2xl shadow-black/80 py-1 min-w-[220px] bg-zinc-950/95 backdrop-blur-2xl">
+          <div className="absolute top-full left-0 mt-1 z-50 border border-border/30 rounded-xl shadow-2xl shadow-black/80 py-1 min-w-[220px] bg-background/95 backdrop-blur-2xl">
             {items.map((item) => {
               const Icon = item.icon;
               return (
                 <button
                   key={item.label}
                   onClick={() => { item.onClick(); setOpen(false); }}
-                  className="w-full text-left px-3 py-2 text-[11px] font-medium text-zinc-300 hover:text-white hover:bg-white/5 flex items-center gap-2.5 transition-all"
+                  className="w-full text-left px-3 py-2 text-[11px] font-medium text-foreground/80 hover:text-foreground hover:bg-muted/30 flex items-center gap-2.5 transition-all"
                 >
-                  <Icon className="w-3.5 h-3.5 text-zinc-500" />
+                  <Icon className="w-3.5 h-3.5 text-muted-foreground" />
                   <span>{item.label}</span>
                 </button>
               );
@@ -227,7 +227,7 @@ function BatchAddButton() {
   return (
     <>
       <button
-        className="h-7 px-2 text-[9px] font-bold gap-1 flex items-center rounded-md bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 border border-cyan-500/20 transition-all uppercase tracking-wider"
+        className="h-7 px-2 text-[9px] font-bold gap-1 flex items-center rounded-md bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-all uppercase tracking-wider"
         title="Gerar Posições em Lote"
         onClick={() => setOpen(true)}
       >
@@ -236,23 +236,23 @@ function BatchAddButton() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md" onClick={() => setOpen(false)}>
-          <div className="w-[380px] rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-zinc-950/95 backdrop-blur-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-md" onClick={() => setOpen(false)}>
+          <div className="w-[380px] rounded-2xl overflow-hidden border border-border/30 shadow-2xl bg-background/95 backdrop-blur-2xl" onClick={e => e.stopPropagation()}>
             <div className="px-5 pt-5 pb-3">
-              <h3 className="text-sm font-bold text-white tracking-wide">Gerar Posições</h3>
-              <p className="text-[10px] text-zinc-500 mt-0.5">Crie múltiplas posições em padrão geométrico</p>
+              <h3 className="text-sm font-bold text-foreground tracking-wide">Gerar Posições</h3>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Crie múltiplas posições em padrão geométrico</p>
             </div>
             <div className="px-5 pb-5 space-y-4">
-              <div className="flex rounded-xl overflow-hidden border border-white/10 bg-black/40">
-                <button onClick={() => setPosType('pyro')} className={cn("flex-1 py-2.5 text-xs font-semibold transition-all", posType === 'pyro' ? "bg-orange-500/15 text-orange-400" : "text-zinc-500 hover:text-zinc-300")}>🎆 PYRO</button>
-                <div className="w-px bg-white/10" />
-                <button onClick={() => setPosType('drone-pad')} className={cn("flex-1 py-2.5 text-xs font-semibold transition-all", posType === 'drone-pad' ? "bg-cyan-500/15 text-cyan-400" : "text-zinc-500 hover:text-zinc-300")}>🛸 DRONE</button>
+              <div className="flex rounded-xl overflow-hidden border border-border/30 bg-background/40">
+                <button onClick={() => setPosType('pyro')} className={cn("flex-1 py-2.5 text-xs font-semibold transition-all", posType === 'pyro' ? "bg-orange-500/15 text-orange-400" : "text-muted-foreground hover:text-foreground/80")}>🎆 PYRO</button>
+                <div className="w-px bg-border/30" />
+                <button onClick={() => setPosType('drone-pad')} className={cn("flex-1 py-2.5 text-xs font-semibold transition-all", posType === 'drone-pad' ? "bg-cyan-500/15 text-cyan-400" : "text-muted-foreground hover:text-foreground/80")}>🛸 DRONE</button>
               </div>
               <div className="space-y-1.5">
-                <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Padrão</span>
+                <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Padrão</span>
                 <div className="flex gap-1.5">
                   {patterns.map(p => (
-                    <button key={p.id} onClick={() => setPattern(p.id)} className={cn("flex-1 py-2 rounded-xl text-[10px] border transition-all text-center", pattern === p.id ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-400 font-semibold" : "border-white/5 bg-black/30 text-zinc-500 hover:border-white/15")}>
+                    <button key={p.id} onClick={() => setPattern(p.id)} className={cn("flex-1 py-2 rounded-xl text-[10px] border transition-all text-center", pattern === p.id ? "border-primary/40 bg-primary/10 text-primary font-semibold" : "border-border/20 bg-background/30 text-muted-foreground hover:border-border/40")}>
                       <div className="text-base leading-none">{p.icon}</div>
                       <div className="text-[8px] mt-0.5 font-medium">{p.label}</div>
                     </button>
@@ -261,30 +261,30 @@ function BatchAddButton() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Quantidade</label>
-                  <input type="number" value={count} onChange={e => setCount(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))} className="w-full h-9 px-3 rounded-xl text-sm bg-black/40 border border-white/10 text-white focus:border-cyan-500/50 outline-none transition-all" />
+                  <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Quantidade</label>
+                  <input type="number" value={count} onChange={e => setCount(Math.max(1, Math.min(500, parseInt(e.target.value) || 1)))} className="w-full h-9 px-3 rounded-xl text-sm bg-background/40 border border-border/30 text-foreground focus:border-primary/50 outline-none transition-all" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Espaçamento (m)</label>
-                  <input type="number" value={spacing} step={0.5} onChange={e => setSpacing(Math.max(0.5, parseFloat(e.target.value) || 1))} className="w-full h-9 px-3 rounded-xl text-sm bg-black/40 border border-white/10 text-white focus:border-cyan-500/50 outline-none transition-all" />
+                  <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Espaçamento (m)</label>
+                  <input type="number" value={spacing} step={0.5} onChange={e => setSpacing(Math.max(0.5, parseFloat(e.target.value) || 1))} className="w-full h-9 px-3 rounded-xl text-sm bg-background/40 border border-border/30 text-foreground focus:border-primary/50 outline-none transition-all" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Origem X</label>
-                  <input type="number" value={startX} onChange={e => setStartX(parseFloat(e.target.value) || 0)} className="w-full h-9 px-3 rounded-xl text-sm bg-black/40 border border-white/10 text-white focus:border-cyan-500/50 outline-none transition-all" />
+                  <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Origem X</label>
+                  <input type="number" value={startX} onChange={e => setStartX(parseFloat(e.target.value) || 0)} className="w-full h-9 px-3 rounded-xl text-sm bg-background/40 border border-border/30 text-foreground focus:border-primary/50 outline-none transition-all" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Origem Z</label>
-                  <input type="number" value={startZ} onChange={e => setStartZ(parseFloat(e.target.value) || 0)} className="w-full h-9 px-3 rounded-xl text-sm bg-black/40 border border-white/10 text-white focus:border-cyan-500/50 outline-none transition-all" />
+                  <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Origem Z</label>
+                  <input type="number" value={startZ} onChange={e => setStartZ(parseFloat(e.target.value) || 0)} className="w-full h-9 px-3 rounded-xl text-sm bg-background/40 border border-border/30 text-foreground focus:border-primary/50 outline-none transition-all" />
                 </div>
               </div>
-              <div className="bg-black/30 rounded-xl px-3.5 py-2.5 text-[11px] font-mono text-zinc-400 border border-white/5 text-center">
+              <div className="bg-background/30 rounded-xl px-3.5 py-2.5 text-[11px] font-mono text-muted-foreground border border-border/20 text-center">
                 {count} × {posType === 'pyro' ? 'PYRO' : 'DRONE'} · {pattern} · {spacing}m
               </div>
               <div className="flex gap-2.5 pt-1">
-                <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl text-xs border-white/10 text-zinc-300 hover:bg-white/5" onClick={() => setOpen(false)}>Cancelar</Button>
-                <button className="flex-1 h-10 rounded-xl text-xs font-semibold bg-cyan-500 text-black hover:bg-cyan-400 flex items-center justify-center gap-1.5 transition-all" onClick={handleCreate}>
+                <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl text-xs border-border/30 text-foreground/80 hover:bg-muted/30" onClick={() => setOpen(false)}>Cancelar</Button>
+                <button className="flex-1 h-10 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center gap-1.5 transition-all" onClick={handleCreate}>
                   <PlusCircle className="h-3.5 w-3.5" />
                   Criar {count} posições
                 </button>
@@ -312,8 +312,8 @@ function NightModeToggle() {
       className={cn(
         "h-7 w-7 flex items-center justify-center rounded-md transition-all",
         nightMode
-          ? "bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25"
-          : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+          ? "bg-primary/15 text-primary hover:bg-primary/25"
+          : "text-muted-foreground hover:text-foreground/80 hover:bg-muted/30"
       )}
       title={nightMode ? 'Day Mode' : 'Night Mode'}
     >
@@ -338,14 +338,14 @@ function LocationDisplay() {
   return (
     <button
       onClick={() => window.dispatchEvent(new Event('open-geo-setup'))}
-      className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/30 border border-white/5 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer group"
+      className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/30 border border-border/20 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer group"
       title="Alterar localização"
     >
       <Navigation className="w-2.5 h-2.5 text-primary group-hover:text-primary" />
-      <span className="text-[9px] font-mono text-zinc-400 group-hover:text-zinc-200 truncate max-w-[180px]">
+      <span className="text-[9px] font-mono text-muted-foreground group-hover:text-foreground/80 truncate max-w-[180px]">
         {locationName || 'Set Location'}
       </span>
-      <ChevronDown className="w-2.5 h-2.5 text-zinc-600 group-hover:text-zinc-400" />
+      <ChevronDown className="w-2.5 h-2.5 text-muted-foreground/60 group-hover:text-muted-foreground" />
     </button>
   );
 }
@@ -469,46 +469,46 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       "flex items-center gap-1 z-50 relative",
       isMobile ? "h-10 px-2" : "h-14 px-4"
     )} style={{
-      background: 'rgba(9, 9, 11, 0.80)',
+      background: 'hsl(var(--background) / 0.80)',
       backdropFilter: 'blur(12px) saturate(1.5)',
-      borderBottom: '1px solid rgba(255,255,255,0.06)',
+      borderBottom: '1px solid hsl(var(--border) / 0.3)',
     }}>
       {/* ─── LEFT: Logo ─────────────────────────── */}
       <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center p-0.5 bg-white/[0.04] border border-white/[0.06]">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center p-0.5 bg-muted/20 border border-border/20">
           <img src={fxkLogo} alt="FX Kontrol" className="w-full h-full object-contain opacity-90" />
         </div>
         <div className="flex flex-col leading-none">
-          <span className="text-[11px] font-bold text-white tracking-[0.18em] uppercase">FX KONTROL</span>
-          <span className="text-[7px] text-zinc-600 tracking-[0.12em] uppercase">by Minas FX</span>
+          <span className="text-[11px] font-bold text-foreground tracking-[0.18em] uppercase">FX KONTROL</span>
+          <span className="text-[7px] text-muted-foreground/60 tracking-[0.12em] uppercase">by Minas FX</span>
         </div>
       </div>
 
       {/* Separator */}
-      <div className="w-px h-7 bg-white/[0.06] mx-2" />
+      <div className="w-px h-7 bg-border/20 mx-2" />
 
       {/* ─── File/Menu Quick Access (compact) ─── */}
       {!isMobile && (
         <div className="flex items-center gap-0.5">
-          <button onClick={handleNewProject} className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all" title="New">
+          <button onClick={handleNewProject} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all" title="New">
             <FilePlus className="w-3.5 h-3.5" />
           </button>
-          <button onClick={() => setBrowserOpen(true)} className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all" title="Open">
+          <button onClick={() => setBrowserOpen(true)} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all" title="Open">
             <FolderOpen className="w-3.5 h-3.5" />
           </button>
-          <button onClick={handleSave} disabled={saving} className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all disabled:opacity-30" title="Save">
+          <button onClick={handleSave} disabled={saving} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all disabled:opacity-30" title="Save">
             <Save className={cn("w-3.5 h-3.5", saving && "animate-spin")} />
           </button>
-          <button onClick={undo} disabled={!canUndo} className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all disabled:opacity-20" title="Undo">
+          <button onClick={undo} disabled={!canUndo} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all disabled:opacity-20" title="Undo">
             <Undo className="w-3.5 h-3.5" />
           </button>
-          <button onClick={redo} disabled={!canRedo} className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all disabled:opacity-20" title="Redo">
+          <button onClick={redo} disabled={!canRedo} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all disabled:opacity-20" title="Redo">
             <Redo className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
-      {!isMobile && <div className="w-px h-7 bg-white/[0.06] mx-1" />}
+      {!isMobile && <div className="w-px h-7 bg-border/20 mx-1" />}
 
       {/* ─── Menus ───────────────────────────── */}
       {!isMobile && (
@@ -535,19 +535,19 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       {/* ─── Mode tools ─────────────────────── */}
       {!isMobile && (
         <>
-          <div className="w-px h-7 bg-white/[0.06] mx-1" />
+          <div className="w-px h-7 bg-border/20 mx-1" />
           <div className="flex items-center gap-0.5">
-            <button onClick={() => setEditorMode('select')} className={cn("h-7 px-2 flex items-center gap-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all", editorMode === 'select' ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5")} title="Select (S)">
+            <button onClick={() => setEditorMode('select')} className={cn("h-7 px-2 flex items-center gap-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all", editorMode === 'select' ? "bg-muted/50 text-foreground" : "text-muted-foreground hover:text-foreground/80 hover:bg-muted/30")} title="Select (S)">
               <MousePointer className="h-3 w-3" /><span className="hidden xl:inline">SEL</span>
             </button>
-            <button onClick={() => setEditorMode(editorMode === 'add-pyro' ? 'select' : 'add-pyro')} className={cn("h-7 px-2 flex items-center gap-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all", editorMode === 'add-pyro' ? "bg-orange-500/15 text-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.15)]" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5")} title="Add Pyro">
+            <button onClick={() => setEditorMode(editorMode === 'add-pyro' ? 'select' : 'add-pyro')} className={cn("h-7 px-2 flex items-center gap-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all", editorMode === 'add-pyro' ? "bg-orange-500/15 text-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.15)]" : "text-muted-foreground hover:text-foreground/80 hover:bg-muted/30")} title="Add Pyro">
               <MapPin className="h-3 w-3" /><span className="hidden xl:inline">PYRO</span>
             </button>
-            <button onClick={() => setEditorMode(editorMode === 'add-drone' ? 'select' : 'add-drone')} className={cn("h-7 px-2 flex items-center gap-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all", editorMode === 'add-drone' ? "bg-cyan-500/15 text-cyan-400" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5")} title="Add Drone">
+            <button onClick={() => setEditorMode(editorMode === 'add-drone' ? 'select' : 'add-drone')} className={cn("h-7 px-2 flex items-center gap-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all", editorMode === 'add-drone' ? "bg-cyan-500/15 text-cyan-400" : "text-muted-foreground hover:text-foreground/80 hover:bg-muted/30")} title="Add Drone">
               <Target className="h-3 w-3" /><span className="hidden xl:inline">DRONE</span>
             </button>
             <BatchAddButton />
-            <button onClick={() => setFormationOpen(true)} className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all" title="Formations">
+            <button onClick={() => setFormationOpen(true)} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all" title="Formations">
               <Shapes className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -557,10 +557,10 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       {/* ─── CENTER: Project Name + Location ────────────── */}
       <div className="flex-1 flex justify-center">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-zinc-400 font-medium truncate max-w-[200px]">{projectName}</span>
-          <div className="flex items-center gap-1.5 text-[9px] font-mono text-zinc-600">
+          <span className="text-sm text-muted-foreground font-medium truncate max-w-[200px]">{projectName}</span>
+          <div className="flex items-center gap-1.5 text-[9px] font-mono text-muted-foreground/60">
             <span>{timelineItems.length} cues</span>
-            <span className="text-zinc-700">·</span>
+            <span className="text-muted-foreground/30">·</span>
             <span>{positions.length} pos</span>
           </div>
           <LocationDisplay />
@@ -574,7 +574,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
         {!isMobile && (
           <>
             {/* ── Separator ── */}
-            <div className="w-px h-5 bg-white/[0.06]" />
+            <div className="w-px h-5 bg-border/20" />
 
             {/* Viewport controls */}
             <button
@@ -582,8 +582,8 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
               className={cn(
                 "h-7 w-7 flex items-center justify-center rounded-md transition-all",
                 isMaximized
-                  ? "bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25"
-                  : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                  ? "bg-primary/15 text-primary hover:bg-primary/25"
+                  : "text-muted-foreground hover:text-foreground/80 hover:bg-muted/30"
               )}
               title={isMaximized ? 'Restore UI (Esc)' : 'Maximize Viewport (F)'}
             >
@@ -592,16 +592,16 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
             <NightModeToggle />
 
             {/* ── Separator ── */}
-            <div className="w-px h-5 bg-white/[0.06]" />
+            <div className="w-px h-5 bg-border/20" />
 
             {/* Command */}
-            <button onClick={() => setCommandMenuOpen(true)} className="h-7 px-2.5 flex items-center gap-1.5 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all text-[10px] font-semibold uppercase tracking-wider" title="⌘K">
+            <button onClick={() => setCommandMenuOpen(true)} className="h-7 px-2.5 flex items-center gap-1.5 rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all text-[10px] font-semibold uppercase tracking-wider" title="⌘K">
               <Command className="h-3 w-3" />
               <span>⌘K</span>
             </button>
 
             {/* ── Separator ── */}
-            <div className="w-px h-5 bg-white/[0.06]" />
+            <div className="w-px h-5 bg-border/20" />
 
             {/* LIVE + ARM + E-STOP */}
             <button
@@ -623,14 +623,14 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
                 useProjectStore.getState().setPlaying(false);
                 toast.error('🔴 EMERGENCY STOP');
               }}
-              className="h-9 px-4 flex items-center gap-1.5 rounded-xl bg-red-600 text-white hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.3)] transition-all text-[11px] font-black uppercase tracking-wider"
+              className="h-9 px-4 flex items-center gap-1.5 rounded-xl bg-red-600 text-red-50 hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.3)] transition-all text-[11px] font-black uppercase tracking-wider"
             >
               <AlertTriangle className="h-4 w-4" />
               E-STOP
             </button>
 
             {/* ── Separator ── */}
-            <div className="w-px h-5 bg-white/[0.06]" />
+            <div className="w-px h-5 bg-border/20" />
 
             {/* Hardware dots */}
             <HardwareStatusDots onOpenPanel={onOpenPanel} />
@@ -638,7 +638,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
         )}
 
         {!isMobile && (
-          <button onClick={signOut} className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-600 hover:text-red-400 hover:bg-red-500/5 transition-all" title="Logout">
+          <button onClick={signOut} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-red-400 hover:bg-red-500/5 transition-all" title="Logout">
             <LogOut className="h-3.5 w-3.5" />
           </button>
         )}

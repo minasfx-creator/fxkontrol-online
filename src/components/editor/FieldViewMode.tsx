@@ -121,8 +121,8 @@ export function FieldTelemetryBadge({
 
   // Field mode — large neon readout
   return (
-    <div className="flex flex-col items-center p-2 rounded-lg bg-black min-w-[80px]">
-      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{label}</span>
+    <div className="flex flex-col items-center p-2 rounded-lg bg-background min-w-[80px]">
+      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</span>
       <span
         className="text-3xl font-black tabular-nums leading-tight"
         style={{
@@ -132,7 +132,7 @@ export function FieldTelemetryBadge({
       >
         {value}
       </span>
-      {unit && <span className="text-[9px] text-gray-500 font-medium">{unit}</span>}
+      {unit && <span className="text-[9px] text-muted-foreground/60 font-medium">{unit}</span>}
     </div>
   );
 }
