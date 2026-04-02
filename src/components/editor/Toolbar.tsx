@@ -535,19 +535,19 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       {/* ─── Mode tools ─────────────────────── */}
       {!isMobile && (
         <>
-          <div className="w-px h-7 bg-white/[0.06] mx-1" />
+          <div className="w-px h-7 bg-border/20 mx-1" />
           <div className="flex items-center gap-0.5">
-            <button onClick={() => setEditorMode('select')} className={cn("h-7 px-2 flex items-center gap-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all", editorMode === 'select' ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5")} title="Select (S)">
+            <button onClick={() => setEditorMode('select')} className={cn("h-7 px-2 flex items-center gap-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all", editorMode === 'select' ? "bg-muted/50 text-foreground" : "text-muted-foreground hover:text-foreground/80 hover:bg-muted/30")} title="Select (S)">
               <MousePointer className="h-3 w-3" /><span className="hidden xl:inline">SEL</span>
             </button>
-            <button onClick={() => setEditorMode(editorMode === 'add-pyro' ? 'select' : 'add-pyro')} className={cn("h-7 px-2 flex items-center gap-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all", editorMode === 'add-pyro' ? "bg-orange-500/15 text-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.15)]" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5")} title="Add Pyro">
+            <button onClick={() => setEditorMode(editorMode === 'add-pyro' ? 'select' : 'add-pyro')} className={cn("h-7 px-2 flex items-center gap-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all", editorMode === 'add-pyro' ? "bg-orange-500/15 text-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.15)]" : "text-muted-foreground hover:text-foreground/80 hover:bg-muted/30")} title="Add Pyro">
               <MapPin className="h-3 w-3" /><span className="hidden xl:inline">PYRO</span>
             </button>
-            <button onClick={() => setEditorMode(editorMode === 'add-drone' ? 'select' : 'add-drone')} className={cn("h-7 px-2 flex items-center gap-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all", editorMode === 'add-drone' ? "bg-cyan-500/15 text-cyan-400" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5")} title="Add Drone">
+            <button onClick={() => setEditorMode(editorMode === 'add-drone' ? 'select' : 'add-drone')} className={cn("h-7 px-2 flex items-center gap-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all", editorMode === 'add-drone' ? "bg-cyan-500/15 text-cyan-400" : "text-muted-foreground hover:text-foreground/80 hover:bg-muted/30")} title="Add Drone">
               <Target className="h-3 w-3" /><span className="hidden xl:inline">DRONE</span>
             </button>
             <BatchAddButton />
-            <button onClick={() => setFormationOpen(true)} className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all" title="Formations">
+            <button onClick={() => setFormationOpen(true)} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all" title="Formations">
               <Shapes className="h-3.5 w-3.5" />
             </button>
           </div>
