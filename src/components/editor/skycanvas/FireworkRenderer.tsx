@@ -431,19 +431,19 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           <bufferAttribute attach="attributes-position" args={[particleBuffers.trailPos, 3]} />
           <bufferAttribute attach="attributes-color" args={[particleBuffers.trailCol, 3]} />
         </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={Math.min(1, 0.8 * tailFactor)} depthWrite={false} blending={THREE.AdditiveBlending} linewidth={3} />
+        <lineBasicMaterial vertexColors transparent opacity={Math.min(1, 0.8 * tailFactor)} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} linewidth={3} />
       </lineSegments>
       
       {progress < 0.06 && (
         <mesh renderOrder={100}>
           <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 6), 8, 8]} />
-          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.2 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} depthWrite={false} />
+          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.2 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
         </mesh>
       )}
       {progress < 0.12 && (
         <mesh renderOrder={99}>
           <sphereGeometry args={[flashSize * (1 + progress * 6), 8, 8]} />
-          <meshBasicMaterial color={color} transparent opacity={0.08 * Math.pow(1 - progress / 0.12, 2)} blending={THREE.AdditiveBlending} depthWrite={false} />
+          <meshBasicMaterial color={color} transparent opacity={0.08 * Math.pow(1 - progress / 0.12, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
         </mesh>
       )}
     </group>
