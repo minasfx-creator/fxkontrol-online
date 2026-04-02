@@ -227,7 +227,7 @@ function BatchAddButton() {
   return (
     <>
       <button
-        className="h-7 px-2 text-[9px] font-bold gap-1 flex items-center rounded-md bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 border border-cyan-500/20 transition-all uppercase tracking-wider"
+        className="h-7 px-2 text-[9px] font-bold gap-1 flex items-center rounded-md bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-all uppercase tracking-wider"
         title="Gerar Posições em Lote"
         onClick={() => setOpen(true)}
       >
