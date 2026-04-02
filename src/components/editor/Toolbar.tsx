@@ -574,7 +574,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
         {!isMobile && (
           <>
             {/* ── Separator ── */}
-            <div className="w-px h-5 bg-white/[0.06]" />
+            <div className="w-px h-5 bg-border/20" />
 
             {/* Viewport controls */}
             <button
