@@ -236,17 +236,17 @@ function BatchAddButton() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md" onClick={() => setOpen(false)}>
-          <div className="w-[380px] rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-zinc-950/95 backdrop-blur-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-md" onClick={() => setOpen(false)}>
+          <div className="w-[380px] rounded-2xl overflow-hidden border border-border/30 shadow-2xl bg-background/95 backdrop-blur-2xl" onClick={e => e.stopPropagation()}>
             <div className="px-5 pt-5 pb-3">
-              <h3 className="text-sm font-bold text-white tracking-wide">Gerar Posições</h3>
-              <p className="text-[10px] text-zinc-500 mt-0.5">Crie múltiplas posições em padrão geométrico</p>
+              <h3 className="text-sm font-bold text-foreground tracking-wide">Gerar Posições</h3>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Crie múltiplas posições em padrão geométrico</p>
             </div>
             <div className="px-5 pb-5 space-y-4">
-              <div className="flex rounded-xl overflow-hidden border border-white/10 bg-black/40">
-                <button onClick={() => setPosType('pyro')} className={cn("flex-1 py-2.5 text-xs font-semibold transition-all", posType === 'pyro' ? "bg-orange-500/15 text-orange-400" : "text-zinc-500 hover:text-zinc-300")}>🎆 PYRO</button>
-                <div className="w-px bg-white/10" />
-                <button onClick={() => setPosType('drone-pad')} className={cn("flex-1 py-2.5 text-xs font-semibold transition-all", posType === 'drone-pad' ? "bg-cyan-500/15 text-cyan-400" : "text-zinc-500 hover:text-zinc-300")}>🛸 DRONE</button>
+              <div className="flex rounded-xl overflow-hidden border border-border/30 bg-background/40">
+                <button onClick={() => setPosType('pyro')} className={cn("flex-1 py-2.5 text-xs font-semibold transition-all", posType === 'pyro' ? "bg-orange-500/15 text-orange-400" : "text-muted-foreground hover:text-foreground/80")}>🎆 PYRO</button>
+                <div className="w-px bg-border/30" />
+                <button onClick={() => setPosType('drone-pad')} className={cn("flex-1 py-2.5 text-xs font-semibold transition-all", posType === 'drone-pad' ? "bg-cyan-500/15 text-cyan-400" : "text-muted-foreground hover:text-foreground/80")}>🛸 DRONE</button>
               </div>
               <div className="space-y-1.5">
                 <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Padrão</span>
