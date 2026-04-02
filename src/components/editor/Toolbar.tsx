@@ -171,9 +171,9 @@ function DropdownMenu({ label, icon: LabelIcon, items }: { label: string; icon?:
                 <button
                   key={item.label}
                   onClick={() => { item.onClick(); setOpen(false); }}
-                  className="w-full text-left px-3 py-2 text-[11px] font-medium text-zinc-300 hover:text-white hover:bg-white/5 flex items-center gap-2.5 transition-all"
+                  className="w-full text-left px-3 py-2 text-[11px] font-medium text-foreground/80 hover:text-foreground hover:bg-muted/30 flex items-center gap-2.5 transition-all"
                 >
-                  <Icon className="w-3.5 h-3.5 text-zinc-500" />
+                  <Icon className="w-3.5 h-3.5 text-muted-foreground" />
                   <span>{item.label}</span>
                 </button>
               );
