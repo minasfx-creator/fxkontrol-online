@@ -283,8 +283,8 @@ function BatchAddButton() {
                 {count} × {posType === 'pyro' ? 'PYRO' : 'DRONE'} · {pattern} · {spacing}m
               </div>
               <div className="flex gap-2.5 pt-1">
-                <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl text-xs border-white/10 text-zinc-300 hover:bg-white/5" onClick={() => setOpen(false)}>Cancelar</Button>
-                <button className="flex-1 h-10 rounded-xl text-xs font-semibold bg-cyan-500 text-black hover:bg-cyan-400 flex items-center justify-center gap-1.5 transition-all" onClick={handleCreate}>
+                <Button variant="outline" size="sm" className="flex-1 h-10 rounded-xl text-xs border-border/30 text-foreground/80 hover:bg-muted/30" onClick={() => setOpen(false)}>Cancelar</Button>
+                <button className="flex-1 h-10 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center gap-1.5 transition-all" onClick={handleCreate}>
                   <PlusCircle className="h-3.5 w-3.5" />
                   Criar {count} posições
                 </button>
