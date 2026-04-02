@@ -338,7 +338,7 @@ function LocationDisplay() {
   return (
     <button
       onClick={() => window.dispatchEvent(new Event('open-geo-setup'))}
-      className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/30 border border-white/5 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer group"
+      className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/30 border border-border/20 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer group"
       title="Alterar localização"
     >
       <Navigation className="w-2.5 h-2.5 text-primary group-hover:text-primary" />
