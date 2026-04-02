@@ -271,15 +271,15 @@ function BatchAddButton() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Origem X</label>
-                  <input type="number" value={startX} onChange={e => setStartX(parseFloat(e.target.value) || 0)} className="w-full h-9 px-3 rounded-xl text-sm bg-black/40 border border-white/10 text-white focus:border-cyan-500/50 outline-none transition-all" />
+                  <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Origem X</label>
+                  <input type="number" value={startX} onChange={e => setStartX(parseFloat(e.target.value) || 0)} className="w-full h-9 px-3 rounded-xl text-sm bg-background/40 border border-border/30 text-foreground focus:border-primary/50 outline-none transition-all" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider">Origem Z</label>
-                  <input type="number" value={startZ} onChange={e => setStartZ(parseFloat(e.target.value) || 0)} className="w-full h-9 px-3 rounded-xl text-sm bg-black/40 border border-white/10 text-white focus:border-cyan-500/50 outline-none transition-all" />
+                  <label className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Origem Z</label>
+                  <input type="number" value={startZ} onChange={e => setStartZ(parseFloat(e.target.value) || 0)} className="w-full h-9 px-3 rounded-xl text-sm bg-background/40 border border-border/30 text-foreground focus:border-primary/50 outline-none transition-all" />
                 </div>
               </div>
-              <div className="bg-black/30 rounded-xl px-3.5 py-2.5 text-[11px] font-mono text-zinc-400 border border-white/5 text-center">
+              <div className="bg-background/30 rounded-xl px-3.5 py-2.5 text-[11px] font-mono text-muted-foreground border border-border/20 text-center">
                 {count} × {posType === 'pyro' ? 'PYRO' : 'DRONE'} · {pattern} · {spacing}m
               </div>
               <div className="flex gap-2.5 pt-1">
