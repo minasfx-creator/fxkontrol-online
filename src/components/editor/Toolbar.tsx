@@ -469,9 +469,9 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       "flex items-center gap-1 z-50 relative",
       isMobile ? "h-10 px-2" : "h-14 px-4"
     )} style={{
-      background: 'rgba(9, 9, 11, 0.80)',
+      background: 'hsl(var(--background) / 0.80)',
       backdropFilter: 'blur(12px) saturate(1.5)',
-      borderBottom: '1px solid rgba(255,255,255,0.06)',
+      borderBottom: '1px solid hsl(var(--border) / 0.3)',
     }}>
       {/* ─── LEFT: Logo ─────────────────────────── */}
       <div className="flex items-center gap-2.5">
