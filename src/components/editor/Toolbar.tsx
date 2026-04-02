@@ -490,19 +490,19 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       {/* ─── File/Menu Quick Access (compact) ─── */}
       {!isMobile && (
         <div className="flex items-center gap-0.5">
-          <button onClick={handleNewProject} className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all" title="New">
+          <button onClick={handleNewProject} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all" title="New">
             <FilePlus className="w-3.5 h-3.5" />
           </button>
-          <button onClick={() => setBrowserOpen(true)} className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all" title="Open">
+          <button onClick={() => setBrowserOpen(true)} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all" title="Open">
             <FolderOpen className="w-3.5 h-3.5" />
           </button>
-          <button onClick={handleSave} disabled={saving} className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all disabled:opacity-30" title="Save">
+          <button onClick={handleSave} disabled={saving} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all disabled:opacity-30" title="Save">
             <Save className={cn("w-3.5 h-3.5", saving && "animate-spin")} />
           </button>
-          <button onClick={undo} disabled={!canUndo} className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all disabled:opacity-20" title="Undo">
+          <button onClick={undo} disabled={!canUndo} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all disabled:opacity-20" title="Undo">
             <Undo className="w-3.5 h-3.5" />
           </button>
-          <button onClick={redo} disabled={!canRedo} className="w-7 h-7 flex items-center justify-center rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-all disabled:opacity-20" title="Redo">
+          <button onClick={redo} disabled={!canRedo} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all disabled:opacity-20" title="Redo">
             <Redo className="w-3.5 h-3.5" />
           </button>
         </div>
