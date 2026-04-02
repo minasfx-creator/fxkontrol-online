@@ -449,8 +449,8 @@ function Index() {
         <BoxSelectOverlay />
         <SelectionModeBar />
         {isDragOver && (
-          <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center bg-cyan-500/5 border-2 border-dashed border-cyan-400/30 backdrop-blur-[2px]">
-            <div className="flex flex-col items-center gap-2 text-cyan-400">
+          <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center bg-primary/5 border-2 border-dashed border-primary/30 backdrop-blur-[2px]">
+            <div className="flex flex-col items-center gap-2 text-primary">
               <Upload className="h-10 w-10 animate-bounce" />
               <p className="text-sm font-semibold">Solte o arquivo para importar</p>
             </div>
