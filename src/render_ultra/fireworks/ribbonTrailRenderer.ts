@@ -153,6 +153,7 @@ export class RibbonTrail {
       transparent: true,
       blending,
       depthWrite: false,
+      depthTest: false,
       side: THREE.DoubleSide,
     });
 

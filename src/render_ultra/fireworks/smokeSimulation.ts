@@ -131,6 +131,7 @@ export class SmokeSystem {
       },
       transparent: true,
       depthWrite: false,
+      depthTest: false,
       blending: THREE.NormalBlending,
     });
 

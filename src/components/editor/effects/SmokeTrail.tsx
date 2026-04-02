@@ -23,7 +23,7 @@ const _sharedSmokeMaterials = new Map<string, THREE.MeshBasicMaterial>();
 function getSmokeMaterial(color: string): THREE.MeshBasicMaterial {
   let mat = _sharedSmokeMaterials.get(color);
   if (!mat) {
-    mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false });
+    mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false, depthTest: false });
     _sharedSmokeMaterials.set(color, mat);
   }
   return mat;
