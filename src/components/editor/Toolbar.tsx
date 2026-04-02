@@ -485,7 +485,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       </div>
 
       {/* Separator */}
-      <div className="w-px h-7 bg-white/[0.06] mx-2" />
+      <div className="w-px h-7 bg-border/20 mx-2" />
 
       {/* ─── File/Menu Quick Access (compact) ─── */}
       {!isMobile && (
