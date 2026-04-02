@@ -601,7 +601,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
             </button>
 
             {/* ── Separator ── */}
-            <div className="w-px h-5 bg-white/[0.06]" />
+            <div className="w-px h-5 bg-border/20" />
 
             {/* LIVE + ARM + E-STOP */}
             <button
