@@ -342,10 +342,10 @@ function LocationDisplay() {
       title="Alterar localização"
     >
       <Navigation className="w-2.5 h-2.5 text-primary group-hover:text-primary" />
-      <span className="text-[9px] font-mono text-zinc-400 group-hover:text-zinc-200 truncate max-w-[180px]">
+      <span className="text-[9px] font-mono text-muted-foreground group-hover:text-foreground/80 truncate max-w-[180px]">
         {locationName || 'Set Location'}
       </span>
-      <ChevronDown className="w-2.5 h-2.5 text-zinc-600 group-hover:text-zinc-400" />
+      <ChevronDown className="w-2.5 h-2.5 text-muted-foreground/60 group-hover:text-muted-foreground" />
     </button>
   );
 }
