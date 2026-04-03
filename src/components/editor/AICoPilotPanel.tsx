@@ -128,7 +128,7 @@ export default function AICoPilotPanel() {
             <button
               onClick={() => setVoiceEnabled(!voiceEnabled)}
               className={cn("p-1 rounded transition-all",
-                voiceEnabled ? "bg-cyan-500/10 border border-cyan-500/20" : "border border-white/5 hover:bg-white/[0.03]"
+                voiceEnabled ? "bg-cyan-500/10 border border-cyan-500/20" : "border border-border/20 hover:bg-muted/20"
               )}
               title={voiceEnabled ? 'Voice ON' : 'Voice OFF'}
             >
