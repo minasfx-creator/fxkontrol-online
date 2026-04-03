@@ -1,71 +1,73 @@
 
 
-## Plano: Refino Tático — Unificação, Estética e Navegação
+## Plano: Refino Tático Final — Ground Operator + Limpeza Residual
 
 ### Diagnóstico
 
-Após varredura completa do codebase, muitas das funcionalidades solicitadas **já existem**:
-- **TransformControls (Gizmo)**: `PositionTransformGizmo.tsx` e `SiteModelRenderer.tsx` ✅
-- **Box/Lasso Selection**: `BoxSelectOverlay.tsx` + `SelectionModeBar.tsx` ✅
-- **Fly Mode (WASD + PointerLock)**: `FlyControls` em `SkyCanvas.tsx` ✅
-- **OrbitControls com Damping**: `dampingFactor: 0.06` já configurado ✅
-- **Joi Hologram**: `JoiHologramAvatar.tsx` + `FXKAssistant.tsx` ✅
-- **Camera Presets dropdown**: Menu existente no SkyCanvas ✅
-- **MissionSetupOverlay**: Já existe (atualmente desativado) ✅
+O codebase do FX Kontrol **já possui** a maioria dos sistemas solicitados no prompt tático:
 
-O que precisa de trabalho real é **unificação visual** e **adições incrementais**.
+| Funcionalidade | Estado | Ficheiro |
+|---|---|---|
+| VVIZ Parser (Web Worker, ArrayBuffer, streaming) | **Superior ao proposto** | `src/lib/vvizWorker.ts` (280 linhas) |
+| Drone Renderer (6x InstancedMesh, PBR, LOD) | **Superior ao proposto** | `src/components/editor/InstancedDroneSwarm.tsx` |
+| Choreography + Transitions | Completo | `DroneChoreography.tsx` |
+| TacticalDock (macOS dock) | Criado | `TacticalDock.tsx` |
+| ViewportConfigMenu | Criado | `ViewportConfigMenu.tsx` |
+| JoiStatusMonitor HUD | Criado | `JoiStatusMonitor.tsx` |
+| FlyControls (WASD + PointerLock) | Completo | `SkyCanvas.tsx` linhas 506-580 |
+| Damping 0.05 | Aplicado | `SkyCanvas.tsx` |
+| VVIZ Importer (drag-drop + dialog) | Completo | `VVIZImporter.tsx` |
 
----
-
-### Etapa 1: VIEWPORT CONFIG — Menu unificado de visualização (SkyCanvas.tsx)
-
-Agrupar os controles dispersos no topo do viewport (Free Look, Fly Mode, Camera Presets) num único dropdown **"VIEWPORT"**:
-- Um botão compacto "VIEWPORT" que abre um menu com 3 seções: Camera Presets, Navigation Mode (Orbit/Free Look/Fly), Display Options (rulers, grid, debug)
-- Elimina 3 botões separados, substitui por 1
-
-### Etapa 2: TACTICAL DOCK — Dock lateral de ferramentas de edição
-
-Criar um componente `TacticalDock.tsx` — dock vertical minimalista no lado esquerdo do viewport:
-- Ícones: Select (cursor), Move (gizmo translate), Rotate (gizmo rotate), Scale (gizmo scale), Lasso, Add Position
-- Estilo macOS dock vertical com glassmorphism (`bg-background/80 backdrop-blur-xl`)
-- Atalhos de teclado existentes (W/E/R/L) mantidos
-- Substitui os controles de modo dispersos no `SelectionModeBar` e `FinaleViewportTools`
-
-### Etapa 3: Joi como Status Monitor — HUD tático fixo
-
-Adicionar um mini-widget fixo no canto superior direito do editor 3D:
-- Reutiliza `JoiHologramAvatar` (size="sm") já existente
-- Mostra status compacto: FPS, drone count, armed state, connection status
-- Scanline + pulse animation já implementados no componente
-- Click expande o `FXKAssistant` completo (já existe)
-
-### Etapa 4: Damping e Camera polish
-
-Ajustar `SkyCanvas.tsx` OrbitControls:
-- `dampingFactor`: 0.06 → 0.05 (mais cirúrgico)
-- Adicionar `enableRotate: !flyMode` para evitar conflito
-- Garantir que `makeDefault` está ativo para TransformControls não interferir
-
-### Etapa 5: GROUND OPERATOR mode (Walk Mode)
-
-Estender o `FlyControls` existente com altitude lock:
-- Novo toggle "Ground" no VIEWPORT menu
-- Reutiliza PointerLock existente
-- Trava `camera.position.y` a um valor fixo (1.7m acima do terreno)
-- Usa Elevation API já integrada para obter altura do terreno na posição atual
+**O parser e renderer propostos no prompt são versões simplificadas do que já existe.** Substituí-los seria um downgrade. O que falta implementar é apenas o **Ground Operator mode**.
 
 ---
 
-### Proteções (não toca)
-- APIs Google (Geocoding, Tiles, Elevation) — intactas
+### O que será feito
+
+**1. GroundControls — Componente R3F em `SkyCanvas.tsx`**
+
+Baseado no `FlyControls` existente (linhas 506-580) com restrições:
+- Movimento WASD projetado apenas no plano XZ (componente Y da direção ignorado)
+- Sem teclas E/Q/Space (sem controlo vertical manual)
+- Velocidade base reduzida: 5 m/s (vs 15 m/s do FlyControls)
+- Pitch limitado a ±80° (simula visão humana andando)
+- A cada frame, raycast vertical para baixo detecta o chão e trava `camera.position.y = terrainY + 1.7`
+- Lerp suave (fator 0.15) para evitar saltos bruscos ao caminhar em terreno irregular
+- Fallback: se raycast falha, mantém última altitude conhecida
+
+**2. `raycastTerrainLocal` — Utilitário em `src/core/geo/terrainQuery.ts`**
+
+Nova função que aceita coordenadas locais (x, z) e a scene Three.js:
+- Cria raio de `(x, 2000, z)` para baixo `(0, -1, 0)`
+- Intersecta todos os filhos da scene (Google Tiles, StageGround, terreno)
+- Retorna `hit.point.y` ou `null`
+- Sem conversão lat/lng necessária — opera em espaço local
+
+**3. Integração em `SkyCanvas.tsx`**
+
+- Renderização condicional: `FlyControls` quando `flyMode && !groundMode`, `GroundControls` quando `groundMode`
+- O estado `groundMode` já existe (adicionado na iteração anterior do ViewportConfigMenu)
+- CameraController recebe `freeLook={freeLook || flyMode || groundMode}`
+
+**4. HUD de Ground Mode**
+
+Reutiliza o padrão do Fly Mode HUD (linhas 1656-1667) com indicadores:
+- "GROUND OP" em vez de "Fly Mode"
+- Mostra altitude relativa ao terreno
+- Remove indicações de Q/E Up/Down
+
+---
+
+### Ficheiros modificados: 2
+
+1. **`src/core/geo/terrainQuery.ts`** — adicionar `raycastTerrainLocal()`
+2. **`src/components/editor/SkyCanvas.tsx`** — adicionar `GroundControls`, integrar renderização condicional, HUD de ground mode
+
+### Proteções
+
+- Parser VVIZ existente (Worker) — intacto
+- InstancedDroneSwarm (PBR renderer) — intacto
 - Stores Zustand — intactos
-- Sincronização áudio/DMX/SMPTE — intacta
-- Assets e configurações — intactos
-
-### Arquivos a criar/modificar
-1. **Criar** `src/components/editor/TacticalDock.tsx` — dock lateral de ferramentas
-2. **Criar** `src/components/editor/ViewportConfigMenu.tsx` — menu unificado VIEWPORT
-3. **Criar** `src/components/editor/JoiStatusMonitor.tsx` — mini HUD com Joi
-4. **Modificar** `src/components/editor/SkyCanvas.tsx` — integrar novos componentes, ajustar damping, adicionar Ground mode
-5. **Modificar** `src/components/editor/Toolbar.tsx` — remover controles migrados para o VIEWPORT menu
+- APIs Google — intactas
+- TacticalDock / ViewportConfigMenu / JoiStatusMonitor — intactos
 
