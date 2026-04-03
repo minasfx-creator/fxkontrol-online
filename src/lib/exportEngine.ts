@@ -160,7 +160,13 @@ export function exportVVIZ(
   positions: Position[],
   trajectories: Trajectory[] = [],
   droneFormations: DroneFormation[] = [],
+  options: VVIZExportOptions = {},
 ): string {
+  const posRate = options.positionRate ?? POSITION_RATE;
+  const colRate = options.colorRate ?? COLOR_RATE;
+  const frame = options.coordinateFrame ?? 'standard';
+  const noTrail = options.noTrail ?? false;
+  const showName = options.showName ?? projectName;
   let performanceId = 0;
   const performances: VVIZPerformance[] = [];
 
