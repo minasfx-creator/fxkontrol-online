@@ -527,7 +527,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
           ]} />
           <DropdownMenu label="Export" icon={Download} items={[
             { label: 'Export Manager...', icon: FileBarChart, onClick: () => setExportModalOpen(true) },
-            { label: '.vviz (Finale 3D)', icon: FileJson, onClick: handleExportVVIZ },
+            { label: '.vviz (Finale 3D)', icon: FileJson, onClick: () => setVvizExportOpen(true) },
             { label: '.skyc (SkyCreator)', icon: Download, onClick: handleExportSkyc },
             { label: 'Firing CSV', icon: Download, onClick: handleExportFiringCSV },
           ]} />
