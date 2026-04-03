@@ -104,7 +104,7 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
           </div>
           <div className="bg-surface-1/60 rounded px-2 py-1.5 text-center">
             <div className="text-muted-foreground">Alerts</div>
-            <div className={cn("font-bold text-sm", alertCount > 0 ? 'text-red-400' : 'text-green-400')}>
+            <div className={cn("font-bold text-sm", alertCount > 0 ? 'text-destructive' : 'text-emerald-400')}>
               {alertCount}
             </div>
           </div>

@@ -171,8 +171,8 @@ export default function ModelImportPanel({ onClose }: { onClose: () => void }) {
   }, [result, height, radius, droneFormations, addDroneFormation, setCurrentTime]);
 
   const qualityColor = result ? (
-    result.quality.score >= 80 ? 'text-green-400' :
-    result.quality.score >= 50 ? 'text-yellow-400' : 'text-red-400'
+    result.quality.score >= 80 ? 'text-emerald-400' :
+    result.quality.score >= 50 ? 'text-yellow-400' : 'text-destructive'
   ) : '';
 
   return (

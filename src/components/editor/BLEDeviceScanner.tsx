@@ -267,7 +267,7 @@ export default function BLEDeviceScanner({ context, compact = false, simulation 
                   Desconectar
                 </Button>
               ) : (
-                <Button size="sm" className={cn("h-6 px-2 text-[8px] text-white",
+                <Button size="sm" className={cn("h-6 px-2 text-[8px] text-primary-foreground",
                   context === 'pyro' ? 'bg-red-600 hover:bg-red-500' :
                   context === 'dmx' ? 'bg-blue-600 hover:bg-blue-500' :
                   context === 'light' ? 'bg-indigo-600 hover:bg-indigo-500' :
