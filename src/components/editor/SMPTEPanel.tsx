@@ -378,7 +378,6 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
                 <SelectItem value="25">25 fps (PAL / EBU)</SelectItem>
                 <SelectItem value="29.97">29.97 fps (NTSC DF)</SelectItem>
                 <SelectItem value="30">30 fps (SMPTE NDF)</SelectItem>
-                <SelectItem value="59.94">59.94 fps (NTSC DF HFR)</SelectItem>
                 <SelectItem value="60">60 fps (NDF HFR)</SelectItem>
               </SelectContent>
             </Select>
