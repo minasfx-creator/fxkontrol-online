@@ -35,7 +35,7 @@ export default function AICoPilotOverlay() {
   const modeColor = MODE_COLORS[mode];
 
   return (
-    <div className="absolute top-3 left-3 z-40 pointer-events-none select-none">
+    <div className="absolute top-12 left-3 z-40 pointer-events-none select-none">
       {/* Main pill */}
       <div className="flex items-center gap-2 bg-card/70 backdrop-blur-xl border border-border/20 rounded-xl px-3 py-1.5"
         style={{ borderColor: `${orbColor}25` }}

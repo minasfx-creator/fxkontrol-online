@@ -102,7 +102,7 @@ export default function AlignmentTools() {
   );
 
   return (
-    <div className="absolute top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-surface-1/95 backdrop-blur-md border border-border/60 rounded-lg px-2 py-1 shadow-xl">
+    <div className="absolute top-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-surface-1/95 backdrop-blur-md border border-border/60 rounded-lg px-2 py-1 shadow-xl">
       {/* Type filter */}
       <div className="flex items-center gap-0.5 mr-1">
         {filterBtn('all', <span className="text-[7px]">ALL</span>, 'All types')}

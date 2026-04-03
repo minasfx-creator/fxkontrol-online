@@ -160,7 +160,7 @@ export default function ViewportGeoTools({
   const totalItems = markers.length + rulers.length + paths.length;
 
   return (
-    <div className="absolute top-3 right-14 z-30 flex flex-col items-end gap-1.5">
+    <div className="absolute top-12 right-3 z-30 flex flex-col items-end gap-1.5">
       {/* Toggle button */}
       <button
         onClick={() => setExpanded(!expanded)}
