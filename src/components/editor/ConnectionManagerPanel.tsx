@@ -57,7 +57,7 @@ function TransportRow({ t, onRemove, fs }: { t: TransportStatus; onRemove: (id: 
         <span className="text-[7px] font-mono text-muted-foreground/40">{t.latencyMs}ms</span>
       )}
       <span className="text-[6px] text-muted-foreground/30">P{t.priority}</span>
-      <Button size="sm" variant="ghost" className="h-4 w-4 p-0 text-muted-foreground/30 hover:text-red-400"
+      <Button size="sm" variant="ghost" className="h-4 w-4 p-0 text-muted-foreground/30 hover:text-destructive"
         onClick={() => onRemove(t.id)}>
         <X className="w-2.5 h-2.5" />
       </Button>
