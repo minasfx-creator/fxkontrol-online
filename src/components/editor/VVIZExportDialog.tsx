@@ -27,11 +27,7 @@ export default function VVIZExportDialog({ open, onOpenChange }: VVIZExportDialo
   const [noTrail, setNoTrail] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const droneCount = timelineItems.filter(i => {
-    const lib = useProjectStore.getState().effects || [];
-    return true;
-  }).length + trajectories.length + (droneFormations[0]?.droneCount ?? 0);
-
+  const totalPerfs = timelineItems.length + trajectories.length + (droneFormations[0]?.droneCount ?? 0);
   const handleExport = useCallback(async () => {
     setExporting(true);
     try {
