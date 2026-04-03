@@ -243,7 +243,7 @@ export default function BLEDeviceScanner({ context, compact = false, simulation 
 
                   {dev.battery !== null && (
                     <div className="flex items-center gap-0.5">
-                      <Battery className={cn("w-2.5 h-2.5", dev.battery > 20 ? "text-green-400" : "text-red-400")} />
+                      <Battery className={cn("w-2.5 h-2.5", dev.battery > 20 ? "text-emerald-400" : "text-destructive")} />
                       <span className="text-[8px] font-mono text-muted-foreground">{dev.battery}%</span>
                     </div>
                   )}
