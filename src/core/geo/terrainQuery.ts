@@ -64,3 +64,41 @@ export function batchTerrainHeight(
     getTerrainHeight(p.lat, p.lng, scene, anchorLat, anchorLon, anchorAlt),
   );
 }
+
+// ── Local-space terrain raycast (no geo conversion) ───────────────
+
+const _localOrigin = new THREE.Vector3();
+const _localDown = new THREE.Vector3(0, -1, 0);
+const _localRaycaster = new THREE.Raycaster();
+
+/**
+ * Raycast terrain height using local scene coordinates (no lat/lng).
+ * Casts from (x, startHeight, z) downward and returns hit Y or null.
+ *
+ * @param x - Local X position
+ * @param z - Local Z position
+ * @param scene - Three.js scene to intersect
+ * @param startHeight - Ray origin height (default 2000)
+ */
+export function raycastTerrainLocal(
+  x: number,
+  z: number,
+  scene: THREE.Scene,
+  startHeight = 2000,
+): number | null {
+  _localOrigin.set(x, startHeight, z);
+  _localRaycaster.set(_localOrigin, _localDown);
+  _localRaycaster.far = startHeight * 2;
+
+  const hits = _localRaycaster.intersectObjects(scene.children, true);
+
+  // Filter to visible mesh hits only
+  for (let i = 0; i < hits.length; i++) {
+    const obj = hits[i].object;
+    if (obj.visible && (obj as THREE.Mesh).isMesh) {
+      return hits[i].point.y;
+    }
+  }
+
+  return null;
+}
