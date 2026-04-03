@@ -1536,7 +1536,7 @@ export default function SkyCanvas() {
         {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
         {!google3DTilesEnabled && !isLowTierMobile && <PyroSafetyZones />}
-        <DroneChoreography />
+        <DroneRendererSwitch />
         {!isMobile && <BoidsVisualizer />}
         {!isMobile && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
         <Suspense fallback={null}>
