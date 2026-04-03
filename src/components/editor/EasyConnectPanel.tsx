@@ -68,7 +68,7 @@ const TRANSPORT_COLORS: Record<TransportType, string> = {
 const STATUS_STYLES: Record<DeviceStatus, { dot: string; text: string }> = {
   online: { dot: 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]', text: 'text-emerald-400' },
   connecting: { dot: 'bg-amber-400 animate-pulse shadow-[0_0_6px_rgba(251,191,36,0.5)]', text: 'text-amber-400' },
-  offline: { dot: 'bg-zinc-600', text: 'text-zinc-500' },
+  offline: { dot: 'bg-muted-foreground/40', text: 'text-muted-foreground' },
   error: { dot: 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]', text: 'text-red-400' },
 };
 
