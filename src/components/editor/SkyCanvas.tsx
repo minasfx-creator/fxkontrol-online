@@ -1610,17 +1610,19 @@ export default function SkyCanvas() {
         />
       )}
 
-      {/* ═══ VIEWPORT CONFIG — Unified menu ═══ */}
-      <ViewportConfigMenu
-        activePreset={activePreset}
-        freeLook={freeLook}
-        flyMode={flyMode}
-        groundMode={groundMode}
-        onPresetChange={(id) => { setActivePreset(id); setFreeLook(false); }}
-        onFreeLookToggle={() => { setFreeLook(!freeLook); if (flyMode) setFlyMode(false); if (groundMode) setGroundMode(false); }}
-        onFlyModeToggle={() => { setFlyMode(!flyMode); if (!flyMode) { setFreeLook(false); setGroundMode(false); } }}
-        onGroundModeToggle={() => { setGroundMode(!groundMode); if (!groundMode) { setFlyMode(false); setFreeLook(false); } }}
-      />
+      {/* ═══ VIEWPORT CONFIG — Unified menu (desktop only) ═══ */}
+      {!isMobile && (
+        <ViewportConfigMenu
+          activePreset={activePreset}
+          freeLook={freeLook}
+          flyMode={flyMode}
+          groundMode={groundMode}
+          onPresetChange={(id) => { setActivePreset(id); setFreeLook(false); }}
+          onFreeLookToggle={() => { setFreeLook(!freeLook); if (flyMode) setFlyMode(false); if (groundMode) setGroundMode(false); }}
+          onFlyModeToggle={() => { setFlyMode(!flyMode); if (!flyMode) { setFreeLook(false); setGroundMode(false); } }}
+          onGroundModeToggle={() => { setGroundMode(!groundMode); if (!groundMode) { setFlyMode(false); setFreeLook(false); } }}
+        />
+      )}
 
       {/* ═══ TACTICAL DOCK — Editing tools ═══ */}
       {!isMobile && <TacticalDock />}
