@@ -66,7 +66,7 @@ export default function BluetoothPanel({ onClose }: BluetoothPanelProps) {
     return (
       <div className="flex gap-px items-end h-3">
         {[0, 1, 2, 3].map(i => (
-          <div key={i} className={cn("w-1 rounded-sm", i < strength ? "bg-green-400" : "bg-muted-foreground/20")} style={{ height: `${(i + 1) * 25}%` }} />
+          <div key={i} className={cn("w-1 rounded-sm", i < strength ? "bg-emerald-400" : "bg-muted-foreground/20")} style={{ height: `${(i + 1) * 25}%` }} />
         ))}
       </div>
     );
