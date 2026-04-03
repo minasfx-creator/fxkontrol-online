@@ -38,6 +38,7 @@ const ProjectBrowser = lz(() => import('./ProjectBrowser'));
 const CatalogImportDialog = lz(() => import('./CatalogImportDialog'));
 const FullscreenCommandMenu = lz(() => import('./FullscreenCommandMenu'));
 const ExportModal = lz(() => import('./ExportModal'));
+const VVIZExportDialog = lz(() => import('./VVIZExportDialog'));
 
 
 // Export functions loaded on demand
