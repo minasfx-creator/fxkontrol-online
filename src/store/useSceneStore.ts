@@ -790,6 +790,7 @@ const DEFAULT_ENVIRONMENT: EnvironmentState = {
   showAxesHelper: true,
   positionTransformMode: 'translate',
   gridSnapResolution: 1,
+  droneRendererMode: 'instanced',
 };
 
 export const useSceneStore = create<SceneSettingsState>((set) => ({

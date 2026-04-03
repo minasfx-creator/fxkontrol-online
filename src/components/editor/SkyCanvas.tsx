@@ -1755,8 +1755,8 @@ export default function SkyCanvas() {
 
       {/* ViewportPlaybackControls removed — redundant with Timeline playback */}
 
-      {/* Fly mode HUD */}
-      {flyMode && !groundMode && (
+      {/* Fly mode HUD (desktop only — mobile uses MobileHUD) */}
+      {!isMobile && flyMode && !groundMode && (
         <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 bg-card/85 backdrop-blur-xl border border-border/25 rounded-xl px-4 py-2 font-mono text-[10px] text-muted-foreground space-y-0.5 select-none pointer-events-none">
           <div className="text-center text-[9px] font-semibold uppercase tracking-wider text-accent-foreground mb-1">✈ Fly Mode</div>
           <div className="flex gap-4">
@@ -1769,8 +1769,8 @@ export default function SkyCanvas() {
         </div>
       )}
 
-      {/* Ground operator HUD */}
-      {groundMode && (
+      {/* Ground operator HUD (desktop only) */}
+      {!isMobile && groundMode && (
         <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 bg-card/85 backdrop-blur-xl border border-border/25 rounded-xl px-4 py-2 font-mono text-[10px] text-muted-foreground space-y-0.5 select-none pointer-events-none">
           <div className="text-center text-[9px] font-semibold uppercase tracking-wider text-primary mb-1">🥾 Ground Op</div>
           <div className="flex gap-4">
