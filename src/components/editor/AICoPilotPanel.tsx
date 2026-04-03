@@ -90,7 +90,7 @@ export default function AICoPilotPanel() {
                     "flex-1 flex flex-col items-center gap-0.5 py-1 rounded transition-all",
                     active
                       ? "border border-opacity-30"
-                      : "border border-transparent hover:bg-white/[0.03]"
+                      : "border border-transparent hover:bg-muted/20"
                   )}
                   style={active ? {
                     borderColor: `${m.color}50`,
