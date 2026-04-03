@@ -120,7 +120,7 @@ export default function BluetoothPanel({ onClose }: BluetoothPanelProps) {
             <div key={dev.id} className="bg-muted/20 rounded-lg p-2 border border-border/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Bluetooth className="w-3 h-3 text-blue-400" />
+                  <Bluetooth className="w-3 h-3 text-primary" />
                   <div>
                     <p className="text-[10px] font-semibold text-foreground">{dev.name}</p>
                     <p className="text-[8px] text-muted-foreground">{dev.profile.description}</p>
