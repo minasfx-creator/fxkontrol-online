@@ -87,7 +87,6 @@ const COLOR_RATE = 10.0;    // 10 samples/sec for LED color (default)
 function applyZFlip(z: number, frame: 'standard' | 'ogl'): number {
   return frame === 'standard' ? -z : z;
 }
-const COLOR_RATE = 10.0;    // 10 samples/sec for LED color
 
 /**
  * Build agentTraversal from a list of absolute keyframes.
