@@ -238,7 +238,7 @@ export default function ConnectionManagerPanel({ fs = false, onClose }: Connecti
                       <span className="text-[7px] text-muted-foreground/40 font-mono">TX: {(conn.txBytes / 1024).toFixed(1)}KB</span>
                       <span className="text-[7px] text-muted-foreground/40 font-mono">RX: {(conn.rxBytes / 1024).toFixed(1)}KB</span>
                       {conn.latencyMs > 0 && (
-                        <span className={cn("text-[7px] font-mono", conn.latencyMs > 500 ? 'text-amber-400/60' : 'text-green-400/60')}>
+                        <span className={cn("text-[7px] font-mono", conn.latencyMs > 500 ? 'text-amber-400/60' : 'text-emerald-400/60')}>
                           {conn.latencyMs}ms
                         </span>
                       )}
