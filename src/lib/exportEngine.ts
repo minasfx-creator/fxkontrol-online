@@ -1,10 +1,12 @@
 import { type TimelineItem, type Position, type Trajectory, type DroneFormation, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { rgbToVdlString } from '@/lib/vdlQuantizer';
 
 // ─── VVIZ Drone Export (Finale 3D Spec) ─────────────────────────────
 // Generates a valid .vviz JSON file following the official Finale 3D specification:
 // https://finale3d.com/documentation/vviz-file-format/
 //
-// Coordinate system: X (right), Y (up), Z (into screen)
+// Coordinate system: VVIZ standard = X (right), Y (up), Z (forward/into screen)
+// Three.js uses Z toward viewer, so we flip Z on export: z_vviz = -z_threejs
 // Uses delta positions (dx, dy, dz) and optional heading delta (dh).
 // Supports LED Light payloads and Pyro payloads with VDL descriptions.
 
@@ -59,8 +61,16 @@ interface VVIZFile {
   defaultColorRate: number;
   timeOffsetSecs: number;
   performanceName?: string;
-  coordinateFrame: 'ogl';
+  coordinateFrame: 'standard' | 'ogl';
   performances: VVIZPerformance[];
+}
+
+export interface VVIZExportOptions {
+  positionRate?: number;
+  colorRate?: number;
+  coordinateFrame?: 'standard' | 'ogl';
+  noTrail?: boolean;
+  showName?: string;
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
@@ -70,8 +80,13 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
     : { r: 255, g: 255, b: 255 };
 }
 
-const POSITION_RATE = 2.0;  // 2 samples/sec for position
-const COLOR_RATE = 10.0;    // 10 samples/sec for LED color
+const POSITION_RATE = 2.0;  // 2 samples/sec for position (default)
+const COLOR_RATE = 10.0;    // 10 samples/sec for LED color (default)
+
+/** Apply coordinate frame transform: Three.js (Z toward viewer) → VVIZ standard (Z forward) */
+function applyZFlip(z: number, frame: 'standard' | 'ogl'): number {
+  return frame === 'standard' ? -z : z;
+}
 
 /**
  * Build agentTraversal from a list of absolute keyframes.
@@ -144,9 +159,35 @@ export function exportVVIZ(
   positions: Position[],
   trajectories: Trajectory[] = [],
   droneFormations: DroneFormation[] = [],
+  options: VVIZExportOptions = {},
 ): string {
+  const posRate = options.positionRate ?? POSITION_RATE;
+  const colRate = options.colorRate ?? COLOR_RATE;
+  const frame = options.coordinateFrame ?? 'standard';
+  const noTrail = options.noTrail ?? false;
+  const showName = options.showName ?? projectName;
   let performanceId = 0;
   const performances: VVIZPerformance[] = [];
+  const zF = (z: number) => applyZFlip(z, frame);
+
+  // ── Helper: add VDL pyro payload alongside light payload ──
+  const buildVdlPayloads = (lightPayload: VVIZLightPayload): VVIZPayload[] => {
+    const payloads: VVIZPayload[] = [lightPayload];
+    // Find dominant color from light payload for VDL string
+    const actions = lightPayload.payloadActions;
+    const dominant = actions.find(a => a.r > 0 || a.g > 0 || a.b > 0);
+    if (dominant) {
+      const vdl = rgbToVdlString(dominant.r, dominant.g, dominant.b, noTrail);
+      payloads.push({
+        id: 1,
+        type: 'Pyro',
+        eventTime: 0,
+        vdl,
+        partNumber: `VDL-${vdl.replace(/\s+/g, '-')}`,
+      });
+    }
+    return payloads;
+  };
 
   // ── Build performances from timeline drone items ──
   const droneItems = timelineItems.filter((item) => {
@@ -157,23 +198,19 @@ export function exportVVIZ(
   for (const item of droneItems) {
     const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId)!;
     const rgb = hexToRgb(effect.color);
-
-    // Home position: on the ground at the item's XZ
     const homeX = item.position.x;
     const homeY = 0;
-    const homeZ = item.position.z;
+    const homeZ = zF(item.position.z);
     const homeH = 0;
 
-    // Keyframes: launch → hold → descend
     const keyframes = [
       { t: 0, x: homeX, y: homeY, z: homeZ, h: 0 },
       { t: Math.max(0, item.startTime - 1), x: homeX, y: homeY, z: homeZ, h: 0 },
-      { t: item.startTime, x: item.position.x, y: item.position.y, z: item.position.z, h: 0 },
-      { t: item.startTime + effect.duration, x: item.position.x, y: item.position.y, z: item.position.z, h: 0 },
+      { t: item.startTime, x: item.position.x, y: item.position.y, z: zF(item.position.z), h: 0 },
+      { t: item.startTime + effect.duration, x: item.position.x, y: item.position.y, z: zF(item.position.z), h: 0 },
       { t: item.startTime + effect.duration + 1, x: homeX, y: homeY, z: homeZ, h: 0 },
     ];
 
-    // Color keyframes: off → on → off
     const colorKeyframes = [
       { t: 0, r: 0, g: 0, b: 0 },
       { t: Math.max(0, item.startTime - 0.5), r: 0, g: 0, b: 0 },
@@ -182,16 +219,11 @@ export function exportVVIZ(
       { t: item.startTime + effect.duration + 0.5, r: 0, g: 0, b: 0 },
     ];
 
+    const lp = buildLightPayload(colorKeyframes);
     performances.push({
       id: performanceId++,
-      agentDescription: {
-        homeX,
-        homeY,
-        homeZ,
-        homeH,
-        agentTraversal: buildTraversal(keyframes),
-      },
-      payloadDescription: [buildLightPayload(colorKeyframes)],
+      agentDescription: { homeX, homeY, homeZ, homeH, agentTraversal: buildTraversal(keyframes) },
+      payloadDescription: buildVdlPayloads(lp),
     });
   }
 
@@ -199,51 +231,33 @@ export function exportVVIZ(
   for (const traj of trajectories) {
     const pad = positions.find((p) => p.id === traj.positionId);
     if (!pad) continue;
-
     const rgb = hexToRgb(pad.color || '#00B4D8');
     const sortedWps = [...traj.waypoints].sort((a, b) => a.time - b.time);
-
     const homeX = pad.x;
     const homeY = pad.y || 0;
-    const homeZ = pad.z;
+    const homeZ = zF(pad.z);
     const homeH = pad.heading || 0;
 
-    // Build absolute keyframes from trajectory waypoints
     const keyframes: { t: number; x: number; y: number; z: number; h: number }[] = [
       { t: 0, x: homeX, y: homeY, z: homeZ, h: homeH },
     ];
-
     for (const wp of sortedWps) {
-      keyframes.push({
-        t: wp.time,
-        x: wp.position.x,
-        y: wp.position.y,
-        z: wp.position.z,
-        h: 0,
-      });
+      keyframes.push({ t: wp.time, x: wp.position.x, y: wp.position.y, z: zF(wp.position.z), h: 0 });
     }
-
-    // Return to pad
     const lastTime = sortedWps.length > 0 ? sortedWps[sortedWps.length - 1].time + 2 : 5;
     keyframes.push({ t: lastTime, x: homeX, y: homeY, z: homeZ, h: 0 });
 
-    // Color: on for entire trajectory, off at end
     const colorKeyframes = [
       { t: 0, ...rgb },
       { t: lastTime - 0.5, ...rgb },
       { t: lastTime, r: 0, g: 0, b: 0 },
     ];
 
+    const lp = buildLightPayload(colorKeyframes);
     performances.push({
       id: performanceId++,
-      agentDescription: {
-        homeX,
-        homeY,
-        homeZ,
-        homeH,
-        agentTraversal: buildTraversal(keyframes),
-      },
-      payloadDescription: [buildLightPayload(colorKeyframes)],
+      agentDescription: { homeX, homeY, homeZ, homeH, agentTraversal: buildTraversal(keyframes) },
+      payloadDescription: buildVdlPayloads(lp),
     });
   }
 
@@ -256,9 +270,8 @@ export function exportVVIZ(
 
     for (let d = 0; d < droneCount; d++) {
       const homeX = droneFormations[0].points[d]?.x ?? 0;
-      const homeZ = droneFormations[0].points[d]?.z ?? 0;
+      const homeZ = zF(droneFormations[0].points[d]?.z ?? 0);
 
-      // Build keyframes through all formations
       const keyframes: { t: number; x: number; y: number; z: number; h: number }[] = [
         { t: 0, x: homeX, y: 0, z: homeZ, h: 0 },
       ];
@@ -267,19 +280,13 @@ export function exportVVIZ(
         const pt = f.points[d] || { x: 0, z: 0 };
         const transEnd = f.startTime + f.transitionDuration;
         const holdEnd = transEnd + f.holdDuration;
-
-        // Start of transition (current position handled by previous keyframe)
         keyframes.push({ t: f.startTime, x: keyframes[keyframes.length - 1].x, y: keyframes[keyframes.length - 1].y, z: keyframes[keyframes.length - 1].z, h: 0 });
-        // Formed
-        keyframes.push({ t: transEnd, x: pt.x, y: f.height, z: pt.z, h: 0 });
-        // Hold end
-        keyframes.push({ t: holdEnd, x: pt.x, y: f.height, z: pt.z, h: 0 });
+        keyframes.push({ t: transEnd, x: pt.x, y: f.height, z: zF(pt.z), h: 0 });
+        keyframes.push({ t: holdEnd, x: pt.x, y: f.height, z: zF(pt.z), h: 0 });
       }
 
-      // Landing
       keyframes.push({ t: lastEnd + landingDuration, x: homeX, y: 0, z: homeZ, h: 0 });
 
-      // Color keyframes: match formation colors
       const colorKeyframes: { t: number; r: number; g: number; b: number }[] = [
         { t: 0, r: 0, g: 0, b: 0 },
       ];
@@ -291,26 +298,21 @@ export function exportVVIZ(
         colorKeyframes.push({ t: f.startTime + f.transitionDuration + f.holdDuration, r: 0, g: 0, b: 0 });
       }
 
+      const lp = buildLightPayload(colorKeyframes);
       performances.push({
         id: performanceId++,
-        agentDescription: {
-          homeX,
-          homeY: 0,
-          homeZ,
-          homeH: 0,
-          agentTraversal: buildTraversal(keyframes),
-        },
-        payloadDescription: [buildLightPayload(colorKeyframes)],
+        agentDescription: { homeX, homeY: 0, homeZ, homeH: 0, agentTraversal: buildTraversal(keyframes) },
+        payloadDescription: buildVdlPayloads(lp),
       });
     }
   }
 
   const vviz: VVIZFile = {
     version: '1.0',
-    performanceName: projectName,
-    coordinateFrame: 'ogl',
-    defaultPositionRate: POSITION_RATE,
-    defaultColorRate: COLOR_RATE,
+    performanceName: showName,
+    coordinateFrame: frame,
+    defaultPositionRate: posRate,
+    defaultColorRate: colRate,
     timeOffsetSecs: 0,
     performances,
   };

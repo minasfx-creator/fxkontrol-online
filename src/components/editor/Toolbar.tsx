@@ -38,6 +38,7 @@ const ProjectBrowser = lz(() => import('./ProjectBrowser'));
 const CatalogImportDialog = lz(() => import('./CatalogImportDialog'));
 const FullscreenCommandMenu = lz(() => import('./FullscreenCommandMenu'));
 const ExportModal = lz(() => import('./ExportModal'));
+const VVIZExportDialog = lz(() => import('./VVIZExportDialog'));
 
 
 // Export functions loaded on demand
@@ -371,6 +372,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
   const [saving, setSaving] = useState(false);
   const [commandMenuOpen, setCommandMenuOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [vvizExportOpen, setVvizExportOpen] = useState(false);
 
   useEffect(() => {
     const handler = (e: CustomEvent<{ file: File; type: any }>) => {
@@ -525,7 +527,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
           ]} />
           <DropdownMenu label="Export" icon={Download} items={[
             { label: 'Export Manager...', icon: FileBarChart, onClick: () => setExportModalOpen(true) },
-            { label: '.vviz (Finale 3D)', icon: FileJson, onClick: handleExportVVIZ },
+            { label: '.vviz (Finale 3D)', icon: FileJson, onClick: () => setVvizExportOpen(true) },
             { label: '.skyc (SkyCreator)', icon: Download, onClick: handleExportSkyc },
             { label: 'Firing CSV', icon: Download, onClick: handleExportFiringCSV },
           ]} />
@@ -660,6 +662,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
         {twinmotionOpen && <TwinmotionImporter open={twinmotionOpen} onOpenChange={(v) => { setTwinmotionOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'twinmotion' ? droppedFile.file : null} />}
         {commandMenuOpen && <FullscreenCommandMenu open={commandMenuOpen} onClose={() => setCommandMenuOpen(false)} onOpenPanel={(id) => onOpenPanel?.(id)} />}
         {exportModalOpen && <ExportModal open={exportModalOpen} onOpenChange={setExportModalOpen} />}
+        {vvizExportOpen && <VVIZExportDialog open={vvizExportOpen} onOpenChange={setVvizExportOpen} />}
       </Suspense>
     </div>
   );
