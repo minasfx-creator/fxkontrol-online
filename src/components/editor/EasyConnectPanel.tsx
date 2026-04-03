@@ -253,7 +253,7 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
             size="sm"
             onClick={handleScanAll}
             disabled={scanning}
-            className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25 border border-cyan-500/20"
+            className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary hover:bg-primary/25 border border-primary/20"
           >
             {scanning ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Search className="w-3 h-3 mr-1" />}
             SCAN ALL
