@@ -138,7 +138,7 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
           <div className="text-[9px] font-mono-code text-muted-foreground mt-1">
             Project: {currentTime.toFixed(2)}s | Offset: +{store.startTimecodeSeconds.toFixed(1)}s
           </div>
-          {(store.frameRate === 29.97 || store.frameRate === 59.94) && (
+          {store.frameRate === 29.97 && (
             <div className="text-[8px] font-mono-code text-fxk-cyan/60 mt-0.5">
               DF: {formatSMPTE(offsetTime, store.frameRate, true).text}
             </div>
