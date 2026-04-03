@@ -22,6 +22,7 @@ import { useKeybindings } from '@/hooks/useKeybindings';
 import ViewportRulers from './ViewportRulers';
 import TrajectoryPaths from './TrajectoryPaths';
 import DroneChoreography from './DroneChoreography';
+import { SwarmPlaybackEngine } from './SwarmPlaybackEngine';
 import Rack3DView from './Rack3DView';
 import BoidsVisualizer from './BoidsVisualizer';
 import CollisionAvoidanceOverlay from './CollisionAvoidanceOverlay';
@@ -162,6 +163,40 @@ let _adaptiveExposure_local = 1.2;
 let _activeBurstScan_local: ActiveBurstScanResult | null = null;
 
 // lumaTonemapScale REMOVED — PostProcessing ACES Filmic is the single tonemap pass
+
+// --- DroneRendererSwitch: conditional PBR vs Tactical engine ---
+function DroneRendererSwitch() {
+  const mode = useSceneStore(s => s.environment.droneRendererMode);
+  const { droneFormations, currentTime } = useProjectStore();
+
+  // Bridge formations → SwarmAgent format (always computed to respect hooks rules)
+  const agents = React.useMemo(() => {
+    if (!droneFormations.length) return [];
+    const count = droneFormations[0].droneCount;
+    return Array.from({ length: count }, (_, i) => ({
+      id: i,
+      path: droneFormations.flatMap(f => {
+        const p = f.points[i];
+        if (!p) return [];
+        return [{ x: p.x, y: f.height - p.z, z: 0, time: f.startTime + f.transitionDuration }];
+      }),
+      colors: droneFormations.map(f => {
+        const hex = f.color || '#ffffff';
+        const r = parseInt(hex.slice(1, 3), 16) / 255;
+        const g = parseInt(hex.slice(3, 5), 16) / 255;
+        const b = parseInt(hex.slice(5, 7), 16) / 255;
+        return { r, g, b, time: f.startTime, duration: f.transitionDuration + f.holdDuration };
+      }),
+      duration: droneFormations[droneFormations.length - 1].startTime + droneFormations[droneFormations.length - 1].transitionDuration + droneFormations[droneFormations.length - 1].holdDuration,
+    }));
+  }, [droneFormations]);
+
+  if (mode === 'swarm') {
+    if (!agents.length) return null;
+    return <SwarmPlaybackEngine agents={agents} manualTime={currentTime} isPlaying={false} />;
+  }
+  return <DroneChoreography />;
+}
 
 // --- Playback clock (wired through DeterministicClock → LockstepEngine → ExecutionBridge) ---
 import { deterministicClock } from '@/core/time/deterministicClock';
@@ -1535,7 +1570,7 @@ export default function SkyCanvas() {
         {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
         {!google3DTilesEnabled && !isLowTierMobile && <PyroSafetyZones />}
-        <DroneChoreography />
+        <DroneRendererSwitch />
         {!isMobile && <BoidsVisualizer />}
         {!isMobile && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
         <Suspense fallback={null}>
@@ -1609,17 +1644,19 @@ export default function SkyCanvas() {
         />
       )}
 
-      {/* ═══ VIEWPORT CONFIG — Unified menu ═══ */}
-      <ViewportConfigMenu
-        activePreset={activePreset}
-        freeLook={freeLook}
-        flyMode={flyMode}
-        groundMode={groundMode}
-        onPresetChange={(id) => { setActivePreset(id); setFreeLook(false); }}
-        onFreeLookToggle={() => { setFreeLook(!freeLook); if (flyMode) setFlyMode(false); if (groundMode) setGroundMode(false); }}
-        onFlyModeToggle={() => { setFlyMode(!flyMode); if (!flyMode) { setFreeLook(false); setGroundMode(false); } }}
-        onGroundModeToggle={() => { setGroundMode(!groundMode); if (!groundMode) { setFlyMode(false); setFreeLook(false); } }}
-      />
+      {/* ═══ VIEWPORT CONFIG — Unified menu (desktop only) ═══ */}
+      {!isMobile && (
+        <ViewportConfigMenu
+          activePreset={activePreset}
+          freeLook={freeLook}
+          flyMode={flyMode}
+          groundMode={groundMode}
+          onPresetChange={(id) => { setActivePreset(id); setFreeLook(false); }}
+          onFreeLookToggle={() => { setFreeLook(!freeLook); if (flyMode) setFlyMode(false); if (groundMode) setGroundMode(false); }}
+          onFlyModeToggle={() => { setFlyMode(!flyMode); if (!flyMode) { setFreeLook(false); setGroundMode(false); } }}
+          onGroundModeToggle={() => { setGroundMode(!groundMode); if (!groundMode) { setFlyMode(false); setFreeLook(false); } }}
+        />
+      )}
 
       {/* ═══ TACTICAL DOCK — Editing tools ═══ */}
       {!isMobile && <TacticalDock />}
@@ -1752,8 +1789,8 @@ export default function SkyCanvas() {
 
       {/* ViewportPlaybackControls removed — redundant with Timeline playback */}
 
-      {/* Fly mode HUD */}
-      {flyMode && !groundMode && (
+      {/* Fly mode HUD (desktop only — mobile uses MobileHUD) */}
+      {!isMobile && flyMode && !groundMode && (
         <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 bg-card/85 backdrop-blur-xl border border-border/25 rounded-xl px-4 py-2 font-mono text-[10px] text-muted-foreground space-y-0.5 select-none pointer-events-none">
           <div className="text-center text-[9px] font-semibold uppercase tracking-wider text-accent-foreground mb-1">✈ Fly Mode</div>
           <div className="flex gap-4">
@@ -1766,8 +1803,8 @@ export default function SkyCanvas() {
         </div>
       )}
 
-      {/* Ground operator HUD */}
-      {groundMode && (
+      {/* Ground operator HUD (desktop only) */}
+      {!isMobile && groundMode && (
         <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 bg-card/85 backdrop-blur-xl border border-border/25 rounded-xl px-4 py-2 font-mono text-[10px] text-muted-foreground space-y-0.5 select-none pointer-events-none">
           <div className="text-center text-[9px] font-semibold uppercase tracking-wider text-primary mb-1">🥾 Ground Op</div>
           <div className="flex gap-4">
