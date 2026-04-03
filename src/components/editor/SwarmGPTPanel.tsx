@@ -1109,6 +1109,23 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
+        {/* Telemetry Sparklines — FUI trend lines */}
+        {droneFormations.length > 0 && (
+          <div className="space-y-1.5">
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Fleet Trends</span>
+            {[
+              { label: 'Battery', data: Array.from({ length: 20 }, (_, i) => 95 - i * 3.2 + Math.random() * 5) },
+              { label: 'Signal', data: Array.from({ length: 20 }, (_, i) => 88 + Math.sin(i * 0.5) * 8 + Math.random() * 3) },
+              { label: 'GPS Acc', data: Array.from({ length: 20 }, (_, i) => 12 + Math.cos(i * 0.3) * 3 + Math.random() * 2) },
+            ].map(({ label, data }) => (
+              <div key={label} className="flex items-center gap-2">
+                <span className="text-[8px] text-muted-foreground w-10 shrink-0">{label}</span>
+                <SparklineSVG data={data} />
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* 2D Preview of last generation */}
         {lastGeneratedPoints.length > 0 && (
           <div className="space-y-1">
