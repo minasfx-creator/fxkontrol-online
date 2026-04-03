@@ -34,7 +34,7 @@ export default function JoiStatusMonitor() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  const droneCount = positions.filter(p => p.type === 'drone').length;
+  const droneCount = positions.filter(p => p.type === 'drone-pad').length;
   const cueCount = timelineItems.length;
 
   return (
