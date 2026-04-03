@@ -1146,6 +1146,7 @@ export default function SkyCanvas() {
   const [activePreset, setActivePreset] = useState('free');
   const [freeLook, setFreeLook] = useState(false);
   const [flyMode, setFlyMode] = useState(false);
+  const [groundMode, setGroundMode] = useState(false);
   const [flySpeed, setFlySpeed] = useState(15);
   const flySpeedCb = useCallback((s: number) => setFlySpeed(Math.round(s)), []);
   const [isFullscreen, setIsFullscreen] = useState(false);
