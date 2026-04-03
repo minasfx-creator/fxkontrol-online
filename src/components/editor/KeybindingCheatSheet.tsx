@@ -21,9 +21,9 @@ export default function KeybindingCheatSheet() {
   const categories = [...new Set(KEYBINDING_LIST.map(k => k.category))];
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/60 backdrop-blur-sm" onClick={() => setOpen(false)}>
       <div
-        className="bg-card/95 backdrop-blur-xl border border-border/30 rounded-2xl shadow-2xl shadow-black/50 w-[420px] max-h-[80vh] overflow-y-auto"
+        className="bg-card/95 backdrop-blur-xl border border-border/30 rounded-2xl shadow-2xl w-[420px] max-h-[80vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
