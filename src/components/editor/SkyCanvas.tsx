@@ -1643,8 +1643,7 @@ export default function SkyCanvas() {
       {!isMobile && <SelectionStatusBar />}
       {!isMobile && <AlignmentTools />}
 
-      {/* ═══ Finale 3D Viewport Tools ═══ */}
-      {!isMobile && <FinaleToolbar />}
+      {/* FinaleToolbar replaced by TacticalDock */}
       {!isMobile && showDebugOverlay && (
         <div className="absolute bottom-20 left-3 z-40">
           <StressTestButton />
