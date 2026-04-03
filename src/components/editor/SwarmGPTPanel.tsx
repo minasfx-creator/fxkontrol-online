@@ -95,6 +95,20 @@ function mapPyroType(type: string): string {
 
 /* ── Mini 2D Preview ──────────────────────────────────────── */
 
+function SparklineSVG({ data }: { data: number[] }) {
+  if (data.length < 2) return null;
+  const w = 80, h = 18;
+  const min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * (h - 2) - 1}`);
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="text-fxk-cyan" style={{ filter: 'drop-shadow(0 0 3px currentColor)' }}>
+      <path d={`M${pts.join(' L')}`} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/* ── Mini 2D Preview ──────────────────────────────────────── */
+
 function MiniPreview({ points }: { points: { x: number; z: number }[] }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
