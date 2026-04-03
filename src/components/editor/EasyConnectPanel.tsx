@@ -317,7 +317,7 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
                                 key={i}
                                 className={cn(
                                   "w-[3px] rounded-sm transition-colors",
-                                  i <= bars ? 'bg-emerald-400' : 'bg-zinc-700'
+                                  i <= bars ? 'bg-emerald-400' : 'bg-muted-foreground/20'
                                 )}
                                 style={{ height: `${i * 25}%` }}
                               />
