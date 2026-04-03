@@ -1,84 +1,79 @@
 
 
-## Plano: Resolução de Sobreposições Desktop — Mapa Completo de Overlays
+## Diagnóstico: Relatório Técnico vs. Estado Real do Codebase
 
-### Conflitos Identificados
+O relatório é extenso mas muitas das suas recomendações **já estão implementadas** ou são irrelevantes para a arquitetura atual. Aqui está o mapeamento preciso:
 
-Após auditoria de todos os overlays absolutos no SkyCanvas e componentes filhos:
+### O que JÁ EXISTE (superior ao proposto)
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│  TOP LEFT                    TOP CENTER        TOP RIGHT│
-│  ┌─────────────┐             TelemetryBar      ┌──────┐│
-│  │ViewportCfg  │ z-30        z-30              │Mini- ││
-│  │AICoPilot    │ z-40 ⚠️                       │Dock  ││
-│  └─────────────┘                               │z-20  ││
-│                                                └──────┘│
-│  top-14 left-3              top-14 center    right-14  │
-│  CameraBookmarks            AlignmentTools   JoiStatus │
-│  (no z)                     z-50             z-30      │
-│                             SiteModelToolbar ViewGeoTls│
-│                             z-40 ⚠️          z-30 ⚠️   │
-│                                                        │
-│  LEFT CENTER                                           │
-│  TacticalDock z-30                                     │
-│                                                        │
-│  BOTTOM                                                │
-│  bottom-28 center: Fly/Ground HUD z-40                 │
-│  bottom-24 center: GoogleTilesLoading z-40             │
-│  bottom-20 left-3: StressTest z-40                     │
-│  bottom-14 left-3: SelectionStatusBar (no z)           │
-│  bottom-3 left-3: ViewportTerminal z-10                │
-│  bottom-3 right-3: Debug info                          │
-└─────────────────────────────────────────────────────────┘
-```
-
-### 5 Conflitos a Resolver
-
-| # | Conflito | Severidade |
+| Recomendação do Relatório | Estado Atual | Ficheiro |
 |---|---|---|
-| 1 | **AICoPilotOverlay** (`top-3 left-3 z-40`) sobrepõe **ViewportConfigMenu** (`top-3 left-3 z-30`) | 🔴 Crítico |
-| 2 | **ViewportGeoTools** (`top-3 right-14 z-30`) sobrepõe **JoiStatusMonitor** (`top-3 right-14 z-30`) | 🔴 Crítico |
-| 3 | **AlignmentTools** (`top-14 center z-50`) e **SiteModelTransformToolbar** (`top-14 center z-40`) podem aparecer juntos | 🟡 Médio |
-| 4 | **PerformanceHUD** button (`top-3 right-3`) conflita com **Mini-Dock** (`top-3 right-3`) quando debug está ativo | 🟡 Médio |
-| 5 | **SelectionStatusBar** (`bottom-14 left-3`) pode sobrepor a parte inferior do **TacticalDock** (left-3, centrado verticalmente) | 🟢 Menor |
+| InstancedMesh (abolir mesh iterativo) | **Implementado** — 6x InstancedMesh PBR + tri-tier LOD | `InstancedDroneSwarm.tsx`, `droneLOD.ts` |
+| Web Worker para VVIZ (off-main-thread) | **Implementado** — ArrayBuffer + streaming por drone via postMessage | `vvizWorker.ts` (280 linhas) |
+| Tabela VDL 25 cores com impliesTrail | **Implementado** — 25 cores canónicas + extensões | `vdlParser.ts` (linhas 92-136) |
+| useRef + useFrame (sem setState no loop) | **Implementado** — em ambos os renderers | `InstancedDroneSwarm.tsx`, `SwarmPlaybackEngine.tsx` |
+| instanceMatrix.needsUpdate + instanceColor | **Implementado** — em todos os InstancedMesh | Múltiplos ficheiros |
+| Zero-GC com objetos estáticos | **Implementado** — `_O`, `_C`, `_M` pré-alocados | `SwarmPlaybackEngine.tsx`, `droneLOD.ts` |
+
+### O que NÃO EXISTE (lacunas reais)
+
+| Lacuna | Impacto | Complexidade |
+|---|---|---|
+| **1. RGB→VDL Euclidean Quantizer para exportação** | Cores perdem-se ao exportar para Finale 3D | Média |
+| **2. Streaming JSON Parser no Worker** (atualmente usa `JSON.parse()` monolítico) | OOM em ficheiros VVIZ >100MB com 2000+ drones | Alta |
+| **3. Coordinate frame transform (VVIZ→Three.js Z-flip)** | Trajetórias espelhadas em Z quando `coordinateFrame` difere | Baixa |
+| **4. VVIZ Export pipeline** (não existe nenhum exportador) | Impossível exportar coreografias para Finale 3D | Alta |
+
+### Plano de Implementação — 3 Módulos Cirúrgicos
 
 ---
 
-### Implementação
+**Módulo 1: RGB→VDL Euclidean Quantizer** (`src/lib/vdlQuantizer.ts`)
 
-**1. Mover AICoPilotOverlay para não conflitar com ViewportConfigMenu**
+Criar função `rgbToNearestVdl(r, g, b)` que:
+- Importa a tabela `VDL_COLORS_TABLE` do `vdlParser.ts` existente
+- Calcula distância Euclidiana no espaço RGB normalizado (0-1) contra as 25 cores canónicas
+- Retorna `{ name: string, hex: string, impliesTrail: boolean }`
+- Função `rgbToVdlString(r, g, b, noTrail?: boolean)` que gera a string VDL completa (e.g., `"Gold No Trail"`)
 
-Em `AICoPilotOverlay.tsx`, mover de `top-3 left-3` para `top-12 left-3` (abaixo do ViewportConfigMenu). Mantém z-40.
-
-**2. Mover ViewportGeoTools para não conflitar com JoiStatusMonitor**
-
-Em `ViewportGeoTools.tsx`, mover de `top-3 right-14` para `top-12 right-3` (abaixo do Mini-Dock). Ajustar layout para não colidir com o Mini-Dock vertical.
-
-**3. Evitar sobreposição AlignmentTools vs SiteModelTransformToolbar**
-
-Ambos são condicionais (AlignmentTools aparece quando há seleção múltipla, SiteModelToolbar quando há site model selecionado). Adicionar guard: se `selectedSiteModelId` estiver ativo, esconder AlignmentTools (ambas não devem estar ativas simultaneamente). Se por algum motivo ambas estiverem, mover AlignmentTools para `top-24` quando SiteModelToolbar estiver visível.
-
-**4. Mover PerformanceHUD dentro do Mini-Dock**
-
-O botão de PerformanceHUD (`top-3 right-3`) conflita com o Mini-Dock que já tem o `RenderDebugToggle`. Como o Mini-Dock já contém o toggle de debug, o PerformanceHUD expandido deve renderizar abaixo do Mini-Dock em vez de `top-10 right-3` → usar `top-3` com offset calculado baseado na altura do Mini-Dock. Alternativa mais simples: mover o panel expandido do PerformanceHUD para `top-3 right-16` (à esquerda do Mini-Dock).
-
-**5. Ajustar SelectionStatusBar para evitar TacticalDock**
-
-Mover SelectionStatusBar de `bottom-14 left-3` para `bottom-14 left-16` (à direita do TacticalDock que tem ~44px de largura).
+Expor ambas para uso futuro pelo exportador VVIZ e por qualquer componente que precise mapear cores arbitrárias para o vocabulário Finale 3D.
 
 ---
 
-### Ficheiros a modificar: 5
+**Módulo 2: Streaming JSON no vvizWorker** (modificar `src/lib/vvizWorker.ts`)
 
-1. **`src/components/editor/AICoPilotOverlay.tsx`** — `top-3 left-3` → `top-12 left-3`
-2. **`src/components/editor/ViewportGeoTools.tsx`** — `top-3 right-14` → `top-12 right-3`
-3. **`src/components/editor/AlignmentTools.tsx`** — adicionar guard contra SiteModelTransformToolbar
-4. **`src/components/editor/PerformanceHUD.tsx`** — mover panel expandido para `right-16` (à esquerda do Mini-Dock)
-5. **`src/components/editor/SelectionStatusBar.tsx`** — `left-3` → `left-16` para evitar TacticalDock
+Substituir o `JSON.parse()` monolítico (linha 201) por parsing incremental:
+- Usar um SAX-style JSON tokenizer leve (implementado inline, ~80 linhas, sem dependência externa) que processa o ArrayBuffer em chunks de 64KB
+- Emite cada `performance` individual assim que o `}` de fecho é detectado
+- Mantém memória O(1) — cada drone é processado e enviado via `postMessage` antes de avançar
+- Fallback: se o ficheiro for <5MB, manter `JSON.parse()` como fast-path (já funciona bem para shows pequenos)
+
+---
+
+**Módulo 3: Coordinate Frame Guard** (modificar `src/lib/vvizWorker.ts`)
+
+Na função `processPerf()` (linha 115), após acumular `x += s.dx; y += s.dy; z += s.dz`:
+- Ler `coordinateFrame` do cabeçalho VVIZ
+- Se ausente ou `"standard"`: aplicar `z = -z` para converter de VVIZ (Z-forward) para Three.js (Z-toward-viewer)
+- Se `"threejs"` ou `"opengl"`: sem transformação
+- Aplicar a mesma lógica ao `homeZ`
+
+---
+
+### Ficheiros a criar/modificar
+
+1. **Criar** `src/lib/vdlQuantizer.ts` — Quantizador Euclidiano RGB→VDL
+2. **Modificar** `src/lib/vvizWorker.ts` — Streaming parser + coordinate frame guard
+
+### Fora de Escopo (para iteração futura)
+- **VVIZ Export pipeline completo** — requer decisão de formato e UI de exportação
+- **TUS resumable upload** — requer mudança no `VVIZImporter.tsx` e integração com Supabase Storage
+- **Edge Function streaming** — o Worker atual no frontend já resolve o problema de parsing; mover para Edge Function é uma otimização de segundo nível
 
 ### Proteções
-- Nenhuma alteração funcional — apenas posicionamento CSS
-- Stores Zustand, APIs, renderers intactos
-- Mobile guards existentes mantidos
+- `InstancedDroneSwarm.tsx` — intacto
+- `SwarmPlaybackEngine.tsx` — intacto
+- `vdlParser.ts` — intacto (apenas importado pelo novo quantizer)
+- Zustand stores — intactos
+- Google APIs — intactas
 
