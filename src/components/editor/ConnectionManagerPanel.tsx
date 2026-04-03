@@ -44,7 +44,7 @@ const TRANSPORT_LABELS: Record<TransportType, string> = {
 
 function TransportRow({ t, onRemove, fs }: { t: TransportStatus; onRemove: (id: string) => void; fs: boolean }) {
   const Icon = TRANSPORT_ICONS[t.type] || Cable;
-  const stateColor = t.state === 'connected' ? 'text-green-400' : t.state === 'connecting' || t.state === 'reconnecting' ? 'text-amber-400' : 'text-muted-foreground/30';
+  const stateColor = t.state === 'connected' ? 'text-emerald-400' : t.state === 'connecting' || t.state === 'reconnecting' ? 'text-amber-400' : 'text-muted-foreground/30';
 
   return (
     <div className={cn("flex items-center gap-2 border-t border-border/10", fs ? "px-3 py-1.5" : "px-2 py-1")}>
