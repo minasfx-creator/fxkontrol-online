@@ -219,7 +219,7 @@ export default function BLEDeviceScanner({ context, compact = false, simulation 
                   <Bluetooth className={cn("w-4 h-4", dev.connected ? "text-emerald-400" : theme.accent)} />
                 </div>
                 <span className={cn(
-                  "absolute -bottom-1 -right-1 text-[6px] font-bold px-1 rounded text-white",
+                  "absolute -bottom-1 -right-1 text-[6px] font-bold px-1 rounded text-primary-foreground",
                   TYPE_COLORS[dev.type] || 'bg-muted'
                 )}>
                   {dev.type}
