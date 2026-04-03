@@ -1,10 +1,12 @@
 import { type TimelineItem, type Position, type Trajectory, type DroneFormation, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { rgbToVdlString } from '@/lib/vdlQuantizer';
 
 // ─── VVIZ Drone Export (Finale 3D Spec) ─────────────────────────────
 // Generates a valid .vviz JSON file following the official Finale 3D specification:
 // https://finale3d.com/documentation/vviz-file-format/
 //
-// Coordinate system: X (right), Y (up), Z (into screen)
+// Coordinate system: VVIZ standard = X (right), Y (up), Z (forward/into screen)
+// Three.js uses Z toward viewer, so we flip Z on export: z_vviz = -z_threejs
 // Uses delta positions (dx, dy, dz) and optional heading delta (dh).
 // Supports LED Light payloads and Pyro payloads with VDL descriptions.
 
