@@ -3,7 +3,7 @@
  * Consolidates Camera Presets, Navigation Mode, Display Options
  */
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Camera, ScanEye, Navigation, ChevronDown, Grid3X3, Ruler, Eye, Footprints, Cpu, Zap } from 'lucide-react';
+import { Camera, ScanEye, Navigation, ChevronDown, Grid3X3, Ruler, Eye, Footprints, Cpu, Zap, Crosshair } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSceneStore } from '@/store/useSceneStore';
 import { CAMERA_PRESETS } from './skycanvas/sharedState';
@@ -174,6 +174,17 @@ export default function ViewportConfigMenu({
             <Grid3X3 className="w-3.5 h-3.5" />
             <span>Axes Helper</span>
             {env.showAxesHelper && <span className="ml-auto text-[8px] text-primary">ON</span>}
+          </button>
+          <button
+            onClick={() => updateEnvironment({ showHUDCrosshairs: !env.showHUDCrosshairs })}
+            className={cn(
+              "w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-all hover:bg-muted/30",
+              env.showHUDCrosshairs ? "text-primary" : "text-muted-foreground"
+            )}
+          >
+            <Crosshair className="w-3.5 h-3.5" />
+            <span>HUD Crosshairs</span>
+            {env.showHUDCrosshairs && <span className="ml-auto text-[8px] text-primary">ON</span>}
           </button>
 
           <div className="h-px bg-border/20 mx-2 my-1" />

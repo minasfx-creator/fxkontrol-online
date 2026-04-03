@@ -13,7 +13,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "3d-tiles-renderer": "^0.4.4",
     "@capacitor/android": "^8.2.0",
     "@capacitor/cli": "^8.2.0",
     "@capacitor/core": "^8.2.0",
@@ -56,6 +55,7 @@
     "@types/three": "^0.170.0",
     "@vitejs/plugin-react": "4.3.4",
     "@vitejs/plugin-react-swc": "3.11.0",
+    "3d-tiles-renderer": "^0.4.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

@@ -43,6 +43,7 @@ import SelectionStatusBar from './SelectionStatusBar';
 import AICoPilotOverlay from './AICoPilotOverlay';
 import TelemetryBar from './TelemetryBar';
 import GoogleTilesLoadingOverlay from './GoogleTilesLoadingOverlay';
+import HUDCrosshairs from './HUDCrosshairs';
 import { cn } from '@/lib/utils';
 import {
   CometEffect,
@@ -1773,6 +1774,9 @@ export default function SkyCanvas() {
 
       {/* AI CoPilot Overlay */}
       <AICoPilotOverlay />
+
+      {/* HUD Crosshairs AR Overlay */}
+      <HUDCrosshairs />
 
       {/* ═══ Debug tools — hidden by default, toggle with Ctrl+Shift+D ═══ */}
       {!isMobile && showDebugOverlay && <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />}

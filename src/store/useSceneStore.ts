@@ -715,6 +715,7 @@ export interface EnvironmentState {
   positionTransformMode: 'translate' | 'rotate' | 'scale';  // Gizmo mode for position pins
   gridSnapResolution: number;    // Snap grid cell size in meters (0.1 – 10)
   droneRendererMode: 'instanced' | 'swarm';  // instanced = PBR/LOD, swarm = tactical engine
+  showHUDCrosshairs: boolean;    // AR-style HUD crosshairs overlay
 }
 
 export interface CameraBookmark {
@@ -791,6 +792,7 @@ const DEFAULT_ENVIRONMENT: EnvironmentState = {
   positionTransformMode: 'translate',
   gridSnapResolution: 1,
   droneRendererMode: 'instanced',
+  showHUDCrosshairs: false,
 };
 
 export const useSceneStore = create<SceneSettingsState>((set) => ({

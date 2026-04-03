@@ -1,9 +1,9 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useMAVLinkStore } from '@/store/useMAVLinkStore';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { X, Activity, Wifi, WifiOff, Battery, Gauge, Navigation, AlertTriangle, ChevronDown } from 'lucide-react';
+import { X, Activity, Wifi, WifiOff, Battery, Navigation, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DroneStatus {
@@ -31,10 +31,9 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
 
   const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
 
-  // Generate simulated telemetry for all drones
   const telemetry: DroneStatus[] = useMemo(() => {
     const statuses: DroneStatus[] = [];
-    for (let i = 0; i < Math.min(droneCount, 200); i++) {
+    for (let i = 0; i < Math.min(droneCount, 2000); i++) {
       const mavDrone = drones.get(i);
       const batteryBase = 95 - (currentTime / 60) * 8 - Math.random() * 5;
       const alerts: string[] = [];
@@ -67,6 +66,41 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
     : 0;
 
   const selected = selectedDrone !== null ? telemetry.find(d => d.id === selectedDrone) : null;
+
+  // Grid row renderer for react-window
+  const COLS = 4;
+  const ROW_HEIGHT = 35;
+  const rowCount = Math.ceil(telemetry.length / COLS);
+
+  const GridRow = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => {
+    const startIdx = index * COLS;
+    return (
+      <div style={style} className="flex gap-1 px-1">
+        {Array.from({ length: COLS }, (_, col) => {
+          const i = startIdx + col;
+          if (i >= telemetry.length) return <div key={col} className="flex-1" />;
+          const d = telemetry[i];
+          return (
+            <button
+              key={d.id}
+              onClick={() => { setSelectedDrone(d.id); setViewMode('detail'); }}
+              className={cn(
+                "flex-1 rounded p-1 text-[8px] font-mono transition-colors border text-center",
+                d.alerts.length > 0
+                  ? 'bg-destructive/10 border-destructive/30 text-destructive'
+                  : d.battery < 40
+                    ? 'bg-warning/10 border-warning/30 text-warning'
+                    : 'bg-surface-1/60 border-border/30 text-foreground hover:bg-surface-2/60'
+              )}
+            >
+              <div className="font-bold">#{d.id + 1}</div>
+              <div>{d.battery.toFixed(0)}%</div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }, [telemetry]);
 
   return (
     <div className="h-full flex flex-col bg-surface-0 border-l border-border/50">
@@ -127,29 +161,17 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-hidden p-1">
         {viewMode === 'grid' ? (
-          <div className="grid grid-cols-4 gap-1">
-            {telemetry.slice(0, 100).map(d => (
-              <button
-                key={d.id}
-                onClick={() => { setSelectedDrone(d.id); setViewMode('detail'); }}
-                className={cn(
-                  "rounded p-1 text-[8px] font-mono transition-colors border",
-                  d.alerts.length > 0
-                    ? 'bg-red-500/10 border-red-500/30 text-red-400'
-                    : d.battery < 40
-                      ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
-                      : 'bg-surface-1/60 border-border/30 text-foreground hover:bg-surface-2/60'
-                )}
-              >
-                <div className="font-bold">#{d.id + 1}</div>
-                <div>{d.battery.toFixed(0)}%</div>
-              </button>
-            ))}
+          <div className="h-full overflow-y-auto custom-scrollbar">
+            <div className="space-y-1">
+              {Array.from({ length: rowCount }, (_, rowIdx) => (
+                <GridRow key={rowIdx} index={rowIdx} style={{}} />
+              ))}
+            </div>
           </div>
         ) : selected ? (
-          <div className="space-y-3">
+          <div className="space-y-3 overflow-y-auto h-full p-1">
             <div className="flex items-center justify-between">
               <button onClick={() => setViewMode('grid')} className="text-[10px] text-primary hover:underline">
                 ← Back to grid
@@ -181,7 +203,7 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-3 bg-surface-2 rounded-full overflow-hidden">
                   <div
-                    className={cn("h-full rounded-full transition-all", 
+                    className={cn("h-full rounded-full transition-all",
                       selected.battery > 50 ? 'bg-green-500' : selected.battery > 25 ? 'bg-yellow-500' : 'bg-red-500'
                     )}
                     style={{ width: `${selected.battery}%` }}
@@ -222,12 +244,12 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
 
             {/* Alerts */}
             {selected.alerts.length > 0 && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-md p-2 space-y-1">
-                <div className="flex items-center gap-1.5 text-[10px] font-semibold text-red-400">
+              <div className="bg-destructive/10 border border-destructive/30 rounded-md p-2 space-y-1">
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold text-destructive">
                   <AlertTriangle className="w-3 h-3" /> Alerts
                 </div>
                 {selected.alerts.map((a, i) => (
-                  <div key={i} className="text-[9px] text-red-300">{a}</div>
+                  <div key={i} className="text-[9px] text-destructive/80">{a}</div>
                 ))}
               </div>
             )}
