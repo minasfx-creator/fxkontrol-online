@@ -22,6 +22,7 @@ import { useKeybindings } from '@/hooks/useKeybindings';
 import ViewportRulers from './ViewportRulers';
 import TrajectoryPaths from './TrajectoryPaths';
 import DroneChoreography from './DroneChoreography';
+import { SwarmPlaybackEngine } from './SwarmPlaybackEngine';
 import Rack3DView from './Rack3DView';
 import BoidsVisualizer from './BoidsVisualizer';
 import CollisionAvoidanceOverlay from './CollisionAvoidanceOverlay';
