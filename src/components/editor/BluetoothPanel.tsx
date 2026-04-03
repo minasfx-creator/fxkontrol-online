@@ -76,7 +76,7 @@ export default function BluetoothPanel({ onClose }: BluetoothPanelProps) {
     <div className="p-3 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Bluetooth className="w-4 h-4 text-blue-400" />
+          <Bluetooth className="w-4 h-4 text-primary" />
           <h3 className="text-xs font-black uppercase tracking-wider text-foreground">Bluetooth BLE</h3>
         </div>
         <Badge variant="secondary" className="text-[8px]">
