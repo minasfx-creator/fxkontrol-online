@@ -579,6 +579,105 @@ function FlyControls({ onSpeedChange }: { onSpeedChange?: (speed: number) => voi
   return null;
 }
 
+/** GroundControls — WASD walk mode with altitude locked to terrain + 1.7m */
+function GroundControls({ onSpeedChange }: { onSpeedChange?: (speed: number) => void }) {
+  const { camera, gl, scene } = useThree();
+  const keys = useRef<Record<string, boolean>>({});
+  const euler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
+  const speed = useRef(5);
+  const locked = useRef(false);
+  const lastTerrainY = useRef<number | null>(null);
+  const raycastFn = useRef<typeof import('@/core/geo/terrainQuery').raycastTerrainLocal | null>(null);
+  const SENSITIVITY = 0.002;
+  const EYE_HEIGHT = 1.7;
+  const PITCH_LIMIT = Math.PI * 0.44; // ±80°
+
+  useEffect(() => {
+    import('@/core/geo/terrainQuery').then(mod => {
+      raycastFn.current = mod.raycastTerrainLocal;
+    });
+  }, []);
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+
+    const onPointerLockChange = () => {
+      locked.current = document.pointerLockElement === canvas;
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!locked.current) return;
+      euler.current.setFromQuaternion(camera.quaternion);
+      euler.current.y -= e.movementX * SENSITIVITY;
+      euler.current.x -= e.movementY * SENSITIVITY;
+      euler.current.x = THREE.MathUtils.clamp(euler.current.x, -PITCH_LIMIT, PITCH_LIMIT);
+      camera.quaternion.setFromEuler(euler.current);
+    };
+    const onKeyDown = (e: KeyboardEvent) => { keys.current[e.code] = true; };
+    const onKeyUp = (e: KeyboardEvent) => { keys.current[e.code] = false; };
+    const onWheel = (e: WheelEvent) => {
+      if (!locked.current) return;
+      e.preventDefault();
+      speed.current = THREE.MathUtils.clamp(speed.current * (e.deltaY > 0 ? 0.85 : 1.18), 0.5, 50);
+      onSpeedChange?.(speed.current);
+    };
+
+    canvas.requestPointerLock();
+    document.addEventListener('pointerlockchange', onPointerLockChange);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+
+    return () => {
+      document.removeEventListener('pointerlockchange', onPointerLockChange);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+      canvas.removeEventListener('wheel', onWheel);
+      if (document.pointerLockElement === canvas) document.exitPointerLock();
+      keys.current = {};
+    };
+  }, [camera, gl, onSpeedChange]);
+
+  const dir = useRef(new THREE.Vector3());
+  const right = useRef(new THREE.Vector3());
+  const flatDir = useRef(new THREE.Vector3());
+
+  useFrame((_, delta) => {
+    if (!locked.current) return;
+    const k = keys.current;
+    const sprint = k['ShiftLeft'] || k['ShiftRight'] ? 2.5 : 1;
+    const move = speed.current * sprint * delta;
+
+    // Get camera forward projected onto XZ plane (no vertical movement)
+    camera.getWorldDirection(dir.current);
+    flatDir.current.set(dir.current.x, 0, dir.current.z).normalize();
+    right.current.crossVectors(flatDir.current, camera.up).normalize();
+
+    if (k['KeyW'] || k['ArrowUp']) camera.position.addScaledVector(flatDir.current, move);
+    if (k['KeyS'] || k['ArrowDown']) camera.position.addScaledVector(flatDir.current, -move);
+    if (k['KeyA'] || k['ArrowLeft']) camera.position.addScaledVector(right.current, -move);
+    if (k['KeyD'] || k['ArrowRight']) camera.position.addScaledVector(right.current, move);
+
+    // Raycast terrain and lock altitude
+    if (raycastFn.current) {
+      const terrainY = raycastFn.current(camera.position.x, camera.position.z, scene);
+      if (terrainY !== null) {
+        lastTerrainY.current = terrainY;
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, terrainY + EYE_HEIGHT, 0.15);
+      } else if (lastTerrainY.current !== null) {
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, lastTerrainY.current + EYE_HEIGHT, 0.15);
+      } else {
+        camera.position.y = Math.max(5, camera.position.y);
+      }
+    } else {
+      camera.position.y = Math.max(5, camera.position.y);
+    }
+  });
+
+  return null;
+}
+
 function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: { targetPosition: [number, number, number]; targetLookAt: [number, number, number]; freeLook: boolean; flyMode: boolean }) {
   const { camera } = useThree();
   const controlsRef = useRef<any>(null);
