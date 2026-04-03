@@ -289,7 +289,7 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
                   className={cn(
                     "flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all border border-transparent",
                     device.status === 'online'
-                      ? "hover:bg-white/[0.03] hover:border-white/[0.06]"
+                      ? "hover:bg-muted/30 hover:border-border/30"
                       : "opacity-60 hover:opacity-80"
                   )}
                 >
