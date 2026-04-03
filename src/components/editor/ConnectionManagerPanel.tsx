@@ -50,7 +50,7 @@ function TransportRow({ t, onRemove, fs }: { t: TransportStatus; onRemove: (id: 
     <div className={cn("flex items-center gap-2 border-t border-border/10", fs ? "px-3 py-1.5" : "px-2 py-1")}>
       <Icon className={cn("w-3 h-3", stateColor)} />
       <span className="text-[8px] font-mono text-foreground/70 flex-1">{TRANSPORT_LABELS[t.type]}</span>
-      <Badge variant="outline" className={cn("text-[6px] h-3 px-1", t.state === 'connected' ? 'border-green-500/30 text-green-400' : '')}>
+      <Badge variant="outline" className={cn("text-[6px] h-3 px-1", t.state === 'connected' ? 'border-emerald-500/30 text-emerald-400' : '')}>
         {t.state}
       </Badge>
       {t.state === 'connected' && (
