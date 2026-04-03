@@ -253,7 +253,7 @@ export default function BLEDeviceScanner({ context, compact = false, simulation 
                   )}
 
                   {dev.connected && (
-                    <Badge className="text-[6px] h-3 px-1 bg-green-600 text-white border-0">
+                    <Badge className="text-[6px] h-3 px-1 bg-emerald-600 text-primary-foreground border-0">
                       <CheckCircle2 className="w-1.5 h-1.5 mr-0.5" /> ONLINE
                     </Badge>
                   )}
