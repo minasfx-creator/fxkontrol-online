@@ -1483,8 +1483,9 @@ export default function SkyCanvas() {
           recoveringContextRef.current = false;
         }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={60} near={0.1} far={500000} />
-        <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode} flyMode={flyMode} />
-        {flyMode && <FlyControls onSpeedChange={flySpeedCb} />}
+        <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode || groundMode} flyMode={flyMode || groundMode} />
+        {flyMode && !groundMode && <FlyControls onSpeedChange={flySpeedCb} />}
+        {groundMode && <GroundControls onSpeedChange={flySpeedCb} />}
 
         <ContextLossGuard recoveringRef={recoveringContextRef} onRemount={handleContextRemount} />
         <HardeningWatchdog />
