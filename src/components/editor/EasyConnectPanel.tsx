@@ -259,7 +259,7 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
             SCAN ALL
           </Button>
           {onClose && (
-            <button onClick={onClose} className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-white/5 text-muted-foreground">
+            <button onClick={onClose} className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground">
               <X className="w-3.5 h-3.5" />
             </button>
           )}
