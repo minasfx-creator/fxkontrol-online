@@ -75,7 +75,7 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
           <Activity className="w-4 h-4 text-primary" />
           <span className="text-xs font-semibold text-foreground">Telemetry</span>
           {connected ? (
-            <Badge variant="outline" className="text-[8px] px-1 py-0 text-green-400 border-green-400/30">
+            <Badge variant="outline" className="text-[8px] px-1 py-0 text-emerald-400 border-emerald-400/30">
               <Wifi className="w-2.5 h-2.5 mr-0.5" /> LIVE
             </Badge>
           ) : (
