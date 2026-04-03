@@ -372,6 +372,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
   const [saving, setSaving] = useState(false);
   const [commandMenuOpen, setCommandMenuOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [vvizExportOpen, setVvizExportOpen] = useState(false);
 
   useEffect(() => {
     const handler = (e: CustomEvent<{ file: File; type: any }>) => {
