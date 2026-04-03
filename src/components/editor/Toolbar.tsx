@@ -662,6 +662,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
         {twinmotionOpen && <TwinmotionImporter open={twinmotionOpen} onOpenChange={(v) => { setTwinmotionOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'twinmotion' ? droppedFile.file : null} />}
         {commandMenuOpen && <FullscreenCommandMenu open={commandMenuOpen} onClose={() => setCommandMenuOpen(false)} onOpenPanel={(id) => onOpenPanel?.(id)} />}
         {exportModalOpen && <ExportModal open={exportModalOpen} onOpenChange={setExportModalOpen} />}
+        {vvizExportOpen && <VVIZExportDialog open={vvizExportOpen} onOpenChange={setVvizExportOpen} />}
       </Suspense>
     </div>
   );
