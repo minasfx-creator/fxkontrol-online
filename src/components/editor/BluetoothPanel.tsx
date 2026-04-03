@@ -130,7 +130,7 @@ export default function BluetoothPanel({ onClose }: BluetoothPanelProps) {
                   {rssiBar(dev.rssi)}
                   {dev.batteryLevel !== null && (
                     <div className="flex items-center gap-0.5">
-                      <Battery className="w-3 h-3 text-green-400" />
+                      <Battery className="w-3 h-3 text-emerald-400" />
                       <span className="text-[8px] text-muted-foreground">{dev.batteryLevel}%</span>
                     </div>
                   )}
