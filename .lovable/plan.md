@@ -1,48 +1,71 @@
 
-## Plano: Limpar Cores Hardcoded e Redundância Residual no Editor
 
-### Problemas Encontrados
+## Plano: Refino Tático — Unificação, Estética e Navegação
 
-**1. Cores hardcoded no `Index.tsx`** — 6 blocos usam `rgba(9, 9, 11, ...)` e `rgba(255,255,255,...)` inline em vez de CSS variables/semantic tokens. Os fallbacks de erro (linhas 135, 154, 175) usam `bg-zinc-950`, `text-white`, `text-zinc-500`.
+### Diagnóstico
 
-**2. `border-white/5` no left dock header** (linha 529) — Deveria ser `border-border/10` para consistência com o design system.
+Após varredura completa do codebase, muitas das funcionalidades solicitadas **já existem**:
+- **TransformControls (Gizmo)**: `PositionTransformGizmo.tsx` e `SiteModelRenderer.tsx` ✅
+- **Box/Lasso Selection**: `BoxSelectOverlay.tsx` + `SelectionModeBar.tsx` ✅
+- **Fly Mode (WASD + PointerLock)**: `FlyControls` em `SkyCanvas.tsx` ✅
+- **OrbitControls com Damping**: `dampingFactor: 0.06` já configurado ✅
+- **Joi Hologram**: `JoiHologramAvatar.tsx` + `FXKAssistant.tsx` ✅
+- **Camera Presets dropdown**: Menu existente no SkyCanvas ✅
+- **MissionSetupOverlay**: Já existe (atualmente desativado) ✅
 
-**3. `bg-white/5` e `hover:bg-white/10`** (linha 484, close button) — Deveria usar `bg-muted/30` e `hover:bg-muted/50`.
-
-**4. Left dock e right panel abrem `effects`, `scene`, `showsettings` independentemente** — Usuário pode abrir "Effects" no dock esquerdo E no painel direito ao mesmo tempo, mostrando conteúdo duplicado. Falta guarda para fechar o oposto.
-
-**5. `ViewportPlaybackControls` no desktop sobrepõe a Timeline** — Quando a timeline está expandida (25vh), os playback controls ficam em `bottom-4` DENTRO do viewport, mas visualmente colapsam sobre o toggle da timeline. Já temos playback na própria Timeline.
+O que precisa de trabalho real é **unificação visual** e **adições incrementais**.
 
 ---
 
-### Correções
+### Etapa 1: VIEWPORT CONFIG — Menu unificado de visualização (SkyCanvas.tsx)
 
-**Arquivo 1: `src/pages/Index.tsx`** — Substituir todas as cores hardcoded
+Agrupar os controles dispersos no topo do viewport (Free Look, Fly Mode, Camera Presets) num único dropdown **"VIEWPORT"**:
+- Um botão compacto "VIEWPORT" que abre um menu com 3 seções: Camera Presets, Navigation Mode (Orbit/Free Look/Fly), Display Options (rulers, grid, debug)
+- Elimina 3 botões separados, substitui por 1
 
-| De | Para |
-|---|---|
-| `bg-zinc-950` | `bg-background` |
-| `text-white` | `text-foreground` |
-| `text-zinc-500` | `text-muted-foreground` |
-| `border-cyan-400` | `border-primary` |
-| `text-cyan-400` | `text-primary` |
-| `rgba(9, 9, 11, 0.90)` | `hsl(var(--background) / 0.90)` |
-| `rgba(9, 9, 11, 0.50)` | `hsl(var(--background) / 0.50)` |
-| `rgba(9, 9, 11, 0.92)` | `hsl(var(--background) / 0.92)` |
-| `rgba(255,255,255,0.06)` | `hsl(var(--border) / 0.3)` |
-| `rgba(255,255,255,0.04)` | `hsl(var(--border) / 0.2)` |
-| `bg-white/5` | `bg-muted/30` |
-| `hover:bg-white/10` | `hover:bg-muted/50` |
-| `border-white/5` | `border-border/10` |
+### Etapa 2: TACTICAL DOCK — Dock lateral de ferramentas de edição
 
-**Arquivo 2: `src/pages/Index.tsx`** — Fechar dock oposto ao abrir painel
+Criar um componente `TacticalDock.tsx` — dock vertical minimalista no lado esquerdo do viewport:
+- Ícones: Select (cursor), Move (gizmo translate), Rotate (gizmo rotate), Scale (gizmo scale), Lasso, Add Position
+- Estilo macOS dock vertical com glassmorphism (`bg-background/80 backdrop-blur-xl`)
+- Atalhos de teclado existentes (W/E/R/L) mantidos
+- Substitui os controles de modo dispersos no `SelectionModeBar` e `FinaleViewportTools`
 
-Quando `setActivePanel` é chamado via right dock, fechar `leftDockOpen` se o ID for o mesmo (`effects`, `scene`, `showsettings`). Vice-versa: quando `setLeftDockOpen` é ativado, fechar `activePanel` se for o mesmo ID.
+### Etapa 3: Joi como Status Monitor — HUD tático fixo
 
-**Arquivo 3: `src/components/editor/SkyCanvas.tsx`** — Remover `ViewportPlaybackControls` do desktop
+Adicionar um mini-widget fixo no canto superior direito do editor 3D:
+- Reutiliza `JoiHologramAvatar` (size="sm") já existente
+- Mostra status compacto: FPS, drone count, armed state, connection status
+- Scanline + pulse animation já implementados no componente
+- Click expande o `FXKAssistant` completo (já existe)
 
-O componente é redundante com a Timeline (que já tem controles de playback). Remover a renderização na linha 1701 (`{!isMobile && <ViewportPlaybackControls />}`). O componente interno pode permanecer como código caso seja reutilizado.
+### Etapa 4: Damping e Camera polish
 
-### Arquivos modificados: 2
-- `src/pages/Index.tsx` — theming semântico + guarda de painéis duplicados
-- `src/components/editor/SkyCanvas.tsx` — remover ViewportPlaybackControls redundante
+Ajustar `SkyCanvas.tsx` OrbitControls:
+- `dampingFactor`: 0.06 → 0.05 (mais cirúrgico)
+- Adicionar `enableRotate: !flyMode` para evitar conflito
+- Garantir que `makeDefault` está ativo para TransformControls não interferir
+
+### Etapa 5: GROUND OPERATOR mode (Walk Mode)
+
+Estender o `FlyControls` existente com altitude lock:
+- Novo toggle "Ground" no VIEWPORT menu
+- Reutiliza PointerLock existente
+- Trava `camera.position.y` a um valor fixo (1.7m acima do terreno)
+- Usa Elevation API já integrada para obter altura do terreno na posição atual
+
+---
+
+### Proteções (não toca)
+- APIs Google (Geocoding, Tiles, Elevation) — intactas
+- Stores Zustand — intactos
+- Sincronização áudio/DMX/SMPTE — intacta
+- Assets e configurações — intactos
+
+### Arquivos a criar/modificar
+1. **Criar** `src/components/editor/TacticalDock.tsx` — dock lateral de ferramentas
+2. **Criar** `src/components/editor/ViewportConfigMenu.tsx` — menu unificado VIEWPORT
+3. **Criar** `src/components/editor/JoiStatusMonitor.tsx` — mini HUD com Joi
+4. **Modificar** `src/components/editor/SkyCanvas.tsx` — integrar novos componentes, ajustar damping, adicionar Ground mode
+5. **Modificar** `src/components/editor/Toolbar.tsx` — remover controles migrados para o VIEWPORT menu
+
