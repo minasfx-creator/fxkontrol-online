@@ -163,15 +163,13 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
 
       <div className="flex-1 overflow-hidden p-1">
         {viewMode === 'grid' ? (
-          <List
-            height={400}
-            itemCount={rowCount}
-            itemSize={ROW_HEIGHT}
-            width="100%"
-            className="custom-scrollbar"
-          >
-            {GridRow}
-          </List>
+          <div className="h-full overflow-y-auto custom-scrollbar">
+            <div className="space-y-1">
+              {Array.from({ length: rowCount }, (_, rowIdx) => (
+                <GridRow key={rowIdx} index={rowIdx} style={{}} />
+              ))}
+            </div>
+          </div>
         ) : selected ? (
           <div className="space-y-3 overflow-y-auto h-full p-1">
             <div className="flex items-center justify-between">
