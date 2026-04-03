@@ -43,6 +43,7 @@ import SelectionStatusBar from './SelectionStatusBar';
 import AICoPilotOverlay from './AICoPilotOverlay';
 import TelemetryBar from './TelemetryBar';
 import GoogleTilesLoadingOverlay from './GoogleTilesLoadingOverlay';
+import HUDCrosshairs from './HUDCrosshairs';
 import { cn } from '@/lib/utils';
 import {
   CometEffect,
