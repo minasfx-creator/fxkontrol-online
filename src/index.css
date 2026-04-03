@@ -1593,3 +1593,42 @@ button:active {
 .animate-scanline-sweep {
   animation: scanline-sweep 3s linear infinite;
 }
+
+/* ═══ Beveled Corners — Tactical clip-path utilities ═══ */
+.bevel-sm {
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.bevel-md {
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+}
+.bevel-lg {
+  clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+}
+
+/* ═══ Neon Glow aliases ═══ */
+.glow-neon-amber {
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.4), 0 0 20px hsl(var(--primary) / 0.15);
+}
+.glow-neon-cyan {
+  box-shadow: 0 0 8px hsl(var(--fxk-cyan) / 0.4), 0 0 20px hsl(var(--fxk-cyan) / 0.15);
+}
+.glow-neon-crimson {
+  box-shadow: 0 0 8px hsl(var(--destructive) / 0.4), 0 0 20px hsl(var(--destructive) / 0.15);
+}
+
+/* ═══ Animated scanline gradient ═══ */
+@keyframes scan-move {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 40px; }
+}
+.bg-scanline-anim {
+  background-image: repeating-linear-gradient(
+    180deg,
+    transparent,
+    transparent 3px,
+    hsl(var(--fxk-cyan) / 0.03) 3px,
+    hsl(var(--fxk-cyan) / 0.03) 4px
+  );
+  background-size: 100% 40px;
+  animation: scan-move 2s linear infinite;
+}
