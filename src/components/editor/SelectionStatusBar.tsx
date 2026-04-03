@@ -88,7 +88,7 @@ export default function SelectionStatusBar() {
   if (selectedPositions.length === 0) {
     const droneCount = positions.filter(p => p.type === 'drone-pad').length;
     return (
-      <div className="absolute bottom-14 left-3 bg-card/85 backdrop-blur-sm border border-border/50 rounded-md px-3 py-1.5 shadow-lg">
+      <div className="absolute bottom-14 left-16 bg-card/85 backdrop-blur-sm border border-border/50 rounded-md px-3 py-1.5 shadow-lg">
         <span className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
           {editorMode === 'select' ? (
             <>
@@ -115,7 +115,7 @@ export default function SelectionStatusBar() {
   }
 
   return (
-    <div className="absolute bottom-14 left-3 bg-card/90 backdrop-blur-md border border-primary/20 rounded-md px-3 py-2 space-y-1.5 shadow-xl max-w-sm">
+    <div className="absolute bottom-14 left-16 bg-card/90 backdrop-blur-md border border-primary/20 rounded-md px-3 py-2 space-y-1.5 shadow-xl max-w-sm">
       {/* Selection summary */}
       <div className="flex items-center gap-3 text-[10px] font-mono">
         {selectedPyro.length > 0 && (
