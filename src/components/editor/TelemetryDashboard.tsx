@@ -75,7 +75,7 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
           <Activity className="w-4 h-4 text-primary" />
           <span className="text-xs font-semibold text-foreground">Telemetry</span>
           {connected ? (
-            <Badge variant="outline" className="text-[8px] px-1 py-0 text-green-400 border-green-400/30">
+            <Badge variant="outline" className="text-[8px] px-1 py-0 text-emerald-400 border-emerald-400/30">
               <Wifi className="w-2.5 h-2.5 mr-0.5" /> LIVE
             </Badge>
           ) : (
@@ -98,13 +98,13 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
           </div>
           <div className="bg-surface-1/60 rounded px-2 py-1.5 text-center">
             <div className="text-muted-foreground">Avg Battery</div>
-            <div className={cn("font-bold text-sm", avgBattery > 50 ? 'text-green-400' : avgBattery > 25 ? 'text-yellow-400' : 'text-red-400')}>
+            <div className={cn("font-bold text-sm", avgBattery > 50 ? 'text-emerald-400' : avgBattery > 25 ? 'text-yellow-400' : 'text-destructive')}>
               {avgBattery.toFixed(0)}%
             </div>
           </div>
           <div className="bg-surface-1/60 rounded px-2 py-1.5 text-center">
             <div className="text-muted-foreground">Alerts</div>
-            <div className={cn("font-bold text-sm", alertCount > 0 ? 'text-red-400' : 'text-green-400')}>
+            <div className={cn("font-bold text-sm", alertCount > 0 ? 'text-destructive' : 'text-emerald-400')}>
               {alertCount}
             </div>
           </div>
