@@ -80,7 +80,7 @@ export function PerformanceHUD({
     <>
       <button
         onClick={toggle}
-        className="absolute top-3 right-3 bg-surface-1/80 text-muted-foreground border border-border/50 hover:text-foreground hover:bg-surface-2/80 px-2 py-1 rounded-sm transition-all"
+        className="absolute top-3 right-16 bg-surface-1/80 text-muted-foreground border border-border/50 hover:text-foreground hover:bg-surface-2/80 px-2 py-1 rounded-sm transition-all"
         title="Performance Stats"
       >
         <Activity className="w-3.5 h-3.5" />
