@@ -1,46 +1,58 @@
 
 
-## Diagnóstico: O que já existe vs. o que é pedido
+## Plano: Integração SwarmPlaybackEngine + Revisão Mobile UX
 
-O prompt tático pede 4 fases. Aqui está o estado real:
+### Contexto
 
-| Fase | Pedido | Estado Atual |
-|------|--------|-------------|
-| 1. Limpeza UI / Tactical Dock | Dock lateral, paleta escura | **Já feito** — `TacticalDock.tsx`, `ViewportConfigMenu.tsx`, `JoiStatusMonitor.tsx` criados; tokens semânticos aplicados em 15+ componentes |
-| 2. VvizParser (JS simples) | Parser síncrono JSON → path | **Existente é SUPERIOR** — `vvizWorker.ts` (Web Worker, ArrayBuffer streaming, zero-copy) + `VVIZImporter.tsx` com drag-drop e diagnósticos |
-| 3. SwarmPlaybackEngine (JSX) | InstancedMesh com TypedArrays | **Existente é SUPERIOR** — `InstancedDroneSwarm.tsx` (6x InstancedMesh, PBR, tri-tier LOD, glow points > 400m) |
-| 4. Integração + Import button | File input + Canvas integration | **Já feito** — `VVIZImporter` com drag-drop, dialog, chunk commits; `OrbitControls` damping 0.05 |
+O `SwarmPlaybackEngine` existe como componente standalone em `src/components/editor/SwarmPlaybackEngine.tsx` mas **não está integrado** no SkyCanvas nem acessível via UI. O VVIZ import flow atual (VVIZImporter → useProjectStore → DroneChoreography → InstancedDroneSwarm) não conecta ao SwarmPlaybackEngine.
 
-**Conclusão**: Todas as 4 fases já estão implementadas com qualidade igual ou superior ao código proposto. Criar os ficheiros `VvizTacticalParser.js` e `SwarmPlaybackEngine.jsx` seria um **downgrade** — código duplicado e inferior ao motor existente.
+Para mobile, o layout usa: MobileHUD (z-50, top), MobileQuickActions (z-40, left/right sides, bottom ~80px), MobileTabBar (z-50, bottom), e ViewportConfigMenu (z-30, top-left). O ViewportConfigMenu aparece no mobile **sem** `!isMobile` guard, potencialmente sobrepondo o MobileHUD.
 
 ---
 
-## O que resta fazer (refinamento residual)
+### Implementação
 
-Há 4 componentes com `border-white/5` ou `border-white/10` hardcoded que ainda não foram migrados para tokens semânticos:
+**1. Adicionar toggle de renderer ao SceneStore**
 
-1. **`AICoPilotPanel.tsx`** — 2 instâncias de `border-white/5`
-2. **`DMXMonitorGrid.tsx`** — `border-white/5` e `ring-white/10`
-3. **`CinematicIntro.tsx`** — `border-white/10` (aceitável — é um overlay cinematográfico com estética própria)
-4. **`VideoChoreoPanel.tsx`** — `border-white/50` (é um indicador de cor, contextual)
+Em `src/store/useSceneStore.ts`, adicionar ao `EnvironmentState`:
+```
+droneRendererMode: 'instanced' | 'swarm';  // default 'instanced'
+```
 
-### Plano de ação
+**2. Integrar SwarmPlaybackEngine no SkyCanvas**
 
-**Ficheiros a modificar: 2** (os 2 relevantes; CinematicIntro e VideoChoreoPanel são contextuais e não precisam de alteração)
+Na zona onde `DroneChoreography` é renderizado (linha 1538), adicionar lógica condicional:
+- Se `droneRendererMode === 'instanced'` → renderiza `<DroneChoreography />` (atual)
+- Se `droneRendererMode === 'swarm'` → converte as posições+trajectories do store em formato `SwarmAgent[]` e renderiza `<SwarmPlaybackEngine>`
 
-1. **`src/components/editor/AICoPilotPanel.tsx`**
-   - `border-white/5` → `border-border/20`
-   - `bg-white/[0.02]` → `bg-muted/10`
-   - `hover:bg-white/[0.04]` → `hover:bg-muted/20`
+Criar uma função bridge `trajectoriesToSwarmAgents()` que converte `Trajectory[]` + `Position[]` do projectStore para o formato `SwarmAgent[]` (path + colors).
 
-2. **`src/components/editor/DMXMonitorGrid.tsx`**
-   - `border-white/5` → `border-border/20`
-   - `ring-white/10` → `ring-border/30`
+**3. Adicionar opção no ViewportConfigMenu**
+
+Na secção "Display" do dropdown (linha ~152), adicionar toggle "Drone Renderer" com opções Instanced (PBR/LOD) vs Swarm (Tactical). Chama `updateEnvironment({ droneRendererMode: ... })`.
+
+**4. Corrigir sobreposição mobile — ViewportConfigMenu**
+
+O `ViewportConfigMenu` renderiza na `top-3 left-3 z-30` e aparece no mobile, conflitando com MobileHUD (`z-50 top-0`). Soluções:
+- Esconder ViewportConfigMenu no mobile (`{!isMobile && <ViewportConfigMenu ... />}` na linha 1613 de SkyCanvas)
+- A navegação de câmara para mobile já está coberta pelo MobileQuickActions (zoom/reset) e pelo MobileHUD
+
+**5. Verificar que SkyCanvas overlays não aparecem no mobile**
+
+Confirmar que os seguintes estão guardados por `!isMobile` (já estão): TacticalDock, JoiStatusMonitor, Mini-Dock, SelectionStatusBar, AlignmentTools, CameraBookmarksBar, debug panels. O Fly/Ground HUD (bottom-28, z-40) pode sobrepor MobileTabBar — adicionar guard `!isMobile` a esses HUDs também.
+
+---
+
+### Ficheiros a modificar
+
+1. **`src/store/useSceneStore.ts`** — adicionar `droneRendererMode` ao `EnvironmentState`
+2. **`src/components/editor/SkyCanvas.tsx`** — importar SwarmPlaybackEngine, renderização condicional, esconder ViewportConfigMenu no mobile, guardar Fly/Ground HUD com `!isMobile`
+3. **`src/components/editor/ViewportConfigMenu.tsx`** — adicionar toggle Drone Renderer na secção Display
+4. **`src/components/editor/SwarmPlaybackEngine.tsx`** — nenhuma alteração (já funcional)
 
 ### Proteções
-- VVIZ Worker parser — intacto
-- InstancedDroneSwarm renderer — intacto
-- Zustand stores — intactos
-- Google APIs — intactas
-- GroundControls / FlyControls — intactos
+- DroneChoreography + InstancedDroneSwarm permanecem como renderer default
+- Parser VVIZ Worker intacto
+- Stores Zustand intactos
+- Layout mobile (MobileHUD, MobileTabBar, MobileQuickActions, MobileFloatingPanel) intacto
 
