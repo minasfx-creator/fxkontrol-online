@@ -1,5 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
-import { Grid } from 'react-window';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useMAVLinkStore } from '@/store/useMAVLinkStore';
 import { Badge } from '@/components/ui/badge';
