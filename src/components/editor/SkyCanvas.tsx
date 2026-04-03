@@ -833,7 +833,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     <OrbitControls
       ref={controlsRef}
       enableDamping
-      dampingFactor={0.06}
+      dampingFactor={0.05}
       rotateSpeed={0.6 * sensitivityScale}
       panSpeed={0.8 * sensitivityScale}
       zoomSpeed={1.2 * sensitivityScale}
