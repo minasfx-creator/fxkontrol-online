@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { Shield, Play, MapPin, Clock, Zap } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface MissionSetupOverlayProps {
   onConfirm: () => void;
@@ -32,15 +33,8 @@ export default function MissionSetupOverlay({ onConfirm }: MissionSetupOverlayPr
   };
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div
-        className="rounded-2xl border p-8 max-w-md w-full mx-4 space-y-6"
-        style={{
-          background: 'hsla(240, 10%, 6%, 0.85)',
-          backdropFilter: 'blur(32px)',
-          borderColor: 'hsla(0, 0%, 100%, 0.1)',
-        }}
-      >
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+      <div className="rounded-2xl border border-border/20 bg-card/95 backdrop-blur-xl p-8 max-w-md w-full mx-4 space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/10">
@@ -85,16 +79,12 @@ export default function MissionSetupOverlay({ onConfirm }: MissionSetupOverlayPr
         <button
           onClick={handleConfirm}
           disabled={confirming}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all border"
-          style={{
-            background: confirming
-              ? 'hsla(142, 70%, 45%, 0.3)'
-              : 'hsla(142, 70%, 45%, 0.15)',
-            borderColor: confirming
-              ? 'hsla(142, 70%, 45%, 0.5)'
-              : 'hsla(142, 70%, 45%, 0.3)',
-            color: 'hsl(142, 70%, 65%)',
-          }}
+          className={cn(
+            "w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all border text-emerald-400",
+            confirming
+              ? "bg-emerald-400/30 border-emerald-400/50"
+              : "bg-emerald-400/15 border-emerald-400/30 hover:bg-emerald-400/25"
+          )}
         >
           <Play className="w-4 h-4" />
           {confirming ? 'Iniciando simulação...' : 'Confirmar e Iniciar'}
@@ -106,13 +96,7 @@ export default function MissionSetupOverlay({ onConfirm }: MissionSetupOverlayPr
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div
-      className="rounded-lg border px-3 py-2.5 space-y-1"
-      style={{
-        background: 'hsla(240, 10%, 8%, 0.6)',
-        borderColor: 'hsla(0, 0%, 100%, 0.06)',
-      }}
-    >
+    <div className="rounded-lg border border-border/10 bg-muted/30 px-3 py-2.5 space-y-1">
       <div className="flex items-center gap-1.5">
         {icon}
         <span className="text-[9px] uppercase tracking-wider text-muted-foreground/60 font-medium">
