@@ -355,7 +355,7 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
                   {device.status === 'online' && (
                     <button
                       onClick={() => handleTestDevice(device)}
-                      className="h-6 px-2 text-[8px] font-bold uppercase tracking-wider rounded border border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all shrink-0"
+                      className="h-6 px-2 text-[8px] font-bold uppercase tracking-wider rounded border border-border/30 text-muted-foreground hover:text-foreground hover:bg-muted transition-all shrink-0"
                     >
                       Test
                     </button>

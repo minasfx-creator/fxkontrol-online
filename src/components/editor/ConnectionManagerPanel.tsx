@@ -255,7 +255,7 @@ export default function ConnectionManagerPanel({ fs = false, onClose }: Connecti
                     Auto
                   </label>
                   {conn.connected ? (
-                    <Button size="sm" variant="ghost" className="h-6 text-[9px] px-2 text-red-400 hover:text-red-300"
+                    <Button size="sm" variant="ghost" className="h-6 text-[9px] px-2 text-destructive hover:text-destructive/80"
                       onClick={() => handleDisconnect(conn.id)}>
                       <X className="w-3 h-3 mr-0.5" /> Off
                     </Button>
