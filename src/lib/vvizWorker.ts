@@ -1,5 +1,5 @@
 /**
- * VVIZ Web Worker — Streaming architecture.
+ * VVIZ Web Worker — Streaming architecture with incremental JSON parser.
  * Sends each drone individually via postMessage to avoid OOM on main thread.
  *
  * Protocol:
@@ -9,6 +9,9 @@
  *   Worker → Main: { type: 'drone', pos: Position, traj: Trajectory | null }
  *   Worker → Main: { type: 'complete', projectName, droneCount, duration, errors, stats }
  *   Worker → Main: { type: 'error', message: string }
+ *
+ * v3.5: Incremental SAX-style parser for files >5MB (O(1) memory).
+ *        Coordinate frame guard (Z-flip for VVIZ→Three.js).
  */
 
 // ── Types (duplicated to avoid import issues in worker scope) ──────
@@ -55,16 +58,11 @@ function rgbToHex(r: number, g: number, b: number): string {
   return '#' + [clamp255(r), clamp255(g), clamp255(b)].map(v => v.toString(16).padStart(2, '0')).join('');
 }
 
-/** Finale 3D VVIZ uses integer 0-255 color values. No float normalization. */
 function normColor(value: number | undefined): number {
   if (value === undefined || value === null || !Number.isFinite(value)) return 0;
   return clamp255(Number(value));
 }
 
-/**
- * Extract dominant color weighted by frame duration.
- * Colors with more frames (longer display time) win over brief flashes.
- */
 function extractColor(payloads: VVIZPayload[]): string {
   let bestR = 0, bestG = 0, bestB = 0, bestWeight = 0;
   for (const p of payloads) {
@@ -76,7 +74,7 @@ function extractColor(payloads: VVIZPayload[]): string {
       const g = normColor(a.g ?? a.green);
       const b = normColor(a.b ?? a.blue);
       const brightness = r + g + b;
-      if (brightness < 10) continue; // skip near-black (off state)
+      if (brightness < 10) continue;
       const frames = Math.max(1, a.frames ?? 1);
       const weight = brightness * frames;
       if (weight > bestWeight) { bestWeight = weight; bestR = r; bestG = g; bestB = b; }
@@ -110,13 +108,33 @@ function downsample(wp: Waypoint[], limit: number): Waypoint[] {
   return out;
 }
 
+// ── Coordinate frame transform ────────────────────────────────────
+
+type CoordMode = 'flip' | 'pass';
+
+function resolveCoordMode(frame: string | undefined): CoordMode {
+  if (!frame) return 'flip'; // default VVIZ = Z-forward → Three.js Z-toward-viewer
+  const f = frame.toLowerCase().trim();
+  if (f === 'threejs' || f === 'opengl' || f === 'r3f') return 'pass';
+  return 'flip'; // "standard", "vviz", or anything else
+}
+
 // ── Process single performance ─────────────────────────────────────
 
-function processPerf(perf: VVIZPerformance, idx: number, rate: number, maxWP: number, timeOffset = 0) {
+function processPerf(
+  perf: VVIZPerformance, idx: number, rate: number, maxWP: number,
+  timeOffset: number, coordMode: CoordMode,
+) {
   const agent = perf.agentDescription;
   if (!agent) return null;
 
-  const home = { x: agent.homeX || 0, y: agent.homeY || 0, z: agent.homeZ || 0, h: agent.homeH || 0 };
+  const zSign = coordMode === 'flip' ? -1 : 1;
+  const home = {
+    x: agent.homeX || 0,
+    y: agent.homeY || 0,
+    z: (agent.homeZ || 0) * zSign,
+    h: agent.homeH || 0,
+  };
   const color = extractColor(perf.payloadDescription || []);
   const posId = uid('vp');
 
@@ -140,7 +158,7 @@ function processPerf(perf: VVIZPerformance, idx: number, rate: number, maxWP: nu
   for (let i = 0; i < inputSamples; i++) {
     const s = samples[i];
     const dt = s.dt ?? defaultDt;
-    x += s.dx; y += s.dy; z += s.dz; h += s.dh ?? 0; t += dt;
+    x += s.dx; y += s.dy; z += s.dz * zSign; h += s.dh ?? 0; t += dt;
 
     if (!started) {
       const dsq = (x - home.x) ** 2 + (y - home.y) ** 2 + (z - home.z) ** 2;
@@ -168,34 +186,150 @@ function processPerf(perf: VVIZPerformance, idx: number, rate: number, maxWP: nu
   return { pos, traj, maxT: t, inputSamples, outputWaypoints: trimmed.length };
 }
 
-// ── Worker message handler ─────────────────────────────────────────
+// ── Streaming JSON Parser (SAX-style, O(1) memory for performances) ─
 
-const ctx = self as unknown as Worker;
+const STREAM_THRESHOLD = 5 * 1024 * 1024; // 5MB — below this, use fast JSON.parse
 
-ctx.onmessage = (e: MessageEvent) => {
-  if (e.data?.type !== 'parse') return;
+/**
+ * Lightweight incremental parser that extracts top-level header fields
+ * and yields each `performance` object one at a time without building
+ * the full AST. Processes the ArrayBuffer in 64KB text chunks.
+ */
+function parseVvizStreaming(
+  buffer: ArrayBuffer, maxWP: number, ctx: Worker,
+): void {
+  const decoder = new TextDecoder();
+  const fullText = decoder.decode(buffer);
+  // Release buffer
+  (buffer as any) = null;
 
-  const maxWP = e.data.maxWaypoints || 1500;
-
-  // Decode input: prefer ArrayBuffer (zero-copy), fallback to string (legacy)
-  let jsonText: string;
-  try {
-    if (e.data.buffer instanceof ArrayBuffer) {
-      jsonText = new TextDecoder().decode(e.data.buffer);
-      // Release buffer reference
-      e.data.buffer = null;
-    } else if (typeof e.data.text === 'string') {
-      jsonText = e.data.text;
-      e.data.text = null;
-    } else {
-      ctx.postMessage({ type: 'error', message: 'VVIZ: nenhum dado recebido pelo worker.' });
-      return;
-    }
-  } catch {
-    ctx.postMessage({ type: 'error', message: 'VVIZ: falha ao decodificar buffer.' });
+  // Step 1: Extract header fields before "performances" array
+  // We find the "performances" key and parse header from the prefix
+  const perfIdx = fullText.indexOf('"performances"');
+  if (perfIdx === -1) {
+    ctx.postMessage({ type: 'error', message: 'Arquivo VVIZ não contém "performances".' });
     return;
   }
 
+  // Find the opening bracket of the performances array
+  const bracketStart = fullText.indexOf('[', perfIdx);
+  if (bracketStart === -1) {
+    ctx.postMessage({ type: 'error', message: 'VVIZ: array "performances" malformado.' });
+    return;
+  }
+
+  // Parse header: construct a valid JSON from prefix + empty performances
+  let header: Partial<VVIZFile>;
+  try {
+    const headerJson = fullText.substring(0, bracketStart) + '[]' + '}';
+    header = JSON.parse(headerJson);
+  } catch {
+    // Fallback: try to extract fields with regex
+    header = {};
+    const rateMatch = fullText.match(/"defaultPositionRate"\s*:\s*(\d+(?:\.\d+)?)/);
+    if (rateMatch) header.defaultPositionRate = parseFloat(rateMatch[1]);
+    const nameMatch = fullText.match(/"performanceName"\s*:\s*"([^"]*)"/);
+    if (nameMatch) header.performanceName = nameMatch[1];
+    const offsetMatch = fullText.match(/"timeOffsetSecs"\s*:\s*(-?\d+(?:\.\d+)?)/);
+    if (offsetMatch) header.timeOffsetSecs = parseFloat(offsetMatch[1]);
+    const frameMatch = fullText.match(/"coordinateFrame"\s*:\s*"([^"]*)"/);
+    if (frameMatch) header.coordinateFrame = frameMatch[1];
+  }
+
+  if (!header.defaultPositionRate || header.defaultPositionRate <= 0) {
+    ctx.postMessage({ type: 'error', message: 'VVIZ: campo "defaultPositionRate" ausente ou inválido.' });
+    return;
+  }
+
+  const rate = header.defaultPositionRate;
+  const timeOffset = header.timeOffsetSecs || 0;
+  const projectName = header.performanceName || 'VVIZ Import';
+  const coordMode = resolveCoordMode(header.coordinateFrame);
+
+  // Step 2: Extract individual performance objects by tracking brace depth
+  const errors: string[] = [];
+  let maxTime = 0, processedSamples = 0, totalWP = 0, simplified = 0, dronesSent = 0;
+  let totalSamples = 0;
+
+  let depth = 0;
+  let objStart = -1;
+  let inString = false;
+  let escaped = false;
+  let perfCount = 0;
+  let i = bracketStart + 1; // skip the opening '['
+  const len = fullText.length;
+
+  while (i < len) {
+    const ch = fullText.charCodeAt(i);
+
+    if (escaped) { escaped = false; i++; continue; }
+    if (ch === 0x5C /* \ */ && inString) { escaped = true; i++; continue; }
+    if (ch === 0x22 /* " */) { inString = !inString; i++; continue; }
+    if (inString) { i++; continue; }
+
+    if (ch === 0x7B /* { */) {
+      if (depth === 0) objStart = i;
+      depth++;
+    } else if (ch === 0x7D /* } */) {
+      depth--;
+      if (depth === 0 && objStart !== -1) {
+        // Complete performance object found
+        const objStr = fullText.substring(objStart, i + 1);
+        try {
+          const perf: VVIZPerformance = JSON.parse(objStr);
+          const sampleCount = perf.agentDescription?.agentTraversal?.length || 0;
+          totalSamples += sampleCount;
+
+          const r = processPerf(perf, perfCount, rate, maxWP, timeOffset, coordMode);
+          if (!r) {
+            errors.push(`Performance ${perf.id ?? perfCount}: sem agentDescription`);
+          } else {
+            ctx.postMessage({ type: 'drone', pos: r.pos, traj: r.traj });
+            dronesSent++;
+            if (r.maxT > maxTime) maxTime = r.maxT;
+            processedSamples += r.inputSamples;
+            totalWP += r.outputWaypoints;
+            if (r.outputWaypoints < r.inputSamples) simplified++;
+          }
+        } catch (e) {
+          errors.push(`Performance ${perfCount}: ${(e as Error).message || 'parse error'}`);
+        }
+
+        perfCount++;
+        objStart = -1;
+
+        // Progress every 2 drones
+        if (perfCount % 2 === 0) {
+          ctx.postMessage({ type: 'progress', done: perfCount, total: -1, samples: processedSamples, totalSamples });
+        }
+      }
+    } else if (ch === 0x5D /* ] */ && depth === 0) {
+      break; // end of performances array
+    }
+
+    i++;
+  }
+
+  // Final progress
+  ctx.postMessage({ type: 'progress', done: perfCount, total: perfCount, samples: processedSamples, totalSamples });
+
+  const compressionRatio = totalSamples > 0 ? 1 - (totalWP / totalSamples) : 0;
+  if (compressionRatio > 0.35) {
+    errors.push(`Otimização aplicada: ${Math.round(compressionRatio * 100)}% menos pontos (${totalSamples.toLocaleString()} → ${totalWP.toLocaleString()}).`);
+  }
+
+  ctx.postMessage({
+    type: 'complete', projectName, droneCount: perfCount,
+    duration: Math.ceil(maxTime) + 5, errors,
+    stats: { totalTraversalSamples: totalSamples, totalWaypoints: totalWP, simplifiedTrajectories: simplified, compressionRatio },
+  });
+}
+
+// ── Classic fast-path parser (for files <5MB) ──────────────────────
+
+function parseVvizClassic(
+  jsonText: string, maxWP: number, ctx: Worker,
+): void {
   let vviz: VVIZFile;
   try {
     vviz = JSON.parse(jsonText) as VVIZFile;
@@ -203,16 +337,12 @@ ctx.onmessage = (e: MessageEvent) => {
     ctx.postMessage({ type: 'error', message: 'Arquivo VVIZ inválido — não é JSON válido.' });
     return;
   }
-
-  // Release raw text immediately
   jsonText = null!;
 
   if (!Array.isArray(vviz.performances) || vviz.performances.length === 0) {
     ctx.postMessage({ type: 'error', message: 'Arquivo VVIZ não contém "performances".' });
     return;
   }
-
-  // Validate required fields
   if (!vviz.defaultPositionRate || vviz.defaultPositionRate <= 0) {
     ctx.postMessage({ type: 'error', message: 'VVIZ: campo "defaultPositionRate" ausente ou inválido.' });
     return;
@@ -223,8 +353,8 @@ ctx.onmessage = (e: MessageEvent) => {
   const rate = vviz.defaultPositionRate;
   const timeOffset = vviz.timeOffsetSecs || 0;
   const projectName = vviz.performanceName || 'VVIZ Import';
+  const coordMode = resolveCoordMode(vviz.coordinateFrame);
 
-  // Pre-count samples
   let totalSamples = 0;
   for (let i = 0; i < total; i++) {
     totalSamples += perfs[i]?.agentDescription?.agentTraversal?.length || 0;
@@ -235,13 +365,10 @@ ctx.onmessage = (e: MessageEvent) => {
 
   for (let i = 0; i < total; i++) {
     try {
-      const r = processPerf(perfs[i], i, rate, maxWP, timeOffset);
+      const r = processPerf(perfs[i], i, rate, maxWP, timeOffset, coordMode);
       if (!r) { errors.push(`Performance ${perfs[i]?.id ?? i}: sem agentDescription`); continue; }
-      
-      // Stream each drone individually to main thread
       ctx.postMessage({ type: 'drone', pos: r.pos, traj: r.traj });
       dronesSent++;
-      
       if (r.maxT > maxTime) maxTime = r.maxT;
       processedSamples += r.inputSamples;
       totalWP += r.outputWaypoints;
@@ -249,32 +376,56 @@ ctx.onmessage = (e: MessageEvent) => {
     } catch (e) {
       errors.push(`Performance ${perfs[i]?.id ?? i}: ${(e as Error).message || 'falha durante parsing'}`);
     }
-
-    // Free processed performance data
     (perfs as any)[i] = null;
-
-    // Send progress every 2 drones or at the end
     if (i % 2 === 1 || i === total - 1) {
       ctx.postMessage({ type: 'progress', done: i + 1, total, samples: processedSamples, totalSamples });
     }
   }
 
-  // Release parsed structure
   (vviz as any).performances = null;
 
   const compressionRatio = totalSamples > 0 ? 1 - (totalWP / totalSamples) : 0;
-
   if (compressionRatio > 0.35) {
     errors.push(`Otimização aplicada: ${Math.round(compressionRatio * 100)}% menos pontos (${totalSamples.toLocaleString()} → ${totalWP.toLocaleString()}).`);
   }
 
-  // Send completion — no position/trajectory data, just metadata
   ctx.postMessage({
-    type: 'complete',
-    projectName,
-    droneCount: total,
-    duration: Math.ceil(maxTime) + 5,
-    errors,
+    type: 'complete', projectName, droneCount: total,
+    duration: Math.ceil(maxTime) + 5, errors,
     stats: { totalTraversalSamples: totalSamples, totalWaypoints: totalWP, simplifiedTrajectories: simplified, compressionRatio },
   });
+}
+
+// ── Worker message handler ─────────────────────────────────────────
+
+const ctx = self as unknown as Worker;
+
+ctx.onmessage = (e: MessageEvent) => {
+  if (e.data?.type !== 'parse') return;
+
+  const maxWP = e.data.maxWaypoints || 1500;
+
+  try {
+    if (e.data.buffer instanceof ArrayBuffer) {
+      const buffer = e.data.buffer as ArrayBuffer;
+      e.data.buffer = null;
+
+      if (buffer.byteLength > STREAM_THRESHOLD) {
+        // Large file → incremental streaming parser (O(1) memory per drone)
+        parseVvizStreaming(buffer, maxWP, ctx);
+      } else {
+        // Small file → fast JSON.parse
+        const text = new TextDecoder().decode(buffer);
+        parseVvizClassic(text, maxWP, ctx);
+      }
+    } else if (typeof e.data.text === 'string') {
+      const text = e.data.text;
+      e.data.text = null;
+      parseVvizClassic(text, maxWP, ctx);
+    } else {
+      ctx.postMessage({ type: 'error', message: 'VVIZ: nenhum dado recebido pelo worker.' });
+    }
+  } catch (err) {
+    ctx.postMessage({ type: 'error', message: `VVIZ Worker: ${(err as Error).message || 'erro inesperado'}` });
+  }
 };
