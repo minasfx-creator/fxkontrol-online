@@ -67,7 +67,7 @@ export default function AICoPilotPanel() {
             className={cn("px-2 py-0.5 rounded text-[7px] font-mono font-bold tracking-wider transition-all",
               enabled
                 ? "text-green-300 border border-green-500/30 bg-green-500/10"
-                : "text-muted-foreground/40 border border-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
+                : "text-muted-foreground/40 border border-border/20 bg-muted/10 hover:bg-muted/20"
             )}
           >
             {enabled ? 'ON' : 'OFF'}
@@ -90,7 +90,7 @@ export default function AICoPilotPanel() {
                     "flex-1 flex flex-col items-center gap-0.5 py-1 rounded transition-all",
                     active
                       ? "border border-opacity-30"
-                      : "border border-transparent hover:bg-white/[0.03]"
+                      : "border border-transparent hover:bg-muted/20"
                   )}
                   style={active ? {
                     borderColor: `${m.color}50`,
@@ -128,7 +128,7 @@ export default function AICoPilotPanel() {
             <button
               onClick={() => setVoiceEnabled(!voiceEnabled)}
               className={cn("p-1 rounded transition-all",
-                voiceEnabled ? "bg-cyan-500/10 border border-cyan-500/20" : "border border-white/5 hover:bg-white/[0.03]"
+                voiceEnabled ? "bg-cyan-500/10 border border-cyan-500/20" : "border border-border/20 hover:bg-muted/20"
               )}
               title={voiceEnabled ? 'Voice ON' : 'Voice OFF'}
             >

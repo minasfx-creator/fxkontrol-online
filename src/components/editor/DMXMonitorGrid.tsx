@@ -157,8 +157,8 @@ export default function DMXMonitorGrid({ universes, className }: DMXMonitorGridP
                         'rounded-[2px] flex items-center justify-center transition-colors duration-150',
                         getChannelColor(value),
                         getTextColor(value),
-                        'border border-white/5',
-                        value > 0 && 'ring-1 ring-inset ring-white/10',
+                        'border border-border/20',
+                        value > 0 && 'ring-1 ring-inset ring-border/30',
                       )}
                       style={{
                         width: viewMode === 'compact' ? 14 : 28,
