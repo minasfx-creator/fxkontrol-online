@@ -300,7 +300,7 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[11px] font-semibold text-foreground truncate">{device.name}</span>
-                      <Badge variant="outline" className="text-[7px] h-3.5 px-1 border-white/10 text-muted-foreground/50 font-mono">
+                      <Badge variant="outline" className="text-[7px] h-3.5 px-1 border-border/30 text-muted-foreground/50 font-mono">
                         {device.type}
                       </Badge>
                     </div>
