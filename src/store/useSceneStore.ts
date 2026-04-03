@@ -714,6 +714,7 @@ export interface EnvironmentState {
   showAxesHelper: boolean;       // XYZ color-coded axes at origin
   positionTransformMode: 'translate' | 'rotate' | 'scale';  // Gizmo mode for position pins
   gridSnapResolution: number;    // Snap grid cell size in meters (0.1 – 10)
+  droneRendererMode: 'instanced' | 'swarm';  // instanced = PBR/LOD, swarm = tactical engine
 }
 
 export interface CameraBookmark {
