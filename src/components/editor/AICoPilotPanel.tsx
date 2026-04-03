@@ -67,7 +67,7 @@ export default function AICoPilotPanel() {
             className={cn("px-2 py-0.5 rounded text-[7px] font-mono font-bold tracking-wider transition-all",
               enabled
                 ? "text-green-300 border border-green-500/30 bg-green-500/10"
-                : "text-muted-foreground/40 border border-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
+                : "text-muted-foreground/40 border border-border/20 bg-muted/10 hover:bg-muted/20"
             )}
           >
             {enabled ? 'ON' : 'OFF'}
