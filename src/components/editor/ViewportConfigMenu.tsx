@@ -175,6 +175,41 @@ export default function ViewportConfigMenu({
             <span>Axes Helper</span>
             {env.showAxesHelper && <span className="ml-auto text-[8px] text-primary">ON</span>}
           </button>
+
+          <div className="h-px bg-border/20 mx-2 my-1" />
+
+          {/* Drone Renderer */}
+          <div className="px-3 pt-1 pb-1">
+            <span className="text-[8px] font-bold text-muted-foreground/40 uppercase tracking-wider">Drone Renderer</span>
+          </div>
+          <button
+            onClick={() => updateEnvironment({ droneRendererMode: 'instanced' })}
+            className={cn(
+              "w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-all hover:bg-muted/30",
+              env.droneRendererMode === 'instanced' ? "text-primary font-semibold" : "text-muted-foreground"
+            )}
+          >
+            <Cpu className="w-3.5 h-3.5" />
+            <div className="flex flex-col">
+              <span>Instanced (PBR)</span>
+              <span className="text-[8px] text-muted-foreground/50">Tri-tier LOD · Production</span>
+            </div>
+            {env.droneRendererMode === 'instanced' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
+          </button>
+          <button
+            onClick={() => updateEnvironment({ droneRendererMode: 'swarm' })}
+            className={cn(
+              "w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-all hover:bg-muted/30",
+              env.droneRendererMode === 'swarm' ? "text-primary font-semibold" : "text-muted-foreground"
+            )}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <div className="flex flex-col">
+              <span>Swarm (Tactical)</span>
+              <span className="text-[8px] text-muted-foreground/50">Zero-GC · 2000+ drones</span>
+            </div>
+            {env.droneRendererMode === 'swarm' && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
+          </button>
         </div>
       )}
     </div>
