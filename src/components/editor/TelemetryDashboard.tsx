@@ -98,7 +98,7 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
           </div>
           <div className="bg-surface-1/60 rounded px-2 py-1.5 text-center">
             <div className="text-muted-foreground">Avg Battery</div>
-            <div className={cn("font-bold text-sm", avgBattery > 50 ? 'text-green-400' : avgBattery > 25 ? 'text-yellow-400' : 'text-red-400')}>
+            <div className={cn("font-bold text-sm", avgBattery > 50 ? 'text-emerald-400' : avgBattery > 25 ? 'text-yellow-400' : 'text-destructive')}>
               {avgBattery.toFixed(0)}%
             </div>
           </div>
