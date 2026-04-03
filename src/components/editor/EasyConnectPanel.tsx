@@ -68,7 +68,7 @@ const TRANSPORT_COLORS: Record<TransportType, string> = {
 const STATUS_STYLES: Record<DeviceStatus, { dot: string; text: string }> = {
   online: { dot: 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]', text: 'text-emerald-400' },
   connecting: { dot: 'bg-amber-400 animate-pulse shadow-[0_0_6px_rgba(251,191,36,0.5)]', text: 'text-amber-400' },
-  offline: { dot: 'bg-zinc-600', text: 'text-zinc-500' },
+  offline: { dot: 'bg-muted-foreground/40', text: 'text-muted-foreground' },
   error: { dot: 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]', text: 'text-red-400' },
 };
 
@@ -253,13 +253,13 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
             size="sm"
             onClick={handleScanAll}
             disabled={scanning}
-            className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25 border border-cyan-500/20"
+            className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary hover:bg-primary/25 border border-primary/20"
           >
             {scanning ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Search className="w-3 h-3 mr-1" />}
             SCAN ALL
           </Button>
           {onClose && (
-            <button onClick={onClose} className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-white/5 text-muted-foreground">
+            <button onClick={onClose} className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-muted text-muted-foreground">
               <X className="w-3.5 h-3.5" />
             </button>
           )}
@@ -289,7 +289,7 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
                   className={cn(
                     "flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all border border-transparent",
                     device.status === 'online'
-                      ? "hover:bg-white/[0.03] hover:border-white/[0.06]"
+                      ? "hover:bg-muted/30 hover:border-border/30"
                       : "opacity-60 hover:opacity-80"
                   )}
                 >
@@ -300,7 +300,7 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[11px] font-semibold text-foreground truncate">{device.name}</span>
-                      <Badge variant="outline" className="text-[7px] h-3.5 px-1 border-white/10 text-muted-foreground/50 font-mono">
+                      <Badge variant="outline" className="text-[7px] h-3.5 px-1 border-border/30 text-muted-foreground/50 font-mono">
                         {device.type}
                       </Badge>
                     </div>
@@ -317,7 +317,7 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
                                 key={i}
                                 className={cn(
                                   "w-[3px] rounded-sm transition-colors",
-                                  i <= bars ? 'bg-emerald-400' : 'bg-zinc-700'
+                                  i <= bars ? 'bg-emerald-400' : 'bg-muted-foreground/20'
                                 )}
                                 style={{ height: `${i * 25}%` }}
                               />
@@ -355,7 +355,7 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
                   {device.status === 'online' && (
                     <button
                       onClick={() => handleTestDevice(device)}
-                      className="h-6 px-2 text-[8px] font-bold uppercase tracking-wider rounded border border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all shrink-0"
+                      className="h-6 px-2 text-[8px] font-bold uppercase tracking-wider rounded border border-border/30 text-muted-foreground hover:text-foreground hover:bg-muted transition-all shrink-0"
                     >
                       Test
                     </button>
