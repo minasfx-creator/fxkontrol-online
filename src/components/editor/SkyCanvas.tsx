@@ -1753,7 +1753,7 @@ export default function SkyCanvas() {
       {/* ViewportPlaybackControls removed — redundant with Timeline playback */}
 
       {/* Fly mode HUD */}
-      {flyMode && (
+      {flyMode && !groundMode && (
         <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 bg-card/85 backdrop-blur-xl border border-border/25 rounded-xl px-4 py-2 font-mono text-[10px] text-muted-foreground space-y-0.5 select-none pointer-events-none">
           <div className="text-center text-[9px] font-semibold uppercase tracking-wider text-accent-foreground mb-1">✈ Fly Mode</div>
           <div className="flex gap-4">
@@ -1761,6 +1761,20 @@ export default function SkyCanvas() {
             <span>Q/E Up/Down</span>
             <span>Shift Sprint</span>
             <span>Scroll Speed</span>
+          </div>
+          <div className="text-center text-foreground font-semibold">{flySpeed} m/s</div>
+        </div>
+      )}
+
+      {/* Ground operator HUD */}
+      {groundMode && (
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 bg-card/85 backdrop-blur-xl border border-border/25 rounded-xl px-4 py-2 font-mono text-[10px] text-muted-foreground space-y-0.5 select-none pointer-events-none">
+          <div className="text-center text-[9px] font-semibold uppercase tracking-wider text-primary mb-1">🥾 Ground Op</div>
+          <div className="flex gap-4">
+            <span>WASD Walk</span>
+            <span>Shift Run</span>
+            <span>Scroll Speed</span>
+            <span>Alt Lock: 1.7m</span>
           </div>
           <div className="text-center text-foreground font-semibold">{flySpeed} m/s</div>
         </div>
