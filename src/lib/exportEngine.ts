@@ -61,8 +61,16 @@ interface VVIZFile {
   defaultColorRate: number;
   timeOffsetSecs: number;
   performanceName?: string;
-  coordinateFrame: 'ogl';
+  coordinateFrame: 'standard' | 'ogl';
   performances: VVIZPerformance[];
+}
+
+export interface VVIZExportOptions {
+  positionRate?: number;
+  colorRate?: number;
+  coordinateFrame?: 'standard' | 'ogl';
+  noTrail?: boolean;
+  showName?: string;
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
