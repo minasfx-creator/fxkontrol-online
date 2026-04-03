@@ -80,7 +80,13 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
     : { r: 255, g: 255, b: 255 };
 }
 
-const POSITION_RATE = 2.0;  // 2 samples/sec for position
+const POSITION_RATE = 2.0;  // 2 samples/sec for position (default)
+const COLOR_RATE = 10.0;    // 10 samples/sec for LED color (default)
+
+/** Apply coordinate frame transform: Three.js (Z toward viewer) → VVIZ standard (Z forward) */
+function applyZFlip(z: number, frame: 'standard' | 'ogl'): number {
+  return frame === 'standard' ? -z : z;
+}
 const COLOR_RATE = 10.0;    // 10 samples/sec for LED color
 
 /**
