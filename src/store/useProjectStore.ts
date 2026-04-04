@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { materializeFormation as materialize } from '@/lib/formationMaterializer';
 import type { VideoChoreoResult } from '@/lib/videoChoreoEngine';
+import { createDroneFormationSlice, type DroneFormationSliceActions } from '@/store/slices/droneFormationSlice';
 
 // ── Effect types & EFFECT_LIBRARY re-exported from src/data for backward compat ──
 export type { Effect, PartType } from '@/data/effectLibrary';
