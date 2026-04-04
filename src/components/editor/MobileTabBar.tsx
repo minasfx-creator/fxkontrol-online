@@ -67,7 +67,7 @@ export default function MobileTabBar({
       return;
     }
     haptics.tap();
-    const tabDef = TABS.find(t => t.key === tab);
+    const tabDef = ALL_TABS.find(t => t.key === tab);
 
     if (tabDef?.panelId) {
       if (activeTab === tab) {
