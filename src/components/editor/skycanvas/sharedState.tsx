@@ -3,7 +3,9 @@
  * Eliminates prop-drilling and enables centralized per-frame scanning.
  */
 import * as THREE from 'three';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { getEffectById as getEffectByIdFromMap } from '@/data/effectLibraryMap';
 import { getCompound, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
 import { getBreakHeight } from '@/lib/pyroPhysics';
 
