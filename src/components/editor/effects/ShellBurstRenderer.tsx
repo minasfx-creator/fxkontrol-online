@@ -397,12 +397,13 @@ export default function ShellBurstRenderer({
   }, [starCount, breakSpeed, pattern, starLifetime, hasPistil, pistilCount, fallingLeaves]);
 
   // Buffer attributes (reused — no GC pressure)
-  const { posBuffer, lifeBuffer, maxLifeBuffer, brightnessBuffer, velocityBuffer } = useMemo(() => ({
+  const { posBuffer, lifeBuffer, maxLifeBuffer, brightnessBuffer, velocityBuffer, dragBuffer } = useMemo(() => ({
     posBuffer: new Float32Array(MAX_PARTICLES * 3),
     lifeBuffer: new Float32Array(MAX_PARTICLES),
     maxLifeBuffer: new Float32Array(MAX_PARTICLES),
     brightnessBuffer: new Float32Array(MAX_PARTICLES),
     velocityBuffer: new Float32Array(MAX_PARTICLES * 3),
+    dragBuffer: new Float32Array(MAX_PARTICLES),
   }), []);
 
   // Pistil buffers
