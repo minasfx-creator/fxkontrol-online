@@ -9,7 +9,8 @@ import { Shield, AlertTriangle, AlertOctagon, CheckCircle, Settings2, Fence, Zap
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import {
   runDeconfliction,
   runGeofenceCheck,

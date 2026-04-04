@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useInventoryStore, type InventoryItem } from '@/store/useInventoryStore';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { parseVDL } from '@/lib/vdlParser';
 import { cn } from '@/lib/utils';
 

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { MapPin, Crosshair, Zap, Move, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, RotateCw, Maximize2, Minimize2, Grid3x3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

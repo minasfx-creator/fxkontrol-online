@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';

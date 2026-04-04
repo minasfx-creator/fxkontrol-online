@@ -4,7 +4,8 @@ import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { EFFECT_LIBRARY, useProjectStore, type Effect } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { ScrollArea } from '@/components/ui/scroll-area';

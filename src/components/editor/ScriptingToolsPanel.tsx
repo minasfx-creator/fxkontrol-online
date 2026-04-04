@@ -3,7 +3,8 @@ import { Wand2, Shuffle, ArrowLeftRight, Fan, AlignHorizontalSpaceAround, ArrowD
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import {
   randomizeItems, DEFAULT_RANDOMIZE, type RandomizeConfig,
   makeIntoSequence, DEFAULT_SEQUENCE, type SequenceConfig, type SequenceSortMode,

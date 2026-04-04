@@ -1,7 +1,8 @@
 import { useRef, useState, useCallback, useEffect, useMemo, forwardRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html, Line } from '@react-three/drei';
-import { useProjectStore, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore, type Position } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useSceneStore } from '@/store/useSceneStore';
 import { useUndoStore } from '@/store/useUndoStore';
 import { useAddressingStore } from '@/store/useAddressingStore';

@@ -6,7 +6,8 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { X, MapPin, Plane, Sparkles, ChevronRight, ChevronLeft, Check, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useUndoStore } from '@/store/useUndoStore';
 import AngleQuickEditor from './AngleQuickEditor';
 

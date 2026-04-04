@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useProjectStore, EFFECT_LIBRARY, type Position } from '@/store/useProjectStore';
+import { useProjectStore, type Position } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Unlink, Link, ChevronDown, ChevronRight } from 'lucide-react';

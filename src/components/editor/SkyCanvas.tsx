@@ -1,6 +1,7 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Grid, PerspectiveCamera, ContactShadows, Sky } from '@react-three/drei';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useSceneStore } from '@/store/useSceneStore';
 import React, { useRef, useMemo, useEffect, useState, useCallback, Component, ErrorInfo, ReactNode, lazy, Suspense } from 'react';
 import { PerfCollector, PerformanceHUD, type PerfStats } from './PerformanceHUD';
