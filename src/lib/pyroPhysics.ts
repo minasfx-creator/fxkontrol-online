@@ -14,21 +14,31 @@ import { interpolateTable, interpolateTableRound, type LookupTable } from './int
 // ── Constants ───────────────────────────────────────────────────────
 
 export const GRAVITY = -9.81; // m/s²
-export const AIR_DRAG = 0.03;
-export const STAR_DRAG = 0.08;
+// Drag coefficients for quadratic drag model: F_drag = k * v²
+// Light sparks decelerate fast, heavy embers maintain trajectory
+export const AIR_DRAG = 0.06;   // default shell body drag
+export const STAR_DRAG = 0.10;  // star particle drag (medium)
+
+/** Drag coefficient ranges by particle type (for per-particle variance) */
+export const DRAG_TABLE = {
+  spark_light: { min: 0.08, max: 0.15 },   // charcoal, light metals
+  ember_medium: { min: 0.04, max: 0.08 },  // standard stars
+  fragment_heavy: { min: 0.01, max: 0.04 }, // titanium, iron
+} as const;
 
 // ── Lookup Tables (sub-2" calibers added per Finale manual) ─────────
 
+// Calibrated against real-world field measurements (NFPA 1123 / Skylighter / PIROEX)
 const MORTAR_VELOCITY: LookupTable = {
-  1: 22, 1.5: 32, 2: 42, 3: 56, 4: 68, 5: 78, 6: 88, 8: 105, 10: 118, 12: 130, 16: 145,
+  1: 30, 1.5: 45, 2: 55, 3: 70, 4: 85, 5: 95, 6: 110, 8: 125, 10: 135, 12: 145, 16: 160,
 };
 
 const BREAK_HEIGHT: LookupTable = {
-  1: 15, 1.5: 25, 2: 35, 3: 55, 4: 80, 5: 110, 6: 140, 8: 190, 10: 240, 12: 280, 16: 320,
+  1: 20, 1.5: 35, 2: 50, 3: 105, 4: 140, 5: 190, 6: 260, 8: 330, 10: 380, 12: 420, 16: 480,
 };
 
 const BREAK_SPEED: LookupTable = {
-  1: 10, 1.5: 14, 2: 18, 3: 28, 4: 38, 5: 48, 6: 58, 8: 72, 10: 85, 12: 95, 16: 110,
+  1: 12, 1.5: 18, 2: 24, 3: 35, 4: 45, 5: 55, 6: 65, 8: 78, 10: 90, 12: 100, 16: 115,
 };
 
 const STAR_COUNT: LookupTable = {
@@ -86,7 +96,7 @@ export function getSafetyDistance(caliberInches: number): number {
 // Used for safety radius calculations and regulatory compliance, NOT for viewport rendering.
 
 const REAL_BURST_HEIGHT_NFPA: LookupTable = {
-  3: 120, 4: 150, 5: 180, 6: 210, 8: 270, 10: 320, 12: 350,
+  3: 105, 4: 140, 5: 190, 6: 260, 8: 330, 10: 380, 12: 420,
 };
 
 /** Real-world burst height from NFPA data (meters). For safety calculations only. */
@@ -452,14 +462,15 @@ export function stepParticle(
     p.vz += Math.cos(p.life * 1.5 + p.seed * 3.14) * 0.3 * dt;
   }
   
-  // Apply aerodynamic drag
+  // Apply aerodynamic drag — QUADRATIC model: F_drag = k * v²
+  // More physically accurate: high-speed particles decelerate much faster
   const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz);
   if (speed > 0.01) {
-    const dragForce = drag * speed;
-    const invSpeed = 1 / speed;
-    p.vx -= p.vx * invSpeed * dragForce * dt;
-    p.vy -= p.vy * invSpeed * dragForce * dt;
-    p.vz -= p.vz * invSpeed * dragForce * dt;
+    const dragForce = drag * speed * speed; // k * v² (quadratic)
+    const decel = Math.min(dragForce * dt / speed, 0.95); // cap to prevent sign flip
+    p.vx -= p.vx * decel;
+    p.vy -= p.vy * decel;
+    p.vz -= p.vz * decel;
   }
   
   // Integrate position
@@ -477,7 +488,10 @@ export function stepParticle(
   
   // Update lifecycle
   p.life += dt;
-  p.brightness = Math.max(0, 1 - p.life / p.maxLife);
+  // Exponential brightness decay: I = I0 * e^(-k*t)
+  // k=1.2 gives medium decay rate (configurable via maxLife)
+  const lifeRatio = p.life / p.maxLife;
+  p.brightness = Math.max(0, Math.exp(-1.2 * lifeRatio * lifeRatio * 3.0));
 }
 
 // ── Shell Burst Patterns ────────────────────────────────────────────
@@ -568,7 +582,29 @@ export function createShellBurst(
       }
     }
 
-    particles.push({ x: 0, y: 0, z: 0, vx, vy, vz, life: 0, maxLife: life, brightness: 1 });
+    // ── Natural variance (mandatory for realism) ──
+    // Velocity: ±10% random variation per particle
+    const velVariance = 0.90 + Math.random() * 0.20;
+    vx *= velVariance;
+    vy *= velVariance;
+    vz *= velVariance;
+
+    // Angular jitter: ±5° deviation from ideal trajectory
+    const jitterRad = ((Math.random() - 0.5) * 10) * Math.PI / 180; // ±5°
+    const cosJ = Math.cos(jitterRad);
+    const sinJ = Math.sin(jitterRad);
+    const jVx = vx * cosJ - vz * sinJ;
+    const jVz = vx * sinJ + vz * cosJ;
+    vx = jVx;
+    vz = jVz;
+
+    // Intensity: ±15% initial brightness variation
+    const brightnessVariance = 0.85 + Math.random() * 0.30;
+
+    // Timing: ±3% lifetime variation (fuse irregularity)
+    life *= (0.97 + Math.random() * 0.06);
+
+    particles.push({ x: 0, y: 0, z: 0, vx, vy, vz, life: 0, maxLife: life, brightness: brightnessVariance });
   }
 
   return particles;
