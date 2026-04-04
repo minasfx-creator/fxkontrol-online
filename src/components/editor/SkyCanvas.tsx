@@ -46,6 +46,7 @@ import GoogleTilesLoadingOverlay from './GoogleTilesLoadingOverlay';
 import HUDCrosshairs from './HUDCrosshairs';
 import ARCompassHUD from './ARCompassHUD';
 import ARScanEffect from './ARScanEffect';
+import DestructionOverlay from './DestructionOverlay';
 import { cn } from '@/lib/utils';
 import {
   CometEffect,
