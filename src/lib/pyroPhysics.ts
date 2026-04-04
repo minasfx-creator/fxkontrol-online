@@ -14,8 +14,17 @@ import { interpolateTable, interpolateTableRound, type LookupTable } from './int
 // ── Constants ───────────────────────────────────────────────────────
 
 export const GRAVITY = -9.81; // m/s²
-export const AIR_DRAG = 0.03;
-export const STAR_DRAG = 0.08;
+// Drag coefficients for quadratic drag model: F_drag = k * v²
+// Light sparks decelerate fast, heavy embers maintain trajectory
+export const AIR_DRAG = 0.06;   // default shell body drag
+export const STAR_DRAG = 0.10;  // star particle drag (medium)
+
+/** Drag coefficient ranges by particle type (for per-particle variance) */
+export const DRAG_TABLE = {
+  spark_light: { min: 0.08, max: 0.15 },   // charcoal, light metals
+  ember_medium: { min: 0.04, max: 0.08 },  // standard stars
+  fragment_heavy: { min: 0.01, max: 0.04 }, // titanium, iron
+} as const;
 
 // ── Lookup Tables (sub-2" calibers added per Finale manual) ─────────
 
