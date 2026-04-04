@@ -1,4 +1,4 @@
-import { type TimelineItem, type Position, type Trajectory, type DroneFormation } from '@/store/useProjectStore';
+import { type TimelineItem, type Position, type Trajectory, type DroneFormation } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { rgbToVdlString } from '@/lib/vdlQuantizer';
 

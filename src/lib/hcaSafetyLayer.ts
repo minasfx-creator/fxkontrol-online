@@ -6,7 +6,7 @@
  * Based on HCA Technical Architecture Dossier.
  */
 
-import { type Position, type Trajectory, type TimelineItem, type DroneFormation } from '@/store/useProjectStore';
+import { type Position, type Trajectory, type TimelineItem, type DroneFormation } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 
 // ─── Failsafe Escalation Levels ──────────────────────────────────────

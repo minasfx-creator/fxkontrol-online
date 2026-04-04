@@ -7,7 +7,7 @@
  * - Visual representation in timeline
  */
 
-import { type TimelineItem } from '@/store/useProjectStore';
+import { type TimelineItem } from '@/types/projectTypes';
 
 export interface ChainConfig {
   id: string;

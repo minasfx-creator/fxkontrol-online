@@ -2,7 +2,8 @@ import { useRef, useState, useCallback, useMemo, useEffect, forwardRef } from 'r
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
-import { useProjectStore, type Position } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type Position } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useUndoStore } from '@/store/useUndoStore';
 import { calcWindCompensation, getBreakHeight, getMortarVelocity, getLiftTime } from '@/lib/pyroPhysics';

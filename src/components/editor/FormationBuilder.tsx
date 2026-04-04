@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type DroneFormation } from '@/types/projectTypes';
 import type { ColorTransitionMode } from '@/lib/colorInterpolation';
 import {
   generateFormation,

@@ -1,7 +1,8 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type DroneFormation } from '@/types/projectTypes';
 
 const SPARKS_PER_DRONE = 4;
 const TRAIL_SEGMENTS = 6;

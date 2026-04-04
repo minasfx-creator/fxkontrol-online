@@ -1,4 +1,5 @@
-import { useProjectStore, type SelectionMode } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type SelectionMode } from '@/types/projectTypes';
 import { MapPin, Zap, Link2, Lasso, Grid3x3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect } from 'react';

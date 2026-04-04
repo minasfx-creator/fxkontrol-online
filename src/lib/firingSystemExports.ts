@@ -6,7 +6,7 @@
  * Show Director, Megafire, PyroNeo, MAGICFX, G-Flame
  */
 
-import { type TimelineItem, type Position } from '@/store/useProjectStore';
+import { type TimelineItem, type Position } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 
 interface FiringCue {
