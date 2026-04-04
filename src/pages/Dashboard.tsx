@@ -364,7 +364,7 @@ export default function Dashboard() {
           background: 'linear-gradient(90deg, hsl(32 100% 50% / 0.6), hsl(32 100% 50% / 0.1) 30%, hsl(32 100% 50% / 0.1) 70%, hsl(32 100% 50% / 0.6))'
         }} />
         
-        <div className="p-5 md:p-7 relative z-10">
+        <div className="p-3 md:p-7 relative z-10">
           <div className="flex items-start justify-between">
             <div>
               {/* Status line */}
