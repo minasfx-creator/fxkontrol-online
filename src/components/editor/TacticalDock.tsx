@@ -1,6 +1,6 @@
 /**
  * TacticalDock — Vertical macOS-style dock for editing tools
- * Consolidates transform gizmo modes, selection, and add tools
+ * Wrapped in DraggableFloatingPanel for repositioning
  */
 import { MousePointer2, Move, RotateCw, Maximize2, Lasso, Plus, Axis3D, Magnet } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -8,6 +8,7 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
 import { isLassoActive } from './SelectionModeBar';
 import { useState, useEffect, useCallback } from 'react';
+import DraggableFloatingPanel from './DraggableFloatingPanel';
 
 type DockTool = 'select' | 'translate' | 'rotate' | 'scale' | 'lasso' | 'add';
 
@@ -30,7 +31,6 @@ export default function TacticalDock() {
 
   const [lassoOn, setLassoOn] = useState(false);
 
-  // Determine active tool from state
   const activeTool: DockTool = (() => {
     if (lassoOn && editorMode === 'select') return 'lasso';
     if (editorMode === 'add-pyro' || editorMode === 'add-drone') return 'add';
@@ -75,7 +75,6 @@ export default function TacticalDock() {
     }
   }, [setEditorMode, updateEnvironment]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -87,67 +86,65 @@ export default function TacticalDock() {
   }, [handleToolClick]);
 
   return (
-    <div className="absolute left-3 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-0.5 bg-background/80 backdrop-blur-xl border border-border/20 rounded-2xl p-1 shadow-2xl">
-      {TOOLS.map(({ id, icon: Icon, label, shortcut }) => {
-        const isActive = activeTool === id;
-        return (
-          <button
-            key={id}
-            onClick={() => handleToolClick(id)}
-            className={cn(
-              "relative w-9 h-9 rounded-xl flex items-center justify-center transition-all group",
-              isActive
-                ? "bg-primary/20 text-primary shadow-md shadow-primary/10"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-            )}
-            title={`${label} (${shortcut})`}
-          >
-            <Icon className="w-4 h-4" />
-            {/* Tooltip */}
-            <span className="absolute left-full ml-2 px-2 py-1 rounded-lg text-[10px] font-medium bg-popover border border-border/30 text-foreground opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap shadow-lg z-50">
-              {label}
-              <kbd className="ml-1.5 text-[8px] text-muted-foreground/60 bg-muted/40 px-1 py-0.5 rounded">{shortcut}</kbd>
-            </span>
-            {/* Active indicator dot */}
-            {isActive && (
-              <span className="absolute -right-0.5 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-primary shadow-sm shadow-primary/50" />
-            )}
-          </button>
-        );
-      })}
+    <DraggableFloatingPanel panelId="tactical-dock" initialX={12} initialY={Math.round(window.innerHeight / 2 - 150)}>
+      <div className="flex flex-col items-center gap-0.5 p-1">
+        {TOOLS.map(({ id, icon: Icon, label, shortcut }) => {
+          const isActive = activeTool === id;
+          return (
+            <button
+              key={id}
+              onClick={() => handleToolClick(id)}
+              className={cn(
+                "relative w-9 h-9 rounded-xl flex items-center justify-center transition-all group",
+                isActive
+                  ? "bg-primary/20 text-primary shadow-md shadow-primary/10"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+              )}
+              title={`${label} (${shortcut})`}
+            >
+              <Icon className="w-4 h-4" />
+              <span className="absolute left-full ml-2 px-2 py-1 rounded-lg text-[10px] font-medium bg-popover border border-border/30 text-foreground opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap shadow-lg z-50">
+                {label}
+                <kbd className="ml-1.5 text-[8px] text-muted-foreground/60 bg-muted/40 px-1 py-0.5 rounded">{shortcut}</kbd>
+              </span>
+              {isActive && (
+                <span className="absolute -right-0.5 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-primary shadow-sm shadow-primary/50" />
+              )}
+            </button>
+          );
+        })}
 
-      <div className="w-5 h-px bg-border/30 my-0.5" />
+        <div className="w-5 h-px bg-border/30 my-0.5" />
 
-      {/* Axes toggle */}
-      <button
-        onClick={() => updateEnvironment({ showAxesHelper: !showAxes })}
-        className={cn(
-          "w-9 h-9 rounded-xl flex items-center justify-center transition-all group",
-          showAxes
-            ? "bg-accent/20 text-accent-foreground"
-            : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/20"
-        )}
-        title="Axes Helper"
-      >
-        <Axis3D className="w-4 h-4" />
-      </button>
+        <button
+          onClick={() => updateEnvironment({ showAxesHelper: !showAxes })}
+          className={cn(
+            "w-9 h-9 rounded-xl flex items-center justify-center transition-all group",
+            showAxes
+              ? "bg-accent/20 text-accent-foreground"
+              : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/20"
+          )}
+          title="Axes Helper"
+        >
+          <Axis3D className="w-4 h-4" />
+        </button>
 
-      {/* Snap toggle */}
-      <button
-        onClick={() => {
-          const snaps = [0.1, 0.5, 1, 5, 10];
-          const idx = snaps.indexOf(env.gridSnapResolution);
-          const next = snaps[(idx + 1) % snaps.length];
-          updateEnvironment({ gridSnapResolution: next });
-        }}
-        className="w-9 h-9 rounded-xl flex items-center justify-center transition-all text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/20 group"
-        title={`Snap: ${env.gridSnapResolution >= 1 ? `${env.gridSnapResolution}m` : `${env.gridSnapResolution * 100}cm`}`}
-      >
-        <Magnet className="w-4 h-4" />
-        <span className="absolute left-full ml-2 px-2 py-1 rounded-lg text-[9px] font-mono bg-popover border border-border/30 text-foreground opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap shadow-lg z-50">
-          {env.gridSnapResolution >= 1 ? `${env.gridSnapResolution}m` : `${env.gridSnapResolution * 100}cm`}
-        </span>
-      </button>
-    </div>
+        <button
+          onClick={() => {
+            const snaps = [0.1, 0.5, 1, 5, 10];
+            const idx = snaps.indexOf(env.gridSnapResolution);
+            const next = snaps[(idx + 1) % snaps.length];
+            updateEnvironment({ gridSnapResolution: next });
+          }}
+          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/20 group"
+          title={`Snap: ${env.gridSnapResolution >= 1 ? `${env.gridSnapResolution}m` : `${env.gridSnapResolution * 100}cm`}`}
+        >
+          <Magnet className="w-4 h-4" />
+          <span className="absolute left-full ml-2 px-2 py-1 rounded-lg text-[9px] font-mono bg-popover border border-border/30 text-foreground opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap shadow-lg z-50">
+            {env.gridSnapResolution >= 1 ? `${env.gridSnapResolution}m` : `${env.gridSnapResolution * 100}cm`}
+          </span>
+        </button>
+      </div>
+    </DraggableFloatingPanel>
   );
 }
