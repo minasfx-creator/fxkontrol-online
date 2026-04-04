@@ -155,7 +155,7 @@ export default function DockBar() {
                       className={cn(
                         "relative flex flex-col items-center justify-center rounded-xl transition-all",
                         "active:scale-90",
-                        isMobile ? "w-12 h-14 gap-0.5" : "w-11 h-11",
+                        isMobile ? "w-14 h-16 gap-0.5" : "w-11 h-11",
                         isActive ? "dock-item-active" : "hover:bg-white/[0.04]"
                       )}
                       style={{
@@ -173,15 +173,15 @@ export default function DockBar() {
                           filter: isActive ? `drop-shadow(0 0 6px ${accentColor})` : 'none',
                         }}
                       />
-                      {/* Label — mobile only */}
+                      {/* Label — mobile only with better abbreviations */}
                       {isMobile && (
                         <span
-                          className="text-[7px] font-bold tracking-wider leading-none truncate max-w-[40px]"
+                          className="text-[7px] font-bold tracking-wider leading-none truncate max-w-[48px]"
                           style={{
                             color: isActive ? accentColor : 'hsl(var(--muted-foreground) / 0.35)',
                           }}
                         >
-                          {item.label.length > 6 ? item.label.slice(0, 5) + '.' : item.label}
+                          {item.label === 'Command' ? 'CMD' : item.label === 'Editor 3D' ? 'Editor' : item.label === 'Training' ? 'Train' : item.label === 'Field Test' ? 'Field' : item.label === 'Show Test' ? 'Show' : item.label === 'Dashboard' ? 'Home' : item.label}
                         </span>
                       )}
                       {isActive && (
