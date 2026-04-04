@@ -505,9 +505,11 @@ function SafetyChecklist() {
 interface ShowCommanderPanelProps {
   onClose?: () => void;
   onOpenPanel?: (id: string) => void;
+  /** @deprecated Backward-compat prop from ShowControlPanel migration */
+  fs?: boolean;
 }
 
-export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommanderPanelProps) {
+export default function ShowCommanderPanel({ onClose, onOpenPanel, fs: _fs }: ShowCommanderPanelProps) {
   const isMobile = useIsMobile();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
