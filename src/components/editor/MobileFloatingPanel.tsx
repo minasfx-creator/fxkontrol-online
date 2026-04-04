@@ -68,7 +68,7 @@ export default function MobileFloatingPanel({
 
   const heightValue = height === 'full'
     ? 'calc(100dvh - 64px - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 48px)'
-    : '50dvh';
+    : 'min(50dvh, calc(100dvh - 180px))';
 
   return (
     <div

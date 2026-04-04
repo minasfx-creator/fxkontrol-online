@@ -179,78 +179,84 @@ export default function MobileTabBar({
           </div>
         )}
 
-        {/* Horizontally scrollable tab bar */}
-        <nav
-          className="pointer-events-auto glass-dock mx-2 mb-2 rounded-2xl px-1 py-1 overflow-x-auto no-scrollbar"
-          onMouseLeave={() => setHoveredIndex(null)}
-          onTouchStart={handleSwipeStart}
-          onTouchEnd={handleSwipeEnd}
-        >
-          <div className="flex items-end justify-start gap-0.5 min-w-max">
-            {TABS.map(({ key, icon: Icon, label, accent }, index) => {
-              const isActive = activeTab === key;
+        {/* Horizontally scrollable tab bar with edge fade */}
+        <div className="relative mx-2 mb-2">
+          {/* Left fade */}
+          <div className="absolute left-0 top-0 bottom-0 w-6 z-10 pointer-events-none rounded-l-2xl" style={{ background: 'linear-gradient(to right, hsl(var(--background) / 0.7), transparent)' }} />
+          {/* Right fade */}
+          <div className="absolute right-0 top-0 bottom-0 w-6 z-10 pointer-events-none rounded-r-2xl" style={{ background: 'linear-gradient(to left, hsl(var(--background) / 0.7), transparent)' }} />
+          <nav
+            className="pointer-events-auto glass-dock rounded-2xl px-1 py-1 overflow-x-auto no-scrollbar"
+            onMouseLeave={() => setHoveredIndex(null)}
+            onTouchStart={handleSwipeStart}
+            onTouchEnd={handleSwipeEnd}
+          >
+            <div className="flex items-end justify-start gap-0.5 min-w-max">
+              {TABS.map(({ key, icon: Icon, label, accent }, index) => {
+                const isActive = activeTab === key;
 
-              return (
-                <button
-                  key={key}
-                  onClick={() => handleTabClick(key)}
-                  onMouseEnter={() => setHoveredIndex(index)}
-                  onTouchStart={(e) => {
-                    setHoveredIndex(index);
-                    handleLongPressStart(key, e);
-                  }}
-                  onTouchEnd={() => {
-                    handleLongPressEnd();
-                    setTimeout(() => setHoveredIndex(null), 300);
-                  }}
-                  onTouchCancel={() => {
-                    handleLongPressEnd();
-                    setHoveredIndex(null);
-                  }}
-                  className={cn(
-                    "relative flex flex-col items-center justify-center py-1.5 px-2.5 rounded-xl min-h-[48px] min-w-[44px]",
-                    "active:scale-90 transition-transform",
-                    isActive && "bg-white/[0.04]",
-                  )}
-                >
-                  <div className="relative">
-                    <Icon className={cn(
-                      "w-5 h-5 transition-colors duration-200",
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleTabClick(key)}
+                    onMouseEnter={() => setHoveredIndex(index)}
+                    onTouchStart={(e) => {
+                      setHoveredIndex(index);
+                      handleLongPressStart(key, e);
+                    }}
+                    onTouchEnd={() => {
+                      handleLongPressEnd();
+                      setTimeout(() => setHoveredIndex(null), 300);
+                    }}
+                    onTouchCancel={() => {
+                      handleLongPressEnd();
+                      setHoveredIndex(null);
+                    }}
+                    className={cn(
+                      "relative flex flex-col items-center justify-center py-1.5 px-2.5 rounded-xl min-h-[48px] min-w-[44px]",
+                      "active:scale-90 transition-transform",
+                      isActive && "bg-white/[0.04]",
+                    )}
+                  >
+                    <div className="relative">
+                      <Icon className={cn(
+                        "w-5 h-5 transition-colors duration-200",
+                        isActive
+                          ? accent ? "text-accent" : "text-primary"
+                          : "text-muted-foreground/50"
+                      )}
+                        style={isActive ? { filter: `drop-shadow(0 0 6px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'})` } : undefined}
+                      />
+                      {key === 'livefx' && activeEffectsCount > 0 && (
+                        <span className="absolute -top-1.5 -right-2 min-w-[14px] h-[14px] rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center px-0.5"
+                          style={{ boxShadow: '0 0 6px hsl(var(--destructive) / 0.5)' }}>
+                          {activeEffectsCount}
+                        </span>
+                      )}
+                    </div>
+                    <span className={cn(
+                      "text-[8px] font-semibold mt-0.5 transition-colors duration-200",
                       isActive
                         ? accent ? "text-accent" : "text-primary"
-                        : "text-muted-foreground/50"
-                    )}
-                      style={isActive ? { filter: `drop-shadow(0 0 6px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'})` } : undefined}
-                    />
-                    {key === 'livefx' && activeEffectsCount > 0 && (
-                      <span className="absolute -top-1.5 -right-2 min-w-[14px] h-[14px] rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center px-0.5"
-                        style={{ boxShadow: '0 0 6px hsl(var(--destructive) / 0.5)' }}>
-                        {activeEffectsCount}
-                      </span>
-                    )}
-                  </div>
-                  <span className={cn(
-                    "text-[8px] font-semibold mt-0.5 transition-colors duration-200",
-                    isActive
-                      ? accent ? "text-accent" : "text-primary"
-                      : "text-muted-foreground/35"
-                  )}>
-                    {label}
-                  </span>
+                        : "text-muted-foreground/35"
+                    )}>
+                      {label}
+                    </span>
 
-                  {isActive && (
-                    <div className="absolute -bottom-0.5 w-1 h-1 rounded-full"
-                      style={{
-                        background: accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
-                        boxShadow: `0 0 4px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'}`,
-                      }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </nav>
+                    {isActive && (
+                      <div className="absolute -bottom-0.5 w-1 h-1 rounded-full"
+                        style={{
+                          background: accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
+                          boxShadow: `0 0 4px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'}`,
+                        }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+        </div>
 
         {/* Category dots indicator */}
         <div className="pointer-events-none flex justify-center gap-1 pb-1">

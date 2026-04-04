@@ -174,7 +174,7 @@ function TransportIndicator() {
 }
 
 /* ── Feed Card (Instagram-style) ─────────────────────── */
-function FeedCard({ item }: { item: NewsItem }) {
+function FeedCard({ item, compact }: { item: NewsItem; compact?: boolean }) {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -194,7 +194,7 @@ function FeedCard({ item }: { item: NewsItem }) {
         {item.sentiment === 'negative' && <TrendingDown className="h-3.5 w-3.5 text-red-400" />}
         {item.sentiment === 'neutral' && <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
       </div>
-      <div className="relative aspect-[4/3] overflow-hidden">
+      <div className={cn("relative overflow-hidden", compact ? "aspect-[16/9]" : "aspect-[4/3]")}>
         <img src={item.image} alt={item.title} className="w-full h-full object-cover brightness-[0.85]" loading="lazy" decoding="async" />
         <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
       </div>
@@ -364,7 +364,7 @@ export default function Dashboard() {
           background: 'linear-gradient(90deg, hsl(32 100% 50% / 0.6), hsl(32 100% 50% / 0.1) 30%, hsl(32 100% 50% / 0.1) 70%, hsl(32 100% 50% / 0.6))'
         }} />
         
-        <div className="p-5 md:p-7 relative z-10">
+        <div className="p-3 md:p-7 relative z-10">
           <div className="flex items-start justify-between">
             <div>
               {/* Status line */}
@@ -443,7 +443,7 @@ export default function Dashboard() {
               <button
                 key={console.key}
                 onClick={() => navigate(`/command?mode=${console.key}`)}
-                className={cn("group relative overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-300 ease-spring hover:scale-[1.08] active:scale-[0.95] animate-fxk-stagger", isMobile && "shrink-0 min-w-[72px]")}
+                className={cn("group relative overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-300 ease-spring hover:scale-[1.08] active:scale-[0.95] animate-fxk-stagger", isMobile && "shrink-0 min-w-[80px]")}
                 style={{
                   animationDelay: `${0.1 + i * 0.04}s`,
                   borderColor: `${console.color}20`,
@@ -680,7 +680,7 @@ export default function Dashboard() {
           <div className="space-y-4">
             {visibleNews.map((item, i) => (
               <div key={item.id} className="animate-fxk-stagger" style={{ animationDelay: `${0.2 + i * 0.08}s` }}>
-                <FeedCard item={item} />
+                <FeedCard item={item} compact={isMobile} />
               </div>
             ))}
           </div>
