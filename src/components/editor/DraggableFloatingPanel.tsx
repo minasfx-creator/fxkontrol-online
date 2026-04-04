@@ -35,6 +35,7 @@ export default function DraggableFloatingPanel({
   children,
   minimizable = true,
   className,
+  bottomOffset = 0,
 }: Props) {
   const [pos, setPos] = useState(() => getStoredPos(panelId, { x: initialX, y: initialY }));
   const [minimized, setMinimized] = useState(false);
