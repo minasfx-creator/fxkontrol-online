@@ -82,7 +82,7 @@ export default function ViewportConfigMenu({
   }, [freeLook, flyMode, groundMode, onFreeLookToggle, onFlyModeToggle, onGroundModeToggle]);
 
   return (
-    <div ref={menuRef} className="absolute top-3 left-3 z-30">
+    <div ref={menuRef} className="absolute top-3 left-3 z-40">
       {/* Trigger */}
       <button
         onClick={() => setOpen(!open)}
