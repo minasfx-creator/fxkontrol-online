@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { lazy, Suspense } from "react";
 import MainLayout from "@/layouts/MainLayout";
+import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
