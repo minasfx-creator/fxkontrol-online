@@ -1,78 +1,18 @@
 /**
  * PerformanceMonitor — Real-time system health display for Show Commander.
  * Shows FPS, memory, worker latency with emergency visual scale-down.
+ * 
+ * Now uses shared usePerfMetrics hook.
  */
-import { useState, useEffect, useCallback, useRef } from 'react';
 import { Cpu, Gauge, Activity, AlertTriangle, Zap, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePerfMetrics } from '@/hooks/usePerfMetrics';
 
-interface PerfMetrics {
-  fps: number;
-  memory: number;      // MB
-  workerLatency: number; // ms
-  frameTime: number;   // ms
-  drawCalls: number;
-  isScaledDown: boolean;
-}
-
-export function usePerformanceMetrics() {
-  const [metrics, setMetrics] = useState<PerfMetrics>({
-    fps: 60, memory: 0, workerLatency: 0, frameTime: 16.7, drawCalls: 0, isScaledDown: false,
-  });
-
-  const framesRef = useRef(0);
-  const lastTimeRef = useRef(performance.now());
-  const scaledDownRef = useRef(false);
-
-  useEffect(() => {
-    let rafId: number;
-    const measure = () => {
-      framesRef.current++;
-      const now = performance.now();
-      const delta = now - lastTimeRef.current;
-
-      if (delta >= 1000) {
-        const fps = Math.round((framesRef.current / delta) * 1000);
-        const frameTime = +(delta / framesRef.current).toFixed(1);
-        framesRef.current = 0;
-        lastTimeRef.current = now;
-
-        // Memory (if available)
-        const mem = (performance as any).memory;
-        const memoryMB = mem ? Math.round(mem.usedJSHeapSize / 1048576) : 0;
-
-        // Auto scale-down
-        const shouldScaleDown = fps < 25;
-        if (shouldScaleDown !== scaledDownRef.current) {
-          scaledDownRef.current = shouldScaleDown;
-          // Dispatch event for SkyCanvas to react
-          window.dispatchEvent(new CustomEvent('fxk-performance-mode', {
-            detail: { scaleDown: shouldScaleDown },
-          }));
-        }
-
-        setMetrics({
-          fps,
-          memory: memoryMB,
-          workerLatency: +(1 + Math.random() * 2).toFixed(1),
-          frameTime,
-          drawCalls: Math.round(50 + Math.random() * 30),
-          isScaledDown: shouldScaleDown,
-        });
-      }
-
-      rafId = requestAnimationFrame(measure);
-    };
-
-    rafId = requestAnimationFrame(measure);
-    return () => cancelAnimationFrame(rafId);
-  }, []);
-
-  return metrics;
-}
+// Re-export for backward compat
+export { usePerfMetrics as usePerformanceMetrics } from '@/hooks/usePerfMetrics';
 
 export default function PerformanceMonitor({ workerFPS = 0 }: { workerFPS?: number }) {
-  const m = usePerformanceMetrics();
+  const m = usePerfMetrics();
 
   const fpsColor = m.fps >= 50 ? 'text-green-400' : m.fps >= 30 ? 'text-amber-400' : 'text-red-400';
   const memColor = m.memory > 1500 ? 'text-red-400' : m.memory > 800 ? 'text-amber-400' : 'text-green-400';

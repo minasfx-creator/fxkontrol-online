@@ -2,40 +2,24 @@
  * ─── TelemetryBar — Industrial HUD Top Bar ──────────────────────────
  * Minimalist glassmorphism telemetry strip: Location · Altitude · FPS
  * Positioned at the top of the viewport for real-time operational data.
+ * 
+ * Now uses shared useTelemetryData hook for data.
  */
 
-import { useEffect, useRef, useState } from 'react';
 import { useSceneStore } from '@/store/useSceneStore';
 import { MapPin, Mountain, Activity, Clock, Satellite } from 'lucide-react';
+import { useTelemetryData, updateTelemetry } from '@/hooks/useTelemetryData';
 
-// Module-level perf data — updated from render loop, read by React at 4Hz
-let _telemetry = {
-  fps: 60,
-  lat: -23.007,
-  lng: -44.318,
-  altMSL: 0,
-  locationName: '',
-  tilesLoaded: 0,
-  drawCalls: 0,
-  triangles: 0,
-};
-
-export function updateTelemetry(data: Partial<typeof _telemetry>) {
-  Object.assign(_telemetry, data);
-}
+// Re-export updateTelemetry for backward compat (existing callers import from here)
+export { updateTelemetry };
 
 export default function TelemetryBar() {
   const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
-  const [tick, setTick] = useState(0);
+  const t = useTelemetryData();
 
-  useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 250);
-    return () => clearInterval(id);
-  }, []);
-
-  const fpsColor = _telemetry.fps >= 55
+  const fpsColor = t.fps >= 55
     ? 'text-emerald-400'
-    : _telemetry.fps >= 30
+    : t.fps >= 30
       ? 'text-amber-400'
       : 'text-red-400';
 
@@ -70,11 +54,11 @@ export default function TelemetryBar() {
         <span className="flex items-center gap-1.5 text-muted-foreground/80">
           <MapPin className="w-3 h-3 text-primary/70" />
           <span className="tabular-nums">
-            {_telemetry.lat.toFixed(4)}°, {_telemetry.lng.toFixed(4)}°
+            {t.lat.toFixed(4)}°, {t.lng.toFixed(4)}°
           </span>
-          {_telemetry.locationName && (
+          {t.locationName && (
             <span className="text-foreground/60 max-w-[120px] truncate ml-1">
-              {_telemetry.locationName}
+              {t.locationName}
             </span>
           )}
         </span>
@@ -84,7 +68,7 @@ export default function TelemetryBar() {
         {/* Altitude */}
         <span className="flex items-center gap-1.5 text-muted-foreground/80">
           <Mountain className="w-3 h-3 text-sky-400/70" />
-          <span className="tabular-nums">{_telemetry.altMSL.toFixed(0)}m MSL</span>
+          <span className="tabular-nums">{t.altMSL.toFixed(0)}m MSL</span>
         </span>
 
         <Divider />
@@ -92,7 +76,7 @@ export default function TelemetryBar() {
         {/* FPS */}
         <span className={`flex items-center gap-1.5 ${fpsColor}`}>
           <Activity className="w-3 h-3" />
-          <span className="tabular-nums font-semibold">{Math.round(_telemetry.fps)} FPS</span>
+          <span className="tabular-nums font-semibold">{Math.round(t.fps)} FPS</span>
         </span>
 
         {/* Tiles count — only in geo mode */}
@@ -101,7 +85,7 @@ export default function TelemetryBar() {
             <Divider />
             <span className="flex items-center gap-1.5 text-muted-foreground/60">
               <Satellite className="w-3 h-3" />
-              <span className="tabular-nums">{_telemetry.tilesLoaded} tiles</span>
+              <span className="tabular-nums">{t.tilesLoaded} tiles</span>
             </span>
           </>
         )}
