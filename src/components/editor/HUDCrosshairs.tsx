@@ -9,7 +9,7 @@ export default function HUDCrosshairs() {
   if (!show) return null;
 
   return (
-    <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center animate-fade-in">
+    <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center animate-fade-in">
       <svg
         viewBox="0 0 600 600"
         className="w-[min(80%,600px)] h-[min(80%,600px)] opacity-60"
