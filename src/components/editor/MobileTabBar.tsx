@@ -1,14 +1,15 @@
 /**
- * MobileTabBar — Unified dock bar for mobile editor.
- * Features: horizontally scrollable tabs, long-press context menu, swipe to cycle categories.
+ * MobileTabBar — Unified dock bar with central FAB for mobile editor.
+ * Features: horizontally scrollable tabs, FAB creation button, long-press context menu.
  */
 import { useCallback, useRef, useState } from 'react';
 import { haptics } from '@/lib/haptics';
-import { Sparkles, Cpu, Smartphone, Map, LayoutGrid, Clock, Layers, Settings2 } from 'lucide-react';
+import { Sparkles, Cpu, Smartphone, Map, LayoutGrid, Clock, Layers, Settings2, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { PANEL_SECTIONS, type PanelId } from '@/components/editor/PanelTabBar';
 import DockContextMenu from './DockContextMenu';
+import AddPositionWizard from './AddPositionWizard';
 
 export type MobileTab = 'timeline' | 'assets' | 'properties' | 'livefx' | 'points' | 'formations' | 'mobilelink' | 'controllers' | 'fieldmap' | 'radio' | 'remote' | 'more';
 
@@ -20,9 +21,12 @@ interface MobileTabBarProps {
   onPanelHeightChange: (h: 'collapsed' | 'half' | 'full') => void;
 }
 
-const TABS: { key: MobileTab; icon: typeof Sparkles; label: string; panelId?: PanelId; accent?: boolean }[] = [
+// Tabs split: left group, then FAB, then right group
+const TABS_LEFT: { key: MobileTab; icon: typeof Sparkles; label: string; panelId?: PanelId; accent?: boolean }[] = [
   { key: 'timeline', icon: Clock, label: 'Timeline' },
   { key: 'assets', icon: Layers, label: 'Assets' },
+];
+const TABS_RIGHT: { key: MobileTab; icon: typeof Sparkles; label: string; panelId?: PanelId; accent?: boolean }[] = [
   { key: 'livefx', icon: Sparkles, label: 'Live FX', panelId: 'livefiring', accent: true },
   { key: 'controllers', icon: Cpu, label: 'Control', panelId: 'controllers' },
   { key: 'remote', icon: Smartphone, label: 'Remote', panelId: 'remotecontrol' },
@@ -30,6 +34,7 @@ const TABS: { key: MobileTab; icon: typeof Sparkles; label: string; panelId?: Pa
   { key: 'properties', icon: Settings2, label: 'Props' },
   { key: 'more', icon: LayoutGrid, label: 'Painéis' },
 ];
+const ALL_TABS = [...TABS_LEFT, ...TABS_RIGHT];
 
 // Swipe category cycling
 const CATEGORY_NAMES = PANEL_SECTIONS.map(s => s.title);
@@ -46,6 +51,7 @@ export default function MobileTabBar({
   const [categoryIndex, setCategoryIndex] = useState(0);
   const [swipeLabel, setSwipeLabel] = useState<string | null>(null);
   const swipeLabelTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   // Long-press context menu state
   const [contextMenu, setContextMenu] = useState<{ tab: MobileTab; rect: DOMRect } | null>(null);
@@ -61,7 +67,7 @@ export default function MobileTabBar({
       return;
     }
     haptics.tap();
-    const tabDef = TABS.find(t => t.key === tab);
+    const tabDef = ALL_TABS.find(t => t.key === tab);
 
     if (tabDef?.panelId) {
       if (activeTab === tab) {
@@ -192,26 +198,17 @@ export default function MobileTabBar({
             onTouchEnd={handleSwipeEnd}
           >
             <div className="flex items-end justify-start gap-0.5 min-w-max">
-              {TABS.map(({ key, icon: Icon, label, accent }, index) => {
+              {/* Left tabs */}
+              {TABS_LEFT.map(({ key, icon: Icon, label, accent }, index) => {
                 const isActive = activeTab === key;
-
                 return (
                   <button
                     key={key}
                     onClick={() => handleTabClick(key)}
                     onMouseEnter={() => setHoveredIndex(index)}
-                    onTouchStart={(e) => {
-                      setHoveredIndex(index);
-                      handleLongPressStart(key, e);
-                    }}
-                    onTouchEnd={() => {
-                      handleLongPressEnd();
-                      setTimeout(() => setHoveredIndex(null), 300);
-                    }}
-                    onTouchCancel={() => {
-                      handleLongPressEnd();
-                      setHoveredIndex(null);
-                    }}
+                    onTouchStart={(e) => { setHoveredIndex(index); handleLongPressStart(key, e); }}
+                    onTouchEnd={() => { handleLongPressEnd(); setTimeout(() => setHoveredIndex(null), 300); }}
+                    onTouchCancel={() => { handleLongPressEnd(); setHoveredIndex(null); }}
                     className={cn(
                       "relative flex flex-col items-center justify-center py-1.5 px-2.5 rounded-xl min-h-[48px] min-w-[44px]",
                       "active:scale-90 transition-transform",
@@ -219,12 +216,49 @@ export default function MobileTabBar({
                     )}
                   >
                     <div className="relative">
-                      <Icon className={cn(
-                        "w-5 h-5 transition-colors duration-200",
-                        isActive
-                          ? accent ? "text-accent" : "text-primary"
-                          : "text-muted-foreground/50"
-                      )}
+                      <Icon className={cn("w-5 h-5 transition-colors duration-200", isActive ? accent ? "text-accent" : "text-primary" : "text-muted-foreground/50")}
+                        style={isActive ? { filter: `drop-shadow(0 0 6px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'})` } : undefined}
+                      />
+                    </div>
+                    <span className={cn("text-[8px] font-semibold mt-0.5 transition-colors duration-200", isActive ? accent ? "text-accent" : "text-primary" : "text-muted-foreground/35")}>{label}</span>
+                    {isActive && <div className="absolute -bottom-0.5 w-1 h-1 rounded-full" style={{ background: 'hsl(var(--primary))', boxShadow: '0 0 4px hsl(var(--primary))' }} />}
+                  </button>
+                );
+              })}
+
+              {/* Central FAB */}
+              <div className="flex items-center justify-center px-1.5">
+                <button
+                  onClick={() => { haptics.select(); setWizardOpen(true); }}
+                  className="relative w-14 h-14 -translate-y-3 rounded-full flex items-center justify-center active:scale-90 transition-all fab-glow-pulse"
+                  style={{
+                    background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8))',
+                    boxShadow: '0 4px 20px hsl(var(--primary) / 0.4), 0 0 40px hsl(var(--primary) / 0.15)',
+                  }}
+                >
+                  <Plus className="w-7 h-7 text-primary-foreground" strokeWidth={2.5} />
+                </button>
+              </div>
+
+              {/* Right tabs */}
+              {TABS_RIGHT.map(({ key, icon: Icon, label, accent }, index) => {
+                const isActive = activeTab === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleTabClick(key)}
+                    onMouseEnter={() => setHoveredIndex(TABS_LEFT.length + 1 + index)}
+                    onTouchStart={(e) => { setHoveredIndex(TABS_LEFT.length + 1 + index); handleLongPressStart(key, e); }}
+                    onTouchEnd={() => { handleLongPressEnd(); setTimeout(() => setHoveredIndex(null), 300); }}
+                    onTouchCancel={() => { handleLongPressEnd(); setHoveredIndex(null); }}
+                    className={cn(
+                      "relative flex flex-col items-center justify-center py-1.5 px-2.5 rounded-xl min-h-[48px] min-w-[44px]",
+                      "active:scale-90 transition-transform",
+                      isActive && "bg-white/[0.04]",
+                    )}
+                  >
+                    <div className="relative">
+                      <Icon className={cn("w-5 h-5 transition-colors duration-200", isActive ? accent ? "text-accent" : "text-primary" : "text-muted-foreground/50")}
                         style={isActive ? { filter: `drop-shadow(0 0 6px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'})` } : undefined}
                       />
                       {key === 'livefx' && activeEffectsCount > 0 && (
@@ -234,23 +268,8 @@ export default function MobileTabBar({
                         </span>
                       )}
                     </div>
-                    <span className={cn(
-                      "text-[8px] font-semibold mt-0.5 transition-colors duration-200",
-                      isActive
-                        ? accent ? "text-accent" : "text-primary"
-                        : "text-muted-foreground/35"
-                    )}>
-                      {label}
-                    </span>
-
-                    {isActive && (
-                      <div className="absolute -bottom-0.5 w-1 h-1 rounded-full"
-                        style={{
-                          background: accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
-                          boxShadow: `0 0 4px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'}`,
-                        }}
-                      />
-                    )}
+                    <span className={cn("text-[8px] font-semibold mt-0.5 transition-colors duration-200", isActive ? accent ? "text-accent" : "text-primary" : "text-muted-foreground/35")}>{label}</span>
+                    {isActive && <div className="absolute -bottom-0.5 w-1 h-1 rounded-full" style={{ background: accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))', boxShadow: `0 0 4px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'}` }} />}
                   </button>
                 );
               })}
@@ -283,6 +302,9 @@ export default function MobileTabBar({
           onDismiss={() => setContextMenu(null)}
         />
       )}
+
+      {/* Add Position Wizard */}
+      <AddPositionWizard open={wizardOpen} onClose={() => setWizardOpen(false)} />
     </>
   );
 }

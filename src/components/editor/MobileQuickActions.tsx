@@ -2,7 +2,7 @@
  * MobileQuickActions — Compact floating action buttons with drag-and-drop repositioning
  */
 import { useCallback } from 'react';
-import { MousePointer2, Plus, Undo2, Redo2, Trash2, Copy, Pencil, Compass, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { MousePointer2, Undo2, Redo2, Trash2, Copy, Pencil, Compass, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -79,7 +79,6 @@ export default function MobileQuickActions() {
     : [
         { icon: MousePointer2, label: 'Sel', onClick: handleToggleSelect, variant: selectVariant },
         { icon: Compass, label: 'Angle', onClick: handleToggleAngles, variant: angleVariant },
-        { icon: Plus, label: 'Add', onClick: handleAdd, variant: 'default' },
         { icon: Undo2, label: 'Undo', onClick: handleUndo, variant: 'default' },
         { icon: Redo2, label: 'Redo', onClick: handleRedo, variant: 'default' },
       ];
@@ -100,7 +99,7 @@ export default function MobileQuickActions() {
               key={label}
               onClick={onClick}
               className={cn(
-                "flex items-center justify-center w-10 h-10 rounded-xl glass-button transition-all active:scale-90",
+                "flex items-center justify-center w-11 h-11 rounded-xl glass-button transition-all active:scale-90",
                 variant === 'active' && "bg-primary/15 border-primary/30 text-primary glow-active",
                 variant === 'primary' && "bg-primary/12 border-primary/25 text-primary",
                 variant === 'danger' && "bg-destructive/15 border-destructive/30 text-destructive glow-danger",
