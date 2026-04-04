@@ -4,7 +4,7 @@
  */
 import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Pause, Square, AlertOctagon, Zap, Radio, ScanEye } from 'lucide-react';
+import { Play, Pause, Square, AlertOctagon, Zap, Radio, ScanEye, Crosshair } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
