@@ -390,6 +390,10 @@ export default function RealisticFirework({
     if (elapsed < 0) return;
 
     materialRef.current.uniforms.uTime.value = elapsed;
+    
+    // Update wind from turbulent field each frame
+    const [wx, wy, wz] = windField.getGlobalWind('ember');
+    materialRef.current.uniforms.uWind.value.set(wx, wy, wz);
 
     // Auto-complete after lifetime expires — spawn post-explosion smoke
     if (elapsed > lifetime * 1.2 && !completedRef.current) {
