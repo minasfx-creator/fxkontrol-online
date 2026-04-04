@@ -1,10 +1,22 @@
+/**
+ * PerformanceHUD — In-viewport debug overlay + R3F stats collector.
+ * 
+ * Now uses shared usePerfMetrics + pushGPUStats from the centralized hook.
+ */
 import { useRef, useState, useCallback, forwardRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Activity } from 'lucide-react';
+import { pushGPUStats, usePerfMetrics, type PerfMetrics } from '@/hooks/usePerfMetrics';
+
+// ── Legacy types re-exported for backward compat ──
+export type PerfStats = PerfMetrics;
 
 /**
  * In-scene stats collector — runs inside <Canvas>.
- * Pushes stats to a shared ref that the HTML overlay reads.
+ * Pushes GPU stats to the shared singleton via pushGPUStats().
+ * 
+ * The statsRef prop is kept for backward compat but now also
+ * feeds the centralized usePerfMetrics hook.
  */
 export const PerfCollector = forwardRef<any, { statsRef: React.MutableRefObject<PerfStats> }>(function PerfCollector({ statsRef }, _ref) {
   const { gl } = useThree();
@@ -19,13 +31,26 @@ export const PerfCollector = forwardRef<any, { statsRef: React.MutableRefObject<
     if (delta >= 500) {
       const fps = Math.round((frames.current / delta) * 1000);
       const info = gl.info;
-      statsRef.current = {
-        fps,
+      const gpuStats = {
         drawCalls: info.render.calls,
         triangles: info.render.triangles,
         geometries: info.memory.geometries,
         textures: info.memory.textures,
       };
+
+      // Feed legacy statsRef
+      statsRef.current = {
+        fps,
+        ...gpuStats,
+        memory: 0,
+        frameTime: +(delta / frames.current).toFixed(1),
+        workerLatency: 0,
+        isScaledDown: false,
+      };
+
+      // Feed centralized singleton
+      pushGPUStats(gpuStats);
+
       frames.current = 0;
       lastTime.current = now;
     }
@@ -33,14 +58,6 @@ export const PerfCollector = forwardRef<any, { statsRef: React.MutableRefObject<
 
   return null;
 });
-
-export interface PerfStats {
-  fps: number;
-  drawCalls: number;
-  triangles: number;
-  geometries: number;
-  textures: number;
-}
 
 /**
  * HTML overlay HUD showing real-time performance metrics.
@@ -54,27 +71,13 @@ export function PerformanceHUD({
   droneCount: number;
 }) {
   const [visible, setVisible] = useState(false);
-  const [stats, setStats] = useState<PerfStats>({ fps: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0 });
-
-  // Poll the ref at ~4Hz to avoid re-render storms
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const metrics = usePerfMetrics();
 
   const toggle = useCallback(() => {
-    setVisible((v) => {
-      const next = !v;
-      if (next && !intervalRef.current) {
-        intervalRef.current = setInterval(() => {
-          setStats({ ...statsRef.current });
-        }, 250);
-      } else if (!next && intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      return next;
-    });
-  }, [statsRef]);
+    setVisible(v => !v);
+  }, []);
 
-  const fpsColor = stats.fps >= 55 ? 'text-green-400' : stats.fps >= 30 ? 'text-yellow-400' : 'text-red-400';
+  const fpsColor = metrics.fps >= 55 ? 'text-green-400' : metrics.fps >= 30 ? 'text-yellow-400' : 'text-red-400';
 
   return (
     <>
@@ -92,11 +95,11 @@ export function PerformanceHUD({
             <Activity className="w-3 h-3" /> FX Kontrol
           </div>
           <div className="space-y-0.5">
-            <Row label="FPS" value={stats.fps} className={fpsColor} />
-            <Row label="Draw Calls" value={stats.drawCalls} />
-            <Row label="Triangles" value={formatK(stats.triangles)} />
-            <Row label="Geometries" value={stats.geometries} />
-            <Row label="Textures" value={stats.textures} />
+            <Row label="FPS" value={metrics.fps} className={fpsColor} />
+            <Row label="Draw Calls" value={metrics.drawCalls} />
+            <Row label="Triangles" value={formatK(metrics.triangles)} />
+            <Row label="Geometries" value={metrics.geometries} />
+            <Row label="Textures" value={metrics.textures} />
             <div className="border-t border-border/40 my-1" />
             <Row label="Drones" value={droneCount} className="text-primary" />
           </div>
