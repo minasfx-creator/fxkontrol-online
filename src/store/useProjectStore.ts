@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { VideoChoreoResult } from '@/lib/videoChoreoEngine';
-import { createDroneFormationSlice, type DroneFormationSliceActions } from '@/store/slices/droneFormationSlice';
+import { createDroneFormationSlice } from '@/store/slices/droneFormationSlice';
 
 // ── Effect types & EFFECT_LIBRARY re-exported from src/data for backward compat ──
 export type { Effect, PartType } from '@/data/effectLibrary';
@@ -20,7 +20,7 @@ import type {
 
 export interface ProjectState {
   projectName: string;
-  activeLockouts: string[];  // Risk groups currently locked out from firing
+  activeLockouts: string[];
   setActiveLockouts: (lockouts: string[]) => void;
   toggleLockout: (riskGroup: string) => void;
   isPlaying: boolean;
@@ -29,13 +29,13 @@ export interface ProjectState {
   timelineItems: TimelineItem[];
   selectedEffectId: string | null;
   selectedTimelineItemId: string | null;
-  selectedTimelineItemIds: string[]; // Multi-select
+  selectedTimelineItemIds: string[];
   positions: Position[];
   selectedPositionId: string | null;
   selectedPositionIds: string[];
   editorMode: EditorMode;
   selectionMode: SelectionMode;
-  linkedTimelineItemIds: string[]; // Timeline items highlighted via position selection
+  linkedTimelineItemIds: string[];
   trajectories: Trajectory[];
   selectedTrajectoryId: string | null;
   selectedWaypointId: string | null;
@@ -60,8 +60,8 @@ export interface ProjectState {
   gpsOrigin: { lat: number; lng: number; heading: number; altitude: number };
   locationName: string | null;
   timeZoneId: string | null;
-  timeZoneOffset: number | null;   // total offset in seconds from UTC
-  terrainElevation: number | null; // meters
+  timeZoneOffset: number | null;
+  terrainElevation: number | null;
   staticMapUrl: string | null;
   setGpsOrigin: (origin: { lat: number; lng: number; heading: number; altitude: number }) => void;
   setGeoIntelligence: (data: {
@@ -149,7 +149,7 @@ export interface ProjectState {
 // ── EFFECT_LIBRARY re-exported from src/data/effectLibrary for backward compat ──
 export { EFFECT_LIBRARY } from '@/data/effectLibrary';
 
-export const useProjectStore = create<ProjectState>((set) => ({
+export const useProjectStore = create<ProjectState>((set, get) => ({
   projectName: 'Untitled Show',
   isPlaying: false,
   activeLockouts: [],
@@ -214,7 +214,6 @@ export const useProjectStore = create<ProjectState>((set) => ({
   removeTimelineItem: (id) => set((s) => {
     const removed = s.timelineItems.find(i => i.id === id);
     const nextTimeline = s.timelineItems.filter(i => i.id !== id);
-    // Auto-clean orphaned positions
     let nextPositions = s.positions;
     if (removed?.positionId) {
       const stillReferenced = nextTimeline.some(i => i.positionId === removed.positionId);
@@ -231,7 +230,6 @@ export const useProjectStore = create<ProjectState>((set) => ({
   removeMultipleTimelineItems: (ids) => set((s) => {
     const removedItems = s.timelineItems.filter(i => ids.includes(i.id));
     const nextTimeline = s.timelineItems.filter(i => !ids.includes(i.id));
-    // Auto-clean orphaned positions
     const posIdsToCheck = [...new Set(removedItems.map(i => i.positionId).filter(Boolean))] as string[];
     const orphanedIds = posIdsToCheck.filter(pId => !nextTimeline.some(i => i.positionId === pId));
     const nextPositions = orphanedIds.length > 0 ? s.positions.filter(p => !orphanedIds.includes(p.id)) : s.positions;
@@ -334,7 +332,6 @@ export const useProjectStore = create<ProjectState>((set) => ({
     ...(duration && duration > 0 ? { duration } : {}),
   })),
   batchImportVVIZChunk: (positions, trajectories) => {
-    // Mutate + new ref: push into copies for O(n_chunk) not O(n_total)
     set((s) => {
       const newP = [...s.positions];
       const newT = [...s.trajectories];
@@ -431,123 +428,8 @@ export const useProjectStore = create<ProjectState>((set) => ({
 
   setWind: (updates) => set((s) => ({ wind: { ...s.wind, ...updates } })),
 
-  addDroneFormation: (formation) => set((s) => ({
-    droneFormations: [...s.droneFormations, formation],
-  })),
-  updateDroneFormation: (id, updates) => set((s) => ({
-    droneFormations: s.droneFormations.map((f) => f.id === id ? { ...f, ...updates } : f),
-  })),
-  removeDroneFormation: (id) => set((s) => ({
-    droneFormations: s.droneFormations.filter((f) => f.id !== id),
-    selectedFormationId: s.selectedFormationId === id ? null : s.selectedFormationId,
-  })),
-  selectFormation: (id) => set({ selectedFormationId: id }),
-  materializeFormation: (formation) => set((s) => {
-    const existingPadCount = s.positions.filter(p => p.type === 'drone-pad').length;
-    const isReuse = existingPadCount >= formation.droneCount;
-    const existingPadIds = isReuse
-      ? s.positions.filter(p => p.type === 'drone-pad').map(p => p.id).slice(0, formation.droneCount)
-      : undefined;
-    const { positions: newPads, trajectories: newTrajs } = materialize(
-      formation, s.droneFormations.length, existingPadIds,
-    );
-    return {
-      positions: isReuse ? s.positions : [...s.positions, ...newPads],
-      trajectories: [...s.trajectories, ...newTrajs],
-    };
-  }),
-
-  toggleTrajectorySelection: (id) => set((s) => {
-    const ids = s.selectedTrajectoryIds.includes(id)
-      ? s.selectedTrajectoryIds.filter((i) => i !== id)
-      : [...s.selectedTrajectoryIds, id];
-    return { selectedTrajectoryIds: ids };
-  }),
-  selectAllFormationTrajectories: (formationIndex) => set((s) => {
-    const pads = s.positions.filter(p => p.type === 'drone-pad');
-    const formation = s.droneFormations[formationIndex];
-    if (!formation) return s;
-    const padIds = pads.slice(0, formation.droneCount).map(p => p.id);
-    const trajIds = s.trajectories.filter(t => padIds.includes(t.positionId)).map(t => t.id);
-    return { selectedTrajectoryIds: trajIds };
-  }),
-  clearTrajectorySelection: () => set({ selectedTrajectoryIds: [] }),
-  batchOffsetWaypoints: (trajectoryIds, offset) => set((s) => ({
-    trajectories: s.trajectories.map((t) =>
-      trajectoryIds.includes(t.id)
-        ? {
-          ...t,
-          waypoints: t.waypoints.map((w) => ({
-            ...w,
-            position: {
-              x: Math.round((w.position.x + offset.x) * 10) / 10,
-              y: Math.max(0.1, Math.round((w.position.y + offset.y) * 10) / 10),
-              z: Math.round((w.position.z + offset.z) * 10) / 10,
-            },
-          })),
-        }
-        : t
-    ),
-  })),
-  batchScaleWaypoints: (trajectoryIds, scale) => set((s) => ({
-    trajectories: s.trajectories.map((t) =>
-      trajectoryIds.includes(t.id)
-        ? {
-          ...t,
-          waypoints: t.waypoints.map((w) => ({
-            ...w,
-            position: {
-              x: Math.round(w.position.x * scale * 10) / 10,
-              y: Math.max(0.1, Math.round(w.position.y * scale * 10) / 10),
-              z: Math.round(w.position.z * scale * 10) / 10,
-            },
-          })),
-        }
-        : t
-    ),
-  })),
-  setShowFormations: (show) => set({ showFormations: show }),
-
-  reorderDroneFormation: (fromIndex, toIndex) => set((s) => {
-    const arr = [...s.droneFormations];
-    const [moved] = arr.splice(fromIndex, 1);
-    arr.splice(toIndex, 0, moved);
-    // Recalculate start times sequentially
-    let time = 0;
-    const updated = arr.map(f => {
-      const newF = { ...f, startTime: time };
-      time += f.transitionDuration + f.holdDuration;
-      return newF;
-    });
-    return { droneFormations: updated };
-  }),
-
-  duplicateDroneFormation: (id) => set((s) => {
-    const src = s.droneFormations.find(f => f.id === id);
-    if (!src) return s;
-    const lastEnd = s.droneFormations.reduce((t, f) => Math.max(t, f.startTime + f.transitionDuration + f.holdDuration), 0);
-    const dup: DroneFormation = {
-      ...src,
-      id: `form-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-      startTime: lastEnd,
-    };
-    return { droneFormations: [...s.droneFormations, dup] };
-  }),
-
-  clearAllFormations: () => set({
-    droneFormations: [],
-    selectedFormationId: null,
-  }),
-
-  recalculateFormationTimings: () => set((s) => {
-    let time = 0;
-    const updated = s.droneFormations.map(f => {
-      const newF = { ...f, startTime: time };
-      time += f.transitionDuration + f.holdDuration;
-      return newF;
-    });
-    return { droneFormations: updated };
-  }),
+  // ── Drone Formation actions (delegated to slice) ──
+  ...createDroneFormationSlice(set as any, get as any),
 
   addCueMarker: (marker) => set((s) => ({ cueMarkers: [...s.cueMarkers, marker].sort((a, b) => a.time - b.time) })),
   removeCueMarker: (id) => set((s) => ({ cueMarkers: s.cueMarkers.filter((c) => c.id !== id) })),
@@ -559,55 +441,5 @@ export const useProjectStore = create<ProjectState>((set) => ({
   setDepthLayers: (layers) => set({ depthLayers: layers }),
 }));
 
-/**
- * effectWorldOrientation: Computes world Euler rotation by combining
- * Position (heading/pitch/roll) with Effect (pan/tilt/spin).
- * Position: R = RotY(heading) × RotX(pitch) × RotZ(roll)  — Mortar rack model
- * Effect:   R = RotY(pan) × RotX(tilt) × RotY(spin)       — Moving-head model
- * Returns combined Euler angles (in degrees) for the effect's world orientation.
- */
-export function effectWorldOrientation(
-  position: Position,
-  item: { pan?: number; tilt?: number; spin?: number }
-): { heading: number; pitch: number; roll: number } {
-  const toRad = (d: number) => (d || 0) * Math.PI / 180;
-  const toDeg = (r: number) => r * 180 / Math.PI;
-
-  // Position quaternion: YXZ order (heading × pitch × roll)
-  const euler1 = { x: toRad(position.pitch), y: toRad(position.heading), z: toRad(position.roll) };
-  const cy1 = Math.cos(euler1.y / 2), sy1 = Math.sin(euler1.y / 2);
-  const cx1 = Math.cos(euler1.x / 2), sx1 = Math.sin(euler1.x / 2);
-  const cz1 = Math.cos(euler1.z / 2), sz1 = Math.sin(euler1.z / 2);
-
-  // YXZ quaternion
-  const qw1 = cy1 * cx1 * cz1 + sy1 * sx1 * sz1;
-  const qx1 = cy1 * sx1 * cz1 + sy1 * cx1 * sz1;
-  const qy1 = sy1 * cx1 * cz1 - cy1 * sx1 * sz1;
-  const qz1 = cy1 * cx1 * sz1 - sy1 * sx1 * cz1;
-
-  // Effect pan/tilt/spin — simplified: treat as additional YXZ
-  const pan = toRad(item.pan || 0);
-  const tilt = toRad(item.tilt || 0);
-  const spin = toRad(item.spin || 0);
-  const cy2 = Math.cos((pan + spin) / 2), sy2 = Math.sin((pan + spin) / 2);
-  const cx2 = Math.cos(tilt / 2), sx2 = Math.sin(tilt / 2);
-
-  const qw2 = cy2 * cx2;
-  const qx2 = cy2 * sx2;
-  const qy2 = sy2 * cx2;
-  const qz2 = -sy2 * sx2;
-
-  // Multiply q1 × q2
-  const w = qw1 * qw2 - qx1 * qx2 - qy1 * qy2 - qz1 * qz2;
-  const x = qw1 * qx2 + qx1 * qw2 + qy1 * qz2 - qz1 * qy2;
-  const y = qw1 * qy2 - qx1 * qz2 + qy1 * qw2 + qz1 * qx2;
-  const z = qw1 * qz2 + qx1 * qy2 - qy1 * qx2 + qz1 * qw2;
-
-  // Extract YXZ Euler from quaternion
-  const sinP = 2 * (w * x - y * z);
-  const outPitch = toDeg(Math.asin(Math.max(-1, Math.min(1, sinP))));
-  const outHeading = toDeg(Math.atan2(2 * (w * y + x * z), 1 - 2 * (x * x + y * y)));
-  const outRoll = toDeg(Math.atan2(2 * (w * z + x * y), 1 - 2 * (x * x + z * z)));
-
-  return { heading: outHeading, pitch: outPitch, roll: outRoll };
-}
+// ── effectWorldOrientation re-exported from src/lib for backward compat ──
+export { effectWorldOrientation } from '@/lib/effectOrientation';
