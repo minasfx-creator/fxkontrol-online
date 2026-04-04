@@ -10,6 +10,7 @@ import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
+import { usePlaybackState } from '@/hooks/useEditorUI';
 import { useDisplayStore } from '@/store/useDisplayStore';
 import { useUndoStore } from '@/store/useUndoStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
@@ -128,7 +129,7 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
 
 
 function TimecodeDisplay() {
-  const { currentTime, isPlaying } = useProjectStore();
+  const { currentTime, isPlaying } = usePlaybackState();
   const { frameRate, startTimecodeSeconds, locked, running } = useSMPTEStore();
   const offsetTime = currentTime + startTimecodeSeconds;
   const tc = secondsToTimecode(offsetTime, frameRate, frameRate === 29.97);

@@ -7,10 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import { Play, Pause, Square, AlertOctagon, Zap, Radio, ScanEye, Crosshair } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
+import { usePlaybackState, useEditorMode, useHardwareStatus } from '@/hooks/useEditorUI';
 import { useProjectStore } from '@/store/useProjectStore';
-import { useLiveSfxStore } from '@/store/useLiveSfxStore';
-import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
-import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { useShowSettings } from '@/hooks/useShowSettings';
 import { useSceneStore } from '@/store/useSceneStore';
 
@@ -33,23 +31,15 @@ function getCountdown(showDate: string | null): string | null {
 
 export default function MobileHUD() {
   const navigate = useNavigate();
-  const currentTime = useProjectStore(s => s.currentTime);
-  const isPlaying = useProjectStore(s => s.isPlaying);
-  const setPlaying = useProjectStore(s => s.setPlaying);
-  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
-  const activeEffects = useLiveSfxStore(s => s.activeEffects);
-  const clearAll = useLiveSfxStore(s => s.clearAll);
-  const usbConnected = useUSBDeviceStore(s => s.dmxDevices.length > 0);
-  const smpteRunning = useSMPTEStore(s => s.running);
+  const { currentTime, isPlaying, setPlaying, setCurrentTime } = usePlaybackState();
+  const { editorMode, isPlacingMode } = useEditorMode();
+  const { activeEffects, clearAll, usbConnected, smpteRunning, isArmed } = useHardwareStatus();
+  const positions = useProjectStore(s => s.positions);
+  const selectedIds = useProjectStore(s => s.selectedPositionIds);
   const { settings } = useShowSettings();
   const arMode = useSceneStore(s => s.environment.arMode);
   const updateEnvironment = useSceneStore(s => s.updateEnvironment);
-  const editorMode = useProjectStore(s => s.editorMode);
-  const positions = useProjectStore(s => s.positions);
-  const selectedIds = useProjectStore(s => s.selectedPositionIds);
-  const isArmed = activeEffects.length > 0;
   const countdown = useMemo(() => getCountdown(settings?.show_date ?? null), [settings?.show_date]);
-  const isPlacingMode = editorMode === 'add-pyro' || editorMode === 'add-drone';
 
   const handleARToggle = useCallback(() => {
     const next = !arMode;

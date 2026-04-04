@@ -6,11 +6,8 @@ import { useCallback, useMemo } from 'react';
 import { Play, Pause, Square, ShieldAlert, ShieldCheck, LogOut, AlertOctagon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
-import { useProjectStore } from '@/store/useProjectStore';
 import { useDisplayStore } from '@/store/useDisplayStore';
-import { useLiveSfxStore } from '@/store/useLiveSfxStore';
-import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
-import { useSMPTEStore } from '@/store/useSMPTEStore';
+import { usePlaybackState, useHardwareStatus } from '@/hooks/useEditorUI';
 import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
 import { useShowSettings } from '@/hooks/useShowSettings';
 
@@ -34,17 +31,10 @@ function HoldRing({ progress, size = 64, stroke = 3, color = 'hsl(var(--destruct
 }
 
 export default function LiveModeOverlay() {
-  const currentTime = useProjectStore(s => s.currentTime);
-  const isPlaying = useProjectStore(s => s.isPlaying);
-  const setPlaying = useProjectStore(s => s.setPlaying);
-  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
+  const { currentTime, isPlaying, setPlaying, setCurrentTime } = usePlaybackState();
+  const { activeEffects, clearAll, usbConnected, smpteRunning, isArmed } = useHardwareStatus();
   const setOperationMode = useDisplayStore(s => s.setOperationMode);
-  const activeEffects = useLiveSfxStore(s => s.activeEffects);
-  const clearAll = useLiveSfxStore(s => s.clearAll);
-  const usbConnected = useUSBDeviceStore(s => s.dmxDevices.length > 0);
-  const smpteRunning = useSMPTEStore(s => s.running);
 
-  const isArmed = activeEffects.length > 0;
   const showState: ShowState = isPlaying ? 'LIVE' : isArmed ? 'ARMED' : 'READY';
 
   // Hold-to-ARM
