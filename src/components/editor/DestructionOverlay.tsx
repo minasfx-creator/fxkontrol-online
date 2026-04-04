@@ -43,7 +43,7 @@ export default function DestructionOverlay() {
     // Impact
     setPhase('impact');
     setFlashOpacity(1);
-    triggerHaptic('calibrationPing');
+    haptics.fire();
     // Screen shake
     const shakeInterval = setInterval(() => {
       setShakeOffset({
