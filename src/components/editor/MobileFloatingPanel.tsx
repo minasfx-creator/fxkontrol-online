@@ -49,7 +49,7 @@ export default function MobileFloatingPanel({
     setDragOffset(0);
     dragRef.current = null;
 
-    if (dy > 80) {
+    if (dy > 60) {
       haptics.tap();
       if (height === 'full') {
         onHeightChange?.('half');
