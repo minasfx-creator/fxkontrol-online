@@ -4,7 +4,7 @@
  * Uses GPS anchor to create a Google Earth-style cinematic flight path.
  */
 
-import type { CameraKeyframe } from '@/store/useProjectStore';
+import type { CameraKeyframe } from '@/types/projectTypes';
 import { geoToLocalSync } from '@/core/geo/useGeo';
 
 export interface CinematicConfig {

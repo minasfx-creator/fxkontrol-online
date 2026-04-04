@@ -5,7 +5,7 @@
  * 1. Ground-level drone pads in a square grid (launch positions)
  * 2. A trajectory per drone: takeoff → formation point at height → hold
  */
-import type { Position, Trajectory, Waypoint, DroneFormation } from '@/store/useProjectStore';
+import type { Position, Trajectory, Waypoint, DroneFormation } from '@/types/projectTypes';
 
 /** Generate a square grid of ground positions centered at origin */
 export function generateLaunchGrid(

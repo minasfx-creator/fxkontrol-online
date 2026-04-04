@@ -8,7 +8,7 @@
  * Supports auto-detection of format and column mapping.
  */
 
-import type { Effect, PartType } from '@/store/useProjectStore';
+import { Effect, PartType } from '@/data/effectLibrary';
 
 // Known Finale 3D column headers (case-insensitive)
 const COLUMN_ALIASES: Record<string, string[]> = {

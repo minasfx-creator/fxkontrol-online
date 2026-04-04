@@ -15,7 +15,7 @@
  */
 
 import JSZip from 'jszip';
-import type { Position, Trajectory, DroneFormation, CameraKeyframe } from '@/store/useProjectStore';
+import type { Position, Trajectory, DroneFormation, CameraKeyframe } from '@/types/projectTypes';
 import { interpolateColor, type ColorTransitionMode } from '@/lib/colorInterpolation';
 
 // ── Types ───────────────────────────────────────────────────────────
