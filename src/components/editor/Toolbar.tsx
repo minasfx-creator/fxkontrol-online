@@ -10,6 +10,7 @@ import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
+import { usePlaybackState } from '@/hooks/useEditorUI';
 import { useDisplayStore } from '@/store/useDisplayStore';
 import { useUndoStore } from '@/store/useUndoStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
