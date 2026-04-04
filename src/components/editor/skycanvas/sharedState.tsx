@@ -120,14 +120,22 @@ export let _adaptiveExposure = 1.2;
 export function setAdaptiveExposureValue(v: number) { _adaptiveExposure = v; }
 export function getAdaptiveExposure() { return _adaptiveExposure; }
 
-// ═══ Wind helper ═══
-export function getWindForce(): [number, number, number] {
+// ═══ Wind helper (turbulent wind field) ═══
+import { windField, type WindParticleType } from '@/core/engine/windField';
+
+export function getWindForce(particleType: WindParticleType = 'ember'): [number, number, number] {
   const { wind } = useProjectStore.getState();
   if (!wind.enabled) return [0, 0, 0];
-  const rad = (wind.direction * Math.PI) / 180;
-  const gust = 1 + (Math.sin(performance.now() * 0.001) * 0.5 + 0.5) * wind.gustStrength;
-  const s = wind.speed * gust * 0.15;
-  return [Math.sin(rad) * s, 0, Math.cos(rad) * s];
+
+  // Sync wind field config from project store
+  windField.setConfig({
+    baseSpeed: wind.speed,
+    directionDeg: wind.direction,
+    gustMax: wind.gustStrength * 3, // gustStrength 0-1 → 0-3 m/s
+    turbulenceIntensity: 0.3,
+  });
+
+  return windField.getGlobalWind(particleType);
 }
 
 // ═══ Camera presets ═══
