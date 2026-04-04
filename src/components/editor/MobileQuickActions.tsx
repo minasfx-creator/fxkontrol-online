@@ -1,6 +1,5 @@
 /**
- * MobileQuickActions — Compact floating action buttons with scroll support
- * Positioned lower-left with vertical scroll when many actions exist.
+ * MobileQuickActions — Compact floating action buttons with drag-and-drop repositioning
  */
 import { useCallback } from 'react';
 import { MousePointer2, Plus, Undo2, Redo2, Trash2, Copy, Pencil, Compass, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
@@ -8,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoStore } from '@/store/useUndoStore';
+import DraggableFloatingPanel from './DraggableFloatingPanel';
 
 export default function MobileQuickActions() {
   const selectedIds = useProjectStore(s => s.selectedPositionIds);
@@ -63,7 +63,7 @@ export default function MobileQuickActions() {
   type ActionVariant = 'primary' | 'default' | 'danger' | 'active';
   const selectVariant: ActionVariant = editorMode === 'select' ? 'active' : 'default';
   const angleVariant: ActionVariant = editorMode === 'adjust-angles' ? 'active' : 'default';
-  
+
   const handleToggleAngles = useCallback(() => {
     haptics.select();
     setEditorMode(editorMode === 'adjust-angles' ? 'select' : 'adjust-angles');
@@ -84,7 +84,6 @@ export default function MobileQuickActions() {
         { icon: Redo2, label: 'Redo', onClick: handleRedo, variant: 'default' },
       ];
 
-  // Viewport navigation controls
   const viewportActions: { icon: typeof ZoomIn; label: string; onClick: () => void }[] = [
     { icon: ZoomIn, label: 'Zoom+', onClick: () => window.dispatchEvent(new CustomEvent('viewport-zoom', { detail: 1 })) },
     { icon: ZoomOut, label: 'Zoom-', onClick: () => window.dispatchEvent(new CustomEvent('viewport-zoom', { detail: -1 })) },
@@ -93,9 +92,9 @@ export default function MobileQuickActions() {
 
   return (
     <>
-      {/* Edit actions — left side */}
-      <div className="fixed left-2 z-40 pointer-events-none" style={{ bottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
-        <div className="flex flex-col gap-1.5 pointer-events-auto max-h-[45dvh] overflow-y-auto no-scrollbar">
+      {/* Edit actions — draggable left panel */}
+      <DraggableFloatingPanel panelId="mobile-edit-actions" initialX={8} initialY={Math.round(window.innerHeight - 280)}>
+        <div className="flex flex-col gap-1.5 p-1.5">
           {editActions.map(({ icon: Icon, label, onClick, variant }) => (
             <button
               key={label}
@@ -112,18 +111,17 @@ export default function MobileQuickActions() {
               <Icon className="w-4 h-4" />
             </button>
           ))}
-
           {hasSelection && (
             <div className="status-pill justify-center px-1.5 py-0.5">
               <span className="text-[9px] font-bold text-primary tabular-nums">{selectedIds.length}</span>
             </div>
           )}
         </div>
-      </div>
+      </DraggableFloatingPanel>
 
-      {/* Viewport navigation — right side */}
-      <div className="fixed right-2 z-30 pointer-events-none" style={{ bottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
-        <div className="flex flex-col gap-1 pointer-events-auto">
+      {/* Viewport navigation — draggable right panel */}
+      <DraggableFloatingPanel panelId="mobile-viewport-nav" initialX={Math.round(window.innerWidth - 52)} initialY={Math.round(window.innerHeight - 220)}>
+        <div className="flex flex-col gap-1 p-1">
           {viewportActions.map(({ icon: Icon, label, onClick }) => (
             <button
               key={label}
@@ -135,7 +133,7 @@ export default function MobileQuickActions() {
             </button>
           ))}
         </div>
-      </div>
+      </DraggableFloatingPanel>
     </>
   );
 }

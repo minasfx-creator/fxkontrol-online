@@ -1,4 +1,5 @@
 import { ZoomIn, ZoomOut, Compass, Layers } from 'lucide-react';
+import DraggableFloatingPanel from './DraggableFloatingPanel';
 
 const NAV_BUTTONS = [
   { icon: ZoomIn, title: 'Zoom In', action: () => window.dispatchEvent(new CustomEvent('viewport-zoom', { detail: 1 })) },
@@ -7,25 +8,25 @@ const NAV_BUTTONS = [
   { icon: Layers, title: 'Toggle 3D/2D', action: () => window.dispatchEvent(new Event('viewport-toggle-2d')) },
 ];
 
-export default function ViewportNavControls({ collapsed }: { collapsed?: boolean }) {
+export default function ViewportNavControls() {
   return (
-    <div
-      className="absolute right-3 z-30 flex flex-col gap-1"
-      style={{
-        bottom: collapsed ? '40px' : 'calc(25vh + 8px)',
-        transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      }}
+    <DraggableFloatingPanel
+      panelId="viewport-nav"
+      initialX={Math.round(window.innerWidth - 56)}
+      initialY={Math.round(window.innerHeight * 0.6)}
     >
-      {NAV_BUTTONS.map(({ icon: Icon, title, action }) => (
-        <button
-          key={title}
-          onClick={action}
-          title={title}
-          className="w-8 h-8 flex items-center justify-center rounded-lg bg-background/50 backdrop-blur-sm border border-border/20 text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all"
-        >
-          <Icon className="w-4 h-4" />
-        </button>
-      ))}
-    </div>
+      <div className="flex flex-col gap-1 p-1">
+        {NAV_BUTTONS.map(({ icon: Icon, title, action }) => (
+          <button
+            key={title}
+            onClick={action}
+            title={title}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all"
+          >
+            <Icon className="w-4 h-4" />
+          </button>
+        ))}
+      </div>
+    </DraggableFloatingPanel>
   );
 }
