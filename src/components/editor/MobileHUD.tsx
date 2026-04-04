@@ -61,9 +61,9 @@ export default function MobileHUD() {
   }, [clearAll, setPlaying, setCurrentTime]);
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+    <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: 'max(8px, env(safe-area-inset-top))' }}>
       {/* Main HUD row */}
-      <div className="flex items-center justify-between px-2 pt-2 pb-1 mx-2 mt-1 gap-1">
+      <div className="flex items-center justify-between px-2 pt-1 pb-1 mx-2 gap-1">
         {/* Left: Timecode pill */}
         <div className={cn(
           "pointer-events-auto status-pill transition-all duration-300 shrink-0",

@@ -194,7 +194,7 @@ function FeedCard({ item }: { item: NewsItem }) {
         {item.sentiment === 'negative' && <TrendingDown className="h-3.5 w-3.5 text-red-400" />}
         {item.sentiment === 'neutral' && <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
       </div>
-      <div className="relative aspect-[4/3] overflow-hidden">
+      <div className={cn("relative overflow-hidden", isMobile ? "aspect-[16/9]" : "aspect-[4/3]")}>
         <img src={item.image} alt={item.title} className="w-full h-full object-cover brightness-[0.85]" loading="lazy" decoding="async" />
         <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
       </div>

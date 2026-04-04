@@ -132,29 +132,40 @@ export default function DraggableFloatingPanel({
     <div
       ref={panelRef}
       className={cn(
-        "fixed z-40 flex flex-col items-center transition-transform duration-150",
+        "fixed z-40 flex flex-col items-center transition-all duration-150",
         dragging && "select-none scale-[1.02]",
         className
       )}
-      style={{ left: pos.x, top: pos.y, touchAction: 'none' }}
+      style={{
+        left: pos.x,
+        top: pos.y,
+        touchAction: 'none',
+        opacity: dragging ? 1 : 0.88,
+      }}
     >
-      {/* Grip handle — 44px WCAG touch target */}
+      {/* Grip handle — compact 32px, expands on drag */}
       <div
         className={cn(
-          "flex items-center justify-center gap-0.5 rounded-t-lg cursor-grab active:cursor-grabbing",
+          "flex items-center justify-center gap-1 rounded-t-lg cursor-grab active:cursor-grabbing",
           "bg-background/60 backdrop-blur-sm border border-b-0 border-border/20",
-          "min-h-[44px] min-w-[44px] px-3",
-          dragging && "ring-1 ring-[hsl(var(--fxk-cyan)/0.4)] shadow-[0_0_12px_hsl(var(--fxk-cyan)/0.15)]"
+          dragging ? "min-h-[44px] min-w-[44px] px-3" : "min-h-[32px] min-w-[36px] px-2",
+          dragging && "ring-1 ring-[hsl(var(--fxk-cyan)/0.4)] shadow-[0_0_12px_hsl(var(--fxk-cyan)/0.15)]",
+          "transition-all duration-200"
         )}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
       >
-        <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40" />
+        {/* 3-dot drag indicator */}
+        <div className="flex gap-[3px]">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+          ))}
+        </div>
         {minimizable && (
           <button
             onClick={handleMinimize}
-            className="ml-1 text-muted-foreground/40 hover:text-muted-foreground transition-colors p-1"
+            className="ml-1 text-muted-foreground/40 hover:text-muted-foreground transition-colors p-0.5"
           >
             {minimized ? <Plus className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
           </button>

@@ -140,8 +140,8 @@ export default function DockBar() {
                 {i === separatorIndex && (
                   <div className={cn(
                     "rounded-full self-center",
-                    isMobile ? "w-[1px] h-5 mx-0" : "w-[1px] h-6 mx-0.5"
-                  )} style={{ background: 'hsl(var(--primary) / 0.1)' }} />
+                    isMobile ? "w-[2px] h-6 mx-0.5" : "w-[1px] h-6 mx-0.5"
+                  )} style={{ background: isMobile ? 'hsl(var(--primary) / 0.2)' : 'hsl(var(--primary) / 0.1)' }} />
                 )}
                 <Tooltip>
                   <TooltipTrigger asChild>
