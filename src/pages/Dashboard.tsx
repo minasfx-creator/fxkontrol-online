@@ -766,6 +766,31 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
+          {/* AR Preview Card */}
+          <Card className="bg-card border-border/50 hover:border-[hsl(var(--fxk-magenta)/0.3)] transition-colors animate-fxk-stagger cursor-pointer group"
+            style={{ animationDelay: '0.55s' }}
+            onClick={() => navigate('/editor?panel=aroverlay')}
+          >
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-7 w-7 rounded-lg bg-[hsl(var(--fxk-magenta)/0.1)] flex items-center justify-center">
+                  <ScanEye className="h-3.5 w-3.5 text-[hsl(var(--fxk-magenta))]" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">AR Preview</p>
+                  <p className="text-[8px] text-muted-foreground">Realidade Aumentada</p>
+                </div>
+                <div className="ml-auto flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+                  <span className="text-[8px] text-muted-foreground">Não calibrado</span>
+                </div>
+              </div>
+              <div className="h-16 rounded-lg bg-muted/20 border border-border/20 flex items-center justify-center overflow-hidden">
+                <div className="text-[9px] text-muted-foreground/40 font-mono">Abrir editor para calibrar AR</div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Enter Editor CTA */}
           <button
             onClick={() => navigate('/editor')}
