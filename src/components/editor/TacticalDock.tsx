@@ -2,7 +2,7 @@
  * TacticalDock — Vertical macOS-style dock for editing tools
  * Wrapped in DraggableFloatingPanel for repositioning
  */
-import { MousePointer2, Move, RotateCw, Maximize2, Lasso, Plus, Axis3D, Magnet } from 'lucide-react';
+import { MousePointer2, Move, RotateCw, Maximize2, Lasso, Plus, Axis3D, Magnet, Bomb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
