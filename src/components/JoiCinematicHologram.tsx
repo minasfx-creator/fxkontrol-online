@@ -103,6 +103,20 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
 
   return (
     <div className={cn('relative flex items-center justify-center', SIZES[size], className)}>
+      {/* Projected shadow on panel background */}
+      <div
+        className="absolute joi-projected-shadow"
+        style={{
+          width: '140%',
+          height: '60%',
+          bottom: '-8%',
+          left: '-20%',
+          background: 'radial-gradient(ellipse 50% 40% at 50% 30%, hsl(280 80% 45% / 0.12), hsl(280 80% 55% / 0.04) 45%, transparent 70%)',
+          filter: 'blur(18px)',
+          pointerEvents: 'none',
+        }}
+      />
+
       {/* Magenta halo ring */}
       <div
         className="absolute inset-0 rounded-full joi-halo-pulse"
