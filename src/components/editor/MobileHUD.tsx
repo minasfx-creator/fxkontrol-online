@@ -44,8 +44,12 @@ export default function MobileHUD() {
   const { settings } = useShowSettings();
   const arMode = useSceneStore(s => s.environment.arMode);
   const updateEnvironment = useSceneStore(s => s.updateEnvironment);
+  const editorMode = useProjectStore(s => s.editorMode);
+  const positions = useProjectStore(s => s.positions);
+  const selectedIds = useProjectStore(s => s.selectedPositionIds);
   const isArmed = activeEffects.length > 0;
   const countdown = useMemo(() => getCountdown(settings?.show_date ?? null), [settings?.show_date]);
+  const isPlacingMode = editorMode === 'add-pyro' || editorMode === 'add-drone';
 
   const handleARToggle = useCallback(() => {
     const next = !arMode;

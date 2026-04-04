@@ -302,6 +302,9 @@ export default function MobileTabBar({
           onDismiss={() => setContextMenu(null)}
         />
       )}
+
+      {/* Add Position Wizard */}
+      <AddPositionWizard open={wizardOpen} onClose={() => setWizardOpen(false)} />
     </>
   );
 }
