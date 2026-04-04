@@ -13,6 +13,8 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { spawnPostExplosionSmoke } from './PostExplosionSmokeManager';
+import { windField } from '@/core/engine/windField';
+import { DRAG_TABLE } from '@/lib/pyroPhysics';
 
 // ═══════════════════════════════════════════════════════════════════════
 // GPU Vertex Shader — computes position from initial velocity + time
