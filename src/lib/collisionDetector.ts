@@ -3,7 +3,7 @@
  * Checks inter-drone distances within and between formations during transitions
  */
 
-import type { DroneFormation } from '@/store/useProjectStore';
+import type { DroneFormation } from '@/types/projectTypes';
 
 export interface FormationCollision {
   severity: 'warning' | 'critical';

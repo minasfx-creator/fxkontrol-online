@@ -9,7 +9,7 @@
  *  - Async parsing with yields to avoid UI freezes
  */
 
-import type { Position, Trajectory, Waypoint } from '@/store/useProjectStore';
+import type { Position, Trajectory, Waypoint } from '@/types/projectTypes';
 
 // ── Types ──────────────────────────────────────────────────────────
 

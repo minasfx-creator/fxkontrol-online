@@ -11,7 +11,7 @@
  * - Angle snap: 1°, 5°, 22.5° grid (per Finale manual)
  */
 
-import type { TimelineItem, Position } from '@/store/useProjectStore';
+import type { TimelineItem, Position } from '@/types/projectTypes';
 
 // ═══════════════════════════════════════════════════════════════════════
 // Randomize — Finale's "looks random" algorithm
