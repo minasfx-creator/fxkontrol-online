@@ -198,26 +198,17 @@ export default function MobileTabBar({
             onTouchEnd={handleSwipeEnd}
           >
             <div className="flex items-end justify-start gap-0.5 min-w-max">
-              {TABS.map(({ key, icon: Icon, label, accent }, index) => {
+              {/* Left tabs */}
+              {TABS_LEFT.map(({ key, icon: Icon, label, accent }, index) => {
                 const isActive = activeTab === key;
-
                 return (
                   <button
                     key={key}
                     onClick={() => handleTabClick(key)}
                     onMouseEnter={() => setHoveredIndex(index)}
-                    onTouchStart={(e) => {
-                      setHoveredIndex(index);
-                      handleLongPressStart(key, e);
-                    }}
-                    onTouchEnd={() => {
-                      handleLongPressEnd();
-                      setTimeout(() => setHoveredIndex(null), 300);
-                    }}
-                    onTouchCancel={() => {
-                      handleLongPressEnd();
-                      setHoveredIndex(null);
-                    }}
+                    onTouchStart={(e) => { setHoveredIndex(index); handleLongPressStart(key, e); }}
+                    onTouchEnd={() => { handleLongPressEnd(); setTimeout(() => setHoveredIndex(null), 300); }}
+                    onTouchCancel={() => { handleLongPressEnd(); setHoveredIndex(null); }}
                     className={cn(
                       "relative flex flex-col items-center justify-center py-1.5 px-2.5 rounded-xl min-h-[48px] min-w-[44px]",
                       "active:scale-90 transition-transform",
@@ -225,12 +216,49 @@ export default function MobileTabBar({
                     )}
                   >
                     <div className="relative">
-                      <Icon className={cn(
-                        "w-5 h-5 transition-colors duration-200",
-                        isActive
-                          ? accent ? "text-accent" : "text-primary"
-                          : "text-muted-foreground/50"
-                      )}
+                      <Icon className={cn("w-5 h-5 transition-colors duration-200", isActive ? accent ? "text-accent" : "text-primary" : "text-muted-foreground/50")}
+                        style={isActive ? { filter: `drop-shadow(0 0 6px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'})` } : undefined}
+                      />
+                    </div>
+                    <span className={cn("text-[8px] font-semibold mt-0.5 transition-colors duration-200", isActive ? accent ? "text-accent" : "text-primary" : "text-muted-foreground/35")}>{label}</span>
+                    {isActive && <div className="absolute -bottom-0.5 w-1 h-1 rounded-full" style={{ background: 'hsl(var(--primary))', boxShadow: '0 0 4px hsl(var(--primary))' }} />}
+                  </button>
+                );
+              })}
+
+              {/* Central FAB */}
+              <div className="flex items-center justify-center px-1.5">
+                <button
+                  onClick={() => { haptics.select(); setWizardOpen(true); }}
+                  className="relative w-14 h-14 -translate-y-3 rounded-full flex items-center justify-center active:scale-90 transition-all fab-glow-pulse"
+                  style={{
+                    background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8))',
+                    boxShadow: '0 4px 20px hsl(var(--primary) / 0.4), 0 0 40px hsl(var(--primary) / 0.15)',
+                  }}
+                >
+                  <Plus className="w-7 h-7 text-primary-foreground" strokeWidth={2.5} />
+                </button>
+              </div>
+
+              {/* Right tabs */}
+              {TABS_RIGHT.map(({ key, icon: Icon, label, accent }, index) => {
+                const isActive = activeTab === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleTabClick(key)}
+                    onMouseEnter={() => setHoveredIndex(TABS_LEFT.length + 1 + index)}
+                    onTouchStart={(e) => { setHoveredIndex(TABS_LEFT.length + 1 + index); handleLongPressStart(key, e); }}
+                    onTouchEnd={() => { handleLongPressEnd(); setTimeout(() => setHoveredIndex(null), 300); }}
+                    onTouchCancel={() => { handleLongPressEnd(); setHoveredIndex(null); }}
+                    className={cn(
+                      "relative flex flex-col items-center justify-center py-1.5 px-2.5 rounded-xl min-h-[48px] min-w-[44px]",
+                      "active:scale-90 transition-transform",
+                      isActive && "bg-white/[0.04]",
+                    )}
+                  >
+                    <div className="relative">
+                      <Icon className={cn("w-5 h-5 transition-colors duration-200", isActive ? accent ? "text-accent" : "text-primary" : "text-muted-foreground/50")}
                         style={isActive ? { filter: `drop-shadow(0 0 6px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'})` } : undefined}
                       />
                       {key === 'livefx' && activeEffectsCount > 0 && (
@@ -240,23 +268,8 @@ export default function MobileTabBar({
                         </span>
                       )}
                     </div>
-                    <span className={cn(
-                      "text-[8px] font-semibold mt-0.5 transition-colors duration-200",
-                      isActive
-                        ? accent ? "text-accent" : "text-primary"
-                        : "text-muted-foreground/35"
-                    )}>
-                      {label}
-                    </span>
-
-                    {isActive && (
-                      <div className="absolute -bottom-0.5 w-1 h-1 rounded-full"
-                        style={{
-                          background: accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
-                          boxShadow: `0 0 4px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'}`,
-                        }}
-                      />
-                    )}
+                    <span className={cn("text-[8px] font-semibold mt-0.5 transition-colors duration-200", isActive ? accent ? "text-accent" : "text-primary" : "text-muted-foreground/35")}>{label}</span>
+                    {isActive && <div className="absolute -bottom-0.5 w-1 h-1 rounded-full" style={{ background: accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))', boxShadow: `0 0 4px ${accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'}` }} />}
                   </button>
                 );
               })}
