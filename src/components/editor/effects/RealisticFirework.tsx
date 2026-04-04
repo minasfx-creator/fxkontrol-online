@@ -367,8 +367,12 @@ export default function RealisticFirework({
     mat.uniforms = {
       uTime: { value: 0 },
       uGravity: { value: -9.81 },
-      uDrag: { value: caliber <= 75 ? 0.065 : caliber <= 150 ? 0.045 : 0.03 },
-      uWind: { value: new THREE.Vector3(0, 0, 0) },
+      uDrag: { value: caliber <= 75 
+        ? (DRAG_TABLE.spark_light.min + DRAG_TABLE.spark_light.max) / 2
+        : caliber <= 150 
+          ? (DRAG_TABLE.ember_medium.min + DRAG_TABLE.ember_medium.max) / 2
+          : (DRAG_TABLE.fragment_heavy.min + DRAG_TABLE.fragment_heavy.max) / 2 },
+      uWind: { value: new THREE.Vector3(...windField.getGlobalWind('ember')) },
       uSpreadScale: { value: 1.0 },
       uColor: { value: new THREE.Color(color) },
       uSecondaryColor: { value: secondaryColor ? new THREE.Color(secondaryColor) : new THREE.Color(0, 0, 0) },
