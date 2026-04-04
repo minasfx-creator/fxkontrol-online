@@ -1,4 +1,5 @@
-import { type TimelineItem, type Position, type Trajectory, type DroneFormation, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { type TimelineItem, type Position, type Trajectory, type DroneFormation } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { rgbToVdlString } from '@/lib/vdlQuantizer';
 
 // ─── VVIZ Drone Export (Finale 3D Spec) ─────────────────────────────

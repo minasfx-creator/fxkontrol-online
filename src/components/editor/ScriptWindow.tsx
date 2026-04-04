@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useProjectStore, EFFECT_LIBRARY, type TimelineItem } from '@/store/useProjectStore';
+import { useProjectStore, type TimelineItem } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { getPreFireTime } from '@/lib/safetyEngine';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';

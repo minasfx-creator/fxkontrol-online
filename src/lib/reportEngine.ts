@@ -1,4 +1,5 @@
-import { type TimelineItem, type Position, type Trajectory, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { type TimelineItem, type Position, type Trajectory } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { getPreFireTime } from '@/lib/safetyEngine';
 import { downloadFile } from '@/lib/exportEngine';
 

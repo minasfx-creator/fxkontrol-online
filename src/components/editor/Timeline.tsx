@@ -1,7 +1,8 @@
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet, Copy, GripVertical, Zap, Sparkles, ChevronDown, ChevronRight, Clock, Move, Crosshair, Link2, Unlink, Scissors, ClipboardPaste, Eye, EyeOff, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
 import useGenerativeStore from '@/store/useGenerativeStore';
 import { getPreFireTime } from '@/lib/safetyEngine';

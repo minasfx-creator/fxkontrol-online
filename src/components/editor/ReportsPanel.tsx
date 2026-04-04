@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { FileText, Shield, Cable, Link2, ClipboardList, Download, ExternalLink, Map, BarChart3, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import {
   generateSafetyReport,
   generateWiringReport,

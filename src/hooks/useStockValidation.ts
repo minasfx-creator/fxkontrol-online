@@ -3,7 +3,8 @@
  * Checks if designed effects exceed available stock from inventory store.
  */
 import { useMemo } from 'react';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useInventoryStore } from '@/store/useInventoryStore';
 
 export interface StockAlert {

@@ -6,7 +6,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Sparkles, Send, X, Loader2, Wand2, Zap, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';

@@ -3,7 +3,8 @@
  * tabular preview, and download actions.
  */
 import { useState, useMemo } from 'react';
-import { useProjectStore, EFFECT_LIBRARY, type TimelineItem, type Position } from '@/store/useProjectStore';
+import { useProjectStore, type TimelineItem, type Position } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { exportFiringCSV, downloadFile } from '@/lib/exportEngine';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';

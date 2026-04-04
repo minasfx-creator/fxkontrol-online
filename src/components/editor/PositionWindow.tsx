@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { MapPin, Plus, Trash2, Copy, ChevronDown, ChevronRight, GripVertical, Search, Flame, Radio, Lightbulb, Hash, ArrowUpDown, MoreHorizontal, Crosshair, Users } from 'lucide-react';
-import { useProjectStore, EFFECT_LIBRARY, type Position, type PositionType } from '@/store/useProjectStore';
+import { useProjectStore, type Position, type PositionType } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
