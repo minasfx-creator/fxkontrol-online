@@ -13,7 +13,7 @@ import {
   TrendingUp, TrendingDown, Minus, Circle, Bookmark,
   Smartphone, Wand2, Layers,
   Lightbulb, Pencil, LayoutTemplate,
-  Bluetooth, Usb, Wifi,
+  Bluetooth, Usb, Wifi, ScanEye,
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { lazy, Suspense } from 'react';
