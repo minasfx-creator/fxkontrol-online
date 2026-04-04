@@ -632,13 +632,30 @@ export function createMineBurst(count: number, speed: number, lifetime: number):
 // ── Gerb / Fountain ─────────────────────────────────────────────────
 
 export function createGerbStream(height: number): ParticleState {
-  const spread = 0.15;
+  // Gerb physics: emission velocity 5-20 m/s proportional to desired height
+  // v = sqrt(2 * g * h) gives realistic emission speed for target height
+  const emissionSpeed = Math.max(5, Math.min(20, Math.sqrt(2 * 9.81 * height)));
+  
+  // Cone spread: 0.2-0.35 radians (realistic fountain cone)
+  const spread = 0.20 + Math.random() * 0.15;
+  const theta = Math.random() * Math.PI * 2;
+  const upAngle = spread * Math.random(); // angle from vertical
+  
+  // Velocity with ±10% natural variance
+  const speedVar = 0.90 + Math.random() * 0.20;
+  const speed = emissionSpeed * speedVar;
+  
+  // Lifetime: t ≈ 2*v*sin(angle)/g with drag, plus ±15% variance
+  const baseLifetime = (2 * speed * Math.cos(upAngle)) / 9.81;
+  const lifetimeVar = 0.85 + Math.random() * 0.30;
+  const maxLife = Math.max(0.4, baseLifetime * lifetimeVar);
+  
   return {
     x: 0, y: 0, z: 0,
-    vx: (Math.random() - 0.5) * spread * height,
-    vy: height * (0.8 + Math.random() * 0.4),
-    vz: (Math.random() - 0.5) * spread * height,
-    life: 0, maxLife: 0.8 + Math.random() * 0.5, brightness: 1,
+    vx: Math.sin(upAngle) * Math.cos(theta) * speed,
+    vy: Math.cos(upAngle) * speed,
+    vz: Math.sin(upAngle) * Math.sin(theta) * speed,
+    life: 0, maxLife, brightness: 1,
   };
 }
 

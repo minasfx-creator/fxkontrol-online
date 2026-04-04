@@ -13,11 +13,13 @@ import {
   getParticleSize,
   getMaterialType,
   getBurstSmokeDensity,
+  GRAVITY,
   type BurstPattern,
   type ParticleState,
   type StepModifiers,
   getFormulationModifiers,
 } from '@/lib/pyroPhysics';
+import { windField } from '@/core/engine/windField';
 import { useSceneStore } from '@/store/useSceneStore';
 import { getThreeBlending, getMaxEnergy, GROUND_LIGHT_SCALE } from '@/lib/niagaraBlenderRules';
 import { getRealFormulation, formulationToCompound } from '@/render_ultra/fireworks/particleChemistry';
@@ -586,7 +588,7 @@ export default function ShellBurstRenderer({
       // Remove dead glitter
       for (let i = gp.length - 1; i >= 0; i--) {
         gp[i].life += dt;
-        gp[i].vy += -9.81 * dt * 0.5;
+        gp[i].vy += GRAVITY * dt * 0.5;
         gp[i].x += gp[i].vx * dt;
         gp[i].y += gp[i].vy * dt;
         gp[i].z += gp[i].vz * dt;
@@ -706,9 +708,15 @@ export default function ShellBurstRenderer({
       const turbFreqZ = 0.25 + turbSeed * 0.35;
       const turbAmp = 0.02 + turbSeed * 0.03;
       
-      sp.x += sp.vx * dt + Math.sin(time * turbFreqX + sp.seed * 10) * turbAmp;
-      sp.y += sp.vy * dt;
-      sp.z += sp.vz * dt + Math.cos(time * turbFreqZ + sp.seed * 7) * turbAmp;
+      // Sample turbulent wind field at smoke world position (100% influence)
+      const worldX = (position as number[])[0] + sp.x;
+      const worldY = (position as number[])[1] + sp.y;
+      const worldZ = (position as number[])[2] + sp.z;
+      const [windX, windY, windZ] = windField.sample(worldX, worldY, worldZ, 'smoke');
+      
+      sp.x += sp.vx * dt + windX * dt + Math.sin(time * turbFreqX + sp.seed * 10) * turbAmp;
+      sp.y += sp.vy * dt + windY * dt;
+      sp.z += sp.vz * dt + windZ * dt + Math.cos(time * turbFreqZ + sp.seed * 7) * turbAmp;
       sp.vy *= 0.994;
       
       const mesh = smokeMeshRefs.current[i];

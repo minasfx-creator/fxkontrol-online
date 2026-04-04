@@ -13,6 +13,8 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { spawnPostExplosionSmoke } from './PostExplosionSmokeManager';
+import { windField } from '@/core/engine/windField';
+import { DRAG_TABLE } from '@/lib/pyroPhysics';
 
 // ═══════════════════════════════════════════════════════════════════════
 // GPU Vertex Shader — computes position from initial velocity + time
@@ -41,11 +43,12 @@ const REALISTIC_VERTEX = `
     vAge = clamp(t / life, 0.0, 1.0);
     vRandom = aRandom;
     
-    // ── Exponential drag model ──
-    // position = v0 * (1 - e^(-k*t)) / k
-    // This naturally decelerates particles without CPU iteration
+    // ── Quadratic drag approximation ──
+    // Analytical solution for F_drag = k*v²: x(t) = v0*t / (1 + k*|v0|*t)
+    // This gives physically correct deceleration matching CPU-side model
     float k = uDrag;
-    float dragFactor = (1.0 - exp(-k * t)) / max(k, 0.001);
+    float speed0 = length(aVelocity * uSpreadScale);
+    float dragFactor = t / max(1.0 + k * speed0 * t, 0.001);
     
     vec3 vel = aVelocity * uSpreadScale;
     vVelocity = vel;
@@ -54,7 +57,7 @@ const REALISTIC_VERTEX = `
     // Position: drag-integrated velocity + gravitational free-fall + wind
     vec3 pos = vel * dragFactor;
     pos.y += 0.5 * uGravity * t * t;            // gravity pull
-    pos += uWind * t * t * 0.3;                   // wind drift (quadratic accumulation)
+    pos += uWind * t * t * 0.5;                   // wind drift (quadratic accumulation)
     
     // Slight turbulence from random seed
     float turb = sin(aRandom * 6283.0 + t * 3.0) * 0.15 * (1.0 - vAge);
@@ -364,8 +367,12 @@ export default function RealisticFirework({
     mat.uniforms = {
       uTime: { value: 0 },
       uGravity: { value: -9.81 },
-      uDrag: { value: caliber <= 75 ? 0.065 : caliber <= 150 ? 0.045 : 0.03 },
-      uWind: { value: new THREE.Vector3(0, 0, 0) },
+      uDrag: { value: caliber <= 75 
+        ? (DRAG_TABLE.spark_light.min + DRAG_TABLE.spark_light.max) / 2
+        : caliber <= 150 
+          ? (DRAG_TABLE.ember_medium.min + DRAG_TABLE.ember_medium.max) / 2
+          : (DRAG_TABLE.fragment_heavy.min + DRAG_TABLE.fragment_heavy.max) / 2 },
+      uWind: { value: new THREE.Vector3(...windField.getGlobalWind('ember')) },
       uSpreadScale: { value: 1.0 },
       uColor: { value: new THREE.Color(color) },
       uSecondaryColor: { value: secondaryColor ? new THREE.Color(secondaryColor) : new THREE.Color(0, 0, 0) },
@@ -383,6 +390,10 @@ export default function RealisticFirework({
     if (elapsed < 0) return;
 
     materialRef.current.uniforms.uTime.value = elapsed;
+    
+    // Update wind from turbulent field each frame
+    const [wx, wy, wz] = windField.getGlobalWind('ember');
+    materialRef.current.uniforms.uWind.value.set(wx, wy, wz);
 
     // Auto-complete after lifetime expires — spawn post-explosion smoke
     if (elapsed > lifetime * 1.2 && !completedRef.current) {
