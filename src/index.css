@@ -1792,3 +1792,26 @@ button:active {
 .joi-hologram-noise {
   animation: joi-hologram-noise 0.15s linear infinite;
 }
+
+/* Static hair strands — holographic electricity */
+@keyframes joi-static-strand-kf {
+  0%, 70%, 100% { opacity: 0; transform: scaleY(0.3); }
+  75% { opacity: 0.6; transform: scaleY(1) translateX(1px); }
+  80% { opacity: 0.3; transform: scaleY(0.8) translateX(-0.5px); }
+  85% { opacity: 0.5; transform: scaleY(1.1) translateX(0.8px); }
+  90% { opacity: 0; transform: scaleY(0.2); }
+}
+.joi-static-strand {
+  transform-origin: bottom center;
+  animation: joi-static-strand-kf 3s ease-in-out infinite;
+}
+
+/* Particle dissolve — materialisation */
+@keyframes joi-dissolve-particle-kf {
+  0% { opacity: 0.8; transform: translate(0, 0) scale(1); }
+  40% { opacity: 0.5; transform: translate(var(--dissolve-drift, 0px), -20px) scale(0.7); }
+  100% { opacity: 0; transform: translate(var(--dissolve-drift, 0px), -60px) scale(0); }
+}
+.joi-dissolve-particle {
+  animation: joi-dissolve-particle-kf 1.8s ease-out forwards;
+}
