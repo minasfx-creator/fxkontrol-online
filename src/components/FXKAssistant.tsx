@@ -360,100 +360,118 @@ export function FXKAssistant() {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} onScroll={handleScroll} className="relative z-10 flex-1 overflow-y-auto px-3 py-2 space-y-3 scrollbar-thin">
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80">
-            <JoiHologramAvatar size="lg" state="idle" animate />
-            <p className="text-[8px] font-mono tracking-[0.2em] uppercase text-center" style={{ color: 'hsl(32 100% 50% / 0.45)' }}>
-              NEXUS ONLINE · AWAITING INPUT
-            </p>
-            <div className="flex flex-wrap gap-1.5 justify-center px-2">
-              {presets.map((p, idx) => (
-                <button
-                  key={p.label}
-                  onClick={() => send(p.prompt)}
-                  className="flex items-center gap-1 px-2.5 py-2 rounded-lg text-[8px] font-mono tracking-wider uppercase transition-all hover:scale-105 active:scale-95 animate-fade-in"
-                  style={{
-                    background: 'hsl(32 100% 50% / 0.06)',
-                    border: '1px solid hsl(32 100% 50% / 0.15)',
-                    color: 'hsl(32 100% 60%)',
-                    animationDelay: `${idx * 50}ms`,
-                  }}
-                >
-                  <p.icon className="h-3 w-3" />
-                  {p.label}
-                </button>
-              ))}
-            </div>
+      {/* Content area — sidebar + messages */}
+      <div className="relative z-10 flex flex-1 overflow-hidden">
+        {/* Sidebar hologram (expanded only, when messages exist) */}
+        {expanded && messages.length > 0 && (
+          <div className="w-[120px] shrink-0 flex flex-col items-center justify-center border-r" style={{ borderColor: 'hsl(32 100% 50% / 0.1)', background: 'hsl(220 22% 3% / 0.5)' }}>
+            <JoiHologramFullBody className="w-24 h-48" state={loading ? 'active' : 'idle'} />
+            <span className="text-[6px] font-mono tracking-[0.2em] uppercase mt-2" style={{ color: 'hsl(32 100% 50% / 0.3)' }}>
+              HOLOGRAM · ACTIVE
+            </span>
           </div>
         )}
 
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={cn('max-w-[88%]', msg.role === 'user' ? 'ml-auto' : '')}
-            style={{ animation: msg.role === 'assistant' ? 'holo-materialize 0.5s cubic-bezier(0.16, 1, 0.3, 1) both' : 'fade-in 0.2s ease-out both' }}
-          >
-            {msg.role === 'user' ? (
-              <div>
-                <div
-                  className="px-3 py-2 rounded-lg rounded-br-sm text-[11px] font-mono leading-relaxed"
-                  style={{
-                    background: 'hsl(32 100% 50% / 0.1)',
-                    border: '1px solid hsl(32 100% 50% / 0.18)',
-                    color: 'hsl(32 100% 80%)',
-                  }}
-                >
-                  {msg.content}
-                </div>
-                {msg.ts && <span className="text-[6px] font-mono block text-right mt-0.5" style={{ color: 'hsl(32 100% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
+        {/* Messages */}
+        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-2 space-y-3 scrollbar-thin">
+          {messages.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80">
+              {expanded ? (
+                <JoiHologramFullBody className="w-40 h-64" state="materializing" />
+              ) : (
+                <JoiHologramAvatar size="lg" state="idle" animate />
+              )}
+              <p className="text-[8px] font-mono tracking-[0.2em] uppercase text-center" style={{ color: 'hsl(32 100% 50% / 0.45)' }}>
+                NEXUS ONLINE · AWAITING INPUT
+              </p>
+              <div className="flex flex-wrap gap-1.5 justify-center px-2">
+                {presets.map((p, idx) => (
+                  <button
+                    key={p.label}
+                    onClick={() => send(p.prompt)}
+                    className="flex items-center gap-1 px-2.5 py-2 rounded-lg text-[8px] font-mono tracking-wider uppercase transition-all hover:scale-105 active:scale-95 animate-fade-in"
+                    style={{
+                      background: 'hsl(32 100% 50% / 0.06)',
+                      border: '1px solid hsl(32 100% 50% / 0.15)',
+                      color: 'hsl(32 100% 60%)',
+                      animationDelay: `${idx * 50}ms`,
+                    }}
+                  >
+                    <p.icon className="h-3 w-3" />
+                    {p.label}
+                  </button>
+                ))}
               </div>
-            ) : (
-              <div>
-                <div
-                  className="px-3 py-2 rounded-lg rounded-bl-sm text-[11px] leading-relaxed"
-                  style={{
-                    borderLeft: '2px solid hsl(32 100% 50% / 0.35)',
-                    background: 'hsl(220 20% 6% / 0.6)',
-                    color: 'hsl(180 8% 82%)',
-                  }}
-                >
-                  <div className="prose prose-invert prose-xs max-w-none [&_p]:my-1 [&_code]:text-[hsl(32_100%_65%)] [&_code]:bg-transparent [&_pre]:bg-[hsl(220_20%_8%)] [&_pre]:border [&_pre]:border-[hsl(32_100%_50%/0.1)] [&_strong]:text-[hsl(32_100%_70%)] [&_a]:text-[hsl(32_100%_60%)]">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+            </div>
+          )}
+
+          {messages.map((msg, i) => (
+            <div
+              key={i}
+              className={cn('max-w-[88%]', msg.role === 'user' ? 'ml-auto' : '')}
+              style={{ animation: msg.role === 'assistant' ? 'holo-materialize 0.5s cubic-bezier(0.16, 1, 0.3, 1) both' : 'fade-in 0.2s ease-out both' }}
+            >
+              {msg.role === 'user' ? (
+                <div>
+                  <div
+                    className="px-3 py-2 rounded-lg rounded-br-sm text-[11px] font-mono leading-relaxed"
+                    style={{
+                      background: 'hsl(32 100% 50% / 0.1)',
+                      border: '1px solid hsl(32 100% 50% / 0.18)',
+                      color: 'hsl(32 100% 80%)',
+                    }}
+                  >
+                    {msg.content}
+                  </div>
+                  {msg.ts && <span className="text-[6px] font-mono block text-right mt-0.5" style={{ color: 'hsl(32 100% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
+                </div>
+              ) : (
+                <div>
+                  <div
+                    className="px-3 py-2 rounded-lg rounded-bl-sm text-[11px] leading-relaxed"
+                    style={{
+                      borderLeft: '2px solid hsl(32 100% 50% / 0.35)',
+                      background: 'hsl(220 20% 6% / 0.6)',
+                      color: 'hsl(180 8% 82%)',
+                    }}
+                  >
+                    <div className="prose prose-invert prose-xs max-w-none [&_p]:my-1 [&_code]:text-[hsl(32_100%_65%)] [&_code]:bg-transparent [&_pre]:bg-[hsl(220_20%_8%)] [&_pre]:border [&_pre]:border-[hsl(32_100%_50%/0.1)] [&_strong]:text-[hsl(32_100%_70%)] [&_a]:text-[hsl(32_100%_60%)]">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-0.5">
+                    {msg.ts && <span className="text-[6px] font-mono" style={{ color: 'hsl(32 100% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
+                    {!loading && (
+                      <div className="flex gap-0.5 ml-auto">
+                        <button
+                          onClick={() => handleFeedback(i, 'up')}
+                          className={cn("h-4 w-4 rounded flex items-center justify-center transition-colors",
+                            msg.feedback === 'up' ? "bg-green-500/20" : "hover:bg-white/5"
+                          )}
+                        >
+                          <ThumbsUp className="h-2.5 w-2.5" style={{ color: msg.feedback === 'up' ? 'hsl(120 70% 50%)' : 'hsl(32 100% 50% / 0.2)' }} />
+                        </button>
+                        <button
+                          onClick={() => handleFeedback(i, 'down')}
+                          className={cn("h-4 w-4 rounded flex items-center justify-center transition-colors",
+                            msg.feedback === 'down' ? "bg-red-500/20" : "hover:bg-white/5"
+                          )}
+                        >
+                          <ThumbsDown className="h-2.5 w-2.5" style={{ color: msg.feedback === 'down' ? 'hsl(0 70% 50%)' : 'hsl(32 100% 50% / 0.2)' }} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center justify-between mt-0.5">
-                  {msg.ts && <span className="text-[6px] font-mono" style={{ color: 'hsl(32 100% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
-                  {!loading && (
-                    <div className="flex gap-0.5 ml-auto">
-                      <button
-                        onClick={() => handleFeedback(i, 'up')}
-                        className={cn("h-4 w-4 rounded flex items-center justify-center transition-colors",
-                          msg.feedback === 'up' ? "bg-green-500/20" : "hover:bg-white/5"
-                        )}
-                      >
-                        <ThumbsUp className="h-2.5 w-2.5" style={{ color: msg.feedback === 'up' ? 'hsl(120 70% 50%)' : 'hsl(32 100% 50% / 0.2)' }} />
-                      </button>
-                      <button
-                        onClick={() => handleFeedback(i, 'down')}
-                        className={cn("h-4 w-4 rounded flex items-center justify-center transition-colors",
-                          msg.feedback === 'down' ? "bg-red-500/20" : "hover:bg-white/5"
-                        )}
-                      >
-                        <ThumbsDown className="h-2.5 w-2.5" style={{ color: msg.feedback === 'down' ? 'hsl(0 70% 50%)' : 'hsl(32 100% 50% / 0.2)' }} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          ))}
 
-        {loading && messages[messages.length - 1]?.role !== 'assistant' && (
-          <ThinkingWave />
-        )}
-        <div ref={endRef} />
+          {loading && messages[messages.length - 1]?.role !== 'assistant' && (
+            <ThinkingWave />
+          )}
+          <div ref={endRef} />
+        </div>
       </div>
 
       {/* Quick presets */}
