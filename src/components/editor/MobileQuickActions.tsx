@@ -99,7 +99,7 @@ export default function MobileQuickActions() {
               key={label}
               onClick={onClick}
               className={cn(
-                "flex items-center justify-center w-10 h-10 rounded-xl glass-button transition-all active:scale-90",
+                "flex items-center justify-center w-11 h-11 rounded-xl glass-button transition-all active:scale-90",
                 variant === 'active' && "bg-primary/15 border-primary/30 text-primary glow-active",
                 variant === 'primary' && "bg-primary/12 border-primary/25 text-primary",
                 variant === 'danger' && "bg-destructive/15 border-destructive/30 text-destructive glow-danger",
