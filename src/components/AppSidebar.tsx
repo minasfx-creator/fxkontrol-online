@@ -37,11 +37,11 @@ const navItems = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
-  // On mobile the sidebar opens as a Sheet (offcanvas) — always show labels
-  const showLabels = isMobile || !collapsed;
   const location = useLocation();
   const { user, signOut } = useAuth();
   const isMobile = useIsMobile();
+  // On mobile the sidebar opens as a Sheet (offcanvas) — always show labels
+  const showLabels = isMobile || !collapsed;
   const { isAdmin } = useAdminRole();
   const [soundMuted, setSoundMuted] = useState(ambientSound.muted);
 
