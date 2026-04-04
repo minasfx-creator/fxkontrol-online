@@ -719,6 +719,9 @@ export interface EnvironmentState {
   arMode: boolean;               // AR overlay mode toggle
   arOverlayOpacity: number;      // 0-1 AR overlay opacity
   arBlendMode: 'screen' | 'add' | 'normal' | 'overlay';
+  // ═══ Destruction Mode — Blade Runner 2049 "Luv Missile Strike" ═══
+  destructionMode: boolean;
+  destructionPhase: 'idle' | 'targeting' | 'incoming' | 'impact' | 'aftermath';
 }
 
 export interface CameraBookmark {
