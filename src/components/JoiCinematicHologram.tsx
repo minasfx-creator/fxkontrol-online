@@ -1,7 +1,8 @@
 /**
  * JoiCinematicHologram — Blade Runner 2049 Joi holographic avatar
  * Cinematic 3rd-person SVG with volumetric hair, hollow vessel effect,
- * magenta halo, dense rain, chromatic aberration, voxel glitch
+ * magenta halo, dense rain, chromatic aberration, voxel glitch,
+ * clothing texture, static hair strands, particle dissolve materialisation
  */
 import { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
@@ -54,7 +55,51 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
       opacity: 0.03 + (i % 3) * 0.01,
     })), []);
 
-  const op = isActive ? 1 : 0.7; // global opacity multiplier
+  // Particle dissolve particles (materializing only)
+  const dissolveParticles = useMemo(() =>
+    Array.from({ length: 40 }, (_, i) => ({
+      cx: 60 + Math.random() * 180,
+      cy: 80 + Math.random() * 380,
+      r: 0.8 + Math.random() * 2.5,
+      delay: (Math.random() * 2.2).toFixed(2),
+      dur: (1.2 + Math.random() * 1.5).toFixed(2),
+      drift: (-15 + Math.random() * 30).toFixed(1),
+    })), []);
+
+  // Static hair strands (active state — holographic static electricity)
+  const staticStrands = useMemo(() =>
+    Array.from({ length: 12 }, (_, i) => {
+      const side = i < 6 ? 'left' : 'right';
+      const baseX = side === 'left' ? 88 + i * 4 : 152 + (i - 6) * 4;
+      const baseY = 40 + Math.random() * 30;
+      const tipX = baseX + (side === 'left' ? -(5 + Math.random() * 12) : (5 + Math.random() * 12));
+      const tipY = baseY - (8 + Math.random() * 18);
+      return { baseX, baseY, tipX, tipY, delay: (i * 0.15).toFixed(2) };
+    }), []);
+
+  // Clothing texture lines (seams, folds)
+  const clothingSeams = useMemo(() => [
+    // Center seam
+    { d: 'M130 120 L130 290', op: 0.06 },
+    // Left fold
+    { d: 'M95 150 Q100 200 98 250', op: 0.04 },
+    // Right fold
+    { d: 'M165 150 Q160 200 162 250', op: 0.04 },
+    // Cross-stitch texture near collar
+    { d: 'M115 125 L118 130 M122 125 L125 130 M138 125 L135 130 M142 125 L145 130', op: 0.05 },
+    // Diagonal fold left
+    { d: 'M82 155 Q90 180 88 210', op: 0.03 },
+    // Diagonal fold right
+    { d: 'M178 155 Q170 180 172 210', op: 0.03 },
+    // Waist detail
+    { d: 'M100 280 Q115 275 130 278 Q145 275 160 280', op: 0.05 },
+    // Arm seam right
+    { d: 'M182 145 Q188 135 192 120', op: 0.04 },
+    // Arm seam left
+    { d: 'M78 145 Q72 160 68 180', op: 0.04 },
+  ], []);
+
+  const op = isActive ? 1 : 0.7;
 
   return (
     <div className={cn('relative flex items-center justify-center', SIZES[size], className)}>
@@ -123,6 +168,12 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
             <stop offset="100%" stopColor="transparent" />
           </radialGradient>
 
+          {/* Clothing texture pattern */}
+          <pattern id="jc-fabric" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="6" y2="6" stroke="hsl(280 80% 55%)" strokeWidth="0.15" strokeOpacity="0.08" />
+            <line x1="6" y1="0" x2="0" y2="6" stroke="hsl(190 100% 50%)" strokeWidth="0.1" strokeOpacity="0.04" />
+          </pattern>
+
           {/* Chromatic aberration filter */}
           <filter id="jc-chroma" x="-5%" y="-5%" width="110%" height="110%">
             <feOffset in="SourceGraphic" dx="1.5" dy="0" result="red" />
@@ -152,6 +203,21 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
           opacity={0.5}
         />
 
+        {/* ═══ PARTICLE DISSOLVE (materializing only) ═══ */}
+        {isMat && dissolveParticles.map((p, i) => (
+          <circle
+            key={`dp-${i}`}
+            cx={p.cx} cy={p.cy} r={p.r}
+            fill="hsl(280 80% 65%)"
+            className="joi-dissolve-particle"
+            style={{
+              animationDelay: `${p.delay}s`,
+              animationDuration: `${p.dur}s`,
+              ['--dissolve-drift' as string]: `${p.drift}px`,
+            }}
+          />
+        ))}
+
         {/* ═══ HAIR — Volumetric with bangs and bun ═══ */}
         <g filter={isActive ? 'url(#jc-chroma)' : undefined}>
           {/* Main hair volume */}
@@ -176,6 +242,20 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
           {/* Hair strands highlight */}
           <path d="M100 55 Q95 70 93 90" fill="none" stroke="hsl(190 100% 50%)" strokeWidth="0.4" strokeOpacity={0.12 * op} />
           <path d="M160 55 Q165 70 167 90" fill="none" stroke="hsl(190 100% 50%)" strokeWidth="0.4" strokeOpacity={0.12 * op} />
+
+          {/* ═══ STATIC HAIR STRANDS (active — holographic static electricity) ═══ */}
+          {isActive && staticStrands.map((s, i) => (
+            <line
+              key={`ss-${i}`}
+              x1={s.baseX} y1={s.baseY} x2={s.tipX} y2={s.tipY}
+              stroke="hsl(190 100% 60%)"
+              strokeWidth="0.35"
+              strokeOpacity={0.4}
+              strokeLinecap="round"
+              className="joi-static-strand"
+              style={{ animationDelay: `${s.delay}s` }}
+            />
+          ))}
         </g>
 
         {/* ═══ HEAD / FACE ═══ */}
@@ -261,6 +341,30 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
                Q172 260 175 220 Q178 180 182 145 Q160 125 130 118 Q100 125 78 145 Z"
             fill="url(#jc-body)"
           />
+
+          {/* Fabric texture overlay */}
+          <path
+            d="M78 145 Q82 180 85 220 Q88 260 95 290 Q130 285 165 290
+               Q172 260 175 220 Q178 180 182 145 Q160 125 130 118 Q100 125 78 145 Z"
+            fill="url(#jc-fabric)"
+            opacity={isActive ? 0.6 : 0.35}
+          />
+
+          {/* Clothing seams and folds */}
+          {clothingSeams.map((seam, i) => (
+            <path key={`seam-${i}`} d={seam.d} fill="none"
+              stroke="hsl(280 80% 60%)" strokeWidth="0.4" strokeOpacity={seam.op * op}
+              strokeDasharray={i < 3 ? undefined : '2 4'} />
+          ))}
+
+          {/* Collar ribbing texture */}
+          {Array.from({ length: 5 }, (_, i) => (
+            <path
+              key={`rib-${i}`}
+              d={`M${120 + i * 2} ${111 + i * 1.5} Q130 ${108 + i * 1.5} ${140 - i * 2} ${111 + i * 1.5}`}
+              fill="none" stroke="hsl(220 40% 25%)" strokeWidth="0.25" strokeOpacity={0.15 * op}
+            />
+          ))}
 
           {/* Right arm raised (Joi interaction pose) */}
           <path d="M182 145 Q192 132 198 110 Q202 95 196 80" fill="none"
