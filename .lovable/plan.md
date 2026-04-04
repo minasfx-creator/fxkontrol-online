@@ -1,77 +1,88 @@
 
 
-# Ciclo #9 — Calibração Final: Gerb/Flame Physics + Smoke Wind Response + RealisticFirework Drag Alignment
+# Ciclo #10 — Joi Hologram Cinematográfico (BR2049)
 
-## Analise
+## Pesquisa de Referências Visuais
 
-Fases completas: Balística (NFPA tables), drag quadrático, flicker estocástico, detonation envelope, wind field turbulento, per-particle drag por material.
+### Técnica DNEG (VFX do filme)
 
-### Gaps Restantes (vs. especificação)
+De acordo com Paul Lambert (VFX Supervisor, DNEG) e os artigos do VFX Science e VFXBlog:
 
-| Gap | Severidade | Ficheiro |
-|-----|-----------|---------|
-| 1. `createGerbStream` usa velocidade linear sem drag/flicker | Alta | `pyroPhysics.ts:634` |
-| 2. `RealisticFirework` usa drag exponencial (shader), mas NÃO quadrático — inconsistente com `ShellBurstRenderer` | Média | `RealisticFirework.tsx:44-48` |
-| 3. `RealisticFirework` não usa `windField` — vento é sempre `(0,0,0)` | Alta | `RealisticFirework.tsx:367-368` |
-| 4. Smoke wind response é fraco — `sp.vy *= 0.994` mas sem `windField.sample()` por posição | Média | `ShellBurstRenderer.tsx:712` |
-| 5. `createGerbStream` lifetime fixo 0.8-1.3s — deveria variar com altura (5-20 m/s, 2-8m) | Média | `pyroPhysics.ts:641` |
-| 6. Glitter trail gravity hardcoded `-9.81 * 0.5` — deveria usar `GRAVITY` constant | Baixa | `ShellBurstRenderer.tsx:589` |
+1. **Joi é um "hollow vessel"** — ela tem pele, cabelo, roupa, mas por dentro é completamente oca. Quando semi-transparente, vê-se o "back shell" (a casca traseira) através dela, antes de ver o fundo.
 
-## Plano (4 intervenções)
+2. **Efeito controlado pela iluminação** — Roger Deakins iluminou de forma específica. A transparência só aparece com luz forte ou movimento. Em muitos momentos ela parece completamente "real" (opaca).
 
-### 1. Calibrar `createGerbStream` com física realista (pyroPhysics.ts)
+3. **Glitch = voxelização** — nos momentos de stress emocional, o CG double é voxelizado (pixelização 3D). Quanto mais intensa a emoção, maiores e mais aleatórios os voxels.
 
-- Velocidade de emissão: 5-20 m/s (proporcional à altura)
-- Lifetime: proporcional à altura/velocidade com variância ±15%
-- Spread angular: aumentar de 0.15 para 0.2-0.35 (cone realista)
-- Drag alto (sparks leves: k=0.08-0.15)
+4. **Ela projeta sombras** — o software "sabe" quando ela está na sombra e ajusta. Ela afeta o ambiente.
 
-**Risco:** Nenhum. Função utilitária pura.
+5. **Chuva é fisicamente correta** — tamanho, velocidade, iluminação da chuva são críticos. DNEG usou Clarisse (render físico) para a chuva.
 
-### 2. Alinhar `RealisticFirework` shader com drag quadrático (RealisticFirework.tsx)
+6. **Estática no cabelo** — ao interagir com humanos, fios de cabelo se levantam por estática holográfica.
 
-O shader atual usa `(1 - e^(-k*t)) / k` (drag exponencial linear). Converter para modelo que aproxime drag quadrático no GPU:
-- Substituir `dragFactor` por `t / (1.0 + k * speed * t)` — aproximação analítica do drag quadrático
-- Adicionar uniform `uWindField` sampado do `windField.getGlobalWind('ember')` no `useFrame`
-- Usar `DRAG_TABLE` para definir `uDrag` por caliber em vez de constantes ad-hoc
+### Paleta Visual (do filme e referências enviadas)
 
-**Risco:** Baixo. Mudança isolada no shader, valores de fallback mantidos.
+- Magenta/roxo profundo: `hsl(280, 80%, 55%)` — halo principal
+- Ciano neon: `hsl(190, 100%, 50%)` — highlights, contornos
+- Pele quente: `hsl(25, 40%, 45%)` — tons faciais
+- Cabelo preto-azulado: `hsl(240, 30%, 12%)`
+- Lábios: `hsl(340, 60%, 45%)`
+- Fundo: escuro azulado `hsl(220, 40%, 8%)`
 
-### 3. Integrar `windField` no smoke do ShellBurstRenderer (ShellBurstRenderer.tsx)
+## Estado Atual dos Componentes
 
-- Substituir drift fixo (`sp.vy *= 0.994`) por `windField.sample(worldPos, 'smoke')`
-- Fumaça responde a 100% do vento (conforme spec)
-- Usar posição mundial real para turbulência espacial
+- `JoiHologramAvatar` (239 LOC) — SVG 60x60, wireframe monocromático (ciano/âmbar)
+- `JoiHologramFullBody` (212 LOC) — SVG 200x400, wireframe com pose, chuva básica
+- Ambos usados em `FXKAssistant.tsx` em 4 pontos
 
-**Risco:** Baixo. Smoke é cosmético, não afeta core.
+## Plano de Implementação
 
-### 4. Corrigir constantes hardcoded (ShellBurstRenderer.tsx)
+### 1. Criar `src/components/JoiCinematicHologram.tsx`
 
-- Glitter gravity: `GRAVITY` em vez de `-9.81 * 0.5`
-- Garantir consistência com constante global
+Novo componente SVG (viewBox 300x500) com estética cinematográfica:
 
-**Risco:** Nenhum.
+- **Cabelo volumétrico** — filled paths com gradientes escuros (preto-azulado), franja definida, coque
+- **Rosto com volume** — preenchimentos suaves, sombras faciais, lábios com cor (rosa), olhos com íris detalhada
+- **Roupa gola alta** — como nas referências, com gradiente holográfico
+- **"Hollow vessel" effect** — inner shell semi-transparente visível através do corpo (back-shell gradient)
+- **Halo magenta circular** — anel pulsante ao redor (como na 2ª referência enviada)
+- **Chuva densa** — 30+ gotas com blur variável e velocidade diferenciada
+- **Scanlines horizontais** — semi-transparentes, espaçadas
+- **Chromatic aberration** — SVG filter com offset R/G/B
+- **Voxel glitch** — no estado 'active', blocos retangulares aleatórios aparecem
+- **Materialização bottom-to-top** — clip-path com partículas de dissolve
+- **Projeção base** — cone de luz na base (projetor holográfico)
 
-## Ficheiros Afetados
+Props: `size: 'sm' | 'md' | 'lg' | 'xl'`, `state: 'idle' | 'active' | 'materializing'`, `className`
 
-| Ação | Ficheiro |
+### 2. Novas keyframes em `src/index.css`
+
+- `joi-halo-pulse` — anel magenta pulsando (scale + opacity)
+- `joi-rain-heavy` — chuva mais rápida e densa
+- `joi-chromatic-shift` — aberração cromática sutil (translateX oscilante)
+- `joi-materialize-scan` — barra horizontal de scan durante materialização
+- `joi-hologram-noise` — micro-jitter de projeção (translate aleatório)
+- `joi-voxel-glitch` — aparição/desaparição de blocos voxel
+
+### 3. Integrar no `FXKAssistant.tsx`
+
+Substituir `JoiHologramFullBody` pelo `JoiCinematicHologram` nos 3 pontos de uso:
+- Header (linha 328): `size="sm"`
+- Sidebar (linha 368): `size="lg"`
+- Idle central (linha 380): `size="xl"` com `state="materializing"`
+
+Manter `JoiHologramAvatar` para o mini-HUD (JoiStatusMonitor) — zero breaking change.
+
+## Ficheiros
+
+| Acao | Ficheiro |
 |------|---------|
-| Modificar | `src/lib/pyroPhysics.ts` — `createGerbStream` calibrado |
-| Modificar | `src/components/editor/effects/RealisticFirework.tsx` — drag quadrático + wind |
-| Modificar | `src/components/editor/effects/ShellBurstRenderer.tsx` — smoke wind + glitter fix |
-| Preservar | Core engines, stores, todos os outros |
+| Criar | `src/components/JoiCinematicHologram.tsx` |
+| Modificar | `src/index.css` — novas keyframes |
+| Modificar | `src/components/FXKAssistant.tsx` — trocar imports |
+| Preservar | `JoiHologramAvatar.tsx`, `JoiHologramFullBody.tsx` |
 
-## Resultado
+## Risco
 
-- Gerbs com física plausível (velocidade, spread, lifetime calibrados)
-- RealisticFirework com mesmo modelo de drag do ShellBurstRenderer (consistência)
-- Fumaça responde ao campo de vento turbulento (realismo critico)
-- Zero constantes hardcoded desalinhadas
-
-## Proteções
-
-- Nenhuma API pública alterada
-- Valores default produzem comportamento visualmente idêntico ao atual
-- Core engines intocados
-- Build verificado com `tsc`
+**Baixo.** Componente novo isolado. Componentes antigos preservados. Zero impacto em core engines ou VFX pipeline.
 
