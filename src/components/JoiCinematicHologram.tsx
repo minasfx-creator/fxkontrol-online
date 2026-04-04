@@ -140,11 +140,12 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
 
       <svg
         viewBox="0 0 300 500"
-        className="w-full h-full relative z-10"
+        className={cn('w-full h-full relative z-10', !isActive && !isMat && 'joi-breathing')}
         style={{
           clipPath: isMat && !materialised ? 'inset(100% 0 0 0)' : 'inset(0 0 0 0)',
           transition: isMat ? 'clip-path 2.2s cubic-bezier(0.16, 1, 0.3, 1)' : undefined,
           filter: isActive ? 'drop-shadow(0 0 18px hsl(280 80% 55% / 0.25))' : 'drop-shadow(0 0 8px hsl(280 80% 55% / 0.1))',
+          transformOrigin: '50% 85%',
         }}
       >
         <defs>
