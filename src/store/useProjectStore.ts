@@ -9,56 +9,8 @@ export interface DepthLayer {
   boundingBox?: { x: number; y: number; w: number; h: number };
 }
 
-export type PartType = 'shell' | 'comet' | 'mine' | 'cake' | 'candle' | 'fan' | 'gerb' | 'flame' | 'sfx' | 'light' | 'laser' | 'drone' | 'formation' | 'single_shot' | 'ground' | 'rocket' | 'waterfall' | 'strobe' | 'set_piece';
-
-export interface Effect {
-  id: string;
-  name: string;
-  category: string;
-  type: 'firework' | 'drone' | 'sfx' | 'laser' | 'light';
-  color: string;
-  duration: number;
-  cost: number;
-  icon: string;
-  // ── Finale 3D compatible fields ──────────────────────────────
-  partType?: PartType;          // Physical device type (from Finale manual)
-  caliber?: number;             // Size in inches (e.g., 3, 4, 5, 6, 8)
-  heightMeters?: number;        // Break/effect height in meters
-  prefire?: number;             // Lift time in seconds (shell rise time)
-  fuseDelay?: number;           // Fuse delay before ignition
-  numDevices?: number;          // Chain device count (1 for single)
-  safetyDistance?: number;      // NFPA 1123 safety distance (meters)
-  vdl?: string;                 // Visual Description Language string
-  pattern?: string;             // Burst pattern: peony, willow, palm, kamuro, crossette
-  shotCount?: number;           // For cakes/roman candles: number of shots
-  laserPattern?: 'fan' | 'harp' | 'tunnel' | 'cone' | 'single' | 'wave' | 'grid'; // For lasers
-  beamType?: 'spot' | 'wash' | 'beam'; // For moving heads
-  beamCount?: number;                  // Number of beams (lasers)
-  lockoutDefault?: string;      // Risk group for lockout system (e.g. "A", "B", "C", "D")
-  // ── VDL rendering metadata ──────────────────────────────────
-  angleOffset?: number;         // R45, L30 etc. in degrees (+ = right)
-  trailType?: string;           // none, comet, glitter, brocade, charcoal, smoke
-  noTrail?: boolean;            // "No Trail" modifier
-  hasPistil?: boolean;          // w/ Pistil
-  pistilColor?: string;         // Pistil color hex
-  colorTransition?: string;     // none, to, changing, alternating
-  secondaryColor?: string;      // Secondary color from VDL (& or w/)
-  firingPattern?: string;       // Z-Shape, Fan, X-Shape, W-Shape, etc.
-  impliesTrail?: boolean;       // Color implies trail (Silver, Gold, Charcoal)
-  // ── Niagara particle profile (SuperVDL fusion) ──
-  niagaraProfile?: {
-    starCount: number;
-    lifetime: number;
-    velocity: number;
-    drag: number;
-    gravityScale: number;
-    sparkleRate: number;
-    glowIntensity: number;
-    fadeProfile: 'linear' | 'exponential' | 'ember';
-  };
-  niagaraPresetId?: string;     // matched Niagara preset ID
-  formulationId?: string;       // Chemical formulation ID for realistic rendering
-}
+// ── Effect types & EFFECT_LIBRARY re-exported from src/data for backward compat ──
+export type { Effect, PartType } from '@/data/effectLibrary';
 
 export interface TimelineItem {
   id: string;
