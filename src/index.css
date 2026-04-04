@@ -1815,3 +1815,21 @@ button:active {
 .joi-dissolve-particle {
   animation: joi-dissolve-particle-kf 1.8s ease-out forwards;
 }
+
+/* Breathing — subtle idle silhouette scale */
+@keyframes joi-breathing-kf {
+  0%, 100% { transform: scaleY(1) scaleX(1); opacity: 0.7; }
+  50% { transform: scaleY(1.008) scaleX(1.003); opacity: 0.75; }
+}
+.joi-breathing {
+  animation: joi-breathing-kf 4.5s ease-in-out infinite;
+}
+
+/* Projected shadow — syncs with breathing */
+@keyframes joi-projected-shadow-kf {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.04); }
+}
+.joi-projected-shadow {
+  animation: joi-projected-shadow-kf 4.5s ease-in-out infinite;
+}
