@@ -366,8 +366,8 @@ export function FXKAssistant() {
         {/* Sidebar hologram (expanded only, when messages exist, hidden on mobile) */}
         {expanded && messages.length > 0 && !isMobile && (
           <div className="w-[120px] shrink-0 flex flex-col items-center justify-center border-r" style={{ borderColor: 'hsl(32 100% 50% / 0.1)', background: 'hsl(220 22% 3% / 0.5)' }}>
-            <JoiHologramFullBody className="w-24 h-48" state={loading ? 'active' : 'idle'} />
-            <span className="text-[6px] font-mono tracking-[0.2em] uppercase mt-2" style={{ color: 'hsl(32 100% 50% / 0.3)' }}>
+            <JoiCinematicHologram size="lg" state={loading ? 'active' : 'idle'} className="w-24 h-48" />
+            <span className="text-[6px] font-mono tracking-[0.2em] uppercase mt-2" style={{ color: 'hsl(280 80% 55% / 0.4)' }}>
               HOLOGRAM · ACTIVE
             </span>
           </div>
