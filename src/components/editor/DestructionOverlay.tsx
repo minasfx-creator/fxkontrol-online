@@ -34,7 +34,7 @@ export default function DestructionOverlay() {
 
     // Incoming — countdown
     setPhase('incoming');
-    triggerHaptic('dragStart');
+    haptics.warning();
     for (let i = 3; i >= 1; i--) {
       setCountdown(i);
       await wait(1000);
