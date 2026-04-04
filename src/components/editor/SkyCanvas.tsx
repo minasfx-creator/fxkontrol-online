@@ -1291,7 +1291,7 @@ export default function SkyCanvas() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [cameraMenuOpen, setCameraMenuOpen] = useState(false);
   const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
-  const perfStatsRef = useRef<PerfStats>({ fps: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0 });
+  const perfStatsRef = useRef<PerfStats>({ fps: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0, memory: 0, frameTime: 16.7, workerLatency: 0, isScaledDown: false });
   const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
   const [satelliteTexture, setSatelliteTexture] = useState<string | null>(null);
   const [downloadingScenery, setDownloadingScenery] = useState(false);
