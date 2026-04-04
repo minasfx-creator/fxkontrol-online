@@ -41,7 +41,7 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const isMobile = useIsMobile();
   // On mobile the sidebar opens as a Sheet (offcanvas) — always show labels
-  const showLabels = isMobile || showLabels;
+  const showLabels = isMobile || !collapsed;
   const { isAdmin } = useAdminRole();
   const [soundMuted, setSoundMuted] = useState(ambientSound.muted);
 
