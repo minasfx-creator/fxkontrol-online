@@ -103,6 +103,20 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
 
   return (
     <div className={cn('relative flex items-center justify-center', SIZES[size], className)}>
+      {/* Projected shadow on panel background */}
+      <div
+        className="absolute joi-projected-shadow"
+        style={{
+          width: '140%',
+          height: '60%',
+          bottom: '-8%',
+          left: '-20%',
+          background: 'radial-gradient(ellipse 50% 40% at 50% 30%, hsl(280 80% 45% / 0.12), hsl(280 80% 55% / 0.04) 45%, transparent 70%)',
+          filter: 'blur(18px)',
+          pointerEvents: 'none',
+        }}
+      />
+
       {/* Magenta halo ring */}
       <div
         className="absolute inset-0 rounded-full joi-halo-pulse"
@@ -126,11 +140,12 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
 
       <svg
         viewBox="0 0 300 500"
-        className="w-full h-full relative z-10"
+        className={cn('w-full h-full relative z-10', !isActive && !isMat && 'joi-breathing')}
         style={{
           clipPath: isMat && !materialised ? 'inset(100% 0 0 0)' : 'inset(0 0 0 0)',
           transition: isMat ? 'clip-path 2.2s cubic-bezier(0.16, 1, 0.3, 1)' : undefined,
           filter: isActive ? 'drop-shadow(0 0 18px hsl(280 80% 55% / 0.25))' : 'drop-shadow(0 0 8px hsl(280 80% 55% / 0.1))',
+          transformOrigin: '50% 85%',
         }}
       >
         <defs>
