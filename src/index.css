@@ -1699,3 +1699,25 @@ button:active {
   0% { opacity: 0; }
   100% { opacity: 1; }
 }
+@keyframes destruction-shockwave {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(25); opacity: 0; }
+}
+@keyframes destruction-mushroom-rise {
+  0% { transform: translateY(60px) scaleX(0.3) scaleY(0.1); opacity: 0; }
+  40% { opacity: 0.8; }
+  100% { transform: translateY(0) scaleX(1) scaleY(1); opacity: 0.6; }
+}
+@keyframes destruction-fallout {
+  0% { transform: translateY(0) translateX(0); opacity: 0.6; }
+  100% { transform: translateY(110vh) translateX(var(--fallout-drift, 0px)); opacity: 0; }
+}
+@keyframes destruction-heat-pulse {
+  0% { opacity: 1; backdrop-filter: blur(4px); }
+  50% { opacity: 0.6; backdrop-filter: blur(2px); }
+  100% { opacity: 0; backdrop-filter: blur(0px); }
+}
+@keyframes destruction-scanline {
+  0% { transform: translateY(-100vh); opacity: 0.3; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
