@@ -680,7 +680,7 @@ export default function Dashboard() {
           <div className="space-y-4">
             {visibleNews.map((item, i) => (
               <div key={item.id} className="animate-fxk-stagger" style={{ animationDelay: `${0.2 + i * 0.08}s` }}>
-                <FeedCard item={item} />
+                <FeedCard item={item} compact={isMobile} />
               </div>
             ))}
           </div>
