@@ -1,9 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { handleCors, corsHeaders } from "../_shared/cors.ts";
+import { jsonError } from "../_shared/response.ts";
 
 /**
  * Art-Net Bridge Edge Function
@@ -103,9 +100,8 @@ function validateUniverse(data: DMXUniverseData): string[] {
 }
 
 serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
   try {
     const body: ArtNetRequest = await req.json();
