@@ -46,6 +46,7 @@ import GoogleTilesLoadingOverlay from './GoogleTilesLoadingOverlay';
 import HUDCrosshairs from './HUDCrosshairs';
 import ARCompassHUD from './ARCompassHUD';
 import ARScanEffect from './ARScanEffect';
+import DestructionOverlay from './DestructionOverlay';
 import { cn } from '@/lib/utils';
 import {
   CometEffect,
@@ -1842,6 +1843,9 @@ export default function SkyCanvas() {
       {/* AR Overlays */}
       <ARCompassHUD />
       <ARScanEffect />
+
+      {/* Destruction Mode — Blade Runner 2049 */}
+      <DestructionOverlay />
 
       {/* MissionSetupOverlay removed — scene loads immediately */}
     </div>
