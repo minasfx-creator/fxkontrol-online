@@ -13,6 +13,8 @@ interface Props {
   children: ReactNode;
   minimizable?: boolean;
   className?: string;
+  /** Reserved space at the bottom (e.g. for MobileTabBar) */
+  bottomOffset?: number;
 }
 
 function getStoredPos(id: string, fallback: { x: number; y: number }) {
