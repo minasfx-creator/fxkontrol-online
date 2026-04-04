@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { materializeFormation as materialize } from '@/lib/formationMaterializer';
 import type { VideoChoreoResult } from '@/lib/videoChoreoEngine';
 
+// ── Effect types & EFFECT_LIBRARY re-exported from src/data for backward compat ──
+export type { Effect, PartType } from '@/data/effectLibrary';
+
 // ── Project types re-exported from src/types for backward compat ──
 export type {
   DepthLayer, TimelineItem, PositionType, Position,
