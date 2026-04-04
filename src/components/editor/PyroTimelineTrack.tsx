@@ -4,7 +4,8 @@
  * Each bar represents a timeline item (pyro effect) with color-coded category indicators.
  */
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { useProjectStore, type TimelineItem } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type TimelineItem } from '@/types/projectTypes';
 import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
 import { Flame, ChevronDown, ChevronRight } from 'lucide-react';

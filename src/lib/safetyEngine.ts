@@ -1,4 +1,4 @@
-import { type Position, type Trajectory, type TimelineItem } from '@/store/useProjectStore';
+import { type Position, type Trajectory, type TimelineItem } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 
 // ─── Deconfliction: minimum distance checks between drones ───────────

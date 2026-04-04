@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type DroneFormation } from '@/types/projectTypes';
 import { interpolateColor, type ColorTransitionMode } from '@/lib/colorInterpolation';
 import InstancedDroneSwarm from './InstancedDroneSwarm';
 import TransitionParticles from './TransitionParticles';

@@ -1,5 +1,6 @@
 import { useMemo, useCallback, useRef, useState } from 'react';
-import { useProjectStore, type Waypoint } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type Waypoint } from '@/types/projectTypes';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';

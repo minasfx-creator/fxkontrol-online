@@ -7,7 +7,8 @@ import { useRef, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Line } from '@react-three/drei';
-import { useProjectStore, type TimelineItem } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type TimelineItem } from '@/types/projectTypes';
 import { getMortarVelocity, getBreakHeight, GRAVITY, AIR_DRAG } from '@/lib/pyroPhysics';
 
 // ═══ Types ═══

@@ -3,7 +3,8 @@ import { Route, Trash2, Plus, Gauge, Spline, X, ChevronDown, ChevronRight, Alert
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { useProjectStore, type Waypoint, type Trajectory } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type Waypoint, type Trajectory } from '@/types/projectTypes';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
