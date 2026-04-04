@@ -1,28 +1,17 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { handleCors } from "../_shared/cors.ts";
+import { jsonOk, jsonError } from "../_shared/response.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+Deno.serve(async (req) => {
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
   const key = Deno.env.get("GOOGLE_MAPS_API_KEY");
-  if (!key) {
-    return new Response(JSON.stringify({ error: "GOOGLE_MAPS_API_KEY not configured" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (!key) return jsonError("GOOGLE_MAPS_API_KEY not configured");
 
   try {
     const { query } = await req.json();
     if (!query || typeof query !== "string" || query.trim().length < 2) {
-      return new Response(JSON.stringify({ results: [] }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonOk({ results: [] });
     }
 
     const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
@@ -41,10 +30,7 @@ serve(async (req) => {
     if (!res.ok) {
       const errText = await res.text();
       console.error("Google Places API error:", res.status, errText);
-      return new Response(JSON.stringify({ results: [], error: `Google API: ${res.status}` }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonOk({ results: [], error: `Google API: ${res.status}` });
     }
 
     const data = await res.json();
@@ -55,15 +41,9 @@ serve(async (req) => {
       formattedAddress: p.formattedAddress || "",
     }));
 
-    return new Response(JSON.stringify({ results }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonOk({ results });
   } catch (err) {
     console.error("google-places-search error:", err);
-    return new Response(JSON.stringify({ results: [], error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonError(err.message);
   }
 });
