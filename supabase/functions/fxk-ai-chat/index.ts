@@ -16,9 +16,8 @@ Your expertise covers:
 Respond concisely in the user's language (Portuguese or English). Use technical terms accurately. When discussing safety, be thorough. Format with markdown when helpful.`;
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
   try {
     const { messages } = await req.json();

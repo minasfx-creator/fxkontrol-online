@@ -100,9 +100,8 @@ function validateUniverse(data: DMXUniverseData): string[] {
 }
 
 serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
   try {
     const body: ArtNetRequest = await req.json();

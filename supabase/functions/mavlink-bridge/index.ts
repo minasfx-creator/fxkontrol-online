@@ -15,9 +15,8 @@ import { jsonError } from "../_shared/response.ts";
  * POST /  — Process telemetry packet(s), return ACK + validation
  */
 serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
   try {
     const { action, packets, command } = await req.json();
