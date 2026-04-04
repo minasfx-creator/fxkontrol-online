@@ -716,6 +716,9 @@ export interface EnvironmentState {
   gridSnapResolution: number;    // Snap grid cell size in meters (0.1 – 10)
   droneRendererMode: 'instanced' | 'swarm';  // instanced = PBR/LOD, swarm = tactical engine
   showHUDCrosshairs: boolean;    // AR-style HUD crosshairs overlay
+  arMode: boolean;               // AR overlay mode toggle
+  arOverlayOpacity: number;      // 0-1 AR overlay opacity
+  arBlendMode: 'screen' | 'add' | 'normal' | 'overlay';
 }
 
 export interface CameraBookmark {
