@@ -582,7 +582,29 @@ export function createShellBurst(
       }
     }
 
-    particles.push({ x: 0, y: 0, z: 0, vx, vy, vz, life: 0, maxLife: life, brightness: 1 });
+    // ── Natural variance (mandatory for realism) ──
+    // Velocity: ±10% random variation per particle
+    const velVariance = 0.90 + Math.random() * 0.20;
+    vx *= velVariance;
+    vy *= velVariance;
+    vz *= velVariance;
+
+    // Angular jitter: ±5° deviation from ideal trajectory
+    const jitterRad = ((Math.random() - 0.5) * 10) * Math.PI / 180; // ±5°
+    const cosJ = Math.cos(jitterRad);
+    const sinJ = Math.sin(jitterRad);
+    const jVx = vx * cosJ - vz * sinJ;
+    const jVz = vx * sinJ + vz * cosJ;
+    vx = jVx;
+    vz = jVz;
+
+    // Intensity: ±15% initial brightness variation
+    const brightnessVariance = 0.85 + Math.random() * 0.30;
+
+    // Timing: ±3% lifetime variation (fuse irregularity)
+    life *= (0.97 + Math.random() * 0.06);
+
+    particles.push({ x: 0, y: 0, z: 0, vx, vy, vz, life: 0, maxLife: life, brightness: brightnessVariance });
   }
 
   return particles;
