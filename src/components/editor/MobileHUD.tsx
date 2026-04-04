@@ -4,7 +4,7 @@
  */
 import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Pause, Square, AlertOctagon, Zap, Radio } from 'lucide-react';
+import { Play, Pause, Square, AlertOctagon, Zap, Radio, ScanEye } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -12,6 +12,7 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { useShowSettings } from '@/hooks/useShowSettings';
+import { useSceneStore } from '@/store/useSceneStore';
 
 function formatTimecode(seconds: number): string {
   const m = Math.floor(seconds / 60);
