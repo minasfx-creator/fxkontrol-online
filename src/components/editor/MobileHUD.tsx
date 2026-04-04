@@ -104,6 +104,19 @@ export default function MobileHUD() {
 
         {/* Right: Compact action group */}
         <div className="pointer-events-auto flex items-center gap-1 shrink-0">
+          {/* AR Toggle pill */}
+          <button
+            onClick={handleARToggle}
+            className={cn(
+              "flex items-center justify-center gap-0.5 px-2 h-8 rounded-lg text-[9px] font-bold tracking-wider transition-all active:scale-90",
+              arMode
+                ? "bg-[hsl(var(--fxk-magenta)/0.2)] ring-1 ring-[hsl(var(--fxk-magenta)/0.5)] text-[hsl(var(--fxk-magenta))]"
+                : "glass-button text-muted-foreground"
+            )}
+          >
+            <ScanEye className="w-3.5 h-3.5" />
+            AR
+          </button>
           {/* PANIC — only when armed, takes priority */}
           {isArmed && (
             <button

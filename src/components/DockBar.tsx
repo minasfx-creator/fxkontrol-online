@@ -45,6 +45,7 @@ export default function DockBar() {
   const location = useLocation();
   const { isAdmin } = useAdminRole();
   const isMobile = useIsMobile();
+  const arMode = useSceneStore(s => s.environment.arMode);
   const dockRef = useRef<HTMLDivElement>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [tilt, setTilt] = useState({ rotateX: 0, rotateY: 0 });
