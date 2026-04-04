@@ -443,7 +443,7 @@ export default function Dashboard() {
               <button
                 key={console.key}
                 onClick={() => navigate(`/command?mode=${console.key}`)}
-                className={cn("group relative overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-300 ease-spring hover:scale-[1.08] active:scale-[0.95] animate-fxk-stagger", isMobile && "shrink-0 min-w-[72px]")}
+                className={cn("group relative overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-300 ease-spring hover:scale-[1.08] active:scale-[0.95] animate-fxk-stagger", isMobile && "shrink-0 min-w-[80px]")}
                 style={{
                   animationDelay: `${0.1 + i * 0.04}s`,
                   borderColor: `${console.color}20`,
