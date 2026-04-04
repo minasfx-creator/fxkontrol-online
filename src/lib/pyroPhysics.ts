@@ -19,16 +19,17 @@ export const STAR_DRAG = 0.08;
 
 // ── Lookup Tables (sub-2" calibers added per Finale manual) ─────────
 
+// Calibrated against real-world field measurements (NFPA 1123 / Skylighter / PIROEX)
 const MORTAR_VELOCITY: LookupTable = {
-  1: 22, 1.5: 32, 2: 42, 3: 56, 4: 68, 5: 78, 6: 88, 8: 105, 10: 118, 12: 130, 16: 145,
+  1: 30, 1.5: 45, 2: 55, 3: 70, 4: 85, 5: 95, 6: 110, 8: 125, 10: 135, 12: 145, 16: 160,
 };
 
 const BREAK_HEIGHT: LookupTable = {
-  1: 15, 1.5: 25, 2: 35, 3: 55, 4: 80, 5: 110, 6: 140, 8: 190, 10: 240, 12: 280, 16: 320,
+  1: 20, 1.5: 35, 2: 50, 3: 105, 4: 140, 5: 190, 6: 260, 8: 330, 10: 380, 12: 420, 16: 480,
 };
 
 const BREAK_SPEED: LookupTable = {
-  1: 10, 1.5: 14, 2: 18, 3: 28, 4: 38, 5: 48, 6: 58, 8: 72, 10: 85, 12: 95, 16: 110,
+  1: 12, 1.5: 18, 2: 24, 3: 35, 4: 45, 5: 55, 6: 65, 8: 78, 10: 90, 12: 100, 16: 115,
 };
 
 const STAR_COUNT: LookupTable = {
