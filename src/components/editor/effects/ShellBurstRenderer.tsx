@@ -493,11 +493,19 @@ export default function ShellBurstRenderer({
     const time = initTimeRef.current;
 
     // Step physics using store-driven drag and wind (formulation override if present)
-    const effectiveDrag = formMods ? formMods.dragOverride : starDrag;
+    // Per-particle drag: base drag * material density coefficient
+    const baseDrag = formMods ? formMods.dragOverride : starDrag;
+    const dragCoeffs = particleDragCoeffs.current;
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       if (p.life < p.maxLife) {
-        stepParticle(p, dt, windVec, effectiveDrag, stepMods);
+        // Detonation envelope: particles start slow and reach full velocity over first 3% of life
+        const lifeRatio = p.life / p.maxLife;
+        const detonationMult = lifeRatio < 0.03 ? 0.15 + (lifeRatio / 0.03) * 0.85 : 1.0;
+        
+        // Per-particle drag from material density
+        const particleDrag = baseDrag * dragCoeffs[i];
+        stepParticle(p, dt * detonationMult, windVec, particleDrag, stepMods);
 
         // Glitter trail: emit micro-particles from active stars
         if (trailType === 'glitter' && p.life > 0.1 && Math.random() < 0.15) {
