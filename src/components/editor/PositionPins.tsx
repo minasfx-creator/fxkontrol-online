@@ -705,6 +705,7 @@ function GroundClickPlane() {
         color: type === 'drone-pad' ? '#00B4D8' : '#FF6B35',
       });
       useProjectStore.getState().selectPosition(id);
+      window.dispatchEvent(new CustomEvent('position-placed', { detail: { id, type } }));
       return;
     }
 

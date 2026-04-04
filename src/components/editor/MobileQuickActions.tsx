@@ -2,7 +2,7 @@
  * MobileQuickActions — Compact floating action buttons with drag-and-drop repositioning
  */
 import { useCallback } from 'react';
-import { MousePointer2, Plus, Undo2, Redo2, Trash2, Copy, Pencil, Compass, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { MousePointer2, Undo2, Redo2, Trash2, Copy, Pencil, Compass, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { useProjectStore } from '@/store/useProjectStore';
