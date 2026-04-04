@@ -4,7 +4,7 @@
  * No external audio files required.
  */
 
-type SoundType = 'nav' | 'click' | 'boot' | 'error';
+type SoundType = 'nav' | 'click' | 'boot' | 'error' | 'alarm' | 'missile' | 'explosion' | 'radiation';
 
 class AmbientSoundEngine {
   private ctx: AudioContext | null = null;
