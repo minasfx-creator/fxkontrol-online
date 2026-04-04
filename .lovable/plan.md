@@ -1,105 +1,77 @@
 
 
-# Ciclo #7 — Realismo Visual: Melhoria Incremental do Pipeline VFX
+# Ciclo #9 — Calibração Final: Gerb/Flame Physics + Smoke Wind Response + RealisticFirework Drag Alignment
 
-## Análise do Estado Atual
+## Analise
 
-O sistema VFX é maduro e bem arquitetado:
+Fases completas: Balística (NFPA tables), drag quadrático, flicker estocástico, detonation envelope, wind field turbulento, per-particle drag por material.
 
-| Componente | LOC | Estado | Nota |
-|------------|-----|--------|------|
-| ShellBurstRenderer | 932 | Produção | Shaders térmicos, glitter, crossette, fumaça |
-| RealisticFirework | 454 | Produção | GPU-only, material singleton, object pool |
-| PostExplosionSmokeManager | 309 | Produção | Pool pré-alocado, zero-GC |
-| SmokeSystem (render_ultra) | 250 | Produção | Curl noise, soft particles |
-| PrefireShell | 259 | Produção | Comet trail, muzzle flash |
-| particleChemistry | 1312 | Produção | 30+ compostos reais calibrados |
-| HDR Lighting | 193 | Produção | Burst light pool, inverse-square |
-| Exposure | 87 | Produção | Adaptação assimétrica |
+### Gaps Restantes (vs. especificação)
 
-### Gaps Identificados (vs. referência real)
+| Gap | Severidade | Ficheiro |
+|-----|-----------|---------|
+| 1. `createGerbStream` usa velocidade linear sem drag/flicker | Alta | `pyroPhysics.ts:634` |
+| 2. `RealisticFirework` usa drag exponencial (shader), mas NÃO quadrático — inconsistente com `ShellBurstRenderer` | Média | `RealisticFirework.tsx:44-48` |
+| 3. `RealisticFirework` não usa `windField` — vento é sempre `(0,0,0)` | Alta | `RealisticFirework.tsx:367-368` |
+| 4. Smoke wind response é fraco — `sp.vy *= 0.994` mas sem `windField.sample()` por posição | Média | `ShellBurstRenderer.tsx:712` |
+| 5. `createGerbStream` lifetime fixo 0.8-1.3s — deveria variar com altura (5-20 m/s, 2-8m) | Média | `pyroPhysics.ts:641` |
+| 6. Glitter trail gravity hardcoded `-9.81 * 0.5` — deveria usar `GRAVITY` constant | Baixa | `ShellBurstRenderer.tsx:589` |
 
-1. **Burst não-instantâneo ausente** — explosão expande imediatamente; fogos reais têm 50-120ms de expansão visível do núcleo
-2. **Spark drag uniforme** — todas as partículas usam mesmo coeficiente; realidade: Ti sparks pesados vs charcoal leves
-3. **Fumaça post-burst sem interação com luz** — smoke billboards não recebem iluminação dos burst lights
-4. **Flicker mecânico** — `sin()` produz flicker periódico; fogos reais têm flicker estocástico
-5. **Trail sem variação de espessura** — spark trails têm largura constante; realidade: mais grosso perto da fonte
+## Plano (4 intervenções)
 
-## Plano de Execução (3 intervenções seguras)
+### 1. Calibrar `createGerbStream` com física realista (pyroPhysics.ts)
 
-### Intervenção 1 — Flicker Estocástico nos Shaders (Baixo Risco)
+- Velocidade de emissão: 5-20 m/s (proporcional à altura)
+- Lifetime: proporcional à altura/velocidade com variância ±15%
+- Spread angular: aumentar de 0.15 para 0.2-0.35 (cone realista)
+- Drag alto (sparks leves: k=0.08-0.15)
 
-Substituir o flicker `sin()` periódico no `ShellBurstRenderer` e `RealisticFirework` por noise hash que produz pulsação irregular e não-repetitiva.
+**Risco:** Nenhum. Função utilitária pura.
 
-**Antes (ShellBurstRenderer, linha 118):**
-```glsl
-float flicker = 0.85 + 0.15 * sin(vLife * 47.0 + stretchedCoord.x * 13.0);
-```
+### 2. Alinhar `RealisticFirework` shader com drag quadrático (RealisticFirework.tsx)
 
-**Depois:**
-```glsl
-float flickerHash = fract(sin(dot(vec2(vLife * 31.7, vBrightness * 17.3), vec2(127.1, 311.7))) * 43758.5453);
-float flicker = 0.80 + 0.20 * flickerHash;
-```
+O shader atual usa `(1 - e^(-k*t)) / k` (drag exponencial linear). Converter para modelo que aproxime drag quadrático no GPU:
+- Substituir `dragFactor` por `t / (1.0 + k * speed * t)` — aproximação analítica do drag quadrático
+- Adicionar uniform `uWindField` sampado do `windField.getGlobalWind('ember')` no `useFrame`
+- Usar `DRAG_TABLE` para definir `uDrag` por caliber em vez de constantes ad-hoc
 
-Mesmo padrão para `RealisticFirework` (linha 134: `sin(vRandom * 6283.0 + uTime * 12.0)`).
+**Risco:** Baixo. Mudança isolada no shader, valores de fallback mantidos.
 
-**Impacto:** Partículas piscam de forma orgânica e imprevisível, eliminando padrão visual repetitivo.
+### 3. Integrar `windField` no smoke do ShellBurstRenderer (ShellBurstRenderer.tsx)
 
-### Intervenção 2 — Drag por Material (Baixo Risco)
+- Substituir drift fixo (`sp.vy *= 0.994`) por `windField.sample(worldPos, 'smoke')`
+- Fumaça responde a 100% do vento (conforme spec)
+- Usar posição mundial real para turbulência espacial
 
-Adicionar um atributo `aDragCoeff` per-particle nos shaders, alimentado pelos dados de `particleChemistry` (density/sparkSize). Partículas de Titânio (density 4.5) mantêm trajetória; Charcoal (density ~0.5) desacelera rápido.
+**Risco:** Baixo. Smoke é cosmético, não afeta core.
 
-**ShellBurstRenderer:**
-- Novo attribute `aDragCoeff` no vertex shader
-- Buffer `dragBuffer` pré-computado no `useEffect` com base no `formulationId`
-- `stepParticle()` já aceita drag — apenas variar per-particle
+### 4. Corrigir constantes hardcoded (ShellBurstRenderer.tsx)
 
-**Cálculo:** `dragCoeff = baseDrag * (1.0 / (0.5 + density * 0.3))` — materiais densos têm menos drag.
+- Glitter gravity: `GRAVITY` em vez de `-9.81 * 0.5`
+- Garantir consistência com constante global
 
-### Intervenção 3 — Expansão de Burst em 2 Fases (Médio Risco)
-
-Modificar o vertex shader do `ShellBurstRenderer` para que nos primeiros 80ms (lifeRatio < 0.03) as partículas expandam a velocidade crescente (detonação), e depois sigam a balística normal. Simula o "flash + shell break" real.
-
-**No BURST_VERTEX:**
-```glsl
-// Detonation envelope: fast expansion in first 3% of life
-float detonationPhase = smoothstep(0.0, 0.03, rawRatio);
-float burstEnvelope = mix(0.2, 1.0, detonationPhase);
-// Apply to velocity before position integration
-vec3 scaledVel = aVelocity * burstEnvelope;
-```
-
-Isso faz o burst "crescer" visivelmente em vez de aparecer instantâneamente.
+**Risco:** Nenhum.
 
 ## Ficheiros Afetados
 
 | Ação | Ficheiro |
 |------|---------|
-| Modificar | `src/components/editor/effects/ShellBurstRenderer.tsx` — flicker hash + drag attribute + burst envelope |
-| Modificar | `src/components/editor/effects/RealisticFirework.tsx` — flicker hash |
-| Preservar | Todos os outros ficheiros (zero mudanças) |
+| Modificar | `src/lib/pyroPhysics.ts` — `createGerbStream` calibrado |
+| Modificar | `src/components/editor/effects/RealisticFirework.tsx` — drag quadrático + wind |
+| Modificar | `src/components/editor/effects/ShellBurstRenderer.tsx` — smoke wind + glitter fix |
+| Preservar | Core engines, stores, todos os outros |
+
+## Resultado
+
+- Gerbs com física plausível (velocidade, spread, lifetime calibrados)
+- RealisticFirework com mesmo modelo de drag do ShellBurstRenderer (consistência)
+- Fumaça responde ao campo de vento turbulento (realismo critico)
+- Zero constantes hardcoded desalinhadas
 
 ## Proteções
 
-- Shaders são isolados — mudança não afeta lógica React
-- Parâmetros mantêm valores default idênticos ao comportamento atual
-- Object pools e material singletons intocados
-- Core engines (fxkEngine, timelineEngine) intocados
+- Nenhuma API pública alterada
+- Valores default produzem comportamento visualmente idêntico ao atual
+- Core engines intocados
 - Build verificado com `tsc`
-
-## Risco
-
-**Baixo.** Intervenções 1-2 são aditivas (novo attribute + novo cálculo no shader). Intervenção 3 é multiplicativa mas o `smoothstep` garante que em t>3% o comportamento é idêntico ao atual.
-
-## Resultado Esperado
-
-- Flicker orgânico eliminando repetição visual mecânica
-- Partículas pesadas (Ti, Fe) com trajetórias distintas de partículas leves (charcoal, fumaça)
-- Burst com expansão progressiva visível (detonação → balística)
-- Zero impacto em performance (mesmos draw calls, mesmos buffers)
-
-## Próximo Passo (após validação)
-
-Intervenção 4: Iluminação dinâmica na fumaça — fazer os smoke billboards receberem cor dos burst lights ativos, criando o efeito de fumaça colorida que é fundamental no realismo pirotécnico.
 
