@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { EFFECT_LIBRARY, type Effect } from './useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 
 export interface InventoryItem {
   effectId: string;
