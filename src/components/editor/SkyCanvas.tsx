@@ -44,6 +44,8 @@ import AICoPilotOverlay from './AICoPilotOverlay';
 import TelemetryBar from './TelemetryBar';
 import GoogleTilesLoadingOverlay from './GoogleTilesLoadingOverlay';
 import HUDCrosshairs from './HUDCrosshairs';
+import ARCompassHUD from './ARCompassHUD';
+import ARScanEffect from './ARScanEffect';
 import { cn } from '@/lib/utils';
 import {
   CometEffect,
@@ -1836,6 +1838,10 @@ export default function SkyCanvas() {
         active={presentationMode}
         onExit={() => useSceneStore.getState().updateSettings({ presentationMode: false })}
       />
+
+      {/* AR Overlays */}
+      <ARCompassHUD />
+      <ARScanEffect />
 
       {/* MissionSetupOverlay removed — scene loads immediately */}
     </div>

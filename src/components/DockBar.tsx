@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { ambientSound } from '@/lib/ambientSound';
 import { haptics } from '@/lib/haptics';
 import { prefetchRoute } from '@/lib/prefetchRoutes';
+import { useSceneStore } from '@/store/useSceneStore';
 import {
   LayoutDashboard, Clapperboard, CalendarDays,
   Crosshair, Gamepad2, Rocket, Activity,
@@ -44,6 +45,7 @@ export default function DockBar() {
   const location = useLocation();
   const { isAdmin } = useAdminRole();
   const isMobile = useIsMobile();
+  const arMode = useSceneStore(s => s.environment.arMode);
   const dockRef = useRef<HTMLDivElement>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [tilt, setTilt] = useState({ rotateX: 0, rotateY: 0 });
@@ -191,6 +193,12 @@ export default function DockBar() {
                             background: accentColor,
                             boxShadow: `0 0 4px ${accentColor}`,
                           }}
+                        />
+                      )}
+                      {/* AR Mode badge on Editor 3D */}
+                      {arMode && item.path === '/editor' && (
+                        <div className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full animate-pulse"
+                          style={{ background: 'hsl(var(--fxk-magenta))', boxShadow: '0 0 6px hsl(var(--fxk-magenta) / 0.6)' }}
                         />
                       )}
                     </button>

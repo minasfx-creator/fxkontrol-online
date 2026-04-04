@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { lazy, Suspense } from "react";
 import MainLayout from "@/layouts/MainLayout";
+import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -52,6 +53,7 @@ function App() {
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <PageTransitionOverlay />
             <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
               <Routes>
                 <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />

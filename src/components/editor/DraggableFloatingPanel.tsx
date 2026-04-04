@@ -1,10 +1,11 @@
 /**
  * DraggableFloatingPanel — Generic draggable wrapper with localStorage persistence
- * Glassmorphism FUI style, grip handle, minimize, bounds checking
+ * Glassmorphism FUI style, grip handle, minimize, bounds checking, auto-dodge
  */
 import { useState, useRef, useCallback, useEffect, type ReactNode } from 'react';
 import { GripVertical, Minus, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { haptics } from '@/lib/haptics';
 
 interface Props {
   panelId: string;
@@ -17,6 +18,9 @@ interface Props {
   bottomOffset?: number;
 }
 
+// Static registry for auto-dodge collision detection
+const panelRegistry = new Map<string, { x: number; y: number; w: number; h: number }>();
+
 function getStoredPos(id: string, fallback: { x: number; y: number }) {
   try {
     const raw = localStorage.getItem(`dfp-${id}`);
@@ -26,6 +30,18 @@ function getStoredPos(id: string, fallback: { x: number; y: number }) {
     }
   } catch {}
   return fallback;
+}
+
+function dodgeCollisions(id: string, x: number, y: number, w: number, h: number): { x: number; y: number } {
+  let finalY = y;
+  for (const [pid, rect] of panelRegistry) {
+    if (pid === id) continue;
+    const overlap = !(x + w < rect.x || x > rect.x + rect.w || finalY + h < rect.y || finalY > rect.y + rect.h);
+    if (overlap) {
+      finalY = rect.y + rect.h + 8;
+    }
+  }
+  return { x, y: finalY };
 }
 
 export default function DraggableFloatingPanel({
@@ -43,6 +59,20 @@ export default function DraggableFloatingPanel({
   const panelRef = useRef<HTMLDivElement>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
 
+  // Register/unregister panel in static map
+  useEffect(() => {
+    const el = panelRef.current;
+    const update = () => {
+      panelRegistry.set(panelId, {
+        x: pos.x, y: pos.y,
+        w: el?.offsetWidth ?? 48,
+        h: el?.offsetHeight ?? 48,
+      });
+    };
+    update();
+    return () => { panelRegistry.delete(panelId); };
+  }, [panelId, pos]);
+
   const clamp = useCallback((x: number, y: number) => {
     const el = panelRef.current;
     const w = el?.offsetWidth ?? 48;
@@ -51,7 +81,6 @@ export default function DraggableFloatingPanel({
     const maxY = window.innerHeight - h - bottomOffset;
     let cx = Math.max(0, Math.min(window.innerWidth - w, x));
     let cy = Math.max(0, Math.min(maxY, y));
-    // Snap to edges
     if (cx < snap) cx = 0;
     if (cy < snap) cy = 0;
     if (cx > window.innerWidth - w - snap) cx = window.innerWidth - w;
@@ -63,6 +92,7 @@ export default function DraggableFloatingPanel({
     e.preventDefault();
     e.stopPropagation();
     setDragging(true);
+    haptics.dragStart();
     dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }, [pos]);
@@ -76,11 +106,20 @@ export default function DraggableFloatingPanel({
   const onPointerUp = useCallback((e: React.PointerEvent) => {
     if (!dragging) return;
     setDragging(false);
+    haptics.dragEnd();
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    const final = clamp(e.clientX - dragOffset.current.x, e.clientY - dragOffset.current.y);
-    setPos(final);
-    try { localStorage.setItem(`dfp-${panelId}`, JSON.stringify(final)); } catch {}
+    const raw = clamp(e.clientX - dragOffset.current.x, e.clientY - dragOffset.current.y);
+    const el = panelRef.current;
+    const final = dodgeCollisions(panelId, raw.x, raw.y, el?.offsetWidth ?? 48, el?.offsetHeight ?? 48);
+    const clamped = clamp(final.x, final.y);
+    setPos(clamped);
+    try { localStorage.setItem(`dfp-${panelId}`, JSON.stringify(clamped)); } catch {}
   }, [dragging, clamp, panelId]);
+
+  const handleMinimize = useCallback(() => {
+    haptics.panelToggle();
+    setMinimized(p => !p);
+  }, []);
 
   // Recalculate bounds on resize
   useEffect(() => {
@@ -93,30 +132,31 @@ export default function DraggableFloatingPanel({
     <div
       ref={panelRef}
       className={cn(
-        "fixed z-40 flex flex-col items-center",
-        dragging && "select-none",
+        "fixed z-40 flex flex-col items-center transition-transform duration-150",
+        dragging && "select-none scale-[1.02]",
         className
       )}
       style={{ left: pos.x, top: pos.y, touchAction: 'none' }}
     >
-      {/* Grip handle */}
+      {/* Grip handle — 44px WCAG touch target */}
       <div
         className={cn(
-          "flex items-center justify-center gap-0.5 rounded-t-lg px-2 py-0.5 cursor-grab active:cursor-grabbing",
+          "flex items-center justify-center gap-0.5 rounded-t-lg cursor-grab active:cursor-grabbing",
           "bg-background/60 backdrop-blur-sm border border-b-0 border-border/20",
-          dragging && "ring-1 ring-primary/30"
+          "min-h-[44px] min-w-[44px] px-3",
+          dragging && "ring-1 ring-[hsl(var(--fxk-cyan)/0.4)] shadow-[0_0_12px_hsl(var(--fxk-cyan)/0.15)]"
         )}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
       >
-        <GripVertical className="w-3 h-3 text-muted-foreground/40" />
+        <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40" />
         {minimizable && (
           <button
-            onClick={() => setMinimized(p => !p)}
-            className="ml-1 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+            onClick={handleMinimize}
+            className="ml-1 text-muted-foreground/40 hover:text-muted-foreground transition-colors p-1"
           >
-            {minimized ? <Plus className="w-2.5 h-2.5" /> : <Minus className="w-2.5 h-2.5" />}
+            {minimized ? <Plus className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
           </button>
         )}
       </div>

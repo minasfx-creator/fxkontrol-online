@@ -131,4 +131,54 @@ export const haptics = {
       webVibrate([50, 30, 50, 30, 100]);
     }
   },
+
+  /** Drag start — subtle hold feedback */
+  dragStart: async () => {
+    if (isNative()) {
+      await Haptics.impact({ style: ImpactStyle.Light });
+    } else {
+      webVibrate(8);
+    }
+  },
+
+  /** Drag end — snap confirmation */
+  dragEnd: async () => {
+    if (isNative()) {
+      await Haptics.impact({ style: ImpactStyle.Medium });
+    } else {
+      webVibrate(15);
+    }
+  },
+
+  /** AR mode toggle */
+  arToggle: async (entering: boolean) => {
+    if (isNative()) {
+      if (entering) {
+        await Haptics.notification({ type: NotificationType.Success });
+        setTimeout(() => Haptics.impact({ style: ImpactStyle.Light }), 60);
+      } else {
+        await Haptics.impact({ style: ImpactStyle.Light });
+      }
+    } else {
+      webVibrate(entering ? [30, 20, 30] : [20]);
+    }
+  },
+
+  /** Panel minimize/maximize */
+  panelToggle: async () => {
+    if (isNative()) {
+      await Haptics.impact({ style: ImpactStyle.Light });
+    } else {
+      webVibrate(10);
+    }
+  },
+
+  /** Calibration complete ping */
+  calibrationPing: async () => {
+    if (isNative()) {
+      await Haptics.notification({ type: NotificationType.Success });
+    } else {
+      webVibrate([20, 10, 20]);
+    }
+  },
 };

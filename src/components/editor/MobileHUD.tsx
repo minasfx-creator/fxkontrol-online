@@ -4,7 +4,7 @@
  */
 import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Pause, Square, AlertOctagon, Zap, Radio } from 'lucide-react';
+import { Play, Pause, Square, AlertOctagon, Zap, Radio, ScanEye } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -12,6 +12,7 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { useShowSettings } from '@/hooks/useShowSettings';
+import { useSceneStore } from '@/store/useSceneStore';
 
 function formatTimecode(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -41,8 +42,16 @@ export default function MobileHUD() {
   const usbConnected = useUSBDeviceStore(s => s.dmxDevices.length > 0);
   const smpteRunning = useSMPTEStore(s => s.running);
   const { settings } = useShowSettings();
+  const arMode = useSceneStore(s => s.environment.arMode);
+  const updateEnvironment = useSceneStore(s => s.updateEnvironment);
   const isArmed = activeEffects.length > 0;
   const countdown = useMemo(() => getCountdown(settings?.show_date ?? null), [settings?.show_date]);
+
+  const handleARToggle = useCallback(() => {
+    const next = !arMode;
+    updateEnvironment({ arMode: next });
+    haptics.arToggle(next);
+  }, [arMode, updateEnvironment]);
 
   const handlePanic = useCallback(() => {
     clearAll();
@@ -95,6 +104,19 @@ export default function MobileHUD() {
 
         {/* Right: Compact action group */}
         <div className="pointer-events-auto flex items-center gap-1 shrink-0">
+          {/* AR Toggle pill */}
+          <button
+            onClick={handleARToggle}
+            className={cn(
+              "flex items-center justify-center gap-0.5 px-2 h-8 rounded-lg text-[9px] font-bold tracking-wider transition-all active:scale-90",
+              arMode
+                ? "bg-[hsl(var(--fxk-magenta)/0.2)] ring-1 ring-[hsl(var(--fxk-magenta)/0.5)] text-[hsl(var(--fxk-magenta))]"
+                : "glass-button text-muted-foreground"
+            )}
+          >
+            <ScanEye className="w-3.5 h-3.5" />
+            AR
+          </button>
           {/* PANIC — only when armed, takes priority */}
           {isArmed && (
             <button
