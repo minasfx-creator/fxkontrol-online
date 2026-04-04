@@ -44,6 +44,7 @@ import AICoPilotOverlay from './AICoPilotOverlay';
 import TelemetryBar from './TelemetryBar';
 import GoogleTilesLoadingOverlay from './GoogleTilesLoadingOverlay';
 import HUDCrosshairs from './HUDCrosshairs';
+import PlacingModeOverlay from './PlacingModeOverlay';
 import ARCompassHUD from './ARCompassHUD';
 import ARScanEffect from './ARScanEffect';
 import DestructionOverlay from './DestructionOverlay';
@@ -1780,6 +1781,9 @@ export default function SkyCanvas() {
 
       {/* HUD Crosshairs AR Overlay */}
       <HUDCrosshairs />
+
+      {/* Placing Mode Crosshair Overlay */}
+      <PlacingModeOverlay />
 
       {/* ═══ Debug tools — hidden by default, toggle with Ctrl+Shift+D ═══ */}
       {!isMobile && showDebugOverlay && <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />}
