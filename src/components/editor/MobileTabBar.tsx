@@ -51,6 +51,7 @@ export default function MobileTabBar({
   const [categoryIndex, setCategoryIndex] = useState(0);
   const [swipeLabel, setSwipeLabel] = useState<string | null>(null);
   const swipeLabelTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   // Long-press context menu state
   const [contextMenu, setContextMenu] = useState<{ tab: MobileTab; rect: DOMRect } | null>(null);
