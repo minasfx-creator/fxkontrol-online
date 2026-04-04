@@ -29,7 +29,7 @@ export default function DestructionOverlay() {
   const runSequence = useCallback(async () => {
     // Targeting
     setPhase('targeting');
-    triggerHaptic('arToggle');
+    haptics.fire();
     await wait(PHASE_DURATIONS.targeting);
 
     // Incoming — countdown
