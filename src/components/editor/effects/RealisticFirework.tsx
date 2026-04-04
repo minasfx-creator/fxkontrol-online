@@ -57,7 +57,7 @@ const REALISTIC_VERTEX = `
     // Position: drag-integrated velocity + gravitational free-fall + wind
     vec3 pos = vel * dragFactor;
     pos.y += 0.5 * uGravity * t * t;            // gravity pull
-    pos += uWind * t * t * 0.3;                   // wind drift (quadratic accumulation)
+    pos += uWind * t * t * 0.5;                   // wind drift (quadratic accumulation)
     
     // Slight turbulence from random seed
     float turb = sin(aRandom * 6283.0 + t * 3.0) * 0.15 * (1.0 - vAge);
