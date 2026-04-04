@@ -43,11 +43,12 @@ const REALISTIC_VERTEX = `
     vAge = clamp(t / life, 0.0, 1.0);
     vRandom = aRandom;
     
-    // ── Exponential drag model ──
-    // position = v0 * (1 - e^(-k*t)) / k
-    // This naturally decelerates particles without CPU iteration
+    // ── Quadratic drag approximation ──
+    // Analytical solution for F_drag = k*v²: x(t) = v0*t / (1 + k*|v0|*t)
+    // This gives physically correct deceleration matching CPU-side model
     float k = uDrag;
-    float dragFactor = (1.0 - exp(-k * t)) / max(k, 0.001);
+    float speed0 = length(aVelocity * uSpreadScale);
+    float dragFactor = t / max(1.0 + k * speed0 * t, 0.001);
     
     vec3 vel = aVelocity * uSpreadScale;
     vVelocity = vel;
