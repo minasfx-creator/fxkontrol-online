@@ -44,6 +44,8 @@ import AICoPilotOverlay from './AICoPilotOverlay';
 import TelemetryBar from './TelemetryBar';
 import GoogleTilesLoadingOverlay from './GoogleTilesLoadingOverlay';
 import HUDCrosshairs from './HUDCrosshairs';
+import ARCompassHUD from './ARCompassHUD';
+import ARScanEffect from './ARScanEffect';
 import { cn } from '@/lib/utils';
 import {
   CometEffect,
