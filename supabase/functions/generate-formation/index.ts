@@ -2087,7 +2087,8 @@ function selectModels(mode: string, count: number, isFullShow: boolean): { prima
 // ── Main handler ────────────────────────────────────────────
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
