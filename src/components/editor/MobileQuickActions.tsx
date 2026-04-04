@@ -120,7 +120,7 @@ export default function MobileQuickActions() {
       </DraggableFloatingPanel>
 
       {/* Viewport navigation — draggable right panel */}
-      <DraggableFloatingPanel panelId="mobile-viewport-nav" initialX={Math.round(window.innerWidth - 52)} initialY={Math.round(window.innerHeight - 220)}>
+      <DraggableFloatingPanel panelId="mobile-viewport-nav" initialX={Math.round(window.innerWidth - 52)} initialY={Math.round(window.innerHeight * 0.45)} bottomOffset={80}>
         <div className="flex flex-col gap-1 p-1">
           {viewportActions.map(({ icon: Icon, label, onClick }) => (
             <button
