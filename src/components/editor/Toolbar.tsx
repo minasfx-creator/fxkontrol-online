@@ -128,7 +128,7 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
 
 
 function TimecodeDisplay() {
-  const { currentTime, isPlaying } = useProjectStore();
+  const { currentTime, isPlaying } = usePlaybackState();
   const { frameRate, startTimecodeSeconds, locked, running } = useSMPTEStore();
   const offsetTime = currentTime + startTimecodeSeconds;
   const tc = secondsToTimecode(offsetTime, frameRate, frameRate === 29.97);
