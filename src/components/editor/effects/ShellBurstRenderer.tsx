@@ -13,11 +13,13 @@ import {
   getParticleSize,
   getMaterialType,
   getBurstSmokeDensity,
+  GRAVITY,
   type BurstPattern,
   type ParticleState,
   type StepModifiers,
   getFormulationModifiers,
 } from '@/lib/pyroPhysics';
+import { windField } from '@/core/engine/windField';
 import { useSceneStore } from '@/store/useSceneStore';
 import { getThreeBlending, getMaxEnergy, GROUND_LIGHT_SCALE } from '@/lib/niagaraBlenderRules';
 import { getRealFormulation, formulationToCompound } from '@/render_ultra/fireworks/particleChemistry';
