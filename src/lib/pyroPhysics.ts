@@ -462,14 +462,15 @@ export function stepParticle(
     p.vz += Math.cos(p.life * 1.5 + p.seed * 3.14) * 0.3 * dt;
   }
   
-  // Apply aerodynamic drag
+  // Apply aerodynamic drag — QUADRATIC model: F_drag = k * v²
+  // More physically accurate: high-speed particles decelerate much faster
   const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz);
   if (speed > 0.01) {
-    const dragForce = drag * speed;
-    const invSpeed = 1 / speed;
-    p.vx -= p.vx * invSpeed * dragForce * dt;
-    p.vy -= p.vy * invSpeed * dragForce * dt;
-    p.vz -= p.vz * invSpeed * dragForce * dt;
+    const dragForce = drag * speed * speed; // k * v² (quadratic)
+    const decel = Math.min(dragForce * dt / speed, 0.95); // cap to prevent sign flip
+    p.vx -= p.vx * decel;
+    p.vy -= p.vy * decel;
+    p.vz -= p.vz * decel;
   }
   
   // Integrate position
@@ -487,7 +488,10 @@ export function stepParticle(
   
   // Update lifecycle
   p.life += dt;
-  p.brightness = Math.max(0, 1 - p.life / p.maxLife);
+  // Exponential brightness decay: I = I0 * e^(-k*t)
+  // k=1.2 gives medium decay rate (configurable via maxLife)
+  const lifeRatio = p.life / p.maxLife;
+  p.brightness = Math.max(0, Math.exp(-1.2 * lifeRatio * lifeRatio * 3.0));
 }
 
 // ── Shell Burst Patterns ────────────────────────────────────────────
