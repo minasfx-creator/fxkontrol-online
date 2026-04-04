@@ -1782,6 +1782,9 @@ export default function SkyCanvas() {
       {/* HUD Crosshairs AR Overlay */}
       <HUDCrosshairs />
 
+      {/* Placing Mode Crosshair Overlay */}
+      <PlacingModeOverlay />
+
       {/* ═══ Debug tools — hidden by default, toggle with Ctrl+Shift+D ═══ */}
       {!isMobile && showDebugOverlay && <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />}
       {!isMobile && showDebugOverlay && <ViewportTerminal />}
