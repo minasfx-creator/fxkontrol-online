@@ -87,7 +87,7 @@ export function getSafetyDistance(caliberInches: number): number {
 // Used for safety radius calculations and regulatory compliance, NOT for viewport rendering.
 
 const REAL_BURST_HEIGHT_NFPA: LookupTable = {
-  3: 120, 4: 150, 5: 180, 6: 210, 8: 270, 10: 320, 12: 350,
+  3: 105, 4: 140, 5: 190, 6: 260, 8: 330, 10: 380, 12: 420,
 };
 
 /** Real-world burst height from NFPA data (meters). For safety calculations only. */
