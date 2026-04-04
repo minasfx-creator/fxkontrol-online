@@ -1839,6 +1839,10 @@ export default function SkyCanvas() {
         onExit={() => useSceneStore.getState().updateSettings({ presentationMode: false })}
       />
 
+      {/* AR Overlays */}
+      <ARCompassHUD />
+      <ARScanEffect />
+
       {/* MissionSetupOverlay removed — scene loads immediately */}
     </div>
   );
