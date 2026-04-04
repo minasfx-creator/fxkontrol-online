@@ -41,7 +41,7 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const isMobile = useIsMobile();
   // On mobile the sidebar opens as a Sheet (offcanvas) — always show labels
-  const showLabels = isMobile || !collapsed;
+  const showLabels = isMobile || showLabels;
   const { isAdmin } = useAdminRole();
   const [soundMuted, setSoundMuted] = useState(ambientSound.muted);
 
@@ -57,11 +57,11 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible={isMobile ? 'offcanvas' : 'icon'} className={`glass-sidebar ${collapsed ? 'sidebar-collapsed' : ''}`}>
+    <Sidebar collapsible={isMobile ? 'offcanvas' : 'icon'} className={`glass-sidebar ${!showLabels ? 'sidebar-collapsed' : ''}`}>
       <SidebarContent>
         {/* Brand with MinasFX logo */}
-        <div className={`px-3 pt-4 pb-2 ${collapsed ? 'flex justify-center' : ''} animate-holo-materialize`}>
-          {collapsed ? (
+        <div className={`px-3 pt-4 pb-2 ${!showLabels ? 'flex justify-center' : ''} animate-holo-materialize`}>
+          {!showLabels ? (
             <div className="h-8 w-8 rounded-lg flex items-center justify-center overflow-hidden" style={{ background: 'hsl(32 100% 50% / 0.15)' }}>
               <img src={minasfxLogo} alt="MinasFX" className="h-5 object-contain" />
             </div>
@@ -74,12 +74,12 @@ export function AppSidebar() {
               </div>
             </div>
           )}
-          {!collapsed && <div className="mt-2 h-[1px]" style={{ background: 'linear-gradient(90deg, hsl(32 100% 50% / 0.2), transparent)' }} />}
+          {showLabels && <div className="mt-2 h-[1px]" style={{ background: 'linear-gradient(90deg, hsl(32 100% 50% / 0.2), transparent)' }} />}
         </div>
 
         <SidebarGroup>
           <SidebarGroupLabel className="text-[9px] uppercase tracking-[0.2em] px-3" style={{ color: 'hsl(32 100% 50% / 0.4)' }}>
-            {!collapsed && 'Módulos'}
+            {showLabels && 'Módulos'}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -108,13 +108,13 @@ export function AppSidebar() {
                           activeClassName=""
                         >
                           <item.icon className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} style={isActive ? { color: 'hsl(32 100% 50%)', filter: 'drop-shadow(0 0 4px hsl(32 100% 50% / 0.4))' } : undefined} />
-                          {!collapsed && (
+                          {showLabels && (
                             <div className="flex flex-col">
                               <span className="text-xs font-medium">{item.title}</span>
                               <span className="text-[9px] text-muted-foreground/60">{item.desc}</span>
                             </div>
                           )}
-                          {isActive && !collapsed && (
+                          {isActive && showLabels && (
                             <div className="ml-auto h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'hsl(32 100% 50%)', boxShadow: '0 0 6px hsl(32 100% 50% / 0.5)' }} />
                           )}
                         </NavLink>
@@ -148,7 +148,7 @@ export function AppSidebar() {
       <SidebarContent className="mt-auto pb-0">
         <SidebarGroup>
           <SidebarGroupLabel className="text-[9px] uppercase tracking-[0.2em] px-3" style={{ color: 'hsl(32 100% 50% / 0.4)' }}>
-            {!collapsed && 'Sistema'}
+            {showLabels && 'Sistema'}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -171,7 +171,7 @@ export function AppSidebar() {
                           activeClassName=""
                         >
                           <item.icon className={`h-4 w-4 shrink-0 ${active ? 'scale-110' : ''}`} style={active ? { color: 'hsl(32 100% 50%)', filter: 'drop-shadow(0 0 4px hsl(32 100% 50% / 0.4))' } : undefined} />
-                          {!collapsed && <span className="text-xs font-medium">{item.title}</span>}
+                          {showLabels && <span className="text-xs font-medium">{item.title}</span>}
                         </NavLink>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -200,15 +200,15 @@ export function AppSidebar() {
         {/* Sound toggle */}
         <Button
           variant="ghost"
-          size={collapsed ? 'icon' : 'sm'}
+          size={!showLabels ? 'icon' : 'sm'}
           className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground text-xs"
           onClick={toggleSound}
         >
           {soundMuted ? <VolumeX className="h-3.5 w-3.5 shrink-0" /> : <Volume2 className="h-3.5 w-3.5 shrink-0" />}
-          {!collapsed && <span className="text-[9px] font-mono-code">{soundMuted ? 'SOM OFF' : 'SOM ON'}</span>}
+          {showLabels && <span className="text-[9px] font-mono-code">{soundMuted ? 'SOM OFF' : 'SOM ON'}</span>}
         </Button>
 
-        {!collapsed && (
+        {showLabels && (
           <div className="flex items-center gap-2 px-2 py-1.5 rounded-xl animate-holo-materialize" style={{ background: 'hsl(32 100% 50% / 0.05)', animationDelay: '0.3s' }}>
             <div className="h-7 w-7 rounded-full flex items-center justify-center shrink-0 relative" style={{ background: 'hsl(32 100% 50% / 0.15)' }}>
               <span className="text-[9px] font-bold" style={{ color: 'hsl(32 100% 50%)' }}>{initials}</span>
@@ -223,12 +223,12 @@ export function AppSidebar() {
         )}
         <Button
           variant="ghost"
-          size={collapsed ? 'icon' : 'sm'}
+          size={!showLabels ? 'icon' : 'sm'}
           className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive text-xs"
           onClick={() => signOut()}
         >
           <LogOut className="h-3.5 w-3.5 shrink-0" />
-          {!collapsed && <span>Sair</span>}
+          {showLabels && <span>Sair</span>}
         </Button>
       </SidebarFooter>
     </Sidebar>
