@@ -114,8 +114,10 @@ const BURST_FRAGMENT = `
     float outerGlow = exp(-dist * dist * 10.0);
     float glow = coreGlow * 0.6 + outerGlow * 0.4;
     
-    // Flicker
-    float flicker = 0.85 + 0.15 * sin(vLife * 47.0 + stretchedCoord.x * 13.0);
+    // Stochastic flicker — hash-based, non-periodic combustion irregularity
+    float flickerHash = fract(sin(dot(vec2(vLife * 31.7 + stretchedCoord.x * 5.3, vBrightness * 17.3 + vSpeed * 0.7), vec2(127.1, 311.7))) * 43758.5453);
+    float flickerHash2 = fract(sin(dot(vec2(vLife * 53.1, stretchedCoord.y * 29.7), vec2(269.5, 183.3))) * 43758.5453);
+    float flicker = 0.78 + 0.22 * (flickerHash * 0.6 + flickerHash2 * 0.4);
     
     // Opacity fade
     float fadeIn = smoothstep(0.0, 0.03, rawRatio);
