@@ -68,24 +68,38 @@ export default function MobileHUD() {
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: 'max(8px, env(safe-area-inset-top))' }}>
       {/* Main HUD row */}
       <div className="flex items-center justify-between px-2 pt-1 pb-1 mx-2 gap-1">
-        {/* Left: Timecode pill */}
-        <div className={cn(
-          "pointer-events-auto status-pill transition-all duration-300 shrink-0",
-          isArmed && "ring-1 ring-destructive/40 shadow-[0_0_8px_hsl(var(--destructive)/0.15)]"
-        )}>
-          <Zap className={cn("w-3 h-3", isArmed ? "text-destructive" : "text-primary")} />
-          <span className="font-mono text-[10px] font-semibold text-primary tabular-nums tracking-tight">
-            {formatTimecode(currentTime)}
-          </span>
-          {isArmed && (
-            <span className="text-[8px] font-bold text-destructive animate-pulse ml-0.5">ARM</span>
-          )}
-          {countdown && !isArmed && (
-            <span className={cn("text-[8px] font-bold ml-0.5", countdown === 'LIVE' ? "text-destructive" : "text-accent")}>
-              {countdown}
+        {/* Left: Timecode pill or Placing Mode indicator */}
+        {isPlacingMode ? (
+          <div className="pointer-events-auto status-pill shrink-0 ring-1 ring-accent/40 mode-indicator-pulse" style={{ background: 'hsl(var(--accent) / 0.1)' }}>
+            <Crosshair className="w-3 h-3 text-accent" />
+            <span className="text-[10px] font-bold text-accent uppercase tracking-wider">Placing</span>
+          </div>
+        ) : (
+          <div className={cn(
+            "pointer-events-auto status-pill transition-all duration-300 shrink-0",
+            isArmed && "ring-1 ring-destructive/40 shadow-[0_0_8px_hsl(var(--destructive)/0.15)]"
+          )}>
+            <Zap className={cn("w-3 h-3", isArmed ? "text-destructive" : "text-primary")} />
+            <span className="font-mono text-[10px] font-semibold text-primary tabular-nums tracking-tight">
+              {formatTimecode(currentTime)}
             </span>
-          )}
-        </div>
+            {isArmed && (
+              <span className="text-[8px] font-bold text-destructive animate-pulse ml-0.5">ARM</span>
+            )}
+            {countdown && !isArmed && (
+              <span className={cn("text-[8px] font-bold ml-0.5", countdown === 'LIVE' ? "text-destructive" : "text-accent")}>
+                {countdown}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Position count badge */}
+        {positions.length > 0 && !isPlacingMode && (
+          <div className="pointer-events-none status-pill shrink-0 px-1.5">
+            <span className="text-[9px] font-bold text-muted-foreground tabular-nums">{positions.length} POS</span>
+          </div>
+        )}
 
         {/* Center: Transport — compact 44px targets */}
         <div className="pointer-events-auto flex items-center gap-1">
