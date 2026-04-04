@@ -42,8 +42,16 @@ export default function MobileHUD() {
   const usbConnected = useUSBDeviceStore(s => s.dmxDevices.length > 0);
   const smpteRunning = useSMPTEStore(s => s.running);
   const { settings } = useShowSettings();
+  const arMode = useSceneStore(s => s.environment.arMode);
+  const updateEnvironment = useSceneStore(s => s.updateEnvironment);
   const isArmed = activeEffects.length > 0;
   const countdown = useMemo(() => getCountdown(settings?.show_date ?? null), [settings?.show_date]);
+
+  const handleARToggle = useCallback(() => {
+    const next = !arMode;
+    updateEnvironment({ arMode: next });
+    haptics.arToggle(next);
+  }, [arMode, updateEnvironment]);
 
   const handlePanic = useCallback(() => {
     clearAll();
