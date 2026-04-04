@@ -11,7 +11,7 @@ export type {
 } from '@/types/projectTypes';
 
 import type {
-  TimelineItem, Position, PositionType, BezierHandle, Waypoint, Trajectory,
+  DepthLayer, TimelineItem, Position, PositionType, BezierHandle, Waypoint, Trajectory,
   EditorMode, SelectionMode, DroneFormation, CueMarker, CameraKeyframe, WindSettings,
 } from '@/types/projectTypes';
 
