@@ -99,14 +99,8 @@ export function hexToCompound(hexColor: string): ChemicalCompound {
   return result;
 }
 
-// ═══ EFFECT_LIBRARY indexed Map for O(1) lookups ═══
-let _effectLibraryMap: Map<string, (typeof EFFECT_LIBRARY)[number]> | null = null;
-export function getEffectById(id: string): (typeof EFFECT_LIBRARY)[number] | undefined {
-  if (!_effectLibraryMap || _effectLibraryMap.size !== EFFECT_LIBRARY.length) {
-    _effectLibraryMap = new Map(EFFECT_LIBRARY.map(e => [e.id, e]));
-  }
-  return _effectLibraryMap.get(id);
-}
+// ═══ EFFECT_LIBRARY indexed Map — delegated to src/data/effectLibraryMap ═══
+export const getEffectById = getEffectByIdFromMap;
 
 // ═══ Pre-allocated math objects for quaternion composition ═══
 export const _posQuat = new THREE.Quaternion();
