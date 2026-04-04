@@ -381,11 +381,23 @@ export default function ShellBurstRenderer({
     [fallingLeaves]
   );
 
-  // Initialize particles on first render
+  // Initialize particles + per-particle drag coefficients on first render
+  const particleDragCoeffs = useRef<Float32Array>(new Float32Array(MAX_PARTICLES));
   useEffect(() => {
     const mainParticles = createShellBurst(starCount, breakSpeed, pattern, starLifetime);
     if (fallingLeaves) mainParticles.forEach((p, i) => { p.seed = i / starCount; });
     particlesRef.current = mainParticles;
+
+    // Compute per-particle drag from material density (Ti=4.5 → low drag, charcoal=0.5 → high drag)
+    const baseDensity = realFormulation ? (realFormulation.density || 1.0) : 1.0;
+    const dragCoeffs = particleDragCoeffs.current;
+    for (let i = 0; i < starCount; i++) {
+      // Variance per particle: ±30% randomization around material-based drag
+      const densityVariance = 0.7 + Math.random() * 0.6; // 0.7-1.3
+      const effectiveDensity = baseDensity * densityVariance;
+      // Denser materials → lower drag coefficient (maintain trajectory longer)
+      dragCoeffs[i] = 1.0 / (0.5 + effectiveDensity * 0.3);
+    }
 
     if (hasPistil) {
       const pistilPs = createShellBurst(pistilCount, breakSpeed * 0.4, 'peony', starLifetime * 0.8);
