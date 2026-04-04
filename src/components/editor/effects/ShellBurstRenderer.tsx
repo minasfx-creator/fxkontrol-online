@@ -586,7 +586,7 @@ export default function ShellBurstRenderer({
       // Remove dead glitter
       for (let i = gp.length - 1; i >= 0; i--) {
         gp[i].life += dt;
-        gp[i].vy += -9.81 * dt * 0.5;
+        gp[i].vy += GRAVITY * dt * 0.5;
         gp[i].x += gp[i].vx * dt;
         gp[i].y += gp[i].vy * dt;
         gp[i].z += gp[i].vz * dt;
