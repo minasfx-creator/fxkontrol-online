@@ -103,7 +103,7 @@ export default function AddPositionWizard({ open, onClose }: AddPositionWizardPr
         effectId,
         positionId: posId,
         startTime: store.currentTime + i * 0.2,
-        track: 0,
+        rack: 0,
       });
     });
     handleClose();
