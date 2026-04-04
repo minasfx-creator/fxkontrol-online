@@ -116,6 +116,28 @@ export default function TacticalDock() {
 
         <div className="w-5 h-px bg-border/30 my-0.5" />
 
+        {/* Destruction Mode trigger */}
+        <button
+          onClick={() => {
+            const current = env.destructionMode ?? false;
+            if (!current) {
+              updateEnvironment({ destructionMode: true, destructionPhase: 'targeting' } as any);
+            }
+          }}
+          className={cn(
+            "w-9 h-9 rounded-xl flex items-center justify-center transition-all group",
+            env.destructionMode
+              ? "bg-destructive/20 text-destructive animate-pulse"
+              : "text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10"
+          )}
+          title="Destruction Mode"
+        >
+          <Bomb className="w-4 h-4" />
+          <span className="absolute left-full ml-2 px-2 py-1 rounded-lg text-[10px] font-medium bg-popover border border-border/30 text-foreground opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap shadow-lg z-50">
+            Destruction Mode
+          </span>
+        </button>
+
         <button
           onClick={() => updateEnvironment({ showAxesHelper: !showAxes })}
           className={cn(

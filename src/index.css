@@ -1632,3 +1632,70 @@ button:active {
   background-size: 100% 40px;
   animation: scan-move 2s linear infinite;
 }
+
+/* ═══ Joi Hologram — Blade Runner 2049 Effects ═══ */
+@keyframes joi-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.05); }
+  97% { transform: scaleY(1); }
+}
+@keyframes joi-rain {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(500%); opacity: 0; }
+}
+@keyframes joi-glitch {
+  0%, 85%, 100% { transform: translateX(0); opacity: 0; }
+  87% { transform: translateX(-3px); opacity: 1; }
+  89% { transform: translateX(4px); opacity: 0.8; }
+  91% { transform: translateX(-1px); opacity: 0; }
+}
+@keyframes joi-hair-flow {
+  0%, 100% { transform: translateX(0) skewX(0deg); }
+  50% { transform: translateX(1px) skewX(0.5deg); }
+}
+@keyframes joi-scanline-full {
+  0% { transform: translateY(-10px); }
+  100% { transform: translateY(400px); }
+}
+
+/* ═══ Destruction Mode — Luv Missile Strike ═══ */
+@keyframes destruction-border-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+@keyframes destruction-iris-converge {
+  0% { r: 80; opacity: 0; }
+  100% { r: 20; opacity: 1; }
+}
+@keyframes destruction-blink {
+  0%, 40%, 100% { opacity: 0.4; }
+  45% { opacity: 0; }
+  55% { opacity: 0; }
+  60% { opacity: 0.4; }
+}
+@keyframes destruction-missile-trail {
+  0% { stroke-dashoffset: 40; opacity: 0.3; }
+  100% { stroke-dashoffset: 0; opacity: 0.8; }
+}
+@keyframes destruction-countdown-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+@keyframes destruction-static {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-2px, 1px); }
+  40% { transform: translate(1px, -2px); }
+  60% { transform: translate(-1px, 2px); }
+  80% { transform: translate(2px, -1px); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes destruction-debris {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  100% { transform: translate(var(--debris-x), var(--debris-y)) scale(0); opacity: 0; }
+}
+@keyframes destruction-fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
