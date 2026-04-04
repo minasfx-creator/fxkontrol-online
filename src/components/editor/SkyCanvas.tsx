@@ -1844,6 +1844,9 @@ export default function SkyCanvas() {
       <ARCompassHUD />
       <ARScanEffect />
 
+      {/* Destruction Mode — Blade Runner 2049 */}
+      <DestructionOverlay />
+
       {/* MissionSetupOverlay removed — scene loads immediately */}
     </div>
   );
