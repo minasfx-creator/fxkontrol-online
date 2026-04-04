@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { useSceneStore } from '@/store/useSceneStore';
-import { triggerHaptic } from '@/lib/haptics';
+import { haptics } from '@/lib/haptics';
 
 type Phase = 'idle' | 'targeting' | 'incoming' | 'impact' | 'aftermath';
 

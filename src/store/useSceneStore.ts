@@ -802,6 +802,8 @@ const DEFAULT_ENVIRONMENT: EnvironmentState = {
   arMode: false,
   arOverlayOpacity: 0.85,
   arBlendMode: 'screen',
+  destructionMode: false,
+  destructionPhase: 'idle',
 };
 
 export const useSceneStore = create<SceneSettingsState>((set) => ({
