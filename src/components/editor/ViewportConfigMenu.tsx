@@ -100,7 +100,7 @@ export default function ViewportConfigMenu({
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute top-full left-0 mt-1 w-[220px] bg-card/95 backdrop-blur-xl border border-border/20 rounded-xl shadow-2xl py-1 animate-fade-in">
+        <div className="absolute top-full left-0 mt-1 w-[220px] max-h-[70vh] overflow-y-auto bg-card/95 backdrop-blur-xl border border-border/20 rounded-xl shadow-2xl py-1 animate-fade-in">
           {/* Navigation Mode */}
           <div className="px-3 pt-2 pb-1">
             <span className="text-[8px] font-bold text-muted-foreground/40 uppercase tracking-wider">Navigation</span>
