@@ -1,61 +1,63 @@
 
 
-# Ciclo de Refatoração — Fase 4A: Extração Segura do EFFECT_LIBRARY + Feature Flags
+# Ciclo de Refatoração — Fase 4B: Migração dos Consumidores de EFFECT_LIBRARY
 
-## Análise do Estado Atual
+## Estado Atual
 
-Fases completas: 1 (Dedup), 2 (Facade Hooks), 3 (DMX Hierarchy), 5 (Edge Shared Utils).
+Fases completas: 1 (Dedup), 2 (Facade Hooks), 3 (DMX Hierarchy), 5 (Edge Shared Utils), 4A (Extração EFFECT_LIBRARY + Feature Flags).
 
-Situação do `useProjectStore.ts` (908 LOC):
-- **~140 LOC** são dados estáticos (`EFFECT_LIBRARY`) — constante pura, sem relação com estado reativo
-- **42 arquivos** importam `EFFECT_LIBRARY` diretamente do store
-- **169 arquivos** importam algo de `useProjectStore`
-- O store contém tipos, constantes, estado e lógica — tudo misturado
+`EFFECT_LIBRARY` já vive em `src/data/effectLibrary.ts` e é re-exportada de `useProjectStore` para backward compat. Porém **42 arquivos** ainda importam `EFFECT_LIBRARY` do store — isso mantém a dependência artificial e inflaciona o bundle do store em cada consumidor.
 
-## O que será feito (2 ações seguras e reversíveis)
+## O Que Será Feito
 
-### 1. Extrair EFFECT_LIBRARY para módulo próprio
+Migrar todos os 42 consumidores para importar `EFFECT_LIBRARY` (e o tipo `Effect`) diretamente de `src/data/effectLibrary` em vez de `@/store/useProjectStore`. Os que também importam o hook `useProjectStore` ou tipos como `TimelineItem` continuam importando esses do store — apenas `EFFECT_LIBRARY` e `Effect` mudam de origem.
 
-`EFFECT_LIBRARY` é uma constante estática (array de ~140 efeitos). Não é estado Zustand, não muda em runtime. Mantê-la no store polui o módulo e aumenta o bundle do store.
+## Regra de Migração (por arquivo)
 
-**Ação:**
-- Criar `src/data/effectLibrary.ts` com o array e o tipo `Effect`
-- Criar `src/data/effectLibraryMap.ts` com o Map indexado (O(1) lookups) — atualmente duplicado em `sharedState.tsx`
-- Re-exportar `EFFECT_LIBRARY` de `useProjectStore.ts` para backward compat (zero breaking change)
-- Migrar progressivamente os 42 consumidores para importar de `src/data/effectLibrary`
+```text
+ANTES:
+import { useProjectStore, EFFECT_LIBRARY, type Effect } from '@/store/useProjectStore';
 
-**Risco:** Nenhum. É uma constante pura. Re-export mantém compatibilidade total.
-**Impacto:** -140 LOC no store monolítico. Eliminação de lógica duplicada no `sharedState.tsx`.
+DEPOIS:
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
+```
 
-### 2. Criar sistema de Feature Flags leve
+Se o arquivo importa APENAS `EFFECT_LIBRARY` / `Effect` do store (sem o hook), a linha do store é removida inteiramente.
 
-Sistema minimalista para controlar novas implementações com fallback automático.
+## Arquivos Afetados (42 ficheiros, 3 lotes)
 
-**Ação:**
-- Criar `src/lib/featureFlags.ts` — objeto imutável com flags booleanas
-- Flags iniciais: `useNewEffectLibrary`, `useEditorUIHooks` (ambas `true` — validar migração)
-- Helper `isEnabled(flag)` com fallback seguro (retorna `false` se flag não existe)
+**Lote 1 — Componentes Editor (UI):** ~18 arquivos
+`EffectLibrary.tsx`, `AddPositionWizard.tsx`, `CakeBuilder.tsx`, `ChainEditorPanel.tsx`, `ExportModal.tsx`, `PositionPins.tsx`, `PyroLaunchAngle.tsx`, `PyroTimelineTrack.tsx`, `ScriptWindow.tsx`, `ScriptingDialogs.tsx`, `ScriptingToolsPanel.tsx`, `SoundLevelPanel.tsx`, `SynesthesiaPanel.tsx`, `RiderPanel.tsx`, `SkyCanvas.tsx`, `FireworkRenderer.tsx`, `safety/DeconflictionTab.tsx`, `safety/FlightCheckTab.tsx`
 
-**Risco:** Nenhum. Aditivo, não altera comportamento existente.
+**Lote 2 — Libs/Engines:** ~12 arquivos
+`exportEngine.ts`, `labelGenerator.ts`, `safetyEngine.ts`, `hcaSafetyLayer.ts`, `reportEngine.ts`, `firingSystemExports.ts`, `chainEngine.ts` (se importa), `skybrushSafetyCheck.ts`, etc.
+
+**Lote 3 — Stores/Hooks:** ~4 arquivos
+`useInventoryStore.ts`, `useStockValidation.ts`, etc.
+
+## Proteções
+
+- `useProjectStore` mantém o re-export — zero breaking change para qualquer arquivo não migrado
+- Nenhuma lógica alterada — apenas origem do import
+- Core engines (fxkEngine, timelineEngine, fireworkEngine) não são tocados
+- Build verificado com `tsc` após cada lote
+
+## Risco
+
+**Nenhum.** Trata-se exclusivamente de mover a origem de um import estático. O re-export no store permanece como safety net.
+
+## Resultado Esperado
+
+- 42 ficheiros deixam de depender artificialmente do módulo de 719 LOC para acessar uma constante estática
+- Tree-shaking mais eficiente (consumidores que só precisam de efeitos não puxam o store)
+- Preparação para Phase 4C (extração de tipos)
 
 ## Ficheiros
 
 | Ação | Ficheiro |
 |------|---------|
-| Criar | `src/data/effectLibrary.ts` — tipos + EFFECT_LIBRARY |
-| Criar | `src/data/effectLibraryMap.ts` — Map indexado |
-| Criar | `src/lib/featureFlags.ts` — sistema de flags |
-| Modificar | `src/store/useProjectStore.ts` — re-export de `src/data/effectLibrary` |
-| Modificar | `src/components/editor/skycanvas/sharedState.tsx` — usar `effectLibraryMap` |
-
-## Proteções
-
-- `useProjectStore` continua exportando `EFFECT_LIBRARY` e `Effect` (re-export)
-- Nenhum consumidor existente quebra
-- Core engines intocados
-- Zero alteração de comportamento runtime
-
-## Próximo Passo Recomendado
-
-Após validação: migrar os 42 consumidores de `EFFECT_LIBRARY` para `src/data/effectLibrary` em lotes de 10, removendo a dependência do store.
+| Modificar | ~42 arquivos (split de import lines) |
+| Preservar | `src/store/useProjectStore.ts` (re-export mantido) |
+| Preservar | `src/data/effectLibrary.ts` (sem alterações) |
 
