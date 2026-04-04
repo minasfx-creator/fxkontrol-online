@@ -13,6 +13,8 @@ interface Props {
   children: ReactNode;
   minimizable?: boolean;
   className?: string;
+  /** Reserved space at the bottom (e.g. for MobileTabBar) */
+  bottomOffset?: number;
 }
 
 function getStoredPos(id: string, fallback: { x: number; y: number }) {
@@ -33,6 +35,7 @@ export default function DraggableFloatingPanel({
   children,
   minimizable = true,
   className,
+  bottomOffset = 0,
 }: Props) {
   const [pos, setPos] = useState(() => getStoredPos(panelId, { x: initialX, y: initialY }));
   const [minimized, setMinimized] = useState(false);
@@ -45,15 +48,16 @@ export default function DraggableFloatingPanel({
     const w = el?.offsetWidth ?? 48;
     const h = el?.offsetHeight ?? 48;
     const snap = 8;
+    const maxY = window.innerHeight - h - bottomOffset;
     let cx = Math.max(0, Math.min(window.innerWidth - w, x));
-    let cy = Math.max(0, Math.min(window.innerHeight - h, y));
+    let cy = Math.max(0, Math.min(maxY, y));
     // Snap to edges
     if (cx < snap) cx = 0;
     if (cy < snap) cy = 0;
     if (cx > window.innerWidth - w - snap) cx = window.innerWidth - w;
-    if (cy > window.innerHeight - h - snap) cy = window.innerHeight - h;
+    if (cy > maxY - snap) cy = maxY;
     return { x: cx, y: cy };
-  }, []);
+  }, [bottomOffset]);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault();

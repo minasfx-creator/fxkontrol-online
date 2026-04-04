@@ -93,7 +93,7 @@ export default function MobileQuickActions() {
   return (
     <>
       {/* Edit actions — draggable left panel */}
-      <DraggableFloatingPanel panelId="mobile-edit-actions" initialX={8} initialY={Math.round(window.innerHeight - 280)}>
+      <DraggableFloatingPanel panelId="mobile-edit-actions" initialX={8} initialY={Math.round(window.innerHeight * 0.4)} bottomOffset={80}>
         <div className="flex flex-col gap-1.5 p-1.5">
           {editActions.map(({ icon: Icon, label, onClick, variant }) => (
             <button
@@ -120,7 +120,7 @@ export default function MobileQuickActions() {
       </DraggableFloatingPanel>
 
       {/* Viewport navigation — draggable right panel */}
-      <DraggableFloatingPanel panelId="mobile-viewport-nav" initialX={Math.round(window.innerWidth - 52)} initialY={Math.round(window.innerHeight - 220)}>
+      <DraggableFloatingPanel panelId="mobile-viewport-nav" initialX={Math.round(window.innerWidth - 52)} initialY={Math.round(window.innerHeight * 0.45)} bottomOffset={80}>
         <div className="flex flex-col gap-1 p-1">
           {viewportActions.map(({ icon: Icon, label, onClick }) => (
             <button
