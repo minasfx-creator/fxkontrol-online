@@ -6,6 +6,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import JoiHologramAvatar from '@/components/JoiHologramAvatar';
 import JoiHologramFullBody from '@/components/JoiHologramFullBody';
+import JoiCinematicHologram from '@/components/JoiCinematicHologram';
 import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
@@ -325,7 +326,7 @@ export function FXKAssistant() {
       {/* Header */}
       <div className="relative z-10 flex items-center gap-2.5 px-3 py-3 shrink-0" style={{ borderBottom: '1px solid hsl(32 100% 50% / 0.12)' }}>
         {expanded ? (
-          <JoiHologramFullBody className="w-10 h-16 shrink-0" state={loading ? 'active' : 'idle'} />
+          <JoiCinematicHologram size="sm" state={loading ? 'active' : 'idle'} className="w-10 h-16 shrink-0" />
         ) : (
           <JoiHologramAvatar size="sm" state={loading ? 'active' : 'idle'} animate />
         )}
@@ -365,8 +366,8 @@ export function FXKAssistant() {
         {/* Sidebar hologram (expanded only, when messages exist, hidden on mobile) */}
         {expanded && messages.length > 0 && !isMobile && (
           <div className="w-[120px] shrink-0 flex flex-col items-center justify-center border-r" style={{ borderColor: 'hsl(32 100% 50% / 0.1)', background: 'hsl(220 22% 3% / 0.5)' }}>
-            <JoiHologramFullBody className="w-24 h-48" state={loading ? 'active' : 'idle'} />
-            <span className="text-[6px] font-mono tracking-[0.2em] uppercase mt-2" style={{ color: 'hsl(32 100% 50% / 0.3)' }}>
+            <JoiCinematicHologram size="lg" state={loading ? 'active' : 'idle'} className="w-24 h-48" />
+            <span className="text-[6px] font-mono tracking-[0.2em] uppercase mt-2" style={{ color: 'hsl(280 80% 55% / 0.4)' }}>
               HOLOGRAM · ACTIVE
             </span>
           </div>
@@ -377,7 +378,7 @@ export function FXKAssistant() {
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80">
               {expanded ? (
-                <JoiHologramFullBody className="w-40 h-64" state="materializing" />
+                <JoiCinematicHologram size="xl" state="materializing" className="w-40 h-64" />
               ) : (
                 <JoiHologramAvatar size="lg" state="idle" animate />
               )}
