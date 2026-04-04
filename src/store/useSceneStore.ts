@@ -796,6 +796,9 @@ const DEFAULT_ENVIRONMENT: EnvironmentState = {
   gridSnapResolution: 1,
   droneRendererMode: 'instanced',
   showHUDCrosshairs: false,
+  arMode: false,
+  arOverlayOpacity: 0.85,
+  arBlendMode: 'screen',
 };
 
 export const useSceneStore = create<SceneSettingsState>((set) => ({
