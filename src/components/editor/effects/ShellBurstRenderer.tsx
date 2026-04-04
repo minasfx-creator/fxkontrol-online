@@ -30,6 +30,7 @@ const BURST_VERTEX = `
   attribute float aMaxLife;
   attribute float aBrightness;
   attribute vec3 aVelocity;
+  attribute float aDragCoeff;
   
   varying float vLife;
   varying float vMaxLife;
@@ -50,12 +51,18 @@ const BURST_VERTEX = `
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     
     // Size: larger at birth, shrinking as star burns out
-    float lifeRatio = clamp(aLife / aMaxLife, 0.0, 1.0);
-    float sizeDecay = mix(1.0, 0.15, pow(lifeRatio, 0.8));
-    // Slight bloom pulse at birth
-    float birthPulse = lifeRatio < 0.05 ? 1.0 + (1.0 - lifeRatio / 0.05) * 0.8 : 1.0;
+    float rawRatio = clamp(aLife / aMaxLife, 0.0, 1.0);
     
-    gl_PointSize = uBaseSize * sizeDecay * birthPulse * (300.0 / -mvPosition.z);
+    // Detonation envelope: burst expands progressively in first 3% of life
+    // Simulates real shell break — not instantaneous
+    float detonationPhase = smoothstep(0.0, 0.03, rawRatio);
+    float burstEnvelope = mix(0.15, 1.0, detonationPhase);
+    
+    float sizeDecay = mix(1.0, 0.15, pow(rawRatio, 0.8));
+    // Slight bloom pulse at birth, modulated by detonation
+    float birthPulse = rawRatio < 0.05 ? 1.0 + (1.0 - rawRatio / 0.05) * 0.8 * burstEnvelope : 1.0;
+    
+    gl_PointSize = uBaseSize * sizeDecay * birthPulse * burstEnvelope * (300.0 / -mvPosition.z);
     gl_PointSize = clamp(gl_PointSize, 1.0, 64.0 + uCaliberScale * 8.0);
     
     gl_Position = projectionMatrix * mvPosition;
@@ -114,8 +121,10 @@ const BURST_FRAGMENT = `
     float outerGlow = exp(-dist * dist * 10.0);
     float glow = coreGlow * 0.6 + outerGlow * 0.4;
     
-    // Flicker
-    float flicker = 0.85 + 0.15 * sin(vLife * 47.0 + stretchedCoord.x * 13.0);
+    // Stochastic flicker — hash-based, non-periodic combustion irregularity
+    float flickerHash = fract(sin(dot(vec2(vLife * 31.7 + stretchedCoord.x * 5.3, vBrightness * 17.3 + vSpeed * 0.7), vec2(127.1, 311.7))) * 43758.5453);
+    float flickerHash2 = fract(sin(dot(vec2(vLife * 53.1, stretchedCoord.y * 29.7), vec2(269.5, 183.3))) * 43758.5453);
+    float flicker = 0.78 + 0.22 * (flickerHash * 0.6 + flickerHash2 * 0.4);
     
     // Opacity fade
     float fadeIn = smoothstep(0.0, 0.03, rawRatio);
@@ -372,11 +381,24 @@ export default function ShellBurstRenderer({
     [fallingLeaves]
   );
 
-  // Initialize particles on first render
+  // Initialize particles + per-particle drag coefficients on first render
+  const particleDragCoeffs = useRef<Float32Array>(new Float32Array(MAX_PARTICLES));
   useEffect(() => {
     const mainParticles = createShellBurst(starCount, breakSpeed, pattern, starLifetime);
     if (fallingLeaves) mainParticles.forEach((p, i) => { p.seed = i / starCount; });
     particlesRef.current = mainParticles;
+
+    // Compute per-particle drag from material properties (sparkSize as density proxy)
+    // Large sparkSize → heavier particles → lower drag (maintain trajectory)
+    // High temperature → more energetic → slightly lower drag
+    const baseSparkSize = realFormulation ? realFormulation.sparkSize : 1.0;
+    const tempFactor = realFormulation ? Math.min(1.0, realFormulation.temperature / 2500) : 0.5;
+    const dragCoeffs = particleDragCoeffs.current;
+    for (let i = 0; i < starCount; i++) {
+      const densityVariance = 0.7 + Math.random() * 0.6;
+      const effectiveMass = baseSparkSize * densityVariance * (0.8 + tempFactor * 0.4);
+      dragCoeffs[i] = 1.0 / (0.5 + effectiveMass * 0.3);
+    }
 
     if (hasPistil) {
       const pistilPs = createShellBurst(pistilCount, breakSpeed * 0.4, 'peony', starLifetime * 0.8);
@@ -388,12 +410,13 @@ export default function ShellBurstRenderer({
   }, [starCount, breakSpeed, pattern, starLifetime, hasPistil, pistilCount, fallingLeaves]);
 
   // Buffer attributes (reused — no GC pressure)
-  const { posBuffer, lifeBuffer, maxLifeBuffer, brightnessBuffer, velocityBuffer } = useMemo(() => ({
+  const { posBuffer, lifeBuffer, maxLifeBuffer, brightnessBuffer, velocityBuffer, dragBuffer } = useMemo(() => ({
     posBuffer: new Float32Array(MAX_PARTICLES * 3),
     lifeBuffer: new Float32Array(MAX_PARTICLES),
     maxLifeBuffer: new Float32Array(MAX_PARTICLES),
     brightnessBuffer: new Float32Array(MAX_PARTICLES),
     velocityBuffer: new Float32Array(MAX_PARTICLES * 3),
+    dragBuffer: new Float32Array(MAX_PARTICLES),
   }), []);
 
   // Pistil buffers
@@ -471,11 +494,19 @@ export default function ShellBurstRenderer({
     const time = initTimeRef.current;
 
     // Step physics using store-driven drag and wind (formulation override if present)
-    const effectiveDrag = formMods ? formMods.dragOverride : starDrag;
+    // Per-particle drag: base drag * material density coefficient
+    const baseDrag = formMods ? formMods.dragOverride : starDrag;
+    const dragCoeffs = particleDragCoeffs.current;
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       if (p.life < p.maxLife) {
-        stepParticle(p, dt, windVec, effectiveDrag, stepMods);
+        // Detonation envelope: particles start slow and reach full velocity over first 3% of life
+        const lifeRatio = p.life / p.maxLife;
+        const detonationMult = lifeRatio < 0.03 ? 0.15 + (lifeRatio / 0.03) * 0.85 : 1.0;
+        
+        // Per-particle drag from material density
+        const particleDrag = baseDrag * dragCoeffs[i];
+        stepParticle(p, dt * detonationMult, windVec, particleDrag, stepMods);
 
         // Glitter trail: emit micro-particles from active stars
         if (trailType === 'glitter' && p.life > 0.1 && Math.random() < 0.15) {
@@ -715,6 +746,7 @@ export default function ShellBurstRenderer({
           <bufferAttribute attach="attributes-aMaxLife" args={[maxLifeBuffer, 1]} />
           <bufferAttribute attach="attributes-aBrightness" args={[brightnessBuffer, 1]} />
           <bufferAttribute attach="attributes-aVelocity" args={[velocityBuffer, 3]} />
+          <bufferAttribute attach="attributes-aDragCoeff" args={[dragBuffer, 1]} />
         </bufferGeometry>
         <shaderMaterial
           vertexShader={BURST_VERTEX}
