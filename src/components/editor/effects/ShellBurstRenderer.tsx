@@ -30,6 +30,7 @@ const BURST_VERTEX = `
   attribute float aMaxLife;
   attribute float aBrightness;
   attribute vec3 aVelocity;
+  attribute float aDragCoeff;
   
   varying float vLife;
   varying float vMaxLife;
@@ -50,12 +51,18 @@ const BURST_VERTEX = `
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     
     // Size: larger at birth, shrinking as star burns out
-    float lifeRatio = clamp(aLife / aMaxLife, 0.0, 1.0);
-    float sizeDecay = mix(1.0, 0.15, pow(lifeRatio, 0.8));
-    // Slight bloom pulse at birth
-    float birthPulse = lifeRatio < 0.05 ? 1.0 + (1.0 - lifeRatio / 0.05) * 0.8 : 1.0;
+    float rawRatio = clamp(aLife / aMaxLife, 0.0, 1.0);
     
-    gl_PointSize = uBaseSize * sizeDecay * birthPulse * (300.0 / -mvPosition.z);
+    // Detonation envelope: burst expands progressively in first 3% of life
+    // Simulates real shell break — not instantaneous
+    float detonationPhase = smoothstep(0.0, 0.03, rawRatio);
+    float burstEnvelope = mix(0.15, 1.0, detonationPhase);
+    
+    float sizeDecay = mix(1.0, 0.15, pow(rawRatio, 0.8));
+    // Slight bloom pulse at birth, modulated by detonation
+    float birthPulse = rawRatio < 0.05 ? 1.0 + (1.0 - rawRatio / 0.05) * 0.8 * burstEnvelope : 1.0;
+    
+    gl_PointSize = uBaseSize * sizeDecay * birthPulse * burstEnvelope * (300.0 / -mvPosition.z);
     gl_PointSize = clamp(gl_PointSize, 1.0, 64.0 + uCaliberScale * 8.0);
     
     gl_Position = projectionMatrix * mvPosition;

@@ -130,8 +130,10 @@ const REALISTIC_FRAGMENT = `
       float flash = 1.0 - vAge / 0.05;
       col = mix(effectColor * 1.2, whiteHot * 1.0, flash * flash);
     } else if (vAge < 0.5) {
-      // Phase 2: Full color with sparkle
-      float sparkle = sin(vRandom * 6283.0 + uTime * 12.0) * 0.15 + 0.85;
+      // Phase 2: Full color with stochastic combustion flicker
+      float sparkleHash = fract(sin(dot(vec2(vRandom * 31.7 + uTime * 3.1, vAge * 53.9), vec2(127.1, 311.7))) * 43758.5453);
+      float sparkleHash2 = fract(sin(dot(vec2(vRandom * 67.3, uTime * 7.7 + vAge * 19.1), vec2(269.5, 183.3))) * 43758.5453);
+      float sparkle = 0.80 + 0.20 * (sparkleHash * 0.55 + sparkleHash2 * 0.45);
       col = effectColor * sparkle * 0.8;
       // Hot core white boost
       col = mix(col, whiteHot, core * 0.1);
