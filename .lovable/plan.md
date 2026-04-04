@@ -1,98 +1,81 @@
 
 
-## Plano: Implementação das Lacunas do Relatório SkyCanvas Nexus
+## Plano: Ajuste UI/UX Mobile — Sidebar, Menus e Ferramentas Flutuantes Arrastáveis
 
-### Diagnóstico Completo (Relatório vs. Codebase)
+### Problemas Identificados
 
-O relatório completo (10 secções, obtido via link Gemini) especifica componentes concretos. Mapeamento:
+1. **Nomes dos menus não aparecem na sidebar mobile** — O `SidebarProvider` usa `defaultOpen={!isMobile}`, resultando em `state="collapsed"` no mobile. O `AppSidebar` condiciona a exibição de texto com `{!collapsed && ...}`, escondendo todos os labels mesmo quando a sidebar abre como Sheet (offcanvas).
 
-| Especificação do Relatório | Estado Atual | Ação |
-|---|---|---|
-| Vantablack #050505 base | **Implementado** — `--surface-0: 220 22% 3%` | Nenhuma |
-| Dark Glassmorphism (4 camadas) | **Implementado** — 8 variantes glass-* | Nenhuma |
-| Tipografia mono/sans split | **Implementado** — JetBrains Mono + Rajdhani | Nenhuma |
-| Scanlines animadas | **Implementado** — `.tactical-scanline`, `.dock-scanline` | Nenhuma |
-| Tactical grid isométrico | **Implementado** — `.tactical-grid` | Nenhuma |
-| **Beveled corners via `clip-path: polygon()`** | **NÃO EXISTE** | **Criar** |
-| **`react-window` virtualização de telemetria 2000 drones** | **NÃO EXISTE** — TelemetryDashboard limita a 200 drones, sem windowing | **Criar** |
-| **SVG HUD crosshairs (miras AR)** | **NÃO EXISTE** no editor | **Criar** |
-| **SMPTE Drop-Frame 29.97** | Parcial — SMPTEPanel existe, sem lógica DF real | **Melhorar** |
-| **Sparklines SVG** no painel SwarmGPT | **NÃO EXISTE** | **Criar** |
-| Cores neon-amber/cyan/crimson | **Equivalentes existem** — `--primary`, `--fxk-cyan`, `--destructive` | Adicionar aliases |
+2. **Ferramentas do viewport não são reposicionáveis** — O `TacticalDock` (desktop) e `MobileQuickActions` (mobile) têm posição fixa, sem possibilidade de arrastar.
 
-### Implementação — 5 Módulos Cirúrgicos
+3. **Controles de viewport obstruem o canvas** — Posições fixas podem sobrepor conteúdo importante sem escape.
 
 ---
 
-**1. CSS Utilities: Beveled Corners + Neon Aliases** (`src/index.css`)
+### Mudanças Planejadas
 
-Adicionar ao `@layer utilities`:
-- `.bevel-sm` — `clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)`
-- `.bevel-md` — mesma lógica com 12px
-- `.bevel-lg` — mesma lógica com 15px
-- `.glow-neon-amber` / `.glow-neon-cyan` / `.glow-neon-crimson` — box-shadow neon matching report specs
-- `.bg-scanline-anim` — animated repeating gradient (scan-move keyframe)
+#### 1. Corrigir visibilidade dos nomes na sidebar mobile
+**Arquivo:** `src/components/AppSidebar.tsx`
 
----
+- Criar variável `showLabels` que é `true` quando no mobile (Sheet sempre mostra expandido) OU quando `state === 'expanded'` no desktop.
+- Substituir todas as ocorrências de `!collapsed` por `showLabels`.
+- Lógica: `const showLabels = isMobile || state === 'expanded';`
 
-**2. Telemetria Virtualizada com react-window** (`src/components/editor/TelemetryDashboard.tsx`)
+#### 2. Criar componente `DraggableFloatingPanel`
+**Novo arquivo:** `src/components/editor/DraggableFloatingPanel.tsx`
 
-- Instalar `react-window` (já existe no package.json? Se não, adicionar)
-- Substituir o loop limitado a 200 drones por `FixedSizeList` de até 2000 drones
-- Cada row: 35px de altura, renderização O(1)
-- Status dot com cores semânticas (nominal=cyan, warning=amber, error=crimson pulsante)
-- Scrollbar custom com `.custom-scrollbar` neon
+- Wrapper genérico que permite drag-and-drop de posição via pointer events.
+- Persiste posição no `localStorage` por `panelId`.
+- Inclui grab handle visual (6 dots grip), botão minimizar/expandir.
+- Snap to edges com magnetismo de 8px.
+- Limita movimento dentro do viewport (bounds checking).
+- Estilo glassmorphism consistente com o design system FUI.
 
----
+#### 3. Envolver ferramentas do viewport em painéis flutuantes arrastáveis
 
-**3. SVG HUD Crosshairs Overlay** (`src/components/editor/HUDCrosshairs.tsx`)
+**Arquivo:** `src/components/editor/TacticalDock.tsx`
+- Envolver o dock em `DraggableFloatingPanel` com `panelId="tactical-dock"`.
+- Posição inicial: left-center (como atual).
 
-Componente overlay `pointer-events-none` centrado no SkyCanvas:
-- SVG 600x600 com `fill="none"`, `stroke="currentColor"` em Electric Cyan
-- Linhas de mira (4 segmentos cruzados)
-- Círculos concêntricos dashed
-- Corner brackets (L-shapes nos 4 cantos)
-- Texto técnico (P-Y/22, TGT-LOCK) em font-tactical
-- `mix-blend-mode: screen` para iluminar fundos escuros
-- Opacidade 40%, animação fade-in via framer-motion ou CSS
-- Integrar no SkyCanvas com toggle via ViewportConfigMenu
+**Arquivo:** `src/components/editor/MobileQuickActions.tsx`
+- Envolver os dois grupos (edit actions + viewport nav) em `DraggableFloatingPanel` independentes.
+- `panelId="mobile-edit-actions"` (esquerda) e `panelId="mobile-viewport-nav"` (direita).
 
----
+**Arquivo:** `src/components/editor/ViewportNavControls.tsx`
+- Envolver em `DraggableFloatingPanel` com `panelId="viewport-nav"`.
+- Posição inicial: right-bottom (como atual).
 
-**4. Sparklines SVG no SwarmGPT** (`src/components/editor/SwarmGPTPanel.tsx`)
-
-Adicionar ao painel existente:
-- Componente `<Sparkline>` que recebe array de valores e renderiza `<svg>` com `<path>` stroke-only
-- Métricas: Signal Strength, Battery Trend, GPS Accuracy
-- Stroke em cyan com `drop-shadow` glow
-- Sem eixos, sem legendas — apenas o traçado puro (princípio FUI)
+#### 4. Revisão QA final de visibilidade
+- Verificar que todos os labels da sidebar mobile (Dashboard, Command, Editor 3D, Agenda, Training, Field Test, Show Test, Pairing, PCB Viewer, Configurações, Admin) aparecem com texto legível.
+- Confirmar que o DockBar mobile (bottom dock) tem labels truncados corretamente.
+- Garantir que painéis flutuantes não cobrem a MobileTabBar (bottom: > 80px).
 
 ---
 
-**5. SMPTE Drop-Frame Logic** (`src/lib/smpteUtils.ts` + `src/components/editor/SMPTEPanel.tsx`)
+### Detalhes Técnicos
 
-Criar utility function `formatSMPTE(seconds, fps, dropFrame)`:
-- Modo NDF: separador `:`
-- Modo DF (29.97): separador `;`, skip frames 00 e 01 no início de cada minuto exceto múltiplos de 10
-- Integrar no SMPTEPanel existente e no TimelineBottomBar
+```text
+DraggableFloatingPanel
+├── State: { x, y } via useState + localStorage
+├── Events: onPointerDown → track, onPointerMove → update, onPointerUp → persist
+├── Bounds: clamp(0, window.innerWidth - panelWidth)
+├── Props: panelId, initialPosition, children, minimizable
+└── Render: div[position:fixed, left/top from state, z-40]
+     ├── GripHandle (drag target)
+     └── {children}
+```
 
----
-
-### Ficheiros a criar/modificar
-
-1. **Modificar** `src/index.css` — bevel utilities, neon glow aliases, scanline animation
-2. **Modificar** `src/components/editor/TelemetryDashboard.tsx` — react-window virtualização
-3. **Criar** `src/components/editor/HUDCrosshairs.tsx` — SVG overlay AR
-4. **Modificar** `src/components/editor/SwarmGPTPanel.tsx` — Sparklines
-5. **Criar** `src/lib/smpteUtils.ts` — Drop-Frame formatter
-6. **Modificar** `src/components/editor/SMPTEPanel.tsx` — integrar DF logic
-7. **Modificar** `src/components/editor/SkyCanvas.tsx` — mount HUDCrosshairs
-8. **Modificar** `src/components/editor/ViewportConfigMenu.tsx` — toggle HUD crosshairs
+### Ficheiros Afetados
+1. **Modificar** `src/components/AppSidebar.tsx` — fix label visibility on mobile
+2. **Criar** `src/components/editor/DraggableFloatingPanel.tsx` — generic draggable wrapper
+3. **Modificar** `src/components/editor/TacticalDock.tsx` — wrap in draggable
+4. **Modificar** `src/components/editor/MobileQuickActions.tsx` — wrap groups in draggable
+5. **Modificar** `src/components/editor/ViewportNavControls.tsx` — wrap in draggable
 
 ### Proteções
-- InstancedDroneSwarm / SwarmPlaybackEngine — intactos
-- VVIZ Worker / Quantizer / Exporter — intactos
-- Zustand stores — intactos
-- Google APIs — intactas
-- Layout existente (TacticalDock, JoiStatusMonitor, Toolbar) — intacto
+- Sidebar desktop (icon collapsible) — intacto
+- DockBar (bottom dock) — intacto
+- MobileTabBar / MobileFloatingPanel — intactos
+- Stores Zustand — intactos
+- SkyCanvas / Three.js — intacto
 
