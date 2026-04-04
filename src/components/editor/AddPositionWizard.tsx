@@ -97,13 +97,16 @@ export default function AddPositionWizard({ open, onClose }: AddPositionWizardPr
     haptics.success();
     const store = useProjectStore.getState();
     useUndoStore.getState().checkpoint();
+    const pos0 = store.positions.find(p => p.id === placedIds[0]);
     placedIds.forEach((posId, i) => {
+      const pos = store.positions.find(p => p.id === posId);
       store.addTimelineItem({
         id: `tl-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 5)}`,
         effectId,
         positionId: posId,
         startTime: store.currentTime + i * 0.2,
-        rack: 0,
+        trackIndex: 0,
+        position: { x: pos?.x ?? 0, y: pos?.y ?? 0, z: pos?.z ?? 0 },
       });
     });
     handleClose();
