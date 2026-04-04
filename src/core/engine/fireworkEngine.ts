@@ -1,8 +1,12 @@
 /**
  * ─── Firework Physics Engine ────────────────────────────────────────
- * Real ballistic simulation: gravity + air drag + wind influence.
+ * Real ballistic simulation: gravity + quadratic air drag + wind influence.
  * 1 unit = 1 meter. Feeds visual renderer with active shell positions.
+ * 
+ * Calibrated against NFPA 1123 / pyroPhysics.ts lookup tables.
  */
+
+import { getMortarVelocity, getLiftTime, GRAVITY, AIR_DRAG } from '@/lib/pyroPhysics';
 
 export interface FireworkShell {
   id: number;
@@ -11,12 +15,13 @@ export interface FireworkShell {
   alive: boolean;
   fuseRemaining: number;  // seconds until burst
   caliber: number;        // mm
+  caliberInches: number;  // inches (derived)
   color: [number, number, number];
 }
 
-const GRAVITY = -9.81;       // m/s²
-const DRAG_COEFF = 0.03;     // air drag per tick
-const FUSE_VARIANCE = 0.15;  // ±15% fuse randomness
+const FUSE_VARIANCE = 0.05;  // ±5% fuse randomness (real pyro tolerance)
+const SHELL_WIND_FACTOR = 0.20; // shells receive 20% wind influence (heavy mass)
+const SHELL_DRAG = 0.025;    // shell body drag coefficient (heavy, aerodynamic)
 
 let nextId = 0;
 
@@ -30,18 +35,28 @@ class FireworkEngine {
     x: number, y: number, z: number,
     opts: { fuse?: number; caliber?: number; launchSpeed?: number; color?: [number, number, number] } = {},
   ): FireworkShell {
-    const fuse = (opts.fuse ?? 3) * (1 + (Math.random() - 0.5) * 2 * FUSE_VARIANCE);
-    const speed = opts.launchSpeed ?? (20 + Math.random() * 15);
+    const caliberMm = opts.caliber ?? 75;
+    const caliberInches = caliberMm / 25.4;
+
+    // Use caliber-based velocity from NFPA tables if no explicit speed
+    const baseSpeed = opts.launchSpeed ?? getMortarVelocity(caliberInches);
+
+    // Fuse time: use caliber-based lift time if not explicit, ±5% variance
+    const baseFuse = opts.fuse ?? getLiftTime(caliberInches);
+    const fuse = baseFuse * (1 + (Math.random() - 0.5) * 2 * FUSE_VARIANCE);
+
     const shell = this.pool.pop() ?? {} as FireworkShell;
 
     shell.id = nextId++;
     shell.x = x; shell.y = y; shell.z = z;
-    shell.vx = (Math.random() - 0.5) * 2;
-    shell.vy = speed;
-    shell.vz = (Math.random() - 0.5) * 2;
+    // Slight lateral drift (real mortar imperfection)
+    shell.vx = (Math.random() - 0.5) * 1.5;
+    shell.vy = baseSpeed;
+    shell.vz = (Math.random() - 0.5) * 1.5;
     shell.alive = true;
     shell.fuseRemaining = fuse;
-    shell.caliber = opts.caliber ?? 75;
+    shell.caliber = caliberMm;
+    shell.caliberInches = caliberInches;
     shell.color = opts.color ?? [1, 0.8, 0.2];
 
     this.shells.push(shell);
@@ -58,18 +73,22 @@ class FireworkEngine {
         continue;
       }
 
-      // Wind influence
-      s.vx += wind[0] * dt;
-      s.vz += wind[2] * dt;
+      // Wind influence (shells = 20%, heavy mass)
+      s.vx += wind[0] * SHELL_WIND_FACTOR * dt;
+      s.vz += wind[2] * SHELL_WIND_FACTOR * dt;
 
       // Gravity
       s.vy += GRAVITY * dt;
 
-      // Air drag
-      const drag = 1 - DRAG_COEFF * dt;
-      s.vx *= drag;
-      s.vy *= drag;
-      s.vz *= drag;
+      // Quadratic air drag: F_drag = k * v², applied as deceleration
+      const speed = Math.sqrt(s.vx * s.vx + s.vy * s.vy + s.vz * s.vz);
+      if (speed > 0.01) {
+        const dragForce = SHELL_DRAG * speed * speed;
+        const decel = Math.min(dragForce * dt / speed, 0.95); // cap to prevent sign flip
+        s.vx -= s.vx * decel;
+        s.vy -= s.vy * decel;
+        s.vz -= s.vz * decel;
+      }
 
       // Integrate position
       s.x += s.vx * dt;
