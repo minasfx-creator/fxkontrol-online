@@ -79,7 +79,6 @@ export default function MobileQuickActions() {
     : [
         { icon: MousePointer2, label: 'Sel', onClick: handleToggleSelect, variant: selectVariant },
         { icon: Compass, label: 'Angle', onClick: handleToggleAngles, variant: angleVariant },
-        { icon: Plus, label: 'Add', onClick: handleAdd, variant: 'default' },
         { icon: Undo2, label: 'Undo', onClick: handleUndo, variant: 'default' },
         { icon: Redo2, label: 'Redo', onClick: handleRedo, variant: 'default' },
       ];
