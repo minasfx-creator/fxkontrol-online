@@ -1,14 +1,15 @@
 /**
- * MobileTabBar — Unified dock bar for mobile editor.
- * Features: horizontally scrollable tabs, long-press context menu, swipe to cycle categories.
+ * MobileTabBar — Unified dock bar with central FAB for mobile editor.
+ * Features: horizontally scrollable tabs, FAB creation button, long-press context menu.
  */
 import { useCallback, useRef, useState } from 'react';
 import { haptics } from '@/lib/haptics';
-import { Sparkles, Cpu, Smartphone, Map, LayoutGrid, Clock, Layers, Settings2 } from 'lucide-react';
+import { Sparkles, Cpu, Smartphone, Map, LayoutGrid, Clock, Layers, Settings2, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { PANEL_SECTIONS, type PanelId } from '@/components/editor/PanelTabBar';
 import DockContextMenu from './DockContextMenu';
+import AddPositionWizard from './AddPositionWizard';
 
 export type MobileTab = 'timeline' | 'assets' | 'properties' | 'livefx' | 'points' | 'formations' | 'mobilelink' | 'controllers' | 'fieldmap' | 'radio' | 'remote' | 'more';
 
@@ -20,9 +21,12 @@ interface MobileTabBarProps {
   onPanelHeightChange: (h: 'collapsed' | 'half' | 'full') => void;
 }
 
-const TABS: { key: MobileTab; icon: typeof Sparkles; label: string; panelId?: PanelId; accent?: boolean }[] = [
+// Tabs split: left group, then FAB, then right group
+const TABS_LEFT: { key: MobileTab; icon: typeof Sparkles; label: string; panelId?: PanelId; accent?: boolean }[] = [
   { key: 'timeline', icon: Clock, label: 'Timeline' },
   { key: 'assets', icon: Layers, label: 'Assets' },
+];
+const TABS_RIGHT: { key: MobileTab; icon: typeof Sparkles; label: string; panelId?: PanelId; accent?: boolean }[] = [
   { key: 'livefx', icon: Sparkles, label: 'Live FX', panelId: 'livefiring', accent: true },
   { key: 'controllers', icon: Cpu, label: 'Control', panelId: 'controllers' },
   { key: 'remote', icon: Smartphone, label: 'Remote', panelId: 'remotecontrol' },
@@ -30,6 +34,7 @@ const TABS: { key: MobileTab; icon: typeof Sparkles; label: string; panelId?: Pa
   { key: 'properties', icon: Settings2, label: 'Props' },
   { key: 'more', icon: LayoutGrid, label: 'Painéis' },
 ];
+const ALL_TABS = [...TABS_LEFT, ...TABS_RIGHT];
 
 // Swipe category cycling
 const CATEGORY_NAMES = PANEL_SECTIONS.map(s => s.title);
