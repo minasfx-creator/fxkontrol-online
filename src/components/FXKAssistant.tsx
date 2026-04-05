@@ -474,7 +474,7 @@ export function FXKAssistant() {
         <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-2 space-y-3 scrollbar-thin">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80">
-              <JoiCinematicHologram size="xl" state="materializing" glitching={glitching} className="w-40 h-64" />
+              <JoiCinematicHologram size="xl" state="materializing" glitching={glitching} emotion={joiEmotion} className="w-40 h-64" />
               {/* Contextual greeting */}
               <p className="text-[9px] font-mono tracking-[0.15em] text-center max-w-[200px]" style={{ color: 'hsl(340 65% 65% / 0.6)' }}>
                 {getGreeting()}
