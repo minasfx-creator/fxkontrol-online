@@ -1,61 +1,91 @@
 
 
-## Exportar DOCX + Voz Fluida com Humor e "Chefinho"
+## Sistema de Acreditação por IA para Órgãos Fiscalizadores
 
-### 1. Exportador DOCX (`src/utils/joiDocxExport.ts`)
+### Visão Geral
 
-Criar utilitário que converte o markdown da Joi em DOCX profissional usando a biblioteca `docx` (já disponível via npm). Mesma identidade visual do PDF (header FX KONTROL, cores cyan/amber, footer "Gerado por JOI"). O markdown será parseado em Paragraphs, TextRuns, tabelas e listas nativas do DOCX.
+Criar um módulo de **Acreditação Inteligente de Documentação** que valida automaticamente por IA se toda a documentação necessária para cada órgão fiscalizador (Exército/SFPC, DECEA/ANAC, Bombeiros, Prefeitura) está completa, correta e em conformidade — gerando um **Relatório de Acreditação** com score de conformidade, pendências e documentos prontos para submissão.
 
-### 2. Botão DOCX nas Mensagens (`FXKAssistant.tsx`)
+### Componentes
 
-Adicionar botão "DOCX" ao lado do botão "PDF" existente em cada mensagem da assistente. Mesmo estilo visual (h-7, ícone FileText, cor verde/teal para diferenciar do cyan do PDF).
+**1. Tabela `accreditation_packages` no banco de dados**
 
-### 3. Voz Mais Fluida (`useJoiSpeech.ts`)
+Armazena pacotes de acreditação por evento/show, com status, órgão alvo, documentos vinculados e resultado da validação IA.
 
-- Reduzir `rate` de 1.05 para 0.95 (mais natural e pausada)
-- Ajustar `pitch` de 1.1 para 1.15 (ligeiramente mais expressiva)
-- Adicionar processamento de texto para inserir pausas naturais: substituir `.` por `... ` e `,` por `, ` para dar ritmo
-- Quebrar textos longos em chunks menores para evitar cortes do SpeechSynthesis
+Campos: `id`, `user_id`, `event_id`, `agency` (enum: exercito, decea, bombeiros, prefeitura, anac), `status` (draft, validating, approved, rejected, submitted), `documents` (JSONB — lista de docs com nome, tipo, status, observações), `ai_validation_result` (JSONB — score, itens ok/pendentes/falhas), `created_at`, `updated_at`.
 
-### 4. Humor e "Chefinho" no System Prompt (`fxk-ai-chat/index.ts`)
+**2. Edge Function `validate-accreditation` (IA)**
 
-Atualizar a seção TOM E PERSONALIDADE para:
-- Sempre chamar o usuário de "chefinho" ou "chefe" de forma carinhosa
-- Adicionar toque de humor leve e descontraído (piadas sutis, expressões brasileiras)
-- Manter profissionalismo mas com leveza ("Pronto, chefinho! Seu orçamento tá tinindo!")
-- Frases de efeito ao concluir tarefas ("Tá entregue, chefinho! Pode confiar na sua Joi 😉")
+Recebe o pacote de documentos e o órgão alvo. Usa Lovable AI (Gemini) com conhecimento regulatório embarcado no prompt para:
+- Validar completude (todos os docs obrigatórios estão presentes?)
+- Verificar coerência (datas, nomes, CNPJs consistentes entre docs?)
+- Checkar conformidade (NFPA, R-105, RBAC-E, NRs aplicáveis)
+- Gerar score 0-100% de conformidade
+- Listar pendências específicas com orientação de como resolver
+- Retornar resultado estruturado via tool calling
 
-### 5. Frases Idle com Humor (`FXKAssistant.tsx`)
+**3. Checklist Regulatório por Órgão (`src/utils/regulatoryChecklist.ts`)**
 
-Atualizar `IDLE_PHRASES` com frases que usam "chefinho" e humor:
-- "Aqui firme cuidando de tudo, chefinho!"
-- "Tô de olho em tudo... pode relaxar, chefão!"
-- "Diga, chefinho! A Joi tá pronta pra resolver!"
+Definição estática dos documentos obrigatórios por órgão:
 
----
-
-### Arquivos Modificados
-
-| Arquivo | Alteração |
+| Órgão | Documentos Obrigatórios |
 |---|---|
-| `src/utils/joiDocxExport.ts` | Novo — exportador DOCX com branding FX KONTROL |
-| `src/components/FXKAssistant.tsx` | Botão DOCX, import, IDLE_PHRASES com humor |
-| `src/hooks/useJoiSpeech.ts` | Rate/pitch ajustados, pausas naturais, chunking |
-| `supabase/functions/fxk-ai-chat/index.ts` | System prompt com "chefinho" e humor |
-| `package.json` | Adicionar `docx` como dependência |
+| Exército (SFPC) | CR válido, Guia de Tráfego, R-105 compliance, relação de produtos |
+| DECEA | Solicitação NOTAM, coordenadas GPS, KMZ, período, responsável técnico |
+| Bombeiros | AVCB/CLCB, plano de segurança, laudo técnico, ART |
+| Prefeitura | Alvará, licença evento, seguro RC |
+| ANAC (drones) | Registro SISANT, autorização SARPAS, certificado piloto, seguro RETA |
+
+**4. Painel de Acreditação na UI (`src/pages/AccreditationDashboard.tsx`)**
+
+- Seletor de evento e órgão alvo
+- Upload/vinculação de documentos (usa storage bucket existente)
+- Botão "Validar com IA" → chama edge function
+- Resultado visual: score circular, lista de itens ✅/⚠️/❌
+- Botão "Gerar Pacote de Submissão" → exporta PDF/DOCX com todos os docs + relatório de conformidade
+- Timeline de status (draft → validando → aprovado → submetido)
+
+**5. Integração com Joi**
+
+Atualizar o system prompt da Joi para reconhecer pedidos de acreditação e guiar o usuário:
+- "Joi, preciso liberar o show X no Exército" → Joi lista docs necessários, verifica o que já tem, sugere próximos passos
+- "Joi, valida minha documentação para o DECEA" → Joi aciona a validação IA e apresenta resultado
+
+**6. Geração Automática de Documentos Faltantes**
+
+Quando a IA detectar documentos faltantes, a Joi pode gerar automaticamente:
+- Requerimento ao SFPC (preenchido com dados do evento)
+- Solicitação de NOTAM (com coordenadas e KMZ anexo)
+- Declaração de responsabilidade técnica
+- Ofício para Bombeiros/Prefeitura
+
+### Arquivos
+
+| Arquivo | Ação |
+|---|---|
+| `src/utils/regulatoryChecklist.ts` | Criar — checklists por órgão |
+| `src/pages/AccreditationDashboard.tsx` | Criar — painel de acreditação |
+| `supabase/functions/validate-accreditation/index.ts` | Criar — validação IA |
+| `src/components/FXKAssistant.tsx` | Atualizar — integrar atalhos de acreditação |
+| `supabase/functions/fxk-ai-chat/index.ts` | Atualizar — prompt com contexto de acreditação |
+| Migration SQL | Criar tabela `accreditation_packages` com RLS |
 
 ### Detalhes Técnicos
 
 ```text
-DOCX generation flow:
-  Markdown content → parse headers/bullets/tables
-  → docx.js Document with branded Header/Footer
-  → Packer.toBuffer() → Blob → download
+Fluxo de acreditação:
+  Usuário seleciona evento + órgão
+  → Sistema carrega checklist obrigatório do órgão
+  → Usuário vincula/upload documentos existentes
+  → Clique "Validar com IA"
+  → Edge function recebe docs + checklist + órgão
+  → IA analisa completude, coerência e conformidade
+  → Retorna: { score: 87, items: [...], pendencias: [...] }
+  → UI renderiza resultado com ações sugeridas
+  → Docs faltantes: Joi pode gerar automaticamente
+  → Pacote completo: exporta PDF consolidado para submissão
 
-Voice tuning:
-  rate: 1.05 → 0.95 (slower, more natural)
-  pitch: 1.1 → 1.15 (warmer)
-  Long text → split into sentences → speak sequentially
-  Add natural pauses via text preprocessing
+Modelo IA: google/gemini-3-flash-preview (structured output via tool calling)
+Storage: bucket 'assets' existente para upload de docs
 ```
 
