@@ -10,6 +10,7 @@ import joiActive from '@/assets/joi-hologram-active.png';
 interface Props {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   state?: 'idle' | 'active' | 'materializing';
+  glitching?: boolean;
   className?: string;
 }
 
