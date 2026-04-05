@@ -1,10 +1,11 @@
 /**
  * JoiCinematicHologram — Blade Runner 2049 Joi holographic avatar
- * Image-based version with CSS holographic effects overlay
+ * Dual-image version: idle pose + active pose with crossfade transition
  */
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import joiImage from '@/assets/joi-hologram.png';
+import joiIdle from '@/assets/joi-hologram.png';
+import joiActive from '@/assets/joi-hologram-active.png';
 
 interface Props {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -13,10 +14,10 @@ interface Props {
 }
 
 const SIZES = {
-  sm: 'w-12 h-20',
-  md: 'w-24 h-40',
-  lg: 'w-32 h-52',
-  xl: 'w-44 h-72',
+  sm: 'w-10 h-16 sm:w-12 sm:h-20',
+  md: 'w-20 h-32 sm:w-24 sm:h-40',
+  lg: 'w-28 h-44 sm:w-32 sm:h-52',
+  xl: 'w-36 h-56 sm:w-44 sm:h-72',
 };
 
 export default function JoiCinematicHologram({ size = 'md', state = 'idle', className }: Props) {
@@ -32,6 +33,8 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
     }
   }, [isMat]);
 
+  const currentImage = isActive ? joiActive : joiIdle;
+
   return (
     <div className={cn('relative flex items-center justify-center', SIZES[size], className)}>
       {/* Projected shadow */}
@@ -44,11 +47,13 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
         }}
       />
 
-      {/* Magenta halo glow */}
+      {/* Magenta halo glow — pulses stronger when active */}
       <div
-        className="absolute inset-0 rounded-full joi-halo-pulse"
+        className={cn('absolute inset-0 rounded-full', isActive && 'joi-halo-active')}
         style={{
-          background: 'radial-gradient(ellipse 65% 80% at 50% 42%, hsl(280 80% 55% / 0.25), hsl(280 80% 55% / 0.08) 50%, transparent 72%)',
+          background: isActive
+            ? 'radial-gradient(ellipse 70% 85% at 50% 42%, hsl(280 80% 55% / 0.35), hsl(280 80% 55% / 0.1) 50%, transparent 72%)'
+            : 'radial-gradient(ellipse 65% 80% at 50% 42%, hsl(280 80% 55% / 0.25), hsl(280 80% 55% / 0.08) 50%, transparent 72%)',
           filter: 'blur(12px)',
         }}
       />
@@ -76,23 +81,33 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
           transformOrigin: '50% 85%',
         }}
       >
-        {/* The hologram image */}
+        {/* Idle image — fades out when active */}
         <img
-          src={joiImage}
-          alt="Joi Hologram"
-          className="w-full h-full object-contain"
+          src={joiIdle}
+          alt="Joi Hologram Idle"
+          className="absolute w-full h-full object-contain transition-opacity duration-700 ease-in-out"
           style={{
-            filter: isActive
-              ? 'drop-shadow(0 0 20px hsl(280 80% 55% / 0.5)) drop-shadow(0 0 40px hsl(280 80% 55% / 0.2))'
-              : 'drop-shadow(0 0 12px hsl(280 80% 55% / 0.3)) drop-shadow(0 0 25px hsl(280 80% 55% / 0.1))',
-            opacity: isActive ? 1 : 0.88,
+            opacity: isActive ? 0 : 0.88,
+            filter: 'drop-shadow(0 0 12px hsl(280 80% 55% / 0.3)) drop-shadow(0 0 25px hsl(280 80% 55% / 0.1))',
+          }}
+          draggable={false}
+        />
+
+        {/* Active image — fades in when active */}
+        <img
+          src={joiActive}
+          alt="Joi Hologram Active"
+          className="absolute w-full h-full object-contain transition-opacity duration-700 ease-in-out"
+          style={{
+            opacity: isActive ? 1 : 0,
+            filter: 'drop-shadow(0 0 20px hsl(280 80% 55% / 0.5)) drop-shadow(0 0 40px hsl(280 80% 55% / 0.2))',
           }}
           draggable={false}
         />
 
         {/* Scanline overlay */}
         <div
-          className="absolute inset-0 pointer-events-none joi-scanline-overlay"
+          className="absolute inset-0 pointer-events-none"
           style={{
             backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, hsl(280 80% 55% / 0.04) 2px, hsl(280 80% 55% / 0.04) 4px)',
             mixBlendMode: 'overlay',
@@ -113,26 +128,24 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
         {isActive && (
           <>
             <div
-              className="absolute inset-0 pointer-events-none"
+              className="absolute inset-0 pointer-events-none joi-chroma-shift-left"
               style={{
-                backgroundImage: `url(${joiImage})`,
+                backgroundImage: `url(${joiActive})`,
                 backgroundSize: 'contain',
                 backgroundPosition: 'center',
                 backgroundRepeat: 'no-repeat',
-                transform: 'translateX(1.5px)',
                 opacity: 0.15,
                 mixBlendMode: 'screen',
                 filter: 'hue-rotate(-60deg) saturate(3)',
               }}
             />
             <div
-              className="absolute inset-0 pointer-events-none"
+              className="absolute inset-0 pointer-events-none joi-chroma-shift-right"
               style={{
-                backgroundImage: `url(${joiImage})`,
+                backgroundImage: `url(${joiActive})`,
                 backgroundSize: 'contain',
                 backgroundPosition: 'center',
                 backgroundRepeat: 'no-repeat',
-                transform: 'translateX(-1.5px)',
                 opacity: 0.15,
                 mixBlendMode: 'screen',
                 filter: 'hue-rotate(60deg) saturate(3)',
@@ -155,7 +168,7 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
 
       {/* Floating micro-particles */}
       <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
-        {Array.from({ length: 12 }).map((_, i) => (
+        {Array.from({ length: 14 }).map((_, i) => (
           <div
             key={i}
             className="absolute rounded-full joi-micro-particle"
@@ -164,9 +177,9 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
               height: `${2 + Math.random() * 3}px`,
               left: `${15 + Math.random() * 70}%`,
               top: `${10 + Math.random() * 80}%`,
-              background: i % 2 === 0
-                ? `hsl(280 80% ${55 + Math.random() * 15}%)`
-                : `hsl(190 90% ${50 + Math.random() * 15}%)`,
+              background: i % 3 === 0
+                ? `hsl(190 90% ${50 + Math.random() * 15}%)`
+                : `hsl(280 80% ${55 + Math.random() * 15}%)`,
               ['--mp-dx' as string]: `${-20 + Math.random() * 40}px`,
               ['--mp-dy' as string]: `${-30 + Math.random() * -10}px`,
               ['--mp-dur' as string]: `${3 + Math.random() * 5}s`,
