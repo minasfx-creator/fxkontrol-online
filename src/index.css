@@ -1988,3 +1988,35 @@ button:active {
 .joi-serious-pulse {
   animation: joi-serious-pulse 2s ease-in-out infinite;
 }
+
+/* === Close-up Entrance — cinematic zoom + fade === */
+@keyframes joi-closeup-entrance {
+  0% { opacity: 0; transform: scale(1.08); filter: blur(4px); }
+  60% { opacity: 0.9; transform: scale(1.01); filter: blur(0px); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0px); }
+}
+.joi-closeup-entrance {
+  animation: joi-closeup-entrance 2.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* === Typewriter cursor blink === */
+@keyframes joi-typewriter-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.joi-typewriter-cursor {
+  display: inline-block;
+  width: 1px;
+  height: 1em;
+  margin-left: 1px;
+  background: hsl(340 65% 60%);
+  box-shadow: 0 0 6px hsl(340 65% 55% / 0.5), 0 0 12px hsl(340 65% 50% / 0.3);
+  animation: joi-typewriter-cursor 1s ease-in-out infinite;
+  vertical-align: text-bottom;
+}
+
+/* === Close-up vignette overlay === */
+.joi-closeup-vignette {
+  background: radial-gradient(ellipse 70% 65% at 50% 40%, transparent 40%, hsl(220 22% 4% / 0.7) 100%);
+  pointer-events: none;
+}

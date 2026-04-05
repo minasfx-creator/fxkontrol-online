@@ -55,6 +55,31 @@ function detectEmotion(text: string): JoiEmotion {
   return 'caring';
 }
 
+/** Typewriter greeting — reveals text char by char with blinking cursor */
+function TypewriterGreeting({ text }: { text: string }) {
+  const [displayed, setDisplayed] = useState('');
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    setDisplayed('');
+    setDone(false);
+    let i = 0;
+    const iv = setInterval(() => {
+      i++;
+      setDisplayed(text.slice(0, i));
+      if (i >= text.length) { clearInterval(iv); setDone(true); }
+    }, 40);
+    return () => clearInterval(iv);
+  }, [text]);
+
+  return (
+    <p className="text-[10px] font-mono tracking-[0.12em] text-center max-w-[220px] min-h-[2em]" style={{ color: 'hsl(340 65% 70% / 0.8)' }}>
+      {displayed}
+      {!done && <span className="joi-typewriter-cursor" />}
+    </p>
+  );
+}
+
 function getContextPresets() {
   const path = window.location.pathname;
   if (path.includes('command')) return PRESETS_COMMAND;
@@ -475,12 +500,13 @@ export function FXKAssistant() {
         {/* Messages */}
         <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-2 space-y-3 scrollbar-thin">
           {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80">
-              <JoiCinematicHologram size="xl" state="materializing" glitching={glitching} emotion={joiEmotion} className="w-40 h-64" />
-              {/* Contextual greeting */}
-              <p className="text-[9px] font-mono tracking-[0.15em] text-center max-w-[200px]" style={{ color: 'hsl(340 65% 65% / 0.6)' }}>
-                {getGreeting()}
-              </p>
+            <div className="flex flex-col items-center justify-center h-full gap-3 opacity-90">
+              {/* Close-up cinematográfico */}
+              <div className="relative w-48 h-48 sm:w-56 sm:h-56 rounded-2xl overflow-hidden joi-closeup-entrance" style={{ boxShadow: '0 0 40px hsl(340 65% 50% / 0.15), 0 0 80px hsl(32 80% 45% / 0.08)' }}>
+                <JoiCinematicHologram size="xl" state="materializing" glitching={glitching} emotion={joiEmotion} variant="closeup" className="w-full h-full" />
+              </div>
+              {/* Typewriter greeting */}
+              <TypewriterGreeting text={getGreeting()} />
               {/* Idle presence phrase */}
               <p className="text-[7px] font-mono tracking-[0.2em] uppercase text-center transition-all duration-1000" style={{ color: 'hsl(340 65% 50% / 0.3)' }}>
                 {IDLE_PHRASES[idlePhrase]}
