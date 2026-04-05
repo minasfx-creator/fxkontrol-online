@@ -48,18 +48,26 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
   const containerRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
+  const [eyeIntensity, setEyeIntensity] = useState(0);
+
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const el = containerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
-    // Normalize to -1..1
     const nx = (e.clientX - cx) / (rect.width / 2);
     const ny = (e.clientY - cy) / (rect.height / 2);
-    // Subtle rotation: max ~4deg, and slight translate for depth
-    setTilt({ x: ny * -3, y: nx * 4 });
-  }, []);
+    const maxTilt = isCloseup ? 5 : 4;
+    setTilt({ x: ny * -(maxTilt - 1), y: nx * maxTilt });
+    // Eye intensity: 1.0 when cursor is at center of face region (~38% from top)
+    if (isCloseup) {
+      const eyeY = rect.top + rect.height * 0.38;
+      const dist = Math.sqrt((e.clientX - cx) ** 2 + (e.clientY - eyeY) ** 2);
+      const maxDist = rect.width * 0.8;
+      setEyeIntensity(Math.max(0, 1 - dist / maxDist));
+    }
+  }, [isCloseup]);
 
   const handleMouseLeave = useCallback(() => {
     setTilt({ x: 0, y: 0 });
