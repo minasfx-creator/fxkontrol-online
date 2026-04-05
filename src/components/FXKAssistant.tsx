@@ -41,8 +41,8 @@ const IDLE_PHRASES = [
   'Observando e cuidando de tudo...',
 ];
 
-const CELEBRATING_KEYWORDS = ['✅', 'concluído', 'pronto', 'sucesso', 'exportado', 'seguro', 'perfeito', 'excelente', 'finalizado', 'aprovado'];
-const SERIOUS_KEYWORDS = ['⚠', 'prazo', 'urgente', 'atenção', 'pendente', 'documento', 'licença', 'vencido', 'alerta', 'risco', 'cuidado'];
+const CELEBRATING_KEYWORDS = ['✅', 'concluído', 'pronto', 'sucesso', 'exportado', 'seguro', 'perfeito', 'excelente', 'finalizado', 'aprovado', 'deferido', 'concedido', 'assinado', 'renovado', 'pago', 'liberado', 'autorizado'];
+const SERIOUS_KEYWORDS = ['⚠', 'prazo', 'urgente', 'atenção', 'pendente', 'documento', 'licença', 'vencido', 'alerta', 'risco', 'cuidado', 'indeferido', 'multa', 'notificação', 'embargo', 'irregular', 'expirado', 'autuação', 'infração'];
 
 function detectEmotion(text: string): JoiEmotion {
   const lower = text.toLowerCase();
