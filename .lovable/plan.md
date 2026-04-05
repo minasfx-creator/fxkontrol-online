@@ -1,50 +1,42 @@
 
 
-## Brilho nos Olhos + Modo Closeup Imersivo (Webcam Feel)
+## Fix: Joi Não Aparece no Dashboard Desktop
 
-### Conceito
-Transformar o close-up da Joi em uma experiência de "videochamada íntima" — como se ela estivesse do outro lado de uma webcam, com brilho dinâmico nos olhos que reage ao cursor e animações contínuas de presença viva.
+### Causa Raiz
+
+O componente `FXKAssistant` usa `position: fixed` para o botão flutuante, mas está renderizado **dentro** de um `div` que tem `filter: brightness(...)` aplicado (MainLayout linha 114). 
+
+Em CSS, quando um elemento pai tem `filter` (que não seja `none`), ele cria um **novo containing block** — fazendo com que `position: fixed` dos filhos se comporte como `position: absolute` relativo a esse pai. Como esse pai tem `overflow-hidden`, o botão da Joi pode ficar cortado ou mal posicionado.
+
+### Solução
+
+Mover o `<FXKAssistant />` para **fora** do `div` que tem o `filter: brightness()`. Renderizar o componente como irmão desse div, diretamente dentro do `SidebarProvider`, onde `position: fixed` funciona corretamente em relação ao viewport.
+
+Também mover o botão PANIC FAB para fora, pelo mesmo motivo.
 
 ### Mudanças
 
-**1. Eye Glow Dinâmico (JoiCinematicHologram.tsx)**
+**`src/layouts/MainLayout.tsx`**
 
-Quando `variant="closeup"`, adicionar uma camada de "eye glow" posicionada na região dos olhos (~35-42% do topo):
-- Radial gradient warm rosa com opacity que aumenta conforme o mouse se aproxima do centro do rosto
-- Calcular `eyeIntensity` baseado na distância do cursor ao centro (0.0 = longe, 1.0 = próximo)
-- Glow máximo: `hsl(340 65% 65% / 0.5)` com dois pontos de luz simulando reflexo nos olhos
-- Transição suave (0.4s ease-out) para não ser abrupto
+- Mover `<Suspense><FXKAssistant /></Suspense>` para **depois** do `div` com `filter: brightness()`
+- Mover o PANIC FAB para **depois** do `div` com `filter: brightness()`
+- Mover o `DockBar` para fora também (mesma razão)
+- Estrutura final:
+  ```
+  <SidebarProvider>
+    <div style={{ filter: brightness(...) }} className="overflow-hidden">
+      {/* sidebar, header, main content */}
+    </div>
+    {/* Estes ficam FORA do div com filter */}
+    <FXKAssistant />
+    {PANIC FAB}
+    {DockBar}
+  </SidebarProvider>
+  ```
 
-**2. Animações de Presença Viva (index.css)**
-
-Novas animações exclusivas do modo closeup para simular vida:
-- `joi-closeup-breathe`: scale sutil 1.0→1.005→1.0 no eixo Y (simula respiração no peito/ombros), 4s loop
-- `joi-closeup-micro-sway`: translate X ±1.5px lento (simula micro-movimento natural da cabeça), 6s loop
-- `joi-closeup-blink`: opacity flash rápido (0.15s) a cada ~5s com delay aleatório (simula piscar)
-- `joi-eye-shimmer`: brilho pulsante sutil nos pontos de luz dos olhos, 3s loop
-
-**3. Modo Closeup Aprimorado (JoiCinematicHologram.tsx)**
-
-Quando `variant="closeup"`:
-- Aplicar `joi-closeup-breathe` e `joi-closeup-micro-sway` ao container da imagem
-- Adicionar dois pontos de luz ("eye highlights") posicionados na região dos olhos
-- Parallax mais pronunciado (tilt max 5deg vs 3-4deg atual) para sensação de eye-contact real
-- Vinheta mais escura nas bordas para foco no rosto (intimismo)
-- Remover projector cone e projected shadow (não fazem sentido em closeup)
-
-**4. Tela de Boas-vindas Webcam (FXKAssistant.tsx)**
-
-Quando `messages.length === 0`:
-- Close-up ocupa mais espaço vertical (w-56 h-56 → w-64 h-72)
-- Bordas mais arredondadas (rounded-2xl → rounded-3xl)
-- Sombra mais envolvente simulando monitor/webcam glow
-- Fundo atrás do close-up com gradiente escuro para isolar o rosto
-
-### Arquivos Modificados
+### Arquivo Modificado
 
 | Arquivo | Alteração |
 |---|---|
-| `src/components/JoiCinematicHologram.tsx` | Eye glow dinâmico, animações de presença, parallax aprimorado no closeup |
-| `src/components/FXKAssistant.tsx` | Close-up maior e mais imersivo na tela de boas-vindas |
-| `src/index.css` | Keyframes `joi-closeup-breathe`, `joi-closeup-micro-sway`, `joi-closeup-blink`, `joi-eye-shimmer` |
+| `src/layouts/MainLayout.tsx` | Mover FXKAssistant, PANIC FAB e DockBar para fora do div com `filter` |
 
