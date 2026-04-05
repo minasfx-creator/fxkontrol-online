@@ -392,23 +392,6 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
         </div>
       )}
 
-      {/* Rain effect — warm subtle */}
-      <div className="absolute inset-0 pointer-events-none z-5 overflow-hidden">
-        {Array.from({ length: 10 }).map((_, i) => (
-          <div
-            key={`rain-${i}`}
-            className="absolute"
-            style={{
-              left: `${10 + (i / 10) * 80}%`,
-              top: '-5%',
-              width: '0.5px',
-              height: `${18 + Math.random() * 25}px`,
-              background: `hsl(340 50% 60% / ${0.03 + Math.random() * 0.06})`,
-              animation: `joi-rain-heavy 1.8s linear ${(i * 0.22).toFixed(2)}s infinite`,
-            }}
-          />
-        ))}
-      </div>
     </div>
   );
 }
