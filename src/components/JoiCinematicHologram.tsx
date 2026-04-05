@@ -136,29 +136,46 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
           animation: glitching ? 'joi-glitch-burst 0.8s steps(1, end) both' : undefined,
         }}
       >
-        {/* Idle image */}
-        <img
-          src={joiIdle}
-          alt="Joi Hologram Idle"
-          className="absolute w-full h-full object-contain transition-opacity duration-700 ease-in-out"
-          style={{
-            opacity: isActive ? 0 : 0.9,
-            filter: 'drop-shadow(0 0 12px hsl(340 65% 55% / 0.25)) drop-shadow(0 0 25px hsl(32 80% 50% / 0.1))',
-          }}
-          draggable={false}
-        />
-
-        {/* Active image */}
-        <img
-          src={joiActive}
-          alt="Joi Hologram Active"
-          className="absolute w-full h-full object-contain transition-opacity duration-700 ease-in-out"
-          style={{
-            opacity: isActive ? 1 : 0,
-            filter: 'drop-shadow(0 0 20px hsl(340 65% 55% / 0.4)) drop-shadow(0 0 40px hsl(32 80% 50% / 0.15))',
-          }}
-          draggable={false}
-        />
+        {/* Close-up variant — single image with vignette */}
+        {isCloseup ? (
+          <>
+            <img
+              src={joiCloseup}
+              alt="Joi Close-up"
+              className="absolute w-full h-full object-cover joi-closeup-entrance"
+              style={{
+                filter: 'drop-shadow(0 0 20px hsl(340 65% 55% / 0.35)) drop-shadow(0 0 40px hsl(32 80% 50% / 0.15))',
+              }}
+              draggable={false}
+            />
+            <div className="absolute inset-0 joi-closeup-vignette" />
+          </>
+        ) : (
+          <>
+            {/* Idle image */}
+            <img
+              src={joiIdle}
+              alt="Joi Hologram Idle"
+              className="absolute w-full h-full object-contain transition-opacity duration-700 ease-in-out"
+              style={{
+                opacity: isActive ? 0 : 0.9,
+                filter: 'drop-shadow(0 0 12px hsl(340 65% 55% / 0.25)) drop-shadow(0 0 25px hsl(32 80% 50% / 0.1))',
+              }}
+              draggable={false}
+            />
+            {/* Active image */}
+            <img
+              src={joiActive}
+              alt="Joi Hologram Active"
+              className="absolute w-full h-full object-contain transition-opacity duration-700 ease-in-out"
+              style={{
+                opacity: isActive ? 1 : 0,
+                filter: 'drop-shadow(0 0 20px hsl(340 65% 55% / 0.4)) drop-shadow(0 0 40px hsl(32 80% 50% / 0.15))',
+              }}
+              draggable={false}
+            />
+          </>
+        )}
 
         {/* Scanline overlay — very subtle */}
         <div
