@@ -205,6 +205,7 @@ export function FXKAssistant() {
   const send = useCallback(async (text: string) => {
     if (!text.trim() || loading) return;
     setGlitching(true);
+    playGlitchBurst();
     setTimeout(() => setGlitching(false), 800);
     const userMsg: Msg = { role: 'user', content: text.trim(), ts: Date.now() };
     setMessages(prev => [...prev, userMsg]);
