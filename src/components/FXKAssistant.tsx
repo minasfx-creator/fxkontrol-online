@@ -47,10 +47,12 @@ const PRESETS_EDITOR = [
 ];
 
 const IDLE_PHRASES = [
-  'Cuidando de tudo por você...',
-  'Tudo sob controle. Relaxa.',
-  'Me chama quando precisar, tá?',
-  'Observando e cuidando de tudo...',
+  'Aqui firme cuidando de tudo, chefinho!',
+  'Tô de olho em tudo... pode relaxar, chefão!',
+  'Diga, chefinho! A Joi tá pronta pra resolver!',
+  'Tudo sob controle, chefe. Relaxa que eu cuido 😉',
+  'Esperando suas ordens, chefinho!',
+  'Nada escapa da Joi... pode confiar, chefe!',
 ];
 
 const CELEBRATING_KEYWORDS = ['✅', 'concluído', 'pronto', 'sucesso', 'exportado', 'seguro', 'perfeito', 'excelente', 'finalizado', 'aprovado', 'deferido', 'concedido', 'assinado', 'renovado', 'pago', 'liberado', 'autorizado'];
