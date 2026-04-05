@@ -548,6 +548,13 @@ export function FXKAssistant() {
                     {!loading && (
                       <div className="flex gap-0.5 ml-auto">
                         <button
+                          onClick={() => exportJoiPdf(msg.content)}
+                          className="h-4 w-4 rounded flex items-center justify-center transition-colors hover:bg-white/5"
+                          title="Exportar PDF"
+                        >
+                          <Download className="h-2.5 w-2.5" style={{ color: 'hsl(38 100% 55% / 0.5)' }} />
+                        </button>
+                        <button
                           onClick={() => handleFeedback(i, 'up')}
                           className={cn("h-4 w-4 rounded flex items-center justify-center transition-colors",
                             msg.feedback === 'up' ? "bg-green-500/20" : "hover:bg-white/5"
