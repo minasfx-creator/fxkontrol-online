@@ -209,5 +209,14 @@ export async function exportJoiPdf(markdownContent: string): Promise<void> {
   // Download
   const typeSlug = docType.toUpperCase();
   const dateSlug = now.toISOString().slice(0, 10).replace(/-/g, '');
-  doc.save(`JOI_${typeSlug}_${dateSlug}.pdf`);
+  const filename = `JOI_${typeSlug}_${dateSlug}.pdf`;
+  doc.save(filename);
+
+  const { toast } = await import('sonner');
+  toast.success(`📄 ${filename} exportado com sucesso!`);
+  } catch (err) {
+    console.error('PDF export error:', err);
+    const { toast } = await import('sonner');
+    toast.error('Erro ao exportar PDF. Tente novamente.');
+  }
 }

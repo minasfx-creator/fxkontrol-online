@@ -776,39 +776,43 @@ export function FXKAssistant() {
                   <div className="flex items-center justify-between mt-0.5">
                     {msg.ts && <span className="text-[6px] font-mono" style={{ color: 'hsl(190 100% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
                     {!loading && (
-                      <div className="flex gap-0.5 ml-auto">
+                      <div className="flex gap-1 ml-auto">
                         {/* Play individual message */}
                         {joiSpeech.supported && (
                           <button
                             onClick={() => joiSpeech.speakSingle(msg.content)}
-                            className="h-4 w-4 rounded flex items-center justify-center transition-colors hover:bg-white/5"
+                            className="h-7 px-1.5 rounded-md flex items-center gap-1 transition-all hover:scale-105 active:scale-95"
+                            style={{ background: 'hsl(38 100% 55% / 0.08)', border: '1px solid hsl(38 100% 55% / 0.15)' }}
                             title="Ouvir mensagem"
                           >
-                            <Play className="h-2.5 w-2.5" style={{ color: 'hsl(38 100% 55% / 0.5)' }} />
+                            <Play className="h-3 w-3" style={{ color: 'hsl(38 100% 55% / 0.7)' }} />
+                            <span className="text-[7px] font-mono" style={{ color: 'hsl(38 100% 55% / 0.6)' }}>OUVIR</span>
                           </button>
                         )}
                         <button
                           onClick={() => exportJoiPdf(msg.content)}
-                          className="h-4 w-4 rounded flex items-center justify-center transition-colors hover:bg-white/5"
+                          className="h-7 px-1.5 rounded-md flex items-center gap-1 transition-all hover:scale-105 active:scale-95"
+                          style={{ background: 'hsl(190 100% 50% / 0.08)', border: '1px solid hsl(190 100% 50% / 0.15)' }}
                           title="Exportar PDF"
                         >
-                          <Download className="h-2.5 w-2.5" style={{ color: 'hsl(38 100% 55% / 0.5)' }} />
+                          <FileText className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.7)' }} />
+                          <span className="text-[7px] font-mono" style={{ color: 'hsl(190 100% 50% / 0.6)' }}>PDF</span>
                         </button>
                         <button
                           onClick={() => handleFeedback(i, 'up')}
-                          className={cn("h-4 w-4 rounded flex items-center justify-center transition-colors",
-                            msg.feedback === 'up' ? "bg-green-500/20" : "hover:bg-white/5"
+                          className={cn("h-7 w-7 rounded-md flex items-center justify-center transition-all hover:scale-105 active:scale-95",
+                            msg.feedback === 'up' ? "bg-green-500/20 border border-green-500/30" : "hover:bg-white/5"
                           )}
                         >
-                          <ThumbsUp className="h-2.5 w-2.5" style={{ color: msg.feedback === 'up' ? 'hsl(120 70% 50%)' : 'hsl(190 100% 50% / 0.2)' }} />
+                          <ThumbsUp className="h-3 w-3" style={{ color: msg.feedback === 'up' ? 'hsl(120 70% 50%)' : 'hsl(190 100% 50% / 0.3)' }} />
                         </button>
                         <button
                           onClick={() => handleFeedback(i, 'down')}
-                          className={cn("h-4 w-4 rounded flex items-center justify-center transition-colors",
-                            msg.feedback === 'down' ? "bg-red-500/20" : "hover:bg-white/5"
+                          className={cn("h-7 w-7 rounded-md flex items-center justify-center transition-all hover:scale-105 active:scale-95",
+                            msg.feedback === 'down' ? "bg-red-500/20 border border-red-500/30" : "hover:bg-white/5"
                           )}
                         >
-                          <ThumbsDown className="h-2.5 w-2.5" style={{ color: msg.feedback === 'down' ? 'hsl(0 70% 50%)' : 'hsl(190 100% 50% / 0.2)' }} />
+                          <ThumbsDown className="h-3 w-3" style={{ color: msg.feedback === 'down' ? 'hsl(0 70% 50%)' : 'hsl(190 100% 50% / 0.3)' }} />
                         </button>
                       </div>
                     )}
