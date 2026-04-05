@@ -1,39 +1,42 @@
 
 
-## Fix: Joi Não Aparece no Mobile + Limpeza de Código
+## Recolorir Joi — Substituir Rosa por Cores da Plataforma
 
 ### Problema
+A Joi usa extensivamente `hsl(340 65% ...)` (rosa/magenta), que destoa da paleta oficial da plataforma FX KONTROL (cyan, âmbar, gold, orange).
 
-No mobile, o botão FAB da Joi (`bottom-20 right-3 z-[60]`) pode estar sendo coberto ou cortado pelo `DockBar` e pelo `safe-area-inset-bottom`. Além disso, o painel aberto usa `inset-3 bottom-20` que pode conflitar com o espaço do dock.
+### Estratégia de Cores
+Substituir todas as referências rosa `hsl(340 ...)` e `hsl(350 ...)` por tokens da plataforma:
 
-### Solução
-
-**1. Corrigir posicionamento mobile do FAB da Joi (`FXKAssistant.tsx`)**
-- Ajustar `bottom` do FAB para ficar acima do DockBar + safe-area (ex: `bottom-[88px]`)
-- Aumentar z-index para `z-[70]` para garantir visibilidade sobre qualquer overlay
-- Painel aberto no mobile: usar `bottom-[76px]` para não sobrepor o dock
-- Minimized bar: mesma correção de bottom
-
-**2. Limpar código legado no `JoiCinematicHologram.tsx`**
-- Remover efeito de chuva (rain) redundante — já existe no painel da FXKAssistant
-- Simplificar partículas dissolve que raramente são visíveis
-- Manter apenas: parallax + eye glow + closeup + emoções + breathing + scanlines
-
-**3. Limpar código legado no `FXKAssistant.tsx`**
-- Remover `VoiceWave` não utilizado no fluxo principal (só aparece no minimized bar)
-- Simplificar idle phrases — reduzir de 8 para 4 frases mais impactantes
-- Remover botão `Maximize2` (expand) no mobile — não faz sentido em tela cheia
-- Remover sidebar hologram no mobile (`expanded && !isMobile`) — já está correto, confirmar
-
-**4. Garantir visibilidade em todos os estados mobile**
-- FAB fechado: visível acima do dock
-- Painel aberto: fullscreen mobile com gap para o dock
-- Minimized: barra visível acima do dock
+| Uso atual (rosa) | Novo (plataforma) |
+|---|---|
+| Glow principal, borders, shadows | **Cyan** `hsl(190 100% 50%)` / `var(--fxk-cyan)` |
+| Texto de label, status, accents | **Âmbar** `hsl(38 100% 50%)` / `var(--fxk-amber)` |
+| Partículas, detalhes secundários | **Gold** `hsl(45 100% 50%)` / `var(--fxk-gold)` |
+| Celebração | **Gold/Orange** (já usa `hsl(42 ...)`, manter) |
+| Seriedade | **Âmbar** `hsl(32 80% ...)` (já usa, manter) |
 
 ### Arquivos Modificados
 
-| Arquivo | Alteração |
-|---|---|
-| `src/components/FXKAssistant.tsx` | Fix posicionamento mobile, limpeza de código redundante |
-| `src/components/JoiCinematicHologram.tsx` | Remover rain e dissolve particles, simplificar |
+**1. `src/components/FXKAssistant.tsx`** (~30 substituições)
+- FAB gradient: `hsl(340 ...)` → cyan + âmbar
+- Borders, shadows do painel: rosa → cyan com baixa opacidade
+- Textos "JOI · COMPANION": rosa → âmbar
+- Status dot, ícones de ação: rosa → cyan/âmbar
+- Typewriter cursor color: rosa → âmbar
+- VoiceWave bars: rosa → cyan
+- Minimized bar border: rosa → cyan
+
+**2. `src/components/JoiCinematicHologram.tsx`** (~20 substituições)
+- Ambient glow: rosa → cyan
+- Halo, projector cone: rosa → cyan
+- Eye shimmer: rosa → âmbar (warmth para intimismo)
+- Drop-shadows das imagens: rosa → cyan
+- Scanline sweep: rosa → cyan
+- Chromatic aberration hue-rotate: ajustar para cyan spectrum
+- Micro-particles: rosa → alternar cyan e âmbar
+
+**3. `src/index.css`** (cursor typewriter)
+- `.joi-typewriter-cursor`: rosa → âmbar
+- Qualquer keyframe com `hsl(340 ...)` → cyan ou âmbar conforme contexto
 
