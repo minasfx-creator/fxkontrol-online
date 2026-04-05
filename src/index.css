@@ -970,6 +970,19 @@ button:active {
 
 
 
+/* Joi FAB breathing animation */
+@keyframes joi-fab-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+
+/* Joi listening ring pulse */
+@keyframes joi-listening-ring {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+
+
 /* ===== BR2049 Console Boot Animations ===== */
 @keyframes console-boot {
   0% { opacity: 0; clip-path: inset(50% 0 50% 0); }
