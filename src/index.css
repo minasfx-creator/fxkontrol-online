@@ -2009,8 +2009,8 @@ button:active {
   width: 1px;
   height: 1em;
   margin-left: 1px;
-  background: hsl(340 65% 60%);
-  box-shadow: 0 0 6px hsl(340 65% 55% / 0.5), 0 0 12px hsl(340 65% 50% / 0.3);
+  background: hsl(38 100% 55%);
+  box-shadow: 0 0 6px hsl(38 100% 50% / 0.5), 0 0 12px hsl(38 100% 45% / 0.3);
   animation: joi-typewriter-cursor 1s ease-in-out infinite;
   vertical-align: text-bottom;
 }

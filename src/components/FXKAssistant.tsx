@@ -1,6 +1,6 @@
 /**
  * FXKAssistant — "Joi" BR2049 AI Companion
- * Warm cinematic presence, contextual greetings, typing reactions, presence states
+ * Cyan-Âmbar-Gold palette, cinematic presence, contextual greetings, typing reactions
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
@@ -51,7 +51,7 @@ function detectEmotion(text: string): JoiEmotion {
   return 'caring';
 }
 
-/** Typewriter greeting — reveals text char by char with blinking cursor */
+/** Typewriter greeting */
 function TypewriterGreeting({ text }: { text: string }) {
   const [displayed, setDisplayed] = useState('');
   const [done, setDone] = useState(false);
@@ -69,7 +69,7 @@ function TypewriterGreeting({ text }: { text: string }) {
   }, [text]);
 
   return (
-    <p className="text-[10px] font-mono tracking-[0.12em] text-center max-w-[220px] min-h-[2em]" style={{ color: 'hsl(340 65% 70% / 0.8)' }}>
+    <p className="text-[10px] font-mono tracking-[0.12em] text-center max-w-[220px] min-h-[2em]" style={{ color: 'hsl(38 100% 55% / 0.8)' }}>
       {displayed}
       {!done && <span className="joi-typewriter-cursor" />}
     </p>
@@ -164,13 +164,13 @@ function ThinkingWave() {
             key={i}
             className="w-[2px] rounded-full"
             style={{
-              background: `hsl(340 65% ${50 + i * 2}% / ${0.3 + Math.sin(i * 0.8) * 0.2})`,
+              background: `hsl(190 100% ${45 + i * 2}% / ${0.3 + Math.sin(i * 0.8) * 0.2})`,
               animation: `voice-wave 1.2s ease-in-out ${i * 60}ms infinite`,
             }}
           />
         ))}
       </div>
-      <span className="text-[7px] font-mono tracking-[0.2em] uppercase" style={{ color: 'hsl(340 65% 55% / 0.5)' }}>
+      <span className="text-[7px] font-mono tracking-[0.2em] uppercase" style={{ color: 'hsl(190 100% 50% / 0.5)' }}>
         PROCESSANDO
       </span>
     </div>
@@ -204,7 +204,6 @@ export function FXKAssistant() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isAtBottom = useRef(true);
 
-  // Idle presence phrases
   useEffect(() => {
     if (messages.length > 0 || loading) return;
     const interval = setInterval(() => {
@@ -213,7 +212,6 @@ export function FXKAssistant() {
     return () => clearInterval(interval);
   }, [messages.length, loading]);
 
-  // Emotion detection from last assistant message
   useEffect(() => {
     const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
     if (!lastAssistant || loading) {
@@ -222,16 +220,13 @@ export function FXKAssistant() {
     }
     const emotion = detectEmotion(lastAssistant.content);
     setJoiEmotion(emotion);
-    // Celebration sound
     if (emotion === 'celebrating') {
-      playGlitchBurst(0.1, 1.6); // higher pitch = celebratory
+      playGlitchBurst(0.1, 1.6);
     }
-    // Reset emotion after 8s
     const t = setTimeout(() => setJoiEmotion('caring'), 8000);
     return () => clearTimeout(t);
   }, [messages, loading]);
 
-  // Status text rotation
   useEffect(() => {
     if (loading) {
       setStatusText('PROCESSING...');
@@ -248,7 +243,6 @@ export function FXKAssistant() {
     }
   }, [loading, isTyping, messages.length, joiEmotion]);
 
-  // Typing detection → Joi reacts
   useEffect(() => {
     if (input.length > 0) {
       setIsTyping(true);
@@ -258,14 +252,12 @@ export function FXKAssistant() {
     }
   }, [input]);
 
-  // Check connection on mount
   useEffect(() => {
     fetch(CHAT_URL, { method: 'OPTIONS' })
       .then(() => setConnectionOk(true))
       .catch(() => setConnectionOk(false));
   }, []);
 
-  // Smart auto-scroll
   useEffect(() => {
     if (isAtBottom.current) {
       endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -278,12 +270,10 @@ export function FXKAssistant() {
     isAtBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
   }, []);
 
-  // Save history
   useEffect(() => {
     if (messages.length > 0) saveHistory(messages);
   }, [messages]);
 
-  // Auto-resize textarea
   useEffect(() => {
     const ta = textareaRef.current;
     if (ta) {
@@ -292,7 +282,6 @@ export function FXKAssistant() {
     }
   }, [input]);
 
-  // Materializing sound on open
   useEffect(() => {
     if (open && !minimized) {
       playGlitchBurst(0.08);
@@ -363,7 +352,7 @@ export function FXKAssistant() {
 
   const panelWidth = isMobile ? undefined : (expanded ? 560 : 360);
 
-  // Bubble — always cinematic
+  // FAB
   if (!open) {
     return (
       <button
@@ -373,13 +362,13 @@ export function FXKAssistant() {
           isMobile ? "bottom-[88px] right-3 h-14 w-14" : "bottom-5 right-5 h-16 w-16"
         )}
         style={{
-          background: 'radial-gradient(circle at 35% 35%, hsl(340 65% 55%), hsl(32 80% 42%))',
-          boxShadow: '0 0 30px hsl(340 65% 50% / 0.35), 0 0 60px hsl(32 80% 45% / 0.12), inset 0 1px 0 hsl(340 65% 70% / 0.25)',
+          background: 'radial-gradient(circle at 35% 35%, hsl(190 100% 45%), hsl(38 100% 42%))',
+          boxShadow: '0 0 30px hsl(190 100% 50% / 0.35), 0 0 60px hsl(38 100% 45% / 0.12), inset 0 1px 0 hsl(190 100% 60% / 0.25)',
           willChange: 'transform',
         }}
       >
         <JoiCinematicHologram size="sm" state="idle" className="w-8 h-12 sm:w-9 sm:h-14 group-hover:scale-105 transition-transform" />
-        <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full animate-amber-pulse" style={{ background: 'hsl(340 65% 55%)' }} />
+        <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full animate-amber-pulse" style={{ background: 'hsl(190 100% 50%)' }} />
       </button>
     );
   }
@@ -395,12 +384,12 @@ export function FXKAssistant() {
         )}
         style={{
           background: 'hsl(220 22% 5% / 0.92)',
-          borderColor: 'hsl(340 65% 50% / 0.25)',
+          borderColor: 'hsl(190 100% 50% / 0.25)',
           backdropFilter: 'blur(20px)',
         }}
       >
-        <div className="w-2 h-2 rounded-full" style={{ background: loading ? 'hsl(340 65% 58%)' : 'hsl(340 65% 40%)', boxShadow: loading ? '0 0 6px hsl(340 65% 55%)' : 'none', transition: 'all 0.3s' }} />
-        <span className="text-[10px] font-mono tracking-[0.2em] uppercase" style={{ color: 'hsl(340 65% 60%)' }}>
+        <div className="w-2 h-2 rounded-full" style={{ background: loading ? 'hsl(190 100% 50%)' : 'hsl(190 100% 35%)', boxShadow: loading ? '0 0 6px hsl(190 100% 50%)' : 'none', transition: 'all 0.3s' }} />
+        <span className="text-[10px] font-mono tracking-[0.2em] uppercase" style={{ color: 'hsl(38 100% 55%)' }}>
           JOI · COMPANION
         </span>
       </div>
@@ -417,8 +406,8 @@ export function FXKAssistant() {
       style={{
         width: isMobile ? undefined : panelWidth,
         background: 'hsl(220 22% 4% / 0.96)',
-        border: '1px solid hsl(340 65% 50% / 0.15)',
-        boxShadow: '0 0 50px hsl(340 65% 50% / 0.08), 0 0 100px hsl(32 80% 45% / 0.05), 0 20px 80px hsl(0 0% 0% / 0.7)',
+        border: '1px solid hsl(190 100% 50% / 0.15)',
+        boxShadow: '0 0 50px hsl(190 100% 50% / 0.08), 0 0 100px hsl(38 100% 45% / 0.05), 0 20px 80px hsl(0 0% 0% / 0.7)',
         backdropFilter: 'blur(32px)',
       }}
     >
@@ -428,15 +417,15 @@ export function FXKAssistant() {
       {/* Rain overlay when idle */}
       {messages.length === 0 && <div className="absolute inset-0 pointer-events-none br2049-rain rounded-xl" style={{ zIndex: 1 }} />}
 
-      {/* Header — always cinematic */}
-      <div className="relative z-10 flex items-center gap-2.5 px-3 py-3 shrink-0" style={{ borderBottom: '1px solid hsl(340 65% 50% / 0.1)' }}>
+      {/* Header */}
+      <div className="relative z-10 flex items-center gap-2.5 px-3 py-3 shrink-0" style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.1)' }}>
         <div className="cursor-pointer hover:brightness-125 transition-all">
           <JoiCinematicHologram size="sm" state={joiState} glitching={glitching} emotion={joiEmotion} className="w-10 h-16 shrink-0" />
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-mono font-bold tracking-[0.25em] uppercase" style={{ color: 'hsl(340 65% 65%)' }}>
+            <span className="text-[10px] font-mono font-bold tracking-[0.25em] uppercase" style={{ color: 'hsl(38 100% 55%)' }}>
               JOI · COMPANION
             </span>
             <div className={cn("w-1.5 h-1.5 rounded-full",
@@ -444,25 +433,25 @@ export function FXKAssistant() {
             )} style={{ boxShadow: connectionOk === true ? '0 0 4px hsl(120 70% 50%)' : 'none' }} />
           </div>
           <span className="text-[7px] font-mono tracking-[0.15em] uppercase transition-all duration-500" style={{
-            color: joiEmotion === 'celebrating' ? 'hsl(42 90% 60%)' : joiEmotion === 'serious' ? 'hsl(32 80% 55%)' : 'hsl(340 65% 55% / 0.4)',
+            color: joiEmotion === 'celebrating' ? 'hsl(42 90% 60%)' : joiEmotion === 'serious' ? 'hsl(32 80% 55%)' : 'hsl(190 100% 50% / 0.4)',
           }}>
             {statusText}
           </span>
         </div>
 
         <button onClick={clearMessages} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Clear">
-          <Trash2 className="h-3 w-3" style={{ color: 'hsl(340 65% 55% / 0.4)' }} />
+          <Trash2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.4)' }} />
         </button>
         {!isMobile && (
           <button onClick={() => setExpanded(!expanded)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Expand">
-            <Maximize2 className="h-3 w-3" style={{ color: 'hsl(340 65% 55% / 0.6)' }} />
+            <Maximize2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
           </button>
         )}
         <button onClick={() => setMinimized(true)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors">
-          <Minimize2 className="h-3 w-3" style={{ color: 'hsl(340 65% 55% / 0.6)' }} />
+          <Minimize2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
         </button>
         <button onClick={handleClose} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors">
-          <X className="h-3 w-3" style={{ color: 'hsl(340 65% 55% / 0.6)' }} />
+          <X className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
         </button>
       </div>
 
@@ -470,9 +459,9 @@ export function FXKAssistant() {
       <div className="relative z-10 flex flex-1 overflow-hidden">
         {/* Sidebar hologram (expanded only) */}
         {expanded && messages.length > 0 && !isMobile && (
-          <div className="w-[120px] shrink-0 flex flex-col items-center justify-center border-r" style={{ borderColor: 'hsl(340 65% 50% / 0.08)', background: 'hsl(220 22% 3% / 0.5)' }}>
+          <div className="w-[120px] shrink-0 flex flex-col items-center justify-center border-r" style={{ borderColor: 'hsl(190 100% 50% / 0.08)', background: 'hsl(220 22% 3% / 0.5)' }}>
             <JoiCinematicHologram size="lg" state={joiState} glitching={glitching} emotion={joiEmotion} className="w-24 h-48" />
-            <span className="text-[6px] font-mono tracking-[0.2em] uppercase mt-2" style={{ color: 'hsl(340 65% 55% / 0.4)' }}>
+            <span className="text-[6px] font-mono tracking-[0.2em] uppercase mt-2" style={{ color: 'hsl(190 100% 50% / 0.4)' }}>
               {statusText}
             </span>
           </div>
@@ -483,13 +472,13 @@ export function FXKAssistant() {
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-3 opacity-90">
               {/* Close-up cinematográfico */}
-              <div className="relative w-64 h-72 rounded-3xl overflow-hidden joi-closeup-entrance" style={{ boxShadow: '0 0 50px hsl(340 65% 50% / 0.2), 0 0 100px hsl(32 80% 45% / 0.1), inset 0 0 60px hsl(220 22% 4% / 0.5)', background: 'radial-gradient(ellipse at 50% 40%, hsl(220 22% 8%) 0%, hsl(220 22% 3%) 100%)' }}>
+              <div className="relative w-64 h-72 rounded-3xl overflow-hidden joi-closeup-entrance" style={{ boxShadow: '0 0 50px hsl(190 100% 50% / 0.2), 0 0 100px hsl(38 100% 45% / 0.1), inset 0 0 60px hsl(220 22% 4% / 0.5)', background: 'radial-gradient(ellipse at 50% 40%, hsl(220 22% 8%) 0%, hsl(220 22% 3%) 100%)' }}>
                 <JoiCinematicHologram size="xl" state="materializing" glitching={glitching} emotion={joiEmotion} variant="closeup" className="w-full h-full" />
               </div>
               {/* Typewriter greeting */}
               <TypewriterGreeting text={getGreeting()} />
               {/* Idle presence phrase */}
-              <p className="text-[7px] font-mono tracking-[0.2em] uppercase text-center transition-all duration-1000" style={{ color: 'hsl(340 65% 50% / 0.3)' }}>
+              <p className="text-[7px] font-mono tracking-[0.2em] uppercase text-center transition-all duration-1000" style={{ color: 'hsl(190 100% 50% / 0.3)' }}>
                 {IDLE_PHRASES[idlePhrase]}
               </p>
               <div className="flex flex-wrap gap-1.5 justify-center px-2">
@@ -499,9 +488,9 @@ export function FXKAssistant() {
                     onClick={() => send(p.prompt)}
                     className="flex items-center gap-1 px-2.5 py-2 rounded-lg text-[8px] font-mono tracking-wider uppercase transition-all hover:scale-105 active:scale-95 animate-fade-in"
                     style={{
-                      background: 'hsl(340 65% 50% / 0.06)',
-                      border: '1px solid hsl(340 65% 50% / 0.12)',
-                      color: 'hsl(340 65% 65%)',
+                      background: 'hsl(190 100% 50% / 0.06)',
+                      border: '1px solid hsl(190 100% 50% / 0.12)',
+                      color: 'hsl(38 100% 55%)',
                       animationDelay: `${idx * 50}ms`,
                     }}
                   >
@@ -524,14 +513,14 @@ export function FXKAssistant() {
                   <div
                     className="px-3 py-2 rounded-lg rounded-br-sm text-[11px] font-mono leading-relaxed"
                     style={{
-                      background: 'hsl(340 65% 50% / 0.08)',
-                      border: '1px solid hsl(340 65% 50% / 0.15)',
-                      color: 'hsl(340 65% 85%)',
+                      background: 'hsl(190 100% 50% / 0.08)',
+                      border: '1px solid hsl(190 100% 50% / 0.15)',
+                      color: 'hsl(190 100% 85%)',
                     }}
                   >
                     {msg.content}
                   </div>
-                  {msg.ts && <span className="text-[6px] font-mono block text-right mt-0.5" style={{ color: 'hsl(340 65% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
+                  {msg.ts && <span className="text-[6px] font-mono block text-right mt-0.5" style={{ color: 'hsl(190 100% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
                 </div>
               ) : (
                 <div>
@@ -541,18 +530,18 @@ export function FXKAssistant() {
                       borderLeft: `2px solid ${
                         detectEmotion(msg.content) === 'celebrating' ? 'hsl(42 90% 55% / 0.5)'
                           : detectEmotion(msg.content) === 'serious' ? 'hsl(32 80% 50% / 0.5)'
-                            : 'hsl(340 65% 55% / 0.3)'
+                            : 'hsl(190 100% 50% / 0.3)'
                       }`,
                       background: 'hsl(220 20% 6% / 0.6)',
                       color: 'hsl(180 8% 82%)',
                     }}
                   >
-                    <div className="prose prose-invert prose-xs max-w-none [&_p]:my-1 [&_code]:text-[hsl(340_65%_70%)] [&_code]:bg-transparent [&_pre]:bg-[hsl(220_20%_8%)] [&_pre]:border [&_pre]:border-[hsl(340_65%_50%/0.1)] [&_strong]:text-[hsl(340_65%_75%)] [&_a]:text-[hsl(340_65%_65%)]">
+                    <div className="prose prose-invert prose-xs max-w-none [&_p]:my-1 [&_code]:text-[hsl(190_100%_70%)] [&_code]:bg-transparent [&_pre]:bg-[hsl(220_20%_8%)] [&_pre]:border [&_pre]:border-[hsl(190_100%_50%/0.1)] [&_strong]:text-[hsl(38_100%_65%)] [&_a]:text-[hsl(190_100%_60%)]">
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-0.5">
-                    {msg.ts && <span className="text-[6px] font-mono" style={{ color: 'hsl(340 65% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
+                    {msg.ts && <span className="text-[6px] font-mono" style={{ color: 'hsl(190 100% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
                     {!loading && (
                       <div className="flex gap-0.5 ml-auto">
                         <button
@@ -561,7 +550,7 @@ export function FXKAssistant() {
                             msg.feedback === 'up' ? "bg-green-500/20" : "hover:bg-white/5"
                           )}
                         >
-                          <ThumbsUp className="h-2.5 w-2.5" style={{ color: msg.feedback === 'up' ? 'hsl(120 70% 50%)' : 'hsl(340 65% 50% / 0.2)' }} />
+                          <ThumbsUp className="h-2.5 w-2.5" style={{ color: msg.feedback === 'up' ? 'hsl(120 70% 50%)' : 'hsl(190 100% 50% / 0.2)' }} />
                         </button>
                         <button
                           onClick={() => handleFeedback(i, 'down')}
@@ -569,7 +558,7 @@ export function FXKAssistant() {
                             msg.feedback === 'down' ? "bg-red-500/20" : "hover:bg-white/5"
                           )}
                         >
-                          <ThumbsDown className="h-2.5 w-2.5" style={{ color: msg.feedback === 'down' ? 'hsl(0 70% 50%)' : 'hsl(340 65% 50% / 0.2)' }} />
+                          <ThumbsDown className="h-2.5 w-2.5" style={{ color: msg.feedback === 'down' ? 'hsl(0 70% 50%)' : 'hsl(190 100% 50% / 0.2)' }} />
                         </button>
                       </div>
                     )}
@@ -588,7 +577,7 @@ export function FXKAssistant() {
 
       {/* Quick presets */}
       {messages.length > 0 && (
-        <div className="relative z-10 flex gap-1 px-3 py-1.5 overflow-x-auto shrink-0" style={{ borderTop: '1px solid hsl(340 65% 50% / 0.06)' }}>
+        <div className="relative z-10 flex gap-1 px-3 py-1.5 overflow-x-auto shrink-0" style={{ borderTop: '1px solid hsl(190 100% 50% / 0.06)' }}>
           {presets.map(p => (
             <button
               key={p.label}
@@ -596,9 +585,9 @@ export function FXKAssistant() {
               disabled={loading}
               className="shrink-0 px-2 py-1 rounded text-[7px] font-mono tracking-wider uppercase transition-colors disabled:opacity-30"
               style={{
-                background: 'hsl(340 65% 50% / 0.05)',
-                border: '1px solid hsl(340 65% 50% / 0.08)',
-                color: 'hsl(340 65% 60%)',
+                background: 'hsl(190 100% 50% / 0.05)',
+                border: '1px solid hsl(190 100% 50% / 0.08)',
+                color: 'hsl(38 100% 55%)',
               }}
             >
               {p.label}
@@ -608,19 +597,19 @@ export function FXKAssistant() {
       )}
 
       {/* Input */}
-      <div className="relative z-10 p-2.5 shrink-0" style={{ borderTop: '1px solid hsl(340 65% 50% / 0.08)' }}>
+      <div className="relative z-10 p-2.5 shrink-0" style={{ borderTop: '1px solid hsl(190 100% 50% / 0.08)' }}>
         <div
           className="flex items-end gap-1.5 rounded-lg px-3 py-2 transition-all duration-300"
           style={{
             background: 'hsl(220 20% 5%)',
-            border: `1px solid ${isTyping ? 'hsl(340 65% 55% / 0.25)' : 'hsl(340 65% 50% / 0.08)'}`,
+            border: `1px solid ${isTyping ? 'hsl(190 100% 50% / 0.25)' : 'hsl(190 100% 50% / 0.08)'}`,
           }}
         >
-          <span className="text-[10px] font-mono shrink-0 pb-0.5" style={{ color: 'hsl(340 65% 55% / 0.4)' }}>&gt;_</span>
+          <span className="text-[10px] font-mono shrink-0 pb-0.5" style={{ color: 'hsl(190 100% 50% / 0.4)' }}>&gt;_</span>
           <textarea
             ref={textareaRef}
-            className="flex-1 bg-transparent border-none outline-none text-[11px] font-mono placeholder:text-[hsl(340_65%_50%/0.2)] resize-none overflow-hidden leading-relaxed"
-            style={{ color: 'hsl(340 65% 80%)', caretColor: 'hsl(340 65% 55%)', minHeight: '20px', maxHeight: '80px' }}
+            className="flex-1 bg-transparent border-none outline-none text-[11px] font-mono placeholder:text-[hsl(190_100%_50%/0.2)] resize-none overflow-hidden leading-relaxed"
+            style={{ color: 'hsl(38 100% 80%)', caretColor: 'hsl(190 100% 50%)', minHeight: '20px', maxHeight: '80px' }}
             placeholder="Comando... (Shift+Enter nova linha)"
             value={input}
             onChange={e => setInput(e.target.value)}
@@ -632,9 +621,9 @@ export function FXKAssistant() {
             onClick={() => send(input)}
             disabled={!input.trim() || loading}
             className="h-7 w-7 rounded flex items-center justify-center transition-all disabled:opacity-20 hover:scale-110 active:scale-90 shrink-0"
-            style={{ background: input.trim() ? 'hsl(340 65% 55% / 0.15)' : 'transparent' }}
+            style={{ background: input.trim() ? 'hsl(190 100% 50% / 0.15)' : 'transparent' }}
           >
-            <Send className="h-3.5 w-3.5" style={{ color: 'hsl(340 65% 60%)' }} />
+            <Send className="h-3.5 w-3.5" style={{ color: 'hsl(190 100% 55%)' }} />
           </button>
         </div>
       </div>
