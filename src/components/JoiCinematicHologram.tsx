@@ -149,7 +149,7 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
         }}
       />
 
-      {/* Main image container */}
+      {/* Main image container — with parallax tilt */}
       <div
         className={cn(
           'relative z-10 w-full h-full flex items-center justify-center',
@@ -157,8 +157,9 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
         )}
         style={{
           clipPath: isMat && !materialised ? 'inset(100% 0 0 0)' : 'inset(0 0 0 0)',
-          transition: isMat ? 'clip-path 2.2s cubic-bezier(0.16, 1, 0.3, 1)' : undefined,
-          transformOrigin: '50% 85%',
+          transition: isMat ? 'clip-path 2.2s cubic-bezier(0.16, 1, 0.3, 1)' : 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
+          transformOrigin: '50% 50%',
+          transform: `perspective(600px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) translateX(${tilt.y * 0.8}px) translateY(${tilt.x * -0.5}px)`,
           animation: glitching ? 'joi-glitch-burst 0.8s steps(1, end) both' : undefined,
         }}
       >
