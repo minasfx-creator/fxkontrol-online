@@ -369,8 +369,8 @@ export function FXKAssistant() {
       <button
         onClick={() => setOpen(true)}
         className={cn(
-          "fixed z-[60] group rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 touch-target-lg",
-          isMobile ? "bottom-20 right-3 h-14 w-14" : "bottom-5 right-5 h-16 w-16"
+          "fixed z-[70] group rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 touch-target-lg",
+          isMobile ? "bottom-[88px] right-3 h-14 w-14" : "bottom-5 right-5 h-16 w-16"
         )}
         style={{
           background: 'radial-gradient(circle at 35% 35%, hsl(340 65% 55%), hsl(32 80% 42%))',
