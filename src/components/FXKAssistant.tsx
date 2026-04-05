@@ -425,7 +425,9 @@ export function FXKAssistant() {
   const panelWidth = isMobile ? undefined : (expanded ? 560 : 360);
   const isListening = voiceRecognition.state === 'listening';
 
-  // FAB — Joi face icon
+  const fabState = joiSpeech.speaking ? 'speaking' : isListening ? 'listening' : loading ? 'processing' : 'idle';
+
+  // FAB — Joi face icon with multi-state visuals
   if (!open) {
     return (
       <button
@@ -436,48 +438,115 @@ export function FXKAssistant() {
         )}
         style={{ willChange: 'transform' }}
       >
-        {/* Breathing glow ring */}
+        {/* State-specific outer effects */}
+        {fabState === 'listening' && (
+          <>
+            {[0, 1, 2].map(i => (
+              <div
+                key={i}
+                className="absolute inset-0 rounded-full"
+                style={{
+                  border: '1.5px solid hsl(190 100% 50% / 0.4)',
+                  animation: `joi-listening-ripple 2s ease-out ${i * 0.6}s infinite`,
+                }}
+              />
+            ))}
+          </>
+        )}
+        {fabState === 'processing' && (
+          <div
+            className="absolute inset-[-6px] rounded-full"
+            style={{ animation: 'joi-processing-orbit 2s linear infinite' }}
+          >
+            {[0, 1, 2].map(i => (
+              <div
+                key={i}
+                className="absolute w-2 h-2 rounded-full"
+                style={{
+                  background: 'hsl(38 100% 55%)',
+                  boxShadow: '0 0 8px hsl(38 100% 50% / 0.6)',
+                  top: '50%',
+                  left: '50%',
+                  transform: `rotate(${i * 120}deg) translateY(-${isMobile ? 34 : 38}px) translate(-50%, -50%)`,
+                }}
+              />
+            ))}
+          </div>
+        )}
+        {fabState === 'speaking' && (
+          <div
+            className="absolute inset-[-3px] rounded-full"
+            style={{
+              border: '2px solid hsl(38 100% 50% / 0.5)',
+              animation: 'joi-speaking-pulse 1.5s ease-in-out infinite',
+            }}
+          />
+        )}
+
+        {/* Base glow ring */}
         <div
           className="absolute inset-0 rounded-full"
           style={{
-            background: 'radial-gradient(circle, hsl(190 100% 50% / 0.25), hsl(38 100% 50% / 0.1), transparent)',
-            animation: 'joi-fab-breathe 3s ease-in-out infinite',
+            background: fabState === 'speaking'
+              ? 'radial-gradient(circle, hsl(38 100% 50% / 0.25), hsl(45 100% 50% / 0.1), transparent)'
+              : fabState === 'processing'
+                ? 'radial-gradient(circle, hsl(38 100% 50% / 0.2), transparent)'
+                : 'radial-gradient(circle, hsl(190 100% 50% / 0.25), hsl(38 100% 50% / 0.1), transparent)',
+            animation: fabState === 'idle' ? 'joi-fab-breathe 3s ease-in-out infinite' : undefined,
           }}
         />
-        {/* Outer cyan glow border */}
+        {/* Outer border */}
         <div
-          className="absolute inset-0 rounded-full"
+          className="absolute inset-0 rounded-full transition-all duration-500"
           style={{
-            border: '2px solid hsl(190 100% 50% / 0.5)',
-            boxShadow: '0 0 20px hsl(190 100% 50% / 0.3), 0 0 40px hsl(38 100% 45% / 0.1), inset 0 0 15px hsl(190 100% 50% / 0.1)',
-            animation: 'joi-fab-breathe 3s ease-in-out infinite',
+            border: `2px solid ${
+              fabState === 'speaking' ? 'hsl(38 100% 50% / 0.6)'
+                : fabState === 'listening' ? 'hsl(190 100% 50% / 0.7)'
+                  : fabState === 'processing' ? 'hsl(38 100% 50% / 0.4)'
+                    : 'hsl(190 100% 50% / 0.5)'
+            }`,
+            boxShadow: fabState === 'speaking'
+              ? '0 0 25px hsl(38 100% 50% / 0.35), inset 0 0 15px hsl(38 100% 50% / 0.1)'
+              : fabState === 'listening'
+                ? '0 0 30px hsl(190 100% 50% / 0.4), inset 0 0 15px hsl(190 100% 50% / 0.1)'
+                : '0 0 20px hsl(190 100% 50% / 0.3), 0 0 40px hsl(38 100% 45% / 0.1), inset 0 0 15px hsl(190 100% 50% / 0.1)',
+            animation: fabState === 'idle' ? 'joi-fab-breathe 3s ease-in-out infinite' : undefined,
           }}
         />
         {/* Joi face image */}
         <img
           src={joiFaceIcon}
           alt="Joi"
-          className="w-full h-full rounded-full object-cover relative z-10"
+          className="w-full h-full rounded-full object-cover relative z-10 transition-all duration-300"
           style={{
-            filter: 'contrast(1.05) brightness(0.95)',
+            filter: fabState === 'speaking' ? 'contrast(1.1) brightness(1.05) saturate(1.1)' : 'contrast(1.05) brightness(0.95)',
           }}
         />
+        {/* Mini speaking wave bars around FAB */}
+        {fabState === 'speaking' && (
+          <div className="absolute inset-[-10px] z-0 flex items-center justify-center">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div
+                key={i}
+                className="absolute w-[2px] rounded-full origin-bottom"
+                style={{
+                  background: 'hsl(38 100% 55% / 0.6)',
+                  transform: `rotate(${i * 45}deg) translateY(-${isMobile ? 32 : 36}px)`,
+                  animation: `joi-mouth-speak 0.6s ease-in-out ${i * 75}ms infinite`,
+                }}
+              />
+            ))}
+          </div>
+        )}
         {/* Status ping */}
         <span
-          className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full animate-amber-pulse z-20"
-          style={{ background: 'hsl(190 100% 50%)', boxShadow: '0 0 8px hsl(190 100% 50% / 0.6)' }}
+          className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full z-20 transition-colors duration-300"
+          style={{
+            background: fabState === 'speaking' ? 'hsl(38 100% 55%)' : fabState === 'listening' ? 'hsl(190 100% 55%)' : 'hsl(190 100% 50%)',
+            boxShadow: `0 0 8px ${fabState === 'speaking' ? 'hsl(38 100% 50% / 0.6)' : 'hsl(190 100% 50% / 0.6)'}`,
+            animation: fabState !== 'idle' ? undefined : 'joi-fab-breathe 2s ease-in-out infinite',
+          }}
         />
-        {/* Listening indicator on FAB */}
-        {isListening && (
-          <div
-            className="absolute inset-[-4px] rounded-full z-0"
-            style={{
-              border: '2px solid hsl(190 100% 50% / 0.7)',
-              animation: 'joi-listening-ring 1.5s ease-in-out infinite',
-              boxShadow: '0 0 25px hsl(190 100% 50% / 0.4)',
-            }}
-          />
-        )}
       </button>
     );
   }
