@@ -38,6 +38,8 @@ const PRESETS_EDITOR = [
   { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos urgentes.' },
   { label: 'CONTRATO', icon: Zap, prompt: 'Me ajude a redigir uma proposta comercial ou contrato para este projeto de show.' },
   { label: 'LICITAÇÃO', icon: Gavel, prompt: 'Me ajude a analisar um edital de licitação e preparar proposta para este tipo de show.' },
+  { label: 'ESPAÇO AÉREO', icon: Plane, prompt: 'Me ajude a preparar a documentação de fechamento de espaço aéreo e planta de distanciamento para este show.' },
+  { label: 'PLANTA', icon: MapPin, prompt: 'Gere uma planta de distanciamento de segurança conforme NFPA 1123 para este projeto.' },
 ];
 
 const IDLE_PHRASES = [
