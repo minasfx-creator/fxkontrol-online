@@ -1,10 +1,9 @@
 /**
- * JoiStatusMonitor — Mini HUD with holographic Joi avatar
+ * JoiStatusMonitor — Mini HUD with cinematic Joi avatar
  * Shows FPS, drone count, connection status
- * Click to expand full FXK Assistant
  */
 import { useState, useEffect, useRef } from 'react';
-import JoiHologramAvatar from '@/components/JoiHologramAvatar';
+import JoiCinematicHologram from '@/components/JoiCinematicHologram';
 import { useProjectStore } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 
@@ -16,7 +15,6 @@ export default function JoiStatusMonitor() {
   const frameTimesRef = useRef<number[]>([]);
   const lastRef = useRef(performance.now());
 
-  // FPS counter
   useEffect(() => {
     let raf: number;
     const tick = () => {
@@ -25,7 +23,6 @@ export default function JoiStatusMonitor() {
       lastRef.current = now;
       frameTimesRef.current.push(delta);
       if (frameTimesRef.current.length > 30) frameTimesRef.current.shift();
-
       const avg = frameTimesRef.current.reduce((a, b) => a + b, 0) / frameTimesRef.current.length;
       setFps(Math.round(1000 / avg));
       raf = requestAnimationFrame(tick);
@@ -39,7 +36,6 @@ export default function JoiStatusMonitor() {
 
   return (
     <div className="absolute top-3 right-14 z-30 flex items-center gap-2">
-      {/* Status chips */}
       <div className="flex items-center gap-1 bg-background/60 backdrop-blur-xl border border-border/15 rounded-xl px-2 py-1">
         <span className={cn(
           "text-[9px] font-mono-code tabular-nums",
@@ -65,12 +61,10 @@ export default function JoiStatusMonitor() {
         </span>
       </div>
 
-      {/* Joi Avatar */}
-      <div className="cursor-pointer" title="AI Assistant">
-        <JoiHologramAvatar
+      <div className="cursor-pointer hover:brightness-125 transition-all" title="AI Companion">
+        <JoiCinematicHologram
           size="sm"
           state={isPlaying ? 'active' : 'idle'}
-          animate={false}
         />
       </div>
     </div>
