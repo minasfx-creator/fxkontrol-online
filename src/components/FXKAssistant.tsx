@@ -759,16 +759,19 @@ export function FXKAssistant() {
                       <button
                         onClick={() => {
                           const params = parseKmzReadyBlock(msg.content);
-                          if (params) downloadAeroKmz(params);
+                          if (params) {
+                            downloadAeroKmz(params);
+                            import('sonner').then(({ toast }) => toast.success('🌍 KMZ exportado com sucesso!'));
+                          }
                         }}
-                        className="flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg text-[9px] font-mono tracking-wider uppercase transition-all hover:scale-105 active:scale-95"
+                        className="flex items-center gap-1.5 mt-2 px-3 py-2 rounded-lg text-[9px] font-mono tracking-wider uppercase transition-all hover:scale-105 active:scale-95"
                         style={{
                           background: 'hsl(190 100% 50% / 0.1)',
                           border: '1px solid hsl(190 100% 50% / 0.25)',
                           color: 'hsl(190 100% 70%)',
                         }}
                       >
-                        <Globe className="h-3 w-3" />
+                        <Globe className="h-3.5 w-3.5" />
                         Exportar KMZ Aeronáutica
                       </button>
                     )}
