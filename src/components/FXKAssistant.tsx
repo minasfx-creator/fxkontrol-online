@@ -598,14 +598,18 @@ export function FXKAssistant() {
 
       {/* Header */}
       <div className="relative z-10 flex items-center gap-2.5 px-3 py-3 shrink-0" style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.1)' }}>
-        {/* Joi face in header */}
+        {/* Joi face in header — speaking avatar */}
         <div className="relative cursor-pointer hover:brightness-125 transition-all shrink-0">
-          <img src={joiFaceIcon} alt="Joi" className="w-10 h-10 rounded-full object-cover" style={{
-            border: '1.5px solid hsl(190 100% 50% / 0.3)',
-            boxShadow: '0 0 12px hsl(190 100% 50% / 0.15)',
+          <img src={joiFaceIcon} alt="Joi" className="w-10 h-10 rounded-full object-cover transition-all duration-500" style={{
+            border: joiSpeech.speaking ? '2px solid hsl(38 100% 50% / 0.6)' : '1.5px solid hsl(190 100% 50% / 0.3)',
+            boxShadow: joiSpeech.speaking
+              ? '0 0 20px hsl(38 100% 50% / 0.25), 0 0 8px hsl(38 100% 50% / 0.15)'
+              : '0 0 12px hsl(190 100% 50% / 0.15)',
+            animation: joiSpeech.speaking ? 'joi-avatar-speaking 1.5s ease-in-out infinite' : undefined,
+            transform: joiSpeech.speaking ? 'scale(1.02)' : 'scale(1)',
           }} />
           {joiSpeech.speaking && (
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center" style={{ background: 'hsl(38 100% 50%)' }}>
+            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center" style={{ background: 'hsl(38 100% 50%)', boxShadow: '0 0 6px hsl(38 100% 50% / 0.5)' }}>
               <Volume2 className="w-2 h-2 text-black" />
             </div>
           )}
