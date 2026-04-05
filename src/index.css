@@ -1652,8 +1652,49 @@ button:active {
   91% { transform: translateX(-1px); opacity: 0; }
 }
 @keyframes joi-hair-flow {
-  0%, 100% { transform: translateX(0) skewX(0deg); }
-  50% { transform: translateX(1px) skewX(0.5deg); }
+  0%, 100% { transform: translateX(0) skewX(0deg) scaleX(1); }
+  25% { transform: translateX(2px) skewX(1.2deg) scaleX(1.01); }
+  50% { transform: translateX(3px) skewX(1.8deg) scaleX(1.015); }
+  75% { transform: translateX(1.5px) skewX(0.8deg) scaleX(1.005); }
+}
+
+/* Flowing hair strand — wind-driven wave */
+@keyframes joi-hair-strand-flow {
+  0%, 100% { transform: translateX(0) rotate(0deg); opacity: var(--strand-op, 0.3); }
+  30% { transform: translateX(4px) rotate(3deg); opacity: calc(var(--strand-op, 0.3) * 1.4); }
+  60% { transform: translateX(6px) rotate(5deg); opacity: var(--strand-op, 0.3); }
+  80% { transform: translateX(2px) rotate(1.5deg); opacity: calc(var(--strand-op, 0.3) * 0.8); }
+}
+.joi-hair-strand {
+  transform-origin: top center;
+  animation: joi-hair-strand-flow var(--strand-dur, 5s) ease-in-out infinite;
+  animation-delay: var(--strand-delay, 0s);
+}
+
+/* Micro-particles floating around Joi */
+@keyframes joi-micro-particle {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  15% {
+    opacity: var(--mp-op, 0.5);
+  }
+  50% {
+    transform: translate(var(--mp-dx, 10px), var(--mp-dy, -20px)) scale(var(--mp-scale, 1.2));
+    opacity: var(--mp-op, 0.5);
+  }
+  85% {
+    opacity: calc(var(--mp-op, 0.5) * 0.3);
+  }
+  100% {
+    transform: translate(calc(var(--mp-dx, 10px) * 1.5), calc(var(--mp-dy, -20px) * 1.8)) scale(0.4);
+    opacity: 0;
+  }
+}
+.joi-micro-particle {
+  animation: joi-micro-particle var(--mp-dur, 4s) ease-in-out infinite;
+  animation-delay: var(--mp-delay, 0s);
 }
 @keyframes joi-scanline-full {
   0% { transform: translateY(-10px); }
