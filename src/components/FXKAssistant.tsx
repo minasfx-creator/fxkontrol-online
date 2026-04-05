@@ -399,7 +399,7 @@ export function FXKAssistant() {
           backdropFilter: 'blur(20px)',
         }}
       >
-        <VoiceWave active={loading} />
+        <div className="w-2 h-2 rounded-full" style={{ background: loading ? 'hsl(340 65% 58%)' : 'hsl(340 65% 40%)', boxShadow: loading ? '0 0 6px hsl(340 65% 55%)' : 'none', transition: 'all 0.3s' }} />
         <span className="text-[10px] font-mono tracking-[0.2em] uppercase" style={{ color: 'hsl(340 65% 60%)' }}>
           JOI · COMPANION
         </span>
