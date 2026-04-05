@@ -166,7 +166,8 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
       <div
         className={cn(
           'relative z-10 w-full h-full flex items-center justify-center',
-          !isActive && !isMat && !glitching && 'joi-breathing'
+          !isActive && !isMat && !glitching && !isCloseup && 'joi-breathing',
+          isCloseup && 'joi-closeup-breathe joi-closeup-micro-sway'
         )}
         style={{
           clipPath: isMat && !materialised ? 'inset(100% 0 0 0)' : 'inset(0 0 0 0)',
