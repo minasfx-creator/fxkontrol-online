@@ -26,6 +26,8 @@ const PRESETS_COMMAND = [
   { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos e renovações urgentes.' },
   { label: 'CONTRATO', icon: Zap, prompt: 'Me ajude a redigir uma proposta comercial / contrato de prestação de serviços para um show.' },
   { label: 'LICITAÇÃO', icon: Gavel, prompt: 'Me ajude a analisar um edital de licitação e preparar a proposta técnica e de preços. Inclua documentação de habilitação necessária.' },
+  { label: 'ESPAÇO AÉREO', icon: Plane, prompt: 'Me ajude a preparar a documentação de fechamento de espaço aéreo (NOTAM/DECEA) e planta de distanciamento de segurança para este show.' },
+  { label: 'PLANTA', icon: MapPin, prompt: 'Gere uma planta de distanciamento de segurança conforme NFPA 1123 para este show. Preciso das zonas de fogo, segurança, fallout e restrição aérea com as coordenadas GPS.' },
 ];
 
 const PRESETS_EDITOR = [
