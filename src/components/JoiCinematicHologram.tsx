@@ -2,7 +2,7 @@
  * JoiCinematicHologram — Blade Runner 2049 Joi holographic avatar
  * Warm rosa-pêssego-âmbar palette, organic breathing, cinematic presence
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import joiIdle from '@/assets/joi-hologram.png';
 import joiActive from '@/assets/joi-hologram-active.png';
