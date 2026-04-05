@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
 import JoiCinematicHologram, { type JoiEmotion } from '@/components/JoiCinematicHologram';
-import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText } from 'lucide-react';
+import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from '@/hooks/use-mobile';
