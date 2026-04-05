@@ -42,35 +42,31 @@ export function useJoiSpeech() {
 
   const speak = useCallback((text: string) => {
     if (!supported || !enabled) return;
-    // Strip markdown formatting for cleaner speech
-    const clean = text
-      .replace(/#{1,6}\s/g, '')
-      .replace(/\*\*(.+?)\*\*/g, '$1')
-      .replace(/\*(.+?)\*/g, '$1')
-      .replace(/`(.+?)`/g, '$1')
-      .replace(/\[(.+?)\]\(.+?\)/g, '$1')
-      .replace(/\|/g, ', ')
-      .replace(/---+/g, '')
-      .replace(/\[KMZ_READY\][\s\S]*?\[\/KMZ_READY\]/g, '')
-      .trim();
-
+    const clean = cleanForSpeech(text);
     if (!clean) return;
 
     speechSynthesis.cancel();
-    const utt = new SpeechSynthesisUtterance(clean);
-    const voice = getBestVoice();
-    if (voice) utt.voice = voice;
-    utt.lang = 'pt-BR';
-    utt.rate = 1.05;
-    utt.pitch = 1.1;
-    utt.volume = 0.85;
+    // Split into sentences for more natural chunked speech
+    const chunks = clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [clean];
+    let idx = 0;
 
-    utt.onstart = () => setSpeaking(true);
-    utt.onend = () => setSpeaking(false);
-    utt.onerror = () => setSpeaking(false);
+    const speakNext = () => {
+      if (idx >= chunks.length) { setSpeaking(false); return; }
+      const utt = new SpeechSynthesisUtterance(chunks[idx].trim());
+      const voice = getBestVoice();
+      if (voice) utt.voice = voice;
+      utt.lang = 'pt-BR';
+      utt.rate = 0.95;
+      utt.pitch = 1.15;
+      utt.volume = 0.85;
+      utt.onstart = () => setSpeaking(true);
+      utt.onend = () => { idx++; speakNext(); };
+      utt.onerror = () => setSpeaking(false);
+      utteranceRef.current = utt;
+      speechSynthesis.speak(utt);
+    };
 
-    utteranceRef.current = utt;
-    speechSynthesis.speak(utt);
+    speakNext();
   }, [supported, enabled]);
 
   const stop = useCallback(() => {
