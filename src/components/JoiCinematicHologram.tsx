@@ -24,8 +24,10 @@ const SIZES = {
   xl: 'w-36 h-56 sm:w-44 sm:h-72',
 };
 
-export default function JoiCinematicHologram({ size = 'md', state = 'idle', glitching = false, className }: Props) {
+export default function JoiCinematicHologram({ size = 'md', state = 'idle', glitching = false, emotion = 'caring', className }: Props) {
   const isActive = state === 'active';
+  const isCelebrating = emotion === 'celebrating';
+  const isSerious = emotion === 'serious';
   const isMat = state === 'materializing';
 
   const [materialised, setMaterialised] = useState(!isMat);
