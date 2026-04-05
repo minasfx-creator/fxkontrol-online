@@ -169,39 +169,48 @@ async function streamChat(
 function ThinkingWave() {
   return (
     <div className="flex items-center gap-2 py-2 animate-fade-in">
-      <div className="flex items-end gap-[2px] h-4">
+      <div className="flex items-end gap-[2px] h-5">
         {Array.from({ length: 12 }, (_, i) => (
           <div
             key={i}
-            className="w-[2px] rounded-full"
+            className="w-[2px] rounded-full origin-bottom"
             style={{
-              background: `hsl(190 100% ${45 + i * 2}% / ${0.3 + Math.sin(i * 0.8) * 0.2})`,
-              animation: `voice-wave 1.2s ease-in-out ${i * 60}ms infinite`,
+              background: `linear-gradient(to top, hsl(190 100% ${40 + i * 3}%), hsl(190 100% ${55 + i * 2}%))`,
+              animation: `voice-wave 1.2s ease-in-out ${i * 60}ms infinite, joi-wave-bar-enter 0.4s ease-out ${i * 40}ms both`,
             }}
           />
         ))}
       </div>
-      <span className="text-[7px] font-mono tracking-[0.2em] uppercase" style={{ color: 'hsl(190 100% 50% / 0.5)' }}>
+      <span className="text-[7px] font-mono tracking-[0.2em] uppercase flex items-center gap-0.5" style={{ color: 'hsl(190 100% 50% / 0.5)' }}>
         PROCESSANDO
+        <span className="inline-flex w-4">
+          <span className="animate-pulse" style={{ animationDelay: '0ms' }}>.</span>
+          <span className="animate-pulse" style={{ animationDelay: '200ms' }}>.</span>
+          <span className="animate-pulse" style={{ animationDelay: '400ms' }}>.</span>
+        </span>
       </span>
     </div>
   );
 }
 
-/** Speaking wave animation in header */
+/** Speaking wave animation in header — enhanced 8-bar organic */
 function SpeakingWave() {
   return (
-    <div className="flex items-center gap-[1px] h-3">
-      {Array.from({ length: 5 }, (_, i) => (
-        <div
-          key={i}
-          className="w-[2px] rounded-full"
-          style={{
-            background: 'hsl(38 100% 55%)',
-            animation: `voice-wave 0.8s ease-in-out ${i * 80}ms infinite`,
-          }}
-        />
-      ))}
+    <div className="flex items-center gap-[1.5px] h-3.5">
+      {Array.from({ length: 8 }, (_, i) => {
+        const offset = i * 0.7;
+        return (
+          <div
+            key={i}
+            className="w-[2px] rounded-full origin-bottom"
+            style={{
+              background: `linear-gradient(to top, hsl(38 100% 50%), hsl(45 100% 60%))`,
+              animation: `joi-speak-wave 0.9s ease-in-out ${i * 70}ms infinite, joi-wave-bar-enter 0.3s ease-out ${i * 50}ms both`,
+              height: `${6 + Math.sin(offset) * 5}px`,
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -416,7 +425,9 @@ export function FXKAssistant() {
   const panelWidth = isMobile ? undefined : (expanded ? 560 : 360);
   const isListening = voiceRecognition.state === 'listening';
 
-  // FAB — Joi face icon
+  const fabState = joiSpeech.speaking ? 'speaking' : isListening ? 'listening' : loading ? 'processing' : 'idle';
+
+  // FAB — Joi face icon with multi-state visuals
   if (!open) {
     return (
       <button
@@ -427,48 +438,115 @@ export function FXKAssistant() {
         )}
         style={{ willChange: 'transform' }}
       >
-        {/* Breathing glow ring */}
+        {/* State-specific outer effects */}
+        {fabState === 'listening' && (
+          <>
+            {[0, 1, 2].map(i => (
+              <div
+                key={i}
+                className="absolute inset-0 rounded-full"
+                style={{
+                  border: '1.5px solid hsl(190 100% 50% / 0.4)',
+                  animation: `joi-listening-ripple 2s ease-out ${i * 0.6}s infinite`,
+                }}
+              />
+            ))}
+          </>
+        )}
+        {fabState === 'processing' && (
+          <div
+            className="absolute inset-[-6px] rounded-full"
+            style={{ animation: 'joi-processing-orbit 2s linear infinite' }}
+          >
+            {[0, 1, 2].map(i => (
+              <div
+                key={i}
+                className="absolute w-2 h-2 rounded-full"
+                style={{
+                  background: 'hsl(38 100% 55%)',
+                  boxShadow: '0 0 8px hsl(38 100% 50% / 0.6)',
+                  top: '50%',
+                  left: '50%',
+                  transform: `rotate(${i * 120}deg) translateY(-${isMobile ? 34 : 38}px) translate(-50%, -50%)`,
+                }}
+              />
+            ))}
+          </div>
+        )}
+        {fabState === 'speaking' && (
+          <div
+            className="absolute inset-[-3px] rounded-full"
+            style={{
+              border: '2px solid hsl(38 100% 50% / 0.5)',
+              animation: 'joi-speaking-pulse 1.5s ease-in-out infinite',
+            }}
+          />
+        )}
+
+        {/* Base glow ring */}
         <div
           className="absolute inset-0 rounded-full"
           style={{
-            background: 'radial-gradient(circle, hsl(190 100% 50% / 0.25), hsl(38 100% 50% / 0.1), transparent)',
-            animation: 'joi-fab-breathe 3s ease-in-out infinite',
+            background: fabState === 'speaking'
+              ? 'radial-gradient(circle, hsl(38 100% 50% / 0.25), hsl(45 100% 50% / 0.1), transparent)'
+              : fabState === 'processing'
+                ? 'radial-gradient(circle, hsl(38 100% 50% / 0.2), transparent)'
+                : 'radial-gradient(circle, hsl(190 100% 50% / 0.25), hsl(38 100% 50% / 0.1), transparent)',
+            animation: fabState === 'idle' ? 'joi-fab-breathe 3s ease-in-out infinite' : undefined,
           }}
         />
-        {/* Outer cyan glow border */}
+        {/* Outer border */}
         <div
-          className="absolute inset-0 rounded-full"
+          className="absolute inset-0 rounded-full transition-all duration-500"
           style={{
-            border: '2px solid hsl(190 100% 50% / 0.5)',
-            boxShadow: '0 0 20px hsl(190 100% 50% / 0.3), 0 0 40px hsl(38 100% 45% / 0.1), inset 0 0 15px hsl(190 100% 50% / 0.1)',
-            animation: 'joi-fab-breathe 3s ease-in-out infinite',
+            border: `2px solid ${
+              fabState === 'speaking' ? 'hsl(38 100% 50% / 0.6)'
+                : fabState === 'listening' ? 'hsl(190 100% 50% / 0.7)'
+                  : fabState === 'processing' ? 'hsl(38 100% 50% / 0.4)'
+                    : 'hsl(190 100% 50% / 0.5)'
+            }`,
+            boxShadow: fabState === 'speaking'
+              ? '0 0 25px hsl(38 100% 50% / 0.35), inset 0 0 15px hsl(38 100% 50% / 0.1)'
+              : fabState === 'listening'
+                ? '0 0 30px hsl(190 100% 50% / 0.4), inset 0 0 15px hsl(190 100% 50% / 0.1)'
+                : '0 0 20px hsl(190 100% 50% / 0.3), 0 0 40px hsl(38 100% 45% / 0.1), inset 0 0 15px hsl(190 100% 50% / 0.1)',
+            animation: fabState === 'idle' ? 'joi-fab-breathe 3s ease-in-out infinite' : undefined,
           }}
         />
         {/* Joi face image */}
         <img
           src={joiFaceIcon}
           alt="Joi"
-          className="w-full h-full rounded-full object-cover relative z-10"
+          className="w-full h-full rounded-full object-cover relative z-10 transition-all duration-300"
           style={{
-            filter: 'contrast(1.05) brightness(0.95)',
+            filter: fabState === 'speaking' ? 'contrast(1.1) brightness(1.05) saturate(1.1)' : 'contrast(1.05) brightness(0.95)',
           }}
         />
+        {/* Mini speaking wave bars around FAB */}
+        {fabState === 'speaking' && (
+          <div className="absolute inset-[-10px] z-0 flex items-center justify-center">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div
+                key={i}
+                className="absolute w-[2px] rounded-full origin-bottom"
+                style={{
+                  background: 'hsl(38 100% 55% / 0.6)',
+                  transform: `rotate(${i * 45}deg) translateY(-${isMobile ? 32 : 36}px)`,
+                  animation: `joi-mouth-speak 0.6s ease-in-out ${i * 75}ms infinite`,
+                }}
+              />
+            ))}
+          </div>
+        )}
         {/* Status ping */}
         <span
-          className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full animate-amber-pulse z-20"
-          style={{ background: 'hsl(190 100% 50%)', boxShadow: '0 0 8px hsl(190 100% 50% / 0.6)' }}
+          className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full z-20 transition-colors duration-300"
+          style={{
+            background: fabState === 'speaking' ? 'hsl(38 100% 55%)' : fabState === 'listening' ? 'hsl(190 100% 55%)' : 'hsl(190 100% 50%)',
+            boxShadow: `0 0 8px ${fabState === 'speaking' ? 'hsl(38 100% 50% / 0.6)' : 'hsl(190 100% 50% / 0.6)'}`,
+            animation: fabState !== 'idle' ? undefined : 'joi-fab-breathe 2s ease-in-out infinite',
+          }}
         />
-        {/* Listening indicator on FAB */}
-        {isListening && (
-          <div
-            className="absolute inset-[-4px] rounded-full z-0"
-            style={{
-              border: '2px solid hsl(190 100% 50% / 0.7)',
-              animation: 'joi-listening-ring 1.5s ease-in-out infinite',
-              boxShadow: '0 0 25px hsl(190 100% 50% / 0.4)',
-            }}
-          />
-        )}
       </button>
     );
   }
@@ -520,14 +598,18 @@ export function FXKAssistant() {
 
       {/* Header */}
       <div className="relative z-10 flex items-center gap-2.5 px-3 py-3 shrink-0" style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.1)' }}>
-        {/* Joi face in header */}
+        {/* Joi face in header — speaking avatar */}
         <div className="relative cursor-pointer hover:brightness-125 transition-all shrink-0">
-          <img src={joiFaceIcon} alt="Joi" className="w-10 h-10 rounded-full object-cover" style={{
-            border: '1.5px solid hsl(190 100% 50% / 0.3)',
-            boxShadow: '0 0 12px hsl(190 100% 50% / 0.15)',
+          <img src={joiFaceIcon} alt="Joi" className="w-10 h-10 rounded-full object-cover transition-all duration-500" style={{
+            border: joiSpeech.speaking ? '2px solid hsl(38 100% 50% / 0.6)' : '1.5px solid hsl(190 100% 50% / 0.3)',
+            boxShadow: joiSpeech.speaking
+              ? '0 0 20px hsl(38 100% 50% / 0.25), 0 0 8px hsl(38 100% 50% / 0.15)'
+              : '0 0 12px hsl(190 100% 50% / 0.15)',
+            animation: joiSpeech.speaking ? 'joi-avatar-speaking 1.5s ease-in-out infinite' : undefined,
+            transform: joiSpeech.speaking ? 'scale(1.02)' : 'scale(1)',
           }} />
           {joiSpeech.speaking && (
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center" style={{ background: 'hsl(38 100% 50%)' }}>
+            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center" style={{ background: 'hsl(38 100% 50%)', boxShadow: '0 0 6px hsl(38 100% 50% / 0.5)' }}>
               <Volume2 className="w-2 h-2 text-black" />
             </div>
           )}
@@ -651,17 +733,25 @@ export function FXKAssistant() {
               ) : (
                 <div>
                   <div
-                    className="px-3 py-2 rounded-lg rounded-bl-sm text-[11px] leading-relaxed"
+                    className="px-3 py-2 rounded-lg rounded-bl-sm text-[11px] leading-relaxed transition-all duration-500"
                     style={{
                       borderLeft: `2px solid ${
-                        detectEmotion(msg.content) === 'celebrating' ? 'hsl(42 90% 55% / 0.5)'
-                          : detectEmotion(msg.content) === 'serious' ? 'hsl(32 80% 50% / 0.5)'
-                            : 'hsl(190 100% 50% / 0.3)'
+                        (joiSpeech.speaking && i === messages.length - 1) ? 'hsl(38 100% 55% / 0.8)'
+                          : detectEmotion(msg.content) === 'celebrating' ? 'hsl(42 90% 55% / 0.5)'
+                            : detectEmotion(msg.content) === 'serious' ? 'hsl(32 80% 50% / 0.5)'
+                              : 'hsl(190 100% 50% / 0.3)'
                       }`,
-                      background: 'hsl(220 20% 6% / 0.6)',
+                      background: (joiSpeech.speaking && i === messages.length - 1) ? 'hsl(220 20% 7% / 0.8)' : 'hsl(220 20% 6% / 0.6)',
                       color: 'hsl(180 8% 82%)',
+                      animation: (joiSpeech.speaking && i === messages.length - 1) ? 'joi-msg-speaking 2s ease-in-out infinite' : undefined,
                     }}
                   >
+                    {joiSpeech.speaking && i === messages.length - 1 && (
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <SpeakingWave />
+                        <span className="text-[7px] font-mono tracking-wider uppercase" style={{ color: 'hsl(38 100% 55% / 0.6)' }}>FALANDO</span>
+                      </div>
+                    )}
                     <div className="prose prose-invert prose-xs max-w-none [&_p]:my-1 [&_code]:text-[hsl(190_100%_70%)] [&_code]:bg-transparent [&_pre]:bg-[hsl(220_20%_8%)] [&_pre]:border [&_pre]:border-[hsl(190_100%_50%/0.1)] [&_strong]:text-[hsl(38_100%_65%)] [&_a]:text-[hsl(190_100%_60%)]">
                       <ReactMarkdown>{stripKmzReadyBlock(msg.content)}</ReactMarkdown>
                     </div>
