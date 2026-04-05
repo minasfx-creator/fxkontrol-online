@@ -4,6 +4,7 @@
  * Enhanced: textarea, session history, feedback, expand, timestamps, clear, context presets
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { playGlitchBurst } from '@/utils/glitchSound';
 import JoiHologramAvatar from '@/components/JoiHologramAvatar';
 import JoiHologramFullBody from '@/components/JoiHologramFullBody';
 import JoiCinematicHologram from '@/components/JoiCinematicHologram';
