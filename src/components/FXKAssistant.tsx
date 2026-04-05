@@ -427,7 +427,7 @@ export function FXKAssistant() {
       {/* Header — always cinematic */}
       <div className="relative z-10 flex items-center gap-2.5 px-3 py-3 shrink-0" style={{ borderBottom: '1px solid hsl(340 65% 50% / 0.1)' }}>
         <div className="cursor-pointer hover:brightness-125 transition-all">
-          <JoiCinematicHologram size="sm" state={joiState} glitching={glitching} className="w-10 h-16 shrink-0" />
+          <JoiCinematicHologram size="sm" state={joiState} glitching={glitching} emotion={joiEmotion} className="w-10 h-16 shrink-0" />
         </div>
 
         <div className="flex-1 min-w-0">
