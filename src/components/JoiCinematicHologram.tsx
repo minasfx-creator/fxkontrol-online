@@ -69,6 +69,44 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
       return { baseX, baseY, tipX, tipY, delay: (i * 0.15).toFixed(2) };
     }), []);
 
+  // Flowing hair strands — wind-driven
+  const flowingStrands = useMemo(() =>
+    Array.from({ length: 8 }, (_, i) => {
+      const side = i < 4 ? 'left' : 'right';
+      const baseX = side === 'left' ? 102 + i * 3 : 190 + (i - 4) * 3;
+      const baseY = 55 + Math.random() * 30;
+      const len = 25 + Math.random() * 40;
+      const curve = side === 'left' ? -(8 + Math.random() * 15) : (8 + Math.random() * 15);
+      const endX = baseX + curve;
+      const endY = baseY + len;
+      const cpX = baseX + curve * 0.6;
+      const cpY = baseY + len * 0.5;
+      return {
+        d: `M${baseX} ${baseY} Q${cpX} ${cpY} ${endX} ${endY}`,
+        dur: (4 + Math.random() * 3).toFixed(1),
+        delay: (Math.random() * 3).toFixed(2),
+        op: (0.15 + Math.random() * 0.2).toFixed(2),
+      };
+    }), []);
+
+  // Micro-particles floating around the hologram
+  const microParticles = useMemo(() =>
+    Array.from({ length: 18 }, (_, i) => {
+      const cx = 70 + Math.random() * 160;
+      const cy = 40 + Math.random() * 400;
+      const r = 0.6 + Math.random() * 2;
+      const dx = (-20 + Math.random() * 40).toFixed(1);
+      const dy = (-30 + Math.random() * -10).toFixed(1);
+      const dur = (3 + Math.random() * 5).toFixed(1);
+      const delay = (Math.random() * 6).toFixed(2);
+      const scale = (0.8 + Math.random() * 0.6).toFixed(2);
+      const op = (0.25 + Math.random() * 0.4).toFixed(2);
+      const color = Math.random() > 0.5
+        ? `hsl(280 80% ${55 + Math.random() * 15}%)`
+        : `hsl(190 90% ${50 + Math.random() * 15}%)`;
+      return { cx, cy, r, dx, dy, dur, delay, scale, op, color };
+    }), []);
+
   const op = isActive ? 1 : 0.85;
 
   return (
