@@ -69,6 +69,44 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
       return { baseX, baseY, tipX, tipY, delay: (i * 0.15).toFixed(2) };
     }), []);
 
+  // Flowing hair strands — wind-driven
+  const flowingStrands = useMemo(() =>
+    Array.from({ length: 8 }, (_, i) => {
+      const side = i < 4 ? 'left' : 'right';
+      const baseX = side === 'left' ? 102 + i * 3 : 190 + (i - 4) * 3;
+      const baseY = 55 + Math.random() * 30;
+      const len = 25 + Math.random() * 40;
+      const curve = side === 'left' ? -(8 + Math.random() * 15) : (8 + Math.random() * 15);
+      const endX = baseX + curve;
+      const endY = baseY + len;
+      const cpX = baseX + curve * 0.6;
+      const cpY = baseY + len * 0.5;
+      return {
+        d: `M${baseX} ${baseY} Q${cpX} ${cpY} ${endX} ${endY}`,
+        dur: (4 + Math.random() * 3).toFixed(1),
+        delay: (Math.random() * 3).toFixed(2),
+        op: (0.15 + Math.random() * 0.2).toFixed(2),
+      };
+    }), []);
+
+  // Micro-particles floating around the hologram
+  const microParticles = useMemo(() =>
+    Array.from({ length: 18 }, (_, i) => {
+      const cx = 70 + Math.random() * 160;
+      const cy = 40 + Math.random() * 400;
+      const r = 0.6 + Math.random() * 2;
+      const dx = (-20 + Math.random() * 40).toFixed(1);
+      const dy = (-30 + Math.random() * -10).toFixed(1);
+      const dur = (3 + Math.random() * 5).toFixed(1);
+      const delay = (Math.random() * 6).toFixed(2);
+      const scale = (0.8 + Math.random() * 0.6).toFixed(2);
+      const op = (0.25 + Math.random() * 0.4).toFixed(2);
+      const color = Math.random() > 0.5
+        ? `hsl(280 80% ${55 + Math.random() * 15}%)`
+        : `hsl(190 90% ${50 + Math.random() * 15}%)`;
+      return { cx, cy, r, dx, dy, dur, delay, scale, op, color };
+    }), []);
+
   const op = isActive ? 1 : 0.85;
 
   return (
@@ -220,6 +258,25 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
           <path d="M112 58 Q107 75 105 95" fill="none" stroke="hsl(190 80% 50%)" strokeWidth="0.5" strokeOpacity={0.2 * op} />
           <path d="M188 58 Q193 75 195 95" fill="none" stroke="hsl(190 80% 50%)" strokeWidth="0.5" strokeOpacity={0.2 * op} />
 
+          {/* ═══ FLOWING HAIR STRANDS — wind-driven ═══ */}
+          {flowingStrands.map((s, i) => (
+            <path
+              key={`fhs-${i}`}
+              d={s.d}
+              fill="none"
+              stroke="hsl(240 25% 22%)"
+              strokeWidth="0.8"
+              strokeOpacity={Number(s.op) * op}
+              strokeLinecap="round"
+              className="joi-hair-strand"
+              style={{
+                ['--strand-dur' as string]: `${s.dur}s`,
+                ['--strand-delay' as string]: `${s.delay}s`,
+                ['--strand-op' as string]: s.op,
+              }}
+            />
+          ))}
+
           {/* Static strands (active) */}
           {isActive && staticStrands.map((s, i) => (
             <line key={`ss-${i}`} x1={s.baseX} y1={s.baseY} x2={s.tipX} y2={s.tipY}
@@ -370,6 +427,24 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
           fill="hsl(260 35% 20%)" fillOpacity={0.2 * op} />
         <path d="M185 300 Q182 345 180 390 Q179 425 178 455 L172 455 Q173 425 174 390 Q176 345 179 300 Z"
           fill="hsl(260 35% 20%)" fillOpacity={0.2 * op} />
+
+        {/* ═══ MICRO-PARTICLES — floating holographic dust ═══ */}
+        {microParticles.map((p, i) => (
+          <circle
+            key={`mp-${i}`}
+            cx={p.cx} cy={p.cy} r={p.r}
+            fill={p.color}
+            className="joi-micro-particle"
+            style={{
+              ['--mp-dx' as string]: `${p.dx}px`,
+              ['--mp-dy' as string]: `${p.dy}px`,
+              ['--mp-dur' as string]: `${p.dur}s`,
+              ['--mp-delay' as string]: `${p.delay}s`,
+              ['--mp-scale' as string]: p.scale,
+              ['--mp-op' as string]: p.op,
+            }}
+          />
+        ))}
 
         {/* ═══ HOLOGRAPHIC RAIN ═══ */}
         {rain.map((d, i) => (
