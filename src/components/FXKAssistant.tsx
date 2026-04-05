@@ -209,10 +209,32 @@ export function FXKAssistant() {
     return () => clearInterval(interval);
   }, [messages.length, loading]);
 
+  // Emotion detection from last assistant message
+  useEffect(() => {
+    const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+    if (!lastAssistant || loading) {
+      setJoiEmotion('caring');
+      return;
+    }
+    const emotion = detectEmotion(lastAssistant.content);
+    setJoiEmotion(emotion);
+    // Celebration sound
+    if (emotion === 'celebrating') {
+      playGlitchBurst(0.1, 1.6); // higher pitch = celebratory
+    }
+    // Reset emotion after 8s
+    const t = setTimeout(() => setJoiEmotion('caring'), 8000);
+    return () => clearTimeout(t);
+  }, [messages, loading]);
+
   // Status text rotation
   useEffect(() => {
     if (loading) {
       setStatusText('PROCESSING...');
+    } else if (joiEmotion === 'celebrating') {
+      setStatusText('✨ EXCELENTE!');
+    } else if (joiEmotion === 'serious') {
+      setStatusText('⚠ ATENÇÃO');
     } else if (isTyping) {
       setStatusText('LISTENING...');
     } else if (messages.length === 0) {
@@ -220,7 +242,7 @@ export function FXKAssistant() {
     } else {
       setStatusText('OBSERVING...');
     }
-  }, [loading, isTyping, messages.length]);
+  }, [loading, isTyping, messages.length, joiEmotion]);
 
   // Typing detection → Joi reacts
   useEffect(() => {
