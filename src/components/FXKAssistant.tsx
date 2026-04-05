@@ -36,12 +36,8 @@ const PRESETS_EDITOR = [
 
 const IDLE_PHRASES = [
   'Cuidando de tudo por você...',
-  'Revisando prazos e pendências...',
-  'Estou de olho nos documentos...',
   'Tudo sob controle. Relaxa.',
   'Me chama quando precisar, tá?',
-  'Verificando se há algo urgente...',
-  'Pode contar comigo para qualquer coisa...',
   'Observando e cuidando de tudo...',
 ];
 
@@ -158,23 +154,6 @@ async function streamChat(
   onDone();
 }
 
-function VoiceWave({ active }: { active: boolean }) {
-  return (
-    <div className="flex items-center gap-[2px] h-5">
-      {[0, 1, 2, 3, 4].map(i => (
-        <div
-          key={i}
-          className={cn("w-[3px] rounded-full transition-all", active ? "animate-voice-wave" : "h-1")}
-          style={{
-            background: 'hsl(340 65% 58%)',
-            animationDelay: active ? `${i * 80}ms` : '0ms',
-            height: active ? undefined : '4px',
-          }}
-        />
-      ))}
-    </div>
-  );
-}
 
 function ThinkingWave() {
   return (
@@ -390,8 +369,8 @@ export function FXKAssistant() {
       <button
         onClick={() => setOpen(true)}
         className={cn(
-          "fixed z-[60] group rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 touch-target-lg",
-          isMobile ? "bottom-20 right-3 h-14 w-14" : "bottom-5 right-5 h-16 w-16"
+          "fixed z-[70] group rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 touch-target-lg",
+          isMobile ? "bottom-[88px] right-3 h-14 w-14" : "bottom-5 right-5 h-16 w-16"
         )}
         style={{
           background: 'radial-gradient(circle at 35% 35%, hsl(340 65% 55%), hsl(32 80% 42%))',
@@ -411,8 +390,8 @@ export function FXKAssistant() {
       <div
         onClick={() => setMinimized(false)}
         className={cn(
-          "fixed z-[60] w-56 cursor-pointer rounded-lg border px-3 py-2 flex items-center gap-2",
-          isMobile ? "bottom-20 right-3" : "bottom-5 right-5"
+          "fixed z-[70] w-56 cursor-pointer rounded-lg border px-3 py-2 flex items-center gap-2",
+          isMobile ? "bottom-[88px] right-3" : "bottom-5 right-5"
         )}
         style={{
           background: 'hsl(220 22% 5% / 0.92)',
@@ -420,7 +399,7 @@ export function FXKAssistant() {
           backdropFilter: 'blur(20px)',
         }}
       >
-        <VoiceWave active={loading} />
+        <div className="w-2 h-2 rounded-full" style={{ background: loading ? 'hsl(340 65% 58%)' : 'hsl(340 65% 40%)', boxShadow: loading ? '0 0 6px hsl(340 65% 55%)' : 'none', transition: 'all 0.3s' }} />
         <span className="text-[10px] font-mono tracking-[0.2em] uppercase" style={{ color: 'hsl(340 65% 60%)' }}>
           JOI · COMPANION
         </span>
@@ -431,9 +410,9 @@ export function FXKAssistant() {
   return (
     <div
       className={cn(
-        "fixed z-[60] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
+        "fixed z-[70] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
         closing ? "animate-holo-dissolve" : "animate-holo-materialize",
-        isMobile ? "inset-3 bottom-20" : "bottom-5 right-5 h-[560px]"
+        isMobile ? "inset-3 bottom-[76px]" : "bottom-5 right-5 h-[560px]"
       )}
       style={{
         width: isMobile ? undefined : panelWidth,
@@ -474,9 +453,11 @@ export function FXKAssistant() {
         <button onClick={clearMessages} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Clear">
           <Trash2 className="h-3 w-3" style={{ color: 'hsl(340 65% 55% / 0.4)' }} />
         </button>
-        <button onClick={() => setExpanded(!expanded)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Expand">
-          <Maximize2 className="h-3 w-3" style={{ color: 'hsl(340 65% 55% / 0.6)' }} />
-        </button>
+        {!isMobile && (
+          <button onClick={() => setExpanded(!expanded)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Expand">
+            <Maximize2 className="h-3 w-3" style={{ color: 'hsl(340 65% 55% / 0.6)' }} />
+          </button>
+        )}
         <button onClick={() => setMinimized(true)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors">
           <Minimize2 className="h-3 w-3" style={{ color: 'hsl(340 65% 55% / 0.6)' }} />
         </button>
