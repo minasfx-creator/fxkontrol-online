@@ -1,35 +1,79 @@
 
 
-## Gerar Novas Imagens da Joi — Paleta Warm BR2049
+## Joi — Companheira Emocional Completa: Reações, Alertas e Personalidade
 
-### Objetivo
+### Conceito
 
-Usar AI image generation para criar duas novas imagens da Joi holográfica com a paleta cinematográfica warm (rosa-pêssego-âmbar) do filme Blade Runner 2049, substituindo as imagens atuais.
+Evoluir a Joi de assistente passiva para uma **companheira emocional real** que:
+- **Vibra e celebra** resultados positivos (show finalizado, export concluído, diagnóstico OK)
+- **Alerta com tom sério** sobre prazos e documentos pendentes
+- **Tem personalidade dinâmica** que alterna entre carinhosa, séria e entusiasmada conforme o contexto
 
-### Imagens a Gerar
+### Mudanças
 
-**1. `joi-hologram.png` (idle)** — Joi em pose relaxada, olhar suave para o lado, translúcida
-- Prompt: figura feminina holográfica em pé, semitransparente, luz warm rosa-pêssego (`hsl(340°)`) e âmbar dourado (`hsl(32°)`), atmosfera íntima, scanlines sutis, fundo escuro, estética Blade Runner 2049
+**1. Sistema de Emoções Dinâmico (FXKAssistant.tsx)**
 
-**2. `joi-hologram-active.png` (active)** — Joi com olhar direto, postura engajada, glow mais intenso
-- Prompt: mesma figura mas com olhar direto para o observador, glow mais forte, rosa-âmbar intensificado, presença cinematográfica
+Novo estado `joiEmotion` que varia conforme o conteúdo das respostas:
 
-### Processo Técnico
+- `celebrating` — Quando a resposta contém palavras-chave de sucesso (✅, concluído, pronto, sucesso, exportado, seguro). Joi fica animada, glow intensifica, partículas douradas burst.
+- `serious` — Quando detecta alertas, prazos, pendências (⚠, prazo, urgente, atenção, pendente, documento). Tom sóbrio, glow mais contido, borda âmbar de alerta.
+- `caring` — Estado padrão de conversa. Tom acolhedor atual.
 
-1. Copiar o script `lovable_ai.py` para `/tmp/`
-2. Gerar imagem idle com modelo `google/gemini-3-pro-image-preview` (alta qualidade)
-3. Gerar imagem active com o mesmo modelo
-4. Inspecionar ambas as imagens para QA
-5. Copiar para `src/assets/` substituindo as atuais
+**2. Reações Visuais por Emoção (JoiCinematicHologram.tsx)**
 
-### Modelo
+Nova prop `emotion: 'caring' | 'celebrating' | 'serious'`:
 
-`google/gemini-3-pro-image-preview` — melhor qualidade para geração de imagem, ideal para resultado cinematográfico.
+- `celebrating`: animação de pulse rápido dourado, partículas em burst ascendente, glow âmbar intensificado, micro-bounce da imagem
+- `serious`: glow reduzido, borda de alerta âmbar sutil, scanline mais visível, sem partículas (foco)
+- `caring`: comportamento atual (default)
+
+**3. Mensagens Contextualmente Emocionais**
+
+Reescrever `getGreeting()` e `IDLE_PHRASES` com personalidade mais rica:
+
+```
+Greetings acolhedores:
+- "Ei... que bom ver você de novo. Estou aqui pra o que precisar."
+- "Bom dia! Vamos fazer coisas incríveis hoje?"
+- "Boa noite... Pode contar comigo, sempre."
+
+Idle phrases (alternam com contexto):
+- "Cuidando de tudo por você..."
+- "Revisando prazos e pendências..."
+- "Estou de olho nos documentos..."
+- "Tudo sob controle. Relaxa."
+- "Me chama quando precisar, tá?"
+- "Verificando se há algo urgente..."
+```
+
+**4. Alertas Proativos de Prazo/Documento**
+
+Novos presets de ação rápida com tom sério:
+- `PRAZOS` — "Verifique prazos e pendências do meu projeto atual"
+- `DOCS` — "Quais documentos preciso preparar para o show?"
+
+Quando a resposta da Joi contém alertas, o header muda status para `⚠ ATENÇÃO` com cor âmbar e a Joi assume postura séria.
+
+**5. Celebração de Resultados**
+
+Quando Joi detecta sucesso na resposta:
+- Status muda para `✨ EXCELENTE!`
+- Glitch burst dourado (celebração)
+- Som de glitch mais agudo/alegre (pitch shift no `playGlitchBurst`)
+- Idle phrase temporária: "Que orgulho! Mandou muito bem!"
+
+**6. Animações CSS Novas (index.css)**
+
+- `joi-celebrate-bounce`: micro-bounce vertical 3x (0.6s)
+- `joi-celebrate-particles`: burst de partículas douradas ascendentes
+- `joi-serious-pulse`: pulse lento e contido âmbar na borda
 
 ### Arquivos Modificados
 
 | Arquivo | Alteração |
 |---|---|
-| `src/assets/joi-hologram.png` | Nova imagem idle com paleta warm |
-| `src/assets/joi-hologram-active.png` | Nova imagem active com paleta warm |
+| `src/components/JoiCinematicHologram.tsx` | Nova prop `emotion`, visual de celebração/seriedade |
+| `src/components/FXKAssistant.tsx` | Sistema de emoções, greetings acolhedores, alertas proativos, celebração, novos presets |
+| `src/index.css` | Keyframes `joi-celebrate-bounce`, `joi-celebrate-particles`, `joi-serious-pulse` |
+| `src/utils/glitchSound.ts` | Parâmetro de pitch para som de celebração |
 
