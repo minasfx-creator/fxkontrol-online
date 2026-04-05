@@ -166,6 +166,45 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
             }}
           />
         )}
+
+        {/* Chromatic burst overlays (glitching) */}
+        {glitching && (
+          <>
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                backgroundImage: `url(${currentImage})`,
+                backgroundSize: 'contain',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                mixBlendMode: 'screen',
+                filter: 'hue-rotate(-60deg) saturate(4)',
+                animation: 'joi-chroma-burst-left 0.8s ease-out both',
+              }}
+            />
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                backgroundImage: `url(${currentImage})`,
+                backgroundSize: 'contain',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                mixBlendMode: 'screen',
+                filter: 'hue-rotate(60deg) saturate(4)',
+                animation: 'joi-chroma-burst-right 0.8s ease-out both',
+              }}
+            />
+            {/* Flash overlay */}
+            <div
+              className="absolute inset-0 pointer-events-none rounded"
+              style={{
+                background: 'radial-gradient(ellipse at 50% 40%, hsl(190 100% 70% / 0.5), hsl(280 80% 60% / 0.2) 50%, transparent 75%)',
+                mixBlendMode: 'screen',
+                animation: 'joi-flash-burst 0.8s ease-out both',
+              }}
+            />
+          </>
+        )}
       </div>
 
       {/* Floating micro-particles */}
