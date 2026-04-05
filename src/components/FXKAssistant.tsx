@@ -17,12 +17,12 @@ const HISTORY_KEY = 'fxk-ai-history';
 const MAX_HISTORY = 10;
 
 const PRESETS_COMMAND = [
-  { label: 'DIAGNÓSTICO', icon: Activity, prompt: 'Execute um diagnóstico completo do sistema FXK — módulos, DMX, canais ativos, status de segurança.' },
-  { label: 'SCRIPT', icon: Sparkles, prompt: 'Preciso de ajuda criando um script de show pirotécnico.' },
-  { label: 'SAFETY', icon: ShieldCheck, prompt: 'Quais são os protocolos de segurança NFPA que devo seguir para este show?' },
-  { label: 'STATUS', icon: Zap, prompt: 'Qual o status atual do show — timeline, posições configuradas e módulos online?' },
-  { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos e pendências do meu projeto atual. Me alerte sobre qualquer urgência.' },
-  { label: 'DOCS', icon: FileText, prompt: 'Quais documentos preciso preparar para o show? Licenças, seguros, autorizações pendentes?' },
+  { label: 'ORÇAMENTO', icon: Sparkles, prompt: 'Me ajude a criar um orçamento detalhado para um show pirotécnico. Preciso incluir itens, quantidades, calibres e custos.' },
+  { label: 'LICENÇAS', icon: ShieldCheck, prompt: 'Quais documentos e licenças preciso para realizar este show? Liste todos os órgãos, prazos e requisitos.' },
+  { label: 'DECLARAÇÃO', icon: FileText, prompt: 'Preciso redigir uma declaração/ofício para um órgão regulador. Me ajude com o formato oficial completo.' },
+  { label: 'CHECKLIST', icon: Activity, prompt: 'Monte um checklist completo de documentação pré-show: licenças, seguros, certificados, autorizações.' },
+  { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos e renovações urgentes.' },
+  { label: 'CONTRATO', icon: Zap, prompt: 'Me ajude a redigir uma proposta comercial / contrato de prestação de serviços para um show.' },
 ];
 
 const PRESETS_EDITOR = [
