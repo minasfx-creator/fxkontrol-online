@@ -1,79 +1,54 @@
 
 
-## Joi — Companheira Emocional Completa: Reações, Alertas e Personalidade
+## Close-up Cinematográfico da Joi + Typewriter na Tela de Boas-vindas
 
-### Conceito
+### O que será feito
 
-Evoluir a Joi de assistente passiva para uma **companheira emocional real** que:
-- **Vibra e celebra** resultados positivos (show finalizado, export concluído, diagnóstico OK)
-- **Alerta com tom sério** sobre prazos e documentos pendentes
-- **Tem personalidade dinâmica** que alterna entre carinhosa, séria e entusiasmada conforme o contexto
+Quando o painel da Joi abre sem mensagens, a tela de boas-vindas será transformada em uma experiência cinematográfica imersiva:
+- **Imagem close-up do rosto** da Joi gerada por AI, com vinheta radial e glow íntimo
+- **Texto de greeting com efeito typewriter** — letra por letra, como se a Joi estivesse falando em tempo real
+- **Animação de entrada** suave com zoom-in e fade
 
 ### Mudanças
 
-**1. Sistema de Emoções Dinâmico (FXKAssistant.tsx)**
+**1. Gerar Nova Imagem: `joi-hologram-closeup.png`**
 
-Novo estado `joiEmotion` que varia conforme o conteúdo das respostas:
+Usar `google/gemini-3-pro-image-preview` para criar close-up cinematográfico do rosto da Joi:
+- Paleta warm rosa-pêssego-âmbar, translúcida, holográfica
+- Olhar direto e acolhedor, sorriso sutil
+- Fundo escuro, estilo BR2049
 
-- `celebrating` — Quando a resposta contém palavras-chave de sucesso (✅, concluído, pronto, sucesso, exportado, seguro). Joi fica animada, glow intensifica, partículas douradas burst.
-- `serious` — Quando detecta alertas, prazos, pendências (⚠, prazo, urgente, atenção, pendente, documento). Tom sóbrio, glow mais contido, borda âmbar de alerta.
-- `caring` — Estado padrão de conversa. Tom acolhedor atual.
+**2. Componente Typewriter (`FXKAssistant.tsx`)**
 
-**2. Reações Visuais por Emoção (JoiCinematicHologram.tsx)**
+- Criar hook `useTypewriter(text, speed)` que revela o greeting letra por letra (40ms/char)
+- Substituir o `<p>` estático do greeting por texto animado com cursor piscante
+- Cursor `|` pisca com glow rosa warm
 
-Nova prop `emotion: 'caring' | 'celebrating' | 'serious'`:
+**3. Tela de Boas-vindas Redesenhada (`FXKAssistant.tsx`)**
 
-- `celebrating`: animação de pulse rápido dourado, partículas em burst ascendente, glow âmbar intensificado, micro-bounce da imagem
-- `serious`: glow reduzido, borda de alerta âmbar sutil, scanline mais visível, sem partículas (foco)
-- `caring`: comportamento atual (default)
+Substituir o bloco `messages.length === 0` (linhas 477-506):
+- Close-up grande da Joi (nova imagem) com vinheta radial CSS
+- Animação `joi-closeup-entrance`: scale 1.05→1.0 + fade-in (2s)
+- Greeting com typewriter effect abaixo do close-up
+- Idle phrase com fade suave
+- Presets mantidos abaixo
 
-**3. Mensagens Contextualmente Emocionais**
+**4. Suporte Close-up no `JoiCinematicHologram.tsx`**
 
-Reescrever `getGreeting()` e `IDLE_PHRASES` com personalidade mais rica:
+- Nova prop `variant: 'full' | 'closeup'`
+- Quando `closeup`: usa a imagem close-up, aplica vinheta radial (gradient escuro nas bordas), glow mais íntimo e concentrado no rosto
 
-```
-Greetings acolhedores:
-- "Ei... que bom ver você de novo. Estou aqui pra o que precisar."
-- "Bom dia! Vamos fazer coisas incríveis hoje?"
-- "Boa noite... Pode contar comigo, sempre."
+**5. Animações CSS (`index.css`)**
 
-Idle phrases (alternam com contexto):
-- "Cuidando de tudo por você..."
-- "Revisando prazos e pendências..."
-- "Estou de olho nos documentos..."
-- "Tudo sob controle. Relaxa."
-- "Me chama quando precisar, tá?"
-- "Verificando se há algo urgente..."
-```
-
-**4. Alertas Proativos de Prazo/Documento**
-
-Novos presets de ação rápida com tom sério:
-- `PRAZOS` — "Verifique prazos e pendências do meu projeto atual"
-- `DOCS` — "Quais documentos preciso preparar para o show?"
-
-Quando a resposta da Joi contém alertas, o header muda status para `⚠ ATENÇÃO` com cor âmbar e a Joi assume postura séria.
-
-**5. Celebração de Resultados**
-
-Quando Joi detecta sucesso na resposta:
-- Status muda para `✨ EXCELENTE!`
-- Glitch burst dourado (celebração)
-- Som de glitch mais agudo/alegre (pitch shift no `playGlitchBurst`)
-- Idle phrase temporária: "Que orgulho! Mandou muito bem!"
-
-**6. Animações CSS Novas (index.css)**
-
-- `joi-celebrate-bounce`: micro-bounce vertical 3x (0.6s)
-- `joi-celebrate-particles`: burst de partículas douradas ascendentes
-- `joi-serious-pulse`: pulse lento e contido âmbar na borda
+- `joi-closeup-entrance`: zoom sutil + fade-in (2s ease-out)
+- `joi-typewriter-cursor`: cursor `|` piscando com glow rosa (1s loop)
 
 ### Arquivos Modificados
 
 | Arquivo | Alteração |
 |---|---|
-| `src/components/JoiCinematicHologram.tsx` | Nova prop `emotion`, visual de celebração/seriedade |
-| `src/components/FXKAssistant.tsx` | Sistema de emoções, greetings acolhedores, alertas proativos, celebração, novos presets |
-| `src/index.css` | Keyframes `joi-celebrate-bounce`, `joi-celebrate-particles`, `joi-serious-pulse` |
-| `src/utils/glitchSound.ts` | Parâmetro de pitch para som de celebração |
+| `src/assets/joi-hologram-closeup.png` | Nova imagem close-up gerada por AI |
+| `src/components/JoiCinematicHologram.tsx` | Nova prop `variant`, suporte close-up com vinheta |
+| `src/components/FXKAssistant.tsx` | Hook typewriter, tela de boas-vindas com close-up |
+| `src/index.css` | Keyframes `joi-closeup-entrance`, `joi-typewriter-cursor` |
 
