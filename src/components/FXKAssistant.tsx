@@ -463,7 +463,7 @@ export function FXKAssistant() {
         {/* Sidebar hologram (expanded only) */}
         {expanded && messages.length > 0 && !isMobile && (
           <div className="w-[120px] shrink-0 flex flex-col items-center justify-center border-r" style={{ borderColor: 'hsl(340 65% 50% / 0.08)', background: 'hsl(220 22% 3% / 0.5)' }}>
-            <JoiCinematicHologram size="lg" state={joiState} glitching={glitching} className="w-24 h-48" />
+            <JoiCinematicHologram size="lg" state={joiState} glitching={glitching} emotion={joiEmotion} className="w-24 h-48" />
             <span className="text-[6px] font-mono tracking-[0.2em] uppercase mt-2" style={{ color: 'hsl(340 65% 55% / 0.4)' }}>
               {statusText}
             </span>
