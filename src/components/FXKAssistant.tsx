@@ -157,6 +157,7 @@ export function FXKAssistant() {
   const [messages, setMessages] = useState<Msg[]>(() => loadHistory());
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [glitching, setGlitching] = useState(false);
   const [connectionOk, setConnectionOk] = useState<boolean | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
