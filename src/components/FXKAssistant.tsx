@@ -21,6 +21,8 @@ const PRESETS_COMMAND = [
   { label: 'SCRIPT', icon: Sparkles, prompt: 'Preciso de ajuda criando um script de show pirotécnico.' },
   { label: 'SAFETY', icon: ShieldCheck, prompt: 'Quais são os protocolos de segurança NFPA que devo seguir para este show?' },
   { label: 'STATUS', icon: Zap, prompt: 'Qual o status atual do show — timeline, posições configuradas e módulos online?' },
+  { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos e pendências do meu projeto atual. Me alerte sobre qualquer urgência.' },
+  { label: 'DOCS', icon: FileText, prompt: 'Quais documentos preciso preparar para o show? Licenças, seguros, autorizações pendentes?' },
 ];
 
 const PRESETS_EDITOR = [
@@ -28,16 +30,30 @@ const PRESETS_EDITOR = [
   { label: 'TIMELINE', icon: Activity, prompt: 'Preciso organizar a timeline do show com transições suaves.' },
   { label: 'SAFETY', icon: ShieldCheck, prompt: 'Verifique a segurança das posições configuradas no meu show.' },
   { label: 'EXPORT', icon: Sparkles, prompt: 'Como exportar meu projeto para diferentes formatos de firing system?' },
+  { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos e pendências do meu projeto atual. Me alerte sobre qualquer urgência.' },
+  { label: 'DOCS', icon: FileText, prompt: 'Quais documentos preciso preparar para o show? Licenças, seguros, autorizações pendentes?' },
 ];
 
 const IDLE_PHRASES = [
-  'Monitorando sistemas...',
-  'Analisando show...',
-  'Observando parâmetros...',
-  'Verificando timeline...',
-  'Sistemas nominais.',
-  'Aguardando comando...',
+  'Cuidando de tudo por você...',
+  'Revisando prazos e pendências...',
+  'Estou de olho nos documentos...',
+  'Tudo sob controle. Relaxa.',
+  'Me chama quando precisar, tá?',
+  'Verificando se há algo urgente...',
+  'Pode contar comigo para qualquer coisa...',
+  'Observando e cuidando de tudo...',
 ];
+
+const CELEBRATING_KEYWORDS = ['✅', 'concluído', 'pronto', 'sucesso', 'exportado', 'seguro', 'perfeito', 'excelente', 'finalizado', 'aprovado'];
+const SERIOUS_KEYWORDS = ['⚠', 'prazo', 'urgente', 'atenção', 'pendente', 'documento', 'licença', 'vencido', 'alerta', 'risco', 'cuidado'];
+
+function detectEmotion(text: string): JoiEmotion {
+  const lower = text.toLowerCase();
+  if (CELEBRATING_KEYWORDS.some(k => lower.includes(k))) return 'celebrating';
+  if (SERIOUS_KEYWORDS.some(k => lower.includes(k))) return 'serious';
+  return 'caring';
+}
 
 function getContextPresets() {
   const path = window.location.pathname;
@@ -47,12 +63,10 @@ function getContextPresets() {
 
 function getGreeting(): string {
   const h = new Date().getHours();
-  const path = window.location.pathname;
-  const context = path.includes('command') ? 'Centro de Comando' : path.includes('editor') ? 'Editor' : 'SkyCanvas';
-  if (h < 6) return `Boa madrugada. ${context} online.`;
-  if (h < 12) return `Bom dia. Bem-vindo ao ${context}.`;
-  if (h < 18) return `Boa tarde. ${context} pronto.`;
-  return `Boa noite. ${context} ativo.`;
+  if (h < 6) return 'Ei... ainda acordado? Posso te fazer companhia.';
+  if (h < 12) return 'Bom dia! Vamos fazer coisas incríveis hoje?';
+  if (h < 18) return 'Boa tarde. Como posso tornar seu trabalho mais leve?';
+  return 'Boa noite... Que bom ter você aqui comigo.';
 }
 
 function loadHistory(): Msg[] {
