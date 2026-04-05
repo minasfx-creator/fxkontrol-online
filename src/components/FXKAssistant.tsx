@@ -410,9 +410,9 @@ export function FXKAssistant() {
   return (
     <div
       className={cn(
-        "fixed z-[60] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
+        "fixed z-[70] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
         closing ? "animate-holo-dissolve" : "animate-holo-materialize",
-        isMobile ? "inset-3 bottom-20" : "bottom-5 right-5 h-[560px]"
+        isMobile ? "inset-3 bottom-[76px]" : "bottom-5 right-5 h-[560px]"
       )}
       style={{
         width: isMobile ? undefined : panelWidth,
