@@ -139,7 +139,7 @@ export default function MainLayout() {
             </button>
           )}
 
-          {/* Header — Apple frosted glass bar (hidden on immersive routes) */}
+          {/* Header */}
           {!commandImmersive && !isEditor && (
             <header
               className="flex items-center border-b px-3 shrink-0 relative overflow-hidden h-10"
@@ -170,16 +170,13 @@ export default function MainLayout() {
 
           <main className={`${(isEditor || isCommand) ? 'flex-1 min-h-0 overflow-hidden' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}
             style={showDock || showMobileDock ? { paddingBottom: '72px' } : undefined}>
-            {/* Immersive routes: direct render without transition wrapper */}
             {(isEditor || isCommand) ? (
               <Outlet />
             ) : (
               <>
-                {/* Holographic light sweep overlay during transition */}
                 {transitionPhase !== 'idle' && (
                   <div className="absolute inset-0 pointer-events-none z-50 animate-page-sweep" />
                 )}
-                {/* Content with dissolve/materialize phase transitions */}
                 <div
                   key={displayedPath}
                   className={`h-full ${
@@ -196,35 +193,35 @@ export default function MainLayout() {
             )}
           </main>
         </div>
-
-        <Suspense fallback={null}>
-          <FXKAssistant />
-        </Suspense>
-
-        {/* Global PANIC FAB */}
-        {isArmed && !commandImmersive && (
-          <button
-            onClick={handlePanic}
-            className="fixed z-[9999] flex items-center justify-center rounded-xl border-2 border-destructive/60 transition-all active:scale-90 armed-pulse"
-            style={{
-              bottom: '80px',
-              right: '16px',
-              width: '64px',
-              height: '64px',
-              background: 'hsl(var(--destructive) / 0.9)',
-              boxShadow: '0 0 24px hsl(var(--destructive) / 0.4), 0 0 64px hsl(var(--destructive) / 0.15)',
-            }}
-            title="EMERGENCY STOP — ALL CHANNELS"
-          >
-            <div className="flex flex-col items-center">
-              <AlertOctagon className="w-6 h-6 text-white" />
-              <span className="text-[7px] font-mono-code font-black text-white tracking-widest mt-0.5">PANIC</span>
-            </div>
-          </button>
-        )}
-
-        {(showDock || showMobileDock) && <DockBar />}
       </div>
+
+      {/* Overlays OUTSIDE the filtered div so position:fixed works correctly */}
+      <Suspense fallback={null}>
+        <FXKAssistant />
+      </Suspense>
+
+      {isArmed && !commandImmersive && (
+        <button
+          onClick={handlePanic}
+          className="fixed z-[9999] flex items-center justify-center rounded-xl border-2 border-destructive/60 transition-all active:scale-90 armed-pulse"
+          style={{
+            bottom: '80px',
+            right: '16px',
+            width: '64px',
+            height: '64px',
+            background: 'hsl(var(--destructive) / 0.9)',
+            boxShadow: '0 0 24px hsl(var(--destructive) / 0.4), 0 0 64px hsl(var(--destructive) / 0.15)',
+          }}
+          title="EMERGENCY STOP — ALL CHANNELS"
+        >
+          <div className="flex flex-col items-center">
+            <AlertOctagon className="w-6 h-6 text-white" />
+            <span className="text-[7px] font-mono-code font-black text-white tracking-widest mt-0.5">PANIC</span>
+          </div>
+        </button>
+      )}
+
+      {(showDock || showMobileDock) && <DockBar />}
     </SidebarProvider>
   );
 }
