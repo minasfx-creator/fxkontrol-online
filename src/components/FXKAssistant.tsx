@@ -329,7 +329,7 @@ export function FXKAssistant() {
       {/* Header */}
       <div className="relative z-10 flex items-center gap-2.5 px-3 py-3 shrink-0" style={{ borderBottom: '1px solid hsl(32 100% 50% / 0.12)' }}>
         {expanded ? (
-          <JoiCinematicHologram size="sm" state={loading ? 'active' : 'idle'} className="w-10 h-16 shrink-0" />
+          <JoiCinematicHologram size="sm" state={loading ? 'active' : 'idle'} glitching={glitching} className="w-10 h-16 shrink-0" />
         ) : (
           <JoiHologramAvatar size="sm" state={loading ? 'active' : 'idle'} animate />
         )}
