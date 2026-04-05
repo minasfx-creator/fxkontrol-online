@@ -279,7 +279,7 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
             }}
           />
         ))}
-      </div>
+      </div>}
 
       {/* Materializing dissolve particles — warm */}
       {isMat && (

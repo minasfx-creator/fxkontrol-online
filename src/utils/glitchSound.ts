@@ -48,8 +48,8 @@ export function playGlitchBurst(volume = 0.12, pitchShift = 1) {
     // Layer 2: Descending sine chirp (digital whine)
     const osc = ctx.createOscillator();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(1800, now);
-    osc.frequency.exponentialRampToValueAtTime(200, now + dur * 0.5);
+    osc.frequency.setValueAtTime(1800 * pitchShift, now);
+    osc.frequency.exponentialRampToValueAtTime(200 * pitchShift, now + dur * 0.5);
 
     const oscGain = ctx.createGain();
     oscGain.gain.setValueAtTime(0.3, now);
