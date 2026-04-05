@@ -531,7 +531,11 @@ export function FXKAssistant() {
                   <div
                     className="px-3 py-2 rounded-lg rounded-bl-sm text-[11px] leading-relaxed"
                     style={{
-                      borderLeft: '2px solid hsl(340 65% 55% / 0.3)',
+                      borderLeft: `2px solid ${
+                        detectEmotion(msg.content) === 'celebrating' ? 'hsl(42 90% 55% / 0.5)'
+                          : detectEmotion(msg.content) === 'serious' ? 'hsl(32 80% 50% / 0.5)'
+                            : 'hsl(340 65% 55% / 0.3)'
+                      }`,
                       background: 'hsl(220 20% 6% / 0.6)',
                       color: 'hsl(180 8% 82%)',
                     }}
