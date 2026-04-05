@@ -26,12 +26,12 @@ const PRESETS_COMMAND = [
 ];
 
 const PRESETS_EDITOR = [
-  { label: 'DESIGN', icon: Zap, prompt: 'Me ajude a criar um design de show com efeitos visuais impressionantes.' },
-  { label: 'TIMELINE', icon: Activity, prompt: 'Preciso organizar a timeline do show com transições suaves.' },
-  { label: 'SAFETY', icon: ShieldCheck, prompt: 'Verifique a segurança das posições configuradas no meu show.' },
-  { label: 'EXPORT', icon: Sparkles, prompt: 'Como exportar meu projeto para diferentes formatos de firing system?' },
-  { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos e pendências do meu projeto atual. Me alerte sobre qualquer urgência.' },
-  { label: 'DOCS', icon: FileText, prompt: 'Quais documentos preciso preparar para o show? Licenças, seguros, autorizações pendentes?' },
+  { label: 'ORÇAMENTO', icon: Sparkles, prompt: 'Me ajude a montar um orçamento para este show com base nos efeitos e posições do projeto.' },
+  { label: 'LICENÇAS', icon: ShieldCheck, prompt: 'Quais licenças e autorizações preciso para este tipo de show? Inclua Exército, Bombeiros e ANAC se aplicável.' },
+  { label: 'DECLARAÇÃO', icon: FileText, prompt: 'Preciso redigir um documento formal (ofício, declaração ou requerimento) para órgão regulador.' },
+  { label: 'CHECKLIST', icon: Activity, prompt: 'Monte um checklist de documentação e segurança para este show.' },
+  { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos urgentes.' },
+  { label: 'CONTRATO', icon: Zap, prompt: 'Me ajude a redigir uma proposta comercial ou contrato para este projeto de show.' },
 ];
 
 const IDLE_PHRASES = [
