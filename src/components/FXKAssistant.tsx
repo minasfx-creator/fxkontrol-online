@@ -1,16 +1,19 @@
 /**
  * FXKAssistant — "Joi" BR2049 AI Companion
- * Cyan-Âmbar-Gold palette, cinematic presence, contextual greetings, typing reactions
+ * Cyan-Âmbar-Gold palette, cinematic presence, voice interaction (Alexa-style)
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
 import JoiCinematicHologram, { type JoiEmotion } from '@/components/JoiCinematicHologram';
-import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText, Download, Gavel, Plane, MapPin, Globe } from 'lucide-react';
+import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText, Download, Gavel, Plane, MapPin, Globe, Volume2, VolumeX, Mic, MicOff, Play } from 'lucide-react';
 import { exportJoiPdf } from '@/utils/joiPdfExport';
 import { parseKmzReadyBlock, stripKmzReadyBlock, downloadAeroKmz } from '@/utils/joiAeroKmzExport';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
+import { useJoiSpeech } from '@/hooks/useJoiSpeech';
+import joiFaceIcon from '@/assets/joi-face-icon.png';
 
 type Msg = { role: 'user' | 'assistant'; content: string; ts?: number; feedback?: 'up' | 'down' };
 
@@ -185,6 +188,24 @@ function ThinkingWave() {
   );
 }
 
+/** Speaking wave animation in header */
+function SpeakingWave() {
+  return (
+    <div className="flex items-center gap-[1px] h-3">
+      {Array.from({ length: 5 }, (_, i) => (
+        <div
+          key={i}
+          className="w-[2px] rounded-full"
+          style={{
+            background: 'hsl(38 100% 55%)',
+            animation: `voice-wave 0.8s ease-in-out ${i * 80}ms infinite`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function formatTime(ts?: number) {
   if (!ts) return '';
   const d = new Date(ts);
@@ -211,6 +232,29 @@ export function FXKAssistant() {
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isAtBottom = useRef(true);
+  const lastMsgCountRef = useRef(messages.length);
+
+  // Voice hooks
+  const joiSpeech = useJoiSpeech();
+  const voiceRecognition = useVoiceRecognition({
+    onTranscript: (text) => setInput(text),
+    onFinalTranscript: (text) => {
+      setInput(text);
+      // Auto-submit after voice recognition
+      setTimeout(() => send(text), 200);
+    },
+  });
+
+  // Auto-speak new assistant messages
+  useEffect(() => {
+    if (messages.length > lastMsgCountRef.current) {
+      const last = messages[messages.length - 1];
+      if (last?.role === 'assistant' && !loading && joiSpeech.enabled) {
+        joiSpeech.speak(last.content);
+      }
+    }
+    lastMsgCountRef.current = messages.length;
+  }, [messages, loading, joiSpeech.enabled]);
 
   useEffect(() => {
     if (messages.length > 0 || loading) return;
@@ -236,7 +280,11 @@ export function FXKAssistant() {
   }, [messages, loading]);
 
   useEffect(() => {
-    if (loading) {
+    if (voiceRecognition.state === 'listening') {
+      setStatusText('🎤 LISTENING...');
+    } else if (joiSpeech.speaking) {
+      setStatusText('🔊 SPEAKING...');
+    } else if (loading) {
       setStatusText('PROCESSING...');
     } else if (joiEmotion === 'celebrating') {
       setStatusText('✨ EXCELENTE!');
@@ -249,7 +297,7 @@ export function FXKAssistant() {
     } else {
       setStatusText('OBSERVING...');
     }
-  }, [loading, isTyping, messages.length, joiEmotion]);
+  }, [loading, isTyping, messages.length, joiEmotion, voiceRecognition.state, joiSpeech.speaking]);
 
   useEffect(() => {
     if (input.length > 0) {
@@ -344,12 +392,14 @@ export function FXKAssistant() {
   }, []);
 
   const handleClose = useCallback(() => {
+    joiSpeech.stop();
+    voiceRecognition.stopListening();
     setClosing(true);
     setTimeout(() => {
       setOpen(false);
       setClosing(false);
     }, 350);
-  }, []);
+  }, [joiSpeech, voiceRecognition]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -358,9 +408,15 @@ export function FXKAssistant() {
     }
   }, [input, send]);
 
-  const panelWidth = isMobile ? undefined : (expanded ? 560 : 360);
+  const handleMicToggle = useCallback(() => {
+    playGlitchBurst(0.06, voiceRecognition.state === 'listening' ? 0.8 : 1.2);
+    voiceRecognition.toggle();
+  }, [voiceRecognition]);
 
-  // FAB
+  const panelWidth = isMobile ? undefined : (expanded ? 560 : 360);
+  const isListening = voiceRecognition.state === 'listening';
+
+  // FAB — Joi face icon
   if (!open) {
     return (
       <button
@@ -369,14 +425,50 @@ export function FXKAssistant() {
           "fixed z-[70] group rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 touch-target-lg",
           isMobile ? "bottom-[88px] right-3 h-14 w-14" : "bottom-5 right-5 h-16 w-16"
         )}
-        style={{
-          background: 'radial-gradient(circle at 35% 35%, hsl(190 100% 45%), hsl(38 100% 42%))',
-          boxShadow: '0 0 30px hsl(190 100% 50% / 0.35), 0 0 60px hsl(38 100% 45% / 0.12), inset 0 1px 0 hsl(190 100% 60% / 0.25)',
-          willChange: 'transform',
-        }}
+        style={{ willChange: 'transform' }}
       >
-        <JoiCinematicHologram size="sm" state="idle" className="w-8 h-12 sm:w-9 sm:h-14 group-hover:scale-105 transition-transform" />
-        <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full animate-amber-pulse" style={{ background: 'hsl(190 100% 50%)' }} />
+        {/* Breathing glow ring */}
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{
+            background: 'radial-gradient(circle, hsl(190 100% 50% / 0.25), hsl(38 100% 50% / 0.1), transparent)',
+            animation: 'joi-fab-breathe 3s ease-in-out infinite',
+          }}
+        />
+        {/* Outer cyan glow border */}
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{
+            border: '2px solid hsl(190 100% 50% / 0.5)',
+            boxShadow: '0 0 20px hsl(190 100% 50% / 0.3), 0 0 40px hsl(38 100% 45% / 0.1), inset 0 0 15px hsl(190 100% 50% / 0.1)',
+            animation: 'joi-fab-breathe 3s ease-in-out infinite',
+          }}
+        />
+        {/* Joi face image */}
+        <img
+          src={joiFaceIcon}
+          alt="Joi"
+          className="w-full h-full rounded-full object-cover relative z-10"
+          style={{
+            filter: 'contrast(1.05) brightness(0.95)',
+          }}
+        />
+        {/* Status ping */}
+        <span
+          className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full animate-amber-pulse z-20"
+          style={{ background: 'hsl(190 100% 50%)', boxShadow: '0 0 8px hsl(190 100% 50% / 0.6)' }}
+        />
+        {/* Listening indicator on FAB */}
+        {isListening && (
+          <div
+            className="absolute inset-[-4px] rounded-full z-0"
+            style={{
+              border: '2px solid hsl(190 100% 50% / 0.7)',
+              animation: 'joi-listening-ring 1.5s ease-in-out infinite',
+              boxShadow: '0 0 25px hsl(190 100% 50% / 0.4)',
+            }}
+          />
+        )}
       </button>
     );
   }
@@ -387,7 +479,7 @@ export function FXKAssistant() {
       <div
         onClick={() => setMinimized(false)}
         className={cn(
-          "fixed z-[70] w-56 cursor-pointer rounded-lg border px-3 py-2 flex items-center gap-2",
+          "fixed z-[70] cursor-pointer rounded-lg border px-3 py-2 flex items-center gap-2",
           isMobile ? "bottom-[88px] right-3" : "bottom-5 right-5"
         )}
         style={{
@@ -396,10 +488,11 @@ export function FXKAssistant() {
           backdropFilter: 'blur(20px)',
         }}
       >
-        <div className="w-2 h-2 rounded-full" style={{ background: loading ? 'hsl(190 100% 50%)' : 'hsl(190 100% 35%)', boxShadow: loading ? '0 0 6px hsl(190 100% 50%)' : 'none', transition: 'all 0.3s' }} />
+        <img src={joiFaceIcon} alt="Joi" className="w-5 h-5 rounded-full object-cover" />
         <span className="text-[10px] font-mono tracking-[0.2em] uppercase" style={{ color: 'hsl(38 100% 55%)' }}>
           JOI · COMPANION
         </span>
+        {joiSpeech.speaking && <SpeakingWave />}
       </div>
     );
   }
@@ -427,8 +520,17 @@ export function FXKAssistant() {
 
       {/* Header */}
       <div className="relative z-10 flex items-center gap-2.5 px-3 py-3 shrink-0" style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.1)' }}>
-        <div className="cursor-pointer hover:brightness-125 transition-all">
-          <JoiCinematicHologram size="sm" state={joiState} glitching={glitching} emotion={joiEmotion} className="w-10 h-16 shrink-0" />
+        {/* Joi face in header */}
+        <div className="relative cursor-pointer hover:brightness-125 transition-all shrink-0">
+          <img src={joiFaceIcon} alt="Joi" className="w-10 h-10 rounded-full object-cover" style={{
+            border: '1.5px solid hsl(190 100% 50% / 0.3)',
+            boxShadow: '0 0 12px hsl(190 100% 50% / 0.15)',
+          }} />
+          {joiSpeech.speaking && (
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center" style={{ background: 'hsl(38 100% 50%)' }}>
+              <Volume2 className="w-2 h-2 text-black" />
+            </div>
+          )}
         </div>
 
         <div className="flex-1 min-w-0">
@@ -439,13 +541,29 @@ export function FXKAssistant() {
             <div className={cn("w-1.5 h-1.5 rounded-full",
               connectionOk === true ? "bg-green-500" : connectionOk === false ? "bg-red-500" : "bg-muted-foreground/20"
             )} style={{ boxShadow: connectionOk === true ? '0 0 4px hsl(120 70% 50%)' : 'none' }} />
+            {joiSpeech.speaking && <SpeakingWave />}
           </div>
           <span className="text-[7px] font-mono tracking-[0.15em] uppercase transition-all duration-500" style={{
-            color: joiEmotion === 'celebrating' ? 'hsl(42 90% 60%)' : joiEmotion === 'serious' ? 'hsl(32 80% 55%)' : 'hsl(190 100% 50% / 0.4)',
+            color: voiceRecognition.state === 'listening' ? 'hsl(190 100% 65%)' : joiSpeech.speaking ? 'hsl(38 100% 65%)' : joiEmotion === 'celebrating' ? 'hsl(42 90% 60%)' : joiEmotion === 'serious' ? 'hsl(32 80% 55%)' : 'hsl(190 100% 50% / 0.4)',
           }}>
             {statusText}
           </span>
         </div>
+
+        {/* Voice toggle */}
+        {joiSpeech.supported && (
+          <button
+            onClick={joiSpeech.toggle}
+            className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors"
+            title={joiSpeech.enabled ? 'Desativar voz' : 'Ativar voz'}
+          >
+            {joiSpeech.enabled ? (
+              <Volume2 className="h-3 w-3" style={{ color: 'hsl(38 100% 55%)' }} />
+            ) : (
+              <VolumeX className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.3)' }} />
+            )}
+          </button>
+        )}
 
         <button onClick={clearMessages} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Clear">
           <Trash2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.4)' }} />
@@ -569,6 +687,16 @@ export function FXKAssistant() {
                     {msg.ts && <span className="text-[6px] font-mono" style={{ color: 'hsl(190 100% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
                     {!loading && (
                       <div className="flex gap-0.5 ml-auto">
+                        {/* Play individual message */}
+                        {joiSpeech.supported && (
+                          <button
+                            onClick={() => joiSpeech.speakSingle(msg.content)}
+                            className="h-4 w-4 rounded flex items-center justify-center transition-colors hover:bg-white/5"
+                            title="Ouvir mensagem"
+                          >
+                            <Play className="h-2.5 w-2.5" style={{ color: 'hsl(38 100% 55% / 0.5)' }} />
+                          </button>
+                        )}
                         <button
                           onClick={() => exportJoiPdf(msg.content)}
                           className="h-4 w-4 rounded flex items-center justify-center transition-colors hover:bg-white/5"
@@ -634,21 +762,46 @@ export function FXKAssistant() {
           className="flex items-end gap-1.5 rounded-lg px-3 py-2 transition-all duration-300"
           style={{
             background: 'hsl(220 20% 5%)',
-            border: `1px solid ${isTyping ? 'hsl(190 100% 50% / 0.25)' : 'hsl(190 100% 50% / 0.08)'}`,
+            border: `1px solid ${isListening ? 'hsl(190 100% 50% / 0.5)' : isTyping ? 'hsl(190 100% 50% / 0.25)' : 'hsl(190 100% 50% / 0.08)'}`,
+            boxShadow: isListening ? '0 0 15px hsl(190 100% 50% / 0.15)' : 'none',
           }}
         >
-          <span className="text-[10px] font-mono shrink-0 pb-0.5" style={{ color: 'hsl(190 100% 50% / 0.4)' }}>&gt;_</span>
+          <span className="text-[10px] font-mono shrink-0 pb-0.5" style={{ color: isListening ? 'hsl(190 100% 50% / 0.8)' : 'hsl(190 100% 50% / 0.4)' }}>
+            {isListening ? '🎤' : '>_'}
+          </span>
           <textarea
             ref={textareaRef}
             className="flex-1 bg-transparent border-none outline-none text-[11px] font-mono placeholder:text-[hsl(190_100%_50%/0.2)] resize-none overflow-hidden leading-relaxed"
             style={{ color: 'hsl(38 100% 80%)', caretColor: 'hsl(190 100% 50%)', minHeight: '20px', maxHeight: '80px' }}
-            placeholder="Comando... (Shift+Enter nova linha)"
+            placeholder={isListening ? 'Ouvindo...' : 'Comando... (Shift+Enter nova linha)'}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={loading}
             rows={1}
           />
+          {/* Mic button */}
+          {voiceRecognition.supported && (
+            <button
+              onClick={handleMicToggle}
+              disabled={loading}
+              className={cn(
+                "h-7 w-7 rounded flex items-center justify-center transition-all shrink-0 hover:scale-110 active:scale-90",
+                isListening && "animate-pulse"
+              )}
+              style={{
+                background: isListening ? 'hsl(190 100% 50% / 0.2)' : 'transparent',
+                boxShadow: isListening ? '0 0 12px hsl(190 100% 50% / 0.3)' : 'none',
+              }}
+              title={isListening ? 'Parar de ouvir' : 'Comando de voz'}
+            >
+              {isListening ? (
+                <Mic className="h-3.5 w-3.5" style={{ color: 'hsl(190 100% 60%)' }} />
+              ) : (
+                <MicOff className="h-3.5 w-3.5" style={{ color: 'hsl(190 100% 50% / 0.3)' }} />
+              )}
+            </button>
+          )}
           <button
             onClick={() => send(input)}
             disabled={!input.trim() || loading}
