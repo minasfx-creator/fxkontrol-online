@@ -5,8 +5,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
 import JoiCinematicHologram, { type JoiEmotion } from '@/components/JoiCinematicHologram';
-import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText, Download, Gavel } from 'lucide-react';
+import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText, Download, Gavel, Plane, MapPin, Globe } from 'lucide-react';
 import { exportJoiPdf } from '@/utils/joiPdfExport';
+import { parseKmzReadyBlock, stripKmzReadyBlock, downloadAeroKmz } from '@/utils/joiAeroKmzExport';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -25,6 +26,8 @@ const PRESETS_COMMAND = [
   { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos e renovações urgentes.' },
   { label: 'CONTRATO', icon: Zap, prompt: 'Me ajude a redigir uma proposta comercial / contrato de prestação de serviços para um show.' },
   { label: 'LICITAÇÃO', icon: Gavel, prompt: 'Me ajude a analisar um edital de licitação e preparar a proposta técnica e de preços. Inclua documentação de habilitação necessária.' },
+  { label: 'ESPAÇO AÉREO', icon: Plane, prompt: 'Me ajude a preparar a documentação de fechamento de espaço aéreo (NOTAM/DECEA) e planta de distanciamento de segurança para este show.' },
+  { label: 'PLANTA', icon: MapPin, prompt: 'Gere uma planta de distanciamento de segurança conforme NFPA 1123 para este show. Preciso das zonas de fogo, segurança, fallout e restrição aérea com as coordenadas GPS.' },
 ];
 
 const PRESETS_EDITOR = [
@@ -35,6 +38,8 @@ const PRESETS_EDITOR = [
   { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos urgentes.' },
   { label: 'CONTRATO', icon: Zap, prompt: 'Me ajude a redigir uma proposta comercial ou contrato para este projeto de show.' },
   { label: 'LICITAÇÃO', icon: Gavel, prompt: 'Me ajude a analisar um edital de licitação e preparar proposta para este tipo de show.' },
+  { label: 'ESPAÇO AÉREO', icon: Plane, prompt: 'Me ajude a preparar a documentação de fechamento de espaço aéreo e planta de distanciamento para este show.' },
+  { label: 'PLANTA', icon: MapPin, prompt: 'Gere uma planta de distanciamento de segurança conforme NFPA 1123 para este projeto.' },
 ];
 
 const IDLE_PHRASES = [
@@ -540,8 +545,25 @@ export function FXKAssistant() {
                     }}
                   >
                     <div className="prose prose-invert prose-xs max-w-none [&_p]:my-1 [&_code]:text-[hsl(190_100%_70%)] [&_code]:bg-transparent [&_pre]:bg-[hsl(220_20%_8%)] [&_pre]:border [&_pre]:border-[hsl(190_100%_50%/0.1)] [&_strong]:text-[hsl(38_100%_65%)] [&_a]:text-[hsl(190_100%_60%)]">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown>{stripKmzReadyBlock(msg.content)}</ReactMarkdown>
                     </div>
+                    {parseKmzReadyBlock(msg.content) && (
+                      <button
+                        onClick={() => {
+                          const params = parseKmzReadyBlock(msg.content);
+                          if (params) downloadAeroKmz(params);
+                        }}
+                        className="flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg text-[9px] font-mono tracking-wider uppercase transition-all hover:scale-105 active:scale-95"
+                        style={{
+                          background: 'hsl(190 100% 50% / 0.1)',
+                          border: '1px solid hsl(190 100% 50% / 0.25)',
+                          color: 'hsl(190 100% 70%)',
+                        }}
+                      >
+                        <Globe className="h-3 w-3" />
+                        Exportar KMZ Aeronáutica
+                      </button>
+                    )}
                   </div>
                   <div className="flex items-center justify-between mt-0.5">
                     {msg.ts && <span className="text-[6px] font-mono" style={{ color: 'hsl(190 100% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
