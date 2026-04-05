@@ -193,6 +193,7 @@ export function FXKAssistant() {
   const [idlePhrase, setIdlePhrase] = useState(0);
   const [connectionOk, setConnectionOk] = useState<boolean | null>(null);
   const [statusText, setStatusText] = useState('COMPANION ONLINE');
+  const [joiEmotion, setJoiEmotion] = useState<JoiEmotion>('caring');
   const endRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
