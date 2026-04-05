@@ -33,8 +33,8 @@ export function playGlitchBurst(volume = 0.12, pitchShift = 1) {
 
     const bp = ctx.createBiquadFilter();
     bp.type = 'bandpass';
-    bp.frequency.setValueAtTime(2400, now);
-    bp.frequency.exponentialRampToValueAtTime(800, now + dur);
+    bp.frequency.setValueAtTime(2400 * pitchShift, now);
+    bp.frequency.exponentialRampToValueAtTime(800 * pitchShift, now + dur);
     bp.Q.value = 4;
 
     const noiseGain = ctx.createGain();
