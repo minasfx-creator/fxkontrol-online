@@ -439,7 +439,9 @@ export function FXKAssistant() {
               connectionOk === true ? "bg-green-500" : connectionOk === false ? "bg-red-500" : "bg-muted-foreground/20"
             )} style={{ boxShadow: connectionOk === true ? '0 0 4px hsl(120 70% 50%)' : 'none' }} />
           </div>
-          <span className="text-[7px] font-mono tracking-[0.15em] uppercase transition-all duration-500" style={{ color: 'hsl(340 65% 55% / 0.4)' }}>
+          <span className="text-[7px] font-mono tracking-[0.15em] uppercase transition-all duration-500" style={{
+            color: joiEmotion === 'celebrating' ? 'hsl(42 90% 60%)' : joiEmotion === 'serious' ? 'hsl(32 80% 55%)' : 'hsl(340 65% 55% / 0.4)',
+          }}>
             {statusText}
           </span>
         </div>
