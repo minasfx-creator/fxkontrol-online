@@ -169,39 +169,48 @@ async function streamChat(
 function ThinkingWave() {
   return (
     <div className="flex items-center gap-2 py-2 animate-fade-in">
-      <div className="flex items-end gap-[2px] h-4">
+      <div className="flex items-end gap-[2px] h-5">
         {Array.from({ length: 12 }, (_, i) => (
           <div
             key={i}
-            className="w-[2px] rounded-full"
+            className="w-[2px] rounded-full origin-bottom"
             style={{
-              background: `hsl(190 100% ${45 + i * 2}% / ${0.3 + Math.sin(i * 0.8) * 0.2})`,
-              animation: `voice-wave 1.2s ease-in-out ${i * 60}ms infinite`,
+              background: `linear-gradient(to top, hsl(190 100% ${40 + i * 3}%), hsl(190 100% ${55 + i * 2}%))`,
+              animation: `voice-wave 1.2s ease-in-out ${i * 60}ms infinite, joi-wave-bar-enter 0.4s ease-out ${i * 40}ms both`,
             }}
           />
         ))}
       </div>
-      <span className="text-[7px] font-mono tracking-[0.2em] uppercase" style={{ color: 'hsl(190 100% 50% / 0.5)' }}>
+      <span className="text-[7px] font-mono tracking-[0.2em] uppercase flex items-center gap-0.5" style={{ color: 'hsl(190 100% 50% / 0.5)' }}>
         PROCESSANDO
+        <span className="inline-flex w-4">
+          <span className="animate-pulse" style={{ animationDelay: '0ms' }}>.</span>
+          <span className="animate-pulse" style={{ animationDelay: '200ms' }}>.</span>
+          <span className="animate-pulse" style={{ animationDelay: '400ms' }}>.</span>
+        </span>
       </span>
     </div>
   );
 }
 
-/** Speaking wave animation in header */
+/** Speaking wave animation in header — enhanced 8-bar organic */
 function SpeakingWave() {
   return (
-    <div className="flex items-center gap-[1px] h-3">
-      {Array.from({ length: 5 }, (_, i) => (
-        <div
-          key={i}
-          className="w-[2px] rounded-full"
-          style={{
-            background: 'hsl(38 100% 55%)',
-            animation: `voice-wave 0.8s ease-in-out ${i * 80}ms infinite`,
-          }}
-        />
-      ))}
+    <div className="flex items-center gap-[1.5px] h-3.5">
+      {Array.from({ length: 8 }, (_, i) => {
+        const offset = i * 0.7;
+        return (
+          <div
+            key={i}
+            className="w-[2px] rounded-full origin-bottom"
+            style={{
+              background: `linear-gradient(to top, hsl(38 100% 50%), hsl(45 100% 60%))`,
+              animation: `joi-speak-wave 0.9s ease-in-out ${i * 70}ms infinite, joi-wave-bar-enter 0.3s ease-out ${i * 50}ms both`,
+              height: `${6 + Math.sin(offset) * 5}px`,
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
