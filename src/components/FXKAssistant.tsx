@@ -381,7 +381,7 @@ export function FXKAssistant() {
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80">
               {expanded ? (
-                <JoiCinematicHologram size="xl" state="materializing" className="w-40 h-64" />
+                <JoiCinematicHologram size="xl" state="materializing" glitching={glitching} className="w-40 h-64" />
               ) : (
                 <JoiHologramAvatar size="lg" state="idle" animate />
               )}
