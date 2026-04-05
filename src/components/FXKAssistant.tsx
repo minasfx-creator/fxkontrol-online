@@ -453,9 +453,11 @@ export function FXKAssistant() {
         <button onClick={clearMessages} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Clear">
           <Trash2 className="h-3 w-3" style={{ color: 'hsl(340 65% 55% / 0.4)' }} />
         </button>
-        <button onClick={() => setExpanded(!expanded)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Expand">
-          <Maximize2 className="h-3 w-3" style={{ color: 'hsl(340 65% 55% / 0.6)' }} />
-        </button>
+        {!isMobile && (
+          <button onClick={() => setExpanded(!expanded)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Expand">
+            <Maximize2 className="h-3 w-3" style={{ color: 'hsl(340 65% 55% / 0.6)' }} />
+          </button>
+        )}
         <button onClick={() => setMinimized(true)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors">
           <Minimize2 className="h-3 w-3" style={{ color: 'hsl(340 65% 55% / 0.6)' }} />
         </button>

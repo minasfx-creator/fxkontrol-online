@@ -370,27 +370,6 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
         ))}
       </div>}
 
-      {/* Materializing dissolve particles — warm */}
-      {isMat && (
-        <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
-          {Array.from({ length: 16 }).map((_, i) => (
-            <div
-              key={`dp-${i}`}
-              className="absolute rounded-full joi-dissolve-particle"
-              style={{
-                width: `${2 + Math.random() * 3}px`,
-                height: `${2 + Math.random() * 3}px`,
-                left: `${20 + Math.random() * 60}%`,
-                top: `${15 + Math.random() * 70}%`,
-                background: i % 2 === 0 ? 'hsl(340 65% 60%)' : 'hsl(32 80% 55%)',
-                animationDelay: `${(Math.random() * 2).toFixed(2)}s`,
-                animationDuration: `${(1.2 + Math.random() * 1.5).toFixed(2)}s`,
-                ['--dissolve-drift' as string]: `${(-12 + Math.random() * 24).toFixed(1)}px`,
-              }}
-            />
-          ))}
-        </div>
-      )}
 
     </div>
   );
