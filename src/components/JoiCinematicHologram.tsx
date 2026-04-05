@@ -7,10 +7,13 @@ import { cn } from '@/lib/utils';
 import joiIdle from '@/assets/joi-hologram.png';
 import joiActive from '@/assets/joi-hologram-active.png';
 
+export type JoiEmotion = 'caring' | 'celebrating' | 'serious';
+
 interface Props {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   state?: 'idle' | 'active' | 'materializing';
   glitching?: boolean;
+  emotion?: JoiEmotion;
   className?: string;
 }
 
