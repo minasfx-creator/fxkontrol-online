@@ -256,8 +256,8 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
         )}
       </div>
 
-      {/* Floating micro-particles — warm tones */}
-      <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
+      {/* Floating micro-particles — hidden in serious mode for focus */}
+      {!isSerious && <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
         {Array.from({ length: 10 }).map((_, i) => (
           <div
             key={i}
