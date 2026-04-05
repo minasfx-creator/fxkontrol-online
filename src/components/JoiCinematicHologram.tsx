@@ -2,7 +2,7 @@
  * JoiCinematicHologram — Blade Runner 2049 Joi holographic avatar
  * Warm rosa-pêssego-âmbar palette, organic breathing, cinematic presence
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import joiIdle from '@/assets/joi-hologram.png';
 import joiActive from '@/assets/joi-hologram-active.png';
@@ -44,8 +44,34 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
   const isCloseup = variant === 'closeup';
   const currentImage = isCloseup ? joiCloseup : (isActive ? joiActive : joiIdle);
 
+  // Parallax eye-contact effect
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    // Normalize to -1..1
+    const nx = (e.clientX - cx) / (rect.width / 2);
+    const ny = (e.clientY - cy) / (rect.height / 2);
+    // Subtle rotation: max ~4deg, and slight translate for depth
+    setTilt({ x: ny * -3, y: nx * 4 });
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setTilt({ x: 0, y: 0 });
+  }, []);
+
   return (
-    <div className={cn('relative flex items-center justify-center', SIZES[size], className)}>
+    <div
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className={cn('relative flex items-center justify-center', SIZES[size], className)}
+    >
       {/* Warm ambient glow — varies by emotion */}
       <div
         className={cn("absolute", isCelebrating ? "joi-celebrate-bounce" : "joi-warm-pulse")}
@@ -123,7 +149,7 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
         }}
       />
 
-      {/* Main image container */}
+      {/* Main image container — with parallax tilt */}
       <div
         className={cn(
           'relative z-10 w-full h-full flex items-center justify-center',
@@ -131,8 +157,9 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
         )}
         style={{
           clipPath: isMat && !materialised ? 'inset(100% 0 0 0)' : 'inset(0 0 0 0)',
-          transition: isMat ? 'clip-path 2.2s cubic-bezier(0.16, 1, 0.3, 1)' : undefined,
-          transformOrigin: '50% 85%',
+          transition: isMat ? 'clip-path 2.2s cubic-bezier(0.16, 1, 0.3, 1)' : 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
+          transformOrigin: '50% 50%',
+          transform: `perspective(600px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) translateX(${tilt.y * 0.8}px) translateY(${tilt.x * -0.5}px)`,
           animation: glitching ? 'joi-glitch-burst 0.8s steps(1, end) both' : undefined,
         }}
       >
