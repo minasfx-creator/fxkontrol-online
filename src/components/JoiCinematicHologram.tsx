@@ -26,7 +26,7 @@ const SIZES = {
   xl: 'w-36 h-56 sm:w-44 sm:h-72',
 };
 
-export default function JoiCinematicHologram({ size = 'md', state = 'idle', glitching = false, emotion = 'caring', className }: Props) {
+export default function JoiCinematicHologram({ size = 'md', state = 'idle', glitching = false, emotion = 'caring', variant = 'full', className }: Props) {
   const isActive = state === 'active';
   const isCelebrating = emotion === 'celebrating';
   const isSerious = emotion === 'serious';
