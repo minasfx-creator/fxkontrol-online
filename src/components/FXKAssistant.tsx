@@ -4,8 +4,8 @@
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
-import JoiCinematicHologram from '@/components/JoiCinematicHologram';
-import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown } from 'lucide-react';
+import JoiCinematicHologram, { type JoiEmotion } from '@/components/JoiCinematicHologram';
+import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -21,6 +21,8 @@ const PRESETS_COMMAND = [
   { label: 'SCRIPT', icon: Sparkles, prompt: 'Preciso de ajuda criando um script de show pirotécnico.' },
   { label: 'SAFETY', icon: ShieldCheck, prompt: 'Quais são os protocolos de segurança NFPA que devo seguir para este show?' },
   { label: 'STATUS', icon: Zap, prompt: 'Qual o status atual do show — timeline, posições configuradas e módulos online?' },
+  { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos e pendências do meu projeto atual. Me alerte sobre qualquer urgência.' },
+  { label: 'DOCS', icon: FileText, prompt: 'Quais documentos preciso preparar para o show? Licenças, seguros, autorizações pendentes?' },
 ];
 
 const PRESETS_EDITOR = [
@@ -28,16 +30,30 @@ const PRESETS_EDITOR = [
   { label: 'TIMELINE', icon: Activity, prompt: 'Preciso organizar a timeline do show com transições suaves.' },
   { label: 'SAFETY', icon: ShieldCheck, prompt: 'Verifique a segurança das posições configuradas no meu show.' },
   { label: 'EXPORT', icon: Sparkles, prompt: 'Como exportar meu projeto para diferentes formatos de firing system?' },
+  { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos e pendências do meu projeto atual. Me alerte sobre qualquer urgência.' },
+  { label: 'DOCS', icon: FileText, prompt: 'Quais documentos preciso preparar para o show? Licenças, seguros, autorizações pendentes?' },
 ];
 
 const IDLE_PHRASES = [
-  'Monitorando sistemas...',
-  'Analisando show...',
-  'Observando parâmetros...',
-  'Verificando timeline...',
-  'Sistemas nominais.',
-  'Aguardando comando...',
+  'Cuidando de tudo por você...',
+  'Revisando prazos e pendências...',
+  'Estou de olho nos documentos...',
+  'Tudo sob controle. Relaxa.',
+  'Me chama quando precisar, tá?',
+  'Verificando se há algo urgente...',
+  'Pode contar comigo para qualquer coisa...',
+  'Observando e cuidando de tudo...',
 ];
+
+const CELEBRATING_KEYWORDS = ['✅', 'concluído', 'pronto', 'sucesso', 'exportado', 'seguro', 'perfeito', 'excelente', 'finalizado', 'aprovado'];
+const SERIOUS_KEYWORDS = ['⚠', 'prazo', 'urgente', 'atenção', 'pendente', 'documento', 'licença', 'vencido', 'alerta', 'risco', 'cuidado'];
+
+function detectEmotion(text: string): JoiEmotion {
+  const lower = text.toLowerCase();
+  if (CELEBRATING_KEYWORDS.some(k => lower.includes(k))) return 'celebrating';
+  if (SERIOUS_KEYWORDS.some(k => lower.includes(k))) return 'serious';
+  return 'caring';
+}
 
 function getContextPresets() {
   const path = window.location.pathname;
@@ -47,12 +63,10 @@ function getContextPresets() {
 
 function getGreeting(): string {
   const h = new Date().getHours();
-  const path = window.location.pathname;
-  const context = path.includes('command') ? 'Centro de Comando' : path.includes('editor') ? 'Editor' : 'SkyCanvas';
-  if (h < 6) return `Boa madrugada. ${context} online.`;
-  if (h < 12) return `Bom dia. Bem-vindo ao ${context}.`;
-  if (h < 18) return `Boa tarde. ${context} pronto.`;
-  return `Boa noite. ${context} ativo.`;
+  if (h < 6) return 'Ei... ainda acordado? Posso te fazer companhia.';
+  if (h < 12) return 'Bom dia! Vamos fazer coisas incríveis hoje?';
+  if (h < 18) return 'Boa tarde. Como posso tornar seu trabalho mais leve?';
+  return 'Boa noite... Que bom ter você aqui comigo.';
 }
 
 function loadHistory(): Msg[] {
@@ -179,6 +193,7 @@ export function FXKAssistant() {
   const [idlePhrase, setIdlePhrase] = useState(0);
   const [connectionOk, setConnectionOk] = useState<boolean | null>(null);
   const [statusText, setStatusText] = useState('COMPANION ONLINE');
+  const [joiEmotion, setJoiEmotion] = useState<JoiEmotion>('caring');
   const endRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -194,10 +209,32 @@ export function FXKAssistant() {
     return () => clearInterval(interval);
   }, [messages.length, loading]);
 
+  // Emotion detection from last assistant message
+  useEffect(() => {
+    const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+    if (!lastAssistant || loading) {
+      setJoiEmotion('caring');
+      return;
+    }
+    const emotion = detectEmotion(lastAssistant.content);
+    setJoiEmotion(emotion);
+    // Celebration sound
+    if (emotion === 'celebrating') {
+      playGlitchBurst(0.1, 1.6); // higher pitch = celebratory
+    }
+    // Reset emotion after 8s
+    const t = setTimeout(() => setJoiEmotion('caring'), 8000);
+    return () => clearTimeout(t);
+  }, [messages, loading]);
+
   // Status text rotation
   useEffect(() => {
     if (loading) {
       setStatusText('PROCESSING...');
+    } else if (joiEmotion === 'celebrating') {
+      setStatusText('✨ EXCELENTE!');
+    } else if (joiEmotion === 'serious') {
+      setStatusText('⚠ ATENÇÃO');
     } else if (isTyping) {
       setStatusText('LISTENING...');
     } else if (messages.length === 0) {
@@ -205,7 +242,7 @@ export function FXKAssistant() {
     } else {
       setStatusText('OBSERVING...');
     }
-  }, [loading, isTyping, messages.length]);
+  }, [loading, isTyping, messages.length, joiEmotion]);
 
   // Typing detection → Joi reacts
   useEffect(() => {
@@ -390,7 +427,7 @@ export function FXKAssistant() {
       {/* Header — always cinematic */}
       <div className="relative z-10 flex items-center gap-2.5 px-3 py-3 shrink-0" style={{ borderBottom: '1px solid hsl(340 65% 50% / 0.1)' }}>
         <div className="cursor-pointer hover:brightness-125 transition-all">
-          <JoiCinematicHologram size="sm" state={joiState} glitching={glitching} className="w-10 h-16 shrink-0" />
+          <JoiCinematicHologram size="sm" state={joiState} glitching={glitching} emotion={joiEmotion} className="w-10 h-16 shrink-0" />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -402,7 +439,9 @@ export function FXKAssistant() {
               connectionOk === true ? "bg-green-500" : connectionOk === false ? "bg-red-500" : "bg-muted-foreground/20"
             )} style={{ boxShadow: connectionOk === true ? '0 0 4px hsl(120 70% 50%)' : 'none' }} />
           </div>
-          <span className="text-[7px] font-mono tracking-[0.15em] uppercase transition-all duration-500" style={{ color: 'hsl(340 65% 55% / 0.4)' }}>
+          <span className="text-[7px] font-mono tracking-[0.15em] uppercase transition-all duration-500" style={{
+            color: joiEmotion === 'celebrating' ? 'hsl(42 90% 60%)' : joiEmotion === 'serious' ? 'hsl(32 80% 55%)' : 'hsl(340 65% 55% / 0.4)',
+          }}>
             {statusText}
           </span>
         </div>
@@ -426,7 +465,7 @@ export function FXKAssistant() {
         {/* Sidebar hologram (expanded only) */}
         {expanded && messages.length > 0 && !isMobile && (
           <div className="w-[120px] shrink-0 flex flex-col items-center justify-center border-r" style={{ borderColor: 'hsl(340 65% 50% / 0.08)', background: 'hsl(220 22% 3% / 0.5)' }}>
-            <JoiCinematicHologram size="lg" state={joiState} glitching={glitching} className="w-24 h-48" />
+            <JoiCinematicHologram size="lg" state={joiState} glitching={glitching} emotion={joiEmotion} className="w-24 h-48" />
             <span className="text-[6px] font-mono tracking-[0.2em] uppercase mt-2" style={{ color: 'hsl(340 65% 55% / 0.4)' }}>
               {statusText}
             </span>
@@ -437,7 +476,7 @@ export function FXKAssistant() {
         <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-2 space-y-3 scrollbar-thin">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80">
-              <JoiCinematicHologram size="xl" state="materializing" glitching={glitching} className="w-40 h-64" />
+              <JoiCinematicHologram size="xl" state="materializing" glitching={glitching} emotion={joiEmotion} className="w-40 h-64" />
               {/* Contextual greeting */}
               <p className="text-[9px] font-mono tracking-[0.15em] text-center max-w-[200px]" style={{ color: 'hsl(340 65% 65% / 0.6)' }}>
                 {getGreeting()}
@@ -492,7 +531,11 @@ export function FXKAssistant() {
                   <div
                     className="px-3 py-2 rounded-lg rounded-bl-sm text-[11px] leading-relaxed"
                     style={{
-                      borderLeft: '2px solid hsl(340 65% 55% / 0.3)',
+                      borderLeft: `2px solid ${
+                        detectEmotion(msg.content) === 'celebrating' ? 'hsl(42 90% 55% / 0.5)'
+                          : detectEmotion(msg.content) === 'serious' ? 'hsl(32 80% 50% / 0.5)'
+                            : 'hsl(340 65% 55% / 0.3)'
+                      }`,
                       background: 'hsl(220 20% 6% / 0.6)',
                       color: 'hsl(180 8% 82%)',
                     }}

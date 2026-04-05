@@ -9,7 +9,7 @@ function getCtx(): AudioContext {
   return audioCtx;
 }
 
-export function playGlitchBurst(volume = 0.12) {
+export function playGlitchBurst(volume = 0.12, pitchShift = 1) {
   try {
     const ctx = getCtx();
     if (ctx.state === 'suspended') ctx.resume();
@@ -33,8 +33,8 @@ export function playGlitchBurst(volume = 0.12) {
 
     const bp = ctx.createBiquadFilter();
     bp.type = 'bandpass';
-    bp.frequency.setValueAtTime(2400, now);
-    bp.frequency.exponentialRampToValueAtTime(800, now + dur);
+    bp.frequency.setValueAtTime(2400 * pitchShift, now);
+    bp.frequency.exponentialRampToValueAtTime(800 * pitchShift, now + dur);
     bp.Q.value = 4;
 
     const noiseGain = ctx.createGain();
@@ -48,8 +48,8 @@ export function playGlitchBurst(volume = 0.12) {
     // Layer 2: Descending sine chirp (digital whine)
     const osc = ctx.createOscillator();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(1800, now);
-    osc.frequency.exponentialRampToValueAtTime(200, now + dur * 0.5);
+    osc.frequency.setValueAtTime(1800 * pitchShift, now);
+    osc.frequency.exponentialRampToValueAtTime(200 * pitchShift, now + dur * 0.5);
 
     const oscGain = ctx.createGain();
     oscGain.gain.setValueAtTime(0.3, now);

@@ -7,10 +7,13 @@ import { cn } from '@/lib/utils';
 import joiIdle from '@/assets/joi-hologram.png';
 import joiActive from '@/assets/joi-hologram-active.png';
 
+export type JoiEmotion = 'caring' | 'celebrating' | 'serious';
+
 interface Props {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   state?: 'idle' | 'active' | 'materializing';
   glitching?: boolean;
+  emotion?: JoiEmotion;
   className?: string;
 }
 
@@ -21,8 +24,10 @@ const SIZES = {
   xl: 'w-36 h-56 sm:w-44 sm:h-72',
 };
 
-export default function JoiCinematicHologram({ size = 'md', state = 'idle', glitching = false, className }: Props) {
+export default function JoiCinematicHologram({ size = 'md', state = 'idle', glitching = false, emotion = 'caring', className }: Props) {
   const isActive = state === 'active';
+  const isCelebrating = emotion === 'celebrating';
+  const isSerious = emotion === 'serious';
   const isMat = state === 'materializing';
 
   const [materialised, setMaterialised] = useState(!isMat);
@@ -38,15 +43,50 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
 
   return (
     <div className={cn('relative flex items-center justify-center', SIZES[size], className)}>
-      {/* Warm ambient glow — asymmetric organic pulse */}
+      {/* Warm ambient glow — varies by emotion */}
       <div
-        className="absolute joi-warm-pulse"
+        className={cn("absolute", isCelebrating ? "joi-celebrate-bounce" : "joi-warm-pulse")}
         style={{
           width: '160%', height: '130%', top: '-15%', left: '-30%',
-          background: 'radial-gradient(ellipse 55% 65% at 48% 45%, hsl(340 65% 58% / 0.12), hsl(32 80% 45% / 0.06) 50%, transparent 75%)',
+          background: isCelebrating
+            ? 'radial-gradient(ellipse 55% 65% at 48% 45%, hsl(42 90% 55% / 0.2), hsl(32 80% 45% / 0.1) 50%, transparent 75%)'
+            : isSerious
+              ? 'radial-gradient(ellipse 55% 65% at 48% 45%, hsl(340 65% 58% / 0.06), hsl(32 80% 45% / 0.03) 50%, transparent 75%)'
+              : 'radial-gradient(ellipse 55% 65% at 48% 45%, hsl(340 65% 58% / 0.12), hsl(32 80% 45% / 0.06) 50%, transparent 75%)',
           filter: 'blur(20px)', pointerEvents: 'none',
         }}
       />
+
+      {/* Serious alert border */}
+      {isSerious && (
+        <div
+          className="absolute inset-0 rounded-full joi-serious-pulse pointer-events-none"
+          style={{
+            border: '1px solid hsl(32 80% 50% / 0.3)',
+            boxShadow: '0 0 15px hsl(32 80% 50% / 0.1)',
+          }}
+        />
+      )}
+
+      {/* Celebration particles burst */}
+      {isCelebrating && (
+        <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={`cel-${i}`}
+              className="absolute rounded-full joi-celebrate-particle"
+              style={{
+                width: `${2 + Math.random() * 3}px`,
+                height: `${2 + Math.random() * 3}px`,
+                left: `${30 + Math.random() * 40}%`,
+                bottom: `${10 + Math.random() * 30}%`,
+                background: i % 2 === 0 ? 'hsl(42 90% 60%)' : 'hsl(340 65% 65%)',
+                animationDelay: `${(Math.random() * 0.6).toFixed(2)}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Projected shadow — warm golden */}
       <div
@@ -216,8 +256,8 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
         )}
       </div>
 
-      {/* Floating micro-particles — warm tones */}
-      <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
+      {/* Floating micro-particles — hidden in serious mode for focus */}
+      {!isSerious && <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
         {Array.from({ length: 10 }).map((_, i) => (
           <div
             key={i}
@@ -239,7 +279,7 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
             }}
           />
         ))}
-      </div>
+      </div>}
 
       {/* Materializing dissolve particles — warm */}
       {isMat && (
