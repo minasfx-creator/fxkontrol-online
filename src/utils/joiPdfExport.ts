@@ -41,6 +41,7 @@ function stripMarkdown(text: string): string {
 }
 
 export async function exportJoiPdf(markdownContent: string): Promise<void> {
+  try {
   const docType = detectDocType(markdownContent);
   const label = DOC_LABELS[docType];
   const now = new Date();
