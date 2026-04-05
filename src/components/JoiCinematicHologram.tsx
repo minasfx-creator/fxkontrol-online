@@ -44,8 +44,34 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
   const isCloseup = variant === 'closeup';
   const currentImage = isCloseup ? joiCloseup : (isActive ? joiActive : joiIdle);
 
+  // Parallax eye-contact effect
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    // Normalize to -1..1
+    const nx = (e.clientX - cx) / (rect.width / 2);
+    const ny = (e.clientY - cy) / (rect.height / 2);
+    // Subtle rotation: max ~4deg, and slight translate for depth
+    setTilt({ x: ny * -3, y: nx * 4 });
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setTilt({ x: 0, y: 0 });
+  }, []);
+
   return (
-    <div className={cn('relative flex items-center justify-center', SIZES[size], className)}>
+    <div
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className={cn('relative flex items-center justify-center', SIZES[size], className)}
+    >
       {/* Warm ambient glow — varies by emotion */}
       <div
         className={cn("absolute", isCelebrating ? "joi-celebrate-bounce" : "joi-warm-pulse")}
