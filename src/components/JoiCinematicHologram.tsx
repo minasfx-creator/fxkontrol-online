@@ -80,6 +80,9 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
       onMouseLeave={handleMouseLeave}
       className={cn('relative flex items-center justify-center', SIZES[size], className)}
     >
+      {/* Hide projector elements in closeup mode */}
+      {isCloseup ? null : (
+        <>
       {/* Warm ambient glow — varies by emotion */}
       <div
         className={cn("absolute", isCelebrating ? "joi-celebrate-bounce" : "joi-warm-pulse")}
