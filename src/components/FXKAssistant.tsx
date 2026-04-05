@@ -154,23 +154,6 @@ async function streamChat(
   onDone();
 }
 
-function VoiceWave({ active }: { active: boolean }) {
-  return (
-    <div className="flex items-center gap-[2px] h-5">
-      {[0, 1, 2, 3, 4].map(i => (
-        <div
-          key={i}
-          className={cn("w-[3px] rounded-full transition-all", active ? "animate-voice-wave" : "h-1")}
-          style={{
-            background: 'hsl(340 65% 58%)',
-            animationDelay: active ? `${i * 80}ms` : '0ms',
-            height: active ? undefined : '4px',
-          }}
-        />
-      ))}
-    </div>
-  );
-}
 
 function ThinkingWave() {
   return (
