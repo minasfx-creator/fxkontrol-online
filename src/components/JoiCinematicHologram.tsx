@@ -41,7 +41,8 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
     }
   }, [isMat]);
 
-  const currentImage = isActive ? joiActive : joiIdle;
+  const isCloseup = variant === 'closeup';
+  const currentImage = isCloseup ? joiCloseup : (isActive ? joiActive : joiIdle);
 
   return (
     <div className={cn('relative flex items-center justify-center', SIZES[size], className)}>
