@@ -36,12 +36,8 @@ const PRESETS_EDITOR = [
 
 const IDLE_PHRASES = [
   'Cuidando de tudo por você...',
-  'Revisando prazos e pendências...',
-  'Estou de olho nos documentos...',
   'Tudo sob controle. Relaxa.',
   'Me chama quando precisar, tá?',
-  'Verificando se há algo urgente...',
-  'Pode contar comigo para qualquer coisa...',
   'Observando e cuidando de tudo...',
 ];
 
