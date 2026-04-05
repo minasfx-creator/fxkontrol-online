@@ -1,42 +1,63 @@
 
 
-## Recolorir Joi — Substituir Rosa por Cores da Plataforma
+## Joi → Super Secretária Executiva Especializada em Pyro & Drone Shows
 
-### Problema
-A Joi usa extensivamente `hsl(340 65% ...)` (rosa/magenta), que destoa da paleta oficial da plataforma FX KONTROL (cyan, âmbar, gold, orange).
+### Conceito
 
-### Estratégia de Cores
-Substituir todas as referências rosa `hsl(340 ...)` e `hsl(350 ...)` por tokens da plataforma:
+Transformar a Joi de uma assistente técnica de sistemas em uma **secretária executiva completa**, ultra-especializada nos setores de pirotecnia e drone shows. Ela deve ser capaz de:
 
-| Uso atual (rosa) | Novo (plataforma) |
+- **Orçamentos**: Criar, revisar e formatar orçamentos completos para shows
+- **Documentação de licenciamento**: Gerar declarações, requerimentos, ofícios para Exército, DEPC, Corpo de Bombeiros, Prefeituras, ANAC (drones)
+- **Compliance regulatório**: Conhecer toda a legislação (NFPA, R-105, portarias do Exército, regulamentação ANAC para drones)
+- **Gestão de prazos**: Alertar sobre vencimentos de licenças, certificados, seguros
+- **Redação profissional**: Contratos, propostas comerciais, termos de responsabilidade
+- **Checklist operacional**: Preparação de documentos pré-show
+
+### Mudanças
+
+**1. System Prompt da Edge Function (`supabase/functions/fxk-ai-chat/index.ts`)**
+
+Reescrever completamente o system prompt para refletir a personalidade de secretária executiva:
+- Expertise em legislação brasileira de pirotecnia (R-105 do Exército, DEPC, Corpo de Bombeiros)
+- Expertise em regulamentação ANAC para operações de drones (RBAC-E 94, ICA 100-40)
+- Capacidade de redigir documentos formais (ofícios, declarações, requerimentos)
+- Capacidade de montar orçamentos detalhados com itens, quantidades e custos
+- Conhecimento de seguros obrigatórios (RC Produtos, RC Operações)
+- Conhecimento de certificados necessários (Blaster Certificate, CR do Exército)
+- Tom: profissional mas acolhedor, como uma secretária executiva de confiança
+
+**2. Presets de Comando (`FXKAssistant.tsx`)**
+
+Substituir os presets atuais por ações de secretária executiva:
+
+| Antigo | Novo |
 |---|---|
-| Glow principal, borders, shadows | **Cyan** `hsl(190 100% 50%)` / `var(--fxk-cyan)` |
-| Texto de label, status, accents | **Âmbar** `hsl(38 100% 50%)` / `var(--fxk-amber)` |
-| Partículas, detalhes secundários | **Gold** `hsl(45 100% 50%)` / `var(--fxk-gold)` |
-| Celebração | **Gold/Orange** (já usa `hsl(42 ...)`, manter) |
-| Seriedade | **Âmbar** `hsl(32 80% ...)` (já usa, manter) |
+| DIAGNÓSTICO | ORÇAMENTO — "Me ajude a criar um orçamento detalhado para um show" |
+| SCRIPT | LICENÇAS — "Quais documentos e licenças preciso para este show?" |
+| SAFETY | DECLARAÇÃO — "Preciso redigir uma declaração/ofício para órgão regulador" |
+| STATUS | CHECKLIST — "Monte um checklist completo de documentação pré-show" |
+| PRAZOS | PRAZOS (mantém) — "Verifique prazos de licenças e certificados" |
+| DOCS | CONTRATO — "Me ajude a redigir uma proposta comercial / contrato" |
+
+Mesma lógica para PRESETS_EDITOR.
+
+**3. Keywords de Emoção**
+
+Expandir keywords para contexto de secretária:
+- **Celebrating**: aprovado, deferido, concedido, assinado, renovado, pago
+- **Serious**: vencido, indeferido, pendente, multa, notificação, embargo, irregular
+
+**4. Greeting contextual**
+
+Atualizar saudações para refletir a personalidade de secretária:
+- Manhã: "Bom dia! Já organizei sua agenda. Vamos revisar pendências?"
+- Tarde: "Boa tarde. Algum documento urgente para preparar?"
+- Noite: "Boa noite... Posso adiantar alguma papelada para amanhã?"
 
 ### Arquivos Modificados
 
-**1. `src/components/FXKAssistant.tsx`** (~30 substituições)
-- FAB gradient: `hsl(340 ...)` → cyan + âmbar
-- Borders, shadows do painel: rosa → cyan com baixa opacidade
-- Textos "JOI · COMPANION": rosa → âmbar
-- Status dot, ícones de ação: rosa → cyan/âmbar
-- Typewriter cursor color: rosa → âmbar
-- VoiceWave bars: rosa → cyan
-- Minimized bar border: rosa → cyan
-
-**2. `src/components/JoiCinematicHologram.tsx`** (~20 substituições)
-- Ambient glow: rosa → cyan
-- Halo, projector cone: rosa → cyan
-- Eye shimmer: rosa → âmbar (warmth para intimismo)
-- Drop-shadows das imagens: rosa → cyan
-- Scanline sweep: rosa → cyan
-- Chromatic aberration hue-rotate: ajustar para cyan spectrum
-- Micro-particles: rosa → alternar cyan e âmbar
-
-**3. `src/index.css`** (cursor typewriter)
-- `.joi-typewriter-cursor`: rosa → âmbar
-- Qualquer keyframe com `hsl(340 ...)` → cyan ou âmbar conforme contexto
+| Arquivo | Alteração |
+|---|---|
+| `supabase/functions/fxk-ai-chat/index.ts` | Reescrever system prompt completo para secretária executiva |
+| `src/components/FXKAssistant.tsx` | Novos presets, keywords de emoção, saudações contextuais |
 
