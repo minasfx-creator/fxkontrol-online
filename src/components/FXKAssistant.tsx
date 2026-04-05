@@ -545,8 +545,25 @@ export function FXKAssistant() {
                     }}
                   >
                     <div className="prose prose-invert prose-xs max-w-none [&_p]:my-1 [&_code]:text-[hsl(190_100%_70%)] [&_code]:bg-transparent [&_pre]:bg-[hsl(220_20%_8%)] [&_pre]:border [&_pre]:border-[hsl(190_100%_50%/0.1)] [&_strong]:text-[hsl(38_100%_65%)] [&_a]:text-[hsl(190_100%_60%)]">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown>{stripKmzReadyBlock(msg.content)}</ReactMarkdown>
                     </div>
+                    {parseKmzReadyBlock(msg.content) && (
+                      <button
+                        onClick={() => {
+                          const params = parseKmzReadyBlock(msg.content);
+                          if (params) downloadAeroKmz(params);
+                        }}
+                        className="flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg text-[9px] font-mono tracking-wider uppercase transition-all hover:scale-105 active:scale-95"
+                        style={{
+                          background: 'hsl(190 100% 50% / 0.1)',
+                          border: '1px solid hsl(190 100% 50% / 0.25)',
+                          color: 'hsl(190 100% 70%)',
+                        }}
+                      >
+                        <Globe className="h-3 w-3" />
+                        Exportar KMZ Aeronáutica
+                      </button>
+                    )}
                   </div>
                   <div className="flex items-center justify-between mt-0.5">
                     {msg.ts && <span className="text-[6px] font-mono" style={{ color: 'hsl(190 100% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
