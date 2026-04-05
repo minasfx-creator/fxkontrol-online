@@ -390,8 +390,8 @@ export function FXKAssistant() {
       <div
         onClick={() => setMinimized(false)}
         className={cn(
-          "fixed z-[60] w-56 cursor-pointer rounded-lg border px-3 py-2 flex items-center gap-2",
-          isMobile ? "bottom-20 right-3" : "bottom-5 right-5"
+          "fixed z-[70] w-56 cursor-pointer rounded-lg border px-3 py-2 flex items-center gap-2",
+          isMobile ? "bottom-[88px] right-3" : "bottom-5 right-5"
         )}
         style={{
           background: 'hsl(220 22% 5% / 0.92)',
