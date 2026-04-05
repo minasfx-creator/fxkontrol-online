@@ -805,6 +805,15 @@ export function FXKAssistant() {
                           <span className="text-[7px] font-mono" style={{ color: 'hsl(190 100% 50% / 0.6)' }}>PDF</span>
                         </button>
                         <button
+                          onClick={() => exportJoiDocx(msg.content)}
+                          className="h-7 px-1.5 rounded-md flex items-center gap-1 transition-all hover:scale-105 active:scale-95"
+                          style={{ background: 'hsl(160 70% 40% / 0.1)', border: '1px solid hsl(160 70% 40% / 0.2)' }}
+                          title="Exportar DOCX"
+                        >
+                          <FileText className="h-3 w-3" style={{ color: 'hsl(160 70% 45% / 0.8)' }} />
+                          <span className="text-[7px] font-mono" style={{ color: 'hsl(160 70% 45% / 0.7)' }}>DOCX</span>
+                        </button>
+                        <button
                           onClick={() => handleFeedback(i, 'up')}
                           className={cn("h-7 w-7 rounded-md flex items-center justify-center transition-all hover:scale-105 active:scale-95",
                             msg.feedback === 'up' ? "bg-green-500/20 border border-green-500/30" : "hover:bg-white/5"

@@ -21,6 +21,22 @@ function getBestVoice(): SpeechSynthesisVoice | null {
   return voices[0] || null;
 }
 
+function cleanForSpeech(text: string): string {
+  return text
+    .replace(/#{1,6}\s/g, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+    .replace(/\|/g, ', ')
+    .replace(/---+/g, '')
+    .replace(/\[KMZ_READY\][\s\S]*?\[\/KMZ_READY\]/g, '')
+    // Add natural pauses
+    .replace(/\.\s/g, '... ')
+    .replace(/,\s/g, ',  ')
+    .trim();
+}
+
 export function useJoiSpeech() {
   const [enabled, setEnabled] = useState(() => {
     try { return localStorage.getItem(VOICE_PREF_KEY) === 'true'; } catch { return false; }
