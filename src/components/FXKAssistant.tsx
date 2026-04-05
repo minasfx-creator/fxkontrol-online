@@ -732,23 +732,26 @@ export function FXKAssistant() {
                 </div>
               ) : (
                 <div>
-                  {(() => {
-                    const isSpeakingThis = joiSpeech.speaking && i === messages.length - 1 && msg.role === 'assistant';
-                    return (
-                      <div
-                        className="px-3 py-2 rounded-lg rounded-bl-sm text-[11px] leading-relaxed transition-all duration-500"
-                        style={{
-                          borderLeft: `2px solid ${
-                            isSpeakingThis ? 'hsl(38 100% 55% / 0.8)'
-                              : detectEmotion(msg.content) === 'celebrating' ? 'hsl(42 90% 55% / 0.5)'
-                                : detectEmotion(msg.content) === 'serious' ? 'hsl(32 80% 50% / 0.5)'
-                                  : 'hsl(190 100% 50% / 0.3)'
-                          }`,
-                          background: isSpeakingThis ? 'hsl(220 20% 7% / 0.8)' : 'hsl(220 20% 6% / 0.6)',
-                          color: 'hsl(180 8% 82%)',
-                          animation: isSpeakingThis ? 'joi-msg-speaking 2s ease-in-out infinite' : undefined,
-                        }}
-                      >
+                  <div
+                    className="px-3 py-2 rounded-lg rounded-bl-sm text-[11px] leading-relaxed transition-all duration-500"
+                    style={{
+                      borderLeft: `2px solid ${
+                        (joiSpeech.speaking && i === messages.length - 1) ? 'hsl(38 100% 55% / 0.8)'
+                          : detectEmotion(msg.content) === 'celebrating' ? 'hsl(42 90% 55% / 0.5)'
+                            : detectEmotion(msg.content) === 'serious' ? 'hsl(32 80% 50% / 0.5)'
+                              : 'hsl(190 100% 50% / 0.3)'
+                      }`,
+                      background: (joiSpeech.speaking && i === messages.length - 1) ? 'hsl(220 20% 7% / 0.8)' : 'hsl(220 20% 6% / 0.6)',
+                      color: 'hsl(180 8% 82%)',
+                      animation: (joiSpeech.speaking && i === messages.length - 1) ? 'joi-msg-speaking 2s ease-in-out infinite' : undefined,
+                    }}
+                  >
+                    {joiSpeech.speaking && i === messages.length - 1 && (
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <SpeakingWave />
+                        <span className="text-[7px] font-mono tracking-wider uppercase" style={{ color: 'hsl(38 100% 55% / 0.6)' }}>FALANDO</span>
+                      </div>
+                    )}
                     <div className="prose prose-invert prose-xs max-w-none [&_p]:my-1 [&_code]:text-[hsl(190_100%_70%)] [&_code]:bg-transparent [&_pre]:bg-[hsl(220_20%_8%)] [&_pre]:border [&_pre]:border-[hsl(190_100%_50%/0.1)] [&_strong]:text-[hsl(38_100%_65%)] [&_a]:text-[hsl(190_100%_60%)]">
                       <ReactMarkdown>{stripKmzReadyBlock(msg.content)}</ReactMarkdown>
                     </div>
