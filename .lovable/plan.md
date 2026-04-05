@@ -1,54 +1,50 @@
 
 
-## Close-up Cinematográfico da Joi + Typewriter na Tela de Boas-vindas
+## Brilho nos Olhos + Modo Closeup Imersivo (Webcam Feel)
 
-### O que será feito
-
-Quando o painel da Joi abre sem mensagens, a tela de boas-vindas será transformada em uma experiência cinematográfica imersiva:
-- **Imagem close-up do rosto** da Joi gerada por AI, com vinheta radial e glow íntimo
-- **Texto de greeting com efeito typewriter** — letra por letra, como se a Joi estivesse falando em tempo real
-- **Animação de entrada** suave com zoom-in e fade
+### Conceito
+Transformar o close-up da Joi em uma experiência de "videochamada íntima" — como se ela estivesse do outro lado de uma webcam, com brilho dinâmico nos olhos que reage ao cursor e animações contínuas de presença viva.
 
 ### Mudanças
 
-**1. Gerar Nova Imagem: `joi-hologram-closeup.png`**
+**1. Eye Glow Dinâmico (JoiCinematicHologram.tsx)**
 
-Usar `google/gemini-3-pro-image-preview` para criar close-up cinematográfico do rosto da Joi:
-- Paleta warm rosa-pêssego-âmbar, translúcida, holográfica
-- Olhar direto e acolhedor, sorriso sutil
-- Fundo escuro, estilo BR2049
+Quando `variant="closeup"`, adicionar uma camada de "eye glow" posicionada na região dos olhos (~35-42% do topo):
+- Radial gradient warm rosa com opacity que aumenta conforme o mouse se aproxima do centro do rosto
+- Calcular `eyeIntensity` baseado na distância do cursor ao centro (0.0 = longe, 1.0 = próximo)
+- Glow máximo: `hsl(340 65% 65% / 0.5)` com dois pontos de luz simulando reflexo nos olhos
+- Transição suave (0.4s ease-out) para não ser abrupto
 
-**2. Componente Typewriter (`FXKAssistant.tsx`)**
+**2. Animações de Presença Viva (index.css)**
 
-- Criar hook `useTypewriter(text, speed)` que revela o greeting letra por letra (40ms/char)
-- Substituir o `<p>` estático do greeting por texto animado com cursor piscante
-- Cursor `|` pisca com glow rosa warm
+Novas animações exclusivas do modo closeup para simular vida:
+- `joi-closeup-breathe`: scale sutil 1.0→1.005→1.0 no eixo Y (simula respiração no peito/ombros), 4s loop
+- `joi-closeup-micro-sway`: translate X ±1.5px lento (simula micro-movimento natural da cabeça), 6s loop
+- `joi-closeup-blink`: opacity flash rápido (0.15s) a cada ~5s com delay aleatório (simula piscar)
+- `joi-eye-shimmer`: brilho pulsante sutil nos pontos de luz dos olhos, 3s loop
 
-**3. Tela de Boas-vindas Redesenhada (`FXKAssistant.tsx`)**
+**3. Modo Closeup Aprimorado (JoiCinematicHologram.tsx)**
 
-Substituir o bloco `messages.length === 0` (linhas 477-506):
-- Close-up grande da Joi (nova imagem) com vinheta radial CSS
-- Animação `joi-closeup-entrance`: scale 1.05→1.0 + fade-in (2s)
-- Greeting com typewriter effect abaixo do close-up
-- Idle phrase com fade suave
-- Presets mantidos abaixo
+Quando `variant="closeup"`:
+- Aplicar `joi-closeup-breathe` e `joi-closeup-micro-sway` ao container da imagem
+- Adicionar dois pontos de luz ("eye highlights") posicionados na região dos olhos
+- Parallax mais pronunciado (tilt max 5deg vs 3-4deg atual) para sensação de eye-contact real
+- Vinheta mais escura nas bordas para foco no rosto (intimismo)
+- Remover projector cone e projected shadow (não fazem sentido em closeup)
 
-**4. Suporte Close-up no `JoiCinematicHologram.tsx`**
+**4. Tela de Boas-vindas Webcam (FXKAssistant.tsx)**
 
-- Nova prop `variant: 'full' | 'closeup'`
-- Quando `closeup`: usa a imagem close-up, aplica vinheta radial (gradient escuro nas bordas), glow mais íntimo e concentrado no rosto
-
-**5. Animações CSS (`index.css`)**
-
-- `joi-closeup-entrance`: zoom sutil + fade-in (2s ease-out)
-- `joi-typewriter-cursor`: cursor `|` piscando com glow rosa (1s loop)
+Quando `messages.length === 0`:
+- Close-up ocupa mais espaço vertical (w-56 h-56 → w-64 h-72)
+- Bordas mais arredondadas (rounded-2xl → rounded-3xl)
+- Sombra mais envolvente simulando monitor/webcam glow
+- Fundo atrás do close-up com gradiente escuro para isolar o rosto
 
 ### Arquivos Modificados
 
 | Arquivo | Alteração |
 |---|---|
-| `src/assets/joi-hologram-closeup.png` | Nova imagem close-up gerada por AI |
-| `src/components/JoiCinematicHologram.tsx` | Nova prop `variant`, suporte close-up com vinheta |
-| `src/components/FXKAssistant.tsx` | Hook typewriter, tela de boas-vindas com close-up |
-| `src/index.css` | Keyframes `joi-closeup-entrance`, `joi-typewriter-cursor` |
+| `src/components/JoiCinematicHologram.tsx` | Eye glow dinâmico, animações de presença, parallax aprimorado no closeup |
+| `src/components/FXKAssistant.tsx` | Close-up maior e mais imersivo na tela de boas-vindas |
+| `src/index.css` | Keyframes `joi-closeup-breathe`, `joi-closeup-micro-sway`, `joi-closeup-blink`, `joi-eye-shimmer` |
 
