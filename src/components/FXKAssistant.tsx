@@ -5,7 +5,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
 import JoiCinematicHologram, { type JoiEmotion } from '@/components/JoiCinematicHologram';
-import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText } from 'lucide-react';
+import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText, Download, Gavel } from 'lucide-react';
+import { exportJoiPdf } from '@/utils/joiPdfExport';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -23,6 +24,7 @@ const PRESETS_COMMAND = [
   { label: 'CHECKLIST', icon: Activity, prompt: 'Monte um checklist completo de documentação pré-show: licenças, seguros, certificados, autorizações.' },
   { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos e renovações urgentes.' },
   { label: 'CONTRATO', icon: Zap, prompt: 'Me ajude a redigir uma proposta comercial / contrato de prestação de serviços para um show.' },
+  { label: 'LICITAÇÃO', icon: Gavel, prompt: 'Me ajude a analisar um edital de licitação e preparar a proposta técnica e de preços. Inclua documentação de habilitação necessária.' },
 ];
 
 const PRESETS_EDITOR = [
@@ -32,6 +34,7 @@ const PRESETS_EDITOR = [
   { label: 'CHECKLIST', icon: Activity, prompt: 'Monte um checklist de documentação e segurança para este show.' },
   { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos urgentes.' },
   { label: 'CONTRATO', icon: Zap, prompt: 'Me ajude a redigir uma proposta comercial ou contrato para este projeto de show.' },
+  { label: 'LICITAÇÃO', icon: Gavel, prompt: 'Me ajude a analisar um edital de licitação e preparar proposta para este tipo de show.' },
 ];
 
 const IDLE_PHRASES = [
@@ -544,6 +547,13 @@ export function FXKAssistant() {
                     {msg.ts && <span className="text-[6px] font-mono" style={{ color: 'hsl(190 100% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
                     {!loading && (
                       <div className="flex gap-0.5 ml-auto">
+                        <button
+                          onClick={() => exportJoiPdf(msg.content)}
+                          className="h-4 w-4 rounded flex items-center justify-center transition-colors hover:bg-white/5"
+                          title="Exportar PDF"
+                        >
+                          <Download className="h-2.5 w-2.5" style={{ color: 'hsl(38 100% 55% / 0.5)' }} />
+                        </button>
                         <button
                           onClick={() => handleFeedback(i, 'up')}
                           className={cn("h-4 w-4 rounded flex items-center justify-center transition-colors",
