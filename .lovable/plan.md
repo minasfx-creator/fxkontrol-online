@@ -1,89 +1,72 @@
 
 
-## Adicionar Plantas de Distanciamento, Fechamento de Espaço Aéreo e KMZ para Aeronáutica
+## Aprimorar Ícone da Joi + Voz e Comando de Voz Estilo Alexa
 
-### Conceito
+### Visão Geral
 
-Três adições interligadas: (1) conhecimento especializado da Joi sobre plantas de distanciamento NFPA e normas brasileiras, (2) procedimentos de fechamento de espaço aéreo (NOTAM/DECEA), e (3) geração de KMZ com zonas de segurança e restrição aérea para submissão à aeronáutica.
+Três mudanças principais: (1) Substituir o FAB genérico pelo rosto closeup da Joi como ícone, (2) Adicionar Text-to-Speech para a Joi "falar" suas respostas, (3) Adicionar reconhecimento de voz (Speech-to-Text) via Web Speech API nativa para comandar a Joi por voz — criando uma experiência estilo Alexa.
 
 ### Mudanças
 
-**1. System Prompt — Novas Especialidades (`supabase/functions/fxk-ai-chat/index.ts`)**
+**1. Ícone FAB com Rosto da Joi (`FXKAssistant.tsx`)**
 
-Adicionar duas novas seções ao prompt:
+Substituir o `JoiCinematicHologram` genérico no botão FAB por uma imagem circular do rosto da Joi (`joi-hologram-closeup.png`), com:
+- Borda circular com glow cyan pulsante
+- Ring âmbar sutil de status
+- Efeito de "respiração" (scale pulse suave)
+- No mobile: 56px, desktop: 64px
+- Manter o ping indicator de status
 
-**📐 PLANTAS DE DISTANCIAMENTO**
-- Distâncias mínimas de segurança conforme NFPA 1123 (tabela por calibre: 50mm→21m, 75mm→42m, 100mm→60m, 150mm→105m, 200mm→140m)
-- Distâncias NFPA 1126 (Proximity Displays — reduzidas com proteção)
-- Normas brasileiras do Exército (R-105) para raios de segurança
-- Geração de plantas de distanciamento com zonas: zona de fogo, zona de segurança (equipe), zona de público, zona de fallout
-- Incluir dimensionamento de barricadas e proteções
-- Formato: tabela + descrição textual para gerar croqui/planta
+**2. Text-to-Speech — Joi Fala as Respostas (`FXKAssistant.tsx`)**
 
-**✈️ FECHAMENTO DE ESPAÇO AÉREO (NOTAM/DECEA)**
-- Procedimentos para solicitar NOTAM (Notice to Airmen) via DECEA
-- Prazos: NOTAM com mínimo 72h de antecedência
-- Informações obrigatórias: coordenadas GPS do local, raio de restrição, altitude máxima dos efeitos, horário de início/fim, tipo de atividade (pirotecnia ou RPAS)
-- ICA 100-12 e ICA 100-40 para operações de drones
-- Contato com SRPV (Serviço Regional de Proteção ao Voo)
-- Modelo de formulário para solicitação de NOTAM
-- Para drones: autorização SARPAS (DECEA) + registro SISANT (ANAC)
+Usar a API nativa `SpeechSynthesis` do browser (sem dependências externas):
+- Botão toggle de voz no header do painel (ícone Volume2/VolumeX)
+- Quando ativado, cada resposta da Joi é lida em voz alta automaticamente
+- Voz feminina em pt-BR (seleção automática da melhor voz disponível)
+- Indicador visual de "falando" (wave animation no header)
+- Botão de play individual em cada mensagem para re-ouvir
+- Persistir preferência de voz no localStorage
 
-**2. Gerador de KMZ para Aeronáutica (`src/utils/joiAeroKmzExport.ts`) — Novo**
+**3. Comando de Voz — Estilo Alexa (`FXKAssistant.tsx`)**
 
-Função que gera KMZ com:
-- **Círculo de zona de fogo** (polígono vermelho, raio conforme calibre)
-- **Círculo de zona de segurança público** (polígono amarelo, raio NFPA)
-- **Cilindro de restrição aérea** (polígono com altitude, raio do NOTAM)
-- **Ponto central** (coordenadas GPS do local do show)
-- **Metadados**: nome do evento, data, horário, altitudes, responsável técnico
-- Compatível com Google Earth e submissão ao DECEA
-- Reutiliza a lógica de coordenadas do `geoToolsKmlExporter.ts`
+Usar Web Speech API (`webkitSpeechRecognition` / `SpeechRecognition`):
+- Botão de microfone no campo de input (ícone Mic/MicOff)
+- Ao pressionar: iniciar escuta contínua com feedback visual
+- Visual: ring pulsante cyan ao redor do FAB enquanto ouvindo (estilo Alexa listening)
+- Transcrição em tempo real aparece no campo de input
+- Auto-envio após pausa na fala (1.5s de silêncio)
+- Status visual: LISTENING → PROCESSING → SPEAKING
+- Feedback sonoro sutil ao iniciar/parar escuta (usar `playGlitchBurst` existente)
+- Fallback gracioso em browsers sem suporte
 
-Parâmetros de entrada:
-```text
-{
-  eventName, date, startTime, endTime,
-  gpsCenter: { lat, lng },
-  maxCaliber (mm) → calcula raios automaticamente,
-  maxAltitude (m) → teto de restrição aérea,
-  notamRadius (NM) → raio do NOTAM,
-  responsibleName, responsibleDoc
-}
-```
+**4. Aprimorar UX de Interação**
 
-**3. Novo preset "ESPAÇO AÉREO" + Botão KMZ (`FXKAssistant.tsx`)**
-
-- Adicionar preset: `ESPAÇO AÉREO` — "Me ajude a preparar a documentação de fechamento de espaço aéreo e planta de distanciamento"
-- Adicionar preset: `PLANTA` — "Gere uma planta de distanciamento de segurança conforme NFPA para este show"
-- Na resposta da Joi quando gera plantas/NOTAM, incluir botão "Exportar KMZ Aeronáutica" que chama o gerador
-
-**4. Instrução no System Prompt para KMZ**
-
-Quando a Joi gerar uma planta de distanciamento ou NOTAM, incluir ao final da resposta um bloco especial `[KMZ_READY]` com os parâmetros estruturados, permitindo que o frontend detecte e ofereça o botão de exportação KMZ.
+- Estado "Listening" com animação no FAB (ring pulsante como Alexa)
+- Estado "Speaking" com wave bars animadas no header
+- Transição suave entre estados: idle → listening → processing → speaking → idle
+- Quando voz ativa e painel fechado, mostrar mini-indicator no FAB
 
 ### Arquivos
 
 | Arquivo | Alteração |
 |---|---|
-| `src/utils/joiAeroKmzExport.ts` | **Novo** — Gerador de KMZ com zonas de segurança e restrição aérea |
-| `src/components/FXKAssistant.tsx` | Novos presets ESPAÇO AÉREO e PLANTA, detecção de `[KMZ_READY]`, botão exportar KMZ |
-| `supabase/functions/fxk-ai-chat/index.ts` | Novas seções: plantas de distanciamento (NFPA 1123/1126), fechamento espaço aéreo (NOTAM/DECEA/SARPAS) |
+| `src/components/FXKAssistant.tsx` | FAB com rosto, TTS, Speech Recognition, estados visuais |
+| `src/hooks/useVoiceRecognition.ts` | **Novo** — Hook para Web Speech API recognition |
+| `src/hooks/useJoiSpeech.ts` | **Novo** — Hook para SpeechSynthesis TTS |
 
 ### Detalhes Técnicos
 
 ```text
-Fluxo:
-  Usuário pede planta/NOTAM → Joi gera documento com dados estruturados
-  → Frontend detecta [KMZ_READY:{json}] na resposta
-  → Renderiza botão "Exportar KMZ Aeronáutica"  
-  → Clique gera KMZ com zonas circulares e metadados
-  → Download automático "NOTAM_[evento]_[data].kmz"
+Fluxo de voz estilo Alexa:
+  Toque no mic → glitch sound → ring pulsante (LISTENING)
+  → Fala capturada em tempo real (texto no input)
+  → Pausa 1.5s → auto-submit → ring para (PROCESSING)  
+  → Resposta chega → SpeechSynthesis fala (SPEAKING)
+  → Fim da fala → volta a idle
 
-Zonas no KMZ (círculos concêntricos):
-  🔴 Zona de Fogo — raio conforme calibre (NFPA 1123)
-  🟡 Zona de Segurança — raio de fallout (1.5x zona de fogo)  
-  🔵 Restrição Aérea — raio do NOTAM (tipicamente 1-3 NM)
-  📍 Ponto Central — coordenadas GPS com metadados
+Web APIs usadas (sem dependências):
+  - SpeechRecognition / webkitSpeechRecognition (input)
+  - SpeechSynthesis (output)
+  - Ambas nativas do browser, sem API key necessária
 ```
 
