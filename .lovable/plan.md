@@ -1,63 +1,58 @@
 
 
-## Joi → Super Secretária Executiva Especializada em Pyro & Drone Shows
+## Exportar Documentos da Joi em PDF + Aprimorar Conhecimentos em Licitações e Contratos
 
 ### Conceito
 
-Transformar a Joi de uma assistente técnica de sistemas em uma **secretária executiva completa**, ultra-especializada nos setores de pirotecnia e drone shows. Ela deve ser capaz de:
-
-- **Orçamentos**: Criar, revisar e formatar orçamentos completos para shows
-- **Documentação de licenciamento**: Gerar declarações, requerimentos, ofícios para Exército, DEPC, Corpo de Bombeiros, Prefeituras, ANAC (drones)
-- **Compliance regulatório**: Conhecer toda a legislação (NFPA, R-105, portarias do Exército, regulamentação ANAC para drones)
-- **Gestão de prazos**: Alertar sobre vencimentos de licenças, certificados, seguros
-- **Redação profissional**: Contratos, propostas comerciais, termos de responsabilidade
-- **Checklist operacional**: Preparação de documentos pré-show
+Adicionar um botão "Exportar PDF" em cada mensagem da Joi que contenha documentos (orçamentos, declarações, contratos). O PDF será gerado client-side usando a biblioteca `jspdf` + `html2canvas` ou markdown-to-PDF. Além disso, expandir o system prompt com conhecimento profundo em licitações públicas e contratos.
 
 ### Mudanças
 
-**1. System Prompt da Edge Function (`supabase/functions/fxk-ai-chat/index.ts`)**
+**1. Botão "Exportar PDF" nas mensagens da assistente (`FXKAssistant.tsx`)**
+- Adicionar ícone `Download` (lucide) ao lado dos botões de feedback em cada mensagem da Joi
+- Ao clicar, converte o conteúdo markdown da mensagem em PDF formatado
+- Usar `jspdf` + `jspdf-autotable` para gerar PDF limpo com:
+  - Header com logo/nome "FX KONTROL · Minas Pirotécnica"
+  - Data de geração
+  - Conteúdo formatado (títulos, tabelas, listas)
+  - Footer com "Gerado por JOI · Secretária Executiva AI"
+- Instalar dependências: `jspdf`, `html2pdf.js`
 
-Reescrever completamente o system prompt para refletir a personalidade de secretária executiva:
-- Expertise em legislação brasileira de pirotecnia (R-105 do Exército, DEPC, Corpo de Bombeiros)
-- Expertise em regulamentação ANAC para operações de drones (RBAC-E 94, ICA 100-40)
-- Capacidade de redigir documentos formais (ofícios, declarações, requerimentos)
-- Capacidade de montar orçamentos detalhados com itens, quantidades e custos
-- Conhecimento de seguros obrigatórios (RC Produtos, RC Operações)
-- Conhecimento de certificados necessários (Blaster Certificate, CR do Exército)
-- Tom: profissional mas acolhedor, como uma secretária executiva de confiança
+**2. Função utilitária de exportação (`src/utils/joiPdfExport.ts`)**
+- Receber conteúdo markdown e gerar PDF
+- Parsing do markdown para estruturar o documento
+- Formatação profissional com a paleta da plataforma (cyan/âmbar/gold)
+- Detecção automática do tipo de documento (orçamento, declaração, contrato) para ajustar template
 
-**2. Presets de Comando (`FXKAssistant.tsx`)**
+**3. Aprimorar System Prompt — Licitações e Contratos (`fxk-ai-chat/index.ts`)**
 
-Substituir os presets atuais por ações de secretária executiva:
+Adicionar novas seções ao system prompt:
 
-| Antigo | Novo |
-|---|---|
-| DIAGNÓSTICO | ORÇAMENTO — "Me ajude a criar um orçamento detalhado para um show" |
-| SCRIPT | LICENÇAS — "Quais documentos e licenças preciso para este show?" |
-| SAFETY | DECLARAÇÃO — "Preciso redigir uma declaração/ofício para órgão regulador" |
-| STATUS | CHECKLIST — "Monte um checklist completo de documentação pré-show" |
-| PRAZOS | PRAZOS (mantém) — "Verifique prazos de licenças e certificados" |
-| DOCS | CONTRATO — "Me ajude a redigir uma proposta comercial / contrato" |
+- **LICITAÇÕES PÚBLICAS**: Lei 14.133/2021 (Nova Lei de Licitações), modalidades (pregão, concorrência, tomada de preços), elaboração de propostas técnicas e de preços, documentação de habilitação jurídica/fiscal/técnica, impugnações e recursos, atas de registro de preços
+- **CONTRATOS**: Tipos (prestação de serviços, fornecimento, empreitada), cláusulas obrigatórias, termos aditivos, reajustes, garantias contratuais, rescisão, subcontratação
+- **PROPOSTAS COMERCIAIS**: Estrutura profissional, escopo técnico detalhado, cronograma, condições de pagamento, cláusulas de segurança, seguros obrigatórios
+- **EDITAIS**: Análise de editais, requisitos de habilitação, propostas técnicas, atestados de capacidade técnica
 
-Mesma lógica para PRESETS_EDITOR.
+**4. Novo preset "LICITAÇÃO" nos comandos rápidos**
+- Substituir ou adicionar preset: "Me ajude a analisar um edital e preparar proposta para licitação"
 
-**3. Keywords de Emoção**
-
-Expandir keywords para contexto de secretária:
-- **Celebrating**: aprovado, deferido, concedido, assinado, renovado, pago
-- **Serious**: vencido, indeferido, pendente, multa, notificação, embargo, irregular
-
-**4. Greeting contextual**
-
-Atualizar saudações para refletir a personalidade de secretária:
-- Manhã: "Bom dia! Já organizei sua agenda. Vamos revisar pendências?"
-- Tarde: "Boa tarde. Algum documento urgente para preparar?"
-- Noite: "Boa noite... Posso adiantar alguma papelada para amanhã?"
-
-### Arquivos Modificados
+### Arquivos
 
 | Arquivo | Alteração |
 |---|---|
-| `supabase/functions/fxk-ai-chat/index.ts` | Reescrever system prompt completo para secretária executiva |
-| `src/components/FXKAssistant.tsx` | Novos presets, keywords de emoção, saudações contextuais |
+| `src/utils/joiPdfExport.ts` | **Novo** — Função de exportação markdown→PDF |
+| `src/components/FXKAssistant.tsx` | Botão PDF nas mensagens, import do exportador, novo preset LICITAÇÃO |
+| `supabase/functions/fxk-ai-chat/index.ts` | Expandir system prompt com licitações, contratos, editais |
+| `package.json` | Adicionar `html2pdf.js` |
+
+### Detalhes Técnicos
+
+```text
+Fluxo de exportação:
+  Mensagem Joi (markdown) 
+    → Parse markdown 
+    → Renderizar em div oculto com estilos profissionais
+    → html2pdf.js captura e gera PDF
+    → Download automático "JOI_[tipo]_[data].pdf"
+```
 
