@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import joiIdle from '@/assets/joi-hologram.png';
 import joiActive from '@/assets/joi-hologram-active.png';
+import joiCloseup from '@/assets/joi-hologram-closeup.png';
 
 export type JoiEmotion = 'caring' | 'celebrating' | 'serious';
 
@@ -14,6 +15,7 @@ interface Props {
   state?: 'idle' | 'active' | 'materializing';
   glitching?: boolean;
   emotion?: JoiEmotion;
+  variant?: 'full' | 'closeup';
   className?: string;
 }
 
