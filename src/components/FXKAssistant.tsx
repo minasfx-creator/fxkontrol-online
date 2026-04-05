@@ -55,6 +55,31 @@ function detectEmotion(text: string): JoiEmotion {
   return 'caring';
 }
 
+/** Typewriter greeting — reveals text char by char with blinking cursor */
+function TypewriterGreeting({ text }: { text: string }) {
+  const [displayed, setDisplayed] = useState('');
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    setDisplayed('');
+    setDone(false);
+    let i = 0;
+    const iv = setInterval(() => {
+      i++;
+      setDisplayed(text.slice(0, i));
+      if (i >= text.length) { clearInterval(iv); setDone(true); }
+    }, 40);
+    return () => clearInterval(iv);
+  }, [text]);
+
+  return (
+    <p className="text-[10px] font-mono tracking-[0.12em] text-center max-w-[220px] min-h-[2em]" style={{ color: 'hsl(340 65% 70% / 0.8)' }}>
+      {displayed}
+      {!done && <span className="joi-typewriter-cursor" />}
+    </p>
+  );
+}
+
 function getContextPresets() {
   const path = window.location.pathname;
   if (path.includes('command')) return PRESETS_COMMAND;
