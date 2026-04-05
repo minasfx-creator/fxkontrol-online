@@ -428,6 +428,24 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
         <path d="M185 300 Q182 345 180 390 Q179 425 178 455 L172 455 Q173 425 174 390 Q176 345 179 300 Z"
           fill="hsl(260 35% 20%)" fillOpacity={0.2 * op} />
 
+        {/* ═══ MICRO-PARTICLES — floating holographic dust ═══ */}
+        {microParticles.map((p, i) => (
+          <circle
+            key={`mp-${i}`}
+            cx={p.cx} cy={p.cy} r={p.r}
+            fill={p.color}
+            className="joi-micro-particle"
+            style={{
+              ['--mp-dx' as string]: `${p.dx}px`,
+              ['--mp-dy' as string]: `${p.dy}px`,
+              ['--mp-dur' as string]: `${p.dur}s`,
+              ['--mp-delay' as string]: `${p.delay}s`,
+              ['--mp-scale' as string]: p.scale,
+              ['--mp-op' as string]: p.op,
+            }}
+          />
+        ))}
+
         {/* ═══ HOLOGRAPHIC RAIN ═══ */}
         {rain.map((d, i) => (
           <line key={i} x1={d.x} y1={-5} x2={d.x} y2={d.len}
