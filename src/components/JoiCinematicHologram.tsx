@@ -258,6 +258,25 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
           <path d="M112 58 Q107 75 105 95" fill="none" stroke="hsl(190 80% 50%)" strokeWidth="0.5" strokeOpacity={0.2 * op} />
           <path d="M188 58 Q193 75 195 95" fill="none" stroke="hsl(190 80% 50%)" strokeWidth="0.5" strokeOpacity={0.2 * op} />
 
+          {/* ═══ FLOWING HAIR STRANDS — wind-driven ═══ */}
+          {flowingStrands.map((s, i) => (
+            <path
+              key={`fhs-${i}`}
+              d={s.d}
+              fill="none"
+              stroke="hsl(240 25% 22%)"
+              strokeWidth="0.8"
+              strokeOpacity={Number(s.op) * op}
+              strokeLinecap="round"
+              className="joi-hair-strand"
+              style={{
+                ['--strand-dur' as string]: `${s.dur}s`,
+                ['--strand-delay' as string]: `${s.delay}s`,
+                ['--strand-op' as string]: s.op,
+              }}
+            />
+          ))}
+
           {/* Static strands (active) */}
           {isActive && staticStrands.map((s, i) => (
             <line key={`ss-${i}`} x1={s.baseX} y1={s.baseY} x2={s.tipX} y2={s.tipY}
