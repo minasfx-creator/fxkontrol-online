@@ -9,7 +9,7 @@ function getCtx(): AudioContext {
   return audioCtx;
 }
 
-export function playGlitchBurst(volume = 0.12) {
+export function playGlitchBurst(volume = 0.12, pitchShift = 1) {
   try {
     const ctx = getCtx();
     if (ctx.state === 'suspended') ctx.resume();
