@@ -1,72 +1,60 @@
 
+## Animações de Transição Fluidas entre Estados da Joi + Animação de Fala
 
-## Aprimorar Ícone da Joi + Voz e Comando de Voz Estilo Alexa
-
-### Visão Geral
-
-Três mudanças principais: (1) Substituir o FAB genérico pelo rosto closeup da Joi como ícone, (2) Adicionar Text-to-Speech para a Joi "falar" suas respostas, (3) Adicionar reconhecimento de voz (Speech-to-Text) via Web Speech API nativa para comandar a Joi por voz — criando uma experiência estilo Alexa.
+### Problema Atual
+As transições entre estados (idle → listening → processing → speaking) são abruptas. O FAB não reflete o estado "speaking". A `ThinkingWave` e `SpeakingWave` são simples e sem transição de entrada/saída. Não há animação labial/visual durante a fala.
 
 ### Mudanças
 
-**1. Ícone FAB com Rosto da Joi (`FXKAssistant.tsx`)**
+**1. Novas Keyframes CSS (`src/index.css`)**
 
-Substituir o `JoiCinematicHologram` genérico no botão FAB por uma imagem circular do rosto da Joi (`joi-hologram-closeup.png`), com:
-- Borda circular com glow cyan pulsante
-- Ring âmbar sutil de status
-- Efeito de "respiração" (scale pulse suave)
-- No mobile: 56px, desktop: 64px
-- Manter o ping indicator de status
+| Keyframe | Descrição |
+|---|---|
+| `joi-state-glow` | Transição suave de cor do ring do FAB entre estados (cyan→âmbar→cyan) |
+| `joi-speaking-pulse` | Pulsação orgânica no FAB durante fala (simula "respiração de fala") |
+| `joi-speaking-wave-enter` | Fade-in + scale das barras de wave ao iniciar fala |
+| `joi-processing-orbit` | Dots orbitando o FAB durante processamento |
+| `joi-listening-ripple` | Ondas concêntricas saindo do FAB no modo escuta (estilo Alexa) |
+| `joi-mouth-speak` | Animação de "boca" no indicador do FAB durante speaking |
 
-**2. Text-to-Speech — Joi Fala as Respostas (`FXKAssistant.tsx`)**
+**2. FAB com Estado Visual Distinto (`FXKAssistant.tsx`)**
 
-Usar a API nativa `SpeechSynthesis` do browser (sem dependências externas):
-- Botão toggle de voz no header do painel (ícone Volume2/VolumeX)
-- Quando ativado, cada resposta da Joi é lida em voz alta automaticamente
-- Voz feminina em pt-BR (seleção automática da melhor voz disponível)
-- Indicador visual de "falando" (wave animation no header)
-- Botão de play individual em cada mensagem para re-ouvir
-- Persistir preferência de voz no localStorage
+O FAB fechado refletirá cada estado com visual diferente:
+- **Idle**: Breathing cyan suave (atual)
+- **Listening**: Ripples concêntricos cyan expandindo (3 ondas) + borda mais intensa
+- **Processing**: Ring com dots orbitantes (3 dots pequenos girando ao redor) + brilho âmbar
+- **Speaking**: Pulsação orgânica âmbar (simula fala) + mini wave bars ao redor
 
-**3. Comando de Voz — Estilo Alexa (`FXKAssistant.tsx`)**
+**3. Header com Transições Suaves**
 
-Usar Web Speech API (`webkitSpeechRecognition` / `SpeechRecognition`):
-- Botão de microfone no campo de input (ícone Mic/MicOff)
-- Ao pressionar: iniciar escuta contínua com feedback visual
-- Visual: ring pulsante cyan ao redor do FAB enquanto ouvindo (estilo Alexa listening)
-- Transcrição em tempo real aparece no campo de input
-- Auto-envio após pausa na fala (1.5s de silêncio)
-- Status visual: LISTENING → PROCESSING → SPEAKING
-- Feedback sonoro sutil ao iniciar/parar escuta (usar `playGlitchBurst` existente)
-- Fallback gracioso em browsers sem suporte
+- Status text muda com `animate-fade-in` (fade cross entre textos)
+- `SpeakingWave` ganha entrada com scale stagger por barra
+- Adicionar `JoiSpeakingAvatar` — no header, quando speaking, a foto da Joi ganha:
+  - Ring âmbar pulsando em sincronia com wave  
+  - Glow sutil que "respira" indicando fala ativa
+  - Micro-scale (1.02) no ritmo da wave
 
-**4. Aprimorar UX de Interação**
+**4. ThinkingWave Aprimorada**
 
-- Estado "Listening" com animação no FAB (ring pulsante como Alexa)
-- Estado "Speaking" com wave bars animadas no header
-- Transição suave entre estados: idle → listening → processing → speaking → idle
-- Quando voz ativa e painel fechado, mostrar mini-indicator no FAB
+- Entrada staggered: barras aparecem uma a uma com delay
+- Cores variam de cyan escuro → cyan claro com gradiente
+- Adicionar label com dots animados: "Processando..." com 3 dots cycling
 
-### Arquivos
+**5. SpeakingWave Aprimorada**
+
+- Mais barras (8 em vez de 5)
+- Variação de altura mais orgânica (usar sin com offsets diferentes)
+- Cor âmbar com gradiente para gold
+- Entrada com scale-in staggered
+
+**6. Indicador de Fala na Mensagem**
+
+- Quando Joi está falando uma mensagem específica, highlight sutil na borda esquerda (pulso âmbar)
+- A mensagem atualmente sendo falada ganha um pequeno ícone de wave ao lado
+
+### Arquivos Modificados
 
 | Arquivo | Alteração |
 |---|---|
-| `src/components/FXKAssistant.tsx` | FAB com rosto, TTS, Speech Recognition, estados visuais |
-| `src/hooks/useVoiceRecognition.ts` | **Novo** — Hook para Web Speech API recognition |
-| `src/hooks/useJoiSpeech.ts` | **Novo** — Hook para SpeechSynthesis TTS |
-
-### Detalhes Técnicos
-
-```text
-Fluxo de voz estilo Alexa:
-  Toque no mic → glitch sound → ring pulsante (LISTENING)
-  → Fala capturada em tempo real (texto no input)
-  → Pausa 1.5s → auto-submit → ring para (PROCESSING)  
-  → Resposta chega → SpeechSynthesis fala (SPEAKING)
-  → Fim da fala → volta a idle
-
-Web APIs usadas (sem dependências):
-  - SpeechRecognition / webkitSpeechRecognition (input)
-  - SpeechSynthesis (output)
-  - Ambas nativas do browser, sem API key necessária
-```
-
+| `src/index.css` | 6 novas keyframes, melhorar `voice-wave` existente |
+| `src/components/FXKAssistant.tsx` | FAB multi-estado, header speaking avatar, ThinkingWave/SpeakingWave aprimoradas, indicador de fala em mensagem |
