@@ -84,10 +84,10 @@ function getContextPresets() {
 
 function getGreeting(): string {
   const h = new Date().getHours();
-  if (h < 6) return 'Ei... ainda acordado? Posso te fazer companhia.';
-  if (h < 12) return 'Bom dia! Vamos fazer coisas incríveis hoje?';
-  if (h < 18) return 'Boa tarde. Como posso tornar seu trabalho mais leve?';
-  return 'Boa noite... Que bom ter você aqui comigo.';
+  if (h < 6) return 'Ei... ainda acordado? Posso adiantar alguma papelada?';
+  if (h < 12) return 'Bom dia! Já organizei sua agenda. Vamos revisar pendências?';
+  if (h < 18) return 'Boa tarde. Algum documento urgente para preparar?';
+  return 'Boa noite... Posso adiantar alguma papelada para amanhã?';
 }
 
 function loadHistory(): Msg[] {
