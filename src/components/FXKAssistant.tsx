@@ -157,6 +157,7 @@ export function FXKAssistant() {
   const [messages, setMessages] = useState<Msg[]>(() => loadHistory());
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [glitching, setGlitching] = useState(false);
   const [connectionOk, setConnectionOk] = useState<boolean | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -202,6 +203,8 @@ export function FXKAssistant() {
 
   const send = useCallback(async (text: string) => {
     if (!text.trim() || loading) return;
+    setGlitching(true);
+    setTimeout(() => setGlitching(false), 800);
     const userMsg: Msg = { role: 'user', content: text.trim(), ts: Date.now() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
@@ -326,7 +329,7 @@ export function FXKAssistant() {
       {/* Header */}
       <div className="relative z-10 flex items-center gap-2.5 px-3 py-3 shrink-0" style={{ borderBottom: '1px solid hsl(32 100% 50% / 0.12)' }}>
         {expanded ? (
-          <JoiCinematicHologram size="sm" state={loading ? 'active' : 'idle'} className="w-10 h-16 shrink-0" />
+          <JoiCinematicHologram size="sm" state={loading ? 'active' : 'idle'} glitching={glitching} className="w-10 h-16 shrink-0" />
         ) : (
           <JoiHologramAvatar size="sm" state={loading ? 'active' : 'idle'} animate />
         )}
@@ -366,7 +369,7 @@ export function FXKAssistant() {
         {/* Sidebar hologram (expanded only, when messages exist, hidden on mobile) */}
         {expanded && messages.length > 0 && !isMobile && (
           <div className="w-[120px] shrink-0 flex flex-col items-center justify-center border-r" style={{ borderColor: 'hsl(32 100% 50% / 0.1)', background: 'hsl(220 22% 3% / 0.5)' }}>
-            <JoiCinematicHologram size="lg" state={loading ? 'active' : 'idle'} className="w-24 h-48" />
+            <JoiCinematicHologram size="lg" state={loading ? 'active' : 'idle'} glitching={glitching} className="w-24 h-48" />
             <span className="text-[6px] font-mono tracking-[0.2em] uppercase mt-2" style={{ color: 'hsl(280 80% 55% / 0.4)' }}>
               HOLOGRAM · ACTIVE
             </span>
@@ -378,7 +381,7 @@ export function FXKAssistant() {
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-4 opacity-80">
               {expanded ? (
-                <JoiCinematicHologram size="xl" state="materializing" className="w-40 h-64" />
+                <JoiCinematicHologram size="xl" state="materializing" glitching={glitching} className="w-40 h-64" />
               ) : (
                 <JoiHologramAvatar size="lg" state="idle" animate />
               )}

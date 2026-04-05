@@ -10,6 +10,7 @@ import joiActive from '@/assets/joi-hologram-active.png';
 interface Props {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   state?: 'idle' | 'active' | 'materializing';
+  glitching?: boolean;
   className?: string;
 }
 
@@ -20,7 +21,7 @@ const SIZES = {
   xl: 'w-36 h-56 sm:w-44 sm:h-72',
 };
 
-export default function JoiCinematicHologram({ size = 'md', state = 'idle', className }: Props) {
+export default function JoiCinematicHologram({ size = 'md', state = 'idle', glitching = false, className }: Props) {
   const isActive = state === 'active';
   const isMat = state === 'materializing';
 
@@ -73,12 +74,13 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
       <div
         className={cn(
           'relative z-10 w-full h-full flex items-center justify-center',
-          !isActive && !isMat && 'joi-breathing'
+          !isActive && !isMat && !glitching && 'joi-breathing'
         )}
         style={{
           clipPath: isMat && !materialised ? 'inset(100% 0 0 0)' : 'inset(0 0 0 0)',
           transition: isMat ? 'clip-path 2.2s cubic-bezier(0.16, 1, 0.3, 1)' : undefined,
           transformOrigin: '50% 85%',
+          animation: glitching ? 'joi-glitch-burst 0.8s steps(1, end) both' : undefined,
         }}
       >
         {/* Idle image — fades out when active */}
@@ -163,6 +165,45 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', clas
               mixBlendMode: 'screen',
             }}
           />
+        )}
+
+        {/* Chromatic burst overlays (glitching) */}
+        {glitching && (
+          <>
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                backgroundImage: `url(${currentImage})`,
+                backgroundSize: 'contain',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                mixBlendMode: 'screen',
+                filter: 'hue-rotate(-60deg) saturate(4)',
+                animation: 'joi-chroma-burst-left 0.8s ease-out both',
+              }}
+            />
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                backgroundImage: `url(${currentImage})`,
+                backgroundSize: 'contain',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                mixBlendMode: 'screen',
+                filter: 'hue-rotate(60deg) saturate(4)',
+                animation: 'joi-chroma-burst-right 0.8s ease-out both',
+              }}
+            />
+            {/* Flash overlay */}
+            <div
+              className="absolute inset-0 pointer-events-none rounded"
+              style={{
+                background: 'radial-gradient(ellipse at 50% 40%, hsl(190 100% 70% / 0.5), hsl(280 80% 60% / 0.2) 50%, transparent 75%)',
+                mixBlendMode: 'screen',
+                animation: 'joi-flash-burst 0.8s ease-out both',
+              }}
+            />
+          </>
         )}
       </div>
 
