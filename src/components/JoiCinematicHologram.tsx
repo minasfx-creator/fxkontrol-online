@@ -48,18 +48,26 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
   const containerRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
+  const [eyeIntensity, setEyeIntensity] = useState(0);
+
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const el = containerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
-    // Normalize to -1..1
     const nx = (e.clientX - cx) / (rect.width / 2);
     const ny = (e.clientY - cy) / (rect.height / 2);
-    // Subtle rotation: max ~4deg, and slight translate for depth
-    setTilt({ x: ny * -3, y: nx * 4 });
-  }, []);
+    const maxTilt = isCloseup ? 5 : 4;
+    setTilt({ x: ny * -(maxTilt - 1), y: nx * maxTilt });
+    // Eye intensity: 1.0 when cursor is at center of face region (~38% from top)
+    if (isCloseup) {
+      const eyeY = rect.top + rect.height * 0.38;
+      const dist = Math.sqrt((e.clientX - cx) ** 2 + (e.clientY - eyeY) ** 2);
+      const maxDist = rect.width * 0.8;
+      setEyeIntensity(Math.max(0, 1 - dist / maxDist));
+    }
+  }, [isCloseup]);
 
   const handleMouseLeave = useCallback(() => {
     setTilt({ x: 0, y: 0 });
@@ -72,6 +80,9 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
       onMouseLeave={handleMouseLeave}
       className={cn('relative flex items-center justify-center', SIZES[size], className)}
     >
+      {/* Hide projector elements in closeup mode */}
+      {isCloseup ? null : (
+        <>
       {/* Warm ambient glow — varies by emotion */}
       <div
         className={cn("absolute", isCelebrating ? "joi-celebrate-bounce" : "joi-warm-pulse")}
@@ -148,12 +159,15 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
           clipPath: 'polygon(20% 100%, 50% 0%, 80% 100%)',
         }}
       />
+        </>
+      )}
 
       {/* Main image container — with parallax tilt */}
       <div
         className={cn(
           'relative z-10 w-full h-full flex items-center justify-center',
-          !isActive && !isMat && !glitching && 'joi-breathing'
+          !isActive && !isMat && !glitching && !isCloseup && 'joi-breathing',
+          isCloseup && 'joi-closeup-breathe joi-closeup-micro-sway'
         )}
         style={{
           clipPath: isMat && !materialised ? 'inset(100% 0 0 0)' : 'inset(0 0 0 0)',
@@ -175,7 +189,31 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
               }}
               draggable={false}
             />
-            <div className="absolute inset-0 joi-closeup-vignette" />
+            <div className="absolute inset-0 joi-closeup-vignette" style={{ background: 'radial-gradient(ellipse 60% 55% at 50% 40%, transparent 30%, hsl(220 22% 4% / 0.85) 100%)' }} />
+            {/* Blink overlay */}
+            <div className="absolute inset-0 pointer-events-none joi-closeup-blink" />
+            {/* Eye highlights */}
+            <div
+              className="absolute pointer-events-none joi-eye-shimmer"
+              style={{
+                width: '35%', height: '8%',
+                top: '36%', left: '20%',
+                background: `radial-gradient(circle, hsl(340 65% 65% / ${(0.15 + eyeIntensity * 0.35).toFixed(2)}) 0%, transparent 70%)`,
+                filter: 'blur(3px)',
+                transition: 'background 0.4s ease-out',
+              }}
+            />
+            <div
+              className="absolute pointer-events-none joi-eye-shimmer"
+              style={{
+                width: '35%', height: '8%',
+                top: '36%', right: '20%',
+                background: `radial-gradient(circle, hsl(340 65% 65% / ${(0.15 + eyeIntensity * 0.35).toFixed(2)}) 0%, transparent 70%)`,
+                filter: 'blur(3px)',
+                transition: 'background 0.4s ease-out',
+                animationDelay: '0.5s',
+              }}
+            />
           </>
         ) : (
           <>

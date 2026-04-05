@@ -502,7 +502,7 @@ export function FXKAssistant() {
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-3 opacity-90">
               {/* Close-up cinematográfico */}
-              <div className="relative w-48 h-48 sm:w-56 sm:h-56 rounded-2xl overflow-hidden joi-closeup-entrance" style={{ boxShadow: '0 0 40px hsl(340 65% 50% / 0.15), 0 0 80px hsl(32 80% 45% / 0.08)' }}>
+              <div className="relative w-64 h-72 rounded-3xl overflow-hidden joi-closeup-entrance" style={{ boxShadow: '0 0 50px hsl(340 65% 50% / 0.2), 0 0 100px hsl(32 80% 45% / 0.1), inset 0 0 60px hsl(220 22% 4% / 0.5)', background: 'radial-gradient(ellipse at 50% 40%, hsl(220 22% 8%) 0%, hsl(220 22% 3%) 100%)' }}>
                 <JoiCinematicHologram size="xl" state="materializing" glitching={glitching} emotion={joiEmotion} variant="closeup" className="w-full h-full" />
               </div>
               {/* Typewriter greeting */}

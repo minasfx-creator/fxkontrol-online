@@ -2020,3 +2020,43 @@ button:active {
   background: radial-gradient(ellipse 70% 65% at 50% 40%, transparent 40%, hsl(220 22% 4% / 0.7) 100%);
   pointer-events: none;
 }
+
+/* === Close-up Breathe — subtle Y-scale breathing === */
+@keyframes joi-closeup-breathe {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.005); }
+}
+.joi-closeup-breathe {
+  animation: joi-closeup-breathe 4s ease-in-out infinite;
+}
+
+/* === Close-up Micro Sway — natural head movement === */
+@keyframes joi-closeup-micro-sway {
+  0%, 100% { transform: translateX(0); }
+  33% { transform: translateX(1.5px); }
+  66% { transform: translateX(-1.5px); }
+}
+.joi-closeup-micro-sway {
+  animation: joi-closeup-micro-sway 6s ease-in-out infinite;
+}
+
+/* === Close-up Blink — quick opacity flash === */
+@keyframes joi-closeup-blink {
+  0%, 94%, 100% { opacity: 1; }
+  96% { opacity: 0.3; }
+  97% { opacity: 0.1; }
+  98% { opacity: 0.3; }
+}
+.joi-closeup-blink {
+  animation: joi-closeup-blink 5s ease-in-out infinite;
+  animation-delay: 2s;
+}
+
+/* === Eye Shimmer — pulsing eye highlight === */
+@keyframes joi-eye-shimmer {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+.joi-eye-shimmer {
+  animation: joi-eye-shimmer 3s ease-in-out infinite;
+}
