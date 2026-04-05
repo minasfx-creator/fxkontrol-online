@@ -44,7 +44,9 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
   }, [isMat]);
 
   const isCloseup = variant === 'closeup';
-  const currentImage = isCloseup ? joiCloseup : (isActive ? joiActive : joiIdle);
+  const currentImage = isCloseup
+    ? (isSerious ? joiSerious : isCelebrating ? joiCelebrating : joiCloseup)
+    : (isActive ? joiActive : joiIdle);
 
   // Parallax eye-contact effect
   const containerRef = useRef<HTMLDivElement>(null);
