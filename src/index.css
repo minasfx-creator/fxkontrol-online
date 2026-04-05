@@ -1304,7 +1304,7 @@ button:active {
   animation: page-sweep 0.65s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
 }
 
-/* Voice wave bars */
+/* Voice wave bars — enhanced organic */
 @keyframes voice-wave {
   0%, 100% { height: 4px; }
   25% { height: 14px; }
@@ -1313,6 +1313,12 @@ button:active {
 }
 .animate-voice-wave {
   animation: voice-wave 0.8s ease-in-out infinite;
+}
+
+/* Joi speaking avatar ring pulse */
+@keyframes joi-avatar-speaking {
+  0%, 100% { box-shadow: 0 0 0 2px hsl(38 100% 50% / 0.3), 0 0 12px hsl(38 100% 50% / 0.1); transform: scale(1); }
+  50% { box-shadow: 0 0 0 3px hsl(38 100% 55% / 0.6), 0 0 20px hsl(38 100% 50% / 0.25); transform: scale(1.02); }
 }
 
 /* ══════════════════════════════════════════════
