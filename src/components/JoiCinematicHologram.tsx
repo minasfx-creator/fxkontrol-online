@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 import joiIdle from '@/assets/joi-hologram.png';
 import joiActive from '@/assets/joi-hologram-active.png';
 import joiCloseup from '@/assets/joi-hologram-closeup.png';
+import joiSerious from '@/assets/joi-hologram-serious.png';
+import joiCelebrating from '@/assets/joi-hologram-celebrating.png';
 
 export type JoiEmotion = 'caring' | 'celebrating' | 'serious';
 
@@ -42,7 +44,9 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
   }, [isMat]);
 
   const isCloseup = variant === 'closeup';
-  const currentImage = isCloseup ? joiCloseup : (isActive ? joiActive : joiIdle);
+  const currentImage = isCloseup
+    ? (isSerious ? joiSerious : isCelebrating ? joiCelebrating : joiCloseup)
+    : (isActive ? joiActive : joiIdle);
 
   // Parallax eye-contact effect
   const containerRef = useRef<HTMLDivElement>(null);
