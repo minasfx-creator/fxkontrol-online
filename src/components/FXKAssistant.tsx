@@ -17,21 +17,21 @@ const HISTORY_KEY = 'fxk-ai-history';
 const MAX_HISTORY = 10;
 
 const PRESETS_COMMAND = [
-  { label: 'DIAGNÓSTICO', icon: Activity, prompt: 'Execute um diagnóstico completo do sistema FXK — módulos, DMX, canais ativos, status de segurança.' },
-  { label: 'SCRIPT', icon: Sparkles, prompt: 'Preciso de ajuda criando um script de show pirotécnico.' },
-  { label: 'SAFETY', icon: ShieldCheck, prompt: 'Quais são os protocolos de segurança NFPA que devo seguir para este show?' },
-  { label: 'STATUS', icon: Zap, prompt: 'Qual o status atual do show — timeline, posições configuradas e módulos online?' },
-  { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos e pendências do meu projeto atual. Me alerte sobre qualquer urgência.' },
-  { label: 'DOCS', icon: FileText, prompt: 'Quais documentos preciso preparar para o show? Licenças, seguros, autorizações pendentes?' },
+  { label: 'ORÇAMENTO', icon: Sparkles, prompt: 'Me ajude a criar um orçamento detalhado para um show pirotécnico. Preciso incluir itens, quantidades, calibres e custos.' },
+  { label: 'LICENÇAS', icon: ShieldCheck, prompt: 'Quais documentos e licenças preciso para realizar este show? Liste todos os órgãos, prazos e requisitos.' },
+  { label: 'DECLARAÇÃO', icon: FileText, prompt: 'Preciso redigir uma declaração/ofício para um órgão regulador. Me ajude com o formato oficial completo.' },
+  { label: 'CHECKLIST', icon: Activity, prompt: 'Monte um checklist completo de documentação pré-show: licenças, seguros, certificados, autorizações.' },
+  { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos e renovações urgentes.' },
+  { label: 'CONTRATO', icon: Zap, prompt: 'Me ajude a redigir uma proposta comercial / contrato de prestação de serviços para um show.' },
 ];
 
 const PRESETS_EDITOR = [
-  { label: 'DESIGN', icon: Zap, prompt: 'Me ajude a criar um design de show com efeitos visuais impressionantes.' },
-  { label: 'TIMELINE', icon: Activity, prompt: 'Preciso organizar a timeline do show com transições suaves.' },
-  { label: 'SAFETY', icon: ShieldCheck, prompt: 'Verifique a segurança das posições configuradas no meu show.' },
-  { label: 'EXPORT', icon: Sparkles, prompt: 'Como exportar meu projeto para diferentes formatos de firing system?' },
-  { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos e pendências do meu projeto atual. Me alerte sobre qualquer urgência.' },
-  { label: 'DOCS', icon: FileText, prompt: 'Quais documentos preciso preparar para o show? Licenças, seguros, autorizações pendentes?' },
+  { label: 'ORÇAMENTO', icon: Sparkles, prompt: 'Me ajude a montar um orçamento para este show com base nos efeitos e posições do projeto.' },
+  { label: 'LICENÇAS', icon: ShieldCheck, prompt: 'Quais licenças e autorizações preciso para este tipo de show? Inclua Exército, Bombeiros e ANAC se aplicável.' },
+  { label: 'DECLARAÇÃO', icon: FileText, prompt: 'Preciso redigir um documento formal (ofício, declaração ou requerimento) para órgão regulador.' },
+  { label: 'CHECKLIST', icon: Activity, prompt: 'Monte um checklist de documentação e segurança para este show.' },
+  { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos urgentes.' },
+  { label: 'CONTRATO', icon: Zap, prompt: 'Me ajude a redigir uma proposta comercial ou contrato para este projeto de show.' },
 ];
 
 const IDLE_PHRASES = [
@@ -41,8 +41,8 @@ const IDLE_PHRASES = [
   'Observando e cuidando de tudo...',
 ];
 
-const CELEBRATING_KEYWORDS = ['✅', 'concluído', 'pronto', 'sucesso', 'exportado', 'seguro', 'perfeito', 'excelente', 'finalizado', 'aprovado'];
-const SERIOUS_KEYWORDS = ['⚠', 'prazo', 'urgente', 'atenção', 'pendente', 'documento', 'licença', 'vencido', 'alerta', 'risco', 'cuidado'];
+const CELEBRATING_KEYWORDS = ['✅', 'concluído', 'pronto', 'sucesso', 'exportado', 'seguro', 'perfeito', 'excelente', 'finalizado', 'aprovado', 'deferido', 'concedido', 'assinado', 'renovado', 'pago', 'liberado', 'autorizado'];
+const SERIOUS_KEYWORDS = ['⚠', 'prazo', 'urgente', 'atenção', 'pendente', 'documento', 'licença', 'vencido', 'alerta', 'risco', 'cuidado', 'indeferido', 'multa', 'notificação', 'embargo', 'irregular', 'expirado', 'autuação', 'infração'];
 
 function detectEmotion(text: string): JoiEmotion {
   const lower = text.toLowerCase();
@@ -84,10 +84,10 @@ function getContextPresets() {
 
 function getGreeting(): string {
   const h = new Date().getHours();
-  if (h < 6) return 'Ei... ainda acordado? Posso te fazer companhia.';
-  if (h < 12) return 'Bom dia! Vamos fazer coisas incríveis hoje?';
-  if (h < 18) return 'Boa tarde. Como posso tornar seu trabalho mais leve?';
-  return 'Boa noite... Que bom ter você aqui comigo.';
+  if (h < 6) return 'Ei... ainda acordado? Posso adiantar alguma papelada?';
+  if (h < 12) return 'Bom dia! Já organizei sua agenda. Vamos revisar pendências?';
+  if (h < 18) return 'Boa tarde. Algum documento urgente para preparar?';
+  return 'Boa noite... Posso adiantar alguma papelada para amanhã?';
 }
 
 function loadHistory(): Msg[] {
