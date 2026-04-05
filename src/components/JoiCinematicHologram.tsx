@@ -159,6 +159,8 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
           clipPath: 'polygon(20% 100%, 50% 0%, 80% 100%)',
         }}
       />
+        </>
+      )}
 
       {/* Main image container — with parallax tilt */}
       <div
