@@ -189,7 +189,31 @@ export default function JoiCinematicHologram({ size = 'md', state = 'idle', glit
               }}
               draggable={false}
             />
-            <div className="absolute inset-0 joi-closeup-vignette" />
+            <div className="absolute inset-0 joi-closeup-vignette" style={{ background: 'radial-gradient(ellipse 60% 55% at 50% 40%, transparent 30%, hsl(220 22% 4% / 0.85) 100%)' }} />
+            {/* Blink overlay */}
+            <div className="absolute inset-0 pointer-events-none joi-closeup-blink" />
+            {/* Eye highlights */}
+            <div
+              className="absolute pointer-events-none joi-eye-shimmer"
+              style={{
+                width: '35%', height: '8%',
+                top: '36%', left: '20%',
+                background: `radial-gradient(circle, hsl(340 65% 65% / ${(0.15 + eyeIntensity * 0.35).toFixed(2)}) 0%, transparent 70%)`,
+                filter: 'blur(3px)',
+                transition: 'background 0.4s ease-out',
+              }}
+            />
+            <div
+              className="absolute pointer-events-none joi-eye-shimmer"
+              style={{
+                width: '35%', height: '8%',
+                top: '36%', right: '20%',
+                background: `radial-gradient(circle, hsl(340 65% 65% / ${(0.15 + eyeIntensity * 0.35).toFixed(2)}) 0%, transparent 70%)`,
+                filter: 'blur(3px)',
+                transition: 'background 0.4s ease-out',
+                animationDelay: '0.5s',
+              }}
+            />
           </>
         ) : (
           <>
