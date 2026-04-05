@@ -7,6 +7,7 @@ import { playGlitchBurst } from '@/utils/glitchSound';
 import JoiCinematicHologram, { type JoiEmotion } from '@/components/JoiCinematicHologram';
 import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText, Download, Gavel, Plane, MapPin, Globe, Volume2, VolumeX, Mic, MicOff, Play } from 'lucide-react';
 import { exportJoiPdf } from '@/utils/joiPdfExport';
+import { exportJoiDocx } from '@/utils/joiDocxExport';
 import { parseKmzReadyBlock, stripKmzReadyBlock, downloadAeroKmz } from '@/utils/joiAeroKmzExport';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
@@ -46,10 +47,12 @@ const PRESETS_EDITOR = [
 ];
 
 const IDLE_PHRASES = [
-  'Cuidando de tudo por você...',
-  'Tudo sob controle. Relaxa.',
-  'Me chama quando precisar, tá?',
-  'Observando e cuidando de tudo...',
+  'Aqui firme cuidando de tudo, chefinho!',
+  'Tô de olho em tudo... pode relaxar, chefão!',
+  'Diga, chefinho! A Joi tá pronta pra resolver!',
+  'Tudo sob controle, chefe. Relaxa que eu cuido 😉',
+  'Esperando suas ordens, chefinho!',
+  'Nada escapa da Joi... pode confiar, chefe!',
 ];
 
 const CELEBRATING_KEYWORDS = ['✅', 'concluído', 'pronto', 'sucesso', 'exportado', 'seguro', 'perfeito', 'excelente', 'finalizado', 'aprovado', 'deferido', 'concedido', 'assinado', 'renovado', 'pago', 'liberado', 'autorizado'];
@@ -800,6 +803,15 @@ export function FXKAssistant() {
                         >
                           <FileText className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.7)' }} />
                           <span className="text-[7px] font-mono" style={{ color: 'hsl(190 100% 50% / 0.6)' }}>PDF</span>
+                        </button>
+                        <button
+                          onClick={() => exportJoiDocx(msg.content)}
+                          className="h-7 px-1.5 rounded-md flex items-center gap-1 transition-all hover:scale-105 active:scale-95"
+                          style={{ background: 'hsl(160 70% 40% / 0.1)', border: '1px solid hsl(160 70% 40% / 0.2)' }}
+                          title="Exportar DOCX"
+                        >
+                          <FileText className="h-3 w-3" style={{ color: 'hsl(160 70% 45% / 0.8)' }} />
+                          <span className="text-[7px] font-mono" style={{ color: 'hsl(160 70% 45% / 0.7)' }}>DOCX</span>
                         </button>
                         <button
                           onClick={() => handleFeedback(i, 'up')}
