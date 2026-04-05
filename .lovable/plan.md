@@ -1,42 +1,39 @@
 
 
-## Fix: Joi Não Aparece no Dashboard Desktop
+## Fix: Joi Não Aparece no Mobile + Limpeza de Código
 
-### Causa Raiz
+### Problema
 
-O componente `FXKAssistant` usa `position: fixed` para o botão flutuante, mas está renderizado **dentro** de um `div` que tem `filter: brightness(...)` aplicado (MainLayout linha 114). 
-
-Em CSS, quando um elemento pai tem `filter` (que não seja `none`), ele cria um **novo containing block** — fazendo com que `position: fixed` dos filhos se comporte como `position: absolute` relativo a esse pai. Como esse pai tem `overflow-hidden`, o botão da Joi pode ficar cortado ou mal posicionado.
+No mobile, o botão FAB da Joi (`bottom-20 right-3 z-[60]`) pode estar sendo coberto ou cortado pelo `DockBar` e pelo `safe-area-inset-bottom`. Além disso, o painel aberto usa `inset-3 bottom-20` que pode conflitar com o espaço do dock.
 
 ### Solução
 
-Mover o `<FXKAssistant />` para **fora** do `div` que tem o `filter: brightness()`. Renderizar o componente como irmão desse div, diretamente dentro do `SidebarProvider`, onde `position: fixed` funciona corretamente em relação ao viewport.
+**1. Corrigir posicionamento mobile do FAB da Joi (`FXKAssistant.tsx`)**
+- Ajustar `bottom` do FAB para ficar acima do DockBar + safe-area (ex: `bottom-[88px]`)
+- Aumentar z-index para `z-[70]` para garantir visibilidade sobre qualquer overlay
+- Painel aberto no mobile: usar `bottom-[76px]` para não sobrepor o dock
+- Minimized bar: mesma correção de bottom
 
-Também mover o botão PANIC FAB para fora, pelo mesmo motivo.
+**2. Limpar código legado no `JoiCinematicHologram.tsx`**
+- Remover efeito de chuva (rain) redundante — já existe no painel da FXKAssistant
+- Simplificar partículas dissolve que raramente são visíveis
+- Manter apenas: parallax + eye glow + closeup + emoções + breathing + scanlines
 
-### Mudanças
+**3. Limpar código legado no `FXKAssistant.tsx`**
+- Remover `VoiceWave` não utilizado no fluxo principal (só aparece no minimized bar)
+- Simplificar idle phrases — reduzir de 8 para 4 frases mais impactantes
+- Remover botão `Maximize2` (expand) no mobile — não faz sentido em tela cheia
+- Remover sidebar hologram no mobile (`expanded && !isMobile`) — já está correto, confirmar
 
-**`src/layouts/MainLayout.tsx`**
+**4. Garantir visibilidade em todos os estados mobile**
+- FAB fechado: visível acima do dock
+- Painel aberto: fullscreen mobile com gap para o dock
+- Minimized: barra visível acima do dock
 
-- Mover `<Suspense><FXKAssistant /></Suspense>` para **depois** do `div` com `filter: brightness()`
-- Mover o PANIC FAB para **depois** do `div` com `filter: brightness()`
-- Mover o `DockBar` para fora também (mesma razão)
-- Estrutura final:
-  ```
-  <SidebarProvider>
-    <div style={{ filter: brightness(...) }} className="overflow-hidden">
-      {/* sidebar, header, main content */}
-    </div>
-    {/* Estes ficam FORA do div com filter */}
-    <FXKAssistant />
-    {PANIC FAB}
-    {DockBar}
-  </SidebarProvider>
-  ```
-
-### Arquivo Modificado
+### Arquivos Modificados
 
 | Arquivo | Alteração |
 |---|---|
-| `src/layouts/MainLayout.tsx` | Mover FXKAssistant, PANIC FAB e DockBar para fora do div com `filter` |
+| `src/components/FXKAssistant.tsx` | Fix posicionamento mobile, limpeza de código redundante |
+| `src/components/JoiCinematicHologram.tsx` | Remover rain e dissolve particles, simplificar |
 
