@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, startTransition, useMemo } from 'react';
-import { Upload, FileJson, X, Check, AlertTriangle, Loader2, Replace, Plus } from 'lucide-react';
+import { Upload, FileJson, X, Check, AlertTriangle, Loader2, Replace, Plus, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -13,8 +13,13 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 import { getDeviceProfile } from '@/lib/deviceCapability';
+import { supabase } from '@/integrations/supabase/client';
+import * as tus from 'tus-js-client';
 
-type ImportPhase = 'idle' | 'reading' | 'parsing' | 'importing' | 'done';
+type ImportPhase = 'idle' | 'uploading' | 'reading' | 'parsing' | 'importing' | 'done';
+
+const TUS_THRESHOLD = 20 * 1024 * 1024; // 20MB — above this, use TUS resumable upload
+const TUS_CHUNK_SIZE = 6 * 1024 * 1024; // 6MB chunks
 
 function formatCompact(n: number): string {
   return new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(Math.max(0, n));
@@ -53,6 +58,8 @@ export default function VVIZImporter({
     return () => {
       workerRef.current?.terminate();
       workerRef.current = null;
+      tusRef.current?.abort();
+      tusRef.current = null;
     };
   }, []);
 
@@ -83,118 +90,227 @@ export default function VVIZImporter({
     toast.success(`Importado: ${droneCount} drones, ${trajectories.length} trajetórias`);
   }, [replaceMode]);
 
+  const tusRef = useRef<tus.Upload | null>(null);
+
+  const sendToWorker = useCallback((buffer: ArrayBuffer, runId: number) => {
+    if (runId !== parseRunRef.current) return;
+
+    setPhase('parsing');
+    setProgress(10);
+    setProgressLabel('Iniciando Web Worker...');
+
+    const device = getDeviceProfile();
+    const worker = new Worker(
+      new URL('@/lib/vvizWorker.ts', import.meta.url),
+      { type: 'module' }
+    );
+    workerRef.current = worker;
+
+    const safetyTimeout = setTimeout(() => {
+      if (runId !== parseRunRef.current) return;
+      setPhase('idle');
+      setProgress(0);
+      setProgressLabel('');
+      toast.error('Timeout: importação VVIZ demorou demais (>120s).');
+      worker.terminate();
+      workerRef.current = null;
+    }, 120_000);
+
+    const colors = new Set<string>();
+
+    worker.onmessage = (e: MessageEvent) => {
+      if (runId !== parseRunRef.current) return;
+      const msg = e.data;
+
+      if (msg.type === 'progress') {
+        const ratio = msg.totalSamples > 0
+          ? msg.samples / msg.totalSamples
+          : msg.done / Math.max(1, msg.total);
+        const pct = 10 + Math.round(ratio * 75);
+        setProgress(Math.max(10, Math.min(85, pct)));
+        setProgressLabel(`Processando ${msg.done}/${msg.total} drones • ${formatCompact(msg.samples)}/${formatCompact(msg.totalSamples)} pontos`);
+      }
+
+      if (msg.type === 'drone') {
+        if (msg.pos) {
+          accRef.current.positions.push(msg.pos);
+          colors.add(msg.pos.color);
+        }
+        if (msg.traj) accRef.current.trajectories.push(msg.traj);
+      }
+
+      if (msg.type === 'complete') {
+        clearTimeout(safetyTimeout);
+        setProgress(90);
+        setProgressLabel(`${msg.droneCount} drones prontos para importar`);
+        setPreviewData({
+          projectName: msg.projectName,
+          droneCount: msg.droneCount,
+          duration: msg.duration,
+          errors: msg.errors,
+          stats: msg.stats,
+          colors: [...colors].slice(0, 12),
+        });
+        setPhase('idle');
+
+        if (msg.errors.length > 0) {
+          toast.warning(`${msg.errors.length} aviso(s) durante análise`);
+        }
+        if ((msg.stats?.compressionRatio || 0) > 0.35) {
+          toast.info(`Otimização automática aplicada (${Math.round((msg.stats?.compressionRatio || 0) * 100)}% menos pontos)`);
+        }
+
+        worker.terminate();
+        workerRef.current = null;
+      }
+
+      if (msg.type === 'error') {
+        clearTimeout(safetyTimeout);
+        setPhase('idle');
+        setProgress(0);
+        setProgressLabel('');
+        toast.error(msg.message || 'Falha ao analisar arquivo VVIZ');
+        worker.terminate();
+        workerRef.current = null;
+      }
+    };
+
+    worker.onerror = () => {
+      if (runId !== parseRunRef.current) return;
+      clearTimeout(safetyTimeout);
+      setPhase('idle');
+      setProgress(0);
+      setProgressLabel('');
+      toast.error('Erro no Web Worker ao processar VVIZ');
+      worker.terminate();
+      workerRef.current = null;
+    };
+
+    worker.postMessage({ type: 'parse', buffer, maxWaypoints: device.maxWaypoints }, [buffer]);
+  }, []);
+
+  const uploadViaTUS = useCallback(async (file: File, runId: number): Promise<ArrayBuffer | null> => {
+    const bucketName = 'assets';
+    const storagePath = `vviz-uploads/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+
+    // Get session for auth
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error('Autenticação necessária para upload de arquivos grandes.');
+      return null;
+    }
+
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+    return new Promise<ArrayBuffer | null>((resolve) => {
+      const upload = new tus.Upload(file, {
+        endpoint: `${supabaseUrl}/storage/v1/upload/resumable`,
+        retryDelays: [0, 1000, 3000, 5000, 10000],
+        chunkSize: TUS_CHUNK_SIZE,
+        headers: {
+          authorization: `Bearer ${session.access_token}`,
+          'x-upsert': 'true',
+        },
+        uploadDataDuringCreation: true,
+        removeFingerprintOnSuccess: true,
+        metadata: {
+          bucketName,
+          objectName: storagePath,
+          contentType: file.type || 'application/json',
+          cacheControl: '3600',
+        },
+        onError: (error) => {
+          console.error('TUS upload error:', error);
+          toast.error('Upload interrompido — tentando novamente...');
+          tusRef.current = null;
+          resolve(null);
+        },
+        onProgress: (bytesUploaded, bytesTotal) => {
+          if (runId !== parseRunRef.current) return;
+          const pct = Math.round((bytesUploaded / bytesTotal) * 100);
+          setProgress(Math.min(pct * 0.08, 8)); // 0-8% for upload phase
+          setProgressLabel(`Upload resumível: ${Math.round(bytesUploaded / 1024 / 1024)}MB / ${Math.round(bytesTotal / 1024 / 1024)}MB`);
+        },
+        onSuccess: async () => {
+          tusRef.current = null;
+          if (runId !== parseRunRef.current) { resolve(null); return; }
+
+          setProgressLabel('Download do storage para processamento...');
+          setProgress(9);
+
+          try {
+            // Download back as ArrayBuffer for Worker processing
+            const { data, error } = await supabase.storage.from(bucketName).download(storagePath);
+            if (error || !data) {
+              toast.error('Falha ao recuperar arquivo do storage.');
+              resolve(null);
+              return;
+            }
+            const arrayBuffer = await data.arrayBuffer();
+
+            // Cleanup: delete the temp file from storage (fire-and-forget)
+            supabase.storage.from(bucketName).remove([storagePath]).catch(() => {});
+
+            resolve(arrayBuffer);
+          } catch {
+            toast.error('Falha ao processar arquivo após upload.');
+            resolve(null);
+          }
+        },
+      });
+
+      tusRef.current = upload;
+
+      // Check for previous uploads to resume
+      upload.findPreviousUploads().then((prev) => {
+        if (prev.length > 0) {
+          upload.resumeFromPreviousUpload(prev[0]);
+          toast.info('Retomando upload anterior...');
+        }
+        upload.start();
+      });
+    });
+  }, []);
+
   const parseFile = useCallback(async (file: File) => {
     const runId = ++parseRunRef.current;
     workerRef.current?.terminate();
     workerRef.current = null;
+    tusRef.current?.abort();
+    tusRef.current = null;
     accRef.current = { positions: [], trajectories: [] };
 
     setFileName(file.name);
     setCurrentFile(file);
     setPreviewData(null);
-    setPhase('reading');
-    setProgress(5);
-    setProgressLabel('Lendo arquivo...');
+    setProgress(1);
 
     try {
-      // Zero-copy: read as ArrayBuffer, transfer to worker (no main-thread string copy)
-      const buffer = await file.arrayBuffer();
+      let buffer: ArrayBuffer;
+
+      if (file.size > TUS_THRESHOLD) {
+        // Large file → TUS resumable upload → download → Worker
+        setPhase('uploading');
+        setProgressLabel(`Upload resumível (${Math.round(file.size / 1024 / 1024)}MB)...`);
+        const result = await uploadViaTUS(file, runId);
+        if (!result || runId !== parseRunRef.current) {
+          if (runId === parseRunRef.current) {
+            setPhase('idle'); setProgress(0); setProgressLabel('');
+          }
+          return;
+        }
+        buffer = result;
+      } else {
+        // Small file → direct FileReader (zero-copy)
+        setPhase('reading');
+        setProgressLabel('Lendo arquivo...');
+        setProgress(5);
+        buffer = await file.arrayBuffer();
+      }
+
       if (runId !== parseRunRef.current) return;
-
-      setPhase('parsing');
-      setProgress(10);
-      setProgressLabel('Iniciando Web Worker...');
-
-      const device = getDeviceProfile();
-      const worker = new Worker(
-        new URL('@/lib/vvizWorker.ts', import.meta.url),
-        { type: 'module' }
-      );
-      workerRef.current = worker;
-
-      // Safety timeout: if worker hangs for 120s, abort
-      const safetyTimeout = setTimeout(() => {
-        if (runId !== parseRunRef.current) return;
-        setPhase('idle');
-        setProgress(0);
-        setProgressLabel('');
-        toast.error('Timeout: importação VVIZ demorou demais (>120s). Arquivo pode ser muito grande.');
-        worker.terminate();
-        workerRef.current = null;
-      }, 120_000);
-
-      const colors = new Set<string>();
-
-      worker.onmessage = (e: MessageEvent) => {
-        if (runId !== parseRunRef.current) return;
-        const msg = e.data;
-
-        if (msg.type === 'progress') {
-          const ratio = msg.totalSamples > 0
-            ? msg.samples / msg.totalSamples
-            : msg.done / Math.max(1, msg.total);
-          const pct = 10 + Math.round(ratio * 75);
-          setProgress(Math.max(10, Math.min(85, pct)));
-          setProgressLabel(`Processando ${msg.done}/${msg.total} drones • ${formatCompact(msg.samples)}/${formatCompact(msg.totalSamples)} pontos`);
-        }
-
-        if (msg.type === 'drone') {
-          if (msg.pos) {
-            accRef.current.positions.push(msg.pos);
-            colors.add(msg.pos.color);
-          }
-          if (msg.traj) accRef.current.trajectories.push(msg.traj);
-        }
-
-        if (msg.type === 'complete') {
-          clearTimeout(safetyTimeout);
-          setProgress(90);
-          setProgressLabel(`${msg.droneCount} drones prontos para importar`);
-          setPreviewData({
-            projectName: msg.projectName,
-            droneCount: msg.droneCount,
-            duration: msg.duration,
-            errors: msg.errors,
-            stats: msg.stats,
-            colors: [...colors].slice(0, 12),
-          });
-          setPhase('idle');
-
-          if (msg.errors.length > 0) {
-            toast.warning(`${msg.errors.length} aviso(s) durante análise`);
-          }
-          if ((msg.stats?.compressionRatio || 0) > 0.35) {
-            toast.info(`Otimização automática aplicada (${Math.round((msg.stats?.compressionRatio || 0) * 100)}% menos pontos)`);
-          }
-
-          worker.terminate();
-          workerRef.current = null;
-        }
-
-        if (msg.type === 'error') {
-          clearTimeout(safetyTimeout);
-          setPhase('idle');
-          setProgress(0);
-          setProgressLabel('');
-          toast.error(msg.message || 'Falha ao analisar arquivo VVIZ');
-          worker.terminate();
-          workerRef.current = null;
-        }
-      };
-
-      worker.onerror = () => {
-        if (runId !== parseRunRef.current) return;
-        clearTimeout(safetyTimeout);
-        setPhase('idle');
-        setProgress(0);
-        setProgressLabel('');
-        toast.error('Erro no Web Worker ao processar VVIZ');
-        worker.terminate();
-        workerRef.current = null;
-      };
-
-      // Transfer buffer (zero-copy, main thread releases memory immediately)
-      worker.postMessage({ type: 'parse', buffer, maxWaypoints: device.maxWaypoints }, [buffer]);
+      sendToWorker(buffer, runId);
     } catch {
       if (runId !== parseRunRef.current) return;
       setPhase('idle');
@@ -202,7 +318,7 @@ export default function VVIZImporter({
       setProgressLabel('');
       toast.error('Falha ao ler arquivo VVIZ');
     }
-  }, []);
+  }, [sendToWorker, uploadViaTUS]);
 
   useEffect(() => {
     if (initialFile && open) parseFile(initialFile);
@@ -245,7 +361,7 @@ export default function VVIZImporter({
     });
   }, [previewData, commitChunks, onOpenChange, currentFile, fileName, saveToLibrary]);
 
-  const isProcessing = phase === 'reading' || phase === 'parsing' || phase === 'importing';
+  const isProcessing = phase === 'uploading' || phase === 'reading' || phase === 'parsing' || phase === 'importing';
   const hasResult = previewData && accRef.current.positions.length > 0;
 
   return (
@@ -281,7 +397,7 @@ export default function VVIZImporter({
               </div>
               <Progress value={progress} className="h-1.5" />
               <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
-                <span>{phase === 'reading' ? 'Leitura' : phase === 'parsing' ? 'Web Worker' : 'Importação'}</span>
+                <span>{phase === 'uploading' ? 'Upload TUS' : phase === 'reading' ? 'Leitura' : phase === 'parsing' ? 'Web Worker' : 'Importação'}</span>
                 <span>{Math.round(progress)}%</span>
               </div>
             </div>

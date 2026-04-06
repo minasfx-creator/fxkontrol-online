@@ -198,41 +198,51 @@ const STREAM_THRESHOLD = 5 * 1024 * 1024; // 5MB — below this, use fast JSON.p
 function parseVvizStreaming(
   buffer: ArrayBuffer, maxWP: number, ctx: Worker,
 ): void {
-  const decoder = new TextDecoder();
-  const fullText = decoder.decode(buffer);
-  // Release buffer
-  (buffer as any) = null;
+  const CHUNK_BYTES = 65536; // 64KB text chunks
+  const totalBytes = buffer.byteLength;
 
-  // Step 1: Extract header fields before "performances" array
-  // We find the "performances" key and parse header from the prefix
-  const perfIdx = fullText.indexOf('"performances"');
-  if (perfIdx === -1) {
+  // Step 1: Scan for header by decoding in 64KB chunks (avoid full string)
+  let headerText = '';
+  let perfKeyOffset = -1;
+  let headerEndByte = 0;
+  const headerDecoder = new TextDecoder();
+
+  for (let offset = 0; offset < totalBytes; offset += CHUNK_BYTES) {
+    const end = Math.min(offset + CHUNK_BYTES, totalBytes);
+    const slice = new Uint8Array(buffer, offset, end - offset);
+    const chunk = headerDecoder.decode(slice, { stream: end < totalBytes });
+    headerText += chunk;
+    headerEndByte = end;
+
+    perfKeyOffset = headerText.indexOf('"performances"');
+    if (perfKeyOffset !== -1) break;
+  }
+
+  if (perfKeyOffset === -1) {
     ctx.postMessage({ type: 'error', message: 'Arquivo VVIZ não contém "performances".' });
     return;
   }
 
-  // Find the opening bracket of the performances array
-  const bracketStart = fullText.indexOf('[', perfIdx);
+  const bracketStart = headerText.indexOf('[', perfKeyOffset);
   if (bracketStart === -1) {
     ctx.postMessage({ type: 'error', message: 'VVIZ: array "performances" malformado.' });
     return;
   }
 
-  // Parse header: construct a valid JSON from prefix + empty performances
+  // Parse header fields
   let header: Partial<VVIZFile>;
   try {
-    const headerJson = fullText.substring(0, bracketStart) + '[]' + '}';
+    const headerJson = headerText.substring(0, bracketStart) + '[]' + '}';
     header = JSON.parse(headerJson);
   } catch {
-    // Fallback: try to extract fields with regex
     header = {};
-    const rateMatch = fullText.match(/"defaultPositionRate"\s*:\s*(\d+(?:\.\d+)?)/);
+    const rateMatch = headerText.match(/"defaultPositionRate"\s*:\s*(\d+(?:\.\d+)?)/);
     if (rateMatch) header.defaultPositionRate = parseFloat(rateMatch[1]);
-    const nameMatch = fullText.match(/"performanceName"\s*:\s*"([^"]*)"/);
+    const nameMatch = headerText.match(/"performanceName"\s*:\s*"([^"]*)"/);
     if (nameMatch) header.performanceName = nameMatch[1];
-    const offsetMatch = fullText.match(/"timeOffsetSecs"\s*:\s*(-?\d+(?:\.\d+)?)/);
+    const offsetMatch = headerText.match(/"timeOffsetSecs"\s*:\s*(-?\d+(?:\.\d+)?)/);
     if (offsetMatch) header.timeOffsetSecs = parseFloat(offsetMatch[1]);
-    const frameMatch = fullText.match(/"coordinateFrame"\s*:\s*"([^"]*)"/);
+    const frameMatch = headerText.match(/"coordinateFrame"\s*:\s*"([^"]*)"/);
     if (frameMatch) header.coordinateFrame = frameMatch[1];
   }
 
@@ -246,71 +256,93 @@ function parseVvizStreaming(
   const projectName = header.performanceName || 'VVIZ Import';
   const coordMode = resolveCoordMode(header.coordinateFrame);
 
-  // Step 2: Extract individual performance objects by tracking brace depth
+  // Step 2: Chunked brace-depth scanning (O(chunkSize) memory)
   const errors: string[] = [];
   let maxTime = 0, processedSamples = 0, totalWP = 0, simplified = 0, dronesSent = 0;
   let totalSamples = 0;
 
   let depth = 0;
-  let objStart = -1;
   let inString = false;
   let escaped = false;
   let perfCount = 0;
-  let i = bracketStart + 1; // skip the opening '['
-  const len = fullText.length;
+  let objBuffer = ''; // rolling buffer for current object
+  let objActive = false;
+  let done = false;
 
-  while (i < len) {
-    const ch = fullText.charCodeAt(i);
+  function processTextChunk(text: string) {
+    for (let ci = 0; ci < text.length; ci++) {
+      if (done) return;
+      const ch = text.charCodeAt(ci);
 
-    if (escaped) { escaped = false; i++; continue; }
-    if (ch === 0x5C /* \ */ && inString) { escaped = true; i++; continue; }
-    if (ch === 0x22 /* " */) { inString = !inString; i++; continue; }
-    if (inString) { i++; continue; }
+      if (escaped) { escaped = false; if (objActive) objBuffer += text[ci]; continue; }
+      if (ch === 0x5C && inString) { escaped = true; if (objActive) objBuffer += text[ci]; continue; }
+      if (ch === 0x22) { inString = !inString; if (objActive) objBuffer += text[ci]; continue; }
+      if (inString) { if (objActive) objBuffer += text[ci]; continue; }
 
-    if (ch === 0x7B /* { */) {
-      if (depth === 0) objStart = i;
-      depth++;
-    } else if (ch === 0x7D /* } */) {
-      depth--;
-      if (depth === 0 && objStart !== -1) {
-        // Complete performance object found
-        const objStr = fullText.substring(objStart, i + 1);
-        try {
-          const perf: VVIZPerformance = JSON.parse(objStr);
-          const sampleCount = perf.agentDescription?.agentTraversal?.length || 0;
-          totalSamples += sampleCount;
+      if (ch === 0x7B) {
+        if (depth === 0) { objActive = true; objBuffer = '{'; }
+        else if (objActive) { objBuffer += '{'; }
+        depth++;
+      } else if (ch === 0x7D) {
+        depth--;
+        if (depth === 0 && objActive) {
+          objBuffer += '}';
+          try {
+            const perf: VVIZPerformance = JSON.parse(objBuffer);
+            const sampleCount = perf.agentDescription?.agentTraversal?.length || 0;
+            totalSamples += sampleCount;
 
-          const r = processPerf(perf, perfCount, rate, maxWP, timeOffset, coordMode);
-          if (!r) {
-            errors.push(`Performance ${perf.id ?? perfCount}: sem agentDescription`);
-          } else {
-            ctx.postMessage({ type: 'drone', pos: r.pos, traj: r.traj });
-            dronesSent++;
-            if (r.maxT > maxTime) maxTime = r.maxT;
-            processedSamples += r.inputSamples;
-            totalWP += r.outputWaypoints;
-            if (r.outputWaypoints < r.inputSamples) simplified++;
+            const r = processPerf(perf, perfCount, rate, maxWP, timeOffset, coordMode);
+            if (!r) {
+              errors.push(`Performance ${perf.id ?? perfCount}: sem agentDescription`);
+            } else {
+              ctx.postMessage({ type: 'drone', pos: r.pos, traj: r.traj });
+              dronesSent++;
+              if (r.maxT > maxTime) maxTime = r.maxT;
+              processedSamples += r.inputSamples;
+              totalWP += r.outputWaypoints;
+              if (r.outputWaypoints < r.inputSamples) simplified++;
+            }
+          } catch (e) {
+            errors.push(`Performance ${perfCount}: ${(e as Error).message || 'parse error'}`);
           }
-        } catch (e) {
-          errors.push(`Performance ${perfCount}: ${(e as Error).message || 'parse error'}`);
+          perfCount++;
+          objBuffer = '';
+          objActive = false;
+          if (perfCount % 2 === 0) {
+            ctx.postMessage({ type: 'progress', done: perfCount, total: -1, samples: processedSamples, totalSamples });
+          }
+        } else if (objActive) {
+          objBuffer += '}';
         }
-
-        perfCount++;
-        objStart = -1;
-
-        // Progress every 2 drones
-        if (perfCount % 2 === 0) {
-          ctx.postMessage({ type: 'progress', done: perfCount, total: -1, samples: processedSamples, totalSamples });
-        }
+      } else if (ch === 0x5D && depth === 0) {
+        done = true;
+        return;
+      } else if (objActive) {
+        objBuffer += text[ci];
       }
-    } else if (ch === 0x5D /* ] */ && depth === 0) {
-      break; // end of performances array
     }
-
-    i++;
   }
 
-  // Final progress
+  // Process initial tail from header scan
+  const initialTail = headerText.substring(bracketStart + 1);
+  headerText = null!; // release
+  processTextChunk(initialTail);
+
+  // Continue with remaining buffer in 64KB chunks
+  if (!done && headerEndByte < totalBytes) {
+    const chunkDecoder = new TextDecoder();
+    for (let offset = headerEndByte; offset < totalBytes && !done; offset += CHUNK_BYTES) {
+      const end = Math.min(offset + CHUNK_BYTES, totalBytes);
+      const slice = new Uint8Array(buffer, offset, end - offset);
+      const chunk = chunkDecoder.decode(slice, { stream: end < totalBytes });
+      processTextChunk(chunk);
+    }
+  }
+
+  // Release buffer
+  (buffer as any) = null;
+
   ctx.postMessage({ type: 'progress', done: perfCount, total: perfCount, samples: processedSamples, totalSamples });
 
   const compressionRatio = totalSamples > 0 ? 1 - (totalWP / totalSamples) : 0;
