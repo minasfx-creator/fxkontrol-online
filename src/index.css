@@ -7,7 +7,7 @@
 @layer base {
   :root {
     /* FX KONTROL — Tactical Command Interface */
-    --background: 220 20% 4%;
+    --background: 0 0% 2%;
     --foreground: 180 8% 88%;
 
     --card: 220 18% 6%;
