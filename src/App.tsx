@@ -70,6 +70,7 @@ function App() {
                   <Route path="/field-test" element={<FieldTest />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/admin" element={<Admin />} />
+                  <Route path="/accreditation" element={<AccreditationDashboard />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

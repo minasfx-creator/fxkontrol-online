@@ -97,14 +97,14 @@ export default function AccreditationDashboard() {
       // Save to database
       if (user) {
         setSaving(true);
-        const { error } = await supabase.from('accreditation_packages').insert({
+        const { error } = await supabase.from('accreditation_packages' as any).insert({
           user_id: user.id,
           agency: selectedAgency,
           status: data.status === 'approved' ? 'approved' : data.status === 'rejected' ? 'rejected' : 'draft',
-          documents: documents as any,
-          ai_validation_result: data as any,
+          documents: documents,
+          ai_validation_result: data,
           notes: eventName,
-        });
+        } as any);
         if (error) console.error('Save error:', error);
         setSaving(false);
       }
