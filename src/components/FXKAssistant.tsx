@@ -32,6 +32,7 @@ const PRESETS_COMMAND = [
   { label: 'LICITAÇÃO', icon: Gavel, prompt: 'Me ajude a analisar um edital de licitação e preparar a proposta técnica e de preços. Inclua documentação de habilitação necessária.' },
   { label: 'ESPAÇO AÉREO', icon: Plane, prompt: 'Me ajude a preparar a documentação de fechamento de espaço aéreo (NOTAM/DECEA) e planta de distanciamento de segurança para este show.' },
   { label: 'PLANTA', icon: MapPin, prompt: 'Gere uma planta de distanciamento de segurança conforme NFPA 1123 para este show. Preciso das zonas de fogo, segurança, fallout e restrição aérea com as coordenadas GPS.' },
+  { label: 'ACREDITAÇÃO', icon: ShieldCheck, prompt: 'Me ajude a preparar toda a documentação para acreditação junto aos órgãos fiscalizadores. Quais documentos preciso para cada órgão? Tem algo vencido ou pendente?' },
 ];
 
 const PRESETS_EDITOR = [
