@@ -184,6 +184,7 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
             rowComponent={GridRowComponent}
             rowCount={rowCount}
             rowHeight={ROW_HEIGHT}
+            rowProps={{}}
           />
         ) : selected ? (
           <div className="space-y-3 overflow-y-auto h-full p-1">
