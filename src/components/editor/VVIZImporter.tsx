@@ -16,7 +16,10 @@ import { getDeviceProfile } from '@/lib/deviceCapability';
 import { supabase } from '@/integrations/supabase/client';
 import * as tus from 'tus-js-client';
 
-type ImportPhase = 'idle' | 'reading' | 'parsing' | 'importing' | 'done';
+type ImportPhase = 'idle' | 'uploading' | 'reading' | 'parsing' | 'importing' | 'done';
+
+const TUS_THRESHOLD = 20 * 1024 * 1024; // 20MB — above this, use TUS resumable upload
+const TUS_CHUNK_SIZE = 6 * 1024 * 1024; // 6MB chunks
 
 function formatCompact(n: number): string {
   return new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(Math.max(0, n));
