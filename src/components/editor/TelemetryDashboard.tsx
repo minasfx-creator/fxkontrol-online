@@ -182,10 +182,10 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
             style={{ height: gridHeight }}
             className="custom-scrollbar"
             overscanCount={3}
-            rowComponent={GridRowComponent}
+            rowComponent={GridRowComponent as any}
             rowCount={rowCount}
             rowHeight={ROW_HEIGHT}
-            rowProps={{}}
+            rowProps={{} as any}
           />
         ) : selected ? (
           <div className="space-y-3 overflow-y-auto h-full p-1">
