@@ -86,7 +86,8 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
   const ROW_HEIGHT = 35;
   const rowCount = Math.ceil(telemetry.length / COLS);
 
-  const GridRowComponent = useCallback(({ rowIndex, style }: { rowIndex: number; style: React.CSSProperties; [key: string]: any }) => {
+  const GridRowComponent = useCallback((props: { rowIndex: number; style: React.CSSProperties }) => {
+    const { rowIndex, style } = props;
     const startIdx = rowIndex * COLS;
     return (
       <div style={style} className="flex gap-1 px-1">
