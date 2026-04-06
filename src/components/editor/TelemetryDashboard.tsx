@@ -178,15 +178,13 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
       <div className="flex-1 overflow-hidden p-1" ref={gridContainerRef}>
         {viewMode === 'grid' ? (
           <List
-            height={gridHeight}
-            itemCount={rowCount}
-            itemSize={ROW_HEIGHT}
-            width="100%"
+            style={{ height: gridHeight }}
             className="custom-scrollbar"
             overscanCount={3}
-          >
-            {GridRow}
-          </List>
+            rowComponent={GridRowComponent}
+            rowCount={rowCount}
+            rowHeight={ROW_HEIGHT}
+          />
         ) : selected ? (
           <div className="space-y-3 overflow-y-auto h-full p-1">
             <div className="flex items-center justify-between">
