@@ -24,6 +24,7 @@ const ShowTestSimulator = lazy(() => import("./pages/ShowTestSimulator"));
 const FieldTest = lazy(() => import("./pages/FieldTest"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Admin = lazy(() => import("./pages/Admin"));
+const AccreditationDashboard = lazy(() => import("./pages/AccreditationDashboard"));
 
 const queryClient = new QueryClient();
 
