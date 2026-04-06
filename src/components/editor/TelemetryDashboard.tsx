@@ -29,6 +29,19 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
   const { drones, connected } = useMAVLinkStore();
   const [selectedDrone, setSelectedDrone] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'detail'>('grid');
+  const gridContainerRef = useRef<HTMLDivElement>(null);
+  const [gridHeight, setGridHeight] = useState(400);
+
+  useEffect(() => {
+    if (!gridContainerRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setGridHeight(entry.contentRect.height);
+      }
+    });
+    ro.observe(gridContainerRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
 
