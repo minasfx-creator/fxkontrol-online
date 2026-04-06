@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, startTransition, useMemo } from 'react';
-import { Upload, FileJson, X, Check, AlertTriangle, Loader2, Replace, Plus } from 'lucide-react';
+import { Upload, FileJson, X, Check, AlertTriangle, Loader2, Replace, Plus, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -13,6 +13,8 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 import { getDeviceProfile } from '@/lib/deviceCapability';
+import { supabase } from '@/integrations/supabase/client';
+import * as tus from 'tus-js-client';
 
 type ImportPhase = 'idle' | 'reading' | 'parsing' | 'importing' | 'done';
 
