@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { FixedSizeList as List } from 'react-window';
+import { List } from 'react-window';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useMAVLinkStore } from '@/store/useMAVLinkStore';
 import { Badge } from '@/components/ui/badge';
