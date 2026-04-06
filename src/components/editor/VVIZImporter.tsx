@@ -58,6 +58,8 @@ export default function VVIZImporter({
     return () => {
       workerRef.current?.terminate();
       workerRef.current = null;
+      tusRef.current?.abort();
+      tusRef.current = null;
     };
   }, []);
 
