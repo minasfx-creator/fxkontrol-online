@@ -1,105 +1,72 @@
 
 
-# Auditoria de Conformidade: Código vs. Especificação Arquitetural
+## Auditoria de Conformidade: Relatório Técnico vs. Codebase Atual
 
-Avaliação sistemática do codebase atual contra os 10 pilares do relatório de arquitetura.
+### RESUMO EXECUTIVO
 
----
-
-## RESUMO EXECUTIVO
-
-| Área | Status | Nota |
+| Área do Relatório | Status | Implementação Atual |
 |---|---|---|
-| 1. Paleta de Cores | ⚠️ Parcial | Vantablack é `220 20% 4%` (~#0A0D12), não `#050505` |
-| 2. Tipografia Híbrida | ✅ Conforme | JetBrains Mono para dados, Rajdhani/Inter para UI |
-| 3. Chanfros (Beveled Corners) | ✅ Conforme | `.bevel-sm/md/lg` com clip-path polygon implementados |
-| 4. Dark Glassmorphism | ✅ Conforme | `.glass`, `.glass-premium` com blur+saturate+border |
-| 5. HUD Crosshairs SVG | ⚠️ Parcial | SVG implementado, mas falta `mix-blend-mode: screen` |
-| 6. Virtualização de Telemetria | ❌ Não conforme | `react-window` referenciado mas NÃO utilizado — renderiza todos os drones |
-| 7. SMPTE Drop-Frame | ✅ Conforme | Suporte completo 29.97 DF com semicolon separator |
-| 8. Animações (circOut, sem spring) | ❌ Não conforme | Framer Motion não instalado. Animações são CSS puras |
-| 9. Layout 100vh fixo | ✅ Conforme | `h-[100dvh]` com `overflow-hidden` |
-| 10. Sparklines | ✅ Conforme | SVG puro sem eixos, exatamente como especificado |
+| Streaming JSON Parser (SAX-style) | ✅ Conforme | `vvizWorker.ts` — parser incremental para >5MB, brace-depth tracking |
+| Web Worker off-thread | ✅ Conforme | `vvizWorker.ts` — processamento completo em Worker, ArrayBuffer transfer |
+| Coordinate Z-flip | ✅ Conforme | `resolveCoordMode()` com `zSign = -1` para frames VVIZ/standard |
+| InstancedMesh (1 draw call) | ✅ Conforme | `InstancedDroneSwarm.tsx` — 6 InstancedMesh (body/led/rotor/halo/nav/glow), useRef+useFrame direto |
+| instanceColor buffer | ✅ Conforme | `setColorAt()` + `instanceColor.needsUpdate = true` em cada frame |
+| instanceMatrix.needsUpdate | ✅ Conforme | Flag elevada corretamente para todos os meshes |
+| VDL 25-color quantizer | ✅ Conforme | `vdlQuantizer.ts` — distância Euclidiana, 30 cores, impliesTrail/Tip/No Trail |
+| VDL no export pipeline | ✅ Conforme | `exportEngine.ts` importa `rgbToVdlString` e aplica na exportação VVIZ |
+| GC-friendly (nullify refs) | ✅ Conforme | Worker nullifica buffer e performance objects após processamento |
+| Waypoint simplification | ✅ Conforme | Adaptive downsample baseado em count (4 tiers) |
+| **TUS Resumable Upload** | ❌ Ausente | Uploads são `supabase.storage.upload()` padrão, sem `tus-js-client` |
+| **EdgeRuntime.waitUntil** | ❌ Ausente | Edge Functions não usam background processing, mas o parsing já ocorre no Worker do frontend |
+| **Backend streaming (req.body pipe)** | ⚠️ N/A | O VVIZ é parseado no frontend Worker, não na Edge Function — arquitetura alternativa válida |
 
----
+### DESVIOS QUE REQUEREM AÇÃO
 
-## DESVIOS CRÍTICOS (requerem correção)
+#### 1. Upload Resumível (TUS) — NÃO IMPLEMENTADO
 
-### 1. Virtualização de Telemetria — NÃO IMPLEMENTADA
+O relatório especifica `tus-js-client` para uploads de VVIZ >50MB com retry automático e chunks de 6MB. Atualmente, o `VVIZImporter.tsx` lê o arquivo via `FileReader` localmente no browser e envia ao Worker. Para o fluxo de storage (bucket `assets`), uploads usam `supabase.storage.upload()` padrão, limitado a ~50MB sem retry.
 
-**Especificação**: react-window FixedSizeList renderizando ~15 rows visíveis, complexidade O(1).
+**Correção proposta**: Implementar upload TUS no componente `VVIZImporter.tsx` para arquivos >20MB, utilizando `supabase.storage.createSignedUploadUrl()` + `tus-js-client`. Arquivos menores continuam no fast-path atual (FileReader → Worker direto).
 
-**Realidade**: `TelemetryDashboard.tsx` (linha 164-172) renderiza TODAS as rows via `Array.from({ length: rowCount })` dentro de um `overflow-y-auto` div. O `GridRow` callback existe mas é chamado sem virtualização real — é um map completo. Para 2000 drones (500 rows × 4 cols), isso gera ~2000 botões DOM simultâneos.
+#### 2. Parser Streaming — Melhoria de Memória
 
-**Impacto**: Violação direta do KPI de 60 FPS para frotas massivas. Provável frame drop severo acima de 500 drones.
+O parser streaming atual (`parseVvizStreaming`) faz `decoder.decode(buffer)` — decodifica o buffer inteiro em string antes de parsear. Para arquivos >100MB, isso duplica a memória (ArrayBuffer + String). O relatório especifica processamento chunk-by-chunk com `TextDecoderStream`.
 
-**Correção**: Importar `FixedSizeList` de `react-window` e substituir o div scrollável pelo componente virtualizado com `ROW_HEIGHT=35` e `height` dinâmico.
+**Correção proposta**: Refatorar o streaming parser para processar em chunks de 64KB usando `TextDecoderStream` pattern, mantendo apenas o chunk ativo em memória. Isso reduz o pico de memória de ~2x filesize para ~50MB fixo.
 
-### 2. Cor de Fundo — Desvio do Vantablack
+### CONFORMIDADES VERIFICADAS (sem ação necessária)
 
-**Especificação**: `#050505` como piso absoluto do canvas.
+- **InstancedMesh**: 6 meshes instanciados (body, LED, rotor, halo, nav, glow), useRef direto, sem setState no useFrame
+- **Z-axis flip**: `resolveCoordMode()` retorna `'flip'` para frames VVIZ/standard, aplica `zSign = -1` em dx/dz
+- **VDL Quantizer**: Tabela de 30 cores (superset dos 25 canônicos), Euclidean distance em espaço normalizado 0-1, suporte a `impliesTrail`, `Tip`, `No Trail`
+- **Color extraction**: Média ponderada por brightness×frames nas `payloadActions`
+- **Dual parser**: SAX-style para >5MB, JSON.parse fast-path para <5MB
+- **Worker protocol**: ArrayBuffer transfer, progressive nullification, progress events
 
-**Realidade**: `--background: 220 20% 4%` → converte para ~`#0A0D12` (azulado escuro, não preto neutro). O Three.js renderer usa `0x0d0f14` (similar).
+### PLANO DE IMPLEMENTAÇÃO
 
-**Impacto**: Menor. O tom azulado é intencional para o tema FUI e funciona bem contra OLED smearing, mas diverge tecnicamente da spec `#050505`.
+| Passo | Arquivo | Mudança |
+|---|---|---|
+| 1 | `package.json` | Adicionar `tus-js-client` |
+| 2 | `src/components/editor/VVIZImporter.tsx` | Upload TUS para arquivos >20MB com progress bar e retry |
+| 3 | `src/lib/vvizWorker.ts` | Refatorar `parseVvizStreaming` para processar em chunks de 64KB em vez de decodificar o buffer inteiro |
 
-### 3. mix-blend-mode: screen — AUSENTE no HUD
+### DETALHES TÉCNICOS
 
-**Especificação**: Crosshairs com `mix-blend-mode: screen` para iluminar sobre canvas 3D.
+```text
+Upload TUS flow (files >20MB):
+  File selected → check size
+  → >20MB: tus-js-client upload to storage bucket
+     → 6MB chunks, auto-retry on disconnect
+     → progress events → UI bar
+     → on complete: download from storage → Worker
+  → <20MB: FileReader.readAsArrayBuffer → Worker (existing fast-path)
 
-**Realidade**: `HUDCrosshairs.tsx` não aplica blend mode algum. As miras são renderizadas com opacidade fixa (0.6) sobre z-50.
-
-**Correção**: Adicionar `style={{ mixBlendMode: 'screen' }}` ao container SVG.
-
-### 4. Framer Motion — NÃO INSTALADO
-
-**Especificação**: Animações com `type: "tween", ease: "circOut", duration: 0.3` para cinética mecânica.
-
-**Realidade**: O projeto não usa framer-motion. Todas as animações são CSS puras (keyframes no tailwind.config.ts e index.css). As transições usam `cubic-bezier(0.16, 1, 0.3, 1)` (expo-out) e `cubic-bezier(0.34, 1.56, 0.64, 1)` (spring).
-
-**Avaliação**: As curvas CSS atuais (expo-out) produzem resultado similar ao circOut especificado. O spring com overshoot (1.56) viola a regra de "nenhum bounce". A decisão de não usar framer-motion reduz o bundle size (~30KB), mas limita animações imperativas.
-
----
-
-## CONFORMIDADES VERIFICADAS
-
-### Tipografia ✅
-- `font-mono-code` → JetBrains Mono para dados telemetricos (timecodes, coordenadas, percentuais)
-- `font-sans` → Rajdhani/Inter para UI estrutural
-- `font-tactical` → JetBrains Mono uppercase com letter-spacing 0.08em
-
-### Chanfros ✅
-- `.bevel-sm` (8px), `.bevel-md` (12px), `.bevel-lg` (15px) implementados exatamente com clip-path polygon
-
-### Glassmorphism ✅
-- `.glass`: `blur(16px) saturate(1.4)` + `hsl(220 18% 6% / 0.85)` — conforme spec
-- `.glass-premium`: `blur(32px) saturate(1.6)` + borda translúcida + box-shadow profundo
-
-### SMPTE ✅
-- Motor modular em `src/lib/smpte/` com Drop-Frame completo (29.97 fps)
-- Omissão de frames 00/01 implementada corretamente
-- Separador `;` para DF vs `:` para NDF
-- UI no `SMPTEPanel.tsx` exibindo rate e modo DF/NDF
-
-### Scanlines ✅
-- Implementadas em 18+ componentes via CSS `repeating-linear-gradient` e animação `scan-move`
-
-### Scrollbar Neon ✅
-- Custom scrollbar com 3px width, thumb usando `--primary` com glow — variação sutil da spec (usa amber/primary em vez de cyan puro)
-
----
-
-## PLANO DE CORREÇÃO (4 itens)
-
-### Passo 1 — Virtualizar TelemetryDashboard
-Substituir o loop `Array.from` pelo `FixedSizeList` de react-window. O `GridRow` callback já existe no formato correto — basta envolvê-lo no componente virtualizado. ~15 linhas de mudança.
-
-### Passo 2 — Adicionar mix-blend-mode: screen ao HUD
-Uma linha no `HUDCrosshairs.tsx`: adicionar `style={{ mixBlendMode: 'screen' }}` ao div container ou ao SVG.
-
-### Passo 3 — Remover curva spring com overshoot
-Substituir `'spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)'` no tailwind.config.ts por uma curva circOut: `cubic-bezier(0, 0.55, 0.45, 1)` — elimina o bounce não-militar.
-
-### Passo 4 — Ajustar background para Vantablack neutro (OPCIONAL)
-Alterar `--background` e `--surface-0` para tons de preto neutro (#050505 / #080808) em vez do azulado atual. Decisão estética — o azulado funciona bem na prática.
+Streaming parser refactor:
+  Current: decoder.decode(fullBuffer) → scan string char-by-char
+  Proposed: process ArrayBuffer in 64KB slices via TextDecoder.decode(slice, {stream: true})
+  → accumulate partial JSON objects in a rolling buffer (~1MB max)
+  → emit complete performance objects as before
+  → memory: O(chunkSize) instead of O(fileSize)
+```
 
