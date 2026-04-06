@@ -1,91 +1,69 @@
 
 
-## Sistema de Acreditação por IA para Órgãos Fiscalizadores
+## Upload Real de Arquivos ao Painel de Acreditação
 
 ### Visão Geral
 
-Criar um módulo de **Acreditação Inteligente de Documentação** que valida automaticamente por IA se toda a documentação necessária para cada órgão fiscalizador (Exército/SFPC, DECEA/ANAC, Bombeiros, Prefeitura) está completa, correta e em conformidade — gerando um **Relatório de Acreditação** com score de conformidade, pendências e documentos prontos para submissão.
+Adicionar upload de arquivos PDF/imagem a cada documento no painel de acreditação, usando o bucket `assets` existente. Cada documento passa a ter um arquivo real associado, com preview e indicador visual.
 
-### Componentes
+### Mudanças
 
-**1. Tabela `accreditation_packages` no banco de dados**
+**1. Criar bucket policy para acreditação**
 
-Armazena pacotes de acreditação por evento/show, com status, órgão alvo, documentos vinculados e resultado da validação IA.
+Usar o bucket `assets` existente. Os arquivos serão salvos em `accreditation/{user_id}/{timestamp}-{filename}`.
 
-Campos: `id`, `user_id`, `event_id`, `agency` (enum: exercito, decea, bombeiros, prefeitura, anac), `status` (draft, validating, approved, rejected, submitted), `documents` (JSONB — lista de docs com nome, tipo, status, observações), `ai_validation_result` (JSONB — score, itens ok/pendentes/falhas), `created_at`, `updated_at`.
+**2. Atualizar `DocEntry` com dados de arquivo**
 
-**2. Edge Function `validate-accreditation` (IA)**
+```typescript
+interface DocEntry {
+  name: string;
+  description: string;
+  filePath?: string;      // path no storage
+  fileName?: string;      // nome original do arquivo
+  fileSize?: number;      // tamanho em bytes
+  fileType?: string;      // mime type (pdf, image/*)
+}
+```
 
-Recebe o pacote de documentos e o órgão alvo. Usa Lovable AI (Gemini) com conhecimento regulatório embarcado no prompt para:
-- Validar completude (todos os docs obrigatórios estão presentes?)
-- Verificar coerência (datas, nomes, CNPJs consistentes entre docs?)
-- Checkar conformidade (NFPA, R-105, RBAC-E, NRs aplicáveis)
-- Gerar score 0-100% de conformidade
-- Listar pendências específicas com orientação de como resolver
-- Retornar resultado estruturado via tool calling
+**3. Adicionar upload inline por documento**
 
-**3. Checklist Regulatório por Órgão (`src/utils/regulatoryChecklist.ts`)**
+- Cada item no checklist obrigatório ganha um botão "Anexar arquivo" (input file hidden)
+- Aceita PDF, JPG, PNG (max 20MB)
+- Ao selecionar arquivo: upload para `assets` bucket → atualiza o `DocEntry` com `filePath`
+- Indicador visual: ícone de clipe + nome do arquivo quando anexado
+- Botão de remover arquivo individual
 
-Definição estática dos documentos obrigatórios por órgão:
+**4. Área de upload drag-and-drop para docs avulsos**
 
-| Órgão | Documentos Obrigatórios |
+- Dropzone na seção "Seus Documentos" para arrastar e soltar arquivos
+- Auto-detecta nome do documento pelo filename
+- Adiciona ao array de documents com o arquivo já vinculado
+
+**5. Enviar metadados de arquivo na validação**
+
+- O payload para `validate-accreditation` passa a incluir `fileName` e `fileType` para cada doc
+- A IA pode considerar se o arquivo real foi anexado ou se é apenas declarativo
+
+### Arquivos Modificados
+
+| Arquivo | Alteração |
 |---|---|
-| Exército (SFPC) | CR válido, Guia de Tráfego, R-105 compliance, relação de produtos |
-| DECEA | Solicitação NOTAM, coordenadas GPS, KMZ, período, responsável técnico |
-| Bombeiros | AVCB/CLCB, plano de segurança, laudo técnico, ART |
-| Prefeitura | Alvará, licença evento, seguro RC |
-| ANAC (drones) | Registro SISANT, autorização SARPAS, certificado piloto, seguro RETA |
-
-**4. Painel de Acreditação na UI (`src/pages/AccreditationDashboard.tsx`)**
-
-- Seletor de evento e órgão alvo
-- Upload/vinculação de documentos (usa storage bucket existente)
-- Botão "Validar com IA" → chama edge function
-- Resultado visual: score circular, lista de itens ✅/⚠️/❌
-- Botão "Gerar Pacote de Submissão" → exporta PDF/DOCX com todos os docs + relatório de conformidade
-- Timeline de status (draft → validando → aprovado → submetido)
-
-**5. Integração com Joi**
-
-Atualizar o system prompt da Joi para reconhecer pedidos de acreditação e guiar o usuário:
-- "Joi, preciso liberar o show X no Exército" → Joi lista docs necessários, verifica o que já tem, sugere próximos passos
-- "Joi, valida minha documentação para o DECEA" → Joi aciona a validação IA e apresenta resultado
-
-**6. Geração Automática de Documentos Faltantes**
-
-Quando a IA detectar documentos faltantes, a Joi pode gerar automaticamente:
-- Requerimento ao SFPC (preenchido com dados do evento)
-- Solicitação de NOTAM (com coordenadas e KMZ anexo)
-- Declaração de responsabilidade técnica
-- Ofício para Bombeiros/Prefeitura
-
-### Arquivos
-
-| Arquivo | Ação |
-|---|---|
-| `src/utils/regulatoryChecklist.ts` | Criar — checklists por órgão |
-| `src/pages/AccreditationDashboard.tsx` | Criar — painel de acreditação |
-| `supabase/functions/validate-accreditation/index.ts` | Criar — validação IA |
-| `src/components/FXKAssistant.tsx` | Atualizar — integrar atalhos de acreditação |
-| `supabase/functions/fxk-ai-chat/index.ts` | Atualizar — prompt com contexto de acreditação |
-| Migration SQL | Criar tabela `accreditation_packages` com RLS |
+| `src/pages/AccreditationDashboard.tsx` | DocEntry com file fields, upload handlers, dropzone UI, preview de arquivos |
+| Migration SQL | RLS policy no bucket `assets` para path `accreditation/` (se necessário) |
 
 ### Detalhes Técnicos
 
 ```text
-Fluxo de acreditação:
-  Usuário seleciona evento + órgão
-  → Sistema carrega checklist obrigatório do órgão
-  → Usuário vincula/upload documentos existentes
-  → Clique "Validar com IA"
-  → Edge function recebe docs + checklist + órgão
-  → IA analisa completude, coerência e conformidade
-  → Retorna: { score: 87, items: [...], pendencias: [...] }
-  → UI renderiza resultado com ações sugeridas
-  → Docs faltantes: Joi pode gerar automaticamente
-  → Pacote completo: exporta PDF consolidado para submissão
+Upload flow:
+  User clicks "Anexar" or drops file
+  → supabase.storage.from('assets').upload(path, file)
+  → path: accreditation/{user_id}/{timestamp}-{sanitized_name}
+  → DocEntry updated with filePath, fileName, fileSize, fileType
+  → Visual indicator shows attached file
+  → On validate: filePath sent to edge function for context
 
-Modelo IA: google/gemini-3-flash-preview (structured output via tool calling)
-Storage: bucket 'assets' existente para upload de docs
+File types: application/pdf, image/jpeg, image/png
+Max size: 20MB per file
+Bucket: assets (existing, private)
 ```
 
