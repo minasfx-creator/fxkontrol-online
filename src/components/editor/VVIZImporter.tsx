@@ -359,7 +359,7 @@ export default function VVIZImporter({
     });
   }, [previewData, commitChunks, onOpenChange, currentFile, fileName, saveToLibrary]);
 
-  const isProcessing = phase === 'reading' || phase === 'parsing' || phase === 'importing';
+  const isProcessing = phase === 'uploading' || phase === 'reading' || phase === 'parsing' || phase === 'importing';
   const hasResult = previewData && accRef.current.positions.length > 0;
 
   return (
