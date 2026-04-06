@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { List } from 'react-window';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useMAVLinkStore } from '@/store/useMAVLinkStore';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,19 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
   const { drones, connected } = useMAVLinkStore();
   const [selectedDrone, setSelectedDrone] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'detail'>('grid');
+  const gridContainerRef = useRef<HTMLDivElement>(null);
+  const [gridHeight, setGridHeight] = useState(400);
+
+  useEffect(() => {
+    if (!gridContainerRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setGridHeight(entry.contentRect.height);
+      }
+    });
+    ro.observe(gridContainerRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
 
@@ -72,8 +86,9 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
   const ROW_HEIGHT = 35;
   const rowCount = Math.ceil(telemetry.length / COLS);
 
-  const GridRow = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const startIdx = index * COLS;
+  const GridRowComponent = useCallback((props: { rowIndex: number; style: React.CSSProperties }) => {
+    const { rowIndex, style } = props;
+    const startIdx = rowIndex * COLS;
     return (
       <div style={style} className="flex gap-1 px-1">
         {Array.from({ length: COLS }, (_, col) => {
@@ -161,15 +176,17 @@ export default function TelemetryDashboard({ onClose }: { onClose: () => void })
         ))}
       </div>
 
-      <div className="flex-1 overflow-hidden p-1">
+      <div className="flex-1 overflow-hidden p-1" ref={gridContainerRef}>
         {viewMode === 'grid' ? (
-          <div className="h-full overflow-y-auto custom-scrollbar">
-            <div className="space-y-1">
-              {Array.from({ length: rowCount }, (_, rowIdx) => (
-                <GridRow key={rowIdx} index={rowIdx} style={{}} />
-              ))}
-            </div>
-          </div>
+          <List
+            style={{ height: gridHeight }}
+            className="custom-scrollbar"
+            overscanCount={3}
+            rowComponent={GridRowComponent as any}
+            rowCount={rowCount}
+            rowHeight={ROW_HEIGHT}
+            rowProps={{} as any}
+          />
         ) : selected ? (
           <div className="space-y-3 overflow-y-auto h-full p-1">
             <div className="flex items-center justify-between">
