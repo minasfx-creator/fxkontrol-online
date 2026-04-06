@@ -395,7 +395,7 @@ export default function VVIZImporter({
               </div>
               <Progress value={progress} className="h-1.5" />
               <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
-                <span>{phase === 'reading' ? 'Leitura' : phase === 'parsing' ? 'Web Worker' : 'Importação'}</span>
+                <span>{phase === 'uploading' ? 'Upload TUS' : phase === 'reading' ? 'Leitura' : phase === 'parsing' ? 'Web Worker' : 'Importação'}</span>
                 <span>{Math.round(progress)}%</span>
               </div>
             </div>
