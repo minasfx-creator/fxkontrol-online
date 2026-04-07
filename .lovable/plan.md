@@ -1,105 +1,54 @@
 
 
-# Refatoracao Desktop UI/UX — Eliminar Travas, Redundancia e Integrar World Shows AR
+# Adicionar Shows Pirotécnicos Nacionais Brasileiros
 
-## Problemas Identificados
+## Resumo
 
-| Problema | Causa |
-|---|---|
-| World Shows inacessivel | Escondido dentro de 80+ icones no PanelTabBar direito, sem atalho na Toolbar |
-| Floating panel com scroll pessimo | Container `overflow-y-auto` sem `h-full` — conteudo corta ou nao scrolla |
-| Redundancia entre Left Dock e Right Dock | Effects, Scene e Settings aparecem em ambos os lados |
-| VenueIntelOverlay nunca aparece | Usuarios nao encontram o caminho ate o panel World Shows |
-| Panel direito `max-w-[30vw]` muito estreito | 380px com max 30vw comprime conteudo do VenueIntelOverlay |
+Adicionar 6 shows pirotécnicos nacionais brasileiros ao catálogo World Shows, além de Copacabana que já existe. Cada preset terá plano de fogo realista, GPS real e intel estratégico completo.
 
-## Mudancas
+---
 
-### 1. Adicionar botao "World Shows" direto na Toolbar (acesso imediato)
+## Shows a Adicionar
 
-Em `Toolbar.tsx`, adicionar um botao Globe na barra superior (proximo ao ADD+) que abre diretamente `activePanel: 'worldshows'`. Isso elimina a necessidade de procurar no dock direito.
+| Show | Local | GPS | Posições | Duração | Terreno |
+|---|---|---|---|---|---|
+| **Réveillon Salvador** | Farol da Barra, BA | -13.0089, -38.5327 | 10 balsas na baía | 600s (10min) | Baía de Todos os Santos |
+| **Réveillon Fortaleza** | Praia de Iracema, CE | -3.7219, -38.5217 | 8 balsas | 480s (8min) | Praia oceânica |
+| **Réveillon Balneário Camboriú** | Barra Sul, SC | -27.0044, -48.6229 | 6 balsas + FG Emissário | 420s (7min) | Praia c/ skyline |
+| **Réveillon Brasília** | Esplanada dos Ministérios | -15.7989, -47.8649 | 8 posições terrestres | 480s (8min) | Terrestre, lago Paranoá |
+| **São João Caruaru** | Pátio de Eventos, PE | -8.2823, -35.9714 | 6 posições terrestres | 360s (6min) | Terrestre, sertão |
+| **Réveillon Recife/Olinda** | Marco Zero, PE | -8.0631, -34.8711 | 10 balsas no rio/mar | 540s (9min) | Rio Capibaribe + mar |
 
-### 2. Corrigir layout do Floating Panel direito (Index.tsx)
+---
 
-O container do panel flutuante (Layer 3, linha 477-499) tem problemas:
-- Adicionar `h-full` ao container interno para que `overflow-y-auto` funcione
-- O container precisa de height explicito: ja tem `top` e `bottom` absolutos, mas o div interno nao propaga height
-- Mudar `max-w-[30vw]` para `max-w-[40vw]` para paineis com conteudo denso como VenueIntelOverlay
-- Garantir que o `ScrollArea` dentro de `WorldShowPresetsPanel` e `VenueIntelOverlay` receba height correta
+## Arquivo Modificado
 
-Mudanca especifica em Index.tsx linhas 488-498:
-```tsx
-// DE:
-<div className="h-full overflow-y-auto">
+### `src/data/worldShowPresets.ts`
 
-// PARA:  
-<div className="h-full overflow-hidden flex flex-col">
-```
+- Adicionar 6 funções `generate*()` seguindo o padrão existente (multi-fase: opening → shells → crescendo → finale)
+- Adicionar 6 entries no array `WORLD_SHOW_PRESETS` com intel completo:
+  - População metro, últimos shows, vencedores de licitação
+  - Segurança (NOTAMs, terreno), marés, cultura local
+  - Insights estratégicos e regulatório
+- Todos com `continent: 'americas'` e `flag: '🇧🇷'`
 
-E no container (linha 479):
-```tsx
-// DE: max-w-[30vw]
-// PARA: max-w-[40vw]  
-```
+### Dados Intel Reais (resumo)
 
-### 3. Corrigir propagacao de height nos paineis
+| Local | Pop. Metro | Regulatório |
+|---|---|---|
+| Salvador | 3.9M | DECEA + Capitania BA + IBAMA |
+| Fortaleza | 4.0M | DECEA + Capitania CE + SEMACE |
+| Balneário Camboriú | 150K (1M+ turistas) | DECEA + Bombeiros SC |
+| Brasília | 4.8M | DECEA + GDF + ICMBio |
+| Caruaru | 370K | Bombeiros PE + Polícia Civil |
+| Recife/Olinda | 4.0M | DECEA + Capitania PE + PCR |
 
-Em `WorldShowPresetsPanel.tsx` e `VenueIntelOverlay.tsx`:
-- Garantir que o root div usa `h-full` (ja usa ✓)
-- O `ScrollArea` precisa de `flex-1 min-h-0` para funcionar dentro de flex containers
+---
 
-VenueIntelOverlay.tsx linha 136:
-```tsx
-// DE: <ScrollArea className="flex-1">
-// PARA: <ScrollArea className="flex-1 min-h-0">
-```
-
-WorldShowPresetsPanel.tsx linha 129:
-```tsx  
-// DE: <ScrollArea className="flex-1">
-// PARA: <ScrollArea className="flex-1 min-h-0">
-```
-
-### 4. Auto-load + Apresentacao AR ao selecionar cidade
-
-Modificar `WorldShowPresetsPanel.tsx`:
-- Ao clicar no ShowCard, o VenueIntelOverlay abre (ja implementado ✓)
-- Adicionar auto-scroll suave nas secoes do overlay
-- No VenueIntelOverlay, apos o usuario ver os dados, o botao DEPLOY SHOW carrega automaticamente (ja implementado ✓)
-- Verificar que o fluxo funciona end-to-end
-
-### 5. Eliminar redundancia Left Dock vs Right Dock
-
-O Left Dock (Effects/Scene/Settings) duplica entradas do PanelTabBar direito. Solucao:
-- Manter o Left Dock como acesso rapido (esta correto como esta)
-- Remover `effects`, `scene`, `showsettings` da secao "Ambiente" do PanelTabBar direito para evitar confusao
-- Isso nao quebra nada porque a logica de exclusao mutua (`SHARED_PANEL_IDS`) ja existe
-
-### 6. Melhorar VenueIntelOverlay com estetica AR cinematografica
-
-Refinar o overlay com:
-- Borda `border-cyan-500/20` e sutil scanline animation no header
-- GPS coords com animacao typewriter (incremento progressivo dos digitos)
-- Botao DEPLOY com glow pulsante ciano
-- Secoes com icone de "scanning" antes de revelar (transicao atual de 120ms esta boa, mas adicionar um sutil border-left accent)
-
-## Arquivos a Modificar
-
-| Arquivo | Mudanca |
-|---|---|
-| `src/components/editor/Toolbar.tsx` | Adicionar botao Globe "World Shows" na toolbar |
-| `src/pages/Index.tsx` | Fix container height + max-width do floating panel |
-| `src/components/editor/WorldShowPresetsPanel.tsx` | Fix ScrollArea min-h-0 |
-| `src/components/editor/VenueIntelOverlay.tsx` | Fix ScrollArea min-h-0 + refino AR visual |
-| `src/components/editor/PanelTabBar.tsx` | Remover duplicatas da secao Ambiente |
-
-## Ordem de Execucao
+## Ordem de Execução
 
 | Passo | Tarefa |
 |---|---|
-| 1 | Fix layout do floating panel (Index.tsx) — desbloqueia todos os paineis |
-| 2 | Fix ScrollArea nos paineis World Shows e Intel Overlay |
-| 3 | Adicionar botao World Shows na Toolbar |
-| 4 | Remover duplicatas do PanelTabBar |
-| 5 | Refinar estetica AR do VenueIntelOverlay |
-| 6 | Build verification |
+| 1 | Criar 6 funções generate + presets com intel em `worldShowPresets.ts` |
+| 2 | Build verification |
 
