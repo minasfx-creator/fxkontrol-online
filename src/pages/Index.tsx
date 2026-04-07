@@ -428,7 +428,8 @@ function Index() {
         )}
 
         <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} onOpenPanel={(id) => handleTogglePanel(id as PanelId)} panelHeight={mobilePanelHeight} onPanelHeightChange={setMobilePanelHeight} />
-        <PositionContextMenu />
+        <RadialMenu />
+        <LiveCard />
       </div>
     );
   }
