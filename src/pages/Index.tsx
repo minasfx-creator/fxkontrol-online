@@ -118,7 +118,7 @@ const MobileLinkMonitor = lz(() => import('@/components/editor/MobileLinkMonitor
 const SiteModelsPanel = lz(() => import('@/components/editor/SiteModelsPanel'));
 const VirtualControllerHub = lz(() => import('@/components/editor/VirtualControllerHub'));
 const FieldMap2D = lz(() => import('@/components/editor/FieldMap2D'));
-const ShowCommanderPanelDirect = lz(() => import('@/components/editor/ShowCommanderPanel'));
+const ShowCommanderPanel = lz(() => import('@/components/editor/ShowCommanderPanel'));
 const BluetoothPanel = lz(() => import('@/components/editor/BluetoothPanel'));
 const NFCPairPanel = lz(() => import('@/components/editor/NFCPairPanel'));
 const DMXOutputPanel = lz(() => import('@/components/editor/dmx/DMXOutputPanel'));
