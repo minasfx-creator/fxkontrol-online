@@ -165,6 +165,39 @@ export function generateBurst(
       vx = Math.sin(phi) * Math.cos(theta) * speed;
       vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.12;
       vz = Math.cos(phi) * speed;
+    } else if (pattern === 'horsetail') {
+      // Horsetail: heavy charcoal stars, tight upward cone, extreme droop
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.random() * Math.PI * 0.25; // tight upward cone
+      const speed = cfg.velocity * scale * (0.7 + Math.random() * 0.3);
+      vx = Math.sin(phi) * Math.cos(theta) * speed * 0.4;
+      vy = Math.cos(phi) * speed;
+      vz = Math.sin(phi) * Math.sin(theta) * speed * 0.4;
+    } else if (pattern === 'brocade_crown') {
+      // Brocade crown: like brocade but with wider spread and auto-pistil
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = cfg.velocity * scale * (0.55 + Math.random() * 0.45);
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.15;
+      vz = Math.cos(phi) * speed;
+    } else if (pattern === 'saturn') {
+      // Saturn: 60% stars in equatorial ring, 40% in polar burst
+      const isRing = (i / count) < 0.6;
+      if (isRing) {
+        const ringAngle = ((i / (count * 0.6)) * Math.PI * 2) + (Math.random() - 0.5) * 0.08;
+        const speed = cfg.velocity * scale * (0.85 + Math.random() * 0.15);
+        vx = Math.cos(ringAngle) * speed;
+        vy = (Math.random() - 0.5) * speed * 0.06; // very flat
+        vz = Math.sin(ringAngle) * speed;
+      } else {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.random() * Math.PI * 0.35; // upward polar cone
+        const speed = cfg.velocity * scale * (0.5 + Math.random() * 0.5) * 0.7;
+        vx = Math.sin(phi) * Math.cos(theta) * speed * 0.3;
+        vy = Math.cos(phi) * speed;
+        vz = Math.sin(phi) * Math.sin(theta) * speed * 0.3;
+      }
     } else {
       // Spherical burst (peony, etc.)
       const theta = Math.random() * Math.PI * 2;

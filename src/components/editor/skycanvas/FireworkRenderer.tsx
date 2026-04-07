@@ -276,11 +276,45 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           break;
         }
         case 'glitter': {
-          // Spherical, normal speed — delayed scatter handled in useFrame
           vx = sx * breakSpeed * speedVar * 0.9;
           vy = sy * breakSpeed * speedVar * 0.9 + 0.5;
           vz = sz * breakSpeed * speedVar * 0.9;
           life = starLife * (0.8 + Math.random() * 0.4);
+          break;
+        }
+        case 'horsetail': {
+          // Horsetail: tight upward cone, heavy charcoal stars with extreme droop
+          const htPhi = Math.random() * Math.PI * 0.25;
+          const htTheta = Math.random() * Math.PI * 2;
+          vx = Math.sin(htPhi) * Math.cos(htTheta) * breakSpeed * 0.35 * speedVar;
+          vy = Math.cos(htPhi) * breakSpeed * 0.7 * speedVar;
+          vz = Math.sin(htPhi) * Math.sin(htTheta) * breakSpeed * 0.35 * speedVar;
+          life = starLife * (2.0 + Math.random() * 2.0);
+          break;
+        }
+        case 'brocade_crown': {
+          // Brocade crown: wide brocade with auto-pistil (pistil handled by hasPistil prop)
+          vx = sx * breakSpeed * 0.55 * speedVar;
+          vy = sy * breakSpeed * 0.55 * speedVar + 0.8;
+          vz = sz * breakSpeed * 0.55 * speedVar;
+          life = starLife * (1.4 + Math.random() * 0.8);
+          break;
+        }
+        case 'saturn': {
+          // Saturn: 60% equatorial ring + 40% polar burst
+          const isRingStar = (i / STAR_COUNT) < 0.6;
+          if (isRingStar) {
+            const satAngle = ((i / (STAR_COUNT * 0.6)) * Math.PI * 2) + (Math.random() - 0.5) * 0.06;
+            const satSpeed = breakSpeed * (0.88 + Math.random() * 0.12);
+            vx = Math.cos(satAngle) * satSpeed;
+            vy = (Math.random() - 0.5) * satSpeed * 0.05;
+            vz = Math.sin(satAngle) * satSpeed;
+          } else {
+            const polPhi = Math.random() * Math.PI * 0.3;
+            vx = Math.sin(polPhi) * Math.cos(theta) * breakSpeed * 0.25 * speedVar;
+            vy = Math.cos(polPhi) * breakSpeed * 0.6 * speedVar;
+            vz = Math.sin(polPhi) * Math.sin(theta) * breakSpeed * 0.25 * speedVar;
+          }
           break;
         }
         default:
