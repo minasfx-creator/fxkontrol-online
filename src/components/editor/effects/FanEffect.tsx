@@ -73,7 +73,7 @@ export default function FanEffect({
 
     for (let ray = 0; ray < RAYS; ray++) {
       const rayAngle = -halfSpread + (ray / (RAYS - 1)) * halfSpread * 2;
-      const speed = (4 + Math.sin(ray * 1.5) * 1.5) * caliberScale;
+      const speed = (raySpeed + Math.sin(ray * 1.5) * 1.5);
 
       const dirX = Math.sin(rayAngle);
       const dirY = Math.cos(rayAngle) * 0.8 + 0.5;
