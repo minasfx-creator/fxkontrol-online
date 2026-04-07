@@ -12,7 +12,7 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useLOD } from '@/hooks/useLOD';
 import { getLiftTime, getBreakHeight, getBreakSpeed, getTypedPrefire, getTypedDuration, getStarLifetime, type FinalePartType } from '@/lib/pyroPhysics';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
-import { temporalFlicker } from '@/lib/pyroNoise';
+import { temporalFlicker, getFlickerParams } from '@/lib/pyroNoise';
 import { updateFrustum, isSphereInFrustum } from '@/lib/frustumCuller';
 import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
 import { thermalColor, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
@@ -347,9 +347,12 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       
       let twinkle: number;
       if (isTrailingPattern) {
-        twinkle = 0.8 + Math.sin(twinklePhases[i] + starAge * 15) * 0.2;
+        // Trailing: use temporalFlicker with reduced amplitude for constant glow + micro-variations
+        twinkle = temporalFlicker(sparkleSeeds[i], time, 0.82, 0.15, 0.10);
       } else {
-        twinkle = temporalFlicker(sparkleSeeds[i], time, 0.65, 0.30, 0.35);
+        // Chemical-compound-specific flicker params
+        const fp = getFlickerParams(String(compound));
+        twinkle = temporalFlicker(sparkleSeeds[i], time, fp.base, fp.amplitude, fp.popStrength);
       }
       
       const userFade = 1 - starAge;
@@ -476,6 +479,26 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           <ringGeometry args={[flashSize * progress * 18, flashSize * progress * 18 + flashSize * 0.15, 32]} />
           <meshBasicMaterial color="#FFFFFF" transparent opacity={0.3 * Math.pow(1 - progress / 0.20, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />
         </mesh>
+      )}
+      {/* Post-burst smoke — appears in late burst phase */}
+      {progress > 0.6 && (
+        <SmokeTrail
+          position={[0, 0, 0]}
+          progress={(progress - 0.6) / 0.4}
+          intensity={0.6}
+          color={color}
+          caliber={caliber}
+        />
+      )}
+      {/* Ember particles — falling hot debris after burst */}
+      {progress > 0.3 && (
+        <EmberParticles
+          position={[0, 0, 0]}
+          color={color}
+          progress={(progress - 0.3) / 0.7}
+          spreadRadius={caliber * 3}
+          startHeight={0}
+        />
       )}
     </group>
   );

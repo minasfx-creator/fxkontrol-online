@@ -2,7 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
-import { temporalFlicker } from '@/lib/pyroNoise';
+import { temporalFlicker, hash01 } from '@/lib/pyroNoise';
 
 const EMBER_COUNT = 240;
 
@@ -71,22 +71,31 @@ function EmberParticlesInner({
         continue;
       }
 
-      const gravityEffect = 4.9 * age * age * 0.08;
-      const y = startHeight + seed.vy * age - gravityEffect;
+      // Real gravity: 0.5 * g * t²
+      const gravityEffect = 0.5 * 9.81 * age * age;
+      // Quadratic drag — smaller embers have more drag
+      const dragK = 0.12 / Math.max(0.3, seed.size);
+      const speed = Math.sqrt(seed.vy * seed.vy + seed.driftX * seed.driftX + seed.driftZ * seed.driftZ);
+      const dragFactor = Math.max(0.01, 1 - dragK * speed * age);
+      
+      const y = startHeight + seed.vy * age * dragFactor - gravityEffect;
       if (y < 0) {
         posArr[i3] = 0; posArr[i3 + 1] = -100; posArr[i3 + 2] = 0;
         colArr[i3] = 0; colArr[i3 + 1] = 0; colArr[i3 + 2] = 0;
         continue;
       }
 
-      posArr[i3] = seed.x + seed.driftX * age + Math.sin(time * 0.25 + i * 0.7) * 0.5 + windX * age * 12;
+      // Wind influence — embers are light, stronger wind effect (0.15)
+      posArr[i3] = seed.x + seed.driftX * age * dragFactor + Math.sin(time * 0.25 + i * 0.7) * 0.5 + windX * age * 25;
       posArr[i3 + 1] = y;
-      posArr[i3 + 2] = seed.z + seed.driftZ * age + Math.cos(time * 0.2 + i * 1.1) * 0.4 + windZ * age * 12;
+      posArr[i3 + 2] = seed.z + seed.driftZ * age * dragFactor + Math.cos(time * 0.2 + i * 1.1) * 0.4 + windZ * age * 25;
 
       const lifeFrac = age / seed.lt;
       const fadeCurve = Math.pow(Math.max(0, 1 - lifeFrac), 0.35);
       const flicker = temporalFlicker(seed.noiseSeed, time, 0.58, 0.35, 0.4);
-      const reignition = (seed.reignite > 0.85 && Math.sin(time * 5 + i * 11) > 0.95) ? 1.5 : 0;
+      // Stochastic reignition via hash noise instead of predictable sin()
+      const reignitionHash = hash01(seed.noiseSeed + Math.floor(time * 3) * 7.13);
+      const reignition = (seed.reignite > 0.85 && reignitionHash > 0.92) ? 1.5 : 0;
 
       const thermalShift = Math.pow(lifeFrac, 0.6);
       const r = THREE.MathUtils.lerp(baseColor.r, 0.8, thermalShift * 0.55) + reignition * 0.3;
