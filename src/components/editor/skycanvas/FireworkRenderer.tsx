@@ -538,12 +538,10 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         py = basePy + Math.cos(time * tumbleFreq * 1.3 + tumblePhase) * tumbleAmp * 0.45 * tumbleScale;
         pz = basePz + Math.cos(time * tumbleFreq * 0.8 + tumblePhase + 2.1) * tumbleAmp * tumbleScale + w[2] * t * t * 0.5;
       } else if (pattern === 'glitter') {
-        // Glitter: normal ballistics, but with delayed stochastic "flash" scatter
+        // Glitter: normal ballistics with stochastic flash scatter
         px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
         pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
-        // Delayed secondary ignition: at random times (30-80% life), stars flash bright
-        // This is handled in the color/brightness section below
       } else {
         px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
