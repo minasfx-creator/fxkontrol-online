@@ -1,81 +1,96 @@
 
 
-# Limpeza, Bugs e Realismo — Ciclo de Calibracao Industrial #2
+# Calibracao Chrysanthemum + Crossette + Bug Fixes
 
-## Problemas Identificados
+## Bugs Identificados
 
-| # | Bug / Ineficiencia | Impacto |
+| # | Bug | Localizacao |
 |---|---|---|
-| 1 | `spatialCuller.isInFrustum()` extrai frustum matrix POR EFEITO (~50-900x/frame). Já existe `updateFrustum()` em `frustumCuller.ts` que faz 1x/frame | CPU desperdicado, stalls |
-| 2 | `sharedState.runActiveBurstScan()` usa luminance 3.0 por burst (linha 42) — inconsistente com LightingSystem que já foi corrigido para 1.5 | Dados de scan incorretos |
-| 3 | `exposure.ts` acumula `luminanceAccum` infinitamente — `resetLuminanceAccum()` nunca é chamado | Memory leak lento |
-| 4 | Dois sistemas de frustum culling coexistem: `spatialCuller.ts` e `frustumCuller.ts` — redundância, confusão | Código duplicado |
-| 5 | Film grain e chromatic aberration condicionados a `hasBursts` — cena vazia sem grain cinematográfico | Visual flat sem fogos |
-| 6 | Flash sphere (break flash) com opacity 0.2 e 0.08 — muito fraco para ser percebido | Explosão sem impacto |
-| 7 | Star vertex shader: `gl_PointSize = aSize * (8000.0 / -mvPos.z)` — divisor fixo causa stars gigantes perto da câmera | Visual quebrado em close-up |
+| 1 | `updateFrustum(camera)` chamado DUAS vezes por frame — linha 270 (dentro do `useFrame` de cada `FireworkBurst`) E linha 625 (no `TimelineEffects` render). A chamada dentro do `useFrame` e redundante e roda N vezes por frame | `FireworkRenderer.tsx:270` |
+| 2 | Chrysanthemum sem upward bias — usa burst esferico simetrico (`sy * breakSpeed * 0.93`), produz esfera perfeita em vez de forma levemente achatada/elevada como no Finale 3D | `FireworkRenderer.tsx:210` |
+| 3 | Crossette sem upward bias — `armPhi = Math.PI * 0.45` e simetrico, sem compensacao gravitacional. No Finale 3D, crossettes tem leve elevacao porque os sub-bursts secundarios perdem energia rapidamente | `FireworkRenderer.tsx:223-228` |
+| 4 | `burstSimulation.ts` — chrysanthemum e crossette no `generateBurst()` tambem sem upward bias no else generico (linha 84: `+ cfg.velocity * 0.15` e fixo para todos, nao especifico) | `burstSimulation.ts:79-86` |
+| 5 | `exposure.ts` — `luminanceAccum` e `luminanceSamples` nunca sao resetados apos leitura. `resetLuminanceAccum()` existe mas nenhum consumidor chama | `exposure.ts:14-15` |
+| 6 | Duplicate frustum update no `FireworkBurst.useFrame` (ja corrigido no TimelineEffects mas nao removido do burst) causa CPU waste proporcional ao numero de bursts ativos | `FireworkRenderer.tsx:269-270` |
 
 ## Solucoes
 
-### 1. Unificar frustum culling — eliminar `spatialCuller.isInFrustum()`
-**Arquivo**: `src/components/editor/skycanvas/FireworkRenderer.tsx`
+### 1. Remover `updateFrustum` duplicado do FireworkBurst
+**Arquivo**: `FireworkRenderer.tsx`
 
-Substituir `isInFrustum(camera, effectPos, cullRadius)` por `isSphereInFrustum(effectPos[0], effectPos[1], effectPos[2], cullRadius)` do `frustumCuller.ts`. Adicionar um único `updateFrustum(camera)` no INICIO do `TimelineEffects` render (fora do map), removendo a chamada redundante de dentro do `FireworkBurst.useFrame`.
+Remover linhas 269-270 (`updateFrustum(camera)` dentro do `useFrame` do `FireworkBurst`). O `TimelineEffects` ja chama `updateFrustum(camera)` uma vez por frame na linha 625 — isso e suficiente.
 
-### 2. Corrigir luminance em `runActiveBurstScan()`
-**Arquivo**: `src/components/editor/skycanvas/sharedState.tsx`
+### 2. Chrysanthemum — upward bias realista
+**Arquivo**: `FireworkRenderer.tsx`
 
-Linha 42: mudar `luminance += elapsed < 0.5 ? 3.0 : 0.5` para `luminance += elapsed < 0.5 ? 1.5 : 0.3` — alinhado com LightingSystem.
-
-### 3. Remover leak de `luminanceAccum`
-**Arquivo**: `src/render_ultra/postprocessing/exposure.ts`
-
-Chamar `resetLuminanceAccum()` ao final de `updateExposure()`, ou remover o accumulator inteiramente (não é usado por nenhum consumidor).
-
-### 4. Film grain e chromatic aberration sempre ativos
-**Arquivo**: `src/components/editor/PostProcessing.tsx`
-
-- Film grain: remover condição `hasBursts` — sempre renderizar se `s.filmGrain > 0.01`
-- Chromatic aberration: manter gated em bursts (correto — só em explosões)
-- Reduzir film grain opacity de `s.filmGrain * 0.6` para `s.filmGrain * 0.4` para sutileza
-
-### 5. Aumentar impacto do flash de explosão
-**Arquivo**: `src/components/editor/skycanvas/FireworkRenderer.tsx`
-
-- Flash interno (progress < 0.06): opacity de 0.2 para 0.5, cor `#FFFFEE`
-- Flash externo (progress < 0.12): opacity de 0.08 para 0.2
-- Adicionar scale pulse: `flashSize * (1 + progress * 12)` em vez de `* 6`
-
-### 6. Corrigir star point size para close-up
-**Arquivo**: `src/components/editor/skycanvas/FireworkRenderer.tsx`
-
-Star vertex shader: adicionar clamp inferior mais agressivo e ajustar divisor:
-```glsl
-gl_PointSize = aSize * (6000.0 / -mvPos.z);
-gl_PointSize = clamp(gl_PointSize, 0.5, 96.0);
+Linha 210: mudar de:
 ```
-Reduz max de 140 para 96 — evita stars que cobrem metade da tela em close-up.
+vy = sy * breakSpeed * 0.93 * speedVar;
+```
+para:
+```
+vy = sy * breakSpeed * 0.93 * speedVar + breakSpeed * 0.08;
+```
+Adiciona +8% do breakSpeed como bias vertical — chrysanthemum no Finale 3D tem leve elevacao porque as estrelas sao mais leves e o momentum inicial da shell contribui para cima.
 
-### 7. Limpar import morto de `spatialCuller` no FireworkRenderer
-**Arquivo**: `src/components/editor/skycanvas/FireworkRenderer.tsx`
+### 3. Crossette — upward bias + jitter mais natural
+**Arquivo**: `FireworkRenderer.tsx`
 
-Remover `import { isInFrustum } from '@/lib/spatialCuller'` após migrar para `frustumCuller`.
+Linhas 223-228: mudar `armPhi` de `Math.PI * 0.45` para `Math.PI * 0.40` (ligeiramente mais elevado) e adicionar `+ breakSpeed * 0.06` ao `vy`:
+```
+const armPhi = Math.PI * 0.40;
+vy = Math.cos(armPhi + jitter) * breakSpeed * 0.82 + breakSpeed * 0.06;
+```
+
+### 4. burstSimulation.ts — bias especifico por pattern
+**Arquivo**: `burstSimulation.ts`
+
+No else generico (linha 79-86), adicionar cases especificos para chrysanthemum e crossette:
+```typescript
+} else if (pattern === 'chrysanthemum') {
+  // Slightly elevated sphere — Finale 3D reference
+  const speed = cfg.velocity * scale * (0.5 + Math.random() * 0.5);
+  vx = Math.sin(phi) * Math.cos(theta) * speed;
+  vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.25;
+  vz = Math.cos(phi) * speed;
+} else if (pattern === 'crossette') {
+  // 4-6 arms with slight upward bias
+  const armCount = cfg.symmetry || 4;
+  const arm = i % armCount;
+  const armAngle = (arm / armCount) * Math.PI * 2;
+  const jitter = (Math.random() - 0.5) * 0.15;
+  const speed = cfg.velocity * scale * (0.8 + Math.random() * 0.2);
+  vx = Math.sin(Math.PI * 0.42) * Math.cos(armAngle + jitter) * speed;
+  vy = Math.cos(Math.PI * 0.42) * speed + cfg.velocity * 0.1;
+  vz = Math.sin(Math.PI * 0.42) * Math.sin(armAngle + jitter) * speed;
+}
+```
+
+### 5. Exposure leak fix — chamar resetLuminanceAccum
+**Arquivo**: `exposure.ts`
+
+Adicionar `resetLuminanceAccum` ao final de `updateExposure()`:
+```typescript
+// Reset accumulator after each frame update
+state.luminanceAccum = 0;
+state.luminanceSamples = 0;
+```
 
 ## Arquivos Modificados
 
 | Arquivo | Acao |
 |---|---|
-| `src/components/editor/skycanvas/FireworkRenderer.tsx` | Unificar frustum, flash mais forte, star size fix |
-| `src/components/editor/skycanvas/sharedState.tsx` | Fix luminance 3.0→1.5 |
-| `src/render_ultra/postprocessing/exposure.ts` | Remover leak luminanceAccum |
-| `src/components/editor/PostProcessing.tsx` | Film grain sempre ativo |
+| `src/components/editor/skycanvas/FireworkRenderer.tsx` | Remover updateFrustum duplicado, chrysanthemum/crossette upward bias |
+| `src/render_ultra/fireworks/burstSimulation.ts` | Chrysanthemum e crossette patterns especificos |
+| `src/render_ultra/postprocessing/exposure.ts` | Fix luminance leak |
 
 ## Ordem de Execucao
 
 | Passo | Tarefa |
 |---|---|
-| 1 | Fix sharedState luminance + exposure leak |
-| 2 | Unificar frustum culling no FireworkRenderer |
-| 3 | Flash mais forte + star size fix |
-| 4 | Film grain sempre ativo no PostProcessing |
+| 1 | Fix exposure leak |
+| 2 | Remover updateFrustum duplicado do FireworkBurst |
+| 3 | Chrysanthemum upward bias (FireworkRenderer + burstSimulation) |
+| 4 | Crossette upward bias (FireworkRenderer + burstSimulation) |
 | 5 | Build verification |
 
