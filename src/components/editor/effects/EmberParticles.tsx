@@ -117,7 +117,7 @@ function EmberParticlesInner({
   if (progress < 0.1) return null;
 
   return (
-    <group position={position}>
+    <group position={position} renderOrder={50}>
       <points ref={pointsRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[posArr, 3]} />
