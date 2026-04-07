@@ -152,6 +152,10 @@ const PrefireShell = React.forwardRef<THREE.Group, {
   const headGlow = 0.12 + caliber * 0.035;
   const headBrightness = Math.max(0.4, 1 - progress * 0.25);
 
+  // Smoke trail density scales quadratically with caliber
+  const smokeRadius = 0.3 + caliber * caliber * 0.02 + progress * 3.0;
+  const smokeOpacity = (0.06 + caliber * 0.008) * (1 - progress / 0.35);
+
   return (
     <group position={position}>
       {/* Muzzle flash at mortar — quick bright burst */}
@@ -167,14 +171,28 @@ const PrefireShell = React.forwardRef<THREE.Group, {
         </mesh>
       )}
 
-      {/* Mortar smoke puff */}
-      {progress < 0.3 && (
+      {/* Mortar smoke puff — primary layer */}
+      {progress < 0.35 && (
         <mesh position={[0, progress * 2.5, 0]}>
-          <sphereGeometry args={[0.25 + progress * 2.5, 8, 8]} />
+          <sphereGeometry args={[smokeRadius, 8, 8]} />
           <meshBasicMaterial
             color="#776655"
             transparent
-            opacity={0.06 * (1 - progress / 0.3)}
+            opacity={Math.max(0, smokeOpacity)}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
+
+      {/* Secondary smoke layer — wider, more diffuse */}
+      {progress < 0.4 && progress > 0.02 && (
+        <mesh position={[0, progress * 1.8, 0]}>
+          <sphereGeometry args={[smokeRadius * 1.4, 8, 8]} />
+          <meshBasicMaterial
+            color="#665544"
+            transparent
+            opacity={Math.max(0, 0.03 * (1 - progress / 0.4))}
+            depthWrite={false}
           />
         </mesh>
       )}
