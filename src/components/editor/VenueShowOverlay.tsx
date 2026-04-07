@@ -64,10 +64,27 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
   const [statsVisible, setStatsVisible] = useState(false);
   const deployed = useRef(false);
   const bootPlayed = useRef(false);
+  const orbitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const gpsText = `${preset.gps.lat.toFixed(4)}°S  ${preset.gps.lng.toFixed(4)}°W`;
   const handleGpsTick = useCallback(() => ambientSound.play('click'), []);
   const { displayed: gpsDisplayed, done: gpsDone } = useTypewriter(gpsText, 25, handleGpsTick);
+
+  // Trigger flyTo on mount — camera flies to venue immediately
+  useEffect(() => {
+    triggerFlyTo({
+      lat: preset.gps.lat,
+      lng: preset.gps.lng,
+      alt: 400,
+      duration: 3,
+      pitch: 35,
+    });
+    return () => {
+      // Cleanup orbit on unmount
+      stopOrbit();
+      if (orbitTimer.current) clearTimeout(orbitTimer.current);
+    };
+  }, [preset.gps.lat, preset.gps.lng]);
 
   // Sequential intel reveal with nav sound
   useEffect(() => {

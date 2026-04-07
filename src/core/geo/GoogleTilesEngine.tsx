@@ -123,6 +123,7 @@ export default function GoogleTilesLayer() {
   const googleTilesQuality = useSceneStore((s) => s.settings.googleTilesQuality);
   const lastDebugPublishRef = useRef(0);
   const lastDebugSignatureRef = useRef('');
+  const frameCountRef = useRef(0);
 
   const applyAnchorTransform = useCallback(() => {
     if (!tilesRef.current) return;
