@@ -1,68 +1,57 @@
 
 
-# Ciclo de Calibracao #17 — Angulos/Burst, Mine/Fan/Cake Polish, Export Documental Inteligente
+# Ciclo de Calibracao #18 — Ground Bounce Sparks, Ember Glow Trail, Smoke Pos-Burst, Angle Trajectory Verification
 
-## 4 Frentes de Trabalho
+## Problemas Identificados
 
-### 1. Burst no Final da Trajetoria Angular (Bug Fix)
+| # | Problema |
+|---|----------|
+| 1 | **MineEffect sem ground bounce sparks** — quando particulas atingem Y=0, simplesmente usam `abs(rawY) * restitution` sem gerar sparks secundarias no impacto |
+| 2 | **Ember glow trail ausente** — particulas que caem (drip class + spray tardio) nao deixam trilha de brasa incandescente; apenas desaparecem |
+| 3 | **Smoke pos-burst insuficiente** — FireworkBurst so mostra `SmokeTrail` apos 60% do progress; falta nuvem volumetrica expandindo no ponto de burst que persista alem do efeito |
+| 4 | **Verificacao de angulos** — confirmar que `burstPos` no FireworkRenderer calcula corretamente a posicao final do burst usando o quaternion de heading/pitch, e que shells explodem no final da trajetoria angulada |
 
-**Problema**: Mine, Fan, Cake, RomanCandle e Comet recebem apenas `angleOffset` mas NAO recebem `launchHeading`/`launchPitch` do cue. O burst da shell (`FireworkBurst`) usa corretamente o quaternion de angulo para posicionar o burst no final da trajetoria, mas os efeitos ground-level (mine, fan, cake, candle, comet) ignoram os angulos do cue — sempre disparam para cima (eixo Y).
+## Solucao
 
-**Solucao**: Passar `launchHeading` e `launchPitch` como props para Mine, Fan, Cake, RomanCandle, Comet e aplicar rotacao quaternion ao vetor de direcao de disparo dentro de cada efeito. Isso garante que quando o usuario ajusta o angulo no seletor (PyroLaunchAngle), o efeito segue a trajetoria correta.
+### 1. MineEffect — Ground Bounce Sparks
+- Detectar quando `rawY < 0` (particula atinge o chao)
+- No momento do bounce, spawnar 3-5 micro-sparks no buffer de trail existente
+- Sparks: velocidade lateral baixa (1-3 m/s), cor amber/orange, lifetime 0.2-0.4s
+- Reutilizar o buffer de trail (ultimos 15% dos trail segments) para bounce sparks sem alocacao extra
 
-### 2. Mine/Fan/Cake — Polish Remanescente
+### 2. FireworkBurst — Ember Glow Trail
+- Adicionar buffer `LineSegments` para stars na fase tardia (>60% life)
+- Cada star que esta na fase ember (emberPhase > 0.3) gera 2-3 trail segments
+- Trail color: thermal ramp de amber quente → cinza escuro
+- Trail desaparece com `opacity *= (1 - emberPhase)`
 
-**MineEffect**: Garantir que trail segments usam `launchDir` rotacionado para trilhas de cometa seguirem o angulo correto.
+### 3. FireworkBurst — Smoke Volumetrico Pos-Burst
+- Substituir a `SmokeTrail` simples por uma nuvem de 20-30 particulas de fumaca
+- Nuvem expande radialmente a partir do centro do burst
+- Comeca em 40% progress (nao 60%), persiste ate 100%
+- Cor: cinza quente absorvendo cor da explosao (30% tint)
+- Buoyancy leve (+0.5 m/s vertical), drag alto
 
-**FanEffect**: Ja tem calibracao por caliber (ciclo #16). Agora aplicar rotacao `launchHeading/Pitch` ao grupo raiz para fan apontar na direcao do cue.
-
-**CakeEffect**: Cada shot individual deve usar `launchDir` rotacionado. Garantir que `getBreakHeight` escala corretamente cada shot burst.
-
-### 3. Export Documental — Modelos Formais por Tipo (SEM transcrever conversa)
-
-**Problema Atual**: `exportJoiPdf` e `exportJoiDocx` recebem `msg.content` (markdown da mensagem inteira da Joi) e renderizam TODO o texto. Quando a Joi gera um orcamento, o markdown pode conter saudacoes, explicacoes e contexto conversacional que NAO pertencem ao documento formal.
-
-**Solucao**: Criar um parser inteligente (`extractDocumentBody`) que:
-1. Remove saudacoes/despedidas ("Olá chefinho", "Pronto!", "Aqui está", "Espero que...", etc.)
-2. Remove blocos KMZ/codigo/meta
-3. Identifica o inicio do conteudo formal (primeira heading ou primeiro bloco estruturado)
-4. Identifica o fim do conteudo formal (antes de despedidas/comentarios finais)
-5. Para cada `DocType`, aplica template de formatacao especifica:
-
-| DocType | Template |
-|---------|----------|
-| `orcamento` | Cabecalho empresa, tabela de itens/valores, totais, condicoes de pagamento, validade |
-| `declaracao` | Cabecalho oficial, corpo do documento, local/data, assinatura |
-| `contrato` | Partes, clausulas numeradas, foro, assinaturas |
-| `checklist` | Items com checkboxes, status, responsavel |
-| `licitacao` | Referencia edital, habilitacao, proposta tecnica/comercial |
-| `geral` | Documento limpo com headings e paragrafos |
-
-Aplicar mesma logica em PDF e DOCX.
-
-### 4. Build Verification
+### 4. Angle Trajectory Verification
+- Revisar calculo de `burstPos` em FireworkRenderer (linhas 1099-1125)
+- Confirmar que `launchDir` e calculado corretamente: heading rotaciona em Y, pitch aplica inclinacao no eixo X local
+- Verificar que `burstPos = pos + launchDir * realBreakHeight` posiciona a explosao no final da trajetoria
+- Corrigir se houver inversao de sinal ou ordem de multiplicacao de quaternions
 
 ## Arquivos Modificados
 
 | Arquivo | Acao |
 |---------|------|
-| `src/components/editor/skycanvas/FireworkRenderer.tsx` | Passar `launchHeading`/`launchPitch` para Mine, Fan, Cake, Candle, Comet |
-| `src/components/editor/effects/MineEffect.tsx` | Receber heading/pitch, rotacionar direcao de disparo |
-| `src/components/editor/effects/FanEffect.tsx` | Receber heading/pitch, rotacionar grupo |
-| `src/components/editor/effects/CakeEffect.tsx` | Receber heading/pitch, rotacionar shots |
-| `src/components/editor/effects/RomanCandleEffect.tsx` | Receber heading/pitch, rotacionar trajetoria dos shots |
-| `src/components/editor/effects/CometEffect.tsx` | Receber heading/pitch, rotacionar direcao |
-| `src/utils/joiDocumentParser.ts` | **NOVO** — `extractDocumentBody()` + templates por DocType |
-| `src/utils/joiPdfExport.ts` | Usar `extractDocumentBody`, templates formais por tipo |
-| `src/utils/joiDocxExport.ts` | Usar `extractDocumentBody`, templates formais por tipo |
+| `src/components/editor/effects/MineEffect.tsx` | Ground bounce sparks no impacto |
+| `src/components/editor/skycanvas/FireworkRenderer.tsx` | Ember glow trail + smoke volumetrico pos-burst + verificar angulos |
 
 ## Ordem de Execucao
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | `joiDocumentParser.ts` — parser inteligente de extracao de corpo documental |
-| 2 | `joiPdfExport.ts` + `joiDocxExport.ts` — integrar parser, templates formais |
-| 3 | `FireworkRenderer.tsx` — passar heading/pitch para efeitos ground |
-| 4 | Mine, Fan, Cake, RomanCandle, Comet — aplicar rotacao angular |
+| 1 | FireworkRenderer.tsx — verificar/corrigir calculo de angulos no burstPos |
+| 2 | FireworkRenderer.tsx — ember glow trail segments na fase tardia |
+| 3 | FireworkRenderer.tsx — smoke volumetrico pos-burst |
+| 4 | MineEffect.tsx — ground bounce sparks |
 | 5 | Build verification |
 
