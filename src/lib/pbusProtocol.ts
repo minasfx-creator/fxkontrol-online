@@ -173,7 +173,7 @@ export interface PBusParsedFrame {
 }
 
 export function parsePBusResponse(data: Uint8Array): PBusParsedFrame | null {
-  if (data.length < 6) return null; // min: preamble + addr + cmd + len + crc(2) + term
+  if (data.length < 7) return null; // min: preamble(1) + addr(1) + cmd(1) + len(1) + crc(2) + term(1)
   if (data[0] !== PREAMBLE || data[data.length - 1] !== TERMINATOR) return null;
 
   const addr = data[1];
