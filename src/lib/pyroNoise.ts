@@ -104,26 +104,35 @@ const FLICKER_BY_COMPOUND: Record<string, FlickerParams> = {
   strontium: { base: 0.50, amplitude: 0.42, popStrength: 0.48 },
   // Barium (green) — BaCO3-based, stable chlorate oxidizer
   barium: { base: 0.70, amplitude: 0.25, popStrength: 0.20 },
-  // Copper (blue) — CuCO3/CuO, moderately unstable at high temps
+  // Copper (blue) — CuCO3/CuO → CuCl2 blue emission, requires Cl donor (PVC/Parlon)
   copper: { base: 0.60, amplitude: 0.35, popStrength: 0.38 },
   // Sodium (yellow/gold) — NaHCO3/Na₂C₂O₄, relatively stable
   sodium: { base: 0.68, amplitude: 0.28, popStrength: 0.22 },
   // Titanium (white/brocade) — Ti 25%, Rice Flour 2% (FFIC laudo)
-  // Extremely irregular sparking from Ti particle combustion
+  // Extremely irregular sparking from Ti particle combustion, high heat capacity
   titanium: { base: 0.45, amplitude: 0.50, popStrength: 0.55 },
-  // Magnesium — fast burn, bright white, irregular
+  // Magnesium — fast burn, bright white, irregular. Combustion heat 6000 kcal/g
   magnesium: { base: 0.48, amplitude: 0.45, popStrength: 0.52 },
   // Charcoal (gold tails) — slow smoldering, organic carbon fuel
   charcoal: { base: 0.72, amplitude: 0.20, popStrength: 0.15 },
-  // Iron (gold sparks) — moderate, Fe particle combustion
+  // Iron (gold sparks) — moderate, Fe particle combustion, linseed oil coating
   iron: { base: 0.62, amplitude: 0.32, popStrength: 0.30 },
-  // KClO4 flash — KClO4 36% + Al 15% (FFIC composition data)
-  // Extremely fast burn, intense burst, very short duration
+  // KClO4 flash — KClO4 66-70% + Al 30-34% (stoichiometric, Chemistry of Pyrotechnics)
+  // Burns in milliseconds, TNT equivalence ~75%. Combustion heat Al=7400 kcal/g
   flash: { base: 0.30, amplitude: 0.60, popStrength: 0.70 },
-  // Aluminum — Al 30% in break charge, bright intense sparks
+  // Aluminum — Al 30% in break charge, bright intense sparks. 7400 kcal/g
   aluminum: { base: 0.42, amplitude: 0.48, popStrength: 0.55 },
   // Phenolic resin binder — slows combustion, smooths flicker (6-8% in PIROEX reds)
   phenolic: { base: 0.75, amplitude: 0.18, popStrength: 0.12 },
+  // Magnalium — 50/50 Al/Mg alloy, mp ~460°C, SG 2.0. Dragon eggs, strobe stars.
+  // Extremely reactive, combines Mg fast ignition + Al high heat output
+  magnalium: { base: 0.40, amplitude: 0.52, popStrength: 0.58 },
+  // Zinc — bluish-green "electric" sparks, moderate burn (Chemistry of Pyrotechnics)
+  zinc: { base: 0.55, amplitude: 0.38, popStrength: 0.35 },
+  // Antimony trisulfide (Sb2S3) — bengal fire sensitizer, bright light with blue tinge
+  antimony: { base: 0.58, amplitude: 0.40, popStrength: 0.42 },
+  // Sulfur — low ignition temp (223°C), steady burn, used as fuel/sensitizer
+  sulfur: { base: 0.65, amplitude: 0.30, popStrength: 0.25 },
 };
 
 /**
@@ -139,18 +148,78 @@ export function getFlickerParams(compound: string): FlickerParams {
   return { base: 0.62, amplitude: 0.32, popStrength: 0.32 };
 }
 
+/**
+ * Strobe oscillatory flicker — models real chemical strobe combustion.
+ * Alternates between "smolder" phase (near-dark) and "intense burn" phase.
+ * Based on Chemistry of Pyrotechnics: strobe stars use oscillatory combustion
+ * where a dark/smolder layer alternates with a bright flash layer.
+ * @param seed - per-particle seed
+ * @param time - elapsed time in seconds
+ * @param smolderDuration - avg duration of dark phase (0.3-0.8s)
+ * @param burnDuration - avg duration of bright phase (0.05-0.15s)
+ * @returns brightness 0.02-1.4
+ */
+export function strobeFlicker(
+  seed: number,
+  time: number,
+  smolderDuration = 0.5,
+  burnDuration = 0.1,
+): number {
+  const n = hash01(seed + 4.73);
+  // Per-particle variation in cycle timing
+  const smolder = smolderDuration * (0.7 + n * 0.6);
+  const burn = burnDuration * (0.6 + n * 0.8);
+  const cycle = smolder + burn;
+
+  // Phase offset per particle for desync
+  const phase = hash01(seed + 9.31) * cycle;
+  const tInCycle = ((time + phase) % cycle);
+
+  if (tInCycle < smolder) {
+    // Smolder phase — near dark with tiny fluctuations
+    const microNoise = Math.sin(time * (80 + n * 40) + seed * 7.3) * 0.03;
+    return 0.02 + Math.abs(microNoise);
+  }
+  // Burn phase — intense flash with rapid flutter
+  const burnProgress = (tInCycle - smolder) / burn;
+  const envelope = Math.sin(burnProgress * Math.PI); // smooth rise-fall within burn
+  const flutter = 1 + Math.sin(time * (200 + n * 100)) * 0.15;
+  return (0.9 + envelope * 0.5) * flutter;
+}
+
 export function thermalColorRamp(
   baseR: number,
   baseG: number,
   baseB: number,
   lifeRatio: number,
   hdrBoost = 1.5,
+  isFlash = false,
 ): { r: number; g: number; b: number } {
-  // Clamp lifeRatio
   const t = Math.max(0, Math.min(1, lifeRatio));
 
+  // Flash powder special path: burns in milliseconds, almost entirely white-hot
+  // TNT equivalence ~75%, Al combustion 7400 kcal/g — extreme HDR
+  if (isFlash) {
+    const flashBoost = hdrBoost * 3.0;
+    if (t < 0.80) {
+      // 80% of life is white-hot burn (milliseconds in real life)
+      const fadeIn = Math.min(1, t / 0.02);
+      return {
+        r: 2.0 * flashBoost * fadeIn,
+        g: 1.8 * flashBoost * fadeIn,
+        b: 1.5 * flashBoost * fadeIn,
+      };
+    }
+    // Instant collapse to charcoal — no ember phase
+    const p = (t - 0.80) / 0.20;
+    return {
+      r: 2.0 * flashBoost * (1 - p) + 0.05 * p,
+      g: 1.8 * flashBoost * (1 - p) + 0.03 * p,
+      b: 1.5 * flashBoost * (1 - p) + 0.01 * p,
+    };
+  }
+
   if (t < 0.04) {
-    // White-hot birth phase
     const p = t / 0.04;
     return {
       r: (1.4 + (1 - p) * 0.6) * hdrBoost,
@@ -159,7 +228,6 @@ export function thermalColorRamp(
     };
   }
   if (t < 0.15) {
-    // White-hot → saturated
     const p = (t - 0.04) / 0.11;
     return {
       r: 1.4 * hdrBoost * (1 - p) + baseR * 1.5 * p,
@@ -168,7 +236,6 @@ export function thermalColorRamp(
     };
   }
   if (t < 0.55) {
-    // Saturated → base color
     const p = (t - 0.15) / 0.4;
     return {
       r: baseR * 1.5 * (1 - p) + baseR * 1.2 * p,
@@ -177,7 +244,6 @@ export function thermalColorRamp(
     };
   }
   if (t < 0.80) {
-    // Base → ember (warm orange-red)
     const p = (t - 0.55) / 0.25;
     return {
       r: baseR * 1.2 * (1 - p) + (baseR * 0.5 + 0.25) * p,
@@ -185,11 +251,39 @@ export function thermalColorRamp(
       b: baseB * 1.2 * (1 - p) + (baseB * 0.05) * p,
     };
   }
-  // Ember → charcoal
   const p = (t - 0.80) / 0.20;
   return {
     r: (baseR * 0.5 + 0.25) * (1 - p) + 0.12 * p,
     g: (baseG * 0.15 + 0.05) * (1 - p) + 0.06 * p,
     b: (baseB * 0.05) * (1 - p) + 0.02 * p,
   };
+}
+
+/**
+ * Combustion heat per gram (kcal/g) for common pyrotechnic metals.
+ * Source: Chemistry of Pyrotechnics + Complete Book of Flash Powder.
+ * Use as HDR boost multiplier: normalize to aluminum (max) → 0-1 scale.
+ */
+export const COMBUSTION_HEAT_KCAL: Record<string, number> = {
+  aluminum: 7400,
+  magnesium: 6000,
+  magnalium: 6700, // weighted avg of Al+Mg
+  titanium: 4700,
+  iron: 1600,
+  charcoal: 7800, // as carbon
+  sulfur: 2200,
+  zinc: 1300,
+  antimony: 1800, // Sb2S3 decomposition
+};
+
+/**
+ * Get HDR boost multiplier based on metal combustion heat.
+ * Normalized: aluminum = 1.0, others proportionally lower.
+ */
+export function getCombustionHdrBoost(compound: string): number {
+  const key = compound.toLowerCase().replace(/[^a-z]/g, '');
+  for (const [k, heat] of Object.entries(COMBUSTION_HEAT_KCAL)) {
+    if (key.includes(k)) return heat / 7400; // normalize to Al
+  }
+  return 0.7; // default moderate
 }
