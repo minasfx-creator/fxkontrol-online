@@ -550,6 +550,14 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
               <Target className="h-3 w-3" /><span className="hidden xl:inline">DRONE</span>
             </button>
             <BatchAddButton />
+            <button
+              className="h-7 px-2 text-[9px] font-bold gap-1 flex items-center rounded-md bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 border border-cyan-500/20 transition-all uppercase tracking-wider"
+              title="World Shows — Presets de shows mundiais"
+              onClick={() => onOpenPanel?.('worldshows')}
+            >
+              <Globe className="h-3 w-3" />
+              <span className="hidden xl:inline">SHOWS</span>
+            </button>
             <button onClick={() => setFormationOpen(true)} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all" title="Formations">
               <Shapes className="h-3.5 w-3.5" />
             </button>
