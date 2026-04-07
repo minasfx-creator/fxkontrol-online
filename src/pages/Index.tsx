@@ -128,6 +128,7 @@ const RadioControlPanel = lz(() => import('@/components/editor/RadioControlPanel
 const MA3ControlPanel = lz(() => import('@/components/editor/MA3ControlPanel'));
 const SACNMonitorPanel = lz(() => import('@/components/editor/SACNMonitorPanel'));
 const EasyConnectPanel = lz(() => import('@/components/editor/EasyConnectPanel'));
+const WorldShowPresetsPanel = lz(() => import('@/components/editor/WorldShowPresetsPanel'));
 
 const SkyCanvas = lazy(() =>
   import('@/components/editor/SkyCanvas').catch((err) => {
