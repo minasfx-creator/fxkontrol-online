@@ -677,16 +677,22 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         tPos[base2 + 5] = sz1 + w1[2] * t1 * t1 * 0.3;
         
         const segFrac = s / TRAIL_LENGTH;
-        const segFade = fadeCubed * Math.pow(1 - segFrac, 2.5) * 0.95; // was 0.7 — brighter trails
+        const segFade = fadeCubed * Math.pow(1 - segFrac, 2.5) * 0.95;
         const endFade = fadeCubed * Math.pow(1 - (s + 1) / TRAIL_LENGTH, 2.5) * 0.95;
         
         const trailWarmth = Math.pow(segFrac, 0.4);
-        tCol[base2] = THREE.MathUtils.lerp(0.9, r * 0.75, trailWarmth) * segFade;
-        tCol[base2 + 1] = THREE.MathUtils.lerp(0.55, g * 0.5, trailWarmth) * segFade;
-        tCol[base2 + 2] = THREE.MathUtils.lerp(0.25, b * 0.2, trailWarmth) * segFade;
-        tCol[base2 + 3] = THREE.MathUtils.lerp(0.9, r * 0.75, trailWarmth) * endFade;
-        tCol[base2 + 4] = THREE.MathUtils.lerp(0.55, g * 0.5, trailWarmth) * endFade;
-        tCol[base2 + 5] = THREE.MathUtils.lerp(0.25, b * 0.2, trailWarmth) * endFade;
+        // Ember glow: late-phase stars (>60% life) get warm amber trail instead of fading out
+        const isEmberPhase = starAge > 0.6;
+        const emberGlow = isEmberPhase ? Math.max(0, 1 - (starAge - 0.6) / 0.4) * 0.4 : 0;
+        const trR = THREE.MathUtils.lerp(0.9, r * 0.75, trailWarmth) + (isEmberPhase ? 0.5 * emberGlow : 0);
+        const trG = THREE.MathUtils.lerp(0.55, g * 0.5, trailWarmth) + (isEmberPhase ? 0.2 * emberGlow : 0);
+        const trB = THREE.MathUtils.lerp(0.25, b * 0.2, trailWarmth) + (isEmberPhase ? 0.05 * emberGlow : 0);
+        tCol[base2] = trR * segFade;
+        tCol[base2 + 1] = trG * segFade;
+        tCol[base2 + 2] = trB * segFade;
+        tCol[base2 + 3] = trR * endFade;
+        tCol[base2 + 4] = trG * endFade;
+        tCol[base2 + 5] = trB * endFade;
       }
     }
 
