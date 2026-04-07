@@ -9,6 +9,9 @@ import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Tr
 import { exportJoiPdf } from '@/utils/joiPdfExport';
 import { exportJoiDocx } from '@/utils/joiDocxExport';
 import { parseKmzReadyBlock, stripKmzReadyBlock, downloadAeroKmz } from '@/utils/joiAeroKmzExport';
+import { executeJoiCommands, stripJoiCommands, hasJoiCommands, type JoiCommandResult } from '@/utils/joiCommandExecutor';
+import JoiCommandFeedback from '@/components/JoiCommandFeedback';
+import { OPERATIONAL_PRESETS } from '@/components/JoiCommandPresets';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from '@/hooks/use-mobile';
