@@ -20,15 +20,15 @@ export interface ExposureState {
 
 export function createExposureController(): ExposureState {
   return {
-    currentExposure: 1.2,
-    targetExposure: 1.2,
-    minExposure: 0.3,
-    maxExposure: 2.0,
+    currentExposure: 1.0,
+    targetExposure: 1.0,
+    minExposure: 0.7,
+    maxExposure: 1.4,
     adaptSpeed: 1.5,
     luminanceAccum: 0,
     luminanceSamples: 0,
-    darkenSpeed: 4.0,   // fast darken like real cameras
-    brightenSpeed: 1.0,  // slow brighten
+    darkenSpeed: 2.5,   // reduced asymmetry — was 4.0
+    brightenSpeed: 2.0,  // faster recovery — was 1.0
   };
 }
 

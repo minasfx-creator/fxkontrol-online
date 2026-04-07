@@ -496,8 +496,8 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         />
       )}
 
-      {/* ═══ Motion Blur — UE5 MotionBlurAmount ═══ */}
-      {s.motionBlurEnabled && (
+      {/* ═══ Motion Blur — DISABLED during bursts (fake screen-space, GPU expensive) ═══ */}
+      {s.motionBlurEnabled && !hasBursts && (
         <MotionBlur intensity={s.motionBlurIntensity} />
       )}
 

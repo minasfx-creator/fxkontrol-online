@@ -77,7 +77,8 @@ export const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(func
       flashEvent(state, Math.min(luminance * 0.15, 0.8));
     }
 
-    const exposure = THREE.MathUtils.clamp(updateExposure(state, luminance, delta), 0.35, 1.8);
+    // Narrower exposure range: [0.7, 1.4] — was [0.35, 1.8]
+    const exposure = THREE.MathUtils.clamp(updateExposure(state, luminance, delta), 0.7, 1.4);
     setAdaptiveExposureValue(exposure);
     setAdaptivePipelineState(exposure, burstLoad);
     setDebugExposure(exposure);

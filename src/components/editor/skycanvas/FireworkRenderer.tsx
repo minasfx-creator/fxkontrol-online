@@ -385,8 +385,8 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         tPos[base2 + 5] = dragPos(vz, t1, dragCoeff) + w[2] * t1 * t1 * 0.3;
         
         const segFrac = s / TRAIL_LENGTH;
-        const segFade = fadeCubed * Math.pow(1 - segFrac, 2.5) * 0.7;
-        const endFade = fadeCubed * Math.pow(1 - (s + 1) / TRAIL_LENGTH, 2.5) * 0.7;
+        const segFade = fadeCubed * Math.pow(1 - segFrac, 2.5) * 0.95; // was 0.7 — brighter trails
+        const endFade = fadeCubed * Math.pow(1 - (s + 1) / TRAIL_LENGTH, 2.5) * 0.95;
         
         const trailWarmth = Math.pow(segFrac, 0.4);
         tCol[base2] = THREE.MathUtils.lerp(0.9, r * 0.75, trailWarmth) * segFade;
