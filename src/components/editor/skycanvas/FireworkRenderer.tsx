@@ -629,10 +629,16 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       
       const niagaraGlow = niagaraProfile ? niagaraProfile.glowIntensity / 2.0 : 1.0;
       
+      // ── Height extinction: stars dim as they reach max travel distance for this caliber ──
+      const dist = Math.sqrt(px * px + py * py + pz * pz);
+      const maxRadius = breakSpeed * starLife * 0.4;
+      const extinctionT = maxRadius > 0 ? THREE.MathUtils.clamp((dist / maxRadius - 0.7) / 0.3, 0, 1) : 0;
+      const heightExtinction = 1 - extinctionT;
+      
       const [safeR, safeG, safeB] = clampNiagaraHDR(
-        r * twinkle * brightnessScale * niagaraGlow,
-        g * twinkle * brightnessScale * niagaraGlow,
-        b * twinkle * brightnessScale * niagaraGlow
+        r * twinkle * brightnessScale * niagaraGlow * heightExtinction,
+        g * twinkle * brightnessScale * niagaraGlow * heightExtinction,
+        b * twinkle * brightnessScale * niagaraGlow * heightExtinction
       );
 
       cols[i * 3] = safeR; cols[i * 3 + 1] = safeG; cols[i * 3 + 2] = safeB;

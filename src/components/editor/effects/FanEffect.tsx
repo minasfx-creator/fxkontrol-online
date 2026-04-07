@@ -16,7 +16,7 @@ export default function FanEffect({
   position,
   color,
   progress,
-  spreadAngle = 90,
+  spreadAngle,
   caliber = 3,
   formulationId,
 }: {
@@ -27,11 +27,14 @@ export default function FanEffect({
   caliber?: number;
   formulationId?: string;
 }) {
+  // Caliber-based spread calibration
+  const effectiveSpread = spreadAngle ?? (70 + caliber * 8);
   const caliberScale = 0.7 + caliber * 0.12;
-  // Scale particle density by caliber
   const RAYS = Math.min(15, Math.round(BASE_RAYS * caliberScale));
+  const raySpeed = (3.5 + caliber * 1.2) * caliberScale;
   const PARTICLES_PER_RAY = Math.min(50, Math.round(BASE_PARTICLES_PER_RAY * caliberScale));
   const TOTAL_PARTICLES = RAYS * PARTICLES_PER_RAY;
+  const particleSize = 0.10 + caliber * 0.02;
 
   const pointsRef = useRef<THREE.Points>(null);
   const linesRef = useRef<THREE.LineSegments>(null);
@@ -58,7 +61,7 @@ export default function FanEffect({
     const c = colArr.current;
     const lp = linePos.current;
     const lc = lineCol.current;
-    const halfSpread = (spreadAngle * Math.PI) / 360;
+    const halfSpread = (effectiveSpread * Math.PI) / 360;
     const t = progress * 2;
     const time = clock.getElapsedTime();
 
@@ -70,7 +73,7 @@ export default function FanEffect({
 
     for (let ray = 0; ray < RAYS; ray++) {
       const rayAngle = -halfSpread + (ray / (RAYS - 1)) * halfSpread * 2;
-      const speed = (4 + Math.sin(ray * 1.5) * 1.5) * caliberScale;
+      const speed = (raySpeed + Math.sin(ray * 1.5) * 1.5);
 
       const dirX = Math.sin(rayAngle);
       const dirY = Math.cos(rayAngle) * 0.8 + 0.5;
@@ -96,7 +99,7 @@ export default function FanEffect({
         const idx = ray * PARTICLES_PER_RAY + j;
         const pct = j / PARTICLES_PER_RAY;
         const dist = pct * speed * t;
-        const gravity = -2 * pct * pct * t;
+        const gravity = -(2 + caliber * 0.4) * pct * pct * t;
         const scatter = Math.sin(j * 13.7 + ray * 5.1) * 0.3 * pct;
 
         p[idx * 3] = dirX * dist + scatter + wX * pct * t;
@@ -148,7 +151,7 @@ export default function FanEffect({
           <bufferAttribute attach="attributes-position" args={[posArr.current, 3]} />
           <bufferAttribute attach="attributes-color" args={[colArr.current, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.14} vertexColors transparent opacity={0.95} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={particleSize} vertexColors transparent opacity={0.95} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
       {progress < 0.3 && (
         <mesh>
