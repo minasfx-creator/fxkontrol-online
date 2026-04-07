@@ -175,7 +175,10 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     if (pattern === 'multi_break') return baseLife * 1.4;
     if (pattern === 'time_rain') return baseLife * 4.0;
     if (pattern === 'falling_leaves') return baseLife * 3.5; // long flutter
-    if (pattern === 'glitter') return baseLife * 2.5; // hold for delayed scatter
+    if (pattern === 'glitter') return baseLife * 2.5;
+    if (pattern === 'horsetail') return baseLife * 3.5; // heavy charcoal, long droop
+    if (pattern === 'brocade_crown') return baseLife * 1.8;
+    if (pattern === 'saturn') return baseLife * 1.3;
     return baseLife;
   }, [caliber, pattern]);
   
