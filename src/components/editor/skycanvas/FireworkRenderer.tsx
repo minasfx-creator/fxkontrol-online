@@ -542,6 +542,14 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
         pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
+      } else if (pattern === 'willow') {
+        // Willow: normal ballistics but progressive gravity increase in last 40% for droop
+        const willowGravMult = starAge > 0.6 
+          ? gravityMult * (1 + (starAge - 0.6) / 0.4 * 3.5) // ramp to 4.5x gravity
+          : gravityMult * 0.7; // lighter gravity early for wide spread
+        px = dragPos(vx, t, dragCoeff * 0.85) + w[0] * t * t * 0.4; // less drag horizontally
+        py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * willowGravMult * t * t;
+        pz = dragPos(vz, t, dragCoeff * 0.85) + w[2] * t * t * 0.4;
       } else {
         px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
