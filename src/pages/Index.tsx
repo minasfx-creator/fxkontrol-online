@@ -16,7 +16,6 @@ import Toolbar from '@/components/editor/Toolbar';
 import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import SelectionModeBar from '@/components/editor/SelectionModeBar';
-import PositionContextMenu from '@/components/editor/PositionContextMenu';
 import RadialMenu from '@/components/editor/RadialMenu';
 import LiveCard from '@/components/editor/LiveCard';
 
@@ -99,10 +98,10 @@ const LiveFiringPanel = lz(() => import('@/components/editor/LiveFiringPanel'));
 const FleetManagementPanel = lz(() => import('@/components/editor/FleetManagementPanel'));
 const GeofencePanel = lz(() => import('@/components/editor/GeofencePanel'));
 const StoryboardPanel = lz(() => import('@/components/editor/StoryboardPanel'));
-const ShowControlPanel = lz(() => import('@/components/editor/ShowCommanderPanel'));
+
 const ShowInspectorPanel = lz(() => import('@/components/editor/ShowInspectorPanel'));
 const LightProgramPanel = lz(() => import('@/components/editor/LightProgramPanel'));
-const SafetyCheckPanel = lz(() => import('@/components/editor/safety/FlightCheckTab'));
+const FlightCheckTab = lz(() => import('@/components/editor/safety/FlightCheckTab'));
 const TakeoffGridPanel = lz(() => import('@/components/editor/TakeoffGridPanel'));
 const TransitionPlannerPanel = lz(() => import('@/components/editor/TransitionPlannerPanel'));
 const LaserControlPanel = lz(() => import('@/components/editor/LaserControlPanel'));
@@ -119,7 +118,7 @@ const MobileLinkMonitor = lz(() => import('@/components/editor/MobileLinkMonitor
 const SiteModelsPanel = lz(() => import('@/components/editor/SiteModelsPanel'));
 const VirtualControllerHub = lz(() => import('@/components/editor/VirtualControllerHub'));
 const FieldMap2D = lz(() => import('@/components/editor/FieldMap2D'));
-const ShowCommanderPanelDirect = lz(() => import('@/components/editor/ShowCommanderPanel'));
+const ShowCommanderPanel = lz(() => import('@/components/editor/ShowCommanderPanel'));
 const BluetoothPanel = lz(() => import('@/components/editor/BluetoothPanel'));
 const NFCPairPanel = lz(() => import('@/components/editor/NFCPairPanel'));
 const DMXOutputPanel = lz(() => import('@/components/editor/dmx/DMXOutputPanel'));
@@ -338,10 +337,10 @@ function Index() {
         {activePanel === 'fleet' && <FleetManagementPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'geofence' && <GeofencePanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'storyboard' && <StoryboardPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'showcontrol' && <ShowControlPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showcontrol' && <ShowCommanderPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'inspector' && <ShowInspectorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'lightprogram' && <LightProgramPanel />}
-        {activePanel === 'safetycheck' && <SafetyCheckPanel />}
+        {activePanel === 'safetycheck' && <FlightCheckTab />}
         {activePanel === 'takeoffgrid' && <TakeoffGridPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'transitions' && <TransitionPlannerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'lasercontrol' && <LaserControlPanel onClose={() => setActivePanel(null)} />}
@@ -356,7 +355,7 @@ function Index() {
         {activePanel === 'showpreview' && <ShowPreviewPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'mobilelink' && <MobileLinkPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'linkmonitor' && <MobileLinkMonitor onClose={() => setActivePanel(null)} />}
-        {activePanel === 'showcommander' && <ShowCommanderPanelDirect onClose={() => setActivePanel(null)} onOpenPanel={(id) => setActivePanel(id as PanelId)} />}
+        {activePanel === 'showcommander' && <ShowCommanderPanel onClose={() => setActivePanel(null)} onOpenPanel={(id) => setActivePanel(id as PanelId)} />}
         {activePanel === 'bluetooth' && <BluetoothPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'nfc' && <NFCPairPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'dmxoutput' && <DMXOutputPanel onClose={() => setActivePanel(null)} />}
@@ -428,8 +427,6 @@ function Index() {
         )}
 
         <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} onOpenPanel={(id) => handleTogglePanel(id as PanelId)} panelHeight={mobilePanelHeight} onPanelHeightChange={setMobilePanelHeight} />
-        <RadialMenu />
-        <LiveCard />
       </div>
     );
   }
