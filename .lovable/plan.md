@@ -1,46 +1,110 @@
 
 
-# Ciclo de Engenharia #26 — Niagara sizeOverLife Fix, GC Optimization, Deterministic Random, VDL Rack Type
+# Joi Operacional — Comando de Plataforma via Chat
 
-## Bugs a Corrigir
+## Visão Geral
 
-| # | Tipo | Problema | Local |
-|---|------|----------|-------|
-| 1 | **BUG CRÍTICO** | `p.size *= sampleCurve(...)` (L425) multiplica size pela curva a cada frame, causando decaimento exponencial. Após 60 frames com valor 0.6, size → `0.6^60 ≈ 0`. Deveria usar `initialSize * curveValue` | `niagaraEmitterSystem.ts` L425 |
-| 2 | **GC PRESSURE** | `sampleColorGradient` cria `new THREE.Color()` a cada chamada (L181-190). Com 2000 partículas = ~120K allocations/s | `niagaraEmitterSystem.ts` L180-191 |
-| 3 | **NON-DETERMINISTIC** | `randRange` e `randVec3` usam `Math.random()` ao invés do `simRNG` do projeto | `niagaraEmitterSystem.ts` L155-165 |
-| 4 | **MISSING** | VDL_TYPES não inclui `rack` e `not_an_effect` — tipos presentes no manual Finale 3D Table 2 | `vdlParser.ts` L164-203 |
+Transformar a Joi de assistente documental em **co-piloto operacional** que executa ações diretas na plataforma: adicionar posições, criar coreografias, manipular timeline, controlar playback e gerenciar o projeto inteiro — tudo via linguagem natural no chat.
 
-## Plano de Implementação
+## Arquitetura
 
-### Arquivo 1: `src/render_ultra/fireworks/niagaraEmitterSystem.ts`
+```text
+┌─────────────────────┐     ┌──────────────────────┐
+│  Joi AI (Edge Fn)   │     │  FXKAssistant.tsx     │
+│                     │     │                       │
+│ System Prompt with  │────▶│ Response Parser       │
+│ [JOI_CMD] blocks    │     │ detecta [JOI_CMD]     │
+│                     │     │ executa via store      │
+└─────────────────────┘     └───────┬───────────────┘
+                                    │
+                           ┌────────▼────────┐
+                           │ joiCommandExec   │
+                           │ (novo módulo)    │
+                           │                  │
+                           │ addPosition()    │
+                           │ addTimelineItem()│
+                           │ addFormation()   │
+                           │ setWind()        │
+                           │ play/pause/seek  │
+                           │ setProjectName() │
+                           └──────────────────┘
+```
 
-**Fix 1: Adicionar `initialSize` ao NiagaraParticle + corrigir sizeOverLife**
-- Adicionar campo `initialSize: number` à interface `NiagaraParticle` (L85-98)
-- Em `spawnParticles` (L382): setar `initialSize: randRange(init.size[0], init.size[1])` e `size` igual ao mesmo valor
-- Em `updateParticles` (L425): trocar `p.size *= sampleCurve(...)` por `p.size = p.initialSize * sampleCurve(...)`
+## Arquivos a Criar/Editar
 
-**Fix 2: GC optimization em sampleColorGradient**
-- Criar `const _tempColor = new THREE.Color()` estático no módulo (antes da função)
-- Reescrever `sampleColorGradient` para reutilizar `_tempColor` com `.copy().lerp()` — o caller em L422 já faz `p.color.copy()`, então retornar `_tempColor` diretamente é seguro
-- Remover `.clone()` das early returns (L182-183) — usar `_tempColor.copy()`
+### 1. `src/utils/joiCommandExecutor.ts` (NOVO)
 
-**Fix 3: Deterministic random**
-- Importar `simRNG` de `@/core/reliability/seededRandom`
-- Substituir `Math.random()` em `randRange` (L156) por `simRNG.next()`
+Motor de execução de comandos. Parseia blocos `[JOI_CMD]{...}[/JOI_CMD]` das respostas da Joi e despacha para o `useProjectStore`.
 
-**Fix 4: VDL rack/not_an_effect**
-- Adicionar ao `VDL_TYPES` (após L203):
-  - `rack`: partType `'rack'`, baseSpread 0, baseDuration 0, baseStars 0, baseBreakSpeed 0
-  - `not_an_effect`: partType `'marker'`, baseSpread 0, baseDuration 0, baseStars 0, baseBreakSpeed 0
+**Comandos suportados:**
+- `add_position` — cria posição pyro/drone/light com coordenadas
+- `add_effect` — adiciona efeito na timeline (effectId, startTime, positionId)
+- `remove_position` / `remove_effect` — remoção
+- `update_position` — edita coordenadas/ângulos
+- `add_formation` — cria formação de drones
+- `set_wind` — configura vento
+- `play` / `pause` / `seek` — controle de playback
+- `set_project_name` — renomeia projeto
+- `add_cue_marker` — marca cue na timeline
+- `create_choreography` — macro que cria múltiplas posições + efeitos de uma vez
+
+### 2. `src/components/JoiCommandFeedback.tsx` (NOVO)
+
+Widget inline no chat que mostra confirmação visual de cada comando executado (ícone + descrição + status ✅/❌).
+
+### 3. `supabase/functions/fxk-ai-chat/index.ts` (EDITAR)
+
+Expandir SYSTEM_PROMPT com seção de comandos operacionais:
+- Documentar formato `[JOI_CMD]{"action":"...","params":{...}}[/JOI_CMD]`
+- Listar todos os comandos disponíveis com parâmetros
+- Instruir a Joi a usar comandos quando o usuário pedir ações operacionais
+- Incluir lista de effectIds válidos do EFFECT_LIBRARY
+
+### 4. `src/components/FXKAssistant.tsx` (EDITAR)
+
+- Importar `joiCommandExecutor`
+- No `streamChat` callback `upsert`, após acumular texto completo, detectar e executar blocos `[JOI_CMD]`
+- Renderizar `JoiCommandFeedback` inline nas mensagens que contêm comandos executados
+- Strip `[JOI_CMD]` blocks do texto visível (similar ao `[KMZ_READY]`)
+
+### 5. `src/components/JoiCommandPresets.tsx` (NOVO)
+
+Presets operacionais adicionais para o chat:
+- `CRIAR SHOW` — "Crie um show de 3 minutos com 20 posições e efeitos variados"
+- `POSIÇÕES` — "Adicione 10 posições pyro em linha espaçadas 5m"
+- `COREOGRAFIA` — "Crie uma coreografia de chrysanthemum em sequência com 0.5s de intervalo"
+- `FORMAÇÃO` — "Crie uma formação de 50 drones em espiral"
+
+## Detalhes Técnicos
+
+### Formato de Comando
+```json
+[JOI_CMD]{"action":"add_position","params":{"name":"P1","type":"pyro","x":0,"y":0,"z":0}}[/JOI_CMD]
+```
+
+### Macro `create_choreography`
+```json
+[JOI_CMD]{"action":"create_choreography","params":{
+  "positions":[{"name":"P1","type":"pyro","x":-10,"y":0,"z":0},...],
+  "cues":[{"effectId":"mort-01","positionIndex":0,"startTime":5.0},...],
+  "projectName":"Show Reveillon 2026"
+}}[/JOI_CMD]
+```
+
+### Segurança
+- Todos os comandos são validados antes da execução (types, ranges)
+- Confirmação visual no chat antes de ações destrutivas (remove)
+- Limite de 50 comandos por mensagem para evitar flood
+- Toast notification para cada ação executada
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Add `initialSize` + fix sizeOverLife |
-| 2 | GC optimize sampleColorGradient |
-| 3 | Replace Math.random with simRNG |
-| 4 | Add rack/not_an_effect to VDL_TYPES |
-| 5 | Build verification |
+| 1 | Criar `joiCommandExecutor.ts` com parser + executor |
+| 2 | Criar `JoiCommandFeedback.tsx` |
+| 3 | Atualizar system prompt com comandos operacionais |
+| 4 | Integrar executor no `FXKAssistant.tsx` |
+| 5 | Adicionar presets operacionais |
+| 6 | Build verification |
 
