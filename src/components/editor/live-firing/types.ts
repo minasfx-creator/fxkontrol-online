@@ -138,6 +138,7 @@ export interface DeviceCapabilities {
   rdmx?: boolean;
   eStopChain?: boolean;
   externalPyroTrigger?: boolean;
+  nozzleCount?: number;
 }
 
 /** UltraFire state for FireOne XLII+ */
