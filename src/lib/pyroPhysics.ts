@@ -620,10 +620,10 @@ export function createShellBurst(
         life = starLifetime * (2.5 + Math.random() * 1.5);
         break;
       case 'dahlia':
-        vx = sx * breakSpeed * 1.2;
-        vy = sy * breakSpeed * 1.1;
-        vz = sz * breakSpeed * 1.2;
-        life = starLifetime * (0.6 + Math.random() * 0.3);
+        vx = sx * breakSpeed * 1.4;
+        vy = sy * breakSpeed * 1.3;
+        vz = sz * breakSpeed * 1.4;
+        life = starLifetime * (0.45 + Math.random() * 0.2);
         break;
       case 'brocade':
         vx = sx * breakSpeed * 0.7;

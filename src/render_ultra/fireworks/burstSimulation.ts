@@ -239,8 +239,21 @@ export function generateBurst(
         vy = (Math.random() - 0.5) * speed * 0.1 + cfg.velocity * 0.04;
         vz = Math.sin(ringAngle) * speed;
       }
+    } else if (pattern === 'peony') {
+      // Peony: 12 azimuthal petal clusters with ±8° jitter
+      const PETAL_COUNT = 12;
+      const petalIndex = i % PETAL_COUNT;
+      const petalCenter = (petalIndex / PETAL_COUNT) * Math.PI * 2;
+      const jitterAz = (Math.random() - 0.5) * 2 * (8 * Math.PI / 180); // ±8°
+      const theta = petalCenter + jitterAz;
+      // Elevation: upper hemisphere bias (phi 0.3π–0.8π)
+      const phi = Math.PI * (0.3 + Math.random() * 0.5);
+      const speed = cfg.velocity * scale * (0.85 + Math.random() * 0.15) * cfg.spread;
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.15;
+      vz = Math.cos(phi) * speed;
     } else {
-      // Spherical burst (peony, etc.)
+      // Generic spherical burst fallback
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       const speed = cfg.velocity * scale * (0.5 + Math.random() * 0.5) * cfg.spread;
