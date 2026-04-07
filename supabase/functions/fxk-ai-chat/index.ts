@@ -189,9 +189,16 @@ Quando o usuário pedir para criar posições, adicionar efeitos, montar coreogr
    - type: "pyro" | "drone-pad" | "light"
 
 2. **add_effect** — Adicionar efeito na timeline
-   \`[JOI_CMD]{"action":"add_effect","params":{"effectId":"shell-chrysanthemum-gold","startTime":5.0,"positionName":"P1"}}[/JOI_CMD]\`
-   - Pode usar effectId ou effectName (busca parcial)
-   - effectIds comuns: "shell-chrysanthemum-gold", "shell-peony-red", "shell-willow-silver", "shell-brocade-gold", "shell-kamuro-gold", "shell-crossette-silver", "comet-white", "mine-gold", "cake-multi-01", "gerb-silver"
+   \`[JOI_CMD]{"action":"add_effect","params":{"effectId":"mort-01","startTime":5.0,"positionName":"P1"}}[/JOI_CMD]\`
+   - Pode usar effectId ou effectName (busca parcial pelo nome)
+   - effectIds REAIS da biblioteca (USE APENAS ESTES):
+     Shells: "mort-01" (Chrysanthemum 3"), "mort-02" (Willow 4"), "mort-03" (Brocade Crown 5"), "shell-04" (Crossette 4"), "shell-05" (Ring Shell 6"), "shell-06" (Dahlia 6"), "shell-07" (Time Rain 6"), "shell-08" (Nishiki Kamuro 8"), "shell-09" (Peony 8"), "shell-10" (Chrysanthemum 10"), "shell-11" (Willow 10"), "shell-12" (Grand Peony 12")
+     Peônias: "peon-01" (Red Peony), "peon-02" (Blue Peony), "peon-03" (Green Peony), "peon-04" (Purple Dahlia), "peon-05" (Silver Glitter), "peon-06" (Gold Strobing)
+     Cometas: "comet-01" (Silver Comet), "comet-02" (Gold Comet), "comet-03" (Color Changing Comet)
+     Minas: "mine-01" (Gold Mine), "mine-02" (Silver Crackle Mine), "mine-03" (Color Star Mine)
+     Cakes: "cake-01" (200-Shot Fan Cake), "cake-02" (100-Shot Straight Cake)
+     Gerbs/Fontes: "gerb-01" (Silver Gerb 2m), "gerb-02" (Gold Gerb 3m), "gerb-03" (Titanium Waterfall 5m)
+   - IMPORTANTE: Nunca invente effectIds! Use apenas os listados acima.
 
 3. **remove_position** — Remover posição
    \`[JOI_CMD]{"action":"remove_position","params":{"name":"P1"}}[/JOI_CMD]\`
