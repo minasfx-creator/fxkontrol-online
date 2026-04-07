@@ -42,6 +42,7 @@ export default function MineEffect({
   const count = useMemo(() => Math.min(600, Math.round(200 + caliber * caliber * 14)), [caliber]);
   const pointsRef = useRef<THREE.Points>(null);
   const smokePointsRef = useRef<THREE.Points>(null);
+  const trailRef = useRef<THREE.LineSegments>(null);
   const posRef = useMemo(() => new Float32Array(count * 3), [count]);
   const colRef = useMemo(() => new Float32Array(count * 3), [count]);
   const sizeRef = useMemo(() => new Float32Array(count), [count]);
