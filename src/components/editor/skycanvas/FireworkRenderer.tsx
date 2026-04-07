@@ -491,9 +491,23 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       const compoundStr = String(compound);
       const isMagnaliumOrDragonEgg = compoundStr.includes('magnalium') || pattern === 'dragon_egg';
       
-      if (isMagnaliumOrDragonEgg) {
+      if (pattern === 'glitter') {
+        // Glitter: delayed stochastic flashes — each star ignites at a random time
+        // Weingart: "glitter stars produce delayed flashes as they fall"
+        const igniteTime = 0.3 + (sparkleSeeds[i] % 100) / 200; // 30-80% of life
+        const flashWindow = 0.06; // 60ms flash
+        const timeSinceIgnite = starAge - igniteTime;
+        const flashCount = Math.floor((starAge - igniteTime) / 0.12); // repeating flashes
+        const flashPhase = (starAge - igniteTime) % 0.12;
+        if (timeSinceIgnite > 0 && flashPhase < flashWindow) {
+          twinkle = 2.5; // bright flash
+        } else if (timeSinceIgnite > 0) {
+          twinkle = 0.15; // dim between flashes — smoldering
+        } else {
+          twinkle = 0.6; // pre-ignition: normal glow
+        }
+      } else if (isMagnaliumOrDragonEgg) {
         // Dragon eggs / magnalium strobe: real oscillatory combustion
-        // "more vigorous than strobe" — smolder 0.2s, burn 0.08s (Chemistry of Pyrotechnics)
         twinkle = strobeFlicker(sparkleSeeds[i], time, 0.2, 0.08);
       } else if (isTrailingPattern) {
         // Trailing: use temporalFlicker with reduced amplitude for constant glow + micro-variations
