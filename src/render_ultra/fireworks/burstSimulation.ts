@@ -35,7 +35,7 @@ const BURST_CONFIGS: Record<BurstPattern, BurstConfig> = {
   horsetail:     { starCount: 160, velocity: 16, spread: 0.7, tailFactor: 2.5, gravityMult: 2.0, symmetry: 0 },
   brocade_crown: { starCount: 220, velocity: 24, spread: 1.0, tailFactor: 1.6, gravityMult: 1.2, symmetry: 0 },
   saturn:        { starCount: 140, velocity: 28, spread: 1.0, tailFactor: 0.5, gravityMult: 0.8, symmetry: 0 },
-  dahlia:        { starCount: 80,  velocity: 38, spread: 0.8, tailFactor: 0.2, gravityMult: 1.1, symmetry: 0 },
+  dahlia:        { starCount: 60,  velocity: 42, spread: 0.9, tailFactor: 0.2, gravityMult: 1.1, symmetry: 0 },
   coconut_tree:  { starCount: 40,  velocity: 22, spread: 0.5, tailFactor: 1.8, gravityMult: 1.5, symmetry: 5 },
   spider_web:    { starCount: 120, velocity: 32, spread: 1.0, tailFactor: 1.4, gravityMult: 0.6, symmetry: 0 },
 };
