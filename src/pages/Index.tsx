@@ -58,7 +58,7 @@ const InventoryPanel = lz(() => import('@/components/editor/InventoryPanel'));
 const WaypointEditor = lz(() => import('@/components/editor/WaypointEditor'));
 const BoidsPanel = lz(() => import('@/components/editor/BoidsPanel'));
 const PIDPanel = lz(() => import('@/components/editor/PIDPanel'));
-const DMXPanel = lz(() => import('@/components/editor/DMXPanel'));
+const DMXPanel = lz(() => import('@/components/editor/dmx/DMXPanel'));
 const BatteryPanel = lz(() => import('@/components/editor/BatteryPanel'));
 const MAVLinkPanel = lz(() => import('@/components/editor/MAVLinkPanel'));
 const SMPTEPanel = lz(() => import('@/components/editor/SMPTEPanel'));
