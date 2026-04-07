@@ -119,6 +119,15 @@ export function generateBurst(
       vx = Math.sin(phi) * Math.cos(theta) * speed;
       vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.10;
       vz = Math.cos(phi) * speed;
+    } else if (pattern === 'dragon_egg') {
+      // Dragon egg: moderate velocity sphere, heavy gravity, stars will use strobeFlicker
+      // "more vigorous than strobe" — Chemistry of Pyrotechnics
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = cfg.velocity * scale * (0.5 + Math.random() * 0.5);
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.12;
+      vz = Math.cos(phi) * speed;
     } else {
       // Spherical burst (peony, etc.)
       const theta = Math.random() * Math.PI * 2;
