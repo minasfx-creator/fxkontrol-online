@@ -13,7 +13,6 @@ import { useLOD } from '@/hooks/useLOD';
 import { getLiftTime, getBreakHeight, getBreakSpeed, getTypedPrefire, getTypedDuration, getStarLifetime, type FinalePartType } from '@/lib/pyroPhysics';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { temporalFlicker } from '@/lib/pyroNoise';
-import { isInFrustum } from '@/lib/spatialCuller';
 import { updateFrustum, isSphereInFrustum } from '@/lib/frustumCuller';
 import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
 import { thermalColor, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
