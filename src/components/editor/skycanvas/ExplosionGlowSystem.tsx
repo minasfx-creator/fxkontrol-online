@@ -11,6 +11,8 @@ import { getActiveBurstScan } from './sharedState';
 const POOL_SIZE = 4;
 const DECAY_RATE = 2.0; // intensity per second
 const MAX_INTENSITY = 0.75;
+const FLASH_INTENSITY = 2.0; // Initial flash spike (2.5x normal)
+const FLASH_DURATION = 0.05; // 50ms flash
 const LIGHT_DISTANCE = 500;
 const _warmShift = new THREE.Color('#ffcc88'); // Pre-allocated for zero-GC
 
