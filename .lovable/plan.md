@@ -1,64 +1,65 @@
 
-# Ciclo de Realismo #7 — Trail Physics, Wind-Shearing, Sound-Sync Delay
+
+# Ciclo de Realismo #8 — Pistil, Crossette Sub-Breaks, Star Twinkle, Trajectory Sync
 
 ## Problemas Identificados
 
 | # | Problema | Localização |
 |---|---|---|
-| 1 | **Trails são segmentos retos** — cada segmento de trail usa `dragPos()` com o mesmo `dragCoeff` e `w[]` constante. O trail não segue a curvatura real da trajetória (gravidade + vento acumulado). Resultado: willow/kamuro trails parecem retas em vez de arcos parabólicos | `FireworkRenderer.tsx:399-408` |
-| 2 | **Wind é uniforme** — `getWindForce()` chama `windField.sample(0, 50, 0)` (posição fixa) via `getGlobalWind()`. Não há variação por altitude. Na realidade, vento é mais forte em altitude e muda de direção — wind shearing | `sharedState.tsx:126-138`, `windField.ts:142-143` |
-| 3 | **Sem delay de som por distância** — em shows reais, explosões distantes têm delay audível (~3s/km). A câmera pode estar a 200-3000m dos fogos. Sem esse delay, o som parece artificial | Não implementado |
+| 1 | **Pistil nunca renderizado no FireworkBurst** — `hasPistil` e `pistilColor` são recebidos como props (linha 128) mas NUNCA usados no JSX ou useFrame. O pistil só existe no `ShellBurstRenderer` (usado pelo `ShellExplosionManager`), mas o renderer principal `FireworkBurst` ignora completamente | `FireworkRenderer.tsx:128,137` |
+| 2 | **Crossette sem sub-breaks no FireworkBurst** — `ShellBurstRenderer` tem crossette sub-burst logic (linhas 524-541), mas `FireworkBurst` renderiza crossette como simples 6 braços sem split. Estrelas deveriam fragmentar-se a ~40% da vida em mini-explosões | `FireworkRenderer.tsx:230-236` |
+| 3 | **Star twinkle sem blink pattern** — todos os patterns usam `temporalFlicker` com curva suave. Fogos reais (especialmente strobe/twinkle effects) têm blink discreto: ON/OFF rápido com duty-cycle variável. Não há blink pattern implementado | `FireworkRenderer.tsx:349-357` |
+| 4 | **Explosão não acompanha mudança de ângulo em tempo real** — `burstPos` é calculado uma vez no `TimelineEffects` usando `launchHeading`/`launchPitch`, mas quando o usuário muda a angulação da posição no editor, o burst já renderizado não atualiza sua posição. O `burstPos` depende de `_launchDir` que é recalculado a cada frame, mas o `FireworkBurst` recebe `position={burstPos}` como prop estático — React não re-renderiza se o array reference não mudar | `FireworkRenderer.tsx:726-751,787-803` |
 
 ## Soluções
 
-### 1. Trail physics com curvatura real
+### 1. Pistil interno no FireworkBurst
 **Arquivo**: `FireworkRenderer.tsx`
 
-O trail já usa `dragPos()` para posição — mas o vento aplicado é `w[0] * t² * 0.3` com `w` constante. Para curvatura real:
-- Usar `windField.sample(px, py, pz)` por segmento de trail, passando a posição real da estrela naquele instante
-- Isso faz trails de willow curvarem com o vento em vez de derivar linearmente
-- Custo: ~STAR_COUNT * TRAIL_LENGTH lookups adicionais, mas `windField.sample()` é hash-based (barato)
+Adicionar ao `FireworkBurst`:
+- Gerar velocidades de pistil separadas (25% do `STAR_COUNT`, velocidade 40% do breakSpeed) no `useMemo` de velocidades
+- No `useFrame`, calcular posições do pistil com drag reduzido (0.8x) e gravidade reduzida (0.7x)
+- Renderizar como segundo `<points>` com cor do `pistilColor` e tamanho 0.7x
+- Só ativar quando `hasPistil === true`
 
-### 2. Wind-shearing por altitude
-**Arquivo**: `windField.ts`
+### 2. Crossette sub-breaks no FireworkBurst
+**Arquivo**: `FireworkRenderer.tsx`
 
-Adicionar multiplicador de altitude ao `sample()`:
-- Abaixo de 50m: wind × 0.3 (protegido por terreno/prédios)
-- 50-150m: interpolação linear 0.3 → 1.0
-- 150-400m: wind × 1.0 (full speed)
-- Acima de 400m: wind × 1.2 + rotação de direção de 15° (jet stream shearing)
-- Adicionar `altitudeShearing: boolean` ao config (default true)
+Adicionar lógica de fragmentação:
+- Quando `pattern === 'crossette'` e `starAge > 0.4`, cada estrela dos 6 braços spawna 4-6 sub-partículas em direções aleatórias com velocidade 30% do breakSpeed
+- Usar um `useRef<Set<number>>` para trackear quais estrelas já fragmentaram (evitar re-spawn)
+- Sub-partículas renderizadas no mesmo `<points>` buffer, usando slots extras pré-alocados
 
-### 3. Sound-sync delay por distância
-**Arquivo**: Novo `src/lib/soundDelay.ts` + integração em `FireworkRenderer.tsx`
+### 3. Star twinkle com blink pattern
+**Arquivo**: `FireworkRenderer.tsx`
 
-- Calcular distância câmera→burst: `d = sqrt((cam.x - burst.x)² + ...)`
-- Speed of sound: 343 m/s
-- Delay: `d / 343` segundos
-- Aplicar delay ao `progress` do burst visual: **não** — o visual é correto, o que precisa de delay é o SOM
-- Exportar `getSoundDelay(cameraPos, burstPos)` para uso futuro no sistema de áudio
-- Por enquanto, expor como helper + aplicar no flash visual (flash é o que sincroniza percepção de "instante da explosão")
+Adicionar blink discreto para patterns que suportam:
+- `twinklePhases[i]` já existe — usar como seed para blink timing
+- Blink: `Math.sin(time * freq + phase) > threshold ? 1.0 : 0.05` onde threshold controla duty-cycle
+- Patterns com blink: peony (sutil, 70% duty), crossette (forte, 50% duty), heart (sutil, 80%)
+- Trailing patterns (willow, kamuro): sem blink (mantêm flicker suave atual)
 
-### 4. getWindForce com altitude
-**Arquivo**: `sharedState.tsx`
+### 4. Burst position reativa à mudança de ângulo
+**Arquivo**: `FireworkRenderer.tsx`
 
-Modificar `getWindForce()` para aceitar posição Y opcional e passar para `windField.sample()` com coordenada real em vez de `(0, 50, 0)`.
+O problema é que `burstPos` é calculado dentro do `useMemo` do `activeEffects` e passado como prop. Como `launchHeading`/`launchPitch` vêm do store e mudam, o `useMemo` já recalcula — mas o array `[x,y,z]` cria referência nova a cada frame quando os valores mudam. Verificar:
+- Garantir que `positions` está nas dependências do `useMemo` (já está na linha 668)
+- O `burstPos` é recalculado no render do `cappedEffects.map()` (linhas 726-751) que roda a cada render — isso já é reativo
+- **Bug real**: `_posQuat`, `_effQuat` etc. são singletons compartilhados (sharedState). Se múltiplos efeitos renderizam no mesmo frame, eles sobrescrevem os quaternions um do outro. Solução: mover cálculo de quaternion para variáveis locais dentro do `.map()` callback
 
 ## Arquivos Modificados
 
 | Arquivo | Ação |
 |---|---|
-| `src/core/engine/windField.ts` | Wind-shearing por altitude |
-| `src/components/editor/skycanvas/sharedState.tsx` | getWindForce com altitude |
-| `src/components/editor/skycanvas/FireworkRenderer.tsx` | Trail curvatura real, wind por posição |
-| `src/lib/soundDelay.ts` | Novo — helper de delay sonoro por distância |
+| `src/components/editor/skycanvas/FireworkRenderer.tsx` | Pistil rendering, crossette sub-breaks, blink twinkle, fix quaternion race |
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |---|---|
-| 1 | windField.ts — altitude shearing |
-| 2 | sharedState.tsx — getWindForce com Y |
-| 3 | soundDelay.ts — helper |
-| 4 | FireworkRenderer.tsx — trail curvatura + wind por posição |
+| 1 | Pistil interno — gerar, simular, renderizar |
+| 2 | Crossette sub-breaks — fragmentação a 40% da vida |
+| 3 | Star twinkle blink pattern por compound |
+| 4 | Fix quaternion singletons → variáveis locais no map |
 | 5 | Build verification |
+
