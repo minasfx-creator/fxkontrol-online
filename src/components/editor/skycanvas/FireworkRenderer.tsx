@@ -292,8 +292,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       : caliber <= 6 ? 0.042 : caliber <= 8 ? 0.035 : caliber <= 10 ? 0.028 : 0.024;
     const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm';
     
-    const baseSize = caliber <= 3 ? 0.4 : caliber <= 4 ? 0.6 : caliber <= 6 ? 0.9
-      : caliber <= 8 ? 1.2 : caliber <= 10 ? 1.5 : 1.8;
+    // Larger star sizes for bigger calibers — was 0.9 for 6", now 1.4
+    const baseSize = caliber <= 3 ? 0.5 : caliber <= 4 ? 0.8 : caliber <= 6 ? 1.4
+      : caliber <= 8 ? 1.8 : caliber <= 10 ? 2.2 : 2.6;
     
     const dragPos = (v0: number, t: number, k: number) => {
       if (k < 0.001) return v0 * t;
