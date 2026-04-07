@@ -2,7 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
-import { temporalFlicker } from '@/lib/pyroNoise';
+import { temporalFlicker, hash01 } from '@/lib/pyroNoise';
 
 const EMBER_COUNT = 240;
 

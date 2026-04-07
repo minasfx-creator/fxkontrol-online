@@ -88,6 +88,47 @@ export function combustionFlicker(
  * @param hdrBoost - multiplier for initial white-hot phase (default 1.5)
  * @returns {r, g, b} color values (may exceed 1.0 for HDR)
  */
+/**
+ * Chemical-compound-specific flicker parameters.
+ * Models real combustion irregularity per pyrotechnic compound.
+ */
+export interface FlickerParams {
+  base: number;
+  amplitude: number;
+  popStrength: number;
+}
+
+const FLICKER_BY_COMPOUND: Record<string, FlickerParams> = {
+  // Strontium (red) — irregular combustion
+  strontium: { base: 0.55, amplitude: 0.40, popStrength: 0.45 },
+  // Barium (green) — stable burn
+  barium: { base: 0.70, amplitude: 0.25, popStrength: 0.20 },
+  // Copper (blue) — moderately unstable
+  copper: { base: 0.60, amplitude: 0.35, popStrength: 0.38 },
+  // Sodium (yellow/gold) — relatively stable
+  sodium: { base: 0.68, amplitude: 0.28, popStrength: 0.22 },
+  // Titanium/Magnesium (white/silver) — very irregular sparking
+  titanium: { base: 0.50, amplitude: 0.45, popStrength: 0.50 },
+  magnesium: { base: 0.52, amplitude: 0.42, popStrength: 0.48 },
+  // Charcoal (gold tails) — slow smoldering
+  charcoal: { base: 0.72, amplitude: 0.20, popStrength: 0.15 },
+  // Iron (gold sparks) — moderate
+  iron: { base: 0.62, amplitude: 0.32, popStrength: 0.30 },
+};
+
+/**
+ * Get flicker parameters calibrated to a specific chemical compound.
+ * Falls back to generic middle-ground params for unknown compounds.
+ */
+export function getFlickerParams(compound: string): FlickerParams {
+  const key = compound.toLowerCase().replace(/[^a-z]/g, '');
+  for (const [k, v] of Object.entries(FLICKER_BY_COMPOUND)) {
+    if (key.includes(k)) return v;
+  }
+  // Default — generic moderate flicker
+  return { base: 0.62, amplitude: 0.32, popStrength: 0.32 };
+}
+
 export function thermalColorRamp(
   baseR: number,
   baseG: number,
