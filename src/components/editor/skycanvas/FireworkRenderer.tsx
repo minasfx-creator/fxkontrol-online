@@ -267,6 +267,8 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
 
   useFrame(({ clock, camera }) => {
     if (!pointsRef.current || !trailRef.current) return;
+    // Update frustum planes once per frame (idempotent if called multiple times)
+    updateFrustum(camera);
 
     // Frustum culling: skip if burst center is off-screen
     // Zero-GC: uses pre-allocated singletons from frustumCuller module
