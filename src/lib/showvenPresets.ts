@@ -102,8 +102,8 @@ export interface ShowvenInfrastructurePreset {
 export const SHOWVEN_FLAMERS: ShowvenFlamerPreset[] = [
   {
     id: 'cflamer', name: 'cFlamer', maxHeightM: 10, nozzles: 1, colorCount: 5,
-    fuelCapacityL: 5.3, burnTimeMin: 8, dmxChannels: 8, weightKg: 18, ipRating: 'IP54',
-    description: 'Color flame projector — 5 LPG color cartridges (R/G/B/W/Y)',
+    fuelCapacityL: 5.3, burnTimeMin: 8, dmxChannels: 2, weightKg: 18, ipRating: 'IP54',
+    description: 'Color flame projector — 2CH-P/2CH-N modes, 5 LPG color cartridges (R/G/B/W/Y)',
   },
   {
     id: 'uflamer_max', name: 'uFlamer Max', maxHeightM: 20, nozzles: 1, colorCount: 0,
