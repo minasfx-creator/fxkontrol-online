@@ -508,7 +508,13 @@ export default function ShellBurstRenderer({
         
         // Per-particle drag from material density
         const particleDrag = baseDrag * dragCoeffs[i];
-        stepParticle(p, dt * detonationMult, windVec, particleDrag, stepMods);
+        // Chrysanthemum tip curl: progressive gravity after 70% life
+        const tipCurlMods: StepModifiers = {
+          ...stepMods,
+          tipCurlFactor: pattern === 'chrysanthemum' ? 2.5 : undefined,
+          tipCurlLifeRatio: pattern === 'chrysanthemum' ? lifeRatio : undefined,
+        };
+        stepParticle(p, dt * detonationMult, windVec, particleDrag, tipCurlMods);
 
         // Glitter trail: emit micro-particles from active stars
         if (trailType === 'glitter' && p.life > 0.1 && Math.random() < 0.15) {
