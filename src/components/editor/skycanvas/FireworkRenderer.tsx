@@ -110,6 +110,7 @@ function _sharedStarMaterial(): THREE.ShaderMaterial {
       vertexColors: true,
       transparent: true,
       depthWrite: false,
+      depthTest: false,
       blending: THREE.AdditiveBlending,
     });
     _starMaterialVersion++;
