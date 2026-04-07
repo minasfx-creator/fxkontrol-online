@@ -1,54 +1,94 @@
 
 
-# Adicionar Shows Pirotécnicos Nacionais Brasileiros
+# Refatoracao Total — World Shows como Experiencia Cinematica no Viewport
 
-## Resumo
+## Problema Central
 
-Adicionar 6 shows pirotécnicos nacionais brasileiros ao catálogo World Shows, além de Copacabana que já existe. Cada preset terá plano de fogo realista, GPS real e intel estratégico completo.
+O sistema atual forca o usuario a navegar por um painel lateral generico (WorldShowPresetsPanel) para encontrar shows. Isso e um padrao de "app de lista" — nao de editor 3D cinematografico. O usuario quer selecionar uma praca no viewport e o show carregar automaticamente com uma apresentacao imersiva AR diretamente sobre o canvas 3D.
 
----
+## Nova Arquitetura UX
 
-## Shows a Adicionar
+```text
+ANTES (generico):
+  Toolbar → SHOWS btn → Side Panel → Lista → Card → Intel Overlay → Deploy
 
-| Show | Local | GPS | Posições | Duração | Terreno |
-|---|---|---|---|---|---|
-| **Réveillon Salvador** | Farol da Barra, BA | -13.0089, -38.5327 | 10 balsas na baía | 600s (10min) | Baía de Todos os Santos |
-| **Réveillon Fortaleza** | Praia de Iracema, CE | -3.7219, -38.5217 | 8 balsas | 480s (8min) | Praia oceânica |
-| **Réveillon Balneário Camboriú** | Barra Sul, SC | -27.0044, -48.6229 | 6 balsas + FG Emissário | 420s (7min) | Praia c/ skyline |
-| **Réveillon Brasília** | Esplanada dos Ministérios | -15.7989, -47.8649 | 8 posições terrestres | 480s (8min) | Terrestre, lago Paranoá |
-| **São João Caruaru** | Pátio de Eventos, PE | -8.2823, -35.9714 | 6 posições terrestres | 360s (6min) | Terrestre, sertão |
-| **Réveillon Recife/Olinda** | Marco Zero, PE | -8.0631, -34.8711 | 10 balsas no rio/mar | 540s (9min) | Rio Capibaribe + mar |
+DEPOIS (cinematografico):  
+  Viewport → Seleciona Praca → Fade-to-black → GPS flyTo → AR Intel HUD overlay no viewport → Auto-deploy show
+```
 
----
+## Mudancas
 
-## Arquivo Modificado
+### 1. Novo componente `VenueShowOverlay.tsx` — HUD fullscreen no viewport
 
-### `src/data/worldShowPresets.ts`
+Substituir o painel lateral por um overlay transparente que se projeta SOBRE o viewport 3D (como um HUD de game AAA). Componente absoluto `inset-0 z-30` com `pointer-events-none` nos areas do canvas e `pointer-events-auto` apenas nos elementos interativos.
 
-- Adicionar 6 funções `generate*()` seguindo o padrão existente (multi-fase: opening → shells → crescendo → finale)
-- Adicionar 6 entries no array `WORLD_SHOW_PRESETS` com intel completo:
-  - População metro, últimos shows, vencedores de licitação
-  - Segurança (NOTAMs, terreno), marés, cultura local
-  - Insights estratégicos e regulatório
-- Todos com `continent: 'americas'` e `flag: '🇧🇷'`
+Layout cinematografico:
+- **Canto superior esquerdo**: Nome da cidade + bandeira + GPS typewriter
+- **Lateral esquerda**: Intel sections com reveal sequencial (scanline + fade-in)
+- **Centro inferior**: Barra de stats (posicoes, cues, calibres, duracao)
+- **Canto inferior direito**: Botao DEPLOY pulsante ciano
+- **Background**: Sem fundo opaco — glassmorphism ultra-transparente, o canvas 3D e visivel atras
 
-### Dados Intel Reais (resumo)
+Inclui typewriter GPS animation (30ms/char com cursor `|` piscante).
 
-| Local | Pop. Metro | Regulatório |
-|---|---|---|
-| Salvador | 3.9M | DECEA + Capitania BA + IBAMA |
-| Fortaleza | 4.0M | DECEA + Capitania CE + SEMACE |
-| Balneário Camboriú | 150K (1M+ turistas) | DECEA + Bombeiros SC |
-| Brasília | 4.8M | DECEA + GDF + ICMBio |
-| Caruaru | 370K | Bombeiros PE + Polícia Civil |
-| Recife/Olinda | 4.0M | DECEA + Capitania PE + PCR |
+### 2. Novo componente `VenueQuickSelector.tsx` — Seletor compacto de pracas
 
----
+Em vez do painel lateral com lista, um seletor compacto flutuante (estilo command palette) que aparece ao clicar no botao SHOWS da toolbar:
+- Input de busca com filtro por continente (chips horizontais)
+- Grid compacto de cards (flag + nome + cidade) — max 6 visiveis, scroll
+- Ao clicar em uma praca: fecha o seletor, inicia sequencia cinematografica
 
-## Ordem de Execução
+### 3. Fluxo cinematografico ao selecionar praca
+
+Sequencia automatica ao selecionar uma praca no `VenueQuickSelector`:
+1. Fechar seletor
+2. Trigger `ViewportTransitionOverlay` (fade-to-black existente) com nome da cidade
+3. Executar `setGpsOrigin()` + `updateSettings()` (camera voa para o local)
+4. Mostrar `VenueShowOverlay` com intel AR sobre o viewport
+5. Auto-deploy do show (generate + inject positions/timeline) — sem botao manual
+6. Apos 3s de intel reveal, overlay faz fade-out gradual deixando apenas o show carregado
+
+### 4. Modificar `Index.tsx`
+
+- Remover renderizacao de `WorldShowPresetsPanel` do floating panel lateral
+- Adicionar estado `venueOverlay: WorldShowPreset | null`
+- Renderizar `VenueShowOverlay` como layer sobre o canvas (z-30, abaixo da toolbar)
+- Renderizar `VenueQuickSelector` como modal central (z-50)
+- Manter botao SHOWS na toolbar — agora abre `VenueQuickSelector` em vez do painel lateral
+
+### 5. Remover `WorldShowPresetsPanel.tsx` e `VenueIntelOverlay.tsx`
+
+Substituidos pelos novos componentes. Logica de `handleLoad` migra para `VenueShowOverlay`.
+
+## Estetica — PhD Design + Hollywood + Rockstar
+
+- **Tipografia**: Font mono para GPS/stats, font sans bold para titulos — tracking ultra-wide
+- **Cores**: Ciano dominante (`cyan-400/500`) sobre vantablack, com accents amber para alertas
+- **Animacoes**: Typewriter GPS, scanline reveal nas sections, glow pulsante no deploy, fade-in sequencial com `circOut` easing
+- **Glassmorphism**: `bg-black/20 backdrop-blur-md` — o 3D e sempre visivel
+- **Scanlines**: Overlay sutil de linhas horizontais 1px no header
+- **Crosshair**: Icone de mira pulsante no GPS
+- **Auto-dissolve**: Overlay desaparece sozinho apos reveal completo, deixando o editor limpo
+
+## Arquivos
+
+| Arquivo | Acao |
+|---|---|
+| `src/components/editor/VenueShowOverlay.tsx` | CRIAR — HUD fullscreen AR |
+| `src/components/editor/VenueQuickSelector.tsx` | CRIAR — Seletor compacto |
+| `src/pages/Index.tsx` | MODIFICAR — Integrar overlay + seletor, remover panel lateral |
+| `src/components/editor/WorldShowPresetsPanel.tsx` | REMOVER |
+| `src/components/editor/VenueIntelOverlay.tsx` | REMOVER |
+| `src/components/editor/PanelTabBar.tsx` | MODIFICAR — Remover entry `worldshows` |
+
+## Ordem de Execucao
 
 | Passo | Tarefa |
 |---|---|
-| 1 | Criar 6 funções generate + presets com intel em `worldShowPresets.ts` |
-| 2 | Build verification |
+| 1 | Criar `VenueQuickSelector.tsx` — seletor compacto com busca e filtro |
+| 2 | Criar `VenueShowOverlay.tsx` — HUD AR cinematografico com typewriter GPS e auto-deploy |
+| 3 | Integrar em `Index.tsx` — novo fluxo, remover painel lateral |
+| 4 | Remover `WorldShowPresetsPanel.tsx` e `VenueIntelOverlay.tsx` |
+| 5 | Limpar entry `worldshows` do `PanelTabBar.tsx` |
+| 6 | Build verification |
 
