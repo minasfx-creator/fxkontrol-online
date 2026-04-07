@@ -542,7 +542,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
         pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
-      } else if (pattern === 'willow') {
+    } else if (pattern === 'willow') {
         // Willow: normal ballistics but progressive gravity increase in last 40% for droop
         const willowGravMult = starAge > 0.6 
           ? gravityMult * (1 + (starAge - 0.6) / 0.4 * 3.5) // ramp to 4.5x gravity
@@ -550,6 +550,43 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         px = dragPos(vx, t, dragCoeff * 0.85) + w[0] * t * t * 0.4; // less drag horizontally
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * willowGravMult * t * t;
         pz = dragPos(vz, t, dragCoeff * 0.85) + w[2] * t * t * 0.4;
+      } else if (pattern === 'horsetail') {
+        // Horsetail: heavy charcoal stars with aggressive progressive droop
+        const htGravMult = starAge < 0.5
+          ? gravityMult * 1.2
+          : gravityMult * (1.2 + (starAge - 0.5) / 0.5 * 4.8); // ramp to 6x
+        px = dragPos(vx, t, dragCoeff * 0.7) + w[0] * t * t * 0.5; // reduced horiz drag, amplified wind
+        py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * htGravMult * t * t;
+        pz = dragPos(vz, t, dragCoeff * 0.7) + w[2] * t * t * 0.5;
+      } else if (pattern === 'coconut') {
+        // Coconut tree: 3-phase — ascent, frond spread, heavy droop
+        let cocoGravMult: number;
+        let cocoDragH: number;
+        const frondSeed = sparkleSeeds[i];
+        if (starAge < 0.3) {
+          // Ascent: low gravity, low drag — stars climb fast
+          cocoGravMult = gravityMult * 0.4;
+          cocoDragH = dragCoeff * 0.5;
+        } else if (starAge < 0.6) {
+          // Frond spread: moderate gravity, sinusoidal lateral sway
+          cocoGravMult = gravityMult * 1.5;
+          cocoDragH = dragCoeff * 0.8;
+        } else {
+          // Droop: heavy gravity, near-zero horizontal drag — fronds fall
+          cocoGravMult = gravityMult * 5.0;
+          cocoDragH = dragCoeff * 0.15;
+        }
+        px = dragPos(vx, t, cocoDragH) + w[0] * t * t * 0.3;
+        py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * cocoGravMult * t * t;
+        pz = dragPos(vz, t, cocoDragH) + w[2] * t * t * 0.3;
+        // Frond lateral sway during spread phase
+        if (starAge >= 0.3 && starAge < 0.6) {
+          const frondPhase = (frondSeed % 100) / 100 * Math.PI * 2;
+          const frondAmp = 0.8 + (frondSeed % 50) / 50 * 0.6;
+          const spreadProgress = (starAge - 0.3) / 0.3;
+          px += Math.sin(time * 2.5 + frondPhase) * frondAmp * spreadProgress;
+          pz += Math.cos(time * 2.5 + frondPhase + 1.5) * frondAmp * spreadProgress;
+        }
       } else {
         px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
