@@ -101,7 +101,7 @@ const StoryboardPanel = lz(() => import('@/components/editor/StoryboardPanel'));
 
 const ShowInspectorPanel = lz(() => import('@/components/editor/ShowInspectorPanel'));
 const LightProgramPanel = lz(() => import('@/components/editor/LightProgramPanel'));
-const SafetyCheckPanel = lz(() => import('@/components/editor/safety/FlightCheckTab'));
+const FlightCheckTab = lz(() => import('@/components/editor/safety/FlightCheckTab'));
 const TakeoffGridPanel = lz(() => import('@/components/editor/TakeoffGridPanel'));
 const TransitionPlannerPanel = lz(() => import('@/components/editor/TransitionPlannerPanel'));
 const LaserControlPanel = lz(() => import('@/components/editor/LaserControlPanel'));
