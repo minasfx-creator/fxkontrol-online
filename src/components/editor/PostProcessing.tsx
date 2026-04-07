@@ -559,11 +559,11 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         />
       )}
 
-      {/* Film grain — skip when no activity */}
-      {s.filmGrain > 0.01 && hasBursts && (
+      {/* Film grain — always active for cinematic texture */}
+      {s.filmGrain > 0.01 && (
         <Noise
           blendFunction={BlendFunction.SOFT_LIGHT}
-          opacity={s.filmGrain * 0.6}
+          opacity={s.filmGrain * 0.4}
         />
       )}
 

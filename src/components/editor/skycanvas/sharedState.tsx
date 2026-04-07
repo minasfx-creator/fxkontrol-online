@@ -39,7 +39,7 @@ export function runActiveBurstScan(): ActiveBurstScanResult {
     if (elapsed < 0 || elapsed > 2.0) continue;
 
     activeBursts++;
-    luminance += elapsed < 0.5 ? 3.0 : 0.5;
+    luminance += elapsed < 0.5 ? 1.5 : 0.3;
 
     if (elapsed < 0.05) {
       const effect = getEffectById(item.effectId);

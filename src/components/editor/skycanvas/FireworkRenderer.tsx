@@ -437,14 +437,14 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       
       {progress < 0.06 && (
         <mesh renderOrder={100}>
-          <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 6), 8, 8]} />
-          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.2 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+          <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 12), 8, 8]} />
+          <meshBasicMaterial color="#FFFFEE" transparent opacity={0.5 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
         </mesh>
       )}
       {progress < 0.12 && (
         <mesh renderOrder={99}>
-          <sphereGeometry args={[flashSize * (1 + progress * 6), 8, 8]} />
-          <meshBasicMaterial color={color} transparent opacity={0.08 * Math.pow(1 - progress / 0.12, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+          <sphereGeometry args={[flashSize * (1 + progress * 12), 8, 8]} />
+          <meshBasicMaterial color={color} transparent opacity={0.2 * Math.pow(1 - progress / 0.12, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
         </mesh>
       )}
     </group>
