@@ -351,7 +351,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         twinkle = temporalFlicker(sparkleSeeds[i], time, 0.82, 0.15, 0.10);
       } else {
         // Chemical-compound-specific flicker params
-        const fp = getFlickerParams(compound);
+        const fp = getFlickerParams(String(compound));
         twinkle = temporalFlicker(sparkleSeeds[i], time, fp.base, fp.amplitude, fp.popStrength);
       }
       
