@@ -74,6 +74,7 @@ export default function MineEffect({
   // Particle class indices
   const columnEnd = useMemo(() => Math.floor(count * COLUMN_FRAC), [count]);
   const sprayEnd = useMemo(() => Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC)), [count]);
+  const dripEnd = useMemo(() => Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC + DRIP_FRAC)), [count]);
   
   // Trail buffers for spray comet trails
   const TRAIL_SEGS = 5;
