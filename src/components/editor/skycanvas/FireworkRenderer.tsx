@@ -234,8 +234,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           break;
         }
         case 'dahlia':
-          vx = sx * breakSpeed * 1.35 * speedVar; vy = sy * breakSpeed * 1.28 * speedVar; vz = sz * breakSpeed * 1.35 * speedVar;
-          life = starLife * (0.22 + Math.random() * 0.15); break;
+          // Dahlia: HIGH velocity, short life — bright flash burst with fewer large stars
+          vx = sx * breakSpeed * 1.5 * speedVar; vy = sy * breakSpeed * 1.4 * speedVar + 0.5; vz = sz * breakSpeed * 1.5 * speedVar;
+          life = starLife * (0.25 + Math.random() * 0.15); break;
         case 'brocade':
           vx = sx * breakSpeed * 0.58 * speedVar; vy = sy * breakSpeed * 0.58 * speedVar; vz = sz * breakSpeed * 0.58 * speedVar;
           life = starLife * (1.3 + Math.random() * 1.0); break;
