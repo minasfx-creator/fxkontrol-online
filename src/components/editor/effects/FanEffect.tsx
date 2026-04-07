@@ -16,7 +16,7 @@ export default function FanEffect({
   position,
   color,
   progress,
-  spreadAngle = 90,
+  spreadAngle,
   caliber = 3,
   formulationId,
 }: {
