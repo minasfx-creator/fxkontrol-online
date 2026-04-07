@@ -8,6 +8,7 @@ import { useViewportDrop } from '@/hooks/useViewportDrop';
 import { Upload, ChevronDown, Sparkles, Paintbrush, Cog, X } from 'lucide-react';
 import ViewportNavControls from '@/components/editor/ViewportNavControls';
 import { useDisplayStore } from '@/store/useDisplayStore';
+import type { WorldShowPreset } from '@/data/worldShowPresets';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { type MobileTab } from '@/components/editor/MobileTabBar';
 
