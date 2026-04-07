@@ -1777,7 +1777,7 @@ export default function SkyCanvas() {
 
           {/* Presentation */}
           <button
-            onClick={() => useSceneStore.getState().updateSettings({ presentationMode: true })}
+            onClick={() => updateSettings({ presentationMode: true })}
             className="w-7 h-7 rounded-md flex items-center justify-center transition-all border bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
             title="Presentation Mode"
           >
