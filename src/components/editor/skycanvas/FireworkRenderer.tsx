@@ -626,7 +626,7 @@ export function TimelineEffects() {
       {cappedEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
         const effectPos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const cullRadius = effect.type === 'firework' ? (caliber || 4) * 25 : 50;
-        if (!isInFrustum(camera, effectPos, cullRadius)) return null;
+        if (!isSphereInFrustum(effectPos[0], effectPos[1], effectPos[2], cullRadius)) return null;
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
         const pt = effect.partType;
