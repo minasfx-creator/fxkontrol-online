@@ -501,10 +501,10 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         <MotionBlur intensity={s.motionBlurIntensity} />
       )}
 
-      {/* Layer 1: Core catch — always active (low cost) */}
+      {/* Layer 1: Core catch — threshold raised to 3.5 for real flashes only */}
       <Bloom
-        intensity={str * 0.065 * bloomMul}
-        luminanceThreshold={2.8}
+        intensity={str * 0.04 * bloomMul}
+        luminanceThreshold={3.5}
         luminanceSmoothing={0.05}
         kernelSize={KernelSize.MEDIUM}
         mipmapBlur
