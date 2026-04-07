@@ -46,7 +46,6 @@ export default function TourbillonEffect({
 
   const trailBuffer = useMemo(() => new Float32Array(MAX_TRAIL * 3), []);
   const trailColors = useMemo(() => new Float32Array(MAX_TRAIL * 3), []);
-  const trailSizes = useMemo(() => new Float32Array(MAX_TRAIL), []);
   const sparkBuffer = useMemo(() => new Float32Array(MAX_SPARKS * 3), []);
   const sparkColors = useMemo(() => new Float32Array(MAX_SPARKS * 3), []);
   const burstBuffer = useMemo(() => new Float32Array(MAX_BURST_PARTICLES * 3), []);
@@ -146,18 +145,18 @@ export default function TourbillonEffect({
         const fade = Math.pow(1 - i / count, 1.8);
         const windDrift = h * 0.06;
 
-        trailBuffer[i * 3] = Math.cos(a) * rad + (Math.random() - 0.5) * 0.06 + wX * windDrift;
+        // Deterministic jitter based on point index (no per-frame randomness)
+        const jitterX = Math.sin(i * 73.37 + clampedP * 11) * 0.04;
+        const jitterZ = Math.cos(i * 91.13 + clampedP * 7) * 0.04;
+        trailBuffer[i * 3] = Math.cos(a) * rad + jitterX + wX * windDrift;
         trailBuffer[i * 3 + 1] = h;
-        trailBuffer[i * 3 + 2] = Math.sin(a) * rad + wobZ + (Math.random() - 0.5) * 0.06 + wZ * windDrift;
+        trailBuffer[i * 3 + 2] = Math.sin(a) * rad + wobZ + jitterZ + wZ * windDrift;
 
         // Core-to-ember with nozzle color variation
         const emberT = Math.pow(i / count, 0.5);
         trailColors[i * 3] = THREE.MathUtils.lerp(1.2, baseColor.r * 0.3, emberT) * fade;
         trailColors[i * 3 + 1] = THREE.MathUtils.lerp(0.95, baseColor.g * 0.15, emberT) * fade;
         trailColors[i * 3 + 2] = THREE.MathUtils.lerp(0.5, baseColor.b * 0.08, emberT) * fade;
-
-        // Size taper: thick at head, thin at tail
-        trailSizes[i] = THREE.MathUtils.lerp(0.28, 0.06, i / count) * fade;
       }
 
       const geo = trailRef.current.geometry;

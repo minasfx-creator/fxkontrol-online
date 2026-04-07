@@ -65,26 +65,40 @@ export default function GirandolaEffect({
     const windZ = wind.enabled ? Math.cos(windRad) * wind.speed * 0.03 : 0;
 
     // Spin physics: angular velocity increases with progress (spin-up)
-    // ω(t) = ω_max * (1 - e^(-kt))
     const spinUpRate = 3.5;
-    const maxOmega = 15 + caliber * 3; // rad/s at full speed
+    const maxOmega = 15 + caliber * 3;
     const omega = maxOmega * (1 - Math.exp(-spinUpRate * progress));
     const totalAngle = maxOmega * (progress + (Math.exp(-spinUpRate * progress) - 1) / spinUpRate);
 
-    // Lift: device rises as thrust builds
+    // Lift
     const liftAccel = (thrustForce * nozzleCount * liftFraction / mass) - 9.81;
     const liftT = progress * 3.0;
     const deviceY = Math.max(0, 0.5 * Math.max(0, liftAccel) * liftT * liftT * 0.15);
     const deviceDriftX = windX * liftT * liftT * 0.2;
     const deviceDriftZ = windZ * liftT * liftT * 0.2;
 
-    // Wobble — imperfect balance
-    const wobbleX = Math.sin(time * 2.3 + 1.7) * 0.08 * Math.min(1, progress * 3);
-    const wobbleZ = Math.cos(time * 1.9 + 0.3) * 0.06 * Math.min(1, progress * 3);
+    // Gyroscopic precession: spin axis traces a cone
+    // Precession rate inversely proportional to omega (gyroscopic stability)
+    const precessionRate = 0.8 / (1 + omega * 0.1);
+    const precessionAngle = time * precessionRate;
+    // Tilt angle grows with omega, capped at ~15°
+    const tiltAngle = Math.min(0.25, omega * 0.008);
+    // Precession rotation: tilt axis direction rotates around Y
+    const tiltX = Math.sin(precessionAngle) * tiltAngle;
+    const tiltZ = Math.cos(precessionAngle) * tiltAngle;
 
     // Intensity envelope
     const intensity = progress < 0.05 ? progress / 0.05 :
                       progress > 0.85 ? (1 - progress) / 0.15 : 1.0;
+
+    // Helper: apply precession tilt to a point (small angle rotation around X and Z axes)
+    const applyTilt = (x: number, y: number, z: number) => {
+      // Rodrigues-lite: rotate around tilted axis
+      const tx = x + tiltZ * y;  // tilt around Z axis
+      const ty = y - tiltZ * x + tiltX * z; // combined
+      const tz = z - tiltX * y;  // tilt around X axis
+      return { x: tx, y: ty, z: tz };
+    };
 
     for (let i = 0; i < SPARK_COUNT; i++) {
       const nozzle = sparkSeeds[i * 5];
@@ -100,13 +114,19 @@ export default function GirandolaEffect({
         continue;
       }
 
-      // Nozzle position at detach time
-      const detachAngle = totalAngle * (detachProg / Math.max(0.001, progress)) + (nozzle / nozzleCount) * Math.PI * 2;
-      const nozzleX = Math.cos(detachAngle) * armLength + deviceDriftX * (detachProg / Math.max(0.001, progress));
-      const nozzleZ = Math.sin(detachAngle) * armLength + deviceDriftZ * (detachProg / Math.max(0.001, progress));
-      const nozzleY = deviceY * (detachProg / Math.max(0.001, progress));
+      // Nozzle position at detach time in the spin plane
+      const progRatio = detachProg / Math.max(0.001, progress);
+      const detachAngle = totalAngle * progRatio + (nozzle / nozzleCount) * Math.PI * 2;
+      const localNX = Math.cos(detachAngle) * armLength;
+      const localNZ = Math.sin(detachAngle) * armLength;
 
-      // Ejection direction: tangential + radial + upward
+      // Transform nozzle through precession tilt
+      const tilted = applyTilt(localNX, 0, localNZ);
+      const nozzleX = tilted.x + deviceDriftX * progRatio;
+      const nozzleZ = tilted.z + deviceDriftZ * progRatio;
+      const nozzleY = tilted.y + deviceY * progRatio;
+
+      // Ejection direction: tangential + radial, also tilted
       const tangentX = -Math.sin(detachAngle);
       const tangentZ = Math.cos(detachAngle);
       const radialX = Math.cos(detachAngle);
@@ -115,14 +135,15 @@ export default function GirandolaEffect({
       const sparkT = sparkAge * 4.0;
       const drag = Math.pow(dragFactor, sparkT * 30);
 
-      // Spark position: nozzle + ejection velocity + gravity
-      const ejX = (tangentX * ejSpeed * 0.7 + radialX * ejSpeed * 0.4) * sparkT * drag;
-      const ejZ = (tangentZ * ejSpeed * 0.7 + radialZ * ejSpeed * 0.4) * sparkT * drag;
-      const ejY = ejSpeed * 0.3 * sparkT * drag + 0.5 * (-9.81) * sparkT * sparkT;
+      // Ejection in local frame then tilt
+      const localEjX = (tangentX * ejSpeed * 0.7 + radialX * ejSpeed * 0.4) * sparkT * drag;
+      const localEjZ = (tangentZ * ejSpeed * 0.7 + radialZ * ejSpeed * 0.4) * sparkT * drag;
+      const localEjY = ejSpeed * 0.3 * sparkT * drag + 0.5 * (-9.81) * sparkT * sparkT;
+      const tiltedEj = applyTilt(localEjX, localEjY, localEjZ);
 
-      sparkPosArr[i * 3] = nozzleX + ejX + windX * sparkT * sparkT * 0.5 + wobbleX;
-      sparkPosArr[i * 3 + 1] = Math.max(-0.1, nozzleY + ejY) + wobbleZ * 0.3;
-      sparkPosArr[i * 3 + 2] = nozzleZ + ejZ + windZ * sparkT * sparkT * 0.5 + wobbleZ;
+      sparkPosArr[i * 3] = nozzleX + tiltedEj.x + windX * sparkT * sparkT * 0.5;
+      sparkPosArr[i * 3 + 1] = Math.max(-0.1, nozzleY + tiltedEj.y);
+      sparkPosArr[i * 3 + 2] = nozzleZ + tiltedEj.z + windZ * sparkT * sparkT * 0.5;
 
       // Color: thermal ramp + flicker
       const lifeFrac = sparkAge / 0.25;
@@ -144,17 +165,21 @@ export default function GirandolaEffect({
 
   if (progress <= 0) return null;
 
-  // Wheel body visualization
-  const omega = (15 + caliber * 3) * (1 - Math.exp(-3.5 * progress));
-  const totalAngle = (15 + caliber * 3) * (progress + (Math.exp(-3.5 * progress) - 1) / 3.5);
-  const liftT = progress * 3.0;
-  const liftAccel = (thrustForce * nozzleCount * liftFraction / mass) - 9.81;
-  const deviceY = Math.max(0, 0.5 * Math.max(0, liftAccel) * liftT * liftT * 0.15);
+  // Wheel body visualization — with precession
+  const vizMaxOmega = 15 + caliber * 3;
+  const vizOmega = vizMaxOmega * (1 - Math.exp(-3.5 * progress));
+  const vizTotalAngle = vizMaxOmega * (progress + (Math.exp(-3.5 * progress) - 1) / 3.5);
+  const vizLiftT = progress * 3.0;
+  const vizLiftAccel = (thrustForce * nozzleCount * liftFraction / mass) - 9.81;
+  const deviceY = Math.max(0, 0.5 * Math.max(0, vizLiftAccel) * vizLiftT * vizLiftT * 0.15);
+  // Precession tilt for visual hub
+  const vizPrecRate = 0.8 / (1 + vizOmega * 0.1);
+  const vizTiltAngle = Math.min(0.25, vizOmega * 0.008);
 
   return (
     <group position={position} renderOrder={50}>
       {/* Spinning hub */}
-      <group position={[0, deviceY, 0]} rotation={[0, totalAngle, 0]}>
+      <group position={[0, deviceY, 0]} rotation={[vizTiltAngle * 0.5, vizTotalAngle, vizTiltAngle * 0.3]}>
         {/* Central axis */}
         <mesh>
           <cylinderGeometry args={[0.05, 0.05, 0.3, 6]} />
