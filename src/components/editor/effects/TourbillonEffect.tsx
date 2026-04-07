@@ -46,7 +46,6 @@ export default function TourbillonEffect({
 
   const trailBuffer = useMemo(() => new Float32Array(MAX_TRAIL * 3), []);
   const trailColors = useMemo(() => new Float32Array(MAX_TRAIL * 3), []);
-  const trailSizes = useMemo(() => new Float32Array(MAX_TRAIL), []);
   const sparkBuffer = useMemo(() => new Float32Array(MAX_SPARKS * 3), []);
   const sparkColors = useMemo(() => new Float32Array(MAX_SPARKS * 3), []);
   const burstBuffer = useMemo(() => new Float32Array(MAX_BURST_PARTICLES * 3), []);
