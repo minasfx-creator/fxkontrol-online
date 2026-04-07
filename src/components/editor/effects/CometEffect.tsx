@@ -398,6 +398,7 @@ export default function CometEffect({
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest={false}
           />
         </mesh>
       )}
