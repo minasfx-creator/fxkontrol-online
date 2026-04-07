@@ -774,8 +774,11 @@ export function FXKAssistant() {
                       </div>
                     )}
                     <div className="prose prose-invert prose-xs max-w-none [&_p]:my-1 [&_code]:text-[hsl(190_100%_70%)] [&_code]:bg-transparent [&_pre]:bg-[hsl(220_20%_8%)] [&_pre]:border [&_pre]:border-[hsl(190_100%_50%/0.1)] [&_strong]:text-[hsl(38_100%_65%)] [&_a]:text-[hsl(190_100%_60%)]">
-                      <ReactMarkdown>{stripKmzReadyBlock(msg.content)}</ReactMarkdown>
+                      <ReactMarkdown>{stripJoiCommands(stripKmzReadyBlock(msg.content))}</ReactMarkdown>
                     </div>
+                    {msg.cmdResults && msg.cmdResults.length > 0 && (
+                      <JoiCommandFeedback results={msg.cmdResults} />
+                    )}
                     {parseKmzReadyBlock(msg.content) && (
                       <button
                         onClick={() => {
