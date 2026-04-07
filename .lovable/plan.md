@@ -1,105 +1,94 @@
 
 
-# Calibracao Industrial PIROEX/FFIC — Dados dos Laudos Laboratoriais
+# Ciclo de Calibracao #9 — Dados dos Manuais de Pirotecnia e Quimica
 
-## Dados Extraidos dos Test Reports FFIC (Changsha Customs)
+## Dados Extraidos dos Documentos
 
-Os laudos laboratoriais da FFIC (Fireworks and Firecracker Inspection Center) para PIROEX LTDA / Changsha Skyking contêm dados reais de construcao e composicao quimica que devem calibrar o motor de simulacao:
+### Chemistry of Pyrotechnics (Sparky)
+- **Flash powder padrao**: KClO4 70% + Al 30% (dark aluminum) — stoichiometric
+- **Black powder**: KNO3 75%, Charcoal 15%, Sulfur 10%
+- **Strobe**: combustao oscilatoria com fase smolder (pouca luz) + fase burn intensa — modelo ON/OFF real
+- **Magnalium**: 50/50 Al/Mg, ponto de fusao ~460C, gravidade especifica 2.0
+- **Copper blue**: CuO decompoe → Cu + Cl → CuCl2 (blue emission) — requer chlorine donor (PVC/Parlon)
+- **Iron sparks**: bright orange, precisa coating protetor (linseed oil)
+- **Zinc**: bluish-green sparks, "electric stars" com ilusao de eletricidade
+- **Titanium**: sparks brilhantes, alta capacidade termica
+- **Barium green**: BaCO3-based, estavel, deep green
+- **Strontium red**: SrCO3, burn rate irregular
 
-### Tabela de Construcao Real (FFIC Actual Findings)
+### Complete Book of Flash Powder (Moran)
+- **Standard salute**: KClO4 66% + Al 34%
+- **Al combustion heat**: 7400 kcal/g (highest among common metals)
+- **Mg combustion heat**: 6000 kcal/g
+- **Flash burn time**: milissegundos (thousandths of a second)
+- **TNT equivalence**: 75% para flash powder finely blended
+- **Flake Al**: mais reativo que atomized, forma platelets microscopicos
+- **Sulfur ignition**: 223C no ar — baixo ponto de ignicao
 
-| Calibre | Tubo OD mm | Tubo H mm | Efeito g | Lift g | Break g | Total g | Fuse Time (medido) |
-|---------|-----------|-----------|----------|--------|---------|---------|---------------------|
-| 2.5" | 58 | 85 | 51.8 | 25.4 | 21.1 | 98.3 | 4.1-4.9s (avg 4.3) |
-| 3" | 69 | 100 | 86.4 | 36.2 | 30.8 | 153.4 | 5.3-6.5s (avg 5.9) |
-| 4" | 89 | 125 | 201.7 | 48.7 | 83.4 | 333.8 | 5.1-6.7s (avg 6.1) |
-| 5" | 117 | 150 | 348.9 | 81.0 | 180.4 | 610.3 | 5.3-6.7s (avg 6.0) |
-| 6" | 144 | 180 | 660.4 | 121.9 | 340.6 | 1122.9 | 5.4-6.7s (avg 6.2) |
+### Manual Finale 3D (Pyrosmart Mexico)
+- GPU-intensive rendering (OpenGL/DirectX)
+- Supplier catalogs com simulacoes calibradas
+- Chain/cake timing configs
 
-### Alturas Minimas de Burst (NEB/T M-251 Item 24c)
-
-| Diametro OD (mm) | Altura Minima Burst (m) |
-|-------------------|------------------------|
-| 45.0-55.0 | >=25 |
-| 55.0-76.2 | >=55 |
-| 76.2-101.6 | >=70 |
-| 101.6-127.0 | >=85 |
-| 127.0-203.2 | >=120 |
-| >203.2 | >=200 |
-
-### Composicao Quimica Real (PIROEX shells)
-
-- **Lift charge**: KNO3 75%, Carbon 15%, Sulfur 10% (polv. negra classica)
-- **Break charge (chaff)**: KClO4 70%, Al 30%, Carbon 30%
-- **Flash powder**: KClO4 36%, Al 15%
-- **Red (Strontium)**: SrCO3 10-23%, KClO4, PVC 7%, Shellac 5%, Phenolic resin 6-8%
-- **Brocade crown**: Ti 25%, Rice Flour 2%, Adhesion agent 5%
-- **Cake 20mm**: 6.65g effect/shot, 1.93g lift/shot, tubo 172x25x20mm
-
-### Dados Art-Net DMX (Star Lighting Artnet8)
-
-- 8 saidas DMX512 bidirecionais (XLR 5 pinos)
-- 2 entradas DMX fixas (portas 9-10)
-- Protocolos: Art-Net e sACN
-- Isolamento optico ate 1500V em todas as portas DMX
-- RDM compativel
-- Conexao 10/100 Ethernet RJ45
+### Manual de Pirotecnia 2025 (Consejo Superior Ingenieros de Minas, Espanha)
+- Regulamentacao europeia RD 989/2015
+- Framework profissional para pirotecnia
 
 ## Problemas Identificados no Motor Atual
 
-| # | Problema | Impacto |
-|---|---------|---------|
-| 1 | **Fuse times em pyroPhysics.ts nao correspondem aos laudos FFIC** — getLiftTime() calcula balisticamente, mas os tempos medidos (4.3s para 2.5", 5.9s para 3") sao muito maiores que o calculo balistico puro porque incluem delay fuse real | Timing incorreto |
-| 2 | **Break heights nao alinhados com NEB/T M-251** — tabela BREAK_HEIGHT tem 50m para 2" mas norma exige >=55m para OD 55-76mm (3"); valores atuais nao refletem minimos regulatorios | Alturas fora da norma |
-| 3 | **Composicao quimica do flicker nao usa dados reais** — pyroNoise.ts tem params genericos; laudos mostram composicoes exatas (SrCO3 para red, Ti para brocade) que afetam burn rate e flicker | Flicker impreciso |
-| 4 | **Perfil PIROEX/Skyking nao existe em manufacturerCalibration.ts** — temos dados reais de um fabricante chines (Changsha Skyking) para PIROEX mas nao ha perfil calibrado | Dados desperdicados |
-| 5 | **Cake 20mm nao tem dados de calibracao** — laudos mostram 6.65g/shot, tubo 172x25x20mm, fuse 6.2-7.3s, mas nao ha perfil de cake sub-1" calibrado | Cakes imprecisos |
-| 6 | **Art-Net DMX engine nao suporta Star Lighting Artnet8** — wiredDmxEngine.ts suporta ENTTEC/Eurolite/DMXking mas nao a interface brasileira Artnet8 com 8 universos | Hardware nao suportado |
+| # | Problema | Fonte |
+|---|---------|-------|
+| 1 | **Strobe/twinkle nao modela fase smolder real** — Chemistry of Pyrotechnics descreve strobe como oscilacao entre "smolder phase" (quase sem luz) e "intense burn phase". O blink atual usa sine wave suave, nao tem fase smolder com duracao variavel | Chemistry of Pyrotechnics |
+| 2 | **Magnalium nao tem compound flicker** — 50/50 Al/Mg alloy e muito usado em dragon eggs e strobe; combina reatividade alta do Mg com estabilidade do Al. Nao tem entrada em `FLICKER_BY_COMPOUND` | Chemistry + Flash Powder |
+| 3 | **Zinc/electric stars sem modelo** — zinc produz sparks azuladas/verdes com efeito "eletricidade". Nao tem compound entry nem visual model | Chemistry of Pyrotechnics |
+| 4 | **Flash burn duration incorreta** — flash powder consome em milessegundos (0.001-0.01s). O `thermalColorRamp` trata white-hot phase como 4% da vida, mas para flash deveria ser 80%+ da vida porque e quase instantaneo | Flash Powder book |
+| 5 | **Antimony trisulfide (Sb2S3) sem modelo** — usado em "bengal fire" e salutes como sensitizer, produz bright light com blue tinge. Nao tem compound entry | Chemistry + Flash Powder |
+| 6 | **Sulfur ignition temperature nao modelado** — sulfur ignites at 223C (muito baixo), afeta priming e ease of ignition. Pode calibrar prefire times para composicoes com sulfur | Flash Powder book |
 
 ## Solucoes
 
-### 1. Adicionar perfil PIROEX/Skyking em manufacturerCalibration.ts
-Criar novo perfil `piroex-skyking` com dados REAIS dos laudos FFIC:
-- Calibres 2.5", 3", 4", 5", 6" com heightM, spreadDeg, prefireSec, starCount, breakSpeed, safetyM baseados nos dados medidos
-- Derivar starCount dos pesos de efeito (proporcional a effect charge)
-- Usar fuse times medidos como prefireSec
+### 1. Strobe oscillatory model em pyroNoise.ts
+Adicionar funcao `strobeFlicker(seed, time, smolderDuration, burnDuration)`:
+- Ciclo alternado: smolder (brightness 0.02-0.08) → burn (brightness 0.9-1.4)
+- `smolderDuration` = 0.3-0.8s, `burnDuration` = 0.05-0.15s (baseado na descricao do livro)
+- Duty cycle variavel por seed para organicidade
 
-### 2. Atualizar pyroPhysics.ts com dados NEB/T M-251
-- Adicionar tabela `MIN_BURST_HEIGHT_NEBT` com alturas minimas regulatorias
-- Funcao `getMinBurstHeight(outerDiameterMm)` para validacao de conformidade
-- Ajustar BREAK_HEIGHT para alinhar com alturas reais medidas
+### 2. Novos compounds em FLICKER_BY_COMPOUND
+- **magnalium**: base 0.40, amplitude 0.52, popStrength 0.58 (50/50 Al/Mg — extremamente reativo, burn irregular)
+- **zinc**: base 0.55, amplitude 0.38, popStrength 0.35 (moderate, bluish sparks)
+- **antimony**: base 0.58, amplitude: 0.40, popStrength 0.42 (bengal fire, bright with blue tinge)
+- **sulfur**: base 0.65, amplitude 0.30, popStrength 0.25 (low ignition temp, steady burn)
+- **magnaliumDragonEgg**: usar strobeFlicker com smolder/burn cycle
 
-### 3. Calibrar composicao quimica em pyroNoise.ts
-Atualizar `getFlickerParams()` com dados reais PIROEX:
-- Strontium red (SrCO3 10-23%): burn rate lento, flicker irregular
-- Brocade/Ti (25% titanium): burn rate muito alto, sparks brilhantes
-- Flash (KClO4 36% + Al 15%): burst intenso e curto
+### 3. Flash duration model em thermalColorRamp
+Adicionar parametro `flashDuration` ao thermalColorRamp:
+- Para compound "flash": white-hot phase = 80% da vida (nao 4%)
+- Transicao instantanea para charcoal (sem fase ember)
+- Modelar TNT equivalence 75%: bloom/HDR multiplicador 3.0x durante burn
 
-### 4. Adicionar Star Lighting Artnet8 ao wiredDmxEngine.ts
-Novo adaptador com specs do manual:
-- 8 saidas DMX (bidirecionais), baudRate via Art-Net/sACN (ethernet, nao serial)
-- Nota: este dispositivo usa Ethernet, nao USB serial — adicionar nota de compatibilidade
-
-### 5. Adicionar dados de cake 20mm ao pyroPhysics.ts
-- CAKE_PARTICLES_PER_SHOT para sub-1" (20mm = ~0.8"): 10-15 particulas
-- Fuse time: 6.2-7.3s para cake completo (300 shots)
+### 4. Combustion heat table em pyroPhysics.ts
+Adicionar tabela `COMBUSTION_HEAT_KCAL` para calibrar intensidade de brilho por metal:
+- Aluminum: 7400 kcal/g
+- Magnesium: 6000 kcal/g
+- Iron: 1600 kcal/g
+- Titanium: 4700 kcal/g
+- Charcoal: 7800 kcal/g (como carbono)
+- Sulfur: 2200 kcal/g
+Usar como multiplicador de `hdrBoost` no thermalColorRamp
 
 ## Arquivos Modificados
 
 | Arquivo | Acao |
 |---------|------|
-| `src/lib/manufacturerCalibration.ts` | Adicionar perfil PIROEX/Skyking com dados FFIC |
-| `src/lib/pyroPhysics.ts` | Tabela NEB/T M-251, ajustar break heights |
-| `src/lib/pyroNoise.ts` | Calibrar flicker com composicao quimica real |
-| `src/lib/wiredDmxEngine.ts` | Adicionar nota Artnet8 (ethernet-based) |
+| `src/lib/pyroNoise.ts` | Strobe oscillatory model, novos compounds (magnalium, zinc, antimony, sulfur) |
+| `src/lib/pyroPhysics.ts` | Tabela combustion heat por metal |
 
 ## Ordem de Execucao
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | manufacturerCalibration.ts — perfil PIROEX/Skyking |
-| 2 | pyroPhysics.ts — tabela NEB/T M-251 + break heights |
-| 3 | pyroNoise.ts — flicker calibrado por composicao real |
-| 4 | wiredDmxEngine.ts — nota Artnet8 |
-| 5 | Build verification |
+| 1 | pyroNoise.ts — strobeFlicker + novos compounds |
+| 2 | pyroNoise.ts — thermalColorRamp flash duration param |
+| 3 | pyroPhysics.ts — combustion heat table |
+| 4 | Build verification |
 
