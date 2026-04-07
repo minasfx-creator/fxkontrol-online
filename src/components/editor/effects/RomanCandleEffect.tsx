@@ -28,6 +28,8 @@ export default function RomanCandleEffect({
   caliber = 2,
   angleOffset = 0,
   formulationId,
+  launchHeading = 0,
+  launchPitch = 85,
 }: {
   position: [number, number, number];
   color: string;
@@ -36,6 +38,8 @@ export default function RomanCandleEffect({
   caliber?: number;
   angleOffset?: number;
   formulationId?: string;
+  launchHeading?: number;
+  launchPitch?: number;
 }) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailLinesRef = useRef<THREE.LineSegments>(null);
