@@ -21,6 +21,7 @@ import {
   hexToCompound,
   getEffectById,
   getWindForce,
+  getWindAtPosition,
   getAdaptiveExposure,
   GRAVITY,
   _posQuat, _effQuat, _pitchQuat, _posEuler, _effEuler, _launchDir, _pitchAxis,
