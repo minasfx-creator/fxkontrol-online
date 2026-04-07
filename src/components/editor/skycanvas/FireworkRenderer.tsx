@@ -233,6 +233,16 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           vz = Math.sin(armPhi) * Math.sin(armTheta + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
           break;
         }
+        case 'heart': {
+          const t_h = (i / STAR_COUNT) * Math.PI * 2;
+          const hx = 16 * Math.pow(Math.sin(t_h), 3);
+          const hy = 13 * Math.cos(t_h) - 5 * Math.cos(2 * t_h) - 2 * Math.cos(3 * t_h) - Math.cos(4 * t_h);
+          const scale_h = breakSpeed * 0.045;
+          vx = hx * scale_h + (Math.random() - 0.5) * 0.8;
+          vy = hy * scale_h + (Math.random() - 0.5) * 0.8;
+          vz = (Math.random() - 0.5) * breakSpeed * 0.06;
+          break;
+        }
         default:
           vx = sx * breakSpeed * speedVar; vy = sy * breakSpeed * speedVar * 0.9 + 0.6; vz = sz * breakSpeed * speedVar; break;
       }
@@ -317,7 +327,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       
       const fade = Math.max(0, 1 - starAge);
       const fadeSmooth = fade * fade * (3 - 2 * fade);
-      const fadeCubed = fade * fade * fade;
+      // Exponential decay for peony/chrysanthemum — holds brightness longer then drops naturally
+      const useExpFade = pattern === 'peony' || pattern === 'chrysanthemum';
+      const fadeCubed = useExpFade ? Math.exp(-starAge * 3.5) : fade * fade * fade;
       
       const px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
       const py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
@@ -444,16 +456,25 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         <lineBasicMaterial vertexColors transparent opacity={Math.min(1, 0.8 * tailFactor)} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} linewidth={3} />
       </lineSegments>
       
-      {progress < 0.06 && (
+      {/* Core flash — bright white, 80ms */}
+      {progress < 0.08 && (
         <mesh renderOrder={100}>
-          <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 12), 8, 8]} />
-          <meshBasicMaterial color="#FFFFEE" transparent opacity={0.5 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+          <sphereGeometry args={[flashSize * 0.3 * (1 + progress * 15), 8, 8]} />
+          <meshBasicMaterial color="#FFFDF0" transparent opacity={0.7 * (1 - progress / 0.08)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
         </mesh>
       )}
-      {progress < 0.12 && (
+      {/* Halo — color-synced, 150ms */}
+      {progress < 0.15 && (
         <mesh renderOrder={99}>
-          <sphereGeometry args={[flashSize * (1 + progress * 12), 8, 8]} />
-          <meshBasicMaterial color={color} transparent opacity={0.2 * Math.pow(1 - progress / 0.12, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+          <sphereGeometry args={[flashSize * (1 + progress * 10), 8, 8]} />
+          <meshBasicMaterial color={color} transparent opacity={0.35 * Math.pow(1 - progress / 0.15, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+        </mesh>
+      )}
+      {/* Shockwave ring — expanding white ring, 200ms */}
+      {progress < 0.20 && (
+        <mesh renderOrder={98} rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[flashSize * progress * 18, flashSize * progress * 18 + flashSize * 0.15, 32]} />
+          <meshBasicMaterial color="#FFFFFF" transparent opacity={0.3 * Math.pow(1 - progress / 0.20, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />
         </mesh>
       )}
     </group>
