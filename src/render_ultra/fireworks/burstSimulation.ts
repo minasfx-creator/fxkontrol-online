@@ -146,6 +146,22 @@ export function generateBurst(
       vx = Math.sin(phi) * Math.cos(theta) * speed * 0.6;
       vy = Math.abs(Math.sin(phi) * Math.sin(theta)) * speed * 0.4 + cfg.velocity * 0.35; // upward bias
       vz = Math.cos(phi) * speed * 0.6;
+    } else if (pattern === 'falling_leaves') {
+      // Falling leaves: wide spread, heavy tumbling drag — stars flutter down
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = cfg.velocity * scale * (0.6 + Math.random() * 0.4);
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed * 0.5 + cfg.velocity * 0.08; // slight upward
+      vz = Math.cos(phi) * speed;
+    } else if (pattern === 'glitter') {
+      // Glitter: spherical burst, delayed secondary scatter handled in renderer
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = cfg.velocity * scale * (0.5 + Math.random() * 0.5);
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.12;
+      vz = Math.cos(phi) * speed;
     } else {
       // Spherical burst (peony, etc.)
       const theta = Math.random() * Math.PI * 2;
