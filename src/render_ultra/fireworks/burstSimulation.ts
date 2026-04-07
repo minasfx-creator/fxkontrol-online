@@ -28,6 +28,8 @@ const BURST_CONFIGS: Record<BurstPattern, BurstConfig> = {
   kamuro:        { starCount: 300, velocity: 18, spread: 1.0, tailFactor: 2.0, gravityMult: 1.5, symmetry: 0 },
   brocade:       { starCount: 250, velocity: 25, spread: 1.0, tailFactor: 1.8, gravityMult: 1.3, symmetry: 0 },
   dragon_egg:    { starCount: 40,  velocity: 15, spread: 0.6, tailFactor: 0.3, gravityMult: 1.8, symmetry: 0 },
+  multi_break:   { starCount: 120, velocity: 26, spread: 1.0, tailFactor: 0.5, gravityMult: 1.0, symmetry: 0 },
+  time_rain:     { starCount: 100, velocity: 22, spread: 0.9, tailFactor: 0.2, gravityMult: 0.3, symmetry: 0 },
 };
 
 /**
