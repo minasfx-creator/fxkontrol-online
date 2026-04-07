@@ -148,18 +148,78 @@ export function getFlickerParams(compound: string): FlickerParams {
   return { base: 0.62, amplitude: 0.32, popStrength: 0.32 };
 }
 
+/**
+ * Strobe oscillatory flicker — models real chemical strobe combustion.
+ * Alternates between "smolder" phase (near-dark) and "intense burn" phase.
+ * Based on Chemistry of Pyrotechnics: strobe stars use oscillatory combustion
+ * where a dark/smolder layer alternates with a bright flash layer.
+ * @param seed - per-particle seed
+ * @param time - elapsed time in seconds
+ * @param smolderDuration - avg duration of dark phase (0.3-0.8s)
+ * @param burnDuration - avg duration of bright phase (0.05-0.15s)
+ * @returns brightness 0.02-1.4
+ */
+export function strobeFlicker(
+  seed: number,
+  time: number,
+  smolderDuration = 0.5,
+  burnDuration = 0.1,
+): number {
+  const n = hash01(seed + 4.73);
+  // Per-particle variation in cycle timing
+  const smolder = smolderDuration * (0.7 + n * 0.6);
+  const burn = burnDuration * (0.6 + n * 0.8);
+  const cycle = smolder + burn;
+
+  // Phase offset per particle for desync
+  const phase = hash01(seed + 9.31) * cycle;
+  const tInCycle = ((time + phase) % cycle);
+
+  if (tInCycle < smolder) {
+    // Smolder phase — near dark with tiny fluctuations
+    const microNoise = Math.sin(time * (80 + n * 40) + seed * 7.3) * 0.03;
+    return 0.02 + Math.abs(microNoise);
+  }
+  // Burn phase — intense flash with rapid flutter
+  const burnProgress = (tInCycle - smolder) / burn;
+  const envelope = Math.sin(burnProgress * Math.PI); // smooth rise-fall within burn
+  const flutter = 1 + Math.sin(time * (200 + n * 100)) * 0.15;
+  return (0.9 + envelope * 0.5) * flutter;
+}
+
 export function thermalColorRamp(
   baseR: number,
   baseG: number,
   baseB: number,
   lifeRatio: number,
   hdrBoost = 1.5,
+  isFlash = false,
 ): { r: number; g: number; b: number } {
-  // Clamp lifeRatio
   const t = Math.max(0, Math.min(1, lifeRatio));
 
+  // Flash powder special path: burns in milliseconds, almost entirely white-hot
+  // TNT equivalence ~75%, Al combustion 7400 kcal/g — extreme HDR
+  if (isFlash) {
+    const flashBoost = hdrBoost * 3.0;
+    if (t < 0.80) {
+      // 80% of life is white-hot burn (milliseconds in real life)
+      const fadeIn = Math.min(1, t / 0.02);
+      return {
+        r: 2.0 * flashBoost * fadeIn,
+        g: 1.8 * flashBoost * fadeIn,
+        b: 1.5 * flashBoost * fadeIn,
+      };
+    }
+    // Instant collapse to charcoal — no ember phase
+    const p = (t - 0.80) / 0.20;
+    return {
+      r: 2.0 * flashBoost * (1 - p) + 0.05 * p,
+      g: 1.8 * flashBoost * (1 - p) + 0.03 * p,
+      b: 1.5 * flashBoost * (1 - p) + 0.01 * p,
+    };
+  }
+
   if (t < 0.04) {
-    // White-hot birth phase
     const p = t / 0.04;
     return {
       r: (1.4 + (1 - p) * 0.6) * hdrBoost,
@@ -168,7 +228,6 @@ export function thermalColorRamp(
     };
   }
   if (t < 0.15) {
-    // White-hot → saturated
     const p = (t - 0.04) / 0.11;
     return {
       r: 1.4 * hdrBoost * (1 - p) + baseR * 1.5 * p,
@@ -177,7 +236,6 @@ export function thermalColorRamp(
     };
   }
   if (t < 0.55) {
-    // Saturated → base color
     const p = (t - 0.15) / 0.4;
     return {
       r: baseR * 1.5 * (1 - p) + baseR * 1.2 * p,
@@ -186,7 +244,6 @@ export function thermalColorRamp(
     };
   }
   if (t < 0.80) {
-    // Base → ember (warm orange-red)
     const p = (t - 0.55) / 0.25;
     return {
       r: baseR * 1.2 * (1 - p) + (baseR * 0.5 + 0.25) * p,
@@ -194,11 +251,39 @@ export function thermalColorRamp(
       b: baseB * 1.2 * (1 - p) + (baseB * 0.05) * p,
     };
   }
-  // Ember → charcoal
   const p = (t - 0.80) / 0.20;
   return {
     r: (baseR * 0.5 + 0.25) * (1 - p) + 0.12 * p,
     g: (baseG * 0.15 + 0.05) * (1 - p) + 0.06 * p,
     b: (baseB * 0.05) * (1 - p) + 0.02 * p,
   };
+}
+
+/**
+ * Combustion heat per gram (kcal/g) for common pyrotechnic metals.
+ * Source: Chemistry of Pyrotechnics + Complete Book of Flash Powder.
+ * Use as HDR boost multiplier: normalize to aluminum (max) → 0-1 scale.
+ */
+export const COMBUSTION_HEAT_KCAL: Record<string, number> = {
+  aluminum: 7400,
+  magnesium: 6000,
+  magnalium: 6700, // weighted avg of Al+Mg
+  titanium: 4700,
+  iron: 1600,
+  charcoal: 7800, // as carbon
+  sulfur: 2200,
+  zinc: 1300,
+  antimony: 1800, // Sb2S3 decomposition
+};
+
+/**
+ * Get HDR boost multiplier based on metal combustion heat.
+ * Normalized: aluminum = 1.0, others proportionally lower.
+ */
+export function getCombustionHdrBoost(compound: string): number {
+  const key = compound.toLowerCase().replace(/[^a-z]/g, '');
+  for (const [k, heat] of Object.entries(COMBUSTION_HEAT_KCAL)) {
+    if (key.includes(k)) return heat / 7400; // normalize to Al
+  }
+  return 0.7; // default moderate
 }
