@@ -192,7 +192,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       const phi = Math.acos(2 * Math.random() - 1);
       let vx: number, vy: number, vz: number;
       let life = starLife * (0.6 + Math.random() * 0.4);
-      const speedVar = Math.pow(0.4 + Math.random() * 0.6, 0.7);
+      const speedVar = Math.pow(0.4 + Math.random() * 0.6, 0.5); // was 0.7 — more uniform distribution
       tp[i] = Math.random() * Math.PI * 2;
       sparkle[i] = Math.random() * 999 + i;
 
