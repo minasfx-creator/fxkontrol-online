@@ -337,7 +337,7 @@ function Index() {
         {activePanel === 'fleet' && <FleetManagementPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'geofence' && <GeofencePanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'storyboard' && <StoryboardPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'showcontrol' && <ShowControlPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'showcontrol' && <ShowCommanderPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'inspector' && <ShowInspectorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'lightprogram' && <LightProgramPanel />}
         {activePanel === 'safetycheck' && <SafetyCheckPanel />}
