@@ -21,6 +21,7 @@ import {
   hexToCompound,
   getEffectById,
   getWindForce,
+  getWindAtPosition,
   getAdaptiveExposure,
   GRAVITY,
   _posQuat, _effQuat, _pitchQuat, _posEuler, _effEuler, _launchDir, _pitchAxis,
@@ -298,7 +299,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     const t = progress * (starLife * 0.88);
     const trailDt = (pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade') ? 0.020
       : pattern === 'palm' ? 0.025 : 0.035;
-    const w = getWindForce();
+    const w = getWindForce('ember', position[1]);
     const time = clock.getElapsedTime();
     const _adaptiveExposure = getAdaptiveExposure();
     
@@ -400,12 +401,28 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         const t0 = Math.max(0, t - s * trailDt);
         const t1 = Math.max(0, t - (s + 1) * trailDt);
         const base2 = (i * TRAIL_LENGTH + s) * 6;
-        tPos[base2] = dragPos(vx, t0, dragCoeff) + w[0] * t0 * t0 * 0.3;
-        tPos[base2 + 1] = dragPos(vy, t0, dragCoeff) + 0.5 * GRAVITY * gravityMult * t0 * t0;
-        tPos[base2 + 2] = dragPos(vz, t0, dragCoeff) + w[2] * t0 * t0 * 0.3;
-        tPos[base2 + 3] = dragPos(vx, t1, dragCoeff) + w[0] * t1 * t1 * 0.3;
-        tPos[base2 + 4] = dragPos(vy, t1, dragCoeff) + 0.5 * GRAVITY * gravityMult * t1 * t1;
-        tPos[base2 + 5] = dragPos(vz, t1, dragCoeff) + w[2] * t1 * t1 * 0.3;
+        
+        // Trail segment start — sample wind at actual star position for curvature
+        const sx0 = dragPos(vx, t0, dragCoeff);
+        const sy0 = dragPos(vy, t0, dragCoeff) + 0.5 * GRAVITY * gravityMult * t0 * t0;
+        const sz0 = dragPos(vz, t0, dragCoeff);
+        const w0 = isTrailingPattern 
+          ? getWindAtPosition(position[0] + sx0, position[1] + sy0, position[2] + sz0, 'ember')
+          : w;
+        tPos[base2] = sx0 + w0[0] * t0 * t0 * 0.3;
+        tPos[base2 + 1] = sy0;
+        tPos[base2 + 2] = sz0 + w0[2] * t0 * t0 * 0.3;
+        
+        // Trail segment end
+        const sx1 = dragPos(vx, t1, dragCoeff);
+        const sy1 = dragPos(vy, t1, dragCoeff) + 0.5 * GRAVITY * gravityMult * t1 * t1;
+        const sz1 = dragPos(vz, t1, dragCoeff);
+        const w1 = isTrailingPattern
+          ? getWindAtPosition(position[0] + sx1, position[1] + sy1, position[2] + sz1, 'ember')
+          : w;
+        tPos[base2 + 3] = sx1 + w1[0] * t1 * t1 * 0.3;
+        tPos[base2 + 4] = sy1;
+        tPos[base2 + 5] = sz1 + w1[2] * t1 * t1 * 0.3;
         
         const segFrac = s / TRAIL_LENGTH;
         const segFade = fadeCubed * Math.pow(1 - segFrac, 2.5) * 0.95; // was 0.7 — brighter trails

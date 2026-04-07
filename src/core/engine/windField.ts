@@ -65,6 +65,8 @@ export interface WindFieldConfig {
   turbulenceIntensity: number;
   /** Turbulence spatial scale (lower = more local variation) */
   turbulenceScale: number;
+  /** Enable altitude-based wind shearing (default true) */
+  altitudeShearing: boolean;
 }
 
 const DEFAULT_CONFIG: WindFieldConfig = {
@@ -74,6 +76,7 @@ const DEFAULT_CONFIG: WindFieldConfig = {
   gustFrequency: 0.2,
   turbulenceIntensity: 0.3,
   turbulenceScale: 0.05,
+  altitudeShearing: true,
 };
 
 // ── Wind Field Class ────────────────────────────────────────────────
@@ -108,25 +111,42 @@ class WindField {
     x: number, y: number, z: number,
     particleType: WindParticleType = 'ember',
   ): [number, number, number] {
-    const { baseSpeed, directionDeg, gustMax, gustFrequency, turbulenceIntensity, turbulenceScale } = this.config;
+    const { baseSpeed, directionDeg, gustMax, gustFrequency, turbulenceIntensity, turbulenceScale, altitudeShearing } = this.config;
     const influence = WIND_INFLUENCE[particleType];
 
-    // Base wind direction (horizontal plane)
-    const rad = (directionDeg * Math.PI) / 180;
-    const baseX = Math.sin(rad) * baseSpeed;
-    const baseZ = Math.cos(rad) * baseSpeed;
+    // Altitude shearing: wind strength and direction vary by height
+    let altMult = 1.0;
+    let dirOffset = 0; // degrees
+    if (altitudeShearing) {
+      if (y < 50) {
+        altMult = 0.3 + (y / 50) * 0.2; // 0.3–0.5 near ground
+      } else if (y < 150) {
+        altMult = 0.5 + ((y - 50) / 100) * 0.5; // 0.5–1.0
+      } else if (y < 400) {
+        altMult = 1.0; // nominal
+      } else {
+        altMult = 1.0 + Math.min(0.3, (y - 400) / 1000); // 1.0–1.3
+        dirOffset = Math.min(15, (y - 400) / 100 * 2.5); // up to 15° rotation
+      }
+    }
+
+    // Base wind direction with altitude shearing rotation
+    const rad = ((directionDeg + dirOffset) * Math.PI) / 180;
+    const effectiveSpeed = baseSpeed * altMult;
+    const baseX = Math.sin(rad) * effectiveSpeed;
+    const baseZ = Math.cos(rad) * effectiveSpeed;
 
     // Gusts: low-frequency noise modulating speed
     const gustNoise = fbm(this.time * gustFrequency + 17.3, 2);
-    const gustFactor = gustNoise * gustMax;
+    const gustFactor = gustNoise * gustMax * altMult;
     const gustX = Math.sin(rad) * gustFactor;
     const gustZ = Math.cos(rad) * gustFactor;
 
     // Turbulence: spatially varying high-frequency noise
     const turbScale = turbulenceScale;
-    const turbX = (fbm(x * turbScale + this.time * 0.7 + 0.0, 3) - 0.5) * 2 * turbulenceIntensity * baseSpeed;
-    const turbY = (fbm(y * turbScale + this.time * 0.5 + 33.7, 3) - 0.5) * 2 * turbulenceIntensity * baseSpeed * 0.3; // vertical turbulence weaker
-    const turbZ = (fbm(z * turbScale + this.time * 0.6 + 77.1, 3) - 0.5) * 2 * turbulenceIntensity * baseSpeed;
+    const turbX = (fbm(x * turbScale + this.time * 0.7 + 0.0, 3) - 0.5) * 2 * turbulenceIntensity * effectiveSpeed;
+    const turbY = (fbm(y * turbScale + this.time * 0.5 + 33.7, 3) - 0.5) * 2 * turbulenceIntensity * effectiveSpeed * 0.3;
+    const turbZ = (fbm(z * turbScale + this.time * 0.6 + 77.1, 3) - 0.5) * 2 * turbulenceIntensity * effectiveSpeed;
 
     return [
       (baseX + gustX + turbX) * influence,

@@ -20,6 +20,7 @@ export {
   hexToCompound,
   getEffectById,
   getWindForce,
+  getWindAtPosition,
   getAdaptiveExposure,
   setAdaptiveExposureValue,
   getSkyScatterUniforms,

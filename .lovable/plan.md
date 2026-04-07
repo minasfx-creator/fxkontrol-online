@@ -1,73 +1,64 @@
 
-
-# Ciclo de Realismo #6 — Smoke Pós-Burst, Ember Physics, Star Flicker Orgânico
+# Ciclo de Realismo #7 — Trail Physics, Wind-Shearing, Sound-Sync Delay
 
 ## Problemas Identificados
 
 | # | Problema | Localização |
 |---|---|---|
-| 1 | **SmokeTrail e EmberParticles são importados mas NUNCA usados** no FireworkBurst ou TimelineEffects — dead imports. Após o burst, não há fumaça residual nem embers caindo, quebrando completamente o realismo pós-explosão | `FireworkRenderer.tsx:44-45` |
-| 2 | **Ember physics sem gravidade quadrática** — usa `4.9 * age² * 0.08` (constante fixa) em vez de integração real com `GRAVITY`. Não responde ao vento proporcionalmente ao peso das partículas | `EmberParticles.tsx:74` |
-| 3 | **Star flicker idêntico para todos os patterns** — trailing patterns usam `sin()` simples (linha 350), non-trailing usam `temporalFlicker` com parâmetros fixos. Não há variação por composição química (strontium flicka diferente de barium) | `FireworkRenderer.tsx:348-353` |
-| 4 | **SmokeTrail usa 80-120 meshes individuais** com `sphereGeometry` — extremamente pesado. Cada puff = 1 draw call. Para smoke pós-burst precisamos de abordagem mais leve | `SmokeTrail.tsx:168-178` |
-| 5 | **Ember reignition** usa `Math.sin()` — previsível e periódico. Deveria usar hash noise para picos estocásticos | `EmberParticles.tsx:89` |
+| 1 | **Trails são segmentos retos** — cada segmento de trail usa `dragPos()` com o mesmo `dragCoeff` e `w[]` constante. O trail não segue a curvatura real da trajetória (gravidade + vento acumulado). Resultado: willow/kamuro trails parecem retas em vez de arcos parabólicos | `FireworkRenderer.tsx:399-408` |
+| 2 | **Wind é uniforme** — `getWindForce()` chama `windField.sample(0, 50, 0)` (posição fixa) via `getGlobalWind()`. Não há variação por altitude. Na realidade, vento é mais forte em altitude e muda de direção — wind shearing | `sharedState.tsx:126-138`, `windField.ts:142-143` |
+| 3 | **Sem delay de som por distância** — em shows reais, explosões distantes têm delay audível (~3s/km). A câmera pode estar a 200-3000m dos fogos. Sem esse delay, o som parece artificial | Não implementado |
 
 ## Soluções
 
-### 1. Integrar Smoke + Embers no FireworkBurst (pós-burst)
+### 1. Trail physics com curvatura real
 **Arquivo**: `FireworkRenderer.tsx`
 
-Adicionar ao JSX do FireworkBurst, após o shockwave ring:
-- **Smoke pós-burst**: renderizar `SmokeTrail` quando `progress > 0.6` (fase final do burst), herdando posição e cor do burst. Usar `caliber` para escalar densidade.
-- **Ember particles**: renderizar `EmberParticles` quando `progress > 0.3`, com `spreadRadius = caliber * 3` e `startHeight` baseado na posição Y do burst.
+O trail já usa `dragPos()` para posição — mas o vento aplicado é `w[0] * t² * 0.3` com `w` constante. Para curvatura real:
+- Usar `windField.sample(px, py, pz)` por segmento de trail, passando a posição real da estrela naquele instante
+- Isso faz trails de willow curvarem com o vento em vez de derivar linearmente
+- Custo: ~STAR_COUNT * TRAIL_LENGTH lookups adicionais, mas `windField.sample()` é hash-based (barato)
 
-### 2. Ember physics com gravidade real e vento
-**Arquivo**: `EmberParticles.tsx`
+### 2. Wind-shearing por altitude
+**Arquivo**: `windField.ts`
 
-- Substituir `4.9 * age² * 0.08` por `0.5 * 9.81 * age²` (gravidade real)
-- Adicionar arrasto quadrático: `velocity *= (1 - drag * speed * dt)` onde drag varia por tamanho da partícula
-- Aumentar influência do vento de `0.05` para `0.15` (embers são leves)
-- Substituir reignition `Math.sin()` por `hash01(seed + time * 3)` para picos estocásticos
+Adicionar multiplicador de altitude ao `sample()`:
+- Abaixo de 50m: wind × 0.3 (protegido por terreno/prédios)
+- 50-150m: interpolação linear 0.3 → 1.0
+- 150-400m: wind × 1.0 (full speed)
+- Acima de 400m: wind × 1.2 + rotação de direção de 15° (jet stream shearing)
+- Adicionar `altitudeShearing: boolean` ao config (default true)
 
-### 3. Star flicker orgânico por composição química
-**Arquivo**: `FireworkRenderer.tsx`
+### 3. Sound-sync delay por distância
+**Arquivo**: Novo `src/lib/soundDelay.ts` + integração em `FireworkRenderer.tsx`
 
-Diferenciar flicker parameters por cor/composição:
-- **Strontium (red)**: base 0.55, amplitude 0.40, popStrength 0.45 — combustão irregular
-- **Barium (green)**: base 0.70, amplitude 0.25, popStrength 0.20 — queima mais estável
-- **Copper (blue)**: base 0.60, amplitude 0.35, popStrength 0.38 — moderadamente instável
-- **Titanium/Mg (white/silver)**: base 0.50, amplitude 0.45, popStrength 0.50 — muito irregular
-- Trailing patterns: substituir `sin()` simples por `temporalFlicker` com amplitude reduzida (0.15) para brilho mais constante com micro-variações
+- Calcular distância câmera→burst: `d = sqrt((cam.x - burst.x)² + ...)`
+- Speed of sound: 343 m/s
+- Delay: `d / 343` segundos
+- Aplicar delay ao `progress` do burst visual: **não** — o visual é correto, o que precisa de delay é o SOM
+- Exportar `getSoundDelay(cameraPos, burstPos)` para uso futuro no sistema de áudio
+- Por enquanto, expor como helper + aplicar no flash visual (flash é o que sincroniza percepção de "instante da explosão")
 
-### 4. Smoke pós-burst leve (InstancedMesh em vez de meshes individuais)
-**Arquivo**: `SmokeTrail.tsx`
+### 4. getWindForce com altitude
+**Arquivo**: `sharedState.tsx`
 
-Converter de N meshes individuais para `InstancedMesh` com `sphereGeometry` compartilhado:
-- 1 draw call em vez de 80-120
-- Usar `instanceMatrix` e `instanceColor` para posição/cor por partícula
-- Opacity via uniform global (aproximação aceitável para smoke difuso)
-
-### 5. pyroNoise — flicker params lookup por compound
-**Arquivo**: `pyroNoise.ts`
-
-Adicionar função `getFlickerParams(compound: string)` que retorna `{base, amplitude, popStrength}` calibrados por composição química.
+Modificar `getWindForce()` para aceitar posição Y opcional e passar para `windField.sample()` com coordenada real em vez de `(0, 50, 0)`.
 
 ## Arquivos Modificados
 
 | Arquivo | Ação |
 |---|---|
-| `src/components/editor/skycanvas/FireworkRenderer.tsx` | Integrar smoke + embers no burst, flicker por composição |
-| `src/components/editor/effects/EmberParticles.tsx` | Gravidade real, arrasto quadrático, vento, reignition estocástico |
-| `src/components/editor/effects/SmokeTrail.tsx` | Converter para InstancedMesh (1 draw call) |
-| `src/lib/pyroNoise.ts` | Adicionar `getFlickerParams()` por compound |
+| `src/core/engine/windField.ts` | Wind-shearing por altitude |
+| `src/components/editor/skycanvas/sharedState.tsx` | getWindForce com altitude |
+| `src/components/editor/skycanvas/FireworkRenderer.tsx` | Trail curvatura real, wind por posição |
+| `src/lib/soundDelay.ts` | Novo — helper de delay sonoro por distância |
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |---|---|
-| 1 | pyroNoise.ts — adicionar getFlickerParams por compound |
-| 2 | EmberParticles.tsx — gravidade real, arrasto, vento, reignition |
-| 3 | SmokeTrail.tsx — converter para InstancedMesh |
-| 4 | FireworkRenderer.tsx — integrar smoke/embers + flicker orgânico |
+| 1 | windField.ts — altitude shearing |
+| 2 | sharedState.tsx — getWindForce com Y |
+| 3 | soundDelay.ts — helper |
+| 4 | FireworkRenderer.tsx — trail curvatura + wind por posição |
 | 5 | Build verification |
-
