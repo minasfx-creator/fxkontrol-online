@@ -632,12 +632,12 @@ export function TimelineEffects() {
       {cappedEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
         const effectPos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const pt = effect.partType;
-        const isTrailing = pt === 'willow' || pt === 'kamuro' || pt === 'brocade' || pt === 'palm';
+        const patternStr = String(pt || '');
+        const isTrailing = patternStr === 'willow' || patternStr === 'kamuro' || patternStr === 'brocade' || patternStr === 'palm';
         const cullRadius = effect.type === 'firework' ? (caliber || 4) * (isTrailing ? 40 : 25) : 50;
         if (!isSphereInFrustum(effectPos[0], effectPos[1], effectPos[2], cullRadius)) return null;
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
-        const pt = effect.partType;
 
         if (inPrefire) {
           return (
