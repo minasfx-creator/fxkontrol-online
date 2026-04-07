@@ -183,15 +183,25 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
       { id: 'eff-c16-seq', name: 'SEQUENCE', description: 'Sequential fire 10ms interval', duration: 1.0, channelValues: [] },
     ],
   },
-  // ── FXbutton ──
+  // ── FXbutton (device-specific presets per manual) ──
   {
     id: 'lib-fxbutton', name: 'FXBUTTON', manufacturer: 'SHOWVEN', dmxChannels: 36, category: 'showven',
+    dmxModes: ['sparkular', 'cflamer', 'co2jet', 'confetti'],
     effects: [
       { id: 'eff-fxb-sync', name: 'SYNC', description: 'Synchronous firing all devices', duration: 2.0, channelValues: [] },
       { id: 'eff-fxb-cte', name: 'CENTER→ENDS', description: 'Center to ends wave', duration: 2.0, channelValues: [] },
       { id: 'eff-fxb-etc', name: 'ENDS→CENTER', description: 'Ends to center wave', duration: 2.0, channelValues: [] },
       { id: 'eff-fxb-ltr', name: 'L→R', description: 'Left to right sequence', duration: 2.0, channelValues: [] },
       { id: 'eff-fxb-rtl', name: 'R→L', description: 'Right to left sequence', duration: 2.0, channelValues: [] },
+      // Sparkular mode: CH1=Height, CH2=Duration
+      { id: 'eff-fxb-spark-h10', name: 'SPARK H10', description: 'Sparkular max height', duration: 2.5, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }] },
+      { id: 'eff-fxb-spark-h5', name: 'SPARK H5', description: 'Sparkular mid height', duration: 2.0, channelValues: [{ channel: 1, value: 128 }, { channel: 2, value: 200 }] },
+      // cFlamer mode: CH1=Timer, CH2=Fire
+      { id: 'eff-fxb-flame-jet', name: 'FLAME JET', description: 'cFlamer fire via FXbutton', duration: 0.5, channelValues: [{ channel: 1, value: 200 }, { channel: 2, value: 200 }] },
+      // CO2 Jet mode
+      { id: 'eff-fxb-co2', name: 'CO2 BLAST', description: 'CO2 Jet full blast', duration: 0.5, channelValues: [{ channel: 1, value: 255 }] },
+      // Confetti mode
+      { id: 'eff-fxb-confetti', name: 'CONFETTI SHOT', description: 'Confetti single shot', duration: 1.0, channelValues: [{ channel: 1, value: 255 }] },
     ],
   },
   // ── ZK6200/6300 Host Controllers ──
