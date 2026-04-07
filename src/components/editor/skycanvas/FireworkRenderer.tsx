@@ -170,7 +170,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     if (pattern === 'palm' || pattern === 'brocade') return baseLife * 1.6;
     if (pattern === 'chrysanthemum') return baseLife * 1.2;
     if (pattern === 'dahlia') return baseLife * 0.5;
-    if (pattern === 'dragon_egg') return baseLife * 1.8; // heavy stars, long strobe life
+    if (pattern === 'dragon_egg') return baseLife * 1.8;
+    if (pattern === 'multi_break') return baseLife * 1.4; // primary + secondary break phases
+    if (pattern === 'time_rain') return baseLife * 4.0; // very long: hang + rain
     return baseLife;
   }, [caliber, pattern]);
   
