@@ -124,8 +124,16 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
         if (existingTimeline.length > 0) store.removeMultipleTimelineItems(existingTimeline);
         existingPositions.forEach(id => store.removePosition(id));
 
+        // ── Critical: sync geoAnchor with scene store so Google 3D Tiles move ──
         store.setGpsOrigin(preset.gps);
-        if (preset.sceneOverrides) scene.updateSettings(preset.sceneOverrides as any);
+        scene.updateSettings({
+          geoAnchorLat: preset.gps.lat,
+          geoAnchorLon: preset.gps.lng,
+          geoAnchorAlt: 0,
+          floatingOriginEnabled: true,
+          google3DTilesEnabled: true,
+          ...(preset.sceneOverrides as any),
+        });
 
         positions.forEach(p => store.addPosition(p));
 
@@ -143,6 +151,12 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
         toast.success(`${preset.flag} ${preset.name}`, {
           description: `${positions.length} posições · ${timelineItems.length} cues · ${Math.round(preset.duration / 60)} min`,
         });
+
+        // Start cinematic orbit after deploy
+        triggerOrbit([0, 0, 0], 300, 0.08, 250);
+        orbitTimer.current = setTimeout(() => {
+          stopOrbit();
+        }, 8000);
 
         setTimeout(() => setPhase('dissolve'), 1200);
       } catch (err) {
