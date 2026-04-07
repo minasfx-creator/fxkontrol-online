@@ -211,7 +211,7 @@ export default function MineEffect({
         const bt = (progress - bounceDelay) * 2.5;
         const bDrag = Math.exp(-0.12 * bt);
         posArr[i * 3] = vx * bt * bDrag + windX * bt * bt * 0.3;
-        posArr[i * 3 + 1] = Math.max(0, vy * bt * bDrag + 0.5 * GRAV * bt * bt * 0.5);
+        posArr[i * 3 + 1] = Math.max(0, vy * bt * bDrag + 0.5 * GRAV * bt * bt);
         posArr[i * 3 + 2] = vz * bt * bDrag + windZ * bt * bt * 0.3;
         // Amber/orange bounce spark color
         const sparkTwinkle = combustionFlicker(sparkleSeeds[i], time, 1.8);
