@@ -126,32 +126,36 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
       { id: 'eff-conf-low', name: 'LOW OUTPUT', description: 'Gentle confetti', duration: 3.0, channelValues: [{ channel: 1, value: 128 }, { channel: 2, value: 255 }] },
     ],
   },
-  // ── Maiman Laser Series ──
+  // ── Maiman Laser Series (FB3 16CH) ──
   {
-    id: 'lib-maiman-30', name: 'MAIMAN 30W LASER', manufacturer: 'SHOWVEN', dmxChannels: 12, category: 'showven',
+    id: 'lib-maiman-30', name: 'MAIMAN 30W LASER', manufacturer: 'SHOWVEN', dmxChannels: 16, category: 'showven',
+    dmxModes: ['FB3-16CH', 'FB4-39CH'],
     effects: [
-      { id: 'eff-laser-beam', name: 'BEAM', description: 'Single beam output', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 255 }] },
-      { id: 'eff-laser-fan', name: 'FAN', description: 'Fan beam pattern', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 4, value: 128 }] },
-      { id: 'eff-laser-anim', name: 'ANIMATION', description: 'Animated pattern from SD/FB4', duration: 10.0, channelValues: [{ channel: 1, value: 255 }, { channel: 5, value: 200 }] },
-      { id: 'eff-laser-scan', name: 'SCAN', description: 'Scanner mode', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 6, value: 180 }] },
+      { id: 'eff-laser-beam', name: 'BEAM', description: 'Single beam output', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }] },
+      { id: 'eff-laser-fan', name: 'FAN', description: 'Fan beam pattern', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }, { channel: 7, value: 200 }] },
+      { id: 'eff-laser-anim', name: 'ANIMATION', description: 'Animated pattern from SD/FB4', duration: 10.0, channelValues: [{ channel: 1, value: 1 }, { channel: 2, value: 1 }, { channel: 3, value: 128 }, { channel: 5, value: 255 }] },
+      { id: 'eff-laser-scan', name: 'SCAN', description: 'Scanner mode', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }, { channel: 13, value: 200 }] },
     ],
-    safetyChannel: 1, safetyValue: 0,
+    // FB3 16CH layout: Mode(1) Page(2) Cue(3) Speed(4) Dimmer(5) Zoom(6) SizeX(7) SizeY(8) AngleZ(9) PosX(10) PosY(11) VisiblePts(12) ScanRate(13) CueRelease(14) Reserved(15-16)
+    safetyChannel: 5, safetyValue: 0,
   },
   {
-    id: 'lib-maiman-40', name: 'MAIMAN 40W LASER', manufacturer: 'SHOWVEN', dmxChannels: 12, category: 'showven',
+    id: 'lib-maiman-40', name: 'MAIMAN 40W LASER', manufacturer: 'SHOWVEN', dmxChannels: 16, category: 'showven',
+    dmxModes: ['FB3-16CH', 'FB4-39CH'],
     effects: [
-      { id: 'eff-laser40-beam', name: 'BEAM', description: 'Single beam 40W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 255 }] },
-      { id: 'eff-laser40-fan', name: 'FAN', description: 'Fan pattern 40W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 4, value: 128 }] },
+      { id: 'eff-laser40-beam', name: 'BEAM', description: 'Single beam 40W', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }] },
+      { id: 'eff-laser40-fan', name: 'FAN', description: 'Fan pattern 40W', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }, { channel: 7, value: 200 }] },
     ],
-    safetyChannel: 1, safetyValue: 0,
+    safetyChannel: 5, safetyValue: 0,
   },
   {
-    id: 'lib-maiman-60', name: 'MAIMAN 60W LASER', manufacturer: 'SHOWVEN', dmxChannels: 12, category: 'showven',
+    id: 'lib-maiman-60', name: 'MAIMAN 60W LASER', manufacturer: 'SHOWVEN', dmxChannels: 16, category: 'showven',
+    dmxModes: ['FB3-16CH', 'FB4-39CH'],
     effects: [
-      { id: 'eff-laser60-beam', name: 'BEAM', description: 'Single beam 60W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 255 }] },
-      { id: 'eff-laser60-fan', name: 'FAN', description: 'Fan pattern 60W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 4, value: 128 }] },
+      { id: 'eff-laser60-beam', name: 'BEAM', description: 'Single beam 60W', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }] },
+      { id: 'eff-laser60-fan', name: 'FAN', description: 'Fan pattern 60W', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }, { channel: 7, value: 200 }] },
     ],
-    safetyChannel: 1, safetyValue: 0,
+    safetyChannel: 5, safetyValue: 0,
   },
   // ── DMX Relay R12 ──
   {
