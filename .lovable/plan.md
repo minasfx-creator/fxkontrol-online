@@ -1,28 +1,25 @@
 
+# Ciclo de Polish #20 — Ground Sparks, Smoke Trail, Burst Flash
 
-# Ciclo de Polish #19 — MineEffect Bug Fixes
+## Bugs e Melhorias Identificados
 
-## Bugs Encontrados no Codigo Atual
+| # | Problema | Arquivo | Fix |
+|---|----------|---------|-----|
+| 1 | **SparkShower sem ground interaction** — sparks que atingem Y=0 simplesmente desaparecem (L83-86) sem gerar bounce ou ground glow. Devem ricochetear com velocidade reduzida e emitir cor quente no impacto | `SparkShower.tsx` | Quando `y < 0`, refletir Y com restitution 0.3, adicionar ground glow orange na cor, reduzir lifetime |
+| 2 | **PrefireShell smoke trail fino demais** — mortar smoke puff (L171-180) usa sphere com opacity 0.06 fixa, trail shader `uSize` não escala com caliber suficientemente. Trail parece fio de cabelo em calibres grandes (8"+) | `PrefireShell.tsx` | Aumentar smoke puff opacity para 0.09, escalar radius com caliber², aumentar uSize para `1.8 + caliber * 0.5`, adicionar smoke density layers |
+| 3 | **ExplosionGlowSystem sem flash bloom inicial** — burst começa com intensity MAX_INTENSITY (0.75) constante, sem spike inicial que simule o flash da detonação. Falta o "pop" visual de iluminação | `ExplosionGlowSystem.tsx` | Adicionar flash spike nos primeiros 50ms (intensity 2.5x), decair exponencialmente para MAX_INTENSITY depois |
 
-| # | Bug | Linha | Fix |
-|---|-----|-------|-----|
-| 1 | **Bounce sparks: gravidade 50%** — `0.5 * GRAV * bt * bt * 0.5` aplica fator 0.25 em vez de 0.5. Sparks flutuam | L214 | Remover o `* 0.5` final |
-| 2 | **Smoke shader ignora size buffer** — vertex shader substituido com `3.0 *` hardcoded, entao `smokeSizeArr` calculado no loop (L378) nunca e usado | L507 | Usar `size` attribute no smoke shader |
-| 3 | **Smoke sem color tint** — fumaca sempre warm gray fixo (0.35, 0.3, 0.25), nao absorve cor da explosao | L373-375 | Misturar 25% de `baseColor` |
-| 4 | **Smoke termina em progress=0.7** — fumaca desaparece cedo demais | L350 | Estender para `progress < 0.92` |
-| 5 | **Rising smoke cloud falta depthWrite={false}** — L469 so tem `depthTest={false}` | L469 | Adicionar `depthWrite={false}` |
-| 6 | **Drip sem ember transition** — drips que batem no chao (`rawY < 0`) nao transitam para cor ember | L270-276 | Quando bounced, interpolar para charcoal/amber |
+## Arquivos Modificados
 
-## Arquivo Modificado
-
-`src/components/editor/effects/MineEffect.tsx` — 6 correcoes pontuais
+| Arquivo | Mudança |
+|---------|---------|
+| `SparkShower.tsx` | Ground bounce + glow ao atingir Y=0 |
+| `PrefireShell.tsx` | Smoke trail mais denso, uSize escalado, smoke layers |
+| `ExplosionGlowSystem.tsx` | Flash spike inicial no burst |
 
 ## Ordem
 
-1. Fix gravidade bounce (L214)
-2. Fix smoke shader size attribute (L507)
-3. Smoke color tint + duracao estendida (L350, L373)
-4. Rising smoke depthWrite (L469)
-5. Drip ember transition no bounce (L270)
-6. Build verification
-
+1. SparkShower — ground interaction
+2. PrefireShell — smoke trail thickness
+3. ExplosionGlowSystem — burst flash bloom
+4. Build verification
