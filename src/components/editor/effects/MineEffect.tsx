@@ -211,7 +211,7 @@ export default function MineEffect({
         const bt = (progress - bounceDelay) * 2.5;
         const bDrag = Math.exp(-0.12 * bt);
         posArr[i * 3] = vx * bt * bDrag + windX * bt * bt * 0.3;
-        posArr[i * 3 + 1] = Math.max(0, vy * bt * bDrag + 0.5 * GRAV * bt * bt * 0.5);
+        posArr[i * 3 + 1] = Math.max(0, vy * bt * bDrag + 0.5 * GRAV * bt * bt);
         posArr[i * 3 + 2] = vz * bt * bDrag + windZ * bt * bt * 0.3;
         // Amber/orange bounce spark color
         const sparkTwinkle = combustionFlicker(sparkleSeeds[i], time, 1.8);
@@ -268,12 +268,19 @@ export default function MineEffect({
         g = thermal.g;
         b = thermal.b;
       } else if (isDrip) {
-        // Drip: thermal ramp with ember bias
+        // Drip: thermal ramp with ember transition on ground bounce
         const dripLife = Math.min(1, age * 1.5);
         const thermal = thermalColorRamp(0.9, 0.35, 0.08, dripLife * 0.6 + 0.4, 0.8);
-        r = thermal.r;
-        g = thermal.g;
-        b = thermal.b;
+        if (bounced) {
+          const emberMix = Math.min(1, Math.abs(rawY) * 0.5);
+          r = thermal.r * (1 - emberMix) + charcoalColor.r * emberMix;
+          g = thermal.g * (1 - emberMix) + charcoalColor.g * emberMix;
+          b = thermal.b * (1 - emberMix) + charcoalColor.b * emberMix;
+        } else {
+          r = thermal.r;
+          g = thermal.g;
+          b = thermal.b;
+        }
       } else {
         // Spray: standard thermal color ramp
         const sprayLife = Math.min(1, age * 0.8);
@@ -347,11 +354,11 @@ export default function MineEffect({
     if (szAttr) szAttr.needsUpdate = true;
 
     // ── Ground smoke plume ──
-    if (smokePointsRef.current && progress > 0.03 && progress < 0.7) {
+    if (smokePointsRef.current && progress > 0.03 && progress < 0.92) {
       const smokePosArr = smokePosRef;
       const smokeColArr = smokeColRef;
       const smokeSizeArr = smokeSizeRef;
-      const smokeAge = (progress - 0.03) / 0.67;
+      const smokeAge = (progress - 0.03) / 0.89;
 
       for (let i = 0; i < SMOKE_COUNT; i++) {
         const svx = smokeVelocities[i * 3];
@@ -370,9 +377,9 @@ export default function MineEffect({
 
         // Warm gray smoke, fading with age
         const smokeFade = Math.max(0, 1 - smokeAge * 1.2) * 0.06;
-        smokeColArr[i * 3] = 0.35 * smokeFade;
-        smokeColArr[i * 3 + 1] = 0.3 * smokeFade;
-        smokeColArr[i * 3 + 2] = 0.25 * smokeFade;
+        smokeColArr[i * 3] = (0.35 * 0.75 + baseColor.r * 0.25) * smokeFade;
+        smokeColArr[i * 3 + 1] = (0.3 * 0.75 + baseColor.g * 0.25) * smokeFade;
+        smokeColArr[i * 3 + 2] = (0.25 * 0.75 + baseColor.b * 0.25) * smokeFade;
 
         // Expanding size
         smokeSizeArr[i] = (1.5 + hash01(seed) * 2.5) * (1 + smokeAge * 2);
@@ -466,7 +473,7 @@ export default function MineEffect({
       {progress > 0.02 && progress < 0.6 && (
         <mesh position={[0, progress * 4, 0]}>
           <sphereGeometry args={[0.6 + progress * 6, 8, 8]} />
-          <meshBasicMaterial color="#887766" transparent opacity={0.06 * (1 - progress / 0.6)} depthTest={false} />
+          <meshBasicMaterial color="#887766" transparent opacity={0.06 * (1 - progress / 0.6)} depthTest={false} depthWrite={false} />
         </mesh>
       )}
 
@@ -497,14 +504,15 @@ export default function MineEffect({
       </lineSegments>
 
       {/* Ground smoke plume */}
-      {progress > 0.03 && progress < 0.7 && (
+      {progress > 0.03 && progress < 0.92 && (
         <points ref={smokePointsRef} frustumCulled={false} renderOrder={50}>
           <bufferGeometry>
             <bufferAttribute attach="attributes-position" args={[smokePosRef, 3]} />
             <bufferAttribute attach="attributes-color" args={[smokeColRef, 3]} />
+            <bufferAttribute attach="attributes-size" args={[smokeSizeRef, 1]} />
           </bufferGeometry>
           <shaderMaterial
-            vertexShader={sizeVertexShader.replace('size *', '3.0 *')}
+            vertexShader={sizeVertexShader}
             fragmentShader={`
               varying vec3 vColor;
               void main() {
