@@ -162,9 +162,10 @@ export default function VenueIntelOverlay({ preset, onBack, onDeploy, deploying 
       </ScrollArea>
 
       {/* Deploy Button */}
-      <div className="border-t border-primary/20 p-2">
+      <div className="border-t border-cyan-500/20 p-2">
         <Button
-          className="w-full h-9 text-xs font-bold tracking-wider"
+          className="w-full h-9 text-xs font-bold tracking-wider bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/25 shadow-[0_0_20px_hsl(190_95%_55%/0.15)] hover:shadow-[0_0_30px_hsl(190_95%_55%/0.25)] transition-all"
+          variant="outline"
           onClick={onDeploy}
           disabled={deploying}
         >
