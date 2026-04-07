@@ -248,15 +248,17 @@ function CakeShot({
 
   const liftFraction = 0.25;
   const isLifting = progress < liftFraction;
-  const liftHeight = breakH;
+
+  if (isLifting) {
+    const liftProgress = progress / liftFraction;
+    const realY = Math.max(0, liftProgress * breakH);
     const screenBlend = getThreeBlending('screen');
-    // Trajectory follows angle
-    const lateralX = Math.sin(angle) * liftProgress * breakH * 0.7;
+    const lateralX = Math.sin(angle) * liftProgress * breakH;
     return (
       <group position={offset}>
         <mesh position={[lateralX, realY, Math.cos(angle) * liftProgress * 0.3]}>
           <sphereGeometry args={[0.06 + caliber * 0.01, 6, 6]} />
-          <meshBasicMaterial color="#FFFFCC" transparent opacity={0.9} blending={THREE.AdditiveBlending} depthWrite={false} />
+          <meshBasicMaterial color="#FFFFCC" transparent opacity={0.9} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
         </mesh>
         {Array.from({ length: 8 }).map((_, j) => {
           const trailY = realY * (1 - j * 0.1);
@@ -264,14 +266,14 @@ function CakeShot({
           return (
             <mesh key={j} position={[lateralX * (1 - j * 0.05), trailY, 0]}>
               <sphereGeometry args={[0.03 + caliber * 0.005, 4, 4]} />
-              <meshBasicMaterial color="#FFCC66" transparent opacity={0.4 * fade} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
+              <meshBasicMaterial color="#FFCC66" transparent opacity={0.4 * fade} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} depthTest={false} />
             </mesh>
           );
         })}
         {progress < 0.04 && (
           <mesh position={[0, 0.15, 0]}>
             <sphereGeometry args={[0.3 + caliber * 0.08, 8, 8]} />
-            <meshBasicMaterial color="#FFEEAA" transparent opacity={0.5 * (1 - progress / 0.04)} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
+            <meshBasicMaterial color="#FFEEAA" transparent opacity={0.5 * (1 - progress / 0.04)} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} depthTest={false} />
           </mesh>
         )}
       </group>
@@ -283,8 +285,7 @@ function CakeShot({
   const positions = burstPositions;
   const colors = burstColors;
   const drag = 0.03 + caliber * 0.005;
-  // Burst center position accounts for angle
-  const burstCenterX = Math.sin(angle) * breakH * 0.7;
+  const burstCenterX = Math.sin(angle) * breakH;
 
   for (let i = 0; i < PARTICLES_PER_SHOT; i++) {
     const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
@@ -293,15 +294,24 @@ function CakeShot({
     const fade = Math.max(0, 1 - age);
     const dragFactor = Math.exp(-drag * t);
 
-    positions[i * 3] = burstCenterX + vx * t * 0.35 * dragFactor;
-    positions[i * 3 + 1] = breakH * 0.7 + vy * t * 0.35 * dragFactor + 0.5 * GRAVITY * t * t * 0.12;
-    positions[i * 3 + 2] = vz * t * 0.35 * dragFactor;
+    const px = vx * t * 0.35 * dragFactor;
+    const py = vy * t * 0.35 * dragFactor + 0.5 * GRAVITY * t * t * 0.25;
+    const pz = vz * t * 0.35 * dragFactor;
+    
+    positions[i * 3] = burstCenterX + px;
+    positions[i * 3 + 1] = breakH + py;
+    positions[i * 3 + 2] = pz;
+
+    // Height extinction
+    const dist = Math.sqrt(px * px + py * py + pz * pz);
+    const extT = maxRadius > 0 ? Math.max(0, Math.min(1, (dist / maxRadius - 0.7) / 0.3)) : 0;
+    const heightExt = 1 - extT;
 
     const flashPhase = Math.max(0, 1 - burstProgress * 8);
     const sparkle = 0.75 + Math.sin(i * 13 + burstProgress * 25) * 0.25;
-    colors[i * 3] = THREE.MathUtils.lerp(baseColor.r, 1.0, flashPhase) * fade * sparkle;
-    colors[i * 3 + 1] = THREE.MathUtils.lerp(baseColor.g, 0.95, flashPhase) * fade * sparkle;
-    colors[i * 3 + 2] = THREE.MathUtils.lerp(baseColor.b, 0.7, flashPhase) * fade * sparkle;
+    colors[i * 3] = THREE.MathUtils.lerp(baseColor.r, 1.0, flashPhase) * fade * sparkle * heightExt;
+    colors[i * 3 + 1] = THREE.MathUtils.lerp(baseColor.g, 0.95, flashPhase) * fade * sparkle * heightExt;
+    colors[i * 3 + 2] = THREE.MathUtils.lerp(baseColor.b, 0.7, flashPhase) * fade * sparkle * heightExt;
   }
 
   return (
@@ -309,9 +319,9 @@ function CakeShot({
       {burstProgress < 0.08 && (() => {
         const sb = getThreeBlending('screen');
         return (
-          <mesh position={[burstCenterX, breakH * 0.7, 0]}>
+          <mesh position={[burstCenterX, breakH, 0]}>
             <sphereGeometry args={[0.8 + caliber * 0.3, 12, 12]} />
-            <meshBasicMaterial color="#FFFFEE" transparent opacity={0.4 * (1 - burstProgress / 0.08)} blending={sb.blending} blendEquation={sb.blendEquation} blendSrc={sb.blendSrc as any} blendDst={sb.blendDst as any} depthWrite={false} />
+            <meshBasicMaterial color="#FFFFEE" transparent opacity={0.4 * (1 - burstProgress / 0.08)} blending={sb.blending} blendEquation={sb.blendEquation} blendSrc={sb.blendSrc as any} blendDst={sb.blendDst as any} depthWrite={false} depthTest={false} />
           </mesh>
         );
       })()}
@@ -320,7 +330,7 @@ function CakeShot({
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />
           <bufferAttribute attach="attributes-color" args={[colors, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={particleVisualSize} vertexColors transparent opacity={0.9} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={particleVisualSize} vertexColors transparent opacity={0.9} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
     </group>
   );
