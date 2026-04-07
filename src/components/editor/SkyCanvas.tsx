@@ -279,13 +279,28 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
  * Runs inside the R3F Canvas context.
  */
 function HardeningWatchdog() {
-  const { gl } = useThree();
+  const { gl, scene } = useThree();
   const frameRef = useRef(0);
+  const overBudgetStreakRef = useRef(0);
 
   // Start metrics console reporting on mount
   useEffect(() => {
     startMetricsReporting(60); // Log every 60s
     return () => stopMetricsReporting();
+  }, []);
+
+  // Connect hardening degradation to quality system
+  useEffect(() => {
+    const unsub = onDegradationChange((level) => {
+      if (level === 'severe' || level === 'critical') {
+        const store = useSceneStore.getState();
+        if (!store.environment.lowQualityMode) {
+          store.updateEnvironment({ lowQualityMode: true });
+          pushLog(`[Hardening] Degradation ${level} → forcing low quality mode`, 'warn');
+        }
+      }
+    });
+    return unsub;
   }, []);
 
   useFrame((_state, delta) => {
@@ -299,6 +314,29 @@ function HardeningWatchdog() {
 
     pushFrameMetrics(fps, frameTimeMs, info.calls, info.triangles);
     watchdogTick(fps);
+
+    // ── Scene transform integrity scan (throttled internally to every 60 frames)
+    scanSceneTransforms(scene);
+
+    // ── Frame budget check
+    const budgetCheck = checkFrameBudget(frameTimeMs, info.calls, info.triangles);
+    if (!budgetCheck.withinBudget) {
+      overBudgetStreakRef.current++;
+      if (overBudgetStreakRef.current >= 3) {
+        pushLog(`[Hardening] Over budget: frame=${frameTimeMs.toFixed(1)}ms draws=${info.calls} tris=${info.triangles}`, 'warn');
+        overBudgetStreakRef.current = 0;
+      }
+    } else {
+      overBudgetStreakRef.current = 0;
+    }
+
+    // ── Scene health check (every ~5s = 300 frames)
+    if (frameRef.current % 300 === 0) {
+      const health = checkSceneHealth(gl);
+      if (health.warnings.length > 0) {
+        health.warnings.forEach(w => pushLog(`[GPU Health] ${w}`, 'warn'));
+      }
+    }
   });
 
   return null;
