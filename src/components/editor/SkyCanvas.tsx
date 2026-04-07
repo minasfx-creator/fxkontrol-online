@@ -1875,7 +1875,7 @@ export default function SkyCanvas() {
       {/* Client Presentation Mode */}
       <ClientPresentationMode
         active={presentationMode}
-        onExit={() => useSceneStore.getState().updateSettings({ presentationMode: false })}
+        onExit={() => updateSettings({ presentationMode: false })}
       />
 
       {/* AR Overlays */}
