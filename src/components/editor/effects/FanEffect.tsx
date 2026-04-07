@@ -99,7 +99,7 @@ export default function FanEffect({
         const idx = ray * PARTICLES_PER_RAY + j;
         const pct = j / PARTICLES_PER_RAY;
         const dist = pct * speed * t;
-        const gravity = -2 * pct * pct * t;
+        const gravity = -(2 + caliber * 0.4) * pct * pct * t;
         const scatter = Math.sin(j * 13.7 + ray * 5.1) * 0.3 * pct;
 
         p[idx * 3] = dirX * dist + scatter + wX * pct * t;
