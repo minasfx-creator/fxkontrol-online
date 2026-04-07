@@ -17,8 +17,9 @@ import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/f
 
 // Particle class boundaries (index ranges)
 const COLUMN_FRAC = 0.20;
-const SPRAY_FRAC = 0.65; // 20-85%
-const DRIP_FRAC = 0.15;  // 85-100%
+const SPRAY_FRAC = 0.60; // 20-80%
+const DRIP_FRAC = 0.10;  // 80-90%
+const BOUNCE_FRAC = 0.10; // 90-100% — ground bounce sparks
 
 const SMOKE_COUNT = 40;
 
