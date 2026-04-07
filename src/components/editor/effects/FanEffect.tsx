@@ -61,7 +61,7 @@ export default function FanEffect({
     const c = colArr.current;
     const lp = linePos.current;
     const lc = lineCol.current;
-    const halfSpread = (spreadAngle * Math.PI) / 360;
+    const halfSpread = (effectiveSpread * Math.PI) / 360;
     const t = progress * 2;
     const time = clock.getElapsedTime();
 
