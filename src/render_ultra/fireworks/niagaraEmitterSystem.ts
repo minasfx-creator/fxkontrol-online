@@ -10,6 +10,7 @@ import { sampleSpawnShape } from './niagaraSpawnShapes';
 import type { ForceModule } from './niagaraForceModules';
 import { applyForceModule } from './niagaraForceModules';
 import type { DataInterface } from './niagaraDataInterfaces';
+import { simRNG } from '@/core/reliability/seededRandom';
 
 // ── Module Types ────────────────────────────────────────────────────
 
