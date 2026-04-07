@@ -722,6 +722,12 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           trailGrav1 = segAge1 > 0.6 ? gravityMult * (1 + (segAge1 - 0.6) / 0.4 * 3.5) : gravityMult * 0.7;
           trailDragH0 = dragCoeff * 0.85;
           trailDragH1 = dragCoeff * 0.85;
+        } else if (pattern === 'time_rain') {
+          // Time rain trails: rising phase low gravity, rain phase 2.5x gravity
+          const hangStart = 0.25;
+          const hangEnd = 0.55;
+          trailGrav0 = segAge0 < hangStart ? gravityMult * 0.15 : segAge0 < hangEnd ? gravityMult * 0.05 : gravityMult * 2.5;
+          trailGrav1 = segAge1 < hangStart ? gravityMult * 0.15 : segAge1 < hangEnd ? gravityMult * 0.05 : gravityMult * 2.5;
         }
         
         // Trail segment start

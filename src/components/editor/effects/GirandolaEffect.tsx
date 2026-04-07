@@ -179,7 +179,7 @@ export default function GirandolaEffect({
   return (
     <group position={position} renderOrder={50}>
       {/* Spinning hub */}
-      <group position={[0, deviceY, 0]} rotation={[0, totalAngle, 0]}>
+      <group position={[0, deviceY, 0]} rotation={[vizTiltAngle * 0.5, vizTotalAngle, vizTiltAngle * 0.3]}>
         {/* Central axis */}
         <mesh>
           <cylinderGeometry args={[0.05, 0.05, 0.3, 6]} />
