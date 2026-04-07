@@ -574,18 +574,19 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       
       if (pattern === 'glitter') {
         // Glitter: delayed stochastic flashes — each star ignites at a random time
-        // Weingart: "glitter stars produce delayed flashes as they fall"
-        const igniteTime = 0.3 + (sparkleSeeds[i] % 100) / 200; // 30-80% of life
-        const flashWindow = 0.06; // 60ms flash
+        // Per-star random flash interval and brightness for cascade effect
+        const igniteTime = 0.25 + (sparkleSeeds[i] % 100) / 180; // 25-80% of life
+        const flashInterval = 0.08 + (sparkleSeeds[i] % 50) / 500; // 80-180ms per star
+        const flashWindow = 0.04 + (sparkleSeeds[i] % 30) / 1000; // 40-70ms flash width
+        const flashBrightness = 1.8 + (sparkleSeeds[i] % 40) / 40; // 1.8-2.8x
         const timeSinceIgnite = starAge - igniteTime;
-        const flashCount = Math.floor((starAge - igniteTime) / 0.12); // repeating flashes
-        const flashPhase = (starAge - igniteTime) % 0.12;
-        if (timeSinceIgnite > 0 && flashPhase < flashWindow) {
-          twinkle = 2.5; // bright flash
+        const flashPhase = timeSinceIgnite > 0 ? timeSinceIgnite % flashInterval : -1;
+        if (timeSinceIgnite > 0 && flashPhase >= 0 && flashPhase < flashWindow) {
+          twinkle = flashBrightness; // bright flash — varies per star
         } else if (timeSinceIgnite > 0) {
-          twinkle = 0.15; // dim between flashes — smoldering
+          twinkle = 0.1; // dim between flashes — smoldering
         } else {
-          twinkle = 0.6; // pre-ignition: normal glow
+          twinkle = 0.5; // pre-ignition: subdued glow
         }
       } else if (isMagnaliumOrDragonEgg) {
         // Dragon eggs / magnalium strobe: real oscillatory combustion
