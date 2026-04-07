@@ -507,7 +507,12 @@ export function stepParticle(
 ): void {
   const gravityFactor = modifiers?.reducedGravity ?? 1;
   // Apply gravity (reduced for falling leaves)
-  p.vy += GRAVITY * gravityFactor * dt;
+  // Tip curl: progressive gravity increase after 70% life (chrysanthemum signature)
+  let tipCurlMult = 1;
+  if (modifiers?.tipCurlFactor && modifiers.tipCurlLifeRatio !== undefined && modifiers.tipCurlLifeRatio > 0.7) {
+    tipCurlMult = 1 + modifiers.tipCurlFactor * ((modifiers.tipCurlLifeRatio - 0.7) / 0.3);
+  }
+  p.vy += GRAVITY * gravityFactor * tipCurlMult * dt;
   
   // Apply wind forces
   p.vx += wind[0] * dt * 0.5;
