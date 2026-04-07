@@ -615,7 +615,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         </bufferGeometry>
       </points>
       
-      <lineSegments ref={trailRef} frustumCulled={false}>
+      <lineSegments ref={trailRef} frustumCulled={false} renderOrder={50}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[particleBuffers.trailPos, 3]} />
           <bufferAttribute attach="attributes-color" args={[particleBuffers.trailCol, 3]} />
