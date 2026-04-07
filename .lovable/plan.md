@@ -1,72 +1,102 @@
 
 
-## Auditoria de Conformidade: Relatório Técnico vs. Codebase Atual
+# Implementação: Live Cards AR/HUD + Menu Radial + Timeline ECS
 
-### RESUMO EXECUTIVO
+## Visão Geral
 
-| Área do Relatório | Status | Implementação Atual |
+Implementar três paradigmas de UX descritos no relatório de Realidade Aumentada: (1) Live Cards contextuais que flutuam ao selecionar objetos no viewport 3D, (2) Menu Radial holográfico substituindo o context menu linear atual, e (3) Refatoração da Timeline para arquitetura ECS/DOD.
+
+---
+
+## 1. Live Cards AR/HUD (Cartões Vivos Contextuais)
+
+Componente `LiveCard.tsx` que aparece ao selecionar uma posição ou drone no viewport 3D. Mostra telemetria em tempo real e dissolve-se automaticamente ao deselecionar.
+
+**Arquivo novo**: `src/components/editor/LiveCard.tsx`
+- Card semi-transparente glass flutuante posicionado adjacente ao objeto 3D selecionado (projeta coordenadas 3D → tela via `project()` do Three.js)
+- Conteúdo: nome, coordenadas XYZ, heading, canais DMX, efeito vinculado, status de segurança
+- Animação de entrada `scale-in` + `fade-in`, saída `fade-out` (curva circOut)
+- Auto-dismiss: dissolve após 5s de inatividade ou ao mudar seleção
+- Estética: `.glass-premium`, cantos chanfrados `.bevel-md`, scanlines, tipografia `font-mono-code` para dados
+
+**Integração**: Renderizar dentro do `SkyCanvas` usando `Html` do `@react-three/drei` para posicionamento 3D → 2D automático. Escutar `selectedPositionId` do `useProjectStore`.
+
+---
+
+## 2. Menu Radial Holográfico
+
+Substituir o `PositionContextMenu.tsx` linear por um menu radial FUI ativado por clique direito no viewport 3D.
+
+**Arquivo novo**: `src/components/editor/RadialMenu.tsx`
+- Layout circular com 6-8 setores (rotate, move, delete, duplicate, link effect, assign section, properties, align)
+- Cada setor é um arco SVG com ícone Lucide centralizado
+- Ativação: clique direito no viewport → menu aparece centrado no cursor
+- Seleção: mover mouse na direção do setor desejado + soltar (ou clicar)
+- Estética: fundo glass circular com borda ciano pulsante, setores com hover amber
+- Suporte a sub-menus radiais (ex: "Rotate" abre segundo anel com eixos X/Y/Z)
+- Feedback haptic sonoro sutil ao selecionar
+
+**Integração**: Substituir o event listener `position-context-menu` existente. Manter fallback keyboard shortcuts intactos.
+
+---
+
+## 3. Timeline ECS/DOD
+
+Refatorar o gerenciamento de dados da Timeline de OOP (objetos individuais com métodos) para arrays contíguos tipados, otimizando cache locality.
+
+**Arquivo novo**: `src/lib/timelineECS.ts`
+- **Entidades**: IDs numéricos simples (index no array)
+- **Componentes** (TypedArrays contíguos):
+  - `startTimes: Float64Array` — tempo de início
+  - `durations: Float64Array` — duração
+  - `effectIds: Uint16Array` — índice na biblioteca de efeitos
+  - `positionIds: Uint16Array` — índice na lista de posições
+  - `flags: Uint8Array` — bitfield (selected, locked, muted, linked)
+- **Sistemas** (funções puras que varrem arrays):
+  - `translateSystem(indices, deltaTime)` — move N itens sem dispatch dinâmico
+  - `snapSystem(bpm)` — quantiza todos os tempos ao beat grid
+  - `collisionSystem()` — detecta sobreposições em O(n log n)
+  - `renderSystem(scrollLeft, viewportWidth, pxPerSec)` — retorna apenas itens visíveis (virtualização)
+
+**Integração**: Manter a interface Zustand atual (`timelineItems[]`) como camada de compatibilidade. O ECS opera internamente e sincroniza com o store via `syncToStore()` apenas em commit (mouseup/keyup), evitando re-renders durante drag. A Timeline.tsx consulta o ECS diretamente durante operações de drag em massa.
+
+---
+
+## Ordem de Implementação
+
+| Passo | Tarefa | Arquivos |
 |---|---|---|
-| Streaming JSON Parser (SAX-style) | ✅ Conforme | `vvizWorker.ts` — parser incremental para >5MB, brace-depth tracking |
-| Web Worker off-thread | ✅ Conforme | `vvizWorker.ts` — processamento completo em Worker, ArrayBuffer transfer |
-| Coordinate Z-flip | ✅ Conforme | `resolveCoordMode()` com `zSign = -1` para frames VVIZ/standard |
-| InstancedMesh (1 draw call) | ✅ Conforme | `InstancedDroneSwarm.tsx` — 6 InstancedMesh (body/led/rotor/halo/nav/glow), useRef+useFrame direto |
-| instanceColor buffer | ✅ Conforme | `setColorAt()` + `instanceColor.needsUpdate = true` em cada frame |
-| instanceMatrix.needsUpdate | ✅ Conforme | Flag elevada corretamente para todos os meshes |
-| VDL 25-color quantizer | ✅ Conforme | `vdlQuantizer.ts` — distância Euclidiana, 30 cores, impliesTrail/Tip/No Trail |
-| VDL no export pipeline | ✅ Conforme | `exportEngine.ts` importa `rgbToVdlString` e aplica na exportação VVIZ |
-| GC-friendly (nullify refs) | ✅ Conforme | Worker nullifica buffer e performance objects após processamento |
-| Waypoint simplification | ✅ Conforme | Adaptive downsample baseado em count (4 tiers) |
-| **TUS Resumable Upload** | ❌ Ausente | Uploads são `supabase.storage.upload()` padrão, sem `tus-js-client` |
-| **EdgeRuntime.waitUntil** | ❌ Ausente | Edge Functions não usam background processing, mas o parsing já ocorre no Worker do frontend |
-| **Backend streaming (req.body pipe)** | ⚠️ N/A | O VVIZ é parseado no frontend Worker, não na Edge Function — arquitetura alternativa válida |
+| 1 | Criar `RadialMenu.tsx` | Novo componente + CSS |
+| 2 | Integrar RadialMenu ao viewport | `PositionContextMenu.tsx` refatorado, `SkyCanvas.tsx` |
+| 3 | Criar `LiveCard.tsx` | Novo componente |
+| 4 | Integrar LiveCard ao SkyCanvas | `SkyCanvas.tsx` ou componente filho R3F |
+| 5 | Criar `timelineECS.ts` | Novo módulo de dados |
+| 6 | Conectar ECS à Timeline | `Timeline.tsx`, operações de drag em massa |
 
-### DESVIOS QUE REQUEREM AÇÃO
+---
 
-#### 1. Upload Resumível (TUS) — NÃO IMPLEMENTADO
-
-O relatório especifica `tus-js-client` para uploads de VVIZ >50MB com retry automático e chunks de 6MB. Atualmente, o `VVIZImporter.tsx` lê o arquivo via `FileReader` localmente no browser e envia ao Worker. Para o fluxo de storage (bucket `assets`), uploads usam `supabase.storage.upload()` padrão, limitado a ~50MB sem retry.
-
-**Correção proposta**: Implementar upload TUS no componente `VVIZImporter.tsx` para arquivos >20MB, utilizando `supabase.storage.createSignedUploadUrl()` + `tus-js-client`. Arquivos menores continuam no fast-path atual (FileReader → Worker direto).
-
-#### 2. Parser Streaming — Melhoria de Memória
-
-O parser streaming atual (`parseVvizStreaming`) faz `decoder.decode(buffer)` — decodifica o buffer inteiro em string antes de parsear. Para arquivos >100MB, isso duplica a memória (ArrayBuffer + String). O relatório especifica processamento chunk-by-chunk com `TextDecoderStream`.
-
-**Correção proposta**: Refatorar o streaming parser para processar em chunks de 64KB usando `TextDecoderStream` pattern, mantendo apenas o chunk ativo em memória. Isso reduz o pico de memória de ~2x filesize para ~50MB fixo.
-
-### CONFORMIDADES VERIFICADAS (sem ação necessária)
-
-- **InstancedMesh**: 6 meshes instanciados (body, LED, rotor, halo, nav, glow), useRef direto, sem setState no useFrame
-- **Z-axis flip**: `resolveCoordMode()` retorna `'flip'` para frames VVIZ/standard, aplica `zSign = -1` em dx/dz
-- **VDL Quantizer**: Tabela de 30 cores (superset dos 25 canônicos), Euclidean distance em espaço normalizado 0-1, suporte a `impliesTrail`, `Tip`, `No Trail`
-- **Color extraction**: Média ponderada por brightness×frames nas `payloadActions`
-- **Dual parser**: SAX-style para >5MB, JSON.parse fast-path para <5MB
-- **Worker protocol**: ArrayBuffer transfer, progressive nullification, progress events
-
-### PLANO DE IMPLEMENTAÇÃO
-
-| Passo | Arquivo | Mudança |
-|---|---|---|
-| 1 | `package.json` | Adicionar `tus-js-client` |
-| 2 | `src/components/editor/VVIZImporter.tsx` | Upload TUS para arquivos >20MB com progress bar e retry |
-| 3 | `src/lib/vvizWorker.ts` | Refatorar `parseVvizStreaming` para processar em chunks de 64KB em vez de decodificar o buffer inteiro |
-
-### DETALHES TÉCNICOS
+## Detalhes Técnicos
 
 ```text
-Upload TUS flow (files >20MB):
-  File selected → check size
-  → >20MB: tus-js-client upload to storage bucket
-     → 6MB chunks, auto-retry on disconnect
-     → progress events → UI bar
-     → on complete: download from storage → Worker
-  → <20MB: FileReader.readAsArrayBuffer → Worker (existing fast-path)
+LiveCard projection:
+  Three.js camera.project(position3D) → normalized device coords
+  → multiply by (viewportWidth/2, viewportHeight/2) → screen px
+  → position card at screenX + offset, screenY
+  → clamp to viewport bounds
 
-Streaming parser refactor:
-  Current: decoder.decode(fullBuffer) → scan string char-by-char
-  Proposed: process ArrayBuffer in 64KB slices via TextDecoder.decode(slice, {stream: true})
-  → accumulate partial JSON objects in a rolling buffer (~1MB max)
-  → emit complete performance objects as before
-  → memory: O(chunkSize) instead of O(fileSize)
+RadialMenu geometry:
+  8 sectors × 45° each
+  Inner radius: 40px, outer radius: 120px
+  Each sector: SVG <path> arc segment
+  Hit detection: atan2(dy, dx) → sector index
+
+ECS memory layout (2000 items):
+  startTimes: 16KB (2000 × 8 bytes)
+  durations: 16KB
+  effectIds: 4KB
+  positionIds: 4KB
+  flags: 2KB
+  Total: ~42KB contiguous → fits in L1 cache
+  vs OOP: ~400KB+ scattered heap objects
 ```
 
