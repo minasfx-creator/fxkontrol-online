@@ -407,6 +407,7 @@ export default function MineEffect({
             `}
             transparent
             depthWrite={false}
+            depthTest={false}
           />
         </points>
       )}

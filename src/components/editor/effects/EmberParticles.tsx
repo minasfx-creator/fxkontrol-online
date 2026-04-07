@@ -129,6 +129,7 @@ function EmberParticlesInner({
           transparent
           opacity={0.92}
           depthWrite={false}
+          depthTest={false}
           blending={THREE.AdditiveBlending}
           sizeAttenuation
         />

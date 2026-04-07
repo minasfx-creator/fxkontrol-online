@@ -133,7 +133,7 @@ export default function WaterfallEffect({
           <bufferAttribute attach="attributes-position" args={[posArr, 3]} />
           <bufferAttribute attach="attributes-color" args={[colArr, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.055} vertexColors transparent opacity={0.92} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={0.055} vertexColors transparent opacity={0.92} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
     </group>
   );

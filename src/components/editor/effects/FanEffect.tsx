@@ -153,7 +153,7 @@ export default function FanEffect({
       {progress < 0.3 && (
         <mesh>
           <sphereGeometry args={[0.4 + progress * 2, 12, 12]} />
-          <meshBasicMaterial color={color} transparent opacity={0.1 * (1 - progress / 0.3)} blending={THREE.AdditiveBlending} />
+          <meshBasicMaterial color={color} transparent opacity={0.1 * (1 - progress / 0.3)} blending={THREE.AdditiveBlending} depthTest={false} />
         </mesh>
       )}
     </group>

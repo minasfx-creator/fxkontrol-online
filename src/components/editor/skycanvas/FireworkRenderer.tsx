@@ -625,7 +625,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
 
       {/* Pistil — inner burst with different color */}
       {hasPistil && pistilBuffers && (
-        <points ref={pistilRef} material={starMaterial} frustumCulled={false}>
+        <points ref={pistilRef} material={starMaterial} frustumCulled={false} renderOrder={50}>
           <bufferGeometry>
             <bufferAttribute attach="attributes-position" args={[pistilBuffers.positions, 3]} />
             <bufferAttribute attach="attributes-color" args={[pistilBuffers.colors, 3]} />
