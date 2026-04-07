@@ -587,7 +587,8 @@ function Index() {
 
       {/* ─── Layer 9: Overlays & Modals ──────────────── */}
       {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
-      <PositionContextMenu />
+      <RadialMenu />
+      <LiveCard />
       <SmartScriptAssistant open={smartScriptOpen} onClose={() => setSmartScriptOpen(false)} />
 
     </div>
