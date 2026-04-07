@@ -840,14 +840,14 @@ export default function ShellBurstRenderer({
         </mesh>
       )}
 
-      {/* Secondary flash ring — Screen blending */}
-      {progress < 0.12 && (
+      {/* Secondary flash ring — Screen blending. Dahlia: 2.5x boost */}
+      {progress < (pattern === 'dahlia' ? 0.18 : 0.12) && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[caliber * 0.5 + progress * 40, caliber * 0.8 + progress * 45, 32]} />
           <meshBasicMaterial
             color={secondaryColor || color}
             transparent
-            opacity={burstFlashIntensity * 0.12 * (1 - progress / 0.12)}
+            opacity={burstFlashIntensity * (pattern === 'dahlia' ? 0.3 : 0.12) * (1 - progress / (pattern === 'dahlia' ? 0.18 : 0.12))}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}

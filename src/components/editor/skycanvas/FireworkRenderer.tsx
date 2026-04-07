@@ -356,8 +356,19 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           life = starLife * (0.8 + Math.random() * 0.5);
           break;
         }
-        default:
-          vx = sx * breakSpeed * speedVar; vy = sy * breakSpeed * speedVar * 0.9 + 0.6; vz = sz * breakSpeed * speedVar; break;
+        default: {
+          // Peony: 12 petal clusters with azimuthal grouping
+          const PETAL_CT = 12;
+          const petalIdx = i % PETAL_CT;
+          const petalAngle = (petalIdx / PETAL_CT) * Math.PI * 2;
+          const petalJitter = (Math.random() - 0.5) * 2 * (8 * Math.PI / 180);
+          const pTheta = petalAngle + petalJitter;
+          const pPhi = Math.acos(0.3 + Math.random() * 0.5);
+          const psx = Math.sin(pPhi) * Math.cos(pTheta);
+          const psy = Math.cos(pPhi);
+          const psz = Math.sin(pPhi) * Math.sin(pTheta);
+          vx = psx * breakSpeed * speedVar; vy = psy * breakSpeed * speedVar * 0.9 + 0.6; vz = psz * breakSpeed * speedVar; break;
+        }
       }
 
       v[i * 3] = vx; v[i * 3 + 1] = vy; v[i * 3 + 2] = vz;
