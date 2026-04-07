@@ -1,74 +1,99 @@
 
 
-# Renderizacao, Efeitos Cinematicos e Correcao de Bugs — World Shows
+# Calibração Industrial — Superar Finale 3D em Realismo e Performance
 
-## Bugs Criticos Identificados
+## Diagnóstico Técnico
 
-### Bug 1: GPS Anchor nao sincroniza com Google 3D Tiles
-O `VenueShowOverlay` chama `store.setGpsOrigin(preset.gps)` (project store) e `scene.updateSettings(preset.sceneOverrides)`, mas `sceneOverrides` NAO inclui `geoAnchorLat/Lon/Alt`. O Google Tiles le do scene store (`settings.geoAnchorLat`), entao os tiles nunca mudam de posicao. O `GeoLocationSetup` faz corretamente — chama `updateSettings({ geoAnchorLat, geoAnchorLon, geoAnchorAlt })` explicitamente.
+A análise do codebase revela 7 problemas críticos que degradam a qualidade:
 
-### Bug 2: Camera nao voa para o local
-O fluxo nao chama `triggerFlyTo()` apos selecionar a praca. O usuario ve o overlay AR mas a camera fica parada na posicao anterior. O `GeoLocationSetup` faz corretamente com `triggerFlyTo({ lat, lng, alt: 300, duration: 2.5, pitch: 45 })`.
+| Problema | Causa Raiz | Impacto |
+|---|---|---|
+| Cena acende/apaga | `AdaptiveExposureController` oscila entre 0.35-1.8 sem damping adequado; `darkenSpeed: 4.0` vs `brightenSpeed: 1.0` cria assimetria extrema | Lighting instável |
+| FPS 14-21 constante | `FireworkBurst.useFrame` aloca `new THREE.Frustum()`, `new THREE.Matrix4()`, `new THREE.Sphere()` e `new THREE.Vector3()` POR FRAME POR BURST — GC pressure massivo | Watchdog `critical` permanente |
+| Fogos invisíveis | Frustum culling com `cullRadius = caliber * 5` (ex: 20m para calibre 4) é pequeno demais — bursts de 6" expandem para 100m+; `isInFrustum` rejeita efeitos visíveis | Efeitos cortados |
+| Posições erradas | `VenueShowOverlay` injeta posições relativas ao GPS origin mas o `resolvedPos` no `TimelineEffects` usa coordenadas absolutas sem considerar heading da praça | Balsas fora d'água |
+| Bloom excessivo | Bloom Layer 1 threshold 2.8 com star shader emitindo cores `> 1.0` via HDR = bloom em tudo, não apenas nos flashes | Visual lavado |
+| Exposure ping-pong | `luminance += elapsed < 0.5 ? 3.0 : 0.5` por burst — 10 bursts simultâneos = luminance 30, exposure cai para 0.35; no frame seguinte sem bursts = sobe para 1.8 | Pisca-pisca |
+| PostProcessing pesado | EffectComposer com SMAA + SSR + SSAO + DOF + 3x Bloom + GodRays + Heat + MotionBlur + Sharpen + BrightnessContrast + HueSaturation + ColorGrading + ToneMapping = 14 passes | GPU saturada |
 
-### Bug 3: Camera altitude drop spam
-Console mostra dezenas de `[Camera] altitude drop clamped` durante flyTo porque `clampToWorldBounds` nao ignora flyTo adequadamente. O guard `if (isFlyingTo()) return;` existe mas o flyTo nao e chamado, entao nao se aplica — quando corrigirmos o flyTo, este log spam pode aparecer se o timing da clamp vs flyTo nao estiver sincronizado.
+## Soluções
 
-### Bug 4: Performance — Watchdog degradation frequente
-Logs mostram oscilacao `none → severe → none` frequente (FPS caindo para 21-29). O `traverse()` no GoogleTilesEngine percorre TODOS os meshes a cada frame para culling, criando GC pressure. 
+### 1. Estabilizar Exposure — Eliminar Pisca-Pisca
+**Arquivo**: `src/render_ultra/postprocessing/exposure.ts` + `src/components/editor/skycanvas/LightingSystem.tsx`
 
-## Solucoes
+- Aumentar `brightenSpeed` de 1.0 para 2.0 (menos assimetria)
+- Reduzir `darkenSpeed` de 4.0 para 2.5
+- Clampar `luminance` por burst a 1.5 (não 3.0)
+- Limitar luminance total a 6.0 (não 15.0)
+- Estreitar range de exposure de [0.35, 1.8] para [0.7, 1.4] — variação máxima de 2x, não 5x
+- Adicionar temporal smoothing: média ponderada dos últimos 5 frames de luminance
 
-### 1. Fix VenueShowOverlay — Sincronizar geoAnchor + flyTo + orbit cinematico
-**Arquivo**: `src/components/editor/VenueShowOverlay.tsx`
+### 2. Zero-GC no FireworkBurst — Eliminar Alocações Per-Frame
+**Arquivo**: `src/components/editor/skycanvas/FireworkRenderer.tsx`
 
-No `deploying` phase, ANTES de injetar positions/timeline:
-- Chamar `scene.updateSettings({ geoAnchorLat: preset.gps.lat, geoAnchorLon: preset.gps.lng, geoAnchorAlt: 0, floatingOriginEnabled: true })` para mover os tiles
-- Importar `triggerFlyTo` e `triggerOrbit` de `GeoCameraController`
-- Na fase `reveal` (inicio), trigger `triggerFlyTo({ lat, lng, alt: 400, duration: 3, pitch: 35 })` para camera voar cinematicamente ao local
-- Apos deploy completo (fase `dissolve`), iniciar `triggerOrbit([0, 0, 0], 300, 0.08, 250)` para sobrevoo lento — 8 segundos, depois `stopOrbit()`
+- Mover `new THREE.Frustum()`, `new THREE.Matrix4()`, `new THREE.Sphere()`, `new THREE.Vector3()` para module-level singletons (como já feito em LightingSystem)
+- São 4 alocações × N bursts × 60fps = centenas de objetos/segundo para GC
+- Substituir por `_frustum`, `_projMatrix`, `_burstSphere`, `_burstCenter` reutilizáveis
 
-### 2. Fix sceneOverrides nos presets
-**Arquivo**: `src/data/worldShowPresets.ts`
+### 3. Corrigir Frustum Culling — Raio Realista
+**Arquivo**: `src/components/editor/skycanvas/FireworkRenderer.tsx`
 
-Adicionar `geoAnchorLat`, `geoAnchorLon`, `geoAnchorAlt` ao tipo `sceneOverrides` e a cada preset. Isso garante que `scene.updateSettings(preset.sceneOverrides)` no overlay atualiza o anchor dos tiles.
+- Aumentar `cullRadius` de `caliber * 5` para `caliber * 30` no `TimelineEffects` (linha 628)
+- Fireworks de calibre 6 expandem para ~150m — o raio de culling deve ser pelo menos `caliber * 25`
+- Isso elimina o corte prematuro de efeitos que estão visíveis mas são descartados
 
-Alternativa mais simples (preferida): em vez de modificar todos os 16+ presets, o `VenueShowOverlay` deve injetar `geoAnchorLat/Lon` diretamente no `updateSettings()` call, usando `preset.gps`.
+### 4. Calibrar Bloom — Threshold Cinematográfico
+**Arquivo**: `src/components/editor/PostProcessing.tsx`
 
-### 3. Otimizar GoogleTilesEngine traverse
-**Arquivo**: `src/core/geo/GoogleTilesEngine.tsx`
+- Bloom Layer 1: subir `luminanceThreshold` de 2.8 para 3.5 — só flash real
+- Bloom Layer 2: subir de 3.5 para 5.0 — apenas explosões intensas
+- Reduzir `intensity` base de `str * 0.065` para `str * 0.04` — menos lavado
+- Desabilitar Bloom Layer 3 (atmospheric) quando não há bursts pesados — economia de GPU
 
-Reduzir frequencia do `traverse()` de 60fps para ~10fps (a cada 6 frames) usando um frame counter. O culling por distancia nao precisa rodar a cada frame — meshes nao se movem entre frames.
+### 5. Reduzir PostProcessing — Cortar Passes Desnecessários
+**Arquivo**: `src/components/editor/PostProcessing.tsx`
 
-### 4. Sobrevoo cinematico automatico
-**Arquivo**: `src/components/editor/VenueShowOverlay.tsx`
+- Remover `DownSampleBlur` (duplica o que bloom já faz)
+- Desabilitar `SSR` por padrão (custo absurdo para cena noturna com pouca reflexão)
+- Reduzir SSAO samples de 16 para 8
+- `MotionBlur` screen-space é fake e caro — desabilitar por padrão
+- Resultado: de ~14 passes para ~7-8 passes
 
-Sequencia temporal apos selecao:
-```text
-t=0ms      → triggerFlyTo (camera voa para posicao)
-t=500ms    → VenueShowOverlay aparece com intel AR
-t=3500ms   → Show deployed, triggerOrbit (sobrevoo lento)
-t=8500ms   → stopOrbit, dissolve overlay
-```
+### 6. Calibrar Física dos Fogos — Realismo Finale 3D
+**Arquivo**: `src/components/editor/skycanvas/FireworkRenderer.tsx`
 
-### 5. Suavizar camera clamp durante flyTo
-**Arquivo**: `src/components/editor/SkyCanvas.tsx` (CameraController)
+- Peony: reduzir `speedVar` exponent de 0.7 para 0.5 — distribuição mais uniforme (Finale usa esfera regular)
+- Willow: aumentar `starLife` multiplier de 2.2 para 3.0 — pendão mais longo
+- Chrysanthemum: adicionar slight upward bias (+2 m/s em Y) — não perfeitamente esférica
+- Star size: aumentar `baseSize` por calibre (atualmente 6" = 0.9, deveria ser 1.4)
+- Drag coefficient: calibres maiores devem ter MENOS drag (ar stars mais pesadas) — ajustar curva
+- Trail opacity: aumentar de 0.8 para 0.95 com tail warmth mais pronunciado
 
-O `clampToWorldBounds` ja tem guard `if (isFlyingTo()) return;` que deve funcionar uma vez que o flyTo esteja ativo. Verificar se o import de `isFlyingTo` esta presente no componente.
+### 7. Performance — Playback Rate Guard
+**Arquivo**: `src/components/editor/SkyCanvas.tsx`
 
-## Arquivos Modificados
+- Quando `getDegradationLevel() === 'critical'`, automaticamente reduzir `particleDensity` para 0.5
+- Restaurar quando FPS > 40 por 3 segundos consecutivos
+- Isso evita o ciclo `severe → critical → severe` que aparece nos logs
 
-| Arquivo | Acao |
-|---|---|
-| `src/components/editor/VenueShowOverlay.tsx` | Fix geoAnchor sync + flyTo + orbit cinematico |
-| `src/core/geo/GoogleTilesEngine.tsx` | Throttle traverse para ~10fps |
-| `src/pages/Index.tsx` | Ajustar timing do fluxo — flyTo antes do overlay |
+## Ordem de Execução
 
-## Ordem de Execucao
+| Passo | Tarefa | Impacto |
+|---|---|---|
+| 1 | Estabilizar exposure — eliminar pisca-pisca | Visual estável |
+| 2 | Zero-GC FireworkBurst — singletons per-frame | +15-20 FPS |
+| 3 | Corrigir frustum culling radius | Fogos visíveis |
+| 4 | Calibrar bloom thresholds | Visual cinematográfico |
+| 5 | Reduzir passes PostProcessing | +10 FPS |
+| 6 | Calibrar física dos fogos | Realismo Finale |
+| 7 | Build verification | Estabilidade |
 
-| Passo | Tarefa |
-|---|---|
-| 1 | Fix VenueShowOverlay — adicionar geoAnchor sync + flyTo + orbit |
-| 2 | Otimizar GoogleTilesEngine traverse throttle |
-| 3 | Ajustar Index.tsx timing (flyTo antes do overlay) |
-| 4 | Build verification |
+## Resultado Esperado
+
+- FPS estável 40-60 (hoje: 14-21)
+- Lighting sem pisca — variação máxima 2x (hoje: 5x)
+- Fogos sempre visíveis com raio de culling realista
+- Bloom cinematográfico sem lavar a imagem
+- Física calibrada para cada padrão (peony, willow, chrysanthemum, etc.)
+- PostProcessing otimizado: 7 passes em vez de 14
 
