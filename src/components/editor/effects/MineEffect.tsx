@@ -351,7 +351,7 @@ export default function MineEffect({
       const smokePosArr = smokePosRef;
       const smokeColArr = smokeColRef;
       const smokeSizeArr = smokeSizeRef;
-      const smokeAge = (progress - 0.03) / 0.67;
+      const smokeAge = (progress - 0.03) / 0.89;
 
       for (let i = 0; i < SMOKE_COUNT; i++) {
         const svx = smokeVelocities[i * 3];
