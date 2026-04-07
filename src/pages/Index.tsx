@@ -493,7 +493,7 @@ function Index() {
           >
             <X className="w-3 h-3 text-muted-foreground" />
           </button>
-          <div className="h-full overflow-y-auto">
+          <div className="h-full overflow-hidden flex flex-col">
             <Suspense fallback={<PanelLoader />}>{renderPanelContent()}</Suspense>
           </div>
         </div>
