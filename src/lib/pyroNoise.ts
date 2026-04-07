@@ -104,26 +104,35 @@ const FLICKER_BY_COMPOUND: Record<string, FlickerParams> = {
   strontium: { base: 0.50, amplitude: 0.42, popStrength: 0.48 },
   // Barium (green) — BaCO3-based, stable chlorate oxidizer
   barium: { base: 0.70, amplitude: 0.25, popStrength: 0.20 },
-  // Copper (blue) — CuCO3/CuO, moderately unstable at high temps
+  // Copper (blue) — CuCO3/CuO → CuCl2 blue emission, requires Cl donor (PVC/Parlon)
   copper: { base: 0.60, amplitude: 0.35, popStrength: 0.38 },
   // Sodium (yellow/gold) — NaHCO3/Na₂C₂O₄, relatively stable
   sodium: { base: 0.68, amplitude: 0.28, popStrength: 0.22 },
   // Titanium (white/brocade) — Ti 25%, Rice Flour 2% (FFIC laudo)
-  // Extremely irregular sparking from Ti particle combustion
+  // Extremely irregular sparking from Ti particle combustion, high heat capacity
   titanium: { base: 0.45, amplitude: 0.50, popStrength: 0.55 },
-  // Magnesium — fast burn, bright white, irregular
+  // Magnesium — fast burn, bright white, irregular. Combustion heat 6000 kcal/g
   magnesium: { base: 0.48, amplitude: 0.45, popStrength: 0.52 },
   // Charcoal (gold tails) — slow smoldering, organic carbon fuel
   charcoal: { base: 0.72, amplitude: 0.20, popStrength: 0.15 },
-  // Iron (gold sparks) — moderate, Fe particle combustion
+  // Iron (gold sparks) — moderate, Fe particle combustion, linseed oil coating
   iron: { base: 0.62, amplitude: 0.32, popStrength: 0.30 },
-  // KClO4 flash — KClO4 36% + Al 15% (FFIC composition data)
-  // Extremely fast burn, intense burst, very short duration
+  // KClO4 flash — KClO4 66-70% + Al 30-34% (stoichiometric, Chemistry of Pyrotechnics)
+  // Burns in milliseconds, TNT equivalence ~75%. Combustion heat Al=7400 kcal/g
   flash: { base: 0.30, amplitude: 0.60, popStrength: 0.70 },
-  // Aluminum — Al 30% in break charge, bright intense sparks
+  // Aluminum — Al 30% in break charge, bright intense sparks. 7400 kcal/g
   aluminum: { base: 0.42, amplitude: 0.48, popStrength: 0.55 },
   // Phenolic resin binder — slows combustion, smooths flicker (6-8% in PIROEX reds)
   phenolic: { base: 0.75, amplitude: 0.18, popStrength: 0.12 },
+  // Magnalium — 50/50 Al/Mg alloy, mp ~460°C, SG 2.0. Dragon eggs, strobe stars.
+  // Extremely reactive, combines Mg fast ignition + Al high heat output
+  magnalium: { base: 0.40, amplitude: 0.52, popStrength: 0.58 },
+  // Zinc — bluish-green "electric" sparks, moderate burn (Chemistry of Pyrotechnics)
+  zinc: { base: 0.55, amplitude: 0.38, popStrength: 0.35 },
+  // Antimony trisulfide (Sb2S3) — bengal fire sensitizer, bright light with blue tinge
+  antimony: { base: 0.58, amplitude: 0.40, popStrength: 0.42 },
+  // Sulfur — low ignition temp (223°C), steady burn, used as fuel/sensitizer
+  sulfur: { base: 0.65, amplitude: 0.30, popStrength: 0.25 },
 };
 
 /**
