@@ -218,4 +218,19 @@ export const EFFECT_LIBRARY: Effect[] = [
   { id: 'gl-01', name: 'Glitter Gold 4"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 5, cost: 30, icon: '✨', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'glitter', safetyDistance: 100 },
   { id: 'gl-02', name: 'Glitter Silver 6"', category: 'morteiros', type: 'firework', color: '#C0C0C0', duration: 7, cost: 48, icon: '✨', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'glitter', safetyDistance: 175 },
   { id: 'gl-03', name: 'Glitter Rainbow 8"', category: 'morteiros', type: 'firework', color: '#FF69B4', duration: 8, cost: 72, icon: '💎', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'glitter', safetyDistance: 210 },
+
+  // ── Horsetail ─────────────────────────────────────────────
+  { id: 'ht-01', name: 'Horsetail Gold 4"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 7, cost: 30, icon: '🐴', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'horsetail', safetyDistance: 100 },
+  { id: 'ht-02', name: 'Horsetail Silver 6"', category: 'morteiros', type: 'firework', color: '#C0C0C0', duration: 9, cost: 50, icon: '🐴', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'horsetail', safetyDistance: 175 },
+  { id: 'ht-03', name: 'Horsetail Gold 8"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 11, cost: 80, icon: '🐴', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'horsetail', safetyDistance: 210 },
+
+  // ── Brocade Crown ─────────────────────────────────────────
+  { id: 'bc-01', name: 'Brocade Crown Gold 4"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 5, cost: 35, icon: '👑', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'brocade_crown', safetyDistance: 100, hasPistil: true, pistilColor: '#FF0000' },
+  { id: 'bc-02', name: 'Brocade Crown Silver 6"', category: 'morteiros', type: 'firework', color: '#C0C0C0', duration: 7, cost: 55, icon: '👑', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'brocade_crown', safetyDistance: 175, hasPistil: true, pistilColor: '#00FF00' },
+  { id: 'bc-03', name: 'Brocade Crown Gold 8"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 8, cost: 85, icon: '👑', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'brocade_crown', safetyDistance: 210, hasPistil: true, pistilColor: '#FF69B4' },
+
+  // ── Saturn Ring ────────────────────────────────────────────
+  { id: 'sat-01', name: 'Saturn Ring Red 4"', category: 'morteiros', type: 'firework', color: '#FF0000', duration: 4, cost: 32, icon: '🪐', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'saturn', safetyDistance: 100 },
+  { id: 'sat-02', name: 'Saturn Ring Gold 6"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 5, cost: 52, icon: '🪐', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'saturn', safetyDistance: 175 },
+  { id: 'sat-03', name: 'Saturn Ring Blue 8"', category: 'morteiros', type: 'firework', color: '#0088FF', duration: 6, cost: 78, icon: '🪐', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'saturn', safetyDistance: 210 },
 ];
