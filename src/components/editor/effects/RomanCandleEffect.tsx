@@ -28,6 +28,8 @@ export default function RomanCandleEffect({
   caliber = 2,
   angleOffset = 0,
   formulationId,
+  launchHeading = 0,
+  launchPitch = 85,
 }: {
   position: [number, number, number];
   color: string;
@@ -36,6 +38,8 @@ export default function RomanCandleEffect({
   caliber?: number;
   angleOffset?: number;
   formulationId?: string;
+  launchHeading?: number;
+  launchPitch?: number;
 }) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailLinesRef = useRef<THREE.LineSegments>(null);
@@ -255,10 +259,14 @@ export default function RomanCandleEffect({
     }
   });
 
-  const angleOffsetRad = (angleOffset * Math.PI) / 180;
+  const launchRotation = useMemo(() => {
+    const headingRad = -(launchHeading || 0) * Math.PI / 180;
+    const pitchRad = (90 - (launchPitch || 85)) * Math.PI / 180;
+    return new THREE.Euler(pitchRad, headingRad, 0, 'YXZ');
+  }, [launchHeading, launchPitch]);
 
   return (
-    <group position={position} rotation={[0, 0, angleOffsetRad]} renderOrder={50}>
+    <group position={position} rotation={launchRotation} renderOrder={50}>
       {/* Tube exit flash */}
       {Array.from({ length: shotCount }).map((_, s) => {
         const shotTime = s / shotCount;

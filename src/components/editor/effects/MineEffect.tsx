@@ -30,6 +30,8 @@ export default function MineEffect({
   angleOffset = 0,
   heightMeters,
   formulationId,
+  launchHeading = 0,
+  launchPitch = 85,
 }: {
   position: [number, number, number];
   color: string;
@@ -38,6 +40,8 @@ export default function MineEffect({
   angleOffset?: number;
   heightMeters?: number;
   formulationId?: string;
+  launchHeading?: number;
+  launchPitch?: number;
 }) {
   const count = useMemo(() => Math.min(600, Math.round(200 + caliber * caliber * 14)), [caliber]);
   const pointsRef = useRef<THREE.Points>(null);
@@ -348,7 +352,14 @@ export default function MineEffect({
   });
 
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
-  const angleOffsetRad = (angleOffset * Math.PI) / 180;
+
+  // Compute launch direction quaternion from heading/pitch
+  const launchRotation = useMemo(() => {
+    const headingRad = -(launchHeading || 0) * Math.PI / 180;
+    const pitchRad = (90 - (launchPitch || 85)) * Math.PI / 180;
+    const euler = new THREE.Euler(pitchRad, headingRad, 0, 'YXZ');
+    return euler;
+  }, [launchHeading, launchPitch]);
 
   // Combustion-modulated muzzle flash
   const muzzleFlashOpacity = useMemo(() => 0.7, []);
@@ -378,7 +389,7 @@ export default function MineEffect({
   `;
 
   return (
-    <group position={position} rotation={[0, 0, angleOffsetRad]} renderOrder={50}>
+    <group position={position} rotation={launchRotation} renderOrder={50}>
       {/* Combustion muzzle flash with flicker */}
       {progress < 0.08 && (
         <mesh position={[0, 0.3, 0]}>
