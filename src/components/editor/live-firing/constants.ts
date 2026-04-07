@@ -94,6 +94,23 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
     ],
     safetyChannel: 2, safetyValue: 127,
   },
+  // ── cFlamer mVolcano (5-nozzle, 6CH, 88 presets per manual) ──
+  {
+    id: 'lib-cflamer-mvolcano', name: 'cFLAMER mVOLCANO', manufacturer: 'SHOWVEN', dmxChannels: 6, category: 'showven',
+    dmxModes: ['6CH-N', '6CH-M', '6CH-P'],
+    capabilities: { eStopChain: true, externalPyroTrigger: true, nozzleCount: 5 },
+    effects: [
+      { id: 'eff-mv-all', name: 'ALL NOZZLES', description: 'All 5 nozzles fire', duration: 0.5, channelValues: [{ channel: 1, value: 200 }, { channel: 2, value: 200 }, { channel: 3, value: 200 }, { channel: 4, value: 200 }, { channel: 5, value: 200 }] },
+      { id: 'eff-mv-center', name: 'CENTER', description: 'Center nozzle only', duration: 0.5, channelValues: [{ channel: 3, value: 200 }] },
+      { id: 'eff-mv-wave-lr', name: 'WAVE L→R', description: 'Sequential L to R', duration: 1.0, channelValues: [] },
+      { id: 'eff-mv-wave-rl', name: 'WAVE R→L', description: 'Sequential R to L', duration: 1.0, channelValues: [] },
+      { id: 'eff-mv-sides', name: 'SIDES', description: 'Outer nozzles only', duration: 0.5, channelValues: [{ channel: 1, value: 200 }, { channel: 5, value: 200 }] },
+      { id: 'eff-mv-preset1', name: 'PRESET 1', description: 'Preset sequence (CH6 DMX 1-3)', duration: 2.0, channelValues: [{ channel: 6, value: 1 }] },
+      { id: 'eff-mv-preset44', name: 'PRESET 44', description: 'Preset sequence mid (CH6 DMX 130)', duration: 2.0, channelValues: [{ channel: 6, value: 130 }] },
+      { id: 'eff-mv-preset88', name: 'PRESET 88', description: 'Preset sequence max (CH6 DMX 255)', duration: 2.0, channelValues: [{ channel: 6, value: 255 }] },
+    ],
+    safetyChannel: 6, safetyValue: 0,
+  },
   // ── cFlamer MINI ──
   {
     id: 'lib-cflamer-mini', name: 'cFLAMER MINI', manufacturer: 'SHOWVEN', dmxChannels: 2, category: 'showven',
