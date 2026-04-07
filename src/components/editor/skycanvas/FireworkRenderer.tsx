@@ -260,12 +260,27 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           break;
         }
         case 'time_rain': {
-          // Time rain: upward-biased, low gravity phase then rain
           const upBias = 0.4 + Math.random() * 0.3;
           vx = sx * breakSpeed * 0.5 * speedVar;
           vy = Math.abs(sy) * breakSpeed * 0.35 * speedVar + breakSpeed * upBias;
           vz = sz * breakSpeed * 0.5 * speedVar;
-          life = starLife * (2.5 + Math.random() * 1.5); // long life for rain phase
+          life = starLife * (2.5 + Math.random() * 1.5);
+          break;
+        }
+        case 'falling_leaves': {
+          // Wide spread, tumbling: each star gets a random tumble phase
+          vx = sx * breakSpeed * 0.9 * speedVar;
+          vy = sy * breakSpeed * 0.5 * speedVar + breakSpeed * 0.08;
+          vz = sz * breakSpeed * 0.9 * speedVar;
+          life = starLife * (1.5 + Math.random() * 2.0);
+          break;
+        }
+        case 'glitter': {
+          // Spherical, normal speed — delayed scatter handled in useFrame
+          vx = sx * breakSpeed * speedVar * 0.9;
+          vy = sy * breakSpeed * speedVar * 0.9 + 0.5;
+          vz = sz * breakSpeed * speedVar * 0.9;
+          life = starLife * (0.8 + Math.random() * 0.4);
           break;
         }
         default:
