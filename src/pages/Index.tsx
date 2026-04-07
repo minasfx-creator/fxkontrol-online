@@ -17,6 +17,8 @@ import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import PositionContextMenu from '@/components/editor/PositionContextMenu';
+import RadialMenu from '@/components/editor/RadialMenu';
+import LiveCard from '@/components/editor/LiveCard';
 
 // ── Lazy helper — one-liner for 80+ panels ──
 const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
