@@ -8,6 +8,7 @@ import { useViewportDrop } from '@/hooks/useViewportDrop';
 import { Upload, ChevronDown, Sparkles, Paintbrush, Cog, X } from 'lucide-react';
 import ViewportNavControls from '@/components/editor/ViewportNavControls';
 import { useDisplayStore } from '@/store/useDisplayStore';
+import type { WorldShowPreset } from '@/data/worldShowPresets';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { type MobileTab } from '@/components/editor/MobileTabBar';
 
@@ -128,7 +129,8 @@ const RadioControlPanel = lz(() => import('@/components/editor/RadioControlPanel
 const MA3ControlPanel = lz(() => import('@/components/editor/MA3ControlPanel'));
 const SACNMonitorPanel = lz(() => import('@/components/editor/SACNMonitorPanel'));
 const EasyConnectPanel = lz(() => import('@/components/editor/EasyConnectPanel'));
-const WorldShowPresetsPanel = lz(() => import('@/components/editor/WorldShowPresetsPanel'));
+const VenueQuickSelector = lz(() => import('@/components/editor/VenueQuickSelector'));
+const VenueShowOverlay = lz(() => import('@/components/editor/VenueShowOverlay'));
 
 const SkyCanvas = lazy(() =>
   import('@/components/editor/SkyCanvas').catch((err) => {
@@ -194,6 +196,8 @@ function Index() {
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
+  const [venueSelector, setVenueSelector] = useState(false);
+  const [venueOverlay, setVenueOverlay] = useState<WorldShowPreset | null>(null);
   const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'editor'>('editor');
   const [showGeoSetup, setShowGeoSetup] = useState(false);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
@@ -252,6 +256,11 @@ function Index() {
   const SHARED_PANEL_IDS = new Set(['effects', 'scene', 'showsettings']);
 
   const handleTogglePanel = useCallback((id: PanelId) => {
+    // Intercept worldshows — open VenueQuickSelector instead of panel
+    if (id === 'worldshows') {
+      setVenueSelector(true);
+      return;
+    }
     setActivePanel((prev) => {
       const next = prev === id ? null : id;
       if (next && SHARED_PANEL_IDS.has(next)) setLeftDockOpen(null);
@@ -368,7 +377,7 @@ function Index() {
         {activePanel === 'ma3' && <MA3ControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'sacnmonitor' && <SACNMonitorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'easyconnect' && <EasyConnectPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'worldshows' && <WorldShowPresetsPanel onClose={() => setActivePanel(null)} />}
+        
       </>
     );
   };
@@ -583,6 +592,29 @@ function Index() {
 
       {/* ─── Layer 8b: Viewport Transition Overlay ── */}
       <ViewportTransitionOverlay />
+
+      {/* ─── Venue AR HUD Overlay ─── */}
+      {venueOverlay && (
+        <VenueShowOverlay
+          preset={venueOverlay}
+          onComplete={() => setVenueOverlay(null)}
+        />
+      )}
+
+      {/* ─── Venue Quick Selector ─── */}
+      <VenueQuickSelector
+        open={venueSelector}
+        onClose={() => setVenueSelector(false)}
+        onSelect={(preset) => {
+          setVenueSelector(false);
+          // Trigger viewport transition
+          window.dispatchEvent(new CustomEvent('viewport-transition', {
+            detail: { locationName: `${preset.flag} ${preset.name}`, holdMs: 1000 },
+          }));
+          // After fade-out, show AR overlay
+          setTimeout(() => setVenueOverlay(preset), 500);
+        }}
+      />
 
       {/* ─── Layer 9: Overlays & Modals ──────────────── */}
       {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
