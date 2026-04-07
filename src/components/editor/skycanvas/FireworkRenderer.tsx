@@ -449,6 +449,26 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           py = hangPy - 0.3 + 0.5 * GRAVITY * 1.2 * rainT * rainT; // full gravity rain
           pz = hangPz + w[2] * rainT * rainT * 0.5;
         }
+      } else if (pattern === 'falling_leaves') {
+        // Falling leaves: aerodynamic tumble — sinusoidal lateral drift + heavy gravity
+        // Each star tumbles at its own frequency (from sparkleSeeds)
+        const tumbleFreq = 2.0 + (sparkleSeeds[i] % 3) * 0.8;
+        const tumbleAmp = 0.4 + (sparkleSeeds[i] % 5) * 0.08;
+        const basePx = dragPos(vx, t, dragCoeff * 0.6); // less drag = wider spread
+        const basePy = dragPos(vy, t, dragCoeff * 0.4) + 0.5 * GRAVITY * 1.6 * t * t;
+        const basePz = dragPos(vz, t, dragCoeff * 0.6);
+        // Tumbling flutter: lateral oscillation perpendicular to velocity
+        const tumblePhase = twinklePhases[i];
+        px = basePx + Math.sin(time * tumbleFreq + tumblePhase) * tumbleAmp * starAge + w[0] * t * t * 0.4;
+        py = basePy + Math.cos(time * tumbleFreq * 0.7 + tumblePhase) * tumbleAmp * 0.3 * starAge;
+        pz = basePz + Math.cos(time * tumbleFreq + tumblePhase + 1.5) * tumbleAmp * starAge + w[2] * t * t * 0.4;
+      } else if (pattern === 'glitter') {
+        // Glitter: normal ballistics, but with delayed stochastic "flash" scatter
+        px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
+        py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
+        pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
+        // Delayed secondary ignition: at random times (30-80% life), stars flash bright
+        // This is handled in the color/brightness section below
       } else {
         px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
