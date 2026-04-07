@@ -247,8 +247,8 @@ export const SHOWVEN_LASERS: ShowvenLaserPreset[] = [
     wavelengthRGB: [638, 520, 445], scanningAngleDeg: 25, scanRateKpps: 30,
     beamDivergenceMrad: 1.2, weightKg: 29, ipRating: 'IP65', laserClass: 4,
     controlInterfaces: ['FB4', 'DMX', 'ILDA', 'Ethernet', 'SD', 'Sound'],
-    dmxChannels: 12,
-    description: 'Full-colour RGB laser — 40W, ±25° scan, 30Kpps, TEC cooling, IP65',
+    dmxChannels: 16,
+    description: 'Full-colour RGB laser — 40W, ±25° scan, 30Kpps, FB3 16CH, TEC cooling, IP65',
   },
   {
     id: 'maiman_60', name: 'Maiman 60W', outputW: 60,
