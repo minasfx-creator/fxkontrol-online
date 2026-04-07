@@ -377,7 +377,7 @@ function Index() {
         {activePanel === 'ma3' && <MA3ControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'sacnmonitor' && <SACNMonitorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'easyconnect' && <EasyConnectPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'worldshows' && null}
+        
       </>
     );
   };
