@@ -1155,9 +1155,9 @@ export function TimelineEffects() {
         if (eid === 'sfx-10') return <SnowMachineEffect key={item.id} position={pos} progress={progress} width={6 + (scaledHeight || 4)} height={Math.max(6, (scaledHeight || 8) * 1.2)} />;
         if (eid === 'sfx-11') return <BubbleMachineEffect key={item.id} position={pos} color={effect.color} progress={progress} spread={6 + (scaledHeight || 3)} />;
 
-        if (eid.startsWith('comet-')) return <CometEffect key={item.id} position={pos} color={effect.color} progress={progress} direction={eid === 'comet-02' ? 'down' : 'up'} caliber={caliber} angleOffset={vdlAngle} formulationId={effFormulationId} />;
+        if (eid.startsWith('comet-')) return <CometEffect key={item.id} position={pos} color={effect.color} progress={progress} direction={eid === 'comet-02' ? 'down' : 'up'} caliber={caliber} angleOffset={vdlAngle} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} />;
         if (eid.startsWith('mburst-')) return <MultiBurstEffect key={item.id} position={burstPos} color={effect.color} progress={progress} burstCount={eid === 'mburst-02' ? 5 : 3} caliber={caliber} />;
-        if (eid.startsWith('fan-')) return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={eid === 'fan-02' ? 180 : 90} caliber={caliber} formulationId={effFormulationId} />;
+        if (eid.startsWith('fan-')) return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={eid === 'fan-02' ? 180 : 90} caliber={caliber} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} />;
 
         if (effect.type === 'firework') return (
           <FireworkBurst 
