@@ -637,8 +637,15 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         // Dragon eggs / magnalium strobe: real oscillatory combustion
         twinkle = strobeFlicker(sparkleSeeds[i], time, 0.2, 0.08);
       } else if (isTrailingPattern) {
-        // Trailing: use temporalFlicker with reduced amplitude for constant glow + micro-variations
-        twinkle = temporalFlicker(sparkleSeeds[i], time, 0.82, 0.15, 0.10);
+        // Nishiki detection: kamuro + gold-like base color → high-freq aluminum shimmer
+        const isNishiki = pattern === 'kamuro' && baseColor.r > 0.85 && baseColor.g > 0.7 && baseColor.b < 0.4;
+        if (isNishiki) {
+          // 25Hz shimmer overlay modeling aluminum/charcoal combustion oscillation
+          const shimmer = Math.sin(time * 50 + sparkleSeeds[i] * 3.7) * 0.15;
+          twinkle = temporalFlicker(sparkleSeeds[i], time, 0.70, 0.30, 0.12) + shimmer;
+        } else {
+          twinkle = temporalFlicker(sparkleSeeds[i], time, 0.82, 0.15, 0.10);
+        }
       } else {
         // Chemical-compound-specific flicker params
         const fp = getFlickerParams(compoundStr);
