@@ -248,10 +248,7 @@ function CakeShot({
 
   const liftFraction = 0.25;
   const isLifting = progress < liftFraction;
-
-  if (isLifting) {
-    const liftProgress = progress / liftFraction;
-    const realY = Math.max(0, liftProgress * breakH * 0.7);
+  const liftHeight = breakH;
     const screenBlend = getThreeBlending('screen');
     // Trajectory follows angle
     const lateralX = Math.sin(angle) * liftProgress * breakH * 0.7;
