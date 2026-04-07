@@ -112,6 +112,8 @@ import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/
 import {
   reportCrash, isInCooldown, recordContextLoss,
   watchdogTick, pushFrameMetrics, startMetricsReporting, stopMetricsReporting,
+  scanSceneTransforms, checkFrameBudget, checkSceneHealth, deepDispose, disposeAllTracked,
+  getDegradationLevel, onDegradationChange,
 } from '@/lib/hardening';
 // ═══ FXK Ultra Refinement — Adaptive Quality + Render Stability ═══
 import { useFXKUltraRefinement } from '@/hooks/useFXKUltraRefinement';
@@ -277,13 +279,28 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
  * Runs inside the R3F Canvas context.
  */
 function HardeningWatchdog() {
-  const { gl } = useThree();
+  const { gl, scene } = useThree();
   const frameRef = useRef(0);
+  const overBudgetStreakRef = useRef(0);
 
   // Start metrics console reporting on mount
   useEffect(() => {
     startMetricsReporting(60); // Log every 60s
     return () => stopMetricsReporting();
+  }, []);
+
+  // Connect hardening degradation to quality system
+  useEffect(() => {
+    const unsub = onDegradationChange((level) => {
+      if (level === 'severe' || level === 'critical') {
+        const store = useSceneStore.getState();
+        if (!store.environment.lowQualityMode) {
+          store.updateEnvironment({ lowQualityMode: true });
+          pushLog(`[Hardening] Degradation ${level} → forcing low quality mode`, 'warn');
+        }
+      }
+    });
+    return unsub;
   }, []);
 
   useFrame((_state, delta) => {
@@ -297,6 +314,29 @@ function HardeningWatchdog() {
 
     pushFrameMetrics(fps, frameTimeMs, info.calls, info.triangles);
     watchdogTick(fps);
+
+    // ── Scene transform integrity scan (throttled internally to every 60 frames)
+    scanSceneTransforms(scene);
+
+    // ── Frame budget check
+    const budgetCheck = checkFrameBudget(frameTimeMs, info.calls, info.triangles);
+    if (!budgetCheck.withinBudget) {
+      overBudgetStreakRef.current++;
+      if (overBudgetStreakRef.current >= 3) {
+        pushLog(`[Hardening] Over budget: frame=${frameTimeMs.toFixed(1)}ms draws=${info.calls} tris=${info.triangles}`, 'warn');
+        overBudgetStreakRef.current = 0;
+      }
+    } else {
+      overBudgetStreakRef.current = 0;
+    }
+
+    // ── Scene health check (every ~5s = 300 frames)
+    if (frameRef.current % 300 === 0) {
+      const health = checkSceneHealth(gl);
+      if (health.warnings.length > 0) {
+        health.warnings.forEach(w => pushLog(`[GPU Health] ${w}`, 'warn'));
+      }
+    }
   });
 
   return null;
@@ -319,7 +359,7 @@ function ContextLossGuard({ recoveringRef, onRemount }: {
   recoveringRef: React.MutableRefObject<boolean>;
   onRemount: () => void;
 }) {
-  const { gl } = useThree();
+  const { gl, scene } = useThree();
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -333,6 +373,15 @@ function ContextLossGuard({ recoveringRef, onRemount }: {
       if (!shouldRecover || isInCooldown()) {
         console.error('[FXK] WebGL context lost — in cooldown, suppressing remount');
         return;
+      }
+
+      // Deep dispose scene resources before remount to prevent memory leaks
+      try {
+        deepDispose(scene);
+        disposeAllTracked();
+        pushLog('[FXK] Deep disposed scene resources after context loss', 'warn');
+      } catch (disposeErr) {
+        console.warn('[FXK] Error during deep dispose:', disposeErr);
       }
 
       recoveringRef.current = true;
@@ -352,9 +401,25 @@ function ContextLossGuard({ recoveringRef, onRemount }: {
       canvas.removeEventListener('webglcontextlost', onLost as EventListener);
       canvas.removeEventListener('webglcontextrestored', onRestored as EventListener);
     };
-  }, [gl, recoveringRef, onRemount]);
+  }, [gl, scene, recoveringRef, onRemount]);
 
   return null;
+}
+
+/**
+ * SubsystemBoundary — isolates heavy R3F subsystems so one crash doesn't take down the viewport.
+ */
+class SubsystemBoundary extends Component<{ name: string; children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(`[FXK SubsystemBoundary:${this.props.name}]`, error, info.componentStack);
+    pushLog(`[SubsystemBoundary] ${this.props.name} crashed: ${error.message}`, 'error');
+  }
+  render() {
+    if (this.state.hasError) return null; // Silently remove crashed subsystem from scene
+    return this.props.children;
+  }
 }
 
 // Module-level refs — local aliases for backward compat within this file
@@ -1280,6 +1345,11 @@ export default function SkyCanvas() {
   // Professional keybindings (Finale 3D)
   useKeybindings();
   const editorMode = useProjectStore((s) => s.editorMode);
+  // ── Memoized Zustand selectors (avoid inline getState in JSX) ──
+  const lockPositions = useSceneStore((s) => s.environment.lockPositions);
+  const showRulers = useSceneStore((s) => s.environment.showRulers);
+  const updateEnvironment = useSceneStore((s) => s.updateEnvironment);
+  const updateSettings = useSceneStore((s) => s.updateSettings);
   const droneFormations = useProjectStore((s) => s.droneFormations);
   const gpsOrigin = useProjectStore((s) => s.gpsOrigin);
   // cursorStyle moved below geoTool declaration
@@ -1484,22 +1554,7 @@ export default function SkyCanvas() {
 
   // Force R3F to re-measure when resizable panels change size (debounced)
   const containerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const ro = new ResizeObserver(() => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        window.dispatchEvent(new Event('resize'));
-      }, 150);
-    });
-    ro.observe(el);
-    return () => {
-      if (timer) clearTimeout(timer);
-      ro.disconnect();
-    };
-  }, []);
+  // ResizeObserver removed — R3F Canvas resize={{ debounce: 50 }} handles this natively
 
   return (
     <div ref={containerRef} className="w-full h-full relative bg-black" data-sky-canvas style={{ cursor: cursorStyle }}>
@@ -1562,11 +1617,12 @@ export default function SkyCanvas() {
         <Suspense fallback={null}>
           {!google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
         </Suspense>
-        {google3DTilesEnabled && <GoogleTilesLayer />}
-        {google3DTilesEnabled && <GeoCameraController />}
-        {/* Fallback grid + horizon when Google Tiles fail or timeout */}
-        {google3DTilesEnabled && <GoogleTilesFallback />}
-        <GoogleEarthLighting />
+        <SubsystemBoundary name="GoogleTiles">
+          {google3DTilesEnabled && <GoogleTilesLayer />}
+          {google3DTilesEnabled && <GeoCameraController />}
+          {google3DTilesEnabled && <GoogleTilesFallback />}
+          <GoogleEarthLighting />
+        </SubsystemBoundary>
         {!google3DTilesEnabled && <FinaleAxesHelper />}
         <DoubleClickFocus />
         <SiteModelRenderer />
@@ -1576,13 +1632,17 @@ export default function SkyCanvas() {
         {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
         {!google3DTilesEnabled && !isLowTierMobile && <PyroSafetyZones />}
-        <DroneRendererSwitch />
+        <SubsystemBoundary name="DroneSwarm">
+          <DroneRendererSwitch />
+        </SubsystemBoundary>
         {!isMobile && <BoidsVisualizer />}
         {!isMobile && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
-        <Suspense fallback={null}>
-          <TimelineEffects />
-          <LiveSFXEffects />
-        </Suspense>
+        <SubsystemBoundary name="Pyrotechnics">
+          <Suspense fallback={null}>
+            <TimelineEffects />
+            <LiveSFXEffects />
+          </Suspense>
+        </SubsystemBoundary>
         <LaserPreviewBeams />
         {!google3DTilesEnabled && !isLowTierMobile && <StageFixtures />}
         {!google3DTilesEnabled && !isMobile && !isLowTierMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
@@ -1591,7 +1651,9 @@ export default function SkyCanvas() {
         {!isMobile && <CameraPathPreview />}
         {!google3DTilesEnabled && <ViewportRulers />}
         <CameraBookmarkSaver />
-        {!isLowTierMobile && <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />}
+        <SubsystemBoundary name="PostProcessing">
+          {!isLowTierMobile && <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />}
+        </SubsystemBoundary>
         {!isLowTierMobile && <StressTestFireworks />}
         
         {!isLowTierMobile && <PostExplosionSmokeManager />}
@@ -1678,13 +1740,10 @@ export default function SkyCanvas() {
 
           {/* Lock Positions */}
           <button
-            onClick={() => {
-              const env = useSceneStore.getState().environment;
-              useSceneStore.getState().updateEnvironment({ lockPositions: !env.lockPositions });
-            }}
+            onClick={() => updateEnvironment({ lockPositions: !lockPositions })}
             className={cn(
               "w-7 h-7 rounded-md flex items-center justify-center transition-all border",
-              useSceneStore.getState().environment.lockPositions
+              lockPositions
                 ? "bg-warning/20 border-warning/40 text-warning"
                 : "bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
             )}
@@ -1695,13 +1754,10 @@ export default function SkyCanvas() {
 
           {/* Rulers */}
           <button
-            onClick={() => {
-              const env = useSceneStore.getState().environment;
-              useSceneStore.getState().updateEnvironment({ showRulers: !env.showRulers });
-            }}
+            onClick={() => updateEnvironment({ showRulers: !showRulers })}
             className={cn(
               "w-7 h-7 rounded-md flex items-center justify-center transition-all border",
-              useSceneStore.getState().environment.showRulers
+              showRulers
                 ? "bg-primary/20 border-primary/40 text-primary"
                 : "bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
             )}
@@ -1744,7 +1800,7 @@ export default function SkyCanvas() {
 
           {/* Presentation */}
           <button
-            onClick={() => useSceneStore.getState().updateSettings({ presentationMode: true })}
+            onClick={() => updateSettings({ presentationMode: true })}
             className="w-7 h-7 rounded-md flex items-center justify-center transition-all border bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
             title="Presentation Mode"
           >
@@ -1842,7 +1898,7 @@ export default function SkyCanvas() {
       {/* Client Presentation Mode */}
       <ClientPresentationMode
         active={presentationMode}
-        onExit={() => useSceneStore.getState().updateSettings({ presentationMode: false })}
+        onExit={() => updateSettings({ presentationMode: false })}
       />
 
       {/* AR Overlays */}
