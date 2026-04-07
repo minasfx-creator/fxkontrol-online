@@ -287,9 +287,13 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     const _adaptiveExposure = getAdaptiveExposure();
     
     // Reduced drag for larger calibers — heavier stars travel further
-    const dragCoeff = caliber <= 3 ? 0.058 : caliber <= 4 ? 0.048 : caliber <= 5 ? 0.040
+    const baseDrag = caliber <= 3 ? 0.058 : caliber <= 4 ? 0.048 : caliber <= 5 ? 0.040
       : caliber <= 6 ? 0.034 : caliber <= 8 ? 0.026 : caliber <= 10 ? 0.020 : 0.016;
     const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm';
+    // Pattern-specific drag multiplier — heavier stars = less air resistance
+    const dragMult = pattern === 'kamuro' ? 0.45 : pattern === 'willow' ? 0.55
+      : pattern === 'brocade' ? 0.60 : pattern === 'palm' ? 0.75 : 1.0;
+    const dragCoeff = baseDrag * dragMult;
     
     // Larger star sizes for bigger calibers — was 0.9 for 6", now 1.4
     const baseSize = caliber <= 3 ? 0.5 : caliber <= 4 ? 0.8 : caliber <= 6 ? 1.4
