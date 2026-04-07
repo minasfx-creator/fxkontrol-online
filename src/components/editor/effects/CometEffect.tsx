@@ -364,6 +364,7 @@ export default function CometEffect({
           transparent
           opacity={0.09}
           depthWrite={false}
+          depthTest={false}
           sizeAttenuation
         />
       </points>
