@@ -49,6 +49,7 @@ import {
   HazeMachineEffect,
   SnowMachineEffect,
   BubbleMachineEffect,
+  GirandolaEffect,
 } from '../effects';
 import QuadcopterModel from '../QuadcopterModel';
 
