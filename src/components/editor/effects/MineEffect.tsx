@@ -338,6 +338,7 @@ export default function MineEffect({
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest={false}
           />
         </mesh>
       )}
@@ -355,6 +356,7 @@ export default function MineEffect({
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest={false}
             side={THREE.DoubleSide}
           />
         </mesh>
