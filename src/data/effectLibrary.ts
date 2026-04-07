@@ -193,4 +193,19 @@ export const EFFECT_LIBRARY: Effect[] = [
   { id: 'niagara-01', name: 'Ns Blue Peony 5"', category: 'morteiros', type: 'firework', color: '#0066FF', duration: 3.5, cost: 28, icon: '🔵', partType: 'shell', caliber: 5, heightMeters: 100, prefire: 2.5, pattern: 'peony', safetyDistance: 140 },
   { id: 'niagara-02', name: 'Ns Gold Kamuro 6"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 5.0, cost: 38, icon: '🌟', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'kamuro', safetyDistance: 175 },
   { id: 'niagara-03', name: 'Ns Pink Multi-Break 4"', category: 'morteiros', type: 'firework', color: '#FF69B4', duration: 3.0, cost: 32, icon: '💖', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'crossette', safetyDistance: 100, numDevices: 3 },
+
+  // ── Multi-Break Shells ────────────────────────────────────
+  { id: 'mb-01', name: 'Multi-Break Red 4"', category: 'morteiros', type: 'firework', color: '#FF0000', duration: 4, cost: 28, icon: '💥', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'multi_break', safetyDistance: 100 },
+  { id: 'mb-02', name: 'Multi-Break Gold 6"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 6, cost: 48, icon: '💥', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'multi_break', safetyDistance: 175 },
+  { id: 'mb-03', name: 'Multi-Break Rainbow 8"', category: 'morteiros', type: 'firework', color: '#FF69B4', duration: 7, cost: 75, icon: '🌈', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'multi_break', safetyDistance: 210 },
+
+  // ── Time Rain ─────────────────────────────────────────────
+  { id: 'tr-01', name: 'Time Rain Gold 4"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 5, cost: 25, icon: '🌧️', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'time_rain', safetyDistance: 100 },
+  { id: 'tr-02', name: 'Time Rain Silver 6"', category: 'morteiros', type: 'firework', color: '#C0C0C0', duration: 7, cost: 40, icon: '🌧️', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'time_rain', safetyDistance: 175 },
+  { id: 'tr-03', name: 'Time Rain Blue 8"', category: 'morteiros', type: 'firework', color: '#0088FF', duration: 9, cost: 65, icon: '💧', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'time_rain', safetyDistance: 210 },
+
+  // ── Girandola (Spinning Wheel) ────────────────────────────
+  { id: 'gir-01', name: 'Girandola 3" Silver', category: 'ground_effects', type: 'firework', color: '#C0C0C0', duration: 8, cost: 20, icon: '🌀', partType: 'girandola', caliber: 3, heightMeters: 15, safetyDistance: 30 },
+  { id: 'gir-02', name: 'Girandola 4" Gold', category: 'ground_effects', type: 'firework', color: '#FFD700', duration: 10, cost: 30, icon: '🌀', partType: 'girandola', caliber: 4, heightMeters: 25, safetyDistance: 40 },
+  { id: 'gir-03', name: 'Girandola 5" Color', category: 'ground_effects', type: 'firework', color: '#FF4500', duration: 12, cost: 40, icon: '🎡', partType: 'girandola', caliber: 5, heightMeters: 35, safetyDistance: 50 },
 ];

@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import CakeBuilder from './CakeBuilder';
-import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, GripVertical, Clock, MapPin, Ruler, List, LayoutGrid, Hash, Plus } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Flame, Sparkles, Radio, Shapes, Wand2, Zap, Lightbulb, Droplets, Bomb, CandlestickChart as Candle, Waves, Box, GripVertical, Clock, MapPin, Ruler, List, LayoutGrid, Hash, Plus, RotateCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ const CATEGORIES = [
   { key: 'iluminacao' as const, label: 'Lighting', icon: Lightbulb, accent: 'hsl(50, 95%, 55%)' },
   { key: 'drones' as const, label: 'Drone Units', icon: Radio, accent: 'hsl(200, 80%, 55%)' },
   { key: 'formacoes' as const, label: 'Formations', icon: Shapes, accent: 'hsl(270, 70%, 60%)' },
+  { key: 'ground_effects' as const, label: 'Ground Effects', icon: RotateCw, accent: 'hsl(35, 85%, 55%)' },
 ];
 
 type FilterType = 'all' | 'firework' | 'drone' | 'sfx' | 'laser' | 'light';
