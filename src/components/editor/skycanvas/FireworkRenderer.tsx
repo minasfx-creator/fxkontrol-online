@@ -327,7 +327,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       
       const fade = Math.max(0, 1 - starAge);
       const fadeSmooth = fade * fade * (3 - 2 * fade);
-      const fadeCubed = fade * fade * fade;
+      // Exponential decay for peony/chrysanthemum — holds brightness longer then drops naturally
+      const useExpFade = pattern === 'peony' || pattern === 'chrysanthemum';
+      const fadeCubed = useExpFade ? Math.exp(-starAge * 3.5) : fade * fade * fade;
       
       const px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
       const py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
