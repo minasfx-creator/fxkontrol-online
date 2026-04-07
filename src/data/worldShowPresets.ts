@@ -39,8 +39,7 @@ export interface WorldShowPreset {
 }
 
 // ── Helpers ──
-let _uid = 0;
-const uid = (prefix: string) => `${prefix}-${Date.now()}-${++_uid}`;
+const uid = () => crypto.randomUUID();
 const pos = (id: string, name: string, x: number, y: number, z: number, heading = 0): Position => ({
   id, name, type: 'pyro', x, y, z, heading, pitch: 0, roll: 0, color: '#FF6B35',
 });
