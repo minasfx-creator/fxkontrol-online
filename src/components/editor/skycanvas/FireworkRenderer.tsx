@@ -201,7 +201,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
 
       switch (pattern) {
         case 'willow':
-          vx = sx * breakSpeed * 0.42 * speedVar; vy = sy * breakSpeed * 0.42 * speedVar; vz = sz * breakSpeed * 0.42 * speedVar;
+          vx = sx * breakSpeed * 0.55 * speedVar; vy = sy * breakSpeed * 0.55 * speedVar; vz = sz * breakSpeed * 0.55 * speedVar;
           life = starLife * (1.3 + Math.random() * 1.4); break;
         case 'palm':
           vx = sx * breakSpeed * 0.52 * speedVar; vy = Math.abs(sy) * breakSpeed * 0.85 + breakSpeed * 0.45; vz = sz * breakSpeed * 0.52 * speedVar;
