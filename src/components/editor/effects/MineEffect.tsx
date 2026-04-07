@@ -253,6 +253,53 @@ export default function MineEffect({
       sizeArr[i] = basePointSize * particleSizes[i];
     }
 
+    // ── Spray comet trails ──
+    if (trailRef.current) {
+      const tp = trailPosRef;
+      const tc = trailColRef;
+      for (let si = 0; si < sprayCount; si++) {
+        const pi = columnEnd + si; // particle index
+        const vx = velocities[pi * 3];
+        const vy = velocities[pi * 3 + 1];
+        const vz = velocities[pi * 3 + 2];
+        const lt = lifetimes[pi];
+        const age = progress / lt;
+        const fade = Math.max(0, 1 - age) * envelope;
+        
+        for (let s = 0; s < TRAIL_SEGS; s++) {
+          const dt = 0.015 * (s + 1);
+          const tPast = Math.max(0, t - dt * s);
+          const tPast2 = Math.max(0, t - dt * (s + 1));
+          const dragPast = Math.exp(-0.04 * tPast);
+          const dragPast2 = Math.exp(-0.04 * tPast2);
+          const base = (si * TRAIL_SEGS + s) * 6;
+          
+          tp[base] = vx * tPast * dragPast + windX * tPast * tPast * 0.5;
+          tp[base + 1] = vy * tPast * Math.exp(-0.03 * tPast) + 0.5 * GRAV * tPast * tPast;
+          tp[base + 2] = vz * tPast * dragPast + windZ * tPast * tPast * 0.5;
+          tp[base + 3] = vx * tPast2 * dragPast2 + windX * tPast2 * tPast2 * 0.5;
+          tp[base + 4] = vy * tPast2 * Math.exp(-0.03 * tPast2) + 0.5 * GRAV * tPast2 * tPast2;
+          tp[base + 5] = vz * tPast2 * dragPast2 + windZ * tPast2 * tPast2 * 0.5;
+          
+          const segFade = fade * Math.pow(1 - s / TRAIL_SEGS, 2) * 0.6;
+          const endFade = fade * Math.pow(1 - (s + 1) / TRAIL_SEGS, 2) * 0.3;
+          // Thermal ramp: white-hot → base → ember
+          const warmth = s / TRAIL_SEGS;
+          tc[base] = (1.0 - warmth * 0.5) * segFade * baseColor.r;
+          tc[base + 1] = (0.8 - warmth * 0.4) * segFade * baseColor.g;
+          tc[base + 2] = (0.5 - warmth * 0.3) * segFade * baseColor.b;
+          tc[base + 3] = (1.0 - warmth * 0.5) * endFade * baseColor.r;
+          tc[base + 4] = (0.8 - warmth * 0.4) * endFade * baseColor.g;
+          tc[base + 5] = (0.5 - warmth * 0.3) * endFade * baseColor.b;
+        }
+      }
+      const trailGeo = trailRef.current.geometry;
+      const tPosAttr = trailGeo.getAttribute('position') as THREE.BufferAttribute;
+      const tColAttr = trailGeo.getAttribute('color') as THREE.BufferAttribute;
+      if (tPosAttr) tPosAttr.needsUpdate = true;
+      if (tColAttr) tColAttr.needsUpdate = true;
+    }
+
     const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
     const colAttr = geo.getAttribute('color') as THREE.BufferAttribute;
     const szAttr = geo.getAttribute('size') as THREE.BufferAttribute;
