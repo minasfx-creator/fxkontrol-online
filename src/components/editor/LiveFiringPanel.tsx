@@ -43,8 +43,8 @@ import MobileLinkMode from './live-firing/MobileLinkMode';
 import PyroFireOnePanel from './live-firing/PyroFireOnePanel';
 import VirtualControllerHub from './VirtualControllerHub';
 import MA3ControlPanel from './MA3ControlPanel';
-import ShowControlPanel from './ShowControlPanel';
-import DMXMonitorPanel from './DMXMonitorPanel';
+import ShowCommanderPanel from './ShowCommanderPanel';
+import DMXMonitorPanel from './dmx/DMXMonitorPanel';
 import DroneCommandPanel from './DroneCommandPanel';
 import EasyConnectPanel from './EasyConnectPanel';
 import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
@@ -1399,7 +1399,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         </div>
       );
       case 'mobile_link': return <MobileLinkMode fs={fs} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
-      case 'show_control': return <ShowControlPanel fs={fs} />;
+      case 'show_control': return <ShowCommanderPanel fs={fs} />;
       case 'module':
       case 'artnet_modules': return <FXKNetPanel fs={fs} />;
       case 'dmx_monitor': return <DMXMonitorPanel fs={fs} />;

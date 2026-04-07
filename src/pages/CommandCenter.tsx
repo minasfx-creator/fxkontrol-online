@@ -26,9 +26,9 @@ import TacticalMinimap from '@/components/editor/TacticalMinimap';
 const LiveFiringPanel = lazy(() => import('@/components/editor/LiveFiringPanel'));
 const MA3ControlPanel = lazy(() => import('@/components/editor/MA3ControlPanel'));
 const DroneCommandPanel = lazy(() => import('@/components/editor/DroneCommandPanel'));
-const ShowControlPanel = lazy(() => import('@/components/editor/ShowControlPanel'));
+const ShowCommanderPanel = lazy(() => import('@/components/editor/ShowCommanderPanel'));
 const FXKNetPanel = lazy(() => import('@/components/editor/live-firing/FXKNetPanel'));
-const DMXMonitorPanel = lazy(() => import('@/components/editor/DMXMonitorPanel'));
+const DMXMonitorPanel = lazy(() => import('@/components/editor/dmx/DMXMonitorPanel'));
 const FieldTestDesktop = lazy(() => import('@/components/editor/FieldTestDesktop'));
 const QuickHardwarePanel = lazy(() => import('@/components/editor/QuickHardwarePanel'));
 
@@ -193,7 +193,7 @@ export default function CommandCenter() {
     switch (mode) {
       case 'fxk_light': return <MA3ControlPanel fs />;
       case 'drone_ops': return <DroneCommandPanel fs />;
-      case 'show_control': return <ShowControlPanel fs />;
+      case 'show_control': return <ShowCommanderPanel fs />;
       case 'module': return <FXKNetPanel fs />;
       case 'hardware': return <QuickHardwarePanel fs />;
       case 'dmx_monitor': return <DMXMonitorPanel fs />;

@@ -58,7 +58,7 @@ const InventoryPanel = lz(() => import('@/components/editor/InventoryPanel'));
 const WaypointEditor = lz(() => import('@/components/editor/WaypointEditor'));
 const BoidsPanel = lz(() => import('@/components/editor/BoidsPanel'));
 const PIDPanel = lz(() => import('@/components/editor/PIDPanel'));
-const DMXPanel = lz(() => import('@/components/editor/DMXPanel'));
+const DMXPanel = lz(() => import('@/components/editor/dmx/DMXPanel'));
 const BatteryPanel = lz(() => import('@/components/editor/BatteryPanel'));
 const MAVLinkPanel = lz(() => import('@/components/editor/MAVLinkPanel'));
 const SMPTEPanel = lz(() => import('@/components/editor/SMPTEPanel'));
@@ -99,10 +99,10 @@ const LiveFiringPanel = lz(() => import('@/components/editor/LiveFiringPanel'));
 const FleetManagementPanel = lz(() => import('@/components/editor/FleetManagementPanel'));
 const GeofencePanel = lz(() => import('@/components/editor/GeofencePanel'));
 const StoryboardPanel = lz(() => import('@/components/editor/StoryboardPanel'));
-const ShowControlPanel = lz(() => import('@/components/editor/ShowControlPanel'));
+const ShowControlPanel = lz(() => import('@/components/editor/ShowCommanderPanel'));
 const ShowInspectorPanel = lz(() => import('@/components/editor/ShowInspectorPanel'));
 const LightProgramPanel = lz(() => import('@/components/editor/LightProgramPanel'));
-const SafetyCheckPanel = lz(() => import('@/components/editor/SafetyCheckPanel'));
+const SafetyCheckPanel = lz(() => import('@/components/editor/safety/FlightCheckTab'));
 const TakeoffGridPanel = lz(() => import('@/components/editor/TakeoffGridPanel'));
 const TransitionPlannerPanel = lz(() => import('@/components/editor/TransitionPlannerPanel'));
 const LaserControlPanel = lz(() => import('@/components/editor/LaserControlPanel'));
@@ -119,10 +119,10 @@ const MobileLinkMonitor = lz(() => import('@/components/editor/MobileLinkMonitor
 const SiteModelsPanel = lz(() => import('@/components/editor/SiteModelsPanel'));
 const VirtualControllerHub = lz(() => import('@/components/editor/VirtualControllerHub'));
 const FieldMap2D = lz(() => import('@/components/editor/FieldMap2D'));
-const ShowCommanderPanel = lz(() => import('@/components/editor/ShowCommanderPanel'));
+const ShowCommanderPanelDirect = lz(() => import('@/components/editor/ShowCommanderPanel'));
 const BluetoothPanel = lz(() => import('@/components/editor/BluetoothPanel'));
 const NFCPairPanel = lz(() => import('@/components/editor/NFCPairPanel'));
-const DMXOutputPanel = lz(() => import('@/components/editor/DMXOutputPanel'));
+const DMXOutputPanel = lz(() => import('@/components/editor/dmx/DMXOutputPanel'));
 const RemoteControlPanel = lz(() => import('@/components/editor/RemoteControlPanel'));
 const ConnectionManagerPanel = lz(() => import('@/components/editor/ConnectionManagerPanel'));
 const RadioControlPanel = lz(() => import('@/components/editor/RadioControlPanel'));
@@ -356,7 +356,7 @@ function Index() {
         {activePanel === 'showpreview' && <ShowPreviewPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'mobilelink' && <MobileLinkPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'linkmonitor' && <MobileLinkMonitor onClose={() => setActivePanel(null)} />}
-        {activePanel === 'showcommander' && <ShowCommanderPanel onClose={() => setActivePanel(null)} onOpenPanel={(id) => setActivePanel(id as PanelId)} />}
+        {activePanel === 'showcommander' && <ShowCommanderPanelDirect onClose={() => setActivePanel(null)} onOpenPanel={(id) => setActivePanel(id as PanelId)} />}
         {activePanel === 'bluetooth' && <BluetoothPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'nfc' && <NFCPairPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'dmxoutput' && <DMXOutputPanel onClose={() => setActivePanel(null)} />}

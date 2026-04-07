@@ -9,7 +9,7 @@ import ArtNetModulePanel from './ArtNetModulePanel';
 import VirtualIFMx32QPanel from './VirtualIFMx32QPanel';
 import DMXIOPanel from './DMXIOPanel';
 import PixelMappingPanel from './PixelMappingPanel';
-import DMXBezierEditor from '../DMXBezierEditor';
+import DMXBezierEditor from '../dmx/DMXBezierEditor';
 import MA3NetworkPanel from './MA3NetworkPanel';
 
 interface FXKNetPanelProps {
