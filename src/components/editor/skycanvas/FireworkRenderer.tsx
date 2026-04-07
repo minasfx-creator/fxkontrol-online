@@ -400,6 +400,16 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         // Chemical-compound-specific flicker params
         const fp = getFlickerParams(String(compound));
         twinkle = temporalFlicker(sparkleSeeds[i], time, fp.base, fp.amplitude, fp.popStrength);
+        
+        // ── Discrete blink pattern for non-trailing patterns ──
+        const blinkVal = Math.sin(time * 18.0 + twinklePhases[i] * 6.28);
+        if (pattern === 'crossette') {
+          twinkle *= blinkVal > 0.0 ? 1.0 : 0.08; // 50% duty, strong blink
+        } else if (pattern === 'peony' || pattern === 'chrysanthemum') {
+          twinkle *= blinkVal > -0.4 ? 1.0 : 0.35; // 70% duty, subtle
+        } else if (pattern === 'heart') {
+          twinkle *= blinkVal > -0.6 ? 1.0 : 0.5; // 80% duty, gentle
+        }
       }
       
       const userFade = 1 - starAge;
