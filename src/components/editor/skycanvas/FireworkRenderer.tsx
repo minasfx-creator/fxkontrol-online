@@ -12,7 +12,7 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useLOD } from '@/hooks/useLOD';
 import { getLiftTime, getBreakHeight, getBreakSpeed, getTypedPrefire, getTypedDuration, getStarLifetime, type FinalePartType } from '@/lib/pyroPhysics';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
-import { temporalFlicker, getFlickerParams } from '@/lib/pyroNoise';
+import { temporalFlicker, getFlickerParams, strobeFlicker, getCombustionHdrBoost } from '@/lib/pyroNoise';
 import { updateFrustum, isSphereInFrustum } from '@/lib/frustumCuller';
 import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
 import { thermalColor, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
