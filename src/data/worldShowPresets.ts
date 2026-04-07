@@ -55,7 +55,7 @@ function wavePattern(
   positions: Position[], effectId: string, startTime: number, track: number, interval: number,
 ): TimelineItem[] {
   return positions.map((p, i) =>
-    cue(uid('tl'), effectId, startTime + i * interval, track, { x: p.x, y: p.y, z: p.z }, p.id)
+    cue(uid(), effectId, startTime + i * interval, track, { x: p.x, y: p.y, z: p.z }, p.id)
   );
 }
 
@@ -64,7 +64,7 @@ function simultaneous(
   positions: Position[], effectId: string, startTime: number, track: number,
 ): TimelineItem[] {
   return positions.map(p =>
-    cue(uid('tl'), effectId, startTime, track, { x: p.x, y: p.y, z: p.z }, p.id)
+    cue(uid(), effectId, startTime, track, { x: p.x, y: p.y, z: p.z }, p.id)
   );
 }
 
@@ -84,11 +84,10 @@ function alternating(
 // 1. COPACABANA — Rio de Janeiro
 // ═══════════════════════════════════════════════════════════════
 function generateCopacabana() {
-  _uid = 0;
   // 19 barges spread over 4.2km along the beach, ~220m apart
   const barges: Position[] = Array.from({ length: 19 }, (_, i) => {
     const spread = (i - 9) * 220; // centered, -1980 to +1980
-    return pos(uid('pos'), `Balsa ${i + 1}`, spread, 0, -80, 0);
+    return pos(uid(), `Balsa ${i + 1}`, spread, 0, -80, 0);
   });
 
   const items: TimelineItem[] = [];
@@ -163,23 +162,22 @@ function generateCopacabana() {
 // 2. SYDNEY HARBOUR
 // ═══════════════════════════════════════════════════════════════
 function generateSydney() {
-  _uid = 0;
   // Bridge: 20 positions across 1149m span at 134m height
   const bridge: Position[] = Array.from({ length: 20 }, (_, i) => {
     const spread = (i - 10) * 57;
-    return pos(uid('pos'), `Bridge ${i + 1}`, spread, 134, 0, 180);
+    return pos(uid(), `Bridge ${i + 1}`, spread, 134, 0, 180);
   });
   // 6 barges in harbour
   const barges: Position[] = Array.from({ length: 6 }, (_, i) => {
     const angle = (i / 6) * Math.PI * 0.8 - 0.4;
-    return pos(uid('pos'), `Barge ${i + 1}`, Math.sin(angle) * 400, 0, Math.cos(angle) * -300, 0);
+    return pos(uid(), `Barge ${i + 1}`, Math.sin(angle) * 400, 0, Math.cos(angle) * -300, 0);
   });
   // Opera House: 4 lateral positions
   const opera: Position[] = [
-    pos(uid('pos'), 'Opera L1', -250, 0, -200, 45),
-    pos(uid('pos'), 'Opera L2', -200, 0, -250, 45),
-    pos(uid('pos'), 'Opera R1', 250, 0, -200, -45),
-    pos(uid('pos'), 'Opera R2', 200, 0, -250, -45),
+    pos(uid(), 'Opera L1', -250, 0, -200, 45),
+    pos(uid(), 'Opera L2', -200, 0, -250, 45),
+    pos(uid(), 'Opera R1', 250, 0, -200, -45),
+    pos(uid(), 'Opera R2', 200, 0, -250, -45),
   ];
 
   const all = [...bridge, ...barges, ...opera];
@@ -237,16 +235,15 @@ function generateSydney() {
 // 3. BURJ KHALIFA — Dubai
 // ═══════════════════════════════════════════════════════════════
 function generateBurjKhalifa() {
-  _uid = 0;
   // Vertical positions along the 828m tower — 15 levels
   const tower: Position[] = Array.from({ length: 15 }, (_, i) => {
     const h = 50 + i * 52; // 50m to 778m
-    return pos(uid('pos'), `Level ${i + 1} (${h}m)`, 0, h, 0, 0);
+    return pos(uid(), `Level ${i + 1} (${h}m)`, 0, h, 0, 0);
   });
   // Fountain positions (Dubai Fountain) — 8 positions in arc
   const fountain: Position[] = Array.from({ length: 8 }, (_, i) => {
     const angle = (i / 8) * Math.PI - Math.PI / 2;
-    return pos(uid('pos'), `Fountain ${i + 1}`, Math.cos(angle) * 150, 0, Math.sin(angle) * 150 - 200, 0);
+    return pos(uid(), `Fountain ${i + 1}`, Math.cos(angle) * 150, 0, Math.sin(angle) * 150 - 200, 0);
   });
 
   const all = [...tower, ...fountain];
@@ -254,7 +251,7 @@ function generateBurjKhalifa() {
 
   // Phase 1 (0-60s): Vertical cascade down the tower
   tower.slice().reverse().forEach((p, i) => {
-    items.push(cue(uid('tl'), 'wf-02', i * 2, 5, { x: p.x, y: p.y, z: p.z }, p.id));
+    items.push(cue(uid(), 'wf-02', i * 2, 5, { x: p.x, y: p.y, z: p.z }, p.id));
   });
   items.push(...simultaneous(fountain, 'mine-01', 10, 0));
   items.push(...simultaneous(fountain, 'comet-01', 25, 1));
@@ -293,16 +290,15 @@ function generateBurjKhalifa() {
 // 4. LONDON EYE — Thames
 // ═══════════════════════════════════════════════════════════════
 function generateLondonEye() {
-  _uid = 0;
   // London Eye: 8 positions around the wheel at 135m
   const eye: Position[] = Array.from({ length: 8 }, (_, i) => {
     const angle = (i / 8) * Math.PI * 2;
-    return pos(uid('pos'), `Eye ${i + 1}`, Math.cos(angle) * 60, 67 + Math.sin(angle) * 60, 0, 180);
+    return pos(uid(), `Eye ${i + 1}`, Math.cos(angle) * 60, 67 + Math.sin(angle) * 60, 0, 180);
   });
   // Thames barges: 10 positions along the river
   const barges: Position[] = Array.from({ length: 10 }, (_, i) => {
     const spread = (i - 5) * 100;
-    return pos(uid('pos'), `Barge ${i + 1}`, spread, 0, -50, 0);
+    return pos(uid(), `Barge ${i + 1}`, spread, 0, -50, 0);
   });
 
   const all = [...eye, ...barges];
@@ -350,16 +346,15 @@ function generateLondonEye() {
 // 5. TOUR EIFFEL — Paris
 // ═══════════════════════════════════════════════════════════════
 function generateEiffelTower() {
-  _uid = 0;
   // Tower: 10 levels from 0 to 330m
   const tower: Position[] = Array.from({ length: 10 }, (_, i) => {
     const h = i * 33;
-    return pos(uid('pos'), `Tour ${i + 1} (${h}m)`, 0, h, 0, 0);
+    return pos(uid(), `Tour ${i + 1} (${h}m)`, 0, h, 0, 0);
   });
   // Seine barges: 8 positions along the river
   const barges: Position[] = Array.from({ length: 8 }, (_, i) => {
     const spread = (i - 4) * 80;
-    return pos(uid('pos'), `Seine ${i + 1}`, spread, 0, -120, 0);
+    return pos(uid(), `Seine ${i + 1}`, spread, 0, -120, 0);
   });
 
   const all = [...tower, ...barges];
@@ -367,7 +362,7 @@ function generateEiffelTower() {
 
   // Phase 1: Tower cascade + Seine mines
   tower.slice().reverse().forEach((p, i) => {
-    items.push(cue(uid('tl'), 'wf-01', i * 1.5, 5, { x: p.x, y: p.y, z: p.z }, p.id));
+    items.push(cue(uid(), 'wf-01', i * 1.5, 5, { x: p.x, y: p.y, z: p.z }, p.id));
   });
   items.push(...simultaneous(barges, 'mine-02', 5, 0));
   items.push(...wavePattern(barges, 'comet-01', 20, 1, 0.6));
@@ -403,12 +398,11 @@ function generateEiffelTower() {
 // 6. JINGU GAIEN — Tokyo (Hanabi)
 // ═══════════════════════════════════════════════════════════════
 function generateTokyoHanabi() {
-  _uid = 0;
   // Traditional hanabi: single launch site with large-caliber artisan shells
   // 12 firing positions in semicircle
   const positions: Position[] = Array.from({ length: 12 }, (_, i) => {
     const angle = (i / 11) * Math.PI;
-    return pos(uid('pos'), `台 ${i + 1}`, Math.cos(angle) * 200, 0, Math.sin(angle) * -100, 0);
+    return pos(uid(), `台 ${i + 1}`, Math.cos(angle) * 200, 0, Math.sin(angle) * -100, 0);
   });
 
   const items: TimelineItem[] = [];
@@ -418,14 +412,14 @@ function generateTokyoHanabi() {
   for (let t = 0; t < 120; t += 10) {
     const p = positions[Math.floor(Math.random() * 12)];
     const effects = ['shell-08', 'shell-09', 'shell-10', 'mort-04', 'shell-03'];
-    items.push(cue(uid('tl'), effects[Math.floor(t / 10) % effects.length], t, 2, { x: p.x, y: p.y, z: p.z }, p.id));
+    items.push(cue(uid(), effects[Math.floor(t / 10) % effects.length], t, 2, { x: p.x, y: p.y, z: p.z }, p.id));
   }
 
   // Phase 2 (120-480s): Increasing density, chrysanthemums and kamuro
   for (let t = 120; t < 480; t += 5) {
     const p = positions[Math.floor((t / 5) % 12)];
     const effects = ['mort-01', 'shell-03', 'shell-05', 'shell-08', 'mort-04', 'shell-17', 'peon-05'];
-    items.push(cue(uid('tl'), effects[Math.floor(t / 5) % effects.length], t, 3, { x: p.x, y: p.y, z: p.z }, p.id));
+    items.push(cue(uid(), effects[Math.floor(t / 5) % effects.length], t, 3, { x: p.x, y: p.y, z: p.z }, p.id));
   }
 
   // Phase 3 (480-720s): Multi-launch, big calibers
@@ -451,10 +445,9 @@ function generateTokyoHanabi() {
 // 7. MARINA BAY — Singapore
 // ═══════════════════════════════════════════════════════════════
 function generateMarinaBay() {
-  _uid = 0;
   const barges: Position[] = Array.from({ length: 8 }, (_, i) => {
     const angle = (i / 8) * Math.PI * 1.2 - 0.3;
-    return pos(uid('pos'), `Barge ${i + 1}`, Math.cos(angle) * 300, 0, Math.sin(angle) * -200, 0);
+    return pos(uid(), `Barge ${i + 1}`, Math.cos(angle) * 300, 0, Math.sin(angle) * -200, 0);
   });
 
   const items: TimelineItem[] = [];
@@ -487,16 +480,15 @@ function generateMarinaBay() {
 // 8. LAS VEGAS STRIP
 // ═══════════════════════════════════════════════════════════════
 function generateLasVegas() {
-  _uid = 0;
   // 7 casino rooftops
   const casinos = [
-    pos(uid('pos'), 'MGM Grand', -600, 60, 0, 0),
-    pos(uid('pos'), 'Aria', -400, 55, 0, 0),
-    pos(uid('pos'), 'Bellagio', -200, 50, 0, 0),
-    pos(uid('pos'), 'Caesars', 0, 55, 0, 0),
-    pos(uid('pos'), 'Venetian', 200, 50, 0, 0),
-    pos(uid('pos'), 'Wynn', 400, 60, 0, 0),
-    pos(uid('pos'), 'Stratosphere', 600, 350, 0, 0),
+    pos(uid(), 'MGM Grand', -600, 60, 0, 0),
+    pos(uid(), 'Aria', -400, 55, 0, 0),
+    pos(uid(), 'Bellagio', -200, 50, 0, 0),
+    pos(uid(), 'Caesars', 0, 55, 0, 0),
+    pos(uid(), 'Venetian', 200, 50, 0, 0),
+    pos(uid(), 'Wynn', 400, 60, 0, 0),
+    pos(uid(), 'Stratosphere', 600, 350, 0, 0),
   ];
 
   const items: TimelineItem[] = [];
@@ -529,16 +521,15 @@ function generateLasVegas() {
 // 9. FUNCHAL — Madeira (Guinness Record)
 // ═══════════════════════════════════════════════════════════════
 function generateFunchal() {
-  _uid = 0;
   // Barges around the bay — 16 positions in semicircle
   const barges: Position[] = Array.from({ length: 16 }, (_, i) => {
     const angle = (i / 15) * Math.PI;
-    return pos(uid('pos'), `Balsa ${i + 1}`, Math.cos(angle) * 800, 0, Math.sin(angle) * -400, 0);
+    return pos(uid(), `Balsa ${i + 1}`, Math.cos(angle) * 800, 0, Math.sin(angle) * -400, 0);
   });
   // Hillside positions — 8 positions on the amphitheater hills
   const hills: Position[] = Array.from({ length: 8 }, (_, i) => {
     const angle = (i / 7) * Math.PI * 0.6 + 0.3;
-    return pos(uid('pos'), `Monte ${i + 1}`, Math.cos(angle) * 600, 50 + i * 30, Math.sin(angle) * 200, 180);
+    return pos(uid(), `Monte ${i + 1}`, Math.cos(angle) * 600, 50 + i * 30, Math.sin(angle) * 200, 180);
   });
 
   const all = [...barges, ...hills];
@@ -593,17 +584,16 @@ function generateFunchal() {
 // 10. GRAND HARBOUR — Malta
 // ═══════════════════════════════════════════════════════════════
 function generateMalta() {
-  _uid = 0;
   // Waterfront 360° — 12 positions around the harbour
   const harbour: Position[] = Array.from({ length: 12 }, (_, i) => {
     const angle = (i / 12) * Math.PI * 2;
-    return pos(uid('pos'), `Bastione ${i + 1}`, Math.cos(angle) * 400, 0, Math.sin(angle) * 400, 0);
+    return pos(uid(), `Bastione ${i + 1}`, Math.cos(angle) * 400, 0, Math.sin(angle) * 400, 0);
   });
   // Fort positions on elevated ground
   const forts: Position[] = [
-    pos(uid('pos'), 'Fort St Elmo', 0, 30, -500, 180),
-    pos(uid('pos'), 'Fort Ricasoli', 350, 25, -400, 225),
-    pos(uid('pos'), 'Fort St Angelo', -300, 35, -350, 135),
+    pos(uid(), 'Fort St Elmo', 0, 30, -500, 180),
+    pos(uid(), 'Fort Ricasoli', 350, 25, -400, 225),
+    pos(uid(), 'Fort St Angelo', -300, 35, -350, 135),
   ];
 
   const all = [...harbour, ...forts];
