@@ -133,6 +133,16 @@ const FLICKER_BY_COMPOUND: Record<string, FlickerParams> = {
   antimony: { base: 0.58, amplitude: 0.40, popStrength: 0.42 },
   // Sulfur — low ignition temp (223°C), steady burn, used as fuel/sensitizer
   sulfur: { base: 0.65, amplitude: 0.30, popStrength: 0.25 },
+  // Calcium — CaCO3, "rojo claro" distinct from strontium carmesí, irregular burn
+  calcium: { base: 0.55, amplitude: 0.38, popStrength: 0.40 },
+  // Black powder — KNO3 75% + C 15% + S 10%, moderate steady burn
+  black_powder: { base: 0.60, amplitude: 0.35, popStrength: 0.30 },
+  // Lead oxide (PbO) — dragon eggs, violent oscillatory combustion with magnalium
+  lead: { base: 0.35, amplitude: 0.55, popStrength: 0.65 },
+  // Bismuth (Bi2O3) — dragon egg substitute, similarly violent oscillation
+  bismuth: { base: 0.38, amplitude: 0.52, popStrength: 0.60 },
+  // Potassium perchlorate (KClO4) — strong oxidizer, moderate flicker
+  potassium_perchlorate: { base: 0.50, amplitude: 0.42, popStrength: 0.50 },
 };
 
 /**
