@@ -877,24 +877,25 @@ export function TimelineEffects() {
         const effPan = (item.pan ?? 90) * (Math.PI / 180);
         const effTilt = (item.tilt ?? 0) * (Math.PI / 180);
         
-        _posEuler.set(0, -posHeadingRad, 0, 'YZX');
-        _posQuat.setFromEuler(_posEuler);
-        _launchDir.set(0, 1, 0);
-        _pitchAxis.set(1, 0, 0).applyQuaternion(_posQuat);
-        _pitchQuat.setFromAxisAngle(_pitchAxis, -(Math.PI / 2 - posPitchRad));
-        _posQuat.multiply(_pitchQuat);
+        // Use local quaternions to avoid race condition with concurrent bursts
+        const posEuler = new THREE.Euler(0, -posHeadingRad, 0, 'YZX');
+        const posQuat = new THREE.Quaternion().setFromEuler(posEuler);
+        const launchDir = new THREE.Vector3(0, 1, 0);
+        const pitchAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(posQuat);
+        const pitchQuat = new THREE.Quaternion().setFromAxisAngle(pitchAxis, -(Math.PI / 2 - posPitchRad));
+        posQuat.multiply(pitchQuat);
         
-        _effEuler.set(effTilt, effPan - Math.PI / 2, 0, 'YXZ');
-        _effQuat.setFromEuler(_effEuler);
+        const effEuler = new THREE.Euler(effTilt, effPan - Math.PI / 2, 0, 'YXZ');
+        const effQuat = new THREE.Quaternion().setFromEuler(effEuler);
         
-        _posQuat.multiply(_effQuat);
-        _launchDir.set(0, 1, 0).applyQuaternion(_posQuat).normalize();
+        posQuat.multiply(effQuat);
+        launchDir.set(0, 1, 0).applyQuaternion(posQuat).normalize();
         
         const burstPos: [number, number, number] = isShell
           ? [
-              pos[0] + _launchDir.x * realBreakHeight,
-              pos[1] + _launchDir.y * realBreakHeight,
-              pos[2] + _launchDir.z * realBreakHeight,
+              pos[0] + launchDir.x * realBreakHeight,
+              pos[1] + launchDir.y * realBreakHeight,
+              pos[2] + launchDir.z * realBreakHeight,
             ]
           : pos;
 
