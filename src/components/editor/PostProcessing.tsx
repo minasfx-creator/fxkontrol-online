@@ -534,10 +534,7 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         />
       ))}
 
-      {/* ═══ Downsample Blur — BP_DownSampleSceneCapture ═══ */}
-      {str > 0.5 && (
-        <DownSampleBlur intensity={0.15} />
-      )}
+      {/* ═══ Downsample Blur — DISABLED: duplicates bloom, saves 1 GPU pass ═══ */}
 
       {/* ═══ Heat Distortion — UE5 Niagara Heat Haze ═══ */}
       {s.heatDistortionEnabled && hasBursts && (
