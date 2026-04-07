@@ -242,7 +242,9 @@ export class PBusController {
   private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
   private listeners: PBusEventListener[] = [];
-  private buffer = new Uint8Array(0);
+  // Ring buffer: pre-allocated to avoid GC pressure during high-frequency polling
+  private ringBuffer = new Uint8Array(1024);
+  private ringWriteOffset = 0;
   private readLoop = false;
 
   discoveredDevices: Map<number, PBusDevice> = new Map();
