@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 
-export type BurstPattern = 'peony' | 'chrysanthemum' | 'willow' | 'palm' | 'ring' | 'heart' | 'crossette' | 'kamuro' | 'brocade' | 'dragon_egg' | 'multi_break' | 'time_rain';
+export type BurstPattern = 'peony' | 'chrysanthemum' | 'willow' | 'palm' | 'ring' | 'heart' | 'crossette' | 'kamuro' | 'brocade' | 'dragon_egg' | 'multi_break' | 'time_rain' | 'falling_leaves' | 'glitter';
 
 interface BurstConfig {
   starCount: number;
