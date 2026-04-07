@@ -1,59 +1,51 @@
 
 
-# Ciclo de Engenharia #24 — FXcommander Device Library + FireOne Module Bugs
+# Ciclo de Polish #25 — Time Rain Apogee Drift, Girandola Precession, Tourbillon Trail
 
-## Bugs e Melhorias Identificados
+## Bugs Identificados
 
-| # | Tipo | Problema | Local |
-|---|------|----------|-------|
-| 1 | **BUG** | `fireGroup` usa `pins.indexOf(pin)` para detectar último pin — retorna primeiro índice de valor duplicado, não o índice atual do loop. Se `pins = [0, 0, 1]`, o stagger delay é aplicado incorretamente | `fireoneModuleEmulator.ts` L321 |
-| 2 | **MISSING** | Dispositivos do catálogo FXcommander ausentes na biblioteca: **Sonicboom 11CH**, **Sonicboom Plus 14CH**, **SPARKULAR TRIPLE 6CH**, **SPARKULAR SPIN**, **SPARKULAR FALL**, **uFlamer Volcano 6CH** | `constants.ts` SHOWVEN_LIBRARY |
-| 3 | **MISSING** | Presets Sparkular individuais (Jet II 4CH, Cyclone II 6CH) existem em `showvenPresets.ts` mas não têm entries correspondentes na `SHOWVEN_LIBRARY` de `constants.ts` para uso no Super DMX | `constants.ts` |
-| 4 | **MISSING** | Campo `group` para Manual Fire cue grouping — manual FXcommander descreve agrupamento de cues adjacentes que disparam juntos. O tipo `CueEntry` não tem campo `group` para vincular cues | `types.ts` |
-| 5 | **BUG** | cFlamer 2CH-N safety logic invertida — em modo 2CH-N, CH2 `0-239 = Pressure Relief` (E-Stop) e `240-255 = Compression` (enable). O `safetyValue: 127` está no range de E-Stop para modo N | `constants.ts` L95 |
-| 6 | **MISSING** | FXcommander console specs ausentes — dual-core processor, 3×18650 battery, IP ratings, version V1.5 boot — não existe perfil de controlador para o FXcommander | `showvenPresets.ts` CONTROLLERS |
+| # | Bug | Local | Fix |
+|---|-----|-------|-----|
+| 1 | **Time rain hangT calculation wrong** — `hangT = hangStart * lt / (starLife * 0.88)` uses elapsed time `lt` which changes every frame, making the "apogee anchor" slide. Should use a fixed fraction of total lifetime | `FireworkRenderer.tsx` L507, L517 | Calculate `hangT` as `hangStart * starLife * 0.88 / (starLife * 0.88)` → simplify to just `hangStart * lt_total_fraction` using the actual elapsed time at hangStart |
+| 2 | **Time rain wind drift during hang too weak** — stars barely move laterally during the 30% hang phase. Real time rain drifts visibly with wind at apogee | L512-514 | Amplify wind drift during hang: `w[0] * driftT * 2.0` and add per-star lateral scatter based on sparkleSeeds |
+| 3 | **Time rain rain phase gravity too weak** — `rainT = rainPhase * 3.0` then `GRAVITY * 1.2` produces slow descent. Real time rain stars accelerate sharply | L521-524 | Increase rain gravity to `2.5x` and reduce horizontal damping to create vertical rain columns |
+| 4 | **Girandola no gyroscopic precession** — wobble is simple sin/cos offset, not a tilting spin plane. Real girandolas precess: the spin axis traces a cone as angular momentum builds | `GirandolaEffect.tsx` L82-83 | Add precession: tilt the entire spin plane using a rotation matrix that precesses around vertical axis. Tilt angle grows with omega, precession rate inversely proportional to omega (gyroscopic) |
+| 5 | **Girandola sparks use device wobble offset** — sparks at L123-125 add `wobbleX/Z` directly instead of transforming through the precessing frame. Creates disconnect between spark emission and visible wheel orientation | L123-125 | Transform spark nozzle positions through the precession rotation |
+| 6 | **Tourbillon trail uses Math.random() per frame** — L149, L151 inject random jitter every frame, causing trail points to flicker/dance instead of being smooth | `TourbillonEffect.tsx` L149, L151 | Replace with deterministic noise based on point index: `sin(i * 73.37) * 0.06` |
+| 7 | **Tourbillon trailSizes buffer unused** — L49 allocates trailSizes and L160 fills it, but it's never attached as a `size` attribute. The material uses a fixed `size={0.22}` | L160, L273 | Attach trailSizes as a `size` attribute and use a custom vertex shader snippet, OR use the simpler approach: modulate point size via the alpha channel and keep the fixed size but vary opacity for taper effect (already partially done via color fade) |
 
-## Plano de Implementação
+## Plano de Implementacao
 
-### Arquivo 1: `src/lib/fireoneModuleEmulator.ts` — 1 fix
+### Arquivo 1: `src/components/editor/skycanvas/FireworkRenderer.tsx`
 
-**Fix 1: `fireGroup` loop index**
-- Trocar `for (const pin of pins)` + `pins.indexOf(pin)` por `for (let i = 0; i < pins.length; i++)` + `i < pins.length - 1`
+**Fix 1-3: Time rain apogee drift rewrite**
+- Compute `hangT` correctly: `const hangT = hangStart * lt` (time at which hang starts = fraction of elapsed time)
+- Hang phase: amplify wind drift (2.5x), add per-star lateral scatter `± sparkleSeeds[i] % 30 * 0.02`
+- Rain phase: gravity `2.5x`, reduce horizontal velocity to create vertical rain columns
+- Add trail droop for time_rain pattern in trail segment computation (L710-725)
 
-### Arquivo 2: `src/components/editor/live-firing/constants.ts` — 7 entries
+### Arquivo 2: `src/components/editor/effects/GirandolaEffect.tsx`
 
-**Fix 2: Adicionar dispositivos faltantes do catálogo FXcommander à SHOWVEN_LIBRARY**
-- `lib-sonicboom` — Sonicboom 11CH (based on FXcommander device list)
-- `lib-sonicboom-plus` — Sonicboom Plus 14CH
-- `lib-sparkular-triple` — SPARKULAR TRIPLE 6CH
-- `lib-sparkular-spin` — SPARKULAR SPIN (rotational sparkular)
-- `lib-sparkular-fall` — SPARKULAR FALL (waterfall sparkular)
-- `lib-sparkular-cyclone` — SPARKULAR CYCLONE 6CH
-- `lib-sparkular-jet` — SPARKULAR JET II 4CH
+**Fix 4-5: Gyroscopic precession**
+- Add precession state: `precessionAngle = time * precessionRate`, where `precessionRate = 0.8 / (1 + omega * 0.1)` (slower precession as spin increases — gyroscopic stability)
+- Tilt angle: `tiltAngle = Math.min(0.25, omega * 0.008)` radians (~15° max)
+- Transform all nozzle positions and ejection vectors through the precession rotation matrix
+- Remove simple wobbleX/Z, replace with proper tilt transformation
 
-**Fix 3: Corrigir cFlamer safety values por modo DMX**
-- 2CH-P: safetyValue no range 50-200 (correto: 127)
-- 2CH-N: safetyValue deve ser 240-255 para enable (era 127 — incorreto para modo N)
-- Adicionar nota nos comentários sobre diferença por modo
+### Arquivo 3: `src/components/editor/effects/TourbillonEffect.tsx`
 
-### Arquivo 3: `src/components/editor/live-firing/types.ts` — 1 campo
+**Fix 6-7: Deterministic trail + size taper**
+- Replace `Math.random()` jitter with `Math.sin(i * 73.37 + clampedP * 11) * 0.04`
+- Remove trailSizes buffer (unused overhead) — taper is already achieved via color fade
+- OR: attach trailSizes as attribute with custom shader — prefer removing since point size variation via color intensity is sufficient
 
-**Fix 4: Adicionar campo `manualGroup` ao CueEntry**
-- `manualGroup?: number` — cues com mesmo groupId adjacente disparam juntos (manual FXcommander p.29)
-
-### Arquivo 4: `src/lib/showvenPresets.ts` — 1 entry
-
-**Fix 5: Adicionar FXcommander ao SHOWVEN_CONTROLLERS**
-- FXcommander Pro: 128 cues × 4 scenes, dual-band pyro (433M/868M), 2.4GHz wireless DMX, MIDI/LTC input, battery powered
-
-## Ordem de Execução
+## Ordem de Execucao
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Fix fireGroup loop index bug |
-| 2 | Adicionar dispositivos FXcommander ao SHOWVEN_LIBRARY |
-| 3 | Corrigir cFlamer safety values por modo |
-| 4 | Adicionar manualGroup ao CueEntry |
-| 5 | Adicionar FXcommander ao controllers |
-| 6 | Build verification |
+| 1 | Fix time rain apogee drift + wind + rain gravity |
+| 2 | Fix time rain trail segments |
+| 3 | Girandola gyroscopic precession |
+| 4 | Tourbillon deterministic trail |
+| 5 | Build verification |
 
