@@ -65,6 +65,8 @@ export interface WindFieldConfig {
   turbulenceIntensity: number;
   /** Turbulence spatial scale (lower = more local variation) */
   turbulenceScale: number;
+  /** Enable altitude-based wind shearing (default true) */
+  altitudeShearing: boolean;
 }
 
 const DEFAULT_CONFIG: WindFieldConfig = {
@@ -74,6 +76,7 @@ const DEFAULT_CONFIG: WindFieldConfig = {
   gustFrequency: 0.2,
   turbulenceIntensity: 0.3,
   turbulenceScale: 0.05,
+  altitudeShearing: true,
 };
 
 // ── Wind Field Class ────────────────────────────────────────────────
