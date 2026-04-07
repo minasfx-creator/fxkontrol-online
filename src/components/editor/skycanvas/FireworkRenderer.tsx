@@ -257,6 +257,50 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     return { velocities: v, lifetimes: l, twinklePhases: tp, sparkleSeeds: sparkle };
   }, [STAR_COUNT, breakSpeed, starLife, pattern]);
 
+  // ── Pistil velocities (25% star count, 40% speed, inner burst) ──
+  const PISTIL_COUNT = hasPistil ? Math.max(8, Math.round(STAR_COUNT * 0.25)) : 0;
+  const pistilBaseColor = useMemo(() => pistilColor ? new THREE.Color(pistilColor) : new THREE.Color('#FFD700'), [pistilColor]);
+  const pistilData = useMemo(() => {
+    if (!PISTIL_COUNT) return null;
+    const pv = new Float32Array(PISTIL_COUNT * 3);
+    const pl = new Float32Array(PISTIL_COUNT);
+    for (let i = 0; i < PISTIL_COUNT; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = breakSpeed * 0.4 * (0.5 + Math.random() * 0.5);
+      pv[i * 3] = Math.sin(phi) * Math.cos(theta) * speed;
+      pv[i * 3 + 1] = Math.cos(phi) * speed;
+      pv[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * speed;
+      pl[i] = starLife * (0.5 + Math.random() * 0.3);
+    }
+    return { velocities: pv, lifetimes: pl };
+  }, [PISTIL_COUNT, breakSpeed, starLife]);
+
+  const pistilBuffers = useMemo(() => {
+    if (!PISTIL_COUNT) return null;
+    return {
+      positions: new Float32Array(PISTIL_COUNT * 3),
+      colors: new Float32Array(PISTIL_COUNT * 3),
+      sizes: new Float32Array(PISTIL_COUNT),
+      lives: new Float32Array(PISTIL_COUNT),
+    };
+  }, [PISTIL_COUNT]);
+
+  // ── Crossette sub-break buffer (pre-allocated slots after main stars) ──
+  const CROSSETTE_SUB_COUNT = pattern === 'crossette' ? STAR_COUNT * 4 : 0;
+  const crossetteSubData = useMemo(() => {
+    if (!CROSSETTE_SUB_COUNT) return null;
+    return {
+      velocities: new Float32Array(CROSSETTE_SUB_COUNT * 3),
+      positions: new Float32Array(CROSSETTE_SUB_COUNT * 3),
+      colors: new Float32Array(CROSSETTE_SUB_COUNT * 3),
+      sizes: new Float32Array(CROSSETTE_SUB_COUNT),
+      lives: new Float32Array(CROSSETTE_SUB_COUNT),
+      activeCount: 0,
+      spawnTimes: new Float32Array(CROSSETTE_SUB_COUNT),
+    };
+  }, [CROSSETTE_SUB_COUNT]);
+
   const particleBuffers = useMemo(() => {
     const trailVertCount = STAR_COUNT * TRAIL_LENGTH * 2;
     return {
