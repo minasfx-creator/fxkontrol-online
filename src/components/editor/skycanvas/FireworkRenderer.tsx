@@ -233,6 +233,16 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           vz = Math.sin(armPhi) * Math.sin(armTheta + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
           break;
         }
+        case 'heart': {
+          const t_h = (i / STAR_COUNT) * Math.PI * 2;
+          const hx = 16 * Math.pow(Math.sin(t_h), 3);
+          const hy = 13 * Math.cos(t_h) - 5 * Math.cos(2 * t_h) - 2 * Math.cos(3 * t_h) - Math.cos(4 * t_h);
+          const scale_h = breakSpeed * 0.045;
+          vx = hx * scale_h + (Math.random() - 0.5) * 0.8;
+          vy = hy * scale_h + (Math.random() - 0.5) * 0.8;
+          vz = (Math.random() - 0.5) * breakSpeed * 0.06;
+          break;
+        }
         default:
           vx = sx * breakSpeed * speedVar; vy = sy * breakSpeed * speedVar * 0.9 + 0.6; vz = sz * breakSpeed * speedVar; break;
       }
