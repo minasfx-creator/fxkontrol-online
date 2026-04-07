@@ -430,7 +430,7 @@ function updateParticles(emitter: NiagaraEmitter, dt: number, events: EmitterEve
         p.color.copy(sampleColorGradient(upd.colorOverLife, t));
       }
       if (upd.sizeOverLife.length > 0) {
-        p.size *= sampleCurve(upd.sizeOverLife, t);
+        p.size = p.initialSize * sampleCurve(upd.sizeOverLife, t);
       }
       p.rotation += upd.rotationRate * dt;
     }
