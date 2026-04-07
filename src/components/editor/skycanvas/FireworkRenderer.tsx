@@ -492,36 +492,36 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       let px: number, py: number, pz: number;
       
       if (pattern === 'time_rain') {
-        // Time rain: stars rise, hang at apogee (30-60% life), then rain down
+        // Time rain: stars rise, hang at apogee (30-60% life), then rain down sharply
         const hangStart = 0.25;
         const hangEnd = 0.55;
         const rainPhase = Math.max(0, (starAge - hangEnd) / (1 - hangEnd));
         
+        // Fixed hangT: time at which this star reaches apogee (fraction of its total flight)
+        const hangT = hangStart * starLife * 0.88;
+        const hangPx = dragPos(vx, hangT, dragCoeff) + w[0] * hangT * hangT * 0.3;
+        const hangPy = dragPos(vy, hangT, dragCoeff) + 0.5 * GRAVITY * 0.15 * hangT * hangT;
+        const hangPz = dragPos(vz, hangT, dragCoeff) + w[2] * hangT * hangT * 0.3;
+        
         if (starAge < hangStart) {
           // Rising phase — normal ballistics
           px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
-          py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * 0.15 * t * t; // very low gravity
+          py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * 0.15 * t * t;
           pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
         } else if (starAge < hangEnd) {
-          // Hanging phase — stars hover at apogee with micro-drift
-          const hangT = hangStart * lt / (starLife * 0.88); // time at hang start
-          const hangPx = dragPos(vx, hangT, dragCoeff) + w[0] * hangT * hangT * 0.3;
-          const hangPy = dragPos(vy, hangT, dragCoeff) + 0.5 * GRAVITY * 0.15 * hangT * hangT;
-          const hangPz = dragPos(vz, hangT, dragCoeff) + w[2] * hangT * hangT * 0.3;
+          // Hanging phase — stars hover at apogee with amplified wind drift + per-star scatter
           const driftT = (starAge - hangStart) / (hangEnd - hangStart);
-          px = hangPx + w[0] * driftT * 0.5 + Math.sin(time * 0.3 + sparkleSeeds[i]) * 0.05;
-          py = hangPy - driftT * 0.3; // barely sinking
-          pz = hangPz + w[2] * driftT * 0.5 + Math.cos(time * 0.25 + sparkleSeeds[i]) * 0.04;
+          const lateralScatter = ((sparkleSeeds[i] % 30) - 15) * 0.003;
+          px = hangPx + w[0] * driftT * 2.5 + Math.sin(time * 0.3 + sparkleSeeds[i]) * 0.08 + lateralScatter * driftT;
+          py = hangPy - driftT * 0.35;
+          pz = hangPz + w[2] * driftT * 2.5 + Math.cos(time * 0.25 + sparkleSeeds[i]) * 0.06 + lateralScatter * driftT * 0.7;
         } else {
-          // Rain phase — gravity pulls stars down vertically
-          const hangT = hangStart * lt / (starLife * 0.88);
-          const hangPx = dragPos(vx, hangT, dragCoeff) + w[0] * hangT * hangT * 0.3;
-          const hangPy = dragPos(vy, hangT, dragCoeff) + 0.5 * GRAVITY * 0.15 * hangT * hangT;
-          const hangPz = dragPos(vz, hangT, dragCoeff) + w[2] * hangT * hangT * 0.3;
-          const rainT = rainPhase * 3.0; // accelerated rain
-          px = hangPx + w[0] * rainT * rainT * 0.5;
-          py = hangPy - 0.3 + 0.5 * GRAVITY * 1.2 * rainT * rainT; // full gravity rain
-          pz = hangPz + w[2] * rainT * rainT * 0.5;
+          // Rain phase — sharp vertical descent with 2.5x gravity, minimal horizontal movement
+          const rainT = rainPhase * 4.0;
+          const driftEnd = 1.0; // full hang drift at transition
+          px = hangPx + w[0] * driftEnd * 2.5 + w[0] * rainT * 0.15; // minimal horizontal
+          py = hangPy - 0.35 + 0.5 * GRAVITY * 2.5 * rainT * rainT; // sharp gravity rain
+          pz = hangPz + w[2] * driftEnd * 2.5 + w[2] * rainT * 0.15;
         }
       } else if (pattern === 'falling_leaves') {
         // Falling leaves: aerodynamic tumble — multi-axis sinusoidal flutter + heavy gravity
