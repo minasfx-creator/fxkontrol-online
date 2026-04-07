@@ -104,6 +104,63 @@ export function getRealBurstHeight(caliberInches: number): number {
   return interpolateTable(REAL_BURST_HEIGHT_NFPA, caliberInches, 150);
 }
 
+// ── NEB/T M-251 Minimum Burst Heights (regulatory) ──────────────────
+// Item 24c — minimum burst altitudes by outer diameter range (mm).
+// Used for conformity validation against Chinese/Brazilian import standards.
+
+export interface BurstHeightRange {
+  minOD: number;   // mm
+  maxOD: number;   // mm (Infinity for open-ended)
+  minHeight: number; // meters
+}
+
+export const MIN_BURST_HEIGHT_NEBT: BurstHeightRange[] = [
+  { minOD: 0,     maxOD: 45,    minHeight: 15 },
+  { minOD: 45,    maxOD: 55,    minHeight: 25 },
+  { minOD: 55,    maxOD: 76.2,  minHeight: 55 },
+  { minOD: 76.2,  maxOD: 101.6, minHeight: 70 },
+  { minOD: 101.6, maxOD: 127.0, minHeight: 85 },
+  { minOD: 127.0, maxOD: 203.2, minHeight: 120 },
+  { minOD: 203.2, maxOD: Infinity, minHeight: 200 },
+];
+
+/** Get NEB/T M-251 minimum burst height for a given shell outer diameter (mm). */
+export function getMinBurstHeightNEBT(outerDiameterMm: number): number {
+  for (const range of MIN_BURST_HEIGHT_NEBT) {
+    if (outerDiameterMm >= range.minOD && outerDiameterMm < range.maxOD) {
+      return range.minHeight;
+    }
+  }
+  return 200; // fallback for very large shells
+}
+
+/** Convert caliber inches to approximate outer diameter mm (with casing). */
+export function caliberToOuterDiameterMm(caliberInches: number): number {
+  // Typical shell OD ≈ caliber * 25.4 * ~0.9 (bore-to-OD ratio varies)
+  // FFIC data: 2.5"→58mm, 3"→69mm, 4"→89mm, 5"→117mm, 6"→144mm
+  const ffic: LookupTable = { 2.5: 58, 3: 69, 4: 89, 5: 117, 6: 144, 8: 190, 10: 240, 12: 290 };
+  return interpolateTable(ffic, caliberInches, caliberInches * 24);
+}
+
+/** Check if a burst height meets NEB/T M-251 requirements. */
+export function isNEBTCompliant(caliberInches: number, burstHeightM: number): boolean {
+  const od = caliberToOuterDiameterMm(caliberInches);
+  return burstHeightM >= getMinBurstHeightNEBT(od);
+}
+
+// ── Cake sub-1" calibration (FFIC laudo 2726000009) ─────────────────
+// 20mm (≈0.8") cake shots: 6.65g effect, 1.93g lift, tube 172×25×20mm
+export const CAKE_20MM = {
+  caliberInches: 0.8,
+  effectChargeG: 6.65,
+  liftChargeG: 1.93,
+  tubeLengthMm: 172,
+  tubeOdMm: 25,
+  tubeIdMm: 20,
+  particlesPerShot: 12,
+  fuseTimeSec: { min: 6.2, max: 7.3, avg: 6.75 },
+} as const;
+
 // ── APA 87-1 Risk Division / Classification ─────────────────────────
 
 /** Deflagration temperature range for pyrotechnic compositions (°C) */
