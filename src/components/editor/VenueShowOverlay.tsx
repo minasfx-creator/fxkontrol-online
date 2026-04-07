@@ -12,6 +12,7 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
 import { toast } from 'sonner';
 import { ambientSound } from '@/lib/ambientSound';
+import { triggerFlyTo, triggerOrbit, stopOrbit } from '@/core/geo/GeoCameraController';
 import type { WorldShowPreset } from '@/data/worldShowPresets';
 
 interface Props {
@@ -63,10 +64,27 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
   const [statsVisible, setStatsVisible] = useState(false);
   const deployed = useRef(false);
   const bootPlayed = useRef(false);
+  const orbitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const gpsText = `${preset.gps.lat.toFixed(4)}°S  ${preset.gps.lng.toFixed(4)}°W`;
   const handleGpsTick = useCallback(() => ambientSound.play('click'), []);
   const { displayed: gpsDisplayed, done: gpsDone } = useTypewriter(gpsText, 25, handleGpsTick);
+
+  // Trigger flyTo on mount — camera flies to venue immediately
+  useEffect(() => {
+    triggerFlyTo({
+      lat: preset.gps.lat,
+      lng: preset.gps.lng,
+      alt: 400,
+      duration: 3,
+      pitch: 35,
+    });
+    return () => {
+      // Cleanup orbit on unmount
+      stopOrbit();
+      if (orbitTimer.current) clearTimeout(orbitTimer.current);
+    };
+  }, [preset.gps.lat, preset.gps.lng]);
 
   // Sequential intel reveal with nav sound
   useEffect(() => {
@@ -106,8 +124,16 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
         if (existingTimeline.length > 0) store.removeMultipleTimelineItems(existingTimeline);
         existingPositions.forEach(id => store.removePosition(id));
 
+        // ── Critical: sync geoAnchor with scene store so Google 3D Tiles move ──
         store.setGpsOrigin(preset.gps);
-        if (preset.sceneOverrides) scene.updateSettings(preset.sceneOverrides as any);
+        scene.updateSettings({
+          geoAnchorLat: preset.gps.lat,
+          geoAnchorLon: preset.gps.lng,
+          geoAnchorAlt: 0,
+          floatingOriginEnabled: true,
+          google3DTilesEnabled: true,
+          ...(preset.sceneOverrides as any),
+        });
 
         positions.forEach(p => store.addPosition(p));
 
@@ -125,6 +151,12 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
         toast.success(`${preset.flag} ${preset.name}`, {
           description: `${positions.length} posições · ${timelineItems.length} cues · ${Math.round(preset.duration / 60)} min`,
         });
+
+        // Start cinematic orbit after deploy
+        triggerOrbit([0, 0, 0], 300, 0.08, 250);
+        orbitTimer.current = setTimeout(() => {
+          stopOrbit();
+        }, 8000);
 
         setTimeout(() => setPhase('dissolve'), 1200);
       } catch (err) {
