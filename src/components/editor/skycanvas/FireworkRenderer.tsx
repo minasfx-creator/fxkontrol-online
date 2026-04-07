@@ -848,21 +848,35 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       const plv = pistilBuffers.lives;
       const pistilDrag = dragCoeff * 0.8;
       const pistilGravMult = gravityMult * 0.7;
+      const pistilDelay = pattern === 'brocade_crown' ? 0.25 : 0.15;
       for (let i = 0; i < PISTIL_COUNT; i++) {
         const pvx = pistilData.velocities[i * 3];
         const pvy = pistilData.velocities[i * 3 + 1];
         const pvz = pistilData.velocities[i * 3 + 2];
         const plt = pistilData.lifetimes[i];
-        const pistilAge = Math.min(1, t / plt);
-        const pistilFade = Math.exp(-pistilAge * 4.0);
-        pp[i * 3] = dragPos(pvx, t, pistilDrag) + w[0] * t * t * 0.2;
-        pp[i * 3 + 1] = dragPos(pvy, t, pistilDrag) + 0.5 * GRAVITY * pistilGravMult * t * t;
-        pp[i * 3 + 2] = dragPos(pvz, t, pistilDrag) + w[2] * t * t * 0.2;
-        pc[i * 3] = pistilBaseColor.r * pistilFade;
-        pc[i * 3 + 1] = pistilBaseColor.g * pistilFade;
-        pc[i * 3 + 2] = pistilBaseColor.b * pistilFade;
-        ps[i] = baseSize * 0.7 * Math.max(0.1, pistilFade);
-        plv[i] = pistilAge;
+        const delayedT = Math.max(0, t - pistilDelay);
+        const pistilAge = Math.min(1, delayedT / plt);
+        
+        if (t < pistilDelay) {
+          // Pre-delay: pistil invisible
+          pp[i * 3] = 0; pp[i * 3 + 1] = 0; pp[i * 3 + 2] = 0;
+          pc[i * 3] = 0; pc[i * 3 + 1] = 0; pc[i * 3 + 2] = 0;
+          ps[i] = 0;
+          plv[i] = 0;
+        } else {
+          const pistilFade = Math.exp(-pistilAge * 4.0);
+          // Ignition flash when pistil just detonates
+          const ignitionFlash = delayedT < 0.08 ? (1 - delayedT / 0.08) * 1.5 : 0;
+          pp[i * 3] = dragPos(pvx, delayedT, pistilDrag) + w[0] * delayedT * delayedT * 0.2;
+          pp[i * 3 + 1] = dragPos(pvy, delayedT, pistilDrag) + 0.5 * GRAVITY * pistilGravMult * delayedT * delayedT;
+          pp[i * 3 + 2] = dragPos(pvz, delayedT, pistilDrag) + w[2] * delayedT * delayedT * 0.2;
+          const flashBoost = 1 + ignitionFlash;
+          pc[i * 3] = Math.min(1.5, pistilBaseColor.r * pistilFade * flashBoost + ignitionFlash * 0.3);
+          pc[i * 3 + 1] = Math.min(1.5, pistilBaseColor.g * pistilFade * flashBoost + ignitionFlash * 0.25);
+          pc[i * 3 + 2] = Math.min(1.5, pistilBaseColor.b * pistilFade * flashBoost + ignitionFlash * 0.15);
+          ps[i] = baseSize * 0.7 * Math.max(0.1, pistilFade) * (1 + ignitionFlash * 0.5);
+          plv[i] = pistilAge;
+        }
       }
       const piGeo = pistilRef.current.geometry;
       const piPos = piGeo.getAttribute('position') as THREE.BufferAttribute;
