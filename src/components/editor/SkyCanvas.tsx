@@ -1601,11 +1601,12 @@ export default function SkyCanvas() {
         <Suspense fallback={null}>
           {!google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
         </Suspense>
-        {google3DTilesEnabled && <GoogleTilesLayer />}
-        {google3DTilesEnabled && <GeoCameraController />}
-        {/* Fallback grid + horizon when Google Tiles fail or timeout */}
-        {google3DTilesEnabled && <GoogleTilesFallback />}
-        <GoogleEarthLighting />
+        <SubsystemBoundary name="GoogleTiles">
+          {google3DTilesEnabled && <GoogleTilesLayer />}
+          {google3DTilesEnabled && <GeoCameraController />}
+          {google3DTilesEnabled && <GoogleTilesFallback />}
+          <GoogleEarthLighting />
+        </SubsystemBoundary>
         {!google3DTilesEnabled && <FinaleAxesHelper />}
         <DoubleClickFocus />
         <SiteModelRenderer />
@@ -1615,13 +1616,17 @@ export default function SkyCanvas() {
         {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
         {!google3DTilesEnabled && !isLowTierMobile && <PyroSafetyZones />}
-        <DroneRendererSwitch />
+        <SubsystemBoundary name="DroneSwarm">
+          <DroneRendererSwitch />
+        </SubsystemBoundary>
         {!isMobile && <BoidsVisualizer />}
         {!isMobile && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
-        <Suspense fallback={null}>
-          <TimelineEffects />
-          <LiveSFXEffects />
-        </Suspense>
+        <SubsystemBoundary name="Pyrotechnics">
+          <Suspense fallback={null}>
+            <TimelineEffects />
+            <LiveSFXEffects />
+          </Suspense>
+        </SubsystemBoundary>
         <LaserPreviewBeams />
         {!google3DTilesEnabled && !isLowTierMobile && <StageFixtures />}
         {!google3DTilesEnabled && !isMobile && !isLowTierMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
@@ -1630,7 +1635,9 @@ export default function SkyCanvas() {
         {!isMobile && <CameraPathPreview />}
         {!google3DTilesEnabled && <ViewportRulers />}
         <CameraBookmarkSaver />
-        {!isLowTierMobile && <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />}
+        <SubsystemBoundary name="PostProcessing">
+          {!isLowTierMobile && <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />}
+        </SubsystemBoundary>
         {!isLowTierMobile && <StressTestFireworks />}
         
         {!isLowTierMobile && <PostExplosionSmokeManager />}
