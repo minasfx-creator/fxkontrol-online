@@ -207,7 +207,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           vx = sx * breakSpeed * 0.52 * speedVar; vy = Math.abs(sy) * breakSpeed * 0.85 + breakSpeed * 0.45; vz = sz * breakSpeed * 0.52 * speedVar;
           life = starLife * (1.1 + Math.random() * 0.6); break;
         case 'chrysanthemum':
-          vx = sx * breakSpeed * speedVar; vy = sy * breakSpeed * 0.93 * speedVar; vz = sz * breakSpeed * speedVar;
+          vx = sx * breakSpeed * speedVar; vy = sy * breakSpeed * 0.93 * speedVar + breakSpeed * 0.08; vz = sz * breakSpeed * speedVar;
           life = starLife * (0.85 + Math.random() * 0.3); break;
         case 'kamuro':
           vx = sx * breakSpeed * 0.35 * speedVar; vy = sy * breakSpeed * 0.35 * speedVar + 1.2; vz = sz * breakSpeed * 0.35 * speedVar;
@@ -221,9 +221,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           vx = sx * breakSpeed * 0.58 * speedVar; vy = sy * breakSpeed * 0.58 * speedVar; vz = sz * breakSpeed * 0.58 * speedVar;
           life = starLife * (1.3 + Math.random() * 1.0); break;
         case 'crossette': {
-          const arm = i % 6; const armTheta = (arm / 6) * Math.PI * 2; const armPhi = Math.PI * 0.45; const jitter = 0.12;
+          const arm = i % 6; const armTheta = (arm / 6) * Math.PI * 2; const armPhi = Math.PI * 0.40; const jitter = 0.12;
           vx = Math.sin(armPhi) * Math.cos(armTheta + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
-          vy = Math.cos(armPhi + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
+          vy = Math.cos(armPhi + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82 + breakSpeed * 0.06;
           vz = Math.sin(armPhi) * Math.sin(armTheta + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
           break;
         }
@@ -266,10 +266,8 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
 
   useFrame(({ clock, camera }) => {
     if (!pointsRef.current || !trailRef.current) return;
-    // Update frustum planes once per frame (idempotent if called multiple times)
-    updateFrustum(camera);
-
     // Frustum culling: skip if burst center is off-screen
+    // Note: updateFrustum(camera) is called once per frame in TimelineEffects
     // Zero-GC: uses pre-allocated singletons from frustumCuller module
     if (frustumCullingBursts) {
       if (!isSphereInFrustum(position[0], position[1], position[2], caliber * 30)) return;
