@@ -1538,22 +1538,7 @@ export default function SkyCanvas() {
 
   // Force R3F to re-measure when resizable panels change size (debounced)
   const containerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const ro = new ResizeObserver(() => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        window.dispatchEvent(new Event('resize'));
-      }, 150);
-    });
-    ro.observe(el);
-    return () => {
-      if (timer) clearTimeout(timer);
-      ro.disconnect();
-    };
-  }, []);
+  // ResizeObserver removed — R3F Canvas resize={{ debounce: 50 }} handles this natively
 
   return (
     <div ref={containerRef} className="w-full h-full relative bg-black" data-sky-canvas style={{ cursor: cursorStyle }}>
