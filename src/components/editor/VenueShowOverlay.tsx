@@ -1,6 +1,7 @@
 /**
  * VenueShowOverlay — Cinematic fullscreen AR HUD that projects venue intelligence
  * directly over the 3D viewport. Auto-deploys show and self-dissolves.
+ * Includes spatial sound design and circOut easing animations.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -10,6 +11,7 @@ import {
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
 import { toast } from 'sonner';
+import { ambientSound } from '@/lib/ambientSound';
 import type { WorldShowPreset } from '@/data/worldShowPresets';
 
 interface Props {
@@ -28,7 +30,12 @@ const INTEL_SECTIONS = [
   { key: 'regulatory', icon: FileText, label: 'REGULATÓRIO' },
 ] as const;
 
-function useTypewriter(text: string, speed = 30) {
+/** circOut easing: fast start, slow end */
+function circOut(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function useTypewriter(text: string, speed = 30, onTick?: () => void) {
   const [displayed, setDisplayed] = useState('');
   const [done, setDone] = useState(false);
 
@@ -39,6 +46,8 @@ function useTypewriter(text: string, speed = 30) {
     const interval = setInterval(() => {
       i++;
       setDisplayed(text.slice(0, i));
+      // Play click sound every 3rd character to avoid spam
+      if (onTick && i % 3 === 0) onTick();
       if (i >= text.length) { clearInterval(interval); setDone(true); }
     }, speed);
     return () => clearInterval(interval);
@@ -51,31 +60,40 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
   const [phase, setPhase] = useState<'reveal' | 'deploying' | 'dissolve' | 'done'>('reveal');
   const [visibleSections, setVisibleSections] = useState(0);
   const [opacity, setOpacity] = useState(1);
+  const [statsVisible, setStatsVisible] = useState(false);
   const deployed = useRef(false);
+  const bootPlayed = useRef(false);
 
   const gpsText = `${preset.gps.lat.toFixed(4)}°S  ${preset.gps.lng.toFixed(4)}°W`;
-  const { displayed: gpsDisplayed, done: gpsDone } = useTypewriter(gpsText, 25);
+  const handleGpsTick = useCallback(() => ambientSound.play('click'), []);
+  const { displayed: gpsDisplayed, done: gpsDone } = useTypewriter(gpsText, 25, handleGpsTick);
 
-  // Sequential intel reveal
+  // Sequential intel reveal with nav sound
   useEffect(() => {
     if (phase !== 'reveal') return;
     let count = 0;
     const interval = setInterval(() => {
       count++;
       setVisibleSections(count);
+      ambientSound.play('nav');
       if (count >= INTEL_SECTIONS.length) {
         clearInterval(interval);
-        // After all sections revealed, auto-deploy
+        setStatsVisible(true);
         setTimeout(() => setPhase('deploying'), 600);
       }
     }, 150);
     return () => clearInterval(interval);
   }, [phase]);
 
-  // Auto-deploy show
+  // Auto-deploy show with boot sound
   useEffect(() => {
     if (phase !== 'deploying' || deployed.current) return;
     deployed.current = true;
+
+    if (!bootPlayed.current) {
+      bootPlayed.current = true;
+      ambientSound.play('boot');
+    }
 
     (async () => {
       try {
@@ -83,7 +101,6 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
         const scene = useSceneStore.getState();
         const { positions, timelineItems } = preset.generate();
 
-        // Clear existing
         const existingTimeline = store.timelineItems.map(t => t.id);
         const existingPositions = store.positions.map(p => p.id);
         if (existingTimeline.length > 0) store.removeMultipleTimelineItems(existingTimeline);
@@ -109,7 +126,6 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
           description: `${positions.length} posições · ${timelineItems.length} cues · ${Math.round(preset.duration / 60)} min`,
         });
 
-        // Dissolve after deploy
         setTimeout(() => setPhase('dissolve'), 1200);
       } catch (err) {
         console.error('Deploy failed:', err);
@@ -119,15 +135,15 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
     })();
   }, [phase, preset, onComplete]);
 
-  // Dissolve animation
+  // Dissolve animation with circOut easing — 2500ms for cinematic feel
   useEffect(() => {
     if (phase !== 'dissolve') return;
     const start = Date.now();
-    const duration = 1500;
+    const duration = 2500;
     const frame = () => {
       const elapsed = Date.now() - start;
       const progress = Math.min(elapsed / duration, 1);
-      setOpacity(1 - progress);
+      setOpacity(1 - circOut(progress));
       if (progress < 1) requestAnimationFrame(frame);
       else { setPhase('done'); onComplete(); }
     };
@@ -152,11 +168,23 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
     }
   };
 
+  const deployGlowStyle = phase === 'deploying' ? {
+    animation: 'deployGlow 1.2s ease-in-out infinite alternate',
+  } : {};
+
   return (
     <div
       className="absolute inset-0 z-[35] pointer-events-none"
       style={{ opacity }}
     >
+      {/* Inline keyframes for deploy glow */}
+      <style>{`
+        @keyframes deployGlow {
+          0% { box-shadow: 0 0 30px hsl(var(--primary) / 0.15); }
+          100% { box-shadow: 0 0 60px hsl(var(--primary) / 0.4), 0 0 100px hsl(var(--primary) / 0.15); }
+        }
+      `}</style>
+
       {/* Scanline overlay */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -189,7 +217,7 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
         </div>
       </div>
 
-      {/* ═══ Left: Intel Sections (sequential reveal) ═══ */}
+      {/* ═══ Left: Intel Sections (sequential reveal with circOut) ═══ */}
       <div className="absolute top-44 left-6 w-[280px] space-y-1.5">
         {INTEL_SECTIONS.map((section, idx) => {
           const Icon = section.icon;
@@ -200,10 +228,10 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
           return (
             <div
               key={section.key}
-              className="transition-all duration-500"
               style={{
                 opacity: visible ? 1 : 0,
                 transform: visible ? 'translateX(0)' : 'translateX(-20px)',
+                transition: 'all 500ms cubic-bezier(0.0, 0.0, 0.2, 1)',
               }}
             >
               <div
@@ -230,8 +258,15 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
         })}
       </div>
 
-      {/* ═══ Bottom Center: Stats Bar ═══ */}
-      <div className="absolute bottom-28 left-1/2 -translate-x-1/2">
+      {/* ═══ Bottom Center: Stats Bar (fade-in after sections) ═══ */}
+      <div
+        className="absolute bottom-28 left-1/2 -translate-x-1/2"
+        style={{
+          opacity: statsVisible ? 1 : 0,
+          transform: statsVisible ? 'translateY(0)' : 'translateY(10px)',
+          transition: 'all 800ms cubic-bezier(0.0, 0.0, 0.2, 1)',
+        }}
+      >
         <div
           className="flex items-center gap-6 px-6 py-2.5 rounded-full font-mono text-[11px]"
           style={{
@@ -261,7 +296,7 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
         </div>
       </div>
 
-      {/* ═══ Bottom Right: Deploy Status ═══ */}
+      {/* ═══ Bottom Right: Deploy Status with pulsating glow ═══ */}
       <div className="absolute bottom-28 right-8">
         <div
           className="flex items-center gap-2 px-4 py-2 rounded-full font-mono text-[10px] tracking-[0.15em] font-bold"
@@ -274,7 +309,7 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
             background: 'hsl(var(--background) / 0.2)',
             backdropFilter: 'blur(8px)',
             border: `1px solid ${phase === 'deploying' ? 'hsl(var(--primary) / 0.4)' : 'hsl(var(--primary) / 0.1)'}`,
-            boxShadow: phase === 'deploying' ? '0 0 30px hsl(var(--primary) / 0.15)' : 'none',
+            ...deployGlowStyle,
           }}
         >
           {phase === 'reveal' && (
