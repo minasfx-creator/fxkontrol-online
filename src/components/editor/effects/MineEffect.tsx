@@ -268,12 +268,19 @@ export default function MineEffect({
         g = thermal.g;
         b = thermal.b;
       } else if (isDrip) {
-        // Drip: thermal ramp with ember bias
+        // Drip: thermal ramp with ember transition on ground bounce
         const dripLife = Math.min(1, age * 1.5);
         const thermal = thermalColorRamp(0.9, 0.35, 0.08, dripLife * 0.6 + 0.4, 0.8);
-        r = thermal.r;
-        g = thermal.g;
-        b = thermal.b;
+        if (bounced) {
+          const emberMix = Math.min(1, Math.abs(rawY) * 0.5);
+          r = thermal.r * (1 - emberMix) + charcoalColor.r * emberMix;
+          g = thermal.g * (1 - emberMix) + charcoalColor.g * emberMix;
+          b = thermal.b * (1 - emberMix) + charcoalColor.b * emberMix;
+        } else {
+          r = thermal.r;
+          g = thermal.g;
+          b = thermal.b;
+        }
       } else {
         // Spray: standard thermal color ramp
         const sprayLife = Math.min(1, age * 0.8);
