@@ -255,8 +255,8 @@ export const SHOWVEN_LASERS: ShowvenLaserPreset[] = [
     wavelengthRGB: [638, 520, 445], scanningAngleDeg: 20, scanRateKpps: 25,
     beamDivergenceMrad: 1.5, weightKg: 50, ipRating: 'IP65', laserClass: 4,
     controlInterfaces: ['FB4', 'DMX', 'ILDA', 'Ethernet', 'SD', 'Sound'],
-    dmxChannels: 12,
-    description: 'Full-colour RGB laser — 60W, ±20° scan, 25Kpps, TEC cooling, IP65, dual-layer housing',
+    dmxChannels: 16,
+    description: 'Full-colour RGB laser — 60W, ±20° scan, 25Kpps, FB3 16CH, TEC cooling, IP65, dual-layer housing',
   },
 ];
 
