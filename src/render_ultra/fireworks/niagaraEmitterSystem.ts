@@ -88,6 +88,8 @@ export interface NiagaraParticle {
   velocity: THREE.Vector3;
   color: THREE.Color;
   size: number;
+  /** Original size at spawn — used for sizeOverLife curve sampling */
+  initialSize: number;
   rotation: number;
   age: number;
   lifetime: number;
