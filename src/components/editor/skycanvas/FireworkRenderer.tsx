@@ -243,7 +243,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           vx = sx * breakSpeed * 0.58 * speedVar; vy = sy * breakSpeed * 0.58 * speedVar; vz = sz * breakSpeed * 0.58 * speedVar;
           life = starLife * (1.3 + Math.random() * 1.0); break;
         case 'crossette': {
-          const arm = i % 6; const armTheta = (arm / 6) * Math.PI * 2; const armPhi = Math.PI * 0.40; const jitter = 0.12;
+          const arm = i % 4; const armTheta = (arm / 4) * Math.PI * 2; const armPhi = Math.PI * 0.40; const jitter = 0.08;
           vx = Math.sin(armPhi) * Math.cos(armTheta + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
           vy = Math.cos(armPhi + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82 + breakSpeed * 0.06;
           vz = Math.sin(armPhi) * Math.sin(armTheta + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
