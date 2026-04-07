@@ -17,8 +17,9 @@ import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/f
 
 // Particle class boundaries (index ranges)
 const COLUMN_FRAC = 0.20;
-const SPRAY_FRAC = 0.65; // 20-85%
-const DRIP_FRAC = 0.15;  // 85-100%
+const SPRAY_FRAC = 0.60; // 20-80%
+const DRIP_FRAC = 0.10;  // 80-90%
+const BOUNCE_FRAC = 0.10; // 90-100% — ground bounce sparks
 
 const SMOKE_COUNT = 40;
 
@@ -73,6 +74,7 @@ export default function MineEffect({
   // Particle class indices
   const columnEnd = useMemo(() => Math.floor(count * COLUMN_FRAC), [count]);
   const sprayEnd = useMemo(() => Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC)), [count]);
+  const dripEnd = useMemo(() => Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC + DRIP_FRAC)), [count]);
   
   // Trail buffers for spray comet trails
   const TRAIL_SEGS = 5;
@@ -92,13 +94,13 @@ export default function MineEffect({
 
       if (i < Math.floor(count * COLUMN_FRAC)) {
         // Column particles: narrow cone (5-15°), high velocity
-        const upAngle = 0.05 + Math.random() * 0.17; // ~3-10° from vertical
+        const upAngle = 0.05 + Math.random() * 0.17;
         const speed = (15 + Math.random() * 22 + caliber * 5) * 1.5;
         v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
         v[i * 3 + 1] = Math.cos(upAngle) * speed + 3;
         v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
-        l[i] = 0.3 + Math.random() * 0.3; // short lifetime
-        ps[i] = 0.6; // smaller size
+        l[i] = 0.3 + Math.random() * 0.3;
+        ps[i] = 0.6;
       } else if (i < Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC))) {
         // Spray particles: wide hemisphere (30-80°), jittered lifetime
         const upAngle = 0.35 + Math.random() * 0.85;
@@ -106,17 +108,25 @@ export default function MineEffect({
         v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
         v[i * 3 + 1] = Math.cos(upAngle) * speed + 2;
         v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
-        l[i] = (0.4 + Math.random() * 1.0) * (0.6 + Math.random() * 0.8); // ±40% jitter
-        ps[i] = 0.8 + Math.random() * 1.0; // 0.8-1.8x variation
-      } else {
+        l[i] = (0.4 + Math.random() * 1.0) * (0.6 + Math.random() * 0.8);
+        ps[i] = 0.8 + Math.random() * 1.0;
+      } else if (i < Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC + DRIP_FRAC))) {
         // Drip particles: low velocity, high drag, fall back
         const upAngle = 0.1 + Math.random() * 0.5;
-        const speed = 3 + Math.random() * 3; // 3-6 m/s
+        const speed = 3 + Math.random() * 3;
         v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
         v[i * 3 + 1] = Math.cos(upAngle) * speed + 1;
         v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
-        l[i] = 0.8 + Math.random() * 1.5; // persist longer
-        ps[i] = 1.2; // ember glow size
+        l[i] = 0.8 + Math.random() * 1.5;
+        ps[i] = 1.2;
+      } else {
+        // Bounce sparks: lateral spread, low height, delayed spawn
+        const speed = 1 + Math.random() * 2.5;
+        v[i * 3] = Math.cos(theta) * speed;
+        v[i * 3 + 1] = 0.5 + Math.random() * 1.5;
+        v[i * 3 + 2] = Math.sin(theta) * speed;
+        l[i] = 0.15 + Math.random() * 0.35;
+        ps[i] = 0.4 + Math.random() * 0.3;
       }
 
       s[i] = Math.random() * 999 + i;
@@ -185,9 +195,34 @@ export default function MineEffect({
       const fadeSq = fade * fade;
 
       const isColumn = i < columnEnd;
-      const isDrip = i >= sprayEnd;
+      const isDrip = i >= sprayEnd && i < dripEnd;
+      const isBounce = i >= dripEnd;
 
-      // Column: visible in first 15% of progress; spray/drip have staggered entry
+      // Bounce sparks: delayed spawn — appear when main particles hit ground (~30% progress)
+      if (isBounce) {
+        const bounceDelay = 0.25 + hash01(sparkleSeeds[i]) * 0.2;
+        if (progress < bounceDelay) {
+          colArr[i * 3] = 0; colArr[i * 3 + 1] = 0; colArr[i * 3 + 2] = 0;
+          sizeArr[i] = 0;
+          continue;
+        }
+        const bounceAge = (progress - bounceDelay) / Math.max(0.01, lt);
+        const bounceFade = Math.max(0, 1 - bounceAge * 3);
+        const bt = (progress - bounceDelay) * 2.5;
+        const bDrag = Math.exp(-0.12 * bt);
+        posArr[i * 3] = vx * bt * bDrag + windX * bt * bt * 0.3;
+        posArr[i * 3 + 1] = Math.max(0, vy * bt * bDrag + 0.5 * GRAV * bt * bt * 0.5);
+        posArr[i * 3 + 2] = vz * bt * bDrag + windZ * bt * bt * 0.3;
+        // Amber/orange bounce spark color
+        const sparkTwinkle = combustionFlicker(sparkleSeeds[i], time, 1.8);
+        colArr[i * 3] = 0.9 * bounceFade * sparkTwinkle * envelope;
+        colArr[i * 3 + 1] = 0.35 * bounceFade * sparkTwinkle * envelope;
+        colArr[i * 3 + 2] = 0.05 * bounceFade * sparkTwinkle * envelope;
+        sizeArr[i] = basePointSize * particleSizes[i] * bounceFade;
+        continue;
+      }
+
+      // Column: visible in first 15% of progress
       if (isColumn && progress > 0.15) {
         // Column particles fade fast after initial jet
         const columnFade = Math.max(0, 1 - (progress - 0.05) / 0.15);
