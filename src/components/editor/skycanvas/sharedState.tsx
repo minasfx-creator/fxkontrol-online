@@ -123,7 +123,7 @@ export function getAdaptiveExposure() { return _adaptiveExposure; }
 // ═══ Wind helper (turbulent wind field) ═══
 import { windField, type WindParticleType } from '@/core/engine/windField';
 
-export function getWindForce(particleType: WindParticleType = 'ember'): [number, number, number] {
+export function getWindForce(particleType: WindParticleType = 'ember', posY = 50): [number, number, number] {
   const { wind } = useProjectStore.getState();
   if (!wind.enabled) return [0, 0, 0];
 
@@ -131,11 +131,28 @@ export function getWindForce(particleType: WindParticleType = 'ember'): [number,
   windField.setConfig({
     baseSpeed: wind.speed,
     directionDeg: wind.direction,
-    gustMax: wind.gustStrength * 3, // gustStrength 0-1 → 0-3 m/s
+    gustMax: wind.gustStrength * 3,
     turbulenceIntensity: 0.3,
   });
 
-  return windField.getGlobalWind(particleType);
+  return windField.sample(0, posY, 0, particleType);
+}
+
+/**
+ * Sample wind at a specific world position (for trail curvature).
+ */
+export function getWindAtPosition(x: number, y: number, z: number, particleType: WindParticleType = 'ember'): [number, number, number] {
+  const { wind } = useProjectStore.getState();
+  if (!wind.enabled) return [0, 0, 0];
+
+  windField.setConfig({
+    baseSpeed: wind.speed,
+    directionDeg: wind.direction,
+    gustMax: wind.gustStrength * 3,
+    turbulenceIntensity: 0.3,
+  });
+
+  return windField.sample(x, y, z, particleType);
 }
 
 // ═══ Camera presets ═══
