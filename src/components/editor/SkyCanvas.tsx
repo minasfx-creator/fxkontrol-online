@@ -48,7 +48,7 @@ import HUDCrosshairs from './HUDCrosshairs';
 import PlacingModeOverlay from './PlacingModeOverlay';
 import ARCompassHUD from './ARCompassHUD';
 import ARScanEffect from './ARScanEffect';
-import DestructionOverlay from './DestructionOverlay';
+
 import { cn } from '@/lib/utils';
 import {
   CometEffect,
