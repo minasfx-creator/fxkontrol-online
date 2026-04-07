@@ -225,7 +225,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           vx = sx * breakSpeed * speedVar; vy = sy * breakSpeed * 0.93 * speedVar + breakSpeed * 0.08; vz = sz * breakSpeed * speedVar;
           life = starLife * (0.85 + Math.random() * 0.3); break;
         case 'kamuro':
-          vx = sx * breakSpeed * 0.35 * speedVar; vy = sy * breakSpeed * 0.35 * speedVar + 1.2; vz = sz * breakSpeed * 0.35 * speedVar;
+          vx = sx * breakSpeed * 0.45 * speedVar; vy = sy * breakSpeed * 0.45 * speedVar + 1.2; vz = sz * breakSpeed * 0.45 * speedVar;
           life = starLife * (1.8 + Math.random() * 1.8); break;
         case 'ring': {
           const ringAngle = (i / STAR_COUNT) * Math.PI * 2;
@@ -243,7 +243,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           vx = sx * breakSpeed * 0.58 * speedVar; vy = sy * breakSpeed * 0.58 * speedVar; vz = sz * breakSpeed * 0.58 * speedVar;
           life = starLife * (1.3 + Math.random() * 1.0); break;
         case 'crossette': {
-          const arm = i % 6; const armTheta = (arm / 6) * Math.PI * 2; const armPhi = Math.PI * 0.40; const jitter = 0.12;
+          const arm = i % 4; const armTheta = (arm / 4) * Math.PI * 2; const armPhi = Math.PI * 0.40; const jitter = 0.08;
           vx = Math.sin(armPhi) * Math.cos(armTheta + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
           vy = Math.cos(armPhi + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82 + breakSpeed * 0.06;
           vz = Math.sin(armPhi) * Math.sin(armTheta + (Math.random() - 0.5) * jitter) * breakSpeed * 0.82;
@@ -464,7 +464,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       : caliber <= 6 ? 0.034 : caliber <= 8 ? 0.026 : caliber <= 10 ? 0.020 : 0.016;
     const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm' || pattern === 'horsetail' || pattern === 'brocade_crown';
     // Pattern-specific drag multiplier — heavier stars = less air resistance
-    const dragMult = pattern === 'kamuro' ? 0.45 : pattern === 'willow' ? 0.55
+    const dragMult = pattern === 'kamuro' ? 0.55 : pattern === 'willow' ? 0.55
       : pattern === 'horsetail' ? 0.40 : pattern === 'brocade' ? 0.60
       : pattern === 'brocade_crown' ? 0.55 : pattern === 'palm' ? 0.75 : 1.0;
     const dragCoeff = baseDrag * dragMult;
@@ -587,6 +587,14 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           px += Math.sin(time * 2.5 + frondPhase) * frondAmp * spreadProgress;
           pz += Math.cos(time * 2.5 + frondPhase + 1.5) * frondAmp * spreadProgress;
         }
+      } else if (pattern === 'kamuro') {
+        // Kamuro: heavy metal-coated stars — progressive gravity buildup for golden cascade
+        const kamGravMult = starAge < 0.4
+          ? gravityMult * 0.8
+          : gravityMult * (0.8 + (starAge - 0.4) / 0.6 * 2.7); // peaks at 3.5x
+        px = dragPos(vx, t, dragCoeff * 0.7) + w[0] * t * t * 0.4;
+        py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * kamGravMult * t * t;
+        pz = dragPos(vz, t, dragCoeff * 0.7) + w[2] * t * t * 0.4;
       } else {
         px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
@@ -629,8 +637,15 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         // Dragon eggs / magnalium strobe: real oscillatory combustion
         twinkle = strobeFlicker(sparkleSeeds[i], time, 0.2, 0.08);
       } else if (isTrailingPattern) {
-        // Trailing: use temporalFlicker with reduced amplitude for constant glow + micro-variations
-        twinkle = temporalFlicker(sparkleSeeds[i], time, 0.82, 0.15, 0.10);
+        // Nishiki detection: kamuro + gold-like base color → high-freq aluminum shimmer
+        const isNishiki = pattern === 'kamuro' && baseColor.r > 0.85 && baseColor.g > 0.7 && baseColor.b < 0.4;
+        if (isNishiki) {
+          // 25Hz shimmer overlay modeling aluminum/charcoal combustion oscillation
+          const shimmer = Math.sin(time * 50 + sparkleSeeds[i] * 3.7) * 0.15;
+          twinkle = temporalFlicker(sparkleSeeds[i], time, 0.70, 0.30, 0.12) + shimmer;
+        } else {
+          twinkle = temporalFlicker(sparkleSeeds[i], time, 0.82, 0.15, 0.10);
+        }
       } else {
         // Chemical-compound-specific flicker params
         const fp = getFlickerParams(compoundStr);
@@ -728,6 +743,16 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           const hangEnd = 0.55;
           trailGrav0 = segAge0 < hangStart ? gravityMult * 0.15 : segAge0 < hangEnd ? gravityMult * 0.05 : gravityMult * 2.5;
           trailGrav1 = segAge1 < hangStart ? gravityMult * 0.15 : segAge1 < hangEnd ? gravityMult * 0.05 : gravityMult * 2.5;
+        } else if (pattern === 'crossette') {
+          // Post-split crossette segments: increased gravity for visible 4-arm divergence droop
+          trailGrav0 = segAge0 > 0.4 ? gravityMult * 1.5 : gravityMult;
+          trailGrav1 = segAge1 > 0.4 ? gravityMult * 1.5 : gravityMult;
+        } else if (pattern === 'kamuro') {
+          // Kamuro trail droop: progressive gravity matching star physics
+          trailGrav0 = segAge0 < 0.4 ? gravityMult * 0.8 : gravityMult * (0.8 + (segAge0 - 0.4) / 0.6 * 2.7);
+          trailGrav1 = segAge1 < 0.4 ? gravityMult * 0.8 : gravityMult * (0.8 + (segAge1 - 0.4) / 0.6 * 2.7);
+          trailDragH0 = dragCoeff * 0.7;
+          trailDragH1 = dragCoeff * 0.7;
         }
         
         // Trail segment start
@@ -772,7 +797,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       }
     }
 
-    // ── Crossette sub-breaks: spawn sub-particles at 40% life ──
+    // ── Crossette sub-breaks: spawn exactly 4 directional arms at 40% life ──
     if (pattern === 'crossette' && crossetteSubData) {
       for (let i = 0; i < STAR_COUNT; i++) {
         const lt = lifetimes[i];
@@ -780,15 +805,34 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         if (starAge > 0.4 && !crossetteSplitRef.current.has(i)) {
           crossetteSplitRef.current.add(i);
           const parentPx = pos[i * 3], parentPy = pos[i * 3 + 1], parentPz = pos[i * 3 + 2];
-          const subCount = 4 + Math.floor(Math.random() * 3); // 4-6 sub-particles
+          const pvx = velocities[i * 3], pvy = velocities[i * 3 + 1], pvz = velocities[i * 3 + 2];
+          // Compute perpendicular axes to parent velocity for 4-arm cross
+          const pSpeed = Math.sqrt(pvx * pvx + pvy * pvy + pvz * pvz) || 1;
+          const dxN = pvx / pSpeed, dyN = pvy / pSpeed, dzN = pvz / pSpeed;
+          // Find a perpendicular vector (cross with up, fallback to right)
+          let perpX = -dzN, perpY = 0, perpZ = dxN;
+          const perpLen = Math.sqrt(perpX * perpX + perpZ * perpZ);
+          if (perpLen < 0.01) { perpX = 1; perpY = 0; perpZ = 0; }
+          else { perpX /= perpLen; perpZ /= perpLen; }
+          // Second perpendicular via cross product
+          const perp2X = dyN * perpZ - dzN * perpY;
+          const perp2Y = dzN * perpX - dxN * perpZ;
+          const perp2Z = dxN * perpY - dyN * perpX;
+          
+          const subSpeed = breakSpeed * 0.4;
+          const subCount = 4; // exactly 4 arms — crossette = cross
           for (let s = 0; s < subCount && crossetteSubData.activeCount < CROSSETTE_SUB_COUNT; s++) {
             const idx = crossetteSubData.activeCount;
-            const subSpeed = breakSpeed * 0.3;
-            const sTheta = Math.random() * Math.PI * 2;
-            const sPhi = Math.acos(2 * Math.random() - 1);
-            crossetteSubData.velocities[idx * 3] = Math.sin(sPhi) * Math.cos(sTheta) * subSpeed;
-            crossetteSubData.velocities[idx * 3 + 1] = Math.cos(sPhi) * subSpeed;
-            crossetteSubData.velocities[idx * 3 + 2] = Math.sin(sPhi) * Math.sin(sTheta) * subSpeed;
+            const armAngle = (s / 4) * Math.PI * 2;
+            const jitter = (sparkleSeeds[i] + s * 17.3) % 1 * 0.14 - 0.07; // ±4° cone
+            const cosA = Math.cos(armAngle + jitter), sinA = Math.sin(armAngle + jitter);
+            // Arm direction in the plane perpendicular to parent velocity
+            const armDx = perpX * cosA + perp2X * sinA;
+            const armDy = perpY * cosA + perp2Y * sinA;
+            const armDz = perpZ * cosA + perp2Z * sinA;
+            crossetteSubData.velocities[idx * 3] = armDx * subSpeed;
+            crossetteSubData.velocities[idx * 3 + 1] = armDy * subSpeed;
+            crossetteSubData.velocities[idx * 3 + 2] = armDz * subSpeed;
             crossetteSubData.positions[idx * 3] = parentPx;
             crossetteSubData.positions[idx * 3 + 1] = parentPy;
             crossetteSubData.positions[idx * 3 + 2] = parentPz;
@@ -797,18 +841,19 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           }
         }
       }
-      // Simulate crossette sub-particles
+      // Simulate crossette sub-particles with increased gravity
       for (let i = 0; i < crossetteSubData.activeCount; i++) {
         const subAge = t - crossetteSubData.spawnTimes[i];
         const subFade = Math.max(0, 1 - subAge / 0.8);
         const svx = crossetteSubData.velocities[i * 3];
         const svy = crossetteSubData.velocities[i * 3 + 1];
         const svz = crossetteSubData.velocities[i * 3 + 2];
-        const spx = crossetteSubData.positions[i * 3] + dragPos(svx, subAge, dragCoeff * 1.5);
-        const spy = crossetteSubData.positions[i * 3 + 1] + dragPos(svy, subAge, dragCoeff * 1.5) + 0.5 * GRAVITY * subAge * subAge;
-        const spz = crossetteSubData.positions[i * 3 + 2] + dragPos(svz, subAge, dragCoeff * 1.5);
-        // Write into main star buffer's unused trailing slots or overlay
-        const targetIdx = STAR_COUNT - 1 - (i % Math.max(1, Math.floor(STAR_COUNT * 0.15)));
+        const spx = crossetteSubData.positions[i * 3] + dragPos(svx, subAge, dragCoeff * 1.2);
+        const spy = crossetteSubData.positions[i * 3 + 1] + dragPos(svy, subAge, dragCoeff * 1.2) + 0.5 * GRAVITY * 1.5 * subAge * subAge;
+        const spz = crossetteSubData.positions[i * 3 + 2] + dragPos(svz, subAge, dragCoeff * 1.2);
+        // Write into reserved tail region of buffer (last 15%)
+        const reserveStart = Math.floor(STAR_COUNT * 0.85);
+        const targetIdx = reserveStart + (i % (STAR_COUNT - reserveStart));
         if (subFade > 0.01) {
           pos[targetIdx * 3] = spx; pos[targetIdx * 3 + 1] = spy; pos[targetIdx * 3 + 2] = spz;
           cols[targetIdx * 3] = baseColor.r * subFade; cols[targetIdx * 3 + 1] = baseColor.g * subFade; cols[targetIdx * 3 + 2] = baseColor.b * subFade;
