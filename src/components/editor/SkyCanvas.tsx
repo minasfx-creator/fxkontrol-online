@@ -1717,13 +1717,10 @@ export default function SkyCanvas() {
 
           {/* Lock Positions */}
           <button
-            onClick={() => {
-              const env = useSceneStore.getState().environment;
-              useSceneStore.getState().updateEnvironment({ lockPositions: !env.lockPositions });
-            }}
+            onClick={() => updateEnvironment({ lockPositions: !lockPositions })}
             className={cn(
               "w-7 h-7 rounded-md flex items-center justify-center transition-all border",
-              useSceneStore.getState().environment.lockPositions
+              lockPositions
                 ? "bg-warning/20 border-warning/40 text-warning"
                 : "bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
             )}
@@ -1734,13 +1731,10 @@ export default function SkyCanvas() {
 
           {/* Rulers */}
           <button
-            onClick={() => {
-              const env = useSceneStore.getState().environment;
-              useSceneStore.getState().updateEnvironment({ showRulers: !env.showRulers });
-            }}
+            onClick={() => updateEnvironment({ showRulers: !showRulers })}
             className={cn(
               "w-7 h-7 rounded-md flex items-center justify-center transition-all border",
-              useSceneStore.getState().environment.showRulers
+              showRulers
                 ? "bg-primary/20 border-primary/40 text-primary"
                 : "bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
             )}
