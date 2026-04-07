@@ -268,13 +268,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     if (!pointsRef.current || !trailRef.current) return;
 
     // Frustum culling: skip if burst center is off-screen
+    // Zero-GC: uses pre-allocated singletons from frustumCuller module
     if (frustumCullingBursts) {
-      const frustum = new THREE.Frustum();
-      const projScreenMatrix = new THREE.Matrix4();
-      projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-      frustum.setFromProjectionMatrix(projScreenMatrix);
-      const burstSphere = new THREE.Sphere(new THREE.Vector3(position[0], position[1], position[2]), caliber * 5);
-      if (!frustum.intersectsSphere(burstSphere)) return;
+      if (!isSphereInFrustum(position[0], position[1], position[2], caliber * 30)) return;
     }
 
     const pos = particleBuffers.positions;
