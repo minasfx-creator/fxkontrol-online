@@ -122,14 +122,28 @@ export function generateBurst(
       vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.10;
       vz = Math.cos(phi) * speed;
     } else if (pattern === 'dragon_egg') {
-      // Dragon egg: moderate velocity sphere, heavy gravity, stars will use strobeFlicker
-      // "more vigorous than strobe" — Chemistry of Pyrotechnics
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       const speed = cfg.velocity * scale * (0.5 + Math.random() * 0.5);
       vx = Math.sin(phi) * Math.cos(theta) * speed;
       vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.12;
       vz = Math.cos(phi) * speed;
+    } else if (pattern === 'multi_break') {
+      // Multi-break: standard spherical initial burst, secondary breaks handled in renderer
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = cfg.velocity * scale * (0.5 + Math.random() * 0.5);
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.12;
+      vz = Math.cos(phi) * speed;
+    } else if (pattern === 'time_rain') {
+      // Time rain: initial burst with very low gravity, stars hang then rain down
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = cfg.velocity * scale * (0.7 + Math.random() * 0.3);
+      vx = Math.sin(phi) * Math.cos(theta) * speed * 0.6;
+      vy = Math.abs(Math.sin(phi) * Math.sin(theta)) * speed * 0.4 + cfg.velocity * 0.35; // upward bias
+      vz = Math.cos(phi) * speed * 0.6;
     } else {
       // Spherical burst (peony, etc.)
       const theta = Math.random() * Math.PI * 2;
