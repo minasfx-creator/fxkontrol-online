@@ -225,7 +225,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           vx = sx * breakSpeed * speedVar; vy = sy * breakSpeed * 0.93 * speedVar + breakSpeed * 0.08; vz = sz * breakSpeed * speedVar;
           life = starLife * (0.85 + Math.random() * 0.3); break;
         case 'kamuro':
-          vx = sx * breakSpeed * 0.35 * speedVar; vy = sy * breakSpeed * 0.35 * speedVar + 1.2; vz = sz * breakSpeed * 0.35 * speedVar;
+          vx = sx * breakSpeed * 0.45 * speedVar; vy = sy * breakSpeed * 0.45 * speedVar + 1.2; vz = sz * breakSpeed * 0.45 * speedVar;
           life = starLife * (1.8 + Math.random() * 1.8); break;
         case 'ring': {
           const ringAngle = (i / STAR_COUNT) * Math.PI * 2;
