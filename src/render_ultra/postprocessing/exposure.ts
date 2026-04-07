@@ -49,6 +49,10 @@ export function updateExposure(state: ExposureState, luminance: number, dt: numb
   const t = 1 - Math.exp(-speed * dt);
   state.currentExposure += (state.targetExposure - state.currentExposure) * t;
 
+  // Reset accumulator after each frame update to prevent infinite growth
+  state.luminanceAccum = 0;
+  state.luminanceSamples = 0;
+
   return state.currentExposure;
 }
 

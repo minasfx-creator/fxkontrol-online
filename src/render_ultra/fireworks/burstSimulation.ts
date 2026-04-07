@@ -75,8 +75,26 @@ export function generateBurst(
       vx = Math.sin(phi) * Math.cos(theta) * speed;
       vy = Math.cos(phi) * speed;
       vz = Math.sin(phi) * Math.sin(theta) * speed;
+    } else if (pattern === 'chrysanthemum') {
+      // Slightly elevated sphere — Finale 3D reference
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = cfg.velocity * scale * (0.5 + Math.random() * 0.5);
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.25;
+      vz = Math.cos(phi) * speed;
+    } else if (pattern === 'crossette') {
+      // 4-6 arms with slight upward bias
+      const armCount = cfg.symmetry || 4;
+      const arm = i % armCount;
+      const armAngle = (arm / armCount) * Math.PI * 2;
+      const jitter = (Math.random() - 0.5) * 0.15;
+      const speed = cfg.velocity * scale * (0.8 + Math.random() * 0.2);
+      vx = Math.sin(Math.PI * 0.42) * Math.cos(armAngle + jitter) * speed;
+      vy = Math.cos(Math.PI * 0.42) * speed + cfg.velocity * 0.1;
+      vz = Math.sin(Math.PI * 0.42) * Math.sin(armAngle + jitter) * speed;
     } else {
-      // Spherical burst (peony, chrysanthemum, willow, etc.)
+      // Spherical burst (peony, willow, etc.)
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       const speed = cfg.velocity * scale * (0.5 + Math.random() * 0.5) * cfg.spread;
