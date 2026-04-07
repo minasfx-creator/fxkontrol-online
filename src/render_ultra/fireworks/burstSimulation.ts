@@ -18,8 +18,8 @@ interface BurstConfig {
 
 // Star counts calibrated to Finale 3D reference at 3" (75mm) baseline
 const BURST_CONFIGS: Record<BurstPattern, BurstConfig> = {
-  peony:         { starCount: 150, velocity: 28, spread: 1.0, tailFactor: 0.3, gravityMult: 1.0, symmetry: 0 },
-  chrysanthemum: { starCount: 200, velocity: 30, spread: 1.0, tailFactor: 0.9, gravityMult: 0.8, symmetry: 0 },
+  peony:         { starCount: 280, velocity: 26, spread: 1.0, tailFactor: 0.3, gravityMult: 1.0, symmetry: 0 },
+  chrysanthemum: { starCount: 200, velocity: 30, spread: 1.0, tailFactor: 1.4, gravityMult: 1.0, symmetry: 0 },
   willow:        { starCount: 180, velocity: 20, spread: 0.8, tailFactor: 1.5, gravityMult: 1.4, symmetry: 0 },
   palm:          { starCount: 60,  velocity: 24, spread: 0.6, tailFactor: 1.2, gravityMult: 1.2, symmetry: 6 },
   ring:          { starCount: 80,  velocity: 28, spread: 0.1, tailFactor: 0.5, gravityMult: 0.6, symmetry: 0 },
