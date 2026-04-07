@@ -229,6 +229,11 @@ export const SHOWVEN_CONTROLLERS: ShowvenControllerPreset[] = [
     wiredRangeM: 2000,
     description: 'PBUS charging controller — loads up to 25x PyroSlave C16 units, dual-band RF relay, E-Stop chain',
   },
+  {
+    id: 'fxcommander', name: 'FXcommander', channels: 128, type: 'wireless', protocol: 'Dual-band RF 433M/868M + 2.4GHz DMX + MIDI + LTC',
+    wirelessRangeM: 600, dualBand: true, supportLTC: true,
+    description: 'FXcommander Pro — 128 cues × 4 scenes, dual-band pyro firing, 2.4GHz wireless DMX, MIDI/LTC timecode, 3×18650 battery, V1.5 firmware',
+  },
 ];
 
 // ── Lasers (Maiman Series) ──────────────────────────────────────────

@@ -246,6 +246,74 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
       { id: 'eff-zk3-special', name: 'SPECIAL FX', description: 'Custom SparkularEdit200 file', duration: 30.0, channelValues: [] },
     ],
   },
+  // ── Sonicboom (FXcommander device catalog) ──
+  {
+    id: 'lib-sonicboom', name: 'SONICBOOM 11CH', manufacturer: 'SHOWVEN', dmxChannels: 11, category: 'showven',
+    effects: [
+      { id: 'eff-sb-blast', name: 'BLAST', description: 'Full concussive blast', duration: 0.3, channelValues: [{ channel: 1, value: 255 }] },
+      { id: 'eff-sb-pulse', name: 'PULSE', description: 'Pulsing concussive effect', duration: 1.0, channelValues: [{ channel: 1, value: 200 }] },
+    ],
+  },
+  {
+    id: 'lib-sonicboom-plus', name: 'SONICBOOM PLUS 14CH', manufacturer: 'SHOWVEN', dmxChannels: 14, category: 'showven',
+    effects: [
+      { id: 'eff-sbp-blast', name: 'BLAST', description: 'Full concussive blast Plus', duration: 0.3, channelValues: [{ channel: 1, value: 255 }] },
+      { id: 'eff-sbp-strobe', name: 'STROBE BLAST', description: 'Strobe + concussive', duration: 1.0, channelValues: [{ channel: 1, value: 255 }, { channel: 8, value: 200 }] },
+    ],
+  },
+  // ── Sparkular variants (FXcommander + showvenPresets cross-ref) ──
+  {
+    id: 'lib-sparkular-triple', name: 'SPARKULAR TRIPLE 6CH', manufacturer: 'SHOWVEN', dmxChannels: 6, category: 'showven',
+    effects: [
+      { id: 'eff-st-all', name: 'ALL HEADS', description: 'All 3 heads max height', duration: 2.5, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 255 }, { channel: 4, value: 255 }, { channel: 5, value: 255 }, { channel: 6, value: 255 }] },
+      { id: 'eff-st-center', name: 'CENTER', description: 'Center head only', duration: 2.0, channelValues: [{ channel: 3, value: 255 }, { channel: 4, value: 255 }] },
+      { id: 'eff-st-wave', name: 'WAVE', description: 'Sequential L→R heads', duration: 3.0, channelValues: [] },
+    ],
+    safetyChannel: 2, safetyValue: 255,
+  },
+  {
+    id: 'lib-sparkular-spin', name: 'SPARKULAR SPIN', manufacturer: 'SHOWVEN', dmxChannels: 4, category: 'showven',
+    effects: [
+      { id: 'eff-sspin-full', name: 'FULL SPIN', description: 'Max height + rotation', duration: 3.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 200 }] },
+      { id: 'eff-sspin-slow', name: 'SLOW SPIN', description: 'Low height slow rotation', duration: 3.0, channelValues: [{ channel: 1, value: 128 }, { channel: 2, value: 200 }, { channel: 3, value: 100 }] },
+    ],
+    safetyChannel: 2, safetyValue: 255,
+  },
+  {
+    id: 'lib-sparkular-fall', name: 'SPARKULAR FALL', manufacturer: 'SHOWVEN', dmxChannels: 6, category: 'showven',
+    effects: [
+      { id: 'eff-sfall-full', name: 'FULL CASCADE', description: 'Max waterfall output', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }] },
+      { id: 'eff-sfall-gentle', name: 'GENTLE', description: 'Low output cascade', duration: 5.0, channelValues: [{ channel: 1, value: 128 }, { channel: 2, value: 200 }] },
+    ],
+    safetyChannel: 2, safetyValue: 255,
+  },
+  {
+    id: 'lib-sparkular-cyclone', name: 'SPARKULAR CYCLONE II 6CH', manufacturer: 'SHOWVEN', dmxChannels: 6, category: 'showven',
+    effects: [
+      { id: 'eff-scyc-full', name: 'FULL CYCLONE', description: '360° max dispersal', duration: 3.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 200 }] },
+      { id: 'eff-scyc-slow', name: 'SLOW CYCLONE', description: 'Slow 360° rotation', duration: 4.0, channelValues: [{ channel: 1, value: 128 }, { channel: 2, value: 200 }, { channel: 3, value: 100 }] },
+    ],
+    safetyChannel: 2, safetyValue: 255,
+  },
+  {
+    id: 'lib-sparkular-jet', name: 'SPARKULAR JET II 4CH', manufacturer: 'SHOWVEN', dmxChannels: 4, category: 'showven',
+    effects: [
+      { id: 'eff-sjet-h10', name: 'HEIGHT 10', description: 'Max height 5m', duration: 2.5, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }] },
+      { id: 'eff-sjet-h5', name: 'HEIGHT 5', description: 'Mid height 2.5m', duration: 2.0, channelValues: [{ channel: 1, value: 128 }, { channel: 2, value: 200 }] },
+      { id: 'eff-sjet-h1', name: 'HEIGHT 1', description: 'Min height', duration: 1.0, channelValues: [{ channel: 1, value: 25 }, { channel: 2, value: 128 }] },
+    ],
+    safetyChannel: 2, safetyValue: 255,
+  },
+  // ── uFlamer Volcano 6CH ──
+  {
+    id: 'lib-uflamer-volcano', name: 'uFLAMER VOLCANO 6CH', manufacturer: 'SHOWVEN', dmxChannels: 6, category: 'showven',
+    capabilities: { nozzleCount: 5 },
+    effects: [
+      { id: 'eff-ufv-all', name: 'ALL NOZZLES', description: 'All 5 nozzles fire', duration: 0.5, channelValues: [{ channel: 1, value: 200 }, { channel: 2, value: 200 }, { channel: 3, value: 200 }, { channel: 4, value: 200 }, { channel: 5, value: 200 }] },
+      { id: 'eff-ufv-center', name: 'CENTER', description: 'Center nozzle only', duration: 0.5, channelValues: [{ channel: 3, value: 200 }] },
+    ],
+    safetyChannel: 6, safetyValue: 255,
+  },
 ];
 
 // ── PBUS Device Profiles ──
