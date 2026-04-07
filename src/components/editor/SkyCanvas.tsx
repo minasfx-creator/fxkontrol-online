@@ -406,6 +406,22 @@ function ContextLossGuard({ recoveringRef, onRemount }: {
   return null;
 }
 
+/**
+ * SubsystemBoundary — isolates heavy R3F subsystems so one crash doesn't take down the viewport.
+ */
+class SubsystemBoundary extends Component<{ name: string; children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(`[FXK SubsystemBoundary:${this.props.name}]`, error, info.componentStack);
+    pushLog(`[SubsystemBoundary] ${this.props.name} crashed: ${error.message}`, 'error');
+  }
+  render() {
+    if (this.state.hasError) return null; // Silently remove crashed subsystem from scene
+    return this.props.children;
+  }
+}
+
 // Module-level refs — local aliases for backward compat within this file
 let _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
 let _adaptiveExposure = 1.2;
