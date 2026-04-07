@@ -195,9 +195,34 @@ export default function MineEffect({
       const fadeSq = fade * fade;
 
       const isColumn = i < columnEnd;
-      const isDrip = i >= sprayEnd;
+      const isDrip = i >= sprayEnd && i < dripEnd;
+      const isBounce = i >= dripEnd;
 
-      // Column: visible in first 15% of progress; spray/drip have staggered entry
+      // Bounce sparks: delayed spawn — appear when main particles hit ground (~30% progress)
+      if (isBounce) {
+        const bounceDelay = 0.25 + hash01(sparkleSeeds[i]) * 0.2;
+        if (progress < bounceDelay) {
+          colArr[i * 3] = 0; colArr[i * 3 + 1] = 0; colArr[i * 3 + 2] = 0;
+          sizeArr[i] = 0;
+          continue;
+        }
+        const bounceAge = (progress - bounceDelay) / Math.max(0.01, lt);
+        const bounceFade = Math.max(0, 1 - bounceAge * 3);
+        const bt = (progress - bounceDelay) * 2.5;
+        const bDrag = Math.exp(-0.12 * bt);
+        posArr[i * 3] = vx * bt * bDrag + windX * bt * bt * 0.3;
+        posArr[i * 3 + 1] = Math.max(0, vy * bt * bDrag + 0.5 * GRAV * bt * bt * 0.5);
+        posArr[i * 3 + 2] = vz * bt * bDrag + windZ * bt * bt * 0.3;
+        // Amber/orange bounce spark color
+        const sparkTwinkle = combustionFlicker(sparkleSeeds[i], time, 1.8);
+        colArr[i * 3] = 0.9 * bounceFade * sparkTwinkle * envelope;
+        colArr[i * 3 + 1] = 0.35 * bounceFade * sparkTwinkle * envelope;
+        colArr[i * 3 + 2] = 0.05 * bounceFade * sparkTwinkle * envelope;
+        sizeArr[i] = basePointSize * particleSizes[i] * bounceFade;
+        continue;
+      }
+
+      // Column: visible in first 15% of progress
       if (isColumn && progress > 0.15) {
         // Column particles fade fast after initial jet
         const columnFade = Math.max(0, 1 - (progress - 0.05) / 0.15);
