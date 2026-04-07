@@ -180,17 +180,20 @@ function sampleCurve(curve: { t: number; value: number }[], t: number): number {
   return 1;
 }
 
+/** Reusable temp color to avoid GC pressure (~120K allocs/s eliminated) */
+const _tempColor = new THREE.Color();
+
 function sampleColorGradient(gradient: { t: number; color: THREE.Color }[], t: number): THREE.Color {
-  if (gradient.length === 0) return new THREE.Color(1, 1, 1);
-  if (t <= gradient[0].t) return gradient[0].color.clone();
-  if (t >= gradient[gradient.length - 1].t) return gradient[gradient.length - 1].color.clone();
+  if (gradient.length === 0) return _tempColor.setRGB(1, 1, 1);
+  if (t <= gradient[0].t) return _tempColor.copy(gradient[0].color);
+  if (t >= gradient[gradient.length - 1].t) return _tempColor.copy(gradient[gradient.length - 1].color);
   for (let i = 0; i < gradient.length - 1; i++) {
     if (t >= gradient[i].t && t <= gradient[i + 1].t) {
       const frac = (t - gradient[i].t) / (gradient[i + 1].t - gradient[i].t);
-      return gradient[i].color.clone().lerp(gradient[i + 1].color, frac);
+      return _tempColor.copy(gradient[i].color).lerp(gradient[i + 1].color, frac);
     }
   }
-  return new THREE.Color(1, 1, 1);
+  return _tempColor.setRGB(1, 1, 1);
 }
 
 function curlNoise3D(p: THREE.Vector3, scale: number): THREE.Vector3 {
