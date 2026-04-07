@@ -30,6 +30,8 @@ const BURST_CONFIGS: Record<BurstPattern, BurstConfig> = {
   dragon_egg:    { starCount: 40,  velocity: 15, spread: 0.6, tailFactor: 0.3, gravityMult: 1.8, symmetry: 0 },
   multi_break:   { starCount: 120, velocity: 26, spread: 1.0, tailFactor: 0.5, gravityMult: 1.0, symmetry: 0 },
   time_rain:     { starCount: 100, velocity: 22, spread: 0.9, tailFactor: 0.2, gravityMult: 0.3, symmetry: 0 },
+  falling_leaves:{ starCount: 80,  velocity: 24, spread: 1.0, tailFactor: 0.8, gravityMult: 1.6, symmetry: 0 },
+  glitter:       { starCount: 200, velocity: 26, spread: 1.0, tailFactor: 0.4, gravityMult: 1.0, symmetry: 0 },
 };
 
 /**
