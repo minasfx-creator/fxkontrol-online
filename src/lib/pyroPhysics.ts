@@ -177,7 +177,7 @@ export const BP_GRADE_BURN_MODIFIER: Record<string, number> = {
 // ── Type-Aware Physics Helpers (Finale 3D Manual Table 2) ───────────
 
 /** Finale part types */
-export type FinalePartType = 'shell' | 'cake' | 'candle' | 'mine' | 'comet' | 'gerb' | 'waterfall' | 'fan' | 'flame' | 'sfx' | 'single_shot' | 'ground' | 'rocket' | 'light';
+export type FinalePartType = 'shell' | 'cake' | 'candle' | 'mine' | 'comet' | 'gerb' | 'waterfall' | 'fan' | 'flame' | 'sfx' | 'single_shot' | 'ground' | 'rocket' | 'light' | 'girandola';
 
 /**
  * Shell prefire = break time (time from mortar to burst).
