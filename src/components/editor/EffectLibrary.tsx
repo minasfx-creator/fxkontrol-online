@@ -23,6 +23,7 @@ const CATEGORIES = [
   { key: 'iluminacao' as const, label: 'Lighting', icon: Lightbulb, accent: 'hsl(50, 95%, 55%)' },
   { key: 'drones' as const, label: 'Drone Units', icon: Radio, accent: 'hsl(200, 80%, 55%)' },
   { key: 'formacoes' as const, label: 'Formations', icon: Shapes, accent: 'hsl(270, 70%, 60%)' },
+  { key: 'ground_effects' as const, label: 'Ground Effects', icon: RotateCw, accent: 'hsl(35, 85%, 55%)' },
 ];
 
 type FilterType = 'all' | 'firework' | 'drone' | 'sfx' | 'laser' | 'light';
