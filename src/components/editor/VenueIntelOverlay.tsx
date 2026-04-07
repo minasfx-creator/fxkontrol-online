@@ -148,10 +148,10 @@ export default function VenueIntelOverlay({ preset, onBack, onDeploy, deploying 
                   transform: visible ? 'translateY(0)' : 'translateY(8px)',
                 }}
               >
-                <div className="border border-primary/15 rounded-md bg-surface-2/50 p-2">
+              <div className="border border-cyan-500/15 rounded-md bg-surface-2/50 p-2 border-l-2 border-l-cyan-500/30">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <Icon className="w-3 h-3 text-primary/70" />
-                    <span className="text-[9px] font-bold tracking-widest text-primary/70">{section.label}</span>
+                    <Icon className="w-3 h-3 text-cyan-400/70" />
+                    <span className="text-[9px] font-bold tracking-widest text-cyan-400/70">{section.label}</span>
                   </div>
                   {renderSectionContent(section.key)}
                 </div>
