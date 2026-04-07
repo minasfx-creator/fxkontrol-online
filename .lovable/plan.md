@@ -1,65 +1,105 @@
 
 
-# Ciclo de Realismo #8 — Pistil, Crossette Sub-Breaks, Star Twinkle, Trajectory Sync
+# Calibracao Industrial PIROEX/FFIC — Dados dos Laudos Laboratoriais
 
-## Problemas Identificados
+## Dados Extraidos dos Test Reports FFIC (Changsha Customs)
 
-| # | Problema | Localização |
-|---|---|---|
-| 1 | **Pistil nunca renderizado no FireworkBurst** — `hasPistil` e `pistilColor` são recebidos como props (linha 128) mas NUNCA usados no JSX ou useFrame. O pistil só existe no `ShellBurstRenderer` (usado pelo `ShellExplosionManager`), mas o renderer principal `FireworkBurst` ignora completamente | `FireworkRenderer.tsx:128,137` |
-| 2 | **Crossette sem sub-breaks no FireworkBurst** — `ShellBurstRenderer` tem crossette sub-burst logic (linhas 524-541), mas `FireworkBurst` renderiza crossette como simples 6 braços sem split. Estrelas deveriam fragmentar-se a ~40% da vida em mini-explosões | `FireworkRenderer.tsx:230-236` |
-| 3 | **Star twinkle sem blink pattern** — todos os patterns usam `temporalFlicker` com curva suave. Fogos reais (especialmente strobe/twinkle effects) têm blink discreto: ON/OFF rápido com duty-cycle variável. Não há blink pattern implementado | `FireworkRenderer.tsx:349-357` |
-| 4 | **Explosão não acompanha mudança de ângulo em tempo real** — `burstPos` é calculado uma vez no `TimelineEffects` usando `launchHeading`/`launchPitch`, mas quando o usuário muda a angulação da posição no editor, o burst já renderizado não atualiza sua posição. O `burstPos` depende de `_launchDir` que é recalculado a cada frame, mas o `FireworkBurst` recebe `position={burstPos}` como prop estático — React não re-renderiza se o array reference não mudar | `FireworkRenderer.tsx:726-751,787-803` |
+Os laudos laboratoriais da FFIC (Fireworks and Firecracker Inspection Center) para PIROEX LTDA / Changsha Skyking contêm dados reais de construcao e composicao quimica que devem calibrar o motor de simulacao:
 
-## Soluções
+### Tabela de Construcao Real (FFIC Actual Findings)
 
-### 1. Pistil interno no FireworkBurst
-**Arquivo**: `FireworkRenderer.tsx`
+| Calibre | Tubo OD mm | Tubo H mm | Efeito g | Lift g | Break g | Total g | Fuse Time (medido) |
+|---------|-----------|-----------|----------|--------|---------|---------|---------------------|
+| 2.5" | 58 | 85 | 51.8 | 25.4 | 21.1 | 98.3 | 4.1-4.9s (avg 4.3) |
+| 3" | 69 | 100 | 86.4 | 36.2 | 30.8 | 153.4 | 5.3-6.5s (avg 5.9) |
+| 4" | 89 | 125 | 201.7 | 48.7 | 83.4 | 333.8 | 5.1-6.7s (avg 6.1) |
+| 5" | 117 | 150 | 348.9 | 81.0 | 180.4 | 610.3 | 5.3-6.7s (avg 6.0) |
+| 6" | 144 | 180 | 660.4 | 121.9 | 340.6 | 1122.9 | 5.4-6.7s (avg 6.2) |
 
-Adicionar ao `FireworkBurst`:
-- Gerar velocidades de pistil separadas (25% do `STAR_COUNT`, velocidade 40% do breakSpeed) no `useMemo` de velocidades
-- No `useFrame`, calcular posições do pistil com drag reduzido (0.8x) e gravidade reduzida (0.7x)
-- Renderizar como segundo `<points>` com cor do `pistilColor` e tamanho 0.7x
-- Só ativar quando `hasPistil === true`
+### Alturas Minimas de Burst (NEB/T M-251 Item 24c)
 
-### 2. Crossette sub-breaks no FireworkBurst
-**Arquivo**: `FireworkRenderer.tsx`
+| Diametro OD (mm) | Altura Minima Burst (m) |
+|-------------------|------------------------|
+| 45.0-55.0 | >=25 |
+| 55.0-76.2 | >=55 |
+| 76.2-101.6 | >=70 |
+| 101.6-127.0 | >=85 |
+| 127.0-203.2 | >=120 |
+| >203.2 | >=200 |
 
-Adicionar lógica de fragmentação:
-- Quando `pattern === 'crossette'` e `starAge > 0.4`, cada estrela dos 6 braços spawna 4-6 sub-partículas em direções aleatórias com velocidade 30% do breakSpeed
-- Usar um `useRef<Set<number>>` para trackear quais estrelas já fragmentaram (evitar re-spawn)
-- Sub-partículas renderizadas no mesmo `<points>` buffer, usando slots extras pré-alocados
+### Composicao Quimica Real (PIROEX shells)
 
-### 3. Star twinkle com blink pattern
-**Arquivo**: `FireworkRenderer.tsx`
+- **Lift charge**: KNO3 75%, Carbon 15%, Sulfur 10% (polv. negra classica)
+- **Break charge (chaff)**: KClO4 70%, Al 30%, Carbon 30%
+- **Flash powder**: KClO4 36%, Al 15%
+- **Red (Strontium)**: SrCO3 10-23%, KClO4, PVC 7%, Shellac 5%, Phenolic resin 6-8%
+- **Brocade crown**: Ti 25%, Rice Flour 2%, Adhesion agent 5%
+- **Cake 20mm**: 6.65g effect/shot, 1.93g lift/shot, tubo 172x25x20mm
 
-Adicionar blink discreto para patterns que suportam:
-- `twinklePhases[i]` já existe — usar como seed para blink timing
-- Blink: `Math.sin(time * freq + phase) > threshold ? 1.0 : 0.05` onde threshold controla duty-cycle
-- Patterns com blink: peony (sutil, 70% duty), crossette (forte, 50% duty), heart (sutil, 80%)
-- Trailing patterns (willow, kamuro): sem blink (mantêm flicker suave atual)
+### Dados Art-Net DMX (Star Lighting Artnet8)
 
-### 4. Burst position reativa à mudança de ângulo
-**Arquivo**: `FireworkRenderer.tsx`
+- 8 saidas DMX512 bidirecionais (XLR 5 pinos)
+- 2 entradas DMX fixas (portas 9-10)
+- Protocolos: Art-Net e sACN
+- Isolamento optico ate 1500V em todas as portas DMX
+- RDM compativel
+- Conexao 10/100 Ethernet RJ45
 
-O problema é que `burstPos` é calculado dentro do `useMemo` do `activeEffects` e passado como prop. Como `launchHeading`/`launchPitch` vêm do store e mudam, o `useMemo` já recalcula — mas o array `[x,y,z]` cria referência nova a cada frame quando os valores mudam. Verificar:
-- Garantir que `positions` está nas dependências do `useMemo` (já está na linha 668)
-- O `burstPos` é recalculado no render do `cappedEffects.map()` (linhas 726-751) que roda a cada render — isso já é reativo
-- **Bug real**: `_posQuat`, `_effQuat` etc. são singletons compartilhados (sharedState). Se múltiplos efeitos renderizam no mesmo frame, eles sobrescrevem os quaternions um do outro. Solução: mover cálculo de quaternion para variáveis locais dentro do `.map()` callback
+## Problemas Identificados no Motor Atual
+
+| # | Problema | Impacto |
+|---|---------|---------|
+| 1 | **Fuse times em pyroPhysics.ts nao correspondem aos laudos FFIC** — getLiftTime() calcula balisticamente, mas os tempos medidos (4.3s para 2.5", 5.9s para 3") sao muito maiores que o calculo balistico puro porque incluem delay fuse real | Timing incorreto |
+| 2 | **Break heights nao alinhados com NEB/T M-251** — tabela BREAK_HEIGHT tem 50m para 2" mas norma exige >=55m para OD 55-76mm (3"); valores atuais nao refletem minimos regulatorios | Alturas fora da norma |
+| 3 | **Composicao quimica do flicker nao usa dados reais** — pyroNoise.ts tem params genericos; laudos mostram composicoes exatas (SrCO3 para red, Ti para brocade) que afetam burn rate e flicker | Flicker impreciso |
+| 4 | **Perfil PIROEX/Skyking nao existe em manufacturerCalibration.ts** — temos dados reais de um fabricante chines (Changsha Skyking) para PIROEX mas nao ha perfil calibrado | Dados desperdicados |
+| 5 | **Cake 20mm nao tem dados de calibracao** — laudos mostram 6.65g/shot, tubo 172x25x20mm, fuse 6.2-7.3s, mas nao ha perfil de cake sub-1" calibrado | Cakes imprecisos |
+| 6 | **Art-Net DMX engine nao suporta Star Lighting Artnet8** — wiredDmxEngine.ts suporta ENTTEC/Eurolite/DMXking mas nao a interface brasileira Artnet8 com 8 universos | Hardware nao suportado |
+
+## Solucoes
+
+### 1. Adicionar perfil PIROEX/Skyking em manufacturerCalibration.ts
+Criar novo perfil `piroex-skyking` com dados REAIS dos laudos FFIC:
+- Calibres 2.5", 3", 4", 5", 6" com heightM, spreadDeg, prefireSec, starCount, breakSpeed, safetyM baseados nos dados medidos
+- Derivar starCount dos pesos de efeito (proporcional a effect charge)
+- Usar fuse times medidos como prefireSec
+
+### 2. Atualizar pyroPhysics.ts com dados NEB/T M-251
+- Adicionar tabela `MIN_BURST_HEIGHT_NEBT` com alturas minimas regulatorias
+- Funcao `getMinBurstHeight(outerDiameterMm)` para validacao de conformidade
+- Ajustar BREAK_HEIGHT para alinhar com alturas reais medidas
+
+### 3. Calibrar composicao quimica em pyroNoise.ts
+Atualizar `getFlickerParams()` com dados reais PIROEX:
+- Strontium red (SrCO3 10-23%): burn rate lento, flicker irregular
+- Brocade/Ti (25% titanium): burn rate muito alto, sparks brilhantes
+- Flash (KClO4 36% + Al 15%): burst intenso e curto
+
+### 4. Adicionar Star Lighting Artnet8 ao wiredDmxEngine.ts
+Novo adaptador com specs do manual:
+- 8 saidas DMX (bidirecionais), baudRate via Art-Net/sACN (ethernet, nao serial)
+- Nota: este dispositivo usa Ethernet, nao USB serial — adicionar nota de compatibilidade
+
+### 5. Adicionar dados de cake 20mm ao pyroPhysics.ts
+- CAKE_PARTICLES_PER_SHOT para sub-1" (20mm = ~0.8"): 10-15 particulas
+- Fuse time: 6.2-7.3s para cake completo (300 shots)
 
 ## Arquivos Modificados
 
-| Arquivo | Ação |
-|---|---|
-| `src/components/editor/skycanvas/FireworkRenderer.tsx` | Pistil rendering, crossette sub-breaks, blink twinkle, fix quaternion race |
+| Arquivo | Acao |
+|---------|------|
+| `src/lib/manufacturerCalibration.ts` | Adicionar perfil PIROEX/Skyking com dados FFIC |
+| `src/lib/pyroPhysics.ts` | Tabela NEB/T M-251, ajustar break heights |
+| `src/lib/pyroNoise.ts` | Calibrar flicker com composicao quimica real |
+| `src/lib/wiredDmxEngine.ts` | Adicionar nota Artnet8 (ethernet-based) |
 
-## Ordem de Execução
+## Ordem de Execucao
 
 | Passo | Tarefa |
-|---|---|
-| 1 | Pistil interno — gerar, simular, renderizar |
-| 2 | Crossette sub-breaks — fragmentação a 40% da vida |
-| 3 | Star twinkle blink pattern por compound |
-| 4 | Fix quaternion singletons → variáveis locais no map |
+|-------|--------|
+| 1 | manufacturerCalibration.ts — perfil PIROEX/Skyking |
+| 2 | pyroPhysics.ts — tabela NEB/T M-251 + break heights |
+| 3 | pyroNoise.ts — flicker calibrado por composicao real |
+| 4 | wiredDmxEngine.ts — nota Artnet8 |
 | 5 | Build verification |
 
