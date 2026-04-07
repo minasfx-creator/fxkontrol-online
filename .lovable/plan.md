@@ -1,25 +1,17 @@
 
-# Ciclo de Polish #20 — Ground Sparks, Smoke Trail, Burst Flash
+# Ciclo de Polish #21 — Falling Leaves Tumble, Glitter Delay Scatter, Willow Droop
 
-## Bugs e Melhorias Identificados
+## Melhorias Identificadas
 
-| # | Problema | Arquivo | Fix |
-|---|----------|---------|-----|
-| 1 | **SparkShower sem ground interaction** — sparks que atingem Y=0 simplesmente desaparecem (L83-86) sem gerar bounce ou ground glow. Devem ricochetear com velocidade reduzida e emitir cor quente no impacto | `SparkShower.tsx` | Quando `y < 0`, refletir Y com restitution 0.3, adicionar ground glow orange na cor, reduzir lifetime |
-| 2 | **PrefireShell smoke trail fino demais** — mortar smoke puff (L171-180) usa sphere com opacity 0.06 fixa, trail shader `uSize` não escala com caliber suficientemente. Trail parece fio de cabelo em calibres grandes (8"+) | `PrefireShell.tsx` | Aumentar smoke puff opacity para 0.09, escalar radius com caliber², aumentar uSize para `1.8 + caliber * 0.5`, adicionar smoke density layers |
-| 3 | **ExplosionGlowSystem sem flash bloom inicial** — burst começa com intensity MAX_INTENSITY (0.75) constante, sem spike inicial que simule o flash da detonação. Falta o "pop" visual de iluminação | `ExplosionGlowSystem.tsx` | Adicionar flash spike nos primeiros 50ms (intensity 2.5x), decair exponencialmente para MAX_INTENSITY depois |
-
-## Arquivos Modificados
-
-| Arquivo | Mudança |
-|---------|---------|
-| `SparkShower.tsx` | Ground bounce + glow ao atingir Y=0 |
-| `PrefireShell.tsx` | Smoke trail mais denso, uSize escalado, smoke layers |
-| `ExplosionGlowSystem.tsx` | Flash spike inicial no burst |
+| # | Melhoria | Arquivo | Descrição |
+|---|----------|---------|-----------|
+| 1 | **Falling leaves sem tumble rotation** — stars do pattern `falling_leaves` caem em linha reta sem a rotação oscilante característica de folhas ao vento | `FireworkRenderer.tsx` | Adicionar tumble sinusoidal (oscilação X/Z com fase aleatória por star) durante a queda |
+| 2 | **Glitter sem delay scatter estocástico** — todas as stars do pattern `glitter` piscam no mesmo ritmo, sem o delay aleatório que cria o efeito cascata de brilho | `FireworkRenderer.tsx` | Aplicar delay offset aleatório por star no flicker/strobe, criando cascade effect |
+| 3 | **Willow droop insuficiente** — stars do willow perdem velocidade horizontal mas não curvam o suficiente para baixo no final da vida, parecendo mais peony lento que willow real | `FireworkRenderer.tsx` | Aumentar gravityMult progressivo nas últimas 40% de vida, reduzir drag horizontal |
 
 ## Ordem
 
-1. SparkShower — ground interaction
-2. PrefireShell — smoke trail thickness
-3. ExplosionGlowSystem — burst flash bloom
+1. Falling leaves tumble physics
+2. Glitter delay scatter
+3. Willow enhanced droop
 4. Build verification

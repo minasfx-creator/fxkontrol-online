@@ -524,25 +524,32 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           pz = hangPz + w[2] * rainT * rainT * 0.5;
         }
       } else if (pattern === 'falling_leaves') {
-        // Falling leaves: aerodynamic tumble — sinusoidal lateral drift + heavy gravity
-        // Each star tumbles at its own frequency (from sparkleSeeds)
-        const tumbleFreq = 2.0 + (sparkleSeeds[i] % 3) * 0.8;
-        const tumbleAmp = 0.4 + (sparkleSeeds[i] % 5) * 0.08;
-        const basePx = dragPos(vx, t, dragCoeff * 0.6); // less drag = wider spread
-        const basePy = dragPos(vy, t, dragCoeff * 0.4) + 0.5 * GRAVITY * 1.6 * t * t;
-        const basePz = dragPos(vz, t, dragCoeff * 0.6);
-        // Tumbling flutter: lateral oscillation perpendicular to velocity
+        // Falling leaves: aerodynamic tumble — multi-axis sinusoidal flutter + heavy gravity
+        // Each star tumbles at its own frequency/amplitude (from sparkleSeeds)
+        const tumbleFreq = 1.8 + (sparkleSeeds[i] % 5) * 0.6;
+        const tumbleAmp = 0.6 + (sparkleSeeds[i] % 7) * 0.12;
+        const basePx = dragPos(vx, t, dragCoeff * 0.5); // reduced drag = wider drift
+        const basePy = dragPos(vy, t, dragCoeff * 0.35) + 0.5 * GRAVITY * 1.8 * t * t;
+        const basePz = dragPos(vz, t, dragCoeff * 0.5);
         const tumblePhase = twinklePhases[i];
-        px = basePx + Math.sin(time * tumbleFreq + tumblePhase) * tumbleAmp * starAge + w[0] * t * t * 0.4;
-        py = basePy + Math.cos(time * tumbleFreq * 0.7 + tumblePhase) * tumbleAmp * 0.3 * starAge;
-        pz = basePz + Math.cos(time * tumbleFreq + tumblePhase + 1.5) * tumbleAmp * starAge + w[2] * t * t * 0.4;
+        // Multi-axis tumble: primary lateral + secondary vertical wobble + perpendicular sway
+        const tumbleScale = starAge * (1 + starAge); // amplifies as leaf slows
+        px = basePx + Math.sin(time * tumbleFreq + tumblePhase) * tumbleAmp * tumbleScale + w[0] * t * t * 0.5;
+        py = basePy + Math.cos(time * tumbleFreq * 1.3 + tumblePhase) * tumbleAmp * 0.45 * tumbleScale;
+        pz = basePz + Math.cos(time * tumbleFreq * 0.8 + tumblePhase + 2.1) * tumbleAmp * tumbleScale + w[2] * t * t * 0.5;
       } else if (pattern === 'glitter') {
-        // Glitter: normal ballistics, but with delayed stochastic "flash" scatter
+        // Glitter: normal ballistics with stochastic flash scatter
         px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
         pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
-        // Delayed secondary ignition: at random times (30-80% life), stars flash bright
-        // This is handled in the color/brightness section below
+      } else if (pattern === 'willow') {
+        // Willow: normal ballistics but progressive gravity increase in last 40% for droop
+        const willowGravMult = starAge > 0.6 
+          ? gravityMult * (1 + (starAge - 0.6) / 0.4 * 3.5) // ramp to 4.5x gravity
+          : gravityMult * 0.7; // lighter gravity early for wide spread
+        px = dragPos(vx, t, dragCoeff * 0.85) + w[0] * t * t * 0.4; // less drag horizontally
+        py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * willowGravMult * t * t;
+        pz = dragPos(vz, t, dragCoeff * 0.85) + w[2] * t * t * 0.4;
       } else {
         px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
@@ -567,18 +574,19 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       
       if (pattern === 'glitter') {
         // Glitter: delayed stochastic flashes — each star ignites at a random time
-        // Weingart: "glitter stars produce delayed flashes as they fall"
-        const igniteTime = 0.3 + (sparkleSeeds[i] % 100) / 200; // 30-80% of life
-        const flashWindow = 0.06; // 60ms flash
+        // Per-star random flash interval and brightness for cascade effect
+        const igniteTime = 0.25 + (sparkleSeeds[i] % 100) / 180; // 25-80% of life
+        const flashInterval = 0.08 + (sparkleSeeds[i] % 50) / 500; // 80-180ms per star
+        const flashWindow = 0.04 + (sparkleSeeds[i] % 30) / 1000; // 40-70ms flash width
+        const flashBrightness = 1.8 + (sparkleSeeds[i] % 40) / 40; // 1.8-2.8x
         const timeSinceIgnite = starAge - igniteTime;
-        const flashCount = Math.floor((starAge - igniteTime) / 0.12); // repeating flashes
-        const flashPhase = (starAge - igniteTime) % 0.12;
-        if (timeSinceIgnite > 0 && flashPhase < flashWindow) {
-          twinkle = 2.5; // bright flash
+        const flashPhase = timeSinceIgnite > 0 ? timeSinceIgnite % flashInterval : -1;
+        if (timeSinceIgnite > 0 && flashPhase >= 0 && flashPhase < flashWindow) {
+          twinkle = flashBrightness; // bright flash — varies per star
         } else if (timeSinceIgnite > 0) {
-          twinkle = 0.15; // dim between flashes — smoldering
+          twinkle = 0.1; // dim between flashes — smoldering
         } else {
-          twinkle = 0.6; // pre-ignition: normal glow
+          twinkle = 0.5; // pre-ignition: subdued glow
         }
       } else if (isMagnaliumOrDragonEgg) {
         // Dragon eggs / magnalium strobe: real oscillatory combustion
