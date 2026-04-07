@@ -504,7 +504,7 @@ export default function MineEffect({
       </lineSegments>
 
       {/* Ground smoke plume */}
-      {progress > 0.03 && progress < 0.7 && (
+      {progress > 0.03 && progress < 0.92 && (
         <points ref={smokePointsRef} frustumCulled={false} renderOrder={50}>
           <bufferGeometry>
             <bufferAttribute attach="attributes-position" args={[smokePosRef, 3]} />
