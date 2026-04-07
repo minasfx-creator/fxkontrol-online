@@ -27,11 +27,14 @@ export default function FanEffect({
   caliber?: number;
   formulationId?: string;
 }) {
+  // Caliber-based spread calibration
+  const effectiveSpread = spreadAngle ?? (70 + caliber * 8);
   const caliberScale = 0.7 + caliber * 0.12;
-  // Scale particle density by caliber
   const RAYS = Math.min(15, Math.round(BASE_RAYS * caliberScale));
+  const raySpeed = (3.5 + caliber * 1.2) * caliberScale;
   const PARTICLES_PER_RAY = Math.min(50, Math.round(BASE_PARTICLES_PER_RAY * caliberScale));
   const TOTAL_PARTICLES = RAYS * PARTICLES_PER_RAY;
+  const particleSize = 0.10 + caliber * 0.02;
 
   const pointsRef = useRef<THREE.Points>(null);
   const linesRef = useRef<THREE.LineSegments>(null);
