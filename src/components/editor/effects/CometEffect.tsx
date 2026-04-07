@@ -347,12 +347,13 @@ export default function CometEffect({
           `}
           transparent
           depthWrite={false}
+          depthTest={false}
           blending={THREE.AdditiveBlending}
         />
       </points>
 
       {/* Smoke wake cloud */}
-      <points ref={smokePointsRef} frustumCulled={false}>
+      <points ref={smokePointsRef} frustumCulled={false} renderOrder={50}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[smokePosBuffer, 3]} />
           <bufferAttribute attach="attributes-color" args={[smokeColBuffer, 3]} />
