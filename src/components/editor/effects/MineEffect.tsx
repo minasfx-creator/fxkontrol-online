@@ -94,13 +94,13 @@ export default function MineEffect({
 
       if (i < Math.floor(count * COLUMN_FRAC)) {
         // Column particles: narrow cone (5-15°), high velocity
-        const upAngle = 0.05 + Math.random() * 0.17; // ~3-10° from vertical
+        const upAngle = 0.05 + Math.random() * 0.17;
         const speed = (15 + Math.random() * 22 + caliber * 5) * 1.5;
         v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
         v[i * 3 + 1] = Math.cos(upAngle) * speed + 3;
         v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
-        l[i] = 0.3 + Math.random() * 0.3; // short lifetime
-        ps[i] = 0.6; // smaller size
+        l[i] = 0.3 + Math.random() * 0.3;
+        ps[i] = 0.6;
       } else if (i < Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC))) {
         // Spray particles: wide hemisphere (30-80°), jittered lifetime
         const upAngle = 0.35 + Math.random() * 0.85;
@@ -108,17 +108,25 @@ export default function MineEffect({
         v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
         v[i * 3 + 1] = Math.cos(upAngle) * speed + 2;
         v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
-        l[i] = (0.4 + Math.random() * 1.0) * (0.6 + Math.random() * 0.8); // ±40% jitter
-        ps[i] = 0.8 + Math.random() * 1.0; // 0.8-1.8x variation
-      } else {
+        l[i] = (0.4 + Math.random() * 1.0) * (0.6 + Math.random() * 0.8);
+        ps[i] = 0.8 + Math.random() * 1.0;
+      } else if (i < Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC + DRIP_FRAC))) {
         // Drip particles: low velocity, high drag, fall back
         const upAngle = 0.1 + Math.random() * 0.5;
-        const speed = 3 + Math.random() * 3; // 3-6 m/s
+        const speed = 3 + Math.random() * 3;
         v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
         v[i * 3 + 1] = Math.cos(upAngle) * speed + 1;
         v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
-        l[i] = 0.8 + Math.random() * 1.5; // persist longer
-        ps[i] = 1.2; // ember glow size
+        l[i] = 0.8 + Math.random() * 1.5;
+        ps[i] = 1.2;
+      } else {
+        // Bounce sparks: lateral spread, low height, delayed spawn
+        const speed = 1 + Math.random() * 2.5;
+        v[i * 3] = Math.cos(theta) * speed;
+        v[i * 3 + 1] = 0.5 + Math.random() * 1.5;
+        v[i * 3 + 2] = Math.sin(theta) * speed;
+        l[i] = 0.15 + Math.random() * 0.35;
+        ps[i] = 0.4 + Math.random() * 0.3;
       }
 
       s[i] = Math.random() * 999 + i;
