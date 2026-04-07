@@ -284,8 +284,11 @@ function CakeShot({
   const t = burstProgress * starLife;
   const positions = burstPositions;
   const colors = burstColors;
-  const drag = 0.03 + caliber * 0.005;
+  // Caliber-scaled drag: heavier shells = less drag
+  const drag = caliber <= 2 ? 0.055 : caliber <= 3 ? 0.045 : caliber <= 4 ? 0.038 : 0.030;
   const burstCenterX = Math.sin(angle) * breakH;
+  // Caliber-scaled velocity multiplier
+  const velScale = caliber <= 2 ? 0.45 : caliber <= 3 ? 0.50 : caliber <= 4 ? 0.55 : 0.60;
 
   for (let i = 0; i < PARTICLES_PER_SHOT; i++) {
     const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
@@ -294,9 +297,9 @@ function CakeShot({
     const fade = Math.max(0, 1 - age);
     const dragFactor = Math.exp(-drag * t);
 
-    const px = vx * t * 0.35 * dragFactor;
-    const py = vy * t * 0.35 * dragFactor + 0.5 * GRAVITY * t * t * 0.25;
-    const pz = vz * t * 0.35 * dragFactor;
+    const px = vx * t * velScale * dragFactor;
+    const py = vy * t * velScale * dragFactor + 0.5 * GRAVITY * t * t * 0.4; // 40% gravity (was 25%)
+    const pz = vz * t * velScale * dragFactor;
     
     positions[i * 3] = burstCenterX + px;
     positions[i * 3 + 1] = breakH + py;
