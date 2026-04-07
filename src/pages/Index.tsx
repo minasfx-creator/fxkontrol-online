@@ -17,6 +17,8 @@ import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import PositionContextMenu from '@/components/editor/PositionContextMenu';
+import RadialMenu from '@/components/editor/RadialMenu';
+import LiveCard from '@/components/editor/LiveCard';
 
 // ── Lazy helper — one-liner for 80+ panels ──
 const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
@@ -426,7 +428,8 @@ function Index() {
         )}
 
         <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} onOpenPanel={(id) => handleTogglePanel(id as PanelId)} panelHeight={mobilePanelHeight} onPanelHeightChange={setMobilePanelHeight} />
-        <PositionContextMenu />
+        <RadialMenu />
+        <LiveCard />
       </div>
     );
   }
@@ -584,7 +587,8 @@ function Index() {
 
       {/* ─── Layer 9: Overlays & Modals ──────────────── */}
       {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
-      <PositionContextMenu />
+      <RadialMenu />
+      <LiveCard />
       <SmartScriptAssistant open={smartScriptOpen} onClose={() => setSmartScriptOpen(false)} />
 
     </div>
