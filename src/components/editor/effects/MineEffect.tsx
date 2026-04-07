@@ -214,8 +214,10 @@ export default function MineEffect({
 
       if (isColumn) {
         // Column: white-hot → base using thermal ramp (very early life)
+        // Flash compounds (aluminum/flash) use isFlash path for 80% white-hot phase
         const colLife = Math.min(1, progress * 8);
-        const thermal = thermalColorRamp(baseColor.r, baseColor.g, baseColor.b, colLife * 0.3, 2.0);
+        const isFlashCompound = color.toLowerCase().includes('flash') || color === '#FFFFFF' || color === '#ffffff';
+        const thermal = thermalColorRamp(baseColor.r, baseColor.g, baseColor.b, colLife * 0.3, 2.0, isFlashCompound);
         r = thermal.r;
         g = thermal.g;
         b = thermal.b;
