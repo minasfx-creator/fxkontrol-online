@@ -743,6 +743,16 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           const hangEnd = 0.55;
           trailGrav0 = segAge0 < hangStart ? gravityMult * 0.15 : segAge0 < hangEnd ? gravityMult * 0.05 : gravityMult * 2.5;
           trailGrav1 = segAge1 < hangStart ? gravityMult * 0.15 : segAge1 < hangEnd ? gravityMult * 0.05 : gravityMult * 2.5;
+        } else if (pattern === 'crossette') {
+          // Post-split crossette segments: increased gravity for visible 4-arm divergence droop
+          trailGrav0 = segAge0 > 0.4 ? gravityMult * 1.5 : gravityMult;
+          trailGrav1 = segAge1 > 0.4 ? gravityMult * 1.5 : gravityMult;
+        } else if (pattern === 'kamuro') {
+          // Kamuro trail droop: progressive gravity matching star physics
+          trailGrav0 = segAge0 < 0.4 ? gravityMult * 0.8 : gravityMult * (0.8 + (segAge0 - 0.4) / 0.6 * 2.7);
+          trailGrav1 = segAge1 < 0.4 ? gravityMult * 0.8 : gravityMult * (0.8 + (segAge1 - 0.4) / 0.6 * 2.7);
+          trailDragH0 = dragCoeff * 0.7;
+          trailDragH1 = dragCoeff * 0.7;
         }
         
         // Trail segment start
