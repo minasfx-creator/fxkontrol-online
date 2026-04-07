@@ -5,6 +5,18 @@
  */
 import type { Position, TimelineItem } from '@/types/projectTypes';
 
+export interface VenueIntel {
+  population: string;
+  lastShows: string[];
+  recentWinners: string[];
+  safetyNotes: string[];
+  terrain: string;
+  tideInfo: string;
+  culture: string;
+  keyInsights: string[];
+  regulatory: string;
+}
+
 export interface WorldShowPreset {
   id: string;
   name: string;
@@ -14,7 +26,7 @@ export interface WorldShowPreset {
   continent: 'americas' | 'europe' | 'asia' | 'oceania' | 'middle-east';
   description: string;
   gps: { lat: number; lng: number; heading: number; altitude: number };
-  duration: number; // seconds
+  duration: number;
   stats: { positions: number; cues: number; calibers: string };
   sceneOverrides: {
     waterEnabled?: boolean;
@@ -22,6 +34,7 @@ export interface WorldShowPreset {
     timeOfDay?: number;
     google3DTilesEnabled?: boolean;
   };
+  intel: VenueIntel;
   generate: () => { positions: Position[]; timelineItems: TimelineItem[] };
 }
 
