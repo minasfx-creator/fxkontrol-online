@@ -1,94 +1,105 @@
 
 
-# Refinamento Final — World Shows Intel AR + Bug Fixes
+# Refatoracao Desktop UI/UX — Eliminar Travas, Redundancia e Integrar World Shows AR
 
-## Bugs a Corrigir
+## Problemas Identificados
 
-| Bug | Fix |
+| Problema | Causa |
 |---|---|
-| `_uid` counter global — IDs duplicam se `generate()` chamado 2x | Usar `crypto.randomUUID()` |
-| `_uid = 0` reset dentro de cada `generate` — frágil | Eliminar counter, usar UUID |
-| `window.confirm()` — quebra estética FUI | Substituir por overlay inline |
-| Sem empty state no filtro | Adicionar mensagem quando 0 resultados |
+| World Shows inacessivel | Escondido dentro de 80+ icones no PanelTabBar direito, sem atalho na Toolbar |
+| Floating panel com scroll pessimo | Container `overflow-y-auto` sem `h-full` — conteudo corta ou nao scrolla |
+| Redundancia entre Left Dock e Right Dock | Effects, Scene e Settings aparecem em ambos os lados |
+| VenueIntelOverlay nunca aparece | Usuarios nao encontram o caminho ate o panel World Shows |
+| Panel direito `max-w-[30vw]` muito estreito | 380px com max 30vw comprime conteudo do VenueIntelOverlay |
 
-## Arquivos e Mudanças
+## Mudancas
 
-### 1. `src/data/worldShowPresets.ts` — Fix IDs + Adicionar Intel
+### 1. Adicionar botao "World Shows" direto na Toolbar (acesso imediato)
 
-- Substituir `uid()` por `crypto.randomUUID()` em todos os helpers
-- Remover `_uid` counter global e resets `_uid = 0`
-- Adicionar campo `intel` ao tipo `WorldShowPreset`:
+Em `Toolbar.tsx`, adicionar um botao Globe na barra superior (proximo ao ADD+) que abre diretamente `activePanel: 'worldshows'`. Isso elimina a necessidade de procurar no dock direito.
 
-```typescript
-intel: {
-  population: string;
-  lastShows: string[];
-  recentWinners: string[];
-  safetyNotes: string[];
-  terrain: string;
-  tideInfo: string;
-  culture: string;
-  keyInsights: string[];
-  regulatory: string;
-}
+### 2. Corrigir layout do Floating Panel direito (Index.tsx)
+
+O container do panel flutuante (Layer 3, linha 477-499) tem problemas:
+- Adicionar `h-full` ao container interno para que `overflow-y-auto` funcione
+- O container precisa de height explicito: ja tem `top` e `bottom` absolutos, mas o div interno nao propaga height
+- Mudar `max-w-[30vw]` para `max-w-[40vw]` para paineis com conteudo denso como VenueIntelOverlay
+- Garantir que o `ScrollArea` dentro de `WorldShowPresetsPanel` e `VenueIntelOverlay` receba height correta
+
+Mudanca especifica em Index.tsx linhas 488-498:
+```tsx
+// DE:
+<div className="h-full overflow-y-auto">
+
+// PARA:  
+<div className="h-full overflow-hidden flex flex-col">
 ```
 
-- Preencher intel para cada um dos 10 presets com dados reais
+E no container (linha 479):
+```tsx
+// DE: max-w-[30vw]
+// PARA: max-w-[40vw]  
+```
 
-### 2. `src/components/editor/VenueIntelOverlay.tsx` — Novo (HUD AR)
+### 3. Corrigir propagacao de height nos paineis
 
-Painel cinematográfico exibido ao selecionar um show, antes de carregar:
+Em `WorldShowPresetsPanel.tsx` e `VenueIntelOverlay.tsx`:
+- Garantir que o root div usa `h-full` (ja usa ✓)
+- O `ScrollArea` precisa de `flex-1 min-h-0` para funcionar dentro de flex containers
 
-- Fundo `bg-black/90` com borda `border-cyan-500/30`
-- Header: bandeira + nome + GPS coords com typewriter animation
-- 8 seções com fade-in sequencial (150ms delay entre cada):
-  - População & Público (Users icon)
-  - Últimos Shows (History icon)
-  - Vencedores Licitação (Trophy icon)
-  - Segurança & Terreno (Shield icon)
-  - Marés & Clima (Waves icon)
-  - Cultura Local (Heart icon)
-  - Insights Estratégicos (Lightbulb icon)
-  - Regulatório (FileText icon)
-- Botão "DEPLOY SHOW" estilo neon ciano — substitui `window.confirm`
-- Botão "VOLTAR" para retornar à lista
+VenueIntelOverlay.tsx linha 136:
+```tsx
+// DE: <ScrollArea className="flex-1">
+// PARA: <ScrollArea className="flex-1 min-h-0">
+```
 
-### 3. `src/components/editor/WorldShowPresetsPanel.tsx` — Integrar Overlay
+WorldShowPresetsPanel.tsx linha 129:
+```tsx  
+// DE: <ScrollArea className="flex-1">
+// PARA: <ScrollArea className="flex-1 min-h-0">
+```
 
-- Adicionar estado `selectedPreset: WorldShowPreset | null`
-- Click no ShowCard → `setSelectedPreset(preset)` em vez de carregar direto
-- Renderizar `VenueIntelOverlay` quando `selectedPreset` existe
-- O overlay dispara `handleLoad` via botão DEPLOY
-- Adicionar empty state quando filtro retorna 0 resultados
-- Remover `window.confirm`
+### 4. Auto-load + Apresentacao AR ao selecionar cidade
 
-## Dados Intel por Local (resumo)
+Modificar `WorldShowPresetsPanel.tsx`:
+- Ao clicar no ShowCard, o VenueIntelOverlay abre (ja implementado ✓)
+- Adicionar auto-scroll suave nas secoes do overlay
+- No VenueIntelOverlay, apos o usuario ver os dados, o botao DEPLOY SHOW carrega automaticamente (ja implementado ✓)
+- Verificar que o fluxo funciona end-to-end
 
-| Local | Pop. Metro | Terreno | Maré | Regulatório |
-|---|---|---|---|---|
-| Copacabana | 6.7M | Praia oceânica 4.2km | 0.3-1.2m | NOTAM DECEA + Bombeiros RJ |
-| Sydney | 5.3M | Harbour, ponte 134m | 0.5-2.0m | NSW EPA + Maritime Safety |
-| Burj Khalifa | 3.5M | Lago artificial urbano | N/A | Dubai Civil Defence |
-| London Eye | 9.0M | Rio Thames, 135m | 1.0-7.0m | GLA + Port of London |
-| Tour Eiffel | 11M | Rio Sena, torre 330m | Fluvial | Préfecture de Police |
-| Tokyo | 14M | Parque urbano | N/A | Fire Dept Tokyo + MLIT |
-| Marina Bay | 5.9M | Baía artificial | 0.5-3.0m | MPA Singapore |
-| Las Vegas | 2.2M | Deserto, rooftops | N/A | Clark County Fire |
-| Funchal | 112K | Baía vulcânica | 0.5-2.5m | ANPC Portugal |
-| Malta | 516K | Porto natural 360° | 0.2-0.5m | Malta Police + TM |
+### 5. Eliminar redundancia Left Dock vs Right Dock
 
-## Ordem de Execução
+O Left Dock (Effects/Scene/Settings) duplica entradas do PanelTabBar direito. Solucao:
+- Manter o Left Dock como acesso rapido (esta correto como esta)
+- Remover `effects`, `scene`, `showsettings` da secao "Ambiente" do PanelTabBar direito para evitar confusao
+- Isso nao quebra nada porque a logica de exclusao mutua (`SHARED_PANEL_IDS`) ja existe
+
+### 6. Melhorar VenueIntelOverlay com estetica AR cinematografica
+
+Refinar o overlay com:
+- Borda `border-cyan-500/20` e sutil scanline animation no header
+- GPS coords com animacao typewriter (incremento progressivo dos digitos)
+- Botao DEPLOY com glow pulsante ciano
+- Secoes com icone de "scanning" antes de revelar (transicao atual de 120ms esta boa, mas adicionar um sutil border-left accent)
+
+## Arquivos a Modificar
+
+| Arquivo | Mudanca |
+|---|---|
+| `src/components/editor/Toolbar.tsx` | Adicionar botao Globe "World Shows" na toolbar |
+| `src/pages/Index.tsx` | Fix container height + max-width do floating panel |
+| `src/components/editor/WorldShowPresetsPanel.tsx` | Fix ScrollArea min-h-0 |
+| `src/components/editor/VenueIntelOverlay.tsx` | Fix ScrollArea min-h-0 + refino AR visual |
+| `src/components/editor/PanelTabBar.tsx` | Remover duplicatas da secao Ambiente |
+
+## Ordem de Execucao
 
 | Passo | Tarefa |
 |---|---|
-| 1 | Fix bugs + adicionar intel em `worldShowPresets.ts` |
-| 2 | Criar `VenueIntelOverlay.tsx` |
-| 3 | Atualizar `WorldShowPresetsPanel.tsx` com overlay + empty state |
-| 4 | Build verification |
-
-## Impacto
-
-- ~1 arquivo modificado (worldShowPresets.ts — +200 LOC intel data)
-- ~1 arquivo novo (VenueIntelOverlay.tsx — ~180 LOC)
-- ~1 arquivo modificado (WorldShowPresetsPanel.tsx — ~20 LOC)
+| 1 | Fix layout do floating panel (Index.tsx) — desbloqueia todos os paineis |
+| 2 | Fix ScrollArea nos paineis World Shows e Intel Overlay |
+| 3 | Adicionar botao World Shows na Toolbar |
+| 4 | Remover duplicatas do PanelTabBar |
+| 5 | Refinar estetica AR do VenueIntelOverlay |
+| 6 | Build verification |
 
