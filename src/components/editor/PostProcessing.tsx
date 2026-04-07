@@ -510,11 +510,11 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         mipmapBlur
       />
 
-      {/* Layer 2: Star halos — only during pyro activity */}
+      {/* Layer 2: Star halos — threshold raised to 5.0, intense explosions only */}
       {hasBursts && (
         <Bloom
-          intensity={str * 0.035 * bloomMul}
-          luminanceThreshold={3.5}
+          intensity={str * 0.025 * bloomMul}
+          luminanceThreshold={5.0}
           luminanceSmoothing={0.2}
           kernelSize={KernelSize.LARGE}
           mipmapBlur
