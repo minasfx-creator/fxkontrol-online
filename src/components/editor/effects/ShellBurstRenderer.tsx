@@ -823,14 +823,14 @@ export default function ShellBurstRenderer({
         <CrossetteSubBurst key={gi} particles={subGroup} color={color} caliber={caliber} windVec={windVec} drag={starDrag} />
       ))}
 
-      {/* Burst flash — Screen blending to prevent white-out accumulation */}
-      {progress < 0.08 && (
+      {/* Burst flash — Screen blending. Dahlia: 2.5x intensity, faster decay */}
+      {progress < (pattern === 'dahlia' ? 0.12 : 0.08) && (
         <mesh>
-          <sphereGeometry args={[1.0 + caliber * 1.0, 16, 16]} />
+          <sphereGeometry args={[1.0 + caliber * (pattern === 'dahlia' ? 1.5 : 1.0), 16, 16]} />
           <meshBasicMaterial
             color={secondaryColor || color}
             transparent
-            opacity={burstFlashIntensity * 0.2 * (1 - progress / 0.08)}
+            opacity={burstFlashIntensity * (pattern === 'dahlia' ? 0.5 : 0.2) * (1 - progress / (pattern === 'dahlia' ? 0.12 : 0.08))}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}
