@@ -12,6 +12,7 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
 import { toast } from 'sonner';
 import { ambientSound } from '@/lib/ambientSound';
+import { triggerFlyTo, triggerOrbit, stopOrbit } from '@/core/geo/GeoCameraController';
 import type { WorldShowPreset } from '@/data/worldShowPresets';
 
 interface Props {

@@ -71,6 +71,9 @@ const TILE_RADIUS_METERS = 800;
 const ORIGIN = new THREE.Vector3(0, 0, 0);
 const TMP_WORLD = new THREE.Vector3();
 
+// Throttle traverse to ~10fps (every 6th frame at 60fps)
+const TRAVERSE_INTERVAL = 6;
+
 // ── Main Component ──────────────────────────────────────────────────
 // ── Loading state broadcast for HUD overlay ─────────────────────────
 export type TilesLoadingState = 'idle' | 'fetching-key' | 'loading-tiles' | 'ready' | 'error';
