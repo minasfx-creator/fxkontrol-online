@@ -1,110 +1,70 @@
 
 
-# Joi Operacional — Comando de Plataforma via Chat
+# Ciclo de Polish #28 — Peony Petal Density, Chrysanthemum Tip Curl, Dahlia Flash Timing
 
-## Visão Geral
+## Bugs Identificados
 
-Transformar a Joi de assistente documental em **co-piloto operacional** que executa ações diretas na plataforma: adicionar posições, criar coreografias, manipular timeline, controlar playback e gerenciar o projeto inteiro — tudo via linguagem natural no chat.
+| # | Bug | Local | Fix |
+|---|-----|-------|-----|
+| 1 | **Peony = esfera genérica** — `createShellBurst` case `'peony'` (L632-638) e `generateBurst` fallback (L242-249) usam distribuição esférica uniforme. Peony real tem estrelas agrupadas em "pétalas" (clusters densos de 10-14 grupos azimutais). Resultado atual: esfera homogênea indistinguível de chrysanthemum | `pyroPhysics.ts` L632, `burstSimulation.ts` L242 |
+| 2 | **Chrysanthemum sem tip curl** — `stepParticle` aplica gravidade constante (`GRAVITY * gravityFactor`). Chrysanthemum real tem pontas que "curvam" para baixo no final da vida (drag progressivo após 70% de vida). Sem isso, chrysanthemum parece peony com trail | `pyroPhysics.ts` L499-552, `burstSimulation.ts` L90 |
+| 3 | **Dahlia sem flash de detonação** — Dahlia tem estrelas grandes e rápidas com flash inicial intenso. O `ShellBurstRenderer` já tem `detonationPhase` no vertex shader mas não diferencia dahlia de outros padrões. Dahlia deveria ter burst flash 2.5x mais intenso e duração 50% menor | `ShellBurstRenderer.tsx` L821, `burstSimulation.ts` L204 |
+| 4 | **Peony starCount baixo** — 150 estrelas (L21) é insuficiente para a densidade visual de um peony real (Finale 3D usa ~280 para 3"). Resulta em burst visualmente esparso | `burstSimulation.ts` L21 |
+| 5 | **Chrysanthemum tailFactor insuficiente** — 0.9 (L22) não cria os trails longos e distintos que definem chrysanthemum vs peony. Finale 3D usa ~1.4 | `burstSimulation.ts` L22 |
 
-## Arquitetura
+## Plano de Implementação
 
-```text
-┌─────────────────────┐     ┌──────────────────────┐
-│  Joi AI (Edge Fn)   │     │  FXKAssistant.tsx     │
-│                     │     │                       │
-│ System Prompt with  │────▶│ Response Parser       │
-│ [JOI_CMD] blocks    │     │ detecta [JOI_CMD]     │
-│                     │     │ executa via store      │
-└─────────────────────┘     └───────┬───────────────┘
-                                    │
-                           ┌────────▼────────┐
-                           │ joiCommandExec   │
-                           │ (novo módulo)    │
-                           │                  │
-                           │ addPosition()    │
-                           │ addTimelineItem()│
-                           │ addFormation()   │
-                           │ setWind()        │
-                           │ play/pause/seek  │
-                           │ setProjectName() │
-                           └──────────────────┘
-```
+### Arquivo 1: `src/lib/pyroPhysics.ts`
 
-## Arquivos a Criar/Editar
+**Fix 1: Peony petal clustering**
+- Reescrever case `'peony'` (L632-638) para agrupar estrelas em 10-14 clusters azimutais
+- Cada cluster: ângulo central + jitter de ±8°, velocidade 0.85-1.0 do breakSpeed
+- Clusters distribuídos uniformemente em azimute, com elevação hemisférica superior ligeiramente favorecida
 
-### 1. `src/utils/joiCommandExecutor.ts` (NOVO)
+**Fix 2: Chrysanthemum tip curl em `stepParticle`**
+- Adicionar campo opcional `pattern` ao `ParticleState` interface
+- Em `stepParticle`, quando `pattern === 'chrysanthemum'` e `lifeRatio > 0.7`: multiplicar gravidade por `1 + 2.5 * ((lifeRatio - 0.7) / 0.3)` — cria curvatura progressiva nas pontas
+- Alternativa (menor impacto): adicionar `tipCurlFactor` ao `StepModifiers` para não poluir `ParticleState`
 
-Motor de execução de comandos. Parseia blocos `[JOI_CMD]{...}[/JOI_CMD]` das respostas da Joi e despacha para o `useProjectStore`.
+**Fix 3: Setar `tipCurlFactor` para chrysanthemum no `createShellBurst`**
+- Em case `'chrysanthemum'` (L603-608): retornar partículas com flag para tip curl
 
-**Comandos suportados:**
-- `add_position` — cria posição pyro/drone/light com coordenadas
-- `add_effect` — adiciona efeito na timeline (effectId, startTime, positionId)
-- `remove_position` / `remove_effect` — remoção
-- `update_position` — edita coordenadas/ângulos
-- `add_formation` — cria formação de drones
-- `set_wind` — configura vento
-- `play` / `pause` / `seek` — controle de playback
-- `set_project_name` — renomeia projeto
-- `add_cue_marker` — marca cue na timeline
-- `create_choreography` — macro que cria múltiplas posições + efeitos de uma vez
+### Arquivo 2: `src/render_ultra/fireworks/burstSimulation.ts`
 
-### 2. `src/components/JoiCommandFeedback.tsx` (NOVO)
+**Fix 4: Peony starCount + petal distribution**
+- `peony` starCount: 150 → 280
+- `peony` velocity: 28 → 26 (ligeiramente menor para manter raio visual)
+- Reescrever branch `peony` em `generateBurst` (L242-249) com petal clustering: 12 clusters, ±8° jitter por cluster
 
-Widget inline no chat que mostra confirmação visual de cada comando executado (ícone + descrição + status ✅/❌).
+**Fix 5: Chrysanthemum tail + tip curl config**
+- `chrysanthemum` tailFactor: 0.9 → 1.4
+- `chrysanthemum` gravityMult: 0.8 → 1.0 (tip curl handled via progressive increase)
 
-### 3. `supabase/functions/fxk-ai-chat/index.ts` (EDITAR)
+**Fix 6: Dahlia velocity tightening + flash config**
+- `dahlia` velocity: 38 → 42 (mais rápido, mais curto)
+- `dahlia` starCount: 80 → 60 (menos estrelas, maiores)
+- `dahlia` spread: 0.8 → 0.9 (mais uniforme)
 
-Expandir SYSTEM_PROMPT com seção de comandos operacionais:
-- Documentar formato `[JOI_CMD]{"action":"...","params":{...}}[/JOI_CMD]`
-- Listar todos os comandos disponíveis com parâmetros
-- Instruir a Joi a usar comandos quando o usuário pedir ações operacionais
-- Incluir lista de effectIds válidos do EFFECT_LIBRARY
+### Arquivo 3: `src/components/editor/effects/ShellBurstRenderer.tsx`
 
-### 4. `src/components/FXKAssistant.tsx` (EDITAR)
+**Fix 7: Chrysanthemum tip curl no physics loop**
+- No `useFrame` (L490-740), após `stepParticle`, se `pattern === 'chrysanthemum'`: aplicar gravidade extra progressiva `p.vy += GRAVITY * 2.5 * max(0, lifeRatio - 0.7) / 0.3 * dt`
 
-- Importar `joiCommandExecutor`
-- No `streamChat` callback `upsert`, após acumular texto completo, detectar e executar blocos `[JOI_CMD]`
-- Renderizar `JoiCommandFeedback` inline nas mensagens que contêm comandos executados
-- Strip `[JOI_CMD]` blocks do texto visível (similar ao `[KMZ_READY]`)
+**Fix 8: Dahlia detonation flash boost**
+- No burst flash sphere (L821-835): se `pattern === 'dahlia'`, multiplicar `burstFlashIntensity` por 2.5 e estender duração do flash para `progress < 0.12`
+- No secondary flash ring (L838-853): mesma lógica para dahlia
 
-### 5. `src/components/JoiCommandPresets.tsx` (NOVO)
+### Arquivo 4: `src/components/editor/skycanvas/FireworkRenderer.tsx`
 
-Presets operacionais adicionais para o chat:
-- `CRIAR SHOW` — "Crie um show de 3 minutos com 20 posições e efeitos variados"
-- `POSIÇÕES` — "Adicione 10 posições pyro em linha espaçadas 5m"
-- `COREOGRAFIA` — "Crie uma coreografia de chrysanthemum em sequência com 0.5s de intervalo"
-- `FORMAÇÃO` — "Crie uma formação de 50 drones em espiral"
-
-## Detalhes Técnicos
-
-### Formato de Comando
-```json
-[JOI_CMD]{"action":"add_position","params":{"name":"P1","type":"pyro","x":0,"y":0,"z":0}}[/JOI_CMD]
-```
-
-### Macro `create_choreography`
-```json
-[JOI_CMD]{"action":"create_choreography","params":{
-  "positions":[{"name":"P1","type":"pyro","x":-10,"y":0,"z":0},...],
-  "cues":[{"effectId":"mort-01","positionIndex":0,"startTime":5.0},...],
-  "projectName":"Show Reveillon 2026"
-}}[/JOI_CMD]
-```
-
-### Segurança
-- Todos os comandos são validados antes da execução (types, ranges)
-- Confirmação visual no chat antes de ações destrutivas (remove)
-- Limite de 50 comandos por mensagem para evitar flood
-- Toast notification para cada ação executada
+**Fix 9: Alinhar FireworkRenderer dahlia com novo timing**
+- Ajustar velocidade e lifetime do case `'dahlia'` (L238-241) para consistência com burstSimulation
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Criar `joiCommandExecutor.ts` com parser + executor |
-| 2 | Criar `JoiCommandFeedback.tsx` |
-| 3 | Atualizar system prompt com comandos operacionais |
-| 4 | Integrar executor no `FXKAssistant.tsx` |
-| 5 | Adicionar presets operacionais |
-| 6 | Build verification |
+| 1 | Peony petal clustering (pyroPhysics + burstSimulation) |
+| 2 | Chrysanthemum tip curl (StepModifiers + ShellBurstRenderer) |
+| 3 | Dahlia flash boost + velocity tuning |
+| 4 | Build verification |
 
