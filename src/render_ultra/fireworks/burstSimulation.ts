@@ -52,12 +52,13 @@ export function generateBurst(
     let vx: number, vy: number, vz: number;
 
     if (pattern === 'ring') {
-      // Torus burst — stars in a ring plane
+      // Torus burst — evenly distributed ring with minimal jitter
       const angle = (i / count) * Math.PI * 2;
-      const speed = cfg.velocity * scale * (0.9 + Math.random() * 0.2);
-      vx = Math.cos(angle) * speed;
-      vy = (Math.random() - 0.5) * speed * cfg.spread;
-      vz = Math.sin(angle) * speed;
+      const jitter = (Math.random() - 0.5) * 0.06;
+      const speed = cfg.velocity * scale * (0.92 + Math.random() * 0.08);
+      vx = Math.cos(angle + jitter) * speed;
+      vy = (Math.random() - 0.5) * speed * 0.04;
+      vz = Math.sin(angle + jitter) * speed;
     } else if (pattern === 'heart') {
       // Heart curve parametric
       const t = (i / count) * Math.PI * 2;

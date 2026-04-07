@@ -204,7 +204,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           vx = sx * breakSpeed * 0.55 * speedVar; vy = sy * breakSpeed * 0.55 * speedVar; vz = sz * breakSpeed * 0.55 * speedVar;
           life = starLife * (1.3 + Math.random() * 1.4); break;
         case 'palm':
-          vx = sx * breakSpeed * 0.52 * speedVar; vy = Math.abs(sy) * breakSpeed * 0.85 + breakSpeed * 0.45; vz = sz * breakSpeed * 0.52 * speedVar;
+          vx = sx * breakSpeed * 0.48 * speedVar; vy = Math.abs(sy) * breakSpeed * 0.95 + breakSpeed * 0.55; vz = sz * breakSpeed * 0.48 * speedVar;
           life = starLife * (1.1 + Math.random() * 0.6); break;
         case 'chrysanthemum':
           vx = sx * breakSpeed * speedVar; vy = sy * breakSpeed * 0.93 * speedVar + breakSpeed * 0.08; vz = sz * breakSpeed * speedVar;
@@ -212,11 +212,17 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         case 'kamuro':
           vx = sx * breakSpeed * 0.35 * speedVar; vy = sy * breakSpeed * 0.35 * speedVar + 1.2; vz = sz * breakSpeed * 0.35 * speedVar;
           life = starLife * (1.8 + Math.random() * 1.8); break;
-        case 'ring':
-          vx = Math.cos(theta) * breakSpeed * speedVar; vy = (Math.random() - 0.5) * breakSpeed * 0.08; vz = Math.sin(theta) * breakSpeed * speedVar; break;
+        case 'ring': {
+          const ringAngle = (i / STAR_COUNT) * Math.PI * 2;
+          const ringJitter = (Math.random() - 0.5) * 0.06;
+          vx = Math.cos(ringAngle + ringJitter) * breakSpeed * (0.92 + Math.random() * 0.08);
+          vy = (Math.random() - 0.5) * breakSpeed * 0.04;
+          vz = Math.sin(ringAngle + ringJitter) * breakSpeed * (0.92 + Math.random() * 0.08);
+          break;
+        }
         case 'dahlia':
-          vx = sx * breakSpeed * 1.25 * speedVar; vy = sy * breakSpeed * 1.18 * speedVar; vz = sz * breakSpeed * 1.25 * speedVar;
-          life = starLife * (0.35 + Math.random() * 0.25); break;
+          vx = sx * breakSpeed * 1.35 * speedVar; vy = sy * breakSpeed * 1.28 * speedVar; vz = sz * breakSpeed * 1.35 * speedVar;
+          life = starLife * (0.22 + Math.random() * 0.15); break;
         case 'brocade':
           vx = sx * breakSpeed * 0.58 * speedVar; vy = sy * breakSpeed * 0.58 * speedVar; vz = sz * breakSpeed * 0.58 * speedVar;
           life = starLife * (1.3 + Math.random() * 1.0); break;
