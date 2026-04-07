@@ -542,7 +542,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
         pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
-      } else if (pattern === 'willow') {
+    } else if (pattern === 'willow') {
         // Willow: normal ballistics but progressive gravity increase in last 40% for droop
         const willowGravMult = starAge > 0.6 
           ? gravityMult * (1 + (starAge - 0.6) / 0.4 * 3.5) // ramp to 4.5x gravity
@@ -550,6 +550,43 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         px = dragPos(vx, t, dragCoeff * 0.85) + w[0] * t * t * 0.4; // less drag horizontally
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * willowGravMult * t * t;
         pz = dragPos(vz, t, dragCoeff * 0.85) + w[2] * t * t * 0.4;
+      } else if (pattern === 'horsetail') {
+        // Horsetail: heavy charcoal stars with aggressive progressive droop
+        const htGravMult = starAge < 0.5
+          ? gravityMult * 1.2
+          : gravityMult * (1.2 + (starAge - 0.5) / 0.5 * 4.8); // ramp to 6x
+        px = dragPos(vx, t, dragCoeff * 0.7) + w[0] * t * t * 0.5; // reduced horiz drag, amplified wind
+        py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * htGravMult * t * t;
+        pz = dragPos(vz, t, dragCoeff * 0.7) + w[2] * t * t * 0.5;
+      } else if (pattern === 'coconut') {
+        // Coconut tree: 3-phase — ascent, frond spread, heavy droop
+        let cocoGravMult: number;
+        let cocoDragH: number;
+        const frondSeed = sparkleSeeds[i];
+        if (starAge < 0.3) {
+          // Ascent: low gravity, low drag — stars climb fast
+          cocoGravMult = gravityMult * 0.4;
+          cocoDragH = dragCoeff * 0.5;
+        } else if (starAge < 0.6) {
+          // Frond spread: moderate gravity, sinusoidal lateral sway
+          cocoGravMult = gravityMult * 1.5;
+          cocoDragH = dragCoeff * 0.8;
+        } else {
+          // Droop: heavy gravity, near-zero horizontal drag — fronds fall
+          cocoGravMult = gravityMult * 5.0;
+          cocoDragH = dragCoeff * 0.15;
+        }
+        px = dragPos(vx, t, cocoDragH) + w[0] * t * t * 0.3;
+        py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * cocoGravMult * t * t;
+        pz = dragPos(vz, t, cocoDragH) + w[2] * t * t * 0.3;
+        // Frond lateral sway during spread phase
+        if (starAge >= 0.3 && starAge < 0.6) {
+          const frondPhase = (frondSeed % 100) / 100 * Math.PI * 2;
+          const frondAmp = 0.8 + (frondSeed % 50) / 50 * 0.6;
+          const spreadProgress = (starAge - 0.3) / 0.3;
+          px += Math.sin(time * 2.5 + frondPhase) * frondAmp * spreadProgress;
+          pz += Math.cos(time * 2.5 + frondPhase + 1.5) * frondAmp * spreadProgress;
+        }
       } else {
         px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
@@ -662,10 +699,35 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         const t1 = Math.max(0, t - (s + 1) * trailDt);
         const base2 = (i * TRAIL_LENGTH + s) * 6;
         
-        // Trail segment start — sample wind at actual star position for curvature
-        const sx0 = dragPos(vx, t0, dragCoeff);
-        const sy0 = dragPos(vy, t0, dragCoeff) + 0.5 * GRAVITY * gravityMult * t0 * t0;
-        const sz0 = dragPos(vz, t0, dragCoeff);
+        // Compute per-segment gravity multiplier for droop patterns
+        const segAge0 = lt > 0 ? Math.min(1, t0 / lt) : 0;
+        const segAge1 = lt > 0 ? Math.min(1, t1 / lt) : 0;
+        let trailGrav0 = gravityMult;
+        let trailGrav1 = gravityMult;
+        let trailDragH0 = dragCoeff;
+        let trailDragH1 = dragCoeff;
+        
+        if (pattern === 'horsetail') {
+          trailGrav0 = segAge0 < 0.5 ? gravityMult * 1.2 : gravityMult * (1.2 + (segAge0 - 0.5) / 0.5 * 4.8);
+          trailGrav1 = segAge1 < 0.5 ? gravityMult * 1.2 : gravityMult * (1.2 + (segAge1 - 0.5) / 0.5 * 4.8);
+          trailDragH0 = dragCoeff * 0.7;
+          trailDragH1 = dragCoeff * 0.7;
+        } else if (pattern === 'coconut') {
+          trailGrav0 = segAge0 < 0.3 ? gravityMult * 0.4 : segAge0 < 0.6 ? gravityMult * 1.5 : gravityMult * 5.0;
+          trailGrav1 = segAge1 < 0.3 ? gravityMult * 0.4 : segAge1 < 0.6 ? gravityMult * 1.5 : gravityMult * 5.0;
+          trailDragH0 = segAge0 < 0.3 ? dragCoeff * 0.5 : segAge0 < 0.6 ? dragCoeff * 0.8 : dragCoeff * 0.15;
+          trailDragH1 = segAge1 < 0.3 ? dragCoeff * 0.5 : segAge1 < 0.6 ? dragCoeff * 0.8 : dragCoeff * 0.15;
+        } else if (pattern === 'willow') {
+          trailGrav0 = segAge0 > 0.6 ? gravityMult * (1 + (segAge0 - 0.6) / 0.4 * 3.5) : gravityMult * 0.7;
+          trailGrav1 = segAge1 > 0.6 ? gravityMult * (1 + (segAge1 - 0.6) / 0.4 * 3.5) : gravityMult * 0.7;
+          trailDragH0 = dragCoeff * 0.85;
+          trailDragH1 = dragCoeff * 0.85;
+        }
+        
+        // Trail segment start
+        const sx0 = dragPos(vx, t0, trailDragH0);
+        const sy0 = dragPos(vy, t0, dragCoeff) + 0.5 * GRAVITY * trailGrav0 * t0 * t0;
+        const sz0 = dragPos(vz, t0, trailDragH0);
         const w0 = isTrailingPattern 
           ? getWindAtPosition(position[0] + sx0, position[1] + sy0, position[2] + sz0, 'ember')
           : w;
@@ -674,9 +736,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         tPos[base2 + 2] = sz0 + w0[2] * t0 * t0 * 0.3;
         
         // Trail segment end
-        const sx1 = dragPos(vx, t1, dragCoeff);
-        const sy1 = dragPos(vy, t1, dragCoeff) + 0.5 * GRAVITY * gravityMult * t1 * t1;
-        const sz1 = dragPos(vz, t1, dragCoeff);
+        const sx1 = dragPos(vx, t1, trailDragH1);
+        const sy1 = dragPos(vy, t1, dragCoeff) + 0.5 * GRAVITY * trailGrav1 * t1 * t1;
+        const sz1 = dragPos(vz, t1, trailDragH1);
         const w1 = isTrailingPattern
           ? getWindAtPosition(position[0] + sx1, position[1] + sy1, position[2] + sz1, 'ember')
           : w;
@@ -786,21 +848,35 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       const plv = pistilBuffers.lives;
       const pistilDrag = dragCoeff * 0.8;
       const pistilGravMult = gravityMult * 0.7;
+      const pistilDelay = pattern === 'brocade_crown' ? 0.25 : 0.15;
       for (let i = 0; i < PISTIL_COUNT; i++) {
         const pvx = pistilData.velocities[i * 3];
         const pvy = pistilData.velocities[i * 3 + 1];
         const pvz = pistilData.velocities[i * 3 + 2];
         const plt = pistilData.lifetimes[i];
-        const pistilAge = Math.min(1, t / plt);
-        const pistilFade = Math.exp(-pistilAge * 4.0);
-        pp[i * 3] = dragPos(pvx, t, pistilDrag) + w[0] * t * t * 0.2;
-        pp[i * 3 + 1] = dragPos(pvy, t, pistilDrag) + 0.5 * GRAVITY * pistilGravMult * t * t;
-        pp[i * 3 + 2] = dragPos(pvz, t, pistilDrag) + w[2] * t * t * 0.2;
-        pc[i * 3] = pistilBaseColor.r * pistilFade;
-        pc[i * 3 + 1] = pistilBaseColor.g * pistilFade;
-        pc[i * 3 + 2] = pistilBaseColor.b * pistilFade;
-        ps[i] = baseSize * 0.7 * Math.max(0.1, pistilFade);
-        plv[i] = pistilAge;
+        const delayedT = Math.max(0, t - pistilDelay);
+        const pistilAge = Math.min(1, delayedT / plt);
+        
+        if (t < pistilDelay) {
+          // Pre-delay: pistil invisible
+          pp[i * 3] = 0; pp[i * 3 + 1] = 0; pp[i * 3 + 2] = 0;
+          pc[i * 3] = 0; pc[i * 3 + 1] = 0; pc[i * 3 + 2] = 0;
+          ps[i] = 0;
+          plv[i] = 0;
+        } else {
+          const pistilFade = Math.exp(-pistilAge * 4.0);
+          // Ignition flash when pistil just detonates
+          const ignitionFlash = delayedT < 0.08 ? (1 - delayedT / 0.08) * 1.5 : 0;
+          pp[i * 3] = dragPos(pvx, delayedT, pistilDrag) + w[0] * delayedT * delayedT * 0.2;
+          pp[i * 3 + 1] = dragPos(pvy, delayedT, pistilDrag) + 0.5 * GRAVITY * pistilGravMult * delayedT * delayedT;
+          pp[i * 3 + 2] = dragPos(pvz, delayedT, pistilDrag) + w[2] * delayedT * delayedT * 0.2;
+          const flashBoost = 1 + ignitionFlash;
+          pc[i * 3] = Math.min(1.5, pistilBaseColor.r * pistilFade * flashBoost + ignitionFlash * 0.3);
+          pc[i * 3 + 1] = Math.min(1.5, pistilBaseColor.g * pistilFade * flashBoost + ignitionFlash * 0.25);
+          pc[i * 3 + 2] = Math.min(1.5, pistilBaseColor.b * pistilFade * flashBoost + ignitionFlash * 0.15);
+          ps[i] = baseSize * 0.7 * Math.max(0.1, pistilFade) * (1 + ignitionFlash * 0.5);
+          plv[i] = pistilAge;
+        }
       }
       const piGeo = pistilRef.current.geometry;
       const piPos = piGeo.getAttribute('position') as THREE.BufferAttribute;
