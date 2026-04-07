@@ -170,15 +170,17 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     if (pattern === 'willow' || pattern === 'kamuro') return baseLife * 3.0;
     if (pattern === 'palm' || pattern === 'brocade') return baseLife * 1.6;
     if (pattern === 'chrysanthemum') return baseLife * 1.2;
-    if (pattern === 'dahlia') return baseLife * 0.5;
+    if (pattern === 'dahlia') return baseLife * 0.35;
     if (pattern === 'dragon_egg') return baseLife * 1.8;
     if (pattern === 'multi_break') return baseLife * 1.4;
     if (pattern === 'time_rain') return baseLife * 4.0;
-    if (pattern === 'falling_leaves') return baseLife * 3.5; // long flutter
+    if (pattern === 'falling_leaves') return baseLife * 3.5;
     if (pattern === 'glitter') return baseLife * 2.5;
-    if (pattern === 'horsetail') return baseLife * 3.5; // heavy charcoal, long droop
+    if (pattern === 'horsetail') return baseLife * 3.5;
     if (pattern === 'brocade_crown') return baseLife * 1.8;
     if (pattern === 'saturn') return baseLife * 1.3;
+    if (pattern === 'coconut_tree') return baseLife * 2.8;
+    if (pattern === 'spider_web') return baseLife * 1.6;
     return baseLife;
   }, [caliber, pattern]);
   
@@ -234,8 +236,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           break;
         }
         case 'dahlia':
-          vx = sx * breakSpeed * 1.35 * speedVar; vy = sy * breakSpeed * 1.28 * speedVar; vz = sz * breakSpeed * 1.35 * speedVar;
-          life = starLife * (0.22 + Math.random() * 0.15); break;
+          // Dahlia: HIGH velocity, short life — bright flash burst with fewer large stars
+          vx = sx * breakSpeed * 1.5 * speedVar; vy = sy * breakSpeed * 1.4 * speedVar + 0.5; vz = sz * breakSpeed * 1.5 * speedVar;
+          life = starLife * (0.25 + Math.random() * 0.15); break;
         case 'brocade':
           vx = sx * breakSpeed * 0.58 * speedVar; vy = sy * breakSpeed * 0.58 * speedVar; vz = sz * breakSpeed * 0.58 * speedVar;
           life = starLife * (1.3 + Math.random() * 1.0); break;
@@ -318,6 +321,39 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
             vy = Math.cos(polPhi) * breakSpeed * 0.6 * speedVar;
             vz = Math.sin(polPhi) * Math.sin(theta) * breakSpeed * 0.25 * speedVar;
           }
+          break;
+        }
+        case 'coconut_tree': {
+          // Coconut tree: very tight upward cone, heavy charcoal stars droop into "fronds"
+          const ctPhi = Math.random() * Math.PI * 0.22;
+          const ctTheta = Math.random() * Math.PI * 2;
+          vx = Math.sin(ctPhi) * Math.cos(ctTheta) * breakSpeed * 0.3 * speedVar;
+          vy = Math.cos(ctPhi) * breakSpeed * 0.75 * speedVar + breakSpeed * 0.3;
+          vz = Math.sin(ctPhi) * Math.sin(ctTheta) * breakSpeed * 0.3 * speedVar;
+          life = starLife * (1.5 + Math.random() * 1.5);
+          break;
+        }
+        case 'spider_web': {
+          // Spider web: radial arms + concentric ring connectors
+          const swArmCount = 10;
+          const isArm = (i % 3) !== 2;
+          if (isArm) {
+            const arm = i % swArmCount;
+            const armAngle = (arm / swArmCount) * Math.PI * 2;
+            const jitter = (Math.random() - 0.5) * 0.04;
+            const spd = breakSpeed * (0.7 + Math.random() * 0.3);
+            vx = Math.cos(armAngle + jitter) * spd;
+            vy = (Math.random() - 0.5) * spd * 0.08 + 0.3;
+            vz = Math.sin(armAngle + jitter) * spd;
+          } else {
+            const ringR = 0.3 + Math.random() * 0.7;
+            const ringA = Math.random() * Math.PI * 2;
+            const spd = breakSpeed * ringR;
+            vx = Math.cos(ringA) * spd;
+            vy = (Math.random() - 0.5) * spd * 0.1 + 0.2;
+            vz = Math.sin(ringA) * spd;
+          }
+          life = starLife * (0.8 + Math.random() * 0.5);
           break;
         }
         default:
