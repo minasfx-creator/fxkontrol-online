@@ -211,7 +211,7 @@ export default function RomanCandleEffect({
           <bufferAttribute attach="attributes-position" args={[trailPosArr, 3]} />
           <bufferAttribute attach="attributes-color" args={[trailColArr, 3]} />
         </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={0.7} depthWrite={false} blending={THREE.AdditiveBlending} />
+        <lineBasicMaterial vertexColors transparent opacity={0.7} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} />
       </lineSegments>
       <points ref={pointsRef}>
         <bufferGeometry>
