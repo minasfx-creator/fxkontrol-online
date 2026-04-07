@@ -466,7 +466,7 @@ export default function MineEffect({
       {progress > 0.02 && progress < 0.6 && (
         <mesh position={[0, progress * 4, 0]}>
           <sphereGeometry args={[0.6 + progress * 6, 8, 8]} />
-          <meshBasicMaterial color="#887766" transparent opacity={0.06 * (1 - progress / 0.6)} depthTest={false} />
+          <meshBasicMaterial color="#887766" transparent opacity={0.06 * (1 - progress / 0.6)} depthTest={false} depthWrite={false} />
         </mesh>
       )}
 
