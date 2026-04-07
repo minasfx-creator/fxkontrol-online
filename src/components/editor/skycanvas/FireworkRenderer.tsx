@@ -299,7 +299,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     const t = progress * (starLife * 0.88);
     const trailDt = (pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade') ? 0.020
       : pattern === 'palm' ? 0.025 : 0.035;
-    const w = getWindForce();
+    const w = getWindForce('ember', position[1]);
     const time = clock.getElapsedTime();
     const _adaptiveExposure = getAdaptiveExposure();
     
