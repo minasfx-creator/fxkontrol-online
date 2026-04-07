@@ -1,57 +1,28 @@
 
 
-# Ciclo de Calibracao #18 — Ground Bounce Sparks, Ember Glow Trail, Smoke Pos-Burst, Angle Trajectory Verification
+# Ciclo de Polish #19 — MineEffect Bug Fixes
 
-## Problemas Identificados
+## Bugs Encontrados no Codigo Atual
 
-| # | Problema |
-|---|----------|
-| 1 | **MineEffect sem ground bounce sparks** — quando particulas atingem Y=0, simplesmente usam `abs(rawY) * restitution` sem gerar sparks secundarias no impacto |
-| 2 | **Ember glow trail ausente** — particulas que caem (drip class + spray tardio) nao deixam trilha de brasa incandescente; apenas desaparecem |
-| 3 | **Smoke pos-burst insuficiente** — FireworkBurst so mostra `SmokeTrail` apos 60% do progress; falta nuvem volumetrica expandindo no ponto de burst que persista alem do efeito |
-| 4 | **Verificacao de angulos** — confirmar que `burstPos` no FireworkRenderer calcula corretamente a posicao final do burst usando o quaternion de heading/pitch, e que shells explodem no final da trajetoria angulada |
+| # | Bug | Linha | Fix |
+|---|-----|-------|-----|
+| 1 | **Bounce sparks: gravidade 50%** — `0.5 * GRAV * bt * bt * 0.5` aplica fator 0.25 em vez de 0.5. Sparks flutuam | L214 | Remover o `* 0.5` final |
+| 2 | **Smoke shader ignora size buffer** — vertex shader substituido com `3.0 *` hardcoded, entao `smokeSizeArr` calculado no loop (L378) nunca e usado | L507 | Usar `size` attribute no smoke shader |
+| 3 | **Smoke sem color tint** — fumaca sempre warm gray fixo (0.35, 0.3, 0.25), nao absorve cor da explosao | L373-375 | Misturar 25% de `baseColor` |
+| 4 | **Smoke termina em progress=0.7** — fumaca desaparece cedo demais | L350 | Estender para `progress < 0.92` |
+| 5 | **Rising smoke cloud falta depthWrite={false}** — L469 so tem `depthTest={false}` | L469 | Adicionar `depthWrite={false}` |
+| 6 | **Drip sem ember transition** — drips que batem no chao (`rawY < 0`) nao transitam para cor ember | L270-276 | Quando bounced, interpolar para charcoal/amber |
 
-## Solucao
+## Arquivo Modificado
 
-### 1. MineEffect — Ground Bounce Sparks
-- Detectar quando `rawY < 0` (particula atinge o chao)
-- No momento do bounce, spawnar 3-5 micro-sparks no buffer de trail existente
-- Sparks: velocidade lateral baixa (1-3 m/s), cor amber/orange, lifetime 0.2-0.4s
-- Reutilizar o buffer de trail (ultimos 15% dos trail segments) para bounce sparks sem alocacao extra
+`src/components/editor/effects/MineEffect.tsx` — 6 correcoes pontuais
 
-### 2. FireworkBurst — Ember Glow Trail
-- Adicionar buffer `LineSegments` para stars na fase tardia (>60% life)
-- Cada star que esta na fase ember (emberPhase > 0.3) gera 2-3 trail segments
-- Trail color: thermal ramp de amber quente → cinza escuro
-- Trail desaparece com `opacity *= (1 - emberPhase)`
+## Ordem
 
-### 3. FireworkBurst — Smoke Volumetrico Pos-Burst
-- Substituir a `SmokeTrail` simples por uma nuvem de 20-30 particulas de fumaca
-- Nuvem expande radialmente a partir do centro do burst
-- Comeca em 40% progress (nao 60%), persiste ate 100%
-- Cor: cinza quente absorvendo cor da explosao (30% tint)
-- Buoyancy leve (+0.5 m/s vertical), drag alto
-
-### 4. Angle Trajectory Verification
-- Revisar calculo de `burstPos` em FireworkRenderer (linhas 1099-1125)
-- Confirmar que `launchDir` e calculado corretamente: heading rotaciona em Y, pitch aplica inclinacao no eixo X local
-- Verificar que `burstPos = pos + launchDir * realBreakHeight` posiciona a explosao no final da trajetoria
-- Corrigir se houver inversao de sinal ou ordem de multiplicacao de quaternions
-
-## Arquivos Modificados
-
-| Arquivo | Acao |
-|---------|------|
-| `src/components/editor/effects/MineEffect.tsx` | Ground bounce sparks no impacto |
-| `src/components/editor/skycanvas/FireworkRenderer.tsx` | Ember glow trail + smoke volumetrico pos-burst + verificar angulos |
-
-## Ordem de Execucao
-
-| Passo | Tarefa |
-|-------|--------|
-| 1 | FireworkRenderer.tsx — verificar/corrigir calculo de angulos no burstPos |
-| 2 | FireworkRenderer.tsx — ember glow trail segments na fase tardia |
-| 3 | FireworkRenderer.tsx — smoke volumetrico pos-burst |
-| 4 | MineEffect.tsx — ground bounce sparks |
-| 5 | Build verification |
+1. Fix gravidade bounce (L214)
+2. Fix smoke shader size attribute (L507)
+3. Smoke color tint + duracao estendida (L350, L373)
+4. Rising smoke depthWrite (L469)
+5. Drip ember transition no bounce (L270)
+6. Build verification
 
