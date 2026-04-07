@@ -355,7 +355,7 @@ function Index() {
         {activePanel === 'showpreview' && <ShowPreviewPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'mobilelink' && <MobileLinkPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'linkmonitor' && <MobileLinkMonitor onClose={() => setActivePanel(null)} />}
-        {activePanel === 'showcommander' && <ShowCommanderPanelDirect onClose={() => setActivePanel(null)} onOpenPanel={(id) => setActivePanel(id as PanelId)} />}
+        {activePanel === 'showcommander' && <ShowCommanderPanel onClose={() => setActivePanel(null)} onOpenPanel={(id) => setActivePanel(id as PanelId)} />}
         {activePanel === 'bluetooth' && <BluetoothPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'nfc' && <NFCPairPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'dmxoutput' && <DMXOutputPanel onClose={() => setActivePanel(null)} />}
