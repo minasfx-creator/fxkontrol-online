@@ -13,7 +13,6 @@ import { useLOD } from '@/hooks/useLOD';
 import { getLiftTime, getBreakHeight, getBreakSpeed, getTypedPrefire, getTypedDuration, getStarLifetime, type FinalePartType } from '@/lib/pyroPhysics';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { temporalFlicker } from '@/lib/pyroNoise';
-import { isInFrustum } from '@/lib/spatialCuller';
 import { updateFrustum, isSphereInFrustum } from '@/lib/frustumCuller';
 import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
 import { thermalColor, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
@@ -66,8 +65,8 @@ const STAR_VERTEX_SHADER = `
     vLife = aLife;
     vSize = aSize;
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = aSize * (8000.0 / -mvPos.z);
-    gl_PointSize = clamp(gl_PointSize, 1.0, 140.0);
+    gl_PointSize = aSize * (6000.0 / -mvPos.z);
+    gl_PointSize = clamp(gl_PointSize, 0.5, 96.0);
     gl_Position = projectionMatrix * mvPos;
   }
 `;
@@ -438,14 +437,14 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       
       {progress < 0.06 && (
         <mesh renderOrder={100}>
-          <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 6), 8, 8]} />
-          <meshBasicMaterial color="#FFFFF0" transparent opacity={0.2 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+          <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 12), 8, 8]} />
+          <meshBasicMaterial color="#FFFFEE" transparent opacity={0.5 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
         </mesh>
       )}
       {progress < 0.12 && (
         <mesh renderOrder={99}>
-          <sphereGeometry args={[flashSize * (1 + progress * 6), 8, 8]} />
-          <meshBasicMaterial color={color} transparent opacity={0.08 * Math.pow(1 - progress / 0.12, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+          <sphereGeometry args={[flashSize * (1 + progress * 12), 8, 8]} />
+          <meshBasicMaterial color={color} transparent opacity={0.2 * Math.pow(1 - progress / 0.12, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
         </mesh>
       )}
     </group>
@@ -622,12 +621,15 @@ export function TimelineEffects() {
   // Export burst count for PostProcessing
   TimelineEffects._activeBurstCount = cappedEffects.filter(e => e.effect.type === 'firework').length;
 
+  // Update frustum once per render (not per-burst)
+  updateFrustum(camera);
+
   return (
     <>
       {cappedEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
         const effectPos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const cullRadius = effect.type === 'firework' ? (caliber || 4) * 25 : 50;
-        if (!isInFrustum(camera, effectPos, cullRadius)) return null;
+        if (!isSphereInFrustum(effectPos[0], effectPos[1], effectPos[2], cullRadius)) return null;
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
         const pt = effect.partType;

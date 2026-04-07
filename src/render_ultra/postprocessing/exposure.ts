@@ -49,10 +49,6 @@ export function updateExposure(state: ExposureState, luminance: number, dt: numb
   const t = 1 - Math.exp(-speed * dt);
   state.currentExposure += (state.targetExposure - state.currentExposure) * t;
 
-  // Accumulate luminance for averaging
-  state.luminanceAccum += luminance;
-  state.luminanceSamples++;
-
   return state.currentExposure;
 }
 
