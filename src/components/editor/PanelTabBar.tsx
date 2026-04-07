@@ -47,6 +47,7 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'videochoreo', label: 'Video Choreo', icon: Video },
       { id: 'synesthesia', label: 'Audio Sync', icon: Music, shortcut: 'Y' },
       { id: 'templates', label: 'Templates', icon: FolderOpen },
+      { id: 'worldshows', label: 'World Shows', icon: Globe },
       { id: 'storyboard', label: 'Storyboard', icon: Film },
       { id: 'trajectory', label: 'Trajetórias', icon: Navigation },
       { id: 'transitions', label: 'Transições', icon: ArrowRightLeft },
