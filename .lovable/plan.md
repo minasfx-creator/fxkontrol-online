@@ -1,138 +1,121 @@
 
 
-# Otimização e Hardening Total da Plataforma FX KONTROL
+# World Famous Firework Show Presets — Planos de Fogo Reais
+
+## Visao Geral
+
+Criar um sistema de presets de shows pirotecnicos baseados nos maiores shows do mundo, com planos de fogo realistas (posicoes de balsas, calibres, timing, efeitos). O usuario seleciona um local e recebe o cenario GPS + timeline completa pronta para simulacao.
 
 ---
 
-## RESUMO
+## Dados Pesquisados (Shows Reais)
 
-Execução combinada de 4 frentes: (1) Fase 3 pendente de limpeza, (2) Integração completa do hardening engine no runtime, (3) Otimização de performance do SkyCanvas, (4) Proteções de segurança de rede e dados.
-
----
-
-## PARTE 1 — Fase 3 Pendente: Remoção de Código Morto (~20 arquivos)
-
-A Fase 3 foi aprovada mas não executada. Arquivos a remover:
-
-| Arquivo | LOC | Motivo |
-|---|---|---|
-| `modules/ai/` (12 arquivos) | ~900 | Zero imports no app React |
-| `src/core/drones/droneLOD.ts` | ~160 | Zero imports (LOD integrado no InstancedDroneSwarm) |
-| `src/core/drones/dronePhysicsEngine.ts` | ~240 | Zero imports |
-| `src/core/reliability/predictiveEngine.ts` | ~150 | Só exportado pelo barrel, nunca consumido pelo app |
-| `src/core/reliability/realityEngine.ts` | ~170 | Idem |
-| `src/core/reliability/emergencySystem.ts` | ~150 | Idem |
-| `src/core/reliability/selfDiagnostic.ts` | ~180 | Idem (feedDiagnosticFps nunca chamado) |
-| `src/core/sync/clusterSyncHook.ts` | ~100 | Zero imports fora do barrel |
-| `src/core/sync/globalClockAdapter.ts` | ~120 | Idem |
-| `src/core/sync/globalSyncEngine.ts` | ~200 | Idem |
-| `src/core/sync/multiSiteSyncEngine.ts` | ~250 | Idem |
-| `src/core/sync/multiSiteValidator.ts` | ~200 | Idem |
-
-**Preservados** (têm imports ativos): `blackBoxRecorder`, `autoHealEngine`, `latencyCompensator`, `autoScaler`, `lockstepEngine`, `seededRandom`, `frameSyncEngine`, `clusterSyncEngine`, `unrealBridge`.
-
-**Atualizar** `src/core/reliability/index.ts` — remover re-exports dos módulos deletados.
+| Local | Dados Tecnico-Operacionais |
+|---|---|
+| **Copacabana, Rio** | 19 balsas, 35.000 disparos, calibres 100-400mm, 23.500kg, 14 min, sincronizado com musica, balsas distribuidas em 4.2km de praia |
+| **Sydney Harbour** | 9 toneladas de fogos, 7km de Harbour, waterfall na ponte (134m altura), 4 plataformas aereas, balsas + Opera House + Bridge, ~12 min |
+| **Burj Khalifa, Dubai** | Fogos instalados nos andares do predio (828m), LED mapping + pirotecnia, efeitos cascata verticalissima, Dubai Fountain sincronizada |
+| **London Eye, Thames** | Barges no Thames + London Eye (135m), 12.000 fogos, 12 min, Titanium Fireworks/CarnDu, sincronizado BBC |
+| **Jingu Gaien, Tokyo** | 12.000 disparos, show de 1h, warimono (shells artesanais), estilo hanabi classico japones |
+| **Malta Grand Harbour** | Estilo italiano artesanal, shells 3-12", waterfront 360 graus, competicao internacional |
+| **Eiffel Tower, Paris** | Fogos na torre (330m) + barges no Sena, 14 Juillet, cascatas na torre |
+| **Marina Bay, Singapura** | Barges em baia, 7 min, sincronizado com laser show e drones |
+| **Las Vegas Strip** | 7 casinos simultaneos, rooftop launchers, 8 min, shells 3-8" |
+| **Funchal, Madeira** | Guinness record (2006), 16.5 min, barges ao redor da baia, 66.326 fogos |
 
 ---
 
-## PARTE 2 — Hardening Engine: Integração Completa
+## Arquitetura
 
-O hardening engine (`src/lib/hardening/`) tem 4 módulos prontos mas **parcialmente integrados**:
+### 1. Arquivo de Dados: `src/data/worldShowPresets.ts`
 
-| Módulo | Status Atual | Ação |
-|---|---|---|
-| `runtimeSafety` — watchdog + crash loop | ✅ Ativo via `HardeningWatchdog` | — |
-| `runtimeSafety` — `scanSceneTransforms` | ❌ Nunca chamado | Integrar no `HardeningWatchdog` (scan a cada 60 frames) |
-| `runtimeSafety` — `checkFrameBudget` | ❌ Nunca chamado | Integrar no watchdog — acionar degradação se over-budget |
-| `runtimeSafety` — `getDegradationLevel` / `onDegradationChange` | ❌ Nunca consumido | Conectar ao `FXKQualityController` para unificar degradação |
-| `gpuMemoryManager` — `checkSceneHealth` | ❌ Nunca chamado | Chamar a cada 5s no watchdog, logar warnings |
-| `gpuMemoryManager` — `deepDispose` | ❌ Nunca chamado | Usar no `ContextLossGuard` ao receber `webglcontextlost` |
-| `gpuMemoryManager` — `textureCache/geometryCache` | ❌ Nunca usados | Integrar nos loaders de assets 3D (SiteModelRenderer) |
-| `assetGate` — `validateAssetFile` | ❌ Nunca chamado | Integrar no importador VVIZ e nos uploads de assets |
-| `observability` — `recordContextLoss` | ✅ Ativo | — |
+Cada preset contem:
+- **Metadata**: nome, local, descricao, pais, bandeira, coordenadas GPS, heading ideal da camera
+- **Positions**: array de `Position` (balsas, pontos fixos na ponte/predio/torre) com coordenadas XYZ relativas
+- **Timeline**: array de `TimelineItem` com efeitos da `EFFECT_LIBRARY` existente, timings realistas, calibres corretos
+- **Scene overrides**: `Partial<SceneSettings>` (waterEnabled, timeOfDay, fogDensity)
+- **Duration**: duracao total do show
 
-### Implementação
+Exemplo da estrutura por show:
 
-**A. `HardeningWatchdog` expandido** — Adicionar ao componente existente:
-- `scanSceneTransforms(scene)` a cada frame (já throttled internamente a 60 frames)
-- `checkSceneHealth(gl)` a cada 300 frames (~5s)
-- `checkFrameBudget(frameTime, drawCalls, triangles)` — se `withinBudget === false` por 3 checks consecutivos, chamar `pushLog` com warning
+```text
+Copacabana (14 min, 35.000 disparos):
+  19 balsas: 4.2km linearmente no mar, ~220m entre balsas
+  Fase 1 (0-30s):  Abertura — mines + comets de todas as balsas
+  Fase 2 (30-180s): Shells 3-5" alternados, padrao wave esquerda-direita
+  Fase 3 (180-360s): Crisantemos 6" + kamuro 5" crescendo
+  Fase 4 (360-600s): Multi-break 6"+ waterfalls nas balsas centrais
+  Fase 5 (600-720s): Cascata total + shells 8-10"
+  Fase 6 (720-840s): Grand Finale — todas balsas simultaneas, 12" shells
 
-**B. Unificar degradação** — Conectar `onDegradationChange` do hardening ao `useFXKUltraRefinement`:
-- Se `getDegradationLevel()` retornar `severe` ou `critical`, forçar `qualityIndex` para `performance`/`safe`
-- Eliminar lógica duplicada de crash cooldown (existe no hardening E no useFXKUltraRefinement)
+Sydney (12 min):
+  Bridge waterfall (134m, 1149m span): 20 posicoes ao longo da ponte
+  6 barges no Harbour
+  Opera House: 4 posicoes laterais
+  Fase 1: Waterfall na ponte + mines nas barges
+  Fase 2: Shells 4-6" das barges em sequencia
+  Fase 3: Chrysanthemum 8" + palm 6"
+  Fase 4: Grand Finale ponte + barges + Opera House
+```
 
-**C. `ContextLossGuard` reforçado** — No handler de `webglcontextlost`:
-- Chamar `deepDispose(scene)` antes do remount
-- Chamar `disposeAllTracked()` para limpar recursos rastreados
+### 2. UI Component: `src/components/editor/WorldShowPresetsPanel.tsx`
 
-**D. Asset validation gate** — Nos componentes de upload:
-- Chamar `validateAssetFile(file)` antes de processar qualquer upload de modelo 3D
-- Bloquear e mostrar toast com os erros se `valid === false`
+- Lista de shows agrupados por continente (Americas, Europa, Asia, Oceania, Oriente Medio)
+- Card com: bandeira + nome + foto placeholder + stats (disparos, duracao, posicoes)
+- Botao "Carregar Show" que:
+  1. `setGpsOrigin({ lat, lng, heading, altitude })`
+  2. `useSceneStore.getState().updateSettings({ google3DTilesEnabled: true, waterEnabled, timeOfDay, ... })`
+  3. Adiciona `positions` ao store
+  4. Adiciona `timelineItems` ao store
+  5. `setDuration(totalDuration)`
+  6. Toast de confirmacao
 
----
+### 3. Integracao no Editor
 
-## PARTE 3 — Otimização de Performance do SkyCanvas
-
-### 3A. Eliminar duplicação de contexto-loss handling
-
-Atualmente existem **dois** sistemas de crash recovery executando em paralelo:
-1. `ContextLossGuard` (linha 318) — usa `reportCrash()` do hardening
-2. `useFXKUltraRefinement` (linha 124) — tem seu próprio `handleContextLoss()`
-
-**Ação**: Remover o listener de `webglcontextlost` do `useFXKUltraRefinement`, mantendo apenas o `ContextLossGuard` como single source of truth.
-
-### 3B. Throttle do `useSceneStore.getState()` inline
-
-Nas linhas 1682-1704 do SkyCanvas, há chamadas `useSceneStore.getState()` dentro do JSX render (botões Lock/Rulers). Isto re-executa a cada render.
-
-**Ação**: Extrair para seletores Zustand no topo do componente (`const lockPositions = useSceneStore(st => st.environment.lockPositions)`).
-
-### 3C. Memoização de callbacks geo-tools
-
-`handlePlaceMarker`, `handleFinishRuler`, `handleFinishPath` recriam closures a cada render por dependerem de `.length`.
-
-**Ação**: Usar refs para os contadores em vez de state `.length` nas dependências.
-
-### 3D. Canvas `resize` debounce
-
-O `ResizeObserver` com `setTimeout(150)` dispara `window.dispatchEvent(new Event('resize'))` que força recálculo global.
-
-**Ação**: Já existe `resize={{ debounce: 50 }}` no Canvas — remover o ResizeObserver manual (linha 1491) pois é redundante.
+- Botao "World Shows" no toolbar superior ou dentro do GoogleMapsPanel
+- Lazy-loaded panel
+- Ao carregar, limpa timeline/posicoes existentes (com confirmacao)
 
 ---
 
-## PARTE 4 — Hardening de Rede e Dados
+## Shows a Implementar (10 presets)
 
-### 4A. Proteção da API key do Google Maps
-
-Linha 1464: a API key é exposta no URL do fetch client-side. Já vem de edge function, mas a URL resultante fica no Network tab.
-
-**Ação**: Mover o fetch da imagem satélite para a edge function (proxy) — a key nunca sai do servidor.
-
-### 4B. Error boundaries por subsistema
-
-Atualmente há um `WebGLErrorBoundary` global. Se qualquer componente dentro do Canvas crashar, todo o viewport cai.
-
-**Ação**: Envolver subsistemas pesados em `<Suspense>` + `<ErrorBoundary>` individuais:
-- `DroneRendererSwitch` (swarm rendering)
-- `TimelineEffects` + `LiveSFXEffects` (pirotecnia)
-- `GoogleTilesLayer` + `GeoCameraController` (Google Earth)
-- `PostProcessing` (post-processing)
+1. **Copacabana, Rio de Janeiro** — 19 balsas, 35K disparos, 14 min
+2. **Sydney Harbour Bridge** — waterfall + barges + Opera House, 12 min
+3. **Burj Khalifa, Dubai** — vertical cascade 828m, 10 min
+4. **London Eye, Thames** — barges + Eye, 12 min
+5. **Tour Eiffel, Paris** — torre + Sena, 12 min
+6. **Jingu Gaien, Tokyo** — hanabi classico, 15 min
+7. **Marina Bay, Singapore** — barges + laser, 8 min
+8. **Las Vegas Strip** — 7 rooftops, 8 min
+9. **Funchal, Madeira** — baia 360, 16 min
+10. **Grand Harbour, Malta** — competicao italiana, 10 min
 
 ---
 
-## ORDEM DE EXECUÇÃO
+## Detalhes Tecnicos por Show
 
-| Passo | Tarefa | Impacto |
-|---|---|---|
-| 1 | Remover `modules/ai/` + dead core files | -2.500 LOC |
-| 2 | Atualizar `reliability/index.ts` barrel | Fixes imports |
-| 3 | Expandir `HardeningWatchdog` (scanTransforms + checkHealth + checkBudget) | Runtime protection |
-| 4 | Unificar degradação (hardening ↔ FXKUltraRefinement) | Elimina duplicação |
-| 5 | Reforçar `ContextLossGuard` com deepDispose | Previne memory leaks |
-| 6 | Remover context-loss handler duplicado do useFXKUltraRefinement | Cleanup |
-| 7 | Otimizar SkyCanvas (inline getState, ResizeObserver, callbacks) | -renders/frame |
-| 8 | Adicionar error boundaries por subsistema | Resiliência |
-| 9 | Build verification | Estabilidade |
+Cada show tera ~30-80 positions e ~100-300 timeline items (representando os momentos-chave, nao os 35.000 disparos individuais — isso seria inviavel na UI). Os timeline items usam efeitos existentes (`mort-01` a `shell-13`, `wf-01` a `wf-04`, `mine-01` a `mine-06`, `cake-01` a `cake-05`) com posicoes e timings que replicam o arco dramatico real:
+
+- Abertura (mines + comets) 
+- Desenvolvimento (shells crescentes em calibre)
+- Climax (multi-breaks + waterfalls)
+- Grand Finale (saturacao total)
+
+---
+
+## Ordem de Execucao
+
+| Passo | Tarefa |
+|---|---|
+| 1 | Criar `src/data/worldShowPresets.ts` com 10 shows completos |
+| 2 | Criar `WorldShowPresetsPanel.tsx` com UI de selecao |
+| 3 | Integrar no toolbar do editor |
+| 4 | Build verification |
+
+## Impacto
+
+- ~1 novo arquivo de dados (~800 LOC)
+- ~1 novo componente UI (~250 LOC)  
+- ~5 linhas de integracao no editor
 
