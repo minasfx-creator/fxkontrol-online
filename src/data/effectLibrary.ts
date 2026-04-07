@@ -233,4 +233,19 @@ export const EFFECT_LIBRARY: Effect[] = [
   { id: 'sat-01', name: 'Saturn Ring Red 4"', category: 'morteiros', type: 'firework', color: '#FF0000', duration: 4, cost: 32, icon: '🪐', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'saturn', safetyDistance: 100 },
   { id: 'sat-02', name: 'Saturn Ring Gold 6"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 5, cost: 52, icon: '🪐', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'saturn', safetyDistance: 175 },
   { id: 'sat-03', name: 'Saturn Ring Blue 8"', category: 'morteiros', type: 'firework', color: '#0088FF', duration: 6, cost: 78, icon: '🪐', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'saturn', safetyDistance: 210 },
+
+  // ── Dahlia ─────────────────────────────────────────────────
+  { id: 'dah-01', name: 'Dahlia Red 4"', category: 'morteiros', type: 'firework', color: '#FF0000', duration: 2, cost: 22, icon: '🌺', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'dahlia', safetyDistance: 100 },
+  { id: 'dah-02', name: 'Dahlia Purple 6"', category: 'morteiros', type: 'firework', color: '#9B30FF', duration: 3, cost: 40, icon: '🌺', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'dahlia', safetyDistance: 175 },
+  { id: 'dah-03', name: 'Dahlia Orange 8"', category: 'morteiros', type: 'firework', color: '#FF6600', duration: 3, cost: 65, icon: '🌺', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'dahlia', safetyDistance: 210 },
+
+  // ── Coconut Tree ───────────────────────────────────────────
+  { id: 'coc-01', name: 'Coconut Tree Gold 4"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 6, cost: 28, icon: '🌴', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'coconut_tree', safetyDistance: 100, impliesTrail: true, trailType: 'comet' },
+  { id: 'coc-02', name: 'Coconut Tree Silver 6"', category: 'morteiros', type: 'firework', color: '#C0C0C0', duration: 8, cost: 48, icon: '🌴', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'coconut_tree', safetyDistance: 175, impliesTrail: true, trailType: 'comet' },
+  { id: 'coc-03', name: 'Coconut Tree Gold 8"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 10, cost: 75, icon: '🌴', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'coconut_tree', safetyDistance: 210, impliesTrail: true, trailType: 'comet' },
+
+  // ── Spider Web ─────────────────────────────────────────────
+  { id: 'spw-01', name: 'Spider Web Green 4"', category: 'morteiros', type: 'firework', color: '#00FF7F', duration: 4, cost: 30, icon: '🕸️', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'spider_web', safetyDistance: 100 },
+  { id: 'spw-02', name: 'Spider Web Silver 6"', category: 'morteiros', type: 'firework', color: '#C0C0C0', duration: 5, cost: 50, icon: '🕸️', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'spider_web', safetyDistance: 175 },
+  { id: 'spw-03', name: 'Spider Web Gold 8"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 6, cost: 78, icon: '🕸️', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'spider_web', safetyDistance: 210 },
 ];

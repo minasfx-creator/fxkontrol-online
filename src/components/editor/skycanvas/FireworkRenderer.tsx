@@ -321,6 +321,39 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           }
           break;
         }
+        case 'coconut_tree': {
+          // Coconut tree: very tight upward cone, heavy charcoal stars droop into "fronds"
+          const ctPhi = Math.random() * Math.PI * 0.22;
+          const ctTheta = Math.random() * Math.PI * 2;
+          vx = Math.sin(ctPhi) * Math.cos(ctTheta) * breakSpeed * 0.3 * speedVar;
+          vy = Math.cos(ctPhi) * breakSpeed * 0.75 * speedVar + breakSpeed * 0.3;
+          vz = Math.sin(ctPhi) * Math.sin(ctTheta) * breakSpeed * 0.3 * speedVar;
+          life = starLife * (1.5 + Math.random() * 1.5);
+          break;
+        }
+        case 'spider_web': {
+          // Spider web: radial arms + concentric ring connectors
+          const swArmCount = 10;
+          const isArm = (i % 3) !== 2;
+          if (isArm) {
+            const arm = i % swArmCount;
+            const armAngle = (arm / swArmCount) * Math.PI * 2;
+            const jitter = (Math.random() - 0.5) * 0.04;
+            const spd = breakSpeed * (0.7 + Math.random() * 0.3);
+            vx = Math.cos(armAngle + jitter) * spd;
+            vy = (Math.random() - 0.5) * spd * 0.08 + 0.3;
+            vz = Math.sin(armAngle + jitter) * spd;
+          } else {
+            const ringR = 0.3 + Math.random() * 0.7;
+            const ringA = Math.random() * Math.PI * 2;
+            const spd = breakSpeed * ringR;
+            vx = Math.cos(ringA) * spd;
+            vy = (Math.random() - 0.5) * spd * 0.1 + 0.2;
+            vz = Math.sin(ringA) * spd;
+          }
+          life = starLife * (0.8 + Math.random() * 0.5);
+          break;
+        }
         default:
           vx = sx * breakSpeed * speedVar; vy = sy * breakSpeed * speedVar * 0.9 + 0.6; vz = sz * breakSpeed * speedVar; break;
       }

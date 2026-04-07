@@ -201,6 +201,44 @@ export function generateBurst(
         vy = Math.cos(phi) * speed;
         vz = Math.sin(phi) * Math.sin(theta) * speed * 0.3;
       }
+    } else if (pattern === 'dahlia') {
+      // Dahlia: fewer, larger stars with HIGH velocity — short-lived, bright burst
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = cfg.velocity * scale * (0.85 + Math.random() * 0.15);
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.12;
+      vz = Math.cos(phi) * speed;
+    } else if (pattern === 'coconut_tree') {
+      // Coconut tree: upward-biased palm variant with fewer, heavier charcoal stars
+      // Very tight upward cone (~20°), heavy gravity droop creates "trunk + fronds"
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.random() * Math.PI * 0.22; // tighter than palm
+      const speed = cfg.velocity * scale * (0.7 + Math.random() * 0.3);
+      vx = Math.sin(phi) * Math.cos(theta) * speed * 0.35;
+      vy = Math.cos(phi) * speed + cfg.velocity * 0.3;
+      vz = Math.sin(phi) * Math.sin(theta) * speed * 0.35;
+    } else if (pattern === 'spider_web') {
+      // Spider web: radial arms (8-12) with interconnecting "web" stars between arms
+      const armCount = 10;
+      const isArm = (i % 3) !== 2; // 2/3 arm stars, 1/3 web connectors
+      if (isArm) {
+        const arm = i % armCount;
+        const armAngle = (arm / armCount) * Math.PI * 2;
+        const jitter = (Math.random() - 0.5) * 0.04; // very tight arm
+        const speed = cfg.velocity * scale * (0.7 + Math.random() * 0.3);
+        vx = Math.cos(armAngle + jitter) * speed;
+        vy = (Math.random() - 0.5) * speed * 0.08 + cfg.velocity * 0.06;
+        vz = Math.sin(armAngle + jitter) * speed;
+      } else {
+        // Web connector: ring-like at varying radii
+        const ringRadius = 0.3 + Math.random() * 0.7;
+        const ringAngle = Math.random() * Math.PI * 2;
+        const speed = cfg.velocity * scale * ringRadius;
+        vx = Math.cos(ringAngle) * speed;
+        vy = (Math.random() - 0.5) * speed * 0.1 + cfg.velocity * 0.04;
+        vz = Math.sin(ringAngle) * speed;
+      }
     } else {
       // Spherical burst (peony, etc.)
       const theta = Math.random() * Math.PI * 2;
