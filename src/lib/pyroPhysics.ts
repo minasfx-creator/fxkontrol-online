@@ -494,6 +494,8 @@ export interface ParticleState {
 export interface StepModifiers {
   fallingLeaves?: boolean;
   reducedGravity?: number; // 0-1 factor
+  tipCurlFactor?: number;  // progressive gravity after 70% life (chrysanthemum)
+  tipCurlLifeRatio?: number; // current life ratio for tip curl calc
 }
 
 export function stepParticle(
