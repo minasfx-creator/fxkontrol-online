@@ -75,11 +75,29 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
       }
 
       case 'add_effect': {
-        const effect = EFFECT_LIBRARY.find(e =>
-          e.id === params.effectId ||
-          (params.effectName && e.name.toLowerCase().includes(params.effectName.toLowerCase()))
-        );
-        if (!effect) return { action, success: false, label: `Efeito não encontrado: ${params.effectId || params.effectName}` };
+        const searchTerm = params.effectId || params.effectName || '';
+        const searchLower = searchTerm.toLowerCase();
+        let effect = EFFECT_LIBRARY.find(e => e.id === params.effectId);
+        // Fallback: search by name substring
+        if (!effect && searchTerm) {
+          effect = EFFECT_LIBRARY.find(e => e.name.toLowerCase().includes(searchLower));
+        }
+        // Fallback: fuzzy match by pattern/color keywords in the ID or name
+        if (!effect && searchTerm) {
+          const keywords = searchLower.replace(/[-_]/g, ' ').split(/\s+/).filter(k => k.length > 2);
+          effect = EFFECT_LIBRARY.find(e => {
+            const haystack = `${e.id} ${e.name} ${e.pattern || ''} ${e.color || ''}`.toLowerCase();
+            return keywords.every(kw => haystack.includes(kw));
+          });
+          // Last resort: match by pattern alone
+          if (!effect) {
+            const patternKw = keywords.find(k => ['chrysanthemum','peony','willow','kamuro','crossette','dahlia','brocade','ring','comet','mine','gerb','cake'].includes(k));
+            if (patternKw) {
+              effect = EFFECT_LIBRARY.find(e => (e.pattern || '').toLowerCase() === patternKw || e.name.toLowerCase().includes(patternKw));
+            }
+          }
+        }
+        if (!effect) return { action, success: false, label: `Efeito não encontrado: ${searchTerm}` };
 
         const pos = params.positionId ? store.positions.find(p => p.id === params.positionId) :
           params.positionName ? store.positions.find(p => p.name === params.positionName) : null;
