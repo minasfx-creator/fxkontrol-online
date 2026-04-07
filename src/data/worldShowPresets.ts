@@ -5,6 +5,18 @@
  */
 import type { Position, TimelineItem } from '@/types/projectTypes';
 
+export interface VenueIntel {
+  population: string;
+  lastShows: string[];
+  recentWinners: string[];
+  safetyNotes: string[];
+  terrain: string;
+  tideInfo: string;
+  culture: string;
+  keyInsights: string[];
+  regulatory: string;
+}
+
 export interface WorldShowPreset {
   id: string;
   name: string;
@@ -14,7 +26,7 @@ export interface WorldShowPreset {
   continent: 'americas' | 'europe' | 'asia' | 'oceania' | 'middle-east';
   description: string;
   gps: { lat: number; lng: number; heading: number; altitude: number };
-  duration: number; // seconds
+  duration: number;
   stats: { positions: number; cues: number; calibers: string };
   sceneOverrides: {
     waterEnabled?: boolean;
@@ -22,12 +34,12 @@ export interface WorldShowPreset {
     timeOfDay?: number;
     google3DTilesEnabled?: boolean;
   };
+  intel: VenueIntel;
   generate: () => { positions: Position[]; timelineItems: TimelineItem[] };
 }
 
 // ── Helpers ──
-let _uid = 0;
-const uid = (prefix: string) => `${prefix}-${Date.now()}-${++_uid}`;
+const uid = () => crypto.randomUUID();
 const pos = (id: string, name: string, x: number, y: number, z: number, heading = 0): Position => ({
   id, name, type: 'pyro', x, y, z, heading, pitch: 0, roll: 0, color: '#FF6B35',
 });
@@ -43,7 +55,7 @@ function wavePattern(
   positions: Position[], effectId: string, startTime: number, track: number, interval: number,
 ): TimelineItem[] {
   return positions.map((p, i) =>
-    cue(uid('tl'), effectId, startTime + i * interval, track, { x: p.x, y: p.y, z: p.z }, p.id)
+    cue(uid(), effectId, startTime + i * interval, track, { x: p.x, y: p.y, z: p.z }, p.id)
   );
 }
 
@@ -52,7 +64,7 @@ function simultaneous(
   positions: Position[], effectId: string, startTime: number, track: number,
 ): TimelineItem[] {
   return positions.map(p =>
-    cue(uid('tl'), effectId, startTime, track, { x: p.x, y: p.y, z: p.z }, p.id)
+    cue(uid(), effectId, startTime, track, { x: p.x, y: p.y, z: p.z }, p.id)
   );
 }
 
@@ -72,11 +84,10 @@ function alternating(
 // 1. COPACABANA — Rio de Janeiro
 // ═══════════════════════════════════════════════════════════════
 function generateCopacabana() {
-  _uid = 0;
   // 19 barges spread over 4.2km along the beach, ~220m apart
   const barges: Position[] = Array.from({ length: 19 }, (_, i) => {
     const spread = (i - 9) * 220; // centered, -1980 to +1980
-    return pos(uid('pos'), `Balsa ${i + 1}`, spread, 0, -80, 0);
+    return pos(uid(), `Balsa ${i + 1}`, spread, 0, -80, 0);
   });
 
   const items: TimelineItem[] = [];
@@ -151,23 +162,22 @@ function generateCopacabana() {
 // 2. SYDNEY HARBOUR
 // ═══════════════════════════════════════════════════════════════
 function generateSydney() {
-  _uid = 0;
   // Bridge: 20 positions across 1149m span at 134m height
   const bridge: Position[] = Array.from({ length: 20 }, (_, i) => {
     const spread = (i - 10) * 57;
-    return pos(uid('pos'), `Bridge ${i + 1}`, spread, 134, 0, 180);
+    return pos(uid(), `Bridge ${i + 1}`, spread, 134, 0, 180);
   });
   // 6 barges in harbour
   const barges: Position[] = Array.from({ length: 6 }, (_, i) => {
     const angle = (i / 6) * Math.PI * 0.8 - 0.4;
-    return pos(uid('pos'), `Barge ${i + 1}`, Math.sin(angle) * 400, 0, Math.cos(angle) * -300, 0);
+    return pos(uid(), `Barge ${i + 1}`, Math.sin(angle) * 400, 0, Math.cos(angle) * -300, 0);
   });
   // Opera House: 4 lateral positions
   const opera: Position[] = [
-    pos(uid('pos'), 'Opera L1', -250, 0, -200, 45),
-    pos(uid('pos'), 'Opera L2', -200, 0, -250, 45),
-    pos(uid('pos'), 'Opera R1', 250, 0, -200, -45),
-    pos(uid('pos'), 'Opera R2', 200, 0, -250, -45),
+    pos(uid(), 'Opera L1', -250, 0, -200, 45),
+    pos(uid(), 'Opera L2', -200, 0, -250, 45),
+    pos(uid(), 'Opera R1', 250, 0, -200, -45),
+    pos(uid(), 'Opera R2', 200, 0, -250, -45),
   ];
 
   const all = [...bridge, ...barges, ...opera];
@@ -225,16 +235,15 @@ function generateSydney() {
 // 3. BURJ KHALIFA — Dubai
 // ═══════════════════════════════════════════════════════════════
 function generateBurjKhalifa() {
-  _uid = 0;
   // Vertical positions along the 828m tower — 15 levels
   const tower: Position[] = Array.from({ length: 15 }, (_, i) => {
     const h = 50 + i * 52; // 50m to 778m
-    return pos(uid('pos'), `Level ${i + 1} (${h}m)`, 0, h, 0, 0);
+    return pos(uid(), `Level ${i + 1} (${h}m)`, 0, h, 0, 0);
   });
   // Fountain positions (Dubai Fountain) — 8 positions in arc
   const fountain: Position[] = Array.from({ length: 8 }, (_, i) => {
     const angle = (i / 8) * Math.PI - Math.PI / 2;
-    return pos(uid('pos'), `Fountain ${i + 1}`, Math.cos(angle) * 150, 0, Math.sin(angle) * 150 - 200, 0);
+    return pos(uid(), `Fountain ${i + 1}`, Math.cos(angle) * 150, 0, Math.sin(angle) * 150 - 200, 0);
   });
 
   const all = [...tower, ...fountain];
@@ -242,7 +251,7 @@ function generateBurjKhalifa() {
 
   // Phase 1 (0-60s): Vertical cascade down the tower
   tower.slice().reverse().forEach((p, i) => {
-    items.push(cue(uid('tl'), 'wf-02', i * 2, 5, { x: p.x, y: p.y, z: p.z }, p.id));
+    items.push(cue(uid(), 'wf-02', i * 2, 5, { x: p.x, y: p.y, z: p.z }, p.id));
   });
   items.push(...simultaneous(fountain, 'mine-01', 10, 0));
   items.push(...simultaneous(fountain, 'comet-01', 25, 1));
@@ -281,16 +290,15 @@ function generateBurjKhalifa() {
 // 4. LONDON EYE — Thames
 // ═══════════════════════════════════════════════════════════════
 function generateLondonEye() {
-  _uid = 0;
   // London Eye: 8 positions around the wheel at 135m
   const eye: Position[] = Array.from({ length: 8 }, (_, i) => {
     const angle = (i / 8) * Math.PI * 2;
-    return pos(uid('pos'), `Eye ${i + 1}`, Math.cos(angle) * 60, 67 + Math.sin(angle) * 60, 0, 180);
+    return pos(uid(), `Eye ${i + 1}`, Math.cos(angle) * 60, 67 + Math.sin(angle) * 60, 0, 180);
   });
   // Thames barges: 10 positions along the river
   const barges: Position[] = Array.from({ length: 10 }, (_, i) => {
     const spread = (i - 5) * 100;
-    return pos(uid('pos'), `Barge ${i + 1}`, spread, 0, -50, 0);
+    return pos(uid(), `Barge ${i + 1}`, spread, 0, -50, 0);
   });
 
   const all = [...eye, ...barges];
@@ -338,16 +346,15 @@ function generateLondonEye() {
 // 5. TOUR EIFFEL — Paris
 // ═══════════════════════════════════════════════════════════════
 function generateEiffelTower() {
-  _uid = 0;
   // Tower: 10 levels from 0 to 330m
   const tower: Position[] = Array.from({ length: 10 }, (_, i) => {
     const h = i * 33;
-    return pos(uid('pos'), `Tour ${i + 1} (${h}m)`, 0, h, 0, 0);
+    return pos(uid(), `Tour ${i + 1} (${h}m)`, 0, h, 0, 0);
   });
   // Seine barges: 8 positions along the river
   const barges: Position[] = Array.from({ length: 8 }, (_, i) => {
     const spread = (i - 4) * 80;
-    return pos(uid('pos'), `Seine ${i + 1}`, spread, 0, -120, 0);
+    return pos(uid(), `Seine ${i + 1}`, spread, 0, -120, 0);
   });
 
   const all = [...tower, ...barges];
@@ -355,7 +362,7 @@ function generateEiffelTower() {
 
   // Phase 1: Tower cascade + Seine mines
   tower.slice().reverse().forEach((p, i) => {
-    items.push(cue(uid('tl'), 'wf-01', i * 1.5, 5, { x: p.x, y: p.y, z: p.z }, p.id));
+    items.push(cue(uid(), 'wf-01', i * 1.5, 5, { x: p.x, y: p.y, z: p.z }, p.id));
   });
   items.push(...simultaneous(barges, 'mine-02', 5, 0));
   items.push(...wavePattern(barges, 'comet-01', 20, 1, 0.6));
@@ -391,12 +398,11 @@ function generateEiffelTower() {
 // 6. JINGU GAIEN — Tokyo (Hanabi)
 // ═══════════════════════════════════════════════════════════════
 function generateTokyoHanabi() {
-  _uid = 0;
   // Traditional hanabi: single launch site with large-caliber artisan shells
   // 12 firing positions in semicircle
   const positions: Position[] = Array.from({ length: 12 }, (_, i) => {
     const angle = (i / 11) * Math.PI;
-    return pos(uid('pos'), `台 ${i + 1}`, Math.cos(angle) * 200, 0, Math.sin(angle) * -100, 0);
+    return pos(uid(), `台 ${i + 1}`, Math.cos(angle) * 200, 0, Math.sin(angle) * -100, 0);
   });
 
   const items: TimelineItem[] = [];
@@ -404,16 +410,16 @@ function generateTokyoHanabi() {
   // Hanabi style: deliberate, one-at-a-time shells building to finale
   // Phase 1 (0-120s): Single large shells, slow pace (warimono style)
   for (let t = 0; t < 120; t += 10) {
-    const p = positions[Math.floor(Math.random() * 12)];
+    const p = positions[Math.floor(t / 10) % 12];
     const effects = ['shell-08', 'shell-09', 'shell-10', 'mort-04', 'shell-03'];
-    items.push(cue(uid('tl'), effects[Math.floor(t / 10) % effects.length], t, 2, { x: p.x, y: p.y, z: p.z }, p.id));
+    items.push(cue(uid(), effects[Math.floor(t / 10) % effects.length], t, 2, { x: p.x, y: p.y, z: p.z }, p.id));
   }
 
   // Phase 2 (120-480s): Increasing density, chrysanthemums and kamuro
   for (let t = 120; t < 480; t += 5) {
     const p = positions[Math.floor((t / 5) % 12)];
     const effects = ['mort-01', 'shell-03', 'shell-05', 'shell-08', 'mort-04', 'shell-17', 'peon-05'];
-    items.push(cue(uid('tl'), effects[Math.floor(t / 5) % effects.length], t, 3, { x: p.x, y: p.y, z: p.z }, p.id));
+    items.push(cue(uid(), effects[Math.floor(t / 5) % effects.length], t, 3, { x: p.x, y: p.y, z: p.z }, p.id));
   }
 
   // Phase 3 (480-720s): Multi-launch, big calibers
@@ -439,10 +445,9 @@ function generateTokyoHanabi() {
 // 7. MARINA BAY — Singapore
 // ═══════════════════════════════════════════════════════════════
 function generateMarinaBay() {
-  _uid = 0;
   const barges: Position[] = Array.from({ length: 8 }, (_, i) => {
     const angle = (i / 8) * Math.PI * 1.2 - 0.3;
-    return pos(uid('pos'), `Barge ${i + 1}`, Math.cos(angle) * 300, 0, Math.sin(angle) * -200, 0);
+    return pos(uid(), `Barge ${i + 1}`, Math.cos(angle) * 300, 0, Math.sin(angle) * -200, 0);
   });
 
   const items: TimelineItem[] = [];
@@ -475,16 +480,15 @@ function generateMarinaBay() {
 // 8. LAS VEGAS STRIP
 // ═══════════════════════════════════════════════════════════════
 function generateLasVegas() {
-  _uid = 0;
   // 7 casino rooftops
   const casinos = [
-    pos(uid('pos'), 'MGM Grand', -600, 60, 0, 0),
-    pos(uid('pos'), 'Aria', -400, 55, 0, 0),
-    pos(uid('pos'), 'Bellagio', -200, 50, 0, 0),
-    pos(uid('pos'), 'Caesars', 0, 55, 0, 0),
-    pos(uid('pos'), 'Venetian', 200, 50, 0, 0),
-    pos(uid('pos'), 'Wynn', 400, 60, 0, 0),
-    pos(uid('pos'), 'Stratosphere', 600, 350, 0, 0),
+    pos(uid(), 'MGM Grand', -600, 60, 0, 0),
+    pos(uid(), 'Aria', -400, 55, 0, 0),
+    pos(uid(), 'Bellagio', -200, 50, 0, 0),
+    pos(uid(), 'Caesars', 0, 55, 0, 0),
+    pos(uid(), 'Venetian', 200, 50, 0, 0),
+    pos(uid(), 'Wynn', 400, 60, 0, 0),
+    pos(uid(), 'Stratosphere', 600, 350, 0, 0),
   ];
 
   const items: TimelineItem[] = [];
@@ -517,16 +521,15 @@ function generateLasVegas() {
 // 9. FUNCHAL — Madeira (Guinness Record)
 // ═══════════════════════════════════════════════════════════════
 function generateFunchal() {
-  _uid = 0;
   // Barges around the bay — 16 positions in semicircle
   const barges: Position[] = Array.from({ length: 16 }, (_, i) => {
     const angle = (i / 15) * Math.PI;
-    return pos(uid('pos'), `Balsa ${i + 1}`, Math.cos(angle) * 800, 0, Math.sin(angle) * -400, 0);
+    return pos(uid(), `Balsa ${i + 1}`, Math.cos(angle) * 800, 0, Math.sin(angle) * -400, 0);
   });
   // Hillside positions — 8 positions on the amphitheater hills
   const hills: Position[] = Array.from({ length: 8 }, (_, i) => {
     const angle = (i / 7) * Math.PI * 0.6 + 0.3;
-    return pos(uid('pos'), `Monte ${i + 1}`, Math.cos(angle) * 600, 50 + i * 30, Math.sin(angle) * 200, 180);
+    return pos(uid(), `Monte ${i + 1}`, Math.cos(angle) * 600, 50 + i * 30, Math.sin(angle) * 200, 180);
   });
 
   const all = [...barges, ...hills];
@@ -581,17 +584,16 @@ function generateFunchal() {
 // 10. GRAND HARBOUR — Malta
 // ═══════════════════════════════════════════════════════════════
 function generateMalta() {
-  _uid = 0;
   // Waterfront 360° — 12 positions around the harbour
   const harbour: Position[] = Array.from({ length: 12 }, (_, i) => {
     const angle = (i / 12) * Math.PI * 2;
-    return pos(uid('pos'), `Bastione ${i + 1}`, Math.cos(angle) * 400, 0, Math.sin(angle) * 400, 0);
+    return pos(uid(), `Bastione ${i + 1}`, Math.cos(angle) * 400, 0, Math.sin(angle) * 400, 0);
   });
   // Fort positions on elevated ground
   const forts: Position[] = [
-    pos(uid('pos'), 'Fort St Elmo', 0, 30, -500, 180),
-    pos(uid('pos'), 'Fort Ricasoli', 350, 25, -400, 225),
-    pos(uid('pos'), 'Fort St Angelo', -300, 35, -350, 135),
+    pos(uid(), 'Fort St Elmo', 0, 30, -500, 180),
+    pos(uid(), 'Fort Ricasoli', 350, 25, -400, 225),
+    pos(uid(), 'Fort St Angelo', -300, 35, -350, 135),
   ];
 
   const all = [...harbour, ...forts];
@@ -642,6 +644,17 @@ export const WORLD_SHOW_PRESETS: WorldShowPreset[] = [
     duration: 840,
     stats: { positions: 19, cues: 650, calibers: '3"-12"' },
     sceneOverrides: { waterEnabled: true, waterPreset: 'ocean', timeOfDay: 0, google3DTilesEnabled: true },
+    intel: {
+      population: '6.7 milhões (região metropolitana)',
+      lastShows: ['Réveillon 2024 — Grupo Fog Artifícios (14 min, 19 balsas)', 'Réveillon 2023 — Art Fogo (12 min, 17 balsas)', 'Réveillon 2022 — Grupo Fog (10 min, formato reduzido COVID)'],
+      recentWinners: ['Licitação 2024: Grupo Fog Artifícios — R$12M', 'Licitação 2023: Art Fogo — R$9.5M', 'Licitação 2022: Grupo Fog — R$7M'],
+      safetyNotes: ['Corrente marítima forte (Corrente do Brasil)', 'Zona NOTAM restrita durante evento (raio 5NM)', 'Público de 2M+ na areia — risco de pisoteamento', 'Balsas ancoradas com 3 âncoras cada (ondulação 1-2m)'],
+      terrain: 'Praia oceânica aberta, 4.2km de extensão, fundo arenoso com ondulação 1-2m. Profundidade de ancoragem 8-15m.',
+      tideInfo: 'Maré: 0.3-1.2m amplitude. Preamar ~21h em 31/12. Corrente S-N ~0.5 nós.',
+      culture: 'Réveillon com samba, axé e MPB. Público 2M+ vestido de branco. Oferendas a Iemanjá. Queima sincronizada com contagem regressiva e música ao vivo.',
+      keyInsights: ['Balsas posicionadas 80-120m da costa para segurança', 'Ventos predominantes de NE — planejar fallout para o mar', 'Sincronização com 12 palcos de música ao longo da praia', 'Teste de disparo obrigatório 48h antes do evento'],
+      regulatory: 'NOTAM via DECEA/CINDACTA + Alvará Corpo de Bombeiros RJ + Capitania dos Portos (DPC) + Licença ambiental INEA',
+    },
     generate: generateCopacabana,
   },
   {
@@ -656,6 +669,17 @@ export const WORLD_SHOW_PRESETS: WorldShowPreset[] = [
     duration: 720,
     stats: { positions: 30, cues: 480, calibers: '3"-12"' },
     sceneOverrides: { waterEnabled: true, waterPreset: 'ocean', timeOfDay: 21, google3DTilesEnabled: true },
+    intel: {
+      population: '5.3 milhões (Greater Sydney)',
+      lastShows: ['NYE 2024 — Foti International Fireworks (12 min)', 'NYE 2023 — Foti Fireworks + Howard & Sons', 'NYE 2022 — Foti International (formato completo pós-COVID)'],
+      recentWinners: ['2024: Foti International Fireworks — AUD $7M', '2023: Consórcio Foti/Howard & Sons — AUD $6.5M'],
+      safetyNotes: ['Harbour Bridge: instalação leva 3 semanas em andaimes', 'Zona de exclusão marítima 500m ao redor das barges', 'Ventos fortes no Harbour — limite de vento 40km/h para cancelamento', 'Opera House: shells não podem cair no telhado (patrimônio UNESCO)'],
+      terrain: 'Porto natural, Harbour Bridge 1149m span a 134m altura. Barges ancoradas em águas calmas do porto. Opera House a 300m.',
+      tideInfo: 'Maré: 0.5-2.0m amplitude. Porto abrigado, ondulação mínima. Corrente tidal ~1 nó.',
+      culture: 'Maior evento de NYE do hemisfério sul. 1M+ no Harbour. Transmissão global ABC. Tema cultural indígena integrado desde 2020.',
+      keyInsights: ['Waterfall na ponte é a atração principal — gerenciadores devem alocar 40% do orçamento', 'Cuidado com reflexo na água — efeitos baixos dobram visualmente', 'Barges posicionadas para não bloquear linhas de visão da Opera House', 'Fallout no porto — sem risco para público terrestre'],
+      regulatory: 'NSW EPA + Maritime Safety NSW + Transport NSW + City of Sydney Council',
+    },
     generate: generateSydney,
   },
   {
@@ -670,6 +694,17 @@ export const WORLD_SHOW_PRESETS: WorldShowPreset[] = [
     duration: 600,
     stats: { positions: 23, cues: 380, calibers: 'WF + 3"-12"' },
     sceneOverrides: { waterEnabled: true, waterPreset: 'lake', timeOfDay: 0, google3DTilesEnabled: true },
+    intel: {
+      population: '3.5 milhões (Dubai metro)',
+      lastShows: ['NYE 2024 — Grucci (10 min, cascata vertical completa)', 'NYE 2023 — Grucci + Al Zarooni', 'NYE 2022 — Grucci (recorde de cascata contínua 828m)'],
+      recentWinners: ['2024: Fireworks by Grucci (EUA) — USD $10M+', '2023: Consórcio Grucci/Al Zarooni'],
+      safetyNotes: ['Instalação no prédio requer equipe de alpinistas industriais', 'Temperatura extrema no deserto — armazenagem climatizada obrigatória', 'Dubai Fountain: coordenação com sistema hidráulico (jatos de 150m)', 'Zona de exclusão aérea ampla — aeroporto DXB a 13km'],
+      terrain: 'Lago artificial (Dubai Fountain, 275m extensão). Prédio de 828m em ambiente desértico urbano. Sem vento marítimo direto.',
+      tideInfo: 'N/A — lago artificial com nível controlado',
+      culture: 'Luxo e grandiosidade. Público VIP em terraços + milhões no Downtown Boulevard. Transmissão global. LED mapping integrado à pirotecnia.',
+      keyInsights: ['Efeito cascata vertical é a estrela — planejar de cima para baixo', 'LED panels no prédio devem ser sincronizados com timing dos fogos', 'Vento do deserto (Shamal) pode cancelar — monitorar 72h antes', 'Dubai Fountain disparos coordenados nos intervalos entre shells'],
+      regulatory: 'Dubai Civil Defence + GCAA (aviação) + Emaar Properties (proprietário)',
+    },
     generate: generateBurjKhalifa,
   },
   {
@@ -684,6 +719,17 @@ export const WORLD_SHOW_PRESETS: WorldShowPreset[] = [
     duration: 720,
     stats: { positions: 18, cues: 400, calibers: '3"-12"' },
     sceneOverrides: { waterEnabled: true, waterPreset: 'river', timeOfDay: 0, google3DTilesEnabled: true },
+    intel: {
+      population: '9.0 milhões (Greater London)',
+      lastShows: ['NYE 2024 — Titanium Fireworks (12 min)', 'NYE 2023 — Titanium/CarnDu (12 min)', 'NYE 2022 — Titanium Fireworks'],
+      recentWinners: ['2024: Titanium Fireworks — £3M+', '2023: Titanium Fireworks — £2.8M'],
+      safetyNotes: ['Thames: maré alta de até 7m — verificar tábua de marés para posicionamento', 'London Eye: fogos montados na estrutura da roda — engenharia específica', 'Zona de exclusão: Westminster Bridge a Hungerford Bridge', 'Público de 100K+ com ingresso — áreas controladas'],
+      terrain: 'Rio Thames, largura ~250m. London Eye 135m de diâmetro. Barges ancoradas contra corrente tidal forte.',
+      tideInfo: 'Maré: 1.0-7.0m amplitude (uma das maiores do mundo em rio). Preamar ~23:30 em 31/12. Corrente até 4 nós.',
+      culture: 'Big Ben badaladas + Auld Lang Syne. Transmissão BBC. 100K ingressos pagos. Multiculturalismo refletido no tema anual.',
+      keyInsights: ['MARÉ CRÍTICA: Thames tem amplitude de 7m — ancorar barges para maré alta', 'London Eye como pivot central — shells irradiam da roda', 'Sincronização com Big Ben é obrigatória (12 badaladas = 12 shells)', 'Fallout no Thames — sem risco terrestre, mas cuidado com embarcações'],
+      regulatory: 'Greater London Authority (GLA) + Port of London Authority + Met Police + TfL',
+    },
     generate: generateLondonEye,
   },
   {
@@ -698,6 +744,17 @@ export const WORLD_SHOW_PRESETS: WorldShowPreset[] = [
     duration: 720,
     stats: { positions: 18, cues: 350, calibers: 'WF + 3"-12"' },
     sceneOverrides: { waterEnabled: true, waterPreset: 'river', timeOfDay: 23, google3DTilesEnabled: true },
+    intel: {
+      population: '11 milhões (Île-de-France)',
+      lastShows: ['14 Juillet 2024 — Groupe F / Ruggieri (35 min total)', '14 Juillet 2023 — Ruggieri', '14 Juillet 2022 — Groupe F'],
+      recentWinners: ['2024: Groupe F / Ruggieri — €2.5M', '2023: Ruggieri — €2.2M'],
+      safetyNotes: ['Torre: instalação de 2 semanas nos andares + cúpula', 'Sena: barges fixas em pontos pré-aprovados pela Voies Navigables de France', 'Champ de Mars: público de 500K+ — corredores de evacuação obrigatórios', 'Zona NOTAM: raio 3NM centrado na torre'],
+      terrain: 'Rio Sena (largura ~200m), Tour Eiffel 330m. Barges no rio + fogos montados na estrutura metálica da torre.',
+      tideInfo: 'Fluvial — sem maré oceânica. Nível do Sena varia com chuvas (cheias em jan-mar). Corrente ~0.5 nós.',
+      culture: 'Fête Nationale. Desfile militar Champs-Élysées de dia, fogos à noite. Tema tricolor (bleu-blanc-rouge). Marselhesa como abertura.',
+      keyInsights: ['Cascatas na torre são o diferencial — 4 níveis de cascata simultânea', 'Tema tricolor obrigatório — azul, branco e vermelho em sequência', 'Cuidado com vento nos níveis altos da torre (>200m)', 'Sena tem restrição de navegação 4h antes do show'],
+      regulatory: 'Préfecture de Police de Paris + DGAC (aviação) + Voies Navigables de France + SETE (operadora da torre)',
+    },
     generate: generateEiffelTower,
   },
   {
@@ -712,6 +769,17 @@ export const WORLD_SHOW_PRESETS: WorldShowPreset[] = [
     duration: 900,
     stats: { positions: 12, cues: 420, calibers: '4"-12"' },
     sceneOverrides: { timeOfDay: 20, google3DTilesEnabled: true },
+    intel: {
+      population: '14 milhões (Tokyo metro)',
+      lastShows: ['Jingu Gaien 2024 — Marutamaya Ogatsu Fireworks (1h show)', 'Jingu Gaien 2023 — Marutamaya + Hosoya', 'Sumida River 2024 — Kagi-ya + Tama-ya (tradição de 1733)'],
+      recentWinners: ['2024: Marutamaya Ogatsu Fireworks Co.', '2023: Consórcio Marutamaya/Hosoya Fireworks'],
+      safetyNotes: ['Parque urbano — sem água para fallout', 'Público sentado em esteiras (tatami-style) — zona de segurança ampla', 'Estação de trem Gaienmae a 200m — coordenação com JR East', 'Temporada de tufões (ago-set) — plano de contingência obrigatório'],
+      terrain: 'Parque urbano (Meiji Jingu Gaien). Terreno plano gramado. Sem corpo d\'água. Prédios ao redor de 30-50m.',
+      tideInfo: 'N/A — localização terrestre',
+      culture: 'Hanabi (花火) é arte milenar japonesa. Público contemplativo (não festivo). Warimono: shells artesanais com padrões simétricos perfeitos. Tradição de "uma shell, um aplauso".',
+      keyInsights: ['Estilo japonês: qualidade > quantidade — cada shell deve ser perfeita', 'Warimono (割物): shells esféricas com simetria radial perfeita', 'Ritmo lento e deliberado na abertura — acelera gradualmente', 'Público espera variedade de cores e formas — não repetir efeitos consecutivos'],
+      regulatory: 'Tokyo Fire Department + MLIT (Ministry of Land) + Shinjuku Ward Office',
+    },
     generate: generateTokyoHanabi,
   },
   {
@@ -726,6 +794,17 @@ export const WORLD_SHOW_PRESETS: WorldShowPreset[] = [
     duration: 480,
     stats: { positions: 8, cues: 280, calibers: '3"-12"' },
     sceneOverrides: { waterEnabled: true, waterPreset: 'ocean', timeOfDay: 20, google3DTilesEnabled: true },
+    intel: {
+      population: '5.9 milhões (Singapore)',
+      lastShows: ['NDP 2024 — Star Fireworks (8 min + drones)', 'NDP 2023 — Star Fireworks + Pyromusical', 'NYE 2024 — Marina Bay countdown (7 min)'],
+      recentWinners: ['NDP 2024: Star Fireworks Pte Ltd', 'NDP 2023: Star Fireworks Pte Ltd'],
+      safetyNotes: ['Marina Bay: baía artificial com profundidade controlada (3-5m)', 'Prédios ao redor (MBS 200m, ArtScience Museum) — ângulos de tiro calculados', 'Changi Airport 15km — zona NOTAM obrigatória', 'Clima tropical: chuvas súbitas frequentes — cobertura para eletrônica'],
+      terrain: 'Baía artificial, 360° de skyline. Marina Bay Sands (200m) como backdrop. Profundidade 3-5m, fundo lamacento.',
+      tideInfo: 'Maré: 0.5-3.0m amplitude. Baía semi-fechada com comporta (Marina Barrage).',
+      culture: 'National Day (9 de agosto). Patriotismo, multiculturalidade (chinês, malaio, indiano). Hino nacional + desfile militar antes dos fogos.',
+      keyInsights: ['Integrar com laser show e drones — sincronização multimédia', 'MBS como backdrop — shells devem estourar acima da linha do prédio', 'Baía pequena — efeitos de reflexo na água são potencializados', 'Clima quente e úmido — armazenagem climatizada obrigatória'],
+      regulatory: 'MPA Singapore (Maritime) + CAAS (aviação civil) + Singapore Police Force + MINDEF',
+    },
     generate: generateMarinaBay,
   },
   {
@@ -740,6 +819,17 @@ export const WORLD_SHOW_PRESETS: WorldShowPreset[] = [
     duration: 480,
     stats: { positions: 7, cues: 260, calibers: '3"-8"' },
     sceneOverrides: { timeOfDay: 0, google3DTilesEnabled: true },
+    intel: {
+      population: '2.2 milhões (Las Vegas metro)',
+      lastShows: ['NYE 2024 — Fireworks by Grucci (8 min, 7 rooftops)', 'NYE 2023 — Grucci (8 min)', 'July 4th 2024 — múltiplos casinos independentes'],
+      recentWinners: ['2024: Fireworks by Grucci — USD $3M+', '2023: Fireworks by Grucci — USD $2.8M'],
+      safetyNotes: ['Rooftop launchers: estrutural check obrigatório em cada casino', 'Deserto: ar seco, risco de incêndio em vegetação', 'Strip fechada ao tráfego — 300K+ pedestres', 'Harry Reid Airport 3km — coordenação FAA crítica'],
+      terrain: 'Deserto urbano, Las Vegas Strip 6.8km. Rooftops de casinos entre 50-350m (Stratosphere). Sem corpo d\'água.',
+      tideInfo: 'N/A — localização desértica',
+      culture: 'Entertainment capital. NYE é o maior evento do ano. Show deve ser espetacular em 360° — público em toda a Strip. Tema de luxo e excessos.',
+      keyInsights: ['7 pontos de disparo simultâneo — sincronização GPS/timecode essencial', 'Calibres limitados (3-8") por proximidade dos prédios e público', 'Stratosphere (350m) permite shells maiores — usar como destaque', 'Vento do deserto pode dispersar fumaça rapidamente — vantagem visual'],
+      regulatory: 'Clark County Fire Department + FAA (zona de restrição) + Nevada State Fire Marshal + LVMPD',
+    },
     generate: generateLasVegas,
   },
   {
@@ -754,6 +844,17 @@ export const WORLD_SHOW_PRESETS: WorldShowPreset[] = [
     duration: 990,
     stats: { positions: 24, cues: 520, calibers: '3"-12"' },
     sceneOverrides: { waterEnabled: true, waterPreset: 'ocean', timeOfDay: 0, google3DTilesEnabled: true },
+    intel: {
+      population: '112 mil (Funchal) / 250 mil (ilha toda)',
+      lastShows: ['NYE 2024 — Pirotecnia Madeirense (16 min)', 'NYE 2023 — Pirotecnia Madeirense + Macedos', 'NYE 2006 — Guinness Record: 66.326 fogos'],
+      recentWinners: ['2024: Pirotecnia Madeirense Lda — €800K', '2023: Consórcio Madeirense/Macedos — €750K'],
+      safetyNotes: ['Baía vulcânica: correntes irregulares próximo às rochas', 'Montes ao redor: posições elevadas com acesso difícil', 'Navios de cruzeiro na baía — coordenação com capitania', 'Vento Atlântico: rajadas de 50km/h possíveis'],
+      terrain: 'Baía vulcânica em anfiteatro natural. Montes de 0-600m ao redor. Fundo rochoso vulcânico. Ancoragem em 10-30m de profundidade.',
+      tideInfo: 'Maré: 0.5-2.5m amplitude. Oceano Atlântico aberto. Ondulação de NW 1-3m comum.',
+      culture: 'Tradição madeirense de fogos de Réveillon desde 1930s. Turismo internacional (navios de cruzeiro). Poncha e bolo de mel. Público nos montes com vista 360°.',
+      keyInsights: ['Anfiteatro natural amplifica o som — impacto acústico impressionante', 'Posições nos montes criam efeito 3D envolvente — explorar alturas', 'Navios de cruzeiro servem como "plateia VIP" — considerar ângulos', 'Densidade de fogos é o diferencial — recorde mundial de disparos/minuto'],
+      regulatory: 'ANPC (Proteção Civil Portugal) + Capitania do Porto do Funchal + ANAC (aviação)',
+    },
     generate: generateFunchal,
   },
   {
@@ -768,6 +869,17 @@ export const WORLD_SHOW_PRESETS: WorldShowPreset[] = [
     duration: 600,
     stats: { positions: 15, cues: 350, calibers: '3"-12"' },
     sceneOverrides: { waterEnabled: true, waterPreset: 'ocean', timeOfDay: 21, google3DTilesEnabled: true },
+    intel: {
+      population: '516 mil (Malta inteira)',
+      lastShows: ['Malta Intl Fireworks Festival 2024 — 8 equipes competindo', 'Festa de Santa Maria 2024 — Pirotecnia artesanal local', 'Festival 2023 — vencedor: equipe italiana de Napoli'],
+      recentWinners: ['Festival 2024: Pirotecnica Morsani (Itália)', 'Festival 2023: Pirotecnica Napoletana (Itália)', 'Festa Local 2024: Ta\' Lourdes Fireworks Factory (Malta)'],
+      safetyNotes: ['Porto natural abrigado — ondulação mínima', 'Bastions históricas (Patrimônio UNESCO) — sem fixação permanente', 'Festas locais: fogos muito próximos do público (tradição)', 'Fábricas artesanais nas aldeias — produção manual tradicional'],
+      terrain: 'Porto natural profundo (Grand Harbour). Bastions de calcário a 20-40m de altura. Waterfront 360° com Valletta, Three Cities. Fundo rochoso calcário.',
+      tideInfo: 'Maré: 0.2-0.5m amplitude (Mediterrâneo — amplitude mínima). Sem corrente significativa no porto.',
+      culture: 'Pirotecnia é parte da identidade maltesa. Cada aldeia tem sua "fireworks factory". Competições internacionais anuais. Estilo italiano artesanal com shells feitas à mão. Festas religiosas (santos padroeiros) com fogos de dia e noite.',
+      keyInsights: ['Estilo italiano artesanal — warimono europeus com cores ricas', 'Porto 360° permite posicionamento envolvente — público vê de todos os lados', 'Amplitude de maré mínima — ancoragem estável', 'Tradição de shells de dia (diurnas com fumaça colorida) — diferencial único'],
+      regulatory: 'Malta Police Force + Transport Malta (marítimo) + Malta Competition & Consumer Affairs',
+    },
     generate: generateMalta,
   },
 ];

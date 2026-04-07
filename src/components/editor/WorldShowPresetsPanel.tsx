@@ -7,6 +7,7 @@ import { WORLD_SHOW_PRESETS, CONTINENT_LABELS, type WorldShowPreset } from '@/da
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
 import { toast } from 'sonner';
+import VenueIntelOverlay from './VenueIntelOverlay';
 
 interface Props {
   onClose: () => void;
@@ -15,6 +16,7 @@ interface Props {
 export default function WorldShowPresetsPanel({ onClose }: Props) {
   const [loading, setLoading] = useState<string | null>(null);
   const [filter, setFilter] = useState<string | null>(null);
+  const [selectedPreset, setSelectedPreset] = useState<WorldShowPreset | null>(null);
 
   const grouped = useMemo(() => {
     const groups: Record<string, WorldShowPreset[]> = {};
@@ -26,50 +28,37 @@ export default function WorldShowPresetsPanel({ onClose }: Props) {
   }, [filter]);
 
   const handleLoad = useCallback(async (preset: WorldShowPreset) => {
-    if (!window.confirm(
-      `Carregar "${preset.name}"?\n\nIsso limpará as posições e timeline atuais.`
-    )) return;
-
     setLoading(preset.id);
-
-    // Small delay so UI shows loading state
     await new Promise(r => setTimeout(r, 50));
 
     try {
       const store = useProjectStore.getState();
       const scene = useSceneStore.getState();
 
-      // Generate show data
       const { positions, timelineItems } = preset.generate();
 
-      // Clear existing data
       const existingPositions = store.positions.map(p => p.id);
       const existingTimeline = store.timelineItems.map(t => t.id);
       if (existingTimeline.length > 0) store.removeMultipleTimelineItems(existingTimeline);
       existingPositions.forEach(id => store.removePosition(id));
 
-      // Set GPS origin
       store.setGpsOrigin(preset.gps);
 
-      // Apply scene overrides
       if (preset.sceneOverrides) {
         scene.updateSettings(preset.sceneOverrides as any);
       }
 
-      // Add positions
       positions.forEach(p => store.addPosition(p));
 
-      // Add timeline items in batches for performance
       const BATCH = 50;
       for (let i = 0; i < timelineItems.length; i += BATCH) {
         const batch = timelineItems.slice(i, i + BATCH);
         batch.forEach(item => store.addTimelineItem(item));
         if (i + BATCH < timelineItems.length) {
-          await new Promise(r => setTimeout(r, 0)); // yield to UI
+          await new Promise(r => setTimeout(r, 0));
         }
       }
 
-      // Set duration and project name
       store.setDuration(preset.duration);
       store.setProjectName(preset.name);
       store.setCurrentTime(0);
@@ -77,6 +66,8 @@ export default function WorldShowPresetsPanel({ onClose }: Props) {
       toast.success(`${preset.flag} ${preset.name} carregado!`, {
         description: `${positions.length} posições · ${timelineItems.length} cues · ${Math.round(preset.duration / 60)} min`,
       });
+
+      setSelectedPreset(null);
     } catch (err) {
       console.error('Failed to load preset:', err);
       toast.error('Erro ao carregar preset');
@@ -86,6 +77,19 @@ export default function WorldShowPresetsPanel({ onClose }: Props) {
   }, []);
 
   const continents = Object.keys(CONTINENT_LABELS);
+  const hasResults = Object.keys(grouped).length > 0;
+
+  // Show overlay when a preset is selected
+  if (selectedPreset) {
+    return (
+      <VenueIntelOverlay
+        preset={selectedPreset}
+        onBack={() => setSelectedPreset(null)}
+        onDeploy={() => handleLoad(selectedPreset)}
+        deploying={loading === selectedPreset.id}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-surface-1 text-foreground">
@@ -124,6 +128,12 @@ export default function WorldShowPresetsPanel({ onClose }: Props) {
       {/* Show List */}
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-4">
+          {!hasResults && (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <Globe className="w-8 h-8 mb-2 opacity-30" />
+              <p className="text-xs">Nenhum show encontrado para este filtro.</p>
+            </div>
+          )}
           {Object.entries(grouped).map(([continent, presets]) => (
             <div key={continent}>
               <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1 mb-1.5">
@@ -134,8 +144,7 @@ export default function WorldShowPresetsPanel({ onClose }: Props) {
                   <ShowCard
                     key={preset.id}
                     preset={preset}
-                    loading={loading === preset.id}
-                    onLoad={() => handleLoad(preset)}
+                    onSelect={() => setSelectedPreset(preset)}
                   />
                 ))}
               </div>
@@ -147,9 +156,12 @@ export default function WorldShowPresetsPanel({ onClose }: Props) {
   );
 }
 
-function ShowCard({ preset, loading, onLoad }: { preset: WorldShowPreset; loading: boolean; onLoad: () => void }) {
+function ShowCard({ preset, onSelect }: { preset: WorldShowPreset; onSelect: () => void }) {
   return (
-    <div className="bg-surface-2 rounded-md border border-border/30 p-2.5 hover:border-primary/40 transition-colors">
+    <div
+      className="bg-surface-2 rounded-md border border-border/30 p-2.5 hover:border-primary/40 transition-colors cursor-pointer"
+      onClick={onSelect}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
@@ -164,11 +176,10 @@ function ShowCard({ preset, loading, onLoad }: { preset: WorldShowPreset; loadin
         <Button
           size="sm"
           className="h-7 text-[10px] px-2.5 shrink-0"
-          onClick={onLoad}
-          disabled={loading}
+          onClick={(e) => { e.stopPropagation(); onSelect(); }}
         >
-          {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
-          {loading ? 'Carregando...' : 'Carregar'}
+          <Sparkles className="w-3 h-3 mr-1" />
+          Intel
         </Button>
       </div>
 
