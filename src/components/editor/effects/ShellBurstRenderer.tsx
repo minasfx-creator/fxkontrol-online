@@ -508,7 +508,13 @@ export default function ShellBurstRenderer({
         
         // Per-particle drag from material density
         const particleDrag = baseDrag * dragCoeffs[i];
-        stepParticle(p, dt * detonationMult, windVec, particleDrag, stepMods);
+        // Chrysanthemum tip curl: progressive gravity after 70% life
+        const tipCurlMods: StepModifiers = {
+          ...stepMods,
+          tipCurlFactor: pattern === 'chrysanthemum' ? 2.5 : undefined,
+          tipCurlLifeRatio: pattern === 'chrysanthemum' ? lifeRatio : undefined,
+        };
+        stepParticle(p, dt * detonationMult, windVec, particleDrag, tipCurlMods);
 
         // Glitter trail: emit micro-particles from active stars
         if (trailType === 'glitter' && p.life > 0.1 && Math.random() < 0.15) {
@@ -817,14 +823,14 @@ export default function ShellBurstRenderer({
         <CrossetteSubBurst key={gi} particles={subGroup} color={color} caliber={caliber} windVec={windVec} drag={starDrag} />
       ))}
 
-      {/* Burst flash — Screen blending to prevent white-out accumulation */}
-      {progress < 0.08 && (
+      {/* Burst flash — Screen blending. Dahlia: 2.5x intensity, faster decay */}
+      {progress < (pattern === 'dahlia' ? 0.12 : 0.08) && (
         <mesh>
-          <sphereGeometry args={[1.0 + caliber * 1.0, 16, 16]} />
+          <sphereGeometry args={[1.0 + caliber * (pattern === 'dahlia' ? 1.5 : 1.0), 16, 16]} />
           <meshBasicMaterial
             color={secondaryColor || color}
             transparent
-            opacity={burstFlashIntensity * 0.2 * (1 - progress / 0.08)}
+            opacity={burstFlashIntensity * (pattern === 'dahlia' ? 0.5 : 0.2) * (1 - progress / (pattern === 'dahlia' ? 0.12 : 0.08))}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}
@@ -834,14 +840,14 @@ export default function ShellBurstRenderer({
         </mesh>
       )}
 
-      {/* Secondary flash ring — Screen blending */}
-      {progress < 0.12 && (
+      {/* Secondary flash ring — Screen blending. Dahlia: 2.5x boost */}
+      {progress < (pattern === 'dahlia' ? 0.18 : 0.12) && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[caliber * 0.5 + progress * 40, caliber * 0.8 + progress * 45, 32]} />
           <meshBasicMaterial
             color={secondaryColor || color}
             transparent
-            opacity={burstFlashIntensity * 0.12 * (1 - progress / 0.12)}
+            opacity={burstFlashIntensity * (pattern === 'dahlia' ? 0.3 : 0.12) * (1 - progress / (pattern === 'dahlia' ? 0.18 : 0.12))}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}

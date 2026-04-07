@@ -494,6 +494,8 @@ export interface ParticleState {
 export interface StepModifiers {
   fallingLeaves?: boolean;
   reducedGravity?: number; // 0-1 factor
+  tipCurlFactor?: number;  // progressive gravity after 70% life (chrysanthemum)
+  tipCurlLifeRatio?: number; // current life ratio for tip curl calc
 }
 
 export function stepParticle(
@@ -505,7 +507,12 @@ export function stepParticle(
 ): void {
   const gravityFactor = modifiers?.reducedGravity ?? 1;
   // Apply gravity (reduced for falling leaves)
-  p.vy += GRAVITY * gravityFactor * dt;
+  // Tip curl: progressive gravity increase after 70% life (chrysanthemum signature)
+  let tipCurlMult = 1;
+  if (modifiers?.tipCurlFactor && modifiers.tipCurlLifeRatio !== undefined && modifiers.tipCurlLifeRatio > 0.7) {
+    tipCurlMult = 1 + modifiers.tipCurlFactor * ((modifiers.tipCurlLifeRatio - 0.7) / 0.3);
+  }
+  p.vy += GRAVITY * gravityFactor * tipCurlMult * dt;
   
   // Apply wind forces
   p.vx += wind[0] * dt * 0.5;
@@ -613,10 +620,10 @@ export function createShellBurst(
         life = starLifetime * (2.5 + Math.random() * 1.5);
         break;
       case 'dahlia':
-        vx = sx * breakSpeed * 1.2;
-        vy = sy * breakSpeed * 1.1;
-        vz = sz * breakSpeed * 1.2;
-        life = starLifetime * (0.6 + Math.random() * 0.3);
+        vx = sx * breakSpeed * 1.4;
+        vy = sy * breakSpeed * 1.3;
+        vz = sz * breakSpeed * 1.4;
+        life = starLifetime * (0.45 + Math.random() * 0.2);
         break;
       case 'brocade':
         vx = sx * breakSpeed * 0.7;
@@ -631,10 +638,21 @@ export function createShellBurst(
         break;
       case 'peony':
       default: {
-        const speedVariation = 0.7 + Math.random() * 0.3;
-        vx = sx * breakSpeed * speedVariation;
-        vy = sy * breakSpeed * speedVariation * 0.85 + 1;
-        vz = sz * breakSpeed * speedVariation;
+        // Peony: 12 azimuthal petal clusters with ±8° jitter
+        const PETAL_COUNT = 12;
+        const petalIdx = i % PETAL_COUNT;
+        const petalAngle = (petalIdx / PETAL_COUNT) * Math.PI * 2;
+        const jitter = (Math.random() - 0.5) * 2 * (8 * Math.PI / 180);
+        const clusterTheta = petalAngle + jitter;
+        // Upper hemisphere bias for petal shape
+        const clusterPhi = Math.acos(0.3 + Math.random() * 0.5);
+        const csx = Math.sin(clusterPhi) * Math.cos(clusterTheta);
+        const csy = Math.cos(clusterPhi);
+        const csz = Math.sin(clusterPhi) * Math.sin(clusterTheta);
+        const speedVariation = 0.85 + Math.random() * 0.15;
+        vx = csx * breakSpeed * speedVariation;
+        vy = csy * breakSpeed * speedVariation * 0.85 + 1;
+        vz = csz * breakSpeed * speedVariation;
         break;
       }
     }

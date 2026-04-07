@@ -236,9 +236,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           break;
         }
         case 'dahlia':
-          // Dahlia: HIGH velocity, short life — bright flash burst with fewer large stars
-          vx = sx * breakSpeed * 1.5 * speedVar; vy = sy * breakSpeed * 1.4 * speedVar + 0.5; vz = sz * breakSpeed * 1.5 * speedVar;
-          life = starLife * (0.25 + Math.random() * 0.15); break;
+          // Dahlia: HIGH velocity, short life — bright detonation flash with fewer large stars
+          vx = sx * breakSpeed * 1.7 * speedVar; vy = sy * breakSpeed * 1.6 * speedVar + 0.5; vz = sz * breakSpeed * 1.7 * speedVar;
+          life = starLife * (0.2 + Math.random() * 0.1); break;
         case 'brocade':
           vx = sx * breakSpeed * 0.58 * speedVar; vy = sy * breakSpeed * 0.58 * speedVar; vz = sz * breakSpeed * 0.58 * speedVar;
           life = starLife * (1.3 + Math.random() * 1.0); break;
@@ -356,8 +356,19 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           life = starLife * (0.8 + Math.random() * 0.5);
           break;
         }
-        default:
-          vx = sx * breakSpeed * speedVar; vy = sy * breakSpeed * speedVar * 0.9 + 0.6; vz = sz * breakSpeed * speedVar; break;
+        default: {
+          // Peony: 12 petal clusters with azimuthal grouping
+          const PETAL_CT = 12;
+          const petalIdx = i % PETAL_CT;
+          const petalAngle = (petalIdx / PETAL_CT) * Math.PI * 2;
+          const petalJitter = (Math.random() - 0.5) * 2 * (8 * Math.PI / 180);
+          const pTheta = petalAngle + petalJitter;
+          const pPhi = Math.acos(0.3 + Math.random() * 0.5);
+          const psx = Math.sin(pPhi) * Math.cos(pTheta);
+          const psy = Math.cos(pPhi);
+          const psz = Math.sin(pPhi) * Math.sin(pTheta);
+          vx = psx * breakSpeed * speedVar; vy = psy * breakSpeed * speedVar * 0.9 + 0.6; vz = psz * breakSpeed * speedVar; break;
+        }
       }
 
       v[i * 3] = vx; v[i * 3 + 1] = vy; v[i * 3 + 2] = vz;

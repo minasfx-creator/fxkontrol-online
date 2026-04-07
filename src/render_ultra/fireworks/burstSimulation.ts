@@ -18,8 +18,8 @@ interface BurstConfig {
 
 // Star counts calibrated to Finale 3D reference at 3" (75mm) baseline
 const BURST_CONFIGS: Record<BurstPattern, BurstConfig> = {
-  peony:         { starCount: 150, velocity: 28, spread: 1.0, tailFactor: 0.3, gravityMult: 1.0, symmetry: 0 },
-  chrysanthemum: { starCount: 200, velocity: 30, spread: 1.0, tailFactor: 0.9, gravityMult: 0.8, symmetry: 0 },
+  peony:         { starCount: 280, velocity: 26, spread: 1.0, tailFactor: 0.3, gravityMult: 1.0, symmetry: 0 },
+  chrysanthemum: { starCount: 200, velocity: 30, spread: 1.0, tailFactor: 1.4, gravityMult: 1.0, symmetry: 0 },
   willow:        { starCount: 180, velocity: 20, spread: 0.8, tailFactor: 1.5, gravityMult: 1.4, symmetry: 0 },
   palm:          { starCount: 60,  velocity: 24, spread: 0.6, tailFactor: 1.2, gravityMult: 1.2, symmetry: 6 },
   ring:          { starCount: 80,  velocity: 28, spread: 0.1, tailFactor: 0.5, gravityMult: 0.6, symmetry: 0 },
@@ -35,7 +35,7 @@ const BURST_CONFIGS: Record<BurstPattern, BurstConfig> = {
   horsetail:     { starCount: 160, velocity: 16, spread: 0.7, tailFactor: 2.5, gravityMult: 2.0, symmetry: 0 },
   brocade_crown: { starCount: 220, velocity: 24, spread: 1.0, tailFactor: 1.6, gravityMult: 1.2, symmetry: 0 },
   saturn:        { starCount: 140, velocity: 28, spread: 1.0, tailFactor: 0.5, gravityMult: 0.8, symmetry: 0 },
-  dahlia:        { starCount: 80,  velocity: 38, spread: 0.8, tailFactor: 0.2, gravityMult: 1.1, symmetry: 0 },
+  dahlia:        { starCount: 60,  velocity: 42, spread: 0.9, tailFactor: 0.2, gravityMult: 1.1, symmetry: 0 },
   coconut_tree:  { starCount: 40,  velocity: 22, spread: 0.5, tailFactor: 1.8, gravityMult: 1.5, symmetry: 5 },
   spider_web:    { starCount: 120, velocity: 32, spread: 1.0, tailFactor: 1.4, gravityMult: 0.6, symmetry: 0 },
 };
@@ -239,8 +239,21 @@ export function generateBurst(
         vy = (Math.random() - 0.5) * speed * 0.1 + cfg.velocity * 0.04;
         vz = Math.sin(ringAngle) * speed;
       }
+    } else if (pattern === 'peony') {
+      // Peony: 12 azimuthal petal clusters with ±8° jitter
+      const PETAL_COUNT = 12;
+      const petalIndex = i % PETAL_COUNT;
+      const petalCenter = (petalIndex / PETAL_COUNT) * Math.PI * 2;
+      const jitterAz = (Math.random() - 0.5) * 2 * (8 * Math.PI / 180); // ±8°
+      const theta = petalCenter + jitterAz;
+      // Elevation: upper hemisphere bias (phi 0.3π–0.8π)
+      const phi = Math.PI * (0.3 + Math.random() * 0.5);
+      const speed = cfg.velocity * scale * (0.85 + Math.random() * 0.15) * cfg.spread;
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.15;
+      vz = Math.cos(phi) * speed;
     } else {
-      // Spherical burst (peony, etc.)
+      // Generic spherical burst fallback
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       const speed = cfg.velocity * scale * (0.5 + Math.random() * 0.5) * cfg.spread;
