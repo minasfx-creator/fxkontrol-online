@@ -324,7 +324,7 @@ export default function MineEffect({
   `;
 
   return (
-    <group position={position} rotation={[0, 0, angleOffsetRad]}>
+    <group position={position} rotation={[0, 0, angleOffsetRad]} renderOrder={50}>
       {/* Combustion muzzle flash with flicker */}
       {progress < 0.08 && (
         <mesh position={[0, 0.3, 0]}>
