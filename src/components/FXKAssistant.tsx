@@ -9,6 +9,9 @@ import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Tr
 import { exportJoiPdf } from '@/utils/joiPdfExport';
 import { exportJoiDocx } from '@/utils/joiDocxExport';
 import { parseKmzReadyBlock, stripKmzReadyBlock, downloadAeroKmz } from '@/utils/joiAeroKmzExport';
+import { executeJoiCommands, stripJoiCommands, hasJoiCommands, type JoiCommandResult } from '@/utils/joiCommandExecutor';
+import JoiCommandFeedback from '@/components/JoiCommandFeedback';
+import { OPERATIONAL_PRESETS } from '@/components/JoiCommandPresets';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -16,7 +19,7 @@ import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useJoiSpeech } from '@/hooks/useJoiSpeech';
 import joiFaceIcon from '@/assets/joi-face-icon.png';
 
-type Msg = { role: 'user' | 'assistant'; content: string; ts?: number; feedback?: 'up' | 'down' };
+type Msg = { role: 'user' | 'assistant'; content: string; ts?: number; feedback?: 'up' | 'down'; cmdResults?: JoiCommandResult[] };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fxk-ai-chat`;
 const HISTORY_KEY = 'fxk-ai-history';
@@ -387,7 +390,20 @@ export function FXKAssistant() {
     abortRef.current = ctrl;
 
     try {
-      await streamChat([...messages, userMsg], upsert, () => setLoading(false), ctrl.signal);
+      await streamChat([...messages, userMsg], upsert, () => {
+        setLoading(false);
+        // Execute JOI_CMD blocks after stream completes
+        if (hasJoiCommands(soFar)) {
+          const results = executeJoiCommands(soFar);
+          if (results.length > 0) {
+            setMessages(prev => prev.map((m, i) =>
+              i === prev.length - 1 && m.role === 'assistant'
+                ? { ...m, cmdResults: results }
+                : m
+            ));
+          }
+        }
+      }, ctrl.signal);
     } catch (e: any) {
       if (e.name !== 'AbortError') {
         setMessages(prev => [...prev, { role: 'assistant', content: `⚠ ${e.message}`, ts: Date.now() }]);
@@ -758,8 +774,11 @@ export function FXKAssistant() {
                       </div>
                     )}
                     <div className="prose prose-invert prose-xs max-w-none [&_p]:my-1 [&_code]:text-[hsl(190_100%_70%)] [&_code]:bg-transparent [&_pre]:bg-[hsl(220_20%_8%)] [&_pre]:border [&_pre]:border-[hsl(190_100%_50%/0.1)] [&_strong]:text-[hsl(38_100%_65%)] [&_a]:text-[hsl(190_100%_60%)]">
-                      <ReactMarkdown>{stripKmzReadyBlock(msg.content)}</ReactMarkdown>
+                      <ReactMarkdown>{stripJoiCommands(stripKmzReadyBlock(msg.content))}</ReactMarkdown>
                     </div>
+                    {msg.cmdResults && msg.cmdResults.length > 0 && (
+                      <JoiCommandFeedback results={msg.cmdResults} />
+                    )}
                     {parseKmzReadyBlock(msg.content) && (
                       <button
                         onClick={() => {
@@ -849,6 +868,22 @@ export function FXKAssistant() {
       {/* Quick presets */}
       {messages.length > 0 && (
         <div className="relative z-10 flex gap-1 px-3 py-1.5 overflow-x-auto shrink-0" style={{ borderTop: '1px solid hsl(190 100% 50% / 0.06)' }}>
+          {OPERATIONAL_PRESETS.map(p => (
+            <button
+              key={p.label}
+              onClick={() => send(p.prompt)}
+              disabled={loading}
+              className="shrink-0 px-2 py-1 rounded text-[7px] font-mono tracking-wider uppercase transition-colors disabled:opacity-30 flex items-center gap-1"
+              style={{
+                background: 'hsl(38 100% 55% / 0.06)',
+                border: '1px solid hsl(38 100% 55% / 0.12)',
+                color: 'hsl(38 100% 60%)',
+              }}
+            >
+              <p.icon className="h-2.5 w-2.5" />
+              {p.label}
+            </button>
+          ))}
           {presets.map(p => (
             <button
               key={p.label}
