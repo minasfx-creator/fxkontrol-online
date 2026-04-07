@@ -16,7 +16,6 @@ import Toolbar from '@/components/editor/Toolbar';
 import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import SelectionModeBar from '@/components/editor/SelectionModeBar';
-import PositionContextMenu from '@/components/editor/PositionContextMenu';
 import RadialMenu from '@/components/editor/RadialMenu';
 import LiveCard from '@/components/editor/LiveCard';
 
