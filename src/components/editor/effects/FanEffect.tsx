@@ -141,7 +141,7 @@ export default function FanEffect({
           <bufferAttribute attach="attributes-position" args={[linePos.current, 3]} />
           <bufferAttribute attach="attributes-color" args={[lineCol.current, 3]} />
         </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={0.6} depthWrite={false} blending={THREE.AdditiveBlending} />
+        <lineBasicMaterial vertexColors transparent opacity={0.6} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} />
       </lineSegments>
       <points ref={pointsRef}>
         <bufferGeometry>
