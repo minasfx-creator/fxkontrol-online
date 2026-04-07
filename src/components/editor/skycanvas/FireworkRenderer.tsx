@@ -700,8 +700,8 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         const base2 = (i * TRAIL_LENGTH + s) * 6;
         
         // Compute per-segment gravity multiplier for droop patterns
-        const segAge0 = plt > 0 ? Math.min(1, t0 / plt) : 0;
-        const segAge1 = plt > 0 ? Math.min(1, t1 / plt) : 0;
+        const segAge0 = lt > 0 ? Math.min(1, t0 / lt) : 0;
+        const segAge1 = lt > 0 ? Math.min(1, t1 / lt) : 0;
         let trailGrav0 = gravityMult;
         let trailGrav1 = gravityMult;
         let trailDragH0 = dragCoeff;
