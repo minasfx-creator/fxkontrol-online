@@ -138,8 +138,14 @@ export default function FanEffect({
     if (lColAttr) lColAttr.needsUpdate = true;
   });
 
+  const launchRotation = useMemo(() => {
+    const headingRad = -(launchHeading || 0) * Math.PI / 180;
+    const pitchRad = (90 - (launchPitch || 85)) * Math.PI / 180;
+    return new THREE.Euler(pitchRad, headingRad, 0, 'YXZ');
+  }, [launchHeading, launchPitch]);
+
   return (
-    <group position={position} renderOrder={50}>
+    <group position={position} rotation={launchRotation} renderOrder={50}>
       {progress < 0.1 && (
         <pointLight color={color} intensity={10 * (1 - progress / 0.1)} distance={15} decay={2} />
       )}

@@ -406,8 +406,14 @@ export default function CakeEffect({
     return s;
   }, [shotCount, pattern, cakeRows, angleOffset]);
 
+  const launchRotation = useMemo(() => {
+    const headingRad = -(launchHeading || 0) * Math.PI / 180;
+    const pitchRad = (90 - (launchPitch || 85)) * Math.PI / 180;
+    return new THREE.Euler(pitchRad, headingRad, 0, 'YXZ');
+  }, [launchHeading, launchPitch]);
+
   return (
-    <group position={position}>
+    <group position={position} rotation={launchRotation}>
       {shots.map((shot, i) => {
         const shotDuration = 1 / shotCount * 2.5;
         const shotProgress = (progress - shot.delay) / shotDuration;

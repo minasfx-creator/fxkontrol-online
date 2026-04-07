@@ -298,10 +298,14 @@ export default function CometEffect({
   const headFade = Math.max(0, 1 - progress * 0.5);
   const { headX, headY, headZ } = getHeadPos(progress);
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
-  const angleOffsetRad = (angleOffset * Math.PI) / 180;
+  const launchRotation = useMemo(() => {
+    const headingRad = -(launchHeading || 0) * Math.PI / 180;
+    const pitchRad = (90 - (launchPitch || 85)) * Math.PI / 180;
+    return new THREE.Euler(pitchRad, headingRad, 0, 'YXZ');
+  }, [launchHeading, launchPitch]);
 
   return (
-    <group position={position} rotation={[0, 0, angleOffsetRad]} renderOrder={50}>
+    <group position={position} rotation={launchRotation} renderOrder={50}>
       {/* Ignition flare — aggressive first 3% */}
       {progress < 0.03 && (
         <mesh position={[0, 0.1, 0]}>
