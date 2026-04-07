@@ -19,6 +19,8 @@ export default function FanEffect({
   spreadAngle,
   caliber = 3,
   formulationId,
+  launchHeading = 0,
+  launchPitch = 85,
 }: {
   position: [number, number, number];
   color: string;
@@ -26,6 +28,8 @@ export default function FanEffect({
   spreadAngle?: number;
   caliber?: number;
   formulationId?: string;
+  launchHeading?: number;
+  launchPitch?: number;
 }) {
   // Caliber-based spread calibration
   const effectiveSpread = spreadAngle ?? (70 + caliber * 8);
