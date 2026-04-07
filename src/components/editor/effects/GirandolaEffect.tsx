@@ -165,12 +165,16 @@ export default function GirandolaEffect({
 
   if (progress <= 0) return null;
 
-  // Wheel body visualization
-  const omega = (15 + caliber * 3) * (1 - Math.exp(-3.5 * progress));
-  const totalAngle = (15 + caliber * 3) * (progress + (Math.exp(-3.5 * progress) - 1) / 3.5);
-  const liftT = progress * 3.0;
-  const liftAccel = (thrustForce * nozzleCount * liftFraction / mass) - 9.81;
-  const deviceY = Math.max(0, 0.5 * Math.max(0, liftAccel) * liftT * liftT * 0.15);
+  // Wheel body visualization — with precession
+  const vizMaxOmega = 15 + caliber * 3;
+  const vizOmega = vizMaxOmega * (1 - Math.exp(-3.5 * progress));
+  const vizTotalAngle = vizMaxOmega * (progress + (Math.exp(-3.5 * progress) - 1) / 3.5);
+  const vizLiftT = progress * 3.0;
+  const vizLiftAccel = (thrustForce * nozzleCount * liftFraction / mass) - 9.81;
+  const deviceY = Math.max(0, 0.5 * Math.max(0, vizLiftAccel) * vizLiftT * vizLiftT * 0.15);
+  // Precession tilt for visual hub
+  const vizPrecRate = 0.8 / (1 + vizOmega * 0.1);
+  const vizTiltAngle = Math.min(0.25, vizOmega * 0.008);
 
   return (
     <group position={position} renderOrder={50}>
