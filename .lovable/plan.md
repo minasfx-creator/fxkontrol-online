@@ -1,94 +1,96 @@
 
 
-# Ciclo de Calibracao #9 — Dados dos Manuais de Pirotecnia e Quimica
+# Ciclo de Calibracao #10 — Conformidade 100% com Manuais (Bíblia Pirotécnica)
 
-## Dados Extraidos dos Documentos
+## Auditoria: O Que Já Está Implementado vs O Que Falta
 
-### Chemistry of Pyrotechnics (Sparky)
-- **Flash powder padrao**: KClO4 70% + Al 30% (dark aluminum) — stoichiometric
-- **Black powder**: KNO3 75%, Charcoal 15%, Sulfur 10%
-- **Strobe**: combustao oscilatoria com fase smolder (pouca luz) + fase burn intensa — modelo ON/OFF real
-- **Magnalium**: 50/50 Al/Mg, ponto de fusao ~460C, gravidade especifica 2.0
-- **Copper blue**: CuO decompoe → Cu + Cl → CuCl2 (blue emission) — requer chlorine donor (PVC/Parlon)
-- **Iron sparks**: bright orange, precisa coating protetor (linseed oil)
-- **Zinc**: bluish-green sparks, "electric stars" com ilusao de eletricidade
-- **Titanium**: sparks brilhantes, alta capacidade termica
-- **Barium green**: BaCO3-based, estavel, deep green
-- **Strontium red**: SrCO3, burn rate irregular
+### Implementado (OK)
+- `FLICKER_BY_COMPOUND`: 15 compounds (strontium, barium, copper, sodium, titanium, magnesium, charcoal, iron, flash, aluminum, phenolic, magnalium, zinc, antimony, sulfur)
+- `strobeFlicker()`: modelo oscilatório smolder/burn
+- `thermalColorRamp()`: path especial para flash (`isFlash`)
+- `COMBUSTION_HEAT_KCAL`: 9 metais com calor de combustão
+- `getCombustionHdrBoost()`: normalização por metal
+- `particleChemistry.ts`: 14+ compounds com dados completos (ignição, densidade, ponto de fusão)
+- NEB/T M-251 tabela regulatória
+- Perfil PIROEX/Skyking com dados FFIC
 
-### Complete Book of Flash Powder (Moran)
-- **Standard salute**: KClO4 66% + Al 34%
-- **Al combustion heat**: 7400 kcal/g (highest among common metals)
-- **Mg combustion heat**: 6000 kcal/g
-- **Flash burn time**: milissegundos (thousandths of a second)
-- **TNT equivalence**: 75% para flash powder finely blended
-- **Flake Al**: mais reativo que atomized, forma platelets microscopicos
-- **Sulfur ignition**: 223C no ar — baixo ponto de ignicao
+### Problemas Críticos — Funções Existem Mas NUNCA São Chamadas
 
-### Manual Finale 3D (Pyrosmart Mexico)
-- GPU-intensive rendering (OpenGL/DirectX)
-- Supplier catalogs com simulacoes calibradas
-- Chain/cake timing configs
+| # | Gap | Evidência | Fonte |
+|---|-----|-----------|-------|
+| 1 | **`strobeFlicker()` nunca chamado** — existe em pyroNoise.ts mas nenhum renderer a utiliza. Dragon eggs/strobe stars ficam sem efeito ON/OFF real | Busca em src/components: 0 chamadas | Chemistry of Pyrotechnics p.3: "oscillatory burning effect" |
+| 2 | **`getCombustionHdrBoost()` nunca chamado** — tabela de calor existe mas brilho de alumínio/magnésio/ferro é IDÊNTICO no render | Busca em src/components: 0 chamadas | Flash Powder p.16: "6000 kcal" Mg, "7400 kcal" Al |
+| 3 | **`thermalColorRamp(isFlash=true)` nunca chamado** — nenhum caller passa `isFlash=true`. Flash powder renderiza como estrela normal | Busca: 6 arquivos usam thermalColorRamp, nenhum com isFlash | Flash Powder p.6: "burns in thousandths of a second" |
+| 4 | **Calcium sem flicker entry** — particleChemistry tem calcium mas FLICKER_BY_COMPOUND não | Chemistry p.12: "rojo claro por compuestos de calcio" |
+| 5 | **Black powder sem flicker entry** — compound existe mas sem parâmetros de flicker | Chemistry p.1: "75% KNO3, 10% S, 15% C" |
+| 6 | **Lead/Bismuth (dragon eggs) sem compound** — manuals descrevem oscilação violenta com magnalium + PbO/Bi2O3 | Chemistry p.4: "oscillatory burning more vigorous than strobe" |
+| 7 | **Chlorine donor model ausente** — copper blue REQUER PVC/Parlon para CuCl2. Sem chlorine donor → cor deveria ser verde, não azul | Chemistry p.4: "CuO + Cl → CuCl2 blue emission" |
+| 8 | **Fórmulas flash reais não calibradas** — 15+ fórmulas específicas no Flash Powder book (Standard Salute, Clark, Chinese, Military M-80) com características distintas de velocidade/intensidade | Flash Powder pp.21-28 |
 
-### Manual de Pirotecnia 2025 (Consejo Superior Ingenieros de Minas, Espanha)
-- Regulamentacao europeia RD 989/2015
-- Framework profissional para pirotecnia
+## Soluções — 5 Tarefas
 
-## Problemas Identificados no Motor Atual
+### Tarefa 1: Integrar `strobeFlicker` + `getCombustionHdrBoost` no FireworkRenderer
+**Arquivo**: `FireworkRenderer.tsx`
 
-| # | Problema | Fonte |
-|---|---------|-------|
-| 1 | **Strobe/twinkle nao modela fase smolder real** — Chemistry of Pyrotechnics descreve strobe como oscilacao entre "smolder phase" (quase sem luz) e "intense burn phase". O blink atual usa sine wave suave, nao tem fase smolder com duracao variavel | Chemistry of Pyrotechnics |
-| 2 | **Magnalium nao tem compound flicker** — 50/50 Al/Mg alloy e muito usado em dragon eggs e strobe; combina reatividade alta do Mg com estabilidade do Al. Nao tem entrada em `FLICKER_BY_COMPOUND` | Chemistry + Flash Powder |
-| 3 | **Zinc/electric stars sem modelo** — zinc produz sparks azuladas/verdes com efeito "eletricidade". Nao tem compound entry nem visual model | Chemistry of Pyrotechnics |
-| 4 | **Flash burn duration incorreta** — flash powder consome em milessegundos (0.001-0.01s). O `thermalColorRamp` trata white-hot phase como 4% da vida, mas para flash deveria ser 80%+ da vida porque e quase instantaneo | Flash Powder book |
-| 5 | **Antimony trisulfide (Sb2S3) sem modelo** — usado em "bengal fire" e salutes como sensitizer, produz bright light com blue tinge. Nao tem compound entry | Chemistry + Flash Powder |
-| 6 | **Sulfur ignition temperature nao modelado** — sulfur ignites at 223C (muito baixo), afeta priming e ease of ignition. Pode calibrar prefire times para composicoes com sulfur | Flash Powder book |
+No bloco de flicker (linhas ~395-413):
+- Quando `compound` contém "magnalium" e pattern suporta strobe → usar `strobeFlicker()` em vez de `temporalFlicker()`
+- Aplicar `getCombustionHdrBoost(compound)` como multiplicador do HDR scale (linha ~391)
+- Importar `strobeFlicker`, `getCombustionHdrBoost` de pyroNoise
 
-## Solucoes
+### Tarefa 2: Integrar `isFlash=true` nos callers de `thermalColorRamp`
+**Arquivos**: MineEffect, CometEffect, RomanCandleEffect, WaterfallEffect, FanEffect
 
-### 1. Strobe oscillatory model em pyroNoise.ts
-Adicionar funcao `strobeFlicker(seed, time, smolderDuration, burnDuration)`:
-- Ciclo alternado: smolder (brightness 0.02-0.08) → burn (brightness 0.9-1.4)
-- `smolderDuration` = 0.3-0.8s, `burnDuration` = 0.05-0.15s (baseado na descricao do livro)
-- Duty cycle variavel por seed para organicidade
+- Detectar quando compound é "flash" ou "aluminum" + pattern é salute
+- Passar `isFlash=true` ao `thermalColorRamp`
+- Flash powder em mines: muzzle flash deve usar path especial (80% white-hot)
 
-### 2. Novos compounds em FLICKER_BY_COMPOUND
-- **magnalium**: base 0.40, amplitude 0.52, popStrength 0.58 (50/50 Al/Mg — extremamente reativo, burn irregular)
-- **zinc**: base 0.55, amplitude 0.38, popStrength 0.35 (moderate, bluish sparks)
-- **antimony**: base 0.58, amplitude: 0.40, popStrength 0.42 (bengal fire, bright with blue tinge)
-- **sulfur**: base 0.65, amplitude 0.30, popStrength 0.25 (low ignition temp, steady burn)
-- **magnaliumDragonEgg**: usar strobeFlicker com smolder/burn cycle
+### Tarefa 3: Adicionar compounds faltantes ao FLICKER_BY_COMPOUND
+**Arquivo**: `pyroNoise.ts`
 
-### 3. Flash duration model em thermalColorRamp
-Adicionar parametro `flashDuration` ao thermalColorRamp:
-- Para compound "flash": white-hot phase = 80% da vida (nao 4%)
-- Transicao instantanea para charcoal (sem fase ember)
-- Modelar TNT equivalence 75%: bloom/HDR multiplicador 3.0x durante burn
+Novos entries baseados nos manuais:
+- **calcium**: base 0.55, amplitude 0.38, popStrength 0.40 (rojo claro, irregular como strontium)
+- **black_powder**: base 0.60, amplitude 0.35, popStrength 0.30 (KNO3+C+S, moderate)
+- **lead**: base 0.35, amplitude 0.55, popStrength 0.65 (dragon eggs, violent oscillation)
+- **bismuth**: base 0.38, amplitude 0.52, popStrength 0.60 (dragon eggs substitute)
+- **potassium_perchlorate**: base 0.50, amplitude 0.42, popStrength 0.50 (strong oxidizer)
 
-### 4. Combustion heat table em pyroPhysics.ts
-Adicionar tabela `COMBUSTION_HEAT_KCAL` para calibrar intensidade de brilho por metal:
-- Aluminum: 7400 kcal/g
-- Magnesium: 6000 kcal/g
-- Iron: 1600 kcal/g
-- Titanium: 4700 kcal/g
-- Charcoal: 7800 kcal/g (como carbono)
-- Sulfur: 2200 kcal/g
-Usar como multiplicador de `hdrBoost` no thermalColorRamp
+### Tarefa 4: Dragon Eggs burst pattern
+**Arquivo**: `burstSimulation.ts`
+
+Adicionar `'dragon_egg'` ao BurstPattern:
+- starCount: 40, velocity: 15, spread: 0.6, tailFactor: 0.3, gravityMult: 1.8, symmetry: 0
+- No renderer, dragon_egg stars usam `strobeFlicker()` com smolder=0.2s, burn=0.08s (mais rápido que strobe normal — "more vigorous than strobe" per Chemistry book)
+
+### Tarefa 5: Flash formula variations na particleChemistry
+**Arquivo**: `particleChemistry.ts`
+
+Adicionar variações reais do Flash Powder book:
+- **flash_standard**: KClO4 66% + Al 34% (Standard Salute) — baseline
+- **flash_clark**: KClO4 7 + Al flake 5 — "very good high velocity mix"
+- **flash_chinese**: KClO4 3 + Al 4 + S 3 — "very hot mix"
+- **flash_military_m80**: KClO4 + Mg + Al flake — "slow burning, hard to ignite"
+
+Cada variação com `burnRate` diferente modelando velocidade real.
 
 ## Arquivos Modificados
 
-| Arquivo | Acao |
+| Arquivo | Ação |
 |---------|------|
-| `src/lib/pyroNoise.ts` | Strobe oscillatory model, novos compounds (magnalium, zinc, antimony, sulfur) |
-| `src/lib/pyroPhysics.ts` | Tabela combustion heat por metal |
+| `src/components/editor/skycanvas/FireworkRenderer.tsx` | Integrar strobeFlicker, getCombustionHdrBoost |
+| `src/components/editor/effects/MineEffect.tsx` | thermalColorRamp com isFlash |
+| `src/components/editor/effects/CometEffect.tsx` | thermalColorRamp com isFlash |
+| `src/lib/pyroNoise.ts` | 5 novos compounds no FLICKER_BY_COMPOUND |
+| `src/render_ultra/fireworks/burstSimulation.ts` | Dragon egg pattern |
+| `src/render_ultra/fireworks/particleChemistry.ts` | Flash formula variations |
 
-## Ordem de Execucao
+## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | pyroNoise.ts — strobeFlicker + novos compounds |
-| 2 | pyroNoise.ts — thermalColorRamp flash duration param |
-| 3 | pyroPhysics.ts — combustion heat table |
-| 4 | Build verification |
+| 1 | pyroNoise.ts — adicionar 5 compounds faltantes |
+| 2 | burstSimulation.ts — dragon_egg pattern |
+| 3 | particleChemistry.ts — flash formula variations |
+| 4 | FireworkRenderer.tsx — integrar strobeFlicker + getCombustionHdrBoost |
+| 5 | MineEffect + CometEffect — isFlash path |
+| 6 | Build verification |
 
