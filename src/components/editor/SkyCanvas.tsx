@@ -359,7 +359,7 @@ function ContextLossGuard({ recoveringRef, onRemount }: {
   recoveringRef: React.MutableRefObject<boolean>;
   onRemount: () => void;
 }) {
-  const { gl } = useThree();
+  const { gl, scene } = useThree();
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -373,6 +373,15 @@ function ContextLossGuard({ recoveringRef, onRemount }: {
       if (!shouldRecover || isInCooldown()) {
         console.error('[FXK] WebGL context lost — in cooldown, suppressing remount');
         return;
+      }
+
+      // Deep dispose scene resources before remount to prevent memory leaks
+      try {
+        deepDispose(scene);
+        disposeAllTracked();
+        pushLog('[FXK] Deep disposed scene resources after context loss', 'warn');
+      } catch (disposeErr) {
+        console.warn('[FXK] Error during deep dispose:', disposeErr);
       }
 
       recoveringRef.current = true;
@@ -392,7 +401,7 @@ function ContextLossGuard({ recoveringRef, onRemount }: {
       canvas.removeEventListener('webglcontextlost', onLost as EventListener);
       canvas.removeEventListener('webglcontextrestored', onRestored as EventListener);
     };
-  }, [gl, recoveringRef, onRemount]);
+  }, [gl, scene, recoveringRef, onRemount]);
 
   return null;
 }
