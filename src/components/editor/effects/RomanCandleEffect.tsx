@@ -201,7 +201,7 @@ export default function RomanCandleEffect({
         return (
           <mesh key={s} position={[0, 0.15, 0]}>
             <sphereGeometry args={[0.25 + dt * 8, 8, 8]} />
-            <meshBasicMaterial color="#FFFFCC" transparent opacity={0.5 * (1 - dt / 0.04)} blending={THREE.AdditiveBlending} />
+            <meshBasicMaterial color="#FFFFCC" transparent opacity={0.5 * (1 - dt / 0.04)} blending={THREE.AdditiveBlending} depthTest={false} />
           </mesh>
         );
       })}
