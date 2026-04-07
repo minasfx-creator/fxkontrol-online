@@ -297,7 +297,7 @@ export default function CometEffect({
   const angleOffsetRad = (angleOffset * Math.PI) / 180;
 
   return (
-    <group position={position} rotation={[0, 0, angleOffsetRad]}>
+    <group position={position} rotation={[0, 0, angleOffsetRad]} renderOrder={50}>
       {/* Ignition flare — aggressive first 3% */}
       {progress < 0.03 && (
         <mesh position={[0, 0.1, 0]}>
