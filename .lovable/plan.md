@@ -1,51 +1,51 @@
 
 
-# Ciclo de Polish #25 — Time Rain Apogee Drift, Girandola Precession, Tourbillon Trail
+# Ciclo de Polish #27 — Crossette Split Physics, Kamuro Star Weight, Nishiki Shimmer
 
 ## Bugs Identificados
 
 | # | Bug | Local | Fix |
 |---|-----|-------|-----|
-| 1 | **Time rain hangT calculation wrong** — `hangT = hangStart * lt / (starLife * 0.88)` uses elapsed time `lt` which changes every frame, making the "apogee anchor" slide. Should use a fixed fraction of total lifetime | `FireworkRenderer.tsx` L507, L517 | Calculate `hangT` as `hangStart * starLife * 0.88 / (starLife * 0.88)` → simplify to just `hangStart * lt_total_fraction` using the actual elapsed time at hangStart |
-| 2 | **Time rain wind drift during hang too weak** — stars barely move laterally during the 30% hang phase. Real time rain drifts visibly with wind at apogee | L512-514 | Amplify wind drift during hang: `w[0] * driftT * 2.0` and add per-star lateral scatter based on sparkleSeeds |
-| 3 | **Time rain rain phase gravity too weak** — `rainT = rainPhase * 3.0` then `GRAVITY * 1.2` produces slow descent. Real time rain stars accelerate sharply | L521-524 | Increase rain gravity to `2.5x` and reduce horizontal damping to create vertical rain columns |
-| 4 | **Girandola no gyroscopic precession** — wobble is simple sin/cos offset, not a tilting spin plane. Real girandolas precess: the spin axis traces a cone as angular momentum builds | `GirandolaEffect.tsx` L82-83 | Add precession: tilt the entire spin plane using a rotation matrix that precesses around vertical axis. Tilt angle grows with omega, precession rate inversely proportional to omega (gyroscopic) |
-| 5 | **Girandola sparks use device wobble offset** — sparks at L123-125 add `wobbleX/Z` directly instead of transforming through the precessing frame. Creates disconnect between spark emission and visible wheel orientation | L123-125 | Transform spark nozzle positions through the precession rotation |
-| 6 | **Tourbillon trail uses Math.random() per frame** — L149, L151 inject random jitter every frame, causing trail points to flicker/dance instead of being smooth | `TourbillonEffect.tsx` L149, L151 | Replace with deterministic noise based on point index: `sin(i * 73.37) * 0.06` |
-| 7 | **Tourbillon trailSizes buffer unused** — L49 allocates trailSizes and L160 fills it, but it's never attached as a `size` attribute. The material uses a fixed `size={0.22}` | L160, L273 | Attach trailSizes as a `size` attribute and use a custom vertex shader snippet, OR use the simpler approach: modulate point size via the alpha channel and keep the fixed size but vary opacity for taper effect (already partially done via color fade) |
+| 1 | **Crossette sub-particles spawn spherically** — L788 uses random `theta/phi` for sub-burst velocities. Real crossettes split into exactly 4 symmetrical arms at 90° intervals, each arm a tight cluster. Current code creates a random cloud instead of directional splits | `FireworkRenderer.tsx` L786-791 | Compute 4 arm directions from parent velocity vector, spawn sub-particles along each arm with tight jitter cone |
+| 2 | **Crossette sub-particles overwrite main stars** — L811 writes sub-particle data into `STAR_COUNT - 1 - (i % 15%)` which stomps on real star positions. Stars at the tail of the buffer flicker/teleport | L811-816 | Use dedicated crossette sub-buffer rendering (separate Points mesh) or write into slots after `STAR_COUNT` with expanded buffer |
+| 3 | **Crossette sub-particle count inconsistent** — L783 spawns 4-6 random sub-particles per star via `Math.random()`. Should be exactly 4 (crossette = "cross" = 4 arms) | L783 | Fix to exactly 4 sub-particles per parent star |
+| 4 | **Kamuro falls through generic else branch** — L591 uses default `gravityMult` without progressive droop. Kamuro stars are heavy metal-coated (gold/silver) and should have increasing gravity similar to willow/horsetail | L591-593 | Add dedicated `kamuro` branch with progressive gravity: `1.0x` early → `3.5x` at 60%+ life, matching heavy star weight |
+| 5 | **Kamuro drag too aggressive** — `dragMult = 0.45` (L467) combined with low velocity `0.35 * breakSpeed` (L228) makes kamuro barely expand. Real kamuro has moderate initial spread that gradually droops into a golden cascade | L228, L467 | Increase initial velocity to `0.45 * breakSpeed`, reduce dragMult to `0.55` for wider initial spread before gravity takes over |
+| 6 | **Nishiki shimmer uses generic trailing flicker** — L633 applies `temporalFlicker(base=0.82, amp=0.15)` to all trailing patterns. Real nishiki kamuro has a distinctive high-frequency aluminum shimmer (20-30Hz oscillation) that differentiates it from plain kamuro | L631-633 | Add nishiki detection (pattern=kamuro + color=gold/#FFD700) and apply high-frequency shimmer: `base=0.75, amp=0.25` with 25Hz overlay |
+| 7 | **Crossette trail segments use default gravity** — L697-731 has no crossette-specific trail handling. After split, sub-particle trails should show the 4-arm divergence | trail section | Add crossette trail gravity handling (slightly increased post-split) |
 
 ## Plano de Implementacao
 
 ### Arquivo 1: `src/components/editor/skycanvas/FireworkRenderer.tsx`
 
-**Fix 1-3: Time rain apogee drift rewrite**
-- Compute `hangT` correctly: `const hangT = hangStart * lt` (time at which hang starts = fraction of elapsed time)
-- Hang phase: amplify wind drift (2.5x), add per-star lateral scatter `± sparkleSeeds[i] % 30 * 0.02`
-- Rain phase: gravity `2.5x`, reduce horizontal velocity to create vertical rain columns
-- Add trail droop for time_rain pattern in trail segment computation (L710-725)
+**Fix 1-3: Crossette sub-split rewrite (L776-817)**
+- Change sub-particle spawn to compute 4 arm directions from parent velocity: `armDir = rotate(parentVel, armIndex * PI/2)` around parent velocity axis
+- Each arm gets exactly 1 sub-particle (4 total per star) with speed `breakSpeed * 0.4` and tight 8° cone jitter
+- Write sub-particles into the crossetteSubData buffers without stomping main buffer — render as overlay positions in the buffer's reserved tail region (`STAR_COUNT * 0.85` to `STAR_COUNT`)
 
-### Arquivo 2: `src/components/editor/effects/GirandolaEffect.tsx`
+**Fix 4-5: Kamuro physics branch (L590, insert before else)**
+- Add `pattern === 'kamuro'` branch:
+  - Progressive gravity: `starAge < 0.4 ? gravityMult * 0.8 : gravityMult * (0.8 + (starAge - 0.4) / 0.6 * 2.7)` (peaks at 3.5x)
+  - Reduced horizontal drag: `dragCoeff * 0.7` for wider cascade spread
+- Update velocity init L228: `0.35 → 0.45`
+- Update dragMult L467: `0.45 → 0.55`
 
-**Fix 4-5: Gyroscopic precession**
-- Add precession state: `precessionAngle = time * precessionRate`, where `precessionRate = 0.8 / (1 + omega * 0.1)` (slower precession as spin increases — gyroscopic stability)
-- Tilt angle: `tiltAngle = Math.min(0.25, omega * 0.008)` radians (~15° max)
-- Transform all nozzle positions and ejection vectors through the precession rotation matrix
-- Remove simple wobbleX/Z, replace with proper tilt transformation
+**Fix 6: Nishiki shimmer (L631-633)**
+- Detect nishiki: `pattern === 'kamuro' && (baseColor similarity to gold #FFD700)`
+- Apply shimmer overlay: `temporalFlicker(seed, time, 0.70, 0.30, 0.12)` + high-freq modulation `sin(time * 50 + seed) * 0.15`
+- Non-nishiki kamuro keeps current trailing flicker
 
-### Arquivo 3: `src/components/editor/effects/TourbillonEffect.tsx`
-
-**Fix 6-7: Deterministic trail + size taper**
-- Replace `Math.random()` jitter with `Math.sin(i * 73.37 + clampedP * 11) * 0.04`
-- Remove trailSizes buffer (unused overhead) — taper is already achieved via color fade
-- OR: attach trailSizes as attribute with custom shader — prefer removing since point size variation via color intensity is sufficient
+**Fix 7: Crossette trail gravity (L697-731)**
+- Add `pattern === 'crossette'` case in trail gravity section
+- Post-split segments (segAge > 0.4): `trailGrav = gravityMult * 1.5` for visible droop divergence
 
 ## Ordem de Execucao
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Fix time rain apogee drift + wind + rain gravity |
-| 2 | Fix time rain trail segments |
-| 3 | Girandola gyroscopic precession |
-| 4 | Tourbillon deterministic trail |
+| 1 | Kamuro physics branch + velocity/drag calibration |
+| 2 | Nishiki shimmer detection + high-freq flicker |
+| 3 | Crossette sub-split rewrite (4-arm directional) |
+| 4 | Crossette trail gravity |
 | 5 | Build verification |
 
