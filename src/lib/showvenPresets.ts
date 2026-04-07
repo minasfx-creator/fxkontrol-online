@@ -111,9 +111,9 @@ export const SHOWVEN_FLAMERS: ShowvenFlamerPreset[] = [
     description: 'Ultra-height single-color LPG flame projector',
   },
   {
-    id: 'cflamer_volcano', name: 'cFlamer Volcano', maxHeightM: 10, nozzles: 5, colorCount: 5,
-    fuelCapacityL: 5.3, burnTimeMin: 5, dmxChannels: 12, weightKg: 22, ipRating: 'IP54',
-    description: '5-nozzle color flame array for wide flame walls',
+    id: 'cflamer_volcano', name: 'cFlamer mVolcano', maxHeightM: 10, nozzles: 5, colorCount: 5,
+    fuelCapacityL: 7.5, burnTimeMin: 5, dmxChannels: 6, weightKg: 26, ipRating: 'IP54',
+    description: '5-nozzle color flame array — 3 DMX modes (6CH-N/M/P), 88 preset sequences, E-Stop chain',
   },
   {
     id: 'uflamer', name: 'uFlamer', maxHeightM: 6, nozzles: 1, colorCount: 0,
