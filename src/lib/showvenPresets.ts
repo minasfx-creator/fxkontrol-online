@@ -102,8 +102,8 @@ export interface ShowvenInfrastructurePreset {
 export const SHOWVEN_FLAMERS: ShowvenFlamerPreset[] = [
   {
     id: 'cflamer', name: 'cFlamer', maxHeightM: 10, nozzles: 1, colorCount: 5,
-    fuelCapacityL: 5.3, burnTimeMin: 8, dmxChannels: 8, weightKg: 18, ipRating: 'IP54',
-    description: 'Color flame projector — 5 LPG color cartridges (R/G/B/W/Y)',
+    fuelCapacityL: 5.3, burnTimeMin: 8, dmxChannels: 2, weightKg: 18, ipRating: 'IP54',
+    description: 'Color flame projector — 2CH-P/2CH-N modes, 5 LPG color cartridges (R/G/B/W/Y)',
   },
   {
     id: 'uflamer_max', name: 'uFlamer Max', maxHeightM: 20, nozzles: 1, colorCount: 0,
@@ -111,9 +111,9 @@ export const SHOWVEN_FLAMERS: ShowvenFlamerPreset[] = [
     description: 'Ultra-height single-color LPG flame projector',
   },
   {
-    id: 'cflamer_volcano', name: 'cFlamer Volcano', maxHeightM: 10, nozzles: 5, colorCount: 5,
-    fuelCapacityL: 5.3, burnTimeMin: 5, dmxChannels: 12, weightKg: 22, ipRating: 'IP54',
-    description: '5-nozzle color flame array for wide flame walls',
+    id: 'cflamer_volcano', name: 'cFlamer mVolcano', maxHeightM: 10, nozzles: 5, colorCount: 5,
+    fuelCapacityL: 7.5, burnTimeMin: 5, dmxChannels: 6, weightKg: 26, ipRating: 'IP54',
+    description: '5-nozzle color flame array — 3 DMX modes (6CH-N/M/P), 88 preset sequences, E-Stop chain',
   },
   {
     id: 'uflamer', name: 'uFlamer', maxHeightM: 6, nozzles: 1, colorCount: 0,
@@ -224,6 +224,11 @@ export const SHOWVEN_CONTROLLERS: ShowvenControllerPreset[] = [
     wirelessRangeM: 300,
     description: 'Wireless SFX remote control — 8 channels',
   },
+  {
+    id: 'pyro_adaptor', name: 'PyroAdaptor', channels: 25, type: 'wired', protocol: 'PBUS',
+    wiredRangeM: 2000,
+    description: 'PBUS charging controller — loads up to 25x PyroSlave C16 units, dual-band RF relay, E-Stop chain',
+  },
 ];
 
 // ── Lasers (Maiman Series) ──────────────────────────────────────────
@@ -234,24 +239,24 @@ export const SHOWVEN_LASERS: ShowvenLaserPreset[] = [
     wavelengthRGB: [638, 520, 445], scanningAngleDeg: 30, scanRateKpps: 35,
     beamDivergenceMrad: 1.2, weightKg: 27, ipRating: 'IP65', laserClass: 4,
     controlInterfaces: ['FB4', 'DMX', 'ILDA', 'Ethernet', 'SD', 'Sound'],
-    dmxChannels: 12,
-    description: 'Full-colour RGB laser — 30W, ±30° scan, 35Kpps, TEC cooling, IP65',
+    dmxChannels: 16,
+    description: 'Full-colour RGB laser — 30W, ±30° scan, 35Kpps, FB3 16CH, TEC cooling, IP65',
   },
   {
     id: 'maiman_40', name: 'Maiman 40W', outputW: 40,
     wavelengthRGB: [638, 520, 445], scanningAngleDeg: 25, scanRateKpps: 30,
     beamDivergenceMrad: 1.2, weightKg: 29, ipRating: 'IP65', laserClass: 4,
     controlInterfaces: ['FB4', 'DMX', 'ILDA', 'Ethernet', 'SD', 'Sound'],
-    dmxChannels: 12,
-    description: 'Full-colour RGB laser — 40W, ±25° scan, 30Kpps, TEC cooling, IP65',
+    dmxChannels: 16,
+    description: 'Full-colour RGB laser — 40W, ±25° scan, 30Kpps, FB3 16CH, TEC cooling, IP65',
   },
   {
     id: 'maiman_60', name: 'Maiman 60W', outputW: 60,
     wavelengthRGB: [638, 520, 445], scanningAngleDeg: 20, scanRateKpps: 25,
     beamDivergenceMrad: 1.5, weightKg: 50, ipRating: 'IP65', laserClass: 4,
     controlInterfaces: ['FB4', 'DMX', 'ILDA', 'Ethernet', 'SD', 'Sound'],
-    dmxChannels: 12,
-    description: 'Full-colour RGB laser — 60W, ±20° scan, 25Kpps, TEC cooling, IP65, dual-layer housing',
+    dmxChannels: 16,
+    description: 'Full-colour RGB laser — 60W, ±20° scan, 25Kpps, FB3 16CH, TEC cooling, IP65, dual-layer housing',
   },
 ];
 

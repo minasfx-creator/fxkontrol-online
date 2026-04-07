@@ -94,6 +94,23 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
     ],
     safetyChannel: 2, safetyValue: 127,
   },
+  // ── cFlamer mVolcano (5-nozzle, 6CH, 88 presets per manual) ──
+  {
+    id: 'lib-cflamer-mvolcano', name: 'cFLAMER mVOLCANO', manufacturer: 'SHOWVEN', dmxChannels: 6, category: 'showven',
+    dmxModes: ['6CH-N', '6CH-M', '6CH-P'],
+    capabilities: { eStopChain: true, externalPyroTrigger: true, nozzleCount: 5 },
+    effects: [
+      { id: 'eff-mv-all', name: 'ALL NOZZLES', description: 'All 5 nozzles fire', duration: 0.5, channelValues: [{ channel: 1, value: 200 }, { channel: 2, value: 200 }, { channel: 3, value: 200 }, { channel: 4, value: 200 }, { channel: 5, value: 200 }] },
+      { id: 'eff-mv-center', name: 'CENTER', description: 'Center nozzle only', duration: 0.5, channelValues: [{ channel: 3, value: 200 }] },
+      { id: 'eff-mv-wave-lr', name: 'WAVE L→R', description: 'Sequential L to R', duration: 1.0, channelValues: [] },
+      { id: 'eff-mv-wave-rl', name: 'WAVE R→L', description: 'Sequential R to L', duration: 1.0, channelValues: [] },
+      { id: 'eff-mv-sides', name: 'SIDES', description: 'Outer nozzles only', duration: 0.5, channelValues: [{ channel: 1, value: 200 }, { channel: 5, value: 200 }] },
+      { id: 'eff-mv-preset1', name: 'PRESET 1', description: 'Preset sequence (CH6 DMX 1-3)', duration: 2.0, channelValues: [{ channel: 6, value: 1 }] },
+      { id: 'eff-mv-preset44', name: 'PRESET 44', description: 'Preset sequence mid (CH6 DMX 130)', duration: 2.0, channelValues: [{ channel: 6, value: 130 }] },
+      { id: 'eff-mv-preset88', name: 'PRESET 88', description: 'Preset sequence max (CH6 DMX 255)', duration: 2.0, channelValues: [{ channel: 6, value: 255 }] },
+    ],
+    safetyChannel: 6, safetyValue: 0,
+  },
   // ── cFlamer MINI ──
   {
     id: 'lib-cflamer-mini', name: 'cFLAMER MINI', manufacturer: 'SHOWVEN', dmxChannels: 2, category: 'showven',
@@ -126,32 +143,36 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
       { id: 'eff-conf-low', name: 'LOW OUTPUT', description: 'Gentle confetti', duration: 3.0, channelValues: [{ channel: 1, value: 128 }, { channel: 2, value: 255 }] },
     ],
   },
-  // ── Maiman Laser Series ──
+  // ── Maiman Laser Series (FB3 16CH) ──
   {
-    id: 'lib-maiman-30', name: 'MAIMAN 30W LASER', manufacturer: 'SHOWVEN', dmxChannels: 12, category: 'showven',
+    id: 'lib-maiman-30', name: 'MAIMAN 30W LASER', manufacturer: 'SHOWVEN', dmxChannels: 16, category: 'showven',
+    dmxModes: ['FB3-16CH', 'FB4-39CH'],
     effects: [
-      { id: 'eff-laser-beam', name: 'BEAM', description: 'Single beam output', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 255 }] },
-      { id: 'eff-laser-fan', name: 'FAN', description: 'Fan beam pattern', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 4, value: 128 }] },
-      { id: 'eff-laser-anim', name: 'ANIMATION', description: 'Animated pattern from SD/FB4', duration: 10.0, channelValues: [{ channel: 1, value: 255 }, { channel: 5, value: 200 }] },
-      { id: 'eff-laser-scan', name: 'SCAN', description: 'Scanner mode', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 6, value: 180 }] },
+      { id: 'eff-laser-beam', name: 'BEAM', description: 'Single beam output', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }] },
+      { id: 'eff-laser-fan', name: 'FAN', description: 'Fan beam pattern', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }, { channel: 7, value: 200 }] },
+      { id: 'eff-laser-anim', name: 'ANIMATION', description: 'Animated pattern from SD/FB4', duration: 10.0, channelValues: [{ channel: 1, value: 1 }, { channel: 2, value: 1 }, { channel: 3, value: 128 }, { channel: 5, value: 255 }] },
+      { id: 'eff-laser-scan', name: 'SCAN', description: 'Scanner mode', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }, { channel: 13, value: 200 }] },
     ],
-    safetyChannel: 1, safetyValue: 0,
+    // FB3 16CH layout: Mode(1) Page(2) Cue(3) Speed(4) Dimmer(5) Zoom(6) SizeX(7) SizeY(8) AngleZ(9) PosX(10) PosY(11) VisiblePts(12) ScanRate(13) CueRelease(14) Reserved(15-16)
+    safetyChannel: 5, safetyValue: 0,
   },
   {
-    id: 'lib-maiman-40', name: 'MAIMAN 40W LASER', manufacturer: 'SHOWVEN', dmxChannels: 12, category: 'showven',
+    id: 'lib-maiman-40', name: 'MAIMAN 40W LASER', manufacturer: 'SHOWVEN', dmxChannels: 16, category: 'showven',
+    dmxModes: ['FB3-16CH', 'FB4-39CH'],
     effects: [
-      { id: 'eff-laser40-beam', name: 'BEAM', description: 'Single beam 40W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 255 }] },
-      { id: 'eff-laser40-fan', name: 'FAN', description: 'Fan pattern 40W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 4, value: 128 }] },
+      { id: 'eff-laser40-beam', name: 'BEAM', description: 'Single beam 40W', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }] },
+      { id: 'eff-laser40-fan', name: 'FAN', description: 'Fan pattern 40W', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }, { channel: 7, value: 200 }] },
     ],
-    safetyChannel: 1, safetyValue: 0,
+    safetyChannel: 5, safetyValue: 0,
   },
   {
-    id: 'lib-maiman-60', name: 'MAIMAN 60W LASER', manufacturer: 'SHOWVEN', dmxChannels: 12, category: 'showven',
+    id: 'lib-maiman-60', name: 'MAIMAN 60W LASER', manufacturer: 'SHOWVEN', dmxChannels: 16, category: 'showven',
+    dmxModes: ['FB3-16CH', 'FB4-39CH'],
     effects: [
-      { id: 'eff-laser60-beam', name: 'BEAM', description: 'Single beam 60W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 255 }] },
-      { id: 'eff-laser60-fan', name: 'FAN', description: 'Fan pattern 60W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 4, value: 128 }] },
+      { id: 'eff-laser60-beam', name: 'BEAM', description: 'Single beam 60W', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }] },
+      { id: 'eff-laser60-fan', name: 'FAN', description: 'Fan pattern 60W', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }, { channel: 7, value: 200 }] },
     ],
-    safetyChannel: 1, safetyValue: 0,
+    safetyChannel: 5, safetyValue: 0,
   },
   // ── DMX Relay R12 ──
   {
@@ -179,15 +200,25 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
       { id: 'eff-c16-seq', name: 'SEQUENCE', description: 'Sequential fire 10ms interval', duration: 1.0, channelValues: [] },
     ],
   },
-  // ── FXbutton ──
+  // ── FXbutton (device-specific presets per manual) ──
   {
     id: 'lib-fxbutton', name: 'FXBUTTON', manufacturer: 'SHOWVEN', dmxChannels: 36, category: 'showven',
+    dmxModes: ['sparkular', 'cflamer', 'co2jet', 'confetti'],
     effects: [
       { id: 'eff-fxb-sync', name: 'SYNC', description: 'Synchronous firing all devices', duration: 2.0, channelValues: [] },
       { id: 'eff-fxb-cte', name: 'CENTER→ENDS', description: 'Center to ends wave', duration: 2.0, channelValues: [] },
       { id: 'eff-fxb-etc', name: 'ENDS→CENTER', description: 'Ends to center wave', duration: 2.0, channelValues: [] },
       { id: 'eff-fxb-ltr', name: 'L→R', description: 'Left to right sequence', duration: 2.0, channelValues: [] },
       { id: 'eff-fxb-rtl', name: 'R→L', description: 'Right to left sequence', duration: 2.0, channelValues: [] },
+      // Sparkular mode: CH1=Height, CH2=Duration
+      { id: 'eff-fxb-spark-h10', name: 'SPARK H10', description: 'Sparkular max height', duration: 2.5, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }] },
+      { id: 'eff-fxb-spark-h5', name: 'SPARK H5', description: 'Sparkular mid height', duration: 2.0, channelValues: [{ channel: 1, value: 128 }, { channel: 2, value: 200 }] },
+      // cFlamer mode: CH1=Timer, CH2=Fire
+      { id: 'eff-fxb-flame-jet', name: 'FLAME JET', description: 'cFlamer fire via FXbutton', duration: 0.5, channelValues: [{ channel: 1, value: 200 }, { channel: 2, value: 200 }] },
+      // CO2 Jet mode
+      { id: 'eff-fxb-co2', name: 'CO2 BLAST', description: 'CO2 Jet full blast', duration: 0.5, channelValues: [{ channel: 1, value: 255 }] },
+      // Confetti mode
+      { id: 'eff-fxb-confetti', name: 'CONFETTI SHOT', description: 'Confetti single shot', duration: 1.0, channelValues: [{ channel: 1, value: 255 }] },
     ],
   },
   // ── ZK6200/6300 Host Controllers ──
