@@ -418,7 +418,7 @@ export default function CakeEffect({
   return (
     <group position={position} rotation={launchRotation}>
       {shots.map((shot, i) => {
-        const shotDuration = 1 / shotCount * 2.5;
+        const shotDuration = (1 / shotCount) * (2.0 + caliber * 0.3); // larger caliber = longer per-shot duration
         const shotProgress = (progress - shot.delay) / shotDuration;
         return (
           <CakeShot
