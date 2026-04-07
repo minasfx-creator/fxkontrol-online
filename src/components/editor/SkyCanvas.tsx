@@ -1329,6 +1329,11 @@ export default function SkyCanvas() {
   // Professional keybindings (Finale 3D)
   useKeybindings();
   const editorMode = useProjectStore((s) => s.editorMode);
+  // ── Memoized Zustand selectors (avoid inline getState in JSX) ──
+  const lockPositions = useSceneStore((s) => s.environment.lockPositions);
+  const showRulers = useSceneStore((s) => s.environment.showRulers);
+  const updateEnvironment = useSceneStore((s) => s.updateEnvironment);
+  const updateSettings = useSceneStore((s) => s.updateSettings);
   const droneFormations = useProjectStore((s) => s.droneFormations);
   const gpsOrigin = useProjectStore((s) => s.gpsOrigin);
   // cursorStyle moved below geoTool declaration
