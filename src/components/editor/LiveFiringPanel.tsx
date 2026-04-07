@@ -1399,7 +1399,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         </div>
       );
       case 'mobile_link': return <MobileLinkMode fs={fs} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
-      case 'show_control': return <ShowControlPanel fs={fs} />;
+      case 'show_control': return <ShowCommanderPanel fs={fs} />;
       case 'module':
       case 'artnet_modules': return <FXKNetPanel fs={fs} />;
       case 'dmx_monitor': return <DMXMonitorPanel fs={fs} />;

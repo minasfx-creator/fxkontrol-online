@@ -193,7 +193,7 @@ export default function CommandCenter() {
     switch (mode) {
       case 'fxk_light': return <MA3ControlPanel fs />;
       case 'drone_ops': return <DroneCommandPanel fs />;
-      case 'show_control': return <ShowControlPanel fs />;
+      case 'show_control': return <ShowCommanderPanel fs />;
       case 'module': return <FXKNetPanel fs />;
       case 'hardware': return <QuickHardwarePanel fs />;
       case 'dmx_monitor': return <DMXMonitorPanel fs />;
