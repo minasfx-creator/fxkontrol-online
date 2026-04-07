@@ -593,6 +593,29 @@ function Index() {
       {/* ─── Layer 8b: Viewport Transition Overlay ── */}
       <ViewportTransitionOverlay />
 
+      {/* ─── Venue AR HUD Overlay ─── */}
+      {venueOverlay && (
+        <VenueShowOverlay
+          preset={venueOverlay}
+          onComplete={() => setVenueOverlay(null)}
+        />
+      )}
+
+      {/* ─── Venue Quick Selector ─── */}
+      <VenueQuickSelector
+        open={venueSelector}
+        onClose={() => setVenueSelector(false)}
+        onSelect={(preset) => {
+          setVenueSelector(false);
+          // Trigger viewport transition
+          window.dispatchEvent(new CustomEvent('viewport-transition', {
+            detail: { locationName: `${preset.flag} ${preset.name}`, holdMs: 1000 },
+          }));
+          // After fade-out, show AR overlay
+          setTimeout(() => setVenueOverlay(preset), 500);
+        }}
+      />
+
       {/* ─── Layer 9: Overlays & Modals ──────────────── */}
       {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
       <RadialMenu />
