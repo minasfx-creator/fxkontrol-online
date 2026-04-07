@@ -381,11 +381,13 @@ function spawnParticles(emitter: NiagaraEmitter, dt: number): NiagaraParticle[] 
       spawnPos = sample.position;
     }
 
+    const spawnSize = randRange(init.size[0], init.size[1]);
     const p: NiagaraParticle = {
       position: spawnPos,
       velocity: init.enabled ? randVec3(init.velocity.min, init.velocity.max) : new THREE.Vector3(),
       color: init.color.clone(),
-      size: randRange(init.size[0], init.size[1]),
+      size: spawnSize,
+      initialSize: spawnSize,
       rotation: randRange(init.rotation[0], init.rotation[1]),
       age: 0,
       lifetime: randRange(init.lifetime[0], init.lifetime[1]),
