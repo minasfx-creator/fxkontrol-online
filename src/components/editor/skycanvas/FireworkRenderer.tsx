@@ -138,6 +138,8 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
 }, _ref) {
   const pointsRef = useRef<THREE.Points>(null);
   const trailRef = useRef<THREE.LineSegments>(null);
+  const pistilRef = useRef<THREE.Points>(null);
+  const crossetteSplitRef = useRef<Set<number>>(new Set());
   
   const lod = useLOD(position);
   const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -255,6 +257,50 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     return { velocities: v, lifetimes: l, twinklePhases: tp, sparkleSeeds: sparkle };
   }, [STAR_COUNT, breakSpeed, starLife, pattern]);
 
+  // ── Pistil velocities (25% star count, 40% speed, inner burst) ──
+  const PISTIL_COUNT = hasPistil ? Math.max(8, Math.round(STAR_COUNT * 0.25)) : 0;
+  const pistilBaseColor = useMemo(() => pistilColor ? new THREE.Color(pistilColor) : new THREE.Color('#FFD700'), [pistilColor]);
+  const pistilData = useMemo(() => {
+    if (!PISTIL_COUNT) return null;
+    const pv = new Float32Array(PISTIL_COUNT * 3);
+    const pl = new Float32Array(PISTIL_COUNT);
+    for (let i = 0; i < PISTIL_COUNT; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = breakSpeed * 0.4 * (0.5 + Math.random() * 0.5);
+      pv[i * 3] = Math.sin(phi) * Math.cos(theta) * speed;
+      pv[i * 3 + 1] = Math.cos(phi) * speed;
+      pv[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * speed;
+      pl[i] = starLife * (0.5 + Math.random() * 0.3);
+    }
+    return { velocities: pv, lifetimes: pl };
+  }, [PISTIL_COUNT, breakSpeed, starLife]);
+
+  const pistilBuffers = useMemo(() => {
+    if (!PISTIL_COUNT) return null;
+    return {
+      positions: new Float32Array(PISTIL_COUNT * 3),
+      colors: new Float32Array(PISTIL_COUNT * 3),
+      sizes: new Float32Array(PISTIL_COUNT),
+      lives: new Float32Array(PISTIL_COUNT),
+    };
+  }, [PISTIL_COUNT]);
+
+  // ── Crossette sub-break buffer (pre-allocated slots after main stars) ──
+  const CROSSETTE_SUB_COUNT = pattern === 'crossette' ? STAR_COUNT * 4 : 0;
+  const crossetteSubData = useMemo(() => {
+    if (!CROSSETTE_SUB_COUNT) return null;
+    return {
+      velocities: new Float32Array(CROSSETTE_SUB_COUNT * 3),
+      positions: new Float32Array(CROSSETTE_SUB_COUNT * 3),
+      colors: new Float32Array(CROSSETTE_SUB_COUNT * 3),
+      sizes: new Float32Array(CROSSETTE_SUB_COUNT),
+      lives: new Float32Array(CROSSETTE_SUB_COUNT),
+      activeCount: 0,
+      spawnTimes: new Float32Array(CROSSETTE_SUB_COUNT),
+    };
+  }, [CROSSETTE_SUB_COUNT]);
+
   const particleBuffers = useMemo(() => {
     const trailVertCount = STAR_COUNT * TRAIL_LENGTH * 2;
     return {
@@ -354,6 +400,16 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         // Chemical-compound-specific flicker params
         const fp = getFlickerParams(String(compound));
         twinkle = temporalFlicker(sparkleSeeds[i], time, fp.base, fp.amplitude, fp.popStrength);
+        
+        // ── Discrete blink pattern for non-trailing patterns ──
+        const blinkVal = Math.sin(time * 18.0 + twinklePhases[i] * 6.28);
+        if (pattern === 'crossette') {
+          twinkle *= blinkVal > 0.0 ? 1.0 : 0.08; // 50% duty, strong blink
+        } else if (pattern === 'peony' || pattern === 'chrysanthemum') {
+          twinkle *= blinkVal > -0.4 ? 1.0 : 0.35; // 70% duty, subtle
+        } else if (pattern === 'heart') {
+          twinkle *= blinkVal > -0.6 ? 1.0 : 0.5; // 80% duty, gentle
+        }
       }
       
       const userFade = 1 - starAge;
@@ -438,6 +494,86 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       }
     }
 
+    // ── Crossette sub-breaks: spawn sub-particles at 40% life ──
+    if (pattern === 'crossette' && crossetteSubData) {
+      for (let i = 0; i < STAR_COUNT; i++) {
+        const lt = lifetimes[i];
+        const starAge = Math.min(1, t / lt);
+        if (starAge > 0.4 && !crossetteSplitRef.current.has(i)) {
+          crossetteSplitRef.current.add(i);
+          const parentPx = pos[i * 3], parentPy = pos[i * 3 + 1], parentPz = pos[i * 3 + 2];
+          const subCount = 4 + Math.floor(Math.random() * 3); // 4-6 sub-particles
+          for (let s = 0; s < subCount && crossetteSubData.activeCount < CROSSETTE_SUB_COUNT; s++) {
+            const idx = crossetteSubData.activeCount;
+            const subSpeed = breakSpeed * 0.3;
+            const sTheta = Math.random() * Math.PI * 2;
+            const sPhi = Math.acos(2 * Math.random() - 1);
+            crossetteSubData.velocities[idx * 3] = Math.sin(sPhi) * Math.cos(sTheta) * subSpeed;
+            crossetteSubData.velocities[idx * 3 + 1] = Math.cos(sPhi) * subSpeed;
+            crossetteSubData.velocities[idx * 3 + 2] = Math.sin(sPhi) * Math.sin(sTheta) * subSpeed;
+            crossetteSubData.positions[idx * 3] = parentPx;
+            crossetteSubData.positions[idx * 3 + 1] = parentPy;
+            crossetteSubData.positions[idx * 3 + 2] = parentPz;
+            crossetteSubData.spawnTimes[idx] = t;
+            crossetteSubData.activeCount++;
+          }
+        }
+      }
+      // Simulate crossette sub-particles
+      for (let i = 0; i < crossetteSubData.activeCount; i++) {
+        const subAge = t - crossetteSubData.spawnTimes[i];
+        const subFade = Math.max(0, 1 - subAge / 0.8);
+        const svx = crossetteSubData.velocities[i * 3];
+        const svy = crossetteSubData.velocities[i * 3 + 1];
+        const svz = crossetteSubData.velocities[i * 3 + 2];
+        const spx = crossetteSubData.positions[i * 3] + dragPos(svx, subAge, dragCoeff * 1.5);
+        const spy = crossetteSubData.positions[i * 3 + 1] + dragPos(svy, subAge, dragCoeff * 1.5) + 0.5 * GRAVITY * subAge * subAge;
+        const spz = crossetteSubData.positions[i * 3 + 2] + dragPos(svz, subAge, dragCoeff * 1.5);
+        // Write into main star buffer's unused trailing slots or overlay
+        const targetIdx = STAR_COUNT - 1 - (i % Math.max(1, Math.floor(STAR_COUNT * 0.15)));
+        if (subFade > 0.01) {
+          pos[targetIdx * 3] = spx; pos[targetIdx * 3 + 1] = spy; pos[targetIdx * 3 + 2] = spz;
+          cols[targetIdx * 3] = baseColor.r * subFade; cols[targetIdx * 3 + 1] = baseColor.g * subFade; cols[targetIdx * 3 + 2] = baseColor.b * subFade;
+          sizes[targetIdx] = baseSize * 0.6 * subFade;
+        }
+      }
+    }
+
+    // ── Pistil simulation ──
+    if (pistilData && pistilBuffers && pistilRef.current) {
+      const pp = pistilBuffers.positions;
+      const pc = pistilBuffers.colors;
+      const ps = pistilBuffers.sizes;
+      const plv = pistilBuffers.lives;
+      const pistilDrag = dragCoeff * 0.8;
+      const pistilGravMult = gravityMult * 0.7;
+      for (let i = 0; i < PISTIL_COUNT; i++) {
+        const pvx = pistilData.velocities[i * 3];
+        const pvy = pistilData.velocities[i * 3 + 1];
+        const pvz = pistilData.velocities[i * 3 + 2];
+        const plt = pistilData.lifetimes[i];
+        const pistilAge = Math.min(1, t / plt);
+        const pistilFade = Math.exp(-pistilAge * 4.0);
+        pp[i * 3] = dragPos(pvx, t, pistilDrag) + w[0] * t * t * 0.2;
+        pp[i * 3 + 1] = dragPos(pvy, t, pistilDrag) + 0.5 * GRAVITY * pistilGravMult * t * t;
+        pp[i * 3 + 2] = dragPos(pvz, t, pistilDrag) + w[2] * t * t * 0.2;
+        pc[i * 3] = pistilBaseColor.r * pistilFade;
+        pc[i * 3 + 1] = pistilBaseColor.g * pistilFade;
+        pc[i * 3 + 2] = pistilBaseColor.b * pistilFade;
+        ps[i] = baseSize * 0.7 * Math.max(0.1, pistilFade);
+        plv[i] = pistilAge;
+      }
+      const piGeo = pistilRef.current.geometry;
+      const piPos = piGeo.getAttribute('position') as THREE.BufferAttribute;
+      const piCol = piGeo.getAttribute('color') as THREE.BufferAttribute;
+      const piSize = piGeo.getAttribute('aSize') as THREE.BufferAttribute;
+      const piLife = piGeo.getAttribute('aLife') as THREE.BufferAttribute;
+      if (piPos) { piPos.array = pp; piPos.needsUpdate = true; }
+      if (piCol) { piCol.array = pc; piCol.needsUpdate = true; }
+      if (piSize) { piSize.array = ps; piSize.needsUpdate = true; }
+      if (piLife) { piLife.array = plv; piLife.needsUpdate = true; }
+    }
+
     const pGeo = pointsRef.current.geometry;
     const posAttr = pGeo.getAttribute('position') as THREE.BufferAttribute;
     const colAttr = pGeo.getAttribute('color') as THREE.BufferAttribute;
@@ -475,6 +611,18 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         </bufferGeometry>
         <lineBasicMaterial vertexColors transparent opacity={Math.min(1, 0.8 * tailFactor)} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} linewidth={3} />
       </lineSegments>
+
+      {/* Pistil — inner burst with different color */}
+      {hasPistil && pistilBuffers && (
+        <points ref={pistilRef} material={starMaterial} frustumCulled={false}>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[pistilBuffers.positions, 3]} />
+            <bufferAttribute attach="attributes-color" args={[pistilBuffers.colors, 3]} />
+            <bufferAttribute attach="attributes-aSize" args={[pistilBuffers.sizes, 1]} />
+            <bufferAttribute attach="attributes-aLife" args={[pistilBuffers.lives, 1]} />
+          </bufferGeometry>
+        </points>
+      )}
       
       {/* Core flash — bright white, 80ms */}
       {progress < 0.08 && (
@@ -729,24 +877,25 @@ export function TimelineEffects() {
         const effPan = (item.pan ?? 90) * (Math.PI / 180);
         const effTilt = (item.tilt ?? 0) * (Math.PI / 180);
         
-        _posEuler.set(0, -posHeadingRad, 0, 'YZX');
-        _posQuat.setFromEuler(_posEuler);
-        _launchDir.set(0, 1, 0);
-        _pitchAxis.set(1, 0, 0).applyQuaternion(_posQuat);
-        _pitchQuat.setFromAxisAngle(_pitchAxis, -(Math.PI / 2 - posPitchRad));
-        _posQuat.multiply(_pitchQuat);
+        // Use local quaternions to avoid race condition with concurrent bursts
+        const posEuler = new THREE.Euler(0, -posHeadingRad, 0, 'YZX');
+        const posQuat = new THREE.Quaternion().setFromEuler(posEuler);
+        const launchDir = new THREE.Vector3(0, 1, 0);
+        const pitchAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(posQuat);
+        const pitchQuat = new THREE.Quaternion().setFromAxisAngle(pitchAxis, -(Math.PI / 2 - posPitchRad));
+        posQuat.multiply(pitchQuat);
         
-        _effEuler.set(effTilt, effPan - Math.PI / 2, 0, 'YXZ');
-        _effQuat.setFromEuler(_effEuler);
+        const effEuler = new THREE.Euler(effTilt, effPan - Math.PI / 2, 0, 'YXZ');
+        const effQuat = new THREE.Quaternion().setFromEuler(effEuler);
         
-        _posQuat.multiply(_effQuat);
-        _launchDir.set(0, 1, 0).applyQuaternion(_posQuat).normalize();
+        posQuat.multiply(effQuat);
+        launchDir.set(0, 1, 0).applyQuaternion(posQuat).normalize();
         
         const burstPos: [number, number, number] = isShell
           ? [
-              pos[0] + _launchDir.x * realBreakHeight,
-              pos[1] + _launchDir.y * realBreakHeight,
-              pos[2] + _launchDir.z * realBreakHeight,
+              pos[0] + launchDir.x * realBreakHeight,
+              pos[1] + launchDir.y * realBreakHeight,
+              pos[2] + launchDir.z * realBreakHeight,
             ]
           : pos;
 
