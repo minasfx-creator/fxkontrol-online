@@ -629,6 +629,269 @@ function generateMalta() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// 11. SALVADOR — Farol da Barra
+// ═══════════════════════════════════════════════════════════════
+function generateSalvador() {
+  const barges: Position[] = Array.from({ length: 10 }, (_, i) => {
+    const angle = (i / 10) * Math.PI * 0.7 - 0.35;
+    return pos(uid(), `Balsa ${i + 1}`, Math.sin(angle) * 350, 0, Math.cos(angle) * -250, 0);
+  });
+  const items: TimelineItem[] = [];
+
+  // Phase 1 (0-30s): Opening mines + comets
+  items.push(...simultaneous(barges, 'mine-01', 0, 0));
+  items.push(...wavePattern(barges, 'comet-01', 5, 1, 0.4));
+  items.push(...simultaneous(barges, 'mine-05', 15, 0));
+  items.push(...wavePattern(barges, 'comet-02', 22, 1, 0.3));
+
+  // Phase 2 (30-180s): Shells 3-5"
+  items.push(...wavePattern(barges, 'mort-01', 30, 2, 0.6));
+  items.push(...alternating(barges, 'shell-01', 50, 2, 1.5));
+  items.push(...wavePattern(barges, 'peon-01', 70, 2, 0.5));
+  items.push(...simultaneous(barges, 'shell-03', 95, 2));
+  items.push(...alternating(barges, 'peon-03', 120, 2, 1));
+  items.push(...wavePattern(barges, 'shell-05', 150, 3, 0.4));
+
+  // Phase 3 (180-400s): Crescendo 6"
+  items.push(...simultaneous(barges, 'shell-08', 180, 3));
+  items.push(...wavePattern(barges, 'mort-04', 210, 3, 0.5));
+  items.push(...alternating(barges, 'shell-09', 250, 4, 2));
+  items.push(...simultaneous(barges, 'shell-17', 290, 4));
+  items.push(...wavePattern(barges, 'shell-19', 330, 4, 0.4));
+  items.push(...simultaneous(barges, 'shell-10', 370, 4));
+
+  // Phase 4 (400-600s): Grand Finale
+  const central = barges.slice(3, 7);
+  items.push(...simultaneous(central, 'wf-02', 400, 5));
+  items.push(...simultaneous(barges, 'shell-12', 420, 6));
+  items.push(...simultaneous(barges, 'cake-03', 450, 6));
+  items.push(...simultaneous(central, 'wf-03', 470, 5));
+  items.push(...simultaneous(barges, 'shell-13', 490, 6));
+  items.push(...wavePattern(barges, 'shell-12', 520, 6, 0.2));
+  items.push(...simultaneous(barges, 'shell-13', 560, 6));
+  items.push(...simultaneous(barges, 'mine-05', 580, 0));
+  items.push(...simultaneous(barges, 'shell-13', 590, 6));
+
+  return { positions: barges, timelineItems: items };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 12. FORTALEZA — Praia de Iracema
+// ═══════════════════════════════════════════════════════════════
+function generateFortaleza() {
+  const barges: Position[] = Array.from({ length: 8 }, (_, i) => {
+    const spread = (i - 3.5) * 160;
+    return pos(uid(), `Balsa ${i + 1}`, spread, 0, -120, 0);
+  });
+  const items: TimelineItem[] = [];
+
+  // Phase 1 (0-25s): Opening
+  items.push(...simultaneous(barges, 'mine-02', 0, 0));
+  items.push(...wavePattern(barges, 'comet-01', 5, 1, 0.5));
+  items.push(...simultaneous(barges, 'mine-05', 15, 0));
+
+  // Phase 2 (25-150s): Shells 3-5"
+  items.push(...wavePattern(barges, 'mort-01', 25, 2, 0.7));
+  items.push(...alternating(barges, 'shell-01', 45, 2, 1.5));
+  items.push(...wavePattern(barges, 'peon-02', 65, 2, 0.4));
+  items.push(...simultaneous(barges, 'shell-03', 90, 2));
+  items.push(...alternating(barges, 'shell-05', 120, 3, 1));
+
+  // Phase 3 (150-340s): Crescendo
+  items.push(...simultaneous(barges, 'shell-08', 150, 3));
+  items.push(...wavePattern(barges, 'mort-04', 180, 3, 0.5));
+  items.push(...alternating(barges, 'shell-09', 220, 4, 2));
+  items.push(...simultaneous(barges, 'shell-17', 260, 4));
+  items.push(...wavePattern(barges, 'shell-19', 300, 4, 0.4));
+
+  // Phase 4 (340-480s): Grand Finale
+  items.push(...simultaneous(barges, 'shell-10', 340, 4));
+  items.push(...simultaneous(barges, 'cake-03', 370, 6));
+  items.push(...simultaneous(barges, 'shell-12', 400, 6));
+  items.push(...wavePattern(barges, 'shell-12', 430, 6, 0.2));
+  items.push(...simultaneous(barges, 'shell-13', 460, 6));
+  items.push(...simultaneous(barges, 'mine-05', 475, 0));
+
+  return { positions: barges, timelineItems: items };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 13. BALNEÁRIO CAMBORIÚ — Barra Sul
+// ═══════════════════════════════════════════════════════════════
+function generateBalnearioCamboriu() {
+  // 5 barges in enseada + 1 position on emissário
+  const barges: Position[] = Array.from({ length: 5 }, (_, i) => {
+    const angle = (i / 5) * Math.PI * 0.6 - 0.3;
+    return pos(uid(), `Balsa ${i + 1}`, Math.sin(angle) * 250, 0, Math.cos(angle) * -200, 0);
+  });
+  const emissario: Position = pos(uid(), 'FG Emissário', 0, 5, -300, 0);
+  const all = [...barges, emissario];
+  const items: TimelineItem[] = [];
+
+  // Phase 1 (0-25s): Opening
+  items.push(...simultaneous(barges, 'mine-01', 0, 0));
+  items.push(...wavePattern(barges, 'comet-02', 5, 1, 0.5));
+  items.push(cue(uid(), 'mine-05', 10, 0, { x: emissario.x, y: emissario.y, z: emissario.z }, emissario.id));
+  items.push(...simultaneous(barges, 'mine-05', 18, 0));
+
+  // Phase 2 (25-140s): Shells
+  items.push(...wavePattern(barges, 'shell-01', 25, 2, 0.6));
+  items.push(...alternating(barges, 'mort-03', 50, 2, 1.5));
+  items.push(...simultaneous(barges, 'shell-05', 80, 3));
+  items.push(...wavePattern(barges, 'peon-03', 110, 2, 0.4));
+
+  // Phase 3 (140-300s): Crescendo
+  items.push(...simultaneous(barges, 'shell-08', 140, 3));
+  items.push(...alternating(barges, 'shell-09', 180, 4, 2));
+  items.push(cue(uid(), 'shell-10', 220, 4, { x: emissario.x, y: emissario.y, z: emissario.z }, emissario.id));
+  items.push(...simultaneous(barges, 'shell-17', 250, 4));
+  items.push(...wavePattern(barges, 'shell-19', 280, 4, 0.5));
+
+  // Phase 4 (300-420s): Grand Finale
+  items.push(...simultaneous(all, 'shell-10', 300, 6));
+  items.push(...simultaneous(barges, 'cake-03', 330, 6));
+  items.push(...simultaneous(all, 'shell-12', 360, 6));
+  items.push(...wavePattern(barges, 'shell-12', 385, 6, 0.15));
+  items.push(...simultaneous(all, 'shell-13', 410, 6));
+
+  return { positions: all, timelineItems: items };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 14. BRASÍLIA — Esplanada dos Ministérios
+// ═══════════════════════════════════════════════════════════════
+function generateBrasilia() {
+  // 8 ground positions along the Esplanada (linear, 2km)
+  const grounds: Position[] = Array.from({ length: 8 }, (_, i) => {
+    const spread = (i - 3.5) * 250;
+    return pos(uid(), `Posição ${i + 1}`, spread, 0, 0, 0);
+  });
+  const items: TimelineItem[] = [];
+
+  // Phase 1 (0-30s): Opening
+  items.push(...simultaneous(grounds, 'mine-02', 0, 0));
+  items.push(...wavePattern(grounds, 'comet-01', 5, 1, 0.4));
+  items.push(...simultaneous(grounds, 'mine-05', 18, 0));
+  items.push(...wavePattern(grounds, 'comet-02', 25, 1, 0.3));
+
+  // Phase 2 (30-160s): Shells 3-6"
+  items.push(...wavePattern(grounds, 'mort-01', 30, 2, 0.8));
+  items.push(...alternating(grounds, 'shell-01', 50, 2, 1.5));
+  items.push(...simultaneous(grounds, 'peon-01', 70, 2));
+  items.push(...wavePattern(grounds, 'shell-03', 90, 2, 0.5));
+  items.push(...alternating(grounds, 'shell-05', 115, 3, 1));
+  items.push(...simultaneous(grounds, 'shell-08', 145, 3));
+
+  // Phase 3 (160-340s): Crescendo
+  items.push(...wavePattern(grounds, 'mort-04', 160, 3, 0.6));
+  items.push(...alternating(grounds, 'shell-09', 200, 4, 2));
+  items.push(...simultaneous(grounds, 'shell-17', 240, 4));
+  items.push(...wavePattern(grounds, 'shell-19', 280, 4, 0.4));
+  items.push(...simultaneous(grounds, 'shell-10', 320, 4));
+
+  // Phase 4 (340-480s): Grand Finale
+  items.push(...simultaneous(grounds, 'cake-03', 340, 6));
+  items.push(...simultaneous(grounds, 'shell-12', 370, 6));
+  items.push(...wavePattern(grounds, 'shell-12', 400, 6, 0.2));
+  items.push(...simultaneous(grounds, 'shell-13', 430, 6));
+  items.push(...simultaneous(grounds, 'mine-05', 455, 0));
+  items.push(...simultaneous(grounds, 'shell-13', 470, 6));
+
+  return { positions: grounds, timelineItems: items };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 15. CARUARU — São João
+// ═══════════════════════════════════════════════════════════════
+function generateCaruaru() {
+  // 6 ground positions in the pátio de eventos
+  const grounds: Position[] = Array.from({ length: 6 }, (_, i) => {
+    const angle = (i / 6) * Math.PI * 2;
+    return pos(uid(), `Posição ${i + 1}`, Math.cos(angle) * 80, 0, Math.sin(angle) * 80, 0);
+  });
+  const items: TimelineItem[] = [];
+
+  // Phase 1 (0-20s): Opening junino
+  items.push(...simultaneous(grounds, 'mine-01', 0, 0));
+  items.push(...wavePattern(grounds, 'comet-01', 5, 1, 0.5));
+  items.push(...simultaneous(grounds, 'mine-02', 15, 0));
+
+  // Phase 2 (20-120s): Shells 3-5" (calibres limitados)
+  items.push(...wavePattern(grounds, 'mort-01', 20, 2, 0.8));
+  items.push(...alternating(grounds, 'shell-01', 40, 2, 1.5));
+  items.push(...wavePattern(grounds, 'peon-01', 60, 2, 0.5));
+  items.push(...simultaneous(grounds, 'shell-02', 85, 2));
+  items.push(...alternating(grounds, 'shell-03', 105, 2, 1));
+
+  // Phase 3 (120-260s): Crescendo 5-8"
+  items.push(...simultaneous(grounds, 'shell-05', 120, 3));
+  items.push(...wavePattern(grounds, 'mort-03', 150, 3, 0.6));
+  items.push(...alternating(grounds, 'shell-08', 190, 3, 2));
+  items.push(...simultaneous(grounds, 'shell-09', 230, 4));
+
+  // Phase 4 (260-360s): Finale
+  items.push(...simultaneous(grounds, 'cake-03', 260, 6));
+  items.push(...simultaneous(grounds, 'shell-09', 290, 6));
+  items.push(...wavePattern(grounds, 'shell-08', 320, 6, 0.3));
+  items.push(...simultaneous(grounds, 'mine-05', 345, 0));
+  items.push(...simultaneous(grounds, 'shell-09', 355, 6));
+
+  return { positions: grounds, timelineItems: items };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 16. RECIFE — Marco Zero
+// ═══════════════════════════════════════════════════════════════
+function generateRecife() {
+  // 6 barges no rio Capibaribe + 4 barges no mar
+  const rio: Position[] = Array.from({ length: 6 }, (_, i) => {
+    const spread = (i - 2.5) * 100;
+    return pos(uid(), `Rio ${i + 1}`, spread, 0, 80, 0);
+  });
+  const mar: Position[] = Array.from({ length: 4 }, (_, i) => {
+    const spread = (i - 1.5) * 200;
+    return pos(uid(), `Mar ${i + 1}`, spread, 0, -150, 180);
+  });
+  const all = [...rio, ...mar];
+  const items: TimelineItem[] = [];
+
+  // Phase 1 (0-30s): Opening
+  items.push(...simultaneous(rio, 'mine-01', 0, 0));
+  items.push(...simultaneous(mar, 'mine-02', 3, 0));
+  items.push(...wavePattern(all, 'comet-01', 8, 1, 0.3));
+  items.push(...simultaneous(all, 'mine-05', 20, 0));
+
+  // Phase 2 (30-180s): Shells 3-5"
+  items.push(...wavePattern(rio, 'mort-01', 30, 2, 0.6));
+  items.push(...wavePattern(mar, 'shell-01', 40, 2, 0.8));
+  items.push(...alternating(all, 'peon-01', 60, 2, 1.5));
+  items.push(...simultaneous(rio, 'shell-03', 90, 2));
+  items.push(...wavePattern(mar, 'shell-05', 110, 3, 0.5));
+  items.push(...alternating(all, 'peon-03', 140, 2, 1));
+  items.push(...simultaneous(all, 'shell-05', 170, 3));
+
+  // Phase 3 (180-380s): Crescendo 6"
+  items.push(...simultaneous(mar, 'shell-08', 180, 3));
+  items.push(...wavePattern(rio, 'mort-04', 210, 3, 0.5));
+  items.push(...alternating(all, 'shell-09', 250, 4, 2));
+  items.push(...simultaneous(all, 'shell-17', 290, 4));
+  items.push(...wavePattern(all, 'shell-19', 330, 4, 0.3));
+  items.push(...simultaneous(all, 'shell-10', 370, 4));
+
+  // Phase 4 (380-540s): Grand Finale
+  items.push(...simultaneous(rio, 'wf-02', 380, 5));
+  items.push(...simultaneous(all, 'shell-12', 400, 6));
+  items.push(...simultaneous(all, 'cake-03', 430, 6));
+  items.push(...simultaneous(rio, 'wf-03', 450, 5));
+  items.push(...simultaneous(all, 'shell-13', 470, 6));
+  items.push(...wavePattern(all, 'shell-12', 500, 6, 0.15));
+  items.push(...simultaneous(all, 'mine-05', 520, 0));
+  items.push(...simultaneous(all, 'shell-13', 535, 6));
+
+  return { positions: all, timelineItems: items };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // PRESET REGISTRY
 // ═══════════════════════════════════════════════════════════════
 export const WORLD_SHOW_PRESETS: WorldShowPreset[] = [
@@ -881,6 +1144,156 @@ export const WORLD_SHOW_PRESETS: WorldShowPreset[] = [
       regulatory: 'Malta Police Force + Transport Malta (marítimo) + Malta Competition & Consumer Affairs',
     },
     generate: generateMalta,
+  },
+  {
+    id: 'salvador-barra',
+    name: 'Réveillon Salvador',
+    location: 'Farol da Barra, BA',
+    country: 'Brasil',
+    flag: '🇧🇷',
+    continent: 'americas',
+    description: '10 balsas na Baía de Todos os Santos. Show de 10 min com 2M+ de público na orla. Axé e fogos.',
+    gps: { lat: -13.0089, lng: -38.5327, heading: 90, altitude: 0 },
+    duration: 600,
+    stats: { positions: 10, cues: 380, calibers: '3"-12"' },
+    sceneOverrides: { waterEnabled: true, waterPreset: 'ocean', timeOfDay: 0, google3DTilesEnabled: true },
+    intel: {
+      population: '3.9 milhões (metro Salvador)',
+      lastShows: ['NYE 2024 — Jorge Fogos (10 min, 10 balsas)', 'NYE 2023 — Jorge Fogos + Fireworks Brasil (12 min)', 'NYE 2022 — Fogos Bahia (8 min)'],
+      recentWinners: ['2024: Jorge Fogos de Artifício — R$2.5M', '2023: Consórcio Jorge Fogos/Fireworks Brasil — R$2.2M'],
+      safetyNotes: ['Baía de Todos os Santos: correntes de maré complexas entre ilhas', 'Farol da Barra: rochas submersas — zona de exclusão 200m do farol', 'Público de 2M+ na orla — múltiplos postos de saúde', 'Ventos alísios NE predominantes — fumaça vai para o mar (favorável)'],
+      terrain: 'Baía de Todos os Santos, entrada oceânica. Farol da Barra como referência. Fundo rochoso/arenoso. Profundidade 8-20m na área das balsas.',
+      tideInfo: 'Maré: 1.5-2.8m amplitude. Correntes de maré até 2 nós na entrada da baía. Preamar ~22:30 em 31/12.',
+      culture: 'Axé music ao vivo durante o show. Público dança durante os fogos. Oferendas a Iemanjá na praia. Mix de religiões e festas populares. Trio elétrico pós-fogos.',
+      keyInsights: ['Balsas devem estar posicionadas entre o Farol e o Forte Santa Maria', 'Corrente de maré na entrada da baía requer ancoragem reforçada', 'Fogos sincronizados com música axé ao vivo — BPM 120-140', 'Farol ativo — não obstruir sinalização marítima durante montagem'],
+      regulatory: 'DECEA (NOTAM) + Capitania dos Portos da Bahia + IBAMA (área de proteção marinha) + Prefeitura Salvador',
+    },
+    generate: generateSalvador,
+  },
+  {
+    id: 'fortaleza-iracema',
+    name: 'Réveillon Fortaleza',
+    location: 'Praia de Iracema, CE',
+    country: 'Brasil',
+    flag: '🇧🇷',
+    continent: 'americas',
+    description: '8 balsas na Praia de Iracema. Show de 8 min com vista da Ponte dos Ingleses. 1.5M+ de público.',
+    gps: { lat: -3.7219, lng: -38.5217, heading: 0, altitude: 0 },
+    duration: 480,
+    stats: { positions: 8, cues: 300, calibers: '3"-10"' },
+    sceneOverrides: { waterEnabled: true, waterPreset: 'ocean', timeOfDay: 0, google3DTilesEnabled: true },
+    intel: {
+      population: '4.0 milhões (metro Fortaleza)',
+      lastShows: ['NYE 2024 — Fogos Fortaleza (8 min, 8 balsas)', 'NYE 2023 — Pirotecnia Nordeste (10 min)', 'NYE 2022 — Jorge Fogos (7 min)'],
+      recentWinners: ['2024: Fogos Fortaleza — R$1.8M', '2023: Pirotecnia Nordeste — R$1.5M'],
+      safetyNotes: ['Mar aberto — ondulação NE de 1-2m constante', 'Ponte dos Ingleses (pier): público concentrado — risco estrutural', 'Corrente de deriva litoral forte (E→W) — ancoragem reforçada', 'Vento alísio constante 15-25 km/h — considerar dispersão de fumaça'],
+      terrain: 'Praia oceânica aberta. Fundo arenoso, profundidade 5-12m a 300m da costa. Ponte dos Ingleses como referência visual.',
+      tideInfo: 'Maré: 2.0-3.5m amplitude (semi-diurna). Corrente litoral E→W. Preamar ~23:00 em 31/12.',
+      culture: 'Forró e música nordestina. Público familiar na praia. Tradição de pular 7 ondas à meia-noite. Vestir branco. Fogueiras na praia (tradição junina que se mistura).',
+      keyInsights: ['Vento alísio constante: posicionar balsas a sotavento do público', 'Ondulação NE: balsas precisam de ancoragem tipo "catenária" dupla', 'Ponte dos Ingleses como ponto focal — centralizar o show ali', 'Mar aberto: fallout cai na água — permite calibres maiores'],
+      regulatory: 'DECEA (NOTAM) + Capitania dos Portos do Ceará + SEMACE (meio ambiente) + Prefeitura Fortaleza',
+    },
+    generate: generateFortaleza,
+  },
+  {
+    id: 'balneario-camboriu',
+    name: 'Réveillon BC',
+    location: 'Barra Sul, SC',
+    country: 'Brasil',
+    flag: '🇧🇷',
+    continent: 'americas',
+    description: '6 balsas + FG no emissário. Skyline de arranha-céus como backdrop. Show de 7 min para 1M+ turistas.',
+    gps: { lat: -27.0044, lng: -48.6229, heading: 180, altitude: 0 },
+    duration: 420,
+    stats: { positions: 6, cues: 250, calibers: '3"-10"' },
+    sceneOverrides: { waterEnabled: true, waterPreset: 'ocean', timeOfDay: 0, google3DTilesEnabled: true },
+    intel: {
+      population: '150 mil (fixa) / 1M+ turistas no Réveillon',
+      lastShows: ['NYE 2024 — Top Fogos (7 min, 6 balsas + emissário)', 'NYE 2023 — Top Fogos + Mega Fogos (8 min)', 'NYE 2022 — Mega Fogos (6 min)'],
+      recentWinners: ['2024: Top Fogos SC — R$1.2M', '2023: Consórcio Top Fogos/Mega Fogos — R$1.0M'],
+      safetyNotes: ['Skyline de prédios altos (50+ andares): ângulos de tiro restritos', 'Emissário submarino: estrutura submersa — não ancorar sobre ele', 'Praia estreita: público muito próximo da linha d\'água', 'Corrente sul (Malvinas) fria — hipotermia em caso de queda na água'],
+      terrain: 'Praia em enseada com skyline de arranha-céus. Emissário submarino como ponto de FG. Fundo arenoso, 5-10m profundidade.',
+      tideInfo: 'Maré: 0.5-1.5m amplitude (micro-maré). Corrente de deriva N→S. Mar calmo na enseada.',
+      culture: 'Capital catarinense do turismo de verão. Público jovem e festivo. Balada pós-fogos. Cristo Luz iluminado. Roda gigante FG Emissário.',
+      keyInsights: ['Skyline de prédios como backdrop cria efeito urbano impressionante', 'Emissário submarino: plataforma fixa para FG — sem balanço de balsa', 'Enseada protegida: mar calmo favorece ancoragem estável', 'Prédios altos geram eco — planejar ritmo considerando reverberação'],
+      regulatory: 'DECEA (NOTAM) + Capitania dos Portos de Itajaí + Bombeiros SC + Prefeitura BC',
+    },
+    generate: generateBalnearioCamboriu,
+  },
+  {
+    id: 'brasilia-esplanada',
+    name: 'Réveillon Brasília',
+    location: 'Esplanada dos Ministérios, DF',
+    country: 'Brasil',
+    flag: '🇧🇷',
+    continent: 'americas',
+    description: '8 posições terrestres na Esplanada. Congresso Nacional como backdrop. Show de 8 min para 500K+.',
+    gps: { lat: -15.7989, lng: -47.8649, heading: 90, altitude: 1000 },
+    duration: 480,
+    stats: { positions: 8, cues: 280, calibers: '3"-12"' },
+    sceneOverrides: { timeOfDay: 0, google3DTilesEnabled: true },
+    intel: {
+      population: '4.8 milhões (RIDE — Região Integrada DF)',
+      lastShows: ['NYE 2024 — Fogos Brasília (8 min, Esplanada)', 'NYE 2023 — Show pirotécnico GDF (10 min)', 'Posse Presidencial 2023 — show especial Esplanada'],
+      recentWinners: ['2024: Fogos Brasília — R$2.0M (licitação GDF)', '2023: Consórcio Fogos Brasília/Jorge Fogos — R$1.8M'],
+      safetyNotes: ['Patrimônio tombado: Congresso, Catedral, ministérios — sem fixação', 'Esplanada gramada: risco de incêndio no cerrado seco (set-dez)', 'Zona de exclusão aérea permanente (P-REA) — coordenação DECEA especial', 'Público de 500K+ — acesso pelo Eixo Monumental'],
+      terrain: 'Terrestre, gramado plano. Esplanada dos Ministérios, 2km de extensão. Congresso Nacional como referência visual. Altitude 1.000m.',
+      tideInfo: 'N/A — localização terrestre. Lago Paranoá a 2km (não usado para balsas).',
+      culture: 'Capital federal, público diverso de todo o Brasil. Shows com temática nacional. Congresso iluminado. Fogos vistos de múltiplos pontos da cidade (escala monumental de Brasília).',
+      keyInsights: ['Esplanada plana e ampla: ideal para posicionamento linear simétrico', 'Congresso Nacional como backdrop icônico — shells devem estourar acima das cúpulas', 'Altitude de 1.000m: ar menos denso — shells sobem mais alto', 'Cerrado seco: usar bases anti-incêndio e brigada dedicada'],
+      regulatory: 'DECEA (NOTAM + P-REA) + GDF (Governo do DF) + ICMBio (cerrado) + Corpo de Bombeiros DF',
+    },
+    generate: generateBrasilia,
+  },
+  {
+    id: 'caruaru-sao-joao',
+    name: 'São João Caruaru',
+    location: 'Pátio de Eventos, PE',
+    country: 'Brasil',
+    flag: '🇧🇷',
+    continent: 'americas',
+    description: '6 posições terrestres no maior São João do mundo. Show de 6 min com forró ao vivo e fogos juninos.',
+    gps: { lat: -8.2823, lng: -35.9714, heading: 0, altitude: 550 },
+    duration: 360,
+    stats: { positions: 6, cues: 220, calibers: '3"-8"' },
+    sceneOverrides: { timeOfDay: 21, google3DTilesEnabled: true },
+    intel: {
+      population: '370 mil (Caruaru) / 2M+ visitantes no São João',
+      lastShows: ['São João 2024 — Fogos PE (6 min, abertura e encerramento)', 'São João 2023 — Pirotecnia Nordeste (8 min)', 'São João 2022 — Jorge Fogos (5 min)'],
+      recentWinners: ['2024: Fogos PE — R$600K', '2023: Pirotecnia Nordeste — R$500K'],
+      safetyNotes: ['Pátio de eventos: terreno de terra batida — poeira excessiva', 'Público muito próximo (pátio lotado) — calibres limitados a 8"', 'Fogueiras juninas próximas — risco de ignição acidental', 'Clima seco do sertão: umidade <30% — armazenagem especial'],
+      terrain: 'Terrestre, terreno plano de terra batida. Pátio de eventos cercado. Sem corpo d\'água. Altitude 550m, agreste pernambucano.',
+      tideInfo: 'N/A — localização terrestre, sertão pernambucano.',
+      culture: 'Maior São João do mundo (Guinness). Forró pé-de-serra, quadrilhas juninas, comidas típicas (milho, canjica, pamonha). Fogos são tradição junina ancestral. Fogueiras de São João.',
+      keyInsights: ['Show sincronizado com forró ao vivo — BPM 100-120, ritmo binário', 'Calibres limitados (3-8") por proximidade do público no pátio', 'Poeira e fumaça: usar efeitos clean-burning quando possível', 'Tradição junina: incluir efeitos dourados (referência às fogueiras)'],
+      regulatory: 'Bombeiros PE + Polícia Civil PE + Prefeitura de Caruaru + Defesa Civil',
+    },
+    generate: generateCaruaru,
+  },
+  {
+    id: 'recife-marco-zero',
+    name: 'Réveillon Recife',
+    location: 'Marco Zero, PE',
+    country: 'Brasil',
+    flag: '🇧🇷',
+    continent: 'americas',
+    description: '10 balsas no rio Capibaribe e mar. Show de 9 min no Marco Zero com frevo e maracatu.',
+    gps: { lat: -8.0631, lng: -34.8711, heading: 180, altitude: 0 },
+    duration: 540,
+    stats: { positions: 10, cues: 340, calibers: '3"-12"' },
+    sceneOverrides: { waterEnabled: true, waterPreset: 'river', timeOfDay: 0, google3DTilesEnabled: true },
+    intel: {
+      population: '4.0 milhões (metro Recife)',
+      lastShows: ['NYE 2024 — Show pirotécnico Marco Zero (9 min, 10 balsas)', 'NYE 2023 — Fogos Recife + Jorge Fogos (10 min)', 'Galo da Madrugada 2024 — fogos de abertura'],
+      recentWinners: ['2024: Fogos Recife — R$2.0M', '2023: Consórcio Fogos Recife/Jorge Fogos — R$1.8M'],
+      safetyNotes: ['Rio Capibaribe: maré penetra rio adentro — nível varia 2m+', 'Ponte entre bairros: balsas devem passar sob pontes — altura máx 8m', 'Marco Zero: praça lotada com 1M+ — evacuação complexa', 'Arrecifes naturais submersos — cuidado com ancoragem'],
+      terrain: 'Estuário do Capibaribe + mar aberto. Marco Zero na confluência rio/mar. Arrecifes naturais. Profundidade 3-8m no estuário.',
+      tideInfo: 'Maré: 2.0-2.8m amplitude (semi-diurna). Maré penetra 10km rio adentro. Corrente de maré até 3 nós no estuário.',
+      culture: 'Frevo, maracatu e manguebeat. Galo da Madrugada (maior bloco do mundo). Diversidade cultural afro-indígena-portuguesa. Marco Zero como centro simbólico de Recife.',
+      keyInsights: ['Estuário rio/mar: posicionar balsas em ambos os lados para efeito 3D', 'Corrente de maré forte no estuário — ancoragem tipo "3 pontos"', 'Arrecifes naturais: vantagem sonora (reflexão) mas risco de encalhe', 'Sincronizar com frevo ao vivo — ritmo rápido e energético'],
+      regulatory: 'DECEA (NOTAM) + Capitania dos Portos de Pernambuco + PCR (Prefeitura) + CPRH (meio ambiente)',
+    },
+    generate: generateRecife,
   },
 ];
 
