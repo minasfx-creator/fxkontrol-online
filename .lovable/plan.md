@@ -1,90 +1,61 @@
 
-# Limpeza Total — Fase 2: Código Obsoleto, Redundâncias e Scaffolds Mortos
 
----
+# Limpeza Total — Fase 3: Core Modules Mortos + modules/ai/
 
 ## RESUMO
 
-Remoção de ~25 arquivos e ~4.500+ LOC de código morto, redundante ou scaffold não conectado, organizados em 4 categorias.
+Remoção de **39 arquivos** e **~5.078 LOC** de código morto em `src/core/` e `modules/ai/` — zero referências no app React.
 
 ---
 
-## CATEGORIA 1 — Diretório `platform/` Inteiro (SCAFFOLD MORTO)
+## CATEGORIA 1 — `modules/ai/` Inteiro (898 LOC, 12 arquivos)
 
-O diretório `platform/` (2.957 LOC) contém scaffolds de Rust, C++, Python, Docker e Kubernetes que **nunca são importados pelo app React**. Zero referências em `src/`. Toda a lógica relevante (boids, physics, MAVLink) já foi reimplementada em TypeScript dentro de `src/lib/` e `src/core/`.
+O diretório `modules/ai/` contém 6 arquivos `.ts` + 6 duplicatas `.cjs`. **Nenhum** é importado pelo app — o React usa `useAICoPilotStore`, `AICoPilotPanel`, `AICoPilotOverlay` e `FXKAssistant.tsx` (todos em `src/`).
 
-| Diretório | Conteúdo | LOC |
+**Ação**: Remover `modules/ai/` inteiro.
+
+---
+
+## CATEGORIA 2 — `src/core/` Módulos Sem Importação (27 arquivos, 4.180 LOC)
+
+| Subdiretório | Arquivos Mortos | LOC |
 |---|---|---|
-| `platform/frontend/` | Vanilla JS antigo (renderer, cinematic, fireworks, designer) | ~250 |
-| `platform/ai/` | JS stubs (choreographyAI, pathPlanner, slamSystem) | ~400 |
-| `platform/simulation/` | JS stubs (digitalTwin, GPU compute) | ~300 |
-| `platform/physics-engine-cpp/` | C++ stubs (aerodynamics, drone_physics) | ~400 |
-| `platform/swarm-core-rust/` | Rust stubs (boids, collision, formation) | ~600 |
-| `platform/drone-control/` | Python MAVLink bridge | ~275 |
-| `platform/cluster/` | K8s configs | ~200 |
-| `platform/tools/` | Node.js bridges (artnet, osc, sacn, mvr) | ~500 |
-| `docker-compose.yml` | 14 services — não executável neste ambiente | ~30 |
+| `drones/` | `droneLOD.ts`, `dronePhysicsEngine.ts` | 400 |
+| `simulation/` | `fixedTimestep.ts` | 79 |
+| `network/` | `realtimeClient.ts` | 106 |
+| `environment/` | `sunSystem.ts` | 150 |
+| `execution/` | `droneExecutor.ts`, `pyroExecutor.ts` | 190 |
+| `interaction/` | `terrainRaycaster.ts` | 210 |
+| `performance/` | `aiOptimizer.ts`, `memoryManager.ts` | 401 |
+| `project/` | `projectManager.ts` | 133 |
+| `state/` | `stateBuffer.ts` | 46 |
+| `system/` | `eventBus.ts` | 83 |
+| `reliability/` | `autoHealEngine`, `blackBoxRecorder`, `emergencySystem`, `predictiveEngine`, `realityEngine`, `selfDiagnostic` | 993 |
+| `sync/` | `clusterSyncHook`, `globalClockAdapter`, `globalSyncEngine`, `latencyCompensator`, `multiSiteSyncEngine`, `multiSiteValidator` | 1.139 |
+| `time/` | `frameTimeService`, `timecodeProvider` | 250 |
 
-**Ação**: Remover `platform/` inteiro (~2.957 LOC).
+**Nota**: Arquivos com referências ativas são **preservados** (`autoScaler`, `lockstepEngine`, `seededRandom`, `clusterSyncEngine`, `frameSyncEngine`, `unrealBridge`, `deterministicClock`, `simulationValidator`, `cinematicSequencer`, `geoCamera`, `environmentEngine`, `executionBridge`, `exportEngine`).
 
----
-
-## CATEGORIA 2 — Componentes de UI Não Renderizados / Redundantes
-
-| Arquivo | LOC | Motivo |
-|---|---|---|
-| `PositionContextMenu.tsx` | ~150 | Importado mas nunca renderizado — substituído por `RadialMenu.tsx` |
-| `MiniMap.tsx` | 253 | Zero importações — substituído por `TacticalMinimap.tsx` |
-| `destruction/DestructionTargeting.tsx` | 44 | Easter egg "Destruction Mode" — 278 LOC total (4 arquivos) para uma feature cosmética beta |
-| `destruction/DestructionIncoming.tsx` | 36 | Idem |
-| `destruction/DestructionNuclearAftermath.tsx` | 85 | Idem |
-| `DestructionOverlay.tsx` | 113 | Orquestrador do modo destruição |
-
-**Ação**: Remover `PositionContextMenu.tsx`, `MiniMap.tsx`. Remover `destruction/` + `DestructionOverlay.tsx` (278 LOC). Atualizar `SkyCanvas.tsx` para remover import do `DestructionOverlay`. Remover import morto do `PositionContextMenu` em `Index.tsx`.
+**Ação**: Remover os 27 arquivos mortos. Remover diretórios vazios resultantes (`simulation/`, `interaction/`, `performance/`, `project/`, `state/`, `system/`). Atualizar `src/core/reliability/index.ts` se exportar módulos removidos.
 
 ---
-
-## CATEGORIA 3 — Duplicidade de Imports e Aliases Desnecessários em `Index.tsx`
-
-O `Index.tsx` tem 598 LOC com ~130 lazy imports, incluindo aliases confusos:
-
-| Problema | Exemplo |
-|---|---|
-| Alias redundante | `const ShowControlPanel = lz(() => import('./ShowCommanderPanel'))` — mesmo componente com 2 nomes |
-| Alias redundante | `const SafetyCheckPanel = lz(() => import('./safety/FlightCheckTab'))` — mesmo componente com 2 nomes |
-| RadialMenu renderizado 2 vezes | Linhas 431 e 590 — duplicata desnecessária |
-
-**Ação**: Remover aliases `ShowControlPanel` e `SafetyCheckPanel` (usar nomes reais). Remover renderização duplicada de `<RadialMenu />` e `<LiveCard />`. Limpar import morto de `PositionContextMenu`.
-
----
-
-## CATEGORIA 4 — Arquivos `.cjs` de Teste Remanescentes
-
-| Arquivo | LOC | Motivo |
-|---|---|---|
-| `test/fxk_ultra_refinement.test.cjs` | ~50 | Teste do CJS já removido na fase 1 — pode ter sobrado |
-
-**Ação**: Verificar e remover se ainda existir.
-
----
-
-## IMPACTO TOTAL
-
-| Categoria | Arquivos | LOC Removidos |
-|---|---|---|
-| Platform scaffolds | ~35 | ~2,957 |
-| UI redundante | 6 | ~680 |
-| Index.tsx cleanup | 1 (edição) | ~15 |
-| Testes mortos | 1 | ~50 |
-| **Total** | **~42** | **~3,700** |
 
 ## ORDEM DE EXECUÇÃO
 
 | Passo | Tarefa |
 |---|---|
-| 1 | Remover `platform/` inteiro |
-| 2 | Remover `PositionContextMenu.tsx`, `MiniMap.tsx` |
-| 3 | Remover `destruction/` + `DestructionOverlay.tsx` |
-| 4 | Atualizar `SkyCanvas.tsx` — remover import `DestructionOverlay` |
-| 5 | Limpar `Index.tsx` — remover imports mortos, aliases, duplicatas |
-| 6 | Remover `test/` se remanescente |
+| 1 | Remover `modules/ai/` inteiro (12 arquivos) |
+| 2 | Remover 27 arquivos mortos de `src/core/` |
+| 3 | Atualizar barrel exports (`reliability/index.ts`) |
+| 4 | Verificar build (`npx vite build`) |
+
+## IMPACTO
+
+| Categoria | Arquivos | LOC |
+|---|---|---|
+| `modules/ai/` | 12 | 898 |
+| `src/core/` dead | 27 | 4.180 |
+| **Total** | **39** | **~5.078** |
+
+**Acumulado Fases 1+2+3**: ~100+ arquivos, ~9.500+ LOC eliminados.
+
