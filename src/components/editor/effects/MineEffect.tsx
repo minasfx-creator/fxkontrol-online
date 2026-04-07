@@ -382,13 +382,14 @@ export default function MineEffect({
           fragmentShader={sizeFragmentShader}
           transparent
           depthWrite={false}
+          depthTest={false}
           blending={THREE.AdditiveBlending}
         />
       </points>
 
       {/* Ground smoke plume */}
       {progress > 0.03 && progress < 0.7 && (
-        <points ref={smokePointsRef} frustumCulled={false}>
+        <points ref={smokePointsRef} frustumCulled={false} renderOrder={50}>
           <bufferGeometry>
             <bufferAttribute attach="attributes-position" args={[smokePosRef, 3]} />
             <bufferAttribute attach="attributes-color" args={[smokeColRef, 3]} />
