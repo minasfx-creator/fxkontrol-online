@@ -224,6 +224,11 @@ export const SHOWVEN_CONTROLLERS: ShowvenControllerPreset[] = [
     wirelessRangeM: 300,
     description: 'Wireless SFX remote control — 8 channels',
   },
+  {
+    id: 'pyro_adaptor', name: 'PyroAdaptor', channels: 25, type: 'wired', protocol: 'PBUS',
+    wiredRangeM: 2000,
+    description: 'PBUS charging controller — loads up to 25x PyroSlave C16 units, dual-band RF relay, E-Stop chain',
+  },
 ];
 
 // ── Lasers (Maiman Series) ──────────────────────────────────────────

@@ -320,23 +320,50 @@ export class PBusController {
   }
 
   private processIncoming(chunk: Uint8Array): void {
-    const combined = new Uint8Array(this.buffer.length + chunk.length);
-    combined.set(this.buffer);
-    combined.set(chunk, this.buffer.length);
-    this.buffer = combined;
+    // Grow ring buffer if needed (rare)
+    if (this.ringWriteOffset + chunk.length > this.ringBuffer.length) {
+      if (this.ringWriteOffset + chunk.length > 4096) {
+        // Overflow protection: reset buffer
+        this.ringWriteOffset = 0;
+        return;
+      }
+      const newBuf = new Uint8Array(Math.max(this.ringBuffer.length * 2, this.ringWriteOffset + chunk.length));
+      newBuf.set(this.ringBuffer.subarray(0, this.ringWriteOffset));
+      this.ringBuffer = newBuf;
+    }
+    this.ringBuffer.set(chunk, this.ringWriteOffset);
+    this.ringWriteOffset += chunk.length;
 
-    // Find complete frames
-    while (this.buffer.length >= 6) {
-      const start = this.buffer.indexOf(PREAMBLE);
-      if (start === -1) { this.buffer = new Uint8Array(0); break; }
-      if (start > 0) this.buffer = this.buffer.slice(start);
+    // Find complete frames in ring buffer
+    let readPos = 0;
+    while (this.ringWriteOffset - readPos >= 7) {
+      // Find preamble
+      let start = -1;
+      for (let i = readPos; i < this.ringWriteOffset; i++) {
+        if (this.ringBuffer[i] === PREAMBLE) { start = i; break; }
+      }
+      if (start === -1) { readPos = this.ringWriteOffset; break; }
+      if (start > readPos) readPos = start;
 
-      const termIdx = Array.from(this.buffer).indexOf(TERMINATOR, 5);
+      // Find terminator (min 6 bytes after preamble)
+      let termIdx = -1;
+      for (let i = readPos + 6; i < this.ringWriteOffset; i++) {
+        if (this.ringBuffer[i] === TERMINATOR) { termIdx = i; break; }
+      }
       if (termIdx === -1) break;
 
-      const frame = this.buffer.slice(0, termIdx + 1);
-      this.buffer = this.buffer.slice(termIdx + 1);
+      const frame = this.ringBuffer.slice(readPos, termIdx + 1);
+      readPos = termIdx + 1;
       this.handleFrame(frame);
+    }
+
+    // Compact: shift remaining data to start of ring buffer
+    if (readPos > 0) {
+      const remaining = this.ringWriteOffset - readPos;
+      if (remaining > 0) {
+        this.ringBuffer.copyWithin(0, readPos, this.ringWriteOffset);
+      }
+      this.ringWriteOffset = remaining;
     }
   }
 
