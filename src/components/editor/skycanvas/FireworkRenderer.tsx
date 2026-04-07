@@ -494,6 +494,86 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       }
     }
 
+    // ── Crossette sub-breaks: spawn sub-particles at 40% life ──
+    if (pattern === 'crossette' && crossetteSubData) {
+      for (let i = 0; i < STAR_COUNT; i++) {
+        const lt = lifetimes[i];
+        const starAge = Math.min(1, t / lt);
+        if (starAge > 0.4 && !crossetteSplitRef.current.has(i)) {
+          crossetteSplitRef.current.add(i);
+          const parentPx = pos[i * 3], parentPy = pos[i * 3 + 1], parentPz = pos[i * 3 + 2];
+          const subCount = 4 + Math.floor(Math.random() * 3); // 4-6 sub-particles
+          for (let s = 0; s < subCount && crossetteSubData.activeCount < CROSSETTE_SUB_COUNT; s++) {
+            const idx = crossetteSubData.activeCount;
+            const subSpeed = breakSpeed * 0.3;
+            const sTheta = Math.random() * Math.PI * 2;
+            const sPhi = Math.acos(2 * Math.random() - 1);
+            crossetteSubData.velocities[idx * 3] = Math.sin(sPhi) * Math.cos(sTheta) * subSpeed;
+            crossetteSubData.velocities[idx * 3 + 1] = Math.cos(sPhi) * subSpeed;
+            crossetteSubData.velocities[idx * 3 + 2] = Math.sin(sPhi) * Math.sin(sTheta) * subSpeed;
+            crossetteSubData.positions[idx * 3] = parentPx;
+            crossetteSubData.positions[idx * 3 + 1] = parentPy;
+            crossetteSubData.positions[idx * 3 + 2] = parentPz;
+            crossetteSubData.spawnTimes[idx] = t;
+            crossetteSubData.activeCount++;
+          }
+        }
+      }
+      // Simulate crossette sub-particles
+      for (let i = 0; i < crossetteSubData.activeCount; i++) {
+        const subAge = t - crossetteSubData.spawnTimes[i];
+        const subFade = Math.max(0, 1 - subAge / 0.8);
+        const svx = crossetteSubData.velocities[i * 3];
+        const svy = crossetteSubData.velocities[i * 3 + 1];
+        const svz = crossetteSubData.velocities[i * 3 + 2];
+        const spx = crossetteSubData.positions[i * 3] + dragPos(svx, subAge, dragCoeff * 1.5);
+        const spy = crossetteSubData.positions[i * 3 + 1] + dragPos(svy, subAge, dragCoeff * 1.5) + 0.5 * GRAVITY * subAge * subAge;
+        const spz = crossetteSubData.positions[i * 3 + 2] + dragPos(svz, subAge, dragCoeff * 1.5);
+        // Write into main star buffer's unused trailing slots or overlay
+        const targetIdx = STAR_COUNT - 1 - (i % Math.max(1, Math.floor(STAR_COUNT * 0.15)));
+        if (subFade > 0.01) {
+          pos[targetIdx * 3] = spx; pos[targetIdx * 3 + 1] = spy; pos[targetIdx * 3 + 2] = spz;
+          cols[targetIdx * 3] = baseColor.r * subFade; cols[targetIdx * 3 + 1] = baseColor.g * subFade; cols[targetIdx * 3 + 2] = baseColor.b * subFade;
+          sizes[targetIdx] = baseSize * 0.6 * subFade;
+        }
+      }
+    }
+
+    // ── Pistil simulation ──
+    if (pistilData && pistilBuffers && pistilRef.current) {
+      const pp = pistilBuffers.positions;
+      const pc = pistilBuffers.colors;
+      const ps = pistilBuffers.sizes;
+      const plv = pistilBuffers.lives;
+      const pistilDrag = dragCoeff * 0.8;
+      const pistilGravMult = gravityMult * 0.7;
+      for (let i = 0; i < PISTIL_COUNT; i++) {
+        const pvx = pistilData.velocities[i * 3];
+        const pvy = pistilData.velocities[i * 3 + 1];
+        const pvz = pistilData.velocities[i * 3 + 2];
+        const plt = pistilData.lifetimes[i];
+        const pistilAge = Math.min(1, t / plt);
+        const pistilFade = Math.exp(-pistilAge * 4.0);
+        pp[i * 3] = dragPos(pvx, t, pistilDrag) + w[0] * t * t * 0.2;
+        pp[i * 3 + 1] = dragPos(pvy, t, pistilDrag) + 0.5 * GRAVITY * pistilGravMult * t * t;
+        pp[i * 3 + 2] = dragPos(pvz, t, pistilDrag) + w[2] * t * t * 0.2;
+        pc[i * 3] = pistilBaseColor.r * pistilFade;
+        pc[i * 3 + 1] = pistilBaseColor.g * pistilFade;
+        pc[i * 3 + 2] = pistilBaseColor.b * pistilFade;
+        ps[i] = baseSize * 0.7 * Math.max(0.1, pistilFade);
+        plv[i] = pistilAge;
+      }
+      const piGeo = pistilRef.current.geometry;
+      const piPos = piGeo.getAttribute('position') as THREE.BufferAttribute;
+      const piCol = piGeo.getAttribute('color') as THREE.BufferAttribute;
+      const piSize = piGeo.getAttribute('aSize') as THREE.BufferAttribute;
+      const piLife = piGeo.getAttribute('aLife') as THREE.BufferAttribute;
+      if (piPos) { piPos.array = pp; piPos.needsUpdate = true; }
+      if (piCol) { piCol.array = pc; piCol.needsUpdate = true; }
+      if (piSize) { piSize.array = ps; piSize.needsUpdate = true; }
+      if (piLife) { piLife.array = plv; piLife.needsUpdate = true; }
+    }
+
     const pGeo = pointsRef.current.geometry;
     const posAttr = pGeo.getAttribute('position') as THREE.BufferAttribute;
     const colAttr = pGeo.getAttribute('color') as THREE.BufferAttribute;
