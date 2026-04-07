@@ -99,7 +99,7 @@ const LiveFiringPanel = lz(() => import('@/components/editor/LiveFiringPanel'));
 const FleetManagementPanel = lz(() => import('@/components/editor/FleetManagementPanel'));
 const GeofencePanel = lz(() => import('@/components/editor/GeofencePanel'));
 const StoryboardPanel = lz(() => import('@/components/editor/StoryboardPanel'));
-const ShowCommanderPanel = lz(() => import('@/components/editor/ShowCommanderPanel'));
+const ShowControlPanel = lz(() => import('@/components/editor/ShowCommanderPanel'));
 const ShowInspectorPanel = lz(() => import('@/components/editor/ShowInspectorPanel'));
 const LightProgramPanel = lz(() => import('@/components/editor/LightProgramPanel'));
 const SafetyCheckPanel = lz(() => import('@/components/editor/safety/FlightCheckTab'));
