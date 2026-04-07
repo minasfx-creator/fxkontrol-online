@@ -193,7 +193,7 @@ export default function RomanCandleEffect({
   const angleOffsetRad = (angleOffset * Math.PI) / 180;
 
   return (
-    <group position={position} rotation={[0, 0, angleOffsetRad]}>
+    <group position={position} rotation={[0, 0, angleOffsetRad]} renderOrder={50}>
       {Array.from({ length: shotCount }).map((_, s) => {
         const shotTime = s / shotCount;
         const dt = progress - shotTime;
