@@ -441,6 +441,15 @@ export default function MineEffect({
         />
       </points>
 
+      {/* Spray comet trails */}
+      <lineSegments ref={trailRef} frustumCulled={false}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[trailPosRef, 3]} />
+          <bufferAttribute attach="attributes-color" args={[trailColRef, 3]} />
+        </bufferGeometry>
+        <lineBasicMaterial vertexColors transparent opacity={0.7} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} />
+      </lineSegments>
+
       {/* Ground smoke plume */}
       {progress > 0.03 && progress < 0.7 && (
         <points ref={smokePointsRef} frustumCulled={false} renderOrder={50}>
