@@ -65,9 +65,9 @@ export function generateBurst(
       const hx = 16 * Math.pow(Math.sin(t), 3);
       const hy = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
       const speed = cfg.velocity * scale * 0.06;
-      vx = hx * speed + (Math.random() - 0.5) * 3;
-      vy = hy * speed + (Math.random() - 0.5) * 3;
-      vz = (Math.random() - 0.5) * speed * 5;
+      vx = hx * speed + (Math.random() - 0.5) * 0.8;
+      vy = hy * speed + (Math.random() - 0.5) * 0.8;
+      vz = (Math.random() - 0.5) * speed * 0.8;
     } else if (pattern === 'palm') {
       // Upward-biased with stronger vertical lift
       const theta = Math.random() * Math.PI * 2;

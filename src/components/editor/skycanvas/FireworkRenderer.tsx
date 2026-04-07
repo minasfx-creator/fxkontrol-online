@@ -456,16 +456,25 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         <lineBasicMaterial vertexColors transparent opacity={Math.min(1, 0.8 * tailFactor)} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} linewidth={3} />
       </lineSegments>
       
-      {progress < 0.06 && (
+      {/* Core flash — bright white, 80ms */}
+      {progress < 0.08 && (
         <mesh renderOrder={100}>
-          <sphereGeometry args={[flashSize * 0.4 * (1 + progress * 12), 8, 8]} />
-          <meshBasicMaterial color="#FFFFEE" transparent opacity={0.5 * (1 - progress / 0.06)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+          <sphereGeometry args={[flashSize * 0.3 * (1 + progress * 15), 8, 8]} />
+          <meshBasicMaterial color="#FFFDF0" transparent opacity={0.7 * (1 - progress / 0.08)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
         </mesh>
       )}
-      {progress < 0.12 && (
+      {/* Halo — color-synced, 150ms */}
+      {progress < 0.15 && (
         <mesh renderOrder={99}>
-          <sphereGeometry args={[flashSize * (1 + progress * 12), 8, 8]} />
-          <meshBasicMaterial color={color} transparent opacity={0.2 * Math.pow(1 - progress / 0.12, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+          <sphereGeometry args={[flashSize * (1 + progress * 10), 8, 8]} />
+          <meshBasicMaterial color={color} transparent opacity={0.35 * Math.pow(1 - progress / 0.15, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+        </mesh>
+      )}
+      {/* Shockwave ring — expanding white ring, 200ms */}
+      {progress < 0.20 && (
+        <mesh renderOrder={98} rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[flashSize * progress * 18, flashSize * progress * 18 + flashSize * 0.15, 32]} />
+          <meshBasicMaterial color="#FFFFFF" transparent opacity={0.3 * Math.pow(1 - progress / 0.20, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />
         </mesh>
       )}
     </group>
