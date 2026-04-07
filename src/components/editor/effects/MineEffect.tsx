@@ -370,9 +370,9 @@ export default function MineEffect({
 
         // Warm gray smoke, fading with age
         const smokeFade = Math.max(0, 1 - smokeAge * 1.2) * 0.06;
-        smokeColArr[i * 3] = 0.35 * smokeFade;
-        smokeColArr[i * 3 + 1] = 0.3 * smokeFade;
-        smokeColArr[i * 3 + 2] = 0.25 * smokeFade;
+        smokeColArr[i * 3] = (0.35 * 0.75 + baseColor.r * 0.25) * smokeFade;
+        smokeColArr[i * 3 + 1] = (0.3 * 0.75 + baseColor.g * 0.25) * smokeFade;
+        smokeColArr[i * 3 + 2] = (0.25 * 0.75 + baseColor.b * 0.25) * smokeFade;
 
         // Expanding size
         smokeSizeArr[i] = (1.5 + hash01(seed) * 2.5) * (1 + smokeAge * 2);
