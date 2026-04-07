@@ -471,14 +471,14 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         />
       )}
 
-      {/* ═══ SSAO — Screen Space Ambient Occlusion ═══ */}
+      {/* ═══ SSAO — samples reduced from 16 to 8 for GPU savings ═══ */}
       {s.ssaoEnabled && (
         <SSAO
           intensity={s.ssaoIntensity * 30}
           radius={0.15}
           luminanceInfluence={0.6}
           bias={0.025}
-          samples={16}
+          samples={8}
           rings={3}
           worldDistanceThreshold={1.0}
           worldDistanceFalloff={0.5}
