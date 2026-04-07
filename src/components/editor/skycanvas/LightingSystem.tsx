@@ -56,7 +56,8 @@ export const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(func
       if (elapsed < 0 || elapsed > 2.0) continue;
 
       activeBursts++;
-      luminance += elapsed < 0.5 ? 3.0 : 0.5;
+      // Clamped per-burst luminance — was 3.0, now 1.5 max
+      luminance += elapsed < 0.5 ? 1.5 : 0.3;
 
       if (elapsed < 0.3) {
         const effect = getEffectById(item.effectId);
@@ -69,13 +70,15 @@ export const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(func
     }
 
     const burstLoad = THREE.MathUtils.clamp(activeBursts / 6, 0, 1);
-    luminance = Math.min(luminance * (1 + burstLoad * 0.2), 15);
+    // Total luminance capped at 6.0 — was 15
+    luminance = Math.min(luminance * (1 + burstLoad * 0.2), 6.0);
 
     if (luminance > 2 && delta < 0.1) {
       flashEvent(state, Math.min(luminance * 0.15, 0.8));
     }
 
-    const exposure = THREE.MathUtils.clamp(updateExposure(state, luminance, delta), 0.35, 1.8);
+    // Narrower exposure range: [0.7, 1.4] — was [0.35, 1.8]
+    const exposure = THREE.MathUtils.clamp(updateExposure(state, luminance, delta), 0.7, 1.4);
     setAdaptiveExposureValue(exposure);
     setAdaptivePipelineState(exposure, burstLoad);
     setDebugExposure(exposure);

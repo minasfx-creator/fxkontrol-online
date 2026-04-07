@@ -14,6 +14,7 @@ import { getLiftTime, getBreakHeight, getBreakSpeed, getTypedPrefire, getTypedDu
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { temporalFlicker } from '@/lib/pyroNoise';
 import { isInFrustum } from '@/lib/spatialCuller';
+import { updateFrustum, isSphereInFrustum } from '@/lib/frustumCuller';
 import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
 import { thermalColor, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
 import { getBurstConfig, type BurstPattern } from '@/render_ultra/fireworks/burstSimulation';
@@ -162,7 +163,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   const starLife = useMemo(() => {
     const baseLife = caliber <= 3 ? 1.6 : caliber <= 4 ? 2.2 : caliber <= 5 ? 2.8
       : caliber <= 6 ? 3.5 : caliber <= 8 ? 4.5 : caliber <= 10 ? 6.0 : 7.5;
-    if (pattern === 'willow' || pattern === 'kamuro') return baseLife * 2.2;
+    if (pattern === 'willow' || pattern === 'kamuro') return baseLife * 3.0; // was 2.2 — longer trails
     if (pattern === 'palm' || pattern === 'brocade') return baseLife * 1.6;
     if (pattern === 'chrysanthemum') return baseLife * 1.2;
     if (pattern === 'dahlia') return baseLife * 0.5;
@@ -191,7 +192,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       const phi = Math.acos(2 * Math.random() - 1);
       let vx: number, vy: number, vz: number;
       let life = starLife * (0.6 + Math.random() * 0.4);
-      const speedVar = Math.pow(0.4 + Math.random() * 0.6, 0.7);
+      const speedVar = Math.pow(0.4 + Math.random() * 0.6, 0.5); // was 0.7 — more uniform distribution
       tp[i] = Math.random() * Math.PI * 2;
       sparkle[i] = Math.random() * 999 + i;
 
@@ -266,15 +267,13 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
 
   useFrame(({ clock, camera }) => {
     if (!pointsRef.current || !trailRef.current) return;
+    // Update frustum planes once per frame (idempotent if called multiple times)
+    updateFrustum(camera);
 
     // Frustum culling: skip if burst center is off-screen
+    // Zero-GC: uses pre-allocated singletons from frustumCuller module
     if (frustumCullingBursts) {
-      const frustum = new THREE.Frustum();
-      const projScreenMatrix = new THREE.Matrix4();
-      projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-      frustum.setFromProjectionMatrix(projScreenMatrix);
-      const burstSphere = new THREE.Sphere(new THREE.Vector3(position[0], position[1], position[2]), caliber * 5);
-      if (!frustum.intersectsSphere(burstSphere)) return;
+      if (!isSphereInFrustum(position[0], position[1], position[2], caliber * 30)) return;
     }
 
     const pos = particleBuffers.positions;
@@ -289,12 +288,14 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     const time = clock.getElapsedTime();
     const _adaptiveExposure = getAdaptiveExposure();
     
-    const dragCoeff = caliber <= 3 ? 0.065 : caliber <= 4 ? 0.055 : caliber <= 5 ? 0.048
-      : caliber <= 6 ? 0.042 : caliber <= 8 ? 0.035 : caliber <= 10 ? 0.028 : 0.024;
+    // Reduced drag for larger calibers — heavier stars travel further
+    const dragCoeff = caliber <= 3 ? 0.058 : caliber <= 4 ? 0.048 : caliber <= 5 ? 0.040
+      : caliber <= 6 ? 0.034 : caliber <= 8 ? 0.026 : caliber <= 10 ? 0.020 : 0.016;
     const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm';
     
-    const baseSize = caliber <= 3 ? 0.4 : caliber <= 4 ? 0.6 : caliber <= 6 ? 0.9
-      : caliber <= 8 ? 1.2 : caliber <= 10 ? 1.5 : 1.8;
+    // Larger star sizes for bigger calibers — was 0.9 for 6", now 1.4
+    const baseSize = caliber <= 3 ? 0.5 : caliber <= 4 ? 0.8 : caliber <= 6 ? 1.4
+      : caliber <= 8 ? 1.8 : caliber <= 10 ? 2.2 : 2.6;
     
     const dragPos = (v0: number, t: number, k: number) => {
       if (k < 0.001) return v0 * t;
@@ -384,8 +385,8 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         tPos[base2 + 5] = dragPos(vz, t1, dragCoeff) + w[2] * t1 * t1 * 0.3;
         
         const segFrac = s / TRAIL_LENGTH;
-        const segFade = fadeCubed * Math.pow(1 - segFrac, 2.5) * 0.7;
-        const endFade = fadeCubed * Math.pow(1 - (s + 1) / TRAIL_LENGTH, 2.5) * 0.7;
+        const segFade = fadeCubed * Math.pow(1 - segFrac, 2.5) * 0.95; // was 0.7 — brighter trails
+        const endFade = fadeCubed * Math.pow(1 - (s + 1) / TRAIL_LENGTH, 2.5) * 0.95;
         
         const trailWarmth = Math.pow(segFrac, 0.4);
         tCol[base2] = THREE.MathUtils.lerp(0.9, r * 0.75, trailWarmth) * segFade;

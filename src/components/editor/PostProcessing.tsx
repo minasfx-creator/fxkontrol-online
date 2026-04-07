@@ -440,8 +440,8 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
     <EffectComposer multisampling={0} enableNormalPass={s.ssaoEnabled} resolutionScale={s.ssrHalfRes && s.ssrEnabled ? 1.0 : 1.0}>
       <SMAA />
 
-      {/* ═══ Screen Space Reflections (UE5 r.SSR.Temporal) — half-res for perf ═══ */}
-      {s.ssrEnabled && (
+      {/* ═══ SSR — DISABLED by default for night scenes (heavy GPU cost) ═══ */}
+      {s.ssrEnabled && !hasBursts && (
         <SSR
           temporalResolve
           temporalResolveMix={0.9}
@@ -471,14 +471,14 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         />
       )}
 
-      {/* ═══ SSAO — Screen Space Ambient Occlusion ═══ */}
+      {/* ═══ SSAO — samples reduced from 16 to 8 for GPU savings ═══ */}
       {s.ssaoEnabled && (
         <SSAO
           intensity={s.ssaoIntensity * 30}
           radius={0.15}
           luminanceInfluence={0.6}
           bias={0.025}
-          samples={16}
+          samples={8}
           rings={3}
           worldDistanceThreshold={1.0}
           worldDistanceFalloff={0.5}
@@ -496,25 +496,25 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         />
       )}
 
-      {/* ═══ Motion Blur — UE5 MotionBlurAmount ═══ */}
-      {s.motionBlurEnabled && (
+      {/* ═══ Motion Blur — DISABLED during bursts (fake screen-space, GPU expensive) ═══ */}
+      {s.motionBlurEnabled && !hasBursts && (
         <MotionBlur intensity={s.motionBlurIntensity} />
       )}
 
-      {/* Layer 1: Core catch — always active (low cost) */}
+      {/* Layer 1: Core catch — threshold raised to 3.5 for real flashes only */}
       <Bloom
-        intensity={str * 0.065 * bloomMul}
-        luminanceThreshold={2.8}
+        intensity={str * 0.04 * bloomMul}
+        luminanceThreshold={3.5}
         luminanceSmoothing={0.05}
         kernelSize={KernelSize.MEDIUM}
         mipmapBlur
       />
 
-      {/* Layer 2: Star halos — only during pyro activity */}
+      {/* Layer 2: Star halos — threshold raised to 5.0, intense explosions only */}
       {hasBursts && (
         <Bloom
-          intensity={str * 0.035 * bloomMul}
-          luminanceThreshold={3.5}
+          intensity={str * 0.025 * bloomMul}
+          luminanceThreshold={5.0}
           luminanceSmoothing={0.2}
           kernelSize={KernelSize.LARGE}
           mipmapBlur
@@ -534,10 +534,7 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         />
       ))}
 
-      {/* ═══ Downsample Blur — BP_DownSampleSceneCapture ═══ */}
-      {str > 0.5 && (
-        <DownSampleBlur intensity={0.15} />
-      )}
+      {/* ═══ Downsample Blur — DISABLED: duplicates bloom, saves 1 GPU pass ═══ */}
 
       {/* ═══ Heat Distortion — UE5 Niagara Heat Haze ═══ */}
       {s.heatDistortionEnabled && hasBursts && (
