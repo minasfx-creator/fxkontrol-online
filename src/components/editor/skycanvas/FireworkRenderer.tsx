@@ -699,10 +699,35 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         const t1 = Math.max(0, t - (s + 1) * trailDt);
         const base2 = (i * TRAIL_LENGTH + s) * 6;
         
-        // Trail segment start — sample wind at actual star position for curvature
-        const sx0 = dragPos(vx, t0, dragCoeff);
-        const sy0 = dragPos(vy, t0, dragCoeff) + 0.5 * GRAVITY * gravityMult * t0 * t0;
-        const sz0 = dragPos(vz, t0, dragCoeff);
+        // Compute per-segment gravity multiplier for droop patterns
+        const segAge0 = plt > 0 ? Math.min(1, t0 / plt) : 0;
+        const segAge1 = plt > 0 ? Math.min(1, t1 / plt) : 0;
+        let trailGrav0 = gravityMult;
+        let trailGrav1 = gravityMult;
+        let trailDragH0 = dragCoeff;
+        let trailDragH1 = dragCoeff;
+        
+        if (pattern === 'horsetail') {
+          trailGrav0 = segAge0 < 0.5 ? gravityMult * 1.2 : gravityMult * (1.2 + (segAge0 - 0.5) / 0.5 * 4.8);
+          trailGrav1 = segAge1 < 0.5 ? gravityMult * 1.2 : gravityMult * (1.2 + (segAge1 - 0.5) / 0.5 * 4.8);
+          trailDragH0 = dragCoeff * 0.7;
+          trailDragH1 = dragCoeff * 0.7;
+        } else if (pattern === 'coconut') {
+          trailGrav0 = segAge0 < 0.3 ? gravityMult * 0.4 : segAge0 < 0.6 ? gravityMult * 1.5 : gravityMult * 5.0;
+          trailGrav1 = segAge1 < 0.3 ? gravityMult * 0.4 : segAge1 < 0.6 ? gravityMult * 1.5 : gravityMult * 5.0;
+          trailDragH0 = segAge0 < 0.3 ? dragCoeff * 0.5 : segAge0 < 0.6 ? dragCoeff * 0.8 : dragCoeff * 0.15;
+          trailDragH1 = segAge1 < 0.3 ? dragCoeff * 0.5 : segAge1 < 0.6 ? dragCoeff * 0.8 : dragCoeff * 0.15;
+        } else if (pattern === 'willow') {
+          trailGrav0 = segAge0 > 0.6 ? gravityMult * (1 + (segAge0 - 0.6) / 0.4 * 3.5) : gravityMult * 0.7;
+          trailGrav1 = segAge1 > 0.6 ? gravityMult * (1 + (segAge1 - 0.6) / 0.4 * 3.5) : gravityMult * 0.7;
+          trailDragH0 = dragCoeff * 0.85;
+          trailDragH1 = dragCoeff * 0.85;
+        }
+        
+        // Trail segment start
+        const sx0 = dragPos(vx, t0, trailDragH0);
+        const sy0 = dragPos(vy, t0, dragCoeff) + 0.5 * GRAVITY * trailGrav0 * t0 * t0;
+        const sz0 = dragPos(vz, t0, trailDragH0);
         const w0 = isTrailingPattern 
           ? getWindAtPosition(position[0] + sx0, position[1] + sy0, position[2] + sz0, 'ember')
           : w;
@@ -711,9 +736,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         tPos[base2 + 2] = sz0 + w0[2] * t0 * t0 * 0.3;
         
         // Trail segment end
-        const sx1 = dragPos(vx, t1, dragCoeff);
-        const sy1 = dragPos(vy, t1, dragCoeff) + 0.5 * GRAVITY * gravityMult * t1 * t1;
-        const sz1 = dragPos(vz, t1, dragCoeff);
+        const sx1 = dragPos(vx, t1, trailDragH1);
+        const sy1 = dragPos(vy, t1, dragCoeff) + 0.5 * GRAVITY * trailGrav1 * t1 * t1;
+        const sz1 = dragPos(vz, t1, trailDragH1);
         const w1 = isTrailingPattern
           ? getWindAtPosition(position[0] + sx1, position[1] + sy1, position[2] + sz1, 'ember')
           : w;
