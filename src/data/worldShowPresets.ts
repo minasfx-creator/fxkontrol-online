@@ -410,7 +410,7 @@ function generateTokyoHanabi() {
   // Hanabi style: deliberate, one-at-a-time shells building to finale
   // Phase 1 (0-120s): Single large shells, slow pace (warimono style)
   for (let t = 0; t < 120; t += 10) {
-    const p = positions[Math.floor(Math.random() * 12)];
+    const p = positions[Math.floor(t / 10) % 12];
     const effects = ['shell-08', 'shell-09', 'shell-10', 'mort-04', 'shell-03'];
     items.push(cue(uid(), effects[Math.floor(t / 10) % effects.length], t, 2, { x: p.x, y: p.y, z: p.z }, p.id));
   }
