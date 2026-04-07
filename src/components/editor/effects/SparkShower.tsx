@@ -77,13 +77,24 @@ export default function SparkShower({
       const cycleTime = ((time * seed.speed + seed.phase) % seed.lt) / seed.lt;
       
       const x = Math.cos(seed.angle) * seed.r * (0.5 + cycleTime * 0.5) + windX * cycleTime * seed.lt;
-      const y = height * (1 - cycleTime * 0.3) + seed.vy * cycleTime * seed.lt;
+      let y = height * (1 - cycleTime * 0.3) + seed.vy * cycleTime * seed.lt;
       const z = Math.sin(seed.angle) * seed.r * (0.5 + cycleTime * 0.5) + windZ * cycleTime * seed.lt;
 
+      // Ground bounce interaction — reflect with restitution and add ground glow
+      let bounced = false;
       if (y < 0) {
-        posArr[i * 3] = 0; posArr[i * 3 + 1] = -100; posArr[i * 3 + 2] = 0;
-        colArr[i * 3] = 0; colArr[i * 3 + 1] = 0; colArr[i * 3 + 2] = 0;
-        continue;
+        y = Math.abs(y) * 0.3; // restitution coefficient 0.3
+        bounced = true;
+        // Kill if too low after bounce (energy exhausted)
+        if (y < 0.05) {
+          posArr[i * 3] = x; posArr[i * 3 + 1] = 0.01; posArr[i * 3 + 2] = z;
+          // Ground glow — warm orange at impact point
+          const groundGlow = Math.max(0, (1 - cycleTime) * 0.4);
+          colArr[i * 3] = 1.0 * groundGlow;
+          colArr[i * 3 + 1] = 0.4 * groundGlow;
+          colArr[i * 3 + 2] = 0.05 * groundGlow;
+          continue;
+        }
       }
 
       posArr[i * 3] = x;
@@ -96,9 +107,11 @@ export default function SparkShower({
       // Organic temporal flicker
       const flicker = temporalFlicker(seed.seed, time, 0.6, 0.34, 0.32);
       
-      colArr[i * 3] = Math.min(1.5, baseColor.r * fade * spawnBoost * flicker * 1.2);
-      colArr[i * 3 + 1] = Math.min(1.5, baseColor.g * fade * spawnBoost * flicker * 0.8);
-      colArr[i * 3 + 2] = Math.min(1.5, baseColor.b * fade * spawnBoost * flicker * 0.5);
+      // Bounced sparks shift to warm ember color
+      const bounceShift = bounced ? 0.5 : 1.0;
+      colArr[i * 3] = Math.min(1.5, (bounced ? 1.0 : baseColor.r) * fade * spawnBoost * flicker * 1.2 * bounceShift);
+      colArr[i * 3 + 1] = Math.min(1.5, (bounced ? 0.35 : baseColor.g) * fade * spawnBoost * flicker * 0.8 * bounceShift);
+      colArr[i * 3 + 2] = Math.min(1.5, (bounced ? 0.05 : baseColor.b) * fade * spawnBoost * flicker * 0.5 * bounceShift);
     }
 
     const geo = pointsRef.current.geometry;

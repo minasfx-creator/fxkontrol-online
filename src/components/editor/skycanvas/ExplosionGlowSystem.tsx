@@ -64,8 +64,16 @@ export function ExplosionGlowSystem() {
         slot.light.visible = false;
         slot.light.intensity = 0;
       } else {
-        // Exponential decay
-        slot.light.intensity = MAX_INTENSITY * Math.pow(1 - t, 2);
+        // Flash spike in first 50ms, then exponential decay
+        const flashT = slot.age / FLASH_DURATION;
+        if (flashT < 1) {
+          // Spike: lerp from FLASH_INTENSITY down to MAX_INTENSITY
+          slot.light.intensity = THREE.MathUtils.lerp(FLASH_INTENSITY, MAX_INTENSITY, flashT * flashT);
+        } else {
+          // Normal exponential decay after flash
+          const decayT = (slot.age - FLASH_DURATION) / (slot.maxAge - FLASH_DURATION);
+          slot.light.intensity = MAX_INTENSITY * Math.pow(Math.max(0, 1 - decayT), 2);
+        }
       }
     }
 

@@ -207,7 +207,7 @@ const PrefireShell = React.forwardRef<THREE.Group, {
         <shaderMaterial
           vertexShader={COMET_VERTEX}
           fragmentShader={COMET_FRAGMENT}
-          uniforms={{ uSize: { value: 1.2 + caliber * 0.3 } }}
+          uniforms={{ uSize: { value: 1.8 + caliber * 0.5 } }}
           transparent
           depthWrite={false}
           blending={THREE.AdditiveBlending}
