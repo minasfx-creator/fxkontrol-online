@@ -122,7 +122,7 @@ const FieldMap2D = lz(() => import('@/components/editor/FieldMap2D'));
 const ShowCommanderPanelDirect = lz(() => import('@/components/editor/ShowCommanderPanel'));
 const BluetoothPanel = lz(() => import('@/components/editor/BluetoothPanel'));
 const NFCPairPanel = lz(() => import('@/components/editor/NFCPairPanel'));
-const DMXOutputPanel = lz(() => import('@/components/editor/DMXOutputPanel'));
+const DMXOutputPanel = lz(() => import('@/components/editor/dmx/DMXOutputPanel'));
 const RemoteControlPanel = lz(() => import('@/components/editor/RemoteControlPanel'));
 const ConnectionManagerPanel = lz(() => import('@/components/editor/ConnectionManagerPanel'));
 const RadioControlPanel = lz(() => import('@/components/editor/RadioControlPanel'));
