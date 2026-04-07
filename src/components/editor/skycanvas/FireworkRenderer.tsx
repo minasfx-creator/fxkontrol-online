@@ -603,6 +603,35 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       }
     }
 
+    // ── Multi-break: secondary burst at 50% star life ──
+    if (pattern === 'multi_break') {
+      for (let i = 0; i < STAR_COUNT; i++) {
+        const lt = lifetimes[i];
+        const starAge = Math.min(1, t / lt);
+        if (starAge > 0.5 && starAge < 0.95) {
+          const subAge = (starAge - 0.5) / 0.45;
+          const subFade = Math.max(0, 1 - subAge * subAge);
+          const reigniteFlash = subAge < 0.05 ? (1 - subAge / 0.05) * 2.0 : 0;
+          const subTheta = sparkleSeeds[i] * 6.28;
+          const subPhi = Math.acos(2 * ((sparkleSeeds[i] * 3.7) % 1) - 1);
+          const subSpeed = breakSpeed * 0.35 * (0.5 + ((sparkleSeeds[i] * 7.3) % 1) * 0.5);
+          const subT = (starAge - 0.5) * lt / (starLife * 0.88) * 0.8;
+          const parentPx = pos[i * 3], parentPy = pos[i * 3 + 1], parentPz = pos[i * 3 + 2];
+          const svx = Math.sin(subPhi) * Math.cos(subTheta) * subSpeed;
+          const svy = Math.cos(subPhi) * subSpeed;
+          const svz = Math.sin(subPhi) * Math.sin(subTheta) * subSpeed;
+          pos[i * 3] = parentPx + dragPos(svx, subT, dragCoeff * 1.2);
+          pos[i * 3 + 1] = parentPy + dragPos(svy, subT, dragCoeff * 1.2) + 0.5 * GRAVITY * subT * subT;
+          pos[i * 3 + 2] = parentPz + dragPos(svz, subT, dragCoeff * 1.2);
+          const secBright = (subFade + reigniteFlash) * 0.8;
+          cols[i * 3] = baseColor.r * secBright;
+          cols[i * 3 + 1] = baseColor.g * secBright;
+          cols[i * 3 + 2] = baseColor.b * secBright;
+          sizes[i] = baseSize * 0.7 * Math.max(0.2, subFade);
+        }
+      }
+    }
+
     // ── Pistil simulation ──
     if (pistilData && pistilBuffers && pistilRef.current) {
       const pp = pistilBuffers.positions;
