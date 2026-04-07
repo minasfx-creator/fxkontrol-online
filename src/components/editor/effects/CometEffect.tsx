@@ -311,12 +311,13 @@ export default function CometEffect({
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest={false}
           />
         </mesh>
       )}
 
       {/* GPU spark cloud */}
-      <points ref={sparkPointsRef} frustumCulled={false}>
+      <points ref={sparkPointsRef} frustumCulled={false} renderOrder={50}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[sparkPosBuffer, 3]} />
           <bufferAttribute attach="attributes-color" args={[sparkColBuffer, 3]} />
