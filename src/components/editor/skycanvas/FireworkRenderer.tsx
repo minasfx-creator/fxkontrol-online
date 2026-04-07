@@ -480,6 +480,26 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           <meshBasicMaterial color="#FFFFFF" transparent opacity={0.3 * Math.pow(1 - progress / 0.20, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />
         </mesh>
       )}
+      {/* Post-burst smoke — appears in late burst phase */}
+      {progress > 0.6 && (
+        <SmokeTrail
+          position={[0, 0, 0]}
+          progress={(progress - 0.6) / 0.4}
+          intensity={0.6}
+          color={color}
+          caliber={caliber}
+        />
+      )}
+      {/* Ember particles — falling hot debris after burst */}
+      {progress > 0.3 && (
+        <EmberParticles
+          position={[0, 0, 0]}
+          color={color}
+          progress={(progress - 0.3) / 0.7}
+          spreadRadius={caliber * 3}
+          startHeight={0}
+        />
+      )}
     </group>
   );
 });
