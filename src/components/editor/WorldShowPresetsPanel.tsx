@@ -126,7 +126,7 @@ export default function WorldShowPresetsPanel({ onClose }: Props) {
       </div>
 
       {/* Show List */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="p-2 space-y-4">
           {!hasResults && (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">

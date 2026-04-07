@@ -476,7 +476,7 @@ function Index() {
       {/* ─── Layer 3: Floating Panel (z-40) ─────────── */}
       {activePanel && !viewportMaximized && (
         <div
-          className="absolute top-14 right-[52px] z-40 w-[380px] max-w-[30vw]"
+          className="absolute top-14 right-[52px] z-40 w-[420px] max-w-[40vw]"
           style={{
             bottom: timelineCollapsed ? '32px' : '25vh',
             transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -493,7 +493,7 @@ function Index() {
           >
             <X className="w-3 h-3 text-muted-foreground" />
           </button>
-          <div className="h-full overflow-y-auto">
+          <div className="h-full overflow-hidden flex flex-col">
             <Suspense fallback={<PanelLoader />}>{renderPanelContent()}</Suspense>
           </div>
         </div>

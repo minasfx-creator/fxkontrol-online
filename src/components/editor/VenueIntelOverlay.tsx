@@ -100,20 +100,21 @@ export default function VenueIntelOverlay({ preset, onBack, onDeploy, deploying 
   };
 
   return (
-    <div className="flex flex-col h-full bg-background/95 backdrop-blur-sm text-foreground">
-      {/* Header HUD */}
-      <div className="border-b border-primary/20 px-3 py-2">
-        <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full bg-background/95 backdrop-blur-sm text-foreground border-l border-cyan-500/15">
+      {/* Header HUD with scanline */}
+      <div className="border-b border-cyan-500/20 px-3 py-2 relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, hsl(var(--primary)/0.15) 2px, hsl(var(--primary)/0.15) 3px)' }} />
+        <div className="flex items-center justify-between relative">
           <Button variant="ghost" size="sm" className="h-6 text-[10px] px-1.5 gap-1" onClick={onBack}>
             <ArrowLeft className="w-3 h-3" /> VOLTAR
           </Button>
-          <div className="flex items-center gap-1 text-[9px] text-primary/60 font-mono">
-            <Crosshair className="w-3 h-3" />
+          <div className="flex items-center gap-1 text-[9px] text-cyan-400/80 font-mono tracking-wider">
+            <Crosshair className="w-3 h-3 animate-pulse" />
             {preset.gps.lat.toFixed(4)}° {preset.gps.lng.toFixed(4)}°
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2 mt-1 relative">
           <span className="text-xl">{preset.flag}</span>
           <div>
             <h2 className="text-sm font-bold tracking-tight">{preset.name}</h2>
@@ -128,12 +129,12 @@ export default function VenueIntelOverlay({ preset, onBack, onDeploy, deploying 
           <span className="flex items-center gap-0.5"><Crosshair className="w-3 h-3" />{preset.stats.positions} pos</span>
           <span className="flex items-center gap-0.5"><Sparkles className="w-3 h-3" />{preset.stats.cues} cues</span>
           <span className="flex items-center gap-0.5"><Clock className="w-3 h-3" />{Math.round(preset.duration / 60)} min</span>
-          <span className="px-1 py-0 border border-border/40 rounded text-[9px]">{preset.stats.calibers}</span>
+          <span className="px-1 py-0 border border-cyan-500/30 rounded text-[9px] text-cyan-400/70">{preset.stats.calibers}</span>
         </div>
       </div>
 
       {/* Intel Sections */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="p-2 space-y-2">
           {SECTIONS.map((section, idx) => {
             const Icon = section.icon;
@@ -147,10 +148,10 @@ export default function VenueIntelOverlay({ preset, onBack, onDeploy, deploying 
                   transform: visible ? 'translateY(0)' : 'translateY(8px)',
                 }}
               >
-                <div className="border border-primary/15 rounded-md bg-surface-2/50 p-2">
+              <div className="border border-cyan-500/15 rounded-md bg-surface-2/50 p-2 border-l-2 border-l-cyan-500/30">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <Icon className="w-3 h-3 text-primary/70" />
-                    <span className="text-[9px] font-bold tracking-widest text-primary/70">{section.label}</span>
+                    <Icon className="w-3 h-3 text-cyan-400/70" />
+                    <span className="text-[9px] font-bold tracking-widest text-cyan-400/70">{section.label}</span>
                   </div>
                   {renderSectionContent(section.key)}
                 </div>
@@ -161,9 +162,10 @@ export default function VenueIntelOverlay({ preset, onBack, onDeploy, deploying 
       </ScrollArea>
 
       {/* Deploy Button */}
-      <div className="border-t border-primary/20 p-2">
+      <div className="border-t border-cyan-500/20 p-2">
         <Button
-          className="w-full h-9 text-xs font-bold tracking-wider"
+          className="w-full h-9 text-xs font-bold tracking-wider bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/25 shadow-[0_0_20px_hsl(190_95%_55%/0.15)] hover:shadow-[0_0_30px_hsl(190_95%_55%/0.25)] transition-all"
+          variant="outline"
           onClick={onDeploy}
           disabled={deploying}
         >
