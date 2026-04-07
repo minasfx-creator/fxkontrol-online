@@ -1,6 +1,6 @@
 /**
  * joiDocxExport — Export Joi assistant messages as branded DOCX
- * Uses docx.js with FX KONTROL branding (cyan/amber palette)
+ * Uses joiDocumentParser to extract formal content only (no conversation)
  */
 import {
   Document, Packer, Paragraph, TextRun, Header, Footer,
@@ -8,11 +8,10 @@ import {
   LevelFormat,
 } from 'docx';
 import { toast } from 'sonner';
+import { extractDocumentBody, DOC_LABELS, getDocTypeFooterNote } from './joiDocumentParser';
 
 function parseMarkdownToDocxChildren(markdown: string) {
-  // Strip KMZ blocks
-  const clean = markdown.replace(/\[KMZ_READY\][\s\S]*?\[\/KMZ_READY\]/g, '').trim();
-  const lines = clean.split('\n');
+  const lines = markdown.split('\n');
   const children: Paragraph[] = [];
 
   for (const line of lines) {
@@ -22,7 +21,6 @@ function parseMarkdownToDocxChildren(markdown: string) {
       continue;
     }
 
-    // Headings
     const headingMatch = trimmed.match(/^(#{1,3})\s+(.+)/);
     if (headingMatch) {
       const level = headingMatch[1].length;
@@ -35,7 +33,6 @@ function parseMarkdownToDocxChildren(markdown: string) {
       continue;
     }
 
-    // Bullet items
     const bulletMatch = trimmed.match(/^[-*]\s+(.+)/);
     if (bulletMatch) {
       children.push(new Paragraph({
@@ -46,7 +43,6 @@ function parseMarkdownToDocxChildren(markdown: string) {
       continue;
     }
 
-    // Numbered items
     const numMatch = trimmed.match(/^\d+\.\s+(.+)/);
     if (numMatch) {
       children.push(new Paragraph({
@@ -57,7 +53,6 @@ function parseMarkdownToDocxChildren(markdown: string) {
       continue;
     }
 
-    // Horizontal rules
     if (/^---+$/.test(trimmed)) {
       children.push(new Paragraph({
         border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: '00B4D8', space: 1 } },
@@ -66,7 +61,6 @@ function parseMarkdownToDocxChildren(markdown: string) {
       continue;
     }
 
-    // Normal paragraph
     children.push(new Paragraph({
       children: parseInlineFormatting(trimmed),
       spacing: { after: 80 },
@@ -98,9 +92,23 @@ function parseInlineFormatting(text: string): TextRun[] {
 
 export async function exportJoiDocx(markdown: string) {
   try {
+    const { body, docType } = extractDocumentBody(markdown);
+    const label = DOC_LABELS[docType];
+    const footerNote = getDocTypeFooterNote(docType);
     const now = new Date();
     const dateStr = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const fileDate = now.toISOString().slice(0, 10).replace(/-/g, '');
+
+    const sectionChildren = parseMarkdownToDocxChildren(body);
+
+    // Add template-specific footer note
+    if (footerNote) {
+      sectionChildren.push(new Paragraph({
+        border: { top: { style: BorderStyle.SINGLE, size: 1, color: '00B4D8', space: 4 } },
+        spacing: { before: 300, after: 60 },
+        children: [new TextRun({ text: footerNote, italics: true, font: 'Arial', size: 16, color: '888888' })],
+      }));
+    }
 
     const doc = new Document({
       numbering: {
@@ -141,7 +149,7 @@ export async function exportJoiDocx(markdown: string) {
                 children: [
                   new TextRun({ text: 'FX KONTROL', bold: true, font: 'Arial', size: 16, color: '00B4D8' }),
                   new TextRun({ text: '  ·  ', font: 'Arial', size: 14, color: '888888' }),
-                  new TextRun({ text: 'Gerado por JOI', font: 'Arial', size: 14, color: 'E8A317' }),
+                  new TextRun({ text: label, font: 'Arial', size: 14, color: 'E8A317', bold: true }),
                   new TextRun({ text: `  ·  ${dateStr}`, font: 'Arial', size: 14, color: '888888' }),
                 ],
               }),
@@ -162,7 +170,7 @@ export async function exportJoiDocx(markdown: string) {
             ],
           }),
         },
-        children: parseMarkdownToDocxChildren(markdown),
+        children: sectionChildren,
       }],
     });
 
@@ -171,7 +179,7 @@ export async function exportJoiDocx(markdown: string) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `JOI_DOC_${fileDate}.docx`;
+    a.download = `JOI_${docType.toUpperCase()}_${fileDate}.docx`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
