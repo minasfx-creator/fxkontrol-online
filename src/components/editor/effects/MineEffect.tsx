@@ -69,6 +69,12 @@ export default function MineEffect({
   // Particle class indices
   const columnEnd = useMemo(() => Math.floor(count * COLUMN_FRAC), [count]);
   const sprayEnd = useMemo(() => Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC)), [count]);
+  
+  // Trail buffers for spray comet trails
+  const TRAIL_SEGS = 5;
+  const sprayCount = sprayEnd - columnEnd;
+  const trailPosRef = useMemo(() => new Float32Array(sprayCount * TRAIL_SEGS * 6), [sprayCount]);
+  const trailColRef = useMemo(() => new Float32Array(sprayCount * TRAIL_SEGS * 6), [sprayCount]);
 
   const { velocities, lifetimes, sparkleSeeds, particleSizes, smokeSeeds } = useMemo(() => {
     const v = new Float32Array(count * 3);
