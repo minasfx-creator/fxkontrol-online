@@ -102,16 +102,14 @@ export function buildPBusFrame(addr: number, cmd: PBusCmd, payload: number[] = [
   const len = payload.length;
   const inner = new Uint8Array([addr, cmd, len, ...payload]);
   const crc = calculateCRC16(inner);
-  const frame = new Uint8Array(inner.length + 3); // preamble + inner + crc(2) + term
+  // Single allocation: preamble(1) + inner + crc(2) + terminator(1)
+  const frame = new Uint8Array(1 + inner.length + 2 + 1);
   frame[0] = PREAMBLE;
   frame.set(inner, 1);
   frame[1 + inner.length] = (crc >> 8) & 0xFF;
   frame[2 + inner.length] = crc & 0xFF;
-  // Oops, need +1 more for term
-  const full = new Uint8Array(frame.length + 1);
-  full.set(frame);
-  full[full.length - 1] = TERMINATOR;
-  return full;
+  frame[3 + inner.length] = TERMINATOR;
+  return frame;
 }
 
 export function buildDiscoverFrame(addr: number): Uint8Array {
