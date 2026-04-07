@@ -93,8 +93,32 @@ export function generateBurst(
       vx = Math.sin(Math.PI * 0.42) * Math.cos(armAngle + jitter) * speed;
       vy = Math.cos(Math.PI * 0.42) * speed + cfg.velocity * 0.1;
       vz = Math.sin(Math.PI * 0.42) * Math.sin(armAngle + jitter) * speed;
+    } else if (pattern === 'willow') {
+      // Willow: uniform spread, slight downward bias (heavy charcoal stars)
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = cfg.velocity * scale * (0.85 + Math.random() * 0.15);
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed - cfg.velocity * 0.05;
+      vz = Math.cos(phi) * speed;
+    } else if (pattern === 'kamuro') {
+      // Kamuro: low velocity, max spread, heavy gravitational droop
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = cfg.velocity * scale * (0.7 + Math.random() * 0.3);
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed - cfg.velocity * 0.08;
+      vz = Math.cos(phi) * speed;
+    } else if (pattern === 'brocade') {
+      // Brocade: like chrysanthemum but slower, more uniform spread
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = cfg.velocity * scale * (0.6 + Math.random() * 0.4);
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.10;
+      vz = Math.cos(phi) * speed;
     } else {
-      // Spherical burst (peony, willow, etc.)
+      // Spherical burst (peony, etc.)
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       const speed = cfg.velocity * scale * (0.5 + Math.random() * 0.5) * cfg.spread;

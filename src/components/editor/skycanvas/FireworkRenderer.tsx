@@ -201,7 +201,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
 
       switch (pattern) {
         case 'willow':
-          vx = sx * breakSpeed * 0.42 * speedVar; vy = sy * breakSpeed * 0.42 * speedVar; vz = sz * breakSpeed * 0.42 * speedVar;
+          vx = sx * breakSpeed * 0.55 * speedVar; vy = sy * breakSpeed * 0.55 * speedVar; vz = sz * breakSpeed * 0.55 * speedVar;
           life = starLife * (1.3 + Math.random() * 1.4); break;
         case 'palm':
           vx = sx * breakSpeed * 0.52 * speedVar; vy = Math.abs(sy) * breakSpeed * 0.85 + breakSpeed * 0.45; vz = sz * breakSpeed * 0.52 * speedVar;
@@ -280,15 +280,20 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     const tPos = particleBuffers.trailPos;
     const tCol = particleBuffers.trailCol;
     const t = progress * (starLife * 0.88);
-    const trailDt = 0.035;
+    const trailDt = (pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade') ? 0.020
+      : pattern === 'palm' ? 0.025 : 0.035;
     const w = getWindForce();
     const time = clock.getElapsedTime();
     const _adaptiveExposure = getAdaptiveExposure();
     
     // Reduced drag for larger calibers — heavier stars travel further
-    const dragCoeff = caliber <= 3 ? 0.058 : caliber <= 4 ? 0.048 : caliber <= 5 ? 0.040
+    const baseDrag = caliber <= 3 ? 0.058 : caliber <= 4 ? 0.048 : caliber <= 5 ? 0.040
       : caliber <= 6 ? 0.034 : caliber <= 8 ? 0.026 : caliber <= 10 ? 0.020 : 0.016;
     const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm';
+    // Pattern-specific drag multiplier — heavier stars = less air resistance
+    const dragMult = pattern === 'kamuro' ? 0.45 : pattern === 'willow' ? 0.55
+      : pattern === 'brocade' ? 0.60 : pattern === 'palm' ? 0.75 : 1.0;
+    const dragCoeff = baseDrag * dragMult;
     
     // Larger star sizes for bigger calibers — was 0.9 for 6", now 1.4
     const baseSize = caliber <= 3 ? 0.5 : caliber <= 4 ? 0.8 : caliber <= 6 ? 1.4
@@ -626,11 +631,13 @@ export function TimelineEffects() {
     <>
       {cappedEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
         const effectPos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
-        const cullRadius = effect.type === 'firework' ? (caliber || 4) * 25 : 50;
+        const pt = effect.partType;
+        const patternStr = String(pt || '');
+        const isTrailing = patternStr === 'willow' || patternStr === 'kamuro' || patternStr === 'brocade' || patternStr === 'palm';
+        const cullRadius = effect.type === 'firework' ? (caliber || 4) * (isTrailing ? 40 : 25) : 50;
         if (!isSphereInFrustum(effectPos[0], effectPos[1], effectPos[2], cullRadius)) return null;
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
-        const pt = effect.partType;
 
         if (inPrefire) {
           return (
