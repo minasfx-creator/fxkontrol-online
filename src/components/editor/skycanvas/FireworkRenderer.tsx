@@ -397,9 +397,45 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       const useExpFade = pattern === 'peony' || pattern === 'chrysanthemum';
       const fadeCubed = useExpFade ? Math.exp(-starAge * 3.5) : fade * fade * fade;
       
-      const px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
-      const py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
-      const pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
+      let px: number, py: number, pz: number;
+      
+      if (pattern === 'time_rain') {
+        // Time rain: stars rise, hang at apogee (30-60% life), then rain down
+        const hangStart = 0.25;
+        const hangEnd = 0.55;
+        const rainPhase = Math.max(0, (starAge - hangEnd) / (1 - hangEnd));
+        
+        if (starAge < hangStart) {
+          // Rising phase — normal ballistics
+          px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
+          py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * 0.15 * t * t; // very low gravity
+          pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
+        } else if (starAge < hangEnd) {
+          // Hanging phase — stars hover at apogee with micro-drift
+          const hangT = hangStart * lt / (starLife * 0.88); // time at hang start
+          const hangPx = dragPos(vx, hangT, dragCoeff) + w[0] * hangT * hangT * 0.3;
+          const hangPy = dragPos(vy, hangT, dragCoeff) + 0.5 * GRAVITY * 0.15 * hangT * hangT;
+          const hangPz = dragPos(vz, hangT, dragCoeff) + w[2] * hangT * hangT * 0.3;
+          const driftT = (starAge - hangStart) / (hangEnd - hangStart);
+          px = hangPx + w[0] * driftT * 0.5 + Math.sin(time * 0.3 + sparkleSeeds[i]) * 0.05;
+          py = hangPy - driftT * 0.3; // barely sinking
+          pz = hangPz + w[2] * driftT * 0.5 + Math.cos(time * 0.25 + sparkleSeeds[i]) * 0.04;
+        } else {
+          // Rain phase — gravity pulls stars down vertically
+          const hangT = hangStart * lt / (starLife * 0.88);
+          const hangPx = dragPos(vx, hangT, dragCoeff) + w[0] * hangT * hangT * 0.3;
+          const hangPy = dragPos(vy, hangT, dragCoeff) + 0.5 * GRAVITY * 0.15 * hangT * hangT;
+          const hangPz = dragPos(vz, hangT, dragCoeff) + w[2] * hangT * hangT * 0.3;
+          const rainT = rainPhase * 3.0; // accelerated rain
+          px = hangPx + w[0] * rainT * rainT * 0.5;
+          py = hangPy - 0.3 + 0.5 * GRAVITY * 1.2 * rainT * rainT; // full gravity rain
+          pz = hangPz + w[2] * rainT * rainT * 0.5;
+        }
+      } else {
+        px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
+        py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
+        pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
+      }
       pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
 
       const flashIntensity = Math.max(0, 1 - starAge * 20);
