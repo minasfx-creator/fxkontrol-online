@@ -132,7 +132,7 @@ export default function FanEffect({
   });
 
   return (
-    <group position={position}>
+    <group position={position} renderOrder={50}>
       {progress < 0.1 && (
         <pointLight color={color} intensity={10 * (1 - progress / 0.1)} distance={15} decay={2} />
       )}
