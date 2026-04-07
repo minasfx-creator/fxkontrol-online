@@ -49,6 +49,7 @@ import {
   HazeMachineEffect,
   SnowMachineEffect,
   BubbleMachineEffect,
+  GirandolaEffect,
 } from '../effects';
 import QuadcopterModel from '../QuadcopterModel';
 
@@ -170,7 +171,9 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     if (pattern === 'palm' || pattern === 'brocade') return baseLife * 1.6;
     if (pattern === 'chrysanthemum') return baseLife * 1.2;
     if (pattern === 'dahlia') return baseLife * 0.5;
-    if (pattern === 'dragon_egg') return baseLife * 1.8; // heavy stars, long strobe life
+    if (pattern === 'dragon_egg') return baseLife * 1.8;
+    if (pattern === 'multi_break') return baseLife * 1.4; // primary + secondary break phases
+    if (pattern === 'time_rain') return baseLife * 4.0; // very long: hang + rain
     return baseLife;
   }, [caliber, pattern]);
   
@@ -246,6 +249,21 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           vx = hx * scale_h + (Math.random() - 0.5) * 0.8;
           vy = hy * scale_h + (Math.random() - 0.5) * 0.8;
           vz = (Math.random() - 0.5) * breakSpeed * 0.06;
+          break;
+        }
+        case 'multi_break': {
+          // Multi-break: standard spherical, secondary bursts handled below
+          vx = sx * breakSpeed * speedVar * 0.85; vy = sy * breakSpeed * speedVar * 0.85 + 0.8; vz = sz * breakSpeed * speedVar * 0.85;
+          life = starLife * (0.7 + Math.random() * 0.3);
+          break;
+        }
+        case 'time_rain': {
+          // Time rain: upward-biased, low gravity phase then rain
+          const upBias = 0.4 + Math.random() * 0.3;
+          vx = sx * breakSpeed * 0.5 * speedVar;
+          vy = Math.abs(sy) * breakSpeed * 0.35 * speedVar + breakSpeed * upBias;
+          vz = sz * breakSpeed * 0.5 * speedVar;
+          life = starLife * (2.5 + Math.random() * 1.5); // long life for rain phase
           break;
         }
         default:
@@ -380,9 +398,45 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       const useExpFade = pattern === 'peony' || pattern === 'chrysanthemum';
       const fadeCubed = useExpFade ? Math.exp(-starAge * 3.5) : fade * fade * fade;
       
-      const px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
-      const py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
-      const pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
+      let px: number, py: number, pz: number;
+      
+      if (pattern === 'time_rain') {
+        // Time rain: stars rise, hang at apogee (30-60% life), then rain down
+        const hangStart = 0.25;
+        const hangEnd = 0.55;
+        const rainPhase = Math.max(0, (starAge - hangEnd) / (1 - hangEnd));
+        
+        if (starAge < hangStart) {
+          // Rising phase — normal ballistics
+          px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
+          py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * 0.15 * t * t; // very low gravity
+          pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
+        } else if (starAge < hangEnd) {
+          // Hanging phase — stars hover at apogee with micro-drift
+          const hangT = hangStart * lt / (starLife * 0.88); // time at hang start
+          const hangPx = dragPos(vx, hangT, dragCoeff) + w[0] * hangT * hangT * 0.3;
+          const hangPy = dragPos(vy, hangT, dragCoeff) + 0.5 * GRAVITY * 0.15 * hangT * hangT;
+          const hangPz = dragPos(vz, hangT, dragCoeff) + w[2] * hangT * hangT * 0.3;
+          const driftT = (starAge - hangStart) / (hangEnd - hangStart);
+          px = hangPx + w[0] * driftT * 0.5 + Math.sin(time * 0.3 + sparkleSeeds[i]) * 0.05;
+          py = hangPy - driftT * 0.3; // barely sinking
+          pz = hangPz + w[2] * driftT * 0.5 + Math.cos(time * 0.25 + sparkleSeeds[i]) * 0.04;
+        } else {
+          // Rain phase — gravity pulls stars down vertically
+          const hangT = hangStart * lt / (starLife * 0.88);
+          const hangPx = dragPos(vx, hangT, dragCoeff) + w[0] * hangT * hangT * 0.3;
+          const hangPy = dragPos(vy, hangT, dragCoeff) + 0.5 * GRAVITY * 0.15 * hangT * hangT;
+          const hangPz = dragPos(vz, hangT, dragCoeff) + w[2] * hangT * hangT * 0.3;
+          const rainT = rainPhase * 3.0; // accelerated rain
+          px = hangPx + w[0] * rainT * rainT * 0.5;
+          py = hangPy - 0.3 + 0.5 * GRAVITY * 1.2 * rainT * rainT; // full gravity rain
+          pz = hangPz + w[2] * rainT * rainT * 0.5;
+        }
+      } else {
+        px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
+        py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
+        pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
+      }
       pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz;
 
       const flashIntensity = Math.max(0, 1 - starAge * 20);
@@ -546,6 +600,35 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           pos[targetIdx * 3] = spx; pos[targetIdx * 3 + 1] = spy; pos[targetIdx * 3 + 2] = spz;
           cols[targetIdx * 3] = baseColor.r * subFade; cols[targetIdx * 3 + 1] = baseColor.g * subFade; cols[targetIdx * 3 + 2] = baseColor.b * subFade;
           sizes[targetIdx] = baseSize * 0.6 * subFade;
+        }
+      }
+    }
+
+    // ── Multi-break: secondary burst at 50% star life ──
+    if (pattern === 'multi_break') {
+      for (let i = 0; i < STAR_COUNT; i++) {
+        const lt = lifetimes[i];
+        const starAge = Math.min(1, t / lt);
+        if (starAge > 0.5 && starAge < 0.95) {
+          const subAge = (starAge - 0.5) / 0.45;
+          const subFade = Math.max(0, 1 - subAge * subAge);
+          const reigniteFlash = subAge < 0.05 ? (1 - subAge / 0.05) * 2.0 : 0;
+          const subTheta = sparkleSeeds[i] * 6.28;
+          const subPhi = Math.acos(2 * ((sparkleSeeds[i] * 3.7) % 1) - 1);
+          const subSpeed = breakSpeed * 0.35 * (0.5 + ((sparkleSeeds[i] * 7.3) % 1) * 0.5);
+          const subT = (starAge - 0.5) * lt / (starLife * 0.88) * 0.8;
+          const parentPx = pos[i * 3], parentPy = pos[i * 3 + 1], parentPz = pos[i * 3 + 2];
+          const svx = Math.sin(subPhi) * Math.cos(subTheta) * subSpeed;
+          const svy = Math.cos(subPhi) * subSpeed;
+          const svz = Math.sin(subPhi) * Math.sin(subTheta) * subSpeed;
+          pos[i * 3] = parentPx + dragPos(svx, subT, dragCoeff * 1.2);
+          pos[i * 3 + 1] = parentPy + dragPos(svy, subT, dragCoeff * 1.2) + 0.5 * GRAVITY * subT * subT;
+          pos[i * 3 + 2] = parentPz + dragPos(svz, subT, dragCoeff * 1.2);
+          const secBright = (subFade + reigniteFlash) * 0.8;
+          cols[i * 3] = baseColor.r * secBright;
+          cols[i * 3 + 1] = baseColor.g * secBright;
+          cols[i * 3 + 2] = baseColor.b * secBright;
+          sizes[i] = baseSize * 0.7 * Math.max(0.2, subFade);
         }
       }
     }
@@ -928,6 +1011,7 @@ export function TimelineEffects() {
         if (pt === 'waterfall') return <WaterfallEffect key={item.id} position={pos} color={effect.color} progress={progress} width={scaledHeight} caliber={caliber} formulationId={effFormulationId} />;
         if (pt === 'gerb') return <GerbEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight} caliber={caliber} formulationId={effFormulationId} />;
         if (pt === 'flame') return <FlameEffect key={item.id} position={pos} color={effect.color} progress={progress} height={scaledHeight} />;
+        if (pt === 'girandola') return <GirandolaEffect key={item.id} position={pos} color={effect.color} progress={progress} caliber={caliber} />;
         if (pt === 'cake') return <CakeEffect key={item.id} position={pos} color={effect.color} progress={progress} shotCount={effect.shotCount || 25} pattern={vdlFiringPattern} caliber={caliber} formulationId={effFormulationId} />;
         if (pt === 'laser') return <LaserEffect key={item.id} position={pos} color={effect.color} progress={progress} pattern={effect.laserPattern || 'fan'} beamCount={effect.beamCount || 8} />;
         if (pt === 'light' && effect.beamType) return <MovingHeadEffect key={item.id} position={pos} color={effect.color} progress={progress} beamType={effect.beamType} />;
