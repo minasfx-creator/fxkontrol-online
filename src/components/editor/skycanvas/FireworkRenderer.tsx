@@ -110,6 +110,7 @@ function _sharedStarMaterial(): THREE.ShaderMaterial {
       vertexColors: true,
       transparent: true,
       depthWrite: false,
+      depthTest: false,
       blending: THREE.AdditiveBlending,
     });
     _starMaterialVersion++;
@@ -605,7 +606,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
 
   return (
     <group position={position}>
-      <points ref={pointsRef} material={starMaterial} frustumCulled={false}>
+      <points ref={pointsRef} material={starMaterial} frustumCulled={false} renderOrder={50}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[particleBuffers.positions, 3]} />
           <bufferAttribute attach="attributes-color" args={[particleBuffers.colors, 3]} />
@@ -614,7 +615,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         </bufferGeometry>
       </points>
       
-      <lineSegments ref={trailRef} frustumCulled={false}>
+      <lineSegments ref={trailRef} frustumCulled={false} renderOrder={50}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[particleBuffers.trailPos, 3]} />
           <bufferAttribute attach="attributes-color" args={[particleBuffers.trailCol, 3]} />
@@ -624,7 +625,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
 
       {/* Pistil — inner burst with different color */}
       {hasPistil && pistilBuffers && (
-        <points ref={pistilRef} material={starMaterial} frustumCulled={false}>
+        <points ref={pistilRef} material={starMaterial} frustumCulled={false} renderOrder={50}>
           <bufferGeometry>
             <bufferAttribute attach="attributes-position" args={[pistilBuffers.positions, 3]} />
             <bufferAttribute attach="attributes-color" args={[pistilBuffers.colors, 3]} />

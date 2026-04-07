@@ -119,7 +119,7 @@ export default function WaterfallEffect({
   const wireOpacity = progress < 0.88 ? Math.min(1, progress / 0.04) * 0.35 : (1 - progress) / 0.12 * 0.35;
 
   return (
-    <group position={position}>
+    <group position={position} renderOrder={50}>
       <mesh position={[0, 0.05, 0]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.025, 0.025, scaledWidth, 8]} />
         <meshBasicMaterial color="#FFEEAA" transparent opacity={wireOpacity} blending={THREE.AdditiveBlending} />
@@ -133,7 +133,7 @@ export default function WaterfallEffect({
           <bufferAttribute attach="attributes-position" args={[posArr, 3]} />
           <bufferAttribute attach="attributes-color" args={[colArr, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.055} vertexColors transparent opacity={0.92} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={0.055} vertexColors transparent opacity={0.92} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
     </group>
   );

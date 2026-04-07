@@ -297,7 +297,7 @@ export default function CometEffect({
   const angleOffsetRad = (angleOffset * Math.PI) / 180;
 
   return (
-    <group position={position} rotation={[0, 0, angleOffsetRad]}>
+    <group position={position} rotation={[0, 0, angleOffsetRad]} renderOrder={50}>
       {/* Ignition flare — aggressive first 3% */}
       {progress < 0.03 && (
         <mesh position={[0, 0.1, 0]}>
@@ -311,12 +311,13 @@ export default function CometEffect({
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest={false}
           />
         </mesh>
       )}
 
       {/* GPU spark cloud */}
-      <points ref={sparkPointsRef} frustumCulled={false}>
+      <points ref={sparkPointsRef} frustumCulled={false} renderOrder={50}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[sparkPosBuffer, 3]} />
           <bufferAttribute attach="attributes-color" args={[sparkColBuffer, 3]} />
@@ -346,12 +347,13 @@ export default function CometEffect({
           `}
           transparent
           depthWrite={false}
+          depthTest={false}
           blending={THREE.AdditiveBlending}
         />
       </points>
 
       {/* Smoke wake cloud */}
-      <points ref={smokePointsRef} frustumCulled={false}>
+      <points ref={smokePointsRef} frustumCulled={false} renderOrder={50}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[smokePosBuffer, 3]} />
           <bufferAttribute attach="attributes-color" args={[smokeColBuffer, 3]} />
@@ -362,6 +364,7 @@ export default function CometEffect({
           transparent
           opacity={0.09}
           depthWrite={false}
+          depthTest={false}
           sizeAttenuation
         />
       </points>
@@ -378,6 +381,7 @@ export default function CometEffect({
           blendSrc={screenBlend.blendSrc as any}
           blendDst={screenBlend.blendDst as any}
           depthWrite={false}
+          depthTest={false}
         />
       </mesh>
 
@@ -394,6 +398,7 @@ export default function CometEffect({
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest={false}
           />
         </mesh>
       )}

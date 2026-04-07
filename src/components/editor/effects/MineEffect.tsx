@@ -324,7 +324,7 @@ export default function MineEffect({
   `;
 
   return (
-    <group position={position} rotation={[0, 0, angleOffsetRad]}>
+    <group position={position} rotation={[0, 0, angleOffsetRad]} renderOrder={50}>
       {/* Combustion muzzle flash with flicker */}
       {progress < 0.08 && (
         <mesh position={[0, 0.3, 0]}>
@@ -338,6 +338,7 @@ export default function MineEffect({
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest={false}
           />
         </mesh>
       )}
@@ -355,6 +356,7 @@ export default function MineEffect({
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest={false}
             side={THREE.DoubleSide}
           />
         </mesh>
@@ -364,7 +366,7 @@ export default function MineEffect({
       {progress > 0.02 && progress < 0.6 && (
         <mesh position={[0, progress * 4, 0]}>
           <sphereGeometry args={[0.6 + progress * 6, 8, 8]} />
-          <meshBasicMaterial color="#887766" transparent opacity={0.06 * (1 - progress / 0.6)} />
+          <meshBasicMaterial color="#887766" transparent opacity={0.06 * (1 - progress / 0.6)} depthTest={false} />
         </mesh>
       )}
 
@@ -380,13 +382,14 @@ export default function MineEffect({
           fragmentShader={sizeFragmentShader}
           transparent
           depthWrite={false}
+          depthTest={false}
           blending={THREE.AdditiveBlending}
         />
       </points>
 
       {/* Ground smoke plume */}
       {progress > 0.03 && progress < 0.7 && (
-        <points ref={smokePointsRef} frustumCulled={false}>
+        <points ref={smokePointsRef} frustumCulled={false} renderOrder={50}>
           <bufferGeometry>
             <bufferAttribute attach="attributes-position" args={[smokePosRef, 3]} />
             <bufferAttribute attach="attributes-color" args={[smokeColRef, 3]} />
@@ -404,6 +407,7 @@ export default function MineEffect({
             `}
             transparent
             depthWrite={false}
+            depthTest={false}
           />
         </points>
       )}

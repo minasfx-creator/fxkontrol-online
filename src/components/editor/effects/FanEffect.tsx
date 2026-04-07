@@ -132,7 +132,7 @@ export default function FanEffect({
   });
 
   return (
-    <group position={position}>
+    <group position={position} renderOrder={50}>
       {progress < 0.1 && (
         <pointLight color={color} intensity={10 * (1 - progress / 0.1)} distance={15} decay={2} />
       )}
@@ -141,19 +141,19 @@ export default function FanEffect({
           <bufferAttribute attach="attributes-position" args={[linePos.current, 3]} />
           <bufferAttribute attach="attributes-color" args={[lineCol.current, 3]} />
         </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={0.6} depthWrite={false} blending={THREE.AdditiveBlending} />
+        <lineBasicMaterial vertexColors transparent opacity={0.6} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} />
       </lineSegments>
       <points ref={pointsRef}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[posArr.current, 3]} />
           <bufferAttribute attach="attributes-color" args={[colArr.current, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.14} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={0.14} vertexColors transparent opacity={0.95} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
       {progress < 0.3 && (
         <mesh>
           <sphereGeometry args={[0.4 + progress * 2, 12, 12]} />
-          <meshBasicMaterial color={color} transparent opacity={0.1 * (1 - progress / 0.3)} blending={THREE.AdditiveBlending} />
+          <meshBasicMaterial color={color} transparent opacity={0.1 * (1 - progress / 0.3)} blending={THREE.AdditiveBlending} depthTest={false} />
         </mesh>
       )}
     </group>
