@@ -196,6 +196,8 @@ function Index() {
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
+  const [venueSelector, setVenueSelector] = useState(false);
+  const [venueOverlay, setVenueOverlay] = useState<WorldShowPreset | null>(null);
   const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'editor'>('editor');
   const [showGeoSetup, setShowGeoSetup] = useState(false);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
