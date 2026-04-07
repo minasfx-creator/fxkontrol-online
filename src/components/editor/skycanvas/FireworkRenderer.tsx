@@ -347,9 +347,12 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       
       let twinkle: number;
       if (isTrailingPattern) {
-        twinkle = 0.8 + Math.sin(twinklePhases[i] + starAge * 15) * 0.2;
+        // Trailing: use temporalFlicker with reduced amplitude for constant glow + micro-variations
+        twinkle = temporalFlicker(sparkleSeeds[i], time, 0.82, 0.15, 0.10);
       } else {
-        twinkle = temporalFlicker(sparkleSeeds[i], time, 0.65, 0.30, 0.35);
+        // Chemical-compound-specific flicker params
+        const fp = getFlickerParams(compound);
+        twinkle = temporalFlicker(sparkleSeeds[i], time, fp.base, fp.amplitude, fp.popStrength);
       }
       
       const userFade = 1 - starAge;
