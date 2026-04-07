@@ -390,7 +390,20 @@ export function FXKAssistant() {
     abortRef.current = ctrl;
 
     try {
-      await streamChat([...messages, userMsg], upsert, () => setLoading(false), ctrl.signal);
+      await streamChat([...messages, userMsg], upsert, () => {
+        setLoading(false);
+        // Execute JOI_CMD blocks after stream completes
+        if (hasJoiCommands(soFar)) {
+          const results = executeJoiCommands(soFar);
+          if (results.length > 0) {
+            setMessages(prev => prev.map((m, i) =>
+              i === prev.length - 1 && m.role === 'assistant'
+                ? { ...m, cmdResults: results }
+                : m
+            ));
+          }
+        }
+      }, ctrl.signal);
     } catch (e: any) {
       if (e.name !== 'AbortError') {
         setMessages(prev => [...prev, { role: 'assistant', content: `⚠ ${e.message}`, ts: Date.now() }]);
