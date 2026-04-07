@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 
-export type BurstPattern = 'peony' | 'chrysanthemum' | 'willow' | 'palm' | 'ring' | 'heart' | 'crossette' | 'kamuro' | 'brocade' | 'dragon_egg' | 'multi_break' | 'time_rain' | 'falling_leaves' | 'glitter';
+export type BurstPattern = 'peony' | 'chrysanthemum' | 'willow' | 'palm' | 'ring' | 'heart' | 'crossette' | 'kamuro' | 'brocade' | 'dragon_egg' | 'multi_break' | 'time_rain' | 'falling_leaves' | 'glitter' | 'horsetail' | 'brocade_crown' | 'saturn';
 
 interface BurstConfig {
   starCount: number;
@@ -32,6 +32,9 @@ const BURST_CONFIGS: Record<BurstPattern, BurstConfig> = {
   time_rain:     { starCount: 100, velocity: 22, spread: 0.9, tailFactor: 0.2, gravityMult: 0.3, symmetry: 0 },
   falling_leaves:{ starCount: 80,  velocity: 24, spread: 1.0, tailFactor: 0.8, gravityMult: 1.6, symmetry: 0 },
   glitter:       { starCount: 200, velocity: 26, spread: 1.0, tailFactor: 0.4, gravityMult: 1.0, symmetry: 0 },
+  horsetail:     { starCount: 160, velocity: 16, spread: 0.7, tailFactor: 2.5, gravityMult: 2.0, symmetry: 0 },
+  brocade_crown: { starCount: 220, velocity: 24, spread: 1.0, tailFactor: 1.6, gravityMult: 1.2, symmetry: 0 },
+  saturn:        { starCount: 140, velocity: 28, spread: 1.0, tailFactor: 0.5, gravityMult: 0.8, symmetry: 0 },
 };
 
 /**
@@ -162,6 +165,39 @@ export function generateBurst(
       vx = Math.sin(phi) * Math.cos(theta) * speed;
       vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.12;
       vz = Math.cos(phi) * speed;
+    } else if (pattern === 'horsetail') {
+      // Horsetail: heavy charcoal stars, tight upward cone, extreme droop
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.random() * Math.PI * 0.25; // tight upward cone
+      const speed = cfg.velocity * scale * (0.7 + Math.random() * 0.3);
+      vx = Math.sin(phi) * Math.cos(theta) * speed * 0.4;
+      vy = Math.cos(phi) * speed;
+      vz = Math.sin(phi) * Math.sin(theta) * speed * 0.4;
+    } else if (pattern === 'brocade_crown') {
+      // Brocade crown: like brocade but with wider spread and auto-pistil
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = cfg.velocity * scale * (0.55 + Math.random() * 0.45);
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.15;
+      vz = Math.cos(phi) * speed;
+    } else if (pattern === 'saturn') {
+      // Saturn: 60% stars in equatorial ring, 40% in polar burst
+      const isRing = (i / count) < 0.6;
+      if (isRing) {
+        const ringAngle = ((i / (count * 0.6)) * Math.PI * 2) + (Math.random() - 0.5) * 0.08;
+        const speed = cfg.velocity * scale * (0.85 + Math.random() * 0.15);
+        vx = Math.cos(ringAngle) * speed;
+        vy = (Math.random() - 0.5) * speed * 0.06; // very flat
+        vz = Math.sin(ringAngle) * speed;
+      } else {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.random() * Math.PI * 0.35; // upward polar cone
+        const speed = cfg.velocity * scale * (0.5 + Math.random() * 0.5) * 0.7;
+        vx = Math.sin(phi) * Math.cos(theta) * speed * 0.3;
+        vy = Math.cos(phi) * speed;
+        vz = Math.sin(phi) * Math.sin(theta) * speed * 0.3;
+      }
     } else {
       // Spherical burst (peony, etc.)
       const theta = Math.random() * Math.PI * 2;

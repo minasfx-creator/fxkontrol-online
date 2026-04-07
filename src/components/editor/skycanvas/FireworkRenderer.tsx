@@ -175,7 +175,10 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     if (pattern === 'multi_break') return baseLife * 1.4;
     if (pattern === 'time_rain') return baseLife * 4.0;
     if (pattern === 'falling_leaves') return baseLife * 3.5; // long flutter
-    if (pattern === 'glitter') return baseLife * 2.5; // hold for delayed scatter
+    if (pattern === 'glitter') return baseLife * 2.5;
+    if (pattern === 'horsetail') return baseLife * 3.5; // heavy charcoal, long droop
+    if (pattern === 'brocade_crown') return baseLife * 1.8;
+    if (pattern === 'saturn') return baseLife * 1.3;
     return baseLife;
   }, [caliber, pattern]);
   
@@ -276,11 +279,45 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           break;
         }
         case 'glitter': {
-          // Spherical, normal speed — delayed scatter handled in useFrame
           vx = sx * breakSpeed * speedVar * 0.9;
           vy = sy * breakSpeed * speedVar * 0.9 + 0.5;
           vz = sz * breakSpeed * speedVar * 0.9;
           life = starLife * (0.8 + Math.random() * 0.4);
+          break;
+        }
+        case 'horsetail': {
+          // Horsetail: tight upward cone, heavy charcoal stars with extreme droop
+          const htPhi = Math.random() * Math.PI * 0.25;
+          const htTheta = Math.random() * Math.PI * 2;
+          vx = Math.sin(htPhi) * Math.cos(htTheta) * breakSpeed * 0.35 * speedVar;
+          vy = Math.cos(htPhi) * breakSpeed * 0.7 * speedVar;
+          vz = Math.sin(htPhi) * Math.sin(htTheta) * breakSpeed * 0.35 * speedVar;
+          life = starLife * (2.0 + Math.random() * 2.0);
+          break;
+        }
+        case 'brocade_crown': {
+          // Brocade crown: wide brocade with auto-pistil (pistil handled by hasPistil prop)
+          vx = sx * breakSpeed * 0.55 * speedVar;
+          vy = sy * breakSpeed * 0.55 * speedVar + 0.8;
+          vz = sz * breakSpeed * 0.55 * speedVar;
+          life = starLife * (1.4 + Math.random() * 0.8);
+          break;
+        }
+        case 'saturn': {
+          // Saturn: 60% equatorial ring + 40% polar burst
+          const isRingStar = (i / STAR_COUNT) < 0.6;
+          if (isRingStar) {
+            const satAngle = ((i / (STAR_COUNT * 0.6)) * Math.PI * 2) + (Math.random() - 0.5) * 0.06;
+            const satSpeed = breakSpeed * (0.88 + Math.random() * 0.12);
+            vx = Math.cos(satAngle) * satSpeed;
+            vy = (Math.random() - 0.5) * satSpeed * 0.05;
+            vz = Math.sin(satAngle) * satSpeed;
+          } else {
+            const polPhi = Math.random() * Math.PI * 0.3;
+            vx = Math.sin(polPhi) * Math.cos(theta) * breakSpeed * 0.25 * speedVar;
+            vy = Math.cos(polPhi) * breakSpeed * 0.6 * speedVar;
+            vz = Math.sin(polPhi) * Math.sin(theta) * breakSpeed * 0.25 * speedVar;
+          }
           break;
         }
         default:
@@ -389,10 +426,11 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     // Reduced drag for larger calibers — heavier stars travel further
     const baseDrag = caliber <= 3 ? 0.058 : caliber <= 4 ? 0.048 : caliber <= 5 ? 0.040
       : caliber <= 6 ? 0.034 : caliber <= 8 ? 0.026 : caliber <= 10 ? 0.020 : 0.016;
-    const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm';
+    const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm' || pattern === 'horsetail' || pattern === 'brocade_crown';
     // Pattern-specific drag multiplier — heavier stars = less air resistance
     const dragMult = pattern === 'kamuro' ? 0.45 : pattern === 'willow' ? 0.55
-      : pattern === 'brocade' ? 0.60 : pattern === 'palm' ? 0.75 : 1.0;
+      : pattern === 'horsetail' ? 0.40 : pattern === 'brocade' ? 0.60
+      : pattern === 'brocade_crown' ? 0.55 : pattern === 'palm' ? 0.75 : 1.0;
     const dragCoeff = baseDrag * dragMult;
     
     // Larger star sizes for bigger calibers — was 0.9 for 6", now 1.4
