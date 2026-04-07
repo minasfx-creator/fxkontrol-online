@@ -10,6 +10,7 @@ import { sampleSpawnShape } from './niagaraSpawnShapes';
 import type { ForceModule } from './niagaraForceModules';
 import { applyForceModule } from './niagaraForceModules';
 import type { DataInterface } from './niagaraDataInterfaces';
+import { simRNG } from '@/core/reliability/seededRandom';
 
 // ── Module Types ────────────────────────────────────────────────────
 
@@ -87,6 +88,8 @@ export interface NiagaraParticle {
   velocity: THREE.Vector3;
   color: THREE.Color;
   size: number;
+  /** Original size at spawn — used for sizeOverLife curve sampling */
+  initialSize: number;
   rotation: number;
   age: number;
   lifetime: number;
@@ -153,7 +156,7 @@ export interface NiagaraSystem {
 // ── Helpers ─────────────────────────────────────────────────────────
 
 function randRange(min: number, max: number): number {
-  return min + Math.random() * (max - min);
+  return min + simRNG.next() * (max - min);
 }
 
 function randVec3(min: THREE.Vector3, max: THREE.Vector3): THREE.Vector3 {
@@ -177,17 +180,20 @@ function sampleCurve(curve: { t: number; value: number }[], t: number): number {
   return 1;
 }
 
+/** Reusable temp color to avoid GC pressure (~120K allocs/s eliminated) */
+const _tempColor = new THREE.Color();
+
 function sampleColorGradient(gradient: { t: number; color: THREE.Color }[], t: number): THREE.Color {
-  if (gradient.length === 0) return new THREE.Color(1, 1, 1);
-  if (t <= gradient[0].t) return gradient[0].color.clone();
-  if (t >= gradient[gradient.length - 1].t) return gradient[gradient.length - 1].color.clone();
+  if (gradient.length === 0) return _tempColor.setRGB(1, 1, 1);
+  if (t <= gradient[0].t) return _tempColor.copy(gradient[0].color);
+  if (t >= gradient[gradient.length - 1].t) return _tempColor.copy(gradient[gradient.length - 1].color);
   for (let i = 0; i < gradient.length - 1; i++) {
     if (t >= gradient[i].t && t <= gradient[i + 1].t) {
       const frac = (t - gradient[i].t) / (gradient[i + 1].t - gradient[i].t);
-      return gradient[i].color.clone().lerp(gradient[i + 1].color, frac);
+      return _tempColor.copy(gradient[i].color).lerp(gradient[i + 1].color, frac);
     }
   }
-  return new THREE.Color(1, 1, 1);
+  return _tempColor.setRGB(1, 1, 1);
 }
 
 function curlNoise3D(p: THREE.Vector3, scale: number): THREE.Vector3 {
@@ -375,11 +381,13 @@ function spawnParticles(emitter: NiagaraEmitter, dt: number): NiagaraParticle[] 
       spawnPos = sample.position;
     }
 
+    const spawnSize = randRange(init.size[0], init.size[1]);
     const p: NiagaraParticle = {
       position: spawnPos,
       velocity: init.enabled ? randVec3(init.velocity.min, init.velocity.max) : new THREE.Vector3(),
       color: init.color.clone(),
-      size: randRange(init.size[0], init.size[1]),
+      size: spawnSize,
+      initialSize: spawnSize,
       rotation: randRange(init.rotation[0], init.rotation[1]),
       age: 0,
       lifetime: randRange(init.lifetime[0], init.lifetime[1]),
@@ -422,7 +430,7 @@ function updateParticles(emitter: NiagaraEmitter, dt: number, events: EmitterEve
         p.color.copy(sampleColorGradient(upd.colorOverLife, t));
       }
       if (upd.sizeOverLife.length > 0) {
-        p.size *= sampleCurve(upd.sizeOverLife, t);
+        p.size = p.initialSize * sampleCurve(upd.sizeOverLife, t);
       }
       p.rotation += upd.rotationRate * dt;
     }
