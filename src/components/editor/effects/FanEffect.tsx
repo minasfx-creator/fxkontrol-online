@@ -148,7 +148,7 @@ export default function FanEffect({
           <bufferAttribute attach="attributes-position" args={[posArr.current, 3]} />
           <bufferAttribute attach="attributes-color" args={[colArr.current, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={0.14} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={0.14} vertexColors transparent opacity={0.95} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
       {progress < 0.3 && (
         <mesh>
