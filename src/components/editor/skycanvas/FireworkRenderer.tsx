@@ -870,23 +870,55 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           <meshBasicMaterial color="#FFFFFF" transparent opacity={0.3 * Math.pow(1 - progress / 0.20, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />
         </mesh>
       )}
-      {/* Post-burst smoke — appears in late burst phase */}
-      {progress > 0.6 && (
-        <SmokeTrail
-          position={[0, 0, 0]}
-          progress={(progress - 0.6) / 0.4}
-          intensity={0.6}
-          color={color}
-          caliber={caliber}
-        />
+      {/* Volumetric smoke cloud — expands from burst center */}
+      {progress > 0.35 && (
+        <>
+          <SmokeTrail
+            position={[0, 0, 0]}
+            progress={(progress - 0.35) / 0.65}
+            intensity={0.8}
+            color={color}
+            caliber={caliber}
+          />
+          {/* Expanding volumetric smoke sphere */}
+          <mesh renderOrder={45}>
+            <sphereGeometry args={[
+              (caliber * 0.8 + 1.5) * Math.min(1, (progress - 0.35) / 0.3) * 3,
+              12, 12
+            ]} />
+            <meshBasicMaterial
+              color={new THREE.Color(color).lerp(new THREE.Color(0.35, 0.30, 0.25), 0.7)}
+              transparent
+              opacity={0.04 * Math.pow(Math.max(0, 1 - (progress - 0.35) / 0.65), 1.5)}
+              depthWrite={false}
+              depthTest={false}
+            />
+          </mesh>
+          {/* Secondary smoke wisps rising */}
+          {progress > 0.5 && (
+            <mesh position={[0, (progress - 0.5) * caliber * 2, 0]} renderOrder={44}>
+              <sphereGeometry args={[
+                (caliber * 0.5 + 1) * Math.min(1, (progress - 0.5) / 0.2) * 2,
+                8, 8
+              ]} />
+              <meshBasicMaterial
+                color="#665544"
+                transparent
+                opacity={0.025 * Math.pow(Math.max(0, 1 - (progress - 0.5) / 0.5), 2)}
+                depthWrite={false}
+                depthTest={false}
+              />
+            </mesh>
+          )}
+        </>
       )}
-      {/* Ember particles — falling hot debris after burst */}
-      {progress > 0.3 && (
+      {/* Ember particles — falling hot debris with glow trail */}
+      {progress > 0.25 && (
         <EmberParticles
           position={[0, 0, 0]}
           color={color}
-          progress={(progress - 0.3) / 0.7}
-          spreadRadius={caliber * 3}
+          progress={(progress - 0.25) / 0.75}
+          spreadRadius={caliber * 3.5}
           startHeight={0}
         />
       )}
