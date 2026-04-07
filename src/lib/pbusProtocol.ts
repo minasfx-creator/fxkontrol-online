@@ -180,7 +180,7 @@ export function parsePBusResponse(data: Uint8Array): PBusParsedFrame | null {
   const cmd = data[2] as PBusCmd;
   const len = data[3];
 
-  if (data.length < 6 + len) return null;
+  if (data.length < 7 + len) return null;
 
   const payload = data.slice(4, 4 + len);
   const innerData = data.slice(1, 4 + len);
