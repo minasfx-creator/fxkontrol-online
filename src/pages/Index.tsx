@@ -256,6 +256,11 @@ function Index() {
   const SHARED_PANEL_IDS = new Set(['effects', 'scene', 'showsettings']);
 
   const handleTogglePanel = useCallback((id: PanelId) => {
+    // Intercept worldshows — open VenueQuickSelector instead of panel
+    if (id === 'worldshows') {
+      setVenueSelector(true);
+      return;
+    }
     setActivePanel((prev) => {
       const next = prev === id ? null : id;
       if (next && SHARED_PANEL_IDS.has(next)) setLeftDockOpen(null);
