@@ -163,7 +163,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   const starLife = useMemo(() => {
     const baseLife = caliber <= 3 ? 1.6 : caliber <= 4 ? 2.2 : caliber <= 5 ? 2.8
       : caliber <= 6 ? 3.5 : caliber <= 8 ? 4.5 : caliber <= 10 ? 6.0 : 7.5;
-    if (pattern === 'willow' || pattern === 'kamuro') return baseLife * 2.2;
+    if (pattern === 'willow' || pattern === 'kamuro') return baseLife * 3.0; // was 2.2 — longer trails
     if (pattern === 'palm' || pattern === 'brocade') return baseLife * 1.6;
     if (pattern === 'chrysanthemum') return baseLife * 1.2;
     if (pattern === 'dahlia') return baseLife * 0.5;
