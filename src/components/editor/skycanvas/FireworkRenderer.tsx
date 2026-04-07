@@ -611,6 +611,18 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         </bufferGeometry>
         <lineBasicMaterial vertexColors transparent opacity={Math.min(1, 0.8 * tailFactor)} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} linewidth={3} />
       </lineSegments>
+
+      {/* Pistil — inner burst with different color */}
+      {hasPistil && pistilBuffers && (
+        <points ref={pistilRef} material={starMaterial} frustumCulled={false}>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[pistilBuffers.positions, 3]} />
+            <bufferAttribute attach="attributes-color" args={[pistilBuffers.colors, 3]} />
+            <bufferAttribute attach="attributes-aSize" args={[pistilBuffers.sizes, 1]} />
+            <bufferAttribute attach="attributes-aLife" args={[pistilBuffers.lives, 1]} />
+          </bufferGeometry>
+        </points>
+      )}
       
       {/* Core flash — bright white, 80ms */}
       {progress < 0.08 && (
