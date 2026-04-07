@@ -347,7 +347,7 @@ export default function MineEffect({
     if (szAttr) szAttr.needsUpdate = true;
 
     // ── Ground smoke plume ──
-    if (smokePointsRef.current && progress > 0.03 && progress < 0.7) {
+    if (smokePointsRef.current && progress > 0.03 && progress < 0.92) {
       const smokePosArr = smokePosRef;
       const smokeColArr = smokeColRef;
       const smokeSizeArr = smokeSizeRef;
