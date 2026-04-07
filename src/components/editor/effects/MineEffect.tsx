@@ -352,7 +352,14 @@ export default function MineEffect({
   });
 
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
-  const angleOffsetRad = (angleOffset * Math.PI) / 180;
+
+  // Compute launch direction quaternion from heading/pitch
+  const launchRotation = useMemo(() => {
+    const headingRad = -(launchHeading || 0) * Math.PI / 180;
+    const pitchRad = (90 - (launchPitch || 85)) * Math.PI / 180;
+    const euler = new THREE.Euler(pitchRad, headingRad, 0, 'YXZ');
+    return euler;
+  }, [launchHeading, launchPitch]);
 
   // Combustion-modulated muzzle flash
   const muzzleFlashOpacity = useMemo(() => 0.7, []);
