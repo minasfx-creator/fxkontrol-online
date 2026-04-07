@@ -464,7 +464,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       : caliber <= 6 ? 0.034 : caliber <= 8 ? 0.026 : caliber <= 10 ? 0.020 : 0.016;
     const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm' || pattern === 'horsetail' || pattern === 'brocade_crown';
     // Pattern-specific drag multiplier — heavier stars = less air resistance
-    const dragMult = pattern === 'kamuro' ? 0.45 : pattern === 'willow' ? 0.55
+    const dragMult = pattern === 'kamuro' ? 0.55 : pattern === 'willow' ? 0.55
       : pattern === 'horsetail' ? 0.40 : pattern === 'brocade' ? 0.60
       : pattern === 'brocade_crown' ? 0.55 : pattern === 'palm' ? 0.75 : 1.0;
     const dragCoeff = baseDrag * dragMult;
