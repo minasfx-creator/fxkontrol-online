@@ -509,6 +509,7 @@ export default function MineEffect({
           <bufferGeometry>
             <bufferAttribute attach="attributes-position" args={[smokePosRef, 3]} />
             <bufferAttribute attach="attributes-color" args={[smokeColRef, 3]} />
+            <bufferAttribute attach="attributes-size" args={[smokeSizeRef, 1]} />
           </bufferGeometry>
           <shaderMaterial
             vertexShader={sizeVertexShader}
