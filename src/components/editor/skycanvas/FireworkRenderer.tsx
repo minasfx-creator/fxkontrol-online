@@ -12,7 +12,7 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useLOD } from '@/hooks/useLOD';
 import { getLiftTime, getBreakHeight, getBreakSpeed, getTypedPrefire, getTypedDuration, getStarLifetime, type FinalePartType } from '@/lib/pyroPhysics';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
-import { temporalFlicker, getFlickerParams } from '@/lib/pyroNoise';
+import { temporalFlicker, getFlickerParams, strobeFlicker, getCombustionHdrBoost } from '@/lib/pyroNoise';
 import { updateFrustum, isSphereInFrustum } from '@/lib/frustumCuller';
 import { clampNiagaraHDR, getNiagaraBudgets } from '@/lib/niagaraBlenderRules';
 import { thermalColor, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
@@ -165,10 +165,11 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   const starLife = useMemo(() => {
     const baseLife = caliber <= 3 ? 1.6 : caliber <= 4 ? 2.2 : caliber <= 5 ? 2.8
       : caliber <= 6 ? 3.5 : caliber <= 8 ? 4.5 : caliber <= 10 ? 6.0 : 7.5;
-    if (pattern === 'willow' || pattern === 'kamuro') return baseLife * 3.0; // was 2.2 — longer trails
+    if (pattern === 'willow' || pattern === 'kamuro') return baseLife * 3.0;
     if (pattern === 'palm' || pattern === 'brocade') return baseLife * 1.6;
     if (pattern === 'chrysanthemum') return baseLife * 1.2;
     if (pattern === 'dahlia') return baseLife * 0.5;
+    if (pattern === 'dragon_egg') return baseLife * 1.8; // heavy stars, long strobe life
     return baseLife;
   }, [caliber, pattern]);
   
@@ -388,17 +389,26 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       
       const lifeRatio = 1 - starAge;
       const adaptiveScale = THREE.MathUtils.clamp(_adaptiveExposure / 1.2, 0.45, 1.35);
-      const hdrScale = THREE.MathUtils.clamp((hdrMultiplier / 3.5) * adaptiveScale, 0.6, 2.4);
+      // Apply combustion heat HDR boost per compound (Al=1.0, Fe=0.22, etc.)
+      const compoundHdr = getCombustionHdrBoost(String(compound));
+      const hdrScale = THREE.MathUtils.clamp((hdrMultiplier / 3.5) * adaptiveScale * (0.7 + compoundHdr * 0.6), 0.6, 2.8);
       const chemColor = thermalColor(compound, lifeRatio, hdrScale);
       const chemR = chemColor.r, chemG = chemColor.g, chemB = chemColor.b;
       
       let twinkle: number;
-      if (isTrailingPattern) {
+      const compoundStr = String(compound);
+      const isMagnaliumOrDragonEgg = compoundStr.includes('magnalium') || pattern === 'dragon_egg';
+      
+      if (isMagnaliumOrDragonEgg) {
+        // Dragon eggs / magnalium strobe: real oscillatory combustion
+        // "more vigorous than strobe" — smolder 0.2s, burn 0.08s (Chemistry of Pyrotechnics)
+        twinkle = strobeFlicker(sparkleSeeds[i], time, 0.2, 0.08);
+      } else if (isTrailingPattern) {
         // Trailing: use temporalFlicker with reduced amplitude for constant glow + micro-variations
         twinkle = temporalFlicker(sparkleSeeds[i], time, 0.82, 0.15, 0.10);
       } else {
         // Chemical-compound-specific flicker params
-        const fp = getFlickerParams(String(compound));
+        const fp = getFlickerParams(compoundStr);
         twinkle = temporalFlicker(sparkleSeeds[i], time, fp.base, fp.amplitude, fp.popStrength);
         
         // ── Discrete blink pattern for non-trailing patterns ──

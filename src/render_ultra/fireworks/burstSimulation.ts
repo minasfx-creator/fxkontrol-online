@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 
-export type BurstPattern = 'peony' | 'chrysanthemum' | 'willow' | 'palm' | 'ring' | 'heart' | 'crossette' | 'kamuro' | 'brocade';
+export type BurstPattern = 'peony' | 'chrysanthemum' | 'willow' | 'palm' | 'ring' | 'heart' | 'crossette' | 'kamuro' | 'brocade' | 'dragon_egg';
 
 interface BurstConfig {
   starCount: number;
@@ -27,6 +27,7 @@ const BURST_CONFIGS: Record<BurstPattern, BurstConfig> = {
   crossette:     { starCount: 36,  velocity: 32, spread: 0.9, tailFactor: 0.6, gravityMult: 1.0, symmetry: 4 },
   kamuro:        { starCount: 300, velocity: 18, spread: 1.0, tailFactor: 2.0, gravityMult: 1.5, symmetry: 0 },
   brocade:       { starCount: 250, velocity: 25, spread: 1.0, tailFactor: 1.8, gravityMult: 1.3, symmetry: 0 },
+  dragon_egg:    { starCount: 40,  velocity: 15, spread: 0.6, tailFactor: 0.3, gravityMult: 1.8, symmetry: 0 },
 };
 
 /**
@@ -117,6 +118,15 @@ export function generateBurst(
       const speed = cfg.velocity * scale * (0.6 + Math.random() * 0.4);
       vx = Math.sin(phi) * Math.cos(theta) * speed;
       vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.10;
+      vz = Math.cos(phi) * speed;
+    } else if (pattern === 'dragon_egg') {
+      // Dragon egg: moderate velocity sphere, heavy gravity, stars will use strobeFlicker
+      // "more vigorous than strobe" — Chemistry of Pyrotechnics
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = cfg.velocity * scale * (0.5 + Math.random() * 0.5);
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.12;
       vz = Math.cos(phi) * speed;
     } else {
       // Spherical burst (peony, etc.)

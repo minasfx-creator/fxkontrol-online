@@ -1199,6 +1199,14 @@ export function getChemistryForRendering(formulationId: string | undefined) {
   };
 }
 
+// ── Flash Formula Variations (Complete Book of Flash Powder) ──
+export const FLASH_FORMULAS: Record<string, { name: string; composition: string; burnRate: number; hdrBoost: number }> = {
+  flash_standard: { name: 'Standard Salute', composition: 'KClO4 66% + Al 34%', burnRate: 0.005, hdrBoost: 3.0 },
+  flash_clark: { name: 'Clark Mix', composition: 'KClO4 7 + Al flake 5', burnRate: 0.003, hdrBoost: 3.5 },
+  flash_chinese: { name: 'Chinese Mix', composition: 'KClO4 3 + Al 4 + S 3', burnRate: 0.004, hdrBoost: 3.2 },
+  flash_military_m80: { name: 'Military M-80', composition: 'KClO4 + Mg + Al flake', burnRate: 0.008, hdrBoost: 2.5 },
+};
+
 export function getAllFormulations(): Record<string, RealFormulation> {
   return { ...REAL_FORMULATIONS };
 }
