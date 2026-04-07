@@ -621,6 +621,9 @@ export function TimelineEffects() {
   // Export burst count for PostProcessing
   TimelineEffects._activeBurstCount = cappedEffects.filter(e => e.effect.type === 'firework').length;
 
+  // Update frustum once per render (not per-burst)
+  updateFrustum(camera);
+
   return (
     <>
       {cappedEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
