@@ -156,7 +156,7 @@ export interface NiagaraSystem {
 // ── Helpers ─────────────────────────────────────────────────────────
 
 function randRange(min: number, max: number): number {
-  return min + Math.random() * (max - min);
+  return min + simRNG.next() * (max - min);
 }
 
 function randVec3(min: THREE.Vector3, max: THREE.Vector3): THREE.Vector3 {
