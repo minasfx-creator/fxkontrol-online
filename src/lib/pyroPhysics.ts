@@ -638,10 +638,21 @@ export function createShellBurst(
         break;
       case 'peony':
       default: {
-        const speedVariation = 0.7 + Math.random() * 0.3;
-        vx = sx * breakSpeed * speedVariation;
-        vy = sy * breakSpeed * speedVariation * 0.85 + 1;
-        vz = sz * breakSpeed * speedVariation;
+        // Peony: 12 azimuthal petal clusters with ±8° jitter
+        const PETAL_COUNT = 12;
+        const petalIdx = i % PETAL_COUNT;
+        const petalAngle = (petalIdx / PETAL_COUNT) * Math.PI * 2;
+        const jitter = (Math.random() - 0.5) * 2 * (8 * Math.PI / 180);
+        const clusterTheta = petalAngle + jitter;
+        // Upper hemisphere bias for petal shape
+        const clusterPhi = Math.acos(0.3 + Math.random() * 0.5);
+        const csx = Math.sin(clusterPhi) * Math.cos(clusterTheta);
+        const csy = Math.cos(clusterPhi);
+        const csz = Math.sin(clusterPhi) * Math.sin(clusterTheta);
+        const speedVariation = 0.85 + Math.random() * 0.15;
+        vx = csx * breakSpeed * speedVariation;
+        vy = csy * breakSpeed * speedVariation * 0.85 + 1;
+        vz = csz * breakSpeed * speedVariation;
         break;
       }
     }
