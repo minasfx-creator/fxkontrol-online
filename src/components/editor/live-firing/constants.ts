@@ -92,7 +92,8 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
       { id: 'eff-cfl-yellow', name: 'COLOR YELLOW', description: 'Yellow fluid flame', duration: 1.0, channelValues: [{ channel: 1, value: 200 }] },
       { id: 'eff-cfl-purple', name: 'COLOR PURPLE', description: 'Purple fluid flame', duration: 1.0, channelValues: [{ channel: 1, value: 200 }] },
     ],
-    safetyChannel: 2, safetyValue: 127,
+    // 2CH-P: safetyValue 127 (range 50-200 = enable). 2CH-N: 240-255 = Compression (enable), 0-239 = Pressure Relief (E-Stop)
+    safetyChannel: 2, safetyValue: 245,
   },
   // ── cFlamer mVolcano (5-nozzle, 6CH, 88 presets per manual) ──
   {
