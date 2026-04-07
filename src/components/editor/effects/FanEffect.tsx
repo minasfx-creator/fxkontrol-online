@@ -31,14 +31,15 @@ export default function FanEffect({
   launchHeading?: number;
   launchPitch?: number;
 }) {
-  // Caliber-based spread calibration
-  const effectiveSpread = spreadAngle ?? (70 + caliber * 8);
-  const caliberScale = 0.7 + caliber * 0.12;
-  const RAYS = Math.min(15, Math.round(BASE_RAYS * caliberScale));
-  const raySpeed = (3.5 + caliber * 1.2) * caliberScale;
+  // Caliber-based spread calibration — larger calibers = wider spread, more rays, heavier particles
+  const effectiveSpread = spreadAngle ?? Math.min(160, 60 + caliber * 12);
+  const caliberScale = 0.6 + caliber * 0.15;
+  const RAYS = Math.min(15, Math.max(5, Math.round(BASE_RAYS * caliberScale)));
+  const raySpeed = (3.0 + caliber * 0.9) * caliberScale;
   const PARTICLES_PER_RAY = Math.min(50, Math.round(BASE_PARTICLES_PER_RAY * caliberScale));
   const TOTAL_PARTICLES = RAYS * PARTICLES_PER_RAY;
-  const particleSize = 0.10 + caliber * 0.02;
+  const particleSize = 0.08 + caliber * 0.025;
+  const gravityStrength = 1.5 + caliber * 0.6; // heavier particles = more droop
 
   const pointsRef = useRef<THREE.Points>(null);
   const linesRef = useRef<THREE.LineSegments>(null);
@@ -80,16 +81,17 @@ export default function FanEffect({
       const speed = (raySpeed + Math.sin(ray * 1.5) * 1.5);
 
       const dirX = Math.sin(rayAngle);
-      const dirY = Math.cos(rayAngle) * 0.8 + 0.5;
-      const dirZ = 0;
+      const dirY = Math.cos(rayAngle) * 0.75 + 0.55;
+      const dirZ = Math.sin(rayAngle) * 0.15; // add depth spread
 
       const tipDist = speed * t * 0.8;
+      const tipGravity = -gravityStrength * t * t * 0.15;
       const rayFade = Math.max(0, 1 - progress * 0.7);
       lp[ray * 6] = 0;
       lp[ray * 6 + 1] = 0;
       lp[ray * 6 + 2] = 0;
       lp[ray * 6 + 3] = dirX * tipDist + wX * t * t;
-      lp[ray * 6 + 4] = dirY * tipDist;
+      lp[ray * 6 + 4] = dirY * tipDist + tipGravity;
       lp[ray * 6 + 5] = dirZ * tipDist + wZ * t * t;
 
       lc[ray * 6] = baseColor.r * rayFade * 0.4;
@@ -103,12 +105,12 @@ export default function FanEffect({
         const idx = ray * PARTICLES_PER_RAY + j;
         const pct = j / PARTICLES_PER_RAY;
         const dist = pct * speed * t;
-        const gravity = -(2 + caliber * 0.4) * pct * pct * t;
+        const gravity = -gravityStrength * pct * pct * t;
         const scatter = Math.sin(j * 13.7 + ray * 5.1) * 0.3 * pct;
 
         p[idx * 3] = dirX * dist + scatter + wX * pct * t;
         p[idx * 3 + 1] = dirY * dist + gravity;
-        p[idx * 3 + 2] = dirZ * dist + Math.cos(j * 7.3 + ray * 3.3) * 0.2 * pct + wZ * pct * t;
+        p[idx * 3 + 2] = dirZ * dist + Math.cos(j * 7.3 + ray * 3.3) * 0.25 * pct + wZ * pct * t;
 
         const fade = Math.max(0, 1 - pct * 0.6) * Math.max(0, 1 - progress * 0.8);
         

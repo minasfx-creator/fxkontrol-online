@@ -225,15 +225,15 @@ function CakeShot({
     const v = new Float32Array(PARTICLES_PER_SHOT * 3);
     const l = new Float32Array(PARTICLES_PER_SHOT);
     const rng = (i: number) => Math.sin(seed * 9999 + i * 7919) * 0.5 + 0.5;
-    const breakSpeed = getBreakSpeed(caliber) * 0.5;
+    const breakSpeed = getBreakSpeed(caliber) * 0.75; // realistic proportion for cake shells
     for (let i = 0; i < PARTICLES_PER_SHOT; i++) {
       const theta = rng(i * 2) * Math.PI * 2;
       const phi = Math.acos(2 * rng(i * 2 + 1) - 1);
-      const speed = breakSpeed * (0.6 + rng(i * 3) * 0.4);
+      const speed = breakSpeed * (0.5 + rng(i * 3) * 0.5);
       v[i * 3] = Math.sin(phi) * Math.cos(theta) * speed;
-      v[i * 3 + 1] = Math.sin(phi) * Math.sin(theta) * speed * 0.85 + 1.5;
+      v[i * 3 + 1] = Math.sin(phi) * Math.sin(theta) * speed * 0.9 + 1.0;
       v[i * 3 + 2] = Math.cos(phi) * speed;
-      l[i] = starLife * (0.6 + rng(i * 4) * 0.4);
+      l[i] = starLife * (0.5 + rng(i * 4) * 0.5);
     }
     return { velocities: v, lifetimes: l };
   }, [seed, caliber, starLife]);
@@ -284,8 +284,11 @@ function CakeShot({
   const t = burstProgress * starLife;
   const positions = burstPositions;
   const colors = burstColors;
-  const drag = 0.03 + caliber * 0.005;
+  // Caliber-scaled drag: heavier shells = less drag
+  const drag = caliber <= 2 ? 0.055 : caliber <= 3 ? 0.045 : caliber <= 4 ? 0.038 : 0.030;
   const burstCenterX = Math.sin(angle) * breakH;
+  // Caliber-scaled velocity multiplier
+  const velScale = caliber <= 2 ? 0.45 : caliber <= 3 ? 0.50 : caliber <= 4 ? 0.55 : 0.60;
 
   for (let i = 0; i < PARTICLES_PER_SHOT; i++) {
     const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
@@ -294,9 +297,9 @@ function CakeShot({
     const fade = Math.max(0, 1 - age);
     const dragFactor = Math.exp(-drag * t);
 
-    const px = vx * t * 0.35 * dragFactor;
-    const py = vy * t * 0.35 * dragFactor + 0.5 * GRAVITY * t * t * 0.25;
-    const pz = vz * t * 0.35 * dragFactor;
+    const px = vx * t * velScale * dragFactor;
+    const py = vy * t * velScale * dragFactor + 0.5 * GRAVITY * t * t * 0.4; // 40% gravity (was 25%)
+    const pz = vz * t * velScale * dragFactor;
     
     positions[i * 3] = burstCenterX + px;
     positions[i * 3 + 1] = breakH + py;
@@ -415,7 +418,7 @@ export default function CakeEffect({
   return (
     <group position={position} rotation={launchRotation}>
       {shots.map((shot, i) => {
-        const shotDuration = 1 / shotCount * 2.5;
+        const shotDuration = (1 / shotCount) * (2.0 + caliber * 0.3); // larger caliber = longer per-shot duration
         const shotProgress = (progress - shot.delay) / shotDuration;
         return (
           <CakeShot
