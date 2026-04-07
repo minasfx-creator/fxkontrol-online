@@ -440,8 +440,8 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
     <EffectComposer multisampling={0} enableNormalPass={s.ssaoEnabled} resolutionScale={s.ssrHalfRes && s.ssrEnabled ? 1.0 : 1.0}>
       <SMAA />
 
-      {/* ═══ Screen Space Reflections (UE5 r.SSR.Temporal) — half-res for perf ═══ */}
-      {s.ssrEnabled && (
+      {/* ═══ SSR — DISABLED by default for night scenes (heavy GPU cost) ═══ */}
+      {s.ssrEnabled && !hasBursts && (
         <SSR
           temporalResolve
           temporalResolveMix={0.9}
