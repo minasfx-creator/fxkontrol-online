@@ -587,6 +587,14 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           px += Math.sin(time * 2.5 + frondPhase) * frondAmp * spreadProgress;
           pz += Math.cos(time * 2.5 + frondPhase + 1.5) * frondAmp * spreadProgress;
         }
+      } else if (pattern === 'kamuro') {
+        // Kamuro: heavy metal-coated stars — progressive gravity buildup for golden cascade
+        const kamGravMult = starAge < 0.4
+          ? gravityMult * 0.8
+          : gravityMult * (0.8 + (starAge - 0.4) / 0.6 * 2.7); // peaks at 3.5x
+        px = dragPos(vx, t, dragCoeff * 0.7) + w[0] * t * t * 0.4;
+        py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * kamGravMult * t * t;
+        pz = dragPos(vz, t, dragCoeff * 0.7) + w[2] * t * t * 0.4;
       } else {
         px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
