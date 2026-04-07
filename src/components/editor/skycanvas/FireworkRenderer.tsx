@@ -65,8 +65,8 @@ const STAR_VERTEX_SHADER = `
     vLife = aLife;
     vSize = aSize;
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = aSize * (8000.0 / -mvPos.z);
-    gl_PointSize = clamp(gl_PointSize, 1.0, 140.0);
+    gl_PointSize = aSize * (6000.0 / -mvPos.z);
+    gl_PointSize = clamp(gl_PointSize, 0.5, 96.0);
     gl_Position = projectionMatrix * mvPos;
   }
 `;
