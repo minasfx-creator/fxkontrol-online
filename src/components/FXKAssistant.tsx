@@ -868,6 +868,22 @@ export function FXKAssistant() {
       {/* Quick presets */}
       {messages.length > 0 && (
         <div className="relative z-10 flex gap-1 px-3 py-1.5 overflow-x-auto shrink-0" style={{ borderTop: '1px solid hsl(190 100% 50% / 0.06)' }}>
+          {OPERATIONAL_PRESETS.map(p => (
+            <button
+              key={p.label}
+              onClick={() => send(p.prompt)}
+              disabled={loading}
+              className="shrink-0 px-2 py-1 rounded text-[7px] font-mono tracking-wider uppercase transition-colors disabled:opacity-30 flex items-center gap-1"
+              style={{
+                background: 'hsl(38 100% 55% / 0.06)',
+                border: '1px solid hsl(38 100% 55% / 0.12)',
+                color: 'hsl(38 100% 60%)',
+              }}
+            >
+              <p.icon className="h-2.5 w-2.5" />
+              {p.label}
+            </button>
+          ))}
           {presets.map(p => (
             <button
               key={p.label}
