@@ -32,6 +32,8 @@ export default function CometEffect({
   caliber = 3,
   angleOffset = 0,
   formulationId,
+  launchHeading = 0,
+  launchPitch = 85,
 }: {
   position: [number, number, number];
   color: string;
@@ -40,6 +42,8 @@ export default function CometEffect({
   caliber?: number;
   angleOffset?: number;
   formulationId?: string;
+  launchHeading?: number;
+  launchPitch?: number;
 }) {
   const { scene, camera } = useThree();
   const glowRef = useRef<THREE.Mesh>(null);
