@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 
-export type BurstPattern = 'peony' | 'chrysanthemum' | 'willow' | 'palm' | 'ring' | 'heart' | 'crossette' | 'kamuro' | 'brocade' | 'dragon_egg' | 'multi_break' | 'time_rain';
+export type BurstPattern = 'peony' | 'chrysanthemum' | 'willow' | 'palm' | 'ring' | 'heart' | 'crossette' | 'kamuro' | 'brocade' | 'dragon_egg' | 'multi_break' | 'time_rain' | 'falling_leaves' | 'glitter';
 
 interface BurstConfig {
   starCount: number;
@@ -30,6 +30,8 @@ const BURST_CONFIGS: Record<BurstPattern, BurstConfig> = {
   dragon_egg:    { starCount: 40,  velocity: 15, spread: 0.6, tailFactor: 0.3, gravityMult: 1.8, symmetry: 0 },
   multi_break:   { starCount: 120, velocity: 26, spread: 1.0, tailFactor: 0.5, gravityMult: 1.0, symmetry: 0 },
   time_rain:     { starCount: 100, velocity: 22, spread: 0.9, tailFactor: 0.2, gravityMult: 0.3, symmetry: 0 },
+  falling_leaves:{ starCount: 80,  velocity: 24, spread: 1.0, tailFactor: 0.8, gravityMult: 1.6, symmetry: 0 },
+  glitter:       { starCount: 200, velocity: 26, spread: 1.0, tailFactor: 0.4, gravityMult: 1.0, symmetry: 0 },
 };
 
 /**
@@ -144,6 +146,22 @@ export function generateBurst(
       vx = Math.sin(phi) * Math.cos(theta) * speed * 0.6;
       vy = Math.abs(Math.sin(phi) * Math.sin(theta)) * speed * 0.4 + cfg.velocity * 0.35; // upward bias
       vz = Math.cos(phi) * speed * 0.6;
+    } else if (pattern === 'falling_leaves') {
+      // Falling leaves: wide spread, heavy tumbling drag — stars flutter down
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = cfg.velocity * scale * (0.6 + Math.random() * 0.4);
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed * 0.5 + cfg.velocity * 0.08; // slight upward
+      vz = Math.cos(phi) * speed;
+    } else if (pattern === 'glitter') {
+      // Glitter: spherical burst, delayed secondary scatter handled in renderer
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const speed = cfg.velocity * scale * (0.5 + Math.random() * 0.5);
+      vx = Math.sin(phi) * Math.cos(theta) * speed;
+      vy = Math.sin(phi) * Math.sin(theta) * speed + cfg.velocity * 0.12;
+      vz = Math.cos(phi) * speed;
     } else {
       // Spherical burst (peony, etc.)
       const theta = Math.random() * Math.PI * 2;

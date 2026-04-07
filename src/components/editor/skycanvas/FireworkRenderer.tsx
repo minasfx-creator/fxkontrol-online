@@ -172,8 +172,10 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     if (pattern === 'chrysanthemum') return baseLife * 1.2;
     if (pattern === 'dahlia') return baseLife * 0.5;
     if (pattern === 'dragon_egg') return baseLife * 1.8;
-    if (pattern === 'multi_break') return baseLife * 1.4; // primary + secondary break phases
-    if (pattern === 'time_rain') return baseLife * 4.0; // very long: hang + rain
+    if (pattern === 'multi_break') return baseLife * 1.4;
+    if (pattern === 'time_rain') return baseLife * 4.0;
+    if (pattern === 'falling_leaves') return baseLife * 3.5; // long flutter
+    if (pattern === 'glitter') return baseLife * 2.5; // hold for delayed scatter
     return baseLife;
   }, [caliber, pattern]);
   
@@ -258,12 +260,27 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           break;
         }
         case 'time_rain': {
-          // Time rain: upward-biased, low gravity phase then rain
           const upBias = 0.4 + Math.random() * 0.3;
           vx = sx * breakSpeed * 0.5 * speedVar;
           vy = Math.abs(sy) * breakSpeed * 0.35 * speedVar + breakSpeed * upBias;
           vz = sz * breakSpeed * 0.5 * speedVar;
-          life = starLife * (2.5 + Math.random() * 1.5); // long life for rain phase
+          life = starLife * (2.5 + Math.random() * 1.5);
+          break;
+        }
+        case 'falling_leaves': {
+          // Wide spread, tumbling: each star gets a random tumble phase
+          vx = sx * breakSpeed * 0.9 * speedVar;
+          vy = sy * breakSpeed * 0.5 * speedVar + breakSpeed * 0.08;
+          vz = sz * breakSpeed * 0.9 * speedVar;
+          life = starLife * (1.5 + Math.random() * 2.0);
+          break;
+        }
+        case 'glitter': {
+          // Spherical, normal speed — delayed scatter handled in useFrame
+          vx = sx * breakSpeed * speedVar * 0.9;
+          vy = sy * breakSpeed * speedVar * 0.9 + 0.5;
+          vz = sz * breakSpeed * speedVar * 0.9;
+          life = starLife * (0.8 + Math.random() * 0.4);
           break;
         }
         default:
@@ -432,6 +449,26 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           py = hangPy - 0.3 + 0.5 * GRAVITY * 1.2 * rainT * rainT; // full gravity rain
           pz = hangPz + w[2] * rainT * rainT * 0.5;
         }
+      } else if (pattern === 'falling_leaves') {
+        // Falling leaves: aerodynamic tumble — sinusoidal lateral drift + heavy gravity
+        // Each star tumbles at its own frequency (from sparkleSeeds)
+        const tumbleFreq = 2.0 + (sparkleSeeds[i] % 3) * 0.8;
+        const tumbleAmp = 0.4 + (sparkleSeeds[i] % 5) * 0.08;
+        const basePx = dragPos(vx, t, dragCoeff * 0.6); // less drag = wider spread
+        const basePy = dragPos(vy, t, dragCoeff * 0.4) + 0.5 * GRAVITY * 1.6 * t * t;
+        const basePz = dragPos(vz, t, dragCoeff * 0.6);
+        // Tumbling flutter: lateral oscillation perpendicular to velocity
+        const tumblePhase = twinklePhases[i];
+        px = basePx + Math.sin(time * tumbleFreq + tumblePhase) * tumbleAmp * starAge + w[0] * t * t * 0.4;
+        py = basePy + Math.cos(time * tumbleFreq * 0.7 + tumblePhase) * tumbleAmp * 0.3 * starAge;
+        pz = basePz + Math.cos(time * tumbleFreq + tumblePhase + 1.5) * tumbleAmp * starAge + w[2] * t * t * 0.4;
+      } else if (pattern === 'glitter') {
+        // Glitter: normal ballistics, but with delayed stochastic "flash" scatter
+        px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
+        py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
+        pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
+        // Delayed secondary ignition: at random times (30-80% life), stars flash bright
+        // This is handled in the color/brightness section below
       } else {
         px = dragPos(vx, t, dragCoeff) + w[0] * t * t * 0.3;
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * gravityMult * t * t;
@@ -454,9 +491,23 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       const compoundStr = String(compound);
       const isMagnaliumOrDragonEgg = compoundStr.includes('magnalium') || pattern === 'dragon_egg';
       
-      if (isMagnaliumOrDragonEgg) {
+      if (pattern === 'glitter') {
+        // Glitter: delayed stochastic flashes — each star ignites at a random time
+        // Weingart: "glitter stars produce delayed flashes as they fall"
+        const igniteTime = 0.3 + (sparkleSeeds[i] % 100) / 200; // 30-80% of life
+        const flashWindow = 0.06; // 60ms flash
+        const timeSinceIgnite = starAge - igniteTime;
+        const flashCount = Math.floor((starAge - igniteTime) / 0.12); // repeating flashes
+        const flashPhase = (starAge - igniteTime) % 0.12;
+        if (timeSinceIgnite > 0 && flashPhase < flashWindow) {
+          twinkle = 2.5; // bright flash
+        } else if (timeSinceIgnite > 0) {
+          twinkle = 0.15; // dim between flashes — smoldering
+        } else {
+          twinkle = 0.6; // pre-ignition: normal glow
+        }
+      } else if (isMagnaliumOrDragonEgg) {
         // Dragon eggs / magnalium strobe: real oscillatory combustion
-        // "more vigorous than strobe" — smolder 0.2s, burn 0.08s (Chemistry of Pyrotechnics)
         twinkle = strobeFlicker(sparkleSeeds[i], time, 0.2, 0.08);
       } else if (isTrailingPattern) {
         // Trailing: use temporalFlicker with reduced amplitude for constant glow + micro-variations

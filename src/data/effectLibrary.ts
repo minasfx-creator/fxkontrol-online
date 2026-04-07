@@ -208,4 +208,14 @@ export const EFFECT_LIBRARY: Effect[] = [
   { id: 'gir-01', name: 'Girandola 3" Silver', category: 'ground_effects', type: 'firework', color: '#C0C0C0', duration: 8, cost: 20, icon: '🌀', partType: 'girandola', caliber: 3, heightMeters: 15, safetyDistance: 30 },
   { id: 'gir-02', name: 'Girandola 4" Gold', category: 'ground_effects', type: 'firework', color: '#FFD700', duration: 10, cost: 30, icon: '🌀', partType: 'girandola', caliber: 4, heightMeters: 25, safetyDistance: 40 },
   { id: 'gir-03', name: 'Girandola 5" Color', category: 'ground_effects', type: 'firework', color: '#FF4500', duration: 12, cost: 40, icon: '🎡', partType: 'girandola', caliber: 5, heightMeters: 35, safetyDistance: 50 },
+
+  // ── Falling Leaves ────────────────────────────────────────
+  { id: 'fl-01', name: 'Falling Leaves Gold 4"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 6, cost: 28, icon: '🍂', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'falling_leaves', safetyDistance: 100 },
+  { id: 'fl-02', name: 'Falling Leaves Red 6"', category: 'morteiros', type: 'firework', color: '#FF0000', duration: 8, cost: 45, icon: '🍂', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'falling_leaves', safetyDistance: 175 },
+  { id: 'fl-03', name: 'Falling Leaves Silver 8"', category: 'morteiros', type: 'firework', color: '#C0C0C0', duration: 10, cost: 70, icon: '🍃', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'falling_leaves', safetyDistance: 210 },
+
+  // ── Glitter ───────────────────────────────────────────────
+  { id: 'gl-01', name: 'Glitter Gold 4"', category: 'morteiros', type: 'firework', color: '#FFD700', duration: 5, cost: 30, icon: '✨', partType: 'shell', caliber: 4, heightMeters: 80, prefire: 2.0, pattern: 'glitter', safetyDistance: 100 },
+  { id: 'gl-02', name: 'Glitter Silver 6"', category: 'morteiros', type: 'firework', color: '#C0C0C0', duration: 7, cost: 48, icon: '✨', partType: 'shell', caliber: 6, heightMeters: 120, prefire: 3.0, pattern: 'glitter', safetyDistance: 175 },
+  { id: 'gl-03', name: 'Glitter Rainbow 8"', category: 'morteiros', type: 'firework', color: '#FF69B4', duration: 8, cost: 72, icon: '💎', partType: 'shell', caliber: 8, heightMeters: 160, prefire: 4.0, pattern: 'glitter', safetyDistance: 210 },
 ];
