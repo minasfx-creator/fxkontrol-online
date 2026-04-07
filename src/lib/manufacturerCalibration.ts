@@ -140,6 +140,14 @@ export const MANUFACTURER_PROFILES: ManufacturerProfile[] = [
     icon: '🔥',
     calibers: FIREONE_CALIBERS,
   },
+  {
+    id: 'piroex-skyking',
+    name: 'PIROEX / Skyking',
+    country: 'BR/CN',
+    description: 'PIROEX LTDA (Changsha Skyking) — calibrado com laudos FFIC, fuse times medidos em laboratório, alturas NEB/T M-251',
+    icon: '🇧🇷',
+    calibers: PIROEX_CALIBERS,
+  },
 ];
 
 /**

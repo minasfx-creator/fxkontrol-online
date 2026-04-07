@@ -99,21 +99,31 @@ export interface FlickerParams {
 }
 
 const FLICKER_BY_COMPOUND: Record<string, FlickerParams> = {
-  // Strontium (red) — irregular combustion
-  strontium: { base: 0.55, amplitude: 0.40, popStrength: 0.45 },
-  // Barium (green) — stable burn
+  // Strontium (red) — SrCO3 10-23%, KClO4, PVC 7%, Shellac 5%
+  // Slow burn rate due to PVC/shellac binders; irregular combustion from SrCO3 decomposition
+  strontium: { base: 0.50, amplitude: 0.42, popStrength: 0.48 },
+  // Barium (green) — BaCO3-based, stable chlorate oxidizer
   barium: { base: 0.70, amplitude: 0.25, popStrength: 0.20 },
-  // Copper (blue) — moderately unstable
+  // Copper (blue) — CuCO3/CuO, moderately unstable at high temps
   copper: { base: 0.60, amplitude: 0.35, popStrength: 0.38 },
-  // Sodium (yellow/gold) — relatively stable
+  // Sodium (yellow/gold) — NaHCO3/Na₂C₂O₄, relatively stable
   sodium: { base: 0.68, amplitude: 0.28, popStrength: 0.22 },
-  // Titanium/Magnesium (white/silver) — very irregular sparking
-  titanium: { base: 0.50, amplitude: 0.45, popStrength: 0.50 },
-  magnesium: { base: 0.52, amplitude: 0.42, popStrength: 0.48 },
-  // Charcoal (gold tails) — slow smoldering
+  // Titanium (white/brocade) — Ti 25%, Rice Flour 2% (FFIC laudo)
+  // Extremely irregular sparking from Ti particle combustion
+  titanium: { base: 0.45, amplitude: 0.50, popStrength: 0.55 },
+  // Magnesium — fast burn, bright white, irregular
+  magnesium: { base: 0.48, amplitude: 0.45, popStrength: 0.52 },
+  // Charcoal (gold tails) — slow smoldering, organic carbon fuel
   charcoal: { base: 0.72, amplitude: 0.20, popStrength: 0.15 },
-  // Iron (gold sparks) — moderate
+  // Iron (gold sparks) — moderate, Fe particle combustion
   iron: { base: 0.62, amplitude: 0.32, popStrength: 0.30 },
+  // KClO4 flash — KClO4 36% + Al 15% (FFIC composition data)
+  // Extremely fast burn, intense burst, very short duration
+  flash: { base: 0.30, amplitude: 0.60, popStrength: 0.70 },
+  // Aluminum — Al 30% in break charge, bright intense sparks
+  aluminum: { base: 0.42, amplitude: 0.48, popStrength: 0.55 },
+  // Phenolic resin binder — slows combustion, smooths flicker (6-8% in PIROEX reds)
+  phenolic: { base: 0.75, amplitude: 0.18, popStrength: 0.12 },
 };
 
 /**
