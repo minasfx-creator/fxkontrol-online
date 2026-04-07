@@ -511,7 +511,7 @@ export default function MineEffect({
             <bufferAttribute attach="attributes-color" args={[smokeColRef, 3]} />
           </bufferGeometry>
           <shaderMaterial
-            vertexShader={sizeVertexShader.replace('size *', '3.0 *')}
+            vertexShader={sizeVertexShader}
             fragmentShader={`
               varying vec3 vColor;
               void main() {
