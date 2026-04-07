@@ -230,23 +230,26 @@ export default function GoogleTilesLayer() {
       tiles.setResolutionFromRenderer(camera, gl);
       tiles.update();
 
+      // Throttle expensive traverse to ~10fps instead of 60fps
+      frameCountRef.current++;
       let visibleCount = 0;
-      const cullRadius = Math.max(TILE_RADIUS_METERS, sceneImportRadius);
 
-      tiles.group.traverse((child) => {
-        if (child instanceof THREE.Mesh) {
-          if (!child.geometry?.boundingSphere) {
-            child.geometry?.computeBoundingSphere();
+      if (frameCountRef.current % TRAVERSE_INTERVAL === 0) {
+        const cullRadius = Math.max(TILE_RADIUS_METERS, sceneImportRadius);
+
+        tiles.group.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            if (!child.geometry?.boundingSphere) {
+              child.geometry?.computeBoundingSphere();
+            }
+            child.getWorldPosition(TMP_WORLD);
+            const dist = TMP_WORLD.distanceTo(ORIGIN);
+            const isVisible = dist < cullRadius;
+            child.visible = isVisible;
+            if (isVisible) visibleCount++;
           }
-
-          // World position is already in ENU space (near origin) — do NOT worldToLocal
-          child.getWorldPosition(TMP_WORLD);
-          const dist = TMP_WORLD.distanceTo(ORIGIN);
-          const isVisible = dist < cullRadius;
-          child.visible = isVisible;
-          if (isVisible) visibleCount++;
-        }
-      });
+        });
+      }
 
       const root = tiles.root;
       if (root) {
