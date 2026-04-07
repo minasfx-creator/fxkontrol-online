@@ -606,7 +606,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
 
   return (
     <group position={position}>
-      <points ref={pointsRef} material={starMaterial} frustumCulled={false}>
+      <points ref={pointsRef} material={starMaterial} frustumCulled={false} renderOrder={50}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[particleBuffers.positions, 3]} />
           <bufferAttribute attach="attributes-color" args={[particleBuffers.colors, 3]} />
