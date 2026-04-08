@@ -25,6 +25,10 @@ import { getThreeBlending, getMaxEnergy, GROUND_LIGHT_SCALE } from '@/lib/niagar
 import { getRealFormulation, formulationToCompound } from '@/render_ultra/fireworks/particleChemistry';
 import { readDensityAt, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
 
+// ── Pre-allocated singletons (Zero-GC) ──────────────────────────────
+const _warmSmokeColor = new THREE.Color(0.47, 0.40, 0.33);
+const _coolSmokeColor = new THREE.Color(0.40, 0.47, 0.53);
+
 // ── Custom GPU Shaders (Skybrush-grade thermal rendering) ───────────
 
 const BURST_VERTEX = `
