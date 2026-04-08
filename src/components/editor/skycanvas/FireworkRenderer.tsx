@@ -1036,7 +1036,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       {progress < 0.08 && (
         <mesh renderOrder={100}>
           <sphereGeometry args={[flashSize * 0.3 * (1 + progress * 15), 8, 8]} />
-          <meshBasicMaterial color="#FFFDF0" transparent opacity={0.7 * (1 - progress / 0.08)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+          <meshBasicMaterial color="#FFFDF0" transparent opacity={0.7 * (1 - progress / 0.08)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={true} />
         </mesh>
       )}
       {/* Halo — color-synced, 150ms */}
