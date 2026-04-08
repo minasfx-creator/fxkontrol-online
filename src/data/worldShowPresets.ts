@@ -849,14 +849,14 @@ function generateCaruaru() {
 // 16. RECIFE — Marco Zero
 // ═══════════════════════════════════════════════════════════════
 function generateRecife() {
-  // 6 barges no rio Capibaribe + 4 barges no mar
+  // 6 barges no rio Capibaribe (closer, z: -40) + 4 barges no mar (farther, z: -250)
   const rio: Position[] = Array.from({ length: 6 }, (_, i) => {
     const spread = (i - 2.5) * 100;
-    return pos(uid(), `Rio ${i + 1}`, spread, 0, 80, 0);
+    return pos(uid(), `Rio ${i + 1}`, spread, 0, -40, 0);
   });
   const mar: Position[] = Array.from({ length: 4 }, (_, i) => {
     const spread = (i - 1.5) * 200;
-    return pos(uid(), `Mar ${i + 1}`, spread, 0, -150, 180);
+    return pos(uid(), `Mar ${i + 1}`, spread, 0, -250, 0);
   });
   const all = [...rio, ...mar];
   const items: TimelineItem[] = [];
