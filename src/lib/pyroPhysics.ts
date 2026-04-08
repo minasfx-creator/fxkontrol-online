@@ -608,12 +608,21 @@ export function createShellBurst(
         vz = sz * breakSpeed * 0.5;
         life = starLifetime * (1.8 + Math.random() * 1.2);
         break;
-      case 'palm':
-        vx = sx * breakSpeed * 0.6;
-        vy = Math.abs(sy) * breakSpeed + breakSpeed * 0.4;
-        vz = sz * breakSpeed * 0.6;
+      case 'palm': {
+        // Palm: 6 symmetric fronds with upward bias
+        const FROND_COUNT = 6;
+        const frondIdx = i % FROND_COUNT;
+        const frondAngle = (frondIdx / FROND_COUNT) * Math.PI * 2;
+        const frondJitter = (Math.random() - 0.5) * 2 * (6 * Math.PI / 180); // ±6°
+        const palmTheta = frondAngle + frondJitter;
+        const palmPhi = Math.random() * Math.PI * 0.35; // upward cone
+        const palmSpeed = breakSpeed * (0.6 + Math.random() * 0.4);
+        vx = Math.sin(palmPhi) * Math.cos(palmTheta) * palmSpeed * 0.48;
+        vy = Math.cos(palmPhi) * palmSpeed + breakSpeed * 0.4;
+        vz = Math.sin(palmPhi) * Math.sin(palmTheta) * palmSpeed * 0.48;
         life = starLifetime * (1.5 + Math.random() * 0.5);
         break;
+      }
       case 'chrysanthemum':
         vx = sx * breakSpeed;
         vy = sy * breakSpeed * 0.9;

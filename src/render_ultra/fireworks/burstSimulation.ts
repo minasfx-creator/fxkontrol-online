@@ -80,13 +80,17 @@ export function generateBurst(
       vy = hy * speed + (Math.random() - 0.5) * 0.8;
       vz = (Math.random() - 0.5) * speed * 0.8;
     } else if (pattern === 'palm') {
-      // Upward-biased with stronger vertical lift
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.random() * Math.PI * 0.35; // tighter upward cone
+      // Palm: 6 symmetric fronds with upward bias and ±6° jitter
+      const FROND_COUNT = cfg.symmetry || 6;
+      const frondIdx = i % FROND_COUNT;
+      const frondCenter = (frondIdx / FROND_COUNT) * Math.PI * 2;
+      const frondJitter = (Math.random() - 0.5) * 2 * (6 * Math.PI / 180);
+      const palmAngle = frondCenter + frondJitter;
+      const phi = Math.random() * Math.PI * 0.35;
       const speed = cfg.velocity * scale * (0.6 + Math.random() * 0.4);
-      vx = Math.sin(phi) * Math.cos(theta) * speed * 0.48;
+      vx = Math.sin(phi) * Math.cos(palmAngle) * speed * 0.48;
       vy = Math.cos(phi) * speed + cfg.velocity * 0.2;
-      vz = Math.sin(phi) * Math.sin(theta) * speed * 0.48;
+      vz = Math.sin(phi) * Math.sin(palmAngle) * speed * 0.48;
     } else if (pattern === 'chrysanthemum') {
       // Slightly elevated sphere — Finale 3D reference
       const theta = Math.random() * Math.PI * 2;
