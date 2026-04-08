@@ -919,7 +919,7 @@ export default function ShellBurstRenderer({
       </mesh>
 
       {/* Volumetric smoke billboards — Niagara SubUV turbulent puffs */}
-      {smokeParticles.current.map((sp, i) => (
+      {smokeParticles.current.map((_sp, i) => i < SMOKE_POOL_SIZE ? (
         <mesh
           key={`smoke-${i}`}
           ref={(el) => { smokeMeshRefs.current[i] = el; }}
@@ -930,20 +930,14 @@ export default function ShellBurstRenderer({
           <shaderMaterial
             vertexShader={SMOKE_VERTEX}
             fragmentShader={SMOKE_FRAGMENT}
-            uniforms={{
-              ...smokeUniforms,
-              aAge: { value: sp.age },
-              aMaxAge: { value: sp.maxAge },
-              aScale: { value: sp.scale },
-              aSeed: { value: sp.seed },
-            }}
+            uniforms={perSmokeUniforms[i]}
             transparent
             depthWrite={false}
             depthTest
             side={THREE.DoubleSide}
           />
         </mesh>
-      ))}
+      ) : null)}
 
       {/* Ground illumination — reduced intensity per V-Ray/Blender rules */}
       {progress < 0.5 && (
