@@ -760,9 +760,9 @@ export default function ShellBurstRenderer({
       const turbAmp = 0.02 + turbSeed * 0.03;
       
       // Sample turbulent wind field at smoke world position (100% influence)
-      const worldX = (position as number[])[0] + sp.x;
-      const worldY = (position as number[])[1] + sp.y;
-      const worldZ = (position as number[])[2] + sp.z;
+      const worldX = px + sp.x;
+      const worldY = py + sp.y;
+      const worldZ = pz + sp.z;
       const [windX, windY, windZ] = windField.sample(worldX, worldY, worldZ, 'smoke');
       
       sp.x += sp.vx * dt + windX * dt + Math.sin(time * turbFreqX + sp.seed * 10) * turbAmp;
