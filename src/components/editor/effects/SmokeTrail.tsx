@@ -43,6 +43,7 @@ function getSharedSmokeMat(): THREE.MeshBasicMaterial {
 // Pre-allocated dummy for matrix updates
 const _dummy = new THREE.Object3D();
 const _color = new THREE.Color();
+const _colorTemp = new THREE.Color();
 
 function SmokeTrailInner({
   position,
