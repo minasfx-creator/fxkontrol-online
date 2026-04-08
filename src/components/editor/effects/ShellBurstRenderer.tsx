@@ -526,6 +526,9 @@ export default function ShellBurstRenderer({
     initTimeRef.current += dt;
     const time = initTimeRef.current;
 
+    // Cache position tuple (avoid repeated cast + index per frame)
+    const px = position[0], py = position[1], pz = position[2];
+
     // Step physics using store-driven drag and wind (formulation override if present)
     // Per-particle drag: base drag * material density coefficient
     const baseDrag = formMods ? formMods.dragOverride : starDrag;
