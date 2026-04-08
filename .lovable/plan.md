@@ -1,45 +1,51 @@
 
 
-# Ciclo #43 — ShellBurstRenderer GC Pressure + Smoke Consistency
+# Ciclo #45 — Aprimoramento Joi Show Creation Engine
 
-## Bugs Identificados
+## Análise de Gaps
 
-| # | Bug | Local | Impacto |
+| # | Gap | Local | Impacto |
 |---|-----|-------|---------|
-| 1 | **`new THREE.Color()` per-frame no smoke loop** — L708-709 cria `warmColor` e `coolColor` a cada frame dentro de `useFrame`. 60 alocações/s × 2 cores = GC spikes | `ShellBurstRenderer.tsx` L708-709 | Alto |
-| 2 | **Objeto `tipCurlMods` criado per-particle per-frame** — L512-523 faz object spread (`{...stepMods, ...}`) para cada partícula a cada frame. Com 2000 partículas × 60fps = 120.000 objetos/s | `ShellBurstRenderer.tsx` L512-523 | Alto |
-| 3 | **`crossetteTriggered` nunca limpo** — Ref Set não reseta quando pattern/color muda, impedindo sub-breaks se componente for reusado (mesmo bug corrigido no FireworkRenderer no ciclo #42) | `ShellBurstRenderer.tsx` L488 | Médio |
-| 4 | **Smoke billboards sem `depthTest`** — Fumaça volumétrica renderiza sobre geometria sólida. Inconsistente com as correções de oclusão aplicadas no FireworkRenderer | `ShellBurstRenderer.tsx` L895-909 | Médio |
-| 5 | **`glitter.splice(i,1)` inside reverse loop** — L611 usa `splice` em loop reverso, correto em ordem mas O(n²) com 800 partículas. Deveria usar swap-and-pop | `ShellBurstRenderer.tsx` L611 | Baixo |
+| 1 | **Contexto não inclui IDs dos timeline items** — Joi não consegue usar `update_effect` porque o contexto injetado (L394-396) só mostra contagem por tipo, não os IDs individuais. Impossível editar cues existentes | `FXKAssistant.tsx` L382-396 | Alto |
+| 2 | **Sem comando `add_effects_batch`** — Para shows grandes, cada efeito é um `add_effect` separado dentro de `create_choreography`. Sem validação de posição antes de disparar. Se posição falha, todos os cues daquela posição falham silenciosamente | `joiCommandExecutor.ts` L331-375 | Médio |
+| 3 | **`create_choreography` não retorna IDs criados** — Após criar um show, Joi não sabe os IDs dos efeitos que criou, impedindo edição posterior (update_effect requer ID) | `joiCommandExecutor.ts` L331-375 | Alto |
+| 4 | **System prompt não orienta sobre `positionName` no `add_effect`** — O catálogo mostra effectId mas o prompt não enfatiza usar `positionName` (mais robusto que `positionIndex`) para cues individuais fora de choreography | `systemPrompt.ts` L76-78 | Baixo |
+| 5 | **Modelo `gemini-3-flash-preview` menos preciso para JSON** — Para geração de shows complexos com dezenas de cues JSON, um modelo com melhor reasoning (gemini-2.5-pro ou gpt-5-mini) reduziria erros de formatação | `fxk-ai-chat/index.ts` L22 | Médio |
 
-## Implementação — `ShellBurstRenderer.tsx`
+## Implementação
 
-**Fix 1 — Hoist smoke colors (L708-709):**
-- Mover `warmColor` e `coolColor` para singletons module-level:
-```ts
-const _warmSmokeColor = new THREE.Color(0.47, 0.40, 0.33);
-const _coolSmokeColor = new THREE.Color(0.40, 0.47, 0.53);
+### 1. Contexto enriquecido com IDs (`FXKAssistant.tsx`)
+
+Alterar o bloco de contexto (L382-396) para incluir IDs dos timeline items (últimos 30 para não estourar contexto):
+
 ```
-- L710: trocar `new THREE.Color(...)` por referência ao singleton
+Efeitos (5): joi-fx-abc [mort-01 @ P1, t=5.0s], joi-fx-def [shell-08 @ P3, t=12.0s], ...
+```
 
-**Fix 2 — Pre-allocate tipCurlMods (L512-523):**
-- Criar um objeto singleton module-level `_stepModsCache: StepModifiers = {}`
-- Dentro do loop, mutar campos em vez de criar novo objeto a cada iteração
-- Elimina 120k alocações/s
+Isso permite que Joi use `update_effect` com o ID correto.
 
-**Fix 3 — Crossette cleanup (L488):**
-- Adicionar `useEffect(() => { crossetteTriggered.current.clear(); crossetteRef.current = []; }, [pattern, color]);`
+### 2. `create_choreography` retorna IDs criados (`joiCommandExecutor.ts`)
 
-**Fix 4 — Smoke depthTest (L895-909):**
-- Adicionar `depthTest` no shaderMaterial das smoke billboards
+Modificar o case `create_choreography` para coletar e retornar os IDs de todos os efeitos criados no campo `detail`, formatado como lista. Permite que Joi referencie efeitos em mensagens de follow-up.
 
-**Fix 5 — Swap-and-pop glitter cleanup (L604-611):**
-- Substituir `gp.splice(i, 1)` por swap com último elemento + pop
+### 3. Upgrade do modelo para shows (`fxk-ai-chat/index.ts`)
+
+Trocar `google/gemini-3-flash-preview` → `google/gemini-2.5-flash` — melhor conformidade JSON com custo razoável.
+
+### 4. System prompt: reforçar `positionName` e pós-criação (`systemPrompt.ts`)
+
+Adicionar seção curta ao prompt:
+- Preferir `positionName` sobre `positionIndex` para cues individuais
+- Após `create_choreography`, informar ao usuário os IDs criados para permitir edição
+- Nota sobre limite de 30 efeitos no contexto
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Aplicar 5 fixes no ShellBurstRenderer.tsx |
-| 2 | Build verification |
+| 1 | Enriquecer contexto com IDs dos timeline items |
+| 2 | `create_choreography` retorna IDs no detail |
+| 3 | Upgrade modelo para gemini-2.5-flash |
+| 4 | Atualizar system prompt |
+| 5 | Build verification |
 
