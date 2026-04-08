@@ -767,10 +767,12 @@ function generateBalnearioCamboriu() {
 // 14. BRASÍLIA — Esplanada dos Ministérios
 // ═══════════════════════════════════════════════════════════════
 function generateBrasilia() {
-  // 8 ground positions along the Esplanada (linear, 2km)
+  // 8 ground positions along the Esplanada (linear, 2km) — slight curvature for depth
   const grounds: Position[] = Array.from({ length: 8 }, (_, i) => {
     const spread = (i - 3.5) * 250;
-    return pos(uid(), `Posição ${i + 1}`, spread, 0, 0, 0);
+    const t = (i - 3.5) / 3.5; // -1 to 1
+    const zCurve = -(1 - t * t) * 30; // slight arc, center at -30
+    return pos(uid(), `Posição ${i + 1}`, spread, 0, zCurve, 0);
   });
   const items: TimelineItem[] = [];
 
