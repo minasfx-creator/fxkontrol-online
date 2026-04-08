@@ -543,6 +543,20 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     density: 7.87,
     riskClassification: { fire: 1, reactivity: 1, contact: 0 },
   },
+  ferrotitanium: {
+    name: 'Ferrotitanium (60/40 Fe/Ti)',
+    element: 'FeTi',
+    color: new THREE.Color(1.0, 0.90, 0.35), // "yellow-white sparks" — Pyrotechnic Chemicals
+    temperature: 3000,
+    emissionIntensity: 4.5,
+    burnRate: 2.8,
+    sparkSize: 1.6,
+    smokeColor: new THREE.Color(0.15, 0.12, 0.08),
+    trailDecay: 0.90,
+    ignitionTemp: 800,
+    density: 6.1,
+    riskClassification: { fire: 2, reactivity: 2, contact: 1 },
+  },
   magnalium_alloy: {
     name: 'Magnalium (Mg/Al 50:50)',
     element: 'MgAl',
