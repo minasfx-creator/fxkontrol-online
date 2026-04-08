@@ -1298,7 +1298,7 @@ export function TimelineEffects() {
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
 
-        if (inPrefire) {
+        if (inPrefire && pt !== 'rocket') {
           return (
             <PrefireShell
               key={`prefire-${item.id}`}
