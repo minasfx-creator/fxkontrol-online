@@ -586,7 +586,7 @@ export default function ShellBurstRenderer({
             life: 0, maxLife: starLifetime * 0.4, brightness: 1,
           });
         }
-        crossetteRef.current.push(subParticles);
+        crossetteRef.current.push({ id: crossetteIdCounter.current++, particles: subParticles });
         setRenderTick(t => t + 1);
       }
 
