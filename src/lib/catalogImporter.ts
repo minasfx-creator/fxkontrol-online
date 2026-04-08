@@ -435,6 +435,12 @@ export function parseDepenceDPX(xmlText: string): ParsedCatalogEffect[] {
       vdl: '',
       sku: '',
       manufacturer: mfgStr,
+      fuseDelay: 0,
+      devices: 0,
+      exNumber: '',
+      ceNumber: '',
+      unNumber: '',
+      subtype: '',
       raw: {},
     });
   }
