@@ -498,6 +498,8 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     const baseDrag = caliber <= 3 ? 0.058 : caliber <= 4 ? 0.048 : caliber <= 5 ? 0.040
       : caliber <= 6 ? 0.034 : caliber <= 8 ? 0.026 : caliber <= 10 ? 0.020 : 0.016;
     const isTrailingPattern = pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade' || pattern === 'palm' || pattern === 'horsetail' || pattern === 'brocade_crown';
+    // Pre-cache wind for trailing patterns — avoids 1600 store reads/frame
+    const wTrail = isTrailingPattern ? getWindAtPosition(position[0], position[1], position[2], 'ember') : w;
     // Pattern-specific drag multiplier — heavier stars = less air resistance
     const dragMult = pattern === 'kamuro' ? 0.55 : pattern === 'willow' ? 0.55
       : pattern === 'horsetail' ? 0.40 : pattern === 'brocade' ? 0.60
