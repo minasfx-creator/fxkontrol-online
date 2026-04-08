@@ -659,8 +659,8 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           twinkle = 0.5; // pre-ignition: subdued glow
         }
       } else if (isMagnaliumOrDragonEgg) {
-        // Dragon eggs / magnalium strobe: real oscillatory combustion
-        twinkle = strobeFlicker(sparkleSeeds[i], time, 0.2, 0.08);
+        // Dragon eggs / magnalium strobe: real oscillatory combustion ~10Hz
+        twinkle = strobeFlicker(sparkleSeeds[i], time, 0.06, 0.04);
       } else if (isTrailingPattern) {
         // Nishiki detection: kamuro + gold-like base color → high-freq aluminum shimmer
         const isNishiki = pattern === 'kamuro' && baseColor.r > 0.85 && baseColor.g > 0.7 && baseColor.b < 0.4;
