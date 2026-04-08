@@ -666,8 +666,8 @@ export default function ShellBurstRenderer({
     }
 
     // Step crossette sub-particles with store wind/drag
-    for (const subGroup of crossetteRef.current) {
-      for (const sp of subGroup) {
+    for (const entry of crossetteRef.current) {
+      for (const sp of entry.particles) {
         if (sp.life < sp.maxLife) stepParticle(sp, dt, windVec, starDrag * 1.5);
       }
     }
