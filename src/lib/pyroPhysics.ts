@@ -496,6 +496,8 @@ export interface StepModifiers {
   reducedGravity?: number; // 0-1 factor
   tipCurlFactor?: number;  // progressive gravity after 70% life (chrysanthemum)
   tipCurlLifeRatio?: number; // current life ratio for tip curl calc
+  willowDroop?: boolean;   // progressive heavy droop after 50% life (willow charcoal stars)
+  willowLifeRatio?: number; // current life ratio for willow droop calc
 }
 
 export function stepParticle(
@@ -512,7 +514,12 @@ export function stepParticle(
   if (modifiers?.tipCurlFactor && modifiers.tipCurlLifeRatio !== undefined && modifiers.tipCurlLifeRatio > 0.7) {
     tipCurlMult = 1 + modifiers.tipCurlFactor * ((modifiers.tipCurlLifeRatio - 0.7) / 0.3);
   }
-  p.vy += GRAVITY * gravityFactor * tipCurlMult * dt;
+  // Willow droop: progressive heavy gravity after 50% life (charcoal star weight)
+  let willowMult = 1;
+  if (modifiers?.willowDroop && modifiers.willowLifeRatio !== undefined && modifiers.willowLifeRatio > 0.5) {
+    willowMult = 1 + 3.5 * ((modifiers.willowLifeRatio - 0.5) / 0.5);
+  }
+  p.vy += GRAVITY * gravityFactor * tipCurlMult * willowMult * dt;
   
   // Apply wind forces
   p.vx += wind[0] * dt * 0.5;
@@ -562,7 +569,8 @@ export function stepParticle(
 
 export type BurstPattern = 
   | 'sphere' | 'ring' | 'willow' | 'palm' | 'peony' 
-  | 'chrysanthemum' | 'kamuro' | 'crossette' | 'dahlia' | 'brocade';
+  | 'chrysanthemum' | 'kamuro' | 'crossette' | 'dahlia' | 'brocade'
+  | 'brocade_crown';
 
 /** Generate spherical direction vector */
 function randomSphericalDir(): { sx: number; sy: number; sz: number; theta: number } {
@@ -601,12 +609,21 @@ export function createShellBurst(
         vz = sz * breakSpeed * 0.5;
         life = starLifetime * (1.8 + Math.random() * 1.2);
         break;
-      case 'palm':
-        vx = sx * breakSpeed * 0.6;
-        vy = Math.abs(sy) * breakSpeed + breakSpeed * 0.4;
-        vz = sz * breakSpeed * 0.6;
+      case 'palm': {
+        // Palm: 6 symmetric fronds with upward bias
+        const FROND_COUNT = 6;
+        const frondIdx = i % FROND_COUNT;
+        const frondAngle = (frondIdx / FROND_COUNT) * Math.PI * 2;
+        const frondJitter = (Math.random() - 0.5) * 2 * (6 * Math.PI / 180); // ±6°
+        const palmTheta = frondAngle + frondJitter;
+        const palmPhi = Math.random() * Math.PI * 0.35; // upward cone
+        const palmSpeed = breakSpeed * (0.6 + Math.random() * 0.4);
+        vx = Math.sin(palmPhi) * Math.cos(palmTheta) * palmSpeed * 0.48;
+        vy = Math.cos(palmPhi) * palmSpeed + breakSpeed * 0.4;
+        vz = Math.sin(palmPhi) * Math.sin(palmTheta) * palmSpeed * 0.48;
         life = starLifetime * (1.5 + Math.random() * 0.5);
         break;
+      }
       case 'chrysanthemum':
         vx = sx * breakSpeed;
         vy = sy * breakSpeed * 0.9;

@@ -218,9 +218,20 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         case 'willow':
           vx = sx * breakSpeed * 0.55 * speedVar; vy = sy * breakSpeed * 0.55 * speedVar; vz = sz * breakSpeed * 0.55 * speedVar;
           life = starLife * (1.3 + Math.random() * 1.4); break;
-        case 'palm':
-          vx = sx * breakSpeed * 0.48 * speedVar; vy = Math.abs(sy) * breakSpeed * 0.95 + breakSpeed * 0.55; vz = sz * breakSpeed * 0.48 * speedVar;
+        case 'palm': {
+          // Palm: 6 symmetric fronds with upward bias
+          const FROND_COUNT = 6;
+          const frondIdx = i % FROND_COUNT;
+          const frondAngle = (frondIdx / FROND_COUNT) * Math.PI * 2;
+          const frondJitter = (Math.random() - 0.5) * 2 * (6 * Math.PI / 180);
+          const palmTheta = frondAngle + frondJitter;
+          const palmPhi = Math.random() * Math.PI * 0.35;
+          const palmSpd = breakSpeed * (0.6 + Math.random() * 0.4);
+          vx = Math.sin(palmPhi) * Math.cos(palmTheta) * palmSpd * 0.48 * speedVar;
+          vy = Math.cos(palmPhi) * palmSpd * 0.95 + breakSpeed * 0.55;
+          vz = Math.sin(palmPhi) * Math.sin(palmTheta) * palmSpd * 0.48 * speedVar;
           life = starLife * (1.1 + Math.random() * 0.6); break;
+        }
         case 'chrysanthemum':
           vx = sx * breakSpeed * speedVar; vy = sy * breakSpeed * 0.93 * speedVar + breakSpeed * 0.08; vz = sz * breakSpeed * speedVar;
           life = starLife * (0.85 + Math.random() * 0.3); break;

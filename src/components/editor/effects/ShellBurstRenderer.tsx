@@ -513,6 +513,8 @@ export default function ShellBurstRenderer({
           ...stepMods,
           tipCurlFactor: pattern === 'chrysanthemum' ? 2.5 : undefined,
           tipCurlLifeRatio: pattern === 'chrysanthemum' ? lifeRatio : undefined,
+          willowDroop: pattern === 'willow',
+          willowLifeRatio: pattern === 'willow' ? lifeRatio : undefined,
         };
         stepParticle(p, dt * detonationMult, windVec, particleDrag, tipCurlMods);
 
@@ -558,10 +560,12 @@ export default function ShellBurstRenderer({
     }
 
     // Step pistil particles
+    // Brocade crown: 250ms pistil ignition delay
     if (pistilParticlesRef.current && pistilPointsRef.current) {
+      const pistilDelay = pattern === 'brocade_crown' ? 0.25 : 0;
       const pp = pistilParticlesRef.current;
       for (let i = 0; i < pp.length; i++) {
-        if (pp[i].life < pp[i].maxLife) stepParticle(pp[i], dt, windVec, starDrag * 0.8, stepMods);
+        if (pp[i].life < pp[i].maxLife && time > pistilDelay) stepParticle(pp[i], dt, windVec, starDrag * 0.8, stepMods);
         pistilBuffers.pos[i * 3] = pp[i].x;
         pistilBuffers.pos[i * 3 + 1] = pp[i].y;
         pistilBuffers.pos[i * 3 + 2] = pp[i].z;

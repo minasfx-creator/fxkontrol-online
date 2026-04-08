@@ -1,70 +1,58 @@
 
-
-# Ciclo de Polish #28 — Peony Petal Density, Chrysanthemum Tip Curl, Dahlia Flash Timing
+# Ciclo de Polish #29 — Willow Droop Weight, Brocade Crown Pistil Delay, Palm Frond Symmetry
 
 ## Bugs Identificados
 
 | # | Bug | Local | Fix |
 |---|-----|-------|-----|
-| 1 | **Peony = esfera genérica** — `createShellBurst` case `'peony'` (L632-638) e `generateBurst` fallback (L242-249) usam distribuição esférica uniforme. Peony real tem estrelas agrupadas em "pétalas" (clusters densos de 10-14 grupos azimutais). Resultado atual: esfera homogênea indistinguível de chrysanthemum | `pyroPhysics.ts` L632, `burstSimulation.ts` L242 |
-| 2 | **Chrysanthemum sem tip curl** — `stepParticle` aplica gravidade constante (`GRAVITY * gravityFactor`). Chrysanthemum real tem pontas que "curvam" para baixo no final da vida (drag progressivo após 70% de vida). Sem isso, chrysanthemum parece peony com trail | `pyroPhysics.ts` L499-552, `burstSimulation.ts` L90 |
-| 3 | **Dahlia sem flash de detonação** — Dahlia tem estrelas grandes e rápidas com flash inicial intenso. O `ShellBurstRenderer` já tem `detonationPhase` no vertex shader mas não diferencia dahlia de outros padrões. Dahlia deveria ter burst flash 2.5x mais intenso e duração 50% menor | `ShellBurstRenderer.tsx` L821, `burstSimulation.ts` L204 |
-| 4 | **Peony starCount baixo** — 150 estrelas (L21) é insuficiente para a densidade visual de um peony real (Finale 3D usa ~280 para 3"). Resulta em burst visualmente esparso | `burstSimulation.ts` L21 |
-| 5 | **Chrysanthemum tailFactor insuficiente** — 0.9 (L22) não cria os trails longos e distintos que definem chrysanthemum vs peony. Finale 3D usa ~1.4 | `burstSimulation.ts` L22 |
+| 1 | **Willow sem droop progressivo** — `stepParticle` aplica gravidade constante para willow. Willow real tem estrelas de carvão pesadas que "gotejam" com aceleração crescente após 50% de vida (gravity ramp 1→4.5x). Atualmente parece chrysanthemum lento | `pyroPhysics.ts` stepParticle, `ShellBurstRenderer.tsx` L502-517 |
+| 2 | **Willow velocity muito baixo** — velocity 20 em burstSimulation produz burst visualmente compacto. Finale 3D reference usa ~22 com spread mais amplo e tailFactor ~2.0 | `burstSimulation.ts` L23 |
+| 3 | **Brocade crown sem pistil delay** — pistil ignita simultaneamente com as estrelas externas. Brocade crown real tem retardo de ~250ms no pistil (ignição secundária). Pistil deve aparecer 250ms após o burst principal | `ShellBurstRenderer.tsx` L560-589 |
+| 4 | **Palm sem simetria de fronds** — distribuição aleatória no cone upward sem agrupamento radial. Palm real tem 5-7 "fronds" (braços) simétricos que caem em arco. Sem isso, parece horsetail | `pyroPhysics.ts` L604-608, `FireworkRenderer.tsx` L221-223, `burstSimulation.ts` L82-89 |
+| 5 | **Palm gravityMult insuficiente** — 1.2 não cria o droop característico das fronds. Needs ~1.6 para que os braços formem arcos visíveis | `burstSimulation.ts` L24 |
 
 ## Plano de Implementação
 
 ### Arquivo 1: `src/lib/pyroPhysics.ts`
 
-**Fix 1: Peony petal clustering**
-- Reescrever case `'peony'` (L632-638) para agrupar estrelas em 10-14 clusters azimutais
-- Cada cluster: ângulo central + jitter de ±8°, velocidade 0.85-1.0 do breakSpeed
-- Clusters distribuídos uniformemente em azimute, com elevação hemisférica superior ligeiramente favorecida
+**Fix 1: Willow droop weight em `StepModifiers`**
+- Adicionar `willowDroop?: boolean` ao `StepModifiers`
+- Em `stepParticle`, quando `willowDroop` e `lifeRatio > 0.5`: multiplicar gravidade por `1 + 3.5 * ((lifeRatio - 0.5) / 0.5)` — aceleração de queda progressiva
 
-**Fix 2: Chrysanthemum tip curl em `stepParticle`**
-- Adicionar campo opcional `pattern` ao `ParticleState` interface
-- Em `stepParticle`, quando `pattern === 'chrysanthemum'` e `lifeRatio > 0.7`: multiplicar gravidade por `1 + 2.5 * ((lifeRatio - 0.7) / 0.3)` — cria curvatura progressiva nas pontas
-- Alternativa (menor impacto): adicionar `tipCurlFactor` ao `StepModifiers` para não poluir `ParticleState`
-
-**Fix 3: Setar `tipCurlFactor` para chrysanthemum no `createShellBurst`**
-- Em case `'chrysanthemum'` (L603-608): retornar partículas com flag para tip curl
+**Fix 2: Palm frond symmetry em `createShellBurst`**
+- Reescrever case `'palm'` para agrupar em 6 braços simétricos (armAngle = i%6 * 60°) com ±6° jitter
+- Upward bias mantido, mas dentro de cada braço
 
 ### Arquivo 2: `src/render_ultra/fireworks/burstSimulation.ts`
 
-**Fix 4: Peony starCount + petal distribution**
-- `peony` starCount: 150 → 280
-- `peony` velocity: 28 → 26 (ligeiramente menor para manter raio visual)
-- Reescrever branch `peony` em `generateBurst` (L242-249) com petal clustering: 12 clusters, ±8° jitter por cluster
+**Fix 3: Willow config tuning**
+- `willow` velocity: 20 → 22
+- `willow` tailFactor: 1.5 → 2.0
+- `willow` gravityMult: 1.4 → 1.8
 
-**Fix 5: Chrysanthemum tail + tip curl config**
-- `chrysanthemum` tailFactor: 0.9 → 1.4
-- `chrysanthemum` gravityMult: 0.8 → 1.0 (tip curl handled via progressive increase)
-
-**Fix 6: Dahlia velocity tightening + flash config**
-- `dahlia` velocity: 38 → 42 (mais rápido, mais curto)
-- `dahlia` starCount: 80 → 60 (menos estrelas, maiores)
-- `dahlia` spread: 0.8 → 0.9 (mais uniforme)
+**Fix 4: Palm frond symmetry + gravity**
+- `palm` gravityMult: 1.2 → 1.6
+- `palm` symmetry: 6 (já está, usar no generateBurst)
+- Reescrever branch `palm` em `generateBurst` para agrupar em 6 fronds com ±6° jitter
 
 ### Arquivo 3: `src/components/editor/effects/ShellBurstRenderer.tsx`
 
-**Fix 7: Chrysanthemum tip curl no physics loop**
-- No `useFrame` (L490-740), após `stepParticle`, se `pattern === 'chrysanthemum'`: aplicar gravidade extra progressiva `p.vy += GRAVITY * 2.5 * max(0, lifeRatio - 0.7) / 0.3 * dt`
+**Fix 5: Willow droop no physics loop**
+- No `useFrame`, se `pattern === 'willow'`: passar `willowDroop: true` no StepModifiers
 
-**Fix 8: Dahlia detonation flash boost**
-- No burst flash sphere (L821-835): se `pattern === 'dahlia'`, multiplicar `burstFlashIntensity` por 2.5 e estender duração do flash para `progress < 0.12`
-- No secondary flash ring (L838-853): mesma lógica para dahlia
+**Fix 6: Brocade crown pistil delay**
+- No step pistil loop (L560-589): adicionar check `if (pattern === 'brocade_crown' && time < 0.25) skip pistil stepping` — pistil só começa a avançar 250ms após burst
 
 ### Arquivo 4: `src/components/editor/skycanvas/FireworkRenderer.tsx`
 
-**Fix 9: Alinhar FireworkRenderer dahlia com novo timing**
-- Ajustar velocidade e lifetime do case `'dahlia'` (L238-241) para consistência com burstSimulation
+**Fix 7: Palm frond symmetry alinhado**
+- Reescrever case `'palm'` (L221-223) com 6 braços simétricos consistentes com burstSimulation
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Peony petal clustering (pyroPhysics + burstSimulation) |
-| 2 | Chrysanthemum tip curl (StepModifiers + ShellBurstRenderer) |
-| 3 | Dahlia flash boost + velocity tuning |
+| 1 | Willow droop weight (StepModifiers + ShellBurstRenderer + burstSimulation) |
+| 2 | Brocade crown pistil delay |
+| 3 | Palm frond symmetry (pyroPhysics + burstSimulation + FireworkRenderer) |
 | 4 | Build verification |
-
