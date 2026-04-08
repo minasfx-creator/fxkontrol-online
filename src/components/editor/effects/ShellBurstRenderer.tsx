@@ -768,7 +768,8 @@ export default function ShellBurstRenderer({
       const worldX = px + sp.x;
       const worldY = py + sp.y;
       const worldZ = pz + sp.z;
-      const [windX, windY, windZ] = windField.sample(worldX, worldY, worldZ, 'smoke');
+      windField.sampleInto(worldX, worldY, worldZ, 'smoke', _windOut);
+      const windX = _windOut[0], windY = _windOut[1], windZ = _windOut[2];
       
       sp.x += sp.vx * dt + windX * dt + Math.sin(time * turbFreqX + sp.seed * 10) * turbAmp;
       sp.y += sp.vy * dt + windY * dt;
