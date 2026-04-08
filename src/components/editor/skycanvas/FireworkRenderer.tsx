@@ -1054,7 +1054,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       {progress < 0.20 && (
         <mesh renderOrder={98} rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[flashSize * progress * 18, flashSize * progress * 18 + flashSize * 0.15, 32]} />
-          <meshBasicMaterial color="#FFFFFF" transparent opacity={0.3 * Math.pow(1 - progress / 0.20, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />
+          <meshBasicMaterial color="#FFFFFF" transparent opacity={0.3 * Math.pow(1 - progress / 0.20, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={true} side={THREE.DoubleSide} />
         </mesh>
       )}
       {/* Volumetric smoke cloud — expands from burst center */}
