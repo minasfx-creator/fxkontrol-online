@@ -152,8 +152,14 @@ export default function VenueShowOverlay({ preset, onComplete }: Props) {
           description: `${positions.length} posições · ${timelineItems.length} cues · ${Math.round(preset.duration / 60)} min`,
         });
 
-        // Start cinematic orbit after deploy
-        triggerOrbit([0, 0, 0], 300, 0.08, 250);
+        // Dynamic orbit radius based on show spread
+        const maxSpread = Math.max(
+          ...positions.map(p => Math.sqrt(p.x * p.x + p.z * p.z)),
+          100,
+        );
+        const orbitRadius = Math.max(maxSpread * 1.5, 200);
+        const orbitHeight = Math.max(maxSpread * 0.8, 150);
+        triggerOrbit([0, 0, 0], orbitRadius, 0.08, orbitHeight);
         orbitTimer.current = setTimeout(() => {
           stopOrbit();
         }, 8000);

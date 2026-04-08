@@ -84,10 +84,12 @@ function alternating(
 // 1. COPACABANA — Rio de Janeiro
 // ═══════════════════════════════════════════════════════════════
 function generateCopacabana() {
-  // 19 barges spread over 4.2km along the beach, ~220m apart
+  // 19 barges in offshore arc over 4.2km — center barges farther out, edges closer
   const barges: Position[] = Array.from({ length: 19 }, (_, i) => {
     const spread = (i - 9) * 220; // centered, -1980 to +1980
-    return pos(uid(), `Balsa ${i + 1}`, spread, 0, -80, 0);
+    const t = (i - 9) / 9; // -1 to 1
+    const zDepth = -80 - (1 - t * t) * 40; // arc: center at -120, edges at -80
+    return pos(uid(), `Balsa ${i + 1}`, spread, 0, zDepth, 0);
   });
 
   const items: TimelineItem[] = [];
@@ -162,22 +164,23 @@ function generateCopacabana() {
 // 2. SYDNEY HARBOUR
 // ═══════════════════════════════════════════════════════════════
 function generateSydney() {
-  // Bridge: 20 positions across 1149m span at 134m height
+  // Bridge: 20 positions across 1149m span at 134m height — backdrop (z: -300)
   const bridge: Position[] = Array.from({ length: 20 }, (_, i) => {
     const spread = (i - 10) * 57;
-    return pos(uid(), `Bridge ${i + 1}`, spread, 134, 0, 180);
+    return pos(uid(), `Bridge ${i + 1}`, spread, 134, -300, 180);
   });
-  // 6 barges in harbour
+  // 6 barges in harbour — mid-depth (z: -80 to -150)
   const barges: Position[] = Array.from({ length: 6 }, (_, i) => {
     const angle = (i / 6) * Math.PI * 0.8 - 0.4;
-    return pos(uid(), `Barge ${i + 1}`, Math.sin(angle) * 400, 0, Math.cos(angle) * -300, 0);
+    const zDepth = -80 - Math.abs(Math.sin(angle)) * 70; // -80 to -150
+    return pos(uid(), `Barge ${i + 1}`, Math.sin(angle) * 400, 0, zDepth, 0);
   });
-  // Opera House: 4 lateral positions
+  // Opera House: 4 lateral positions — foreground (z: -50)
   const opera: Position[] = [
-    pos(uid(), 'Opera L1', -250, 0, -200, 45),
-    pos(uid(), 'Opera L2', -200, 0, -250, 45),
-    pos(uid(), 'Opera R1', 250, 0, -200, -45),
-    pos(uid(), 'Opera R2', 200, 0, -250, -45),
+    pos(uid(), 'Opera L1', -250, 0, -50, 45),
+    pos(uid(), 'Opera L2', -200, 0, -70, 45),
+    pos(uid(), 'Opera R1', 250, 0, -50, -45),
+    pos(uid(), 'Opera R2', 200, 0, -70, -45),
   ];
 
   const all = [...bridge, ...barges, ...opera];
@@ -235,15 +238,16 @@ function generateSydney() {
 // 3. BURJ KHALIFA — Dubai
 // ═══════════════════════════════════════════════════════════════
 function generateBurjKhalifa() {
-  // Vertical positions along the 828m tower — 15 levels
+  // Vertical positions along the 828m tower — 15 levels with slight X/Z spread per floor
   const tower: Position[] = Array.from({ length: 15 }, (_, i) => {
     const h = 50 + i * 52; // 50m to 778m
-    return pos(uid(), `Level ${i + 1} (${h}m)`, 0, h, 0, 0);
+    const face = (i % 3) - 1; // -1, 0, 1 — simulates different tower faces
+    return pos(uid(), `Level ${i + 1} (${h}m)`, face * 5, h, face * 3, 0);
   });
-  // Fountain positions (Dubai Fountain) — 8 positions in arc
+  // Fountain positions (Dubai Fountain) — 8 positions in arc in front of tower (z: +150 to +200)
   const fountain: Position[] = Array.from({ length: 8 }, (_, i) => {
     const angle = (i / 8) * Math.PI - Math.PI / 2;
-    return pos(uid(), `Fountain ${i + 1}`, Math.cos(angle) * 150, 0, Math.sin(angle) * 150 - 200, 0);
+    return pos(uid(), `Fountain ${i + 1}`, Math.cos(angle) * 150, 0, 150 + Math.abs(Math.sin(angle)) * 50, 0);
   });
 
   const all = [...tower, ...fountain];
@@ -290,15 +294,17 @@ function generateBurjKhalifa() {
 // 4. LONDON EYE — Thames
 // ═══════════════════════════════════════════════════════════════
 function generateLondonEye() {
-  // London Eye: 8 positions around the wheel at 135m
+  // London Eye: 8 positions around the wheel at 135m — backdrop (z: -200)
   const eye: Position[] = Array.from({ length: 8 }, (_, i) => {
     const angle = (i / 8) * Math.PI * 2;
-    return pos(uid(), `Eye ${i + 1}`, Math.cos(angle) * 60, 67 + Math.sin(angle) * 60, 0, 180);
+    return pos(uid(), `Eye ${i + 1}`, Math.cos(angle) * 60, 67 + Math.sin(angle) * 60, -200, 180);
   });
-  // Thames barges: 10 positions along the river
+  // Thames barges: 10 positions along the river — mid-depth (z: -60 to -100)
   const barges: Position[] = Array.from({ length: 10 }, (_, i) => {
     const spread = (i - 5) * 100;
-    return pos(uid(), `Barge ${i + 1}`, spread, 0, -50, 0);
+    const t = Math.abs((i - 5) / 5);
+    const zDepth = -60 - (1 - t) * 40; // center at -100, edges at -60
+    return pos(uid(), `Barge ${i + 1}`, spread, 0, zDepth, 0);
   });
 
   const all = [...eye, ...barges];
@@ -399,10 +405,10 @@ function generateEiffelTower() {
 // ═══════════════════════════════════════════════════════════════
 function generateTokyoHanabi() {
   // Traditional hanabi: single launch site with large-caliber artisan shells
-  // 12 firing positions in semicircle
+  // 12 firing positions in semicircle — facing toward viewer (z positive)
   const positions: Position[] = Array.from({ length: 12 }, (_, i) => {
     const angle = (i / 11) * Math.PI;
-    return pos(uid(), `台 ${i + 1}`, Math.cos(angle) * 200, 0, Math.sin(angle) * -100, 0);
+    return pos(uid(), `台 ${i + 1}`, Math.cos(angle) * 200, 0, -Math.abs(Math.sin(angle)) * 100, 0);
   });
 
   const items: TimelineItem[] = [];
@@ -480,15 +486,15 @@ function generateMarinaBay() {
 // 8. LAS VEGAS STRIP
 // ═══════════════════════════════════════════════════════════════
 function generateLasVegas() {
-  // 7 casino rooftops
+  // 7 casino rooftops — staggered depth along the Strip
   const casinos = [
-    pos(uid(), 'MGM Grand', -600, 60, 0, 0),
-    pos(uid(), 'Aria', -400, 55, 0, 0),
-    pos(uid(), 'Bellagio', -200, 50, 0, 0),
-    pos(uid(), 'Caesars', 0, 55, 0, 0),
-    pos(uid(), 'Venetian', 200, 50, 0, 0),
-    pos(uid(), 'Wynn', 400, 60, 0, 0),
-    pos(uid(), 'Stratosphere', 600, 350, 0, 0),
+    pos(uid(), 'MGM Grand', -600, 60, -80, 0),
+    pos(uid(), 'Aria', -400, 55, -50, 0),
+    pos(uid(), 'Bellagio', -200, 50, -100, 0),
+    pos(uid(), 'Caesars', 0, 55, -60, 0),
+    pos(uid(), 'Venetian', 200, 50, -90, 0),
+    pos(uid(), 'Wynn', 400, 60, -70, 0),
+    pos(uid(), 'Stratosphere', 600, 350, -40, 0),
   ];
 
   const items: TimelineItem[] = [];
@@ -584,16 +590,16 @@ function generateFunchal() {
 // 10. GRAND HARBOUR — Malta
 // ═══════════════════════════════════════════════════════════════
 function generateMalta() {
-  // Waterfront 360° — 12 positions around the harbour
+  // Waterfront 360° — 12 positions around the harbour (consistent negative Z = away)
   const harbour: Position[] = Array.from({ length: 12 }, (_, i) => {
     const angle = (i / 12) * Math.PI * 2;
-    return pos(uid(), `Bastione ${i + 1}`, Math.cos(angle) * 400, 0, Math.sin(angle) * 400, 0);
+    return pos(uid(), `Bastione ${i + 1}`, Math.cos(angle) * 400, 0, -Math.abs(Math.sin(angle)) * 400, 0);
   });
-  // Fort positions on elevated ground
+  // Fort positions on elevated ground — deep backdrop
   const forts: Position[] = [
-    pos(uid(), 'Fort St Elmo', 0, 30, -500, 180),
-    pos(uid(), 'Fort Ricasoli', 350, 25, -400, 225),
-    pos(uid(), 'Fort St Angelo', -300, 35, -350, 135),
+    pos(uid(), 'Fort St Elmo', 0, 30, -600, 180),
+    pos(uid(), 'Fort Ricasoli', 350, 25, -550, 225),
+    pos(uid(), 'Fort St Angelo', -300, 35, -500, 135),
   ];
 
   const all = [...harbour, ...forts];
@@ -679,9 +685,12 @@ function generateSalvador() {
 // 12. FORTALEZA — Praia de Iracema
 // ═══════════════════════════════════════════════════════════════
 function generateFortaleza() {
+  // 8 barges in offshore arc
   const barges: Position[] = Array.from({ length: 8 }, (_, i) => {
     const spread = (i - 3.5) * 160;
-    return pos(uid(), `Balsa ${i + 1}`, spread, 0, -120, 0);
+    const t = (i - 3.5) / 3.5;
+    const zDepth = -100 - (1 - t * t) * 40; // arc: center at -140, edges at -100
+    return pos(uid(), `Balsa ${i + 1}`, spread, 0, zDepth, 0);
   });
   const items: TimelineItem[] = [];
 
@@ -761,10 +770,12 @@ function generateBalnearioCamboriu() {
 // 14. BRASÍLIA — Esplanada dos Ministérios
 // ═══════════════════════════════════════════════════════════════
 function generateBrasilia() {
-  // 8 ground positions along the Esplanada (linear, 2km)
+  // 8 ground positions along the Esplanada (linear, 2km) — slight curvature for depth
   const grounds: Position[] = Array.from({ length: 8 }, (_, i) => {
     const spread = (i - 3.5) * 250;
-    return pos(uid(), `Posição ${i + 1}`, spread, 0, 0, 0);
+    const t = (i - 3.5) / 3.5; // -1 to 1
+    const zCurve = -(1 - t * t) * 30; // slight arc, center at -30
+    return pos(uid(), `Posição ${i + 1}`, spread, 0, zCurve, 0);
   });
   const items: TimelineItem[] = [];
 
@@ -804,10 +815,10 @@ function generateBrasilia() {
 // 15. CARUARU — São João
 // ═══════════════════════════════════════════════════════════════
 function generateCaruaru() {
-  // 6 ground positions in the pátio de eventos
+  // 6 ground positions in the pátio de eventos — consistent negative Z
   const grounds: Position[] = Array.from({ length: 6 }, (_, i) => {
     const angle = (i / 6) * Math.PI * 2;
-    return pos(uid(), `Posição ${i + 1}`, Math.cos(angle) * 80, 0, Math.sin(angle) * 80, 0);
+    return pos(uid(), `Posição ${i + 1}`, Math.cos(angle) * 80, 0, -Math.abs(Math.sin(angle)) * 80 - 20, 0);
   });
   const items: TimelineItem[] = [];
 
@@ -843,14 +854,14 @@ function generateCaruaru() {
 // 16. RECIFE — Marco Zero
 // ═══════════════════════════════════════════════════════════════
 function generateRecife() {
-  // 6 barges no rio Capibaribe + 4 barges no mar
+  // 6 barges no rio Capibaribe (closer, z: -40) + 4 barges no mar (farther, z: -250)
   const rio: Position[] = Array.from({ length: 6 }, (_, i) => {
     const spread = (i - 2.5) * 100;
-    return pos(uid(), `Rio ${i + 1}`, spread, 0, 80, 0);
+    return pos(uid(), `Rio ${i + 1}`, spread, 0, -40, 0);
   });
   const mar: Position[] = Array.from({ length: 4 }, (_, i) => {
     const spread = (i - 1.5) * 200;
-    return pos(uid(), `Mar ${i + 1}`, spread, 0, -150, 180);
+    return pos(uid(), `Mar ${i + 1}`, spread, 0, -250, 0);
   });
   const all = [...rio, ...mar];
   const items: TimelineItem[] = [];
