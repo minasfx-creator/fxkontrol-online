@@ -228,6 +228,7 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
           id: itemId,
           effectId: effect.id,
           startTime: params.startTime ?? store.currentTime,
+          duration: params.duration,
           trackIndex: effect.type === 'firework' ? 0 : 1,
           position: pos ? { x: pos.x, y: pos.y, z: pos.z } : { x: params.x ?? 0, y: params.y ?? 0, z: params.z ?? 0 },
           positionId: pos?.id,
