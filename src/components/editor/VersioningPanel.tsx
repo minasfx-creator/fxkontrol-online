@@ -1,65 +1,48 @@
-import { useState, useCallback } from 'react';
-import { History, X, RotateCcw, Tag, Clock, ChevronRight, Check, Plus, Diff } from 'lucide-react';
+import { useState, useCallback, useSyncExternalStore } from 'react';
+import { History, X, RotateCcw, Tag, ChevronRight, Check, Plus, Diff, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
 import { toast } from 'sonner';
+import { snapshotManager, type Snapshot } from '@/core/state/SnapshotManager';
+import { commandBus } from '@/core/command/CommandBus';
+import { commandLog } from '@/core/command/CommandLog';
+import { lockstep } from '@/core/reliability/lockstepEngine';
 
-interface Snapshot {
-  id: string;
-  name: string;
-  timestamp: number;
-  positionCount: number;
-  timelineItemCount: number;
-  description: string;
-  data: {
-    positions: unknown[];
-    timelineItems: unknown[];
-  };
+/** Hook to poll snapshot list every 2s. */
+function useSnapshots(): readonly Snapshot[] {
+  const [snapshots, setSnapshots] = useState<readonly Snapshot[]>(snapshotManager.getAll());
+  useState(() => {
+    const id = setInterval(() => setSnapshots([...snapshotManager.getAll()]), 2000);
+    return () => clearInterval(id);
+  });
+  return snapshots;
 }
 
 export default function VersioningPanel({ onClose }: { onClose: () => void }) {
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const snapshots = useSnapshots();
   const [newName, setNewName] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [showConfirm, setShowConfirm] = useState<string | null>(null);
+  const [selectedTick, setSelectedTick] = useState<number | null>(null);
+  const [showConfirm, setShowConfirm] = useState<number | null>(null);
   const positions = useProjectStore(s => s.positions);
   const timelineItems = useProjectStore(s => s.timelineItems);
 
-  const createSnapshot = useCallback(() => {
-    const name = newName.trim() || `Snapshot ${snapshots.length + 1}`;
-    const snap: Snapshot = {
-      id: `snap-${Date.now()}`,
-      name,
-      timestamp: Date.now(),
-      positionCount: positions.length,
-      timelineItemCount: timelineItems.length,
-      description: `${positions.length} positions, ${timelineItems.length} cues`,
-      data: {
-        positions: JSON.parse(JSON.stringify(positions)),
-        timelineItems: JSON.parse(JSON.stringify(timelineItems)),
-      },
-    };
-    setSnapshots(prev => [snap, ...prev]);
+  const createManualSnapshot = useCallback(() => {
+    const tick = lockstep.getTickCount();
+    snapshotManager.capture(tick);
+    toast.success(`Snapshot saved at tick ${tick}`);
     setNewName('');
-    toast.success(`Snapshot "${name}" saved`);
-  }, [newName, snapshots.length, positions, timelineItems]);
+  }, []);
 
-  const restoreSnapshot = useCallback((snap: Snapshot) => {
-    // In production, this would apply the snapshot data to the store
-    toast.success(`Restored "${snap.name}"`);
+  const handleRollback = useCallback((tick: number) => {
+    commandBus.dispatch({ type: 'ROLLBACK', targetTick: tick });
+    toast.success(`Rolled back to tick ${tick}`);
     setShowConfirm(null);
   }, []);
 
-  const deleteSnapshot = useCallback((id: string) => {
-    setSnapshots(prev => prev.filter(s => s.id !== id));
-    if (selectedId === id) setSelectedId(null);
-    toast.info('Snapshot deleted');
-  }, [selectedId]);
-
-  const selected = snapshots.find(s => s.id === selectedId);
+  const selected = snapshots.find(s => s.tick === selectedTick);
 
   return (
     <div className="h-full flex flex-col bg-surface-1 border-l border-border/60">
@@ -75,7 +58,7 @@ export default function VersioningPanel({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 space-y-3 text-xs">
-        {/* Create Snapshot */}
+        {/* Manual Snapshot */}
         <div className="space-y-1.5">
           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
             Save Snapshot
@@ -86,14 +69,14 @@ export default function VersioningPanel({ onClose }: { onClose: () => void }) {
               className="h-7 text-[10px] flex-1"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && createSnapshot()}
+              onKeyDown={(e) => e.key === 'Enter' && createManualSnapshot()}
             />
-            <Button variant="default" size="icon" className="h-7 w-7 flex-shrink-0" onClick={createSnapshot}>
+            <Button variant="default" size="icon" className="h-7 w-7 flex-shrink-0" onClick={createManualSnapshot}>
               <Plus className="w-3 h-3" />
             </Button>
           </div>
           <p className="text-[9px] text-muted-foreground">
-            Current: {positions.length} positions, {timelineItems.length} cues
+            Current: {positions.length} positions, {timelineItems.length} cues · Tick {lockstep.getTickCount()} · Log: {commandLog.length} cmds
           </p>
         </div>
 
@@ -105,38 +88,37 @@ export default function VersioningPanel({ onClose }: { onClose: () => void }) {
 
           {snapshots.length === 0 ? (
             <p className="text-[9px] text-muted-foreground italic py-2 text-center">
-              No snapshots yet. Save one to start tracking versions.
+              Snapshots auto-capture every ~5s. Save one manually above.
             </p>
           ) : (
             <div className="space-y-1">
-              {snapshots.map((snap) => (
-                <div key={snap.id}>
+              {[...snapshots].reverse().map((snap) => (
+                <div key={snap.tick}>
                   <button
-                    onClick={() => setSelectedId(selectedId === snap.id ? null : snap.id)}
+                    onClick={() => setSelectedTick(selectedTick === snap.tick ? null : snap.tick)}
                     className={cn(
                       "w-full flex items-center gap-1.5 p-1.5 rounded transition-colors text-left",
-                      selectedId === snap.id
+                      selectedTick === snap.tick
                         ? "bg-primary/10 border border-primary/30"
                         : "bg-surface-2/50 hover:bg-surface-3/60 border border-transparent"
                     )}
                   >
                     <Tag className="w-3 h-3 text-primary flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-foreground font-medium truncate">{snap.name}</p>
+                      <p className="text-foreground font-medium truncate">Tick {snap.tick}</p>
                       <p className="text-[9px] text-muted-foreground">
-                        {snap.description} · {new Date(snap.timestamp).toLocaleString([], {
-                          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                        {snap.positionCount} pos, {snap.timelineItemCount} cues · {new Date(snap.ts).toLocaleString([], {
+                          hour: '2-digit', minute: '2-digit', second: '2-digit'
                         })}
                       </p>
                     </div>
                     <ChevronRight className={cn(
                       "w-3 h-3 text-muted-foreground transition-transform",
-                      selectedId === snap.id && "rotate-90"
+                      selectedTick === snap.tick && "rotate-90"
                     )} />
                   </button>
 
-                  {/* Expanded details */}
-                  {selectedId === snap.id && (
+                  {selectedTick === snap.tick && (
                     <div className="ml-4 mt-1 space-y-1.5 p-1.5 bg-surface-2/30 rounded">
                       <div className="grid grid-cols-2 gap-1 text-[9px]">
                         <div className="bg-surface-0/50 rounded p-1">
@@ -149,7 +131,6 @@ export default function VersioningPanel({ onClose }: { onClose: () => void }) {
                         </div>
                       </div>
 
-                      {/* Diff summary */}
                       <div className="text-[9px] text-muted-foreground flex items-center gap-1">
                         <Diff className="w-3 h-3" />
                         <span>
@@ -161,16 +142,16 @@ export default function VersioningPanel({ onClose }: { onClose: () => void }) {
                       </div>
 
                       <div className="flex gap-1">
-                        {showConfirm === snap.id ? (
+                        {showConfirm === snap.tick ? (
                           <>
                             <Button
                               variant="default"
                               size="sm"
                               className="flex-1 h-6 text-[9px]"
-                              onClick={() => restoreSnapshot(snap)}
+                              onClick={() => handleRollback(snap.tick)}
                             >
                               <Check className="w-3 h-3 mr-0.5" />
-                              Confirm
+                              Confirm Rollback
                             </Button>
                             <Button
                               variant="ghost"
@@ -182,25 +163,15 @@ export default function VersioningPanel({ onClose }: { onClose: () => void }) {
                             </Button>
                           </>
                         ) : (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1 h-6 text-[9px]"
-                              onClick={() => setShowConfirm(snap.id)}
-                            >
-                              <RotateCcw className="w-3 h-3 mr-0.5" />
-                              Restore
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 text-[9px] text-destructive hover:text-destructive"
-                              onClick={() => deleteSnapshot(snap.id)}
-                            >
-                              <X className="w-3 h-3" />
-                            </Button>
-                          </>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 h-6 text-[9px]"
+                            onClick={() => setShowConfirm(snap.tick)}
+                          >
+                            <RotateCcw className="w-3 h-3 mr-0.5" />
+                            Rollback to here
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -213,8 +184,8 @@ export default function VersioningPanel({ onClose }: { onClose: () => void }) {
 
         {/* Info */}
         <div className="bg-surface-2/50 rounded p-2 text-[9px] text-muted-foreground space-y-1">
-          <p><strong>Show Versioning</strong></p>
-          <p>Save named snapshots of your show state. Compare differences and restore previous versions at any time.</p>
+          <p><strong>Deterministic Versioning</strong></p>
+          <p>Auto-snapshots every ~5s. All commands are logged for exact replay. Rollback restores state + re-applies commands deterministically.</p>
         </div>
       </div>
     </div>
