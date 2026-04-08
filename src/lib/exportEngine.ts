@@ -1,6 +1,7 @@
 import { type TimelineItem, type Position, type Trajectory, type DroneFormation } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { rgbToVdlString } from '@/lib/vdlQuantizer';
+import { getLiftTime } from '@/lib/pyroPhysics';
 
 // ─── VVIZ Drone Export (Finale 3D Spec) ─────────────────────────────
 // Generates a valid .vviz JSON file following the official Finale 3D specification:
