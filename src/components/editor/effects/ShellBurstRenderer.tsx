@@ -895,6 +895,7 @@ export default function ShellBurstRenderer({
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest
           />
         </mesh>
       )}
