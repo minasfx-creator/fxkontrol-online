@@ -506,14 +506,16 @@ export default function ShellBurstRenderer({
     [smokeUniforms]
   );
 
-  // Crossette sub-bursts
-  const crossetteRef = useRef<ParticleState[][]>([]);
+  // Crossette sub-bursts with stable IDs for React keys
+  const crossetteRef = useRef<{ id: number; particles: ParticleState[] }[]>([]);
   const crossetteTriggered = useRef(new Set<number>());
+  const crossetteIdCounter = useRef(0);
 
   // Fix: clear crossette state on pattern/color change to prevent stale sub-breaks
   useEffect(() => {
     crossetteTriggered.current.clear();
     crossetteRef.current = [];
+    crossetteIdCounter.current = 0;
   }, [pattern, color]);
 
   useFrame((_, delta) => {
