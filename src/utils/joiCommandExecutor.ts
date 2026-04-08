@@ -426,7 +426,7 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         if (!target) return { action, success: false, label: `Efeito não encontrado: ${params.id}` };
         const updates: Record<string, any> = {};
         if (params.startTime !== undefined) updates.startTime = params.startTime;
-        if (params.duration !== undefined) updates.duration = params.duration;
+        if (params.duration !== undefined) updates.durationOverride = params.duration;
         if (params.effectId) {
           const newEffect = resolveEffect({ effectId: params.effectId });
           if (newEffect) updates.effectId = newEffect.id;
