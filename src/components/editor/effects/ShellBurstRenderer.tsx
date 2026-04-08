@@ -714,9 +714,7 @@ export default function ShellBurstRenderer({
     // Step smoke: update time and set warm/cool smoke color per-particle
     smokeUniforms.uTime.value = time;
     // Base smoke color varies: warm gray #776655 vs cool gray #667788
-    const warmColor = new THREE.Color(0.47, 0.40, 0.33);
-    const coolColor = new THREE.Color(0.40, 0.47, 0.53);
-    smokeUniforms.uSmokeColor.value.copy(baseColor.r > 0.5 ? warmColor : coolColor);
+    smokeUniforms.uSmokeColor.value.copy(baseColor.r > 0.5 ? _warmSmokeColor : _coolSmokeColor);
     smokeUniforms.uSmokeOpacity.value = sceneSettings.smokeRenderQuality === 'high' ? 0.07 : 0.035;
 
     // Read fluid density for smoke modulation if available
