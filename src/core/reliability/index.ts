@@ -11,6 +11,13 @@ export { autoHeal, type SubsystemId, type HealStatus, type SubsystemHealth, type
 
 // ── Command Layer ─────────────────────────────────────────────────
 export { commandBus, type Command, type CommandHandler } from '@/core/command/CommandBus';
+export { commandLog, type LogEntry } from '@/core/command/CommandLog';
+
+// ── State Layer ───────────────────────────────────────────────────
+export { snapshotManager, type Snapshot } from '@/core/state/SnapshotManager';
+
+// ── Replay Layer ──────────────────────────────────────────────────
+export { replayEngine, type ReplayState } from '@/core/engine/ReplayEngine';
 
 // ── Execution & Time Layer ─────────────────────────────────────────
 export { deterministicClock, type ClockState } from '@/core/time/deterministicClock';
