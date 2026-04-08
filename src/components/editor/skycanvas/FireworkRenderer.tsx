@@ -1308,19 +1308,18 @@ export function TimelineEffects() {
         const effPan = (item.pan ?? 90) * (Math.PI / 180);
         const effTilt = (item.tilt ?? 0) * (Math.PI / 180);
         
-        // Use local quaternions to avoid race condition with concurrent bursts
-        const posEuler = new THREE.Euler(0, -posHeadingRad, 0, 'YZX');
-        const posQuat = new THREE.Quaternion().setFromEuler(posEuler);
-        const launchDir = new THREE.Vector3(0, 1, 0);
-        const pitchAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(posQuat);
-        const pitchQuat = new THREE.Quaternion().setFromAxisAngle(pitchAxis, -(Math.PI / 2 - posPitchRad));
-        posQuat.multiply(pitchQuat);
+        // GC-free: reuse pre-allocated singletons (synchronous per-burst, safe)
+        _rPosEuler.set(0, -posHeadingRad, 0, 'YZX');
+        _rPosQuat.setFromEuler(_rPosEuler);
+        _rPitchAxis.set(1, 0, 0).applyQuaternion(_rPosQuat);
+        _rPitchQuat.setFromAxisAngle(_rPitchAxis, -(Math.PI / 2 - posPitchRad));
+        _rPosQuat.multiply(_rPitchQuat);
         
-        const effEuler = new THREE.Euler(effTilt, effPan - Math.PI / 2, 0, 'YXZ');
-        const effQuat = new THREE.Quaternion().setFromEuler(effEuler);
+        _rEffEuler.set(effTilt, effPan - Math.PI / 2, 0, 'YXZ');
+        _rEffQuat.setFromEuler(_rEffEuler);
         
-        posQuat.multiply(effQuat);
-        launchDir.set(0, 1, 0).applyQuaternion(posQuat).normalize();
+        _rPosQuat.multiply(_rEffQuat);
+        _rLaunchDir.set(0, 1, 0).applyQuaternion(_rPosQuat).normalize();
         
         const burstPos: [number, number, number] = isShell
           ? [
