@@ -578,9 +578,10 @@ export function stepParticle(
   // Update lifecycle
   p.life += dt;
   // Exponential brightness decay: I = I0 * e^(-k*t)
-  // k=1.2 gives medium decay rate (configurable via maxLife)
+  // k varies by effect: 2.0 (fast/dahlia), 1.2 (medium/peony), 0.6 (slow/willow)
   const lifeRatio = p.life / p.maxLife;
-  p.brightness = Math.max(0, Math.exp(-1.2 * lifeRatio * lifeRatio * 3.0));
+  const k = p.decayRate ?? 1.2;
+  p.brightness = Math.max(0, Math.exp(-k * lifeRatio));
 }
 
 // ── Shell Burst Patterns ────────────────────────────────────────────
