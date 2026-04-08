@@ -315,6 +315,7 @@ export default function ShellBurstRenderer({
   angleOffset = 0,
   noTrail = false,
 }: ShellBurstRendererProps) {
+  const [, setRenderTick] = useState(0);
   const pointsRef = useRef<THREE.Points>(null);
   const pistilPointsRef = useRef<THREE.Points>(null);
   const glitterRef = useRef<THREE.Points>(null);
