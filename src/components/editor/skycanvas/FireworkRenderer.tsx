@@ -324,7 +324,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
             const satAngle = ((i / (STAR_COUNT * 0.6)) * Math.PI * 2) + (Math.random() - 0.5) * 0.06;
             const satSpeed = breakSpeed * (0.88 + Math.random() * 0.12);
             vx = Math.cos(satAngle) * satSpeed;
-            vy = (Math.random() - 0.5) * satSpeed * 0.05;
+            vy = (Math.random() - 0.5) * satSpeed * 0.02;
             vz = Math.sin(satAngle) * satSpeed;
           } else {
             const polPhi = Math.random() * Math.PI * 0.3;
