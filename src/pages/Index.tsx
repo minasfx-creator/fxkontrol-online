@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useState, useCallback, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
+import { commandBus } from '@/core/command/CommandBus';
 import { useSearchParams } from 'react-router-dom';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
