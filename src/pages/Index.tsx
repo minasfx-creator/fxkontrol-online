@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useState, useCallback, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
+import { commandBus } from '@/core/command/CommandBus';
 import { useSearchParams } from 'react-router-dom';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
@@ -18,6 +19,7 @@ import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import RadialMenu from '@/components/editor/RadialMenu';
+import EngineProvider from '@/orchestration/EngineProvider';
 import LiveCard from '@/components/editor/LiveCard';
 
 // ── Lazy helper — one-liner for 80+ panels ──
@@ -214,6 +216,17 @@ function Index() {
   const operationMode = useDisplayStore(s => s.operationMode);
   const nightMode = useDisplayStore(s => s.nightMode);
   useUndoKeyboard();
+
+  // Wire CommandBus → local UI state
+  useEffect(() => {
+    const unsubs = [
+      commandBus.on('OPEN_PANEL', (cmd) => {
+        if (cmd.type === 'OPEN_PANEL') setActivePanel(cmd.panel as PanelId);
+      }),
+      commandBus.on('CLOSE_PANEL', () => setActivePanel(null)),
+    ];
+    return () => unsubs.forEach(u => u());
+  }, []);
 
   // Apply night-mode class to root element
   useEffect(() => {
@@ -445,6 +458,7 @@ function Index() {
   // ═══ DESKTOP LAYOUT — Full Immersive Viewport ═══
   return (
     <div className="absolute inset-0 overflow-hidden bg-background">
+      <EngineProvider />
       {/* ─── Layer 0: Full-screen 3D Canvas ────────────── */}
       <div
         className="absolute inset-0 w-full h-full z-0 br2049-atmosphere"
