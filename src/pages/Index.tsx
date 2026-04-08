@@ -20,6 +20,7 @@ import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import RadialMenu from '@/components/editor/RadialMenu';
 import EngineProvider from '@/orchestration/EngineProvider';
+import LiveCard from '@/components/editor/LiveCard';
 
 // ── Lazy helper — one-liner for 80+ panels ──
 const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
