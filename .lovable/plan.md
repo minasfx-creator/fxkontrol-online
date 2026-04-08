@@ -1,78 +1,116 @@
 
 
-# Ciclo #54 — Sprint 1 Kernel: Análise e Plano
+# Ciclo #55 — Sprint 2: Command Log, Snapshot System, Replay + Rollback
 
-## Diagnóstico: O que JÁ existe vs o que é pedido
+## Inventário Existente
 
-| Componente Pedido | Já Existe? | Onde | Avaliação |
-|---|---|---|---|
-| FixedClock (tick discreto 16.67ms) | **SIM** — `DeterministicClock` | `src/core/time/deterministicClock.ts` | Mais completo que o pedido: drift correction, SMPTE sync, monotonic guards, zero-GC callbacks |
-| LockstepEngine (60Hz fixed step) | **SIM** — `LockstepEngine` | `src/core/reliability/lockstepEngine.ts` | Priority-sorted subsystems, accumulator, fixed DT, perf tracking |
-| SafetyValidator | **SIM** — `SimulationValidator` | `src/core/validation/simulationValidator.ts` | Geofence, collision, altitude, timing validation |
-| CommandBus | **NÃO** | — | Não existe — único componente novo real |
-| EngineProvider | **PARCIAL** — `FXKEngine` | `src/core/engine/fxkEngine.ts` | Orchestrator existe mas sem React bridge provider |
-| FXK Orchestrator | **SIM** | `src/core/engine/fxkEngine.ts` | Já integra environment, cluster, unreal, AI, timeline, firework |
+| Componente | Existe | Avaliação |
+|---|---|---|
+| CommandBus (dispatch/drain) | SIM | Sprint 1 — funcional |
+| LockstepEngine (60Hz fixed) | SIM | Determinístico |
+| useUndoStore (undo/redo) | SIM | Zustand-based, structuredClone snapshots, max 50 |
+| useBlackBox (crash recovery) | SIM | IndexedDB auto-save 500ms, dirty session detection |
+| StateBuffer (double buffer) | SIM | Front/back swap |
+| VersioningPanel (UI) | SIM | Named snapshots, local state only (não persiste) |
 
-## Problema Central
+## O que o Sprint 2 Adiciona
 
-**O projeto já possui 80% do que o Sprint 1 pede**, em versões mais robustas. Criar os ficheiros propostos introduziria:
+### 1. CommandLog — Gravação determinística de comandos
 
-1. **Duplicação** — `FixedClock` vs `DeterministicClock` (que já tem SMPTE sync, drift correction)
-2. **Conflito de nomes** — novo `LockstepEngine` em `core/engine/` vs existente em `core/reliability/`
-3. **Regressão** — o `LockstepEngine` existente já é usado pelo pipeline; substituí-lo quebraria subsystems registados
+**Novo arquivo:** `src/core/command/CommandLog.ts`
 
-## Plano: Adicionar o que FALTA sem duplicar
+Grava cada comando com tick number e timestamp. Permite replay exato.
 
-### 1. CommandBus (NOVO) — `src/core/command/CommandBus.ts`
-
-Único componente genuinamente ausente. Criar com tipos extensíveis:
-
-```ts
-export type Command =
-  | { type: 'OPEN_PANEL'; panel: string }
-  | { type: 'CLOSE_PANEL' }
-  | { type: 'FIRE'; payload?: any }
-  | { type: 'ARM_SYSTEM' }
-  | { type: 'DISARM_SYSTEM' }
-  | { type: 'E_STOP' };
+```text
+CommandLog
+├── record(tick, cmd)     — append ao log
+├── getLog()              — retorna array completo
+├── slice(fromTick, toTick) — range query
+├── clear()               — reset
+└── exportJSON() / importJSON()  — serialização
 ```
 
-Singleton `commandBus` com `dispatch()` e `drain()`. Zero-GC: reusa array interno.
+Integração: o subsystem `commandBus` no EngineProvider já drena comandos — após `applyAll`, gravar no log com `lockstep.getTickCount()`.
 
-### 2. Integrar CommandBus no LockstepEngine EXISTENTE
+### 2. SnapshotManager — Snapshots periódicos do estado
 
-Adicionar ao `LockstepEngine` em `src/core/reliability/lockstepEngine.ts`:
-- Import `commandBus`
-- No início de `tick()`, antes de avançar subsystems: `drain()` commands e aplicar via handler registry
-- Adicionar `registerHandler(type, fn)` para subsystems receberem commands
+**Novo arquivo:** `src/core/state/SnapshotManager.ts`
 
-### 3. EngineProvider (NOVO) — `src/orchestration/EngineProvider.tsx`
+Captura snapshots do ProjectStore a cada N ticks (configurável, default 300 = ~5s). Mantém ring buffer de max 20 snapshots.
 
-React bridge que:
-- Inicia `deterministicClock` + `lockstep` no mount
-- Conecta `deterministicClock.onTick` → `lockstep.tick`
-- Cleanup no unmount
+```text
+SnapshotManager
+├── capture(tick)         — structuredClone do estado
+├── nearest(tick)         — snapshot mais próximo ≤ tick
+├── getAll()              — lista de snapshots
+├── clear()
+```
 
-### 4. Refactor pontual no Index.tsx
+Integração: registar como subsystem no lockstep com priority 200 (baixa). A cada 300 ticks chama `capture`.
 
-Converter 2-3 ações diretas (e.g. `setActivePanel`) para usar `commandBus.dispatch()` como prova de conceito. NÃO refatorar tudo — apenas demonstrar o padrão.
+### 3. ReplayEngine — Replay determinístico
 
-## Ficheiros
+**Novo arquivo:** `src/core/engine/ReplayEngine.ts`
 
-| Ação | Ficheiro |
+Dado um CommandLog e um snapshot inicial, re-executa comandos tick-a-tick para reproduzir o estado exato.
+
+```text
+ReplayEngine
+├── startReplay(fromTick, toTick?)  — inicia replay
+├── tick()                          — avança 1 tick do replay
+├── isReplaying()
+├── stop()
+```
+
+Fluxo de replay:
+1. Encontra snapshot mais próximo via SnapshotManager
+2. Aplica snapshot ao ProjectStore
+3. Re-executa comandos do CommandLog desde aquele tick
+4. Cada `tick()` aplica os comandos daquele tick no CommandBus
+
+### 4. Rollback — Voltar a qualquer ponto
+
+Rollback = snapshot restore + descarte de comandos posteriores. Usa `SnapshotManager.nearest(targetTick)` + `CommandLog.slice(snapshotTick, targetTick)` e re-aplica.
+
+Integrar como command type no CommandBus:
+```ts
+| { type: 'ROLLBACK'; targetTick: number }
+```
+
+### 5. Integração no EngineProvider
+
+Atualizar `EngineProvider.tsx` para:
+- Importar e registar `SnapshotManager` como subsystem
+- Após `commandBus.applyAll`, gravar no `CommandLog`
+- Expor `commandLog` e `snapshotManager` como singletons importáveis
+
+### 6. Upgrade da VersioningPanel (UI)
+
+Conectar a `SnapshotManager` real em vez de estado local:
+- Listar snapshots automáticos
+- Botão "Rollback to here" dispara `commandBus.dispatch({ type: 'ROLLBACK', targetTick })`
+- Mostrar tick number e timestamp de cada snapshot
+
+## Arquivos
+
+| Ação | Arquivo |
 |------|---------|
-| Criar | `src/core/command/CommandBus.ts` |
-| Editar | `src/core/reliability/lockstepEngine.ts` (integrar command drain) |
-| Criar | `src/orchestration/EngineProvider.tsx` |
-| Editar | `src/pages/Index.tsx` (2-3 dispatch exemplos) |
+| Criar | `src/core/command/CommandLog.ts` |
+| Criar | `src/core/state/SnapshotManager.ts` |
+| Criar | `src/core/engine/ReplayEngine.ts` |
+| Editar | `src/core/command/CommandBus.ts` (adicionar ROLLBACK type) |
+| Editar | `src/orchestration/EngineProvider.tsx` (integrar log + snapshots) |
+| Editar | `src/components/editor/VersioningPanel.tsx` (conectar a SnapshotManager) |
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Criar CommandBus |
-| 2 | Integrar drain no LockstepEngine existente |
-| 3 | Criar EngineProvider |
-| 4 | Refactor pontual no Index |
-| 5 | Build verification |
+| 1 | Criar CommandLog |
+| 2 | Criar SnapshotManager |
+| 3 | Criar ReplayEngine |
+| 4 | Adicionar ROLLBACK ao CommandBus |
+| 5 | Integrar tudo no EngineProvider |
+| 6 | Conectar VersioningPanel ao sistema real |
+| 7 | Build verification |
 
