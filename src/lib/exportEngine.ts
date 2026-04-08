@@ -1,6 +1,7 @@
 import { type TimelineItem, type Position, type Trajectory, type DroneFormation } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { rgbToVdlString } from '@/lib/vdlQuantizer';
+import { getLiftTime } from '@/lib/pyroPhysics';
 
 // ─── VVIZ Drone Export (Finale 3D Spec) ─────────────────────────────
 // Generates a valid .vviz JSON file following the official Finale 3D specification:
@@ -351,14 +352,11 @@ function extractCaliber(name: string): string {
   return match ? `${match[1]}"` : 'N/A';
 }
 
-/** Calculate pre-fire time based on caliber (lift time in seconds) */
+/** Calculate pre-fire time based on caliber using physics-calibrated lift time */
 function calculatePFT(caliber: string): number {
   const size = parseInt(caliber);
   if (isNaN(size)) return 0;
-  const liftTimes: Record<number, number> = {
-    2: 1.2, 3: 1.8, 4: 2.3, 5: 2.8, 6: 3.2, 8: 3.8, 10: 4.2, 12: 4.8,
-  };
-  return liftTimes[size] ?? 2.0;
+  return getLiftTime(size);
 }
 
 export function exportFiringCSV(

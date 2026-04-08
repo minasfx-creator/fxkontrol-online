@@ -6,9 +6,11 @@
  * - Generic: CSV/TSV with any headers
  * 
  * Supports auto-detection of format and column mapping.
+ * Full conformity with Finale 3D Manual (MANUAL_FINALE-19).
  */
 
 import { Effect, PartType } from '@/data/effectLibrary';
+import { getBreakHeight } from '@/lib/pyroPhysics';
 
 // Known Finale 3D column headers (case-insensitive)
 const COLUMN_ALIASES: Record<string, string[]> = {
@@ -17,15 +19,22 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   duration:    ['duration', 'dur', 'time', 'burn_time', 'effect_time', 'burn', 'display_time'],
   color:       ['color', 'colour', 'colors', 'effect_color', 'star_color', 'primary_color'],
   type:        ['type', 'part_type', 'device_type', 'class', 'category', 'kind', 'parttype', 'fdb_type', 'effect_type'],
-  height:      ['height', 'break_height', 'altitude', 'elevation', 'height_m', 'height_ft', 'lift_height'],
+  height:      ['height', 'break_height', 'altitude', 'elevation', 'height_m', 'height_ft', 'lift_height', 'height_meters', 'heightmeters', 'effect_height'],
   cost:        ['cost', 'price', 'unit_price', 'unit_cost', 'retail', 'wholesale'],
-  prefire:     ['prefire', 'pre_fire', 'lift_time', 'pft', 'rise_time', 'fuse_time'],
+  prefire:     ['prefire', 'pre_fire', 'lift_time', 'pft', 'rise_time', 'fuse_time', 'internal_delay', 'internaldelay', 'pre_fire_time', 'prefire_time'],
   pattern:     ['pattern', 'burst_pattern', 'burst_type', 'star_pattern'],
   shotCount:   ['shots', 'shot_count', 'num_shots', 'count', 'tubes', 'num_tubes'],
-  safety:      ['safety', 'safety_distance', 'nfpa_distance', 'safe_dist', 'safety_m'],
+  safety:      ['safety', 'safety_distance', 'nfpa_distance', 'safe_dist', 'safety_m', 'safety_distance_meters'],
   vdl:         ['vdl', 'visual_description', 'vdl_string'],
   sku:         ['sku', 'part_number', 'part_no', 'item_no', 'product_code', 'article'],
   manufacturer:['manufacturer', 'mfg', 'supplier', 'brand', 'vendor', 'factory'],
+  fuseDelay:   ['fuse_delay', 'fuse', 'fusedelay', 'visco_delay'],
+  devices:     ['devices', 'numdevices', 'num_devices', 'chain_devices'],
+  exNumber:    ['ex_number', 'exnumber'],
+  ceNumber:    ['ce_number', 'cenumber'],
+  unNumber:    ['un_number', 'unnumber', 'material'],
+  subtype:     ['subtipo', 'subtype', 'effect_subtype', 'sub_type'],
+  rackType:    ['rack_type', 'racktype'],
 };
 
 // Part type mapping from Finale 3D keywords
@@ -58,6 +67,23 @@ const PART_TYPE_MAP: Record<string, PartType> = {
   laser: 'laser',
   light: 'light',
   sfx: 'sfx',
+  // Finale 3D official types
+  'other effect': 'sfx',
+  other: 'sfx',
+  'not an effect': 'sfx',
+  rack: 'sfx',
+  // Finale Inventory — Spanish variants
+  proyectiles: 'shell',
+  'otro efecto': 'sfx',
+  'no coreografiado': 'sfx',
+  pasteles: 'cake',
+  velas: 'candle',
+  minas: 'mine',
+  cometas: 'comet',
+  cohetes: 'rocket',
+  llamas: 'flame',
+  tierra: 'ground',
+  bastidor: 'sfx',
 };
 
 // Color name to hex mapping
@@ -93,6 +119,12 @@ export interface ParsedCatalogEffect {
   vdl: string;
   sku: string;
   manufacturer: string;
+  fuseDelay: number;
+  devices: number;
+  exNumber: string;
+  ceNumber: string;
+  unNumber: string;
+  subtype: string;
   raw: Record<string, string>;
 }
 
@@ -253,6 +285,12 @@ export function parseCatalogFile(text: string): {
       vdl: getValue('vdl') || '',
       sku: getValue('sku') || '',
       manufacturer: getValue('manufacturer') || '',
+      fuseDelay: parseFloat(getValue('fuseDelay')) || 0,
+      devices: parseInt(getValue('devices')) || 0,
+      exNumber: getValue('exNumber') || '',
+      ceNumber: getValue('ceNumber') || '',
+      unNumber: getValue('unNumber') || '',
+      subtype: getValue('subtype') || '',
       raw,
     });
   }
@@ -267,7 +305,7 @@ export function catalogToEffects(parsed: ParsedCatalogEffect[], idPrefix: string
     const category = inferCategory(partType);
     const type = inferEffectType(partType);
     const caliber = p.caliber || (partType === 'shell' ? 3 : undefined);
-    const height = p.height || (caliber ? caliber * 20 : undefined);
+    const height = p.height || (caliber ? getBreakHeight(caliber) : undefined);
 
     return {
       id: `${idPrefix}-${Date.now()}-${i}`,
@@ -286,6 +324,8 @@ export function catalogToEffects(parsed: ParsedCatalogEffect[], idPrefix: string
       shotCount: p.shotCount || undefined,
       safetyDistance: p.safetyDistance || undefined,
       vdl: p.vdl || undefined,
+      fuseDelay: p.fuseDelay || undefined,
+      numDevices: p.devices || undefined,
     };
   });
 }
@@ -341,6 +381,12 @@ export function parseFinaleFSL(xmlText: string): ParsedCatalogEffect[] {
       vdl: vdlStr,
       sku: skuStr,
       manufacturer: mfgStr,
+      fuseDelay: 0,
+      devices: 0,
+      exNumber: '',
+      ceNumber: '',
+      unNumber: '',
+      subtype: '',
       raw: {},
     });
   }
@@ -393,6 +439,12 @@ export function parseDepenceDPX(xmlText: string): ParsedCatalogEffect[] {
       vdl: '',
       sku: '',
       manufacturer: mfgStr,
+      fuseDelay: 0,
+      devices: 0,
+      exNumber: '',
+      ceNumber: '',
+      unNumber: '',
+      subtype: '',
       raw: {},
     });
   }
