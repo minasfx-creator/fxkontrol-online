@@ -617,7 +617,7 @@ export default function ShellBurstRenderer({
         gp[i].y += gp[i].vy * dt;
         gp[i].z += gp[i].vz * dt;
         gp[i].brightness = Math.max(0, 1 - gp[i].life / gp[i].maxLife);
-        if (gp[i].life > gp[i].maxLife) { gp.splice(i, 1); }
+        if (gp[i].life > gp[i].maxLife) { gp[i] = gp[gp.length - 1]; gp.pop(); }
       }
       const gCount = Math.min(gp.length, GLITTER_MAX);
       for (let i = 0; i < gCount; i++) {
