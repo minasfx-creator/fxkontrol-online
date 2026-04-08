@@ -531,19 +531,22 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * 0.15 * t * t;
           pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
         } else if (starAge < hangEnd) {
-          // Hanging phase — stars hover at apogee with amplified wind drift + per-star scatter
+          // Hanging phase — tight vertical columns with minimal lateral drift
           const driftT = (starAge - hangStart) / (hangEnd - hangStart);
-          const lateralScatter = ((sparkleSeeds[i] % 30) - 15) * 0.003;
-          px = hangPx + w[0] * driftT * 2.5 + Math.sin(time * 0.3 + sparkleSeeds[i]) * 0.08 + lateralScatter * driftT;
+          // Column grouping: stars sharing same column index drift together
+          const columnIdx = sparkleSeeds[i] % 8;
+          const columnScatter = ((columnIdx % 8) - 4) * 0.001;
+          px = hangPx + w[0] * driftT * 0.6 + Math.sin(time * 0.3 + columnIdx) * 0.03 + columnScatter * driftT;
           py = hangPy - driftT * 0.35;
-          pz = hangPz + w[2] * driftT * 2.5 + Math.cos(time * 0.25 + sparkleSeeds[i]) * 0.06 + lateralScatter * driftT * 0.7;
+          pz = hangPz + w[2] * driftT * 0.6 + Math.cos(time * 0.25 + columnIdx) * 0.02 + columnScatter * driftT * 0.7;
         } else {
           // Rain phase — sharp vertical descent with 2.5x gravity, minimal horizontal movement
           const rainT = rainPhase * 4.0;
-          const driftEnd = 1.0; // full hang drift at transition
-          px = hangPx + w[0] * driftEnd * 2.5 + w[0] * rainT * 0.15; // minimal horizontal
-          py = hangPy - 0.35 + 0.5 * GRAVITY * 2.5 * rainT * rainT; // sharp gravity rain
-          pz = hangPz + w[2] * driftEnd * 2.5 + w[2] * rainT * 0.15;
+          const columnIdx = sparkleSeeds[i] % 8;
+          const columnScatter = ((columnIdx % 8) - 4) * 0.001;
+          px = hangPx + w[0] * 0.6 + columnScatter + w[0] * rainT * 0.08;
+          py = hangPy - 0.35 + 0.5 * GRAVITY * 2.5 * rainT * rainT;
+          pz = hangPz + w[2] * 0.6 + columnScatter * 0.7 + w[2] * rainT * 0.08;
         }
       } else if (pattern === 'falling_leaves') {
         // Falling leaves: aerodynamic tumble — multi-axis sinusoidal flutter + heavy gravity
@@ -656,8 +659,8 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           twinkle = 0.5; // pre-ignition: subdued glow
         }
       } else if (isMagnaliumOrDragonEgg) {
-        // Dragon eggs / magnalium strobe: real oscillatory combustion
-        twinkle = strobeFlicker(sparkleSeeds[i], time, 0.2, 0.08);
+        // Dragon eggs / magnalium strobe: real oscillatory combustion ~10Hz
+        twinkle = strobeFlicker(sparkleSeeds[i], time, 0.06, 0.04);
       } else if (isTrailingPattern) {
         // Nishiki detection: kamuro + gold-like base color → high-freq aluminum shimmer
         const isNishiki = pattern === 'kamuro' && baseColor.r > 0.85 && baseColor.g > 0.7 && baseColor.b < 0.4;
@@ -745,11 +748,11 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         let trailDragH1 = dragCoeff;
         
         if (pattern === 'horsetail') {
-          trailGrav0 = segAge0 < 0.5 ? gravityMult * 1.2 : gravityMult * (1.2 + (segAge0 - 0.5) / 0.5 * 4.8);
-          trailGrav1 = segAge1 < 0.5 ? gravityMult * 1.2 : gravityMult * (1.2 + (segAge1 - 0.5) / 0.5 * 4.8);
-          trailDragH0 = dragCoeff * 0.7;
-          trailDragH1 = dragCoeff * 0.7;
-        } else if (pattern === 'coconut') {
+          trailGrav0 = segAge0 < 0.5 ? gravityMult * 1.2 : gravityMult * (1.2 + (segAge0 - 0.5) / 0.5 * 5.5);
+          trailGrav1 = segAge1 < 0.5 ? gravityMult * 1.2 : gravityMult * (1.2 + (segAge1 - 0.5) / 0.5 * 5.5);
+          trailDragH0 = dragCoeff * 0.55;
+          trailDragH1 = dragCoeff * 0.55;
+        } else if (pattern === 'coconut_tree') {
           trailGrav0 = segAge0 < 0.3 ? gravityMult * 0.4 : segAge0 < 0.6 ? gravityMult * 1.5 : gravityMult * 5.0;
           trailGrav1 = segAge1 < 0.3 ? gravityMult * 0.4 : segAge1 < 0.6 ? gravityMult * 1.5 : gravityMult * 5.0;
           trailDragH0 = segAge0 < 0.3 ? dragCoeff * 0.5 : segAge0 < 0.6 ? dragCoeff * 0.8 : dragCoeff * 0.15;
@@ -760,21 +763,25 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           trailDragH0 = dragCoeff * 0.85;
           trailDragH1 = dragCoeff * 0.85;
         } else if (pattern === 'time_rain') {
-          // Time rain trails: rising phase low gravity, rain phase 2.5x gravity
           const hangStart = 0.25;
           const hangEnd = 0.55;
           trailGrav0 = segAge0 < hangStart ? gravityMult * 0.15 : segAge0 < hangEnd ? gravityMult * 0.05 : gravityMult * 2.5;
           trailGrav1 = segAge1 < hangStart ? gravityMult * 0.15 : segAge1 < hangEnd ? gravityMult * 0.05 : gravityMult * 2.5;
         } else if (pattern === 'crossette') {
-          // Post-split crossette segments: increased gravity for visible 4-arm divergence droop
           trailGrav0 = segAge0 > 0.4 ? gravityMult * 1.5 : gravityMult;
           trailGrav1 = segAge1 > 0.4 ? gravityMult * 1.5 : gravityMult;
         } else if (pattern === 'kamuro') {
-          // Kamuro trail droop: progressive gravity matching star physics
           trailGrav0 = segAge0 < 0.4 ? gravityMult * 0.8 : gravityMult * (0.8 + (segAge0 - 0.4) / 0.6 * 2.7);
           trailGrav1 = segAge1 < 0.4 ? gravityMult * 0.8 : gravityMult * (0.8 + (segAge1 - 0.4) / 0.6 * 2.7);
           trailDragH0 = dragCoeff * 0.7;
           trailDragH1 = dragCoeff * 0.7;
+        } else if (pattern === 'saturn') {
+          // Ring stars (first 60%) get reduced gravity to stay flat
+          const isRingStar = (i / STAR_COUNT) < 0.6;
+          if (isRingStar) {
+            trailGrav0 = gravityMult * 0.3;
+            trailGrav1 = gravityMult * 0.3;
+          }
         }
         
         // Trail segment start
