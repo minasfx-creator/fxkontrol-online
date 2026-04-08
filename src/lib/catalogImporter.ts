@@ -117,6 +117,12 @@ export interface ParsedCatalogEffect {
   vdl: string;
   sku: string;
   manufacturer: string;
+  fuseDelay: number;
+  devices: number;
+  exNumber: string;
+  ceNumber: string;
+  unNumber: string;
+  subtype: string;
   raw: Record<string, string>;
 }
 
