@@ -12,6 +12,8 @@ import { parseKmzReadyBlock, stripKmzReadyBlock, downloadAeroKmz } from '@/utils
 import { executeJoiCommands, stripJoiCommands, hasJoiCommands, type JoiCommandResult } from '@/utils/joiCommandExecutor';
 import JoiCommandFeedback from '@/components/JoiCommandFeedback';
 import { OPERATIONAL_PRESETS } from '@/components/JoiCommandPresets';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from '@/hooks/use-mobile';
