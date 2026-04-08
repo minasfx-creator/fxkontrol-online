@@ -491,6 +491,12 @@ export default function ShellBurstRenderer({
   const crossetteRef = useRef<ParticleState[][]>([]);
   const crossetteTriggered = useRef(new Set<number>());
 
+  // Fix: clear crossette state on pattern/color change to prevent stale sub-breaks
+  useEffect(() => {
+    crossetteTriggered.current.clear();
+    crossetteRef.current = [];
+  }, [pattern, color]);
+
   useFrame((_, delta) => {
     if (!pointsRef.current || !particlesRef.current || progress <= 0) return;
     const particles = particlesRef.current;
