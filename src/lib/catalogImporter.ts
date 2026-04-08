@@ -65,6 +65,23 @@ const PART_TYPE_MAP: Record<string, PartType> = {
   laser: 'laser',
   light: 'light',
   sfx: 'sfx',
+  // Finale 3D official types
+  'other effect': 'sfx',
+  other: 'sfx',
+  'not an effect': 'sfx',
+  rack: 'sfx',
+  // Finale Inventory — Spanish variants
+  proyectiles: 'shell',
+  'otro efecto': 'sfx',
+  'no coreografiado': 'sfx',
+  pasteles: 'cake',
+  velas: 'candle',
+  minas: 'mine',
+  cometas: 'comet',
+  cohetes: 'rocket',
+  llamas: 'flame',
+  tierra: 'ground',
+  bastidor: 'sfx',
 };
 
 // Color name to hex mapping
