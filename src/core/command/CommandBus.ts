@@ -14,7 +14,8 @@ export type Command =
   | { type: 'FIRE'; payload?: any }
   | { type: 'ARM_SYSTEM' }
   | { type: 'DISARM_SYSTEM' }
-  | { type: 'E_STOP' };
+  | { type: 'E_STOP' }
+  | { type: 'ROLLBACK'; targetTick: number };
 
 export type CommandHandler = (cmd: Command) => void;
 
