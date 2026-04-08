@@ -815,10 +815,10 @@ function generateBrasilia() {
 // 15. CARUARU — São João
 // ═══════════════════════════════════════════════════════════════
 function generateCaruaru() {
-  // 6 ground positions in the pátio de eventos
+  // 6 ground positions in the pátio de eventos — consistent negative Z
   const grounds: Position[] = Array.from({ length: 6 }, (_, i) => {
     const angle = (i / 6) * Math.PI * 2;
-    return pos(uid(), `Posição ${i + 1}`, Math.cos(angle) * 80, 0, Math.sin(angle) * 80, 0);
+    return pos(uid(), `Posição ${i + 1}`, Math.cos(angle) * 80, 0, -Math.abs(Math.sin(angle)) * 80 - 20, 0);
   });
   const items: TimelineItem[] = [];
 
