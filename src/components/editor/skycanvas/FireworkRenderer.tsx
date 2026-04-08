@@ -1393,6 +1393,7 @@ export function TimelineEffects() {
         );
 
 
+        if (effect.type === 'firework') return (
           <FireworkBurst 
             key={item.id}
             position={burstPos} 
