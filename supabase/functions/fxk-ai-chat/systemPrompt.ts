@@ -79,32 +79,47 @@ Quando o usuário pedir para criar posições, adicionar efeitos, montar coreogr
 
 3. **remove_position** / **remove_effect** / **update_position** — Gerenciar posições e efeitos
 
-4. **add_formation** — Formação de drones
+4. **update_effect** — Editar efeito existente (mover tempo, trocar posição, alterar duração)
+   \`[JOI_CMD]{"action":"update_effect","params":{"id":"joi-fx-xxx","startTime":12.0,"positionName":"P2","duration":8.0}}[/JOI_CMD]\`
+   - Parâmetros opcionais: startTime, positionId, positionName, effectId, duration
+
+5. **duplicate_position** — Duplicar posição com offset ou espelhamento
+   \`[JOI_CMD]{"action":"duplicate_position","params":{"name":"P1","mirror":true,"newName":"P1_mirror"}}[/JOI_CMD]\`
+   - mirror: true espelha em X (x → -x). offsetX: deslocamento em metros (default: 5)
+
+6. **set_duration** — Definir duração total do show
+   \`[JOI_CMD]{"action":"set_duration","params":{"duration":180}}[/JOI_CMD]\`
+
+7. **add_formation** — Formação de drones
    \`[JOI_CMD]{"action":"add_formation","params":{"formationType":"circle","droneCount":30,"height":50,"radius":20,"startTime":10}}[/JOI_CMD]\`
 
-5. **set_wind** — Configurar vento
+8. **set_wind** — Configurar vento
    \`[JOI_CMD]{"action":"set_wind","params":{"enabled":true,"direction":180,"speed":5,"gustStrength":2}}[/JOI_CMD]\`
 
-6. **play** / **pause** / **seek** — Controle de playback
+9. **play** / **pause** / **seek** — Controle de playback
    \`[JOI_CMD]{"action":"seek","params":{"time":30.0}}[/JOI_CMD]\`
 
-7. **set_project_name** — Renomear projeto
-   \`[JOI_CMD]{"action":"set_project_name","params":{"name":"Show Réveillon 2026"}}[/JOI_CMD]\`
+10. **set_project_name** — Renomear projeto
+    \`[JOI_CMD]{"action":"set_project_name","params":{"name":"Show Réveillon 2026"}}[/JOI_CMD]\`
 
-8. **add_cue_marker** — Marcador de cue
-   \`[JOI_CMD]{"action":"add_cue_marker","params":{"time":45.0,"label":"Clímax","color":"#ff0000"}}[/JOI_CMD]\`
+11. **add_cue_marker** — Marcador de cue
+    \`[JOI_CMD]{"action":"add_cue_marker","params":{"time":45.0,"label":"Clímax","color":"#ff0000"}}[/JOI_CMD]\`
 
-9. **create_choreography** — Macro: criar múltiplas posições + efeitos de uma vez
-   \`[JOI_CMD]{"action":"create_choreography","params":{"projectName":"Show Réveillon","positions":[{"name":"P1","type":"pyro","x":-10,"y":0,"z":0}],"cues":[{"effectId":"mort-01","positionIndex":0,"startTime":5.0}],"sections":[{"time":0,"label":"Abertura","color":"#00ff00"},{"time":45,"label":"Clímax","color":"#ff0000"}]}}[/JOI_CMD]\`
+12. **create_choreography** — Macro: criar múltiplas posições + efeitos de uma vez
+    \`[JOI_CMD]{"action":"create_choreography","params":{"projectName":"Show Réveillon","positions":[{"name":"P1","type":"pyro","x":-10,"y":0,"z":0}],"cues":[{"effectId":"mort-01","positionIndex":0,"startTime":5.0}],"sections":[{"time":0,"label":"Abertura","color":"#00ff00"},{"time":45,"label":"Clímax","color":"#ff0000"}]}}[/JOI_CMD]\`
 
-10. **clear_project** — Limpar todo o projeto (posições, efeitos, formações)
+13. **clear_project** — Limpar todo o projeto (posições, efeitos, formações)
     \`[JOI_CMD]{"action":"clear_project","params":{}}[/JOI_CMD]\`
 
-11. **list_positions** — Listar posições existentes
+14. **list_positions** — Listar posições existentes
     \`[JOI_CMD]{"action":"list_positions","params":{}}[/JOI_CMD]\`
 
-12. **list_effects** — Listar efeitos na timeline
+15. **list_effects** — Listar efeitos na timeline
     \`[JOI_CMD]{"action":"list_effects","params":{}}[/JOI_CMD]\`
+
+### NOTAS IMPORTANTES SOBRE PARÂMETROS
+- **duration** no add_effect: Use para efeitos de longa duração como waterfalls (10-30s), gerbs (5-15s), cold sparks (3-10s). Se omitido, usa o default do efeito.
+- **update_effect**: Permite edição inline de cues sem precisar remover e recriar. O ID do efeito na timeline é retornado quando criado.
 
 ---
 

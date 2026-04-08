@@ -21,7 +21,7 @@ import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useJoiSpeech } from '@/hooks/useJoiSpeech';
 import joiFaceIcon from '@/assets/joi-face-icon.png';
 
-type Msg = { role: 'user' | 'assistant'; content: string; ts?: number; feedback?: 'up' | 'down'; cmdResults?: JoiCommandResult[] };
+type Msg = { role: 'user' | 'assistant' | 'system'; content: string; ts?: number; feedback?: 'up' | 'down'; cmdResults?: JoiCommandResult[] };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fxk-ai-chat`;
 const HISTORY_KEY = 'fxk-ai-history';
@@ -392,8 +392,8 @@ export function FXKAssistant() {
       ? Array.from(effectCounts.entries()).map(([n, c]) => `${n} ×${c}`).join(', ')
       : 'Nenhum';
     const contextMsg: Msg = {
-      role: 'user' as const,
-      content: `[CONTEXTO DO PROJETO — NÃO EXIBIR AO USUÁRIO]\nPosições (${store.positions.length}): ${positionsSummary}\nEfeitos na timeline (${store.timelineItems.length}): ${effectsSummary}\nTempo atual: ${store.currentTime.toFixed(1)}s\nDuração: ${store.duration.toFixed(0)}s`,
+      role: 'system' as const,
+      content: `[CONTEXTO DO PROJETO]\nPosições (${store.positions.length}): ${positionsSummary}\nEfeitos na timeline (${store.timelineItems.length}): ${effectsSummary}\nTempo atual: ${store.currentTime.toFixed(1)}s\nDuração: ${store.duration.toFixed(0)}s`,
     };
 
     let soFar = '';
