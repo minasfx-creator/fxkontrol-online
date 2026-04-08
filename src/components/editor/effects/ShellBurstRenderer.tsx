@@ -707,6 +707,7 @@ export default function ShellBurstRenderer({
     // Spawn smoke puffs when burst reaches ~20% progress
     if (progress > 0.15 && !smokeSpawned.current && sceneSettings.smokeRenderQuality !== 'off') {
       smokeSpawned.current = true;
+      setRenderTick(t => t + 1);
       const sp: typeof smokeParticles.current = [];
       for (let i = 0; i < SMOKE_COUNT; i++) {
         const theta = Math.random() * Math.PI * 2;
