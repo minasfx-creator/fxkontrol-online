@@ -347,15 +347,24 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
           });
         }
 
-        // Create cues — track individual failures
+        // Create cues — track individual failures and collect IDs
+        const createdIds: string[] = [];
         if (Array.isArray(params.cues)) {
           params.cues.forEach((c: any) => {
             const posId = posMap.get(c.positionIndex);
+            const storeBefore = useProjectStore.getState().timelineItems.length;
             const r = executeCommand({
               action: 'add_effect',
               params: { ...c, positionId: posId || c.positionId },
             });
-            if (!r.success) cueFails++;
+            if (!r.success) {
+              cueFails++;
+            } else {
+              const storeAfter = useProjectStore.getState();
+              if (storeAfter.timelineItems.length > storeBefore) {
+                createdIds.push(storeAfter.timelineItems[storeAfter.timelineItems.length - 1].id);
+              }
+            }
           });
         }
 
@@ -377,10 +386,11 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         const posCount = params.positions?.length || 0;
         const cueCount = params.cues?.length || 0;
         const failDetail = cueFails > 0 ? ` (${cueFails} falharam)` : '';
+        const idsDetail = createdIds.length > 0 ? `\nIDs criados: ${createdIds.join(', ')}` : '';
         return {
           action, success: true,
           label: `Coreografia criada`,
-          detail: `${posCount} posições + ${cueCount} cues${failDetail}`,
+          detail: `${posCount} posições + ${cueCount} cues${failDetail}${idsDetail}`,
         };
       }
 

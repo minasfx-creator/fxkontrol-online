@@ -391,9 +391,17 @@ export function FXKAssistant() {
     const effectsSummary = effectCounts.size > 0
       ? Array.from(effectCounts.entries()).map(([n, c]) => `${n} ×${c}`).join(', ')
       : 'Nenhum';
+    // Include last 30 timeline item IDs for update_effect targeting
+    const recentItems = store.timelineItems.slice(-30).map(item => {
+      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const eName = effect?.name || item.effectId;
+      const pName = item.positionName || item.positionId || '?';
+      return `${item.id} [${eName} @ ${pName}, t=${item.startTime.toFixed(1)}s]`;
+    });
+    const itemsDetail = recentItems.length > 0 ? recentItems.join(', ') : 'Nenhum';
     const contextMsg: Msg = {
       role: 'system' as const,
-      content: `[CONTEXTO DO PROJETO]\nPosições (${store.positions.length}): ${positionsSummary}\nEfeitos na timeline (${store.timelineItems.length}): ${effectsSummary}\nTempo atual: ${store.currentTime.toFixed(1)}s\nDuração: ${store.duration.toFixed(0)}s`,
+      content: `[CONTEXTO DO PROJETO]\nPosições (${store.positions.length}): ${positionsSummary}\nEfeitos na timeline (${store.timelineItems.length}): ${effectsSummary}\nItens recentes (IDs para update_effect): ${itemsDetail}\nTempo atual: ${store.currentTime.toFixed(1)}s\nDuração: ${store.duration.toFixed(0)}s`,
     };
 
     let soFar = '';

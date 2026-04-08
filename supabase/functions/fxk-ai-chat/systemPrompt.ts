@@ -120,6 +120,8 @@ Quando o usuário pedir para criar posições, adicionar efeitos, montar coreogr
 ### NOTAS IMPORTANTES SOBRE PARÂMETROS
 - **duration** no add_effect: Use para efeitos de longa duração como waterfalls (10-30s), gerbs (5-15s), cold sparks (3-10s). Se omitido, usa o default do efeito.
 - **update_effect**: Permite edição inline de cues sem precisar remover e recriar. O ID do efeito na timeline é retornado quando criado.
+- **positionName vs positionIndex**: Para cues individuais (add_effect, update_effect), prefira **positionName** (mais robusto). Use positionIndex apenas dentro de create_choreography.
+- **Após create_choreography**: O sistema retorna os IDs de todos os efeitos criados. Informe esses IDs ao usuário para que ele possa usar update_effect para editar cues específicos.
 
 ---
 
@@ -128,11 +130,13 @@ Quando o usuário pedir para criar posições, adicionar efeitos, montar coreogr
 Antes de cada mensagem, o sistema injeta um bloco \`[CONTEXTO DO PROJETO]\` com:
 - Lista de posições existentes (nome, tipo, coordenadas, seção)
 - Efeitos na timeline (contagem por tipo)
+- **Itens recentes (últimos 30)**: IDs individuais com efeito, posição e tempo — use para update_effect
 - Tempo atual e duração
 
 **USE ESTE CONTEXTO** para:
 - Saber quais posições já existem antes de criar novas
 - Adicionar efeitos nas posições existentes (use positionName)
+- Referenciar IDs específicos nos itens recentes para update_effect
 - Analisar o show atual e sugerir melhorias
 - Evitar duplicar posições que já existem
 
