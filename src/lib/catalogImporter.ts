@@ -305,7 +305,7 @@ export function catalogToEffects(parsed: ParsedCatalogEffect[], idPrefix: string
     const category = inferCategory(partType);
     const type = inferEffectType(partType);
     const caliber = p.caliber || (partType === 'shell' ? 3 : undefined);
-    const height = p.height || (caliber ? caliber * 20 : undefined);
+    const height = p.height || (caliber ? getBreakHeight(caliber) : undefined);
 
     return {
       id: `${idPrefix}-${Date.now()}-${i}`,
