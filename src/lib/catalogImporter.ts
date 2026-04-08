@@ -283,6 +283,12 @@ export function parseCatalogFile(text: string): {
       vdl: getValue('vdl') || '',
       sku: getValue('sku') || '',
       manufacturer: getValue('manufacturer') || '',
+      fuseDelay: parseFloat(getValue('fuseDelay')) || 0,
+      devices: parseInt(getValue('devices')) || 0,
+      exNumber: getValue('exNumber') || '',
+      ceNumber: getValue('ceNumber') || '',
+      unNumber: getValue('unNumber') || '',
+      subtype: getValue('subtype') || '',
       raw,
     });
   }
