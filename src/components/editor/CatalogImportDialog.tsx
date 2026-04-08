@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type Effect, EFFECT_LIBRARY } from '@/data/effectLibrary';
-import { parseCatalogFile, catalogToEffects, parseAnyFormat, type CatalogColumnMapping, type ParsedCatalogEffect } from '@/lib/catalogImporter';
+import { parseCatalogFile, catalogToEffects, parseAnyFormat, parseCatalogFileWithMappings, type CatalogColumnMapping, type ParsedCatalogEffect } from '@/lib/catalogImporter';
 import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
