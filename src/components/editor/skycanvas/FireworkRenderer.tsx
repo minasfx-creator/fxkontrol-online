@@ -1376,7 +1376,23 @@ export function TimelineEffects() {
         if (eid.startsWith('mburst-')) return <MultiBurstEffect key={item.id} position={burstPos} color={effect.color} progress={progress} burstCount={eid === 'mburst-02' ? 5 : 3} caliber={caliber} />;
         if (eid.startsWith('fan-')) return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={eid === 'fan-02' ? 180 : 90} caliber={caliber} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} />;
 
-        if (effect.type === 'firework') return (
+        if (pt === 'rocket') return (
+          <group key={item.id}>
+            {prefireProgress < 1 && (
+              <RocketEffect position={pos} color={effect.color} progress={prefireProgress} caliber={caliber} />
+            )}
+            {progress > 0 && (
+              <FireworkBurst
+                position={burstPos} color={effect.color} progress={progress} caliber={caliber}
+                pattern={effect.pattern || 'peony'} angleOffset={vdlAngle} trailType={vdlTrailType}
+                noTrail={vdlNoTrail} secondaryColor={vdlSecondaryColor} colorTransition={vdlColorTransition}
+                hasPistil={vdlHasPistil} pistilColor={vdlPistilColor} niagaraProfile={effect.niagaraProfile}
+              />
+            )}
+          </group>
+        );
+
+
           <FireworkBurst 
             key={item.id}
             position={burstPos} 
