@@ -1,42 +1,41 @@
 
-
-# Ciclo #47 — Smoke Shader Bug + Crossette Render Stale
+# Ciclo #48 — Shared Mutation Race + Flash Occlusion + Minor Cleanup
 
 ## Bugs Identificados
 
 | # | Bug | Local | Impacto |
 |---|-----|-------|---------|
-| 1 | **Smoke shader declares `attribute` but receives `uniform`** — SMOKE_VERTEX (L174-177) declares `aAge`, `aMaxAge`, `aScale`, `aSeed` as `attribute` (per-vertex), but they are passed via `perSmokeUniforms` as uniform values on the shaderMaterial. The planeGeometry has no such attributes → shader reads garbage → smoke billboards render incorrectly or are invisible | L174-177, L930-933 | **CRÍTICO** |
-| 2 | **Crossette sub-bursts read ref in JSX** — L866 `crossetteRef.current.map(...)` reads a mutable ref directly in the render body. Ref mutations don't trigger re-render → new crossette sub-bursts remain invisible until an unrelated state change forces re-render | L866-868 | Alto |
-| 3 | **`smokeParticles.current.map()` in JSX** — L922 same pattern: smoke meshes are conditionally rendered based on ref length. After `smokeSpawned` is set (in useFrame, L707), the component doesn't re-render → smoke meshes never mount | L922-940 | Alto |
-| 4 | **`noTrail` prop unused** — Prop declared (L316) but never read in any logic. Glitter trails still spawn even when `noTrail=true` | L316, L553 | Baixo |
+| 1 | **`stepMods` shared mutation across concurrent instances** — L541-550 mutates `stepMods` in-place every frame. `stepMods` comes from `useMemo` keyed on `fallingLeaves`. Multiple `ShellBurstRenderer` instances with same `fallingLeaves` value share the **same object reference**. Instance A's chrysanthemum tipCurl bleeds into Instance B's peony → incorrect physics on overlapping bursts | L386-388, L541-550 | **CRÍTICO** |
+| 2 | **Burst flash/ring missing `depthTest`** — Flash sphere (L875) and ring (L891) have no `depthTest` prop → default `true` is OK, but `meshBasicMaterial` with additive/screen blending renders **over terrain** when camera is below burst altitude. Need explicit `depthTest={true}` to confirm intent and add `depthWrite={false}` (already present) | L875-905 | Médio |
+| 3 | **`(position as number[])` repeated 4 times in useFrame** — L757-759, L785-786 cast and index `position` tuple every frame. Should cache once at top of useFrame | L757, 785 | Baixo |
+| 4 | **Crossette `key={gi}` uses array index** — L869 uses unstable array index as React key for crossette sub-bursts. As sub-bursts are appended, old keys shift → unnecessary remounts | L869 | Baixo |
 
 ## Implementação — `ShellBurstRenderer.tsx`
 
-**Fix 1 — Smoke shader: change `attribute` → `uniform` (L174-177):**
-```glsl
-uniform float aAge;
-uniform float aMaxAge;
-uniform float aScale;
-uniform float aSeed;
+**Fix 1 — Instance-local stepMods via useRef (L386-388 + L541):**
+- Replace `useMemo` with `useRef` for stepMods:
+```ts
+const stepModsRef = useRef<StepModifiers>(fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : {});
 ```
-This matches how the values are actually passed via `perSmokeUniforms[i]`.
+- Update on fallingLeaves change via useEffect
+- L541: `const tipCurlMods = stepModsRef.current;` — now each instance has its own object
 
-**Fix 2+3 — Force re-render when crossette/smoke state changes:**
-- Add a `const [renderTick, setRenderTick] = useState(0)` counter
-- In useFrame, after `smokeSpawned.current = true`, call `setRenderTick(t => t + 1)` to force mesh mount
-- After adding crossette sub-bursts (L582), also increment renderTick
-- This is minimal — a single state bump per lifecycle phase, not per-frame
+**Fix 2 — Explicit depthTest on flash meshes (L877, L894):**
+- Already have `depthTest` default true in THREE, but add explicit prop for clarity and ensure no regression
 
-**Fix 4 — Respect `noTrail` prop (L553):**
-- Guard glitter emission: `if (trailType === 'glitter' && !noTrail && ...)`
+**Fix 3 — Cache position tuple at useFrame top:**
+```ts
+const px = position[0], py = position[1], pz = position[2];
+```
+- Replace all `(position as number[])[n]` with `px/py/pz`
+
+**Fix 4 — Stable crossette keys:**
+- Add a `crossetteIdCounter` ref, assign unique ID when sub-burst is created
+- Use that ID as React key
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Fix smoke shader attribute→uniform |
-| 2 | Add renderTick for crossette/smoke mount |
-| 3 | Guard glitter with noTrail |
-| 4 | Build verification |
-
+| 1 | Apply 4 fixes to ShellBurstRenderer.tsx |
+| 2 | Build verification |
