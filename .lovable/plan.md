@@ -1,41 +1,48 @@
 
-# Ciclo #48 — Shared Mutation Race + Flash Occlusion + Minor Cleanup
+
+# Ciclo #49 — Wind GC Allocation + Dead GPU Attribute + Glitter Cleanup
 
 ## Bugs Identificados
 
 | # | Bug | Local | Impacto |
 |---|-----|-------|---------|
-| 1 | **`stepMods` shared mutation across concurrent instances** — L541-550 mutates `stepMods` in-place every frame. `stepMods` comes from `useMemo` keyed on `fallingLeaves`. Multiple `ShellBurstRenderer` instances with same `fallingLeaves` value share the **same object reference**. Instance A's chrysanthemum tipCurl bleeds into Instance B's peony → incorrect physics on overlapping bursts | L386-388, L541-550 | **CRÍTICO** |
-| 2 | **Burst flash/ring missing `depthTest`** — Flash sphere (L875) and ring (L891) have no `depthTest` prop → default `true` is OK, but `meshBasicMaterial` with additive/screen blending renders **over terrain** when camera is below burst altitude. Need explicit `depthTest={true}` to confirm intent and add `depthWrite={false}` (already present) | L875-905 | Médio |
-| 3 | **`(position as number[])` repeated 4 times in useFrame** — L757-759, L785-786 cast and index `position` tuple every frame. Should cache once at top of useFrame | L757, 785 | Baixo |
-| 4 | **Crossette `key={gi}` uses array index** — L869 uses unstable array index as React key for crossette sub-bursts. As sub-bursts are appended, old keys shift → unnecessary remounts | L869 | Baixo |
+| 1 | **`windField.sample` allocates new tuple every call** — L151 returns `[x, y, z]` literal. ShellBurstRenderer L766 calls it 16× per frame in smoke loop = 960 arrays/s of GC pressure. Other callers in `sharedState.tsx` also affected | `windField.ts` L151-155, `ShellBurstRenderer.tsx` L766 | **Alto** |
+| 2 | **`dragBuffer` / `aDragCoeff` — dead GPU attribute** — Buffer allocated (L427), attached to geometry (L816), shader declares `attribute float aDragCoeff` (L39) but **never reads it** in vertex calculations and buffer is **never written to** in useFrame. Wastes GPU bandwidth uploading 2000 zeros every frame | `ShellBurstRenderer.tsx` L39, L427, L816 | Médio |
+| 3 | **Glitter backward-iterate swap-and-pop skips swapped element** — L641-648 iterates `i` from end→0. When dead particle at `i` is swapped with last element, `i` decrements → the swapped particle is never checked that frame. Particle survives 1 extra frame, causing faint ghost glitter | `ShellBurstRenderer.tsx` L641-648 | Baixo |
+| 4 | **Flash sphere and ring missing explicit `depthTest`** — L881-893 flash and L897-911 ring use screen blending but no `depthTest` prop. Default `true` is correct but should be explicit to prevent regression if THREE defaults change | `ShellBurstRenderer.tsx` L881-911 | Baixo |
 
-## Implementação — `ShellBurstRenderer.tsx`
+## Implementação
 
-**Fix 1 — Instance-local stepMods via useRef (L386-388 + L541):**
-- Replace `useMemo` with `useRef` for stepMods:
+**Fix 1 — Zero-alloc windField.sample (`windField.ts` + `ShellBurstRenderer.tsx`):**
+- Add `sampleInto(x, y, z, type, out: [number,number,number]): void` method to WindField that writes into a pre-allocated output tuple instead of returning a new array
+- Add a module-level `_windOut: [number,number,number] = [0,0,0]` singleton in ShellBurstRenderer
+- Replace L766 `const [windX, windY, windZ] = windField.sample(...)` with `windField.sampleInto(..., _windOut)` + read `_windOut[0/1/2]`
+- Keep existing `sample()` for backward compat (calls sampleInto internally)
+
+**Fix 2 — Remove dead dragBuffer + aDragCoeff (`ShellBurstRenderer.tsx`):**
+- Delete `dragBuffer` from L427 useMemo
+- Delete `<bufferAttribute attach="attributes-aDragCoeff" .../>` from L816
+- Delete `attribute float aDragCoeff;` from BURST_VERTEX L39
+
+**Fix 3 — Re-check swapped particle in glitter cleanup (L641-648):**
+- After swap-and-pop, don't decrement `i` — use `continue` to re-check same index:
 ```ts
-const stepModsRef = useRef<StepModifiers>(fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : {});
+if (gp[i].life > gp[i].maxLife) {
+  gp[i] = gp[gp.length - 1]; gp.pop();
+  // don't decrement i — re-check swapped element
+  continue;
+}
 ```
-- Update on fallingLeaves change via useEffect
-- L541: `const tipCurlMods = stepModsRef.current;` — now each instance has its own object
+- Adjust loop to use while instead of for to handle the continue correctly
 
-**Fix 2 — Explicit depthTest on flash meshes (L877, L894):**
-- Already have `depthTest` default true in THREE, but add explicit prop for clarity and ensure no regression
-
-**Fix 3 — Cache position tuple at useFrame top:**
-```ts
-const px = position[0], py = position[1], pz = position[2];
-```
-- Replace all `(position as number[])[n]` with `px/py/pz`
-
-**Fix 4 — Stable crossette keys:**
-- Add a `crossetteIdCounter` ref, assign unique ID when sub-burst is created
-- Use that ID as React key
+**Fix 4 — Explicit depthTest on flash meshes (L883, L900):**
+- Add `depthTest` prop to both meshBasicMaterial elements
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Apply 4 fixes to ShellBurstRenderer.tsx |
-| 2 | Build verification |
+| 1 | Add `sampleInto` to windField.ts |
+| 2 | Apply fixes 1-4 in ShellBurstRenderer.tsx |
+| 3 | Build verification |
+
