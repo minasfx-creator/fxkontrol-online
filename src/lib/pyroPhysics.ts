@@ -787,6 +787,7 @@ export function createWaterfallParticle(width: number, dropHeight: number): Part
     vy: -0.5 - Math.random() * 1.5,
     vz: (Math.random() - 0.5) * 0.3,
     life: 0, maxLife: dropHeight / 2 + Math.random(), brightness: 1,
+    decayRate: 0.6, windInfluence: 0.9,
   };
 }
 
