@@ -164,22 +164,23 @@ function generateCopacabana() {
 // 2. SYDNEY HARBOUR
 // ═══════════════════════════════════════════════════════════════
 function generateSydney() {
-  // Bridge: 20 positions across 1149m span at 134m height
+  // Bridge: 20 positions across 1149m span at 134m height — backdrop (z: -300)
   const bridge: Position[] = Array.from({ length: 20 }, (_, i) => {
     const spread = (i - 10) * 57;
-    return pos(uid(), `Bridge ${i + 1}`, spread, 134, 0, 180);
+    return pos(uid(), `Bridge ${i + 1}`, spread, 134, -300, 180);
   });
-  // 6 barges in harbour
+  // 6 barges in harbour — mid-depth (z: -80 to -150)
   const barges: Position[] = Array.from({ length: 6 }, (_, i) => {
     const angle = (i / 6) * Math.PI * 0.8 - 0.4;
-    return pos(uid(), `Barge ${i + 1}`, Math.sin(angle) * 400, 0, Math.cos(angle) * -300, 0);
+    const zDepth = -80 - Math.abs(Math.sin(angle)) * 70; // -80 to -150
+    return pos(uid(), `Barge ${i + 1}`, Math.sin(angle) * 400, 0, zDepth, 0);
   });
-  // Opera House: 4 lateral positions
+  // Opera House: 4 lateral positions — foreground (z: -50)
   const opera: Position[] = [
-    pos(uid(), 'Opera L1', -250, 0, -200, 45),
-    pos(uid(), 'Opera L2', -200, 0, -250, 45),
-    pos(uid(), 'Opera R1', 250, 0, -200, -45),
-    pos(uid(), 'Opera R2', 200, 0, -250, -45),
+    pos(uid(), 'Opera L1', -250, 0, -50, 45),
+    pos(uid(), 'Opera L2', -200, 0, -70, 45),
+    pos(uid(), 'Opera R1', 250, 0, -50, -45),
+    pos(uid(), 'Opera R2', 200, 0, -70, -45),
   ];
 
   const all = [...bridge, ...barges, ...opera];
