@@ -25,6 +25,10 @@ import { getThreeBlending, getMaxEnergy, GROUND_LIGHT_SCALE } from '@/lib/niagar
 import { getRealFormulation, formulationToCompound } from '@/render_ultra/fireworks/particleChemistry';
 import { readDensityAt, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
 
+// ── Pre-allocated singletons (Zero-GC) ──────────────────────────────
+const _warmSmokeColor = new THREE.Color(0.47, 0.40, 0.33);
+const _coolSmokeColor = new THREE.Color(0.40, 0.47, 0.53);
+
 // ── Custom GPU Shaders (Skybrush-grade thermal rendering) ───────────
 
 const BURST_VERTEX = `
@@ -487,6 +491,12 @@ export default function ShellBurstRenderer({
   const crossetteRef = useRef<ParticleState[][]>([]);
   const crossetteTriggered = useRef(new Set<number>());
 
+  // Fix: clear crossette state on pattern/color change to prevent stale sub-breaks
+  useEffect(() => {
+    crossetteTriggered.current.clear();
+    crossetteRef.current = [];
+  }, [pattern, color]);
+
   useFrame((_, delta) => {
     if (!pointsRef.current || !particlesRef.current || progress <= 0) return;
     const particles = particlesRef.current;
@@ -509,18 +519,17 @@ export default function ShellBurstRenderer({
         // Per-particle drag from material density
         const particleDrag = baseDrag * dragCoeffs[i];
         // Chrysanthemum tip curl: progressive gravity after 70% life
-        const tipCurlMods: StepModifiers = {
-          ...stepMods,
-          tipCurlFactor: pattern === 'chrysanthemum' ? 2.5 : undefined,
-          tipCurlLifeRatio: pattern === 'chrysanthemum' ? lifeRatio : undefined,
-          willowDroop: pattern === 'willow',
-          willowLifeRatio: pattern === 'willow' ? lifeRatio : undefined,
-          horsetailDroop: pattern === 'horsetail',
-          horsetailLifeRatio: pattern === 'horsetail' ? lifeRatio : undefined,
-          coconutPhase: pattern === 'coconut_tree'
-            ? (lifeRatio < 0.3 ? 'ascent' : lifeRatio < 0.6 ? 'spread' : 'droop')
-            : undefined,
-        };
+        // Mutate stepMods in-place to avoid 120k object allocations/s
+        const tipCurlMods = stepMods;
+        tipCurlMods.tipCurlFactor = pattern === 'chrysanthemum' ? 2.5 : undefined;
+        tipCurlMods.tipCurlLifeRatio = pattern === 'chrysanthemum' ? lifeRatio : undefined;
+        tipCurlMods.willowDroop = pattern === 'willow';
+        tipCurlMods.willowLifeRatio = pattern === 'willow' ? lifeRatio : undefined;
+        tipCurlMods.horsetailDroop = pattern === 'horsetail';
+        tipCurlMods.horsetailLifeRatio = pattern === 'horsetail' ? lifeRatio : undefined;
+        tipCurlMods.coconutPhase = pattern === 'coconut_tree'
+          ? (lifeRatio < 0.3 ? 'ascent' : lifeRatio < 0.6 ? 'spread' : 'droop')
+          : undefined;
         stepParticle(p, dt * detonationMult, windVec, particleDrag, tipCurlMods);
 
         // Glitter trail: emit micro-particles from active stars
@@ -608,7 +617,7 @@ export default function ShellBurstRenderer({
         gp[i].y += gp[i].vy * dt;
         gp[i].z += gp[i].vz * dt;
         gp[i].brightness = Math.max(0, 1 - gp[i].life / gp[i].maxLife);
-        if (gp[i].life > gp[i].maxLife) { gp.splice(i, 1); }
+        if (gp[i].life > gp[i].maxLife) { gp[i] = gp[gp.length - 1]; gp.pop(); }
       }
       const gCount = Math.min(gp.length, GLITTER_MAX);
       for (let i = 0; i < gCount; i++) {
@@ -705,9 +714,7 @@ export default function ShellBurstRenderer({
     // Step smoke: update time and set warm/cool smoke color per-particle
     smokeUniforms.uTime.value = time;
     // Base smoke color varies: warm gray #776655 vs cool gray #667788
-    const warmColor = new THREE.Color(0.47, 0.40, 0.33);
-    const coolColor = new THREE.Color(0.40, 0.47, 0.53);
-    smokeUniforms.uSmokeColor.value.copy(baseColor.r > 0.5 ? warmColor : coolColor);
+    smokeUniforms.uSmokeColor.value.copy(baseColor.r > 0.5 ? _warmSmokeColor : _coolSmokeColor);
     smokeUniforms.uSmokeOpacity.value = sceneSettings.smokeRenderQuality === 'high' ? 0.07 : 0.035;
 
     // Read fluid density for smoke modulation if available
@@ -904,6 +911,7 @@ export default function ShellBurstRenderer({
             }}
             transparent
             depthWrite={false}
+            depthTest
             side={THREE.DoubleSide}
           />
         </mesh>
