@@ -748,11 +748,11 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         let trailDragH1 = dragCoeff;
         
         if (pattern === 'horsetail') {
-          trailGrav0 = segAge0 < 0.5 ? gravityMult * 1.2 : gravityMult * (1.2 + (segAge0 - 0.5) / 0.5 * 4.8);
-          trailGrav1 = segAge1 < 0.5 ? gravityMult * 1.2 : gravityMult * (1.2 + (segAge1 - 0.5) / 0.5 * 4.8);
-          trailDragH0 = dragCoeff * 0.7;
-          trailDragH1 = dragCoeff * 0.7;
-        } else if (pattern === 'coconut') {
+          trailGrav0 = segAge0 < 0.5 ? gravityMult * 1.2 : gravityMult * (1.2 + (segAge0 - 0.5) / 0.5 * 5.5);
+          trailGrav1 = segAge1 < 0.5 ? gravityMult * 1.2 : gravityMult * (1.2 + (segAge1 - 0.5) / 0.5 * 5.5);
+          trailDragH0 = dragCoeff * 0.55;
+          trailDragH1 = dragCoeff * 0.55;
+        } else if (pattern === 'coconut_tree') {
           trailGrav0 = segAge0 < 0.3 ? gravityMult * 0.4 : segAge0 < 0.6 ? gravityMult * 1.5 : gravityMult * 5.0;
           trailGrav1 = segAge1 < 0.3 ? gravityMult * 0.4 : segAge1 < 0.6 ? gravityMult * 1.5 : gravityMult * 5.0;
           trailDragH0 = segAge0 < 0.3 ? dragCoeff * 0.5 : segAge0 < 0.6 ? dragCoeff * 0.8 : dragCoeff * 0.15;
@@ -763,21 +763,25 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           trailDragH0 = dragCoeff * 0.85;
           trailDragH1 = dragCoeff * 0.85;
         } else if (pattern === 'time_rain') {
-          // Time rain trails: rising phase low gravity, rain phase 2.5x gravity
           const hangStart = 0.25;
           const hangEnd = 0.55;
           trailGrav0 = segAge0 < hangStart ? gravityMult * 0.15 : segAge0 < hangEnd ? gravityMult * 0.05 : gravityMult * 2.5;
           trailGrav1 = segAge1 < hangStart ? gravityMult * 0.15 : segAge1 < hangEnd ? gravityMult * 0.05 : gravityMult * 2.5;
         } else if (pattern === 'crossette') {
-          // Post-split crossette segments: increased gravity for visible 4-arm divergence droop
           trailGrav0 = segAge0 > 0.4 ? gravityMult * 1.5 : gravityMult;
           trailGrav1 = segAge1 > 0.4 ? gravityMult * 1.5 : gravityMult;
         } else if (pattern === 'kamuro') {
-          // Kamuro trail droop: progressive gravity matching star physics
           trailGrav0 = segAge0 < 0.4 ? gravityMult * 0.8 : gravityMult * (0.8 + (segAge0 - 0.4) / 0.6 * 2.7);
           trailGrav1 = segAge1 < 0.4 ? gravityMult * 0.8 : gravityMult * (0.8 + (segAge1 - 0.4) / 0.6 * 2.7);
           trailDragH0 = dragCoeff * 0.7;
           trailDragH1 = dragCoeff * 0.7;
+        } else if (pattern === 'saturn') {
+          // Ring stars (first 60%) get reduced gravity to stay flat
+          const isRingStar = (i / STAR_COUNT) < 0.6;
+          if (isRingStar) {
+            trailGrav0 = gravityMult * 0.3;
+            trailGrav1 = gravityMult * 0.3;
+          }
         }
         
         // Trail segment start

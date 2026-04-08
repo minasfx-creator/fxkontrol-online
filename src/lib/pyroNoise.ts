@@ -163,10 +163,16 @@ export function getFlickerParams(compound: string): FlickerParams {
  * Alternates between "smolder" phase (near-dark) and "intense burn" phase.
  * Based on Chemistry of Pyrotechnics: strobe stars use oscillatory combustion
  * where a dark/smolder layer alternates with a bright flash layer.
+ * 
+ * Recommended frequency ranges:
+ * - Magnalium strobe: 8-12Hz → smolder=0.06-0.08, burn=0.03-0.05
+ * - Dragon egg: 6-8Hz → smolder=0.08-0.10, burn=0.04-0.06
+ * - Generic strobe: 3-6Hz → smolder=0.12-0.20, burn=0.05-0.10
+ * 
  * @param seed - per-particle seed
  * @param time - elapsed time in seconds
- * @param smolderDuration - avg duration of dark phase (0.3-0.8s)
- * @param burnDuration - avg duration of bright phase (0.05-0.15s)
+ * @param smolderDuration - avg duration of dark phase
+ * @param burnDuration - avg duration of bright phase
  * @returns brightness 0.02-1.4
  */
 export function strobeFlicker(

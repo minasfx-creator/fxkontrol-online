@@ -172,14 +172,15 @@ export default function GirandolaEffect({
   const vizLiftT = progress * 3.0;
   const vizLiftAccel = (thrustForce * nozzleCount * liftFraction / mass) - 9.81;
   const deviceY = Math.max(0, 0.5 * Math.max(0, vizLiftAccel) * vizLiftT * vizLiftT * 0.15);
-  // Precession tilt for visual hub
+  // Precession tilt for visual hub — synced with spark physics
   const vizPrecRate = 0.8 / (1 + vizOmega * 0.1);
   const vizTiltAngle = Math.min(0.25, vizOmega * 0.008);
+  const vizPrecessionAngle = progress * 10 * vizPrecRate;
 
   return (
     <group position={position} renderOrder={50}>
       {/* Spinning hub */}
-      <group position={[0, deviceY, 0]} rotation={[vizTiltAngle * 0.5, vizTotalAngle, vizTiltAngle * 0.3]}>
+      <group position={[0, deviceY, 0]} rotation={[Math.sin(vizPrecessionAngle) * vizTiltAngle, vizTotalAngle, Math.cos(vizPrecessionAngle) * vizTiltAngle]}>
         {/* Central axis */}
         <mesh>
           <cylinderGeometry args={[0.05, 0.05, 0.3, 6]} />
