@@ -155,6 +155,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   const trailRef = useRef<THREE.LineSegments>(null);
   const pistilRef = useRef<THREE.Points>(null);
   const crossetteSplitRef = useRef<Set<number>>(new Set());
+  useEffect(() => { crossetteSplitRef.current.clear(); }, [pattern, color]);
   
   const lod = useLOD(position);
   const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
