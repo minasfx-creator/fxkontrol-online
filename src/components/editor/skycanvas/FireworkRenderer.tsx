@@ -200,13 +200,6 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
   const secondaryBaseColor = useMemo(() => secondaryColor ? new THREE.Color(secondaryColor) : null, [secondaryColor]);
   const compound = useMemo(() => hexToCompound(color), [color]);
-  const emberColor = useMemo(() => {
-    const c = new THREE.Color(color);
-    return new THREE.Color().setHSL(
-      Math.min(c.getHSL({ h: 0, s: 0, l: 0 }).h, 0.06),
-      0.85, 0.12
-    );
-  }, [color]);
   
   const { velocities, lifetimes, twinklePhases, sparkleSeeds } = useMemo(() => {
     const v = new Float32Array(STAR_COUNT * 3);
