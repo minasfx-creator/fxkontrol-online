@@ -119,6 +119,8 @@ const FLICKER_BY_COMPOUND: Record<string, FlickerParams> = {
   lampblack: { base: 0.65, amplitude: 0.28, popStrength: 0.20 },
   // Iron (gold sparks) — moderate, Fe particle combustion, linseed oil coating
   iron: { base: 0.62, amplitude: 0.32, popStrength: 0.30 },
+  // Ferrotitanium (60/40 Fe/Ti) — yellow-white sparks, between iron and titanium
+  ferrotitanium: { base: 0.52, amplitude: 0.44, popStrength: 0.48 },
   // KClO4 flash — KClO4 66-70% + Al 30-34% (stoichiometric, Chemistry of Pyrotechnics)
   // Burns in milliseconds, TNT equivalence ~75%. Combustion heat Al=7400 kcal/g
   flash: { base: 0.30, amplitude: 0.60, popStrength: 0.70 },
