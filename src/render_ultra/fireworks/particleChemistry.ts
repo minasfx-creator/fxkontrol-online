@@ -185,7 +185,7 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
   zinc: {
     name: 'Limaduras de Zinc',
     element: 'Zn',
-    color: new THREE.Color(0.85, 0.9, 1.0), // "luz blanca ligeramente azulada"
+    color: new THREE.Color(0.68, 0.82, 1.0), // "bright blue with bluish zinc sparks" — Chemistry of Pyrotechnics
     temperature: 1700,
     emissionIntensity: 3.5,
     burnRate: 2.0,
