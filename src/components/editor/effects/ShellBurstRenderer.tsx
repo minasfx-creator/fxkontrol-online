@@ -769,6 +769,14 @@ export default function ShellBurstRenderer({
         mesh.scale.setScalar(expansion);
         mesh.visible = sp.age < sp.maxAge;
         
+        // Update pre-allocated per-smoke uniforms
+        if (i < SMOKE_POOL_SIZE) {
+          perSmokeUniforms[i].aAge.value = sp.age;
+          perSmokeUniforms[i].aMaxAge.value = sp.maxAge;
+          perSmokeUniforms[i].aScale.value = sp.scale;
+          perSmokeUniforms[i].aSeed.value = sp.seed;
+        }
+        
         // Modulate opacity by fluid grid density if available
         if (fluidGrid && mesh.material) {
           const worldX = (position as number[])[0] + sp.x;
