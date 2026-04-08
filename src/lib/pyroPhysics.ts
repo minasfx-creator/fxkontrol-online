@@ -514,7 +514,12 @@ export function stepParticle(
   if (modifiers?.tipCurlFactor && modifiers.tipCurlLifeRatio !== undefined && modifiers.tipCurlLifeRatio > 0.7) {
     tipCurlMult = 1 + modifiers.tipCurlFactor * ((modifiers.tipCurlLifeRatio - 0.7) / 0.3);
   }
-  p.vy += GRAVITY * gravityFactor * tipCurlMult * dt;
+  // Willow droop: progressive heavy gravity after 50% life (charcoal star weight)
+  let willowMult = 1;
+  if (modifiers?.willowDroop && modifiers.willowLifeRatio !== undefined && modifiers.willowLifeRatio > 0.5) {
+    willowMult = 1 + 3.5 * ((modifiers.willowLifeRatio - 0.5) / 0.5);
+  }
+  p.vy += GRAVITY * gravityFactor * tipCurlMult * willowMult * dt;
   
   // Apply wind forces
   p.vx += wind[0] * dt * 0.5;
