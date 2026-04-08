@@ -377,6 +377,12 @@ export function parseFinaleFSL(xmlText: string): ParsedCatalogEffect[] {
       vdl: vdlStr,
       sku: skuStr,
       manufacturer: mfgStr,
+      fuseDelay: 0,
+      devices: 0,
+      exNumber: '',
+      ceNumber: '',
+      unNumber: '',
+      subtype: '',
       raw: {},
     });
   }
