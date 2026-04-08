@@ -216,6 +216,17 @@ function Index() {
   const nightMode = useDisplayStore(s => s.nightMode);
   useUndoKeyboard();
 
+  // Wire CommandBus → local UI state
+  useEffect(() => {
+    const unsubs = [
+      commandBus.on('OPEN_PANEL', (cmd) => {
+        if (cmd.type === 'OPEN_PANEL') setActivePanel(cmd.panel as PanelId);
+      }),
+      commandBus.on('CLOSE_PANEL', () => setActivePanel(null)),
+    ];
+    return () => unsubs.forEach(u => u());
+  }, []);
+
   // Apply night-mode class to root element
   useEffect(() => {
     document.documentElement.classList.toggle('night-mode', nightMode);
