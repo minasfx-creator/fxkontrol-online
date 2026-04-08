@@ -531,19 +531,22 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * 0.15 * t * t;
           pz = dragPos(vz, t, dragCoeff) + w[2] * t * t * 0.3;
         } else if (starAge < hangEnd) {
-          // Hanging phase — stars hover at apogee with amplified wind drift + per-star scatter
+          // Hanging phase — tight vertical columns with minimal lateral drift
           const driftT = (starAge - hangStart) / (hangEnd - hangStart);
-          const lateralScatter = ((sparkleSeeds[i] % 30) - 15) * 0.003;
-          px = hangPx + w[0] * driftT * 2.5 + Math.sin(time * 0.3 + sparkleSeeds[i]) * 0.08 + lateralScatter * driftT;
+          // Column grouping: stars sharing same column index drift together
+          const columnIdx = sparkleSeeds[i] % 8;
+          const columnScatter = ((columnIdx % 8) - 4) * 0.001;
+          px = hangPx + w[0] * driftT * 0.6 + Math.sin(time * 0.3 + columnIdx) * 0.03 + columnScatter * driftT;
           py = hangPy - driftT * 0.35;
-          pz = hangPz + w[2] * driftT * 2.5 + Math.cos(time * 0.25 + sparkleSeeds[i]) * 0.06 + lateralScatter * driftT * 0.7;
+          pz = hangPz + w[2] * driftT * 0.6 + Math.cos(time * 0.25 + columnIdx) * 0.02 + columnScatter * driftT * 0.7;
         } else {
           // Rain phase — sharp vertical descent with 2.5x gravity, minimal horizontal movement
           const rainT = rainPhase * 4.0;
-          const driftEnd = 1.0; // full hang drift at transition
-          px = hangPx + w[0] * driftEnd * 2.5 + w[0] * rainT * 0.15; // minimal horizontal
-          py = hangPy - 0.35 + 0.5 * GRAVITY * 2.5 * rainT * rainT; // sharp gravity rain
-          pz = hangPz + w[2] * driftEnd * 2.5 + w[2] * rainT * 0.15;
+          const columnIdx = sparkleSeeds[i] % 8;
+          const columnScatter = ((columnIdx % 8) - 4) * 0.001;
+          px = hangPx + w[0] * 0.6 + columnScatter + w[0] * rainT * 0.08;
+          py = hangPy - 0.35 + 0.5 * GRAVITY * 2.5 * rainT * rainT;
+          pz = hangPz + w[2] * 0.6 + columnScatter * 0.7 + w[2] * rainT * 0.08;
         }
       } else if (pattern === 'falling_leaves') {
         // Falling leaves: aerodynamic tumble — multi-axis sinusoidal flutter + heavy gravity
