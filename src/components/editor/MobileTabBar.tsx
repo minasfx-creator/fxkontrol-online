@@ -4,7 +4,7 @@
  */
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { haptics } from '@/lib/haptics';
-import { Sparkles, Cpu, Smartphone, Map, LayoutGrid, Clock, Layers, Settings2, Plus } from 'lucide-react';
+import { Sparkles, Cpu, Smartphone, Map, LayoutGrid, Clock, Layers, Settings2, Plus, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { PANEL_SECTIONS, type PanelId } from '@/components/editor/PanelTabBar';
