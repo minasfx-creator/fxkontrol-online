@@ -573,13 +573,13 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * willowGravMult * t * t;
         pz = dragPos(vz, t, dragCoeff * 0.85) + w[2] * t * t * 0.4;
       } else if (pattern === 'horsetail') {
-        // Horsetail: heavy charcoal stars with aggressive progressive droop
+        // Horsetail: heavy charcoal stars with aggressive progressive droop (heavier than willow)
         const htGravMult = starAge < 0.5
           ? gravityMult * 1.2
-          : gravityMult * (1.2 + (starAge - 0.5) / 0.5 * 4.8); // ramp to 6x
-        px = dragPos(vx, t, dragCoeff * 0.7) + w[0] * t * t * 0.5; // reduced horiz drag, amplified wind
+          : gravityMult * (1.2 + (starAge - 0.5) / 0.5 * 5.5); // ramp to 6.7x (charcoal heavier than willow 4.5x)
+        px = dragPos(vx, t, dragCoeff * 0.55) + w[0] * t * t * 0.5; // less horiz drag = charcoal weight dominates
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * htGravMult * t * t;
-        pz = dragPos(vz, t, dragCoeff * 0.7) + w[2] * t * t * 0.5;
+        pz = dragPos(vz, t, dragCoeff * 0.55) + w[2] * t * t * 0.5;
       } else if (pattern === 'coconut_tree') {
         // Coconut tree: 3-phase — ascent, frond spread, heavy droop
         let cocoGravMult: number;

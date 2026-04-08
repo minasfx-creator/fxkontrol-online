@@ -498,6 +498,9 @@ export interface StepModifiers {
   tipCurlLifeRatio?: number; // current life ratio for tip curl calc
   willowDroop?: boolean;   // progressive heavy droop after 50% life (willow charcoal stars)
   willowLifeRatio?: number; // current life ratio for willow droop calc
+  horsetailDroop?: boolean;   // progressive heavy droop — charcoal weight ramp to 6x
+  horsetailLifeRatio?: number;
+  coconutPhase?: 'ascent' | 'spread' | 'droop'; // 3-phase coconut tree gravity
 }
 
 export function stepParticle(
