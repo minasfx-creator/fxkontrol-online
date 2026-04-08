@@ -332,6 +332,7 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
       case 'create_choreography': {
         const results: JoiCommandResult[] = [];
         const posMap = new Map<number, string>();
+        let cueFails = 0;
 
         // Create positions
         if (Array.isArray(params.positions)) {
@@ -345,13 +346,24 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
           });
         }
 
-        // Create cues
+        // Create cues — track individual failures
         if (Array.isArray(params.cues)) {
           params.cues.forEach((c: any) => {
             const posId = posMap.get(c.positionIndex);
-            executeCommand({
+            const r = executeCommand({
               action: 'add_effect',
               params: { ...c, positionId: posId || c.positionId },
+            });
+            if (!r.success) cueFails++;
+          });
+        }
+
+        // Auto-create cue markers for sections
+        if (Array.isArray(params.sections)) {
+          params.sections.forEach((s: any) => {
+            executeCommand({
+              action: 'add_cue_marker',
+              params: { time: s.time ?? 0, label: s.label || 'Section', color: s.color || '#ffaa00' },
             });
           });
         }
@@ -363,11 +375,49 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
 
         const posCount = params.positions?.length || 0;
         const cueCount = params.cues?.length || 0;
+        const failDetail = cueFails > 0 ? ` (${cueFails} falharam)` : '';
         return {
           action, success: true,
           label: `Coreografia criada`,
-          detail: `${posCount} posições + ${cueCount} cues`,
+          detail: `${posCount} posições + ${cueCount} cues${failDetail}`,
         };
+      }
+
+      case 'clear_project': {
+        const posCount = store.positions.length;
+        const fxCount = store.timelineItems.length;
+        // Remove all timeline items
+        store.timelineItems.forEach(item => store.removeTimelineItem(item.id));
+        // Remove all positions
+        store.positions.forEach(pos => store.removePosition(pos.id));
+        // Clear formations
+        store.droneFormations.forEach(f => store.removeDroneFormation(f.id));
+        toast.success('Projeto limpo!');
+        return { action, success: true, label: `Projeto limpo`, detail: `${posCount} posições + ${fxCount} efeitos removidos` };
+      }
+
+      case 'list_positions': {
+        const positions = store.positions;
+        if (positions.length === 0) {
+          return { action, success: true, label: 'Nenhuma posição no projeto' };
+        }
+        const list = positions.map(p => `${p.name} (${p.type}) @ (${p.x.toFixed(1)}, ${p.z.toFixed(1)})${p.section ? ` [${p.section}]` : ''}`).join(', ');
+        return { action, success: true, label: `${positions.length} posições`, detail: list };
+      }
+
+      case 'list_effects': {
+        const items = store.timelineItems;
+        if (items.length === 0) {
+          return { action, success: true, label: 'Nenhum efeito na timeline' };
+        }
+        const effectCounts = new Map<string, number>();
+        items.forEach(item => {
+          const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+          const name = effect?.name || item.effectId;
+          effectCounts.set(name, (effectCounts.get(name) || 0) + 1);
+        });
+        const summary = Array.from(effectCounts.entries()).map(([name, count]) => `${name} ×${count}`).join(', ');
+        return { action, success: true, label: `${items.length} efeitos na timeline`, detail: summary };
       }
 
       default:

@@ -12,6 +12,8 @@ import { parseKmzReadyBlock, stripKmzReadyBlock, downloadAeroKmz } from '@/utils
 import { executeJoiCommands, stripJoiCommands, hasJoiCommands, type JoiCommandResult } from '@/utils/joiCommandExecutor';
 import JoiCommandFeedback from '@/components/JoiCommandFeedback';
 import { OPERATIONAL_PRESETS } from '@/components/JoiCommandPresets';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -98,7 +100,8 @@ function TypewriterGreeting({ text }: { text: string }) {
 function getContextPresets() {
   const path = window.location.pathname;
   if (path.includes('command')) return PRESETS_COMMAND;
-  return PRESETS_EDITOR;
+  // Merge operational + editor presets for editor context
+  return [...OPERATIONAL_PRESETS.map(op => ({ label: op.label, icon: op.icon, prompt: op.prompt })), ...PRESETS_EDITOR];
 }
 
 function getGreeting(): string {
@@ -135,7 +138,7 @@ async function streamChat(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
-    body: JSON.stringify({ messages: messages.map(m => ({ role: m.role, content: m.content })) }),
+    body: JSON.stringify({ messages: messages.map(m => ({ role: m.role, content: m.content })), projectContext: true }),
     signal,
   });
 
@@ -374,6 +377,25 @@ export function FXKAssistant() {
     setInput('');
     setLoading(true);
 
+    // Inject project context as system message
+    const store = useProjectStore.getState();
+    const positionsSummary = store.positions.length > 0
+      ? store.positions.map(p => `${p.name} (${p.type}) @ (${p.x.toFixed(1)}, ${p.z.toFixed(1)})${p.section ? ` [Sec ${p.section}]` : ''}`).join('; ')
+      : 'Nenhuma';
+    const effectCounts = new Map<string, number>();
+    store.timelineItems.forEach(item => {
+      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const name = effect?.name || item.effectId;
+      effectCounts.set(name, (effectCounts.get(name) || 0) + 1);
+    });
+    const effectsSummary = effectCounts.size > 0
+      ? Array.from(effectCounts.entries()).map(([n, c]) => `${n} ×${c}`).join(', ')
+      : 'Nenhum';
+    const contextMsg: Msg = {
+      role: 'user' as const,
+      content: `[CONTEXTO DO PROJETO — NÃO EXIBIR AO USUÁRIO]\nPosições (${store.positions.length}): ${positionsSummary}\nEfeitos na timeline (${store.timelineItems.length}): ${effectsSummary}\nTempo atual: ${store.currentTime.toFixed(1)}s\nDuração: ${store.duration.toFixed(0)}s`,
+    };
+
     let soFar = '';
     const upsert = (chunk: string) => {
       soFar += chunk;
@@ -390,7 +412,7 @@ export function FXKAssistant() {
     abortRef.current = ctrl;
 
     try {
-      await streamChat([...messages, userMsg], upsert, () => {
+      await streamChat([contextMsg, ...messages, userMsg], upsert, () => {
         setLoading(false);
         // Execute JOI_CMD blocks after stream completes
         if (hasJoiCommands(soFar)) {
