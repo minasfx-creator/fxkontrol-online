@@ -1,5 +1,5 @@
-import { useState, useCallback, useSyncExternalStore } from 'react';
-import { History, X, RotateCcw, Tag, ChevronRight, Check, Plus, Diff, Clock } from 'lucide-react';
+import { useState, useCallback, useRef } from 'react';
+import { History, X, RotateCcw, Tag, ChevronRight, Check, Plus, Diff, Download, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { snapshotManager, type Snapshot } from '@/core/state/SnapshotManager';
 import { commandBus } from '@/core/command/CommandBus';
 import { commandLog } from '@/core/command/CommandLog';
 import { lockstep } from '@/core/reliability/lockstepEngine';
+import TimelineScrubber from './TimelineScrubber';
 
 /** Hook to poll snapshot list every 2s. */
 function useSnapshots(): readonly Snapshot[] {
@@ -28,6 +29,7 @@ export default function VersioningPanel({ onClose }: { onClose: () => void }) {
   const [showConfirm, setShowConfirm] = useState<number | null>(null);
   const positions = useProjectStore(s => s.positions);
   const timelineItems = useProjectStore(s => s.timelineItems);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const createManualSnapshot = useCallback(() => {
     const tick = lockstep.getTickCount();
@@ -40,6 +42,24 @@ export default function VersioningPanel({ onClose }: { onClose: () => void }) {
     commandBus.dispatch({ type: 'ROLLBACK', targetTick: tick });
     toast.success(`Rolled back to tick ${tick}`);
     setShowConfirm(null);
+  }, []);
+
+  const handleExport = useCallback(() => {
+    commandBus.dispatch({ type: 'EXPORT_LOG', format: 'json' });
+    toast.success('Session exported');
+  }, []);
+
+  const handleImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const json = reader.result as string;
+      commandBus.dispatch({ type: 'IMPORT_LOG', json });
+      toast.success(`Imported ${file.name}`);
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
   const selected = snapshots.find(s => s.tick === selectedTick);
@@ -78,6 +98,32 @@ export default function VersioningPanel({ onClose }: { onClose: () => void }) {
           <p className="text-[9px] text-muted-foreground">
             Current: {positions.length} positions, {timelineItems.length} cues · Tick {lockstep.getTickCount()} · Log: {commandLog.length} cmds
           </p>
+        </div>
+
+        {/* Export / Import */}
+        <div className="space-y-1.5">
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+            Session Data
+          </Label>
+          <div className="flex gap-1">
+            <Button variant="outline" size="sm" className="flex-1 h-6 text-[9px]" onClick={handleExport}>
+              <Download className="w-3 h-3 mr-0.5" />
+              Export Log
+            </Button>
+            <Button variant="outline" size="sm" className="flex-1 h-6 text-[9px]" onClick={() => fileInputRef.current?.click()}>
+              <Upload className="w-3 h-3 mr-0.5" />
+              Import Log
+            </Button>
+            <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
+          </div>
+        </div>
+
+        {/* Timeline Scrubber */}
+        <div className="space-y-1.5">
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+            Timeline Scrubber
+          </Label>
+          <TimelineScrubber snapshots={snapshots} />
         </div>
 
         {/* Snapshot List */}
@@ -185,7 +231,7 @@ export default function VersioningPanel({ onClose }: { onClose: () => void }) {
         {/* Info */}
         <div className="bg-surface-2/50 rounded p-2 text-[9px] text-muted-foreground space-y-1">
           <p><strong>Deterministic Versioning</strong></p>
-          <p>Auto-snapshots every ~5s. All commands are logged for exact replay. Rollback restores state + re-applies commands deterministically.</p>
+          <p>Auto-snapshots every ~5s persisted to IndexedDB. Export/import sessions as JSON. Drag the scrubber to rollback visually.</p>
         </div>
       </div>
     </div>

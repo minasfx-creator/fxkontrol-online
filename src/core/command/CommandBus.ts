@@ -20,7 +20,9 @@ export type Command =
   | { type: 'SITE_LEAVE'; siteId: string }
   | { type: 'REPLAY_START'; fromTick: number; toTick: number }
   | { type: 'REPLAY_STOP' }
-  | { type: 'REPLAY_SPEED'; speed: number };
+  | { type: 'REPLAY_SPEED'; speed: number }
+  | { type: 'EXPORT_LOG'; format: 'json' }
+  | { type: 'IMPORT_LOG'; json: string };
 
 export type CommandHandler = (cmd: Command) => void;
 
