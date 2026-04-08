@@ -91,15 +91,11 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
 
   const handleReparse = useCallback(() => {
     if (!rawText) return;
-    // Re-parse with updated column mappings applied
-    const result = parseCatalogFile(rawText);
-    // Override auto-mappings with user selections
-    result.columns.forEach((col, i) => {
-      if (columns[i]) {
-        col.mappedTo = columns[i].mappedTo;
-      }
-    });
+    const result = parseCatalogFileWithMappings(rawText, columns);
+    setColumns(result.columns);
     setParsedEffects(result.effects);
+    setSelectedEffects(new Set(result.effects.map((_, i) => i)));
+    toast.success(`Re-parsed with custom mappings`, { description: `${result.effects.length} effects found` });
   }, [rawText, columns]);
 
   const updateMapping = (index: number, mappedTo: string) => {
