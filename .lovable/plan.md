@@ -1,36 +1,66 @@
 
-# Ciclo #40 — Depth Consistency, Smoke Chemistry, Wind GC
 
-## Bugs Identificados
+# Ciclo #41 — Joi Command Engine: Conformidade Finale 3D + Bugs
 
-| # | Bug | Local | Impacto |
-|---|-----|-------|---------|
-| 1 | **Flash/shockwave/smoke ignore depthTest** — L1050, L1057, L1081, L1096 all use `depthTest={false}`. Stars and trails already fixed in Ciclo #38-39, but ancillary meshes (detonation flash, shockwave ring, smoke spheres) still render over buildings/terrain | `FireworkRenderer.tsx` | Alto — visual inconsistency |
-| 2 | **Secondary smoke wisps hardcoded color** — L1092 uses `color="#665544"` ignoring burst color chemistry. Should blend burst color with gray like primary smoke does | `FireworkRenderer.tsx` L1092 | Médio — breaks color coherence |
-| 3 | **`getWindAtPosition` called per trail segment** — L809, L820: trailing patterns call `getWindAtPosition()` per segment per star per frame (200 stars × 8 segments = 1600 calls). Each call reads the project store + syncs wind config. Should sample wind once per burst and reuse | `FireworkRenderer.tsx` L808-821 | Alto — CPU pressure in barrages |
+## Bugs & Gaps Identificados
+
+| # | Bug/Gap | Local | Impacto |
+|---|---------|-------|---------|
+| 1 | **`update_effect` ausente** — Joi pode adicionar e remover efeitos mas não pode mover um efeito no tempo (startTime) ou trocar posição. Finale 3D suporta edição inline de cues. Força o fluxo "remove + add" que perde o ID original | `joiCommandExecutor.ts` | Alto |
+| 2 | **`duplicate_position` ausente** — Para layouts simétricos (espelhamento), Joi precisa criar posições manualmente. Finale 3D tem "Mirror" e "Duplicate" nativos | `joiCommandExecutor.ts` | Médio |
+| 3 | **`set_duration` ausente** — Joi não pode alterar a duração do show. O sistema prompt menciona "duração" no contexto mas não há comando para configurá-la | `joiCommandExecutor.ts` | Médio |
+| 4 | **Contexto enviado como `role: 'user'`** — L394-397 injeta o contexto do projeto como mensagem de usuário. Isso confunde o modelo — deveria ser `role: 'system'` para não ser interpretado como input do usuário | `FXKAssistant.tsx` L394 | Alto |
+| 5 | **System prompt sem `update_effect` / `duplicate_position` / `set_duration`** — Mesmo que adicionemos ao executor, a Joi não saberá usá-los sem documentação no prompt | `systemPrompt.ts` | Alto |
+| 6 | **`add_effect` não passa `duration`** — Cues criadas pela Joi não preservam duração customizada (waterfalls, gerbs, cold sparks que duram 10-30s). Usam o default do store | `joiCommandExecutor.ts` L227 | Médio |
 
 ## Implementação
 
-**Fix 1 — Enable depthTest on all burst ancillary meshes:**
-- L1050: `depthTest={false}` → `depthTest={true}` (detonation flash)
-- L1057: `depthTest={false}` → `depthTest={true}` (shockwave ring)
-- L1081: `depthTest={false}` → `depthTest={true}` (primary smoke sphere)
-- L1096: `depthTest={false}` → `depthTest={true}` (secondary smoke wisps)
+### Arquivo 1: `src/utils/joiCommandExecutor.ts`
 
-**Fix 2 — Secondary smoke color from burst chemistry:**
-- L1092: replace `color="#665544"` with `color={_smokeBlendResult}` (reuses the already-computed smoke blend from L1077)
+**Fix 1 — Novo comando `update_effect`:**
+```
+case 'update_effect': {
+  const target = store.timelineItems.find(i => i.id === params.id);
+  if (!target) return { action, success: false, label: 'Efeito não encontrado' };
+  const updates: Partial<TimelineItem> = {};
+  if (params.startTime !== undefined) updates.startTime = params.startTime;
+  if (params.positionId) { updates.positionId = params.positionId; /* + resolve xyz */ }
+  if (params.positionName) { /* find + update position */ }
+  if (params.effectId) updates.effectId = params.effectId;
+  if (params.duration !== undefined) updates.duration = params.duration;
+  store.updateTimelineItem(target.id, updates);
+  return success;
+}
+```
 
-**Fix 3 — Cache wind sampling for trailing patterns:**
-- Before the star loop (after L493), add a single wind sample for the burst center position:
-  ```
-  const wTrail = isTrailingPattern ? getWindAtPosition(position[0], position[1], position[2], 'ember') : w;
-  ```
-- Replace `getWindAtPosition(...)` calls at L809 and L820 with the cached `wTrail`
-- Eliminates ~1600 store reads per frame per trailing burst
+**Fix 2 — Novo comando `duplicate_position`:**
+- Copia posição existente com offset em X (+5m default)
+- Suporta `mirror: true` para espelhamento em X (x → -x)
 
-## Ordem
+**Fix 3 — Novo comando `set_duration`:**
+- Chama `store.setDuration(params.duration)`
+
+**Fix 4 — `add_effect` passa `duration`:**
+- Adicionar `duration: params.duration` ao objeto do timeline item quando fornecido
+
+### Arquivo 2: `src/components/FXKAssistant.tsx`
+
+**Fix 5 — Contexto como `role: 'system'`:**
+- L394: trocar `role: 'user' as const` por `role: 'system' as const`
+- Garante que o modelo trata como instrução interna, não como pergunta do usuário
+
+### Arquivo 3: `supabase/functions/fxk-ai-chat/systemPrompt.ts`
+
+**Fix 6 — Documentar novos comandos no system prompt:**
+- Adicionar `update_effect`, `duplicate_position`, `set_duration` à seção de comandos
+- Adicionar nota sobre `duration` no `add_effect` para efeitos de longa duração (waterfalls, gerbs)
+
+## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Apply all 3 fixes |
-| 2 | Build verification |
+| 1 | Novos comandos no executor (update_effect, duplicate_position, set_duration) + fix duration no add_effect |
+| 2 | Fix contexto role: system no FXKAssistant |
+| 3 | Atualizar system prompt com novos comandos |
+| 4 | Build verification |
+
