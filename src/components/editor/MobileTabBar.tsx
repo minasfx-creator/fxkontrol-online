@@ -52,6 +52,21 @@ export default function MobileTabBar({
   const [swipeLabel, setSwipeLabel] = useState<string | null>(null);
   const swipeLabelTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const [showScrollHint, setShowScrollHint] = useState(true);
+
+  // Track scroll position to show/hide right arrow
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 8;
+      setShowScrollHint(!atEnd);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
 
   // Long-press context menu state
   const [contextMenu, setContextMenu] = useState<{ tab: MobileTab; rect: DOMRect } | null>(null);
