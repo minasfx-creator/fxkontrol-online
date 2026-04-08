@@ -638,14 +638,19 @@ export default function ShellBurstRenderer({
     if (glitterRef.current && glitterParticlesRef.current.length > 0) {
       const gp = glitterParticlesRef.current;
       // Remove dead glitter
-      for (let i = gp.length - 1; i >= 0; i--) {
+      let i = gp.length - 1;
+      while (i >= 0) {
         gp[i].life += dt;
         gp[i].vy += GRAVITY * dt * 0.5;
         gp[i].x += gp[i].vx * dt;
         gp[i].y += gp[i].vy * dt;
         gp[i].z += gp[i].vz * dt;
         gp[i].brightness = Math.max(0, 1 - gp[i].life / gp[i].maxLife);
-        if (gp[i].life > gp[i].maxLife) { gp[i] = gp[gp.length - 1]; gp.pop(); }
+        if (gp[i].life > gp[i].maxLife) {
+          gp[i] = gp[gp.length - 1]; gp.pop();
+          continue; // re-check swapped element at same index
+        }
+        i--;
       }
       const gCount = Math.min(gp.length, GLITTER_MAX);
       for (let i = 0; i < gCount; i++) {
