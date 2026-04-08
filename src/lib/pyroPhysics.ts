@@ -715,7 +715,12 @@ export function createShellBurst(
     // Timing: ±3% lifetime variation (fuse irregularity)
     life *= (0.97 + Math.random() * 0.06);
 
-    particles.push({ x: 0, y: 0, z: 0, vx, vy, vz, life: 0, maxLife: life, brightness: brightnessVariance });
+    // Assign decay rate by pattern
+    const decayRate = (pattern === 'dahlia' || pattern === 'crossette') ? 2.0
+      : (pattern === 'willow' || pattern === 'kamuro' || pattern === 'horsetail' || pattern === 'brocade' || pattern === 'brocade_crown') ? 0.6
+      : 1.2; // peony, chrysanthemum, sphere, ring, palm, coconut_tree
+
+    particles.push({ x: 0, y: 0, z: 0, vx, vy, vz, life: 0, maxLife: life, brightness: brightnessVariance, decayRate, windInfluence: 0.6 });
   }
 
   return particles;
