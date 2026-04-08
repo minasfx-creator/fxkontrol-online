@@ -1,66 +1,36 @@
+# Ciclo #42 — Rendering Bugs: Depth, Frustum Cull, Dead Code, Crossette Leak
 
+## Bugs Identificados
 
-# Ciclo #41 — Joi Command Engine: Conformidade Finale 3D + Bugs
+| # | Bug | Local | Impacto |
+|---|-----|-------|---------|
+| 1 | **Core flash `depthTest={false}`** — O flash branco de detonação (80ms) renderiza sobre toda geometria sólida. Halo e shockwave já foram corrigidos no Ciclo #40, mas o core flash ficou inconsistente | L1039 | Médio |
+| 2 | **Frustum cull usa `partType` em vez de `effect.pattern`** — `patternStr = String(pt)` compara contra 'willow', 'kamuro' etc. que são valores de `pattern`, não `partType`. Resultado: trailing patterns nunca recebem o raio expandido (40x) e podem ser culled prematuramente | L1290-1291 | Alto |
+| 3 | **`emberColor` computado mas nunca utilizado** — `useMemo` cria 2× `new THREE.Color` por burst sem jamais ler o resultado. GC waste desnecessário | L203-209 | Baixo |
+| 4 | **`crossetteSplitRef` Set nunca limpo** — Se o React reusar a instância do componente (key swap), dados stale impedem novas sub-breaks de spawnar | L157 | Médio |
+| 5 | **Array duplicado `effectPos` e `pos`** — L1288 e L1294 criam arrays idênticos; `effectPos` é usado apenas para frustum check e `pos` para rendering — basta um | L1288-1294 | Baixo |
 
-## Bugs & Gaps Identificados
+## Implementação — `src/components/editor/skycanvas/FireworkRenderer.tsx`
 
-| # | Bug/Gap | Local | Impacto |
-|---|---------|-------|---------|
-| 1 | **`update_effect` ausente** — Joi pode adicionar e remover efeitos mas não pode mover um efeito no tempo (startTime) ou trocar posição. Finale 3D suporta edição inline de cues. Força o fluxo "remove + add" que perde o ID original | `joiCommandExecutor.ts` | Alto |
-| 2 | **`duplicate_position` ausente** — Para layouts simétricos (espelhamento), Joi precisa criar posições manualmente. Finale 3D tem "Mirror" e "Duplicate" nativos | `joiCommandExecutor.ts` | Médio |
-| 3 | **`set_duration` ausente** — Joi não pode alterar a duração do show. O sistema prompt menciona "duração" no contexto mas não há comando para configurá-la | `joiCommandExecutor.ts` | Médio |
-| 4 | **Contexto enviado como `role: 'user'`** — L394-397 injeta o contexto do projeto como mensagem de usuário. Isso confunde o modelo — deveria ser `role: 'system'` para não ser interpretado como input do usuário | `FXKAssistant.tsx` L394 | Alto |
-| 5 | **System prompt sem `update_effect` / `duplicate_position` / `set_duration`** — Mesmo que adicionemos ao executor, a Joi não saberá usá-los sem documentação no prompt | `systemPrompt.ts` | Alto |
-| 6 | **`add_effect` não passa `duration`** — Cues criadas pela Joi não preservam duração customizada (waterfalls, gerbs, cold sparks que duram 10-30s). Usam o default do store | `joiCommandExecutor.ts` L227 | Médio |
+**Fix 1 — Core flash depthTest (L1039):**
+- Trocar `depthTest={false}` por `depthTest={true}`
 
-## Implementação
+**Fix 2 — Frustum cull pattern detection (L1290-1291):**
+- Trocar `String(pt || '')` por `String(effect.pattern || '')`
+- Agora trailing patterns (willow, kamuro, brocade, palm) recebem raio 40x corretamente
 
-### Arquivo 1: `src/utils/joiCommandExecutor.ts`
+**Fix 3 — Remover `emberColor` dead code (L203-209):**
+- Deletar o bloco `useMemo` inteiro que computa `emberColor`
 
-**Fix 1 — Novo comando `update_effect`:**
-```
-case 'update_effect': {
-  const target = store.timelineItems.find(i => i.id === params.id);
-  if (!target) return { action, success: false, label: 'Efeito não encontrado' };
-  const updates: Partial<TimelineItem> = {};
-  if (params.startTime !== undefined) updates.startTime = params.startTime;
-  if (params.positionId) { updates.positionId = params.positionId; /* + resolve xyz */ }
-  if (params.positionName) { /* find + update position */ }
-  if (params.effectId) updates.effectId = params.effectId;
-  if (params.duration !== undefined) updates.duration = params.duration;
-  store.updateTimelineItem(target.id, updates);
-  return success;
-}
-```
+**Fix 4 — Reset crossetteSplitRef quando pattern muda:**
+- Adicionar `useEffect` que limpa `crossetteSplitRef.current.clear()` quando `pattern` ou `color` mudam
 
-**Fix 2 — Novo comando `duplicate_position`:**
-- Copia posição existente com offset em X (+5m default)
-- Suporta `mirror: true` para espelhamento em X (x → -x)
-
-**Fix 3 — Novo comando `set_duration`:**
-- Chama `store.setDuration(params.duration)`
-
-**Fix 4 — `add_effect` passa `duration`:**
-- Adicionar `duration: params.duration` ao objeto do timeline item quando fornecido
-
-### Arquivo 2: `src/components/FXKAssistant.tsx`
-
-**Fix 5 — Contexto como `role: 'system'`:**
-- L394: trocar `role: 'user' as const` por `role: 'system' as const`
-- Garante que o modelo trata como instrução interna, não como pergunta do usuário
-
-### Arquivo 3: `supabase/functions/fxk-ai-chat/systemPrompt.ts`
-
-**Fix 6 — Documentar novos comandos no system prompt:**
-- Adicionar `update_effect`, `duplicate_position`, `set_duration` à seção de comandos
-- Adicionar nota sobre `duration` no `add_effect` para efeitos de longa duração (waterfalls, gerbs)
+**Fix 5 — Eliminar array duplicado (L1288-1294):**
+- Usar apenas `pos` para frustum check e rendering, remover `effectPos`
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Novos comandos no executor (update_effect, duplicate_position, set_duration) + fix duration no add_effect |
-| 2 | Fix contexto role: system no FXKAssistant |
-| 3 | Atualizar system prompt com novos comandos |
-| 4 | Build verification |
-
+| 1 | Aplicar 5 fixes no FireworkRenderer.tsx |
+| 2 | Build verification |
