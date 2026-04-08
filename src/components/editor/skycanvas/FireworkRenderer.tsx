@@ -1078,7 +1078,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
               transparent
               opacity={0.04 * Math.pow(Math.max(0, 1 - (progress - 0.35) / 0.65), 1.5)}
               depthWrite={false}
-              depthTest={false}
+depthTest={true}
             />
           </mesh>
           {/* Secondary smoke wisps rising */}
