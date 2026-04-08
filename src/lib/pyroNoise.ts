@@ -115,6 +115,8 @@ const FLICKER_BY_COMPOUND: Record<string, FlickerParams> = {
   magnesium: { base: 0.48, amplitude: 0.45, popStrength: 0.52 },
   // Charcoal (gold tails) — slow smoldering, organic carbon fuel
   charcoal: { base: 0.72, amplitude: 0.20, popStrength: 0.15 },
+  // Lampblack — "extremely fine, finely dispersed orange sparks" (Pyrotechnic Chemicals)
+  lampblack: { base: 0.65, amplitude: 0.28, popStrength: 0.20 },
   // Iron (gold sparks) — moderate, Fe particle combustion, linseed oil coating
   iron: { base: 0.62, amplitude: 0.32, popStrength: 0.30 },
   // KClO4 flash — KClO4 66-70% + Al 30-34% (stoichiometric, Chemistry of Pyrotechnics)
