@@ -324,6 +324,8 @@ export function catalogToEffects(parsed: ParsedCatalogEffect[], idPrefix: string
       shotCount: p.shotCount || undefined,
       safetyDistance: p.safetyDistance || undefined,
       vdl: p.vdl || undefined,
+      fuseDelay: p.fuseDelay || undefined,
+      numDevices: p.devices || undefined,
     };
   });
 }

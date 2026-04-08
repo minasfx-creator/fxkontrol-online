@@ -740,7 +740,15 @@ export function parseVDL(input: string): VDLResult {
     result.numSplits = 4;
   }
 
-  // ── SuperVDL: Niagara preset detection + auto-matching ──
+  // ── Comet ultra-fast / laser detection (Finale Manual Table 2) ──
+  // "Para fazer cometas ultrarrápidos, configure altura alta e duração pequena"
+  if (result.partType === 'comet' && result.height > 80 && result.duration < 0.8) {
+    result.breakSpeed = Math.round(result.breakSpeed * 1.8 * 10) / 10;
+    if (!result.modifiers.includes('laser')) {
+      result.modifiers.push('laser');
+    }
+  }
+
   // 1. Explicit reference: "niagara-blue", "niagara-red" etc.
   const niagaraExplicit = lower.match(/niagara-(\w+)/);
   if (niagaraExplicit) {
