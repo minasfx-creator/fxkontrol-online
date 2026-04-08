@@ -773,6 +773,7 @@ export function createGerbStream(height: number): ParticleState {
     vy: Math.cos(upAngle) * speed,
     vz: Math.sin(upAngle) * Math.sin(theta) * speed,
     life: 0, maxLife, brightness: 1,
+    decayRate: 2.0, windInfluence: 0.8,
   };
 }
 
