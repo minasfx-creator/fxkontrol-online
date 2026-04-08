@@ -489,6 +489,21 @@ export default function ShellBurstRenderer({
     uTime: { value: 0 },
   }), []);
 
+  // Pre-allocated per-smoke uniform objects to avoid spread allocation per render
+  const SMOKE_POOL_SIZE = 16;
+  const perSmokeUniforms = useMemo(() =>
+    Array.from({ length: SMOKE_POOL_SIZE }, () => ({
+      uSmokeColor: smokeUniforms.uSmokeColor,
+      uSmokeOpacity: smokeUniforms.uSmokeOpacity,
+      uTime: smokeUniforms.uTime,
+      aAge: { value: 0 },
+      aMaxAge: { value: 1 },
+      aScale: { value: 1 },
+      aSeed: { value: 0 },
+    })),
+    [smokeUniforms]
+  );
+
   // Crossette sub-bursts
   const crossetteRef = useRef<ParticleState[][]>([]);
   const crossetteTriggered = useRef(new Set<number>());
