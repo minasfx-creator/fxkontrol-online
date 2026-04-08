@@ -872,8 +872,8 @@ export default function ShellBurstRenderer({
       )}
 
       {/* Crossette sub-bursts */}
-      {crossetteRef.current.map((subGroup, gi) => (
-        <CrossetteSubBurst key={gi} particles={subGroup} color={color} caliber={caliber} windVec={windVec} drag={starDrag} />
+      {crossetteRef.current.map((entry) => (
+        <CrossetteSubBurst key={entry.id} particles={entry.particles} color={color} caliber={caliber} windVec={windVec} drag={starDrag} />
       ))}
 
       {/* Burst flash — Screen blending. Dahlia: 2.5x intensity, faster decay */}
