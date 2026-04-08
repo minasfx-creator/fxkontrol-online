@@ -513,6 +513,8 @@ export default function ShellBurstRenderer({
           ...stepMods,
           tipCurlFactor: pattern === 'chrysanthemum' ? 2.5 : undefined,
           tipCurlLifeRatio: pattern === 'chrysanthemum' ? lifeRatio : undefined,
+          willowDroop: pattern === 'willow',
+          willowLifeRatio: pattern === 'willow' ? lifeRatio : undefined,
         };
         stepParticle(p, dt * detonationMult, windVec, particleDrag, tipCurlMods);
 
