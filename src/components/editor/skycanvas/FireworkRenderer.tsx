@@ -580,7 +580,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         px = dragPos(vx, t, dragCoeff * 0.7) + w[0] * t * t * 0.5; // reduced horiz drag, amplified wind
         py = dragPos(vy, t, dragCoeff) + 0.5 * GRAVITY * htGravMult * t * t;
         pz = dragPos(vz, t, dragCoeff * 0.7) + w[2] * t * t * 0.5;
-      } else if (pattern === 'coconut') {
+      } else if (pattern === 'coconut_tree') {
         // Coconut tree: 3-phase — ascent, frond spread, heavy droop
         let cocoGravMult: number;
         let cocoDragH: number;
