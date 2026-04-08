@@ -294,15 +294,17 @@ function generateBurjKhalifa() {
 // 4. LONDON EYE — Thames
 // ═══════════════════════════════════════════════════════════════
 function generateLondonEye() {
-  // London Eye: 8 positions around the wheel at 135m
+  // London Eye: 8 positions around the wheel at 135m — backdrop (z: -200)
   const eye: Position[] = Array.from({ length: 8 }, (_, i) => {
     const angle = (i / 8) * Math.PI * 2;
-    return pos(uid(), `Eye ${i + 1}`, Math.cos(angle) * 60, 67 + Math.sin(angle) * 60, 0, 180);
+    return pos(uid(), `Eye ${i + 1}`, Math.cos(angle) * 60, 67 + Math.sin(angle) * 60, -200, 180);
   });
-  // Thames barges: 10 positions along the river
+  // Thames barges: 10 positions along the river — mid-depth (z: -60 to -100)
   const barges: Position[] = Array.from({ length: 10 }, (_, i) => {
     const spread = (i - 5) * 100;
-    return pos(uid(), `Barge ${i + 1}`, spread, 0, -50, 0);
+    const t = Math.abs((i - 5) / 5);
+    const zDepth = -60 - (1 - t) * 40; // center at -100, edges at -60
+    return pos(uid(), `Barge ${i + 1}`, spread, 0, zDepth, 0);
   });
 
   const all = [...eye, ...barges];
