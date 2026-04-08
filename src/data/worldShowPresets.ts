@@ -405,10 +405,10 @@ function generateEiffelTower() {
 // ═══════════════════════════════════════════════════════════════
 function generateTokyoHanabi() {
   // Traditional hanabi: single launch site with large-caliber artisan shells
-  // 12 firing positions in semicircle
+  // 12 firing positions in semicircle — facing toward viewer (z positive)
   const positions: Position[] = Array.from({ length: 12 }, (_, i) => {
     const angle = (i / 11) * Math.PI;
-    return pos(uid(), `台 ${i + 1}`, Math.cos(angle) * 200, 0, Math.sin(angle) * -100, 0);
+    return pos(uid(), `台 ${i + 1}`, Math.cos(angle) * 200, 0, -Math.abs(Math.sin(angle)) * 100, 0);
   });
 
   const items: TimelineItem[] = [];
