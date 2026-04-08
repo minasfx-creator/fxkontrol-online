@@ -100,7 +100,8 @@ function TypewriterGreeting({ text }: { text: string }) {
 function getContextPresets() {
   const path = window.location.pathname;
   if (path.includes('command')) return PRESETS_COMMAND;
-  return PRESETS_EDITOR;
+  // Merge operational + editor presets for editor context
+  return [...OPERATIONAL_PRESETS.map(op => ({ label: op.label, icon: op.icon, prompt: op.prompt })), ...PRESETS_EDITOR];
 }
 
 function getGreeting(): string {

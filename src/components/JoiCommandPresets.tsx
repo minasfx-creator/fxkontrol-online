@@ -77,4 +77,20 @@ Use create_choreography.`,
 - Tons: multicolorido, festivo, alegre
 Use create_choreography.`,
   },
+  {
+    label: 'MODIFICAR',
+    icon: RefreshCw,
+    prompt: `Analise o projeto atual (posições e efeitos na timeline) e sugira melhorias:
+- Identifique gaps de tempo sem efeitos
+- Sugira efeitos complementares para posições vazias
+- Verifique se o arco dramático está balanceado (abertura, build, clímax, finale)
+- Recomende ajustes de timing e stagger
+Use list_positions e list_effects primeiro para entender o estado atual.`,
+  },
+  {
+    label: 'LIMPAR',
+    icon: Trash2,
+    prompt: `Limpe todo o projeto (posições, efeitos, formações) para recomeçar do zero.
+[JOI_CMD]{"action":"clear_project","params":{}}[/JOI_CMD]`,
+  },
 ];
