@@ -6,9 +6,11 @@
  * - Generic: CSV/TSV with any headers
  * 
  * Supports auto-detection of format and column mapping.
+ * Full conformity with Finale 3D Manual (MANUAL_FINALE-19).
  */
 
 import { Effect, PartType } from '@/data/effectLibrary';
+import { getBreakHeight } from '@/lib/pyroPhysics';
 
 // Known Finale 3D column headers (case-insensitive)
 const COLUMN_ALIASES: Record<string, string[]> = {
