@@ -607,7 +607,7 @@ export default function ShellBurstRenderer({
       const pistilDelay = pattern === 'brocade_crown' ? 0.25 : 0;
       const pp = pistilParticlesRef.current;
       for (let i = 0; i < pp.length; i++) {
-        if (pp[i].life < pp[i].maxLife && time > pistilDelay) stepParticle(pp[i], dt, windVec, starDrag * 0.8, stepMods);
+        if (pp[i].life < pp[i].maxLife && time > pistilDelay) stepParticle(pp[i], dt, windVec, starDrag * 0.8, stepModsRef.current);
         pistilBuffers.pos[i * 3] = pp[i].x;
         pistilBuffers.pos[i * 3 + 1] = pp[i].y;
         pistilBuffers.pos[i * 3 + 2] = pp[i].z;
