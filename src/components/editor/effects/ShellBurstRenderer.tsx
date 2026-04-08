@@ -37,7 +37,7 @@ const BURST_VERTEX = `
   attribute float aMaxLife;
   attribute float aBrightness;
   attribute vec3 aVelocity;
-  attribute float aDragCoeff;
+  
   
   varying float vLife;
   varying float vMaxLife;
