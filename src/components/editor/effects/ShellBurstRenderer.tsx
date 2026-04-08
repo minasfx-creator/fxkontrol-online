@@ -788,9 +788,9 @@ export default function ShellBurstRenderer({
         
         // Modulate opacity by fluid grid density if available
         if (fluidGrid && mesh.material) {
-          const worldX = (position as number[])[0] + sp.x;
-          const worldZ = (position as number[])[2] + sp.z;
-          const density = readDensityAt(fluidGrid as FluidGrid, worldX, worldZ);
+          const fluidWorldX = px + sp.x;
+          const fluidWorldZ = pz + sp.z;
+          const density = readDensityAt(fluidGrid as FluidGrid, fluidWorldX, fluidWorldZ);
           const fluidBoost = 1 + density * 0.4;
           (mesh.material as any).uniforms.uSmokeOpacity.value = smokeUniforms.uSmokeOpacity.value * fluidBoost;
         }
