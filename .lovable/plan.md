@@ -1,108 +1,89 @@
 
-# Ciclo #56 — Sprint 3: Distributed Command Sync + Multi-Site Coordinator + Replay Visual
 
-## Inventário Existente
+# Ciclo #57 — Sprint 4: IndexedDB Persistence + Export/Import + Timeline Scrubber
 
-| Componente | Existe | Estado |
-|---|---|---|
-| CommandBus (dispatch/drain/apply) | SIM | Sprint 1-2, funcional |
-| CommandLog (record/replay/rollback) | SIM | Sprint 2, funcional |
-| SnapshotManager (periodic capture) | SIM | Sprint 2, funcional |
-| ReplayEngine (rollback + slow-mo) | SIM | Sprint 2, funcional |
-| ClusterSyncEngine (camera/physics broadcast) | SIM | Broadcasts ClusterFrame, não Commands |
-| RealtimeClient (WebSocket generic) | SIM | Genérico, sem integração com CommandBus |
-| remoteCommandEngine (Supabase Realtime) | SIM | Controle remoto, sem command relay |
-| FrameSyncEngine (timecode alignment) | SIM | Drift correction, frame-locked |
-| MissionControlPanel (multi-site UI) | SIM | Stub `multiSiteSync` — not implemented |
-| EngineProvider (React bridge) | SIM | Sprint 2, boots kernel |
+## What Exists
 
-## O que FALTA para Sprint 3
+| Component | Status |
+|---|---|
+| CommandLog (in-memory ring buffer 60K) | Functional, has `exportJSON()`/`importJSON()` |
+| SnapshotManager (in-memory ring buffer 20) | Functional, no persistence |
+| useBlackBox (IndexedDB crash recovery) | Functional, separate DB `fxkontrol_blackbox` |
+| VersioningPanel (UI) | Functional, polls snapshots, rollback button |
+| ReplayOverlay (UI) | Functional, progress/speed/controls |
+| Timeline.tsx | Has basic scrubber/progress bar, no tick-level scrubbing |
 
-### 1. CommandRelay — Distributed Command Sync
+## Sprint 4 Deliverables
 
-**Novo:** `src/core/sync/CommandRelay.ts`
+### 1. IndexedDB Persistence Layer — `src/core/persistence/IndexedDBPersistence.ts`
 
-Bridges CommandBus to Supabase Realtime broadcast channel. Master site dispatches commands that are relayed to all connected sites. Each site applies them through the same deterministic pipeline.
+Unified IndexedDB wrapper (reuses existing `fxkontrol_blackbox` DB with new object stores):
+- **Store `snapshots`**: Persists SnapshotManager ring buffer on each capture
+- **Store `commandlog`**: Periodically flushes CommandLog to IDB (every 30s or on page unload)
+- **On boot**: Loads persisted snapshots into SnapshotManager and command log into CommandLog
+- Uses DB version upgrade to add new stores alongside existing `sessions` store
 
+Key methods:
 ```text
-CommandRelay
-├── start(sessionCode, role)  — join relay channel
-├── stop()                    — leave
-├── relayOutgoing(cmd)        — broadcast local command to peers
-├── onIncoming(cmd)           — inject remote command into local CommandBus
-├── getState()                — connected, peerCount, latencyMs
+persistSnapshots(snapshots: Snapshot[])
+persistCommandLog(entries: LogEntry[])
+loadSnapshots(): Snapshot[]
+loadCommandLog(): LogEntry[]
+clearAll()
 ```
 
-Key design decisions:
-- Commands are tagged with `originSiteId` to prevent echo loops
-- Only Master can relay mutation commands (FIRE, ARM); Clients relay read-only (OPEN_PANEL)
-- Uses Supabase Realtime broadcast (already in project) — no new WebSocket server needed
-- Integrates into EngineProvider as a subsystem
+### 2. Export/Import Commands — `src/core/command/CommandBus.ts` + VersioningPanel
 
-### 2. MultiSiteCoordinator — Replace Stub
-
-**Novo:** `src/core/sync/MultiSiteCoordinator.ts`
-
-Replaces the stub `multiSiteSync` object in MissionControlPanel with a real implementation.
-
-```text
-MultiSiteCoordinator
-├── registerSite(siteId, name, role)
-├── getAllSites()              — SiteInfo[]
-├── isLocalMode()              — true if no remote sites
-├── getMaster()                — current master site
-├── onStateChange(cb)          — notify UI
-├── heartbeat()                — periodic presence via Supabase
+Add command types:
+```ts
+| { type: 'EXPORT_LOG'; format: 'json' }
+| { type: 'IMPORT_LOG'; json: string }
 ```
 
-Site presence via Supabase Realtime presence API (already used in remoteCommandEngine). Each site tracks: siteId, name, role (master/slave), lastHeartbeat, latencyMs, tickCount.
+In VersioningPanel, add two buttons:
+- **Export Log** — downloads `commandLog.exportJSON()` as `.json` file via `triggerDownload`
+- **Import Log** — file input that reads JSON and calls `commandLog.importJSON()`
 
-### 3. ReplayVisualizer — Replay Playback UI
+### 3. Integration in EngineProvider
 
-**Novo:** `src/components/editor/ReplayOverlay.tsx`
+- Import `IndexedDBPersistence` 
+- On boot: load persisted snapshots + command log
+- Register low-priority subsystem (priority 300) that flushes to IDB every 1800 ticks (~30s)
+- On unmount: final flush
 
-Overlay that shows during active replay:
-- Progress bar (currentTick / targetTick)
-- Speed controls (0.25x, 0.5x, 1x, 2x)
-- Play/Pause/Stop buttons
-- Tick counter display
-- Semi-transparent overlay badge "REPLAY MODE"
+### 4. Visual Timeline Scrubber — `src/components/editor/TimelineScrubber.tsx`
 
-Connects to `replayEngine` state. Mounted conditionally in EngineProvider when replay is active.
+A dedicated scrubber component that maps tick-space to pixel-space:
+- Horizontal bar showing full session duration (tick 0 → lastTick)
+- Snapshot markers (dots) at each snapshot tick
+- Draggable playhead that dispatches `ROLLBACK` on release
+- Current tick indicator
+- Integrates into VersioningPanel below the snapshot list
 
-### 4. Integration Updates
+```text
+|●───●────●──────●──▶────────|
+ s1   s2    s3     s4  ▲current
+                      drag to rollback
+```
 
-**Edit:** `src/orchestration/EngineProvider.tsx`
-- Register CommandRelay as subsystem (priority 5, after commandBus drain)
-- After `commandBus.applyAll`, relay outgoing commands via CommandRelay
-- Inject incoming remote commands before next drain
-- Conditionally render ReplayOverlay when `replayEngine.getState() === 'replaying'`
+## Files
 
-**Edit:** `src/components/editor/MissionControlPanel.tsx`
-- Replace stub `multiSiteSync` with real `MultiSiteCoordinator` import
-- Remove stub type definitions
+| Action | File |
+|--------|------|
+| Create | `src/core/persistence/IndexedDBPersistence.ts` |
+| Create | `src/components/editor/TimelineScrubber.tsx` |
+| Edit | `src/core/command/CommandBus.ts` (add EXPORT_LOG, IMPORT_LOG types) |
+| Edit | `src/orchestration/EngineProvider.tsx` (boot load + periodic flush) |
+| Edit | `src/components/editor/VersioningPanel.tsx` (export/import buttons + scrubber) |
 
-**Edit:** `src/core/command/CommandBus.ts`
-- Add new command types: `SITE_JOIN`, `SITE_LEAVE`, `REPLAY_START`, `REPLAY_STOP`, `REPLAY_SPEED`
+## Execution Order
 
-## Arquivos
-
-| Acao | Arquivo |
-|------|---------|
-| Criar | `src/core/sync/CommandRelay.ts` |
-| Criar | `src/core/sync/MultiSiteCoordinator.ts` |
-| Criar | `src/components/editor/ReplayOverlay.tsx` |
-| Editar | `src/core/command/CommandBus.ts` (novos tipos) |
-| Editar | `src/orchestration/EngineProvider.tsx` (relay + replay overlay) |
-| Editar | `src/components/editor/MissionControlPanel.tsx` (replace stub) |
-
-## Ordem de Execucao
-
-| Passo | Tarefa |
-|-------|--------|
-| 1 | Adicionar novos command types ao CommandBus |
-| 2 | Criar CommandRelay (Supabase Realtime broadcast) |
-| 3 | Criar MultiSiteCoordinator (presence-based) |
-| 4 | Criar ReplayOverlay (UI) |
-| 5 | Integrar tudo no EngineProvider + MissionControlPanel |
+| Step | Task |
+|------|------|
+| 1 | Create IndexedDBPersistence |
+| 2 | Add export/import command types to CommandBus |
+| 3 | Create TimelineScrubber component |
+| 4 | Integrate persistence in EngineProvider |
+| 5 | Update VersioningPanel with export/import + scrubber |
 | 6 | Build verification |
+
