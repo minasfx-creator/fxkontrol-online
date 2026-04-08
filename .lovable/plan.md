@@ -1,116 +1,108 @@
 
-
-# Ciclo #55 — Sprint 2: Command Log, Snapshot System, Replay + Rollback
+# Ciclo #56 — Sprint 3: Distributed Command Sync + Multi-Site Coordinator + Replay Visual
 
 ## Inventário Existente
 
-| Componente | Existe | Avaliação |
+| Componente | Existe | Estado |
 |---|---|---|
-| CommandBus (dispatch/drain) | SIM | Sprint 1 — funcional |
-| LockstepEngine (60Hz fixed) | SIM | Determinístico |
-| useUndoStore (undo/redo) | SIM | Zustand-based, structuredClone snapshots, max 50 |
-| useBlackBox (crash recovery) | SIM | IndexedDB auto-save 500ms, dirty session detection |
-| StateBuffer (double buffer) | SIM | Front/back swap |
-| VersioningPanel (UI) | SIM | Named snapshots, local state only (não persiste) |
+| CommandBus (dispatch/drain/apply) | SIM | Sprint 1-2, funcional |
+| CommandLog (record/replay/rollback) | SIM | Sprint 2, funcional |
+| SnapshotManager (periodic capture) | SIM | Sprint 2, funcional |
+| ReplayEngine (rollback + slow-mo) | SIM | Sprint 2, funcional |
+| ClusterSyncEngine (camera/physics broadcast) | SIM | Broadcasts ClusterFrame, não Commands |
+| RealtimeClient (WebSocket generic) | SIM | Genérico, sem integração com CommandBus |
+| remoteCommandEngine (Supabase Realtime) | SIM | Controle remoto, sem command relay |
+| FrameSyncEngine (timecode alignment) | SIM | Drift correction, frame-locked |
+| MissionControlPanel (multi-site UI) | SIM | Stub `multiSiteSync` — not implemented |
+| EngineProvider (React bridge) | SIM | Sprint 2, boots kernel |
 
-## O que o Sprint 2 Adiciona
+## O que FALTA para Sprint 3
 
-### 1. CommandLog — Gravação determinística de comandos
+### 1. CommandRelay — Distributed Command Sync
 
-**Novo arquivo:** `src/core/command/CommandLog.ts`
+**Novo:** `src/core/sync/CommandRelay.ts`
 
-Grava cada comando com tick number e timestamp. Permite replay exato.
-
-```text
-CommandLog
-├── record(tick, cmd)     — append ao log
-├── getLog()              — retorna array completo
-├── slice(fromTick, toTick) — range query
-├── clear()               — reset
-└── exportJSON() / importJSON()  — serialização
-```
-
-Integração: o subsystem `commandBus` no EngineProvider já drena comandos — após `applyAll`, gravar no log com `lockstep.getTickCount()`.
-
-### 2. SnapshotManager — Snapshots periódicos do estado
-
-**Novo arquivo:** `src/core/state/SnapshotManager.ts`
-
-Captura snapshots do ProjectStore a cada N ticks (configurável, default 300 = ~5s). Mantém ring buffer de max 20 snapshots.
+Bridges CommandBus to Supabase Realtime broadcast channel. Master site dispatches commands that are relayed to all connected sites. Each site applies them through the same deterministic pipeline.
 
 ```text
-SnapshotManager
-├── capture(tick)         — structuredClone do estado
-├── nearest(tick)         — snapshot mais próximo ≤ tick
-├── getAll()              — lista de snapshots
-├── clear()
+CommandRelay
+├── start(sessionCode, role)  — join relay channel
+├── stop()                    — leave
+├── relayOutgoing(cmd)        — broadcast local command to peers
+├── onIncoming(cmd)           — inject remote command into local CommandBus
+├── getState()                — connected, peerCount, latencyMs
 ```
 
-Integração: registar como subsystem no lockstep com priority 200 (baixa). A cada 300 ticks chama `capture`.
+Key design decisions:
+- Commands are tagged with `originSiteId` to prevent echo loops
+- Only Master can relay mutation commands (FIRE, ARM); Clients relay read-only (OPEN_PANEL)
+- Uses Supabase Realtime broadcast (already in project) — no new WebSocket server needed
+- Integrates into EngineProvider as a subsystem
 
-### 3. ReplayEngine — Replay determinístico
+### 2. MultiSiteCoordinator — Replace Stub
 
-**Novo arquivo:** `src/core/engine/ReplayEngine.ts`
+**Novo:** `src/core/sync/MultiSiteCoordinator.ts`
 
-Dado um CommandLog e um snapshot inicial, re-executa comandos tick-a-tick para reproduzir o estado exato.
+Replaces the stub `multiSiteSync` object in MissionControlPanel with a real implementation.
 
 ```text
-ReplayEngine
-├── startReplay(fromTick, toTick?)  — inicia replay
-├── tick()                          — avança 1 tick do replay
-├── isReplaying()
-├── stop()
+MultiSiteCoordinator
+├── registerSite(siteId, name, role)
+├── getAllSites()              — SiteInfo[]
+├── isLocalMode()              — true if no remote sites
+├── getMaster()                — current master site
+├── onStateChange(cb)          — notify UI
+├── heartbeat()                — periodic presence via Supabase
 ```
 
-Fluxo de replay:
-1. Encontra snapshot mais próximo via SnapshotManager
-2. Aplica snapshot ao ProjectStore
-3. Re-executa comandos do CommandLog desde aquele tick
-4. Cada `tick()` aplica os comandos daquele tick no CommandBus
+Site presence via Supabase Realtime presence API (already used in remoteCommandEngine). Each site tracks: siteId, name, role (master/slave), lastHeartbeat, latencyMs, tickCount.
 
-### 4. Rollback — Voltar a qualquer ponto
+### 3. ReplayVisualizer — Replay Playback UI
 
-Rollback = snapshot restore + descarte de comandos posteriores. Usa `SnapshotManager.nearest(targetTick)` + `CommandLog.slice(snapshotTick, targetTick)` e re-aplica.
+**Novo:** `src/components/editor/ReplayOverlay.tsx`
 
-Integrar como command type no CommandBus:
-```ts
-| { type: 'ROLLBACK'; targetTick: number }
-```
+Overlay that shows during active replay:
+- Progress bar (currentTick / targetTick)
+- Speed controls (0.25x, 0.5x, 1x, 2x)
+- Play/Pause/Stop buttons
+- Tick counter display
+- Semi-transparent overlay badge "REPLAY MODE"
 
-### 5. Integração no EngineProvider
+Connects to `replayEngine` state. Mounted conditionally in EngineProvider when replay is active.
 
-Atualizar `EngineProvider.tsx` para:
-- Importar e registar `SnapshotManager` como subsystem
-- Após `commandBus.applyAll`, gravar no `CommandLog`
-- Expor `commandLog` e `snapshotManager` como singletons importáveis
+### 4. Integration Updates
 
-### 6. Upgrade da VersioningPanel (UI)
+**Edit:** `src/orchestration/EngineProvider.tsx`
+- Register CommandRelay as subsystem (priority 5, after commandBus drain)
+- After `commandBus.applyAll`, relay outgoing commands via CommandRelay
+- Inject incoming remote commands before next drain
+- Conditionally render ReplayOverlay when `replayEngine.getState() === 'replaying'`
 
-Conectar a `SnapshotManager` real em vez de estado local:
-- Listar snapshots automáticos
-- Botão "Rollback to here" dispara `commandBus.dispatch({ type: 'ROLLBACK', targetTick })`
-- Mostrar tick number e timestamp de cada snapshot
+**Edit:** `src/components/editor/MissionControlPanel.tsx`
+- Replace stub `multiSiteSync` with real `MultiSiteCoordinator` import
+- Remove stub type definitions
+
+**Edit:** `src/core/command/CommandBus.ts`
+- Add new command types: `SITE_JOIN`, `SITE_LEAVE`, `REPLAY_START`, `REPLAY_STOP`, `REPLAY_SPEED`
 
 ## Arquivos
 
-| Ação | Arquivo |
+| Acao | Arquivo |
 |------|---------|
-| Criar | `src/core/command/CommandLog.ts` |
-| Criar | `src/core/state/SnapshotManager.ts` |
-| Criar | `src/core/engine/ReplayEngine.ts` |
-| Editar | `src/core/command/CommandBus.ts` (adicionar ROLLBACK type) |
-| Editar | `src/orchestration/EngineProvider.tsx` (integrar log + snapshots) |
-| Editar | `src/components/editor/VersioningPanel.tsx` (conectar a SnapshotManager) |
+| Criar | `src/core/sync/CommandRelay.ts` |
+| Criar | `src/core/sync/MultiSiteCoordinator.ts` |
+| Criar | `src/components/editor/ReplayOverlay.tsx` |
+| Editar | `src/core/command/CommandBus.ts` (novos tipos) |
+| Editar | `src/orchestration/EngineProvider.tsx` (relay + replay overlay) |
+| Editar | `src/components/editor/MissionControlPanel.tsx` (replace stub) |
 
-## Ordem de Execução
+## Ordem de Execucao
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Criar CommandLog |
-| 2 | Criar SnapshotManager |
-| 3 | Criar ReplayEngine |
-| 4 | Adicionar ROLLBACK ao CommandBus |
-| 5 | Integrar tudo no EngineProvider |
-| 6 | Conectar VersioningPanel ao sistema real |
-| 7 | Build verification |
-
+| 1 | Adicionar novos command types ao CommandBus |
+| 2 | Criar CommandRelay (Supabase Realtime broadcast) |
+| 3 | Criar MultiSiteCoordinator (presence-based) |
+| 4 | Criar ReplayOverlay (UI) |
+| 5 | Integrar tudo no EngineProvider + MissionControlPanel |
+| 6 | Build verification |
