@@ -411,7 +411,7 @@ export function FXKAssistant() {
     abortRef.current = ctrl;
 
     try {
-      await streamChat([...messages, userMsg], upsert, () => {
+      await streamChat([contextMsg, ...messages, userMsg], upsert, () => {
         setLoading(false);
         // Execute JOI_CMD blocks after stream completes
         if (hasJoiCommands(soFar)) {
