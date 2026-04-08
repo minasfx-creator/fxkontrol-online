@@ -282,15 +282,15 @@ export function parseCatalogFile(text: string): {
   const lines = text.trim().split('\n').filter(l => l.trim());
   if (lines.length < 2) return { columns: [], effects: [], delimiter, rowCount: 0 };
 
-  const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^"|"$/g, ''));
+  const headers = parseCSVLine(lines[0], delimiter);
   
   // Build column mappings
   const columns: CatalogColumnMapping[] = headers.map((header, i) => ({
     header,
     mappedTo: autoMapHeader(header),
     sampleValues: lines.slice(1, 4).map(l => {
-      const cols = l.split(delimiter);
-      return (cols[i] || '').trim().replace(/^"|"$/g, '');
+      const cols = parseCSVLine(l, delimiter);
+      return (cols[i] || '').trim();
     }),
   }));
 
