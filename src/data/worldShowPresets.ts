@@ -486,15 +486,15 @@ function generateMarinaBay() {
 // 8. LAS VEGAS STRIP
 // ═══════════════════════════════════════════════════════════════
 function generateLasVegas() {
-  // 7 casino rooftops
+  // 7 casino rooftops — staggered depth along the Strip
   const casinos = [
-    pos(uid(), 'MGM Grand', -600, 60, 0, 0),
-    pos(uid(), 'Aria', -400, 55, 0, 0),
-    pos(uid(), 'Bellagio', -200, 50, 0, 0),
-    pos(uid(), 'Caesars', 0, 55, 0, 0),
-    pos(uid(), 'Venetian', 200, 50, 0, 0),
-    pos(uid(), 'Wynn', 400, 60, 0, 0),
-    pos(uid(), 'Stratosphere', 600, 350, 0, 0),
+    pos(uid(), 'MGM Grand', -600, 60, -80, 0),
+    pos(uid(), 'Aria', -400, 55, -50, 0),
+    pos(uid(), 'Bellagio', -200, 50, -100, 0),
+    pos(uid(), 'Caesars', 0, 55, -60, 0),
+    pos(uid(), 'Venetian', 200, 50, -90, 0),
+    pos(uid(), 'Wynn', 400, 60, -70, 0),
+    pos(uid(), 'Stratosphere', 600, 350, -40, 0),
   ];
 
   const items: TimelineItem[] = [];
