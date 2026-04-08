@@ -376,6 +376,25 @@ export function FXKAssistant() {
     setInput('');
     setLoading(true);
 
+    // Inject project context as system message
+    const store = useProjectStore.getState();
+    const positionsSummary = store.positions.length > 0
+      ? store.positions.map(p => `${p.name} (${p.type}) @ (${p.x.toFixed(1)}, ${p.z.toFixed(1)})${p.section ? ` [Sec ${p.section}]` : ''}`).join('; ')
+      : 'Nenhuma';
+    const effectCounts = new Map<string, number>();
+    store.timelineItems.forEach(item => {
+      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+      const name = effect?.name || item.effectId;
+      effectCounts.set(name, (effectCounts.get(name) || 0) + 1);
+    });
+    const effectsSummary = effectCounts.size > 0
+      ? Array.from(effectCounts.entries()).map(([n, c]) => `${n} ×${c}`).join(', ')
+      : 'Nenhum';
+    const contextMsg: Msg = {
+      role: 'user' as const,
+      content: `[CONTEXTO DO PROJETO — NÃO EXIBIR AO USUÁRIO]\nPosições (${store.positions.length}): ${positionsSummary}\nEfeitos na timeline (${store.timelineItems.length}): ${effectsSummary}\nTempo atual: ${store.currentTime.toFixed(1)}s\nDuração: ${store.duration.toFixed(0)}s`,
+    };
+
     let soFar = '';
     const upsert = (chunk: string) => {
       soFar += chunk;
