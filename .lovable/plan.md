@@ -1,91 +1,70 @@
 
 
-# Ciclo #36 — Conformidade 100% com Manual Finale 3D (MANUAL_FINALE-19)
+# Ciclo #37 — Catalog Import Bug Fixes & Conformidade Finale 3D
 
-## Dados Extraídos do Manual
-
-| Seção Manual | Dado-Chave | Gap no FXK |
-|---|---|---|
-| **Tabela 2 (p.37)** | Prefire para shells = break time, NÃO afeta apex height. Prefire para cakes (blank/0) = auto-calculate lift time do primeiro sub-shell. Prefire para comets/mines = "não afeta simulação, mas afeta timing do script" | ✅ Já implementado em `getTypedPrefire` |
-| **Tabela 2 (p.37)** | Duration para shells = star lifetime. Duration para cakes = "primeiro lançamento até último break". Duration para comets/mines = star lifetime | ✅ Já implementado em `getTypedDuration` |
-| **Tabela 2 (p.37)** | Height para shells = "altura do vértice da trajetória em metros". Para comets: "Para fazer cometas ultrarrápidos/laser, configure altura alta e duração pequena" | Comets sem lógica de ultra-fast (height alto + duration baixo) |
-| **Importação (p.30)** | Colunas Finale: `HeightMeters` (internal: `heightMeters`), `PreFire` (internal: `internalDelay`), `Devices` (internal: `numDevices`), `FuseDelay` (internal: `fuse`), `SafetyDistanceMeters` (internal: `safetyDistance`), `ExNumber`, `CeNumber`, `UnNumber`, `RackType`, `Subtipo` | `catalogImporter.ts` COLUMN_ALIASES faltam vários: `height_meters`, `internal_delay`, `num_devices`, `ex_number`, `ce_number`, `un_number`, `fuse`, `subtipo` |
-| **Importação (p.30)** | Tipo Finale: `shell, comet, mine, cake, candle, other effect, single shot, ground, rocket, flame, not an effect, rack, sfx, light` | `PART_TYPE_MAP` falta: `other effect`, `not an effect`, `proyectiles/shells` (Finale Inventory variant) |
-| **Cadenas (p.47-50)** | `Devices` = número de shells na cadeia. `chainsCountAsOne` config. Preço pode ser por cadeia ou por shell | `catalogImporter` não importa `numDevices`, `fuseDelay`, `exNumber`, `ceNumber`, `unNumber` |
-| **Prefire Cake (p.34)** | Prefire 0.3s em cake aérea 3" → breaks at 0.3s = "parece um géiser" (RUIM). Blank/0 = auto-calculate correto | ✅ `getCakePrefire` já clamp com `liftTime * 0.7` |
-| **Export PFT (exportEngine)** | `calculatePFT` usa hardcoded table {2:1.2, 3:1.8...} em vez de `getLiftTime()` da pyroPhysics — duplicação e desalinhamento | Bug: devia usar `getLiftTime` |
-
-## Bugs & Gaps
+## Bugs Identificados
 
 | # | Bug | Local | Impacto |
 |---|-----|-------|---------|
-| 1 | **catalogImporter missing Finale column aliases** — Faltam: `height_meters`, `heightmeters`, `internal_delay`, `internaldelay`, `num_devices`, `numdevices`, `ex_number`, `ce_number`, `un_number`, `fuse`, `subtipo`, `subtype`, `rack_type` | `catalogImporter.ts` L14-28 | Importação de catálogos Finale ignora colunas |
-| 2 | **catalogImporter missing Finale Inventory type names** — `proyectiles`, `other`, `not an effect`, `otro efecto`, `no coreografiado` não mapeados | `catalogImporter.ts` L32-61 | Tipos incorretos para catálogos Finale Inventory |
-| 3 | **catalogImporter não importa campos extras** — `fuseDelay`, `exNumber`, `ceNumber`, `unNumber`, `devices`, `subtipo` não são capturados nem passados para o Effect | `catalogImporter.ts` L80-97, L240-260 | Metadados Finale perdidos |
-| 4 | **exportEngine.calculatePFT duplica pyroPhysics** — Hardcoded lookup table em vez de usar `getLiftTime()` | `exportEngine.ts` L354-362 | Valores desalinhados com física calibrada |
-| 5 | **catalogToEffects height fallback simplista** — `caliber * 20` é uma fórmula arbitrária. Deveria usar `getBreakHeight()` de pyroPhysics | `catalogImporter.ts` L270 | Alturas de importação erradas vs tabela física |
-| 6 | **Comet "ultra-fast" behavior missing** — Manual diz "Para fazer cometas ultrarrápidos, configure altura alta e duração pequena". Não há lógica que detecte isso e ajuste a velocidade de saída | `vdlParser.ts` / `pyroPhysics.ts` | Cometas laser impossíveis de criar |
+| 1 | **handleReparse ignora mapeamento do usuário** — Chama `parseCatalogFile(rawText)` que usa auto-detect interno. Depois sobrescreve `result.columns[i].mappedTo` com as escolhas do usuário, mas os `result.effects` já foram parseados com os mapeamentos auto-detectados. O re-parse com mapeamento manual **não funciona** | `CatalogImportDialog.tsx` L85-96 | Crítico — botão Re-parse não aplica mudanças do usuário |
+| 2 | **CSV parser não suporta campos entre aspas com delimitador** — `lines[i].split(delimiter)` quebra `"Red, Green"` em dois campos quando delimiter=`,`. Catálogos Finale 3D reais usam CSV RFC 4180 com aspas | `catalogImporter.ts` L242, L257 | Alto — importação de catálogos reais falha |
+| 3 | **FIELD_OPTIONS desatualizado** — Dialog UI tem 15 campos mapeáveis, mas `COLUMN_ALIASES` agora tem 7 campos novos (fuseDelay, devices, exNumber, ceNumber, unNumber, subtype, rackType) que não aparecem no dropdown | `CatalogImportDialog.tsx` L21-37 | Médio — campos Finale não podem ser mapeados manualmente |
+| 4 | **`__customEffects` no window é dead code** — Armazenado mas nunca lido em lugar nenhum. Ocupação de memória sem propósito | `CatalogImportDialog.tsx` L117-120 | Baixo — código morto |
+| 5 | **effectLibraryMap cache invalidation frágil** — Usa `_map.size !== EFFECT_LIBRARY.length` mas se um efeito é removido e outro adicionado (same length), cache não invalida | `effectLibraryMap.ts` L8 | Baixo — edge case raro |
+| 6 | **`calculatePFT` é wrapper trivial** — Após Ciclo #36, `calculatePFT(caliber)` apenas chama `getLiftTime(parseInt(caliber))`. Função desnecessária, adiciona indireção | `exportEngine.ts` L355-360 | Baixo — clareza de código |
 
 ## Plano de Implementação
 
 ### Arquivo 1: `src/lib/catalogImporter.ts`
 
-**Fix 1 — Adicionar aliases Finale (L14-28):**
-- `height`: adicionar `'height_meters'`, `'heightmeters'`, `'medidores_de_altura'`, `'effect_height'`
-- `prefire`: adicionar `'internal_delay'`, `'internaldelay'`, `'pre_fire_time'`, `'prefire_time'`
-- Novo campo `fuseDelay`: `['fuse_delay', 'fuse', 'fusedelay', 'visco_delay']`
-- Novo campo `devices`: `['devices', 'numdevices', 'num_devices', 'chain_devices']`
-- Novo campo `exNumber`: `['ex_number', 'exnumber']`
-- Novo campo `ceNumber`: `['ce_number', 'cenumber']`
-- Novo campo `unNumber`: `['un_number', 'unnumber', 'material']`
-- Novo campo `subtype`: `['subtipo', 'subtype', 'effect_subtype', 'sub_type']`
-- Novo campo `rackType`: `['rack_type', 'racktype']`
+**Fix 2 — CSV RFC 4180 parser:**
+- Adicionar função `parseCSVLine(line: string, delimiter: string): string[]` que respeita campos entre aspas (handles `"field with, comma"`, `"field with ""escaped"" quotes"`)
+- Substituir `lines[0].split(delimiter)` e `lines[i].split(delimiter)` por chamadas a `parseCSVLine`
+- Aplicar em L242 e L257
 
-**Fix 2 — Adicionar tipos Finale Inventory (L32-61):**
-- `'other effect'` → `'sfx'`
-- `'other'` → `'sfx'` (Finale Inventory variant)
-- `'not an effect'` → `'marker'` (need to add 'marker' to PartType or map to 'sfx')
-- `'proyectiles'` → `'shell'` (Spanish Finale Inventory)
-- `'otro efecto'` → `'sfx'`
-- `'no coreografiado'` → `'sfx'`
-- `'pasteles'` → `'cake'`
-- `'velas'` → `'candle'`
-- `'minas'` → `'mine'`
-- `'cometas'` → `'comet'`
-- `'cohetes'` → `'rocket'`
-- `'llamas'` → `'flame'`
-- `'tierra'` → `'ground'`
-- `'bastidor'` → `'sfx'` (rack)
+**Nova export: `parseCatalogFileWithMappings(text, mappings)`:**
+- Variante de `parseCatalogFile` que aceita um array de `CatalogColumnMapping[]` como override
+- Se `mappings` fornecido, usa esses mapeamentos em vez do auto-detect
+- Isso resolve o bug #1 sem alterar a API existente
 
-**Fix 3 — ParsedCatalogEffect + Effect extras (L80-97, L240-260):**
-- Adicionar `fuseDelay`, `devices`, `exNumber`, `ceNumber`, `unNumber`, `subtype` a `ParsedCatalogEffect`
-- Capturar esses campos no parsing CSV e XML
-- Passar `fuseDelay` e `devices` para a conversão `catalogToEffects`
+### Arquivo 2: `src/components/editor/CatalogImportDialog.tsx`
 
-**Fix 4 — catalogToEffects height fallback (L270):**
-- Trocar `caliber ? caliber * 20 : undefined` por `caliber ? getBreakHeight(caliber) : undefined`
-- Importar `getBreakHeight` de pyroPhysics
+**Fix 1 — handleReparse com mapeamentos do usuário:**
+- Importar `parseCatalogFileWithMappings` e usar no handleReparse passando `columns` atuais
+- Resultado: re-parse agora aplica as seleções manuais do usuário
 
-### Arquivo 2: `src/lib/exportEngine.ts`
+**Fix 3 — FIELD_OPTIONS completo:**
+- Adicionar 7 entradas novas ao FIELD_OPTIONS:
+  - `fuseDelay` → "Fuse Delay (s)"
+  - `devices` → "Devices / Chain Count"
+  - `exNumber` → "EX Number"
+  - `ceNumber` → "CE Number"
+  - `unNumber` → "UN Number"
+  - `subtype` → "Subtype"
+  - `rackType` → "Rack Type"
 
-**Fix 5 — Eliminar calculatePFT duplicado (L354-362):**
-- Trocar `calculatePFT(caliber)` por `getLiftTime(parseInt(caliber))` de pyroPhysics
-- Remover a função `calculatePFT` inteira
-- Importar `getLiftTime` de pyroPhysics
+**Fix 4 — Remover dead code `__customEffects`:**
+- Eliminar linhas 117-120 (window.__customEffects)
 
-### Arquivo 3: `src/lib/vdlParser.ts`
+### Arquivo 3: `src/data/effectLibraryMap.ts`
 
-**Fix 6 — Comet ultra-fast detection (~L700):**
-- Após aplicar adjustments, se `partType === 'comet'` e `height > 80` e `duration < 0.8`:
-  - Multiplicar `breakSpeed` por `1.8` (laser comet velocity)
-  - Adicionar modifier `'laser'` se não presente
+**Fix 5 — Cache invalidation robusta:**
+- Adicionar `_version` counter que é incrementado quando efeitos são adicionados
+- Ou simplesmente usar um `_lastLength` check + rebuild se EFFECT_LIBRARY was mutated (trocar size check por rebuild sempre que `_map` exists but length differs OR any ID lookup misses)
+
+### Arquivo 4: `src/lib/exportEngine.ts`
+
+**Fix 6 — Inline calculatePFT:**
+- Substituir `calculatePFT(caliber)` por `getLiftTime(parseInt(caliber) || 0)` inline em L379
+- Remover a função `calculatePFT` (L355-360)
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | catalogImporter: aliases + types + campos extras + height fix |
-| 2 | exportEngine: eliminar calculatePFT duplicado |
-| 3 | vdlParser: comet ultra-fast |
-| 4 | Build verification |
+| 1 | CSV RFC 4180 parser + parseCatalogFileWithMappings (catalogImporter.ts) |
+| 2 | Fix handleReparse + FIELD_OPTIONS + remove dead code (CatalogImportDialog.tsx) |
+| 3 | Cache invalidation fix (effectLibraryMap.ts) |
+| 4 | Inline calculatePFT (exportEngine.ts) |
+| 5 | Build verification |
 
