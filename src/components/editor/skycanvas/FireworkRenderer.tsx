@@ -1043,7 +1043,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       {progress < 0.15 && (
         <mesh renderOrder={99}>
           <sphereGeometry args={[flashSize * (1 + progress * 10), 8, 8]} />
-          <meshBasicMaterial color={color} transparent opacity={0.35 * Math.pow(1 - progress / 0.15, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+          <meshBasicMaterial color={color} transparent opacity={0.35 * Math.pow(1 - progress / 0.15, 2)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={true} />
         </mesh>
       )}
       {/* Shockwave ring — expanding white ring, 200ms */}
