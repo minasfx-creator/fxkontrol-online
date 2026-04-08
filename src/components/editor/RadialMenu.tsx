@@ -23,10 +23,16 @@ interface RadialSector {
   subSectors?: { id: string; label: string; color: string; action: () => void }[];
 }
 
-const INNER_R = 42;
-const OUTER_R = 110;
-const SUB_INNER_R = 116;
-const SUB_OUTER_R = 170;
+const INNER_R_DESKTOP = 42;
+const OUTER_R_DESKTOP = 110;
+const SUB_INNER_R_DESKTOP = 116;
+const SUB_OUTER_R_DESKTOP = 170;
+
+const INNER_R_MOBILE = 52;
+const OUTER_R_MOBILE = 140;
+const SUB_INNER_R_MOBILE = 146;
+const SUB_OUTER_R_MOBILE = 210;
+
 const SECTOR_GAP = 2; // degrees
 
 export default function RadialMenu() {
