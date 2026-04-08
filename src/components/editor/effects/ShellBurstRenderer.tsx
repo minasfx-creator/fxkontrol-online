@@ -536,9 +536,12 @@ export default function ShellBurstRenderer({
         // Glitter trail: emit micro-particles from active stars
         if (trailType === 'glitter' && p.life > 0.1 && Math.random() < 0.15) {
           const gp = createGlitterTrailParticle(p);
-          glitterParticlesRef.current.push(gp);
-          if (glitterParticlesRef.current.length > GLITTER_MAX) {
-            glitterParticlesRef.current.shift();
+          const gArr = glitterParticlesRef.current;
+          if (gArr.length >= GLITTER_MAX) {
+            gArr[glitterWriteIdx.current % GLITTER_MAX] = gp;
+            glitterWriteIdx.current++;
+          } else {
+            gArr.push(gp);
           }
         }
       }
