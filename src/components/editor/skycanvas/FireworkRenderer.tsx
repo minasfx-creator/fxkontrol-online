@@ -66,6 +66,7 @@ const _rEffEuler = new THREE.Euler();
 const _rEffQuat = new THREE.Quaternion();
 const _smokeBlendColor = new THREE.Color();
 const _smokeGrayTarget = new THREE.Color(0.35, 0.30, 0.25);
+const _smokeBlendResult = new THREE.Color();
 
 // ═══════════════════════════════════════════════════════════════════════
 const STAR_VERTEX_SHADER = `
