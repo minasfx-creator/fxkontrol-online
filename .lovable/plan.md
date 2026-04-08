@@ -1,77 +1,72 @@
 
 
-# Ciclo #51 — Refinar Posições dos World Show Presets
+# Ciclo #52 — Revisão de Acesso a Menus e Ferramentas no Mobile Viewport
 
 ## Problemas Identificados
 
-| # | Problema | Shows Afetados | Impacto |
-|---|---------|----------------|---------|
-| 1 | **Balsas todas no mesmo Z** — Layout linear 1D em vez de arco offshore realista | Copacabana, Fortaleza, Brasília | **Alto** — fogos aparecem em linha reta plana |
-| 2 | **Z-axis inconsistente** — Alguns shows usam Z negativo para "offshore", outros usam Z positivo. Mistura de convenções | Sydney, Tokyo, Malta, Recife | **Alto** — posições aparecem invertidas |
-| 3 | **Orbit radius fixo (300)** não escala com tamanho do show — Copacabana tem 4km de spread, Caruaru 160m | Todos | Médio — câmera não enquadra o show |
-| 4 | **Torre Burj Khalifa sem spread X/Z** — 15 posições empilhadas verticalmente no exato mesmo ponto | Burj Khalifa | Médio — visualmente confuso |
-| 5 | **Sydney Bridge z:0 = mesma profundidade das barges** — Ponte deveria estar atrás (backdrop) | Sydney | Médio |
-| 6 | **Heading dos positions sem sentido** — Balsas/ground com heading=0 mas deveriam apontar para público | Vários | Baixo — não afeta visual mas afeta ângulo de lançamento |
+| # | Problema | Local | Impacto |
+|---|---------|-------|---------|
+| 1 | **DraggableFloatingPanel grip handle (32px) muito pequeno para touch** — Apple HIG recomenda mínimo 44px. O grip com 3 dots é difícil de acertar com o dedo, especialmente nos painéis laterais de 9×9 e 11×11 | `DraggableFloatingPanel.tsx` L151 | **Alto** — usuários não conseguem reposicionar painéis |
+| 2 | **MobileQuickActions e MobileHUD sobrepõem-se** — Edit actions no `initialY: 0.4 * innerHeight` colidem com o HUD top bar quando o painel flutuante está aberto em modo `half`. Sem lógica de auto-reflow quando bottom sheet sobe | `MobileQuickActions.tsx` L95, L122 | **Alto** — botões ficam inacessíveis sob o sheet |
+| 3 | **RadialMenu não adaptado para touch** — Raio interno 42px e externo 110px são adequados para mouse mas os setores ficam pequenos demais no mobile (375px viewport). Sem fallback para tela pequena | `RadialMenu.tsx` L25-28 | Médio — menu radial difícil de usar |
+| 4 | **Viewport nav (zoom/reset) duplicados** — `MobileQuickActions` inclui zoom+/zoom-/reset E `ViewportNavControls` renderiza os mesmos controles. No desktop apenas ViewportNavControls aparece, mas no mobile ambos podem coexistir | `MobileQuickActions.tsx` L86-90, `ViewportNavControls.tsx` | Médio — clutter visual |
+| 5 | **Botões sem labels visíveis** — Todos os action buttons usam apenas ícones de 4px sem texto. Em telas touch, sem hover tooltip, o usuário não sabe o que cada botão faz | `MobileQuickActions.tsx` L97-111 | Médio — discoverability ruim |
+| 6 | **MobileTabBar scrollable mas sem indicador visual de scroll** — 8 tabs numa barra que precisa scroll horizontal, mas nenhuma affordance mostra que há mais tabs à direita além do fade sutil | `MobileTabBar.tsx` L189-193 | Baixo |
 
 ## Implementação
 
-### Arquivo: `src/data/worldShowPresets.ts`
+### 1. DraggableFloatingPanel — Touch-friendly grip (`DraggableFloatingPanel.tsx`)
 
-**Convenção de coordenadas padronizada:**
-- X = lateral (esquerda/direita da vista do público)
-- Y = altura (metros acima do solo/mar)
-- Z = profundidade (negativo = longe do público/offshore, positivo = em direção ao público)
-- Heading = ângulo de disparo em graus (0 = para cima, 180 = para trás)
+- Aumentar `min-h` do grip handle de 32px para 44px sempre (não só durante drag)
+- Expandir touch target com padding transparente: `py-2` no grip container
+- Adicionar visual feedback mais forte no drag: escala 1.05 e borda glow
 
-**Copacabana (L86-91):** Arco offshore em vez de linha reta
-- 19 balsas em arco suave: `z` varia de -60 a -120 (centro mais longe, extremidades mais perto)
-- Spread X mantido em 220m entre balsas
+### 2. MobileQuickActions — Auto-hide quando bottom sheet aberto (`MobileQuickActions.tsx`)
 
-**Sydney (L164-181):** Separar profundidades Bridge vs Barges vs Opera
-- Bridge: `z: -300` (backdrop distante)
-- Barges: `z: -80 a -150` (meia distância)  
-- Opera House: `z: -50` (lateral próximo)
+- Receber prop `panelOpen: boolean` (passado do Index.tsx quando `mobilePanelHeight !== 'collapsed'`)
+- Quando `panelOpen`, aplicar `opacity-0 pointer-events-none translate-y-4` nos painéis flutuantes
+- Transição suave de 200ms para não ser abrupto
+- Atualizar `Index.tsx` para passar a prop
 
-**Burj Khalifa (L237-247):** Adicionar leve spread X por andar
-- Torre: `x` varia ±5m baseado no andar (simulando faces do prédio)
-- Fonte: arco na frente do prédio (`z: +150 a +200`)
+### 3. RadialMenu — Escalar raios no mobile (`RadialMenu.tsx`)
 
-**London Eye (L292-302):** Posicionar Eye no backdrop, barges no rio
-- Eye: `z: -200` (backdrop)
-- Barges: `z: -60 a -100` (no rio entre público e Eye)
+- Detectar `isMobile` via `useIsMobile()`
+- No mobile: `INNER_R = 52`, `OUTER_R = 140`, `SUB_INNER_R = 146`, `SUB_OUTER_R = 210`
+- Limitar posição do menu para não cortar nas bordas (clamp x/y com margin de 210px)
 
-**Tokyo Hanabi (L400-406):** Semicírculo virado para frente
-- Inverter Z do semicírculo: `z: Math.sin(angle) * 100` (positivo = frente)
+### 4. Remover viewport nav duplicado (`MobileQuickActions.tsx`)
 
-**Malta (L586-597):** Harbour 360° correto, mas forts devem estar elevados e afastados
-- Forts: Z mais negativo (-600 a -500) para criar profundidade
+- Eliminar o bloco `viewportActions` e o segundo `DraggableFloatingPanel` (mobile-viewport-nav)
+- O ViewportNavControls já existe e cobre essa funcionalidade no desktop
+- No mobile, integrar zoom/reset como ações secundárias no edit panel (aparece com long-press no botão de seleção)
 
-**Recife (L845-854):** Rio e mar em profundidades distintas
-- Rio: `z: -40` (mais perto)
-- Mar: `z: -250` (mais longe)
+### 5. Micro-labels nos botões de ação (`MobileQuickActions.tsx`)
 
-**Caruaru (L806-811):** Escala muito pequena (raio 80m) — adequado para o evento mas ajustar Z center
+- Adicionar `<span>` com label de 8px abaixo de cada ícone
+- Aumentar botão de 11×11 para 12×14 (44×52px real) para acomodar label
+- Layout: ícone centered + label abaixo, estilo igual ao MobileTabBar
 
-**Brasília (L763-768):** Linear correto para Esplanada, mas adicionar leve curvatura
+### 6. Scroll indicator na TabBar (`MobileTabBar.tsx`)
 
-### Arquivo: `src/components/editor/VenueShowOverlay.tsx` (L156)
+- Adicionar seta animada `→` no edge direito quando scroll position < maxScroll
+- Usar `onScroll` no nav container para detectar scroll position
+- Fade out a seta quando usuário scrollou até o fim
 
-**Orbit radius dinâmico baseado no spread do show:**
-```ts
-// Calcular bounding radius das posições
-const maxSpread = Math.max(
-  ...positions.map(p => Math.sqrt(p.x * p.x + p.z * p.z))
-);
-const orbitRadius = Math.max(maxSpread * 1.5, 200);
-const orbitHeight = Math.max(maxSpread * 0.8, 150);
-triggerOrbit([0, 0, 0], orbitRadius, 0.08, orbitHeight);
-```
+## Arquivos Afetados
+
+- `src/components/editor/DraggableFloatingPanel.tsx`
+- `src/components/editor/MobileQuickActions.tsx`
+- `src/components/editor/RadialMenu.tsx`
+- `src/components/editor/MobileTabBar.tsx`
+- `src/pages/Index.tsx` (passar prop panelOpen)
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Refinar coordenadas de todos os 16 shows |
-| 2 | Orbit radius dinâmico no VenueShowOverlay |
-| 3 | Build verification |
+| 1 | Grip handle 44px + auto-hide quick actions |
+| 2 | RadialMenu mobile scaling |
+| 3 | Remover viewport nav duplicado + micro-labels |
+| 4 | Scroll indicator na TabBar |
+| 5 | Build verification |
 
