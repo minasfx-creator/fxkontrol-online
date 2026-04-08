@@ -569,7 +569,8 @@ export function stepParticle(
 
 export type BurstPattern = 
   | 'sphere' | 'ring' | 'willow' | 'palm' | 'peony' 
-  | 'chrysanthemum' | 'kamuro' | 'crossette' | 'dahlia' | 'brocade';
+  | 'chrysanthemum' | 'kamuro' | 'crossette' | 'dahlia' | 'brocade'
+  | 'brocade_crown';
 
 /** Generate spherical direction vector */
 function randomSphericalDir(): { sx: number; sy: number; sz: number; theta: number } {
