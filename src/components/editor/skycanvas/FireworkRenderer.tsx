@@ -54,7 +54,18 @@ import {
 import QuadcopterModel from '../QuadcopterModel';
 
 // ═══════════════════════════════════════════════════════════════════════
-// Star sprite shaders
+// GC-free pre-allocated singletons for render loop
+// ═══════════════════════════════════════════════════════════════════════
+const _rPosEuler = new THREE.Euler();
+const _rPosQuat = new THREE.Quaternion();
+const _rLaunchDir = new THREE.Vector3();
+const _rPitchAxis = new THREE.Vector3();
+const _rPitchQuat = new THREE.Quaternion();
+const _rEffEuler = new THREE.Euler();
+const _rEffQuat = new THREE.Quaternion();
+const _smokeBlendColor = new THREE.Color();
+const _smokeGrayTarget = new THREE.Color(0.35, 0.30, 0.25);
+
 // ═══════════════════════════════════════════════════════════════════════
 const STAR_VERTEX_SHADER = `
   attribute float aSize;
