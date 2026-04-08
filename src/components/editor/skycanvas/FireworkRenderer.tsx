@@ -155,6 +155,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   const trailRef = useRef<THREE.LineSegments>(null);
   const pistilRef = useRef<THREE.Points>(null);
   const crossetteSplitRef = useRef<Set<number>>(new Set());
+  useEffect(() => { crossetteSplitRef.current.clear(); }, [pattern, color]);
   
   const lod = useLOD(position);
   const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -200,13 +201,6 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   const baseColor = useMemo(() => new THREE.Color(color), [color]);
   const secondaryBaseColor = useMemo(() => secondaryColor ? new THREE.Color(secondaryColor) : null, [secondaryColor]);
   const compound = useMemo(() => hexToCompound(color), [color]);
-  const emberColor = useMemo(() => {
-    const c = new THREE.Color(color);
-    return new THREE.Color().setHSL(
-      Math.min(c.getHSL({ h: 0, s: 0, l: 0 }).h, 0.06),
-      0.85, 0.12
-    );
-  }, [color]);
   
   const { velocities, lifetimes, twinklePhases, sparkleSeeds } = useMemo(() => {
     const v = new Float32Array(STAR_COUNT * 3);
@@ -1036,7 +1030,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
       {progress < 0.08 && (
         <mesh renderOrder={100}>
           <sphereGeometry args={[flashSize * 0.3 * (1 + progress * 15), 8, 8]} />
-          <meshBasicMaterial color="#FFFDF0" transparent opacity={0.7 * (1 - progress / 0.08)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
+          <meshBasicMaterial color="#FFFDF0" transparent opacity={0.7 * (1 - progress / 0.08)} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={true} />
         </mesh>
       )}
       {/* Halo — color-synced, 150ms */}
@@ -1285,13 +1279,12 @@ export function TimelineEffects() {
   return (
     <>
       {cappedEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
-        const effectPos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
+        const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const pt = effect.partType;
-        const patternStr = String(pt || '');
+        const patternStr = String(effect.pattern || '');
         const isTrailing = patternStr === 'willow' || patternStr === 'kamuro' || patternStr === 'brocade' || patternStr === 'palm';
         const cullRadius = effect.type === 'firework' ? (caliber || 4) * (isTrailing ? 40 : 25) : 50;
-        if (!isSphereInFrustum(effectPos[0], effectPos[1], effectPos[2], cullRadius)) return null;
-        const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
+        if (!isSphereInFrustum(pos[0], pos[1], pos[2], cullRadius)) return null;
         const eid = effect.id;
 
         if (inPrefire && pt !== 'rocket') {
