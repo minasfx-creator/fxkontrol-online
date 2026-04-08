@@ -28,6 +28,7 @@ import { readDensityAt, type FluidGrid } from '@/render_ultra/fireworks/niagaraF
 // ── Pre-allocated singletons (Zero-GC) ──────────────────────────────
 const _warmSmokeColor = new THREE.Color(0.47, 0.40, 0.33);
 const _coolSmokeColor = new THREE.Color(0.40, 0.47, 0.53);
+const _windOut: [number, number, number] = [0, 0, 0];
 
 // ── Custom GPU Shaders (Skybrush-grade thermal rendering) ───────────
 
