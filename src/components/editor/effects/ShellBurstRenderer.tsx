@@ -437,6 +437,7 @@ export default function ShellBurstRenderer({
 
   // Glitter trail buffers
   const GLITTER_MAX = 800;
+  const glitterWriteIdx = useRef(0);
   const glitterBuffers = useMemo(() => ({
     pos: new Float32Array(GLITTER_MAX * 3),
     col: new Float32Array(GLITTER_MAX * 3),
