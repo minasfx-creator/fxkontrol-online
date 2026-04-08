@@ -25,12 +25,13 @@ import {
   type FrameSyncState,
 } from '@/core/reliability';
 
-// ── Stub types for removed modules (predictive, diagnostic, emergency, globalClock, multiSiteSync) ──
+import { multiSiteCoordinator, type SiteInfo } from '@/core/sync/MultiSiteCoordinator';
+
+// ── Stub types for removed modules (predictive, diagnostic, emergency, globalClock) ──
 type CheckStatus = 'pass' | 'warn' | 'fail';
 interface DiagnosticCheck { name: string; status: CheckStatus; message: string; }
 interface DiagnosticReport { checks: DiagnosticCheck[]; passed: number; warned: number; failed: number; duration_ms: number; }
 interface ClockSyncState { role: string; status: string; offset: number; rtt: number; drift: number; sampleCount: number; }
-interface SiteInfo { siteId: string; name: string; status: string; latencyMs: number; offsetMs: number; isHost: boolean; }
 
 // Stub singletons — replaced modules now provide safe no-ops
 const diagnostic = {
@@ -45,11 +46,6 @@ const predictive = { getStats: () => ({ jitterMs: 0 }) };
 const globalClock = {
   getState: (): ClockSyncState => ({ role: 'standalone', status: 'synced', offset: 0, rtt: 0, drift: 0, sampleCount: 0 }),
   onStatusChange: (_cb: (s: ClockSyncState) => void) => () => {},
-};
-const multiSiteSync = {
-  getAllSites: (): SiteInfo[] => [],
-  isLocalMode: () => true,
-  onStateChange: (_cb: () => void) => () => {},
 };
 
 // ── Status Icon ─────────────────────────────────────────────────────
@@ -122,8 +118,8 @@ export function MissionControlPanel() {
   const [running, setRunning] = useState(false);
   const [bbRecording, setBbRecording] = useState(blackbox.isRecording());
   const [clockSync, setClockSync] = useState<ClockSyncState>(globalClock.getState());
-  const [multiSites, setMultiSites] = useState<SiteInfo[]>(multiSiteSync.getAllSites());
-  const [multiSiteLocal, setMultiSiteLocal] = useState(multiSiteSync.isLocalMode());
+  const [multiSites, setMultiSites] = useState<SiteInfo[]>(multiSiteCoordinator.getAllSites());
+  const [multiSiteLocal, setMultiSiteLocal] = useState(multiSiteCoordinator.isLocalMode());
   const [frameSyncState, setFrameSyncState] = useState<FrameSyncState>(frameSyncEngine.getState());
   const fpsRef = useRef(0);
 
@@ -152,13 +148,13 @@ export function MissionControlPanel() {
 
   // Track multi-site state
   useEffect(() => {
-    const unsub = multiSiteSync.onStateChange(() => {
-      setMultiSites(multiSiteSync.getAllSites());
-      setMultiSiteLocal(multiSiteSync.isLocalMode());
+    const unsub = multiSiteCoordinator.onStateChange(() => {
+      setMultiSites(multiSiteCoordinator.getAllSites());
+      setMultiSiteLocal(multiSiteCoordinator.isLocalMode());
     });
     const poll = setInterval(() => {
-      setMultiSites(multiSiteSync.getAllSites());
-      setMultiSiteLocal(multiSiteSync.isLocalMode());
+      setMultiSites(multiSiteCoordinator.getAllSites());
+      setMultiSiteLocal(multiSiteCoordinator.isLocalMode());
     }, 2000);
     return () => { unsub(); clearInterval(poll); };
   }, []);

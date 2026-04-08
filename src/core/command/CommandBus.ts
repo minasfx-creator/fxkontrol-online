@@ -15,7 +15,12 @@ export type Command =
   | { type: 'ARM_SYSTEM' }
   | { type: 'DISARM_SYSTEM' }
   | { type: 'E_STOP' }
-  | { type: 'ROLLBACK'; targetTick: number };
+  | { type: 'ROLLBACK'; targetTick: number }
+  | { type: 'SITE_JOIN'; siteId: string; name: string; role: 'master' | 'slave' }
+  | { type: 'SITE_LEAVE'; siteId: string }
+  | { type: 'REPLAY_START'; fromTick: number; toTick: number }
+  | { type: 'REPLAY_STOP' }
+  | { type: 'REPLAY_SPEED'; speed: number };
 
 export type CommandHandler = (cmd: Command) => void;
 
