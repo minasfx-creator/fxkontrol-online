@@ -522,7 +522,19 @@ export function stepParticle(
   if (modifiers?.willowDroop && modifiers.willowLifeRatio !== undefined && modifiers.willowLifeRatio > 0.5) {
     willowMult = 1 + 3.5 * ((modifiers.willowLifeRatio - 0.5) / 0.5);
   }
-  p.vy += GRAVITY * gravityFactor * tipCurlMult * willowMult * dt;
+  // Horsetail droop: heavier charcoal — ramp to 6x after 50% life
+  let horsetailMult = 1;
+  if (modifiers?.horsetailDroop && modifiers.horsetailLifeRatio !== undefined && modifiers.horsetailLifeRatio > 0.5) {
+    horsetailMult = 1.2 + 4.8 * ((modifiers.horsetailLifeRatio - 0.5) / 0.5);
+  }
+  // Coconut tree 3-phase gravity
+  let coconutMult = 1;
+  if (modifiers?.coconutPhase) {
+    coconutMult = modifiers.coconutPhase === 'ascent' ? 0.4
+      : modifiers.coconutPhase === 'spread' ? 1.5
+      : 5.0; // droop
+  }
+  p.vy += GRAVITY * gravityFactor * tipCurlMult * willowMult * horsetailMult * coconutMult * dt;
   
   // Apply wind forces
   p.vx += wind[0] * dt * 0.5;
