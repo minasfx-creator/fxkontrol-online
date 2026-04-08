@@ -107,52 +107,63 @@ class WindField {
    * Sample wind force at a world position and time.
    * Returns [wx, wy, wz] in m/s.
    */
-  sample(
+  /**
+   * Write wind force into pre-allocated output array (zero-alloc).
+   */
+  sampleInto(
     x: number, y: number, z: number,
     particleType: WindParticleType = 'ember',
-  ): [number, number, number] {
+    out: [number, number, number],
+  ): void {
     const { baseSpeed, directionDeg, gustMax, gustFrequency, turbulenceIntensity, turbulenceScale, altitudeShearing } = this.config;
     const influence = WIND_INFLUENCE[particleType];
 
-    // Altitude shearing: wind strength and direction vary by height
     let altMult = 1.0;
-    let dirOffset = 0; // degrees
+    let dirOffset = 0;
     if (altitudeShearing) {
       if (y < 50) {
-        altMult = 0.3 + (y / 50) * 0.2; // 0.3–0.5 near ground
+        altMult = 0.3 + (y / 50) * 0.2;
       } else if (y < 150) {
-        altMult = 0.5 + ((y - 50) / 100) * 0.5; // 0.5–1.0
+        altMult = 0.5 + ((y - 50) / 100) * 0.5;
       } else if (y < 400) {
-        altMult = 1.0; // nominal
+        altMult = 1.0;
       } else {
-        altMult = 1.0 + Math.min(0.3, (y - 400) / 1000); // 1.0–1.3
-        dirOffset = Math.min(15, (y - 400) / 100 * 2.5); // up to 15° rotation
+        altMult = 1.0 + Math.min(0.3, (y - 400) / 1000);
+        dirOffset = Math.min(15, (y - 400) / 100 * 2.5);
       }
     }
 
-    // Base wind direction with altitude shearing rotation
     const rad = ((directionDeg + dirOffset) * Math.PI) / 180;
     const effectiveSpeed = baseSpeed * altMult;
     const baseX = Math.sin(rad) * effectiveSpeed;
     const baseZ = Math.cos(rad) * effectiveSpeed;
 
-    // Gusts: low-frequency noise modulating speed
     const gustNoise = fbm(this.time * gustFrequency + 17.3, 2);
     const gustFactor = gustNoise * gustMax * altMult;
     const gustX = Math.sin(rad) * gustFactor;
     const gustZ = Math.cos(rad) * gustFactor;
 
-    // Turbulence: spatially varying high-frequency noise
     const turbScale = turbulenceScale;
     const turbX = (fbm(x * turbScale + this.time * 0.7 + 0.0, 3) - 0.5) * 2 * turbulenceIntensity * effectiveSpeed;
     const turbY = (fbm(y * turbScale + this.time * 0.5 + 33.7, 3) - 0.5) * 2 * turbulenceIntensity * effectiveSpeed * 0.3;
     const turbZ = (fbm(z * turbScale + this.time * 0.6 + 77.1, 3) - 0.5) * 2 * turbulenceIntensity * effectiveSpeed;
 
-    return [
-      (baseX + gustX + turbX) * influence,
-      turbY * influence,
-      (baseZ + gustZ + turbZ) * influence,
-    ];
+    out[0] = (baseX + gustX + turbX) * influence;
+    out[1] = turbY * influence;
+    out[2] = (baseZ + gustZ + turbZ) * influence;
+  }
+
+  /**
+   * Sample wind force at a world position and time.
+   * Returns [wx, wy, wz] in m/s.
+   */
+  sample(
+    x: number, y: number, z: number,
+    particleType: WindParticleType = 'ember',
+  ): [number, number, number] {
+    const out: [number, number, number] = [0, 0, 0];
+    this.sampleInto(x, y, z, particleType, out);
+    return out;
   }
 
   /**
