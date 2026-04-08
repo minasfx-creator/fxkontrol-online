@@ -709,14 +709,6 @@ export function FXKAssistant() {
       {/* Content area */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
         {/* Sidebar hologram (expanded only) */}
-        {expanded && messages.length > 0 && !isMobile && (
-          <div className="w-[120px] shrink-0 flex flex-col items-center justify-center border-r" style={{ borderColor: 'hsl(190 100% 50% / 0.08)', background: 'hsl(220 22% 3% / 0.5)' }}>
-            <JoiCinematicHologram size="lg" state={joiState} glitching={glitching} emotion={joiEmotion} className="w-24 h-48" />
-            <span className="text-[6px] font-mono tracking-[0.2em] uppercase mt-2" style={{ color: 'hsl(190 100% 50% / 0.4)' }}>
-              {statusText}
-            </span>
-          </div>
-        )}
 
         {/* Messages */}
         <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-2 space-y-3 scrollbar-thin">
