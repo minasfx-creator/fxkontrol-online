@@ -489,6 +489,8 @@ export interface ParticleState {
   life: number; maxLife: number;
   brightness: number;
   seed?: number; // for falling leaves oscillation
+  decayRate?: number;      // k in I=I0*e^(-kt). Default 1.2 (medium)
+  windInfluence?: number;  // 0-1 wind factor. Default 0.6 (ember)
 }
 
 export interface StepModifiers {
@@ -536,10 +538,11 @@ export function stepParticle(
   }
   p.vy += GRAVITY * gravityFactor * tipCurlMult * willowMult * horsetailMult * coconutMult * dt;
   
-  // Apply wind forces
-  p.vx += wind[0] * dt * 0.5;
-  p.vy += wind[1] * dt * 0.5;
-  p.vz += wind[2] * dt * 0.5;
+  // Apply wind forces — per-particle type influence
+  const windFactor = p.windInfluence ?? 0.6;
+  p.vx += wind[0] * dt * windFactor;
+  p.vy += wind[1] * dt * windFactor;
+  p.vz += wind[2] * dt * windFactor;
 
   // Falling leaves: sinusoidal lateral oscillation
   if (modifiers?.fallingLeaves && p.seed !== undefined) {
@@ -575,9 +578,10 @@ export function stepParticle(
   // Update lifecycle
   p.life += dt;
   // Exponential brightness decay: I = I0 * e^(-k*t)
-  // k=1.2 gives medium decay rate (configurable via maxLife)
+  // k varies by effect: 2.0 (fast/dahlia), 1.2 (medium/peony), 0.6 (slow/willow)
   const lifeRatio = p.life / p.maxLife;
-  p.brightness = Math.max(0, Math.exp(-1.2 * lifeRatio * lifeRatio * 3.0));
+  const k = p.decayRate ?? 1.2;
+  p.brightness = Math.max(0, Math.exp(-k * lifeRatio));
 }
 
 // ── Shell Burst Patterns ────────────────────────────────────────────
@@ -711,7 +715,12 @@ export function createShellBurst(
     // Timing: ±3% lifetime variation (fuse irregularity)
     life *= (0.97 + Math.random() * 0.06);
 
-    particles.push({ x: 0, y: 0, z: 0, vx, vy, vz, life: 0, maxLife: life, brightness: brightnessVariance });
+    // Assign decay rate by pattern
+    const decayRate = (pattern === 'dahlia' || pattern === 'crossette') ? 2.0
+      : (pattern === 'willow' || pattern === 'kamuro' || pattern === 'horsetail' || pattern === 'brocade' || pattern === 'brocade_crown') ? 0.6
+      : 1.2; // peony, chrysanthemum, sphere, ring, palm, coconut_tree
+
+    particles.push({ x: 0, y: 0, z: 0, vx, vy, vz, life: 0, maxLife: life, brightness: brightnessVariance, decayRate, windInfluence: 0.6 });
   }
 
   return particles;
@@ -731,6 +740,7 @@ export function createMineBurst(count: number, speed: number, lifetime: number):
       vy: Math.cos(upAngle) * s + speed * 0.3,
       vz: Math.sin(theta) * Math.sin(upAngle) * s,
       life: 0, maxLife: lifetime * (0.6 + Math.random() * 0.4), brightness: 1,
+      decayRate: 1.2, windInfluence: 0.7,
     });
   }
   return particles;
@@ -763,6 +773,7 @@ export function createGerbStream(height: number): ParticleState {
     vy: Math.cos(upAngle) * speed,
     vz: Math.sin(upAngle) * Math.sin(theta) * speed,
     life: 0, maxLife, brightness: 1,
+    decayRate: 2.0, windInfluence: 0.8,
   };
 }
 
@@ -776,6 +787,7 @@ export function createWaterfallParticle(width: number, dropHeight: number): Part
     vy: -0.5 - Math.random() * 1.5,
     vz: (Math.random() - 0.5) * 0.3,
     life: 0, maxLife: dropHeight / 2 + Math.random(), brightness: 1,
+    decayRate: 0.6, windInfluence: 0.9,
   };
 }
 
