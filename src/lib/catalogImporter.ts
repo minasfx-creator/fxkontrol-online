@@ -139,6 +139,49 @@ function detectDelimiter(text: string): string {
   return ',';
 }
 
+/**
+ * RFC 4180 compliant CSV line parser.
+ * Handles quoted fields containing delimiters, newlines, and escaped quotes ("").
+ */
+function parseCSVLine(line: string, delimiter: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  let i = 0;
+
+  while (i < line.length) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i += 2;
+        } else {
+          inQuotes = false;
+          i++;
+        }
+      } else {
+        current += ch;
+        i++;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+        i++;
+      } else if (ch === delimiter) {
+        fields.push(current.trim());
+        current = '';
+        i++;
+      } else {
+        current += ch;
+        i++;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
 /** Auto-map a header to our known fields — exact matches first, then substring */
 function autoMapHeader(header: string): string | null {
   const h = header.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_');
@@ -239,22 +282,22 @@ export function parseCatalogFile(text: string): {
   const lines = text.trim().split('\n').filter(l => l.trim());
   if (lines.length < 2) return { columns: [], effects: [], delimiter, rowCount: 0 };
 
-  const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^"|"$/g, ''));
+  const headers = parseCSVLine(lines[0], delimiter);
   
   // Build column mappings
   const columns: CatalogColumnMapping[] = headers.map((header, i) => ({
     header,
     mappedTo: autoMapHeader(header),
     sampleValues: lines.slice(1, 4).map(l => {
-      const cols = l.split(delimiter);
-      return (cols[i] || '').trim().replace(/^"|"$/g, '');
+      const cols = parseCSVLine(l, delimiter);
+      return (cols[i] || '').trim();
     }),
   }));
 
   // Parse rows
   const effects: ParsedCatalogEffect[] = [];
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(delimiter).map(c => c.trim().replace(/^"|"$/g, ''));
+    const cols = parseCSVLine(lines[i], delimiter);
     const raw: Record<string, string> = {};
     headers.forEach((h, j) => { raw[h] = cols[j] || ''; });
 
@@ -296,6 +339,68 @@ export function parseCatalogFile(text: string): {
   }
 
   return { columns, effects, delimiter, rowCount: effects.length };
+}
+
+/** Re-parse catalog file applying user-specified column mappings as overrides */
+export function parseCatalogFileWithMappings(
+  text: string,
+  mappingOverrides: CatalogColumnMapping[],
+): { columns: CatalogColumnMapping[]; effects: ParsedCatalogEffect[]; delimiter: string; rowCount: number } {
+  const result = parseCatalogFile(text);
+  // Apply user overrides
+  result.columns.forEach((col, i) => {
+    if (mappingOverrides[i]) {
+      col.mappedTo = mappingOverrides[i].mappedTo;
+    }
+  });
+  // Re-parse effects with updated mappings
+  const delimiter = result.delimiter;
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (lines.length < 2) return result;
+
+  const effects: ParsedCatalogEffect[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCSVLine(lines[i], delimiter);
+    const raw: Record<string, string> = {};
+    result.columns.forEach((c, j) => { raw[c.header] = cols[j] || ''; });
+
+    const getValue = (field: string): string => {
+      const colIdx = result.columns.findIndex(c => c.mappedTo === field);
+      return colIdx >= 0 ? (cols[colIdx] || '') : '';
+    };
+
+    const name = getValue('name') || `Effect ${i}`;
+    const colorText = getValue('color');
+    const typeText = getValue('type');
+    const partType = parsePartType(typeText || name);
+
+    effects.push({
+      name,
+      caliber: parseFloat(getValue('caliber')) || (partType === 'shell' ? 3 : 0),
+      duration: parseFloat(getValue('duration')) || (partType === 'shell' ? 3 : 5),
+      color: colorText || 'Gold',
+      colorHex: parseColor(colorText || name),
+      partType,
+      height: parseFloat(getValue('height')) || 0,
+      cost: parseFloat(getValue('cost')) || 0,
+      prefire: parseFloat(getValue('prefire')) || 0,
+      pattern: getValue('pattern') || '',
+      shotCount: parseInt(getValue('shotCount')) || 0,
+      safetyDistance: parseFloat(getValue('safety')) || 0,
+      vdl: getValue('vdl') || '',
+      sku: getValue('sku') || '',
+      manufacturer: getValue('manufacturer') || '',
+      fuseDelay: parseFloat(getValue('fuseDelay')) || 0,
+      devices: parseInt(getValue('devices')) || 0,
+      exNumber: getValue('exNumber') || '',
+      ceNumber: getValue('ceNumber') || '',
+      unNumber: getValue('unNumber') || '',
+      subtype: getValue('subtype') || '',
+      raw,
+    });
+  }
+
+  return { columns: result.columns, effects, delimiter, rowCount: effects.length };
 }
 
 /** Convert parsed catalog effects to our internal Effect format */

@@ -355,8 +355,7 @@ function extractCaliber(name: string): string {
 /** Calculate pre-fire time based on caliber using physics-calibrated lift time */
 function calculatePFT(caliber: string): number {
   const size = parseInt(caliber);
-  if (isNaN(size)) return 0;
-  return getLiftTime(size);
+  return isNaN(size) ? 0 : getLiftTime(size);
 }
 
 export function exportFiringCSV(

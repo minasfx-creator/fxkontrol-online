@@ -5,18 +5,35 @@
 import { EFFECT_LIBRARY, type Effect } from './effectLibrary';
 
 let _map: Map<string, Effect> | null = null;
+let _lastLength = 0;
+
+function rebuildIfNeeded(): Map<string, Effect> {
+  if (!_map || _lastLength !== EFFECT_LIBRARY.length) {
+    _map = new Map(EFFECT_LIBRARY.map(e => [e.id, e]));
+    _lastLength = EFFECT_LIBRARY.length;
+  }
+  return _map;
+}
 
 export function getEffectById(id: string): Effect | undefined {
-  if (!_map || _map.size !== EFFECT_LIBRARY.length) {
+  const map = rebuildIfNeeded();
+  const result = map.get(id);
+  // If lookup misses but library has items, force rebuild (handles same-length mutations)
+  if (!result && EFFECT_LIBRARY.length > 0) {
     _map = new Map(EFFECT_LIBRARY.map(e => [e.id, e]));
+    _lastLength = EFFECT_LIBRARY.length;
+    return _map.get(id);
   }
-  return _map.get(id);
+  return result;
 }
 
 /** Get the full indexed map (lazy-built, cached). */
 export function getEffectLibraryMap(): ReadonlyMap<string, Effect> {
-  if (!_map || _map.size !== EFFECT_LIBRARY.length) {
-    _map = new Map(EFFECT_LIBRARY.map(e => [e.id, e]));
-  }
-  return _map;
+  return rebuildIfNeeded();
+}
+
+/** Force cache invalidation (call after mutations). */
+export function invalidateEffectCache(): void {
+  _map = null;
+  _lastLength = 0;
 }
