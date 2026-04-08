@@ -740,6 +740,7 @@ export function createMineBurst(count: number, speed: number, lifetime: number):
       vy: Math.cos(upAngle) * s + speed * 0.3,
       vz: Math.sin(theta) * Math.sin(upAngle) * s,
       life: 0, maxLife: lifetime * (0.6 + Math.random() * 0.4), brightness: 1,
+      decayRate: 1.2, windInfluence: 0.7,
     });
   }
   return particles;
