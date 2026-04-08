@@ -4,6 +4,7 @@
  * Activated via right-click on positions in 3D viewport.
  */
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useProjectStore } from '@/store/useProjectStore';
 import { toast } from 'sonner';
 import {
@@ -22,13 +23,25 @@ interface RadialSector {
   subSectors?: { id: string; label: string; color: string; action: () => void }[];
 }
 
-const INNER_R = 42;
-const OUTER_R = 110;
-const SUB_INNER_R = 116;
-const SUB_OUTER_R = 170;
+const INNER_R_DESKTOP = 42;
+const OUTER_R_DESKTOP = 110;
+const SUB_INNER_R_DESKTOP = 116;
+const SUB_OUTER_R_DESKTOP = 170;
+
+const INNER_R_MOBILE = 52;
+const OUTER_R_MOBILE = 140;
+const SUB_INNER_R_MOBILE = 146;
+const SUB_OUTER_R_MOBILE = 210;
+
 const SECTOR_GAP = 2; // degrees
 
 export default function RadialMenu() {
+  const isMobile = useIsMobile();
+  const INNER_R = isMobile ? INNER_R_MOBILE : INNER_R_DESKTOP;
+  const OUTER_R = isMobile ? OUTER_R_MOBILE : OUTER_R_DESKTOP;
+  const SUB_INNER_R = isMobile ? SUB_INNER_R_MOBILE : SUB_INNER_R_DESKTOP;
+  const SUB_OUTER_R = isMobile ? SUB_OUTER_R_MOBILE : SUB_OUTER_R_DESKTOP;
+
   const [menu, setMenu] = useState<{ x: number; y: number; posId: string } | null>(null);
   const [hoveredSector, setHoveredSector] = useState<number | null>(null);
   const [activeSub, setActiveSub] = useState<string | null>(null);
@@ -45,7 +58,10 @@ export default function RadialMenu() {
   // ── Event listeners ──
   useEffect(() => {
     const handler = (e: CustomEvent) => {
-      setMenu({ x: e.detail.x, y: e.detail.y, posId: e.detail.posId });
+      const margin = SUB_OUTER_R + 10;
+      const cx = Math.max(margin, Math.min(window.innerWidth - margin, e.detail.x));
+      const cy = Math.max(margin, Math.min(window.innerHeight - margin, e.detail.y));
+      setMenu({ x: cx, y: cy, posId: e.detail.posId });
       setHoveredSector(null);
       setActiveSub(null);
     };

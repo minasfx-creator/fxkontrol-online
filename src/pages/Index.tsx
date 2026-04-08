@@ -411,7 +411,7 @@ function Index() {
           <BoxSelectOverlay />
         </div>
         <MobileHUD />
-        <MobileQuickActions />
+        <MobileQuickActions panelOpen={mobilePanelHeight !== 'collapsed'} />
         <MobileFloatingPanel activeTab={mobileTab} height={mobilePanelHeight} onHeightChange={setMobilePanelHeight} onDismiss={handleDismissPanel} title={mobileTab === 'timeline' ? 'Timeline' : mobileTab === 'assets' ? 'Effects Library' : mobileTab === 'properties' ? 'Properties' : mobileTab === 'more' ? 'Painéis' : activePanel ?? undefined}>
           {mobileTab === 'timeline' && <Timeline />}
           {mobileTab === 'assets' && <EffectLibrary />}

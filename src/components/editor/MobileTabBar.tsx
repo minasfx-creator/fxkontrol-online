@@ -2,9 +2,9 @@
  * MobileTabBar — Unified dock bar with central FAB for mobile editor.
  * Features: horizontally scrollable tabs, FAB creation button, long-press context menu.
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import { haptics } from '@/lib/haptics';
-import { Sparkles, Cpu, Smartphone, Map, LayoutGrid, Clock, Layers, Settings2, Plus } from 'lucide-react';
+import { Sparkles, Cpu, Smartphone, Map, LayoutGrid, Clock, Layers, Settings2, Plus, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { PANEL_SECTIONS, type PanelId } from '@/components/editor/PanelTabBar';
@@ -52,6 +52,21 @@ export default function MobileTabBar({
   const [swipeLabel, setSwipeLabel] = useState<string | null>(null);
   const swipeLabelTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  const [showScrollHint, setShowScrollHint] = useState(true);
+
+  // Track scroll position to show/hide right arrow
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 8;
+      setShowScrollHint(!atEnd);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
 
   // Long-press context menu state
   const [contextMenu, setContextMenu] = useState<{ tab: MobileTab; rect: DOMRect } | null>(null);
@@ -191,7 +206,14 @@ export default function MobileTabBar({
           <div className="absolute left-0 top-0 bottom-0 w-6 z-10 pointer-events-none rounded-l-2xl" style={{ background: 'linear-gradient(to right, hsl(var(--background) / 0.7), transparent)' }} />
           {/* Right fade */}
           <div className="absolute right-0 top-0 bottom-0 w-6 z-10 pointer-events-none rounded-r-2xl" style={{ background: 'linear-gradient(to left, hsl(var(--background) / 0.7), transparent)' }} />
+          {/* Scroll hint arrow */}
+          {showScrollHint && (
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 z-20 pointer-events-none animate-pulse">
+              <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
+            </div>
+          )}
           <nav
+            ref={navRef}
             className="pointer-events-auto glass-dock rounded-2xl px-1 py-1 overflow-x-auto no-scrollbar"
             onMouseLeave={() => setHoveredIndex(null)}
             onTouchStart={handleSwipeStart}

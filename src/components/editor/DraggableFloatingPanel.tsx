@@ -143,13 +143,13 @@ export default function DraggableFloatingPanel({
         opacity: dragging ? 1 : 0.88,
       }}
     >
-      {/* Grip handle — compact 32px, expands on drag */}
+      {/* Grip handle — 44px touch target always */}
       <div
         className={cn(
-          "flex items-center justify-center gap-1 rounded-t-lg cursor-grab active:cursor-grabbing",
+          "flex items-center justify-center gap-1 rounded-t-lg cursor-grab active:cursor-grabbing py-2",
           "bg-background/60 backdrop-blur-sm border border-b-0 border-border/20",
-          dragging ? "min-h-[44px] min-w-[44px] px-3" : "min-h-[32px] min-w-[36px] px-2",
-          dragging && "ring-1 ring-[hsl(var(--fxk-cyan)/0.4)] shadow-[0_0_12px_hsl(var(--fxk-cyan)/0.15)]",
+          "min-h-[44px] min-w-[44px] px-3",
+          dragging && "ring-1 ring-[hsl(var(--fxk-cyan)/0.4)] shadow-[0_0_12px_hsl(var(--fxk-cyan)/0.15)] scale-105",
           "transition-all duration-200"
         )}
         onPointerDown={onPointerDown}
