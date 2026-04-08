@@ -489,6 +489,8 @@ export interface ParticleState {
   life: number; maxLife: number;
   brightness: number;
   seed?: number; // for falling leaves oscillation
+  decayRate?: number;      // k in I=I0*e^(-kt). Default 1.2 (medium)
+  windInfluence?: number;  // 0-1 wind factor. Default 0.6 (ember)
 }
 
 export interface StepModifiers {
