@@ -9,6 +9,9 @@ export { blackbox, type BlackBoxEntry } from './blackBoxRecorder';
 export { autoScaler, type QualityTier, type ScaleState } from './autoScaler';
 export { autoHeal, type SubsystemId, type HealStatus, type SubsystemHealth, type HealEvent } from './autoHealEngine';
 
+// ── Command Layer ─────────────────────────────────────────────────
+export { commandBus, type Command, type CommandHandler } from '@/core/command/CommandBus';
+
 // ── Execution & Time Layer ─────────────────────────────────────────
 export { deterministicClock, type ClockState } from '@/core/time/deterministicClock';
 export { StateBuffer } from '@/core/state/stateBuffer';
