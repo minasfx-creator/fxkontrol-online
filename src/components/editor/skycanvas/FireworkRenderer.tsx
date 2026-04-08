@@ -807,23 +807,17 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
         const sx0 = dragPos(vx, t0, trailDragH0);
         const sy0 = dragPos(vy, t0, dragCoeff) + 0.5 * GRAVITY * trailGrav0 * t0 * t0;
         const sz0 = dragPos(vz, t0, trailDragH0);
-        const w0 = isTrailingPattern 
-          ? getWindAtPosition(position[0] + sx0, position[1] + sy0, position[2] + sz0, 'ember')
-          : w;
-        tPos[base2] = sx0 + w0[0] * t0 * t0 * 0.3;
+        tPos[base2] = sx0 + wTrail[0] * t0 * t0 * 0.3;
         tPos[base2 + 1] = sy0;
-        tPos[base2 + 2] = sz0 + w0[2] * t0 * t0 * 0.3;
+        tPos[base2 + 2] = sz0 + wTrail[2] * t0 * t0 * 0.3;
         
         // Trail segment end
         const sx1 = dragPos(vx, t1, trailDragH1);
         const sy1 = dragPos(vy, t1, dragCoeff) + 0.5 * GRAVITY * trailGrav1 * t1 * t1;
         const sz1 = dragPos(vz, t1, trailDragH1);
-        const w1 = isTrailingPattern
-          ? getWindAtPosition(position[0] + sx1, position[1] + sy1, position[2] + sz1, 'ember')
-          : w;
-        tPos[base2 + 3] = sx1 + w1[0] * t1 * t1 * 0.3;
+        tPos[base2 + 3] = sx1 + wTrail[0] * t1 * t1 * 0.3;
         tPos[base2 + 4] = sy1;
-        tPos[base2 + 5] = sz1 + w1[2] * t1 * t1 * 0.3;
+        tPos[base2 + 5] = sz1 + wTrail[2] * t1 * t1 * 0.3;
         
         const segFrac = s / TRAIL_LENGTH;
         const segFade = fadeCubed * Math.pow(1 - segFrac, 2.5) * 0.95;

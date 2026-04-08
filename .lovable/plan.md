@@ -1,32 +1,36 @@
 
-
-# Ciclo #39 — Rendering Bugs: Rocket Prefire, Smoke GC, Trail DepthTest
+# Ciclo #40 — Depth Consistency, Smoke Chemistry, Wind GC
 
 ## Bugs Identificados
 
 | # | Bug | Local | Impacto |
 |---|-----|-------|---------|
-| 1 | **Rocket prefire interceptado pelo handler genérico** — L1300 `if (inPrefire)` retorna `PrefireShell` para TODOS os tipos shell, incluindo `rocket`. O `RocketEffect` dedicado em L1379 nunca executa durante a fase de subida — rockets usam trail genérico de shell em vez de motor+exaustão | `FireworkRenderer.tsx` L1300 | Alto |
-| 2 | **`_smokeBlendColor.clone()` cria objeto por frame** — L1076 chama `.clone()` no singleton, criando `new THREE.Color` a cada frame por burst ativo, anulando a otimização GC-free do Ciclo #38 | `FireworkRenderer.tsx` L1076 | Médio |
-| 3 | **Trail lineSegments usa `depthTest: false`** — L1023 trails renderizam sobre toda geometria sólida (edifícios, terreno). Estrelas já usam `depthTest: true` desde o Ciclo #38, mas trails ficaram inconsistentes | `FireworkRenderer.tsx` L1023 | Médio |
+| 1 | **Flash/shockwave/smoke ignore depthTest** — L1050, L1057, L1081, L1096 all use `depthTest={false}`. Stars and trails already fixed in Ciclo #38-39, but ancillary meshes (detonation flash, shockwave ring, smoke spheres) still render over buildings/terrain | `FireworkRenderer.tsx` | Alto — visual inconsistency |
+| 2 | **Secondary smoke wisps hardcoded color** — L1092 uses `color="#665544"` ignoring burst color chemistry. Should blend burst color with gray like primary smoke does | `FireworkRenderer.tsx` L1092 | Médio — breaks color coherence |
+| 3 | **`getWindAtPosition` called per trail segment** — L809, L820: trailing patterns call `getWindAtPosition()` per segment per star per frame (200 stars × 8 segments = 1600 calls). Each call reads the project store + syncs wind config. Should sample wind once per burst and reuse | `FireworkRenderer.tsx` L808-821 | Alto — CPU pressure in barrages |
 
-## Implementação — `src/components/editor/skycanvas/FireworkRenderer.tsx`
+## Implementação
 
-**Fix 1 — Rocket prefire routing (L1300):**
-- Trocar `if (inPrefire)` por `if (inPrefire && pt !== 'rocket')`
-- Rockets caem no handler dedicado L1379 que renderiza `RocketEffect` durante subida + `FireworkBurst` após apogeu
+**Fix 1 — Enable depthTest on all burst ancillary meshes:**
+- L1050: `depthTest={false}` → `depthTest={true}` (detonation flash)
+- L1057: `depthTest={false}` → `depthTest={true}` (shockwave ring)
+- L1081: `depthTest={false}` → `depthTest={true}` (primary smoke sphere)
+- L1096: `depthTest={false}` → `depthTest={true}` (secondary smoke wisps)
 
-**Fix 2 — Smoke GC fix (L67-68 + L1076):**
-- Adicionar singleton `const _smokeBlendResult = new THREE.Color()` após L68
-- L1076: trocar `.clone()` por `.copy()` no resultado — `_smokeBlendResult.copy(_smokeBlendColor.set(color).lerp(_smokeGrayTarget, 0.7))`
+**Fix 2 — Secondary smoke color from burst chemistry:**
+- L1092: replace `color="#665544"` with `color={_smokeBlendResult}` (reuses the already-computed smoke blend from L1077)
 
-**Fix 3 — Trail depthTest (L1023):**
-- Trocar `depthTest={false}` por `depthTest={true}` no `lineBasicMaterial` dos trail segments
+**Fix 3 — Cache wind sampling for trailing patterns:**
+- Before the star loop (after L493), add a single wind sample for the burst center position:
+  ```
+  const wTrail = isTrailingPattern ? getWindAtPosition(position[0], position[1], position[2], 'ember') : w;
+  ```
+- Replace `getWindAtPosition(...)` calls at L809 and L820 with the cached `wTrail`
+- Eliminates ~1600 store reads per frame per trailing burst
 
-## Ordem de Execução
+## Ordem
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Aplicar 3 fixes no FireworkRenderer.tsx |
+| 1 | Apply all 3 fixes |
 | 2 | Build verification |
-
