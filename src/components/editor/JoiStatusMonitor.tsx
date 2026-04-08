@@ -3,7 +3,7 @@
  * Shows FPS, drone count, connection status
  */
 import { useState, useEffect, useRef } from 'react';
-import JoiCinematicHologram from '@/components/JoiCinematicHologram';
+import { Sparkles } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 
