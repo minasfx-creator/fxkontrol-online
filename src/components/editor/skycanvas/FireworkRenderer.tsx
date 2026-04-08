@@ -50,11 +50,23 @@ import {
   SnowMachineEffect,
   BubbleMachineEffect,
   GirandolaEffect,
+  RocketEffect,
 } from '../effects';
 import QuadcopterModel from '../QuadcopterModel';
 
 // ═══════════════════════════════════════════════════════════════════════
-// Star sprite shaders
+// GC-free pre-allocated singletons for render loop
+// ═══════════════════════════════════════════════════════════════════════
+const _rPosEuler = new THREE.Euler();
+const _rPosQuat = new THREE.Quaternion();
+const _rLaunchDir = new THREE.Vector3();
+const _rPitchAxis = new THREE.Vector3();
+const _rPitchQuat = new THREE.Quaternion();
+const _rEffEuler = new THREE.Euler();
+const _rEffQuat = new THREE.Quaternion();
+const _smokeBlendColor = new THREE.Color();
+const _smokeGrayTarget = new THREE.Color(0.35, 0.30, 0.25);
+
 // ═══════════════════════════════════════════════════════════════════════
 const STAR_VERTEX_SHADER = `
   attribute float aSize;
@@ -68,7 +80,7 @@ const STAR_VERTEX_SHADER = `
     vSize = aSize;
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
     gl_PointSize = aSize * (6000.0 / -mvPos.z);
-    gl_PointSize = clamp(gl_PointSize, 0.5, 96.0);
+    gl_PointSize = clamp(gl_PointSize, 0.5, 192.0);
     gl_Position = projectionMatrix * mvPos;
   }
 `;
@@ -111,7 +123,7 @@ function _sharedStarMaterial(): THREE.ShaderMaterial {
       vertexColors: true,
       transparent: true,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,
       blending: THREE.AdditiveBlending,
     });
     _starMaterialVersion++;
@@ -1061,7 +1073,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
               12, 12
             ]} />
             <meshBasicMaterial
-              color={new THREE.Color(color).lerp(new THREE.Color(0.35, 0.30, 0.25), 0.7)}
+              color={_smokeBlendColor.set(color).lerp(_smokeGrayTarget, 0.7).clone()}
               transparent
               opacity={0.04 * Math.pow(Math.max(0, 1 - (progress - 0.35) / 0.65), 1.5)}
               depthWrite={false}
@@ -1308,25 +1320,24 @@ export function TimelineEffects() {
         const effPan = (item.pan ?? 90) * (Math.PI / 180);
         const effTilt = (item.tilt ?? 0) * (Math.PI / 180);
         
-        // Use local quaternions to avoid race condition with concurrent bursts
-        const posEuler = new THREE.Euler(0, -posHeadingRad, 0, 'YZX');
-        const posQuat = new THREE.Quaternion().setFromEuler(posEuler);
-        const launchDir = new THREE.Vector3(0, 1, 0);
-        const pitchAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(posQuat);
-        const pitchQuat = new THREE.Quaternion().setFromAxisAngle(pitchAxis, -(Math.PI / 2 - posPitchRad));
-        posQuat.multiply(pitchQuat);
+        // GC-free: reuse pre-allocated singletons (synchronous per-burst, safe)
+        _rPosEuler.set(0, -posHeadingRad, 0, 'YZX');
+        _rPosQuat.setFromEuler(_rPosEuler);
+        _rPitchAxis.set(1, 0, 0).applyQuaternion(_rPosQuat);
+        _rPitchQuat.setFromAxisAngle(_rPitchAxis, -(Math.PI / 2 - posPitchRad));
+        _rPosQuat.multiply(_rPitchQuat);
         
-        const effEuler = new THREE.Euler(effTilt, effPan - Math.PI / 2, 0, 'YXZ');
-        const effQuat = new THREE.Quaternion().setFromEuler(effEuler);
+        _rEffEuler.set(effTilt, effPan - Math.PI / 2, 0, 'YXZ');
+        _rEffQuat.setFromEuler(_rEffEuler);
         
-        posQuat.multiply(effQuat);
-        launchDir.set(0, 1, 0).applyQuaternion(posQuat).normalize();
+        _rPosQuat.multiply(_rEffQuat);
+        _rLaunchDir.set(0, 1, 0).applyQuaternion(_rPosQuat).normalize();
         
         const burstPos: [number, number, number] = isShell
           ? [
-              pos[0] + launchDir.x * realBreakHeight,
-              pos[1] + launchDir.y * realBreakHeight,
-              pos[2] + launchDir.z * realBreakHeight,
+              pos[0] + _rLaunchDir.x * realBreakHeight,
+              pos[1] + _rLaunchDir.y * realBreakHeight,
+              pos[2] + _rLaunchDir.z * realBreakHeight,
             ]
           : pos;
 
@@ -1364,6 +1375,23 @@ export function TimelineEffects() {
         if (eid.startsWith('comet-')) return <CometEffect key={item.id} position={pos} color={effect.color} progress={progress} direction={eid === 'comet-02' ? 'down' : 'up'} caliber={caliber} angleOffset={vdlAngle} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} />;
         if (eid.startsWith('mburst-')) return <MultiBurstEffect key={item.id} position={burstPos} color={effect.color} progress={progress} burstCount={eid === 'mburst-02' ? 5 : 3} caliber={caliber} />;
         if (eid.startsWith('fan-')) return <FanEffect key={item.id} position={pos} color={effect.color} progress={progress} spreadAngle={eid === 'fan-02' ? 180 : 90} caliber={caliber} formulationId={effFormulationId} launchHeading={launchHeading} launchPitch={launchPitch} />;
+
+        if (pt === 'rocket') return (
+          <group key={item.id}>
+            {prefireProgress < 1 && (
+              <RocketEffect position={pos} color={effect.color} progress={prefireProgress} caliber={caliber} />
+            )}
+            {progress > 0 && (
+              <FireworkBurst
+                position={burstPos} color={effect.color} progress={progress} caliber={caliber}
+                pattern={effect.pattern || 'peony'} angleOffset={vdlAngle} trailType={vdlTrailType}
+                noTrail={vdlNoTrail} secondaryColor={vdlSecondaryColor} colorTransition={vdlColorTransition}
+                hasPistil={vdlHasPistil} pistilColor={vdlPistilColor} niagaraProfile={effect.niagaraProfile}
+              />
+            )}
+          </group>
+        );
+
 
         if (effect.type === 'firework') return (
           <FireworkBurst 
