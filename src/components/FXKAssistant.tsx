@@ -4,7 +4,7 @@
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
-import JoiCinematicHologram, { type JoiEmotion } from '@/components/JoiCinematicHologram';
+import { type JoiEmotion } from '@/components/JoiCinematicHologram';
 import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText, Download, Gavel, Plane, MapPin, Globe, Volume2, VolumeX, Mic, MicOff, Play } from 'lucide-react';
 import { exportJoiPdf } from '@/utils/joiPdfExport';
 import { exportJoiDocx } from '@/utils/joiDocxExport';
