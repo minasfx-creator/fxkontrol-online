@@ -581,6 +581,7 @@ export default function ShellBurstRenderer({
           });
         }
         crossetteRef.current.push(subParticles);
+        setRenderTick(t => t + 1);
       }
 
       posBuffer[i * 3] = p.x;
