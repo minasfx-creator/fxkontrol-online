@@ -544,7 +544,7 @@ export default function ShellBurstRenderer({
         const particleDrag = baseDrag * dragCoeffs[i];
         // Chrysanthemum tip curl: progressive gravity after 70% life
         // Mutate stepMods in-place to avoid 120k object allocations/s
-        const tipCurlMods = stepMods;
+        const tipCurlMods = stepModsRef.current;
         tipCurlMods.tipCurlFactor = pattern === 'chrysanthemum' ? 2.5 : undefined;
         tipCurlMods.tipCurlLifeRatio = pattern === 'chrysanthemum' ? lifeRatio : undefined;
         tipCurlMods.willowDroop = pattern === 'willow';
