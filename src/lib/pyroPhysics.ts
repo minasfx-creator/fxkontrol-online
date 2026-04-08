@@ -496,6 +496,8 @@ export interface StepModifiers {
   reducedGravity?: number; // 0-1 factor
   tipCurlFactor?: number;  // progressive gravity after 70% life (chrysanthemum)
   tipCurlLifeRatio?: number; // current life ratio for tip curl calc
+  willowDroop?: boolean;   // progressive heavy droop after 50% life (willow charcoal stars)
+  willowLifeRatio?: number; // current life ratio for willow droop calc
 }
 
 export function stepParticle(
