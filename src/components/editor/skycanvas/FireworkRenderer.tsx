@@ -1061,7 +1061,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
               12, 12
             ]} />
             <meshBasicMaterial
-              color={new THREE.Color(color).lerp(new THREE.Color(0.35, 0.30, 0.25), 0.7)}
+              color={_smokeBlendColor.set(color).lerp(_smokeGrayTarget, 0.7).clone()}
               transparent
               opacity={0.04 * Math.pow(Math.max(0, 1 - (progress - 0.35) / 0.65), 1.5)}
               depthWrite={false}
