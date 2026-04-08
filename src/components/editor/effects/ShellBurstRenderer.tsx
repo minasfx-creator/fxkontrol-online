@@ -383,10 +383,11 @@ export default function ShellBurstRenderer({
   const pistilCount = useMemo(() => hasPistil ? Math.round(starCount * 0.25) : 0, [hasPistil, starCount]);
   const pistilColorObj = useMemo(() => new THREE.Color(pistilColor), [pistilColor]);
   const secondaryColorObj = useMemo(() => new THREE.Color(secondaryColor || color), [secondaryColor, color]);
-  const stepMods = useMemo<StepModifiers>(
-    () => fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : {},
-    [fallingLeaves]
-  );
+  // Instance-local stepMods to prevent shared mutation across concurrent bursts
+  const stepModsRef = useRef<StepModifiers>(fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : {});
+  useEffect(() => {
+    stepModsRef.current = fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : {};
+  }, [fallingLeaves]);
 
   // Initialize particles + per-particle drag coefficients on first render
   const particleDragCoeffs = useRef<Float32Array>(new Float32Array(MAX_PARTICLES));
@@ -505,14 +506,16 @@ export default function ShellBurstRenderer({
     [smokeUniforms]
   );
 
-  // Crossette sub-bursts
-  const crossetteRef = useRef<ParticleState[][]>([]);
+  // Crossette sub-bursts with stable IDs for React keys
+  const crossetteRef = useRef<{ id: number; particles: ParticleState[] }[]>([]);
   const crossetteTriggered = useRef(new Set<number>());
+  const crossetteIdCounter = useRef(0);
 
   // Fix: clear crossette state on pattern/color change to prevent stale sub-breaks
   useEffect(() => {
     crossetteTriggered.current.clear();
     crossetteRef.current = [];
+    crossetteIdCounter.current = 0;
   }, [pattern, color]);
 
   useFrame((_, delta) => {
@@ -522,6 +525,9 @@ export default function ShellBurstRenderer({
     const dt = Math.min(delta, 0.05);
     initTimeRef.current += dt;
     const time = initTimeRef.current;
+
+    // Cache position tuple (avoid repeated cast + index per frame)
+    const px = position[0], py = position[1], pz = position[2];
 
     // Step physics using store-driven drag and wind (formulation override if present)
     // Per-particle drag: base drag * material density coefficient
@@ -538,7 +544,7 @@ export default function ShellBurstRenderer({
         const particleDrag = baseDrag * dragCoeffs[i];
         // Chrysanthemum tip curl: progressive gravity after 70% life
         // Mutate stepMods in-place to avoid 120k object allocations/s
-        const tipCurlMods = stepMods;
+        const tipCurlMods = stepModsRef.current;
         tipCurlMods.tipCurlFactor = pattern === 'chrysanthemum' ? 2.5 : undefined;
         tipCurlMods.tipCurlLifeRatio = pattern === 'chrysanthemum' ? lifeRatio : undefined;
         tipCurlMods.willowDroop = pattern === 'willow';
@@ -580,7 +586,7 @@ export default function ShellBurstRenderer({
             life: 0, maxLife: starLifetime * 0.4, brightness: 1,
           });
         }
-        crossetteRef.current.push(subParticles);
+        crossetteRef.current.push({ id: crossetteIdCounter.current++, particles: subParticles });
         setRenderTick(t => t + 1);
       }
 
@@ -601,7 +607,7 @@ export default function ShellBurstRenderer({
       const pistilDelay = pattern === 'brocade_crown' ? 0.25 : 0;
       const pp = pistilParticlesRef.current;
       for (let i = 0; i < pp.length; i++) {
-        if (pp[i].life < pp[i].maxLife && time > pistilDelay) stepParticle(pp[i], dt, windVec, starDrag * 0.8, stepMods);
+        if (pp[i].life < pp[i].maxLife && time > pistilDelay) stepParticle(pp[i], dt, windVec, starDrag * 0.8, stepModsRef.current);
         pistilBuffers.pos[i * 3] = pp[i].x;
         pistilBuffers.pos[i * 3 + 1] = pp[i].y;
         pistilBuffers.pos[i * 3 + 2] = pp[i].z;
@@ -660,8 +666,8 @@ export default function ShellBurstRenderer({
     }
 
     // Step crossette sub-particles with store wind/drag
-    for (const subGroup of crossetteRef.current) {
-      for (const sp of subGroup) {
+    for (const entry of crossetteRef.current) {
+      for (const sp of entry.particles) {
         if (sp.life < sp.maxLife) stepParticle(sp, dt, windVec, starDrag * 1.5);
       }
     }
@@ -754,9 +760,9 @@ export default function ShellBurstRenderer({
       const turbAmp = 0.02 + turbSeed * 0.03;
       
       // Sample turbulent wind field at smoke world position (100% influence)
-      const worldX = (position as number[])[0] + sp.x;
-      const worldY = (position as number[])[1] + sp.y;
-      const worldZ = (position as number[])[2] + sp.z;
+      const worldX = px + sp.x;
+      const worldY = py + sp.y;
+      const worldZ = pz + sp.z;
       const [windX, windY, windZ] = windField.sample(worldX, worldY, worldZ, 'smoke');
       
       sp.x += sp.vx * dt + windX * dt + Math.sin(time * turbFreqX + sp.seed * 10) * turbAmp;
@@ -782,9 +788,9 @@ export default function ShellBurstRenderer({
         
         // Modulate opacity by fluid grid density if available
         if (fluidGrid && mesh.material) {
-          const worldX = (position as number[])[0] + sp.x;
-          const worldZ = (position as number[])[2] + sp.z;
-          const density = readDensityAt(fluidGrid as FluidGrid, worldX, worldZ);
+          const fluidWorldX = px + sp.x;
+          const fluidWorldZ = pz + sp.z;
+          const density = readDensityAt(fluidGrid as FluidGrid, fluidWorldX, fluidWorldZ);
           const fluidBoost = 1 + density * 0.4;
           (mesh.material as any).uniforms.uSmokeOpacity.value = smokeUniforms.uSmokeOpacity.value * fluidBoost;
         }
@@ -866,8 +872,8 @@ export default function ShellBurstRenderer({
       )}
 
       {/* Crossette sub-bursts */}
-      {crossetteRef.current.map((subGroup, gi) => (
-        <CrossetteSubBurst key={gi} particles={subGroup} color={color} caliber={caliber} windVec={windVec} drag={starDrag} />
+      {crossetteRef.current.map((entry) => (
+        <CrossetteSubBurst key={entry.id} particles={entry.particles} color={color} caliber={caliber} windVec={windVec} drag={starDrag} />
       ))}
 
       {/* Burst flash — Screen blending. Dahlia: 2.5x intensity, faster decay */}
