@@ -82,16 +82,12 @@ class SnapshotManager {
 
   /** Apply a snapshot to ProjectStore. */
   restore(snap: Snapshot): void {
-    const store = useProjectStore.getState();
-    store.setPositions(structuredClone(snap.state.positions) as any);
-    store.setTimelineItems(structuredClone(snap.state.timelineItems) as any);
-    // trajectories and keyframes if setters exist
-    if ('setTrajectories' in store) {
-      (store as any).setTrajectories(structuredClone(snap.state.trajectories));
-    }
-    if ('setCameraKeyframes' in store) {
-      (store as any).setCameraKeyframes(structuredClone(snap.state.cameraKeyframes));
-    }
+    useProjectStore.setState({
+      positions: structuredClone(snap.state.positions) as any,
+      timelineItems: structuredClone(snap.state.timelineItems) as any,
+      trajectories: structuredClone(snap.state.trajectories) as any,
+      cameraKeyframes: structuredClone(snap.state.cameraKeyframes) as any,
+    });
   }
 
   get count(): number {
