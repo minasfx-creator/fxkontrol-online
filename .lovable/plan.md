@@ -1,55 +1,59 @@
 
 
-# Ciclo #33 — Time Rain Column Stability, Girandola Precession Fix, Strobe Pulse Frequency + Trail Sync
+# Joi Show Creation — Aprimoramento Ciclo #34
 
-## Bugs Identificados
+## Problemas Identificados
 
-| # | Bug | Local | Impacto |
-|---|-----|-------|---------|
-| 1 | **Time rain columns drift too much** — Hanging phase applies `w[0] * driftT * 2.5` lateral wind + per-star scatter, causing stars to spread horizontally. Real time rain hangs in tight vertical columns with minimal drift. Rain phase also lacks per-star column grouping | FireworkRenderer L537-539 | Columns dissolve into cloud |
-| 2 | **Girandola visual hub rotation doesn't match precession** — Spark physics computes proper `precessionAngle` from `time * precessionRate`, but visual hub uses hardcoded `vizTiltAngle * 0.5` and `0.3` for X/Z rotation instead of deriving from precession angle. Hub visually decouples from spark trajectories | GirandolaEffect L161-162 | Hub doesn't visually precess |
-| 3 | **Strobe pulse too slow (3.6Hz vs real 6-12Hz)** — `strobeFlicker` called with `smolderDuration=0.2, burnDuration=0.08` → cycle 0.28s = 3.6Hz. Real magnalium strobe stars pulse at 8-12Hz. Also, "Gold Strobing" effect (peon-06) uses generic flicker, not strobe | FireworkRenderer L660, pyroNoise L172 | Strobe looks like slow blink |
-| 4 | **Horsetail trail gravity mismatch** — Trail uses `4.8` ramp but main star uses `5.5`. Trails lag behind stars | FireworkRenderer L748-749 | Trail/star visual separation |
-| 5 | **Coconut trail pattern name wrong** — `'coconut'` vs `'coconut_tree'` | FireworkRenderer L752 | Trails ignore 3-phase gravity |
-| 6 | **Saturn ring trail missing reduced gravity** — No saturn case in trail section → ring trails sag while stars stay flat | FireworkRenderer L778 | Ring deformation in trails |
+| # | Bug/Gap | Impacto |
+|---|---------|---------|
+| 1 | **Presets operacionais nunca aparecem** — `getContextPresets()` retorna `PRESETS_COMMAND` ou `PRESETS_EDITOR` (documentação/licenças). Os `OPERATIONAL_PRESETS` de `JoiCommandPresets.tsx` (Réveillon, Casamento, Finale, etc.) nunca são exibidos ao usuário | Crítico — usuário não vê os presets de shows |
+| 2 | **Joi não conhece o projeto atual** — System prompt não recebe contexto das posições e efeitos já existentes. Joi não pode "adicionar mais efeitos nas posições existentes" ou "modificar a coreografia" | Alto — não consegue iterar sobre shows |
+| 3 | **create_choreography não reporta falhas individuais** — Se 3 de 20 cues falham, retorna só "Coreografia criada" sem detalhe das falhas | Médio — esconde problemas |
+| 4 | **Faltam comandos: clear_project, list_positions, list_effects** — Joi não pode listar o que já existe nem limpar o projeto para recomeçar | Médio — UX limitada |
+| 5 | **System prompt não instrui sobre erro recovery** — Se um efeito não é encontrado, Joi não sabe sugerir alternativas | Baixo — UX |
 
 ## Plano de Implementação
 
-### Arquivo 1: `src/components/editor/skycanvas/FireworkRenderer.tsx`
+### 1. `src/components/FXKAssistant.tsx` — Mostrar presets operacionais + enviar contexto do projeto
 
-**Fix 1 — Time rain column stability (L516-547):**
-- Reduce hanging phase wind multiplier from `2.5` to `0.6` (tight columns)
-- Reduce lateral scatter amplitude from `0.003` to `0.001`
-- Reduce sinusoidal drift amplitude from `0.08/0.06` to `0.03/0.02`
-- Add column grouping: stars with same `sparkleSeeds[i] % 8` form a column, sharing base drift
+- Modificar `getContextPresets()` para incluir os `OPERATIONAL_PRESETS` na tela do editor (combinar com `PRESETS_EDITOR` ou substituir por tabbed view)
+- No `send()`, antes de enviar mensagens à API, injetar um **system context message** com o estado atual do projeto:
+  ```
+  { role: "system", content: `[CONTEXTO DO PROJETO]\nPosições: ${positions.map(p => `${p.name} (${p.type}) @ (${p.x}, ${p.z})`).join(', ')}\nEfeitos na timeline: ${timelineItems.length}\nTempo atual: ${currentTime}s` }
+  ```
 
-**Fix 2 — Strobe frequency (L660):**
-- Change `strobeFlicker(sparkleSeeds[i], time, 0.2, 0.08)` → `strobeFlicker(sparkleSeeds[i], time, 0.06, 0.04)` → cycle 0.10s ≈ 10Hz
-- Add "Gold Strobing" detection: if effect name contains "strobing" or compound includes strobe marker, use `strobeFlicker` instead of generic flicker
+### 2. `src/utils/joiCommandExecutor.ts` — Novos comandos + melhorar feedback
 
-**Fix 3 — Trail sync (L748-778):**
-- Horsetail: `4.8` → `5.5`, drag `0.7` → `0.55`
-- Coconut: `'coconut'` → `'coconut_tree'`
-- Add saturn trail case after kamuro: ring stars (first 60%) get `gravityMult * 0.3`
+**Novos comandos:**
+- `clear_project` — Remove todas posições e efeitos (com confirmação visual)
+- `list_positions` — Retorna lista das posições existentes no label do resultado
+- `list_effects` — Retorna lista dos efeitos na timeline
 
-### Arquivo 2: `src/components/editor/effects/GirandolaEffect.tsx`
+**Melhorar `create_choreography`:**
+- Rastrear falhas individuais de cues e incluir no detail: `"15 posições + 42 cues (3 falharam)"`
+- Adicionar `add_cue_marker` automático para seções do show (Abertura, Build, Clímax, Finale) se `params.sections` presente
 
-**Fix — Visual hub precession (L155-162):**
-- Compute `vizPrecessionAngle` from elapsed time (use `progress * 10` as proxy for continuous time)
-- Set hub rotation X = `Math.sin(vizPrecessionAngle) * vizTiltAngle`, Z = `Math.cos(vizPrecessionAngle) * vizTiltAngle` (matching spark physics formula)
-- Keep Y = `vizTotalAngle` (spin)
+### 3. `supabase/functions/fxk-ai-chat/systemPrompt.ts` — Contexto + error recovery
 
-### Arquivo 3: `src/lib/pyroNoise.ts`
+- Adicionar seção sobre como usar contexto do projeto: "Quando o usuário pedir para modificar o show, leia o [CONTEXTO DO PROJETO] para saber as posições e efeitos existentes"
+- Adicionar guia de error recovery: "Se um effectId falhar, sugira effectIds alternativos similares"
+- Documentar novos comandos: `clear_project`, `list_positions`, `list_effects`
+- Adicionar instruções para criar seções com cue markers automáticos
 
-**Enhancement — strobeFlicker frequency range:**
-- No change to function signature, but add doc comment noting recommended ranges: magnalium 8-12Hz (smolder=0.06-0.08, burn=0.03-0.05), dragon_egg 6-8Hz (smolder=0.08-0.10, burn=0.04-0.06)
+### 4. `src/components/JoiCommandPresets.tsx` — Refinar presets
+
+- Adicionar preset **"MODIFICAR SHOW"** — prompt que pede à Joi para analisar o projeto atual e sugerir melhorias
+- Adicionar preset **"LIMPAR PROJETO"** — clear_project + confirmação
+
+### 5. Deploy + Build
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Time rain column stability + strobe frequency (FireworkRenderer) |
-| 2 | Trail sync: horsetail, coconut, saturn (FireworkRenderer) |
-| 3 | Girandola visual precession fix |
-| 4 | Build verification |
+| 1 | Novos comandos no joiCommandExecutor + feedback melhorado |
+| 2 | Presets operacionais visíveis + contexto do projeto no FXKAssistant |
+| 3 | System prompt: contexto, error recovery, novos comandos |
+| 4 | Novos presets (Modificar, Limpar) |
+| 5 | Deploy edge function + build verification |
 
