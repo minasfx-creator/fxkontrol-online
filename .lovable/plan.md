@@ -1,42 +1,42 @@
 
 
-# Ciclo #46 — Critical Runtime Crash + GC Fixes
+# Ciclo #47 — Smoke Shader Bug + Crossette Render Stale
 
 ## Bugs Identificados
 
 | # | Bug | Local | Impacto |
 |---|-----|-------|---------|
-| 1 | **`tipCurlMods` crashes when `stepMods` is undefined** — L523 assigns `const tipCurlMods = stepMods` and L524 does `tipCurlMods.tipCurlFactor = ...`. When `fallingLeaves` is false (default), `stepMods` is `undefined` → **TypeError crash** on every frame | L523-533 | **CRÍTICO** |
-| 2 | **Smoke uniforms spread per-render** — L905 `{...smokeUniforms, aAge: {...}}` creates a new object for each of 16 smoke meshes every React render | L905-911 | Alto |
-| 3 | **Glitter `shift()` is O(n)** — L540 still uses `shift()` on 800-element array for overflow cap | L540 | Médio |
-| 4 | **`pistilBuffers` over-allocated** — L429-435 allocates `MAX_PARTICLES` (2000) when pistil uses max ~500 particles | L429-435 | Baixo |
+| 1 | **Smoke shader declares `attribute` but receives `uniform`** — SMOKE_VERTEX (L174-177) declares `aAge`, `aMaxAge`, `aScale`, `aSeed` as `attribute` (per-vertex), but they are passed via `perSmokeUniforms` as uniform values on the shaderMaterial. The planeGeometry has no such attributes → shader reads garbage → smoke billboards render incorrectly or are invisible | L174-177, L930-933 | **CRÍTICO** |
+| 2 | **Crossette sub-bursts read ref in JSX** — L866 `crossetteRef.current.map(...)` reads a mutable ref directly in the render body. Ref mutations don't trigger re-render → new crossette sub-bursts remain invisible until an unrelated state change forces re-render | L866-868 | Alto |
+| 3 | **`smokeParticles.current.map()` in JSX** — L922 same pattern: smoke meshes are conditionally rendered based on ref length. After `smokeSpawned` is set (in useFrame, L707), the component doesn't re-render → smoke meshes never mount | L922-940 | Alto |
+| 4 | **`noTrail` prop unused** — Prop declared (L316) but never read in any logic. Glitter trails still spawn even when `noTrail=true` | L316, L553 | Baixo |
 
 ## Implementação — `ShellBurstRenderer.tsx`
 
-**Fix 1 (CRITICAL) — Replace undefined stepMods with pre-allocated singleton (L385-388 + L523-533):**
-- Change `stepMods` useMemo to always return an object (never undefined):
-```ts
-const stepMods = useMemo<StepModifiers>(
-  () => fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : {},
-  [fallingLeaves]
-);
+**Fix 1 — Smoke shader: change `attribute` → `uniform` (L174-177):**
+```glsl
+uniform float aAge;
+uniform float aMaxAge;
+uniform float aScale;
+uniform float aSeed;
 ```
-- This makes L523 `tipCurlMods.tipCurlFactor = ...` safe without any other changes needed
+This matches how the values are actually passed via `perSmokeUniforms[i]`.
 
-**Fix 2 — Pre-allocate per-smoke uniforms (L893-918):**
-- Create a `smokeUniformsArray` of 16 uniform objects in `useMemo`, each with own `aAge`, `aMaxAge`, `aScale`, `aSeed` uniform values sharing base `smokeUniforms` refs
-- In JSX, use `smokeUniformsArray[i]` directly instead of spread
+**Fix 2+3 — Force re-render when crossette/smoke state changes:**
+- Add a `const [renderTick, setRenderTick] = useState(0)` counter
+- In useFrame, after `smokeSpawned.current = true`, call `setRenderTick(t => t + 1)` to force mesh mount
+- After adding crossette sub-bursts (L582), also increment renderTick
+- This is minimal — a single state bump per lifecycle phase, not per-frame
 
-**Fix 3 — Replace glitter `shift()` with index overwrite (L539-541):**
-- Use circular write index: when overflow, overwrite oldest entry and increment index mod GLITTER_MAX
-
-**Fix 4 — Right-size pistil buffers (L429-435):**
-- Allocate based on `pistilCount` (with minimum of 1) instead of `MAX_PARTICLES`
+**Fix 4 — Respect `noTrail` prop (L553):**
+- Guard glitter emission: `if (trailType === 'glitter' && !noTrail && ...)`
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Apply 4 fixes to ShellBurstRenderer.tsx |
-| 2 | Build verification |
+| 1 | Fix smoke shader attribute→uniform |
+| 2 | Add renderTick for crossette/smoke mount |
+| 3 | Guard glitter with noTrail |
+| 4 | Build verification |
 
