@@ -421,6 +421,67 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         return { action, success: true, label: `${items.length} efeitos na timeline`, detail: summary };
       }
 
+      case 'update_effect': {
+        const target = store.timelineItems.find(i => i.id === params.id);
+        if (!target) return { action, success: false, label: `Efeito não encontrado: ${params.id}` };
+        const updates: Record<string, any> = {};
+        if (params.startTime !== undefined) updates.startTime = params.startTime;
+        if (params.duration !== undefined) updates.duration = params.duration;
+        if (params.effectId) {
+          const newEffect = resolveEffect({ effectId: params.effectId });
+          if (newEffect) updates.effectId = newEffect.id;
+        }
+        if (params.positionId) {
+          const pos = store.positions.find(p => p.id === params.positionId);
+          if (pos) {
+            updates.positionId = pos.id;
+            updates.positionName = pos.name;
+            updates.position = { x: pos.x, y: pos.y, z: pos.z };
+          }
+        } else if (params.positionName) {
+          const pos = store.positions.find(p => p.name === params.positionName);
+          if (pos) {
+            updates.positionId = pos.id;
+            updates.positionName = pos.name;
+            updates.position = { x: pos.x, y: pos.y, z: pos.z };
+          }
+        }
+        store.updateTimelineItem(target.id, updates);
+        return { action, success: true, label: `Efeito "${target.id}" atualizado` };
+      }
+
+      case 'duplicate_position': {
+        const source = store.positions.find(p => p.id === params.id || p.name === params.name);
+        if (!source) return { action, success: false, label: `Posição não encontrada` };
+        const offsetX = params.offsetX ?? 5;
+        const mirror = params.mirror === true;
+        const newX = mirror ? -source.x : source.x + offsetX;
+        const newName = params.newName || `${source.name}_${mirror ? 'mirror' : 'copy'}`;
+        const newId = `joi-pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+        store.addPosition({
+          id: newId,
+          name: newName,
+          type: source.type,
+          x: newX,
+          y: source.y,
+          z: mirror ? source.z : source.z,
+          heading: mirror ? -source.heading : source.heading,
+          pitch: source.pitch,
+          roll: source.roll,
+          color: source.color,
+          section: source.section,
+        });
+        return { action, success: true, label: `Posição "${newName}" duplicada de "${source.name}"`, detail: mirror ? 'espelhada' : `offset +${offsetX}m` };
+      }
+
+      case 'set_duration': {
+        const d = params.duration;
+        if (typeof d !== 'number' || d <= 0) return { action, success: false, label: `Duração inválida` };
+        store.setDuration(d);
+        timelineEngine.setDuration(d);
+        return { action, success: true, label: `Duração do show: ${d}s` };
+      }
+
       default:
         return { action, success: false, label: `Comando desconhecido: ${action}` };
     }
