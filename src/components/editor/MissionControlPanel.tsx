@@ -118,8 +118,8 @@ export function MissionControlPanel() {
   const [running, setRunning] = useState(false);
   const [bbRecording, setBbRecording] = useState(blackbox.isRecording());
   const [clockSync, setClockSync] = useState<ClockSyncState>(globalClock.getState());
-  const [multiSites, setMultiSites] = useState<SiteInfo[]>(multiSiteSync.getAllSites());
-  const [multiSiteLocal, setMultiSiteLocal] = useState(multiSiteSync.isLocalMode());
+  const [multiSites, setMultiSites] = useState<SiteInfo[]>(multiSiteCoordinator.getAllSites());
+  const [multiSiteLocal, setMultiSiteLocal] = useState(multiSiteCoordinator.isLocalMode());
   const [frameSyncState, setFrameSyncState] = useState<FrameSyncState>(frameSyncEngine.getState());
   const fpsRef = useRef(0);
 
