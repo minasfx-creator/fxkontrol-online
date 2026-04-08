@@ -28,6 +28,7 @@ import { readDensityAt, type FluidGrid } from '@/render_ultra/fireworks/niagaraF
 // ── Pre-allocated singletons (Zero-GC) ──────────────────────────────
 const _warmSmokeColor = new THREE.Color(0.47, 0.40, 0.33);
 const _coolSmokeColor = new THREE.Color(0.40, 0.47, 0.53);
+const _windOut: [number, number, number] = [0, 0, 0];
 
 // ── Custom GPU Shaders (Skybrush-grade thermal rendering) ───────────
 
@@ -36,7 +37,7 @@ const BURST_VERTEX = `
   attribute float aMaxLife;
   attribute float aBrightness;
   attribute vec3 aVelocity;
-  attribute float aDragCoeff;
+  
   
   varying float vLife;
   varying float vMaxLife;
@@ -418,13 +419,12 @@ export default function ShellBurstRenderer({
   }, [starCount, breakSpeed, pattern, starLifetime, hasPistil, pistilCount, fallingLeaves]);
 
   // Buffer attributes (reused — no GC pressure)
-  const { posBuffer, lifeBuffer, maxLifeBuffer, brightnessBuffer, velocityBuffer, dragBuffer } = useMemo(() => ({
+  const { posBuffer, lifeBuffer, maxLifeBuffer, brightnessBuffer, velocityBuffer } = useMemo(() => ({
     posBuffer: new Float32Array(MAX_PARTICLES * 3),
     lifeBuffer: new Float32Array(MAX_PARTICLES),
     maxLifeBuffer: new Float32Array(MAX_PARTICLES),
     brightnessBuffer: new Float32Array(MAX_PARTICLES),
     velocityBuffer: new Float32Array(MAX_PARTICLES * 3),
-    dragBuffer: new Float32Array(MAX_PARTICLES),
   }), []);
 
   // Pistil buffers
@@ -638,14 +638,19 @@ export default function ShellBurstRenderer({
     if (glitterRef.current && glitterParticlesRef.current.length > 0) {
       const gp = glitterParticlesRef.current;
       // Remove dead glitter
-      for (let i = gp.length - 1; i >= 0; i--) {
+      let i = gp.length - 1;
+      while (i >= 0) {
         gp[i].life += dt;
         gp[i].vy += GRAVITY * dt * 0.5;
         gp[i].x += gp[i].vx * dt;
         gp[i].y += gp[i].vy * dt;
         gp[i].z += gp[i].vz * dt;
         gp[i].brightness = Math.max(0, 1 - gp[i].life / gp[i].maxLife);
-        if (gp[i].life > gp[i].maxLife) { gp[i] = gp[gp.length - 1]; gp.pop(); }
+        if (gp[i].life > gp[i].maxLife) {
+          gp[i] = gp[gp.length - 1]; gp.pop();
+          continue; // re-check swapped element at same index
+        }
+        i--;
       }
       const gCount = Math.min(gp.length, GLITTER_MAX);
       for (let i = 0; i < gCount; i++) {
@@ -763,7 +768,8 @@ export default function ShellBurstRenderer({
       const worldX = px + sp.x;
       const worldY = py + sp.y;
       const worldZ = pz + sp.z;
-      const [windX, windY, windZ] = windField.sample(worldX, worldY, worldZ, 'smoke');
+      windField.sampleInto(worldX, worldY, worldZ, 'smoke', _windOut);
+      const windX = _windOut[0], windY = _windOut[1], windZ = _windOut[2];
       
       sp.x += sp.vx * dt + windX * dt + Math.sin(time * turbFreqX + sp.seed * 10) * turbAmp;
       sp.y += sp.vy * dt + windY * dt;
@@ -813,7 +819,7 @@ export default function ShellBurstRenderer({
           <bufferAttribute attach="attributes-aMaxLife" args={[maxLifeBuffer, 1]} />
           <bufferAttribute attach="attributes-aBrightness" args={[brightnessBuffer, 1]} />
           <bufferAttribute attach="attributes-aVelocity" args={[velocityBuffer, 3]} />
-          <bufferAttribute attach="attributes-aDragCoeff" args={[dragBuffer, 1]} />
+          
         </bufferGeometry>
         <shaderMaterial
           vertexShader={BURST_VERTEX}
@@ -889,6 +895,7 @@ export default function ShellBurstRenderer({
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest
           />
         </mesh>
       )}
@@ -906,6 +913,7 @@ export default function ShellBurstRenderer({
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest
             side={THREE.DoubleSide}
           />
         </mesh>
