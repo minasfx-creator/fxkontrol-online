@@ -115,8 +115,12 @@ const FLICKER_BY_COMPOUND: Record<string, FlickerParams> = {
   magnesium: { base: 0.48, amplitude: 0.45, popStrength: 0.52 },
   // Charcoal (gold tails) — slow smoldering, organic carbon fuel
   charcoal: { base: 0.72, amplitude: 0.20, popStrength: 0.15 },
+  // Lampblack — "extremely fine, finely dispersed orange sparks" (Pyrotechnic Chemicals)
+  lampblack: { base: 0.65, amplitude: 0.28, popStrength: 0.20 },
   // Iron (gold sparks) — moderate, Fe particle combustion, linseed oil coating
   iron: { base: 0.62, amplitude: 0.32, popStrength: 0.30 },
+  // Ferrotitanium (60/40 Fe/Ti) — yellow-white sparks, between iron and titanium
+  ferrotitanium: { base: 0.52, amplitude: 0.44, popStrength: 0.48 },
   // KClO4 flash — KClO4 66-70% + Al 30-34% (stoichiometric, Chemistry of Pyrotechnics)
   // Burns in milliseconds, TNT equivalence ~75%. Combustion heat Al=7400 kcal/g
   flash: { base: 0.30, amplitude: 0.60, popStrength: 0.70 },
@@ -139,8 +143,12 @@ const FLICKER_BY_COMPOUND: Record<string, FlickerParams> = {
   black_powder: { base: 0.60, amplitude: 0.35, popStrength: 0.30 },
   // Lead oxide (PbO) — dragon eggs, violent oscillatory combustion with magnalium
   lead: { base: 0.35, amplitude: 0.55, popStrength: 0.65 },
+  // Lead tetraoxide (Pb3O4) — dragon eggs, "oscillatory burning much more vigorous" (Chemistry of Pyrotechnics)
+  lead_oxide: { base: 0.30, amplitude: 0.58, popStrength: 0.68 },
   // Bismuth (Bi2O3) — dragon egg substitute, similarly violent oscillation
   bismuth: { base: 0.38, amplitude: 0.52, popStrength: 0.60 },
+  // Bismuth trioxide — dragon eggs, violent oscillation comparable to lead tetraoxide
+  bismuth_oxide: { base: 0.33, amplitude: 0.55, popStrength: 0.62 },
   // Potassium perchlorate (KClO4) — strong oxidizer, moderate flicker
   potassium_perchlorate: { base: 0.50, amplitude: 0.42, popStrength: 0.50 },
 };

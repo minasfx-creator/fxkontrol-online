@@ -659,8 +659,12 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           twinkle = 0.5; // pre-ignition: subdued glow
         }
       } else if (isMagnaliumOrDragonEgg) {
-        // Dragon eggs / magnalium strobe: real oscillatory combustion ~10Hz
-        twinkle = strobeFlicker(sparkleSeeds[i], time, 0.06, 0.04);
+        // Dragon eggs: "oscillatory burning much more vigorous than strobe mix" — Chemistry of Pyrotechnics
+        // Lead/bismuth oxide + magnalium = ~15Hz violent oscillation (vs 10Hz standard strobe)
+        const isDragonEgg = pattern === 'dragon_egg';
+        const smolder = isDragonEgg ? 0.04 : 0.06;
+        const burn = isDragonEgg ? 0.025 : 0.04;
+        twinkle = strobeFlicker(sparkleSeeds[i], time, smolder, burn) * (isDragonEgg ? 1.3 : 1.0);
       } else if (isTrailingPattern) {
         // Nishiki detection: kamuro + gold-like base color → high-freq aluminum shimmer
         const isNishiki = pattern === 'kamuro' && baseColor.r > 0.85 && baseColor.g > 0.7 && baseColor.b < 0.4;
