@@ -4,6 +4,7 @@
  */
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import type { Effect } from '@/data/effectLibrary';
 import { timelineEngine } from '@/core/engine/timelineEngine';
 import { toast } from 'sonner';
 
@@ -21,6 +22,63 @@ interface JoiCommand {
 
 const CMD_REGEX = /\[JOI_CMD\]([\s\S]*?)\[\/JOI_CMD\]/g;
 const MAX_COMMANDS_PER_MSG = 50;
+
+// ── Alias map for common terms → effectId ──
+const EFFECT_ALIASES: Record<string, string> = {
+  'chrysanthemum gold': 'mort-01',
+  'chrysanthemum 3': 'mort-01',
+  'gold chrysanthemum': 'mort-01',
+  'willow gold': 'mort-02',
+  'willow 4': 'mort-02',
+  'brocade': 'mort-03',
+  'brocade crown': 'mort-03',
+  'coconut palm': 'mort-04',
+  'palm 6': 'mort-04',
+  'titanium shell': 'shell-01',
+  'color shell': 'shell-02',
+  'kamuro 5': 'shell-03',
+  'crossette': 'shell-04',
+  'horsetail': 'shell-05',
+  'spider': 'shell-06',
+  'ring shell': 'shell-07',
+  'nishiki': 'shell-08',
+  'nishiki kamuro': 'shell-08',
+  'peony 8': 'shell-09',
+  'chrysanthemum 10': 'shell-10',
+  'willow 10': 'shell-11',
+  'grand peony': 'shell-12',
+  'kamuro 12': 'shell-13',
+  'palm 8': 'shell-14',
+  'heart': 'shell-15',
+  'heart shell': 'shell-15',
+  'dahlia': 'shell-17',
+  'dahlia 6': 'shell-17',
+  'strobe shell': 'shell-18',
+  'multi-break': 'shell-19',
+  'tourbillion': 'shell-20',
+  'red peony': 'peon-01',
+  'blue peony': 'peon-02',
+  'green peony': 'peon-03',
+  'purple dahlia': 'peon-04',
+  'silver glitter': 'peon-05',
+  'gold strobing': 'peon-06',
+  'crackling stars': 'peon-07',
+  'falling leaves': 'peon-08',
+  'rising comet': 'comet-01',
+  'comet': 'comet-01',
+  'falling comet': 'comet-02',
+  'silver mine': 'mine-01',
+  'gold mine': 'mine-02',
+  'crackling mine': 'mine-03',
+  'color star mine': 'mine-04',
+  'titanium mine': 'mine-05',
+  'cold sparks': 'sfx-03',
+  'silver spark': 'spark-01',
+  'gold spark': 'spark-02',
+  'silver waterfall': 'wf-01',
+  'gold waterfall': 'wf-02',
+  'waterfall curtain': 'wf-03',
+};
 
 /** Extract all [JOI_CMD] blocks from text */
 export function parseJoiCommands(text: string): JoiCommand[] {
@@ -46,6 +104,89 @@ export function stripJoiCommands(text: string): string {
 /** Check if text contains any JOI_CMD blocks */
 export function hasJoiCommands(text: string): boolean {
   return /\[JOI_CMD\]/.test(text);
+}
+
+/** 
+ * Resolve an effect from effectId/effectName with multi-level fallback:
+ * 1. Exact ID match
+ * 2. Alias map lookup
+ * 3. Name substring match
+ * 4. Pattern + caliber extraction
+ * 5. Keyword intersection
+ * 6. Pattern-only fallback
+ */
+function resolveEffect(params: Record<string, any>): Effect | undefined {
+  const searchTerm = params.effectId || params.effectName || '';
+  if (!searchTerm) return undefined;
+
+  // 1. Exact ID
+  let effect = EFFECT_LIBRARY.find(e => e.id === searchTerm);
+  if (effect) return effect;
+
+  const searchLower = searchTerm.toLowerCase().replace(/["""'']/g, '').trim();
+
+  // 2. Alias map
+  const aliasId = EFFECT_ALIASES[searchLower];
+  if (aliasId) {
+    effect = EFFECT_LIBRARY.find(e => e.id === aliasId);
+    if (effect) return effect;
+  }
+  // Also try partial alias match
+  for (const [alias, id] of Object.entries(EFFECT_ALIASES)) {
+    if (searchLower.includes(alias) || alias.includes(searchLower)) {
+      effect = EFFECT_LIBRARY.find(e => e.id === id);
+      if (effect) return effect;
+    }
+  }
+
+  // 3. Name substring match
+  effect = EFFECT_LIBRARY.find(e => e.name.toLowerCase().replace(/["""'']/g, '').includes(searchLower));
+  if (effect) return effect;
+
+  // 4. Pattern + caliber extraction (e.g. "Chrysanthemum 6" → pattern=chrysanthemum, caliber=6)
+  const caliberMatch = searchLower.match(/(\d+)\s*(?:"|inch|pol)?/);
+  const caliber = caliberMatch ? parseInt(caliberMatch[1]) : null;
+  const patternWords = searchLower.replace(/\d+\s*(?:"|inch|pol)?/g, '').trim().split(/\s+/).filter(Boolean);
+
+  if (caliber && patternWords.length > 0) {
+    const patternKey = patternWords.join(' ');
+    effect = EFFECT_LIBRARY.find(e =>
+      e.caliber === caliber &&
+      (e.pattern?.toLowerCase() === patternKey ||
+       e.name.toLowerCase().includes(patternKey))
+    );
+    if (effect) return effect;
+  }
+
+  // 5. Keyword intersection (allow short words like "3" for caliber matching)
+  const keywords = searchLower.replace(/[-_]/g, ' ').split(/\s+/).filter(k => k.length >= 1);
+  if (keywords.length > 0) {
+    effect = EFFECT_LIBRARY.find(e => {
+      const haystack = `${e.id} ${e.name} ${e.pattern || ''}`.toLowerCase();
+      return keywords.every(kw => haystack.includes(kw));
+    });
+    if (effect) return effect;
+  }
+
+  // 6. Pattern-only fallback
+  const KNOWN_PATTERNS = ['chrysanthemum', 'peony', 'willow', 'kamuro', 'crossette', 'dahlia', 'brocade', 'ring', 'palm', 'heart', 'strobe'];
+  const patternKw = patternWords.find(k => KNOWN_PATTERNS.includes(k)) || keywords.find(k => KNOWN_PATTERNS.includes(k));
+  if (patternKw) {
+    effect = EFFECT_LIBRARY.find(e => e.pattern?.toLowerCase() === patternKw);
+    if (effect) return effect;
+    effect = EFFECT_LIBRARY.find(e => e.name.toLowerCase().includes(patternKw));
+    if (effect) return effect;
+  }
+
+  // 7. PartType fallback (mine, comet, cake, waterfall, gerb)
+  const partTypes = ['mine', 'comet', 'cake', 'waterfall', 'gerb'];
+  const ptMatch = keywords.find(k => partTypes.includes(k));
+  if (ptMatch) {
+    effect = EFFECT_LIBRARY.find(e => e.partType === ptMatch);
+    if (effect) return effect;
+  }
+
+  return undefined;
 }
 
 /** Execute a single command, return result */
@@ -75,28 +216,8 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
       }
 
       case 'add_effect': {
+        const effect = resolveEffect(params);
         const searchTerm = params.effectId || params.effectName || '';
-        const searchLower = searchTerm.toLowerCase();
-        let effect = EFFECT_LIBRARY.find(e => e.id === params.effectId);
-        // Fallback: search by name substring
-        if (!effect && searchTerm) {
-          effect = EFFECT_LIBRARY.find(e => e.name.toLowerCase().includes(searchLower));
-        }
-        // Fallback: fuzzy match by pattern/color keywords in the ID or name
-        if (!effect && searchTerm) {
-          const keywords = searchLower.replace(/[-_]/g, ' ').split(/\s+/).filter(k => k.length > 2);
-          effect = EFFECT_LIBRARY.find(e => {
-            const haystack = `${e.id} ${e.name} ${e.pattern || ''} ${e.color || ''}`.toLowerCase();
-            return keywords.every(kw => haystack.includes(kw));
-          });
-          // Last resort: match by pattern alone
-          if (!effect) {
-            const patternKw = keywords.find(k => ['chrysanthemum','peony','willow','kamuro','crossette','dahlia','brocade','ring','comet','mine','gerb','cake'].includes(k));
-            if (patternKw) {
-              effect = EFFECT_LIBRARY.find(e => (e.pattern || '').toLowerCase() === patternKw || e.name.toLowerCase().includes(patternKw));
-            }
-          }
-        }
         if (!effect) return { action, success: false, label: `Efeito não encontrado: ${searchTerm}` };
 
         const pos = params.positionId ? store.positions.find(p => p.id === params.positionId) :
