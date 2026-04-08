@@ -426,13 +426,14 @@ export default function ShellBurstRenderer({
   }), []);
 
   // Pistil buffers
+  const pistilSize = Math.max(pistilCount, 1);
   const pistilBuffers = useMemo(() => ({
-    pos: new Float32Array(MAX_PARTICLES * 3),
-    life: new Float32Array(MAX_PARTICLES),
-    maxLife: new Float32Array(MAX_PARTICLES),
-    brightness: new Float32Array(MAX_PARTICLES),
-    velocity: new Float32Array(MAX_PARTICLES * 3),
-  }), []);
+    pos: new Float32Array(pistilSize * 3),
+    life: new Float32Array(pistilSize),
+    maxLife: new Float32Array(pistilSize),
+    brightness: new Float32Array(pistilSize),
+    velocity: new Float32Array(pistilSize * 3),
+  }), [pistilSize]);
 
   // Glitter trail buffers
   const GLITTER_MAX = 800;
