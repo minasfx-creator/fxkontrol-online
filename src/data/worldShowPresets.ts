@@ -238,15 +238,16 @@ function generateSydney() {
 // 3. BURJ KHALIFA — Dubai
 // ═══════════════════════════════════════════════════════════════
 function generateBurjKhalifa() {
-  // Vertical positions along the 828m tower — 15 levels
+  // Vertical positions along the 828m tower — 15 levels with slight X/Z spread per floor
   const tower: Position[] = Array.from({ length: 15 }, (_, i) => {
     const h = 50 + i * 52; // 50m to 778m
-    return pos(uid(), `Level ${i + 1} (${h}m)`, 0, h, 0, 0);
+    const face = (i % 3) - 1; // -1, 0, 1 — simulates different tower faces
+    return pos(uid(), `Level ${i + 1} (${h}m)`, face * 5, h, face * 3, 0);
   });
-  // Fountain positions (Dubai Fountain) — 8 positions in arc
+  // Fountain positions (Dubai Fountain) — 8 positions in arc in front of tower (z: +150 to +200)
   const fountain: Position[] = Array.from({ length: 8 }, (_, i) => {
     const angle = (i / 8) * Math.PI - Math.PI / 2;
-    return pos(uid(), `Fountain ${i + 1}`, Math.cos(angle) * 150, 0, Math.sin(angle) * 150 - 200, 0);
+    return pos(uid(), `Fountain ${i + 1}`, Math.cos(angle) * 150, 0, 150 + Math.abs(Math.sin(angle)) * 50, 0);
   });
 
   const all = [...tower, ...fountain];
