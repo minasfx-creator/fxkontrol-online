@@ -34,6 +34,13 @@ const FIELD_OPTIONS = [
   { value: 'vdl', label: 'VDL String' },
   { value: 'sku', label: 'SKU / Part Number' },
   { value: 'manufacturer', label: 'Manufacturer' },
+  { value: 'fuseDelay', label: 'Fuse Delay (s)' },
+  { value: 'devices', label: 'Devices / Chain Count' },
+  { value: 'exNumber', label: 'EX Number' },
+  { value: 'ceNumber', label: 'CE Number' },
+  { value: 'unNumber', label: 'UN Number' },
+  { value: 'subtype', label: 'Subtype' },
+  { value: 'rackType', label: 'Rack Type' },
 ];
 
 type Step = 'upload' | 'mapping' | 'preview';
