@@ -911,6 +911,7 @@ export default function ShellBurstRenderer({
             }}
             transparent
             depthWrite={false}
+            depthTest
             side={THREE.DoubleSide}
           />
         </mesh>
