@@ -171,10 +171,10 @@ const AFTERGLOW_FRAGMENT = `
 // ── Volumetric Smoke Billboard Shader (Niagara SubUV style) ─────────
 
 const SMOKE_VERTEX = `
-  attribute float aAge;
-  attribute float aMaxAge;
-  attribute float aScale;
-  attribute float aSeed;
+  uniform float aAge;
+  uniform float aMaxAge;
+  uniform float aScale;
+  uniform float aSeed;
   
   varying float vAge;
   varying float vMaxAge;
