@@ -1,65 +1,91 @@
 
 
-# Ciclo #35 — Chemistry-Calibrated Realism + Bug Fixes (from Documentation)
+# Ciclo #36 — Conformidade 100% com Manual Finale 3D (MANUAL_FINALE-19)
 
-## Dados Extraídos dos Documentos
+## Dados Extraídos do Manual
 
-| Fonte | Dado-Chave | Aplicação |
-|-------|-----------|-----------|
-| **Complete Book of Flash Powder** | KClO4 66% + Al 34% = stoichiometric; TNT equivalence 75%; Al: 7400 kcal/g, Mg: 6000 kcal/g; Al melts 660°C, boils 2270°C; Magnalium mp 460°C, SG 2.0 | Validates existing `COMBUSTION_HEAT_KCAL`. Missing: flash burn time "thousandths of a second" |
-| **Chemistry of Pyrotechnics** | Strobe = oscillatory combustion with smolder + burn phases; Dragon eggs = lead/bismuth oxide + magnalium with "violent oscillation" and "sharp cracks"; Iron = "bright orange sparks" (not gold); Zinc = "bluish or green" sparks + "electric stars" = "bright blue with bluish zinc sparks"; Charcoal from soft wood = fast burn, hard wood = long-lasting sparks | Iron color wrong, zinc color description mismatch, charcoal burn rate should vary |
-| **Pyrotechnic Chemicals** | Iron = "yellow branching sparks"; Titanium = "bright white sparks, intensity affected by particle size"; Lampblack = "finely dispersed orange sparks"; Magnalium = "glitter, strobes, colored stars, crackling stars"; Charcoal soft = fast, hard = long sparks | Confirms iron is yellow-branching (current orange is close), lampblack = orange fine sparks |
+| Seção Manual | Dado-Chave | Gap no FXK |
+|---|---|---|
+| **Tabela 2 (p.37)** | Prefire para shells = break time, NÃO afeta apex height. Prefire para cakes (blank/0) = auto-calculate lift time do primeiro sub-shell. Prefire para comets/mines = "não afeta simulação, mas afeta timing do script" | ✅ Já implementado em `getTypedPrefire` |
+| **Tabela 2 (p.37)** | Duration para shells = star lifetime. Duration para cakes = "primeiro lançamento até último break". Duration para comets/mines = star lifetime | ✅ Já implementado em `getTypedDuration` |
+| **Tabela 2 (p.37)** | Height para shells = "altura do vértice da trajetória em metros". Para comets: "Para fazer cometas ultrarrápidos/laser, configure altura alta e duração pequena" | Comets sem lógica de ultra-fast (height alto + duration baixo) |
+| **Importação (p.30)** | Colunas Finale: `HeightMeters` (internal: `heightMeters`), `PreFire` (internal: `internalDelay`), `Devices` (internal: `numDevices`), `FuseDelay` (internal: `fuse`), `SafetyDistanceMeters` (internal: `safetyDistance`), `ExNumber`, `CeNumber`, `UnNumber`, `RackType`, `Subtipo` | `catalogImporter.ts` COLUMN_ALIASES faltam vários: `height_meters`, `internal_delay`, `num_devices`, `ex_number`, `ce_number`, `un_number`, `fuse`, `subtipo` |
+| **Importação (p.30)** | Tipo Finale: `shell, comet, mine, cake, candle, other effect, single shot, ground, rocket, flame, not an effect, rack, sfx, light` | `PART_TYPE_MAP` falta: `other effect`, `not an effect`, `proyectiles/shells` (Finale Inventory variant) |
+| **Cadenas (p.47-50)** | `Devices` = número de shells na cadeia. `chainsCountAsOne` config. Preço pode ser por cadeia ou por shell | `catalogImporter` não importa `numDevices`, `fuseDelay`, `exNumber`, `ceNumber`, `unNumber` |
+| **Prefire Cake (p.34)** | Prefire 0.3s em cake aérea 3" → breaks at 0.3s = "parece um géiser" (RUIM). Blank/0 = auto-calculate correto | ✅ `getCakePrefire` já clamp com `liftTime * 0.7` |
+| **Export PFT (exportEngine)** | `calculatePFT` usa hardcoded table {2:1.2, 3:1.8...} em vez de `getLiftTime()` da pyroPhysics — duplicação e desalinhamento | Bug: devia usar `getLiftTime` |
 
-## Bugs Identificados
+## Bugs & Gaps
 
-| # | Bug | Local | Fix |
-|---|-----|-------|-----|
-| 1 | **Iron compound color mismatch** — `particleChemistry.ts` iron color `(1.0, 0.65, 0.15)` = deep orange. But documents say iron produces "bright orange sparks" and "yellow branching sparks" — current is too red, not enough yellow branching | `particleChemistry.ts` L164 | Adjust to `(1.0, 0.75, 0.20)` — brighter, more yellow |
-| 2 | **Zinc color too white** — `(0.85, 0.9, 1.0)` is nearly white. Documents: zinc = "bluish or green" and "electric stars are bright blue with bluish zinc sparks" — needs more blue tint | `particleChemistry.ts` L188 | Adjust to `(0.70, 0.82, 1.0)` — more distinctly bluish |
-| 3 | **Magnesium boiling point missing** — Flash Powder book confirms Mg boils at 1107°C. Current compound has `meltingPoint: 650` but no `boilingPoint`. Not a visual bug but temperature data is incomplete | `particleChemistry.ts` L121 | Add boiling point comment (no visual impact, skip) |
-| 4 | **Flash powder burn duration not modeled** — Documents emphasize flash burns in "thousandths of a second". Current `thermalColorRamp` flash path has 80% of life as white-hot, but the star lifetime for flash/salute effects is not shortened to match millisecond burn | `pyroNoise.ts` thermalColorRamp | Flash life multiplier should be dramatically short — but this is already handled via `dahlia` pattern's 0.35x life multiplier. OK as-is. |
-| 5 | **Dragon egg compound lacks lead/bismuth specificity** — Documents say dragon eggs use "lead tetraoxide or bismuth trioxide mixed with magnalium, copper oxide, and NC lacquer" with "oscillatory burning much more vigorous than strobe mix". Current `dragon_egg` pattern uses generic magnalium strobe | `FireworkRenderer.tsx` L661 | Dragon egg strobe should be more violent: shorter cycles, higher spike amplitude |
-| 6 | **Lampblack vs charcoal distinction missing** — Documents distinguish: lampblack = "extremely fine, finely dispersed orange sparks" vs charcoal = "charcoal from hard woods for long-lasting spark effects". Current code treats all charcoal identically | `pyroNoise.ts` FLICKER_BY_COMPOUND | Add `lampblack` entry with faster, finer flicker |
-| 7 | **Sulfur ignition temp wrong in COMBUSTION_HEAT_KCAL** — Current: 2200 kcal/g. Flash Powder book confirms sulfur is a low-energy fuel (ignites at 223°C). The 2200 value seems reasonable for total combustion heat, but it's a fuel not a metal — HDR boost shouldn't apply equally | `pyroNoise.ts` L291 | Keep value but note it — sulfur doesn't produce bright sparks |
-| 8 | **Ferrotitanium alloy missing** — Pyrotechnic Chemicals doc lists "Ferrotitanium [60/40 Fe/Ti]" for "yellow-white sparks in fountains and star compositions". Not modeled | `particleChemistry.ts` | Add ferrotitanium compound |
+| # | Bug | Local | Impacto |
+|---|-----|-------|---------|
+| 1 | **catalogImporter missing Finale column aliases** — Faltam: `height_meters`, `heightmeters`, `internal_delay`, `internaldelay`, `num_devices`, `numdevices`, `ex_number`, `ce_number`, `un_number`, `fuse`, `subtipo`, `subtype`, `rack_type` | `catalogImporter.ts` L14-28 | Importação de catálogos Finale ignora colunas |
+| 2 | **catalogImporter missing Finale Inventory type names** — `proyectiles`, `other`, `not an effect`, `otro efecto`, `no coreografiado` não mapeados | `catalogImporter.ts` L32-61 | Tipos incorretos para catálogos Finale Inventory |
+| 3 | **catalogImporter não importa campos extras** — `fuseDelay`, `exNumber`, `ceNumber`, `unNumber`, `devices`, `subtipo` não são capturados nem passados para o Effect | `catalogImporter.ts` L80-97, L240-260 | Metadados Finale perdidos |
+| 4 | **exportEngine.calculatePFT duplica pyroPhysics** — Hardcoded lookup table em vez de usar `getLiftTime()` | `exportEngine.ts` L354-362 | Valores desalinhados com física calibrada |
+| 5 | **catalogToEffects height fallback simplista** — `caliber * 20` é uma fórmula arbitrária. Deveria usar `getBreakHeight()` de pyroPhysics | `catalogImporter.ts` L270 | Alturas de importação erradas vs tabela física |
+| 6 | **Comet "ultra-fast" behavior missing** — Manual diz "Para fazer cometas ultrarrápidos, configure altura alta e duração pequena". Não há lógica que detecte isso e ajuste a velocidade de saída | `vdlParser.ts` / `pyroPhysics.ts` | Cometas laser impossíveis de criar |
 
 ## Plano de Implementação
 
-### Arquivo 1: `src/render_ultra/fireworks/particleChemistry.ts`
+### Arquivo 1: `src/lib/catalogImporter.ts`
 
-**Fix 1 — Iron color correction (L164):**
-- Change iron color from `(1.0, 0.65, 0.15)` to `(1.0, 0.75, 0.22)` — more yellow-orange per documentation "yellow branching sparks"
+**Fix 1 — Adicionar aliases Finale (L14-28):**
+- `height`: adicionar `'height_meters'`, `'heightmeters'`, `'medidores_de_altura'`, `'effect_height'`
+- `prefire`: adicionar `'internal_delay'`, `'internaldelay'`, `'pre_fire_time'`, `'prefire_time'`
+- Novo campo `fuseDelay`: `['fuse_delay', 'fuse', 'fusedelay', 'visco_delay']`
+- Novo campo `devices`: `['devices', 'numdevices', 'num_devices', 'chain_devices']`
+- Novo campo `exNumber`: `['ex_number', 'exnumber']`
+- Novo campo `ceNumber`: `['ce_number', 'cenumber']`
+- Novo campo `unNumber`: `['un_number', 'unnumber', 'material']`
+- Novo campo `subtype`: `['subtipo', 'subtype', 'effect_subtype', 'sub_type']`
+- Novo campo `rackType`: `['rack_type', 'racktype']`
 
-**Fix 2 — Zinc color correction (L188):**
-- Change zinc color from `(0.85, 0.9, 1.0)` to `(0.68, 0.82, 1.0)` — distinctly bluish per "bright blue with bluish zinc sparks"
+**Fix 2 — Adicionar tipos Finale Inventory (L32-61):**
+- `'other effect'` → `'sfx'`
+- `'other'` → `'sfx'` (Finale Inventory variant)
+- `'not an effect'` → `'marker'` (need to add 'marker' to PartType or map to 'sfx')
+- `'proyectiles'` → `'shell'` (Spanish Finale Inventory)
+- `'otro efecto'` → `'sfx'`
+- `'no coreografiado'` → `'sfx'`
+- `'pasteles'` → `'cake'`
+- `'velas'` → `'candle'`
+- `'minas'` → `'mine'`
+- `'cometas'` → `'comet'`
+- `'cohetes'` → `'rocket'`
+- `'llamas'` → `'flame'`
+- `'tierra'` → `'ground'`
+- `'bastidor'` → `'sfx'` (rack)
 
-**Fix 3 — Add ferrotitanium compound (after iron_filings ~L544):**
-- New compound: ferrotitanium, 60/40 Fe/Ti alloy, color `(1.0, 0.90, 0.35)` yellow-white, temperature 3000K, sparkSize 1.6
+**Fix 3 — ParsedCatalogEffect + Effect extras (L80-97, L240-260):**
+- Adicionar `fuseDelay`, `devices`, `exNumber`, `ceNumber`, `unNumber`, `subtype` a `ParsedCatalogEffect`
+- Capturar esses campos no parsing CSV e XML
+- Passar `fuseDelay` e `devices` para a conversão `catalogToEffects`
 
-### Arquivo 2: `src/lib/pyroNoise.ts`
+**Fix 4 — catalogToEffects height fallback (L270):**
+- Trocar `caliber ? caliber * 20 : undefined` por `caliber ? getBreakHeight(caliber) : undefined`
+- Importar `getBreakHeight` de pyroPhysics
 
-**Fix 4 — Add lampblack flicker entry (after charcoal ~L117):**
-- `lampblack: { base: 0.65, amplitude: 0.28, popStrength: 0.20 }` — finer, more uniform burn per "extremely fine, finely dispersed"
+### Arquivo 2: `src/lib/exportEngine.ts`
 
-**Fix 5 — Add ferrotitanium flicker entry:**
-- `ferrotitanium: { base: 0.52, amplitude: 0.44, popStrength: 0.48 }` — between iron and titanium flicker
+**Fix 5 — Eliminar calculatePFT duplicado (L354-362):**
+- Trocar `calculatePFT(caliber)` por `getLiftTime(parseInt(caliber))` de pyroPhysics
+- Remover a função `calculatePFT` inteira
+- Importar `getLiftTime` de pyroPhysics
 
-**Fix 6 — Add lead_oxide and bismuth_oxide flicker entries for dragon egg distinction:**
-- `lead_oxide: { base: 0.30, amplitude: 0.58, popStrength: 0.68 }` — "violent oscillation" more aggressive than generic lead
-- `bismuth_oxide: { base: 0.33, amplitude: 0.55, popStrength: 0.62 }` — similarly violent
+### Arquivo 3: `src/lib/vdlParser.ts`
 
-### Arquivo 3: `src/components/editor/skycanvas/FireworkRenderer.tsx`
-
-**Fix 7 — Dragon egg strobe more violent (L661-663):**
-- Change dragon egg strobe parameters from `0.06, 0.04` to `0.04, 0.025` — faster cycle (15Hz vs 10Hz) per documentation "much more vigorous than strobe mix"
-- Add brightness spike: multiply strobe output by 1.3 for dragon_egg pattern
+**Fix 6 — Comet ultra-fast detection (~L700):**
+- Após aplicar adjustments, se `partType === 'comet'` e `height > 80` e `duration < 0.8`:
+  - Multiplicar `breakSpeed` por `1.8` (laser comet velocity)
+  - Adicionar modifier `'laser'` se não presente
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Chemistry color corrections (iron, zinc) + ferrotitanium compound |
-| 2 | Flicker entries (lampblack, ferrotitanium, lead/bismuth oxide) |
-| 3 | Dragon egg strobe violence increase |
+| 1 | catalogImporter: aliases + types + campos extras + height fix |
+| 2 | exportEngine: eliminar calculatePFT duplicado |
+| 3 | vdlParser: comet ultra-fast |
 | 4 | Build verification |
 
