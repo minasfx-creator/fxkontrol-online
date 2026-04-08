@@ -1021,7 +1021,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           <bufferAttribute attach="attributes-position" args={[particleBuffers.trailPos, 3]} />
           <bufferAttribute attach="attributes-color" args={[particleBuffers.trailCol, 3]} />
         </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={Math.min(1, 0.8 * tailFactor)} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} linewidth={3} />
+        <lineBasicMaterial vertexColors transparent opacity={Math.min(1, 0.8 * tailFactor)} depthWrite={false} depthTest={true} blending={THREE.AdditiveBlending} linewidth={3} />
       </lineSegments>
 
       {/* Pistil — inner burst with different color */}
