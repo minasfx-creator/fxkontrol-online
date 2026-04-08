@@ -206,6 +206,12 @@ export default function MobileTabBar({
           <div className="absolute left-0 top-0 bottom-0 w-6 z-10 pointer-events-none rounded-l-2xl" style={{ background: 'linear-gradient(to right, hsl(var(--background) / 0.7), transparent)' }} />
           {/* Right fade */}
           <div className="absolute right-0 top-0 bottom-0 w-6 z-10 pointer-events-none rounded-r-2xl" style={{ background: 'linear-gradient(to left, hsl(var(--background) / 0.7), transparent)' }} />
+          {/* Scroll hint arrow */}
+          {showScrollHint && (
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 z-20 pointer-events-none animate-pulse">
+              <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
+            </div>
+          )}
           <nav
             ref={navRef}
             className="pointer-events-auto glass-dock rounded-2xl px-1 py-1 overflow-x-auto no-scrollbar"
