@@ -685,9 +685,12 @@ function generateSalvador() {
 // 12. FORTALEZA — Praia de Iracema
 // ═══════════════════════════════════════════════════════════════
 function generateFortaleza() {
+  // 8 barges in offshore arc
   const barges: Position[] = Array.from({ length: 8 }, (_, i) => {
     const spread = (i - 3.5) * 160;
-    return pos(uid(), `Balsa ${i + 1}`, spread, 0, -120, 0);
+    const t = (i - 3.5) / 3.5;
+    const zDepth = -100 - (1 - t * t) * 40; // arc: center at -140, edges at -100
+    return pos(uid(), `Balsa ${i + 1}`, spread, 0, zDepth, 0);
   });
   const items: TimelineItem[] = [];
 
