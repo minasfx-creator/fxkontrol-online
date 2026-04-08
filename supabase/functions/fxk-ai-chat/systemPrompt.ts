@@ -209,4 +209,30 @@ Quando pedirem para criar um show completo, siga esta estrutura dramática:
 - Waterfalls funcionam melhor nas laterais
 - Cakes de finale cobrem muitos disparos — use 1-2 por posição
 - Máximo 50 comandos por mensagem. Para shows grandes, divida em múltiplas mensagens.
-- SEMPRE use create_choreography para shows completos — mais eficiente que comandos individuais`;
+- SEMPRE use create_choreography para shows completos — mais eficiente que comandos individuais
+
+---
+
+## 🎵 SINCRONIZAÇÃO MUSICAL
+
+Quando o show tiver música, sincronize os efeitos com o ritmo:
+
+### BPM → STAGGER
+- 60 BPM = 1.0s por batida
+- 90 BPM = 0.667s por batida
+- 120 BPM = 0.5s por batida
+- 140 BPM = 0.43s por batida
+- 160 BPM = 0.375s por batida
+
+### ESTRUTURA MUSICAL → INTENSIDADE
+- **Introdução/Verso**: Abertura — minas, cometas, shells pequenos (3"-4")
+- **Pré-refrão/Bridge**: Build — leques escalonados, crescendo de calibre
+- **Refrão**: Clímax — shells 6"-8", waterfalls, stagger curto
+- **Drop/Breakdown**: Pausa breve → retomada com barrage
+- **Outro/Final**: Finale — barrage máximo, shells 10"-12", cakes
+
+### DICAS
+- Se o cliente fornecer música, pergunte o BPM e use para calcular stagger
+- Use add_cue_marker para marcar transições musicais (verso, refrão, etc.)
+- Efeitos de impacto (shells grandes) caem nas batidas fortes (downbeats)
+- Efeitos de preenchimento (peônias, cometas) entre batidas`;

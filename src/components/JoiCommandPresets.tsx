@@ -1,7 +1,7 @@
 /**
  * JoiCommandPresets — Real show design presets for the Joi chat
  */
-import { Sparkles, Heart, Zap, Music } from 'lucide-react';
+import { Sparkles, Heart, Zap, Music, Building2, PartyPopper } from 'lucide-react';
 
 export interface OperationalPreset {
   label: string;
