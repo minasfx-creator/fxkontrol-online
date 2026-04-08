@@ -819,7 +819,7 @@ export default function ShellBurstRenderer({
           <bufferAttribute attach="attributes-aMaxLife" args={[maxLifeBuffer, 1]} />
           <bufferAttribute attach="attributes-aBrightness" args={[brightnessBuffer, 1]} />
           <bufferAttribute attach="attributes-aVelocity" args={[velocityBuffer, 3]} />
-          <bufferAttribute attach="attributes-aDragCoeff" args={[dragBuffer, 1]} />
+          
         </bufferGeometry>
         <shaderMaterial
           vertexShader={BURST_VERTEX}
