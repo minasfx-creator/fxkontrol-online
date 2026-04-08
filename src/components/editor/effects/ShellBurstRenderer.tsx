@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect } from 'react';
+import { useRef, useMemo, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { hash01 } from '@/lib/pyroNoise';
@@ -171,10 +171,10 @@ const AFTERGLOW_FRAGMENT = `
 // ── Volumetric Smoke Billboard Shader (Niagara SubUV style) ─────────
 
 const SMOKE_VERTEX = `
-  attribute float aAge;
-  attribute float aMaxAge;
-  attribute float aScale;
-  attribute float aSeed;
+  uniform float aAge;
+  uniform float aMaxAge;
+  uniform float aScale;
+  uniform float aSeed;
   
   varying float vAge;
   varying float vMaxAge;
@@ -315,6 +315,7 @@ export default function ShellBurstRenderer({
   angleOffset = 0,
   noTrail = false,
 }: ShellBurstRendererProps) {
+  const [, setRenderTick] = useState(0);
   const pointsRef = useRef<THREE.Points>(null);
   const pistilPointsRef = useRef<THREE.Points>(null);
   const glitterRef = useRef<THREE.Points>(null);
@@ -550,7 +551,7 @@ export default function ShellBurstRenderer({
         stepParticle(p, dt * detonationMult, windVec, particleDrag, tipCurlMods);
 
         // Glitter trail: emit micro-particles from active stars
-        if (trailType === 'glitter' && p.life > 0.1 && Math.random() < 0.15) {
+        if (trailType === 'glitter' && !noTrail && p.life > 0.1 && Math.random() < 0.15) {
           const gp = createGlitterTrailParticle(p);
           const gArr = glitterParticlesRef.current;
           if (gArr.length >= GLITTER_MAX) {
@@ -580,6 +581,7 @@ export default function ShellBurstRenderer({
           });
         }
         crossetteRef.current.push(subParticles);
+        setRenderTick(t => t + 1);
       }
 
       posBuffer[i * 3] = p.x;
@@ -705,6 +707,7 @@ export default function ShellBurstRenderer({
     // Spawn smoke puffs when burst reaches ~20% progress
     if (progress > 0.15 && !smokeSpawned.current && sceneSettings.smokeRenderQuality !== 'off') {
       smokeSpawned.current = true;
+      setRenderTick(t => t + 1);
       const sp: typeof smokeParticles.current = [];
       for (let i = 0; i < SMOKE_COUNT; i++) {
         const theta = Math.random() * Math.PI * 2;
