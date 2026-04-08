@@ -148,13 +148,13 @@ export function MissionControlPanel() {
 
   // Track multi-site state
   useEffect(() => {
-    const unsub = multiSiteSync.onStateChange(() => {
-      setMultiSites(multiSiteSync.getAllSites());
-      setMultiSiteLocal(multiSiteSync.isLocalMode());
+    const unsub = multiSiteCoordinator.onStateChange(() => {
+      setMultiSites(multiSiteCoordinator.getAllSites());
+      setMultiSiteLocal(multiSiteCoordinator.isLocalMode());
     });
     const poll = setInterval(() => {
-      setMultiSites(multiSiteSync.getAllSites());
-      setMultiSiteLocal(multiSiteSync.isLocalMode());
+      setMultiSites(multiSiteCoordinator.getAllSites());
+      setMultiSiteLocal(multiSiteCoordinator.isLocalMode());
     }, 2000);
     return () => { unsub(); clearInterval(poll); };
   }, []);
