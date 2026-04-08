@@ -590,16 +590,16 @@ function generateFunchal() {
 // 10. GRAND HARBOUR — Malta
 // ═══════════════════════════════════════════════════════════════
 function generateMalta() {
-  // Waterfront 360° — 12 positions around the harbour
+  // Waterfront 360° — 12 positions around the harbour (consistent negative Z = away)
   const harbour: Position[] = Array.from({ length: 12 }, (_, i) => {
     const angle = (i / 12) * Math.PI * 2;
-    return pos(uid(), `Bastione ${i + 1}`, Math.cos(angle) * 400, 0, Math.sin(angle) * 400, 0);
+    return pos(uid(), `Bastione ${i + 1}`, Math.cos(angle) * 400, 0, -Math.abs(Math.sin(angle)) * 400, 0);
   });
-  // Fort positions on elevated ground
+  // Fort positions on elevated ground — deep backdrop
   const forts: Position[] = [
-    pos(uid(), 'Fort St Elmo', 0, 30, -500, 180),
-    pos(uid(), 'Fort Ricasoli', 350, 25, -400, 225),
-    pos(uid(), 'Fort St Angelo', -300, 35, -350, 135),
+    pos(uid(), 'Fort St Elmo', 0, 30, -600, 180),
+    pos(uid(), 'Fort Ricasoli', 350, 25, -550, 225),
+    pos(uid(), 'Fort St Angelo', -300, 35, -500, 135),
   ];
 
   const all = [...harbour, ...forts];
