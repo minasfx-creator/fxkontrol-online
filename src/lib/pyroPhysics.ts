@@ -538,10 +538,11 @@ export function stepParticle(
   }
   p.vy += GRAVITY * gravityFactor * tipCurlMult * willowMult * horsetailMult * coconutMult * dt;
   
-  // Apply wind forces
-  p.vx += wind[0] * dt * 0.5;
-  p.vy += wind[1] * dt * 0.5;
-  p.vz += wind[2] * dt * 0.5;
+  // Apply wind forces — per-particle type influence
+  const windFactor = p.windInfluence ?? 0.6;
+  p.vx += wind[0] * dt * windFactor;
+  p.vy += wind[1] * dt * windFactor;
+  p.vz += wind[2] * dt * windFactor;
 
   // Falling leaves: sinusoidal lateral oscillation
   if (modifiers?.fallingLeaves && p.seed !== undefined) {
