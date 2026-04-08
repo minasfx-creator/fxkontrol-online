@@ -383,10 +383,11 @@ export default function ShellBurstRenderer({
   const pistilCount = useMemo(() => hasPistil ? Math.round(starCount * 0.25) : 0, [hasPistil, starCount]);
   const pistilColorObj = useMemo(() => new THREE.Color(pistilColor), [pistilColor]);
   const secondaryColorObj = useMemo(() => new THREE.Color(secondaryColor || color), [secondaryColor, color]);
-  const stepMods = useMemo<StepModifiers>(
-    () => fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : {},
-    [fallingLeaves]
-  );
+  // Instance-local stepMods to prevent shared mutation across concurrent bursts
+  const stepModsRef = useRef<StepModifiers>(fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : {});
+  useEffect(() => {
+    stepModsRef.current = fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : {};
+  }, [fallingLeaves]);
 
   // Initialize particles + per-particle drag coefficients on first render
   const particleDragCoeffs = useRef<Float32Array>(new Float32Array(MAX_PARTICLES));
