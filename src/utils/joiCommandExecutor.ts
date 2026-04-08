@@ -386,10 +386,11 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         const posCount = params.positions?.length || 0;
         const cueCount = params.cues?.length || 0;
         const failDetail = cueFails > 0 ? ` (${cueFails} falharam)` : '';
+        const idsDetail = createdIds.length > 0 ? `\nIDs criados: ${createdIds.join(', ')}` : '';
         return {
           action, success: true,
           label: `Coreografia criada`,
-          detail: `${posCount} posições + ${cueCount} cues${failDetail}`,
+          detail: `${posCount} posições + ${cueCount} cues${failDetail}${idsDetail}`,
         };
       }
 
