@@ -1089,11 +1089,11 @@ depthTest={true}
                 8, 8
               ]} />
               <meshBasicMaterial
-                color="#665544"
+                color={_smokeBlendResult}
                 transparent
                 opacity={0.025 * Math.pow(Math.max(0, 1 - (progress - 0.5) / 0.5), 2)}
                 depthWrite={false}
-                depthTest={false}
+                depthTest={true}
               />
             </mesh>
           )}
