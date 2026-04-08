@@ -166,7 +166,7 @@ function SmokeTrailInner({
       const fadeIn = Math.min(1, p.age * 8);
       const fadeOut = Math.max(0, 1 - Math.pow(t, fadeOutPower));
       const opacityFactor = Math.max(0, baseOpacity * intensity * fadeIn * fadeOut * smokeDensityMult);
-      mesh.setColorAt(visIdx, _color.clone().multiplyScalar(opacityFactor * 10)); // Scale for visibility
+      mesh.setColorAt(visIdx, _colorTemp.copy(_color).multiplyScalar(opacityFactor * 10));
 
       visIdx++;
     }
