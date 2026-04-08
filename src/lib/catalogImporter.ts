@@ -139,6 +139,49 @@ function detectDelimiter(text: string): string {
   return ',';
 }
 
+/**
+ * RFC 4180 compliant CSV line parser.
+ * Handles quoted fields containing delimiters, newlines, and escaped quotes ("").
+ */
+function parseCSVLine(line: string, delimiter: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  let i = 0;
+
+  while (i < line.length) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i += 2;
+        } else {
+          inQuotes = false;
+          i++;
+        }
+      } else {
+        current += ch;
+        i++;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+        i++;
+      } else if (ch === delimiter) {
+        fields.push(current.trim());
+        current = '';
+        i++;
+      } else {
+        current += ch;
+        i++;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
 /** Auto-map a header to our known fields — exact matches first, then substring */
 function autoMapHeader(header: string): string | null {
   const h = header.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_');
