@@ -84,10 +84,12 @@ function alternating(
 // 1. COPACABANA — Rio de Janeiro
 // ═══════════════════════════════════════════════════════════════
 function generateCopacabana() {
-  // 19 barges spread over 4.2km along the beach, ~220m apart
+  // 19 barges in offshore arc over 4.2km — center barges farther out, edges closer
   const barges: Position[] = Array.from({ length: 19 }, (_, i) => {
     const spread = (i - 9) * 220; // centered, -1980 to +1980
-    return pos(uid(), `Balsa ${i + 1}`, spread, 0, -80, 0);
+    const t = (i - 9) / 9; // -1 to 1
+    const zDepth = -80 - (1 - t * t) * 40; // arc: center at -120, edges at -80
+    return pos(uid(), `Balsa ${i + 1}`, spread, 0, zDepth, 0);
   });
 
   const items: TimelineItem[] = [];
