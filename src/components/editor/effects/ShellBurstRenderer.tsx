@@ -382,8 +382,8 @@ export default function ShellBurstRenderer({
   const pistilCount = useMemo(() => hasPistil ? Math.round(starCount * 0.25) : 0, [hasPistil, starCount]);
   const pistilColorObj = useMemo(() => new THREE.Color(pistilColor), [pistilColor]);
   const secondaryColorObj = useMemo(() => new THREE.Color(secondaryColor || color), [secondaryColor, color]);
-  const stepMods = useMemo<StepModifiers | undefined>(
-    () => fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : undefined,
+  const stepMods = useMemo<StepModifiers>(
+    () => fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : {},
     [fallingLeaves]
   );
 
@@ -426,16 +426,18 @@ export default function ShellBurstRenderer({
   }), []);
 
   // Pistil buffers
+  const pistilSize = Math.max(pistilCount, 1);
   const pistilBuffers = useMemo(() => ({
-    pos: new Float32Array(MAX_PARTICLES * 3),
-    life: new Float32Array(MAX_PARTICLES),
-    maxLife: new Float32Array(MAX_PARTICLES),
-    brightness: new Float32Array(MAX_PARTICLES),
-    velocity: new Float32Array(MAX_PARTICLES * 3),
-  }), []);
+    pos: new Float32Array(pistilSize * 3),
+    life: new Float32Array(pistilSize),
+    maxLife: new Float32Array(pistilSize),
+    brightness: new Float32Array(pistilSize),
+    velocity: new Float32Array(pistilSize * 3),
+  }), [pistilSize]);
 
   // Glitter trail buffers
   const GLITTER_MAX = 800;
+  const glitterWriteIdx = useRef(0);
   const glitterBuffers = useMemo(() => ({
     pos: new Float32Array(GLITTER_MAX * 3),
     col: new Float32Array(GLITTER_MAX * 3),
@@ -487,6 +489,21 @@ export default function ShellBurstRenderer({
     uTime: { value: 0 },
   }), []);
 
+  // Pre-allocated per-smoke uniform objects to avoid spread allocation per render
+  const SMOKE_POOL_SIZE = 16;
+  const perSmokeUniforms = useMemo(() =>
+    Array.from({ length: SMOKE_POOL_SIZE }, () => ({
+      uSmokeColor: smokeUniforms.uSmokeColor,
+      uSmokeOpacity: smokeUniforms.uSmokeOpacity,
+      uTime: smokeUniforms.uTime,
+      aAge: { value: 0 },
+      aMaxAge: { value: 1 },
+      aScale: { value: 1 },
+      aSeed: { value: 0 },
+    })),
+    [smokeUniforms]
+  );
+
   // Crossette sub-bursts
   const crossetteRef = useRef<ParticleState[][]>([]);
   const crossetteTriggered = useRef(new Set<number>());
@@ -535,9 +552,12 @@ export default function ShellBurstRenderer({
         // Glitter trail: emit micro-particles from active stars
         if (trailType === 'glitter' && p.life > 0.1 && Math.random() < 0.15) {
           const gp = createGlitterTrailParticle(p);
-          glitterParticlesRef.current.push(gp);
-          if (glitterParticlesRef.current.length > GLITTER_MAX) {
-            glitterParticlesRef.current.shift();
+          const gArr = glitterParticlesRef.current;
+          if (gArr.length >= GLITTER_MAX) {
+            gArr[glitterWriteIdx.current % GLITTER_MAX] = gp;
+            glitterWriteIdx.current++;
+          } else {
+            gArr.push(gp);
           }
         }
       }
@@ -749,6 +769,14 @@ export default function ShellBurstRenderer({
         mesh.scale.setScalar(expansion);
         mesh.visible = sp.age < sp.maxAge;
         
+        // Update pre-allocated per-smoke uniforms
+        if (i < SMOKE_POOL_SIZE) {
+          perSmokeUniforms[i].aAge.value = sp.age;
+          perSmokeUniforms[i].aMaxAge.value = sp.maxAge;
+          perSmokeUniforms[i].aScale.value = sp.scale;
+          perSmokeUniforms[i].aSeed.value = sp.seed;
+        }
+        
         // Modulate opacity by fluid grid density if available
         if (fluidGrid && mesh.material) {
           const worldX = (position as number[])[0] + sp.x;
@@ -891,7 +919,7 @@ export default function ShellBurstRenderer({
       </mesh>
 
       {/* Volumetric smoke billboards — Niagara SubUV turbulent puffs */}
-      {smokeParticles.current.map((sp, i) => (
+      {smokeParticles.current.map((_sp, i) => i < SMOKE_POOL_SIZE ? (
         <mesh
           key={`smoke-${i}`}
           ref={(el) => { smokeMeshRefs.current[i] = el; }}
@@ -902,20 +930,14 @@ export default function ShellBurstRenderer({
           <shaderMaterial
             vertexShader={SMOKE_VERTEX}
             fragmentShader={SMOKE_FRAGMENT}
-            uniforms={{
-              ...smokeUniforms,
-              aAge: { value: sp.age },
-              aMaxAge: { value: sp.maxAge },
-              aScale: { value: sp.scale },
-              aSeed: { value: sp.seed },
-            }}
+            uniforms={perSmokeUniforms[i]}
             transparent
             depthWrite={false}
             depthTest
             side={THREE.DoubleSide}
           />
         </mesh>
-      ))}
+      ) : null)}
 
       {/* Ground illumination — reduced intensity per V-Ray/Blender rules */}
       {progress < 0.5 && (
