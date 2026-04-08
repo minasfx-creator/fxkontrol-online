@@ -4,6 +4,7 @@
  * Activated via right-click on positions in 3D viewport.
  */
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useProjectStore } from '@/store/useProjectStore';
 import { toast } from 'sonner';
 import {
