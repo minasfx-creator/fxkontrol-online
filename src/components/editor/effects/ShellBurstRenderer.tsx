@@ -550,7 +550,7 @@ export default function ShellBurstRenderer({
         stepParticle(p, dt * detonationMult, windVec, particleDrag, tipCurlMods);
 
         // Glitter trail: emit micro-particles from active stars
-        if (trailType === 'glitter' && p.life > 0.1 && Math.random() < 0.15) {
+        if (trailType === 'glitter' && !noTrail && p.life > 0.1 && Math.random() < 0.15) {
           const gp = createGlitterTrailParticle(p);
           const gArr = glitterParticlesRef.current;
           if (gArr.length >= GLITTER_MAX) {
