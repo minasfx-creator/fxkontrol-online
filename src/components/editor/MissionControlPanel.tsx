@@ -25,12 +25,13 @@ import {
   type FrameSyncState,
 } from '@/core/reliability';
 
-// ── Stub types for removed modules (predictive, diagnostic, emergency, globalClock, multiSiteSync) ──
+import { multiSiteCoordinator, type SiteInfo } from '@/core/sync/MultiSiteCoordinator';
+
+// ── Stub types for removed modules (predictive, diagnostic, emergency, globalClock) ──
 type CheckStatus = 'pass' | 'warn' | 'fail';
 interface DiagnosticCheck { name: string; status: CheckStatus; message: string; }
 interface DiagnosticReport { checks: DiagnosticCheck[]; passed: number; warned: number; failed: number; duration_ms: number; }
 interface ClockSyncState { role: string; status: string; offset: number; rtt: number; drift: number; sampleCount: number; }
-interface SiteInfo { siteId: string; name: string; status: string; latencyMs: number; offsetMs: number; isHost: boolean; }
 
 // Stub singletons — replaced modules now provide safe no-ops
 const diagnostic = {
@@ -45,11 +46,6 @@ const predictive = { getStats: () => ({ jitterMs: 0 }) };
 const globalClock = {
   getState: (): ClockSyncState => ({ role: 'standalone', status: 'synced', offset: 0, rtt: 0, drift: 0, sampleCount: 0 }),
   onStatusChange: (_cb: (s: ClockSyncState) => void) => () => {},
-};
-const multiSiteSync = {
-  getAllSites: (): SiteInfo[] => [],
-  isLocalMode: () => true,
-  onStateChange: (_cb: () => void) => () => {},
 };
 
 // ── Status Icon ─────────────────────────────────────────────────────
