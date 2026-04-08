@@ -117,10 +117,6 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
     const store = useProjectStore.getState();
     // For now, add as timeline-compatible effects by extending the library
     // We store them in a way they can be used
-    (window as any).__customEffects = [
-      ...((window as any).__customEffects || []),
-      ...effects,
-    ];
     
     // Also push to EFFECT_LIBRARY (mutable operation for runtime)
     effects.forEach(eff => {

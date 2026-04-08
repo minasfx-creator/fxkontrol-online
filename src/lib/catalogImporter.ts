@@ -341,6 +341,68 @@ export function parseCatalogFile(text: string): {
   return { columns, effects, delimiter, rowCount: effects.length };
 }
 
+/** Re-parse catalog file applying user-specified column mappings as overrides */
+export function parseCatalogFileWithMappings(
+  text: string,
+  mappingOverrides: CatalogColumnMapping[],
+): { columns: CatalogColumnMapping[]; effects: ParsedCatalogEffect[]; delimiter: string; rowCount: number } {
+  const result = parseCatalogFile(text);
+  // Apply user overrides
+  result.columns.forEach((col, i) => {
+    if (mappingOverrides[i]) {
+      col.mappedTo = mappingOverrides[i].mappedTo;
+    }
+  });
+  // Re-parse effects with updated mappings
+  const delimiter = result.delimiter;
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (lines.length < 2) return result;
+
+  const effects: ParsedCatalogEffect[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCSVLine(lines[i], delimiter);
+    const raw: Record<string, string> = {};
+    result.columns.forEach((c, j) => { raw[c.header] = cols[j] || ''; });
+
+    const getValue = (field: string): string => {
+      const colIdx = result.columns.findIndex(c => c.mappedTo === field);
+      return colIdx >= 0 ? (cols[colIdx] || '') : '';
+    };
+
+    const name = getValue('name') || `Effect ${i}`;
+    const colorText = getValue('color');
+    const typeText = getValue('type');
+    const partType = parsePartType(typeText || name);
+
+    effects.push({
+      name,
+      caliber: parseFloat(getValue('caliber')) || (partType === 'shell' ? 3 : 0),
+      duration: parseFloat(getValue('duration')) || (partType === 'shell' ? 3 : 5),
+      color: colorText || 'Gold',
+      colorHex: parseColor(colorText || name),
+      partType,
+      height: parseFloat(getValue('height')) || 0,
+      cost: parseFloat(getValue('cost')) || 0,
+      prefire: parseFloat(getValue('prefire')) || 0,
+      pattern: getValue('pattern') || '',
+      shotCount: parseInt(getValue('shotCount')) || 0,
+      safetyDistance: parseFloat(getValue('safety')) || 0,
+      vdl: getValue('vdl') || '',
+      sku: getValue('sku') || '',
+      manufacturer: getValue('manufacturer') || '',
+      fuseDelay: parseFloat(getValue('fuseDelay')) || 0,
+      devices: parseInt(getValue('devices')) || 0,
+      exNumber: getValue('exNumber') || '',
+      ceNumber: getValue('ceNumber') || '',
+      unNumber: getValue('unNumber') || '',
+      subtype: getValue('subtype') || '',
+      raw,
+    });
+  }
+
+  return { columns: result.columns, effects, delimiter, rowCount: effects.length };
+}
+
 /** Convert parsed catalog effects to our internal Effect format */
 export function catalogToEffects(parsed: ParsedCatalogEffect[], idPrefix: string = 'cat'): Effect[] {
   return parsed.map((p, i) => {
