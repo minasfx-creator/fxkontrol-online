@@ -207,6 +207,7 @@ export default function MobileTabBar({
           {/* Right fade */}
           <div className="absolute right-0 top-0 bottom-0 w-6 z-10 pointer-events-none rounded-r-2xl" style={{ background: 'linear-gradient(to left, hsl(var(--background) / 0.7), transparent)' }} />
           <nav
+            ref={navRef}
             className="pointer-events-auto glass-dock rounded-2xl px-1 py-1 overflow-x-auto no-scrollbar"
             onMouseLeave={() => setHoveredIndex(null)}
             onTouchStart={handleSwipeStart}
