@@ -1,70 +1,72 @@
 
 
-# Ciclo #37 — Catalog Import Bug Fixes & Conformidade Finale 3D
+# Ciclo #38 — Superar Qualidade Finale 3D: GC-Free Rendering, Sound Sync, Multi-Break Realism
 
-## Bugs Identificados
+## Bugs & Gaps vs Finale 3D
 
-| # | Bug | Local | Impacto |
-|---|-----|-------|---------|
-| 1 | **handleReparse ignora mapeamento do usuário** — Chama `parseCatalogFile(rawText)` que usa auto-detect interno. Depois sobrescreve `result.columns[i].mappedTo` com as escolhas do usuário, mas os `result.effects` já foram parseados com os mapeamentos auto-detectados. O re-parse com mapeamento manual **não funciona** | `CatalogImportDialog.tsx` L85-96 | Crítico — botão Re-parse não aplica mudanças do usuário |
-| 2 | **CSV parser não suporta campos entre aspas com delimitador** — `lines[i].split(delimiter)` quebra `"Red, Green"` em dois campos quando delimiter=`,`. Catálogos Finale 3D reais usam CSV RFC 4180 com aspas | `catalogImporter.ts` L242, L257 | Alto — importação de catálogos reais falha |
-| 3 | **FIELD_OPTIONS desatualizado** — Dialog UI tem 15 campos mapeáveis, mas `COLUMN_ALIASES` agora tem 7 campos novos (fuseDelay, devices, exNumber, ceNumber, unNumber, subtype, rackType) que não aparecem no dropdown | `CatalogImportDialog.tsx` L21-37 | Médio — campos Finale não podem ser mapeados manualmente |
-| 4 | **`__customEffects` no window é dead code** — Armazenado mas nunca lido em lugar nenhum. Ocupação de memória sem propósito | `CatalogImportDialog.tsx` L117-120 | Baixo — código morto |
-| 5 | **effectLibraryMap cache invalidation frágil** — Usa `_map.size !== EFFECT_LIBRARY.length` mas se um efeito é removido e outro adicionado (same length), cache não invalida | `effectLibraryMap.ts` L8 | Baixo — edge case raro |
-| 6 | **`calculatePFT` é wrapper trivial** — Após Ciclo #36, `calculatePFT(caliber)` apenas chama `getLiftTime(parseInt(caliber))`. Função desnecessária, adiciona indireção | `exportEngine.ts` L355-360 | Baixo — clareza de código |
+| # | Bug/Gap | Local | Impacto |
+|---|---------|-------|---------|
+| 1 | **GC pressure: quaternion allocation per-frame per-burst** — L1311-1322 creates 6 `new THREE.*` objects (Euler, Quaternion, Vector3) per active burst per frame inside `useMemo`. These should be pre-allocated module-level singletons reused across all bursts | `FireworkRenderer.tsx` L1311-1322 | Alto — GC spikes during barrage scenes (20+ simultaneous bursts) |
+| 2 | **`depthTest: false` on main star particles** — L114 sets `depthTest: false` on the shared star material, which means stars render on top of ALL geometry (buildings, terrain, mountains). Finale 3D correctly occludes stars behind solid geometry | `FireworkRenderer.tsx` L114 | Alto — breaks depth realism when bursts are behind buildings or terrain |
+| 3 | **Flash sphere creates new THREE.Color every frame** — L1064 `new THREE.Color(color).lerp(...)` allocates a Color object every frame for every active burst's smoke cloud. Should be cached or use pre-allocated temp | `FireworkRenderer.tsx` L1064 | Médio — GC pressure |
+| 4 | **No sound delay modeling in rendering** — Finale 3D models the speed-of-sound delay (burst is visible before the "boom" arrives). Memory says we have `soundDelay.ts` but it's not integrated into burst visual timing — the flash and burst are simultaneous regardless of camera distance | `soundDelay.ts` / `FireworkRenderer.tsx` | Médio — realism gap vs Finale |
+| 5 | **Rocket partType missing dedicated renderer** — L1302 `isShell` includes `rocket` but rockets should have a visible ascending body with motor exhaust trail, not just a prefire trail + instant burst at height. Finale 3D renders rockets with visible motor climb phase | `FireworkRenderer.tsx` L1302, L1214 | Médio — rockets look identical to shells |
+| 6 | **Star sprite clamped to 96px** — L71 `clamp(gl_PointSize, 0.5, 96.0)` means large caliber bursts (10"+) at close camera distance get clipped. Finale uses 256px max | `FireworkRenderer.tsx` L71 | Baixo — visible only at close camera |
 
 ## Plano de Implementação
 
-### Arquivo 1: `src/lib/catalogImporter.ts`
+### Arquivo 1: `src/components/editor/skycanvas/FireworkRenderer.tsx`
 
-**Fix 2 — CSV RFC 4180 parser:**
-- Adicionar função `parseCSVLine(line: string, delimiter: string): string[]` que respeita campos entre aspas (handles `"field with, comma"`, `"field with ""escaped"" quotes"`)
-- Substituir `lines[0].split(delimiter)` e `lines[i].split(delimiter)` por chamadas a `parseCSVLine`
-- Aplicar em L242 e L257
+**Fix 1 — GC-free quaternion reuse in TimelineEffects (L1311-1322):**
+- Move quaternion/euler/vector allocations to module-level pre-allocated singletons:
+  ```
+  const _renderPosEuler = new THREE.Euler();
+  const _renderPosQuat = new THREE.Quaternion();
+  const _renderLaunchDir = new THREE.Vector3();
+  const _renderPitchAxis = new THREE.Vector3();
+  const _renderPitchQuat = new THREE.Quaternion();
+  const _renderEffEuler = new THREE.Euler();
+  const _renderEffQuat = new THREE.Quaternion();
+  ```
+- Replace all `new THREE.*` inside the `cappedEffects.map()` render loop with `.set()` / `.setFromEuler()` calls on these singletons
+- Note: these are used synchronously per-burst within the same frame, so reuse is safe (no concurrent access)
 
-**Nova export: `parseCatalogFileWithMappings(text, mappings)`:**
-- Variante de `parseCatalogFile` que aceita um array de `CatalogColumnMapping[]` como override
-- Se `mappings` fornecido, usa esses mapeamentos em vez do auto-detect
-- Isso resolve o bug #1 sem alterar a API existente
+**Fix 2 — Enable depthTest on star material (L114):**
+- Change `depthTest: false` to `depthTest: true` on the shared star material
+- Keep `depthWrite: false` to avoid stars occluding each other
+- This makes stars correctly hidden behind terrain/buildings while still rendering with additive blending among themselves
 
-### Arquivo 2: `src/components/editor/CatalogImportDialog.tsx`
+**Fix 3 — Remove per-frame Color allocation in smoke cloud (L1064):**
+- Pre-allocate a module-level `_smokeBlendColor = new THREE.Color()`
+- In the JSX, compute the blended color outside the mesh:
+  ```
+  _smokeBlendColor.set(color).lerp(_smokeGrayTarget, 0.7)
+  ```
+- Use `_smokeBlendColor` in the material `color` prop
 
-**Fix 1 — handleReparse com mapeamentos do usuário:**
-- Importar `parseCatalogFileWithMappings` e usar no handleReparse passando `columns` atuais
-- Resultado: re-parse agora aplica as seleções manuais do usuário
+**Fix 4 — Increase star sprite max size (L71):**
+- Change `clamp(gl_PointSize, 0.5, 96.0)` to `clamp(gl_PointSize, 0.5, 192.0)`
+- Allows 10"+ shells at close range to render at full visual size
 
-**Fix 3 — FIELD_OPTIONS completo:**
-- Adicionar 7 entradas novas ao FIELD_OPTIONS:
-  - `fuseDelay` → "Fuse Delay (s)"
-  - `devices` → "Devices / Chain Count"
-  - `exNumber` → "EX Number"
-  - `ceNumber` → "CE Number"
-  - `unNumber` → "UN Number"
-  - `subtype` → "Subtype"
-  - `rackType` → "Rack Type"
+**Fix 5 — Rocket dedicated ascending body (L1302):**
+- Add `pt === 'rocket'` check before the generic firework fallback
+- Create a new `RocketEffect` inline component that renders:
+  - Ascending body: small sphere moving from launch pos to burst pos based on `prefireProgress`
+  - Motor exhaust: `SparkShower` trail behind the ascending body
+  - At burst completion, render normal `FireworkBurst` at burst position
+- For now, implement as a thin wrapper that shows a `CometEffect` going up during prefire, then burst
 
-**Fix 4 — Remover dead code `__customEffects`:**
-- Eliminar linhas 117-120 (window.__customEffects)
+### Arquivo 2: `src/components/editor/skycanvas/sharedState.tsx`
 
-### Arquivo 3: `src/data/effectLibraryMap.ts`
-
-**Fix 5 — Cache invalidation robusta:**
-- Adicionar `_version` counter que é incrementado quando efeitos são adicionados
-- Ou simplesmente usar um `_lastLength` check + rebuild se EFFECT_LIBRARY was mutated (trocar size check por rebuild sempre que `_map` exists but length differs OR any ID lookup misses)
-
-### Arquivo 4: `src/lib/exportEngine.ts`
-
-**Fix 6 — Inline calculatePFT:**
-- Substituir `calculatePFT(caliber)` por `getLiftTime(parseInt(caliber) || 0)` inline em L379
-- Remover a função `calculatePFT` (L355-360)
+**Fix 6 — Pre-allocate smoke blend target color:**
+- Export `_smokeGrayTarget = new THREE.Color(0.35, 0.30, 0.25)` (currently inlined as hex in L1064)
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | CSV RFC 4180 parser + parseCatalogFileWithMappings (catalogImporter.ts) |
-| 2 | Fix handleReparse + FIELD_OPTIONS + remove dead code (CatalogImportDialog.tsx) |
-| 3 | Cache invalidation fix (effectLibraryMap.ts) |
-| 4 | Inline calculatePFT (exportEngine.ts) |
-| 5 | Build verification |
+| 1 | GC-free quaternions + smoke color allocation fixes |
+| 2 | Enable depthTest on stars + increase point size cap |
+| 3 | Rocket ascending body renderer |
+| 4 | Build verification |
 
