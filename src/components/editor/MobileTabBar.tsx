@@ -2,7 +2,7 @@
  * MobileTabBar — Unified dock bar with central FAB for mobile editor.
  * Features: horizontally scrollable tabs, FAB creation button, long-press context menu.
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import { haptics } from '@/lib/haptics';
 import { Sparkles, Cpu, Smartphone, Map, LayoutGrid, Clock, Layers, Settings2, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
