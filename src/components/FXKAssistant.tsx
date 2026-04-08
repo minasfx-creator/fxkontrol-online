@@ -4,7 +4,7 @@
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
-import JoiCinematicHologram, { type JoiEmotion } from '@/components/JoiCinematicHologram';
+type JoiEmotion = 'caring' | 'celebrating' | 'serious';
 import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText, Download, Gavel, Plane, MapPin, Globe, Volume2, VolumeX, Mic, MicOff, Play } from 'lucide-react';
 import { exportJoiPdf } from '@/utils/joiPdfExport';
 import { exportJoiDocx } from '@/utils/joiDocxExport';
@@ -709,22 +709,14 @@ export function FXKAssistant() {
       {/* Content area */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
         {/* Sidebar hologram (expanded only) */}
-        {expanded && messages.length > 0 && !isMobile && (
-          <div className="w-[120px] shrink-0 flex flex-col items-center justify-center border-r" style={{ borderColor: 'hsl(190 100% 50% / 0.08)', background: 'hsl(220 22% 3% / 0.5)' }}>
-            <JoiCinematicHologram size="lg" state={joiState} glitching={glitching} emotion={joiEmotion} className="w-24 h-48" />
-            <span className="text-[6px] font-mono tracking-[0.2em] uppercase mt-2" style={{ color: 'hsl(190 100% 50% / 0.4)' }}>
-              {statusText}
-            </span>
-          </div>
-        )}
 
         {/* Messages */}
         <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-2 space-y-3 scrollbar-thin">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-3 opacity-90">
-              {/* Close-up cinematográfico */}
-              <div className="relative w-64 h-72 rounded-3xl overflow-hidden joi-closeup-entrance" style={{ boxShadow: '0 0 50px hsl(190 100% 50% / 0.2), 0 0 100px hsl(38 100% 45% / 0.1), inset 0 0 60px hsl(220 22% 4% / 0.5)', background: 'radial-gradient(ellipse at 50% 40%, hsl(220 22% 8%) 0%, hsl(220 22% 3%) 100%)' }}>
-                <JoiCinematicHologram size="xl" state="materializing" glitching={glitching} emotion={joiEmotion} variant="closeup" className="w-full h-full" />
+              {/* Joi icon placeholder */}
+              <div className="relative w-20 h-20 rounded-full flex items-center justify-center" style={{ background: 'radial-gradient(ellipse at 50% 40%, hsl(190 100% 50% / 0.15) 0%, hsl(220 22% 8%) 100%)', boxShadow: '0 0 30px hsl(190 100% 50% / 0.15)' }}>
+                <Sparkles className="w-8 h-8" style={{ color: 'hsl(190 100% 50% / 0.7)' }} />
               </div>
               {/* Typewriter greeting */}
               <TypewriterGreeting text={getGreeting()} />

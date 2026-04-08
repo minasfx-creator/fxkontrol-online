@@ -3,7 +3,7 @@
  * Shows FPS, drone count, connection status
  */
 import { useState, useEffect, useRef } from 'react';
-import JoiCinematicHologram from '@/components/JoiCinematicHologram';
+import { Sparkles } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 
@@ -62,10 +62,7 @@ export default function JoiStatusMonitor() {
       </div>
 
       <div className="cursor-pointer hover:brightness-125 transition-all" title="AI Companion">
-        <JoiCinematicHologram
-          size="sm"
-          state={isPlaying ? 'active' : 'idle'}
-        />
+        <Sparkles className="w-4 h-4" style={{ color: isPlaying ? 'hsl(190 100% 50%)' : 'hsl(190 100% 50% / 0.4)' }} />
       </div>
     </div>
   );
