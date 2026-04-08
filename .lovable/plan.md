@@ -1,59 +1,65 @@
 
 
-# Joi Show Creation — Aprimoramento Ciclo #34
+# Ciclo #35 — Chemistry-Calibrated Realism + Bug Fixes (from Documentation)
 
-## Problemas Identificados
+## Dados Extraídos dos Documentos
 
-| # | Bug/Gap | Impacto |
-|---|---------|---------|
-| 1 | **Presets operacionais nunca aparecem** — `getContextPresets()` retorna `PRESETS_COMMAND` ou `PRESETS_EDITOR` (documentação/licenças). Os `OPERATIONAL_PRESETS` de `JoiCommandPresets.tsx` (Réveillon, Casamento, Finale, etc.) nunca são exibidos ao usuário | Crítico — usuário não vê os presets de shows |
-| 2 | **Joi não conhece o projeto atual** — System prompt não recebe contexto das posições e efeitos já existentes. Joi não pode "adicionar mais efeitos nas posições existentes" ou "modificar a coreografia" | Alto — não consegue iterar sobre shows |
-| 3 | **create_choreography não reporta falhas individuais** — Se 3 de 20 cues falham, retorna só "Coreografia criada" sem detalhe das falhas | Médio — esconde problemas |
-| 4 | **Faltam comandos: clear_project, list_positions, list_effects** — Joi não pode listar o que já existe nem limpar o projeto para recomeçar | Médio — UX limitada |
-| 5 | **System prompt não instrui sobre erro recovery** — Se um efeito não é encontrado, Joi não sabe sugerir alternativas | Baixo — UX |
+| Fonte | Dado-Chave | Aplicação |
+|-------|-----------|-----------|
+| **Complete Book of Flash Powder** | KClO4 66% + Al 34% = stoichiometric; TNT equivalence 75%; Al: 7400 kcal/g, Mg: 6000 kcal/g; Al melts 660°C, boils 2270°C; Magnalium mp 460°C, SG 2.0 | Validates existing `COMBUSTION_HEAT_KCAL`. Missing: flash burn time "thousandths of a second" |
+| **Chemistry of Pyrotechnics** | Strobe = oscillatory combustion with smolder + burn phases; Dragon eggs = lead/bismuth oxide + magnalium with "violent oscillation" and "sharp cracks"; Iron = "bright orange sparks" (not gold); Zinc = "bluish or green" sparks + "electric stars" = "bright blue with bluish zinc sparks"; Charcoal from soft wood = fast burn, hard wood = long-lasting sparks | Iron color wrong, zinc color description mismatch, charcoal burn rate should vary |
+| **Pyrotechnic Chemicals** | Iron = "yellow branching sparks"; Titanium = "bright white sparks, intensity affected by particle size"; Lampblack = "finely dispersed orange sparks"; Magnalium = "glitter, strobes, colored stars, crackling stars"; Charcoal soft = fast, hard = long sparks | Confirms iron is yellow-branching (current orange is close), lampblack = orange fine sparks |
+
+## Bugs Identificados
+
+| # | Bug | Local | Fix |
+|---|-----|-------|-----|
+| 1 | **Iron compound color mismatch** — `particleChemistry.ts` iron color `(1.0, 0.65, 0.15)` = deep orange. But documents say iron produces "bright orange sparks" and "yellow branching sparks" — current is too red, not enough yellow branching | `particleChemistry.ts` L164 | Adjust to `(1.0, 0.75, 0.20)` — brighter, more yellow |
+| 2 | **Zinc color too white** — `(0.85, 0.9, 1.0)` is nearly white. Documents: zinc = "bluish or green" and "electric stars are bright blue with bluish zinc sparks" — needs more blue tint | `particleChemistry.ts` L188 | Adjust to `(0.70, 0.82, 1.0)` — more distinctly bluish |
+| 3 | **Magnesium boiling point missing** — Flash Powder book confirms Mg boils at 1107°C. Current compound has `meltingPoint: 650` but no `boilingPoint`. Not a visual bug but temperature data is incomplete | `particleChemistry.ts` L121 | Add boiling point comment (no visual impact, skip) |
+| 4 | **Flash powder burn duration not modeled** — Documents emphasize flash burns in "thousandths of a second". Current `thermalColorRamp` flash path has 80% of life as white-hot, but the star lifetime for flash/salute effects is not shortened to match millisecond burn | `pyroNoise.ts` thermalColorRamp | Flash life multiplier should be dramatically short — but this is already handled via `dahlia` pattern's 0.35x life multiplier. OK as-is. |
+| 5 | **Dragon egg compound lacks lead/bismuth specificity** — Documents say dragon eggs use "lead tetraoxide or bismuth trioxide mixed with magnalium, copper oxide, and NC lacquer" with "oscillatory burning much more vigorous than strobe mix". Current `dragon_egg` pattern uses generic magnalium strobe | `FireworkRenderer.tsx` L661 | Dragon egg strobe should be more violent: shorter cycles, higher spike amplitude |
+| 6 | **Lampblack vs charcoal distinction missing** — Documents distinguish: lampblack = "extremely fine, finely dispersed orange sparks" vs charcoal = "charcoal from hard woods for long-lasting spark effects". Current code treats all charcoal identically | `pyroNoise.ts` FLICKER_BY_COMPOUND | Add `lampblack` entry with faster, finer flicker |
+| 7 | **Sulfur ignition temp wrong in COMBUSTION_HEAT_KCAL** — Current: 2200 kcal/g. Flash Powder book confirms sulfur is a low-energy fuel (ignites at 223°C). The 2200 value seems reasonable for total combustion heat, but it's a fuel not a metal — HDR boost shouldn't apply equally | `pyroNoise.ts` L291 | Keep value but note it — sulfur doesn't produce bright sparks |
+| 8 | **Ferrotitanium alloy missing** — Pyrotechnic Chemicals doc lists "Ferrotitanium [60/40 Fe/Ti]" for "yellow-white sparks in fountains and star compositions". Not modeled | `particleChemistry.ts` | Add ferrotitanium compound |
 
 ## Plano de Implementação
 
-### 1. `src/components/FXKAssistant.tsx` — Mostrar presets operacionais + enviar contexto do projeto
+### Arquivo 1: `src/render_ultra/fireworks/particleChemistry.ts`
 
-- Modificar `getContextPresets()` para incluir os `OPERATIONAL_PRESETS` na tela do editor (combinar com `PRESETS_EDITOR` ou substituir por tabbed view)
-- No `send()`, antes de enviar mensagens à API, injetar um **system context message** com o estado atual do projeto:
-  ```
-  { role: "system", content: `[CONTEXTO DO PROJETO]\nPosições: ${positions.map(p => `${p.name} (${p.type}) @ (${p.x}, ${p.z})`).join(', ')}\nEfeitos na timeline: ${timelineItems.length}\nTempo atual: ${currentTime}s` }
-  ```
+**Fix 1 — Iron color correction (L164):**
+- Change iron color from `(1.0, 0.65, 0.15)` to `(1.0, 0.75, 0.22)` — more yellow-orange per documentation "yellow branching sparks"
 
-### 2. `src/utils/joiCommandExecutor.ts` — Novos comandos + melhorar feedback
+**Fix 2 — Zinc color correction (L188):**
+- Change zinc color from `(0.85, 0.9, 1.0)` to `(0.68, 0.82, 1.0)` — distinctly bluish per "bright blue with bluish zinc sparks"
 
-**Novos comandos:**
-- `clear_project` — Remove todas posições e efeitos (com confirmação visual)
-- `list_positions` — Retorna lista das posições existentes no label do resultado
-- `list_effects` — Retorna lista dos efeitos na timeline
+**Fix 3 — Add ferrotitanium compound (after iron_filings ~L544):**
+- New compound: ferrotitanium, 60/40 Fe/Ti alloy, color `(1.0, 0.90, 0.35)` yellow-white, temperature 3000K, sparkSize 1.6
 
-**Melhorar `create_choreography`:**
-- Rastrear falhas individuais de cues e incluir no detail: `"15 posições + 42 cues (3 falharam)"`
-- Adicionar `add_cue_marker` automático para seções do show (Abertura, Build, Clímax, Finale) se `params.sections` presente
+### Arquivo 2: `src/lib/pyroNoise.ts`
 
-### 3. `supabase/functions/fxk-ai-chat/systemPrompt.ts` — Contexto + error recovery
+**Fix 4 — Add lampblack flicker entry (after charcoal ~L117):**
+- `lampblack: { base: 0.65, amplitude: 0.28, popStrength: 0.20 }` — finer, more uniform burn per "extremely fine, finely dispersed"
 
-- Adicionar seção sobre como usar contexto do projeto: "Quando o usuário pedir para modificar o show, leia o [CONTEXTO DO PROJETO] para saber as posições e efeitos existentes"
-- Adicionar guia de error recovery: "Se um effectId falhar, sugira effectIds alternativos similares"
-- Documentar novos comandos: `clear_project`, `list_positions`, `list_effects`
-- Adicionar instruções para criar seções com cue markers automáticos
+**Fix 5 — Add ferrotitanium flicker entry:**
+- `ferrotitanium: { base: 0.52, amplitude: 0.44, popStrength: 0.48 }` — between iron and titanium flicker
 
-### 4. `src/components/JoiCommandPresets.tsx` — Refinar presets
+**Fix 6 — Add lead_oxide and bismuth_oxide flicker entries for dragon egg distinction:**
+- `lead_oxide: { base: 0.30, amplitude: 0.58, popStrength: 0.68 }` — "violent oscillation" more aggressive than generic lead
+- `bismuth_oxide: { base: 0.33, amplitude: 0.55, popStrength: 0.62 }` — similarly violent
 
-- Adicionar preset **"MODIFICAR SHOW"** — prompt que pede à Joi para analisar o projeto atual e sugerir melhorias
-- Adicionar preset **"LIMPAR PROJETO"** — clear_project + confirmação
+### Arquivo 3: `src/components/editor/skycanvas/FireworkRenderer.tsx`
 
-### 5. Deploy + Build
+**Fix 7 — Dragon egg strobe more violent (L661-663):**
+- Change dragon egg strobe parameters from `0.06, 0.04` to `0.04, 0.025` — faster cycle (15Hz vs 10Hz) per documentation "much more vigorous than strobe mix"
+- Add brightness spike: multiply strobe output by 1.3 for dragon_egg pattern
 
 ## Ordem de Execução
 
 | Passo | Tarefa |
 |-------|--------|
-| 1 | Novos comandos no joiCommandExecutor + feedback melhorado |
-| 2 | Presets operacionais visíveis + contexto do projeto no FXKAssistant |
-| 3 | System prompt: contexto, error recovery, novos comandos |
-| 4 | Novos presets (Modificar, Limpar) |
-| 5 | Deploy edge function + build verification |
+| 1 | Chemistry color corrections (iron, zinc) + ferrotitanium compound |
+| 2 | Flicker entries (lampblack, ferrotitanium, lead/bismuth oxide) |
+| 3 | Dragon egg strobe violence increase |
+| 4 | Build verification |
 
