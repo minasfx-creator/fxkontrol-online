@@ -515,6 +515,11 @@ export default function ShellBurstRenderer({
           tipCurlLifeRatio: pattern === 'chrysanthemum' ? lifeRatio : undefined,
           willowDroop: pattern === 'willow',
           willowLifeRatio: pattern === 'willow' ? lifeRatio : undefined,
+          horsetailDroop: pattern === 'horsetail',
+          horsetailLifeRatio: pattern === 'horsetail' ? lifeRatio : undefined,
+          coconutPhase: pattern === 'coconut_tree'
+            ? (lifeRatio < 0.3 ? 'ascent' : lifeRatio < 0.6 ? 'spread' : 'droop')
+            : undefined,
         };
         stepParticle(p, dt * detonationMult, windVec, particleDrag, tipCurlMods);
 
