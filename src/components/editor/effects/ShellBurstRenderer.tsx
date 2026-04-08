@@ -519,18 +519,17 @@ export default function ShellBurstRenderer({
         // Per-particle drag from material density
         const particleDrag = baseDrag * dragCoeffs[i];
         // Chrysanthemum tip curl: progressive gravity after 70% life
-        const tipCurlMods: StepModifiers = {
-          ...stepMods,
-          tipCurlFactor: pattern === 'chrysanthemum' ? 2.5 : undefined,
-          tipCurlLifeRatio: pattern === 'chrysanthemum' ? lifeRatio : undefined,
-          willowDroop: pattern === 'willow',
-          willowLifeRatio: pattern === 'willow' ? lifeRatio : undefined,
-          horsetailDroop: pattern === 'horsetail',
-          horsetailLifeRatio: pattern === 'horsetail' ? lifeRatio : undefined,
-          coconutPhase: pattern === 'coconut_tree'
-            ? (lifeRatio < 0.3 ? 'ascent' : lifeRatio < 0.6 ? 'spread' : 'droop')
-            : undefined,
-        };
+        // Mutate stepMods in-place to avoid 120k object allocations/s
+        const tipCurlMods = stepMods;
+        tipCurlMods.tipCurlFactor = pattern === 'chrysanthemum' ? 2.5 : undefined;
+        tipCurlMods.tipCurlLifeRatio = pattern === 'chrysanthemum' ? lifeRatio : undefined;
+        tipCurlMods.willowDroop = pattern === 'willow';
+        tipCurlMods.willowLifeRatio = pattern === 'willow' ? lifeRatio : undefined;
+        tipCurlMods.horsetailDroop = pattern === 'horsetail';
+        tipCurlMods.horsetailLifeRatio = pattern === 'horsetail' ? lifeRatio : undefined;
+        tipCurlMods.coconutPhase = pattern === 'coconut_tree'
+          ? (lifeRatio < 0.3 ? 'ascent' : lifeRatio < 0.6 ? 'spread' : 'droop')
+          : undefined;
         stepParticle(p, dt * detonationMult, windVec, particleDrag, tipCurlMods);
 
         // Glitter trail: emit micro-particles from active stars
