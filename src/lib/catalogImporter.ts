@@ -297,7 +297,7 @@ export function parseCatalogFile(text: string): {
   // Parse rows
   const effects: ParsedCatalogEffect[] = [];
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(delimiter).map(c => c.trim().replace(/^"|"$/g, ''));
+    const cols = parseCSVLine(lines[i], delimiter);
     const raw: Record<string, string> = {};
     headers.forEach((h, j) => { raw[h] = cols[j] || ''; });
 
