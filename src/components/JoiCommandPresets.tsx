@@ -53,4 +53,28 @@ Use create_choreography.`,
 - FINALE (2:20-3:00): Cake 100-shot em posições 3,6,9,12 + shells 8"-10" em barrage 0.2s, fechar com Grand Peony 12" + Kamuro 12"
 Use create_choreography.`,
   },
+  {
+    label: 'CORPORATIVO',
+    icon: Building2,
+    prompt: `Crie um show corporativo elegante de 3 minutos:
+- 10 posições em arco (raio 15m)
+- ABERTURA (0-30s): Cold sparks (sfx-03) nas 3 posições centrais por 15s, depois Rising Comet (comet-01) nas laterais
+- BUILD (30s-1:30): Silver Glitter (peon-05) e Gold Strobing (peon-06) alternados com 0.8s stagger, Brocade Crown 5" (mort-03) nos vértices
+- CLÍMAX (1:30-2:20): Kamuro 5" (shell-03) + Nishiki Kamuro 8" (shell-08) em pares simétricos com 0.5s stagger, Gold Waterfall 5m (wf-02) nas posições 1 e 10
+- FINALE (2:20-3:00): Cake 49-Shot Fan (cake-02) em posições 2,5,8 + Titanium Shell 4" (shell-01) em barrage 0.2s, fechar com Kamuro 12" (shell-13)
+- Tons: gold, silver, white — elegante e sofisticado
+Use create_choreography.`,
+  },
+  {
+    label: 'ANIVERSÁRIO',
+    icon: PartyPopper,
+    prompt: `Crie um show festivo de aniversário de 1.5 minutos:
+- 8 posições em arco (raio 12m)
+- ABERTURA (0-15s): Color Star Mine (mine-04) nas 3 posições centrais + Crackling Mine (mine-03) nas laterais
+- CORPO (15s-1:00): Red Peony 3" (peon-01) + Blue Peony 3" (peon-02) + Green Peony 3" (peon-03) em sequência colorida com 0.5s stagger, Crackling Stars (peon-07) intercaladas
+- CLÍMAX (1:00-1:20): Heart Shell 4" (shell-15) no centro + Color Shell 6" (shell-02) em pares simétricos + Confetti (sfx-06) nas posições frontais
+- FINALE (1:20-1:30): 25-Shot Z Pattern (cake-01) em posições 2,4,6,8 + Multi-Break 6" (shell-19) no centro, fechar com Grand Peony 12" (shell-12)
+- Tons: multicolorido, festivo, alegre
+Use create_choreography.`,
+  },
 ];
