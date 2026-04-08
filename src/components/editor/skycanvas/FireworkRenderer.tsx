@@ -66,6 +66,7 @@ const _rEffEuler = new THREE.Euler();
 const _rEffQuat = new THREE.Quaternion();
 const _smokeBlendColor = new THREE.Color();
 const _smokeGrayTarget = new THREE.Color(0.35, 0.30, 0.25);
+const _smokeBlendResult = new THREE.Color();
 
 // ═══════════════════════════════════════════════════════════════════════
 const STAR_VERTEX_SHADER = `
@@ -1020,7 +1021,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
           <bufferAttribute attach="attributes-position" args={[particleBuffers.trailPos, 3]} />
           <bufferAttribute attach="attributes-color" args={[particleBuffers.trailCol, 3]} />
         </bufferGeometry>
-        <lineBasicMaterial vertexColors transparent opacity={Math.min(1, 0.8 * tailFactor)} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} linewidth={3} />
+        <lineBasicMaterial vertexColors transparent opacity={Math.min(1, 0.8 * tailFactor)} depthWrite={false} depthTest={true} blending={THREE.AdditiveBlending} linewidth={3} />
       </lineSegments>
 
       {/* Pistil — inner burst with different color */}
@@ -1073,7 +1074,7 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
               12, 12
             ]} />
             <meshBasicMaterial
-              color={_smokeBlendColor.set(color).lerp(_smokeGrayTarget, 0.7).clone()}
+              color={_smokeBlendResult.copy(_smokeBlendColor.set(color).lerp(_smokeGrayTarget, 0.7))}
               transparent
               opacity={0.04 * Math.pow(Math.max(0, 1 - (progress - 0.35) / 0.65), 1.5)}
               depthWrite={false}
@@ -1297,7 +1298,7 @@ export function TimelineEffects() {
         const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
         const eid = effect.id;
 
-        if (inPrefire) {
+        if (inPrefire && pt !== 'rocket') {
           return (
             <PrefireShell
               key={`prefire-${item.id}`}
