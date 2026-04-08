@@ -161,7 +161,7 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
   iron: {
     name: 'Limaduras de Hierro',
     element: 'Fe',
-    color: new THREE.Color(1.0, 0.65, 0.15),
+    color: new THREE.Color(1.0, 0.75, 0.22), // "yellow branching sparks" — Pyrotechnic Chemicals
     temperature: 2800,
     emissionIntensity: 3.0,
     burnRate: 3.5,
