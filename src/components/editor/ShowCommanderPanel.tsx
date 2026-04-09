@@ -975,6 +975,11 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel, fs: _fs }: Sh
                 </p>
               </div>
             </TabsContent>
+            <TabsContent value="profiler" className="mt-0 space-y-3">
+              <Suspense fallback={<div className="text-center py-4 text-[9px] text-muted-foreground/40">Loading Profiler...</div>}>
+                <PerformanceProfilerTab />
+              </Suspense>
+            </TabsContent>
           </div>
         </ScrollArea>
       </Tabs>
