@@ -1,59 +1,39 @@
 
 
-# Ciclo #73 — Sprint 19: Health Score Persistence Service
+# Ciclo #74 — Retenção Automática de health_snapshots (cleanup > 24h)
 
-## Context
+## Abordagem
 
-Database tables `health_snapshots` and `health_incidents` already exist (created in Cycle #71). The `HealthPersistenceService` and UI integration were never implemented. The Supabase types file doesn't include these tables yet — we'll use manual typing since the types auto-regenerate.
+Duas camadas complementares:
+
+1. **Client-side cleanup** — No `HealthPersistenceService`, a cada 10º flush (~5min), executar um DELETE dos registros do próprio usuário com `created_at < now() - 24h`. Simples, sem infraestrutura extra.
+
+2. **Database-level scheduled cleanup (pg_cron)** — Criar um cron job que roda a cada hora e deleta snapshots e incidents com mais de 24h para todos os usuários. Garante limpeza mesmo se o client não estiver aberto.
+
+Vou implementar ambos para máxima robustez.
 
 ## Deliverables
 
-### 1. Create `src/core/cluster/HealthPersistenceService.ts`
+### 1. Edit `HealthPersistenceService.ts`
+- Adicionar contador `flushCount`
+- A cada 10 flushes, executar cleanup client-side:
+  - `DELETE FROM health_snapshots WHERE user_id = X AND created_at < now() - interval '24 hours'`
+  - `DELETE FROM health_incidents WHERE user_id = X AND created_at < now() - interval '24 hours'`
+- Log do número de rows removidas
 
-Singleton service:
-- `start(projectId: string)` — begins 30s interval sampling
-- Each tick: reads `clusterHealthService.getSnapshot()` and `getIncidents()`
-- Upserts snapshot row to `health_snapshots` (global_score, global_level, subsystem_scores as JSONB, active_incidents, uptime_ms)
-- Diffs incidents via `lastPersistedIds` Set — only inserts new incidents to `health_incidents`
-- Requires authenticated session (reads `supabase.auth.getSession()`, skips if null)
-- All DB writes in try/catch — never blocks UI
-- `stop()` clears interval
-
-### 2. Create `src/hooks/useHealthHistory.ts`
-
-Hook that:
-- Queries `health_snapshots` ordered by `created_at DESC`, limit param (default 60)
-- Returns `{ scores: number[], loading: boolean }`
-- Refreshes every 60s
-- Requires auth (returns empty if not logged in)
-
-### 3. Edit `src/orchestration/EngineProvider.tsx`
-
-- Import `healthPersistenceService`
-- Add to boot sequence via `safeBoot` with project ID from `VITE_SUPABASE_PROJECT_ID`
-- Register in `autoRecoveryService`
-- Stop on unmount
-
-### 4. Edit `src/components/editor/cluster/ClusterHealthTab.tsx`
-
-- Import `useHealthHistory` and `Sparkline`
-- Add sparkline above HealthRing showing last 60 scores with "Last 30min" label
-- Render only when scores array has 2+ points
+### 2. Scheduled cleanup via pg_cron
+- Habilitar extensões `pg_cron` e `pg_net`
+- Criar cron job hourly que deleta registros > 24h de ambas as tabelas
 
 ## Files
 
 | Action | File |
 |--------|------|
-| Create | `src/core/cluster/HealthPersistenceService.ts` |
-| Create | `src/hooks/useHealthHistory.ts` |
-| Edit | `src/orchestration/EngineProvider.tsx` |
-| Edit | `src/components/editor/cluster/ClusterHealthTab.tsx` |
+| Edit | `src/core/cluster/HealthPersistenceService.ts` |
+| SQL | Enable pg_cron + create scheduled cleanup job |
 
 ## Execution Order
-
-1. Create HealthPersistenceService
-2. Create useHealthHistory hook
-3. Integrate in EngineProvider
-4. Add sparkline to ClusterHealthTab
-5. Build verification
+1. Edit HealthPersistenceService with client-side cleanup
+2. Create pg_cron scheduled job
+3. Build verification
 
