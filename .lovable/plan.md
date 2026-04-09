@@ -1,75 +1,93 @@
 
 
-# Ciclo #63 — Sprint 10: Network Health Monitor
+# Ciclo #66 — Sprint 13: Service Registry Centralizado
 
-## What Exists
+## Problema Atual
 
-| Component | Status |
-|---|---|
-| `FieldBus` singleton | Multi-transport (wifi/rs485/relay), heartbeat monitoring, failover |
-| `RealtimeClient` singleton | WebSocket with exponential backoff reconnect (max 10 retries) |
-| `CommandRelay` | Supabase Realtime broadcast for command sync |
-| `MultiSiteCoordinator` | Presence-based site tracking with latency estimation |
-| `ShowCommanderPanel` | 5 tabs (Overview, Cue Stack, Systems, Safety, Profiler) |
-| `Sparkline` component | Reusable SVG trend line |
-| `blackbox` recorder | Event logging for reliability |
+O `ClusterHealthService` conhece cada subsistema diretamente via imports hardcoded (`safetyStateMachine`, `getPerfAlerts`, `networkHealthService`). Adicionar novos serviços requer editar a classe. Não há interface padronizada — cada subsistema é consultado de forma ad-hoc.
+
+## Solução
+
+Criar um `ServiceRegistry` com interface `HealthReporter` que cada serviço implementa. O `ClusterHealthService` passa a consultar apenas serviços registrados, eliminando imports diretos e permitindo extensibilidade plug-and-play.
 
 ## Deliverables
 
-### 1. NetworkHealthService — `src/core/network/NetworkHealthService.ts`
+### 1. ServiceRegistry — `src/core/cluster/ServiceRegistry.ts`
 
-Module-level singleton that tracks network quality metrics:
+```text
+┌──────────────────────────────────┐
+│         ServiceRegistry          │
+│  Map<string, HealthReporter>     │
+│  register(reporter) → unsub     │
+│  getAll() → HealthReporter[]     │
+│  get(id) → HealthReporter|null   │
+└──────────────────────────────────┘
+         ▲        ▲        ▲
+   SafetyReporter  PerfReporter  NetReporter
+```
 
-- **RTT History**: Ring buffer of 300 samples (~5min at 1Hz ping), stores `{ timestamp, rttMs, transport }`. Pings via `fieldBus.heartbeat()` round-trip measurement
-- **Packet Loss Tracking**: Sliding window (60s) counting sent vs acknowledged packets. Loss % = `(sent - acked) / sent * 100`
-- **Transport Health**: Per-transport (wifi/rs485/relay) status with individual RTT and loss stats
-- **Reconnection Manager**: Exponential backoff (1s → 30s, max 10 retries) with jitter. Hooks into `fieldBus` and `realtimeClient` for auto-reconnect
-- **Alert Thresholds**:
-  - RTT > 100ms sustained 5s → `LATENCY_HIGH`
-  - Packet loss > 5% → `PACKET_LOSS_WARNING`
-  - Packet loss > 15% → `PACKET_LOSS_CRITICAL`
-  - All transports down → `NETWORK_DOWN`
-- API: `getRTTHistory()`, `getPacketLossPercent()`, `getTransportHealth()`, `getActiveAlerts()`, `getReconnectState()`
+**`HealthReporter` interface:**
+- `id: string` — unique subsystem ID
+- `label: string` — display name
+- `weight: number` — 0–1 weight for global score
+- `getHealth(): SubsystemHealth` — current health snapshot
+- `getAlertCount(): number` — active alert count for incident detection
 
-### 2. NetworkHealthTab — `src/components/editor/network/NetworkHealthTab.tsx`
+**`ServiceRegistry` class:**
+- `register(reporter: HealthReporter): () => void` — returns unsubscribe
+- `getAll(): HealthReporter[]`
+- `get(id: string): HealthReporter | null`
+- Singleton export: `serviceRegistry`
 
-New tab in ShowCommander with three sections:
+### 2. Health Reporter Adapters — `src/core/cluster/reporters/`
 
-**A. RTT Timeline** — SVG line chart (Sparkline-style, expanded):
-- Last 300 samples, color gradient (green <50ms, amber 50-100ms, red >100ms)
-- Current RTT + p50/p95 badges
-- 100ms budget line (dashed)
+Three adapter files that wrap existing services into `HealthReporter`:
 
-**B. Transport Status Grid** — Card per transport:
-- Transport name + alive/dead badge
-- Individual RTT + packet loss %
-- Failover count from FieldBus
-- Active transport highlighted
+- **`SafetyHealthReporter.ts`** — wraps `safetyStateMachine` + `safetyAuditTrail`, self-registers on import
+- **`PerformanceHealthReporter.ts`** — wraps `getFrameHistory` + `getActiveAlerts`, self-registers
+- **`NetworkHealthReporter.ts`** — wraps `networkHealthService` + `fieldBus`, self-registers
 
-**C. Connection Status** — Live feed:
-- Reconnection attempts with backoff timer
-- Active alerts (color-coded)
-- Total messages sent / bytes transferred from FieldBus state
-- Uptime percentage
+Each moves the existing scoring logic from `ClusterHealthService` private methods into the reporter's `getHealth()`.
 
-### 3. Integration — ShowCommanderPanel
+### 3. Refactor ClusterHealthService
 
-Add "Network" tab (6th) with `Wifi` icon, lazy-load NetworkHealthTab.
+- Remove hardcoded `getSafetyHealth()`, `getPerformanceHealth()`, `getNetworkHealth()` methods
+- Replace with `serviceRegistry.getAll().map(r => r.getHealth())`
+- Compute `globalScore` from dynamic weights: `sum(score * weight) / sum(weights)`
+- Incident detection via `reporter.getAlertCount()` delta tracking per registered service
+- Remove direct imports of safety/perf/network modules
+
+### 4. EngineProvider Integration
+
+- Import reporters in EngineProvider so they self-register on boot
+- No other changes needed — ClusterHealthService already started
+
+### 5. ClusterHealthTab Update
+
+- `SubsystemId` becomes `string` (dynamic, not union)
+- Subsystem icon selection uses a map with fallback
+- No breaking changes to existing UI
 
 ## Files
 
 | Action | File |
 |--------|------|
-| Create | `src/core/network/NetworkHealthService.ts` |
-| Create | `src/components/editor/network/NetworkHealthTab.tsx` |
-| Edit | `src/components/editor/ShowCommanderPanel.tsx` (add Network tab) |
+| Create | `src/core/cluster/ServiceRegistry.ts` |
+| Create | `src/core/cluster/reporters/SafetyHealthReporter.ts` |
+| Create | `src/core/cluster/reporters/PerformanceHealthReporter.ts` |
+| Create | `src/core/cluster/reporters/NetworkHealthReporter.ts` |
+| Edit | `src/core/cluster/ClusterHealthService.ts` (use registry) |
+| Edit | `src/orchestration/EngineProvider.tsx` (import reporters) |
+| Edit | `src/components/editor/cluster/ClusterHealthTab.tsx` (dynamic subsystem IDs) |
 
 ## Execution Order
 
 | Step | Task |
 |------|------|
-| 1 | Create NetworkHealthService |
-| 2 | Create NetworkHealthTab component |
-| 3 | Add Network tab to ShowCommanderPanel |
-| 4 | Build verification |
+| 1 | Create ServiceRegistry + HealthReporter interface |
+| 2 | Create 3 reporter adapters |
+| 3 | Refactor ClusterHealthService to use registry |
+| 4 | Update EngineProvider imports |
+| 5 | Update ClusterHealthTab for dynamic IDs |
+| 6 | Build verification |
 
