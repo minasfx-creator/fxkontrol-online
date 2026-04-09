@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Shield, Cpu, Wifi, Heart, AlertTriangle, CheckCircle2, XCircle, Clock, Filter, RefreshCw, Skull, Loader2 } from 'lucide-react';
+import { Shield, Cpu, Wifi, Heart, AlertTriangle, CheckCircle2, XCircle, Clock, Filter, RefreshCw, Skull, Loader2, RotateCcw, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -119,10 +119,11 @@ function recoveryStateStyle(state: RecoveryState) {
     case 'recovering': return { bg: 'bg-blue-500/20 border-blue-500/30', text: 'text-blue-400', icon: <Loader2 className="w-3 h-3 animate-spin" /> };
     case 'recovered': return { bg: 'bg-green-500/20 border-green-500/30', text: 'text-green-400', icon: <CheckCircle2 className="w-3 h-3" /> };
     case 'failed': return { bg: 'bg-red-500/20 border-red-500/30', text: 'text-red-400', icon: <Skull className="w-3 h-3" /> };
+    case 'tripped': return { bg: 'bg-red-500/20 border-red-500/30 animate-pulse', text: 'text-red-400', icon: <Zap className="w-3 h-3" /> };
   }
 }
 
-function RecoveryRow({ status }: { status: RecoveryStatus }) {
+function RecoveryRow({ status, onReset }: { status: RecoveryStatus; onReset?: (label: string) => void }) {
   const style = recoveryStateStyle(status.state);
   const countdown = status.nextRetryAt ? Math.max(0, Math.ceil((status.nextRetryAt - Date.now()) / 1000)) : null;
 
@@ -135,11 +136,17 @@ function RecoveryRow({ status }: { status: RecoveryStatus }) {
       <Badge className={`${style.bg} ${style.text} text-[7px] h-4 font-mono border`}>
         {status.state === 'pending' && countdown !== null ? `${countdown}s` : status.state}
       </Badge>
+      {status.state === 'tripped' && onReset && (
+        <Button size="sm" variant="ghost" className="h-5 text-[8px] px-1.5 shrink-0"
+          onClick={() => onReset(status.label)}>
+          <RotateCcw className="w-3 h-3" /> Reset
+        </Button>
+      )}
     </div>
   );
 }
 
-function RecoveryStatusSection({ statuses }: { statuses: RecoveryStatus[] }) {
+function RecoveryStatusSection({ statuses, onReset }: { statuses: RecoveryStatus[]; onReset: (label: string) => void }) {
   const active = statuses.filter(s => !(s.state === 'pending' && s.attempts === 0));
   if (active.length === 0) return null;
 
@@ -149,7 +156,7 @@ function RecoveryStatusSection({ statuses }: { statuses: RecoveryStatus[] }) {
         <RefreshCw className="w-3 h-3" /> RECOVERY ({active.length})
       </div>
       <div className="space-y-0.5">
-        {active.map(s => <RecoveryRow key={s.label} status={s} />)}
+        {active.map(s => <RecoveryRow key={s.label} status={s} onReset={onReset} />)}
       </div>
     </div>
   );
@@ -214,6 +221,11 @@ export default function ClusterHealthTab() {
     setIncidents(clusterHealthService.getIncidents());
   }, []);
 
+  const handleManualReset = useCallback((label: string) => {
+    autoRecoveryService.manualReset(label);
+    setRecoveryStatuses(autoRecoveryService.getStatus());
+  }, []);
+
   const filteredIncidents = incidents.filter(i => {
     if (filter !== 'all' && i.subsystem !== filter) return false;
     if (!showResolved && i.resolved) return false;
@@ -260,7 +272,7 @@ export default function ClusterHealthTab() {
       </div>
 
       {/* Recovery Status */}
-      <RecoveryStatusSection statuses={recoveryStatuses} />
+      <RecoveryStatusSection statuses={recoveryStatuses} onReset={handleManualReset} />
 
       {/* Incident History */}
       <div className="space-y-1.5">

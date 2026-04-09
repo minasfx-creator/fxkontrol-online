@@ -7,7 +7,7 @@
 import { clusterHealthService } from '@/core/cluster/ClusterHealthService';
 import { toast } from 'sonner';
 
-export type RecoveryState = 'pending' | 'recovering' | 'recovered' | 'failed';
+export type RecoveryState = 'pending' | 'recovering' | 'recovered' | 'failed' | 'tripped';
 
 export interface RecoveryStatus {
   label: string;
@@ -50,9 +50,10 @@ class AutoRecoveryService {
     if (!svc) return;
 
     if (svc.attempts >= svc.maxAttempts) {
-      svc.state = 'failed';
-      toast.error(`💀 ${label} — recovery falhou após ${svc.maxAttempts} tentativas`, { duration: 8000 });
-      console.error(`[AutoRecovery] ${label} permanently failed after ${svc.maxAttempts} attempts`);
+      svc.state = 'tripped';
+      clusterHealthService.reportBootFailure(label, `Circuit breaker aberto — ${label} falhou ${svc.maxAttempts}x`);
+      toast.error(`🔌 ${label} — circuit breaker aberto após ${svc.maxAttempts} tentativas`, { duration: 8000 });
+      console.error(`[AutoRecovery] ${label} circuit breaker tripped after ${svc.maxAttempts} attempts`);
       return;
     }
 
@@ -89,6 +90,21 @@ class AutoRecoveryService {
       maxAttempts: s.maxAttempts,
       nextRetryAt: s.nextRetryAt,
     }));
+  }
+
+  manualReset(label: string) {
+    const svc = this.services.get(label);
+    if (!svc || svc.state !== 'tripped') return;
+    svc.attempts = 0;
+    svc.state = 'pending';
+    svc.nextRetryAt = null;
+    console.log(`[AutoRecovery] ${label} manually reset by operator`);
+    toast(`🔄 ${label} — reset manual iniciado`);
+    this.scheduleRecovery(label);
+  }
+
+  isTripped(label: string): boolean {
+    return this.services.get(label)?.state === 'tripped';
   }
 
   dispose() {
