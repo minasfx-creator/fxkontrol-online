@@ -123,7 +123,7 @@ function recoveryStateStyle(state: RecoveryState) {
   }
 }
 
-function RecoveryRow({ status }: { status: RecoveryStatus }) {
+function RecoveryRow({ status, onReset }: { status: RecoveryStatus; onReset?: (label: string) => void }) {
   const style = recoveryStateStyle(status.state);
   const countdown = status.nextRetryAt ? Math.max(0, Math.ceil((status.nextRetryAt - Date.now()) / 1000)) : null;
 
@@ -136,6 +136,12 @@ function RecoveryRow({ status }: { status: RecoveryStatus }) {
       <Badge className={`${style.bg} ${style.text} text-[7px] h-4 font-mono border`}>
         {status.state === 'pending' && countdown !== null ? `${countdown}s` : status.state}
       </Badge>
+      {status.state === 'tripped' && onReset && (
+        <Button size="sm" variant="ghost" className="h-5 text-[8px] px-1.5 shrink-0"
+          onClick={() => onReset(status.label)}>
+          <RotateCcw className="w-3 h-3" /> Reset
+        </Button>
+      )}
     </div>
   );
 }
