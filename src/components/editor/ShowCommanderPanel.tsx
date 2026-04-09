@@ -595,6 +595,7 @@ function ContinuityCheckPanel() {
       </Button>
     </div>
   );
+}
 
 function SafetyChecklist() {
   const [checks] = useState([
