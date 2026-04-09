@@ -1,22 +1,17 @@
 /**
  * ─── Cluster Health Service ─────────────────────────────────────────
- * Aggregates health from safety, performance, and network subsystems
+ * Aggregates health from all registered HealthReporters via ServiceRegistry
  * into a unified global health score with incident history.
  */
 
-import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
-import { safetyAuditTrail } from '@/core/safety/SafetyAuditTrail';
-import { getFrameHistory, getActiveAlerts as getPerfAlerts } from '@/core/performance/PerformanceProfilerService';
-import { networkHealthService } from '@/core/network/NetworkHealthService';
-import { fieldBus } from '@/core/reliability';
+import { serviceRegistry } from './ServiceRegistry';
 
 // ── Types ────────────────────────────────────────────────────────────
 
-export type SubsystemId = 'safety' | 'performance' | 'network';
 export type HealthLevel = 'healthy' | 'degraded' | 'critical' | 'offline';
 
 export interface SubsystemHealth {
-  id: SubsystemId;
+  id: string;
   label: string;
   level: HealthLevel;
   score: number;        // 0–100
@@ -28,7 +23,7 @@ export interface SubsystemHealth {
 export interface Incident {
   id: string;
   timestamp: number;
-  subsystem: SubsystemId;
+  subsystem: string;
   severity: 'warning' | 'critical';
   message: string;
   resolved: boolean;
@@ -51,9 +46,7 @@ const MAX_INCIDENTS = 200;
 class ClusterHealthService {
   private incidents: Incident[] = [];
   private bootTime = Date.now();
-  private lastSafetyState = '';
-  private lastPerfAlertCount = 0;
-  private lastNetAlertCount = 0;
+  private alertCounts = new Map<string, number>();
   private listeners: Array<() => void> = [];
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -62,48 +55,29 @@ class ClusterHealthService {
   }
 
   private start() {
-    // Poll subsystems at 2Hz
     this.pollTimer = setInterval(() => this.tick(), 500);
   }
 
   private tick() {
-    // Detect safety state changes → incidents
-    const safetyState = safetyStateMachine.state;
-    if (safetyState !== this.lastSafetyState) {
-      if (safetyState === 'SAFE' && this.lastSafetyState !== 'IDLE') {
-        this.addIncident('safety', 'critical', `Safety entered SAFE (E-STOP) state`);
-      } else if (this.lastSafetyState === 'SAFE' && safetyState === 'IDLE') {
-        this.resolveSubsystemIncidents('safety');
+    // Detect new alerts from each registered reporter
+    for (const reporter of serviceRegistry.getAll()) {
+      const prev = this.alertCounts.get(reporter.id) ?? 0;
+      const curr = reporter.getAlertCount();
+      if (curr > prev) {
+        const health = reporter.getHealth();
+        this.addIncident(
+          reporter.id,
+          health.score < 30 ? 'critical' : 'warning',
+          `${reporter.label}: ${health.details}`
+        );
       }
-      this.lastSafetyState = safetyState;
+      this.alertCounts.set(reporter.id, curr);
     }
-
-    // Detect performance alerts
-    const perfAlerts = getPerfAlerts();
-    if (perfAlerts.length > this.lastPerfAlertCount) {
-      const newest = perfAlerts[perfAlerts.length - 1];
-      this.addIncident('performance',
-        newest.type === 'PERF_CRITICAL' || newest.type === 'GPU_CRASH' ? 'critical' : 'warning',
-        `${newest.type}: ${newest.message}`
-      );
-    }
-    this.lastPerfAlertCount = perfAlerts.length;
-
-    // Detect network alerts
-    const netAlerts = networkHealthService.getActiveAlerts();
-    if (netAlerts.length > this.lastNetAlertCount) {
-      const newest = netAlerts[netAlerts.length - 1];
-      this.addIncident('network',
-        newest.type === 'NETWORK_DOWN' || newest.type === 'PACKET_LOSS_CRITICAL' ? 'critical' : 'warning',
-        `${newest.type}: ${newest.message}`
-      );
-    }
-    this.lastNetAlertCount = netAlerts.length;
 
     this.notify();
   }
 
-  private addIncident(subsystem: SubsystemId, severity: 'warning' | 'critical', message: string) {
+  private addIncident(subsystem: string, severity: 'warning' | 'critical', message: string) {
     const incident: Incident = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       timestamp: Date.now(),
@@ -118,121 +92,15 @@ class ClusterHealthService {
     }
   }
 
-  private resolveSubsystemIncidents(subsystem: SubsystemId) {
-    const now = Date.now();
-    for (const inc of this.incidents) {
-      if (inc.subsystem === subsystem && !inc.resolved) {
-        inc.resolved = true;
-        inc.resolvedAt = now;
-      }
-    }
-  }
-
-  // ── Subsystem health computation ──────────────────────────────────
-
-  private getSafetyHealth(): SubsystemHealth {
-    const state = safetyStateMachine.state;
-    const conditions = safetyStateMachine.conditions;
-    const auditEntries = safetyAuditTrail.getAll();
-    const violations = auditEntries.filter(e => e.event === 'VIOLATION').length;
-
-    let score = 100;
-    let level: HealthLevel = 'healthy';
-
-    if (state === 'SAFE') { score = 0; level = 'critical'; }
-    else if (violations > 5) { score = 40; level = 'degraded'; }
-    else if (violations > 0) { score = 70; level = 'degraded'; }
-    if (!conditions.linkStable) score -= 15;
-    if (!conditions.validationPassed) score -= 10;
-
-    score = Math.max(0, Math.min(100, score));
-    if (score < 30) level = 'critical';
-    else if (score < 70) level = 'degraded';
-
-    return {
-      id: 'safety', label: 'Safety', level, score,
-      details: `State: ${state}, ${violations} violations`,
-      lastUpdate: Date.now(),
-      metrics: { state, violations, link: conditions.linkStable ? 'OK' : 'FAIL' },
-    };
-  }
-
-  private getPerformanceHealth(): SubsystemHealth {
-    const alerts = getPerfAlerts();
-    const frames = getFrameHistory();
-    const lastFrame = frames.length > 0 ? frames[frames.length - 1] : null;
-    const fps = lastFrame ? Math.round(1000 / Math.max(1, lastFrame.frameTimeMs)) : 60;
-
-    let score = 100;
-    let level: HealthLevel = 'healthy';
-
-    if (fps < 20) { score = 20; level = 'critical'; }
-    else if (fps < 30) { score = 50; level = 'degraded'; }
-    else if (fps < 50) { score = 75; level = 'degraded'; }
-
-    alerts.forEach(a => {
-      if (a.type === 'PERF_CRITICAL' || a.type === 'GPU_CRASH') score -= 30;
-      else score -= 15;
-    });
-
-    score = Math.max(0, Math.min(100, score));
-    if (score < 30) level = 'critical';
-    else if (score < 70) level = 'degraded';
-
-    return {
-      id: 'performance', label: 'Performance', level, score,
-      details: `${fps} FPS, ${alerts.length} alerts`,
-      lastUpdate: Date.now(),
-      metrics: { fps, alerts: alerts.length },
-    };
-  }
-
-  private getNetworkHealth(): SubsystemHealth {
-    const alerts = networkHealthService.getActiveAlerts();
-    const lossPercent = networkHealthService.getPacketLossPercent();
-    const rttHistory = networkHealthService.getRTTHistory();
-    const currentRtt = rttHistory.length > 0 ? rttHistory[rttHistory.length - 1].rttMs : 0;
-    const busState = fieldBus.getState();
-
-    let score = 100;
-    let level: HealthLevel = 'healthy';
-
-    if (currentRtt > 200) score -= 40;
-    else if (currentRtt > 100) score -= 20;
-    if (lossPercent > 15) score -= 40;
-    else if (lossPercent > 5) score -= 20;
-    if (busState.failoverCount > 0) score -= 10;
-
-    alerts.forEach(a => {
-      if (a.type === 'NETWORK_DOWN') score -= 30;
-      else score -= 10;
-    });
-
-    score = Math.max(0, Math.min(100, score));
-    if (score < 30) level = 'critical';
-    else if (score < 70) level = 'degraded';
-
-    return {
-      id: 'network', label: 'Network', level, score,
-      details: `RTT ${currentRtt.toFixed(0)}ms, Loss ${lossPercent.toFixed(1)}%`,
-      lastUpdate: Date.now(),
-      metrics: { rtt: Math.round(currentRtt), loss: `${lossPercent.toFixed(1)}%`, failovers: busState.failoverCount },
-    };
-  }
-
   // ── Public API ────────────────────────────────────────────────────
 
   getSnapshot(): ClusterSnapshot {
-    const subsystems = [
-      this.getSafetyHealth(),
-      this.getPerformanceHealth(),
-      this.getNetworkHealth(),
-    ];
+    const reporters = serviceRegistry.getAll();
+    const subsystems = reporters.map(r => r.getHealth());
 
-    // Weighted average: safety 40%, performance 30%, network 30%
-    const weights = [0.4, 0.3, 0.3];
+    const totalWeight = reporters.reduce((s, r) => s + r.weight, 0) || 1;
     const globalScore = Math.round(
-      subsystems.reduce((sum, s, i) => sum + s.score * weights[i], 0)
+      reporters.reduce((sum, r, i) => sum + subsystems[i].score * r.weight, 0) / totalWeight
     );
 
     const globalLevel: HealthLevel =
