@@ -26,6 +26,7 @@ import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
 import { startProfiler, stopProfiler } from '@/core/performance/PerformanceProfilerService';
 import { networkHealthService } from '@/core/network/NetworkHealthService';
 import { clusterHealthService } from '@/core/cluster/ClusterHealthService';
+import { healthPersistenceService } from '@/core/cluster/HealthPersistenceService';
 import '@/core/cluster/reporters/SafetyHealthReporter';
 import '@/core/cluster/reporters/PerformanceHealthReporter';
 import '@/core/cluster/reporters/NetworkHealthReporter';
@@ -171,11 +172,13 @@ export default function EngineProvider() {
     });
 
     // ── Register recoverable services ──
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || '';
     const bootFns: Record<string, () => void> = {
       DeterministicClock: () => deterministicClock.start(),
       LockstepEngine: () => lockstep.start(),
       PerformanceProfiler: () => startProfiler(),
       NetworkHealth: () => networkHealthService.start(),
+      HealthPersistence: () => healthPersistenceService.start(projectId),
     };
     for (const [label, fn] of Object.entries(bootFns)) {
       autoRecoveryService.register(label, fn);
@@ -203,6 +206,7 @@ export default function EngineProvider() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       autoRecoveryService.dispose();
       clusterHealthService.dispose();
+      if (bootResults['HealthPersistence']) healthPersistenceService.stop();
       if (bootResults['NetworkHealth']) networkHealthService.stop();
       if (bootResults['PerformanceProfiler']) stopProfiler();
       if (bootResults['LockstepEngine']) lockstep.stop();
