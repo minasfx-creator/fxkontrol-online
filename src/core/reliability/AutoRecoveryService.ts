@@ -92,6 +92,21 @@ class AutoRecoveryService {
     }));
   }
 
+  manualReset(label: string) {
+    const svc = this.services.get(label);
+    if (!svc || svc.state !== 'tripped') return;
+    svc.attempts = 0;
+    svc.state = 'pending';
+    svc.nextRetryAt = null;
+    console.log(`[AutoRecovery] ${label} manually reset by operator`);
+    toast(`🔄 ${label} — reset manual iniciado`);
+    this.scheduleRecovery(label);
+  }
+
+  isTripped(label: string): boolean {
+    return this.services.get(label)?.state === 'tripped';
+  }
+
   dispose() {
     for (const svc of this.services.values()) {
       if (svc.timerId) clearTimeout(svc.timerId);
