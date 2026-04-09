@@ -91,6 +91,11 @@ export default function EngineProvider() {
       }
     });
 
+    // ── Register CONTINUITY_CHECK handler ──
+    const unsubContinuity = commandBus.on('CONTINUITY_CHECK', () => {
+      continuityCheckService.runFullCheck();
+    });
+
     // ── Command processing subsystem (priority 0) ──
     // Safety validator gates commands before they reach handlers
     lockstep.register('commandBus', (_time: number, _dt: number) => {
