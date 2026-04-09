@@ -2,9 +2,11 @@
  * ─── Auto-Recovery Service ──────────────────────────────────────────
  * Retries failed services with exponential backoff (1s→2s→4s→8s→16s).
  * Reports recovery/permanent failure to ClusterHealthService.
+ * Propagates degradation to dependents via ServiceRegistry dependency graph.
  */
 
 import { clusterHealthService } from '@/core/cluster/ClusterHealthService';
+import { serviceRegistry } from '@/core/cluster/ServiceRegistry';
 import { toast } from 'sonner';
 
 export type RecoveryState = 'pending' | 'recovering' | 'recovered' | 'failed' | 'tripped';
@@ -15,6 +17,7 @@ export interface RecoveryStatus {
   attempts: number;
   maxAttempts: number;
   nextRetryAt: number | null;
+  trippedUpstreams: string[];
 }
 
 interface RecoverableService {
@@ -45,6 +48,32 @@ class AutoRecoveryService {
     });
   }
 
+  /** Check if all upstream dependencies are healthy (not tripped) */
+  getUpstreamStatus(label: string): { allHealthy: boolean; trippedUpstreams: string[] } {
+    const reporter = serviceRegistry.get(label);
+    if (!reporter?.dependsOn?.length) return { allHealthy: true, trippedUpstreams: [] };
+
+    const trippedUpstreams: string[] = [];
+    for (const depId of reporter.dependsOn) {
+      if (this.isTripped(depId)) {
+        trippedUpstreams.push(depId);
+      }
+    }
+    return { allHealthy: trippedUpstreams.length === 0, trippedUpstreams };
+  }
+
+  /** Propagate degradation incidents to all dependents of a tripped service */
+  private propagateDegradation(label: string) {
+    const dependents = serviceRegistry.getDependents(label);
+    for (const dep of dependents) {
+      clusterHealthService.reportBootFailure(
+        dep.id,
+        `Degraded: upstream dependency "${label}" is tripped`
+      );
+      console.warn(`[AutoRecovery] ${dep.id} degraded — upstream "${label}" tripped`);
+    }
+  }
+
   scheduleRecovery(label: string) {
     const svc = this.services.get(label);
     if (!svc) return;
@@ -54,6 +83,18 @@ class AutoRecoveryService {
       clusterHealthService.reportBootFailure(label, `Circuit breaker aberto — ${label} falhou ${svc.maxAttempts}x`);
       toast.error(`🔌 ${label} — circuit breaker aberto após ${svc.maxAttempts} tentativas`, { duration: 8000 });
       console.error(`[AutoRecovery] ${label} circuit breaker tripped after ${svc.maxAttempts} attempts`);
+      this.propagateDegradation(label);
+      return;
+    }
+
+    // Check upstream health before attempting recovery
+    const upstream = this.getUpstreamStatus(label);
+    if (!upstream.allHealthy) {
+      const delay = BASE_DELAY * Math.pow(2, svc.attempts);
+      svc.nextRetryAt = Date.now() + delay;
+      svc.state = 'pending';
+      console.log(`[AutoRecovery] ${label} retry deferred — upstream(s) tripped: ${upstream.trippedUpstreams.join(', ')}`);
+      svc.timerId = setTimeout(() => this.scheduleRecovery(label), delay);
       return;
     }
 
@@ -89,6 +130,7 @@ class AutoRecoveryService {
       attempts: s.attempts,
       maxAttempts: s.maxAttempts,
       nextRetryAt: s.nextRetryAt,
+      trippedUpstreams: this.getUpstreamStatus(s.label).trippedUpstreams,
     }));
   }
 

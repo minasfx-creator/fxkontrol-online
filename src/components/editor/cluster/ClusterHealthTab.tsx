@@ -1,21 +1,23 @@
 /**
  * ─── Cluster Health Tab ─────────────────────────────────────────────
  * Unified dashboard: global health score, subsystem cards,
- * incident timeline with filters.
+ * dependency indicators, recovery status, incident timeline.
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Shield, Cpu, Wifi, Heart, AlertTriangle, CheckCircle2, XCircle, Clock, Filter, RefreshCw, Skull, Loader2, RotateCcw, Zap } from 'lucide-react';
+import { Shield, Cpu, Wifi, Heart, AlertTriangle, CheckCircle2, XCircle, Clock, RefreshCw, Skull, Loader2, RotateCcw, Zap, Link } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   clusterHealthService,
   type ClusterSnapshot,
   type Incident,
   type HealthLevel,
 } from '@/core/cluster/ClusterHealthService';
+import { serviceRegistry } from '@/core/cluster/ServiceRegistry';
 import { autoRecoveryService, type RecoveryStatus, type RecoveryState } from '@/core/reliability/AutoRecoveryService';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -87,6 +89,10 @@ function HealthRing({ score, level }: { score: number; level: HealthLevel }) {
 // ── Subsystem Card ───────────────────────────────────────────────────
 
 function SubsystemCard({ health }: { health: ClusterSnapshot['subsystems'][0] }) {
+  const reporter = serviceRegistry.get(health.id);
+  const deps = reporter?.dependsOn ?? [];
+  const trippedUpstreams = deps.filter(id => autoRecoveryService.isTripped(id));
+
   return (
     <div className={`p-2 rounded border ${levelBg(health.level)}`}>
       <div className="flex items-center justify-between mb-1">
@@ -94,9 +100,25 @@ function SubsystemCard({ health }: { health: ClusterSnapshot['subsystems'][0] })
           <span className={levelColor(health.level)}>{subsystemIcon(health.id)}</span>
           <span className="text-[10px] font-bold text-foreground">{health.label}</span>
         </div>
-        <Badge className={`${levelBg(health.level)} ${levelColor(health.level)} text-[8px] h-4 font-mono`}>
-          {health.score}%
-        </Badge>
+        <div className="flex items-center gap-1">
+          {trippedUpstreams.length > 0 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Badge className="bg-yellow-500/20 border-yellow-500/30 text-yellow-400 text-[7px] h-4 font-mono">
+                    ⚠ upstream
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Upstream tripped: {trippedUpstreams.join(', ')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          <Badge className={`${levelBg(health.level)} ${levelColor(health.level)} text-[8px] h-4 font-mono`}>
+            {health.score}%
+          </Badge>
+        </div>
       </div>
       <Progress value={health.score} className="h-1 mb-1" />
       <p className="text-[9px] text-muted-foreground truncate">{health.details}</p>
@@ -106,6 +128,11 @@ function SubsystemCard({ health }: { health: ClusterSnapshot['subsystems'][0] })
             <span className="text-foreground/60">{k}:</span> {v}
           </span>
         ))}
+        {deps.length > 0 && (
+          <span className="text-[8px] text-muted-foreground flex items-center gap-0.5">
+            <Link className="w-2.5 h-2.5" /> {deps.join(', ')}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -126,11 +153,26 @@ function recoveryStateStyle(state: RecoveryState) {
 function RecoveryRow({ status, onReset }: { status: RecoveryStatus; onReset?: (label: string) => void }) {
   const style = recoveryStateStyle(status.state);
   const countdown = status.nextRetryAt ? Math.max(0, Math.ceil((status.nextRetryAt - Date.now()) / 1000)) : null;
+  const hasTrippedUpstreams = status.trippedUpstreams.length > 0;
 
   return (
     <div className={`flex items-center gap-2 p-1.5 rounded border ${style.bg}`}>
       <span className={style.text}>{style.icon}</span>
       <span className="text-[10px] font-mono text-foreground flex-1 truncate">{status.label}</span>
+      {hasTrippedUpstreams && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger>
+              <Badge className="bg-yellow-500/20 border-yellow-500/30 text-yellow-400 text-[7px] h-4 font-mono">
+                ⏸ blocked
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">Waiting for upstream: {status.trippedUpstreams.join(', ')}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
       <Progress value={(status.attempts / status.maxAttempts) * 100} className="h-1 w-12" />
       <span className="text-[8px] font-mono text-muted-foreground">{status.attempts}/{status.maxAttempts}</span>
       <Badge className={`${style.bg} ${style.text} text-[7px] h-4 font-mono border`}>
