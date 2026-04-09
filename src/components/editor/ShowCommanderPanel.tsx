@@ -781,6 +781,9 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel, fs: _fs }: Sh
           <TabsTrigger value="safety" className="text-[9px] h-6 px-2 data-[state=active]:bg-card">
             Safety
           </TabsTrigger>
+          <TabsTrigger value="profiler" className="text-[9px] h-6 px-2 data-[state=active]:bg-card">
+            Profiler
+          </TabsTrigger>
         </TabsList>
 
         <ScrollArea className="flex-1">
