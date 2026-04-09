@@ -158,6 +158,9 @@ export default function EngineProvider() {
     // ── Boot ──
     deterministicClock.start();
     lockstep.start();
+    startProfiler();
+    networkHealthService.start();
+    console.log('[EngineProvider] All services started (clock, lockstep, profiler, network, cluster)');
 
     // ── Flush on page unload ──
     const handleBeforeUnload = () => {
@@ -170,6 +173,9 @@ export default function EngineProvider() {
     return () => {
       handleBeforeUnload();
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      clusterHealthService.dispose();
+      networkHealthService.stop();
+      stopProfiler();
       lockstep.stop();
       deterministicClock.pause();
       unsub();
@@ -184,6 +190,7 @@ export default function EngineProvider() {
       lockstep.unregister('idbFlush');
       commandRelay.stop();
       safetyStateMachine.reset();
+      console.log('[EngineProvider] All services stopped');
     };
   }, []);
 
