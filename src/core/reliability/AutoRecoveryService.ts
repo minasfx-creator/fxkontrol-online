@@ -50,9 +50,10 @@ class AutoRecoveryService {
     if (!svc) return;
 
     if (svc.attempts >= svc.maxAttempts) {
-      svc.state = 'failed';
-      toast.error(`💀 ${label} — recovery falhou após ${svc.maxAttempts} tentativas`, { duration: 8000 });
-      console.error(`[AutoRecovery] ${label} permanently failed after ${svc.maxAttempts} attempts`);
+      svc.state = 'tripped';
+      clusterHealthService.reportBootFailure(label, `Circuit breaker aberto — ${label} falhou ${svc.maxAttempts}x`);
+      toast.error(`🔌 ${label} — circuit breaker aberto após ${svc.maxAttempts} tentativas`, { duration: 8000 });
+      console.error(`[AutoRecovery] ${label} circuit breaker tripped after ${svc.maxAttempts} attempts`);
       return;
     }
 
