@@ -9,9 +9,12 @@ import {
   Play, Pause, Square, Volume2, Eye, EyeOff, Lock, Unlock, Flame, Sparkles,
   Plane, Lightbulb, Cable, Signal, Battery, Cpu, Timer, BarChart3, Layers,
   Target, Crosshair, MonitorPlay, Gauge, CircuitBoard, Power, Wifi, WifiOff,
-  Magnet, FlaskConical, Link2, Unlink, Download, Sun
+  Magnet, FlaskConical, Link2, Unlink, Download, Sun, CheckCircle2
 } from 'lucide-react';
 import { useShowCommanderEngine } from '@/hooks/useShowCommanderEngine';
+import { commandBus } from '@/core/command/CommandBus';
+import { safetyStateMachine, type SafetyState } from '@/core/safety/SafetyStateMachine';
+import { safetyValidator } from '@/core/safety/SafetyValidator';
 import PerformanceMonitor from '@/components/editor/PerformanceMonitor';
 import { FieldViewProvider, FieldModeToggle, FieldViewWrapper, TerrainCollisionAlert } from '@/components/editor/FieldViewMode';
 import { downloadFlightPlan, exportFlightPlan, DEFAULT_FLIGHT_CONFIG } from '@/lib/mavlinkFlightPlanExporter';
