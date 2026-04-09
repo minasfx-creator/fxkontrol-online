@@ -562,6 +562,14 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel, fs: _fs }: Sh
   const [activeTab, setActiveTab] = useState('overview');
   const engine = useShowCommanderEngine();
 
+  // Sync safety state machine conditions with engine state
+  useEffect(() => {
+    safetyStateMachine.setConditions({
+      linkStable: engine.linkStatus === 'stable',
+      isDryRun: engine.isDryRun,
+    });
+  }, [engine.linkStatus, engine.isDryRun]);
+
   return (
     <FieldViewProvider>
     <FieldViewWrapper>
