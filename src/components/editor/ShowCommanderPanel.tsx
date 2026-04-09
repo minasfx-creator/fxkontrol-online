@@ -3,7 +3,7 @@
  * Single-panel integration of all subsystems: Pyro, SFX, Drones, Lighting, Lasers, Timecode.
  * Designed for Olympics-level show execution with real-time telemetry and safety interlocks.
  */
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import {
   Zap, Shield, Radio, Activity, Clock, AlertTriangle, ChevronDown, ChevronRight,
   Play, Pause, Square, Volume2, Eye, EyeOff, Lock, Unlock, Flame, Sparkles,
@@ -17,6 +17,7 @@ import { safetyStateMachine, type SafetyState } from '@/core/safety/SafetyStateM
 import { safetyValidator } from '@/core/safety/SafetyValidator';
 import { continuityCheckService, type PinStatus } from '@/core/safety/ContinuityCheckService';
 import PerformanceMonitor from '@/components/editor/PerformanceMonitor';
+const PerformanceProfilerTab = lazy(() => import('@/components/editor/performance/PerformanceProfilerTab'));
 import { FieldViewProvider, FieldModeToggle, FieldViewWrapper, TerrainCollisionAlert } from '@/components/editor/FieldViewMode';
 import { downloadFlightPlan, exportFlightPlan, DEFAULT_FLIGHT_CONFIG } from '@/lib/mavlinkFlightPlanExporter';
 import { checkTrajectoryCollision, interpolateTrajectory, type TrajectoryPoint } from '@/lib/terrainCollisionEngine';
@@ -780,6 +781,9 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel, fs: _fs }: Sh
           <TabsTrigger value="safety" className="text-[9px] h-6 px-2 data-[state=active]:bg-card">
             Safety
           </TabsTrigger>
+          <TabsTrigger value="profiler" className="text-[9px] h-6 px-2 data-[state=active]:bg-card">
+            Profiler
+          </TabsTrigger>
         </TabsList>
 
         <ScrollArea className="flex-1">
@@ -970,6 +974,11 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel, fs: _fs }: Sh
                   Timecode Drift Test — injeta ±15ms no Master Clock
                 </p>
               </div>
+            </TabsContent>
+            <TabsContent value="profiler" className="mt-0 space-y-3">
+              <Suspense fallback={<div className="text-center py-4 text-[9px] text-muted-foreground/40">Loading Profiler...</div>}>
+                <PerformanceProfilerTab />
+              </Suspense>
             </TabsContent>
           </div>
         </ScrollArea>
