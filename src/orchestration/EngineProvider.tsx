@@ -21,6 +21,7 @@ import { commandRelay } from '@/core/sync/CommandRelay';
 import { indexedDBPersistence } from '@/core/persistence/IndexedDBPersistence';
 import { safetyValidator } from '@/core/safety/SafetyValidator';
 import { safetyAuditTrail } from '@/core/safety/SafetyAuditTrail';
+import { continuityCheckService } from '@/core/safety/ContinuityCheckService';
 import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
 import { ReplayOverlay } from '@/components/editor/ReplayOverlay';
 import { toast } from 'sonner';
