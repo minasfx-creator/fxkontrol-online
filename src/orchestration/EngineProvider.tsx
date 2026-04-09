@@ -34,6 +34,16 @@ import { toast } from 'sonner';
 
 const FLUSH_INTERVAL_TICKS = 1800; // ~30s at 60Hz
 
+function safeBoot(label: string, fn: () => void): boolean {
+  try { fn(); return true; }
+  catch (e) {
+    console.error(`[EngineProvider] ${label} failed:`, e);
+    clusterHealthService.reportBootFailure(label, String(e));
+    toast.error(`⚠ ${label} falhou no boot — sistema degradado`);
+    return false;
+  }
+}
+
 export default function EngineProvider() {
   useEffect(() => {
     let lastFlushTick = 0;
