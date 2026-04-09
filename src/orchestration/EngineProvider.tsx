@@ -26,6 +26,9 @@ import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
 import { startProfiler, stopProfiler } from '@/core/performance/PerformanceProfilerService';
 import { networkHealthService } from '@/core/network/NetworkHealthService';
 import { clusterHealthService } from '@/core/cluster/ClusterHealthService';
+import '@/core/cluster/reporters/SafetyHealthReporter';
+import '@/core/cluster/reporters/PerformanceHealthReporter';
+import '@/core/cluster/reporters/NetworkHealthReporter';
 import { ReplayOverlay } from '@/components/editor/ReplayOverlay';
 import { toast } from 'sonner';
 
