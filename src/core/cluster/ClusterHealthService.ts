@@ -70,9 +70,9 @@ class ClusterHealthService {
     // Detect safety state changes → incidents
     const safetyState = safetyStateMachine.state;
     if (safetyState !== this.lastSafetyState) {
-      if (safetyState === 'EMERGENCY') {
-        this.addIncident('safety', 'critical', `Safety entered EMERGENCY state`);
-      } else if (this.lastSafetyState === 'EMERGENCY') {
+      if (safetyState === 'SAFE' && this.lastSafetyState !== 'IDLE') {
+        this.addIncident('safety', 'critical', `Safety entered SAFE (E-STOP) state`);
+      } else if (this.lastSafetyState === 'SAFE' && safetyState === 'IDLE') {
         this.resolveSubsystemIncidents('safety');
       }
       this.lastSafetyState = safetyState;
@@ -139,7 +139,7 @@ class ClusterHealthService {
     let score = 100;
     let level: HealthLevel = 'healthy';
 
-    if (state === 'EMERGENCY') { score = 0; level = 'critical'; }
+    if (state === 'SAFE') { score = 0; level = 'critical'; }
     else if (violations > 5) { score = 40; level = 'degraded'; }
     else if (violations > 0) { score = 70; level = 'degraded'; }
     if (!conditions.linkStable) score -= 15;
