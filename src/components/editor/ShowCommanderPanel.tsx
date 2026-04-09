@@ -15,6 +15,7 @@ import { useShowCommanderEngine } from '@/hooks/useShowCommanderEngine';
 import { commandBus } from '@/core/command/CommandBus';
 import { safetyStateMachine, type SafetyState } from '@/core/safety/SafetyStateMachine';
 import { safetyValidator } from '@/core/safety/SafetyValidator';
+import { continuityCheckService, type PinStatus } from '@/core/safety/ContinuityCheckService';
 import PerformanceMonitor from '@/components/editor/PerformanceMonitor';
 import { FieldViewProvider, FieldModeToggle, FieldViewWrapper, TerrainCollisionAlert } from '@/components/editor/FieldViewMode';
 import { downloadFlightPlan, exportFlightPlan, DEFAULT_FLIGHT_CONFIG } from '@/lib/mavlinkFlightPlanExporter';
