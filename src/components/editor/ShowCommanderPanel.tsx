@@ -3,7 +3,7 @@
  * Single-panel integration of all subsystems: Pyro, SFX, Drones, Lighting, Lasers, Timecode.
  * Designed for Olympics-level show execution with real-time telemetry and safety interlocks.
  */
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import {
   Zap, Shield, Radio, Activity, Clock, AlertTriangle, ChevronDown, ChevronRight,
   Play, Pause, Square, Volume2, Eye, EyeOff, Lock, Unlock, Flame, Sparkles,
