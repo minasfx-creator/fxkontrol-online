@@ -119,6 +119,7 @@ function recoveryStateStyle(state: RecoveryState) {
     case 'recovering': return { bg: 'bg-blue-500/20 border-blue-500/30', text: 'text-blue-400', icon: <Loader2 className="w-3 h-3 animate-spin" /> };
     case 'recovered': return { bg: 'bg-green-500/20 border-green-500/30', text: 'text-green-400', icon: <CheckCircle2 className="w-3 h-3" /> };
     case 'failed': return { bg: 'bg-red-500/20 border-red-500/30', text: 'text-red-400', icon: <Skull className="w-3 h-3" /> };
+    case 'tripped': return { bg: 'bg-red-500/20 border-red-500/30 animate-pulse', text: 'text-red-400', icon: <Zap className="w-3 h-3" /> };
   }
 }
 
