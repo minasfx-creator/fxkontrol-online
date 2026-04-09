@@ -17,6 +17,7 @@ import { safetyStateMachine, type SafetyState } from '@/core/safety/SafetyStateM
 import { safetyValidator } from '@/core/safety/SafetyValidator';
 import { continuityCheckService, type PinStatus } from '@/core/safety/ContinuityCheckService';
 import PerformanceMonitor from '@/components/editor/PerformanceMonitor';
+const PerformanceProfilerTab = lazy(() => import('@/components/editor/performance/PerformanceProfilerTab'));
 import { FieldViewProvider, FieldModeToggle, FieldViewWrapper, TerrainCollisionAlert } from '@/components/editor/FieldViewMode';
 import { downloadFlightPlan, exportFlightPlan, DEFAULT_FLIGHT_CONFIG } from '@/lib/mavlinkFlightPlanExporter';
 import { checkTrajectoryCollision, interpolateTrajectory, type TrajectoryPoint } from '@/lib/terrainCollisionEngine';
