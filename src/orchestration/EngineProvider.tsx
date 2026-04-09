@@ -69,6 +69,7 @@ export default function EngineProvider() {
         await safetyAuditTrail.load();
       } catch (e) {
         console.warn('[EngineProvider] Failed to load persisted data:', e);
+        clusterHealthService.reportBootFailure('IndexedDB', String(e));
       }
     })();
 
