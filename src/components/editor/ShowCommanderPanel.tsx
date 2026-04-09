@@ -18,6 +18,7 @@ import { safetyValidator } from '@/core/safety/SafetyValidator';
 import { continuityCheckService, type PinStatus } from '@/core/safety/ContinuityCheckService';
 import PerformanceMonitor from '@/components/editor/PerformanceMonitor';
 const PerformanceProfilerTab = lazy(() => import('@/components/editor/performance/PerformanceProfilerTab'));
+const NetworkHealthTab = lazy(() => import('@/components/editor/network/NetworkHealthTab'));
 import { FieldViewProvider, FieldModeToggle, FieldViewWrapper, TerrainCollisionAlert } from '@/components/editor/FieldViewMode';
 import { downloadFlightPlan, exportFlightPlan, DEFAULT_FLIGHT_CONFIG } from '@/lib/mavlinkFlightPlanExporter';
 import { checkTrajectoryCollision, interpolateTrajectory, type TrajectoryPoint } from '@/lib/terrainCollisionEngine';
@@ -784,6 +785,9 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel, fs: _fs }: Sh
           <TabsTrigger value="profiler" className="text-[9px] h-6 px-2 data-[state=active]:bg-card">
             Profiler
           </TabsTrigger>
+          <TabsTrigger value="network" className="text-[9px] h-6 px-2 data-[state=active]:bg-card">
+            Network
+          </TabsTrigger>
         </TabsList>
 
         <ScrollArea className="flex-1">
@@ -978,6 +982,11 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel, fs: _fs }: Sh
             <TabsContent value="profiler" className="mt-0 space-y-3">
               <Suspense fallback={<div className="text-center py-4 text-[9px] text-muted-foreground/40">Loading Profiler...</div>}>
                 <PerformanceProfilerTab />
+              </Suspense>
+            </TabsContent>
+            <TabsContent value="network" className="mt-0 space-y-3">
+              <Suspense fallback={<div className="text-center py-4 text-[9px] text-muted-foreground/40">Loading Network...</div>}>
+                <NetworkHealthTab />
               </Suspense>
             </TabsContent>
           </div>
