@@ -1,46 +1,59 @@
 
-# Ciclo #60 — Sprint 7: Safety Audit Trail Visual Panel
+
+# Ciclo #61 — Sprint 8: Safety Metrics Dashboard
 
 ## What Exists
 
 | Component | Status |
 |---|---|
-| `SafetyAuditTrail` singleton | Functional — `getAll()`, `exportJSON()`, `persist()`, `load()`, `clear()` |
-| `AuditEntry` interface | 10 event types: ARM, DISARM, FIRE, E_STOP, VIOLATION, STATE_CHANGE, LOCK, UNLOCK, RESET, CONTINUITY_CHECK |
-| `SafetyPanel` | 2 tabs (Deconfliction, Flight Check) — extensible with 3rd tab |
+| `SafetyAuditTrail` singleton | 10 event types, `getAll()`, persist/load |
+| `AuditTrailTab` | History table + filters + CSV export |
+| `SafetyPanel` | 3 tabs (Deconfliction, Flight Check, Audit Log) |
+| `SafetyStateMachine` | State + conditions readable |
+| `ContinuityCheckService` | Pin report with ok/open/short |
+| `observability.ts` | FPS/frameTime/drawCalls metrics via `getMetricsSnapshot()` |
+| `Sparkline` component | Minimal SVG trend line |
 
 ## Deliverables
 
-### 1. AuditTrailTab — `src/components/editor/safety/AuditTrailTab.tsx`
+### 1. SafetyMetricsDashboard — `src/components/editor/safety/SafetyMetricsTab.tsx`
 
-New lazy-loaded tab component:
+New tab in SafetyPanel with three sections:
 
-- **Stats bar**: total entries badge + violation count (red badge when > 0)
-- **Filter chips**: toggleable per event type + "ALL" toggle. Color-coded:
-  - RED: E_STOP, VIOLATION
-  - AMBER: ARM, FIRE, LOCK
-  - GREEN: DISARM, UNLOCK, RESET, CONTINUITY_CHECK
-  - BLUE: STATE_CHANGE
-- **Actions**: Export CSV button + Clear History button (with confirm dialog)
-- **History table** (ScrollArea 240px): Time (HH:MM:SS.ms), Tick, Event (color badge), From→To, Detail
-- Auto-refresh polling `safetyAuditTrail.getAll()` every 2s
-- CSV format: `Timestamp,Tick,Event,From,To,Detail,SiteID`
+**A. Event Counters** — Grid of cards counting audit events by type from `safetyAuditTrail.getAll()`:
+- ARM / DISARM / FIRE / E_STOP / VIOLATION / CONTINUITY_CHECK counts
+- Color-coded (red critical, amber warn, green ok)
+- Updates every 2s (same polling pattern as AuditTrailTab)
 
-### 2. SafetyPanel — add "Audit Log" tab
+**B. Violation Timeline** — SVG mini-chart showing violation/E_STOP events over time:
+- X-axis: session time (bucketized into 30s intervals)
+- Y-axis: event count per bucket
+- Uses inline SVG bar chart (no recharts dependency needed, keeps it lightweight)
+- Red bars for violations, amber for E_STOP
 
-Add 3rd tab with `ClipboardList` icon, lazy-load AuditTrailTab.
+**C. System Health Indicators** — Current status panel:
+- Safety state (from `safetyStateMachine.state`) with color badge
+- Continuity status (from `continuityCheckService.getReport()`) — ok/total
+- Link stability (from `safetyStateMachine.conditions`)
+- Session uptime (from `getMetricsSnapshot().sessionDurationSec`)
+- FPS health (from `getMetricsSnapshot()`) with Sparkline
+
+### 2. SafetyPanel — add 4th "Metrics" tab
+
+Add tab with `BarChart3` icon, lazy-load SafetyMetricsTab.
 
 ## Files
 
 | Action | File |
 |--------|------|
-| Create | `src/components/editor/safety/AuditTrailTab.tsx` |
-| Edit | `src/components/editor/SafetyPanel.tsx` (add 3rd tab) |
+| Create | `src/components/editor/safety/SafetyMetricsTab.tsx` |
+| Edit | `src/components/editor/SafetyPanel.tsx` (add 4th tab) |
 
 ## Execution Order
 
 | Step | Task |
 |------|------|
-| 1 | Create AuditTrailTab component |
-| 2 | Add Audit Log tab to SafetyPanel |
+| 1 | Create SafetyMetricsTab component |
+| 2 | Add Metrics tab to SafetyPanel |
 | 3 | Build verification |
+
