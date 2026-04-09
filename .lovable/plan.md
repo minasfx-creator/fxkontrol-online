@@ -1,93 +1,61 @@
 
 
-# Ciclo #66 — Sprint 13: Service Registry Centralizado
+# Ciclo #67 — Sprint 14: Graceful Degradation no EngineProvider
 
-## Problema Atual
+## Problema
 
-O `ClusterHealthService` conhece cada subsistema diretamente via imports hardcoded (`safetyStateMachine`, `getPerfAlerts`, `networkHealthService`). Adicionar novos serviços requer editar a classe. Não há interface padronizada — cada subsistema é consultado de forma ad-hoc.
+O boot atual no EngineProvider é sequencial e sem proteção — se `startProfiler()`, `networkHealthService.start()`, ou qualquer reporter lançar exceção, todo o boot falha silenciosamente ou crasheia o componente. Não há isolamento entre serviços.
 
 ## Solução
 
-Criar um `ServiceRegistry` com interface `HealthReporter` que cada serviço implementa. O `ClusterHealthService` passa a consultar apenas serviços registrados, eliminando imports diretos e permitindo extensibilidade plug-and-play.
+Envolver cada fase de boot num `try/catch` isolado usando uma helper `safeBoot()`. Falhas são capturadas, logadas, reportadas como incidentes no `ClusterHealthService`, e exibidas via toast — mas os demais serviços continuam funcionando.
 
 ## Deliverables
 
-### 1. ServiceRegistry — `src/core/cluster/ServiceRegistry.ts`
+### 1. Helper `safeBoot` — inline no EngineProvider
 
-```text
-┌──────────────────────────────────┐
-│         ServiceRegistry          │
-│  Map<string, HealthReporter>     │
-│  register(reporter) → unsub     │
-│  getAll() → HealthReporter[]     │
-│  get(id) → HealthReporter|null   │
-└──────────────────────────────────┘
-         ▲        ▲        ▲
-   SafetyReporter  PerfReporter  NetReporter
+```typescript
+function safeBoot(label: string, fn: () => void): boolean {
+  try { fn(); return true; }
+  catch (e) {
+    console.error(`[EngineProvider] ${label} failed:`, e);
+    clusterHealthService.reportBootFailure(label, String(e));
+    toast.error(`⚠ ${label} falhou no boot — sistema degradado`);
+    return false;
+  }
+}
 ```
 
-**`HealthReporter` interface:**
-- `id: string` — unique subsystem ID
-- `label: string` — display name
-- `weight: number` — 0–1 weight for global score
-- `getHealth(): SubsystemHealth` — current health snapshot
-- `getAlertCount(): number` — active alert count for incident detection
+### 2. Boot sequence com isolamento
 
-**`ServiceRegistry` class:**
-- `register(reporter: HealthReporter): () => void` — returns unsubscribe
-- `getAll(): HealthReporter[]`
-- `get(id: string): HealthReporter | null`
-- Singleton export: `serviceRegistry`
+Cada serviço no boot envolvido individualmente:
+- `safeBoot('DeterministicClock', () => deterministicClock.start())`
+- `safeBoot('LockstepEngine', () => lockstep.start())`
+- `safeBoot('PerformanceProfiler', () => startProfiler())`
+- `safeBoot('NetworkHealth', () => networkHealthService.start())`
 
-### 2. Health Reporter Adapters — `src/core/cluster/reporters/`
+Cleanup condicional — só chama `stop()` de serviços que bootaram com sucesso.
 
-Three adapter files that wrap existing services into `HealthReporter`:
+### 3. Boot failure tracking no ClusterHealthService
 
-- **`SafetyHealthReporter.ts`** — wraps `safetyStateMachine` + `safetyAuditTrail`, self-registers on import
-- **`PerformanceHealthReporter.ts`** — wraps `getFrameHistory` + `getActiveAlerts`, self-registers
-- **`NetworkHealthReporter.ts`** — wraps `networkHealthService` + `fieldBus`, self-registers
+Adicionar método `reportBootFailure(subsystem, error)` que cria um incidente `critical` no histórico existente. Sem alteração de arquitetura — reutiliza o mecanismo de incidentes já implementado.
 
-Each moves the existing scoring logic from `ClusterHealthService` private methods into the reporter's `getHealth()`.
+### 4. Async boot (IndexedDB load) — já tem try/catch
 
-### 3. Refactor ClusterHealthService
-
-- Remove hardcoded `getSafetyHealth()`, `getPerformanceHealth()`, `getNetworkHealth()` methods
-- Replace with `serviceRegistry.getAll().map(r => r.getHealth())`
-- Compute `globalScore` from dynamic weights: `sum(score * weight) / sum(weights)`
-- Incident detection via `reporter.getAlertCount()` delta tracking per registered service
-- Remove direct imports of safety/perf/network modules
-
-### 4. EngineProvider Integration
-
-- Import reporters in EngineProvider so they self-register on boot
-- No other changes needed — ClusterHealthService already started
-
-### 5. ClusterHealthTab Update
-
-- `SubsystemId` becomes `string` (dynamic, not union)
-- Subsystem icon selection uses a map with fallback
-- No breaking changes to existing UI
+A fase async de load do IndexedDB já está protegida. Apenas adicionar reporte ao ClusterHealth em caso de falha.
 
 ## Files
 
 | Action | File |
 |--------|------|
-| Create | `src/core/cluster/ServiceRegistry.ts` |
-| Create | `src/core/cluster/reporters/SafetyHealthReporter.ts` |
-| Create | `src/core/cluster/reporters/PerformanceHealthReporter.ts` |
-| Create | `src/core/cluster/reporters/NetworkHealthReporter.ts` |
-| Edit | `src/core/cluster/ClusterHealthService.ts` (use registry) |
-| Edit | `src/orchestration/EngineProvider.tsx` (import reporters) |
-| Edit | `src/components/editor/cluster/ClusterHealthTab.tsx` (dynamic subsystem IDs) |
+| Edit | `src/orchestration/EngineProvider.tsx` (safeBoot wrapper + isolamento) |
+| Edit | `src/core/cluster/ClusterHealthService.ts` (add `reportBootFailure`) |
 
 ## Execution Order
 
 | Step | Task |
 |------|------|
-| 1 | Create ServiceRegistry + HealthReporter interface |
-| 2 | Create 3 reporter adapters |
-| 3 | Refactor ClusterHealthService to use registry |
-| 4 | Update EngineProvider imports |
-| 5 | Update ClusterHealthTab for dynamic IDs |
-| 6 | Build verification |
+| 1 | Add `reportBootFailure` to ClusterHealthService |
+| 2 | Refactor EngineProvider boot with `safeBoot` isolation |
+| 3 | Build verification |
 
