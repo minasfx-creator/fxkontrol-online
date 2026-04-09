@@ -130,10 +130,51 @@ function useSubsystems(fireone: ReturnType<typeof useFireOneHardware>, pbus: Ret
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
+// ─── Safety Interlock Badge ──────────────────────────────────────────────────
+function SafetyInterlockBadge() {
+  const [state, setState] = useState<SafetyState>(safetyStateMachine.state);
+
+  useEffect(() => {
+    const unsub = safetyStateMachine.onTransition(({ to }) => {
+      setState(to as SafetyState);
+    });
+    return unsub;
+  }, []);
+
+  const status = safetyValidator.getInterlockStatus();
+  const steps = ['IDLE', 'LOCKED', 'ARMED', 'FIRING'];
+  const colors: Record<string, string> = {
+    IDLE: 'border-muted-foreground/20 text-muted-foreground/50',
+    LOCKED: 'border-amber-500/30 text-amber-400',
+    ARMED: 'border-red-500/30 text-red-400',
+    FIRING: 'border-red-500/50 text-red-400 animate-pulse',
+    COOLDOWN: 'border-orange-500/30 text-orange-400',
+    SAFE: 'border-green-500/30 text-green-400',
+  };
+
+  return (
+    <div className={cn(
+      "flex items-center gap-1.5 px-2 h-7 rounded-md border text-[9px] font-bold uppercase",
+      colors[state] ?? colors.IDLE
+    )}>
+      <Shield className="w-3 h-3" />
+      <span>{state}</span>
+      {/* Chain dots */}
+      <div className="flex items-center gap-0.5 ml-1">
+        {steps.map((s, i) => (
+          <div key={s} className={cn(
+            "w-1.5 h-1.5 rounded-full",
+            i <= status.chainProgress ? "bg-current" : "bg-muted-foreground/15"
+          )} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MasterTransport() {
   const { currentTime, isPlaying, duration, setPlaying } = useProjectStore();
   const { frameRate, startTimecodeSeconds } = useSMPTEStore();
-  const [masterArmed, setMasterArmed] = useState(false);
 
   const offsetTime = currentTime + startTimecodeSeconds;
   const tc = secondsToTimecode(offsetTime, frameRate, frameRate === 29.97);
@@ -141,23 +182,24 @@ function MasterTransport() {
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const handleArm = useCallback(() => {
-    if (!masterArmed) {
-      toast.warning('MASTER ARM ativado — Todos os sistemas em STANDBY', { duration: 5000 });
+    const state = safetyStateMachine.state;
+    if (state === 'ARMED' || state === 'FIRING') {
+      commandBus.dispatch({ type: 'DISARM_SYSTEM' });
     } else {
-      toast.info('MASTER DISARM — Sistemas em modo seguro');
+      commandBus.dispatch({ type: 'ARM_SYSTEM' });
     }
-    setMasterArmed(!masterArmed);
-  }, [masterArmed]);
+  }, []);
 
   const handlePanic = useCallback(() => {
-    toast.error('🚨 PANIC — Todos os sistemas DESARMADOS', { duration: 8000 });
-    setMasterArmed(false);
+    commandBus.dispatch({ type: 'E_STOP' });
   }, []);
+
+  const isArmed = safetyStateMachine.state === 'ARMED' || safetyStateMachine.state === 'FIRING';
 
   return (
     <div className={cn(
       "rounded-xl border p-3 space-y-3 transition-all",
-      masterArmed
+      isArmed
         ? "border-red-500/30 bg-red-500/5"
         : "border-border/20 bg-card/30"
     )}>
@@ -169,7 +211,7 @@ function MasterTransport() {
             <span className="font-mono-code text-lg tracking-[0.15em] text-primary font-bold tabular-nums">
               {tcStr}
             </span>
-            {masterArmed && (
+            {isArmed && (
               <Badge className="badge-live text-[9px] h-5">● ARMED</Badge>
             )}
             {isPlaying && (
@@ -187,7 +229,7 @@ function MasterTransport() {
         <Button
           size="sm"
           variant={isPlaying ? 'destructive' : 'default'}
-          className={cn("h-10 flex-1 font-bold text-xs", masterArmed && "min-h-[48px]")}
+          className={cn("h-10 flex-1 font-bold text-xs", isArmed && "min-h-[48px]")}
           onClick={() => setPlaying(!isPlaying)}
         >
           {isPlaying ? <><Pause className="w-4 h-4 mr-1" /> STOP</> : <><Play className="w-4 h-4 mr-1" /> GO</>}
@@ -195,23 +237,23 @@ function MasterTransport() {
 
         <Button
           size="sm"
-          variant={masterArmed ? 'destructive' : 'outline'}
+          variant={isArmed ? 'destructive' : 'outline'}
           className={cn(
             "h-10 font-bold text-xs transition-all",
-            masterArmed && "armed-pulse min-h-[48px]"
+            isArmed && "armed-pulse min-h-[48px]"
           )}
           onClick={handleArm}
         >
-          {masterArmed ? <><Lock className="w-4 h-4 mr-1" /> ARMED</> : <><Unlock className="w-4 h-4 mr-1" /> ARM</>}
+          {isArmed ? <><Lock className="w-4 h-4 mr-1" /> ARMED</> : <><Unlock className="w-4 h-4 mr-1" /> ARM</>}
         </Button>
 
         <Button
           size="sm"
           variant="destructive"
-          className={cn("h-10 font-bold text-xs", masterArmed && "min-h-[48px]")}
+          className={cn("h-10 font-bold text-xs", isArmed && "min-h-[48px]")}
           onClick={handlePanic}
         >
-          <AlertTriangle className="w-4 h-4 mr-1" /> PANIC
+          <AlertTriangle className="w-4 h-4 mr-1" /> E-STOP
         </Button>
       </div>
     </div>
