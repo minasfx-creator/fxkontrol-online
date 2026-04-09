@@ -272,7 +272,7 @@ export default function ClusterHealthTab() {
       </div>
 
       {/* Recovery Status */}
-      <RecoveryStatusSection statuses={recoveryStatuses} />
+      <RecoveryStatusSection statuses={recoveryStatuses} onReset={handleManualReset} />
 
       {/* Incident History */}
       <div className="space-y-1.5">
