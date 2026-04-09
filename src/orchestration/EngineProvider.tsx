@@ -23,6 +23,9 @@ import { safetyValidator } from '@/core/safety/SafetyValidator';
 import { safetyAuditTrail } from '@/core/safety/SafetyAuditTrail';
 import { continuityCheckService } from '@/core/safety/ContinuityCheckService';
 import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
+import { startProfiler, stopProfiler } from '@/core/performance/PerformanceProfilerService';
+import { networkHealthService } from '@/core/network/NetworkHealthService';
+import { clusterHealthService } from '@/core/cluster/ClusterHealthService';
 import { ReplayOverlay } from '@/components/editor/ReplayOverlay';
 import { toast } from 'sonner';
 
