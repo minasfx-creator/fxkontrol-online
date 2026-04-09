@@ -23,6 +23,9 @@ import { safetyValidator } from '@/core/safety/SafetyValidator';
 import { safetyAuditTrail } from '@/core/safety/SafetyAuditTrail';
 import { continuityCheckService } from '@/core/safety/ContinuityCheckService';
 import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
+import { startProfiler, stopProfiler } from '@/core/performance/PerformanceProfilerService';
+import { networkHealthService } from '@/core/network/NetworkHealthService';
+import { clusterHealthService } from '@/core/cluster/ClusterHealthService';
 import { ReplayOverlay } from '@/components/editor/ReplayOverlay';
 import { toast } from 'sonner';
 
@@ -155,6 +158,9 @@ export default function EngineProvider() {
     // ── Boot ──
     deterministicClock.start();
     lockstep.start();
+    startProfiler();
+    networkHealthService.start();
+    console.log('[EngineProvider] All services started (clock, lockstep, profiler, network, cluster)');
 
     // ── Flush on page unload ──
     const handleBeforeUnload = () => {
@@ -167,6 +173,9 @@ export default function EngineProvider() {
     return () => {
       handleBeforeUnload();
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      clusterHealthService.dispose();
+      networkHealthService.stop();
+      stopProfiler();
       lockstep.stop();
       deterministicClock.pause();
       unsub();
@@ -181,6 +190,7 @@ export default function EngineProvider() {
       lockstep.unregister('idbFlush');
       commandRelay.stop();
       safetyStateMachine.reset();
+      console.log('[EngineProvider] All services stopped');
     };
   }, []);
 
