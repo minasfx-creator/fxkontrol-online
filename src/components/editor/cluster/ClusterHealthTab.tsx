@@ -221,6 +221,11 @@ export default function ClusterHealthTab() {
     setIncidents(clusterHealthService.getIncidents());
   }, []);
 
+  const handleManualReset = useCallback((label: string) => {
+    autoRecoveryService.manualReset(label);
+    setRecoveryStatuses(autoRecoveryService.getStatus());
+  }, []);
+
   const filteredIncidents = incidents.filter(i => {
     if (filter !== 'all' && i.subsystem !== filter) return false;
     if (!showResolved && i.resolved) return false;
