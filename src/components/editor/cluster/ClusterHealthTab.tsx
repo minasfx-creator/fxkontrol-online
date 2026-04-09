@@ -15,7 +15,6 @@ import {
   type ClusterSnapshot,
   type Incident,
   type HealthLevel,
-  type SubsystemId,
 } from '@/core/cluster/ClusterHealthService';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -38,12 +37,14 @@ function levelBg(level: HealthLevel) {
   }
 }
 
-function subsystemIcon(id: SubsystemId) {
-  switch (id) {
-    case 'safety': return <Shield className="w-3.5 h-3.5" />;
-    case 'performance': return <Cpu className="w-3.5 h-3.5" />;
-    case 'network': return <Wifi className="w-3.5 h-3.5" />;
-  }
+const SUBSYSTEM_ICONS: Record<string, React.ReactNode> = {
+  safety: <Shield className="w-3.5 h-3.5" />,
+  performance: <Cpu className="w-3.5 h-3.5" />,
+  network: <Wifi className="w-3.5 h-3.5" />,
+};
+
+function subsystemIcon(id: string) {
+  return SUBSYSTEM_ICONS[id] ?? <Heart className="w-3.5 h-3.5" />;
 }
 
 function formatUptime(ms: number): string {
@@ -143,7 +144,7 @@ function IncidentRow({ incident, onResolve }: { incident: Incident; onResolve: (
 
 // ── Main Component ───────────────────────────────────────────────────
 
-type IncidentFilter = 'all' | SubsystemId;
+type IncidentFilter = string;
 
 export default function ClusterHealthTab() {
   const [snapshot, setSnapshot] = useState<ClusterSnapshot>(clusterHealthService.getSnapshot());
@@ -174,9 +175,7 @@ export default function ClusterHealthTab() {
 
   const filters: { value: IncidentFilter; label: string }[] = [
     { value: 'all', label: 'All' },
-    { value: 'safety', label: 'Safety' },
-    { value: 'performance', label: 'Perf' },
-    { value: 'network', label: 'Net' },
+    ...snapshot.subsystems.map(s => ({ value: s.id, label: s.label })),
   ];
 
   return (
