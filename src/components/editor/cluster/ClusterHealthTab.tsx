@@ -5,7 +5,9 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Shield, Cpu, Wifi, Heart, AlertTriangle, CheckCircle2, XCircle, Clock, RefreshCw, Skull, Loader2, RotateCcw, Zap, Link } from 'lucide-react';
+import { Shield, Cpu, Wifi, Heart, AlertTriangle, CheckCircle2, XCircle, Clock, RefreshCw, Skull, Loader2, RotateCcw, Zap, Link, TrendingUp } from 'lucide-react';
+import Sparkline from '@/components/ui/Sparkline';
+import { useHealthHistory } from '@/hooks/useHealthHistory';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -241,6 +243,7 @@ function IncidentRow({ incident, onResolve }: { incident: Incident; onResolve: (
 type IncidentFilter = string;
 
 export default function ClusterHealthTab() {
+  const { scores: historyScores } = useHealthHistory(60);
   const [snapshot, setSnapshot] = useState<ClusterSnapshot>(clusterHealthService.getSnapshot());
   const [incidents, setIncidents] = useState<Incident[]>(clusterHealthService.getIncidents());
   const [recoveryStatuses, setRecoveryStatuses] = useState<RecoveryStatus[]>(autoRecoveryService.getStatus());
@@ -281,6 +284,15 @@ export default function ClusterHealthTab() {
 
   return (
     <div className="space-y-3">
+      {/* Health Trend Sparkline */}
+      {historyScores.length >= 2 && (
+        <div className="flex items-center gap-2 p-1.5 rounded border border-border/30 bg-muted/10">
+          <TrendingUp className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          <span className="text-[9px] text-muted-foreground whitespace-nowrap">Last 30min</span>
+          <Sparkline data={historyScores} width={120} height={20} className="flex-1" />
+        </div>
+      )}
+
       {/* Header + Global Score */}
       <div className="flex items-center gap-3">
         <HealthRing score={snapshot.globalScore} level={snapshot.globalLevel} />
