@@ -19,6 +19,7 @@ import { continuityCheckService, type PinStatus } from '@/core/safety/Continuity
 import PerformanceMonitor from '@/components/editor/PerformanceMonitor';
 const PerformanceProfilerTab = lazy(() => import('@/components/editor/performance/PerformanceProfilerTab'));
 const NetworkHealthTab = lazy(() => import('@/components/editor/network/NetworkHealthTab'));
+const ClusterHealthTab = lazy(() => import('@/components/editor/cluster/ClusterHealthTab'));
 import { FieldViewProvider, FieldModeToggle, FieldViewWrapper, TerrainCollisionAlert } from '@/components/editor/FieldViewMode';
 import { downloadFlightPlan, exportFlightPlan, DEFAULT_FLIGHT_CONFIG } from '@/lib/mavlinkFlightPlanExporter';
 import { checkTrajectoryCollision, interpolateTrajectory, type TrajectoryPoint } from '@/lib/terrainCollisionEngine';
@@ -788,6 +789,9 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel, fs: _fs }: Sh
           <TabsTrigger value="network" className="text-[9px] h-6 px-2 data-[state=active]:bg-card">
             Network
           </TabsTrigger>
+          <TabsTrigger value="cluster" className="text-[9px] h-6 px-2 data-[state=active]:bg-card">
+            Cluster
+          </TabsTrigger>
         </TabsList>
 
         <ScrollArea className="flex-1">
@@ -987,6 +991,11 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel, fs: _fs }: Sh
             <TabsContent value="network" className="mt-0 space-y-3">
               <Suspense fallback={<div className="text-center py-4 text-[9px] text-muted-foreground/40">Loading Network...</div>}>
                 <NetworkHealthTab />
+              </Suspense>
+            </TabsContent>
+            <TabsContent value="cluster" className="mt-0 space-y-3">
+              <Suspense fallback={<div className="text-center py-4 text-[9px] text-muted-foreground/40">Loading Cluster...</div>}>
+                <ClusterHealthTab />
               </Suspense>
             </TabsContent>
           </div>
