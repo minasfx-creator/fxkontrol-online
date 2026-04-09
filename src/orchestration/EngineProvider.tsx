@@ -34,6 +34,16 @@ import { toast } from 'sonner';
 
 const FLUSH_INTERVAL_TICKS = 1800; // ~30s at 60Hz
 
+function safeBoot(label: string, fn: () => void): boolean {
+  try { fn(); return true; }
+  catch (e) {
+    console.error(`[EngineProvider] ${label} failed:`, e);
+    clusterHealthService.reportBootFailure(label, String(e));
+    toast.error(`⚠ ${label} falhou no boot — sistema degradado`);
+    return false;
+  }
+}
+
 export default function EngineProvider() {
   useEffect(() => {
     let lastFlushTick = 0;
@@ -59,6 +69,7 @@ export default function EngineProvider() {
         await safetyAuditTrail.load();
       } catch (e) {
         console.warn('[EngineProvider] Failed to load persisted data:', e);
+        clusterHealthService.reportBootFailure('IndexedDB', String(e));
       }
     })();
 
@@ -158,12 +169,13 @@ export default function EngineProvider() {
       lockstep.tick(delta);
     });
 
-    // ── Boot ──
-    deterministicClock.start();
-    lockstep.start();
-    startProfiler();
-    networkHealthService.start();
-    console.log('[EngineProvider] All services started (clock, lockstep, profiler, network, cluster)');
+    // ── Boot (isolated per service) ──
+    const clockOk = safeBoot('DeterministicClock', () => deterministicClock.start());
+    const lockstepOk = safeBoot('LockstepEngine', () => lockstep.start());
+    const profilerOk = safeBoot('PerformanceProfiler', () => startProfiler());
+    const networkOk = safeBoot('NetworkHealth', () => networkHealthService.start());
+    console.log('[EngineProvider] Boot complete — clock:%s lockstep:%s profiler:%s network:%s',
+      clockOk, lockstepOk, profilerOk, networkOk);
 
     // ── Flush on page unload ──
     const handleBeforeUnload = () => {
@@ -177,10 +189,10 @@ export default function EngineProvider() {
       handleBeforeUnload();
       window.removeEventListener('beforeunload', handleBeforeUnload);
       clusterHealthService.dispose();
-      networkHealthService.stop();
-      stopProfiler();
-      lockstep.stop();
-      deterministicClock.pause();
+      if (networkOk) networkHealthService.stop();
+      if (profilerOk) stopProfiler();
+      if (lockstepOk) lockstep.stop();
+      if (clockOk) deterministicClock.pause();
       unsub();
       unsubRollback();
       unsubReplayStart();

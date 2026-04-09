@@ -132,6 +132,11 @@ class ClusterHealthService {
     if (inc) { inc.resolved = true; inc.resolvedAt = Date.now(); }
   }
 
+  reportBootFailure(subsystem: string, error: string) {
+    this.addIncident(subsystem, 'critical', `Boot failure: ${error}`);
+    this.notify();
+  }
+
   onStateChange(cb: () => void): () => void {
     this.listeners.push(cb);
     return () => { this.listeners = this.listeners.filter(l => l !== cb); };
