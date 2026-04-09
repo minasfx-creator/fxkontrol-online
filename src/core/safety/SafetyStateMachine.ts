@@ -140,6 +140,7 @@ class SafetyStateMachine {
         if (!c.linkStable) return 'Cannot ARM: link not stable';
         if (!c.validationPassed) return 'Cannot ARM: validation has critical failures';
         if (c.isDryRun) return 'Cannot ARM: system in DRY RUN mode';
+        if (!c.continuityOk) return 'Cannot ARM: continuity check not passed (run check first)';
         return null;
       case 'FIRE':
         if (!c.continuityOk) return 'Cannot FIRE: continuity check failed';

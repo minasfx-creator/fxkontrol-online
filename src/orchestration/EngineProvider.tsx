@@ -21,6 +21,7 @@ import { commandRelay } from '@/core/sync/CommandRelay';
 import { indexedDBPersistence } from '@/core/persistence/IndexedDBPersistence';
 import { safetyValidator } from '@/core/safety/SafetyValidator';
 import { safetyAuditTrail } from '@/core/safety/SafetyAuditTrail';
+import { continuityCheckService } from '@/core/safety/ContinuityCheckService';
 import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
 import { ReplayOverlay } from '@/components/editor/ReplayOverlay';
 import { toast } from 'sonner';
@@ -88,6 +89,11 @@ export default function EngineProvider() {
       if (cmd.type === 'IMPORT_LOG') {
         commandLog.importJSON(cmd.json);
       }
+    });
+
+    // ── Register CONTINUITY_CHECK handler ──
+    const unsubContinuity = commandBus.on('CONTINUITY_CHECK', () => {
+      continuityCheckService.runFullCheck();
     });
 
     // ── Command processing subsystem (priority 0) ──
@@ -169,6 +175,7 @@ export default function EngineProvider() {
       unsubReplayStop();
       unsubExport();
       unsubImport();
+      unsubContinuity();
       lockstep.unregister('commandBus');
       lockstep.unregister('snapshotManager');
       lockstep.unregister('idbFlush');
