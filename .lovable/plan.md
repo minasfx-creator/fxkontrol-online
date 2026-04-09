@@ -1,36 +1,44 @@
 
 
-# Ciclo #69 — Sprint 16: Recovery Status Panel
+# Ciclo #70 — Sprint 17: Circuit Breaker Pattern
 
-## Objetivo
+## Problema
 
-Adicionar uma seção "Recovery Status" no `ClusterHealthTab` que exibe o estado de auto-recovery de cada serviço registrado, com estado visual (pending/recovering/recovered/failed), contagem de tentativas, e countdown para o próximo retry.
+Quando um serviço atinge o limite de 5 tentativas de auto-recovery, ele fica marcado como `failed` permanentemente. Não há mecanismo para o operador tentar re-ativar manualmente, nem proteção contra tentativas de uso de um serviço em estado `failed`.
+
+## Solução
+
+Adicionar estado `tripped` ao `AutoRecoveryService` (circuit breaker aberto) com método `manualReset(label)` para re-ativar. O `ClusterHealthTab` ganha botão de reset manual nos serviços com estado `failed`.
 
 ## Deliverables
 
-### 1. RecoveryStatusSection — inline no ClusterHealthTab
+### 1. Circuit Breaker no AutoRecoveryService
 
-Nova seção entre Subsystem Cards e Incident History:
+- Novo estado `tripped` adicionado ao tipo `RecoveryState`: `'pending' | 'recovering' | 'recovered' | 'failed' | 'tripped'`
+- Quando `attempts >= maxAttempts`, estado muda para `tripped` (circuit breaker aberto) em vez de `failed`
+- Novo método `manualReset(label)`: reseta attempts para 0, muda estado para `pending`, e chama `scheduleRecovery(label)` para tentar novamente
+- Novo método `isTripped(label): boolean` para consulta externa
+- Incidente `critical` reportado ao `ClusterHealthService` quando circuit breaker abre
+- Toast notifica operador com ação clara
 
-- Lê `autoRecoveryService.getStatus()` no mesmo poll de 1s
-- Cada serviço exibe: label, estado com badge colorida, barra `attempts/maxAttempts`, countdown "next retry in Xs"
-- Estados visuais: `pending` (yellow pulse), `recovering` (blue spin), `recovered` (green check), `failed` (red skull)
-- Seção só aparece se há pelo menos 1 serviço com estado diferente de `pending` com 0 attempts (i.e., só mostra quando houve atividade de recovery)
+### 2. Botão de Reset Manual no ClusterHealthTab
 
-### 2. Poll integration
-
-O `useEffect` existente já faz refresh a cada 1s — adicionar `autoRecoveryService.getStatus()` ao mesmo ciclo.
+- `RecoveryRow` exibe botão "Reset" quando estado é `tripped`
+- Botão chama `autoRecoveryService.manualReset(label)`
+- Visual: ícone `RotateCcw` + badge vermelha pulsante para `tripped`
 
 ## Files
 
 | Action | File |
 |--------|------|
-| Edit | `src/components/editor/cluster/ClusterHealthTab.tsx` (add recovery section + import) |
+| Edit | `src/core/reliability/AutoRecoveryService.ts` (add tripped state + manualReset) |
+| Edit | `src/components/editor/cluster/ClusterHealthTab.tsx` (add reset button + tripped visual) |
 
 ## Execution Order
 
 | Step | Task |
 |------|------|
-| 1 | Add recovery status section to ClusterHealthTab |
-| 2 | Build verification |
+| 1 | Add circuit breaker logic to AutoRecoveryService |
+| 2 | Add manual reset UI to ClusterHealthTab |
+| 3 | Build verification |
 
