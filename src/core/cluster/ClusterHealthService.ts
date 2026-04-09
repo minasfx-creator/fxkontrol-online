@@ -6,8 +6,7 @@
 
 import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
 import { safetyAuditTrail } from '@/core/safety/SafetyAuditTrail';
-import { continuityCheckService } from '@/core/safety/ContinuityCheckService';
-import { performanceProfilerService } from '@/core/performance/PerformanceProfilerService';
+import { getFrameHistory, getActiveAlerts as getPerfAlerts } from '@/core/performance/PerformanceProfilerService';
 import { networkHealthService } from '@/core/network/NetworkHealthService';
 import { fieldBus } from '@/core/reliability';
 
@@ -69,7 +68,7 @@ class ClusterHealthService {
 
   private tick() {
     // Detect safety state changes → incidents
-    const safetyState = safetyStateMachine.getState();
+    const safetyState = safetyStateMachine.state;
     if (safetyState !== this.lastSafetyState) {
       if (safetyState === 'EMERGENCY') {
         this.addIncident('safety', 'critical', `Safety entered EMERGENCY state`);
@@ -80,7 +79,7 @@ class ClusterHealthService {
     }
 
     // Detect performance alerts
-    const perfAlerts = performanceProfilerService.getActiveAlerts();
+    const perfAlerts = getPerfAlerts();
     if (perfAlerts.length > this.lastPerfAlertCount) {
       const newest = perfAlerts[perfAlerts.length - 1];
       this.addIncident('performance',
@@ -132,8 +131,8 @@ class ClusterHealthService {
   // ── Subsystem health computation ──────────────────────────────────
 
   private getSafetyHealth(): SubsystemHealth {
-    const state = safetyStateMachine.getState();
-    const conditions = safetyStateMachine.getConditions();
+    const state = safetyStateMachine.state;
+    const conditions = safetyStateMachine.conditions;
     const auditEntries = safetyAuditTrail.getAll();
     const violations = auditEntries.filter(e => e.event === 'VIOLATION').length;
 
@@ -143,8 +142,8 @@ class ClusterHealthService {
     if (state === 'EMERGENCY') { score = 0; level = 'critical'; }
     else if (violations > 5) { score = 40; level = 'degraded'; }
     else if (violations > 0) { score = 70; level = 'degraded'; }
-    if (!conditions.geofenceOk) score -= 15;
-    if (!conditions.cueValidationOk) score -= 10;
+    if (!conditions.linkStable) score -= 15;
+    if (!conditions.validationPassed) score -= 10;
 
     score = Math.max(0, Math.min(100, score));
     if (score < 30) level = 'critical';
@@ -154,13 +153,13 @@ class ClusterHealthService {
       id: 'safety', label: 'Safety', level, score,
       details: `State: ${state}, ${violations} violations`,
       lastUpdate: Date.now(),
-      metrics: { state, violations, geofence: conditions.geofenceOk ? 'OK' : 'FAIL' },
+      metrics: { state, violations, link: conditions.linkStable ? 'OK' : 'FAIL' },
     };
   }
 
   private getPerformanceHealth(): SubsystemHealth {
-    const alerts = performanceProfilerService.getActiveAlerts();
-    const frames = performanceProfilerService.getFrameHistory();
+    const alerts = getPerfAlerts();
+    const frames = getFrameHistory();
     const lastFrame = frames.length > 0 ? frames[frames.length - 1] : null;
     const fps = lastFrame ? Math.round(1000 / Math.max(1, lastFrame.frameTimeMs)) : 60;
 
