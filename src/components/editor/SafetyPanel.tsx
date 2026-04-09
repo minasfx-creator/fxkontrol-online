@@ -9,11 +9,12 @@
  */
 import { lazy, Suspense } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Plane, ClipboardList } from 'lucide-react';
+import { Shield, Plane, ClipboardList, BarChart3 } from 'lucide-react';
 
 const DeconflictionTab = lazy(() => import('./safety/DeconflictionTab'));
 const FlightCheckTab = lazy(() => import('./safety/FlightCheckTab'));
 const AuditTrailTab = lazy(() => import('./safety/AuditTrailTab'));
+const SafetyMetricsTab = lazy(() => import('./safety/SafetyMetricsTab'));
 
 function TabFallback() {
   return (
@@ -40,6 +41,10 @@ export default function SafetyPanel() {
             <ClipboardList className="w-3 h-3" />
             Audit Log
           </TabsTrigger>
+          <TabsTrigger value="metrics" className="flex-1 h-6 text-[9px] font-bold uppercase tracking-wider gap-1 data-[state=active]:bg-surface-2">
+            <BarChart3 className="w-3 h-3" />
+            Metrics
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="deconfliction" className="mt-1.5">
@@ -57,6 +62,12 @@ export default function SafetyPanel() {
         <TabsContent value="auditlog" className="mt-1.5">
           <Suspense fallback={<TabFallback />}>
             <AuditTrailTab />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="metrics" className="mt-1.5">
+          <Suspense fallback={<TabFallback />}>
+            <SafetyMetricsTab />
           </Suspense>
         </TabsContent>
       </Tabs>
