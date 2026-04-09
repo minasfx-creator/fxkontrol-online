@@ -36,6 +36,10 @@ export default function SafetyPanel() {
             <Plane className="w-3 h-3" />
             Flight Check
           </TabsTrigger>
+          <TabsTrigger value="auditlog" className="flex-1 h-6 text-[9px] font-bold uppercase tracking-wider gap-1 data-[state=active]:bg-surface-2">
+            <ClipboardList className="w-3 h-3" />
+            Audit Log
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="deconfliction" className="mt-1.5">
@@ -47,6 +51,12 @@ export default function SafetyPanel() {
         <TabsContent value="flightcheck" className="mt-1.5">
           <Suspense fallback={<TabFallback />}>
             <FlightCheckTab />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="auditlog" className="mt-1.5">
+          <Suspense fallback={<TabFallback />}>
+            <AuditTrailTab />
           </Suspense>
         </TabsContent>
       </Tabs>
