@@ -1,75 +1,75 @@
 
 
-# Ciclo #62 — Sprint 9: Performance Profiler Visual
+# Ciclo #63 — Sprint 10: Network Health Monitor
 
 ## What Exists
 
 | Component | Status |
 |---|---|
-| `usePerfMetrics` hook | FPS, memory, frameTime, drawCalls, triangles at 4Hz |
-| `observability.ts` | RollingPercentile (p50/p95/p99), `getMetricsSnapshot()`, context loss tracking |
-| `runtimeSafety.ts` | Watchdog with 5 degradation levels, `onDegradationChange()` callback |
-| `memoryManager.ts` | `getMemoryReport(gl)` — geometries, textures, VRAM estimate, JS heap |
-| `PerformanceMonitor` | Simple FPS/memory/latency cards in ShowCommander |
+| `FieldBus` singleton | Multi-transport (wifi/rs485/relay), heartbeat monitoring, failover |
+| `RealtimeClient` singleton | WebSocket with exponential backoff reconnect (max 10 retries) |
+| `CommandRelay` | Supabase Realtime broadcast for command sync |
+| `MultiSiteCoordinator` | Presence-based site tracking with latency estimation |
+| `ShowCommanderPanel` | 5 tabs (Overview, Cue Stack, Systems, Safety, Profiler) |
 | `Sparkline` component | Reusable SVG trend line |
-| `SafetyPanel` | 4 tabs — extensible pattern |
+| `blackbox` recorder | Event logging for reliability |
 
 ## Deliverables
 
-### 1. PerformanceProfilerService — `src/core/performance/PerformanceProfilerService.ts`
+### 1. NetworkHealthService — `src/core/network/NetworkHealthService.ts`
 
-Module-level singleton that collects time-series data for the profiler UI:
+Module-level singleton that tracks network quality metrics:
 
-- **Frame Time History**: ring buffer of 600 samples (~10s at 60fps), stores `{ timestamp, frameTimeMs, drawCalls, triangles }`
-- **Memory Snapshots**: sampled every 2s, ring buffer of 150 entries (~5min), stores `{ timestamp, jsHeapMB, geometries, textures, estimatedVRAM }`
-- **Degradation Log**: append-only list of `{ timestamp, from, to }` transitions from watchdog
-- **Alert Rules**: configurable thresholds that emit alerts:
-  - FPS < 25 sustained 3s → `PERF_CRITICAL`
-  - Memory > 1200MB → `MEMORY_HIGH`
-  - VRAM > 400MB → `VRAM_HIGH`
-  - Context loss → `GPU_CRASH`
-- `getFrameHistory()`, `getMemoryHistory()`, `getDegradationLog()`, `getActiveAlerts()`
-- Registers via `onDegradationChange()` on init
+- **RTT History**: Ring buffer of 300 samples (~5min at 1Hz ping), stores `{ timestamp, rttMs, transport }`. Pings via `fieldBus.heartbeat()` round-trip measurement
+- **Packet Loss Tracking**: Sliding window (60s) counting sent vs acknowledged packets. Loss % = `(sent - acked) / sent * 100`
+- **Transport Health**: Per-transport (wifi/rs485/relay) status with individual RTT and loss stats
+- **Reconnection Manager**: Exponential backoff (1s → 30s, max 10 retries) with jitter. Hooks into `fieldBus` and `realtimeClient` for auto-reconnect
+- **Alert Thresholds**:
+  - RTT > 100ms sustained 5s → `LATENCY_HIGH`
+  - Packet loss > 5% → `PACKET_LOSS_WARNING`
+  - Packet loss > 15% → `PACKET_LOSS_CRITICAL`
+  - All transports down → `NETWORK_DOWN`
+- API: `getRTTHistory()`, `getPacketLossPercent()`, `getTransportHealth()`, `getActiveAlerts()`, `getReconnectState()`
 
-### 2. PerformanceProfilerTab — `src/components/editor/performance/PerformanceProfilerTab.tsx`
+### 2. NetworkHealthTab — `src/components/editor/network/NetworkHealthTab.tsx`
 
-New dedicated panel (not inside SafetyPanel — standalone, accessed from ShowCommander or a new top-level panel). Three sections:
+New tab in ShowCommander with three sections:
 
-**A. Flame Chart (simplified)** — SVG bar chart showing frame time distribution:
-- X-axis: last 300 frames (scrollable)
-- Y-axis: frame time in ms, with 16.67ms budget line drawn as dashed red
-- Bars color-coded: green (<16ms), amber (16-33ms), red (>33ms)
-- Hover tooltip showing exact frameTime, drawCalls, triangles
+**A. RTT Timeline** — SVG line chart (Sparkline-style, expanded):
+- Last 300 samples, color gradient (green <50ms, amber 50-100ms, red >100ms)
+- Current RTT + p50/p95 badges
+- 100ms budget line (dashed)
 
-**B. Memory Timeline** — dual-axis SVG line chart:
-- JS Heap (MB) as filled area (blue)
-- VRAM estimate as line (amber)
-- Geometry/texture counts as small badges below
-- Last 5 minutes of data
+**B. Transport Status Grid** — Card per transport:
+- Transport name + alive/dead badge
+- Individual RTT + packet loss %
+- Failover count from FieldBus
+- Active transport highlighted
 
-**C. Degradation Alerts** — live alert feed:
-- Color-coded alert cards with timestamp and severity
-- Current degradation level badge with color
-- Auto-dismiss resolved alerts after 10s
+**C. Connection Status** — Live feed:
+- Reconnection attempts with backoff timer
+- Active alerts (color-coded)
+- Total messages sent / bytes transferred from FieldBus state
+- Uptime percentage
 
 ### 3. Integration — ShowCommanderPanel
 
-Add a "Profiler" section/tab in the Performance area of ShowCommander that lazy-loads the `PerformanceProfilerTab`.
+Add "Network" tab (6th) with `Wifi` icon, lazy-load NetworkHealthTab.
 
 ## Files
 
 | Action | File |
 |--------|------|
-| Create | `src/core/performance/PerformanceProfilerService.ts` |
-| Create | `src/components/editor/performance/PerformanceProfilerTab.tsx` |
-| Edit | `src/components/editor/ShowCommanderPanel.tsx` (add Profiler access) |
+| Create | `src/core/network/NetworkHealthService.ts` |
+| Create | `src/components/editor/network/NetworkHealthTab.tsx` |
+| Edit | `src/components/editor/ShowCommanderPanel.tsx` (add Network tab) |
 
 ## Execution Order
 
 | Step | Task |
 |------|------|
-| 1 | Create PerformanceProfilerService |
-| 2 | Create PerformanceProfilerTab component |
-| 3 | Integrate in ShowCommanderPanel |
+| 1 | Create NetworkHealthService |
+| 2 | Create NetworkHealthTab component |
+| 3 | Add Network tab to ShowCommanderPanel |
 | 4 | Build verification |
 
