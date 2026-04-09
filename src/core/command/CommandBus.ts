@@ -22,7 +22,10 @@ export type Command =
   | { type: 'REPLAY_STOP' }
   | { type: 'REPLAY_SPEED'; speed: number }
   | { type: 'EXPORT_LOG'; format: 'json' }
-  | { type: 'IMPORT_LOG'; json: string };
+  | { type: 'IMPORT_LOG'; json: string }
+  | { type: 'LOCK_STATE' }
+  | { type: 'UNLOCK_STATE' }
+  | { type: 'RESET_SAFETY' };
 
 export type CommandHandler = (cmd: Command) => void;
 
