@@ -11,7 +11,7 @@ const STORE_AUDIT = 'safety_audit';
 export interface AuditEntry {
   timestamp: number;
   tick: number;
-  event: 'ARM' | 'DISARM' | 'FIRE' | 'E_STOP' | 'VIOLATION' | 'STATE_CHANGE' | 'LOCK' | 'UNLOCK' | 'RESET';
+  event: 'ARM' | 'DISARM' | 'FIRE' | 'E_STOP' | 'VIOLATION' | 'STATE_CHANGE' | 'LOCK' | 'UNLOCK' | 'RESET' | 'CONTINUITY_CHECK';
   from: string;
   to: string;
   detail: string;

@@ -25,7 +25,8 @@ export type Command =
   | { type: 'IMPORT_LOG'; json: string }
   | { type: 'LOCK_STATE' }
   | { type: 'UNLOCK_STATE' }
-  | { type: 'RESET_SAFETY' };
+  | { type: 'RESET_SAFETY' }
+  | { type: 'CONTINUITY_CHECK' };
 
 export type CommandHandler = (cmd: Command) => void;
 
