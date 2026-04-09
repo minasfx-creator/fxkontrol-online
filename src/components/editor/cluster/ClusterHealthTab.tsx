@@ -111,6 +111,50 @@ function SubsystemCard({ health }: { health: ClusterSnapshot['subsystems'][0] })
   );
 }
 
+// ── Recovery Status Row ──────────────────────────────────────────────
+
+function recoveryStateStyle(state: RecoveryState) {
+  switch (state) {
+    case 'pending': return { bg: 'bg-yellow-500/20 border-yellow-500/30', text: 'text-yellow-400', icon: <RefreshCw className="w-3 h-3 animate-pulse" /> };
+    case 'recovering': return { bg: 'bg-blue-500/20 border-blue-500/30', text: 'text-blue-400', icon: <Loader2 className="w-3 h-3 animate-spin" /> };
+    case 'recovered': return { bg: 'bg-green-500/20 border-green-500/30', text: 'text-green-400', icon: <CheckCircle2 className="w-3 h-3" /> };
+    case 'failed': return { bg: 'bg-red-500/20 border-red-500/30', text: 'text-red-400', icon: <Skull className="w-3 h-3" /> };
+  }
+}
+
+function RecoveryRow({ status }: { status: RecoveryStatus }) {
+  const style = recoveryStateStyle(status.state);
+  const countdown = status.nextRetryAt ? Math.max(0, Math.ceil((status.nextRetryAt - Date.now()) / 1000)) : null;
+
+  return (
+    <div className={`flex items-center gap-2 p-1.5 rounded border ${style.bg}`}>
+      <span className={style.text}>{style.icon}</span>
+      <span className="text-[10px] font-mono text-foreground flex-1 truncate">{status.label}</span>
+      <Progress value={(status.attempts / status.maxAttempts) * 100} className="h-1 w-12" />
+      <span className="text-[8px] font-mono text-muted-foreground">{status.attempts}/{status.maxAttempts}</span>
+      <Badge className={`${style.bg} ${style.text} text-[7px] h-4 font-mono border`}>
+        {status.state === 'pending' && countdown !== null ? `${countdown}s` : status.state}
+      </Badge>
+    </div>
+  );
+}
+
+function RecoveryStatusSection({ statuses }: { statuses: RecoveryStatus[] }) {
+  const active = statuses.filter(s => !(s.state === 'pending' && s.attempts === 0));
+  if (active.length === 0) return null;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
+        <RefreshCw className="w-3 h-3" /> RECOVERY ({active.length})
+      </div>
+      <div className="space-y-0.5">
+        {active.map(s => <RecoveryRow key={s.label} status={s} />)}
+      </div>
+    </div>
+  );
+}
+
 // ── Incident Row ─────────────────────────────────────────────────────
 
 function IncidentRow({ incident, onResolve }: { incident: Incident; onResolve: (id: string) => void }) {
@@ -150,6 +194,7 @@ type IncidentFilter = string;
 export default function ClusterHealthTab() {
   const [snapshot, setSnapshot] = useState<ClusterSnapshot>(clusterHealthService.getSnapshot());
   const [incidents, setIncidents] = useState<Incident[]>(clusterHealthService.getIncidents());
+  const [recoveryStatuses, setRecoveryStatuses] = useState<RecoveryStatus[]>(autoRecoveryService.getStatus());
   const [filter, setFilter] = useState<IncidentFilter>('all');
   const [showResolved, setShowResolved] = useState(false);
 
