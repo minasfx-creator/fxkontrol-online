@@ -168,12 +168,13 @@ export default function EngineProvider() {
       lockstep.tick(delta);
     });
 
-    // ── Boot ──
-    deterministicClock.start();
-    lockstep.start();
-    startProfiler();
-    networkHealthService.start();
-    console.log('[EngineProvider] All services started (clock, lockstep, profiler, network, cluster)');
+    // ── Boot (isolated per service) ──
+    const clockOk = safeBoot('DeterministicClock', () => deterministicClock.start());
+    const lockstepOk = safeBoot('LockstepEngine', () => lockstep.start());
+    const profilerOk = safeBoot('PerformanceProfiler', () => startProfiler());
+    const networkOk = safeBoot('NetworkHealth', () => networkHealthService.start());
+    console.log('[EngineProvider] Boot complete — clock:%s lockstep:%s profiler:%s network:%s',
+      clockOk, lockstepOk, profilerOk, networkOk);
 
     // ── Flush on page unload ──
     const handleBeforeUnload = () => {
@@ -187,10 +188,10 @@ export default function EngineProvider() {
       handleBeforeUnload();
       window.removeEventListener('beforeunload', handleBeforeUnload);
       clusterHealthService.dispose();
-      networkHealthService.stop();
-      stopProfiler();
-      lockstep.stop();
-      deterministicClock.pause();
+      if (networkOk) networkHealthService.stop();
+      if (profilerOk) stopProfiler();
+      if (lockstepOk) lockstep.stop();
+      if (clockOk) deterministicClock.pause();
       unsub();
       unsubRollback();
       unsubReplayStart();
