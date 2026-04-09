@@ -29,6 +29,7 @@ import { clusterHealthService } from '@/core/cluster/ClusterHealthService';
 import '@/core/cluster/reporters/SafetyHealthReporter';
 import '@/core/cluster/reporters/PerformanceHealthReporter';
 import '@/core/cluster/reporters/NetworkHealthReporter';
+import { autoRecoveryService } from '@/core/reliability/AutoRecoveryService';
 import { ReplayOverlay } from '@/components/editor/ReplayOverlay';
 import { toast } from 'sonner';
 
@@ -169,13 +170,25 @@ export default function EngineProvider() {
       lockstep.tick(delta);
     });
 
-    // ── Boot (isolated per service) ──
-    const clockOk = safeBoot('DeterministicClock', () => deterministicClock.start());
-    const lockstepOk = safeBoot('LockstepEngine', () => lockstep.start());
-    const profilerOk = safeBoot('PerformanceProfiler', () => startProfiler());
-    const networkOk = safeBoot('NetworkHealth', () => networkHealthService.start());
-    console.log('[EngineProvider] Boot complete — clock:%s lockstep:%s profiler:%s network:%s',
-      clockOk, lockstepOk, profilerOk, networkOk);
+    // ── Register recoverable services ──
+    const bootFns: Record<string, () => void> = {
+      DeterministicClock: () => deterministicClock.start(),
+      LockstepEngine: () => lockstep.start(),
+      PerformanceProfiler: () => startProfiler(),
+      NetworkHealth: () => networkHealthService.start(),
+    };
+    for (const [label, fn] of Object.entries(bootFns)) {
+      autoRecoveryService.register(label, fn);
+    }
+
+    // ── Boot (isolated per service, auto-recovery on failure) ──
+    const bootResults: Record<string, boolean> = {};
+    for (const [label, fn] of Object.entries(bootFns)) {
+      const ok = safeBoot(label, fn);
+      bootResults[label] = ok;
+      if (!ok) autoRecoveryService.scheduleRecovery(label);
+    }
+    console.log('[EngineProvider] Boot complete —', Object.entries(bootResults).map(([k,v]) => `${k}:${v}`).join(' '));
 
     // ── Flush on page unload ──
     const handleBeforeUnload = () => {
@@ -188,11 +201,12 @@ export default function EngineProvider() {
     return () => {
       handleBeforeUnload();
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      autoRecoveryService.dispose();
       clusterHealthService.dispose();
-      if (networkOk) networkHealthService.stop();
-      if (profilerOk) stopProfiler();
-      if (lockstepOk) lockstep.stop();
-      if (clockOk) deterministicClock.pause();
+      if (bootResults['NetworkHealth']) networkHealthService.stop();
+      if (bootResults['PerformanceProfiler']) stopProfiler();
+      if (bootResults['LockstepEngine']) lockstep.stop();
+      if (bootResults['DeterministicClock']) deterministicClock.pause();
       unsub();
       unsubRollback();
       unsubReplayStart();

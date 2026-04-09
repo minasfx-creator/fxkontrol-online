@@ -137,6 +137,19 @@ class ClusterHealthService {
     this.notify();
   }
 
+  reportRecovery(subsystem: string, message: string) {
+    // Auto-resolve most recent unresolved incident for this subsystem
+    for (let i = this.incidents.length - 1; i >= 0; i--) {
+      if (this.incidents[i].subsystem === subsystem && !this.incidents[i].resolved) {
+        this.incidents[i].resolved = true;
+        this.incidents[i].resolvedAt = Date.now();
+        break;
+      }
+    }
+    this.addIncident(subsystem, 'warning', `Recovery: ${message}`);
+    this.notify();
+  }
+
   onStateChange(cb: () => void): () => void {
     this.listeners.push(cb);
     return () => { this.listeners = this.listeners.filter(l => l !== cb); };
