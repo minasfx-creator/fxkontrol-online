@@ -1,32 +1,34 @@
+
 # Ciclo #60 — Sprint 7: Safety Audit Trail Visual Panel
 
 ## What Exists
-- `SafetyAuditTrail` singleton with `getAll()`, `exportJSON()`, `persist()`, `load()`, `clear()`
-- `AuditEntry` interface: timestamp, tick, event (10 types), from, to, detail, originSiteId
-- `SafetyPanel` with 2 tabs (Deconfliction, Flight Check) — good place to add 3rd tab
+
+| Component | Status |
+|---|---|
+| `SafetyAuditTrail` singleton | Functional — `getAll()`, `exportJSON()`, `persist()`, `load()`, `clear()` |
+| `AuditEntry` interface | 10 event types: ARM, DISARM, FIRE, E_STOP, VIOLATION, STATE_CHANGE, LOCK, UNLOCK, RESET, CONTINUITY_CHECK |
+| `SafetyPanel` | 2 tabs (Deconfliction, Flight Check) — extensible with 3rd tab |
 
 ## Deliverables
 
 ### 1. AuditTrailTab — `src/components/editor/safety/AuditTrailTab.tsx`
 
-New lazy-loaded tab in SafetyPanel with:
-- **Filter bar**: multi-select chips for event types (ARM, FIRE, E_STOP, VIOLATION, etc.), with "All" toggle
-- **History table**: scrollable table showing timestamp (HH:MM:SS.ms), tick, event badge (color-coded), from→to, detail, siteId
-- **Counters**: total entries, violations count, last event time
-- **Actions**: Export CSV button, Clear History button (with confirmation)
-- Auto-refresh via `useEffect` interval polling `safetyAuditTrail.getAll()` every 2s
+New lazy-loaded tab component:
 
-Event badge colors:
-- RED: E_STOP, VIOLATION, SHORT
-- AMBER: ARM, FIRE, LOCK
-- GREEN: DISARM, UNLOCK, RESET, CONTINUITY_CHECK
-- BLUE: STATE_CHANGE
-
-CSV export format: `Timestamp,Tick,Event,From,To,Detail,SiteID`
+- **Stats bar**: total entries badge + violation count (red badge when > 0)
+- **Filter chips**: toggleable per event type + "ALL" toggle. Color-coded:
+  - RED: E_STOP, VIOLATION
+  - AMBER: ARM, FIRE, LOCK
+  - GREEN: DISARM, UNLOCK, RESET, CONTINUITY_CHECK
+  - BLUE: STATE_CHANGE
+- **Actions**: Export CSV button + Clear History button (with confirm dialog)
+- **History table** (ScrollArea 240px): Time (HH:MM:SS.ms), Tick, Event (color badge), From→To, Detail
+- Auto-refresh polling `safetyAuditTrail.getAll()` every 2s
+- CSV format: `Timestamp,Tick,Event,From,To,Detail,SiteID`
 
 ### 2. SafetyPanel — add "Audit Log" tab
 
-Add 3rd tab with `ClipboardList` icon, lazy-load `AuditTrailTab`.
+Add 3rd tab with `ClipboardList` icon, lazy-load AuditTrailTab.
 
 ## Files
 
@@ -40,5 +42,5 @@ Add 3rd tab with `ClipboardList` icon, lazy-load `AuditTrailTab`.
 | Step | Task |
 |------|------|
 | 1 | Create AuditTrailTab component |
-| 2 | Add tab to SafetyPanel |
+| 2 | Add Audit Log tab to SafetyPanel |
 | 3 | Build verification |
