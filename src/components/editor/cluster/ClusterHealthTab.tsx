@@ -146,7 +146,7 @@ function RecoveryRow({ status, onReset }: { status: RecoveryStatus; onReset?: (l
   );
 }
 
-function RecoveryStatusSection({ statuses }: { statuses: RecoveryStatus[] }) {
+function RecoveryStatusSection({ statuses, onReset }: { statuses: RecoveryStatus[]; onReset: (label: string) => void }) {
   const active = statuses.filter(s => !(s.state === 'pending' && s.attempts === 0));
   if (active.length === 0) return null;
 
@@ -156,7 +156,7 @@ function RecoveryStatusSection({ statuses }: { statuses: RecoveryStatus[] }) {
         <RefreshCw className="w-3 h-3" /> RECOVERY ({active.length})
       </div>
       <div className="space-y-0.5">
-        {active.map(s => <RecoveryRow key={s.label} status={s} />)}
+        {active.map(s => <RecoveryRow key={s.label} status={s} onReset={onReset} />)}
       </div>
     </div>
   );
