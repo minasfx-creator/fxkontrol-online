@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Shield, Cpu, Wifi, Heart, AlertTriangle, CheckCircle2, XCircle, Clock, Filter, RefreshCw, Skull, Loader2 } from 'lucide-react';
+import { Shield, Cpu, Wifi, Heart, AlertTriangle, CheckCircle2, XCircle, Clock, Filter, RefreshCw, Skull, Loader2, RotateCcw, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
