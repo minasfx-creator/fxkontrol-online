@@ -7,7 +7,7 @@
 import { clusterHealthService } from '@/core/cluster/ClusterHealthService';
 import { toast } from 'sonner';
 
-export type RecoveryState = 'pending' | 'recovering' | 'recovered' | 'failed';
+export type RecoveryState = 'pending' | 'recovering' | 'recovered' | 'failed' | 'tripped';
 
 export interface RecoveryStatus {
   label: string;
