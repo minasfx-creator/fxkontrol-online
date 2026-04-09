@@ -509,6 +509,93 @@ function TelemetryMini({ fireone, pbus }: { fireone: ReturnType<typeof useFireOn
   );
 }
 
+// ─── Continuity Check Panel ──────────────────────────────────────────────────
+function ContinuityCheckPanel() {
+  const [pins, setPins] = useState(continuityCheckService.getAllPins());
+  const [report, setReport] = useState(continuityCheckService.getReport());
+  const [checking, setChecking] = useState(false);
+
+  const runCheck = useCallback(async () => {
+    setChecking(true);
+    const r = await continuityCheckService.runFullCheck();
+    setPins([...continuityCheckService.getAllPins()]);
+    setReport(r);
+    setChecking(false);
+    if (r.short > 0) {
+      toast.error(`🚨 ${r.short} SHORT-CIRCUIT detectado(s)!`);
+    } else if (r.ok >= 1) {
+      toast.success(`✅ Continuidade OK: ${r.ok}/${r.total} ignitores`);
+    }
+  }, []);
+
+  const statusColor: Record<PinStatus, string> = {
+    OK: 'bg-green-500',
+    OPEN: 'bg-muted-foreground/20',
+    SHORT: 'bg-red-500 animate-pulse',
+    UNKNOWN: 'bg-muted-foreground/10',
+  };
+
+  const passing = report.ok >= 1 && report.short === 0;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between px-1">
+        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50">
+          Continuidade 32-CH
+        </span>
+        <Badge variant="outline" className={cn(
+          "text-[8px] h-4 px-1.5",
+          passing ? "border-green-500/30 text-green-400" : "border-red-500/30 text-red-400"
+        )}>
+          {passing ? 'PASS' : report.lastCheckTime === 0 ? 'PENDING' : 'FAIL'}
+        </Badge>
+      </div>
+
+      {/* 8×4 Grid */}
+      <div className="grid grid-cols-8 gap-1 px-1">
+        {Array.from({ length: 32 }, (_, i) => {
+          const p = pins[i];
+          return (
+            <div
+              key={i}
+              className={cn(
+                "w-full aspect-square rounded-sm flex items-center justify-center text-[6px] font-mono-code font-bold",
+                statusColor[p?.status ?? 'UNKNOWN']
+              )}
+              title={`Pin ${i}: ${p?.ohms?.toFixed(1) ?? '?'}Ω — ${p?.status ?? 'UNKNOWN'}`}
+            >
+              {i}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Counters */}
+      <div className="flex items-center gap-2 px-1">
+        <span className="text-[8px] font-mono-code text-green-400">{report.ok} OK</span>
+        <span className="text-[8px] font-mono-code text-muted-foreground/40">{report.open} OPEN</span>
+        {report.short > 0 && (
+          <span className="text-[8px] font-mono-code text-red-400 font-bold">{report.short} SHORT</span>
+        )}
+      </div>
+
+      {/* Run Check Button */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full h-9 text-[10px] font-bold border-amber-500/20 text-amber-400 hover:bg-amber-500/10"
+        onClick={runCheck}
+        disabled={checking}
+      >
+        {checking ? (
+          <><Activity className="w-3.5 h-3.5 mr-1.5 animate-spin" /> CHECKING...</>
+        ) : (
+          <><Gauge className="w-3.5 h-3.5 mr-1.5" /> RUN CONTINUITY CHECK</>
+        )}
+      </Button>
+    </div>
+  );
+
 function SafetyChecklist() {
   const [checks] = useState([
     { id: 'perimeter', label: 'Perímetro Seguro', status: 'ok' as const },
