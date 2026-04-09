@@ -1,93 +1,44 @@
+# Ciclo #60 — Sprint 7: Safety Audit Trail Visual Panel
 
-
-# Ciclo #59 — Sprint 6: Continuity Check System + Interlock Integration
-
-## Inventário Existente
-
-| Componente | Estado |
-|---|---|
-| `FireOneHardwareBridge.readContinuity(pin)` | Funcional — envia `CONT:pin` e lê `CONT:pin:ohms` |
-| `FireOneModuleEmulator.readContinuity(pin)` / `readAllContinuity()` | Funcional — sim mode com resistências |
-| `useFireOneModuleMode` hook | Expõe `readContinuity`/`readAllContinuity` |
-| `SafetyStateMachine.conditions.continuityOk` | Existe como booleano — usado como precondição para FIRE |
-| `SafetyStateMachine.conditions.validationPassed` | Precondição para ARM |
-| `VirtualIFMx32QPanel` | Tem botão CONT que chama `readAllContinuity` |
-| `MobileLinkMode` | Tab "Continuity" com grade 8×4 e polling simulado |
-
-## O que FALTA
-
-1. **ContinuityCheckService** — subsistema kernel que orquestra verificação de todos os módulos, agrega resultados, e atualiza `safetyStateMachine.conditions.continuityOk`
-2. **Integração no interlock chain** — ARM requer continuity report passado; FIRE requer continuity OK nos pinos-alvo
-3. **UI no ShowCommanderPanel** — indicador de continuity status + botão "Run Check" que dispara verificação antes do ARM
+## What Exists
+- `SafetyAuditTrail` singleton with `getAll()`, `exportJSON()`, `persist()`, `load()`, `clear()`
+- `AuditEntry` interface: timestamp, tick, event (10 types), from, to, detail, originSiteId
+- `SafetyPanel` with 2 tabs (Deconfliction, Flight Check) — good place to add 3rd tab
 
 ## Deliverables
 
-### 1. ContinuityCheckService — `src/core/safety/ContinuityCheckService.ts`
+### 1. AuditTrailTab — `src/components/editor/safety/AuditTrailTab.tsx`
 
-Serviço puro (sem React) que:
-- Mantém mapa de `pin → { ohms, ok, lastChecked }` para 32 canais
-- `runFullCheck(bridge?)` — lê todos os 32 pinos via hardware bridge ou emulador
-- `runPinCheck(pin, bridge?)` — lê pino individual
-- `getReport()` → `{ total, ok, open, short, lastCheckTime }`
-- `isPassingForArm()` — true se ≥1 igniter OK e zero short-circuits
-- `isPassingForFire(pin)` — true se pino específico está OK
-- Atualiza `safetyStateMachine.setConditions({ continuityOk })` automaticamente após cada check
-- Logs ao `safetyAuditTrail` com evento `CONTINUITY_CHECK`
+New lazy-loaded tab in SafetyPanel with:
+- **Filter bar**: multi-select chips for event types (ARM, FIRE, E_STOP, VIOLATION, etc.), with "All" toggle
+- **History table**: scrollable table showing timestamp (HH:MM:SS.ms), tick, event badge (color-coded), from→to, detail, siteId
+- **Counters**: total entries, violations count, last event time
+- **Actions**: Export CSV button, Clear History button (with confirmation)
+- Auto-refresh via `useEffect` interval polling `safetyAuditTrail.getAll()` every 2s
 
-Thresholds padrão (baseados em especificação FireOne):
-- OPEN: > 200Ω (sem igniter)
-- OK: 0.5Ω–50Ω (igniter conectado)
-- SHORT: < 0.5Ω (curto-circuito — perigoso)
+Event badge colors:
+- RED: E_STOP, VIOLATION, SHORT
+- AMBER: ARM, FIRE, LOCK
+- GREEN: DISARM, UNLOCK, RESET, CONTINUITY_CHECK
+- BLUE: STATE_CHANGE
 
-### 2. SafetyAuditTrail — adicionar evento `CONTINUITY_CHECK`
+CSV export format: `Timestamp,Tick,Event,From,To,Detail,SiteID`
 
-Adicionar `'CONTINUITY_CHECK'` ao tipo de evento no `SafetyAuditTrail`.
+### 2. SafetyPanel — add "Audit Log" tab
 
-### 3. SafetyStateMachine — refinar precondição ARM
+Add 3rd tab with `ClipboardList` icon, lazy-load `AuditTrailTab`.
 
-Atualizar `_checkPreconditions` para ARM:
-- Além de `linkStable` e `validationPassed`, exigir que `continuityOk === true`
-- Mensagem: `'Cannot ARM: continuity check not passed (run check first)'`
+## Files
 
-### 4. ContinuityCheckPanel — UI no ShowCommanderPanel
+| Action | File |
+|--------|------|
+| Create | `src/components/editor/safety/AuditTrailTab.tsx` |
+| Edit | `src/components/editor/SafetyPanel.tsx` (add 3rd tab) |
 
-Componente inline que mostra:
-- Grid compacto 8×4 com status de cada pino (verde OK, cinza OPEN, vermelho SHORT)
-- Contadores: `12/32 OK · 18 OPEN · 2 SHORT`
-- Botão "▶ RUN CHECK" que executa `continuityCheckService.runFullCheck()`
-- Badge que reflete se check passa para ARM
-- Auto-refresh a cada 30s quando em estado LOCKED (pré-ARM)
+## Execution Order
 
-### 5. Integração EngineProvider
-
-- Importar `continuityCheckService`
-- Registrar handler para novo command type `CONTINUITY_CHECK` que executa `runFullCheck`
-- Após check, se resultado passa, `setConditions({ continuityOk: true })`
-
-### 6. CommandBus — novo tipo
-
-Adicionar: `| { type: 'CONTINUITY_CHECK' }`
-
-## Arquivos
-
-| Ação | Arquivo |
-|------|---------|
-| Criar | `src/core/safety/ContinuityCheckService.ts` |
-| Editar | `src/core/safety/SafetyAuditTrail.ts` (adicionar evento CONTINUITY_CHECK) |
-| Editar | `src/core/safety/SafetyStateMachine.ts` (refinar precondição ARM) |
-| Editar | `src/core/safety/index.ts` (export ContinuityCheckService) |
-| Editar | `src/core/command/CommandBus.ts` (adicionar CONTINUITY_CHECK type) |
-| Editar | `src/orchestration/EngineProvider.tsx` (handler + integration) |
-| Editar | `src/components/editor/ShowCommanderPanel.tsx` (ContinuityCheckPanel inline) |
-
-## Ordem de Execução
-
-| Passo | Tarefa |
-|-------|--------|
-| 1 | Criar ContinuityCheckService |
-| 2 | Adicionar CONTINUITY_CHECK ao CommandBus e AuditTrail |
-| 3 | Refinar precondição ARM no SafetyStateMachine |
-| 4 | Integrar no EngineProvider |
-| 5 | Adicionar ContinuityCheckPanel no ShowCommanderPanel |
-| 6 | Build verification |
-
+| Step | Task |
+|------|------|
+| 1 | Create AuditTrailTab component |
+| 2 | Add tab to SafetyPanel |
+| 3 | Build verification |
