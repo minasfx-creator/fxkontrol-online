@@ -243,6 +243,7 @@ function IncidentRow({ incident, onResolve }: { incident: Incident; onResolve: (
 type IncidentFilter = string;
 
 export default function ClusterHealthTab() {
+  const { scores: historyScores } = useHealthHistory(60);
   const [snapshot, setSnapshot] = useState<ClusterSnapshot>(clusterHealthService.getSnapshot());
   const [incidents, setIncidents] = useState<Incident[]>(clusterHealthService.getIncidents());
   const [recoveryStatuses, setRecoveryStatuses] = useState<RecoveryStatus[]>(autoRecoveryService.getStatus());
