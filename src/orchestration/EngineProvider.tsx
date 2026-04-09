@@ -2,9 +2,10 @@
  * ─── Engine Provider ────────────────────────────────────────────────
  * React bridge that boots the deterministic kernel:
  *   DeterministicClock → LockstepEngine (60Hz fixed step)
- *   CommandBus drain → CommandLog recording → SnapshotManager capture
- *   CommandRelay (outgoing broadcast to peers)
+ *   CommandBus drain → SafetyValidator gate → CommandLog recording
+ *   SnapshotManager capture → CommandRelay broadcast
  *   IndexedDB persistence (boot load + periodic flush)
+ *   SafetyAuditTrail (boot load + flush alongside snapshots)
  *
  * Mount once at app root. Renders ReplayOverlay when active.
  */
@@ -18,7 +19,11 @@ import { snapshotManager } from '@/core/state/SnapshotManager';
 import { replayEngine } from '@/core/engine/ReplayEngine';
 import { commandRelay } from '@/core/sync/CommandRelay';
 import { indexedDBPersistence } from '@/core/persistence/IndexedDBPersistence';
+import { safetyValidator } from '@/core/safety/SafetyValidator';
+import { safetyAuditTrail } from '@/core/safety/SafetyAuditTrail';
+import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
 import { ReplayOverlay } from '@/components/editor/ReplayOverlay';
+import { toast } from 'sonner';
 
 const FLUSH_INTERVAL_TICKS = 1800; // ~30s at 60Hz
 
@@ -34,7 +39,6 @@ export default function EngineProvider() {
           indexedDBPersistence.loadCommandLog(),
         ]);
         if (snapshots.length > 0) {
-          // Restore snapshots into manager via internal access
           for (const snap of snapshots) {
             (snapshotManager as any)._snapshots.push(snap);
           }
@@ -44,6 +48,8 @@ export default function EngineProvider() {
           commandLog.importJSON(JSON.stringify(logEntries));
           console.log(`[EngineProvider] Restored ${logEntries.length} command log entries from IndexedDB`);
         }
+        // Load safety audit trail
+        await safetyAuditTrail.load();
       } catch (e) {
         console.warn('[EngineProvider] Failed to load persisted data:', e);
       }
@@ -85,19 +91,36 @@ export default function EngineProvider() {
     });
 
     // ── Command processing subsystem (priority 0) ──
+    // Safety validator gates commands before they reach handlers
     lockstep.register('commandBus', (_time: number, _dt: number) => {
       const cmds = commandBus.drain();
       if (cmds.length > 0) {
-        commandBus.applyAll(cmds);
         const tick = lockstep.getTickCount();
         const SKIP = new Set(['ROLLBACK', 'REPLAY_START', 'REPLAY_STOP', 'REPLAY_SPEED', 'EXPORT_LOG', 'IMPORT_LOG']);
+
+        // Filter through safety validator
+        const allowed: typeof cmds = [];
         for (let i = 0; i < cmds.length; i++) {
-          if (!SKIP.has(cmds[i].type)) {
-            commandLog.record(tick, cmds[i]);
+          const result = safetyValidator.validate(cmds[i], tick);
+          if (result.allowed) {
+            allowed.push(cmds[i]);
+          } else {
+            console.warn(`[SafetyValidator] DENIED: ${cmds[i].type} — ${result.reason}`);
+            toast.error(`⛔ ${cmds[i].type} bloqueado: ${result.reason}`, { duration: 4000 });
           }
         }
-        for (let i = 0; i < cmds.length; i++) {
-          commandRelay.relayOutgoing(cmds[i]);
+
+        // Apply allowed commands
+        if (allowed.length > 0) {
+          commandBus.applyAll(allowed);
+          for (let i = 0; i < allowed.length; i++) {
+            if (!SKIP.has(allowed[i].type)) {
+              commandLog.record(tick, allowed[i]);
+            }
+          }
+          for (let i = 0; i < allowed.length; i++) {
+            commandRelay.relayOutgoing(allowed[i]);
+          }
         }
       }
     }, 0);
@@ -114,6 +137,7 @@ export default function EngineProvider() {
         lastFlushTick = tick;
         indexedDBPersistence.persistSnapshots(snapshotManager.getAll());
         indexedDBPersistence.persistCommandLog(commandLog.getLog());
+        safetyAuditTrail.persist();
       }
     }, 300);
 
@@ -130,11 +154,11 @@ export default function EngineProvider() {
     const handleBeforeUnload = () => {
       indexedDBPersistence.persistSnapshots(snapshotManager.getAll());
       indexedDBPersistence.persistCommandLog(commandLog.getLog());
+      safetyAuditTrail.persist();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
-      // Final flush
       handleBeforeUnload();
       window.removeEventListener('beforeunload', handleBeforeUnload);
       lockstep.stop();
@@ -149,6 +173,7 @@ export default function EngineProvider() {
       lockstep.unregister('snapshotManager');
       lockstep.unregister('idbFlush');
       commandRelay.stop();
+      safetyStateMachine.reset();
     };
   }, []);
 
