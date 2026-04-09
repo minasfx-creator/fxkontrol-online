@@ -9,10 +9,11 @@
  */
 import { lazy, Suspense } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Plane } from 'lucide-react';
+import { Shield, Plane, ClipboardList } from 'lucide-react';
 
 const DeconflictionTab = lazy(() => import('./safety/DeconflictionTab'));
 const FlightCheckTab = lazy(() => import('./safety/FlightCheckTab'));
+const AuditTrailTab = lazy(() => import('./safety/AuditTrailTab'));
 
 function TabFallback() {
   return (
