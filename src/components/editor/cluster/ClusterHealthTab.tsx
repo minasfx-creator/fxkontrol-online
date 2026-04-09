@@ -202,6 +202,7 @@ export default function ClusterHealthTab() {
     const refresh = () => {
       setSnapshot(clusterHealthService.getSnapshot());
       setIncidents(clusterHealthService.getIncidents());
+      setRecoveryStatuses(autoRecoveryService.getStatus());
     };
     const unsub = clusterHealthService.onStateChange(refresh);
     const poll = setInterval(refresh, 1000);
