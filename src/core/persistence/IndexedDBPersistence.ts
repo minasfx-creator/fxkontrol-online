@@ -9,7 +9,7 @@ import type { Snapshot } from '@/core/state/SnapshotManager';
 import type { LogEntry } from '@/core/command/CommandLog';
 
 const DB_NAME = 'fxkontrol_blackbox';
-const DB_VERSION = 2; // bump from v1 to add new stores
+const DB_VERSION = 3; // v3: safety_audit store added by SafetyAuditTrail
 const STORE_SNAPSHOTS = 'snapshots';
 const STORE_COMMANDLOG = 'commandlog';
 
