@@ -1,59 +1,59 @@
 
 
-# Ciclo #72 — Sprint 18: Service Dependency Graph
+# Ciclo #73 — Sprint 19: Health Score Persistence Service
 
-## Problema
+## Context
 
-Serviços são tratados como independentes. Quando um serviço upstream (ex: `network`) tem seu circuit breaker ativado, os serviços que dependem dele (ex: `cluster`) continuam tentando operar normalmente, sem saber que sua dependência está indisponível. Não há propagação de degradação.
-
-## Solução
-
-Adicionar um grafo de dependências ao `ServiceRegistry`. Cada serviço declara opcionalmente seus `dependsOn` no registro. Quando o `AutoRecoveryService` detecta um circuit breaker tripped, propaga estado `degraded` aos dependentes. O `ClusterHealthTab` exibe visualmente as dependências e a propagação.
+Database tables `health_snapshots` and `health_incidents` already exist (created in Cycle #71). The `HealthPersistenceService` and UI integration were never implemented. The Supabase types file doesn't include these tables yet — we'll use manual typing since the types auto-regenerate.
 
 ## Deliverables
 
-### 1. Dependency Graph no ServiceRegistry
+### 1. Create `src/core/cluster/HealthPersistenceService.ts`
 
-- Estender `HealthReporter` com campo opcional `dependsOn?: string[]`
-- Novo método `getDependents(id: string): HealthReporter[]` — retorna serviços que dependem do `id`
-- Novo método `getDependencies(id: string): HealthReporter[]` — retorna dependências de um serviço
-- Novo método `getDependencyGraph(): Map<string, string[]>` — grafo completo para visualização
+Singleton service:
+- `start(projectId: string)` — begins 30s interval sampling
+- Each tick: reads `clusterHealthService.getSnapshot()` and `getIncidents()`
+- Upserts snapshot row to `health_snapshots` (global_score, global_level, subsystem_scores as JSONB, active_incidents, uptime_ms)
+- Diffs incidents via `lastPersistedIds` Set — only inserts new incidents to `health_incidents`
+- Requires authenticated session (reads `supabase.auth.getSession()`, skips if null)
+- All DB writes in try/catch — never blocks UI
+- `stop()` clears interval
 
-### 2. Propagação de Degradação no AutoRecoveryService
+### 2. Create `src/hooks/useHealthHistory.ts`
 
-- Quando circuit breaker abre (`tripped`), chamar `serviceRegistry.getDependents(label)` para encontrar dependentes
-- Para cada dependente, reportar incidente `warning` ao `ClusterHealthService` com mensagem clara: "Degraded: upstream dependency {label} is tripped"
-- Novo método `getUpstreamStatus(label: string): { allHealthy: boolean; trippedUpstreams: string[] }` para consulta
-- No `scheduleRecovery`, antes de tentar boot, verificar se upstreams estão saudáveis — se não, adiar retry e logar motivo
+Hook that:
+- Queries `health_snapshots` ordered by `created_at DESC`, limit param (default 60)
+- Returns `{ scores: number[], loading: boolean }`
+- Refreshes every 60s
+- Requires auth (returns empty if not logged in)
 
-### 3. Registro de Dependências nos Reporters Existentes
+### 3. Edit `src/orchestration/EngineProvider.tsx`
 
-- Atualizar os 3 reporter adapters existentes para declarar `dependsOn`:
-  - `SafetyReporter`: sem dependências (raiz)
-  - `PerformanceReporter`: sem dependências (raiz)  
-  - `NetworkReporter`: sem dependências (raiz)
-- Estrutura pronta para futuros serviços que declarem dependências reais
+- Import `healthPersistenceService`
+- Add to boot sequence via `safeBoot` with project ID from `VITE_SUPABASE_PROJECT_ID`
+- Register in `autoRecoveryService`
+- Stop on unmount
 
-### 4. Dependency Indicators no ClusterHealthTab
+### 4. Edit `src/components/editor/cluster/ClusterHealthTab.tsx`
 
-- Nos subsystem cards, exibir chip "depends on: X" quando o serviço tem dependências
-- Quando um upstream está tripped, o card dependente mostra badge "⚠ upstream degraded" em amarelo
-- Na `RecoveryStatusSection`, serviços com upstream tripped mostram tooltip explicando o bloqueio
+- Import `useHealthHistory` and `Sparkline`
+- Add sparkline above HealthRing showing last 60 scores with "Last 30min" label
+- Render only when scores array has 2+ points
 
 ## Files
 
 | Action | File |
 |--------|------|
-| Edit | `src/core/cluster/ServiceRegistry.ts` (add dependsOn, getDependents, getDependencyGraph) |
-| Edit | `src/core/reliability/AutoRecoveryService.ts` (propagation + upstream check) |
-| Edit | `src/components/editor/cluster/ClusterHealthTab.tsx` (dependency indicators) |
+| Create | `src/core/cluster/HealthPersistenceService.ts` |
+| Create | `src/hooks/useHealthHistory.ts` |
+| Edit | `src/orchestration/EngineProvider.tsx` |
+| Edit | `src/components/editor/cluster/ClusterHealthTab.tsx` |
 
 ## Execution Order
 
-| Step | Task |
-|------|------|
-| 1 | Extend ServiceRegistry with dependency graph |
-| 2 | Add propagation logic to AutoRecoveryService |
-| 3 | Add dependency indicators to ClusterHealthTab |
-| 4 | Build verification |
+1. Create HealthPersistenceService
+2. Create useHealthHistory hook
+3. Integrate in EngineProvider
+4. Add sparkline to ClusterHealthTab
+5. Build verification
 
