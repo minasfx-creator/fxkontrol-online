@@ -614,11 +614,22 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel, fs: _fs }: Sh
             size="sm"
             variant={engine.isLocked ? 'destructive' : 'outline'}
             className={cn("h-7 text-[9px] font-bold px-2", engine.isLocked && "animate-pulse")}
-            onClick={engine.isLocked ? engine.unlockState : engine.lockState}
+            onClick={() => {
+              if (engine.isLocked) {
+                commandBus.dispatch({ type: 'UNLOCK_STATE' });
+                engine.unlockState();
+              } else {
+                commandBus.dispatch({ type: 'LOCK_STATE' });
+                engine.lockState();
+              }
+            }}
           >
             {engine.isLocked ? <Lock className="w-3 h-3 mr-1" /> : <Unlock className="w-3 h-3 mr-1" />}
             {engine.isLocked ? 'LOCKED' : 'LOCK'}
           </Button>
+
+          {/* Safety Interlock Badge */}
+          <SafetyInterlockBadge />
 
           {/* DRY RUN */}
           <Button
