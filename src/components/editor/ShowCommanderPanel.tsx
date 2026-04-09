@@ -850,6 +850,7 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel, fs: _fs }: Sh
             </TabsContent>
 
             <TabsContent value="safety" className="mt-0 space-y-3">
+              <ContinuityCheckPanel />
               <SafetyChecklist />
               <TerrainCollisionAlert hasCollision={false} minClearance={Infinity} />
 

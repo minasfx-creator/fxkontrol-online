@@ -175,6 +175,7 @@ export default function EngineProvider() {
       unsubReplayStop();
       unsubExport();
       unsubImport();
+      unsubContinuity();
       lockstep.unregister('commandBus');
       lockstep.unregister('snapshotManager');
       lockstep.unregister('idbFlush');
