@@ -50,8 +50,9 @@ const FAREWELL_PATTERNS = [
 const META_BLOCK_PATTERNS = [
   /\[KMZ_READY\][\s\S]*?\[\/KMZ_READY\]/g,
   /\[JOI_CMD\][\s\S]*?\[\/JOI_CMD\]/g,
-  /\[DOCUMENTO ANEXADO:[^\]]*\][\s\S]*?(?=\n\n|\n[A-Z]|\n#|$)/g,
+  /\[DOCUMENTO ANEXADO:[^\]]*\][\s\S]*?(?=\n\n|$)/g,
   /```[\s\S]*?```/g,
+  /\{[^{}]*"action"\s*:\s*"[^"]*"[^{}]*\}/g, // Loose JSON JOI_CMD blocks
 ];
 
 // Decorative emojis to strip (preserve ☐ ☑ ✓ ✗ for checklists)
@@ -60,14 +61,23 @@ const DECORATIVE_EMOJI_RE = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27
 // Table separator lines (---|---|---)
 const TABLE_SEPARATOR_RE = /^\|?\s*[-:]+(\s*\|\s*[-:]+)+\s*\|?\s*$/;
 
+// Residual backtick lines
+const RESIDUAL_BACKTICK_RE = /^`{1,3}\s*$/;
+
+export interface ParsedLine {
+  text: string;
+  headingLevel: number; // 0 = not heading, 1-6 = heading level
+}
+
 /**
  * Extracts the formal document body from a Joi message,
  * removing conversational fluff, greetings, farewells, and meta blocks.
+ * Preserves heading level info for downstream renderers.
  */
-export function extractDocumentBody(markdown: string): { body: string; docType: DocType } {
+export function extractDocumentBody(markdown: string): { body: string; docType: DocType; parsedLines: ParsedLine[] } {
   let cleaned = markdown;
 
-  // Remove meta blocks (KMZ, JOI_CMD, attached docs, code blocks)
+  // Remove meta blocks (KMZ, JOI_CMD, attached docs, code blocks, loose JSON)
   for (const pattern of META_BLOCK_PATTERNS) {
     cleaned = cleaned.replace(pattern, '');
   }
@@ -75,16 +85,28 @@ export function extractDocumentBody(markdown: string): { body: string; docType: 
   // Strip decorative emojis (keep checkbox symbols)
   cleaned = cleaned.replace(DECORATIVE_EMOJI_RE, '');
 
-  const lines = cleaned.split('\n');
+  const rawLines = cleaned.split('\n');
 
-  // Filter out table separator lines
-  const filteredLines = lines.filter(line => !TABLE_SEPARATOR_RE.test(line.trim()));
+  // Build parsed lines with heading info before stripping markdown
+  const parsedLines: ParsedLine[] = [];
+  for (const line of rawLines) {
+    const trimmed = line.trim();
+    // Skip table separators and residual backticks
+    if (TABLE_SEPARATOR_RE.test(trimmed) || RESIDUAL_BACKTICK_RE.test(trimmed)) continue;
+    
+    const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)/);
+    if (headingMatch) {
+      parsedLines.push({ text: headingMatch[2].replace(/\*\*/g, ''), headingLevel: headingMatch[1].length });
+    } else {
+      parsedLines.push({ text: trimmed, headingLevel: 0 });
+    }
+  }
 
   let formalStart = -1;
-  let formalEnd = filteredLines.length - 1;
+  let formalEnd = parsedLines.length - 1;
 
-  for (let i = 0; i < filteredLines.length; i++) {
-    const trimmed = filteredLines[i].trim();
+  for (let i = 0; i < parsedLines.length; i++) {
+    const { text: trimmed, headingLevel } = parsedLines[i];
     if (!trimmed) continue;
 
     const isGreeting = GREETING_PATTERNS.some(p => p.test(trimmed));
@@ -92,7 +114,7 @@ export function extractDocumentBody(markdown: string): { body: string; docType: 
 
     if (formalStart === -1) {
       const isStructured =
-        /^#{1,6}\s/.test(trimmed) ||
+        headingLevel > 0 ||
         /^\|/.test(trimmed) ||
         /^[-*]\s/.test(trimmed) ||
         /^\d+\.\s/.test(trimmed) ||
@@ -111,39 +133,36 @@ export function extractDocumentBody(markdown: string): { body: string; docType: 
 
   if (formalStart === -1) {
     formalStart = 0;
-    for (let i = 0; i < Math.min(5, filteredLines.length); i++) {
-      const trimmed = filteredLines[i].trim();
-      if (GREETING_PATTERNS.some(p => p.test(trimmed))) {
+    for (let i = 0; i < Math.min(5, parsedLines.length); i++) {
+      if (GREETING_PATTERNS.some(p => p.test(parsedLines[i].text))) {
         formalStart = i + 1;
       }
     }
   }
 
-  for (let i = filteredLines.length - 1; i > formalStart; i--) {
-    const trimmed = filteredLines[i].trim();
+  for (let i = parsedLines.length - 1; i > formalStart; i--) {
+    const trimmed = parsedLines[i].text;
     if (!trimmed) continue;
-
-    const isFarewell = FAREWELL_PATTERNS.some(p => p.test(trimmed));
-    if (isFarewell) {
+    if (FAREWELL_PATTERNS.some(p => p.test(trimmed))) {
       formalEnd = i - 1;
     } else {
       break;
     }
   }
 
-  const formalLines = filteredLines.slice(formalStart, formalEnd + 1);
+  const formalParsed = parsedLines.slice(formalStart, formalEnd + 1);
 
-  while (formalLines.length > 0 && !formalLines[formalLines.length - 1].trim()) {
-    formalLines.pop();
-  }
-  while (formalLines.length > 0 && !formalLines[0].trim()) {
-    formalLines.shift();
-  }
+  while (formalParsed.length > 0 && !formalParsed[formalParsed.length - 1].text) formalParsed.pop();
+  while (formalParsed.length > 0 && !formalParsed[0].text) formalParsed.shift();
 
-  const body = formalLines.join('\n');
+  const body = formalParsed.map(l => {
+    if (l.headingLevel > 0) return '#'.repeat(l.headingLevel) + ' ' + l.text;
+    return l.text;
+  }).join('\n');
+
   const docType = detectDocType(body || markdown);
 
-  return { body: body || markdown, docType };
+  return { body: body || markdown, docType, parsedLines: formalParsed };
 }
 
 /**
