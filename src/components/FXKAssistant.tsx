@@ -281,6 +281,8 @@ export function FXKAssistant() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isAtBottom = useRef(true);
   const lastMsgCountRef = useRef(messages.length);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachment, setAttachment] = useState<AttachedFile | null>(null);
 
   // Voice hooks
   const joiSpeech = useJoiSpeech();
