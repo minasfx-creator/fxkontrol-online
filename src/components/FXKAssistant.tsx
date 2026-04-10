@@ -397,12 +397,49 @@ export function FXKAssistant() {
   const presets = getContextPresets();
   const joiState = loading ? 'active' : isTyping ? 'active' : 'idle';
 
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_FILE_SIZE) {
+      import('sonner').then(({ toast }) => toast.error('Arquivo muito grande (máx 2MB)'));
+      return;
+    }
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    if (TEXT_EXTENSIONS.includes(ext)) {
+      const content = await readFileAsText(file);
+      setAttachment({ file, content: content.slice(0, 8000), type: 'text' });
+    } else if (IMAGE_EXTENSIONS.includes(ext)) {
+      const dataUrl = await readFileAsDataURL(file);
+      setAttachment({ file, content: dataUrl, type: 'image' });
+    } else {
+      import('sonner').then(({ toast }) => toast.error(`Formato .${ext} não suportado. Use texto ou imagem.`));
+    }
+    // Reset input so same file can be re-selected
+    e.target.value = '';
+  }, []);
+
   const send = useCallback(async (text: string) => {
-    if (!text.trim() || loading) return;
+    if ((!text.trim() && !attachment) || loading) return;
     setGlitching(true);
     playGlitchBurst();
     setTimeout(() => setGlitching(false), 800);
-    const userMsg: Msg = { role: 'user', content: text.trim(), ts: Date.now() };
+
+    // Build user message with attachment context
+    let userContent = text.trim();
+    let imageBase64: string | undefined;
+    const attachName = attachment?.file.name;
+
+    if (attachment) {
+      if (attachment.type === 'text') {
+        userContent = `[DOCUMENTO ANEXADO: ${attachment.file.name}]\n\`\`\`\n${attachment.content}\n\`\`\`\n\n${userContent || 'Analise este documento.'}`;
+      } else if (attachment.type === 'image') {
+        imageBase64 = attachment.content;
+        userContent = userContent || `Analise esta imagem: ${attachment.file.name}`;
+      }
+      setAttachment(null);
+    }
+
+    const userMsg: Msg = { role: 'user', content: userContent, ts: Date.now(), attachmentName: attachName, imageBase64 };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
@@ -421,7 +458,6 @@ export function FXKAssistant() {
     const effectsSummary = effectCounts.size > 0
       ? Array.from(effectCounts.entries()).map(([n, c]) => `${n} ×${c}`).join(', ')
       : 'Nenhum';
-    // Include last 30 timeline item IDs for update_effect targeting
     const recentItems = store.timelineItems.slice(-30).map(item => {
       const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
       const eName = effect?.name || item.effectId;
@@ -449,10 +485,23 @@ export function FXKAssistant() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
+    // Build messages for API — include image as multimodal content if present
+    const apiMessages = [contextMsg, ...messages, userMsg].map(m => {
+      if (m.imageBase64) {
+        return {
+          role: m.role,
+          content: [
+            { type: 'text', text: m.content },
+            { type: 'image_url', image_url: { url: m.imageBase64 } },
+          ],
+        };
+      }
+      return { role: m.role, content: m.content };
+    });
+
     try {
-      await streamChat([contextMsg, ...messages, userMsg], upsert, () => {
+      await streamChat(apiMessages as any, upsert, () => {
         setLoading(false);
-        // Execute JOI_CMD blocks after stream completes
         if (hasJoiCommands(soFar)) {
           const results = executeJoiCommands(soFar);
           if (results.length > 0) {
@@ -470,7 +519,7 @@ export function FXKAssistant() {
       }
       setLoading(false);
     }
-  }, [messages, loading]);
+  }, [messages, loading, attachment]);
 
   const handleFeedback = useCallback((idx: number, fb: 'up' | 'down') => {
     setMessages(prev => prev.map((m, i) => i === idx ? { ...m, feedback: fb } : m));
