@@ -1,39 +1,50 @@
 
 
-# Ciclo #74 — Retenção Automática de health_snapshots (cleanup > 24h)
+# Ciclo #75 — Aprimoramento de Documentos Joi: Legibilidade, Formatação e Limpeza de Comandos
 
-## Abordagem
+## Problemas Identificados
 
-Duas camadas complementares:
-
-1. **Client-side cleanup** — No `HealthPersistenceService`, a cada 10º flush (~5min), executar um DELETE dos registros do próprio usuário com `created_at < now() - 24h`. Simples, sem infraestrutura extra.
-
-2. **Database-level scheduled cleanup (pg_cron)** — Criar um cron job que roda a cada hora e deleta snapshots e incidents com mais de 24h para todos os usuários. Garante limpeza mesmo se o client não estiver aberto.
-
-Vou implementar ambos para máxima robustez.
+1. **Blocos `[JOI_CMD]` vazam para o documento** — o parser só remove `[KMZ_READY]` e code blocks
+2. **Blocos `[DOCUMENTO ANEXADO]` vazam** — texto de anexo injected no prompt aparece no export
+3. **PDF com fontes pequenas demais** — corpo em 9pt, headers 10pt; padrão internacional é 11-12pt corpo
+4. **Espaçamento entre linhas muito apertado** no PDF (4.5mm entre linhas)
+5. **Emojis aparecem no documento formal** — ☐ e checkboxes ok, mas 🎆🔥 etc não
+6. **Linhas separadoras de tabela markdown (`---|---`)** não filtradas
+7. **DOCX usa cores cyan nos headings** — documentos formais devem usar preto/escuro
 
 ## Deliverables
 
-### 1. Edit `HealthPersistenceService.ts`
-- Adicionar contador `flushCount`
-- A cada 10 flushes, executar cleanup client-side:
-  - `DELETE FROM health_snapshots WHERE user_id = X AND created_at < now() - interval '24 hours'`
-  - `DELETE FROM health_incidents WHERE user_id = X AND created_at < now() - interval '24 hours'`
-- Log do número de rows removidas
+### 1. Edit `src/utils/joiDocumentParser.ts`
+- Adicionar `[JOI_CMD]...[/JOI_CMD]` ao `META_BLOCK_PATTERNS`
+- Adicionar `[DOCUMENTO ANEXADO: ...]...` pattern (com o code block do conteúdo)
+- Adicionar strip de emojis decorativos (manter ☐/☑ para checklists)
+- Filtrar linhas de separador de tabela markdown (`---|---|---`)
+- Adicionar mais patterns de farewell/greeting para melhor limpeza
 
-### 2. Scheduled cleanup via pg_cron
-- Habilitar extensões `pg_cron` e `pg_net`
-- Criar cron job hourly que deleta registros > 24h de ambas as tabelas
+### 2. Edit `src/utils/joiPdfExport.ts`
+- Aumentar corpo para 11pt (era 9pt), headers para 13pt (era 10pt)
+- Aumentar line height para 5.5mm (era 4.5mm)
+- Aumentar margens para 25mm (era 20mm) — padrão ISO
+- Melhorar contraste: texto corpo preto (#1a1a1a), não cinza (#333)
+- Ajustar bullet indent e table cell sizing proporcionalmente
+
+### 3. Edit `src/utils/joiDocxExport.ts`
+- Headings em preto/escuro (era cyan) — documentos formais
+- Aumentar body size para 22 (11pt, era 20/10pt)
+- Bold text em preto (era amber #E8A317) — profissional
+- Ajustar spacing entre parágrafos (after: 120 em vez de 80)
 
 ## Files
 
 | Action | File |
 |--------|------|
-| Edit | `src/core/cluster/HealthPersistenceService.ts` |
-| SQL | Enable pg_cron + create scheduled cleanup job |
+| Edit | `src/utils/joiDocumentParser.ts` |
+| Edit | `src/utils/joiPdfExport.ts` |
+| Edit | `src/utils/joiDocxExport.ts` |
 
 ## Execution Order
-1. Edit HealthPersistenceService with client-side cleanup
-2. Create pg_cron scheduled job
-3. Build verification
+1. Fortalecer parser (remover comandos + emojis + separadores)
+2. Aprimorar PDF com normas de legibilidade
+3. Aprimorar DOCX com formatação profissional
+4. Build verification
 
