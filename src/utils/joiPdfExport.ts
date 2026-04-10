@@ -1,6 +1,7 @@
 /**
  * joiPdfExport — Export Joi assistant messages as professional PDF documents
  * Uses joiDocumentParser to extract formal content only (no conversation)
+ * ISO standard formatting: 25mm margins, 11pt body, proper line height
  */
 import jsPDF from 'jspdf';
 import { extractDocumentBody, DOC_LABELS, getDocTypeFooterNote, type DocType } from './joiDocumentParser';
@@ -33,8 +34,8 @@ export async function exportJoiPdf(markdownContent: string): Promise<void> {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
-    const marginL = 20;
-    const marginR = 20;
+    const marginL = 25; // ISO standard
+    const marginR = 25;
     const contentW = pageW - marginL - marginR;
     let y = 0;
 
@@ -59,7 +60,7 @@ export async function exportJoiPdf(markdownContent: string): Promise<void> {
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(150, 150, 150);
       doc.text(`${dateStr} · ${timeStr}`, pageW - marginR, 18, { align: 'right' });
-      y = 35;
+      y = 36;
     };
 
     const addFooter = (pageNum: number) => {
@@ -85,94 +86,92 @@ export async function exportJoiPdf(markdownContent: string): Promise<void> {
 
     addHeader();
 
-    // Parse formal body content
     const cleanContent = stripMarkdown(body);
     const lines = cleanContent.split('\n');
 
     for (const line of lines) {
       const trimmed = line.trim();
-      if (!trimmed) { y += 3; continue; }
+      if (!trimmed) { y += 4; continue; }
 
       const isHeader = /^[A-ZÁÉÍÓÚÂÊÔÃÕÇÜ\d\s.]{4,}$/.test(trimmed) ||
         (trimmed.endsWith(':') && trimmed.length < 60 && !trimmed.startsWith('•'));
 
       if (isHeader) {
-        checkPageBreak(12);
-        y += 4;
+        checkPageBreak(14);
+        y += 5;
         doc.setFillColor(CYAN[0], CYAN[1], CYAN[2]);
-        doc.rect(marginL, y - 3, 2, 5, 'F');
+        doc.rect(marginL, y - 3.5, 2, 6, 'F');
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.setTextColor(30, 30, 30);
-        doc.text(trimmed, marginL + 5, y);
-        y += 8;
+        doc.setFontSize(13);
+        doc.setTextColor(26, 26, 26);
+        doc.text(trimmed, marginL + 6, y);
+        y += 9;
         continue;
       }
 
       if (trimmed.startsWith('•')) {
-        checkPageBreak(8);
+        checkPageBreak(10);
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.setTextColor(50, 50, 50);
-        const bulletLines = doc.splitTextToSize(trimmed, contentW - 6);
+        doc.setFontSize(11);
+        doc.setTextColor(26, 26, 26);
+        const bulletLines = doc.splitTextToSize(trimmed, contentW - 8);
         bulletLines.forEach((bl: string, idx: number) => {
-          checkPageBreak(5);
-          doc.text(bl, marginL + (idx === 0 ? 0 : 4), y);
-          y += 4.5;
+          checkPageBreak(6);
+          doc.text(bl, marginL + (idx === 0 ? 0 : 5), y);
+          y += 5.5;
         });
-        y += 1;
+        y += 1.5;
         continue;
       }
 
       if (trimmed.includes('|') && !trimmed.startsWith('---')) {
-        checkPageBreak(7);
+        checkPageBreak(8);
         const cells = trimmed.split('|').map(c => c.trim()).filter(Boolean);
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(40, 40, 40);
+        doc.setFontSize(10);
+        doc.setTextColor(26, 26, 26);
         const cellW = contentW / Math.max(cells.length, 1);
         cells.forEach((cell, ci) => {
-          doc.text(cell, marginL + ci * cellW, y, { maxWidth: cellW - 2 });
+          doc.text(cell, marginL + ci * cellW, y, { maxWidth: cellW - 3 });
         });
-        y += 5;
+        y += 6;
         continue;
       }
 
       if (/^[-=]{3,}$/.test(trimmed)) {
-        checkPageBreak(4);
+        checkPageBreak(5);
         doc.setDrawColor(200, 200, 200);
         doc.line(marginL, y, pageW - marginR, y);
-        y += 4;
+        y += 5;
         continue;
       }
 
-      checkPageBreak(6);
+      checkPageBreak(7);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(40, 40, 40);
+      doc.setFontSize(11);
+      doc.setTextColor(26, 26, 26);
       const wrapped = doc.splitTextToSize(trimmed, contentW);
       wrapped.forEach((wl: string) => {
-        checkPageBreak(5);
+        checkPageBreak(6);
         doc.text(wl, marginL, y);
-        y += 4.5;
+        y += 5.5;
       });
-      y += 1;
+      y += 1.5;
     }
 
-    // Template-specific footer note
     if (footerNote) {
-      checkPageBreak(16);
-      y += 6;
+      checkPageBreak(18);
+      y += 7;
       doc.setDrawColor(CYAN[0], CYAN[1], CYAN[2]);
       doc.line(marginL, y, pageW - marginR, y);
-      y += 5;
+      y += 6;
       doc.setFont('helvetica', 'italic');
-      doc.setFontSize(7);
-      doc.setTextColor(120, 120, 120);
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
       const noteLines = doc.splitTextToSize(footerNote, contentW);
       noteLines.forEach((nl: string) => {
         doc.text(nl, marginL, y);
-        y += 3.5;
+        y += 4;
       });
     }
 
