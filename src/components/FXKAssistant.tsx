@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
 type JoiEmotion = 'caring' | 'celebrating' | 'serious';
-import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText, Download, Gavel, Plane, MapPin, Globe, Volume2, VolumeX, Mic, MicOff, Play } from 'lucide-react';
+import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText, Download, Gavel, Plane, MapPin, Globe, Volume2, VolumeX, Mic, MicOff, Play, Paperclip, File, Image as ImageIcon, XCircle } from 'lucide-react';
 import { exportJoiPdf } from '@/utils/joiPdfExport';
 import { exportJoiDocx } from '@/utils/joiDocxExport';
 import { parseKmzReadyBlock, stripKmzReadyBlock, downloadAeroKmz } from '@/utils/joiAeroKmzExport';
@@ -21,7 +21,35 @@ import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useJoiSpeech } from '@/hooks/useJoiSpeech';
 import joiFaceIcon from '@/assets/joi-face-icon.png';
 
-type Msg = { role: 'user' | 'assistant' | 'system'; content: string; ts?: number; feedback?: 'up' | 'down'; cmdResults?: JoiCommandResult[] };
+type Msg = { role: 'user' | 'assistant' | 'system'; content: string; ts?: number; feedback?: 'up' | 'down'; cmdResults?: JoiCommandResult[]; attachmentName?: string; imageBase64?: string };
+
+interface AttachedFile {
+  file: File;
+  content: string; // text content or base64 data URL
+  type: 'text' | 'image';
+}
+
+const TEXT_EXTENSIONS = ['txt', 'md', 'csv', 'json', 'xml', 'yaml', 'yml', 'log', 'ini', 'toml', 'html', 'css', 'js', 'ts', 'py', 'sql', 'env'];
+const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'];
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+
+function readFileAsText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+
+function readFileAsDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fxk-ai-chat`;
 const HISTORY_KEY = 'fxk-ai-history';
@@ -127,7 +155,7 @@ function saveHistory(msgs: Msg[]) {
 }
 
 async function streamChat(
-  messages: Msg[],
+  messages: any[],
   onDelta: (t: string) => void,
   onDone: () => void,
   signal?: AbortSignal,
@@ -138,7 +166,7 @@ async function streamChat(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
-    body: JSON.stringify({ messages: messages.map(m => ({ role: m.role, content: m.content })), projectContext: true }),
+    body: JSON.stringify({ messages, projectContext: true }),
     signal,
   });
 
@@ -253,6 +281,8 @@ export function FXKAssistant() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isAtBottom = useRef(true);
   const lastMsgCountRef = useRef(messages.length);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachment, setAttachment] = useState<AttachedFile | null>(null);
 
   // Voice hooks
   const joiSpeech = useJoiSpeech();
@@ -367,12 +397,49 @@ export function FXKAssistant() {
   const presets = getContextPresets();
   const joiState = loading ? 'active' : isTyping ? 'active' : 'idle';
 
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_FILE_SIZE) {
+      import('sonner').then(({ toast }) => toast.error('Arquivo muito grande (máx 2MB)'));
+      return;
+    }
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    if (TEXT_EXTENSIONS.includes(ext)) {
+      const content = await readFileAsText(file);
+      setAttachment({ file, content: content.slice(0, 8000), type: 'text' });
+    } else if (IMAGE_EXTENSIONS.includes(ext)) {
+      const dataUrl = await readFileAsDataURL(file);
+      setAttachment({ file, content: dataUrl, type: 'image' });
+    } else {
+      import('sonner').then(({ toast }) => toast.error(`Formato .${ext} não suportado. Use texto ou imagem.`));
+    }
+    // Reset input so same file can be re-selected
+    e.target.value = '';
+  }, []);
+
   const send = useCallback(async (text: string) => {
-    if (!text.trim() || loading) return;
+    if ((!text.trim() && !attachment) || loading) return;
     setGlitching(true);
     playGlitchBurst();
     setTimeout(() => setGlitching(false), 800);
-    const userMsg: Msg = { role: 'user', content: text.trim(), ts: Date.now() };
+
+    // Build user message with attachment context
+    let userContent = text.trim();
+    let imageBase64: string | undefined;
+    const attachName = attachment?.file.name;
+
+    if (attachment) {
+      if (attachment.type === 'text') {
+        userContent = `[DOCUMENTO ANEXADO: ${attachment.file.name}]\n\`\`\`\n${attachment.content}\n\`\`\`\n\n${userContent || 'Analise este documento.'}`;
+      } else if (attachment.type === 'image') {
+        imageBase64 = attachment.content;
+        userContent = userContent || `Analise esta imagem: ${attachment.file.name}`;
+      }
+      setAttachment(null);
+    }
+
+    const userMsg: Msg = { role: 'user', content: userContent, ts: Date.now(), attachmentName: attachName, imageBase64 };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
@@ -391,7 +458,6 @@ export function FXKAssistant() {
     const effectsSummary = effectCounts.size > 0
       ? Array.from(effectCounts.entries()).map(([n, c]) => `${n} ×${c}`).join(', ')
       : 'Nenhum';
-    // Include last 30 timeline item IDs for update_effect targeting
     const recentItems = store.timelineItems.slice(-30).map(item => {
       const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
       const eName = effect?.name || item.effectId;
@@ -419,10 +485,23 @@ export function FXKAssistant() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
+    // Build messages for API — include image as multimodal content if present
+    const apiMessages = [contextMsg, ...messages, userMsg].map(m => {
+      if (m.imageBase64) {
+        return {
+          role: m.role,
+          content: [
+            { type: 'text', text: m.content },
+            { type: 'image_url', image_url: { url: m.imageBase64 } },
+          ],
+        };
+      }
+      return { role: m.role, content: m.content };
+    });
+
     try {
-      await streamChat([contextMsg, ...messages, userMsg], upsert, () => {
+      await streamChat(apiMessages as any, upsert, () => {
         setLoading(false);
-        // Execute JOI_CMD blocks after stream completes
         if (hasJoiCommands(soFar)) {
           const results = executeJoiCommands(soFar);
           if (results.length > 0) {
@@ -440,7 +519,7 @@ export function FXKAssistant() {
       }
       setLoading(false);
     }
-  }, [messages, loading]);
+  }, [messages, loading, attachment]);
 
   const handleFeedback = useCallback((idx: number, fb: 'up' | 'down') => {
     setMessages(prev => prev.map((m, i) => i === idx ? { ...m, feedback: fb } : m));
@@ -761,6 +840,15 @@ export function FXKAssistant() {
             >
               {msg.role === 'user' ? (
                 <div>
+                  {msg.attachmentName && (
+                    <div className="flex items-center gap-1.5 mb-1 px-2 py-1 rounded" style={{ background: 'hsl(38 100% 55% / 0.08)', border: '1px solid hsl(38 100% 55% / 0.15)' }}>
+                      {msg.imageBase64 ? <ImageIcon className="h-3 w-3" style={{ color: 'hsl(38 100% 55% / 0.7)' }} /> : <File className="h-3 w-3" style={{ color: 'hsl(38 100% 55% / 0.7)' }} />}
+                      <span className="text-[8px] font-mono truncate" style={{ color: 'hsl(38 100% 65%)' }}>{msg.attachmentName}</span>
+                    </div>
+                  )}
+                  {msg.imageBase64 && (
+                    <img src={msg.imageBase64} alt="Anexo" className="max-h-32 rounded mb-1 border" style={{ borderColor: 'hsl(190 100% 50% / 0.15)' }} />
+                  )}
                   <div
                     className="px-3 py-2 rounded-lg rounded-br-sm text-[11px] font-mono leading-relaxed"
                     style={{
@@ -769,7 +857,9 @@ export function FXKAssistant() {
                       color: 'hsl(190 100% 85%)',
                     }}
                   >
-                    {msg.content}
+                    {msg.attachmentName && msg.content.includes('[DOCUMENTO ANEXADO')
+                      ? msg.content.replace(/\[DOCUMENTO ANEXADO:.*?\]\n```\n[\s\S]*?\n```\n\n/, '').trim() || `📎 ${msg.attachmentName}`
+                      : msg.content}
                   </div>
                   {msg.ts && <span className="text-[6px] font-mono block text-right mt-0.5" style={{ color: 'hsl(190 100% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
                 </div>
@@ -926,6 +1016,21 @@ export function FXKAssistant() {
 
       {/* Input */}
       <div className="relative z-10 p-2.5 shrink-0" style={{ borderTop: '1px solid hsl(190 100% 50% / 0.08)' }}>
+        {/* Attachment preview */}
+        {attachment && (
+          <div className="flex items-center gap-2 mb-1.5 px-2 py-1.5 rounded-lg animate-fade-in" style={{ background: 'hsl(38 100% 55% / 0.06)', border: '1px solid hsl(38 100% 55% / 0.15)' }}>
+            {attachment.type === 'image' ? (
+              <img src={attachment.content} alt="Preview" className="h-8 w-8 rounded object-cover" style={{ border: '1px solid hsl(190 100% 50% / 0.2)' }} />
+            ) : (
+              <File className="h-4 w-4 shrink-0" style={{ color: 'hsl(38 100% 55% / 0.7)' }} />
+            )}
+            <span className="text-[9px] font-mono truncate flex-1" style={{ color: 'hsl(38 100% 65%)' }}>{attachment.file.name}</span>
+            <span className="text-[7px] font-mono shrink-0" style={{ color: 'hsl(190 100% 50% / 0.3)' }}>{(attachment.file.size / 1024).toFixed(0)}KB</span>
+            <button onClick={() => setAttachment(null)} className="shrink-0 hover:scale-110 transition-transform">
+              <XCircle className="h-3.5 w-3.5" style={{ color: 'hsl(0 70% 55% / 0.6)' }} />
+            </button>
+          </div>
+        )}
         <div
           className="flex items-end gap-1.5 rounded-lg px-3 py-2 transition-all duration-300"
           style={{
@@ -934,6 +1039,17 @@ export function FXKAssistant() {
             boxShadow: isListening ? '0 0 15px hsl(190 100% 50% / 0.15)' : 'none',
           }}
         >
+          {/* File attach button */}
+          <input ref={fileInputRef} type="file" className="hidden" accept=".txt,.md,.csv,.json,.xml,.yaml,.yml,.log,.html,.css,.js,.ts,.py,.sql,.png,.jpg,.jpeg,.gif,.webp,.bmp" onChange={handleFileSelect} />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading}
+            className="h-7 w-7 rounded flex items-center justify-center transition-all shrink-0 hover:scale-110 active:scale-90 disabled:opacity-20"
+            style={{ background: attachment ? 'hsl(38 100% 55% / 0.15)' : 'transparent' }}
+            title="Anexar documento ou imagem"
+          >
+            <Paperclip className="h-3.5 w-3.5" style={{ color: attachment ? 'hsl(38 100% 55%)' : 'hsl(190 100% 50% / 0.4)' }} />
+          </button>
           <span className="text-[10px] font-mono shrink-0 pb-0.5" style={{ color: isListening ? 'hsl(190 100% 50% / 0.8)' : 'hsl(190 100% 50% / 0.4)' }}>
             {isListening ? '🎤' : '>_'}
           </span>
@@ -941,7 +1057,7 @@ export function FXKAssistant() {
             ref={textareaRef}
             className="flex-1 bg-transparent border-none outline-none text-[11px] font-mono placeholder:text-[hsl(190_100%_50%/0.2)] resize-none overflow-hidden leading-relaxed"
             style={{ color: 'hsl(38 100% 80%)', caretColor: 'hsl(190 100% 50%)', minHeight: '20px', maxHeight: '80px' }}
-            placeholder={isListening ? 'Ouvindo...' : 'Comando... (Shift+Enter nova linha)'}
+            placeholder={isListening ? 'Ouvindo...' : attachment ? 'Descreva o que fazer com o arquivo...' : 'Comando... (Shift+Enter nova linha)'}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -972,9 +1088,9 @@ export function FXKAssistant() {
           )}
           <button
             onClick={() => send(input)}
-            disabled={!input.trim() || loading}
+            disabled={(!input.trim() && !attachment) || loading}
             className="h-7 w-7 rounded flex items-center justify-center transition-all disabled:opacity-20 hover:scale-110 active:scale-90 shrink-0"
-            style={{ background: input.trim() ? 'hsl(190 100% 50% / 0.15)' : 'transparent' }}
+            style={{ background: (input.trim() || attachment) ? 'hsl(190 100% 50% / 0.15)' : 'transparent' }}
           >
             <Send className="h-3.5 w-3.5" style={{ color: 'hsl(190 100% 55%)' }} />
           </button>
