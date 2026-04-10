@@ -840,6 +840,15 @@ export function FXKAssistant() {
             >
               {msg.role === 'user' ? (
                 <div>
+                  {msg.attachmentName && (
+                    <div className="flex items-center gap-1.5 mb-1 px-2 py-1 rounded" style={{ background: 'hsl(38 100% 55% / 0.08)', border: '1px solid hsl(38 100% 55% / 0.15)' }}>
+                      {msg.imageBase64 ? <ImageIcon className="h-3 w-3" style={{ color: 'hsl(38 100% 55% / 0.7)' }} /> : <File className="h-3 w-3" style={{ color: 'hsl(38 100% 55% / 0.7)' }} />}
+                      <span className="text-[8px] font-mono truncate" style={{ color: 'hsl(38 100% 65%)' }}>{msg.attachmentName}</span>
+                    </div>
+                  )}
+                  {msg.imageBase64 && (
+                    <img src={msg.imageBase64} alt="Anexo" className="max-h-32 rounded mb-1 border" style={{ borderColor: 'hsl(190 100% 50% / 0.15)' }} />
+                  )}
                   <div
                     className="px-3 py-2 rounded-lg rounded-br-sm text-[11px] font-mono leading-relaxed"
                     style={{
@@ -848,7 +857,9 @@ export function FXKAssistant() {
                       color: 'hsl(190 100% 85%)',
                     }}
                   >
-                    {msg.content}
+                    {msg.attachmentName && msg.content.includes('[DOCUMENTO ANEXADO')
+                      ? msg.content.replace(/\[DOCUMENTO ANEXADO:.*?\]\n```\n[\s\S]*?\n```\n\n/, '').trim() || `📎 ${msg.attachmentName}`
+                      : msg.content}
                   </div>
                   {msg.ts && <span className="text-[6px] font-mono block text-right mt-0.5" style={{ color: 'hsl(190 100% 50% / 0.2)' }}>{formatTime(msg.ts)}</span>}
                 </div>
@@ -1005,6 +1016,21 @@ export function FXKAssistant() {
 
       {/* Input */}
       <div className="relative z-10 p-2.5 shrink-0" style={{ borderTop: '1px solid hsl(190 100% 50% / 0.08)' }}>
+        {/* Attachment preview */}
+        {attachment && (
+          <div className="flex items-center gap-2 mb-1.5 px-2 py-1.5 rounded-lg animate-fade-in" style={{ background: 'hsl(38 100% 55% / 0.06)', border: '1px solid hsl(38 100% 55% / 0.15)' }}>
+            {attachment.type === 'image' ? (
+              <img src={attachment.content} alt="Preview" className="h-8 w-8 rounded object-cover" style={{ border: '1px solid hsl(190 100% 50% / 0.2)' }} />
+            ) : (
+              <File className="h-4 w-4 shrink-0" style={{ color: 'hsl(38 100% 55% / 0.7)' }} />
+            )}
+            <span className="text-[9px] font-mono truncate flex-1" style={{ color: 'hsl(38 100% 65%)' }}>{attachment.file.name}</span>
+            <span className="text-[7px] font-mono shrink-0" style={{ color: 'hsl(190 100% 50% / 0.3)' }}>{(attachment.file.size / 1024).toFixed(0)}KB</span>
+            <button onClick={() => setAttachment(null)} className="shrink-0 hover:scale-110 transition-transform">
+              <XCircle className="h-3.5 w-3.5" style={{ color: 'hsl(0 70% 55% / 0.6)' }} />
+            </button>
+          </div>
+        )}
         <div
           className="flex items-end gap-1.5 rounded-lg px-3 py-2 transition-all duration-300"
           style={{
@@ -1013,6 +1039,17 @@ export function FXKAssistant() {
             boxShadow: isListening ? '0 0 15px hsl(190 100% 50% / 0.15)' : 'none',
           }}
         >
+          {/* File attach button */}
+          <input ref={fileInputRef} type="file" className="hidden" accept=".txt,.md,.csv,.json,.xml,.yaml,.yml,.log,.html,.css,.js,.ts,.py,.sql,.png,.jpg,.jpeg,.gif,.webp,.bmp" onChange={handleFileSelect} />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading}
+            className="h-7 w-7 rounded flex items-center justify-center transition-all shrink-0 hover:scale-110 active:scale-90 disabled:opacity-20"
+            style={{ background: attachment ? 'hsl(38 100% 55% / 0.15)' : 'transparent' }}
+            title="Anexar documento ou imagem"
+          >
+            <Paperclip className="h-3.5 w-3.5" style={{ color: attachment ? 'hsl(38 100% 55%)' : 'hsl(190 100% 50% / 0.4)' }} />
+          </button>
           <span className="text-[10px] font-mono shrink-0 pb-0.5" style={{ color: isListening ? 'hsl(190 100% 50% / 0.8)' : 'hsl(190 100% 50% / 0.4)' }}>
             {isListening ? '🎤' : '>_'}
           </span>
@@ -1020,7 +1057,7 @@ export function FXKAssistant() {
             ref={textareaRef}
             className="flex-1 bg-transparent border-none outline-none text-[11px] font-mono placeholder:text-[hsl(190_100%_50%/0.2)] resize-none overflow-hidden leading-relaxed"
             style={{ color: 'hsl(38 100% 80%)', caretColor: 'hsl(190 100% 50%)', minHeight: '20px', maxHeight: '80px' }}
-            placeholder={isListening ? 'Ouvindo...' : 'Comando... (Shift+Enter nova linha)'}
+            placeholder={isListening ? 'Ouvindo...' : attachment ? 'Descreva o que fazer com o arquivo...' : 'Comando... (Shift+Enter nova linha)'}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -1051,9 +1088,9 @@ export function FXKAssistant() {
           )}
           <button
             onClick={() => send(input)}
-            disabled={!input.trim() || loading}
+            disabled={(!input.trim() && !attachment) || loading}
             className="h-7 w-7 rounded flex items-center justify-center transition-all disabled:opacity-20 hover:scale-110 active:scale-90 shrink-0"
-            style={{ background: input.trim() ? 'hsl(190 100% 50% / 0.15)' : 'transparent' }}
+            style={{ background: (input.trim() || attachment) ? 'hsl(190 100% 50% / 0.15)' : 'transparent' }}
           >
             <Send className="h-3.5 w-3.5" style={{ color: 'hsl(190 100% 55%)' }} />
           </button>
