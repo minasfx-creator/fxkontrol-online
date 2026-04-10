@@ -1,6 +1,7 @@
 /**
  * joiDocxExport — Export Joi assistant messages as branded DOCX
  * Uses joiDocumentParser to extract formal content only (no conversation)
+ * Professional formatting: black headings, 11pt body, proper spacing
  */
 import {
   Document, Packer, Paragraph, TextRun, Header, Footer,
@@ -17,7 +18,7 @@ function parseMarkdownToDocxChildren(markdown: string) {
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) {
-      children.push(new Paragraph({ spacing: { after: 80 } }));
+      children.push(new Paragraph({ spacing: { after: 120 } }));
       continue;
     }
 
@@ -27,8 +28,14 @@ function parseMarkdownToDocxChildren(markdown: string) {
       const text = headingMatch[2].replace(/\*\*/g, '');
       children.push(new Paragraph({
         heading: level === 1 ? HeadingLevel.HEADING_1 : level === 2 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3,
-        children: [new TextRun({ text, bold: true, font: 'Arial', color: '00B4D8', size: level === 1 ? 32 : level === 2 ? 28 : 24 })],
-        spacing: { before: 240, after: 120 },
+        children: [new TextRun({
+          text,
+          bold: true,
+          font: 'Arial',
+          color: '1A1A1A',
+          size: level === 1 ? 32 : level === 2 ? 28 : 24,
+        })],
+        spacing: { before: 280, after: 140 },
       }));
       continue;
     }
@@ -38,7 +45,7 @@ function parseMarkdownToDocxChildren(markdown: string) {
       children.push(new Paragraph({
         numbering: { reference: 'bullets', level: 0 },
         children: parseInlineFormatting(bulletMatch[1]),
-        spacing: { after: 60 },
+        spacing: { after: 80 },
       }));
       continue;
     }
@@ -48,22 +55,22 @@ function parseMarkdownToDocxChildren(markdown: string) {
       children.push(new Paragraph({
         numbering: { reference: 'numbers', level: 0 },
         children: parseInlineFormatting(numMatch[1]),
-        spacing: { after: 60 },
+        spacing: { after: 80 },
       }));
       continue;
     }
 
     if (/^---+$/.test(trimmed)) {
       children.push(new Paragraph({
-        border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: '00B4D8', space: 1 } },
-        spacing: { before: 120, after: 120 },
+        border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC', space: 1 } },
+        spacing: { before: 140, after: 140 },
       }));
       continue;
     }
 
     children.push(new Paragraph({
       children: parseInlineFormatting(trimmed),
-      spacing: { after: 80 },
+      spacing: { after: 120 },
     }));
   }
 
@@ -77,17 +84,17 @@ function parseInlineFormatting(text: string): TextRun[] {
 
   while ((match = regex.exec(text)) !== null) {
     if (match[1]) {
-      runs.push(new TextRun({ text: match[1], bold: true, font: 'Arial', size: 20, color: 'E8A317' }));
+      runs.push(new TextRun({ text: match[1], bold: true, font: 'Arial', size: 22, color: '1A1A1A' }));
     } else if (match[2]) {
-      runs.push(new TextRun({ text: match[2], italics: true, font: 'Arial', size: 20 }));
+      runs.push(new TextRun({ text: match[2], italics: true, font: 'Arial', size: 22, color: '1A1A1A' }));
     } else if (match[3]) {
-      runs.push(new TextRun({ text: match[3], font: 'Courier New', size: 18, color: '00B4D8' }));
+      runs.push(new TextRun({ text: match[3], font: 'Courier New', size: 20, color: '444444' }));
     } else if (match[4]) {
-      runs.push(new TextRun({ text: match[4], font: 'Arial', size: 20 }));
+      runs.push(new TextRun({ text: match[4], font: 'Arial', size: 22, color: '1A1A1A' }));
     }
   }
 
-  return runs.length ? runs : [new TextRun({ text, font: 'Arial', size: 20 })];
+  return runs.length ? runs : [new TextRun({ text, font: 'Arial', size: 22, color: '1A1A1A' })];
 }
 
 export async function exportJoiDocx(markdown: string) {
@@ -101,12 +108,11 @@ export async function exportJoiDocx(markdown: string) {
 
     const sectionChildren = parseMarkdownToDocxChildren(body);
 
-    // Add template-specific footer note
     if (footerNote) {
       sectionChildren.push(new Paragraph({
-        border: { top: { style: BorderStyle.SINGLE, size: 1, color: '00B4D8', space: 4 } },
+        border: { top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC', space: 4 } },
         spacing: { before: 300, after: 60 },
-        children: [new TextRun({ text: footerNote, italics: true, font: 'Arial', size: 16, color: '888888' })],
+        children: [new TextRun({ text: footerNote, italics: true, font: 'Arial', size: 18, color: '888888' })],
       }));
     }
 
@@ -130,13 +136,13 @@ export async function exportJoiDocx(markdown: string) {
         ],
       },
       styles: {
-        default: { document: { run: { font: 'Arial', size: 20 } } },
+        default: { document: { run: { font: 'Arial', size: 22 } } },
       },
       sections: [{
         properties: {
           page: {
             size: { width: 11906, height: 16838 },
-            margin: { top: 1440, right: 1260, bottom: 1440, left: 1260 },
+            margin: { top: 1440, right: 1418, bottom: 1440, left: 1418 }, // ~25mm
           },
         },
         headers: {
@@ -149,7 +155,7 @@ export async function exportJoiDocx(markdown: string) {
                 children: [
                   new TextRun({ text: 'FX KONTROL', bold: true, font: 'Arial', size: 16, color: '00B4D8' }),
                   new TextRun({ text: '  ·  ', font: 'Arial', size: 14, color: '888888' }),
-                  new TextRun({ text: label, font: 'Arial', size: 14, color: 'E8A317', bold: true }),
+                  new TextRun({ text: label, font: 'Arial', size: 14, color: '1A1A1A', bold: true }),
                   new TextRun({ text: `  ·  ${dateStr}`, font: 'Arial', size: 14, color: '888888' }),
                 ],
               }),
