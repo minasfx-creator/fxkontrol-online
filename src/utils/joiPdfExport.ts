@@ -371,6 +371,11 @@ function renderTable(
   // Header row
   const headerH = calcRowHeight(table.headers);
   ensureSpace(headerH);
+
+  // Top border of entire table
+  doc.setDrawColor(200, 200, 200);
+  doc.line(marginL, y, marginL + contentW, y);
+
   doc.setFillColor(DARK[0], DARK[1], DARK[2]);
   doc.rect(marginL, y, contentW, headerH, 'F');
 
