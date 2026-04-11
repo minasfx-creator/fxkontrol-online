@@ -53,7 +53,7 @@ const META_BLOCK_PATTERNS = [
   /```[\s\S]*?```/g,                                    // 1. Code blocks FIRST
   /\[KMZ_READY\][\s\S]*?\[\/KMZ_READY\]/g,             // 2. KMZ blocks
   /\[JOI_CMD\][\s\S]*?\[\/JOI_CMD\]/g,                  // 3. JOI_CMD blocks
-  /\[DOCUMENTO ANEXADO:[^\]]*\][^\[]*/g,                 // 4. Attached docs (simplified - grabs tag + everything until next [ or end)
+  /\[DOCUMENTO ANEXADO:[^\]]*\][\s\S]*?(?=\n\n\n|\n#{1,3}\s|\[(?:KMZ|JOI)|$)/g, // 4. Attached docs - greedy until triple newline, heading, or another block
   /\{[^{}]*"action"\s*:\s*"[^"]*"[^{}]*\}/g,            // 5. Loose JSON JOI_CMD blocks
 ];
 

@@ -58,12 +58,13 @@ function renderFormattedText(doc: jsPDF, segments: TextSegment[], x: number, y: 
   doc.setFontSize(fontSize);
 }
 
-/** Render a line with inline formatting, wrapping if needed. Returns new Y. */
+/** Render a line with inline formatting, wrapping if needed. Returns new Y.
+ *  Uses yRef object for by-reference Y tracking across page breaks. */
 function renderWrappedFormattedLine(
-  doc: jsPDF, text: string, x: number, y: number,
+  doc: jsPDF, text: string, x: number, yRef: { value: number },
   maxWidth: number, lineH: number, fontSize: number,
   checkBreak: (needed: number) => void
-): number {
+): void {
   const segments = parseInlineSegments(text);
   // Check if all segments fit on one line
   let totalW = 0;
@@ -81,8 +82,9 @@ function renderWrappedFormattedLine(
 
   if (totalW <= maxWidth) {
     checkBreak(lineH);
-    renderFormattedText(doc, segments, x, y, fontSize);
-    return y + lineH;
+    renderFormattedText(doc, segments, x, yRef.value, fontSize);
+    yRef.value += lineH;
+    return;
   }
 
   // Fallback: strip formatting and use splitTextToSize for wrapping
@@ -90,10 +92,9 @@ function renderWrappedFormattedLine(
   const wrapped = doc.splitTextToSize(plain, maxWidth);
   for (const wl of wrapped) {
     checkBreak(lineH);
-    doc.text(wl, x, y);
-    y += lineH;
+    doc.text(wl, x, yRef.value);
+    yRef.value += lineH;
   }
-  return y;
 }
 
 function stripInlineMarkdown(text: string): string {
@@ -259,8 +260,9 @@ export async function exportJoiPdf(markdownContent: string): Promise<void> {
         checkPageBreak(10);
         doc.setFontSize(12);
         doc.setTextColor(26, 26, 26);
-        y = renderWrappedFormattedLine(doc, '• ' + bulletText, MARGIN_L, y, contentW - 8, 7, 12, checkPageBreak);
-        y += 2;
+        const yRef = { value: y };
+        renderWrappedFormattedLine(doc, '• ' + bulletText, MARGIN_L, yRef, contentW - 8, 7, 12, checkPageBreak);
+        y = yRef.value + 2;
         i++;
         continue;
       }
@@ -270,8 +272,9 @@ export async function exportJoiPdf(markdownContent: string): Promise<void> {
         checkPageBreak(10);
         doc.setFontSize(12);
         doc.setTextColor(26, 26, 26);
-        y = renderWrappedFormattedLine(doc, trimmed, MARGIN_L, y, contentW - 8, 7, 12, checkPageBreak);
-        y += 2;
+        const yRef = { value: y };
+        renderWrappedFormattedLine(doc, trimmed, MARGIN_L, yRef, contentW - 8, 7, 12, checkPageBreak);
+        y = yRef.value + 2;
         i++;
         continue;
       }
@@ -289,8 +292,9 @@ export async function exportJoiPdf(markdownContent: string): Promise<void> {
       // Regular paragraph with inline formatting
       checkPageBreak(8);
       doc.setTextColor(26, 26, 26);
-      y = renderWrappedFormattedLine(doc, trimmed, MARGIN_L, y, contentW, 7, 12, checkPageBreak);
-      y += 2;
+      const yRef = { value: y };
+      renderWrappedFormattedLine(doc, trimmed, MARGIN_L, yRef, contentW, 7, 12, checkPageBreak);
+      y = yRef.value + 2;
       i++;
     }
 
@@ -367,6 +371,11 @@ function renderTable(
   // Header row
   const headerH = calcRowHeight(table.headers);
   ensureSpace(headerH);
+
+  // Top border of entire table
+  doc.setDrawColor(200, 200, 200);
+  doc.line(marginL, y, marginL + contentW, y);
+
   doc.setFillColor(DARK[0], DARK[1], DARK[2]);
   doc.rect(marginL, y, contentW, headerH, 'F');
 
