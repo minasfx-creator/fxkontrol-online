@@ -16,6 +16,86 @@ const MARGIN_T = 30; // 3cm top
 const MARGIN_R = 20; // 2cm right
 const MARGIN_B = 20; // 2cm bottom
 
+// Inline formatting segment
+interface TextSegment {
+  text: string;
+  bold: boolean;
+  italic: boolean;
+  code: boolean;
+}
+
+/** Parse inline markdown (**bold**, *italic*, `code`) into segments */
+function parseInlineSegments(text: string): TextSegment[] {
+  const segments: TextSegment[] = [];
+  const regex = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|([^*`]+)/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    if (match[1]) segments.push({ text: match[1], bold: true, italic: false, code: false });
+    else if (match[2]) segments.push({ text: match[2], bold: false, italic: true, code: false });
+    else if (match[3]) segments.push({ text: match[3], bold: false, italic: false, code: true });
+    else if (match[4]) segments.push({ text: match[4], bold: false, italic: false, code: false });
+  }
+  return segments.length ? segments : [{ text, bold: false, italic: false, code: false }];
+}
+
+/** Render inline-formatted text at position, returns total width used */
+function renderFormattedText(doc: jsPDF, segments: TextSegment[], x: number, y: number, fontSize: number): void {
+  let cx = x;
+  for (const seg of segments) {
+    if (seg.code) {
+      doc.setFont('courier', 'normal');
+      doc.setFontSize(fontSize - 1);
+    } else {
+      const style = seg.bold && seg.italic ? 'bolditalic' : seg.bold ? 'bold' : seg.italic ? 'italic' : 'normal';
+      doc.setFont('helvetica', style);
+      doc.setFontSize(fontSize);
+    }
+    doc.text(seg.text, cx, y);
+    cx += doc.getTextWidth(seg.text);
+  }
+  // Reset
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(fontSize);
+}
+
+/** Render a line with inline formatting, wrapping if needed. Returns new Y. */
+function renderWrappedFormattedLine(
+  doc: jsPDF, text: string, x: number, y: number,
+  maxWidth: number, lineH: number, fontSize: number,
+  checkBreak: (needed: number) => void
+): number {
+  const segments = parseInlineSegments(text);
+  // Check if all segments fit on one line
+  let totalW = 0;
+  for (const seg of segments) {
+    if (seg.code) { doc.setFont('courier', 'normal'); doc.setFontSize(fontSize - 1); }
+    else {
+      const style = seg.bold ? 'bold' : seg.italic ? 'italic' : 'normal';
+      doc.setFont('helvetica', style);
+      doc.setFontSize(fontSize);
+    }
+    totalW += doc.getTextWidth(seg.text);
+  }
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(fontSize);
+
+  if (totalW <= maxWidth) {
+    checkBreak(lineH);
+    renderFormattedText(doc, segments, x, y, fontSize);
+    return y + lineH;
+  }
+
+  // Fallback: strip formatting and use splitTextToSize for wrapping
+  const plain = text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/`(.+?)`/g, '$1');
+  const wrapped = doc.splitTextToSize(plain, maxWidth);
+  for (const wl of wrapped) {
+    checkBreak(lineH);
+    doc.text(wl, x, y);
+    y += lineH;
+  }
+  return y;
+}
+
 function stripInlineMarkdown(text: string): string {
   return text
     .replace(/\*\*(.+?)\*\*/g, '$1')
@@ -99,7 +179,7 @@ export async function exportJoiPdf(markdownContent: string): Promise<void> {
       doc.text(`Página ${pageNum}`, pageW - MARGIN_R, pageH - 4, { align: 'right' });
     };
 
-    const maxY = pageH - MARGIN_B - 12; // leave room for footer
+    const maxY = pageH - MARGIN_B - 12;
 
     const checkPageBreak = (needed: number) => {
       if (y + needed > maxY) {
@@ -112,7 +192,7 @@ export async function exportJoiPdf(markdownContent: string): Promise<void> {
 
     addHeader();
 
-    // Process lines - collect table blocks
+    // Process lines
     const lines = body.split('\n');
     let i = 0;
 
@@ -123,12 +203,11 @@ export async function exportJoiPdf(markdownContent: string): Promise<void> {
       // Empty line
       if (!trimmed) { y += 4; i++; continue; }
 
-      // Detect table block (consecutive lines starting with |)
+      // Detect table block
       if (trimmed.startsWith('|') && trimmed.includes('|')) {
         const tableLines: string[] = [];
         while (i < lines.length && lines[i].trim().startsWith('|')) {
           const tl = lines[i].trim();
-          // Skip separator lines
           if (!/^\|?\s*[-:]+(\s*\|\s*[-:]+)+\s*\|?\s*$/.test(tl)) {
             tableLines.push(tl);
           }
@@ -145,9 +224,9 @@ export async function exportJoiPdf(markdownContent: string): Promise<void> {
         continue;
       }
 
-      // Heading detection (markdown ## or UPPERCASE)
+      // Heading detection
       const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)/);
-      const headingText = headingMatch ? stripInlineMarkdown(headingMatch[2]) : null;
+      const headingText = headingMatch ? headingMatch[2].replace(/\*\*/g, '') : null;
       const headingLevel = headingMatch ? headingMatch[1].length : 0;
 
       const isUpperHeader = !headingMatch && (
@@ -176,17 +255,11 @@ export async function exportJoiPdf(markdownContent: string): Promise<void> {
 
       // Bullet points
       if (/^[-*•]\s+/.test(trimmed)) {
-        const bulletText = stripInlineMarkdown(trimmed.replace(/^[-*•]\s+/, ''));
+        const bulletText = trimmed.replace(/^[-*•]\s+/, '');
         checkPageBreak(10);
-        doc.setFont('helvetica', 'normal');
         doc.setFontSize(12);
         doc.setTextColor(26, 26, 26);
-        const bulletLines = doc.splitTextToSize('• ' + bulletText, contentW - 8);
-        bulletLines.forEach((bl: string, idx: number) => {
-          checkPageBreak(7);
-          doc.text(bl, MARGIN_L + (idx === 0 ? 0 : 5), y);
-          y += 7; // 1.5 line spacing for 12pt
-        });
+        y = renderWrappedFormattedLine(doc, '• ' + bulletText, MARGIN_L, y, contentW - 8, 7, 12, checkPageBreak);
         y += 2;
         i++;
         continue;
@@ -195,16 +268,9 @@ export async function exportJoiPdf(markdownContent: string): Promise<void> {
       // Numbered list
       if (/^\d+\.\s+/.test(trimmed)) {
         checkPageBreak(10);
-        doc.setFont('helvetica', 'normal');
         doc.setFontSize(12);
         doc.setTextColor(26, 26, 26);
-        const numText = stripInlineMarkdown(trimmed);
-        const numLines = doc.splitTextToSize(numText, contentW - 8);
-        numLines.forEach((nl: string, idx: number) => {
-          checkPageBreak(7);
-          doc.text(nl, MARGIN_L + (idx === 0 ? 0 : 5), y);
-          y += 7;
-        });
+        y = renderWrappedFormattedLine(doc, trimmed, MARGIN_L, y, contentW - 8, 7, 12, checkPageBreak);
         y += 2;
         i++;
         continue;
@@ -220,18 +286,10 @@ export async function exportJoiPdf(markdownContent: string): Promise<void> {
         continue;
       }
 
-      // Regular paragraph - ABNT 12pt, 1.5 spacing (~7mm)
+      // Regular paragraph with inline formatting
       checkPageBreak(8);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(12);
       doc.setTextColor(26, 26, 26);
-      const cleanText = stripInlineMarkdown(trimmed);
-      const wrapped = doc.splitTextToSize(cleanText, contentW);
-      wrapped.forEach((wl: string) => {
-        checkPageBreak(7);
-        doc.text(wl, MARGIN_L, y);
-        y += 7; // 1.5 line spacing
-      });
+      y = renderWrappedFormattedLine(doc, trimmed, MARGIN_L, y, contentW, 7, 12, checkPageBreak);
       y += 2;
       i++;
     }
@@ -269,7 +327,7 @@ export async function exportJoiPdf(markdownContent: string): Promise<void> {
   }
 }
 
-/** Render a formatted table with headers, borders, and zebra striping */
+/** Render a formatted table with dynamic row heights, borders, and zebra striping */
 function renderTable(
   doc: jsPDF,
   table: TableBlock,
@@ -283,47 +341,88 @@ function renderTable(
   let y = startY;
   const colCount = Math.max(table.headers.length, 1);
   const colW = contentW / colCount;
-  const cellPadX = 2;
-  const cellPadY = 2;
-  const rowH = 8;
+  const cellPadX = 3;
+  const cellPadY = 2.5;
+  const fontSize = 10;
 
   const ensureSpace = (needed: number) => {
     if (y + needed > maxY) {
       newPage();
-      y = 38; // after header
+      y = 38;
     }
   };
 
+  /** Calculate dynamic row height based on longest cell text */
+  const calcRowHeight = (cells: string[]): number => {
+    let maxLines = 1;
+    doc.setFontSize(fontSize);
+    for (let ci = 0; ci < cells.length && ci < colCount; ci++) {
+      const cellText = stripInlineMarkdown(cells[ci] || '');
+      const wrapped = doc.splitTextToSize(cellText, colW - cellPadX * 2);
+      maxLines = Math.max(maxLines, wrapped.length);
+    }
+    return maxLines * 4.5 + cellPadY * 2;
+  };
+
   // Header row
-  ensureSpace(rowH);
+  const headerH = calcRowHeight(table.headers);
+  ensureSpace(headerH);
   doc.setFillColor(DARK[0], DARK[1], DARK[2]);
-  doc.rect(marginL, y - 4, contentW, rowH, 'F');
+  doc.rect(marginL, y, contentW, headerH, 'F');
+
+  // Vertical borders for header
+  doc.setDrawColor(60, 60, 60);
+  for (let ci = 1; ci < colCount; ci++) {
+    doc.line(marginL + ci * colW, y, marginL + ci * colW, y + headerH);
+  }
+
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(fontSize);
   doc.setTextColor(255, 255, 255);
   table.headers.forEach((header, ci) => {
-    doc.text(stripInlineMarkdown(header), marginL + ci * colW + cellPadX, y, { maxWidth: colW - cellPadX * 2 });
+    const cellText = stripInlineMarkdown(header);
+    const wrapped = doc.splitTextToSize(cellText, colW - cellPadX * 2);
+    wrapped.forEach((line: string, li: number) => {
+      doc.text(line, marginL + ci * colW + cellPadX, y + cellPadY + 3.5 + li * 4.5);
+    });
   });
-  y += rowH;
+  y += headerH;
 
-  // Data rows with zebra
+  // Data rows with zebra and dynamic heights
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(fontSize);
   table.rows.forEach((row, ri) => {
+    const rowH = calcRowHeight(row);
     ensureSpace(rowH);
+
     // Zebra background
     if (ri % 2 === 0) {
       doc.setFillColor(245, 245, 245);
-      doc.rect(marginL, y - 4, contentW, rowH, 'F');
+      doc.rect(marginL, y, contentW, rowH, 'F');
     }
+
     // Bottom border
     doc.setDrawColor(220, 220, 220);
-    doc.line(marginL, y + rowH - 4, marginL + contentW, y + rowH - 4);
+    doc.line(marginL, y + rowH, marginL + contentW, y + rowH);
+
+    // Vertical borders
+    for (let ci = 1; ci < colCount; ci++) {
+      doc.line(marginL + ci * colW, y, marginL + ci * colW, y + rowH);
+    }
+
+    // Outer borders
+    doc.setDrawColor(200, 200, 200);
+    doc.line(marginL, y, marginL, y + rowH); // left
+    doc.line(marginL + contentW, y, marginL + contentW, y + rowH); // right
 
     doc.setTextColor(26, 26, 26);
     row.forEach((cell, ci) => {
       if (ci < colCount) {
-        doc.text(stripInlineMarkdown(cell), marginL + ci * colW + cellPadX, y, { maxWidth: colW - cellPadX * 2 });
+        const cellText = stripInlineMarkdown(cell);
+        const wrapped = doc.splitTextToSize(cellText, colW - cellPadX * 2);
+        wrapped.forEach((line: string, li: number) => {
+          doc.text(line, marginL + ci * colW + cellPadX, y + cellPadY + 3.5 + li * 4.5);
+        });
       }
     });
     y += rowH;
