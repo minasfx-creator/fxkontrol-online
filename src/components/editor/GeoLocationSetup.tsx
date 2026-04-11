@@ -1,17 +1,18 @@
 /**
- * GeoLocationSetup — Overlay HTML para seleção de local.
- * Integra Google Places API para busca global de endereços.
- * Auto-fetches geo intelligence (geocoding, timezone, elevation) on selection.
+ * GeoLocationSetup — Location selection overlay.
+ * Responsive: fullscreen bottom sheet on mobile, centered card on desktop.
+ * Includes Google Places search and device geolocation.
  */
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { triggerFlyTo } from '@/core/geo/GeoCameraController';
 import { fetchGeoIntelligence } from '@/services/googleGeoIntelligence';
-import { Search, X, MapPin, Navigation, Globe, Loader2 } from 'lucide-react';
+import { Search, X, MapPin, Navigation, Globe, Loader2, Crosshair } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useSceneStore } from '@/store/useSceneStore';
 import { useProjectStore } from '@/store/useProjectStore';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
 const CITIES = [
@@ -49,9 +50,12 @@ interface GeoLocationSetupProps {
 }
 
 export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
   const [apiResults, setApiResults] = useState<PlaceResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsError, setGpsError] = useState<string | null>(null);
   const { updateSettings, settings } = useSceneStore();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -64,45 +68,29 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
   // Debounced Google Places search
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-
     if (search.trim().length < 3) {
       setApiResults([]);
       setSearching(false);
       return;
     }
-
     setSearching(true);
     debounceRef.current = setTimeout(async () => {
       try {
         const { data, error } = await supabase.functions.invoke('google-places-search', {
           body: { query: search.trim() },
         });
-        if (error) {
-          console.warn('Places search error:', error);
-          setApiResults([]);
-        } else {
-          setApiResults(data?.results || []);
-        }
-      } catch (e) {
-        console.warn('Places search failed:', e);
-        setApiResults([]);
-      } finally {
-        setSearching(false);
-      }
+        if (error) { setApiResults([]); }
+        else { setApiResults(data?.results || []); }
+      } catch { setApiResults([]); }
+      finally { setSearching(false); }
     }, 400);
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [search]);
 
   const handleSelect = useCallback((city: { lat: number; lng: number; name?: string }) => {
-    // Dispatch viewport fade transition
     window.dispatchEvent(new CustomEvent('viewport-transition', {
       detail: { locationName: city.name || 'New Location', holdMs: 1200 },
     }));
-
-    // Wait for fade-out before updating geo state
     setTimeout(() => {
       updateSettings({
         geoAnchorLat: city.lat,
@@ -112,21 +100,8 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
         google3DTilesEnabled: true,
       });
       const store = useProjectStore.getState();
-      store.setGpsOrigin({
-        lat: city.lat,
-        lng: city.lng,
-        heading: 0,
-        altitude: 0,
-      });
-      triggerFlyTo({
-        lat: city.lat,
-        lng: city.lng,
-        alt: 300,
-        duration: 2.5,
-        pitch: 45,
-      });
-
-      // Fire & forget: fetch geo intelligence in background
+      store.setGpsOrigin({ lat: city.lat, lng: city.lng, heading: 0, altitude: 0 });
+      triggerFlyTo({ lat: city.lat, lng: city.lng, alt: 300, duration: 2.5, pitch: 45 });
       fetchGeoIntelligence(city.lat, city.lng).then((intel) => {
         useProjectStore.getState().setGeoIntelligence({
           locationName: intel.locationShortName || intel.locationName || city.name || null,
@@ -136,49 +111,70 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
           staticMapUrl: intel.staticMapUrl || null,
         });
       });
-    }, 450); // After fade-out completes
-
+    }, 450);
     setTimeout(onClose, 600);
   }, [updateSettings, onClose]);
+
+  const handleDeviceGPS = useCallback(() => {
+    if (!navigator.geolocation) { setGpsError('GPS não disponível'); return; }
+    setGpsLoading(true);
+    setGpsError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGpsLoading(false);
+        handleSelect({ lat: pos.coords.latitude, lng: pos.coords.longitude, name: 'Sua Localização' });
+      },
+      (err) => {
+        setGpsLoading(false);
+        setGpsError(err.code === 1 ? 'Permissão negada' : 'Erro ao obter GPS');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [handleSelect]);
 
   const hasSearch = search.trim().length > 0;
   const noResults = hasSearch && filtered.length === 0 && apiResults.length === 0 && !searching;
 
+  // Mobile: fullscreen bottom sheet
+  const wrapperClass = isMobile
+    ? "fixed inset-0 z-[60] flex flex-col"
+    : "absolute top-16 left-1/2 -translate-x-1/2 z-50 w-[380px] max-w-[90vw]";
+
+  const cardClass = isMobile
+    ? "flex-1 flex flex-col rounded-t-2xl mt-auto max-h-[85vh] border border-border/40 shadow-2xl overflow-hidden"
+    : "rounded-xl border border-border/40 shadow-2xl overflow-hidden";
+
   return (
-    <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 w-[380px] max-w-[90vw]">
-      <div
-        className="rounded-xl border border-border/40 shadow-2xl overflow-hidden"
-        style={{
-          background: 'hsl(var(--card) / 0.92)',
-          backdropFilter: 'blur(20px) saturate(1.4)',
-        }}
+    <div className={wrapperClass}>
+      {/* Mobile backdrop */}
+      {isMobile && <div className="flex-1 min-h-[15vh]" onClick={onClose} />}
+
+      <div className={cardClass}
+        style={{ background: 'hsl(var(--card) / 0.92)', backdropFilter: 'blur(20px) saturate(1.4)' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/20">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/20 shrink-0">
           <div className="flex items-center gap-2">
             <Navigation className="w-3.5 h-3.5 text-primary" />
             <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/80">
               Geo-Location Setup
             </span>
           </div>
-          <button
-            onClick={onClose}
-            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-muted/30 transition-colors"
-          >
-            <X className="w-3.5 h-3.5 text-muted-foreground" />
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted/30 transition-colors">
+            <X className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
 
         {/* Search */}
-        <div className="px-4 pt-3 pb-2">
+        <div className="px-4 pt-3 pb-2 shrink-0">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search any address worldwide..."
-              className="h-8 text-[11px] pl-8 pr-8 bg-muted/10 border-border/20 placeholder:text-muted-foreground/40"
-              autoFocus
+              placeholder="Buscar endereço..."
+              className="h-9 text-[12px] pl-8 pr-8 bg-muted/10 border-border/20 placeholder:text-muted-foreground/40"
+              autoFocus={!isMobile}
             />
             {searching && (
               <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-primary animate-spin" />
@@ -192,8 +188,31 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
           </div>
         </div>
 
-        {/* City presets + API results */}
-        <div className="max-h-[320px] overflow-y-auto px-2 pb-2">
+        {/* Scrollable list */}
+        <div className="flex-1 overflow-y-auto px-2 pb-2 min-h-0">
+          {/* Device GPS button */}
+          <button
+            onClick={handleDeviceGPS}
+            disabled={gpsLoading}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-3 rounded-lg mb-1 transition-all",
+              "bg-accent/10 border border-accent/20 hover:bg-accent/15 active:scale-[0.98]",
+              "disabled:opacity-50"
+            )}
+          >
+            {gpsLoading ? (
+              <Loader2 className="w-4 h-4 text-accent animate-spin shrink-0" />
+            ) : (
+              <Crosshair className="w-4 h-4 text-accent shrink-0" />
+            )}
+            <div className="flex-1 text-left min-w-0">
+              <div className="text-[11px] font-semibold text-accent">📍 Usar Minha Localização</div>
+              <div className={cn("text-[9px]", gpsError ? 'text-destructive' : 'text-muted-foreground/50')}>
+                {gpsError || 'GPS do dispositivo'}
+              </div>
+            </div>
+          </button>
+
           {/* Preset cities */}
           {filtered.length > 0 && (
             <>
@@ -207,11 +226,10 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
                   key={city.name}
                   onClick={() => handleSelect(city)}
                   className={cn(
-                    "w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all",
-                    "hover:bg-primary/10 border border-transparent hover:border-primary/20",
+                    "w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all min-h-[44px]",
+                    "hover:bg-primary/10 border border-transparent hover:border-primary/20 active:scale-[0.98]",
                     settings.geoAnchorLat === city.lat && settings.geoAnchorLon === city.lng
-                      ? "bg-primary/15 border-primary/30"
-                      : ""
+                      ? "bg-primary/15 border-primary/30" : ""
                   )}
                 >
                   <span className="text-base">{city.icon}</span>
@@ -240,8 +258,8 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
                   key={`${place.lat}-${place.lng}-${i}`}
                   onClick={() => handleSelect(place)}
                   className={cn(
-                    "w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all",
-                    "hover:bg-primary/10 border border-transparent hover:border-primary/20"
+                    "w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all min-h-[44px]",
+                    "hover:bg-primary/10 border border-transparent hover:border-primary/20 active:scale-[0.98]"
                   )}
                 >
                   <Globe className="w-4 h-4 text-primary/70 shrink-0" />
@@ -254,7 +272,6 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
             </>
           )}
 
-          {/* No results */}
           {noResults && (
             <div className="text-center py-6">
               <span className="text-[10px] text-muted-foreground/40">Nenhum local encontrado</span>
@@ -263,14 +280,14 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2.5 border-t border-border/20 flex justify-end">
+        <div className="px-4 py-2.5 border-t border-border/20 flex justify-end shrink-0">
           <Button
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="h-7 text-[10px] uppercase tracking-wider text-muted-foreground/60 hover:text-foreground"
+            className="h-8 text-[10px] uppercase tracking-wider text-muted-foreground/60 hover:text-foreground"
           >
-            Skip →
+            Fechar →
           </Button>
         </div>
       </div>
