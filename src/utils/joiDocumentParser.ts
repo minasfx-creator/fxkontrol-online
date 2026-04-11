@@ -47,12 +47,14 @@ const FAREWELL_PATTERNS = [
   /^(bom trabalho|bom proveito|boa leitura)/i,
 ];
 
+// IMPORTANT: Code blocks MUST be stripped BEFORE [DOCUMENTO ANEXADO] to avoid
+// the lazy regex consuming partial code block markers
 const META_BLOCK_PATTERNS = [
-  /\[KMZ_READY\][\s\S]*?\[\/KMZ_READY\]/g,
-  /\[JOI_CMD\][\s\S]*?\[\/JOI_CMD\]/g,
-  /\[DOCUMENTO ANEXADO:[^\]]*\][\s\S]*?(?=\n\n|$)/g,
-  /```[\s\S]*?```/g,
-  /\{[^{}]*"action"\s*:\s*"[^"]*"[^{}]*\}/g, // Loose JSON JOI_CMD blocks
+  /```[\s\S]*?```/g,                                    // 1. Code blocks FIRST
+  /\[KMZ_READY\][\s\S]*?\[\/KMZ_READY\]/g,             // 2. KMZ blocks
+  /\[JOI_CMD\][\s\S]*?\[\/JOI_CMD\]/g,                  // 3. JOI_CMD blocks
+  /\[DOCUMENTO ANEXADO:[^\]]*\][^\[]*/g,                 // 4. Attached docs (simplified - grabs tag + everything until next [ or end)
+  /\{[^{}]*"action"\s*:\s*"[^"]*"[^{}]*\}/g,            // 5. Loose JSON JOI_CMD blocks
 ];
 
 // Decorative emojis to strip (preserve ☐ ☑ ✓ ✗ for checklists)
@@ -63,6 +65,9 @@ const TABLE_SEPARATOR_RE = /^\|?\s*[-:]+(\s*\|\s*[-:]+)+\s*\|?\s*$/;
 
 // Residual backtick lines
 const RESIDUAL_BACKTICK_RE = /^`{1,3}\s*$/;
+
+// Residual debug/code strings
+const RESIDUAL_STRINGS_RE = /\b(undefined|null|\[object Object\])\b/g;
 
 export interface ParsedLine {
   text: string;
@@ -77,13 +82,22 @@ export interface ParsedLine {
 export function extractDocumentBody(markdown: string): { body: string; docType: DocType; parsedLines: ParsedLine[] } {
   let cleaned = markdown;
 
-  // Remove meta blocks (KMZ, JOI_CMD, attached docs, code blocks, loose JSON)
+  // Remove meta blocks in correct order (code blocks first!)
   for (const pattern of META_BLOCK_PATTERNS) {
     cleaned = cleaned.replace(pattern, '');
   }
 
   // Strip decorative emojis (keep checkbox symbols)
   cleaned = cleaned.replace(DECORATIVE_EMOJI_RE, '');
+
+  // Strip residual debug strings
+  cleaned = cleaned.replace(RESIDUAL_STRINGS_RE, '');
+
+  // Collapse multiple spaces into one (emoji/string removal residue)
+  cleaned = cleaned.replace(/  +/g, ' ');
+
+  // Collapse 3+ consecutive newlines into 2
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
 
   const rawLines = cleaned.split('\n');
 
@@ -93,6 +107,8 @@ export function extractDocumentBody(markdown: string): { body: string; docType: 
     const trimmed = line.trim();
     // Skip table separators and residual backticks
     if (TABLE_SEPARATOR_RE.test(trimmed) || RESIDUAL_BACKTICK_RE.test(trimmed)) continue;
+    // Skip empty lines that are just spaces
+    if (!trimmed) { parsedLines.push({ text: '', headingLevel: 0 }); continue; }
     
     const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)/);
     if (headingMatch) {
