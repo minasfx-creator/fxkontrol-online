@@ -1,53 +1,63 @@
 
 
-# Ciclo #77 — Eliminação de Bugs e Aprimoramento Final de Documentos
+# Ciclo #78 — Bugs Críticos e Gaps na Plataforma
 
-## Bugs Identificados
+## Bug #1: DOCX Export Quebrado (CRÍTICO)
+**`Packer.toBuffer()` não funciona no browser** — a lib `docx` usa JSZip internamente que requer `nodebuffer` para `toBuffer()`. No browser deve-se usar `Packer.toBlob()`.
 
-1. **Ordem dos regex no parser causa vazamento de conteúdo anexado** — O pattern `[DOCUMENTO ANEXADO]` (index 2) roda ANTES do pattern de code blocks (index 3). O regex lazy `[\s\S]*?(?=\n\n|$)` para no primeiro `\n\n` dentro do code block, deixando conteúdo residual. Depois, o pattern de code blocks não consegue mais fazer match porque os markers ``` já foram parcialmente consumidos.
+- **Arquivo**: `src/utils/joiDocxExport.ts` linha 277
+- **Fix**: Trocar `Packer.toBuffer(doc)` → `Packer.toBlob(doc)` e usar o blob diretamente
 
-2. **PDF: tabelas não ajustam altura para texto longo** — `renderTable` usa `rowH = 8` fixo. Texto que ultrapassa `maxWidth` é truncado silenciosamente por jsPDF em vez de expandir a linha.
+## Bug #2: PDF — Y não atualiza após page break em `renderWrappedFormattedLine`
+A função recebe `y` como parâmetro (cópia local), mas `checkBreak` modifica o `y` do escopo externo via closure em `checkPageBreak`. Após page break, a função continua usando o `y` antigo, causando texto renderizado fora da área visível.
 
-3. **PDF: `parsedLines` retornado pelo parser não é usado** — O export recebe `parsedLines` mas processa `body` (string re-serializada), perdendo informação de heading level quando o texto não começa com `#` após reconstrução.
+- **Arquivo**: `src/utils/joiPdfExport.ts` linhas 62-97
+- **Fix**: Refatorar para usar um objeto `{y: number}` passado por referência, ou retornar o novo Y do checkBreak
 
-4. **PDF: inline formatting (`**bold**`, `*italic*`, `` `code` ``) não é renderizada** — `stripInlineMarkdown` remove tudo para texto plano. Bold/italic/code são perdidos no PDF.
+## Bug #3: Parser — `[DOCUMENTO ANEXADO]` com conteúdo multi-parágrafo vaza
+O regex `[DOCUMENTO ANEXADO:[^\]]*\][^\[]*/g` captura até o próximo `[`, mas se não houver outro `[` no texto, consome tudo. E se houver colchetes no conteúdo do documento, para cedo demais.
 
-5. **DOCX: header com cor cyan na marca "FX KONTROL"** — Documentos formais devem manter brand sutil, mas o cyan no header é aceitável; porém o body do documento pode ter resíduos de formatação colorida.
+- **Arquivo**: `src/utils/joiDocumentParser.ts`
+- **Fix**: Usar regex mais robusto que captura até `\n\n\n` ou fim do texto
 
-6. **Parser: emojis no meio de texto formal não são removidos** — O regex `DECORATIVE_EMOJI_RE` remove emojis decorativos mas a Joi frequentemente coloca 🎆🔥 etc no meio de frases, deixando espaços duplos residuais.
+## Bug #4: PDF — Tabelas sem borda superior no header
+O `renderTable` desenha fundo do header mas não a borda superior, inferior é desenhada por `doc.line` nas data rows.
+
+- **Fix**: Adicionar borda completa ao redor da tabela
 
 ## Correções Planejadas
 
-### 1. Reordenar e fortalecer `joiDocumentParser.ts`
-- Mover pattern de code blocks para ANTES do pattern DOCUMENTO ANEXADO
-- Simplificar regex de DOCUMENTO ANEXADO para capturar apenas a tag `[DOCUMENTO ANEXADO:...]` (já que o code block foi removido antes)
-- Adicionar collapse de espaços múltiplos após remoção de emojis
-- Adicionar patterns para strings residuais como `undefined`, `null`, `[object Object]`
+### 1. Fix DOCX Export (`joiDocxExport.ts`)
+```typescript
+// Antes:
+const buffer = await Packer.toBuffer(doc);
+const blob = new Blob([new Uint8Array(buffer)], { type: '...' });
 
-### 2. Melhorar renderização de tabelas no PDF
-- Calcular altura real de cada linha baseado no texto mais longo da row (usando `splitTextToSize`)
-- Ajustar posição Y das rows dinamicamente
-- Adicionar bordas verticais nas colunas para melhor legibilidade
+// Depois:
+const blob = await Packer.toBlob(doc);
+```
 
-### 3. Adicionar suporte a inline formatting no PDF
-- Substituir `stripInlineMarkdown` por um renderer que detecta `**bold**`, `*italic*`, `` `code` `` e alterna `doc.setFont()` inline
-- Usar `helvetica bold` para bold, `helvetica italic` para itálico, `courier` para code
+### 2. Fix PDF page break Y tracking (`joiPdfExport.ts`)
+- Usar objeto `yRef = { value: y }` passado para `renderWrappedFormattedLine` e `renderTable`
+- Após `checkPageBreak`, atualizar `yRef.value` para que o renderer use a posição correta
 
-### 4. Limpar espaços e linhas residuais
-- Após todos os regex, colapsar múltiplas linhas vazias consecutivas em uma só
-- Remover espaços duplos/triplos dentro de linhas (resíduo de emoji removal)
+### 3. Fortalecer parser (`joiDocumentParser.ts`)
+- Melhorar regex de DOCUMENTO ANEXADO para ser mais agressivo
+
+### 4. Adicionar bordas completas às tabelas no PDF
+- Borda superior e inferior ao bloco inteiro da tabela
 
 ## Arquivos
 
 | Ação | Arquivo |
 |------|---------|
-| Edit | `src/utils/joiDocumentParser.ts` |
-| Edit | `src/utils/joiPdfExport.ts` |
 | Edit | `src/utils/joiDocxExport.ts` |
+| Edit | `src/utils/joiPdfExport.ts` |
+| Edit | `src/utils/joiDocumentParser.ts` |
 
-## Ordem de Execução
-1. Corrigir parser (reordenar patterns, colapsar espaços)
-2. Melhorar PDF (tabelas dinâmicas, inline formatting)
-3. Ajustes DOCX (consistência)
+## Ordem
+1. Fix DOCX (bug crítico — export 100% quebrado)
+2. Fix PDF page break tracking
+3. Fortalecer parser
 4. Build verification
 
