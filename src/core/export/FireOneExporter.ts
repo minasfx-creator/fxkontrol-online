@@ -2,28 +2,40 @@
  * ─── FireOneExporter — ShowPlan → .fir Script ──────────────────────
  * Generates FireOne-compatible .fir scripts from the canonical ShowPlan.
  * All data flows from showPlanManager.current — never from UI state.
+ * Pre-export gate: runs VerificationEngine before generating.
  */
 
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
+import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { blackbox } from '@/core/reliability/blackBoxRecorder';
 
 export interface FireOneExportResult {
   script: string;
   cueCount: number;
   errors: string[];
+  verified: boolean;
 }
 
 export function generateFireOneScript(): FireOneExportResult {
   const sp = showPlanManager.current;
+  const vResult = verificationEngine.run();
+  const canExport = vResult.level === 'READY_FOR_EXPORT' || vResult.level === 'READY_FOR_FIELD';
   const errors: string[] = [];
   const lines: string[] = [];
+
+  if (!canExport) {
+    const blocking = vResult.issues.filter(i => !i.passed && i.severity === 'error');
+    errors.push(...blocking.map(i => `[BLOCKED] ${i.label}: ${i.detail}`));
+  }
 
   lines.push('; FX KONTROL — FireOne Export Script');
   lines.push(`; Show: ${sp.metadata.name}`);
   lines.push(`; Venue: ${sp.metadata.venue || 'N/A'}`);
+  lines.push(`; Author: ${sp.metadata.author || 'N/A'}`);
   lines.push(`; Duration: ${sp.metadata.duration.toFixed(1)}s`);
   lines.push(`; Generated: ${new Date().toISOString()}`);
   lines.push(`; Cues: ${sp.pyroCues.length}`);
+  lines.push(`; Verification: ${vResult.level} (${vResult.summary.passed}/${vResult.summary.total} passed)`);
   lines.push(';');
   lines.push('; Module,Channel,Time(ms),FuseDelay(ms),Effect,Caliber(mm),Elevation,Position,Section');
 
@@ -48,9 +60,9 @@ export function generateFireOneScript(): FireOneExportResult {
     ].join(','));
   });
 
-  blackbox.record('state', `FireOneExporter: ${sorted.length} cues, ${errors.length} errors`);
+  blackbox.record('state', `FireOneExporter: ${sorted.length} cues, ${errors.length} errors, verified=${canExport}`);
 
-  return { script: lines.join('\n'), cueCount: sorted.length, errors };
+  return { script: lines.join('\n'), cueCount: sorted.length, errors, verified: canExport };
 }
 
 export function downloadFireOneScript(filename = 'fxk_show.fir'): void {
