@@ -444,16 +444,55 @@ function TimelineTrackRow({
   const handleItemDragStart = useCallback((e: React.MouseEvent, itemId: string) => {
     const item = timelineItems.find(i => i.id === itemId);
     if (!item) return;
-    dragState.current = { itemId, startX: e.clientX, startTime: item.startTime };
+    const startX = e.clientX;
+    const startTime = item.startTime;
+    let dragActivated = false;
+
     const handleMove = (me: MouseEvent) => {
-      if (!dragState.current) return;
-      const dx = me.clientX - dragState.current.startX;
+      const dx = me.clientX - startX;
+
+      // ── Dead zone: 4px threshold prevents accidental drags ──
+      if (!dragActivated) {
+        if (Math.abs(dx) < 4) return;
+        dragActivated = true;
+        dragState.current = { itemId, startX, startTime };
+      }
+
       const dt = dx / pixelsPerSecond;
-      let newTime = Math.max(0, Math.min(dragState.current.startTime + dt, duration));
+      let newTime = Math.max(0, Math.min(startTime + dt, duration));
       newTime = snapTimeToBeat(newTime, bpm, snapToBeat, pixelsPerSecond);
-      updateTimelineItem(dragState.current.itemId, { startTime: newTime });
+
+      // ── Magnetic snap to adjacent items (edge-to-edge) ──
+      const snapThresholdSec = 6 / pixelsPerSecond;
+      const currentEffect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
+      const currentDuration = item.durationOverride ?? currentEffect?.duration ?? 2;
+
+      for (const other of timelineItems) {
+        if (other.id === itemId || other.trackIndex !== item.trackIndex) continue;
+        const otherEffect = EFFECT_LIBRARY.find(ef => ef.id === other.effectId);
+        const otherDur = other.durationOverride ?? otherEffect?.duration ?? 2;
+        const otherEnd = other.startTime + otherDur;
+
+        // Snap my start to other's end
+        if (Math.abs(newTime - otherEnd) < snapThresholdSec) {
+          newTime = otherEnd;
+          break;
+        }
+        // Snap my end to other's start
+        if (Math.abs((newTime + currentDuration) - other.startTime) < snapThresholdSec) {
+          newTime = other.startTime - currentDuration;
+          break;
+        }
+      }
+
+      updateTimelineItem(itemId, { startTime: newTime });
     };
-    const handleUp = () => { dragState.current = null; window.removeEventListener('mousemove', handleMove); window.removeEventListener('mouseup', handleUp); };
+    const handleUp = () => {
+      dragState.current = null;
+      dragActivated = false;
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
   }, [timelineItems, pixelsPerSecond, duration, bpm, snapToBeat, updateTimelineItem]);
