@@ -154,7 +154,7 @@ export default function AlignmentTools() {
         <Copy className="w-3.5 h-3.5" />
       </Button>
       <Button variant="ghost" size="icon" className={btnClass} onClick={pastePositions} title="Paste (Ctrl+V)">
-        <Clipboard className="w-3.5 h-3.5" />
+        <ClipboardIcon className="w-3.5 h-3.5" />
       </Button>
       <Button variant="ghost" size="icon" className={btnClass} onClick={resetHeadings} title="Reset Headings">
         <RotateCcw className="w-3.5 h-3.5" />
