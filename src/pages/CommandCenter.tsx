@@ -236,6 +236,12 @@ export default function CommandCenter() {
       case 'field_test': return <FieldTestDesktop />;
       case 'verification': return <div className="flex flex-col h-full"><VerificationConsole /><div className="flex-1 overflow-auto"><ShowPlanInspector /></div></div>;
       case 'continuity': return <ContinuityMatrix />;
+      case 'sys_overview': return <SystemOverviewConsole />;
+      case 'safety_console': return <SafetyConsole />;
+      case 'field_diag': return <FieldDiagnosticsConsole />;
+      case 'fireone_export': return <FireOneExportConsole />;
+      case 'dmx_artnet': return <DMXArtNetConsole />;
+      case 'audit_blackbox': return <AuditBlackBoxConsole />;
       default: return null;
     }
   }, []);
