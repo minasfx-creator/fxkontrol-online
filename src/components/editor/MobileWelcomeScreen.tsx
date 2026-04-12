@@ -159,7 +159,7 @@ export default function MobileWelcomeScreen({ onComplete }: MobileWelcomeScreenP
               {loading ? (
                 <Loader2 className="w-5 h-5 text-accent animate-spin" />
               ) : (
-                <Icon className={cn("w-5 h-5", color === 'accent' ? 'text-accent' : 'text-primary')} />
+                <Icon className={cn("w-5 h-5", color === 'accent' ? 'text-accent' : 'text-primary', id === 'gps' && gpsLoading && 'animate-pulse')} />
               )}
             </div>
             <div className="flex-1 text-left min-w-0">
