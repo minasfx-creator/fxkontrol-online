@@ -44,6 +44,6 @@ Deno.serve(async (req) => {
     return jsonOk({ results });
   } catch (err) {
     console.error("google-places-search error:", err);
-    return jsonError(err.message);
+    return jsonError(err instanceof Error ? err.message : String(err));
   }
 });

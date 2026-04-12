@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { handleCors, corsHeaders } from "../_shared/cors.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { jsonOk, jsonError } from "../_shared/response.ts";
 
 serve(async (req) => {
@@ -7,19 +7,13 @@ serve(async (req) => {
   if (preflight) return preflight;
 
   const key = Deno.env.get("GOOGLE_MAPS_API_KEY");
-  if (!key) {
-    return new Response(JSON.stringify({ error: "GOOGLE_MAPS_API_KEY not configured" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (!key) return jsonError("GOOGLE_MAPS_API_KEY not configured");
 
   try {
     const { action, lat, lng, timestamp } = await req.json();
 
     if (!action || lat == null || lng == null) {
-      return new Response(JSON.stringify({ error: "Missing required fields: action, lat, lng" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonError("Missing required fields: action, lat, lng", 400);
     }
 
     const results: Record<string, unknown> = {};
@@ -32,7 +26,6 @@ serve(async (req) => {
         const geoData = await geoRes.json();
         if (geoData.status === "OK" && geoData.results?.length > 0) {
           results.locationName = geoData.results[0].formatted_address;
-          // Try to get a shorter name from locality/sublocality
           const short = geoData.results.find((r: any) =>
             r.types?.some((t: string) => ["sublocality", "locality", "neighborhood", "point_of_interest"].includes(t))
           );
@@ -57,8 +50,8 @@ serve(async (req) => {
         if (tzData.status === "OK") {
           results.timeZoneId = tzData.timeZoneId;
           results.timeZoneName = tzData.timeZoneName;
-          results.rawOffset = tzData.rawOffset;        // seconds from UTC
-          results.dstOffset = tzData.dstOffset;        // DST adjustment in seconds
+          results.rawOffset = tzData.rawOffset;
+          results.dstOffset = tzData.dstOffset;
           results.totalOffset = tzData.rawOffset + tzData.dstOffset;
         } else {
           results.timeZoneError = tzData.status;
@@ -75,7 +68,7 @@ serve(async (req) => {
         const elRes = await fetch(elUrl);
         const elData = await elRes.json();
         if (elData.status === "OK" && elData.results?.length > 0) {
-          results.elevation = elData.results[0].elevation; // meters
+          results.elevation = elData.results[0].elevation;
           results.resolution = elData.results[0].resolution;
         } else {
           results.elevationError = elData.status;
@@ -85,18 +78,14 @@ serve(async (req) => {
       }
     }
 
-    // Static Map URL (no fetch needed — just build the URL)
+    // Static Map URL
     if (action === "all" || action === "staticmap") {
       const zoom = 15;
       results.staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=640x400&maptype=satellite&markers=color:red|${lat},${lng}&key=${key}`;
     }
 
-    return new Response(JSON.stringify(results), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonOk(results);
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonError(e instanceof Error ? e.message : String(e));
   }
 });

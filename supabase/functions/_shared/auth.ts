@@ -20,13 +20,12 @@ export async function requireAuth(req: Request): Promise<
     { global: { headers: { Authorization: authHeader } } },
   );
 
-  const token = authHeader.replace("Bearer ", "");
-  const { data, error } = await supabase.auth.getClaims(token);
-  if (error || !data?.claims) {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
     return { error: jsonError("Unauthorized", 401) };
   }
 
-  return { client: supabase, userId: data.claims.sub as string };
+  return { client: supabase, userId: user.id };
 }
 
 /**
