@@ -20,7 +20,11 @@ let _lassoActive = false;
 export function isLassoActive() { return _lassoActive; }
 
 export default function SelectionModeBar() {
-  const { selectionMode, setSelectionMode, editorMode, positions, selectMultiplePositionsAndLinkedEvents } = useProjectStore();
+    const selectionMode = useProjectStore(s => s.selectionMode);
+  const setSelectionMode = useProjectStore(s => s.setSelectionMode);
+  const editorMode = useProjectStore(s => s.editorMode);
+  const positions = useProjectStore(s => s.positions);
+  const selectMultiplePositionsAndLinkedEvents = useProjectStore(s => s.selectMultiplePositionsAndLinkedEvents);
   const [showSections, setShowSections] = useState(false);
   const [lassoOn, setLassoOn] = useState(false);
 

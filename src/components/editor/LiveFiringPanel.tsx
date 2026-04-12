@@ -151,7 +151,8 @@ function MobileModeTabs({ mode, onModeChange }: { mode: FXCMode; onModeChange: (
 // LOCKOUT PANEL — Finale 3D Risk Group Lockout System
 // ═══════════════════════════════════════════════════════════
 function LockoutPanel({ fs, mob }: { fs: boolean; mob: boolean }) {
-  const { activeLockouts, toggleLockout } = useProjectStore();
+    const activeLockouts = useProjectStore(s => s.activeLockouts);
+  const toggleLockout = useProjectStore(s => s.toggleLockout);
   const groups: RiskGroup[] = ['A', 'B', 'C', 'D', 'E'];
 
   return (
@@ -335,7 +336,10 @@ function DeviceRow({
 // ═══════════════════════════════════════════════════════════
 export default function LiveFiringPanel({ onClose, initialMode, standalone }: { onClose?: () => void; initialMode?: string; standalone?: boolean }) {
   const isMobile = useIsMobile();
-  const { isPlaying, currentTime, setPlaying, positions } = useProjectStore();
+    const isPlaying = useProjectStore(s => s.isPlaying);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const setPlaying = useProjectStore(s => s.setPlaying);
+  const positions = useProjectStore(s => s.positions);
   const { channels, setChannels: setStoreChannels, updateChannels } = useSfxChannelStore();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();

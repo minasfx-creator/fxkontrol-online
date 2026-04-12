@@ -26,7 +26,8 @@ export default function AddressingPanel({ onClose }: { onClose: () => void }) {
     setSortMode, addSplitterBox, removeSplitterBox, addFiringSystem, removeFiringSystem,
   } = useAddressingStore();
 
-  const { timelineItems, positions } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const positions = useProjectStore(s => s.positions);
   const { racks } = useRackStore();
   const hardware = useFireOneHardware();
   const [tab, setTab] = useState<'addresses' | 'modules' | 'splitters' | 'systems'>('addresses');

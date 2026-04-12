@@ -43,7 +43,9 @@ export const DEMO_CUES: AutoFireCue[] = [
 type FireMode = 'auto' | 'semi-auto';
 
 export default function AutoFirePanel({ fs, pyroArm, dmxArm, onFireCue, onPriorityToggle, priorities, ultraFireMode, onUltraFireToggle }: AutoFirePanelProps) {
-  const { currentTime, isPlaying, setPlaying } = useProjectStore();
+    const currentTime = useProjectStore(s => s.currentTime);
+  const isPlaying = useProjectStore(s => s.isPlaying);
+  const setPlaying = useProjectStore(s => s.setPlaying);
   const [cues, setCues] = useState<AutoFireCue[]>(DEMO_CUES);
   const [triggerSource, setTriggerSource] = useState<'manual' | 'midi' | 'ltc'>('manual');
   const [runTimeMs, setRunTimeMs] = useState(0);

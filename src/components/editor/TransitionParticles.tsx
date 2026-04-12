@@ -13,7 +13,8 @@ const MAX_DRONES_FOR_FX = 300; // cap for performance
  * Sparks shoot outward with gravity, fade, and inherit the drone's LED color.
  */
 export default function TransitionParticles() {
-  const { droneFormations, currentTime } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const currentTime = useProjectStore(s => s.currentTime);
   const pointsRef = useRef<THREE.Points>(null);
 
   // Determine if we're in a transition phase

@@ -28,7 +28,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export default function MVRImporter({ open, onOpenChange, initialFile }: Props) {
-  const { addPosition } = useProjectStore();
+    const addPosition = useProjectStore(s => s.addPosition);
   const [result, setResult] = useState<MVRParseResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());

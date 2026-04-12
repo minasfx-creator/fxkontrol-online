@@ -54,7 +54,12 @@ interface BgImage {
 
 export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
   const { settings, updateSettings, applyPreset, applyQualityPreset, qualityPreset, resetToDefault, terrainPreset, setTerrainPreset } = useSceneStore();
-  const { droneFormations, positions, showTrajectories, setShowTrajectories, showFormations, setShowFormations } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const positions = useProjectStore(s => s.positions);
+  const showTrajectories = useProjectStore(s => s.showTrajectories);
+  const setShowTrajectories = useProjectStore(s => s.setShowTrajectories);
+  const showFormations = useProjectStore(s => s.showFormations);
+  const setShowFormations = useProjectStore(s => s.setShowFormations);
   const [openSections, setOpenSections] = useState<Set<SectionId>>(new Set(['quick', 'presets']));
   const [bgImages, setBgImages] = useState<BgImage[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);

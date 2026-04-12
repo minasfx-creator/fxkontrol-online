@@ -42,7 +42,9 @@ const EFFECT_TYPES = [
 ] as const;
 
 export default function LightProgramPanel() {
-  const { droneFormations, currentTime, duration } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const duration = useProjectStore(s => s.duration);
   const [effects, setEffects] = useState<LightEffect[]>([]);
   const [keyframes, setKeyframes] = useState<Color4D[]>([]);
   const [selectedEffectId, setSelectedEffectId] = useState<string | null>(null);

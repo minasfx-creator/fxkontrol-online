@@ -88,11 +88,15 @@ function TimelineContextMenu({
 }: {
   x: number; y: number; item: any; onClose: () => void;
 }) {
-  const {
-    removeTimelineItem, duplicateTimelineItems, selectTimelineItem,
-    updateTimelineItem, positions, setEditorMode, currentTime,
-    addTimelineItem, selectedTimelineItemIds,
-  } = useProjectStore();
+    const removeTimelineItem = useProjectStore(s => s.removeTimelineItem);
+  const duplicateTimelineItems = useProjectStore(s => s.duplicateTimelineItems);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
+  const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
+  const positions = useProjectStore(s => s.positions);
+  const setEditorMode = useProjectStore(s => s.setEditorMode);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
 
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -302,7 +306,10 @@ DraggableTimelineItem.displayName = 'DraggableTimelineItem';
 
 // Track header context menu
 function TrackContextMenu({ x, y, trackIndex, onClose }: { x: number; y: number; trackIndex: number; onClose: () => void }) {
-  const { timelineItems, selectTimelineItem, toggleTimelineItemSelection, removeMultipleTimelineItems } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
+  const toggleTimelineItemSelection = useProjectStore(s => s.toggleTimelineItemSelection);
+  const removeMultipleTimelineItems = useProjectStore(s => s.removeMultipleTimelineItems);
   const trackItems = timelineItems.filter(i => i.trackIndex === trackIndex);
 
   useEffect(() => {
@@ -347,11 +354,18 @@ function TimelineTrackRow({
     el.addEventListener('scroll', update, { passive: true });
     return () => el.removeEventListener('scroll', update);
   }, [scrollRef]);
-  const { 
-    timelineItems, selectedTimelineItemId, selectTimelineItem, addTimelineItem, 
-    bpm, snapToBeat, updateTimelineItem, selectedTimelineItemIds, toggleTimelineItemSelection,
-    positions, selectedPositionId, selectedPositionIds,
-  } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const bpm = useProjectStore(s => s.bpm);
+  const snapToBeat = useProjectStore(s => s.snapToBeat);
+  const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
+  const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
+  const toggleTimelineItemSelection = useProjectStore(s => s.toggleTimelineItemSelection);
+  const positions = useProjectStore(s => s.positions);
+  const selectedPositionId = useProjectStore(s => s.selectedPositionId);
+  const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
   const [isDragOver, setIsDragOver] = useState(false);
   const [muted, setMuted] = useState(false);
   const [trackCtxMenu, setTrackCtxMenu] = useState<{ x: number; y: number } | null>(null);
@@ -615,7 +629,10 @@ function TimelineTrackRow({
 }
 
 const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number }>(function WaypointTrackRow({ pixelsPerSecond, duration }, ref) {
-  const { trajectories, positions, selectedTrajectoryId, selectTrajectory } = useProjectStore();
+    const trajectories = useProjectStore(s => s.trajectories);
+  const positions = useProjectStore(s => s.positions);
+  const selectedTrajectoryId = useProjectStore(s => s.selectedTrajectoryId);
+  const selectTrajectory = useProjectStore(s => s.selectTrajectory);
   const wpEvents = useMemo(() => {
     return trajectories.flatMap((traj) => {
       const pad = positions.find((p) => p.id === traj.positionId);
@@ -657,7 +674,9 @@ const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: num
 });
 
 const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number }>(function FormationTrackRow({ pixelsPerSecond, duration }, _ref) {
-  const { droneFormations, selectFormation, selectedFormationId } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const selectFormation = useProjectStore(s => s.selectFormation);
+  const selectedFormationId = useProjectStore(s => s.selectedFormationId);
   if (droneFormations.length === 0) return null;
 
   return (
@@ -703,7 +722,13 @@ const FORMATION_PRESETS_MAP: Record<string, string> = {
 
 // ── DRONE FX Track — only visible when formations exist ──
 function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
-  const { droneFormations, timelineItems, selectedTimelineItemId, selectTimelineItem, addTimelineItem, bpm, snapToBeat } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const bpm = useProjectStore(s => s.bpm);
+  const snapToBeat = useProjectStore(s => s.snapToBeat);
   
   const droneFxItems = useMemo(() => timelineItems.filter((i) => i.trackIndex === 3), [timelineItems]);
 
@@ -780,7 +805,12 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
 
 // ── LASER Track — shows laser cues with live preview state ──
 function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
-  const { timelineItems, selectedTimelineItemId, selectTimelineItem, addTimelineItem, bpm, snapToBeat } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const bpm = useProjectStore(s => s.bpm);
+  const snapToBeat = useProjectStore(s => s.snapToBeat);
   const laserEnabled = useLaserPreviewStore((s) => s.globalEnabled);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -936,12 +966,23 @@ const MIN_PPS = 4;
 const MAX_PPS = 80;
 
 const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, _ref) {
-  const {
-    isPlaying, setPlaying, currentTime, setCurrentTime, duration,
-    selectedTimelineItemId, removeTimelineItem, timelineItems,
-    playbackSpeed, setPlaybackSpeed, bpm, snapToBeat, setSnapToBeat,
-    selectedTimelineItemIds, clearTimelineItemSelection, duplicateTimelineItems, removeMultipleTimelineItems,
-  } = useProjectStore();
+    const isPlaying = useProjectStore(s => s.isPlaying);
+  const setPlaying = useProjectStore(s => s.setPlaying);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
+  const duration = useProjectStore(s => s.duration);
+  const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const removeTimelineItem = useProjectStore(s => s.removeTimelineItem);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const playbackSpeed = useProjectStore(s => s.playbackSpeed);
+  const setPlaybackSpeed = useProjectStore(s => s.setPlaybackSpeed);
+  const bpm = useProjectStore(s => s.bpm);
+  const snapToBeat = useProjectStore(s => s.snapToBeat);
+  const setSnapToBeat = useProjectStore(s => s.setSnapToBeat);
+  const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
+  const clearTimelineItemSelection = useProjectStore(s => s.clearTimelineItemSelection);
+  const duplicateTimelineItems = useProjectStore(s => s.duplicateTimelineItems);
+  const removeMultipleTimelineItems = useProjectStore(s => s.removeMultipleTimelineItems);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pixelsPerSecond, setPixelsPerSecond] = useState(12);
   const [scrollLeft, setScrollLeft] = useState(0);

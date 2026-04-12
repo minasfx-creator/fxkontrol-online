@@ -26,7 +26,8 @@ export default function MAVLinkPanel({ onClose }: { onClose: () => void }) {
     addPacket, addLog, setSelectedDroneId, clearLog, resetAll,
   } = useMAVLinkStore();
 
-  const { droneFormations, currentTime } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const currentTime = useProjectStore(s => s.currentTime);
   const { agents, running: boidsRunning } = useBoidsStore();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [autoStream, setAutoStream] = useState(false);

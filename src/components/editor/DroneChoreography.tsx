@@ -173,7 +173,9 @@ function computeDronePositions(
 }
 
 export default function DroneChoreography() {
-  const { droneFormations, currentTime, showFormations } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const showFormations = useProjectStore(s => s.showFormations);
 
   const positions = useMemo(
     () => computeDronePositions(droneFormations, currentTime),

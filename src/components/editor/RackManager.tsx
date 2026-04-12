@@ -15,7 +15,7 @@ type TabId = 'list' | 'designer' | 'templates';
 
 export default function RackManager({ onClose }: { onClose: () => void }) {
   const { racks, selectedRackId, addRack, removeRack, selectRack, showRack3D, setShowRack3D, addRackFromTemplate, autoAssignToPositions } = useRackStore();
-  const { positions } = useProjectStore();
+    const positions = useProjectStore(s => s.positions);
   const [tab, setTab] = useState<TabId>('list');
   const [newType, setNewType] = useState<RackType>('fan');
   const [newCount, setNewCount] = useState(6);

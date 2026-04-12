@@ -396,7 +396,9 @@ function DigitalTwinSection() {
 }
 
 export default function ShowSettingsPanel({ onClose }: ShowSettingsProps) {
-  const { duration, gpsOrigin, projectName } = useProjectStore();
+    const duration = useProjectStore(s => s.duration);
+  const gpsOrigin = useProjectStore(s => s.gpsOrigin);
+  const projectName = useProjectStore(s => s.projectName);
 
   // ── Show metadata ──
   const [showName, setShowName] = useState(projectName || 'Untitled Show');

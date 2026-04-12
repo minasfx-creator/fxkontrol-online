@@ -52,7 +52,8 @@ interface LaserControlPanelProps {
 }
 
 export default function LaserControlPanel({ onClose }: LaserControlPanelProps) {
-  const { selectedTimelineItemId, timelineItems } = useProjectStore();
+    const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const timelineItems = useProjectStore(s => s.timelineItems);
   const fireone = useFireOneHardware();
   const [pan, setPan] = useState(0);
   const [tilt, setTilt] = useState(45);

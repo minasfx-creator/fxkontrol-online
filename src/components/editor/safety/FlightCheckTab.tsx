@@ -36,7 +36,10 @@ const SEVERITY_ICONS: Record<string, typeof AlertTriangle> = {
 };
 
 export default function FlightCheckTab() {
-  const { trajectories, droneFormations, duration, setCurrentTime } = useProjectStore();
+    const trajectories = useProjectStore(s => s.trajectories);
+  const droneFormations = useProjectStore(s => s.droneFormations);
+  const duration = useProjectStore(s => s.duration);
+  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
   const [params, setParams] = useState<SafetyCheckParams>(DEFAULT_SAFETY_PARAMS);

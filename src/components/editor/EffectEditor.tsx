@@ -21,7 +21,8 @@ interface EffectEditorProps {
 }
 
 export default function EffectEditor({ initialVDL = '', onClose, realFormulationId }: EffectEditorProps) {
-  const { addTimelineItem, currentTime } = useProjectStore();
+    const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const currentTime = useProjectStore(s => s.currentTime);
   const [vdlInput, setVdlInput] = useState(initialVDL);
   const [params, setParams] = useState<VDLResult>(() => parseVDL(initialVDL));
 

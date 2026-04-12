@@ -161,7 +161,9 @@ function MiniChart({ result, currentTime, config }: {
 }
 
 export default function SoundLevelPanel({ onClose }: { onClose: () => void }) {
-  const { timelineItems, duration, currentTime } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const duration = useProjectStore(s => s.duration);
+  const currentTime = useProjectStore(s => s.currentTime);
   const [distance, setDistance] = useState(DEFAULT_ANALYSIS_CONFIG.measurementDistance);
   const [limit, setLimit] = useState(DEFAULT_ANALYSIS_CONFIG.regulatoryLimit);
   const [showC, setShowC] = useState(true);

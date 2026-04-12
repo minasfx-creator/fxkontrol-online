@@ -72,7 +72,11 @@ export default function PyroTimelineTrack({
   pixelsPerSecond: number;
   duration: number;
 }) {
-  const { timelineItems, droneFormations, currentTime, selectTimelineItem, selectedTimelineItemId } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const droneFormations = useProjectStore(s => s.droneFormations);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
+  const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
   const [expanded, setExpanded] = useState(true);
 
   // Get all pyro timeline items (firework type)

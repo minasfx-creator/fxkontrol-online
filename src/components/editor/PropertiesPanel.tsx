@@ -9,7 +9,12 @@ import { exportVVIZ, exportFiringCSV, downloadFile } from '@/lib/exportEngine';
 import SafetyPanel from './SafetyPanel';
 
 const ExportSection = React.memo(function ExportSection() {
-  const { timelineItems, positions, projectName, duration, trajectories, droneFormations } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const positions = useProjectStore(s => s.positions);
+  const projectName = useProjectStore(s => s.projectName);
+  const duration = useProjectStore(s => s.duration);
+  const trajectories = useProjectStore(s => s.trajectories);
+  const droneFormations = useProjectStore(s => s.droneFormations);
 
   const droneCount = useMemo(() => (droneFormations.length > 0 ? droneFormations[0].droneCount : 0) +
     timelineItems.filter((item) => {
@@ -104,7 +109,10 @@ function NumberField({
 }
 
 function PositionInspector() {
-  const { selectedPositionId, positions, updatePosition, removePosition } = useProjectStore();
+    const selectedPositionId = useProjectStore(s => s.selectedPositionId);
+  const positions = useProjectStore(s => s.positions);
+  const updatePosition = useProjectStore(s => s.updatePosition);
+  const removePosition = useProjectStore(s => s.removePosition);
   const pos = positions.find((p) => p.id === selectedPositionId);
 
   if (!pos) return null;
@@ -158,7 +166,12 @@ function PositionInspector() {
 }
 
 export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor }: { onToggleEffectEditor?: () => void; showEffectEditor?: boolean }) {
-  const { selectedTimelineItemId, timelineItems, selectedEffectId, selectedPositionId, positions, updateTimelineItem } = useProjectStore();
+    const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const selectedEffectId = useProjectStore(s => s.selectedEffectId);
+  const selectedPositionId = useProjectStore(s => s.selectedPositionId);
+  const positions = useProjectStore(s => s.positions);
+  const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
 
   const selectedItem = timelineItems.find((i) => i.id === selectedTimelineItemId);
   const selectedEffect = selectedItem

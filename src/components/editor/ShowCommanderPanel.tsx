@@ -180,7 +180,10 @@ function SafetyInterlockBadge() {
 }
 
 function MasterTransport() {
-  const { currentTime, isPlaying, duration, setPlaying } = useProjectStore();
+    const currentTime = useProjectStore(s => s.currentTime);
+  const isPlaying = useProjectStore(s => s.isPlaying);
+  const duration = useProjectStore(s => s.duration);
+  const setPlaying = useProjectStore(s => s.setPlaying);
   const { frameRate, startTimecodeSeconds } = useSMPTEStore();
 
   const offsetTime = currentTime + startTimecodeSeconds;

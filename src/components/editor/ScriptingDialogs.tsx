@@ -16,7 +16,9 @@ export function ConvertToFanDialog({ children }: { children: React.ReactNode }) 
   const [open, setOpen] = useState(false);
   const [spreadAngle, setSpreadAngle] = useState(90);
   const [axis, setAxis] = useState<'horizontal' | 'vertical'>('horizontal');
-  const { selectedTimelineItemIds, timelineItems, updateTimelineItem } = useProjectStore();
+    const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
 
   const handleApply = useCallback(() => {
     const items = selectedTimelineItemIds
@@ -85,7 +87,9 @@ export function ConvertToSequenceDialog({ children }: { children: React.ReactNod
   const [open, setOpen] = useState(false);
   const [totalDuration, setTotalDuration] = useState(2);
   const [pattern, setPattern] = useState<'forward' | 'reverse' | 'center-out' | 'outside-in' | 'random'>('forward');
-  const { selectedTimelineItemIds, timelineItems, updateTimelineItem } = useProjectStore();
+    const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
 
   const handleApply = useCallback(() => {
     const items = selectedTimelineItemIds
@@ -186,7 +190,9 @@ export function DuplicateInFlightsDialog({ children }: { children: React.ReactNo
   const [open, setOpen] = useState(false);
   const [shotsPerFlight, setShotsPerFlight] = useState(5);
   const [angleBetween, setAngleBetween] = useState(15);
-  const { selectedTimelineItemIds, timelineItems, addTimelineItem } = useProjectStore();
+    const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
 
   const selectedItems = selectedTimelineItemIds
     .map(id => timelineItems.find(i => i.id === id))

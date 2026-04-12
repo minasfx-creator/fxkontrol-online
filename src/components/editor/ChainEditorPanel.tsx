@@ -21,7 +21,13 @@ function hashColor(str: string): string {
 }
 
 export default function ChainEditorPanel({ onClose }: { onClose: () => void }) {
-  const { timelineItems, selectedTimelineItemIds, selectedTimelineItemId, combineAsChain, breakChain, updateTimelineItem, selectTimelineItem } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
+  const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const combineAsChain = useProjectStore(s => s.combineAsChain);
+  const breakChain = useProjectStore(s => s.breakChain);
+  const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
   const [gapMs, setGapMs] = useState(200);
   const [expandedChain, setExpandedChain] = useState<string | null>(null);
   const [autoSpaceMode, setAutoSpaceMode] = useState<'equal' | 'accelerando' | 'ritardando'>('equal');
