@@ -961,6 +961,12 @@ export function FXKAssistant() {
       {/* Truth Inspector — adapter integration status */}
       <JOITruthInspector />
 
+      {/* Execution Trace — resolver pipeline visibility */}
+      <JOIExecutionTracePanel trace={lastTrace} />
+
+      {/* Style Panel — active style management */}
+      <JOIStylePanel />
+
       {/* Content area */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
         {/* Sidebar hologram (expanded only) */}
