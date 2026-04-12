@@ -1,40 +1,71 @@
 
 
-# Relatório Técnico do Sistema FX KONTROL — PDF
+# Limpeza de Código e Otimização — FX KONTROL
 
-## Objetivo
-Gerar um documento PDF profissional com o inventário completo da arquitetura, módulos, subsistemas e métricas do FX KONTROL, seguindo normas ABNT (margens 3cm/2cm, Arial 12pt, espaçamento 1.5).
+## Diagnóstico
 
-## Conteúdo do Relatório
+Após análise completa do codebase, identifiquei os seguintes problemas:
 
-1. **Capa** — Logo/título "FX KONTROL — Relatório de Arquitetura do Sistema", data, versão
-2. **Sumário Executivo** — Visão geral da plataforma (pirotecnia + drones + DMX + laser)
-3. **Stack Tecnológico** — React 18, Vite 5, TypeScript 5, Three.js/R3F, Tailwind CSS, Lovable Cloud (Supabase)
-4. **Arquitetura do Núcleo (Core)**
-   - Engine (LockstepEngine 60Hz, CommandBus, ReplayEngine)
-   - Safety (SafetyStateMachine, ContinuityCheck, SafetyValidator, AuditTrail)
-   - Persistence (IndexedDB blackbox, SnapshotManager)
-   - Sync (CommandRelay, MultiSiteCoordinator, FrameSyncEngine)
-   - Time (DeterministicClock, TimecodeProvider, FrameTimeService)
-   - Cluster Health (ServiceRegistry, HealthReporters, HealthPersistence)
-   - Performance (Profiler, MemoryManager, AIOptimizer)
-5. **Subsistemas de Protocolo** — Art-Net 4, sACN, DMX, OSC, SMPTE, MAVLink, Flockwave, FireOne, P-Bus
-6. **Módulos do Editor** — Inventário dos ~180+ componentes (agrupados por categoria)
-7. **Banco de Dados** — 18 tabelas com RLS, edge functions, storage buckets
-8. **Hardening & Observabilidade** — GPU memory, asset gate, runtime safety, render counters, debug overlay
-9. **Páginas da Aplicação** — 14 rotas (Dashboard, Editor, CommandCenter, FieldTest, etc.)
-10. **Métricas de Código** — Contagem de arquivos por módulo
+### Dependências
+- **Plugin React duplicado**: `@vitejs/plugin-react` E `@vitejs/plugin-react-swc` — só um é usado (o primeiro)
+- **Capacitor platform deps sem uso direto**: `@capacitor/android`, `@capacitor/cli`, `@capacitor/ios` — são deps de build mobile, mas `@capacitor/core` e `@capacitor/haptics` são usados em `haptics.ts`
+- **`@types/google.maps`** — tipo sem importação direta (pode ser usado implicitamente)
+- **`tus-js-client`** — usado apenas em `VVIZImporter.tsx` (1 ficheiro)
 
-## Implementação Técnica
+### Bundle (produção)
+- **Total precache**: 8.5 MB (253 ficheiros) — excessivo para PWA
+- **vendor-export**: 871 KB (jspdf + docx + jszip) — deveria ser lazy-loaded sob demanda
+- **three-core**: 970 KB — inevitável, mas ok por ser lazy
+- **html2canvas**: 201 KB — chunk separado, usado apenas em exportação
+- **1420 exports mortos** (ts-prune) — código não utilizado infla o bundle
 
-- Script Python usando **reportlab** (Platypus) para gerar PDF multi-página
-- Formatação ABNT: margens 3cm sup/esq, 2cm inf/dir, Arial 12pt, espaçamento 1.5
-- Tabelas com zebra striping para inventários de módulos
-- Output: `/mnt/documents/FXKontrol_System_Report.pdf`
-- QA visual com `pdftoppm` para verificar cada página
+### Ficheiros grandes (>800 linhas)
+- 32 ficheiros com >800 linhas; top: SkyCanvas (1926), PyroFireOnePanel (1642), LiveFiringPanel (1486)
+- Candidatos a decomposição em sub-componentes
 
-## Escopo
-- 1 script Python (~300 linhas)
-- ~10-15 páginas de relatório
-- Dados extraídos estaticamente da estrutura de arquivos explorada
+### Código morto
+- Componentes como `JoiHologramAvatar`, `JoiHologramFullBody` com exports não utilizados
+- Hooks como `useCamera`, `useDMXWorker`, `useRemoteRelay`, `useTiles` potencialmente órfãos
+
+## Plano de Execução
+
+### Fase 1 — Remover dependências desnecessárias
+- Remover `@vitejs/plugin-react-swc` do `package.json` (duplicado, não usado no vite.config)
+- Remover `@capacitor/android`, `@capacitor/cli`, `@capacitor/ios` (deps de build nativo, não afetam web)
+- Remover `@types/google.maps` se não houver uso implícito
+
+### Fase 2 — Otimizar chunks pesados
+- Mover `vendor-export` (jspdf/docx/jszip) para import dinâmico lazy — só carrega quando utilizador exporta
+- Separar `html2canvas` do bundle principal (já está separado, verificar se é lazy)
+- Adicionar tree-shaking hints para `lucide-react` (118 KB de ícones)
+
+### Fase 3 — Limpar exports mortos (top 50)
+- Remover funções/tipos exportados mas nunca importados nos módulos mais críticos:
+  - `src/lib/artnet4Engine.ts` (8 exports mortos)
+  - `src/lib/chainEngine.ts` (5 exports mortos)
+  - `src/lib/cueNumbering.ts` (5 exports mortos)
+  - `src/lib/dmxEngine.ts` (6 exports mortos)
+  - `src/hooks/` (vários hooks órfãos)
+
+### Fase 4 — Reduzir precache PWA
+- Excluir chunks lazy (vendor-export, html2canvas, postprocessing-core) do precache do workbox
+- Reduzir de 8.5 MB para ~4 MB de precache
+- Adicionar runtime caching para chunks 3D/export em vez de precache
+
+### Fase 5 — Decomposição dos ficheiros maiores (incremental)
+- `SkyCanvas.tsx` (1926 linhas) → extrair sub-sistemas para `skycanvas/` (já parcialmente feito)
+- `LiveFiringPanel.tsx` (1486 linhas) → extrair secções em componentes dedicados
+- `FieldTest.tsx` (1466 linhas) → separar lógica de teste de UI
+
+## Impacto Esperado
+- **Bundle inicial**: -200-400 KB (lazy vendor-export + dead code)
+- **Precache PWA**: -4 MB (de 8.5 para ~4 MB)
+- **node_modules**: -30 MB (deps removidos)
+- **Manutenibilidade**: menos 1400+ exports mortos, ficheiros mais legíveis
+
+## Detalhes Técnicos
+- Todas as remoções são incrementais e retrocompatíveis
+- Nenhum módulo novo criado — apenas limpeza e reorganização
+- Lazy imports usam o padrão `React.lazy()` já existente no projeto
+- Workbox config ajustada em `vite.config.ts` via `globIgnores`
 
