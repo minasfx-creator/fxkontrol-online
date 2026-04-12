@@ -8,7 +8,7 @@ import { X, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { MobileTab } from './MobileTabBar';
+import type { MobileTab } from './mobileTabTypes';
 
 interface MobileFloatingPanelProps {
   activeTab: MobileTab | null;

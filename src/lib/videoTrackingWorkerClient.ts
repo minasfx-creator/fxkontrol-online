@@ -3,7 +3,7 @@
  * Provides promise-based API for optical flow and Kalman filter.
  */
 import type { OpticalFlowField } from './videoTrackingAdvanced';
-import type { ChoreoTrajectory } from './videoChoreoEngine';
+import type { ChoreoTrajectory } from './videoChoreoTypes';
 
 let worker: Worker | null = null;
 let msgId = 0;

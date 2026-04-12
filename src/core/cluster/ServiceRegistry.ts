@@ -4,7 +4,7 @@
  * Services register themselves; ClusterHealthService queries the registry.
  */
 
-import type { SubsystemHealth } from './ClusterHealthService';
+import type { SubsystemHealth } from './healthTypes';
 
 export interface HealthReporter {
   id: string;

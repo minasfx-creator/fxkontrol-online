@@ -11,7 +11,7 @@ import { PANEL_SECTIONS, type PanelId } from '@/components/editor/PanelTabBar';
 import DockContextMenu from './DockContextMenu';
 import AddPositionWizard from './AddPositionWizard';
 
-export type MobileTab = 'timeline' | 'assets' | 'properties' | 'livefx' | 'points' | 'formations' | 'mobilelink' | 'controllers' | 'fieldmap' | 'radio' | 'remote' | 'more';
+export type { MobileTab } from './mobileTabTypes';
 
 interface MobileTabBarProps {
   activeTab: MobileTab | null;
