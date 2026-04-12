@@ -107,6 +107,7 @@ const MODE_SECTIONS = [
       { key: 'pyro_fire' as CommandMode, label: 'FXK-PYRO', icon: Flame },
       { key: 'super_dmx' as CommandMode, label: 'FXK-DMX', icon: Zap },
       { key: 'fireone_export' as CommandMode, label: 'FIREONE', icon: FileOutput },
+      { key: 'export_readiness' as CommandMode, label: 'EXPORT', icon: FileOutput },
       { key: 'execution_status' as CommandMode, label: 'EXEC STATUS', icon: Activity },
     ],
   },
