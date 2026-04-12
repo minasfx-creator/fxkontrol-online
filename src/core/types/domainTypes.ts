@@ -14,6 +14,7 @@ export interface IgnitionChannel {
   fired: boolean;
   firedAt: number | null;  // timestamp
   continuity: ContinuitySample | null;
+  relay_state: 'open' | 'closed' | 'unknown';  // physical relay position
 }
 
 // ── Continuity Sample (from CD4051 mux reading) ──
@@ -22,15 +23,18 @@ export interface ContinuitySample {
   ohms: number;
   status: 'OK' | 'OPEN' | 'SHORT' | 'UNKNOWN';
   timestamp: number;
+  source_mux: 0 | 1;      // CD4051 mux index (0 or 1)
 }
 
 // ── Power State (12V battery monitoring) ──
 export interface PowerState {
-  voltage: number;         // volts (nominal 12V)
+  voltage: number;         // volts (nominal 12V, field bus)
   current: number;         // amps
   soc: number;             // state-of-charge 0-100%
   charging: boolean;
   lowVoltageAlert: boolean;
+  logic_voltage: number;   // 5V logic rail
+  field_voltage: number;   // 12V field/relay rail
   timestamp: number;
 }
 
@@ -46,6 +50,10 @@ export interface SafetyInterlockState {
   canArm: boolean;
   canFire: boolean;
   blockedReasons: string[];
+  estop: boolean;          // emergency stop active
+  arm_key: boolean;        // physical arm key inserted
+  manual_mode: boolean;    // manual override active
+  software_enable: boolean; // software enable flag
 }
 
 // ── Art-Net Universe Map ──
@@ -57,6 +65,8 @@ export interface ArtNetUniverseEntry {
   activeChannels: number;  // channels with non-zero values
   source: string;          // IP or 'local'
   lastUpdate: number;
+  start_address: number;   // first channel address in universe
+  fixture_type: string;    // fixture profile name
 }
 
 export interface ArtNetUniverseMap {
