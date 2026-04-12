@@ -7,10 +7,11 @@
  * In development, logs render count to console with throttled output.
  * Completely no-ops in production builds (tree-shaken away).
  */
-import { useRef, useEffect } from 'react';
+import { useRef } from 'react';
 
 const THROTTLE_MS = 2000;
 const counters = new Map<string, { count: number; lastLog: number }>();
+const subscribers = new Set<() => void>();
 
 function logCounters() {
   const now = performance.now();
@@ -31,6 +32,8 @@ function scheduleLog() {
   rafId = requestAnimationFrame(() => {
     rafId = null;
     logCounters();
+    // Notify overlay subscribers
+    subscribers.forEach(cb => cb());
   });
 }
 
@@ -58,6 +61,14 @@ export function getRenderCounters(): Record<string, number> {
   const out: Record<string, number> = {};
   counters.forEach((v, k) => { out[k] = v.count; });
   return out;
+}
+
+/**
+ * Subscribe to render counter updates.
+ */
+export function subscribeRenderCounters(cb: () => void): () => void {
+  subscribers.add(cb);
+  return () => { subscribers.delete(cb); };
 }
 
 /**
