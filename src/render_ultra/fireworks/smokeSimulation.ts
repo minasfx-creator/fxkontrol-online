@@ -215,7 +215,7 @@ export class SmokeSystem {
     this.material.uniforms.uAmbientColor.value.copy(color);
   }
 
-
+  emit(origin: THREE.Vector3, count: number, smokeColor: THREE.Color, spread = 15) {
     for (let i = 0; i < count && this.particles.length < this.maxParticles; i++) {
       this.particles.push({
         position: origin.clone().add(new THREE.Vector3(
