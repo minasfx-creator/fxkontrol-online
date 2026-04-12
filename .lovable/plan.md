@@ -1,79 +1,79 @@
 
 
-# Ciclo #83 — Bundle Analysis & Optimization
+# Ciclo #84 — Zustand Subscription Optimization
 
-## Findings
+## Problem
 
-Since `rollup-plugin-visualizer` cannot be run in this environment, I performed a manual static analysis of all imports, `manualChunks` config, and `package.json`. Here are the results:
+**59 components** use `useProjectStore()` with object destructuring, which subscribes to the **entire store**. Since `useProjectStore` has 60+ properties (including `currentTime` which updates ~60fps during playback), every component re-renders on every tick — even if it only reads `editorMode`.
 
-### 1. Dead dependency: `html2pdf.js` (~80KB gzipped)
-- Listed in `package.json` but **zero imports** anywhere in `src/`. Pure dead weight — gets bundled into a default chunk by Vite even without explicit usage if any transitive dep pulls it.
-- **Action**: Remove from `package.json`.
+This is the #1 cause of unnecessary re-renders in the app.
 
-### 2. Missing from `manualChunks`: 5 libraries leak into the main bundle
-| Library | Size (est.) | Used in | Should be |
-|---------|------------|---------|-----------|
-| `jszip` | ~90KB | 4 files (all export utilities) | `vendor-export` |
-| `3d-tiles-renderer` | ~60KB | 1 file (GoogleTilesEngine) | own chunk `vendor-tiles` |
-| `tus-js-client` | ~30KB | 1 file (VVIZImporter) | `vendor-misc` or own |
-| `react-window` | ~6KB | 1 file (TelemetryDashboard) | `vendor-misc` |
-| `postprocessing` | ~120KB | 2 files | own chunk `postprocessing-core` |
+## Severity Classification
 
-Currently these end up in unnamed shared chunks or worse, the main entry chunk.
+| Priority | Component | Why critical |
+|----------|-----------|-------------|
+| P0 | `PositionPins.tsx` (Pin, DirectionLine, GroundClickPlane) | R3F scene — re-renders cause GPU thrash |
+| P0 | `FireworkRenderer.tsx` (TimelineEffects) | R3F scene — rebuilds effect array every frame |
+| P0 | `SelectionStatusBar.tsx` | Renders during playback despite only needing selection state |
+| P1 | `FormationBuilder.tsx` (FormationQueue) | Heavy UI list re-rendered on every time tick |
+| P1 | `RadialMenu.tsx` | Full store subscription for position ops |
+| P1 | `PositionWindow.tsx` (PositionContextMenu) | Full store on right-click menu |
+| P2 | 50+ other components | Panel-level components, less frequent but cumulative |
 
-### 3. `@capacitor/*` packages (~15KB) — only used in `haptics.ts`
-Listed 3 Capacitor packages in `package.json`. Only `@capacitor/core` and `@capacitor/haptics` are imported (1 file). `@capacitor/android`, `@capacitor/ios`, `@capacitor/cli` are build/native tooling — harmless for web bundle but `@capacitor/core` + `@capacitor/haptics` should get their own chunk to avoid polluting vendor-misc.
+## Fix Strategy
 
-### 4. `next-themes` — only used in `sonner.tsx`
-Tiny (~2KB) but should be in `vendor-misc` to avoid unnamed chunk.
+Convert all `useProjectStore()` destructuring calls to **individual selector subscriptions**:
 
-### 5. Dynamic import opportunity: `jszip`, `3d-tiles-renderer`, `tus-js-client`
-All are used in single-purpose utility files that run on user action (export, import). Converting to `await import()` would defer them entirely from initial load (**~180KB saved**).
+```typescript
+// ❌ BEFORE — subscribes to ALL 60+ fields
+const { currentTime, isPlaying } = useProjectStore();
 
-## Plan
-
-### Step 1 — Remove dead dependency
-Remove `html2pdf.js` from `package.json`.
-
-### Step 2 — Expand `manualChunks` in `vite.config.ts`
-Add missing libraries to chunk map:
-```
-'vendor-export': ['jspdf', 'docx', 'jszip'],
-'vendor-tiles': ['3d-tiles-renderer'],
-'vendor-misc': [...existing, 'tus-js-client', 'react-window', 'next-themes'],
-'postprocessing-core': ['postprocessing'],
-'vendor-capacitor': ['@capacitor/core', '@capacitor/haptics'],
+// ✅ AFTER — subscribes only to what's needed
+const currentTime = useProjectStore(s => s.currentTime);
+const isPlaying = useProjectStore(s => s.isPlaying);
 ```
 
-### Step 3 — Dynamic imports for heavy export utilities
-Convert static imports to dynamic `await import()` in:
-- `joiAeroKmzExport.ts` → `const { default: JSZip } = await import('jszip')`
-- `mvrParser.ts` → same pattern
-- `kmzExporter.ts` → same pattern  
-- `geoToolsKmlExporter.ts` → same pattern
-- `VVIZImporter.tsx` → `const tus = await import('tus-js-client')`
+For action-only references (functions that never change), group them with `useCallback`-stable selectors or extract once:
 
-### Step 4 — Build verification
-Run `tsc --noEmit` + `vite build` to confirm no regressions.
+```typescript
+// Actions are stable — can use a single shallow selector
+const actions = useProjectStore(s => ({
+  updatePosition: s.updatePosition,
+  selectPosition: s.selectPosition,
+}));
+// Or just individual: const updatePosition = useProjectStore(s => s.updatePosition);
+```
 
-## Estimated Impact
-| Optimization | Savings |
-|-------------|---------|
-| Remove `html2pdf.js` | ~80KB |
-| Dynamic `jszip` (4 files) | ~90KB deferred |
-| Dynamic `tus-js-client` | ~30KB deferred |
-| Proper chunking (avoid duplication) | ~50KB fewer unnamed chunks |
-| **Total initial load reduction** | **~250KB** |
+## Scope
 
-## Files
+Fix the **12 highest-impact files** (P0 + P1). The remaining ~47 P2 components are panels/dialogs that only mount on user action — lower priority.
 
-| Action | File |
-|--------|------|
-| Edit | `package.json` (remove html2pdf.js) |
-| Edit | `vite.config.ts` (expand manualChunks) |
-| Edit | `src/utils/joiAeroKmzExport.ts` |
-| Edit | `src/lib/mvrParser.ts` |
-| Edit | `src/lib/kmzExporter.ts` |
-| Edit | `src/lib/geoToolsKmlExporter.ts` |
-| Edit | `src/components/editor/VVIZImporter.tsx` |
+### Files to edit
+
+| File | Current destructured fields | Fix |
+|------|---------------------------|-----|
+| `src/components/editor/PositionPins.tsx` (Pin) | 8 fields full-store | Individual selectors |
+| `src/components/editor/PositionPins.tsx` (DirectionLine) | 5 fields full-store | Individual selectors |
+| `src/components/editor/PositionPins.tsx` (GroundClickPlane) | 6 fields full-store | Individual selectors |
+| `src/components/editor/PositionPins.tsx` (GroundDeselectPlane) | 2 fields full-store | Individual selectors |
+| `src/components/editor/PositionPins.tsx` (default export) | 1 field full-store | Individual selector |
+| `src/components/editor/skycanvas/FireworkRenderer.tsx` (TimelineEffects) | 3 fields full-store | Individual selectors |
+| `src/components/editor/SelectionStatusBar.tsx` | 8 fields full-store | Individual selectors |
+| `src/components/editor/FormationBuilder.tsx` (FormationQueue) | 8 fields full-store | Individual selectors |
+| `src/components/editor/FormationBuilder.tsx` (default) | 3 fields full-store | Individual selectors |
+| `src/components/editor/RadialMenu.tsx` | 7 fields full-store | Individual selectors |
+| `src/components/editor/PositionWindow.tsx` | 10+ fields full-store | Individual selectors |
+| `src/components/editor/CakeBuilder.tsx` | 4 fields full-store | Individual selectors |
+
+## Execution Order
+
+1. Fix P0 R3F components (PositionPins, FireworkRenderer) — biggest perf gain
+2. Fix P0/P1 UI components (SelectionStatusBar, FormationBuilder, RadialMenu, PositionWindow, CakeBuilder)
+3. Build verification with `tsc --noEmit`
+
+## Expected Impact
+
+- **R3F scene**: Eliminates ~95% of unnecessary React reconciliation during playback
+- **UI panels**: Panels that only read selection/mode state stop re-rendering on `currentTime` ticks
+- **Memory**: Fewer intermediate React fiber objects created per frame
 
