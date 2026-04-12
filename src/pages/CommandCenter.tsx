@@ -64,7 +64,8 @@ type CommandMode =
   | 'show_control' | 'module' | 'dmx_monitor' | 'field_test' | 'hardware'
   | 'verification' | 'continuity'
   | 'sys_overview' | 'safety_console' | 'field_diag' | 'fireone_export' | 'dmx_artnet' | 'audit_blackbox'
-  | 'cue_validation' | 'addressing' | 'execution_status';
+  | 'cue_validation' | 'addressing' | 'execution_status'
+  | 'export_readiness' | 'state_matrix';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = ['pyro_fire', 'super_dmx'];
