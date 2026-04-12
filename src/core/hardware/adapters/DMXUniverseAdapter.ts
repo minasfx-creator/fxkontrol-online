@@ -5,6 +5,7 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState } from '../types';
+import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
 
 export interface DMXUniverseState {
   universe_id: number;
@@ -30,6 +31,7 @@ class DMXUniverseAdapterImpl implements HardwareAdapter<DMXUniverseState> {
   readonly deviceId = 'dmx-universe-1';
   readonly deviceType = 'dmx-interface' as const;
   readonly label = 'DMX Universe 1';
+  private _provenance: ProvenanceInfo = createSimulatedProvenance('ethernet_udp');
 
   private _state: DMXUniverseState = { ...DEFAULT_STATE };
   private _connectionState: DeviceConnectionState = 'connected';
@@ -62,6 +64,7 @@ class DMXUniverseAdapterImpl implements HardwareAdapter<DMXUniverseState> {
   }
 
   getState(): DMXUniverseState { return { ...this._state }; }
+  getProvenance(): ProvenanceInfo { return { ...this._provenance, last_seen_at: Date.now(), data_freshness_ms: 0 }; }
 
   pollTelemetry(): void {
     // Simulate minor jitter

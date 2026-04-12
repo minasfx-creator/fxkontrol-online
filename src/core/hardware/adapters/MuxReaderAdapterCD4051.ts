@@ -6,11 +6,13 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, MultiplexerState, MuxChannelReading } from '../types';
+import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
 
 export class MuxReaderAdapterCD4051 implements HardwareAdapter<MultiplexerState[]> {
   readonly deviceId = 'mux-cd4051-dual';
   readonly deviceType = 'multiplexer' as const;
   readonly label = 'CD4051 × 2 — 16ch Analog MUX';
+  private _provenance: ProvenanceInfo = createSimulatedProvenance('analog_mux');
 
   private _connected: DeviceConnectionState = 'disconnected';
   private _muxStates: MultiplexerState[] = [
@@ -60,10 +62,9 @@ export class MuxReaderAdapterCD4051 implements HardwareAdapter<MultiplexerState[
   }
 
   getState(): MultiplexerState[] {
-    return this._muxStates.map(m => ({
-      ...m, channels: m.channels.map(c => ({ ...c })),
-    }));
+    return this._muxStates.map(m => ({ ...m, channels: m.channels.map(c => ({ ...c })) }));
   }
+  getProvenance(): ProvenanceInfo { return { ...this._provenance, last_seen_at: Date.now(), data_freshness_ms: 0 }; }
 
   getAllChannels(): MuxChannelReading[] {
     return this._muxStates.flatMap(m => m.channels);

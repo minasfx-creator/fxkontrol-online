@@ -6,11 +6,13 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, ShiftRegisterState } from '../types';
+import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
 
 export class ShiftRegisterAdapter74HC595 implements HardwareAdapter<ShiftRegisterState> {
   readonly deviceId = 'sr-74hc595-chain';
   readonly deviceType = 'shift-register' as const;
   readonly label = '74HC595 × 4 — Output Expansion';
+  private _provenance: ProvenanceInfo = createSimulatedProvenance('spi');
 
   private _connected: DeviceConnectionState = 'disconnected';
   private _state: ShiftRegisterState = {
@@ -43,6 +45,7 @@ export class ShiftRegisterAdapter74HC595 implements HardwareAdapter<ShiftRegiste
   }
 
   getState(): ShiftRegisterState { return { ...this._state, outputs: [...this._state.outputs] }; }
+  getProvenance(): ProvenanceInfo { return { ...this._provenance, last_seen_at: Date.now(), data_freshness_ms: 0 }; }
 
   pollTelemetry(): void {
     // In read-only mode, we only observe — no state changes unless simulated

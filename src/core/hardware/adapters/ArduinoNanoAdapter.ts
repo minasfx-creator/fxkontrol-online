@@ -5,6 +5,7 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState } from '../types';
+import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
 
 export interface ArduinoNanoState {
   firmware: string;
@@ -21,6 +22,7 @@ export class ArduinoNanoAdapter implements HardwareAdapter<ArduinoNanoState> {
   readonly deviceId = 'arduino-nano-01';
   readonly deviceType = 'controller' as const;
   readonly label = 'Arduino Nano — FXK Controller';
+  private _provenance: ProvenanceInfo = createSimulatedProvenance('serial_usb');
 
   private _connected: DeviceConnectionState = 'disconnected';
   private _state: ArduinoNanoState = {
@@ -74,6 +76,7 @@ export class ArduinoNanoAdapter implements HardwareAdapter<ArduinoNanoState> {
   }
 
   getState(): ArduinoNanoState { return { ...this._state }; }
+  getProvenance(): ProvenanceInfo { this._provenance.last_seen_at = Date.now(); this._provenance.data_freshness_ms = 0; return { ...this._provenance }; }
 
   pollTelemetry(): void {
     if (this._connected === 'connected') {

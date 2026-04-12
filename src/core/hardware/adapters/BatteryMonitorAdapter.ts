@@ -5,11 +5,13 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, BatteryState } from '../types';
+import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
 
 export class BatteryMonitorAdapter implements HardwareAdapter<BatteryState> {
   readonly deviceId = 'battery-12v';
   readonly deviceType = 'battery' as const;
   readonly label = '12V Field Battery';
+  private _provenance: ProvenanceInfo = createSimulatedProvenance('analog_mux');
 
   private _connected: DeviceConnectionState = 'disconnected';
   private _state: BatteryState = {
@@ -45,6 +47,7 @@ export class BatteryMonitorAdapter implements HardwareAdapter<BatteryState> {
   }
 
   getState(): BatteryState { return { ...this._state }; }
+  getProvenance(): ProvenanceInfo { return { ...this._provenance, last_seen_at: Date.now(), data_freshness_ms: 0 }; }
 
   pollTelemetry(): void {
     if (this._connected !== 'connected') return;
