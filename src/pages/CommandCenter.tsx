@@ -136,7 +136,8 @@ const MODE_SECTIONS = [
 const MOBILE_CATEGORIES = [
   { label: 'Exec', icon: Flame, section: 0 },
   { label: 'Monitor', icon: Activity, section: 1 },
-  { label: 'Hardware', icon: Cpu, section: 2 },
+  { label: 'Safety', icon: Shield, section: 2 },
+  { label: 'Hardware', icon: Cpu, section: 3 },
 ];
 
 export default function CommandCenter() {
