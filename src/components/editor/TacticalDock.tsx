@@ -2,6 +2,7 @@
  * TacticalDock — Vertical macOS-style dock for editing tools
  * Wrapped in DraggableFloatingPanel for repositioning
  */
+import React from 'react';
 import { MousePointer2, Move, RotateCw, Maximize2, Lasso, Plus, Axis3D, Magnet, Bomb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -21,7 +22,7 @@ const TOOLS: { id: DockTool; icon: typeof Move; label: string; shortcut: string 
   { id: 'add', icon: Plus, label: 'Add Position', shortcut: 'A' },
 ];
 
-export default function TacticalDock() {
+export default React.memo(function TacticalDock() {
   const editorMode = useProjectStore(s => s.editorMode);
   const setEditorMode = useProjectStore(s => s.setEditorMode);
   const env = useSceneStore(s => s.environment);
@@ -169,4 +170,4 @@ export default function TacticalDock() {
       </div>
     </DraggableFloatingPanel>
   );
-}
+});

@@ -2,7 +2,7 @@
  * MobileTabBar — Unified dock bar with central FAB for mobile editor.
  * Features: horizontally scrollable tabs, FAB creation button, long-press context menu.
  */
-import { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { haptics } from '@/lib/haptics';
 import { Sparkles, Cpu, Smartphone, Map, LayoutGrid, Clock, Layers, Settings2, Plus, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -40,7 +40,7 @@ const ALL_TABS = [...TABS_LEFT, ...TABS_RIGHT];
 // Swipe category cycling
 const CATEGORY_NAMES = PANEL_SECTIONS.map(s => s.title);
 
-export default function MobileTabBar({
+export default React.memo(function MobileTabBar({
   activeTab,
   onTabChange,
   onOpenPanel,
@@ -330,4 +330,4 @@ export default function MobileTabBar({
       <AddPositionWizard open={wizardOpen} onClose={() => setWizardOpen(false)} />
     </>
   );
-}
+});

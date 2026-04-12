@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Settings2, Download, FileJson, FileSpreadsheet, Box, Trash2, Zap, Shield, Sliders, MapPin, Link2, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,19 +8,19 @@ import { Separator } from '@/components/ui/separator';
 import { exportVVIZ, exportFiringCSV, downloadFile } from '@/lib/exportEngine';
 import SafetyPanel from './SafetyPanel';
 
-function ExportSection() {
+const ExportSection = React.memo(function ExportSection() {
   const { timelineItems, positions, projectName, duration, trajectories, droneFormations } = useProjectStore();
 
-  const droneCount = (droneFormations.length > 0 ? droneFormations[0].droneCount : 0) +
+  const droneCount = useMemo(() => (droneFormations.length > 0 ? droneFormations[0].droneCount : 0) +
     timelineItems.filter((item) => {
       const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
       return effect?.type === 'drone';
-    }).length + trajectories.length;
+    }).length + trajectories.length, [droneFormations, timelineItems, trajectories]);
 
-  const pyroCount = timelineItems.filter((item) => {
+  const pyroCount = useMemo(() => timelineItems.filter((item) => {
     const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
     return effect?.type === 'firework';
-  }).length;
+  }).length, [timelineItems]);
 
   const handleExportVVIZ = () => {
     const content = exportVVIZ(projectName, duration, timelineItems, positions, trajectories, droneFormations);
@@ -74,7 +74,7 @@ function ExportSection() {
       </Button>
     </div>
   );
-}
+});
 
 function NumberField({
   label,

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useBoidsStore } from '@/store/useBoidsStore';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -53,10 +53,10 @@ export default function BoidsVisualizer() {
 
   if (agents.length === 0) return null;
 
-  const positions = agents.map(a => ({
+  const positions = useMemo(() => agents.map(a => ({
     x: a.x, y: a.y, z: a.z,
     color: '#00FFAA',
-  }));
+  })), [agents]);
 
   return <InstancedDroneSwarm positions={positions} scale={0.5} />;
 }
