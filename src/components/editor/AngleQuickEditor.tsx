@@ -53,6 +53,7 @@ export default function AngleQuickEditor({ heading, pitch, roll, onChange, compa
         </svg>
         <button
           onClick={handleReset}
+          aria-label="Resetar ângulos para padrão"
           className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60 active:scale-90 transition-transform"
           style={{ background: 'hsl(var(--surface-2))' }}
         >

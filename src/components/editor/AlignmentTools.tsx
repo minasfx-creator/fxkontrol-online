@@ -7,9 +7,6 @@ import { useCallback, useState } from 'react';
 import type { Position, PositionType } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 
-let clipboard: Position[];
-clipboard = [];
-
 export default function AlignmentTools() {
     const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
   const positions = useProjectStore(s => s.positions);

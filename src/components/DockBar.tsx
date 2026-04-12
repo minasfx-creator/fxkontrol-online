@@ -182,7 +182,7 @@ export default function DockBar() {
                             color: isActive ? accentColor : 'hsl(var(--muted-foreground) / 0.35)',
                           }}
                         >
-                          {item.label === 'Command' ? 'CMD' : item.label === 'Editor 3D' ? 'Editor' : item.label === 'Training' ? 'Train' : item.label === 'Field Test' ? 'Field' : item.label === 'Show Test' ? 'Show' : item.label === 'Dashboard' ? 'Home' : item.label}
+                          {{ Command: 'CMD', 'Editor 3D': 'Editor', Training: 'Train', 'Field Test': 'Field', 'Show Test': 'Show', Dashboard: 'Home' }[item.label] ?? item.label}
                         </span>
                       )}
                       {isActive && (

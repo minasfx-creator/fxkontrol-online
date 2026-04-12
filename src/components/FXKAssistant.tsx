@@ -305,7 +305,7 @@ export function FXKAssistant() {
       }
     }
     lastMsgCountRef.current = messages.length;
-  }, [messages, loading, joiSpeech.enabled]);
+  }, [messages, loading, joiSpeech.enabled, joiSpeech.speak]);
 
   useEffect(() => {
     if (messages.length > 0 || loading) return;
@@ -393,7 +393,7 @@ export function FXKAssistant() {
     if (open && !minimized) {
       playGlitchBurst(0.08);
     }
-  }, [open]);
+  }, [open, minimized]);
 
   const presets = getContextPresets();
   const joiState = loading ? 'active' : isTyping ? 'active' : 'idle';
@@ -563,6 +563,7 @@ export function FXKAssistant() {
     return (
       <button
         onClick={() => setOpen(true)}
+        aria-label="Abrir assistente Joi"
         className={cn(
           "fixed z-[70] group rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 touch-target-lg",
           isMobile ? "bottom-[88px] right-3 h-14 w-14" : "bottom-5 right-5 h-16 w-16"
@@ -981,7 +982,7 @@ export function FXKAssistant() {
       {/* Quick presets */}
       {messages.length > 0 && (
         <div className="relative z-10 flex gap-1 px-3 py-1.5 overflow-x-auto shrink-0" style={{ borderTop: '1px solid hsl(190 100% 50% / 0.06)' }}>
-          {OPERATIONAL_PRESETS.map(p => (
+          {presets.map(p => (
             <button
               key={p.label}
               onClick={() => send(p.prompt)}
@@ -993,22 +994,7 @@ export function FXKAssistant() {
                 color: 'hsl(38 100% 60%)',
               }}
             >
-              <p.icon className="h-2.5 w-2.5" />
-              {p.label}
-            </button>
-          ))}
-          {presets.map(p => (
-            <button
-              key={p.label}
-              onClick={() => send(p.prompt)}
-              disabled={loading}
-              className="shrink-0 px-2 py-1 rounded text-[7px] font-mono tracking-wider uppercase transition-colors disabled:opacity-30"
-              style={{
-                background: 'hsl(190 100% 50% / 0.05)',
-                border: '1px solid hsl(190 100% 50% / 0.08)',
-                color: 'hsl(38 100% 55%)',
-              }}
-            >
+              {'icon' in p && p.icon && <p.icon className="h-2.5 w-2.5" />}
               {p.label}
             </button>
           ))}
