@@ -14,6 +14,8 @@ import { exportCoordinator } from '@/core/export/ExportCoordinator';
 import { deviceEventLog } from '@/core/hardware/DeviceEventLog';
 import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
 import { getProvenanceBadge, type IntegrationMode } from '@/core/hardware/provenance';
+import { showStyleManager } from '@/core/joi/ShowStyleManager';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface JoiCommandResult {
   action: string;
@@ -626,6 +628,80 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
           action, success: true,
           label: `Diagrama Mermaid (${type})`,
           detail: '```mermaid\n' + diagram + '\n```',
+        };
+      }
+
+      // ── Style Learning Commands ──────────────────────────────
+
+      case 'learn_style': {
+        const styleName = params.name || `Estilo ${new Date().toLocaleDateString('pt-BR')}`;
+        const description = params.description || '';
+        const profile = showStyleManager.extractStyle(styleName, description);
+        const s = profile.style_data;
+        
+        // Try to save if user is authenticated
+        (async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const result = await showStyleManager.saveStyle(profile, user.id);
+            if (result.success) {
+              toast.success(`Estilo "${styleName}" salvo!`);
+            }
+          }
+        })();
+
+        return {
+          action, success: true,
+          label: `Estilo "${styleName}" extraído`,
+          detail: `${s.position_count} posições | ${s.total_effects} efeitos | Densidade: ${s.effect_density.toFixed(2)}/s | Arco: ${s.dramatic_arc} | Top: ${s.top_effects.slice(0, 3).map(e => e.name).join(', ')}`,
+        };
+      }
+
+      case 'list_styles': {
+        // Async — return placeholder, actual data comes via toast
+        (async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            toast.info('Faça login para ver seus estilos salvos');
+            return;
+          }
+          const { styles, error } = await showStyleManager.listStyles(user.id);
+          if (error) {
+            toast.error(`Erro ao listar estilos: ${error}`);
+            return;
+          }
+          if (styles.length === 0) {
+            toast.info('Nenhum estilo salvo ainda. Use "APRENDER ESTILO" para criar um.');
+            return;
+          }
+          const list = styles.map(s => `• ${s.name} (de "${s.source_show_name}")`).join('\n');
+          toast.success(`${styles.length} estilos encontrados`, { description: list.slice(0, 200) });
+        })();
+
+        return {
+          action, success: true,
+          label: 'Listando estilos salvos...',
+          detail: 'Consultando banco de dados',
+        };
+      }
+
+      case 'apply_style': {
+        const styleId = params.styleId || params.id;
+        if (!styleId) {
+          return { action, success: false, label: 'ID do estilo não fornecido. Use list_styles primeiro.' };
+        }
+        (async () => {
+          const style = await showStyleManager.getStyle(styleId);
+          if (style) {
+            toast.success(`Estilo "${style.name}" carregado no contexto`);
+          } else {
+            toast.error('Estilo não encontrado');
+          }
+        })();
+        return {
+          action, success: true,
+          label: `Aplicando estilo ${styleId}...`,
+          detail: 'O estilo será injetado no contexto da próxima criação',
         };
       }
 

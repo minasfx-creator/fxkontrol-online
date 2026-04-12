@@ -198,7 +198,12 @@ ${ctx.hardware.devices.map(d => `- ${d.label}: ${d.badge} | ${d.online ? 'ONLINE
 - Recent events: ${ctx.operational.recentEvents.length > 0 ? ctx.operational.recentEvents.slice(0, 5).join('; ') : 'Nenhum'}
 
 ## Export History
-${ctx.exports.lastAttempts.length > 0 ? ctx.exports.lastAttempts.map(a => `- ${a.target}: ${a.success ? 'OK' : 'FAILED'} (${a.issues.join(', ') || 'sem issues'})`).join('\n') : '- Nenhuma exportação registrada'}`;
+${ctx.exports.lastAttempts.length > 0 ? ctx.exports.lastAttempts.map(a => `- ${a.target}: ${a.success ? 'OK' : 'FAILED'} (${a.issues.join(', ') || 'sem issues'})`).join('\n') : '- Nenhuma exportação registrada'}
+
+## Style Learning
+- Use learn_style para extrair e salvar padrões do show atual
+- Use list_styles para listar estilos salvos do usuário
+- Use apply_style para referenciar um estilo ao criar novos shows`;
   }
 }
 

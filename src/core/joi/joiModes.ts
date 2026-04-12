@@ -7,7 +7,8 @@ import {
   Cpu, BarChart3, ShieldCheck, ListChecks, PenTool, FileText,
   Sparkles, Search, AlertTriangle, Target, Network, BookOpen,
   Heart, Zap, Music, Building2, PartyPopper, RefreshCw, Trash2,
-  Radio, Eye, Wifi, Clock,
+  Radio, Eye, Wifi, Clock, Palette, FolderHeart, Wand2,
+  Gavel, Plane, MapPin, Activity,
 } from 'lucide-react';
 
 export type JoiMode = 'architect' | 'analyst' | 'verify' | 'hardware_truth' | 'planner' | 'blueprint' | 'docs' | 'show';
@@ -114,6 +115,9 @@ export const JOI_MODE_PRESETS: JoiModePreset[] = [
   { mode: 'show', label: 'ANIVERSÁRIO', icon: PartyPopper, prompt: 'Crie um show festivo de aniversário de 1.5 minutos usando create_choreography.' },
   { mode: 'show', label: 'MODIFICAR', icon: RefreshCw, prompt: 'Analise o projeto atual e sugira melhorias. Use list_positions e list_effects primeiro.' },
   { mode: 'show', label: 'LIMPAR', icon: Trash2, prompt: 'Limpe todo o projeto para recomeçar do zero.\n[JOI_CMD]{"action":"clear_project","params":{}}[/JOI_CMD]' },
+  { mode: 'show', label: 'APRENDER ESTILO', icon: Palette, prompt: 'Analise o show atual e extraia um perfil de estilo reutilizável. Use learn_style para salvar.\n[JOI_CMD]{"action":"learn_style","params":{"name":"Estilo do Show Atual"}}[/JOI_CMD]' },
+  { mode: 'show', label: 'MEUS ESTILOS', icon: FolderHeart, prompt: 'Liste todos os meus estilos de show salvos.\n[JOI_CMD]{"action":"list_styles","params":{}}[/JOI_CMD]' },
+  { mode: 'show', label: 'APLICAR ESTILO', icon: Wand2, prompt: 'Mostre meus estilos salvos para eu escolher qual aplicar no próximo show.\n[JOI_CMD]{"action":"list_styles","params":{}}[/JOI_CMD]' },
 
   // Architect presets
   { mode: 'architect', label: 'ARQUITETURA', icon: Cpu, prompt: 'Gere um diagrama Mermaid completo da arquitetura atual do FX KONTROL com todos os módulos, adapters e pipelines.\n[JOI_CMD]{"action":"generate_mermaid","params":{"type":"architecture"}}[/JOI_CMD]' },
@@ -146,11 +150,20 @@ export const JOI_MODE_PRESETS: JoiModePreset[] = [
   { mode: 'blueprint', label: 'HARDWARE', icon: Cpu, prompt: 'Gere um diagrama da topologia de hardware com todos os adapters e seus estados.\n[JOI_CMD]{"action":"generate_mermaid","params":{"type":"hardware"}}[/JOI_CMD]' },
   { mode: 'blueprint', label: 'DASHBOARD', icon: BarChart3, prompt: 'Proponha um layout ideal para o dashboard do CommandCenter com todos os consoles necessários.' },
 
-  // Docs presets
+  // Docs presets — includes legacy document presets
   { mode: 'docs', label: 'RELATÓRIO', icon: FileText, prompt: 'Gere um relatório técnico do estado atual do sistema com todos os subsistemas, seus status de integração e recomendações.\n[JOI_CMD]{"action":"get_system_state","params":{}}[/JOI_CMD]' },
   { mode: 'docs', label: 'CHECKLIST', icon: ListChecks, prompt: 'Gere um checklist de validação pré-show cobrindo hardware, safety, verificação e export.' },
   { mode: 'docs', label: 'MATRIZ', icon: BarChart3, prompt: 'Gere a Current State Matrix completa com módulo, status, integration mode, evidence level, source e detail.\n[JOI_CMD]{"action":"get_system_state","params":{}}[/JOI_CMD]' },
   { mode: 'docs', label: 'AUDITORIA', icon: BookOpen, prompt: 'Gere um resumo da trilha de auditoria com eventos recentes, verificações e exportações.\n[JOI_CMD]{"action":"get_audit_log","params":{}}[/JOI_CMD]' },
+  { mode: 'docs', label: 'ORÇAMENTO', icon: Sparkles, prompt: 'Me ajude a criar um orçamento detalhado para um show pirotécnico. Preciso incluir itens, quantidades, calibres e custos.' },
+  { mode: 'docs', label: 'LICENÇAS', icon: ShieldCheck, prompt: 'Quais documentos e licenças preciso para realizar este show? Liste todos os órgãos, prazos e requisitos.' },
+  { mode: 'docs', label: 'CONTRATO', icon: Zap, prompt: 'Me ajude a redigir uma proposta comercial / contrato de prestação de serviços para um show.' },
+  { mode: 'docs', label: 'LICITAÇÃO', icon: Gavel, prompt: 'Me ajude a analisar um edital de licitação e preparar a proposta técnica e de preços.' },
+  { mode: 'docs', label: 'ESPAÇO AÉREO', icon: Plane, prompt: 'Me ajude a preparar a documentação de fechamento de espaço aéreo (NOTAM/DECEA) e planta de distanciamento de segurança.' },
+  { mode: 'docs', label: 'PLANTA', icon: MapPin, prompt: 'Gere uma planta de distanciamento de segurança conforme NFPA 1123 para este show.' },
+  { mode: 'docs', label: 'ACREDITAÇÃO', icon: ShieldCheck, prompt: 'Me ajude a preparar toda a documentação para acreditação junto aos órgãos fiscalizadores.' },
+  { mode: 'docs', label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos e renovações urgentes.' },
+  { mode: 'docs', label: 'DECLARAÇÃO', icon: FileText, prompt: 'Preciso redigir uma declaração/ofício para um órgão regulador. Me ajude com o formato oficial completo.' },
 ];
 
 export function getPresetsForMode(mode: JoiMode): JoiModePreset[] {
