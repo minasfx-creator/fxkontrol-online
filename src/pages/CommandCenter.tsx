@@ -700,22 +700,9 @@ export default function CommandCenter() {
         </ScrollArea>
 
         {/* Safety Footer — frosted glass */}
-        {!sidebarCollapsed && (
-          <div className="p-2.5 border-t" style={{ borderColor: 'hsl(var(--destructive) / 0.06)' }}>
-            <div className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-300",
-              isArmed ? "danger-stripe border-destructive/20" : "border-destructive/6"
-            )} style={{
-              background: isArmed ? 'hsl(var(--destructive) / 0.06)' : 'hsl(var(--destructive) / 0.02)',
-              backdropFilter: 'blur(12px)',
-            }}>
-              <Shield className="h-3 w-3 text-destructive/40 shrink-0" />
-              <span className="text-[7px] text-destructive/50 font-bold font-mono tracking-[0.15em]">
-                {isArmed ? `ARMED // ${activeEffects.length} HOT` : 'SAFETY INTERLOCK'}
-              </span>
-            </div>
-          </div>
-        )}
+        <div className="p-2.5 border-t" style={{ borderColor: 'hsl(var(--primary) / 0.04)' }}>
+          <SidebarStatusWidget collapsed={sidebarCollapsed} />
+        </div>
       </div>
 
       {/* Main Content */}
