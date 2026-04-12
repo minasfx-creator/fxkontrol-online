@@ -90,7 +90,7 @@ export default function VVIZImporter({
     toast.success(`Importado: ${droneCount} drones, ${trajectories.length} trajetórias`);
   }, [replaceMode]);
 
-  const tusRef = useRef<tus.Upload | null>(null);
+  const tusRef = useRef<any>(null);
 
   const sendToWorker = useCallback((buffer: ArrayBuffer, runId: number) => {
     if (runId !== parseRunRef.current) return;
@@ -204,6 +204,7 @@ export default function VVIZImporter({
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
     return new Promise<ArrayBuffer | null>((resolve) => {
+      const tus = await import('tus-js-client');
       const upload = new tus.Upload(file, {
         endpoint: `${supabaseUrl}/storage/v1/upload/resumable`,
         retryDelays: [0, 1000, 3000, 5000, 10000],
