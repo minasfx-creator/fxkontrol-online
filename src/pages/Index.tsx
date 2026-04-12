@@ -213,6 +213,10 @@ function Index() {
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [viewportMaximized, setViewportMaximized] = useState(false);
   const [leftDockOpen, setLeftDockOpen] = useState<string | null>(null);
+  const [showMobileWelcome, setShowMobileWelcome] = useState(() => {
+    if (!isMobile) return false;
+    try { return localStorage.getItem('fxk-mobile-location-set') !== '1'; } catch { return true; }
+  });
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
   const operationMode = useDisplayStore(s => s.operationMode);
   const nightMode = useDisplayStore(s => s.nightMode);
