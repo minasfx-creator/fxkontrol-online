@@ -26,6 +26,8 @@ import { JOIContextRibbon } from '@/components/joi/JOIContextRibbon';
 import { JOIInsightPanel } from '@/components/joi/JOIInsightPanel';
 import { JOITruthInspector } from '@/components/joi/JOITruthInspector';
 
+import { MermaidRenderer } from '@/components/joi/MermaidRenderer';
+
 type Msg = { role: 'user' | 'assistant' | 'system'; content: string; ts?: number; feedback?: 'up' | 'down'; cmdResults?: JoiCommandResult[]; attachmentName?: string; imageBase64?: string };
 
 interface AttachedFile {
