@@ -102,6 +102,7 @@ const MODE_SECTIONS = [
       { key: 'pyro_fire' as CommandMode, label: 'FXK-PYRO', icon: Flame },
       { key: 'super_dmx' as CommandMode, label: 'FXK-DMX', icon: Zap },
       { key: 'fireone_export' as CommandMode, label: 'FIREONE', icon: FileOutput },
+      { key: 'execution_status' as CommandMode, label: 'EXEC STATUS', icon: Activity },
     ],
   },
   {
@@ -111,6 +112,8 @@ const MODE_SECTIONS = [
     modes: [
       { key: 'sys_overview' as CommandMode, label: 'OVERVIEW', icon: Activity },
       { key: 'show_control' as CommandMode, label: 'SHOW CTRL', icon: Activity },
+      { key: 'cue_validation' as CommandMode, label: 'CUE VALID', icon: Layers },
+      { key: 'addressing' as CommandMode, label: 'ADDRESSING', icon: Map },
       { key: 'dmx_monitor' as CommandMode, label: 'DMX MONITOR', icon: Radio },
       { key: 'dmx_artnet' as CommandMode, label: 'DMX/ARTNET', icon: Wifi },
       { key: 'fxk_light' as CommandMode, label: 'FXK-LIGHT', icon: Gauge },
