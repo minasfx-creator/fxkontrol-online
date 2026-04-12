@@ -1,12 +1,19 @@
 /**
  * Joi Command Executor — Parses [JOI_CMD]{...}[/JOI_CMD] blocks from AI responses
- * and dispatches platform operations to useProjectStore.
+ * and dispatches platform operations to useProjectStore + system inspection.
  */
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import type { Effect } from '@/data/effectLibrary';
 import { timelineEngine } from '@/core/engine/timelineEngine';
 import { toast } from 'sonner';
+import { verificationEngine } from '@/core/verification/VerificationEngine';
+import { readinessEvaluator } from '@/core/hardware/ReadinessEvaluator';
+import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry';
+import { exportCoordinator } from '@/core/export/ExportCoordinator';
+import { deviceEventLog } from '@/core/hardware/DeviceEventLog';
+import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
+import { getProvenanceBadge, type IntegrationMode } from '@/core/hardware/provenance';
 
 export interface JoiCommandResult {
   action: string;
