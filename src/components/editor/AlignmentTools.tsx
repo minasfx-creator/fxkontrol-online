@@ -1,13 +1,14 @@
 import { useProjectStore } from '@/store/useProjectStore';
-import { AlignHorizontalJustifyCenter, AlignVerticalJustifyCenter, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, Rows3, Columns3, Copy, Clipboard, Trash2, RotateCcw, Flame, CircleDot, Lightbulb } from 'lucide-react';
+import { AlignHorizontalJustifyCenter, AlignVerticalJustifyCenter, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, Rows3, Columns3, Copy, Clipboard as ClipboardIcon, Trash2, RotateCcw, Flame, CircleDot, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { Position, PositionType } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 
 export default function AlignmentTools() {
+  const clipboardRef = useRef<Position[]>([]);
     const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
   const positions = useProjectStore(s => s.positions);
   const updatePosition = useProjectStore(s => s.updatePosition);
@@ -53,14 +54,14 @@ export default function AlignmentTools() {
   }, [selected, updatePosition]);
 
   const copyPositions = useCallback(() => {
-    clipboard = selected.map(p => ({ ...p }));
-    toast.success(`Copied ${clipboard.length} positions`);
+    clipboardRef.current = selected.map(p => ({ ...p }));
+    toast.success(`Copied ${clipboardRef.current.length} positions`);
   }, [selected]);
 
   const pastePositions = useCallback(() => {
-    if (clipboard.length === 0) return;
+    if (clipboardRef.current.length === 0) return;
     const newIds: string[] = [];
-    clipboard.forEach((p, i) => {
+    clipboardRef.current.forEach((p, i) => {
       const id = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
       newIds.push(id);
       addPosition({
@@ -72,7 +73,7 @@ export default function AlignmentTools() {
       });
     });
     selectMultiplePositions(newIds);
-    toast.success(`Pasted ${clipboard.length} positions`);
+    toast.success(`Pasted ${clipboardRef.current.length} positions`);
   }, [addPosition, selectMultiplePositions]);
 
   const deleteSelected = useCallback(() => {
