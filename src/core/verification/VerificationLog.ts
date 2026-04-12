@@ -28,7 +28,7 @@ class VerificationLog {
       level: result.level,
       totalChecks: result.summary.total,
       passed: result.summary.passed,
-      failed: result.summary.failed,
+      failed: result.summary.total - result.summary.passed,
       errors: result.summary.errors,
       warnings: result.summary.warnings,
       issues: result.issues.filter(i => !i.passed).map(i => `[${i.severity}] ${i.label}: ${i.detail}`),

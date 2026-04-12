@@ -13,6 +13,7 @@ import { relayBankAdapter } from './adapters/RelayBankAdapter32';
 import { batteryMonitorAdapter } from './adapters/BatteryMonitorAdapter';
 import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
 import { fireOneProfileAdapter } from './adapters/FireOneProfileAdapter';
+import { dmxUniverseAdapter } from './adapters/DMXUniverseAdapter';
 
 class UnifiedHardwareRegistry {
   private _adapters = new Map<string, HardwareAdapter<unknown>>();
