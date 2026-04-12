@@ -1,82 +1,72 @@
 
 
-# Limpeza e Correção de Bugs — Ronda 2
+# Revisão e Correções — Ronda 3
 
-## Falhas Identificadas
+## Falhas Confirmadas (Não Corrigidas das Rondas Anteriores)
 
-### 1. Stale Closure no Voice Recognition → send()
-**Ficheiro: `FXKAssistant.tsx` (linha 290-296)**
+As correções das Rondas 1 e 2 **não foram aplicadas** aos ficheiros. Todos os bugs identificados anteriormente persistem.
 
-`onFinalTranscript` chama `send(text)` via `setTimeout`, mas `send` é definido com `useCallback([messages, loading, attachment])`. Como `voiceRecognition` captura `onFinalTranscript` no momento do `startListening`, se o utilizador falar enquanto `messages` muda, `send` usa estado stale.
+### 1. `_shared/auth.ts` — `getClaims` inexistente (Bug Crítico)
+Linha 24: `supabase.auth.getClaims(token)` não existe no SDK. Quebra toda autenticação.
+**Fix**: `supabase.auth.getUser()` → extrair `user.id`.
 
-**Fix**: Usar um `useRef` para manter referência fresca de `send`:
-```typescript
-const sendRef = useRef(send);
-sendRef.current = send;
-// Na callback: sendRef.current(text)
-```
+### 2. `fxk-ai-chat/index.ts` — Modelo idêntico nos dois ramos (Bug)
+Linha 20: `hasImages ? "google/gemini-2.5-flash" : "google/gemini-2.5-flash"` — ternário inútil.
+**Fix**: Usar `"google/gemini-2.5-pro"` para imagens.
 
-### 2. Stale `state` no useVoiceRecognition
-**Ficheiro: `useVoiceRecognition.ts` (linha 113)**
+### 3. `satellite-tile/index.ts` — Stack overflow em btoa (Bug)
+Linha 23: `btoa(String.fromCharCode(...new Uint8Array(imageBuffer)))` — spread em arrays grandes causa crash.
+**Fix**: Encoding em chunks. Adicionar type guard no catch (linha 27: `err.message` sem verificação).
 
-`recognition.onend` verifica `state === 'listening'` mas `state` é capturado no closure de `startListening`. Quando `onend` dispara, `state` pode já ter mudado. Deve usar um ref.
+### 4. `google-places-search/index.ts` — `err.message` sem type guard
+Linha 47: `err.message` assume que `err` é Error.
+**Fix**: `err instanceof Error ? err.message : String(err)`.
 
-**Fix**: Adicionar `stateRef` que acompanha `state`:
-```typescript
-const stateRef = useRef(state);
-stateRef.current = state;
-// Em onend: stateRef.current === 'listening'
-```
+### 5. `google-geo-intelligence/index.ts` — Importa helpers mas não os usa
+Linhas 3, 11-13, 20-22, 94-96, 97-100: Importa `jsonOk`/`jsonError` mas constrói respostas manualmente.
+**Fix**: Usar `jsonOk(results)` e `jsonError(...)` consistentemente.
 
-### 3. PRESETS_COMMAND e PRESETS_EDITOR — Duplicação de 10 labels
-**Ficheiro: `FXKAssistant.tsx` (linhas 59-83)**
+### 6. `warehouse-download/index.ts` — Import duplicado
+Linhas 1-2: `handleCors` e `corsHeaders` importados em linhas separadas do mesmo módulo.
+**Fix**: Consolidar numa linha.
 
-Ambos arrays têm os mesmos 10 labels (ORÇAMENTO, LICENÇAS, DECLARAÇÃO, etc.) com prompts quase idênticos. Deviam ser consolidados num único array com variações por contexto.
+### 7. `useVoiceRecognition.ts` — Stale closures e double-fire
+- Linha 113: `state === 'listening'` capturado no closure de `startListening`, fica stale no `onend`.
+- Linhas 89, 97, 114: `onTranscript`/`onFinalTranscript` nas deps causam re-criação desnecessária.
+- Linhas 97+114: `onFinalTranscript` pode ser chamado duas vezes (timer + onend).
+**Fix**: Usar refs para callbacks e state; limpar `finalTextRef` após envio.
 
-**Fix**: Unificar num único `PRESETS_DOCS` com campo `promptEditor` e `promptCommand`, usando `getContextPresets()` para selecionar o prompt correto.
+### 8. `FXKAssistant.tsx` — Stale closure no send + PRESETS duplicados
+- Linha 295: `send(text)` capturado no closure da voice recognition, fica stale.
+- Linhas 59-83: `PRESETS_COMMAND` e `PRESETS_EDITOR` têm 10 labels idênticos com prompts quase iguais.
+**Fix**: `sendRef` para referência fresca; unificar presets num `PRESETS_DOCS` com `promptCommand`/`promptEditor`.
 
-### 4. `onFinalTranscript` e `onTranscript` em useVoiceRecognition deps
-**Ficheiro: `useVoiceRecognition.ts` (linha 122)**
+## Plano de Implementação
 
-`startListening` tem `[onTranscript, onFinalTranscript]` nas deps, mas estas são inline arrow functions no FXKAssistant — mudam a cada render, causando re-criação desnecessária de `startListening` e `toggle`. Deviam ser estabilizadas com refs no hook.
+### Fase 1 — Edge Functions (5 ficheiros)
+1. **`_shared/auth.ts`**: Substituir `getClaims` por `getUser()`
+2. **`fxk-ai-chat/index.ts`**: Corrigir modelo para `gemini-2.5-pro` quando há imagens
+3. **`satellite-tile/index.ts`**: Chunked btoa + type guard no catch
+4. **`google-geo-intelligence/index.ts`**: Usar `jsonOk`/`jsonError` em todas as respostas
+5. **`warehouse-download/index.ts`**: Consolidar import + type guard no catch
+6. **`google-places-search/index.ts`**: Type guard no catch
 
-**Fix**: Dentro de `useVoiceRecognition`, usar refs para callbacks:
-```typescript
-const onTranscriptRef = useRef(onTranscript);
-onTranscriptRef.current = onTranscript;
-// Usar onTranscriptRef.current() nos event handlers
-```
-Remover `onTranscript` e `onFinalTranscript` da dep array de `startListening`.
+### Fase 2 — Frontend (2 ficheiros)
+1. **`useVoiceRecognition.ts`**: Refs para callbacks/state, prevenir double-fire
+2. **`FXKAssistant.tsx`**: `sendRef`, consolidar PRESETS_COMMAND + PRESETS_EDITOR
 
-### 5. `recognition.onend` dispara `onFinalTranscript` duplicado
-**Ficheiro: `useVoiceRecognition.ts` (linhas 95-101 + 111-118)**
-
-`onFinalTranscript` pode ser chamado **duas vezes**: uma pelo `autoSubmitTimer` (linha 97) e outra pelo `onend` handler (linha 114). Se o timer dispara e depois `onend` é acionado, o texto é enviado em duplicata.
-
-**Fix**: Limpar `finalTextRef.current` após envio em ambos os caminhos:
-```typescript
-onFinalTranscript(finalTextRef.current);
-finalTextRef.current = ''; // Prevent double-fire
-```
-
-## Plano de Correções
-
-### Fase 1 — Fix stale closures no FXKAssistant
-- Adicionar `sendRef` com referência fresca de `send`
-- Usar `sendRef.current(text)` no `onFinalTranscript`
-
-### Fase 2 — Fix useVoiceRecognition
-- Usar refs para `onTranscript`, `onFinalTranscript` e `state`
-- Remover callbacks instáveis da dep array de `startListening`
-- Prevenir dupla invocação de `onFinalTranscript` limpando `finalTextRef`
-
-### Fase 3 — Consolidar PRESETS duplicados
-- Unificar `PRESETS_COMMAND` e `PRESETS_EDITOR` num único array com prompts contextuais
-- Simplificar `getContextPresets()`
+### Fase 3 — Deploy e Teste
+Deploy das edge functions corrigidas e validação via curl.
 
 ## Ficheiros Afetados
 | Ficheiro | Ação |
 |---|---|
-| `FXKAssistant.tsx` | sendRef, consolidar PRESETS |
-| `useVoiceRecognition.ts` | Refs para callbacks/state, fix double-fire |
+| `_shared/auth.ts` | Fix getClaims → getUser |
+| `fxk-ai-chat/index.ts` | Fix modelo imagens |
+| `satellite-tile/index.ts` | Fix btoa + type guard |
+| `google-geo-intelligence/index.ts` | Usar response helpers |
+| `warehouse-download/index.ts` | Consolidar imports |
+| `google-places-search/index.ts` | Type guard catch |
+| `useVoiceRecognition.ts` | Refs + fix double-fire |
+| `FXKAssistant.tsx` | sendRef + consolidar presets |
 
