@@ -9,7 +9,8 @@
  * mapping them to internal DMX profiles for the editor viewport and DMX engine.
  */
 
-import JSZip from 'jszip';
+// JSZip loaded dynamically to reduce initial bundle
+const loadJSZip = () => import('jszip').then(m => m.default);
 import { DMX_FIXTURE_PROFILES, type DMXFixture, type DMXUniverse } from './dmxEngine';
 
 export interface MVRFixture {

@@ -4,7 +4,8 @@
  * viewport Geo Tools into KML/KMZ format compatible with Google Earth.
  */
 
-import JSZip from 'jszip';
+// JSZip loaded dynamically to reduce initial bundle
+const loadJSZip = () => import('jszip').then(m => m.default);
 import type { GeoMarker, GeoRulerPoint, GeoPath } from '@/components/editor/ViewportGeoTools';
 
 export interface GeoToolsKMLOptions {
