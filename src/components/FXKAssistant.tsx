@@ -381,7 +381,21 @@ export function FXKAssistant() {
     }
   }, [open, minimized]);
 
-  const presets = getContextPresets();
+  const modeConfig = getModeConfig(joiMode);
+  const presets = useMemo(() => {
+    const modePresets = getPresetsForMode(joiMode).map(p => ({ label: p.label, icon: p.icon, prompt: p.prompt }));
+    // On editor page in show mode, also include doc presets
+    if (joiMode === 'show') {
+      const path = window.location.pathname;
+      const isCommand = path.includes('command');
+      const docPresets = PRESETS_DOCS.map(p => ({
+        label: p.label, icon: p.icon,
+        prompt: isCommand ? p.promptCommand : p.promptEditor,
+      }));
+      return [...modePresets, ...docPresets];
+    }
+    return modePresets;
+  }, [joiMode]);
   const joiState = loading ? 'active' : isTyping ? 'active' : 'idle';
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
