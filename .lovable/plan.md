@@ -1,68 +1,56 @@
 
 
-# Ciclo #81 — React.memo & useMemo Performance Optimization
+# Ciclo #82 — Memory Leak Fixes: Event Listeners & Subscriptions
 
-## Diagnóstico
+## Bugs Encontrados
 
-Apenas 2 componentes no editor usam `React.memo` (LaserPreviewBeams e DraggableTimelineItem). Os demais re-renderizam a cada mudança de qualquer state pai, mesmo quando suas props não mudam.
-
-**Componentes mais impactados** (renderizam a cada frame/tick ou a cada interação):
-
-| Componente | Problema | Fix |
-|---|---|---|
-| `TelemetryBar` | Cria `new Date()` + `toLocaleTimeString` a cada render | Wrap com `React.memo` |
-| `SelectionStatusBar` | Filtra arrays `positions`, `timelineItems` inline sem memo | `useMemo` nos filtros + `React.memo` |
-| `GoogleTilesLoadingOverlay` | Re-render em cascata do SkyCanvas | `React.memo` |
-| `TacticalDock` | Re-render quando qualquer store muda | `React.memo` |
-| `MobileHUD` | Re-render a cada tick de playback propaga para filhos | `React.memo` |
-| `MobileQuickActions` | Re-render desnecessário quando panelOpen não muda | `React.memo` |
-| `MobileTabBar` | Props complexas causam re-render | `React.memo` com comparação shallow |
-| `PropertiesPanel` | `ExportSection` recalcula contagens inline | `useMemo` nos contadores + `React.memo` no ExportSection |
-| `BoidsVisualizer` | Recria array `positions` (map) a cada frame | `useMemo` com deps nos agents |
-| `HUDCrosshairs` | Simples mas sem memo | `React.memo` |
-| `PlacingModeOverlay` | Simples mas sem memo | `React.memo` |
-| `ARCompassHUD` | Simples mas sem memo | `React.memo` |
-| `AICoPilotOverlay` | Simples mas sem memo | `React.memo` |
+| # | Arquivo | Problema | Severidade |
+|---|---------|---------|------------|
+| 1 | `ViewportTransitionOverlay.tsx` | `handleTransition` cria 3 `setTimeout` mas retorna cleanup de dentro do callback — o return é ignorado pois não está num useEffect. Timers nunca são limpos se o evento dispara múltiplas vezes. | Alta |
+| 2 | `DroneCommandPanel.tsx` | `setTimeout(() => setLaunchState('airborne'), 2000)` dentro de `handleLaunch` (useCallback) — timer não é limpo se componente desmonta durante os 2s. | Média |
+| 3 | `GPUFireworkStressTest.tsx` | `setTimeout(() => setLaunching(false), 600)` no click handler — state update em componente potencialmente desmontado. | Baixa |
+| 4 | `DMXMonitorPanel.tsx` | `setTimeout(() => changedChannels.current.clear(), 500)` no callback — acumula timers sem limpeza. | Média |
+| 5 | `SplashScreen.tsx` | `setTimeout(() => onStart(), 700)` no `handleStart` — não cancelado se desmonta. | Baixa |
+| 6 | `PyroFireOnePanel.tsx` | `supabase.channel('fxc-mobile-link').send(...)` e `supabase.channel('fxc-pyro-sync').send(...)` — cria canais efêmeros em cada chamada sem `removeChannel`. Acumula channels no SDK. | Alta |
+| 7 | `fireoneModuleHardwareBridge.ts` | BLE `addEventListener` para `characteristicvaluechanged` e `gattserverdisconnected` nunca chama `removeEventListener` no disconnect. | Média |
+| 8 | `FieldTestDesktop.tsx` | `setTimeout(() => setLastFired(null), 300)` em callback sem cleanup ref. | Baixa |
 
 ## Plano de Implementação
 
-### 1. Wrap componentes HUD/overlay com React.memo (8 arquivos)
-Componentes simples que apenas leem do store e renderizam UI:
-- `TelemetryBar`, `GoogleTilesLoadingOverlay`, `HUDCrosshairs`, `PlacingModeOverlay`, `ARCompassHUD`, `AICoPilotOverlay`, `MobileHUD`, `MobileQuickActions`
-- Pattern: `export default React.memo(function ComponentName() { ... })`
+### 1. Fix ViewportTransitionOverlay — Timer leak (Alta)
+Mover timers para refs e limpar na próxima invocação + no cleanup do useEffect.
 
-### 2. Adicionar useMemo em cálculos derivados (3 arquivos)
-- **SelectionStatusBar**: `useMemo` para `selectedPositions`, `selectedPyro`, `selectedDrone`, `linkedEffectCount`
-- **PropertiesPanel/ExportSection**: `useMemo` para `droneCount` e `pyroCount`
-- **BoidsVisualizer**: `useMemo` para o array `positions` derivado de `agents`
+### 2. Fix PyroFireOnePanel — Ephemeral Supabase channels (Alta)
+Criar um canal persistente via `useRef` no mount, reutilizar para `.send()`, e `removeChannel` no cleanup.
 
-### 3. Wrap componentes de dock/toolbar (3 arquivos)
-- `TacticalDock`, `MobileTabBar`, `SelectionStatusBar`
-- Pattern: `React.memo` no export
+### 3. Fix DroneCommandPanel — setTimeout leak
+Usar ref para armazenar timer, limpar no cleanup do useEffect e no unmount.
 
-### 4. Build verification
+### 4. Fix DMXMonitorPanel — setTimeout acumulados
+Armazenar timer em ref, limpar antes de criar novo.
+
+### 5. Fix fireoneModuleHardwareBridge — BLE listeners
+Armazenar referências dos handlers e chamar `removeEventListener` no `disconnect()`.
+
+### 6. Fix componentes menores (GPUFireworkStressTest, SplashScreen, FieldTestDesktop)
+Padrão: `useRef` para timers + cleanup.
 
 ## Arquivos
 
 | Acao | Arquivo |
-|---|---|
-| Edit | `src/components/editor/TelemetryBar.tsx` |
-| Edit | `src/components/editor/GoogleTilesLoadingOverlay.tsx` |
-| Edit | `src/components/editor/HUDCrosshairs.tsx` |
-| Edit | `src/components/editor/PlacingModeOverlay.tsx` |
-| Edit | `src/components/editor/ARCompassHUD.tsx` |
-| Edit | `src/components/editor/AICoPilotOverlay.tsx` |
-| Edit | `src/components/editor/MobileHUD.tsx` |
-| Edit | `src/components/editor/MobileQuickActions.tsx` |
-| Edit | `src/components/editor/MobileTabBar.tsx` |
-| Edit | `src/components/editor/TacticalDock.tsx` |
-| Edit | `src/components/editor/SelectionStatusBar.tsx` |
-| Edit | `src/components/editor/PropertiesPanel.tsx` |
-| Edit | `src/components/editor/BoidsVisualizer.tsx` |
+|------|---------|
+| Edit | `src/components/editor/ViewportTransitionOverlay.tsx` |
+| Edit | `src/components/editor/live-firing/PyroFireOnePanel.tsx` |
+| Edit | `src/components/editor/DroneCommandPanel.tsx` |
+| Edit | `src/components/editor/dmx/DMXMonitorPanel.tsx` |
+| Edit | `src/lib/fireoneModuleHardwareBridge.ts` |
+| Edit | `src/components/editor/effects/GPUFireworkStressTest.tsx` |
+| Edit | `src/components/editor/SplashScreen.tsx` |
+| Edit | `src/components/editor/FieldTestDesktop.tsx` |
 
 ## Ordem
-1. Wrap HUD/overlay components com React.memo (batch)
-2. Adicionar useMemo nos cálculos derivados
-3. Wrap dock/toolbar components
+1. Fix ViewportTransitionOverlay + PyroFireOnePanel (alta severidade)
+2. Fix DroneCommandPanel + DMXMonitorPanel + fireoneModuleHardwareBridge
+3. Fix componentes menores
 4. Build verification
 
