@@ -3,7 +3,7 @@
  * Shows counters per domain: pyro cues, DMX cues, drone paths, hardware modules.
  * Quick-export buttons for .fir, Art-Net patch CSV and drone waypoints CSV.
  */
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { downloadFireOneScript } from '@/core/export/FireOneExporter';
@@ -16,7 +16,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
-import { Flame, Radio, Layers, Cpu, Shield, MapPin, FileOutput, Download } from 'lucide-react';
+import { Flame, Radio, Layers, Cpu, Shield, MapPin, FileOutput, Download, TestTube2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 function CountBadge({ count, color }: { count: number; color: string }) {
@@ -28,8 +28,14 @@ function CountBadge({ count, color }: { count: number; color: string }) {
 }
 
 export default function ShowPlanInspector() {
+  const [, setTick] = useState(0);
   const sp = showPlanManager.current;
   const level = useVerificationStore(s => s.level);
+
+  const handleLoadTestData = useCallback(() => {
+    showPlanManager.loadTestData();
+    setTick(t => t + 1);
+  }, []);
 
   const sections = [
     {
@@ -193,8 +199,12 @@ export default function ShowPlanInspector() {
         </span>
       </div>
 
-      {/* Quick Export */}
+      {/* Test Data + Quick Export */}
       <div className="flex items-center gap-1.5 border border-border/10 rounded p-2">
+        <Button size="sm" variant="outline" onClick={handleLoadTestData}
+          className="h-5 text-[8px] font-mono gap-1 px-2 border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
+          <TestTube2 className="w-2.5 h-2.5" /> LOAD TEST DATA
+        </Button>
         <span className="text-[8px] font-mono text-muted-foreground/60 tracking-widest mr-auto">QUICK EXPORT</span>
         <Button size="sm" variant="outline" onClick={handleExportFir} disabled={!hasPyro}
           className="h-5 text-[8px] font-mono gap-1 px-2">

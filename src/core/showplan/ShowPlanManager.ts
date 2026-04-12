@@ -270,6 +270,86 @@ class ShowPlanManager {
 
     return { level, checks, timestamp: Date.now() };
   }
+
+  /** Load demo/test data for validation of export pipelines. */
+  loadTestData(): ShowPlan {
+    const plan = createEmptyShowPlan();
+    plan.metadata.name = 'FXK Demo Show';
+    plan.metadata.venue = 'Stadium Alpha';
+    plan.metadata.author = 'FX Kontrol';
+    plan.metadata.duration = 60;
+    plan.metadata.gps = { lat: 38.7223, lng: -9.1393, alt: 25 };
+
+    // Positions
+    plan.positions = [
+      { id: 'pos-1', name: 'Front Left', type: 'pyro', x: -10, y: 0, z: 5, heading: 0, pitch: 0, section: 'A' },
+      { id: 'pos-2', name: 'Front Right', type: 'pyro', x: 10, y: 0, z: 5, heading: 0, pitch: 0, section: 'A' },
+      { id: 'pos-3', name: 'Center Stage', type: 'pyro', x: 0, y: 0, z: 10, heading: 0, pitch: 0, section: 'B' },
+      { id: 'pos-4', name: 'Light Tower 1', type: 'light', x: -15, y: 5, z: 0, heading: 90, pitch: 0 },
+      { id: 'pos-5', name: 'Drone Pad A', type: 'drone-pad', x: 0, y: 0, z: -20, heading: 0, pitch: 0 },
+      { id: 'pos-6', name: 'Drone Pad B', type: 'drone-pad', x: 5, y: 0, z: -20, heading: 0, pitch: 0 },
+    ];
+
+    // Pyro cues
+    plan.pyroCues = [
+      { id: 'pyro-1', time: 2.0, positionId: 'pos-1', module: 0, channel: 0, effectId: 'comet-red', fuseDelay: 50, caliber: 75, elevation: 85, heading: 0, position: { x: -10, y: 0, z: 5 }, section: 'A', rack: 1, tube: 1 },
+      { id: 'pyro-2', time: 2.5, positionId: 'pos-2', module: 0, channel: 1, effectId: 'comet-blue', fuseDelay: 50, caliber: 75, elevation: 85, heading: 0, position: { x: 10, y: 0, z: 5 }, section: 'A', rack: 1, tube: 2 },
+      { id: 'pyro-3', time: 5.0, positionId: 'pos-3', module: 0, channel: 2, effectId: 'shell-gold', fuseDelay: 80, caliber: 100, elevation: 90, heading: 0, position: { x: 0, y: 0, z: 10 }, section: 'B', rack: 2, tube: 1 },
+      { id: 'pyro-4', time: 10.0, positionId: 'pos-1', module: 0, channel: 3, effectId: 'mine-silver', fuseDelay: 30, caliber: 50, elevation: 90, heading: 0, position: { x: -10, y: 0, z: 5 }, section: 'A', rack: 1, tube: 3 },
+      { id: 'pyro-5', time: 15.0, positionId: 'pos-2', module: 0, channel: 4, effectId: 'waterfall-gold', fuseDelay: 100, caliber: 200, elevation: 0, heading: 180, position: { x: 10, y: 0, z: 5 }, section: 'A', rack: 1, tube: 4 },
+      { id: 'pyro-6', time: 30.0, positionId: 'pos-3', module: 1, channel: 0, effectId: 'finale-multi', fuseDelay: 60, caliber: 150, elevation: 88, heading: 0, position: { x: 0, y: 0, z: 10 }, section: 'B', rack: 3, tube: 1 },
+    ];
+
+    // DMX cues
+    plan.dmxCues = [
+      { id: 'dmx-1', time: 0, universe: 1, channel: 1, value: 255, duration: 2, curve: 'linear' },
+      { id: 'dmx-2', time: 0, universe: 1, channel: 2, value: 128, duration: 2, curve: 'ease-in' },
+      { id: 'dmx-3', time: 2, universe: 1, channel: 1, value: 0, duration: 1, curve: 'ease-out' },
+      { id: 'dmx-4', time: 5, universe: 2, channel: 1, value: 255, duration: 5, curve: 'linear' },
+      { id: 'dmx-5', time: 5, universe: 2, channel: 10, value: 200, duration: 3, curve: 'ease-in-out' },
+      { id: 'dmx-6', time: 10, universe: 1, channel: 50, value: 180, duration: 2, curve: 'step' },
+      { id: 'dmx-7', time: 15, universe: 3, channel: 1, value: 255, duration: 10, curve: 'linear', fixtureId: 'moving-head-1' },
+      { id: 'dmx-8', time: 15, universe: 3, channel: 2, value: 127, duration: 10, curve: 'linear', fixtureId: 'moving-head-1' },
+    ];
+
+    // Drone paths
+    plan.dronePaths = [
+      {
+        id: 'drone-path-1', droneId: 'drone-1', padPositionId: 'pos-5', color: '#00ffff',
+        waypoints: [
+          { id: 'wp-1a', time: 0, position: { x: 0, y: 0, z: -20 }, speed: 0 },
+          { id: 'wp-1b', time: 5, position: { x: 0, y: 30, z: -20 }, speed: 6 },
+          { id: 'wp-1c', time: 15, position: { x: 10, y: 50, z: 0 }, speed: 4 },
+          { id: 'wp-1d', time: 30, position: { x: -10, y: 40, z: 10 }, speed: 3 },
+          { id: 'wp-1e', time: 55, position: { x: 0, y: 5, z: -20 }, speed: 5 },
+        ],
+      },
+      {
+        id: 'drone-path-2', droneId: 'drone-2', padPositionId: 'pos-6', color: '#ff00ff',
+        waypoints: [
+          { id: 'wp-2a', time: 0, position: { x: 5, y: 0, z: -20 }, speed: 0 },
+          { id: 'wp-2b', time: 5, position: { x: 5, y: 25, z: -15 }, speed: 5 },
+          { id: 'wp-2c', time: 20, position: { x: -5, y: 45, z: 5 }, speed: 4 },
+          { id: 'wp-2d', time: 55, position: { x: 5, y: 5, z: -20 }, speed: 5 },
+        ],
+      },
+    ];
+
+    // Hardware config
+    plan.hardwareConfig = {
+      modules: [
+        { id: 'mod-0', label: 'Module A', type: 'nano-relay-32', channelCount: 32, address: 0, batteryVoltage: 12 },
+        { id: 'mod-1', label: 'Module B', type: 'nano-relay-32', channelCount: 32, address: 1, batteryVoltage: 12 },
+      ],
+      muxChannels: 8,
+      shiftRegisterBits: 8,
+      totalRelays: 64,
+    };
+
+    this.load(plan);
+    blackbox.record('state', `ShowPlanManager: loaded test data (${plan.pyroCues.length} pyro, ${plan.dmxCues.length} dmx, ${plan.dronePaths.length} drone paths)`);
+    return plan;
+  }
 }
 
 export const showPlanManager = new ShowPlanManager();
