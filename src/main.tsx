@@ -4,10 +4,13 @@ import "./index.css";
 
 createRoot(document.getElementById("root")!).render(<App />);
 
-// Dismiss splash screen after React mounts
-requestAnimationFrame(() => {
-  (window as any).__splashDone?.();
-});
+// Dismiss splash screen after React mounts — use idle callback to let browser paint first
+const dismissSplash = () => (window as any).__splashDone?.();
+if (typeof requestIdleCallback === 'function') {
+  requestIdleCallback(dismissSplash, { timeout: 1500 });
+} else {
+  setTimeout(dismissSplash, 100);
+}
 
 // ── PWA Service Worker Registration ──
 // Only register in production and NOT inside iframes/preview hosts

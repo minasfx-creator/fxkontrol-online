@@ -10,5 +10,20 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
+User-agent: GPTBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
 User-agent: *
 Allow: /
+Disallow: /editor
+Disallow: /command
+Disallow: /admin
+Disallow: /field-test
+
+Sitemap: https://fxkontrol.com/sitemap.xml

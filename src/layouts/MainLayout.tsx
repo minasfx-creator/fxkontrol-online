@@ -147,6 +147,7 @@ export default function MainLayout() {
           {/* Header */}
           {!commandImmersive && !isEditor && (
             <header
+              role="banner"
               className="flex items-center border-b px-3 shrink-0 relative overflow-hidden h-10"
               style={{
                 background: 'rgba(8, 10, 14, 0.85)',
