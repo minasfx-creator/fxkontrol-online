@@ -14,6 +14,10 @@ const _scaleVec = new THREE.Vector3();
 const _color = new THREE.Color();
 
 // ── LOD thresholds (squared for fast comparison) ──────────────────
+const LOD_FULL_DIST2 = 150 * 150;     // < 150m → full detail
+const LOD_SIMPLE_DIST2 = 400 * 400;   // < 400m → body + led only
+
+// ── Hex color cache with eviction ─────────────────────────────────
 const COLOR_CACHE_MAX = 256;
 const _colorCache = new Map<string, [number, number, number]>();
 function hexToRGB(hex: string): [number, number, number] {

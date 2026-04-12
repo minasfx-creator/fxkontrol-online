@@ -11,6 +11,12 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { type TimelineItem } from '@/types/projectTypes';
 import { getMortarVelocity, getBreakHeight, GRAVITY, AIR_DRAG } from '@/lib/pyroPhysics';
 
+// ── Pre-allocated scratch vectors (zero GC in trajectory calc) ────
+const _origin = new THREE.Vector3();
+const _vel = new THREE.Vector3();
+const _axisX = new THREE.Vector3(1, 0, 0);
+const _axisY = new THREE.Vector3(0, 1, 0);
+
 // ═══ Types ═══
 export interface SafetyVolume {
   id: string;
@@ -215,7 +221,7 @@ export default function PyroSafetyZones() {
       // Find position
       const pos = positions.find(p => p.id === item.positionId);
       const itemPos = (item as any).position;
-      const origin = new THREE.Vector3(
+      const origin = _origin.set(
         pos?.x ?? itemPos?.x ?? 0,
         0,
         pos?.z ?? itemPos?.z ?? 0,
@@ -226,13 +232,13 @@ export default function PyroSafetyZones() {
       const caliberInches = caliberMatch ? parseInt(caliberMatch[1]) / 25.4 : 3;
       const mortarVel = getMortarVelocity(caliberInches);
 
-      // Build launch velocity vector with heading/pitch rotation
-      const vel = new THREE.Vector3(0, mortarVel, 0);
-      vel.applyAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.degToRad(pitch));
-      vel.applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(heading));
+      // Build launch velocity vector with heading/pitch rotation (reuse _vel)
+      _vel.set(0, mortarVel, 0);
+      _vel.applyAxisAngle(_axisX, THREE.MathUtils.degToRad(pitch));
+      _vel.applyAxisAngle(_axisY, THREE.MathUtils.degToRad(heading));
 
       const lifetime = (getBreakHeight(caliberInches) / mortarVel) * 2.5;
-      const trajectory = calculateBallisticTrajectory(origin, vel, lifetime);
+      const trajectory = calculateBallisticTrajectory(origin.clone(), _vel.clone(), lifetime);
       const check = checkTrajectoryViolations(trajectory, volumes);
 
       results.push({
