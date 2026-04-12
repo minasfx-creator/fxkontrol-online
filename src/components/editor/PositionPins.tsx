@@ -185,7 +185,8 @@ function LinkedGlowRing({ color }: { color: string }) {
 }
 
 const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }>(function Pin({
-  useRenderCounter('Pin'); position, onRightClick }, ref) {
+  position, onRightClick }, ref) {
+  useRenderCounter('Pin');
   const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
   const selectPosition = useProjectStore(s => s.selectPosition);
   const selectPositionAndLinkedEvents = useProjectStore(s => s.selectPositionAndLinkedEvents);
