@@ -53,6 +53,7 @@ import {
   RocketEffect,
 } from '../effects';
 import QuadcopterModel from '../QuadcopterModel';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 // ═══════════════════════════════════════════════════════════════════════
 // GC-free pre-allocated singletons for render loop
@@ -1142,6 +1143,7 @@ export function estimateFireworkStarCost(
 // TimelineEffects — renders all timeline-driven VFX
 // ═══════════════════════════════════════════════════════════════════════
 export function TimelineEffects() {
+  useRenderCounter('TimelineEffects');
   const { camera } = useThree();
   const timelineItems = useProjectStore(s => s.timelineItems);
   const currentTime = useProjectStore(s => s.currentTime);

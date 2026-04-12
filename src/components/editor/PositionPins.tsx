@@ -9,6 +9,7 @@ import { useUndoStore } from '@/store/useUndoStore';
 import { useAddressingStore } from '@/store/useAddressingStore';
 import { getBreakHeight } from '@/lib/pyroPhysics';
 import * as THREE from 'three';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 const PYRO_COLOR = '#FF6B35';
 const DRONE_COLOR = '#00B4D8';
@@ -183,7 +184,8 @@ function LinkedGlowRing({ color }: { color: string }) {
   );
 }
 
-const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }>(function Pin({ position, onRightClick }, ref) {
+const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }>(function Pin({
+  useRenderCounter('Pin'); position, onRightClick }, ref) {
   const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
   const selectPosition = useProjectStore(s => s.selectPosition);
   const selectPositionAndLinkedEvents = useProjectStore(s => s.selectPositionAndLinkedEvents);
