@@ -6,7 +6,7 @@
 
 export interface BlackBoxEntry {
   t: number;          // Timestamp (ms, performance.now based)
-  cat: 'cmd' | 'err' | 'state' | 'fire' | 'drone' | 'net' | 'emergency';
+  cat: 'cmd' | 'err' | 'state' | 'fire' | 'drone' | 'net' | 'emergency' | 'hw';
   msg: string;
   data?: Record<string, unknown>;
 }
