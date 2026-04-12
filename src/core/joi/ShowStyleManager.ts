@@ -8,6 +8,10 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { supabase } from '@/integrations/supabase/client';
 
+// Type-safe wrapper since show_styles may not be in generated types yet
+const showStylesTable = () => supabase.from('show_styles' as any);
+import { supabase } from '@/integrations/supabase/client';
+
 export interface ShowStyleProfile {
   id?: string;
   name: string;
@@ -142,8 +146,7 @@ class ShowStyleManager {
 
   /** Save a style profile to the database */
   async saveStyle(profile: ShowStyleProfile, userId: string): Promise<{ success: boolean; id?: string; error?: string }> {
-    const { data, error } = await supabase
-      .from('show_styles')
+    const { data, error } = await showStylesTable()
       .insert({
         user_id: userId,
         name: profile.name,
@@ -155,13 +158,12 @@ class ShowStyleManager {
       .single();
 
     if (error) return { success: false, error: error.message };
-    return { success: true, id: data.id };
+    return { success: true, id: (data as any).id };
   }
 
   /** List all saved styles for a user */
   async listStyles(userId: string): Promise<{ styles: ShowStyleProfile[]; error?: string }> {
-    const { data, error } = await supabase
-      .from('show_styles')
+    const { data, error } = await showStylesTable()
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -169,32 +171,32 @@ class ShowStyleManager {
     if (error) return { styles: [], error: error.message };
 
     return {
-      styles: (data || []).map(d => ({
+      styles: ((data as any[]) || []).map((d: any) => ({
         id: d.id,
         name: d.name,
         description: d.description || '',
         source_show_name: d.source_show_name || '',
-        style_data: d.style_data as unknown as ShowStyleData,
+        style_data: d.style_data as ShowStyleData,
       })),
     };
   }
 
   /** Get a single style by ID */
   async getStyle(styleId: string): Promise<ShowStyleProfile | null> {
-    const { data, error } = await supabase
-      .from('show_styles')
+    const { data, error } = await showStylesTable()
       .select('*')
       .eq('id', styleId)
       .single();
 
     if (error || !data) return null;
+    const d = data as any;
 
     return {
-      id: data.id,
-      name: data.name,
-      description: data.description || '',
-      source_show_name: data.source_show_name || '',
-      style_data: data.style_data as unknown as ShowStyleData,
+      id: d.id,
+      name: d.name,
+      description: d.description || '',
+      source_show_name: d.source_show_name || '',
+      style_data: d.style_data as ShowStyleData,
     };
   }
 
