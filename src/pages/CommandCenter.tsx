@@ -206,6 +206,8 @@ export default function CommandCenter() {
       case 'hardware': return <QuickHardwarePanel fs />;
       case 'dmx_monitor': return <DMXMonitorPanel fs />;
       case 'field_test': return <FieldTestDesktop />;
+      case 'verification': return <div className="flex flex-col h-full"><VerificationConsole /><div className="flex-1 overflow-auto"><ShowPlanInspector /></div></div>;
+      case 'continuity': return <ContinuityMatrix />;
       default: return null;
     }
   }, []);
