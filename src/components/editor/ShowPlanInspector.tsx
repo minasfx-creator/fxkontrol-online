@@ -181,6 +181,7 @@ export default function ShowPlanInspector() {
   const hasPyro = sp.pyroCues.length > 0;
   const hasDmx = sp.dmxCues.length > 0;
   const hasDrones = sp.dronePaths.length > 0;
+  const exportBlocked = level === 'BLOCKED';
 
   return (
     <div className="flex flex-col h-full p-3 gap-2 bg-background/80">
@@ -206,15 +207,15 @@ export default function ShowPlanInspector() {
           <TestTube2 className="w-2.5 h-2.5" /> LOAD TEST DATA
         </Button>
         <span className="text-[8px] font-mono text-muted-foreground/60 tracking-widest mr-auto">QUICK EXPORT</span>
-        <Button size="sm" variant="outline" onClick={handleExportFir} disabled={!hasPyro}
+        <Button size="sm" variant="outline" onClick={handleExportFir} disabled={!hasPyro || exportBlocked}
           className="h-5 text-[8px] font-mono gap-1 px-2">
           <Download className="w-2.5 h-2.5" /> .FIR
         </Button>
-        <Button size="sm" variant="outline" onClick={handleExportArtNet} disabled={!hasDmx}
+        <Button size="sm" variant="outline" onClick={handleExportArtNet} disabled={!hasDmx || exportBlocked}
           className="h-5 text-[8px] font-mono gap-1 px-2">
           <Download className="w-2.5 h-2.5" /> ART-NET
         </Button>
-        <Button size="sm" variant="outline" onClick={handleExportDrone} disabled={!hasDrones}
+        <Button size="sm" variant="outline" onClick={handleExportDrone} disabled={!hasDrones || exportBlocked}
           className="h-5 text-[8px] font-mono gap-1 px-2">
           <Download className="w-2.5 h-2.5" /> DRONE
         </Button>
