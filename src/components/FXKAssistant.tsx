@@ -734,8 +734,8 @@ export function FXKAssistant() {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-mono font-bold tracking-[0.25em] uppercase" style={{ color: 'hsl(38 100% 55%)' }}>
-              JOI · COMPANION
+            <span className="text-[10px] font-mono font-bold tracking-[0.25em] uppercase" style={{ color: `hsl(${modeConfig.accentHsl})` }}>
+              JOI · {modeConfig.shortLabel}
             </span>
             <div className={cn("w-1.5 h-1.5 rounded-full",
               connectionOk === true ? "bg-green-500" : connectionOk === false ? "bg-red-500" : "bg-muted-foreground/20"
