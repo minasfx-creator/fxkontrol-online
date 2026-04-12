@@ -16,8 +16,7 @@ import { OPERATIONAL_PRESETS } from '@/components/JoiCommandPresets';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
-import { lazy, Suspense } from 'react';
-const ReactMarkdown = lazy(() => import('react-markdown'));
+import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useJoiSpeech } from '@/hooks/useJoiSpeech';
@@ -888,9 +887,7 @@ export function FXKAssistant() {
                       </div>
                     )}
                     <div className="prose prose-invert prose-xs max-w-none [&_p]:my-1 [&_code]:text-[hsl(190_100%_70%)] [&_code]:bg-transparent [&_pre]:bg-[hsl(220_20%_8%)] [&_pre]:border [&_pre]:border-[hsl(190_100%_50%/0.1)] [&_strong]:text-[hsl(38_100%_65%)] [&_a]:text-[hsl(190_100%_60%)]">
-                      <Suspense fallback={<p className="text-[10px] text-muted-foreground/40 font-mono">...</p>}>
-                        <ReactMarkdown>{stripJoiCommands(stripKmzReadyBlock(msg.content))}</ReactMarkdown>
-                      </Suspense>
+                      <ReactMarkdown>{stripJoiCommands(stripKmzReadyBlock(msg.content))}</ReactMarkdown>
                     </div>
                     {msg.cmdResults && msg.cmdResults.length > 0 && (
                       <JoiCommandFeedback results={msg.cmdResults} />
