@@ -253,6 +253,9 @@ export default function CommandCenter() {
       case 'fireone_export': return <FireOneExportConsole />;
       case 'dmx_artnet': return <DMXArtNetConsole />;
       case 'audit_blackbox': return <AuditBlackBoxConsole />;
+      case 'cue_validation': return <CueValidationConsole />;
+      case 'addressing': return <AddressingConsole />;
+      case 'execution_status': return <ExecutionStatusConsole />;
       default: return null;
     }
   }, []);
