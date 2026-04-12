@@ -6,6 +6,7 @@
  * Now uses shared useTelemetryData hook for data.
  */
 
+import React from 'react';
 import { useSceneStore } from '@/store/useSceneStore';
 import { MapPin, Mountain, Activity, Clock, Satellite } from 'lucide-react';
 import { useTelemetryData, updateTelemetry } from '@/hooks/useTelemetryData';
@@ -13,7 +14,7 @@ import { useTelemetryData, updateTelemetry } from '@/hooks/useTelemetryData';
 // Re-export updateTelemetry for backward compat (existing callers import from here)
 export { updateTelemetry };
 
-export default function TelemetryBar() {
+export default React.memo(function TelemetryBar() {
   const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
   const t = useTelemetryData();
 
@@ -93,6 +94,8 @@ export default function TelemetryBar() {
     </div>
   );
 }
+
+});
 
 function Divider() {
   return <span className="w-px h-3 bg-white/10" />;

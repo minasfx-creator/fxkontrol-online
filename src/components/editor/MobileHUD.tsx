@@ -2,7 +2,7 @@
  * MobileHUD — Apple Dynamic Island–inspired top bar
  * Compact layout optimized for 375px mobile screens.
  */
-import { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Pause, Square, AlertOctagon, Zap, Radio, ScanEye, Crosshair, MapPin } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
@@ -29,7 +29,7 @@ function getCountdown(showDate: string | null): string | null {
   return `T-${hours}h${mins}m`;
 }
 
-export default function MobileHUD() {
+export default React.memo(function MobileHUD() {
   const navigate = useNavigate();
   const { currentTime, isPlaying, setPlaying, setCurrentTime } = usePlaybackState();
   const { editorMode, isPlacingMode } = useEditorMode();
@@ -161,4 +161,4 @@ export default function MobileHUD() {
       </div>
     </div>
   );
-}
+});

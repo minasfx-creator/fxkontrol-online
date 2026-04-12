@@ -2,9 +2,10 @@
  * HUDCrosshairs — AR-style SVG overlay for tactical viewport
  * Blade Runner 2049 / FUI aesthetic with Electric Cyan glow
  */
+import React from 'react';
 import { useSceneStore } from '@/store/useSceneStore';
 
-export default function HUDCrosshairs() {
+export default React.memo(function HUDCrosshairs() {
   const show = useSceneStore(s => s.environment.showHUDCrosshairs);
   if (!show) return null;
 
@@ -62,4 +63,4 @@ export default function HUDCrosshairs() {
       </svg>
     </div>
   );
-}
+});

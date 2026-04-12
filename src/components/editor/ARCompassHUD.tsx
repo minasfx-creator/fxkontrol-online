@@ -2,9 +2,10 @@
  * ARCompassHUD — Avionic-style geospatial compass overlay
  * Shows bearing to GPS anchor, magnetic north, wind direction
  */
+import React from 'react';
 import { useSceneStore } from '@/store/useSceneStore';
 
-export default function ARCompassHUD() {
+export default React.memo(function ARCompassHUD() {
   const arMode = useSceneStore(s => s.environment.arMode);
   const windDir = useSceneStore(s => s.settings.windDirection);
   const lat = useSceneStore(s => s.settings.geoAnchorLat);
@@ -75,4 +76,4 @@ export default function ARCompassHUD() {
       </svg>
     </div>
   );
-}
+});
