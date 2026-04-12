@@ -1,72 +1,67 @@
 
 
-# Revisão e Correções — Ronda 3
+# Auditoria de Componentes — Falhas Identificadas e Correções
 
-## Falhas Confirmadas (Não Corrigidas das Rondas Anteriores)
+## Falhas Encontradas
 
-As correções das Rondas 1 e 2 **não foram aplicadas** aos ficheiros. Todos os bugs identificados anteriormente persistem.
+### 1. Componentes Mortos (Dead Code)
+- **`JoiHologramAvatar.tsx`** — exportado mas nunca importado em nenhum outro ficheiro (0 referências)
+- **`JoiHologramFullBody.tsx`** — exportado mas nunca importado em nenhum outro ficheiro (0 referências)
+- Ambos somam ~450 linhas de código morto com SVGs complexos, animações e hooks de estado
 
-### 1. `_shared/auth.ts` — `getClaims` inexistente (Bug Crítico)
-Linha 24: `supabase.auth.getClaims(token)` não existe no SDK. Quebra toda autenticação.
-**Fix**: `supabase.auth.getUser()` → extrair `user.id`.
+### 2. FXKAssistant.tsx — Bugs e Problemas (1102 linhas)
+- **Hook `useEffect` sem dep completa** (linha 308): `joiSpeech.enabled` na dep array mas `joiSpeech.speak` é chamado — se `speak` mudar referência sem `enabled` mudar, fica desatualizado
+- **`useEffect` com dep `[open]`** (linha 392-396): `playGlitchBurst` dispara quando `open` muda para `false` também (closing), deveria verificar `if (open && !minimized)`
+- **Preset duplicação** (linhas 982-1015): `OPERATIONAL_PRESETS` aparece duas vezes na barra inferior — primeiro sozinho, depois dentro de `presets` que já inclui `OPERATIONAL_PRESETS` (via `getContextPresets` linha 133). Resultado: botões duplicados
+- **`send` chamado em `onFinalTranscript`** com referência estática (linha 295): `send(text)` captura closure inicial, pode ficar stale
+- **Variável `pos0`** (linha 101 de AddPositionWizard): declarada mas nunca usada
 
-### 2. `fxk-ai-chat/index.ts` — Modelo idêntico nos dois ramos (Bug)
-Linha 20: `hasImages ? "google/gemini-2.5-flash" : "google/gemini-2.5-flash"` — ternário inútil.
-**Fix**: Usar `"google/gemini-2.5-pro"` para imagens.
+### 3. AlignmentTools.tsx — Module-level Mutable State
+- **`clipboard`** (linha 10-11): variável mutável no nível do módulo (`let clipboard: Position[] = []`). Funciona, mas é um anti-pattern que não sobrevive a HMR e partilha estado entre instâncias. Deveria usar `useRef` ou um store
 
-### 3. `satellite-tile/index.ts` — Stack overflow em btoa (Bug)
-Linha 23: `btoa(String.fromCharCode(...new Uint8Array(imageBuffer)))` — spread em arrays grandes causa crash.
-**Fix**: Encoding em chunks. Adicionar type guard no catch (linha 27: `err.message` sem verificação).
+### 4. DockBar.tsx — Label Ternário Excessivo
+- **Linha 185**: cadeia de ternários de 6 níveis para abreviar labels mobile — difícil de manter. Deveria usar um mapa de abreviações
 
-### 4. `google-places-search/index.ts` — `err.message` sem type guard
-Linha 47: `err.message` assume que `err` é Error.
-**Fix**: `err instanceof Error ? err.message : String(err)`.
+### 5. Acessibilidade
+- **FXKAssistant FAB** (linha 564): botão sem `aria-label` — é o ponto de entrada principal da Joi
+- **AddPositionWizard close button** (linha 184): sem `aria-label`
+- **AddressingPanel close button** (linha 129): usa `✕` como texto sem `aria-label`
+- **AngleQuickEditor reset** (linha 54): sem `aria-label`
+- **AICoPilotPanel enable toggle** (linha 69): sem `aria-label`
 
-### 5. `google-geo-intelligence/index.ts` — Importa helpers mas não os usa
-Linhas 3, 11-13, 20-22, 94-96, 97-100: Importa `jsonOk`/`jsonError` mas constrói respostas manualmente.
-**Fix**: Usar `jsonOk(results)` e `jsonError(...)` consistentemente.
+### 6. FXKAssistant — Tamanho Excessivo
+- 1102 linhas num único ficheiro. Sub-componentes internos (`ThinkingWave`, `SpeakingWave`, `TypewriterGreeting`) deviam ser extraídos
 
-### 6. `warehouse-download/index.ts` — Import duplicado
-Linhas 1-2: `handleCors` e `corsHeaders` importados em linhas separadas do mesmo módulo.
-**Fix**: Consolidar numa linha.
+## Plano de Correções
 
-### 7. `useVoiceRecognition.ts` — Stale closures e double-fire
-- Linha 113: `state === 'listening'` capturado no closure de `startListening`, fica stale no `onend`.
-- Linhas 89, 97, 114: `onTranscript`/`onFinalTranscript` nas deps causam re-criação desnecessária.
-- Linhas 97+114: `onFinalTranscript` pode ser chamado duas vezes (timer + onend).
-**Fix**: Usar refs para callbacks e state; limpar `finalTextRef` após envio.
+### Fase 1 — Eliminar Código Morto
+- Deletar `src/components/JoiHologramAvatar.tsx`
+- Deletar `src/components/JoiHologramFullBody.tsx`
 
-### 8. `FXKAssistant.tsx` — Stale closure no send + PRESETS duplicados
-- Linha 295: `send(text)` capturado no closure da voice recognition, fica stale.
-- Linhas 59-83: `PRESETS_COMMAND` e `PRESETS_EDITOR` têm 10 labels idênticos com prompts quase iguais.
-**Fix**: `sendRef` para referência fresca; unificar presets num `PRESETS_DOCS` com `promptCommand`/`promptEditor`.
+### Fase 2 — Corrigir Bugs no FXKAssistant
+- Remover duplicação de presets na barra inferior (linhas 982-1015): mostrar apenas `presets` (que já inclui `OPERATIONAL_PRESETS`)
+- Corrigir `useEffect` do `playGlitchBurst` para só disparar quando `open` é `true`
+- Remover variável `pos0` não utilizada no AddPositionWizard
 
-## Plano de Implementação
+### Fase 3 — Melhorar DockBar
+- Substituir cadeia de ternários por um mapa `Record<string, string>` para labels mobile
 
-### Fase 1 — Edge Functions (5 ficheiros)
-1. **`_shared/auth.ts`**: Substituir `getClaims` por `getUser()`
-2. **`fxk-ai-chat/index.ts`**: Corrigir modelo para `gemini-2.5-pro` quando há imagens
-3. **`satellite-tile/index.ts`**: Chunked btoa + type guard no catch
-4. **`google-geo-intelligence/index.ts`**: Usar `jsonOk`/`jsonError` em todas as respostas
-5. **`warehouse-download/index.ts`**: Consolidar import + type guard no catch
-6. **`google-places-search/index.ts`**: Type guard no catch
+### Fase 4 — Acessibilidade
+- Adicionar `aria-label` ao FAB da Joi, botões de fechar no wizard/addressing, reset do AngleQuickEditor, e toggle do AICoPilotPanel
 
-### Fase 2 — Frontend (2 ficheiros)
-1. **`useVoiceRecognition.ts`**: Refs para callbacks/state, prevenir double-fire
-2. **`FXKAssistant.tsx`**: `sendRef`, consolidar PRESETS_COMMAND + PRESETS_EDITOR
+### Fase 5 — Mover clipboard para useRef
+- Converter `clipboard` de variável de módulo para `useRef` no AlignmentTools
 
-### Fase 3 — Deploy e Teste
-Deploy das edge functions corrigidas e validação via curl.
-
-## Ficheiros Afetados
+### Ficheiros Afetados
 | Ficheiro | Ação |
 |---|---|
-| `_shared/auth.ts` | Fix getClaims → getUser |
-| `fxk-ai-chat/index.ts` | Fix modelo imagens |
-| `satellite-tile/index.ts` | Fix btoa + type guard |
-| `google-geo-intelligence/index.ts` | Usar response helpers |
-| `warehouse-download/index.ts` | Consolidar imports |
-| `google-places-search/index.ts` | Type guard catch |
-| `useVoiceRecognition.ts` | Refs + fix double-fire |
-| `FXKAssistant.tsx` | sendRef + consolidar presets |
+| `JoiHologramAvatar.tsx` | Deletar |
+| `JoiHologramFullBody.tsx` | Deletar |
+| `FXKAssistant.tsx` | Fix presets duplicados, fix useEffect |
+| `AddPositionWizard.tsx` | Remover `pos0`, aria-label |
+| `DockBar.tsx` | Refactor label map |
+| `AlignmentTools.tsx` | clipboard → useRef |
+| `AngleQuickEditor.tsx` | aria-label |
+| `AICoPilotPanel.tsx` | aria-label |
+| `AddressingPanel.tsx` | aria-label |
 

@@ -1,6 +1,15 @@
 import { handleCors } from "../_shared/cors.ts";
 import { jsonOk, jsonError } from "../_shared/response.ts";
 
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
 Deno.serve(async (req) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
@@ -20,10 +29,10 @@ Deno.serve(async (req) => {
     if (!res.ok) return jsonError(`Google API error: ${res.status}`, 502);
 
     const imageBuffer = await res.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
+    const base64 = uint8ToBase64(new Uint8Array(imageBuffer));
 
     return jsonOk({ image: `data:image/png;base64,${base64}` });
   } catch (err) {
-    return jsonError(err.message);
+    return jsonError(err instanceof Error ? err.message : String(err));
   }
 });

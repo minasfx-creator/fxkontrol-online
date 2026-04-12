@@ -48,12 +48,12 @@ export function useVoiceRecognition(opts: {
   const finalTextRef = useRef('');
 
   // Stable refs for callbacks and state to avoid stale closures
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
   const onFinalTranscriptRef = useRef(onFinalTranscript);
   onFinalTranscriptRef.current = onFinalTranscript;
-  const stateRef = useRef(state);
-  stateRef.current = state;
 
   useEffect(() => {
     setSupported(!!getSpeechRecognition());
@@ -117,7 +117,7 @@ export function useVoiceRecognition(opts: {
     };
 
     recognition.onend = () => {
-      // If we still have pending text (timer hasn't fired yet), submit it
+      // If we still have pending text, submit it
       if (finalTextRef.current && stateRef.current === 'listening') {
         onFinalTranscriptRef.current(finalTextRef.current);
         finalTextRef.current = ''; // Prevent double-fire

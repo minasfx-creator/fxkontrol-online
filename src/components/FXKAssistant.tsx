@@ -277,8 +277,8 @@ export function FXKAssistant() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachment, setAttachment] = useState<AttachedFile | null>(null);
 
-  // Ref for fresh send reference in voice callbacks (assigned after send is defined)
-  const sendRef = useRef<((text: string) => void) | null>(null);
+  // Stable ref for send to avoid stale closure in voice callbacks
+  const sendRef = useRef<(text: string) => void>(() => {});
 
   // Voice hooks
   const joiSpeech = useJoiSpeech();
@@ -286,8 +286,7 @@ export function FXKAssistant() {
     onTranscript: (text) => setInput(text),
     onFinalTranscript: (text) => {
       setInput(text);
-      // Auto-submit after voice recognition — uses ref for fresh send
-      setTimeout(() => sendRef.current?.(text), 200);
+      setTimeout(() => sendRef.current(text), 200);
     },
   });
 
@@ -517,7 +516,7 @@ export function FXKAssistant() {
     }
   }, [messages, loading, attachment]);
 
-  // Keep sendRef fresh for voice callbacks
+  // Keep sendRef fresh
   sendRef.current = send;
 
   const handleFeedback = useCallback((idx: number, fb: 'up' | 'down') => {

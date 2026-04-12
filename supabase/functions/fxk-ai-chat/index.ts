@@ -17,7 +17,7 @@ serve(async (req) => {
     );
 
     // Use vision-capable model when images are present
-    const model = hasImages ? "google/gemini-2.5-flash" : "google/gemini-2.5-flash";
+    const model = hasImages ? "google/gemini-2.5-pro" : "google/gemini-2.5-flash";
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
