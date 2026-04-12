@@ -11,6 +11,7 @@ import { PANEL_SECTIONS, type PanelId } from '@/components/editor/PanelTabBar';
 import DockContextMenu from './DockContextMenu';
 import AddPositionWizard from './AddPositionWizard';
 
+import type { MobileTab } from './mobileTabTypes';
 export type { MobileTab } from './mobileTabTypes';
 
 interface MobileTabBarProps {

@@ -19,6 +19,5 @@ export interface UE5DMXFixture {
 export interface UE5DMXParseResult {
   fixtures: UE5DMXFixture[];
   libraryName: string;
-  format: 'csv' | 'json' | 't3d';
   errors: string[];
 }
