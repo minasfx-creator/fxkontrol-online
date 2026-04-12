@@ -6,6 +6,7 @@
  */
 
 import type { HardwareAdapter, HardwareDevice, HardwareStatusSnapshot, DeviceEvent } from './types';
+import type { ProvenanceInfo } from './provenance';
 import { arduinoNanoAdapter } from './adapters/ArduinoNanoAdapter';
 import { shiftRegisterAdapter } from './adapters/ShiftRegisterAdapter74HC595';
 import { muxReaderAdapter } from './adapters/MuxReaderAdapterCD4051';
@@ -48,15 +49,43 @@ class UnifiedHardwareRegistry {
 
   /** Get unified device list for UI consumption */
   getDevices(): HardwareDevice[] {
-    return this.getAllAdapters().map(a => ({
-      id: a.deviceId,
-      type: a.deviceType,
-      label: a.label,
-      connection_state: a.getConnectionState(),
-      capabilities: a.getCapabilities(),
-      lastSeen: Date.now(),
-      metadata: {},
-    }));
+    return this.getAllAdapters().map(a => {
+      const prov = a.getProvenance();
+      return {
+        id: a.deviceId,
+        type: a.deviceType,
+        label: a.label,
+        connection_state: a.getConnectionState(),
+        capabilities: a.getCapabilities(),
+        lastSeen: prov.last_seen_at,
+        metadata: {
+          integration_mode: prov.integration_mode,
+          evidence_level: prov.evidence_level,
+          transport: prov.transport_type,
+        },
+      };
+    });
+  }
+
+  /** Get provenance for a specific device */
+  getProvenance(deviceId: string): ProvenanceInfo | undefined {
+    return this._adapters.get(deviceId)?.getProvenance();
+  }
+
+  /** Get all provenances */
+  getAllProvenances(): Map<string, ProvenanceInfo> {
+    const map = new Map<string, ProvenanceInfo>();
+    for (const [id, a] of this._adapters) map.set(id, a.getProvenance());
+    return map;
+  }
+
+  /** Count simulated adapters */
+  getSimulatedCount(): number {
+    let count = 0;
+    for (const a of this._adapters.values()) {
+      if (a.getProvenance().integration_mode === 'simulated') count++;
+    }
+    return count;
   }
 
   /** Get all snapshots */
