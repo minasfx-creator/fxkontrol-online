@@ -93,6 +93,7 @@ const MODE_SECTIONS = [
     modes: [
       { key: 'pyro_fire' as CommandMode, label: 'FXK-PYRO', icon: Flame },
       { key: 'super_dmx' as CommandMode, label: 'FXK-DMX', icon: Zap },
+      { key: 'fireone_export' as CommandMode, label: 'FIREONE', icon: FileOutput },
     ],
   },
   {
@@ -100,22 +101,34 @@ const MODE_SECTIONS = [
     accent: 'text-amber-400',
     icon: Activity,
     modes: [
+      { key: 'sys_overview' as CommandMode, label: 'OVERVIEW', icon: Activity },
       { key: 'show_control' as CommandMode, label: 'SHOW CTRL', icon: Activity },
       { key: 'dmx_monitor' as CommandMode, label: 'DMX MONITOR', icon: Radio },
+      { key: 'dmx_artnet' as CommandMode, label: 'DMX/ARTNET', icon: Wifi },
       { key: 'fxk_light' as CommandMode, label: 'FXK-LIGHT', icon: Gauge },
       { key: 'drone_ops' as CommandMode, label: 'FXK-DRONE', icon: Layers },
     ],
   },
   {
+    label: 'SAFETY',
+    accent: 'text-red-400',
+    icon: Shield,
+    modes: [
+      { key: 'safety_console' as CommandMode, label: 'SAFETY', icon: Shield },
+      { key: 'verification' as CommandMode, label: 'VERIFY', icon: Shield },
+      { key: 'continuity' as CommandMode, label: 'CONTINUITY', icon: Zap },
+      { key: 'audit_blackbox' as CommandMode, label: 'AUDIT', icon: FileText },
+    ],
+  },
+  {
     label: 'HARDWARE',
-    accent: 'text-violet-400',
+    accent: 'text-cyan-400',
     icon: Cpu,
     modes: [
       { key: 'module' as CommandMode, label: 'MODULE', icon: Cpu },
       { key: 'hardware' as CommandMode, label: 'HARDWARE', icon: Radio },
+      { key: 'field_diag' as CommandMode, label: 'FIELD DIAG', icon: Cpu },
       { key: 'field_test' as CommandMode, label: 'FIELD TEST', icon: Target },
-      { key: 'verification' as CommandMode, label: 'VERIFY', icon: Shield },
-      { key: 'continuity' as CommandMode, label: 'CONTINUITY', icon: Zap },
     ],
   },
 ];
