@@ -111,7 +111,7 @@ export class InstancedParticleRenderer {
       },
       transparent: true,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,
       blending: cfg.blendMode === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending,
       side: THREE.DoubleSide,
     });

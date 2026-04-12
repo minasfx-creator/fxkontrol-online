@@ -9,20 +9,27 @@ import useGenerativeStore from '@/store/useGenerativeStore';
 const _pos = new THREE.Vector3();
 const _camPos = new THREE.Vector3();
 const _mat4 = new THREE.Matrix4();
+const _rotMat = new THREE.Matrix4();
+const _scaleVec = new THREE.Vector3();
 const _color = new THREE.Color();
 
 // ── LOD thresholds (squared for fast comparison) ──────────────────
-const LOD_FULL_DIST2 = 150 * 150;     // < 150m → full detail (body + led + rotors + nav)
+const LOD_FULL_DIST2 = 150 * 150;     // < 150m → full detail
 const LOD_SIMPLE_DIST2 = 400 * 400;   // < 400m → body + led only
-// > 400m → body + led only (point sprites in future)
 
-// ── Hex color cache to avoid per-frame string parsing ─────────────
+// ── Hex color cache with eviction ─────────────────────────────────
+const COLOR_CACHE_MAX = 256;
 const _colorCache = new Map<string, [number, number, number]>();
 function hexToRGB(hex: string): [number, number, number] {
   let cached = _colorCache.get(hex);
   if (cached) return cached;
   _color.set(hex);
   cached = [_color.r, _color.g, _color.b];
+  if (_colorCache.size >= COLOR_CACHE_MAX) {
+    // Evict oldest entry
+    const firstKey = _colorCache.keys().next().value;
+    if (firstKey !== undefined) _colorCache.delete(firstKey);
+  }
   _colorCache.set(hex, cached);
   return cached;
 }
@@ -180,13 +187,17 @@ export default function InstancedDroneSwarm({
           const ry = py + arm[1] * s;
           const rz = p.z + arm[2] * s;
 
-          // Rotor
+          // Rotor (zero-alloc: reuse _rotMat and _scaleVec)
           _mat4.makeRotationX(-Math.PI / 2);
-          _mat4.premultiply(new THREE.Matrix4().makeRotationY(rotorAngle.current + r * 1.57));
-          _mat4.scale(new THREE.Vector3(s, s, s));
+          _rotMat.makeRotationY(rotorAngle.current + r * 1.57);
+          _mat4.premultiply(_rotMat);
+          _scaleVec.set(s, s, s);
+          _mat4.scale(_scaleVec);
           _mat4.setPosition(rx, ry, rz);
           rotor.setMatrixAt(rotorCount, _mat4);
-          _color.set(ledColor);
+          // Reuse cached RGB to avoid string parse
+          const rotorRgb = hexToRGB(ledColor);
+          _color.setRGB(rotorRgb[0], rotorRgb[1], rotorRgb[2]);
           rotor.setColorAt(rotorCount, _color);
 
           // Nav light
@@ -226,9 +237,9 @@ export default function InstancedDroneSwarm({
         const sHover = Math.sin(t + sp.x * 2 + sp.z) * 0.015;
         _mat4.makeScale(s, s, s);
         _mat4.setPosition(sp.x, sp.y - 0.06 * s + sHover, sp.z);
-        // Apply -PI/2 rotation for ring facing up
-        const rotMat = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
-        _mat4.multiply(rotMat);
+        // Apply -PI/2 rotation for ring facing up (reuse _rotMat)
+        _rotMat.makeRotationX(-Math.PI / 2);
+        _mat4.multiply(_rotMat);
         _mat4.setPosition(sp.x, sp.y - 0.06 * s + sHover, sp.z);
         glow.setMatrixAt(0, _mat4);
         _color.set(sp.color);
