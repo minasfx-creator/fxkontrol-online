@@ -35,9 +35,19 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
-      globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
-        globIgnores: ["**/lovable-uploads/**"],
+        globIgnores: [
+          "**/lovable-uploads/**",
+          "**/vendor-export-*.js",
+          "**/ru-*.js",
+          "**/postprocessing-core-*.js",
+          "**/three-core-*.js",
+          "**/r3f-*.js",
+          "**/vendor-tiles-*.js",
+          "**/vendor-markdown-*.js",
+          "**/recharts-*.js",
+        ],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/~oauth/],
         runtimeCaching: [
@@ -58,6 +68,15 @@ export default defineConfig(({ mode }) => ({
               expiration: { maxEntries: 50, maxAgeSeconds: 5 * 60 },
               cacheableResponse: { statuses: [0, 200] },
               networkTimeoutSeconds: 10,
+            },
+          },
+          {
+            urlPattern: /\/assets\/(three-core|r3f|ru-|postprocessing|vendor-export|vendor-tiles|recharts)/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "lazy-chunks",
+              expiration: { maxEntries: 30, maxAgeSeconds: 30 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
         ],

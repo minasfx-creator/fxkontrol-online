@@ -13,11 +13,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@capacitor/android": "^8.2.0",
-    "@capacitor/cli": "^8.2.0",
     "@capacitor/core": "^8.2.0",
     "@capacitor/haptics": "^8.0.1",
-    "@capacitor/ios": "^8.2.0",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -55,7 +52,6 @@
     "@types/react-window": "^2.0.0",
     "@types/three": "^0.170.0",
     "@vitejs/plugin-react": "4.3.4",
-    "@vitejs/plugin-react-swc": "3.11.0",
     "3d-tiles-renderer": "^0.4.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
