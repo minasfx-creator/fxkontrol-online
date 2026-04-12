@@ -14,7 +14,7 @@ import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 import { getDeviceProfile } from '@/lib/deviceCapability';
 import { supabase } from '@/integrations/supabase/client';
-import * as tus from 'tus-js-client';
+// tus-js-client loaded dynamically to reduce initial bundle
 
 type ImportPhase = 'idle' | 'uploading' | 'reading' | 'parsing' | 'importing' | 'done';
 

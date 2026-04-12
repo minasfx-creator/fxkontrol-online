@@ -303,6 +303,7 @@ export function exportGeoToolsKML(opts: GeoToolsKMLOptions): string {
 
 export async function exportGeoToolsKMZ(opts: GeoToolsKMLOptions): Promise<Blob> {
   const kml = generateGeoToolsKML(opts);
+  const JSZip = await loadJSZip();
   const zip = new JSZip();
   zip.file('doc.kml', kml);
   return zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
