@@ -123,6 +123,7 @@ export interface LinkHealthState {
 export type ReadinessStatus =
   | 'READY_FOR_SIMULATION'
   | 'READY_FOR_EXPORT'
+  | 'READY_FOR_LIVE_READ_ONLY'
   | 'READY_FOR_HARDWARE_SYNC'
   | 'BLOCKED';
 
@@ -139,6 +140,7 @@ export type OperationalMode =
   | 'diagnostics'
   | 'dry-run'
   | 'read-only-sync'
+  | 'live-read-only'
   | 'export'
   | 'blocked';
 
