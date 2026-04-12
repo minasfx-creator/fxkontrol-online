@@ -10,7 +10,6 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Type-safe wrapper since show_styles may not be in generated types yet
 const showStylesTable = () => supabase.from('show_styles' as any);
-import { supabase } from '@/integrations/supabase/client';
 
 export interface ShowStyleProfile {
   id?: string;
