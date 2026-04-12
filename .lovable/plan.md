@@ -1,129 +1,111 @@
 
 
-# JOI Intelligence Redesign — Central Orchestration Intelligence for FX KONTROL
+# JOI Central Intelligence — UI Panels & Rich Rendering Implementation
 
 ## Current State
 
-JOI today is a **chatbot companion** (`FXKAssistant.tsx`, 1085 lines) with:
-- Streaming AI chat via `fxk-ai-chat` edge function
-- `[JOI_CMD]` command execution for show design (positions, effects, choreography)
-- System prompt focused on "secretária executiva" — documents, budgets, licensing
-- Voice recognition + TTS
-- PDF/DOCX export per message
-- KMZ aeronautical export
-- Context injection from `useProjectStore` (positions, effects, timeline)
+JOI's backend intelligence is **already complete**:
+- System prompt defines her as systems intelligence with 7 modes, safety rules, and provenance honesty
+- `JoiContextBuilder` aggregates ShowPlan, Verification, Readiness, Hardware, Exports, OperationalMode
+- `joiCommandExecutor` has 8 system inspection commands (inspect_showplan, run_verification, etc.)
+- `joiModes.ts` defines 7 modes (SHOW, ARCH, ANALYST, VERIFY, PLAN, BLUE, DOCS) with presets
+- `FXKAssistant.tsx` has mode selector bar, context injection, streaming chat
 
-**What's missing**: JOI has zero awareness of the hardware/verification/readiness/safety/export pipeline built in recent phases. She cannot inspect ShowPlan, VerificationEngine, ReadinessEvaluator, HardwareRegistry, ExportCoordinator, AuditTrail, or CurrentStateMatrix.
+**What's missing**: The UI only renders plain markdown. No structured panels, no truth badges in responses, no Mermaid rendering, no insight/artifact separation. JOI looks like a chatbot, not a mission-control intelligence.
 
 ---
 
 ## Plan
 
-### Phase 1 — System Context Layer (`src/core/joi/JoiContextBuilder.ts`)
+### Phase 1 — JOI Types (`src/core/joi/joiTypes.ts`)
 
-Create a module that assembles JOI's full system awareness by reading from all core modules:
+Formalize the intelligence contract types:
 
-- `showPlanManager.current` → pyro/DMX/drone counts, metadata, validation state
-- `verificationEngine.run()` → check results, level, blockers
-- `readinessEvaluator.evaluate()` → status, allowed ops, issues
-- `unifiedHardwareRegistry.getSystemHealth()` → device states, online/offline, simulated count
-- `unifiedHardwareRegistry.getAllProvenances()` → integration modes, evidence levels
-- `exportCoordinator` → last export attempts, blocked reasons
-- `deviceEventLog.getTimeline()` → recent events
-- `operationalModeGuard.getCurrentMode()` → current operational mode
+```
+JOIMode (add 'hardware_truth' as 8th mode)
+JOIInsight { source, severity, message, integration_mode, evidence_level }
+JOIRecommendation { priority, action, rationale, confidence }
+JOIArtifact { id, type, title, content, generated_at }
+JOIArtifactType = 'mermaid' | 'matrix' | 'report' | 'checklist' | 'blueprint'
+JOIContextState { mode, source_of_truth[], integration_mode, evidence_level, confidence }
+JOIConfidenceLevel = 'low' | 'medium' | 'high'
+JOITruthSummary { simulated, replay, live_read_only, not_integrated counts + device lists }
+```
 
-Output: a structured `JoiSystemContext` object serialized as a system message injected before every AI call.
+### Phase 2 — Hardware Truth Mode (`src/core/joi/joiModes.ts`)
 
-### Phase 2 — Enhanced System Prompt (`supabase/functions/fxk-ai-chat/systemPrompt.ts`)
+Add 8th mode `hardware_truth` between `verify` and `planner`:
+- Color: emerald/green
+- Icon: `Eye` or `Radio`
+- Presets: "Device Provenance", "Integration Status", "Stale Data Check", "Risk Assessment"
+- System instruction: focus on provenance interpretation, integration modes, evidence levels
 
-Rewrite the system prompt to define JOI as a **systems intelligence** operating in 6 modes:
+### Phase 3 — JOI Context Ribbon (`src/components/joi/JOIContextRibbon.tsx`)
 
-1. **Architect** — module design, hierarchy, interfaces
-2. **Analyst** — state analysis, gap analysis, inconsistency detection
-3. **Verification** — interpret checks, explain blockers, suggest fixes
-4. **Planner** — decompose objectives into phased plans
-5. **Visual Blueprint** — generate Mermaid diagrams, module maps, pipeline flows
-6. **Documentation** — matrices, checklists, reports, contracts
+A compact bar shown inside the JOI panel (below mode selector) displaying:
+- Current `source_of_truth` badges
+- `integration_mode` indicator (SIMULATED / REPLAY / LIVE / NOT INTEGRATED)
+- `evidence_level` badge
+- `confidence` level
+- System readiness status dot
+- Updates on every mode change or system state change
 
-The prompt will include:
-- All FX KONTROL domain types (ShowPlan, VerificationResult, ReadinessResult, HardwareStatusSnapshot, etc.)
-- Provenance/truth rules (never call simulated "integrated")
-- Safety restrictions (no firing logic, no ignition commands)
-- Structured response format: Diagnosis → Solution → Risks → Artifacts → Next Steps
-- New `[JOI_CMD]` commands for system inspection
+### Phase 4 — JOI Insight Panel (`src/components/joi/JOIInsightPanel.tsx`)
 
-### Phase 3 — New JOI Commands (`src/utils/joiCommandExecutor.ts`)
-
-Add system-awareness commands:
-
-| Command | Action |
-|---------|--------|
-| `inspect_showplan` | Return ShowPlan summary (metadata, cue counts, validation) |
-| `run_verification` | Execute VerificationEngine, return results |
-| `check_readiness` | Evaluate ReadinessEvaluator, return status + allowed ops |
-| `inspect_hardware` | Return device registry state, health, provenances |
-| `inspect_exports` | Return export readiness per channel |
-| `get_system_state` | Full system state matrix (all subsystems) |
-| `get_audit_log` | Recent events from DeviceEventLog |
-| `generate_mermaid` | Generate architecture/pipeline diagram as Mermaid |
-
-### Phase 4 — Mode Selector UI (`src/components/FXKAssistant.tsx`)
-
-Add a mode selector bar in the JOI panel header with 6 mode chips:
-- `ARCH` / `ANALYST` / `VERIFY` / `PLAN` / `BLUEPRINT` / `DOCS`
-
-Each mode:
-- Changes the context preset buttons shown
-- Injects a mode-specific system instruction
-- Adjusts JOI's visual accent color (architect=violet, analyst=cyan, verify=amber, plan=blue, blueprint=green, docs=gold)
-
-Update the preset buttons per mode:
-- **Architect**: "System Architecture", "Module Map", "Interface Design"
-- **Analyst**: "System State", "Gap Analysis", "Compare Manual vs Code"
-- **Verify**: "Run Verification", "Explain Blockers", "Check Readiness"
-- **Planner**: "Phase Plan", "Priority Matrix", "Dependency Map"
-- **Blueprint**: "Pipeline Diagram", "Hardware Topology", "Dashboard Layout"
-- **Docs**: "Technical Report", "Checklist", "State Matrix", "Contract"
+A collapsible panel in the JOI sidebar (when expanded) showing:
+- Current blockers (from ReadinessEvaluator)
+- Active warnings (from VerificationEngine)
+- Anomalies (stale data, offline devices)
+- Recommendations (next best action)
+- Each item tagged with integration_mode and evidence_level
 
 ### Phase 5 — Rich Response Rendering
 
-Enhance message rendering in `FXKAssistant.tsx`:
-- Detect Mermaid code blocks and render them inline using a lightweight Mermaid renderer
-- Render `[JOI_STATUS]` blocks as styled telemetry cards (readiness badge, health score, device count)
-- Render `[JOI_MATRIX]` blocks as styled tables with color-coded status cells
-- Render `[JOI_CHECKLIST]` blocks as interactive checklists
+Update `FXKAssistant.tsx` message rendering to detect and render:
 
-### Phase 6 — Context Presets Update (`src/components/JoiCommandPresets.tsx`)
+1. **Mermaid blocks**: Detect ` ```mermaid ` code blocks, render using dynamic import of `mermaid` library as inline SVG diagrams
+2. **Status cards**: Detect `[JOI_STATUS]{...}[/JOI_STATUS]` blocks, render as styled telemetry cards with readiness badge, health score, device counts
+3. **Matrix blocks**: Detect `[JOI_MATRIX]{...}[/JOI_MATRIX]` blocks, render as color-coded tables with status cells (green/amber/red/cyan)
+4. **Truth badges inline**: When JOI mentions a subsystem, auto-tag with its integration mode badge
 
-Replace/augment current presets with system-aware presets organized by mode. Keep existing show-design presets but add:
-- "Analyze System State" → runs `inspect_showplan` + `check_readiness`
-- "Generate Architecture Diagram" → `generate_mermaid`
-- "Run Full Verification" → `run_verification`
-- "Export Readiness Report" → `inspect_exports`
-- "Hardware Health Check" → `inspect_hardware`
-- "Audit Trail Summary" → `get_audit_log`
+### Phase 6 — JOI Truth Inspector (`src/components/joi/JOITruthInspector.tsx`)
+
+A dedicated panel (accessible via button in JOI header or as expanded sidebar section):
+- Lists all adapters with their integration_mode badge
+- Shows evidence_level per adapter
+- Shows data freshness
+- Color-coded: green (live), blue (simulated), amber (replay), red (not integrated)
+- Summary counts at top
+
+### Phase 7 — Enhanced System Prompt Additions
+
+Update `systemPrompt.ts` to:
+- Add `hardware_truth` mode instructions
+- Instruct JOI to use `[JOI_STATUS]` and `[JOI_MATRIX]` blocks when generating system state summaries
+- Instruct JOI to always include a truth footer with `source_of_truth`, `integration_mode`, `evidence_level`, `confidence`
 
 ---
 
-## Files to Create (2)
+## Files to Create (4)
+1. `src/core/joi/joiTypes.ts` — Formalized intelligence types
+2. `src/components/joi/JOIContextRibbon.tsx` — Truth/context status bar
+3. `src/components/joi/JOIInsightPanel.tsx` — Blockers/warnings/recommendations
+4. `src/components/joi/JOITruthInspector.tsx` — Integration truth inspector panel
 
-1. `src/core/joi/JoiContextBuilder.ts` — System context assembler
-2. `src/core/joi/joiModes.ts` — Mode definitions, presets per mode, mode-specific prompts
+## Files to Update (3)
+1. `src/core/joi/joiModes.ts` — Add `hardware_truth` mode
+2. `src/components/FXKAssistant.tsx` — Integrate ribbon, insight panel, truth inspector, rich rendering (Mermaid, status cards, matrix blocks)
+3. `supabase/functions/fxk-ai-chat/systemPrompt.ts` — Add hardware_truth mode, structured output instructions
 
-## Files to Update (4)
-
-1. `supabase/functions/fxk-ai-chat/systemPrompt.ts` — Complete rewrite as systems intelligence
-2. `src/utils/joiCommandExecutor.ts` — Add 8 new system inspection commands
-3. `src/components/FXKAssistant.tsx` — Mode selector, rich rendering, context injection
-4. `src/components/JoiCommandPresets.tsx` — Mode-organized system presets
+## Dependencies
+- `mermaid` npm package for inline diagram rendering (dynamic import to avoid bundle bloat)
 
 ## What This Delivers
-
-- JOI becomes context-aware of the entire FX KONTROL pipeline
-- She can inspect, diagnose, and explain any subsystem state
-- She generates Mermaid diagrams, matrices, and reports on demand
-- She distinguishes simulated vs live vs replay with architectural honesty
-- She never suggests firing/ignition commands
-- The 6 modes organize her capabilities into clear operational contexts
-- All existing show-design functionality (choreography, effects, positions) is preserved
+- JOI displays provenance/confidence on every interaction via Context Ribbon
+- Rich Mermaid diagrams render inline in chat
+- System state matrices render as color-coded tables
+- Truth Inspector shows honest integration status at a glance
+- Insight Panel surfaces blockers and recommendations proactively
+- Hardware Truth mode dedicated to provenance analysis
+- All responses carry architectural honesty metadata
 
