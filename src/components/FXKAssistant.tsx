@@ -25,6 +25,12 @@ import { JOI_MODES, JOI_MODE_PRESETS, getPresetsForMode, getModeConfig, type Joi
 import { JOIContextRibbon } from '@/components/joi/JOIContextRibbon';
 import { JOIInsightPanel } from '@/components/joi/JOIInsightPanel';
 import { JOITruthInspector } from '@/components/joi/JOITruthInspector';
+import { JOIExecutionTracePanel } from '@/components/joi/JOIExecutionTracePanel';
+import { JOIArtifactCanvas } from '@/components/joi/JOIArtifactCanvas';
+import { JOIStylePanel } from '@/components/joi/JOIStylePanel';
+import { joiExecutionEngine } from '@/core/joi/JOIExecutionEngine';
+import { joiStyleAwareGenerator } from '@/core/joi/JOIStyleAwareGenerator';
+import type { JOIExecutionTrace } from '@/core/joi/joiTypes';
 
 import { MermaidRenderer } from '@/components/joi/MermaidRenderer';
 
