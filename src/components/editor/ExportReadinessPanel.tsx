@@ -1,13 +1,12 @@
 /**
- * ExportReadinessPanel — Unified view of all export pipelines with verification gating.
- * Shows status for each exporter (FireOne, ArtNet, Drone) with issue details.
+ * ExportReadinessPanel — Unified export view gated through ExportCoordinator.
+ * Shows status for each exporter with OperationalMode badge and issue details.
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useVerificationEngine } from '@/core/verification/useVerificationEngine';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
-import { downloadFireOneScript } from '@/core/export/FireOneExporter';
-import { downloadArtNetPatch } from '@/core/export/ArtNetPatchExporter';
-import { downloadDroneCSV } from '@/core/export/DroneCSVExporter';
+import { exportCoordinator, type ExportTarget } from '@/core/export/ExportCoordinator';
+import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
 import { cn } from '@/lib/utils';
 import {
   FileOutput, Download, CheckCircle2, XOctagon, AlertTriangle, RefreshCw,
@@ -39,10 +38,18 @@ interface ExportChannelProps {
   count: number;
   countLabel: string;
   canExport: boolean;
-  onExport: () => void;
+  target: ExportTarget;
 }
 
-function ExportChannel({ label, icon: Icon, color, count, countLabel, canExport, onExport }: ExportChannelProps) {
+function ExportChannel({ label, icon: Icon, color, count, countLabel, canExport, target }: ExportChannelProps) {
+  const [lastResult, setLastResult] = useState<string | null>(null);
+
+  const handleExport = () => {
+    const result = exportCoordinator.execute(target);
+    setLastResult(result.success ? '✓ Exported' : `✗ ${result.issues[0] ?? 'Failed'}`);
+    setTimeout(() => setLastResult(null), 4000);
+  };
+
   return (
     <div className={cn('border rounded p-3 space-y-2', canExport ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-border/10 bg-muted/5')}>
       <div className="flex items-center justify-between">
@@ -58,11 +65,16 @@ function ExportChannel({ label, icon: Icon, color, count, countLabel, canExport,
       </div>
       <div className="flex items-center justify-between">
         <span className="text-[9px] font-mono text-muted-foreground">{count} {countLabel}</span>
-        <Button size="sm" onClick={onExport} disabled={!canExport || count === 0}
+        <Button size="sm" onClick={handleExport} disabled={!canExport || count === 0}
           className="h-5 text-[8px] font-mono gap-1 px-2 disabled:opacity-30">
           <Download className="w-2.5 h-2.5" /> EXPORT
         </Button>
       </div>
+      {lastResult && (
+        <div className={cn('text-[8px] font-mono', lastResult.startsWith('✓') ? 'text-emerald-400' : 'text-red-400')}>
+          {lastResult}
+        </div>
+      )}
     </div>
   );
 }
@@ -71,6 +83,7 @@ export default function ExportReadinessPanel() {
   const { level, result, runVerification } = useVerificationEngine();
   const sp = showPlanManager.current;
   const canExport = level === 'READY_FOR_EXPORT' || level === 'READY_FOR_FIELD';
+  const mode = operationalModeGuard.mode;
 
   useEffect(() => { runVerification(); }, [runVerification]);
 
@@ -84,6 +97,9 @@ export default function ExportReadinessPanel() {
           <span className="text-xs font-mono font-bold tracking-widest text-foreground uppercase">Export Readiness</span>
         </div>
         <div className="flex items-center gap-2">
+          <span className="text-[7px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase">
+            {mode}
+          </span>
           <span className={cn(
             'text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border',
             level === 'READY_FOR_FIELD' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
@@ -112,17 +128,17 @@ export default function ExportReadinessPanel() {
         )}
       </div>
 
-      {/* Export channels */}
+      {/* Export channels — now routed through ExportCoordinator */}
       <div className="grid grid-cols-3 gap-3">
         <ExportChannel label="FireOne .FIR" icon={Flame} color="text-red-400"
           count={sp.pyroCues.length} countLabel="pyro cues"
-          canExport={canExport} onExport={() => downloadFireOneScript()} />
+          canExport={canExport} target="fireone" />
         <ExportChannel label="Art-Net CSV" icon={Radio} color="text-blue-400"
           count={sp.dmxCues.length} countLabel="DMX cues"
-          canExport={canExport} onExport={() => downloadArtNetPatch()} />
+          canExport={canExport} target="artnet" />
         <ExportChannel label="Drone CSV" icon={Layers} color="text-teal-400"
           count={sp.dronePaths.length} countLabel="drone paths"
-          canExport={canExport} onExport={() => downloadDroneCSV()} />
+          canExport={canExport} target="drone" />
       </div>
 
       {/* Blocking issues */}
