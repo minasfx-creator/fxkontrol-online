@@ -4,6 +4,7 @@
  * Landscape mobile: game-style HUD with side rail + top bar
  */
 import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
+import { StatusChips, SidebarStatusWidget } from '@/components/editor/CommandStatusIndicators';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ambientSound } from '@/lib/ambientSound';
 import FullscreenablePanel from '@/components/editor/FullscreenablePanel';
@@ -699,22 +700,9 @@ export default function CommandCenter() {
         </ScrollArea>
 
         {/* Safety Footer — frosted glass */}
-        {!sidebarCollapsed && (
-          <div className="p-2.5 border-t" style={{ borderColor: 'hsl(var(--destructive) / 0.06)' }}>
-            <div className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-300",
-              isArmed ? "danger-stripe border-destructive/20" : "border-destructive/6"
-            )} style={{
-              background: isArmed ? 'hsl(var(--destructive) / 0.06)' : 'hsl(var(--destructive) / 0.02)',
-              backdropFilter: 'blur(12px)',
-            }}>
-              <Shield className="h-3 w-3 text-destructive/40 shrink-0" />
-              <span className="text-[7px] text-destructive/50 font-bold font-mono tracking-[0.15em]">
-                {isArmed ? `ARMED // ${activeEffects.length} HOT` : 'SAFETY INTERLOCK'}
-              </span>
-            </div>
-          </div>
-        )}
+        <div className="p-2.5 border-t" style={{ borderColor: 'hsl(var(--primary) / 0.04)' }}>
+          <SidebarStatusWidget collapsed={sidebarCollapsed} />
+        </div>
       </div>
 
       {/* Main Content */}
@@ -765,12 +753,9 @@ export default function CommandCenter() {
               </span>
             </div>
             <div className="flex items-center gap-3">
+              <StatusChips />
+              <div className="h-3.5 w-[1px] rounded-full" style={{ background: 'hsl(var(--primary) / 0.08)' }} />
               <span className="text-[9px] font-mono font-bold" style={{ color: 'hsl(32 100% 55%)', textShadow: '0 0 8px hsl(32 100% 50% / 0.25)' }}>{missionClock}</span>
-              {isArmed && (
-                <Badge variant="destructive" className="text-[7px] h-5 animate-pulse font-mono tracking-wider rounded-md">
-                  ARMED // {activeEffects.length}
-                </Badge>
-              )}
               {connectedCount > 0 && (
                 <Badge variant="outline" className="text-[7px] h-5 border-primary/10 text-primary/70 font-mono tracking-wider rounded-md">
                   {connectedCount} ONLINE
