@@ -45,7 +45,8 @@ function PanelLoader() {
 // ── Types ──
 type CommandMode =
   | 'pyro_fire' | 'super_dmx' | 'fxk_light' | 'drone_ops'
-  | 'show_control' | 'module' | 'dmx_monitor' | 'field_test' | 'hardware';
+  | 'show_control' | 'module' | 'dmx_monitor' | 'field_test' | 'hardware'
+  | 'verification' | 'continuity';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = ['pyro_fire', 'super_dmx'];
@@ -62,6 +63,8 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   dmx_monitor:  { color: 'hsl(120 70% 42%)',   glow: 'hsl(120 70% 42% / 0.08)',  label: 'DMX MONITOR', badge: 'bg-green-500/15 text-green-400 border-green-500/20', subtitle: 'PROTOCOL ANALYZER' },
   field_test:   { color: 'hsl(0 80% 55%)',     glow: 'hsl(0 80% 55% / 0.1)',    label: 'FIELD TEST',  badge: 'bg-red-500/15 text-red-400 border-red-500/20', subtitle: 'DIAGNOSTIC FIRE TEST' },
   hardware:     { color: 'hsl(190 80% 50%)',   glow: 'hsl(190 80% 50% / 0.1)',  label: 'HARDWARE',    badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'DEVICE CONNECT & MONITOR' },
+  verification: { color: 'hsl(120 70% 42%)',   glow: 'hsl(120 70% 42% / 0.08)', label: 'VERIFY',      badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'SYSTEM VERIFICATION' },
+  continuity:   { color: 'hsl(190 100% 50%)',  glow: 'hsl(190 100% 50% / 0.1)', label: 'CONTINUITY',  badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'IGNITER CONTINUITY MATRIX' },
 };
 
 // ── Sidebar Sections ──
@@ -94,6 +97,8 @@ const MODE_SECTIONS = [
       { key: 'module' as CommandMode, label: 'MODULE', icon: Cpu },
       { key: 'hardware' as CommandMode, label: 'HARDWARE', icon: Radio },
       { key: 'field_test' as CommandMode, label: 'FIELD TEST', icon: Target },
+      { key: 'verification' as CommandMode, label: 'VERIFY', icon: Shield },
+      { key: 'continuity' as CommandMode, label: 'CONTINUITY', icon: Zap },
     ],
   },
 ];
