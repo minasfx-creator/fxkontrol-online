@@ -184,22 +184,22 @@ export default React.memo(function SelectionStatusBar() {
           <div className="flex items-center gap-1">
             <div className="grid grid-cols-3 gap-0.5 w-fit">
               <div />
-              <Button variant="outline" size="icon" className="h-5 w-5" onClick={() => batchMove(0, 0, -1)}>
-                <ArrowUp className="w-2.5 h-2.5" />
+              <Button variant="outline" size="icon" className="h-6 w-6 hover:bg-primary/10 active:scale-90 transition-all" onClick={() => batchMove(0, 0, -1)}>
+                <ArrowUp className="w-3 h-3" />
               </Button>
               <div />
-              <Button variant="outline" size="icon" className="h-5 w-5" onClick={() => batchMove(-1, 0, 0)}>
-                <ArrowLeft className="w-2.5 h-2.5" />
+              <Button variant="outline" size="icon" className="h-6 w-6 hover:bg-primary/10 active:scale-90 transition-all" onClick={() => batchMove(-1, 0, 0)}>
+                <ArrowLeft className="w-3 h-3" />
               </Button>
               <div className="h-5 w-5 flex items-center justify-center">
                 <Grid3x3 className="w-2.5 h-2.5 text-muted-foreground/30" />
               </div>
-              <Button variant="outline" size="icon" className="h-5 w-5" onClick={() => batchMove(1, 0, 0)}>
-                <ArrowRight className="w-2.5 h-2.5" />
+              <Button variant="outline" size="icon" className="h-6 w-6 hover:bg-primary/10 active:scale-90 transition-all" onClick={() => batchMove(1, 0, 0)}>
+                <ArrowRight className="w-3 h-3" />
               </Button>
               <div />
-              <Button variant="outline" size="icon" className="h-5 w-5" onClick={() => batchMove(0, 0, 1)}>
-                <ArrowDown className="w-2.5 h-2.5" />
+              <Button variant="outline" size="icon" className="h-6 w-6 hover:bg-primary/10 active:scale-90 transition-all" onClick={() => batchMove(0, 0, 1)}>
+                <ArrowDown className="w-3 h-3" />
               </Button>
               <div />
             </div>

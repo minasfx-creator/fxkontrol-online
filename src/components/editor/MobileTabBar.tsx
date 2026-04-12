@@ -54,7 +54,7 @@ export default React.memo(function MobileTabBar({
   const swipeLabelTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
-  const [showScrollHint, setShowScrollHint] = useState(true);
+  const [showScrollHint, setShowScrollHint] = useState(false);
 
   // Track scroll position to show/hide right arrow
   useEffect(() => {
