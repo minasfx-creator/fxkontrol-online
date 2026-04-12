@@ -277,7 +277,8 @@ export function FXKAssistant() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachment, setAttachment] = useState<AttachedFile | null>(null);
 
-  // sendRef is initialized after send is defined (see below)
+  // Ref for fresh send reference in voice callbacks (assigned after send is defined)
+  const sendRef = useRef<((text: string) => void) | null>(null);
 
   // Voice hooks
   const joiSpeech = useJoiSpeech();
