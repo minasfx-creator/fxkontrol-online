@@ -174,7 +174,7 @@ export default function MainLayout() {
             </header>
           )}
 
-          <main className={`${(isEditor || isCommand) ? 'flex-1 min-h-0 overflow-hidden' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}
+          <main role="main" className={`${(isEditor || isCommand) ? 'flex-1 min-h-0 overflow-hidden' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}
             style={showDock || showMobileDock ? { paddingBottom: '72px' } : undefined}>
             {(isEditor || isCommand) ? (
               <Outlet />
