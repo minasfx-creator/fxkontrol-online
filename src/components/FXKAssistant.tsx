@@ -812,6 +812,15 @@ export function FXKAssistant() {
         })}
       </div>
 
+      {/* Context Ribbon — truth badges */}
+      <JOIContextRibbon />
+
+      {/* Insight Panel — blockers/warnings */}
+      <JOIInsightPanel />
+
+      {/* Truth Inspector — adapter integration status */}
+      <JOITruthInspector />
+
       {/* Content area */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
         {/* Sidebar hologram (expanded only) */}
