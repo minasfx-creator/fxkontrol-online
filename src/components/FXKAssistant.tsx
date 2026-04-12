@@ -931,7 +931,7 @@ export function FXKAssistant() {
                           </button>
                         )}
                         <button
-                          onClick={() => exportJoiPdf(msg.content)}
+                          onClick={() => lazyExportPdf().then(fn => fn(msg.content))}
                           className="h-7 px-1.5 rounded-md flex items-center gap-1 transition-all hover:scale-105 active:scale-95"
                           style={{ background: 'hsl(190 100% 50% / 0.08)', border: '1px solid hsl(190 100% 50% / 0.15)' }}
                           title="Exportar PDF"
@@ -940,7 +940,7 @@ export function FXKAssistant() {
                           <span className="text-[7px] font-mono" style={{ color: 'hsl(190 100% 50% / 0.6)' }}>PDF</span>
                         </button>
                         <button
-                          onClick={() => exportJoiDocx(msg.content)}
+                          onClick={() => lazyExportDocx().then(fn => fn(msg.content))}
                           className="h-7 px-1.5 rounded-md flex items-center gap-1 transition-all hover:scale-105 active:scale-95"
                           style={{ background: 'hsl(160 70% 40% / 0.1)', border: '1px solid hsl(160 70% 40% / 0.2)' }}
                           title="Exportar DOCX"
