@@ -194,7 +194,28 @@ export class SmokeSystem {
     this.material.uniforms.uResolution.value = resolution;
   }
 
-  emit(origin: THREE.Vector3, count: number, smokeColor: THREE.Color, spread = 15) {
+  /** Enable/disable 6-way directional lighting */
+  set6WayLighting(enabled: boolean): void {
+    this.material.uniforms.uUse6WayLighting.value = enabled;
+  }
+
+  /** Update dynamic light source (call when explosions occur) */
+  updateExplosionLight(
+    direction: THREE.Vector3,
+    color: THREE.Color,
+    intensity: number
+  ): void {
+    this.material.uniforms.uLightDir.value.copy(direction).normalize();
+    this.material.uniforms.uLightColor.value.copy(color);
+    this.material.uniforms.uLightIntensity.value = intensity;
+  }
+
+  /** Set ambient sky colour for 6-way lighting base */
+  setAmbientColor(color: THREE.Color): void {
+    this.material.uniforms.uAmbientColor.value.copy(color);
+  }
+
+
     for (let i = 0; i < count && this.particles.length < this.maxParticles; i++) {
       this.particles.push({
         position: origin.clone().add(new THREE.Vector3(
