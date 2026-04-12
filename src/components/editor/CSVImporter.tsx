@@ -327,7 +327,7 @@ function buildRow(i: number, cols: string[], ctx: any): ParsedRow {
 // ── Component ───────────────────────────────────────────────────────
 
 export default function CSVImporter({ open, onOpenChange, initialFile }: { open: boolean; onOpenChange: (v: boolean) => void; initialFile?: File | null }) {
-  const { addPosition } = useProjectStore();
+    const addPosition = useProjectStore(s => s.addPosition);
   const [parsed, setParsed] = useState<ParsedRow[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [options, setOptions] = useState<ImportOptions>(DEFAULT_OPTIONS);

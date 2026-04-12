@@ -25,7 +25,8 @@ interface DroneStatus {
 }
 
 export default function TelemetryDashboard({ onClose }: { onClose: () => void }) {
-  const { droneFormations, currentTime } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const currentTime = useProjectStore(s => s.currentTime);
   const { drones, connected } = useMAVLinkStore();
   const [selectedDrone, setSelectedDrone] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'detail'>('grid');

@@ -175,7 +175,8 @@ let _activeBurstScan_local: ActiveBurstScanResult | null = null;
 // --- DroneRendererSwitch: conditional PBR vs Tactical engine ---
 function DroneRendererSwitch() {
   const mode = useSceneStore(s => s.environment.droneRendererMode);
-  const { droneFormations, currentTime } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const currentTime = useProjectStore(s => s.currentTime);
 
   // Bridge formations → SwarmAgent format (always computed to respect hooks rules)
   const agents = React.useMemo(() => {
@@ -213,7 +214,12 @@ import { executionBridge } from '@/core/execution/executionBridge';
 import { frameSyncEngine } from '@/core/sync/frameSyncEngine';
 
 const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
-  const { isPlaying, currentTime, duration, setCurrentTime, setPlaying, playbackSpeed } = useProjectStore();
+    const isPlaying = useProjectStore(s => s.isPlaying);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const duration = useProjectStore(s => s.duration);
+  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
+  const setPlaying = useProjectStore(s => s.setPlaying);
+  const playbackSpeed = useProjectStore(s => s.playbackSpeed);
   const registeredRef = useRef(false);
 
   // Pump the deterministic clock every R3F frame
@@ -1053,7 +1059,12 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 
 /** Viewport playback controls — always visible at bottom center of 3D viewport */
 function ViewportPlaybackControls() {
-  const { isPlaying, setPlaying, currentTime, setCurrentTime, duration, playbackSpeed } = useProjectStore();
+    const isPlaying = useProjectStore(s => s.isPlaying);
+  const setPlaying = useProjectStore(s => s.setPlaying);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
+  const duration = useProjectStore(s => s.duration);
+  const playbackSpeed = useProjectStore(s => s.playbackSpeed);
 
   const formatTime = (t: number) => {
     const m = Math.floor(t / 60);
@@ -1131,7 +1142,11 @@ function ViewportPlaybackControls() {
 
 /** Floating menu for fullscreen mode — gives access to key actions */
 function FullscreenEditMenu() {
-  const { isPlaying, setPlaying, currentTime, setCurrentTime, duration } = useProjectStore();
+    const isPlaying = useProjectStore(s => s.isPlaying);
+  const setPlaying = useProjectStore(s => s.setPlaying);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
+  const duration = useProjectStore(s => s.duration);
   const [expanded, setExpanded] = useState(false);
 
   return (

@@ -21,7 +21,8 @@ interface SMPTEPanelProps {
 
 export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
   const store = useSMPTEStore();
-  const { currentTime, isPlaying } = useProjectStore();
+    const currentTime = useProjectStore(s => s.currentTime);
+  const isPlaying = useProjectStore(s => s.isPlaying);
   const hardware = useFireOneHardware();
   const pbus = usePBusHardware();
   const [startTcInput, setStartTcInput] = useState('01:00:00:00');

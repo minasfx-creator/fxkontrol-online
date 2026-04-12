@@ -13,7 +13,8 @@ import { X, Save, Download, Upload, Trash2, FolderOpen, Plus } from 'lucide-reac
 import { toast } from 'sonner';
 
 export default function ShowTemplatesPanel({ onClose }: { onClose: () => void }) {
-  const { droneFormations, addDroneFormation } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const addDroneFormation = useProjectStore(s => s.addDroneFormation);
   const [templates, setTemplates] = useState<ShowTemplate[]>([]);
   const [tab, setTab] = useState<'browse' | 'save'>('browse');
   const [saveName, setSaveName] = useState('');

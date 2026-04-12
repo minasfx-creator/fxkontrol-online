@@ -189,7 +189,8 @@ function DropdownMenu({ label, icon: LabelIcon, items }: { label: string; icon?:
 
 /* ── Batch Add Positions ────────────────────────────────────── */
 function BatchAddButton() {
-  const { addPosition, selectMultiplePositions } = useProjectStore();
+    const addPosition = useProjectStore(s => s.addPosition);
+  const selectMultiplePositions = useProjectStore(s => s.selectMultiplePositions);
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(12);
   const [spacing, setSpacing] = useState(2);
@@ -353,7 +354,15 @@ function LocationDisplay() {
 }
 
 export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: ToolbarProps) {
-  const { projectName, timelineItems, positions, editorMode, setEditorMode, duration, trajectories, droneFormations, gpsOrigin } = useProjectStore();
+    const projectName = useProjectStore(s => s.projectName);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const positions = useProjectStore(s => s.positions);
+  const editorMode = useProjectStore(s => s.editorMode);
+  const setEditorMode = useProjectStore(s => s.setEditorMode);
+  const duration = useProjectStore(s => s.duration);
+  const trajectories = useProjectStore(s => s.trajectories);
+  const droneFormations = useProjectStore(s => s.droneFormations);
+  const gpsOrigin = useProjectStore(s => s.gpsOrigin);
   const { canUndo, canRedo, undo, redo } = useUndoStore();
   const { signOut } = useAuth();
   const { saveProject } = useProjectPersistence();

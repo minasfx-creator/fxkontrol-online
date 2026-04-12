@@ -357,7 +357,9 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   batchMode?: boolean;
   selectedIds?: string[];
 }>(({ position, batchMode, selectedIds }, ref) => {
-  const { updatePosition, updateTimelineItem, timelineItems } = useProjectStore();
+    const updatePosition = useProjectStore(s => s.updatePosition);
+  const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
+  const timelineItems = useProjectStore(s => s.timelineItems);
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [dragAxis, setDragAxis] = useState<'all' | 'heading' | 'pitch' | 'roll' | 'up-vector'>('all');

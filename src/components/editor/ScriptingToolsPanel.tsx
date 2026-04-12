@@ -21,7 +21,11 @@ import { calcWindCompensation } from '@/lib/pyroPhysics';
 type ToolMode = 'randomize' | 'sequence' | 'fan' | 'spread' | 'reverse' | 'quantize' | 'duplicate-flights' | 'wind-comp';
 
 export default function ScriptingToolsPanel({ onClose }: { onClose: () => void }) {
-  const { timelineItems, positions, selectedTimelineItemIds, updateTimelineItem, addTimelineItem } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const positions = useProjectStore(s => s.positions);
+  const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
+  const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
   const [mode, setMode] = useState<ToolMode>('sequence');
   const [randomConfig, setRandomConfig] = useState<RandomizeConfig>(DEFAULT_RANDOMIZE);
   const [seqConfig, setSeqConfig] = useState<SequenceConfig>(DEFAULT_SEQUENCE);

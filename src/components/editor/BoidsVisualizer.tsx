@@ -11,7 +11,8 @@ import InstancedDroneSwarm from './InstancedDroneSwarm';
  */
 export default function BoidsVisualizer() {
   const { agents, running, config, seekTarget, recording, setAgents, addRecordedFrame } = useBoidsStore();
-  const { droneFormations, currentTime } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const currentTime = useProjectStore(s => s.currentTime);
   const lastTime = useRef(performance.now());
   const simTime = useRef(0);
   const lastRecordTime = useRef(0);

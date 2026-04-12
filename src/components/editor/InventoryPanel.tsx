@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 
 export default function InventoryPanel({ onClose }: { onClose: () => void }) {
   const { items, setItem, showCostMultiplier, setShowCostMultiplier, importItems, initDefaults } = useInventoryStore();
-  const { timelineItems } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
   const [search, setSearch] = useState('');
   const [csvText, setCsvText] = useState('');
 

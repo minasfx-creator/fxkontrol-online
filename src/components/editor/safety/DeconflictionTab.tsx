@@ -51,7 +51,11 @@ const ESCALATION_ICONS: Record<EscalationLevel, string> = {
 };
 
 export default function DeconflictionTab() {
-  const { trajectories, positions, timelineItems, duration, droneFormations } = useProjectStore();
+    const trajectories = useProjectStore(s => s.trajectories);
+  const positions = useProjectStore(s => s.positions);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const duration = useProjectStore(s => s.duration);
+  const droneFormations = useProjectStore(s => s.droneFormations);
   const [geofence, setGeofence] = useState<Geofence>(DEFAULT_GEOFENCE);
   const [showGeofenceSettings, setShowGeofenceSettings] = useState(false);
   const [showHCA, setShowHCA] = useState(true);

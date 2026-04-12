@@ -25,7 +25,10 @@ const REPORTS = [
 type ReportId = typeof REPORTS[number]['id'];
 
 export default function ReportsPanel({ onClose }: { onClose: () => void }) {
-  const { projectName, timelineItems, positions, droneFormations } = useProjectStore();
+    const projectName = useProjectStore(s => s.projectName);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const positions = useProjectStore(s => s.positions);
+  const droneFormations = useProjectStore(s => s.droneFormations);
   const [expandedCategory, setExpandedCategory] = useState<string | null>('safety');
   const [previewId, setPreviewId] = useState<ReportId | null>(null);
 

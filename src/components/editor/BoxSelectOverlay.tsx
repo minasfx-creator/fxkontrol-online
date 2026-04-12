@@ -10,7 +10,9 @@ import { isLassoActive } from './SelectionModeBar';
  */
 export function BoxSelectR3F() {
   const { camera } = useThree();
-  const { positions, selectMultiplePositions, editorMode } = useProjectStore();
+    const positions = useProjectStore(s => s.positions);
+  const selectMultiplePositions = useProjectStore(s => s.selectMultiplePositions);
+  const editorMode = useProjectStore(s => s.editorMode);
 
   useEffect(() => {
     const handler = (e: CustomEvent) => {

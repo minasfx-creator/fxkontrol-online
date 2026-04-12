@@ -101,7 +101,11 @@ function generatePositions(config: ArrangeConfig): { x: number; z: number }[] {
 export default function ArrangePositionsDialog({ children }: { children: React.ReactNode }) {
   const [config, setConfig] = useState<ArrangeConfig>(DEFAULT_CONFIG);
   const [open, setOpen] = useState(false);
-  const { addPosition, selectMultiplePositions, selectedPositionIds, positions, updatePosition } = useProjectStore();
+    const addPosition = useProjectStore(s => s.addPosition);
+  const selectMultiplePositions = useProjectStore(s => s.selectMultiplePositions);
+  const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
+  const positions = useProjectStore(s => s.positions);
+  const updatePosition = useProjectStore(s => s.updatePosition);
 
   const arrangeExisting = selectedPositionIds.length >= 2;
   const effectiveCount = arrangeExisting ? selectedPositionIds.length : (config.pattern === 'grid' ? config.rows * config.cols : config.count);

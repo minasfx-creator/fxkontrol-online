@@ -42,7 +42,13 @@ const CALIBER_OPTIONS = [2, 3, 4, 5, 6, 8, 10, 12];
 
 /* ─── Finale 3D-style Table Row ─── */
 function EffectTableRow({ effect, index, usageCount }: { effect: Effect; index: number; usageCount: number }) {
-  const { selectedEffectId, selectEffect, addTimelineItem, currentTime, positions, selectedPositionId, selectedPositionIds } = useProjectStore();
+    const selectedEffectId = useProjectStore(s => s.selectedEffectId);
+  const selectEffect = useProjectStore(s => s.selectEffect);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const positions = useProjectStore(s => s.positions);
+  const selectedPositionId = useProjectStore(s => s.selectedPositionId);
+  const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
   const isSelected = selectedEffectId === effect.id;
   const isPyro = effect.type === 'firework';
   const vdl = useMemo(() => isPyro ? parseVDL(`${effect.caliber || 4}in ${effect.name}`) : null, [effect, isPyro]);
@@ -189,7 +195,13 @@ function EffectTableRow({ effect, index, usageCount }: { effect: Effect; index: 
 
 /* ─── Classic Card Row (existing style, compact) ─── */
 function EffectCard({ effect }: { effect: Effect }) {
-  const { selectedEffectId, selectEffect, addTimelineItem, currentTime, positions, selectedPositionId, selectedPositionIds } = useProjectStore();
+    const selectedEffectId = useProjectStore(s => s.selectedEffectId);
+  const selectEffect = useProjectStore(s => s.selectEffect);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const positions = useProjectStore(s => s.positions);
+  const selectedPositionId = useProjectStore(s => s.selectedPositionId);
+  const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
   const [isDragging, setIsDragging] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [selectedCaliber, setSelectedCaliber] = useState(effect.caliber || 4);
@@ -385,7 +397,7 @@ function EffectCard({ effect }: { effect: Effect }) {
 
 /* ─── Table View wrapper with usage counts ─── */
 function EffectTableView({ effects }: { effects: Effect[] }) {
-  const { timelineItems } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
   const usageCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     timelineItems.forEach(item => {
@@ -427,7 +439,9 @@ export default function EffectLibrary() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createVdl, setCreateVdl] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const { addTimelineItem, currentTime, positions } = useProjectStore();
+    const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const positions = useProjectStore(s => s.positions);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // C-key quick search (Finale 3D behavior)

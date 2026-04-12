@@ -145,7 +145,9 @@ function generateFiringPreview(timelineItems: TimelineItem[], positions: Positio
 // COMPONENT
 // ═══════════════════════════════════════════════════════════
 export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
-  const { projectName, timelineItems, positions } = useProjectStore();
+    const projectName = useProjectStore(s => s.projectName);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const positions = useProjectStore(s => s.positions);
   const [activeTab, setActiveTab] = useState('firing');
 
   const pyroCount = useMemo(() =>

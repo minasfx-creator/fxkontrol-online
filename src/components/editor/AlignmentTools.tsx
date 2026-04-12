@@ -11,7 +11,12 @@ let clipboard: Position[];
 clipboard = [];
 
 export default function AlignmentTools() {
-  const { selectedPositionIds, positions, updatePosition, addPosition, removePosition, selectMultiplePositions } = useProjectStore();
+    const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
+  const positions = useProjectStore(s => s.positions);
+  const updatePosition = useProjectStore(s => s.updatePosition);
+  const addPosition = useProjectStore(s => s.addPosition);
+  const removePosition = useProjectStore(s => s.removePosition);
+  const selectMultiplePositions = useProjectStore(s => s.selectMultiplePositions);
   const [typeFilter, setTypeFilter] = useState<PositionType | 'all'>('all');
   const allSelected = positions.filter(p => selectedPositionIds.includes(p.id));
   const selected = typeFilter === 'all' ? allSelected : allSelected.filter(p => p.type === typeFilter);

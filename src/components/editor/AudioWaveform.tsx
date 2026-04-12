@@ -72,11 +72,19 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-  const {
-    currentTime, duration, audioUrl, bpm, isPlaying, playbackSpeed,
-    setAudioUrl, setBpm, snapToBeat, setSnapToBeat,
-    cueMarkers, addCueMarker, removeCueMarker,
-  } = useProjectStore();
+    const currentTime = useProjectStore(s => s.currentTime);
+  const duration = useProjectStore(s => s.duration);
+  const audioUrl = useProjectStore(s => s.audioUrl);
+  const bpm = useProjectStore(s => s.bpm);
+  const isPlaying = useProjectStore(s => s.isPlaying);
+  const playbackSpeed = useProjectStore(s => s.playbackSpeed);
+  const setAudioUrl = useProjectStore(s => s.setAudioUrl);
+  const setBpm = useProjectStore(s => s.setBpm);
+  const snapToBeat = useProjectStore(s => s.snapToBeat);
+  const setSnapToBeat = useProjectStore(s => s.setSnapToBeat);
+  const cueMarkers = useProjectStore(s => s.cueMarkers);
+  const addCueMarker = useProjectStore(s => s.addCueMarker);
+  const removeCueMarker = useProjectStore(s => s.removeCueMarker);
 
   const [waveformData, setWaveformData] = useState<Float32Array | null>(null);
   const [uploading, setUploading] = useState(false);

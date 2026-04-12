@@ -11,9 +11,10 @@ import { Navigation, Crosshair, Zap, Shield, MapPin } from 'lucide-react';
 const DISSOLVE_DELAY = 5000; // ms
 
 export default function LiveCard() {
-  const {
-    positions, selectedPositionId, selectedPositionIds, timelineItems,
-  } = useProjectStore();
+    const positions = useProjectStore(s => s.positions);
+  const selectedPositionId = useProjectStore(s => s.selectedPositionId);
+  const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
+  const timelineItems = useProjectStore(s => s.timelineItems);
 
   const [visible, setVisible] = useState(false);
   const [screenPos, setScreenPos] = useState({ x: 0, y: 0 });

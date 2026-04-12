@@ -30,7 +30,8 @@ interface DiagnosticLog {
 }
 
 export default function DMXPanel({ onClose }: { onClose: () => void }) {
-  const { droneFormations, currentTime } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const currentTime = useProjectStore(s => s.currentTime);
   const { dmxDevices, sendDMXToAll, getConnectedDMXDevices } = useUSBDeviceStore();
   const hardware = useFireOneHardware();
   const [universes, setUniverses] = useState<DMXUniverse[]>([]);

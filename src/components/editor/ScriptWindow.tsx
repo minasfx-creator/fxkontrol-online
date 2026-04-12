@@ -103,11 +103,15 @@ interface FillConfig {
 }
 
 export default function ScriptWindow() {
-  const {
-    timelineItems, positions, selectedTimelineItemId,
-    selectTimelineItem, removeTimelineItem, updateTimelineItem,
-    combineAsChain, breakChain, addTimelineItem,
-  } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const positions = useProjectStore(s => s.positions);
+  const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
+  const removeTimelineItem = useProjectStore(s => s.removeTimelineItem);
+  const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
+  const combineAsChain = useProjectStore(s => s.combineAsChain);
+  const breakChain = useProjectStore(s => s.breakChain);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
 
   const [sortField, setSortField] = useState<SortField>('eventTime');
   const [sortDir, setSortDir] = useState<SortDir>('asc');

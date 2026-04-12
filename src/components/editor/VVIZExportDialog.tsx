@@ -18,7 +18,12 @@ interface VVIZExportDialogProps {
 }
 
 export default function VVIZExportDialog({ open, onOpenChange }: VVIZExportDialogProps) {
-  const { projectName, duration, timelineItems, positions, trajectories, droneFormations } = useProjectStore();
+    const projectName = useProjectStore(s => s.projectName);
+  const duration = useProjectStore(s => s.duration);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const positions = useProjectStore(s => s.positions);
+  const trajectories = useProjectStore(s => s.trajectories);
+  const droneFormations = useProjectStore(s => s.droneFormations);
 
   const [showName, setShowName] = useState(projectName);
   const [positionRate, setPositionRate] = useState(10);

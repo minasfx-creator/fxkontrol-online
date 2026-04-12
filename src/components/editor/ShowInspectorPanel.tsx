@@ -141,10 +141,12 @@ interface ShowInspectorPanelProps {
 }
 
 export default function ShowInspectorPanel({ onClose }: ShowInspectorPanelProps) {
-  const {
-    droneFormations, positions, timelineItems,
-    duration, currentTime, setCurrentTime,
-  } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const positions = useProjectStore(s => s.positions);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const duration = useProjectStore(s => s.duration);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
   const effects = useProjectStore.getState().timelineItems; // fallback
 
   const { storyboardEntries } = useFleetStore();
