@@ -277,14 +277,16 @@ export function FXKAssistant() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachment, setAttachment] = useState<AttachedFile | null>(null);
 
+  // Stable ref for send to avoid stale closure in voice callbacks
+  const sendRef = useRef<(text: string) => void>(() => {});
+
   // Voice hooks
   const joiSpeech = useJoiSpeech();
   const voiceRecognition = useVoiceRecognition({
     onTranscript: (text) => setInput(text),
     onFinalTranscript: (text) => {
       setInput(text);
-      // Auto-submit after voice recognition
-      setTimeout(() => send(text), 200);
+      setTimeout(() => sendRef.current(text), 200);
     },
   });
 
