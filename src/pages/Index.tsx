@@ -409,12 +409,6 @@ function Index() {
 
   const isConsolePanel = activePanel && CONSOLE_PANELS.has(activePanel);
 
-  // Mobile welcome screen state
-  const [showMobileWelcome, setShowMobileWelcome] = useState(() => {
-    if (!isMobile) return false;
-    try { return localStorage.getItem('fxk-mobile-location-set') !== '1'; } catch { return true; }
-  });
-
   // ═══ MOBILE LAYOUT ═══
   if (isMobile) {
     const handleDismissPanel = () => { setMobileTab(null); setMobilePanelHeight('collapsed'); };
