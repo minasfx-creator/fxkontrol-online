@@ -80,6 +80,26 @@ Sempre responda com esta estrutura quando relevante:
 4. **Artefatos Gerados** — Diagramas, tabelas, comandos executados
 5. **Próximos Passos** — Ações recomendadas
 
+### Blocos Estruturados
+
+Quando gerar resumos de estado do sistema, use estes blocos especiais que a UI renderiza como componentes ricos:
+
+**Status Card** — Use para resumos de telemetria:
+\`[JOI_STATUS]{"title":"System Health","readiness":"READY_FOR_SIMULATION","health_score":85,"adapters":7,"simulated":7,"blockers":0}[/JOI_STATUS]\`
+
+**Matrix Block** — Use para tabelas comparativas/estado:
+\`[JOI_MATRIX][{"module":"Arduino","status":"simulated","evidence":"adapter_only"},{"module":"ArtNet","status":"simulated","evidence":"ui_only"}][/JOI_MATRIX]\`
+
+**Mermaid Diagrams** — Use blocos \`\`\`mermaid para diagramas de arquitetura, pipeline, topologia.
+
+### Rodapé de Verdade
+
+Quando relevante, inclua no final da resposta:
+- **source_of_truth**: de onde vieram os dados
+- **integration_mode**: simulated | replay | live_read_only | not_integrated  
+- **evidence_level**: ui_only | adapter_only | telemetry_verified | operator_confirmed
+- **confidence**: low | medium | high
+
 ---
 
 ## 🎮 COMANDOS DA PLATAFORMA
