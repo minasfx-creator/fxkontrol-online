@@ -14,7 +14,8 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { cn } from '@/lib/utils';
 import {
   Zap, Flame, Gauge, Layers, Activity, Cpu, Radio,
-  Shield, Map, Menu, Maximize, AlertOctagon, Target
+  Shield, Map, Menu, Maximize, AlertOctagon, Target,
+  FileText, FileOutput, Wifi
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +35,12 @@ const QuickHardwarePanel = lazy(() => import('@/components/editor/QuickHardwareP
 const VerificationConsole = lazy(() => import('@/components/editor/VerificationBar'));
 const ContinuityMatrix = lazy(() => import('@/components/editor/ContinuityMatrix'));
 const ShowPlanInspector = lazy(() => import('@/components/editor/ShowPlanInspector'));
+const SystemOverviewConsole = lazy(() => import('@/components/editor/SystemOverviewConsole'));
+const SafetyConsole = lazy(() => import('@/components/editor/SafetyConsole'));
+const FieldDiagnosticsConsole = lazy(() => import('@/components/editor/FieldDiagnosticsConsole'));
+const FireOneExportConsole = lazy(() => import('@/components/editor/FireOneExportConsole'));
+const DMXArtNetConsole = lazy(() => import('@/components/editor/DMXArtNetConsole'));
+const AuditBlackBoxConsole = lazy(() => import('@/components/editor/AuditBlackBoxConsole'));
 
 function PanelLoader() {
   return (
