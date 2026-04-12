@@ -1,19 +1,17 @@
 /**
- * ─── Readiness Evaluator ───────────────────────────────────────────
- * Evaluates system-wide readiness by combining:
- * - VerificationEngine results
- * - Hardware adapter states
- * - Battery/power state
- * - Link health
+ * ─── Readiness Evaluator v2 ────────────────────────────────────────
+ * Evaluates system-wide readiness with provenance-aware checks.
+ * Considers: verification, hardware health, battery, link, data freshness,
+ * integration mode, evidence level, simulated device count.
  * 
- * Enforces the flow: ShowPlan → VerificationPass → ReadinessEvaluator → Export/Sync
- * NEVER permits direct UI→hardware commands.
+ * Enforces: ShowPlan → VerificationPass → ReadinessEvaluator → Export/Sync
  */
 
 import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { unifiedHardwareRegistry } from './UnifiedHardwareRegistry';
 import { batteryMonitorAdapter } from './adapters/BatteryMonitorAdapter';
 import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
+import { isDataStale } from './provenance';
 import type { ReadinessResult, ReadinessIssue, ReadinessStatus, AllowedOperation, OperationalMode } from './types';
 
 const ALL_OPERATIONS: AllowedOperation[] = ['simulate', 'preview', 'validate', 'export', 'diagnostics', 'sync_read_only'];
@@ -56,17 +54,46 @@ class ReadinessEvaluator {
       issues.push({ source: 'ArtNetNode', severity: 'warning', message: `Art-Net link degraded: ${artnet.link.latency_ms.toFixed(0)}ms, ${artnet.link.packet_loss.toFixed(1)}% loss` });
     }
 
+    // 5. Provenance checks — data freshness and integration honesty
+    const provenances = unifiedHardwareRegistry.getAllProvenances();
+    const simulatedCount = unifiedHardwareRegistry.getSimulatedCount();
+    const totalAdapters = provenances.size;
+
+    if (simulatedCount === totalAdapters && totalAdapters > 0) {
+      issues.push({ source: 'Provenance', severity: 'info', message: `All ${totalAdapters} adapters are SIMULATED — no real hardware connected` });
+    } else if (simulatedCount > 0) {
+      issues.push({ source: 'Provenance', severity: 'warning', message: `${simulatedCount}/${totalAdapters} adapters are SIMULATED` });
+    }
+
+    // Check for stale data in non-simulated adapters
+    let staleCount = 0;
+    for (const [id, prov] of provenances) {
+      if (prov.integration_mode !== 'simulated' && prov.integration_mode !== 'not_integrated') {
+        if (isDataStale(prov)) {
+          staleCount++;
+          issues.push({ source: 'Provenance', severity: 'warning', message: `${id}: telemetry stale (${Math.round(prov.data_freshness_ms / 1000)}s)` });
+        }
+      }
+    }
+
+    // Check for not_integrated adapters
+    const notIntegrated = Array.from(provenances.entries()).filter(([, p]) => p.integration_mode === 'not_integrated');
+    if (notIntegrated.length > 0) {
+      issues.push({ source: 'Provenance', severity: 'warning', message: `${notIntegrated.length} subsystem(s) not integrated` });
+    }
+
     // Determine status
     const hasErrors = issues.some(i => i.severity === 'error');
-    const hasWarnings = issues.some(i => i.severity === 'warning');
     
     let status: ReadinessStatus;
     if (vResult.level === 'BLOCKED' || hasErrors) {
       status = 'BLOCKED';
     } else if (battery.low_battery_alarm) {
       status = 'READY_FOR_EXPORT'; // can export but not sync
-    } else if (health.online > 0 && !hasErrors) {
+    } else if (simulatedCount === 0 && health.online > 0 && staleCount === 0) {
       status = 'READY_FOR_HARDWARE_SYNC';
+    } else if (simulatedCount < totalAdapters && health.online > 0) {
+      status = 'READY_FOR_LIVE_READ_ONLY';
     } else if (vResult.level === 'READY_FOR_EXPORT' || vResult.level === 'READY_FOR_FIELD') {
       status = 'READY_FOR_EXPORT';
     } else {
@@ -76,52 +103,44 @@ class ReadinessEvaluator {
     // Determine allowed operations
     const allowed: AllowedOperation[] = [];
     const blocked: AllowedOperation[] = [];
-    
     for (const op of ALL_OPERATIONS) {
-      if (this._isOperationAllowed(op, status, issues)) {
-        allowed.push(op);
-      } else {
-        blocked.push(op);
-      }
+      if (this._isOperationAllowed(op, status, issues)) allowed.push(op);
+      else blocked.push(op);
     }
 
     // Determine mode
     let mode: OperationalMode;
     if (status === 'BLOCKED') mode = 'blocked';
     else if (status === 'READY_FOR_HARDWARE_SYNC') mode = 'read-only-sync';
+    else if (status === 'READY_FOR_LIVE_READ_ONLY') mode = 'live-read-only';
     else if (status === 'READY_FOR_EXPORT') mode = 'export';
     else mode = 'preview';
 
     return {
-      status,
-      mode,
-      issues,
+      status, mode, issues,
       warnings: issues.filter(i => i.severity === 'warning').map(i => i.message),
       allowed_operations: allowed,
       blocked_operations: blocked,
     };
   }
 
-  /** Check if a specific operation is allowed */
   isAllowed(operation: AllowedOperation): boolean {
-    const result = this.evaluate();
-    return result.allowed_operations.includes(operation);
+    return this.evaluate().allowed_operations.includes(operation);
   }
 
   private _isOperationAllowed(op: AllowedOperation, status: ReadinessStatus, issues: ReadinessIssue[]): boolean {
     const hasErrors = issues.some(i => i.severity === 'error');
-    
     switch (op) {
       case 'diagnostics':
       case 'validate':
-        return true; // always allowed
+        return true;
       case 'preview':
       case 'simulate':
         return status !== 'BLOCKED';
       case 'export':
-        return status === 'READY_FOR_EXPORT' || status === 'READY_FOR_HARDWARE_SYNC';
+        return status === 'READY_FOR_EXPORT' || status === 'READY_FOR_HARDWARE_SYNC' || status === 'READY_FOR_LIVE_READ_ONLY';
       case 'sync_read_only':
-        return status === 'READY_FOR_HARDWARE_SYNC' && !hasErrors;
+        return (status === 'READY_FOR_HARDWARE_SYNC' || status === 'READY_FOR_LIVE_READ_ONLY') && !hasErrors;
       default:
         return false;
     }

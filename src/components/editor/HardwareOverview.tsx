@@ -11,6 +11,8 @@ import { hardwareHealthMonitor, type HealthReport } from '@/core/hardware/Hardwa
 import { telemetryPoller } from '@/core/hardware/TelemetryPoller';
 import { deviceDiscovery, type DiscoveryResult } from '@/core/hardware/DeviceDiscovery';
 import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
+import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry';
+import { getProvenanceBadge } from '@/core/hardware/provenance';
 import { cn } from '@/lib/utils';
 import {
   Activity, Cpu, Battery, Radio, Wifi, AlertTriangle,
@@ -151,7 +153,19 @@ export default function HardwareOverview() {
             <div key={dev.id} className="rounded border border-border/20 bg-card/30 p-2 flex flex-col gap-1">
               <div className="flex items-center gap-1.5">
                 <Icon className={cn('w-3.5 h-3.5', STATUS_COLORS[dev.connection_state])} />
-                <span className="text-[9px] font-mono font-bold text-foreground truncate">{dev.label}</span>
+                <span className="text-[9px] font-mono font-bold text-foreground truncate flex-1">{dev.label}</span>
+                {(() => {
+                  const prov = unifiedHardwareRegistry.getProvenance(dev.id);
+                  if (!prov) return null;
+                  const badge = getProvenanceBadge(prov.integration_mode);
+                  const badgeColors: Record<string, string> = {
+                    blue: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
+                    amber: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
+                    emerald: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+                    red: 'bg-red-500/15 text-red-400 border-red-500/20',
+                  };
+                  return <span className={cn('text-[6px] font-mono px-1 py-0.5 rounded border shrink-0', badgeColors[badge.color])}>{badge.label}</span>;
+                })()}
               </div>
               <div className="flex items-center gap-1">
                 <div className={cn('w-1.5 h-1.5 rounded-full', {

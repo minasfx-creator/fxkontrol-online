@@ -6,11 +6,13 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, RelayBankState, RelayChannelState } from '../types';
+import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
 
 export class RelayBankAdapter32 implements HardwareAdapter<RelayBankState> {
   readonly deviceId = 'relay-bank-32ch';
   readonly deviceType = 'relay-bank' as const;
   readonly label = '32ch Relay Bank — Field Output';
+  private _provenance: ProvenanceInfo = createSimulatedProvenance('spi');
 
   private _connected: DeviceConnectionState = 'disconnected';
   private _state: RelayBankState;
@@ -68,11 +70,11 @@ export class RelayBankAdapter32 implements HardwareAdapter<RelayBankState> {
 
   getState(): RelayBankState {
     return {
-      ...this._state,
-      fault_channels: [...this._state.fault_channels],
+      ...this._state, fault_channels: [...this._state.fault_channels],
       channel_states: this._state.channel_states.map(c => ({ ...c })),
     };
   }
+  getProvenance(): ProvenanceInfo { return { ...this._provenance, last_seen_at: Date.now(), data_freshness_ms: 0 }; }
 
   pollTelemetry(): void {
     if (this._connected !== 'connected') return;

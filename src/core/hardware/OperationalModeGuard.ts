@@ -11,6 +11,7 @@ const MODE_PERMISSIONS: Record<OperationalMode, AllowedOperation[]> = {
   'preview':         ['simulate', 'preview', 'validate', 'diagnostics'],
   'diagnostics':     ['validate', 'diagnostics'],
   'dry-run':         ['simulate', 'preview', 'validate', 'diagnostics'],
+  'live-read-only':  ['preview', 'validate', 'diagnostics', 'sync_read_only'],
   'read-only-sync':  ['simulate', 'preview', 'validate', 'export', 'diagnostics', 'sync_read_only'],
   'export':          ['simulate', 'preview', 'validate', 'export', 'diagnostics'],
   'blocked':         ['validate', 'diagnostics'],

@@ -5,11 +5,13 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, ExportProfile } from '../types';
+import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
 
 export class FireOneProfileAdapter implements HardwareAdapter<ExportProfile> {
   readonly deviceId = 'fireone-profile';
   readonly deviceType = 'fireone-profile' as const;
   readonly label = 'FireOne Export Profile';
+  private _provenance: ProvenanceInfo = createSimulatedProvenance('logical');
 
   private _connected: DeviceConnectionState = 'connected'; // always logical
   private _profile: ExportProfile = {
@@ -42,6 +44,7 @@ export class FireOneProfileAdapter implements HardwareAdapter<ExportProfile> {
   }
 
   getState(): ExportProfile { return { ...this._profile }; }
+  getProvenance(): ProvenanceInfo { return { ...this._provenance, last_seen_at: Date.now(), data_freshness_ms: 0 }; }
   pollTelemetry(): void {}
 
   runDiagnostics(): { healthy: boolean; issues: string[] } {

@@ -5,6 +5,7 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, LinkHealthState } from '../types';
+import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
 
 export interface ArtNetNodeState {
   node_ip: string;
@@ -18,6 +19,7 @@ export class ArtNetNodeAdapter implements HardwareAdapter<ArtNetNodeState> {
   readonly deviceId = 'artnet-node-01';
   readonly deviceType = 'artnet-node' as const;
   readonly label = 'Art-Net Node — DMX Bridge';
+  private _provenance: ProvenanceInfo = createSimulatedProvenance('ethernet_udp');
 
   private _connected: DeviceConnectionState = 'disconnected';
   private _state: ArtNetNodeState = {
@@ -63,6 +65,7 @@ export class ArtNetNodeAdapter implements HardwareAdapter<ArtNetNodeState> {
   getState(): ArtNetNodeState {
     return { ...this._state, universes: [...this._state.universes], link: { ...this._state.link } };
   }
+  getProvenance(): ProvenanceInfo { return { ...this._provenance, last_seen_at: Date.now(), data_freshness_ms: 0 }; }
 
   pollTelemetry(): void {
     if (this._connected === 'connected' || this._connected === 'degraded') {
