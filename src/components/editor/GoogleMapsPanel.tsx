@@ -92,16 +92,20 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
 
   // Initialize map
   useEffect(() => {
+    let cancelled = false;
+    const gmListeners: google.maps.MapsEventListener[] = [];
+
     async function init() {
       try {
         const { data, error: fnError } = await supabase.functions.invoke('get-maps-key');
+        if (cancelled) return;
         if (fnError || !data?.key) {
           setError('Google Maps API Key não configurada');
           return;
         }
 
         await loadGoogleMapsScript(data.key);
-        if (!mapRef.current) return;
+        if (cancelled || !mapRef.current) return;
 
         const map = new google.maps.Map(mapRef.current, {
           center: { lat: location.lat, lng: location.lng },
@@ -121,7 +125,7 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
 
         mapInstanceRef.current = map;
 
-        map.addListener('click', (e: google.maps.MapMouseEvent) => {
+        gmListeners.push(map.addListener('click', (e: google.maps.MapMouseEvent) => {
           if (!e.latLng) return;
 
           // Measuring mode
@@ -142,7 +146,7 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
           setGpsOrigin({ ...gpsOrigin, lat, lng });
           pushLog(`GPS origin → ${lat.toFixed(6)}, ${lng.toFixed(6)}`, 'info');
           toast.success(`Origem: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-        });
+        }));
 
         // Setup Places Autocomplete
         if (searchInputRef.current) {
@@ -150,7 +154,7 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
             fields: ['geometry', 'name', 'formatted_address'],
           });
           autocomplete.bindTo('bounds', map);
-          autocomplete.addListener('place_changed', () => {
+          gmListeners.push(autocomplete.addListener('place_changed', () => {
             const place = autocomplete.getPlace();
             if (!place.geometry?.location) {
               toast.error('Local não encontrado');
@@ -164,17 +168,31 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
             setSearchQuery(place.name || place.formatted_address || '');
             pushLog(`📍 Navegou para ${place.name || 'local'}`, 'success');
             toast.success(`📍 ${place.name || 'Local selecionado'}`);
-          });
+          }));
           autocompleteRef.current = autocomplete;
         }
 
         setLoaded(true);
         pushLog('Google Maps inicializado — clique para definir origem GPS', 'info');
       } catch (err: any) {
-        setError(err.message || 'Erro ao carregar Google Maps');
+        if (!cancelled) setError(err.message || 'Erro ao carregar Google Maps');
       }
     }
     init();
+
+    return () => {
+      cancelled = true;
+      gmListeners.forEach(l => l.remove());
+      markersRef.current.forEach(m => m.setMap(null));
+      markersRef.current = [];
+      liveMarkersRef.current.forEach(m => m.setMap(null));
+      liveMarkersRef.current = [];
+      circlesRef.current.forEach(c => c.setMap(null));
+      circlesRef.current = [];
+      if (polylineRef.current) { polylineRef.current.setMap(null); polylineRef.current = null; }
+      if (originMarkerRef.current) { originMarkerRef.current.setMap(null); originMarkerRef.current = null; }
+      mapInstanceRef.current = null;
+    };
   }, []);
 
   // Update map type
