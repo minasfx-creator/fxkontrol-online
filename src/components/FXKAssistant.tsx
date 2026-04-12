@@ -684,8 +684,8 @@ export function FXKAssistant() {
         }}
       >
         <img src={joiFaceIcon} alt="Joi" className="w-5 h-5 rounded-full object-cover" />
-        <span className="text-[10px] font-mono tracking-[0.2em] uppercase" style={{ color: 'hsl(38 100% 55%)' }}>
-          JOI · COMPANION
+        <span className="text-[10px] font-mono tracking-[0.2em] uppercase" style={{ color: `hsl(${modeConfig.accentHsl})` }}>
+          JOI · {modeConfig.shortLabel}
         </span>
         {joiSpeech.speaking && <SpeakingWave />}
       </div>
