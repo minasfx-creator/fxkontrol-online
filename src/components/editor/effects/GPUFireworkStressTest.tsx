@@ -5,7 +5,7 @@
  * Launches 10 simultaneous GPU fireworks to validate 60 FPS performance.
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import RealisticFirework, { type StressTestFirework } from './RealisticFirework';
 
@@ -69,12 +69,18 @@ export function StressTestFireworks() {
  */
 export function StressTestButton() {
   const [launching, setLaunching] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
 
   const handleClick = () => {
     setLaunching(true);
     const fn = (window as any).__stressTestLaunch;
     if (fn) fn();
-    setTimeout(() => setLaunching(false), 600);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setLaunching(false), 600);
   };
 
   return (

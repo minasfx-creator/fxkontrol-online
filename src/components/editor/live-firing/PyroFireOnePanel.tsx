@@ -278,6 +278,20 @@ export default function PyroFireOnePanel({
     })));
   }, [simMode, hardware.isConnected, hardware.modules]);
 
+  // Persistent Supabase channels to avoid ephemeral channel leaks
+  const pyroSyncChannel = useRef(supabase.channel('fxc-pyro-sync'));
+  const mobileLinkChannel = useRef(supabase.channel('fxc-mobile-link'));
+
+  useEffect(() => {
+    // Subscribe channels once
+    pyroSyncChannel.current.subscribe();
+    mobileLinkChannel.current.subscribe();
+    return () => {
+      supabase.removeChannel(pyroSyncChannel.current);
+      supabase.removeChannel(mobileLinkChannel.current);
+    };
+  }, []);
+
   // Import pyro cues from AutoFire
   const importPyroCues = useCallback(() => {
     const pyroCues = DEMO_CUES.filter(c => c.device === 'pyro');
@@ -285,7 +299,7 @@ export default function PyroFireOnePanel({
     setStepCues(pyroCues);
     setStepIndex(0);
     toast.success(`Imported ${pyroCues.length} pyro cues from AutoFire`);
-    supabase.channel('fxc-pyro-sync').send({
+    pyroSyncChannel.current.send({
       type: 'broadcast', event: 'pyro-cues-sync',
       payload: { cues: pyroCues },
     }).catch(() => {});
@@ -407,7 +421,7 @@ export default function PyroFireOnePanel({
     const chIdx = (moduleAddr - 1) * 32 + (igniterPos - 1);
     if (chIdx < channels.length) fireChannel(channels[chIdx].id);
 
-    supabase.channel('fxc-mobile-link').send({
+    mobileLinkChannel.current.send({
       type: 'broadcast', event: 'fxc-fire',
       payload: { channelId: chIdx < channels.length ? channels[chIdx].id : null, module: moduleAddr, igniter: igniterPos, source: 'pyro-panel' },
     }).catch(() => {});

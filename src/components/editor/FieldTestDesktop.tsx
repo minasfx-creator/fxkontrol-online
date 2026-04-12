@@ -4,7 +4,7 @@
  * Center: 32-ch Fire Grid (8×4)
  * Right: Telemetry & Diagnostics + Event Log
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -200,13 +200,20 @@ export default function FieldTestDesktop() {
     toast.info('Sessão encerrada');
   }, [channels]);
 
+  const lastFiredTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => { if (lastFiredTimerRef.current) clearTimeout(lastFiredTimerRef.current); };
+  }, []);
+
   const handleFire = useCallback((ch: number) => {
     if (!session?.armed || session.role !== 'controller') return;
     fieldTestEngine.fire(ch);
     haptics.fire();
     setLastFired(ch);
     setChannelResults(prev => ({ ...prev, [ch]: { status: 'fired' } }));
-    setTimeout(() => setLastFired(null), 300);
+    if (lastFiredTimerRef.current) clearTimeout(lastFiredTimerRef.current);
+    lastFiredTimerRef.current = setTimeout(() => setLastFired(null), 300);
   }, [session]);
 
   // Track ACKs
