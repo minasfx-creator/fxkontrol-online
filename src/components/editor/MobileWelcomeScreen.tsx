@@ -153,8 +153,9 @@ export default function MobileWelcomeScreen({ onComplete }: MobileWelcomeScreenP
             }}
           >
             <div className={cn(
-              "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
-              color === 'accent' ? 'bg-accent/15' : 'bg-primary/10'
+              "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-all",
+              color === 'accent' ? 'bg-accent/15' : 'bg-primary/10',
+              loading && 'animate-pulse ring-2 ring-accent/30'
             )}>
               {loading ? (
                 <Loader2 className="w-5 h-5 text-accent animate-spin" />
