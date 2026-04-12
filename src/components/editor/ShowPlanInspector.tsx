@@ -1,20 +1,15 @@
 /**
  * ShowPlanInspector — Navigable tree view of the ShowPlan data structure.
- * Shows counters per domain: pyro cues, DMX cues, drone paths, hardware modules.
- * Quick-export buttons for .fir, Art-Net patch CSV and drone waypoints CSV.
- * Verification results panel with pass/fail icons per check.
+ * Uses centralized VerificationEngine for validation gating.
  */
 import { useCallback, useState } from 'react';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
-import { useVerificationStore } from '@/core/verification/useVerificationStore';
+import { useVerificationEngine } from '@/core/verification/useVerificationEngine';
 import { downloadFireOneScript } from '@/core/export/FireOneExporter';
 import { downloadArtNetPatch } from '@/core/export/ArtNetPatchExporter';
 import { downloadDroneCSV } from '@/core/export/DroneCSVExporter';
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
+  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
 import {
@@ -23,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { VerificationCheckResult } from '@/core/showplan/ShowPlan';
+import type { VerificationIssue } from '@/core/verification/types';
 
 function CountBadge({ count, color }: { count: number; color: string }) {
   return (
@@ -33,17 +28,17 @@ function CountBadge({ count, color }: { count: number; color: string }) {
   );
 }
 
-function CheckIcon({ check }: { check: VerificationCheckResult }) {
-  if (check.passed) return <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />;
-  if (check.severity === 'error') return <XCircle className="w-3 h-3 text-red-400 shrink-0" />;
-  if (check.severity === 'warning') return <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />;
+function CheckIcon({ issue }: { issue: VerificationIssue }) {
+  if (issue.passed) return <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />;
+  if (issue.severity === 'error') return <XCircle className="w-3 h-3 text-red-400 shrink-0" />;
+  if (issue.severity === 'warning') return <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />;
   return <Info className="w-3 h-3 text-blue-400 shrink-0" />;
 }
 
 export default function ShowPlanInspector() {
   const [, setTick] = useState(0);
   const sp = showPlanManager.current;
-  const { level, result, runVerification } = useVerificationStore();
+  const { level, result, runVerification } = useVerificationEngine();
 
   const handleLoadTestData = useCallback(() => {
     showPlanManager.loadTestData();
@@ -56,14 +51,12 @@ export default function ShowPlanInspector() {
     setTick(t => t + 1);
   }, [runVerification]);
 
+  const canExport = level === 'READY_FOR_EXPORT' || level === 'READY_FOR_FIELD';
+
   const sections = [
     {
-      id: 'metadata',
-      icon: Shield,
-      label: 'METADATA',
-      color: 'text-amber-400',
-      badgeColor: 'bg-amber-500/15 text-amber-400',
-      count: 1,
+      id: 'metadata', icon: Shield, label: 'METADATA', color: 'text-amber-400',
+      badgeColor: 'bg-amber-500/15 text-amber-400', count: 1,
       content: (
         <div className="space-y-1 text-[9px] font-mono text-muted-foreground">
           <div><span className="text-foreground/60">Name:</span> {sp.metadata.name}</div>
@@ -75,12 +68,8 @@ export default function ShowPlanInspector() {
       ),
     },
     {
-      id: 'pyro',
-      icon: Flame,
-      label: 'PYRO CUES',
-      color: 'text-red-400',
-      badgeColor: 'bg-red-500/15 text-red-400',
-      count: sp.pyroCues.length,
+      id: 'pyro', icon: Flame, label: 'PYRO CUES', color: 'text-red-400',
+      badgeColor: 'bg-red-500/15 text-red-400', count: sp.pyroCues.length,
       content: sp.pyroCues.length === 0 ? (
         <p className="text-[9px] font-mono text-muted-foreground/50">No pyro cues defined</p>
       ) : (
@@ -97,12 +86,8 @@ export default function ShowPlanInspector() {
       ),
     },
     {
-      id: 'dmx',
-      icon: Radio,
-      label: 'DMX CUES',
-      color: 'text-blue-400',
-      badgeColor: 'bg-blue-500/15 text-blue-400',
-      count: sp.dmxCues.length,
+      id: 'dmx', icon: Radio, label: 'DMX CUES', color: 'text-blue-400',
+      badgeColor: 'bg-blue-500/15 text-blue-400', count: sp.dmxCues.length,
       content: sp.dmxCues.length === 0 ? (
         <p className="text-[9px] font-mono text-muted-foreground/50">No DMX cues defined</p>
       ) : (
@@ -118,12 +103,8 @@ export default function ShowPlanInspector() {
       ),
     },
     {
-      id: 'drones',
-      icon: Layers,
-      label: 'DRONE PATHS',
-      color: 'text-teal-400',
-      badgeColor: 'bg-teal-500/15 text-teal-400',
-      count: sp.dronePaths.length,
+      id: 'drones', icon: Layers, label: 'DRONE PATHS', color: 'text-teal-400',
+      badgeColor: 'bg-teal-500/15 text-teal-400', count: sp.dronePaths.length,
       content: sp.dronePaths.length === 0 ? (
         <p className="text-[9px] font-mono text-muted-foreground/50">No drone paths defined</p>
       ) : (
@@ -138,12 +119,8 @@ export default function ShowPlanInspector() {
       ),
     },
     {
-      id: 'hardware',
-      icon: Cpu,
-      label: 'HARDWARE MODULES',
-      color: 'text-cyan-400',
-      badgeColor: 'bg-cyan-500/15 text-cyan-400',
-      count: sp.hardwareConfig.modules.length,
+      id: 'hardware', icon: Cpu, label: 'HARDWARE', color: 'text-cyan-400',
+      badgeColor: 'bg-cyan-500/15 text-cyan-400', count: sp.hardwareConfig.modules.length,
       content: sp.hardwareConfig.modules.length === 0 ? (
         <p className="text-[9px] font-mono text-muted-foreground/50">No hardware modules configured</p>
       ) : (
@@ -159,12 +136,8 @@ export default function ShowPlanInspector() {
       ),
     },
     {
-      id: 'positions',
-      icon: MapPin,
-      label: 'POSITIONS',
-      color: 'text-violet-400',
-      badgeColor: 'bg-violet-500/15 text-violet-400',
-      count: sp.positions.length,
+      id: 'positions', icon: MapPin, label: 'POSITIONS', color: 'text-violet-400',
+      badgeColor: 'bg-violet-500/15 text-violet-400', count: sp.positions.length,
       content: sp.positions.length === 0 ? (
         <p className="text-[9px] font-mono text-muted-foreground/50">No positions defined</p>
       ) : (
@@ -177,12 +150,8 @@ export default function ShowPlanInspector() {
       ),
     },
     {
-      id: 'exports',
-      icon: FileOutput,
-      label: 'EXPORT PROFILES',
-      color: 'text-amber-400',
-      badgeColor: 'bg-amber-500/15 text-amber-400',
-      count: sp.exportProfiles.length,
+      id: 'exports', icon: FileOutput, label: 'EXPORT PROFILES', color: 'text-amber-400',
+      badgeColor: 'bg-amber-500/15 text-amber-400', count: sp.exportProfiles.length,
       content: (
         <div className="space-y-0.5 text-[9px] font-mono text-muted-foreground">
           {sp.exportProfiles.map(e => (
@@ -193,26 +162,14 @@ export default function ShowPlanInspector() {
     },
   ];
 
-  const handleExportFir = useCallback(() => downloadFireOneScript(), []);
-  const handleExportArtNet = useCallback(() => downloadArtNetPatch(), []);
-  const handleExportDrone = useCallback(() => downloadDroneCSV(), []);
-
-  const hasPyro = sp.pyroCues.length > 0;
-  const hasDmx = sp.dmxCues.length > 0;
-  const hasDrones = sp.dronePaths.length > 0;
-  const exportBlocked = level === 'BLOCKED';
-
-  const passed = result?.checks.filter(c => c.passed).length ?? 0;
-  const total = result?.checks.length ?? 0;
+  const passed = result?.summary.passed ?? 0;
+  const total = result?.summary.total ?? 0;
   const failed = total - passed;
 
   return (
     <div className="flex flex-col h-full p-3 gap-2 bg-background/80">
-      {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-xs font-mono font-bold tracking-widest text-foreground uppercase">
-          ShowPlan Inspector
-        </span>
+        <span className="text-xs font-mono font-bold tracking-widest text-foreground uppercase">ShowPlan Inspector</span>
         <span className={cn(
           'text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border',
           level === 'READY_FOR_FIELD' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
@@ -223,28 +180,26 @@ export default function ShowPlanInspector() {
         </span>
       </div>
 
-      {/* Test Data + Quick Export */}
       <div className="flex items-center gap-1.5 border border-border/10 rounded p-2">
         <Button size="sm" variant="outline" onClick={handleLoadTestData}
           className="h-5 text-[8px] font-mono gap-1 px-2 border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
           <TestTube2 className="w-2.5 h-2.5" /> LOAD TEST DATA
         </Button>
         <span className="text-[8px] font-mono text-muted-foreground/60 tracking-widest mr-auto">QUICK EXPORT</span>
-        <Button size="sm" variant="outline" onClick={handleExportFir} disabled={!hasPyro || exportBlocked}
-          className="h-5 text-[8px] font-mono gap-1 px-2">
+        <Button size="sm" variant="outline" onClick={() => downloadFireOneScript()} disabled={sp.pyroCues.length === 0 || !canExport}
+          className="h-5 text-[8px] font-mono gap-1 px-2 disabled:opacity-30">
           <Download className="w-2.5 h-2.5" /> .FIR
         </Button>
-        <Button size="sm" variant="outline" onClick={handleExportArtNet} disabled={!hasDmx || exportBlocked}
-          className="h-5 text-[8px] font-mono gap-1 px-2">
+        <Button size="sm" variant="outline" onClick={() => downloadArtNetPatch()} disabled={sp.dmxCues.length === 0 || !canExport}
+          className="h-5 text-[8px] font-mono gap-1 px-2 disabled:opacity-30">
           <Download className="w-2.5 h-2.5" /> ART-NET
         </Button>
-        <Button size="sm" variant="outline" onClick={handleExportDrone} disabled={!hasDrones || exportBlocked}
-          className="h-5 text-[8px] font-mono gap-1 px-2">
+        <Button size="sm" variant="outline" onClick={() => downloadDroneCSV()} disabled={sp.dronePaths.length === 0 || !canExport}
+          className="h-5 text-[8px] font-mono gap-1 px-2 disabled:opacity-30">
           <Download className="w-2.5 h-2.5" /> DRONE
         </Button>
       </div>
 
-      {/* Verification Results Panel */}
       <div className="border border-border/10 rounded p-2 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
@@ -268,19 +223,20 @@ export default function ShowPlanInspector() {
         {result ? (
           <ScrollArea className="max-h-40">
             <div className="space-y-0.5">
-              {result.checks.map(c => (
-                <div key={c.id} className="flex items-start gap-1.5 py-0.5">
-                  <CheckIcon check={c} />
+              {result.issues.map(i => (
+                <div key={i.id} className="flex items-start gap-1.5 py-0.5">
+                  <CheckIcon issue={i} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className={cn(
                         'text-[9px] font-mono font-medium',
-                        c.passed ? 'text-foreground/70' : c.severity === 'error' ? 'text-red-400' : c.severity === 'warning' ? 'text-amber-400' : 'text-blue-400'
+                        i.passed ? 'text-foreground/70' : i.severity === 'error' ? 'text-red-400' : i.severity === 'warning' ? 'text-amber-400' : 'text-blue-400'
                       )}>
-                        {c.label}
+                        {i.label}
                       </span>
+                      <span className="text-[7px] font-mono text-muted-foreground/30 uppercase">{i.category}</span>
                     </div>
-                    <p className="text-[8px] font-mono text-muted-foreground/50 leading-tight">{c.detail}</p>
+                    <p className="text-[8px] font-mono text-muted-foreground/50 leading-tight">{i.detail}</p>
                   </div>
                 </div>
               ))}
@@ -291,7 +247,6 @@ export default function ShowPlanInspector() {
         )}
       </div>
 
-      {/* Accordion tree */}
       <Accordion type="multiple" defaultValue={['metadata', 'pyro']} className="flex-1 overflow-y-auto">
         {sections.map(section => (
           <AccordionItem key={section.id} value={section.id} className="border-border/10">
