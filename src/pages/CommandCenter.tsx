@@ -53,6 +53,7 @@ const BatteryPowerMonitor = lazy(() => import('@/components/editor/BatteryPowerM
 const MuxContinuityMonitor = lazy(() => import('@/components/editor/MuxContinuityMonitor'));
 const ArtNetDMXMonitor = lazy(() => import('@/components/editor/ArtNetDMXMonitor'));
 const ReadinessDashboard = lazy(() => import('@/components/editor/ReadinessDashboard'));
+const SafetySummaryBar = lazy(() => import('@/components/editor/SafetySummaryBar'));
 
 function PanelLoader() {
   return (
@@ -810,6 +811,11 @@ export default function CommandCenter() {
               )}
             </div>
           </div>
+        )}
+
+        {/* Safety Summary Bar — always visible */}
+        {!isNativeFireConsole && (
+          <Suspense fallback={null}><SafetySummaryBar /></Suspense>
         )}
 
         {/* Content with ambient console glow */}
