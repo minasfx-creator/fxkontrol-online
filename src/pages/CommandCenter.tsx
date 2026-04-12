@@ -31,6 +31,9 @@ const FXKNetPanel = lazy(() => import('@/components/editor/live-firing/FXKNetPan
 const DMXMonitorPanel = lazy(() => import('@/components/editor/dmx/DMXMonitorPanel'));
 const FieldTestDesktop = lazy(() => import('@/components/editor/FieldTestDesktop'));
 const QuickHardwarePanel = lazy(() => import('@/components/editor/QuickHardwarePanel'));
+const VerificationConsole = lazy(() => import('@/components/editor/VerificationBar'));
+const ContinuityMatrix = lazy(() => import('@/components/editor/ContinuityMatrix'));
+const ShowPlanInspector = lazy(() => import('@/components/editor/ShowPlanInspector'));
 
 function PanelLoader() {
   return (
