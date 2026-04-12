@@ -7,7 +7,7 @@ import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { dmxUniverseManager } from '@/core/protocols/DMXUniverseManager';
 import { fixtureAddressing } from '@/core/protocols/FixtureAddressing';
 import { cn } from '@/lib/utils';
-import { Map, RefreshCw, Radio, Cpu } from 'lucide-react';
+import { Map as MapIcon, RefreshCw, Radio, Cpu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -17,10 +17,10 @@ export default function AddressingConsole() {
 
   const sp = showPlanManager.current;
   const universes = dmxUniverseManager.getUniverses();
-  const fixtures = fixtureAddressing.getFixtures();
+  const fixtures = fixtureAddressing.getAll();
 
   // Compute module addressing from ShowPlan
-  const moduleMap = new Map<number, { channels: Set<number>; cueCount: number }>();
+  const moduleMap = new window.Map<number, { channels: Set<number>; cueCount: number }>();
   for (const cue of sp.pyroCues) {
     if (!moduleMap.has(cue.module)) moduleMap.set(cue.module, { channels: new Set(), cueCount: 0 });
     const m = moduleMap.get(cue.module)!;
@@ -29,7 +29,7 @@ export default function AddressingConsole() {
   }
 
   // DMX universe usage from ShowPlan cues
-  const universeUsage = new Map<number, number>();
+  const universeUsage = new window.Map<number, number>();
   for (const cue of sp.dmxCues) {
     universeUsage.set(cue.universe, (universeUsage.get(cue.universe) || 0) + 1);
   }
@@ -38,7 +38,7 @@ export default function AddressingConsole() {
     <div className="flex flex-col h-full p-4 gap-4 bg-background/80">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Map className="w-4 h-4 text-violet-400" />
+          <MapIcon className="w-4 h-4 text-violet-400" />
           <span className="text-xs font-mono font-bold tracking-widest text-foreground uppercase">Addressing & Protocols</span>
         </div>
         <Button size="sm" variant="outline" onClick={refresh} className="h-6 text-[9px] font-mono gap-1">
