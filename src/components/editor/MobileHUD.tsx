@@ -57,7 +57,7 @@ export default React.memo(function MobileHUD() {
   return (
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: 'max(8px, env(safe-area-inset-top))' }}>
       {/* Main HUD row */}
-      <div className="flex items-center justify-between px-2 pt-1 pb-1 mx-2 gap-1">
+      <div className="flex items-center justify-between px-2 pt-1 pb-1 mx-2 gap-1 min-w-0">
         {/* Left: Timecode pill or Placing Mode indicator */}
         {isPlacingMode ? (
           <div className="pointer-events-auto status-pill shrink-0 ring-1 ring-accent/40 mode-indicator-pulse" style={{ background: 'hsl(var(--accent) / 0.1)' }}>
@@ -70,7 +70,7 @@ export default React.memo(function MobileHUD() {
             isArmed && "ring-1 ring-destructive/40 shadow-[0_0_8px_hsl(var(--destructive)/0.15)]"
           )}>
             <Zap className={cn("w-3 h-3", isArmed ? "text-destructive" : "text-primary")} />
-            <span className="font-mono text-[10px] font-semibold text-primary tabular-nums tracking-tight">
+            <span className="font-mono text-[10px] font-semibold text-primary tabular-nums tracking-tight truncate max-w-[80px]">
               {formatTimecode(currentTime)}
             </span>
             {isArmed && (
