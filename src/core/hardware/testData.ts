@@ -12,6 +12,7 @@ import { relayBankAdapter } from './adapters/RelayBankAdapter32';
 import { batteryMonitorAdapter } from './adapters/BatteryMonitorAdapter';
 import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
 import { fireOneProfileAdapter } from './adapters/FireOneProfileAdapter';
+import { dmxUniverseAdapter } from './adapters/DMXUniverseAdapter';
 import { deviceEventLog } from './DeviceEventLog';
 
 export type TestScenario = 'healthy' | 'degraded' | 'critical' | 'mixed';
@@ -25,6 +26,7 @@ export function loadHardwareTestData(scenario: TestScenario = 'mixed'): void {
   batteryMonitorAdapter.reset();
   artNetNodeAdapter.reset();
   fireOneProfileAdapter.reset();
+  dmxUniverseAdapter.reset();
 
   deviceEventLog.log('system', 'state_change', `Loading test scenario: ${scenario}`);
 
