@@ -1,71 +1,68 @@
 
 
-# Limpeza de Código e Otimização — FX KONTROL
+# Otimização de LCP, SEO Técnico e Acessibilidade — FX KONTROL
 
-## Diagnóstico
+## Contexto Importante
 
-Após análise completa do codebase, identifiquei os seguintes problemas:
+O relatório é extenso, mas muitas recomendações (SSG, hydration, WASM, consolidação de 17 stores) estão **fora do escopo prático** da plataforma Lovable (SPA pura com Vite/React, sem SSR/Next.js). Vou focar nas **ações concretas e implementáveis** que terão impacto real.
 
-### Dependências
-- **Plugin React duplicado**: `@vitejs/plugin-react` E `@vitejs/plugin-react-swc` — só um é usado (o primeiro)
-- **Capacitor platform deps sem uso direto**: `@capacitor/android`, `@capacitor/cli`, `@capacitor/ios` — são deps de build mobile, mas `@capacitor/core` e `@capacitor/haptics` são usados em `haptics.ts`
-- **`@types/google.maps`** — tipo sem importação direta (pode ser usado implicitamente)
-- **`tus-js-client`** — usado apenas em `VVIZImporter.tsx` (1 ficheiro)
+A pontuação LCP zero da auditoria veio da **página placeholder** (app não publicado). Após publicação, o Lighthouse analisará a app real. Mesmo assim, há otimizações válidas para quando estiver publicada.
 
-### Bundle (produção)
-- **Total precache**: 8.5 MB (253 ficheiros) — excessivo para PWA
-- **vendor-export**: 871 KB (jspdf + docx + jszip) — deveria ser lazy-loaded sob demanda
-- **three-core**: 970 KB — inevitável, mas ok por ser lazy
-- **html2canvas**: 201 KB — chunk separado, usado apenas em exportação
-- **1420 exports mortos** (ts-prune) — código não utilizado infla o bundle
+---
 
-### Ficheiros grandes (>800 linhas)
-- 32 ficheiros com >800 linhas; top: SkyCanvas (1926), PyroFireOnePanel (1642), LiveFiringPanel (1486)
-- Candidatos a decomposição em sub-componentes
+## Fase 1 — SEO Técnico (index.html)
 
-### Código morto
-- Componentes como `JoiHologramAvatar`, `JoiHologramFullBody` com exports não utilizados
-- Hooks como `useCamera`, `useDMXWorker`, `useRemoteRelay`, `useTiles` potencialmente órfãos
+**Ficheiro: `index.html`**
 
-## Plano de Execução
+1. **Corrigir viewport** — remover `maximum-scale=1.0, user-scalable=no` (viola acessibilidade WCAG e penaliza Lighthouse)
+2. **Atualizar OG/Twitter** — usar imagens próprias da Minas FX em vez das do Lovable, corrigir `twitter:site`
+3. **Adicionar JSON-LD** — structured data `Organization` + `SoftwareApplication` para E-E-A-T
+4. **Adicionar `lang="pt-BR"`** — atualmente está `en`
+5. **Adicionar canonical** — `<link rel="canonical">`
 
-### Fase 1 — Remover dependências desnecessárias
-- Remover `@vitejs/plugin-react-swc` do `package.json` (duplicado, não usado no vite.config)
-- Remover `@capacitor/android`, `@capacitor/cli`, `@capacitor/ios` (deps de build nativo, não afetam web)
-- Remover `@types/google.maps` se não houver uso implícito
+## Fase 2 — Ficheiros SEO Estáticos
 
-### Fase 2 — Otimizar chunks pesados
-- Mover `vendor-export` (jspdf/docx/jszip) para import dinâmico lazy — só carrega quando utilizador exporta
-- Separar `html2canvas` do bundle principal (já está separado, verificar se é lazy)
-- Adicionar tree-shaking hints para `lucide-react` (118 KB de ícones)
+1. **Criar `public/sitemap.xml`** — listar rotas públicas (`/`, `/auth`) com `lastmod` e `priority`
+2. **Melhorar `public/robots.txt`** — adicionar GPTBot, PerplexityBot, referência ao sitemap, bloquear rotas privadas
 
-### Fase 3 — Limpar exports mortos (top 50)
-- Remover funções/tipos exportados mas nunca importados nos módulos mais críticos:
-  - `src/lib/artnet4Engine.ts` (8 exports mortos)
-  - `src/lib/chainEngine.ts` (5 exports mortos)
-  - `src/lib/cueNumbering.ts` (5 exports mortos)
-  - `src/lib/dmxEngine.ts` (6 exports mortos)
-  - `src/hooks/` (vários hooks órfãos)
+## Fase 3 — Otimização LCP Real
 
-### Fase 4 — Reduzir precache PWA
-- Excluir chunks lazy (vendor-export, html2canvas, postprocessing-core) do precache do workbox
-- Reduzir de 8.5 MB para ~4 MB de precache
-- Adicionar runtime caching para chunks 3D/export em vez de precache
+**Ficheiro: `index.html`**
 
-### Fase 5 — Decomposição dos ficheiros maiores (incremental)
-- `SkyCanvas.tsx` (1926 linhas) → extrair sub-sistemas para `skycanvas/` (já parcialmente feito)
-- `LiveFiringPanel.tsx` (1486 linhas) → extrair secções em componentes dedicados
-- `FieldTest.tsx` (1466 linhas) → separar lógica de teste de UI
+1. **Splash como elemento LCP visível** — o splash já está no HTML estático, mas o `<p>` de texto nele pode ser o LCP. Adicionar um `<h1>` visível e semântico dentro do splash para que o LCP seja imediato
+2. **Preload do logo/ícone crítico** — adicionar `<link rel="preload">` para o favicon/logo usado no splash
+3. **Reduzir font-loading bloqueante** — a segunda folha de fontes (5 famílias, 20+ pesos) é excessiva; reduzir para pesos usados
 
-## Impacto Esperado
-- **Bundle inicial**: -200-400 KB (lazy vendor-export + dead code)
-- **Precache PWA**: -4 MB (de 8.5 para ~4 MB)
-- **node_modules**: -30 MB (deps removidos)
-- **Manutenibilidade**: menos 1400+ exports mortos, ficheiros mais legíveis
+**Ficheiro: `src/main.tsx`**
 
-## Detalhes Técnicos
-- Todas as remoções são incrementais e retrocompatíveis
-- Nenhum módulo novo criado — apenas limpeza e reorganização
-- Lazy imports usam o padrão `React.lazy()` já existente no projeto
-- Workbox config ajustada em `vite.config.ts` via `globIgnores`
+4. **Defer splash dismissal** — usar `requestIdleCallback` em vez de `requestAnimationFrame` para dar mais tempo ao browser pintar
+
+## Fase 4 — Acessibilidade (ARIA Landmarks)
+
+**Ficheiro: `src/layouts/MainLayout.tsx`**
+
+1. Adicionar `role="banner"` ao header
+2. Adicionar `role="main"` à área de conteúdo (`<Outlet>`)
+3. Adicionar `role="navigation"` ao sidebar/dock
+
+**Ficheiro: `index.html`**
+
+4. Adicionar `aria-label` ao splash para acessibilidade durante carregamento
+
+## Resumo de Ficheiros
+
+| Ficheiro | Ação |
+|---|---|
+| `index.html` | viewport, lang, canonical, JSON-LD, h1 no splash, preload, ARIA |
+| `public/robots.txt` | Expandir com bots IA + sitemap ref |
+| `public/sitemap.xml` | Criar novo |
+| `src/main.tsx` | requestIdleCallback para splash |
+| `src/layouts/MainLayout.tsx` | ARIA landmarks |
+
+## O que NÃO será feito (e porquê)
+
+- **SSG/Hydration** — impossível sem Next.js; Lovable usa Vite SPA puro
+- **Consolidação de 17 stores Zustand** — refatoração massiva, já otimizados com seletores granulares
+- **Migração WASM** — fora do escopo atual
+- **ECS para VFX** — redesign arquitetural completo, não é limpeza
 
