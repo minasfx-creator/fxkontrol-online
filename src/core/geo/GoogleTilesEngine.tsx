@@ -4,7 +4,7 @@
  * aligns them with FXK's local ENU coordinate system via ECEF.
  */
 
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
@@ -16,7 +16,6 @@ import { TilesRenderer } from '3d-tiles-renderer';
 import {
   GoogleCloudAuthPlugin,
   TilesFadePlugin,
-  UpdateOnChangePlugin,
   UnloadTilesPlugin,
 } from '3d-tiles-renderer/plugins';
 
@@ -49,8 +48,6 @@ function buildECEFtoENUMatrix(lat: number, lon: number): THREE.Matrix4 {
 }
 
 // ── SSE quality tiers ───────────────────────────────────────────────
-
-// ── SSE quality tiers ───────────────────────────────────────────────
 const SSE_TIERS = {
   ultra: 4,
   high: 8,
@@ -67,14 +64,16 @@ const GOOGLE_TILE_QUALITY_TO_SSE = {
 // 2 km² ≈ circle radius ~800m
 const TILE_RADIUS_METERS = 800;
 
-// Reuse vectors/matrices to avoid per-frame allocations
+// Reuse vectors to avoid per-frame allocations
 const ORIGIN = new THREE.Vector3(0, 0, 0);
 const TMP_WORLD = new THREE.Vector3();
 
 // Throttle traverse to ~10fps (every 6th frame at 60fps)
 const TRAVERSE_INTERVAL = 6;
 
-// ── Main Component ──────────────────────────────────────────────────
+// Hysteresis: require N consecutive zero-tile cycles before reverting to loading
+const HYSTERESIS_THRESHOLD = 5;
+
 // ── Loading state broadcast for HUD overlay ─────────────────────────
 export type TilesLoadingState = 'idle' | 'fetching-key' | 'loading-tiles' | 'ready' | 'error';
 
@@ -109,6 +108,7 @@ function setLoadingState(s: TilesLoadingState, count = _tilesDebug.count, extra?
   _listeners.forEach(cb => cb());
 }
 
+// ── Main Component ──────────────────────────────────────────────────
 export default function GoogleTilesLayer() {
   const { scene, camera, gl } = useThree();
   const tilesRef = useRef<TilesRenderer | null>(null);
@@ -124,6 +124,11 @@ export default function GoogleTilesLayer() {
   const lastDebugPublishRef = useRef(0);
   const lastDebugSignatureRef = useRef('');
   const frameCountRef = useRef(0);
+  const zeroTileCountRef = useRef(0);
+  const wasReadyRef = useRef(false);
+
+  // Store applyAnchorTransform in a ref to avoid re-creating the init useEffect
+  const applyAnchorTransformRef = useRef<() => void>(() => {});
 
   const applyAnchorTransform = useCallback(() => {
     if (!tilesRef.current) return;
@@ -141,6 +146,9 @@ export default function GoogleTilesLayer() {
     groupRef.current.matrixAutoUpdate = false;
     groupRef.current.matrixWorldNeedsUpdate = true;
   }, [anchorLat, anchorLon, anchorAlt]);
+
+  // Keep ref in sync
+  applyAnchorTransformRef.current = applyAnchorTransform;
 
   // Fetch API key on mount
   useEffect(() => {
@@ -179,12 +187,11 @@ export default function GoogleTilesLayer() {
     tiles.registerPlugin(new TilesFadePlugin());
     tiles.registerPlugin(new UnloadTilesPlugin());
 
-    // Initial quality from user settings (low/medium/high)
     tiles.errorTarget = GOOGLE_TILE_QUALITY_TO_SSE[googleTilesQuality];
 
     const group = groupRef.current;
     group.name = 'GoogleTilesGroup';
-    group.renderOrder = -100; // Render tiles BEFORE effects so VFX always overlay
+    group.renderOrder = -100;
     tiles.setCamera(camera);
     tiles.setResolutionFromRenderer(camera, gl);
 
@@ -192,10 +199,11 @@ export default function GoogleTilesLayer() {
     scene.add(group);
 
     tilesRef.current = tiles;
+    wasReadyRef.current = false;
+    zeroTileCountRef.current = 0;
 
-    // Critical: apply anchor transform immediately after renderer init.
-    // Without this, tiles may stay in ECEF space until anchor changes.
-    applyAnchorTransform();
+    // Apply anchor transform via ref (avoids dep on applyAnchorTransform)
+    applyAnchorTransformRef.current();
 
     console.log('[GoogleTiles] Initialized successfully');
 
@@ -205,11 +213,9 @@ export default function GoogleTilesLayer() {
       scene.remove(group);
       tilesRef.current = null;
     };
-    // NOTE: googleTilesQuality intentionally excluded — handled by separate useEffect
-    // to avoid destroying/recreating the entire TilesRenderer on quality change
-  }, [enabled, apiKey, scene, camera, gl, applyAnchorTransform]);
+  }, [enabled, apiKey, scene, camera, gl]);
 
-  // Runtime quality change from settings
+  // Runtime quality change
   useEffect(() => {
     if (!tilesRef.current || !enabled) return;
     tilesRef.current.errorTarget = GOOGLE_TILE_QUALITY_TO_SSE[googleTilesQuality];
@@ -220,7 +226,7 @@ export default function GoogleTilesLayer() {
     applyAnchorTransform();
   }, [applyAnchorTransform]);
 
-  // Per-frame update with 5 km radius culling
+  // Per-frame update with radius culling + hysteresis
   useFrame(() => {
     const tiles = tilesRef.current;
     if (!tiles || !enabled) return;
@@ -230,7 +236,6 @@ export default function GoogleTilesLayer() {
       tiles.setResolutionFromRenderer(camera, gl);
       tiles.update();
 
-      // Throttle expensive traverse to ~10fps instead of 60fps
       frameCountRef.current++;
       let visibleCount = 0;
 
@@ -255,20 +260,34 @@ export default function GoogleTilesLayer() {
       if (root) {
         updateGeoHUD({ tilesLoaded: visibleCount });
 
-        // Throttle debug-state broadcast to reduce UI churn / potential stutter.
         const now = performance.now();
         if (now - lastDebugPublishRef.current > 250) {
           lastDebugPublishRef.current = now;
 
-          const nextState: TilesLoadingState = visibleCount > 2 ? 'ready' : 'loading-tiles';
+          // Hysteresis logic: once ready, stay ready unless zero tiles for N cycles
+          let nextState: TilesLoadingState;
+          if (visibleCount > 2) {
+            wasReadyRef.current = true;
+            zeroTileCountRef.current = 0;
+            nextState = 'ready';
+          } else if (wasReadyRef.current) {
+            if (visibleCount === 0) {
+              zeroTileCountRef.current++;
+            } else {
+              zeroTileCountRef.current = 0;
+            }
+            nextState = zeroTileCountRef.current >= HYSTERESIS_THRESHOLD ? 'loading-tiles' : 'ready';
+            if (nextState === 'loading-tiles') {
+              wasReadyRef.current = false;
+            }
+          } else {
+            nextState = 'loading-tiles';
+          }
+
           const signature = [
-            nextState,
-            visibleCount,
-            Math.round(tiles.errorTarget),
+            nextState, visibleCount, Math.round(tiles.errorTarget),
             groupRef.current.visible ? 1 : 0,
-            anchorLat.toFixed(6),
-            anchorLon.toFixed(6),
-            anchorAlt.toFixed(1),
+            anchorLat.toFixed(6), anchorLon.toFixed(6), anchorAlt.toFixed(1),
           ].join('|');
 
           if (signature !== lastDebugSignatureRef.current) {

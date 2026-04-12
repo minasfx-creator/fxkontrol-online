@@ -1,11 +1,11 @@
 /**
  * ─── Safety Audit Trail ────────────────────────────────────────────
  * Append-only log of all safety events, persisted to IndexedDB.
- * Used for post-incident analysis and regulatory compliance.
+ * Uses centralized dbConnection for unified store management.
  */
 
-const DB_NAME = 'fxkontrol_blackbox';
-const DB_VERSION = 3; // bump to add audit store
+import { getDB } from '@/core/persistence/dbConnection';
+
 const STORE_AUDIT = 'safety_audit';
 
 export interface AuditEntry {
@@ -20,36 +20,6 @@ export interface AuditEntry {
 
 class SafetyAuditTrail {
   private _entries: AuditEntry[] = [];
-  private _db: IDBDatabase | null = null;
-  private _ready: Promise<IDBDatabase>;
-
-  constructor() {
-    this._ready = this._open();
-  }
-
-  private _open(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains(STORE_AUDIT)) {
-          db.createObjectStore(STORE_AUDIT, { autoIncrement: true });
-        }
-        // Ensure existing stores survive version bump
-        if (!db.objectStoreNames.contains('snapshots')) {
-          db.createObjectStore('snapshots', { keyPath: 'tick' });
-        }
-        if (!db.objectStoreNames.contains('commandlog')) {
-          db.createObjectStore('commandlog', { autoIncrement: true });
-        }
-      };
-      req.onsuccess = () => { this._db = req.result; resolve(req.result); };
-      req.onerror = () => {
-        console.warn('[SafetyAuditTrail] Failed to open DB:', req.error);
-        reject(req.error);
-      };
-    });
-  }
 
   /** Append an audit entry. */
   log(entry: AuditEntry): void {
@@ -69,7 +39,7 @@ class SafetyAuditTrail {
   /** Persist all entries to IndexedDB. */
   async persist(): Promise<void> {
     try {
-      const db = await this._ready;
+      const db = await getDB();
       const tx = db.transaction(STORE_AUDIT, 'readwrite');
       const store = tx.objectStore(STORE_AUDIT);
       store.clear();
@@ -88,7 +58,7 @@ class SafetyAuditTrail {
   /** Load entries from IndexedDB. */
   async load(): Promise<void> {
     try {
-      const db = await this._ready;
+      const db = await getDB();
       const tx = db.transaction(STORE_AUDIT, 'readonly');
       const store = tx.objectStore(STORE_AUDIT);
       const entries = await new Promise<AuditEntry[]>((resolve, reject) => {
@@ -109,7 +79,7 @@ class SafetyAuditTrail {
   async clear(): Promise<void> {
     this._entries = [];
     try {
-      const db = await this._ready;
+      const db = await getDB();
       const tx = db.transaction(STORE_AUDIT, 'readwrite');
       tx.objectStore(STORE_AUDIT).clear();
     } catch (e) {
