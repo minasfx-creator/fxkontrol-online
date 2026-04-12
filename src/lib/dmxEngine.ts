@@ -330,67 +330,6 @@ export const DMX_FIXTURE_PROFILES: Record<string, DMXFixtureProfile> = {
 };
 
 // ── UE5 Blueprint → Profile Mapping ──
-export const UE5_BLUEPRINT_MAP: Record<string, string> = {
-  'BP_SpotMH1_v2': 'spot-mh-standard',
-  'BP_SpotMH2_v2': 'spot-mh-standard',
-  'BP_SpotMH2_v2_HQ': 'spot-mh-hq',
-  'BP_WashMH1_v2': 'moving-head-wash',
-  'BP_WashMH2': 'moving-head-wash',
-  'BP_WashLED_v2': 'wash-led-par',
-  'BP_WashSL1_v2': 'wash-spotlight',
-  'BP_Static_SceneLight': 'static-scene-light',
-  'BP_Static_Toner': 'static-toner',
-  'BP_TonerWBeam': 'toner-beam',
-  'BP_Audience_Toner': 'audience-toner',
-  'BP_StadiumLights': 'stadium-light',
-  'BP_StaticMatrix_5x1': 'led-matrix-5x1',
-  'BP_StaticMatrix_NoBorder': 'led-matrix-panel',
-  'BP_StaticMatrix_v2': 'led-matrix-panel',
-  'BP_Strobe1_v3': 'strobe-high-power',
-  'BP_Sphere': 'generic-rgbw',
-  'BP_Firework_v2': 'sfx-firework-dmx',
-  'BP_Pyro_v4': 'sfx-pyro-dmx',
-  'BP_Laser_Extended': 'generic-rgb',
-  'DMXLib_v4': 'generic-rgbw',
-  // ── From BP uploads ──
-  'BP_DMX_Send_Receive': 'generic-rgbw',
-  'BP_DMXPointLight': 'dmx-point-light',
-  'BP_FountainLight': 'sfx-water-fountain',
-  'BP_PixelMappingManager': 'led-matrix-panel',
-  'BP_DownSampleSceneCapture': 'generic-rgbw',
-  'DMXLib_Fixtures': 'generic-rgbw',
-  'DMXLib_PixelMapping': 'led-matrix-panel',
-  'DMXLib_WaterFountain': 'sfx-water-fountain',
-  'DMXPM_PixelMap': 'led-matrix-panel',
-};
-
-// ── Strobe Curve Tables ──
-export interface StrobeCurve {
-  source: string;
-  minHz: number;
-  maxHz: number;
-  profile: string;
-}
-
-export const STROBE_CURVES: Record<string, StrobeCurve> = {
-  'stadium': { source: 'StadiumLights_Strobe_Table', minHz: 1, maxHz: 25, profile: 'stadium-light' },
-  'static-scene': { source: 'StaticScene_Strobe_Table', minHz: 1, maxHz: 20, profile: 'static-scene-light' },
-  'strobe-rgb': { source: 'StrobeRGB_Strobe_Table', minHz: 1, maxHz: 30, profile: 'strobe-high-power' },
-  'wash-mh1': { source: 'WashMH1_Strobe_Table', minHz: 1, maxHz: 15, profile: 'moving-head-wash' },
-  'wash-mh2': { source: 'WashMH2_Strobe_Table', minHz: 1, maxHz: 15, profile: 'moving-head-wash' },
-};
-
-// ── Gobo Textures ──
-export interface GoboTexture {
-  source: string;
-  label: string;
-  variant: 'clean' | 'frosted';
-}
-
-export const GOBO_TEXTURES: Record<string, GoboTexture> = {
-  'gobo-disk01-clean': { source: 'T_GoboDisk01_Clean', label: 'Gobo Disk 01 (Clean)', variant: 'clean' },
-  'gobo-disk01-frosted': { source: 'T_GoboDisk01_Frosted', label: 'Gobo Disk 01 (Frosted)', variant: 'frosted' },
-};
 
 export interface DMXFixture {
   id: string;
