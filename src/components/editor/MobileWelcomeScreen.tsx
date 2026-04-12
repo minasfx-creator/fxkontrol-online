@@ -47,6 +47,7 @@ export default function MobileWelcomeScreen({ onComplete }: MobileWelcomeScreenP
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        haptics.success();
         const { latitude: lat, longitude: lng } = position.coords;
 
         window.dispatchEvent(new CustomEvent('viewport-transition', {
