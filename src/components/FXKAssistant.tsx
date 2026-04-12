@@ -516,6 +516,9 @@ export function FXKAssistant() {
     }
   }, [messages, loading, attachment]);
 
+  // Keep sendRef fresh
+  sendRef.current = send;
+
   const handleFeedback = useCallback((idx: number, fb: 'up' | 'down') => {
     setMessages(prev => prev.map((m, i) => i === idx ? { ...m, feedback: fb } : m));
   }, []);
