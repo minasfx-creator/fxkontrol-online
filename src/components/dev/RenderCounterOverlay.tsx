@@ -5,20 +5,38 @@
  * Dev-only — tree-shaken in production.
  */
 
-import { useEffect, useState, useCallback, useSyncExternalStore } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { getRenderCounters, subscribeRenderCounters, resetRenderCounters } from '@/hooks/useRenderCounter';
-
-function useCounterSnapshot() {
-  return useSyncExternalStore(
-    subscribeRenderCounters,
-    getRenderCounters,
-    () => ({} as Record<string, number>),
-  );
-}
 
 export default function RenderCounterOverlay() {
   const [visible, setVisible] = useState(false);
-  const counters = useCounterSnapshot();
+  const [counters, setCounters] = useState<Record<string, number>>({});
+  const rafRef = useRef<number | null>(null);
+
+  // Subscribe to counter updates and batch via rAF
+  useEffect(() => {
+    if (!visible) return;
+
+    const update = () => {
+      if (rafRef.current !== null) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        setCounters({ ...getRenderCounters() });
+      });
+    };
+
+    // Initial read
+    setCounters({ ...getRenderCounters() });
+
+    const unsub = subscribeRenderCounters(update);
+    return () => {
+      unsub();
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [visible]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'R') {
@@ -59,7 +77,10 @@ export default function RenderCounterOverlay() {
           ⚡ Render Counts
         </span>
         <button
-          onClick={() => resetRenderCounters()}
+          onClick={() => {
+            resetRenderCounters();
+            setCounters({});
+          }}
           className="text-[8px] uppercase tracking-wider opacity-50 hover:opacity-100 transition-opacity"
           title="Reset counters"
         >
