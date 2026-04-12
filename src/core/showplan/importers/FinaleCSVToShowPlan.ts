@@ -87,7 +87,7 @@ export function importFinaleCSVToShowPlan(rows: FinaleCSVRow[]): FinaleImportRes
   sp.metadata = { ...sp.metadata, duration: Math.max(sp.metadata.duration, ...allTimes, 0), updatedAt: Date.now() };
   showPlanManager.load(sp as any);
 
-  blackbox.record('import', `FinaleCSVToShowPlan: ${pyroCues.length} pyro, ${dmxCues.length} dmx, ${errors.length} errors`);
+  blackbox.record('state', `FinaleCSVToShowPlan: ${pyroCues.length} pyro, ${dmxCues.length} dmx, ${errors.length} errors`);
 
   return { pyroCues, dmxCues, errors };
 }

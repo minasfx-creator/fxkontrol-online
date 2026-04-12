@@ -74,7 +74,7 @@ export default function AddressingConsole() {
         {/* Fixtures */}
         <div className="border border-border/10 rounded p-3 space-y-1">
           <span className="text-[8px] font-mono text-muted-foreground/60 tracking-widest flex items-center gap-1">
-            <Map className="w-3 h-3 text-violet-400" /> FIXTURES
+            <MapIcon className="w-3 h-3 text-violet-400" /> FIXTURES
           </span>
           <div className="text-[9px] font-mono space-y-0.5">
             <div className="flex justify-between"><span className="text-muted-foreground">Patched</span><span className="text-foreground/70">{fixtures.length}</span></div>

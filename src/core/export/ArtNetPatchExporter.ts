@@ -18,7 +18,7 @@ export function generateArtNetPatchCSV(): ArtNetPatchResult {
     `${c.universe},${c.channel},${c.value},${c.time.toFixed(3)},${c.duration.toFixed(3)},${c.curve},${c.fixtureId ?? ''}`
   ).join('\n');
 
-  blackbox.record('export', `ArtNetPatchExporter: ${sp.dmxCues.length} cues`);
+  blackbox.record('state', `ArtNetPatchExporter: ${sp.dmxCues.length} cues`);
   return { csv: header + rows, cueCount: sp.dmxCues.length };
 }
 

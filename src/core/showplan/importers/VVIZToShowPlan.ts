@@ -75,7 +75,7 @@ export function importVVIZToShowPlan(
   sp.metadata = { ...sp.metadata, duration: Math.max(sp.metadata.duration, maxTime), updatedAt: Date.now() };
   showPlanManager.load(sp as any);
 
-  blackbox.record('import', `VVIZToShowPlan: ${drones.length} drones, ${totalWaypoints} waypoints, ${errors.length} errors`);
+  blackbox.record('state', `VVIZToShowPlan: ${drones.length} drones, ${totalWaypoints} waypoints, ${errors.length} errors`);
 
   return { dronePaths, droneCount: drones.length, totalWaypoints, duration: maxTime, errors };
 }

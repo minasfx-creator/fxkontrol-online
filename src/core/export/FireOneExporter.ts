@@ -48,7 +48,7 @@ export function generateFireOneScript(): FireOneExportResult {
     ].join(','));
   });
 
-  blackbox.record('export', `FireOneExporter: ${sorted.length} cues, ${errors.length} errors`);
+  blackbox.record('state', `FireOneExporter: ${sorted.length} cues, ${errors.length} errors`);
 
   return { script: lines.join('\n'), cueCount: sorted.length, errors };
 }

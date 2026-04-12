@@ -24,7 +24,7 @@ export function generateDroneCSV(): DroneCSVResult {
     })
   ).join('\n');
 
-  blackbox.record('export', `DroneCSVExporter: ${sp.dronePaths.length} drones, ${waypointCount} waypoints`);
+  blackbox.record('state', `DroneCSVExporter: ${sp.dronePaths.length} drones, ${waypointCount} waypoints`);
   return { csv: header + rows, droneCount: sp.dronePaths.length, waypointCount };
 }
 

@@ -2,16 +2,15 @@
  * ExecutionStatusConsole — Real-time execution bridge stats, cue queue, executor states.
  * Consumes ShowPlan + ExecutionBridge + PyroExecutor + DroneExecutor.
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
-import { executionBridge } from '@/core/execution/ExecutionBridge';
-import { pyroExecutor } from '@/core/execution/PyroExecutor';
-import { droneExecutor } from '@/core/execution/DroneExecutor';
+import { executionBridge } from '@/core/execution/executionBridge';
+import { pyroExecutor } from '@/core/execution/pyroExecutor';
+import { droneExecutor } from '@/core/execution/droneExecutor';
 import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
 import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { cn } from '@/lib/utils';
-import { Activity, Zap, Layers, Shield, RefreshCw, Play, Square } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Activity, Zap, Layers } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function ExecutionStatusConsole() {
@@ -26,9 +25,10 @@ export default function ExecutionStatusConsole() {
 
   const sp = showPlanManager.current;
   const bridgeStats = executionBridge.getStats();
-  const pyroStats = pyroExecutor.getStats();
-  const droneStats = droneExecutor.getStats();
-  const safetyState = safetyStateMachine.getState();
+  const pyroBufferSize = pyroExecutor.getBufferSize();
+  const droneBufferSize = droneExecutor.getBufferSize();
+  const droneFailSafe = droneExecutor.getFailSafeMode();
+  const safetyState = safetyStateMachine.state;
 
   const safetyColor = safetyState === 'ARMED' || safetyState === 'FIRING'
     ? 'text-red-400' : safetyState === 'LOCKED'
@@ -67,9 +67,9 @@ export default function ExecutionStatusConsole() {
             <Activity className="w-3 h-3 text-emerald-400" /> BRIDGE
           </span>
           <div className="text-[9px] font-mono space-y-0.5">
-            <div className="flex justify-between"><span className="text-muted-foreground">State</span><span className="text-foreground/70">{bridgeStats.state}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Commands TX</span><span className="text-foreground/70">{bridgeStats.commandsSent}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Uptime</span><span className="text-foreground/70">{bridgeStats.uptime}s</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Total Cues</span><span className="text-foreground/70">{bridgeStats.totalCues}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Fired</span><span className="text-foreground/70">{bridgeStats.firedCues}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Pending</span><span className="text-foreground/70">{bridgeStats.pendingCues}</span></div>
           </div>
         </div>
 
@@ -78,9 +78,8 @@ export default function ExecutionStatusConsole() {
             <Zap className="w-3 h-3 text-red-400" /> PYRO EXECUTOR
           </span>
           <div className="text-[9px] font-mono space-y-0.5">
-            <div className="flex justify-between"><span className="text-muted-foreground">Fired</span><span className="text-foreground/70">{pyroStats.fired}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Queued</span><span className="text-foreground/70">{pyroStats.queued}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Errors</span><span className={cn("text-foreground/70", pyroStats.errors > 0 && "text-red-400")}>{pyroStats.errors}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Buffer</span><span className="text-foreground/70">{pyroBufferSize}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Status</span><span className={cn("text-foreground/70", pyroBufferSize > 0 && "text-amber-400")}>{pyroBufferSize > 0 ? 'BUFFERED' : 'CLEAR'}</span></div>
           </div>
         </div>
 
@@ -89,9 +88,8 @@ export default function ExecutionStatusConsole() {
             <Layers className="w-3 h-3 text-teal-400" /> DRONE EXECUTOR
           </span>
           <div className="text-[9px] font-mono space-y-0.5">
-            <div className="flex justify-between"><span className="text-muted-foreground">Active</span><span className="text-foreground/70">{droneStats.active}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Landed</span><span className="text-foreground/70">{droneStats.landed}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Aborted</span><span className={cn("text-foreground/70", droneStats.aborted > 0 && "text-red-400")}>{droneStats.aborted}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Buffer</span><span className="text-foreground/70">{droneBufferSize}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">FailSafe</span><span className="text-foreground/70">{droneFailSafe}</span></div>
           </div>
         </div>
       </div>

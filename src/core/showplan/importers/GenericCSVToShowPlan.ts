@@ -79,7 +79,7 @@ export function importGenericCSVToShowPlan(rows: GenericCSVParsedRow[]): Generic
   }
   showPlanManager.load(sp as any);
 
-  blackbox.record('import', `GenericCSVToShowPlan: ${positions.length} positions, ${pyroCues.length} cues, ${errors.length} errors`);
+  blackbox.record('state', `GenericCSVToShowPlan: ${positions.length} positions, ${pyroCues.length} cues, ${errors.length} errors`);
 
   return { positions, pyroCues, errors };
 }
