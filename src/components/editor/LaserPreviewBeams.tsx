@@ -79,6 +79,7 @@ function generateBeamEndpoints(source: LaserSource, time: number): THREE.Vector3
 }
 
 function LaserSourceBeams({ source }: { source: LaserSource }) {
+  useRenderCounter('LaserBeams');
   const groupRef = useRef<THREE.Group>(null);
   const coreRef = useRef<THREE.BufferGeometry>(null);
   const glowRef = useRef<THREE.BufferGeometry>(null);

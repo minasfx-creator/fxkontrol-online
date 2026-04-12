@@ -34,6 +34,7 @@ export default function TrajectoryValidationOverlay({
   maxAltitude = 150,
   geofenceRadius = 500,
 }: TrajectoryValidationOverlayProps) {
+  useRenderCounter('TrajectoryValidation');
   const currentTime = useProjectStore(s => s.currentTime);
   const markerRef = useRef<THREE.InstancedMesh>(null);
   const lineRef = useRef<THREE.LineSegments>(null);

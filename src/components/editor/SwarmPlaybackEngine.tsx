@@ -53,6 +53,7 @@ export function SwarmPlaybackEngine({
   isPlaying = true,
   manualTime = null,
 }: SwarmPlaybackEngineProps) {
+  useRenderCounter('SwarmPlayback');
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const hudRef = useRef<THREE.Group>(null);
   const droneCount = agents?.length || 0;

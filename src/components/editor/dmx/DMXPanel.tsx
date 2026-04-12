@@ -31,6 +31,7 @@ interface DiagnosticLog {
 }
 
 export default function DMXPanel({ onClose }: { onClose: () => void }) {
+  useRenderCounter('DMXPanel');
     const droneFormations = useProjectStore(s => s.droneFormations);
   const currentTime = useProjectStore(s => s.currentTime);
   const dmxDevices = useUSBDeviceStore(s => s.dmxDevices);

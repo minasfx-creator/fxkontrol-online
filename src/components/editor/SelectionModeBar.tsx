@@ -21,6 +21,7 @@ let _lassoActive = false;
 export function isLassoActive() { return _lassoActive; }
 
 export default function SelectionModeBar() {
+  useRenderCounter('SelectionModeBar');
     const selectionMode = useProjectStore(s => s.selectionMode);
   const setSelectionMode = useProjectStore(s => s.setSelectionMode);
   const editorMode = useProjectStore(s => s.editorMode);

@@ -29,6 +29,7 @@ interface CrowdPerson {
 }
 
 export default function CrowdSystem() {
+  useRenderCounter('CrowdSystem');
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const crowdRef = useRef<CrowdPerson[]>([]);
 

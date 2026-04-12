@@ -43,6 +43,7 @@ const EFFECT_TYPES = [
 ] as const;
 
 export default function LightProgramPanel() {
+  useRenderCounter('LightProgramPanel');
     const droneFormations = useProjectStore(s => s.droneFormations);
   const currentTime = useProjectStore(s => s.currentTime);
   const duration = useProjectStore(s => s.duration);

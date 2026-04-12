@@ -167,6 +167,7 @@ function PositionInspector() {
 }
 
 export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor }: { onToggleEffectEditor?: () => void; showEffectEditor?: boolean }) {
+  useRenderCounter('PropertiesPanel');
     const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
   const timelineItems = useProjectStore(s => s.timelineItems);
   const selectedEffectId = useProjectStore(s => s.selectedEffectId);
