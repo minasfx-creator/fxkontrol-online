@@ -56,30 +56,17 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fxk-ai-chat`
 const HISTORY_KEY = 'fxk-ai-history';
 const MAX_HISTORY = 10;
 
-const PRESETS_COMMAND = [
-  { label: 'ORÇAMENTO', icon: Sparkles, prompt: 'Me ajude a criar um orçamento detalhado para um show pirotécnico. Preciso incluir itens, quantidades, calibres e custos.' },
-  { label: 'LICENÇAS', icon: ShieldCheck, prompt: 'Quais documentos e licenças preciso para realizar este show? Liste todos os órgãos, prazos e requisitos.' },
-  { label: 'DECLARAÇÃO', icon: FileText, prompt: 'Preciso redigir uma declaração/ofício para um órgão regulador. Me ajude com o formato oficial completo.' },
-  { label: 'CHECKLIST', icon: Activity, prompt: 'Monte um checklist completo de documentação pré-show: licenças, seguros, certificados, autorizações.' },
-  { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos e renovações urgentes.' },
-  { label: 'CONTRATO', icon: Zap, prompt: 'Me ajude a redigir uma proposta comercial / contrato de prestação de serviços para um show.' },
-  { label: 'LICITAÇÃO', icon: Gavel, prompt: 'Me ajude a analisar um edital de licitação e preparar a proposta técnica e de preços. Inclua documentação de habilitação necessária.' },
-  { label: 'ESPAÇO AÉREO', icon: Plane, prompt: 'Me ajude a preparar a documentação de fechamento de espaço aéreo (NOTAM/DECEA) e planta de distanciamento de segurança para este show.' },
-  { label: 'PLANTA', icon: MapPin, prompt: 'Gere uma planta de distanciamento de segurança conforme NFPA 1123 para este show. Preciso das zonas de fogo, segurança, fallout e restrição aérea com as coordenadas GPS.' },
-  { label: 'ACREDITAÇÃO', icon: ShieldCheck, prompt: 'Me ajude a preparar toda a documentação para acreditação junto aos órgãos fiscalizadores. Quais documentos preciso para cada órgão? Tem algo vencido ou pendente?' },
-];
-
-const PRESETS_EDITOR = [
-  { label: 'ORÇAMENTO', icon: Sparkles, prompt: 'Me ajude a montar um orçamento para este show com base nos efeitos e posições do projeto.' },
-  { label: 'LICENÇAS', icon: ShieldCheck, prompt: 'Quais licenças e autorizações preciso para este tipo de show? Inclua Exército, Bombeiros e ANAC se aplicável.' },
-  { label: 'DECLARAÇÃO', icon: FileText, prompt: 'Preciso redigir um documento formal (ofício, declaração ou requerimento) para órgão regulador.' },
-  { label: 'CHECKLIST', icon: Activity, prompt: 'Monte um checklist de documentação e segurança para este show.' },
-  { label: 'PRAZOS', icon: AlertTriangle, prompt: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos urgentes.' },
-  { label: 'CONTRATO', icon: Zap, prompt: 'Me ajude a redigir uma proposta comercial ou contrato para este projeto de show.' },
-  { label: 'LICITAÇÃO', icon: Gavel, prompt: 'Me ajude a analisar um edital de licitação e preparar proposta para este tipo de show.' },
-  { label: 'ESPAÇO AÉREO', icon: Plane, prompt: 'Me ajude a preparar a documentação de fechamento de espaço aéreo e planta de distanciamento para este show.' },
-  { label: 'PLANTA', icon: MapPin, prompt: 'Gere uma planta de distanciamento de segurança conforme NFPA 1123 para este projeto.' },
-  { label: 'ACREDITAÇÃO', icon: ShieldCheck, prompt: 'Me ajude a preparar a documentação de acreditação para os órgãos fiscalizadores deste projeto.' },
+const PRESETS_DOCS = [
+  { label: 'ORÇAMENTO', icon: Sparkles, promptCommand: 'Me ajude a criar um orçamento detalhado para um show pirotécnico. Preciso incluir itens, quantidades, calibres e custos.', promptEditor: 'Me ajude a montar um orçamento para este show com base nos efeitos e posições do projeto.' },
+  { label: 'LICENÇAS', icon: ShieldCheck, promptCommand: 'Quais documentos e licenças preciso para realizar este show? Liste todos os órgãos, prazos e requisitos.', promptEditor: 'Quais licenças e autorizações preciso para este tipo de show? Inclua Exército, Bombeiros e ANAC se aplicável.' },
+  { label: 'DECLARAÇÃO', icon: FileText, promptCommand: 'Preciso redigir uma declaração/ofício para um órgão regulador. Me ajude com o formato oficial completo.', promptEditor: 'Preciso redigir um documento formal (ofício, declaração ou requerimento) para órgão regulador.' },
+  { label: 'CHECKLIST', icon: Activity, promptCommand: 'Monte um checklist completo de documentação pré-show: licenças, seguros, certificados, autorizações.', promptEditor: 'Monte um checklist de documentação e segurança para este show.' },
+  { label: 'PRAZOS', icon: AlertTriangle, promptCommand: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos e renovações urgentes.', promptEditor: 'Verifique prazos de licenças, certificados e seguros. Me alerte sobre vencimentos urgentes.' },
+  { label: 'CONTRATO', icon: Zap, promptCommand: 'Me ajude a redigir uma proposta comercial / contrato de prestação de serviços para um show.', promptEditor: 'Me ajude a redigir uma proposta comercial ou contrato para este projeto de show.' },
+  { label: 'LICITAÇÃO', icon: Gavel, promptCommand: 'Me ajude a analisar um edital de licitação e preparar a proposta técnica e de preços. Inclua documentação de habilitação necessária.', promptEditor: 'Me ajude a analisar um edital de licitação e preparar proposta para este tipo de show.' },
+  { label: 'ESPAÇO AÉREO', icon: Plane, promptCommand: 'Me ajude a preparar a documentação de fechamento de espaço aéreo (NOTAM/DECEA) e planta de distanciamento de segurança para este show.', promptEditor: 'Me ajude a preparar a documentação de fechamento de espaço aéreo e planta de distanciamento para este show.' },
+  { label: 'PLANTA', icon: MapPin, promptCommand: 'Gere uma planta de distanciamento de segurança conforme NFPA 1123 para este show. Preciso das zonas de fogo, segurança, fallout e restrição aérea com as coordenadas GPS.', promptEditor: 'Gere uma planta de distanciamento de segurança conforme NFPA 1123 para este projeto.' },
+  { label: 'ACREDITAÇÃO', icon: ShieldCheck, promptCommand: 'Me ajude a preparar toda a documentação para acreditação junto aos órgãos fiscalizadores. Quais documentos preciso para cada órgão? Tem algo vencido ou pendente?', promptEditor: 'Me ajude a preparar a documentação de acreditação para os órgãos fiscalizadores deste projeto.' },
 ];
 
 const IDLE_PHRASES = [
