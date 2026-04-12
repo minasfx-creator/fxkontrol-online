@@ -1,154 +1,50 @@
 
 
-# FX KONTROL — Alinhamento Arquitetural com Hardware Real
+# Implementação do Diagrama Arquitectural + Consoles UI em Falta
 
-## Diagnóstico
+## Estado Actual vs Diagrama
 
-O projeto tem infraestrutura sólida mas dispersa. As lacunas críticas entre o código e a arquitetura operacional real:
+Todos os módulos core do diagrama **já existem** no código:
+- ShowPlan, VerificationPass, Hardware drivers, Protocols, Safety, Execution — implementados
+- CommandRelay, NetworkHealth, AutoRecovery, Profiler, SnapshotManager — implementados
 
-| Bloco Requerido | Estado Atual |
-|---|---|
-| **ShowPlan** (fonte de verdade) | Inexistente. `useProjectStore` (445 linhas) é um monolito Zustand com dados misturados |
-| **VerificationPass** | Inexistente. Sem status binário READY_FOR_FIELD/SIMULATION/EXPORT |
-| **Hardware Layer** (74HC595, CD4051, RelayBank) | Inexistente. `ContinuityCheckService` simula 32 pinos mas sem drivers reais |
-| **ArtNetBridge / DMXUniverseManager** | Inexistente no core. DMX só existe como componentes UI (`dmx/`) |
-| **ShowPlan → CommandBus → Safety → Execution** | Parcial. ExecutionBridge existe mas não consome um ShowPlan canônico |
-| **FireOne Export Console** | `exportEngine.ts` (66 linhas) exporta CSV genérico, não .fir nativo |
+## O que Falta
 
-## Plano de Implementação — 5 Fases
+### 1. Gerar o Diagrama Mermaid como Artefacto
+Converter o grafo TD fornecido pelo utilizador para um ficheiro `.mmd` persistente em `/mnt/documents/`, com styling por domínio (cores por bloco: vermelho=safety, ciano=hardware, verde=execution, etc.).
 
-### Fase 1 — ShowPlan Core (Fonte de Verdade)
-
-**Criar `src/core/showplan/ShowPlan.ts`**
-
-Interface canônica que concentra TODOS os dados do show:
-- `metadata` (nome, local, GPS, duração, versão)
-- `timeline_events` (todos os cues tipados)
-- `pyro_cues` (posição, módulo, canal, efeito, fuse delay)
-- `drone_paths` (waypoints, formações)
-- `dmx_cues` (universo, canal, valor, curva)
-- `safety_constraints` (geofence, exclusion zones, NFPA limits)
-- `export_profiles` (FireOne, Finale CSV, Art-Net)
-- `hardware_config` (módulos, canais, endereçamento)
-
-**Criar `src/core/showplan/ShowPlanManager.ts`**
-- `fromProjectStore()` — converte estado Zustand actual para ShowPlan
-- `toProjectStore()` — aplica ShowPlan de volta
-- `fromVVIZ()`, `fromFinaleCSV()`, `fromJSON()` — importadores
-- `validate()` — retorna `VerificationResult`
-
-### Fase 2 — VerificationPass (Status Binário)
-
-**Criar `src/core/verification/VerificationPass.ts`**
-
-Status: `READY_FOR_SIMULATION` | `READY_FOR_EXPORT` | `READY_FOR_FIELD` | `BLOCKED`
-
-Checks:
-1. Integridade do ShowPlan (cues sem posição, posições sem efeito)
-2. Conflitos de tempo/canal (via `collisionSystem` do timelineECS)
-3. Limites de módulo (>32 canais por módulo = BLOCKED)
-4. Continuity check (via ContinuityCheckService)
-5. Safety interlock (SafetyStateMachine state)
-6. Link DMX/Art-Net (NetworkHealth)
-7. Geofence violations
-8. Audit trail completeness
-
-**Criar `src/core/verification/useVerificationStore.ts`** — Zustand store com resultado em tempo real
-
-### Fase 3 — Hardware Layer Explícita
-
-**Criar `src/core/hardware/`** com módulos que modelam o hardware real:
-
-| Módulo | Responsabilidade |
-|---|---|
-| `ShiftRegisterDriver.ts` | Interface para 74HC595 — expander de 8→32 saídas |
-| `MuxReader.ts` | Interface para CD4051 — leitura multiplexada analógica |
-| `RelayBankController.ts` | Controlo dos 32 relés (arm, fire, status) |
-| `PowerMonitor.ts` | Monitoramento bateria 12V (tensão, corrente, SOC) |
-| `ManualModeState.ts` | Estado do modo manual (key switch, deadman) |
-| `HardwareRegistry.ts` | Registo central de dispositivos conectados |
-
-Cada módulo expõe interface abstrata consumida pelo `FieldBus` e `ExecutionBridge`. Implementações concretas: WebSerial (real) ou Emulator (simulação).
-
-### Fase 4 — DMX/Art-Net Bridge Real
-
-**Criar `src/core/protocols/`**:
-
-| Módulo | Responsabilidade |
-|---|---|
-| `ArtNetBridge.ts` | Ponte Art-Net 4 via WebSocket (send/receive ArtDmx, ArtPoll) |
-| `DMXUniverseManager.ts` | Gestão de universos (merge, priority, HTP/LTP) |
-| `FixtureAddressing.ts` | Endereçamento de fixtures separado do layout visual |
-| `LinkFailoverPolicy.ts` | Failover Art-Net → sACN → serial |
-
-Separação clara: `dmx/` UI components para editor visual; `core/protocols/` para lógica operacional.
-
-### Fase 5 — UI Alinhada (Command-Grade)
-
-**Páginas/Consoles novos ou refatorados:**
+### 2. Consoles UI Command-Grade (Planeados mas Nunca Criados)
 
 | Console | Descrição |
 |---|---|
-| **System Overview** | Dashboard binário: ShowPlan loaded, Verification status, Hardware link, Safety state |
-| **ShowPlan Inspector** | Árvore navegável do ShowPlan com contadores por domínio |
-| **Continuity Matrix** | Grid 32 canais visual (OK/OPEN/SHORT) com ohms em tempo real |
-| **FireOne Export Console** | Exportação .fir com preview de script e validação pré-export |
-| **Verification Console** | Lista de checks com PASS/FAIL/BLOCKED e drill-down |
+| `VerificationBar.tsx` | Barra horizontal no topo do editor com status binário do VerificationPass (READY/BLOCKED) + drill-down |
+| `ContinuityMatrix.tsx` | Grid 32 canais com status OK/OPEN/SHORT por pino, consumindo `ContinuityCheckService` |
+| `ShowPlanInspector.tsx` | Árvore navegável do ShowPlan: contadores por domínio (pyro cues, dmx cues, drone paths, hardware modules) |
 
-**Consoles existentes a expandir no CommandCenter:**
-- `pyro_fire` → integrar VerificationPass como gate visual (barra de status)
-- `hardware` → integrar PowerMonitor e HardwareRegistry
-- `dmx_monitor` → conectar a DMXUniverseManager real
+### 3. Integração no CommandCenter
+Adicionar dois novos modos ao `CommandCenter.tsx`:
+- `verification` → renderiza VerificationBar + checks list
+- `continuity` → renderiza ContinuityMatrix
 
-**Ajustes visuais:**
-- Cor por domínio consistente (ciano=sync, verde=ok, âmbar=warn, vermelho=interlock, violeta=drone)
-- VerificationPass como barra horizontal no topo do editor com status binário
-- Safety state visível em TODAS as views (não só no SafetyPanel)
+Adicionar na secção HARDWARE do sidebar do CommandCenter.
+
+### 4. VerificationBar no Index.tsx
+Barra fina no topo do editor principal mostrando o resultado de `verificationPass.run()` com cor por nível.
 
 ## Ficheiros a Criar
-
-```text
-src/core/showplan/
-  ShowPlan.ts              — Interfaces e tipos canónicos
-  ShowPlanManager.ts       — Conversor, importador, validador
-
-src/core/verification/
-  VerificationPass.ts      — Motor de verificação com checks compostos
-  useVerificationStore.ts  — Store reativo
-
-src/core/hardware/
-  ShiftRegisterDriver.ts   — 74HC595 interface
-  MuxReader.ts             — CD4051 interface
-  RelayBankController.ts   — 32-relay control
-  PowerMonitor.ts          — Battery/power monitoring
-  ManualModeState.ts       — Manual mode interlocks
-  HardwareRegistry.ts      — Device registry
-
-src/core/protocols/
-  ArtNetBridge.ts          — Art-Net 4 bridge
-  DMXUniverseManager.ts    — Universe management
-  FixtureAddressing.ts     — Addressing logic (separated from UI)
-  LinkFailoverPolicy.ts    — Protocol failover
-```
+- `/mnt/documents/FXK_Architecture_v3.mmd` — Diagrama Mermaid completo
+- `src/components/editor/VerificationBar.tsx` — Barra de status binário
+- `src/components/editor/ContinuityMatrix.tsx` — Grid 32 canais
+- `src/components/editor/ShowPlanInspector.tsx` — Árvore ShowPlan
 
 ## Ficheiros a Modificar
-
-| Ficheiro | Mudança |
-|---|---|
-| `src/core/execution/executionBridge.ts` | Consumir ShowPlan em vez de array genérico de cues |
-| `src/core/export/exportEngine.ts` | Adicionar `exportFireOneScript()` nativo |
-| `src/core/engine/fxkEngine.ts` | Registar hardware e protocols no boot |
-| `src/pages/CommandCenter.tsx` | Adicionar consoles: verification, continuity matrix |
-| `src/pages/Index.tsx` | Barra de VerificationPass no topo do editor |
-
-## Diagrama Mermaid Actualizado
-
-Será gerado com os 6 domínios: Authoring/Control, Safety/Verification, Execution/Protocols, Simulation, Hardware Diagnostics, Persistence/Reliability.
+- `src/pages/CommandCenter.tsx` — Adicionar consoles verification + continuity
+- `src/pages/Index.tsx` — Montar VerificationBar no topo
 
 ## Prioridade
-
-1. **ShowPlan + VerificationPass** (Fase 1-2) — maior impacto arquitectural
-2. **Hardware Layer** (Fase 3) — alinha com protótipo Arduino real
-3. **DMX/Art-Net Bridge** (Fase 4) — separa lógica de UI
-4. **UI Command-Grade** (Fase 5) — visual alinhado com mission control
+1. Diagrama Mermaid (artefacto visual imediato)
+2. VerificationBar (impacto visual em todas as views)
+3. ContinuityMatrix (alinhamento com hardware real)
+4. ShowPlanInspector (visibilidade do estado do show)
+5. Integração CommandCenter
 
