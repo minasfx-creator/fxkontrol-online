@@ -6,11 +6,11 @@ import { useRef, useState, useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Grid } from '@react-three/drei';
 import * as THREE from 'three';
-import { useSyncExternalStore } from 'react';
 import {
   subscribeTilesLoading,
   getTilesDebugInfo,
   type TilesLoadingState,
+  type TilesDebugInfo,
 } from '@/core/geo/GoogleTilesEngine';
 
 const TIMEOUT_MS = 15_000;
@@ -40,7 +40,8 @@ const horizonFragmentShader = `
 `;
 
 export default function GoogleTilesFallback() {
-  const debug = useSyncExternalStore(subscribeTilesLoading, getTilesDebugInfo);
+  const [debug, setDebug] = useState<TilesDebugInfo>(getTilesDebugInfo);
+  useEffect(() => subscribeTilesLoading(() => setDebug(getTilesDebugInfo())), []);
   const [timedOut, setTimedOut] = useState(false);
   const loadingStartRef = useRef<number | null>(null);
   const opacityRef = useRef(0);
