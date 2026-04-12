@@ -1,12 +1,11 @@
 /**
- * FXKAssistant — "Joi" BR2049 AI Companion
- * Cyan-Âmbar-Gold palette, cinematic presence, voice interaction (Alexa-style)
+ * FXKAssistant — "Joi" Central Intelligence for FX KONTROL
+ * 6+1 operational modes, system-aware context injection, rich rendering
  */
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
 type JoiEmotion = 'caring' | 'celebrating' | 'serious';
 import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText, Download, Gavel, Plane, MapPin, Globe, Volume2, VolumeX, Mic, MicOff, Play, Paperclip, File, Image as ImageIcon, XCircle } from 'lucide-react';
-// Dynamic imports for heavy export libs (jspdf ~168KB, docx ~157KB)
 const lazyExportPdf = () => import('@/utils/joiPdfExport').then(m => m.exportJoiPdf);
 const lazyExportDocx = () => import('@/utils/joiDocxExport').then(m => m.exportJoiDocx);
 import { parseKmzReadyBlock, stripKmzReadyBlock, downloadAeroKmz } from '@/utils/joiAeroKmzExport';
@@ -21,6 +20,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useJoiSpeech } from '@/hooks/useJoiSpeech';
 import joiFaceIcon from '@/assets/joi-face-icon.png';
+import { joiContextBuilder } from '@/core/joi/JoiContextBuilder';
+import { JOI_MODES, JOI_MODE_PRESETS, getPresetsForMode, getModeConfig, type JoiMode } from '@/core/joi/joiModes';
 
 type Msg = { role: 'user' | 'assistant' | 'system'; content: string; ts?: number; feedback?: 'up' | 'down'; cmdResults?: JoiCommandResult[]; attachmentName?: string; imageBase64?: string };
 
@@ -113,17 +114,7 @@ function TypewriterGreeting({ text }: { text: string }) {
   );
 }
 
-function getContextPresets() {
-  const path = window.location.pathname;
-  const isCommand = path.includes('command');
-  const docPresets = PRESETS_DOCS.map(p => ({
-    label: p.label,
-    icon: p.icon,
-    prompt: isCommand ? p.promptCommand : p.promptEditor,
-  }));
-  if (isCommand) return docPresets;
-  return [...OPERATIONAL_PRESETS.map(op => ({ label: op.label, icon: op.icon, prompt: op.prompt })), ...docPresets];
-}
+// Legacy getContextPresets is replaced by mode-aware presets below
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -276,6 +267,7 @@ export function FXKAssistant() {
   const lastMsgCountRef = useRef(messages.length);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachment, setAttachment] = useState<AttachedFile | null>(null);
+  const [joiMode, setJoiMode] = useState<JoiMode>('show');
 
   // Stable ref for send to avoid stale closure in voice callbacks
   const sendRef = useRef<(text: string) => void>(() => {});
@@ -389,7 +381,21 @@ export function FXKAssistant() {
     }
   }, [open, minimized]);
 
-  const presets = getContextPresets();
+  const modeConfig = getModeConfig(joiMode);
+  const presets = useMemo(() => {
+    const modePresets = getPresetsForMode(joiMode).map(p => ({ label: p.label, icon: p.icon, prompt: p.prompt }));
+    // On editor page in show mode, also include doc presets
+    if (joiMode === 'show') {
+      const path = window.location.pathname;
+      const isCommand = path.includes('command');
+      const docPresets = PRESETS_DOCS.map(p => ({
+        label: p.label, icon: p.icon,
+        prompt: isCommand ? p.promptCommand : p.promptEditor,
+      }));
+      return [...modePresets, ...docPresets];
+    }
+    return modePresets;
+  }, [joiMode]);
   const joiState = loading ? 'active' : isTyping ? 'active' : 'idle';
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -439,30 +445,12 @@ export function FXKAssistant() {
     setInput('');
     setLoading(true);
 
-    // Inject project context as system message
-    const store = useProjectStore.getState();
-    const positionsSummary = store.positions.length > 0
-      ? store.positions.map(p => `${p.name} (${p.type}) @ (${p.x.toFixed(1)}, ${p.z.toFixed(1)})${p.section ? ` [Sec ${p.section}]` : ''}`).join('; ')
-      : 'Nenhuma';
-    const effectCounts = new Map<string, number>();
-    store.timelineItems.forEach(item => {
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
-      const name = effect?.name || item.effectId;
-      effectCounts.set(name, (effectCounts.get(name) || 0) + 1);
-    });
-    const effectsSummary = effectCounts.size > 0
-      ? Array.from(effectCounts.entries()).map(([n, c]) => `${n} ×${c}`).join(', ')
-      : 'Nenhum';
-    const recentItems = store.timelineItems.slice(-30).map(item => {
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
-      const eName = effect?.name || item.effectId;
-      const pName = item.positionName || item.positionId || '?';
-      return `${item.id} [${eName} @ ${pName}, t=${item.startTime.toFixed(1)}s]`;
-    });
-    const itemsDetail = recentItems.length > 0 ? recentItems.join(', ') : 'Nenhum';
+    // Inject system context (full pipeline awareness)
+    const systemContext = joiContextBuilder.toSystemMessage();
+    const modeInstruction = getModeConfig(joiMode).systemInstruction;
     const contextMsg: Msg = {
       role: 'system' as const,
-      content: `[CONTEXTO DO PROJETO]\nPosições (${store.positions.length}): ${positionsSummary}\nEfeitos na timeline (${store.timelineItems.length}): ${effectsSummary}\nItens recentes (IDs para update_effect): ${itemsDetail}\nTempo atual: ${store.currentTime.toFixed(1)}s\nDuração: ${store.duration.toFixed(0)}s`,
+      content: `${systemContext}\n\n[ACTIVE MODE: ${joiMode.toUpperCase()}]\n${modeInstruction}`,
     };
 
     let soFar = '';
@@ -696,8 +684,8 @@ export function FXKAssistant() {
         }}
       >
         <img src={joiFaceIcon} alt="Joi" className="w-5 h-5 rounded-full object-cover" />
-        <span className="text-[10px] font-mono tracking-[0.2em] uppercase" style={{ color: 'hsl(38 100% 55%)' }}>
-          JOI · COMPANION
+        <span className="text-[10px] font-mono tracking-[0.2em] uppercase" style={{ color: `hsl(${modeConfig.accentHsl})` }}>
+          JOI · {modeConfig.shortLabel}
         </span>
         {joiSpeech.speaking && <SpeakingWave />}
       </div>
@@ -746,8 +734,8 @@ export function FXKAssistant() {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-mono font-bold tracking-[0.25em] uppercase" style={{ color: 'hsl(38 100% 55%)' }}>
-              JOI · COMPANION
+            <span className="text-[10px] font-mono font-bold tracking-[0.25em] uppercase" style={{ color: `hsl(${modeConfig.accentHsl})` }}>
+              JOI · {modeConfig.shortLabel}
             </span>
             <div className={cn("w-1.5 h-1.5 rounded-full",
               connectionOk === true ? "bg-green-500" : connectionOk === false ? "bg-red-500" : "bg-muted-foreground/20"
@@ -790,6 +778,33 @@ export function FXKAssistant() {
         <button onClick={handleClose} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors">
           <X className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
         </button>
+      </div>
+
+      {/* Mode selector bar */}
+      <div className="relative z-10 flex gap-1 px-2 py-1.5 overflow-x-auto shrink-0" style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.06)' }}>
+        {JOI_MODES.map(mode => {
+          const isActive = joiMode === mode.id;
+          const ModeIcon = mode.icon;
+          return (
+            <button
+              key={mode.id}
+              onClick={() => setJoiMode(mode.id)}
+              className={cn(
+                "shrink-0 px-2 py-1 rounded text-[7px] font-mono tracking-wider uppercase transition-all flex items-center gap-1",
+                isActive && "scale-[1.02]"
+              )}
+              style={{
+                background: isActive ? `hsl(${mode.accentHsl} / 0.15)` : 'transparent',
+                border: isActive ? `1px solid hsl(${mode.accentHsl} / 0.4)` : '1px solid transparent',
+                color: isActive ? `hsl(${mode.accentHsl})` : 'hsl(190 100% 50% / 0.35)',
+              }}
+              title={mode.description}
+            >
+              <ModeIcon className="h-2.5 w-2.5" />
+              {mode.shortLabel}
+            </button>
+          );
+        })}
       </div>
 
       {/* Content area */}
