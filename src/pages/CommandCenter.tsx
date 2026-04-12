@@ -14,7 +14,8 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { cn } from '@/lib/utils';
 import {
   Zap, Flame, Gauge, Layers, Activity, Cpu, Radio,
-  Shield, Map, Menu, Maximize, AlertOctagon, Target
+  Shield, Map, Menu, Maximize, AlertOctagon, Target,
+  FileText, FileOutput, Wifi
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +35,12 @@ const QuickHardwarePanel = lazy(() => import('@/components/editor/QuickHardwareP
 const VerificationConsole = lazy(() => import('@/components/editor/VerificationBar'));
 const ContinuityMatrix = lazy(() => import('@/components/editor/ContinuityMatrix'));
 const ShowPlanInspector = lazy(() => import('@/components/editor/ShowPlanInspector'));
+const SystemOverviewConsole = lazy(() => import('@/components/editor/SystemOverviewConsole'));
+const SafetyConsole = lazy(() => import('@/components/editor/SafetyConsole'));
+const FieldDiagnosticsConsole = lazy(() => import('@/components/editor/FieldDiagnosticsConsole'));
+const FireOneExportConsole = lazy(() => import('@/components/editor/FireOneExportConsole'));
+const DMXArtNetConsole = lazy(() => import('@/components/editor/DMXArtNetConsole'));
+const AuditBlackBoxConsole = lazy(() => import('@/components/editor/AuditBlackBoxConsole'));
 
 function PanelLoader() {
   return (
@@ -49,7 +56,8 @@ function PanelLoader() {
 type CommandMode =
   | 'pyro_fire' | 'super_dmx' | 'fxk_light' | 'drone_ops'
   | 'show_control' | 'module' | 'dmx_monitor' | 'field_test' | 'hardware'
-  | 'verification' | 'continuity';
+  | 'verification' | 'continuity'
+  | 'sys_overview' | 'safety_console' | 'field_diag' | 'fireone_export' | 'dmx_artnet' | 'audit_blackbox';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = ['pyro_fire', 'super_dmx'];
@@ -68,6 +76,12 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   hardware:     { color: 'hsl(190 80% 50%)',   glow: 'hsl(190 80% 50% / 0.1)',  label: 'HARDWARE',    badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'DEVICE CONNECT & MONITOR' },
   verification: { color: 'hsl(120 70% 42%)',   glow: 'hsl(120 70% 42% / 0.08)', label: 'VERIFY',      badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'SYSTEM VERIFICATION' },
   continuity:   { color: 'hsl(190 100% 50%)',  glow: 'hsl(190 100% 50% / 0.1)', label: 'CONTINUITY',  badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'IGNITER CONTINUITY MATRIX' },
+  sys_overview:   { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'OVERVIEW',    badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'SYSTEM OVERVIEW' },
+  safety_console: { color: 'hsl(0 85% 48%)',     glow: 'hsl(0 85% 48% / 0.1)',     label: 'SAFETY',      badge: 'bg-red-500/15 text-red-400 border-red-500/20', subtitle: 'SAFETY INTERLOCK CONSOLE' },
+  field_diag:     { color: 'hsl(190 80% 50%)',   glow: 'hsl(190 80% 50% / 0.1)',   label: 'FIELD DIAG',  badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'HARDWARE DIAGNOSTICS' },
+  fireone_export: { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'FIREONE',     badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'FIREONE EXPORT CONSOLE' },
+  dmx_artnet:     { color: 'hsl(200 80% 48%)',   glow: 'hsl(200 80% 48% / 0.1)',   label: 'DMX/ARTNET',  badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20', subtitle: 'DMX & ART-NET PROTOCOLS' },
+  audit_blackbox: { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'AUDIT',       badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20', subtitle: 'AUDIT TRAIL & BLACK BOX' },
 };
 
 // ── Sidebar Sections ──
@@ -79,6 +93,7 @@ const MODE_SECTIONS = [
     modes: [
       { key: 'pyro_fire' as CommandMode, label: 'FXK-PYRO', icon: Flame },
       { key: 'super_dmx' as CommandMode, label: 'FXK-DMX', icon: Zap },
+      { key: 'fireone_export' as CommandMode, label: 'FIREONE', icon: FileOutput },
     ],
   },
   {
@@ -86,22 +101,34 @@ const MODE_SECTIONS = [
     accent: 'text-amber-400',
     icon: Activity,
     modes: [
+      { key: 'sys_overview' as CommandMode, label: 'OVERVIEW', icon: Activity },
       { key: 'show_control' as CommandMode, label: 'SHOW CTRL', icon: Activity },
       { key: 'dmx_monitor' as CommandMode, label: 'DMX MONITOR', icon: Radio },
+      { key: 'dmx_artnet' as CommandMode, label: 'DMX/ARTNET', icon: Wifi },
       { key: 'fxk_light' as CommandMode, label: 'FXK-LIGHT', icon: Gauge },
       { key: 'drone_ops' as CommandMode, label: 'FXK-DRONE', icon: Layers },
     ],
   },
   {
+    label: 'SAFETY',
+    accent: 'text-red-400',
+    icon: Shield,
+    modes: [
+      { key: 'safety_console' as CommandMode, label: 'SAFETY', icon: Shield },
+      { key: 'verification' as CommandMode, label: 'VERIFY', icon: Shield },
+      { key: 'continuity' as CommandMode, label: 'CONTINUITY', icon: Zap },
+      { key: 'audit_blackbox' as CommandMode, label: 'AUDIT', icon: FileText },
+    ],
+  },
+  {
     label: 'HARDWARE',
-    accent: 'text-violet-400',
+    accent: 'text-cyan-400',
     icon: Cpu,
     modes: [
       { key: 'module' as CommandMode, label: 'MODULE', icon: Cpu },
       { key: 'hardware' as CommandMode, label: 'HARDWARE', icon: Radio },
+      { key: 'field_diag' as CommandMode, label: 'FIELD DIAG', icon: Cpu },
       { key: 'field_test' as CommandMode, label: 'FIELD TEST', icon: Target },
-      { key: 'verification' as CommandMode, label: 'VERIFY', icon: Shield },
-      { key: 'continuity' as CommandMode, label: 'CONTINUITY', icon: Zap },
     ],
   },
 ];
@@ -109,7 +136,8 @@ const MODE_SECTIONS = [
 const MOBILE_CATEGORIES = [
   { label: 'Exec', icon: Flame, section: 0 },
   { label: 'Monitor', icon: Activity, section: 1 },
-  { label: 'Hardware', icon: Cpu, section: 2 },
+  { label: 'Safety', icon: Shield, section: 2 },
+  { label: 'Hardware', icon: Cpu, section: 3 },
 ];
 
 export default function CommandCenter() {
@@ -208,6 +236,12 @@ export default function CommandCenter() {
       case 'field_test': return <FieldTestDesktop />;
       case 'verification': return <div className="flex flex-col h-full"><VerificationConsole /><div className="flex-1 overflow-auto"><ShowPlanInspector /></div></div>;
       case 'continuity': return <ContinuityMatrix />;
+      case 'sys_overview': return <SystemOverviewConsole />;
+      case 'safety_console': return <SafetyConsole />;
+      case 'field_diag': return <FieldDiagnosticsConsole />;
+      case 'fireone_export': return <FireOneExportConsole />;
+      case 'dmx_artnet': return <DMXArtNetConsole />;
+      case 'audit_blackbox': return <AuditBlackBoxConsole />;
       default: return null;
     }
   }, []);
