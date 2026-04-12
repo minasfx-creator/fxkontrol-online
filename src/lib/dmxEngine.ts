@@ -408,6 +408,23 @@ export function autoPatchDrones(
 }
 
 /**
+ * Set fixture color in the universe channel buffer.
+ */
+export function setFixtureColor(
+  universe: DMXUniverse,
+  fixture: DMXFixture,
+  r: number, g: number, b: number, w = 0,
+): void {
+  const ch = fixture.startChannel - 1;
+  universe.channels[ch] = Math.max(0, Math.min(255, Math.round(r)));
+  universe.channels[ch + 1] = Math.max(0, Math.min(255, Math.round(g)));
+  universe.channels[ch + 2] = Math.max(0, Math.min(255, Math.round(b)));
+  if (fixture.channelCount >= 4) {
+    universe.channels[ch + 3] = Math.max(0, Math.min(255, Math.round(w)));
+  }
+}
+
+/**
  * Convert hex color to DMX channel values.
  */
 export function hexToDMX(hex: string): { r: number; g: number; b: number } {
