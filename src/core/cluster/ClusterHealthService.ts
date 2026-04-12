@@ -33,19 +33,29 @@ export interface ClusterSnapshot {
 
 const MAX_INCIDENTS = 200;
 
+const POLL_FAST_MS = 500;
+const POLL_SLOW_MS = 5000;
+
 class ClusterHealthService {
   private incidents: Incident[] = [];
   private bootTime = Date.now();
   private alertCounts = new Map<string, number>();
   private listeners: Array<() => void> = [];
   private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private currentPollMs = POLL_FAST_MS;
 
   constructor() {
     this.start();
   }
 
   private start() {
-    this.pollTimer = setInterval(() => this.tick(), 500);
+    this.schedulePoll(POLL_FAST_MS);
+  }
+
+  private schedulePoll(ms: number) {
+    if (this.pollTimer) clearInterval(this.pollTimer);
+    this.currentPollMs = ms;
+    this.pollTimer = setInterval(() => this.tick(), ms);
   }
 
   private tick() {
@@ -62,6 +72,13 @@ class ClusterHealthService {
         );
       }
       this.alertCounts.set(reporter.id, curr);
+    }
+
+    // Adaptive polling: fast during active incidents, slow when healthy
+    const hasActive = this.incidents.some(i => !i.resolved);
+    const desiredMs = hasActive ? POLL_FAST_MS : POLL_SLOW_MS;
+    if (desiredMs !== this.currentPollMs) {
+      this.schedulePoll(desiredMs);
     }
 
     this.notify();

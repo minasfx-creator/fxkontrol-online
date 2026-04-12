@@ -9,6 +9,8 @@ import { clusterHealthService } from './ClusterHealthService';
 
 const PERSIST_INTERVAL_MS = 30_000;
 
+const MAX_PERSISTED_IDS = 500;
+
 class HealthPersistenceService {
   private timer: ReturnType<typeof setInterval> | null = null;
   private projectId: string = '';
@@ -74,6 +76,12 @@ class HealthPersistenceService {
 
         for (const i of newIncidents) {
           this.lastPersistedIds.add(i.id);
+        }
+
+        // Cap Set size to prevent memory leak
+        if (this.lastPersistedIds.size > MAX_PERSISTED_IDS) {
+          const arr = Array.from(this.lastPersistedIds);
+          this.lastPersistedIds = new Set(arr.slice(-MAX_PERSISTED_IDS));
         }
       }
     } catch (e) {

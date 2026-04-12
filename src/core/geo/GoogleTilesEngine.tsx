@@ -17,7 +17,9 @@ import {
   GoogleCloudAuthPlugin,
   TilesFadePlugin,
   UnloadTilesPlugin,
+  GLTFExtensionsPlugin,
 } from '3d-tiles-renderer/plugins';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 
 // ── ECEF→ENU rotation matrix for a given lat/lon anchor ─────────────
 function buildECEFtoENUMatrix(lat: number, lon: number): THREE.Matrix4 {
