@@ -45,6 +45,8 @@ const AuditBlackBoxConsole = lazy(() => import('@/components/editor/AuditBlackBo
 const CueValidationConsole = lazy(() => import('@/components/editor/CueValidationConsole'));
 const AddressingConsole = lazy(() => import('@/components/editor/AddressingConsole'));
 const ExecutionStatusConsole = lazy(() => import('@/components/editor/ExecutionStatusConsole'));
+const ExportReadinessPanel = lazy(() => import('@/components/editor/ExportReadinessPanel'));
+const CurrentStateMatrix = lazy(() => import('@/components/editor/CurrentStateMatrix'));
 
 function PanelLoader() {
   return (
