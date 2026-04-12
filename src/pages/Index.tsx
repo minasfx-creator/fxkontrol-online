@@ -47,6 +47,7 @@ const MobileHUD = lz(() => import('@/components/editor/MobileHUD'));
 const MobileQuickActions = lz(() => import('@/components/editor/MobileQuickActions'));
 const LiveModeOverlay = lz(() => import('@/components/editor/LiveModeOverlay'));
 const MobileConsoleFullscreen = lz(() => import('@/components/editor/MobileConsoleFullscreen'));
+const MobileWelcomeScreen = lz(() => import('@/components/editor/MobileWelcomeScreen'));
 
 // ── All panels — loaded on-demand only when opened ──
 const PositionWindow = lz(() => import('@/components/editor/PositionWindow'));
@@ -212,6 +213,10 @@ function Index() {
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [viewportMaximized, setViewportMaximized] = useState(false);
   const [leftDockOpen, setLeftDockOpen] = useState<string | null>(null);
+  const [showMobileWelcome, setShowMobileWelcome] = useState(() => {
+    if (!isMobile) return false;
+    try { return localStorage.getItem('fxk-mobile-location-set') !== '1'; } catch { return true; }
+  });
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
   const operationMode = useDisplayStore(s => s.operationMode);
   const nightMode = useDisplayStore(s => s.nightMode);
@@ -423,8 +428,24 @@ function Index() {
           <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas key="mobile-skycanvas" /></Suspense></CanvasErrorBoundary>
           <BoxSelectOverlay />
         </div>
-        <MobileHUD />
-        <MobileQuickActions panelOpen={mobilePanelHeight !== 'collapsed'} />
+
+        {/* Welcome screen overlay */}
+        {showMobileWelcome && (
+          <Suspense fallback={null}>
+            <MobileWelcomeScreen onComplete={(mode) => {
+              setShowMobileWelcome(false);
+              if (mode === 'search') setShowGeoSetup(true);
+            }} />
+          </Suspense>
+        )}
+
+        {!showMobileWelcome && (
+          <>
+            <MobileHUD />
+            <MobileQuickActions panelOpen={mobilePanelHeight !== 'collapsed'} />
+          </>
+        )}
+
         <MobileFloatingPanel activeTab={mobileTab} height={mobilePanelHeight} onHeightChange={setMobilePanelHeight} onDismiss={handleDismissPanel} title={mobileTab === 'timeline' ? 'Timeline' : mobileTab === 'assets' ? 'Effects Library' : mobileTab === 'properties' ? 'Properties' : mobileTab === 'more' ? 'Painéis' : activePanel ?? undefined}>
           {mobileTab === 'timeline' && <Timeline />}
           {mobileTab === 'assets' && <EffectLibrary />}
@@ -450,7 +471,12 @@ function Index() {
           </MobileConsoleFullscreen>
         )}
 
-        <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} onOpenPanel={(id) => handleTogglePanel(id as PanelId)} panelHeight={mobilePanelHeight} onPanelHeightChange={setMobilePanelHeight} />
+        {/* Geo setup (mobile-adapted fullscreen) */}
+        {showGeoSetup && <GeoLocationSetup onClose={() => setShowGeoSetup(false)} />}
+
+        {!showMobileWelcome && (
+          <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab} onOpenPanel={(id) => handleTogglePanel(id as PanelId)} panelHeight={mobilePanelHeight} onPanelHeightChange={setMobilePanelHeight} />
+        )}
       </div>
     );
   }

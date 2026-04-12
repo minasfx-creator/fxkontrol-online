@@ -80,7 +80,7 @@ export default function MobileQuickActions({ panelOpen = false }: MobileQuickAct
       panelOpen && "opacity-0 pointer-events-none translate-y-4"
     )}>
       {/* Edit actions — draggable left panel */}
-      <DraggableFloatingPanel panelId="mobile-edit-actions" initialX={8} initialY={Math.round(window.innerHeight * 0.4)} bottomOffset={80}>
+      <DraggableFloatingPanel panelId="mobile-edit-actions" initialX={Math.round(window.innerWidth - 64)} initialY={Math.round(window.innerHeight * 0.35)} bottomOffset={100}>
         <div className="flex flex-col gap-1.5 p-1.5">
           {editActions.map(({ icon: Icon, label, onClick, variant }) => (
             <button

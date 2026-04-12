@@ -4,7 +4,7 @@
  */
 import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Pause, Square, AlertOctagon, Zap, Radio, ScanEye, Crosshair } from 'lucide-react';
+import { Play, Pause, Square, AlertOctagon, Zap, Radio, ScanEye, Crosshair, MapPin } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { usePlaybackState, useEditorMode, useHardwareStatus } from '@/hooks/useEditorUI';
@@ -134,6 +134,14 @@ export default function MobileHUD() {
               <AlertOctagon className="w-5 h-5 text-destructive-foreground" />
             </button>
           )}
+
+          {/* Geo location button */}
+          <button
+            onClick={() => { haptics.tap(); window.dispatchEvent(new Event('open-geo-setup')); }}
+            className="glass-button flex items-center justify-center w-11 h-11 active:scale-90 transition-transform"
+          >
+            <MapPin className="w-4 h-4 text-foreground" />
+          </button>
 
           {/* Hardware status indicator */}
           <button
