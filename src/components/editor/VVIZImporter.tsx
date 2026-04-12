@@ -203,8 +203,8 @@ export default function VVIZImporter({
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
+    const tus = await import('tus-js-client');
     return new Promise<ArrayBuffer | null>((resolve) => {
-      const tus = await import('tus-js-client');
       const upload = new tus.Upload(file, {
         endpoint: `${supabaseUrl}/storage/v1/upload/resumable`,
         retryDelays: [0, 1000, 3000, 5000, 10000],
