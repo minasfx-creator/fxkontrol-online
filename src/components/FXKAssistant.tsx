@@ -1,12 +1,11 @@
 /**
- * FXKAssistant — "Joi" BR2049 AI Companion
- * Cyan-Âmbar-Gold palette, cinematic presence, voice interaction (Alexa-style)
+ * FXKAssistant — "Joi" Central Intelligence for FX KONTROL
+ * 6+1 operational modes, system-aware context injection, rich rendering
  */
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
 type JoiEmotion = 'caring' | 'celebrating' | 'serious';
 import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText, Download, Gavel, Plane, MapPin, Globe, Volume2, VolumeX, Mic, MicOff, Play, Paperclip, File, Image as ImageIcon, XCircle } from 'lucide-react';
-// Dynamic imports for heavy export libs (jspdf ~168KB, docx ~157KB)
 const lazyExportPdf = () => import('@/utils/joiPdfExport').then(m => m.exportJoiPdf);
 const lazyExportDocx = () => import('@/utils/joiDocxExport').then(m => m.exportJoiDocx);
 import { parseKmzReadyBlock, stripKmzReadyBlock, downloadAeroKmz } from '@/utils/joiAeroKmzExport';
@@ -21,6 +20,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useJoiSpeech } from '@/hooks/useJoiSpeech';
 import joiFaceIcon from '@/assets/joi-face-icon.png';
+import { joiContextBuilder } from '@/core/joi/JoiContextBuilder';
+import { JOI_MODES, JOI_MODE_PRESETS, getPresetsForMode, getModeConfig, type JoiMode } from '@/core/joi/joiModes';
 
 type Msg = { role: 'user' | 'assistant' | 'system'; content: string; ts?: number; feedback?: 'up' | 'down'; cmdResults?: JoiCommandResult[]; attachmentName?: string; imageBase64?: string };
 
