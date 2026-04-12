@@ -130,6 +130,12 @@ export const JOI_MODE_PRESETS: JoiModePreset[] = [
   { mode: 'verify', label: 'BLOCKERS', icon: AlertTriangle, prompt: 'Identifique e explique todos os blockers atuais do sistema.\n[JOI_CMD]{"action":"check_readiness","params":{}}[/JOI_CMD]' },
   { mode: 'verify', label: 'READINESS', icon: Target, prompt: 'Avalie readiness completo com detalhamento por subsistema.\n[JOI_CMD]{"action":"check_readiness","params":{}}[/JOI_CMD]' },
 
+  // Hardware Truth presets
+  { mode: 'hardware_truth', label: 'PROVENANCE', icon: Radio, prompt: 'Analise a provenance de cada adapter: integration_mode, evidence_level, data_freshness. Identifique o que é simulated vs real.\n[JOI_CMD]{"action":"inspect_hardware","params":{}}[/JOI_CMD]' },
+  { mode: 'hardware_truth', label: 'INTEGRAÇÃO', icon: Eye, prompt: 'Mostre o status de integração completo: o que é simulated, replay, live_read_only e not_integrated.\n[JOI_CMD]{"action":"get_system_state","params":{}}[/JOI_CMD]' },
+  { mode: 'hardware_truth', label: 'STALE DATA', icon: Clock, prompt: 'Identifique todos os dados stale no sistema. Qual a freshness de cada adapter? Há risco operacional?\n[JOI_CMD]{"action":"inspect_hardware","params":{}}[/JOI_CMD]' },
+  { mode: 'hardware_truth', label: 'RISCO', icon: AlertTriangle, prompt: 'Avalie o risco operacional atual baseado nos integration modes e evidence levels. O que precisa evoluir de simulated para live?\n[JOI_CMD]{"action":"get_system_state","params":{}}[/JOI_CMD]' },
+
   // Planner presets
   { mode: 'planner', label: 'FASES', icon: ListChecks, prompt: 'Monte um plano por fases para a próxima evolução do sistema, considerando o estado atual.' },
   { mode: 'planner', label: 'PRIORIDADES', icon: Target, prompt: 'Defina prioridades técnicas para os próximos sprints baseado nos gaps e blockers atuais.' },
