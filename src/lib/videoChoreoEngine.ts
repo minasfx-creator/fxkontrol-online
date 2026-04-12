@@ -47,10 +47,8 @@ export interface ChoreoKeyframe {
   opticalFlow?: OpticalFlowField;
 }
 
-export interface ChoreoTrajectory {
-  droneIndex: number;
-  waypoints: { time: number; x: number; y: number; z: number; color: string }[];
-}
+export type { ChoreoTrajectory } from './videoChoreoTypes';
+import type { ChoreoTrajectory } from './videoChoreoTypes';
 
 export interface VideoChoreoResult {
   keyframes: ChoreoKeyframe[];

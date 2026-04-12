@@ -6,19 +6,9 @@
 
 import { serviceRegistry } from './ServiceRegistry';
 
-// ── Types ────────────────────────────────────────────────────────────
-
-export type HealthLevel = 'healthy' | 'degraded' | 'critical' | 'offline';
-
-export interface SubsystemHealth {
-  id: string;
-  label: string;
-  level: HealthLevel;
-  score: number;        // 0–100
-  details: string;
-  lastUpdate: number;
-  metrics: Record<string, string | number>;
-}
+// Re-export types from shared module
+export type { HealthLevel, SubsystemHealth } from './healthTypes';
+import type { SubsystemHealth, HealthLevel } from './healthTypes';
 
 export interface Incident {
   id: string;
