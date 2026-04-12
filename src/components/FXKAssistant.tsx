@@ -524,18 +524,7 @@ export function FXKAssistant() {
 
   const modeConfig = getModeConfig(joiMode);
   const presets = useMemo(() => {
-    const modePresets = getPresetsForMode(joiMode).map(p => ({ label: p.label, icon: p.icon, prompt: p.prompt }));
-    // On editor page in show mode, also include doc presets
-    if (joiMode === 'show') {
-      const path = window.location.pathname;
-      const isCommand = path.includes('command');
-      const docPresets = PRESETS_DOCS.map(p => ({
-        label: p.label, icon: p.icon,
-        prompt: isCommand ? p.promptCommand : p.promptEditor,
-      }));
-      return [...modePresets, ...docPresets];
-    }
-    return modePresets;
+    return getPresetsForMode(joiMode).map(p => ({ label: p.label, icon: p.icon, prompt: p.prompt }));
   }, [joiMode]);
   const joiState = loading ? 'active' : isTyping ? 'active' : 'idle';
 
