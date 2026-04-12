@@ -415,6 +415,7 @@ export function FXKAssistant() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachment, setAttachment] = useState<AttachedFile | null>(null);
   const [joiMode, setJoiMode] = useState<JoiMode>('show');
+  const [lastTrace, setLastTrace] = useState<JOIExecutionTrace | null>(null);
 
   // Stable ref for send to avoid stale closure in voice callbacks
   const sendRef = useRef<(text: string) => void>(() => {});
