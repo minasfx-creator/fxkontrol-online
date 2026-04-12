@@ -12,6 +12,7 @@ import { relayBankAdapter } from './adapters/RelayBankAdapter32';
 import { batteryMonitorAdapter } from './adapters/BatteryMonitorAdapter';
 import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
 import { fireOneProfileAdapter } from './adapters/FireOneProfileAdapter';
+import { dmxUniverseAdapter } from './adapters/DMXUniverseAdapter';
 import { deviceEventLog } from './DeviceEventLog';
 
 export type TestScenario = 'healthy' | 'degraded' | 'critical' | 'mixed';
@@ -25,6 +26,7 @@ export function loadHardwareTestData(scenario: TestScenario = 'mixed'): void {
   batteryMonitorAdapter.reset();
   artNetNodeAdapter.reset();
   fireOneProfileAdapter.reset();
+  dmxUniverseAdapter.reset();
 
   deviceEventLog.log('system', 'state_change', `Loading test scenario: ${scenario}`);
 
@@ -66,6 +68,7 @@ function _loadHealthy(): void {
   }
 
   fireOneProfileAdapter.updateProfile({ validation_state: 'valid', cue_count: 6 });
+  dmxUniverseAdapter._injectState({ occupied_channels: 128, refresh_rate_hz: 44, link: { connected: true, latency_ms: 1.1, errors: 0 } });
 }
 
 function _loadDegraded(): void {
@@ -95,6 +98,7 @@ function _loadDegraded(): void {
   }
 
   fireOneProfileAdapter.updateProfile({ validation_state: 'valid', cue_count: 4 });
+  dmxUniverseAdapter._injectState({ occupied_channels: 64, refresh_rate_hz: 30, link: { connected: true, latency_ms: 8, errors: 5 } });
 }
 
 function _loadCritical(): void {
@@ -118,6 +122,7 @@ function _loadCritical(): void {
   for (let i = 8; i < 16; i++) muxReaderAdapter.simulateChannelState(i, 'ok');
 
   fireOneProfileAdapter.updateProfile({ validation_state: 'invalid', cue_count: 0, errors: ['No valid cues'] });
+  dmxUniverseAdapter._injectState({ occupied_channels: 0, refresh_rate_hz: 0, link: { connected: false, latency_ms: 0, errors: 99 } });
 }
 
 function _loadMixed(): void {
@@ -161,4 +166,8 @@ function _loadMixed(): void {
   // FireOne: valid
   fireOneProfileAdapter.updateProfile({ validation_state: 'valid', cue_count: 6 });
   deviceEventLog.log('fireone-profile', 'state_change', 'Export profile validated: 6 cues');
+
+  // DMX Universe: online with traffic
+  dmxUniverseAdapter._injectState({ occupied_channels: 96, refresh_rate_hz: 42, link: { connected: true, latency_ms: 2.3, errors: 1 } });
+  deviceEventLog.log('dmx-universe-1', 'connected', 'DMX Universe 1: 96/512 channels occupied, 42Hz');
 }

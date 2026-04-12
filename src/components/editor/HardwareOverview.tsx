@@ -1,16 +1,20 @@
 /**
  * ─── Hardware Overview Dashboard ───────────────────────────────────
  * Top-level hardware supervision console. Shows system health,
- * device summary, readiness status, and active warnings/errors.
+ * device summary, readiness status, discovery, and active warnings.
  * Command-grade industrial aesthetic.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useHardwareRegistry } from '@/core/hardware/useHardwareRegistry';
+import { hardwareHealthMonitor, type HealthReport } from '@/core/hardware/HardwareHealthMonitor';
+import { telemetryPoller } from '@/core/hardware/TelemetryPoller';
+import { deviceDiscovery, type DiscoveryResult } from '@/core/hardware/DeviceDiscovery';
+import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
 import { cn } from '@/lib/utils';
 import {
   Activity, Cpu, Battery, Radio, Wifi, AlertTriangle,
-  CheckCircle2, XCircle, Zap, Shield, RefreshCw,
+  CheckCircle2, XCircle, Zap, Shield, RefreshCw, Search, Gauge,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -35,14 +39,33 @@ const DEVICE_ICONS: Record<string, typeof Cpu> = {
 
 export default function HardwareOverview() {
   const { devices, snapshots, health, readiness, events, refresh, evaluateReadiness, loadTestScenario, startPolling, isPolling } = useHardwareRegistry();
+  const [healthReport, setHealthReport] = useState<HealthReport | null>(null);
+  const [discoveryResults, setDiscoveryResults] = useState<DiscoveryResult[]>([]);
+  const [isScanning, setIsScanning] = useState(false);
 
   useEffect(() => {
     refresh();
     evaluateReadiness();
+    setHealthReport(hardwareHealthMonitor.evaluate());
   }, []);
+
+  const handleScan = useCallback(async () => {
+    setIsScanning(true);
+    const unsub = deviceDiscovery.onChange(() => setDiscoveryResults(deviceDiscovery.getResults()));
+    await deviceDiscovery.scan();
+    unsub();
+    setIsScanning(false);
+    refresh();
+  }, [refresh]);
+
+  const handleStartPoller = useCallback(() => {
+    telemetryPoller.start();
+    startPolling();
+  }, [startPolling]);
 
   const allWarnings = snapshots.flatMap(s => s.warnings.map(w => ({ device: s.device_id, msg: w })));
   const allErrors = snapshots.flatMap(s => s.errors.map(e => ({ device: s.device_id, msg: e })));
+  const mode = operationalModeGuard.mode;
 
   return (
     <div className="flex flex-col h-full bg-background/80 p-3 gap-3">
@@ -51,35 +74,39 @@ export default function HardwareOverview() {
         <div className="flex items-center gap-2">
           <Cpu className="w-4 h-4 text-cyan-400" />
           <span className="text-xs font-mono font-bold tracking-widest text-foreground uppercase">Hardware Overview</span>
+          <span className="text-[7px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase">{mode}</span>
         </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono"
-            onClick={() => loadTestScenario('mixed')}>
-            LOAD MIXED
+            onClick={() => loadTestScenario('mixed')}>LOAD MIXED</Button>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono"
+            onClick={() => loadTestScenario('healthy')}>HEALTHY</Button>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono"
+            onClick={() => loadTestScenario('critical')}>CRITICAL</Button>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono gap-1"
+            onClick={handleScan} disabled={isScanning}>
+            <Search className="w-3 h-3" /> {isScanning ? 'SCANNING…' : 'SCAN'}
           </Button>
           <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono"
-            onClick={() => loadTestScenario('healthy')}>
-            HEALTHY
-          </Button>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono"
-            onClick={() => loadTestScenario('critical')}>
-            CRITICAL
-          </Button>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono"
-            onClick={() => { refresh(); evaluateReadiness(); }}>
+            onClick={() => { refresh(); evaluateReadiness(); setHealthReport(hardwareHealthMonitor.evaluate()); }}>
             <RefreshCw className="w-3 h-3 mr-1" /> POLL
           </Button>
           {!isPolling && (
             <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono text-cyan-400"
-              onClick={startPolling}>
-              AUTO
-            </Button>
+              onClick={handleStartPoller}>AUTO</Button>
+          )}
+          {isPolling && (
+            <span className="text-[7px] font-mono text-cyan-400 flex items-center gap-1">
+              <Gauge className="w-3 h-3" /> {telemetryPoller.frequencyMs}ms
+            </span>
           )}
         </div>
       </div>
 
-      {/* Health Summary Bar */}
-      <div className="grid grid-cols-5 gap-2">
+      {/* Health Summary Bar — now includes weighted score */}
+      <div className="grid grid-cols-6 gap-2">
+        <HealthCard label="WEIGHTED" value={healthReport ? `${healthReport.overallScore}%` : '—'}
+          color={healthReport ? (healthReport.level === 'HEALTHY' ? 'emerald' : healthReport.level === 'DEGRADED' ? 'amber' : 'red') : 'cyan'} />
         <HealthCard label="SCORE" value={`${health.score}%`} color={health.score > 70 ? 'emerald' : health.score > 40 ? 'amber' : 'red'} />
         <HealthCard label="ONLINE" value={`${health.online}/${health.total}`} color={health.online === health.total ? 'emerald' : 'amber'} />
         <HealthCard label="WARNINGS" value={`${health.warnings}`} color={health.warnings > 0 ? 'amber' : 'emerald'} />
@@ -88,19 +115,28 @@ export default function HardwareOverview() {
           color={readiness?.status === 'BLOCKED' ? 'red' : readiness?.status === 'READY_FOR_HARDWARE_SYNC' ? 'emerald' : 'amber'} />
       </div>
 
+      {/* Health breakdown */}
+      {healthReport && (
+        <div className="flex items-center gap-3 text-[7px] font-mono text-muted-foreground">
+          <span>Safety: <span className={healthReport.safetyScore > 70 ? 'text-emerald-400' : 'text-red-400'}>{healthReport.safetyScore}%</span></span>
+          <span>Hardware: <span className={healthReport.hardwareScore > 70 ? 'text-emerald-400' : 'text-amber-400'}>{healthReport.hardwareScore}%</span></span>
+          <span>Network: <span className={healthReport.networkScore > 70 ? 'text-emerald-400' : 'text-amber-400'}>{healthReport.networkScore}%</span></span>
+          <span className="text-muted-foreground/30">|</span>
+          <span>Level: <span className={cn(
+            healthReport.level === 'HEALTHY' ? 'text-emerald-400' : healthReport.level === 'DEGRADED' ? 'text-amber-400' : 'text-red-400'
+          )}>{healthReport.level}</span></span>
+        </div>
+      )}
+
       {/* Allowed Operations */}
       {readiness && (
         <div className="flex items-center gap-1 flex-wrap">
           <span className="text-[7px] font-mono text-muted-foreground/50 uppercase mr-1">Allowed:</span>
           {readiness.allowed_operations.map(op => (
-            <span key={op} className="px-1.5 py-0.5 rounded text-[7px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              {op}
-            </span>
+            <span key={op} className="px-1.5 py-0.5 rounded text-[7px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">{op}</span>
           ))}
           {readiness.blocked_operations.map(op => (
-            <span key={op} className="px-1.5 py-0.5 rounded text-[7px] font-mono bg-red-500/10 text-red-400/50 border border-red-500/10 line-through">
-              {op}
-            </span>
+            <span key={op} className="px-1.5 py-0.5 rounded text-[7px] font-mono bg-red-500/10 text-red-400/50 border border-red-500/10 line-through">{op}</span>
           ))}
         </div>
       )}
@@ -110,6 +146,7 @@ export default function HardwareOverview() {
         {devices.map(dev => {
           const Icon = DEVICE_ICONS[dev.type] ?? Cpu;
           const snap = snapshots.find(s => s.device_id === dev.id);
+          const disc = discoveryResults.find(d => d.deviceId === dev.id);
           return (
             <div key={dev.id} className="rounded border border-border/20 bg-card/30 p-2 flex flex-col gap-1">
               <div className="flex items-center gap-1.5">
@@ -124,6 +161,13 @@ export default function HardwareOverview() {
                   'bg-muted-foreground/30': dev.connection_state === 'disconnected',
                 })} />
                 <span className="text-[7px] font-mono text-muted-foreground uppercase">{dev.connection_state}</span>
+                {disc && (
+                  <span className={cn('text-[6px] font-mono ml-auto', {
+                    'text-emerald-400': disc.status === 'found',
+                    'text-amber-400': disc.status === 'scanning',
+                    'text-red-400': disc.status === 'not_found',
+                  })}>{disc.status === 'scanning' ? '⟳' : disc.status === 'found' ? `${disc.scanDuration_ms}ms` : '—'}</span>
+                )}
               </div>
               {snap && (snap.warnings.length > 0 || snap.errors.length > 0) && (
                 <div className="mt-1 space-y-0.5">
@@ -139,7 +183,6 @@ export default function HardwareOverview() {
                   ))}
                 </div>
               )}
-              {/* Metrics */}
               {snap && Object.keys(snap.metrics).length > 0 && (
                 <div className="mt-auto pt-1 border-t border-border/10 grid grid-cols-2 gap-x-2">
                   {Object.entries(snap.metrics).slice(0, 4).map(([k, v]) => (
