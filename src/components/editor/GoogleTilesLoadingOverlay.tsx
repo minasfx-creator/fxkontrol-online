@@ -2,7 +2,7 @@
  * GoogleTilesLoadingOverlay — shows loading state + debug telemetry
  * while Google Earth 3D Tiles load.
  */
-import React, { useState, useEffect, useSyncExternalStore } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Globe, AlertTriangle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   getTilesLoadingState,
@@ -15,7 +15,8 @@ import {
 import { useSceneStore } from '@/store/useSceneStore';
 
 function useTilesDebug() {
-  const debug = useSyncExternalStore(subscribeTilesLoading, getTilesDebugInfo);
+  const [debug, setDebug] = useState<TilesDebugInfo>(getTilesDebugInfo);
+  useEffect(() => subscribeTilesLoading(() => setDebug(getTilesDebugInfo())), []);
   return debug;
 }
 
