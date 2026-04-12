@@ -10,6 +10,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { SafetyCheckResult, SafetyViolation } from '@/lib/skybrushSafetyCheck';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 interface TrajectoryValidationOverlayProps {
   result: SafetyCheckResult | null;

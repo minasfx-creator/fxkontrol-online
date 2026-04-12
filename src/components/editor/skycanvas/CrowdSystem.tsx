@@ -8,6 +8,7 @@ import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 const CROWD_COUNT = 200;
 const FOH_START_Z = 15;

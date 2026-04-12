@@ -6,6 +6,7 @@ import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useLaserPreviewStore, type LaserSource } from '@/store/useLaserPreviewStore';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 function generateBeamEndpoints(source: LaserSource, time: number): THREE.Vector3[] {
   const { pan, tilt, beamCount, pattern } = source;

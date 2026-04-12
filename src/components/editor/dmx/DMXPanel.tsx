@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap, Usb, Monitor } from 'lucide-react';
 import DMXMonitorGrid from './DMXMonitorGrid';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';

@@ -12,6 +12,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { Crosshair } from 'lucide-react';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 // Variáveis Globais de Memória Estática (Previnem o "Garbage Collector Stutter")
 const _O = new THREE.Object3D();

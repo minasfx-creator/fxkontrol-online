@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { Settings2, Download, FileJson, FileSpreadsheet, Box, Trash2, Zap, Shield, Sliders, MapPin, Link2, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

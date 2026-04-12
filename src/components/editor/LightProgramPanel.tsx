@@ -9,6 +9,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { useProjectStore } from '@/store/useProjectStore';
 import { Lightbulb, Plus, Trash2, Copy, Play, Palette, Sparkles, Zap, Rainbow, Wind, Eye, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
