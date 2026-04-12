@@ -93,8 +93,6 @@ export default React.memo(function TelemetryBar() {
       </div>
     </div>
   );
-}
-
 });
 
 function Divider() {
