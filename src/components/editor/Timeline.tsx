@@ -9,6 +9,7 @@ import { getPreFireTime } from '@/lib/safetyEngine';
 import { cn } from '@/lib/utils';
 import AudioWaveform from './AudioWaveform';
 import PyroTimelineTrack from './PyroTimelineTrack';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -966,6 +967,7 @@ const MIN_PPS = 4;
 const MAX_PPS = 80;
 
 const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, _ref) {
+  useRenderCounter('Timeline');
     const isPlaying = useProjectStore(s => s.isPlaying);
   const setPlaying = useProjectStore(s => s.setPlaying);
   const currentTime = useProjectStore(s => s.currentTime);
