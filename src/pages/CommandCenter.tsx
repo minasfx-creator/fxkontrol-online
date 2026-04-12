@@ -42,6 +42,9 @@ const FieldDiagnosticsConsole = lazy(() => import('@/components/editor/FieldDiag
 const FireOneExportConsole = lazy(() => import('@/components/editor/FireOneExportConsole'));
 const DMXArtNetConsole = lazy(() => import('@/components/editor/DMXArtNetConsole'));
 const AuditBlackBoxConsole = lazy(() => import('@/components/editor/AuditBlackBoxConsole'));
+const CueValidationConsole = lazy(() => import('@/components/editor/CueValidationConsole'));
+const AddressingConsole = lazy(() => import('@/components/editor/AddressingConsole'));
+const ExecutionStatusConsole = lazy(() => import('@/components/editor/ExecutionStatusConsole'));
 
 function PanelLoader() {
   return (
@@ -58,7 +61,8 @@ type CommandMode =
   | 'pyro_fire' | 'super_dmx' | 'fxk_light' | 'drone_ops'
   | 'show_control' | 'module' | 'dmx_monitor' | 'field_test' | 'hardware'
   | 'verification' | 'continuity'
-  | 'sys_overview' | 'safety_console' | 'field_diag' | 'fireone_export' | 'dmx_artnet' | 'audit_blackbox';
+  | 'sys_overview' | 'safety_console' | 'field_diag' | 'fireone_export' | 'dmx_artnet' | 'audit_blackbox'
+  | 'cue_validation' | 'addressing' | 'execution_status';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = ['pyro_fire', 'super_dmx'];
@@ -83,6 +87,9 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   fireone_export: { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'FIREONE',     badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'FIREONE EXPORT CONSOLE' },
   dmx_artnet:     { color: 'hsl(200 80% 48%)',   glow: 'hsl(200 80% 48% / 0.1)',   label: 'DMX/ARTNET',  badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20', subtitle: 'DMX & ART-NET PROTOCOLS' },
   audit_blackbox: { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'AUDIT',       badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20', subtitle: 'AUDIT TRAIL & BLACK BOX' },
+  cue_validation: { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'CUE VALID',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'CUE & TIMELINE VALIDATION' },
+  addressing:     { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'ADDRESSING',  badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20', subtitle: 'PROTOCOL ADDRESSING MAP' },
+  execution_status: { color: 'hsl(120 70% 42%)', glow: 'hsl(120 70% 42% / 0.08)', label: 'EXEC STATUS', badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'EXECUTION BRIDGE STATUS' },
 };
 
 // ── Sidebar Sections ──
@@ -95,6 +102,7 @@ const MODE_SECTIONS = [
       { key: 'pyro_fire' as CommandMode, label: 'FXK-PYRO', icon: Flame },
       { key: 'super_dmx' as CommandMode, label: 'FXK-DMX', icon: Zap },
       { key: 'fireone_export' as CommandMode, label: 'FIREONE', icon: FileOutput },
+      { key: 'execution_status' as CommandMode, label: 'EXEC STATUS', icon: Activity },
     ],
   },
   {
@@ -104,6 +112,8 @@ const MODE_SECTIONS = [
     modes: [
       { key: 'sys_overview' as CommandMode, label: 'OVERVIEW', icon: Activity },
       { key: 'show_control' as CommandMode, label: 'SHOW CTRL', icon: Activity },
+      { key: 'cue_validation' as CommandMode, label: 'CUE VALID', icon: Layers },
+      { key: 'addressing' as CommandMode, label: 'ADDRESSING', icon: Map },
       { key: 'dmx_monitor' as CommandMode, label: 'DMX MONITOR', icon: Radio },
       { key: 'dmx_artnet' as CommandMode, label: 'DMX/ARTNET', icon: Wifi },
       { key: 'fxk_light' as CommandMode, label: 'FXK-LIGHT', icon: Gauge },
@@ -243,6 +253,9 @@ export default function CommandCenter() {
       case 'fireone_export': return <FireOneExportConsole />;
       case 'dmx_artnet': return <DMXArtNetConsole />;
       case 'audit_blackbox': return <AuditBlackBoxConsole />;
+      case 'cue_validation': return <CueValidationConsole />;
+      case 'addressing': return <AddressingConsole />;
+      case 'execution_status': return <ExecutionStatusConsole />;
       default: return null;
     }
   }, []);

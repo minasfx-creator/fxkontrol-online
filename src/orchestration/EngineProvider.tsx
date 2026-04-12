@@ -11,6 +11,7 @@
  */
 
 import { useEffect } from 'react';
+import { useShowPlanSync } from '@/hooks/useShowPlanSync';
 import { deterministicClock } from '@/core/time/deterministicClock';
 import { lockstep } from '@/core/reliability/lockstepEngine';
 import { commandBus } from '@/core/command/CommandBus';
@@ -47,6 +48,9 @@ function safeBoot(label: string, fn: () => void): boolean {
 }
 
 export default function EngineProvider() {
+  // ── ShowPlan ↔ ProjectStore live sync ──
+  useShowPlanSync();
+
   useEffect(() => {
     let lastFlushTick = 0;
 
