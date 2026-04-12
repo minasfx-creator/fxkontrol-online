@@ -3,16 +3,25 @@
  * Listens for 'viewport-transition' events and fades viewport in/out.
  * Uses CSS transitions only — zero JS animation loops.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 export default function ViewportTransitionOverlay() {
   const [phase, setPhase] = useState<'idle' | 'fade-out' | 'hold' | 'fade-in'>('idle');
   const [label, setLabel] = useState<string | null>(null);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const clearTimers = useCallback(() => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+  }, []);
 
   const handleTransition = useCallback((e: Event) => {
     const { locationName, holdMs = 800 } = (e as CustomEvent).detail ?? {};
     setLabel(locationName || null);
+
+    // Clear any previous transition timers
+    clearTimers();
 
     // Phase 1: fade to black
     setPhase('fade-out');
@@ -29,13 +38,16 @@ export default function ViewportTransitionOverlay() {
       setLabel(null);
     }, 400 + holdMs + 600);
 
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, []);
+    timersRef.current = [t1, t2, t3];
+  }, [clearTimers]);
 
   useEffect(() => {
     window.addEventListener('viewport-transition', handleTransition);
-    return () => window.removeEventListener('viewport-transition', handleTransition);
-  }, [handleTransition]);
+    return () => {
+      window.removeEventListener('viewport-transition', handleTransition);
+      clearTimers();
+    };
+  }, [handleTransition, clearTimers]);
 
   return (
     <div

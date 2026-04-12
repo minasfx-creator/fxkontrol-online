@@ -72,6 +72,8 @@ export class FireOneHardwareBridge {
   private onEvent: BridgeEventHandler | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private rssiTimer: ReturnType<typeof setInterval> | null = null;
+  private bleCharValueHandler: ((event: any) => void) | null = null;
+  private bleDisconnectHandler: (() => void) | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 3;
   private lastConnectArgs: { method: string; args?: any } | null = null;
@@ -131,12 +133,14 @@ export class FireOneHardwareBridge {
     this.bleCharRx = await service.getCharacteristic(BLE_CHAR_RX_UUID);
 
     await this.bleCharRx.startNotifications();
-    this.bleCharRx.addEventListener('characteristicvaluechanged', (event: any) => {
+    this.bleCharValueHandler = (event: any) => {
       const value = new TextDecoder().decode(event.target.value.buffer);
       this.handleResponse(value);
-    });
+    };
+    this.bleCharRx.addEventListener('characteristicvaluechanged', this.bleCharValueHandler);
 
-    device.addEventListener('gattserverdisconnected', () => this.handleDisconnect());
+    this.bleDisconnectHandler = () => this.handleDisconnect();
+    device.addEventListener('gattserverdisconnected', this.bleDisconnectHandler);
 
     this.bleDevice = device;
     this.transport = transport;
@@ -262,6 +266,15 @@ export class FireOneHardwareBridge {
     this.lastConnectArgs = null; // Prevent auto-reconnect
     this.stopHeartbeat();
     this.stopRssiPolling();
+    // Remove BLE event listeners before disconnecting
+    if (this.bleCharRx && this.bleCharValueHandler) {
+      this.bleCharRx.removeEventListener('characteristicvaluechanged', this.bleCharValueHandler);
+      this.bleCharValueHandler = null;
+    }
+    if (this.bleDevice && this.bleDisconnectHandler) {
+      this.bleDevice.removeEventListener('gattserverdisconnected', this.bleDisconnectHandler);
+      this.bleDisconnectHandler = null;
+    }
     if (this.bleDevice?.gatt?.connected) {
       this.bleDevice.gatt.disconnect();
     }

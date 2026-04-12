@@ -103,6 +103,7 @@ export default function DMXMonitorPanel({ fs = false }: { fs?: boolean }) {
   const totalPacketsRef = useRef(0);
   const changedChannels = useRef(new Set<number>());
   const sessionId = useRef(`ses-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
+  const changedClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveCountRef = useRef(0);
 
   useEffect(() => { localStorage.setItem('dmx-autosave', autoSave ? 'true' : 'false'); }, [autoSave]);
@@ -137,7 +138,8 @@ export default function DMXMonitorPanel({ fs = false }: { fs?: boolean }) {
         timestamp: Date.now(), source: '192.168.1.100', protocol: 'Art-Net',
         universe, channels: changed,
       }, ...prev].slice(0, 200));
-      setTimeout(() => changedChannels.current.clear(), 500);
+      if (changedClearTimer.current) clearTimeout(changedClearTimer.current);
+      changedClearTimer.current = setTimeout(() => changedChannels.current.clear(), 500);
     }
     setDmxValues(newValues);
   }, [channels, universe]);

@@ -1,4 +1,4 @@
-import { useState, useEffect, forwardRef } from 'react';
+import { useState, useEffect, useRef, forwardRef } from 'react';
 import fxkLogo from '@/assets/fxk-logo-tactical.png';
 import { cn } from '@/lib/utils';
 import { ambientSound } from '@/lib/ambientSound';
@@ -53,10 +53,17 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
     return () => timers.forEach(clearTimeout);
   }, [phase]);
 
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => { if (exitTimerRef.current) clearTimeout(exitTimerRef.current); };
+  }, []);
+
   const handleStart = () => {
     setPhase('exit');
     ambientSound.play('boot');
-    setTimeout(() => onStart(), 700);
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    exitTimerRef.current = setTimeout(() => onStart(), 700);
   };
 
   return (
