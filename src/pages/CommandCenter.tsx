@@ -117,6 +117,7 @@ const MODE_SECTIONS = [
     icon: Activity,
     modes: [
       { key: 'sys_overview' as CommandMode, label: 'OVERVIEW', icon: Activity },
+      { key: 'state_matrix' as CommandMode, label: 'STATE MTX', icon: Activity },
       { key: 'show_control' as CommandMode, label: 'SHOW CTRL', icon: Activity },
       { key: 'cue_validation' as CommandMode, label: 'CUE VALID', icon: Layers },
       { key: 'addressing' as CommandMode, label: 'ADDRESSING', icon: Map },
