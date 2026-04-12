@@ -1063,6 +1063,10 @@ export function FXKAssistant() {
                     {msg.cmdResults && msg.cmdResults.length > 0 && (
                       <JoiCommandFeedback results={msg.cmdResults} />
                     )}
+                    {/* Render execution artifacts for last assistant message */}
+                    {i === messages.length - 1 && !loading && lastTrace && lastTrace.artifacts.length > 0 && (
+                      <JOIArtifactCanvas artifacts={lastTrace.artifacts} />
+                    )}
                     {parseKmzReadyBlock(msg.content) && (
                       <button
                         onClick={() => {
