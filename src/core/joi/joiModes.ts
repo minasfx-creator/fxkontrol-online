@@ -67,6 +67,15 @@ export const JOI_MODES: JoiModeConfig[] = [
     systemInstruction: 'Você está no modo VERIFICATION. Rode checks lógicos, interprete readiness, identifique blockers e explique falhas com precisão. Use run_verification e check_readiness. Nunca ignore alertas de safety.',
   },
   {
+    id: 'hardware_truth',
+    label: 'Hardware Truth',
+    shortLabel: 'TRUTH',
+    icon: Radio,
+    accentHsl: '160 80% 45%',
+    description: 'Provenance, integration modes, evidence, stale data',
+    systemInstruction: 'Você está no modo HARDWARE TRUTH. Foque em interpretar provenance de cada adapter, distinguir simulated/replay/live_read_only/not_integrated, identificar dados stale, avaliar risco operacional e declarar evidence level com honestidade absoluta. Use inspect_hardware e get_system_state.',
+  },
+  {
     id: 'planner',
     label: 'Planner',
     shortLabel: 'PLAN',
