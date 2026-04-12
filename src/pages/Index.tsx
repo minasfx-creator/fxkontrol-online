@@ -25,6 +25,9 @@ import LiveCard from '@/components/editor/LiveCard';
 // ── Lazy helper — one-liner for 80+ panels ──
 const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
 
+// ── Verification ──
+const VerificationBar = lz(() => import('@/components/editor/VerificationBar'));
+
 // ── Phase screens ──
 const CinematicIntro = lz(() => import('@/components/editor/CinematicIntro'));
 const SplashScreen = lz(() => import('@/components/editor/SplashScreen'));
