@@ -189,6 +189,13 @@ export default function GoogleTilesLayer() {
     tiles.registerPlugin(new TilesFadePlugin());
     tiles.registerPlugin(new UnloadTilesPlugin());
 
+    // Register DRACOLoader for compressed Google 3D Tiles meshes
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+    tiles.registerPlugin(new GLTFExtensionsPlugin({
+      dracoLoader,
+    }));
+
     tiles.errorTarget = GOOGLE_TILE_QUALITY_TO_SSE[googleTilesQuality];
 
     const group = groupRef.current;
