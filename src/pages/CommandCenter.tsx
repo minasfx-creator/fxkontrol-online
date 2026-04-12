@@ -93,6 +93,8 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   cue_validation: { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'CUE VALID',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'CUE & TIMELINE VALIDATION' },
   addressing:     { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'ADDRESSING',  badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20', subtitle: 'PROTOCOL ADDRESSING MAP' },
   execution_status: { color: 'hsl(120 70% 42%)', glow: 'hsl(120 70% 42% / 0.08)', label: 'EXEC STATUS', badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'EXECUTION BRIDGE STATUS' },
+  export_readiness: { color: 'hsl(32 100% 50%)',  glow: 'hsl(32 100% 50% / 0.08)',  label: 'EXPORT',      badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'EXPORT READINESS PANEL' },
+  state_matrix:     { color: 'hsl(190 80% 50%)',  glow: 'hsl(190 80% 50% / 0.1)',   label: 'STATE MTX',   badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'CURRENT STATE MATRIX' },
 };
 
 // ── Sidebar Sections ──
