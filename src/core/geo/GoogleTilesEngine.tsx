@@ -72,7 +72,7 @@ const TMP_WORLD = new THREE.Vector3();
 const TRAVERSE_INTERVAL = 6;
 
 // Hysteresis: require N consecutive zero-tile cycles before reverting to loading
-const HYSTERESIS_THRESHOLD = 5;
+const HYSTERESIS_THRESHOLD = 15;
 
 // ── Loading state broadcast for HUD overlay ─────────────────────────
 export type TilesLoadingState = 'idle' | 'fetching-key' | 'loading-tiles' | 'ready' | 'error';
