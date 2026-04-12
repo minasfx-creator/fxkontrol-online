@@ -184,7 +184,14 @@ function LinkedGlowRing({ color }: { color: string }) {
 }
 
 const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }>(function Pin({ position, onRightClick }, ref) {
-  const { selectedPositionIds, selectPosition, selectPositionAndLinkedEvents, togglePositionSelection, editorMode, updatePosition, timelineItems, linkedTimelineItemIds } = useProjectStore();
+  const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
+  const selectPosition = useProjectStore(s => s.selectPosition);
+  const selectPositionAndLinkedEvents = useProjectStore(s => s.selectPositionAndLinkedEvents);
+  const togglePositionSelection = useProjectStore(s => s.togglePositionSelection);
+  const editorMode = useProjectStore(s => s.editorMode);
+  const updatePosition = useProjectStore(s => s.updatePosition);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const linkedTimelineItemIds = useProjectStore(s => s.linkedTimelineItemIds);
   const isSelected = selectedPositionIds.includes(position.id);
   const color = position.type === 'pyro' ? PYRO_COLOR : (position.color || DRONE_COLOR);
   const glowRef = useRef<THREE.Group>(null);
@@ -551,7 +558,11 @@ Pin.displayName = 'Pin';
 
 /** Always-on direction line — extends to real burst height when effects are linked (Finale 3D) */
 function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: { position: Position; color: string; isSelected: boolean; isHovered: boolean; hasEffects: boolean }) {
-  const { timelineItems, editorMode, setEditorMode, selectPosition, updatePosition } = useProjectStore();
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const editorMode = useProjectStore(s => s.editorMode);
+  const setEditorMode = useProjectStore(s => s.setEditorMode);
+  const selectPosition = useProjectStore(s => s.selectPosition);
+  const updatePosition = useProjectStore(s => s.updatePosition);
   const { camera, raycaster, gl } = useThree();
   const [isDraggingHandle, setIsDraggingHandle] = useState(false);
   const dragStartRef = useRef<{ heading: number; pitch: number } | null>(null);
@@ -677,7 +688,12 @@ function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: {
 
 /** Ground plane for placing new pins — continuous mode */
 function GroundClickPlane() {
-  const { editorMode, addPosition, setEditorMode, addWaypoint, selectedTrajectoryId, drawHeight } = useProjectStore();
+  const editorMode = useProjectStore(s => s.editorMode);
+  const addPosition = useProjectStore(s => s.addPosition);
+  const setEditorMode = useProjectStore(s => s.setEditorMode);
+  const addWaypoint = useProjectStore(s => s.addWaypoint);
+  const selectedTrajectoryId = useProjectStore(s => s.selectedTrajectoryId);
+  const drawHeight = useProjectStore(s => s.drawHeight);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -737,7 +753,8 @@ function GroundClickPlane() {
 
 /** Click ground to deselect */
 function GroundDeselectPlane() {
-  const { editorMode, selectPosition } = useProjectStore();
+  const editorMode = useProjectStore(s => s.editorMode);
+  const selectPosition = useProjectStore(s => s.selectPosition);
   const handleClick = useCallback((e: any) => {
     if (e.nativeEvent?.shiftKey || e.shiftKey) return;
     if (editorMode === 'select') selectPosition(null);
@@ -753,7 +770,7 @@ function GroundDeselectPlane() {
 }
 
 export default function PositionPins() {
-  const { positions } = useProjectStore();
+  const positions = useProjectStore(s => s.positions);
   const [contextMenu, setContextMenu] = useState<{ pos: Position; screen: { x: number; y: number } } | null>(null);
 
   const handleRightClick = useCallback((pos: Position, screenPos: { x: number; y: number }) => {

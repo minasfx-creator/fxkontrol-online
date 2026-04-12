@@ -1143,7 +1143,9 @@ export function estimateFireworkStarCost(
 // ═══════════════════════════════════════════════════════════════════════
 export function TimelineEffects() {
   const { camera } = useThree();
-  const { timelineItems, currentTime, positions } = useProjectStore();
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const positions = useProjectStore(s => s.positions);
   const sceneSettings = useSceneStore(st => st.settings);
   const activeEffects = useMemo(() => {
     const effectScale = sceneSettings.effectScale;
