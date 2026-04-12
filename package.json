@@ -13,6 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "3d-tiles-renderer": "^0.4.4",
     "@capacitor/core": "^8.2.0",
     "@capacitor/haptics": "^8.0.1",
     "@hookform/resolvers": "^3.10.0",
@@ -52,7 +53,6 @@
     "@types/react-window": "^2.0.0",
     "@types/three": "^0.170.0",
     "@vitejs/plugin-react": "4.3.4",
-    "3d-tiles-renderer": "^0.4.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -63,6 +63,7 @@
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.462.0",
+    "mermaid": "^11.4.0",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",

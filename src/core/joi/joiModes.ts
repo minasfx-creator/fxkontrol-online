@@ -7,9 +7,10 @@ import {
   Cpu, BarChart3, ShieldCheck, ListChecks, PenTool, FileText,
   Sparkles, Search, AlertTriangle, Target, Network, BookOpen,
   Heart, Zap, Music, Building2, PartyPopper, RefreshCw, Trash2,
+  Radio, Eye, Wifi, Clock,
 } from 'lucide-react';
 
-export type JoiMode = 'architect' | 'analyst' | 'verify' | 'planner' | 'blueprint' | 'docs' | 'show';
+export type JoiMode = 'architect' | 'analyst' | 'verify' | 'hardware_truth' | 'planner' | 'blueprint' | 'docs' | 'show';
 
 export interface JoiModeConfig {
   id: JoiMode;
@@ -66,6 +67,15 @@ export const JOI_MODES: JoiModeConfig[] = [
     systemInstruction: 'Você está no modo VERIFICATION. Rode checks lógicos, interprete readiness, identifique blockers e explique falhas com precisão. Use run_verification e check_readiness. Nunca ignore alertas de safety.',
   },
   {
+    id: 'hardware_truth',
+    label: 'Hardware Truth',
+    shortLabel: 'TRUTH',
+    icon: Radio,
+    accentHsl: '160 80% 45%',
+    description: 'Provenance, integration modes, evidence, stale data',
+    systemInstruction: 'Você está no modo HARDWARE TRUTH. Foque em interpretar provenance de cada adapter, distinguir simulated/replay/live_read_only/not_integrated, identificar dados stale, avaliar risco operacional e declarar evidence level com honestidade absoluta. Use inspect_hardware e get_system_state.',
+  },
+  {
     id: 'planner',
     label: 'Planner',
     shortLabel: 'PLAN',
@@ -119,6 +129,12 @@ export const JOI_MODE_PRESETS: JoiModePreset[] = [
   { mode: 'verify', label: 'VERIFICAR', icon: ShieldCheck, prompt: 'Execute verificação completa do sistema.\n[JOI_CMD]{"action":"run_verification","params":{}}[/JOI_CMD]' },
   { mode: 'verify', label: 'BLOCKERS', icon: AlertTriangle, prompt: 'Identifique e explique todos os blockers atuais do sistema.\n[JOI_CMD]{"action":"check_readiness","params":{}}[/JOI_CMD]' },
   { mode: 'verify', label: 'READINESS', icon: Target, prompt: 'Avalie readiness completo com detalhamento por subsistema.\n[JOI_CMD]{"action":"check_readiness","params":{}}[/JOI_CMD]' },
+
+  // Hardware Truth presets
+  { mode: 'hardware_truth', label: 'PROVENANCE', icon: Radio, prompt: 'Analise a provenance de cada adapter: integration_mode, evidence_level, data_freshness. Identifique o que é simulated vs real.\n[JOI_CMD]{"action":"inspect_hardware","params":{}}[/JOI_CMD]' },
+  { mode: 'hardware_truth', label: 'INTEGRAÇÃO', icon: Eye, prompt: 'Mostre o status de integração completo: o que é simulated, replay, live_read_only e not_integrated.\n[JOI_CMD]{"action":"get_system_state","params":{}}[/JOI_CMD]' },
+  { mode: 'hardware_truth', label: 'STALE DATA', icon: Clock, prompt: 'Identifique todos os dados stale no sistema. Qual a freshness de cada adapter? Há risco operacional?\n[JOI_CMD]{"action":"inspect_hardware","params":{}}[/JOI_CMD]' },
+  { mode: 'hardware_truth', label: 'RISCO', icon: AlertTriangle, prompt: 'Avalie o risco operacional atual baseado nos integration modes e evidence levels. O que precisa evoluir de simulated para live?\n[JOI_CMD]{"action":"get_system_state","params":{}}[/JOI_CMD]' },
 
   // Planner presets
   { mode: 'planner', label: 'FASES', icon: ListChecks, prompt: 'Monte um plano por fases para a próxima evolução do sistema, considerando o estado atual.' },
