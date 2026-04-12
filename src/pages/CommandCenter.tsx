@@ -753,12 +753,9 @@ export default function CommandCenter() {
               </span>
             </div>
             <div className="flex items-center gap-3">
+              <StatusChips />
+              <div className="h-3.5 w-[1px] rounded-full" style={{ background: 'hsl(var(--primary) / 0.08)' }} />
               <span className="text-[9px] font-mono font-bold" style={{ color: 'hsl(32 100% 55%)', textShadow: '0 0 8px hsl(32 100% 50% / 0.25)' }}>{missionClock}</span>
-              {isArmed && (
-                <Badge variant="destructive" className="text-[7px] h-5 animate-pulse font-mono tracking-wider rounded-md">
-                  ARMED // {activeEffects.length}
-                </Badge>
-              )}
               {connectedCount > 0 && (
                 <Badge variant="outline" className="text-[7px] h-5 border-primary/10 text-primary/70 font-mono tracking-wider rounded-md">
                   {connectedCount} ONLINE
