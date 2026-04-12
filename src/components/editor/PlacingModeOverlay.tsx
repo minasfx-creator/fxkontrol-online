@@ -1,9 +1,10 @@
 /**
  * PlacingModeOverlay — Animated crosshair + "TAP TO PLACE" when placing mode is active
  */
+import React from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 
-export default function PlacingModeOverlay() {
+export default React.memo(function PlacingModeOverlay() {
   const editorMode = useProjectStore(s => s.editorMode);
   const isPlacing = editorMode === 'add-pyro' || editorMode === 'add-drone';
 
@@ -86,4 +87,4 @@ export default function PlacingModeOverlay() {
       </p>
     </div>
   );
-}
+});

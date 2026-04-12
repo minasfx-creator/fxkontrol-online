@@ -1,11 +1,11 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { MapPin, Crosshair, Zap, Move, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, RotateCw, Maximize2, Minimize2, Grid3x3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export default function SelectionStatusBar() {
+export default React.memo(function SelectionStatusBar() {
   const {
     selectedPositionIds, positions, timelineItems, editorMode,
     updatePosition, selectMultiplePositions,
@@ -15,14 +15,14 @@ export default function SelectionStatusBar() {
   } = useProjectStore();
   const [showBatchTools, setShowBatchTools] = useState(false);
 
-  const selectedPositions = positions.filter(p => selectedPositionIds.includes(p.id));
-  const selectedPyro = selectedPositions.filter(p => p.type === 'pyro');
-  const selectedDrone = selectedPositions.filter(p => p.type === 'drone-pad');
+  const selectedPositions = useMemo(() => positions.filter(p => selectedPositionIds.includes(p.id)), [positions, selectedPositionIds]);
+  const selectedPyro = useMemo(() => selectedPositions.filter(p => p.type === 'pyro'), [selectedPositions]);
+  const selectedDrone = useMemo(() => selectedPositions.filter(p => p.type === 'drone-pad'), [selectedPositions]);
 
-  const linkedEffectCount = timelineItems.filter(
+  const linkedEffectCount = useMemo(() => timelineItems.filter(
     t => selectedPositionIds.includes(t.positionId || '') ||
       t.positionIds?.some(id => selectedPositionIds.includes(id))
-  ).length;
+  ).length, [timelineItems, selectedPositionIds]);
 
   // Select all drones
   const selectAllDrones = useCallback(() => {
@@ -234,4 +234,4 @@ export default function SelectionStatusBar() {
       )}
     </div>
   );
-}
+});

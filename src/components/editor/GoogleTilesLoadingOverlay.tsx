@@ -2,7 +2,7 @@
  * GoogleTilesLoadingOverlay — shows loading state + debug telemetry
  * while Google Earth 3D Tiles load.
  */
-import { useState, useEffect, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { Globe, AlertTriangle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   getTilesLoadingState,
@@ -27,7 +27,7 @@ const LABELS: Record<TilesLoadingState, string> = {
   error: 'Terreno indisponível — grid de referência ativo',
 };
 
-export default function GoogleTilesLoadingOverlay() {
+export default React.memo(function GoogleTilesLoadingOverlay() {
   const enabled = useSceneStore(st => st.settings.google3DTilesEnabled);
   const debug = useTilesDebug();
   const { state, count } = debug;
@@ -173,8 +173,7 @@ export default function GoogleTilesLoadingOverlay() {
       </div>
     </div>
   );
-}
-
+});
 function DebugRow({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>

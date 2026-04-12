@@ -2,6 +2,7 @@
  * AICoPilotOverlay — HUD overlay for the 3D viewport showing
  * AI CoPilot mode, assistant orb, and status message.
  */
+import React from 'react';
 import { cn } from '@/lib/utils';
 import { useAICoPilotStore } from '@/store/useAICoPilotStore';
 import { Bot, Shield, Brain, Film, Gamepad2 } from 'lucide-react';
@@ -20,7 +21,7 @@ const MODE_COLORS = {
   CINEMATIC: 'hsl(32 100% 55%)',
 } as const;
 
-export default function AICoPilotOverlay() {
+export default React.memo(function AICoPilotOverlay() {
   const enabled = useAICoPilotStore(s => s.enabled);
   const mode = useAICoPilotStore(s => s.mode);
   const assistantState = useAICoPilotStore(s => s.assistantState);
@@ -101,4 +102,4 @@ export default function AICoPilotOverlay() {
       )}
     </div>
   );
-}
+});

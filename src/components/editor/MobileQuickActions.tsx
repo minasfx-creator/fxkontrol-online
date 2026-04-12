@@ -2,7 +2,7 @@
  * MobileQuickActions — Compact floating action buttons with drag-and-drop repositioning
  * Auto-hides when bottom sheet is open. Includes micro-labels for discoverability.
  */
-import { useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { MousePointer2, Undo2, Redo2, Trash2, Copy, Pencil, Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
@@ -14,7 +14,7 @@ interface MobileQuickActionsProps {
   panelOpen?: boolean;
 }
 
-export default function MobileQuickActions({ panelOpen = false }: MobileQuickActionsProps) {
+export default React.memo(function MobileQuickActions({ panelOpen = false }: MobileQuickActionsProps) {
   const selectedIds = useProjectStore(s => s.selectedPositionIds);
   const editorMode = useProjectStore(s => s.editorMode);
   const setEditorMode = useProjectStore(s => s.setEditorMode);
@@ -114,4 +114,4 @@ export default function MobileQuickActions({ panelOpen = false }: MobileQuickAct
       </DraggableFloatingPanel>
     </div>
   );
-}
+});
