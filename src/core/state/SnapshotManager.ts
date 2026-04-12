@@ -5,18 +5,21 @@
  */
 
 import { useProjectStore } from '@/store/useProjectStore';
+import type { Position, TimelineItem, Trajectory, CameraKeyframe } from '@/types/projectTypes';
+
+export interface SnapshotState {
+  positions: Position[];
+  timelineItems: TimelineItem[];
+  trajectories: Trajectory[];
+  cameraKeyframes: CameraKeyframe[];
+}
 
 export interface Snapshot {
   tick: number;
   ts: number;
   positionCount: number;
   timelineItemCount: number;
-  state: {
-    positions: unknown[];
-    timelineItems: unknown[];
-    trajectories: unknown[];
-    cameraKeyframes: unknown[];
-  };
+  state: SnapshotState;
 }
 
 const MAX_SNAPSHOTS = 20;
@@ -83,10 +86,10 @@ class SnapshotManager {
   /** Apply a snapshot to ProjectStore. */
   restore(snap: Snapshot): void {
     useProjectStore.setState({
-      positions: structuredClone(snap.state.positions) as any,
-      timelineItems: structuredClone(snap.state.timelineItems) as any,
-      trajectories: structuredClone(snap.state.trajectories) as any,
-      cameraKeyframes: structuredClone(snap.state.cameraKeyframes) as any,
+      positions: structuredClone(snap.state.positions),
+      timelineItems: structuredClone(snap.state.timelineItems),
+      trajectories: structuredClone(snap.state.trajectories),
+      cameraKeyframes: structuredClone(snap.state.cameraKeyframes),
     });
   }
 

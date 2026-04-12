@@ -17,7 +17,9 @@ import {
   GoogleCloudAuthPlugin,
   TilesFadePlugin,
   UnloadTilesPlugin,
+  GLTFExtensionsPlugin,
 } from '3d-tiles-renderer/plugins';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 
 // ── ECEF→ENU rotation matrix for a given lat/lon anchor ─────────────
 function buildECEFtoENUMatrix(lat: number, lon: number): THREE.Matrix4 {
@@ -186,6 +188,13 @@ export default function GoogleTilesLayer() {
     tiles.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: apiKey }));
     tiles.registerPlugin(new TilesFadePlugin());
     tiles.registerPlugin(new UnloadTilesPlugin());
+
+    // Register DRACOLoader for compressed Google 3D Tiles meshes
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+    tiles.registerPlugin(new GLTFExtensionsPlugin({
+      dracoLoader,
+    }));
 
     tiles.errorTarget = GOOGLE_TILE_QUALITY_TO_SSE[googleTilesQuality];
 

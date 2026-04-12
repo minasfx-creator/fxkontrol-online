@@ -39,10 +39,10 @@ function scheduleLog() {
  * Only active when `import.meta.env.DEV` is true.
  */
 export function useRenderCounter(name: string): void {
-  if (!import.meta.env.DEV) return;
-
   const ref = useRef(0);
   ref.current += 1;
+
+  if (!import.meta.env.DEV) return;
 
   if (!counters.has(name)) {
     counters.set(name, { count: 0, lastLog: 0 });
