@@ -162,6 +162,12 @@ export class SmokeSystem {
         uCameraNear: { value: 0.1 },
         uCameraFar: { value: 1000 },
         uResolution: { value: new THREE.Vector2(1920, 1080) },
+        // 6-way lighting uniforms
+        uUse6WayLighting: { value: false },
+        uLightDir: { value: new THREE.Vector3(0, 1, 0) },
+        uLightColor: { value: new THREE.Color(1, 0.9, 0.7) },
+        uLightIntensity: { value: 0 },
+        uAmbientColor: { value: new THREE.Color(0.15, 0.18, 0.25) },
       },
       transparent: true,
       depthWrite: false,

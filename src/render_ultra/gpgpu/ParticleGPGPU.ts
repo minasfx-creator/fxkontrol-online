@@ -127,7 +127,7 @@ export class ParticleGPGPU {
     this.maxParticles = textureSize * textureSize;
 
     // Create render targets (RGBA Float)
-    const rtOptions: THREE.WebGLRenderTargetOptions = {
+    const rtOptions = {
       minFilter: THREE.NearestFilter,
       magFilter: THREE.NearestFilter,
       format: THREE.RGBAFormat,
