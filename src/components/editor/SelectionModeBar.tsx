@@ -3,6 +3,7 @@ import { type SelectionMode } from '@/types/projectTypes';
 import { MapPin, Zap, Link2, Lasso, Grid3x3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect } from 'react';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 const SECTION_OPTIONS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
 const SECTION_COLORS: Record<string, string> = {
@@ -20,6 +21,7 @@ let _lassoActive = false;
 export function isLassoActive() { return _lassoActive; }
 
 export default function SelectionModeBar() {
+  useRenderCounter('SelectionModeBar');
     const selectionMode = useProjectStore(s => s.selectionMode);
   const setSelectionMode = useProjectStore(s => s.setSelectionMode);
   const editorMode = useProjectStore(s => s.editorMode);

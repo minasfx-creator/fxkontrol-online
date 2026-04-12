@@ -6,6 +6,7 @@
  * are reused via module-level singletons and useRef/useMemo.
  */
 import React, { useRef, useMemo, useEffect } from 'react';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { useFrame, useThree } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
@@ -38,6 +39,7 @@ const _giProbeColor = new THREE.Color();
 // Uses getEffectById() for O(1) lookups instead of EFFECT_LIBRARY.find()
 // ═══════════════════════════════════════════════════════════════════════
 export const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function AdaptiveExposureController(_props, _ref) {
+  useRenderCounter('AdaptiveExposure');
   const exposureRef = useRef(createExposureController());
   const _scatterAccum = useMemo(() => new THREE.Color(), []);
   const _tmpColor = useMemo(() => new THREE.Color(), []);

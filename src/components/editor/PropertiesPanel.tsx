@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { Settings2, Download, FileJson, FileSpreadsheet, Box, Trash2, Zap, Shield, Sliders, MapPin, Link2, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -166,6 +167,7 @@ function PositionInspector() {
 }
 
 export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor }: { onToggleEffectEditor?: () => void; showEffectEditor?: boolean }) {
+  useRenderCounter('PropertiesPanel');
     const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
   const timelineItems = useProjectStore(s => s.timelineItems);
   const selectedEffectId = useProjectStore(s => s.selectedEffectId);

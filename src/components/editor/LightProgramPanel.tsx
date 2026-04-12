@@ -9,6 +9,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { useProjectStore } from '@/store/useProjectStore';
 import { Lightbulb, Plus, Trash2, Copy, Play, Palette, Sparkles, Zap, Rainbow, Wind, Eye, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ const EFFECT_TYPES = [
 ] as const;
 
 export default function LightProgramPanel() {
+  useRenderCounter('LightProgramPanel');
     const droneFormations = useProjectStore(s => s.droneFormations);
   const currentTime = useProjectStore(s => s.currentTime);
   const duration = useProjectStore(s => s.duration);

@@ -10,6 +10,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { SafetyCheckResult, SafetyViolation } from '@/lib/skybrushSafetyCheck';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 interface TrajectoryValidationOverlayProps {
   result: SafetyCheckResult | null;
@@ -33,6 +34,7 @@ export default function TrajectoryValidationOverlay({
   maxAltitude = 150,
   geofenceRadius = 500,
 }: TrajectoryValidationOverlayProps) {
+  useRenderCounter('TrajectoryValidation');
   const currentTime = useProjectStore(s => s.currentTime);
   const markerRef = useRef<THREE.InstancedMesh>(null);
   const lineRef = useRef<THREE.LineSegments>(null);
