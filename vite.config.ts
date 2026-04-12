@@ -98,6 +98,7 @@ export default defineConfig(({ mode }) => ({
             'three-core': ['three'],
             'r3f': ['@react-three/fiber', '@react-three/drei'],
             'postprocessing': ['@react-three/postprocessing'],
+            'postprocessing-core': ['postprocessing'],
             'recharts': ['recharts'],
             'vendor-state': ['zustand', 'react-router-dom', 'sonner', '@tanstack/react-query'],
             'vendor-ui': [
@@ -114,8 +115,10 @@ export default defineConfig(({ mode }) => ({
             ],
             'vendor-supabase': ['@supabase/supabase-js'],
             'vendor-forms': ['react-hook-form', '@hookform/resolvers', 'zod'],
-            'vendor-misc': ['date-fns', 'cmdk', 'input-otp', 'embla-carousel-react', 'react-day-picker', 'vaul', 'react-resizable-panels'],
-            'vendor-export': ['jspdf', 'docx'],
+            'vendor-misc': ['date-fns', 'cmdk', 'input-otp', 'embla-carousel-react', 'react-day-picker', 'vaul', 'react-resizable-panels', 'tus-js-client', 'react-window', 'next-themes'],
+            'vendor-export': ['jspdf', 'docx', 'jszip'],
+            'vendor-tiles': ['3d-tiles-renderer'],
+            'vendor-capacitor': ['@capacitor/core', '@capacitor/haptics'],
             'vendor-markdown': ['react-markdown'],
             'vendor-icons': ['lucide-react'],
           };

@@ -4,7 +4,7 @@
  * restriction areas (NOTAM) for submission to DECEA / aeronautical authorities.
  */
 
-import JSZip from 'jszip';
+// JSZip loaded dynamically to reduce initial bundle
 
 export interface AeroKmzParams {
   eventName: string;
@@ -243,6 +243,7 @@ export function stripKmzReadyBlock(text: string): string {
 
 export async function downloadAeroKmz(params: AeroKmzParams): Promise<void> {
   const kml = generateAeroKml(params);
+  const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   zip.file('doc.kml', kml);
   const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
