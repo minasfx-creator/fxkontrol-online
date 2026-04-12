@@ -81,6 +81,28 @@ export default function VVIZImporter({
       }
     });
 
+    // ── Sync to ShowPlan (canonical source of truth) ──
+    // Convert accumulated drone data into ShowPlan drone paths
+    try {
+      const { importVVIZToShowPlan } = await import('@/core/showplan/importers/VVIZToShowPlan');
+      const vvizDrones = trajectories.map((traj: any, idx: number) => ({
+        id: traj.id || `vviz-drone-${idx}`,
+        label: positions[idx]?.name || `Drone-${idx + 1}`,
+        color: positions[idx]?.color || '#00ffff',
+        waypoints: (traj.waypoints || []).map((wp: any) => ({
+          time: wp.time ?? 0,
+          x: wp.position?.x ?? 0,
+          y: wp.position?.y ?? 0,
+          z: wp.position?.z ?? 0,
+          speed: wp.maxSpeed ?? 5,
+        })),
+      }));
+      const result = importVVIZToShowPlan(vvizDrones, { invertZ: false }); // already normalized by worker
+      console.log(`[VVIZImporter] ShowPlan synced: ${result.droneCount} drones, ${result.totalWaypoints} waypoints`);
+    } catch (e) {
+      console.warn('[VVIZImporter] ShowPlan sync failed:', e);
+    }
+
     // Cleanup accumulator
     accRef.current = { positions: [], trajectories: [] };
 
