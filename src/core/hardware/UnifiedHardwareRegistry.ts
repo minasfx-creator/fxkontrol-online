@@ -30,6 +30,7 @@ class UnifiedHardwareRegistry {
     this.registerAdapter(batteryMonitorAdapter);
     this.registerAdapter(artNetNodeAdapter);
     this.registerAdapter(fireOneProfileAdapter);
+    this.registerAdapter(dmxUniverseAdapter);
   }
 
   registerAdapter(adapter: HardwareAdapter<unknown>): void {
