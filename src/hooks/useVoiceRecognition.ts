@@ -47,6 +47,14 @@ export function useVoiceRecognition(opts: {
   const autoSubmitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finalTextRef = useRef('');
 
+  // Stable refs for callbacks and state to avoid stale closures
+  const onTranscriptRef = useRef(onTranscript);
+  onTranscriptRef.current = onTranscript;
+  const onFinalTranscriptRef = useRef(onFinalTranscript);
+  onFinalTranscriptRef.current = onFinalTranscript;
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
   useEffect(() => {
     setSupported(!!getSpeechRecognition());
   }, []);
@@ -86,15 +94,15 @@ export function useVoiceRecognition(opts: {
       }
 
       const current = (final + interim).trim();
-      onTranscript(current);
+      onTranscriptRef.current(current);
 
       if (final) {
         finalTextRef.current = final.trim();
-        // Reset auto-submit timer on each final result
         if (autoSubmitTimer.current) clearTimeout(autoSubmitTimer.current);
         autoSubmitTimer.current = setTimeout(() => {
           if (finalTextRef.current) {
-            onFinalTranscript(finalTextRef.current);
+            onFinalTranscriptRef.current(finalTextRef.current);
+            finalTextRef.current = ''; // Prevent double-fire
             stopListening();
           }
         }, autoSubmitDelay);
@@ -109,9 +117,10 @@ export function useVoiceRecognition(opts: {
     };
 
     recognition.onend = () => {
-      // If we still have pending text, submit it
-      if (finalTextRef.current && state === 'listening') {
-        onFinalTranscript(finalTextRef.current);
+      // If we still have pending text (timer hasn't fired yet), submit it
+      if (finalTextRef.current && stateRef.current === 'listening') {
+        onFinalTranscriptRef.current(finalTextRef.current);
+        finalTextRef.current = ''; // Prevent double-fire
       }
       setState('idle');
       recognitionRef.current = null;
@@ -119,7 +128,7 @@ export function useVoiceRecognition(opts: {
 
     recognitionRef.current = recognition;
     recognition.start();
-  }, [lang, onTranscript, onFinalTranscript, autoSubmitDelay, stopListening, state]);
+  }, [lang, autoSubmitDelay, stopListening]);
 
   const toggle = useCallback(() => {
     if (state === 'listening') {
