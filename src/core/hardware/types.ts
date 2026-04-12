@@ -189,6 +189,8 @@ export interface HealthTimelineEntry {
 
 // ── Adapter Interface ──────────────────────────────────────────────
 
+import type { ProvenanceInfo } from './provenance';
+
 export interface HardwareAdapter<TState = unknown> {
   readonly deviceId: string;
   readonly deviceType: HardwareDeviceCategory;
@@ -198,6 +200,7 @@ export interface HardwareAdapter<TState = unknown> {
   getCapabilities(): HardwareCapabilities;
   getSnapshot(): HardwareStatusSnapshot;
   getState(): TState;
+  getProvenance(): ProvenanceInfo;
   
   /** Poll telemetry — read-only, no commands */
   pollTelemetry(): void;
