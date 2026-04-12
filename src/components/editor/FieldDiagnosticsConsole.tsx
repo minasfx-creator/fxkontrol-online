@@ -7,7 +7,7 @@ import { shiftRegisterDriver } from '@/core/hardware/ShiftRegisterDriver';
 import { muxReader } from '@/core/hardware/MuxReader';
 import { relayBankController } from '@/core/hardware/RelayBankController';
 import { cn } from '@/lib/utils';
-import { Cpu, Battery, Zap, RefreshCw } from 'lucide-react';
+import { Cpu, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 function DiagBlock({ label, items }: { label: string; items: { k: string; v: string; ok?: boolean }[] }) {
@@ -27,14 +27,17 @@ function DiagBlock({ label, items }: { label: string; items: { k: string; v: str
 export default function FieldDiagnosticsConsole() {
   const [, setTick] = useState(0);
 
-  const refresh = useCallback(() => {
-    powerMonitor.update(Date.now());
-    setTick(t => t + 1);
-  }, []);
+  const refresh = useCallback(() => setTick(t => t + 1), []);
 
-  const power = powerMonitor.getTelemetry();
-  const sr = shiftRegisterDriver;
-  const relays = relayBankController;
+  const power = powerMonitor.getStatus();
+  const srState = shiftRegisterDriver.getState();
+  const activeBits = Array.from(srState).reduce((sum, byte) => {
+    let count = 0;
+    let b = byte;
+    while (b) { count += b & 1; b >>= 1; }
+    return sum + count;
+  }, 0);
+  const stats = relayBankController.getStats();
 
   return (
     <div className="flex flex-col h-full p-4 gap-4 bg-background/80">
@@ -52,27 +55,26 @@ export default function FieldDiagnosticsConsole() {
         <DiagBlock label="POWER — 12V BATTERY" items={[
           { k: 'Voltage', v: `${power.voltage.toFixed(1)}V`, ok: power.voltage > 11.0 },
           { k: 'Current', v: `${power.current.toFixed(2)}A` },
-          { k: 'SOC', v: `${power.soc.toFixed(0)}%`, ok: power.soc > 20 },
-          { k: 'Status', v: power.charging ? 'CHARGING' : power.lowVoltage ? 'LOW VOLTAGE' : 'OK', ok: !power.lowVoltage },
+          { k: 'SOC', v: `${power.socPercent}%`, ok: power.socPercent > 20 },
+          { k: 'Status', v: power.isCritical ? 'CRITICAL' : power.isLow ? 'LOW VOLTAGE' : 'OK', ok: !power.isLow },
         ]} />
 
         <DiagBlock label="74HC595 SHIFT REGISTER" items={[
-          { k: 'Chips', v: `${sr.chipCount} (${sr.chipCount * 8} outputs)` },
-          { k: 'Mode', v: sr.mode },
-          { k: 'Active Bits', v: `${sr.getActiveBitCount()}/${sr.chipCount * 8}` },
+          { k: 'Chips', v: '4 (32 outputs)' },
+          { k: 'Connected', v: shiftRegisterDriver.isConnected() ? 'YES' : 'NO', ok: shiftRegisterDriver.isConnected() },
+          { k: 'Active Bits', v: `${activeBits}/32` },
         ]} />
 
         <DiagBlock label="CD4051 MUX READER" items={[
-          { k: 'Channels', v: `${muxReader.channelCount}` },
-          { k: 'Mode', v: muxReader.mode },
-          { k: 'Last Read', v: muxReader.lastReadTime > 0 ? `${((Date.now() - muxReader.lastReadTime) / 1000).toFixed(1)}s ago` : 'Never' },
+          { k: 'Channels', v: `${muxReader.totalChannels}` },
+          { k: 'Connected', v: muxReader.isConnected() ? 'YES' : 'NO', ok: muxReader.isConnected() },
         ]} />
 
         <DiagBlock label="32-CHANNEL RELAY BANK" items={[
-          { k: 'Total', v: `${relays.channelCount} channels` },
-          { k: 'Armed', v: `${relays.getArmedCount()}` },
-          { k: 'Fired', v: `${relays.getFiredCount()}` },
-          { k: 'Mode', v: relays.mode },
+          { k: 'Total', v: `${relayBankController.totalChannels} channels` },
+          { k: 'Armed', v: `${stats.ARMED}` },
+          { k: 'Fired', v: `${stats.FIRED}` },
+          { k: 'System', v: relayBankController.isArmed() ? 'ARMED' : 'SAFE', ok: !relayBankController.isArmed() },
         ]} />
       </div>
 
@@ -80,19 +82,17 @@ export default function FieldDiagnosticsConsole() {
       <div className="border border-border/10 rounded p-3">
         <span className="text-[8px] font-mono text-muted-foreground/60 tracking-widest">RELAY BANK STATUS</span>
         <div className="grid grid-cols-16 gap-0.5 mt-2">
-          {Array.from({ length: 32 }, (_, i) => {
-            const st = relays.getChannelState(i);
-            return (
-              <div key={i} className={cn(
-                'w-full aspect-square rounded-sm flex items-center justify-center text-[6px] font-mono font-bold',
-                st === 'fired' ? 'bg-red-500/30 text-red-400' :
-                st === 'armed' ? 'bg-amber-500/20 text-amber-400' :
-                'bg-muted/20 text-muted-foreground/30'
-              )}>
-                {i}
-              </div>
-            );
-          })}
+          {relayBankController.getChannels().map((ch, i) => (
+            <div key={i} className={cn(
+              'w-full aspect-square rounded-sm flex items-center justify-center text-[6px] font-mono font-bold',
+              ch.state === 'FIRED' ? 'bg-red-500/30 text-red-400' :
+              ch.state === 'ARMED' ? 'bg-amber-500/20 text-amber-400' :
+              ch.state === 'FIRING' ? 'bg-red-500/40 text-red-300 animate-pulse' :
+              'bg-muted/20 text-muted-foreground/30'
+            )}>
+              {i}
+            </div>
+          ))}
         </div>
       </div>
     </div>

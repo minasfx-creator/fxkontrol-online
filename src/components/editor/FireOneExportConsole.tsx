@@ -3,7 +3,7 @@
  */
 import { useState, useCallback } from 'react';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
-import { exportEngine } from '@/core/export/exportEngine';
+import { exportFireOneScript } from '@/core/export/exportEngine';
 import { cn } from '@/lib/utils';
 import { FileOutput, Download, CheckCircle2, XOctagon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -40,18 +40,7 @@ export default function FireOneExportConsole() {
   }, [sp]);
 
   const handleExport = useCallback(() => {
-    try {
-      const data = exportEngine.export('fireone');
-      const blob = new Blob([typeof data === 'string' ? data : JSON.stringify(data)], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${sp.metadata.name.replace(/\s+/g, '_')}.fir`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      console.error('FireOne export failed:', e);
-    }
+    exportFireOneScript(sp);
   }, [sp]);
 
   return (
@@ -65,18 +54,13 @@ export default function FireOneExportConsole() {
           <Button size="sm" variant="outline" onClick={generatePreview} className="h-6 text-[9px] font-mono gap-1">
             PREVIEW
           </Button>
-          <Button
-            size="sm"
-            onClick={handleExport}
-            disabled={validated !== true}
-            className="h-6 text-[9px] font-mono gap-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30"
-          >
+          <Button size="sm" onClick={handleExport} disabled={validated !== true}
+            className="h-6 text-[9px] font-mono gap-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30">
             <Download className="w-3 h-3" /> EXPORT .FIR
           </Button>
         </div>
       </div>
 
-      {/* Stats */}
       <div className="flex items-center gap-4 text-[9px] font-mono text-muted-foreground">
         <span>Pyro Cues: <span className="text-foreground">{sp.pyroCues.length}</span></span>
         <span>Modules: <span className="text-foreground">{sp.hardwareConfig.modules.length}</span></span>
@@ -89,7 +73,6 @@ export default function FireOneExportConsole() {
         )}
       </div>
 
-      {/* Errors */}
       {errors.length > 0 && (
         <div className="border border-red-500/20 rounded p-2 bg-red-500/5 space-y-0.5">
           {errors.map((e, i) => (
@@ -98,7 +81,6 @@ export default function FireOneExportConsole() {
         </div>
       )}
 
-      {/* Script preview */}
       <ScrollArea className="flex-1 border border-border/10 rounded">
         <pre className="p-3 text-[9px] font-mono text-muted-foreground whitespace-pre leading-relaxed">
           {preview || '; Click PREVIEW to generate FireOne script'}

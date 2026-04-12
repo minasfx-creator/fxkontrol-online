@@ -9,19 +9,14 @@ import { powerMonitor } from '@/core/hardware/PowerMonitor';
 import { cn } from '@/lib/utils';
 import { Shield, Cpu, Zap, Activity, CheckCircle2, XOctagon, AlertTriangle } from 'lucide-react';
 
-function StatusBlock({ label, icon: Icon, status, detail, color }: {
-  label: string; icon: React.ElementType; status: 'ok' | 'warn' | 'error' | 'idle';
-  detail: string; color: string;
+function StatusBlock({ label, icon: Icon, status, detail }: {
+  label: string; icon: React.ElementType; status: 'ok' | 'warn' | 'error' | 'idle'; detail: string;
 }) {
   const styles = {
-    ok:    'border-emerald-500/30 bg-emerald-500/5',
-    warn:  'border-amber-500/30 bg-amber-500/5',
-    error: 'border-red-500/30 bg-red-500/5',
-    idle:  'border-border/20 bg-muted/10',
+    ok: 'border-emerald-500/30 bg-emerald-500/5', warn: 'border-amber-500/30 bg-amber-500/5',
+    error: 'border-red-500/30 bg-red-500/5', idle: 'border-border/20 bg-muted/10',
   };
-  const iconColor = {
-    ok: 'text-emerald-400', warn: 'text-amber-400', error: 'text-red-400', idle: 'text-muted-foreground/40',
-  };
+  const iconColor = { ok: 'text-emerald-400', warn: 'text-amber-400', error: 'text-red-400', idle: 'text-muted-foreground/40' };
   return (
     <div className={cn('rounded border p-4 flex flex-col gap-2 transition-all', styles[status])}>
       <div className="flex items-center gap-2">
@@ -42,7 +37,7 @@ export default function SystemOverviewConsole() {
   const { level, result, runVerification } = useVerificationStore();
   const sp = showPlanManager.current;
   const safetyState = safetyStateMachine.state;
-  const power = powerMonitor.getTelemetry();
+  const power = powerMonitor.getStatus();
 
   useEffect(() => { runVerification(); }, [runVerification]);
 
@@ -52,7 +47,6 @@ export default function SystemOverviewConsole() {
 
   return (
     <div className="flex flex-col h-full p-4 gap-4 bg-background/80">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-primary" />
@@ -68,39 +62,21 @@ export default function SystemOverviewConsole() {
         </span>
       </div>
 
-      {/* 2x2 Status Grid */}
       <div className="grid grid-cols-2 gap-3 flex-1">
-        <StatusBlock
-          label="ShowPlan"
-          icon={Activity}
+        <StatusBlock label="ShowPlan" icon={Activity}
           status={hasCues ? 'ok' : 'idle'}
-          detail={hasCues ? `${sp.pyroCues.length} pyro + ${sp.dmxCues.length} DMX + ${sp.dronePaths.length} drone` : 'No cues loaded'}
-          color="amber"
-        />
-        <StatusBlock
-          label="Verification"
-          icon={Shield}
+          detail={hasCues ? `${sp.pyroCues.length} pyro + ${sp.dmxCues.length} DMX + ${sp.dronePaths.length} drone` : 'No cues loaded'} />
+        <StatusBlock label="Verification" icon={Shield}
           status={level === 'READY_FOR_FIELD' ? 'ok' : level === 'BLOCKED' ? 'error' : 'warn'}
-          detail={`${result?.checks.filter(c => c.passed).length ?? 0}/${result?.checks.length ?? 0} checks passed`}
-          color="green"
-        />
-        <StatusBlock
-          label="Safety"
-          icon={Zap}
+          detail={`${result?.checks.filter(c => c.passed).length ?? 0}/${result?.checks.length ?? 0} checks passed`} />
+        <StatusBlock label="Safety" icon={Zap}
           status={safetyState === 'SAFE' ? 'error' : safetyState === 'ARMED' || safetyState === 'FIRING' ? 'warn' : 'ok'}
-          detail={`State: ${safetyState}`}
-          color="red"
-        />
-        <StatusBlock
-          label="Hardware"
-          icon={Cpu}
+          detail={`State: ${safetyState}`} />
+        <StatusBlock label="Hardware" icon={Cpu}
           status={hwModules > 0 ? 'ok' : 'idle'}
-          detail={hwModules > 0 ? `${hwModules} module(s) | ${power.voltage.toFixed(1)}V` : 'No modules connected'}
-          color="cyan"
-        />
+          detail={hwModules > 0 ? `${hwModules} module(s) | ${power.voltage.toFixed(1)}V` : 'No modules connected'} />
       </div>
 
-      {/* Verification checks summary */}
       {result && (
         <div className="border border-border/10 rounded p-3 space-y-1">
           <span className="text-[9px] font-mono font-bold text-muted-foreground tracking-widest">VERIFICATION CHECKS</span>

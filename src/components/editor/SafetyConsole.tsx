@@ -22,7 +22,7 @@ const STATES_ORDER: SafetyState[] = ['IDLE', 'LOCKED', 'ARMED', 'FIRING', 'COOLD
 export default function SafetyConsole() {
   const [state, setState] = useState<SafetyState>(safetyStateMachine.state);
   const [entries, setEntries] = useState<readonly AuditEntry[]>(safetyAuditTrail.getAll());
-  const conditions = safetyStateMachine.getConditions();
+  const conditions = safetyStateMachine.conditions;
 
   useEffect(() => {
     const unsub = safetyStateMachine.onTransition((result) => {
@@ -38,17 +38,14 @@ export default function SafetyConsole() {
     setEntries([...safetyAuditTrail.getAll()]);
   }, []);
 
-  const style = STATE_STYLES[state];
-
   return (
     <div className="flex flex-col h-full p-4 gap-4 bg-background/80">
-      {/* Header */}
       <div className="flex items-center gap-2">
         <Shield className="w-4 h-4 text-red-400" />
         <span className="text-xs font-mono font-bold tracking-widest text-foreground uppercase">Safety Console</span>
       </div>
 
-      {/* State chain visualization */}
+      {/* State chain */}
       <div className="flex items-center gap-1">
         {STATES_ORDER.map(s => (
           <div key={s} className={cn(
@@ -81,7 +78,7 @@ export default function SafetyConsole() {
         ))}
       </div>
 
-      {/* Control buttons */}
+      {/* Controls */}
       <div className="flex items-center gap-2">
         <Button size="sm" variant="outline" onClick={() => handleTransition('LOCK_STATE')} className="text-[9px] font-mono gap-1 h-7">
           <Lock className="w-3 h-3" /> LOCK
@@ -100,14 +97,13 @@ export default function SafetyConsole() {
         </Button>
       </div>
 
-      {/* Recent audit entries */}
+      {/* Audit log */}
       <div className="flex-1 overflow-auto border border-border/10 rounded p-2 space-y-0.5">
         <span className="text-[8px] font-mono text-muted-foreground/50 tracking-widest">AUDIT LOG (LAST 20)</span>
         {entries.slice(-20).reverse().map((e, i) => (
           <div key={i} className="flex items-center gap-2 text-[8px] font-mono text-muted-foreground">
             <span className="text-muted-foreground/30">{new Date(e.timestamp).toLocaleTimeString()}</span>
-            <span className={cn(
-              'font-bold',
+            <span className={cn('font-bold',
               e.event === 'E_STOP' || e.event === 'VIOLATION' ? 'text-red-400' :
               e.event === 'ARM' || e.event === 'FIRE' ? 'text-amber-400' : 'text-muted-foreground/60'
             )}>{e.event}</span>
