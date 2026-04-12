@@ -38,7 +38,8 @@ function RackTube3D({ x, z, caliber, angle, heading, status, hasEffect }: {
 }
 
 function SingleRack3D({ rack, posX, posZ }: { rack: Rack; posX: number; posZ: number }) {
-  const { selectedRackId, selectRack } = useRackStore();
+  const selectedRackId = useRackStore(s => s.selectedRackId);
+  const selectRack = useRackStore(s => s.selectRack);
   const isSelected = selectedRackId === rack.id;
   const rotRad = (rack.rotation * Math.PI) / 180;
 

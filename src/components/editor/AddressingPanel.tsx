@@ -20,15 +20,27 @@ function getRssiColor(rssi?: number): string {
 }
 
 export default function AddressingPanel({ onClose }: { onClose: () => void }) {
-  const {
-    addresses, moduleSpecs, activeModuleSpecId, splitterBoxes, firingSystems, sortMode,
-    setActiveModuleSpec, autoAssign, clearAddresses, toggleLock, setAddress, removeAddress,
-    setSortMode, addSplitterBox, removeSplitterBox, addFiringSystem, removeFiringSystem,
-  } = useAddressingStore();
+  const addresses = useAddressingStore(s => s.addresses);
+  const moduleSpecs = useAddressingStore(s => s.moduleSpecs);
+  const activeModuleSpecId = useAddressingStore(s => s.activeModuleSpecId);
+  const splitterBoxes = useAddressingStore(s => s.splitterBoxes);
+  const firingSystems = useAddressingStore(s => s.firingSystems);
+  const sortMode = useAddressingStore(s => s.sortMode);
+  const setActiveModuleSpec = useAddressingStore(s => s.setActiveModuleSpec);
+  const autoAssign = useAddressingStore(s => s.autoAssign);
+  const clearAddresses = useAddressingStore(s => s.clearAddresses);
+  const toggleLock = useAddressingStore(s => s.toggleLock);
+  const setAddress = useAddressingStore(s => s.setAddress);
+  const removeAddress = useAddressingStore(s => s.removeAddress);
+  const setSortMode = useAddressingStore(s => s.setSortMode);
+  const addSplitterBox = useAddressingStore(s => s.addSplitterBox);
+  const removeSplitterBox = useAddressingStore(s => s.removeSplitterBox);
+  const addFiringSystem = useAddressingStore(s => s.addFiringSystem);
+  const removeFiringSystem = useAddressingStore(s => s.removeFiringSystem);
 
     const timelineItems = useProjectStore(s => s.timelineItems);
   const positions = useProjectStore(s => s.positions);
-  const { racks } = useRackStore();
+  const racks = useRackStore(s => s.racks);
   const hardware = useFireOneHardware();
   const [tab, setTab] = useState<'addresses' | 'modules' | 'splitters' | 'systems'>('addresses');
 

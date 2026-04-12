@@ -80,7 +80,8 @@ function InfoRow({ label, value, accent = false }: { label: string; value: strin
 }
 /* ── Environment Settings — ShowSim / Finale 3D style ────── */
 function EnvironmentSettingsSection() {
-  const { environment, updateEnvironment } = useSceneStore();
+  const environment = useSceneStore(s => s.environment);
+  const updateEnvironment = useSceneStore(s => s.updateEnvironment);
 
   return (
     <SettingsSection title="Environment" icon={Eye} defaultOpen={false}>
@@ -237,7 +238,8 @@ interface SavedLocation {
 }
 
 function DigitalTwinSection() {
-  const { settings, updateSettings } = useSceneStore();
+  const settings = useSceneStore(s => s.settings);
+  const updateSettings = useSceneStore(s => s.updateSettings);
   const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
   const [saveName, setSaveName] = useState('');
   const [loading, setLoading] = useState(false);

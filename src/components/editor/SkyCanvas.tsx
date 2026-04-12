@@ -520,7 +520,7 @@ function SceneLighting() {
  */
 function GeoTimeOfDaySync() {
   const timeZoneOffset = useProjectStore(s => s.timeZoneOffset);
-  const { updateSettings } = useSceneStore();
+  const updateSettings = useSceneStore(s => s.updateSettings);
   const appliedRef = useRef(false);
 
   useEffect(() => {

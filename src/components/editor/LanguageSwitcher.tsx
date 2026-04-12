@@ -4,7 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 export default function LanguageSwitcher() {
-  const { locale, setLocale } = useI18nStore();
+  const locale = useI18nStore(s => s.locale);
+  const setLocale = useI18nStore(s => s.setLocale);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 

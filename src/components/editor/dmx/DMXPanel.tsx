@@ -32,7 +32,9 @@ interface DiagnosticLog {
 export default function DMXPanel({ onClose }: { onClose: () => void }) {
     const droneFormations = useProjectStore(s => s.droneFormations);
   const currentTime = useProjectStore(s => s.currentTime);
-  const { dmxDevices, sendDMXToAll, getConnectedDMXDevices } = useUSBDeviceStore();
+  const dmxDevices = useUSBDeviceStore(s => s.dmxDevices);
+  const sendDMXToAll = useUSBDeviceStore(s => s.sendDMXToAll);
+  const getConnectedDMXDevices = useUSBDeviceStore(s => s.getConnectedDMXDevices);
   const hardware = useFireOneHardware();
   const [universes, setUniverses] = useState<DMXUniverse[]>([]);
   const [keyframes, setKeyframes] = useState<DMXKeyframe[]>([]);

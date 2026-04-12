@@ -56,7 +56,8 @@ export default function GeoLocationSetup({ onClose }: GeoLocationSetupProps) {
   const [searching, setSearching] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
-  const { updateSettings, settings } = useSceneStore();
+  const updateSettings = useSceneStore(s => s.updateSettings);
+  const settings = useSceneStore(s => s.settings);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filtered = useMemo(() => {

@@ -117,13 +117,23 @@ interface FleetManagementPanelProps {
 }
 
 export default function FleetManagementPanel({ onClose }: FleetManagementPanelProps) {
-  const {
-    connectionState, serverUrl, setServerUrl, setConnectionState,
-    uavs, selectedUAVIds, selectUAV, toggleUAVSelection, selectAllUAVs, clearUAVSelection,
-    preflightResults, preflightSummary, preflightConfig,
-    setPreflightResults, clearPreflightResults,
-    geofence, showState,
-  } = useFleetStore();
+  const connectionState = useFleetStore(s => s.connectionState);
+  const serverUrl = useFleetStore(s => s.serverUrl);
+  const setServerUrl = useFleetStore(s => s.setServerUrl);
+  const setConnectionState = useFleetStore(s => s.setConnectionState);
+  const uavs = useFleetStore(s => s.uavs);
+  const selectedUAVIds = useFleetStore(s => s.selectedUAVIds);
+  const selectUAV = useFleetStore(s => s.selectUAV);
+  const toggleUAVSelection = useFleetStore(s => s.toggleUAVSelection);
+  const selectAllUAVs = useFleetStore(s => s.selectAllUAVs);
+  const clearUAVSelection = useFleetStore(s => s.clearUAVSelection);
+  const preflightResults = useFleetStore(s => s.preflightResults);
+  const preflightSummary = useFleetStore(s => s.preflightSummary);
+  const preflightConfig = useFleetStore(s => s.preflightConfig);
+  const setPreflightResults = useFleetStore(s => s.setPreflightResults);
+  const clearPreflightResults = useFleetStore(s => s.clearPreflightResults);
+  const geofence = useFleetStore(s => s.geofence);
+  const showState = useFleetStore(s => s.showState);
 
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();

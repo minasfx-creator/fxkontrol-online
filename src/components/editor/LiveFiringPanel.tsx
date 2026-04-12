@@ -340,7 +340,9 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   const currentTime = useProjectStore(s => s.currentTime);
   const setPlaying = useProjectStore(s => s.setPlaying);
   const positions = useProjectStore(s => s.positions);
-  const { channels, setChannels: setStoreChannels, updateChannels } = useSfxChannelStore();
+  const channels = useSfxChannelStore(s => s.channels);
+  const setStoreChannels = useSfxChannelStore(s => s.setChannels);
+  const updateChannels = useSfxChannelStore(s => s.updateChannels);
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
   const setChannels = useCallback((updaterOrValue: SFXChannel[] | ((prev: SFXChannel[]) => SFXChannel[])) => {
