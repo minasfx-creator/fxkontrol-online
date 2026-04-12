@@ -1,14 +1,16 @@
 /**
  * DMXArtNetConsole — Protocol monitor for Art-Net / DMX universes.
  * Consumes data from ShowPlan via ArtNetPatchExporter.
+ * Gated by VerificationEngine.
  */
 import { useState, useCallback } from 'react';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { generateArtNetPatchCSV, downloadArtNetPatch } from '@/core/export/ArtNetPatchExporter';
+import { useVerificationEngine } from '@/core/verification/useVerificationEngine';
 import { artNetBridge } from '@/core/protocols/ArtNetBridge';
 import { linkFailoverPolicy } from '@/core/protocols/LinkFailoverPolicy';
 import { cn } from '@/lib/utils';
-import { Radio, RefreshCw, Wifi, WifiOff, Download } from 'lucide-react';
+import { Radio, RefreshCw, Wifi, WifiOff, Download, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -16,6 +18,9 @@ export default function DMXArtNetConsole() {
   const [, setTick] = useState(0);
   const [preview, setPreview] = useState('');
   const [cueCount, setCueCount] = useState(0);
+  const [exportErrors, setExportErrors] = useState<string[]>([]);
+  const { level } = useVerificationEngine();
+  const canExport = level === 'READY_FOR_EXPORT' || level === 'READY_FOR_FIELD';
   const refresh = useCallback(() => setTick(t => t + 1), []);
 
   const sp = showPlanManager.current;
@@ -24,7 +29,6 @@ export default function DMXArtNetConsole() {
   const artnetStats = artNetBridge.getStats();
   const failover = linkFailoverPolicy.getStatus();
 
-  // Derive universe summary from ShowPlan dmxCues
   const universeMap = new Map<number, { channels: Set<number>; cues: number }>();
   for (const cue of sp.dmxCues) {
     const entry = universeMap.get(cue.universe) ?? { channels: new Set<number>(), cues: 0 };
@@ -40,6 +44,7 @@ export default function DMXArtNetConsole() {
     const result = generateArtNetPatchCSV();
     setPreview(result.csv);
     setCueCount(result.cueCount);
+    setExportErrors(result.errors);
   }, []);
 
   const handleExport = useCallback(() => {
@@ -54,6 +59,13 @@ export default function DMXArtNetConsole() {
           <span className="text-xs font-mono font-bold tracking-widest text-foreground uppercase">DMX / Art-Net Console</span>
         </div>
         <div className="flex items-center gap-2">
+          <span className={cn(
+            'text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border',
+            canExport ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
+            'bg-red-500/15 text-red-400 border-red-500/30'
+          )}>
+            {level.replace(/_/g, ' ')}
+          </span>
           <div className={cn(
             'flex items-center gap-1 text-[8px] font-mono px-2 py-0.5 rounded border',
             isConnected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'
@@ -82,7 +94,6 @@ export default function DMXArtNetConsole() {
             <div className="flex justify-between"><span className="text-muted-foreground">TX/RX</span><span className="text-foreground/70">{artnetStats.sent}/{artnetStats.received}</span></div>
           </div>
         </div>
-
         <div className="border border-border/10 rounded p-3 space-y-1">
           <span className="text-[8px] font-mono text-muted-foreground/60 tracking-widest">SHOWPLAN DMX</span>
           <div className="text-[9px] font-mono space-y-0.5">
@@ -91,7 +102,6 @@ export default function DMXArtNetConsole() {
             <div className="flex justify-between"><span className="text-muted-foreground">Total Ch</span><span className="text-foreground/70">{universeSummary.reduce((s, u) => s + u.channelCount, 0)}</span></div>
           </div>
         </div>
-
         <div className="border border-border/10 rounded p-3 space-y-1">
           <span className="text-[8px] font-mono text-muted-foreground/60 tracking-widest">FAILOVER</span>
           <div className="text-[9px] font-mono space-y-0.5">
@@ -101,7 +111,6 @@ export default function DMXArtNetConsole() {
         </div>
       </div>
 
-      {/* Universe breakdown from ShowPlan */}
       <div className="border border-border/10 rounded p-2 space-y-1">
         <span className="text-[8px] font-mono text-muted-foreground/60 tracking-widest">UNIVERSE MAP (SHOWPLAN)</span>
         {universeSummary.length === 0 ? (
@@ -121,13 +130,22 @@ export default function DMXArtNetConsole() {
         )}
       </div>
 
-      {/* Patch CSV preview & export */}
+      {exportErrors.length > 0 && (
+        <div className="border border-red-500/20 rounded p-2 bg-red-500/5 space-y-0.5 max-h-20 overflow-y-auto">
+          {exportErrors.map((e, i) => (
+            <div key={i} className="text-[8px] font-mono text-red-400 flex items-start gap-1">
+              <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" /> {e}
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
         <Button size="sm" variant="outline" onClick={handlePreview} className="h-6 text-[9px] font-mono gap-1">
           <RefreshCw className="w-3 h-3" /> PREVIEW CSV
         </Button>
-        <Button size="sm" onClick={handleExport} disabled={sp.dmxCues.length === 0}
-          className="h-6 text-[9px] font-mono gap-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30">
+        <Button size="sm" onClick={handleExport} disabled={!canExport || sp.dmxCues.length === 0}
+          className="h-6 text-[9px] font-mono gap-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 disabled:opacity-30">
           <Download className="w-3 h-3" /> EXPORT PATCH
         </Button>
         {cueCount > 0 && <span className="text-[8px] font-mono text-muted-foreground">{cueCount} cues in patch</span>}
