@@ -114,17 +114,7 @@ function TypewriterGreeting({ text }: { text: string }) {
   );
 }
 
-function getContextPresets() {
-  const path = window.location.pathname;
-  const isCommand = path.includes('command');
-  const docPresets = PRESETS_DOCS.map(p => ({
-    label: p.label,
-    icon: p.icon,
-    prompt: isCommand ? p.promptCommand : p.promptEditor,
-  }));
-  if (isCommand) return docPresets;
-  return [...OPERATIONAL_PRESETS.map(op => ({ label: op.label, icon: op.icon, prompt: op.prompt })), ...docPresets];
-}
+// Legacy getContextPresets is replaced by mode-aware presets below
 
 function getGreeting(): string {
   const h = new Date().getHours();
