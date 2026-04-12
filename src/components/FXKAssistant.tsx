@@ -6,8 +6,9 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
 type JoiEmotion = 'caring' | 'celebrating' | 'serious';
 import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText, Download, Gavel, Plane, MapPin, Globe, Volume2, VolumeX, Mic, MicOff, Play, Paperclip, File, Image as ImageIcon, XCircle } from 'lucide-react';
-import { exportJoiPdf } from '@/utils/joiPdfExport';
-import { exportJoiDocx } from '@/utils/joiDocxExport';
+// Dynamic imports for heavy export libs (jspdf ~168KB, docx ~157KB)
+const lazyExportPdf = () => import('@/utils/joiPdfExport').then(m => m.exportJoiPdf);
+const lazyExportDocx = () => import('@/utils/joiDocxExport').then(m => m.exportJoiDocx);
 import { parseKmzReadyBlock, stripKmzReadyBlock, downloadAeroKmz } from '@/utils/joiAeroKmzExport';
 import { executeJoiCommands, stripJoiCommands, hasJoiCommands, type JoiCommandResult } from '@/utils/joiCommandExecutor';
 import JoiCommandFeedback from '@/components/JoiCommandFeedback';
@@ -15,7 +16,8 @@ import { OPERATIONAL_PRESETS } from '@/components/JoiCommandPresets';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
-import ReactMarkdown from 'react-markdown';
+import { lazy, Suspense } from 'react';
+const ReactMarkdown = lazy(() => import('react-markdown'));
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useJoiSpeech } from '@/hooks/useJoiSpeech';
@@ -886,7 +888,9 @@ export function FXKAssistant() {
                       </div>
                     )}
                     <div className="prose prose-invert prose-xs max-w-none [&_p]:my-1 [&_code]:text-[hsl(190_100%_70%)] [&_code]:bg-transparent [&_pre]:bg-[hsl(220_20%_8%)] [&_pre]:border [&_pre]:border-[hsl(190_100%_50%/0.1)] [&_strong]:text-[hsl(38_100%_65%)] [&_a]:text-[hsl(190_100%_60%)]">
-                      <ReactMarkdown>{stripJoiCommands(stripKmzReadyBlock(msg.content))}</ReactMarkdown>
+                      <Suspense fallback={<p className="text-[10px] text-muted-foreground/40 font-mono">...</p>}>
+                        <ReactMarkdown>{stripJoiCommands(stripKmzReadyBlock(msg.content))}</ReactMarkdown>
+                      </Suspense>
                     </div>
                     {msg.cmdResults && msg.cmdResults.length > 0 && (
                       <JoiCommandFeedback results={msg.cmdResults} />
@@ -929,7 +933,7 @@ export function FXKAssistant() {
                           </button>
                         )}
                         <button
-                          onClick={() => exportJoiPdf(msg.content)}
+                          onClick={() => lazyExportPdf().then(fn => fn(msg.content))}
                           className="h-7 px-1.5 rounded-md flex items-center gap-1 transition-all hover:scale-105 active:scale-95"
                           style={{ background: 'hsl(190 100% 50% / 0.08)', border: '1px solid hsl(190 100% 50% / 0.15)' }}
                           title="Exportar PDF"
@@ -938,7 +942,7 @@ export function FXKAssistant() {
                           <span className="text-[7px] font-mono" style={{ color: 'hsl(190 100% 50% / 0.6)' }}>PDF</span>
                         </button>
                         <button
-                          onClick={() => exportJoiDocx(msg.content)}
+                          onClick={() => lazyExportDocx().then(fn => fn(msg.content))}
                           className="h-7 px-1.5 rounded-md flex items-center gap-1 transition-all hover:scale-105 active:scale-95"
                           style={{ background: 'hsl(160 70% 40% / 0.1)', border: '1px solid hsl(160 70% 40% / 0.2)' }}
                           title="Exportar DOCX"
