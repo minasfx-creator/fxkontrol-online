@@ -263,6 +263,8 @@ export default function CommandCenter() {
       case 'cue_validation': return <CueValidationConsole />;
       case 'addressing': return <AddressingConsole />;
       case 'execution_status': return <ExecutionStatusConsole />;
+      case 'export_readiness': return <ExportReadinessPanel />;
+      case 'state_matrix': return <CurrentStateMatrix />;
       default: return null;
     }
   }, []);
