@@ -1,79 +1,77 @@
 
 
-# Ciclo #84 — Zustand Subscription Optimization
+# Ciclo #85 — Bug Fixes & Improvements Audit
 
-## Problem
+## Bugs Found
 
-**59 components** use `useProjectStore()` with object destructuring, which subscribes to the **entire store**. Since `useProjectStore` has 60+ properties (including `currentTime` which updates ~60fps during playback), every component re-renders on every tick — even if it only reads `editorMode`.
-
-This is the #1 cause of unnecessary re-renders in the app.
-
-## Severity Classification
-
-| Priority | Component | Why critical |
-|----------|-----------|-------------|
-| P0 | `PositionPins.tsx` (Pin, DirectionLine, GroundClickPlane) | R3F scene — re-renders cause GPU thrash |
-| P0 | `FireworkRenderer.tsx` (TimelineEffects) | R3F scene — rebuilds effect array every frame |
-| P0 | `SelectionStatusBar.tsx` | Renders during playback despite only needing selection state |
-| P1 | `FormationBuilder.tsx` (FormationQueue) | Heavy UI list re-rendered on every time tick |
-| P1 | `RadialMenu.tsx` | Full store subscription for position ops |
-| P1 | `PositionWindow.tsx` (PositionContextMenu) | Full store on right-click menu |
-| P2 | 50+ other components | Panel-level components, less frequent but cumulative |
-
-## Fix Strategy
-
-Convert all `useProjectStore()` destructuring calls to **individual selector subscriptions**:
-
+### BUG 1 — `useRenderCounter` violates Rules of Hooks (P0)
+**File**: `src/hooks/useRenderCounter.ts`  
+**Issue**: Early return before `useRef` on line 42-44. React hooks cannot be called conditionally.
 ```typescript
-// ❌ BEFORE — subscribes to ALL 60+ fields
-const { currentTime, isPlaying } = useProjectStore();
-
-// ✅ AFTER — subscribes only to what's needed
-const currentTime = useProjectStore(s => s.currentTime);
-const isPlaying = useProjectStore(s => s.isPlaying);
+if (!import.meta.env.DEV) return;  // ← early return
+const ref = useRef(0);             // ← hook called after conditional return
 ```
+This will crash in production or trigger React warnings. The conditional must wrap the *logic*, not gate the hooks.
 
-For action-only references (functions that never change), group them with `useCallback`-stable selectors or extract once:
+**Fix**: Move `useRef` before the guard, make the logging conditional instead.
 
-```typescript
-// Actions are stable — can use a single shallow selector
-const actions = useProjectStore(s => ({
-  updatePosition: s.updatePosition,
-  selectPosition: s.selectPosition,
-}));
-// Or just individual: const updatePosition = useProjectStore(s => s.updatePosition);
-```
+---
 
-## Scope
+### BUG 2 — Google 3D Tiles: Missing DRACOLoader (P1)
+**File**: `src/core/geo/GoogleTilesEngine.tsx`  
+**Issue**: Console shows `THREE.GLTFLoader: No DRACOLoader instance provided.` repeatedly. Google's Photorealistic 3D Tiles use Draco-compressed meshes. The `TilesRenderer` initializes without a `DRACOLoader`, causing all tile loads to fail.
 
-Fix the **12 highest-impact files** (P0 + P1). The remaining ~47 P2 components are panels/dialogs that only mount on user action — lower priority.
+**Fix**: Register a `GLTFLoader` with `DRACOLoader` set up (using CDN decoder path from three.js). Use the `GLTFExtensionsPlugin` from `3d-tiles-renderer/plugins` to attach the configured loader.
 
-### Files to edit
+---
 
-| File | Current destructured fields | Fix |
-|------|---------------------------|-----|
-| `src/components/editor/PositionPins.tsx` (Pin) | 8 fields full-store | Individual selectors |
-| `src/components/editor/PositionPins.tsx` (DirectionLine) | 5 fields full-store | Individual selectors |
-| `src/components/editor/PositionPins.tsx` (GroundClickPlane) | 6 fields full-store | Individual selectors |
-| `src/components/editor/PositionPins.tsx` (GroundDeselectPlane) | 2 fields full-store | Individual selectors |
-| `src/components/editor/PositionPins.tsx` (default export) | 1 field full-store | Individual selector |
-| `src/components/editor/skycanvas/FireworkRenderer.tsx` (TimelineEffects) | 3 fields full-store | Individual selectors |
-| `src/components/editor/SelectionStatusBar.tsx` | 8 fields full-store | Individual selectors |
-| `src/components/editor/FormationBuilder.tsx` (FormationQueue) | 8 fields full-store | Individual selectors |
-| `src/components/editor/FormationBuilder.tsx` (default) | 3 fields full-store | Individual selectors |
-| `src/components/editor/RadialMenu.tsx` | 7 fields full-store | Individual selectors |
-| `src/components/editor/PositionWindow.tsx` | 10+ fields full-store | Individual selectors |
-| `src/components/editor/CakeBuilder.tsx` | 4 fields full-store | Individual selectors |
+### BUG 3 — `HealthPersistenceService` writes to non-existent tables (P1)
+**Files**: `src/core/cluster/HealthPersistenceService.ts`, `src/hooks/useHealthHistory.ts`  
+**Issue**: Uses `supabase.from('health_snapshots' as any)` and `supabase.from('health_incidents' as any)`. The `as any` cast hides the fact that these tables don't exist in the database schema (not in `types.ts`). Every 30s flush silently fails.
 
-## Execution Order
+**Fix**: Create `health_snapshots` and `health_incidents` tables via migration, or remove the persistence service if not needed. Tables need proper RLS policies.
 
-1. Fix P0 R3F components (PositionPins, FireworkRenderer) — biggest perf gain
-2. Fix P0/P1 UI components (SelectionStatusBar, FormationBuilder, RadialMenu, PositionWindow, CakeBuilder)
-3. Build verification with `tsc --noEmit`
+---
+
+### BUG 4 — `lastPersistedIds` memory leak in `HealthPersistenceService` (P2)
+**File**: `src/core/cluster/HealthPersistenceService.ts`  
+**Issue**: `lastPersistedIds` Set grows unbounded — every incident ID is added, never removed. Over long sessions this leaks memory.
+
+**Fix**: Clear and rebuild from current incidents on each flush cycle, or cap the Set size.
+
+---
+
+## Improvements
+
+### IMP 1 — `ClusterHealthService` polls at 500ms with no backoff (P2)
+**File**: `src/core/cluster/ClusterHealthService.ts`  
+**Issue**: Polls every 500ms unconditionally via `setInterval`, even when idle. Wastes CPU.
+
+**Fix**: Use adaptive polling — 500ms during active incidents, 5s when healthy.
+
+---
+
+### IMP 2 — `SnapshotManager.restore` uses `as any` casts (P2)
+**File**: `src/core/state/SnapshotManager.ts`  
+**Issue**: 4 `as any` casts on `structuredClone` results suggest type mismatch between snapshot schema and store types. Fragile — won't catch schema drift.
+
+**Fix**: Type the `Snapshot.state` interface to match the store slice, eliminating casts.
+
+---
+
+## Execution Plan
+
+| Step | Action | File(s) |
+|------|--------|---------|
+| 1 | Fix `useRenderCounter` hook order violation | `src/hooks/useRenderCounter.ts` |
+| 2 | Add DRACOLoader to GoogleTilesEngine | `src/core/geo/GoogleTilesEngine.tsx` |
+| 3 | Create DB migration for health tables + RLS | Migration SQL |
+| 4 | Cap `lastPersistedIds` + adaptive polling | `HealthPersistenceService.ts`, `ClusterHealthService.ts` |
+| 5 | Build verification | `tsc --noEmit` |
 
 ## Expected Impact
-
-- **R3F scene**: Eliminates ~95% of unnecessary React reconciliation during playback
-- **UI panels**: Panels that only read selection/mode state stop re-rendering on `currentTime` ticks
-- **Memory**: Fewer intermediate React fiber objects created per frame
+- **BUG 1**: Prevents production crash from hooks violation
+- **BUG 2**: Enables Google 3D Tiles to actually render (currently 100% broken)
+- **BUG 3**: Health telemetry starts persisting to real tables
+- **BUG 4 + IMP 1**: Reduces memory/CPU waste in long sessions
 
