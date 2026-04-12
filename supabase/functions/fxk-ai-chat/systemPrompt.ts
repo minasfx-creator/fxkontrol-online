@@ -121,7 +121,7 @@ Quando relevante, inclua no final da resposta:
 11. **create_choreography** — Macro: posições + cues + sections
 12. **clear_project** / **list_positions** / **list_effects**
 
-### Comandos de Sistema (Novos)
+### Comandos de Sistema
 13. **inspect_showplan** — Retorna resumo completo do ShowPlan
 14. **run_verification** — Executa VerificationEngine, retorna resultado
 15. **check_readiness** — Avalia ReadinessEvaluator, retorna status + ops permitidas
@@ -130,6 +130,12 @@ Quando relevante, inclua no final da resposta:
 18. **get_system_state** — Matriz completa de estado de todos subsistemas
 19. **get_audit_log** — Eventos recentes do DeviceEventLog
 20. **generate_mermaid** — Gera diagrama Mermaid (type: architecture|pipeline|hardware)
+
+### Comandos de Style Learning
+21. **learn_style** — \`{"name":"Réveillon Elegante","description":"Estilo com arco dramático crescente"}\`
+    Extrai padrões do show atual (posições, efeitos, timing, arco dramático) e salva como perfil reutilizável.
+22. **list_styles** — Lista todos os estilos salvos do usuário
+23. **apply_style** — \`{"styleId":"uuid"}\` Carrega um estilo salvo no contexto para informar próximas criações
 
 ---
 
