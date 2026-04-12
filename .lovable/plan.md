@@ -1,71 +1,68 @@
 
 
-# Ciclo #80 — Bug Sweep & Fixes em Toda Plataforma
+# Ciclo #81 — React.memo & useMemo Performance Optimization
 
-## Bug #1: IndexedDB Version Conflict (CONSOLE SPAM)
-**Causa raiz dos warnings repetidos no console.** Três módulos abrem o mesmo DB `fxkontrol_blackbox` com versões diferentes:
-- `useBlackBox.ts` → DB_VERSION = **1**
-- `IndexedDBPersistence.ts` → DB_VERSION = **3**
-- `SafetyAuditTrail.ts` → DB_VERSION = **3**
+## Diagnóstico
 
-Quando `useBlackBox` abre com version 1, o browser retorna o DB já na version 3 (sem trigger `onupgradeneeded`). Mas quando `SafetyAuditTrail` abre com version 3, se o DB já está aberto por outro módulo, a `onupgradeneeded` não roda e o object store `safety_audit` pode não existir. Resultado: `"One of the specified object stores was not found"` a cada 200 ticks (~7 segundos).
+Apenas 2 componentes no editor usam `React.memo` (LaserPreviewBeams e DraggableTimelineItem). Os demais re-renderizam a cada mudança de qualquer state pai, mesmo quando suas props não mudam.
 
-**Fix**: Unificar todos os acessos IndexedDB em um único módulo centralizador, ou pelo menos alinhar `useBlackBox` para DB_VERSION = 3 e garantir que sua `onupgradeneeded` crie TODOS os stores (sessions, snapshots, commandlog, safety_audit).
+**Componentes mais impactados** (renderizam a cada frame/tick ou a cada interação):
 
-## Bug #2: Terrain Loading Loop (PERFORMANCE)
-O session replay mostra "Carregando terreno 3D..." → "Terreno carregado" em loop a cada ~2 segundos.
-
-**Causa**: `applyAnchorTransform` (useCallback com deps `[anchorLat, anchorLon, anchorAlt]`) está na dependency array do useEffect principal que cria/destrói o TilesRenderer (linha 210). Qualquer mudança de anchor destrói e recria todo o renderer, triggering o ciclo loading→ready.
-
-**Fix**: Remover `applyAnchorTransform` da dependency array do useEffect de inicialização. Usar um ref para a função e chamá-la manualmente. O useEffect separado (linha 219-221) já cuida de updates de anchor.
-
-## Bug #3: Terrain State Flicker (UX)
-Mesmo sem mudança de anchor, `visibleCount` oscila entre >2 e <=2 conforme tiles entram/saem do frustum, causando flip constante entre `'ready'` e `'loading-tiles'`.
-
-**Fix**: Adicionar hysteresis: só voltar para `'loading-tiles'` se `visibleCount === 0` por N frames consecutivos. Uma vez `ready`, permanecer `ready` a menos que realmente não haja tiles.
-
-## Bug #4: IndexedDBPersistence não cria `safety_audit` store
-O `onupgradeneeded` de `IndexedDBPersistence.ts` cria apenas `snapshots` e `commandlog`, mas não `safety_audit`. Se este módulo for o primeiro a abrir o DB, o store não existirá quando `SafetyAuditTrail` tentar usá-lo.
-
-**Fix**: Centralizar a criação de todos os stores em um único ponto.
+| Componente | Problema | Fix |
+|---|---|---|
+| `TelemetryBar` | Cria `new Date()` + `toLocaleTimeString` a cada render | Wrap com `React.memo` |
+| `SelectionStatusBar` | Filtra arrays `positions`, `timelineItems` inline sem memo | `useMemo` nos filtros + `React.memo` |
+| `GoogleTilesLoadingOverlay` | Re-render em cascata do SkyCanvas | `React.memo` |
+| `TacticalDock` | Re-render quando qualquer store muda | `React.memo` |
+| `MobileHUD` | Re-render a cada tick de playback propaga para filhos | `React.memo` |
+| `MobileQuickActions` | Re-render desnecessário quando panelOpen não muda | `React.memo` |
+| `MobileTabBar` | Props complexas causam re-render | `React.memo` com comparação shallow |
+| `PropertiesPanel` | `ExportSection` recalcula contagens inline | `useMemo` nos contadores + `React.memo` no ExportSection |
+| `BoidsVisualizer` | Recria array `positions` (map) a cada frame | `useMemo` com deps nos agents |
+| `HUDCrosshairs` | Simples mas sem memo | `React.memo` |
+| `PlacingModeOverlay` | Simples mas sem memo | `React.memo` |
+| `ARCompassHUD` | Simples mas sem memo | `React.memo` |
+| `AICoPilotOverlay` | Simples mas sem memo | `React.memo` |
 
 ## Plano de Implementação
 
-### 1. Criar módulo centralizado de IndexedDB (`src/core/persistence/dbConnection.ts`)
-- Uma única função `getDB()` que abre `fxkontrol_blackbox` com version 4
-- `onupgradeneeded` cria todos os 4 stores: `sessions`, `snapshots`, `commandlog`, `safety_audit`
-- Singleton cached, retorna mesma Promise para todos os callers
+### 1. Wrap componentes HUD/overlay com React.memo (8 arquivos)
+Componentes simples que apenas leem do store e renderizam UI:
+- `TelemetryBar`, `GoogleTilesLoadingOverlay`, `HUDCrosshairs`, `PlacingModeOverlay`, `ARCompassHUD`, `AICoPilotOverlay`, `MobileHUD`, `MobileQuickActions`
+- Pattern: `export default React.memo(function ComponentName() { ... })`
 
-### 2. Refatorar `useBlackBox.ts`
-- Importar `getDB()` do módulo centralizado em vez de abrir DB localmente
-- Remover `DB_NAME`, `DB_VERSION`, `openDB()` locais
+### 2. Adicionar useMemo em cálculos derivados (3 arquivos)
+- **SelectionStatusBar**: `useMemo` para `selectedPositions`, `selectedPyro`, `selectedDrone`, `linkedEffectCount`
+- **PropertiesPanel/ExportSection**: `useMemo` para `droneCount` e `pyroCount`
+- **BoidsVisualizer**: `useMemo` para o array `positions` derivado de `agents`
 
-### 3. Refatorar `IndexedDBPersistence.ts`
-- Importar `getDB()` do módulo centralizado
-- Remover `_open()` local e duplicação de DB_NAME/DB_VERSION
+### 3. Wrap componentes de dock/toolbar (3 arquivos)
+- `TacticalDock`, `MobileTabBar`, `SelectionStatusBar`
+- Pattern: `React.memo` no export
 
-### 4. Refatorar `SafetyAuditTrail.ts`
-- Importar `getDB()` do módulo centralizado
-- Remover `_open()` local e duplicação de DB_NAME/DB_VERSION
-
-### 5. Fix terrain loading loop (`GoogleTilesEngine.tsx`)
-- Remover `applyAnchorTransform` da deps do useEffect de init (linha 210)
-- Usar `applyAnchorTransformRef` (ref) dentro do init para a chamada inicial
-- Adicionar hysteresis ao state: só voltar a `'loading-tiles'` se `visibleCount === 0` por 3+ ciclos consecutivos
+### 4. Build verification
 
 ## Arquivos
 
 | Acao | Arquivo |
-|------|---------|
-| Create | `src/core/persistence/dbConnection.ts` |
-| Edit | `src/hooks/useBlackBox.ts` |
-| Edit | `src/core/persistence/IndexedDBPersistence.ts` |
-| Edit | `src/core/safety/SafetyAuditTrail.ts` |
-| Edit | `src/core/geo/GoogleTilesEngine.tsx` |
+|---|---|
+| Edit | `src/components/editor/TelemetryBar.tsx` |
+| Edit | `src/components/editor/GoogleTilesLoadingOverlay.tsx` |
+| Edit | `src/components/editor/HUDCrosshairs.tsx` |
+| Edit | `src/components/editor/PlacingModeOverlay.tsx` |
+| Edit | `src/components/editor/ARCompassHUD.tsx` |
+| Edit | `src/components/editor/AICoPilotOverlay.tsx` |
+| Edit | `src/components/editor/MobileHUD.tsx` |
+| Edit | `src/components/editor/MobileQuickActions.tsx` |
+| Edit | `src/components/editor/MobileTabBar.tsx` |
+| Edit | `src/components/editor/TacticalDock.tsx` |
+| Edit | `src/components/editor/SelectionStatusBar.tsx` |
+| Edit | `src/components/editor/PropertiesPanel.tsx` |
+| Edit | `src/components/editor/BoidsVisualizer.tsx` |
 
 ## Ordem
-1. Criar `dbConnection.ts` centralizado
-2. Refatorar os 3 consumidores de IndexedDB
-3. Fix terrain loading loop + hysteresis
+1. Wrap HUD/overlay components com React.memo (batch)
+2. Adicionar useMemo nos cálculos derivados
+3. Wrap dock/toolbar components
 4. Build verification
 
