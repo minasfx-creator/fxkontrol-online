@@ -2,6 +2,7 @@
  * ShowPlanInspector — Navigable tree view of the ShowPlan data structure.
  * Shows counters per domain: pyro cues, DMX cues, drone paths, hardware modules.
  * Quick-export buttons for .fir, Art-Net patch CSV and drone waypoints CSV.
+ * Verification results panel with pass/fail icons per check.
  */
 import { useCallback, useState } from 'react';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
@@ -16,8 +17,13 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
-import { Flame, Radio, Layers, Cpu, Shield, MapPin, FileOutput, Download, TestTube2 } from 'lucide-react';
+import {
+  Flame, Radio, Layers, Cpu, Shield, MapPin, FileOutput, Download,
+  TestTube2, CheckCircle2, XCircle, AlertTriangle, Info, RefreshCw, ClipboardCheck,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import type { VerificationCheckResult } from '@/core/showplan/ShowPlan';
 
 function CountBadge({ count, color }: { count: number; color: string }) {
   return (
@@ -27,15 +33,28 @@ function CountBadge({ count, color }: { count: number; color: string }) {
   );
 }
 
+function CheckIcon({ check }: { check: VerificationCheckResult }) {
+  if (check.passed) return <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />;
+  if (check.severity === 'error') return <XCircle className="w-3 h-3 text-red-400 shrink-0" />;
+  if (check.severity === 'warning') return <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />;
+  return <Info className="w-3 h-3 text-blue-400 shrink-0" />;
+}
+
 export default function ShowPlanInspector() {
   const [, setTick] = useState(0);
   const sp = showPlanManager.current;
-  const level = useVerificationStore(s => s.level);
+  const { level, result, runVerification } = useVerificationStore();
 
   const handleLoadTestData = useCallback(() => {
     showPlanManager.loadTestData();
+    runVerification();
     setTick(t => t + 1);
-  }, []);
+  }, [runVerification]);
+
+  const handleRunVerification = useCallback(() => {
+    runVerification();
+    setTick(t => t + 1);
+  }, [runVerification]);
 
   const sections = [
     {
@@ -183,6 +202,10 @@ export default function ShowPlanInspector() {
   const hasDrones = sp.dronePaths.length > 0;
   const exportBlocked = level === 'BLOCKED';
 
+  const passed = result?.checks.filter(c => c.passed).length ?? 0;
+  const total = result?.checks.length ?? 0;
+  const failed = total - passed;
+
   return (
     <div className="flex flex-col h-full p-3 gap-2 bg-background/80">
       {/* Header */}
@@ -219,6 +242,53 @@ export default function ShowPlanInspector() {
           className="h-5 text-[8px] font-mono gap-1 px-2">
           <Download className="w-2.5 h-2.5" /> DRONE
         </Button>
+      </div>
+
+      {/* Verification Results Panel */}
+      <div className="border border-border/10 rounded p-2 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <ClipboardCheck className="w-3 h-3 text-foreground/60" />
+            <span className="text-[8px] font-mono text-muted-foreground/60 tracking-widest">VERIFICATION</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {result && (
+              <div className="flex items-center gap-1.5 text-[8px] font-mono">
+                <span className="text-emerald-400">{passed}✓</span>
+                {failed > 0 && <span className="text-red-400">{failed}✗</span>}
+              </div>
+            )}
+            <Button size="sm" variant="outline" onClick={handleRunVerification}
+              className="h-5 text-[8px] font-mono gap-1 px-2">
+              <RefreshCw className="w-2.5 h-2.5" /> RUN
+            </Button>
+          </div>
+        </div>
+
+        {result ? (
+          <ScrollArea className="max-h-40">
+            <div className="space-y-0.5">
+              {result.checks.map(c => (
+                <div key={c.id} className="flex items-start gap-1.5 py-0.5">
+                  <CheckIcon check={c} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className={cn(
+                        'text-[9px] font-mono font-medium',
+                        c.passed ? 'text-foreground/70' : c.severity === 'error' ? 'text-red-400' : c.severity === 'warning' ? 'text-amber-400' : 'text-blue-400'
+                      )}>
+                        {c.label}
+                      </span>
+                    </div>
+                    <p className="text-[8px] font-mono text-muted-foreground/50 leading-tight">{c.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        ) : (
+          <p className="text-[8px] font-mono text-muted-foreground/40">Click RUN to verify ShowPlan</p>
+        )}
       </div>
 
       {/* Accordion tree */}
