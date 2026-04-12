@@ -1,6 +1,6 @@
 /**
  * FXKAssistant — "Joi" Central Intelligence for FX KONTROL
- * 6+1 operational modes, system-aware context injection, rich rendering
+ * 7+1 operational modes, system-aware context injection, rich rendering
  */
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
@@ -22,6 +22,9 @@ import { useJoiSpeech } from '@/hooks/useJoiSpeech';
 import joiFaceIcon from '@/assets/joi-face-icon.png';
 import { joiContextBuilder } from '@/core/joi/JoiContextBuilder';
 import { JOI_MODES, JOI_MODE_PRESETS, getPresetsForMode, getModeConfig, type JoiMode } from '@/core/joi/joiModes';
+import { JOIContextRibbon } from '@/components/joi/JOIContextRibbon';
+import { JOIInsightPanel } from '@/components/joi/JOIInsightPanel';
+import { JOITruthInspector } from '@/components/joi/JOITruthInspector';
 
 type Msg = { role: 'user' | 'assistant' | 'system'; content: string; ts?: number; feedback?: 'up' | 'down'; cmdResults?: JoiCommandResult[]; attachmentName?: string; imageBase64?: string };
 
