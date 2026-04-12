@@ -56,7 +56,8 @@ function PanelLoader() {
 type CommandMode =
   | 'pyro_fire' | 'super_dmx' | 'fxk_light' | 'drone_ops'
   | 'show_control' | 'module' | 'dmx_monitor' | 'field_test' | 'hardware'
-  | 'verification' | 'continuity';
+  | 'verification' | 'continuity'
+  | 'sys_overview' | 'safety_console' | 'field_diag' | 'fireone_export' | 'dmx_artnet' | 'audit_blackbox';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = ['pyro_fire', 'super_dmx'];
