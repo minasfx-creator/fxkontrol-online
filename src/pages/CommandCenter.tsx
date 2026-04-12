@@ -47,6 +47,12 @@ const AddressingConsole = lazy(() => import('@/components/editor/AddressingConso
 const ExecutionStatusConsole = lazy(() => import('@/components/editor/ExecutionStatusConsole'));
 const ExportReadinessPanel = lazy(() => import('@/components/editor/ExportReadinessPanel'));
 const CurrentStateMatrix = lazy(() => import('@/components/editor/CurrentStateMatrix'));
+const HardwareOverview = lazy(() => import('@/components/editor/HardwareOverview'));
+const RelayBankMonitor = lazy(() => import('@/components/editor/RelayBankMonitor'));
+const BatteryPowerMonitor = lazy(() => import('@/components/editor/BatteryPowerMonitor'));
+const MuxContinuityMonitor = lazy(() => import('@/components/editor/MuxContinuityMonitor'));
+const ArtNetDMXMonitor = lazy(() => import('@/components/editor/ArtNetDMXMonitor'));
+const ReadinessDashboard = lazy(() => import('@/components/editor/ReadinessDashboard'));
 
 function PanelLoader() {
   return (
@@ -65,7 +71,8 @@ type CommandMode =
   | 'verification' | 'continuity'
   | 'sys_overview' | 'safety_console' | 'field_diag' | 'fireone_export' | 'dmx_artnet' | 'audit_blackbox'
   | 'cue_validation' | 'addressing' | 'execution_status'
-  | 'export_readiness' | 'state_matrix';
+  | 'export_readiness' | 'state_matrix'
+  | 'hw_overview' | 'relay_bank' | 'battery_power' | 'mux_continuity' | 'artnet_monitor' | 'readiness';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = ['pyro_fire', 'super_dmx'];
