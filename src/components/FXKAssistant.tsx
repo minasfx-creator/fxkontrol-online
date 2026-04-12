@@ -780,6 +780,33 @@ export function FXKAssistant() {
         </button>
       </div>
 
+      {/* Mode selector bar */}
+      <div className="relative z-10 flex gap-1 px-2 py-1.5 overflow-x-auto shrink-0" style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.06)' }}>
+        {JOI_MODES.map(mode => {
+          const isActive = joiMode === mode.id;
+          const ModeIcon = mode.icon;
+          return (
+            <button
+              key={mode.id}
+              onClick={() => setJoiMode(mode.id)}
+              className={cn(
+                "shrink-0 px-2 py-1 rounded text-[7px] font-mono tracking-wider uppercase transition-all flex items-center gap-1",
+                isActive && "scale-[1.02]"
+              )}
+              style={{
+                background: isActive ? `hsl(${mode.accentHsl} / 0.15)` : 'transparent',
+                border: isActive ? `1px solid hsl(${mode.accentHsl} / 0.4)` : '1px solid transparent',
+                color: isActive ? `hsl(${mode.accentHsl})` : 'hsl(190 100% 50% / 0.35)',
+              }}
+              title={mode.description}
+            >
+              <ModeIcon className="h-2.5 w-2.5" />
+              {mode.shortLabel}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Content area */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
         {/* Sidebar hologram (expanded only) */}
