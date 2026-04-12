@@ -130,7 +130,10 @@ function HardwareStatusDots({ onOpenPanel }: { onOpenPanel?: (id: string) => voi
 
 function TimecodeDisplay() {
   const { currentTime, isPlaying } = usePlaybackState();
-  const { frameRate, startTimecodeSeconds, locked, running } = useSMPTEStore();
+  const frameRate = useSMPTEStore(s => s.frameRate);
+  const startTimecodeSeconds = useSMPTEStore(s => s.startTimecodeSeconds);
+  const locked = useSMPTEStore(s => s.locked);
+  const running = useSMPTEStore(s => s.running);
   const offsetTime = currentTime + startTimecodeSeconds;
   const tc = secondsToTimecode(offsetTime, frameRate, frameRate === 29.97);
   const tcStr = formatTimecode(tc);
@@ -363,7 +366,10 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
   const trajectories = useProjectStore(s => s.trajectories);
   const droneFormations = useProjectStore(s => s.droneFormations);
   const gpsOrigin = useProjectStore(s => s.gpsOrigin);
-  const { canUndo, canRedo, undo, redo } = useUndoStore();
+  const canUndo = useUndoStore(s => s.canUndo);
+  const canRedo = useUndoStore(s => s.canRedo);
+  const undo = useUndoStore(s => s.undo);
+  const redo = useUndoStore(s => s.redo);
   const { signOut } = useAuth();
   const { saveProject } = useProjectPersistence();
   const [formationOpen, setFormationOpen] = useState(false);

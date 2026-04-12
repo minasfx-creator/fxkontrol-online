@@ -31,10 +31,18 @@ function SliderField({ label, value, onChange, min, max, step, unit }: {
 export default function BoidsPanel({ onClose }: { onClose: () => void }) {
     const droneFormations = useProjectStore(s => s.droneFormations);
   const projectName = useProjectStore(s => s.projectName);
-  const {
-    agents, config, running, seekTarget, recording, recordedFrames,
-    setAgents, setConfig, setRunning, setSeekTarget, setRecording, clearRecording,
-  } = useBoidsStore();
+  const agents = useBoidsStore(s => s.agents);
+  const config = useBoidsStore(s => s.config);
+  const running = useBoidsStore(s => s.running);
+  const seekTarget = useBoidsStore(s => s.seekTarget);
+  const recording = useBoidsStore(s => s.recording);
+  const recordedFrames = useBoidsStore(s => s.recordedFrames);
+  const setAgents = useBoidsStore(s => s.setAgents);
+  const setConfig = useBoidsStore(s => s.setConfig);
+  const setRunning = useBoidsStore(s => s.setRunning);
+  const setSeekTarget = useBoidsStore(s => s.setSeekTarget);
+  const setRecording = useBoidsStore(s => s.setRecording);
+  const clearRecording = useBoidsStore(s => s.clearRecording);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [minDist, setMinDist] = useState(0);
 

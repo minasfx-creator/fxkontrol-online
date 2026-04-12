@@ -10,7 +10,12 @@ import { parseVDL } from '@/lib/vdlParser';
 import { cn } from '@/lib/utils';
 
 export default function InventoryPanel({ onClose }: { onClose: () => void }) {
-  const { items, setItem, showCostMultiplier, setShowCostMultiplier, importItems, initDefaults } = useInventoryStore();
+  const items = useInventoryStore(s => s.items);
+  const setItem = useInventoryStore(s => s.setItem);
+  const showCostMultiplier = useInventoryStore(s => s.showCostMultiplier);
+  const setShowCostMultiplier = useInventoryStore(s => s.setShowCostMultiplier);
+  const importItems = useInventoryStore(s => s.importItems);
+  const initDefaults = useInventoryStore(s => s.initDefaults);
     const timelineItems = useProjectStore(s => s.timelineItems);
   const [search, setSearch] = useState('');
   const [csvText, setCsvText] = useState('');

@@ -61,10 +61,12 @@ interface StoryboardPanelProps {
 }
 
 export default function StoryboardPanel({ onClose }: StoryboardPanelProps) {
-  const {
-    storyboardEntries, addStoryboardEntry, updateStoryboardEntry,
-    removeStoryboardEntry, reorderStoryboard, recalculateStoryboardTimings,
-  } = useFleetStore();
+  const storyboardEntries = useFleetStore(s => s.storyboardEntries);
+  const addStoryboardEntry = useFleetStore(s => s.addStoryboardEntry);
+  const updateStoryboardEntry = useFleetStore(s => s.updateStoryboardEntry);
+  const removeStoryboardEntry = useFleetStore(s => s.removeStoryboardEntry);
+  const reorderStoryboard = useFleetStore(s => s.reorderStoryboard);
+  const recalculateStoryboardTimings = useFleetStore(s => s.recalculateStoryboardTimings);
 
   const formations = useProjectStore(s => s.droneFormations);
   const [expandedId, setExpandedId] = useState<string | null>(null);

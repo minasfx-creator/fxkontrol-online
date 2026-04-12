@@ -19,16 +19,28 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export default function MAVLinkPanel({ onClose }: { onClose: () => void }) {
-  const {
-    connected, bridgeActive, drones, log, packetCount, bytesTransferred,
-    selectedDroneId, rateConfig,
-    setConnected, setBridgeActive, initDrone, updateDrone,
-    addPacket, addLog, setSelectedDroneId, clearLog, resetAll,
-  } = useMAVLinkStore();
+  const connected = useMAVLinkStore(s => s.connected);
+  const bridgeActive = useMAVLinkStore(s => s.bridgeActive);
+  const drones = useMAVLinkStore(s => s.drones);
+  const log = useMAVLinkStore(s => s.log);
+  const packetCount = useMAVLinkStore(s => s.packetCount);
+  const bytesTransferred = useMAVLinkStore(s => s.bytesTransferred);
+  const selectedDroneId = useMAVLinkStore(s => s.selectedDroneId);
+  const rateConfig = useMAVLinkStore(s => s.rateConfig);
+  const setConnected = useMAVLinkStore(s => s.setConnected);
+  const setBridgeActive = useMAVLinkStore(s => s.setBridgeActive);
+  const initDrone = useMAVLinkStore(s => s.initDrone);
+  const updateDrone = useMAVLinkStore(s => s.updateDrone);
+  const addPacket = useMAVLinkStore(s => s.addPacket);
+  const addLog = useMAVLinkStore(s => s.addLog);
+  const setSelectedDroneId = useMAVLinkStore(s => s.setSelectedDroneId);
+  const clearLog = useMAVLinkStore(s => s.clearLog);
+  const resetAll = useMAVLinkStore(s => s.resetAll);
 
     const droneFormations = useProjectStore(s => s.droneFormations);
   const currentTime = useProjectStore(s => s.currentTime);
-  const { agents, running: boidsRunning } = useBoidsStore();
+  const agents = useBoidsStore(s => s.agents);
+  const boidsRunning = useBoidsStore(s => s.running);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [autoStream, setAutoStream] = useState(false);
 

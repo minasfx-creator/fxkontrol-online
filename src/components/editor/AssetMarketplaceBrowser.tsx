@@ -745,7 +745,8 @@ function AssetCardList({ asset, onImport }: { asset: MarketplaceAsset; onImport:
 }
 
 function SiteModelControl({ model }: { model: SiteModel }) {
-  const { updateSiteModel, removeSiteModel } = useSceneStore();
+  const updateSiteModel = useSceneStore(s => s.updateSiteModel);
+  const removeSiteModel = useSceneStore(s => s.removeSiteModel);
 
   return (
     <div className="flex items-center gap-2 rounded-lg border border-border/20 bg-surface-0/40 p-2">

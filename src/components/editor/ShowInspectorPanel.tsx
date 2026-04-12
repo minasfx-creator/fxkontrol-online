@@ -149,7 +149,7 @@ export default function ShowInspectorPanel({ onClose }: ShowInspectorPanelProps)
   const setCurrentTime = useProjectStore(s => s.setCurrentTime);
   const effects = useProjectStore.getState().timelineItems; // fallback
 
-  const { storyboardEntries } = useFleetStore();
+  const storyboardEntries = useFleetStore(s => s.storyboardEntries);
   const [selectedDroneIdx, setSelectedDroneIdx] = useState<number | null>(null);
   const [searchCue, setSearchCue] = useState('');
 

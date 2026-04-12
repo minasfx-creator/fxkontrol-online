@@ -10,7 +10,13 @@ import InstancedDroneSwarm from './InstancedDroneSwarm';
  * Records frames when recording is active.
  */
 export default function BoidsVisualizer() {
-  const { agents, running, config, seekTarget, recording, setAgents, addRecordedFrame } = useBoidsStore();
+  const agents = useBoidsStore(s => s.agents);
+  const running = useBoidsStore(s => s.running);
+  const config = useBoidsStore(s => s.config);
+  const seekTarget = useBoidsStore(s => s.seekTarget);
+  const recording = useBoidsStore(s => s.recording);
+  const setAgents = useBoidsStore(s => s.setAgents);
+  const addRecordedFrame = useBoidsStore(s => s.addRecordedFrame);
     const droneFormations = useProjectStore(s => s.droneFormations);
   const currentTime = useProjectStore(s => s.currentTime);
   const lastTime = useRef(performance.now());

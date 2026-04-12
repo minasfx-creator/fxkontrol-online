@@ -184,7 +184,8 @@ function MasterTransport() {
   const isPlaying = useProjectStore(s => s.isPlaying);
   const duration = useProjectStore(s => s.duration);
   const setPlaying = useProjectStore(s => s.setPlaying);
-  const { frameRate, startTimecodeSeconds } = useSMPTEStore();
+  const frameRate = useSMPTEStore(s => s.frameRate);
+  const startTimecodeSeconds = useSMPTEStore(s => s.startTimecodeSeconds);
 
   const offsetTime = currentTime + startTimecodeSeconds;
   const tc = secondsToTimecode(offsetTime, frameRate, frameRate === 29.97);
