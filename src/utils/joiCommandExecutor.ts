@@ -499,6 +499,136 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         return { action, success: true, label: `Duração do show: ${d}s` };
       }
 
+      // ── System Inspection Commands ──────────────────────────────
+
+      case 'inspect_showplan': {
+        const s = store;
+        const effectCounts = new Map<string, number>();
+        s.timelineItems.forEach(item => {
+          const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+          effectCounts.set(effect?.name || item.effectId, (effectCounts.get(effect?.name || item.effectId) || 0) + 1);
+        });
+        const summary = Array.from(effectCounts.entries()).map(([n, c]) => `${n}×${c}`).join(', ') || 'Nenhum';
+        return {
+          action, success: true,
+          label: `ShowPlan: ${s.positions.length} posições, ${s.timelineItems.length} efeitos, ${s.droneFormations.length} formações`,
+          detail: `Projeto: ${s.projectName} | Duração: ${s.duration}s | Efeitos: ${summary}`,
+        };
+      }
+
+      case 'run_verification': {
+        const vResult = verificationEngine.run();
+        const errors = vResult.issues.filter(i => !i.passed && i.severity === 'error');
+        const warnings = vResult.issues.filter(i => !i.passed && i.severity === 'warning');
+        return {
+          action, success: true,
+          label: `Verificação: ${vResult.level}`,
+          detail: `${vResult.summary.passed}/${vResult.summary.total} checks passed | ${errors.length} erros | ${warnings.length} avisos${errors.length > 0 ? '\nBlockers: ' + errors.map(e => `${e.label}: ${e.detail}`).join('; ') : ''}`,
+        };
+      }
+
+      case 'check_readiness': {
+        const readiness = readinessEvaluator.evaluate();
+        return {
+          action, success: true,
+          label: `Readiness: ${readiness.status} (${readiness.mode})`,
+          detail: `Allowed: ${readiness.allowed_operations.join(', ') || 'nenhuma'} | Blocked: ${readiness.blocked_operations.join(', ') || 'nenhuma'}${readiness.issues.length > 0 ? '\nIssues: ' + readiness.issues.map(i => `[${i.severity}] ${i.message}`).join('; ') : ''}`,
+        };
+      }
+
+      case 'inspect_hardware': {
+        const health = unifiedHardwareRegistry.getSystemHealth();
+        const simCount = unifiedHardwareRegistry.getSimulatedCount();
+        const devices = unifiedHardwareRegistry.getDevices();
+        const deviceList = devices.map(d => {
+          const mode = (d.metadata?.integration_mode as IntegrationMode) || 'simulated';
+          const badge = getProvenanceBadge(mode).label;
+          return `${d.label}: ${badge} (${d.connection_state})`;
+        }).join('; ');
+        return {
+          action, success: true,
+          label: `Hardware: ${health.online}/${health.total} online, score ${health.score}`,
+          detail: `Simulated: ${simCount}/${health.total} | Errors: ${health.errors} | Warnings: ${health.warnings}\nDevices: ${deviceList}`,
+        };
+      }
+
+      case 'inspect_exports': {
+        const targets = ['fireone', 'artnet', 'drone'] as const;
+        const lines = targets.map(t => {
+          const last = exportCoordinator.getLastAttempt(t);
+          return `${t}: ${last ? (last.success ? `OK (${last.cueCount} cues)` : `BLOCKED: ${last.issues[0] || '?'}`) : 'Nunca exportado'}`;
+        });
+        const readiness = readinessEvaluator.evaluate();
+        const canExport = readiness.allowed_operations.includes('export');
+        return {
+          action, success: true,
+          label: `Export ${canExport ? 'PERMITIDO' : 'BLOQUEADO'} (${readiness.status})`,
+          detail: lines.join(' | '),
+        };
+      }
+
+      case 'get_system_state': {
+        const health = unifiedHardwareRegistry.getSystemHealth();
+        const vResult2 = verificationEngine.run();
+        const readiness2 = readinessEvaluator.evaluate();
+        const mode = operationalModeGuard.mode;
+        const simCount2 = unifiedHardwareRegistry.getSimulatedCount();
+        const devices2 = unifiedHardwareRegistry.getDevices();
+        const rows = [
+          `ShowPlan: ${store.positions.length > 0 ? 'ACTIVE' : 'EMPTY'} | evidence: adapter_only | source: ProjectStore`,
+          `VerificationPass: ${vResult2.level} | evidence: adapter_only | checks: ${vResult2.summary.passed}/${vResult2.summary.total}`,
+          `ExportCoordinator: ${readiness2.allowed_operations.includes('export') ? 'READY' : 'BLOCKED'} | mode: ${mode}`,
+          ...devices2.map(d => {
+            const im = (d.metadata?.integration_mode as IntegrationMode) || 'simulated';
+            const ev = d.metadata?.evidence_level || 'adapter_only';
+            return `${d.label}: ${d.connection_state} | ${getProvenanceBadge(im).label} | evidence: ${ev}`;
+          }),
+          `AuditTrail: ACTIVE | evidence: adapter_only | events: ${deviceEventLog.getRecent(1).length > 0 ? 'recording' : 'idle'}`,
+          `Unreal Integration: NOT_INTEGRATED | evidence: ui_only`,
+          `BP_SwarmManager: NOT_INTEGRATED | evidence: ui_only`,
+        ];
+        return {
+          action, success: true,
+          label: `System State Matrix (${devices2.length + 5} subsystems)`,
+          detail: rows.join('\n'),
+        };
+      }
+
+      case 'get_audit_log': {
+        const events = deviceEventLog.getRecent(20);
+        if (events.length === 0) {
+          return { action, success: true, label: 'Audit Log vazio', detail: 'Nenhum evento registrado' };
+        }
+        const lines = events.map(e => `[${new Date(e.timestamp).toLocaleTimeString()}] ${e.device_id} (${e.type}): ${e.message}`);
+        return {
+          action, success: true,
+          label: `Audit Log: ${events.length} eventos recentes`,
+          detail: lines.join('\n'),
+        };
+      }
+
+      case 'generate_mermaid': {
+        const type = params.type || 'architecture';
+        let diagram = '';
+        if (type === 'pipeline') {
+          diagram = `graph LR\n  SP[ShowPlan] --> VE[VerificationEngine]\n  VE --> RE[ReadinessEvaluator]\n  RE --> EC[ExportCoordinator]\n  EC --> FO[FireOne .fir]\n  EC --> AN[ArtNet CSV]\n  EC --> DR[Drone CSV]\n  RE --> OMG[OperationalModeGuard]\n  OMG -->|blocks| EC`;
+        } else if (type === 'hardware') {
+          const devices = unifiedHardwareRegistry.getDevices();
+          const nodes = devices.map((d, i) => {
+            const mode = (d.metadata?.integration_mode as IntegrationMode) || 'simulated';
+            return `  D${i}["${d.label}<br/>${getProvenanceBadge(mode).label}"]`;
+          }).join('\n');
+          diagram = `graph TD\n  UHR[UnifiedHardwareRegistry]\n${nodes}\n${devices.map((_, i) => `  UHR --> D${i}`).join('\n')}\n  UHR --> TP[TelemetryPoller]\n  TP --> HHM[HealthMonitor]\n  HHM --> DEL[DeviceEventLog]\n  DEL --> BB[BlackBoxRecorder]`;
+        } else {
+          diagram = `graph TD\n  UI[UI Layer] --> SP[ShowPlan]\n  SP --> VE[VerificationEngine]\n  VE --> RE[ReadinessEvaluator]\n  RE --> EC[ExportCoordinator]\n  RE --> OMG[OperationalModeGuard]\n  OMG --> EC\n  EC --> FO[FireOne]\n  EC --> AN[ArtNet]\n  EC --> DR[Drone]\n  RE --> UHR[UnifiedHardwareRegistry]\n  UHR --> Adapters\n  Adapters --> TP[TelemetryPoller]\n  TP --> HHM[HealthMonitor]\n  HHM --> DEL[DeviceEventLog]\n  DEL --> BB[BlackBoxRecorder]`;
+        }
+        return {
+          action, success: true,
+          label: `Diagrama Mermaid (${type})`,
+          detail: '```mermaid\n' + diagram + '\n```',
+        };
+      }
+
       default:
         return { action, success: false, label: `Comando desconhecido: ${action}` };
     }
