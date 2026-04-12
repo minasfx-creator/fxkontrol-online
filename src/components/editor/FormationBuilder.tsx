@@ -19,6 +19,7 @@ import { parseSVGToFormation } from '@/lib/svgParser';
 import { parseModelToFormation, parseKMZToFormation, SUPPORTED_EXTENSIONS, type ProjectionMode, type SamplingMode, type ModelParseResult } from '@/lib/modelToFormation';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 interface FormationBuilderProps {
   open: boolean;
@@ -122,6 +123,7 @@ function SliderField({ label, value, onChange, min, max, step, unit }: {
 /* ── Formation Queue ─────────────────────────────────────────── */
 
 function FormationQueue() {
+  useRenderCounter('FormationQueue');
   const droneFormations = useProjectStore(s => s.droneFormations);
   const removeDroneFormation = useProjectStore(s => s.removeDroneFormation);
   const selectFormation = useProjectStore(s => s.selectFormation);

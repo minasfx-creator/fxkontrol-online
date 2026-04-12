@@ -4,8 +4,10 @@ import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { MapPin, Crosshair, Zap, Move, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, RotateCw, Maximize2, Minimize2, Grid3x3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 export default React.memo(function SelectionStatusBar() {
+  useRenderCounter('SelectionStatusBar');
   const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
   const positions = useProjectStore(s => s.positions);
   const timelineItems = useProjectStore(s => s.timelineItems);

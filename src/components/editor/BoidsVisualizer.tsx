@@ -4,12 +4,14 @@ import { useBoidsStore } from '@/store/useBoidsStore';
 import { useProjectStore } from '@/store/useProjectStore';
 import { stepBoids } from '@/lib/boidsEngine';
 import InstancedDroneSwarm from './InstancedDroneSwarm';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 /**
  * Renders Boids simulation agents in the 3D viewport.
  * Records frames when recording is active.
  */
 export default function BoidsVisualizer() {
+  useRenderCounter('BoidsVisualizer');
   const agents = useBoidsStore(s => s.agents);
   const running = useBoidsStore(s => s.running);
   const config = useBoidsStore(s => s.config);
