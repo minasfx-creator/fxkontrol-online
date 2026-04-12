@@ -102,6 +102,12 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   execution_status: { color: 'hsl(120 70% 42%)', glow: 'hsl(120 70% 42% / 0.08)', label: 'EXEC STATUS', badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'EXECUTION BRIDGE STATUS' },
   export_readiness: { color: 'hsl(32 100% 50%)',  glow: 'hsl(32 100% 50% / 0.08)',  label: 'EXPORT',      badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'EXPORT READINESS PANEL' },
   state_matrix:     { color: 'hsl(190 80% 50%)',  glow: 'hsl(190 80% 50% / 0.1)',   label: 'STATE MTX',   badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'CURRENT STATE MATRIX' },
+  hw_overview:      { color: 'hsl(190 80% 50%)',  glow: 'hsl(190 80% 50% / 0.1)',   label: 'HW OVERVIEW', badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'HARDWARE OVERVIEW' },
+  relay_bank:       { color: 'hsl(190 100% 50%)', glow: 'hsl(190 100% 50% / 0.1)',  label: 'RELAY BANK',  badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'RELAY BANK MONITOR' },
+  battery_power:    { color: 'hsl(120 70% 42%)',  glow: 'hsl(120 70% 42% / 0.08)',  label: 'BATTERY',     badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'BATTERY & POWER MONITOR' },
+  mux_continuity:   { color: 'hsl(190 80% 50%)',  glow: 'hsl(190 80% 50% / 0.1)',   label: 'MUX/CONT',   badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'MUX / CONTINUITY MONITOR' },
+  artnet_monitor:   { color: 'hsl(200 80% 48%)',  glow: 'hsl(200 80% 48% / 0.1)',   label: 'ART-NET',     badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20', subtitle: 'ART-NET NODE MONITOR' },
+  readiness:        { color: 'hsl(120 70% 42%)',  glow: 'hsl(120 70% 42% / 0.08)',  label: 'READINESS',   badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'READINESS DASHBOARD' },
 };
 
 // ── Sidebar Sections ──
@@ -278,6 +284,12 @@ export default function CommandCenter() {
       case 'execution_status': return <ExecutionStatusConsole />;
       case 'export_readiness': return <ExportReadinessPanel />;
       case 'state_matrix': return <CurrentStateMatrix />;
+      case 'hw_overview': return <HardwareOverview />;
+      case 'relay_bank': return <RelayBankMonitor />;
+      case 'battery_power': return <BatteryPowerMonitor />;
+      case 'mux_continuity': return <MuxContinuityMonitor />;
+      case 'artnet_monitor': return <ArtNetDMXMonitor />;
+      case 'readiness': return <ReadinessDashboard />;
       default: return null;
     }
   }, []);
