@@ -1,68 +1,67 @@
 
 
-# Otimização de LCP, SEO Técnico e Acessibilidade — FX KONTROL
+# Auditoria de Componentes — Falhas Identificadas e Correções
 
-## Contexto Importante
+## Falhas Encontradas
 
-O relatório é extenso, mas muitas recomendações (SSG, hydration, WASM, consolidação de 17 stores) estão **fora do escopo prático** da plataforma Lovable (SPA pura com Vite/React, sem SSR/Next.js). Vou focar nas **ações concretas e implementáveis** que terão impacto real.
+### 1. Componentes Mortos (Dead Code)
+- **`JoiHologramAvatar.tsx`** — exportado mas nunca importado em nenhum outro ficheiro (0 referências)
+- **`JoiHologramFullBody.tsx`** — exportado mas nunca importado em nenhum outro ficheiro (0 referências)
+- Ambos somam ~450 linhas de código morto com SVGs complexos, animações e hooks de estado
 
-A pontuação LCP zero da auditoria veio da **página placeholder** (app não publicado). Após publicação, o Lighthouse analisará a app real. Mesmo assim, há otimizações válidas para quando estiver publicada.
+### 2. FXKAssistant.tsx — Bugs e Problemas (1102 linhas)
+- **Hook `useEffect` sem dep completa** (linha 308): `joiSpeech.enabled` na dep array mas `joiSpeech.speak` é chamado — se `speak` mudar referência sem `enabled` mudar, fica desatualizado
+- **`useEffect` com dep `[open]`** (linha 392-396): `playGlitchBurst` dispara quando `open` muda para `false` também (closing), deveria verificar `if (open && !minimized)`
+- **Preset duplicação** (linhas 982-1015): `OPERATIONAL_PRESETS` aparece duas vezes na barra inferior — primeiro sozinho, depois dentro de `presets` que já inclui `OPERATIONAL_PRESETS` (via `getContextPresets` linha 133). Resultado: botões duplicados
+- **`send` chamado em `onFinalTranscript`** com referência estática (linha 295): `send(text)` captura closure inicial, pode ficar stale
+- **Variável `pos0`** (linha 101 de AddPositionWizard): declarada mas nunca usada
 
----
+### 3. AlignmentTools.tsx — Module-level Mutable State
+- **`clipboard`** (linha 10-11): variável mutável no nível do módulo (`let clipboard: Position[] = []`). Funciona, mas é um anti-pattern que não sobrevive a HMR e partilha estado entre instâncias. Deveria usar `useRef` ou um store
 
-## Fase 1 — SEO Técnico (index.html)
+### 4. DockBar.tsx — Label Ternário Excessivo
+- **Linha 185**: cadeia de ternários de 6 níveis para abreviar labels mobile — difícil de manter. Deveria usar um mapa de abreviações
 
-**Ficheiro: `index.html`**
+### 5. Acessibilidade
+- **FXKAssistant FAB** (linha 564): botão sem `aria-label` — é o ponto de entrada principal da Joi
+- **AddPositionWizard close button** (linha 184): sem `aria-label`
+- **AddressingPanel close button** (linha 129): usa `✕` como texto sem `aria-label`
+- **AngleQuickEditor reset** (linha 54): sem `aria-label`
+- **AICoPilotPanel enable toggle** (linha 69): sem `aria-label`
 
-1. **Corrigir viewport** — remover `maximum-scale=1.0, user-scalable=no` (viola acessibilidade WCAG e penaliza Lighthouse)
-2. **Atualizar OG/Twitter** — usar imagens próprias da Minas FX em vez das do Lovable, corrigir `twitter:site`
-3. **Adicionar JSON-LD** — structured data `Organization` + `SoftwareApplication` para E-E-A-T
-4. **Adicionar `lang="pt-BR"`** — atualmente está `en`
-5. **Adicionar canonical** — `<link rel="canonical">`
+### 6. FXKAssistant — Tamanho Excessivo
+- 1102 linhas num único ficheiro. Sub-componentes internos (`ThinkingWave`, `SpeakingWave`, `TypewriterGreeting`) deviam ser extraídos
 
-## Fase 2 — Ficheiros SEO Estáticos
+## Plano de Correções
 
-1. **Criar `public/sitemap.xml`** — listar rotas públicas (`/`, `/auth`) com `lastmod` e `priority`
-2. **Melhorar `public/robots.txt`** — adicionar GPTBot, PerplexityBot, referência ao sitemap, bloquear rotas privadas
+### Fase 1 — Eliminar Código Morto
+- Deletar `src/components/JoiHologramAvatar.tsx`
+- Deletar `src/components/JoiHologramFullBody.tsx`
 
-## Fase 3 — Otimização LCP Real
+### Fase 2 — Corrigir Bugs no FXKAssistant
+- Remover duplicação de presets na barra inferior (linhas 982-1015): mostrar apenas `presets` (que já inclui `OPERATIONAL_PRESETS`)
+- Corrigir `useEffect` do `playGlitchBurst` para só disparar quando `open` é `true`
+- Remover variável `pos0` não utilizada no AddPositionWizard
 
-**Ficheiro: `index.html`**
+### Fase 3 — Melhorar DockBar
+- Substituir cadeia de ternários por um mapa `Record<string, string>` para labels mobile
 
-1. **Splash como elemento LCP visível** — o splash já está no HTML estático, mas o `<p>` de texto nele pode ser o LCP. Adicionar um `<h1>` visível e semântico dentro do splash para que o LCP seja imediato
-2. **Preload do logo/ícone crítico** — adicionar `<link rel="preload">` para o favicon/logo usado no splash
-3. **Reduzir font-loading bloqueante** — a segunda folha de fontes (5 famílias, 20+ pesos) é excessiva; reduzir para pesos usados
+### Fase 4 — Acessibilidade
+- Adicionar `aria-label` ao FAB da Joi, botões de fechar no wizard/addressing, reset do AngleQuickEditor, e toggle do AICoPilotPanel
 
-**Ficheiro: `src/main.tsx`**
+### Fase 5 — Mover clipboard para useRef
+- Converter `clipboard` de variável de módulo para `useRef` no AlignmentTools
 
-4. **Defer splash dismissal** — usar `requestIdleCallback` em vez de `requestAnimationFrame` para dar mais tempo ao browser pintar
-
-## Fase 4 — Acessibilidade (ARIA Landmarks)
-
-**Ficheiro: `src/layouts/MainLayout.tsx`**
-
-1. Adicionar `role="banner"` ao header
-2. Adicionar `role="main"` à área de conteúdo (`<Outlet>`)
-3. Adicionar `role="navigation"` ao sidebar/dock
-
-**Ficheiro: `index.html`**
-
-4. Adicionar `aria-label` ao splash para acessibilidade durante carregamento
-
-## Resumo de Ficheiros
-
+### Ficheiros Afetados
 | Ficheiro | Ação |
 |---|---|
-| `index.html` | viewport, lang, canonical, JSON-LD, h1 no splash, preload, ARIA |
-| `public/robots.txt` | Expandir com bots IA + sitemap ref |
-| `public/sitemap.xml` | Criar novo |
-| `src/main.tsx` | requestIdleCallback para splash |
-| `src/layouts/MainLayout.tsx` | ARIA landmarks |
-
-## O que NÃO será feito (e porquê)
-
-- **SSG/Hydration** — impossível sem Next.js; Lovable usa Vite SPA puro
-- **Consolidação de 17 stores Zustand** — refatoração massiva, já otimizados com seletores granulares
-- **Migração WASM** — fora do escopo atual
-- **ECS para VFX** — redesign arquitetural completo, não é limpeza
+| `JoiHologramAvatar.tsx` | Deletar |
+| `JoiHologramFullBody.tsx` | Deletar |
+| `FXKAssistant.tsx` | Fix presets duplicados, fix useEffect |
+| `AddPositionWizard.tsx` | Remover `pos0`, aria-label |
+| `DockBar.tsx` | Refactor label map |
+| `AlignmentTools.tsx` | clipboard → useRef |
+| `AngleQuickEditor.tsx` | aria-label |
+| `AICoPilotPanel.tsx` | aria-label |
+| `AddressingPanel.tsx` | aria-label |
 
