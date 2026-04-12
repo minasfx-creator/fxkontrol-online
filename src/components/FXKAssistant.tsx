@@ -445,30 +445,12 @@ export function FXKAssistant() {
     setInput('');
     setLoading(true);
 
-    // Inject project context as system message
-    const store = useProjectStore.getState();
-    const positionsSummary = store.positions.length > 0
-      ? store.positions.map(p => `${p.name} (${p.type}) @ (${p.x.toFixed(1)}, ${p.z.toFixed(1)})${p.section ? ` [Sec ${p.section}]` : ''}`).join('; ')
-      : 'Nenhuma';
-    const effectCounts = new Map<string, number>();
-    store.timelineItems.forEach(item => {
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
-      const name = effect?.name || item.effectId;
-      effectCounts.set(name, (effectCounts.get(name) || 0) + 1);
-    });
-    const effectsSummary = effectCounts.size > 0
-      ? Array.from(effectCounts.entries()).map(([n, c]) => `${n} ×${c}`).join(', ')
-      : 'Nenhum';
-    const recentItems = store.timelineItems.slice(-30).map(item => {
-      const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
-      const eName = effect?.name || item.effectId;
-      const pName = item.positionName || item.positionId || '?';
-      return `${item.id} [${eName} @ ${pName}, t=${item.startTime.toFixed(1)}s]`;
-    });
-    const itemsDetail = recentItems.length > 0 ? recentItems.join(', ') : 'Nenhum';
+    // Inject system context (full pipeline awareness)
+    const systemContext = joiContextBuilder.toSystemMessage();
+    const modeInstruction = getModeConfig(joiMode).systemInstruction;
     const contextMsg: Msg = {
       role: 'system' as const,
-      content: `[CONTEXTO DO PROJETO]\nPosições (${store.positions.length}): ${positionsSummary}\nEfeitos na timeline (${store.timelineItems.length}): ${effectsSummary}\nItens recentes (IDs para update_effect): ${itemsDetail}\nTempo atual: ${store.currentTime.toFixed(1)}s\nDuração: ${store.duration.toFixed(0)}s`,
+      content: `${systemContext}\n\n[ACTIVE MODE: ${joiMode.toUpperCase()}]\n${modeInstruction}`,
     };
 
     let soFar = '';
