@@ -115,6 +115,9 @@ export default defineConfig(({ mode }) => ({
             'vendor-supabase': ['@supabase/supabase-js'],
             'vendor-forms': ['react-hook-form', '@hookform/resolvers', 'zod'],
             'vendor-misc': ['date-fns', 'cmdk', 'input-otp', 'embla-carousel-react', 'react-day-picker', 'vaul', 'react-resizable-panels'],
+            'vendor-export': ['jspdf', 'docx'],
+            'vendor-markdown': ['react-markdown'],
+            'vendor-icons': ['lucide-react'],
           };
           for (const [chunk, pkgs] of Object.entries(vendorChunks)) {
             if (pkgs.some(pkg => id.includes(`node_modules/${pkg}`))) return chunk;
