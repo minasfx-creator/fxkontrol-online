@@ -232,7 +232,7 @@ export default function MobileTabBar({
                     onTouchEnd={() => { handleLongPressEnd(); setTimeout(() => setHoveredIndex(null), 300); }}
                     onTouchCancel={() => { handleLongPressEnd(); setHoveredIndex(null); }}
                     className={cn(
-                      "relative flex flex-col items-center justify-center py-1.5 px-2.5 rounded-xl min-h-[48px] min-w-[44px]",
+                      "relative flex flex-col items-center justify-center py-1 px-2 rounded-xl min-h-[42px] min-w-[42px]",
                       "active:scale-90 transition-transform",
                       isActive && "bg-white/[0.04]",
                     )}
@@ -249,16 +249,16 @@ export default function MobileTabBar({
               })}
 
               {/* Central FAB */}
-              <div className="flex items-center justify-center px-1.5">
+              <div className="flex items-center justify-center px-1">
                 <button
                   onClick={() => { haptics.select(); setWizardOpen(true); }}
-                  className="relative w-14 h-14 -translate-y-3 rounded-full flex items-center justify-center active:scale-90 transition-all fab-glow-pulse"
+                  className="relative w-11 h-11 -translate-y-1.5 rounded-full flex items-center justify-center active:scale-90 transition-all fab-glow-pulse"
                   style={{
                     background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8))',
-                    boxShadow: '0 4px 20px hsl(var(--primary) / 0.4), 0 0 40px hsl(var(--primary) / 0.15)',
+                    boxShadow: '0 4px 16px hsl(var(--primary) / 0.4), 0 0 30px hsl(var(--primary) / 0.15)',
                   }}
                 >
-                  <Plus className="w-7 h-7 text-primary-foreground" strokeWidth={2.5} />
+                  <Plus className="w-5 h-5 text-primary-foreground" strokeWidth={2.5} />
                 </button>
               </div>
 
@@ -274,7 +274,7 @@ export default function MobileTabBar({
                     onTouchEnd={() => { handleLongPressEnd(); setTimeout(() => setHoveredIndex(null), 300); }}
                     onTouchCancel={() => { handleLongPressEnd(); setHoveredIndex(null); }}
                     className={cn(
-                      "relative flex flex-col items-center justify-center py-1.5 px-2.5 rounded-xl min-h-[48px] min-w-[44px]",
+                      "relative flex flex-col items-center justify-center py-1 px-2 rounded-xl min-h-[42px] min-w-[42px]",
                       "active:scale-90 transition-transform",
                       isActive && "bg-white/[0.04]",
                     )}
