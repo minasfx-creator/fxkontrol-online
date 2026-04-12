@@ -219,6 +219,7 @@ export default function MainLayout() {
             boxShadow: '0 0 24px hsl(var(--destructive) / 0.4), 0 0 64px hsl(var(--destructive) / 0.15)',
           }}
           title="EMERGENCY STOP — ALL CHANNELS"
+          aria-label="Emergency stop — all channels"
         >
           <div className="flex flex-col items-center">
             <AlertOctagon className="w-6 h-6 text-white" />

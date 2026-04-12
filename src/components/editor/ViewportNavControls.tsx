@@ -21,6 +21,7 @@ export default function ViewportNavControls() {
             key={title}
             onClick={action}
             title={title}
+            aria-label={title}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all"
           >
             <Icon className="w-4 h-4" />

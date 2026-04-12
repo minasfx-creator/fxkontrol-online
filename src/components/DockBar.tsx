@@ -146,6 +146,7 @@ export default function DockBar() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
+                      aria-label={item.label}
                       onClick={() => handleClick(item.path)}
                       onMouseEnter={isMobile ? undefined : () => {
                         setHoveredIndex(i);
