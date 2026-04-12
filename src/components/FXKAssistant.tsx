@@ -249,6 +249,153 @@ function formatTime(ts?: number) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
+/** Rich content renderer — Mermaid, JOI_STATUS, JOI_MATRIX, markdown */
+function JoiRichContent({ content }: { content: string }) {
+  // Split content into segments: mermaid blocks, JOI_STATUS, JOI_MATRIX, and regular markdown
+  const segments = useMemo(() => {
+    const result: { type: 'markdown' | 'mermaid' | 'status' | 'matrix'; content: string }[] = [];
+    // Match mermaid code blocks and JOI custom blocks
+    const pattern = /(```mermaid\n[\s\S]*?```|\[JOI_STATUS\][\s\S]*?\[\/JOI_STATUS\]|\[JOI_MATRIX\][\s\S]*?\[\/JOI_MATRIX\])/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = pattern.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        result.push({ type: 'markdown', content: content.slice(lastIndex, match.index) });
+      }
+      const block = match[0];
+      if (block.startsWith('```mermaid')) {
+        result.push({ type: 'mermaid', content: block.replace(/^```mermaid\n/, '').replace(/```$/, '') });
+      } else if (block.startsWith('[JOI_STATUS]')) {
+        result.push({ type: 'status', content: block.replace(/^\[JOI_STATUS\]/, '').replace(/\[\/JOI_STATUS\]$/, '') });
+      } else if (block.startsWith('[JOI_MATRIX]')) {
+        result.push({ type: 'matrix', content: block.replace(/^\[JOI_MATRIX\]/, '').replace(/\[\/JOI_MATRIX\]$/, '') });
+      }
+      lastIndex = match.index + block.length;
+    }
+    if (lastIndex < content.length) {
+      result.push({ type: 'markdown', content: content.slice(lastIndex) });
+    }
+    return result;
+  }, [content]);
+
+  return (
+    <>
+      {segments.map((seg, i) => {
+        if (seg.type === 'mermaid') {
+          return <MermaidRenderer key={i} code={seg.content} />;
+        }
+        if (seg.type === 'status') {
+          return <JoiStatusCard key={i} content={seg.content} />;
+        }
+        if (seg.type === 'matrix') {
+          return <JoiMatrixBlock key={i} content={seg.content} />;
+        }
+        return (
+          <div key={i} className="prose prose-invert prose-xs max-w-none [&_p]:my-1 [&_code]:text-[hsl(190_100%_70%)] [&_code]:bg-transparent [&_pre]:bg-[hsl(220_20%_8%)] [&_pre]:border [&_pre]:border-[hsl(190_100%_50%/0.1)] [&_strong]:text-[hsl(38_100%_65%)] [&_a]:text-[hsl(190_100%_60%)]">
+            <ReactMarkdown>{seg.content}</ReactMarkdown>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/** Telemetry status card rendered from [JOI_STATUS] blocks */
+function JoiStatusCard({ content }: { content: string }) {
+  // Try to parse as JSON, fallback to text display
+  let data: Record<string, any> = {};
+  try {
+    data = JSON.parse(content.trim());
+  } catch {
+    // Display as simple text card
+    return (
+      <div className="my-2 px-3 py-2 rounded-lg text-[9px] font-mono" style={{ background: 'hsl(190 100% 50% / 0.06)', border: '1px solid hsl(190 100% 50% / 0.15)', color: 'hsl(190 100% 70%)' }}>
+        {content.trim()}
+      </div>
+    );
+  }
+
+  return (
+    <div className="my-2 rounded-lg overflow-hidden" style={{ background: 'hsl(220 20% 6%)', border: '1px solid hsl(190 100% 50% / 0.12)' }}>
+      <div className="px-3 py-1.5 flex items-center gap-2" style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.08)', background: 'hsl(190 100% 50% / 0.04)' }}>
+        <span className="text-[8px] font-mono font-bold tracking-wider uppercase" style={{ color: 'hsl(190 100% 60%)' }}>
+          {data.title || 'SYSTEM STATUS'}
+        </span>
+        {data.readiness && (
+          <span className="px-1.5 py-0.5 rounded text-[7px] font-mono font-bold" style={{
+            background: data.readiness.includes('BLOCKED') ? 'hsl(0 70% 50% / 0.15)' : 'hsl(160 80% 45% / 0.15)',
+            color: data.readiness.includes('BLOCKED') ? 'hsl(0 70% 60%)' : 'hsl(160 80% 50%)',
+          }}>
+            {data.readiness}
+          </span>
+        )}
+      </div>
+      <div className="px-3 py-2 grid grid-cols-2 gap-x-4 gap-y-1">
+        {Object.entries(data).filter(([k]) => k !== 'title' && k !== 'readiness').map(([key, value]) => (
+          <div key={key} className="flex items-center justify-between text-[8px] font-mono">
+            <span className="tracking-wider uppercase" style={{ color: 'hsl(190 100% 50% / 0.5)' }}>{key.replace(/_/g, ' ')}</span>
+            <span style={{ color: 'hsl(38 100% 65%)' }}>{String(value)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Matrix block rendered from [JOI_MATRIX] blocks */
+function JoiMatrixBlock({ content }: { content: string }) {
+  let rows: Record<string, string>[] = [];
+  try {
+    rows = JSON.parse(content.trim());
+  } catch {
+    return (
+      <div className="my-2 px-3 py-2 rounded-lg text-[9px] font-mono" style={{ background: 'hsl(220 20% 6%)', border: '1px solid hsl(190 100% 50% / 0.1)', color: 'hsl(180 8% 75%)' }}>
+        {content.trim()}
+      </div>
+    );
+  }
+
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  const cols = Object.keys(rows[0]);
+
+  const cellColor = (val: string) => {
+    const v = val.toLowerCase();
+    if (v.includes('simulated') || v.includes('sim')) return 'hsl(210 90% 60%)';
+    if (v.includes('live') || v.includes('ok') || v.includes('pass') || v.includes('ready')) return 'hsl(160 80% 50%)';
+    if (v.includes('replay') || v.includes('warn')) return 'hsl(38 90% 55%)';
+    if (v.includes('error') || v.includes('fail') || v.includes('blocked') || v.includes('not_integrated')) return 'hsl(0 70% 55%)';
+    return 'hsl(180 8% 75%)';
+  };
+
+  return (
+    <div className="my-2 rounded-lg overflow-hidden overflow-x-auto" style={{ background: 'hsl(220 20% 6%)', border: '1px solid hsl(190 100% 50% / 0.1)' }}>
+      <table className="w-full text-[8px] font-mono">
+        <thead>
+          <tr style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.1)' }}>
+            {cols.map(c => (
+              <th key={c} className="px-2 py-1.5 text-left tracking-wider uppercase" style={{ color: 'hsl(190 100% 55%)', background: 'hsl(190 100% 50% / 0.04)' }}>
+                {c.replace(/_/g, ' ')}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, ri) => (
+            <tr key={ri} style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.04)' }}>
+              {cols.map(c => (
+                <td key={c} className="px-2 py-1" style={{ color: cellColor(String(row[c] || '')) }}>
+                  {String(row[c] || '—')}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function FXKAssistant() {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
