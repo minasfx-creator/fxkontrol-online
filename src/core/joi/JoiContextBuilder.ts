@@ -107,7 +107,7 @@ class JoiContextBuilder {
         label: d.label,
         mode,
         badge: getProvenanceBadge(mode).label,
-        online: d.connection_state === 'online',
+        online: d.connection_state === 'connected',
       };
     });
 
@@ -133,7 +133,7 @@ class JoiContextBuilder {
         level: vResult.level,
         totalChecks: vResult.summary.total,
         passed: vResult.summary.passed,
-        failed: vResult.summary.failed,
+        failed: vResult.summary.total - vResult.summary.passed,
         blockers,
         lastRunAt: vResult.timestamp,
       },
