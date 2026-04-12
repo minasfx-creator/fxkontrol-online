@@ -102,6 +102,7 @@ export default React.memo(function TacticalDock() {
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
               )}
               title={`${label} (${shortcut})`}
+              aria-label={`${label} (${shortcut})`}
             >
               <Icon className="w-4 h-4" />
               <span className="absolute left-full ml-2 px-2 py-1 rounded-lg text-[10px] font-medium bg-popover border border-border/30 text-foreground opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap shadow-lg z-50">
@@ -132,6 +133,7 @@ export default React.memo(function TacticalDock() {
               : "text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10"
           )}
           title="Destruction Mode"
+          aria-label="Destruction Mode"
         >
           <Bomb className="w-4 h-4" />
           <span className="absolute left-full ml-2 px-2 py-1 rounded-lg text-[10px] font-medium bg-popover border border-border/30 text-foreground opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap shadow-lg z-50">
@@ -148,6 +150,7 @@ export default React.memo(function TacticalDock() {
               : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/20"
           )}
           title="Axes Helper"
+          aria-label="Axes Helper"
         >
           <Axis3D className="w-4 h-4" />
         </button>
@@ -161,6 +164,7 @@ export default React.memo(function TacticalDock() {
           }}
           className="w-9 h-9 rounded-xl flex items-center justify-center transition-all text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/20 group"
           title={`Snap: ${env.gridSnapResolution >= 1 ? `${env.gridSnapResolution}m` : `${env.gridSnapResolution * 100}cm`}`}
+          aria-label={`Grid snap: ${env.gridSnapResolution >= 1 ? `${env.gridSnapResolution}m` : `${env.gridSnapResolution * 100}cm`}`}
         >
           <Magnet className="w-4 h-4" />
           <span className="absolute left-full ml-2 px-2 py-1 rounded-lg text-[9px] font-mono bg-popover border border-border/30 text-foreground opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap shadow-lg z-50">

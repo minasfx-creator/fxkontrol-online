@@ -23,6 +23,7 @@ export default function LanguageSwitcher() {
         onClick={() => setOpen(o => !o)}
         className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors rounded hover:bg-surface-3"
         title="Language"
+        aria-label="Change language"
       >
         <Globe className="w-3 h-3" />
         <span>{LOCALE_LABELS[locale].flag}</span>
