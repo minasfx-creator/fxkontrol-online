@@ -1,8 +1,9 @@
 /**
  * SystemOverviewConsole — Binary dashboard: ShowPlan, Verification, Safety, Hardware
+ * Uses centralized VerificationEngine.
  */
 import { useEffect } from 'react';
-import { useVerificationStore } from '@/core/verification/useVerificationStore';
+import { useVerificationEngine } from '@/core/verification/useVerificationEngine';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
 import { powerMonitor } from '@/core/hardware/PowerMonitor';
@@ -34,7 +35,7 @@ function StatusBlock({ label, icon: Icon, status, detail }: {
 }
 
 export default function SystemOverviewConsole() {
-  const { level, result, runVerification } = useVerificationStore();
+  const { level, result, runVerification } = useVerificationEngine();
   const sp = showPlanManager.current;
   const safetyState = safetyStateMachine.state;
   const power = powerMonitor.getStatus();
@@ -68,7 +69,7 @@ export default function SystemOverviewConsole() {
           detail={hasCues ? `${sp.pyroCues.length} pyro + ${sp.dmxCues.length} DMX + ${sp.dronePaths.length} drone` : 'No cues loaded'} />
         <StatusBlock label="Verification" icon={Shield}
           status={level === 'READY_FOR_FIELD' ? 'ok' : level === 'BLOCKED' ? 'error' : 'warn'}
-          detail={`${result?.checks.filter(c => c.passed).length ?? 0}/${result?.checks.length ?? 0} checks passed`} />
+          detail={`${result?.summary.passed ?? 0}/${result?.summary.total ?? 0} checks passed`} />
         <StatusBlock label="Safety" icon={Zap}
           status={safetyState === 'SAFE' ? 'error' : safetyState === 'ARMED' || safetyState === 'FIRING' ? 'warn' : 'ok'}
           detail={`State: ${safetyState}`} />
@@ -80,13 +81,14 @@ export default function SystemOverviewConsole() {
       {result && (
         <div className="border border-border/10 rounded p-3 space-y-1">
           <span className="text-[9px] font-mono font-bold text-muted-foreground tracking-widest">VERIFICATION CHECKS</span>
-          {result.checks.map(c => (
-            <div key={c.id} className="flex items-center gap-2 text-[9px] font-mono">
-              <span className={c.passed ? 'text-emerald-400' : c.severity === 'error' ? 'text-red-400' : 'text-amber-400'}>
-                {c.passed ? '●' : '○'}
+          {result.issues.map(i => (
+            <div key={i.id} className="flex items-center gap-2 text-[9px] font-mono">
+              <span className={i.passed ? 'text-emerald-400' : i.severity === 'error' ? 'text-red-400' : 'text-amber-400'}>
+                {i.passed ? '●' : '○'}
               </span>
-              <span className="text-muted-foreground flex-1">{c.label}</span>
-              <span className="text-muted-foreground/50">{c.detail}</span>
+              <span className="text-muted-foreground flex-1">{i.label}</span>
+              <span className="text-muted-foreground/30 text-[7px] uppercase">{i.category}</span>
+              <span className="text-muted-foreground/50">{i.detail}</span>
             </div>
           ))}
         </div>

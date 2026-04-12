@@ -45,6 +45,8 @@ const AuditBlackBoxConsole = lazy(() => import('@/components/editor/AuditBlackBo
 const CueValidationConsole = lazy(() => import('@/components/editor/CueValidationConsole'));
 const AddressingConsole = lazy(() => import('@/components/editor/AddressingConsole'));
 const ExecutionStatusConsole = lazy(() => import('@/components/editor/ExecutionStatusConsole'));
+const ExportReadinessPanel = lazy(() => import('@/components/editor/ExportReadinessPanel'));
+const CurrentStateMatrix = lazy(() => import('@/components/editor/CurrentStateMatrix'));
 
 function PanelLoader() {
   return (
@@ -62,7 +64,8 @@ type CommandMode =
   | 'show_control' | 'module' | 'dmx_monitor' | 'field_test' | 'hardware'
   | 'verification' | 'continuity'
   | 'sys_overview' | 'safety_console' | 'field_diag' | 'fireone_export' | 'dmx_artnet' | 'audit_blackbox'
-  | 'cue_validation' | 'addressing' | 'execution_status';
+  | 'cue_validation' | 'addressing' | 'execution_status'
+  | 'export_readiness' | 'state_matrix';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = ['pyro_fire', 'super_dmx'];
@@ -90,6 +93,8 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   cue_validation: { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'CUE VALID',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'CUE & TIMELINE VALIDATION' },
   addressing:     { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'ADDRESSING',  badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20', subtitle: 'PROTOCOL ADDRESSING MAP' },
   execution_status: { color: 'hsl(120 70% 42%)', glow: 'hsl(120 70% 42% / 0.08)', label: 'EXEC STATUS', badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'EXECUTION BRIDGE STATUS' },
+  export_readiness: { color: 'hsl(32 100% 50%)',  glow: 'hsl(32 100% 50% / 0.08)',  label: 'EXPORT',      badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'EXPORT READINESS PANEL' },
+  state_matrix:     { color: 'hsl(190 80% 50%)',  glow: 'hsl(190 80% 50% / 0.1)',   label: 'STATE MTX',   badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'CURRENT STATE MATRIX' },
 };
 
 // ── Sidebar Sections ──
@@ -102,6 +107,7 @@ const MODE_SECTIONS = [
       { key: 'pyro_fire' as CommandMode, label: 'FXK-PYRO', icon: Flame },
       { key: 'super_dmx' as CommandMode, label: 'FXK-DMX', icon: Zap },
       { key: 'fireone_export' as CommandMode, label: 'FIREONE', icon: FileOutput },
+      { key: 'export_readiness' as CommandMode, label: 'EXPORT', icon: FileOutput },
       { key: 'execution_status' as CommandMode, label: 'EXEC STATUS', icon: Activity },
     ],
   },
@@ -111,6 +117,7 @@ const MODE_SECTIONS = [
     icon: Activity,
     modes: [
       { key: 'sys_overview' as CommandMode, label: 'OVERVIEW', icon: Activity },
+      { key: 'state_matrix' as CommandMode, label: 'STATE MTX', icon: Activity },
       { key: 'show_control' as CommandMode, label: 'SHOW CTRL', icon: Activity },
       { key: 'cue_validation' as CommandMode, label: 'CUE VALID', icon: Layers },
       { key: 'addressing' as CommandMode, label: 'ADDRESSING', icon: Map },
@@ -256,6 +263,8 @@ export default function CommandCenter() {
       case 'cue_validation': return <CueValidationConsole />;
       case 'addressing': return <AddressingConsole />;
       case 'execution_status': return <ExecutionStatusConsole />;
+      case 'export_readiness': return <ExportReadinessPanel />;
+      case 'state_matrix': return <CurrentStateMatrix />;
       default: return null;
     }
   }, []);
