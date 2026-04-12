@@ -287,7 +287,7 @@ export function FXKAssistant() {
     onFinalTranscript: (text) => {
       setInput(text);
       // Auto-submit after voice recognition — uses ref for fresh send
-      setTimeout(() => sendRef.current(text), 200);
+      setTimeout(() => sendRef.current?.(text), 200);
     },
   });
 
