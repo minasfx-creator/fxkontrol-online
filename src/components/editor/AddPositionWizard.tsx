@@ -98,7 +98,6 @@ export default function AddPositionWizard({ open, onClose }: AddPositionWizardPr
     haptics.success();
     const store = useProjectStore.getState();
     useUndoStore.getState().checkpoint();
-    const pos0 = store.positions.find(p => p.id === placedIds[0]);
     placedIds.forEach((posId, i) => {
       const pos = store.positions.find(p => p.id === posId);
       store.addTimelineItem({
@@ -181,7 +180,7 @@ export default function AddPositionWizard({ open, onClose }: AddPositionWizardPr
                 />
               ))}
             </div>
-            <button onClick={handleClose} className="w-7 h-7 flex items-center justify-center rounded-full active:scale-90 transition-transform" style={{ background: 'rgba(255,255,255,0.08)' }}>
+            <button onClick={handleClose} aria-label="Fechar wizard" className="w-7 h-7 flex items-center justify-center rounded-full active:scale-90 transition-transform" style={{ background: 'rgba(255,255,255,0.08)' }}>
               <X className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           </div>

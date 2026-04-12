@@ -64,6 +64,7 @@ export default function AICoPilotPanel() {
           {/* Enable toggle */}
           <button
             onClick={() => setEnabled(!enabled)}
+            aria-label={enabled ? 'Desativar AI CoPilot' : 'Ativar AI CoPilot'}
             className={cn("px-2 py-0.5 rounded text-[7px] font-mono font-bold tracking-wider transition-all",
               enabled
                 ? "text-green-300 border border-green-500/30 bg-green-500/10"

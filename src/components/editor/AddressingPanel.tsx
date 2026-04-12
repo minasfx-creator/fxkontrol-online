@@ -126,7 +126,7 @@ export default function AddressingPanel({ onClose }: { onClose: () => void }) {
             <Signal className="h-2 w-2 mr-0.5" /> LIVE
           </Badge>
         )}
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
+        <button onClick={onClose} aria-label="Fechar painel de endereçamento" className="text-muted-foreground hover:text-foreground text-xs">✕</button>
       </div>
 
       {/* Tabs */}
