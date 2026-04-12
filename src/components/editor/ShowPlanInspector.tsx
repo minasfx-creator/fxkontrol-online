@@ -1,9 +1,14 @@
 /**
  * ShowPlanInspector — Navigable tree view of the ShowPlan data structure.
  * Shows counters per domain: pyro cues, DMX cues, drone paths, hardware modules.
+ * Quick-export buttons for .fir, Art-Net patch CSV and drone waypoints CSV.
  */
+import { useCallback } from 'react';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { useVerificationStore } from '@/core/verification/useVerificationStore';
+import { downloadFireOneScript } from '@/core/export/FireOneExporter';
+import { downloadArtNetPatch } from '@/core/export/ArtNetPatchExporter';
+import { downloadDroneCSV } from '@/core/export/DroneCSVExporter';
 import {
   Accordion,
   AccordionContent,
@@ -11,7 +16,8 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
-import { Flame, Radio, Layers, Cpu, Shield, MapPin, FileOutput } from 'lucide-react';
+import { Flame, Radio, Layers, Cpu, Shield, MapPin, FileOutput, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 function CountBadge({ count, color }: { count: number; color: string }) {
   return (
@@ -162,6 +168,14 @@ export default function ShowPlanInspector() {
     },
   ];
 
+  const handleExportFir = useCallback(() => downloadFireOneScript(), []);
+  const handleExportArtNet = useCallback(() => downloadArtNetPatch(), []);
+  const handleExportDrone = useCallback(() => downloadDroneCSV(), []);
+
+  const hasPyro = sp.pyroCues.length > 0;
+  const hasDmx = sp.dmxCues.length > 0;
+  const hasDrones = sp.dronePaths.length > 0;
+
   return (
     <div className="flex flex-col h-full p-3 gap-2 bg-background/80">
       {/* Header */}
@@ -177,6 +191,23 @@ export default function ShowPlanInspector() {
         )}>
           {level.replace(/_/g, ' ')}
         </span>
+      </div>
+
+      {/* Quick Export */}
+      <div className="flex items-center gap-1.5 border border-border/10 rounded p-2">
+        <span className="text-[8px] font-mono text-muted-foreground/60 tracking-widest mr-auto">QUICK EXPORT</span>
+        <Button size="sm" variant="outline" onClick={handleExportFir} disabled={!hasPyro}
+          className="h-5 text-[8px] font-mono gap-1 px-2">
+          <Download className="w-2.5 h-2.5" /> .FIR
+        </Button>
+        <Button size="sm" variant="outline" onClick={handleExportArtNet} disabled={!hasDmx}
+          className="h-5 text-[8px] font-mono gap-1 px-2">
+          <Download className="w-2.5 h-2.5" /> ART-NET
+        </Button>
+        <Button size="sm" variant="outline" onClick={handleExportDrone} disabled={!hasDrones}
+          className="h-5 text-[8px] font-mono gap-1 px-2">
+          <Download className="w-2.5 h-2.5" /> DRONE
+        </Button>
       </div>
 
       {/* Accordion tree */}
