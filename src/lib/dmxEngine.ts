@@ -408,174 +408,6 @@ export function autoPatchDrones(
 }
 
 /**
- * Auto-patch fixtures from a profile across universes.
- */
-export function autoPatchFixtures(
-  fixtureCount: number,
-  profileId: string,
-  startUniverse = 1,
-  prefix?: string,
-): DMXUniverse[] {
-  const profile = DMX_FIXTURE_PROFILES[profileId];
-  if (!profile) return [];
-
-  const channelsPerFixture = profile.channelCount;
-  const fixturesPerUniverse = Math.floor(512 / channelsPerFixture);
-  const universeCount = Math.ceil(fixtureCount / fixturesPerUniverse);
-  const universes: DMXUniverse[] = [];
-  const label = prefix || profile.name;
-
-  let idx = 0;
-  for (let u = 0; u < universeCount; u++) {
-    const fixturesInThis = Math.min(fixturesPerUniverse, fixtureCount - idx);
-    const fixtures: DMXFixture[] = [];
-
-    for (let f = 0; f < fixturesInThis; f++) {
-      fixtures.push({
-        id: `dmx-${startUniverse + u}-${f + 1}`,
-        label: `${label} ${idx + 1}`,
-        universe: startUniverse + u,
-        startChannel: f * channelsPerFixture + 1,
-        channelCount: channelsPerFixture,
-        droneIndex: idx,
-        profileId,
-      });
-      idx++;
-    }
-
-    universes.push({
-      id: startUniverse + u,
-      label: `Universe ${startUniverse + u}`,
-      channels: new Uint8Array(512),
-      fixtures,
-    });
-  }
-
-  return universes;
-}
-
-/**
- * Set fixture color in the universe channel buffer.
- */
-export function setFixtureColor(
-  universe: DMXUniverse,
-  fixture: DMXFixture,
-  r: number, g: number, b: number, w = 0,
-): void {
-  const ch = fixture.startChannel - 1; // 0-indexed
-  universe.channels[ch] = Math.max(0, Math.min(255, Math.round(r)));
-  universe.channels[ch + 1] = Math.max(0, Math.min(255, Math.round(g)));
-  universe.channels[ch + 2] = Math.max(0, Math.min(255, Math.round(b)));
-  if (fixture.channelCount >= 4) {
-    universe.channels[ch + 3] = Math.max(0, Math.min(255, Math.round(w)));
-  }
-}
-
-/**
- * Get fixture color from the universe channel buffer.
- */
-export function getFixtureColor(universe: DMXUniverse, fixture: DMXFixture): { r: number; g: number; b: number; w: number } {
-  const ch = fixture.startChannel - 1;
-  return {
-    r: universe.channels[ch],
-    g: universe.channels[ch + 1],
-    b: universe.channels[ch + 2],
-    w: fixture.channelCount >= 4 ? universe.channels[ch + 3] : 0,
-  };
-}
-
-/**
- * Set a named attribute on a fixture (requires profile).
- */
-export function setFixtureAttribute(
-  universe: DMXUniverse,
-  fixture: DMXFixture,
-  attributeName: string,
-  value: number,
-): void {
-  if (!fixture.profileId) return;
-  const profile = DMX_FIXTURE_PROFILES[fixture.profileId];
-  if (!profile) return;
-
-  const attrIndex = profile.attributes.indexOf(attributeName);
-  if (attrIndex < 0) return;
-
-  const ch = fixture.startChannel - 1 + attrIndex;
-  if (ch < 512) {
-    universe.channels[ch] = Math.max(0, Math.min(255, Math.round(value)));
-  }
-}
-
-/**
- * Get a named attribute value from a fixture.
- */
-export function getFixtureAttribute(
-  universe: DMXUniverse,
-  fixture: DMXFixture,
-  attributeName: string,
-): number | null {
-  if (!fixture.profileId) return null;
-  const profile = DMX_FIXTURE_PROFILES[fixture.profileId];
-  if (!profile) return null;
-
-  const attrIndex = profile.attributes.indexOf(attributeName);
-  if (attrIndex < 0) return null;
-
-  const ch = fixture.startChannel - 1 + attrIndex;
-  return ch < 512 ? universe.channels[ch] : null;
-}
-
-/**
- * Interpolate DMX keyframes at a given time.
- * Returns a map of fixtureId → { r, g, b, w }.
- */
-export function interpolateKeyframes(
-  keyframes: DMXKeyframe[],
-  time: number,
-): Map<string, { r: number; g: number; b: number; w: number }> {
-  const result = new Map<string, { r: number; g: number; b: number; w: number }>();
-
-  // Group by fixture
-  const byFixture = new Map<string, DMXKeyframe[]>();
-  for (const kf of keyframes) {
-    if (!byFixture.has(kf.fixtureId)) byFixture.set(kf.fixtureId, []);
-    byFixture.get(kf.fixtureId)!.push(kf);
-  }
-
-  for (const [fixtureId, fkfs] of byFixture) {
-    const sorted = fkfs.sort((a, b) => a.time - b.time);
-
-    // Find surrounding keyframes
-    let before = sorted[0];
-    let after = sorted[sorted.length - 1];
-
-    for (let i = 0; i < sorted.length - 1; i++) {
-      if (sorted[i].time <= time && sorted[i + 1].time >= time) {
-        before = sorted[i];
-        after = sorted[i + 1];
-        break;
-      }
-    }
-
-    if (time <= before.time) {
-      result.set(fixtureId, { r: before.r, g: before.g, b: before.b, w: before.w ?? 0 });
-    } else if (time >= after.time) {
-      result.set(fixtureId, { r: after.r, g: after.g, b: after.b, w: after.w ?? 0 });
-    } else {
-      const t = (time - before.time) / (after.time - before.time);
-      result.set(fixtureId, {
-        r: Math.round(before.r + (after.r - before.r) * t),
-        g: Math.round(before.g + (after.g - before.b) * t),
-        b: Math.round(before.b + (after.b - before.b) * t),
-        w: Math.round((before.w ?? 0) + ((after.w ?? 0) - (before.w ?? 0)) * t),
-      });
-    }
-  }
-
-  return result;
-}
-
-/**
  * Convert hex color to DMX channel values.
  */
 export function hexToDMX(hex: string): { r: number; g: number; b: number } {
@@ -593,7 +425,6 @@ export function exportDMXCSV(show: DMXShow): string {
   const lines = ['Time(s),Universe,Channel,R,G,B,W,FixtureLabel'];
 
   for (const kf of show.keyframes.sort((a, b) => a.time - b.time)) {
-    // Find fixture
     for (const u of show.universes) {
       const fixture = u.fixtures.find(f => f.id === kf.fixtureId);
       if (fixture) {
@@ -610,7 +441,6 @@ export function exportDMXCSV(show: DMXShow): string {
 
 /**
  * Patch GMA2 fixtures into DMX universes preserving their original universe/address.
- * Groups fixtures by universe and creates DMXUniverse objects with proper channel mapping.
  */
 export function patchGMA2Fixtures(
   fixtures: Array<{
@@ -622,7 +452,6 @@ export function patchGMA2Fixtures(
     dmxProfileId: string;
   }>,
 ): DMXUniverse[] {
-  // Group by universe
   const byUniverse = new Map<number, typeof fixtures>();
   for (const f of fixtures) {
     if (!byUniverse.has(f.universe)) byUniverse.set(f.universe, []);
@@ -656,81 +485,4 @@ export function patchGMA2Fixtures(
   }
 
   return universes.sort((a, b) => a.id - b.id);
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// DMX Send/Receive Bridge — BP_DMX_Send_Receive
-// Bidirectional DMX I/O controller for Art-Net/sACN
-// ═══════════════════════════════════════════════════════════════════════
-
-export interface DMXIOConfig {
-  universeId: number;
-  mode: 'send' | 'receive' | 'duplex';
-  protocol: 'artnet' | 'sacn';
-  priority: number;
-}
-
-export class DMXSendReceive {
-  private sendBuffers = new Map<number, Uint8Array>();
-  private receiveBuffers = new Map<number, Uint8Array>();
-  private configs = new Map<number, DMXIOConfig>();
-  private sendQueue: { universeId: number; data: Uint8Array }[] = [];
-
-  configureDMXIO(configs: DMXIOConfig[]): void {
-    this.configs.clear();
-    for (const cfg of configs) {
-      this.configs.set(cfg.universeId, cfg);
-      if (!this.sendBuffers.has(cfg.universeId)) {
-        this.sendBuffers.set(cfg.universeId, new Uint8Array(512));
-      }
-      if (!this.receiveBuffers.has(cfg.universeId)) {
-        this.receiveBuffers.set(cfg.universeId, new Uint8Array(512));
-      }
-    }
-  }
-
-  getConfig(universeId: number): DMXIOConfig | undefined {
-    return this.configs.get(universeId);
-  }
-
-  getAllConfigs(): DMXIOConfig[] {
-    return Array.from(this.configs.values());
-  }
-
-  sendUniverse(universeId: number, channels: Uint8Array): void {
-    const cfg = this.configs.get(universeId);
-    if (!cfg || cfg.mode === 'receive') return;
-    const buffer = this.sendBuffers.get(universeId);
-    if (buffer) {
-      buffer.set(channels.subarray(0, 512));
-      this.sendQueue.push({ universeId, data: new Uint8Array(buffer) });
-    }
-  }
-
-  receiveUniverse(universeId: number): Uint8Array {
-    return this.receiveBuffers.get(universeId) ?? new Uint8Array(512);
-  }
-
-  feedReceive(universeId: number, data: Uint8Array): void {
-    const cfg = this.configs.get(universeId);
-    if (!cfg || cfg.mode === 'send') return;
-    const buffer = this.receiveBuffers.get(universeId);
-    if (buffer) buffer.set(data.subarray(0, 512));
-  }
-
-  drainSendQueue(): { universeId: number; data: Uint8Array }[] {
-    const queue = [...this.sendQueue];
-    this.sendQueue = [];
-    return queue;
-  }
-
-  canReceive(universeId: number): boolean {
-    const cfg = this.configs.get(universeId);
-    return !!cfg && (cfg.mode === 'receive' || cfg.mode === 'duplex');
-  }
-
-  canSend(universeId: number): boolean {
-    const cfg = this.configs.get(universeId);
-    return !!cfg && (cfg.mode === 'send' || cfg.mode === 'duplex');
-  }
 }
