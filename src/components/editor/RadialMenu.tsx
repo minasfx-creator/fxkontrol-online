@@ -47,10 +47,13 @@ export default function RadialMenu() {
   const [activeSub, setActiveSub] = useState<string | null>(null);
   const [hoveredSubSector, setHoveredSubSector] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const {
-    positions, updatePosition, removePosition, addPosition,
-    selectMultiplePositions, selectedPositionIds, setEditorMode,
-  } = useProjectStore();
+  const positions = useProjectStore(s => s.positions);
+  const updatePosition = useProjectStore(s => s.updatePosition);
+  const removePosition = useProjectStore(s => s.removePosition);
+  const addPosition = useProjectStore(s => s.addPosition);
+  const selectMultiplePositions = useProjectStore(s => s.selectMultiplePositions);
+  const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
+  const setEditorMode = useProjectStore(s => s.setEditorMode);
 
   const pos = menu ? positions.find(p => p.id === menu.posId) : null;
   const multiSelect = selectedPositionIds.length > 1;

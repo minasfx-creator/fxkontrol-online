@@ -6,13 +6,18 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export default React.memo(function SelectionStatusBar() {
-  const {
-    selectedPositionIds, positions, timelineItems, editorMode,
-    updatePosition, selectMultiplePositions,
-    trajectories, selectedTrajectoryIds, batchOffsetWaypoints,
-    selectionMode, linkedTimelineItemIds,
-    selectMultiplePositionsAndLinkedEvents,
-  } = useProjectStore();
+  const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
+  const positions = useProjectStore(s => s.positions);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const editorMode = useProjectStore(s => s.editorMode);
+  const updatePosition = useProjectStore(s => s.updatePosition);
+  const selectMultiplePositions = useProjectStore(s => s.selectMultiplePositions);
+  const trajectories = useProjectStore(s => s.trajectories);
+  const selectedTrajectoryIds = useProjectStore(s => s.selectedTrajectoryIds);
+  const batchOffsetWaypoints = useProjectStore(s => s.batchOffsetWaypoints);
+  const selectionMode = useProjectStore(s => s.selectionMode);
+  const linkedTimelineItemIds = useProjectStore(s => s.linkedTimelineItemIds);
+  const selectMultiplePositionsAndLinkedEvents = useProjectStore(s => s.selectMultiplePositionsAndLinkedEvents);
   const [showBatchTools, setShowBatchTools] = useState(false);
 
   const selectedPositions = useMemo(() => positions.filter(p => selectedPositionIds.includes(p.id)), [positions, selectedPositionIds]);
