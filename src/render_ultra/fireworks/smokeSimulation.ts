@@ -66,6 +66,13 @@ const SMOKE_FRAGMENT = `
   uniform float uCameraFar;
   uniform vec2 uResolution;
   uniform bool uUseSoftParticles;
+
+  // ── 6-Way Directional Lighting ──
+  uniform bool uUse6WayLighting;
+  uniform vec3 uLightDir;          // Normalized dominant light direction
+  uniform vec3 uLightColor;        // Light colour (from explosions)
+  uniform float uLightIntensity;   // Dynamic intensity (flash → decay)
+  uniform vec3 uAmbientColor;      // Base ambient (sky)
   
   varying float vOpacity;
   varying vec3 vColor;
@@ -74,6 +81,27 @@ const SMOKE_FRAGMENT = `
   float linearizeDepth(float depth) {
     float ndc = depth * 2.0 - 1.0;
     return (2.0 * uCameraNear * uCameraFar) / (uCameraFar + uCameraNear - ndc * (uCameraFar - uCameraNear));
+  }
+
+  // 6-way lighting: pre-computed directional response
+  // Approximates light penetration through volumetric medium
+  vec3 compute6WayLight(vec3 baseColor, vec3 lightDir, vec3 lightCol, float intensity) {
+    // Compute response for 6 cardinal directions
+    float posX = max(0.0, lightDir.x);
+    float negX = max(0.0, -lightDir.x);
+    float posY = max(0.0, lightDir.y);
+    float negY = max(0.0, -lightDir.y);
+    float posZ = max(0.0, lightDir.z);
+    float negZ = max(0.0, -lightDir.z);
+
+    // Weighted blend: front-lit faces get more illumination
+    float directional = posX * 0.8 + negX * 0.4 + posY * 0.9 + negY * 0.3 + posZ * 0.7 + negZ * 0.5;
+    
+    // Light rim effect: edges facing the light glow brighter
+    float rim = pow(1.0 - abs(dot(normalize(vViewPos.xyz), lightDir)), 2.0) * 0.5;
+    
+    vec3 litColor = baseColor * uAmbientColor + lightCol * intensity * (directional + rim) * 0.5;
+    return litColor;
   }
   
   void main() {
@@ -92,7 +120,13 @@ const SMOKE_FRAGMENT = `
     }
     
     if (alpha < 0.005) discard;
-    gl_FragColor = vec4(vColor, alpha);
+
+    vec3 finalColor = vColor;
+    if (uUse6WayLighting && uLightIntensity > 0.01) {
+      finalColor = compute6WayLight(vColor, uLightDir, uLightColor, uLightIntensity);
+    }
+
+    gl_FragColor = vec4(finalColor, alpha);
   }
 `;
 

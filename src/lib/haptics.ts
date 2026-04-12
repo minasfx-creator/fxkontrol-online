@@ -181,4 +181,66 @@ export const haptics = {
       webVibrate([20, 10, 20]);
     }
   },
+
+  // ═══ New Gamification Feedbacks ═══════════════════════════════════
+
+  /** Safety lock achieved — NFPA 1123 clearance validated */
+  safetyLock: async () => {
+    if (isNative()) {
+      await Haptics.notification({ type: NotificationType.Success });
+      setTimeout(() => Haptics.impact({ style: ImpactStyle.Light }), 40);
+      setTimeout(() => Haptics.impact({ style: ImpactStyle.Light }), 100);
+    } else {
+      webVibrate([15, 10, 15, 10, 30]);
+    }
+  },
+
+  /** Collision warning — drone/position overlap detected */
+  collisionWarn: async () => {
+    if (isNative()) {
+      await Haptics.notification({ type: NotificationType.Warning });
+      setTimeout(() => Haptics.impact({ style: ImpactStyle.Medium }), 60);
+    } else {
+      webVibrate([40, 20, 40]);
+    }
+  },
+
+  /** Magnetic snap — item snapped to beat/edge */
+  magneticSnap: async () => {
+    if (isNative()) {
+      await Haptics.impact({ style: ImpactStyle.Light });
+    } else {
+      webVibrate(6);
+    }
+  },
+
+  /** Repulsion — invalid placement rejected */
+  repulsion: async () => {
+    if (isNative()) {
+      await Haptics.impact({ style: ImpactStyle.Medium });
+      setTimeout(() => Haptics.impact({ style: ImpactStyle.Light }), 40);
+    } else {
+      webVibrate([25, 15, 10]);
+    }
+  },
+
+  /** Track lock toggled */
+  trackLock: async () => {
+    if (isNative()) {
+      await Haptics.impact({ style: ImpactStyle.Medium });
+    } else {
+      webVibrate(12);
+    }
+  },
+
+  /** Milestone achieved — 100% safety clearance, etc. */
+  milestone: async () => {
+    if (isNative()) {
+      await Haptics.notification({ type: NotificationType.Success });
+      setTimeout(() => Haptics.impact({ style: ImpactStyle.Medium }), 80);
+      setTimeout(() => Haptics.impact({ style: ImpactStyle.Light }), 160);
+    } else {
+      webVibrate([30, 20, 30, 20, 50]);
+    }
+  },
 };
