@@ -42,6 +42,9 @@ const FieldDiagnosticsConsole = lazy(() => import('@/components/editor/FieldDiag
 const FireOneExportConsole = lazy(() => import('@/components/editor/FireOneExportConsole'));
 const DMXArtNetConsole = lazy(() => import('@/components/editor/DMXArtNetConsole'));
 const AuditBlackBoxConsole = lazy(() => import('@/components/editor/AuditBlackBoxConsole'));
+const CueValidationConsole = lazy(() => import('@/components/editor/CueValidationConsole'));
+const AddressingConsole = lazy(() => import('@/components/editor/AddressingConsole'));
+const ExecutionStatusConsole = lazy(() => import('@/components/editor/ExecutionStatusConsole'));
 
 function PanelLoader() {
   return (
