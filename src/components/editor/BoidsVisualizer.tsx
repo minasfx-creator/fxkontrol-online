@@ -51,12 +51,12 @@ export default function BoidsVisualizer() {
     }
   });
 
-  if (agents.length === 0) return null;
-
   const positions = useMemo(() => agents.map(a => ({
     x: a.x, y: a.y, z: a.z,
     color: '#00FFAA',
   })), [agents]);
+
+  if (agents.length === 0) return null;
 
   return <InstancedDroneSwarm positions={positions} scale={0.5} />;
 }
