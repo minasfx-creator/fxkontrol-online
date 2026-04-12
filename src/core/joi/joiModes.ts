@@ -7,9 +7,10 @@ import {
   Cpu, BarChart3, ShieldCheck, ListChecks, PenTool, FileText,
   Sparkles, Search, AlertTriangle, Target, Network, BookOpen,
   Heart, Zap, Music, Building2, PartyPopper, RefreshCw, Trash2,
+  Radio, Eye, Wifi, Clock,
 } from 'lucide-react';
 
-export type JoiMode = 'architect' | 'analyst' | 'verify' | 'planner' | 'blueprint' | 'docs' | 'show';
+export type JoiMode = 'architect' | 'analyst' | 'verify' | 'hardware_truth' | 'planner' | 'blueprint' | 'docs' | 'show';
 
 export interface JoiModeConfig {
   id: JoiMode;
