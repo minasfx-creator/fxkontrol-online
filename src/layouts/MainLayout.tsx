@@ -10,6 +10,11 @@ import { ambientSound } from '@/lib/ambientSound';
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import DockBar from '@/components/DockBar';
 
+// Dev-only overlay — tree-shaken in production
+const RenderCounterOverlay = import.meta.env.DEV
+  ? lazy(() => import('@/components/dev/RenderCounterOverlay'))
+  : () => null;
+
 // Lazy-load heavy components that aren't needed for initial paint
 const AppSidebar = lazy(() => import('@/components/AppSidebar').then(m => ({ default: m.AppSidebar })));
 const FXKAssistant = lazy(() => import('@/components/FXKAssistant').then(m => ({ default: m.FXKAssistant })));
@@ -222,6 +227,11 @@ export default function MainLayout() {
       )}
 
       {(showDock || showMobileDock) && <DockBar />}
+
+      {/* Dev-only render counter overlay */}
+      <Suspense fallback={null}>
+        <RenderCounterOverlay />
+      </Suspense>
     </SidebarProvider>
   );
 }
