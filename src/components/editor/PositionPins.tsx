@@ -699,6 +699,7 @@ function GroundClickPlane() {
   const selectedTrajectoryId = useProjectStore(s => s.selectedTrajectoryId);
   const drawHeight = useProjectStore(s => s.drawHeight);
   const { scene } = useThree();
+  const [vfxList, setVfxList] = useState<{ id: string; pos: [number, number, number]; color: string }[]>([]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -733,18 +734,24 @@ function GroundClickPlane() {
       const prefix = type === 'pyro' ? 'POS' : 'PAD';
       const count = useProjectStore.getState().positions.filter(p => p.type === type).length + 1;
       const id = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+      const posY = Math.round(terrainY * 100) / 100;
       addPosition({
         id,
         name: `${prefix}-${count.toString().padStart(3, '0')}`,
         type,
         x: clickX,
-        y: Math.round(terrainY * 100) / 100,
+        y: posY,
         z: clickZ,
         heading: 0, pitch: 85, roll: 0,
         color: type === 'drone-pad' ? '#00B4D8' : '#FF6B35',
       });
       useProjectStore.getState().selectPosition(id);
       window.dispatchEvent(new CustomEvent('position-placed', { detail: { id, type } }));
+
+      // Spawn placement VFX
+      const vfxColor = type === 'drone-pad' ? '#00B4D8' : '#FF6B35';
+      const vfxId = `vfx-${Date.now()}`;
+      setVfxList(prev => [...prev, { id: vfxId, pos: [clickX, posY, clickZ], color: vfxColor }]);
       return;
     }
 
@@ -762,13 +769,22 @@ function GroundClickPlane() {
     }
   }, [editorMode, addPosition, setEditorMode, addWaypoint, selectedTrajectoryId, drawHeight, getTerrainY]);
 
+  const removeVfx = useCallback((id: string) => {
+    setVfxList(prev => prev.filter(v => v.id !== id));
+  }, []);
+
   if (editorMode !== 'add-pyro' && editorMode !== 'add-drone' && editorMode !== 'add-waypoint') return null;
 
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} onClick={handleClick}>
-      <planeGeometry args={[20000, 20000]} />
-      <meshBasicMaterial visible={false} />
-    </mesh>
+    <>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} onClick={handleClick}>
+        <planeGeometry args={[20000, 20000]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+      {vfxList.map(vfx => (
+        <PlacementRingVFX key={vfx.id} position={vfx.pos} color={vfx.color} onComplete={() => removeVfx(vfx.id)} />
+      ))}
+    </>
   );
 }
 
