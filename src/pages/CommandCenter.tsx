@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import {
   Zap, Flame, Gauge, Layers, Activity, Cpu, Radio,
   Shield, Map, Menu, Maximize, AlertOctagon, Target,
-  FileText, FileOutput, Wifi
+  FileText, FileOutput, Wifi, BookOpen, Gamepad2, FileCode2, FileBarChart
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -54,6 +54,10 @@ const MuxContinuityMonitor = lazy(() => import('@/components/editor/MuxContinuit
 const ArtNetDMXMonitor = lazy(() => import('@/components/editor/ArtNetDMXMonitor'));
 const ReadinessDashboard = lazy(() => import('@/components/editor/ReadinessDashboard'));
 const SafetySummaryBar = lazy(() => import('@/components/editor/SafetySummaryBar'));
+const ManualComplianceMatrix = lazy(() => import('@/components/editor/ManualComplianceMatrix'));
+const UnrealIntegrationConsole = lazy(() => import('@/components/editor/UnrealIntegrationConsole'));
+const SwarmContractInspector = lazy(() => import('@/components/editor/SwarmContractInspector'));
+const ExecutiveReportConsole = lazy(() => import('@/components/editor/ExecutiveReportConsole'));
 
 function PanelLoader() {
   return (
@@ -73,7 +77,8 @@ type CommandMode =
   | 'sys_overview' | 'safety_console' | 'field_diag' | 'fireone_export' | 'dmx_artnet' | 'audit_blackbox'
   | 'cue_validation' | 'addressing' | 'execution_status'
   | 'export_readiness' | 'state_matrix'
-  | 'hw_overview' | 'relay_bank' | 'battery_power' | 'mux_continuity' | 'artnet_monitor' | 'readiness';
+  | 'hw_overview' | 'relay_bank' | 'battery_power' | 'mux_continuity' | 'artnet_monitor' | 'readiness'
+  | 'manual_compliance' | 'unreal_status' | 'swarm_contract' | 'exec_report';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = ['pyro_fire', 'super_dmx'];
@@ -109,6 +114,10 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   mux_continuity:   { color: 'hsl(190 80% 50%)',  glow: 'hsl(190 80% 50% / 0.1)',   label: 'MUX/CONT',   badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'MUX / CONTINUITY MONITOR' },
   artnet_monitor:   { color: 'hsl(200 80% 48%)',  glow: 'hsl(200 80% 48% / 0.1)',   label: 'ART-NET',     badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20', subtitle: 'ART-NET NODE MONITOR' },
   readiness:        { color: 'hsl(120 70% 42%)',  glow: 'hsl(120 70% 42% / 0.08)',  label: 'READINESS',   badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'READINESS DASHBOARD' },
+  manual_compliance:{ color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'COMPLIANCE',  badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'MANUAL COMPLIANCE MATRIX' },
+  unreal_status:    { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'UNREAL',      badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20', subtitle: 'UNREAL INTEGRATION STATUS' },
+  swarm_contract:   { color: 'hsl(165 100% 42%)',  glow: 'hsl(165 100% 42% / 0.08)', label: 'SWARM',       badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20', subtitle: 'BP_SWARMMANAGER CONTRACT' },
+  exec_report:      { color: 'hsl(190 80% 50%)',   glow: 'hsl(190 80% 50% / 0.1)',   label: 'EXEC RPT',    badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'EXECUTIVE STATUS REPORT' },
 };
 
 // ── Sidebar Sections ──
@@ -132,11 +141,15 @@ const MODE_SECTIONS = [
     modes: [
       { key: 'sys_overview' as CommandMode, label: 'OVERVIEW', icon: Activity },
       { key: 'state_matrix' as CommandMode, label: 'STATE MTX', icon: Activity },
+      { key: 'manual_compliance' as CommandMode, label: 'COMPLIANCE', icon: BookOpen },
+      { key: 'exec_report' as CommandMode, label: 'EXEC REPORT', icon: FileBarChart },
       { key: 'show_control' as CommandMode, label: 'SHOW CTRL', icon: Activity },
       { key: 'cue_validation' as CommandMode, label: 'CUE VALID', icon: Layers },
       { key: 'addressing' as CommandMode, label: 'ADDRESSING', icon: Map },
       { key: 'dmx_monitor' as CommandMode, label: 'DMX MONITOR', icon: Radio },
       { key: 'dmx_artnet' as CommandMode, label: 'DMX/ARTNET', icon: Wifi },
+      { key: 'unreal_status' as CommandMode, label: 'UNREAL', icon: Gamepad2 },
+      { key: 'swarm_contract' as CommandMode, label: 'SWARM', icon: FileCode2 },
       { key: 'fxk_light' as CommandMode, label: 'FXK-LIGHT', icon: Gauge },
       { key: 'drone_ops' as CommandMode, label: 'FXK-DRONE', icon: Layers },
     ],
@@ -291,6 +304,10 @@ export default function CommandCenter() {
       case 'mux_continuity': return <MuxContinuityMonitor />;
       case 'artnet_monitor': return <ArtNetDMXMonitor />;
       case 'readiness': return <ReadinessDashboard />;
+      case 'manual_compliance': return <ManualComplianceMatrix />;
+      case 'unreal_status': return <UnrealIntegrationConsole />;
+      case 'swarm_contract': return <SwarmContractInspector />;
+      case 'exec_report': return <ExecutiveReportConsole />;
       default: return null;
     }
   }, []);
