@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import {
   Zap, Flame, Gauge, Layers, Activity, Cpu, Radio,
   Shield, Map, Menu, Maximize, AlertOctagon, Target,
-  FileText, FileOutput, Wifi
+  FileText, FileOutput, Wifi, BookOpen, Gamepad2, FileCode2, FileBarChart
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -54,6 +54,10 @@ const MuxContinuityMonitor = lazy(() => import('@/components/editor/MuxContinuit
 const ArtNetDMXMonitor = lazy(() => import('@/components/editor/ArtNetDMXMonitor'));
 const ReadinessDashboard = lazy(() => import('@/components/editor/ReadinessDashboard'));
 const SafetySummaryBar = lazy(() => import('@/components/editor/SafetySummaryBar'));
+const ManualComplianceMatrix = lazy(() => import('@/components/editor/ManualComplianceMatrix'));
+const UnrealIntegrationConsole = lazy(() => import('@/components/editor/UnrealIntegrationConsole'));
+const SwarmContractInspector = lazy(() => import('@/components/editor/SwarmContractInspector'));
+const ExecutiveReportConsole = lazy(() => import('@/components/editor/ExecutiveReportConsole'));
 
 function PanelLoader() {
   return (
@@ -73,7 +77,8 @@ type CommandMode =
   | 'sys_overview' | 'safety_console' | 'field_diag' | 'fireone_export' | 'dmx_artnet' | 'audit_blackbox'
   | 'cue_validation' | 'addressing' | 'execution_status'
   | 'export_readiness' | 'state_matrix'
-  | 'hw_overview' | 'relay_bank' | 'battery_power' | 'mux_continuity' | 'artnet_monitor' | 'readiness';
+  | 'hw_overview' | 'relay_bank' | 'battery_power' | 'mux_continuity' | 'artnet_monitor' | 'readiness'
+  | 'manual_compliance' | 'unreal_status' | 'swarm_contract' | 'exec_report';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = ['pyro_fire', 'super_dmx'];
