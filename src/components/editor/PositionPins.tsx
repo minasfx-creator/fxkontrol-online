@@ -698,6 +698,7 @@ function GroundClickPlane() {
   const addWaypoint = useProjectStore(s => s.addWaypoint);
   const selectedTrajectoryId = useProjectStore(s => s.selectedTrajectoryId);
   const drawHeight = useProjectStore(s => s.drawHeight);
+  const { scene } = useThree();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -709,7 +710,23 @@ function GroundClickPlane() {
     return () => window.removeEventListener('keydown', handler);
   }, [editorMode, setEditorMode]);
 
+  /** Raycast against Google 3D Tiles to get real terrain Y at click point */
+  const getTerrainY = useCallback((x: number, z: number): number => {
+    const tilesGroup = scene.getObjectByName('GoogleTilesGroup');
+    if (!tilesGroup) return 0;
+    const ray = new THREE.Raycaster();
+    const origin = new THREE.Vector3(x, 2000, z);
+    ray.set(origin, new THREE.Vector3(0, -1, 0));
+    ray.far = 4000;
+    const hits = ray.intersectObject(tilesGroup, true);
+    return hits.length > 0 ? hits[0].point.y : 0;
+  }, [scene]);
+
   const handleClick = useCallback((e: THREE.Event & { point: THREE.Vector3 }) => {
+    const clickX = Math.round(e.point.x * 10) / 10;
+    const clickZ = Math.round(e.point.z * 10) / 10;
+    const terrainY = getTerrainY(clickX, clickZ);
+
     if (editorMode === 'add-pyro' || editorMode === 'add-drone') {
       useUndoStore.getState().checkpoint();
       const type = editorMode === 'add-pyro' ? 'pyro' as const : 'drone-pad' as const;
@@ -720,9 +737,9 @@ function GroundClickPlane() {
         id,
         name: `${prefix}-${count.toString().padStart(3, '0')}`,
         type,
-        x: Math.round(e.point.x * 10) / 10,
-        y: 0,
-        z: Math.round(e.point.z * 10) / 10,
+        x: clickX,
+        y: Math.round(terrainY * 100) / 100,
+        z: clickZ,
         heading: 0, pitch: 85, roll: 0,
         color: type === 'drone-pad' ? '#00B4D8' : '#FF6B35',
       });
@@ -739,11 +756,11 @@ function GroundClickPlane() {
       const time = lastWp ? lastWp.time + 2 : 2;
       addWaypoint(selectedTrajectoryId, {
         id: `wp-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-        position: { x: Math.round(e.point.x * 10) / 10, y: drawHeight, z: Math.round(e.point.z * 10) / 10 },
+        position: { x: clickX, y: drawHeight, z: clickZ },
         time,
       });
     }
-  }, [editorMode, addPosition, setEditorMode, addWaypoint, selectedTrajectoryId, drawHeight]);
+  }, [editorMode, addPosition, setEditorMode, addWaypoint, selectedTrajectoryId, drawHeight, getTerrainY]);
 
   if (editorMode !== 'add-pyro' && editorMode !== 'add-drone' && editorMode !== 'add-waypoint') return null;
 
