@@ -114,6 +114,10 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   mux_continuity:   { color: 'hsl(190 80% 50%)',  glow: 'hsl(190 80% 50% / 0.1)',   label: 'MUX/CONT',   badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'MUX / CONTINUITY MONITOR' },
   artnet_monitor:   { color: 'hsl(200 80% 48%)',  glow: 'hsl(200 80% 48% / 0.1)',   label: 'ART-NET',     badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20', subtitle: 'ART-NET NODE MONITOR' },
   readiness:        { color: 'hsl(120 70% 42%)',  glow: 'hsl(120 70% 42% / 0.08)',  label: 'READINESS',   badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'READINESS DASHBOARD' },
+  manual_compliance:{ color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'COMPLIANCE',  badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'MANUAL COMPLIANCE MATRIX' },
+  unreal_status:    { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'UNREAL',      badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20', subtitle: 'UNREAL INTEGRATION STATUS' },
+  swarm_contract:   { color: 'hsl(165 100% 42%)',  glow: 'hsl(165 100% 42% / 0.08)', label: 'SWARM',       badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20', subtitle: 'BP_SWARMMANAGER CONTRACT' },
+  exec_report:      { color: 'hsl(190 80% 50%)',   glow: 'hsl(190 80% 50% / 0.1)',   label: 'EXEC RPT',    badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'EXECUTIVE STATUS REPORT' },
 };
 
 // ── Sidebar Sections ──
