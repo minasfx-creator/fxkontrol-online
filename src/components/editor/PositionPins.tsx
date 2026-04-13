@@ -5,6 +5,7 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { type Position } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useSceneStore } from '@/store/useSceneStore';
+import { useTerrainHeightCache } from '@/hooks/useTerrainHeightCache';
 import { useUndoStore } from '@/store/useUndoStore';
 import { useAddressingStore } from '@/store/useAddressingStore';
 import { getBreakHeight } from '@/lib/pyroPhysics';
