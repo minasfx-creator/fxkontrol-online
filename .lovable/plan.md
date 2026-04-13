@@ -1,74 +1,86 @@
 
 
-# SkyCanvas Premium Opening — Cleanup and Visual Refinement
+# Phase 5: Executive Consolidation — Plan
 
-## Problem Analysis
+## What Already Exists (no changes needed)
 
-After auditing the codebase, I identified these issues:
+These consoles are fully implemented in CommandCenter:
+- **System Overview** (`SystemOverviewConsole`)
+- **Verification Console** (`VerificationBar` + `ShowPlanInspector`)
+- **Readiness Dashboard** (`ReadinessDashboard`)
+- **Hardware Overview** (`HardwareOverview`)
+- **Audit / BlackBox** (`AuditBlackBoxConsole`)
+- **Current State Matrix** (`CurrentStateMatrix` — 16 rows, 5 columns)
+- **Export Readiness** (`ExportReadinessPanel`)
+- **FireOne Export** (`FireOneExportConsole`)
 
-1. **PyroSafetyZones always renders default volumes** — A translucent purple cylinder (drone-airspace, `hsl(270, 60%, 55%)`) and a translucent blue box (audience-zone, `hsl(200, 70%, 50%)`) render at startup with 0.08 opacity. These are the "blue cylinder" and "rectangle" the user sees. They render unconditionally in `PyroSafetyZones.tsx`.
+## What Needs to Be Built (4 new components + 1 expansion)
 
-2. **Ground default is `synthetic-grass`** — A military camo pattern, not the premium dark green grass the user wants. The `GrassGround` (google-earth style) has better colors but is only used when `groundStyle === 'google-earth'`.
+### 1. Manual Compliance Matrix (NEW)
+A new console mapping manual requirements to implementation status.
 
-3. **Camera intro starts at Y=2500** looking down, then sweeps to `[0, 15, 150]` — the high altitude start shows empty terrain from above, which looks "pelado" (naked/barren).
+Rows: NFPA 1123/1126, Showven Manual, Finale 3D, FireOne Protocol, Art-Net Spec, VDL Standard, ESP32 Datasheet, SMPTE Timecode.
 
-4. **FloorLogo** renders "MINAS FX" branding on the ground — visible during opening, may feel like a placeholder.
+Columns: Requirement Source, Section/Clause, Implementation Status (implemented/partial/planned/not_applicable), Evidence (code path or test), Action Required.
 
-5. **TreelineSilhouette** uses very dark, barely visible instanced planes — not contributing to premium feel.
+Populated with static data reflecting actual codebase coverage. ~180 lines.
 
-6. **Scale poles and origin markers** render by default if their settings are true.
+### 2. Unreal Integration Status Console (NEW)
+Dedicated console showing:
+- UnrealBridge connection state (currently `not_integrated`)
+- WebSocket/UDP link health
+- Last sync timestamp
+- Exported variables vs BP_SwarmManager contract
+- Data flow direction indicator (FXK → Unreal)
 
-7. **FinaleAxesHelper** renders axis arrows visible in non-Google-Tiles mode.
+~120 lines.
 
-## Plan
+### 3. BP_SwarmManager Contract Inspector (NEW)
+Shows the contract definition (variables, functions, events) from the existing `unrealSwarmContract.ts` and cross-references against ShowPlan drone paths. Displays:
+- Required variables with expected/actual values
+- Required functions with implementation status
+- Required events with binding status
+- Contract compliance score
 
-### 1. Hide PyroSafetyZones on startup (no show loaded)
-**File: `src/components/editor/skycanvas/PyroSafetyZones.tsx`**
-- Add early return: if no timeline items have heading/pitch AND no user-defined safety zones exist, render nothing (no default volumes)
-- Move `DEFAULT_VOLUMES` to only render when user explicitly enables safety zones or when there are angled cues
+~150 lines.
 
-### 2. Refine default ground to premium dark green grass
-**File: `src/components/editor/skycanvas/GroundSystem.tsx`**
-- Update `GrassGround` shader colors: shift from current Google Earth-style greens to deeper, more premium dark green tones (`vec3(0.02, 0.06, 0.02)` base range)
-- Reduce near-field stripe intensity
-- Make the default `groundStyle` more premium
+### 4. Executive Status Report Generator (NEW)
+Auto-generates a system status report combining:
+- Current State Matrix summary
+- Verification Pass results
+- Readiness level
+- Hardware health scores
+- Open issues count by severity
+- Export readiness per channel
+- Timestamp and operator info
 
-**File: `src/store/useSceneStore.ts`**
-- Change default `groundStyle` from `'synthetic-grass'` to `'google-earth'` (which uses the refined GrassGround shader)
+Renders as a printable/exportable view. Download as JSON. ~200 lines.
 
-### 3. Cinematic camera intro refinement
-**File: `src/components/editor/SkyCanvas.tsx`**
-- Change intro start position from `(0, 2500, 3)` → `(0, 80, 250)` — lower, closer, more cinematic
-- Reduce hold phase duration from 2.5s → 1.0s (less time staring at empty sky)
-- Reduce sweep duration from 4.0s → 2.5s (snappier transition)
-- Adjust sweep start position to be closer to final position for smoother animation
+### 5. Current State Matrix — Drill-Down Expansion
+Add click handlers to each row that navigate to the corresponding console in CommandCenter. Add a summary header showing counts by status (X exists, Y partial, Z placeholder, W absent).
 
-### 4. Remove debug/helper geometry from default mode
-**File: `src/components/editor/SkyCanvas.tsx`**
-- Gate `FinaleAxesHelper` behind `showDebugOverlay` flag (currently always visible)
-- Ensure scale poles and origin markers default to false
+~30 lines of changes.
 
-**File: `src/store/useSceneStore.ts`**
-- Verify `showScalePoles` and `showOriginMarker` default to `false`
+## Integration into CommandCenter
 
-### 5. Improve atmosphere and lighting for opening
-**File: `src/components/editor/skycanvas/GroundSystem.tsx`**
-- Increase `GroundFog` default subtle presence for depth
-- Refine `FloorLogo` opacity down further (0.15 → 0.08) so it's barely a ghost imprint
+Add new `CommandMode` entries:
+- `manual_compliance` → Manual Compliance Matrix
+- `unreal_status` → Unreal Integration Status
+- `swarm_contract` → BP_SwarmManager Contract Inspector
+- `exec_report` → Executive Status Report
 
-**File: `src/components/editor/SkyCanvas.tsx`**
-- Ensure `DelayedMount` prevents heavy subsystems from flickering during first frames
-- Add a brief fade-in on the Canvas container (CSS opacity transition from 0→1 over 300ms after `onCreated`)
+Add to MONITORING section in sidebar. Add accent configs.
 
-### 6. Tonemapping and exposure tuning
-**File: `src/components/editor/SkyCanvas.tsx`**
-- Adjust `toneMappingExposure` from 1.5 → 1.2 for more cinematic, less blown-out opening
-- Verify bloom/post-processing doesn't flare on empty scene
+## Files to Create
+1. `src/components/editor/ManualComplianceMatrix.tsx`
+2. `src/components/editor/UnrealIntegrationConsole.tsx`
+3. `src/components/editor/SwarmContractInspector.tsx`
+4. `src/components/editor/ExecutiveReportConsole.tsx`
 
-## Technical Details
+## Files to Modify
+1. `src/pages/CommandCenter.tsx` — add 4 new modes, lazy imports, sidebar entries, render cases
+2. `src/components/editor/CurrentStateMatrix.tsx` — add drill-down navigation and summary header
 
-- **Zero new dependencies** — all changes are refinements to existing shaders and component logic
-- **No breaking changes** — safety zones still render when explicitly needed (angled cues exist)
-- **Performance neutral** — removing default safety volumes and axes helper slightly reduces draw calls
-- Files modified: ~5 files, primarily `PyroSafetyZones.tsx`, `GroundSystem.tsx`, `SkyCanvas.tsx`, `useSceneStore.ts`
+## Design
+All new consoles follow the existing command-grade aesthetic: dark background, mono fonts, colored status badges, industrial layout with scroll areas.
 
