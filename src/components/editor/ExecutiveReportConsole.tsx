@@ -31,7 +31,7 @@ export default function ExecutiveReportConsole() {
     return {
       timestamp: new Date().toISOString(),
       show: {
-        name: sp.metadata?.showName || 'Untitled Show',
+        name: sp.metadata?.name || 'Untitled Show',
         pyroCues: sp.pyroCues.length,
         dmxCues: sp.dmxCues.length,
         dronePaths: sp.dronePaths.length,
@@ -56,8 +56,8 @@ export default function ExecutiveReportConsole() {
       },
       hardware: {
         online: health.online,
-        degraded: health.degraded,
-        offline: health.offline,
+        degraded: health.total - health.online,
+        offline: health.total - health.online,
         errors: health.errors,
         warnings: health.warnings,
         simulatedCount: simCount,
