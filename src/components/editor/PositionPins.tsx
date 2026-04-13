@@ -690,7 +690,39 @@ function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: {
   );
 }
 
-/** Ground plane for placing new pins — continuous mode */
+/** Temporary ring + flash VFX at placement point */
+function PlacementRingVFX({ position, color, onComplete }: { position: [number, number, number]; color: string; onComplete: () => void }) {
+  const ringRef = useRef<THREE.Mesh>(null);
+  const flashRef = useRef<THREE.PointLight>(null);
+  const elapsed = useRef(0);
+  const duration = 0.8;
+
+  useFrame((_, delta) => {
+    elapsed.current += delta;
+    const t = elapsed.current / duration;
+    if (t >= 1) { onComplete(); return; }
+
+    if (ringRef.current) {
+      const scale = 0.5 + t * 4;
+      ringRef.current.scale.set(scale, scale, scale);
+      (ringRef.current.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 1 - t * 1.3);
+    }
+    if (flashRef.current) {
+      flashRef.current.intensity = t < 0.15 ? 20 * (1 - t / 0.15) : 0;
+    }
+  });
+
+  return (
+    <group position={position}>
+      <pointLight ref={flashRef} color={color} intensity={0} distance={12} />
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.6, 0.9, 32]} />
+        <meshBasicMaterial color={color} transparent opacity={1} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
 function GroundClickPlane() {
   const editorMode = useProjectStore(s => s.editorMode);
   const addPosition = useProjectStore(s => s.addPosition);
