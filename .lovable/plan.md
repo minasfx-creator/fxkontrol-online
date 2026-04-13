@@ -1,83 +1,74 @@
 
 
-# Assessment: Hardware Integration Architecture Already Implemented
+# SkyCanvas Premium Opening — Cleanup and Visual Refinement
 
-## Current State
+## Problem Analysis
 
-After reviewing the entire codebase, **the architecture you described is already built**. Here is what exists:
+After auditing the codebase, I identified these issues:
 
-### Hardware Integration Layer — COMPLETE
-- `UnifiedHardwareRegistry` — central registry managing all 8 adapters
-- `HardwareAdapter<T>` interface — with `getConnectionState()`, `getCapabilities()`, `getSnapshot()`, `getState()`, `getProvenance()`, `pollTelemetry()`, `runDiagnostics()`, `reset()`
-- `HardwareCapabilities`, `HardwareStatusSnapshot`, `HardwareDevice` — all defined
-- `HardwareHealthMonitor`, `DeviceDiscovery`, `TelemetryPoller` — all exist
-- `DeviceEventLog`, `HealthTimelineEntry` — observability types defined
+1. **PyroSafetyZones always renders default volumes** — A translucent purple cylinder (drone-airspace, `hsl(270, 60%, 55%)`) and a translucent blue box (audience-zone, `hsl(200, 70%, 50%)`) render at startup with 0.08 opacity. These are the "blue cylinder" and "rectangle" the user sees. They render unconditionally in `PyroSafetyZones.tsx`.
 
-### All 8 Adapters — COMPLETE
-- `ArduinoNanoAdapter` (controller)
-- `ShiftRegisterAdapter74HC595` (SPI output expansion)
-- `MuxReaderAdapterCD4051` (analog multiplexer)
-- `RelayBankAdapter32` (32-channel relay bank)
-- `BatteryMonitorAdapter` (12V battery)
-- `ArtNetNodeAdapter` (Art-Net interface)
-- `DMXUniverseAdapter` (DMX512/sACN)
-- `FireOneProfileAdapter` (export profile)
+2. **Ground default is `synthetic-grass`** — A military camo pattern, not the premium dark green grass the user wants. The `GrassGround` (google-earth style) has better colors but is only used when `groundStyle === 'google-earth'`.
 
-### Provenance / Truth Layer — COMPLETE
-- `IntegrationMode`: simulated | replay | live_read_only | not_integrated
-- `DataProvenance`: synthetic | imported_log | passive_device_feed | manual_entry
-- `EvidenceLevel`: ui_only | adapter_only | telemetry_verified | operator_confirmed
-- `TransportType`: serial_usb | spi | analog_mux | ethernet_udp | etc.
-- Every adapter reports provenance via `getProvenance()`
+3. **Camera intro starts at Y=2500** looking down, then sweeps to `[0, 15, 150]` — the high altitude start shows empty terrain from above, which looks "pelado" (naked/barren).
 
-### Safety & Readiness — COMPLETE
-- `SafetyStateMachine` (IDLE → LOCKED → ARMED → FIRING)
-- `SafetyValidator`, `SafetyAuditTrail`
-- `ContinuityCheckService`
-- `VerificationEngine` / `VerificationPass` (20+ checks)
-- `ReadinessEvaluator` (provenance-aware, battery/link/verification checks)
-- `OperationalModeGuard` (6 modes with permission matrix)
+4. **FloorLogo** renders "MINAS FX" branding on the ground — visible during opening, may feel like a placeholder.
 
-### Readiness Statuses — COMPLETE
-- READY_FOR_SIMULATION, READY_FOR_EXPORT, READY_FOR_LIVE_READ_ONLY, READY_FOR_HARDWARE_SYNC, BLOCKED
+5. **TreelineSilhouette** uses very dark, barely visible instanced planes — not contributing to premium feel.
 
-### Allowed Operations — COMPLETE
-- simulate, preview, validate, export, diagnostics, sync_read_only
+6. **Scale poles and origin markers** render by default if their settings are true.
 
-### Operational Modes — COMPLETE
-- preview, diagnostics, dry-run, read-only-sync, live-read-only, export, blocked
+7. **FinaleAxesHelper** renders axis arrows visible in non-Google-Tiles mode.
 
-### Enforced Flow — COMPLETE
-- UI → ShowPlan → VerificationPass → ReadinessEvaluator → Export/Sync
-- `OperationalModeGuard.assertAllowed()` blocks prohibited operations
+## Plan
 
-### Current State Matrix — COMPLETE (16 rows, 5 columns)
-Columns: Status, Integration Mode, Evidence Level, Source, Detail
-Rows: ShowPlan, VerificationPass, ExportCoordinator, Arduino, 74HC595, CD4051, Relay Bank, Battery, Art-Net, DMX, FireOne, AuditTrail, Unreal, BP_SwarmManager
+### 1. Hide PyroSafetyZones on startup (no show loaded)
+**File: `src/components/editor/skycanvas/PyroSafetyZones.tsx`**
+- Add early return: if no timeline items have heading/pitch AND no user-defined safety zones exist, render nothing (no default volumes)
+- Move `DEFAULT_VOLUMES` to only render when user explicitly enables safety zones or when there are angled cues
 
-### Test Data — COMPLETE (4 scenarios)
-- healthy, degraded, critical, mixed — all with realistic device states
+### 2. Refine default ground to premium dark green grass
+**File: `src/components/editor/skycanvas/GroundSystem.tsx`**
+- Update `GrassGround` shader colors: shift from current Google Earth-style greens to deeper, more premium dark green tones (`vec3(0.02, 0.06, 0.02)` base range)
+- Reduce near-field stripe intensity
+- Make the default `groundStyle` more premium
 
-### UI Components — COMPLETE
-- HardwareOverview, RelayBankMonitor, BatteryPowerMonitor, MuxContinuityMonitor, ArtNetDMXMonitor, FireOneExportConsole, SafetyConsole, VerificationBar, ReadinessDashboard, AuditBlackBoxConsole, CurrentStateMatrix, DiagnosticPanel, etc.
+**File: `src/store/useSceneStore.ts`**
+- Change default `groundStyle` from `'synthetic-grass'` to `'google-earth'` (which uses the refined GrassGround shader)
 
-### Observability — COMPLETE
-- BlackBoxRecorder, SafetyAuditTrail, DeviceEventLog, VerificationLog
+### 3. Cinematic camera intro refinement
+**File: `src/components/editor/SkyCanvas.tsx`**
+- Change intro start position from `(0, 2500, 3)` → `(0, 80, 250)` — lower, closer, more cinematic
+- Reduce hold phase duration from 2.5s → 1.0s (less time staring at empty sky)
+- Reduce sweep duration from 4.0s → 2.5s (snappier transition)
+- Adjust sweep start position to be closer to final position for smoother animation
 
-## Recommendation
+### 4. Remove debug/helper geometry from default mode
+**File: `src/components/editor/SkyCanvas.tsx`**
+- Gate `FinaleAxesHelper` behind `showDebugOverlay` flag (currently always visible)
+- Ensure scale poles and origin markers default to false
 
-**No refactoring is needed.** The architecture you described matches what is already implemented 1:1. The codebase enforces:
-- No firing logic (all adapters are read-only, `writable: false` enforced at type level)
-- No direct UI→hardware commands (OperationalModeGuard blocks)
-- No export without verification (ReadinessEvaluator gates)
-- No sync if safety is blocked
-- Honest provenance on every data point
+**File: `src/store/useSceneStore.ts`**
+- Verify `showScalePoles` and `showOriginMarker` default to `false`
 
-If you want to evolve the system further, here are meaningful next steps:
-1. **Implement WebSerial bridge** — connect `ArduinoNanoAdapter` to a real Arduino Nano via Web Serial API (read-only telemetry ingestion)
-2. **Add IndexedDB persistence** — save device snapshots, verification logs, and health history across sessions
-3. **Add replay mode** — record telemetry sessions and play them back through the adapter layer
-4. **Implement real Art-Net discovery** — use `ArtPoll` via UDP to discover real nodes on the network
+### 5. Improve atmosphere and lighting for opening
+**File: `src/components/editor/skycanvas/GroundSystem.tsx`**
+- Increase `GroundFog` default subtle presence for depth
+- Refine `FloorLogo` opacity down further (0.15 → 0.08) so it's barely a ghost imprint
 
-Would you like to proceed with any of these concrete next steps?
+**File: `src/components/editor/SkyCanvas.tsx`**
+- Ensure `DelayedMount` prevents heavy subsystems from flickering during first frames
+- Add a brief fade-in on the Canvas container (CSS opacity transition from 0→1 over 300ms after `onCreated`)
+
+### 6. Tonemapping and exposure tuning
+**File: `src/components/editor/SkyCanvas.tsx`**
+- Adjust `toneMappingExposure` from 1.5 → 1.2 for more cinematic, less blown-out opening
+- Verify bloom/post-processing doesn't flare on empty scene
+
+## Technical Details
+
+- **Zero new dependencies** — all changes are refinements to existing shaders and component logic
+- **No breaking changes** — safety zones still render when explicitly needed (angled cues exist)
+- **Performance neutral** — removing default safety volumes and axes helper slightly reduces draw calls
+- Files modified: ~5 files, primarily `PyroSafetyZones.tsx`, `GroundSystem.tsx`, `SkyCanvas.tsx`, `useSceneStore.ts`
 
