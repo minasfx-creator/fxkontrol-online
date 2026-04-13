@@ -185,13 +185,13 @@ const UNIFIED_TERRAIN_FRAGMENT = `
     // === NEAR FIELD ===
     float largN = fbm(worldUV * 0.03);
     float fineN = noise(worldUV * 5.0);
-    vec3 grassA = vec3(0.06, 0.16, 0.04);
-    vec3 grassB = vec3(0.10, 0.22, 0.06);
+    vec3 grassA = vec3(0.02, 0.07, 0.02);
+    vec3 grassB = vec3(0.04, 0.12, 0.03);
     vec3 nearColor = mix(grassA, grassB, smoothstep(0.3, 0.7, largN));
-    nearColor += vec3(0.01, 0.025, 0.005) * fineN * 0.2;
+    nearColor += vec3(0.005, 0.015, 0.003) * fineN * 0.15;
     float stripes = sin(worldUV.x * 1.5) * 0.5 + 0.5;
     float crossStripes = sin(worldUV.y * 1.5 + 0.785) * 0.5 + 0.5;
-    nearColor = mix(nearColor, nearColor * 1.1, stripes * crossStripes * 0.12);
+    nearColor = mix(nearColor, nearColor * 1.06, stripes * crossStripes * 0.08);
     
     // === FAR FIELD ===
     float large = fbm(worldUV * 0.005);
@@ -200,14 +200,14 @@ const UNIFIED_TERRAIN_FRAGMENT = `
     float parcels = voronoi(worldUV * 0.008);
     float roads = voronoi(worldUV * 0.003);
     
-    vec3 darkForest  = vec3(0.04, 0.07, 0.02);
-    vec3 forest      = vec3(0.06, 0.11, 0.04);
-    vec3 farmGreen   = vec3(0.08, 0.14, 0.05);
-    vec3 fieldGreen  = vec3(0.12, 0.18, 0.06);
-    vec3 dryField    = vec3(0.18, 0.17, 0.08);
-    vec3 brownEarth  = vec3(0.14, 0.10, 0.05);
-    vec3 roadGrey    = vec3(0.12, 0.11, 0.10);
-    vec3 urbanGrey   = vec3(0.10, 0.09, 0.08);
+    vec3 darkForest  = vec3(0.02, 0.04, 0.01);
+    vec3 forest      = vec3(0.03, 0.07, 0.02);
+    vec3 farmGreen   = vec3(0.04, 0.09, 0.03);
+    vec3 fieldGreen  = vec3(0.06, 0.11, 0.03);
+    vec3 dryField    = vec3(0.10, 0.09, 0.04);
+    vec3 brownEarth  = vec3(0.08, 0.06, 0.03);
+    vec3 roadGrey    = vec3(0.07, 0.06, 0.05);
+    vec3 urbanGrey   = vec3(0.06, 0.05, 0.04);
     
     vec3 farColor = mix(darkForest, forest, smoothstep(0.3, 0.6, large));
     farColor = mix(farColor, farmGreen, smoothstep(0.4, 0.65, medium) * 0.7);
@@ -376,7 +376,7 @@ function FloorLogo() {
       <meshBasicMaterial
         map={texture}
         transparent
-        opacity={0.15}
+        opacity={0.06}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
       />
