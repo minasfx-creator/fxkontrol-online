@@ -690,7 +690,39 @@ function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: {
   );
 }
 
-/** Ground plane for placing new pins — continuous mode */
+/** Temporary ring + flash VFX at placement point */
+function PlacementRingVFX({ position, color, onComplete }: { position: [number, number, number]; color: string; onComplete: () => void }) {
+  const ringRef = useRef<THREE.Mesh>(null);
+  const flashRef = useRef<THREE.PointLight>(null);
+  const elapsed = useRef(0);
+  const duration = 0.8;
+
+  useFrame((_, delta) => {
+    elapsed.current += delta;
+    const t = elapsed.current / duration;
+    if (t >= 1) { onComplete(); return; }
+
+    if (ringRef.current) {
+      const scale = 0.5 + t * 4;
+      ringRef.current.scale.set(scale, scale, scale);
+      (ringRef.current.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 1 - t * 1.3);
+    }
+    if (flashRef.current) {
+      flashRef.current.intensity = t < 0.15 ? 20 * (1 - t / 0.15) : 0;
+    }
+  });
+
+  return (
+    <group position={position}>
+      <pointLight ref={flashRef} color={color} intensity={0} distance={12} />
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.6, 0.9, 32]} />
+        <meshBasicMaterial color={color} transparent opacity={1} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
 function GroundClickPlane() {
   const editorMode = useProjectStore(s => s.editorMode);
   const addPosition = useProjectStore(s => s.addPosition);
@@ -699,6 +731,7 @@ function GroundClickPlane() {
   const selectedTrajectoryId = useProjectStore(s => s.selectedTrajectoryId);
   const drawHeight = useProjectStore(s => s.drawHeight);
   const { scene } = useThree();
+  const [vfxList, setVfxList] = useState<{ id: string; pos: [number, number, number]; color: string }[]>([]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -733,18 +766,24 @@ function GroundClickPlane() {
       const prefix = type === 'pyro' ? 'POS' : 'PAD';
       const count = useProjectStore.getState().positions.filter(p => p.type === type).length + 1;
       const id = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+      const posY = Math.round(terrainY * 100) / 100;
       addPosition({
         id,
         name: `${prefix}-${count.toString().padStart(3, '0')}`,
         type,
         x: clickX,
-        y: Math.round(terrainY * 100) / 100,
+        y: posY,
         z: clickZ,
         heading: 0, pitch: 85, roll: 0,
         color: type === 'drone-pad' ? '#00B4D8' : '#FF6B35',
       });
       useProjectStore.getState().selectPosition(id);
       window.dispatchEvent(new CustomEvent('position-placed', { detail: { id, type } }));
+
+      // Spawn placement VFX
+      const vfxColor = type === 'drone-pad' ? '#00B4D8' : '#FF6B35';
+      const vfxId = `vfx-${Date.now()}`;
+      setVfxList(prev => [...prev, { id: vfxId, pos: [clickX, posY, clickZ], color: vfxColor }]);
       return;
     }
 
@@ -762,13 +801,22 @@ function GroundClickPlane() {
     }
   }, [editorMode, addPosition, setEditorMode, addWaypoint, selectedTrajectoryId, drawHeight, getTerrainY]);
 
+  const removeVfx = useCallback((id: string) => {
+    setVfxList(prev => prev.filter(v => v.id !== id));
+  }, []);
+
   if (editorMode !== 'add-pyro' && editorMode !== 'add-drone' && editorMode !== 'add-waypoint') return null;
 
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} onClick={handleClick}>
-      <planeGeometry args={[20000, 20000]} />
-      <meshBasicMaterial visible={false} />
-    </mesh>
+    <>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} onClick={handleClick}>
+        <planeGeometry args={[20000, 20000]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+      {vfxList.map(vfx => (
+        <PlacementRingVFX key={vfx.id} position={vfx.pos} color={vfx.color} onComplete={() => removeVfx(vfx.id)} />
+      ))}
+    </>
   );
 }
 
