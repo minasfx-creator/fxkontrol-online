@@ -1571,8 +1571,10 @@ export default function SkyCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   // ResizeObserver removed — R3F Canvas resize={{ debounce: 50 }} handles this natively
 
+  const [canvasReady, setCanvasReady] = useState(false);
+
   return (
-    <div ref={containerRef} className="w-full h-full relative bg-black" data-sky-canvas style={{ cursor: cursorStyle }}>
+    <div ref={containerRef} className="w-full h-full relative bg-black transition-opacity duration-500" data-sky-canvas style={{ cursor: cursorStyle, opacity: canvasReady ? 1 : 0 }}>
       <WebGLErrorBoundary>
       <Canvas
         key={canvasInstanceKey}
@@ -1592,6 +1594,7 @@ export default function SkyCanvas() {
         performance={{ min: isLowTierMobile ? 0.35 : 0.5 }}
         onCreated={() => {
           recoveringContextRef.current = false;
+          setTimeout(() => setCanvasReady(true), 100);
         }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={60} near={0.1} far={500000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode || groundMode} flyMode={flyMode || groundMode} />
