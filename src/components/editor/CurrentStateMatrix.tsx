@@ -2,7 +2,8 @@
  * CurrentStateMatrix v3 — Expanded with Integration Mode, Evidence Level, Source.
  * 16 rows. Provenance-aware. Honest architectural truth.
  */
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { useVerificationEngine } from '@/core/verification/useVerificationEngine';
 import { useHardwareRegistry } from '@/core/hardware/useHardwareRegistry';
@@ -20,6 +21,7 @@ interface MatrixRow {
   evidenceLevel: EvidenceLevel;
   source: string;
   detail: string;
+  drillDown?: string; // CommandCenter mode to navigate to
 }
 
 const STATUS_CONFIG: Record<MatrixStatus, { icon: typeof CheckCircle2; color: string; bg: string; label: string }> = {
