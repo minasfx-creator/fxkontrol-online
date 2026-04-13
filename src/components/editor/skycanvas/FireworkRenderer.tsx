@@ -1149,6 +1149,7 @@ export function TimelineEffects() {
   const currentTime = useProjectStore(s => s.currentTime);
   const positions = useProjectStore(s => s.positions);
   const sceneSettings = useSceneStore(st => st.settings);
+  const { getHeight } = useTerrainHeightCache(positions, sceneSettings.google3DTilesEnabled);
   const activeEffects = useMemo(() => {
     const effectScale = sceneSettings.effectScale;
     const weatherDampening = sceneSettings.weather === 'heavy-rain' ? 0.6 :
