@@ -8,6 +8,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Line } from '@react-three/drei';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useSceneStore } from '@/store/useSceneStore';
 import { type TimelineItem } from '@/types/projectTypes';
 import { getMortarVelocity, getBreakHeight, GRAVITY, AIR_DRAG } from '@/lib/pyroPhysics';
 
@@ -202,7 +203,21 @@ function TrajectoryLine({
 export default function PyroSafetyZones() {
   const timelineItems = useProjectStore(s => s.timelineItems);
   const positions = useProjectStore(s => s.positions);
+  const showDebugOverlay = useSceneStore(s => s.environment.showDebugOverlay);
+
+  // Only show safety volumes when there are angled cues or debug mode is on
+  const hasAngledCues = useMemo(() => {
+    return timelineItems.some(item => {
+      const heading = (item as any).cueHeading ?? 0;
+      const pitch = (item as any).cuePitch ?? 0;
+      return heading !== 0 || pitch !== 0;
+    });
+  }, [timelineItems]);
+
   const [volumes] = useState<SafetyVolume[]>(DEFAULT_VOLUMES);
+
+  // Early return: hide default volumes unless there are angled cues or debug is on
+  if (!hasAngledCues && !showDebugOverlay) return null;
 
   // Compute trajectories for all pyro cues with heading/pitch
   const trajectoryData = useMemo(() => {
