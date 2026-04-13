@@ -184,8 +184,8 @@ function LinkedGlowRing({ color }: { color: string }) {
   );
 }
 
-const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }>(function Pin({
-  position, onRightClick }, ref) {
+const Pin = forwardRef<THREE.Group, { position: Position; terrainY: number; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }>(function Pin({
+  position, terrainY, onRightClick }, ref) {
   useRenderCounter('Pin');
   const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
   const selectPosition = useProjectStore(s => s.selectPosition);
@@ -414,7 +414,7 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
   const showLabel = labelsVisible && (isMobileView ? (isSelected || isDragging) : (isHovered || isSelected || isDragging));
 
   return (
-    <group ref={(node) => { (groupRef as any).current = node; if (typeof ref === 'function') ref(node); else if (ref) (ref as any).current = node; }} position={[position.x, position.y, position.z]}>
+    <group ref={(node) => { (groupRef as any).current = node; if (typeof ref === 'function') ref(node); else if (ref) (ref as any).current = node; }} position={[position.x, position.y + terrainY, position.z]}>
       {/* Base disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <circleGeometry args={[isSelected ? 0.65 : 0.5, 32]} />
@@ -774,7 +774,9 @@ function GroundDeselectPlane() {
 
 export default function PositionPins() {
   const positions = useProjectStore(s => s.positions);
+  const google3DTilesEnabled = useSceneStore(s => s.settings.google3DTilesEnabled);
   const [contextMenu, setContextMenu] = useState<{ pos: Position; screen: { x: number; y: number } } | null>(null);
+  const { getHeight } = useTerrainHeightCache(positions, google3DTilesEnabled);
 
   const handleRightClick = useCallback((pos: Position, screenPos: { x: number; y: number }) => {
     setContextMenu({ pos, screen: screenPos });
@@ -785,7 +787,7 @@ export default function PositionPins() {
       <GroundDeselectPlane />
       <GroundClickPlane />
       {positions.map((pos) => (
-        <Pin key={pos.id} position={pos} onRightClick={handleRightClick} />
+        <Pin key={pos.id} position={pos} terrainY={getHeight(pos.x, pos.z)} onRightClick={handleRightClick} />
       ))}
     </>
   );
