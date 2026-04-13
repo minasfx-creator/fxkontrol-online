@@ -1285,7 +1285,8 @@ export function TimelineEffects() {
   return (
     <>
       {cappedEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
-        const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
+        const terrainOffset = getHeight(resolvedPos.x, resolvedPos.z);
+        const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y + terrainOffset, resolvedPos.z];
         const pt = effect.partType;
         const patternStr = String(effect.pattern || '');
         const isTrailing = patternStr === 'willow' || patternStr === 'kamuro' || patternStr === 'brocade' || patternStr === 'palm';
