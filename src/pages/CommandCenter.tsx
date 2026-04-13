@@ -141,11 +141,15 @@ const MODE_SECTIONS = [
     modes: [
       { key: 'sys_overview' as CommandMode, label: 'OVERVIEW', icon: Activity },
       { key: 'state_matrix' as CommandMode, label: 'STATE MTX', icon: Activity },
+      { key: 'manual_compliance' as CommandMode, label: 'COMPLIANCE', icon: BookOpen },
+      { key: 'exec_report' as CommandMode, label: 'EXEC REPORT', icon: FileBarChart },
       { key: 'show_control' as CommandMode, label: 'SHOW CTRL', icon: Activity },
       { key: 'cue_validation' as CommandMode, label: 'CUE VALID', icon: Layers },
       { key: 'addressing' as CommandMode, label: 'ADDRESSING', icon: Map },
       { key: 'dmx_monitor' as CommandMode, label: 'DMX MONITOR', icon: Radio },
       { key: 'dmx_artnet' as CommandMode, label: 'DMX/ARTNET', icon: Wifi },
+      { key: 'unreal_status' as CommandMode, label: 'UNREAL', icon: Gamepad2 },
+      { key: 'swarm_contract' as CommandMode, label: 'SWARM', icon: FileCode2 },
       { key: 'fxk_light' as CommandMode, label: 'FXK-LIGHT', icon: Gauge },
       { key: 'drone_ops' as CommandMode, label: 'FXK-DRONE', icon: Layers },
     ],
@@ -300,6 +304,10 @@ export default function CommandCenter() {
       case 'mux_continuity': return <MuxContinuityMonitor />;
       case 'artnet_monitor': return <ArtNetDMXMonitor />;
       case 'readiness': return <ReadinessDashboard />;
+      case 'manual_compliance': return <ManualComplianceMatrix />;
+      case 'unreal_status': return <UnrealIntegrationConsole />;
+      case 'swarm_contract': return <SwarmContractInspector />;
+      case 'exec_report': return <ExecutiveReportConsole />;
       default: return null;
     }
   }, []);
