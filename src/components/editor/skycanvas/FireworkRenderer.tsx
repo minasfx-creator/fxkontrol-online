@@ -11,6 +11,7 @@ import { useSceneStore } from '@/store/useSceneStore';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useLOD } from '@/hooks/useLOD';
 import { getLiftTime, getBreakHeight, getBreakSpeed, getTypedPrefire, getTypedDuration, getStarLifetime, type FinalePartType } from '@/lib/pyroPhysics';
+import { useTerrainHeightCache } from '@/hooks/useTerrainHeightCache';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { temporalFlicker, getFlickerParams, strobeFlicker, getCombustionHdrBoost } from '@/lib/pyroNoise';
 import { updateFrustum, isSphereInFrustum } from '@/lib/frustumCuller';
@@ -1149,6 +1150,7 @@ export function TimelineEffects() {
   const currentTime = useProjectStore(s => s.currentTime);
   const positions = useProjectStore(s => s.positions);
   const sceneSettings = useSceneStore(st => st.settings);
+  const { getHeight } = useTerrainHeightCache(positions, sceneSettings.google3DTilesEnabled);
   const activeEffects = useMemo(() => {
     const effectScale = sceneSettings.effectScale;
     const weatherDampening = sceneSettings.weather === 'heavy-rain' ? 0.6 :
@@ -1283,7 +1285,8 @@ export function TimelineEffects() {
   return (
     <>
       {cappedEffects.map(({ item, effect, progress, inPrefire, prefireProgress, caliber, resolvedPos, effectScale, effectBrightness, launchHeading, launchPitch }) => {
-        const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y, resolvedPos.z];
+        const terrainOffset = getHeight(resolvedPos.x, resolvedPos.z);
+        const pos: [number, number, number] = [resolvedPos.x, resolvedPos.y + terrainOffset, resolvedPos.z];
         const pt = effect.partType;
         const patternStr = String(effect.pattern || '');
         const isTrailing = patternStr === 'willow' || patternStr === 'kamuro' || patternStr === 'brocade' || patternStr === 'palm';
