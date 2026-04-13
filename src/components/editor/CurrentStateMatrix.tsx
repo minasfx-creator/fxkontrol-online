@@ -49,8 +49,13 @@ export default function CurrentStateMatrix() {
   const sp = showPlanManager.current;
   const { level } = useVerificationEngine();
   const { devices, snapshots, refresh } = useHardwareRegistry();
+  const navigate = useNavigate();
 
   useEffect(() => { refresh(); }, []);
+
+  const handleDrillDown = useCallback((mode?: string) => {
+    if (mode) navigate(`/command-center?mode=${mode}`);
+  }, [navigate]);
 
   const getAdapterInfo = (id: string): { status: MatrixStatus; mode: IntegrationMode; evidence: EvidenceLevel; source: string; detail: string } => {
     const dev = devices.find(d => d.id === id);
@@ -86,13 +91,13 @@ export default function CurrentStateMatrix() {
     });
 
     return [
-      { label: 'ShowPlan', status: hasContent ? 'exists' : 'absent', integrationMode: 'simulated' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'ShowPlanManager', detail: hasContent ? `${sp.pyroCues.length}P + ${sp.dmxCues.length}D + ${sp.dronePaths.length}Dr` : 'No content' },
-      { label: 'VerificationPass', status: level !== 'BLOCKED' ? 'exists' : hasContent ? 'partial' : 'absent', integrationMode: 'simulated' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'VerificationEngine', detail: level.replace(/_/g, ' ') },
-      { label: 'ExportCoordinator', status: hasContent ? 'exists' : 'absent', integrationMode: 'simulated' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'ExportCoordinator', detail: hasContent ? 'Pipeline active' : 'No data' },
+      { label: 'ShowPlan', status: hasContent ? 'exists' : 'absent', integrationMode: 'simulated' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'ShowPlanManager', detail: hasContent ? `${sp.pyroCues.length}P + ${sp.dmxCues.length}D + ${sp.dronePaths.length}Dr` : 'No content', drillDown: 'show_control' },
+      { label: 'VerificationPass', status: level !== 'BLOCKED' ? 'exists' : hasContent ? 'partial' : 'absent', integrationMode: 'simulated' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'VerificationEngine', detail: level.replace(/_/g, ' '), drillDown: 'verification' },
+      { label: 'ExportCoordinator', status: hasContent ? 'exists' : 'absent', integrationMode: 'simulated' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'ExportCoordinator', detail: hasContent ? 'Pipeline active' : 'No data', drillDown: 'export_readiness' },
       ...adapterRows,
-      { label: 'AuditTrail', status: 'exists' as MatrixStatus, integrationMode: 'simulated' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'DeviceEventLog+BlackBox', detail: 'Active — logging events' },
-      { label: 'Unreal Integration', status: 'placeholder' as MatrixStatus, integrationMode: 'not_integrated' as IntegrationMode, evidenceLevel: 'ui_only' as EvidenceLevel, source: 'none', detail: 'Contract defined, runtime pending' },
-      { label: 'BP_SwarmManager', status: sp.dronePaths.length > 0 ? 'partial' as MatrixStatus : 'placeholder' as MatrixStatus, integrationMode: 'not_integrated' as IntegrationMode, evidenceLevel: 'ui_only' as EvidenceLevel, source: 'none', detail: sp.dronePaths.length > 0 ? `${sp.dronePaths.length} paths` : 'Awaiting Unreal' },
+      { label: 'AuditTrail', status: 'exists' as MatrixStatus, integrationMode: 'simulated' as IntegrationMode, evidenceLevel: 'adapter_only' as EvidenceLevel, source: 'DeviceEventLog+BlackBox', detail: 'Active — logging events', drillDown: 'audit_blackbox' },
+      { label: 'Unreal Integration', status: 'placeholder' as MatrixStatus, integrationMode: 'not_integrated' as IntegrationMode, evidenceLevel: 'ui_only' as EvidenceLevel, source: 'none', detail: 'Contract defined, runtime pending', drillDown: 'unreal_status' },
+      { label: 'BP_SwarmManager', status: sp.dronePaths.length > 0 ? 'partial' as MatrixStatus : 'placeholder' as MatrixStatus, integrationMode: 'not_integrated' as IntegrationMode, evidenceLevel: 'ui_only' as EvidenceLevel, source: 'none', detail: sp.dronePaths.length > 0 ? `${sp.dronePaths.length} paths` : 'Awaiting Unreal', drillDown: 'swarm_contract' },
     ];
   }, [sp, level, devices, snapshots]);
 
