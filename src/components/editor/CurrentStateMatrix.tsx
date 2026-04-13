@@ -146,7 +146,7 @@ export default function CurrentStateMatrix() {
           const cfg = STATUS_CONFIG[row.status];
           const badge = getProvenanceBadge(row.integrationMode);
           return (
-            <div key={row.label} className="grid grid-cols-[1fr_90px_90px_80px_120px] gap-1 items-center rounded border border-border/10 px-2 py-1.5 hover:bg-muted/5 transition-colors">
+            <div key={row.label} onClick={() => handleDrillDown(row.drillDown)} className={cn("grid grid-cols-[1fr_90px_90px_80px_120px] gap-1 items-center rounded border border-border/10 px-2 py-1.5 hover:bg-muted/5 transition-colors", row.drillDown && "cursor-pointer hover:border-primary/30")}>
               <div>
                 <div className="text-[9px] font-mono font-medium text-foreground">{row.label}</div>
                 <div className="text-[7px] font-mono text-muted-foreground/50">{row.detail}</div>
