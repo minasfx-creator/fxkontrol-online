@@ -87,13 +87,13 @@ export default function ExecutiveReportConsole() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error('Login required to save reports'); return; }
-      const { error } = await supabase.from('executive_reports').insert({
+      const { error } = await supabase.from('executive_reports' as never).insert({
         user_id: user.id,
         report_data: report as unknown as Record<string, unknown>,
         show_name: report.show.name,
         verification_level: report.verification.level,
         readiness_status: report.readiness.status,
-      });
+      } as never);
       if (error) throw error;
       toast.success('Report saved to history');
     } catch (e: unknown) {
