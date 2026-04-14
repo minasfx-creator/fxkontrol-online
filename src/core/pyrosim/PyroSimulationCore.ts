@@ -26,6 +26,15 @@ import { fuelToTemperature } from './ThermalColorModel';
 import { globalWindField, type WindFieldSystem } from './WindFieldSystem';
 import { globalSmokeVolume, type SmokeVolumeSystem } from './SmokeVolumeSystem';
 import { EFFECT_FAMILIES, type EffectFamilyProfile } from './CalibrationLayer';
+import {
+  generateDispersionTensor,
+  applyDispersionTensor,
+  applyVariance,
+  applyAngularJitter,
+  VARIANCE_PROFILES,
+  DEFAULT_VARIANCE,
+  _burstTensor,
+} from './AsymmetricDispersion';
 import { isEnabled } from '@/lib/featureFlags';
 import { simRNG } from '@/core/reliability/seededRandom';
 
@@ -200,36 +209,42 @@ export class PyroSimulationCore {
   private spawnBurstParticles(event: EnergyEvent): void {
     const family = EFFECT_FAMILIES[event.familyName] ?? EFFECT_FAMILIES.peony;
     const count = Math.min(family.starCount, MAX_PARTICLES - this.pool.activeCount);
+    const vp = VARIANCE_PROFILES[event.familyName] ?? DEFAULT_VARIANCE;
+
+    // ── Generate per-burst asymmetric dispersion tensor ──
+    generateDispersionTensor(vp.asymmetry, _burstTensor);
 
     for (let s = 0; s < count; s++) {
       const idx = allocateParticle(this.pool);
       if (idx < 0) break;
 
-      // ── Spatial distribution (non-uniform for realism) ──
-      // Use seeded random for determinism + noise for natural variation
-      const theta = simRNG.next() * Math.PI * 2;
-      const phi = Math.acos(1 - 2 * simRNG.next());
-      // Angular noise for non-perfect sphere
-      const noiseScale = 0.15;
-      const thetaN = theta + (simRNG.next() - 0.5) * noiseScale;
-      const phiN = phi + (simRNG.next() - 0.5) * noiseScale * 0.5;
+      // ── Spherical distribution with gaussian angular jitter ──
+      const theta0 = simRNG.next() * Math.PI * 2;
+      const phi0 = Math.acos(1 - 2 * simRNG.next());
+      const [thetaN, phiN] = applyAngularJitter(theta0, phi0, vp.angularJitter);
 
       const sinPhi = Math.sin(phiN);
       const cosPhi = Math.cos(phiN);
       const sinTheta = Math.sin(thetaN);
       const cosTheta = Math.cos(thetaN);
 
-      // Velocity with per-particle variance (±15%)
-      const vMag = family.burstVelocity * (0.85 + simRNG.next() * 0.30);
-      const dirX = sinPhi * cosTheta;
-      const dirY = sinPhi * sinTheta;
-      const dirZ = cosPhi;
+      // Raw direction
+      let dirX = sinPhi * cosTheta;
+      let dirY = sinPhi * sinTheta;
+      let dirZ = cosPhi;
+
+      // ── Apply asymmetric dispersion tensor ──
+      const [dX, dY, dZ] = applyDispersionTensor(_burstTensor, dirX, dirY, dirZ);
+      dirX = dX; dirY = dY; dirZ = dZ;
+
+      // ── Per-particle velocity with gaussian variance ──
+      const vMag = applyVariance(family.burstVelocity, vp.velocityVariance, 1.0);
 
       // Ignition jitter
       const jitterOffset = event.ignitionJitter * (simRNG.next() - 0.5);
 
       // ── Populate particle arrays ──
-      this.pool.posX[idx] = event.x + dirX * 0.5; // slight offset
+      this.pool.posX[idx] = event.x + dirX * 0.5;
       this.pool.posY[idx] = event.y + dirY * 0.5;
       this.pool.posZ[idx] = event.z + dirZ * 0.5;
 
@@ -237,24 +252,25 @@ export class PyroSimulationCore {
       this.pool.velY[idx] = dirY * vMag;
       this.pool.velZ[idx] = dirZ * vMag;
 
-      // Mass with per-particle variance (±20%)
-      this.pool.mass[idx] = family.particleMass * (0.8 + simRNG.next() * 0.4);
-      this.pool.dragCoefficient[idx] = family.dragCoefficient * (0.9 + simRNG.next() * 0.2);
-      this.pool.turbulenceFactor[idx] = family.turbulenceFactor * simRNG.next();
+      // ── Per-particle physical properties with gaussian variance ──
+      this.pool.mass[idx] = applyVariance(family.particleMass, vp.massVariance, 0.0001);
+      this.pool.dragCoefficient[idx] = applyVariance(family.dragCoefficient, vp.dragVariance, 0.001);
+      this.pool.turbulenceFactor[idx] = applyVariance(family.turbulenceFactor, vp.turbulenceVariance, 0);
 
       this.pool.temperature[idx] = family.initialTemperature;
       this.pool.brightness[idx] = 1.0;
 
-      this.pool.fuelMass[idx] = family.fuelMass * (0.85 + simRNG.next() * 0.30);
+      // ── Fuel & combustion with gaussian variance ──
+      this.pool.fuelMass[idx] = applyVariance(family.fuelMass, vp.fuelVariance, 0.0001);
       this.pool.fuelInitial[idx] = this.pool.fuelMass[idx];
-      this.pool.burnRate[idx] = family.burnRate * (0.9 + simRNG.next() * 0.2);
+      this.pool.burnRate[idx] = applyVariance(family.burnRate, vp.burnRateVariance, 0.00001);
 
       const starLife = this.pool.fuelMass[idx] / this.pool.burnRate[idx];
       this.pool.lifetime[idx] = starLife + family.emberPersistence;
       this.pool.age[idx] = jitterOffset;
       this.pool.decayCurve[idx] = family.decayCurve;
 
-      this.pool.colorR[idx] = 1.0; // will be overridden by thermal model
+      this.pool.colorR[idx] = 1.0;
       this.pool.colorG[idx] = 0.8;
       this.pool.colorB[idx] = 0.3;
     }
