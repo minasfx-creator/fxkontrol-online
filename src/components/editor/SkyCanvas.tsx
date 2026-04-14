@@ -837,12 +837,12 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   }, [camera]);
 
   // ── Zero-GC: Pre-allocated vectors for intro animation ──
-  const introStartPos = useRef(new THREE.Vector3(0, 80, 250));
-  const introStartLook = useRef(new THREE.Vector3(0, 0, 0));
-  const introDuration = useRef({ hold: 1.0, sweep: 2.5 });
+  const introStartPos = useRef(new THREE.Vector3(-80, 140, 320));
+  const introStartLook = useRef(new THREE.Vector3(0, 5, 0));
+  const introDuration = useRef({ hold: 1.8, sweep: 3.0 });
   const _sweepDefaultPos = useRef(new THREE.Vector3());
   const _sweepDefaultLook = useRef(new THREE.Vector3());
-  const _sweepStartPos = useRef(new THREE.Vector3(0, 120, 180));
+  const _sweepStartPos = useRef(new THREE.Vector3(60, 100, 220));
   const _sweepCurrentTarget = useRef(new THREE.Vector3());
 
   useEffect(() => {
@@ -991,21 +991,26 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       if (introPhase.current === 'hold') {
         const holdT = Math.min(1, introTimer.current / introDuration.current.hold);
         const eased = easeInOutCubic(holdT);
-        const orbitRadius = 250;
-        const orbitSpeed = 0.08;
+        const orbitRadius = 300;
+        const orbitSpeed = 0.12;
+        // Cinematic orbit with altitude variation — descending from 140m to 80m
+        const altBase = 140 - eased * 60;
+        const altWave = Math.sin(introTimer.current * 0.5) * 8;
         camera.position.set(
           Math.sin(introTimer.current * orbitSpeed) * orbitRadius,
-          80 + eased * 10,
+          altBase + altWave,
           Math.cos(introTimer.current * orbitSpeed) * orbitRadius
         );
-        camera.lookAt(0, 0, 0);
+        camera.lookAt(0, 5, 0);
         if (controlsRef.current) {
-          controlsRef.current.target.set(0, 0, 0);
+          controlsRef.current.target.set(0, 5, 0);
           controlsRef.current.update();
         }
         if (introTimer.current >= introDuration.current.hold) {
           introPhase.current = 'sweep';
           introTimer.current = 0;
+          // Capture current position as sweep start
+          _sweepStartPos.current.copy(camera.position);
         }
       } else if (introPhase.current === 'sweep') {
         const sweepT = Math.min(1, introTimer.current / introDuration.current.sweep);
@@ -1653,7 +1658,7 @@ export default function SkyCanvas() {
   const [canvasReady, setCanvasReady] = useState(false);
 
   return (
-    <div ref={containerRef} className="w-full h-full relative bg-black transition-opacity duration-500" data-sky-canvas style={{ cursor: cursorStyle, opacity: canvasReady ? 1 : 0 }}>
+    <div ref={containerRef} className="w-full h-full relative bg-[#050810] transition-opacity duration-700 ease-out" data-sky-canvas style={{ cursor: cursorStyle, opacity: canvasReady ? 1 : 0 }}>
       <WebGLErrorBoundary>
       <Canvas
         key={canvasInstanceKey}
