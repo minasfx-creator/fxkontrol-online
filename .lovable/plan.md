@@ -1,54 +1,70 @@
 
 
-# FX KONTROL — Status Técnico Atualizado e Próximas Ações
+## Camada 7: Cinema-Grade Shaders — Fire, Smoke & Burst
 
-## Estado Atual do Sistema (Verificado)
+### Objetivo
+Implementar 3 shaders GLSL de produção cinematográfica integrados ao pipeline existente de `ShaderMaterial` do Three.js, substituindo as aproximações visuais atuais por modelos fisicamente motivados.
 
-| Métrica | Valor Atual | Status |
-|---|---|---|
-| Arquivos TS/TSX | 766 | Estável |
-| Componentes Editor (top-level) | 217 | Reduzido de 314 (71 removidos) |
-| Componentes Editor (total c/ subdirs) | 297 | — |
-| Stores Zustand | 17 + 1 slice | Fragmentado |
-| Dead code removido | 71 arquivos / ~19K LOC | Concluído |
-| html2canvas | Dep. transitiva (jsPDF), tree-shaken | Resolvido |
-| Codex Review doc | Criado | Concluído |
+> **Nota**: WebGPU/WGSL não está disponível no sandbox de preview. Os shaders serão escritos em GLSL (compatível com WebGL2 via Three.js) seguindo a mesma arquitetura já estabelecida em `softParticleShader.ts` e `instancedParticleRenderer.ts`. A lógica matemática dos shaders WGSL fornecidos será portada fielmente.
 
-## O que já foi executado nesta sessão
+---
 
-1. **Codex Review** — Documento `docs/CODEX_REVIEW_FX_KONTROL_2026-04.md` criado com roadmap de 90 dias, KPIs realistas e correções de direção.
-2. **Dead code removal** — 71 componentes de editor removidos (19.172 LOC). 7 componentes foram restaurados após quebra de build por imports relativos não detectados.
-3. **html2canvas** — Confirmado como dependência transitiva de jsPDF, não entra no bundle final via tree-shaking.
+### Arquivos a Criar
 
-## Próximas Ações Prioritárias (por ordem de impacto)
+**1. `src/render_ultra/fireworks/cinemaFireShader.ts`**
+- Vertex + Fragment GLSL para partículas de fogo/faísca
+- Blackbody temperature→color no fragment (portando a função fornecida)
+- Temporal flicker via `sin(time * 20 + seed * 10)` com modulação orgânica
+- Decaimento exponencial de energia (`exp(-2.0 * lifeRatio)`)
+- HDR emission multiplier (×10) para alimentar o bloom pipeline
+- Factory function `createCinemaFireMaterial()` retornando `THREE.ShaderMaterial`
+- Uniforms: `uTime`, `uHDRMultiplier`, `uFlickerIntensity`
+- Attributes per-instance: `aTemperature`, `aLife`, `aMaxLife`, `aSeed`
 
-### Ação 1: Scan de Dead Code Corrigido (Fase 2)
-O primeiro scan falhou em detectar imports relativos (`./Component`). Um segundo scan deve:
-- Buscar tanto `@/components/editor/X` quanto `./X` e `../X`
-- Verificar imports lazy/dinâmicos (`import(...)`)
-- Estimar componentes restantes realmente inutilizados entre os 217
+**2. `src/render_ultra/fireworks/cinemaSmokeShadeer.ts`**
+- Fragment GLSL com fake-volumetric smoke via FBM (4 octaves)
+- Depth-fade soft particle (reutilizando padrão de `softParticleShader.ts`)
+- Turbulence advection via time-offset no domínio do noise
+- Density-controlled alpha com `smoothstep(0.2, 0.7, density)`
+- Factory `createCinemaSmokeMaterial()` com uniforms: `uTime`, `uDensityScale`, `uDepthTexture`, `uSoftness`
 
-### Ação 2: Consolidação dos 17 Stores Zustand → 4 Domínios
-Migrar de 17 stores fragmentados para 4 slices de domínio:
+**3. `src/render_ultra/fireworks/cinemaBurstShader.ts`**
+- Fragment GLSL para explosões multi-camada
+- Core radial falloff (`exp(-3r)`) + onda de choque (`sin(dist*20 - time*10)`)
+- HDR glow (×5) para bloom intenso no frame de impacto
+- Alpha fadeout radial via `smoothstep`
+- Factory `createCinemaBurstMaterial()` com uniforms: `uTime`, `uCoreIntensity`, `uWaveSpeed`
+
+### Arquivos a Modificar
+
+**4. `src/render_ultra/index.ts`**
+- Exportar as 3 factory functions e tipos dos novos shaders
+
+**5. `src/render_ultra/fireworks/instancedParticleRenderer.ts`**
+- Adicionar método `setShaderMode(mode: 'default' | 'cinema-fire' | 'cinema-smoke' | 'cinema-burst')` que troca o material interno
+- Quando `cinema-fire`, injetar os attributes extras (`aTemperature`, `aLife`, etc.)
+
+**6. `src/components/editor/effects/SparkShower.tsx`**
+- Quando feature flag `cinematic_camera_response` ativo, usar `createCinemaFireMaterial()` em vez do `pointsMaterial` básico
+
+### Detalhes Técnicos
 
 ```text
-Hardware: useMAVLinkStore + useSMPTEStore + useUSBDeviceStore + useFleetStore + useAddressingStore
-Simulation: useBoidsStore + useLaserPreviewStore + useLiveSfxStore + useSfxChannelStore + useGenerativeStore
-Workspace: useProjectStore + useSceneStore + useViewportStore + useDisplayStore + useRackStore + useInventoryStore + useUndoStore
-AI: useAICoPilotStore
+Pipeline Integration:
+
+Particle Data (CPU)
+    ↓ per-instance buffers
+Cinema Shader (GPU fragment)
+    ↓ HDR output (values > 1.0)
+Bloom Pass (existing EffectComposer)
+    ↓ threshold + gaussian
+ACES Tone Map (Camada 5)
+    ↓ hue-preserve
+Final Output
 ```
 
-Cada domínio será um store único com slices internos, mantendo seletores granulares para evitar re-renders.
-
-### Ação 3: Performance Budget no Build
-- Adicionar plugin de análise de bundle (`rollup-plugin-visualizer`)
-- Configurar limites de tamanho por chunk no CI
-- Medir impacto real da remoção de dead code no bundle final
-
-### Ação 4: Instrumentação RUM (Web Vitals por Rota)
-- Integrar `web-vitals` com reporting por rota
-- Estabelecer baseline LCP/INP/CLS reproduzível
-
-## Recomendação
-Executar a **Ação 1** (scan corrigido de dead code) primeiro — é a de menor risco e maior impacto imediato no tamanho do bundle. Em seguida, a **Ação 2** (consolidação de stores) para atacar o problema de fragmentação de estado descrito no relatório.
+- Todos os shaders usam `THREE.AdditiveBlending` para fire/burst e `THREE.NormalBlending` para smoke
+- `depthWrite: false` em fire/burst, `depthWrite: false` + soft depth-fade em smoke
+- Zero alocações no hot path — uniforms atualizados via `.value =`
+- FBM limitado a 4 iterações conforme diretriz de performance
 
