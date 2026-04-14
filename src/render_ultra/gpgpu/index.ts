@@ -29,9 +29,5 @@ export { SMOKE_COMPUTE_WGSL, RENDER_WGSL, LIGHT_SCATTER_WGSL } from './wgsl';
 export { WebGPUParticleLoop } from './webgpuLoop';
 export type { LoopConfig } from './webgpuLoop';
 
-// FXK GPU Engine (unified orchestrator)
-export { FXKGPUEngine } from './fxk-gpu';
-export type { FXKEngineConfig, FXKCameraState, FXKLightSource, FXKEngineState } from './fxk-gpu';
-
 // Legacy WebGL fallback
 export { ParticleGPGPU } from './ParticleGPGPU';
