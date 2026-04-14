@@ -1658,7 +1658,7 @@ export default function SkyCanvas() {
   const [canvasReady, setCanvasReady] = useState(false);
 
   return (
-    <div ref={containerRef} className="w-full h-full relative bg-black transition-opacity duration-500" data-sky-canvas style={{ cursor: cursorStyle, opacity: canvasReady ? 1 : 0 }}>
+    <div ref={containerRef} className="w-full h-full relative bg-[#050810] transition-opacity duration-700 ease-out" data-sky-canvas style={{ cursor: cursorStyle, opacity: canvasReady ? 1 : 0 }}>
       <WebGLErrorBoundary>
       <Canvas
         key={canvasInstanceKey}
