@@ -54,7 +54,7 @@ export default function CurrentStateMatrix() {
   useEffect(() => { refresh(); }, []);
 
   const handleDrillDown = useCallback((mode?: string) => {
-    if (mode) navigate(`/command-center?mode=${mode}`);
+    if (mode) navigate(`/command?mode=${mode}`);
   }, [navigate]);
 
   const getAdapterInfo = (id: string): { status: MatrixStatus; mode: IntegrationMode; evidence: EvidenceLevel; source: string; detail: string } => {
