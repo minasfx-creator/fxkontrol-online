@@ -238,6 +238,14 @@ export default function CommandCenter() {
     };
   }, [isMobile]);
 
+  // Sync URL query param → activeMode when navigating from drill-down
+  useEffect(() => {
+    const modeFromUrl = searchParams.get('mode') as CommandMode | null;
+    if (modeFromUrl && modeFromUrl !== activeMode) {
+      setActiveMode(modeFromUrl);
+    }
+  }, [searchParams]);
+
   const accent = CONSOLE_ACCENTS[activeMode] ?? CONSOLE_ACCENTS.show_control;
 
   const connectedCount = useMemo(() => {
