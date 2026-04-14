@@ -69,6 +69,8 @@ function generateDemoFrameMetrics() {
     particleCount: 200 + Math.floor(Math.random() * 2000),
     frameTimeMs: 8 + Math.random() * 10,
     gcCollections: Math.random() > 0.9 ? 1 : 0,
+    smokePuffCount: Math.floor(Math.random() * 50),
+    meanSmokeOpacity: 0.2 + Math.random() * 0.4,
   };
 }
 
@@ -385,10 +387,10 @@ function MetricsCards({ ssim, lpips }: { ssim: SSIMResult | null; lpips: LPIPSRe
             <div className="text-2xl font-black text-center">
               {lpips.distance.toFixed(3)}
             </div>
-            <div className="grid grid-cols-3 gap-1 text-center">
-              <MetricCell label="Freq" value={lpips.frequencyError.toFixed(2)} />
-              <MetricCell label="Edge" value={lpips.edgeError.toFixed(2)} />
-              <MetricCell label="Text" value={lpips.textureError.toFixed(2)} />
+            <div className="grid grid-cols-2 gap-1 text-center">
+              {lpips.scaleDistances.map((d, i) => (
+                <MetricCell key={i} label={`Scale ${i + 1}`} value={d.toFixed(3)} />
+              ))}
             </div>
           </>
         ) : (
