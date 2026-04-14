@@ -62,29 +62,37 @@ export default function VerificationBar() {
 
   return (
     <Collapsible>
-      <CollapsibleTrigger asChild>
-        <button
-          className={cn(
-            'w-full flex items-center gap-2 px-3 py-1 text-[10px] font-mono tracking-widest uppercase transition-all',
-            'border-b backdrop-blur-md cursor-pointer hover:brightness-110',
-            config.bg, config.border, config.text,
-          )}
-          style={{ background: `linear-gradient(90deg, transparent, ${config.color}08, transparent)` }}
-        >
-          <Icon className="w-3 h-3 shrink-0" />
-          <span className="font-black">{config.label}</span>
-          <span className="opacity-60 ml-1">
-            {isRunning ? 'CHECKING...' : `${passed}/${total} CHECKS`}
-          </span>
-          <div className="flex-1" />
+      <div className="relative">
+        <CollapsibleTrigger asChild>
           <button
-            onClick={(e) => { e.stopPropagation(); runVerification(); }}
-            className="text-[8px] px-1.5 py-0.5 rounded border border-current/20 hover:bg-current/10 transition-colors"
+            className={cn(
+              'w-full flex items-center gap-2 px-3 py-1 text-[10px] font-mono tracking-widest uppercase transition-all',
+              'border-b backdrop-blur-md cursor-pointer hover:brightness-110',
+              config.bg, config.border, config.text,
+            )}
+            style={{ background: `linear-gradient(90deg, transparent, ${config.color}08, transparent)` }}
           >
-            RE-CHECK
+            <Icon className="w-3 h-3 shrink-0" />
+            <span className="font-black">{config.label}</span>
+            <span className="opacity-60 ml-1">
+              {isRunning ? 'CHECKING...' : `${passed}/${total} CHECKS`}
+            </span>
+            <div className="flex-1" />
           </button>
-        </button>
-      </CollapsibleTrigger>
+        </CollapsibleTrigger>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={(e) => { e.stopPropagation(); runVerification(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') runVerification(); }}
+          className={cn(
+            'absolute right-2 top-1/2 -translate-y-1/2 text-[8px] px-1.5 py-0.5 rounded border border-current/20 hover:bg-current/10 transition-colors cursor-pointer z-10',
+            config.text
+          )}
+        >
+          RE-CHECK
+        </div>
+      </div>
 
       <CollapsibleContent>
         <div className={cn('border-b px-3 py-2 space-y-1', config.bg, config.border)}>
