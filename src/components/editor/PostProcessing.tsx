@@ -502,7 +502,7 @@ const DownSampleBlur = forwardRef<DownSampleBlurEffect, { intensity?: number }>(
 });
 
 // ═══════════════════════════════════════════════════════════════════════
-// Wrapper components for Studio Mode effects
+// Wrapper components for Studio Mode effects (Camada 4 + Camada 5)
 // ═══════════════════════════════════════════════════════════════════════
 
 const Halation = forwardRef<HalationEffect, { intensity?: number; threshold?: number; radius?: number }>(
@@ -517,6 +517,30 @@ const HighlightDesaturation = forwardRef<HighlightDesaturationEffect, { intensit
   function HighlightDesaturation({ intensity = 0.8, threshold = 2.0, compression = 1.5 }, ref) {
     const effect = useMemo(() => new HighlightDesaturationEffect({ intensity, threshold, compression }), []);
     useMemo(() => { effect.intensity = intensity; effect.threshold = threshold; effect.compression = compression; }, [effect, intensity, threshold, compression]);
+    return <primitive ref={ref} object={effect} />;
+  }
+);
+
+const ACESHuePreserve = forwardRef<ACESHuePreserveEffect, { exposure?: number; huePreserveStrength?: number; highlightThreshold?: number }>(
+  function ACESHuePreserve({ exposure = 1.0, huePreserveStrength = 0.7, highlightThreshold = 1.5 }, ref) {
+    const effect = useMemo(() => new ACESHuePreserveEffect({ exposure, huePreserveStrength, highlightThreshold }), []);
+    useMemo(() => { effect.exposure = exposure; effect.huePreserveStrength = huePreserveStrength; effect.highlightThreshold = highlightThreshold; }, [effect, exposure, huePreserveStrength, highlightThreshold]);
+    return <primitive ref={ref} object={effect} />;
+  }
+);
+
+const LuminanceFilmGrain = forwardRef<LuminanceFilmGrainEffect, { intensity?: number; luminanceResponse?: number }>(
+  function LuminanceFilmGrain({ intensity = 0.08, luminanceResponse = 0.3 }, ref) {
+    const effect = useMemo(() => new LuminanceFilmGrainEffect({ intensity, luminanceResponse }), []);
+    useMemo(() => { effect.intensity = intensity; effect.luminanceResponse = luminanceResponse; }, [effect, intensity, luminanceResponse]);
+    return <primitive ref={ref} object={effect} />;
+  }
+);
+
+const AtmosphericDepth = forwardRef<AtmosphericDepthEffect, { intensity?: number; desaturation?: number; blueShift?: number }>(
+  function AtmosphericDepth({ intensity = 0.3, desaturation = 0.5, blueShift = 0.6 }, ref) {
+    const effect = useMemo(() => new AtmosphericDepthEffect({ intensity, desaturation, blueShift }), []);
+    useMemo(() => { effect.intensity = intensity; effect.desaturation = desaturation; effect.blueShift = blueShift; }, [effect, intensity, desaturation, blueShift]);
     return <primitive ref={ref} object={effect} />;
   }
 );
