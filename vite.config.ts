@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+import { visualizer } from "rollup-plugin-visualizer";
 
 export default defineConfig(({ mode }) => ({
   server: {
@@ -91,6 +92,12 @@ export default defineConfig(({ mode }) => ({
           },
         ],
       },
+    }),
+    mode === "production" && visualizer({
+      filename: "dist/bundle-analysis.html",
+      gzipSize: true,
+      brotliSize: true,
+      template: "treemap",
     }),
   ].filter(Boolean),
   resolve: {
