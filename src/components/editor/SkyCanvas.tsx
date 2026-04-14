@@ -1775,7 +1775,7 @@ export default function SkyCanvas() {
       </WebGLErrorBoundary>
 
       {/* ═══ VIEWPORT BAR — Fixed top bar with view presets & actions ═══ */}
-      {!isMobile && <ViewportBar />}
+      <ViewportBar />
 
       <TelemetryBar />
       <GoogleTilesLoadingOverlay />
