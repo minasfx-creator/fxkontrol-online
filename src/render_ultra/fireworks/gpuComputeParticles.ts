@@ -1,26 +1,31 @@
 /**
- * FX KONTROL · GPU Compute Particle System
- * WebGPU WGSL compute shaders for particle simulation:
- *   - Velocity-Verlet position/velocity integration
- *   - Force accumulation (gravity, drag, wind, turbulence)
- *   - Back-to-front transparency sorting (bitonic sort)
- *   - CPU fallback when WebGPU unavailable
+ * FX KONTROL · GPU Compute Particle System — RECALIBRATED v2 (Camada 9)
+ * 7-stage pipeline with 3 compute dispatches:
+ *   1. Force accumulation (gravity, drag, wind, turbulence, buoyancy)
+ *   2. Combustion (energy, fuel, flicker) — via computeCombustion
+ *   3. Smoke turbulence (curl noise, buoyancy) — via computeSmokeTurbulence
+ *   + Velocity-Verlet integration + bitonic sort
  *
- * Particle struct (per-particle, 80 bytes, 16-byte aligned):
- *   position: vec3<f32> + pad
- *   velocity: vec3<f32> + pad
- *   force:    vec3<f32> + pad
- *   life, maxLife, temperature, mass: f32
- *   drag, seed, size, sortKey: f32
+ * Particle struct (per-particle, 96 bytes, 16-byte aligned):
+ *   position: vec3<f32> + pad     (0-16)
+ *   velocity: vec3<f32> + pad     (16-32)
+ *   force:    vec3<f32> + pad     (32-48)
+ *   life, maxLife, temperature, mass  (48-64)
+ *   drag, seed, size, sortKey         (64-80)
+ *   energy, fuel, _pad, _pad          (80-96)
  *
+ * Recalibrated values: drag ρ=1.18, buoyancy 3.2, turbulence 3.0
  * Zero-GC: all buffers pre-allocated, no per-frame allocations.
  */
+
+import { tickCombustionCPU, createCombustionData, type CombustionData } from './computeCombustion';
+import { tickSmokeTurbulenceCPU, DEFAULT_SMOKE_TURBULENCE } from './computeSmokeTurbulence';
 
 // ═══════════════════════════════════════════════════════════════
 // WGSL Compute Kernels (strings — compiled at runtime by WebGPU)
 // ═══════════════════════════════════════════════════════════════
 
-/** Particle memory layout — 80 bytes, 16-byte aligned */
+/** Particle memory layout — 96 bytes, 16-byte aligned */
 const PARTICLE_STRUCT_WGSL = /* wgsl */ `
 struct Particle {
   position: vec3<f32>,    // 0..12
@@ -37,6 +42,10 @@ struct Particle {
   seed: f32,              // 68..72
   size: f32,              // 72..76
   sortKey: f32,           // 76..80
+  energy: f32,            // 80..84
+  fuel: f32,              // 84..88
+  _pad3: f32,            // 88..92
+  _pad4: f32,            // 92..96
 };
 `;
 
@@ -79,7 +88,7 @@ fn turbulence(pos: vec3<f32>, time: f32, scale: f32) -> vec3<f32> {
   let dy = hash31(p + vec3<f32>(0.0, eps, 0.0)) - hash31(p - vec3<f32>(0.0, eps, 0.0));
   let dz = hash31(p + vec3<f32>(0.0, 0.0, eps)) - hash31(p - vec3<f32>(0.0, 0.0, eps));
   // Curl = cross(gradient_y_z, gradient_x_z, gradient_x_y)
-  return vec3<f32>(dz - dy, dx - dz, dy - dx) * 2.5;
+  return vec3<f32>(dz - dy, dx - dz, dy - dx) * 3.0;
 }
 
 @compute @workgroup_size(256)
@@ -99,7 +108,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   // ── 2. Aerodynamic drag (quadratic model: F = -½ρCdAv²) ──
   let speed = length(p.velocity);
   if (speed > 0.01) {
-    let dragMag = 0.5 * 1.225 * p.drag * p.size * p.size * speed * speed;
+    let dragMag = 0.5 * 1.18 * p.drag * p.size * p.size * speed * speed;
     f -= normalize(p.velocity) * dragMag;
   }
 
@@ -115,7 +124,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   f += turbulence(p.position, sim.time, 0.15) * turbStrength;
 
   // ── 5. Buoyancy (hot particles rise — proportional to temperature) ──
-  let buoyancy = max(0.0, (p.temperature - 800.0) / 5000.0) * 2.8;
+  let buoyancy = max(0.0, (p.temperature - 800.0) / 5000.0) * 3.2;
   f.y += buoyancy * p.mass;
 
   // ── 6. Thermal radiation cooling ──
