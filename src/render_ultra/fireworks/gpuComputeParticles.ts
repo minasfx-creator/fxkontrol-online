@@ -504,6 +504,8 @@ export class GPUComputeParticleSystem {
       d.seed[i] = Math.random() * 9999;
       d.size[i] = emitter.size + (Math.random() - 0.5) * emitter.sizeVariance;
       d.sortKey[i] = 0;
+      d.energy[i] = 1.0;
+      d.fuel[i] = 1.0 + Math.random() * 0.5;
     }
 
     this._activeCount = end;
@@ -611,15 +613,16 @@ export class GPUComputeParticleSystem {
     const d = this.cpuData;
 
     for (let i = 0; i < n; i++) {
-      const o = i * 20; // 80 bytes / 4 = 20 floats
+      const o = i * 24; // 96 bytes / 4 = 24 floats
       packed[o + 0] = d.posX[i]; packed[o + 1] = d.posY[i]; packed[o + 2] = d.posZ[i]; packed[o + 3] = 0;
       packed[o + 4] = d.velX[i]; packed[o + 5] = d.velY[i]; packed[o + 6] = d.velZ[i]; packed[o + 7] = 0;
       packed[o + 8] = d.forceX[i]; packed[o + 9] = d.forceY[i]; packed[o + 10] = d.forceZ[i]; packed[o + 11] = 0;
       packed[o + 12] = d.life[i]; packed[o + 13] = d.maxLife[i]; packed[o + 14] = d.temperature[i]; packed[o + 15] = d.mass[i];
       packed[o + 16] = d.drag[i]; packed[o + 17] = d.seed[i]; packed[o + 18] = d.size[i]; packed[o + 19] = d.sortKey[i];
+      packed[o + 20] = d.energy[i]; packed[o + 21] = d.fuel[i]; packed[o + 22] = 0; packed[o + 23] = 0;
     }
 
-    this._device.queue.writeBuffer(this._particleBuffer, 0, packed, 0, n * 20);
+    this._device.queue.writeBuffer(this._particleBuffer, 0, packed, 0, n * 24);
   }
 
   private _downloadParticleData() {
@@ -629,12 +632,13 @@ export class GPUComputeParticleSystem {
     const d = this.cpuData;
 
     for (let i = 0; i < n; i++) {
-      const o = i * 20;
+      const o = i * 24;
       d.posX[i] = mapped[o]; d.posY[i] = mapped[o + 1]; d.posZ[i] = mapped[o + 2];
       d.velX[i] = mapped[o + 4]; d.velY[i] = mapped[o + 5]; d.velZ[i] = mapped[o + 6];
       d.forceX[i] = mapped[o + 8]; d.forceY[i] = mapped[o + 9]; d.forceZ[i] = mapped[o + 10];
       d.life[i] = mapped[o + 12]; d.maxLife[i] = mapped[o + 13]; d.temperature[i] = mapped[o + 14]; d.mass[i] = mapped[o + 15];
       d.drag[i] = mapped[o + 16]; d.seed[i] = mapped[o + 17]; d.size[i] = mapped[o + 18]; d.sortKey[i] = mapped[o + 19];
+      d.energy[i] = mapped[o + 20]; d.fuel[i] = mapped[o + 21];
     }
   }
 
