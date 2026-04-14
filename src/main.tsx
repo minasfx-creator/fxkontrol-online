@@ -1,8 +1,12 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { initWebVitals } from "@/lib/webVitals";
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+// Initialize Web Vitals RUM instrumentation
+initWebVitals();
 
 // Dismiss splash screen after React mounts — use idle callback to let browser paint first
 const dismissSplash = () => (window as any).__splashDone?.();
