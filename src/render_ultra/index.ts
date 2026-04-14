@@ -136,3 +136,9 @@ export type { CinemaBurstConfig } from './fireworks/cinemaBurstShader';
 // GPU Compute Particle System (Camada 8)
 export { GPUComputeParticleSystem, createComputeParticleSystem } from './fireworks/gpuComputeParticles';
 export type { GPUParticleData, ComputeSimConfig } from './fireworks/gpuComputeParticles';
+
+// Compute Combustion + Smoke Turbulence (Camada 9)
+export { tickCombustionCPU, createCombustionData } from './fireworks/computeCombustion';
+export type { CombustionData } from './fireworks/computeCombustion';
+export { tickSmokeTurbulenceCPU, DEFAULT_SMOKE_TURBULENCE } from './fireworks/computeSmokeTurbulence';
+export type { SmokeTurbulenceConfig } from './fireworks/computeSmokeTurbulence';

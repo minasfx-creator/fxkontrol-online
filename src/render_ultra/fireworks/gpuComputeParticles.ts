@@ -1,26 +1,31 @@
 /**
- * FX KONTROL · GPU Compute Particle System
- * WebGPU WGSL compute shaders for particle simulation:
- *   - Velocity-Verlet position/velocity integration
- *   - Force accumulation (gravity, drag, wind, turbulence)
- *   - Back-to-front transparency sorting (bitonic sort)
- *   - CPU fallback when WebGPU unavailable
+ * FX KONTROL · GPU Compute Particle System — RECALIBRATED v2 (Camada 9)
+ * 7-stage pipeline with 3 compute dispatches:
+ *   1. Force accumulation (gravity, drag, wind, turbulence, buoyancy)
+ *   2. Combustion (energy, fuel, flicker) — via computeCombustion
+ *   3. Smoke turbulence (curl noise, buoyancy) — via computeSmokeTurbulence
+ *   + Velocity-Verlet integration + bitonic sort
  *
- * Particle struct (per-particle, 80 bytes, 16-byte aligned):
- *   position: vec3<f32> + pad
- *   velocity: vec3<f32> + pad
- *   force:    vec3<f32> + pad
- *   life, maxLife, temperature, mass: f32
- *   drag, seed, size, sortKey: f32
+ * Particle struct (per-particle, 96 bytes, 16-byte aligned):
+ *   position: vec3<f32> + pad     (0-16)
+ *   velocity: vec3<f32> + pad     (16-32)
+ *   force:    vec3<f32> + pad     (32-48)
+ *   life, maxLife, temperature, mass  (48-64)
+ *   drag, seed, size, sortKey         (64-80)
+ *   energy, fuel, _pad, _pad          (80-96)
  *
+ * Recalibrated values: drag ρ=1.18, buoyancy 3.2, turbulence 3.0
  * Zero-GC: all buffers pre-allocated, no per-frame allocations.
  */
+
+import { tickCombustionCPU, createCombustionData, type CombustionData } from './computeCombustion';
+import { tickSmokeTurbulenceCPU, DEFAULT_SMOKE_TURBULENCE } from './computeSmokeTurbulence';
 
 // ═══════════════════════════════════════════════════════════════
 // WGSL Compute Kernels (strings — compiled at runtime by WebGPU)
 // ═══════════════════════════════════════════════════════════════
 
-/** Particle memory layout — 80 bytes, 16-byte aligned */
+/** Particle memory layout — 96 bytes, 16-byte aligned */
 const PARTICLE_STRUCT_WGSL = /* wgsl */ `
 struct Particle {
   position: vec3<f32>,    // 0..12
@@ -37,6 +42,10 @@ struct Particle {
   seed: f32,              // 68..72
   size: f32,              // 72..76
   sortKey: f32,           // 76..80
+  energy: f32,            // 80..84
+  fuel: f32,              // 84..88
+  _pad3: f32,            // 88..92
+  _pad4: f32,            // 92..96
 };
 `;
 
@@ -79,7 +88,7 @@ fn turbulence(pos: vec3<f32>, time: f32, scale: f32) -> vec3<f32> {
   let dy = hash31(p + vec3<f32>(0.0, eps, 0.0)) - hash31(p - vec3<f32>(0.0, eps, 0.0));
   let dz = hash31(p + vec3<f32>(0.0, 0.0, eps)) - hash31(p - vec3<f32>(0.0, 0.0, eps));
   // Curl = cross(gradient_y_z, gradient_x_z, gradient_x_y)
-  return vec3<f32>(dz - dy, dx - dz, dy - dx) * 2.5;
+  return vec3<f32>(dz - dy, dx - dz, dy - dx) * 3.0;
 }
 
 @compute @workgroup_size(256)
@@ -99,7 +108,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   // ── 2. Aerodynamic drag (quadratic model: F = -½ρCdAv²) ──
   let speed = length(p.velocity);
   if (speed > 0.01) {
-    let dragMag = 0.5 * 1.225 * p.drag * p.size * p.size * speed * speed;
+    let dragMag = 0.5 * 1.18 * p.drag * p.size * p.size * speed * speed;
     f -= normalize(p.velocity) * dragMag;
   }
 
@@ -115,7 +124,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   f += turbulence(p.position, sim.time, 0.15) * turbStrength;
 
   // ── 5. Buoyancy (hot particles rise — proportional to temperature) ──
-  let buoyancy = max(0.0, (p.temperature - 800.0) / 5000.0) * 2.8;
+  let buoyancy = max(0.0, (p.temperature - 800.0) / 5000.0) * 3.2;
   f.y += buoyancy * p.mass;
 
   // ── 6. Thermal radiation cooling ──
@@ -247,6 +256,8 @@ export interface GPUParticleData {
   seed: Float32Array;
   size: Float32Array;
   sortKey: Float32Array;
+  energy: Float32Array;
+  fuel: Float32Array;
 }
 
 export interface ComputeSimConfig {
@@ -259,12 +270,12 @@ export interface ComputeSimConfig {
 const DEFAULT_SIM_CONFIG: ComputeSimConfig = {
   maxParticles: 8192,
   gravity: [0, -9.81, 0],
-  turbulenceScale: 1.2,
+  turbulenceScale: 1.4,
   enableSort: true,
 };
 
 /** Packed particle struct size in bytes (must match WGSL) */
-const PARTICLE_BYTES = 80;
+const PARTICLE_BYTES = 96;
 /** Simulation uniforms size */
 const SIM_UNIFORM_BYTES = 64;
 /** Sort uniforms size */
@@ -293,6 +304,8 @@ function cpuTurbulence(x: number, y: number, z: number, time: number, scale: num
 export class GPUComputeParticleSystem {
   readonly config: ComputeSimConfig;
   readonly cpuData: GPUParticleData;
+
+  readonly combustionData: CombustionData;
 
   private _gpuReady = false;
   private _device: GPUDevice | null = null;
@@ -330,7 +343,11 @@ export class GPUComputeParticleSystem {
       seed: new Float32Array(n),
       size: new Float32Array(n),
       sortKey: new Float32Array(n),
+      energy: new Float32Array(n),
+      fuel: new Float32Array(n),
     };
+
+    this.combustionData = createCombustionData(n);
   }
 
   get isGPU(): boolean { return this._gpuReady; }
@@ -487,6 +504,8 @@ export class GPUComputeParticleSystem {
       d.seed[i] = Math.random() * 9999;
       d.size[i] = emitter.size + (Math.random() - 0.5) * emitter.sizeVariance;
       d.sortKey[i] = 0;
+      d.energy[i] = 1.0;
+      d.fuel[i] = 1.0 + Math.random() * 0.5;
     }
 
     this._activeCount = end;
@@ -594,15 +613,16 @@ export class GPUComputeParticleSystem {
     const d = this.cpuData;
 
     for (let i = 0; i < n; i++) {
-      const o = i * 20; // 80 bytes / 4 = 20 floats
+      const o = i * 24; // 96 bytes / 4 = 24 floats
       packed[o + 0] = d.posX[i]; packed[o + 1] = d.posY[i]; packed[o + 2] = d.posZ[i]; packed[o + 3] = 0;
       packed[o + 4] = d.velX[i]; packed[o + 5] = d.velY[i]; packed[o + 6] = d.velZ[i]; packed[o + 7] = 0;
       packed[o + 8] = d.forceX[i]; packed[o + 9] = d.forceY[i]; packed[o + 10] = d.forceZ[i]; packed[o + 11] = 0;
       packed[o + 12] = d.life[i]; packed[o + 13] = d.maxLife[i]; packed[o + 14] = d.temperature[i]; packed[o + 15] = d.mass[i];
       packed[o + 16] = d.drag[i]; packed[o + 17] = d.seed[i]; packed[o + 18] = d.size[i]; packed[o + 19] = d.sortKey[i];
+      packed[o + 20] = d.energy[i]; packed[o + 21] = d.fuel[i]; packed[o + 22] = 0; packed[o + 23] = 0;
     }
 
-    this._device.queue.writeBuffer(this._particleBuffer, 0, packed, 0, n * 20);
+    this._device.queue.writeBuffer(this._particleBuffer, 0, packed, 0, n * 24);
   }
 
   private _downloadParticleData() {
@@ -612,12 +632,13 @@ export class GPUComputeParticleSystem {
     const d = this.cpuData;
 
     for (let i = 0; i < n; i++) {
-      const o = i * 20;
+      const o = i * 24;
       d.posX[i] = mapped[o]; d.posY[i] = mapped[o + 1]; d.posZ[i] = mapped[o + 2];
       d.velX[i] = mapped[o + 4]; d.velY[i] = mapped[o + 5]; d.velZ[i] = mapped[o + 6];
       d.forceX[i] = mapped[o + 8]; d.forceY[i] = mapped[o + 9]; d.forceZ[i] = mapped[o + 10];
       d.life[i] = mapped[o + 12]; d.maxLife[i] = mapped[o + 13]; d.temperature[i] = mapped[o + 14]; d.mass[i] = mapped[o + 15];
       d.drag[i] = mapped[o + 16]; d.seed[i] = mapped[o + 17]; d.size[i] = mapped[o + 18]; d.sortKey[i] = mapped[o + 19];
+      d.energy[i] = mapped[o + 20]; d.fuel[i] = mapped[o + 21];
     }
   }
 
@@ -647,7 +668,7 @@ export class GPUComputeParticleSystem {
       const vx = d.velX[i], vy = d.velY[i], vz = d.velZ[i];
       const speed = Math.sqrt(vx * vx + vy * vy + vz * vz);
       if (speed > 0.01) {
-        const dragMag = 0.5 * 1.225 * d.drag[i] * d.size[i] * d.size[i] * speed * speed;
+        const dragMag = 0.5 * 1.18 * d.drag[i] * d.size[i] * d.size[i] * speed * speed;
         const invSpeed = 1 / speed;
         fx -= vx * invSpeed * dragMag;
         fy -= vy * invSpeed * dragMag;
@@ -667,7 +688,7 @@ export class GPUComputeParticleSystem {
       fx += tx * ts; fy += ty * ts; fz += tz * ts;
 
       // Buoyancy
-      const buoy = Math.max(0, (d.temperature[i] - 800) / 5000) * 2.8;
+      const buoy = Math.max(0, (d.temperature[i] - 800) / 5000) * 3.2;
       fy += buoy * m;
 
       // Thermal cooling
@@ -715,6 +736,23 @@ export class GPUComputeParticleSystem {
       const dz = cam.z - d.posZ[i];
       d.sortKey[i] = dx * dx + dy * dy + dz * dz;
     }
+
+    // ── Pass 2b: Combustion (energy + fuel) ──
+    tickCombustionCPU(
+      n, dt, time,
+      d.life, d.maxLife, d.temperature, d.seed,
+      { energy: d.energy, fuel: d.fuel },
+    );
+
+    // ── Pass 2c: Smoke turbulence ──
+    tickSmokeTurbulenceCPU(
+      n, dt, time,
+      d.posX, d.posY, d.posZ,
+      d.velX, d.velY, d.velZ,
+      d.life, d.maxLife,
+      d.temperature,
+      DEFAULT_SMOKE_TURBULENCE,
+    );
 
     // ── Pass 3: Simple insertion sort for CPU (good for nearly-sorted) ──
     if (this.config.enableSort && n > 1) {
