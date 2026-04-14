@@ -11,9 +11,9 @@ const FLAGS = {
   /** Use facade hooks (useEditorUI, useTelemetryData) in migrated components */
   useEditorUIHooks: true,
   /** Velocity-Verlet integration + per-particle drag coefficients */
-  advanced_ballistics: false,
+  advanced_ballistics: true,
   /** Blackbody temperature→color mapping (Planckian locus) */
-  thermal_color_model: false,
+  thermal_color_model: true,
   /** Enhanced smoke with density fields, cluster breakup, buoyancy */
   smoke_volume_system: true,
   /** Layer-separated bloom pipeline with physical intensity */
