@@ -1,9 +1,10 @@
 /**
- * FX KONTROL · Cinema Fire/Spark Shader — RECALIBRATED
- * Physically-accurate Planckian locus blackbody, multi-harmonic flicker,
- * exponential energy decay with thermal coupling.
- * All values calibrated for cohesive pipeline integration:
- *   Fire → HDR(×8) → Bloom(threshold 1.2) → ACES → Final
+ * FX KONTROL · Cinema Fire/Spark Shader — RECALIBRATED v2 (Camada 9)
+ * Physically-accurate Planckian locus blackbody, 7-harmonic organic flicker,
+ * slower energy decay for longer trails, gradual thermal coupling.
+ *
+ * Calibrated for cohesive 7-stage pipeline:
+ *   Fire(HDR ×10) → Bloom(threshold 1.2) → ACES → Final
  */
 
 import * as THREE from 'three';
@@ -44,11 +45,9 @@ const FIRE_FRAGMENT = /* glsl */ `
   varying vec2 vUv;
 
   // ── Physically-accurate Planckian locus (CIE 1931 fitted) ──
-  // Based on Tanner Helland's fitted curves, valid 1000K–40000K
   vec3 blackbody(float tempK) {
     float t = clamp(tempK, 1000.0, 40000.0) / 100.0;
 
-    // Red channel
     float r;
     if (t <= 66.0) {
       r = 1.0;
@@ -56,7 +55,6 @@ const FIRE_FRAGMENT = /* glsl */ `
       r = 1.292936 * pow(t - 60.0, -0.1332047592);
     }
 
-    // Green channel
     float g;
     if (t <= 66.0) {
       g = 0.3900816 * log(t) - 0.6318414;
@@ -64,7 +62,6 @@ const FIRE_FRAGMENT = /* glsl */ `
       g = 1.129891 * pow(t - 60.0, -0.0755148492);
     }
 
-    // Blue channel
     float b;
     if (t <= 19.0) {
       b = 0.0;
@@ -77,14 +74,16 @@ const FIRE_FRAGMENT = /* glsl */ `
     return clamp(vec3(r, g, b), 0.0, 1.0);
   }
 
-  // ── Multi-harmonic organic flicker (5 frequencies) ──
+  // ── 7-harmonic organic flicker ──
   float flicker(float time, float seed) {
-    float f1 = sin(time * 17.3 + seed * 7.91) * 0.35;        // primary
-    float f2 = sin(time * 41.7 + seed * 19.3) * 0.18;        // high-freq sparkle
-    float f3 = sin(time * 7.1 + seed * 3.7) * 0.22;          // slow pulse
-    float f4 = sin(time * 97.0 + seed * 53.0) * 0.08;        // micro-glint
-    float f5 = sin(time * 2.3 + seed * 1.1) * 0.12;          // breathing
-    return 0.75 + uFlickerIntensity * (f1 + f2 + f3 + f4 + f5);
+    float f1 = sin(time * 17.3 + seed * 7.91) * 0.28;
+    float f2 = sin(time * 41.7 + seed * 19.3) * 0.15;
+    float f3 = sin(time * 7.1  + seed * 3.7)  * 0.20;
+    float f4 = sin(time * 97.0 + seed * 53.0) * 0.06;
+    float f5 = sin(time * 2.3  + seed * 1.1)  * 0.10;
+    float f6 = sin(time * 157.0 + seed * 89.0) * 0.04;
+    float f7 = sin(time * 0.7  + seed * 0.3)  * 0.08;
+    return 0.80 + uFlickerIntensity * (f1 + f2 + f3 + f4 + f5 + f6 + f7);
   }
 
   void main() {
@@ -92,32 +91,32 @@ const FIRE_FRAGMENT = /* glsl */ `
     float dist = length(center);
 
     // ── Particle shape: hot core + soft glow halo ──
-    float core = exp(-dist * dist * 65.0);       // tight white-hot center
-    float inner = exp(-dist * dist * 20.0);      // mid glow
-    float outer = exp(-dist * dist * 6.0);       // soft halo
+    float core = exp(-dist * dist * 65.0);
+    float inner = exp(-dist * dist * 20.0);
+    float outer = exp(-dist * dist * 6.0);
     float shape = core * 0.5 + inner * 0.35 + outer * 0.15;
 
-    // ── Energy: coupled exponential + linear decay ──
-    float expDecay = exp(-2.5 * vLifeRatio);
-    float linDecay = 1.0 - vLifeRatio * 0.4;
+    // ── Energy: slower decay for longer trails ──
+    float expDecay = exp(-2.0 * vLifeRatio);
+    float linDecay = 1.0 - vLifeRatio * 0.35;
     float intensity = expDecay * linDecay;
 
-    // ── Temperature evolution: Stefan-Boltzmann cooling curve ──
+    // ── Temperature evolution: gradual cooling ──
     float temp = mix(vTemperature, 800.0, pow(vLifeRatio, uThermalCoupling));
     vec3 color = blackbody(temp);
 
     // ── Flicker ──
     float flick = flicker(uTime, vSeed);
 
-    // ── HDR emissive (calibrated: peak ~8.0 for bloom threshold 1.2) ──
+    // ── HDR emissive (peak ×10 for bloom threshold 1.2) ──
     vec3 emissive = color * intensity * flick * uHDRMultiplier;
 
-    // ── White-hot core injection (only first 15% of life) ──
-    float coreWhite = smoothstep(0.15, 0.0, vLifeRatio) * core;
-    emissive = mix(emissive, vec3(1.15, 1.08, 0.98) * uHDRMultiplier * 1.2, coreWhite * 0.4);
+    // ── White-hot core injection (first 20% of life) ──
+    float coreWhite = smoothstep(0.20, 0.0, vLifeRatio) * core;
+    emissive = mix(emissive, vec3(1.15, 1.08, 0.98) * uHDRMultiplier * 1.3, coreWhite * 0.45);
 
-    // ── Ember tail: dying sparks shift to deep orange-red ──
-    float emberPhase = smoothstep(0.6, 1.0, vLifeRatio);
+    // ── Ember tail: onset at 55% life for smoother transition ──
+    float emberPhase = smoothstep(0.55, 1.0, vLifeRatio);
     vec3 emberColor = vec3(0.95, 0.3, 0.05) * intensity * 0.6;
     emissive = mix(emissive, emberColor, emberPhase * 0.5);
 
@@ -136,9 +135,9 @@ export interface CinemaFireConfig {
 }
 
 const DEFAULT_FIRE_CONFIG: CinemaFireConfig = {
-  hdrMultiplier: 8.0,           // calibrated for bloom threshold 1.2
-  flickerIntensity: 0.25,       // organic but not epileptic
-  thermalCoupling: 1.8,         // Stefan-Boltzmann cooling curve exponent
+  hdrMultiplier: 10.0,          // recalibrated: peak ×10 for bloom threshold 1.2
+  flickerIntensity: 0.28,       // slightly higher for 7-harmonic richness
+  thermalCoupling: 1.5,         // gradual cooling curve
 };
 
 /**
