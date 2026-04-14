@@ -51,3 +51,7 @@ export {
   VARIANCE_PROFILES, DEFAULT_VARIANCE,
 } from './AsymmetricDispersion';
 export type { VarianceProfile } from './AsymmetricDispersion';
+
+// QA Validation
+export { QAValidationEngine, qaEngine, computeSSIM, computeLPIPS, TemporalCoherenceTracker, QUALITY_CRITERIA } from './QAValidationEngine';
+export type { SSIMResult, LPIPSResult, TemporalCoherenceResult, QAReport, CriterionResult, FrameMetrics, EvaluationMode, GradeLevel } from './QAValidationEngine';
