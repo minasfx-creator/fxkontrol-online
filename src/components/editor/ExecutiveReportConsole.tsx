@@ -2,18 +2,21 @@
  * ExecutiveReportConsole — Auto-generates system status report.
  * Phase 5: Executive Consolidation.
  */
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { readinessEvaluator } from '@/core/hardware/ReadinessEvaluator';
 import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry';
 import { cn } from '@/lib/utils';
-import { FileBarChart, Download, Clock, Shield, Cpu, Activity, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { FileBarChart, Download, Clock, Shield, Cpu, Activity, AlertTriangle, CheckCircle2, XCircle, Save, FileText } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import jsPDF from 'jspdf';
 
 export default function ExecutiveReportConsole() {
+  const [saving, setSaving] = useState(false);
   const report = useMemo(() => {
     const sp = showPlanManager.current;
     const vResult = verificationEngine.run();
@@ -79,6 +82,115 @@ export default function ExecutiveReportConsole() {
     toast.success('Executive report exported');
   }, [report]);
 
+  const handleSaveToHistory = useCallback(async () => {
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error('Login required to save reports'); return; }
+      const { error } = await supabase.from('executive_reports' as never).insert({
+        user_id: user.id,
+        report_data: report as unknown as Record<string, unknown>,
+        show_name: report.show.name,
+        verification_level: report.verification.level,
+        readiness_status: report.readiness.status,
+      } as never);
+      if (error) throw error;
+      toast.success('Report saved to history');
+    } catch (e: unknown) {
+      toast.error(`Save failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    } finally {
+      setSaving(false);
+    }
+  }, [report]);
+
+  const handleExportPDF = useCallback(() => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const w = doc.internal.pageSize.getWidth();
+    let y = 15;
+    const lm = 15;
+
+    // Header
+    doc.setFillColor(15, 15, 20);
+    doc.rect(0, 0, w, 35, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(255, 165, 0);
+    doc.text('FX KONTROL — EXECUTIVE REPORT', lm, y + 5);
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text(new Date(report.timestamp).toLocaleString(), lm, y + 12);
+    doc.text(`Show: ${report.show.name}`, lm, y + 17);
+    y = 42;
+
+    const sectionTitle = (title: string) => {
+      doc.setFillColor(25, 25, 35);
+      doc.rect(lm - 2, y - 4, w - 2 * lm + 4, 7, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(255, 165, 0);
+      doc.text(title, lm, y);
+      y += 8;
+    };
+
+    const row = (label: string, value: string) => {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(180, 180, 180);
+      doc.text(label, lm, y);
+      doc.setTextColor(240, 240, 240);
+      doc.text(value, lm + 55, y);
+      y += 5;
+    };
+
+    // Show Summary
+    sectionTitle('SHOW SUMMARY');
+    row('Pyro Cues', String(report.show.pyroCues));
+    row('DMX Cues', String(report.show.dmxCues));
+    row('Drone Paths', String(report.show.dronePaths));
+    row('Duration', `${report.show.duration}s`);
+    y += 3;
+
+    // Verification
+    sectionTitle('VERIFICATION PASS');
+    row('Level', report.verification.level);
+    row('Checks Passed', `${report.verification.passed}/${report.verification.totalChecks}`);
+    report.verification.categories.forEach(c => row(`  ${c.name.toUpperCase()}`, `${c.passed}/${c.total}`));
+    y += 3;
+
+    // Readiness
+    sectionTitle('READINESS STATUS');
+    row('Status', report.readiness.status);
+    row('Mode', report.readiness.mode);
+    row('Allowed', report.readiness.allowedOps.join(', ') || 'None');
+    row('Blocked', report.readiness.blockedOps.join(', ') || 'None');
+    y += 3;
+
+    // Hardware
+    sectionTitle('HARDWARE HEALTH');
+    row('Online', String(report.hardware.online));
+    row('Degraded', String(report.hardware.degraded));
+    row('Offline', String(report.hardware.offline));
+    row('Errors / Warnings', `${report.hardware.errors} / ${report.hardware.warnings}`);
+    row('Simulated', `${report.hardware.simulatedCount}/${report.hardware.totalAdapters}`);
+    y += 3;
+
+    // Issues
+    sectionTitle(`OPEN ISSUES (${report.issues.errors + report.issues.warnings + report.issues.info})`);
+    report.issuesList.slice(0, 15).forEach(issue => {
+      if (y > 270) { doc.addPage(); y = 15; }
+      const prefix = issue.severity === 'error' ? '✗' : issue.severity === 'warning' ? '⚠' : 'ℹ';
+      row(`${prefix} [${issue.source}]`, issue.message);
+    });
+
+    // Footer
+    doc.setFontSize(6);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Generated by FX KONTROL — Phase 5 Executive Consolidation', lm, 290);
+
+    doc.save(`fxk-exec-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast.success('PDF report exported');
+  }, [report]);
+
   const levelColor = (level: string) => {
     if (level.includes('FIELD') || level.includes('HARDWARE_SYNC')) return 'text-emerald-400 bg-emerald-500/15';
     if (level.includes('EXPORT') || level.includes('LIVE')) return 'text-amber-400 bg-amber-500/15';
@@ -99,6 +211,12 @@ export default function ExecutiveReportConsole() {
             <Clock className="w-2.5 h-2.5 inline mr-1" />
             {new Date(report.timestamp).toLocaleString()}
           </span>
+          <Button variant="outline" size="sm" onClick={handleSaveToHistory} disabled={saving} className="h-6 text-[8px] font-mono gap-1">
+            <Save className="w-3 h-3" /> {saving ? 'SAVING...' : 'SAVE TO HISTORY'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportPDF} className="h-6 text-[8px] font-mono gap-1">
+            <FileText className="w-3 h-3" /> EXPORT PDF
+          </Button>
           <Button variant="outline" size="sm" onClick={handleExportJSON} className="h-6 text-[8px] font-mono gap-1">
             <Download className="w-3 h-3" /> EXPORT JSON
           </Button>
