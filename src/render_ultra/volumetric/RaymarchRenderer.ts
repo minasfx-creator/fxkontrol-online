@@ -155,7 +155,8 @@ export class RaymarchRenderer {
 
   uploadGrid(): void {
     const data = this._grid.packTextureData();
-    (this._texture.image as { data: Float32Array }).data.set(data);
+    const img = this._texture.image as unknown as { data: Float32Array };
+    img.data.set(data);
     this._texture.needsUpdate = true;
   }
 
