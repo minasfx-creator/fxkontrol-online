@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { temporalFlicker } from '@/lib/pyroNoise';
 import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/fireworks/particleChemistry';
+import { isEnabled } from '@/lib/featureFlags';
+import { createCinemaFireMaterial } from '@/render_ultra/fireworks/cinemaFireShader';
 
 const SPARK_COUNT = 150;
 
@@ -41,6 +43,9 @@ export default function SparkShower({
     return new THREE.Color(color);
   }, [color, isColdSpark, chemistry]);
 
+  const useCinemaFire = useMemo(() => isEnabled('cinematic_camera_response'), []);
+  const cinemaFireMat = useMemo(() => useCinemaFire ? createCinemaFireMaterial() : null, [useCinemaFire]);
+
   const posArr = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);
   const colArr = useMemo(() => new Float32Array(SPARK_COUNT * 3), []);
 
@@ -65,6 +70,11 @@ export default function SparkShower({
   useFrame(({ clock }) => {
     if (!pointsRef.current || progress < 0.1 || progress > 0.95) return;
     const time = clock.getElapsedTime();
+
+    // Update cinema fire material time uniform
+    if (cinemaFireMat) {
+      cinemaFireMat.uniforms.uTime.value = time;
+    }
 
     // Wind integration
     const { wind } = useProjectStore.getState();
@@ -130,15 +140,19 @@ export default function SparkShower({
           <bufferAttribute attach="attributes-position" args={[posArr, 3]} />
           <bufferAttribute attach="attributes-color" args={[colArr, 3]} />
         </bufferGeometry>
-        <pointsMaterial
-          size={0.04}
-          vertexColors
-          transparent
-          opacity={0.9}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          sizeAttenuation
-        />
+        {cinemaFireMat ? (
+          <primitive object={cinemaFireMat} attach="material" />
+        ) : (
+          <pointsMaterial
+            size={0.04}
+            vertexColors
+            transparent
+            opacity={0.9}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            sizeAttenuation
+          />
+        )}
       </points>
     </group>
   );

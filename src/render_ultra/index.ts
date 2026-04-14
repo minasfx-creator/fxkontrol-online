@@ -124,3 +124,11 @@ export type { FogConfig } from './environment/volumetricFog';
 
 // Lighting v2
 export type { HDRLightingConfig, BurstLightConfig } from './lighting/hdrLighting';
+
+// Cinema-Grade Shaders (Camada 7)
+export { createCinemaFireMaterial } from './fireworks/cinemaFireShader';
+export type { CinemaFireConfig } from './fireworks/cinemaFireShader';
+export { createCinemaSmokeMaterial } from './fireworks/cinemaSmokeShader';
+export type { CinemaSmokeConfig } from './fireworks/cinemaSmokeShader';
+export { createCinemaBurstMaterial } from './fireworks/cinemaBurstShader';
+export type { CinemaBurstConfig } from './fireworks/cinemaBurstShader';
