@@ -10,6 +10,20 @@ const FLAGS = {
   useNewEffectLibrary: true,
   /** Use facade hooks (useEditorUI, useTelemetryData) in migrated components */
   useEditorUIHooks: true,
+  /** Velocity-Verlet integration + per-particle drag coefficients */
+  advanced_ballistics: false,
+  /** Blackbody temperature→color mapping (Planckian locus) */
+  thermal_color_model: false,
+  /** Enhanced smoke with density fields, cluster breakup, buoyancy */
+  smoke_volume_system: false,
+  /** Layer-separated bloom pipeline with physical intensity */
+  hdr_bloom_physical: false,
+  /** Camera desaturation at peak luminance + highlight compression */
+  cinematic_camera_response: false,
+  /** Layered wind with vertical shear + micro-turbulence */
+  turbulence_field: false,
+  /** 2× particle budget for ultra-dense displays */
+  high_density_particles: false,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
