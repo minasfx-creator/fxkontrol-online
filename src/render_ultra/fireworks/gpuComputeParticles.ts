@@ -305,6 +305,8 @@ export class GPUComputeParticleSystem {
   readonly config: ComputeSimConfig;
   readonly cpuData: GPUParticleData;
 
+  readonly combustionData: CombustionData;
+
   private _gpuReady = false;
   private _device: GPUDevice | null = null;
   private _particleBuffer: GPUBuffer | null = null;
@@ -341,7 +343,11 @@ export class GPUComputeParticleSystem {
       seed: new Float32Array(n),
       size: new Float32Array(n),
       sortKey: new Float32Array(n),
+      energy: new Float32Array(n),
+      fuel: new Float32Array(n),
     };
+
+    this.combustionData = createCombustionData(n);
   }
 
   get isGPU(): boolean { return this._gpuReady; }
