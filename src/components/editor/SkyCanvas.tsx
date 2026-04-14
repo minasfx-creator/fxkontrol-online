@@ -120,6 +120,9 @@ import {
 // ═══ FXK Ultra Refinement — Adaptive Quality + Render Stability ═══
 import { useFXKUltraRefinement } from '@/hooks/useFXKUltraRefinement';
 import { getDeviceProfile } from '@/lib/deviceCapability';
+// ═══ QA Validation Engine — Camada 6 ═══
+import { qaEngine } from '@/core/pyrosim/QAValidationEngine';
+import type { FrameMetrics as QAFrameMetrics } from '@/core/pyrosim/QAValidationEngine';
 // ═══ Shared state (lightweight, no components) ═══
 import {
   getActiveBurstCount as _getActiveBurstCount,
@@ -323,6 +326,20 @@ function HardeningWatchdog() {
     pushFrameMetrics(fps, frameTimeMs, info.calls, info.triangles);
     watchdogTick(fps);
 
+    // ── QA Validation: feed per-frame metrics ──
+    const scan = getActiveBurstScan();
+    const qaMetrics: QAFrameMetrics = {
+      meanLuminance: scan ? Math.min(scan.luminance / 5.0, 1.0) : 0,
+      peakLuminance: scan ? Math.min(scan.luminance, 10.0) : 0,
+      meanVelocity: 0, // populated by sim core if available
+      particleCount: scan ? scan.activeBursts * 200 : 0,
+      frameTimeMs,
+      gcCollections: 0,
+      smokePuffCount: scan ? scan.activeBursts : 0,
+      meanSmokeOpacity: scan ? Math.min(scan.scatterMax, 1.0) : 0,
+    };
+    qaEngine.recordFrame(qaMetrics);
+
     // ── Scene transform integrity scan (throttled internally to every 60 frames)
     scanSceneTransforms(scene);
 
@@ -346,6 +363,36 @@ function HardeningWatchdog() {
       }
     }
   });
+
+  // ── QA Report hotkey: Ctrl+Shift+Q ──
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'Q') {
+        e.preventDefault();
+        const report = qaEngine.generateReport('continuous');
+        console.group(`%c[QA Report] Grade: ${report.overallGrade} (${(report.overallScore * 100).toFixed(1)}%)`, 'color: #0ff; font-weight: bold; font-size: 14px');
+        console.log(`Mode: ${report.mode} | Pass: ${report.passCount}/${report.passCount + report.failCount}`);
+        console.table(report.criteria.map(c => ({
+          Criterion: c.criterion.name,
+          Score: (c.score * 100).toFixed(1) + '%',
+          Grade: c.grade,
+          Pass: c.pass ? '✅' : '❌',
+          Notes: c.notes,
+        })));
+        if (report.temporal) {
+          console.log(`Temporal: meanΔ=${report.temporal.meanBrightnessDelta.toFixed(4)} maxFlicker=${report.temporal.maxFlicker.toFixed(4)} score=${report.temporal.score.toFixed(3)}`);
+        }
+        if (report.recommendations.length > 0) {
+          console.log('%cRecommendations:', 'color: #ff0; font-weight: bold');
+          report.recommendations.forEach(r => console.log(`  → ${r}`));
+        }
+        console.groupEnd();
+        pushLog(`[QA] Report: ${report.overallGrade} (${(report.overallScore * 100).toFixed(1)}%) — ${report.passCount}/${report.passCount + report.failCount} pass`, 'info');
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, []);
 
   return null;
 }
