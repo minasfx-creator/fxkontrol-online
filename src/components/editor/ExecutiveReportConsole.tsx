@@ -2,16 +2,18 @@
  * ExecutiveReportConsole — Auto-generates system status report.
  * Phase 5: Executive Consolidation.
  */
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { readinessEvaluator } from '@/core/hardware/ReadinessEvaluator';
 import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry';
 import { cn } from '@/lib/utils';
-import { FileBarChart, Download, Clock, Shield, Cpu, Activity, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { FileBarChart, Download, Clock, Shield, Cpu, Activity, AlertTriangle, CheckCircle2, XCircle, Save, FileText } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import jsPDF from 'jspdf';
 
 export default function ExecutiveReportConsole() {
   const report = useMemo(() => {
