@@ -360,7 +360,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   geoAnchorAlt: 0,
   tideOffset: 0,
   fieldViewMode: false,
-  google3DTilesEnabled: true,
+  google3DTilesEnabled: false,
   sceneImportRadius: 5000,
   googleTilesQuality: 'low',
   presentationMode: false,
