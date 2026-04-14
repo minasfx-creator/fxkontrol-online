@@ -1,5 +1,4 @@
 import { ZoomIn, ZoomOut, Compass, Layers, Focus } from 'lucide-react';
-import DraggableFloatingPanel from './DraggableFloatingPanel';
 import { useViewportStore } from '@/store/useViewportStore';
 
 export default function ViewportNavControls() {
@@ -15,11 +14,7 @@ export default function ViewportNavControls() {
   ];
 
   return (
-    <DraggableFloatingPanel
-      panelId="viewport-nav"
-      initialX={Math.round(window.innerWidth - 56)}
-      initialY={Math.round(window.innerHeight * 0.6)}
-    >
+    <div className="fixed right-4 bottom-1/3 z-30 bg-surface-1/80 backdrop-blur-sm rounded-xl border border-border/30 shadow-lg">
       <div className="flex flex-col gap-1 p-1">
         {NAV_BUTTONS.map(({ icon: Icon, title, action }) => (
           <button
@@ -33,6 +28,6 @@ export default function ViewportNavControls() {
           </button>
         ))}
       </div>
-    </DraggableFloatingPanel>
+    </div>
   );
 }
