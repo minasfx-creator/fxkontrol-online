@@ -91,7 +91,13 @@ export class FXKGPUEngine {
     }
 
     try {
-      this.ctx = await initWebGPU(canvas);
+      const result = await initWebGPU(canvas);
+      if (!result) {
+        console.warn('[FXKGPUEngine] WebGPU init returned null → fallback mode');
+        this._state = 'fallback';
+        return false;
+      }
+      this.ctx = result;
     } catch (e) {
       console.warn('[FXKGPUEngine] WebGPU init failed → fallback mode', e);
       this._state = 'fallback';
