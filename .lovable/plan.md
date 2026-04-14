@@ -1,75 +1,96 @@
 
 
-# Fix Camera Altitude, Terrain Fallback, and Ground Flickering
+# WGSL Raymarch Volumétrico — Plano de Integração
 
-## Root Causes Identified
+## Situação Atual
 
-1. **Camera sinks to ground**: `CAMERA_MIN_Y = 1` (1 meter) is far too low. OrbitControls `maxPolarAngle = 0.85π` allows near-horizontal views that orbit below terrain surface. No terrain-aware altitude clamping exists.
+O pipeline volumétrico existente em `src/render_ultra/volumetric/` opera inteiramente via **THREE.js WebGL** (Layer 4: `RaymarchRenderer.ts` usa `THREE.ShaderMaterial` com GLSL, `THREE.Data3DTexture`, e `THREE.BoxGeometry`). A simulação (Layer 3) roda na **CPU** com advecção semi-Lagrangiana e curl noise.
 
-2. **Brown terrain flickering**: The `GrassGround` shader blends `brownEarth`, `dryField`, and parcel colors at close range. When Google 3D Tiles are loading, both `StageGround` (line 1686) and `GoogleTilesLayer` (line 1687) can render simultaneously during transition, causing z-fighting between the flat ground plane at Y=-0.02 and incoming 3D tiles.
+O shader WGSL fornecido é um **raymarch nativo WebGPU** com fullscreen quad, ray reconstruction via `inv_view_proj`, e ACES integrado — incompatível com o renderer THREE.js atual mas complementar como upgrade de GPU nativa.
 
-3. **Z-fighting/depth issues**: `near=0.5` with `far=500000` creates massive depth range. Even with `logarithmicDepthBuffer`, ground surfaces at similar Y values fight for depth priority.
+## O que será criado
 
----
+### 1. Shader WGSL — `src/render_ultra/volumetric/shaders/fxk_voxel_raymarch.wgsl.ts`
 
-## Changes
+Exportar o shader como string TypeScript (padrão do projeto — sem suporte a import de `.wgsl` no Vite sem plugin). Inclui vertex fullscreen quad + fragment raymarch + ACES tonemap.
 
-### 1. Camera Altitude Lock — `SkyCanvas.tsx` CameraController
+### 2. WebGPU Raymarch Pipeline — `src/render_ultra/volumetric/WebGPURaymarchPipeline.ts`
 
-**In `clampToWorldBounds` (line 928-949):**
-- Raise `CAMERA_MIN_Y` from `1` to `5`
-- Add dynamic terrain-aware minimum: if Google 3D Tiles enabled, enforce minimum altitude of 5m above anchor altitude
-- Add damping when camera approaches minimum altitude (soft floor instead of hard clamp)
-- Log `[Camera] altitude clamped` when correction occurs
+Classe que encapsula:
+- Criação do `GPURenderPipeline` com o shader WGSL
+- Uniform buffers para `Camera` (inv_view_proj, position) e `VolumeParams` (step_size, density_scale, absorption, scattering, anisotropy, etc.)
+- `GPUTexture` 3D (`r32float` ou `rgba8unorm`) criada a partir do `VoxelGrid.textureData`
+- `GPUSampler` linear
+- Bind group layout com 4 bindings (camera uniform, params uniform, texture 3D, sampler)
+- Método `uploadGrid(grid: VoxelGrid)` — escreve `packTextureData()` no `GPUTexture` via `writeTexture`
+- Método `render(encoder: GPUCommandEncoder, targetView: GPUTextureView, camera: Camera)` — executa o render pass fullscreen
+- Método `updateParams(params: Partial<VolumeParams>)` — atualiza uniforms
+- Método `dispose()` — limpa recursos GPU
 
-**In OrbitControls (line 1124-1138):**
-- Change `maxPolarAngle` from `Math.PI * 0.85` to `Math.PI * 0.75` — prevents camera from orbiting too close to horizontal/below ground
-- Change `minDistance` from `0.5` to `2` — prevents zooming into ground
+Alinhamento WGSL dos structs:
+- `Camera`: 3× mat4x4 (192B) + vec4 position (16B) = **208 bytes**, alinhado a 16
+- `VolumeParams`: 2× f32 + i32 + 5× f32 + f32 pad = **32 bytes**, alinhado a 16
 
-### 2. Remove Ground Suction — `GeoCameraController.tsx`
+### 3. Integração no VolumetricCompositor — `VolumetricCompositor.ts`
 
-- In orbit mode (line 103-113), clamp `camera.position.y` to minimum 5m after computing orbit position
-- During flyTo animation, clamp intermediate positions to never go below minimum altitude
+Adicionar detecção de WebGPU no construtor:
+- Se `navigator.gpu` disponível e adapter/device obtidos → criar `WebGPURaymarchPipeline`
+- Senão → manter o renderer THREE.js GLSL existente (fallback automático, zero breaking changes)
 
-### 3. Terrain Fallback Control — `SkyCanvas.tsx` + `GroundSystem.tsx`
+No método `update()`, volumes com `useFallback === false` e WebGPU disponível usam o pipeline WGSL; caso contrário, continuam com `RaymarchRenderer.ts`.
 
-**In `SkyCanvas.tsx` (line 1686):**
-- When Google 3D Tiles are enabled AND tiles are initializing, hide the `StageGround` component entirely rather than showing it alongside tiles
-- Currently both render: `{!google3DTilesEnabled && <StageGround />}` + `{google3DTilesEnabled && <GoogleTilesLayer />}`. This is correct but the issue is during tile loading there's nothing visible — add a simple dark ground plane as ultra-minimal fallback only when tiles haven't loaded yet
+### 4. React Hook — `src/hooks/useWebGPUDevice.ts`
 
-**In `GoogleTilesEngine.tsx`:**
-- Track tile load state (has any root tile loaded)
-- Expose a `tilesReady` signal
-- Until tiles are ready, keep a minimal non-flickering dark plane visible
+Hook reutilizável que:
+- Requisita adapter + device uma única vez
+- Retorna `{ device, format, supported }` 
+- Trata `device.lost` com re-init
+- Memoiza para evitar múltiplas requisições
 
-### 4. Depth Fix — `SkyCanvas.tsx` Canvas config
+### 5. Atualização do VoxelVolumetricEffect — `VoxelVolumetricEffect.tsx`
 
-**Line 1662:**
-- Change `near` from `0.5` to `1.0`
-- Keep `logarithmicDepthBuffer: true` (essential for this scale)
+Passar o `GPUDevice` (se disponível) ao `VolumetricCompositor` para que ele possa criar o pipeline WGSL. Nenhuma mudança na API pública do componente.
 
-**In `GroundSystem.tsx` GrassGround (line 261):**
-- Add `polygonOffset`, `polygonOffsetFactor={1}`, `polygonOffsetUnits={1}` to the ground shader material to push it behind 3D tiles in depth buffer
-- Change ground Y position from `-0.02` to `-0.05` for more separation
+## Arquivos
 
-### 5. Camera Speed Control — `SkyCanvas.tsx` CameraController
+| Arquivo | Ação |
+|---------|------|
+| `src/render_ultra/volumetric/shaders/fxk_voxel_raymarch.wgsl.ts` | Criar — shader WGSL como string |
+| `src/render_ultra/volumetric/WebGPURaymarchPipeline.ts` | Criar — pipeline WebGPU completo |
+| `src/hooks/useWebGPUDevice.ts` | Criar — hook de inicialização GPU |
+| `src/render_ultra/volumetric/VolumetricCompositor.ts` | Editar — adicionar path WebGPU com fallback |
+| `src/components/editor/effects/VoxelVolumetricEffect.tsx` | Editar — injetar device GPU opcional |
+| `src/render_ultra/volumetric/index.ts` | Editar — exportar novos módulos |
+| `src/render_ultra/index.ts` | Editar — re-exportar WebGPU pipeline |
 
-- In `clampToWorldBounds`, add altitude-dependent damping: when camera Y < 20m, multiply movement speed by `Math.max(0.3, camera.position.y / 20)`
-- Prevent sudden altitude drops by clamping maximum Y-change per frame to 50m
+## Regras de Segurança
 
-### 6. Safe Mode Failsafe — `GoogleTilesEngine.tsx`
+- O renderer GLSL (`RaymarchRenderer.ts`) permanece **intacto** — é o fallback
+- `VolumetricCompositor` decide em runtime qual path usar
+- Nenhuma alteração em timeline, sync, core determinístico ou stores
+- Se WebGPU falhar em qualquer ponto (adapter null, device lost, pipeline error), o sistema degrada para GLSL automaticamente
 
-- If TilesRenderer throws during update, catch error, freeze last valid camera position, log `[Terrain] fallback blocked`
-- Never show brown fallback plane — prefer black/transparent over incorrect terrain
+## Detalhes Técnicos — Struct Alignment
 
----
+```text
+Camera (WGSL uniform):
+  offset  0: view        mat4x4<f32>  64B  align 16
+  offset 64: proj         mat4x4<f32>  64B  align 16
+  offset128: inv_view_proj mat4x4<f32> 64B  align 16
+  offset192: position     vec4<f32>    16B  align 16
+  total: 208 bytes
 
-## Files Modified
+VolumeParams (WGSL uniform):
+  offset 0: step_size     f32   4B
+  offset 4: max_steps     i32   4B
+  offset 8: density_scale f32   4B
+  offset12: emission_scale f32  4B
+  offset16: absorption    f32   4B
+  offset20: scattering    f32   4B
+  offset24: anisotropy    f32   4B
+  offset28: pad           f32   4B
+  total: 32 bytes
+```
 
-| File | Change |
-|------|--------|
-| `src/components/editor/SkyCanvas.tsx` | Raise CAMERA_MIN_Y to 5, maxPolarAngle to 0.75π, minDistance to 2, near to 1.0, add altitude damping and per-frame Y-delta clamp, add tilesReady-aware ground visibility |
-| `src/core/geo/GeoCameraController.tsx` | Clamp Y in orbit mode, clamp flyTo intermediates |
-| `src/core/geo/GoogleTilesEngine.tsx` | Add tilesReady state, wrap update() in try/catch, expose loading signal |
-| `src/components/editor/skycanvas/GroundSystem.tsx` | Add polygonOffset to GrassGround material, lower Y position to -0.05 |
+TypeScript writers usarão `Float32Array` + `Int32Array` view no offset correto para garantir match byte-a-byte.
 
