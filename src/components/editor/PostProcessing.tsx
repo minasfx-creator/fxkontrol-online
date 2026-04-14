@@ -248,9 +248,14 @@ class GodRaysEffect extends Effect {
 
 // ═══════════════════════════════════════════════════════════════════════
 // Color LUT Effect — Cinematic Color Grading Presets (UE5 Film Stock)
+// Expanded with physically calibrated pyro presets for Studio Mode
 // ═══════════════════════════════════════════════════════════════════════
 
-export type ColorGradingPreset = 'neutral' | 'day-for-night' | 'golden-hour' | 'cool-blue-night' | 'warm-sunset' | 'high-contrast';
+export type ColorGradingPreset =
+  | 'neutral' | 'day-for-night' | 'golden-hour' | 'cool-blue-night'
+  | 'warm-sunset' | 'high-contrast'
+  // Studio Mode presets (physically calibrated)
+  | 'pyro-night' | 'stadium-flood' | 'moonlit';
 
 const COLOR_LUT_FRAGMENT = `
 uniform float preset;
@@ -290,17 +295,78 @@ vec3 applyHighContrast(vec3 c) {
   float lum = dot(c, vec3(0.299, 0.587, 0.114));
   vec3 contrast = (c - 0.5) * 1.4 + 0.5;
   contrast = clamp(contrast, 0.0, 1.0);
-  // Slight teal-orange split toning
   vec3 shadows = vec3(0.0, 0.03, 0.05);
   vec3 highlights = vec3(0.05, 0.02, 0.0);
   contrast += mix(shadows, highlights, lum);
   return mix(c, contrast, mix_amount);
 }
 
+// ── Studio Mode: Pyro Night ──
+// Calibrated for fireworks against dark sky.
+// Preserves emission colors while enriching shadow depth.
+// Deep blacks, warm midtones, clean highlight rolloff.
+vec3 applyPyroNight(vec3 c) {
+  float lum = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  
+  // Crush blacks slightly for deep sky
+  vec3 result = c * mix(vec3(0.92, 0.90, 0.95), vec3(1.0), smoothstep(0.0, 0.15, lum));
+  
+  // Warm midtones (smoke and trails)
+  result += vec3(0.015, 0.008, 0.0) * smoothstep(0.05, 0.3, lum) * (1.0 - smoothstep(0.3, 0.8, lum));
+  
+  // Subtle blue tint in deep shadows (ambient sky)
+  result += vec3(0.0, 0.003, 0.01) * (1.0 - smoothstep(0.0, 0.1, lum));
+  
+  // Gentle highlight compression (prevent clinical white)
+  float highlightCompress = smoothstep(0.7, 1.0, lum);
+  result = mix(result, result * vec3(1.0, 0.97, 0.94), highlightCompress * 0.3);
+  
+  return mix(c, result, mix_amount);
+}
+
+// ── Studio Mode: Stadium Flood ──
+// Calibrated for shows with ambient stadium lighting.
+// Warmer overall, accounts for mixed light sources.
+vec3 applyStadiumFlood(vec3 c) {
+  float lum = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  
+  // Warm base (sodium vapor + LED flood)
+  vec3 result = c * vec3(1.06, 1.0, 0.88);
+  
+  // Orange shadow fill (reflected stadium light)
+  result += vec3(0.03, 0.015, 0.0) * (1.0 - smoothstep(0.0, 0.25, lum));
+  
+  // Slight desaturation in highlights (sensor response to mixed lighting)
+  float desat = smoothstep(0.6, 1.0, lum) * 0.15;
+  result = mix(result, vec3(lum * 1.02), desat);
+  
+  return mix(c, result, mix_amount);
+}
+
+// ── Studio Mode: Moonlit ──
+// Silver-blue palette for moonlit outdoor shows.
+// Cool shadows, silver highlights, high dynamic range feel.
+vec3 applyMoonlit(vec3 c) {
+  float lum = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  
+  // Cool silver shift
+  vec3 result = c * vec3(0.88, 0.93, 1.1);
+  
+  // Deep blue shadows
+  result += vec3(0.0, 0.01, 0.03) * (1.0 - smoothstep(0.0, 0.12, lum));
+  
+  // Silver highlights
+  float silver = smoothstep(0.5, 0.9, lum);
+  result = mix(result, vec3(lum * 1.05) * vec3(0.95, 0.97, 1.0), silver * 0.2);
+  
+  return mix(c, result, mix_amount);
+}
+
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   vec3 c = inputColor.rgb;
   
-  // preset: 0=neutral, 1=day-for-night, 2=golden-hour, 3=cool-blue, 4=warm-sunset, 5=high-contrast
+  // preset: 0=neutral, 1=day-for-night, 2=golden-hour, 3=cool-blue,
+  //         4=warm-sunset, 5=high-contrast, 6=pyro-night, 7=stadium-flood, 8=moonlit
   if (preset < 0.5) {
     c = applyNeutral(c);
   } else if (preset < 1.5) {
@@ -311,8 +377,14 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     c = applyCoolBlueNight(c);
   } else if (preset < 4.5) {
     c = applyWarmSunset(c);
-  } else {
+  } else if (preset < 5.5) {
     c = applyHighContrast(c);
+  } else if (preset < 6.5) {
+    c = applyPyroNight(c);
+  } else if (preset < 7.5) {
+    c = applyStadiumFlood(c);
+  } else {
+    c = applyMoonlit(c);
   }
   
   outputColor = vec4(c, inputColor.a);
@@ -326,6 +398,9 @@ const PRESET_INDEX: Record<ColorGradingPreset, number> = {
   'cool-blue-night': 3,
   'warm-sunset': 4,
   'high-contrast': 5,
+  'pyro-night': 6,
+  'stadium-flood': 7,
+  'moonlit': 8,
 };
 
 class ColorGradingEffect extends Effect {
