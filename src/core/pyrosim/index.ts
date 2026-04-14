@@ -18,7 +18,11 @@ export type { ParticlePool, DecayCurveType } from './ParticleStateModel';
 export { updateCombustion, applyFlicker, getBurnRate, BURN_RATE_TABLE } from './CombustionModel';
 
 // Thermal color
-export { blackbodyToRGB, fuelToTemperature, blendThermalChemical, temperatureToBrightness } from './ThermalColorModel';
+export {
+  blackbodyToRGB, fuelToTemperature, blendThermalChemical, temperatureToBrightness,
+  stefanBoltzmannEmission, energyDrivenTemperature, dissipateTemperature,
+  computeParticleThermalState, THERMAL_CONDUCTIVITY,
+} from './ThermalColorModel';
 
 // Wind
 export { WindFieldSystem, globalWindField } from './WindFieldSystem';
