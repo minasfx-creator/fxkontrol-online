@@ -1,13 +1,13 @@
 /**
  * ViewportBar — Fixed horizontal toolbar at top of 3D viewport.
- * Always visible on desktop. Provides standard view presets, quick actions, and toggles.
+ * Always visible. Collapses to compact icon-only mode on narrow screens.
+ * Provides standard view presets, quick actions, and toggles.
  */
 import { useViewportStore, type ViewPreset } from '@/store/useViewportStore';
 import { useProjectStore } from '@/store/useProjectStore';
-import { useSceneStore } from '@/store/useSceneStore';
 import {
-  Box, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Maximize2, Grid3x3,
-  Axis3D, Eye, Lightbulb, Mountain, Focus, ScanSearch, RotateCcw, Hexagon
+  Box, ArrowDown, ArrowLeft, ArrowRight, Hexagon,
+  Grid3x3, Axis3D, Lightbulb, Mountain, Focus, ScanSearch, RotateCcw, Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -15,10 +15,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 const VIEW_PRESETS: { id: ViewPreset; label: string; shortLabel: string; icon: typeof Box }[] = [
   { id: 'perspective', label: 'Perspective', shortLabel: 'Persp', icon: Hexagon },
   { id: 'top', label: 'Top', shortLabel: 'Top', icon: ArrowDown },
-  { id: 'front', label: 'Front', shortLabel: 'Front', icon: Box },
-  { id: 'back', label: 'Back', shortLabel: 'Back', icon: Box },
-  { id: 'left', label: 'Left', shortLabel: 'Left', icon: ArrowLeft },
-  { id: 'right', label: 'Right', shortLabel: 'Right', icon: ArrowRight },
+  { id: 'front', label: 'Front', shortLabel: 'Fnt', icon: Box },
+  { id: 'back', label: 'Back', shortLabel: 'Bck', icon: Box },
+  { id: 'left', label: 'Left', shortLabel: 'Lft', icon: ArrowLeft },
+  { id: 'right', label: 'Right', shortLabel: 'Rgt', icon: ArrowRight },
   { id: 'iso', label: 'Isometric', shortLabel: 'Iso', icon: Box },
 ];
 
@@ -34,7 +34,7 @@ function BarButton({
           <button
             onClick={onClick}
             className={cn(
-              'h-7 px-2 rounded-md text-[10px] font-medium flex items-center gap-1 transition-all border',
+              'h-7 px-1.5 sm:px-2 rounded-md text-[10px] font-medium flex items-center gap-1 transition-all border',
               active
                 ? 'bg-primary/15 text-primary border-primary/30'
                 : 'bg-transparent text-muted-foreground border-transparent hover:bg-muted/40 hover:text-foreground hover:border-border/30',
@@ -53,7 +53,7 @@ function BarButton({
 }
 
 function Separator() {
-  return <div className="w-px h-5 bg-border/30 mx-0.5" />;
+  return <div className="w-px h-5 bg-border/30 mx-0.5 hidden sm:block" />;
 }
 
 export default function ViewportBar() {
@@ -75,7 +75,6 @@ export default function ViewportBar() {
 
   const editorMode = useProjectStore(s => s.editorMode);
 
-  // Mode chip label
   const modeLabels: Record<string, string> = {
     select: 'Select',
     place: 'Add Pyro',
@@ -86,16 +85,16 @@ export default function ViewportBar() {
   const modeLabel = modeLabels[editorMode] || editorMode;
 
   return (
-    <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-0.5 bg-card/85 backdrop-blur-xl border border-border/25 rounded-xl px-2 py-1 shadow-lg select-none">
+    <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-0.5 bg-card/85 backdrop-blur-xl border border-border/25 rounded-xl px-1.5 sm:px-2 py-1 shadow-lg select-none max-w-[95vw] overflow-x-auto scrollbar-none">
       {/* Mode chip */}
       <div className={cn(
-        'h-6 px-2.5 rounded-md text-[9px] font-semibold uppercase tracking-wider flex items-center gap-1 mr-1',
+        'h-6 px-2 sm:px-2.5 rounded-md text-[9px] font-semibold uppercase tracking-wider flex items-center gap-1 mr-0.5 sm:mr-1 shrink-0',
         editorMode === 'select'
           ? 'bg-muted/40 text-muted-foreground'
           : 'bg-primary/20 text-primary border border-primary/30'
       )}>
         <Eye className="w-3 h-3" />
-        {modeLabel}
+        <span className="hidden sm:inline">{modeLabel}</span>
       </div>
 
       <Separator />
@@ -108,7 +107,8 @@ export default function ViewportBar() {
           onClick={() => setViewPreset(vp.id)}
           title={vp.label}
         >
-          {vp.shortLabel}
+          <span className="hidden sm:inline">{vp.shortLabel}</span>
+          <vp.icon className="w-3 h-3 sm:hidden" />
         </BarButton>
       ))}
 
@@ -120,7 +120,8 @@ export default function ViewportBar() {
         onClick={() => setProjection(projection === 'perspective' ? 'orthographic' : 'perspective')}
         title={`Projection: ${projection === 'perspective' ? 'Perspective' : 'Orthographic'}`}
       >
-        {projection === 'perspective' ? 'Persp' : 'Ortho'}
+        <span className="hidden sm:inline">{projection === 'perspective' ? 'Persp' : 'Ortho'}</span>
+        <Hexagon className="w-3 h-3 sm:hidden" />
       </BarButton>
 
       <Separator />
