@@ -7,6 +7,9 @@ import { forwardRef, useMemo } from 'react';
 import { isEnabled } from '@/lib/featureFlags';
 import { HalationEffect } from '@/render_ultra/postprocessing/halation';
 import { HighlightDesaturationEffect } from '@/render_ultra/postprocessing/highlightDesaturation';
+import { ACESHuePreserveEffect } from '@/render_ultra/postprocessing/acesHuePreserve';
+import { LuminanceFilmGrainEffect } from '@/render_ultra/postprocessing/luminanceFilmGrain';
+import { AtmosphericDepthEffect } from '@/render_ultra/postprocessing/atmosphericDepth';
 
 const TONE_MAP: Record<ViewTransform, ToneMappingMode> = {
   'aces-filmic': ToneMappingMode.ACES_FILMIC,
