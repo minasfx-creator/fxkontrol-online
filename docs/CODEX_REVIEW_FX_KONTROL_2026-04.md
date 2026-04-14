@@ -1,129 +1,109 @@
 # Codex Review — FX KONTROL (Abril de 2026)
 
-## Escopo da revisão
-Este documento revisa tecnicamente o relatório enviado, com foco em:
+> Patch: **minasfx-creator-patch-1**
 
-- consistência arquitetural;
-- plausibilidade de performance (Core Web Vitals);
-- plano de execução com risco controlado;
-- qualidade de métricas para acompanhamento executivo.
+## Objetivo
+Transformar o relatório executivo em um plano de execução **ancorado no estado real do repositório**, com prioridades mensuráveis para performance, SEO técnico e segurança operacional.
 
 ---
 
-## 1) Parecer executivo
-O relatório está **estrategicamente bem direcionado** (SSR/SSG para reduzir LCP, consolidação de estado, migração de partes críticas para WASM), mas mistura:
+## 1) Validação objetiva do estado atual (snapshot do código)
 
-1. hipóteses plausíveis;
-2. premissas não comprovadas por evidência do repositório;
-3. metas agressivas sem orçamento técnico explícito por etapa.
+Abaixo, os pontos que foram verificados diretamente no repositório durante esta revisão:
 
-Resultado: excelente visão macro, porém com lacunas para execução segura em produção.
+| Item | Evidência observada | Leitura de impacto |
+|---|---|---|
+| Escala do frontend | `src/` contém **633 arquivos** e **190.585 linhas** | Código suficientemente grande para sofrer com custo de bootstrap e hidratação. |
+| Escala total do monorepo | **762 arquivos** rastreados | Complexidade transversal entre UI, simulação e bridges de protocolo. |
+| Renderização atual | `src/main.tsx` usa apenas `createRoot(...)` | Confirma abordagem CSR pura na entrada; LCP pode depender fortemente de JS para pintar conteúdo crítico. |
+| Estado global | Há **17 stores Zustand** em `src/store/` | Fragmentação é real e tende a aumentar repaints/coordenação difícil entre domínios críticos. |
+| Protocolos/engines | Presença de módulos dedicados para Art-Net, sACN, OSC, DMX, MAVLink e hardening | Arquitetura já orientada a domínios industriais, apta para consolidação por slices de missão. |
 
----
-
-## 2) Pontos fortes do relatório
-
-- Identifica corretamente o gargalo de **Main Thread** como causa provável de Element Render Delay em SPA.
-- Propõe mudança de **CSR puro → pré-renderização + hidratação**, alinhada a boas práticas de LCP.
-- Introduz **fatiamento por domínios** de estado (slice stores), reduzindo acoplamento acidental.
-- Prioriza **acessibilidade semântica (WAI-ARIA)**, que melhora UX e robustez estrutural do HTML.
-- Conecta performance com SEO técnico e descoberta por motores modernos.
+### Conclusão do snapshot
+A tese central do relatório (gargalo de main thread + excesso de fragmentação + necessidade de renderização híbrida) é **coerente com o código atual**.
 
 ---
 
-## 3) Pontos críticos / riscos de execução
+## 2) Revisão crítica do relatório original
 
-### 3.1 Métricas absolutas sem fonte auditável
-Números como `177.930 LOC`, `670 arquivos`, `17 stores`, `2,9s de Element Render Delay`, `TTFB 0,136ms` e `score zero` exigem rastreabilidade (ferramenta, ambiente, data, URL do relatório de auditoria).
+## 2.1 Pontos fortes
+- Diagnóstico correto de que, em SPA/CSR, LCP pode atrasar mesmo com backend rápido.
+- Direção correta ao propor pré-renderização/hidratação para conteúdo crítico.
+- Boa visão de longo prazo ao conectar runtime (WASM/ECS) com confiabilidade operacional.
+- Inclui acessibilidade como requisito estrutural, não apenas "compliance de fim".
 
-**Risco:** decisões de engenharia baseadas em baseline inconsistente.
-
-### 3.2 "SSG para todas as rotas" pode ser inadequado
-Rotas operacionais em tempo real (telemetria, aprovação ao vivo, dashboards de missão) normalmente exigem hidratação pesada e dados voláteis.
-
-**Risco:** adotar SSG universal onde o modelo híbrido seria superior (SSG/SSR/CSR por tipo de rota).
-
-### 3.3 Migração ECS e WASM simultâneas
-ECS + pools + WASM + mudança de stores no mesmo ciclo aumenta risco sistêmico.
-
-**Risco:** regressão funcional difícil de isolar, aumento de MTTR.
-
-### 3.4 Meta "Zero-GC" literal
-Em runtime web, "zero GC" total é raramente alcançável; objetivo mais realista é **GC não-bloqueante no caminho crítico**.
-
-**Risco:** KPI inalcançável e desvio de foco.
-
-### 3.5 SEO de produto operacional vs site público
-Parte das recomendações SEO parece voltada ao site público, mas o texto mistura com painéis autenticados de controle.
-
-**Risco:** otimizações de indexação aplicadas em superfícies que não devem ser indexadas.
+## 2.2 Pontos que precisam de ajuste
+- **Métricas absolutas sem rastreabilidade pública** (ex.: score exato, TTFB ultrabaixo) devem ser tratadas como hipótese até anexar artefato de auditoria.
+- **"SSG para tudo"** é arriscado em rotas de telemetria e aprovação ao vivo; nessas rotas, o ganho vem de shell leve + ilhas interativas.
+- **ECS + WASM + merge de stores no mesmo ciclo** eleva risco de regressão e dificulta rollback cirúrgico.
+- Meta de **"Zero-GC" literal** deve virar meta operacional: "sem pausas GC no caminho crítico de comando".
 
 ---
 
-## 4) Correções de direção recomendadas
+## 3) Plano técnico recomendado (execução em camadas)
 
-### 4.1 Definir baseline reproduzível (D0)
-Antes de refatorar, congelar baseline por ambiente:
+## Fase A — Baseline e observabilidade (sem quebrar produção)
+1. Congelar baseline por rota crítica (LCP, INP, long tasks, JS bootstrap).
+2. Instrumentar RUM para Web Vitals p75 por classe de rota.
+3. Criar budgets no CI (bundle JS/CSS e regressão de LCP em rotas públicas).
 
-- Lighthouse (mobile/desktop) em URL e build fixos;
-- Web Vitals reais (RUM) com amostragem por rota;
-- Perfil de Main Thread (long tasks, scripting, rendering);
-- Bundle analysis (JS/CSS por rota).
+**Saída obrigatória:** painel único com baseline `D0` + owner por métrica.
 
-### 4.2 Arquitetura de renderização por classe de rota
-- **Marketing/docs públicas:** SSG + JSON-LD + OG tags no HTML inicial.
-- **Dashboards de operação em tempo real:** shell SSR/SSG mínimo + ilhas CSR.
-- **Ferramentas pesadas (editor 3D):** CSR progressivo com carregamento por prioridade.
+## Fase B — Renderização híbrida por categoria de rota
+- **Públicas (site/documentação):** SSG/SSR com metadados completos (canonical, OG, JSON-LD).
+- **Operação autenticada (NOC/HUD):** shell mínimo pré-renderizado + hidratação progressiva.
+- **Editor 3D pesado:** CSR progressivo com lazy boundaries e inicialização por prioridade.
 
-### 4.3 Sequenciamento de migração técnica
-1. Observabilidade e budgets de performance.
-2. Refatoração de stores (sem mudar engine).
-3. Otimização de bootstrap/hidratação.
-4. ECS no domínio VFX.
-5. WASM para kernels matemáticos mais caros.
+**Regra:** sem migração "big bang"; rollout por rota, com canary.
 
-### 4.4 KPIs realistas para Q3 2026
-- LCP p75 (público): `< 1,8s` desktop, `< 2,5s` mobile.
-- INP p75: `< 200ms`.
-- Long Task p95 no boot crítico: `< 120ms`.
-- JS inicial por rota pública: `< 220KB gzip`.
-- Erros de hidratação: `0` em produção.
+## Fase C — Estado e fluxo de dados
+Reduzir 17 stores para **4 macrodomínios**:
+1. `missionStore` (timeline, cue, execução);
+2. `hardwareSyncStore` (DMX/sACN/OSC/MAVLink/SMPTE);
+3. `simulationStore` (boids, vento, colisão, física);
+4. `uiWorkspaceStore` (dock layout, seleção, preferências).
 
----
+**Prática obrigatória:** seletores estáveis + shallow compare + eventos de domínio explícitos.
 
-## 5) Plano de execução em 90 dias
-
-### Fase 1 (Semanas 1–3): Instrumentação e higiene crítica
-- Inserir RUM de Web Vitals por rota.
-- Definir performance budgets no CI.
-- Remover bloqueios críticos (scripts síncronos, CSS excessivo inicial).
-
-### Fase 2 (Semanas 4–7): Renderização e estado
-- Implementar pré-renderização apenas em rotas públicas.
-- Introduzir hidratação progressiva por prioridade visual.
-- Consolidar stores por domínio com seletores estáveis e memoização.
-
-### Fase 3 (Semanas 8–10): Runtime pesado
-- Migrar VFX hot paths para ECS.
-- Introduzir object pools nos subsistemas de partículas.
-- Mover kernels numéricos para WASM com benchmark A/B.
-
-### Fase 4 (Semanas 11–13): Hardening e rollout
-- Canary release por coortes de tráfego.
-- SLOs de performance e regressão automática.
-- Playbook de rollback por domínio (render/state/engine).
+## Fase D — Runtime de alta densidade (ECS/WASM)
+- Migrar primeiro **hot paths mensuráveis** (partículas, colisão, integração numérica).
+- Aplicar object pooling e buffers reutilizáveis antes de portar tudo para WASM.
+- Só ampliar escopo WASM após benchmark A/B comprovar ganho com regressão zero funcional.
 
 ---
 
-## 6) Checklist de aceitação para diretoria técnica
+## 4) KPIs executivos revisados (Q3 2026)
 
-- [ ] Baseline auditável anexado (ferramentas + datas + ambiente).
-- [ ] Top 10 rotas classificadas por estratégia de renderização.
-- [ ] Orçamento de JS/CSS por rota formalizado em CI.
-- [ ] Plano de risco (rollback) por frente de migração.
-- [ ] KPIs com alvo p75/p95 e owner por indicador.
+| KPI | Alvo | Observação |
+|---|---|---|
+| LCP p75 (público) | `< 1,8s` desktop / `< 2,5s` mobile | Sem sacrificar precisão visual do painel inicial. |
+| INP p75 | `< 200ms` | Foco em comandos de operador (arm/disarm/kill). |
+| Long Task p95 no boot | `< 120ms` | Evitar congelamento perceptível no setup inicial. |
+| JS inicial rota pública | `< 220KB gzip` | Evitar parser/compile excessivo no first view. |
+| Erros de hidratação | `0` | Qualquer mismatch em produção é bloqueador de release. |
+| Jitter de sincronização | SLO definido por protocolo | Integrar métrica operacional com performance web. |
 
 ---
 
-## 7) Conclusão do review
-A direção do relatório é sólida e alinhada com arquitetura moderna para sistemas web complexos. Para transformar visão em resultado previsível, a prioridade deve ser: **métrica confiável, escopo incremental e rollout controlado**. Sem isso, o programa de otimização corre risco de alta complexidade com baixa rastreabilidade de ganho.
+## 5) Backlog imediato (2 semanas)
+
+1. Introduzir `hydrateRoot` em modo de produção para rotas elegíveis.
+2. Definir e documentar lista de rotas "SEO indexáveis" vs "operacionais privadas".
+3. Criar script de auditoria automática para detectar múltiplos `<h1>`, ausência de `aria-label` em botões ícone e falhas de landmark roles.
+4. Medir custo de inicialização das stores atuais e publicar ranking de "stores mais caras".
+5. Isolar módulos de inicialização de barramentos para execução sob demanda (evitar boot síncrono total).
+
+---
+
+## 6) Aceite mínimo para aprovar avanço de fase
+
+- [ ] Baseline D0 anexado com evidências reproduzíveis (comando, data, ambiente).
+- [ ] Matriz de rotas com estratégia de renderização aprovada (SSG/SSR/CSR).
+- [ ] SLO operacional e KPI web no mesmo dashboard de decisão.
+- [ ] Plano de rollback por frente (renderização, estado, engine).
+- [ ] Canary com critério explícito de promoção/aborto.
+
+---
+
+## 7) Parecer final
+O relatório original está **bem orientado estrategicamente**, mas precisava de uma camada de execução com rastreabilidade, escopo incremental e controle de risco por domínio. Com o plano acima, o FX KONTROL passa de "diagnóstico forte" para "programa executável", com ganhos prováveis em LCP, estabilidade de UI e previsibilidade operacional sem comprometer segurança de missão.
