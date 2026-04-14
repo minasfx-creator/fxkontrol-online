@@ -59,17 +59,21 @@ const INSTANCED_FRAGMENT = `
   varying vec2 vUv;
 
   void main() {
-    // Soft circular falloff
     vec2 center = vUv - 0.5;
     float dist = length(center);
-    float core = exp(-dist * dist * 50.0);
-    float glow = exp(-dist * dist * 12.0);
-    float alpha = (core * 0.8 + glow * 0.3) * vOpacity;
 
-    // Hot-core effect
-    vec3 col = mix(vColor, vec3(1.1, 1.0, 0.9), core * 0.25);
+    // Multi-layer falloff: tight core + mid glow + soft halo
+    float core = exp(-dist * dist * 65.0);
+    float mid = exp(-dist * dist * 18.0);
+    float outer = exp(-dist * dist * 5.0);
+    float alpha = (core * 0.5 + mid * 0.35 + outer * 0.15) * vOpacity;
 
-    float edge = 1.0 - smoothstep(0.42, 0.5, dist);
+    // Hot-core whitening (calibrated for bloom threshold 1.2)
+    vec3 col = mix(vColor, vec3(1.15, 1.08, 0.98), core * 0.35);
+    // Warm mid-glow tint
+    col = mix(col, vColor * 1.1, mid * 0.2);
+
+    float edge = 1.0 - smoothstep(0.42, 0.50, dist);
     gl_FragColor = vec4(col, alpha * edge);
   }
 `;
