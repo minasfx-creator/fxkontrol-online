@@ -739,6 +739,15 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         />
       )}
 
+      {/* ═══ Atmospheric Depth — Studio Mode: aerial perspective ═══ */}
+      {cameraResponseEnabled && (
+        <AtmosphericDepth
+          intensity={0.25}
+          desaturation={0.4}
+          blueShift={0.5}
+        />
+      )}
+
       {/* ═══ Heat Distortion — UE5 Niagara Heat Haze ═══ */}
       {s.heatDistortionEnabled && hasBursts && (
         <HeatDistortion intensity={0.3 + activeBurstCount * 0.1} />
@@ -762,12 +771,19 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         />
       )}
 
-      {/* Film grain — always active for cinematic texture */}
+      {/* ═══ Film Grain — Studio Mode: luminance-coupled / Legacy: flat noise ═══ */}
       {s.filmGrain > 0.01 && (
-        <Noise
-          blendFunction={BlendFunction.SOFT_LIGHT}
-          opacity={s.filmGrain * 0.4}
-        />
+        cameraResponseEnabled ? (
+          <LuminanceFilmGrain
+            intensity={s.filmGrain * 0.5}
+            luminanceResponse={0.35}
+          />
+        ) : (
+          <Noise
+            blendFunction={BlendFunction.SOFT_LIGHT}
+            opacity={s.filmGrain * 0.4}
+          />
+        )
       )}
 
       {/* ═══ Sharpening — UE5 r.Tonemapper.Sharpen ═══ */}
@@ -789,13 +805,22 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         />
       )}
 
-      {/* ═══ Color LUT — Cinematic Grading Presets ═══ */}
+      {/* ═══ Color LUT — Cinematic Grading Presets (incl. Studio Mode) ═══ */}
       {s.colorGradingPreset && s.colorGradingPreset !== 'neutral' && (
         <ColorGrading preset={s.colorGradingPreset as ColorGradingPreset} />
       )}
 
-      {/* Dynamic tone mapping */}
-      <ToneMapping mode={TONE_MAP[vt]} />
+      {/* ═══ Tone Mapping — Studio Mode: ACES Hue-Preserving / Legacy: standard ═══
+           Pipeline order per spec: Color Grading → Tone Mapping (final stage) */}
+      {cameraResponseEnabled ? (
+        <ACESHuePreserve
+          exposure={1.0}
+          huePreserveStrength={0.7}
+          highlightThreshold={1.5}
+        />
+      ) : (
+        <ToneMapping mode={TONE_MAP[vt]} />
+      )}
     </EffectComposer>
   );
 }
