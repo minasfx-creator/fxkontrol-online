@@ -48,6 +48,8 @@ import HUDCrosshairs from './HUDCrosshairs';
 import PlacingModeOverlay from './PlacingModeOverlay';
 import ARCompassHUD from './ARCompassHUD';
 import ARScanEffect from './ARScanEffect';
+import ViewportBar from './ViewportBar';
+import { useViewportStore } from '@/store/useViewportStore';
 
 import { cn } from '@/lib/utils';
 import {
