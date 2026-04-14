@@ -16,7 +16,7 @@ interface Props {
   fixtures: Fixture[];
   layoutPreset?: string;
   categoryOverrides?: Record<string, any>;
-  selected?: Set<string>;
+  selected?: Set<any>;
   [key: string]: any;
 }
 
