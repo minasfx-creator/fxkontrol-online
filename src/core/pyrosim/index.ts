@@ -43,3 +43,11 @@ export type { BurstImportance, LODBudget, QualityPreset } from './PyroLODManager
 // Calibration
 export { EFFECT_FAMILIES, computeValidationMetrics, getFamily, listFamilies } from './CalibrationLayer';
 export type { EffectFamilyProfile, ValidationMetrics } from './CalibrationLayer';
+
+// Asymmetric dispersion & variance
+export {
+  generateDispersionTensor, applyDispersionTensor,
+  applyVariance, applyAngularJitter,
+  VARIANCE_PROFILES, DEFAULT_VARIANCE,
+} from './AsymmetricDispersion';
+export type { VarianceProfile } from './AsymmetricDispersion';
