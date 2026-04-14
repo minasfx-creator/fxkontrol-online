@@ -5,6 +5,11 @@
  */
 
 import * as THREE from 'three';
+import { createCinemaFireMaterial } from './cinemaFireShader';
+import { createCinemaSmokeMaterial } from './cinemaSmokeShader';
+import { createCinemaBurstMaterial } from './cinemaBurstShader';
+
+export type ShaderMode = 'default' | 'cinema-fire' | 'cinema-smoke' | 'cinema-burst';
 
 const INSTANCED_VERTEX = `
   attribute vec3 instanceColor;
@@ -93,7 +98,9 @@ export class InstancedParticleRenderer {
   private maxParticles: number;
   private _dummy = new THREE.Object3D();
   private _activeCount = 0;
-
+  private _shaderMode: ShaderMode = 'default';
+  private _cinemaAttrs: Map<string, THREE.InstancedBufferAttribute> = new Map();
+  
   constructor(config?: Partial<InstancedParticleConfig>) {
     const cfg = { ...DEFAULT_CONFIG, ...config };
     this.maxParticles = cfg.maxParticles;
@@ -194,6 +201,89 @@ export class InstancedParticleRenderer {
 
   update(time: number) {
     this.material.uniforms.uTime.value = time;
+  }
+
+  /**
+   * Switch to a cinema-grade shader mode.
+   * When switching to cinema-fire, extra per-instance attributes are injected.
+   */
+  setShaderMode(mode: ShaderMode) {
+    if (mode === this._shaderMode) return;
+    this._shaderMode = mode;
+
+    // Dispose old material
+    this.material.dispose();
+
+    switch (mode) {
+      case 'cinema-fire':
+        this.material = createCinemaFireMaterial();
+        this._ensureCinemaFireAttrs();
+        break;
+      case 'cinema-smoke':
+        this.material = createCinemaSmokeMaterial();
+        break;
+      case 'cinema-burst':
+        this.material = createCinemaBurstMaterial();
+        break;
+      default:
+        this.material = this._createDefaultMaterial();
+        break;
+    }
+
+    this.mesh.material = this.material;
+  }
+
+  get shaderMode(): ShaderMode { return this._shaderMode; }
+
+  /** Write cinema-fire per-instance data (temperature, life, maxLife, seed). */
+  writeCinemaFireData(data: Array<{ temperature: number; life: number; maxLife: number; seed: number }>) {
+    const tempAttr = this._cinemaAttrs.get('aTemperature');
+    const lifeAttr = this._cinemaAttrs.get('aLife');
+    const maxLifeAttr = this._cinemaAttrs.get('aMaxLife');
+    const seedAttr = this._cinemaAttrs.get('aSeed');
+    if (!tempAttr || !lifeAttr || !maxLifeAttr || !seedAttr) return;
+
+    const count = Math.min(data.length, this.maxParticles);
+    for (let i = 0; i < count; i++) {
+      tempAttr.setX(i, data[i].temperature);
+      lifeAttr.setX(i, data[i].life);
+      maxLifeAttr.setX(i, data[i].maxLife);
+      seedAttr.setX(i, data[i].seed);
+    }
+    tempAttr.needsUpdate = true;
+    lifeAttr.needsUpdate = true;
+    maxLifeAttr.needsUpdate = true;
+    seedAttr.needsUpdate = true;
+  }
+
+  private _ensureCinemaFireAttrs() {
+    const geo = this.mesh.geometry;
+    const names = ['aTemperature', 'aLife', 'aMaxLife', 'aSeed'];
+    for (const name of names) {
+      if (!this._cinemaAttrs.has(name)) {
+        const arr = new Float32Array(this.maxParticles);
+        const attr = new THREE.InstancedBufferAttribute(arr, 1);
+        attr.setUsage(THREE.DynamicDrawUsage);
+        this._cinemaAttrs.set(name, attr);
+      }
+      geo.setAttribute(name, this._cinemaAttrs.get(name)!);
+    }
+  }
+
+  private _createDefaultMaterial(): THREE.ShaderMaterial {
+    return new THREE.ShaderMaterial({
+      vertexShader: INSTANCED_VERTEX,
+      fragmentShader: INSTANCED_FRAGMENT,
+      uniforms: {
+        uVelocityStretch: { value: 0.4 },
+        uTime: { value: 0 },
+      },
+      transparent: true,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+    });
   }
 
   dispose() {
