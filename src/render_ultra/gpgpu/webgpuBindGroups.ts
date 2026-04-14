@@ -57,3 +57,22 @@ export function createRenderBindGroup(
     ],
   });
 }
+
+/**
+ * Create smoke compute bind group: binding(0) = smoke uniform, binding(1) = particle storage.
+ */
+export function createSmokeComputeBindGroup(
+  device: GPUDevice,
+  layout: GPUBindGroupLayout,
+  uniformBuffer: GPUBuffer,
+  particleBuffer: GPUBuffer,
+): GPUBindGroup {
+  return device.createBindGroup({
+    layout,
+    label: 'smoke-compute-bind',
+    entries: [
+      { binding: 0, resource: { buffer: uniformBuffer } },
+      { binding: 1, resource: { buffer: particleBuffer } },
+    ],
+  });
+}

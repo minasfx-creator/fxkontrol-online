@@ -92,3 +92,19 @@ export function runSortPass(
   pass.dispatchWorkgroups(Math.ceil(particleCount / 256));
   pass.end();
 }
+
+/**
+ * Run smoke compute pass (curl noise advection).
+ */
+export function runSmokeComputePass(
+  encoder: GPUCommandEncoder,
+  pipeline: GPUComputePipeline,
+  bindGroup: GPUBindGroup,
+  particleCount: number,
+): void {
+  const pass = encoder.beginComputePass({ label: 'smoke-compute' });
+  pass.setPipeline(pipeline);
+  pass.setBindGroup(0, bindGroup);
+  pass.dispatchWorkgroups(Math.ceil(particleCount / 256));
+  pass.end();
+}

@@ -1,147 +1,33 @@
 /**
- * WebGPUParticleLoop — Full frame orchestrator.
+ * WebGPUParticleLoop — Full frame orchestrator (Camada 11).
  * 
  * Frame pipeline:
- *   SimParams → Uniform → Compute Pass → Swap → Fire Pass (clear) → Smoke Pass (load) → Present
+ *   SimParams → Compute Physics → Compute Smoke (curl noise) → Bitonic Sort
+ *   → Fire Render (ACES, clear) → Smoke Render (Beer-Lambert, load)
+ *   → Light Scatter (fullscreen, additive) → Present
  * 
- * Billboard quads generated in vertex shader.
- * Fire: additive blend. Smoke: alpha blend over fire.
+ * Billboard quads generated in vertex shader via storage buffer read.
+ * Fire: additive blend + ACES tonemapping. Smoke: alpha blend + Beer-Lambert.
+ * Light scatter: fullscreen triangle, low-intensity additive warming.
  */
 
 import type { WebGPUContext } from './webgpuDevice';
-import { createParticleBuffers, createSimUniformBuffer, createSortUniformBuffer, ParticlePingPong, SIM_UNIFORM_BYTES, SORT_UNIFORM_BYTES } from './webgpuBuffers';
-import { createComputeBindGroup, createSortBindGroup } from './webgpuBindGroups';
-import { createComputePipeline, createSortPipeline, createFireRenderPipeline, createSmokeRenderPipeline } from './webgpuPipelines';
-import { runComputePass, runFireRenderPass, runSmokeRenderPass, runSortPass } from './webgpuPasses';
-
-// ── WGSL Billboard Render Shader ──────────────────────────────
-const RENDER_WGSL = /* wgsl */ `
-struct CameraUniforms {
-  viewProj: mat4x4<f32>,
-  camRight: vec3<f32>,
-  _pad0: f32,
-  camUp: vec3<f32>,
-  _pad1: f32,
-};
-
-@group(0) @binding(0) var<uniform> camera: CameraUniforms;
-
-struct VSInput {
-  @location(0) pos: vec4<f32>,    // xyz = world, w = age
-  @location(1) vel: vec4<f32>,    // xyz = velocity, w = life
-  @location(2) color: vec4<f32>,  // rgb, brightness
-  @location(3) misc: vec4<f32>,   // temp, size, smoke, type
-};
-
-struct VSOutput {
-  @builtin(position) clipPos: vec4<f32>,
-  @location(0) vColor: vec4<f32>,
-  @location(1) vUV: vec2<f32>,
-  @location(2) vSmoke: f32,
-  @location(3) vAlive: f32,
-};
-
-// Billboard quad offsets (2 triangles, 6 vertices)
-const QUAD_POS = array<vec2<f32>, 6>(
-  vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(-1.0, 1.0),
-  vec2(-1.0, 1.0),  vec2(1.0, -1.0), vec2(1.0, 1.0),
-);
-const QUAD_UV = array<vec2<f32>, 6>(
-  vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(0.0, 1.0),
-  vec2(0.0, 1.0), vec2(1.0, 0.0), vec2(1.0, 1.0),
-);
-
-fn saturate(v: f32) -> f32 { return clamp(v, 0.0, 1.0); }
-
-// ── Fire vertex/fragment ──
-@vertex
-fn vs_fire(@builtin(vertex_index) vid: u32, input: VSInput) -> VSOutput {
-  var out: VSOutput;
-  let age = input.pos.w;
-  let life = max(input.vel.w, 0.0001);
-  let alive = saturate(1.0 - age / life);
-
-  // Kill dead particles
-  if (alive <= 0.0) {
-    out.clipPos = vec4(0.0, 0.0, -2.0, 1.0);
-    return out;
-  }
-
-  let size = input.misc.y * (0.5 + 0.5 * alive);
-  let offset = QUAD_POS[vid];
-  let worldPos = input.pos.xyz
-    + camera.camRight * offset.x * size
-    + camera.camUp * offset.y * size;
-
-  out.clipPos = camera.viewProj * vec4(worldPos, 1.0);
-  out.vColor = vec4(input.color.rgb * input.color.a, input.color.a);
-  out.vUV = QUAD_UV[vid];
-  out.vSmoke = input.misc.z;
-  out.vAlive = alive;
-  return out;
-}
-
-@fragment
-fn fs_fire(input: VSOutput) -> @location(0) vec4<f32> {
-  let d = length(input.vUV - vec2(0.5));
-  let falloff = saturate(1.0 - d * 2.0);
-  let glow = falloff * falloff * falloff; // cubic falloff for soft glow
-
-  // Only render fire particles (low smoke)
-  if (input.vSmoke > 0.5) {
-    discard;
-  }
-
-  let intensity = glow * input.vAlive;
-  return vec4(input.vColor.rgb * intensity * 10.0, intensity);
-}
-
-// ── Smoke vertex/fragment ──
-@vertex
-fn vs_smoke(@builtin(vertex_index) vid: u32, input: VSInput) -> VSOutput {
-  var out: VSOutput;
-  let age = input.pos.w;
-  let life = max(input.vel.w, 0.0001);
-  let alive = saturate(1.0 - age / life);
-
-  if (alive <= 0.0) {
-    out.clipPos = vec4(0.0, 0.0, -2.0, 1.0);
-    return out;
-  }
-
-  // Smoke grows larger over time
-  let size = input.misc.y * (1.0 + 2.0 * (1.0 - alive));
-  let offset = QUAD_POS[vid];
-  let worldPos = input.pos.xyz
-    + camera.camRight * offset.x * size
-    + camera.camUp * offset.y * size;
-
-  out.clipPos = camera.viewProj * vec4(worldPos, 1.0);
-  out.vColor = vec4(0.12, 0.10, 0.08, 1.0); // dark smoke base
-  out.vUV = QUAD_UV[vid];
-  out.vSmoke = input.misc.z;
-  out.vAlive = alive;
-  return out;
-}
-
-@fragment
-fn fs_smoke(input: VSOutput) -> @location(0) vec4<f32> {
-  // Only render smoke particles
-  if (input.vSmoke < 0.3) {
-    discard;
-  }
-
-  let d = length(input.vUV - vec2(0.5));
-  let falloff = saturate(1.0 - d * 2.0);
-  let soft = falloff * falloff;
-
-  // Beer-Lambert absorption
-  let density = input.vSmoke * 0.92;
-  let alpha = soft * density * input.vAlive * 0.75;
-
-  return vec4(input.vColor.rgb, alpha);
-}
-`;
+import {
+  createParticleBuffers, createSimUniformBuffer, createSortUniformBuffer,
+  createSmokeUniformBuffer, ParticlePingPong,
+  SIM_UNIFORM_BYTES, SORT_UNIFORM_BYTES, SMOKE_UNIFORM_BYTES,
+} from './webgpuBuffers';
+import { createComputeBindGroup, createSortBindGroup, createSmokeComputeBindGroup } from './webgpuBindGroups';
+import { createComputePipeline, createSortPipeline, createSmokeComputePipeline, createFireRenderPipeline, createSmokeRenderPipeline } from './webgpuPipelines';
+import { runComputePass, runFireRenderPass, runSmokeRenderPass, runSortPass, runSmokeComputePass } from './webgpuPasses';
+import {
+  createLightScatterPipeline, createLightScatterBindGroup,
+  createLightScatterUniformBuffer, runLightScatterPass,
+  LIGHT_SCATTER_UNIFORM_BYTES,
+} from './webgpuLightScatter';
+import { RENDER_WGSL } from './wgsl/renderShaders.wgsl';
+import { SMOKE_COMPUTE_WGSL } from './wgsl/smokeCompute.wgsl';
+import { LIGHT_SCATTER_WGSL } from './wgsl/lightScatter.wgsl';
 
 // ── Camera uniform size: mat4 + vec3+pad + vec3+pad = 64+16+16 = 96 bytes (round to 128 for alignment) ──
 const CAMERA_UNIFORM_BYTES = 128;
@@ -149,11 +35,15 @@ const CAMERA_UNIFORM_BYTES = 128;
 export interface LoopConfig {
   maxParticles: number;
   enableSort: boolean;
+  enableSmokeSim: boolean;
+  enableLightScatter: boolean;
 }
 
 const DEFAULT_LOOP_CONFIG: LoopConfig = {
   maxParticles: 8192,
   enableSort: true,
+  enableSmokeSim: true,
+  enableLightScatter: true,
 };
 
 export class WebGPUParticleLoop {
@@ -162,24 +52,33 @@ export class WebGPUParticleLoop {
   private pingPong: ParticlePingPong;
   private simUniform: GPUBuffer;
   private sortUniform: GPUBuffer;
+  private smokeUniform: GPUBuffer;
   private cameraUniform: GPUBuffer;
+  private lightScatterUniform: GPUBuffer;
 
   private computePipeline: GPUComputePipeline | null = null;
   private sortPipeline: GPUComputePipeline | null = null;
+  private smokeComputePipeline: GPUComputePipeline | null = null;
   private firePipeline: GPURenderPipeline | null = null;
   private smokePipeline: GPURenderPipeline | null = null;
+  private lightScatterPipeline: GPURenderPipeline | null = null;
 
   private computeBindA: GPUBindGroup | null = null;
   private computeBindB: GPUBindGroup | null = null;
   private sortBindA: GPUBindGroup | null = null;
   private sortBindB: GPUBindGroup | null = null;
+  private smokeComputeBindA: GPUBindGroup | null = null;
+  private smokeComputeBindB: GPUBindGroup | null = null;
   private fireBindGroup: GPUBindGroup | null = null;
   private smokeBindGroup: GPUBindGroup | null = null;
+  private lightScatterBindGroup: GPUBindGroup | null = null;
 
   // Pre-allocated staging (zero-GC)
   private _simData = new Float32Array(SIM_UNIFORM_BYTES / 4);
   private _sortData = new Uint32Array(SORT_UNIFORM_BYTES / 4);
+  private _smokeData = new Float32Array(SMOKE_UNIFORM_BYTES / 4);
   private _cameraData = new Float32Array(CAMERA_UNIFORM_BYTES / 4);
+  private _lightScatterData = new Float32Array(LIGHT_SCATTER_UNIFORM_BYTES / 4);
 
   private _animId = 0;
   private _lastTime = 0;
@@ -195,21 +94,31 @@ export class WebGPUParticleLoop {
     this.pingPong = new ParticlePingPong(bufPair);
     this.simUniform = createSimUniformBuffer(dev);
     this.sortUniform = createSortUniformBuffer(dev);
+    this.smokeUniform = createSmokeUniformBuffer(dev);
+    this.lightScatterUniform = createLightScatterUniformBuffer(dev);
     this.cameraUniform = dev.createBuffer({
       size: CAMERA_UNIFORM_BYTES,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       label: 'camera-uniform',
     });
 
-    // Pipelines
+    // ── Compute Pipelines ──
     this.computePipeline = createComputePipeline(dev, computeWGSL);
     if (this.config.enableSort) {
       this.sortPipeline = createSortPipeline(dev, sortWGSL);
     }
+    if (this.config.enableSmokeSim) {
+      this.smokeComputePipeline = createSmokeComputePipeline(dev, SMOKE_COMPUTE_WGSL);
+    }
+
+    // ── Render Pipelines ──
     this.firePipeline = createFireRenderPipeline(dev, ctx.format, RENDER_WGSL);
     this.smokePipeline = createSmokeRenderPipeline(dev, ctx.format, RENDER_WGSL);
+    if (this.config.enableLightScatter) {
+      this.lightScatterPipeline = createLightScatterPipeline(dev, ctx.format, LIGHT_SCATTER_WGSL);
+    }
 
-    // Bind groups for both ping-pong states
+    // ── Bind Groups (both ping-pong states) ──
     const computeLayout = this.computePipeline.getBindGroupLayout(0);
     this.computeBindA = createComputeBindGroup(dev, computeLayout, this.simUniform, bufPair.bufferA);
     this.computeBindB = createComputeBindGroup(dev, computeLayout, this.simUniform, bufPair.bufferB);
@@ -220,18 +129,35 @@ export class WebGPUParticleLoop {
       this.sortBindB = createSortBindGroup(dev, sortLayout, bufPair.bufferB, this.sortUniform);
     }
 
-    // Render bind groups
+    if (this.smokeComputePipeline) {
+      const smokeLayout = this.smokeComputePipeline.getBindGroupLayout(0);
+      this.smokeComputeBindA = createSmokeComputeBindGroup(dev, smokeLayout, this.smokeUniform, bufPair.bufferA);
+      this.smokeComputeBindB = createSmokeComputeBindGroup(dev, smokeLayout, this.smokeUniform, bufPair.bufferB);
+    }
+
+    // Render bind groups (camera + particle storage)
     const fireLayout = this.firePipeline.getBindGroupLayout(0);
     this.fireBindGroup = dev.createBindGroup({
       layout: fireLayout,
-      entries: [{ binding: 0, resource: { buffer: this.cameraUniform } }],
+      entries: [
+        { binding: 0, resource: { buffer: this.cameraUniform } },
+        { binding: 1, resource: { buffer: bufPair.bufferA } },
+      ],
     });
 
     const smokeLayout = this.smokePipeline.getBindGroupLayout(0);
     this.smokeBindGroup = dev.createBindGroup({
       layout: smokeLayout,
-      entries: [{ binding: 0, resource: { buffer: this.cameraUniform } }],
+      entries: [
+        { binding: 0, resource: { buffer: this.cameraUniform } },
+        { binding: 1, resource: { buffer: bufPair.bufferA } },
+      ],
     });
+
+    if (this.lightScatterPipeline) {
+      const lsLayout = this.lightScatterPipeline.getBindGroupLayout(0);
+      this.lightScatterBindGroup = createLightScatterBindGroup(dev, lsLayout, this.lightScatterUniform);
+    }
   }
 
   get activeCount(): number { return this._activeCount; }
@@ -250,14 +176,31 @@ export class WebGPUParticleLoop {
    */
   updateCamera(viewProj: Float32Array, camRight: [number, number, number], camUp: [number, number, number]): void {
     const d = this._cameraData;
-    d.set(viewProj, 0); // mat4x4 at offset 0 (64 bytes = 16 floats)
+    d.set(viewProj, 0);
     d[16] = camRight[0]; d[17] = camRight[1]; d[18] = camRight[2]; d[19] = 0;
     d[20] = camUp[0]; d[21] = camUp[1]; d[22] = camUp[2]; d[23] = 0;
     this.ctx.device.queue.writeBuffer(this.cameraUniform, 0, d);
   }
 
   /**
-   * Execute one frame: compute → sort → fire render → smoke render.
+   * Update light scatter params (up to 4 screen-space light positions).
+   */
+  updateLightScatter(
+    intensity: number, falloff: number, radius: number, time: number,
+    lights: Array<{ x: number; y: number; intensity: number; radius: number }>,
+  ): void {
+    const d = this._lightScatterData;
+    d[0] = intensity; d[1] = falloff; d[2] = radius; d[3] = time;
+    for (let i = 0; i < 4; i++) {
+      const l = lights[i] || { x: 0, y: 0, intensity: 0, radius: 0 };
+      const off = 4 + i * 4;
+      d[off] = l.x; d[off + 1] = l.y; d[off + 2] = l.intensity; d[off + 3] = l.radius;
+    }
+    this.ctx.device.queue.writeBuffer(this.lightScatterUniform, 0, d);
+  }
+
+  /**
+   * Execute one frame: compute → smoke → sort → fire → smoke render → light scatter → present.
    */
   frame(dt: number, time: number, wind: { x: number; y: number; z: number }, viewport?: { width: number; height: number }): void {
     if (this._activeCount === 0) return;
@@ -267,28 +210,42 @@ export class WebGPUParticleLoop {
 
     // Write sim params
     const u = this._simData;
-    u[0] = Math.min(dt, 0.05); // cap dt
+    u[0] = Math.min(dt, 0.05);
     u[1] = time;
-    u[2] = 9.81; // gravity
+    u[2] = 9.81;
     u[3] = wind.x; u[4] = wind.y; u[5] = wind.z;
-    u[6] = 0.08; // drag
-    u[7] = 0.15; // smoke_bias
-    u[8] = 1.0;  // fire_intensity
-    u[9] = 0;
+    u[6] = 0.08; u[7] = 0.15; u[8] = 1.0; u[9] = 0;
     u[10] = viewport?.width ?? 1920;
     u[11] = viewport?.height ?? 1080;
     dev.queue.writeBuffer(this.simUniform, 0, u);
 
+    // Write smoke params
+    if (this.config.enableSmokeSim) {
+      const s = this._smokeData;
+      s[0] = Math.min(dt, 0.05); // dt
+      s[1] = time;               // time
+      s[2] = wind.x; s[3] = wind.y; s[4] = wind.z; // wind
+      s[5] = 0.35;  // turbulence
+      s[6] = 0.08;  // dissipation
+      s[7] = 1.2;   // rise_force
+      dev.queue.writeBuffer(this.smokeUniform, 0, s);
+    }
+
     const encoder = dev.createCommandEncoder({ label: 'frame' });
 
-    // Determine which bind groups to use based on current ping-pong state
     const isA = this.pingPong.current === this.pingPong['pair'].bufferA;
-    const computeBind = isA ? this.computeBindA! : this.computeBindB!;
 
-    // 1. Compute
+    // 1. Compute Physics
+    const computeBind = isA ? this.computeBindA! : this.computeBindB!;
     runComputePass(encoder, this.computePipeline!, computeBind, count);
 
-    // 2. Sort (bitonic passes)
+    // 2. Compute Smoke (curl noise advection)
+    if (this.smokeComputePipeline && this.config.enableSmokeSim) {
+      const smokeBind = isA ? this.smokeComputeBindA! : this.smokeComputeBindB!;
+      runSmokeComputePass(encoder, this.smokeComputePipeline, smokeBind, count);
+    }
+
+    // 3. Sort (bitonic passes)
     if (this.sortPipeline && this.config.enableSort) {
       const sortBind = isA ? this.sortBindA! : this.sortBindB!;
       for (let blockSize = 2; blockSize <= count; blockSize *= 2) {
@@ -301,14 +258,19 @@ export class WebGPUParticleLoop {
       }
     }
 
-    // 3. Render
+    // 4. Render
     const view = this.ctx.context.getCurrentTexture().createView();
 
-    // Fire pass (clear)
+    // Fire pass (clear, ACES tonemapped in fragment)
     runFireRenderPass(encoder, view, this.firePipeline!, this.fireBindGroup!, this.pingPong.current, count);
 
-    // Smoke pass (load existing)
+    // Smoke pass (load, Beer-Lambert absorption)
     runSmokeRenderPass(encoder, view, this.smokePipeline!, this.smokeBindGroup!, this.pingPong.current, count);
+
+    // 5. Light Scatter (fullscreen additive)
+    if (this.lightScatterPipeline && this.lightScatterBindGroup && this.config.enableLightScatter) {
+      runLightScatterPass(encoder, view, this.lightScatterPipeline, this.lightScatterBindGroup);
+    }
 
     dev.queue.submit([encoder.finish()]);
 
@@ -354,6 +316,8 @@ export class WebGPUParticleLoop {
     this.pingPong.dispose();
     this.simUniform.destroy();
     this.sortUniform.destroy();
+    this.smokeUniform.destroy();
     this.cameraUniform.destroy();
+    this.lightScatterUniform.destroy();
   }
 }

@@ -9,6 +9,8 @@ export const PARTICLE_STRIDE = 64;
 export const SIM_UNIFORM_BYTES = 64;
 /** Sort uniform: 4 × u32 = 16 bytes */
 export const SORT_UNIFORM_BYTES = 16;
+/** Smoke uniform: 8 floats = 32 bytes */
+export const SMOKE_UNIFORM_BYTES = 32;
 
 export interface ParticleBufferPair {
   bufferA: GPUBuffer;
@@ -49,6 +51,17 @@ export function createSortUniformBuffer(device: GPUDevice): GPUBuffer {
     size: SORT_UNIFORM_BYTES,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     label: 'sort-params',
+  });
+}
+
+/**
+ * Create Smoke uniform buffer (32 bytes).
+ */
+export function createSmokeUniformBuffer(device: GPUDevice): GPUBuffer {
+  return device.createBuffer({
+    size: SMOKE_UNIFORM_BYTES,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    label: 'smoke-params',
   });
 }
 
