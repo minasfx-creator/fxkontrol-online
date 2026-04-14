@@ -70,6 +70,7 @@ const MAVLinkPanel = lz(() => import('@/components/editor/MAVLinkPanel'));
 const SMPTEPanel = lz(() => import('@/components/editor/SMPTEPanel'));
 const GoogleMapsPanel = lz(() => import('@/components/editor/GoogleMapsPanel'));
 const DiagnosticPanel = lz(() => import('@/components/editor/DiagnosticPanel'));
+const QAStudioPanel = lz(() => import('@/components/editor/QAStudioPanel'));
 const LogisticsPanel = lz(() => import('@/components/editor/LogisticsPanel'));
 const SwarmGPTPanel = lz(() => import('@/components/editor/SwarmGPTPanel'));
 const SynesthesiaPanel = lz(() => import('@/components/editor/SynesthesiaPanel'));
@@ -398,6 +399,7 @@ function Index() {
         {activePanel === 'ma3' && <MA3ControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'sacnmonitor' && <SACNMonitorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'easyconnect' && <EasyConnectPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'qastudio' && <QAStudioPanel onClose={() => setActivePanel(null)} />}
         
       </>
     );
