@@ -93,6 +93,12 @@ export default defineConfig(({ mode }) => ({
         ],
       },
     }),
+    mode === "production" && visualizer({
+      filename: "dist/bundle-analysis.html",
+      gzipSize: true,
+      brotliSize: true,
+      template: "treemap",
+    }),
   ].filter(Boolean),
   resolve: {
     alias: {
