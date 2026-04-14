@@ -17,9 +17,9 @@ const FLAGS = {
   /** Enhanced smoke with density fields, cluster breakup, buoyancy */
   smoke_volume_system: false,
   /** Layer-separated bloom pipeline with physical intensity */
-  hdr_bloom_physical: false,
+  hdr_bloom_physical: true,
   /** Camera desaturation at peak luminance + highlight compression */
-  cinematic_camera_response: false,
+  cinematic_camera_response: true,
   /** Layered wind with vertical shear + micro-turbulence */
   turbulence_field: false,
   /** 2× particle budget for ultra-dense displays */
