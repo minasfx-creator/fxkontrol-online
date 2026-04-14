@@ -553,24 +553,66 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         <MotionBlur intensity={s.motionBlurIntensity} />
       )}
 
-      {/* Layer 1: Core catch — threshold raised to 3.5 for real flashes only */}
-      <Bloom
-        intensity={str * 0.04 * bloomMul}
-        luminanceThreshold={3.5}
-        luminanceSmoothing={0.05}
-        kernelSize={KernelSize.MEDIUM}
-        mipmapBlur
-      />
+      {/* ═══════════════════════════════════════════════════════════════
+           BLOOM PIPELINE — Physical (Studio Mode) or Legacy
+           Pipeline order per spec: Bloom Físico → Halation → Highlight Desat → Tone Map
+           ═══════════════════════════════════════════════════════════════ */}
 
-      {/* Layer 2: Star halos — threshold raised to 5.0, intense explosions only */}
-      {hasBursts && (
-        <Bloom
-          intensity={str * 0.025 * bloomMul}
-          luminanceThreshold={5.0}
-          luminanceSmoothing={0.2}
-          kernelSize={KernelSize.LARGE}
-          mipmapBlur
-        />
+      {physicalBloomEnabled ? (
+        <>
+          {/* Physical Bloom Layer 1: Core emission catch
+              Logarithmic intensity + dynamic threshold scales with burst energy */}
+          <Bloom
+            intensity={pb.physicalIntensity}
+            luminanceThreshold={pb.dynamicThreshold}
+            luminanceSmoothing={0.05}
+            kernelSize={KernelSize.MEDIUM}
+            mipmapBlur
+          />
+
+          {/* Physical Bloom Layer 2: Wide energy halo
+              Only fires during active bursts — kernel scales with energy */}
+          {hasBursts && (
+            <Bloom
+              intensity={pb.haloIntensity}
+              luminanceThreshold={pb.haloThreshold}
+              luminanceSmoothing={0.15}
+              kernelSize={hasHeavyBursts ? KernelSize.HUGE : KernelSize.LARGE}
+              mipmapBlur
+            />
+          )}
+
+          {/* Halation: reddish film-like halos on extreme highlights */}
+          {hasBursts && (
+            <Halation
+              intensity={0.12 + activeBurstCount * 0.02}
+              threshold={5.5}
+              radius={8.0}
+            />
+          )}
+        </>
+      ) : (
+        <>
+          {/* Legacy Layer 1: Core catch — threshold raised to 3.5 for real flashes only */}
+          <Bloom
+            intensity={str * 0.04 * bloomMul}
+            luminanceThreshold={3.5}
+            luminanceSmoothing={0.05}
+            kernelSize={KernelSize.MEDIUM}
+            mipmapBlur
+          />
+
+          {/* Legacy Layer 2: Star halos — threshold raised to 5.0, intense explosions only */}
+          {hasBursts && (
+            <Bloom
+              intensity={str * 0.025 * bloomMul}
+              luminanceThreshold={5.0}
+              luminanceSmoothing={0.2}
+              kernelSize={KernelSize.LARGE}
+              mipmapBlur
+            />
+          )}
+        </>
       )}
 
       {/* Layer 3: Atmospheric / God Rays — real radial blur when enabled */}
@@ -586,7 +628,14 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
         />
       ))}
 
-      {/* ═══ Downsample Blur — DISABLED: duplicates bloom, saves 1 GPU pass ═══ */}
+      {/* ═══ Highlight Desaturation — Studio Mode camera response ═══ */}
+      {cameraResponseEnabled && (
+        <HighlightDesaturation
+          intensity={0.75}
+          threshold={2.0}
+          compression={1.5}
+        />
+      )}
 
       {/* ═══ Heat Distortion — UE5 Niagara Heat Haze ═══ */}
       {s.heatDistortionEnabled && hasBursts && (
