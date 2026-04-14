@@ -668,7 +668,7 @@ export class GPUComputeParticleSystem {
       const vx = d.velX[i], vy = d.velY[i], vz = d.velZ[i];
       const speed = Math.sqrt(vx * vx + vy * vy + vz * vz);
       if (speed > 0.01) {
-        const dragMag = 0.5 * 1.225 * d.drag[i] * d.size[i] * d.size[i] * speed * speed;
+        const dragMag = 0.5 * 1.18 * d.drag[i] * d.size[i] * d.size[i] * speed * speed;
         const invSpeed = 1 / speed;
         fx -= vx * invSpeed * dragMag;
         fy -= vy * invSpeed * dragMag;
@@ -688,7 +688,7 @@ export class GPUComputeParticleSystem {
       fx += tx * ts; fy += ty * ts; fz += tz * ts;
 
       // Buoyancy
-      const buoy = Math.max(0, (d.temperature[i] - 800) / 5000) * 2.8;
+      const buoy = Math.max(0, (d.temperature[i] - 800) / 5000) * 3.2;
       fy += buoy * m;
 
       // Thermal cooling
@@ -736,6 +736,23 @@ export class GPUComputeParticleSystem {
       const dz = cam.z - d.posZ[i];
       d.sortKey[i] = dx * dx + dy * dy + dz * dz;
     }
+
+    // ── Pass 2b: Combustion (energy + fuel) ──
+    tickCombustionCPU(
+      n, dt, time,
+      d.life, d.maxLife, d.temperature, d.seed,
+      { energy: d.energy, fuel: d.fuel },
+    );
+
+    // ── Pass 2c: Smoke turbulence ──
+    tickSmokeTurbulenceCPU(
+      n, dt, time,
+      d.posX, d.posY, d.posZ,
+      d.velX, d.velY, d.velZ,
+      d.life, d.maxLife,
+      d.temperature,
+      DEFAULT_SMOKE_TURBULENCE,
+    );
 
     // ── Pass 3: Simple insertion sort for CPU (good for nearly-sorted) ──
     if (this.config.enableSort && n > 1) {
