@@ -991,21 +991,26 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       if (introPhase.current === 'hold') {
         const holdT = Math.min(1, introTimer.current / introDuration.current.hold);
         const eased = easeInOutCubic(holdT);
-        const orbitRadius = 250;
-        const orbitSpeed = 0.08;
+        const orbitRadius = 300;
+        const orbitSpeed = 0.12;
+        // Cinematic orbit with altitude variation — descending from 140m to 80m
+        const altBase = 140 - eased * 60;
+        const altWave = Math.sin(introTimer.current * 0.5) * 8;
         camera.position.set(
           Math.sin(introTimer.current * orbitSpeed) * orbitRadius,
-          80 + eased * 10,
+          altBase + altWave,
           Math.cos(introTimer.current * orbitSpeed) * orbitRadius
         );
-        camera.lookAt(0, 0, 0);
+        camera.lookAt(0, 5, 0);
         if (controlsRef.current) {
-          controlsRef.current.target.set(0, 0, 0);
+          controlsRef.current.target.set(0, 5, 0);
           controlsRef.current.update();
         }
         if (introTimer.current >= introDuration.current.hold) {
           introPhase.current = 'sweep';
           introTimer.current = 0;
+          // Capture current position as sweep start
+          _sweepStartPos.current.copy(camera.position);
         }
       } else if (introPhase.current === 'sweep') {
         const sweepT = Math.min(1, introTimer.current / introDuration.current.sweep);
