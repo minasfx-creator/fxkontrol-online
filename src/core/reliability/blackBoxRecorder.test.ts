@@ -1,16 +1,4 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { BlackBoxRecorder } from "./blackBoxRecorder";
-
-// Create a fresh instance per test suite to avoid shared state
-function makeRecorder() {
-  // BlackBoxRecorder is only exported as a singleton (`blackbox`), so we
-  // reach the class through its module structure. Since the source exports
-  // the class implicitly via the singleton, we test the singleton API by
-  // importing it and working with a fresh one each test via reset().
-  const { blackbox } = require("./blackBoxRecorder");
-  return blackbox as InstanceType<typeof import("./blackBoxRecorder").BlackBoxRecorder>;
-}
-
 import { blackbox } from "./blackBoxRecorder";
 
 describe("BlackBoxRecorder", () => {
