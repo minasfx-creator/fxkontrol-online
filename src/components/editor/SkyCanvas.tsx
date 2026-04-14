@@ -48,6 +48,8 @@ import HUDCrosshairs from './HUDCrosshairs';
 import PlacingModeOverlay from './PlacingModeOverlay';
 import ARCompassHUD from './ARCompassHUD';
 import ARScanEffect from './ARScanEffect';
+import ViewportBar from './ViewportBar';
+import { useViewportStore } from '@/store/useViewportStore';
 
 import { cn } from '@/lib/utils';
 import {
@@ -801,19 +803,18 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   const lastPresetKey = useRef('');
   const introPhase = useRef<'hold' | 'sweep' | 'done'>(__cameraIntroPlayed ? 'done' : 'hold');
   const introTimer = useRef(0);
+  const userInteracted = useRef(__cameraIntroPlayed);
 
   const WORLD_HALF_EXTENT = 250000;
   const CAMERA_MIN_Y = 5;
   const CAMERA_MAX_Y = 40000;
-  const _lastValidY = useRef(-1); // -1 = uninitialized, will sync on first frame
+  const _lastValidY = useRef(-1);
   const _wasClampedLastFrame = useRef(false);
   const _wasDropClampedLastFrame = useRef(false);
 
   const clampToWorldBounds = useCallback(() => {
     const controls = controlsRef.current;
     if (!controls) return;
-
-    // Skip clamping during flyTo transitions
     if (isFlyingTo()) return;
 
     const tx = THREE.MathUtils.clamp(controls.target.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
@@ -822,17 +823,14 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 
     let cy = THREE.MathUtils.clamp(camera.position.y, CAMERA_MIN_Y, CAMERA_MAX_Y);
 
-    // Initialize _lastValidY from actual camera position on first frame
     if (_lastValidY.current < 0) {
       _lastValidY.current = cy;
     }
 
-    // Detect teleport/large transition (preset switch, etc.) — reset baseline
     const absDelta = Math.abs(cy - _lastValidY.current);
     if (absDelta > 500) {
-      _lastValidY.current = cy; // accept the teleport
+      _lastValidY.current = cy;
     } else {
-      // Prevent sudden altitude drops (max 200m per frame) — manual nav only
       const yDelta = cy - _lastValidY.current;
       if (yDelta < -200) {
         cy = _lastValidY.current - 200;
@@ -843,7 +841,6 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       } else {
         _wasDropClampedLastFrame.current = false;
       }
-      // NOTE: altitude-dependent damping removed — it created a feedback loop near ground
     }
 
     if (cy < CAMERA_MIN_Y + 1 && !_wasClampedLastFrame.current) {
@@ -891,6 +888,113 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     introTimer.current = 0;
   }, []);
 
+  // Cancel intro on first manual mouse interaction
+  useEffect(() => {
+    const cancelIntro = () => {
+      if (userInteracted.current) return;
+      userInteracted.current = true;
+      if (introPhase.current !== 'done') {
+        introPhase.current = 'done';
+        __cameraIntroPlayed = true;
+        // Snap to default position immediately
+        camera.position.set(...targetPosition);
+        if (controlsRef.current) {
+          controlsRef.current.target.set(...targetLookAt);
+          controlsRef.current.update();
+        }
+        animating.current = false;
+      }
+    };
+    const canvas = document.querySelector('[data-sky-canvas] canvas');
+    if (canvas) {
+      canvas.addEventListener('pointerdown', cancelIntro, { once: true });
+      canvas.addEventListener('wheel', cancelIntro, { once: true });
+    }
+    return () => {
+      if (canvas) {
+        canvas.removeEventListener('pointerdown', cancelIntro);
+        canvas.removeEventListener('wheel', cancelIntro);
+      }
+    };
+  }, [camera, targetPosition, targetLookAt]);
+
+  // ── Gizmo dragging: disable/enable OrbitControls + zero residual velocity ──
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const isDragging = (e as CustomEvent).detail;
+      if (controlsRef.current) {
+        controlsRef.current.enabled = !isDragging;
+        if (!isDragging) {
+          // Zero any residual damping velocity by calling update with reset
+          controlsRef.current.update();
+        }
+      }
+    };
+    window.addEventListener('gizmo-dragging', handler as any);
+    return () => window.removeEventListener('gizmo-dragging', handler as any);
+  }, []);
+
+  // ── View preset handler ──
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { position, target } = (e as CustomEvent).detail as { position: [number, number, number]; target: [number, number, number] };
+      targetPos.current.set(position[0], position[1], position[2]);
+      targetLook.current.set(target[0], target[1], target[2]);
+      animating.current = true;
+    };
+    window.addEventListener('viewport-set-view', handler as any);
+    return () => window.removeEventListener('viewport-set-view', handler as any);
+  }, []);
+
+  // ── Cancel animation handler ──
+  useEffect(() => {
+    const handler = () => {
+      animating.current = false;
+      focusAnimating.current = false;
+    };
+    window.addEventListener('viewport-cancel-animation', handler);
+    return () => window.removeEventListener('viewport-cancel-animation', handler);
+  }, []);
+
+  // ── Frame selection handler ──
+  useEffect(() => {
+    const handler = () => {
+      // If there's a selected position, focus on it
+      const { selectedPositionId, positions } = useProjectStore.getState();
+      if (selectedPositionId) {
+        const pos = positions.find(p => p.id === selectedPositionId);
+        if (pos) {
+          window.dispatchEvent(new CustomEvent('focus-camera-on-point', { detail: { x: pos.x, y: pos.y || 0, z: pos.z } }));
+        }
+      }
+    };
+    window.addEventListener('viewport-frame-selection', handler);
+    return () => window.removeEventListener('viewport-frame-selection', handler);
+  }, []);
+
+  // ── Frame all handler ──
+  useEffect(() => {
+    const handler = () => {
+      const { positions } = useProjectStore.getState();
+      if (positions.length === 0) {
+        // Reset to default
+        targetPos.current.set(...targetPosition);
+        targetLook.current.set(...targetLookAt);
+        animating.current = true;
+        return;
+      }
+      // Compute bounding box center
+      let cx = 0, cy = 0, cz = 0;
+      for (const p of positions) {
+        cx += p.x; cy += (p.y || 0); cz += p.z;
+      }
+      cx /= positions.length; cy /= positions.length; cz /= positions.length;
+      window.dispatchEvent(new CustomEvent('focus-camera-on-point', { detail: { x: cx, y: cy, z: cz } }));
+    };
+    window.addEventListener('viewport-frame-all', handler);
+    return () => window.removeEventListener('viewport-frame-all', handler);
+  }, [targetPosition, targetLookAt]);
+
   const presetKey = `${targetPosition.join(',')}_${targetLookAt.join(',')}`;
   
   useEffect(() => {
@@ -934,7 +1038,6 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
         const sweepT = Math.min(1, introTimer.current / introDuration.current.sweep);
         const eased = easeInOutCubic(sweepT);
         
-        // Zero-GC: reuse pre-allocated vectors instead of creating new ones per frame
         _sweepDefaultPos.current.set(targetPosition[0], targetPosition[1], targetPosition[2]);
         _sweepDefaultLook.current.set(targetLookAt[0], targetLookAt[1], targetLookAt[2]);
         
@@ -961,7 +1064,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       return;
     }
 
-    // Normal preset animation — fix operator precedence bug
+    // Normal preset animation
     if ((!animating.current && !focusAnimating.current) || !controlsRef.current || freeLook) {
       clampToWorldBounds();
       return;
@@ -976,14 +1079,13 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     clampToWorldBounds();
   });
 
-  const sensitivityScale = 0.7; // 30% less sensitivity
+  const sensitivityScale = 0.7;
 
-  // Broadcast OrbitControls ref to GeoCameraController via custom event (once after mount)
+  // Broadcast OrbitControls ref to GeoCameraController
   useEffect(() => {
     if (controlsRef.current) {
       window.dispatchEvent(new CustomEvent('r3f-controls-ready', { detail: { controls: controlsRef.current } }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [controlsRef.current]);
 
   // Disable OrbitControls while box-select is active
@@ -991,6 +1093,11 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     const handler = (e: CustomEvent) => {
       if (controlsRef.current) {
         controlsRef.current.enabled = !e.detail;
+        if (e.detail) {
+          useViewportStore.getState().setInteractionState('boxSelecting');
+        } else {
+          useViewportStore.getState().setInteractionState('idle');
+        }
       }
     };
     window.addEventListener('box-select-active' as any, handler as any);
@@ -1004,7 +1111,6 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       const { x, y, z } = (e as CustomEvent).detail;
       if (controlsRef.current) {
         targetLook.current.set(x, y, z);
-        // Zero-GC: reuse pre-allocated vector
         _focusCamDir.subVectors(camera.position, controlsRef.current.target).normalize();
         const dist = Math.max(20, camera.position.distanceTo(controlsRef.current.target) * 0.5);
         targetPos.current.set(x + _focusCamDir.x * dist, Math.max(y + 5, y + _focusCamDir.y * dist), z + _focusCamDir.z * dist);
@@ -1019,7 +1125,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   const editorMode = useProjectStore(s => s.editorMode);
   const isSelectMode = editorMode === 'select';
 
-  // Update mouse buttons when mode changes
+  // Standard mapping: Middle=Orbit, Right=Pan, Left disabled in select mode
   useEffect(() => {
     if (!controlsRef.current) return;
     if (isSelectMode) {
@@ -1043,8 +1149,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   return (
     <OrbitControls
       ref={controlsRef}
-      enableDamping
-      dampingFactor={0.05}
+      enableDamping={false}
       rotateSpeed={0.6 * sensitivityScale}
       panSpeed={0.8 * sensitivityScale}
       zoomSpeed={1.2 * sensitivityScale}
@@ -1694,6 +1799,10 @@ export default function SkyCanvas() {
         />
       </Canvas>
       </WebGLErrorBoundary>
+
+      {/* ═══ VIEWPORT BAR — Fixed top bar with view presets & actions ═══ */}
+      {!isMobile && <ViewportBar />}
+
       <TelemetryBar />
       <GoogleTilesLoadingOverlay />
       <KeybindingCheatSheet />
