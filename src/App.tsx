@@ -25,6 +25,7 @@ const FieldTest = lazy(() => import("./pages/FieldTest"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Admin = lazy(() => import("./pages/Admin"));
 const AccreditationDashboard = lazy(() => import("./pages/AccreditationDashboard"));
+const GPUTest = lazy(() => import("./pages/GPUTest"));
 
 const queryClient = new QueryClient();
 
@@ -71,6 +72,7 @@ function App() {
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/accreditation" element={<AccreditationDashboard />} />
+                  <Route path="/gpu-test" element={<GPUTest />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
