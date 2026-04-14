@@ -1098,7 +1098,8 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   const editorMode = useProjectStore(s => s.editorMode);
   const isSelectMode = editorMode === 'select';
 
-  // Standard mapping: Middle=Orbit, Right=Pan, Left disabled in select mode
+  // Standard mapping: Middle=Orbit, Right=Pan in ALL modes
+  // In select mode: Left is disabled (for box-select). Otherwise Left=Orbit.
   useEffect(() => {
     if (!controlsRef.current) return;
     if (isSelectMode) {
@@ -1110,7 +1111,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     } else {
       controlsRef.current.mouseButtons = {
         LEFT: THREE.MOUSE.ROTATE,
-        MIDDLE: THREE.MOUSE.DOLLY,
+        MIDDLE: THREE.MOUSE.ROTATE,
         RIGHT: THREE.MOUSE.PAN,
       };
     }
