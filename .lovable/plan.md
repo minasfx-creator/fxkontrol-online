@@ -1,98 +1,86 @@
 
 
-# Camada 9: Pipeline Cinematográfico Completo — 7-Stage GPU Architecture + Recalibração Global
+# Camada 10: WebGPU Native Pipeline — Device, Buffers, Ping-Pong, Render Passes
 
 ## Objetivo
-Reestruturar o sistema de compute shaders em um pipeline de 7 estágios (Compute Physics → Compute Energy/Combustion → Compute Smoke Turbulence → Vertex Billboard → Fragment Emissive → Fragment Smoke → Post-bloom), recalibrando todos os valores de todas as camadas para funcionar como um sistema coeso de produção cinematográfica.
+Criar a infraestrutura WebGPU nativa completa (device, buffers, bind groups, pipelines, render passes) como módulos independentes em `src/render_ultra/gpgpu/`, integrando-os com o sistema existente `GPUComputeParticleSystem`. Isso substitui o fallback Three.js DataTexture por um pipeline WebGPU real com ping-pong buffers, billboard rendering nativo, e blend states corretos para fogo (aditivo) e fumaça (alpha).
 
 ---
 
 ## Arquivos a Criar
 
-### 1. `src/render_ultra/fireworks/computeCombustion.ts`
-Compute kernel dedicado a combustão + energia (separado da física):
-- Consumo de combustível exponencial (`energy -= burn * 0.6`)
-- Flicker orgânico multi-harmônico injetado na energia (não apenas no fragment)
-- Thermal radiation via Stefan-Boltzmann (dT/dt ∝ -T⁴)
-- Clamp de energia para evitar negativos
-- CPU fallback fiel ao WGSL
+### 1. `src/render_ultra/gpgpu/webgpuDevice.ts`
+- `initWebGPU(canvas)`: adapter request, device creation, context configuration
+- `premultiplied` alpha mode, preferred canvas format
+- Device-lost handler com re-init automático
+- Exporta `WebGPUContext` interface: `{ device, context, format, canvas }`
 
-### 2. `src/render_ultra/fireworks/computeSmokeTurbulence.ts`
-Compute kernel dedicado a advecção de fumaça via curl noise:
-- Curl noise com gradientes centrais (eps = 0.1) para divergência zero
-- Multi-octave turbulence (2 escalas: macro + micro)
-- Buoyancy térmica para partículas de fumaça
-- Dissipação progressiva por fase de vida
-- CPU fallback
+### 2. `src/render_ultra/gpgpu/webgpuBuffers.ts`
+- `createParticleBuffers(device, count)`: ping-pong pair (STORAGE | VERTEX | COPY_DST), 64 bytes/particle
+- `createSimUniformBuffer(device)`: 64-byte uniform
+- `createSortUniformBuffer(device)`: 16-byte uniform
+- `ParticlePingPong` class: `current`/`next` refs + `swap()` method
 
----
+### 3. `src/render_ultra/gpgpu/webgpuBindGroups.ts`
+- `createComputeBindGroup(device, layout, uniformBuf, particleBuf)`
+- `createSortBindGroup(device, layout, particleBuf, sortUniformBuf)`
+- `createRenderBindGroup(device, layout, uniformBuf)` for camera/projection uniforms
+
+### 4. `src/render_ultra/gpgpu/webgpuPipelines.ts`
+- `createComputePipeline(device, wgslCode)`: layout auto, entry `cs_update`
+- `createFireRenderPipeline(device, format, wgslCode)`: vertex+fragment, additive blend (`one/one`), billboard quad
+- `createSmokeRenderPipeline(device, format, wgslCode)`: alpha blend (`src-alpha/one-minus-src-alpha`)
+- Vertex buffer layout: stride 64, locations for pos(float32x4), vel(float32x4), color(float32x4), misc(float32x4)
+
+### 5. `src/render_ultra/gpgpu/webgpuPasses.ts`
+- `runComputePass(encoder, pipeline, bindGroup, count)`: dispatch `ceil(count/256)` workgroups
+- `runFireRenderPass(encoder, view, pipeline, bindGroup, vertexBuf, count)`: draw 6 vertices × count instances, clear on first pass
+- `runSmokeRenderPass(encoder, view, pipeline, bindGroup, vertexBuf, count)`: same but load (no clear)
+
+### 6. `src/render_ultra/gpgpu/webgpuLoop.ts`
+- `WebGPUParticleLoop` class: orchestrates the full frame
+  - Compute pass (physics)
+  - Ping-pong swap
+  - Fire render pass (additive)
+  - Smoke render pass (alpha blend, load existing)
+  - Integrates with existing `GPUComputeParticleSystem` for particle data
+- Render shaders (WGSL): billboard vertex shader (camera-facing quads from particle data) + fire/smoke fragment shaders (blackbody + density)
+- `requestAnimationFrame` loop with dt capping
+
+### 7. `src/render_ultra/gpgpu/index.ts`
+- Re-export all public APIs from the gpgpu modules
 
 ## Arquivos a Modificar
 
-### 3. `src/render_ultra/fireworks/gpuComputeParticles.ts`
-**Reestruturar** o tick em 3 dispatches separados:
-1. Force accumulation (gravidade, drag, vento) — já existe, recalibrar valores
-2. Combustion kernel (novo) — integrar `computeCombustion`
-3. Smoke turbulence (novo) — integrar `computeSmokeTurbulence`
-- Adicionar campo `energy` e `fuel` ao particle struct (96 bytes total)
-- Recalibrar: drag coeff `0.5 * 1.225 → 0.5 * 1.18` (ar a 25°C), buoyancy `2.8 → 3.2`, turbulence `2.5 → 3.0`
-- Sorting: manter bitonic sort existente
+### 8. `src/render_ultra/fireworks/gpuComputeParticles.ts`
+- Add `getComputeWGSL()` and `getSortWGSL()` static methods to expose shader strings for native pipeline use
+- Add method `writeToGPUBuffer(device, buffer)` to pack SoA → packed buffer directly
 
-### 4. `src/render_ultra/fireworks/cinemaFireShader.ts`
-Recalibrar fragment shader:
-- HDR multiplier: `8.0 → 10.0` (peak mais intenso para bloom threshold 1.2)
-- Flicker: adicionar 2 harmônicas extras (7 total) para micro-cintilação
-- Energy decay: `exp(-2.5 * lr) → exp(-2.0 * lr)` (decaimento mais lento = trails mais longos)
-- Thermal coupling: `1.8 → 1.5` (cooling mais gradual)
-- Core white injection: estender de 15% → 20% da vida
-- Ember phase: onset `0.6 → 0.55` (transição mais suave)
-
-### 5. `src/render_ultra/fireworks/cinemaSmokeShader.ts`
-Recalibrar fragment shader:
-- Density scale: `1.4 → 1.6` (fumaça mais encorpada)
-- Absorption: `0.85 → 0.92` (Beer-Lambert mais opaco)
-- FBM: adicionar 5ª octave para micro-detalhe
-- Scatter: `0.6 → 0.75` (rim light mais pronunciado)
-- Wind advect: `1.0 → 1.3` (mais responsivo ao vento)
-- Cor quente: `(0.28, 0.22, 0.18) → (0.32, 0.24, 0.16)` (mais amber perto do fogo)
-
-### 6. `src/render_ultra/fireworks/cinemaBurstShader.ts`
-Recalibrar fragment shader:
-- Core intensity: `1.5 → 2.0` (flash mais intenso)
-- HDR peak: `12.0 → 14.0` (bloom máximo no frame de impacto)
-- Wave decay: `3.5 → 4.0` (shockwave mais rápida)
-- Adicionar secondary flash: re-ignição a 30% da vida (debris catching fire)
-- Sparkle threshold: `0.97 → 0.96` (mais debris brilhantes)
-
-### 7. `src/render_ultra/fireworks/instancedParticleRenderer.ts`
-- Adicionar cinema-smoke/burst per-instance attributes (`aLife`, `aMaxLife`, `aEnergy`)
-- Método `writeCinemaSmokeData` e `writeCinemaBurstData` análogos ao fire
-- Bridge com GPUComputeParticleSystem: método `writeFromComputeData(cpuData, camera)` que lê SoA e escreve nos buffers instanced
-
-### 8. `src/render_ultra/index.ts`
-- Exportar novos módulos de combustion e smoke turbulence
-
----
-
-## Calibração Cross-System
-
-```text
-Pipeline calibrado end-to-end:
-
-Fire Peak HDR: 10.0   ──→ Bloom threshold: 1.2 ──→ visible halo
-Burst Peak HDR: 14.0  ──→ Bloom threshold: 1.2 ──→ intense flash
-Smoke alpha: 0.75 max ──→ NormalBlend over fire  ──→ não mascara bloom
-ACES toe: 0.0         ──→ preserva sombras       ──→ smoke stays dark
-Film grain: 0.015     ──→ luminance-coupled       ──→ invisible on fire, visible on smoke
-```
-
----
+### 9. `src/render_ultra/index.ts`
+- Export new gpgpu module APIs
 
 ## Detalhes Técnicos
 
-- Particle struct expandido para 96 bytes (adiciona `energy: f32`, `fuel: f32`, padding)
-- Workgroup size mantido em 256 (optimal para GPUs mobile e desktop)
-- CPU fallback para todos os novos kernels
-- Zero alocações no hot path — todos os buffers pré-alocados
-- WGSL alignment: `vec3<f32>` paddado a 16 bytes conforme spec
+```text
+Frame Pipeline (WebGPU Native):
+
+SimParams → Uniform Buffer (64B)
+                ↓
+Particle Buffer A (read) → Compute Pass → Particle Buffer B (write)
+                                              ↓
+                                         swap(A, B)
+                                              ↓
+                              Buffer B → Fire Render Pass (additive blend, clear)
+                                              ↓
+                              Buffer B → Smoke Render Pass (alpha blend, load)
+                                              ↓
+                                         Present to canvas
+```
+
+- Billboard quads generated in vertex shader (6 verts per instance, no index buffer)
+- Particle type field (`misc.w`) used to route fire vs smoke in fragment shader
+- Ping-pong eliminates read-write hazards without barriers
+- All buffers pre-allocated, zero GC in frame loop
+- CPU fallback path in `GPUComputeParticleSystem` unchanged — this is a parallel GPU-native path
+- `ParticleGPGPU.ts` (WebGL DataTexture approach) remains as legacy fallback
 
