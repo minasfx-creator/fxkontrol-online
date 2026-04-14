@@ -16,6 +16,8 @@ interface Props {
   fixtures: Fixture[];
   layoutPreset?: string;
   categoryOverrides?: Record<string, any>;
+  selected?: Set<string>;
+  [key: string]: any;
 }
 
 export default function FixtureLayoutPreview({ fixtures, layoutPreset, categoryOverrides }: Props) {
