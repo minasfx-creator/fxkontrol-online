@@ -6,7 +6,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { PANEL_SECTIONS, type PanelId } from './PanelTabBar';
-import type { MobileTab } from './MobileTabBar';
+import type { MobileTab } from './mobileTabTypes';
 
 // Map dock tabs to their parent PANEL_SECTIONS category
 const TAB_TO_SECTION: Record<string, string> = {

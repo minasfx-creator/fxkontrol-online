@@ -26,9 +26,11 @@ interface GeofencePanelProps {
 }
 
 export default function GeofencePanel({ onClose }: GeofencePanelProps) {
-  const {
-    geofence, setGeofence, addGeofencePoint, removeGeofencePoint, clearGeofence,
-  } = useFleetStore();
+  const geofence = useFleetStore(s => s.geofence);
+  const setGeofence = useFleetStore(s => s.setGeofence);
+  const addGeofencePoint = useFleetStore(s => s.addGeofencePoint);
+  const removeGeofencePoint = useFleetStore(s => s.removeGeofencePoint);
+  const clearGeofence = useFleetStore(s => s.clearGeofence);
   const gpsOrigin = useProjectStore(s => s.gpsOrigin);
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();

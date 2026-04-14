@@ -6,7 +6,7 @@
  */
 
 import { DMX_FIXTURE_PROFILES } from './dmxEngine';
-import type { UE5DMXFixture, UE5DMXParseResult } from './ue5DmxPrevisParser';
+import type { UE5DMXFixture, UE5DMXParseResult } from './ue5DmxTypes';
 
 // Re-use the profile inference from the main parser
 // We inline a local copy to avoid circular deps — same logic

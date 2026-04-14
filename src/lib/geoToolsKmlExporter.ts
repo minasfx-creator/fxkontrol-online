@@ -4,7 +4,8 @@
  * viewport Geo Tools into KML/KMZ format compatible with Google Earth.
  */
 
-import JSZip from 'jszip';
+// JSZip loaded dynamically to reduce initial bundle
+const loadJSZip = () => import('jszip').then(m => m.default);
 import type { GeoMarker, GeoRulerPoint, GeoPath } from '@/components/editor/ViewportGeoTools';
 
 export interface GeoToolsKMLOptions {
@@ -302,6 +303,7 @@ export function exportGeoToolsKML(opts: GeoToolsKMLOptions): string {
 
 export async function exportGeoToolsKMZ(opts: GeoToolsKMLOptions): Promise<Blob> {
   const kml = generateGeoToolsKML(opts);
+  const JSZip = await loadJSZip();
   const zip = new JSZip();
   zip.file('doc.kml', kml);
   return zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });

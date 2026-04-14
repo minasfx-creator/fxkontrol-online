@@ -1,96 +1,101 @@
 
 
-# WGSL Raymarch Volumétrico — Plano de Integração
+# Camada 11: Render Volumétrico Real — Curl Noise Smoke, ACES Tonemapping, Light Scattering
 
-## Situação Atual
+## Objetivo
 
-O pipeline volumétrico existente em `src/render_ultra/volumetric/` opera inteiramente via **THREE.js WebGL** (Layer 4: `RaymarchRenderer.ts` usa `THREE.ShaderMaterial` com GLSL, `THREE.Data3DTexture`, e `THREE.BoxGeometry`). A simulação (Layer 3) roda na **CPU** com advecção semi-Lagrangiana e curl noise.
+Upgrade os shaders de render e compute existentes no pipeline WebGPU nativo (`src/render_ultra/gpgpu/`) com: (1) smoke compute dedicado com curl noise divergence-free, (2) fragment shaders cinematográficos com ACES tonemapping, (3) light scattering pass, (4) billboard instanciado via storage buffer read. Tudo incremental sobre a Camada 10 existente.
 
-O shader WGSL fornecido é um **raymarch nativo WebGPU** com fullscreen quad, ray reconstruction via `inv_view_proj`, e ACES integrado — incompatível com o renderer THREE.js atual mas complementar como upgrade de GPU nativa.
+---
 
-## O que será criado
+## Arquivos a Criar
 
-### 1. Shader WGSL — `src/render_ultra/volumetric/shaders/fxk_voxel_raymarch.wgsl.ts`
+### 1. `src/render_ultra/gpgpu/wgsl/smokeCompute.wgsl.ts`
+Exporta string WGSL do compute shader de fumaça com:
+- `SmokeSimParams` uniform (dt, time, wind, turbulence, dissipation, rise_force)
+- `SmokeParticle` struct (pos, vel, density)
+- `curl_noise()`: derivadas cruzadas de 3D value noise → campo divergence-free
+- `cs_smoke_update`: advecção com curl noise, rise force, drag racional, dissipação de densidade
+- Workgroup size 256
 
-Exportar o shader como string TypeScript (padrão do projeto — sem suporte a import de `.wgsl` no Vite sem plugin). Inclui vertex fullscreen quad + fragment raymarch + ACES tonemap.
+### 2. `src/render_ultra/gpgpu/wgsl/renderShaders.wgsl.ts`
+Substitui o `RENDER_WGSL` inline no `webgpuLoop.ts`. Exporta shader completo com:
+- **Billboard vertex** com particle read via `var<storage, read>` (instancing nativo, sem vertex buffer layout)
+- **Fire fragment**: núcleo emissivo `exp(-r²*7)` + halo `exp(-r²*1.8)*0.35`, blackbody tint por temperatura, ACES tonemapping no output
+- **Smoke fragment**: Beer-Lambert absorption, densidade variável por `misc.z`, cor base escura com aquecimento por proximidade de fogo
+- **ACES helper**: `fn aces_tonemap(x: vec3<f32>) -> vec3<f32>` — Narkowicz fit
 
-### 2. WebGPU Raymarch Pipeline — `src/render_ultra/volumetric/WebGPURaymarchPipeline.ts`
+### 3. `src/render_ultra/gpgpu/wgsl/lightScatter.wgsl.ts`
+Exporta WGSL para um fullscreen-triangle pass de light scattering:
+- `LightScatterParams` uniform (intensity, falloff, radius, time, light positions)
+- Fragment shader que amostra radial falloff `1/(1 + k*d²)` de cada fonte de luz
+- Output aditivo baixa intensidade para aquecer bordas de fumaça
 
-Classe que encapsula:
-- Criação do `GPURenderPipeline` com o shader WGSL
-- Uniform buffers para `Camera` (inv_view_proj, position) e `VolumeParams` (step_size, density_scale, absorption, scattering, anisotropy, etc.)
-- `GPUTexture` 3D (`r32float` ou `rgba8unorm`) criada a partir do `VoxelGrid.textureData`
-- `GPUSampler` linear
-- Bind group layout com 4 bindings (camera uniform, params uniform, texture 3D, sampler)
-- Método `uploadGrid(grid: VoxelGrid)` — escreve `packTextureData()` no `GPUTexture` via `writeTexture`
-- Método `render(encoder: GPUCommandEncoder, targetView: GPUTextureView, camera: Camera)` — executa o render pass fullscreen
-- Método `updateParams(params: Partial<VolumeParams>)` — atualiza uniforms
-- Método `dispose()` — limpa recursos GPU
+### 4. `src/render_ultra/gpgpu/webgpuLightScatter.ts`
+Pipeline e pass de light scattering:
+- `createLightScatterPipeline(device, format, wgslCode)`: fullscreen triangle, additive blend leve
+- `createLightScatterUniform(device)`: buffer para parâmetros + posições de luz
+- `runLightScatterPass(encoder, view, pipeline, bindGroup)`: draw(3) fullscreen
 
-Alinhamento WGSL dos structs:
-- `Camera`: 3× mat4x4 (192B) + vec4 position (16B) = **208 bytes**, alinhado a 16
-- `VolumeParams`: 2× f32 + i32 + 5× f32 + f32 pad = **32 bytes**, alinhado a 16
+---
 
-### 3. Integração no VolumetricCompositor — `VolumetricCompositor.ts`
+## Arquivos a Modificar
 
-Adicionar detecção de WebGPU no construtor:
-- Se `navigator.gpu` disponível e adapter/device obtidos → criar `WebGPURaymarchPipeline`
-- Senão → manter o renderer THREE.js GLSL existente (fallback automático, zero breaking changes)
+### 5. `src/render_ultra/gpgpu/webgpuLoop.ts`
+- Importar shaders de `wgsl/renderShaders.wgsl.ts` em vez do `RENDER_WGSL` inline
+- Adicionar smoke compute pipeline e bind groups separados
+- Adicionar light scatter pass após smoke render
+- Frame pipeline atualizado:
+  ```
+  Compute Physics → Compute Smoke → Sort → Fire Render → Smoke Render → Light Scatter → Present
+  ```
+- Novo campo `smokeComputePipeline`, `lightScatterPipeline` e bind groups correspondentes
 
-No método `update()`, volumes com `useFallback === false` e WebGPU disponível usam o pipeline WGSL; caso contrário, continuam com `RaymarchRenderer.ts`.
+### 6. `src/render_ultra/gpgpu/webgpuPipelines.ts`
+- Adicionar `createSmokeComputePipeline(device, wgslCode)` com entry `cs_smoke_update`
+- Exportar nova factory
 
-### 4. React Hook — `src/hooks/useWebGPUDevice.ts`
+### 7. `src/render_ultra/gpgpu/webgpuPasses.ts`
+- Adicionar `runSmokeComputePass(encoder, pipeline, bindGroup, count)`
+- Adicionar `runLightScatterPass(encoder, view, pipeline, bindGroup)`
 
-Hook reutilizável que:
-- Requisita adapter + device uma única vez
-- Retorna `{ device, format, supported }` 
-- Trata `device.lost` com re-init
-- Memoiza para evitar múltiplas requisições
+### 8. `src/render_ultra/gpgpu/webgpuBuffers.ts`
+- Adicionar `createSmokeUniformBuffer(device)` (32 bytes)
+- Adicionar `createLightScatterUniformBuffer(device)` (64 bytes)
+- Exportar constantes `SMOKE_UNIFORM_BYTES`, `LIGHT_SCATTER_UNIFORM_BYTES`
 
-### 5. Atualização do VoxelVolumetricEffect — `VoxelVolumetricEffect.tsx`
+### 9. `src/render_ultra/gpgpu/webgpuBindGroups.ts`
+- Adicionar `createSmokeComputeBindGroup(device, layout, uniformBuf, smokeBuf)`
+- Adicionar `createLightScatterBindGroup(device, layout, uniformBuf)`
 
-Passar o `GPUDevice` (se disponível) ao `VolumetricCompositor` para que ele possa criar o pipeline WGSL. Nenhuma mudança na API pública do componente.
+### 10. `src/render_ultra/gpgpu/index.ts`
+- Re-exportar novos módulos e types
 
-## Arquivos
+---
 
-| Arquivo | Ação |
-|---------|------|
-| `src/render_ultra/volumetric/shaders/fxk_voxel_raymarch.wgsl.ts` | Criar — shader WGSL como string |
-| `src/render_ultra/volumetric/WebGPURaymarchPipeline.ts` | Criar — pipeline WebGPU completo |
-| `src/hooks/useWebGPUDevice.ts` | Criar — hook de inicialização GPU |
-| `src/render_ultra/volumetric/VolumetricCompositor.ts` | Editar — adicionar path WebGPU com fallback |
-| `src/components/editor/effects/VoxelVolumetricEffect.tsx` | Editar — injetar device GPU opcional |
-| `src/render_ultra/volumetric/index.ts` | Editar — exportar novos módulos |
-| `src/render_ultra/index.ts` | Editar — re-exportar WebGPU pipeline |
-
-## Regras de Segurança
-
-- O renderer GLSL (`RaymarchRenderer.ts`) permanece **intacto** — é o fallback
-- `VolumetricCompositor` decide em runtime qual path usar
-- Nenhuma alteração em timeline, sync, core determinístico ou stores
-- Se WebGPU falhar em qualquer ponto (adapter null, device lost, pipeline error), o sistema degrada para GLSL automaticamente
-
-## Detalhes Técnicos — Struct Alignment
+## Detalhes Técnicos
 
 ```text
-Camera (WGSL uniform):
-  offset  0: view        mat4x4<f32>  64B  align 16
-  offset 64: proj         mat4x4<f32>  64B  align 16
-  offset128: inv_view_proj mat4x4<f32> 64B  align 16
-  offset192: position     vec4<f32>    16B  align 16
-  total: 208 bytes
+Frame Pipeline Atualizado:
 
-VolumeParams (WGSL uniform):
-  offset 0: step_size     f32   4B
-  offset 4: max_steps     i32   4B
-  offset 8: density_scale f32   4B
-  offset12: emission_scale f32  4B
-  offset16: absorption    f32   4B
-  offset20: scattering    f32   4B
-  offset24: anisotropy    f32   4B
-  offset28: pad           f32   4B
-  total: 32 bytes
+SimParams ──→ Compute Physics (particles)
+SmokeParams ──→ Compute Smoke (curl noise advection)
+                    ↓
+              Bitonic Sort (transparency ordering)
+                    ↓
+              Fire Render Pass (additive, clear, ACES in fragment)
+                    ↓
+              Smoke Render Pass (alpha blend, load, Beer-Lambert)
+                    ↓
+              Light Scatter Pass (fullscreen, additive low-intensity)
+                    ↓
+              Present
 ```
 
-TypeScript writers usarão `Float32Array` + `Int32Array` view no offset correto para garantir match byte-a-byte.
+- ACES tonemapping aplicado **dentro** do fire fragment shader (preserva HDR até o último momento)
+- Curl noise é divergence-free por construção (derivadas cruzadas), garantindo turbulência sem explosão de volume
+- Light scatter usa fullscreen triangle (3 vertices, no index buffer) para evitar overhead de quad
+- Smoke compute separado do physics principal para permitir tuning independente de turbulência vs física
+- Todos os novos buffers pré-alocados no constructor, zero GC no hot path
+- CPU fallback path inalterado — todo código novo é WebGPU-only com guard `if (!navigator.gpu)`
 

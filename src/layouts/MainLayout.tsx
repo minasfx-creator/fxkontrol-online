@@ -1,7 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
-import { AppSidebar } from '@/components/AppSidebar';
-import { FXKAssistant } from '@/components/FXKAssistant';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PanelLeftClose, PanelLeft, AlertOctagon, Menu } from 'lucide-react';
 import minasfxLogo from '@/assets/minasfx-logo-white.png';
@@ -9,8 +7,17 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useDisplayStore } from '@/store/useDisplayStore';
 import { haptics } from '@/lib/haptics';
 import { ambientSound } from '@/lib/ambientSound';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import DockBar from '@/components/DockBar';
+
+// Dev-only overlay — tree-shaken in production
+const RenderCounterOverlay = import.meta.env.DEV
+  ? lazy(() => import('@/components/dev/RenderCounterOverlay'))
+  : () => null;
+
+// Lazy-load heavy components that aren't needed for initial paint
+const AppSidebar = lazy(() => import('@/components/AppSidebar').then(m => ({ default: m.AppSidebar })));
+const FXKAssistant = lazy(() => import('@/components/FXKAssistant').then(m => ({ default: m.FXKAssistant })));
 
 function SidebarToggleButton() {
   const { state, toggleSidebar } = useSidebar();
@@ -44,6 +51,7 @@ export default function MainLayout() {
   const navigate = useNavigate();
   const isEditor = location.pathname === '/editor';
   const isCommand = location.pathname === '/command';
+  const commandImmersive = isCommand;
   const isMobile = useIsMobile();
   const prevPathRef = useRef(location.pathname);
   const [humStarted, setHumStarted] = useState(false);
@@ -59,7 +67,7 @@ export default function MainLayout() {
 
   const backlight = useDisplayStore(s => s.backlight);
 
-  const showDock = !isEditor && !isMobile;
+  const showDock = !isEditor && !isCommand && !isMobile;
   const showMobileDock = !isEditor && !isCommand && isMobile;
 
   // Start ambient hum on first user gesture
@@ -109,15 +117,18 @@ export default function MainLayout() {
   return (
     <SidebarProvider defaultOpen={!isMobile}>
       <div
-        className="min-h-[100dvh] flex w-full bg-background br2049-vignette"
+        className="h-[100dvh] flex w-full bg-background br2049-vignette overflow-hidden"
         style={{ filter: `brightness(${backlight / 100})` }}
       >
-        {/* Sidebar — renders on all sizes, offcanvas on mobile */}
-        <AppSidebar />
+        {!commandImmersive && !isEditor && (
+          <Suspense fallback={null}>
+            <AppSidebar />
+          </Suspense>
+        )}
 
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
           {/* ARMED Banner */}
-          {isArmed && (
+          {isArmed && !commandImmersive && (
             <button
               onClick={() => navigate('/command')}
               className="shrink-0 w-full flex items-center justify-center gap-2 py-1.5 danger-stripe armed-pulse cursor-pointer transition-all hover:brightness-110"
@@ -133,82 +144,96 @@ export default function MainLayout() {
             </button>
           )}
 
-          {/* Header — Apple frosted glass bar */}
-          <header
-            className={`flex items-center border-b px-3 shrink-0 relative overflow-hidden ${isEditor ? 'h-8' : 'h-10'}`}
-            style={{
-              background: 'rgba(8, 10, 14, 0.85)',
-              backdropFilter: 'blur(48px) saturate(1.8)',
-              WebkitBackdropFilter: 'blur(48px) saturate(1.8)',
-              borderColor: 'hsl(32 100% 50% / 0.06)',
-            }}
-          >
-            <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-20" />
-            {isMobile ? (
-              <MobileSidebarTrigger />
-            ) : (
-              <SidebarToggleButton />
-            )}
-            <div className="ml-3 flex items-center gap-2 relative z-10">
-              <div className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'hsl(32 100% 50%)', boxShadow: '0 0 6px hsl(32 100% 50% / 0.5)' }} />
-              <span className="text-[10px] font-mono tracking-widest uppercase" style={{ color: 'hsl(32 100% 50% / 0.8)', textShadow: '0 0 8px hsl(32 100% 50% / 0.3)' }}>
-                FX KONTROL
-              </span>
-            </div>
-            <div className="ml-auto flex items-center gap-2 relative z-10">
-              <img src={minasfxLogo} alt="MinasFX" className="h-4 object-contain opacity-60" />
-            </div>
-          </header>
-
-          <main className={`${(isEditor || isCommand) ? 'flex-1 min-h-0' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}
-            style={showDock || showMobileDock ? { paddingBottom: isCommand ? undefined : '72px' } : undefined}>
-            {/* Holographic light sweep overlay during transition */}
-            {transitionPhase !== 'idle' && (
-              <div className="absolute inset-0 pointer-events-none z-50 animate-page-sweep" />
-            )}
-            {/* Content with dissolve/materialize phase transitions */}
-            <div
-              key={displayedPath}
-              className={`h-full ${
-                transitionPhase === 'dissolve-out'
-                  ? 'animate-page-dissolve-out'
-                  : transitionPhase === 'materialize-in'
-                    ? 'animate-page-materialize-in'
-                    : ''
-              }`}
+          {/* Header */}
+          {!commandImmersive && !isEditor && (
+            <header
+              role="banner"
+              className="flex items-center border-b px-3 shrink-0 relative overflow-hidden h-10"
+              style={{
+                background: 'rgba(8, 10, 14, 0.85)',
+                backdropFilter: 'blur(48px) saturate(1.8)',
+                WebkitBackdropFilter: 'blur(48px) saturate(1.8)',
+                borderColor: 'hsl(32 100% 50% / 0.06)',
+              }}
             >
+              <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-20" />
+              {isMobile ? (
+                <MobileSidebarTrigger />
+              ) : (
+                <SidebarToggleButton />
+              )}
+              <div className="ml-3 flex items-center gap-2 relative z-10">
+                <div className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'hsl(32 100% 50%)', boxShadow: '0 0 6px hsl(32 100% 50% / 0.5)' }} />
+                <span className="text-[10px] font-mono tracking-widest uppercase" style={{ color: 'hsl(32 100% 50% / 0.8)', textShadow: '0 0 8px hsl(32 100% 50% / 0.3)' }}>
+                  FX KONTROL
+                </span>
+              </div>
+              <div className="ml-auto flex items-center gap-2 relative z-10">
+                <img src={minasfxLogo} alt="MinasFX" className="h-4 object-contain opacity-60" />
+              </div>
+            </header>
+          )}
+
+          <main role="main" className={`${(isEditor || isCommand) ? 'flex-1 min-h-0 overflow-hidden' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}
+            style={showDock || showMobileDock ? { paddingBottom: '72px' } : undefined}>
+            {(isEditor || isCommand) ? (
               <Outlet />
-            </div>
+            ) : (
+              <>
+                {transitionPhase !== 'idle' && (
+                  <div className="absolute inset-0 pointer-events-none z-50 animate-page-sweep" />
+                )}
+                <div
+                  key={displayedPath}
+                  className={`h-full ${
+                    transitionPhase === 'dissolve-out'
+                      ? 'animate-page-dissolve-out'
+                      : transitionPhase === 'materialize-in'
+                        ? 'animate-page-materialize-in'
+                        : ''
+                  }`}
+                >
+                  <Outlet />
+                </div>
+              </>
+            )}
           </main>
         </div>
-
-        <FXKAssistant />
-
-        {/* Global PANIC FAB */}
-        {isArmed && (
-          <button
-            onClick={handlePanic}
-            className="fixed z-[9999] flex items-center justify-center rounded-xl border-2 border-destructive/60 transition-all active:scale-90 armed-pulse"
-            style={{
-              bottom: isMobile ? '80px' : '80px',
-              right: '16px',
-              width: '64px',
-              height: '64px',
-              background: 'hsl(var(--destructive) / 0.9)',
-              boxShadow: '0 0 24px hsl(var(--destructive) / 0.4), 0 0 64px hsl(var(--destructive) / 0.15)',
-            }}
-            title="EMERGENCY STOP — ALL CHANNELS"
-          >
-            <div className="flex flex-col items-center">
-              <AlertOctagon className="w-6 h-6 text-white" />
-              <span className="text-[7px] font-mono-code font-black text-white tracking-widest mt-0.5">PANIC</span>
-            </div>
-          </button>
-        )}
-
-        {showDock && <DockBar />}
-        {showMobileDock && <DockBar />}
       </div>
+
+      {/* Overlays OUTSIDE the filtered div so position:fixed works correctly */}
+      <Suspense fallback={null}>
+        <FXKAssistant />
+      </Suspense>
+
+      {isArmed && !commandImmersive && (
+        <button
+          onClick={handlePanic}
+          className="fixed z-[9999] flex items-center justify-center rounded-xl border-2 border-destructive/60 transition-all active:scale-90 armed-pulse"
+          style={{
+            bottom: '80px',
+            right: '16px',
+            width: '64px',
+            height: '64px',
+            background: 'hsl(var(--destructive) / 0.9)',
+            boxShadow: '0 0 24px hsl(var(--destructive) / 0.4), 0 0 64px hsl(var(--destructive) / 0.15)',
+          }}
+          title="EMERGENCY STOP — ALL CHANNELS"
+          aria-label="Emergency stop — all channels"
+        >
+          <div className="flex flex-col items-center">
+            <AlertOctagon className="w-6 h-6 text-white" />
+            <span className="text-[7px] font-mono-code font-black text-white tracking-widest mt-0.5">PANIC</span>
+          </div>
+        </button>
+      )}
+
+      {(showDock || showMobileDock) && <DockBar />}
+
+      {/* Dev-only render counter overlay */}
+      <Suspense fallback={null}>
+        <RenderCounterOverlay />
+      </Suspense>
     </SidebarProvider>
   );
 }

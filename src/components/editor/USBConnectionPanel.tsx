@@ -41,7 +41,8 @@ const STATE_INDICATORS: Record<ConnectionState, { color: string; label: string }
 
 export default function USBConnectionPanel({ onClose }: { onClose: () => void }) {
   const isMobile = useIsMobile();
-  const { registerDevice, unregisterDevice } = useUSBDeviceStore();
+  const registerDevice = useUSBDeviceStore(s => s.registerDevice);
+  const unregisterDevice = useUSBDeviceStore(s => s.unregisterDevice);
   const [devices, setDevices] = useState<ConnectedDevice[]>([]);
   const [logs, setLogs] = useState<USBLog[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<string>(DEVICE_PROFILES[0].label);

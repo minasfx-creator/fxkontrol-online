@@ -117,7 +117,7 @@ export type { FluidGrid, FluidConfig } from './fireworks/niagaraFluids';
 
 // GPU Instanced Particle Rendering
 export { InstancedParticleRenderer, createSparkInstancedRenderer, createSmokeInstancedRenderer } from './fireworks/instancedParticleRenderer';
-export type { InstancedParticleConfig } from './fireworks/instancedParticleRenderer';
+export type { InstancedParticleConfig, ShaderMode } from './fireworks/instancedParticleRenderer';
 
 // Fog v2
 export type { FogConfig } from './environment/volumetricFog';
@@ -125,15 +125,25 @@ export type { FogConfig } from './environment/volumetricFog';
 // Lighting v2
 export type { HDRLightingConfig, BurstLightConfig } from './lighting/hdrLighting';
 
-// Volumetric Voxel System
-export {
-  VoxelGrid, injectSources, simulateVolume, DEFAULT_SIM_CONFIG,
-  RaymarchRenderer, DEFAULT_RAYMARCH_CONFIG,
-  WebGPURaymarchPipeline, VolumetricCompositor,
-  FXK_VOXEL_RAYMARCH_WGSL,
-} from './volumetric';
-export type {
-  VoxelGridConfig, InjectionSource, SimulationConfig,
-  RaymarchConfig, VolumeParamsGPU,
-  VolumeInstance, VolumePhase, CompositorConfig,
-} from './volumetric';
+// Cinema-Grade Shaders (Camada 7)
+export { createCinemaFireMaterial } from './fireworks/cinemaFireShader';
+export type { CinemaFireConfig } from './fireworks/cinemaFireShader';
+export { createCinemaSmokeMaterial } from './fireworks/cinemaSmokeShader';
+export type { CinemaSmokeConfig } from './fireworks/cinemaSmokeShader';
+export { createCinemaBurstMaterial } from './fireworks/cinemaBurstShader';
+export type { CinemaBurstConfig } from './fireworks/cinemaBurstShader';
+
+// GPU Compute Particle System (Camada 8)
+export { GPUComputeParticleSystem, createComputeParticleSystem } from './fireworks/gpuComputeParticles';
+export type { GPUParticleData, ComputeSimConfig } from './fireworks/gpuComputeParticles';
+
+// Compute Combustion + Smoke Turbulence (Camada 9)
+export { tickCombustionCPU, createCombustionData } from './fireworks/computeCombustion';
+export type { CombustionData } from './fireworks/computeCombustion';
+export { tickSmokeTurbulenceCPU, DEFAULT_SMOKE_TURBULENCE } from './fireworks/computeSmokeTurbulence';
+export type { SmokeTurbulenceConfig } from './fireworks/computeSmokeTurbulence';
+
+// WebGPU Native Pipeline (Camada 10)
+export { initWebGPU, isWebGPUSupported, ParticlePingPong, WebGPUParticleLoop } from './gpgpu';
+export type { WebGPUContext, ParticleBufferPair, LoopConfig } from './gpgpu';
+export { getComputeWGSL, getSortWGSL, packSoAToBuffer } from './fireworks/gpuComputeParticles';

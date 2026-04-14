@@ -12,6 +12,7 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { formatTimecode, encodeTimecodeToLTC, generateMTCQuarterFrames, secondsToTimecode, type SMPTEFrameRate } from '@/lib/smpteEngine';
+import { formatSMPTE } from '@/lib/smpteUtils';
 import { getOSCClient, buildMA3TimecodeSync, buildMA3TimecodeTransport } from '@/lib/oscEngine';
 
 interface SMPTEPanelProps {
@@ -20,7 +21,8 @@ interface SMPTEPanelProps {
 
 export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
   const store = useSMPTEStore();
-  const { currentTime, isPlaying } = useProjectStore();
+    const currentTime = useProjectStore(s => s.currentTime);
+  const isPlaying = useProjectStore(s => s.isPlaying);
   const hardware = useFireOneHardware();
   const pbus = usePBusHardware();
   const [startTcInput, setStartTcInput] = useState('01:00:00:00');
@@ -137,6 +139,11 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
           <div className="text-[9px] font-mono-code text-muted-foreground mt-1">
             Project: {currentTime.toFixed(2)}s | Offset: +{store.startTimecodeSeconds.toFixed(1)}s
           </div>
+          {store.frameRate === 29.97 && (
+            <div className="text-[8px] font-mono-code text-fxk-cyan/60 mt-0.5">
+              DF: {formatSMPTE(offsetTime, store.frameRate, true).text}
+            </div>
+          )}
         </div>
 
         {/* Transport */}
@@ -372,6 +379,7 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
                 <SelectItem value="25">25 fps (PAL / EBU)</SelectItem>
                 <SelectItem value="29.97">29.97 fps (NTSC DF)</SelectItem>
                 <SelectItem value="30">30 fps (SMPTE NDF)</SelectItem>
+                <SelectItem value="60">60 fps (NDF HFR)</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { Search, Star } from 'lucide-react';
 
-export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'positions' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia' | 'firing' | 'labels' | 'video' | 'models' | 'safety' | 'scripting' | 'audience' | 'indoor' | 'chains' | 'groups' | 'scene' | 'soundlevel' | 'aroverlay' | 'share' | 'particles' | 'versioning' | 'weather' | 'collisions' | 'approval' | 'trajectory' | 'templates' | 'telemetry' | 'flightlog' | 'marketplace' | 'sitelayout' | 'showsettings' | 'calibration' | 'livefiring' | 'fleet' | 'geofence' | 'storyboard' | 'showcontrol' | 'inspector' | 'lightprogram' | 'safetycheck' | 'takeoffgrid' | 'transitions' | 'lasercontrol' | 'suppliers' | 'usb' | 'videochoreo' | 'showven' | 'generative' | 'sitemodels' | 'setlist' | 'rider' | 'budget' | 'showpreview' | 'mobilelink' | 'linkmonitor' | 'controllers' | 'fieldmap' | 'connections' | 'radio' | 'ma3' | 'sacnmonitor' | 'showcommander' | 'bluetooth' | 'nfc' | 'remotecontrol' | 'dmxoutput';
+export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'positions' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia' | 'firing' | 'labels' | 'video' | 'models' | 'safety' | 'scripting' | 'audience' | 'indoor' | 'chains' | 'groups' | 'scene' | 'soundlevel' | 'aroverlay' | 'share' | 'particles' | 'versioning' | 'weather' | 'collisions' | 'approval' | 'trajectory' | 'templates' | 'telemetry' | 'flightlog' | 'marketplace' | 'sitelayout' | 'showsettings' | 'calibration' | 'livefiring' | 'fleet' | 'geofence' | 'storyboard' | 'showcontrol' | 'inspector' | 'lightprogram' | 'safetycheck' | 'takeoffgrid' | 'transitions' | 'lasercontrol' | 'suppliers' | 'usb' | 'videochoreo' | 'showven' | 'generative' | 'sitemodels' | 'setlist' | 'rider' | 'budget' | 'showpreview' | 'mobilelink' | 'linkmonitor' | 'controllers' | 'fieldmap' | 'connections' | 'radio' | 'ma3' | 'sacnmonitor' | 'showcommander' | 'bluetooth' | 'nfc' | 'remotecontrol' | 'dmxoutput' | 'easyconnect' | 'worldshows' | 'qastudio';
 
 export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
   {
@@ -47,6 +47,7 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'videochoreo', label: 'Video Choreo', icon: Video },
       { id: 'synesthesia', label: 'Audio Sync', icon: Music, shortcut: 'Y' },
       { id: 'templates', label: 'Templates', icon: FolderOpen },
+      { id: 'worldshows', label: 'World Shows', icon: Globe },
       { id: 'storyboard', label: 'Storyboard', icon: Film },
       { id: 'trajectory', label: 'Trajetórias', icon: Navigation },
       { id: 'transitions', label: 'Transições', icon: ArrowRightLeft },
@@ -58,6 +59,7 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
     title: 'Conexões',
     icon: Cable,
     items: [
+      { id: 'easyconnect', label: 'Easy Connect', icon: Zap, shortcut: 'E' },
       { id: 'usb', label: 'USB Connect', icon: Cpu },
       { id: 'dmx', label: 'DMX512', icon: ScanLine },
       { id: 'dmxoutput', label: 'DMX Output', icon: Cable },
@@ -73,6 +75,7 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
       { id: 'ma3', label: 'grandMA3', icon: Sliders },
       { id: 'sacnmonitor', label: 'sACN Monitor', icon: Activity },
       { id: 'diagnostic', label: 'Diagnóstico', icon: Bug, shortcut: 'D' },
+      { id: 'qastudio', label: 'QA Studio', icon: BarChart3 },
     ],
   },
   {

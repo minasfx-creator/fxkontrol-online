@@ -41,7 +41,8 @@ function toDMS(decimal: number, isLat: boolean): string {
 }
 
 export default function GeoSearchPanel() {
-  const { settings, updateSettings } = useSceneStore();
+  const settings = useSceneStore(s => s.settings);
+  const updateSettings = useSceneStore(s => s.updateSettings);
   const [query, setQuery] = useState('');
   const [copied, setCopied] = useState(false);
 

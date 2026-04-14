@@ -6,10 +6,12 @@
  * are reused via module-level singletons and useRef/useMemo.
  */
 import React, { useRef, useMemo, useEffect } from 'react';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { useFrame, useThree } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useSceneStore } from '@/store/useSceneStore';
 import { createExposureController, updateExposure, flashEvent } from '@/render_ultra/postprocessing/exposure';
 import { GlobalIlluminationSystem } from '@/render_ultra/lighting/globalIllumination';
@@ -37,6 +39,7 @@ const _giProbeColor = new THREE.Color();
 // Uses getEffectById() for O(1) lookups instead of EFFECT_LIBRARY.find()
 // ═══════════════════════════════════════════════════════════════════════
 export const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function AdaptiveExposureController(_props, _ref) {
+  useRenderCounter('AdaptiveExposure');
   const exposureRef = useRef(createExposureController());
   const _scatterAccum = useMemo(() => new THREE.Color(), []);
   const _tmpColor = useMemo(() => new THREE.Color(), []);
@@ -55,7 +58,8 @@ export const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(func
       if (elapsed < 0 || elapsed > 2.0) continue;
 
       activeBursts++;
-      luminance += elapsed < 0.5 ? 3.0 : 0.5;
+      // Clamped per-burst luminance — was 3.0, now 1.5 max
+      luminance += elapsed < 0.5 ? 1.5 : 0.3;
 
       if (elapsed < 0.3) {
         const effect = getEffectById(item.effectId);
@@ -68,13 +72,15 @@ export const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(func
     }
 
     const burstLoad = THREE.MathUtils.clamp(activeBursts / 6, 0, 1);
-    luminance = Math.min(luminance * (1 + burstLoad * 0.2), 15);
+    // Total luminance capped at 6.0 — was 15
+    luminance = Math.min(luminance * (1 + burstLoad * 0.2), 6.0);
 
     if (luminance > 2 && delta < 0.1) {
       flashEvent(state, Math.min(luminance * 0.15, 0.8));
     }
 
-    const exposure = THREE.MathUtils.clamp(updateExposure(state, luminance, delta), 0.35, 1.8);
+    // Narrower exposure range: [0.7, 1.4] — was [0.35, 1.8]
+    const exposure = THREE.MathUtils.clamp(updateExposure(state, luminance, delta), 0.7, 1.4);
     setAdaptiveExposureValue(exposure);
     setAdaptivePipelineState(exposure, burstLoad);
     setDebugExposure(exposure);
@@ -107,10 +113,10 @@ export function ContactShadowsLayer() {
     <ContactShadows
       position={[0, 0.01, 0]}
       opacity={s.contactShadowsOpacity}
-      scale={200}
+      scale={80}
       blur={s.contactShadowsBlur}
       far={50}
-      resolution={512}
+      resolution={256}
       color="#000000"
     />
   );
@@ -241,6 +247,7 @@ export const LensFlareController = React.forwardRef<THREE.Group, {}>(function Le
 // Zero-GC: uses getEffectById() O(1), reuses uniform color in-place
 // ═══════════════════════════════════════════════════════════════════════
 export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflections(_props, _ref) {
+  const groundStyle = useSceneStore(st => st.settings.groundStyle);
   const meshRef = useRef<THREE.Mesh>(null);
   const uniformsRef = useRef({
     uWetness: { value: 0.3 },
@@ -251,6 +258,12 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function Groun
 
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
+    // sfx-stage mode: skip reflection updates entirely (performance optimization)
+    if (groundStyle === 'sfx-stage') {
+      meshRef.current.visible = false;
+      return;
+    }
+    meshRef.current.visible = true;
     const u = uniformsRef.current;
     u.uTime.value = clock.getElapsedTime();
 
@@ -279,7 +292,7 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function Groun
 
   return (
     <mesh ref={meshRef} position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[100000, 100000]} />
+      <planeGeometry args={[10000, 10000]} />
       <shaderMaterial
         transparent
         depthWrite={false}

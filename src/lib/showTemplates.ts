@@ -3,7 +3,7 @@
  * Save and load reusable show templates with formation sequences, effects, and scene settings.
  */
 
-import type { DroneFormation } from '@/store/useProjectStore';
+import type { DroneFormation } from '@/types/projectTypes';
 import type { SceneSettings } from '@/store/useSceneStore';
 
 export interface ShowTemplate {

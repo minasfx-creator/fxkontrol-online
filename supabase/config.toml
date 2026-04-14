@@ -26,3 +26,9 @@ verify_jwt = false
 
 [functions.warehouse-download]
 verify_jwt = false
+
+[functions.google-places-search]
+verify_jwt = false
+
+[functions.validate-accreditation]
+verify_jwt = false

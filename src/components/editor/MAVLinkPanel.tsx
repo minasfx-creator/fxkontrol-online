@@ -19,15 +19,28 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export default function MAVLinkPanel({ onClose }: { onClose: () => void }) {
-  const {
-    connected, bridgeActive, drones, log, packetCount, bytesTransferred,
-    selectedDroneId, rateConfig,
-    setConnected, setBridgeActive, initDrone, updateDrone,
-    addPacket, addLog, setSelectedDroneId, clearLog, resetAll,
-  } = useMAVLinkStore();
+  const connected = useMAVLinkStore(s => s.connected);
+  const bridgeActive = useMAVLinkStore(s => s.bridgeActive);
+  const drones = useMAVLinkStore(s => s.drones);
+  const log = useMAVLinkStore(s => s.log);
+  const packetCount = useMAVLinkStore(s => s.packetCount);
+  const bytesTransferred = useMAVLinkStore(s => s.bytesTransferred);
+  const selectedDroneId = useMAVLinkStore(s => s.selectedDroneId);
+  const rateConfig = useMAVLinkStore(s => s.rateConfig);
+  const setConnected = useMAVLinkStore(s => s.setConnected);
+  const setBridgeActive = useMAVLinkStore(s => s.setBridgeActive);
+  const initDrone = useMAVLinkStore(s => s.initDrone);
+  const updateDrone = useMAVLinkStore(s => s.updateDrone);
+  const addPacket = useMAVLinkStore(s => s.addPacket);
+  const addLog = useMAVLinkStore(s => s.addLog);
+  const setSelectedDroneId = useMAVLinkStore(s => s.setSelectedDroneId);
+  const clearLog = useMAVLinkStore(s => s.clearLog);
+  const resetAll = useMAVLinkStore(s => s.resetAll);
 
-  const { droneFormations, currentTime } = useProjectStore();
-  const { agents, running: boidsRunning } = useBoidsStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const agents = useBoidsStore(s => s.agents);
+  const boidsRunning = useBoidsStore(s => s.running);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [autoStream, setAutoStream] = useState(false);
 
@@ -235,7 +248,7 @@ export default function MAVLinkPanel({ onClose }: { onClose: () => void }) {
               <p>Pitch: <span className="text-foreground">{selectedTel.pitch.toFixed(1)}°</span></p>
               <p>Yaw: <span className="text-foreground">{selectedTel.yaw.toFixed(1)}°</span></p>
               <p>Throttle: <span className="text-foreground">{selectedTel.throttle.toFixed(0)}%</span></p>
-              <p>Batt: <span style={{ color: selectedTel.batteryPercent < 20 ? 'hsl(0 80% 50%)' : 'hsl(120 60% 45%)' }}>{selectedTel.batteryPercent.toFixed(0)}%</span></p>
+              <p>Batt: <span className={selectedTel.batteryPercent < 20 ? 'text-destructive' : 'text-emerald-400'}>{selectedTel.batteryPercent.toFixed(0)}%</span></p>
               <p>Voltage: <span className="text-foreground">{selectedTel.voltageV.toFixed(1)}V</span></p>
               <p>GPS: <span className="text-foreground">{selectedTel.gpsFix}D ({selectedTel.satellites} sat)</span></p>
               <p>RSSI: <span className="text-foreground">{selectedTel.rssi}%</span></p>

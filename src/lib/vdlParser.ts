@@ -200,6 +200,8 @@ const VDL_TYPES: Record<string, VDLTypeSpec> = {
   'single_shot': { name: 'Single Shot', baseSpread: 35, baseDuration: 1.5, baseStars: 80, baseBreakSpeed: 26, trailDefault: 'none', partType: 'single_shot' },
   light:         { name: 'Light', baseSpread: 0, baseDuration: 5.0, baseStars: 0, baseBreakSpeed: 0, trailDefault: 'none', partType: 'light' },
   ground:        { name: 'Ground Effect', baseSpread: 30, baseDuration: 4.0, baseStars: 80, baseBreakSpeed: 10, trailDefault: 'comet', partType: 'ground' },
+  rack:          { name: 'Rack', baseSpread: 0, baseDuration: 0, baseStars: 0, baseBreakSpeed: 0, trailDefault: 'none', partType: 'rack' },
+  not_an_effect: { name: 'Not An Effect', baseSpread: 0, baseDuration: 0, baseStars: 0, baseBreakSpeed: 0, trailDefault: 'none', partType: 'marker' },
 };
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -738,7 +740,15 @@ export function parseVDL(input: string): VDLResult {
     result.numSplits = 4;
   }
 
-  // ── SuperVDL: Niagara preset detection + auto-matching ──
+  // ── Comet ultra-fast / laser detection (Finale Manual Table 2) ──
+  // "Para fazer cometas ultrarrápidos, configure altura alta e duração pequena"
+  if (result.partType === 'comet' && result.height > 80 && result.duration < 0.8) {
+    result.breakSpeed = Math.round(result.breakSpeed * 1.8 * 10) / 10;
+    if (!result.modifiers.includes('laser')) {
+      result.modifiers.push('laser');
+    }
+  }
+
   // 1. Explicit reference: "niagara-blue", "niagara-red" etc.
   const niagaraExplicit = lower.match(/niagara-(\w+)/);
   if (niagaraExplicit) {

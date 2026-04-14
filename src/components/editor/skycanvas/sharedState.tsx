@@ -3,7 +3,9 @@
  * Eliminates prop-drilling and enables centralized per-frame scanning.
  */
 import * as THREE from 'three';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { getEffectById as getEffectByIdFromMap } from '@/data/effectLibraryMap';
 import { getCompound, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
 import { getBreakHeight } from '@/lib/pyroPhysics';
 
@@ -37,7 +39,7 @@ export function runActiveBurstScan(): ActiveBurstScanResult {
     if (elapsed < 0 || elapsed > 2.0) continue;
 
     activeBursts++;
-    luminance += elapsed < 0.5 ? 3.0 : 0.5;
+    luminance += elapsed < 0.5 ? 1.5 : 0.3;
 
     if (elapsed < 0.05) {
       const effect = getEffectById(item.effectId);
@@ -97,14 +99,8 @@ export function hexToCompound(hexColor: string): ChemicalCompound {
   return result;
 }
 
-// ═══ EFFECT_LIBRARY indexed Map for O(1) lookups ═══
-let _effectLibraryMap: Map<string, (typeof EFFECT_LIBRARY)[number]> | null = null;
-export function getEffectById(id: string): (typeof EFFECT_LIBRARY)[number] | undefined {
-  if (!_effectLibraryMap || _effectLibraryMap.size !== EFFECT_LIBRARY.length) {
-    _effectLibraryMap = new Map(EFFECT_LIBRARY.map(e => [e.id, e]));
-  }
-  return _effectLibraryMap.get(id);
-}
+// ═══ EFFECT_LIBRARY indexed Map — delegated to src/data/effectLibraryMap ═══
+export const getEffectById = getEffectByIdFromMap;
 
 // ═══ Pre-allocated math objects for quaternion composition ═══
 export const _posQuat = new THREE.Quaternion();
@@ -124,37 +120,62 @@ export let _adaptiveExposure = 1.2;
 export function setAdaptiveExposureValue(v: number) { _adaptiveExposure = v; }
 export function getAdaptiveExposure() { return _adaptiveExposure; }
 
-// ═══ Wind helper ═══
-export function getWindForce(): [number, number, number] {
+// ═══ Wind helper (turbulent wind field) ═══
+import { windField, type WindParticleType } from '@/core/engine/windField';
+
+export function getWindForce(particleType: WindParticleType = 'ember', posY = 50): [number, number, number] {
   const { wind } = useProjectStore.getState();
   if (!wind.enabled) return [0, 0, 0];
-  const rad = (wind.direction * Math.PI) / 180;
-  const gust = 1 + (Math.sin(performance.now() * 0.001) * 0.5 + 0.5) * wind.gustStrength;
-  const s = wind.speed * gust * 0.15;
-  return [Math.sin(rad) * s, 0, Math.cos(rad) * s];
+
+  // Sync wind field config from project store
+  windField.setConfig({
+    baseSpeed: wind.speed,
+    directionDeg: wind.direction,
+    gustMax: wind.gustStrength * 3,
+    turbulenceIntensity: 0.3,
+  });
+
+  return windField.sample(0, posY, 0, particleType);
+}
+
+/**
+ * Sample wind at a specific world position (for trail curvature).
+ */
+export function getWindAtPosition(x: number, y: number, z: number, particleType: WindParticleType = 'ember'): [number, number, number] {
+  const { wind } = useProjectStore.getState();
+  if (!wind.enabled) return [0, 0, 0];
+
+  windField.setConfig({
+    baseSpeed: wind.speed,
+    directionDeg: wind.direction,
+    gustMax: wind.gustStrength * 3,
+    turbulenceIntensity: 0.3,
+  });
+
+  return windField.sample(x, y, z, particleType);
 }
 
 // ═══ Camera presets ═══
 import { Camera, Eye, Video, Plane, Users, Crosshair, UserRound, Grid3x3, Car } from 'lucide-react';
 
 export const CAMERA_PRESETS = [
-  { id: 'free', label: 'Free', icon: Eye, position: [0, 1.7, 100] as [number, number, number], target: [0, 50, 0] as [number, number, number] },
+  { id: 'free', label: 'Free', icon: Eye, position: [0, 15, 150] as [number, number, number], target: [0, 5, 0] as [number, number, number] },
   // ── UE5-inspired modes ──
-  { id: 'first-person', label: '1st Person', icon: Crosshair, position: [0, 1.7, 800] as [number, number, number], target: [0, 100, 0] as [number, number, number] },
-  { id: 'third-person', label: '3rd Person', icon: UserRound, position: [0, 3.5, 1200] as [number, number, number], target: [0, 1.5, 1190] as [number, number, number] },
+  { id: 'first-person', label: '1st Person', icon: Crosshair, position: [0, 1.7, 200] as [number, number, number], target: [0, 30, 0] as [number, number, number] },
+  { id: 'third-person', label: '3rd Person', icon: UserRound, position: [0, 8, 1200] as [number, number, number], target: [0, 6, 1190] as [number, number, number] },
   { id: 'top-down', label: 'Top Down', icon: Grid3x3, position: [0, 4000, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
   { id: 'vehicle', label: 'Flythrough', icon: Car, position: [-2000, 50, 3000] as [number, number, number], target: [0, 200, 0] as [number, number, number] },
   // ── Classic presets ──
   { id: 'satellite', label: 'Satellite', icon: Plane, position: [0, 6000, 0.1] as [number, number, number], target: [0, 0, 0] as [number, number, number] },
-  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 1.7, 2500] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
-  { id: 'front', label: 'Front', icon: Users, position: [0, 1.7, 3000] as [number, number, number], target: [0, 400, 0] as [number, number, number] },
+  { id: 'audience', label: 'Plateia', icon: Users, position: [0, 6, 2500] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
+  { id: 'front', label: 'Front', icon: Users, position: [0, 6, 3000] as [number, number, number], target: [0, 400, 0] as [number, number, number] },
   { id: 'side', label: 'Side', icon: Video, position: [3000, 250, 0] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
   { id: 'back', label: 'Back', icon: Video, position: [0, 250, -2000] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
   { id: 'aerial', label: 'Aerial 45°', icon: Plane, position: [0, 3000, 3000] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
   { id: 'closeup', label: 'Close-up', icon: Camera, position: [150, 200, 750] as [number, number, number], target: [0, 500, 0] as [number, number, number] },
-  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-750, 2, 2250] as [number, number, number], target: [0, 400, 0] as [number, number, number] },
+  { id: 'cinematic', label: 'Cinema', icon: Video, position: [-750, 8, 2250] as [number, number, number], target: [0, 400, 0] as [number, number, number] },
   { id: 'drone-follow', label: 'Drone POV', icon: Eye, position: [125, 900, 300] as [number, number, number], target: [0, 600, 0] as [number, number, number] },
-  { id: 'vip', label: 'VIP Box', icon: Users, position: [500, 1.7, 2000] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
+  { id: 'vip', label: 'VIP Box', icon: Users, position: [500, 6, 2000] as [number, number, number], target: [0, 300, 0] as [number, number, number] },
 ] as const;
 
 // ═══ WebGL Error Boundary ═══

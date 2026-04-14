@@ -29,7 +29,7 @@ const TYPE_ICONS: Record<string, string> = {
 };
 
 export default function GMA2PatchImporter({ open, onOpenChange }: Props) {
-  const { addPosition } = useProjectStore();
+    const addPosition = useProjectStore(s => s.addPosition);
   const [result, setResult] = useState<GMA2PatchResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());

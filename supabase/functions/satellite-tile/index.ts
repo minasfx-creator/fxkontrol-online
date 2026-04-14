@@ -1,51 +1,38 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { handleCors } from "../_shared/cors.ts";
+import { jsonOk, jsonError } from "../_shared/response.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+Deno.serve(async (req) => {
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
   const key = Deno.env.get("GOOGLE_MAPS_API_KEY");
-  if (!key) {
-    return new Response(JSON.stringify({ error: "GOOGLE_MAPS_API_KEY not configured" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (!key) return jsonError("GOOGLE_MAPS_API_KEY not configured");
 
   try {
     const { lat, lng, zoom = 18, size = "640x640" } = await req.json();
     if (typeof lat !== "number" || typeof lng !== "number") {
-      return new Response(JSON.stringify({ error: "lat and lng required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonError("lat and lng required", 400);
     }
 
     const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=${size}&maptype=satellite&key=${key}`;
     const res = await fetch(url);
 
-    if (!res.ok) {
-      return new Response(JSON.stringify({ error: `Google API error: ${res.status}` }), {
-        status: 502,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!res.ok) return jsonError(`Google API error: ${res.status}`, 502);
 
     const imageBuffer = await res.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)));
+    const base64 = uint8ToBase64(new Uint8Array(imageBuffer));
 
-    return new Response(JSON.stringify({ image: `data:image/png;base64,${base64}` }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonOk({ image: `data:image/png;base64,${base64}` });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonError(err instanceof Error ? err.message : String(err));
   }
 });

@@ -1,6 +1,8 @@
 import { useState, useCallback, useMemo, useRef, useEffect, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { MapPin, Plus, Trash2, Copy, ChevronDown, ChevronRight, GripVertical, Search, Flame, Radio, Lightbulb, Hash, ArrowUpDown, MoreHorizontal, Crosshair, Users } from 'lucide-react';
-import { useProjectStore, EFFECT_LIBRARY, type Position, type PositionType } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type Position, type PositionType } from '@/types/projectTypes';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -24,7 +26,14 @@ const TYPE_CONFIG: Record<PositionType, { label: string; color: string; icon: ty
 const EDITABLE_FIELDS: EditingCell['field'][] = ['name', 'x', 'y', 'z', 'heading', 'pitch', 'section'];
 
 function PositionContextMenu({ x, y, posId, onClose }: { x: number; y: number; posId: string; onClose: () => void }) {
-  const { removePosition, positions, addPosition, selectPosition, timelineItems, addTimelineItem, currentTime, selectedPositionIds } = useProjectStore();
+  const removePosition = useProjectStore(s => s.removePosition);
+  const positions = useProjectStore(s => s.positions);
+  const addPosition = useProjectStore(s => s.addPosition);
+  const selectPosition = useProjectStore(s => s.selectPosition);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
   const pos = positions.find(p => p.id === posId);
 
   useEffect(() => {
@@ -103,11 +112,16 @@ interface PositionWindowProps {
 }
 
 export default function PositionWindow({ onClose }: PositionWindowProps) {
-  const {
-    positions, timelineItems, selectedPositionId, selectedPositionIds,
-    selectPosition, selectMultiplePositions, togglePositionSelection,
-    addPosition, removePosition, updatePosition,
-  } = useProjectStore();
+  const positions = useProjectStore(s => s.positions);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const selectedPositionId = useProjectStore(s => s.selectedPositionId);
+  const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
+  const selectPosition = useProjectStore(s => s.selectPosition);
+  const selectMultiplePositions = useProjectStore(s => s.selectMultiplePositions);
+  const togglePositionSelection = useProjectStore(s => s.togglePositionSelection);
+  const addPosition = useProjectStore(s => s.addPosition);
+  const removePosition = useProjectStore(s => s.removePosition);
+  const updatePosition = useProjectStore(s => s.updatePosition);
 
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [searchQuery, setSearchQuery] = useState('');

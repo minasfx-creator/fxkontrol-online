@@ -1,25 +1,32 @@
-import { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { Settings2, Download, FileJson, FileSpreadsheet, Box, Trash2, Zap, Shield, Sliders, MapPin, Link2, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { Separator } from '@/components/ui/separator';
 import { exportVVIZ, exportFiringCSV, downloadFile } from '@/lib/exportEngine';
 import SafetyPanel from './SafetyPanel';
 
-function ExportSection() {
-  const { timelineItems, positions, projectName, duration, trajectories, droneFormations } = useProjectStore();
+const ExportSection = React.memo(function ExportSection() {
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const positions = useProjectStore(s => s.positions);
+  const projectName = useProjectStore(s => s.projectName);
+  const duration = useProjectStore(s => s.duration);
+  const trajectories = useProjectStore(s => s.trajectories);
+  const droneFormations = useProjectStore(s => s.droneFormations);
 
-  const droneCount = (droneFormations.length > 0 ? droneFormations[0].droneCount : 0) +
+  const droneCount = useMemo(() => (droneFormations.length > 0 ? droneFormations[0].droneCount : 0) +
     timelineItems.filter((item) => {
       const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
       return effect?.type === 'drone';
-    }).length + trajectories.length;
+    }).length + trajectories.length, [droneFormations, timelineItems, trajectories]);
 
-  const pyroCount = timelineItems.filter((item) => {
+  const pyroCount = useMemo(() => timelineItems.filter((item) => {
     const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
     return effect?.type === 'firework';
-  }).length;
+  }).length, [timelineItems]);
 
   const handleExportVVIZ = () => {
     const content = exportVVIZ(projectName, duration, timelineItems, positions, trajectories, droneFormations);
@@ -73,7 +80,7 @@ function ExportSection() {
       </Button>
     </div>
   );
-}
+});
 
 function NumberField({
   label,
@@ -103,7 +110,10 @@ function NumberField({
 }
 
 function PositionInspector() {
-  const { selectedPositionId, positions, updatePosition, removePosition } = useProjectStore();
+    const selectedPositionId = useProjectStore(s => s.selectedPositionId);
+  const positions = useProjectStore(s => s.positions);
+  const updatePosition = useProjectStore(s => s.updatePosition);
+  const removePosition = useProjectStore(s => s.removePosition);
   const pos = positions.find((p) => p.id === selectedPositionId);
 
   if (!pos) return null;
@@ -157,7 +167,13 @@ function PositionInspector() {
 }
 
 export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor }: { onToggleEffectEditor?: () => void; showEffectEditor?: boolean }) {
-  const { selectedTimelineItemId, timelineItems, selectedEffectId, selectedPositionId, positions, updateTimelineItem } = useProjectStore();
+  useRenderCounter('PropertiesPanel');
+    const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const selectedEffectId = useProjectStore(s => s.selectedEffectId);
+  const selectedPositionId = useProjectStore(s => s.selectedPositionId);
+  const positions = useProjectStore(s => s.positions);
+  const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
 
   const selectedItem = timelineItems.find((i) => i.id === selectedTimelineItemId);
   const selectedEffect = selectedItem

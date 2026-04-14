@@ -63,6 +63,7 @@ export default function MobileLinkMonitor({ onClose }: MobileLinkMonitorProps) {
   const maxEvents = 20;
 
   useEffect(() => {
+    let flashTimer: ReturnType<typeof setTimeout> | null = null;
     const ch = supabase.channel(CHANNEL_NAME);
     ch.on('broadcast', { event: 'fixture-fire' }, (msg) => {
       const p = msg.payload as { fixtureId: string; type: FixtureType; color: string; intensity: number };
@@ -91,14 +92,18 @@ export default function MobileLinkMonitor({ onClose }: MobileLinkMonitorProps) {
       };
       setEvents(prev => [evt, ...prev].slice(0, maxEvents));
       setFlashId(eventId);
-      setTimeout(() => setFlashId(null), 500);
+      if (flashTimer) clearTimeout(flashTimer);
+      flashTimer = setTimeout(() => setFlashId(null), 500);
     });
 
     ch.subscribe((status) => {
       setConnected(status === 'SUBSCRIBED');
     });
 
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      if (flashTimer) clearTimeout(flashTimer);
+      supabase.removeChannel(ch);
+    };
   }, [fireEffect]);
 
   return (

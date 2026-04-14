@@ -1,10 +1,12 @@
 /**
  * ─── Export Engine — Commercial Output ──────────────────────────────
- * Exports project data as JSON, Finale 3D CSV, or Unreal-ready stream.
+ * Exports project data as JSON, Finale 3D CSV, FireOne script,
+ * or Unreal-ready stream.
  * Triggers browser download or returns data for API consumers.
  */
 
 import { eventBus } from '@/core/system/eventBus';
+import type { ShowPlan } from '@/core/showplan/ShowPlan';
 
 /** Download a JSON project file */
 export function exportProjectJSON(project: Record<string, unknown>, filename = 'fxk_project.json'): void {
@@ -50,6 +52,66 @@ export function exportDroneWaypointsCSV(
   const blob = new Blob([header + rows], { type: 'text/csv' });
   triggerDownload(blob, filename);
   eventBus.emit('SYSTEM.EXPORT', { format: 'csv', filename, waypointCount: waypoints.length });
+}
+
+/**
+ * Export ShowPlan as FireOne .fir script format.
+ * FireOne format: Module, Channel, Time(ms), Effect, Position, Notes
+ */
+export function exportFireOneScript(
+  plan: ShowPlan,
+  filename = 'fxk_show.fir',
+): void {
+  const lines: string[] = [
+    '; FX KONTROL — FireOne Export Script',
+    `; Show: ${plan.metadata.name}`,
+    `; Venue: ${plan.metadata.venue}`,
+    `; Duration: ${plan.metadata.duration.toFixed(1)}s`,
+    `; Generated: ${new Date().toISOString()}`,
+    `; Cues: ${plan.pyroCues.length}`,
+    ';',
+    '; Module,Channel,Time(ms),FuseDelay(ms),Effect,Caliber(mm),Elevation,Position,Section',
+  ];
+
+  // Sort cues by time
+  const sorted = [...plan.pyroCues].sort((a, b) => a.time - b.time);
+
+  for (const cue of sorted) {
+    const pos = plan.positions.find(p => p.id === cue.positionId);
+    const timeMs = Math.round(cue.time * 1000);
+    lines.push([
+      cue.module,
+      cue.channel,
+      timeMs,
+      Math.round(cue.fuseDelay),
+      cue.effectId,
+      cue.caliber,
+      cue.elevation.toFixed(1),
+      pos?.name ?? cue.positionId,
+      cue.section ?? '',
+    ].join(','));
+  }
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  triggerDownload(blob, filename);
+  eventBus.emit('SYSTEM.EXPORT', { format: 'fireone', filename, cueCount: sorted.length });
+}
+
+/**
+ * Export ShowPlan as Art-Net patch list.
+ */
+export function exportArtNetPatch(
+  plan: ShowPlan,
+  filename = 'fxk_artnet_patch.csv',
+): void {
+  const header = 'Universe,Channel,Value,Time,Duration,Curve,FixtureID\n';
+  const rows = plan.dmxCues.map(c =>
+    `${c.universe},${c.channel},${c.value},${c.time.toFixed(3)},${c.duration.toFixed(3)},${c.curve},${c.fixtureId ?? ''}`
+  ).join('\n');
+
+  const blob = new Blob([header + rows], { type: 'text/csv' });
+  triggerDownload(blob, filename);
+  eventBus.emit('SYSTEM.EXPORT', { format: 'artnet-patch', filename, cueCount: plan.dmxCues.length });
 }
 
 // ── Helper ──────────────────────────────────────────────────────────

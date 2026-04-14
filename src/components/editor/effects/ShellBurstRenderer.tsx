@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect } from 'react';
+import { useRef, useMemo, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { hash01 } from '@/lib/pyroNoise';
@@ -13,15 +13,22 @@ import {
   getParticleSize,
   getMaterialType,
   getBurstSmokeDensity,
+  GRAVITY,
   type BurstPattern,
   type ParticleState,
   type StepModifiers,
   getFormulationModifiers,
 } from '@/lib/pyroPhysics';
+import { windField } from '@/core/engine/windField';
 import { useSceneStore } from '@/store/useSceneStore';
 import { getThreeBlending, getMaxEnergy, GROUND_LIGHT_SCALE } from '@/lib/niagaraBlenderRules';
 import { getRealFormulation, formulationToCompound } from '@/render_ultra/fireworks/particleChemistry';
 import { readDensityAt, type FluidGrid } from '@/render_ultra/fireworks/niagaraFluids';
+
+// ── Pre-allocated singletons (Zero-GC) ──────────────────────────────
+const _warmSmokeColor = new THREE.Color(0.47, 0.40, 0.33);
+const _coolSmokeColor = new THREE.Color(0.40, 0.47, 0.53);
+const _windOut: [number, number, number] = [0, 0, 0];
 
 // ── Custom GPU Shaders (Skybrush-grade thermal rendering) ───────────
 
@@ -30,6 +37,7 @@ const BURST_VERTEX = `
   attribute float aMaxLife;
   attribute float aBrightness;
   attribute vec3 aVelocity;
+  
   
   varying float vLife;
   varying float vMaxLife;
@@ -50,12 +58,18 @@ const BURST_VERTEX = `
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     
     // Size: larger at birth, shrinking as star burns out
-    float lifeRatio = clamp(aLife / aMaxLife, 0.0, 1.0);
-    float sizeDecay = mix(1.0, 0.15, pow(lifeRatio, 0.8));
-    // Slight bloom pulse at birth
-    float birthPulse = lifeRatio < 0.05 ? 1.0 + (1.0 - lifeRatio / 0.05) * 0.8 : 1.0;
+    float rawRatio = clamp(aLife / aMaxLife, 0.0, 1.0);
     
-    gl_PointSize = uBaseSize * sizeDecay * birthPulse * (300.0 / -mvPosition.z);
+    // Detonation envelope: burst expands progressively in first 3% of life
+    // Simulates real shell break — not instantaneous
+    float detonationPhase = smoothstep(0.0, 0.03, rawRatio);
+    float burstEnvelope = mix(0.15, 1.0, detonationPhase);
+    
+    float sizeDecay = mix(1.0, 0.15, pow(rawRatio, 0.8));
+    // Slight bloom pulse at birth, modulated by detonation
+    float birthPulse = rawRatio < 0.05 ? 1.0 + (1.0 - rawRatio / 0.05) * 0.8 * burstEnvelope : 1.0;
+    
+    gl_PointSize = uBaseSize * sizeDecay * birthPulse * burstEnvelope * (300.0 / -mvPosition.z);
     gl_PointSize = clamp(gl_PointSize, 1.0, 64.0 + uCaliberScale * 8.0);
     
     gl_Position = projectionMatrix * mvPosition;
@@ -92,8 +106,8 @@ const BURST_FRAGMENT = `
     vec3 baseHue = mix(uColor, uColor2, smoothstep(uColorChangePoint - 0.1, uColorChangePoint + 0.1, rawRatio));
     
     // Thermal color transition: white-hot → saturated → ember → charcoal
-    vec3 whiteHot = mix(vec3(1.0, 0.95, 0.8), baseHue * 1.4 + vec3(0.1), 0.5) * (0.25 + uHDRMultiplier * 0.06);
-    vec3 saturated = baseHue * 1.5;
+    vec3 whiteHot = mix(vec3(1.0, 0.95, 0.8), baseHue * 1.2 + vec3(0.08), 0.5) * (0.1 + uHDRMultiplier * 0.02);
+    vec3 saturated = baseHue * 0.8;
     vec3 ember = vec3(baseHue.r * 0.5 + 0.25, baseHue.g * 0.15 + 0.05, baseHue.b * 0.05);
     vec3 charcoal = vec3(0.12, 0.06, 0.02);
     
@@ -101,7 +115,7 @@ const BURST_FRAGMENT = `
     if (lifeRatio < 0.04) {
       thermalColor = mix(whiteHot, saturated, lifeRatio / 0.04);
     } else if (lifeRatio < 0.55) {
-      thermalColor = mix(saturated, baseHue * 1.2, (lifeRatio - 0.04) / 0.51);
+      thermalColor = mix(saturated, baseHue * 1.0, (lifeRatio - 0.04) / 0.51);
     } else if (lifeRatio < 0.80) {
       thermalColor = mix(baseHue, ember, (lifeRatio - 0.55) / 0.25);
     } else {
@@ -114,8 +128,10 @@ const BURST_FRAGMENT = `
     float outerGlow = exp(-dist * dist * 10.0);
     float glow = coreGlow * 0.6 + outerGlow * 0.4;
     
-    // Flicker
-    float flicker = 0.85 + 0.15 * sin(vLife * 47.0 + stretchedCoord.x * 13.0);
+    // Stochastic flicker — hash-based, non-periodic combustion irregularity
+    float flickerHash = fract(sin(dot(vec2(vLife * 31.7 + stretchedCoord.x * 5.3, vBrightness * 17.3 + vSpeed * 0.7), vec2(127.1, 311.7))) * 43758.5453);
+    float flickerHash2 = fract(sin(dot(vec2(vLife * 53.1, stretchedCoord.y * 29.7), vec2(269.5, 183.3))) * 43758.5453);
+    float flicker = 0.78 + 0.22 * (flickerHash * 0.6 + flickerHash2 * 0.4);
     
     // Opacity fade
     float fadeIn = smoothstep(0.0, 0.03, rawRatio);
@@ -156,10 +172,10 @@ const AFTERGLOW_FRAGMENT = `
 // ── Volumetric Smoke Billboard Shader (Niagara SubUV style) ─────────
 
 const SMOKE_VERTEX = `
-  attribute float aAge;
-  attribute float aMaxAge;
-  attribute float aScale;
-  attribute float aSeed;
+  uniform float aAge;
+  uniform float aMaxAge;
+  uniform float aScale;
+  uniform float aSeed;
   
   varying float vAge;
   varying float vMaxAge;
@@ -300,6 +316,7 @@ export default function ShellBurstRenderer({
   angleOffset = 0,
   noTrail = false,
 }: ShellBurstRendererProps) {
+  const [, setRenderTick] = useState(0);
   const pointsRef = useRef<THREE.Points>(null);
   const pistilPointsRef = useRef<THREE.Points>(null);
   const glitterRef = useRef<THREE.Points>(null);
@@ -367,16 +384,30 @@ export default function ShellBurstRenderer({
   const pistilCount = useMemo(() => hasPistil ? Math.round(starCount * 0.25) : 0, [hasPistil, starCount]);
   const pistilColorObj = useMemo(() => new THREE.Color(pistilColor), [pistilColor]);
   const secondaryColorObj = useMemo(() => new THREE.Color(secondaryColor || color), [secondaryColor, color]);
-  const stepMods = useMemo<StepModifiers | undefined>(
-    () => fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : undefined,
-    [fallingLeaves]
-  );
+  // Instance-local stepMods to prevent shared mutation across concurrent bursts
+  const stepModsRef = useRef<StepModifiers>(fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : {});
+  useEffect(() => {
+    stepModsRef.current = fallingLeaves ? { fallingLeaves: true, reducedGravity: 0.3 } : {};
+  }, [fallingLeaves]);
 
-  // Initialize particles on first render
+  // Initialize particles + per-particle drag coefficients on first render
+  const particleDragCoeffs = useRef<Float32Array>(new Float32Array(MAX_PARTICLES));
   useEffect(() => {
     const mainParticles = createShellBurst(starCount, breakSpeed, pattern, starLifetime);
     if (fallingLeaves) mainParticles.forEach((p, i) => { p.seed = i / starCount; });
     particlesRef.current = mainParticles;
+
+    // Compute per-particle drag from material properties (sparkSize as density proxy)
+    // Large sparkSize → heavier particles → lower drag (maintain trajectory)
+    // High temperature → more energetic → slightly lower drag
+    const baseSparkSize = realFormulation ? realFormulation.sparkSize : 1.0;
+    const tempFactor = realFormulation ? Math.min(1.0, realFormulation.temperature / 2500) : 0.5;
+    const dragCoeffs = particleDragCoeffs.current;
+    for (let i = 0; i < starCount; i++) {
+      const densityVariance = 0.7 + Math.random() * 0.6;
+      const effectiveMass = baseSparkSize * densityVariance * (0.8 + tempFactor * 0.4);
+      dragCoeffs[i] = 1.0 / (0.5 + effectiveMass * 0.3);
+    }
 
     if (hasPistil) {
       const pistilPs = createShellBurst(pistilCount, breakSpeed * 0.4, 'peony', starLifetime * 0.8);
@@ -397,16 +428,18 @@ export default function ShellBurstRenderer({
   }), []);
 
   // Pistil buffers
+  const pistilSize = Math.max(pistilCount, 1);
   const pistilBuffers = useMemo(() => ({
-    pos: new Float32Array(MAX_PARTICLES * 3),
-    life: new Float32Array(MAX_PARTICLES),
-    maxLife: new Float32Array(MAX_PARTICLES),
-    brightness: new Float32Array(MAX_PARTICLES),
-    velocity: new Float32Array(MAX_PARTICLES * 3),
-  }), []);
+    pos: new Float32Array(pistilSize * 3),
+    life: new Float32Array(pistilSize),
+    maxLife: new Float32Array(pistilSize),
+    brightness: new Float32Array(pistilSize),
+    velocity: new Float32Array(pistilSize * 3),
+  }), [pistilSize]);
 
   // Glitter trail buffers
   const GLITTER_MAX = 800;
+  const glitterWriteIdx = useRef(0);
   const glitterBuffers = useMemo(() => ({
     pos: new Float32Array(GLITTER_MAX * 3),
     col: new Float32Array(GLITTER_MAX * 3),
@@ -458,9 +491,32 @@ export default function ShellBurstRenderer({
     uTime: { value: 0 },
   }), []);
 
-  // Crossette sub-bursts
-  const crossetteRef = useRef<ParticleState[][]>([]);
+  // Pre-allocated per-smoke uniform objects to avoid spread allocation per render
+  const SMOKE_POOL_SIZE = 16;
+  const perSmokeUniforms = useMemo(() =>
+    Array.from({ length: SMOKE_POOL_SIZE }, () => ({
+      uSmokeColor: smokeUniforms.uSmokeColor,
+      uSmokeOpacity: smokeUniforms.uSmokeOpacity,
+      uTime: smokeUniforms.uTime,
+      aAge: { value: 0 },
+      aMaxAge: { value: 1 },
+      aScale: { value: 1 },
+      aSeed: { value: 0 },
+    })),
+    [smokeUniforms]
+  );
+
+  // Crossette sub-bursts with stable IDs for React keys
+  const crossetteRef = useRef<{ id: number; particles: ParticleState[] }[]>([]);
   const crossetteTriggered = useRef(new Set<number>());
+  const crossetteIdCounter = useRef(0);
+
+  // Fix: clear crossette state on pattern/color change to prevent stale sub-breaks
+  useEffect(() => {
+    crossetteTriggered.current.clear();
+    crossetteRef.current = [];
+    crossetteIdCounter.current = 0;
+  }, [pattern, color]);
 
   useFrame((_, delta) => {
     if (!pointsRef.current || !particlesRef.current || progress <= 0) return;
@@ -470,19 +526,45 @@ export default function ShellBurstRenderer({
     initTimeRef.current += dt;
     const time = initTimeRef.current;
 
+    // Cache position tuple (avoid repeated cast + index per frame)
+    const px = position[0], py = position[1], pz = position[2];
+
     // Step physics using store-driven drag and wind (formulation override if present)
-    const effectiveDrag = formMods ? formMods.dragOverride : starDrag;
+    // Per-particle drag: base drag * material density coefficient
+    const baseDrag = formMods ? formMods.dragOverride : starDrag;
+    const dragCoeffs = particleDragCoeffs.current;
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       if (p.life < p.maxLife) {
-        stepParticle(p, dt, windVec, effectiveDrag, stepMods);
+        // Detonation envelope: particles start slow and reach full velocity over first 3% of life
+        const lifeRatio = p.life / p.maxLife;
+        const detonationMult = lifeRatio < 0.03 ? 0.15 + (lifeRatio / 0.03) * 0.85 : 1.0;
+        
+        // Per-particle drag from material density
+        const particleDrag = baseDrag * dragCoeffs[i];
+        // Chrysanthemum tip curl: progressive gravity after 70% life
+        // Mutate stepMods in-place to avoid 120k object allocations/s
+        const tipCurlMods = stepModsRef.current;
+        tipCurlMods.tipCurlFactor = pattern === 'chrysanthemum' ? 2.5 : undefined;
+        tipCurlMods.tipCurlLifeRatio = pattern === 'chrysanthemum' ? lifeRatio : undefined;
+        tipCurlMods.willowDroop = pattern === 'willow';
+        tipCurlMods.willowLifeRatio = pattern === 'willow' ? lifeRatio : undefined;
+        tipCurlMods.horsetailDroop = pattern === 'horsetail';
+        tipCurlMods.horsetailLifeRatio = pattern === 'horsetail' ? lifeRatio : undefined;
+        tipCurlMods.coconutPhase = pattern === 'coconut_tree'
+          ? (lifeRatio < 0.3 ? 'ascent' : lifeRatio < 0.6 ? 'spread' : 'droop')
+          : undefined;
+        stepParticle(p, dt * detonationMult, windVec, particleDrag, tipCurlMods);
 
         // Glitter trail: emit micro-particles from active stars
-        if (trailType === 'glitter' && p.life > 0.1 && Math.random() < 0.15) {
+        if (trailType === 'glitter' && !noTrail && p.life > 0.1 && Math.random() < 0.15) {
           const gp = createGlitterTrailParticle(p);
-          glitterParticlesRef.current.push(gp);
-          if (glitterParticlesRef.current.length > GLITTER_MAX) {
-            glitterParticlesRef.current.shift();
+          const gArr = glitterParticlesRef.current;
+          if (gArr.length >= GLITTER_MAX) {
+            gArr[glitterWriteIdx.current % GLITTER_MAX] = gp;
+            glitterWriteIdx.current++;
+          } else {
+            gArr.push(gp);
           }
         }
       }
@@ -504,7 +586,8 @@ export default function ShellBurstRenderer({
             life: 0, maxLife: starLifetime * 0.4, brightness: 1,
           });
         }
-        crossetteRef.current.push(subParticles);
+        crossetteRef.current.push({ id: crossetteIdCounter.current++, particles: subParticles });
+        setRenderTick(t => t + 1);
       }
 
       posBuffer[i * 3] = p.x;
@@ -519,10 +602,12 @@ export default function ShellBurstRenderer({
     }
 
     // Step pistil particles
+    // Brocade crown: 250ms pistil ignition delay
     if (pistilParticlesRef.current && pistilPointsRef.current) {
+      const pistilDelay = pattern === 'brocade_crown' ? 0.25 : 0;
       const pp = pistilParticlesRef.current;
       for (let i = 0; i < pp.length; i++) {
-        if (pp[i].life < pp[i].maxLife) stepParticle(pp[i], dt, windVec, starDrag * 0.8, stepMods);
+        if (pp[i].life < pp[i].maxLife && time > pistilDelay) stepParticle(pp[i], dt, windVec, starDrag * 0.8, stepModsRef.current);
         pistilBuffers.pos[i * 3] = pp[i].x;
         pistilBuffers.pos[i * 3 + 1] = pp[i].y;
         pistilBuffers.pos[i * 3 + 2] = pp[i].z;
@@ -553,14 +638,19 @@ export default function ShellBurstRenderer({
     if (glitterRef.current && glitterParticlesRef.current.length > 0) {
       const gp = glitterParticlesRef.current;
       // Remove dead glitter
-      for (let i = gp.length - 1; i >= 0; i--) {
+      let i = gp.length - 1;
+      while (i >= 0) {
         gp[i].life += dt;
-        gp[i].vy += -9.81 * dt * 0.5;
+        gp[i].vy += GRAVITY * dt * 0.5;
         gp[i].x += gp[i].vx * dt;
         gp[i].y += gp[i].vy * dt;
         gp[i].z += gp[i].vz * dt;
         gp[i].brightness = Math.max(0, 1 - gp[i].life / gp[i].maxLife);
-        if (gp[i].life > gp[i].maxLife) { gp.splice(i, 1); }
+        if (gp[i].life > gp[i].maxLife) {
+          gp[i] = gp[gp.length - 1]; gp.pop();
+          continue; // re-check swapped element at same index
+        }
+        i--;
       }
       const gCount = Math.min(gp.length, GLITTER_MAX);
       for (let i = 0; i < gCount; i++) {
@@ -581,8 +671,8 @@ export default function ShellBurstRenderer({
     }
 
     // Step crossette sub-particles with store wind/drag
-    for (const subGroup of crossetteRef.current) {
-      for (const sp of subGroup) {
+    for (const entry of crossetteRef.current) {
+      for (const sp of entry.particles) {
         if (sp.life < sp.maxLife) stepParticle(sp, dt, windVec, starDrag * 1.5);
       }
     }
@@ -628,6 +718,7 @@ export default function ShellBurstRenderer({
     // Spawn smoke puffs when burst reaches ~20% progress
     if (progress > 0.15 && !smokeSpawned.current && sceneSettings.smokeRenderQuality !== 'off') {
       smokeSpawned.current = true;
+      setRenderTick(t => t + 1);
       const sp: typeof smokeParticles.current = [];
       for (let i = 0; i < SMOKE_COUNT; i++) {
         const theta = Math.random() * Math.PI * 2;
@@ -657,9 +748,7 @@ export default function ShellBurstRenderer({
     // Step smoke: update time and set warm/cool smoke color per-particle
     smokeUniforms.uTime.value = time;
     // Base smoke color varies: warm gray #776655 vs cool gray #667788
-    const warmColor = new THREE.Color(0.47, 0.40, 0.33);
-    const coolColor = new THREE.Color(0.40, 0.47, 0.53);
-    smokeUniforms.uSmokeColor.value.copy(baseColor.r > 0.5 ? warmColor : coolColor);
+    smokeUniforms.uSmokeColor.value.copy(baseColor.r > 0.5 ? _warmSmokeColor : _coolSmokeColor);
     smokeUniforms.uSmokeOpacity.value = sceneSettings.smokeRenderQuality === 'high' ? 0.07 : 0.035;
 
     // Read fluid density for smoke modulation if available
@@ -675,9 +764,16 @@ export default function ShellBurstRenderer({
       const turbFreqZ = 0.25 + turbSeed * 0.35;
       const turbAmp = 0.02 + turbSeed * 0.03;
       
-      sp.x += sp.vx * dt + Math.sin(time * turbFreqX + sp.seed * 10) * turbAmp;
-      sp.y += sp.vy * dt;
-      sp.z += sp.vz * dt + Math.cos(time * turbFreqZ + sp.seed * 7) * turbAmp;
+      // Sample turbulent wind field at smoke world position (100% influence)
+      const worldX = px + sp.x;
+      const worldY = py + sp.y;
+      const worldZ = pz + sp.z;
+      windField.sampleInto(worldX, worldY, worldZ, 'smoke', _windOut);
+      const windX = _windOut[0], windY = _windOut[1], windZ = _windOut[2];
+      
+      sp.x += sp.vx * dt + windX * dt + Math.sin(time * turbFreqX + sp.seed * 10) * turbAmp;
+      sp.y += sp.vy * dt + windY * dt;
+      sp.z += sp.vz * dt + windZ * dt + Math.cos(time * turbFreqZ + sp.seed * 7) * turbAmp;
       sp.vy *= 0.994;
       
       const mesh = smokeMeshRefs.current[i];
@@ -688,11 +784,19 @@ export default function ShellBurstRenderer({
         mesh.scale.setScalar(expansion);
         mesh.visible = sp.age < sp.maxAge;
         
+        // Update pre-allocated per-smoke uniforms
+        if (i < SMOKE_POOL_SIZE) {
+          perSmokeUniforms[i].aAge.value = sp.age;
+          perSmokeUniforms[i].aMaxAge.value = sp.maxAge;
+          perSmokeUniforms[i].aScale.value = sp.scale;
+          perSmokeUniforms[i].aSeed.value = sp.seed;
+        }
+        
         // Modulate opacity by fluid grid density if available
         if (fluidGrid && mesh.material) {
-          const worldX = (position as number[])[0] + sp.x;
-          const worldZ = (position as number[])[2] + sp.z;
-          const density = readDensityAt(fluidGrid as FluidGrid, worldX, worldZ);
+          const fluidWorldX = px + sp.x;
+          const fluidWorldZ = pz + sp.z;
+          const density = readDensityAt(fluidGrid as FluidGrid, fluidWorldX, fluidWorldZ);
           const fluidBoost = 1 + density * 0.4;
           (mesh.material as any).uniforms.uSmokeOpacity.value = smokeUniforms.uSmokeOpacity.value * fluidBoost;
         }
@@ -715,6 +819,7 @@ export default function ShellBurstRenderer({
           <bufferAttribute attach="attributes-aMaxLife" args={[maxLifeBuffer, 1]} />
           <bufferAttribute attach="attributes-aBrightness" args={[brightnessBuffer, 1]} />
           <bufferAttribute attach="attributes-aVelocity" args={[velocityBuffer, 3]} />
+          
         </bufferGeometry>
         <shaderMaterial
           vertexShader={BURST_VERTEX}
@@ -773,40 +878,42 @@ export default function ShellBurstRenderer({
       )}
 
       {/* Crossette sub-bursts */}
-      {crossetteRef.current.map((subGroup, gi) => (
-        <CrossetteSubBurst key={gi} particles={subGroup} color={color} caliber={caliber} windVec={windVec} drag={starDrag} />
+      {crossetteRef.current.map((entry) => (
+        <CrossetteSubBurst key={entry.id} particles={entry.particles} color={color} caliber={caliber} windVec={windVec} drag={starDrag} />
       ))}
 
-      {/* Burst flash — Screen blending to prevent white-out accumulation */}
-      {progress < 0.08 && (
+      {/* Burst flash — Screen blending. Dahlia: 2.5x intensity, faster decay */}
+      {progress < (pattern === 'dahlia' ? 0.12 : 0.08) && (
         <mesh>
-          <sphereGeometry args={[1.0 + caliber * 1.0, 16, 16]} />
+          <sphereGeometry args={[1.0 + caliber * (pattern === 'dahlia' ? 1.5 : 1.0), 16, 16]} />
           <meshBasicMaterial
             color={secondaryColor || color}
             transparent
-            opacity={burstFlashIntensity * 0.2 * (1 - progress / 0.08)}
+            opacity={burstFlashIntensity * (pattern === 'dahlia' ? 0.5 : 0.2) * (1 - progress / (pattern === 'dahlia' ? 0.12 : 0.08))}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest
           />
         </mesh>
       )}
 
-      {/* Secondary flash ring — Screen blending */}
-      {progress < 0.12 && (
+      {/* Secondary flash ring — Screen blending. Dahlia: 2.5x boost */}
+      {progress < (pattern === 'dahlia' ? 0.18 : 0.12) && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[caliber * 0.5 + progress * 40, caliber * 0.8 + progress * 45, 32]} />
           <meshBasicMaterial
             color={secondaryColor || color}
             transparent
-            opacity={burstFlashIntensity * 0.12 * (1 - progress / 0.12)}
+            opacity={burstFlashIntensity * (pattern === 'dahlia' ? 0.3 : 0.12) * (1 - progress / (pattern === 'dahlia' ? 0.18 : 0.12))}
             blending={screenBlend.blending}
             blendEquation={screenBlend.blendEquation}
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest
             side={THREE.DoubleSide}
           />
         </mesh>
@@ -829,7 +936,7 @@ export default function ShellBurstRenderer({
       </mesh>
 
       {/* Volumetric smoke billboards — Niagara SubUV turbulent puffs */}
-      {smokeParticles.current.map((sp, i) => (
+      {smokeParticles.current.map((_sp, i) => i < SMOKE_POOL_SIZE ? (
         <mesh
           key={`smoke-${i}`}
           ref={(el) => { smokeMeshRefs.current[i] = el; }}
@@ -840,19 +947,14 @@ export default function ShellBurstRenderer({
           <shaderMaterial
             vertexShader={SMOKE_VERTEX}
             fragmentShader={SMOKE_FRAGMENT}
-            uniforms={{
-              ...smokeUniforms,
-              aAge: { value: sp.age },
-              aMaxAge: { value: sp.maxAge },
-              aScale: { value: sp.scale },
-              aSeed: { value: sp.seed },
-            }}
+            uniforms={perSmokeUniforms[i]}
             transparent
             depthWrite={false}
+            depthTest
             side={THREE.DoubleSide}
           />
         </mesh>
-      ))}
+      ) : null)}
 
       {/* Ground illumination — reduced intensity per V-Ray/Blender rules */}
       {progress < 0.5 && (

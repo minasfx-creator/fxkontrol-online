@@ -103,7 +103,7 @@ export default function Auth() {
       )}
 
       {/* Glass card */}
-      <div className={`relative z-10 w-full max-w-sm px-4 transition-all duration-[1000ms] ease-out ${
+      <div className={`relative z-10 w-full max-w-sm px-4 transition-all duration-1000 ease-out ${
         bootPhase === 'ready' ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-6'
       }`}>
         <div className="rounded-2xl p-6 space-y-5 relative overflow-hidden" style={{

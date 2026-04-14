@@ -1,12 +1,14 @@
 /**
  * PositionTransformGizmo — TransformControls attached to selected position
  * Includes trajectory line helper showing launch direction.
+ * Integrates with useViewportStore to disable OrbitControls during drag.
  */
 import { useRef, useEffect, useMemo } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { TransformControls, Line } from '@react-three/drei';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
+import { useViewportStore } from '@/store/useViewportStore';
 import * as THREE from 'three';
 
 export default function PositionTransformGizmo() {
@@ -49,6 +51,7 @@ function PositionGizmoInner({
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const controlsRef = useRef<any>(null);
+  const setInteractionState = useViewportStore(s => s.setInteractionState);
 
   useEffect(() => {
     if (groupRef.current) {
@@ -60,6 +63,30 @@ function PositionGizmoInner({
       );
     }
   }, [position.x, position.y, position.z, position.heading, position.pitch]);
+
+  // Handle dragging-changed to coordinate with OrbitControls
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+
+    const handleDraggingChanged = (event: any) => {
+      const isDragging = event.value;
+      if (isDragging) {
+        setInteractionState('transforming');
+        // Dispatch event to disable OrbitControls immediately
+        window.dispatchEvent(new CustomEvent('gizmo-dragging', { detail: true }));
+      } else {
+        // Small delay to ensure OrbitControls doesn't pick up residual mouse movement
+        requestAnimationFrame(() => {
+          setInteractionState('idle');
+          window.dispatchEvent(new CustomEvent('gizmo-dragging', { detail: false }));
+        });
+      }
+    };
+
+    controls.addEventListener('dragging-changed', handleDraggingChanged);
+    return () => controls.removeEventListener('dragging-changed', handleDraggingChanged);
+  }, [setInteractionState]);
 
   useEffect(() => {
     const controls = controlsRef.current;

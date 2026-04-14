@@ -214,12 +214,12 @@ export default function BLEDeviceScanner({ context, compact = false, simulation 
               <div className="relative">
                 <div className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center",
-                  dev.connected ? "bg-green-500/20" : theme.bg
+                  dev.connected ? "bg-emerald-500/20" : theme.bg
                 )}>
-                  <Bluetooth className={cn("w-4 h-4", dev.connected ? "text-green-400" : theme.accent)} />
+                  <Bluetooth className={cn("w-4 h-4", dev.connected ? "text-emerald-400" : theme.accent)} />
                 </div>
                 <span className={cn(
-                  "absolute -bottom-1 -right-1 text-[6px] font-bold px-1 rounded text-white",
+                  "absolute -bottom-1 -right-1 text-[6px] font-bold px-1 rounded text-primary-foreground",
                   TYPE_COLORS[dev.type] || 'bg-muted'
                 )}>
                   {dev.type}
@@ -243,7 +243,7 @@ export default function BLEDeviceScanner({ context, compact = false, simulation 
 
                   {dev.battery !== null && (
                     <div className="flex items-center gap-0.5">
-                      <Battery className={cn("w-2.5 h-2.5", dev.battery > 20 ? "text-green-400" : "text-red-400")} />
+                      <Battery className={cn("w-2.5 h-2.5", dev.battery > 20 ? "text-emerald-400" : "text-destructive")} />
                       <span className="text-[8px] font-mono text-muted-foreground">{dev.battery}%</span>
                     </div>
                   )}
@@ -253,7 +253,7 @@ export default function BLEDeviceScanner({ context, compact = false, simulation 
                   )}
 
                   {dev.connected && (
-                    <Badge className="text-[6px] h-3 px-1 bg-green-600 text-white border-0">
+                    <Badge className="text-[6px] h-3 px-1 bg-emerald-600 text-primary-foreground border-0">
                       <CheckCircle2 className="w-1.5 h-1.5 mr-0.5" /> ONLINE
                     </Badge>
                   )}
@@ -267,7 +267,7 @@ export default function BLEDeviceScanner({ context, compact = false, simulation 
                   Desconectar
                 </Button>
               ) : (
-                <Button size="sm" className={cn("h-6 px-2 text-[8px] text-white",
+                <Button size="sm" className={cn("h-6 px-2 text-[8px] text-primary-foreground",
                   context === 'pyro' ? 'bg-red-600 hover:bg-red-500' :
                   context === 'dmx' ? 'bg-blue-600 hover:bg-blue-500' :
                   context === 'light' ? 'bg-indigo-600 hover:bg-indigo-500' :

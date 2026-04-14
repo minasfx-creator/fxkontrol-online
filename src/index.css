@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap');
+/* Fonts loaded via index.html preload — no render-blocking @import */
 
 @tailwind base;
 @tailwind components;
@@ -7,7 +7,7 @@
 @layer base {
   :root {
     /* FX KONTROL — Tactical Command Interface */
-    --background: 220 20% 4%;
+    --background: 0 0% 2%;
     --foreground: 180 8% 88%;
 
     --card: 220 18% 6%;
@@ -35,10 +35,10 @@
     --input: 220 14% 12%;
     --ring: 32 100% 50%;
 
-    --radius: 0.25rem;
+    --radius: 0.75rem;
 
     /* Surface hierarchy — military depth */
-    --surface-0: 220 22% 3%;
+    --surface-0: 0 0% 2%;
     --surface-1: 220 20% 5%;
     --surface-2: 220 18% 7%;
     --surface-3: 220 15% 10%;
@@ -56,7 +56,7 @@
     --timeline-track: 220 18% 6%;
 
     /* FXK tactical product colors */
-    --fxk-cyan: 32 100% 50%;
+    --fxk-cyan: 190 100% 50%;
     --fxk-orange: 32 100% 50%;
     --fxk-gold: 45 100% 50%;
     --fxk-violet: 270 60% 50%;
@@ -515,18 +515,18 @@
 .glass-card {
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
+  border-radius: 16px;
 }
 .glass-card-elevated {
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
+  border-radius: 20px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 .glass-button {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
+  border-radius: 14px;
   transition: background 0.2s ease, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .glass-button:hover {
@@ -534,7 +534,7 @@
 }
 .glass-button:active {
   background: rgba(255, 255, 255, 0.12);
-  transform: scale(0.96);
+  transform: scale(0.94);
 }
 
 /* ── Apple Menu Glass ── */
@@ -597,11 +597,11 @@
   background: hsl(var(--primary) / 0.12);
 }
 
-/* Status pill — tactical */
+/* Status pill — Apple Dynamic Island style */
 .status-pill {
-  background: rgba(0, 0, 0, 0.92);
-  border-radius: 2px;
-  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.88);
+  border-radius: 22px;
+  padding: 6px 14px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -609,35 +609,35 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   font-family: 'JetBrains Mono', monospace;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-/* Tactical segmented control */
+/* Segmented control — Apple style */
 .segmented-control {
   display: flex;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 2px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 2px;
-  gap: 1px;
+  padding: 3px;
+  gap: 2px;
 }
 .segmented-control button {
   flex: 1;
   padding: 6px 10px;
-  border-radius: 2px;
+  border-radius: 10px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   color: hsl(var(--muted-foreground));
-  transition: all 0.15s ease;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  font-family: 'JetBrains Mono', monospace;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  letter-spacing: 0.03em;
+  font-family: 'Rajdhani', sans-serif;
 }
 .segmented-control button.active {
   background: hsl(var(--primary) / 0.15);
   color: hsl(var(--primary));
-  box-shadow: 0 0 8px hsl(var(--primary) / 0.15);
+  box-shadow: 0 0 12px hsl(var(--primary) / 0.12);
 }
 
 /* Tactical spring animations */
@@ -665,9 +665,22 @@
 .animate-ios-spring-up { animation: ios-spring-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-ios-spring-scale { animation: ios-spring-scale 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
-/* ===== Night Mode / Show Mode ===== */
-body.night-mode {
-  --muted-foreground: 200 8% 52%;
+/* Night Mode — consolidated in .night-mode block below (line ~909) */
+
+/* ===== Field / Outdoor High-Contrast Mode ===== */
+body.field-mode {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 5%;
+  --card: 0 0% 97%;
+  --card-foreground: 0 0% 5%;
+  --muted: 0 0% 92%;
+  --muted-foreground: 0 0% 35%;
+  --primary: 32 100% 45%;
+  --primary-foreground: 0 0% 100%;
+  --destructive: 0 90% 45%;
+  --border: 0 0% 80%;
+  --surface-0: 0 0% 95%;
+  --surface-1: 0 0% 92%;
 }
 
 /* High-contrast utility — raises minimum text opacity */
@@ -675,10 +688,61 @@ body.night-mode {
   --tw-text-opacity: 1;
 }
 
+/* ===== Status Indicator System ===== */
+.status-ready {
+  color: hsl(var(--success));
+  text-shadow: 0 0 6px hsl(var(--success) / 0.5);
+}
+.status-live {
+  color: hsl(var(--destructive));
+  text-shadow: 0 0 8px hsl(var(--destructive) / 0.6);
+  animation: armed-pulse 1.2s ease-in-out infinite;
+}
+.status-warning {
+  color: hsl(var(--warning));
+  text-shadow: 0 0 6px hsl(var(--warning) / 0.5);
+}
+.status-error {
+  color: hsl(var(--destructive));
+  text-shadow: 0 0 8px hsl(var(--destructive) / 0.6);
+}
+
+/* Status badge variants — high visibility */
+.badge-ready {
+  background: hsl(var(--success) / 0.15);
+  color: hsl(var(--success));
+  border: 1px solid hsl(var(--success) / 0.3);
+  box-shadow: 0 0 8px hsl(var(--success) / 0.15);
+}
+.badge-warning {
+  background: hsl(var(--warning) / 0.15);
+  color: hsl(var(--warning));
+  border: 1px solid hsl(var(--warning) / 0.3);
+  box-shadow: 0 0 8px hsl(var(--warning) / 0.15);
+}
+.badge-error {
+  background: hsl(var(--destructive) / 0.15);
+  color: hsl(var(--destructive));
+  border: 1px solid hsl(var(--destructive) / 0.3);
+  box-shadow: 0 0 8px hsl(var(--destructive) / 0.15);
+}
+
 /* Touch target enforcement for mission-critical UI */
 .touch-target-lg {
   min-width: 48px;
   min-height: 48px;
+}
+.touch-target-xl {
+  min-width: 56px;
+  min-height: 56px;
+}
+
+/* Zero-dead-interaction: every button must have visible active state */
+.glass-button:active,
+.btn-tool:active,
+button:active {
+  transform: scale(0.94);
+  transition: transform 0.08s ease;
 }
 
 /* Armed banner pulse */
@@ -687,6 +751,62 @@ body.night-mode {
   50% { opacity: 1; }
 }
 .armed-banner-pulse { animation: armed-banner-pulse 1s ease-in-out infinite; }
+
+/* ===== Blade Runner 2049 Atmospheric Effects ===== */
+@keyframes br2049-ambient-drift {
+  0%, 100% { opacity: 0.4; transform: translateX(0) translateY(0); }
+  33% { opacity: 0.6; transform: translateX(10px) translateY(-5px); }
+  66% { opacity: 0.3; transform: translateX(-8px) translateY(3px); }
+}
+.br2049-atmosphere {
+  position: relative;
+}
+.br2049-atmosphere::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 80%,
+    hsl(32 100% 50% / 0.04) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  animation: br2049-ambient-drift 20s ease-in-out infinite;
+}
+
+/* Apple × BR2049 glass with warm inner glow */
+.glass-br2049 {
+  background: rgba(8, 10, 16, 0.88);
+  backdrop-filter: blur(48px) saturate(1.8);
+  -webkit-backdrop-filter: blur(48px) saturate(1.8);
+  border: 1px solid rgba(255, 165, 40, 0.06);
+  border-radius: 20px;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.7),
+    0 2px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 200, 100, 0.03),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Warm amber scan line overlay — BR2049 signature */
+.br2049-scanline {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(255, 160, 40, 0.006) 3px,
+    rgba(255, 160, 40, 0.006) 6px
+  );
+  pointer-events: none;
+}
+
+/* Neon edge glow for critical panels */
+.neon-edge-amber {
+  box-shadow: 0 0 1px rgba(255, 165, 0, 0.4), 0 0 20px rgba(255, 165, 0, 0.06);
+}
+.neon-edge-cyan {
+  box-shadow: 0 0 1px rgba(0, 200, 230, 0.4), 0 0 20px rgba(0, 200, 230, 0.06);
+}
 
 /* ===== FXK-AI Holographic Effects ===== */
 @keyframes holographic-scan {
@@ -733,6 +853,85 @@ body.night-mode {
   will-change: transform;
 }
 
+/* Joi hologram avatar keyframes */
+@keyframes joi-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.25; }
+  50% { transform: scale(1.04); opacity: 0.4; }
+}
+@keyframes joi-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.08); opacity: 0.7; }
+}
+@keyframes joi-flicker {
+  0%, 100% { opacity: 0.8; }
+  30% { opacity: 0.75; }
+  50% { opacity: 0.85; }
+  70% { opacity: 0.7; }
+  90% { opacity: 0.82; }
+}
+@keyframes joi-scanline {
+  0% { top: -2px; opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* Joi dissolve entrance */
+@keyframes joi-dissolve-in {
+  0% { opacity: 0; filter: blur(12px) brightness(2); transform: scale(0.7); }
+  40% { opacity: 0.6; filter: blur(4px) brightness(1.5); transform: scale(1.05); }
+  70% { filter: blur(1px) brightness(1.1); transform: scale(0.98); }
+  100% { opacity: 1; filter: blur(0) brightness(1); transform: scale(1); }
+}
+.joi-dissolve-entrance {
+  animation: joi-dissolve-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes joi-particle {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(0) translateY(-10px); opacity: 0; }
+}
+
+/* ===== NIGHT MODE — Cyan on Pure Black ===== */
+.night-mode {
+  --background: 0 0% 0%;
+  --foreground: 190 60% 85%;
+  --card: 200 15% 3%;
+  --card-foreground: 190 60% 85%;
+  --popover: 200 12% 4%;
+  --popover-foreground: 190 60% 85%;
+  --primary: 190 100% 50%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 200 20% 6%;
+  --secondary-foreground: 190 40% 70%;
+  --muted: 200 15% 8%;
+  --muted-foreground: 190 20% 40%;
+  --accent: 190 100% 50%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 85% 48%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 200 20% 8%;
+  --input: 200 18% 6%;
+  --ring: 190 100% 50%;
+  --surface-0: 0 0% 0%;
+  --surface-1: 200 15% 2%;
+  --surface-2: 200 12% 4%;
+  --surface-3: 200 10% 7%;
+  --surface-4: 200 8% 10%;
+  --electric: 190 100% 50%;
+  --electric-glow: 190 100% 60%;
+  --safety: 190 100% 50%;
+  --safety-glow: 190 100% 58%;
+  --success: 150 70% 42%;
+  --warning: 45 100% 50%;
+  --fxk-cyan: 190 100% 50%;
+  --fxk-orange: 32 100% 50%;
+  --shadow-glow: 0 0 16px hsl(190 100% 50% / 0.2), 0 0 48px hsl(190 100% 50% / 0.06);
+  --glass-bg: 200 15% 3% / 0.9;
+  --glass-border: 190 30% 20% / 0.3;
+  --glass-shine: 190 100% 60% / 0.03;
+  --glass-frosted: 0 0% 0% / 0.95;
+}
+
 /* ===== BR2049 Scanline Sweep ===== */
 @keyframes scanlineSweep {
   0% { transform: translateY(-100%); }
@@ -769,7 +968,81 @@ body.night-mode {
   animation: rain-fall 8s linear infinite;
 }
 
-/* .br2049-vignette disabled */
+
+
+/* Joi FAB breathing animation */
+@keyframes joi-fab-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+
+/* Joi listening — triple concentric ripples (Alexa-style) */
+@keyframes joi-listening-ring {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+@keyframes joi-listening-ripple {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+/* Joi processing — orbiting dots */
+@keyframes joi-processing-orbit {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Joi speaking — organic breathing pulse */
+@keyframes joi-speaking-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 20px hsl(38 100% 50% / 0.2); }
+  30% { transform: scale(1.04); box-shadow: 0 0 30px hsl(38 100% 50% / 0.4); }
+  60% { transform: scale(1.02); box-shadow: 0 0 25px hsl(38 100% 50% / 0.3); }
+}
+
+/* Joi state glow — smooth color transitions */
+@keyframes joi-state-glow {
+  0%, 100% { border-color: hsl(190 100% 50% / 0.5); box-shadow: 0 0 20px hsl(190 100% 50% / 0.3); }
+  50% { border-color: hsl(38 100% 50% / 0.6); box-shadow: 0 0 25px hsl(38 100% 50% / 0.3); }
+}
+
+/* Speaking wave bar entry — staggered scale-in */
+@keyframes joi-wave-bar-enter {
+  0% { transform: scaleY(0); opacity: 0; }
+  60% { transform: scaleY(1.2); opacity: 0.8; }
+  100% { transform: scaleY(1); opacity: 1; }
+}
+
+/* Speaking wave organic — sine-based heights */
+@keyframes joi-speak-wave {
+  0%, 100% { height: 3px; }
+  20% { height: 16px; }
+  40% { height: 6px; }
+  60% { height: 20px; }
+  80% { height: 10px; }
+}
+
+/* Speaking message highlight — amber left-border pulse */
+@keyframes joi-msg-speaking {
+  0%, 100% { border-left-color: hsl(38 100% 50% / 0.3); }
+  50% { border-left-color: hsl(38 100% 55% / 0.8); }
+}
+
+/* Processing dots animation */
+@keyframes joi-dots-cycle {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+}
+
+/* Mouth-speak indicator */
+@keyframes joi-mouth-speak {
+  0%, 100% { height: 2px; opacity: 0.5; }
+  25% { height: 5px; opacity: 1; }
+  50% { height: 3px; opacity: 0.8; }
+  75% { height: 6px; opacity: 1; }
+}
+
 
 /* ===== BR2049 Console Boot Animations ===== */
 @keyframes console-boot {
@@ -1031,7 +1304,7 @@ body.night-mode {
   animation: page-sweep 0.65s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
 }
 
-/* Voice wave bars */
+/* Voice wave bars — enhanced organic */
 @keyframes voice-wave {
   0%, 100% { height: 4px; }
   25% { height: 14px; }
@@ -1040,6 +1313,12 @@ body.night-mode {
 }
 .animate-voice-wave {
   animation: voice-wave 0.8s ease-in-out infinite;
+}
+
+/* Joi speaking avatar ring pulse */
+@keyframes joi-avatar-speaking {
+  0%, 100% { box-shadow: 0 0 0 2px hsl(38 100% 50% / 0.3), 0 0 12px hsl(38 100% 50% / 0.1); transform: scale(1); }
+  50% { box-shadow: 0 0 0 3px hsl(38 100% 55% / 0.6), 0 0 20px hsl(38 100% 50% / 0.25); transform: scale(1.02); }
 }
 
 /* ══════════════════════════════════════════════
@@ -1393,4 +1672,471 @@ body.night-mode {
 }
 .animate-scanline-sweep {
   animation: scanline-sweep 3s linear infinite;
+}
+
+/* ═══ Beveled Corners — Tactical clip-path utilities ═══ */
+.bevel-sm {
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.bevel-md {
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+}
+.bevel-lg {
+  clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+}
+
+/* ═══ Neon Glow aliases ═══ */
+.glow-neon-amber {
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.4), 0 0 20px hsl(var(--primary) / 0.15);
+}
+.glow-neon-cyan {
+  box-shadow: 0 0 8px hsl(var(--fxk-cyan) / 0.4), 0 0 20px hsl(var(--fxk-cyan) / 0.15);
+}
+.glow-neon-crimson {
+  box-shadow: 0 0 8px hsl(var(--destructive) / 0.4), 0 0 20px hsl(var(--destructive) / 0.15);
+}
+
+/* ═══ Animated scanline gradient ═══ */
+@keyframes scan-move {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 40px; }
+}
+.bg-scanline-anim {
+  background-image: repeating-linear-gradient(
+    180deg,
+    transparent,
+    transparent 3px,
+    hsl(var(--fxk-cyan) / 0.03) 3px,
+    hsl(var(--fxk-cyan) / 0.03) 4px
+  );
+  background-size: 100% 40px;
+  animation: scan-move 2s linear infinite;
+}
+
+/* ═══ Joi Hologram — Blade Runner 2049 Effects ═══ */
+@keyframes joi-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.05); }
+  97% { transform: scaleY(1); }
+}
+@keyframes joi-rain {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(500%); opacity: 0; }
+}
+@keyframes joi-glitch {
+  0%, 85%, 100% { transform: translateX(0); opacity: 0; }
+  87% { transform: translateX(-3px); opacity: 1; }
+  89% { transform: translateX(4px); opacity: 0.8; }
+  91% { transform: translateX(-1px); opacity: 0; }
+}
+@keyframes joi-hair-flow {
+  0%, 100% { transform: translateX(0) skewX(0deg) scaleX(1); }
+  25% { transform: translateX(2px) skewX(1.2deg) scaleX(1.01); }
+  50% { transform: translateX(3px) skewX(1.8deg) scaleX(1.015); }
+  75% { transform: translateX(1.5px) skewX(0.8deg) scaleX(1.005); }
+}
+
+/* Flowing hair strand — wind-driven wave */
+@keyframes joi-hair-strand-flow {
+  0%, 100% { transform: translateX(0) rotate(0deg); opacity: var(--strand-op, 0.3); }
+  30% { transform: translateX(4px) rotate(3deg); opacity: calc(var(--strand-op, 0.3) * 1.4); }
+  60% { transform: translateX(6px) rotate(5deg); opacity: var(--strand-op, 0.3); }
+  80% { transform: translateX(2px) rotate(1.5deg); opacity: calc(var(--strand-op, 0.3) * 0.8); }
+}
+.joi-hair-strand {
+  transform-origin: top center;
+  animation: joi-hair-strand-flow var(--strand-dur, 5s) ease-in-out infinite;
+  animation-delay: var(--strand-delay, 0s);
+}
+
+/* Micro-particles floating around Joi */
+@keyframes joi-micro-particle {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  15% {
+    opacity: var(--mp-op, 0.5);
+  }
+  50% {
+    transform: translate(var(--mp-dx, 10px), var(--mp-dy, -20px)) scale(var(--mp-scale, 1.2));
+    opacity: var(--mp-op, 0.5);
+  }
+  85% {
+    opacity: calc(var(--mp-op, 0.5) * 0.3);
+  }
+  100% {
+    transform: translate(calc(var(--mp-dx, 10px) * 1.5), calc(var(--mp-dy, -20px) * 1.8)) scale(0.4);
+    opacity: 0;
+  }
+}
+.joi-micro-particle {
+  animation: joi-micro-particle var(--mp-dur, 4s) ease-in-out infinite;
+  animation-delay: var(--mp-delay, 0s);
+}
+@keyframes joi-scanline-full {
+  0% { transform: translateY(-10px); }
+  100% { transform: translateY(400px); }
+}
+
+/* ═══ Destruction Mode — Luv Missile Strike ═══ */
+@keyframes destruction-border-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+@keyframes destruction-iris-converge {
+  0% { r: 80; opacity: 0; }
+  100% { r: 20; opacity: 1; }
+}
+@keyframes destruction-blink {
+  0%, 40%, 100% { opacity: 0.4; }
+  45% { opacity: 0; }
+  55% { opacity: 0; }
+  60% { opacity: 0.4; }
+}
+@keyframes destruction-missile-trail {
+  0% { stroke-dashoffset: 40; opacity: 0.3; }
+  100% { stroke-dashoffset: 0; opacity: 0.8; }
+}
+@keyframes destruction-countdown-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+@keyframes destruction-static {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-2px, 1px); }
+  40% { transform: translate(1px, -2px); }
+  60% { transform: translate(-1px, 2px); }
+  80% { transform: translate(2px, -1px); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes destruction-debris {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  100% { transform: translate(var(--debris-x), var(--debris-y)) scale(0); opacity: 0; }
+}
+@keyframes destruction-fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes destruction-shockwave {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(25); opacity: 0; }
+}
+@keyframes destruction-mushroom-rise {
+  0% { transform: translateY(60px) scaleX(0.3) scaleY(0.1); opacity: 0; }
+  40% { opacity: 0.8; }
+  100% { transform: translateY(0) scaleX(1) scaleY(1); opacity: 0.6; }
+}
+@keyframes destruction-fallout {
+  0% { transform: translateY(0) translateX(0); opacity: 0.6; }
+  100% { transform: translateY(110vh) translateX(var(--fallout-drift, 0px)); opacity: 0; }
+}
+@keyframes destruction-heat-pulse {
+  0% { opacity: 1; backdrop-filter: blur(4px); }
+  50% { opacity: 0.6; backdrop-filter: blur(2px); }
+  100% { opacity: 0; backdrop-filter: blur(0px); }
+}
+@keyframes destruction-scanline {
+  0% { transform: translateY(-100vh); opacity: 0.3; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+@keyframes fab-glow-pulse {
+  0%, 100% { box-shadow: 0 4px 20px hsl(var(--primary) / 0.4), 0 0 40px hsl(var(--primary) / 0.15); }
+  50% { box-shadow: 0 4px 28px hsl(var(--primary) / 0.6), 0 0 60px hsl(var(--primary) / 0.25); }
+}
+.fab-glow-pulse {
+  animation: fab-glow-pulse 2s ease-in-out infinite;
+}
+@keyframes placing-crosshair-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.placing-crosshair-spin {
+  animation: placing-crosshair-spin 8s linear infinite;
+}
+@keyframes placing-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+.placing-pulse {
+  animation: placing-pulse 2s ease-in-out infinite;
+}
+@keyframes mode-indicator-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.mode-indicator-pulse {
+  animation: mode-indicator-pulse 1.5s ease-in-out infinite;
+}
+
+/* ═══ Joi Cinematic Hologram — BR2049 ═══ */
+@keyframes joi-halo-pulse-kf {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.06); opacity: 0.7; }
+}
+.joi-halo-pulse {
+  animation: joi-halo-pulse-kf 3s ease-in-out infinite;
+}
+
+@keyframes joi-rain-heavy {
+  0% { transform: translateY(-20px); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(520px); opacity: 0; }
+}
+
+@keyframes joi-voxel-glitch-kf {
+  0%, 85%, 100% { opacity: 0; transform: scaleX(1); }
+  88% { opacity: 0.5; transform: scaleX(1.3) skewX(4deg); }
+  92% { opacity: 0.2; transform: scaleX(0.8) skewX(-2deg); }
+}
+.joi-voxel-glitch {
+  animation: joi-voxel-glitch-kf 2.5s step-end infinite;
+}
+
+@keyframes joi-materialize-scan-kf {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(500px); }
+}
+.joi-materialize-scan {
+  animation: joi-materialize-scan-kf 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes joi-hologram-noise {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-0.5px, 0.3px); }
+  50% { transform: translate(0.4px, -0.2px); }
+  75% { transform: translate(-0.3px, -0.4px); }
+}
+.joi-hologram-noise {
+  animation: joi-hologram-noise 0.15s linear infinite;
+}
+
+/* Static hair strands — holographic electricity */
+@keyframes joi-static-strand-kf {
+  0%, 70%, 100% { opacity: 0; transform: scaleY(0.3); }
+  75% { opacity: 0.6; transform: scaleY(1) translateX(1px); }
+  80% { opacity: 0.3; transform: scaleY(0.8) translateX(-0.5px); }
+  85% { opacity: 0.5; transform: scaleY(1.1) translateX(0.8px); }
+  90% { opacity: 0; transform: scaleY(0.2); }
+}
+.joi-static-strand {
+  transform-origin: bottom center;
+  animation: joi-static-strand-kf 3s ease-in-out infinite;
+}
+
+/* Particle dissolve — materialisation */
+@keyframes joi-dissolve-particle-kf {
+  0% { opacity: 0.8; transform: translate(0, 0) scale(1); }
+  40% { opacity: 0.5; transform: translate(var(--dissolve-drift, 0px), -20px) scale(0.7); }
+  100% { opacity: 0; transform: translate(var(--dissolve-drift, 0px), -60px) scale(0); }
+}
+.joi-dissolve-particle {
+  animation: joi-dissolve-particle-kf 1.8s ease-out forwards;
+}
+
+/* Breathing — organic slow pulse */
+@keyframes joi-breathing-kf {
+  0%, 100% { transform: scaleY(1) scaleX(1); opacity: 0.85; }
+  50% { transform: scaleY(1.006) scaleX(1.002); opacity: 0.93; }
+}
+.joi-breathing {
+  animation: joi-breathing-kf 8s ease-in-out infinite;
+}
+
+/* Projected shadow — syncs with breathing */
+@keyframes joi-projected-shadow-kf {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.03); }
+}
+.joi-projected-shadow {
+  animation: joi-projected-shadow-kf 8s ease-in-out infinite;
+}
+
+/* Warm ambient pulse — asymmetric organic glow behind Joi */
+@keyframes joi-warm-pulse-kf {
+  0%, 100% { transform: scale(1) translateX(0); opacity: 0.6; }
+  30% { transform: scale(1.05) translateX(3px); opacity: 0.8; }
+  60% { transform: scale(0.98) translateX(-2px); opacity: 0.55; }
+  80% { transform: scale(1.02) translateX(1px); opacity: 0.7; }
+}
+.joi-warm-pulse {
+  animation: joi-warm-pulse-kf 10s ease-in-out infinite;
+}
+
+/* Chromatic aberration shift — animated for active state */
+@keyframes joi-chroma-left {
+  0%, 100% { transform: translateX(-1.5px); }
+  50% { transform: translateX(-3px); }
+}
+@keyframes joi-chroma-right {
+  0%, 100% { transform: translateX(1.5px); }
+  50% { transform: translateX(3px); }
+}
+.joi-chroma-shift-left {
+  animation: joi-chroma-left 3s ease-in-out infinite;
+}
+.joi-chroma-shift-right {
+  animation: joi-chroma-right 3s ease-in-out infinite;
+}
+
+/* Active halo pulse — stronger glow */
+@keyframes joi-halo-active-kf {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+.joi-halo-active {
+  animation: joi-halo-active-kf 2.5s ease-in-out infinite;
+}
+
+/* === Glitch Burst — triggered on user command === */
+@keyframes joi-glitch-burst {
+  0% { transform: translate(0, 0) skewX(0deg); opacity: 1; }
+  10% { transform: translate(-4px, 1px) skewX(-4deg); opacity: 0.7; }
+  20% { transform: translate(3px, -1px) skewX(3deg); opacity: 1; }
+  30% { transform: translate(-2px, 2px) skewX(-2deg); opacity: 0.85; }
+  40% { transform: translate(5px, 0) skewX(5deg); opacity: 0.6; }
+  50% { transform: translate(-3px, -1px) skewX(-3deg); opacity: 1; }
+  60% { transform: translate(2px, 1px) skewX(2deg); opacity: 0.75; }
+  70% { transform: translate(-1px, 0) skewX(-1deg); opacity: 0.9; }
+  85% { transform: translate(1px, 0) skewX(0.5deg); opacity: 0.95; }
+  100% { transform: translate(0, 0) skewX(0deg); opacity: 1; }
+}
+
+@keyframes joi-chroma-burst-left {
+  0% { transform: translateX(0); opacity: 0; }
+  10% { transform: translateX(-6px); opacity: 0.4; }
+  25% { transform: translateX(-4px); opacity: 0.3; }
+  40% { transform: translateX(-5px); opacity: 0.35; }
+  60% { transform: translateX(-3px); opacity: 0.2; }
+  80% { transform: translateX(-1px); opacity: 0.1; }
+  100% { transform: translateX(0); opacity: 0; }
+}
+
+@keyframes joi-chroma-burst-right {
+  0% { transform: translateX(0); opacity: 0; }
+  10% { transform: translateX(6px); opacity: 0.4; }
+  25% { transform: translateX(4px); opacity: 0.3; }
+  40% { transform: translateX(5px); opacity: 0.35; }
+  60% { transform: translateX(3px); opacity: 0.2; }
+  80% { transform: translateX(1px); opacity: 0.1; }
+  100% { transform: translateX(0); opacity: 0; }
+}
+
+@keyframes joi-flash-burst {
+  0% { opacity: 0; }
+  8% { opacity: 0.6; }
+  15% { opacity: 0.1; }
+  22% { opacity: 0.45; }
+  35% { opacity: 0.05; }
+  50% { opacity: 0.2; }
+  100% { opacity: 0; }
+}
+
+/* Joi emotion animations */
+@keyframes joi-celebrate-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  20% { transform: translateY(-4px) scale(1.03); }
+  40% { transform: translateY(0) scale(1); }
+  55% { transform: translateY(-2px) scale(1.015); }
+  70% { transform: translateY(0) scale(1); }
+  85% { transform: translateY(-1px) scale(1.005); }
+}
+
+@keyframes joi-celebrate-particle {
+  0% { transform: translateY(0) scale(0); opacity: 0; }
+  15% { transform: translateY(-8px) scale(1); opacity: 0.8; }
+  50% { transform: translateY(-30px) scale(0.8); opacity: 0.5; }
+  100% { transform: translateY(-55px) scale(0.3); opacity: 0; }
+}
+
+@keyframes joi-serious-pulse {
+  0%, 100% { box-shadow: 0 0 8px hsl(32 80% 50% / 0.08), inset 0 0 6px hsl(32 80% 50% / 0.03); }
+  50% { box-shadow: 0 0 16px hsl(32 80% 50% / 0.15), inset 0 0 10px hsl(32 80% 50% / 0.05); }
+}
+
+.joi-celebrate-bounce {
+  animation: joi-celebrate-bounce 0.7s ease-out 3;
+}
+
+.joi-celebrate-particle {
+  animation: joi-celebrate-particle 1.2s ease-out both;
+}
+
+.joi-serious-pulse {
+  animation: joi-serious-pulse 2s ease-in-out infinite;
+}
+
+/* === Close-up Entrance — cinematic zoom + fade === */
+@keyframes joi-closeup-entrance {
+  0% { opacity: 0; transform: scale(1.08); filter: blur(4px); }
+  60% { opacity: 0.9; transform: scale(1.01); filter: blur(0px); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0px); }
+}
+.joi-closeup-entrance {
+  animation: joi-closeup-entrance 2.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* === Typewriter cursor blink === */
+@keyframes joi-typewriter-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.joi-typewriter-cursor {
+  display: inline-block;
+  width: 1px;
+  height: 1em;
+  margin-left: 1px;
+  background: hsl(38 100% 55%);
+  box-shadow: 0 0 6px hsl(38 100% 50% / 0.5), 0 0 12px hsl(38 100% 45% / 0.3);
+  animation: joi-typewriter-cursor 1s ease-in-out infinite;
+  vertical-align: text-bottom;
+}
+
+/* === Close-up vignette overlay === */
+.joi-closeup-vignette {
+  background: radial-gradient(ellipse 70% 65% at 50% 40%, transparent 40%, hsl(220 22% 4% / 0.7) 100%);
+  pointer-events: none;
+}
+
+/* === Close-up Breathe — subtle Y-scale breathing === */
+@keyframes joi-closeup-breathe {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.005); }
+}
+.joi-closeup-breathe {
+  animation: joi-closeup-breathe 4s ease-in-out infinite;
+}
+
+/* === Close-up Micro Sway — natural head movement === */
+@keyframes joi-closeup-micro-sway {
+  0%, 100% { transform: translateX(0); }
+  33% { transform: translateX(1.5px); }
+  66% { transform: translateX(-1.5px); }
+}
+.joi-closeup-micro-sway {
+  animation: joi-closeup-micro-sway 6s ease-in-out infinite;
+}
+
+/* === Close-up Blink — quick opacity flash === */
+@keyframes joi-closeup-blink {
+  0%, 94%, 100% { opacity: 1; }
+  96% { opacity: 0.3; }
+  97% { opacity: 0.1; }
+  98% { opacity: 0.3; }
+}
+.joi-closeup-blink {
+  animation: joi-closeup-blink 5s ease-in-out infinite;
+  animation-delay: 2s;
+}
+
+/* === Eye Shimmer — pulsing eye highlight === */
+@keyframes joi-eye-shimmer {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+.joi-eye-shimmer {
+  animation: joi-eye-shimmer 3s ease-in-out infinite;
 }

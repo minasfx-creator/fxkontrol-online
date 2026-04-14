@@ -66,7 +66,7 @@ export default function BluetoothPanel({ onClose }: BluetoothPanelProps) {
     return (
       <div className="flex gap-px items-end h-3">
         {[0, 1, 2, 3].map(i => (
-          <div key={i} className={cn("w-1 rounded-sm", i < strength ? "bg-green-400" : "bg-muted-foreground/20")} style={{ height: `${(i + 1) * 25}%` }} />
+          <div key={i} className={cn("w-1 rounded-sm", i < strength ? "bg-emerald-400" : "bg-muted-foreground/20")} style={{ height: `${(i + 1) * 25}%` }} />
         ))}
       </div>
     );
@@ -76,7 +76,7 @@ export default function BluetoothPanel({ onClose }: BluetoothPanelProps) {
     <div className="p-3 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Bluetooth className="w-4 h-4 text-blue-400" />
+          <Bluetooth className="w-4 h-4 text-primary" />
           <h3 className="text-xs font-black uppercase tracking-wider text-foreground">Bluetooth BLE</h3>
         </div>
         <Badge variant="secondary" className="text-[8px]">
@@ -120,7 +120,7 @@ export default function BluetoothPanel({ onClose }: BluetoothPanelProps) {
             <div key={dev.id} className="bg-muted/20 rounded-lg p-2 border border-border/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Bluetooth className="w-3 h-3 text-blue-400" />
+                  <Bluetooth className="w-3 h-3 text-primary" />
                   <div>
                     <p className="text-[10px] font-semibold text-foreground">{dev.name}</p>
                     <p className="text-[8px] text-muted-foreground">{dev.profile.description}</p>
@@ -130,7 +130,7 @@ export default function BluetoothPanel({ onClose }: BluetoothPanelProps) {
                   {rssiBar(dev.rssi)}
                   {dev.batteryLevel !== null && (
                     <div className="flex items-center gap-0.5">
-                      <Battery className="w-3 h-3 text-green-400" />
+                      <Battery className="w-3 h-3 text-emerald-400" />
                       <span className="text-[8px] text-muted-foreground">{dev.batteryLevel}%</span>
                     </div>
                   )}

@@ -93,7 +93,7 @@ export default function FogMachineEffect({
       {puffs.map((_, i) => (
         <mesh key={i} ref={(el) => { meshRefs.current[i] = el; }} visible={false}>
           <sphereGeometry args={[1, 8, 8]} />
-          <meshBasicMaterial color={color} transparent opacity={0} depthWrite={false} />
+          <meshBasicMaterial color={color} transparent opacity={0} depthWrite={false} depthTest={false} />
         </mesh>
       ))}
     </group>

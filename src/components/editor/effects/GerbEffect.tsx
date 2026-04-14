@@ -174,20 +174,20 @@ export default function GerbEffect({
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
 
   return (
-    <group position={position}>
+    <group position={position} renderOrder={100}>
       {isActive && (
         <>
           <mesh position={[0, 0.06, 0]}>
             <sphereGeometry args={[0.12, 8, 8]} />
-            <meshBasicMaterial color="#FFDD55" transparent opacity={0.45} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
+            <meshBasicMaterial color="#FFDD55" transparent opacity={0.45} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} depthTest={false} />
           </mesh>
           <mesh position={[0, 0.08, 0]}>
             <sphereGeometry args={[0.06, 6, 6]} />
-            <meshBasicMaterial color="#FFFFF0" transparent opacity={0.6} blending={THREE.AdditiveBlending} depthWrite={false} />
+            <meshBasicMaterial color="#FFFFF0" transparent opacity={0.6} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
           </mesh>
           <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <circleGeometry args={[0.8 + scaledHeight * 0.12, 16]} />
-            <meshBasicMaterial color={color} transparent opacity={0.04} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
+            <meshBasicMaterial color={color} transparent opacity={0.04} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} depthTest={false} />
           </mesh>
         </>
       )}
@@ -197,7 +197,7 @@ export default function GerbEffect({
           <bufferAttribute attach="attributes-position" args={[posArr, 3]} />
           <bufferAttribute attach="attributes-color" args={[colArr, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={particleVisualSize} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={particleVisualSize} vertexColors transparent opacity={0.95} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
     </group>
   );

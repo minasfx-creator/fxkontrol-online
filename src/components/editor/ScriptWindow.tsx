@@ -7,7 +7,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useProjectStore, EFFECT_LIBRARY, type TimelineItem } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type TimelineItem } from '@/types/projectTypes';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { getPreFireTime } from '@/lib/safetyEngine';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -101,11 +103,15 @@ interface FillConfig {
 }
 
 export default function ScriptWindow() {
-  const {
-    timelineItems, positions, selectedTimelineItemId,
-    selectTimelineItem, removeTimelineItem, updateTimelineItem,
-    combineAsChain, breakChain, addTimelineItem,
-  } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const positions = useProjectStore(s => s.positions);
+  const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
+  const removeTimelineItem = useProjectStore(s => s.removeTimelineItem);
+  const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
+  const combineAsChain = useProjectStore(s => s.combineAsChain);
+  const breakChain = useProjectStore(s => s.breakChain);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
 
   const [sortField, setSortField] = useState<SortField>('eventTime');
   const [sortDir, setSortDir] = useState<SortDir>('asc');

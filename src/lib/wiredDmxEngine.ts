@@ -221,3 +221,22 @@ export function detectAdapter(deviceName: string): DMXOutputAdapter {
   if (lower.includes('dmxking') || lower.includes('ultradmx')) return DMX_ADAPTERS[3];
   return DMX_ADAPTERS[4];
 }
+
+// ── Star Lighting Artnet8 (Ethernet-based, NOT USB serial) ──────────
+// Manual ref: "1055 Manual Interface Art-Net DMX 8 Saídas rev6"
+// This device uses Ethernet (Art-Net / sACN), not USB serial.
+// It is NOT compatible with WebSerial — use the Art-Net network stack instead.
+// Specs: 8 bidirectional DMX512 outputs (XLR 5-pin), 2 fixed DMX inputs,
+//        Art-Net + sACN protocols, RDM compatible, 1500V optical isolation,
+//        10/100 Ethernet RJ45. See dmxNexusEngine.ts for Art-Net support.
+export const ARTNET8_INFO = {
+  name: 'Star Lighting Artnet8',
+  type: 'ethernet' as const,
+  universes: 8,
+  inputs: 2,
+  protocols: ['artnet', 'sacn'] as const,
+  rdm: true,
+  isolation: 1500, // volts
+  connector: 'XLR 5-pin',
+  note: 'Ethernet-based — use Art-Net/sACN network stack, not WebSerial',
+} as const;

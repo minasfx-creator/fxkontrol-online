@@ -1,8 +1,9 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Stars, Grid, PerspectiveCamera, ContactShadows } from '@react-three/drei';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { OrbitControls, Stars, Grid, PerspectiveCamera, ContactShadows, Sky } from '@react-three/drei';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useSceneStore } from '@/store/useSceneStore';
-import React, { useRef, useMemo, useEffect, useState, useCallback, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useRef, useMemo, useEffect, useState, useCallback, Component, ErrorInfo, ReactNode, lazy, Suspense } from 'react';
 import { PerfCollector, PerformanceHUD, type PerfStats } from './PerformanceHUD';
 import ViewportTerminal, { pushLog } from './ViewportTerminal';
 import * as THREE from 'three';
@@ -14,6 +15,7 @@ import AlignmentTools from './AlignmentTools';
 import CameraAnimator, { CameraPathPreview } from './CameraAnimator';
 import { FinaleAxesHelper, DoubleClickFocus, FinaleToolbar } from './FinaleViewportTools';
 import { StressTestFireworks, StressTestButton } from './effects/GPUFireworkStressTest';
+
 import PostExplosionSmokeManager from './effects/PostExplosionSmokeManager';
 import PositionTransformGizmo from './PositionTransformGizmo';
 import KeybindingCheatSheet, { KeybindingTrigger } from './KeybindingCheatSheet';
@@ -21,10 +23,12 @@ import { useKeybindings } from '@/hooks/useKeybindings';
 import ViewportRulers from './ViewportRulers';
 import TrajectoryPaths from './TrajectoryPaths';
 import DroneChoreography from './DroneChoreography';
+import { SwarmPlaybackEngine } from './SwarmPlaybackEngine';
 import Rack3DView from './Rack3DView';
 import BoidsVisualizer from './BoidsVisualizer';
 import CollisionAvoidanceOverlay from './CollisionAvoidanceOverlay';
 import PyroSafetyZones from './skycanvas/PyroSafetyZones';
+import GoogleTilesFallback from './skycanvas/GoogleTilesFallback';
 import AudioSpectrumVisualizer from './AudioSpectrumVisualizer';
 import LaserPreviewBeams from './LaserPreviewBeams';
 import { DEFAULT_AVOIDANCE } from '@/lib/collisionAvoidance';
@@ -33,8 +37,20 @@ import QuadcopterModel from './QuadcopterModel';
 import SiteModelRenderer from './SiteModelRenderer';
 import StageFixtures from './StageFixtures';
 import { Camera, Eye, Video, Plane, Users, Maximize, Minimize, AlertTriangle, Globe, Download, ScanEye, Cog, Paintbrush, MapPinned, Film, ChevronDown, Plus, Lock, Ruler, Bookmark, Trash2, Navigation } from 'lucide-react';
+import TacticalDock from './TacticalDock';
+import ViewportConfigMenu from './ViewportConfigMenu';
+import JoiStatusMonitor from './JoiStatusMonitor';
 import SelectionStatusBar from './SelectionStatusBar';
 import AICoPilotOverlay from './AICoPilotOverlay';
+import TelemetryBar from './TelemetryBar';
+import GoogleTilesLoadingOverlay from './GoogleTilesLoadingOverlay';
+import HUDCrosshairs from './HUDCrosshairs';
+import PlacingModeOverlay from './PlacingModeOverlay';
+import ARCompassHUD from './ARCompassHUD';
+import ARScanEffect from './ARScanEffect';
+import ViewportBar from './ViewportBar';
+import { useViewportStore } from '@/store/useViewportStore';
+
 import { cn } from '@/lib/utils';
 import {
   CometEffect,
@@ -89,6 +105,7 @@ import { resetPools } from '@/lib/geometryPool';
 import ViewportGeoTools, { type GeoToolMode, type GeoMarker, type GeoRulerPoint, type GeoPath } from './ViewportGeoTools';
 import GoogleTilesLayer from '@/core/geo/GoogleTilesEngine';
 import GeoCameraController from '@/core/geo/GeoCameraController';
+import { isFlyingTo } from '@/core/camera/geoCamera';
 import ClientPresentationMode from './ClientPresentationMode';
 import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
@@ -97,10 +114,16 @@ import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/
 import {
   reportCrash, isInCooldown, recordContextLoss,
   watchdogTick, pushFrameMetrics, startMetricsReporting, stopMetricsReporting,
+  scanSceneTransforms, checkFrameBudget, checkSceneHealth, deepDispose, disposeAllTracked,
+  getDegradationLevel, onDegradationChange,
 } from '@/lib/hardening';
 // ═══ FXK Ultra Refinement — Adaptive Quality + Render Stability ═══
 import { useFXKUltraRefinement } from '@/hooks/useFXKUltraRefinement';
-// ═══ Shared state imported from skycanvas module ═══
+import { getDeviceProfile } from '@/lib/deviceCapability';
+// ═══ QA Validation Engine — Camada 6 ═══
+import { qaEngine } from '@/core/pyrosim/QAValidationEngine';
+import type { FrameMetrics as QAFrameMetrics } from '@/core/pyrosim/QAValidationEngine';
+// ═══ Shared state (lightweight, no components) ═══
 import {
   getActiveBurstCount as _getActiveBurstCount,
   runActiveBurstScan,
@@ -117,22 +140,32 @@ import {
   GRAVITY,
   _posQuat, _effQuat, _pitchQuat, _posEuler, _effEuler, _launchDir, _pitchAxis,
   type ActiveBurstScanResult,
-  // ═══ Extracted modules ═══
-  Moon,
-  AtmosphericParticles,
-  StageGround,
-  FireworkBurst,
-  TimelineEffects,
-  LiveSFXEffects,
-  estimateFireworkStarCost,
-  // ═══ LightingSystem ═══
-  AdaptiveExposureController,
-  ContactShadowsLayer,
-  DebugFeed,
-  GlobalIlluminationController,
-  LensFlareController,
-  GroundReflections,
-} from './skycanvas';
+} from './skycanvas/sharedState';
+
+// ═══ Lazy-loaded subsystem chunks ═══
+const lzc = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
+const lzn = <T extends React.ComponentType<any>>(loader: () => Promise<{ [key: string]: any }>, name: string) =>
+  lazy(() => loader().then(m => ({ default: m[name] as T })));
+
+// GroundSystem chunk
+const Moon = lzn(() => import('./skycanvas/GroundSystem'), 'Moon');
+const AtmosphericParticles = lzn(() => import('./skycanvas/GroundSystem'), 'AtmosphericParticles');
+const StageGround = lzn(() => import('./skycanvas/GroundSystem'), 'StageGround');
+
+// FireworkRenderer chunk
+const TimelineEffects = lzn(() => import('./skycanvas/FireworkRenderer'), 'TimelineEffects');
+const LiveSFXEffects = lzn(() => import('./skycanvas/FireworkRenderer'), 'LiveSFXEffects');
+
+// LightingSystem chunk
+const AdaptiveExposureController = lzn(() => import('./skycanvas/LightingSystem'), 'AdaptiveExposureController');
+const ContactShadowsLayer = lzn(() => import('./skycanvas/LightingSystem'), 'ContactShadowsLayer');
+const DebugFeed = lzn(() => import('./skycanvas/LightingSystem'), 'DebugFeed');
+const GlobalIlluminationController = lzn(() => import('./skycanvas/LightingSystem'), 'GlobalIlluminationController');
+const LensFlareController = lzn(() => import('./skycanvas/LightingSystem'), 'LensFlareController');
+const GroundReflections = lzn(() => import('./skycanvas/LightingSystem'), 'GroundReflections');
+
+// estimateFireworkStarCost is a function, import eagerly from barrel (tiny)
+import { estimateFireworkStarCost } from './skycanvas/FireworkRenderer';
 
 // Re-export for external consumers
 export function getActiveBurstCount() { return _getActiveBurstCount(); }
@@ -144,6 +177,41 @@ let _activeBurstScan_local: ActiveBurstScanResult | null = null;
 
 // lumaTonemapScale REMOVED — PostProcessing ACES Filmic is the single tonemap pass
 
+// --- DroneRendererSwitch: conditional PBR vs Tactical engine ---
+function DroneRendererSwitch() {
+  const mode = useSceneStore(s => s.environment.droneRendererMode);
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const currentTime = useProjectStore(s => s.currentTime);
+
+  // Bridge formations → SwarmAgent format (always computed to respect hooks rules)
+  const agents = React.useMemo(() => {
+    if (!droneFormations.length) return [];
+    const count = droneFormations[0].droneCount;
+    return Array.from({ length: count }, (_, i) => ({
+      id: i,
+      path: droneFormations.flatMap(f => {
+        const p = f.points[i];
+        if (!p) return [];
+        return [{ x: p.x, y: f.height - p.z, z: 0, time: f.startTime + f.transitionDuration }];
+      }),
+      colors: droneFormations.map(f => {
+        const hex = f.color || '#ffffff';
+        const r = parseInt(hex.slice(1, 3), 16) / 255;
+        const g = parseInt(hex.slice(3, 5), 16) / 255;
+        const b = parseInt(hex.slice(5, 7), 16) / 255;
+        return { r, g, b, time: f.startTime, duration: f.transitionDuration + f.holdDuration };
+      }),
+      duration: droneFormations[droneFormations.length - 1].startTime + droneFormations[droneFormations.length - 1].transitionDuration + droneFormations[droneFormations.length - 1].holdDuration,
+    }));
+  }, [droneFormations]);
+
+  if (mode === 'swarm') {
+    if (!agents.length) return null;
+    return <SwarmPlaybackEngine agents={agents} manualTime={currentTime} isPlaying={false} />;
+  }
+  return <DroneChoreography />;
+}
+
 // --- Playback clock (wired through DeterministicClock → LockstepEngine → ExecutionBridge) ---
 import { deterministicClock } from '@/core/time/deterministicClock';
 import { lockstep } from '@/core/reliability/lockstepEngine';
@@ -151,7 +219,12 @@ import { executionBridge } from '@/core/execution/executionBridge';
 import { frameSyncEngine } from '@/core/sync/frameSyncEngine';
 
 const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
-  const { isPlaying, currentTime, duration, setCurrentTime, setPlaying, playbackSpeed } = useProjectStore();
+    const isPlaying = useProjectStore(s => s.isPlaying);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const duration = useProjectStore(s => s.duration);
+  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
+  const setPlaying = useProjectStore(s => s.setPlaying);
+  const playbackSpeed = useProjectStore(s => s.playbackSpeed);
   const registeredRef = useRef(false);
 
   // Pump the deterministic clock every R3F frame
@@ -188,10 +261,10 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
     lockstep.start();
 
     // Wire clock → frameSyncEngine → lockstep: frame-aligned time feeds lockstep
-    deterministicClock.onTick((time: number, delta: number) => {
-      // Align the accumulated time to frame boundaries before feeding lockstep
-      const alignedDelta = frameSyncEngine.getSyncedTimeSec(time + delta) - frameSyncEngine.getSyncedTimeSec(time);
-      lockstep.tick(Math.max(0, alignedDelta));
+    deterministicClock.onTick((_time: number, delta: number) => {
+      // Pass delta directly — deterministic clock already applies drift correction.
+      // Previous double-call to getSyncedTimeSec corrupted internal correction state.
+      lockstep.tick(delta);
     });
 
     return () => {
@@ -217,13 +290,28 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
  * Runs inside the R3F Canvas context.
  */
 function HardeningWatchdog() {
-  const { gl } = useThree();
+  const { gl, scene } = useThree();
   const frameRef = useRef(0);
+  const overBudgetStreakRef = useRef(0);
 
   // Start metrics console reporting on mount
   useEffect(() => {
     startMetricsReporting(60); // Log every 60s
     return () => stopMetricsReporting();
+  }, []);
+
+  // Connect hardening degradation to quality system
+  useEffect(() => {
+    const unsub = onDegradationChange((level) => {
+      if (level === 'severe' || level === 'critical') {
+        const store = useSceneStore.getState();
+        if (!store.environment.lowQualityMode) {
+          store.updateEnvironment({ lowQualityMode: true });
+          pushLog(`[Hardening] Degradation ${level} → forcing low quality mode`, 'warn');
+        }
+      }
+    });
+    return unsub;
   }, []);
 
   useFrame((_state, delta) => {
@@ -237,7 +325,74 @@ function HardeningWatchdog() {
 
     pushFrameMetrics(fps, frameTimeMs, info.calls, info.triangles);
     watchdogTick(fps);
+
+    // ── QA Validation: feed per-frame metrics ──
+    const scan = getActiveBurstScan();
+    const qaMetrics: QAFrameMetrics = {
+      meanLuminance: scan ? Math.min(scan.luminance / 5.0, 1.0) : 0,
+      peakLuminance: scan ? Math.min(scan.luminance, 10.0) : 0,
+      meanVelocity: 0, // populated by sim core if available
+      particleCount: scan ? scan.activeBursts * 200 : 0,
+      frameTimeMs,
+      gcCollections: 0,
+      smokePuffCount: scan ? scan.activeBursts : 0,
+      meanSmokeOpacity: scan ? Math.min(scan.scatterMax, 1.0) : 0,
+    };
+    qaEngine.recordFrame(qaMetrics);
+
+    // ── Scene transform integrity scan (throttled internally to every 60 frames)
+    scanSceneTransforms(scene);
+
+    // ── Frame budget check
+    const budgetCheck = checkFrameBudget(frameTimeMs, info.calls, info.triangles);
+    if (!budgetCheck.withinBudget) {
+      overBudgetStreakRef.current++;
+      if (overBudgetStreakRef.current >= 3) {
+        pushLog(`[Hardening] Over budget: frame=${frameTimeMs.toFixed(1)}ms draws=${info.calls} tris=${info.triangles}`, 'warn');
+        overBudgetStreakRef.current = 0;
+      }
+    } else {
+      overBudgetStreakRef.current = 0;
+    }
+
+    // ── Scene health check (every ~5s = 300 frames)
+    if (frameRef.current % 300 === 0) {
+      const health = checkSceneHealth(gl);
+      if (health.warnings.length > 0) {
+        health.warnings.forEach(w => pushLog(`[GPU Health] ${w}`, 'warn'));
+      }
+    }
   });
+
+  // ── QA Report hotkey: Ctrl+Shift+Q ──
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'Q') {
+        e.preventDefault();
+        const report = qaEngine.generateReport('continuous');
+        console.group(`%c[QA Report] Grade: ${report.overallGrade} (${(report.overallScore * 100).toFixed(1)}%)`, 'color: #0ff; font-weight: bold; font-size: 14px');
+        console.log(`Mode: ${report.mode} | Pass: ${report.passCount}/${report.passCount + report.failCount}`);
+        console.table(report.criteria.map(c => ({
+          Criterion: c.criterion.name,
+          Score: (c.score * 100).toFixed(1) + '%',
+          Grade: c.grade,
+          Pass: c.pass ? '✅' : '❌',
+          Notes: c.notes,
+        })));
+        if (report.temporal) {
+          console.log(`Temporal: meanΔ=${report.temporal.meanBrightnessDelta.toFixed(4)} maxFlicker=${report.temporal.maxFlicker.toFixed(4)} score=${report.temporal.score.toFixed(3)}`);
+        }
+        if (report.recommendations.length > 0) {
+          console.log('%cRecommendations:', 'color: #ff0; font-weight: bold');
+          report.recommendations.forEach(r => console.log(`  → ${r}`));
+        }
+        console.groupEnd();
+        pushLog(`[QA] Report: ${report.overallGrade} (${(report.overallScore * 100).toFixed(1)}%) — ${report.passCount}/${report.passCount + report.failCount} pass`, 'info');
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, []);
 
   return null;
 }
@@ -259,7 +414,7 @@ function ContextLossGuard({ recoveringRef, onRemount }: {
   recoveringRef: React.MutableRefObject<boolean>;
   onRemount: () => void;
 }) {
-  const { gl } = useThree();
+  const { gl, scene } = useThree();
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -273,6 +428,15 @@ function ContextLossGuard({ recoveringRef, onRemount }: {
       if (!shouldRecover || isInCooldown()) {
         console.error('[FXK] WebGL context lost — in cooldown, suppressing remount');
         return;
+      }
+
+      // Deep dispose scene resources before remount to prevent memory leaks
+      try {
+        deepDispose(scene);
+        disposeAllTracked();
+        pushLog('[FXK] Deep disposed scene resources after context loss', 'warn');
+      } catch (disposeErr) {
+        console.warn('[FXK] Error during deep dispose:', disposeErr);
       }
 
       recoveringRef.current = true;
@@ -292,9 +456,25 @@ function ContextLossGuard({ recoveringRef, onRemount }: {
       canvas.removeEventListener('webglcontextlost', onLost as EventListener);
       canvas.removeEventListener('webglcontextrestored', onRestored as EventListener);
     };
-  }, [gl, recoveringRef, onRemount]);
+  }, [gl, scene, recoveringRef, onRemount]);
 
   return null;
+}
+
+/**
+ * SubsystemBoundary — isolates heavy R3F subsystems so one crash doesn't take down the viewport.
+ */
+class SubsystemBoundary extends Component<{ name: string; children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(`[FXK SubsystemBoundary:${this.props.name}]`, error, info.componentStack);
+    pushLog(`[SubsystemBoundary] ${this.props.name} crashed: ${error.message}`, 'error');
+  }
+  render() {
+    if (this.state.hasError) return null; // Silently remove crashed subsystem from scene
+    return this.props.children;
+  }
 }
 
 // Module-level refs — local aliases for backward compat within this file
@@ -306,430 +486,16 @@ let _activeBurstCount = 0;
 // FireworkBurst, LightPoint, estimateFireworkStarCost, TimelineEffects, LiveSFXEffects
 // → Extracted to skycanvas/FireworkRenderer.tsx
 
-// ========================================================================
-// ═══ ENVIRONMENT V2 — UE5.7 Virtual Worlds ═══
-// Sky Atmosphere V2, Volumetric Clouds, Water, Ground Decals, Time-of-Day
-// ========================================================================
-import {
-  createSkyAtmosphereV2,
-  createVolumetricCloudLayer, CLOUD_PRESETS,
-  createWaterSystem, WATER_PRESETS,
-  evaluateTimeOfDay,
-  createDecalSystem, spawnScorchMark, spawnLightSplash, updateDecals, clearDecals,
-} from '@/render_ultra';
+// ════════════════════════════════════════════════════════════════════════
+// SkyEnvironment chunk (lazy)
+const EnvironmentV2SwitcherClean = lzn(() => import('./skycanvas/SkyEnvironment'), 'EnvironmentV2Switcher');
+const SceneFogClean = lzn(() => import('./skycanvas/SkyEnvironment'), 'SceneFog');
+const SceneStarsWiredClean = lzn(() => import('./skycanvas/SkyEnvironment'), 'SceneStarsWired');
+import { evaluateTimeOfDay } from '@/render_ultra/environment/timeOfDay';
 
-function SkyAtmosphereV2Layer() {
-  const meshRef = useRef<THREE.Mesh | null>(null);
-  const skySystemRef = useRef<ReturnType<typeof createSkyAtmosphereV2> | null>(null);
-  const { scene } = useThree();
-  const timeOfDay = useSceneStore(st => st.settings.timeOfDay);
-  const timeOfDayEnabled = useSceneStore(st => st.settings.timeOfDayEnabled);
-
-  useEffect(() => {
-    const system = createSkyAtmosphereV2(90000);
-    skySystemRef.current = system;
-    scene.add(system.mesh);
-    return () => {
-      scene.remove(system.mesh);
-      system.mesh.geometry.dispose();
-      (system.mesh.material as THREE.ShaderMaterial).dispose();
-    };
-  }, [scene]);
-
-  useFrame(({ camera }) => {
-    const sys = skySystemRef.current;
-    if (!sys) return;
-    sys.mesh.position.copy(camera.position);
-
-    if (timeOfDayEnabled) {
-      const tod = evaluateTimeOfDay(timeOfDay);
-      sys.setSunDirection(tod.sunDirection);
-      sys.setSunIntensity(tod.sunIntensity);
-      sys.setMoonDirection(tod.moonDirection);
-      sys.setStarBrightness(tod.starBrightness);
-      sys.setTimeOfDay(tod.skyZenith, tod.skyHorizon, tod.skyNight);
-    }
-  });
-
+// SkyGradient fallback for EnvironmentV2Switcher — no synthetic sky in Google Earth mode
+function SkyGradientFallback() {
   return null;
-}
-
-function VolumetricCloudLayer() {
-  const cloudRef = useRef<ReturnType<typeof createVolumetricCloudLayer> | null>(null);
-  const { scene } = useThree();
-  const cloudCoverage = useSceneStore(st => st.settings.cloudCoverage);
-  const cloudDensity = useSceneStore(st => st.settings.cloudDensity);
-  const cloudWindSpeed = useSceneStore(st => st.settings.cloudWindSpeed);
-
-  useEffect(() => {
-    const cloud = createVolumetricCloudLayer({
-      coverage: cloudCoverage,
-      density: cloudDensity,
-      windSpeed: cloudWindSpeed,
-    });
-    cloudRef.current = cloud;
-    scene.add(cloud.mesh);
-
-    // Expose cloud system globally for NiagaraVFXController explosion flash
-    (window as any).__volumetricCloudSystem = cloud;
-
-    return () => {
-      scene.remove(cloud.mesh);
-      cloud.mesh.geometry.dispose();
-      (cloud.mesh.material as THREE.ShaderMaterial).dispose();
-      delete (window as any).__volumetricCloudSystem;
-    };
-  }, [scene]);
-
-  useEffect(() => {
-    const c = cloudRef.current;
-    if (!c) return;
-    c.setCoverage(cloudCoverage);
-    c.setDensity(cloudDensity);
-    c.setWindSpeed(cloudWindSpeed);
-  }, [cloudCoverage, cloudDensity, cloudWindSpeed]);
-
-  useFrame(({ clock }) => {
-    cloudRef.current?.update(clock.getElapsedTime());
-  });
-
-  return null;
-}
-
-function WaterLayer() {
-  const waterRef = useRef<ReturnType<typeof createWaterSystem> | null>(null);
-  const { scene } = useThree();
-  const waterLevel = useSceneStore(st => st.settings.waterLevel);
-  const waterPreset = useSceneStore(st => st.settings.waterPreset);
-
-  useEffect(() => {
-    const presetCfg = WATER_PRESETS[waterPreset] || {};
-    const water = createWaterSystem(presetCfg);
-    waterRef.current = water;
-    water.mesh.position.y = waterLevel;
-    scene.add(water.mesh);
-    return () => {
-      scene.remove(water.mesh);
-      water.mesh.geometry.dispose();
-      (water.mesh.material as THREE.ShaderMaterial).dispose();
-    };
-  }, [scene, waterPreset]);
-
-  useEffect(() => {
-    if (waterRef.current) waterRef.current.mesh.position.y = waterLevel;
-  }, [waterLevel]);
-
-  useFrame(({ clock }) => {
-    waterRef.current?.update(clock.getElapsedTime());
-  });
-
-  return null;
-}
-
-function GroundDecalManager() {
-  const { scene } = useThree();
-
-  useEffect(() => {
-    const group = createDecalSystem();
-    scene.add(group);
-    return () => {
-      scene.remove(group);
-      clearDecals();
-    };
-  }, [scene]);
-
-  useFrame(({ clock }) => {
-    updateDecals(clock.getDelta());
-  });
-
-  return null;
-}
-
-/** Switcher: renders sky engine + optional cloud/water/decal/ToD layers based on store settings */
-function EnvironmentV2Switcher() {
-  const skyEngineV2 = useSceneStore(st => st.settings.skyEngineV2);
-  const cloudCoverage = useSceneStore(st => st.settings.cloudCoverage);
-  const waterEnabled = useSceneStore(st => st.settings.waterEnabled);
-  const decalsEnabled = useSceneStore(st => st.settings.decalsEnabled);
-  const timeOfDayEnabled = useSceneStore(st => st.settings.timeOfDayEnabled);
-
-  return (
-    <>
-      {skyEngineV2 ? <SkyAtmosphereV2Layer /> : <SkyGradient />}
-      {cloudCoverage > 0.05 && <VolumetricCloudLayer />}
-      {waterEnabled && <WaterLayer />}
-      {decalsEnabled && <GroundDecalManager />}
-      {timeOfDayEnabled && <TimeOfDayController />}
-      {/* Volumetric God Rays — ray marched light scattering */}
-      <VolumetricGodRays
-        lightPosition={[0, 800, -500]}
-        lightColor="#ffeedd"
-        intensity={0.8}
-        samples={48}
-        enabled={true}
-      />
-    </>
-  );
-}
-
-function TimeOfDayController() {
-  const timeOfDay = useSceneStore(st => st.settings.timeOfDay);
-  const { scene } = useThree();
-
-  useFrame(() => {
-    const tod = evaluateTimeOfDay(timeOfDay);
-    // Update scene ambient/fog based on time-of-day
-    if (scene.fog && scene.fog instanceof THREE.FogExp2) {
-      scene.fog.color.copy(tod.fogColor);
-    }
-    // Update ambient lights
-    scene.traverse(obj => {
-      if (obj instanceof THREE.AmbientLight) {
-        obj.color.copy(tod.ambientColor);
-        obj.intensity = tod.ambientIntensity * 2;
-      }
-    });
-  });
-
-  return null;
-}
-
-// ========================================================================
-// GOOGLE EARTH-STYLE — Atmospheric sky with realistic horizon
-// ========================================================================
-function SkyGradient() {
-  const skyBrightness = useSceneStore(st => st.settings.skyBrightness);
-  const horizonGlow = useSceneStore(st => st.settings.horizonGlow);
-  const starDensity = useSceneStore(st => st.settings.starDensity);
-  const groundStyle = useSceneStore(st => st.settings.groundStyle);
-  const skyRef = useRef<THREE.Mesh>(null);
-
-  const skyRotation = useSceneStore(st => st.environment.skyRotation);
-
-  // Dynamic ground tint based on groundStyle — eliminates sky/ground seam
-  const groundTint = useMemo(() => {
-    switch (groundStyle) {
-      case 'finale-dark': return new THREE.Vector3(0.003, 0.004, 0.008);
-      case 'flat-black':  return new THREE.Vector3(0.001, 0.001, 0.001);
-      case 'google-earth': return new THREE.Vector3(0.005, 0.008, 0.004);
-      case 'concrete':    return new THREE.Vector3(0.006, 0.006, 0.007);
-      case 'sfx-stage':   return new THREE.Vector3(0.002, 0.001, 0.004);
-      default:            return new THREE.Vector3(0.005, 0.005, 0.015);
-    }
-  }, [groundStyle]);
-
-  const uniforms = useMemo(() => ({
-    uSkyBrightness: { value: skyBrightness },
-    uHorizonGlow: { value: horizonGlow },
-    uStarDensity: { value: starDensity },
-    uTime: { value: 0 },
-    uExplosionScatter: { value: new THREE.Color(0, 0, 0) },
-    uScatterIntensity: { value: 0 },
-    uSkyRotation: { value: 0 },
-    uGroundTint: { value: groundTint },
-  }), []);
-
-  useEffect(() => {
-    uniforms.uSkyBrightness.value = skyBrightness;
-    uniforms.uHorizonGlow.value = horizonGlow;
-    uniforms.uStarDensity.value = starDensity;
-    uniforms.uSkyRotation.value = skyRotation * Math.PI / 180;
-    uniforms.uGroundTint.value = groundTint;
-  }, [skyBrightness, horizonGlow, starDensity, skyRotation, groundTint]);
-
-  // Expose scatter uniforms for AdaptiveExposureController
-  useEffect(() => {
-    _skyScatterUniforms = { uExplosionScatter: uniforms.uExplosionScatter, uScatterIntensity: uniforms.uScatterIntensity };
-    return () => { _skyScatterUniforms = null; };
-  }, []);
-
-  useFrame(({ clock, camera }) => {
-    uniforms.uTime.value = clock.getElapsedTime();
-    if (skyRef.current) skyRef.current.position.copy(camera.position);
-  });
-
-  return (
-    <mesh ref={skyRef} renderOrder={-1000}>
-      <sphereGeometry args={[90000, 32, 16]} />
-      <shaderMaterial
-        side={THREE.BackSide}
-        uniforms={uniforms}
-        vertexShader={`
-          varying vec3 vWorldPosition;
-          void main() {
-            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-            vWorldPosition = worldPosition.xyz;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `}
-        fragmentShader={`
-          uniform float uSkyBrightness;
-          uniform float uHorizonGlow;
-          uniform float uStarDensity;
-          uniform float uTime;
-          uniform vec3 uExplosionScatter;
-          uniform float uScatterIntensity;
-          uniform float uSkyRotation;
-          uniform vec3 uGroundTint;
-          varying vec3 vWorldPosition;
-          
-          float hash21(vec2 p) {
-            p = fract(p * vec2(123.34, 456.21));
-            p += dot(p, p + 45.32);
-            return fract(p.x * p.y);
-          }
-          
-          float noise2d(vec2 p) {
-            vec2 i = floor(p);
-            vec2 f = fract(p);
-            f = f * f * (3.0 - 2.0 * f);
-            return mix(
-              mix(hash21(i), hash21(i + vec2(1,0)), f.x),
-              mix(hash21(i + vec2(0,1)), hash21(i + vec2(1,1)), f.x), f.y
-            );
-          }
-          
-          float fbm3(vec2 p) {
-            float v = 0.0, a = 0.5;
-            for (int i = 0; i < 4; i++) { v += a * noise2d(p); p *= 2.1; a *= 0.45; }
-            return v;
-          }
-          
-          float starField(vec3 dir) {
-            vec2 uv = vec2(atan(dir.x, dir.z) * 3.183, asin(clamp(dir.y, -1.0, 1.0)) * 6.366);
-            vec2 id = floor(uv * 140.0);
-            float h = hash21(id);
-            float threshold = mix(0.998, 0.972, clamp(uStarDensity, 0.0, 2.0) / 2.0);
-            if (h > threshold) {
-              vec2 offset = fract(uv * 140.0) - 0.5;
-              float brightness = smoothstep(0.12, 0.0, length(offset)) * (0.5 + h * 4.0);
-              float twinkle = sin(h * 6283.0 + uTime * (0.5 + h * 2.0)) * 0.35 + 0.65;
-              return brightness * twinkle * smoothstep(0.08, 0.35, dir.y);
-            }
-            return 0.0;
-          }
-          
-          // Shooting stars
-          float shootingStar(vec3 dir) {
-            float t = uTime * 0.15;
-            float star = 0.0;
-            for (int i = 0; i < 3; i++) {
-              float fi = float(i);
-              float phase = fract(t + fi * 0.37);
-              if (phase > 0.95) continue; // most of the time hidden
-              float startAngle = hash21(vec2(fi, floor(t + fi * 0.37))) * 6.28;
-              float startElev = 0.4 + hash21(vec2(fi + 10.0, floor(t + fi * 0.37))) * 0.4;
-              vec3 startDir = normalize(vec3(cos(startAngle), startElev, sin(startAngle)));
-              vec3 moveDir = normalize(vec3(-0.3, -0.15, 0.1));
-              vec3 pos = startDir + moveDir * phase * 0.5;
-              float dist = length(cross(dir - startDir, moveDir)) / length(moveDir);
-              float along = dot(dir - startDir, moveDir);
-              float trail = smoothstep(0.15, 0.0, along) * smoothstep(-0.01, 0.0, along);
-              float bright = smoothstep(0.003, 0.0, dist) * trail * (1.0 - phase) * 3.0;
-              star += bright;
-            }
-            return star * smoothstep(0.15, 0.4, dir.y);
-          }
-          
-          void main() {
-            vec3 dir = normalize(vWorldPosition - cameraPosition);
-            // Apply sky rotation around Y axis
-            float cosR = cos(uSkyRotation);
-            float sinR = sin(uSkyRotation);
-            dir = vec3(dir.x * cosR - dir.z * sinR, dir.y, dir.x * sinR + dir.z * cosR);
-            float h = dir.y;
-            
-            // Deep cinematic space — rich midnight blues to warm horizon
-            vec3 space     = vec3(0.001, 0.002, 0.012);
-            vec3 zenith    = vec3(0.004, 0.008, 0.04);
-            vec3 upperSky  = vec3(0.008, 0.018, 0.07);
-            vec3 midSky    = vec3(0.02, 0.035, 0.12);
-            vec3 lowSky    = vec3(0.04, 0.05, 0.14);
-            vec3 horizon   = vec3(0.08, 0.06, 0.12);
-            vec3 haze      = vec3(0.12, 0.08, 0.10);
-            vec3 ground    = uGroundTint;
-            
-            vec3 color;
-            if (h > 0.7) {
-              color = mix(upperSky, space, smoothstep(0.7, 1.0, h));
-            } else if (h > 0.4) {
-              color = mix(midSky, upperSky, smoothstep(0.4, 0.7, h));
-            } else if (h > 0.15) {
-              color = mix(lowSky, midSky, smoothstep(0.15, 0.4, h));
-            } else if (h > 0.02) {
-              color = mix(horizon, lowSky, smoothstep(0.02, 0.15, h));
-            } else if (h > -0.05) {
-              color = mix(haze, horizon, smoothstep(-0.05, 0.02, h));
-            } else {
-              color = mix(ground, haze, smoothstep(-0.35, -0.05, h));
-            }
-            
-            // Warm amber horizon glow — cinematic sunset afterglow
-            float hGlow = exp(-h * h * 50.0);
-            color += vec3(0.22, 0.10, 0.04) * hGlow * uHorizonGlow;
-            
-            // Cool cyan counter-glow opposite side
-            float cyanGlow = exp(-(h - 0.05) * (h - 0.05) * 80.0);
-            color += vec3(0.02, 0.06, 0.10) * cyanGlow * 0.4;
-            
-            // Aurora borealis band
-            float auroraAngle = dir.x * 0.3 + dir.z * 0.95;
-            float auroraBand = exp(-pow(auroraAngle - 0.2, 2.0) * 12.0) * smoothstep(0.2, 0.6, h);
-            float auroraWave = sin(dir.x * 8.0 + uTime * 0.3) * 0.5 + 0.5;
-            float auroraDetail = fbm3(dir.xz * 20.0 + uTime * 0.05);
-            vec3 auroraColor = mix(vec3(0.01, 0.08, 0.04), vec3(0.03, 0.04, 0.10), auroraWave);
-            color += auroraColor * auroraBand * auroraDetail * 0.35;
-            
-            // Enhanced Milky Way with deep structure
-            float milkyAngle = dir.x * 0.6 + dir.z * 0.8;
-            float milkyBand = exp(-pow(milkyAngle - dir.y * 0.5, 2.0) * 6.0);
-            float milkyDetail = fbm3(dir.xz * 30.0) * 0.6 + 0.4;
-            float milkyDust = fbm3(dir.xz * 60.0 + 100.0);
-            vec3 milkyColor = mix(vec3(0.015, 0.02, 0.045), vec3(0.035, 0.025, 0.045), milkyDust);
-            color += milkyColor * milkyBand * milkyDetail * smoothstep(0.15, 0.5, h) * 1.0;
-            
-            // Dark dust lanes
-            float dustLane = smoothstep(0.45, 0.55, fbm3(dir.xz * 20.0 + 50.0));
-            color -= vec3(0.01) * milkyBand * dustLane * smoothstep(0.2, 0.5, h);
-            
-            // Nebula patches — purple and teal
-            float nebula1 = fbm3(dir.xz * 15.0 + vec2(200.0, 0.0));
-            float nebula2 = fbm3(dir.xz * 12.0 + vec2(0.0, 300.0));
-            color += vec3(0.025, 0.008, 0.035) * smoothstep(0.6, 0.8, nebula1) * milkyBand * 0.6;
-            color += vec3(0.008, 0.018, 0.035) * smoothstep(0.55, 0.75, nebula2) * smoothstep(0.3, 0.6, h) * 0.5;
-            
-            // Wispy clouds near horizon
-            float cloudUV1 = fbm3(dir.xz * 4.0 + uTime * 0.008);
-            float cloudUV2 = fbm3(dir.xz * 8.0 - uTime * 0.006 + 50.0);
-            float cloudMask = smoothstep(0.0, 0.12, h) * smoothstep(0.25, 0.08, h);
-            float clouds = smoothstep(0.45, 0.7, cloudUV1 * 0.6 + cloudUV2 * 0.4) * cloudMask;
-            color += vec3(0.04, 0.04, 0.06) * clouds * 0.3;
-            
-            // Stars with color temperature variation
-            float stars = starField(dir);
-            float starHue = hash21(dir.xz * 50.0);
-            vec3 starColor = starHue < 0.25 ? vec3(0.6, 0.75, 1.0) :
-                             starHue < 0.5 ? vec3(1.0, 0.95, 0.85) :
-                             starHue < 0.75 ? vec3(1.0, 0.80, 0.65) :
-                             vec3(1.0, 0.55, 0.45);
-            color += starColor * stars * 0.9 * uStarDensity;
-            
-            // Shooting stars
-            float shooting = shootingStar(dir);
-            color += vec3(0.85, 0.92, 1.0) * shooting * uStarDensity;
-            
-            // ═══ Explosion sky scatter — atmosphere reflects burst colors ═══
-            color += uExplosionScatter * uScatterIntensity * exp(-abs(h) * 3.0);
-            
-            color *= uSkyBrightness;
-            color = max(color, vec3(0.0));
-            
-            gl_FragColor = vec4(color, 1.0);
-          }
-        `}
-      />
-    </mesh>
-  );
 }
 
 // Moon, SatelliteOverlay, GrassGround, AtmosphericParticles, FloorLogo, TreelineSilhouette
@@ -796,29 +562,91 @@ function SceneLighting() {
   );
 }
 
-function SceneFog() {
-  const s = useSceneStore(st => st.settings);
-  if (s.fogDensity <= 0) return null;
-  return <fog attach="fog" args={[s.fogColor, s.fogNear, s.fogFar / Math.max(s.fogDensity, 0.1)]} />;
+/**
+ * GeoTimeOfDaySync — Reads timezone offset from the project store
+ * and automatically sets the scene's timeOfDay based on showtime (20:00 default)
+ * adjusted by the real timezone, so the sun/sky reflects actual conditions.
+ */
+function GeoTimeOfDaySync() {
+  const timeZoneOffset = useProjectStore(s => s.timeZoneOffset);
+  const updateSettings = useSceneStore(s => s.updateSettings);
+  const appliedRef = useRef(false);
+
+  useEffect(() => {
+    if (timeZoneOffset == null || appliedRef.current) return;
+    appliedRef.current = true;
+
+    // Compute local showtime hour (default: 20:00 local)
+    const showHourLocal = 20;
+    
+    // Enable time-of-day and set it to showtime
+    updateSettings({
+      timeOfDay: showHourLocal,
+      timeOfDayEnabled: true,
+    });
+    
+    console.log(`[GeoSync] TimeOfDay set to ${showHourLocal}h (TZ offset: ${timeZoneOffset}s)`);
+  }, [timeZoneOffset, updateSettings]);
+
+  return null;
 }
 
-function SceneStars() {
-  const density = useSceneStore(st => st.settings.starDensity);
-  if (density <= 0.05) return null;
-  return <Stars radius={100000} depth={40000} count={Math.round(15000 * density)} factor={6} saturation={0.2} fade speed={0.03} />;
+/**
+ * GoogleEarthLighting — adds hemisphere + ambient light specifically for
+ * illuminating Google 3D Tiles which appear dark under the HDR moonlight rig.
+ * Also renders a drei <Sky /> as atmospheric backdrop while tiles load.
+ */
+function GoogleEarthLighting() {
+  const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
+  const timeOfDay = useSceneStore(st => st.settings.timeOfDay);
+  
+  // Compute sun position from timeOfDay (0-24h)
+  const sunPos = useMemo(() => {
+    const angle = ((timeOfDay - 6) / 12) * Math.PI;
+    const y = Math.sin(angle) * 100;
+    const x = Math.cos(angle) * 100;
+    return [x, Math.max(y, -20), 50] as [number, number, number];
+  }, [timeOfDay]);
+  
+  const isNight = timeOfDay >= 20 || timeOfDay <= 5;
+  
+  if (!google3DTilesEnabled) return null;
+  
+  return (
+    <>
+      {/* Night: deep blue sky backdrop + stars */}
+      {isNight && <color attach="background" args={['#0a0e1a']} />}
+      {isNight && <Stars radius={80000} depth={30000} count={8000} factor={5} saturation={0.15} fade speed={0.02} />}
+      {/* Atmospheric sky backdrop — visible while Google Earth tiles load */}
+      {!isNight && <Sky sunPosition={sunPos} turbidity={8} rayleigh={2} mieCoefficient={0.005} mieDirectionalG={0.8} />}
+      {/* Hemisphere light: sky blue + ground warm — fills Google Earth geometry */}
+      <hemisphereLight args={[0x87ceeb, 0x362d1f, isNight ? 0.08 : 0.4]} />
+      {/* Ambient fill — prevents completely dark tiles */}
+      <ambientLight intensity={isNight ? 0.15 : 0.3} color={isNight ? '#1a2b4c' : '#ffffff'} />
+      {/* Directional sunlight matching sky position */}
+      {!isNight && (
+        <directionalLight 
+          position={sunPos} 
+          intensity={0.6} 
+          color={0xffeedd} 
+          castShadow={false}
+        />
+      )}
+      {/* Moonlight for night scenes */}
+      {isNight && (
+        <directionalLight
+          position={[30, 60, -40]}
+          intensity={0.08}
+          color={0x8899bb}
+          castShadow={false}
+        />
+      )}
+    </>
+  );
 }
 
-/** SceneStars with lowQualityMode support — reduces count & factor by 50% */
-function SceneStarsWired() {
-  const density = useSceneStore(st => st.settings.starDensity);
-  const lowQ = useSceneStore(st => st.environment.lowQualityMode);
-  if (density <= 0.05) return null;
-  const mult = lowQ ? 0.5 : 1.0;
-  return <Stars radius={100000} depth={40000} count={Math.round(15000 * density * mult)} factor={6 * mult} saturation={0.2} fade speed={0.03} />;
-}
-
-// WeatherEffects extracted to skycanvas/WeatherSystem.tsx
-import { WeatherEffects } from './skycanvas/WeatherSystem';
+// WeatherSystem chunk (lazy)
+const WeatherEffects = lzn(() => import('./skycanvas/WeatherSystem'), 'WeatherEffects');
 
 // Delayed mount wrapper — lets base renderer stabilize before heavy VFX
 function DelayedMount({ delay = 2000, children }: { delay?: number; children: ReactNode }) {
@@ -906,7 +734,106 @@ function FlyControls({ onSpeedChange }: { onSpeedChange?: (speed: number) => voi
     if (k['KeyQ']) camera.position.y -= move;
 
     // Clamp
-    camera.position.y = Math.max(0.5, camera.position.y);
+    camera.position.y = Math.max(5, camera.position.y);
+  });
+
+  return null;
+}
+
+/** GroundControls — WASD walk mode with altitude locked to terrain + 1.7m */
+function GroundControls({ onSpeedChange }: { onSpeedChange?: (speed: number) => void }) {
+  const { camera, gl, scene } = useThree();
+  const keys = useRef<Record<string, boolean>>({});
+  const euler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
+  const speed = useRef(5);
+  const locked = useRef(false);
+  const lastTerrainY = useRef<number | null>(null);
+  const raycastFn = useRef<typeof import('@/core/geo/terrainQuery').raycastTerrainLocal | null>(null);
+  const SENSITIVITY = 0.002;
+  const EYE_HEIGHT = 1.7;
+  const PITCH_LIMIT = Math.PI * 0.44; // ±80°
+
+  useEffect(() => {
+    import('@/core/geo/terrainQuery').then(mod => {
+      raycastFn.current = mod.raycastTerrainLocal;
+    });
+  }, []);
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+
+    const onPointerLockChange = () => {
+      locked.current = document.pointerLockElement === canvas;
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!locked.current) return;
+      euler.current.setFromQuaternion(camera.quaternion);
+      euler.current.y -= e.movementX * SENSITIVITY;
+      euler.current.x -= e.movementY * SENSITIVITY;
+      euler.current.x = THREE.MathUtils.clamp(euler.current.x, -PITCH_LIMIT, PITCH_LIMIT);
+      camera.quaternion.setFromEuler(euler.current);
+    };
+    const onKeyDown = (e: KeyboardEvent) => { keys.current[e.code] = true; };
+    const onKeyUp = (e: KeyboardEvent) => { keys.current[e.code] = false; };
+    const onWheel = (e: WheelEvent) => {
+      if (!locked.current) return;
+      e.preventDefault();
+      speed.current = THREE.MathUtils.clamp(speed.current * (e.deltaY > 0 ? 0.85 : 1.18), 0.5, 50);
+      onSpeedChange?.(speed.current);
+    };
+
+    canvas.requestPointerLock();
+    document.addEventListener('pointerlockchange', onPointerLockChange);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+
+    return () => {
+      document.removeEventListener('pointerlockchange', onPointerLockChange);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keyup', onKeyUp);
+      canvas.removeEventListener('wheel', onWheel);
+      if (document.pointerLockElement === canvas) document.exitPointerLock();
+      keys.current = {};
+    };
+  }, [camera, gl, onSpeedChange]);
+
+  const dir = useRef(new THREE.Vector3());
+  const right = useRef(new THREE.Vector3());
+  const flatDir = useRef(new THREE.Vector3());
+
+  useFrame((_, delta) => {
+    if (!locked.current) return;
+    const k = keys.current;
+    const sprint = k['ShiftLeft'] || k['ShiftRight'] ? 2.5 : 1;
+    const move = speed.current * sprint * delta;
+
+    // Get camera forward projected onto XZ plane (no vertical movement)
+    camera.getWorldDirection(dir.current);
+    flatDir.current.set(dir.current.x, 0, dir.current.z).normalize();
+    right.current.crossVectors(flatDir.current, camera.up).normalize();
+
+    if (k['KeyW'] || k['ArrowUp']) camera.position.addScaledVector(flatDir.current, move);
+    if (k['KeyS'] || k['ArrowDown']) camera.position.addScaledVector(flatDir.current, -move);
+    if (k['KeyA'] || k['ArrowLeft']) camera.position.addScaledVector(right.current, -move);
+    if (k['KeyD'] || k['ArrowRight']) camera.position.addScaledVector(right.current, move);
+
+    // Raycast terrain and lock altitude
+    if (raycastFn.current) {
+      const terrainY = raycastFn.current(camera.position.x, camera.position.z, scene);
+      if (terrainY !== null) {
+        lastTerrainY.current = terrainY;
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, terrainY + EYE_HEIGHT, 0.15);
+      } else if (lastTerrainY.current !== null) {
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, lastTerrainY.current + EYE_HEIGHT, 0.15);
+      } else {
+        camera.position.y = Math.max(5, camera.position.y);
+      }
+    } else {
+      camera.position.y = Math.max(5, camera.position.y);
+    }
   });
 
   return null;
@@ -923,40 +850,25 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   const lastPresetKey = useRef('');
   const introPhase = useRef<'hold' | 'sweep' | 'done'>(__cameraIntroPlayed ? 'done' : 'hold');
   const introTimer = useRef(0);
+  const userInteracted = useRef(__cameraIntroPlayed);
 
-  const WORLD_HALF_EXTENT = 80000;
+  const WORLD_HALF_EXTENT = 250000;
   const CAMERA_MIN_Y = 5;
-  const CAMERA_MAX_Y = 75000;
-  const _lastValidY = useRef(300);
+  const CAMERA_MAX_Y = 40000;
+  const _lastValidY = useRef(-1);
+  const _wasClampedLastFrame = useRef(false);
+  const _wasDropClampedLastFrame = useRef(false);
 
   const clampToWorldBounds = useCallback(() => {
     const controls = controlsRef.current;
     if (!controls) return;
+    if (isFlyingTo()) return;
 
     const tx = THREE.MathUtils.clamp(controls.target.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
     const ty = THREE.MathUtils.clamp(controls.target.y, 0, 50000);
     const tz = THREE.MathUtils.clamp(controls.target.z, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
 
     let cy = THREE.MathUtils.clamp(camera.position.y, CAMERA_MIN_Y, CAMERA_MAX_Y);
-
-    // Prevent sudden altitude drops (max 50m per frame)
-    const yDelta = cy - _lastValidY.current;
-    if (yDelta < -50) {
-      cy = _lastValidY.current - 50;
-      console.warn('[Camera] altitude drop clamped');
-    }
-
-    // Altitude-dependent damping near ground
-    if (cy < 20) {
-      const dampFactor = Math.max(0.3, cy / 20);
-      const dampedY = _lastValidY.current + (cy - _lastValidY.current) * dampFactor;
-      cy = Math.max(CAMERA_MIN_Y, dampedY);
-    }
-
-    if (cy < CAMERA_MIN_Y + 1) {
-      console.warn('[Camera] altitude clamped to safe floor');
-    }
-
     _lastValidY.current = cy;
 
     const cx = THREE.MathUtils.clamp(camera.position.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
@@ -967,16 +879,17 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 
     if (targetChanged) controls.target.set(tx, ty, tz);
     if (cameraChanged) camera.position.set(cx, cy, cz);
-    if (targetChanged || cameraChanged) controls.update();
+    // Do NOT call controls.update() here — it creates artificial momentum.
+    // OrbitControls already updates itself internally each frame.
   }, [camera]);
 
   // ── Zero-GC: Pre-allocated vectors for intro animation ──
-  const introStartPos = useRef(new THREE.Vector3(0, 300, 100));
-  const introStartLook = useRef(new THREE.Vector3(0, 0, 0));
-  const introDuration = useRef({ hold: 2.5, sweep: 4.0 });
+  const introStartPos = useRef(new THREE.Vector3(-80, 140, 320));
+  const introStartLook = useRef(new THREE.Vector3(0, 5, 0));
+  const introDuration = useRef({ hold: 1.8, sweep: 3.0 });
   const _sweepDefaultPos = useRef(new THREE.Vector3());
   const _sweepDefaultLook = useRef(new THREE.Vector3());
-  const _sweepStartPos = useRef(new THREE.Vector3(0, 2300, 3));
+  const _sweepStartPos = useRef(new THREE.Vector3(60, 100, 220));
   const _sweepCurrentTarget = useRef(new THREE.Vector3());
 
   useEffect(() => {
@@ -994,6 +907,113 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     introPhase.current = 'hold';
     introTimer.current = 0;
   }, []);
+
+  // Cancel intro on first manual mouse interaction
+  useEffect(() => {
+    const cancelIntro = () => {
+      if (userInteracted.current) return;
+      userInteracted.current = true;
+      if (introPhase.current !== 'done') {
+        introPhase.current = 'done';
+        __cameraIntroPlayed = true;
+        // Snap to default position immediately
+        camera.position.set(...targetPosition);
+        if (controlsRef.current) {
+          controlsRef.current.target.set(...targetLookAt);
+          controlsRef.current.update();
+        }
+        animating.current = false;
+      }
+    };
+    const canvas = document.querySelector('[data-sky-canvas] canvas');
+    if (canvas) {
+      canvas.addEventListener('pointerdown', cancelIntro, { once: true });
+      canvas.addEventListener('wheel', cancelIntro, { once: true });
+    }
+    return () => {
+      if (canvas) {
+        canvas.removeEventListener('pointerdown', cancelIntro);
+        canvas.removeEventListener('wheel', cancelIntro);
+      }
+    };
+  }, [camera, targetPosition, targetLookAt]);
+
+  // ── Gizmo dragging: disable/enable OrbitControls + zero residual velocity ──
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const isDragging = (e as CustomEvent).detail;
+      if (controlsRef.current) {
+        controlsRef.current.enabled = !isDragging;
+        if (!isDragging) {
+          // Zero any residual damping velocity by calling update with reset
+          controlsRef.current.update();
+        }
+      }
+    };
+    window.addEventListener('gizmo-dragging', handler as any);
+    return () => window.removeEventListener('gizmo-dragging', handler as any);
+  }, []);
+
+  // ── View preset handler ──
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { position, target } = (e as CustomEvent).detail as { position: [number, number, number]; target: [number, number, number] };
+      targetPos.current.set(position[0], position[1], position[2]);
+      targetLook.current.set(target[0], target[1], target[2]);
+      animating.current = true;
+    };
+    window.addEventListener('viewport-set-view', handler as any);
+    return () => window.removeEventListener('viewport-set-view', handler as any);
+  }, []);
+
+  // ── Cancel animation handler ──
+  useEffect(() => {
+    const handler = () => {
+      animating.current = false;
+      focusAnimating.current = false;
+    };
+    window.addEventListener('viewport-cancel-animation', handler);
+    return () => window.removeEventListener('viewport-cancel-animation', handler);
+  }, []);
+
+  // ── Frame selection handler ──
+  useEffect(() => {
+    const handler = () => {
+      // If there's a selected position, focus on it
+      const { selectedPositionId, positions } = useProjectStore.getState();
+      if (selectedPositionId) {
+        const pos = positions.find(p => p.id === selectedPositionId);
+        if (pos) {
+          window.dispatchEvent(new CustomEvent('focus-camera-on-point', { detail: { x: pos.x, y: pos.y || 0, z: pos.z } }));
+        }
+      }
+    };
+    window.addEventListener('viewport-frame-selection', handler);
+    return () => window.removeEventListener('viewport-frame-selection', handler);
+  }, []);
+
+  // ── Frame all handler ──
+  useEffect(() => {
+    const handler = () => {
+      const { positions } = useProjectStore.getState();
+      if (positions.length === 0) {
+        // Reset to default
+        targetPos.current.set(...targetPosition);
+        targetLook.current.set(...targetLookAt);
+        animating.current = true;
+        return;
+      }
+      // Compute bounding box center
+      let cx = 0, cy = 0, cz = 0;
+      for (const p of positions) {
+        cx += p.x; cy += (p.y || 0); cz += p.z;
+      }
+      cx /= positions.length; cy /= positions.length; cz /= positions.length;
+      window.dispatchEvent(new CustomEvent('focus-camera-on-point', { detail: { x: cx, y: cy, z: cz } }));
+    };
+    window.addEventListener('viewport-frame-all', handler);
+    return () => window.removeEventListener('viewport-frame-all', handler);
+  }, [targetPosition, targetLookAt]);
 
   const presetKey = `${targetPosition.join(',')}_${targetLookAt.join(',')}`;
   
@@ -1018,27 +1038,31 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       if (introPhase.current === 'hold') {
         const holdT = Math.min(1, introTimer.current / introDuration.current.hold);
         const eased = easeInOutCubic(holdT);
-        const orbitRadius = 3;
-        const orbitSpeed = 0.15;
+        const orbitRadius = 300;
+        const orbitSpeed = 0.12;
+        // Cinematic orbit with altitude variation — descending from 140m to 80m
+        const altBase = 140 - eased * 60;
+        const altWave = Math.sin(introTimer.current * 0.5) * 8;
         camera.position.set(
           Math.sin(introTimer.current * orbitSpeed) * orbitRadius,
-          2500 - eased * 200,
-          Math.cos(introTimer.current * orbitSpeed) * orbitRadius + 0.01
+          altBase + altWave,
+          Math.cos(introTimer.current * orbitSpeed) * orbitRadius
         );
-        camera.lookAt(0, 0, 0);
+        camera.lookAt(0, 5, 0);
         if (controlsRef.current) {
-          controlsRef.current.target.set(0, 0, 0);
+          controlsRef.current.target.set(0, 5, 0);
           controlsRef.current.update();
         }
         if (introTimer.current >= introDuration.current.hold) {
           introPhase.current = 'sweep';
           introTimer.current = 0;
+          // Capture current position as sweep start
+          _sweepStartPos.current.copy(camera.position);
         }
       } else if (introPhase.current === 'sweep') {
         const sweepT = Math.min(1, introTimer.current / introDuration.current.sweep);
         const eased = easeInOutCubic(sweepT);
         
-        // Zero-GC: reuse pre-allocated vectors instead of creating new ones per frame
         _sweepDefaultPos.current.set(targetPosition[0], targetPosition[1], targetPosition[2]);
         _sweepDefaultLook.current.set(targetLookAt[0], targetLookAt[1], targetLookAt[2]);
         
@@ -1065,7 +1089,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       return;
     }
 
-    // Normal preset animation — fix operator precedence bug
+    // Normal preset animation
     if ((!animating.current && !focusAnimating.current) || !controlsRef.current || freeLook) {
       clampToWorldBounds();
       return;
@@ -1080,20 +1104,25 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     clampToWorldBounds();
   });
 
-  const sensitivityScale = 0.7; // 30% less sensitivity
+  const sensitivityScale = 0.7;
 
-  // Broadcast OrbitControls ref to GeoCameraController via custom event
+  // Broadcast OrbitControls ref to GeoCameraController
   useEffect(() => {
     if (controlsRef.current) {
       window.dispatchEvent(new CustomEvent('r3f-controls-ready', { detail: { controls: controlsRef.current } }));
     }
-  });
+  }, [controlsRef.current]);
 
   // Disable OrbitControls while box-select is active
   useEffect(() => {
     const handler = (e: CustomEvent) => {
       if (controlsRef.current) {
         controlsRef.current.enabled = !e.detail;
+        if (e.detail) {
+          useViewportStore.getState().setInteractionState('boxSelecting');
+        } else {
+          useViewportStore.getState().setInteractionState('idle');
+        }
       }
     };
     window.addEventListener('box-select-active' as any, handler as any);
@@ -1107,7 +1136,6 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
       const { x, y, z } = (e as CustomEvent).detail;
       if (controlsRef.current) {
         targetLook.current.set(x, y, z);
-        // Zero-GC: reuse pre-allocated vector
         _focusCamDir.subVectors(camera.position, controlsRef.current.target).normalize();
         const dist = Math.max(20, camera.position.distanceTo(controlsRef.current.target) * 0.5);
         targetPos.current.set(x + _focusCamDir.x * dist, Math.max(y + 5, y + _focusCamDir.y * dist), z + _focusCamDir.z * dist);
@@ -1122,7 +1150,8 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   const editorMode = useProjectStore(s => s.editorMode);
   const isSelectMode = editorMode === 'select';
 
-  // Update mouse buttons when mode changes
+  // Standard mapping: Middle=Orbit, Right=Pan in ALL modes
+  // In select mode: Left is disabled (for box-select). Otherwise Left=Orbit.
   useEffect(() => {
     if (!controlsRef.current) return;
     if (isSelectMode) {
@@ -1134,7 +1163,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     } else {
       controlsRef.current.mouseButtons = {
         LEFT: THREE.MOUSE.ROTATE,
-        MIDDLE: THREE.MOUSE.DOLLY,
+        MIDDLE: THREE.MOUSE.ROTATE,
         RIGHT: THREE.MOUSE.PAN,
       };
     }
@@ -1146,8 +1175,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   return (
     <OrbitControls
       ref={controlsRef}
-      enableDamping
-      dampingFactor={0.06}
+      enableDamping={false}
       rotateSpeed={0.6 * sensitivityScale}
       panSpeed={0.8 * sensitivityScale}
       zoomSpeed={1.2 * sensitivityScale}
@@ -1162,7 +1190,12 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 
 /** Viewport playback controls — always visible at bottom center of 3D viewport */
 function ViewportPlaybackControls() {
-  const { isPlaying, setPlaying, currentTime, setCurrentTime, duration, playbackSpeed } = useProjectStore();
+    const isPlaying = useProjectStore(s => s.isPlaying);
+  const setPlaying = useProjectStore(s => s.setPlaying);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
+  const duration = useProjectStore(s => s.duration);
+  const playbackSpeed = useProjectStore(s => s.playbackSpeed);
 
   const formatTime = (t: number) => {
     const m = Math.floor(t / 60);
@@ -1172,7 +1205,7 @@ function ViewportPlaybackControls() {
   };
 
   return (
-    <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5">
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
       {/* Rewind */}
       <button
         onClick={() => { setCurrentTime(0); setPlaying(false); }}
@@ -1240,7 +1273,11 @@ function ViewportPlaybackControls() {
 
 /** Floating menu for fullscreen mode — gives access to key actions */
 function FullscreenEditMenu() {
-  const { isPlaying, setPlaying, currentTime, setCurrentTime, duration } = useProjectStore();
+    const isPlaying = useProjectStore(s => s.isPlaying);
+  const setPlaying = useProjectStore(s => s.setPlaying);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
+  const duration = useProjectStore(s => s.duration);
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -1454,29 +1491,38 @@ export default function SkyCanvas() {
   // Professional keybindings (Finale 3D)
   useKeybindings();
   const editorMode = useProjectStore((s) => s.editorMode);
+  // ── Memoized Zustand selectors (avoid inline getState in JSX) ──
+  const lockPositions = useSceneStore((s) => s.environment.lockPositions);
+  const showRulers = useSceneStore((s) => s.environment.showRulers);
+  const updateEnvironment = useSceneStore((s) => s.updateEnvironment);
+  const updateSettings = useSceneStore((s) => s.updateSettings);
   const droneFormations = useProjectStore((s) => s.droneFormations);
   const gpsOrigin = useProjectStore((s) => s.gpsOrigin);
   // cursorStyle moved below geoTool declaration
   const [activePreset, setActivePreset] = useState('free');
   const [freeLook, setFreeLook] = useState(false);
   const [flyMode, setFlyMode] = useState(false);
+  const [groundMode, setGroundMode] = useState(false);
   const [flySpeed, setFlySpeed] = useState(15);
   const flySpeedCb = useCallback((s: number) => setFlySpeed(Math.round(s)), []);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [cameraMenuOpen, setCameraMenuOpen] = useState(false);
   const preset = CAMERA_PRESETS.find((p) => p.id === activePreset) || CAMERA_PRESETS[0];
-  const perfStatsRef = useRef<PerfStats>({ fps: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0 });
+  const perfStatsRef = useRef<PerfStats>({ fps: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0, memory: 0, frameTime: 16.7, workerLatency: 0, isScaledDown: false });
   const droneCount = droneFormations.length > 0 ? droneFormations[0].droneCount : 0;
   const [satelliteTexture, setSatelliteTexture] = useState<string | null>(null);
   const [downloadingScenery, setDownloadingScenery] = useState(false);
   const [canvasInstanceKey, setCanvasInstanceKey] = useState(0);
   const recoveringContextRef = useRef(false);
   const handleContextRemount = useCallback(() => setCanvasInstanceKey(prev => prev + 1), []);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768; // eslint-disable-line -- kept as static for perf-sensitive render loop; useIsMobile used at page level
+  const deviceProfile = useMemo(() => getDeviceProfile(), []);
+  const isLowTierMobile = isMobile && deviceProfile.tier === 'low';
   const environment = useSceneStore(st => st.environment);
   const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const presentationMode = useSceneStore(st => st.settings.presentationMode);
+  // MissionSetupOverlay removed — scene loads immediately
 
   // Exit fly mode when pointer lock is lost (ESC)
   useEffect(() => {
@@ -1486,6 +1532,18 @@ export default function SkyCanvas() {
     document.addEventListener('pointerlockchange', onLockChange);
     return () => document.removeEventListener('pointerlockchange', onLockChange);
   }, [flyMode]);
+
+  // Ctrl+Shift+D — toggle debug overlay
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+        e.preventDefault();
+        setShowDebugOverlay(v => !v);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   // ═══ Google Earth-style Geo Tools state ═══
   const [geoTool, setGeoTool] = useState<GeoToolMode>('none');
@@ -1642,73 +1700,79 @@ export default function SkyCanvas() {
 
   // Force R3F to re-measure when resizable panels change size (debounced)
   const containerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const ro = new ResizeObserver(() => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        window.dispatchEvent(new Event('resize'));
-      }, 150);
-    });
-    ro.observe(el);
-    return () => {
-      if (timer) clearTimeout(timer);
-      ro.disconnect();
-    };
-  }, []);
+  // ResizeObserver removed — R3F Canvas resize={{ debounce: 50 }} handles this natively
+
+  const [canvasReady, setCanvasReady] = useState(false);
 
   return (
-    <div ref={containerRef} className="w-full h-full relative bg-black" data-sky-canvas style={{ cursor: cursorStyle }}>
+    <div ref={containerRef} className="w-full h-full relative bg-[#050810] transition-opacity duration-700 ease-out" data-sky-canvas style={{ cursor: cursorStyle, opacity: canvasReady ? 1 : 0 }}>
       <WebGLErrorBoundary>
       <Canvas
         key={canvasInstanceKey}
         resize={{ debounce: 50, scroll: false }}
         shadows
         gl={{
-          antialias: !isMobile,
+          antialias: !isLowTierMobile,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.5,
-          powerPreference: 'high-performance',
+          toneMappingExposure: 1.2,
+          powerPreference: isLowTierMobile ? 'default' : 'high-performance',
           alpha: false,
           stencil: false,
-          logarithmicDepthBuffer: true,
+          logarithmicDepthBuffer: !isLowTierMobile,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
-        dpr={isMobile ? [1, 1.5] : [1.5, 2]}
-        performance={{ min: 0.5 }}
+        dpr={isLowTierMobile ? [1, 1] : isMobile ? [1, 1.25] : [1.5, 2]}
+        performance={{ min: isLowTierMobile ? 0.35 : 0.5 }}
         onCreated={() => {
           recoveringContextRef.current = false;
+          setTimeout(() => setCanvasReady(true), 100);
         }}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={50} near={1.0} far={500000} />
-        <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode} flyMode={flyMode} />
-        {flyMode && <FlyControls onSpeedChange={flySpeedCb} />}
+        <PerspectiveCamera makeDefault position={preset.position} fov={60} near={0.1} far={500000} />
+        <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode || groundMode} flyMode={flyMode || groundMode} />
+        {flyMode && !groundMode && <FlyControls onSpeedChange={flySpeedCb} />}
+        {groundMode && <GroundControls onSpeedChange={flySpeedCb} />}
 
         <ContextLossGuard recoveringRef={recoveringContextRef} onRemount={handleContextRemount} />
         <HardeningWatchdog />
         <FXKQualityController />
         <SceneLighting />
-        <AdaptiveExposureController />
-        {!environment.disableLighting && <GlobalIlluminationController />}
-        <GroundReflections />
-        {!environment.disableLighting && <LensFlareController />}
+        <GeoTimeOfDaySync />
+        <Suspense fallback={null}>
+          <AdaptiveExposureController />
+          {!environment.disableLighting && <GlobalIlluminationController />}
+          {!google3DTilesEnabled && <GroundReflections />}
+          {!environment.disableLighting && <LensFlareController />}
+          <ContactShadowsLayer />
+          <DebugFeed />
+        </Suspense>
         <DelayedMount delay={2000}>
           <NiagaraVFXController />
         </DelayedMount>
 
-        <EnvironmentV2Switcher />
+        {/* ═══ Synthetic sky/atmosphere — suppressed in Digital Twin mode ═══ */}
+        <Suspense fallback={null}>
+          {!google3DTilesEnabled && <EnvironmentV2SwitcherClean SkyGradientComponent={SkyGradientFallback} />}
+          {!google3DTilesEnabled && <SceneStarsWiredClean />}
+          {!google3DTilesEnabled && <SceneFogClean />}
+        </Suspense>
 
-        <Moon />
-        <SceneStarsWired />
-        {!isMobile && !environment.lowQualityMode && <AtmosphericParticles />}
-        <SceneFog />
-        {!isMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
+        <Suspense fallback={null}>
+          {!google3DTilesEnabled && <Moon />}
+          {!google3DTilesEnabled && !isLowTierMobile && !environment.lowQualityMode && <AtmosphericParticles />}
+          {!google3DTilesEnabled && !isLowTierMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
+        </Suspense>
 
-        {!google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
-        {google3DTilesEnabled && <GoogleTilesLayer />}
-        {google3DTilesEnabled && <GeoCameraController />}
-        <FinaleAxesHelper />
+        {/* ═══ Ground / Terrain ═══ */}
+        <Suspense fallback={null}>
+          {!google3DTilesEnabled && <StageGround satelliteTexture={satelliteTexture} />}
+        </Suspense>
+        <SubsystemBoundary name="GoogleTiles">
+          {google3DTilesEnabled && <GoogleTilesLayer />}
+          {google3DTilesEnabled && <GeoCameraController />}
+          {google3DTilesEnabled && <GoogleTilesFallback />}
+          <GoogleEarthLighting />
+        </SubsystemBoundary>
+        {!google3DTilesEnabled && showDebugOverlay && <FinaleAxesHelper />}
         <DoubleClickFocus />
         <SiteModelRenderer />
         <PositionPins />
@@ -1716,27 +1780,34 @@ export default function SkyCanvas() {
         <PositionTransformGizmo />
         {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
-        <PyroSafetyZones />
-        <DroneChoreography />
+        {!google3DTilesEnabled && !isLowTierMobile && <PyroSafetyZones />}
+        <SubsystemBoundary name="DroneSwarm">
+          <DroneRendererSwitch />
+        </SubsystemBoundary>
         {!isMobile && <BoidsVisualizer />}
         {!isMobile && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
-        <TimelineEffects />
-        <LiveSFXEffects />
+        <SubsystemBoundary name="Pyrotechnics">
+          <Suspense fallback={null}>
+            <TimelineEffects />
+            <LiveSFXEffects />
+          </Suspense>
+        </SubsystemBoundary>
         <LaserPreviewBeams />
-        <StageFixtures />
-        {!isMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
+        {!google3DTilesEnabled && !isLowTierMobile && <StageFixtures />}
+        {!google3DTilesEnabled && !isMobile && !isLowTierMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
         <PlaybackClock />
         {!isMobile && <CameraAnimator />}
         {!isMobile && <CameraPathPreview />}
-        <ViewportRulers />
+        {!google3DTilesEnabled && <ViewportRulers />}
         <CameraBookmarkSaver />
-        <ContactShadowsLayer />
-        <PostProcessing activeBurstCount={_activeBurstCount} />
-        <StressTestFireworks />
-        <PostExplosionSmokeManager />
+        <SubsystemBoundary name="PostProcessing">
+          {!isLowTierMobile && <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />}
+        </SubsystemBoundary>
+        {!isLowTierMobile && <StressTestFireworks />}
+        
+        {!isLowTierMobile && <PostExplosionSmokeManager />}
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
-        <DebugFeed />
 
         {/* ═══ Google Earth Geo Tools ═══ */}
         <GeoToolsScene
@@ -1754,6 +1825,12 @@ export default function SkyCanvas() {
         />
       </Canvas>
       </WebGLErrorBoundary>
+
+      {/* ═══ VIEWPORT BAR — Fixed top bar with view presets & actions ═══ */}
+      <ViewportBar />
+
+      <TelemetryBar />
+      <GoogleTilesLoadingOverlay />
       <KeybindingCheatSheet />
 
       {/* ═══ Google Earth Geo Tools UI ═══ */}
@@ -1788,203 +1865,117 @@ export default function SkyCanvas() {
         />
       )}
 
-      {/* Camera presets & controls */}
-      <div className="absolute top-3 left-3 flex items-center gap-1 flex-wrap max-w-[calc(100%-24px)]">
-        {/* Free look toggle */}
-        <button
-          onClick={() => { setFreeLook(!freeLook); if (flyMode) setFlyMode(false); }}
-          className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
-            freeLook && !flyMode
-              ? "bg-warning/20 text-warning border-warning/30 shadow-lg shadow-warning/10"
-              : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
-          )}
-          title="Free Look"
-        >
-          <ScanEye className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Look</span>
-        </button>
+      {/* ═══ VIEWPORT CONFIG — Unified menu (desktop only) ═══ */}
+      {!isMobile && (
+        <ViewportConfigMenu
+          activePreset={activePreset}
+          freeLook={freeLook}
+          flyMode={flyMode}
+          groundMode={groundMode}
+          onPresetChange={(id) => { setActivePreset(id); setFreeLook(false); }}
+          onFreeLookToggle={() => { setFreeLook(!freeLook); if (flyMode) setFlyMode(false); if (groundMode) setGroundMode(false); }}
+          onFlyModeToggle={() => { setFlyMode(!flyMode); if (!flyMode) { setFreeLook(false); setGroundMode(false); } }}
+          onGroundModeToggle={() => { setGroundMode(!groundMode); if (!groundMode) { setFlyMode(false); setFreeLook(false); } }}
+        />
+      )}
 
-        {/* Fly mode toggle */}
-        <button
-          onClick={() => { setFlyMode(!flyMode); if (!flyMode) setFreeLook(false); }}
-          className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
-            flyMode
-              ? "bg-accent/20 text-accent-foreground border-accent/30 shadow-lg shadow-accent/10"
-              : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
-          )}
-          title="Fly Mode (WASD + Mouse)"
-        >
-          <Navigation className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Fly</span>
-        </button>
+      {/* ═══ TACTICAL DOCK — Editing tools ═══ */}
+      {!isMobile && <TacticalDock />}
 
-        {/* Mobile: camera dropdown; Desktop: inline buttons */}
-        {isMobile ? (
-          <div className="relative">
-            <button
-              onClick={() => setCameraMenuOpen(!cameraMenuOpen)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20"
-            >
-              <Camera className="w-3.5 h-3.5" />
-              <span>{preset.label}</span>
-              <ChevronDown className={cn("w-3 h-3 transition-transform", cameraMenuOpen && "rotate-180")} />
-            </button>
-            {cameraMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setCameraMenuOpen(false)} />
-                <div className="absolute top-full left-0 mt-1 z-40 bg-card/95 backdrop-blur-xl border border-border/20 rounded-xl shadow-2xl shadow-black/60 py-1 min-w-[140px]">
-                  {CAMERA_PRESETS.map(({ id, label, icon: Icon }) => (
-                    <button
-                      key={id}
-                      onClick={() => { setActivePreset(id); setFreeLook(false); setCameraMenuOpen(false); }}
-                      className={cn(
-                        "w-full text-left px-3 py-2 text-[11px] font-medium flex items-center gap-2 rounded-lg mx-0.5 transition-all",
-                        activePreset === id && !freeLook
-                          ? "text-primary bg-primary/10"
-                          : "text-muted-foreground hover:text-foreground hover:bg-surface-1/60"
-                      )}
-                      style={{ width: 'calc(100% - 4px)' }}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </>
+      {/* ═══ JOI STATUS MONITOR — HUD ═══ */}
+      {!isMobile && <JoiStatusMonitor />}
+
+      {/* ═══ Mini-Dock — utility tools (top-right glassmorphism cluster) ═══ */}
+      {!isMobile && (
+        <div className="absolute right-3 top-3 flex flex-col gap-1 bg-card/40 backdrop-blur-sm border border-border/10 rounded-xl p-1 z-20">
+          {/* Render Debug */}
+          <RenderDebugToggle show={showDebugOverlay} onToggle={() => setShowDebugOverlay(v => !v)} />
+
+          {/* Lock Positions */}
+          <button
+            onClick={() => updateEnvironment({ lockPositions: !lockPositions })}
+            className={cn(
+              "w-7 h-7 rounded-md flex items-center justify-center transition-all border",
+              lockPositions
+                ? "bg-warning/20 border-warning/40 text-warning"
+                : "bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
             )}
-          </div>
-        ) : (
-          CAMERA_PRESETS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => { setActivePreset(id); setFreeLook(false); }}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
-                activePreset === id && !freeLook
-                  ? "bg-primary/15 text-primary border-primary/25 shadow-lg shadow-primary/10"
-                  : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
-              )}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{label}</span>
-            </button>
-          ))
-        )}
+            title="Lock/Unlock Positions"
+          >
+            <Lock className="h-3.5 w-3.5" />
+          </button>
 
-        {/* Download satellite scenery */}
-        {!isMobile && (
+          {/* Rulers */}
+          <button
+            onClick={() => updateEnvironment({ showRulers: !showRulers })}
+            className={cn(
+              "w-7 h-7 rounded-md flex items-center justify-center transition-all border",
+              showRulers
+                ? "bg-primary/20 border-primary/40 text-primary"
+                : "bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
+            )}
+            title="Show Rulers"
+          >
+            <Ruler className="h-3.5 w-3.5" />
+          </button>
+
+          {/* Bookmark */}
+          <button
+            onClick={() => {
+              const id = `bm-${Date.now()}`;
+              const name = `View ${useSceneStore.getState().environment.cameraBookmarks.length + 1}`;
+              window.dispatchEvent(new CustomEvent('save-camera-bookmark', { detail: { id, name } }));
+            }}
+            className="w-7 h-7 rounded-md flex items-center justify-center transition-all border bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
+            title="Save Camera Bookmark"
+          >
+            <Bookmark className="h-3.5 w-3.5" />
+          </button>
+
+          {/* Download satellite */}
           <button
             onClick={handleDownloadScenery}
             disabled={downloadingScenery}
             className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
+              "w-7 h-7 rounded-md flex items-center justify-center transition-all border",
               satelliteTexture
-                ? "bg-success/15 text-success border-success/25"
-                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
+                ? "bg-success/20 border-success/40 text-success"
+                : "bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
             )}
-            title="Download real satellite scenery from Google Maps"
+            title="Download satellite scenery"
           >
             {downloadingScenery ? (
               <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             ) : (
-              <Globe className="w-3.5 h-3.5" />
+              <Globe className="h-3.5 w-3.5" />
             )}
-            <span className="hidden sm:inline">{satelliteTexture ? 'Satélite ✓' : 'Cenário Real'}</span>
           </button>
-        )}
 
-        {/* 🎬 Presentation Mode */}
-        {!isMobile && (
+          {/* Presentation */}
           <button
-            onClick={() => useSceneStore.getState().updateSettings({ presentationMode: true })}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
-            title="Modo Apresentação Cliente"
+            onClick={() => updateSettings({ presentationMode: true })}
+            className="w-7 h-7 rounded-md flex items-center justify-center transition-all border bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
+            title="Presentation Mode"
           >
-            <Film className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Apresentação</span>
+            <Film className="h-3.5 w-3.5" />
           </button>
-        )}
 
-        {!isMobile && (
-          <RenderDebugToggle show={showDebugOverlay} onToggle={() => setShowDebugOverlay(v => !v)} />
-        )}
-
-        {/* Lock Positions toggle */}
-        {!isMobile && (
-          <button
-            onClick={() => {
-              const env = useSceneStore.getState().environment;
-              useSceneStore.getState().updateEnvironment({ lockPositions: !env.lockPositions });
-            }}
-            className={cn(
-              "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
-              useSceneStore.getState().environment.lockPositions
-                ? "bg-warning/20 text-warning border-warning/30"
-                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
-            )}
-            title="Lock/Unlock Positions (Finale 3D)"
-          >
-            <Lock className="w-3.5 h-3.5" />
-          </button>
-        )}
-
-        {/* Rulers toggle */}
-        {!isMobile && (
-          <button
-            onClick={() => {
-              const env = useSceneStore.getState().environment;
-              useSceneStore.getState().updateEnvironment({ showRulers: !env.showRulers });
-            }}
-            className={cn(
-              "flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md",
-              useSceneStore.getState().environment.showRulers
-                ? "bg-primary/15 text-primary border-primary/25"
-                : "bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
-            )}
-            title="Show Rulers (ShowSim)"
-          >
-            <Ruler className="w-3.5 h-3.5" />
-          </button>
-        )}
-
-        {/* Save Camera Bookmark */}
-        {!isMobile && (
-          <button
-            onClick={() => {
-              const cam = document.querySelector('canvas')?.closest('[data-sky-canvas]');
-              // Get camera state from Three.js
-              const id = `bm-${Date.now()}`;
-              const name = `View ${useSceneStore.getState().environment.cameraBookmarks.length + 1}`;
-              // We'll use a custom event to get camera position
-              window.dispatchEvent(new CustomEvent('save-camera-bookmark', { detail: { id, name } }));
-            }}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-semibold transition-all border backdrop-blur-md bg-card/80 text-muted-foreground border-border/20 hover:text-foreground hover:bg-card/90"
-            title="Save Camera Bookmark"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <Bookmark className="w-3.5 h-3.5" />
-          </button>
-        )}
-
-        {/* Fullscreen toggle */}
-        {!isMobile && (
+          {/* Fullscreen */}
           <button
             onClick={() => {
               const el = document.querySelector('[data-sky-canvas]') as HTMLElement;
               if (!el) return;
               document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
             }}
-            className="bg-card/80 text-muted-foreground border border-border/20 hover:text-foreground hover:bg-card/90 px-2.5 py-1.5 rounded-xl transition-all backdrop-blur-md"
+            className="w-7 h-7 rounded-md flex items-center justify-center transition-all border bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
           >
-            {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+            {isFullscreen ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Camera Bookmarks bar */}
-      <CameraBookmarksBar setActivePreset={setActivePreset} setFreeLook={setFreeLook} />
+      {!isMobile && <CameraBookmarksBar setActivePreset={setActivePreset} setFreeLook={setFreeLook} />}
 
       {/* Site Model Transform Toolbar */}
       <SiteModelTransformToolbar />
@@ -1998,24 +1989,29 @@ export default function SkyCanvas() {
       {/* AI CoPilot Overlay */}
       <AICoPilotOverlay />
 
-      {!isMobile && <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />}
-      {!isMobile && <ViewportTerminal />}
-      <SelectionStatusBar />
+      {/* HUD Crosshairs AR Overlay */}
+      <HUDCrosshairs />
+
+      {/* Placing Mode Crosshair Overlay */}
+      <PlacingModeOverlay />
+
+      {/* ═══ Debug tools — hidden by default, toggle with Ctrl+Shift+D ═══ */}
+      {!isMobile && showDebugOverlay && <PerformanceHUD statsRef={perfStatsRef} droneCount={droneCount} />}
+      {!isMobile && showDebugOverlay && <ViewportTerminal />}
+      {!isMobile && <SelectionStatusBar />}
       {!isMobile && <AlignmentTools />}
 
-      {/* ═══ Finale 3D Viewport Tools ═══ */}
-      {!isMobile && <FinaleToolbar />}
-      {!isMobile && (
+      {/* FinaleToolbar replaced by TacticalDock */}
+      {!isMobile && showDebugOverlay && (
         <div className="absolute bottom-20 left-3 z-40">
           <StressTestButton />
         </div>
       )}
 
-      {/* ═══ Viewport Playback Controls ═══ */}
-      <ViewportPlaybackControls />
+      {/* ViewportPlaybackControls removed — redundant with Timeline playback */}
 
-      {/* Fly mode HUD */}
-      {flyMode && (
+      {/* Fly mode HUD (desktop only — mobile uses MobileHUD) */}
+      {!isMobile && flyMode && !groundMode && (
         <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 bg-card/85 backdrop-blur-xl border border-border/25 rounded-xl px-4 py-2 font-mono text-[10px] text-muted-foreground space-y-0.5 select-none pointer-events-none">
           <div className="text-center text-[9px] font-semibold uppercase tracking-wider text-accent-foreground mb-1">✈ Fly Mode</div>
           <div className="flex gap-4">
@@ -2028,10 +2024,24 @@ export default function SkyCanvas() {
         </div>
       )}
 
-      {/* Bottom info — hidden on mobile to avoid tab bar overlap */}
-      {!isMobile && (
+      {/* Ground operator HUD (desktop only) */}
+      {!isMobile && groundMode && (
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 bg-card/85 backdrop-blur-xl border border-border/25 rounded-xl px-4 py-2 font-mono text-[10px] text-muted-foreground space-y-0.5 select-none pointer-events-none">
+          <div className="text-center text-[9px] font-semibold uppercase tracking-wider text-primary mb-1">🥾 Ground Op</div>
+          <div className="flex gap-4">
+            <span>WASD Walk</span>
+            <span>Shift Run</span>
+            <span>Scroll Speed</span>
+            <span>Alt Lock: 1.7m</span>
+          </div>
+          <div className="text-center text-foreground font-semibold">{flySpeed} m/s</div>
+        </div>
+      )}
+
+      {/* Bottom info — only visible in debug mode */}
+      {!isMobile && showDebugOverlay && (
         <div className="absolute bottom-3 right-3 text-[9px] font-mono-code text-muted-foreground/60 bg-card/70 backdrop-blur-md px-3 py-2 rounded-xl border border-border/15 space-y-0.5">
-          <div className="text-[8px] text-muted-foreground/40 tracking-wider font-display">FX KONTROL v2.0 · Minas FX</div>
+          <div className="text-[8px] text-muted-foreground/40 tracking-wider font-display">FX KONTROL v3.2 · Minas FX</div>
           <div>{flyMode ? 'WASD: Move · Mouse: Look · Q/E: Up/Down' : 'Orbit: LMB · Pan: MMB · Zoom: Scroll'}</div>
           <div>Box: Alt+Drag · Multi: Shift+Click · Edit: Dbl-Click</div>
           <div>{flyMode ? '✈ Fly Mode' : freeLook ? '🔓 Free Look ON' : '🔒 Preset Lock'}</div>
@@ -2041,8 +2051,14 @@ export default function SkyCanvas() {
       {/* Client Presentation Mode */}
       <ClientPresentationMode
         active={presentationMode}
-        onExit={() => useSceneStore.getState().updateSettings({ presentationMode: false })}
+        onExit={() => updateSettings({ presentationMode: false })}
       />
+
+      {/* AR Overlays */}
+      <ARCompassHUD />
+      <ARScanEffect />
+
+      {/* MissionSetupOverlay removed — scene loads immediately */}
     </div>
   );
 }

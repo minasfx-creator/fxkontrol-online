@@ -3,8 +3,10 @@
  * Shows pyro cues as colored bars grouped by formation, synchronized with the main timeline.
  * Each bar represents a timeline item (pyro effect) with color-coded category indicators.
  */
-import { useMemo, useState } from 'react';
-import { useProjectStore, EFFECT_LIBRARY, type TimelineItem, type Effect } from '@/store/useProjectStore';
+import { useMemo, useState, useRef, useEffect } from 'react';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type TimelineItem } from '@/types/projectTypes';
+import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
 import { Flame, ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -47,6 +49,22 @@ interface PyroFormationGroup {
   items: { item: TimelineItem; effect: Effect }[];
 }
 
+/** Pyro playhead — DOM-direct, zero re-renders */
+function PyroPlayheadIndicator({ pixelsPerSecond }: { pixelsPerSecond: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const initial = useProjectStore.getState().currentTime;
+    if (ref.current) ref.current.style.transform = `translateX(${initial * pixelsPerSecond}px)`;
+    const unsub = useProjectStore.subscribe((state) => {
+      if (ref.current) ref.current.style.transform = `translateX(${state.currentTime * pixelsPerSecond}px)`;
+    });
+    return unsub;
+  }, [pixelsPerSecond]);
+  return (
+    <div ref={ref} className="absolute top-0 bottom-0 w-px bg-primary/40 pointer-events-none z-30" style={{ transform: 'translateX(0px)' }} />
+  );
+}
+
 export default function PyroTimelineTrack({
   pixelsPerSecond,
   duration,
@@ -54,7 +72,11 @@ export default function PyroTimelineTrack({
   pixelsPerSecond: number;
   duration: number;
 }) {
-  const { timelineItems, droneFormations, currentTime, selectTimelineItem, selectedTimelineItemId } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const droneFormations = useProjectStore(s => s.droneFormations);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
+  const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
   const [expanded, setExpanded] = useState(true);
 
   // Get all pyro timeline items (firework type)
@@ -250,11 +272,8 @@ export default function PyroTimelineTrack({
               );
             })}
 
-            {/* Playhead indicator within this row */}
-            <div
-              className="absolute top-0 bottom-0 w-px bg-primary/40 pointer-events-none z-30"
-              style={{ left: `${currentTime * pixelsPerSecond}px` }}
-            />
+            {/* Playhead — DOM-direct (zero re-renders) */}
+            <PyroPlayheadIndicator pixelsPerSecond={pixelsPerSecond} />
           </div>
         </div>
       ))}

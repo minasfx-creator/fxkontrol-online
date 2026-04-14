@@ -32,6 +32,8 @@ export default function CometEffect({
   caliber = 3,
   angleOffset = 0,
   formulationId,
+  launchHeading = 0,
+  launchPitch = 85,
 }: {
   position: [number, number, number];
   color: string;
@@ -40,6 +42,8 @@ export default function CometEffect({
   caliber?: number;
   angleOffset?: number;
   formulationId?: string;
+  launchHeading?: number;
+  launchPitch?: number;
 }) {
   const { scene, camera } = useThree();
   const glowRef = useRef<THREE.Mesh>(null);
@@ -294,10 +298,14 @@ export default function CometEffect({
   const headFade = Math.max(0, 1 - progress * 0.5);
   const { headX, headY, headZ } = getHeadPos(progress);
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
-  const angleOffsetRad = (angleOffset * Math.PI) / 180;
+  const launchRotation = useMemo(() => {
+    const headingRad = -(launchHeading || 0) * Math.PI / 180;
+    const pitchRad = (90 - (launchPitch || 85)) * Math.PI / 180;
+    return new THREE.Euler(pitchRad, headingRad, 0, 'YXZ');
+  }, [launchHeading, launchPitch]);
 
   return (
-    <group position={position} rotation={[0, 0, angleOffsetRad]}>
+    <group position={position} rotation={launchRotation} renderOrder={50}>
       {/* Ignition flare — aggressive first 3% */}
       {progress < 0.03 && (
         <mesh position={[0, 0.1, 0]}>
@@ -311,12 +319,13 @@ export default function CometEffect({
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest={false}
           />
         </mesh>
       )}
 
       {/* GPU spark cloud */}
-      <points ref={sparkPointsRef} frustumCulled={false}>
+      <points ref={sparkPointsRef} frustumCulled={false} renderOrder={50}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[sparkPosBuffer, 3]} />
           <bufferAttribute attach="attributes-color" args={[sparkColBuffer, 3]} />
@@ -346,12 +355,13 @@ export default function CometEffect({
           `}
           transparent
           depthWrite={false}
+          depthTest={false}
           blending={THREE.AdditiveBlending}
         />
       </points>
 
       {/* Smoke wake cloud */}
-      <points ref={smokePointsRef} frustumCulled={false}>
+      <points ref={smokePointsRef} frustumCulled={false} renderOrder={50}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[smokePosBuffer, 3]} />
           <bufferAttribute attach="attributes-color" args={[smokeColBuffer, 3]} />
@@ -362,6 +372,7 @@ export default function CometEffect({
           transparent
           opacity={0.09}
           depthWrite={false}
+          depthTest={false}
           sizeAttenuation
         />
       </points>
@@ -378,6 +389,7 @@ export default function CometEffect({
           blendSrc={screenBlend.blendSrc as any}
           blendDst={screenBlend.blendDst as any}
           depthWrite={false}
+          depthTest={false}
         />
       </mesh>
 
@@ -394,6 +406,7 @@ export default function CometEffect({
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest={false}
           />
         </mesh>
       )}

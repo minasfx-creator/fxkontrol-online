@@ -30,13 +30,13 @@ A tese central do relatório (gargalo de main thread + excesso de fragmentação
 - Diagnóstico correto de que, em SPA/CSR, LCP pode atrasar mesmo com backend rápido.
 - Direção correta ao propor pré-renderização/hidratação para conteúdo crítico.
 - Boa visão de longo prazo ao conectar runtime (WASM/ECS) com confiabilidade operacional.
-- Inclui acessibilidade como requisito estrutural, não apenas “compliance de fim”.
+- Inclui acessibilidade como requisito estrutural, não apenas "compliance de fim".
 
 ## 2.2 Pontos que precisam de ajuste
 - **Métricas absolutas sem rastreabilidade pública** (ex.: score exato, TTFB ultrabaixo) devem ser tratadas como hipótese até anexar artefato de auditoria.
-- **“SSG para tudo”** é arriscado em rotas de telemetria e aprovação ao vivo; nessas rotas, o ganho vem de shell leve + ilhas interativas.
+- **"SSG para tudo"** é arriscado em rotas de telemetria e aprovação ao vivo; nessas rotas, o ganho vem de shell leve + ilhas interativas.
 - **ECS + WASM + merge de stores no mesmo ciclo** eleva risco de regressão e dificulta rollback cirúrgico.
-- Meta de **“Zero-GC” literal** deve virar meta operacional: “sem pausas GC no caminho crítico de comando”.
+- Meta de **"Zero-GC" literal** deve virar meta operacional: "sem pausas GC no caminho crítico de comando".
 
 ---
 
@@ -54,7 +54,7 @@ A tese central do relatório (gargalo de main thread + excesso de fragmentação
 - **Operação autenticada (NOC/HUD):** shell mínimo pré-renderizado + hidratação progressiva.
 - **Editor 3D pesado:** CSR progressivo com lazy boundaries e inicialização por prioridade.
 
-**Regra:** sem migração “big bang”; rollout por rota, com canary.
+**Regra:** sem migração "big bang"; rollout por rota, com canary.
 
 ## Fase C — Estado e fluxo de dados
 Reduzir 17 stores para **4 macrodomínios**:
@@ -88,9 +88,9 @@ Reduzir 17 stores para **4 macrodomínios**:
 ## 5) Backlog imediato (2 semanas)
 
 1. Introduzir `hydrateRoot` em modo de produção para rotas elegíveis.
-2. Definir e documentar lista de rotas “SEO indexáveis” vs “operacionais privadas”.
+2. Definir e documentar lista de rotas "SEO indexáveis" vs "operacionais privadas".
 3. Criar script de auditoria automática para detectar múltiplos `<h1>`, ausência de `aria-label` em botões ícone e falhas de landmark roles.
-4. Medir custo de inicialização das stores atuais e publicar ranking de “stores mais caras”.
+4. Medir custo de inicialização das stores atuais e publicar ranking de "stores mais caras".
 5. Isolar módulos de inicialização de barramentos para execução sob demanda (evitar boot síncrono total).
 
 ---
@@ -106,4 +106,4 @@ Reduzir 17 stores para **4 macrodomínios**:
 ---
 
 ## 7) Parecer final
-O relatório original está **bem orientado estrategicamente**, mas precisava de uma camada de execução com rastreabilidade, escopo incremental e controle de risco por domínio. Com o plano acima, o FX KONTROL passa de “diagnóstico forte” para “programa executável”, com ganhos prováveis em LCP, estabilidade de UI e previsibilidade operacional sem comprometer segurança de missão.
+O relatório original está **bem orientado estrategicamente**, mas precisava de uma camada de execução com rastreabilidade, escopo incremental e controle de risco por domínio. Com o plano acima, o FX KONTROL passa de "diagnóstico forte" para "programa executável", com ganhos prováveis em LCP, estabilidade de UI e previsibilidade operacional sem comprometer segurança de missão.

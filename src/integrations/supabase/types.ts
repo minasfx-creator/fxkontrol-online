@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      accreditation_packages: {
+        Row: {
+          agency: Database["public"]["Enums"]["accreditation_agency"]
+          ai_validation_result: Json | null
+          created_at: string
+          documents: Json
+          event_id: string | null
+          id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["accreditation_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agency: Database["public"]["Enums"]["accreditation_agency"]
+          ai_validation_result?: Json | null
+          created_at?: string
+          documents?: Json
+          event_id?: string | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["accreditation_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agency?: Database["public"]["Enums"]["accreditation_agency"]
+          ai_validation_result?: Json | null
+          created_at?: string
+          documents?: Json
+          event_id?: string | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["accreditation_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accreditation_packages_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       artnet_modules: {
         Row: {
           channel_count: number
@@ -245,6 +292,84 @@ export type Database = {
           },
         ]
       }
+      health_incidents: {
+        Row: {
+          created_at: string
+          id: string
+          incident_at: string
+          incident_id: string
+          message: string
+          project_id: string
+          resolved: boolean
+          resolved_at: string | null
+          severity: string
+          subsystem: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          incident_at: string
+          incident_id: string
+          message: string
+          project_id: string
+          resolved?: boolean
+          resolved_at?: string | null
+          severity: string
+          subsystem: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          incident_at?: string
+          incident_id?: string
+          message?: string
+          project_id?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          severity?: string
+          subsystem?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      health_snapshots: {
+        Row: {
+          active_incidents: number
+          created_at: string
+          global_level: string
+          global_score: number
+          id: string
+          project_id: string
+          subsystem_scores: Json
+          uptime_ms: number
+          user_id: string
+        }
+        Insert: {
+          active_incidents?: number
+          created_at?: string
+          global_level: string
+          global_score: number
+          id?: string
+          project_id: string
+          subsystem_scores?: Json
+          uptime_ms?: number
+          user_id: string
+        }
+        Update: {
+          active_incidents?: number
+          created_at?: string
+          global_level?: string
+          global_score?: number
+          id?: string
+          project_id?: string
+          subsystem_scores?: Json
+          uptime_ms?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       layout_presets: {
         Row: {
           category_overrides: Json
@@ -423,6 +548,39 @@ export type Database = {
           name?: string
           sections?: Json
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saved_locations: {
+        Row: {
+          alt: number
+          created_at: string
+          id: string
+          lat: number
+          lon: number
+          name: string
+          scene_radius: number
+          user_id: string
+        }
+        Insert: {
+          alt?: number
+          created_at?: string
+          id?: string
+          lat: number
+          lon: number
+          name: string
+          scene_radius?: number
+          user_id: string
+        }
+        Update: {
+          alt?: number
+          created_at?: string
+          id?: string
+          lat?: number
+          lon?: number
+          name?: string
+          scene_radius?: number
           user_id?: string
         }
         Relationships: []
@@ -774,6 +932,18 @@ export type Database = {
       is_project_owner: { Args: { p_project_id: string }; Returns: boolean }
     }
     Enums: {
+      accreditation_agency:
+        | "exercito"
+        | "decea"
+        | "bombeiros"
+        | "prefeitura"
+        | "anac"
+      accreditation_status:
+        | "draft"
+        | "validating"
+        | "approved"
+        | "rejected"
+        | "submitted"
       app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
@@ -902,6 +1072,20 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      accreditation_agency: [
+        "exercito",
+        "decea",
+        "bombeiros",
+        "prefeitura",
+        "anac",
+      ],
+      accreditation_status: [
+        "draft",
+        "validating",
+        "approved",
+        "rejected",
+        "submitted",
+      ],
       app_role: ["admin", "moderator", "user"],
     },
   },

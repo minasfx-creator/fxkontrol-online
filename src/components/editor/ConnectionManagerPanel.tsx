@@ -44,20 +44,20 @@ const TRANSPORT_LABELS: Record<TransportType, string> = {
 
 function TransportRow({ t, onRemove, fs }: { t: TransportStatus; onRemove: (id: string) => void; fs: boolean }) {
   const Icon = TRANSPORT_ICONS[t.type] || Cable;
-  const stateColor = t.state === 'connected' ? 'text-green-400' : t.state === 'connecting' || t.state === 'reconnecting' ? 'text-amber-400' : 'text-muted-foreground/30';
+  const stateColor = t.state === 'connected' ? 'text-emerald-400' : t.state === 'connecting' || t.state === 'reconnecting' ? 'text-amber-400' : 'text-muted-foreground/30';
 
   return (
     <div className={cn("flex items-center gap-2 border-t border-border/10", fs ? "px-3 py-1.5" : "px-2 py-1")}>
       <Icon className={cn("w-3 h-3", stateColor)} />
       <span className="text-[8px] font-mono text-foreground/70 flex-1">{TRANSPORT_LABELS[t.type]}</span>
-      <Badge variant="outline" className={cn("text-[6px] h-3 px-1", t.state === 'connected' ? 'border-green-500/30 text-green-400' : '')}>
+      <Badge variant="outline" className={cn("text-[6px] h-3 px-1", t.state === 'connected' ? 'border-emerald-500/30 text-emerald-400' : '')}>
         {t.state}
       </Badge>
       {t.state === 'connected' && (
         <span className="text-[7px] font-mono text-muted-foreground/40">{t.latencyMs}ms</span>
       )}
       <span className="text-[6px] text-muted-foreground/30">P{t.priority}</span>
-      <Button size="sm" variant="ghost" className="h-4 w-4 p-0 text-muted-foreground/30 hover:text-red-400"
+      <Button size="sm" variant="ghost" className="h-4 w-4 p-0 text-muted-foreground/30 hover:text-destructive"
         onClick={() => onRemove(t.id)}>
         <X className="w-2.5 h-2.5" />
       </Button>
@@ -238,7 +238,7 @@ export default function ConnectionManagerPanel({ fs = false, onClose }: Connecti
                       <span className="text-[7px] text-muted-foreground/40 font-mono">TX: {(conn.txBytes / 1024).toFixed(1)}KB</span>
                       <span className="text-[7px] text-muted-foreground/40 font-mono">RX: {(conn.rxBytes / 1024).toFixed(1)}KB</span>
                       {conn.latencyMs > 0 && (
-                        <span className={cn("text-[7px] font-mono", conn.latencyMs > 500 ? 'text-amber-400/60' : 'text-green-400/60')}>
+                        <span className={cn("text-[7px] font-mono", conn.latencyMs > 500 ? 'text-amber-400/60' : 'text-emerald-400/60')}>
                           {conn.latencyMs}ms
                         </span>
                       )}
@@ -255,7 +255,7 @@ export default function ConnectionManagerPanel({ fs = false, onClose }: Connecti
                     Auto
                   </label>
                   {conn.connected ? (
-                    <Button size="sm" variant="ghost" className="h-6 text-[9px] px-2 text-red-400 hover:text-red-300"
+                    <Button size="sm" variant="ghost" className="h-6 text-[9px] px-2 text-destructive hover:text-destructive/80"
                       onClick={() => handleDisconnect(conn.id)}>
                       <X className="w-3 h-3 mr-0.5" /> Off
                     </Button>

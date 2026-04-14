@@ -48,6 +48,7 @@ interface PyroFireOnePanelProps {
   handlePanic: () => void;
   artNetConnected: boolean;
   relayConnected: boolean;
+  onArmChange?: (armed: boolean) => void;
 }
 
 type PyroMode = 'manual' | 'step' | 'timecode' | 'test';
@@ -100,7 +101,7 @@ function createSimModule(addr: number, connected: boolean, wireless = false): Fi
 }
 
 export default function PyroFireOnePanel({
-  fs, fireChannel, channels, pyroArm, dmxArm, handlePanic, artNetConnected, relayConnected,
+  fs, fireChannel, channels, pyroArm, dmxArm, handlePanic, artNetConnected, relayConnected, onArmChange,
 }: PyroFireOnePanelProps) {
   const isMobile = useIsMobile();
   const hardware = useFireOneHardware();
@@ -277,6 +278,20 @@ export default function PyroFireOnePanel({
     })));
   }, [simMode, hardware.isConnected, hardware.modules]);
 
+  // Persistent Supabase channels to avoid ephemeral channel leaks
+  const pyroSyncChannel = useRef(supabase.channel('fxc-pyro-sync'));
+  const mobileLinkChannel = useRef(supabase.channel('fxc-mobile-link'));
+
+  useEffect(() => {
+    // Subscribe channels once
+    pyroSyncChannel.current.subscribe();
+    mobileLinkChannel.current.subscribe();
+    return () => {
+      supabase.removeChannel(pyroSyncChannel.current);
+      supabase.removeChannel(mobileLinkChannel.current);
+    };
+  }, []);
+
   // Import pyro cues from AutoFire
   const importPyroCues = useCallback(() => {
     const pyroCues = DEMO_CUES.filter(c => c.device === 'pyro');
@@ -284,7 +299,7 @@ export default function PyroFireOnePanel({
     setStepCues(pyroCues);
     setStepIndex(0);
     toast.success(`Imported ${pyroCues.length} pyro cues from AutoFire`);
-    supabase.channel('fxc-pyro-sync').send({
+    pyroSyncChannel.current.send({
       type: 'broadcast', event: 'pyro-cues-sync',
       payload: { cues: pyroCues },
     }).catch(() => {});
@@ -406,7 +421,7 @@ export default function PyroFireOnePanel({
     const chIdx = (moduleAddr - 1) * 32 + (igniterPos - 1);
     if (chIdx < channels.length) fireChannel(channels[chIdx].id);
 
-    supabase.channel('fxc-mobile-link').send({
+    mobileLinkChannel.current.send({
       type: 'broadcast', event: 'fxc-fire',
       payload: { channelId: chIdx < channels.length ? channels[chIdx].id : null, module: moduleAddr, igniter: igniterPos, source: 'pyro-panel' },
     }).catch(() => {});
@@ -914,7 +929,7 @@ export default function PyroFireOnePanel({
       sz === 'xl' ? (mob ? "px-4 py-2.5 flex-wrap" : "px-6 py-3") : sz === 'fs' ? "px-4 py-2" : "px-2 py-1",
       masterKeyOn ? "border-red-800/30" : "border-border/15"
     )} style={{ background: masterKeyOn ? 'hsl(0 30% 8%)' : 'hsl(0 10% 6%)' }}>
-      <button onClick={() => { setMasterKeyOn(!masterKeyOn); haptics[masterKeyOn ? 'disarm' : 'arm'](); }}
+      <button onClick={() => { setMasterKeyOn(!masterKeyOn); haptics[masterKeyOn ? 'disarm' : 'arm'](); onArmChange?.(!masterKeyOn); }}
         className={cn(
           "flex items-center gap-2 rounded border-2 font-black uppercase transition-all min-w-[64px]",
           sz === 'xl' ? (mob ? "px-5 py-3 text-xs flex-1" : "px-6 py-3 text-sm") : sz === 'fs' ? "px-4 py-2 text-[10px]" : "px-3 py-1.5 text-[8px]",
@@ -1602,10 +1617,10 @@ export default function PyroFireOnePanel({
   }
 
   // ═══════════════════════════════════════════════════════════
-  // PANEL MODE (inside FX Commander) — with HUD corners
+  // PANEL MODE (inside FX Commander) — with HUD corners + glass
   // ═══════════════════════════════════════════════════════════
   return (
-    <div className="flex flex-col h-full relative overflow-hidden" style={{ background: 'hsl(220 18% 4%)' }}>
+    <div className="flex flex-col h-full relative overflow-hidden glass-br2049" style={{ background: 'hsl(220 18% 4%)' }}>
       {/* HUD corner brackets */}
       <div className="absolute top-1 left-1 w-4 h-4 pointer-events-none z-10 border-l-2 border-t-2" style={{ borderColor: 'hsl(var(--primary) / 0.2)' }} />
       <div className="absolute top-1 right-1 w-4 h-4 pointer-events-none z-10 border-r-2 border-t-2" style={{ borderColor: 'hsl(var(--primary) / 0.2)' }} />
@@ -1621,6 +1636,7 @@ export default function PyroFireOnePanel({
       {renderModuleInfo()}
       <ScrollArea className="flex-1">{renderModeContent()}</ScrollArea>
       {renderModuleScanner()}
+      {renderPanic()}
     </div>
   );
 }

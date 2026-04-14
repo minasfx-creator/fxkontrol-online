@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type DroneFormation } from '@/types/projectTypes';
 import { interpolateColor, type ColorTransitionMode } from '@/lib/colorInterpolation';
 import InstancedDroneSwarm from './InstancedDroneSwarm';
 import TransitionParticles from './TransitionParticles';
@@ -16,10 +17,12 @@ function ensurePositionsCacheSize(size: number) {
 
 /**
  * Computes drone positions at a given time based on the formation sequence.
- * IMPORTANT: Formations are generated as 2D (x, z) points.
- * For aerial display, we map them UPRIGHT:
+ * IMPORTANT: Formations are generated as 2D (x, z) points where:
+ *   - x = horizontal spread
+ *   - z = vertical in canvas space (positive = DOWN on screen)
+ * For aerial 3D display we NEGATE z so shapes appear right-side-up:
  *   formation.x → world X (horizontal spread)
- *   formation.z → world Y offset (vertical shape, added to base height)
+ *   -formation.z → world Y offset (vertical shape, added to base height)
  *   world Z = 0 (facing audience)
  * 
  * Zero-GC: reuses _positionsCache to avoid creating new arrays every frame.
@@ -54,7 +57,7 @@ function computeDronePositions(
       const p = lastFormation.points[idx];
       if (!p) continue;
       const uprightX = p.x;
-      const uprightY = lastFormation.height + p.z;
+      const uprightY = lastFormation.height - p.z;
       const uprightZ = 0;
 
       const row = Math.floor(idx / cols);
@@ -98,7 +101,7 @@ function computeDronePositions(
           const p = f.points[idx];
           if (!p) continue;
           const targetX = p.x;
-          const targetY = f.height + p.z;
+          const targetY = f.height - p.z;
           const targetZ = 0;
 
           let prevX: number, prevY: number, prevZ: number;
@@ -112,7 +115,7 @@ function computeDronePositions(
             const pp = formations[i - 1].points[idx];
             if (pp) {
               prevX = pp.x;
-              prevY = formations[i - 1].height + pp.z;
+              prevY = formations[i - 1].height - pp.z;
               prevZ = 0;
             } else {
               prevX = 0; prevY = 0; prevZ = 0;
@@ -145,7 +148,7 @@ function computeDronePositions(
           if (!p) continue;
           const out = _positionsCache[idx];
           out.x = p.x;
-          out.y = f.height + p.z;
+          out.y = f.height - p.z;
           out.z = 0;
           out.color = interpolateColor(targetColor, endColor, holdT, colorMode, idx, droneCount);
         }
@@ -158,7 +161,7 @@ function computeDronePositions(
         if (!p) continue;
         const out = _positionsCache[idx];
         out.x = p.x;
-        out.y = f.height + p.z;
+        out.y = f.height - p.z;
         out.z = 0;
         out.color = targetColor;
       }
@@ -170,7 +173,9 @@ function computeDronePositions(
 }
 
 export default function DroneChoreography() {
-  const { droneFormations, currentTime, showFormations } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const showFormations = useProjectStore(s => s.showFormations);
 
   const positions = useMemo(
     () => computeDronePositions(droneFormations, currentTime),

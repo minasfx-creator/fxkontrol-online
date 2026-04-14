@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Upload, Music, Zap, Volume2, VolumeX, GripHorizontal, Minus, Plus, Flag, Trash2 } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -71,11 +72,19 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-  const {
-    currentTime, duration, audioUrl, bpm, isPlaying, playbackSpeed,
-    setAudioUrl, setBpm, snapToBeat, setSnapToBeat,
-    cueMarkers, addCueMarker, removeCueMarker,
-  } = useProjectStore();
+    const currentTime = useProjectStore(s => s.currentTime);
+  const duration = useProjectStore(s => s.duration);
+  const audioUrl = useProjectStore(s => s.audioUrl);
+  const bpm = useProjectStore(s => s.bpm);
+  const isPlaying = useProjectStore(s => s.isPlaying);
+  const playbackSpeed = useProjectStore(s => s.playbackSpeed);
+  const setAudioUrl = useProjectStore(s => s.setAudioUrl);
+  const setBpm = useProjectStore(s => s.setBpm);
+  const snapToBeat = useProjectStore(s => s.snapToBeat);
+  const setSnapToBeat = useProjectStore(s => s.setSnapToBeat);
+  const cueMarkers = useProjectStore(s => s.cueMarkers);
+  const addCueMarker = useProjectStore(s => s.addCueMarker);
+  const removeCueMarker = useProjectStore(s => s.removeCueMarker);
 
   const [waveformData, setWaveformData] = useState<Float32Array | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -178,8 +187,22 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
 
       const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
 
+      // Auto-adjust project duration to match audio length
+      const audioDuration = audioBuffer.duration;
+      if (audioDuration > 0) {
+        const store = useProjectStore.getState();
+        // Only extend — never shrink below current items
+        const maxItemEnd = store.timelineItems.reduce((max, item) => {
+          const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+          return Math.max(max, item.startTime + (effect?.duration ?? 3));
+        }, 0);
+        const newDuration = Math.max(audioDuration, maxItemEnd);
+        store.setDuration(Math.ceil(newDuration));
+      }
+
       const rawData = audioBuffer.getChannelData(0);
-      const samples = Math.floor(duration * pixelsPerSecond * 2);
+      const effectiveDuration = audioDuration > 0 ? Math.ceil(audioDuration) : duration;
+      const samples = Math.floor(effectiveDuration * pixelsPerSecond * 2);
       const blockSize = Math.floor(rawData.length / samples);
       const downsampled = new Float32Array(samples);
 

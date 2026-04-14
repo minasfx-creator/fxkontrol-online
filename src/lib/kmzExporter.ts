@@ -14,8 +14,9 @@
  *   - Time span control for Google Earth timeline slider
  */
 
-import JSZip from 'jszip';
-import type { Position, Trajectory, DroneFormation, CameraKeyframe } from '@/store/useProjectStore';
+// JSZip loaded dynamically to reduce initial bundle
+const loadJSZip = () => import('jszip').then(m => m.default);
+import type { Position, Trajectory, DroneFormation, CameraKeyframe } from '@/types/projectTypes';
 import { interpolateColor, type ColorTransitionMode } from '@/lib/colorInterpolation';
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -582,6 +583,7 @@ export function exportAnimatedKML(options: KMZExportOptions): string {
 /** Export as .kmz (ZIP containing doc.kml) */
 export async function exportKMZ(options: KMZExportOptions): Promise<Blob> {
   const kml = buildAnimatedKML(options);
+  const JSZip = await loadJSZip();
   const zip = new JSZip();
   zip.file('doc.kml', kml);
 

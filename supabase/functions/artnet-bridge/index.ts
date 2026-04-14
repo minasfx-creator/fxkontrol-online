@@ -1,9 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { handleCors, corsHeaders } from "../_shared/cors.ts";
+import { jsonError } from "../_shared/response.ts";
 
 /**
  * Art-Net Bridge Edge Function
@@ -26,8 +23,8 @@ interface DMXUniverseData {
 }
 
 interface ArtNetRequest {
-  action: 'send' | 'validate' | 'export-binary';
-  universes: DMXUniverseData[];
+  action: 'send' | 'validate' | 'export-binary' | 'poll' | 'sync' | 'rdm';
+  universes?: DMXUniverseData[];
   targetIp?: string;
   targetPort?: number;
 }
@@ -88,8 +85,12 @@ function validateUniverse(data: DMXUniverseData): string[] {
   if (data.universe < 0 || data.universe > 15) errors.push(`Universe ${data.universe} out of range (0-15)`);
   if (data.subnet < 0 || data.subnet > 15) errors.push(`Subnet ${data.subnet} out of range (0-15)`);
   if (data.net < 0 || data.net > 127) errors.push(`Net ${data.net} out of range (0-127)`);
-  if (!data.channels || data.channels.length === 0) errors.push('No channel data');
-  if (data.channels.length > 512) errors.push(`Too many channels: ${data.channels.length} (max 512)`);
+  if (!Array.isArray(data.channels) || data.channels.length === 0) errors.push('No channel data');
+  if (Array.isArray(data.channels) && data.channels.length > 512) errors.push(`Too many channels: ${data.channels.length} (max 512)`);
+
+  if (!Array.isArray(data.channels)) {
+    return errors;
+  }
 
   // Validate channel values
   for (let i = 0; i < data.channels.length; i++) {
@@ -103,33 +104,32 @@ function validateUniverse(data: DMXUniverseData): string[] {
 }
 
 serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
   try {
     const body: ArtNetRequest = await req.json();
     const { action, universes, targetIp, targetPort } = body;
 
-    if (!universes || !Array.isArray(universes) || universes.length === 0) {
-      return new Response(JSON.stringify({ error: 'No universe data provided' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Validate all universes
-    const allErrors: string[] = [];
-    for (const u of universes) {
-      allErrors.push(...validateUniverse(u));
-    }
-
     if (action === 'validate') {
+      if (!universes || !Array.isArray(universes) || universes.length === 0) {
+        return new Response(JSON.stringify({ error: 'No universe data provided' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Validate all universes
+      const allErrors: string[] = [];
+      for (const u of universes) {
+        allErrors.push(...validateUniverse(u));
+      }
+
       return new Response(JSON.stringify({
         valid: allErrors.length === 0,
         errors: allErrors,
         universeCount: universes.length,
-        totalChannels: universes.reduce((s, u) => s + u.channels.length, 0),
+        totalChannels: universes.reduce((s, u) => s + (Array.isArray(u.channels) ? u.channels.length : 0), 0),
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -181,6 +181,19 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({
         success: true, type: 'ArtRdm', packetSize: packet.length, binary: b64,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (!universes || !Array.isArray(universes) || universes.length === 0) {
+      return new Response(JSON.stringify({ error: 'No universe data provided' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate all universes
+    const allErrors: string[] = [];
+    for (const u of universes) {
+      allErrors.push(...validateUniverse(u));
     }
 
     if (allErrors.length > 0) {

@@ -384,7 +384,7 @@ export default function FlameEffect({
             <bufferAttribute attach="attributes-position" args={[emberPosBuffer, 3]} />
             <bufferAttribute attach="attributes-color" args={[emberColBuffer, 3]} />
           </bufferGeometry>
-          <pointsMaterial size={0.035} vertexColors transparent opacity={0.95} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+          <pointsMaterial size={0.035} vertexColors transparent opacity={0.95} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} sizeAttenuation />
         </points>
       )}
 

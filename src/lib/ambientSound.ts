@@ -4,7 +4,7 @@
  * No external audio files required.
  */
 
-type SoundType = 'nav' | 'click' | 'boot' | 'error';
+type SoundType = 'nav' | 'click' | 'boot' | 'error' | 'alarm' | 'missile' | 'explosion' | 'radiation';
 
 class AmbientSoundEngine {
   private ctx: AudioContext | null = null;
@@ -160,6 +160,127 @@ class AmbientSoundEngine {
         osc2.start(t);
         osc1.stop(t + 0.12);
         osc2.stop(t + 0.12);
+        break;
+      }
+
+      case 'alarm': {
+        // Targeting siren: alternating 600↔900Hz
+        const osc = this.ctx.createOscillator();
+        const lfo = this.ctx.createOscillator();
+        const lfoGain = this.ctx.createGain();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.value = 750;
+        lfo.type = 'sine';
+        lfo.frequency.value = 3;
+        lfoGain.gain.value = 150; // 750±150 = 600↔900
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.06, t + 0.1);
+        gain.gain.setValueAtTime(0.06, t + 2.0);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 2.5);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        lfo.start(t);
+        osc.start(t);
+        osc.stop(t + 2.5);
+        lfo.stop(t + 2.5);
+        break;
+      }
+
+      case 'missile': {
+        // Whoosh: filtered white noise with descending sweep
+        const bufferSize = this.ctx.sampleRate * 1;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(2000, t);
+        filter.frequency.exponentialRampToValueAtTime(200, t + 0.8);
+        filter.Q.value = 5;
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.1, t + 0.05);
+        gain.gain.setValueAtTime(0.1, t + 0.6);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        noise.start(t);
+        noise.stop(t + 1.0);
+        break;
+      }
+
+      case 'explosion': {
+        // Impact: noise burst + sub-bass rumble
+        const bufferSize = this.ctx.sampleRate * 0.6;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const lpf = this.ctx.createBiquadFilter();
+        lpf.type = 'lowpass';
+        lpf.frequency.setValueAtTime(800, t);
+        lpf.frequency.exponentialRampToValueAtTime(60, t + 0.5);
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.15, t);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+        noise.connect(lpf);
+        lpf.connect(noiseGain);
+        noiseGain.connect(this.masterGain);
+        noise.start(t);
+        noise.stop(t + 0.6);
+        // Sub-bass rumble
+        const sub = this.ctx.createOscillator();
+        const subGain = this.ctx.createGain();
+        sub.type = 'sine';
+        sub.frequency.value = 40;
+        subGain.gain.setValueAtTime(0.12, t);
+        subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+        sub.connect(subGain);
+        subGain.connect(this.masterGain);
+        sub.start(t);
+        sub.stop(t + 0.6);
+        break;
+      }
+
+      case 'radiation': {
+        // Aftermath drone: low metallic tone with tremolo
+        const osc = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator();
+        const trem = this.ctx.createOscillator();
+        const tremGain = this.ctx.createGain();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.value = 55;
+        osc2.type = 'sine';
+        osc2.frequency.value = 58; // slight detune for metallic feel
+        trem.type = 'sine';
+        trem.frequency.value = 4;
+        tremGain.gain.value = 0.02;
+        trem.connect(tremGain);
+        tremGain.connect(gain.gain);
+        gain.gain.setValueAtTime(0.04, t);
+        gain.gain.setValueAtTime(0.04, t + 1.5);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 3.0);
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 300;
+        osc.connect(filter);
+        osc2.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        trem.start(t);
+        osc.start(t);
+        osc2.start(t);
+        osc.stop(t + 3.0);
+        osc2.stop(t + 3.0);
+        trem.stop(t + 3.0);
         break;
       }
     }

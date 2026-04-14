@@ -9,7 +9,8 @@
  * mapping them to internal DMX profiles for the editor viewport and DMX engine.
  */
 
-import JSZip from 'jszip';
+// JSZip loaded dynamically to reduce initial bundle
+const loadJSZip = () => import('jszip').then(m => m.default);
 import { DMX_FIXTURE_PROFILES, type DMXFixture, type DMXUniverse } from './dmxEngine';
 
 export interface MVRFixture {
@@ -111,6 +112,7 @@ async function parseGDTF(gdtfData: ArrayBuffer): Promise<GDTFProfile> {
   let name = 'Unknown';
   
   try {
+    const JSZip = await loadJSZip();
     const zip = await JSZip.loadAsync(gdtfData);
     const descFile = zip.file('description.xml');
     if (!descFile) return { name, modes };
@@ -161,6 +163,7 @@ export async function parseMVR(arrayBuffer: ArrayBuffer): Promise<MVRParseResult
   const gdtfProfiles = new Map<string, GDTFProfile>();
   
   try {
+    const JSZip = await loadJSZip();
     const zip = await JSZip.loadAsync(arrayBuffer);
     
     // 1. Parse GDTF profiles first

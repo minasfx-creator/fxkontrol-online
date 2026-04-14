@@ -1,4 +1,4 @@
-import { useState, useEffect, forwardRef } from 'react';
+import { useState, useEffect, useRef, forwardRef } from 'react';
 import fxkLogo from '@/assets/fxk-logo-tactical.png';
 import { cn } from '@/lib/utils';
 import { ambientSound } from '@/lib/ambientSound';
@@ -53,10 +53,17 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
     return () => timers.forEach(clearTimeout);
   }, [phase]);
 
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => { if (exitTimerRef.current) clearTimeout(exitTimerRef.current); };
+  }, []);
+
   const handleStart = () => {
     setPhase('exit');
     ambientSound.play('boot');
-    setTimeout(() => onStart(), 700);
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    exitTimerRef.current = setTimeout(() => onStart(), 700);
   };
 
   return (
@@ -84,7 +91,7 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
 
       {/* Center radial glow — breathes subtly */}
       <div className={cn(
-        "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full transition-all duration-[2500ms]",
+        "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full transition-all duration-2500",
         phase === 'blackout' ? 'opacity-0 scale-50' : phase === 'ready' ? 'opacity-100 scale-110' : 'opacity-80 scale-100'
       )} style={{
         background: 'radial-gradient(circle, hsl(32 100% 50% / 0.05), transparent 65%)',
@@ -152,14 +159,14 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
 
       {/* Main logo + content — phase 3+ */}
       <div className={cn(
-        "relative flex flex-col items-center gap-7 transition-all duration-[1200ms]",
+        "relative flex flex-col items-center gap-7 transition-all duration-1200",
         (phase === 'logo' || phase === 'ready') ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-[0.92]'
       )} style={{ transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' }}>
         {/* Logo with holographic frame */}
         <div className="relative">
           {/* Outer ring glow */}
           <div className={cn(
-            "absolute -inset-6 rounded-full transition-all duration-[2000ms]",
+            "absolute -inset-6 rounded-full transition-all duration-2000",
             phase === 'ready' ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
           )} style={{
             background: 'radial-gradient(circle, hsl(32 100% 50% / 0.07), transparent 70%)',

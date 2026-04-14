@@ -10,115 +10,8 @@
  * Pan, Tilt, Gobo, Frost, Shaper, Color Wheel, Zoom, Focus, Prism, etc.
  */
 
-// ═══ UE5 DMXPrevis-compatible Fixture Attribute Definitions ═══
-export type DMXAttributeCategory =
-  | 'intensity'
-  | 'color'
-  | 'position'
-  | 'beam'
-  | 'gobo'
-  | 'effects'
-  | 'control'
-  | 'shaper';
 
-export interface DMXAttributeDefinition {
-  name: string;
-  category: DMXAttributeCategory;
-  channelCount: number;       // 1 for 8-bit, 2 for 16-bit
-  defaultValue: number;       // 0-255 (8-bit) or 0-65535 (16-bit)
-  minValue: number;
-  maxValue: number;
-  description: string;
-}
 
-/**
- * Complete DMX attribute library — synced from UE5 DMXPrevis DefaultEngine config.
- * Covers all standard fixture attribute types from moving heads, LED bars, SFX, etc.
- */
-export const DMX_ATTRIBUTE_LIBRARY: Record<string, DMXAttributeDefinition> = {
-  // ── Intensity ──
-  Dimmer:           { name: 'Dimmer',           category: 'intensity', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Master dimmer' },
-  DimmerFine:       { name: 'DimmerFine',       category: 'intensity', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Fine dimmer (16-bit LSB)' },
-  Strobe:           { name: 'Strobe',           category: 'intensity', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Strobe speed' },
-  StrobeDuration:   { name: 'StrobeDuration',   category: 'intensity', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Strobe pulse duration' },
-  StrobeMode:       { name: 'StrobeMode',       category: 'intensity', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Strobe mode selector' },
-
-  // ── Color ──
-  Red:              { name: 'Red',              category: 'color', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Red channel' },
-  Green:            { name: 'Green',            category: 'color', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Green channel' },
-  Blue:             { name: 'Blue',             category: 'color', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Blue channel' },
-  White:            { name: 'White',            category: 'color', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'White channel' },
-  Amber:            { name: 'Amber',            category: 'color', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Amber channel' },
-  UV:               { name: 'UV',               category: 'color', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'UV/Blacklight channel' },
-  Lime:             { name: 'Lime',             category: 'color', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Lime channel' },
-  Cyan:             { name: 'Cyan',             category: 'color', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Cyan channel' },
-  Magenta:          { name: 'Magenta',          category: 'color', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Magenta channel' },
-  CTO:              { name: 'CTO',              category: 'color', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Color Temperature Orange (warm)' },
-  CTB:              { name: 'CTB',              category: 'color', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Color Temperature Blue (cool)' },
-  ColorWheel:       { name: 'ColorWheel',       category: 'color', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Color wheel position' },
-  ColorWheelSpin:   { name: 'ColorWheelSpin',   category: 'color', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Color wheel rotation speed' },
-
-  // ── Position (Pan / Tilt) ──
-  Pan:              { name: 'Pan',              category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Pan coarse (0-540°)' },
-  PanFine:          { name: 'PanFine',          category: 'position', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Pan fine (16-bit LSB)' },
-  Tilt:             { name: 'Tilt',             category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Tilt coarse (0-270°)' },
-  TiltFine:         { name: 'TiltFine',         category: 'position', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Tilt fine (16-bit LSB)' },
-  PanTiltSpeed:     { name: 'PanTiltSpeed',     category: 'position', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Pan/Tilt movement speed' },
-
-  // ── Beam ──
-  Zoom:             { name: 'Zoom',             category: 'beam', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Beam zoom (narrow → wide)' },
-  ZoomFine:         { name: 'ZoomFine',         category: 'beam', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Zoom fine (16-bit LSB)' },
-  Focus:            { name: 'Focus',            category: 'beam', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Focus near ↔ far' },
-  FocusFine:        { name: 'FocusFine',        category: 'beam', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Focus fine (16-bit LSB)' },
-  Iris:             { name: 'Iris',             category: 'beam', channelCount: 1, defaultValue: 255, minValue: 0, maxValue: 255, description: 'Iris aperture' },
-  IrisFine:         { name: 'IrisFine',         category: 'beam', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Iris fine' },
-  Frost:            { name: 'Frost',            category: 'beam', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Frost filter (soft edge)' },
-  FrostFine:        { name: 'FrostFine',        category: 'beam', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Frost fine' },
-  Prism:            { name: 'Prism',            category: 'beam', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Prism insert/rotation' },
-  PrismRotation:    { name: 'PrismRotation',    category: 'beam', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Prism rotation speed' },
-
-  // ── Gobo ──
-  Gobo1:            { name: 'Gobo1',            category: 'gobo', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Gobo wheel 1 selection' },
-  Gobo1Rotation:    { name: 'Gobo1Rotation',    category: 'gobo', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Gobo 1 rotation speed' },
-  Gobo1Fine:        { name: 'Gobo1Fine',        category: 'gobo', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Gobo 1 rotation fine' },
-  Gobo2:            { name: 'Gobo2',            category: 'gobo', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Gobo wheel 2 selection' },
-  Gobo2Rotation:    { name: 'Gobo2Rotation',    category: 'gobo', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Gobo 2 rotation speed' },
-
-  // ── Shaper / Framing ──
-  ShaperRotation:   { name: 'ShaperRotation',   category: 'shaper', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Framing shutter rotation' },
-  ShaperBlade1A:    { name: 'ShaperBlade1A',    category: 'shaper', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Blade 1 position A' },
-  ShaperBlade1B:    { name: 'ShaperBlade1B',    category: 'shaper', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Blade 1 position B' },
-  ShaperBlade2A:    { name: 'ShaperBlade2A',    category: 'shaper', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Blade 2 position A' },
-  ShaperBlade2B:    { name: 'ShaperBlade2B',    category: 'shaper', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Blade 2 position B' },
-  ShaperBlade3A:    { name: 'ShaperBlade3A',    category: 'shaper', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Blade 3 position A' },
-  ShaperBlade3B:    { name: 'ShaperBlade3B',    category: 'shaper', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Blade 3 position B' },
-  ShaperBlade4A:    { name: 'ShaperBlade4A',    category: 'shaper', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Blade 4 position A' },
-  ShaperBlade4B:    { name: 'ShaperBlade4B',    category: 'shaper', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Blade 4 position B' },
-
-  // ── Effects ──
-  EffectWheel:      { name: 'EffectWheel',      category: 'effects', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Animation/effect wheel' },
-  EffectSpeed:      { name: 'EffectSpeed',      category: 'effects', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Effect animation speed' },
-  MacroEffect:      { name: 'MacroEffect',      category: 'effects', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Built-in macro/effect program' },
-
-  // ── Control ──
-  Control:          { name: 'Control',          category: 'control', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Fixture reset/lamp control' },
-  FanSpeed:         { name: 'FanSpeed',         category: 'control', channelCount: 1, defaultValue: 0, minValue: 0, maxValue: 255, description: 'Cooling fan speed' },
-
-  // ── Pyro / SFX (from UE5 DMXPrevis config) ──
-  Burst:            { name: 'Burst',            category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Pyro burst trigger' },
-  Launch:           { name: 'Launch',           category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Pyro launch trigger' },
-  Velocity:         { name: 'Velocity',         category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Launch velocity (0-255)' },
-  Angle:            { name: 'Angle',            category: 'effects', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Launch angle (0-180°)' },
-  NumBeams:         { name: 'NumBeams',         category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Number of beams/stars' },
-  X:                { name: 'X',                category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Position X' },
-  Y:                { name: 'Y',                category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Position Y' },
-  Z:                { name: 'Z',                category: 'position', channelCount: 1, defaultValue: 128, minValue: 0, maxValue: 255, description: 'Position Z' },
-
-  // ── Water Fountain (from DMXLib_WaterFountain) ──
-  WaterPressure:    { name: 'WaterPressure',    category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Water pump pressure' },
-  WaterHeight:      { name: 'WaterHeight',      category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Fountain jet height' },
-  WaterSpread:      { name: 'WaterSpread',      category: 'effects', channelCount: 1, defaultValue: 0,   minValue: 0, maxValue: 255, description: 'Spray spread angle' },
-};
 
 /**
  * Fixture profile template — defines which attributes a fixture type uses.
@@ -330,67 +223,6 @@ export const DMX_FIXTURE_PROFILES: Record<string, DMXFixtureProfile> = {
 };
 
 // ── UE5 Blueprint → Profile Mapping ──
-export const UE5_BLUEPRINT_MAP: Record<string, string> = {
-  'BP_SpotMH1_v2': 'spot-mh-standard',
-  'BP_SpotMH2_v2': 'spot-mh-standard',
-  'BP_SpotMH2_v2_HQ': 'spot-mh-hq',
-  'BP_WashMH1_v2': 'moving-head-wash',
-  'BP_WashMH2': 'moving-head-wash',
-  'BP_WashLED_v2': 'wash-led-par',
-  'BP_WashSL1_v2': 'wash-spotlight',
-  'BP_Static_SceneLight': 'static-scene-light',
-  'BP_Static_Toner': 'static-toner',
-  'BP_TonerWBeam': 'toner-beam',
-  'BP_Audience_Toner': 'audience-toner',
-  'BP_StadiumLights': 'stadium-light',
-  'BP_StaticMatrix_5x1': 'led-matrix-5x1',
-  'BP_StaticMatrix_NoBorder': 'led-matrix-panel',
-  'BP_StaticMatrix_v2': 'led-matrix-panel',
-  'BP_Strobe1_v3': 'strobe-high-power',
-  'BP_Sphere': 'generic-rgbw',
-  'BP_Firework_v2': 'sfx-firework-dmx',
-  'BP_Pyro_v4': 'sfx-pyro-dmx',
-  'BP_Laser_Extended': 'generic-rgb',
-  'DMXLib_v4': 'generic-rgbw',
-  // ── From BP uploads ──
-  'BP_DMX_Send_Receive': 'generic-rgbw',
-  'BP_DMXPointLight': 'dmx-point-light',
-  'BP_FountainLight': 'sfx-water-fountain',
-  'BP_PixelMappingManager': 'led-matrix-panel',
-  'BP_DownSampleSceneCapture': 'generic-rgbw',
-  'DMXLib_Fixtures': 'generic-rgbw',
-  'DMXLib_PixelMapping': 'led-matrix-panel',
-  'DMXLib_WaterFountain': 'sfx-water-fountain',
-  'DMXPM_PixelMap': 'led-matrix-panel',
-};
-
-// ── Strobe Curve Tables ──
-export interface StrobeCurve {
-  source: string;
-  minHz: number;
-  maxHz: number;
-  profile: string;
-}
-
-export const STROBE_CURVES: Record<string, StrobeCurve> = {
-  'stadium': { source: 'StadiumLights_Strobe_Table', minHz: 1, maxHz: 25, profile: 'stadium-light' },
-  'static-scene': { source: 'StaticScene_Strobe_Table', minHz: 1, maxHz: 20, profile: 'static-scene-light' },
-  'strobe-rgb': { source: 'StrobeRGB_Strobe_Table', minHz: 1, maxHz: 30, profile: 'strobe-high-power' },
-  'wash-mh1': { source: 'WashMH1_Strobe_Table', minHz: 1, maxHz: 15, profile: 'moving-head-wash' },
-  'wash-mh2': { source: 'WashMH2_Strobe_Table', minHz: 1, maxHz: 15, profile: 'moving-head-wash' },
-};
-
-// ── Gobo Textures ──
-export interface GoboTexture {
-  source: string;
-  label: string;
-  variant: 'clean' | 'frosted';
-}
-
-export const GOBO_TEXTURES: Record<string, GoboTexture> = {
-  'gobo-disk01-clean': { source: 'T_GoboDisk01_Clean', label: 'Gobo Disk 01 (Clean)', variant: 'clean' },
-  'gobo-disk01-frosted': { source: 'T_GoboDisk01_Frosted', label: 'Gobo Disk 01 (Frosted)', variant: 'frosted' },
-};
 
 export interface DMXFixture {
   id: string;
@@ -469,53 +301,6 @@ export function autoPatchDrones(
 }
 
 /**
- * Auto-patch fixtures from a profile across universes.
- */
-export function autoPatchFixtures(
-  fixtureCount: number,
-  profileId: string,
-  startUniverse = 1,
-  prefix?: string,
-): DMXUniverse[] {
-  const profile = DMX_FIXTURE_PROFILES[profileId];
-  if (!profile) return [];
-
-  const channelsPerFixture = profile.channelCount;
-  const fixturesPerUniverse = Math.floor(512 / channelsPerFixture);
-  const universeCount = Math.ceil(fixtureCount / fixturesPerUniverse);
-  const universes: DMXUniverse[] = [];
-  const label = prefix || profile.name;
-
-  let idx = 0;
-  for (let u = 0; u < universeCount; u++) {
-    const fixturesInThis = Math.min(fixturesPerUniverse, fixtureCount - idx);
-    const fixtures: DMXFixture[] = [];
-
-    for (let f = 0; f < fixturesInThis; f++) {
-      fixtures.push({
-        id: `dmx-${startUniverse + u}-${f + 1}`,
-        label: `${label} ${idx + 1}`,
-        universe: startUniverse + u,
-        startChannel: f * channelsPerFixture + 1,
-        channelCount: channelsPerFixture,
-        droneIndex: idx,
-        profileId,
-      });
-      idx++;
-    }
-
-    universes.push({
-      id: startUniverse + u,
-      label: `Universe ${startUniverse + u}`,
-      channels: new Uint8Array(512),
-      fixtures,
-    });
-  }
-
-  return universes;
-}
-
-/**
  * Set fixture color in the universe channel buffer.
  */
 export function setFixtureColor(
@@ -523,117 +308,13 @@ export function setFixtureColor(
   fixture: DMXFixture,
   r: number, g: number, b: number, w = 0,
 ): void {
-  const ch = fixture.startChannel - 1; // 0-indexed
+  const ch = fixture.startChannel - 1;
   universe.channels[ch] = Math.max(0, Math.min(255, Math.round(r)));
   universe.channels[ch + 1] = Math.max(0, Math.min(255, Math.round(g)));
   universe.channels[ch + 2] = Math.max(0, Math.min(255, Math.round(b)));
   if (fixture.channelCount >= 4) {
     universe.channels[ch + 3] = Math.max(0, Math.min(255, Math.round(w)));
   }
-}
-
-/**
- * Get fixture color from the universe channel buffer.
- */
-export function getFixtureColor(universe: DMXUniverse, fixture: DMXFixture): { r: number; g: number; b: number; w: number } {
-  const ch = fixture.startChannel - 1;
-  return {
-    r: universe.channels[ch],
-    g: universe.channels[ch + 1],
-    b: universe.channels[ch + 2],
-    w: fixture.channelCount >= 4 ? universe.channels[ch + 3] : 0,
-  };
-}
-
-/**
- * Set a named attribute on a fixture (requires profile).
- */
-export function setFixtureAttribute(
-  universe: DMXUniverse,
-  fixture: DMXFixture,
-  attributeName: string,
-  value: number,
-): void {
-  if (!fixture.profileId) return;
-  const profile = DMX_FIXTURE_PROFILES[fixture.profileId];
-  if (!profile) return;
-
-  const attrIndex = profile.attributes.indexOf(attributeName);
-  if (attrIndex < 0) return;
-
-  const ch = fixture.startChannel - 1 + attrIndex;
-  if (ch < 512) {
-    universe.channels[ch] = Math.max(0, Math.min(255, Math.round(value)));
-  }
-}
-
-/**
- * Get a named attribute value from a fixture.
- */
-export function getFixtureAttribute(
-  universe: DMXUniverse,
-  fixture: DMXFixture,
-  attributeName: string,
-): number | null {
-  if (!fixture.profileId) return null;
-  const profile = DMX_FIXTURE_PROFILES[fixture.profileId];
-  if (!profile) return null;
-
-  const attrIndex = profile.attributes.indexOf(attributeName);
-  if (attrIndex < 0) return null;
-
-  const ch = fixture.startChannel - 1 + attrIndex;
-  return ch < 512 ? universe.channels[ch] : null;
-}
-
-/**
- * Interpolate DMX keyframes at a given time.
- * Returns a map of fixtureId → { r, g, b, w }.
- */
-export function interpolateKeyframes(
-  keyframes: DMXKeyframe[],
-  time: number,
-): Map<string, { r: number; g: number; b: number; w: number }> {
-  const result = new Map<string, { r: number; g: number; b: number; w: number }>();
-
-  // Group by fixture
-  const byFixture = new Map<string, DMXKeyframe[]>();
-  for (const kf of keyframes) {
-    if (!byFixture.has(kf.fixtureId)) byFixture.set(kf.fixtureId, []);
-    byFixture.get(kf.fixtureId)!.push(kf);
-  }
-
-  for (const [fixtureId, fkfs] of byFixture) {
-    const sorted = fkfs.sort((a, b) => a.time - b.time);
-
-    // Find surrounding keyframes
-    let before = sorted[0];
-    let after = sorted[sorted.length - 1];
-
-    for (let i = 0; i < sorted.length - 1; i++) {
-      if (sorted[i].time <= time && sorted[i + 1].time >= time) {
-        before = sorted[i];
-        after = sorted[i + 1];
-        break;
-      }
-    }
-
-    if (time <= before.time) {
-      result.set(fixtureId, { r: before.r, g: before.g, b: before.b, w: before.w ?? 0 });
-    } else if (time >= after.time) {
-      result.set(fixtureId, { r: after.r, g: after.g, b: after.b, w: after.w ?? 0 });
-    } else {
-      const t = (time - before.time) / (after.time - before.time);
-      result.set(fixtureId, {
-        r: Math.round(before.r + (after.r - before.r) * t),
-        g: Math.round(before.g + (after.g - before.b) * t),
-        b: Math.round(before.b + (after.b - before.b) * t),
-        w: Math.round((before.w ?? 0) + ((after.w ?? 0) - (before.w ?? 0)) * t),
-      });
-    }
-  }
-
-  return result;
 }
 
 /**
@@ -654,7 +335,6 @@ export function exportDMXCSV(show: DMXShow): string {
   const lines = ['Time(s),Universe,Channel,R,G,B,W,FixtureLabel'];
 
   for (const kf of show.keyframes.sort((a, b) => a.time - b.time)) {
-    // Find fixture
     for (const u of show.universes) {
       const fixture = u.fixtures.find(f => f.id === kf.fixtureId);
       if (fixture) {
@@ -671,7 +351,6 @@ export function exportDMXCSV(show: DMXShow): string {
 
 /**
  * Patch GMA2 fixtures into DMX universes preserving their original universe/address.
- * Groups fixtures by universe and creates DMXUniverse objects with proper channel mapping.
  */
 export function patchGMA2Fixtures(
   fixtures: Array<{
@@ -683,7 +362,6 @@ export function patchGMA2Fixtures(
     dmxProfileId: string;
   }>,
 ): DMXUniverse[] {
-  // Group by universe
   const byUniverse = new Map<number, typeof fixtures>();
   for (const f of fixtures) {
     if (!byUniverse.has(f.universe)) byUniverse.set(f.universe, []);
@@ -717,81 +395,4 @@ export function patchGMA2Fixtures(
   }
 
   return universes.sort((a, b) => a.id - b.id);
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// DMX Send/Receive Bridge — BP_DMX_Send_Receive
-// Bidirectional DMX I/O controller for Art-Net/sACN
-// ═══════════════════════════════════════════════════════════════════════
-
-export interface DMXIOConfig {
-  universeId: number;
-  mode: 'send' | 'receive' | 'duplex';
-  protocol: 'artnet' | 'sacn';
-  priority: number;
-}
-
-export class DMXSendReceive {
-  private sendBuffers = new Map<number, Uint8Array>();
-  private receiveBuffers = new Map<number, Uint8Array>();
-  private configs = new Map<number, DMXIOConfig>();
-  private sendQueue: { universeId: number; data: Uint8Array }[] = [];
-
-  configureDMXIO(configs: DMXIOConfig[]): void {
-    this.configs.clear();
-    for (const cfg of configs) {
-      this.configs.set(cfg.universeId, cfg);
-      if (!this.sendBuffers.has(cfg.universeId)) {
-        this.sendBuffers.set(cfg.universeId, new Uint8Array(512));
-      }
-      if (!this.receiveBuffers.has(cfg.universeId)) {
-        this.receiveBuffers.set(cfg.universeId, new Uint8Array(512));
-      }
-    }
-  }
-
-  getConfig(universeId: number): DMXIOConfig | undefined {
-    return this.configs.get(universeId);
-  }
-
-  getAllConfigs(): DMXIOConfig[] {
-    return Array.from(this.configs.values());
-  }
-
-  sendUniverse(universeId: number, channels: Uint8Array): void {
-    const cfg = this.configs.get(universeId);
-    if (!cfg || cfg.mode === 'receive') return;
-    const buffer = this.sendBuffers.get(universeId);
-    if (buffer) {
-      buffer.set(channels.subarray(0, 512));
-      this.sendQueue.push({ universeId, data: new Uint8Array(buffer) });
-    }
-  }
-
-  receiveUniverse(universeId: number): Uint8Array {
-    return this.receiveBuffers.get(universeId) ?? new Uint8Array(512);
-  }
-
-  feedReceive(universeId: number, data: Uint8Array): void {
-    const cfg = this.configs.get(universeId);
-    if (!cfg || cfg.mode === 'send') return;
-    const buffer = this.receiveBuffers.get(universeId);
-    if (buffer) buffer.set(data.subarray(0, 512));
-  }
-
-  drainSendQueue(): { universeId: number; data: Uint8Array }[] {
-    const queue = [...this.sendQueue];
-    this.sendQueue = [];
-    return queue;
-  }
-
-  canReceive(universeId: number): boolean {
-    const cfg = this.configs.get(universeId);
-    return !!cfg && (cfg.mode === 'receive' || cfg.mode === 'duplex');
-  }
-
-  canSend(universeId: number): boolean {
-    const cfg = this.configs.get(universeId);
-    return !!cfg && (cfg.mode === 'send' || cfg.mode === 'duplex');
-  }
 }

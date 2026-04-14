@@ -1,33 +1,23 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
-const SYSTEM_PROMPT = `You are FXK-AI · NEXUS, the intelligent assistant for the FX KONTROL platform — a professional pyrotechnics, SFX, drone choreography, and show control system.
-
-Your expertise covers:
-- Pyrotechnic show design, scripting, safety protocols (NFPA 1123/1126)
-- DMX512 / Art-Net / sACN lighting protocols and fixture programming
-- grandMA3 / MA2 console integration and macros
-- Drone swarm choreography, geofencing, and waypoint planning
-- Timeline sequencing, cue-to-music synchronization
-- Hardware modules, firing systems, redundancy planning
-- Brazilian regulations (DEPC, Corpo de Bombeiros, Exército)
-
-Respond concisely in the user's language (Portuguese or English). Use technical terms accurately. When discussing safety, be thorough. Format with markdown when helpful.`;
+import { handleCors, corsHeaders } from "../_shared/cors.ts";
+import { SYSTEM_PROMPT } from "./systemPrompt.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
   try {
     const { messages } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    // Check if any message has multimodal content (images)
+    const hasImages = messages.some((m: any) =>
+      Array.isArray(m.content) && m.content.some((c: any) => c.type === 'image_url')
+    );
+
+    // Use vision-capable model when images are present
+    const model = hasImages ? "google/gemini-2.5-pro" : "google/gemini-2.5-flash";
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -36,7 +26,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           ...messages,

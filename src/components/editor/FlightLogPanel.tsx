@@ -27,7 +27,9 @@ interface FlightSession {
 }
 
 export default function FlightLogPanel({ onClose }: { onClose: () => void }) {
-  const { droneFormations, currentTime, isPlaying } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const isPlaying = useProjectStore(s => s.isPlaying);
   const [sessions, setSessions] = useState<FlightSession[]>([]);
   const [recording, setRecording] = useState(false);
   const [activeSession, setActiveSession] = useState<FlightSession | null>(null);

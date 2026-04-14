@@ -4,7 +4,9 @@
  * Patterns: Straight, Fan, V-Shape, W-Shape, Z-Sweep, Fan-Sweep
  */
 import { useState, useMemo, useCallback } from 'react';
-import { useProjectStore, EFFECT_LIBRARY, type TimelineItem } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type TimelineItem } from '@/types/projectTypes';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import * as THREE from 'three';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';

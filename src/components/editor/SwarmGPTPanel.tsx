@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type DroneFormation } from '@/types/projectTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -91,6 +92,20 @@ function mapPyroType(type: string): string {
     confetti: 'confetti', laser: 'laser', strobe: 'strobe',
   };
   return map[type] || 'shell';
+}
+
+/* ── Mini 2D Preview ──────────────────────────────────────── */
+
+function SparklineSVG({ data }: { data: number[] }) {
+  if (data.length < 2) return null;
+  const w = 80, h = 18;
+  const min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * (h - 2) - 1}`);
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="text-fxk-cyan" style={{ filter: 'drop-shadow(0 0 3px currentColor)' }}>
+      <path d={`M${pts.join(' L')}`} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 /* ── Mini 2D Preview ──────────────────────────────────────── */
@@ -1106,6 +1121,23 @@ export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Telemetry Sparklines — FUI trend lines */}
+        {droneFormations.length > 0 && (
+          <div className="space-y-1.5">
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Fleet Trends</span>
+            {[
+              { label: 'Battery', data: Array.from({ length: 20 }, (_, i) => 95 - i * 3.2 + Math.random() * 5) },
+              { label: 'Signal', data: Array.from({ length: 20 }, (_, i) => 88 + Math.sin(i * 0.5) * 8 + Math.random() * 3) },
+              { label: 'GPS Acc', data: Array.from({ length: 20 }, (_, i) => 12 + Math.cos(i * 0.3) * 3 + Math.random() * 2) },
+            ].map(({ label, data }) => (
+              <div key={label} className="flex items-center gap-2">
+                <span className="text-[8px] text-muted-foreground w-10 shrink-0">{label}</span>
+                <SparklineSVG data={data} />
+              </div>
+            ))}
           </div>
         )}
 

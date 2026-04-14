@@ -7,8 +7,15 @@ import { useRef, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Line } from '@react-three/drei';
-import { useProjectStore, type TimelineItem } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type TimelineItem } from '@/types/projectTypes';
 import { getMortarVelocity, getBreakHeight, GRAVITY, AIR_DRAG } from '@/lib/pyroPhysics';
+
+// ── Pre-allocated scratch vectors (zero GC in trajectory calc) ────
+const _origin = new THREE.Vector3();
+const _vel = new THREE.Vector3();
+const _axisX = new THREE.Vector3(1, 0, 0);
+const _axisY = new THREE.Vector3(0, 1, 0);
 
 // ═══ Types ═══
 export interface SafetyVolume {
@@ -197,8 +204,18 @@ export default function PyroSafetyZones() {
   const positions = useProjectStore(s => s.positions);
   const [volumes] = useState<SafetyVolume[]>(DEFAULT_VOLUMES);
 
+  // Only show safety volumes when there are angled cues
+  const hasAngledCues = useMemo(() => {
+    return timelineItems.some(item => {
+      const heading = (item as any).cueHeading ?? 0;
+      const pitch = (item as any).cuePitch ?? 0;
+      return heading !== 0 || pitch !== 0;
+    });
+  }, [timelineItems]);
+
   // Compute trajectories for all pyro cues with heading/pitch
   const trajectoryData = useMemo(() => {
+    if (!hasAngledCues) return [];
     const results: {
       cueId: string;
       trajectory: THREE.Vector3[];
@@ -209,29 +226,26 @@ export default function PyroSafetyZones() {
     for (const item of timelineItems) {
       const heading = (item as any).cueHeading ?? 0;
       const pitch = (item as any).cuePitch ?? 0;
-      if (heading === 0 && pitch === 0) continue; // Skip straight-up default shots
+      if (heading === 0 && pitch === 0) continue;
 
-      // Find position
       const pos = positions.find(p => p.id === item.positionId);
       const itemPos = (item as any).position;
-      const origin = new THREE.Vector3(
+      const origin = _origin.set(
         pos?.x ?? itemPos?.x ?? 0,
         0,
         pos?.z ?? itemPos?.z ?? 0,
       );
 
-      // Estimate caliber from effect name (basic heuristic)
       const caliberMatch = (item.notes || '').match(/(\d+)mm/);
       const caliberInches = caliberMatch ? parseInt(caliberMatch[1]) / 25.4 : 3;
       const mortarVel = getMortarVelocity(caliberInches);
 
-      // Build launch velocity vector with heading/pitch rotation
-      const vel = new THREE.Vector3(0, mortarVel, 0);
-      vel.applyAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.degToRad(pitch));
-      vel.applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(heading));
+      _vel.set(0, mortarVel, 0);
+      _vel.applyAxisAngle(_axisX, THREE.MathUtils.degToRad(pitch));
+      _vel.applyAxisAngle(_axisY, THREE.MathUtils.degToRad(heading));
 
       const lifetime = (getBreakHeight(caliberInches) / mortarVel) * 2.5;
-      const trajectory = calculateBallisticTrajectory(origin, vel, lifetime);
+      const trajectory = calculateBallisticTrajectory(origin.clone(), _vel.clone(), lifetime);
       const check = checkTrajectoryViolations(trajectory, volumes);
 
       results.push({
@@ -243,7 +257,7 @@ export default function PyroSafetyZones() {
     }
 
     return results;
-  }, [timelineItems, positions, volumes]);
+  }, [timelineItems, positions, volumes, hasAngledCues]);
 
   // Which volumes are violated?
   const violatedVolumeIds = useMemo(() => {
@@ -255,6 +269,9 @@ export default function PyroSafetyZones() {
   }, [trajectoryData]);
 
   const violationCount = trajectoryData.filter(t => t.violated).length;
+
+  // Hide default volumes unless there are angled cues
+  if (!hasAngledCues) return null;
 
   return (
     <group name="pyro-safety-zones">

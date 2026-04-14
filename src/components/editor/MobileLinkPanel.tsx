@@ -255,7 +255,7 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
   const statusBadge = (status: 'idle' | 'testing' | 'ok' | 'fail', latency: number | null) => {
     if (status === 'idle') return <Badge variant="outline" className="text-[10px]">—</Badge>;
     if (status === 'testing') return <Badge variant="secondary" className="text-[10px] animate-pulse">Testing…</Badge>;
-    if (status === 'ok') return <Badge className="text-[10px] bg-green-600 text-white">{latency}ms</Badge>;
+    if (status === 'ok') return <Badge className="text-[10px] bg-emerald-600 text-primary-foreground">{latency}ms</Badge>;
     return <Badge variant="destructive" className="text-[10px]">Offline</Badge>;
   };
 

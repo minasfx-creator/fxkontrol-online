@@ -2,7 +2,9 @@ import { useRef, useState, useCallback, useMemo, useEffect, forwardRef } from 'r
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
-import { useProjectStore, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type Position } from '@/types/projectTypes';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useUndoStore } from '@/store/useUndoStore';
 import { calcWindCompensation, getBreakHeight, getMortarVelocity, getLiftTime } from '@/lib/pyroPhysics';
 import { useSceneStore } from '@/store/useSceneStore';
@@ -355,7 +357,9 @@ const LaunchAngleGizmo = forwardRef<THREE.Group, {
   batchMode?: boolean;
   selectedIds?: string[];
 }>(({ position, batchMode, selectedIds }, ref) => {
-  const { updatePosition, updateTimelineItem, timelineItems } = useProjectStore();
+    const updatePosition = useProjectStore(s => s.updatePosition);
+  const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
+  const timelineItems = useProjectStore(s => s.timelineItems);
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [dragAxis, setDragAxis] = useState<'all' | 'heading' | 'pitch' | 'roll' | 'up-vector'>('all');

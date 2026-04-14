@@ -92,7 +92,25 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
       { id: 'eff-cfl-yellow', name: 'COLOR YELLOW', description: 'Yellow fluid flame', duration: 1.0, channelValues: [{ channel: 1, value: 200 }] },
       { id: 'eff-cfl-purple', name: 'COLOR PURPLE', description: 'Purple fluid flame', duration: 1.0, channelValues: [{ channel: 1, value: 200 }] },
     ],
-    safetyChannel: 2, safetyValue: 127,
+    // 2CH-P: safetyValue 127 (range 50-200 = enable). 2CH-N: 240-255 = Compression (enable), 0-239 = Pressure Relief (E-Stop)
+    safetyChannel: 2, safetyValue: 245,
+  },
+  // ── cFlamer mVolcano (5-nozzle, 6CH, 88 presets per manual) ──
+  {
+    id: 'lib-cflamer-mvolcano', name: 'cFLAMER mVOLCANO', manufacturer: 'SHOWVEN', dmxChannels: 6, category: 'showven',
+    dmxModes: ['6CH-N', '6CH-M', '6CH-P'],
+    capabilities: { eStopChain: true, externalPyroTrigger: true, nozzleCount: 5 },
+    effects: [
+      { id: 'eff-mv-all', name: 'ALL NOZZLES', description: 'All 5 nozzles fire', duration: 0.5, channelValues: [{ channel: 1, value: 200 }, { channel: 2, value: 200 }, { channel: 3, value: 200 }, { channel: 4, value: 200 }, { channel: 5, value: 200 }] },
+      { id: 'eff-mv-center', name: 'CENTER', description: 'Center nozzle only', duration: 0.5, channelValues: [{ channel: 3, value: 200 }] },
+      { id: 'eff-mv-wave-lr', name: 'WAVE L→R', description: 'Sequential L to R', duration: 1.0, channelValues: [] },
+      { id: 'eff-mv-wave-rl', name: 'WAVE R→L', description: 'Sequential R to L', duration: 1.0, channelValues: [] },
+      { id: 'eff-mv-sides', name: 'SIDES', description: 'Outer nozzles only', duration: 0.5, channelValues: [{ channel: 1, value: 200 }, { channel: 5, value: 200 }] },
+      { id: 'eff-mv-preset1', name: 'PRESET 1', description: 'Preset sequence (CH6 DMX 1-3)', duration: 2.0, channelValues: [{ channel: 6, value: 1 }] },
+      { id: 'eff-mv-preset44', name: 'PRESET 44', description: 'Preset sequence mid (CH6 DMX 130)', duration: 2.0, channelValues: [{ channel: 6, value: 130 }] },
+      { id: 'eff-mv-preset88', name: 'PRESET 88', description: 'Preset sequence max (CH6 DMX 255)', duration: 2.0, channelValues: [{ channel: 6, value: 255 }] },
+    ],
+    safetyChannel: 6, safetyValue: 0,
   },
   // ── cFlamer MINI ──
   {
@@ -126,32 +144,36 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
       { id: 'eff-conf-low', name: 'LOW OUTPUT', description: 'Gentle confetti', duration: 3.0, channelValues: [{ channel: 1, value: 128 }, { channel: 2, value: 255 }] },
     ],
   },
-  // ── Maiman Laser Series ──
+  // ── Maiman Laser Series (FB3 16CH) ──
   {
-    id: 'lib-maiman-30', name: 'MAIMAN 30W LASER', manufacturer: 'SHOWVEN', dmxChannels: 12, category: 'showven',
+    id: 'lib-maiman-30', name: 'MAIMAN 30W LASER', manufacturer: 'SHOWVEN', dmxChannels: 16, category: 'showven',
+    dmxModes: ['FB3-16CH', 'FB4-39CH'],
     effects: [
-      { id: 'eff-laser-beam', name: 'BEAM', description: 'Single beam output', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 255 }] },
-      { id: 'eff-laser-fan', name: 'FAN', description: 'Fan beam pattern', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 4, value: 128 }] },
-      { id: 'eff-laser-anim', name: 'ANIMATION', description: 'Animated pattern from SD/FB4', duration: 10.0, channelValues: [{ channel: 1, value: 255 }, { channel: 5, value: 200 }] },
-      { id: 'eff-laser-scan', name: 'SCAN', description: 'Scanner mode', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 6, value: 180 }] },
+      { id: 'eff-laser-beam', name: 'BEAM', description: 'Single beam output', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }] },
+      { id: 'eff-laser-fan', name: 'FAN', description: 'Fan beam pattern', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }, { channel: 7, value: 200 }] },
+      { id: 'eff-laser-anim', name: 'ANIMATION', description: 'Animated pattern from SD/FB4', duration: 10.0, channelValues: [{ channel: 1, value: 1 }, { channel: 2, value: 1 }, { channel: 3, value: 128 }, { channel: 5, value: 255 }] },
+      { id: 'eff-laser-scan', name: 'SCAN', description: 'Scanner mode', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }, { channel: 13, value: 200 }] },
     ],
-    safetyChannel: 1, safetyValue: 0,
+    // FB3 16CH layout: Mode(1) Page(2) Cue(3) Speed(4) Dimmer(5) Zoom(6) SizeX(7) SizeY(8) AngleZ(9) PosX(10) PosY(11) VisiblePts(12) ScanRate(13) CueRelease(14) Reserved(15-16)
+    safetyChannel: 5, safetyValue: 0,
   },
   {
-    id: 'lib-maiman-40', name: 'MAIMAN 40W LASER', manufacturer: 'SHOWVEN', dmxChannels: 12, category: 'showven',
+    id: 'lib-maiman-40', name: 'MAIMAN 40W LASER', manufacturer: 'SHOWVEN', dmxChannels: 16, category: 'showven',
+    dmxModes: ['FB3-16CH', 'FB4-39CH'],
     effects: [
-      { id: 'eff-laser40-beam', name: 'BEAM', description: 'Single beam 40W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 255 }] },
-      { id: 'eff-laser40-fan', name: 'FAN', description: 'Fan pattern 40W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 4, value: 128 }] },
+      { id: 'eff-laser40-beam', name: 'BEAM', description: 'Single beam 40W', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }] },
+      { id: 'eff-laser40-fan', name: 'FAN', description: 'Fan pattern 40W', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }, { channel: 7, value: 200 }] },
     ],
-    safetyChannel: 1, safetyValue: 0,
+    safetyChannel: 5, safetyValue: 0,
   },
   {
-    id: 'lib-maiman-60', name: 'MAIMAN 60W LASER', manufacturer: 'SHOWVEN', dmxChannels: 12, category: 'showven',
+    id: 'lib-maiman-60', name: 'MAIMAN 60W LASER', manufacturer: 'SHOWVEN', dmxChannels: 16, category: 'showven',
+    dmxModes: ['FB3-16CH', 'FB4-39CH'],
     effects: [
-      { id: 'eff-laser60-beam', name: 'BEAM', description: 'Single beam 60W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 255 }] },
-      { id: 'eff-laser60-fan', name: 'FAN', description: 'Fan pattern 60W', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 4, value: 128 }] },
+      { id: 'eff-laser60-beam', name: 'BEAM', description: 'Single beam 60W', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }] },
+      { id: 'eff-laser60-fan', name: 'FAN', description: 'Fan pattern 60W', duration: 5.0, channelValues: [{ channel: 1, value: 1 }, { channel: 5, value: 255 }, { channel: 7, value: 200 }] },
     ],
-    safetyChannel: 1, safetyValue: 0,
+    safetyChannel: 5, safetyValue: 0,
   },
   // ── DMX Relay R12 ──
   {
@@ -179,15 +201,25 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
       { id: 'eff-c16-seq', name: 'SEQUENCE', description: 'Sequential fire 10ms interval', duration: 1.0, channelValues: [] },
     ],
   },
-  // ── FXbutton ──
+  // ── FXbutton (device-specific presets per manual) ──
   {
     id: 'lib-fxbutton', name: 'FXBUTTON', manufacturer: 'SHOWVEN', dmxChannels: 36, category: 'showven',
+    dmxModes: ['sparkular', 'cflamer', 'co2jet', 'confetti'],
     effects: [
       { id: 'eff-fxb-sync', name: 'SYNC', description: 'Synchronous firing all devices', duration: 2.0, channelValues: [] },
       { id: 'eff-fxb-cte', name: 'CENTER→ENDS', description: 'Center to ends wave', duration: 2.0, channelValues: [] },
       { id: 'eff-fxb-etc', name: 'ENDS→CENTER', description: 'Ends to center wave', duration: 2.0, channelValues: [] },
       { id: 'eff-fxb-ltr', name: 'L→R', description: 'Left to right sequence', duration: 2.0, channelValues: [] },
       { id: 'eff-fxb-rtl', name: 'R→L', description: 'Right to left sequence', duration: 2.0, channelValues: [] },
+      // Sparkular mode: CH1=Height, CH2=Duration
+      { id: 'eff-fxb-spark-h10', name: 'SPARK H10', description: 'Sparkular max height', duration: 2.5, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }] },
+      { id: 'eff-fxb-spark-h5', name: 'SPARK H5', description: 'Sparkular mid height', duration: 2.0, channelValues: [{ channel: 1, value: 128 }, { channel: 2, value: 200 }] },
+      // cFlamer mode: CH1=Timer, CH2=Fire
+      { id: 'eff-fxb-flame-jet', name: 'FLAME JET', description: 'cFlamer fire via FXbutton', duration: 0.5, channelValues: [{ channel: 1, value: 200 }, { channel: 2, value: 200 }] },
+      // CO2 Jet mode
+      { id: 'eff-fxb-co2', name: 'CO2 BLAST', description: 'CO2 Jet full blast', duration: 0.5, channelValues: [{ channel: 1, value: 255 }] },
+      // Confetti mode
+      { id: 'eff-fxb-confetti', name: 'CONFETTI SHOT', description: 'Confetti single shot', duration: 1.0, channelValues: [{ channel: 1, value: 255 }] },
     ],
   },
   // ── ZK6200/6300 Host Controllers ──
@@ -213,6 +245,74 @@ export const SHOWVEN_LIBRARY: DeviceLibEntry[] = [
       { id: 'eff-zk3-rtl', name: 'R→L', description: 'Right to left', duration: 2.0, channelValues: [] },
       { id: 'eff-zk3-special', name: 'SPECIAL FX', description: 'Custom SparkularEdit200 file', duration: 30.0, channelValues: [] },
     ],
+  },
+  // ── Sonicboom (FXcommander device catalog) ──
+  {
+    id: 'lib-sonicboom', name: 'SONICBOOM 11CH', manufacturer: 'SHOWVEN', dmxChannels: 11, category: 'showven',
+    effects: [
+      { id: 'eff-sb-blast', name: 'BLAST', description: 'Full concussive blast', duration: 0.3, channelValues: [{ channel: 1, value: 255 }] },
+      { id: 'eff-sb-pulse', name: 'PULSE', description: 'Pulsing concussive effect', duration: 1.0, channelValues: [{ channel: 1, value: 200 }] },
+    ],
+  },
+  {
+    id: 'lib-sonicboom-plus', name: 'SONICBOOM PLUS 14CH', manufacturer: 'SHOWVEN', dmxChannels: 14, category: 'showven',
+    effects: [
+      { id: 'eff-sbp-blast', name: 'BLAST', description: 'Full concussive blast Plus', duration: 0.3, channelValues: [{ channel: 1, value: 255 }] },
+      { id: 'eff-sbp-strobe', name: 'STROBE BLAST', description: 'Strobe + concussive', duration: 1.0, channelValues: [{ channel: 1, value: 255 }, { channel: 8, value: 200 }] },
+    ],
+  },
+  // ── Sparkular variants (FXcommander + showvenPresets cross-ref) ──
+  {
+    id: 'lib-sparkular-triple', name: 'SPARKULAR TRIPLE 6CH', manufacturer: 'SHOWVEN', dmxChannels: 6, category: 'showven',
+    effects: [
+      { id: 'eff-st-all', name: 'ALL HEADS', description: 'All 3 heads max height', duration: 2.5, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 255 }, { channel: 4, value: 255 }, { channel: 5, value: 255 }, { channel: 6, value: 255 }] },
+      { id: 'eff-st-center', name: 'CENTER', description: 'Center head only', duration: 2.0, channelValues: [{ channel: 3, value: 255 }, { channel: 4, value: 255 }] },
+      { id: 'eff-st-wave', name: 'WAVE', description: 'Sequential L→R heads', duration: 3.0, channelValues: [] },
+    ],
+    safetyChannel: 2, safetyValue: 255,
+  },
+  {
+    id: 'lib-sparkular-spin', name: 'SPARKULAR SPIN', manufacturer: 'SHOWVEN', dmxChannels: 4, category: 'showven',
+    effects: [
+      { id: 'eff-sspin-full', name: 'FULL SPIN', description: 'Max height + rotation', duration: 3.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 200 }] },
+      { id: 'eff-sspin-slow', name: 'SLOW SPIN', description: 'Low height slow rotation', duration: 3.0, channelValues: [{ channel: 1, value: 128 }, { channel: 2, value: 200 }, { channel: 3, value: 100 }] },
+    ],
+    safetyChannel: 2, safetyValue: 255,
+  },
+  {
+    id: 'lib-sparkular-fall', name: 'SPARKULAR FALL', manufacturer: 'SHOWVEN', dmxChannels: 6, category: 'showven',
+    effects: [
+      { id: 'eff-sfall-full', name: 'FULL CASCADE', description: 'Max waterfall output', duration: 5.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }] },
+      { id: 'eff-sfall-gentle', name: 'GENTLE', description: 'Low output cascade', duration: 5.0, channelValues: [{ channel: 1, value: 128 }, { channel: 2, value: 200 }] },
+    ],
+    safetyChannel: 2, safetyValue: 255,
+  },
+  {
+    id: 'lib-sparkular-cyclone', name: 'SPARKULAR CYCLONE II 6CH', manufacturer: 'SHOWVEN', dmxChannels: 6, category: 'showven',
+    effects: [
+      { id: 'eff-scyc-full', name: 'FULL CYCLONE', description: '360° max dispersal', duration: 3.0, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }, { channel: 3, value: 200 }] },
+      { id: 'eff-scyc-slow', name: 'SLOW CYCLONE', description: 'Slow 360° rotation', duration: 4.0, channelValues: [{ channel: 1, value: 128 }, { channel: 2, value: 200 }, { channel: 3, value: 100 }] },
+    ],
+    safetyChannel: 2, safetyValue: 255,
+  },
+  {
+    id: 'lib-sparkular-jet', name: 'SPARKULAR JET II 4CH', manufacturer: 'SHOWVEN', dmxChannels: 4, category: 'showven',
+    effects: [
+      { id: 'eff-sjet-h10', name: 'HEIGHT 10', description: 'Max height 5m', duration: 2.5, channelValues: [{ channel: 1, value: 255 }, { channel: 2, value: 255 }] },
+      { id: 'eff-sjet-h5', name: 'HEIGHT 5', description: 'Mid height 2.5m', duration: 2.0, channelValues: [{ channel: 1, value: 128 }, { channel: 2, value: 200 }] },
+      { id: 'eff-sjet-h1', name: 'HEIGHT 1', description: 'Min height', duration: 1.0, channelValues: [{ channel: 1, value: 25 }, { channel: 2, value: 128 }] },
+    ],
+    safetyChannel: 2, safetyValue: 255,
+  },
+  // ── uFlamer Volcano 6CH ──
+  {
+    id: 'lib-uflamer-volcano', name: 'uFLAMER VOLCANO 6CH', manufacturer: 'SHOWVEN', dmxChannels: 6, category: 'showven',
+    capabilities: { nozzleCount: 5 },
+    effects: [
+      { id: 'eff-ufv-all', name: 'ALL NOZZLES', description: 'All 5 nozzles fire', duration: 0.5, channelValues: [{ channel: 1, value: 200 }, { channel: 2, value: 200 }, { channel: 3, value: 200 }, { channel: 4, value: 200 }, { channel: 5, value: 200 }] },
+      { id: 'eff-ufv-center', name: 'CENTER', description: 'Center nozzle only', duration: 0.5, channelValues: [{ channel: 3, value: 200 }] },
+    ],
+    safetyChannel: 6, safetyValue: 255,
   },
 ];
 

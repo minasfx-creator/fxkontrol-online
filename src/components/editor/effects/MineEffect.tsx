@@ -17,8 +17,9 @@ import { getChemistryForRendering, autoMatchFormulation } from '@/render_ultra/f
 
 // Particle class boundaries (index ranges)
 const COLUMN_FRAC = 0.20;
-const SPRAY_FRAC = 0.65; // 20-85%
-const DRIP_FRAC = 0.15;  // 85-100%
+const SPRAY_FRAC = 0.60; // 20-80%
+const DRIP_FRAC = 0.10;  // 80-90%
+const BOUNCE_FRAC = 0.10; // 90-100% — ground bounce sparks
 
 const SMOKE_COUNT = 40;
 
@@ -30,6 +31,8 @@ export default function MineEffect({
   angleOffset = 0,
   heightMeters,
   formulationId,
+  launchHeading = 0,
+  launchPitch = 85,
 }: {
   position: [number, number, number];
   color: string;
@@ -38,10 +41,13 @@ export default function MineEffect({
   angleOffset?: number;
   heightMeters?: number;
   formulationId?: string;
+  launchHeading?: number;
+  launchPitch?: number;
 }) {
   const count = useMemo(() => Math.min(600, Math.round(200 + caliber * caliber * 14)), [caliber]);
   const pointsRef = useRef<THREE.Points>(null);
   const smokePointsRef = useRef<THREE.Points>(null);
+  const trailRef = useRef<THREE.LineSegments>(null);
   const posRef = useMemo(() => new Float32Array(count * 3), [count]);
   const colRef = useMemo(() => new Float32Array(count * 3), [count]);
   const sizeRef = useMemo(() => new Float32Array(count), [count]);
@@ -68,6 +74,13 @@ export default function MineEffect({
   // Particle class indices
   const columnEnd = useMemo(() => Math.floor(count * COLUMN_FRAC), [count]);
   const sprayEnd = useMemo(() => Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC)), [count]);
+  const dripEnd = useMemo(() => Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC + DRIP_FRAC)), [count]);
+  
+  // Trail buffers for spray comet trails
+  const TRAIL_SEGS = 5;
+  const sprayCount = sprayEnd - columnEnd;
+  const trailPosRef = useMemo(() => new Float32Array(sprayCount * TRAIL_SEGS * 6), [sprayCount]);
+  const trailColRef = useMemo(() => new Float32Array(sprayCount * TRAIL_SEGS * 6), [sprayCount]);
 
   const { velocities, lifetimes, sparkleSeeds, particleSizes, smokeSeeds } = useMemo(() => {
     const v = new Float32Array(count * 3);
@@ -81,13 +94,13 @@ export default function MineEffect({
 
       if (i < Math.floor(count * COLUMN_FRAC)) {
         // Column particles: narrow cone (5-15°), high velocity
-        const upAngle = 0.05 + Math.random() * 0.17; // ~3-10° from vertical
+        const upAngle = 0.05 + Math.random() * 0.17;
         const speed = (15 + Math.random() * 22 + caliber * 5) * 1.5;
         v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
         v[i * 3 + 1] = Math.cos(upAngle) * speed + 3;
         v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
-        l[i] = 0.3 + Math.random() * 0.3; // short lifetime
-        ps[i] = 0.6; // smaller size
+        l[i] = 0.3 + Math.random() * 0.3;
+        ps[i] = 0.6;
       } else if (i < Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC))) {
         // Spray particles: wide hemisphere (30-80°), jittered lifetime
         const upAngle = 0.35 + Math.random() * 0.85;
@@ -95,17 +108,25 @@ export default function MineEffect({
         v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
         v[i * 3 + 1] = Math.cos(upAngle) * speed + 2;
         v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
-        l[i] = (0.4 + Math.random() * 1.0) * (0.6 + Math.random() * 0.8); // ±40% jitter
-        ps[i] = 0.8 + Math.random() * 1.0; // 0.8-1.8x variation
-      } else {
+        l[i] = (0.4 + Math.random() * 1.0) * (0.6 + Math.random() * 0.8);
+        ps[i] = 0.8 + Math.random() * 1.0;
+      } else if (i < Math.floor(count * (COLUMN_FRAC + SPRAY_FRAC + DRIP_FRAC))) {
         // Drip particles: low velocity, high drag, fall back
         const upAngle = 0.1 + Math.random() * 0.5;
-        const speed = 3 + Math.random() * 3; // 3-6 m/s
+        const speed = 3 + Math.random() * 3;
         v[i * 3] = Math.cos(theta) * Math.sin(upAngle) * speed;
         v[i * 3 + 1] = Math.cos(upAngle) * speed + 1;
         v[i * 3 + 2] = Math.sin(theta) * Math.sin(upAngle) * speed;
-        l[i] = 0.8 + Math.random() * 1.5; // persist longer
-        ps[i] = 1.2; // ember glow size
+        l[i] = 0.8 + Math.random() * 1.5;
+        ps[i] = 1.2;
+      } else {
+        // Bounce sparks: lateral spread, low height, delayed spawn
+        const speed = 1 + Math.random() * 2.5;
+        v[i * 3] = Math.cos(theta) * speed;
+        v[i * 3 + 1] = 0.5 + Math.random() * 1.5;
+        v[i * 3 + 2] = Math.sin(theta) * speed;
+        l[i] = 0.15 + Math.random() * 0.35;
+        ps[i] = 0.4 + Math.random() * 0.3;
       }
 
       s[i] = Math.random() * 999 + i;
@@ -174,9 +195,34 @@ export default function MineEffect({
       const fadeSq = fade * fade;
 
       const isColumn = i < columnEnd;
-      const isDrip = i >= sprayEnd;
+      const isDrip = i >= sprayEnd && i < dripEnd;
+      const isBounce = i >= dripEnd;
 
-      // Column: visible in first 15% of progress; spray/drip have staggered entry
+      // Bounce sparks: delayed spawn — appear when main particles hit ground (~30% progress)
+      if (isBounce) {
+        const bounceDelay = 0.25 + hash01(sparkleSeeds[i]) * 0.2;
+        if (progress < bounceDelay) {
+          colArr[i * 3] = 0; colArr[i * 3 + 1] = 0; colArr[i * 3 + 2] = 0;
+          sizeArr[i] = 0;
+          continue;
+        }
+        const bounceAge = (progress - bounceDelay) / Math.max(0.01, lt);
+        const bounceFade = Math.max(0, 1 - bounceAge * 3);
+        const bt = (progress - bounceDelay) * 2.5;
+        const bDrag = Math.exp(-0.12 * bt);
+        posArr[i * 3] = vx * bt * bDrag + windX * bt * bt * 0.3;
+        posArr[i * 3 + 1] = Math.max(0, vy * bt * bDrag + 0.5 * GRAV * bt * bt);
+        posArr[i * 3 + 2] = vz * bt * bDrag + windZ * bt * bt * 0.3;
+        // Amber/orange bounce spark color
+        const sparkTwinkle = combustionFlicker(sparkleSeeds[i], time, 1.8);
+        colArr[i * 3] = 0.9 * bounceFade * sparkTwinkle * envelope;
+        colArr[i * 3 + 1] = 0.35 * bounceFade * sparkTwinkle * envelope;
+        colArr[i * 3 + 2] = 0.05 * bounceFade * sparkTwinkle * envelope;
+        sizeArr[i] = basePointSize * particleSizes[i] * bounceFade;
+        continue;
+      }
+
+      // Column: visible in first 15% of progress
       if (isColumn && progress > 0.15) {
         // Column particles fade fast after initial jet
         const columnFade = Math.max(0, 1 - (progress - 0.05) / 0.15);
@@ -214,18 +260,27 @@ export default function MineEffect({
 
       if (isColumn) {
         // Column: white-hot → base using thermal ramp (very early life)
+        // Flash compounds (aluminum/flash) use isFlash path for 80% white-hot phase
         const colLife = Math.min(1, progress * 8);
-        const thermal = thermalColorRamp(baseColor.r, baseColor.g, baseColor.b, colLife * 0.3, 2.0);
+        const isFlashCompound = color.toLowerCase().includes('flash') || color === '#FFFFFF' || color === '#ffffff';
+        const thermal = thermalColorRamp(baseColor.r, baseColor.g, baseColor.b, colLife * 0.3, 2.0, isFlashCompound);
         r = thermal.r;
         g = thermal.g;
         b = thermal.b;
       } else if (isDrip) {
-        // Drip: thermal ramp with ember bias
+        // Drip: thermal ramp with ember transition on ground bounce
         const dripLife = Math.min(1, age * 1.5);
         const thermal = thermalColorRamp(0.9, 0.35, 0.08, dripLife * 0.6 + 0.4, 0.8);
-        r = thermal.r;
-        g = thermal.g;
-        b = thermal.b;
+        if (bounced) {
+          const emberMix = Math.min(1, Math.abs(rawY) * 0.5);
+          r = thermal.r * (1 - emberMix) + charcoalColor.r * emberMix;
+          g = thermal.g * (1 - emberMix) + charcoalColor.g * emberMix;
+          b = thermal.b * (1 - emberMix) + charcoalColor.b * emberMix;
+        } else {
+          r = thermal.r;
+          g = thermal.g;
+          b = thermal.b;
+        }
       } else {
         // Spray: standard thermal color ramp
         const sprayLife = Math.min(1, age * 0.8);
@@ -244,6 +299,53 @@ export default function MineEffect({
       sizeArr[i] = basePointSize * particleSizes[i];
     }
 
+    // ── Spray comet trails ──
+    if (trailRef.current) {
+      const tp = trailPosRef;
+      const tc = trailColRef;
+      for (let si = 0; si < sprayCount; si++) {
+        const pi = columnEnd + si; // particle index
+        const vx = velocities[pi * 3];
+        const vy = velocities[pi * 3 + 1];
+        const vz = velocities[pi * 3 + 2];
+        const lt = lifetimes[pi];
+        const age = progress / lt;
+        const fade = Math.max(0, 1 - age) * envelope;
+        
+        for (let s = 0; s < TRAIL_SEGS; s++) {
+          const dt = 0.015 * (s + 1);
+          const tPast = Math.max(0, t - dt * s);
+          const tPast2 = Math.max(0, t - dt * (s + 1));
+          const dragPast = Math.exp(-0.04 * tPast);
+          const dragPast2 = Math.exp(-0.04 * tPast2);
+          const base = (si * TRAIL_SEGS + s) * 6;
+          
+          tp[base] = vx * tPast * dragPast + windX * tPast * tPast * 0.5;
+          tp[base + 1] = vy * tPast * Math.exp(-0.03 * tPast) + 0.5 * GRAV * tPast * tPast;
+          tp[base + 2] = vz * tPast * dragPast + windZ * tPast * tPast * 0.5;
+          tp[base + 3] = vx * tPast2 * dragPast2 + windX * tPast2 * tPast2 * 0.5;
+          tp[base + 4] = vy * tPast2 * Math.exp(-0.03 * tPast2) + 0.5 * GRAV * tPast2 * tPast2;
+          tp[base + 5] = vz * tPast2 * dragPast2 + windZ * tPast2 * tPast2 * 0.5;
+          
+          const segFade = fade * Math.pow(1 - s / TRAIL_SEGS, 2) * 0.6;
+          const endFade = fade * Math.pow(1 - (s + 1) / TRAIL_SEGS, 2) * 0.3;
+          // Thermal ramp: white-hot → base → ember
+          const warmth = s / TRAIL_SEGS;
+          tc[base] = (1.0 - warmth * 0.5) * segFade * baseColor.r;
+          tc[base + 1] = (0.8 - warmth * 0.4) * segFade * baseColor.g;
+          tc[base + 2] = (0.5 - warmth * 0.3) * segFade * baseColor.b;
+          tc[base + 3] = (1.0 - warmth * 0.5) * endFade * baseColor.r;
+          tc[base + 4] = (0.8 - warmth * 0.4) * endFade * baseColor.g;
+          tc[base + 5] = (0.5 - warmth * 0.3) * endFade * baseColor.b;
+        }
+      }
+      const trailGeo = trailRef.current.geometry;
+      const tPosAttr = trailGeo.getAttribute('position') as THREE.BufferAttribute;
+      const tColAttr = trailGeo.getAttribute('color') as THREE.BufferAttribute;
+      if (tPosAttr) tPosAttr.needsUpdate = true;
+      if (tColAttr) tColAttr.needsUpdate = true;
+    }
+
     const posAttr = geo.getAttribute('position') as THREE.BufferAttribute;
     const colAttr = geo.getAttribute('color') as THREE.BufferAttribute;
     const szAttr = geo.getAttribute('size') as THREE.BufferAttribute;
@@ -252,11 +354,11 @@ export default function MineEffect({
     if (szAttr) szAttr.needsUpdate = true;
 
     // ── Ground smoke plume ──
-    if (smokePointsRef.current && progress > 0.03 && progress < 0.7) {
+    if (smokePointsRef.current && progress > 0.03 && progress < 0.92) {
       const smokePosArr = smokePosRef;
       const smokeColArr = smokeColRef;
       const smokeSizeArr = smokeSizeRef;
-      const smokeAge = (progress - 0.03) / 0.67;
+      const smokeAge = (progress - 0.03) / 0.89;
 
       for (let i = 0; i < SMOKE_COUNT; i++) {
         const svx = smokeVelocities[i * 3];
@@ -275,9 +377,9 @@ export default function MineEffect({
 
         // Warm gray smoke, fading with age
         const smokeFade = Math.max(0, 1 - smokeAge * 1.2) * 0.06;
-        smokeColArr[i * 3] = 0.35 * smokeFade;
-        smokeColArr[i * 3 + 1] = 0.3 * smokeFade;
-        smokeColArr[i * 3 + 2] = 0.25 * smokeFade;
+        smokeColArr[i * 3] = (0.35 * 0.75 + baseColor.r * 0.25) * smokeFade;
+        smokeColArr[i * 3 + 1] = (0.3 * 0.75 + baseColor.g * 0.25) * smokeFade;
+        smokeColArr[i * 3 + 2] = (0.25 * 0.75 + baseColor.b * 0.25) * smokeFade;
 
         // Expanding size
         smokeSizeArr[i] = (1.5 + hash01(seed) * 2.5) * (1 + smokeAge * 2);
@@ -292,7 +394,14 @@ export default function MineEffect({
   });
 
   const screenBlend = useMemo(() => getThreeBlending('screen'), []);
-  const angleOffsetRad = (angleOffset * Math.PI) / 180;
+
+  // Compute launch direction quaternion from heading/pitch
+  const launchRotation = useMemo(() => {
+    const headingRad = -(launchHeading || 0) * Math.PI / 180;
+    const pitchRad = (90 - (launchPitch || 85)) * Math.PI / 180;
+    const euler = new THREE.Euler(pitchRad, headingRad, 0, 'YXZ');
+    return euler;
+  }, [launchHeading, launchPitch]);
 
   // Combustion-modulated muzzle flash
   const muzzleFlashOpacity = useMemo(() => 0.7, []);
@@ -322,7 +431,7 @@ export default function MineEffect({
   `;
 
   return (
-    <group position={position} rotation={[0, 0, angleOffsetRad]}>
+    <group position={position} rotation={launchRotation} renderOrder={50}>
       {/* Combustion muzzle flash with flicker */}
       {progress < 0.08 && (
         <mesh position={[0, 0.3, 0]}>
@@ -336,6 +445,7 @@ export default function MineEffect({
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest={false}
           />
         </mesh>
       )}
@@ -353,6 +463,7 @@ export default function MineEffect({
             blendSrc={screenBlend.blendSrc as any}
             blendDst={screenBlend.blendDst as any}
             depthWrite={false}
+            depthTest={false}
             side={THREE.DoubleSide}
           />
         </mesh>
@@ -362,7 +473,7 @@ export default function MineEffect({
       {progress > 0.02 && progress < 0.6 && (
         <mesh position={[0, progress * 4, 0]}>
           <sphereGeometry args={[0.6 + progress * 6, 8, 8]} />
-          <meshBasicMaterial color="#887766" transparent opacity={0.06 * (1 - progress / 0.6)} />
+          <meshBasicMaterial color="#887766" transparent opacity={0.06 * (1 - progress / 0.6)} depthTest={false} depthWrite={false} />
         </mesh>
       )}
 
@@ -378,19 +489,30 @@ export default function MineEffect({
           fragmentShader={sizeFragmentShader}
           transparent
           depthWrite={false}
+          depthTest={false}
           blending={THREE.AdditiveBlending}
         />
       </points>
 
+      {/* Spray comet trails */}
+      <lineSegments ref={trailRef} frustumCulled={false}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[trailPosRef, 3]} />
+          <bufferAttribute attach="attributes-color" args={[trailColRef, 3]} />
+        </bufferGeometry>
+        <lineBasicMaterial vertexColors transparent opacity={0.7} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} />
+      </lineSegments>
+
       {/* Ground smoke plume */}
-      {progress > 0.03 && progress < 0.7 && (
-        <points ref={smokePointsRef} frustumCulled={false}>
+      {progress > 0.03 && progress < 0.92 && (
+        <points ref={smokePointsRef} frustumCulled={false} renderOrder={50}>
           <bufferGeometry>
             <bufferAttribute attach="attributes-position" args={[smokePosRef, 3]} />
             <bufferAttribute attach="attributes-color" args={[smokeColRef, 3]} />
+            <bufferAttribute attach="attributes-size" args={[smokeSizeRef, 1]} />
           </bufferGeometry>
           <shaderMaterial
-            vertexShader={sizeVertexShader.replace('size *', '3.0 *')}
+            vertexShader={sizeVertexShader}
             fragmentShader={`
               varying vec3 vColor;
               void main() {
@@ -402,6 +524,7 @@ export default function MineEffect({
             `}
             transparent
             depthWrite={false}
+            depthTest={false}
           />
         </points>
       )}

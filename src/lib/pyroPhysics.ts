@@ -14,21 +14,31 @@ import { interpolateTable, interpolateTableRound, type LookupTable } from './int
 // ── Constants ───────────────────────────────────────────────────────
 
 export const GRAVITY = -9.81; // m/s²
-export const AIR_DRAG = 0.03;
-export const STAR_DRAG = 0.08;
+// Drag coefficients for quadratic drag model: F_drag = k * v²
+// Light sparks decelerate fast, heavy embers maintain trajectory
+export const AIR_DRAG = 0.06;   // default shell body drag
+export const STAR_DRAG = 0.10;  // star particle drag (medium)
+
+/** Drag coefficient ranges by particle type (for per-particle variance) */
+export const DRAG_TABLE = {
+  spark_light: { min: 0.08, max: 0.15 },   // charcoal, light metals
+  ember_medium: { min: 0.04, max: 0.08 },  // standard stars
+  fragment_heavy: { min: 0.01, max: 0.04 }, // titanium, iron
+} as const;
 
 // ── Lookup Tables (sub-2" calibers added per Finale manual) ─────────
 
+// Calibrated against real-world field measurements (NFPA 1123 / Skylighter / PIROEX)
 const MORTAR_VELOCITY: LookupTable = {
-  1: 22, 1.5: 32, 2: 42, 3: 56, 4: 68, 5: 78, 6: 88, 8: 105, 10: 118, 12: 130, 16: 145,
+  1: 30, 1.5: 45, 2: 55, 3: 70, 4: 85, 5: 95, 6: 110, 8: 125, 10: 135, 12: 145, 16: 160,
 };
 
 const BREAK_HEIGHT: LookupTable = {
-  1: 15, 1.5: 25, 2: 35, 3: 55, 4: 80, 5: 110, 6: 140, 8: 190, 10: 240, 12: 280, 16: 320,
+  1: 20, 1.5: 35, 2: 50, 3: 105, 4: 140, 5: 190, 6: 260, 8: 330, 10: 380, 12: 420, 16: 480,
 };
 
 const BREAK_SPEED: LookupTable = {
-  1: 10, 1.5: 14, 2: 18, 3: 28, 4: 38, 5: 48, 6: 58, 8: 72, 10: 85, 12: 95, 16: 110,
+  1: 12, 1.5: 18, 2: 24, 3: 35, 4: 45, 5: 55, 6: 65, 8: 78, 10: 90, 12: 100, 16: 115,
 };
 
 const STAR_COUNT: LookupTable = {
@@ -86,13 +96,70 @@ export function getSafetyDistance(caliberInches: number): number {
 // Used for safety radius calculations and regulatory compliance, NOT for viewport rendering.
 
 const REAL_BURST_HEIGHT_NFPA: LookupTable = {
-  3: 120, 4: 150, 5: 180, 6: 210, 8: 270, 10: 320, 12: 350,
+  3: 105, 4: 140, 5: 190, 6: 260, 8: 330, 10: 380, 12: 420,
 };
 
 /** Real-world burst height from NFPA data (meters). For safety calculations only. */
 export function getRealBurstHeight(caliberInches: number): number {
   return interpolateTable(REAL_BURST_HEIGHT_NFPA, caliberInches, 150);
 }
+
+// ── NEB/T M-251 Minimum Burst Heights (regulatory) ──────────────────
+// Item 24c — minimum burst altitudes by outer diameter range (mm).
+// Used for conformity validation against Chinese/Brazilian import standards.
+
+export interface BurstHeightRange {
+  minOD: number;   // mm
+  maxOD: number;   // mm (Infinity for open-ended)
+  minHeight: number; // meters
+}
+
+export const MIN_BURST_HEIGHT_NEBT: BurstHeightRange[] = [
+  { minOD: 0,     maxOD: 45,    minHeight: 15 },
+  { minOD: 45,    maxOD: 55,    minHeight: 25 },
+  { minOD: 55,    maxOD: 76.2,  minHeight: 55 },
+  { minOD: 76.2,  maxOD: 101.6, minHeight: 70 },
+  { minOD: 101.6, maxOD: 127.0, minHeight: 85 },
+  { minOD: 127.0, maxOD: 203.2, minHeight: 120 },
+  { minOD: 203.2, maxOD: Infinity, minHeight: 200 },
+];
+
+/** Get NEB/T M-251 minimum burst height for a given shell outer diameter (mm). */
+export function getMinBurstHeightNEBT(outerDiameterMm: number): number {
+  for (const range of MIN_BURST_HEIGHT_NEBT) {
+    if (outerDiameterMm >= range.minOD && outerDiameterMm < range.maxOD) {
+      return range.minHeight;
+    }
+  }
+  return 200; // fallback for very large shells
+}
+
+/** Convert caliber inches to approximate outer diameter mm (with casing). */
+export function caliberToOuterDiameterMm(caliberInches: number): number {
+  // Typical shell OD ≈ caliber * 25.4 * ~0.9 (bore-to-OD ratio varies)
+  // FFIC data: 2.5"→58mm, 3"→69mm, 4"→89mm, 5"→117mm, 6"→144mm
+  const ffic: LookupTable = { 2.5: 58, 3: 69, 4: 89, 5: 117, 6: 144, 8: 190, 10: 240, 12: 290 };
+  return interpolateTable(ffic, caliberInches, caliberInches * 24);
+}
+
+/** Check if a burst height meets NEB/T M-251 requirements. */
+export function isNEBTCompliant(caliberInches: number, burstHeightM: number): boolean {
+  const od = caliberToOuterDiameterMm(caliberInches);
+  return burstHeightM >= getMinBurstHeightNEBT(od);
+}
+
+// ── Cake sub-1" calibration (FFIC laudo 2726000009) ─────────────────
+// 20mm (≈0.8") cake shots: 6.65g effect, 1.93g lift, tube 172×25×20mm
+export const CAKE_20MM = {
+  caliberInches: 0.8,
+  effectChargeG: 6.65,
+  liftChargeG: 1.93,
+  tubeLengthMm: 172,
+  tubeOdMm: 25,
+  tubeIdMm: 20,
+  particlesPerShot: 12,
+  fuseTimeSec: { min: 6.2, max: 7.3, avg: 6.75 },
+} as const;
 
 // ── APA 87-1 Risk Division / Classification ─────────────────────────
 
@@ -110,7 +177,7 @@ export const BP_GRADE_BURN_MODIFIER: Record<string, number> = {
 // ── Type-Aware Physics Helpers (Finale 3D Manual Table 2) ───────────
 
 /** Finale part types */
-export type FinalePartType = 'shell' | 'cake' | 'candle' | 'mine' | 'comet' | 'gerb' | 'waterfall' | 'fan' | 'flame' | 'sfx' | 'single_shot' | 'ground' | 'rocket' | 'light';
+export type FinalePartType = 'shell' | 'cake' | 'candle' | 'mine' | 'comet' | 'gerb' | 'waterfall' | 'fan' | 'flame' | 'sfx' | 'single_shot' | 'ground' | 'rocket' | 'light' | 'girandola';
 
 /**
  * Shell prefire = break time (time from mortar to burst).
@@ -422,11 +489,20 @@ export interface ParticleState {
   life: number; maxLife: number;
   brightness: number;
   seed?: number; // for falling leaves oscillation
+  decayRate?: number;      // k in I=I0*e^(-kt). Default 1.2 (medium)
+  windInfluence?: number;  // 0-1 wind factor. Default 0.6 (ember)
 }
 
 export interface StepModifiers {
   fallingLeaves?: boolean;
   reducedGravity?: number; // 0-1 factor
+  tipCurlFactor?: number;  // progressive gravity after 70% life (chrysanthemum)
+  tipCurlLifeRatio?: number; // current life ratio for tip curl calc
+  willowDroop?: boolean;   // progressive heavy droop after 50% life (willow charcoal stars)
+  willowLifeRatio?: number; // current life ratio for willow droop calc
+  horsetailDroop?: boolean;   // progressive heavy droop — charcoal weight ramp to 6x
+  horsetailLifeRatio?: number;
+  coconutPhase?: 'ascent' | 'spread' | 'droop'; // 3-phase coconut tree gravity
 }
 
 export function stepParticle(
@@ -438,12 +514,35 @@ export function stepParticle(
 ): void {
   const gravityFactor = modifiers?.reducedGravity ?? 1;
   // Apply gravity (reduced for falling leaves)
-  p.vy += GRAVITY * gravityFactor * dt;
+  // Tip curl: progressive gravity increase after 70% life (chrysanthemum signature)
+  let tipCurlMult = 1;
+  if (modifiers?.tipCurlFactor && modifiers.tipCurlLifeRatio !== undefined && modifiers.tipCurlLifeRatio > 0.7) {
+    tipCurlMult = 1 + modifiers.tipCurlFactor * ((modifiers.tipCurlLifeRatio - 0.7) / 0.3);
+  }
+  // Willow droop: progressive heavy gravity after 50% life (charcoal star weight)
+  let willowMult = 1;
+  if (modifiers?.willowDroop && modifiers.willowLifeRatio !== undefined && modifiers.willowLifeRatio > 0.5) {
+    willowMult = 1 + 3.5 * ((modifiers.willowLifeRatio - 0.5) / 0.5);
+  }
+  // Horsetail droop: heavier charcoal — ramp to 6x after 50% life
+  let horsetailMult = 1;
+  if (modifiers?.horsetailDroop && modifiers.horsetailLifeRatio !== undefined && modifiers.horsetailLifeRatio > 0.5) {
+    horsetailMult = 1.2 + 4.8 * ((modifiers.horsetailLifeRatio - 0.5) / 0.5);
+  }
+  // Coconut tree 3-phase gravity
+  let coconutMult = 1;
+  if (modifiers?.coconutPhase) {
+    coconutMult = modifiers.coconutPhase === 'ascent' ? 0.4
+      : modifiers.coconutPhase === 'spread' ? 1.5
+      : 5.0; // droop
+  }
+  p.vy += GRAVITY * gravityFactor * tipCurlMult * willowMult * horsetailMult * coconutMult * dt;
   
-  // Apply wind forces
-  p.vx += wind[0] * dt * 0.5;
-  p.vy += wind[1] * dt * 0.5;
-  p.vz += wind[2] * dt * 0.5;
+  // Apply wind forces — per-particle type influence
+  const windFactor = p.windInfluence ?? 0.6;
+  p.vx += wind[0] * dt * windFactor;
+  p.vy += wind[1] * dt * windFactor;
+  p.vz += wind[2] * dt * windFactor;
 
   // Falling leaves: sinusoidal lateral oscillation
   if (modifiers?.fallingLeaves && p.seed !== undefined) {
@@ -452,14 +551,15 @@ export function stepParticle(
     p.vz += Math.cos(p.life * 1.5 + p.seed * 3.14) * 0.3 * dt;
   }
   
-  // Apply aerodynamic drag
+  // Apply aerodynamic drag — QUADRATIC model: F_drag = k * v²
+  // More physically accurate: high-speed particles decelerate much faster
   const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz);
   if (speed > 0.01) {
-    const dragForce = drag * speed;
-    const invSpeed = 1 / speed;
-    p.vx -= p.vx * invSpeed * dragForce * dt;
-    p.vy -= p.vy * invSpeed * dragForce * dt;
-    p.vz -= p.vz * invSpeed * dragForce * dt;
+    const dragForce = drag * speed * speed; // k * v² (quadratic)
+    const decel = Math.min(dragForce * dt / speed, 0.95); // cap to prevent sign flip
+    p.vx -= p.vx * decel;
+    p.vy -= p.vy * decel;
+    p.vz -= p.vz * decel;
   }
   
   // Integrate position
@@ -477,14 +577,19 @@ export function stepParticle(
   
   // Update lifecycle
   p.life += dt;
-  p.brightness = Math.max(0, 1 - p.life / p.maxLife);
+  // Exponential brightness decay: I = I0 * e^(-k*t)
+  // k varies by effect: 2.0 (fast/dahlia), 1.2 (medium/peony), 0.6 (slow/willow)
+  const lifeRatio = p.life / p.maxLife;
+  const k = p.decayRate ?? 1.2;
+  p.brightness = Math.max(0, Math.exp(-k * lifeRatio));
 }
 
 // ── Shell Burst Patterns ────────────────────────────────────────────
 
 export type BurstPattern = 
   | 'sphere' | 'ring' | 'willow' | 'palm' | 'peony' 
-  | 'chrysanthemum' | 'kamuro' | 'crossette' | 'dahlia' | 'brocade';
+  | 'chrysanthemum' | 'kamuro' | 'crossette' | 'dahlia' | 'brocade'
+  | 'brocade_crown' | 'horsetail' | 'coconut_tree';
 
 /** Generate spherical direction vector */
 function randomSphericalDir(): { sx: number; sy: number; sz: number; theta: number } {
@@ -523,12 +628,21 @@ export function createShellBurst(
         vz = sz * breakSpeed * 0.5;
         life = starLifetime * (1.8 + Math.random() * 1.2);
         break;
-      case 'palm':
-        vx = sx * breakSpeed * 0.6;
-        vy = Math.abs(sy) * breakSpeed + breakSpeed * 0.4;
-        vz = sz * breakSpeed * 0.6;
+      case 'palm': {
+        // Palm: 6 symmetric fronds with upward bias
+        const FROND_COUNT = 6;
+        const frondIdx = i % FROND_COUNT;
+        const frondAngle = (frondIdx / FROND_COUNT) * Math.PI * 2;
+        const frondJitter = (Math.random() - 0.5) * 2 * (6 * Math.PI / 180); // ±6°
+        const palmTheta = frondAngle + frondJitter;
+        const palmPhi = Math.random() * Math.PI * 0.35; // upward cone
+        const palmSpeed = breakSpeed * (0.6 + Math.random() * 0.4);
+        vx = Math.sin(palmPhi) * Math.cos(palmTheta) * palmSpeed * 0.48;
+        vy = Math.cos(palmPhi) * palmSpeed + breakSpeed * 0.4;
+        vz = Math.sin(palmPhi) * Math.sin(palmTheta) * palmSpeed * 0.48;
         life = starLifetime * (1.5 + Math.random() * 0.5);
         break;
+      }
       case 'chrysanthemum':
         vx = sx * breakSpeed;
         vy = sy * breakSpeed * 0.9;
@@ -542,10 +656,10 @@ export function createShellBurst(
         life = starLifetime * (2.5 + Math.random() * 1.5);
         break;
       case 'dahlia':
-        vx = sx * breakSpeed * 1.2;
-        vy = sy * breakSpeed * 1.1;
-        vz = sz * breakSpeed * 1.2;
-        life = starLifetime * (0.6 + Math.random() * 0.3);
+        vx = sx * breakSpeed * 1.4;
+        vy = sy * breakSpeed * 1.3;
+        vz = sz * breakSpeed * 1.4;
+        life = starLifetime * (0.45 + Math.random() * 0.2);
         break;
       case 'brocade':
         vx = sx * breakSpeed * 0.7;
@@ -560,15 +674,53 @@ export function createShellBurst(
         break;
       case 'peony':
       default: {
-        const speedVariation = 0.7 + Math.random() * 0.3;
-        vx = sx * breakSpeed * speedVariation;
-        vy = sy * breakSpeed * speedVariation * 0.85 + 1;
-        vz = sz * breakSpeed * speedVariation;
+        // Peony: 12 azimuthal petal clusters with ±8° jitter
+        const PETAL_COUNT = 12;
+        const petalIdx = i % PETAL_COUNT;
+        const petalAngle = (petalIdx / PETAL_COUNT) * Math.PI * 2;
+        const jitter = (Math.random() - 0.5) * 2 * (8 * Math.PI / 180);
+        const clusterTheta = petalAngle + jitter;
+        // Upper hemisphere bias for petal shape
+        const clusterPhi = Math.acos(0.3 + Math.random() * 0.5);
+        const csx = Math.sin(clusterPhi) * Math.cos(clusterTheta);
+        const csy = Math.cos(clusterPhi);
+        const csz = Math.sin(clusterPhi) * Math.sin(clusterTheta);
+        const speedVariation = 0.85 + Math.random() * 0.15;
+        vx = csx * breakSpeed * speedVariation;
+        vy = csy * breakSpeed * speedVariation * 0.85 + 1;
+        vz = csz * breakSpeed * speedVariation;
         break;
       }
     }
 
-    particles.push({ x: 0, y: 0, z: 0, vx, vy, vz, life: 0, maxLife: life, brightness: 1 });
+    // ── Natural variance (mandatory for realism) ──
+    // Velocity: ±10% random variation per particle
+    const velVariance = 0.90 + Math.random() * 0.20;
+    vx *= velVariance;
+    vy *= velVariance;
+    vz *= velVariance;
+
+    // Angular jitter: ±5° deviation from ideal trajectory
+    const jitterRad = ((Math.random() - 0.5) * 10) * Math.PI / 180; // ±5°
+    const cosJ = Math.cos(jitterRad);
+    const sinJ = Math.sin(jitterRad);
+    const jVx = vx * cosJ - vz * sinJ;
+    const jVz = vx * sinJ + vz * cosJ;
+    vx = jVx;
+    vz = jVz;
+
+    // Intensity: ±15% initial brightness variation
+    const brightnessVariance = 0.85 + Math.random() * 0.30;
+
+    // Timing: ±3% lifetime variation (fuse irregularity)
+    life *= (0.97 + Math.random() * 0.06);
+
+    // Assign decay rate by pattern
+    const decayRate = (pattern === 'dahlia' || pattern === 'crossette') ? 2.0
+      : (pattern === 'willow' || pattern === 'kamuro' || pattern === 'horsetail' || pattern === 'brocade' || pattern === 'brocade_crown') ? 0.6
+      : 1.2; // peony, chrysanthemum, sphere, ring, palm, coconut_tree
+
+    particles.push({ x: 0, y: 0, z: 0, vx, vy, vz, life: 0, maxLife: life, brightness: brightnessVariance, decayRate, windInfluence: 0.6 });
   }
 
   return particles;
@@ -588,6 +740,7 @@ export function createMineBurst(count: number, speed: number, lifetime: number):
       vy: Math.cos(upAngle) * s + speed * 0.3,
       vz: Math.sin(theta) * Math.sin(upAngle) * s,
       life: 0, maxLife: lifetime * (0.6 + Math.random() * 0.4), brightness: 1,
+      decayRate: 1.2, windInfluence: 0.7,
     });
   }
   return particles;
@@ -596,13 +749,31 @@ export function createMineBurst(count: number, speed: number, lifetime: number):
 // ── Gerb / Fountain ─────────────────────────────────────────────────
 
 export function createGerbStream(height: number): ParticleState {
-  const spread = 0.15;
+  // Gerb physics: emission velocity 5-20 m/s proportional to desired height
+  // v = sqrt(2 * g * h) gives realistic emission speed for target height
+  const emissionSpeed = Math.max(5, Math.min(20, Math.sqrt(2 * 9.81 * height)));
+  
+  // Cone spread: 0.2-0.35 radians (realistic fountain cone)
+  const spread = 0.20 + Math.random() * 0.15;
+  const theta = Math.random() * Math.PI * 2;
+  const upAngle = spread * Math.random(); // angle from vertical
+  
+  // Velocity with ±10% natural variance
+  const speedVar = 0.90 + Math.random() * 0.20;
+  const speed = emissionSpeed * speedVar;
+  
+  // Lifetime: t ≈ 2*v*sin(angle)/g with drag, plus ±15% variance
+  const baseLifetime = (2 * speed * Math.cos(upAngle)) / 9.81;
+  const lifetimeVar = 0.85 + Math.random() * 0.30;
+  const maxLife = Math.max(0.4, baseLifetime * lifetimeVar);
+  
   return {
     x: 0, y: 0, z: 0,
-    vx: (Math.random() - 0.5) * spread * height,
-    vy: height * (0.8 + Math.random() * 0.4),
-    vz: (Math.random() - 0.5) * spread * height,
-    life: 0, maxLife: 0.8 + Math.random() * 0.5, brightness: 1,
+    vx: Math.sin(upAngle) * Math.cos(theta) * speed,
+    vy: Math.cos(upAngle) * speed,
+    vz: Math.sin(upAngle) * Math.sin(theta) * speed,
+    life: 0, maxLife, brightness: 1,
+    decayRate: 2.0, windInfluence: 0.8,
   };
 }
 
@@ -616,6 +787,7 @@ export function createWaterfallParticle(width: number, dropHeight: number): Part
     vy: -0.5 - Math.random() * 1.5,
     vz: (Math.random() - 0.5) * 0.3,
     life: 0, maxLife: dropHeight / 2 + Math.random(), brightness: 1,
+    decayRate: 0.6, windInfluence: 0.9,
   };
 }
 

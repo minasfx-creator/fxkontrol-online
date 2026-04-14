@@ -1,13 +1,15 @@
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet, Copy, GripVertical, Zap, Sparkles, ChevronDown, ChevronRight, Clock, Move, Crosshair, Link2, Unlink, Scissors, ClipboardPaste, Eye, EyeOff, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
 import useGenerativeStore from '@/store/useGenerativeStore';
 import { getPreFireTime } from '@/lib/safetyEngine';
 import { cn } from '@/lib/utils';
 import AudioWaveform from './AudioWaveform';
 import PyroTimelineTrack from './PyroTimelineTrack';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -87,11 +89,15 @@ function TimelineContextMenu({
 }: {
   x: number; y: number; item: any; onClose: () => void;
 }) {
-  const {
-    removeTimelineItem, duplicateTimelineItems, selectTimelineItem,
-    updateTimelineItem, positions, setEditorMode, currentTime,
-    addTimelineItem, selectedTimelineItemIds,
-  } = useProjectStore();
+    const removeTimelineItem = useProjectStore(s => s.removeTimelineItem);
+  const duplicateTimelineItems = useProjectStore(s => s.duplicateTimelineItems);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
+  const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
+  const positions = useProjectStore(s => s.positions);
+  const setEditorMode = useProjectStore(s => s.setEditorMode);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
 
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -301,7 +307,10 @@ DraggableTimelineItem.displayName = 'DraggableTimelineItem';
 
 // Track header context menu
 function TrackContextMenu({ x, y, trackIndex, onClose }: { x: number; y: number; trackIndex: number; onClose: () => void }) {
-  const { timelineItems, selectTimelineItem, toggleTimelineItemSelection, removeMultipleTimelineItems } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
+  const toggleTimelineItemSelection = useProjectStore(s => s.toggleTimelineItemSelection);
+  const removeMultipleTimelineItems = useProjectStore(s => s.removeMultipleTimelineItems);
   const trackItems = timelineItems.filter(i => i.trackIndex === trackIndex);
 
   useEffect(() => {
@@ -346,11 +355,18 @@ function TimelineTrackRow({
     el.addEventListener('scroll', update, { passive: true });
     return () => el.removeEventListener('scroll', update);
   }, [scrollRef]);
-  const { 
-    timelineItems, selectedTimelineItemId, selectTimelineItem, addTimelineItem, 
-    bpm, snapToBeat, updateTimelineItem, selectedTimelineItemIds, toggleTimelineItemSelection,
-    positions, selectedPositionId, selectedPositionIds,
-  } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const bpm = useProjectStore(s => s.bpm);
+  const snapToBeat = useProjectStore(s => s.snapToBeat);
+  const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
+  const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
+  const toggleTimelineItemSelection = useProjectStore(s => s.toggleTimelineItemSelection);
+  const positions = useProjectStore(s => s.positions);
+  const selectedPositionId = useProjectStore(s => s.selectedPositionId);
+  const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
   const [isDragOver, setIsDragOver] = useState(false);
   const [muted, setMuted] = useState(false);
   const [trackCtxMenu, setTrackCtxMenu] = useState<{ x: number; y: number } | null>(null);
@@ -428,16 +444,55 @@ function TimelineTrackRow({
   const handleItemDragStart = useCallback((e: React.MouseEvent, itemId: string) => {
     const item = timelineItems.find(i => i.id === itemId);
     if (!item) return;
-    dragState.current = { itemId, startX: e.clientX, startTime: item.startTime };
+    const startX = e.clientX;
+    const startTime = item.startTime;
+    let dragActivated = false;
+
     const handleMove = (me: MouseEvent) => {
-      if (!dragState.current) return;
-      const dx = me.clientX - dragState.current.startX;
+      const dx = me.clientX - startX;
+
+      // ── Dead zone: 4px threshold prevents accidental drags ──
+      if (!dragActivated) {
+        if (Math.abs(dx) < 4) return;
+        dragActivated = true;
+        dragState.current = { itemId, startX, startTime };
+      }
+
       const dt = dx / pixelsPerSecond;
-      let newTime = Math.max(0, Math.min(dragState.current.startTime + dt, duration));
+      let newTime = Math.max(0, Math.min(startTime + dt, duration));
       newTime = snapTimeToBeat(newTime, bpm, snapToBeat, pixelsPerSecond);
-      updateTimelineItem(dragState.current.itemId, { startTime: newTime });
+
+      // ── Magnetic snap to adjacent items (edge-to-edge) ──
+      const snapThresholdSec = 6 / pixelsPerSecond;
+      const currentEffect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
+      const currentDuration = item.durationOverride ?? currentEffect?.duration ?? 2;
+
+      for (const other of timelineItems) {
+        if (other.id === itemId || other.trackIndex !== item.trackIndex) continue;
+        const otherEffect = EFFECT_LIBRARY.find(ef => ef.id === other.effectId);
+        const otherDur = other.durationOverride ?? otherEffect?.duration ?? 2;
+        const otherEnd = other.startTime + otherDur;
+
+        // Snap my start to other's end
+        if (Math.abs(newTime - otherEnd) < snapThresholdSec) {
+          newTime = otherEnd;
+          break;
+        }
+        // Snap my end to other's start
+        if (Math.abs((newTime + currentDuration) - other.startTime) < snapThresholdSec) {
+          newTime = other.startTime - currentDuration;
+          break;
+        }
+      }
+
+      updateTimelineItem(itemId, { startTime: newTime });
     };
-    const handleUp = () => { dragState.current = null; window.removeEventListener('mousemove', handleMove); window.removeEventListener('mouseup', handleUp); };
+    const handleUp = () => {
+      dragState.current = null;
+      dragActivated = false;
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
   }, [timelineItems, pixelsPerSecond, duration, bpm, snapToBeat, updateTimelineItem]);
@@ -614,7 +669,10 @@ function TimelineTrackRow({
 }
 
 const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number }>(function WaypointTrackRow({ pixelsPerSecond, duration }, ref) {
-  const { trajectories, positions, selectedTrajectoryId, selectTrajectory } = useProjectStore();
+    const trajectories = useProjectStore(s => s.trajectories);
+  const positions = useProjectStore(s => s.positions);
+  const selectedTrajectoryId = useProjectStore(s => s.selectedTrajectoryId);
+  const selectTrajectory = useProjectStore(s => s.selectTrajectory);
   const wpEvents = useMemo(() => {
     return trajectories.flatMap((traj) => {
       const pad = positions.find((p) => p.id === traj.positionId);
@@ -656,7 +714,9 @@ const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: num
 });
 
 const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number }>(function FormationTrackRow({ pixelsPerSecond, duration }, _ref) {
-  const { droneFormations, selectFormation, selectedFormationId } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const selectFormation = useProjectStore(s => s.selectFormation);
+  const selectedFormationId = useProjectStore(s => s.selectedFormationId);
   if (droneFormations.length === 0) return null;
 
   return (
@@ -702,7 +762,13 @@ const FORMATION_PRESETS_MAP: Record<string, string> = {
 
 // ── DRONE FX Track — only visible when formations exist ──
 function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
-  const { droneFormations, timelineItems, selectedTimelineItemId, selectTimelineItem, addTimelineItem, bpm, snapToBeat } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const bpm = useProjectStore(s => s.bpm);
+  const snapToBeat = useProjectStore(s => s.snapToBeat);
   
   const droneFxItems = useMemo(() => timelineItems.filter((i) => i.trackIndex === 3), [timelineItems]);
 
@@ -779,7 +845,12 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
 
 // ── LASER Track — shows laser cues with live preview state ──
 function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
-  const { timelineItems, selectedTimelineItemId, selectTimelineItem, addTimelineItem, bpm, snapToBeat } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
+  const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const bpm = useProjectStore(s => s.bpm);
+  const snapToBeat = useProjectStore(s => s.snapToBeat);
   const laserEnabled = useLaserPreviewStore((s) => s.globalEnabled);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -911,16 +982,48 @@ function CollapsibleTrackGroup({ label, defaultOpen = true, children }: { label:
   );
 }
 
+/** Playhead rendered via direct DOM manipulation — no React re-renders during playback */
+function PlayheadIndicator({ pixelsPerSecond }: { pixelsPerSecond: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const initial = useProjectStore.getState().currentTime;
+    if (ref.current) ref.current.style.transform = `translateX(${initial * pixelsPerSecond}px)`;
+    const unsub = useProjectStore.subscribe((state) => {
+      if (ref.current) ref.current.style.transform = `translateX(${state.currentTime * pixelsPerSecond}px)`;
+    });
+    return unsub;
+  }, [pixelsPerSecond]);
+
+  return (
+    <div ref={ref} className="absolute top-0 bottom-0 w-px z-20 pointer-events-none" style={{ transform: 'translateX(0px)' }}>
+      <div className="w-2 h-2 bg-primary rounded-full -translate-x-[3px] -translate-y-px shadow-[0_0_8px_hsl(var(--primary)/0.4)]" />
+      <div className="absolute top-0 w-px h-full bg-gradient-to-b from-primary via-primary/30 to-transparent" />
+    </div>
+  );
+}
+
 const MIN_PPS = 4;
 const MAX_PPS = 80;
 
 const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, _ref) {
-  const {
-    isPlaying, setPlaying, currentTime, setCurrentTime, duration,
-    selectedTimelineItemId, removeTimelineItem, timelineItems,
-    playbackSpeed, setPlaybackSpeed, bpm, snapToBeat, setSnapToBeat,
-    selectedTimelineItemIds, clearTimelineItemSelection, duplicateTimelineItems, removeMultipleTimelineItems,
-  } = useProjectStore();
+  useRenderCounter('Timeline');
+    const isPlaying = useProjectStore(s => s.isPlaying);
+  const setPlaying = useProjectStore(s => s.setPlaying);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
+  const duration = useProjectStore(s => s.duration);
+  const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const removeTimelineItem = useProjectStore(s => s.removeTimelineItem);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const playbackSpeed = useProjectStore(s => s.playbackSpeed);
+  const setPlaybackSpeed = useProjectStore(s => s.setPlaybackSpeed);
+  const bpm = useProjectStore(s => s.bpm);
+  const snapToBeat = useProjectStore(s => s.snapToBeat);
+  const setSnapToBeat = useProjectStore(s => s.setSnapToBeat);
+  const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
+  const clearTimelineItemSelection = useProjectStore(s => s.clearTimelineItemSelection);
+  const duplicateTimelineItems = useProjectStore(s => s.duplicateTimelineItems);
+  const removeMultipleTimelineItems = useProjectStore(s => s.removeMultipleTimelineItems);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pixelsPerSecond, setPixelsPerSecond] = useState(12);
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -1142,11 +1245,8 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
             <div className="flex-1 relative">
               <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               <BeatGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
-              {/* Playhead */}
-              <div className="absolute top-0 bottom-0 w-px z-20 pointer-events-none" style={{ left: `${currentTime * pixelsPerSecond}px` }}>
-                <div className="w-2 h-2 bg-primary rounded-full -translate-x-[3px] -translate-y-px shadow-[0_0_8px_hsl(var(--primary)/0.4)]" />
-                <div className="absolute top-0 w-px h-full bg-gradient-to-b from-primary via-primary/30 to-transparent" />
-              </div>
+              {/* Playhead — DOM-direct updates via transient Zustand subscription (zero re-renders) */}
+              <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} />
             </div>
           </div>
           {/* ── FIRING SYSTEMS group ── */}

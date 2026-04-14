@@ -58,7 +58,7 @@ const PRESET_INFO: { value: LayoutPreset; label: string; desc: string; icon: Rea
 ];
 
 export default function UE5DMXPrevisImporter({ open, onOpenChange, initialFile }: Props) {
-  const { addPosition } = useProjectStore();
+    const addPosition = useProjectStore(s => s.addPosition);
   const [result, setResult] = useState<UE5DMXParseResult | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
