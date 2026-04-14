@@ -1,0 +1,477 @@
+import { useState, useEffect, useMemo } from 'react';
+import { Sliders, Wand2, X, Sparkles, Layers, Palette, Leaf, FlaskConical } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { parseVDL, toVDL, getVDLColors, type VDLResult } from '@/lib/vdlParser';
+import { useProjectStore } from '@/store/useProjectStore';
+import { cn } from '@/lib/utils';
+import { getRealFormulation, formulationToCompound } from '@/render_ultra/fireworks/particleChemistry';
+
+const VDL_COLORS = getVDLColors();
+
+interface EffectEditorProps {
+  initialVDL?: string;
+  onClose?: () => void;
+  /** Real FFIC formulation ID from supplier catalog */
+  realFormulationId?: string;
+}
+
+export default function EffectEditor({ initialVDL = '', onClose, realFormulationId }: EffectEditorProps) {
+    const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const [vdlInput, setVdlInput] = useState(initialVDL);
+  const [params, setParams] = useState<VDLResult>(() => parseVDL(initialVDL));
+
+  // Real formulation data
+  const realFormulation = useMemo(() => realFormulationId ? getRealFormulation(realFormulationId) : undefined, [realFormulationId]);
+  const realCompound = useMemo(() => realFormulation ? formulationToCompound(realFormulation) : undefined, [realFormulation]);
+
+  useEffect(() => {
+    if (vdlInput) {
+      const parsed = parseVDL(vdlInput);
+      if (parsed.valid) setParams(parsed);
+    }
+  }, [vdlInput]);
+
+  const displayVDL = useMemo(() => toVDL(params), [params]);
+
+  const updateParam = <K extends keyof VDLResult>(key: K, value: VDLResult[K]) => {
+    setParams(prev => ({ ...prev, [key]: value }));
+  };
+
+  const toggleColor = (name: string, hex: string) => {
+    setParams(prev => {
+      const has = prev.colorNames.includes(name);
+      return {
+        ...prev,
+        colorNames: has ? prev.colorNames.filter(c => c !== name) : [...prev.colorNames, name],
+        colors: has ? prev.colors.filter(c => c !== hex) : [...prev.colors, hex],
+      };
+    });
+  };
+
+  const toggleModifier = (mod: string) => {
+    setParams(prev => ({
+      ...prev,
+      modifiers: prev.modifiers.includes(mod)
+        ? prev.modifiers.filter(m => m !== mod)
+        : [...prev.modifiers, mod],
+    }));
+  };
+
+  const handleAddToTimeline = () => {
+    const colorStr = params.colorNames.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join('/');
+    const name = `${params.caliber}" ${colorStr} ${params.typeName}`.trim();
+
+    const newItem = {
+      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      effectId: `vdl-${Date.now()}`,
+      startTime: currentTime,
+      trackIndex: 0,
+      position: {
+        x: (Math.random() - 0.5) * 16,
+        y: params.height / 10,
+        z: (Math.random() - 0.5) * 8,
+      },
+      notes: `VDL: ${displayVDL} | Stars: ${params.starCount} | Spread: ${params.spread}°`,
+    };
+    addTimelineItem(newItem);
+  };
+
+  return (
+    <div className="h-full flex flex-col bg-card border-l border-border">
+      {/* Header */}
+      <div className="px-3 py-2 border-b border-border flex items-center gap-2">
+        <Sliders className="h-3.5 w-3.5 text-primary" />
+        <h2 className="text-xs font-semibold text-foreground uppercase tracking-wider flex-1">Effect Editor</h2>
+        {onClose && (
+          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={onClose}>
+            <X className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+        {/* FFIC Real Product Section */}
+        {realFormulation && realCompound && (
+          <div className="space-y-1.5 p-2 rounded-lg bg-primary/5 border border-primary/20">
+            <div className="flex items-center gap-1.5">
+              <FlaskConical className="w-3 h-3 text-primary" />
+              <Label className="text-[10px] text-primary uppercase tracking-wider font-bold">Real Product</Label>
+              <Badge variant="default" className="text-[7px] px-1.5 py-0 h-3.5 ml-auto">
+                FFIC Calibrated
+              </Badge>
+            </div>
+            <p className="text-[10px] text-foreground font-medium">{realFormulation.name}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <div
+                className="w-5 h-5 rounded-full border-2 border-foreground/30"
+                style={{ backgroundColor: `#${realFormulation.resultColor.getHexString()}` }}
+              />
+              <div className="text-[9px] text-muted-foreground">
+                {realFormulation.caliber} • {realFormulation.productType} • {realFormulation.temperature}K
+              </div>
+            </div>
+            {/* Chemical composition */}
+            <div className="mt-1 space-y-0.5">
+              <p className="text-[8px] text-muted-foreground uppercase tracking-wider">Chemical Composition</p>
+              {realFormulation.compounds.map((c, i) => (
+                <div key={i} className="flex justify-between text-[9px]">
+                  <span className="text-foreground/70 font-mono-code">{c.element}</span>
+                  <span className="text-primary font-mono-code">{c.percentage}%</span>
+                </div>
+              ))}
+            </div>
+            {realFormulation.crackle && (
+              <Badge variant="outline" className="text-[8px] mt-1 border-accent/40 text-accent">
+                ⚡ Crackling Effect
+              </Badge>
+            )}
+          </div>
+        )}
+        {/* VDL Input */}
+        <div className="space-y-1">
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">VDL Description</Label>
+          <div className="relative">
+            <Wand2 className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-primary" />
+            <Input
+              placeholder='e.g. 4in Red Gold Chrysanthemum w/ tail'
+              value={vdlInput}
+              onChange={(e) => setVdlInput(e.target.value)}
+              className="h-8 pl-7 text-xs bg-surface-2 border-border font-mono-code"
+            />
+          </div>
+          {vdlInput && (
+            <p className={cn("text-[10px]", params.valid ? "text-primary" : "text-muted-foreground")}>
+              {params.valid ? `✓ ${displayVDL}` : 'Type a VDL description...'}
+            </p>
+          )}
+        </div>
+
+        {/* Caliber */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Caliber</Label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono-code text-foreground">{params.caliber}" ({params.caliberMM}mm)</span>
+              <span className="text-[9px] text-primary font-mono-code">
+                ≈{Math.round(params.caliber * 25.4 * 2.8)}m burst
+              </span>
+            </div>
+          </div>
+          <Slider
+            value={[params.caliber]}
+            onValueChange={([v]) => updateParam('caliber', v)}
+            min={1} max={12} step={0.5}
+            className="py-1"
+          />
+          <div className="flex justify-between text-[9px] text-muted-foreground">
+            <span>1"</span><span>6"</span><span>12"</span>
+          </div>
+        </div>
+
+        {/* Quick Angle Presets (Finale 3D) */}
+        <div className="space-y-1.5">
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Pitch Presets</Label>
+          <div className="flex flex-wrap gap-1">
+            {[
+              { label: '45°', value: 45, hint: 'Comet/Fan' },
+              { label: '60°', value: 60, hint: 'Cake' },
+              { label: '75°', value: 75, hint: 'Angled Shell' },
+              { label: '85°', value: 85, hint: 'Shell' },
+              { label: '90°', value: 90, hint: 'Mine/Vertical' },
+            ].map(preset => (
+              <Badge
+                key={preset.value}
+                variant="outline"
+                className={cn(
+                  "text-[9px] cursor-pointer",
+                  "hover:bg-primary/10 transition-colors"
+                )}
+                onClick={() => updateParam('height', preset.value)}
+                title={preset.hint}
+              >
+                {preset.label}
+              </Badge>
+            ))}
+          </div>
+        </div>
+
+        {/* Colors */}
+        <div className="space-y-1.5">
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Colors</Label>
+          <div className="flex flex-wrap gap-1">
+            {VDL_COLORS.map(({ name, hex }) => (
+              <button
+                key={name}
+                onClick={() => toggleColor(name, hex)}
+                className={cn(
+                  "w-5 h-5 rounded-full border-2 transition-transform",
+                  params.colorNames.includes(name)
+                    ? "border-foreground scale-110"
+                    : "border-transparent opacity-60 hover:opacity-100"
+                )}
+                style={{ backgroundColor: hex }}
+                title={name}
+              />
+            ))}
+          </div>
+          {params.colorNames.length > 0 && (
+            <p className="text-[10px] text-muted-foreground">
+              {params.colorNames.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join(', ')}
+            </p>
+          )}
+        </div>
+
+        {/* Color Transition */}
+        {params.colorNames.length >= 2 && (
+          <div className="space-y-1.5">
+            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+              <Palette className="w-3 h-3" /> Color Transition
+            </Label>
+            <div className="flex gap-1">
+              {(['none', 'to', 'changing', 'alternating'] as const).map(tr => (
+                <Badge
+                  key={tr}
+                  variant={params.colorTransition === tr ? 'default' : 'outline'}
+                  className={cn(
+                    "text-[9px] cursor-pointer capitalize",
+                    params.colorTransition === tr && "bg-primary text-primary-foreground"
+                  )}
+                  onClick={() => updateParam('colorTransition', tr)}
+                >
+                  {tr === 'none' ? 'Static' : tr === 'to' ? 'To →' : tr}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pistil Toggle */}
+        <div className="space-y-1.5 p-2 rounded-lg bg-surface-2/50 border border-border/20">
+          <div className="flex items-center justify-between">
+            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-accent" /> Pistil
+            </Label>
+            <Switch
+              checked={params.hasPistil}
+              onCheckedChange={(v) => updateParam('hasPistil', v)}
+            />
+          </div>
+          {params.hasPistil && (
+            <div className="space-y-1">
+              <Label className="text-[9px] text-muted-foreground">Pistil Color</Label>
+              <div className="flex flex-wrap gap-1">
+                {VDL_COLORS.slice(0, 12).map(({ name, hex }) => (
+                  <button
+                    key={name}
+                    onClick={() => updateParam('pistilColor', hex)}
+                    className={cn(
+                      "w-4 h-4 rounded-full border-2 transition-transform",
+                      params.pistilColor === hex
+                        ? "border-foreground scale-110"
+                        : "border-transparent opacity-50 hover:opacity-100"
+                    )}
+                    style={{ backgroundColor: hex }}
+                    title={name}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Multi-Break */}
+        {params.partType === 'shell' && (
+          <div className="space-y-1.5 p-2 rounded-lg bg-surface-2/50 border border-border/20">
+            <div className="flex items-center justify-between">
+              <Label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <Layers className="w-3 h-3 text-primary" /> Multi-Break
+              </Label>
+              <span className="text-xs font-mono-code text-foreground">{params.numSplits > 1 ? params.numSplits : 1}x</span>
+            </div>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4].map(n => (
+                <button
+                  key={n}
+                  onClick={() => updateParam('numSplits', n)}
+                  className={cn(
+                    "flex-1 py-1.5 rounded-lg text-[10px] font-semibold transition-all",
+                    params.numSplits === n
+                      ? "bg-primary/15 text-primary border border-primary/30"
+                      : "bg-surface-1 text-muted-foreground/60 border border-transparent hover:bg-surface-2"
+                  )}
+                >
+                  {n}x
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Falling Leaves */}
+        <div className="flex items-center justify-between p-2 rounded-lg bg-surface-2/50 border border-border/20">
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+            <Leaf className="w-3 h-3 text-green-500" /> Falling Leaves
+          </Label>
+          <Switch
+            checked={params.fallingLeaves}
+            onCheckedChange={(v) => updateParam('fallingLeaves', v)}
+          />
+        </div>
+
+        {/* Trail Type */}
+        <div className="space-y-1.5">
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Trail</Label>
+          <div className="flex flex-wrap gap-1">
+            {(['none', 'comet', 'glitter', 'brocade', 'charcoal'] as const).map(tr => (
+              <Badge
+                key={tr}
+                variant={params.trailType === tr ? 'default' : 'outline'}
+                className={cn(
+                  "text-[9px] cursor-pointer capitalize",
+                  params.trailType === tr && "bg-primary text-primary-foreground"
+                )}
+                onClick={() => updateParam('trailType', tr)}
+              >
+                {tr}
+              </Badge>
+            ))}
+          </div>
+        </div>
+
+        {/* Height */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Burst Height</Label>
+            <span className="text-xs font-mono-code text-foreground">{params.height}m</span>
+          </div>
+          <Slider
+            value={[params.height]}
+            onValueChange={([v]) => updateParam('height', v)}
+            min={10} max={300} step={5}
+          />
+        </div>
+
+        {/* Spread Angle */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Spread Angle</Label>
+            <span className="text-xs font-mono-code text-foreground">{params.spread}°</span>
+          </div>
+          <Slider
+            value={[params.spread]}
+            onValueChange={([v]) => updateParam('spread', v)}
+            min={5} max={180} step={5}
+          />
+        </div>
+
+        {/* Star Count */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Star Count</Label>
+            <span className="text-xs font-mono-code text-foreground">{params.starCount}</span>
+          </div>
+          <Slider
+            value={[params.starCount]}
+            onValueChange={([v]) => updateParam('starCount', v)}
+            min={1} max={500} step={5}
+          />
+        </div>
+
+        {/* Duration */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Duration</Label>
+            <span className="text-xs font-mono-code text-foreground">{params.duration}s</span>
+          </div>
+          <Slider
+            value={[params.duration]}
+            onValueChange={([v]) => updateParam('duration', Math.round(v * 10) / 10)}
+            min={0.5} max={15} step={0.1}
+          />
+        </div>
+
+        {/* Modifiers */}
+        <div className="space-y-1.5">
+          <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Modifiers</Label>
+          <div className="flex flex-wrap gap-1">
+            {['tail', 'glitter', 'strobe', 'crackle', 'pistil', 'twinkle', 'whistle', 'report'].map(mod => (
+              <Badge
+                key={mod}
+                variant={params.modifiers.includes(mod) ? 'default' : 'outline'}
+                className={cn(
+                  "text-[10px] cursor-pointer capitalize",
+                  params.modifiers.includes(mod) && "bg-primary text-primary-foreground"
+                )}
+                onClick={() => toggleModifier(mod)}
+              >
+                {mod}
+              </Badge>
+            ))}
+          </div>
+        </div>
+
+        {/* Preview Summary */}
+        <div className="bg-surface-2 rounded-sm p-2 space-y-1">
+          <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Summary</p>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
+            <span className="text-muted-foreground">VDL</span>
+            <span className="font-mono-code text-foreground truncate">{displayVDL || '—'}</span>
+            <span className="text-muted-foreground">Cost</span>
+            <span className="font-mono-code text-foreground">${params.cost}</span>
+            <span className="text-muted-foreground">Duration</span>
+            <span className="font-mono-code text-foreground">{params.duration}s</span>
+            <span className="text-muted-foreground">Stars</span>
+            <span className="font-mono-code text-foreground">{params.starCount}</span>
+            {params.hasPistil && (
+              <>
+                <span className="text-muted-foreground">Pistil</span>
+                <div className="flex items-center gap-1">
+                  <div className="w-2.5 h-2.5 rounded-full border border-border" style={{ backgroundColor: params.pistilColor }} />
+                  <span className="font-mono-code text-foreground text-[9px]">Yes</span>
+                </div>
+              </>
+            )}
+            {params.colorTransition !== 'none' && (
+              <>
+                <span className="text-muted-foreground">Transition</span>
+                <span className="font-mono-code text-foreground capitalize">{params.colorTransition}</span>
+              </>
+            )}
+            {params.fallingLeaves && (
+              <>
+                <span className="text-muted-foreground">Leaves</span>
+                <span className="font-mono-code text-foreground">🍂 Yes</span>
+              </>
+            )}
+          </div>
+          <div className="flex gap-1 mt-1">
+            {params.colors.map((c, i) => (
+              <div key={i} className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: c }} />
+            ))}
+            {params.hasPistil && (
+              <div className="w-4 h-4 rounded-full border-2 border-dashed border-muted-foreground/30" style={{ backgroundColor: params.pistilColor }} title="Pistil" />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Add Button */}
+      <div className="px-3 py-2 border-t border-border">
+        <Button
+          size="sm"
+          className="w-full h-7 text-xs gap-1.5"
+          onClick={handleAddToTimeline}
+        >
+          <Sparkles className="h-3 w-3" />
+          Add to Timeline
+        </Button>
+      </div>
+    </div>
+  );
+}

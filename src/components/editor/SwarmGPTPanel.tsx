@@ -1,0 +1,1177 @@
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { X, Sparkles, Loader2, Wand2, Film, Send, Music, Layers, RefreshCw, Eye, Trash2, ChevronDown, ChevronRight, Image, Upload, Video, Grid3X3 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type DroneFormation } from '@/types/projectTypes';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import {
+  extractVideoFrames, extractGifFrames, framesToChoreography,
+  isGifFile, isVideoFile, type ExtractedFrame, type FrameFormation,
+} from '@/lib/videoToFormation';
+import {
+  generateFormation,
+  FORMATION_PRESETS,
+  type FormationType,
+  type FormationConfig,
+} from '@/lib/formations';
+
+type Mode = 'presets' | 'single' | 'full-show' | 'music-sync' | 'image' | 'video';
+
+const QUICK_PROMPTS = [
+  { emoji: '🌀', label: 'Vórtex Cibernético', prompt: 'vortex cibernético com espirais logarítmicas' },
+  { emoji: '🦅', label: 'Fênix Renascendo', prompt: 'phoenix rising with spread wings and tail feathers' },
+  { emoji: '🇧🇷', label: 'Bandeira Brasil', prompt: 'bandeira do Brasil com losango amarelo e círculo azul' },
+  { emoji: '🧬', label: 'DNA Helix', prompt: 'DNA double helix rotating' },
+  { emoji: '🌌', label: 'Galáxia Espiral', prompt: 'spiral galaxy with 3 arms and dense core' },
+  { emoji: '💎', label: 'Diamante 3D', prompt: 'geodesic diamond with facets' },
+  { emoji: '🎵', label: 'Nota Musical', prompt: 'treble clef music note' },
+  { emoji: '🏛️', label: 'Coliseu', prompt: 'roman colosseum elliptical structure' },
+  { emoji: '🦋', label: 'Borboleta', prompt: 'butterfly with detailed symmetrical wings open wide' },
+  { emoji: '❤️', label: 'Coração Batendo', prompt: 'beating heart with pulsing scale animation' },
+  { emoji: '🐉', label: 'Dragão', prompt: 'chinese dragon serpentine body with head and claws' },
+  { emoji: '🌍', label: 'Globo Terrestre', prompt: 'earth globe with continents and meridians' },
+  { emoji: '⚡', label: 'Raio', prompt: 'lightning bolt zigzag with glow effect' },
+  { emoji: '🏆', label: 'Troféu', prompt: 'championship trophy cup with handles' },
+  { emoji: '🎸', label: 'Guitarra', prompt: 'electric guitar silhouette with neck and body' },
+  { emoji: '🕊️', label: 'Pomba da Paz', prompt: 'dove of peace with olive branch flying' },
+  { emoji: '❄️', label: 'Floco de Neve', prompt: 'snowflake with 6 fractal arms and branches' },
+  { emoji: '👑', label: 'Coroa', prompt: 'royal crown with 5 peaks and jewels' },
+];
+
+const SHOW_THEMES = [
+  { emoji: '🎆', label: 'Réveillon 2027', prompt: 'Réveillon celebration: countdown 3-2-1, champagne glass, firework burst, heart, 2027 text, stars finale' },
+  { emoji: '💒', label: 'Casamento', prompt: 'Wedding: bouquet, hearts, rings interlocked, dove pair, crown, fireworks finale' },
+  { emoji: '🎄', label: 'Natal', prompt: 'Christmas: star of Bethlehem, pine tree, bell, snowflake, gift box, peace angel' },
+  { emoji: '🚀', label: 'Espaço', prompt: 'Space odyssey: rocket launch, saturn rings, spiral galaxy, constellation, earth, infinity' },
+  { emoji: '🌿', label: 'Natureza', prompt: 'Nature evolution: seed sprout, fern leaf, butterfly, flower bloom, tree of life, earth globe' },
+  { emoji: '⚡', label: 'Tech Future', prompt: 'Technology: circuit chip, DNA helix, robot head, neural network, globe grid, infinity symbol' },
+  { emoji: '🎵', label: 'Musical', prompt: 'Music festival: treble clef, guitar, piano keys, vinyl record, equalizer waves, concert stage' },
+  { emoji: '⚽', label: 'Esporte', prompt: 'Sports celebration: soccer ball, trophy cup, torch flame, olympic rings, podium, firework' },
+  { emoji: '🎭', label: 'Arte & Cultura', prompt: 'Arts: theater masks, ballet dancer, paintbrush, musical note, mandala, star burst finale' },
+  { emoji: '🌅', label: 'Sustentabilidade', prompt: 'Sustainability: water drop, tree, wind turbine, solar panel, recycle symbol, earth' },
+  { emoji: '🌀', label: 'Grand Finale', prompt: 'Grand Finale (Ritmo Frenético): Caos controlado e volume máximo. Todos os 300 drones sobem à altitude máxima e iniciam descida em espiral (Vórtex), mudando de cor rapidamente (RGB Cycle). Pirotecnia densa: cakes, shells calibre 10-12, mines, gerbs e waterfall simultâneos. Finale com explosão radiante e chuva de fogos.' },
+];
+
+const TRAJECTORY_PRESETS = [
+  { emoji: '🌊', label: 'Ondulação', prompt: 'gentle wave oscillation building to stormy seas then calm' },
+  { emoji: '💓', label: 'Pulsação', prompt: 'heartbeat pulse rhythm: subtle then strong then fading' },
+  { emoji: '🌪️', label: 'Tornado', prompt: 'slow rotation accelerating into tornado then explosive scatter' },
+  { emoji: '🌸', label: 'Bloom', prompt: 'flower blooming open from center with petals unfolding' },
+  { emoji: '🎆', label: 'Fogos', prompt: 'firework burst: converge to center then explosive expand then rain down' },
+  { emoji: '🌌', label: 'Nebulosa', prompt: 'nebula shimmer with slow spiral and cascade color change' },
+];
+
+/* ── Normalize point count to match droneCount ───────────── */
+
+function normalizeDroneCount(pts: { x: number; z: number }[], target: number): { x: number; z: number }[] {
+  if (pts.length === 0) return [];
+  if (pts.length === target) return pts;
+  if (pts.length > target) return pts.slice(0, target);
+  const result = [...pts];
+  let i = 0;
+  while (result.length < target) {
+    const src = pts[i % pts.length];
+    result.push({ x: src.x + (Math.random() - 0.5) * 0.5, z: src.z + (Math.random() - 0.5) * 0.5 });
+    i++;
+  }
+  return result;
+}
+
+/* ── Map AI pyro type names to effect library IDs ──────── */
+
+function mapPyroType(type: string): string {
+  const map: Record<string, string> = {
+    shell: 'shell', mine: 'mine', comet: 'comet', cake: 'cake',
+    roman_candle: 'roman_candle', gerb: 'gerb', waterfall: 'waterfall',
+    fan: 'fan', flame: 'flame', cryo: 'cryo', salute: 'salute',
+    confetti: 'confetti', laser: 'laser', strobe: 'strobe',
+  };
+  return map[type] || 'shell';
+}
+
+/* ── Mini 2D Preview ──────────────────────────────────────── */
+
+function SparklineSVG({ data }: { data: number[] }) {
+  if (data.length < 2) return null;
+  const w = 80, h = 18;
+  const min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * (h - 2) - 1}`);
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="text-fxk-cyan" style={{ filter: 'drop-shadow(0 0 3px currentColor)' }}>
+      <path d={`M${pts.join(' L')}`} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/* ── Mini 2D Preview ──────────────────────────────────────── */
+
+function MiniPreview({ points }: { points: { x: number; z: number }[] }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || points.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const w = canvas.width, h = canvas.height, pad = 10;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = 'hsl(240 6% 6%)';
+    ctx.fillRect(0, 0, w, h);
+
+    // Grid
+    ctx.strokeStyle = 'hsl(240 4% 12%)';
+    ctx.lineWidth = 0.5;
+    for (let x = pad; x <= w - pad; x += 15) { ctx.beginPath(); ctx.moveTo(x, pad); ctx.lineTo(x, h - pad); ctx.stroke(); }
+    for (let y = pad; y <= h - pad; y += 15) { ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(w - pad, y); ctx.stroke(); }
+
+    let maxDist = 0;
+    for (const p of points) maxDist = Math.max(maxDist, Math.abs(p.x), Math.abs(p.z));
+    maxDist = Math.max(maxDist, 1);
+    const scale = Math.min(w - pad * 2, h - pad * 2) / (maxDist * 2.2);
+
+    for (const p of points) {
+      const px = w / 2 + p.x * scale;
+      const py = h / 2 + p.z * scale;
+      ctx.beginPath();
+      ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'hsl(207 90% 54%)';
+      ctx.fill();
+    }
+
+    ctx.fillStyle = 'hsl(240 5% 40%)';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${points.length}`, w - pad, h - 3);
+  }, [points]);
+
+  return <canvas ref={canvasRef} width={200} height={120} className="rounded-sm border border-border/50 w-full" />;
+}
+
+/* ── Main Panel ───────────────────────────────────────────── */
+
+export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
+  const [mode, setMode] = useState<Mode>('single');
+  const [prompt, setPrompt] = useState('');
+  const [droneCount, setDroneCount] = useState(300);
+  const [loading, setLoading] = useState(false);
+  const [loadingPhase, setLoadingPhase] = useState('');
+  const [progress, setProgress] = useState(0);
+  const [history, setHistory] = useState<{ prompt: string; result: string; time: string; points?: { x: number; z: number }[] }[]>([]);
+  const [musicSyncBPM, setMusicSyncBPM] = useState(120);
+  const [musicSyncBeats, setMusicSyncBeats] = useState(4);
+  const [lastGeneratedPoints, setLastGeneratedPoints] = useState<{ x: number; z: number }[]>([]);
+  const [showFormationList, setShowFormationList] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Video/GIF state
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [videoFrames, setVideoFrames] = useState<ExtractedFrame[]>([]);
+  const [videoFps, setVideoFps] = useState(4);
+  const [videoThreshold, setVideoThreshold] = useState(128);
+  const [videoInvert, setVideoInvert] = useState(false);
+  const [videoTransitionDur, setVideoTransitionDur] = useState(5);
+  const [videoHoldDur, setVideoHoldDur] = useState(3);
+  const [videoDetectionMode, setVideoDetectionMode] = useState<'threshold' | 'edge' | 'adaptive'>('threshold');
+  const [videoBlurRadius, setVideoBlurRadius] = useState(0);
+  const [videoContrast, setVideoContrast] = useState(1);
+  const [videoEdgeSensitivity, setVideoEdgeSensitivity] = useState(50);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
+  const addDroneFormation = useProjectStore((s) => s.addDroneFormation);
+  const addTimelineItem = useProjectStore((s) => s.addTimelineItem);
+  const droneFormations = useProjectStore((s) => s.droneFormations);
+  const bpm = useProjectStore((s) => s.bpm);
+  const setCurrentTime = useProjectStore((s) => s.setCurrentTime);
+  const setPlaying = useProjectStore((s) => s.setPlaying);
+  const clearAllFormations = useProjectStore((s) => s.clearAllFormations);
+  const selectFormation = useProjectStore((s) => s.selectFormation);
+  const selectedFormationId = useProjectStore((s) => s.selectedFormationId);
+  const removeDroneFormation = useProjectStore((s) => s.removeDroneFormation);
+  const duplicateDroneFormation = useProjectStore((s) => s.duplicateDroneFormation);
+  const reorderDroneFormation = useProjectStore((s) => s.reorderDroneFormation);
+  const recalculateFormationTimings = useProjectStore((s) => s.recalculateFormationTimings);
+  const updateDroneFormation = useProjectStore((s) => s.updateDroneFormation);
+
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Selecione uma imagem'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setImagePreview(dataUrl);
+      setImageBase64(dataUrl.split(',')[1]);
+      setMode('image');
+    };
+    reader.readAsDataURL(file);
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  }, []);
+
+  const generateFromImage = useCallback(async () => {
+    if (!imageBase64) return;
+    setLoading(true);
+    setLoadingPhase('Analisando imagem com IA...');
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-formation', {
+        body: { mode: 'image', prompt: prompt || 'Extract the main subject silhouette', droneCount, imageBase64 },
+      });
+      if (error) {
+        const errMsg = (data as any)?.error || error.message || String(error);
+        throw new Error(errMsg.includes('402') ? '402' : errMsg.includes('429') ? '429' : errMsg);
+      }
+      if (data?.error) throw new Error(data.error);
+
+      const rawPts = (data.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+      const pts = normalizeDroneCount(rawPts, droneCount);
+      setLastGeneratedPoints(pts);
+
+      const lastTime = droneFormations.length > 0
+        ? droneFormations[droneFormations.length - 1].startTime + droneFormations[droneFormations.length - 1].transitionDuration + droneFormations[droneFormations.length - 1].holdDuration
+        : 0;
+
+      addDroneFormation({
+        id: `img-${Date.now()}`,
+        formationType: 'image-traced',
+        droneCount,
+        height: data.suggestedHeight || 30,
+        radius: 20,
+        spacing: 2,
+        rotation: 0,
+        startTime: lastTime,
+        transitionDuration: data.suggestedTransitionTime || 15,
+        holdDuration: 20,
+        color: '#00E5FF',
+        points: pts,
+      });
+      setCurrentTime(lastTime);
+      setHistory(prev => [{ prompt: '📷 Image', result: `${data.formationName} · ${pts.length} drones`, time: new Date().toLocaleTimeString(), points: pts }, ...prev.slice(0, 9)]);
+      toast.success(`"${data.formationName}" gerada da imagem`, { description: `${pts.length} drones` });
+    } catch (e: any) {
+      handleError(e);
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+    }
+  }, [imageBase64, prompt, droneCount, droneFormations, addDroneFormation, setCurrentTime]);
+
+  // ── Video/GIF Handlers ──────────────────────────────────────
+
+  const handleVideoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!isVideoFile(file) && !isGifFile(file)) {
+      toast.error('Formato não suportado', { description: 'Use MP4, WebM, MOV ou GIF' });
+      return;
+    }
+    setVideoFile(file);
+    setVideoPreviewUrl(URL.createObjectURL(file));
+    setMode('video');
+    setVideoFrames([]);
+
+    setLoading(true);
+    try {
+      const extractor = isGifFile(file) ? extractGifFrames : extractVideoFrames;
+      const frames = await extractor(file, {
+        fps: videoFps,
+        maxFrames: 60,
+        resolution: 128,
+        onProgress: (p, phase) => {
+          setProgress(Math.round(p * 100));
+          setLoadingPhase(phase);
+        },
+      });
+      setVideoFrames(frames);
+      toast.success(`${frames.length} frames extraídos`, { description: `${isGifFile(file) ? 'GIF' : 'Vídeo'} processado` });
+    } catch (err: any) {
+      toast.error('Erro ao extrair frames', { description: err.message });
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+      setProgress(0);
+    }
+    if (videoInputRef.current) videoInputRef.current.value = '';
+  }, [videoFps]);
+
+  const generateFromVideo = useCallback(async () => {
+    if (videoFrames.length === 0) return;
+    setLoading(true);
+    setLoadingPhase('Convertendo frames em formações...');
+
+    try {
+      const choreography = await framesToChoreography(videoFrames, {
+        droneCount,
+        radius: Math.max(15, Math.sqrt(droneCount) * 2.2),
+        threshold: videoThreshold,
+        invertDetection: videoInvert,
+        detectionMode: videoDetectionMode,
+        blurRadius: videoBlurRadius,
+        contrastBoost: videoContrast,
+        edgeSensitivity: videoEdgeSensitivity,
+        holdDuration: videoHoldDur,
+        transitionDuration: videoTransitionDur,
+        height: 30,
+        color: '#00E5FF',
+        onProgress: (p) => {
+          setProgress(Math.round(p * 100));
+          setLoadingPhase(`Gerando formação ${Math.round(p * videoFrames.length)}/${videoFrames.length}`);
+        },
+      });
+
+      let time = droneFormations.length > 0
+        ? droneFormations[droneFormations.length - 1].startTime + droneFormations[droneFormations.length - 1].transitionDuration + droneFormations[droneFormations.length - 1].holdDuration
+        : 0;
+
+      for (const ff of choreography) {
+        addDroneFormation({
+          id: `vid-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          formationType: 'video-traced',
+          droneCount,
+          height: 30,
+          radius: 20,
+          spacing: 2,
+          rotation: 0,
+          startTime: time,
+          transitionDuration: videoTransitionDur,
+          holdDuration: videoHoldDur,
+          color: '#00E5FF',
+          points: ff.points,
+        });
+        time += videoTransitionDur + videoHoldDur;
+      }
+
+      setCurrentTime(0);
+      setLastGeneratedPoints(choreography[0]?.points || []);
+      const totalDur = choreography.length * (videoTransitionDur + videoHoldDur);
+      setHistory(prev => [{
+        prompt: `🎬 ${videoFile?.name || 'Video'}`,
+        result: `${choreography.length} formações · ${droneCount} drones · ${totalDur.toFixed(0)}s`,
+        time: new Date().toLocaleTimeString(),
+        points: choreography[0]?.points || [],
+      }, ...prev.slice(0, 9)]);
+      toast.success(`Coreografia gerada do vídeo!`, {
+        description: `${choreography.length} formações · ${totalDur.toFixed(0)}s de show`,
+      });
+    } catch (err: any) {
+      toast.error('Erro ao gerar coreografia', { description: err.message });
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+      setProgress(0);
+    }
+  }, [videoFrames, droneCount, videoThreshold, videoInvert, videoHoldDur, videoTransitionDur, videoDetectionMode, videoBlurRadius, videoContrast, videoEdgeSensitivity, droneFormations, addDroneFormation, setCurrentTime, videoFile]);
+
+  const generateSingle = useCallback(async () => {
+    if (!prompt.trim()) return;
+    setLoading(true);
+    setLoadingPhase('Interpretando forma com IA...');
+    try {
+      const lastFormation = droneFormations.length > 0 ? droneFormations[droneFormations.length - 1] : null;
+      const { data, error } = await supabase.functions.invoke('generate-formation', {
+        body: { mode: 'text', prompt, droneCount, previousFormation: lastFormation?.points?.slice(0, droneCount) },
+      });
+      if (error) {
+        const errMsg = (data as any)?.error || error.message || String(error);
+        throw new Error(errMsg.includes('402') || errMsg.includes('Créditos') ? '402' : errMsg.includes('429') ? '429' : errMsg);
+      }
+      if (data?.error) throw new Error(data.error);
+
+      const rawPts = (data.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+      const pts = normalizeDroneCount(rawPts, droneCount);
+      setLastGeneratedPoints(pts);
+
+      const lastTime = droneFormations.length > 0
+        ? droneFormations[droneFormations.length - 1].startTime + droneFormations[droneFormations.length - 1].transitionDuration + droneFormations[droneFormations.length - 1].holdDuration
+        : 0;
+
+      addDroneFormation({
+        id: `swarm-${Date.now()}`,
+        formationType: 'ai-generated',
+        droneCount,
+        height: data.suggestedHeight || 30,
+        radius: 20,
+        spacing: 2,
+        rotation: 0,
+        startTime: lastTime,
+        transitionDuration: data.suggestedTransitionTime || 12,
+        holdDuration: 15,
+        color: '#00E5FF',
+        points: pts,
+      });
+
+      setCurrentTime(lastTime);
+
+      setHistory(prev => [{ prompt, result: `${data.formationName} · ${pts.length} drones`, time: new Date().toLocaleTimeString(), points: pts }, ...prev.slice(0, 9)]);
+      toast.success(`"${data.formationName}" gerada`, { description: `${pts.length} drones · ${data.model || 'AI'}` });
+    } catch (e: any) {
+      handleError(e);
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+    }
+  }, [prompt, droneCount, droneFormations, addDroneFormation, setCurrentTime]);
+
+  const generateFullShow = useCallback(async () => {
+    if (!prompt.trim()) return;
+    setLoading(true);
+    setLoadingPhase('Desenhando show completo...');
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-formation', {
+        body: { generateFullShow: true, prompt, droneCount },
+      });
+      if (error) {
+        const errMsg = (data as any)?.error || error.message || String(error);
+        throw new Error(errMsg);
+      }
+      if (data?.error) throw new Error(data.error);
+
+      let time = 0;
+      const allPts: { x: number; z: number }[] = [];
+      let pyroCount = 0;
+      (data.formations || []).forEach((f: any) => {
+        const rawPts = (f.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+        const pts = normalizeDroneCount(rawPts, droneCount);
+        if (allPts.length === 0) allPts.push(...pts);
+        addDroneFormation({
+          id: `show-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          formationType: 'ai-generated',
+          droneCount,
+          height: f.height || 30,
+          radius: 20,
+          spacing: 2,
+          rotation: 0,
+          startTime: time,
+          transitionDuration: f.transitionDuration || 12,
+          holdDuration: f.holdDuration || 15,
+          color: f.color || '#00E5FF',
+          endColor: f.endColor,
+          colorTransition: f.colorTransition || 'linear',
+          points: pts,
+        });
+
+        // Insert pyro cues as timeline items
+        const holdStart = time + (f.transitionDuration || 12);
+        if (f.pyroCues && Array.isArray(f.pyroCues)) {
+          f.pyroCues.forEach((cue: any) => {
+            const pyroType = mapPyroType(cue.type);
+            const effectId = pyroType; // matches effect library IDs
+            for (let d = 0; d < (cue.count || 1); d++) {
+              const spread = d * 3;
+              addTimelineItem({
+                id: `pyro-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                effectId,
+                startTime: holdStart + (cue.fireTime || 0) + d * 0.15,
+                trackIndex: 1 + (d % 3),
+                position: {
+                  x: (cue.positionX || 0) + (d % 2 === 0 ? spread : -spread),
+                  y: 0,
+                  z: (cue.positionZ || 0),
+                },
+              });
+              pyroCount++;
+            }
+          });
+        }
+
+        time += (f.transitionDuration || 12) + (f.holdDuration || 15);
+      });
+
+      setLastGeneratedPoints(allPts);
+      setCurrentTime(0);
+      setHistory(prev => [{ prompt, result: `Show "${data.showName}" · ${data.formations?.length || 0} formações · ${pyroCount} fogos`, time: new Date().toLocaleTimeString(), points: allPts }, ...prev.slice(0, 9)]);
+      if (data.fallback) {
+        toast.warning(`Show gerado em modo local (sem IA)`, { description: `${data.formations?.length || 0} formações · ${pyroCount} fogos pirotécnicos`, duration: 8000 });
+      } else {
+        toast.success(`Show "${data.showName}" gerado!`, { description: `${data.formations?.length || 0} formações · ${pyroCount} fogos · ${data.totalDuration}s` });
+      }
+    } catch (e: any) {
+      handleError(e);
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+    }
+  }, [prompt, droneCount, addDroneFormation, addTimelineItem, setCurrentTime]);
+
+  const generateMusicSync = useCallback(async () => {
+    if (!prompt.trim()) return;
+    setLoading(true);
+    setLoadingPhase('Sincronizando com música...');
+    try {
+      const effectiveBPM = bpm || musicSyncBPM;
+      const beatDuration = 60 / effectiveBPM;
+      const enhancedPrompt = `${prompt}. Sync to music at ${effectiveBPM} BPM. Create formations that change every ${musicSyncBeats} beats (${(beatDuration * musicSyncBeats).toFixed(1)}s). Use transitions timed to musical phrases.`;
+      
+      const { data, error } = await supabase.functions.invoke('generate-formation', {
+        body: { generateFullShow: true, prompt: enhancedPrompt, droneCount },
+      });
+      if (error) {
+        const errMsg = (data as any)?.error || error.message || String(error);
+        throw new Error(errMsg);
+      }
+      if (data?.error) throw new Error(data.error);
+
+      let time = 0;
+      let pyroCount = 0;
+      (data.formations || []).forEach((f: any) => {
+        const rawPts = (f.points || []).map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
+        const pts = normalizeDroneCount(rawPts, droneCount);
+        const quantizedTransition = Math.round((f.transitionDuration || 8) / beatDuration) * beatDuration;
+        const quantizedHold = Math.round((f.holdDuration || 12) / beatDuration) * beatDuration;
+        
+        addDroneFormation({
+          id: `music-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          formationType: 'ai-generated',
+          droneCount,
+          height: f.height || 30,
+          radius: 20,
+          spacing: 2,
+          rotation: 0,
+          startTime: time,
+          transitionDuration: quantizedTransition,
+          holdDuration: quantizedHold,
+          color: f.color || '#00E5FF',
+          endColor: f.endColor,
+          colorTransition: f.colorTransition || 'pulse',
+          points: pts,
+        });
+
+        // Insert pyro cues quantized to beats
+        const holdStart = time + quantizedTransition;
+        if (f.pyroCues && Array.isArray(f.pyroCues)) {
+          f.pyroCues.forEach((cue: any) => {
+            const quantizedFire = Math.round((cue.fireTime || 0) / beatDuration) * beatDuration;
+            const pyroType = mapPyroType(cue.type);
+            for (let d = 0; d < (cue.count || 1); d++) {
+              addTimelineItem({
+                id: `pyro-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                effectId: pyroType,
+                startTime: holdStart + quantizedFire + d * 0.15,
+                trackIndex: 1 + (d % 3),
+                position: {
+                  x: (cue.positionX || 0) + (d % 2 === 0 ? d * 3 : -d * 3),
+                  y: 0,
+                  z: (cue.positionZ || 0),
+                },
+              });
+              pyroCount++;
+            }
+          });
+        }
+
+        time += quantizedTransition + quantizedHold;
+      });
+
+      setCurrentTime(0);
+      toast.success(`Show musical gerado!`, { description: `${effectiveBPM} BPM · ${data.formations?.length || 0} formações · ${pyroCount} fogos` });
+    } catch (e: any) {
+      handleError(e);
+    } finally {
+      setLoading(false);
+      setLoadingPhase('');
+    }
+  }, [prompt, droneCount, bpm, musicSyncBPM, musicSyncBeats, addDroneFormation, addTimelineItem, setCurrentTime]);
+
+  const handleError = (e: any) => {
+    const msg = e.message || 'Erro';
+    if (msg.includes('429')) toast.error('Rate limit', { description: 'Aguarde e tente novamente.' });
+    else if (msg.includes('402')) toast.error('Créditos esgotados');
+    else toast.error(msg);
+  };
+
+  const handleGenerate = () => {
+    if (mode === 'full-show') generateFullShow();
+    else if (mode === 'music-sync') generateMusicSync();
+    else if (mode === 'image') generateFromImage();
+    else if (mode === 'video') generateFromVideo();
+    else generateSingle();
+  };
+
+  const handlePreview = () => {
+    if (droneFormations.length > 0) {
+      setCurrentTime(0);
+      setPlaying(true);
+    }
+  };
+
+  const quickList = mode === 'full-show' ? SHOW_THEMES : QUICK_PROMPTS;
+
+  return (
+    <div className="h-full flex flex-col border-l" style={{ background: 'hsl(165 8% 4%)', borderColor: 'hsl(165 20% 15%)' }}>
+      {/* Header — SWARM OPS 2.0 */}
+      <div className="flex items-center justify-between p-2" style={{
+        background: 'linear-gradient(135deg, hsl(165 15% 7%) 0%, hsl(165 8% 4%) 100%)',
+        borderBottom: '2px solid hsl(165 80% 30%)',
+      }}>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded flex items-center justify-center font-black text-white text-[8px]"
+            style={{ background: 'linear-gradient(135deg, hsl(165 100% 42%), hsl(165 80% 28%))' }}>
+            SW
+          </div>
+          <div>
+            <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: 'hsl(165 80% 55%)' }}>
+              FXK-DRONES
+            </span>
+            <div className="text-[7px] font-mono tracking-wider" style={{ color: 'hsl(165 30% 35%)' }}>
+              SWARM OPS 2.0 · AI FORMATION
+            </div>
+          </div>
+        </div>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Mode tabs */}
+      <div className="flex border-b border-border">
+        {([
+          { id: 'presets' as Mode, label: 'Presets', icon: Grid3X3 },
+          { id: 'single' as Mode, label: 'IA', icon: Wand2 },
+          { id: 'full-show' as Mode, label: 'Show', icon: Film },
+          { id: 'image' as Mode, label: 'Imagem', icon: Image },
+          { id: 'video' as Mode, label: 'Vídeo', icon: Video },
+          { id: 'music-sync' as Mode, label: 'Music', icon: Music },
+        ]).map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setMode(id)}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1 py-1.5 text-[8px] font-bold uppercase tracking-wider transition-colors font-mono",
+              mode === id ? "border-b-2 bg-teal-500/8" : "text-muted-foreground hover:text-foreground"
+            )}
+            style={mode === id ? { color: 'hsl(165 80% 55%)', borderColor: 'hsl(165 100% 42%)' } : undefined}
+          >
+            <Icon className="w-3 h-3" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+        {/* Drone count */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Drones</span>
+            <span className="text-[10px] font-mono-code text-foreground">{droneCount}</span>
+          </div>
+          <Slider value={[droneCount]} onValueChange={([v]) => setDroneCount(v)} min={50} max={2000} step={10} />
+        </div>
+
+        {/* ── Presets mode: geometric shapes ────────────────── */}
+        {mode === 'presets' && (
+          <div className="space-y-2">
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Formas Geométricas</span>
+            <div className="grid grid-cols-2 gap-1">
+              {FORMATION_PRESETS.map((preset) => (
+                <button
+                  key={preset.type}
+                  onClick={() => {
+                    const config: FormationConfig = { type: preset.type, count: droneCount, radius: Math.max(10, Math.sqrt(droneCount) * 1.5), spacing: 2, rotation: 0 };
+                    const pts = generateFormation(config);
+                    const lastTime = droneFormations.length > 0
+                      ? droneFormations[droneFormations.length - 1].startTime + droneFormations[droneFormations.length - 1].transitionDuration + droneFormations[droneFormations.length - 1].holdDuration
+                      : 0;
+                    addDroneFormation({
+                      id: `preset-${Date.now()}`,
+                      formationType: preset.type,
+                      droneCount,
+                      height: 30,
+                      radius: config.radius,
+                      spacing: 2,
+                      rotation: 0,
+                      startTime: lastTime,
+                      transitionDuration: 12,
+                      holdDuration: 15,
+                      color: '#00E5FF',
+                      points: pts.map(p => ({ x: p.x, z: p.z })),
+                    });
+                    setCurrentTime(lastTime);
+                    setLastGeneratedPoints(pts);
+                    toast.success(`${preset.label} adicionada`, { description: `${pts.length} drones` });
+                  }}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2 py-1.5 rounded-sm text-[9px] text-left transition-colors border",
+                    "border-border/50 bg-surface-2 hover:bg-surface-3 text-foreground hover:border-primary/30"
+                  )}
+                >
+                  <span className="text-sm">{preset.icon}</span>
+                  <span className="truncate">{preset.label}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[8px] text-muted-foreground">
+              💡 Para parâmetros detalhados (raio, rotação, cor), use o Formation Builder (botão + na toolbar).
+            </p>
+          </div>
+        )}
+
+        {/* Music sync options */}
+        {mode === 'music-sync' && (
+          <div className="space-y-1.5 p-2 rounded-sm border border-primary/20 bg-primary/5">
+            <div className="flex items-center gap-1">
+              <Music className="w-3 h-3 text-primary" />
+              <span className="text-[9px] font-semibold text-primary uppercase">Sincronização Musical</span>
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] text-muted-foreground">BPM</span>
+                <span className="text-[10px] font-mono-code">{bpm || musicSyncBPM}</span>
+              </div>
+              {!bpm && (
+                <Slider value={[musicSyncBPM]} onValueChange={([v]) => setMusicSyncBPM(v)} min={60} max={200} step={1} />
+              )}
+              {bpm && <p className="text-[8px] text-primary">✓ BPM detectado do áudio</p>}
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] text-muted-foreground">Beats por formação</span>
+                <span className="text-[10px] font-mono-code">{musicSyncBeats}</span>
+              </div>
+              <Slider value={[musicSyncBeats]} onValueChange={([v]) => setMusicSyncBeats(v)} min={2} max={16} step={1} />
+            </div>
+          </div>
+        )}
+
+        {/* Image upload section */}
+        {mode === 'image' && (
+          <div className="space-y-1.5 p-2 rounded-sm border border-primary/20 bg-primary/5">
+            <div className="flex items-center gap-1">
+              <Image className="w-3 h-3 text-primary" />
+              <span className="text-[9px] font-semibold text-primary uppercase">Imagem → Formação</span>
+            </div>
+            <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+            {imagePreview ? (
+              <div className="relative">
+                <img src={imagePreview} alt="Preview" className="w-full h-28 object-contain rounded border border-border/30 bg-black/50" />
+                <button
+                  onClick={() => { setImagePreview(null); setImageBase64(null); }}
+                  className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/60 flex items-center justify-center text-white/80 hover:text-white"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => imageInputRef.current?.click()}
+                className="w-full h-24 rounded border-2 border-dashed border-primary/30 flex flex-col items-center justify-center gap-1 hover:border-primary/50 transition-colors"
+              >
+                <Upload className="w-5 h-5 text-primary/50" />
+                <span className="text-[8px] text-primary/70">Arraste ou clique para enviar</span>
+                <span className="text-[7px] text-muted-foreground">PNG, JPG, SVG — logos, silhuetas, formas</span>
+              </button>
+            )}
+            <p className="text-[7px] text-muted-foreground">A IA extrairá a silhueta principal e posicionará os drones</p>
+          </div>
+        )}
+
+        {/* Video/GIF upload section */}
+        {mode === 'video' && (
+          <div className="space-y-2 p-2 rounded-sm border border-primary/20 bg-primary/5">
+            <div className="flex items-center gap-1">
+              <Video className="w-3 h-3 text-primary" />
+              <span className="text-[9px] font-semibold text-primary uppercase">Vídeo/GIF → Coreografia</span>
+            </div>
+            <input ref={videoInputRef} type="file" accept="video/*,image/gif" onChange={handleVideoUpload} className="hidden" />
+            
+            {videoPreviewUrl && videoFile ? (
+              <div className="relative">
+                {isGifFile(videoFile) ? (
+                  <img src={videoPreviewUrl} alt="GIF Preview" className="w-full h-28 object-contain rounded border border-border/30 bg-black/50" />
+                ) : (
+                  <video src={videoPreviewUrl} className="w-full h-28 object-contain rounded border border-border/30 bg-black/50" muted loop autoPlay playsInline />
+                )}
+                <button
+                  onClick={() => { setVideoFile(null); setVideoPreviewUrl(null); setVideoFrames([]); }}
+                  className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/60 flex items-center justify-center text-white/80 hover:text-white"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+                <div className="absolute bottom-1 left-1 bg-black/70 px-1.5 py-0.5 rounded text-[7px] text-white/80 font-mono">
+                  {videoFrames.length} frames
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => videoInputRef.current?.click()}
+                className="w-full h-24 rounded border-2 border-dashed border-primary/30 flex flex-col items-center justify-center gap-1 hover:border-primary/50 transition-colors"
+              >
+                <Video className="w-5 h-5 text-primary/50" />
+                <span className="text-[8px] text-primary/70">Envie um vídeo ou GIF</span>
+                <span className="text-[7px] text-muted-foreground">MP4, WebM, MOV, GIF — cada frame vira uma formação</span>
+              </button>
+            )}
+
+            {/* Frame thumbnails */}
+            {videoFrames.length > 0 && (
+              <div className="space-y-1">
+                <span className="text-[8px] text-muted-foreground font-semibold">Frames Extraídos ({videoFrames.length})</span>
+                <div className="flex gap-0.5 overflow-x-auto pb-1">
+                  {videoFrames.slice(0, 20).map((f, i) => (
+                    <img key={i} src={f.thumbnail} alt={`Frame ${i}`} className="w-8 h-8 rounded-sm border border-border/30 flex-shrink-0 object-cover" />
+                  ))}
+                  {videoFrames.length > 20 && (
+                    <div className="w-8 h-8 rounded-sm border border-border/30 flex-shrink-0 flex items-center justify-center bg-surface-2 text-[7px] text-muted-foreground">
+                      +{videoFrames.length - 20}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Settings */}
+            <div className="space-y-1.5">
+              {/* Detection mode selector */}
+              <div className="space-y-1">
+                <span className="text-[8px] text-muted-foreground font-semibold">Modo de Detecção</span>
+                <div className="grid grid-cols-3 gap-0.5">
+                  {([
+                    { id: 'threshold' as const, label: 'Threshold', emoji: '◐' },
+                    { id: 'edge' as const, label: 'Bordas', emoji: '▢' },
+                    { id: 'adaptive' as const, label: 'Adaptativo', emoji: '◑' },
+                  ]).map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => setVideoDetectionMode(m.id)}
+                      className={cn(
+                        "text-[7px] py-1 rounded border transition-colors",
+                        videoDetectionMode === m.id
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border/50 bg-surface-2 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {m.emoji} {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">FPS extração</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoFps}</span>
+              </div>
+              <Slider value={[videoFps]} onValueChange={([v]) => setVideoFps(v)} min={1} max={15} step={1} />
+
+              {/* Blur */}
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">Blur (suavização)</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoBlurRadius}px</span>
+              </div>
+              <Slider value={[videoBlurRadius]} onValueChange={([v]) => setVideoBlurRadius(v)} min={0} max={8} step={1} />
+
+              {/* Contrast */}
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">Contraste</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoContrast.toFixed(1)}x</span>
+              </div>
+              <Slider value={[videoContrast]} onValueChange={([v]) => setVideoContrast(v)} min={0.5} max={4} step={0.1} />
+
+              {/* Mode-specific controls */}
+              {videoDetectionMode === 'threshold' && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[8px] text-muted-foreground">Threshold (brilho)</span>
+                    <span className="text-[9px] font-mono-code text-foreground">{videoThreshold}</span>
+                  </div>
+                  <Slider value={[videoThreshold]} onValueChange={([v]) => setVideoThreshold(v)} min={30} max={230} step={5} />
+                </>
+              )}
+
+              {videoDetectionMode === 'edge' && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[8px] text-muted-foreground">Sensibilidade bordas</span>
+                    <span className="text-[9px] font-mono-code text-foreground">{videoEdgeSensitivity}%</span>
+                  </div>
+                  <Slider value={[videoEdgeSensitivity]} onValueChange={([v]) => setVideoEdgeSensitivity(v)} min={5} max={100} step={5} />
+                </>
+              )}
+
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">Transição (s)</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoTransitionDur}s</span>
+              </div>
+              <Slider value={[videoTransitionDur]} onValueChange={([v]) => setVideoTransitionDur(v)} min={1} max={20} step={0.5} />
+
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-muted-foreground">Hold (s)</span>
+                <span className="text-[9px] font-mono-code text-foreground">{videoHoldDur}s</span>
+              </div>
+              <Slider value={[videoHoldDur]} onValueChange={([v]) => setVideoHoldDur(v)} min={1} max={15} step={0.5} />
+
+              {videoDetectionMode !== 'adaptive' && (
+                <button
+                  onClick={() => setVideoInvert(!videoInvert)}
+                  className={cn(
+                    "w-full text-[8px] py-1 rounded border transition-colors",
+                    videoInvert ? "border-primary/40 bg-primary/10 text-primary" : "border-border/50 bg-surface-2 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {videoInvert ? '✓ Detectar pixels claros' : 'Detectar pixels escuros'}
+                </button>
+              )}
+            </div>
+
+            <p className="text-[7px] text-muted-foreground">
+              <strong>Threshold:</strong> corte por brilho · <strong>Bordas:</strong> detecta contornos (Sobel) · <strong>Adaptativo:</strong> auto-ajuste local
+            </p>
+          </div>
+        )}
+
+        {/* Quick prompts */}
+        {mode !== 'video' && mode !== 'presets' && <div className="space-y-1">
+          <span className="text-[9px] font-mono font-bold uppercase tracking-[0.15em]" style={{ color: 'hsl(165 50% 45%)' }}>
+            {mode === 'full-show' ? 'MISSION THEMES' : mode === 'music-sync' ? 'SYNC PROFILES' : 'QUICK DEPLOY'}
+          </span>
+          <div className="grid grid-cols-2 gap-1">
+            {quickList.map((q) => (
+              <button
+                key={q.label}
+                onClick={() => setPrompt(q.prompt)}
+                disabled={loading}
+                className={cn(
+                  "flex items-center gap-1 px-1.5 py-1 rounded-sm text-[8px] text-left transition-colors border font-mono",
+                  prompt === q.prompt
+                    ? "border-teal-500/40 bg-teal-500/10 text-teal-300"
+                    : "border-teal-500/10 bg-surface-2 hover:bg-surface-3 text-muted-foreground hover:text-foreground hover:border-teal-500/20"
+                )}
+              >
+                <span className="text-sm">{q.emoji}</span>
+                <span className="truncate uppercase tracking-wider">{q.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>}
+
+        {/* Prompt input */}
+        {mode !== 'video' && mode !== 'presets' && <div className="space-y-1">
+          <span className="text-[7px] font-mono font-bold uppercase tracking-[0.2em]" style={{ color: 'hsl(165 50% 40%)' }}>MISSION BRIEF</span>
+          <Textarea
+            placeholder={
+              mode === 'full-show' ? "Descreva o tema do show completo..."
+              : mode === 'music-sync' ? "Descreva o estilo visual sincronizado com a música..."
+              : mode === 'image' ? "(Opcional) Descreva o que extrair da imagem..."
+              : "Descreva a formação..."
+            }
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !loading) {
+                e.preventDefault();
+                handleGenerate();
+              }
+            }}
+            className="h-16 text-[10px] bg-surface-2 resize-none font-mono"
+            style={{ borderColor: 'hsl(165 30% 20%)' }}
+          />
+        </div>}
+
+        {/* Generate + Preview buttons */}
+        {mode !== 'presets' && <div className="flex gap-1">
+          <Button
+            onClick={handleGenerate}
+            disabled={loading || (mode === 'video' ? videoFrames.length === 0 : mode === 'image' ? !imageBase64 : !prompt.trim())}
+            className="flex-1 h-8 text-[10px] gap-1 font-mono font-bold uppercase tracking-wider"
+            size="sm"
+            style={{ background: loading ? 'hsl(165 30% 15%)' : 'hsl(165 50% 25%)', color: 'hsl(165 100% 80%)' }}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'hsl(165 100% 50%)' }} />
+                COMPUTING TRAJECTORIES...
+              </>
+            ) : (
+              <>
+                <Send className="w-3 h-3" />
+                {mode === 'full-show' ? 'DEPLOY SHOW' : mode === 'music-sync' ? 'SYNC DEPLOY' : mode === 'image' ? 'IMAGE TRACE' : mode === 'video' ? 'VIDEO TRACE' : 'DEPLOY'} ({droneCount})
+              </>
+            )}
+          </Button>
+          {droneFormations.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={handlePreview}
+              title="Preview show"
+            >
+              <Eye className="w-3 h-3" />
+            </Button>
+          )}
+        </div>}
+        {mode !== 'presets' && <p className="text-[8px] text-muted-foreground">Ctrl+Enter para gerar</p>}
+
+        {/* 2D Preview of last generation */}
+        {lastGeneratedPoints.length > 0 && (
+          <div className="space-y-1">
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Última Geração</span>
+            <MiniPreview points={lastGeneratedPoints} />
+          </div>
+        )}
+
+        {/* ═══ Formation Manager ═══ */}
+        {droneFormations.length > 0 && (
+          <div className="border border-border/50 rounded-sm bg-surface-1/50">
+            {/* Header */}
+            <button
+              onClick={() => setShowFormationList(!showFormationList)}
+              className="w-full flex items-center gap-1.5 px-2 py-1.5 hover:bg-surface-2/50 transition-colors"
+            >
+              {showFormationList ? <ChevronDown className="w-3 h-3 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 text-muted-foreground" />}
+              <Layers className="w-3 h-3 text-primary" />
+              <span className="text-[9px] font-bold text-foreground uppercase tracking-wider flex-1 text-left">
+                Coreografia ({droneFormations.length})
+              </span>
+              <span className="text-[8px] font-mono text-muted-foreground">
+                {droneFormations.reduce((s, f) => s + f.transitionDuration + f.holdDuration, 0).toFixed(0)}s
+              </span>
+            </button>
+
+            {showFormationList && (
+              <div className="border-t border-border/30">
+                {/* Actions bar */}
+                <div className="flex items-center gap-1 px-2 py-1 border-b border-border/20">
+                  <button
+                    onClick={() => { recalculateFormationTimings(); toast.success('Tempos recalculados'); }}
+                    className="text-[7px] text-muted-foreground hover:text-primary px-1.5 py-0.5 rounded hover:bg-primary/10 transition-colors"
+                  >
+                    ⏱ Re-sync
+                  </button>
+                  <button
+                    onClick={handlePreview}
+                    className="text-[7px] text-muted-foreground hover:text-primary px-1.5 py-0.5 rounded hover:bg-primary/10 transition-colors"
+                  >
+                    ▶ Preview
+                  </button>
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => { clearAllFormations(); toast.success('Formações limpas'); }}
+                    className="text-[7px] text-muted-foreground hover:text-destructive px-1.5 py-0.5 rounded hover:bg-destructive/10 transition-colors"
+                  >
+                    🗑 Clear All
+                  </button>
+                </div>
+
+                {/* Formation list */}
+                <div className="max-h-[250px] overflow-y-auto">
+                  {droneFormations.map((f, idx) => {
+                    const endTime = f.startTime + f.transitionDuration + f.holdDuration;
+                    const isSelected = selectedFormationId === f.id;
+
+                    return (
+                      <div
+                        key={f.id}
+                        onClick={() => { selectFormation(f.id); setCurrentTime(f.startTime); }}
+                        className={cn(
+                          "group flex items-center gap-1 px-2 py-1 border-b border-border/10 cursor-pointer transition-colors",
+                          isSelected ? "bg-primary/10" : "hover:bg-surface-2/50"
+                        )}
+                      >
+                        {/* Index badge */}
+                        <div
+                          className="w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold flex-shrink-0"
+                          style={{ backgroundColor: f.color + '33', color: f.color }}
+                        >
+                          {idx + 1}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[8px] font-medium text-foreground truncate">
+                            {f.formationType === 'ai-generated' ? '🤖 AI' : f.formationType}
+                          </div>
+                          <div className="text-[7px] font-mono text-muted-foreground">
+                            {f.startTime.toFixed(0)}→{endTime.toFixed(0)}s · {f.height}m · {f.droneCount}🤖
+                          </div>
+                        </div>
+
+                        {/* Timing bar */}
+                        <div className="w-12 h-1.5 rounded-full bg-surface-3 overflow-hidden flex-shrink-0">
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${(f.transitionDuration / (f.transitionDuration + f.holdDuration)) * 100}%`,
+                              backgroundColor: f.color,
+                            }}
+                          />
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                          {idx > 0 && (
+                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx - 1); }} className="text-muted-foreground hover:text-primary text-[8px]">↑</button>
+                          )}
+                          {idx < droneFormations.length - 1 && (
+                            <button onClick={(e) => { e.stopPropagation(); reorderDroneFormation(idx, idx + 1); }} className="text-muted-foreground hover:text-primary text-[8px]">↓</button>
+                          )}
+                          <button onClick={(e) => { e.stopPropagation(); duplicateDroneFormation(f.id); }} className="text-muted-foreground hover:text-primary text-[8px]">📋</button>
+                          <button onClick={(e) => { e.stopPropagation(); removeDroneFormation(f.id); }} className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Telemetry Sparklines — FUI trend lines */}
+        {droneFormations.length > 0 && (
+          <div className="space-y-1.5">
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Fleet Trends</span>
+            {[
+              { label: 'Battery', data: Array.from({ length: 20 }, (_, i) => 95 - i * 3.2 + Math.random() * 5) },
+              { label: 'Signal', data: Array.from({ length: 20 }, (_, i) => 88 + Math.sin(i * 0.5) * 8 + Math.random() * 3) },
+              { label: 'GPS Acc', data: Array.from({ length: 20 }, (_, i) => 12 + Math.cos(i * 0.3) * 3 + Math.random() * 2) },
+            ].map(({ label, data }) => (
+              <div key={label} className="flex items-center gap-2">
+                <span className="text-[8px] text-muted-foreground w-10 shrink-0">{label}</span>
+                <SparklineSVG data={data} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 2D Preview of last generation */}
+        {lastGeneratedPoints.length > 0 && (
+          <div className="space-y-1">
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Última Geração</span>
+            <MiniPreview points={lastGeneratedPoints} />
+          </div>
+        )}
+
+        {/* History */}
+        {history.length > 0 && (
+          <div className="space-y-1">
+            <span className="text-[9px] text-muted-foreground font-semibold uppercase">Histórico</span>
+            {history.slice(0, 5).map((h, i) => (
+              <div
+                key={i}
+                className="p-1.5 rounded-sm border border-border/50 bg-surface-1/50 text-[8px] font-mono-code cursor-pointer hover:bg-surface-2 group"
+                onClick={() => setPrompt(h.prompt)}
+              >
+                <div className="flex justify-between text-muted-foreground">
+                  <span className="truncate flex-1">{h.prompt}</span>
+                  <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+                    <span>{h.time}</span>
+                    <RefreshCw className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </div>
+                <div className="text-foreground mt-0.5">{h.result}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
