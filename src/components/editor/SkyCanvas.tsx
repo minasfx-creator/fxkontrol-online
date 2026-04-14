@@ -822,34 +822,6 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     const tz = THREE.MathUtils.clamp(controls.target.z, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
 
     let cy = THREE.MathUtils.clamp(camera.position.y, CAMERA_MIN_Y, CAMERA_MAX_Y);
-
-    if (_lastValidY.current < 0) {
-      _lastValidY.current = cy;
-    }
-
-    const absDelta = Math.abs(cy - _lastValidY.current);
-    if (absDelta > 500) {
-      _lastValidY.current = cy;
-    } else {
-      const yDelta = cy - _lastValidY.current;
-      if (yDelta < -200) {
-        cy = _lastValidY.current - 200;
-        if (!_wasDropClampedLastFrame.current) {
-          console.warn('[Camera] altitude drop clamped');
-          _wasDropClampedLastFrame.current = true;
-        }
-      } else {
-        _wasDropClampedLastFrame.current = false;
-      }
-    }
-
-    if (cy < CAMERA_MIN_Y + 1 && !_wasClampedLastFrame.current) {
-      console.warn('[Camera] altitude clamped to safe floor');
-      _wasClampedLastFrame.current = true;
-    } else if (cy > CAMERA_MIN_Y + 1) {
-      _wasClampedLastFrame.current = false;
-    }
-
     _lastValidY.current = cy;
 
     const cx = THREE.MathUtils.clamp(camera.position.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
@@ -860,7 +832,8 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 
     if (targetChanged) controls.target.set(tx, ty, tz);
     if (cameraChanged) camera.position.set(cx, cy, cz);
-    if (targetChanged || cameraChanged) controls.update();
+    // Do NOT call controls.update() here — it creates artificial momentum.
+    // OrbitControls already updates itself internally each frame.
   }, [camera]);
 
   // ── Zero-GC: Pre-allocated vectors for intro animation ──
@@ -1125,7 +1098,8 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   const editorMode = useProjectStore(s => s.editorMode);
   const isSelectMode = editorMode === 'select';
 
-  // Standard mapping: Middle=Orbit, Right=Pan, Left disabled in select mode
+  // Standard mapping: Middle=Orbit, Right=Pan in ALL modes
+  // In select mode: Left is disabled (for box-select). Otherwise Left=Orbit.
   useEffect(() => {
     if (!controlsRef.current) return;
     if (isSelectMode) {
@@ -1137,7 +1111,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     } else {
       controlsRef.current.mouseButtons = {
         LEFT: THREE.MOUSE.ROTATE,
-        MIDDLE: THREE.MOUSE.DOLLY,
+        MIDDLE: THREE.MOUSE.ROTATE,
         RIGHT: THREE.MOUSE.PAN,
       };
     }
