@@ -260,9 +260,120 @@ export class InstancedParticleRenderer {
     seedAttr.needsUpdate = true;
   }
 
+  /** Write cinema-smoke per-instance data (life, maxLife). */
+  writeCinemaSmokeData(data: Array<{ life: number; maxLife: number }>) {
+    this._ensureCinemaSmokeAttrs();
+    const lifeAttr = this._cinemaAttrs.get('aLife');
+    const maxLifeAttr = this._cinemaAttrs.get('aMaxLife');
+    if (!lifeAttr || !maxLifeAttr) return;
+
+    const count = Math.min(data.length, this.maxParticles);
+    for (let i = 0; i < count; i++) {
+      lifeAttr.setX(i, data[i].life);
+      maxLifeAttr.setX(i, data[i].maxLife);
+    }
+    lifeAttr.needsUpdate = true;
+    maxLifeAttr.needsUpdate = true;
+  }
+
+  /** Write cinema-burst per-instance data (life, maxLife, energy). */
+  writeCinemaBurstData(data: Array<{ life: number; maxLife: number; energy: number }>) {
+    this._ensureCinemaBurstAttrs();
+    const lifeAttr = this._cinemaAttrs.get('aLife');
+    const maxLifeAttr = this._cinemaAttrs.get('aMaxLife');
+    const energyAttr = this._cinemaAttrs.get('aEnergy');
+    if (!lifeAttr || !maxLifeAttr || !energyAttr) return;
+
+    const count = Math.min(data.length, this.maxParticles);
+    for (let i = 0; i < count; i++) {
+      lifeAttr.setX(i, data[i].life);
+      maxLifeAttr.setX(i, data[i].maxLife);
+      energyAttr.setX(i, data[i].energy);
+    }
+    lifeAttr.needsUpdate = true;
+    maxLifeAttr.needsUpdate = true;
+    energyAttr.needsUpdate = true;
+  }
+
+  /**
+   * Bridge: write directly from GPUComputeParticleSystem SoA data.
+   * Reads position, velocity, color (from temperature), size, opacity, and
+   * cinema-specific attributes from the SoA buffers.
+   */
+  writeFromComputeData(
+    cpuData: {
+      posX: Float32Array; posY: Float32Array; posZ: Float32Array;
+      velX: Float32Array; velY: Float32Array; velZ: Float32Array;
+      life: Float32Array; maxLife: Float32Array;
+      temperature: Float32Array; seed: Float32Array;
+      size: Float32Array; energy: Float32Array;
+    },
+    activeCount: number,
+    camera?: THREE.Camera,
+  ) {
+    const count = Math.min(activeCount, this.maxParticles);
+    this._activeCount = count;
+
+    for (let i = 0; i < count; i++) {
+      // Position + billboard
+      this._dummy.position.set(cpuData.posX[i], cpuData.posY[i], cpuData.posZ[i]);
+      if (camera) this._dummy.quaternion.copy(camera.quaternion);
+      this._dummy.updateMatrix();
+      this.mesh.setMatrixAt(i, this._dummy.matrix);
+
+      // Color from temperature (simple blackbody approximation for CPU bridge)
+      const t = Math.max(0, Math.min(1, (cpuData.temperature[i] - 800) / 5200));
+      const r = Math.min(1, 0.5 + t * 0.5);
+      const g = Math.min(1, t * 0.8);
+      const b = Math.min(1, Math.max(0, t - 0.6) * 2.5);
+      this.colorAttr.setXYZ(i, r, g, b);
+
+      // Opacity from life
+      const lr = cpuData.life[i] / Math.max(cpuData.maxLife[i], 0.001);
+      this.opacityAttr.setX(i, Math.max(0, 1 - lr));
+      this.scaleAttr.setX(i, cpuData.size[i]);
+      this.velocityAttr.setXYZ(i, cpuData.velX[i], cpuData.velY[i], cpuData.velZ[i]);
+    }
+
+    this.mesh.count = count;
+    this.mesh.instanceMatrix.needsUpdate = true;
+    this.colorAttr.needsUpdate = true;
+    this.opacityAttr.needsUpdate = true;
+    this.scaleAttr.needsUpdate = true;
+    this.velocityAttr.needsUpdate = true;
+  }
+
   private _ensureCinemaFireAttrs() {
     const geo = this.mesh.geometry;
     const names = ['aTemperature', 'aLife', 'aMaxLife', 'aSeed'];
+    for (const name of names) {
+      if (!this._cinemaAttrs.has(name)) {
+        const arr = new Float32Array(this.maxParticles);
+        const attr = new THREE.InstancedBufferAttribute(arr, 1);
+        attr.setUsage(THREE.DynamicDrawUsage);
+        this._cinemaAttrs.set(name, attr);
+      }
+      geo.setAttribute(name, this._cinemaAttrs.get(name)!);
+    }
+  }
+
+  private _ensureCinemaSmokeAttrs() {
+    const geo = this.mesh.geometry;
+    const names = ['aLife', 'aMaxLife'];
+    for (const name of names) {
+      if (!this._cinemaAttrs.has(name)) {
+        const arr = new Float32Array(this.maxParticles);
+        const attr = new THREE.InstancedBufferAttribute(arr, 1);
+        attr.setUsage(THREE.DynamicDrawUsage);
+        this._cinemaAttrs.set(name, attr);
+      }
+      geo.setAttribute(name, this._cinemaAttrs.get(name)!);
+    }
+  }
+
+  private _ensureCinemaBurstAttrs() {
+    const geo = this.mesh.geometry;
+    const names = ['aLife', 'aMaxLife', 'aEnergy'];
     for (const name of names) {
       if (!this._cinemaAttrs.has(name)) {
         const arr = new Float32Array(this.maxParticles);
