@@ -40,6 +40,17 @@ export function createSortPipeline(device: GPUDevice, wgslCode: string): GPUComp
 }
 
 /**
+ * Create smoke compute pipeline with entry point `cs_smoke_update`.
+ */
+export function createSmokeComputePipeline(device: GPUDevice, wgslCode: string): GPUComputePipeline {
+  const module = device.createShaderModule({ code: wgslCode, label: 'compute-smoke' });
+  return device.createComputePipeline({
+    layout: 'auto',
+    compute: { module, entryPoint: 'cs_smoke_update' },
+  });
+}
+
+/**
  * Fire render pipeline — additive blend (one/one) for emissive particles.
  * Billboard quads generated in vertex shader (6 verts per instance).
  */
