@@ -1,18 +1,28 @@
 /**
- * FX KONTROL · Cinema Volumetric Smoke Shader
- * Fake-volumetric via 4-octave FBM, soft particle depth-fade,
- * turbulence advection, density-controlled alpha.
+ * FX KONTROL · Cinema Volumetric Smoke Shader — RECALIBRATED
+ * Fake-volumetric via 4-octave FBM with domain warping,
+ * soft particle depth-fade, Beer-Lambert absorption,
+ * internal scattering approximation, and atmospheric perspective.
+ * 
+ * Calibrated for cohesive pipeline:
+ *   Smoke(NormalBlend) → over Fire(Additive) → HDR → Bloom → ACES
  */
 
 import * as THREE from 'three';
 
 const SMOKE_VERTEX = /* glsl */ `
+  attribute float aLife;
+  attribute float aMaxLife;
+
   varying vec2 vUv;
   varying vec3 vWorldPos;
   varying float vViewDepth;
+  varying float vLifeRatio;
 
   void main() {
     vUv = uv;
+    vLifeRatio = clamp(aLife / max(aMaxLife, 0.001), 0.0, 1.0);
+
     vec4 worldPos = modelMatrix * instanceMatrix * vec4(position, 1.0);
     vWorldPos = worldPos.xyz;
 
@@ -27,79 +37,141 @@ const SMOKE_FRAGMENT = /* glsl */ `
   uniform float uTime;
   uniform float uDensityScale;
   uniform float uSoftness;
-  uniform float uCameraNear;
-  uniform float uCameraFar;
+  uniform float uAbsorption;
+  uniform float uScatterStrength;
+  uniform float uWindAdvect;
+  uniform vec3 uLightDir;
 
   varying vec2 vUv;
   varying vec3 vWorldPos;
   varying float vViewDepth;
+  varying float vLifeRatio;
 
-  // ── Hash-based noise (no texture dependency) ──
+  // ── Improved value noise with quintic interpolation ──
   float hash(vec3 p) {
-    return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453);
+    p = fract(p * vec3(0.1031, 0.1030, 0.0973));
+    p += dot(p, p.yxz + 33.33);
+    return fract((p.x + p.y) * p.z);
   }
 
   float noise(vec3 p) {
     vec3 i = floor(p);
     vec3 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f); // smoothstep
+    // Quintic Hermite for smoother gradients (vs cubic smoothstep)
+    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+
+    float a = hash(i);
+    float b = hash(i + vec3(1, 0, 0));
+    float c = hash(i + vec3(0, 1, 0));
+    float d = hash(i + vec3(1, 1, 0));
+    float e = hash(i + vec3(0, 0, 1));
+    float g = hash(i + vec3(1, 0, 1));
+    float h = hash(i + vec3(0, 1, 1));
+    float k = hash(i + vec3(1, 1, 1));
 
     return mix(
-      mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x),
-          mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
-      mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
-          mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y),
+      mix(mix(a, b, f.x), mix(c, d, f.x), f.y),
+      mix(mix(e, g, f.x), mix(h, k, f.x), f.y),
       f.z
     );
   }
 
-  // ── Fractal Brownian Motion — 4 octaves ──
+  // ── Domain-warped FBM — 4 octaves with rotation per octave ──
   float fbm(vec3 p) {
     float total = 0.0;
     float freq = 1.0;
-    float amp = 0.5;
+    float amp = 0.55;
+    float maxAmp = 0.0;
+
+    // Domain warp — feed noise into itself for organic shapes
+    vec3 warp = vec3(
+      noise(p * 0.8 + vec3(1.7, 9.2, 0.0)),
+      noise(p * 0.8 + vec3(8.3, 2.8, 0.0)),
+      noise(p * 0.8 + vec3(2.1, 5.7, 0.0))
+    ) * 0.35;
+
+    p += warp;
+
     for (int i = 0; i < 4; i++) {
       total += noise(p * freq) * amp;
-      freq *= 2.0;
-      amp *= 0.5;
+      maxAmp += amp;
+      // Rotate domain slightly each octave to break axis alignment
+      p = vec3(p.y * 1.1 + p.z * 0.3, p.z * 1.1 - p.x * 0.3, p.x * 1.1 + p.y * 0.3);
+      freq *= 2.15;
+      amp *= 0.48;
     }
-    return total;
+    return total / maxAmp;
   }
 
   void main() {
-    // Turbulence advection — time-offset in noise domain
-    vec3 samplePos = vWorldPos * 0.1 + vec3(uTime * 0.2, uTime * 0.1, 0.0);
+    // ── Advection: wind + thermal rise in noise domain ──
+    vec3 advect = vec3(
+      uTime * uWindAdvect * 0.15,
+      uTime * 0.08 + vLifeRatio * 1.2,  // thermal rise with age
+      uTime * 0.05
+    );
+    vec3 samplePos = vWorldPos * 0.08 + advect;
 
-    float density = fbm(samplePos) * uDensityScale;
-    float alpha = smoothstep(0.2, 0.7, density);
+    float rawDensity = fbm(samplePos);
 
-    // Soft particle depth-fade (avoids hard intersections)
+    // ── Density modulation by life (dissipation) ──
+    float dissipation = 1.0 - smoothstep(0.4, 1.0, vLifeRatio);
+    float density = rawDensity * uDensityScale * dissipation;
+
+    // ── Beer-Lambert absorption (exponential opacity) ──
+    float opticalDepth = density * uAbsorption * 3.5;
+    float transmittance = exp(-opticalDepth);
+    float alpha = (1.0 - transmittance) * 0.75;
+
+    // ── Soft particle depth-fade ──
     float depthFade = smoothstep(0.0, uSoftness, vViewDepth);
 
-    // Smoke color — slightly warm-tinted grey
-    vec3 color = vec3(0.22, 0.20, 0.19) * (0.5 + density);
+    // ── Internal scattering approximation (Henyey-Greenstein lite) ──
+    // Bright rim on light-facing side
+    vec3 toLight = normalize(uLightDir);
+    float scatter = max(0.0, dot(normalize(vWorldPos), toLight)) * uScatterStrength;
+    float rimLight = pow(scatter, 2.0) * 0.35;
 
-    // Atmospheric scattering tint at distance
-    float distFade = 1.0 - smoothstep(20.0, 80.0, vViewDepth);
-    color = mix(vec3(0.3, 0.35, 0.4), color, distFade);
+    // ── Smoke color: warm near fire, cool-grey at distance ──
+    vec3 warmSmoke = vec3(0.28, 0.22, 0.18);    // near-fire warm
+    vec3 coolSmoke = vec3(0.15, 0.16, 0.18);    // ambient cool
+    float tempFade = smoothstep(0.0, 0.5, vLifeRatio);
+    vec3 baseColor = mix(warmSmoke, coolSmoke, tempFade);
 
-    // Circular particle shape
+    // Add scattering contribution
+    vec3 scatterColor = vec3(0.4, 0.35, 0.3) * rimLight;
+    vec3 color = (baseColor * (0.5 + density * 0.5)) + scatterColor;
+
+    // ── Atmospheric perspective (fade to sky at distance) ──
+    float atmoFade = 1.0 - smoothstep(30.0, 120.0, vViewDepth);
+    vec3 skyTint = vec3(0.25, 0.30, 0.38);
+    color = mix(skyTint, color, atmoFade);
+
+    // ── Particle shape: very soft circular for volumetric feel ──
     vec2 center = vUv - 0.5;
     float dist = length(center);
-    float shape = 1.0 - smoothstep(0.3, 0.5, dist);
+    float shape = 1.0 - smoothstep(0.25, 0.50, dist);
 
-    gl_FragColor = vec4(color, alpha * 0.6 * depthFade * shape);
+    gl_FragColor = vec4(color, alpha * depthFade * shape);
   }
 `;
 
 export interface CinemaSmokeConfig {
   densityScale: number;
   softness: number;
+  absorption: number;
+  scatterStrength: number;
+  windAdvect: number;
+  lightDir: [number, number, number];
 }
 
 const DEFAULT_SMOKE_CONFIG: CinemaSmokeConfig = {
-  densityScale: 1.0,
-  softness: 2.0,
+  densityScale: 1.4,            // calibrated: visible but not opaque
+  softness: 1.5,                // soft particle fade distance
+  absorption: 0.85,             // Beer-Lambert coefficient
+  scatterStrength: 0.6,         // internal scattering intensity
+  windAdvect: 1.0,              // wind influence on noise domain
+  lightDir: [0.3, 1.0, 0.5],   // default from above-right
 };
 
 /**
@@ -107,6 +179,8 @@ const DEFAULT_SMOKE_CONFIG: CinemaSmokeConfig = {
  */
 export function createCinemaSmokeMaterial(config?: Partial<CinemaSmokeConfig>): THREE.ShaderMaterial {
   const cfg = { ...DEFAULT_SMOKE_CONFIG, ...config };
+  const ld = cfg.lightDir;
+  const len = Math.sqrt(ld[0] * ld[0] + ld[1] * ld[1] + ld[2] * ld[2]) || 1;
 
   return new THREE.ShaderMaterial({
     vertexShader: SMOKE_VERTEX,
@@ -115,8 +189,10 @@ export function createCinemaSmokeMaterial(config?: Partial<CinemaSmokeConfig>): 
       uTime: { value: 0 },
       uDensityScale: { value: cfg.densityScale },
       uSoftness: { value: cfg.softness },
-      uCameraNear: { value: 0.1 },
-      uCameraFar: { value: 1000 },
+      uAbsorption: { value: cfg.absorption },
+      uScatterStrength: { value: cfg.scatterStrength },
+      uWindAdvect: { value: cfg.windAdvect },
+      uLightDir: { value: new THREE.Vector3(ld[0] / len, ld[1] / len, ld[2] / len) },
     },
     transparent: true,
     depthWrite: false,
