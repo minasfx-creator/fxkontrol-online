@@ -26,7 +26,7 @@ import LiveCard from '@/components/editor/LiveCard';
 const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
 
 // ── Verification ──
-const VerificationBar = lz(() => import('@/components/editor/VerificationBar'));
+
 
 // ── Phase screens ──
 const CinematicIntro = lz(() => import('@/components/editor/CinematicIntro'));
