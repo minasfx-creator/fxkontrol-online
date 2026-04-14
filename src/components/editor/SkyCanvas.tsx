@@ -837,12 +837,12 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   }, [camera]);
 
   // ── Zero-GC: Pre-allocated vectors for intro animation ──
-  const introStartPos = useRef(new THREE.Vector3(0, 80, 250));
-  const introStartLook = useRef(new THREE.Vector3(0, 0, 0));
-  const introDuration = useRef({ hold: 1.0, sweep: 2.5 });
+  const introStartPos = useRef(new THREE.Vector3(-80, 140, 320));
+  const introStartLook = useRef(new THREE.Vector3(0, 5, 0));
+  const introDuration = useRef({ hold: 1.8, sweep: 3.0 });
   const _sweepDefaultPos = useRef(new THREE.Vector3());
   const _sweepDefaultLook = useRef(new THREE.Vector3());
-  const _sweepStartPos = useRef(new THREE.Vector3(0, 120, 180));
+  const _sweepStartPos = useRef(new THREE.Vector3(60, 100, 220));
   const _sweepCurrentTarget = useRef(new THREE.Vector3());
 
   useEffect(() => {
