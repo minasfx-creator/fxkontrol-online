@@ -256,6 +256,8 @@ export interface GPUParticleData {
   seed: Float32Array;
   size: Float32Array;
   sortKey: Float32Array;
+  energy: Float32Array;
+  fuel: Float32Array;
 }
 
 export interface ComputeSimConfig {
@@ -268,12 +270,12 @@ export interface ComputeSimConfig {
 const DEFAULT_SIM_CONFIG: ComputeSimConfig = {
   maxParticles: 8192,
   gravity: [0, -9.81, 0],
-  turbulenceScale: 1.2,
+  turbulenceScale: 1.4,
   enableSort: true,
 };
 
 /** Packed particle struct size in bytes (must match WGSL) */
-const PARTICLE_BYTES = 80;
+const PARTICLE_BYTES = 96;
 /** Simulation uniforms size */
 const SIM_UNIFORM_BYTES = 64;
 /** Sort uniforms size */
