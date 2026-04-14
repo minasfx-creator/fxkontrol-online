@@ -775,3 +775,27 @@ export class GPUComputeParticleSystem {
 export function createComputeParticleSystem(config?: Partial<ComputeSimConfig>): GPUComputeParticleSystem {
   return new GPUComputeParticleSystem(config);
 }
+
+/** Expose compute WGSL for native WebGPU pipeline. */
+export function getComputeWGSL(): string {
+  return UNIFIED_COMPUTE_WGSL;
+}
+
+/** Expose sort WGSL for native WebGPU pipeline. */
+export function getSortWGSL(): string {
+  return SORT_KERNEL_WGSL;
+}
+
+/**
+ * Pack SoA cpu data into a GPU-ready Float32Array (16 floats per particle).
+ * Zero-alloc: caller provides the output buffer.
+ */
+export function packSoAToBuffer(data: GPUParticleData, count: number, out: Float32Array): void {
+  for (let i = 0; i < count; i++) {
+    const o = i * 16;
+    out[o]     = data.posX[i]; out[o + 1]  = data.posY[i]; out[o + 2]  = data.posZ[i]; out[o + 3]  = data.age[i];
+    out[o + 4] = data.velX[i]; out[o + 5]  = data.velY[i]; out[o + 6]  = data.velZ[i]; out[o + 7]  = data.life[i];
+    out[o + 8] = data.colorR[i]; out[o + 9] = data.colorG[i]; out[o + 10] = data.colorB[i]; out[o + 11] = data.brightness[i];
+    out[o + 12] = data.temperature[i]; out[o + 13] = data.size[i]; out[o + 14] = data.smoke[i]; out[o + 15] = data.particleType[i];
+  }
+}

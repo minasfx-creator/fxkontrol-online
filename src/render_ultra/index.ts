@@ -142,3 +142,8 @@ export { tickCombustionCPU, createCombustionData } from './fireworks/computeComb
 export type { CombustionData } from './fireworks/computeCombustion';
 export { tickSmokeTurbulenceCPU, DEFAULT_SMOKE_TURBULENCE } from './fireworks/computeSmokeTurbulence';
 export type { SmokeTurbulenceConfig } from './fireworks/computeSmokeTurbulence';
+
+// WebGPU Native Pipeline (Camada 10)
+export { initWebGPU, isWebGPUSupported, ParticlePingPong, WebGPUParticleLoop } from './gpgpu';
+export type { WebGPUContext, ParticleBufferPair, LoopConfig } from './gpgpu';
+export { getComputeWGSL, getSortWGSL, packSoAToBuffer } from './fireworks/gpuComputeParticles';
