@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 export interface ModelTransform {
   scale: number;
   rotationY: number;
-  offsetY: number;
+  offsetY?: number;
 }
 
 interface Props {
