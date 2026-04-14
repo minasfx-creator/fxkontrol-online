@@ -1,14 +1,19 @@
-import { ZoomIn, ZoomOut, Compass, Layers } from 'lucide-react';
+import { ZoomIn, ZoomOut, Compass, Layers, Focus } from 'lucide-react';
 import DraggableFloatingPanel from './DraggableFloatingPanel';
-
-const NAV_BUTTONS = [
-  { icon: ZoomIn, title: 'Zoom In', action: () => window.dispatchEvent(new CustomEvent('viewport-zoom', { detail: 1 })) },
-  { icon: ZoomOut, title: 'Zoom Out', action: () => window.dispatchEvent(new CustomEvent('viewport-zoom', { detail: -1 })) },
-  { icon: Compass, title: 'Reset Camera', action: () => window.dispatchEvent(new Event('viewport-reset-camera')) },
-  { icon: Layers, title: 'Toggle 3D/2D', action: () => window.dispatchEvent(new Event('viewport-toggle-2d')) },
-];
+import { useViewportStore } from '@/store/useViewportStore';
 
 export default function ViewportNavControls() {
+  const frameSelection = useViewportStore(s => s.frameSelection);
+  const resetCamera = useViewportStore(s => s.resetCamera);
+
+  const NAV_BUTTONS = [
+    { icon: ZoomIn, title: 'Zoom In', action: () => window.dispatchEvent(new CustomEvent('viewport-zoom', { detail: 1 })) },
+    { icon: ZoomOut, title: 'Zoom Out', action: () => window.dispatchEvent(new CustomEvent('viewport-zoom', { detail: -1 })) },
+    { icon: Focus, title: 'Frame Selection', action: frameSelection },
+    { icon: Compass, title: 'Reset Camera', action: resetCamera },
+    { icon: Layers, title: 'Toggle 3D/2D', action: () => window.dispatchEvent(new Event('viewport-toggle-2d')) },
+  ];
+
   return (
     <DraggableFloatingPanel
       panelId="viewport-nav"
