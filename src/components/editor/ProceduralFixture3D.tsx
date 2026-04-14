@@ -3,7 +3,7 @@
  */
 import React from 'react';
 
-export type FixtureType = 'moving-head' | 'par' | 'strobe' | 'laser' | 'generic';
+export type FixtureType = 'moving-head' | 'par' | 'strobe' | 'laser' | 'generic' | 'wash' | 'beam' | 'spot';
 
 interface Props {
   position: [number, number, number];

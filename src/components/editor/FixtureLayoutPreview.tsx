@@ -4,10 +4,10 @@
 import React from 'react';
 
 interface Fixture {
-  id: string;
+  id?: string;
   name: string;
-  x: number;
-  y: number;
+  x?: number;
+  y?: number;
   channel?: number;
   [key: string]: any;
 }
@@ -15,7 +15,7 @@ interface Fixture {
 interface Props {
   fixtures: Fixture[];
   layoutPreset?: string;
-  categoryOverrides?: Record<string, string>;
+  categoryOverrides?: Record<string, any>;
 }
 
 export default function FixtureLayoutPreview({ fixtures, layoutPreset, categoryOverrides }: Props) {
