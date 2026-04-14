@@ -26,7 +26,7 @@ import LiveCard from '@/components/editor/LiveCard';
 const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
 
 // ── Verification ──
-const VerificationBar = lz(() => import('@/components/editor/VerificationBar'));
+
 
 // ── Phase screens ──
 const CinematicIntro = lz(() => import('@/components/editor/CinematicIntro'));
@@ -516,9 +516,6 @@ function Index() {
       <div className="absolute top-0 left-0 right-0 z-50">
         <CrashRecoveryBanner />
         <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} isMaximized={viewportMaximized} onToggleMaximize={() => setViewportMaximized(v => !v)} />
-        <Suspense fallback={null}>
-          <VerificationBar />
-        </Suspense>
       </div>
 
       {/* ─── Layer 2: Right Dock (icon bar, z-40) ──── */}
