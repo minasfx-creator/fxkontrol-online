@@ -15,13 +15,13 @@ const FLAGS = {
   /** Blackbody temperature→color mapping (Planckian locus) */
   thermal_color_model: false,
   /** Enhanced smoke with density fields, cluster breakup, buoyancy */
-  smoke_volume_system: false,
+  smoke_volume_system: true,
   /** Layer-separated bloom pipeline with physical intensity */
   hdr_bloom_physical: true,
   /** Camera desaturation at peak luminance + highlight compression */
   cinematic_camera_response: true,
   /** Layered wind with vertical shear + micro-turbulence */
-  turbulence_field: false,
+  turbulence_field: true,
   /** 2× particle budget for ultra-dense displays */
   high_density_particles: false,
 } as const;
