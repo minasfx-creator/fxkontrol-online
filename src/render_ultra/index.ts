@@ -117,7 +117,7 @@ export type { FluidGrid, FluidConfig } from './fireworks/niagaraFluids';
 
 // GPU Instanced Particle Rendering
 export { InstancedParticleRenderer, createSparkInstancedRenderer, createSmokeInstancedRenderer } from './fireworks/instancedParticleRenderer';
-export type { InstancedParticleConfig } from './fireworks/instancedParticleRenderer';
+export type { InstancedParticleConfig, ShaderMode } from './fireworks/instancedParticleRenderer';
 
 // Fog v2
 export type { FogConfig } from './environment/volumetricFog';
@@ -132,3 +132,7 @@ export { createCinemaSmokeMaterial } from './fireworks/cinemaSmokeShader';
 export type { CinemaSmokeConfig } from './fireworks/cinemaSmokeShader';
 export { createCinemaBurstMaterial } from './fireworks/cinemaBurstShader';
 export type { CinemaBurstConfig } from './fireworks/cinemaBurstShader';
+
+// GPU Compute Particle System (Camada 8)
+export { GPUComputeParticleSystem, createComputeParticleSystem } from './fireworks/gpuComputeParticles';
+export type { GPUParticleData, ComputeSimConfig } from './fireworks/gpuComputeParticles';
