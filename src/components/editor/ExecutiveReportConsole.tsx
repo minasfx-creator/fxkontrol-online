@@ -15,9 +15,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import jsPDF from 'jspdf';
 
-  const [saving, setSaving] = useState(false);
-
 export default function ExecutiveReportConsole() {
+  const [saving, setSaving] = useState(false);
   const report = useMemo(() => {
     const sp = showPlanManager.current;
     const vResult = verificationEngine.run();
