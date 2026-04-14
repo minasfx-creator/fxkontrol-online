@@ -937,9 +937,9 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   // ── View preset handler ──
   useEffect(() => {
     const handler = (e: Event) => {
-      const { position, target } = (e as CustomEvent).detail;
-      targetPos.current.set(...position);
-      targetLook.current.set(...target);
+      const { position, target } = (e as CustomEvent).detail as { position: [number, number, number]; target: [number, number, number] };
+      targetPos.current.set(position[0], position[1], position[2]);
+      targetLook.current.set(target[0], target[1], target[2]);
       animating.current = true;
     };
     window.addEventListener('viewport-set-view', handler as any);
