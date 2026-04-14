@@ -303,10 +303,15 @@ export class InstancedParticleRenderer {
   writeFromComputeData(
     cpuData: {
       posX: Float32Array; posY: Float32Array; posZ: Float32Array;
+      age: Float32Array;
       velX: Float32Array; velY: Float32Array; velZ: Float32Array;
-      life: Float32Array; maxLife: Float32Array;
-      temperature: Float32Array; seed: Float32Array;
-      size: Float32Array; energy: Float32Array;
+      life: Float32Array;
+      colorR: Float32Array; colorG: Float32Array; colorB: Float32Array;
+      brightness: Float32Array;
+      temperature: Float32Array;
+      size: Float32Array;
+      smoke: Float32Array;
+      particleType: Float32Array;
     },
     activeCount: number,
     camera?: THREE.Camera,
@@ -321,16 +326,12 @@ export class InstancedParticleRenderer {
       this._dummy.updateMatrix();
       this.mesh.setMatrixAt(i, this._dummy.matrix);
 
-      // Color from temperature (simple blackbody approximation for CPU bridge)
-      const t = Math.max(0, Math.min(1, (cpuData.temperature[i] - 800) / 5200));
-      const r = Math.min(1, 0.5 + t * 0.5);
-      const g = Math.min(1, t * 0.8);
-      const b = Math.min(1, Math.max(0, t - 0.6) * 2.5);
-      this.colorAttr.setXYZ(i, r, g, b);
+      // Color directly from compute data
+      this.colorAttr.setXYZ(i, cpuData.colorR[i], cpuData.colorG[i], cpuData.colorB[i]);
 
-      // Opacity from life
-      const lr = cpuData.life[i] / Math.max(cpuData.maxLife[i], 0.001);
-      this.opacityAttr.setX(i, Math.max(0, 1 - lr));
+      // Opacity from age/life ratio * brightness
+      const lr = cpuData.age[i] / Math.max(cpuData.life[i], 0.001);
+      this.opacityAttr.setX(i, Math.max(0, (1 - lr)) * cpuData.brightness[i]);
       this.scaleAttr.setX(i, cpuData.size[i]);
       this.velocityAttr.setXYZ(i, cpuData.velX[i], cpuData.velY[i], cpuData.velZ[i]);
     }
