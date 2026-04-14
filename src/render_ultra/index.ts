@@ -124,3 +124,16 @@ export type { FogConfig } from './environment/volumetricFog';
 
 // Lighting v2
 export type { HDRLightingConfig, BurstLightConfig } from './lighting/hdrLighting';
+
+// Volumetric Voxel System
+export {
+  VoxelGrid, injectSources, simulateVolume, DEFAULT_SIM_CONFIG,
+  RaymarchRenderer, DEFAULT_RAYMARCH_CONFIG,
+  WebGPURaymarchPipeline, VolumetricCompositor,
+  FXK_VOXEL_RAYMARCH_WGSL,
+} from './volumetric';
+export type {
+  VoxelGridConfig, InjectionSource, SimulationConfig,
+  RaymarchConfig, VolumeParamsGPU,
+  VolumeInstance, VolumePhase, CompositorConfig,
+} from './volumetric';
