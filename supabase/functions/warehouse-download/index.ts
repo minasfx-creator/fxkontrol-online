@@ -1,36 +1,21 @@
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { handleCors, corsHeaders } from "../_shared/cors.ts";
+import { jsonOk, jsonError } from "../_shared/response.ts";
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCors(req);
+  if (preflight) return preflight;
 
   try {
     const { modelId, format = 'gltf' } = await req.json();
 
-    if (!modelId) {
-      return new Response(JSON.stringify({ error: 'modelId is required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    if (!modelId) return jsonError('modelId is required', 400);
 
-    // Validate that modelId looks like a real 3D Warehouse UUID, not a fallback slug
     if (modelId.length < 20 && !/^[0-9a-f]{8}-/.test(modelId)) {
-      return new Response(JSON.stringify({ 
-        error: 'Invalid model ID',
+      return jsonError('Invalid model ID', 400, {
         message: 'This appears to be a placeholder ID. Search 3D Warehouse for real models.',
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // 3D Warehouse provides COLLADA (.dae) downloads via their public API
-    // The glTF binary endpoint is at /3dw/GetEntity/modelId?format=gltf
     const downloadUrls = [
       `https://3dwarehouse.sketchup.com/3dw/GetBinary?id=${modelId}&format=gltf`,
       `https://3dwarehouse.sketchup.com/3dw/GetEntity/${modelId}?format=gltf`,
@@ -51,7 +36,6 @@ Deno.serve(async (req) => {
 
         if (resp.ok) {
           const ct = resp.headers.get('content-type') || '';
-          // Verify we got binary data, not an HTML error page
           if (!ct.includes('text/html')) {
             modelData = await resp.arrayBuffer();
             if (ct) contentType = ct;
@@ -64,7 +48,6 @@ Deno.serve(async (req) => {
     }
 
     if (!modelData || modelData.byteLength < 100) {
-      // If direct download fails, try the COLLADA endpoint as last resort
       try {
         const colladaUrl = `https://3dwarehouse.sketchup.com/3dw/GetBinary?id=${modelId}&format=dae`;
         const resp = await fetch(colladaUrl, {
@@ -80,12 +63,8 @@ Deno.serve(async (req) => {
     }
 
     if (!modelData || modelData.byteLength < 100) {
-      return new Response(JSON.stringify({ 
-        error: 'Model download failed',
+      return jsonError('Model download failed', 404, {
         message: 'Could not download model from 3D Warehouse. The model may not support glTF export.',
-      }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -98,9 +77,6 @@ Deno.serve(async (req) => {
       },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: 'Internal error', message: String(err) }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonError('Internal error', 500, { message: String(err) });
   }
 });

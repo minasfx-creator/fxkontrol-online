@@ -12,7 +12,7 @@
  * Coordinate systems: NEU (default), NED (MAVLink), ENU (ROS)
  */
 
-import type { Position, Trajectory, DroneFormation } from '@/store/useProjectStore';
+import type { Position, Trajectory, DroneFormation } from '@/types/projectTypes';
 
 // ── Types ───────────────────────────────────────────────────────────
 

@@ -1,11 +1,14 @@
 /**
  * MobileFloatingPanel — Apple-style bottom sheet
  * Smooth spring transitions, grab indicator, swipe-to-dismiss.
+ * Enhanced with visible scroll indicators and better grab area.
  */
 import { useRef, useCallback, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { MobileTab } from './MobileTabBar';
+import { haptics } from '@/lib/haptics';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import type { MobileTab } from './mobileTabTypes';
 
 interface MobileFloatingPanelProps {
   activeTab: MobileTab | null;
@@ -13,13 +16,8 @@ interface MobileFloatingPanelProps {
   onHeightChange?: (h: 'collapsed' | 'half' | 'full') => void;
   onDismiss?: () => void;
   children: React.ReactNode;
+  title?: string;
 }
-
-const HEIGHT_MAP: Record<string, string> = {
-  collapsed: 'translate-y-full',
-  half: 'h-[50vh]',
-  full: 'h-[88vh]',
-};
 
 export default function MobileFloatingPanel({
   activeTab,
@@ -27,72 +25,126 @@ export default function MobileFloatingPanel({
   onHeightChange,
   onDismiss,
   children,
+  title,
 }: MobileFloatingPanelProps) {
-  const dragRef = useRef<{ startY: number; startHeight: string } | null>(null);
+  const dragRef = useRef<{ startY: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    dragRef.current = { startY: touch.clientY, startHeight: height };
+    dragRef.current = { startY: e.touches[0].clientY };
     setIsDragging(true);
-  }, [height]);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!dragRef.current) return;
+    const dy = e.touches[0].clientY - dragRef.current.startY;
+    setDragOffset(dy > 0 ? dy : dy * 0.3);
+  }, []);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (!dragRef.current) return;
-    const touch = e.changedTouches[0];
-    const deltaY = touch.clientY - dragRef.current.startY;
+    const dy = e.changedTouches[0].clientY - dragRef.current.startY;
     setIsDragging(false);
+    setDragOffset(0);
+    dragRef.current = null;
 
-    if (deltaY > 60) {
+    if (dy > 60) {
+      haptics.tap();
       if (height === 'full') {
         onHeightChange?.('half');
       } else {
         onDismiss?.();
       }
-    } else if (deltaY < -60) {
+    } else if (dy < -60) {
+      haptics.tap();
       if (height === 'half') {
         onHeightChange?.('full');
       }
     }
-    dragRef.current = null;
   }, [height, onHeightChange, onDismiss]);
 
   if (!activeTab || height === 'collapsed') return null;
 
+  const heightValue = height === 'full'
+    ? 'calc(100dvh - 64px - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 48px)'
+    : 'min(50dvh, calc(100dvh - 180px))';
+
   return (
     <div
       className={cn(
-        "fixed left-0 right-0 z-40 glass-sheet rounded-t-[20px] overflow-hidden animate-ios-spring-up",
-        HEIGHT_MAP[height]
+        "fixed left-2 right-2 z-40 rounded-t-[24px] overflow-hidden",
+        "animate-in slide-in-from-bottom duration-400",
       )}
       style={{
         bottom: 'calc(64px + env(safe-area-inset-bottom))',
-        transition: isDragging ? 'none' : 'height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        height: heightValue,
+        transform: isDragging ? `translateY(${dragOffset}px)` : undefined,
+        transition: isDragging ? 'none' : 'height 0.45s cubic-bezier(0.32, 0.72, 0, 1), transform 0.45s cubic-bezier(0.32, 0.72, 0, 1)',
+        willChange: 'transform, height',
+        contain: 'layout style paint',
+        background: 'rgba(10, 12, 18, 0.96)',
+        backdropFilter: 'blur(48px) saturate(1.6)',
+        WebkitBackdropFilter: 'blur(48px) saturate(1.6)',
+        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+        borderLeft: '1px solid rgba(255, 255, 255, 0.04)',
+        borderRight: '1px solid rgba(255, 255, 255, 0.04)',
+        boxShadow: '0 -8px 40px rgba(0, 0, 0, 0.6), 0 -2px 12px rgba(0, 0, 0, 0.4)',
       }}
     >
-      {/* Grab indicator — Apple style */}
+      {/* Grab handle area — larger touch target */}
       <div
-        className="flex items-center justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing"
+        className="flex flex-col items-center pt-2 pb-1 cursor-grab active:cursor-grabbing"
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div className="sheet-indicator" />
+        <div className="w-10 h-[5px] rounded-full bg-muted-foreground/30" />
+        
+        {/* Header row with title and controls */}
+        <div className="w-full flex items-center justify-between px-3 mt-1.5">
+          <div className="flex items-center gap-2">
+            {/* Height toggle */}
+            <button
+              onClick={() => {
+                haptics.tap();
+                onHeightChange?.(height === 'full' ? 'half' : 'full');
+              }}
+              className="w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-90"
+              style={{ background: 'rgba(255, 255, 255, 0.06)' }}
+            >
+              {height === 'full'
+                ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/60" />
+                : <ChevronUp className="w-3.5 h-3.5 text-muted-foreground/60" />
+              }
+            </button>
+            {title && (
+              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground/50">
+                {title}
+              </span>
+            )}
+          </div>
+
+          {/* Close button */}
+          {onDismiss && (
+            <button
+              onClick={() => { haptics.tap(); onDismiss(); }}
+              className="w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-90"
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              <X className="w-3.5 h-3.5 text-muted-foreground/60" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Close button */}
-      {onDismiss && (
-        <button
-          onClick={onDismiss}
-          className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full glass-button text-muted-foreground z-10"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      )}
-
-      {/* Content */}
-      <div className="h-[calc(100%-36px)] overflow-y-auto overscroll-contain px-1 pb-2">
+      {/* Content with visible scrollbar */}
+      <ScrollArea className="h-[calc(100%-56px)] px-1 pb-2">
         {children}
-      </div>
+      </ScrollArea>
     </div>
   );
 }

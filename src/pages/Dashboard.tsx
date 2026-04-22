@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import {
   Clapperboard, CalendarDays, Plus, FolderOpen,
@@ -12,10 +13,11 @@ import {
   TrendingUp, TrendingDown, Minus, Circle, Bookmark,
   Smartphone, Wand2, Layers,
   Lightbulb, Pencil, LayoutTemplate,
-  Gauge
+  Bluetooth, Usb, Wifi, ScanEye,
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
-import CinematicIntro from '@/components/editor/CinematicIntro';
+import { lazy, Suspense } from 'react';
+const CinematicIntro = lazy(() => import('@/components/editor/CinematicIntro'));
 import { useIsMobile } from '@/hooks/use-mobile';
 
 /* ── Types ──────────────────────────────────────────── */
@@ -48,16 +50,16 @@ interface NewsItem {
 
 /* ── Constants ──────────────────────────────────────── */
 const MOCK_NEWS: NewsItem[] = [
-  { id: 1, title: 'Drone shows superam fogos em 35% dos eventos corporativos na Europa', category: 'drones', sentiment: 'positive', time: '2min', image: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=600&h=600&fit=crop', source: 'DroneWorld', avatar: '🤖' },
-  { id: 2, title: 'NFPA atualiza norma 1123 para pirotecnia de proximidade', category: 'pyro', sentiment: 'neutral', time: '15min', image: 'https://images.unsplash.com/photo-1498931299472-f7a63a5a1cfa?w=600&h=600&fit=crop', source: 'PyroNews', avatar: '🎆' },
-  { id: 3, title: 'Showven lança novo SparkularFall 2 com controle DMX integrado', category: 'sfx', sentiment: 'positive', time: '28min', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop', source: 'SFX Today', avatar: '🔥' },
-  { id: 4, title: 'Rock in Rio 2026 confirma 40 shows com drones sincronizados', category: 'festivals', sentiment: 'positive', time: '45min', image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=600&h=600&fit=crop', source: 'Festival Mag', avatar: '🎪' },
-  { id: 5, title: 'Escassez global de lítio pode afetar baterias de drones em 2027', category: 'drones', sentiment: 'negative', time: '1h', image: 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=600&h=600&fit=crop', source: 'TechBrief', avatar: '🤖' },
-  { id: 6, title: 'Moving heads Ayrton Perseo ganha prêmio LDI Innovation', category: 'lighting', sentiment: 'positive', time: '2h', image: 'https://images.unsplash.com/photo-1504509546545-e000b4a62425?w=600&h=600&fit=crop', source: 'LDI Weekly', avatar: '💡' },
-  { id: 7, title: 'Novo protocolo Art-Net 5 promete latência sub-1ms', category: 'lighting', sentiment: 'positive', time: '3h', image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=600&h=600&fit=crop', source: 'ProLight', avatar: '💡' },
-  { id: 8, title: 'FAA restringe voos de drones em 12 novos aeroportos dos EUA', category: 'drones', sentiment: 'negative', time: '4h', image: 'https://images.unsplash.com/photo-1506947411487-a56738b4ccd4?w=600&h=600&fit=crop', source: 'AviationPost', avatar: '🤖' },
-  { id: 9, title: 'Galaxis lança módulo de disparo com 64 canais e GPS integrado', category: 'pyro', sentiment: 'positive', time: '5h', image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&h=600&fit=crop', source: 'FireTech', avatar: '🎆' },
-  { id: 10, title: 'Coachella 2026 bate recorde com 1.200 drones em show de encerramento', category: 'festivals', sentiment: 'positive', time: '6h', image: 'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=600&h=600&fit=crop', source: 'Festival Mag', avatar: '🎪' },
+  { id: 1, title: 'Drone shows superam fogos em 35% dos eventos corporativos na Europa', category: 'drones', sentiment: 'positive', time: '2min', image: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=280&q=60&fit=crop', source: 'DroneWorld', avatar: '🤖' },
+  { id: 2, title: 'NFPA atualiza norma 1123 para pirotecnia de proximidade', category: 'pyro', sentiment: 'neutral', time: '15min', image: 'https://images.unsplash.com/photo-1498931299472-f7a63a5a1cfa?w=280&q=60&fit=crop', source: 'PyroNews', avatar: '🎆' },
+  { id: 3, title: 'Showven lança novo SparkularFall 2 com controle DMX integrado', category: 'sfx', sentiment: 'positive', time: '28min', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=280&q=60&fit=crop', source: 'SFX Today', avatar: '🔥' },
+  { id: 4, title: 'Rock in Rio 2026 confirma 40 shows com drones sincronizados', category: 'festivals', sentiment: 'positive', time: '45min', image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=280&q=60&fit=crop', source: 'Festival Mag', avatar: '🎪' },
+  { id: 5, title: 'Escassez global de lítio pode afetar baterias de drones em 2027', category: 'drones', sentiment: 'negative', time: '1h', image: 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=280&q=60&fit=crop', source: 'TechBrief', avatar: '🤖' },
+  { id: 6, title: 'Moving heads Ayrton Perseo ganha prêmio LDI Innovation', category: 'lighting', sentiment: 'positive', time: '2h', image: 'https://images.unsplash.com/photo-1504509546545-e000b4a62425?w=280&q=60&fit=crop', source: 'LDI Weekly', avatar: '💡' },
+  { id: 7, title: 'Novo protocolo Art-Net 5 promete latência sub-1ms', category: 'lighting', sentiment: 'positive', time: '3h', image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=280&q=60&fit=crop', source: 'ProLight', avatar: '💡' },
+  { id: 8, title: 'FAA restringe voos de drones em 12 novos aeroportos dos EUA', category: 'drones', sentiment: 'negative', time: '4h', image: 'https://images.unsplash.com/photo-1506947411487-a56738b4ccd4?w=280&q=60&fit=crop', source: 'AviationPost', avatar: '🤖' },
+  { id: 9, title: 'Galaxis lança módulo de disparo com 64 canais e GPS integrado', category: 'pyro', sentiment: 'positive', time: '5h', image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=280&q=60&fit=crop', source: 'FireTech', avatar: '🎆' },
+  { id: 10, title: 'Coachella 2026 bate recorde com 1.200 drones em show de encerramento', category: 'festivals', sentiment: 'positive', time: '6h', image: 'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=280&q=60&fit=crop', source: 'Festival Mag', avatar: '🎪' },
 ];
 
 const CATEGORY_FILTERS: Array<{ key: NewsItem['category'] | 'all'; label: string; emoji: string }> = [
@@ -98,6 +100,7 @@ const SHOW_COMMANDER_TOOLS: HubTool[] = [
   { label: 'DMX Mon', icon: Radio, panel: 'dmx_monitor' },
   { label: 'FXK-LIGHT', icon: Lightbulb, panel: 'fxk_light' },
   { label: 'Module', icon: Cpu, panel: 'module' },
+  { label: 'Hardware', icon: Radio, panel: 'hardware' },
 ];
 
 const MASTER_EDITOR_TOOLS: HubTool[] = [
@@ -109,8 +112,69 @@ const MASTER_EDITOR_TOOLS: HubTool[] = [
   { label: 'Templates', icon: LayoutTemplate, panel: 'templates' },
 ];
 
+/* ── Transport Availability Indicator ─────────────────── */
+const TRANSPORT_TOOLTIPS: Record<string, { desc: string; howTo: string }> = {
+  ble: { desc: 'Bluetooth Low Energy — comunicação sem fio com módulos BLE (IFMx, PyroMote)', howTo: 'Use Chrome/Edge. No iOS, use o app nativo.' },
+  usb: { desc: 'USB Serial — conexão cabeada com antenas rádio e controladores DMX', howTo: 'Conecte via USB-C. Requer Chrome/Edge desktop ou Android.' },
+  wifi: { desc: 'Wi-Fi — rede local para Art-Net, sACN e controle remoto', howTo: 'Conecte-se à mesma rede Wi-Fi dos módulos.' },
+  artnet: { desc: 'Art-Net/sACN — protocolo DMX sobre IP para iluminação e SFX', howTo: 'Requer Wi-Fi ativo na mesma sub-rede dos nós DMX.' },
+};
+
+function TransportIndicator() {
+  const [transports, setTransports] = useState<{ key: string; label: string; icon: React.ElementType; available: boolean; color: string }[]>([]);
+
+  useEffect(() => {
+    const checks = [
+      { key: 'ble', label: 'BLE', icon: Bluetooth, available: typeof navigator !== 'undefined' && 'bluetooth' in navigator, color: 'hsl(220 90% 56%)' },
+      { key: 'usb', label: 'USB', icon: Usb, available: typeof navigator !== 'undefined' && 'serial' in navigator, color: 'hsl(32 100% 50%)' },
+      { key: 'wifi', label: 'Wi-Fi', icon: Wifi, available: typeof navigator !== 'undefined' && 'onLine' in navigator && navigator.onLine, color: 'hsl(165 100% 42%)' },
+      { key: 'artnet', label: 'Art-Net', icon: Radio, available: typeof navigator !== 'undefined' && 'onLine' in navigator && navigator.onLine, color: 'hsl(270 60% 55%)' },
+    ];
+    setTransports(checks);
+  }, []);
+
+  if (transports.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {transports.map(t => {
+        const Icon = t.icon;
+        const tip = TRANSPORT_TOOLTIPS[t.key];
+        return (
+          <Tooltip key={t.key}>
+            <TooltipTrigger asChild>
+              <div
+                className="flex items-center gap-1 px-2 py-1 rounded-md border transition-all cursor-help"
+                style={{
+                  borderColor: t.available ? `${t.color}40` : 'hsl(0 0% 50% / 0.15)',
+                  background: t.available ? `${t.color}08` : 'transparent',
+                }}
+              >
+                <Icon className="h-3 w-3" style={{ color: t.available ? t.color : 'hsl(0 0% 50% / 0.3)' }} />
+                <span className="text-[8px] font-mono font-bold tracking-wider uppercase" style={{ color: t.available ? t.color : 'hsl(0 0% 50% / 0.3)' }}>
+                  {t.label}
+                </span>
+                <div className="h-1.5 w-1.5 rounded-full" style={{ background: t.available ? t.color : 'hsl(0 0% 50% / 0.2)', boxShadow: t.available ? `0 0 6px ${t.color}60` : 'none' }} />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[220px] p-2.5 bg-popover border-border/50">
+              <p className="text-[10px] font-semibold text-foreground mb-1">{t.label} — {t.available ? '✅ Disponível' : '❌ Indisponível'}</p>
+              {tip && (
+                <>
+                  <p className="text-[9px] text-muted-foreground leading-relaxed">{tip.desc}</p>
+                  <p className="text-[8px] text-primary/70 mt-1 font-mono">💡 {tip.howTo}</p>
+                </>
+              )}
+            </TooltipContent>
+          </Tooltip>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ── Feed Card (Instagram-style) ─────────────────────── */
-function FeedCard({ item }: { item: NewsItem }) {
+function FeedCard({ item, compact }: { item: NewsItem; compact?: boolean }) {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -130,8 +194,8 @@ function FeedCard({ item }: { item: NewsItem }) {
         {item.sentiment === 'negative' && <TrendingDown className="h-3.5 w-3.5 text-red-400" />}
         {item.sentiment === 'neutral' && <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
       </div>
-      <div className="relative aspect-[4/3] overflow-hidden">
-        <img src={item.image} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03] brightness-[0.85]" loading="lazy" />
+      <div className={cn("relative overflow-hidden", compact ? "aspect-[16/9]" : "aspect-[4/3]")}>
+        <img src={item.image} alt={item.title} className="w-full h-full object-cover brightness-[0.85]" loading="lazy" decoding="async" />
         <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
       </div>
       <div className="px-3 pt-2.5 pb-1 flex items-center justify-between relative z-20">
@@ -229,6 +293,8 @@ export default function Dashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [showIntro, setShowIntro] = useState(() => {
     if (typeof window === 'undefined') return false;
+    // Skip cinematic intro on mobile — saves 11MB of video downloads
+    if (window.matchMedia('(max-width: 768px)').matches) return false;
     const seen = sessionStorage.getItem('fxk-intro-seen');
     return !seen;
   });
@@ -268,9 +334,10 @@ export default function Dashboard() {
     : null;
 
   const filteredNews = feedFilter === 'all' ? MOCK_NEWS : MOCK_NEWS.filter(n => n.category === feedFilter);
+  const visibleNews = isMobile ? filteredNews.slice(0, 4) : filteredNews;
 
   if (showIntro) {
-    return <CinematicIntro onComplete={handleIntroComplete} />;
+    return <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><CinematicIntro onComplete={handleIntroComplete} /></Suspense>;
   }
 
   return (
@@ -297,7 +364,7 @@ export default function Dashboard() {
           background: 'linear-gradient(90deg, hsl(32 100% 50% / 0.6), hsl(32 100% 50% / 0.1) 30%, hsl(32 100% 50% / 0.1) 70%, hsl(32 100% 50% / 0.6))'
         }} />
         
-        <div className="p-5 md:p-7 relative z-10">
+        <div className="p-3 md:p-7 relative z-10">
           <div className="flex items-start justify-between">
             <div>
               {/* Status line */}
@@ -369,14 +436,14 @@ export default function Dashboard() {
           <div className="h-[1px] flex-1" style={{ background: 'hsl(32 100% 50% / 0.1)' }} />
           <span className="text-[8px] font-mono text-muted-foreground/30 tracking-wider">TAP TO ENTER</span>
         </div>
-        <div className={cn("grid gap-2", isMobile ? "grid-cols-4" : "grid-cols-7")}>
+        <div className={cn("gap-2", isMobile ? "flex overflow-x-auto pb-2 scrollbar-none" : "grid grid-cols-7")}>
           {CONSOLE_CARDS.map((console, i) => {
             const Icon = console.icon;
             return (
               <button
                 key={console.key}
                 onClick={() => navigate(`/command?mode=${console.key}`)}
-                className="group relative overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:scale-[1.08] active:scale-[0.95] animate-fxk-stagger"
+                className={cn("group relative overflow-hidden rounded-lg border p-2.5 text-center transition-all duration-300 ease-spring hover:scale-[1.08] active:scale-[0.95] animate-fxk-stagger", isMobile && "shrink-0 min-w-[80px]")}
                 style={{
                   animationDelay: `${0.1 + i * 0.04}s`,
                   borderColor: `${console.color}20`,
@@ -413,6 +480,63 @@ export default function Dashboard() {
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* ── FIELD OPS — Quick access to hardware testing ──── */}
+      <div className="mb-6 animate-fxk-stagger" style={{ animationDelay: '0.14s' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="h-[1px] w-4" style={{ background: 'hsl(165 100% 42% / 0.4)' }} />
+          <span className="text-[9px] font-mono font-bold tracking-[0.3em] uppercase" style={{ color: 'hsl(165 100% 42% / 0.7)' }}>
+            FIELD OPS
+          </span>
+          <div className="h-[1px] flex-1" style={{ background: 'hsl(165 100% 42% / 0.1)' }} />
+          <span className="text-[8px] font-mono text-muted-foreground/30 tracking-wider">DIAGNOSTICS & CONNECT</span>
+        </div>
+        {/* Transport availability */}
+        <div className="mb-3">
+          <TransportIndicator />
+        </div>
+        <div className={cn("grid gap-2", isMobile ? "grid-cols-1" : "grid-cols-2")}>
+          {/* Easy Connect Card */}
+          <button
+            onClick={() => navigate('/command?mode=hardware')}
+            className="group relative overflow-hidden rounded-lg border p-3 text-left transition-all duration-300 hover:scale-[1.02] active:scale-[0.97]"
+            style={{ borderColor: 'hsl(200 80% 48% / 0.2)', background: 'rgba(8, 10, 14, 0.8)', backdropFilter: 'blur(24px)' }}
+          >
+            <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent, hsl(200 80% 48% / 0.5), transparent)' }} />
+            <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l pointer-events-none" style={{ borderColor: 'hsl(200 80% 48% / 0.3)' }} />
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'hsl(200 80% 48% / 0.1)', border: '1px solid hsl(200 80% 48% / 0.2)' }}>
+                <Zap className="h-5 w-5" style={{ color: 'hsl(200 80% 48%)' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold font-display text-foreground tracking-wide uppercase">Easy Connect</p>
+                <p className="text-[9px] text-muted-foreground/60 mt-0.5 font-mono">USB · BLE · Art-Net · PBUS · Wi-Fi</p>
+              </div>
+              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-foreground transition-colors shrink-0" />
+            </div>
+          </button>
+
+          {/* Field Test Card */}
+          <button
+            onClick={() => navigate('/field-test')}
+            className="group relative overflow-hidden rounded-lg border p-3 text-left transition-all duration-300 hover:scale-[1.02] active:scale-[0.97]"
+            style={{ borderColor: 'hsl(165 100% 42% / 0.2)', background: 'rgba(8, 10, 14, 0.8)', backdropFilter: 'blur(24px)' }}
+          >
+            <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent, hsl(165 100% 42% / 0.5), transparent)' }} />
+            <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l pointer-events-none" style={{ borderColor: 'hsl(165 100% 42% / 0.3)' }} />
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'hsl(165 100% 42% / 0.1)', border: '1px solid hsl(165 100% 42% / 0.2)' }}>
+                <Activity className="h-5 w-5" style={{ color: 'hsl(165 100% 42%)' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold font-display text-foreground tracking-wide uppercase">Field Test</p>
+                <p className="text-[9px] text-muted-foreground/60 mt-0.5 font-mono">CDS · Continuidade · Diagnóstico · SIM</p>
+              </div>
+              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-foreground transition-colors shrink-0" />
+            </div>
+          </button>
         </div>
       </div>
 
@@ -473,42 +597,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Hardware Controllers */}
-          <Card className="bg-card border-border/50 animate-fxk-stagger overflow-hidden" style={{ animationDelay: '0.3s' }}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Cpu className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-display">Hardware</span>
-                </div>
-                <button
-                  onClick={() => navigate('/command?mode=module')}
-                  className="text-[9px] text-primary hover:text-primary/80 font-semibold transition-colors"
-                >
-                  Ver todos →
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: 'FXK-PYRO', icon: Zap, mode: 'pyro_fire', color: 'text-red-400', border: 'border-red-500/15' },
-                  { label: 'FXK-DMX', icon: Gauge, mode: 'super_dmx', color: 'text-amber-400', border: 'border-amber-500/15' },
-                  { label: 'FXK-LIGHT', icon: Lightbulb, mode: 'fxk_light', color: 'text-indigo-400', border: 'border-indigo-500/15' },
-                  { label: 'MODULE', icon: Cpu, mode: 'module', color: 'text-violet-400', border: 'border-violet-500/15' },
-                  { label: 'FXK-DRONE', icon: Layers, mode: 'drone_ops', color: 'text-teal-400', border: 'border-teal-500/15' },
-                  { label: 'DMX Monitor', icon: Radio, mode: 'dmx_monitor', color: 'text-green-400', border: 'border-green-500/15' },
-                ].map((hw) => (
-                  <button
-                    key={hw.label}
-                    onClick={() => navigate(`/command?mode=${hw.mode}`)}
-                    className={`flex items-center gap-2 px-2.5 py-2 rounded-xl bg-[hsl(var(--surface-0)/0.5)] border ${hw.border} hover:bg-muted/20 transition-all active:scale-[0.97] text-left min-h-[48px]`}
-                  >
-                    <hw.icon className={`h-3.5 w-3.5 ${hw.color} shrink-0`} />
-                    <span className="text-[9px] font-semibold text-foreground/70 truncate">{hw.label}</span>
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Hardware section removed — consolidated into Console Launcher above */}
 
           {/* Events */}
           <Card className="bg-card border-border/50 animate-fxk-stagger" style={{ animationDelay: '0.35s' }}>
@@ -589,9 +678,9 @@ export default function Dashboard() {
             </span>
           </div>
           <div className="space-y-4">
-            {filteredNews.map((item, i) => (
+            {visibleNews.map((item, i) => (
               <div key={item.id} className="animate-fxk-stagger" style={{ animationDelay: `${0.2 + i * 0.08}s` }}>
-                <FeedCard item={item} />
+                <FeedCard item={item} compact={isMobile} />
               </div>
             ))}
           </div>
@@ -674,6 +763,31 @@ export default function Dashboard() {
                   </div>
                 </div>
               ))}
+            </CardContent>
+          </Card>
+
+          {/* AR Preview Card */}
+          <Card className="bg-card border-border/50 hover:border-[hsl(var(--fxk-magenta)/0.3)] transition-colors animate-fxk-stagger cursor-pointer group"
+            style={{ animationDelay: '0.55s' }}
+            onClick={() => navigate('/editor?panel=aroverlay')}
+          >
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-7 w-7 rounded-lg bg-[hsl(var(--fxk-magenta)/0.1)] flex items-center justify-center">
+                  <ScanEye className="h-3.5 w-3.5 text-[hsl(var(--fxk-magenta))]" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">AR Preview</p>
+                  <p className="text-[8px] text-muted-foreground">Realidade Aumentada</p>
+                </div>
+                <div className="ml-auto flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+                  <span className="text-[8px] text-muted-foreground">Não calibrado</span>
+                </div>
+              </div>
+              <div className="h-16 rounded-lg bg-muted/20 border border-border/20 flex items-center justify-center overflow-hidden">
+                <div className="text-[9px] text-muted-foreground/40 font-mono">Abrir editor para calibrar AR</div>
+              </div>
             </CardContent>
           </Card>
 

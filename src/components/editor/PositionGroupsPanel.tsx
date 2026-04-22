@@ -18,7 +18,9 @@ let savedGroups: PositionGroup[] = [];
 export default function PositionGroupsPanel({ onClose }: { onClose: () => void }) {
   const [groups, setGroups] = useState<PositionGroup[]>(savedGroups);
   const [newName, setNewName] = useState('');
-  const { selectedPositionIds, selectMultiplePositions, positions } = useProjectStore();
+    const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
+  const selectMultiplePositions = useProjectStore(s => s.selectMultiplePositions);
+  const positions = useProjectStore(s => s.positions);
 
   const saveGroup = useCallback(() => {
     if (selectedPositionIds.length === 0) {

@@ -28,6 +28,7 @@ const PANEL_DESCRIPTIONS: Partial<Record<PanelId, string>> = {
   transitions: 'Planejar transições entre formações',
   collisions: 'Detectar e evitar colisões',
   boids: 'Simulação de enxame com algoritmo Boids',
+  easyconnect: 'Descoberta unificada de hardware — BLE, USB, Art-Net, PBUS',
   usb: 'Conectar dispositivos USB de disparo',
   dmx: 'Controle DMX512 para fixtures',
   smpte: 'Sincronização SMPTE/LTC timecode',

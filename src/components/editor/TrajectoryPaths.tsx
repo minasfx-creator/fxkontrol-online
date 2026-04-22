@@ -1,5 +1,6 @@
 import { useMemo, useCallback, useRef, useState } from 'react';
-import { useProjectStore, type Waypoint } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type Waypoint } from '@/types/projectTypes';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -79,7 +80,8 @@ function DraggableWaypoint({
   index: number;
   isSelected: boolean;
 }) {
-  const { selectTrajectory, updateWaypoint } = useProjectStore();
+    const selectTrajectory = useProjectStore(s => s.selectTrajectory);
+  const updateWaypoint = useProjectStore(s => s.updateWaypoint);
   const meshRef = useRef<THREE.Mesh>(null);
   const [isDragging, setIsDragging] = useState(false);
   const { camera, raycaster, gl } = useThree();
@@ -161,7 +163,7 @@ function BezierHandle({
   trajectoryId: string;
   type: 'controlIn' | 'controlOut';
 }) {
-  const { updateWaypoint } = useProjectStore();
+    const updateWaypoint = useProjectStore(s => s.updateWaypoint);
   const [isDragging, setIsDragging] = useState(false);
   const { camera, raycaster, gl } = useThree();
   const dragPlane = useRef(new THREE.Plane());
@@ -250,7 +252,10 @@ function TrajectoryLine({ points }: { points: THREE.Vector3[] }) {
 
 // ─── Click plane to add waypoints ───
 function WaypointClickPlane() {
-  const { editorMode, selectedTrajectoryId, addWaypoint, trajectories } = useProjectStore();
+    const editorMode = useProjectStore(s => s.editorMode);
+  const selectedTrajectoryId = useProjectStore(s => s.selectedTrajectoryId);
+  const addWaypoint = useProjectStore(s => s.addWaypoint);
+  const trajectories = useProjectStore(s => s.trajectories);
 
   const handleClick = useCallback((e: any) => {
     if (editorMode !== 'add-waypoint' || !selectedTrajectoryId) return;
@@ -284,7 +289,9 @@ function lerpVec3(a: { x: number; y: number; z: number }, b: { x: number; y: num
 
 // ─── Animated drones during playback ───
 function TrajectoryDrones() {
-  const { trajectories, positions, currentTime } = useProjectStore();
+    const trajectories = useProjectStore(s => s.trajectories);
+  const positions = useProjectStore(s => s.positions);
+  const currentTime = useProjectStore(s => s.currentTime);
   return (
     <>
       {trajectories.map((traj) => {
@@ -321,7 +328,10 @@ function TrajectoryDrones() {
 
 // ─── Main component ───
 export default function TrajectoryPaths() {
-  const { trajectories, positions, showTrajectories, selectedTrajectoryId } = useProjectStore();
+    const trajectories = useProjectStore(s => s.trajectories);
+  const positions = useProjectStore(s => s.positions);
+  const showTrajectories = useProjectStore(s => s.showTrajectories);
+  const selectedTrajectoryId = useProjectStore(s => s.selectedTrajectoryId);
   if (!showTrajectories) return null;
 
   return (

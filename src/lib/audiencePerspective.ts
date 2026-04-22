@@ -5,7 +5,7 @@
  * are visible and legible from various angles on the ground."
  */
 
-import type { DroneFormation } from '@/store/useProjectStore';
+import type { DroneFormation } from '@/types/projectTypes';
 
 export interface ViewPoint {
   id: string;

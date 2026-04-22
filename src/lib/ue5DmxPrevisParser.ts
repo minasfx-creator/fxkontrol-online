@@ -11,25 +11,8 @@
 import { DMX_FIXTURE_PROFILES, type DMXFixture, type DMXUniverse } from './dmxEngine';
 import { isT3DFormat, parseUE5T3D } from './ue5T3dParser';
 
-export interface UE5DMXFixture {
-  name: string;
-  fixtureType: string;
-  universe: number;
-  startChannel: number;
-  channelCount: number;
-  mode: string;
-  gdtfSource: string;
-  // Inferred
-  profileId: string;
-  category: string;
-  color: string;
-}
-
-export interface UE5DMXParseResult {
-  fixtures: UE5DMXFixture[];
-  libraryName: string;
-  errors: string[];
-}
+export type { UE5DMXFixture, UE5DMXParseResult } from './ue5DmxTypes';
+import type { UE5DMXFixture, UE5DMXParseResult } from './ue5DmxTypes';
 
 // ── UE5 fixture type keyword → internal profile mapping ──
 const UE5_PROFILE_MAP: Record<string, { profileId: string; category: string; color: string }> = {

@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useSceneStore, SCENE_PRESETS, QUALITY_PRESETS, type GroundStyle, type WeatherCondition, type QualityPreset, type ViewTransform } from '@/store/useSceneStore';
+import { useSceneStore, SCENE_PRESETS, QUALITY_PRESETS, type GroundStyle, type WeatherCondition, type QualityPreset, type ViewTransform, type GoogleTilesQuality } from '@/store/useSceneStore';
 import { getAllViewTransforms } from '@/lib/niagaraBlenderRules';
 import { getTerrainPresets } from '@/render_ultra/environment/terrainPBR';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -53,8 +53,20 @@ interface BgImage {
 }
 
 export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
-  const { settings, updateSettings, applyPreset, applyQualityPreset, qualityPreset, resetToDefault, terrainPreset, setTerrainPreset } = useSceneStore();
-  const { droneFormations, positions, showTrajectories, setShowTrajectories, showFormations, setShowFormations } = useProjectStore();
+  const settings = useSceneStore(s => s.settings);
+  const updateSettings = useSceneStore(s => s.updateSettings);
+  const applyPreset = useSceneStore(s => s.applyPreset);
+  const applyQualityPreset = useSceneStore(s => s.applyQualityPreset);
+  const qualityPreset = useSceneStore(s => s.qualityPreset);
+  const resetToDefault = useSceneStore(s => s.resetToDefault);
+  const terrainPreset = useSceneStore(s => s.terrainPreset);
+  const setTerrainPreset = useSceneStore(s => s.setTerrainPreset);
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const positions = useProjectStore(s => s.positions);
+  const showTrajectories = useProjectStore(s => s.showTrajectories);
+  const setShowTrajectories = useProjectStore(s => s.setShowTrajectories);
+  const showFormations = useProjectStore(s => s.showFormations);
+  const setShowFormations = useProjectStore(s => s.setShowFormations);
   const [openSections, setOpenSections] = useState<Set<SectionId>>(new Set(['quick', 'presets']));
   const [bgImages, setBgImages] = useState<BgImage[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -267,6 +279,20 @@ export default function SceneEditorPanel({ onClose }: { onClose: () => void }) {
                   if (v) toast.success('Digital Twin carregado');
                 }}
               />
+            </div>
+            <div>
+              <span className="text-[9px] text-muted-foreground">Qualidade Tiles 3D</span>
+              <Select
+                value={settings.googleTilesQuality}
+                onValueChange={v => updateSettings({ googleTilesQuality: v as GoogleTilesQuality })}
+              >
+                <SelectTrigger className="h-7 text-[10px] mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low" className="text-[10px]">Low (mais leve)</SelectItem>
+                  <SelectItem value="medium" className="text-[10px]">Medium</SelectItem>
+                  <SelectItem value="high" className="text-[10px]">High (mais detalhe)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-[9px] text-muted-foreground">Floating Origin</span>

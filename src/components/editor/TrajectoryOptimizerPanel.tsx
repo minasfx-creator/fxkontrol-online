@@ -14,7 +14,7 @@ import { X, Zap, AlertTriangle, CheckCircle, Play } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function TrajectoryOptimizerPanel({ onClose }: { onClose: () => void }) {
-  const { droneFormations } = useProjectStore();
+    const droneFormations = useProjectStore(s => s.droneFormations);
   const [constraints, setConstraints] = useState<TrajectoryConstraints>({ ...DEFAULT_CONSTRAINTS });
   const [result, setResult] = useState<{
     violations: TrajectoryViolation[];

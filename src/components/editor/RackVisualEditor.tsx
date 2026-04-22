@@ -72,7 +72,15 @@ function computeTubePositions(rack: Rack, width: number, height: number): TubePo
 
 /** Single-rack SVG editor */
 function SingleRackView({ rack }: { rack: Rack }) {
-  const { updateTube, updateRack, selectTube, selectedTubeId, duplicateRack, removeRack, clearAllEffects, setAllTubesCaliber, setAllTubesAngle } = useRackStore();
+  const updateTube = useRackStore(s => s.updateTube);
+  const updateRack = useRackStore(s => s.updateRack);
+  const selectTube = useRackStore(s => s.selectTube);
+  const selectedTubeId = useRackStore(s => s.selectedTubeId);
+  const duplicateRack = useRackStore(s => s.duplicateRack);
+  const removeRack = useRackStore(s => s.removeRack);
+  const clearAllEffects = useRackStore(s => s.clearAllEffects);
+  const setAllTubesCaliber = useRackStore(s => s.setAllTubesCaliber);
+  const setAllTubesAngle = useRackStore(s => s.setAllTubesAngle);
   const [hoveredTube, setHoveredTube] = useState<string | null>(null);
   const [bulkCaliber, setBulkCaliber] = useState(3);
   const [bulkAngle, setBulkAngle] = useState(0);
@@ -255,7 +263,8 @@ function SingleRackView({ rack }: { rack: Rack }) {
 /** Multi-rack layout workspace - top-down CAD view */
 function MultiRackLayout() {
   const racks = useRackStore(s => s.racks);
-  const { selectRack, selectedRackId } = useRackStore();
+  const selectRack = useRackStore(s => s.selectRack);
+  const selectedRackId = useRackStore(s => s.selectedRackId);
   const [dragState, setDragState] = useState<{ rackId: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 

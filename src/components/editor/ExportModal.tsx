@@ -3,7 +3,9 @@
  * tabular preview, and download actions.
  */
 import { useState, useMemo } from 'react';
-import { useProjectStore, EFFECT_LIBRARY, type TimelineItem, type Position } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type TimelineItem, type Position } from '@/types/projectTypes';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { exportFiringCSV, downloadFile } from '@/lib/exportEngine';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -143,7 +145,9 @@ function generateFiringPreview(timelineItems: TimelineItem[], positions: Positio
 // COMPONENT
 // ═══════════════════════════════════════════════════════════
 export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
-  const { projectName, timelineItems, positions } = useProjectStore();
+    const projectName = useProjectStore(s => s.projectName);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const positions = useProjectStore(s => s.positions);
   const [activeTab, setActiveTab] = useState('firing');
 
   const pyroCount = useMemo(() =>

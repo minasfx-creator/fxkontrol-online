@@ -16,9 +16,10 @@ import { TilesRenderer } from '3d-tiles-renderer';
 import {
   GoogleCloudAuthPlugin,
   TilesFadePlugin,
-  UpdateOnChangePlugin,
   UnloadTilesPlugin,
+  GLTFExtensionsPlugin,
 } from '3d-tiles-renderer/plugins';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 
 // ── ECEF→ENU rotation matrix for a given lat/lon anchor ─────────────
 function buildECEFtoENUMatrix(lat: number, lon: number): THREE.Matrix4 {
@@ -49,86 +50,89 @@ function buildECEFtoENUMatrix(lat: number, lon: number): THREE.Matrix4 {
 }
 
 // ── SSE quality tiers ───────────────────────────────────────────────
-const SSE_TIERS: Record<string, number> = {
+const SSE_TIERS = {
   ultra: 4,
   high: 8,
   medium: 16,
   low: 32,
+} as const;
+
+const GOOGLE_TILE_QUALITY_TO_SSE = {
+  low: SSE_TIERS.low,
+  medium: SSE_TIERS.medium,
+  high: SSE_TIERS.high,
+} as const;
+
+// 2 km² ≈ circle radius ~800m
+const TILE_RADIUS_METERS = 800;
+
+// Reuse vectors to avoid per-frame allocations
+const ORIGIN = new THREE.Vector3(0, 0, 0);
+const TMP_WORLD = new THREE.Vector3();
+
+// Throttle traverse to ~10fps (every 6th frame at 60fps)
+const TRAVERSE_INTERVAL = 6;
+
+// Hysteresis: require N consecutive zero-tile cycles before reverting to loading
+const HYSTERESIS_THRESHOLD = 15;
+
+// ── Loading state broadcast for HUD overlay ─────────────────────────
+export type TilesLoadingState = 'idle' | 'fetching-key' | 'loading-tiles' | 'ready' | 'error';
+
+export interface TilesDebugInfo {
+  state: TilesLoadingState;
+  count: number;
+  sse: number;
+  errorMsg: string | null;
+  anchorLat: number;
+  anchorLon: number;
+  anchorAlt: number;
+  groupVisible: boolean;
+  rendererActive: boolean;
+}
+
+let _tilesDebug: TilesDebugInfo = {
+  state: 'idle', count: 0, sse: 0, errorMsg: null,
+  anchorLat: 0, anchorLon: 0, anchorAlt: 0,
+  groupVisible: false, rendererActive: false,
 };
+const _listeners = new Set<() => void>();
+
+export function getTilesLoadingState() { return _tilesDebug.state; }
+export function getTilesLoadedCount() { return _tilesDebug.count; }
+export function getTilesDebugInfo() { return _tilesDebug; }
+export function subscribeTilesLoading(cb: () => void) {
+  _listeners.add(cb);
+  return () => { _listeners.delete(cb); };
+}
+function setLoadingState(s: TilesLoadingState, count = _tilesDebug.count, extra?: Partial<TilesDebugInfo>) {
+  _tilesDebug = { ..._tilesDebug, state: s, count, ...extra };
+  _listeners.forEach(cb => cb());
+}
 
 // ── Main Component ──────────────────────────────────────────────────
-
 export default function GoogleTilesLayer() {
   const { scene, camera, gl } = useThree();
   const tilesRef = useRef<TilesRenderer | null>(null);
   const groupRef = useRef<THREE.Group>(new THREE.Group());
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [tilesReady, setTilesReady] = useState(false);
 
   const anchorLat = useSceneStore((s) => s.settings.geoAnchorLat);
   const anchorLon = useSceneStore((s) => s.settings.geoAnchorLon);
   const anchorAlt = useSceneStore((s) => s.settings.geoAnchorAlt);
   const enabled = useSceneStore((s) => s.settings.google3DTilesEnabled);
+  const sceneImportRadius = useSceneStore((s) => s.settings.sceneImportRadius);
+  const googleTilesQuality = useSceneStore((s) => s.settings.googleTilesQuality);
+  const lastDebugPublishRef = useRef(0);
+  const lastDebugSignatureRef = useRef('');
+  const frameCountRef = useRef(0);
+  const zeroTileCountRef = useRef(0);
+  const wasReadyRef = useRef(false);
 
-  // Fetch API key on mount
-  useEffect(() => {
-    if (apiKey) return;
-    (async () => {
-      try {
-        console.log('[GoogleTiles] Fetching API key...');
-        const { data, error } = await supabase.functions.invoke('get-maps-key');
-        if (error || !data?.key) {
-          console.warn('[GoogleTiles] Failed to fetch API key:', error);
-          return;
-        }
-        console.log('[GoogleTiles] API key acquired');
-        setApiKey(data.key);
-      } catch (err) {
-        console.warn('[GoogleTiles] API key fetch error:', err);
-      }
-    })();
-  }, [apiKey]);
+  // Store applyAnchorTransform in a ref to avoid re-creating the init useEffect
+  const applyAnchorTransformRef = useRef<() => void>(() => {});
 
-  // Initialize TilesRenderer when enabled and API key is ready
-  useEffect(() => {
-    if (!enabled || !apiKey) return;
-    if (tilesRef.current) return;
-
-    console.log('[GoogleTiles] Initializing TilesRenderer...');
-
-    const tiles = new TilesRenderer();
-
-    tiles.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: apiKey }));
-    // TileCompressionPlugin removed — crashes with 'content' undefined in v0.4
-    tiles.registerPlugin(new TilesFadePlugin());
-    tiles.registerPlugin(new UpdateOnChangePlugin());
-    tiles.registerPlugin(new UnloadTilesPlugin());
-
-    tiles.errorTarget = SSE_TIERS.high;
-    // errorThreshold removed — deprecated in 3d-tiles-renderer v0.4
-
-    const group = groupRef.current;
-    group.name = 'GoogleTilesGroup';
-    tiles.setCamera(camera);
-    tiles.setResolutionFromRenderer(camera, gl);
-
-    group.add(tiles.group);
-    scene.add(group);
-
-    tilesRef.current = tiles;
-
-    console.log('[GoogleTiles] Initialized successfully');
-
-    return () => {
-      console.log('[GoogleTiles] Disposing...');
-      tiles.dispose();
-      scene.remove(group);
-      tilesRef.current = null;
-    };
-  }, [enabled, apiKey, scene, camera, gl]);
-
-  // Update anchor position
-  useEffect(() => {
+  const applyAnchorTransform = useCallback(() => {
     if (!tilesRef.current) return;
 
     const anchorECEF = geoToECEF({ lat: anchorLat, lon: anchorLon, alt: anchorAlt });
@@ -145,7 +149,93 @@ export default function GoogleTilesLayer() {
     groupRef.current.matrixWorldNeedsUpdate = true;
   }, [anchorLat, anchorLon, anchorAlt]);
 
-  // Per-frame update
+  // Keep ref in sync
+  applyAnchorTransformRef.current = applyAnchorTransform;
+
+  // Fetch API key on mount
+  useEffect(() => {
+    if (apiKey) return;
+    setLoadingState('fetching-key', 0, { errorMsg: null });
+    (async () => {
+      try {
+        console.log('[GoogleTiles] Fetching API key...');
+        const { data, error } = await supabase.functions.invoke('get-maps-key');
+        if (error || !data?.key) {
+          const msg = error?.message || 'No key returned';
+          console.warn('[GoogleTiles] Failed to fetch API key:', msg);
+          setLoadingState('error', 0, { errorMsg: `API key: ${msg}` });
+          return;
+        }
+        console.log('[GoogleTiles] API key acquired');
+        setApiKey(data.key);
+        setLoadingState('loading-tiles', 0, { errorMsg: null });
+      } catch (err) {
+        console.warn('[GoogleTiles] API key fetch error:', err);
+        setLoadingState('error', 0, { errorMsg: `Fetch error: ${(err as Error).message}` });
+      }
+    })();
+  }, [apiKey]);
+
+  // Initialize TilesRenderer when enabled and API key is ready
+  useEffect(() => {
+    if (!enabled || !apiKey) return;
+    if (tilesRef.current) return;
+
+    console.log('[GoogleTiles] Initializing TilesRenderer...');
+
+    const tiles = new TilesRenderer();
+
+    tiles.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: apiKey }));
+    tiles.registerPlugin(new TilesFadePlugin());
+    tiles.registerPlugin(new UnloadTilesPlugin());
+
+    // Register DRACOLoader for compressed Google 3D Tiles meshes
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+    tiles.registerPlugin(new GLTFExtensionsPlugin({
+      dracoLoader,
+    }));
+
+    tiles.errorTarget = GOOGLE_TILE_QUALITY_TO_SSE[googleTilesQuality];
+
+    const group = groupRef.current;
+    group.name = 'GoogleTilesGroup';
+    group.renderOrder = -100;
+    tiles.setCamera(camera);
+    tiles.setResolutionFromRenderer(camera, gl);
+
+    group.add(tiles.group);
+    scene.add(group);
+
+    tilesRef.current = tiles;
+    wasReadyRef.current = false;
+    zeroTileCountRef.current = 0;
+
+    // Apply anchor transform via ref (avoids dep on applyAnchorTransform)
+    applyAnchorTransformRef.current();
+
+    console.log('[GoogleTiles] Initialized successfully');
+
+    return () => {
+      console.log('[GoogleTiles] Disposing...');
+      tiles.dispose();
+      scene.remove(group);
+      tilesRef.current = null;
+    };
+  }, [enabled, apiKey, scene, camera, gl]);
+
+  // Runtime quality change
+  useEffect(() => {
+    if (!tilesRef.current || !enabled) return;
+    tilesRef.current.errorTarget = GOOGLE_TILE_QUALITY_TO_SSE[googleTilesQuality];
+  }, [googleTilesQuality, enabled]);
+
+  // Update anchor position
+  useEffect(() => {
+    applyAnchorTransform();
+  }, [applyAnchorTransform]);
+
+  // Per-frame update with radius culling + hysteresis
   useFrame(() => {
     const tiles = tilesRef.current;
     if (!tiles || !enabled) return;
@@ -155,18 +245,73 @@ export default function GoogleTilesLayer() {
       tiles.setResolutionFromRenderer(camera, gl);
       tiles.update();
 
+      frameCountRef.current++;
+      let visibleCount = 0;
+
+      if (frameCountRef.current % TRAVERSE_INTERVAL === 0) {
+        const cullRadius = Math.max(TILE_RADIUS_METERS, sceneImportRadius);
+
+        tiles.group.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            if (!child.geometry?.boundingSphere) {
+              child.geometry?.computeBoundingSphere();
+            }
+            child.getWorldPosition(TMP_WORLD);
+            const dist = TMP_WORLD.distanceTo(ORIGIN);
+            const isVisible = dist < cullRadius;
+            child.visible = isVisible;
+            if (isVisible) visibleCount++;
+          }
+        });
+      }
+
       const root = tiles.root;
       if (root) {
-        let visibleCount = 0;
-        tiles.group.traverse(() => { visibleCount++; });
         updateGeoHUD({ tilesLoaded: visibleCount });
-        if (!tilesReady && visibleCount > 5) {
-          setTilesReady(true);
-          console.log('[Terrain] tiles ready, fallback blocked');
+
+        const now = performance.now();
+        if (now - lastDebugPublishRef.current > 250) {
+          lastDebugPublishRef.current = now;
+
+          // Hysteresis logic: once ready, stay ready unless zero tiles for N cycles
+          let nextState: TilesLoadingState;
+          if (visibleCount > 2) {
+            wasReadyRef.current = true;
+            zeroTileCountRef.current = 0;
+            nextState = 'ready';
+          } else if (wasReadyRef.current) {
+            if (visibleCount === 0) {
+              zeroTileCountRef.current++;
+            } else {
+              zeroTileCountRef.current = 0;
+            }
+            nextState = zeroTileCountRef.current >= HYSTERESIS_THRESHOLD ? 'loading-tiles' : 'ready';
+            if (nextState === 'loading-tiles') {
+              wasReadyRef.current = false;
+            }
+          } else {
+            nextState = 'loading-tiles';
+          }
+
+          const signature = [
+            nextState, visibleCount, Math.round(tiles.errorTarget),
+            groupRef.current.visible ? 1 : 0,
+            anchorLat.toFixed(6), anchorLon.toFixed(6), anchorAlt.toFixed(1),
+          ].join('|');
+
+          if (signature !== lastDebugSignatureRef.current) {
+            lastDebugSignatureRef.current = signature;
+            setLoadingState(nextState, visibleCount, {
+              sse: tiles.errorTarget,
+              anchorLat, anchorLon, anchorAlt,
+              groupVisible: groupRef.current.visible,
+              rendererActive: true,
+            });
+          }
         }
       }
     } catch (err) {
-      console.warn('[Terrain] update error caught, fallback blocked:', err);
+      console.warn('[Terrain] update error caught:', err);
     }
   });
 

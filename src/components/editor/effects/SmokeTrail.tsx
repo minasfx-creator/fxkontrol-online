@@ -1,9 +1,8 @@
 /**
- * SmokeTrail — Niagara-grade smoke using composable emitter system
+ * SmokeTrail — InstancedMesh smoke (1 draw call instead of 80-120)
  * 
- * Zero-GC optimized: pre-allocated material array, no per-frame allocations.
- * Uses NiagaraSystem with sphere spawn, curl noise turbulence,
- * negative gravity for rising smoke, and soft-particle rendering config.
+ * Uses THREE.InstancedMesh with shared sphereGeometry for GPU-efficient
+ * post-burst smoke rendering. Per-instance transform via instanceMatrix.
  */
 
 import { useRef, useMemo, useEffect } from 'react';
@@ -17,17 +16,34 @@ import {
 
 const BASE_SMOKE_COUNT = 80;
 
-// Pre-allocated shared material to avoid per-mesh material creation
-const _sharedSmokeMaterials = new Map<string, THREE.MeshBasicMaterial>();
-
-function getSmokeMaterial(color: string): THREE.MeshBasicMaterial {
-  let mat = _sharedSmokeMaterials.get(color);
-  if (!mat) {
-    mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false });
-    _sharedSmokeMaterials.set(color, mat);
+// Shared geometry — created once
+let _sharedSphereGeo: THREE.SphereGeometry | null = null;
+function getSharedSphereGeo(): THREE.SphereGeometry {
+  if (!_sharedSphereGeo) {
+    _sharedSphereGeo = new THREE.SphereGeometry(1, 6, 6);
   }
-  return mat;
+  return _sharedSphereGeo;
 }
+
+// Shared material
+let _sharedSmokeMat: THREE.MeshBasicMaterial | null = null;
+function getSharedSmokeMat(): THREE.MeshBasicMaterial {
+  if (!_sharedSmokeMat) {
+    _sharedSmokeMat = new THREE.MeshBasicMaterial({
+      color: '#888888',
+      transparent: true,
+      opacity: 0.06,
+      depthWrite: false,
+      depthTest: false,
+    });
+  }
+  return _sharedSmokeMat;
+}
+
+// Pre-allocated dummy for matrix updates
+const _dummy = new THREE.Object3D();
+const _color = new THREE.Color();
+const _colorTemp = new THREE.Color();
 
 function SmokeTrailInner({
   position,
@@ -49,10 +65,9 @@ function SmokeTrailInner({
   const smokeDensityMult = getBurstSmokeDensity(caliber);
   const SMOKE_COUNT = Math.min(120, Math.round(BASE_SMOKE_COUNT * smokeDensityMult));
 
-  const meshRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const instancedRef = useRef<THREE.InstancedMesh>(null);
   const niagaraRef = useRef<NiagaraSystem | null>(null);
 
-  // Cache fadeOut power to avoid branch per particle per frame
   const fadeOutPower = liftChargeType === 'black_powder' ? 1.5 : 2.0;
   const baseOpacity = liftChargeType === 'black_powder' ? 0.08 : 0.05;
 
@@ -119,9 +134,10 @@ function SmokeTrailInner({
   }, [SMOKE_COUNT, liftChargeType, smokeConfig, smokeColor]);
 
   useFrame((_, delta) => {
-    if (!niagaraRef.current) return;
+    if (!niagaraRef.current || !instancedRef.current) return;
     const dt = Math.min(delta, 0.05);
     const sys = niagaraRef.current;
+    const mesh = instancedRef.current;
 
     for (const emitter of sys.emitters) {
       emitter.enabled = progress > 0 && progress < 0.95;
@@ -135,46 +151,48 @@ function SmokeTrailInner({
     if (!emitter) return;
 
     let visIdx = 0;
+    _color.set(smokeColor);
+
     for (const p of emitter.particles) {
       if (!p.alive || visIdx >= SMOKE_COUNT) continue;
-      const mesh = meshRefs.current[visIdx];
-      if (!mesh) { visIdx++; continue; }
 
       const t = p.age / p.lifetime;
-      mesh.visible = true;
-      mesh.position.set(p.position.x, p.position.y, p.position.z);
-      mesh.scale.setScalar(p.size);
+      _dummy.position.set(p.position.x, p.position.y, p.position.z);
+      _dummy.scale.setScalar(p.size);
+      _dummy.updateMatrix();
+      mesh.setMatrixAt(visIdx, _dummy.matrix);
 
-      const mat = mesh.material as THREE.MeshBasicMaterial;
+      // Per-instance color with fade baked into color brightness
       const fadeIn = Math.min(1, p.age * 8);
       const fadeOut = Math.max(0, 1 - Math.pow(t, fadeOutPower));
-      mat.opacity = Math.max(0, baseOpacity * intensity * fadeIn * fadeOut * smokeDensityMult);
+      const opacityFactor = Math.max(0, baseOpacity * intensity * fadeIn * fadeOut * smokeDensityMult);
+      mesh.setColorAt(visIdx, _colorTemp.copy(_color).multiplyScalar(opacityFactor * 10));
 
       visIdx++;
     }
 
+    // Hide remaining instances by scaling to 0
     for (let i = visIdx; i < SMOKE_COUNT; i++) {
-      const mesh = meshRefs.current[i];
-      if (mesh) mesh.visible = false;
+      _dummy.position.set(0, -1000, 0);
+      _dummy.scale.setScalar(0);
+      _dummy.updateMatrix();
+      mesh.setMatrixAt(i, _dummy.matrix);
     }
-  });
 
-  const puffs = useMemo(() => Array.from({ length: SMOKE_COUNT }, (_, i) => i), [SMOKE_COUNT]);
+    mesh.count = visIdx;
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  });
 
   if (progress <= 0) return null;
 
   return (
     <group position={position}>
-      {puffs.map((_, i) => (
-        <mesh
-          key={i}
-          ref={el => { meshRefs.current[i] = el; }}
-          visible={false}
-        >
-          <sphereGeometry args={[1, 8, 8]} />
-          <meshBasicMaterial color={smokeColor} transparent opacity={0} depthWrite={false} />
-        </mesh>
-      ))}
+      <instancedMesh
+        ref={instancedRef}
+        args={[getSharedSphereGeo(), getSharedSmokeMat(), SMOKE_COUNT]}
+        frustumCulled={false}
+      />
     </group>
   );
 }

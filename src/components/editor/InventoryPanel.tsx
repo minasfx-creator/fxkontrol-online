@@ -4,13 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useInventoryStore, type InventoryItem } from '@/store/useInventoryStore';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { parseVDL } from '@/lib/vdlParser';
 import { cn } from '@/lib/utils';
 
 export default function InventoryPanel({ onClose }: { onClose: () => void }) {
-  const { items, setItem, showCostMultiplier, setShowCostMultiplier, importItems, initDefaults } = useInventoryStore();
-  const { timelineItems } = useProjectStore();
+  const items = useInventoryStore(s => s.items);
+  const setItem = useInventoryStore(s => s.setItem);
+  const showCostMultiplier = useInventoryStore(s => s.showCostMultiplier);
+  const setShowCostMultiplier = useInventoryStore(s => s.setShowCostMultiplier);
+  const importItems = useInventoryStore(s => s.importItems);
+  const initDefaults = useInventoryStore(s => s.initDefaults);
+    const timelineItems = useProjectStore(s => s.timelineItems);
   const [search, setSearch] = useState('');
   const [csvText, setCsvText] = useState('');
 

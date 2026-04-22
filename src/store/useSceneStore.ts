@@ -6,6 +6,7 @@ export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concr
 export type SkyPreset = 'night-clear' | 'night-cloudy' | 'dusk' | 'overcast' | 'foggy' | 'custom';
 export type WeatherCondition = 'clear' | 'light-rain' | 'heavy-rain' | 'snow' | 'fog' | 'haze' | 'wind-only';
 export type QualityPreset = 'realistic' | 'show' | 'performance';
+export type GoogleTilesQuality = 'low' | 'medium' | 'high';
 export type { ViewTransform };
 export const QUALITY_PRESETS: Record<QualityPreset, { name: string; description: string; settings: Partial<SceneSettings> }> = {
   realistic: {
@@ -239,6 +240,8 @@ export interface SceneSettings {
   tideOffset: number;             // -2 to 2 meters dynamic tide adjustment
   fieldViewMode: boolean;         // high-contrast outdoor UI
   google3DTilesEnabled: boolean;   // Google Photorealistic 3D Tiles digital twin
+  sceneImportRadius: number;       // 1000-20000 meters (1-20 km) tile loading radius
+  googleTilesQuality: GoogleTilesQuality; // low/medium/high quality target for tiles
   presentationMode: boolean;       // Client presentation fullscreen mode
 
   // ═══ Ultra-Smooth Rendering ═══
@@ -251,26 +254,26 @@ export interface SceneSettings {
 
 const DEFAULT_SETTINGS: SceneSettings = {
   skyPreset: 'night-clear',
-  ambientIntensity: 0.12,
-  moonIntensity: 0.7,
+  ambientIntensity: 0.14,
+  moonIntensity: 0.8,
   moonColor: '#8899cc',
-  skyBrightness: 1.0,
-  starDensity: 1.0,
-  fogDensity: 0.15,
+  skyBrightness: 1.1,
+  starDensity: 1.3,
+  fogDensity: 0.12,
   fogColor: '#101828',
   fogNear: 25000,
   fogFar: 300000,
-  horizonGlow: 0.5,
+  horizonGlow: 0.6,
 
-  groundStyle: 'synthetic-grass',
-  groundBrightness: 1.5,
-  gridOpacity: 0.6,
+  groundStyle: 'google-earth',
+  groundBrightness: 1.6,
+  gridOpacity: 0.5,
   gridColor: '#1a1a2e',
   showGrid: true,
-  showOriginMarker: true,
+  showOriginMarker: false,
   showScalePoles: false,
   showTreeline: false,
-  groundFogIntensity: 0.2,
+  groundFogIntensity: 0.35,
 
   weather: 'clear',
   rainIntensity: 0,
@@ -287,7 +290,7 @@ const DEFAULT_SETTINGS: SceneSettings = {
   smokeOpacity: 0.85,
   bloomStrength: 1.6,
 
-  hdrMultiplier: 4.5,
+  hdrMultiplier: 0.9,
   starDrag: 0.08,
   windSpeed: 0.3,
   windDirection: 90,
@@ -351,13 +354,15 @@ const DEFAULT_SETTINGS: SceneSettings = {
   niagaraFluidsEnabled: false,
 
   // Ultra Hardening defaults
-  floatingOriginEnabled: false,
+  floatingOriginEnabled: true,
   geoAnchorLat: -23.007,
   geoAnchorLon: -44.318,
   geoAnchorAlt: 0,
   tideOffset: 0,
   fieldViewMode: false,
   google3DTilesEnabled: false,
+  sceneImportRadius: 5000,
+  googleTilesQuality: 'low',
   presentationMode: false,
 
   // Ultra-Smooth Rendering defaults
@@ -397,7 +402,7 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       particleDensity: 1.2,
       smokeOpacity: 0.55,
       trailLength: 1.2,
-      hdrMultiplier: 4.0,
+      hdrMultiplier: 0.8,
       burstFlashIntensity: 1.2,
       afterglowDuration: 3.0,
       afterglowIntensity: 0.18,
@@ -540,7 +545,7 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       particleDensity: 0.8,
       smokeOpacity: 0.1,
       trailLength: 0.6,
-      hdrMultiplier: 2.0,
+      hdrMultiplier: 1.0,
       burstFlashIntensity: 0.3,
       afterglowDuration: 1.0,
       afterglowIntensity: 0.05,
@@ -584,7 +589,7 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       particleDensity: 1.5,
       smokeOpacity: 0.75,
       trailLength: 1.5,
-      hdrMultiplier: 5.5,
+      hdrMultiplier: 1.1,
       burstFlashIntensity: 1.5,
       afterglowDuration: 4.0,
       afterglowIntensity: 0.25,
@@ -627,7 +632,7 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       particleDensity: 1.0,
       smokeOpacity: 0.65,
       trailLength: 1.0,
-      hdrMultiplier: 3.0,
+      hdrMultiplier: 0.7,
       burstFlashIntensity: 0.8,
       afterglowDuration: 2.5,
       afterglowIntensity: 0.12,
@@ -673,7 +678,7 @@ export const SCENE_PRESETS: Record<string, { name: string; description: string; 
       particleDensity: 1.3,
       smokeOpacity: 0.8,
       trailLength: 1.0,
-      hdrMultiplier: 3.5,
+      hdrMultiplier: 0.75,
       burstFlashIntensity: 0.6,
       afterglowDuration: 2.0,
       afterglowIntensity: 0.15,
@@ -709,6 +714,14 @@ export interface EnvironmentState {
   showAxesHelper: boolean;       // XYZ color-coded axes at origin
   positionTransformMode: 'translate' | 'rotate' | 'scale';  // Gizmo mode for position pins
   gridSnapResolution: number;    // Snap grid cell size in meters (0.1 – 10)
+  droneRendererMode: 'instanced' | 'swarm';  // instanced = PBR/LOD, swarm = tactical engine
+  showHUDCrosshairs: boolean;    // AR-style HUD crosshairs overlay
+  arMode: boolean;               // AR overlay mode toggle
+  arOverlayOpacity: number;      // 0-1 AR overlay opacity
+  arBlendMode: 'screen' | 'add' | 'normal' | 'overlay';
+  // ═══ Destruction Mode — Blade Runner 2049 "Luv Missile Strike" ═══
+  destructionMode: boolean;
+  destructionPhase: 'idle' | 'targeting' | 'incoming' | 'impact' | 'aftermath';
 }
 
 export interface CameraBookmark {
@@ -784,6 +797,13 @@ const DEFAULT_ENVIRONMENT: EnvironmentState = {
   showAxesHelper: true,
   positionTransformMode: 'translate',
   gridSnapResolution: 1,
+  droneRendererMode: 'instanced',
+  showHUDCrosshairs: false,
+  arMode: false,
+  arOverlayOpacity: 0.85,
+  arBlendMode: 'screen',
+  destructionMode: false,
+  destructionPhase: 'idle',
 };
 
 export const useSceneStore = create<SceneSettingsState>((set) => ({

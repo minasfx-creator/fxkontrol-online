@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 
 /**
  * Timecode Bridge — WebSocket relay for external LTC/MTC timecode.
@@ -19,9 +20,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
  *   POST /timecode-bridge { type: "tc", ... }
  */
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+const tcCorsHeaders = {
+  ...corsHeaders,
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
@@ -172,7 +172,7 @@ function handleWebSocket(req: Request): Response {
 serve(async (req) => {
   // CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: tcCorsHeaders });
   }
 
   const url = new URL(req.url);

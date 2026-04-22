@@ -3,7 +3,8 @@ import { Volume2, X, AlertTriangle, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import {
   analyzeSoundLevels,
   DEFAULT_ANALYSIS_CONFIG,
@@ -160,7 +161,9 @@ function MiniChart({ result, currentTime, config }: {
 }
 
 export default function SoundLevelPanel({ onClose }: { onClose: () => void }) {
-  const { timelineItems, duration, currentTime } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const duration = useProjectStore(s => s.duration);
+  const currentTime = useProjectStore(s => s.currentTime);
   const [distance, setDistance] = useState(DEFAULT_ANALYSIS_CONFIG.measurementDistance);
   const [limit, setLimit] = useState(DEFAULT_ANALYSIS_CONFIG.regulatoryLimit);
   const [showC, setShowC] = useState(true);

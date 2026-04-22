@@ -1,27 +1,35 @@
-import { useState, useCallback } from 'react';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { MapPin, Crosshair, Zap, Move, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, RotateCw, Maximize2, Minimize2, Grid3x3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
-export default function SelectionStatusBar() {
-  const {
-    selectedPositionIds, positions, timelineItems, editorMode,
-    updatePosition, selectMultiplePositions,
-    trajectories, selectedTrajectoryIds, batchOffsetWaypoints,
-    selectionMode, linkedTimelineItemIds,
-    selectMultiplePositionsAndLinkedEvents,
-  } = useProjectStore();
+export default React.memo(function SelectionStatusBar() {
+  useRenderCounter('SelectionStatusBar');
+  const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
+  const positions = useProjectStore(s => s.positions);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const editorMode = useProjectStore(s => s.editorMode);
+  const updatePosition = useProjectStore(s => s.updatePosition);
+  const selectMultiplePositions = useProjectStore(s => s.selectMultiplePositions);
+  const trajectories = useProjectStore(s => s.trajectories);
+  const selectedTrajectoryIds = useProjectStore(s => s.selectedTrajectoryIds);
+  const batchOffsetWaypoints = useProjectStore(s => s.batchOffsetWaypoints);
+  const selectionMode = useProjectStore(s => s.selectionMode);
+  const linkedTimelineItemIds = useProjectStore(s => s.linkedTimelineItemIds);
+  const selectMultiplePositionsAndLinkedEvents = useProjectStore(s => s.selectMultiplePositionsAndLinkedEvents);
   const [showBatchTools, setShowBatchTools] = useState(false);
 
-  const selectedPositions = positions.filter(p => selectedPositionIds.includes(p.id));
-  const selectedPyro = selectedPositions.filter(p => p.type === 'pyro');
-  const selectedDrone = selectedPositions.filter(p => p.type === 'drone-pad');
+  const selectedPositions = useMemo(() => positions.filter(p => selectedPositionIds.includes(p.id)), [positions, selectedPositionIds]);
+  const selectedPyro = useMemo(() => selectedPositions.filter(p => p.type === 'pyro'), [selectedPositions]);
+  const selectedDrone = useMemo(() => selectedPositions.filter(p => p.type === 'drone-pad'), [selectedPositions]);
 
-  const linkedEffectCount = timelineItems.filter(
+  const linkedEffectCount = useMemo(() => timelineItems.filter(
     t => selectedPositionIds.includes(t.positionId || '') ||
       t.positionIds?.some(id => selectedPositionIds.includes(id))
-  ).length;
+  ).length, [timelineItems, selectedPositionIds]);
 
   // Select all drones
   const selectAllDrones = useCallback(() => {
@@ -88,7 +96,7 @@ export default function SelectionStatusBar() {
   if (selectedPositions.length === 0) {
     const droneCount = positions.filter(p => p.type === 'drone-pad').length;
     return (
-      <div className="absolute bottom-14 left-3 bg-card/85 backdrop-blur-sm border border-border/50 rounded-md px-3 py-1.5 shadow-lg">
+      <div className="absolute bottom-14 left-16 bg-card/85 backdrop-blur-sm border border-border/50 rounded-md px-3 py-1.5 shadow-lg">
         <span className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
           {editorMode === 'select' ? (
             <>
@@ -115,7 +123,7 @@ export default function SelectionStatusBar() {
   }
 
   return (
-    <div className="absolute bottom-14 left-3 bg-card/90 backdrop-blur-md border border-primary/20 rounded-md px-3 py-2 space-y-1.5 shadow-xl max-w-sm">
+    <div className="absolute bottom-14 left-16 bg-card/90 backdrop-blur-md border border-primary/20 rounded-md px-3 py-2 space-y-1.5 shadow-xl max-w-sm">
       {/* Selection summary */}
       <div className="flex items-center gap-3 text-[10px] font-mono">
         {selectedPyro.length > 0 && (
@@ -183,22 +191,22 @@ export default function SelectionStatusBar() {
           <div className="flex items-center gap-1">
             <div className="grid grid-cols-3 gap-0.5 w-fit">
               <div />
-              <Button variant="outline" size="icon" className="h-5 w-5" onClick={() => batchMove(0, 0, -1)}>
-                <ArrowUp className="w-2.5 h-2.5" />
+              <Button variant="outline" size="icon" className="h-6 w-6 hover:bg-primary/10 active:scale-90 transition-all" onClick={() => batchMove(0, 0, -1)}>
+                <ArrowUp className="w-3 h-3" />
               </Button>
               <div />
-              <Button variant="outline" size="icon" className="h-5 w-5" onClick={() => batchMove(-1, 0, 0)}>
-                <ArrowLeft className="w-2.5 h-2.5" />
+              <Button variant="outline" size="icon" className="h-6 w-6 hover:bg-primary/10 active:scale-90 transition-all" onClick={() => batchMove(-1, 0, 0)}>
+                <ArrowLeft className="w-3 h-3" />
               </Button>
               <div className="h-5 w-5 flex items-center justify-center">
                 <Grid3x3 className="w-2.5 h-2.5 text-muted-foreground/30" />
               </div>
-              <Button variant="outline" size="icon" className="h-5 w-5" onClick={() => batchMove(1, 0, 0)}>
-                <ArrowRight className="w-2.5 h-2.5" />
+              <Button variant="outline" size="icon" className="h-6 w-6 hover:bg-primary/10 active:scale-90 transition-all" onClick={() => batchMove(1, 0, 0)}>
+                <ArrowRight className="w-3 h-3" />
               </Button>
               <div />
-              <Button variant="outline" size="icon" className="h-5 w-5" onClick={() => batchMove(0, 0, 1)}>
-                <ArrowDown className="w-2.5 h-2.5" />
+              <Button variant="outline" size="icon" className="h-6 w-6 hover:bg-primary/10 active:scale-90 transition-all" onClick={() => batchMove(0, 0, 1)}>
+                <ArrowDown className="w-3 h-3" />
               </Button>
               <div />
             </div>
@@ -233,4 +241,4 @@ export default function SelectionStatusBar() {
       )}
     </div>
   );
-}
+});

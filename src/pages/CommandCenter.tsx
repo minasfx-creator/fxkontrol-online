@@ -3,7 +3,8 @@
  * 7 focused consoles: 4 main + Show Control + Module + DMX Monitor
  * Landscape mobile: game-style HUD with side rail + top bar
  */
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
+import { StatusChips, SidebarStatusWidget } from '@/components/editor/CommandStatusIndicators';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ambientSound } from '@/lib/ambientSound';
 import FullscreenablePanel from '@/components/editor/FullscreenablePanel';
@@ -14,26 +15,70 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { cn } from '@/lib/utils';
 import {
   Zap, Flame, Gauge, Layers, Activity, Cpu, Radio,
-  Shield, Map, Menu, Maximize, AlertOctagon, Target
+  Shield, Map, Menu, Maximize, AlertOctagon, Target,
+  FileText, FileOutput, Wifi, BookOpen, Gamepad2, FileCode2, FileBarChart
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import LiveFiringPanel from '@/components/editor/LiveFiringPanel';
 import { CONSOLE_LOGOS } from '@/components/editor/ConsoleLogos';
 import ConsoleBootSequence from '@/components/editor/ConsoleBootSequence';
 import TacticalMinimap from '@/components/editor/TacticalMinimap';
 
-// Direct-render components
-import MA3ControlPanel from '@/components/editor/MA3ControlPanel';
-import DroneCommandPanel from '@/components/editor/DroneCommandPanel';
-import ShowControlPanel from '@/components/editor/ShowControlPanel';
-import FXKNetPanel from '@/components/editor/live-firing/FXKNetPanel';
-import DMXMonitorPanel from '@/components/editor/DMXMonitorPanel';
-import FieldTestDesktop from '@/components/editor/FieldTestDesktop';
+// Lazy-loaded heavy panels — code-split into separate chunks
+const LiveFiringPanel = lazy(() => import('@/components/editor/LiveFiringPanel'));
+const MA3ControlPanel = lazy(() => import('@/components/editor/MA3ControlPanel'));
+const DroneCommandPanel = lazy(() => import('@/components/editor/DroneCommandPanel'));
+const ShowCommanderPanel = lazy(() => import('@/components/editor/ShowCommanderPanel'));
+const FXKNetPanel = lazy(() => import('@/components/editor/live-firing/FXKNetPanel'));
+const DMXMonitorPanel = lazy(() => import('@/components/editor/dmx/DMXMonitorPanel'));
+const FieldTestDesktop = lazy(() => import('@/components/editor/FieldTestDesktop'));
+const QuickHardwarePanel = lazy(() => import('@/components/editor/QuickHardwarePanel'));
+const VerificationConsole = lazy(() => import('@/components/editor/VerificationBar'));
+const ContinuityMatrix = lazy(() => import('@/components/editor/ContinuityMatrix'));
+const ShowPlanInspector = lazy(() => import('@/components/editor/ShowPlanInspector'));
+const SystemOverviewConsole = lazy(() => import('@/components/editor/SystemOverviewConsole'));
+const SafetyConsole = lazy(() => import('@/components/editor/SafetyConsole'));
+const FieldDiagnosticsConsole = lazy(() => import('@/components/editor/FieldDiagnosticsConsole'));
+const FireOneExportConsole = lazy(() => import('@/components/editor/FireOneExportConsole'));
+const DMXArtNetConsole = lazy(() => import('@/components/editor/DMXArtNetConsole'));
+const AuditBlackBoxConsole = lazy(() => import('@/components/editor/AuditBlackBoxConsole'));
+const CueValidationConsole = lazy(() => import('@/components/editor/CueValidationConsole'));
+const AddressingConsole = lazy(() => import('@/components/editor/AddressingConsole'));
+const ExecutionStatusConsole = lazy(() => import('@/components/editor/ExecutionStatusConsole'));
+const ExportReadinessPanel = lazy(() => import('@/components/editor/ExportReadinessPanel'));
+const CurrentStateMatrix = lazy(() => import('@/components/editor/CurrentStateMatrix'));
+const HardwareOverview = lazy(() => import('@/components/editor/HardwareOverview'));
+const RelayBankMonitor = lazy(() => import('@/components/editor/RelayBankMonitor'));
+const BatteryPowerMonitor = lazy(() => import('@/components/editor/BatteryPowerMonitor'));
+const MuxContinuityMonitor = lazy(() => import('@/components/editor/MuxContinuityMonitor'));
+const ArtNetDMXMonitor = lazy(() => import('@/components/editor/ArtNetDMXMonitor'));
+const ReadinessDashboard = lazy(() => import('@/components/editor/ReadinessDashboard'));
+const SafetySummaryBar = lazy(() => import('@/components/editor/SafetySummaryBar'));
+const ManualComplianceMatrix = lazy(() => import('@/components/editor/ManualComplianceMatrix'));
+const UnrealIntegrationConsole = lazy(() => import('@/components/editor/UnrealIntegrationConsole'));
+const SwarmContractInspector = lazy(() => import('@/components/editor/SwarmContractInspector'));
+const ExecutiveReportConsole = lazy(() => import('@/components/editor/ExecutiveReportConsole'));
+
+function PanelLoader() {
+  return (
+    <div className="flex-1 flex items-center justify-center bg-background/80">
+      <div className="flex flex-col items-center gap-2">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <span className="text-[9px] font-mono tracking-widest text-muted-foreground/50 uppercase">Loading Console</span>
+      </div>
+    </div>
+  );
+}
 // ── Types ──
 type CommandMode =
   | 'pyro_fire' | 'super_dmx' | 'fxk_light' | 'drone_ops'
-  | 'show_control' | 'module' | 'dmx_monitor' | 'field_test';
+  | 'show_control' | 'module' | 'dmx_monitor' | 'field_test' | 'hardware'
+  | 'verification' | 'continuity'
+  | 'sys_overview' | 'safety_console' | 'field_diag' | 'fireone_export' | 'dmx_artnet' | 'audit_blackbox'
+  | 'cue_validation' | 'addressing' | 'execution_status'
+  | 'export_readiness' | 'state_matrix'
+  | 'hw_overview' | 'relay_bank' | 'battery_power' | 'mux_continuity' | 'artnet_monitor' | 'readiness'
+  | 'manual_compliance' | 'unreal_status' | 'swarm_contract' | 'exec_report';
 
 // Fire modes get full LiveFiringPanel chrome (ARM, CUE keys, PANIC)
 const FIRE_MODES: CommandMode[] = ['pyro_fire', 'super_dmx'];
@@ -49,6 +94,30 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   module:       { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'MODULE',      badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20', subtitle: 'FIELD HARDWARE CTRL' },
   dmx_monitor:  { color: 'hsl(120 70% 42%)',   glow: 'hsl(120 70% 42% / 0.08)',  label: 'DMX MONITOR', badge: 'bg-green-500/15 text-green-400 border-green-500/20', subtitle: 'PROTOCOL ANALYZER' },
   field_test:   { color: 'hsl(0 80% 55%)',     glow: 'hsl(0 80% 55% / 0.1)',    label: 'FIELD TEST',  badge: 'bg-red-500/15 text-red-400 border-red-500/20', subtitle: 'DIAGNOSTIC FIRE TEST' },
+  hardware:     { color: 'hsl(190 80% 50%)',   glow: 'hsl(190 80% 50% / 0.1)',  label: 'HARDWARE',    badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'DEVICE CONNECT & MONITOR' },
+  verification: { color: 'hsl(120 70% 42%)',   glow: 'hsl(120 70% 42% / 0.08)', label: 'VERIFY',      badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'SYSTEM VERIFICATION' },
+  continuity:   { color: 'hsl(190 100% 50%)',  glow: 'hsl(190 100% 50% / 0.1)', label: 'CONTINUITY',  badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'IGNITER CONTINUITY MATRIX' },
+  sys_overview:   { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'OVERVIEW',    badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'SYSTEM OVERVIEW' },
+  safety_console: { color: 'hsl(0 85% 48%)',     glow: 'hsl(0 85% 48% / 0.1)',     label: 'SAFETY',      badge: 'bg-red-500/15 text-red-400 border-red-500/20', subtitle: 'SAFETY INTERLOCK CONSOLE' },
+  field_diag:     { color: 'hsl(190 80% 50%)',   glow: 'hsl(190 80% 50% / 0.1)',   label: 'FIELD DIAG',  badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'HARDWARE DIAGNOSTICS' },
+  fireone_export: { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'FIREONE',     badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'FIREONE EXPORT CONSOLE' },
+  dmx_artnet:     { color: 'hsl(200 80% 48%)',   glow: 'hsl(200 80% 48% / 0.1)',   label: 'DMX/ARTNET',  badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20', subtitle: 'DMX & ART-NET PROTOCOLS' },
+  audit_blackbox: { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'AUDIT',       badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20', subtitle: 'AUDIT TRAIL & BLACK BOX' },
+  cue_validation: { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'CUE VALID',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'CUE & TIMELINE VALIDATION' },
+  addressing:     { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'ADDRESSING',  badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20', subtitle: 'PROTOCOL ADDRESSING MAP' },
+  execution_status: { color: 'hsl(120 70% 42%)', glow: 'hsl(120 70% 42% / 0.08)', label: 'EXEC STATUS', badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'EXECUTION BRIDGE STATUS' },
+  export_readiness: { color: 'hsl(32 100% 50%)',  glow: 'hsl(32 100% 50% / 0.08)',  label: 'EXPORT',      badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'EXPORT READINESS PANEL' },
+  state_matrix:     { color: 'hsl(190 80% 50%)',  glow: 'hsl(190 80% 50% / 0.1)',   label: 'STATE MTX',   badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'CURRENT STATE MATRIX' },
+  hw_overview:      { color: 'hsl(190 80% 50%)',  glow: 'hsl(190 80% 50% / 0.1)',   label: 'HW OVERVIEW', badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'HARDWARE OVERVIEW' },
+  relay_bank:       { color: 'hsl(190 100% 50%)', glow: 'hsl(190 100% 50% / 0.1)',  label: 'RELAY BANK',  badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'RELAY BANK MONITOR' },
+  battery_power:    { color: 'hsl(120 70% 42%)',  glow: 'hsl(120 70% 42% / 0.08)',  label: 'BATTERY',     badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'BATTERY & POWER MONITOR' },
+  mux_continuity:   { color: 'hsl(190 80% 50%)',  glow: 'hsl(190 80% 50% / 0.1)',   label: 'MUX/CONT',   badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'MUX / CONTINUITY MONITOR' },
+  artnet_monitor:   { color: 'hsl(200 80% 48%)',  glow: 'hsl(200 80% 48% / 0.1)',   label: 'ART-NET',     badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20', subtitle: 'ART-NET NODE MONITOR' },
+  readiness:        { color: 'hsl(120 70% 42%)',  glow: 'hsl(120 70% 42% / 0.08)',  label: 'READINESS',   badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'READINESS DASHBOARD' },
+  manual_compliance:{ color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'COMPLIANCE',  badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'MANUAL COMPLIANCE MATRIX' },
+  unreal_status:    { color: 'hsl(270 60% 50%)',   glow: 'hsl(270 60% 50% / 0.08)',  label: 'UNREAL',      badge: 'bg-violet-500/15 text-violet-400 border-violet-500/20', subtitle: 'UNREAL INTEGRATION STATUS' },
+  swarm_contract:   { color: 'hsl(165 100% 42%)',  glow: 'hsl(165 100% 42% / 0.08)', label: 'SWARM',       badge: 'bg-teal-500/15 text-teal-400 border-teal-500/20', subtitle: 'BP_SWARMMANAGER CONTRACT' },
+  exec_report:      { color: 'hsl(190 80% 50%)',   glow: 'hsl(190 80% 50% / 0.1)',   label: 'EXEC RPT',    badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'EXECUTIVE STATUS REPORT' },
 };
 
 // ── Sidebar Sections ──
@@ -60,6 +129,9 @@ const MODE_SECTIONS = [
     modes: [
       { key: 'pyro_fire' as CommandMode, label: 'FXK-PYRO', icon: Flame },
       { key: 'super_dmx' as CommandMode, label: 'FXK-DMX', icon: Zap },
+      { key: 'fireone_export' as CommandMode, label: 'FIREONE', icon: FileOutput },
+      { key: 'export_readiness' as CommandMode, label: 'EXPORT', icon: FileOutput },
+      { key: 'execution_status' as CommandMode, label: 'EXEC STATUS', icon: Activity },
     ],
   },
   {
@@ -67,18 +139,46 @@ const MODE_SECTIONS = [
     accent: 'text-amber-400',
     icon: Activity,
     modes: [
+      { key: 'sys_overview' as CommandMode, label: 'OVERVIEW', icon: Activity },
+      { key: 'state_matrix' as CommandMode, label: 'STATE MTX', icon: Activity },
+      { key: 'manual_compliance' as CommandMode, label: 'COMPLIANCE', icon: BookOpen },
+      { key: 'exec_report' as CommandMode, label: 'EXEC REPORT', icon: FileBarChart },
       { key: 'show_control' as CommandMode, label: 'SHOW CTRL', icon: Activity },
+      { key: 'cue_validation' as CommandMode, label: 'CUE VALID', icon: Layers },
+      { key: 'addressing' as CommandMode, label: 'ADDRESSING', icon: Map },
       { key: 'dmx_monitor' as CommandMode, label: 'DMX MONITOR', icon: Radio },
+      { key: 'dmx_artnet' as CommandMode, label: 'DMX/ARTNET', icon: Wifi },
+      { key: 'unreal_status' as CommandMode, label: 'UNREAL', icon: Gamepad2 },
+      { key: 'swarm_contract' as CommandMode, label: 'SWARM', icon: FileCode2 },
       { key: 'fxk_light' as CommandMode, label: 'FXK-LIGHT', icon: Gauge },
       { key: 'drone_ops' as CommandMode, label: 'FXK-DRONE', icon: Layers },
     ],
   },
   {
+    label: 'SAFETY',
+    accent: 'text-red-400',
+    icon: Shield,
+    modes: [
+      { key: 'safety_console' as CommandMode, label: 'SAFETY', icon: Shield },
+      { key: 'verification' as CommandMode, label: 'VERIFY', icon: Shield },
+      { key: 'continuity' as CommandMode, label: 'CONTINUITY', icon: Zap },
+      { key: 'audit_blackbox' as CommandMode, label: 'AUDIT', icon: FileText },
+    ],
+  },
+  {
     label: 'HARDWARE',
-    accent: 'text-violet-400',
+    accent: 'text-cyan-400',
     icon: Cpu,
     modes: [
+      { key: 'hw_overview' as CommandMode, label: 'HW OVERVIEW', icon: Cpu },
+      { key: 'relay_bank' as CommandMode, label: 'RELAY BANK', icon: Activity },
+      { key: 'battery_power' as CommandMode, label: 'BATTERY', icon: Zap },
+      { key: 'mux_continuity' as CommandMode, label: 'MUX/CONT', icon: Radio },
+      { key: 'artnet_monitor' as CommandMode, label: 'ART-NET', icon: Wifi },
+      { key: 'readiness' as CommandMode, label: 'READINESS', icon: Shield },
       { key: 'module' as CommandMode, label: 'MODULE', icon: Cpu },
+      { key: 'hardware' as CommandMode, label: 'CONNECT', icon: Radio },
+      { key: 'field_diag' as CommandMode, label: 'FIELD DIAG', icon: Cpu },
       { key: 'field_test' as CommandMode, label: 'FIELD TEST', icon: Target },
     ],
   },
@@ -87,7 +187,8 @@ const MODE_SECTIONS = [
 const MOBILE_CATEGORIES = [
   { label: 'Exec', icon: Flame, section: 0 },
   { label: 'Monitor', icon: Activity, section: 1 },
-  { label: 'Hardware', icon: Cpu, section: 2 },
+  { label: 'Safety', icon: Shield, section: 2 },
+  { label: 'Hardware', icon: Cpu, section: 3 },
 ];
 
 export default function CommandCenter() {
@@ -137,6 +238,14 @@ export default function CommandCenter() {
     };
   }, [isMobile]);
 
+  // Sync URL query param → activeMode when navigating from drill-down
+  useEffect(() => {
+    const modeFromUrl = searchParams.get('mode') as CommandMode | null;
+    if (modeFromUrl && modeFromUrl !== activeMode) {
+      setActiveMode(modeFromUrl);
+    }
+  }, [searchParams]);
+
   const accent = CONSOLE_ACCENTS[activeMode] ?? CONSOLE_ACCENTS.show_control;
 
   const connectedCount = useMemo(() => {
@@ -179,10 +288,34 @@ export default function CommandCenter() {
     switch (mode) {
       case 'fxk_light': return <MA3ControlPanel fs />;
       case 'drone_ops': return <DroneCommandPanel fs />;
-      case 'show_control': return <ShowControlPanel fs />;
+      case 'show_control': return <ShowCommanderPanel fs />;
       case 'module': return <FXKNetPanel fs />;
+      case 'hardware': return <QuickHardwarePanel fs />;
       case 'dmx_monitor': return <DMXMonitorPanel fs />;
       case 'field_test': return <FieldTestDesktop />;
+      case 'verification': return <div className="flex flex-col h-full"><VerificationConsole /><div className="flex-1 overflow-auto"><ShowPlanInspector /></div></div>;
+      case 'continuity': return <ContinuityMatrix />;
+      case 'sys_overview': return <SystemOverviewConsole />;
+      case 'safety_console': return <SafetyConsole />;
+      case 'field_diag': return <FieldDiagnosticsConsole />;
+      case 'fireone_export': return <FireOneExportConsole />;
+      case 'dmx_artnet': return <DMXArtNetConsole />;
+      case 'audit_blackbox': return <AuditBlackBoxConsole />;
+      case 'cue_validation': return <CueValidationConsole />;
+      case 'addressing': return <AddressingConsole />;
+      case 'execution_status': return <ExecutionStatusConsole />;
+      case 'export_readiness': return <ExportReadinessPanel />;
+      case 'state_matrix': return <CurrentStateMatrix />;
+      case 'hw_overview': return <HardwareOverview />;
+      case 'relay_bank': return <RelayBankMonitor />;
+      case 'battery_power': return <BatteryPowerMonitor />;
+      case 'mux_continuity': return <MuxContinuityMonitor />;
+      case 'artnet_monitor': return <ArtNetDMXMonitor />;
+      case 'readiness': return <ReadinessDashboard />;
+      case 'manual_compliance': return <ManualComplianceMatrix />;
+      case 'unreal_status': return <UnrealIntegrationConsole />;
+      case 'swarm_contract': return <SwarmContractInspector />;
+      case 'exec_report': return <ExecutiveReportConsole />;
       default: return null;
     }
   }, []);
@@ -275,13 +408,15 @@ export default function CommandCenter() {
             <div className="ff-hud-bracket bottom-1 left-1 w-5 h-5 border-b-[3px] border-l-[3px]" style={{ borderColor: `${accent.color}40` }} />
             <div className="ff-hud-bracket bottom-1 right-1 w-5 h-5 border-b-[3px] border-r-[3px]" style={{ borderColor: `${accent.color}40` }} />
 
-            <FullscreenablePanel title={accent.label}>
+            <Suspense fallback={<PanelLoader />}>
               {isFireMode(activeMode) ? (
-                <LiveFiringPanel initialMode={activeMode} standalone />
+                <LiveFiringPanel key={`mobile-landscape-${activeMode}`} initialMode={activeMode} standalone />
               ) : (
-                <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
+                <FullscreenablePanel title={accent.label}>
+                  <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
+                </FullscreenablePanel>
               )}
-            </FullscreenablePanel>
+            </Suspense>
 
             {/* ═══ Tactical Minimap (bottom-left) ═══ */}
             <TacticalMinimap accentColor={accent.color} width={100} height={80} />
@@ -431,13 +566,15 @@ export default function CommandCenter() {
 
         {/* Content — full bleed */}
         <div className="flex-1 overflow-hidden min-h-0" style={{ paddingBottom: '64px' }}>
-          {isFireMode(activeMode) ? (
-            <LiveFiringPanel initialMode={activeMode} standalone />
-          ) : (
-            <ScrollArea className="h-full">
-              <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
-            </ScrollArea>
-          )}
+          <Suspense fallback={<PanelLoader />}>
+            {isFireMode(activeMode) ? (
+              <LiveFiringPanel key={`mobile-portrait-${activeMode}`} initialMode={activeMode} standalone />
+            ) : (
+              <ScrollArea className="h-full">
+                <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
+              </ScrollArea>
+            )}
+          </Suspense>
         </div>
 
         {/* ═══ Floating Bottom Nav — game hex-category style ═══ */}
@@ -499,12 +636,14 @@ export default function CommandCenter() {
   // ══════════════════════════════════════════════
   // DESKTOP LAYOUT
   // ══════════════════════════════════════════════
+  const isNativeFireConsole = isFireMode(activeMode);
+
   return (
-    <div className="h-full flex overflow-hidden pb-14">
+    <div className={cn("h-full flex overflow-hidden", !isNativeFireConsole && "pb-14")}>
       {/* Sidebar — Apple glassmorphism dock */}
       <div
         className={cn(
-          "shrink-0 flex flex-col transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          "shrink-0 flex flex-col transition-all duration-500 ease-expo-out",
           sidebarCollapsed ? "w-[56px]" : "w-56"
         )}
         style={{
@@ -515,42 +654,54 @@ export default function CommandCenter() {
         }}
       >
         {/* Status Header — frosted glass card */}
-        <div className="px-2.5 pt-3 pb-2">
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className={cn(
-              "w-full rounded-lg border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
-              "hover:border-primary/15 active:scale-[0.97]",
-              sidebarCollapsed ? "p-2.5" : "px-3.5 py-2.5"
-            )}
-            style={{
-              background: `linear-gradient(135deg, ${accent.glow}, hsl(220 22% 6% / 0.6))`,
-              borderColor: accent.color + '12',
-              boxShadow: `0 2px 12px ${accent.color}08, inset 0 1px 0 hsl(0 0% 100% / 0.03)`,
-            }}
-          >
-            {sidebarCollapsed ? (
-              <div className="flex flex-col items-center gap-1.5">
-                <div className="h-2 w-2 rounded-full transition-all duration-300" style={{
-                  backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.2)',
-                  boxShadow: connectedCount > 0 ? `0 0 8px ${accent.color}60` : 'none',
-                }} />
-                <span className="text-[7px] font-mono text-muted-foreground/60 font-bold">{connectedCount}</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2.5">
-                <div className="h-2.5 w-2.5 rounded-full shrink-0 transition-all duration-300" style={{
-                  backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.2)',
-                  boxShadow: connectedCount > 0 ? `0 0 10px ${accent.color}50` : 'none',
-                }} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[8px] font-bold text-foreground/90 font-mono tracking-[0.2em] truncate">FXK COMMAND</p>
-                  <p className="text-[7px] text-muted-foreground/40 font-mono tracking-wider">{connectedCount} LINKS ACTIVE</p>
+        {isNativeFireConsole ? (
+          <div className="px-2.5 pt-3 pb-1.5">
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="w-full h-9 rounded-lg border border-border/10 bg-background/40 hover:border-primary/20 transition-all active:scale-[0.97] flex items-center justify-center"
+              title={sidebarCollapsed ? 'Expandir navegação' : 'Recolher navegação'}
+            >
+              <Menu className="w-4 h-4 text-muted-foreground/60" />
+            </button>
+          </div>
+        ) : (
+          <div className="px-2.5 pt-3 pb-2">
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className={cn(
+                "w-full rounded-lg border transition-all duration-500 ease-expo-out",
+                "hover:border-primary/15 active:scale-[0.97]",
+                sidebarCollapsed ? "p-2.5" : "px-3.5 py-2.5"
+              )}
+              style={{
+                background: `linear-gradient(135deg, ${accent.glow}, hsl(220 22% 6% / 0.6))`,
+                borderColor: accent.color + '12',
+                boxShadow: `0 2px 12px ${accent.color}08, inset 0 1px 0 hsl(0 0% 100% / 0.03)`,
+              }}
+            >
+              {sidebarCollapsed ? (
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="h-2 w-2 rounded-full transition-all duration-300" style={{
+                    backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.2)',
+                    boxShadow: connectedCount > 0 ? `0 0 8px ${accent.color}60` : 'none',
+                  }} />
+                  <span className="text-[7px] font-mono text-muted-foreground/60 font-bold">{connectedCount}</span>
                 </div>
-              </div>
-            )}
-          </button>
-        </div>
+              ) : (
+                <div className="flex items-center gap-2.5">
+                  <div className="h-2.5 w-2.5 rounded-full shrink-0 transition-all duration-300" style={{
+                    backgroundColor: connectedCount > 0 ? accent.color : 'hsl(var(--muted-foreground) / 0.2)',
+                    boxShadow: connectedCount > 0 ? `0 0 10px ${accent.color}50` : 'none',
+                  }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[8px] font-bold text-foreground/90 font-mono tracking-[0.2em] truncate">FXK COMMAND</p>
+                    <p className="text-[7px] text-muted-foreground/40 font-mono tracking-wider">{connectedCount} LINKS ACTIVE</p>
+                  </div>
+                </div>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Mode List — Apple-style selection indicators */}
         <ScrollArea className="flex-1 px-1.5">
@@ -575,7 +726,7 @@ export default function CommandCenter() {
                         key={mode.key}
                         onClick={() => handleModeChange(mode.key)}
                         className={cn(
-                          "w-full flex items-center gap-2.5 rounded-lg transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] relative group",
+                          "w-full flex items-center gap-2.5 rounded-lg transition-all duration-300 ease-expo-out relative group",
                           sidebarCollapsed ? "justify-center p-2.5" : "px-3 py-2.5 min-h-[42px]",
                           isActive
                             ? "text-foreground"
@@ -587,14 +738,12 @@ export default function CommandCenter() {
                         } : undefined}
                         title={sidebarCollapsed ? mode.label : undefined}
                       >
-                        {/* Active indicator — pill style */}
                         {isActive && (
                           <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full transition-all duration-500" style={{
                             backgroundColor: mAccent?.color,
                             boxShadow: `0 0 8px ${mAccent?.color}60`,
                           }} />
                         )}
-                        {/* Hover glow */}
                         {!isActive && (
                           <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                             style={{ background: `linear-gradient(135deg, ${mAccent?.glow}50, transparent)` }} />
@@ -624,22 +773,9 @@ export default function CommandCenter() {
         </ScrollArea>
 
         {/* Safety Footer — frosted glass */}
-        {!sidebarCollapsed && (
-          <div className="p-2.5 border-t" style={{ borderColor: 'hsl(var(--destructive) / 0.06)' }}>
-            <div className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-300",
-              isArmed ? "danger-stripe border-destructive/20" : "border-destructive/6"
-            )} style={{
-              background: isArmed ? 'hsl(var(--destructive) / 0.06)' : 'hsl(var(--destructive) / 0.02)',
-              backdropFilter: 'blur(12px)',
-            }}>
-              <Shield className="h-3 w-3 text-destructive/40 shrink-0" />
-              <span className="text-[7px] text-destructive/50 font-bold font-mono tracking-[0.15em]">
-                {isArmed ? `ARMED // ${activeEffects.length} HOT` : 'SAFETY INTERLOCK'}
-              </span>
-            </div>
-          </div>
-        )}
+        <div className="p-2.5 border-t" style={{ borderColor: 'hsl(var(--primary) / 0.04)' }}>
+          <SidebarStatusWidget collapsed={sidebarCollapsed} />
+        </div>
       </div>
 
       {/* Main Content */}
@@ -656,56 +792,56 @@ export default function CommandCenter() {
           animation: 'scanlineSweep 8s linear infinite',
         }} />
 
-        {/* Breadcrumb — Apple frosted glass bar with HUD brackets */}
-        <div
-          className="h-12 shrink-0 flex items-center justify-between px-5 border-b relative overflow-hidden"
-          style={{
-            background: 'rgba(8, 10, 14, 0.92)',
-            backdropFilter: 'blur(48px) saturate(1.8)',
-            WebkitBackdropFilter: 'blur(48px) saturate(1.8)',
-            borderColor: 'rgba(255, 255, 255, 0.04)',
-          }}
-        >
-          {/* Ambient accent glow line */}
-          <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{
-            background: `linear-gradient(90deg, ${accent.color}40, ${accent.color}10 40%, transparent 70%)`,
-            boxShadow: `0 0 12px ${accent.color}15`,
-          }} />
-          {/* HUD corner brackets — top left */}
-          <div className="absolute top-1 left-2 w-4 h-4 pointer-events-none" style={{
-            borderLeft: `2px solid ${accent.color}30`,
-            borderTop: `2px solid ${accent.color}30`,
-          }} />
-          {/* HUD corner brackets — top right */}
-          <div className="absolute top-1 right-2 w-4 h-4 pointer-events-none" style={{
-            borderRight: `2px solid ${accent.color}30`,
-            borderTop: `2px solid ${accent.color}30`,
-          }} />
+        {!isNativeFireConsole && (
+          <div
+            className="h-12 shrink-0 flex items-center justify-between px-5 border-b relative overflow-hidden"
+            style={{
+              background: 'rgba(8, 10, 14, 0.92)',
+              backdropFilter: 'blur(48px) saturate(1.8)',
+              WebkitBackdropFilter: 'blur(48px) saturate(1.8)',
+              borderColor: 'rgba(255, 255, 255, 0.04)',
+            }}
+          >
+            <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{
+              background: `linear-gradient(90deg, ${accent.color}40, ${accent.color}10 40%, transparent 70%)`,
+              boxShadow: `0 0 12px ${accent.color}15`,
+            }} />
+            <div className="absolute top-1 left-2 w-4 h-4 pointer-events-none" style={{
+              borderLeft: `2px solid ${accent.color}30`,
+              borderTop: `2px solid ${accent.color}30`,
+            }} />
+            <div className="absolute top-1 right-2 w-4 h-4 pointer-events-none" style={{
+              borderRight: `2px solid ${accent.color}30`,
+              borderTop: `2px solid ${accent.color}30`,
+            }} />
 
-          <div className="flex items-center gap-3">
-            {(() => { const L = CONSOLE_LOGOS[activeMode]; return L ? <L size={26} active /> : null; })()}
-            <Badge variant="outline" className={cn("text-[7px] h-5 px-2.5 font-black border font-mono tracking-[0.15em] rounded-md", accent.badge)}>
-              {accent.label}
-            </Badge>
-            <div className="h-3.5 w-[1px] rounded-full" style={{ background: 'hsl(var(--primary) / 0.08)' }} />
-            <span className="text-[7px] text-muted-foreground/25 font-mono tracking-[0.15em]">
-              {accent.subtitle}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-[9px] font-mono font-bold" style={{ color: 'hsl(32 100% 55%)', textShadow: '0 0 8px hsl(32 100% 50% / 0.25)' }}>{missionClock}</span>
-            {isArmed && (
-              <Badge variant="destructive" className="text-[7px] h-5 animate-pulse font-mono tracking-wider rounded-md">
-                ARMED // {activeEffects.length}
+            <div className="flex items-center gap-3">
+              {(() => { const L = CONSOLE_LOGOS[activeMode]; return L ? <L size={26} active /> : null; })()}
+              <Badge variant="outline" className={cn("text-[7px] h-5 px-2.5 font-black border font-mono tracking-[0.15em] rounded-md", accent.badge)}>
+                {accent.label}
               </Badge>
-            )}
-            {connectedCount > 0 && (
-              <Badge variant="outline" className="text-[7px] h-5 border-primary/10 text-primary/70 font-mono tracking-wider rounded-md">
-                {connectedCount} ONLINE
-              </Badge>
-            )}
+              <div className="h-3.5 w-[1px] rounded-full" style={{ background: 'hsl(var(--primary) / 0.08)' }} />
+              <span className="text-[7px] text-muted-foreground/25 font-mono tracking-[0.15em]">
+                {accent.subtitle}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <StatusChips />
+              <div className="h-3.5 w-[1px] rounded-full" style={{ background: 'hsl(var(--primary) / 0.08)' }} />
+              <span className="text-[9px] font-mono font-bold" style={{ color: 'hsl(32 100% 55%)', textShadow: '0 0 8px hsl(32 100% 50% / 0.25)' }}>{missionClock}</span>
+              {connectedCount > 0 && (
+                <Badge variant="outline" className="text-[7px] h-5 border-primary/10 text-primary/70 font-mono tracking-wider rounded-md">
+                  {connectedCount} ONLINE
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Safety Summary Bar — always visible */}
+        {!isNativeFireConsole && (
+          <Suspense fallback={null}><SafetySummaryBar /></Suspense>
+        )}
 
         {/* Content with ambient console glow */}
         <div
@@ -718,33 +854,38 @@ export default function CommandCenter() {
             background: `radial-gradient(ellipse at 20% 0%, ${accent.glow} 0%, transparent 60%)`,
           }}
         >
-          {/* HUD corner brackets — content area */}
-          <div className="absolute top-2 left-3 w-5 h-5 pointer-events-none z-[3]" style={{
-            borderLeft: `1px solid ${accent.color}18`,
-            borderTop: `1px solid ${accent.color}18`,
-          }} />
-          <div className="absolute top-2 right-3 w-5 h-5 pointer-events-none z-[3]" style={{
-            borderRight: `1px solid ${accent.color}18`,
-            borderTop: `1px solid ${accent.color}18`,
-          }} />
-          <div className="absolute bottom-2 left-3 w-5 h-5 pointer-events-none z-[3]" style={{
-            borderLeft: `1px solid ${accent.color}18`,
-            borderBottom: `1px solid ${accent.color}18`,
-          }} />
-          <div className="absolute bottom-2 right-3 w-5 h-5 pointer-events-none z-[3]" style={{
-            borderRight: `1px solid ${accent.color}18`,
-            borderBottom: `1px solid ${accent.color}18`,
-          }} />
+          {!isNativeFireConsole && (
+            <>
+              <div className="absolute top-2 left-3 w-5 h-5 pointer-events-none z-[3]" style={{
+                borderLeft: `1px solid ${accent.color}18`,
+                borderTop: `1px solid ${accent.color}18`,
+              }} />
+              <div className="absolute top-2 right-3 w-5 h-5 pointer-events-none z-[3]" style={{
+                borderRight: `1px solid ${accent.color}18`,
+                borderTop: `1px solid ${accent.color}18`,
+              }} />
+              <div className="absolute bottom-2 left-3 w-5 h-5 pointer-events-none z-[3]" style={{
+                borderLeft: `1px solid ${accent.color}18`,
+                borderBottom: `1px solid ${accent.color}18`,
+              }} />
+              <div className="absolute bottom-2 right-3 w-5 h-5 pointer-events-none z-[3]" style={{
+                borderRight: `1px solid ${accent.color}18`,
+                borderBottom: `1px solid ${accent.color}18`,
+              }} />
+            </>
+          )}
 
-          <FullscreenablePanel title={accent.label}>
-            {isFireMode(activeMode) ? (
-              <LiveFiringPanel initialMode={activeMode} standalone />
+          <Suspense fallback={<PanelLoader />}>
+            {isNativeFireConsole ? (
+              <LiveFiringPanel key={`desktop-${activeMode}`} initialMode={activeMode} standalone />
             ) : (
-              <ScrollArea className="h-full">
-                <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
-              </ScrollArea>
+              <FullscreenablePanel title={accent.label}>
+                <ScrollArea className="h-full">
+                  <div className="h-full surface-0">{renderDirectPanel(activeMode)}</div>
+                </ScrollArea>
+              </FullscreenablePanel>
             )}
-          </FullscreenablePanel>
+          </Suspense>
         </div>
       </div>
       {/* Boot Sequence Overlay */}

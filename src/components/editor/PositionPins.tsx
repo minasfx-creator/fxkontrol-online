@@ -1,12 +1,16 @@
 import { useRef, useState, useCallback, useEffect, useMemo, forwardRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html, Line } from '@react-three/drei';
-import { useProjectStore, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type Position } from '@/types/projectTypes';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useSceneStore } from '@/store/useSceneStore';
+import { useTerrainHeightCache } from '@/hooks/useTerrainHeightCache';
 import { useUndoStore } from '@/store/useUndoStore';
 import { useAddressingStore } from '@/store/useAddressingStore';
 import { getBreakHeight } from '@/lib/pyroPhysics';
 import * as THREE from 'three';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 const PYRO_COLOR = '#FF6B35';
 const DRONE_COLOR = '#00B4D8';
@@ -181,8 +185,17 @@ function LinkedGlowRing({ color }: { color: string }) {
   );
 }
 
-const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }>(function Pin({ position, onRightClick }, ref) {
-  const { selectedPositionIds, selectPosition, selectPositionAndLinkedEvents, togglePositionSelection, editorMode, updatePosition, timelineItems, linkedTimelineItemIds } = useProjectStore();
+const Pin = forwardRef<THREE.Group, { position: Position; terrainY: number; onRightClick: (pos: Position, screenPos: { x: number; y: number }) => void }>(function Pin({
+  position, terrainY, onRightClick }, ref) {
+  useRenderCounter('Pin');
+  const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
+  const selectPosition = useProjectStore(s => s.selectPosition);
+  const selectPositionAndLinkedEvents = useProjectStore(s => s.selectPositionAndLinkedEvents);
+  const togglePositionSelection = useProjectStore(s => s.togglePositionSelection);
+  const editorMode = useProjectStore(s => s.editorMode);
+  const updatePosition = useProjectStore(s => s.updatePosition);
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const linkedTimelineItemIds = useProjectStore(s => s.linkedTimelineItemIds);
   const isSelected = selectedPositionIds.includes(position.id);
   const color = position.type === 'pyro' ? PYRO_COLOR : (position.color || DRONE_COLOR);
   const glowRef = useRef<THREE.Group>(null);
@@ -402,7 +415,7 @@ const Pin = forwardRef<THREE.Group, { position: Position; onRightClick: (pos: Po
   const showLabel = labelsVisible && (isMobileView ? (isSelected || isDragging) : (isHovered || isSelected || isDragging));
 
   return (
-    <group ref={(node) => { (groupRef as any).current = node; if (typeof ref === 'function') ref(node); else if (ref) (ref as any).current = node; }} position={[position.x, position.y, position.z]}>
+    <group ref={(node) => { (groupRef as any).current = node; if (typeof ref === 'function') ref(node); else if (ref) (ref as any).current = node; }} position={[position.x, position.y + terrainY, position.z]}>
       {/* Base disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <circleGeometry args={[isSelected ? 0.65 : 0.5, 32]} />
@@ -549,7 +562,11 @@ Pin.displayName = 'Pin';
 
 /** Always-on direction line — extends to real burst height when effects are linked (Finale 3D) */
 function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: { position: Position; color: string; isSelected: boolean; isHovered: boolean; hasEffects: boolean }) {
-  const { timelineItems, editorMode, setEditorMode, selectPosition, updatePosition } = useProjectStore();
+  const timelineItems = useProjectStore(s => s.timelineItems);
+  const editorMode = useProjectStore(s => s.editorMode);
+  const setEditorMode = useProjectStore(s => s.setEditorMode);
+  const selectPosition = useProjectStore(s => s.selectPosition);
+  const updatePosition = useProjectStore(s => s.updatePosition);
   const { camera, raycaster, gl } = useThree();
   const [isDraggingHandle, setIsDraggingHandle] = useState(false);
   const dragStartRef = useRef<{ heading: number; pitch: number } | null>(null);
@@ -673,9 +690,48 @@ function DirectionLine({ position, color, isSelected, isHovered, hasEffects }: {
   );
 }
 
-/** Ground plane for placing new pins — continuous mode */
+/** Temporary ring + flash VFX at placement point */
+function PlacementRingVFX({ position, color, onComplete }: { position: [number, number, number]; color: string; onComplete: () => void }) {
+  const ringRef = useRef<THREE.Mesh>(null);
+  const flashRef = useRef<THREE.PointLight>(null);
+  const elapsed = useRef(0);
+  const duration = 0.8;
+
+  useFrame((_, delta) => {
+    elapsed.current += delta;
+    const t = elapsed.current / duration;
+    if (t >= 1) { onComplete(); return; }
+
+    if (ringRef.current) {
+      const scale = 0.5 + t * 4;
+      ringRef.current.scale.set(scale, scale, scale);
+      (ringRef.current.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 1 - t * 1.3);
+    }
+    if (flashRef.current) {
+      flashRef.current.intensity = t < 0.15 ? 20 * (1 - t / 0.15) : 0;
+    }
+  });
+
+  return (
+    <group position={position}>
+      <pointLight ref={flashRef} color={color} intensity={0} distance={12} />
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.6, 0.9, 32]} />
+        <meshBasicMaterial color={color} transparent opacity={1} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
 function GroundClickPlane() {
-  const { editorMode, addPosition, setEditorMode, addWaypoint, selectedTrajectoryId, drawHeight } = useProjectStore();
+  const editorMode = useProjectStore(s => s.editorMode);
+  const addPosition = useProjectStore(s => s.addPosition);
+  const setEditorMode = useProjectStore(s => s.setEditorMode);
+  const addWaypoint = useProjectStore(s => s.addWaypoint);
+  const selectedTrajectoryId = useProjectStore(s => s.selectedTrajectoryId);
+  const drawHeight = useProjectStore(s => s.drawHeight);
+  const { scene } = useThree();
+  const [vfxList, setVfxList] = useState<{ id: string; pos: [number, number, number]; color: string }[]>([]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -687,24 +743,47 @@ function GroundClickPlane() {
     return () => window.removeEventListener('keydown', handler);
   }, [editorMode, setEditorMode]);
 
+  /** Raycast against Google 3D Tiles to get real terrain Y at click point */
+  const getTerrainY = useCallback((x: number, z: number): number => {
+    const tilesGroup = scene.getObjectByName('GoogleTilesGroup');
+    if (!tilesGroup) return 0;
+    const ray = new THREE.Raycaster();
+    const origin = new THREE.Vector3(x, 2000, z);
+    ray.set(origin, new THREE.Vector3(0, -1, 0));
+    ray.far = 4000;
+    const hits = ray.intersectObject(tilesGroup, true);
+    return hits.length > 0 ? hits[0].point.y : 0;
+  }, [scene]);
+
   const handleClick = useCallback((e: THREE.Event & { point: THREE.Vector3 }) => {
+    const clickX = Math.round(e.point.x * 10) / 10;
+    const clickZ = Math.round(e.point.z * 10) / 10;
+    const terrainY = getTerrainY(clickX, clickZ);
+
     if (editorMode === 'add-pyro' || editorMode === 'add-drone') {
       useUndoStore.getState().checkpoint();
       const type = editorMode === 'add-pyro' ? 'pyro' as const : 'drone-pad' as const;
       const prefix = type === 'pyro' ? 'POS' : 'PAD';
       const count = useProjectStore.getState().positions.filter(p => p.type === type).length + 1;
       const id = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+      const posY = Math.round(terrainY * 100) / 100;
       addPosition({
         id,
         name: `${prefix}-${count.toString().padStart(3, '0')}`,
         type,
-        x: Math.round(e.point.x * 10) / 10,
-        y: 0,
-        z: Math.round(e.point.z * 10) / 10,
+        x: clickX,
+        y: posY,
+        z: clickZ,
         heading: 0, pitch: 85, roll: 0,
         color: type === 'drone-pad' ? '#00B4D8' : '#FF6B35',
       });
       useProjectStore.getState().selectPosition(id);
+      window.dispatchEvent(new CustomEvent('position-placed', { detail: { id, type } }));
+
+      // Spawn placement VFX
+      const vfxColor = type === 'drone-pad' ? '#00B4D8' : '#FF6B35';
+      const vfxId = `vfx-${Date.now()}`;
+      setVfxList(prev => [...prev, { id: vfxId, pos: [clickX, posY, clickZ], color: vfxColor }]);
       return;
     }
 
@@ -716,25 +795,35 @@ function GroundClickPlane() {
       const time = lastWp ? lastWp.time + 2 : 2;
       addWaypoint(selectedTrajectoryId, {
         id: `wp-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-        position: { x: Math.round(e.point.x * 10) / 10, y: drawHeight, z: Math.round(e.point.z * 10) / 10 },
+        position: { x: clickX, y: drawHeight, z: clickZ },
         time,
       });
     }
-  }, [editorMode, addPosition, setEditorMode, addWaypoint, selectedTrajectoryId, drawHeight]);
+  }, [editorMode, addPosition, setEditorMode, addWaypoint, selectedTrajectoryId, drawHeight, getTerrainY]);
+
+  const removeVfx = useCallback((id: string) => {
+    setVfxList(prev => prev.filter(v => v.id !== id));
+  }, []);
 
   if (editorMode !== 'add-pyro' && editorMode !== 'add-drone' && editorMode !== 'add-waypoint') return null;
 
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} onClick={handleClick}>
-      <planeGeometry args={[20000, 20000]} />
-      <meshBasicMaterial visible={false} />
-    </mesh>
+    <>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} onClick={handleClick}>
+        <planeGeometry args={[20000, 20000]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+      {vfxList.map(vfx => (
+        <PlacementRingVFX key={vfx.id} position={vfx.pos} color={vfx.color} onComplete={() => removeVfx(vfx.id)} />
+      ))}
+    </>
   );
 }
 
 /** Click ground to deselect */
 function GroundDeselectPlane() {
-  const { editorMode, selectPosition } = useProjectStore();
+  const editorMode = useProjectStore(s => s.editorMode);
+  const selectPosition = useProjectStore(s => s.selectPosition);
   const handleClick = useCallback((e: any) => {
     if (e.nativeEvent?.shiftKey || e.shiftKey) return;
     if (editorMode === 'select') selectPosition(null);
@@ -750,8 +839,10 @@ function GroundDeselectPlane() {
 }
 
 export default function PositionPins() {
-  const { positions } = useProjectStore();
+  const positions = useProjectStore(s => s.positions);
+  const google3DTilesEnabled = useSceneStore(s => s.settings.google3DTilesEnabled);
   const [contextMenu, setContextMenu] = useState<{ pos: Position; screen: { x: number; y: number } } | null>(null);
+  const { getHeight } = useTerrainHeightCache(positions, google3DTilesEnabled);
 
   const handleRightClick = useCallback((pos: Position, screenPos: { x: number; y: number }) => {
     setContextMenu({ pos, screen: screenPos });
@@ -762,7 +853,7 @@ export default function PositionPins() {
       <GroundDeselectPlane />
       <GroundClickPlane />
       {positions.map((pos) => (
-        <Pin key={pos.id} position={pos} onRightClick={handleRightClick} />
+        <Pin key={pos.id} position={pos} terrainY={getHeight(pos.x, pos.z)} onRightClick={handleRightClick} />
       ))}
     </>
   );

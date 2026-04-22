@@ -88,6 +88,24 @@ const FIREONE_CALIBERS: Record<number, CaliberData> = {
   12:   { heightM: 275, spreadDeg: 118, prefireSec: 4.52, starCount: 1080, breakSpeed: 93, safetyM: 300, costFactor: 155.0 },
 };
 
+// ── PIROEX / Changsha Skyking — FFIC lab-tested (laudos 2726000005/09) ──
+// Heights from NEB/T M-251 minimums + field overshoot; fuse times = measured avg;
+// starCount derived from effect charge mass (g) proportional to Finale baseline.
+const PIROEX_CALIBERS: Record<number, CaliberData> = {
+  0.8:  { heightM: 12,  spreadDeg: 14, prefireSec: 0.30, starCount: 12,  breakSpeed: 8,  safetyM: 25,  costFactor: 0.15 },
+  1:    { heightM: 18,  spreadDeg: 18, prefireSec: 0.40, starCount: 25,  breakSpeed: 10, safetyM: 25,  costFactor: 0.25 },
+  1.5:  { heightM: 28,  spreadDeg: 24, prefireSec: 0.65, starCount: 45,  breakSpeed: 14, safetyM: 40,  costFactor: 0.45 },
+  2:    { heightM: 38,  spreadDeg: 30, prefireSec: 0.85, starCount: 70,  breakSpeed: 17, safetyM: 40,  costFactor: 0.8 },
+  2.5:  { heightM: 55,  spreadDeg: 36, prefireSec: 4.30, starCount: 95,  breakSpeed: 21, safetyM: 55,  costFactor: 1.5 },
+  3:    { heightM: 70,  spreadDeg: 42, prefireSec: 5.90, starCount: 160, breakSpeed: 26, safetyM: 70,  costFactor: 3.0 },
+  4:    { heightM: 95,  spreadDeg: 52, prefireSec: 6.10, starCount: 370, breakSpeed: 36, safetyM: 100, costFactor: 7.0 },
+  5:    { heightM: 125, spreadDeg: 62, prefireSec: 6.00, starCount: 640, breakSpeed: 46, safetyM: 120, costFactor: 14.0 },
+  6:    { heightM: 160, spreadDeg: 72, prefireSec: 6.20, starCount: 1200, breakSpeed: 56, safetyM: 175, costFactor: 24.0 },
+  8:    { heightM: 210, spreadDeg: 88, prefireSec: 7.50, starCount: 1800, breakSpeed: 70, safetyM: 210, costFactor: 48.0 },
+  10:   { heightM: 260, spreadDeg: 105, prefireSec: 8.80, starCount: 2400, breakSpeed: 84, safetyM: 280, costFactor: 88.0 },
+  12:   { heightM: 300, spreadDeg: 120, prefireSec: 10.0, starCount: 3000, breakSpeed: 95, safetyM: 300, costFactor: 145.0 },
+};
+
 // ── All built-in profiles ──
 export const MANUFACTURER_PROFILES: ManufacturerProfile[] = [
   {
@@ -121,6 +139,14 @@ export const MANUFACTURER_PROFILES: ManufacturerProfile[] = [
     description: 'FireOne XLII+ — sistema profissional com suporte SCL e UltraFire, calibrado para precisão de timing',
     icon: '🔥',
     calibers: FIREONE_CALIBERS,
+  },
+  {
+    id: 'piroex-skyking',
+    name: 'PIROEX / Skyking',
+    country: 'BR/CN',
+    description: 'PIROEX LTDA (Changsha Skyking) — calibrado com laudos FFIC, fuse times medidos em laboratório, alturas NEB/T M-251',
+    icon: '🇧🇷',
+    calibers: PIROEX_CALIBERS,
   },
 ];
 

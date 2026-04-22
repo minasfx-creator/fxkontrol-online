@@ -11,8 +11,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useProjectStore, type Effect, EFFECT_LIBRARY } from '@/store/useProjectStore';
-import { parseCatalogFile, catalogToEffects, parseAnyFormat, type CatalogColumnMapping, type ParsedCatalogEffect } from '@/lib/catalogImporter';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type Effect, EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { parseCatalogFile, catalogToEffects, parseAnyFormat, parseCatalogFileWithMappings, type CatalogColumnMapping, type ParsedCatalogEffect } from '@/lib/catalogImporter';
 import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -33,6 +34,13 @@ const FIELD_OPTIONS = [
   { value: 'vdl', label: 'VDL String' },
   { value: 'sku', label: 'SKU / Part Number' },
   { value: 'manufacturer', label: 'Manufacturer' },
+  { value: 'fuseDelay', label: 'Fuse Delay (s)' },
+  { value: 'devices', label: 'Devices / Chain Count' },
+  { value: 'exNumber', label: 'EX Number' },
+  { value: 'ceNumber', label: 'CE Number' },
+  { value: 'unNumber', label: 'UN Number' },
+  { value: 'subtype', label: 'Subtype' },
+  { value: 'rackType', label: 'Rack Type' },
 ];
 
 type Step = 'upload' | 'mapping' | 'preview';
@@ -83,15 +91,11 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
 
   const handleReparse = useCallback(() => {
     if (!rawText) return;
-    // Re-parse with updated column mappings applied
-    const result = parseCatalogFile(rawText);
-    // Override auto-mappings with user selections
-    result.columns.forEach((col, i) => {
-      if (columns[i]) {
-        col.mappedTo = columns[i].mappedTo;
-      }
-    });
+    const result = parseCatalogFileWithMappings(rawText, columns);
+    setColumns(result.columns);
     setParsedEffects(result.effects);
+    setSelectedEffects(new Set(result.effects.map((_, i) => i)));
+    toast.success(`Re-parsed with custom mappings`, { description: `${result.effects.length} effects found` });
   }, [rawText, columns]);
 
   const updateMapping = (index: number, mappedTo: string) => {
@@ -113,10 +117,6 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
     const store = useProjectStore.getState();
     // For now, add as timeline-compatible effects by extending the library
     // We store them in a way they can be used
-    (window as any).__customEffects = [
-      ...((window as any).__customEffects || []),
-      ...effects,
-    ];
     
     // Also push to EFFECT_LIBRARY (mutable operation for runtime)
     effects.forEach(eff => {

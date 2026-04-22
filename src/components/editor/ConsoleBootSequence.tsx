@@ -126,7 +126,7 @@ export default function ConsoleBootSequence({ consoleKey, label, subtitle, accen
           ))}
           {/* Progress bar */}
           <div className="mt-3 w-32 h-[2px] rounded-full overflow-hidden" style={{ background: 'hsl(0 0% 12%)' }}>
-            <div className="h-full rounded-full transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            <div className="h-full rounded-full transition-all duration-300 ease-expo-out"
               style={{ width: `${progressWidth}%`, background: accentColor, boxShadow: `0 0 8px ${accentColor}40` }} />
           </div>
         </div>

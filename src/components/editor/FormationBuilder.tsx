@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type DroneFormation } from '@/types/projectTypes';
 import type { ColorTransitionMode } from '@/lib/colorInterpolation';
 import {
   generateFormation,
@@ -18,6 +19,7 @@ import { parseSVGToFormation } from '@/lib/svgParser';
 import { parseModelToFormation, parseKMZToFormation, SUPPORTED_EXTENSIONS, type ProjectionMode, type SamplingMode, type ModelParseResult } from '@/lib/modelToFormation';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 interface FormationBuilderProps {
   open: boolean;
@@ -121,11 +123,17 @@ function SliderField({ label, value, onChange, min, max, step, unit }: {
 /* ── Formation Queue ─────────────────────────────────────────── */
 
 function FormationQueue() {
-  const {
-    droneFormations, removeDroneFormation, selectFormation, selectedFormationId,
-    updateDroneFormation, reorderDroneFormation, duplicateDroneFormation, clearAllFormations,
-    recalculateFormationTimings, setCurrentTime,
-  } = useProjectStore();
+  useRenderCounter('FormationQueue');
+  const droneFormations = useProjectStore(s => s.droneFormations);
+  const removeDroneFormation = useProjectStore(s => s.removeDroneFormation);
+  const selectFormation = useProjectStore(s => s.selectFormation);
+  const selectedFormationId = useProjectStore(s => s.selectedFormationId);
+  const updateDroneFormation = useProjectStore(s => s.updateDroneFormation);
+  const reorderDroneFormation = useProjectStore(s => s.reorderDroneFormation);
+  const duplicateDroneFormation = useProjectStore(s => s.duplicateDroneFormation);
+  const clearAllFormations = useProjectStore(s => s.clearAllFormations);
+  const recalculateFormationTimings = useProjectStore(s => s.recalculateFormationTimings);
+  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
   const [editId, setEditId] = useState<string | null>(null);
 
   const totalDuration = droneFormations.reduce((s, f) => s + f.transitionDuration + f.holdDuration, 0);
@@ -399,7 +407,9 @@ function Model3DTab({ droneCount, radius, onPoints }: {
 /* ── Main FormationBuilder (Simplified) ──────────────────────── */
 
 export default function FormationBuilder({ open, onOpenChange }: FormationBuilderProps) {
-  const { droneFormations, addDroneFormation, materializeFormation } = useProjectStore();
+  const droneFormations = useProjectStore(s => s.droneFormations);
+  const addDroneFormation = useProjectStore(s => s.addDroneFormation);
+  const materializeFormation = useProjectStore(s => s.materializeFormation);
   const [activeTab, setActiveTab] = useState<GenerationTab>('presets');
   const [selectedType, setSelectedType] = useState<FormationType>('circle');
   const [count, setCount] = useState(() => droneFormations.length > 0 ? droneFormations[0].droneCount : 24);

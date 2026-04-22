@@ -1,17 +1,20 @@
 import { useProjectStore } from '@/store/useProjectStore';
-import { AlignHorizontalJustifyCenter, AlignVerticalJustifyCenter, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, Rows3, Columns3, Copy, Clipboard, Trash2, RotateCcw, Flame, CircleDot, Lightbulb } from 'lucide-react';
+import { AlignHorizontalJustifyCenter, AlignVerticalJustifyCenter, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, Rows3, Columns3, Copy, Clipboard as ClipboardIcon, Trash2, RotateCcw, Flame, CircleDot, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { Position, PositionType } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 
-let clipboard: Position[];
-clipboard = [];
-
 export default function AlignmentTools() {
-  const { selectedPositionIds, positions, updatePosition, addPosition, removePosition, selectMultiplePositions } = useProjectStore();
+  const clipboardRef = useRef<Position[]>([]);
+    const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
+  const positions = useProjectStore(s => s.positions);
+  const updatePosition = useProjectStore(s => s.updatePosition);
+  const addPosition = useProjectStore(s => s.addPosition);
+  const removePosition = useProjectStore(s => s.removePosition);
+  const selectMultiplePositions = useProjectStore(s => s.selectMultiplePositions);
   const [typeFilter, setTypeFilter] = useState<PositionType | 'all'>('all');
   const allSelected = positions.filter(p => selectedPositionIds.includes(p.id));
   const selected = typeFilter === 'all' ? allSelected : allSelected.filter(p => p.type === typeFilter);
@@ -51,14 +54,14 @@ export default function AlignmentTools() {
   }, [selected, updatePosition]);
 
   const copyPositions = useCallback(() => {
-    clipboard = selected.map(p => ({ ...p }));
-    toast.success(`Copied ${clipboard.length} positions`);
+    clipboardRef.current = selected.map(p => ({ ...p }));
+    toast.success(`Copied ${clipboardRef.current.length} positions`);
   }, [selected]);
 
   const pastePositions = useCallback(() => {
-    if (clipboard.length === 0) return;
+    if (clipboardRef.current.length === 0) return;
     const newIds: string[] = [];
-    clipboard.forEach((p, i) => {
+    clipboardRef.current.forEach((p, i) => {
       const id = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
       newIds.push(id);
       addPosition({
@@ -70,7 +73,7 @@ export default function AlignmentTools() {
       });
     });
     selectMultiplePositions(newIds);
-    toast.success(`Pasted ${clipboard.length} positions`);
+    toast.success(`Pasted ${clipboardRef.current.length} positions`);
   }, [addPosition, selectMultiplePositions]);
 
   const deleteSelected = useCallback(() => {
@@ -102,7 +105,7 @@ export default function AlignmentTools() {
   );
 
   return (
-    <div className="absolute top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-surface-1/95 backdrop-blur-md border border-border/60 rounded-lg px-2 py-1 shadow-xl">
+    <div className="absolute top-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-surface-1/95 backdrop-blur-md border border-border/60 rounded-lg px-2 py-1 shadow-xl">
       {/* Type filter */}
       <div className="flex items-center gap-0.5 mr-1">
         {filterBtn('all', <span className="text-[7px]">ALL</span>, 'All types')}
@@ -151,7 +154,7 @@ export default function AlignmentTools() {
         <Copy className="w-3.5 h-3.5" />
       </Button>
       <Button variant="ghost" size="icon" className={btnClass} onClick={pastePositions} title="Paste (Ctrl+V)">
-        <Clipboard className="w-3.5 h-3.5" />
+        <ClipboardIcon className="w-3.5 h-3.5" />
       </Button>
       <Button variant="ghost" size="icon" className={btnClass} onClick={resetHeadings} title="Reset Headings">
         <RotateCcw className="w-3.5 h-3.5" />

@@ -3,7 +3,8 @@ import { Route, Trash2, Plus, Gauge, Spline, X, ChevronDown, ChevronRight, Alert
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { useProjectStore, type Waypoint, type Trajectory } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type Waypoint, type Trajectory } from '@/types/projectTypes';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
@@ -106,7 +107,10 @@ const PRESETS: PresetDef[] = [
 function WaypointRow({ wp, index, traj, prevWp }: {
   wp: Waypoint; index: number; traj: Trajectory; prevWp?: Waypoint;
 }) {
-  const { updateWaypoint, removeWaypoint, selectedWaypointId, selectWaypoint } = useProjectStore();
+    const updateWaypoint = useProjectStore(s => s.updateWaypoint);
+  const removeWaypoint = useProjectStore(s => s.removeWaypoint);
+  const selectedWaypointId = useProjectStore(s => s.selectedWaypointId);
+  const selectWaypoint = useProjectStore(s => s.selectWaypoint);
   const [expanded, setExpanded] = useState(false);
   const isSelected = selectedWaypointId === wp.id;
 
@@ -177,16 +181,32 @@ function WaypointRow({ wp, index, traj, prevWp }: {
 /* ── main editor ─────────────────────────────────────────────── */
 
 export default function WaypointEditor({ onClose }: { onClose: () => void }) {
-  const {
-    trajectories, positions, selectedTrajectoryId, selectedWaypointId,
-    selectTrajectory, selectWaypoint, addTrajectory, addWaypoint,
-    removeWaypoint, updateWaypoint, setEditorMode, editorMode,
-    drawHeight, setDrawHeight, undoLastWaypoint,
-    showTrajectories, setShowTrajectories, showFormations, setShowFormations,
-    selectedTrajectoryIds, toggleTrajectorySelection, selectAllFormationTrajectories,
-    clearTrajectorySelection, batchOffsetWaypoints, batchScaleWaypoints,
-    droneFormations,
-  } = useProjectStore();
+    const trajectories = useProjectStore(s => s.trajectories);
+  const positions = useProjectStore(s => s.positions);
+  const selectedTrajectoryId = useProjectStore(s => s.selectedTrajectoryId);
+  const selectedWaypointId = useProjectStore(s => s.selectedWaypointId);
+  const selectTrajectory = useProjectStore(s => s.selectTrajectory);
+  const selectWaypoint = useProjectStore(s => s.selectWaypoint);
+  const addTrajectory = useProjectStore(s => s.addTrajectory);
+  const addWaypoint = useProjectStore(s => s.addWaypoint);
+  const removeWaypoint = useProjectStore(s => s.removeWaypoint);
+  const updateWaypoint = useProjectStore(s => s.updateWaypoint);
+  const setEditorMode = useProjectStore(s => s.setEditorMode);
+  const editorMode = useProjectStore(s => s.editorMode);
+  const drawHeight = useProjectStore(s => s.drawHeight);
+  const setDrawHeight = useProjectStore(s => s.setDrawHeight);
+  const undoLastWaypoint = useProjectStore(s => s.undoLastWaypoint);
+  const showTrajectories = useProjectStore(s => s.showTrajectories);
+  const setShowTrajectories = useProjectStore(s => s.setShowTrajectories);
+  const showFormations = useProjectStore(s => s.showFormations);
+  const setShowFormations = useProjectStore(s => s.setShowFormations);
+  const selectedTrajectoryIds = useProjectStore(s => s.selectedTrajectoryIds);
+  const toggleTrajectorySelection = useProjectStore(s => s.toggleTrajectorySelection);
+  const selectAllFormationTrajectories = useProjectStore(s => s.selectAllFormationTrajectories);
+  const clearTrajectorySelection = useProjectStore(s => s.clearTrajectorySelection);
+  const batchOffsetWaypoints = useProjectStore(s => s.batchOffsetWaypoints);
+  const batchScaleWaypoints = useProjectStore(s => s.batchScaleWaypoints);
+  const droneFormations = useProjectStore(s => s.droneFormations);
 
   const [presetRadius, setPresetRadius] = useState(15);
   const [presetCount, setPresetCount] = useState(12);

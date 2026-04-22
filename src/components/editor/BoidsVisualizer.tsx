@@ -1,17 +1,26 @@
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useBoidsStore } from '@/store/useBoidsStore';
 import { useProjectStore } from '@/store/useProjectStore';
 import { stepBoids } from '@/lib/boidsEngine';
 import InstancedDroneSwarm from './InstancedDroneSwarm';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 /**
  * Renders Boids simulation agents in the 3D viewport.
  * Records frames when recording is active.
  */
 export default function BoidsVisualizer() {
-  const { agents, running, config, seekTarget, recording, setAgents, addRecordedFrame } = useBoidsStore();
-  const { droneFormations, currentTime } = useProjectStore();
+  useRenderCounter('BoidsVisualizer');
+  const agents = useBoidsStore(s => s.agents);
+  const running = useBoidsStore(s => s.running);
+  const config = useBoidsStore(s => s.config);
+  const seekTarget = useBoidsStore(s => s.seekTarget);
+  const recording = useBoidsStore(s => s.recording);
+  const setAgents = useBoidsStore(s => s.setAgents);
+  const addRecordedFrame = useBoidsStore(s => s.addRecordedFrame);
+    const droneFormations = useProjectStore(s => s.droneFormations);
+  const currentTime = useProjectStore(s => s.currentTime);
   const lastTime = useRef(performance.now());
   const simTime = useRef(0);
   const lastRecordTime = useRef(0);
@@ -51,12 +60,12 @@ export default function BoidsVisualizer() {
     }
   });
 
-  if (agents.length === 0) return null;
-
-  const positions = agents.map(a => ({
+  const positions = useMemo(() => agents.map(a => ({
     x: a.x, y: a.y, z: a.z,
     color: '#00FFAA',
-  }));
+  })), [agents]);
+
+  if (agents.length === 0) return null;
 
   return <InstancedDroneSwarm positions={positions} scale={0.5} />;
 }

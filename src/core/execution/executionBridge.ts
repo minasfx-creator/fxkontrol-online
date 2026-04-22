@@ -4,6 +4,8 @@
  * Iterates cues, applies pre-fire compensation, dispatches to
  * PyroExecutor / DroneExecutor / DMX subsystems.
  * Every command is logged to BlackBox.
+ *
+ * Supports both legacy TimelineCue[] and ShowPlan as input.
  */
 
 import { blackbox } from '@/core/reliability/blackBoxRecorder';
@@ -11,6 +13,7 @@ import { latencyCompensator } from '@/core/sync/latencyCompensator';
 import { pyroExecutor, type PyroCue } from './pyroExecutor';
 import { droneExecutor, type DroneWaypoint } from './droneExecutor';
 import { fieldBus } from '@/core/network/fieldBus';
+import type { ShowPlan, PyroCue as ShowPlanPyroCue } from '@/core/showplan/ShowPlan';
 
 export interface TimelineCue {
   id: string;
@@ -136,6 +139,61 @@ class ExecutionBridge {
     this._stats.firedCues = 0;
     this._stats.pendingCues = this._stats.totalCues;
     blackbox.record('state', 'ExecutionBridge: RESET');
+  }
+
+  /**
+   * Load cues from a ShowPlan (canonical source of truth).
+   * Converts ShowPlan pyro/dmx/drone data into TimelineCue[].
+   */
+  loadShowPlan(plan: ShowPlan): void {
+    const cues: TimelineCue[] = [];
+
+    // Pyro cues
+    for (const pc of plan.pyroCues) {
+      cues.push({
+        id: pc.id,
+        type: 'pyro',
+        time: pc.time,
+        data: {
+          positionId: pc.positionId,
+          time: pc.time,
+          effectId: pc.effectId,
+          module: pc.module,
+          channel: pc.channel,
+        } as unknown as PyroCue,
+      });
+    }
+
+    // DMX cues
+    for (const dc of plan.dmxCues) {
+      cues.push({
+        id: dc.id,
+        type: 'dmx',
+        time: dc.time,
+        data: { universe: dc.universe, channel: dc.channel, value: dc.value },
+      });
+    }
+
+    // Drone paths → waypoint cues
+    for (const dp of plan.dronePaths) {
+      for (const wp of dp.waypoints) {
+        cues.push({
+          id: `${dp.id}-${wp.id}`,
+          type: 'drone',
+          time: wp.time,
+          data: {
+            droneId: dp.droneId,
+            position: wp.position,
+            speed: wp.speed,
+          } as unknown as DroneWaypoint,
+        });
+      }
+    }
+
+    // Sort by time and load
+    cues.sort((a, b) => a.time - b.time);
+    this.loadTimeline(cues);
+    blackbox.record('state', `ExecutionBridge: loaded ShowPlan "${plan.metadata.name}" (${cues.length} cues)`);
   }
 
   getStats(): Readonly<BridgeStats> { return this._stats; }

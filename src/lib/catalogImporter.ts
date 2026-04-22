@@ -6,9 +6,11 @@
  * - Generic: CSV/TSV with any headers
  * 
  * Supports auto-detection of format and column mapping.
+ * Full conformity with Finale 3D Manual (MANUAL_FINALE-19).
  */
 
-import type { Effect, PartType } from '@/store/useProjectStore';
+import { Effect, PartType } from '@/data/effectLibrary';
+import { getBreakHeight } from '@/lib/pyroPhysics';
 
 // Known Finale 3D column headers (case-insensitive)
 const COLUMN_ALIASES: Record<string, string[]> = {
@@ -17,15 +19,22 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   duration:    ['duration', 'dur', 'time', 'burn_time', 'effect_time', 'burn', 'display_time'],
   color:       ['color', 'colour', 'colors', 'effect_color', 'star_color', 'primary_color'],
   type:        ['type', 'part_type', 'device_type', 'class', 'category', 'kind', 'parttype', 'fdb_type', 'effect_type'],
-  height:      ['height', 'break_height', 'altitude', 'elevation', 'height_m', 'height_ft', 'lift_height'],
+  height:      ['height', 'break_height', 'altitude', 'elevation', 'height_m', 'height_ft', 'lift_height', 'height_meters', 'heightmeters', 'effect_height'],
   cost:        ['cost', 'price', 'unit_price', 'unit_cost', 'retail', 'wholesale'],
-  prefire:     ['prefire', 'pre_fire', 'lift_time', 'pft', 'rise_time', 'fuse_time'],
+  prefire:     ['prefire', 'pre_fire', 'lift_time', 'pft', 'rise_time', 'fuse_time', 'internal_delay', 'internaldelay', 'pre_fire_time', 'prefire_time'],
   pattern:     ['pattern', 'burst_pattern', 'burst_type', 'star_pattern'],
   shotCount:   ['shots', 'shot_count', 'num_shots', 'count', 'tubes', 'num_tubes'],
-  safety:      ['safety', 'safety_distance', 'nfpa_distance', 'safe_dist', 'safety_m'],
+  safety:      ['safety', 'safety_distance', 'nfpa_distance', 'safe_dist', 'safety_m', 'safety_distance_meters'],
   vdl:         ['vdl', 'visual_description', 'vdl_string'],
   sku:         ['sku', 'part_number', 'part_no', 'item_no', 'product_code', 'article'],
   manufacturer:['manufacturer', 'mfg', 'supplier', 'brand', 'vendor', 'factory'],
+  fuseDelay:   ['fuse_delay', 'fuse', 'fusedelay', 'visco_delay'],
+  devices:     ['devices', 'numdevices', 'num_devices', 'chain_devices'],
+  exNumber:    ['ex_number', 'exnumber'],
+  ceNumber:    ['ce_number', 'cenumber'],
+  unNumber:    ['un_number', 'unnumber', 'material'],
+  subtype:     ['subtipo', 'subtype', 'effect_subtype', 'sub_type'],
+  rackType:    ['rack_type', 'racktype'],
 };
 
 // Part type mapping from Finale 3D keywords
@@ -58,6 +67,23 @@ const PART_TYPE_MAP: Record<string, PartType> = {
   laser: 'laser',
   light: 'light',
   sfx: 'sfx',
+  // Finale 3D official types
+  'other effect': 'sfx',
+  other: 'sfx',
+  'not an effect': 'sfx',
+  rack: 'sfx',
+  // Finale Inventory — Spanish variants
+  proyectiles: 'shell',
+  'otro efecto': 'sfx',
+  'no coreografiado': 'sfx',
+  pasteles: 'cake',
+  velas: 'candle',
+  minas: 'mine',
+  cometas: 'comet',
+  cohetes: 'rocket',
+  llamas: 'flame',
+  tierra: 'ground',
+  bastidor: 'sfx',
 };
 
 // Color name to hex mapping
@@ -93,6 +119,12 @@ export interface ParsedCatalogEffect {
   vdl: string;
   sku: string;
   manufacturer: string;
+  fuseDelay: number;
+  devices: number;
+  exNumber: string;
+  ceNumber: string;
+  unNumber: string;
+  subtype: string;
   raw: Record<string, string>;
 }
 
@@ -105,6 +137,49 @@ function detectDelimiter(text: string): string {
   if (tabCount >= commaCount && tabCount >= semiCount) return '\t';
   if (semiCount >= commaCount) return ';';
   return ',';
+}
+
+/**
+ * RFC 4180 compliant CSV line parser.
+ * Handles quoted fields containing delimiters, newlines, and escaped quotes ("").
+ */
+function parseCSVLine(line: string, delimiter: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  let i = 0;
+
+  while (i < line.length) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i += 2;
+        } else {
+          inQuotes = false;
+          i++;
+        }
+      } else {
+        current += ch;
+        i++;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+        i++;
+      } else if (ch === delimiter) {
+        fields.push(current.trim());
+        current = '';
+        i++;
+      } else {
+        current += ch;
+        i++;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
 }
 
 /** Auto-map a header to our known fields — exact matches first, then substring */
@@ -207,22 +282,22 @@ export function parseCatalogFile(text: string): {
   const lines = text.trim().split('\n').filter(l => l.trim());
   if (lines.length < 2) return { columns: [], effects: [], delimiter, rowCount: 0 };
 
-  const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^"|"$/g, ''));
+  const headers = parseCSVLine(lines[0], delimiter);
   
   // Build column mappings
   const columns: CatalogColumnMapping[] = headers.map((header, i) => ({
     header,
     mappedTo: autoMapHeader(header),
     sampleValues: lines.slice(1, 4).map(l => {
-      const cols = l.split(delimiter);
-      return (cols[i] || '').trim().replace(/^"|"$/g, '');
+      const cols = parseCSVLine(l, delimiter);
+      return (cols[i] || '').trim();
     }),
   }));
 
   // Parse rows
   const effects: ParsedCatalogEffect[] = [];
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(delimiter).map(c => c.trim().replace(/^"|"$/g, ''));
+    const cols = parseCSVLine(lines[i], delimiter);
     const raw: Record<string, string> = {};
     headers.forEach((h, j) => { raw[h] = cols[j] || ''; });
 
@@ -253,11 +328,79 @@ export function parseCatalogFile(text: string): {
       vdl: getValue('vdl') || '',
       sku: getValue('sku') || '',
       manufacturer: getValue('manufacturer') || '',
+      fuseDelay: parseFloat(getValue('fuseDelay')) || 0,
+      devices: parseInt(getValue('devices')) || 0,
+      exNumber: getValue('exNumber') || '',
+      ceNumber: getValue('ceNumber') || '',
+      unNumber: getValue('unNumber') || '',
+      subtype: getValue('subtype') || '',
       raw,
     });
   }
 
   return { columns, effects, delimiter, rowCount: effects.length };
+}
+
+/** Re-parse catalog file applying user-specified column mappings as overrides */
+export function parseCatalogFileWithMappings(
+  text: string,
+  mappingOverrides: CatalogColumnMapping[],
+): { columns: CatalogColumnMapping[]; effects: ParsedCatalogEffect[]; delimiter: string; rowCount: number } {
+  const result = parseCatalogFile(text);
+  // Apply user overrides
+  result.columns.forEach((col, i) => {
+    if (mappingOverrides[i]) {
+      col.mappedTo = mappingOverrides[i].mappedTo;
+    }
+  });
+  // Re-parse effects with updated mappings
+  const delimiter = result.delimiter;
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (lines.length < 2) return result;
+
+  const effects: ParsedCatalogEffect[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCSVLine(lines[i], delimiter);
+    const raw: Record<string, string> = {};
+    result.columns.forEach((c, j) => { raw[c.header] = cols[j] || ''; });
+
+    const getValue = (field: string): string => {
+      const colIdx = result.columns.findIndex(c => c.mappedTo === field);
+      return colIdx >= 0 ? (cols[colIdx] || '') : '';
+    };
+
+    const name = getValue('name') || `Effect ${i}`;
+    const colorText = getValue('color');
+    const typeText = getValue('type');
+    const partType = parsePartType(typeText || name);
+
+    effects.push({
+      name,
+      caliber: parseFloat(getValue('caliber')) || (partType === 'shell' ? 3 : 0),
+      duration: parseFloat(getValue('duration')) || (partType === 'shell' ? 3 : 5),
+      color: colorText || 'Gold',
+      colorHex: parseColor(colorText || name),
+      partType,
+      height: parseFloat(getValue('height')) || 0,
+      cost: parseFloat(getValue('cost')) || 0,
+      prefire: parseFloat(getValue('prefire')) || 0,
+      pattern: getValue('pattern') || '',
+      shotCount: parseInt(getValue('shotCount')) || 0,
+      safetyDistance: parseFloat(getValue('safety')) || 0,
+      vdl: getValue('vdl') || '',
+      sku: getValue('sku') || '',
+      manufacturer: getValue('manufacturer') || '',
+      fuseDelay: parseFloat(getValue('fuseDelay')) || 0,
+      devices: parseInt(getValue('devices')) || 0,
+      exNumber: getValue('exNumber') || '',
+      ceNumber: getValue('ceNumber') || '',
+      unNumber: getValue('unNumber') || '',
+      subtype: getValue('subtype') || '',
+      raw,
+    });
+  }
+
+  return { columns: result.columns, effects, delimiter, rowCount: effects.length };
 }
 
 /** Convert parsed catalog effects to our internal Effect format */
@@ -267,7 +410,7 @@ export function catalogToEffects(parsed: ParsedCatalogEffect[], idPrefix: string
     const category = inferCategory(partType);
     const type = inferEffectType(partType);
     const caliber = p.caliber || (partType === 'shell' ? 3 : undefined);
-    const height = p.height || (caliber ? caliber * 20 : undefined);
+    const height = p.height || (caliber ? getBreakHeight(caliber) : undefined);
 
     return {
       id: `${idPrefix}-${Date.now()}-${i}`,
@@ -286,6 +429,8 @@ export function catalogToEffects(parsed: ParsedCatalogEffect[], idPrefix: string
       shotCount: p.shotCount || undefined,
       safetyDistance: p.safetyDistance || undefined,
       vdl: p.vdl || undefined,
+      fuseDelay: p.fuseDelay || undefined,
+      numDevices: p.devices || undefined,
     };
   });
 }
@@ -341,6 +486,12 @@ export function parseFinaleFSL(xmlText: string): ParsedCatalogEffect[] {
       vdl: vdlStr,
       sku: skuStr,
       manufacturer: mfgStr,
+      fuseDelay: 0,
+      devices: 0,
+      exNumber: '',
+      ceNumber: '',
+      unNumber: '',
+      subtype: '',
       raw: {},
     });
   }
@@ -393,6 +544,12 @@ export function parseDepenceDPX(xmlText: string): ParsedCatalogEffect[] {
       vdl: '',
       sku: '',
       manufacturer: mfgStr,
+      fuseDelay: 0,
+      devices: 0,
+      exNumber: '',
+      ceNumber: '',
+      unNumber: '',
+      subtype: '',
       raw: {},
     });
   }

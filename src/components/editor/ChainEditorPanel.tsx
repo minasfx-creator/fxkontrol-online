@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Slider } from '@/components/ui/slider';
-import { useProjectStore, EFFECT_LIBRARY, type TimelineItem } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type TimelineItem } from '@/types/projectTypes';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { getChainStats, getUniqueChains } from '@/lib/chainEngine';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -19,7 +21,13 @@ function hashColor(str: string): string {
 }
 
 export default function ChainEditorPanel({ onClose }: { onClose: () => void }) {
-  const { timelineItems, selectedTimelineItemIds, selectedTimelineItemId, combineAsChain, breakChain, updateTimelineItem, selectTimelineItem } = useProjectStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
+  const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const combineAsChain = useProjectStore(s => s.combineAsChain);
+  const breakChain = useProjectStore(s => s.breakChain);
+  const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
+  const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
   const [gapMs, setGapMs] = useState(200);
   const [expandedChain, setExpandedChain] = useState<string | null>(null);
   const [autoSpaceMode, setAutoSpaceMode] = useState<'equal' | 'accelerando' | 'ritardando'>('equal');

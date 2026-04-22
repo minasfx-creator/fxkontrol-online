@@ -4,7 +4,8 @@
  * Compatible with standard Avery label sheets.
  */
 
-import { type TimelineItem, type Position, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { type TimelineItem, type Position } from '@/types/projectTypes';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 
 export interface LabelConfig {
   labelsPerRow: number;

@@ -84,10 +84,17 @@ export default function DroneCommandPanel({ fs = false }: DroneCommandPanelProps
     if (launchState === 'idle') setLaunchState('armed');
   }, [launchState]);
 
+  const launchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => { if (launchTimerRef.current) clearTimeout(launchTimerRef.current); };
+  }, []);
+
   const handleLaunch = useCallback(() => {
     if (launchState === 'armed') {
       setLaunchState('launching');
-      setTimeout(() => setLaunchState('airborne'), 2000);
+      if (launchTimerRef.current) clearTimeout(launchTimerRef.current);
+      launchTimerRef.current = setTimeout(() => setLaunchState('airborne'), 2000);
     }
   }, [launchState]);
 

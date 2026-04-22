@@ -315,10 +315,10 @@ export class FireOneModuleEmulator {
   /** Fire multiple pins sequentially with 2ms stagger (simulates CDS current draw) */
   async fireGroup(pins: number[], durationMs: number): Promise<boolean[]> {
     const results: boolean[] = [];
-    for (const pin of pins) {
-      const ok = await this.fire(pin, durationMs);
+    for (let i = 0; i < pins.length; i++) {
+      const ok = await this.fire(pins[i], durationMs);
       results.push(ok);
-      if (pins.indexOf(pin) < pins.length - 1) {
+      if (i < pins.length - 1) {
         await new Promise(r => setTimeout(r, FIRE_GROUP_STAGGER_MS));
       }
     }

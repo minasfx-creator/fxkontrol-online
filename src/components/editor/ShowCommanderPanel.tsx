@@ -3,16 +3,23 @@
  * Single-panel integration of all subsystems: Pyro, SFX, Drones, Lighting, Lasers, Timecode.
  * Designed for Olympics-level show execution with real-time telemetry and safety interlocks.
  */
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import {
   Zap, Shield, Radio, Activity, Clock, AlertTriangle, ChevronDown, ChevronRight,
   Play, Pause, Square, Volume2, Eye, EyeOff, Lock, Unlock, Flame, Sparkles,
   Plane, Lightbulb, Cable, Signal, Battery, Cpu, Timer, BarChart3, Layers,
   Target, Crosshair, MonitorPlay, Gauge, CircuitBoard, Power, Wifi, WifiOff,
-  Magnet, FlaskConical, Link2, Unlink, Download, Sun
+  Magnet, FlaskConical, Link2, Unlink, Download, Sun, CheckCircle2
 } from 'lucide-react';
 import { useShowCommanderEngine } from '@/hooks/useShowCommanderEngine';
+import { commandBus } from '@/core/command/CommandBus';
+import { safetyStateMachine, type SafetyState } from '@/core/safety/SafetyStateMachine';
+import { safetyValidator } from '@/core/safety/SafetyValidator';
+import { continuityCheckService, type PinStatus } from '@/core/safety/ContinuityCheckService';
 import PerformanceMonitor from '@/components/editor/PerformanceMonitor';
+const PerformanceProfilerTab = lazy(() => import('@/components/editor/performance/PerformanceProfilerTab'));
+const NetworkHealthTab = lazy(() => import('@/components/editor/network/NetworkHealthTab'));
+const ClusterHealthTab = lazy(() => import('@/components/editor/cluster/ClusterHealthTab'));
 import { FieldViewProvider, FieldModeToggle, FieldViewWrapper, TerrainCollisionAlert } from '@/components/editor/FieldViewMode';
 import { downloadFlightPlan, exportFlightPlan, DEFAULT_FLIGHT_CONFIG } from '@/lib/mavlinkFlightPlanExporter';
 import { checkTrajectoryCollision, interpolateTrajectory, type TrajectoryPoint } from '@/lib/terrainCollisionEngine';
@@ -130,10 +137,55 @@ function useSubsystems(fireone: ReturnType<typeof useFireOneHardware>, pbus: Ret
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
+// ─── Safety Interlock Badge ──────────────────────────────────────────────────
+function SafetyInterlockBadge() {
+  const [state, setState] = useState<SafetyState>(safetyStateMachine.state);
+
+  useEffect(() => {
+    const unsub = safetyStateMachine.onTransition(({ to }) => {
+      setState(to as SafetyState);
+    });
+    return unsub;
+  }, []);
+
+  const status = safetyValidator.getInterlockStatus();
+  const steps = ['IDLE', 'LOCKED', 'ARMED', 'FIRING'];
+  const colors: Record<string, string> = {
+    IDLE: 'border-muted-foreground/20 text-muted-foreground/50',
+    LOCKED: 'border-amber-500/30 text-amber-400',
+    ARMED: 'border-red-500/30 text-red-400',
+    FIRING: 'border-red-500/50 text-red-400 animate-pulse',
+    COOLDOWN: 'border-orange-500/30 text-orange-400',
+    SAFE: 'border-green-500/30 text-green-400',
+  };
+
+  return (
+    <div className={cn(
+      "flex items-center gap-1.5 px-2 h-7 rounded-md border text-[9px] font-bold uppercase",
+      colors[state] ?? colors.IDLE
+    )}>
+      <Shield className="w-3 h-3" />
+      <span>{state}</span>
+      {/* Chain dots */}
+      <div className="flex items-center gap-0.5 ml-1">
+        {steps.map((s, i) => (
+          <div key={s} className={cn(
+            "w-1.5 h-1.5 rounded-full",
+            i <= status.chainProgress ? "bg-current" : "bg-muted-foreground/15"
+          )} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MasterTransport() {
-  const { currentTime, isPlaying, duration, setPlaying } = useProjectStore();
-  const { frameRate, startTimecodeSeconds } = useSMPTEStore();
-  const [masterArmed, setMasterArmed] = useState(false);
+    const currentTime = useProjectStore(s => s.currentTime);
+  const isPlaying = useProjectStore(s => s.isPlaying);
+  const duration = useProjectStore(s => s.duration);
+  const setPlaying = useProjectStore(s => s.setPlaying);
+  const frameRate = useSMPTEStore(s => s.frameRate);
+  const startTimecodeSeconds = useSMPTEStore(s => s.startTimecodeSeconds);
 
   const offsetTime = currentTime + startTimecodeSeconds;
   const tc = secondsToTimecode(offsetTime, frameRate, frameRate === 29.97);
@@ -141,23 +193,24 @@ function MasterTransport() {
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const handleArm = useCallback(() => {
-    if (!masterArmed) {
-      toast.warning('MASTER ARM ativado — Todos os sistemas em STANDBY', { duration: 5000 });
+    const state = safetyStateMachine.state;
+    if (state === 'ARMED' || state === 'FIRING') {
+      commandBus.dispatch({ type: 'DISARM_SYSTEM' });
     } else {
-      toast.info('MASTER DISARM — Sistemas em modo seguro');
+      commandBus.dispatch({ type: 'ARM_SYSTEM' });
     }
-    setMasterArmed(!masterArmed);
-  }, [masterArmed]);
+  }, []);
 
   const handlePanic = useCallback(() => {
-    toast.error('🚨 PANIC — Todos os sistemas DESARMADOS', { duration: 8000 });
-    setMasterArmed(false);
+    commandBus.dispatch({ type: 'E_STOP' });
   }, []);
+
+  const isArmed = safetyStateMachine.state === 'ARMED' || safetyStateMachine.state === 'FIRING';
 
   return (
     <div className={cn(
       "rounded-xl border p-3 space-y-3 transition-all",
-      masterArmed
+      isArmed
         ? "border-red-500/30 bg-red-500/5"
         : "border-border/20 bg-card/30"
     )}>
@@ -169,7 +222,7 @@ function MasterTransport() {
             <span className="font-mono-code text-lg tracking-[0.15em] text-primary font-bold tabular-nums">
               {tcStr}
             </span>
-            {masterArmed && (
+            {isArmed && (
               <Badge className="badge-live text-[9px] h-5">● ARMED</Badge>
             )}
             {isPlaying && (
@@ -187,7 +240,7 @@ function MasterTransport() {
         <Button
           size="sm"
           variant={isPlaying ? 'destructive' : 'default'}
-          className={cn("h-10 flex-1 font-bold text-xs", masterArmed && "min-h-[48px]")}
+          className={cn("h-10 flex-1 font-bold text-xs", isArmed && "min-h-[48px]")}
           onClick={() => setPlaying(!isPlaying)}
         >
           {isPlaying ? <><Pause className="w-4 h-4 mr-1" /> STOP</> : <><Play className="w-4 h-4 mr-1" /> GO</>}
@@ -195,23 +248,23 @@ function MasterTransport() {
 
         <Button
           size="sm"
-          variant={masterArmed ? 'destructive' : 'outline'}
+          variant={isArmed ? 'destructive' : 'outline'}
           className={cn(
             "h-10 font-bold text-xs transition-all",
-            masterArmed && "armed-pulse min-h-[48px]"
+            isArmed && "armed-pulse min-h-[48px]"
           )}
           onClick={handleArm}
         >
-          {masterArmed ? <><Lock className="w-4 h-4 mr-1" /> ARMED</> : <><Unlock className="w-4 h-4 mr-1" /> ARM</>}
+          {isArmed ? <><Lock className="w-4 h-4 mr-1" /> ARMED</> : <><Unlock className="w-4 h-4 mr-1" /> ARM</>}
         </Button>
 
         <Button
           size="sm"
           variant="destructive"
-          className={cn("h-10 font-bold text-xs", masterArmed && "min-h-[48px]")}
+          className={cn("h-10 font-bold text-xs", isArmed && "min-h-[48px]")}
           onClick={handlePanic}
         >
-          <AlertTriangle className="w-4 h-4 mr-1" /> PANIC
+          <AlertTriangle className="w-4 h-4 mr-1" /> E-STOP
         </Button>
       </div>
     </div>
@@ -463,6 +516,94 @@ function TelemetryMini({ fireone, pbus }: { fireone: ReturnType<typeof useFireOn
   );
 }
 
+// ─── Continuity Check Panel ──────────────────────────────────────────────────
+function ContinuityCheckPanel() {
+  const [pins, setPins] = useState(continuityCheckService.getAllPins());
+  const [report, setReport] = useState(continuityCheckService.getReport());
+  const [checking, setChecking] = useState(false);
+
+  const runCheck = useCallback(async () => {
+    setChecking(true);
+    const r = await continuityCheckService.runFullCheck();
+    setPins([...continuityCheckService.getAllPins()]);
+    setReport(r);
+    setChecking(false);
+    if (r.short > 0) {
+      toast.error(`🚨 ${r.short} SHORT-CIRCUIT detectado(s)!`);
+    } else if (r.ok >= 1) {
+      toast.success(`✅ Continuidade OK: ${r.ok}/${r.total} ignitores`);
+    }
+  }, []);
+
+  const statusColor: Record<PinStatus, string> = {
+    OK: 'bg-green-500',
+    OPEN: 'bg-muted-foreground/20',
+    SHORT: 'bg-red-500 animate-pulse',
+    UNKNOWN: 'bg-muted-foreground/10',
+  };
+
+  const passing = report.ok >= 1 && report.short === 0;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between px-1">
+        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50">
+          Continuidade 32-CH
+        </span>
+        <Badge variant="outline" className={cn(
+          "text-[8px] h-4 px-1.5",
+          passing ? "border-green-500/30 text-green-400" : "border-red-500/30 text-red-400"
+        )}>
+          {passing ? 'PASS' : report.lastCheckTime === 0 ? 'PENDING' : 'FAIL'}
+        </Badge>
+      </div>
+
+      {/* 8×4 Grid */}
+      <div className="grid grid-cols-8 gap-1 px-1">
+        {Array.from({ length: 32 }, (_, i) => {
+          const p = pins[i];
+          return (
+            <div
+              key={i}
+              className={cn(
+                "w-full aspect-square rounded-sm flex items-center justify-center text-[6px] font-mono-code font-bold",
+                statusColor[p?.status ?? 'UNKNOWN']
+              )}
+              title={`Pin ${i}: ${p?.ohms?.toFixed(1) ?? '?'}Ω — ${p?.status ?? 'UNKNOWN'}`}
+            >
+              {i}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Counters */}
+      <div className="flex items-center gap-2 px-1">
+        <span className="text-[8px] font-mono-code text-green-400">{report.ok} OK</span>
+        <span className="text-[8px] font-mono-code text-muted-foreground/40">{report.open} OPEN</span>
+        {report.short > 0 && (
+          <span className="text-[8px] font-mono-code text-red-400 font-bold">{report.short} SHORT</span>
+        )}
+      </div>
+
+      {/* Run Check Button */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full h-9 text-[10px] font-bold border-amber-500/20 text-amber-400 hover:bg-amber-500/10"
+        onClick={runCheck}
+        disabled={checking}
+      >
+        {checking ? (
+          <><Activity className="w-3.5 h-3.5 mr-1.5 animate-spin" /> CHECKING...</>
+        ) : (
+          <><Gauge className="w-3.5 h-3.5 mr-1.5" /> RUN CONTINUITY CHECK</>
+        )}
+      </Button>
+    </div>
+  );
+}
+
 function SafetyChecklist() {
   const [checks] = useState([
     { id: 'perimeter', label: 'Perímetro Seguro', status: 'ok' as const },
@@ -505,15 +646,25 @@ function SafetyChecklist() {
 interface ShowCommanderPanelProps {
   onClose?: () => void;
   onOpenPanel?: (id: string) => void;
+  /** @deprecated Backward-compat prop from ShowControlPanel migration */
+  fs?: boolean;
 }
 
-export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommanderPanelProps) {
+export default function ShowCommanderPanel({ onClose, onOpenPanel, fs: _fs }: ShowCommanderPanelProps) {
   const isMobile = useIsMobile();
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
   const subsystems = useSubsystems(fireone, pbus);
   const [activeTab, setActiveTab] = useState('overview');
   const engine = useShowCommanderEngine();
+
+  // Sync safety state machine conditions with engine state
+  useEffect(() => {
+    safetyStateMachine.setConditions({
+      linkStable: engine.linkStatus === 'stable',
+      isDryRun: engine.isDryRun,
+    });
+  }, [engine.linkStatus, engine.isDryRun]);
 
   return (
     <FieldViewProvider>
@@ -567,11 +718,22 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
             size="sm"
             variant={engine.isLocked ? 'destructive' : 'outline'}
             className={cn("h-7 text-[9px] font-bold px-2", engine.isLocked && "animate-pulse")}
-            onClick={engine.isLocked ? engine.unlockState : engine.lockState}
+            onClick={() => {
+              if (engine.isLocked) {
+                commandBus.dispatch({ type: 'UNLOCK_STATE' });
+                engine.unlockState();
+              } else {
+                commandBus.dispatch({ type: 'LOCK_STATE' });
+                engine.lockState();
+              }
+            }}
           >
             {engine.isLocked ? <Lock className="w-3 h-3 mr-1" /> : <Unlock className="w-3 h-3 mr-1" />}
             {engine.isLocked ? 'LOCKED' : 'LOCK'}
           </Button>
+
+          {/* Safety Interlock Badge */}
+          <SafetyInterlockBadge />
 
           {/* DRY RUN */}
           <Button
@@ -624,6 +786,15 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
           </TabsTrigger>
           <TabsTrigger value="safety" className="text-[9px] h-6 px-2 data-[state=active]:bg-card">
             Safety
+          </TabsTrigger>
+          <TabsTrigger value="profiler" className="text-[9px] h-6 px-2 data-[state=active]:bg-card">
+            Profiler
+          </TabsTrigger>
+          <TabsTrigger value="network" className="text-[9px] h-6 px-2 data-[state=active]:bg-card">
+            Network
+          </TabsTrigger>
+          <TabsTrigger value="cluster" className="text-[9px] h-6 px-2 data-[state=active]:bg-card">
+            Cluster
           </TabsTrigger>
         </TabsList>
 
@@ -696,6 +867,7 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
             </TabsContent>
 
             <TabsContent value="safety" className="mt-0 space-y-3">
+              <ContinuityCheckPanel />
               <SafetyChecklist />
               <TerrainCollisionAlert hasCollision={false} minClearance={Infinity} />
 
@@ -814,6 +986,21 @@ export default function ShowCommanderPanel({ onClose, onOpenPanel }: ShowCommand
                   Timecode Drift Test — injeta ±15ms no Master Clock
                 </p>
               </div>
+            </TabsContent>
+            <TabsContent value="profiler" className="mt-0 space-y-3">
+              <Suspense fallback={<div className="text-center py-4 text-[9px] text-muted-foreground/40">Loading Profiler...</div>}>
+                <PerformanceProfilerTab />
+              </Suspense>
+            </TabsContent>
+            <TabsContent value="network" className="mt-0 space-y-3">
+              <Suspense fallback={<div className="text-center py-4 text-[9px] text-muted-foreground/40">Loading Network...</div>}>
+                <NetworkHealthTab />
+              </Suspense>
+            </TabsContent>
+            <TabsContent value="cluster" className="mt-0 space-y-3">
+              <Suspense fallback={<div className="text-center py-4 text-[9px] text-muted-foreground/40">Loading Cluster...</div>}>
+                <ClusterHealthTab />
+              </Suspense>
             </TabsContent>
           </div>
         </ScrollArea>

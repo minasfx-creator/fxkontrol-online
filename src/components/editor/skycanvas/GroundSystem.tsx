@@ -185,13 +185,13 @@ const UNIFIED_TERRAIN_FRAGMENT = `
     // === NEAR FIELD ===
     float largN = fbm(worldUV * 0.03);
     float fineN = noise(worldUV * 5.0);
-    vec3 grassA = vec3(0.06, 0.16, 0.04);
-    vec3 grassB = vec3(0.10, 0.22, 0.06);
+    vec3 grassA = vec3(0.02, 0.07, 0.02);
+    vec3 grassB = vec3(0.04, 0.12, 0.03);
     vec3 nearColor = mix(grassA, grassB, smoothstep(0.3, 0.7, largN));
-    nearColor += vec3(0.01, 0.025, 0.005) * fineN * 0.2;
+    nearColor += vec3(0.005, 0.015, 0.003) * fineN * 0.15;
     float stripes = sin(worldUV.x * 1.5) * 0.5 + 0.5;
     float crossStripes = sin(worldUV.y * 1.5 + 0.785) * 0.5 + 0.5;
-    nearColor = mix(nearColor, nearColor * 1.1, stripes * crossStripes * 0.12);
+    nearColor = mix(nearColor, nearColor * 1.06, stripes * crossStripes * 0.08);
     
     // === FAR FIELD ===
     float large = fbm(worldUV * 0.005);
@@ -200,14 +200,14 @@ const UNIFIED_TERRAIN_FRAGMENT = `
     float parcels = voronoi(worldUV * 0.008);
     float roads = voronoi(worldUV * 0.003);
     
-    vec3 darkForest  = vec3(0.04, 0.07, 0.02);
-    vec3 forest      = vec3(0.06, 0.11, 0.04);
-    vec3 farmGreen   = vec3(0.08, 0.14, 0.05);
-    vec3 fieldGreen  = vec3(0.12, 0.18, 0.06);
-    vec3 dryField    = vec3(0.18, 0.17, 0.08);
-    vec3 brownEarth  = vec3(0.14, 0.10, 0.05);
-    vec3 roadGrey    = vec3(0.12, 0.11, 0.10);
-    vec3 urbanGrey   = vec3(0.10, 0.09, 0.08);
+    vec3 darkForest  = vec3(0.02, 0.04, 0.01);
+    vec3 forest      = vec3(0.03, 0.07, 0.02);
+    vec3 farmGreen   = vec3(0.04, 0.09, 0.03);
+    vec3 fieldGreen  = vec3(0.06, 0.11, 0.03);
+    vec3 dryField    = vec3(0.10, 0.09, 0.04);
+    vec3 brownEarth  = vec3(0.08, 0.06, 0.03);
+    vec3 roadGrey    = vec3(0.07, 0.06, 0.05);
+    vec3 urbanGrey   = vec3(0.06, 0.05, 0.04);
     
     vec3 farColor = mix(darkForest, forest, smoothstep(0.3, 0.6, large));
     farColor = mix(farColor, farmGreen, smoothstep(0.4, 0.65, medium) * 0.7);
@@ -259,7 +259,7 @@ function GrassGround() {
 
   return (
     <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[100000, 100000, 1, 1]} />
+      <planeGeometry args={[10000, 10000, 1, 1]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={TERRAIN_VERTEX}
@@ -376,7 +376,7 @@ function FloorLogo() {
       <meshBasicMaterial
         map={texture}
         transparent
-        opacity={0.15}
+        opacity={0.06}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
       />
@@ -393,7 +393,7 @@ function GroundFog() {
 
   const fogSystem = useMemo(() => {
     const sys = createVolumetricFogPlane(
-      100000,
+      10000,
       new THREE.Color(0.03, 0.04, 0.08),
       0.4
     );
@@ -432,7 +432,7 @@ function FinaleDarkGround({ brightness }: { brightness: number }) {
 
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[100000, 100000, 1, 1]} />
+      <planeGeometry args={[10000, 10000, 1, 1]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={`
@@ -620,7 +620,7 @@ function SyntheticGrassGround({ brightness }: { brightness: number }) {
 
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[100000, 100000, 1, 1]} />
+      <planeGeometry args={[10000, 10000, 1, 1]} />
       <shaderMaterial
         uniforms={uniforms}
         vertexShader={SYNTHETIC_GRASS_VERTEX}
@@ -638,7 +638,7 @@ function ConcreteGround({ brightness }: { brightness: number }) {
   const groundColor = useMemo(() => new THREE.Color(0.07 * b, 0.07 * b, 0.075 * b), [b]);
   return (
     <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[100000, 100000]} />
+      <planeGeometry args={[10000, 10000]} />
       <meshStandardMaterial
         color={groundColor}
         roughness={0.92}
@@ -806,13 +806,7 @@ function SFXStageEnvironment() {
     orbRefs.current.forEach((orb, i) => {
       if (orb) orb.position.y = orbBaseY + Math.sin(t * 0.8 + i * 2.1) * 0.5;
     });
-    // DMX Point Light hue rotation
-    dmxPointLightRefs.current.forEach((light, i) => {
-      if (light) {
-        const hue = (t * 0.05 + i * 0.25) % 1;
-        light.color.setHSL(hue, 0.7, 0.5);
-      }
-    });
+    // DMX Point Lights removed — no longer animated
   });
 
   const trussColor = '#1a1a1a';
@@ -900,7 +894,7 @@ function SFXStageEnvironment() {
             <sphereGeometry args={[0.06, 8, 8]} />
             <meshBasicMaterial color="#00ff44" />
           </mesh>
-          <pointLight color="#00ff44" intensity={0.3} distance={3} decay={2} />
+          {/* Removed pointLight — emissive glow is sufficient */}
         </group>
       ))}
 
@@ -945,7 +939,7 @@ function SFXStageEnvironment() {
                 <coneGeometry args={[0.8, 9, 12, 1, true]} />
                 <meshBasicMaterial color={beamColor} transparent opacity={0.12} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} />
               </mesh>
-              <pointLight color={beamColor} intensity={1.2} distance={25} decay={2} />
+              {/* Removed per-beam pointLight — emissive cones provide visual effect without GPU cost */}
             </group>
           );
         })}
@@ -970,7 +964,7 @@ function SFXStageEnvironment() {
             <sphereGeometry args={[1.2, 16, 16]} />
             <meshBasicMaterial color="#4400ff" transparent opacity={0.08} blending={THREE.AdditiveBlending} depthWrite={false} />
           </mesh>
-          <pointLight color="#4400ff" intensity={0.8} distance={8} decay={2} />
+          {/* Removed orb pointLight — emissive material provides visual glow */}
         </group>
       ))}
 
@@ -1010,7 +1004,7 @@ function SFXStageEnvironment() {
         </mesh>
       </group>
 
-      {/* ═══ DMX Point Lights — BP_DMXPointLight reference ═══ */}
+      {/* ═══ DMX Fixtures — emissive only, no pointLights ═══ */}
       {[
         [-(stageW / 2 - 2), riggingY - 0.5, -(stageD / 2 - 2)],
         [stageW / 2 - 2, riggingY - 0.5, -(stageD / 2 - 2)],
@@ -1028,13 +1022,6 @@ function SFXStageEnvironment() {
               roughness={Math.max(0.02, 0.1)}
             />
           </mesh>
-          <pointLight
-            ref={el => { dmxPointLightRefs.current[i] = el; }}
-            color="#ffffff"
-            intensity={1.2}
-            distance={20}
-            decay={2}
-          />
         </group>
       ))}
 
@@ -1044,20 +1031,15 @@ function SFXStageEnvironment() {
         <meshBasicMaterial color="#220033" transparent opacity={0.015} side={THREE.BackSide} depthWrite={false} blending={THREE.AdditiveBlending} />
       </mesh>
 
-      {/* Overhead fill lights from rigging */}
-      {[-12, 0, 12].map((x, i) => (
-        <pointLight key={`fill-${i}`} position={[x, riggingY - 1, 0]} color="#1a0033" intensity={0.6} distance={18} decay={2} />
-      ))}
-
-      <ambientLight color="#1a0028" intensity={0.15} />
-      <directionalLight position={[0, 10, 15]} color="#220044" intensity={0.3} />
-      <pointLight position={[0, riggingY, -stageD / 2]} color="#4400aa" intensity={2.5} distance={50} decay={2} />
-      <pointLight position={[0, riggingY - 1, stageD / 2]} color="#330066" intensity={1.0} distance={35} decay={2} />
-      <pointLight position={[-stageW / 2, 6, 0]} color="#220044" intensity={0.8} distance={30} decay={2} />
-      <pointLight position={[stageW / 2, 6, 0]} color="#220044" intensity={0.8} distance={30} decay={2} />
+      {/* Capped lighting: 1 ambient + 1 directional + 3 key pointLights = 5 total */}
+      <ambientLight color="#1a0028" intensity={0.25} />
+      <directionalLight position={[0, 10, 15]} color="#220044" intensity={0.5} />
+      <pointLight position={[0, riggingY, 0]} color="#4400aa" intensity={3.0} distance={60} decay={2} />
+      <pointLight position={[-stageW / 3, 6, 0]} color="#220044" intensity={1.2} distance={40} decay={2} />
+      <pointLight position={[stageW / 3, 6, 0]} color="#220044" intensity={1.2} distance={40} decay={2} />
 
       <mesh position={[0, -0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[100000, 100000]} />
+        <planeGeometry args={[10000, 10000]} />
         <meshStandardMaterial color="#030305" roughness={0.95} metalness={0} />
       </mesh>
 
@@ -1131,13 +1113,14 @@ function TreelineSilhouette() {
 // ═══════════════════════════════════════════════════════════════════════
 export function StageGround({ satelliteTexture }: { satelliteTexture: string | null }) {
   const sc = useSceneStore(st => st.settings);
+  const gridSnapResolution = useSceneStore(s => s.environment.gridSnapResolution);
 
   const renderGround = () => {
     switch (sc.groundStyle) {
       case 'flat-black':
         return (
       <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[100000, 100000]} />
+            <planeGeometry args={[10000, 10000]} />
             <meshStandardMaterial color="#050505" roughness={0.95} metalness={0} />
           </mesh>
         );
@@ -1162,9 +1145,8 @@ export function StageGround({ satelliteTexture }: { satelliteTexture: string | n
       {sc.groundFogIntensity > 0 && <GroundFog />}
 
       {sc.showGrid && (() => {
-        const snap = useSceneStore.getState().environment.gridSnapResolution;
-        const cellSize = snap;
-        const sectionSize = snap * 10;
+        const cellSize = gridSnapResolution;
+        const sectionSize = gridSnapResolution * 10;
         return (
           <>
             <Grid

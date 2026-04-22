@@ -14,8 +14,16 @@ import { toast } from 'sonner';
 type TabId = 'list' | 'designer' | 'templates';
 
 export default function RackManager({ onClose }: { onClose: () => void }) {
-  const { racks, selectedRackId, addRack, removeRack, selectRack, showRack3D, setShowRack3D, addRackFromTemplate, autoAssignToPositions } = useRackStore();
-  const { positions } = useProjectStore();
+  const racks = useRackStore(s => s.racks);
+  const selectedRackId = useRackStore(s => s.selectedRackId);
+  const addRack = useRackStore(s => s.addRack);
+  const removeRack = useRackStore(s => s.removeRack);
+  const selectRack = useRackStore(s => s.selectRack);
+  const showRack3D = useRackStore(s => s.showRack3D);
+  const setShowRack3D = useRackStore(s => s.setShowRack3D);
+  const addRackFromTemplate = useRackStore(s => s.addRackFromTemplate);
+  const autoAssignToPositions = useRackStore(s => s.autoAssignToPositions);
+    const positions = useProjectStore(s => s.positions);
   const [tab, setTab] = useState<TabId>('list');
   const [newType, setNewType] = useState<RackType>('fan');
   const [newCount, setNewCount] = useState(6);

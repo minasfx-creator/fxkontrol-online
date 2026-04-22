@@ -6,9 +6,8 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { toast } from 'sonner';
+import { getDB } from '@/core/persistence/dbConnection';
 
-const DB_NAME = 'fxkontrol_blackbox';
-const DB_VERSION = 1;
 const STORE_NAME = 'sessions';
 const SESSION_KEY = 'current_session';
 
@@ -32,22 +31,8 @@ interface BlackBoxSnapshot {
   };
 }
 
-function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'key' });
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
 async function saveSnapshot(snapshot: BlackBoxSnapshot) {
-  const db = await openDB();
+  const db = await getDB();
   const tx = db.transaction(STORE_NAME, 'readwrite');
   tx.objectStore(STORE_NAME).put(snapshot);
   return new Promise<void>((resolve, reject) => {
@@ -57,7 +42,7 @@ async function saveSnapshot(snapshot: BlackBoxSnapshot) {
 }
 
 async function loadSnapshot(): Promise<BlackBoxSnapshot | null> {
-  const db = await openDB();
+  const db = await getDB();
   const tx = db.transaction(STORE_NAME, 'readonly');
   const req = tx.objectStore(STORE_NAME).get(SESSION_KEY);
   return new Promise((resolve, reject) => {
@@ -81,7 +66,6 @@ export function useBlackBox() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initialCheckDone = useRef(false);
 
-  // Check for dirty session on mount
   useEffect(() => {
     if (initialCheckDone.current) return;
     initialCheckDone.current = true;
@@ -95,7 +79,6 @@ export function useBlackBox() {
     }).catch(() => {});
   }, []);
 
-  // Auto-save every 500ms
   useEffect(() => {
     intervalRef.current = setInterval(() => {
       const s = useProjectStore.getState();
@@ -121,14 +104,12 @@ export function useBlackBox() {
       saveSnapshot(snapshot).catch(() => {});
     }, 500);
 
-    // Mark clean on orderly unmount
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       markClean().catch(() => {});
     };
   }, []);
 
-  // Mark clean on beforeunload if possible
   useEffect(() => {
     const handler = () => { markClean().catch(() => {}); };
     window.addEventListener('beforeunload', handler);
@@ -147,13 +128,8 @@ export function useBlackBox() {
     s.setBpm(st.bpm);
     s.setPlaybackSpeed(st.playbackSpeed);
 
-    // Restore positions
     st.positions.forEach(p => s.addPosition(p));
-
-    // Restore timeline items
     st.timelineItems.forEach(item => s.addTimelineItem(item));
-
-    // Restore trajectories
     st.trajectories.forEach(t => s.addTrajectory(t));
 
     await markClean();

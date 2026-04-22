@@ -32,3 +32,4 @@ export { default as FirecrackerStringEffect } from './FirecrackerStringEffect';
 export { default as SaxonEffect } from './SaxonEffect';
 export { default as ParachuteFlareEffect } from './ParachuteFlareEffect';
 export { default as VolumetricSmoke } from './VolumetricSmoke';
+export { default as GirandolaEffect } from './GirandolaEffect';

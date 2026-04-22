@@ -5,6 +5,11 @@
  */
 
 import * as THREE from 'three';
+import { createCinemaFireMaterial } from './cinemaFireShader';
+import { createCinemaSmokeMaterial } from './cinemaSmokeShader';
+import { createCinemaBurstMaterial } from './cinemaBurstShader';
+
+export type ShaderMode = 'default' | 'cinema-fire' | 'cinema-smoke' | 'cinema-burst';
 
 const INSTANCED_VERTEX = `
   attribute vec3 instanceColor;
@@ -54,17 +59,21 @@ const INSTANCED_FRAGMENT = `
   varying vec2 vUv;
 
   void main() {
-    // Soft circular falloff
     vec2 center = vUv - 0.5;
     float dist = length(center);
-    float core = exp(-dist * dist * 50.0);
-    float glow = exp(-dist * dist * 12.0);
-    float alpha = (core * 0.8 + glow * 0.3) * vOpacity;
 
-    // Hot-core effect
-    vec3 col = mix(vColor, vec3(1.1, 1.0, 0.9), core * 0.25);
+    // Multi-layer falloff: tight core + mid glow + soft halo
+    float core = exp(-dist * dist * 65.0);
+    float mid = exp(-dist * dist * 18.0);
+    float outer = exp(-dist * dist * 5.0);
+    float alpha = (core * 0.5 + mid * 0.35 + outer * 0.15) * vOpacity;
 
-    float edge = 1.0 - smoothstep(0.42, 0.5, dist);
+    // Hot-core whitening (calibrated for bloom threshold 1.2)
+    vec3 col = mix(vColor, vec3(1.15, 1.08, 0.98), core * 0.35);
+    // Warm mid-glow tint
+    col = mix(col, vColor * 1.1, mid * 0.2);
+
+    float edge = 1.0 - smoothstep(0.42, 0.50, dist);
     gl_FragColor = vec4(col, alpha * edge);
   }
 `;
@@ -93,7 +102,9 @@ export class InstancedParticleRenderer {
   private maxParticles: number;
   private _dummy = new THREE.Object3D();
   private _activeCount = 0;
-
+  private _shaderMode: ShaderMode = 'default';
+  private _cinemaAttrs: Map<string, THREE.InstancedBufferAttribute> = new Map();
+  
   constructor(config?: Partial<InstancedParticleConfig>) {
     const cfg = { ...DEFAULT_CONFIG, ...config };
     this.maxParticles = cfg.maxParticles;
@@ -111,6 +122,7 @@ export class InstancedParticleRenderer {
       },
       transparent: true,
       depthWrite: false,
+      depthTest: true,
       blending: cfg.blendMode === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending,
       side: THREE.DoubleSide,
     });
@@ -193,6 +205,201 @@ export class InstancedParticleRenderer {
 
   update(time: number) {
     this.material.uniforms.uTime.value = time;
+  }
+
+  /**
+   * Switch to a cinema-grade shader mode.
+   * When switching to cinema-fire, extra per-instance attributes are injected.
+   */
+  setShaderMode(mode: ShaderMode) {
+    if (mode === this._shaderMode) return;
+    this._shaderMode = mode;
+
+    // Dispose old material
+    this.material.dispose();
+
+    switch (mode) {
+      case 'cinema-fire':
+        this.material = createCinemaFireMaterial();
+        this._ensureCinemaFireAttrs();
+        break;
+      case 'cinema-smoke':
+        this.material = createCinemaSmokeMaterial();
+        break;
+      case 'cinema-burst':
+        this.material = createCinemaBurstMaterial();
+        break;
+      default:
+        this.material = this._createDefaultMaterial();
+        break;
+    }
+
+    this.mesh.material = this.material;
+  }
+
+  get shaderMode(): ShaderMode { return this._shaderMode; }
+
+  /** Write cinema-fire per-instance data (temperature, life, maxLife, seed). */
+  writeCinemaFireData(data: Array<{ temperature: number; life: number; maxLife: number; seed: number }>) {
+    const tempAttr = this._cinemaAttrs.get('aTemperature');
+    const lifeAttr = this._cinemaAttrs.get('aLife');
+    const maxLifeAttr = this._cinemaAttrs.get('aMaxLife');
+    const seedAttr = this._cinemaAttrs.get('aSeed');
+    if (!tempAttr || !lifeAttr || !maxLifeAttr || !seedAttr) return;
+
+    const count = Math.min(data.length, this.maxParticles);
+    for (let i = 0; i < count; i++) {
+      tempAttr.setX(i, data[i].temperature);
+      lifeAttr.setX(i, data[i].life);
+      maxLifeAttr.setX(i, data[i].maxLife);
+      seedAttr.setX(i, data[i].seed);
+    }
+    tempAttr.needsUpdate = true;
+    lifeAttr.needsUpdate = true;
+    maxLifeAttr.needsUpdate = true;
+    seedAttr.needsUpdate = true;
+  }
+
+  /** Write cinema-smoke per-instance data (life, maxLife). */
+  writeCinemaSmokeData(data: Array<{ life: number; maxLife: number }>) {
+    this._ensureCinemaSmokeAttrs();
+    const lifeAttr = this._cinemaAttrs.get('aLife');
+    const maxLifeAttr = this._cinemaAttrs.get('aMaxLife');
+    if (!lifeAttr || !maxLifeAttr) return;
+
+    const count = Math.min(data.length, this.maxParticles);
+    for (let i = 0; i < count; i++) {
+      lifeAttr.setX(i, data[i].life);
+      maxLifeAttr.setX(i, data[i].maxLife);
+    }
+    lifeAttr.needsUpdate = true;
+    maxLifeAttr.needsUpdate = true;
+  }
+
+  /** Write cinema-burst per-instance data (life, maxLife, energy). */
+  writeCinemaBurstData(data: Array<{ life: number; maxLife: number; energy: number }>) {
+    this._ensureCinemaBurstAttrs();
+    const lifeAttr = this._cinemaAttrs.get('aLife');
+    const maxLifeAttr = this._cinemaAttrs.get('aMaxLife');
+    const energyAttr = this._cinemaAttrs.get('aEnergy');
+    if (!lifeAttr || !maxLifeAttr || !energyAttr) return;
+
+    const count = Math.min(data.length, this.maxParticles);
+    for (let i = 0; i < count; i++) {
+      lifeAttr.setX(i, data[i].life);
+      maxLifeAttr.setX(i, data[i].maxLife);
+      energyAttr.setX(i, data[i].energy);
+    }
+    lifeAttr.needsUpdate = true;
+    maxLifeAttr.needsUpdate = true;
+    energyAttr.needsUpdate = true;
+  }
+
+  /**
+   * Bridge: write directly from GPUComputeParticleSystem SoA data.
+   * Reads position, velocity, color (from temperature), size, opacity, and
+   * cinema-specific attributes from the SoA buffers.
+   */
+  writeFromComputeData(
+    cpuData: {
+      posX: Float32Array; posY: Float32Array; posZ: Float32Array;
+      age: Float32Array;
+      velX: Float32Array; velY: Float32Array; velZ: Float32Array;
+      life: Float32Array;
+      colorR: Float32Array; colorG: Float32Array; colorB: Float32Array;
+      brightness: Float32Array;
+      temperature: Float32Array;
+      size: Float32Array;
+      smoke: Float32Array;
+      particleType: Float32Array;
+    },
+    activeCount: number,
+    camera?: THREE.Camera,
+  ) {
+    const count = Math.min(activeCount, this.maxParticles);
+    this._activeCount = count;
+
+    for (let i = 0; i < count; i++) {
+      // Position + billboard
+      this._dummy.position.set(cpuData.posX[i], cpuData.posY[i], cpuData.posZ[i]);
+      if (camera) this._dummy.quaternion.copy(camera.quaternion);
+      this._dummy.updateMatrix();
+      this.mesh.setMatrixAt(i, this._dummy.matrix);
+
+      // Color directly from compute data
+      this.colorAttr.setXYZ(i, cpuData.colorR[i], cpuData.colorG[i], cpuData.colorB[i]);
+
+      // Opacity from age/life ratio * brightness
+      const lr = cpuData.age[i] / Math.max(cpuData.life[i], 0.001);
+      this.opacityAttr.setX(i, Math.max(0, (1 - lr)) * cpuData.brightness[i]);
+      this.scaleAttr.setX(i, cpuData.size[i]);
+      this.velocityAttr.setXYZ(i, cpuData.velX[i], cpuData.velY[i], cpuData.velZ[i]);
+    }
+
+    this.mesh.count = count;
+    this.mesh.instanceMatrix.needsUpdate = true;
+    this.colorAttr.needsUpdate = true;
+    this.opacityAttr.needsUpdate = true;
+    this.scaleAttr.needsUpdate = true;
+    this.velocityAttr.needsUpdate = true;
+  }
+
+  private _ensureCinemaFireAttrs() {
+    const geo = this.mesh.geometry;
+    const names = ['aTemperature', 'aLife', 'aMaxLife', 'aSeed'];
+    for (const name of names) {
+      if (!this._cinemaAttrs.has(name)) {
+        const arr = new Float32Array(this.maxParticles);
+        const attr = new THREE.InstancedBufferAttribute(arr, 1);
+        attr.setUsage(THREE.DynamicDrawUsage);
+        this._cinemaAttrs.set(name, attr);
+      }
+      geo.setAttribute(name, this._cinemaAttrs.get(name)!);
+    }
+  }
+
+  private _ensureCinemaSmokeAttrs() {
+    const geo = this.mesh.geometry;
+    const names = ['aLife', 'aMaxLife'];
+    for (const name of names) {
+      if (!this._cinemaAttrs.has(name)) {
+        const arr = new Float32Array(this.maxParticles);
+        const attr = new THREE.InstancedBufferAttribute(arr, 1);
+        attr.setUsage(THREE.DynamicDrawUsage);
+        this._cinemaAttrs.set(name, attr);
+      }
+      geo.setAttribute(name, this._cinemaAttrs.get(name)!);
+    }
+  }
+
+  private _ensureCinemaBurstAttrs() {
+    const geo = this.mesh.geometry;
+    const names = ['aLife', 'aMaxLife', 'aEnergy'];
+    for (const name of names) {
+      if (!this._cinemaAttrs.has(name)) {
+        const arr = new Float32Array(this.maxParticles);
+        const attr = new THREE.InstancedBufferAttribute(arr, 1);
+        attr.setUsage(THREE.DynamicDrawUsage);
+        this._cinemaAttrs.set(name, attr);
+      }
+      geo.setAttribute(name, this._cinemaAttrs.get(name)!);
+    }
+  }
+
+  private _createDefaultMaterial(): THREE.ShaderMaterial {
+    return new THREE.ShaderMaterial({
+      vertexShader: INSTANCED_VERTEX,
+      fragmentShader: INSTANCED_FRAGMENT,
+      uniforms: {
+        uVelocityStretch: { value: 0.4 },
+        uTime: { value: 0 },
+      },
+      transparent: true,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+    });
   }
 
   dispose() {

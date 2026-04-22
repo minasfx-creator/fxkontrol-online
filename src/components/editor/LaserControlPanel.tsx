@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { parseILDA, generateShape, type ILDAFrame } from '@/lib/ildaParser';
 import { LASER_HARDWARE_PRESETS } from '@/lib/laserEngine';
 import { SHOWVEN_LASERS, type ShowvenLaserPreset } from '@/lib/showvenPresets';
@@ -51,7 +52,8 @@ interface LaserControlPanelProps {
 }
 
 export default function LaserControlPanel({ onClose }: LaserControlPanelProps) {
-  const { selectedTimelineItemId, timelineItems } = useProjectStore();
+    const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
+  const timelineItems = useProjectStore(s => s.timelineItems);
   const fireone = useFireOneHardware();
   const [pan, setPan] = useState(0);
   const [tilt, setTilt] = useState(45);

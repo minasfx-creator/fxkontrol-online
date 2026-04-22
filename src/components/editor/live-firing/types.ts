@@ -68,6 +68,8 @@ export interface CueEntry {
   sceneIndex?: number;
   /** Priority group 1–16 for FireOne Priority Disable */
   priority?: number;
+  /** Manual fire group — adjacent cues with same manualGroup fire together (FXcommander) */
+  manualGroup?: number;
 }
 
 export type FiringRule = 'sync' | 'ltr' | 'rtl' | 'sides' | 'middle';
@@ -138,6 +140,7 @@ export interface DeviceCapabilities {
   rdmx?: boolean;
   eStopChain?: boolean;
   externalPyroTrigger?: boolean;
+  nozzleCount?: number;
 }
 
 /** UltraFire state for FireOne XLII+ */

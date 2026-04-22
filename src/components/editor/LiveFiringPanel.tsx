@@ -31,6 +31,7 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useSfxChannelStore } from '@/store/useSfxChannelStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
+import { buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl } from '@/lib/bridgeGateway';
 
 import type { SFXChannel, CueEntry, FXCMode, FXCSettings, DeviceLibEntry } from './live-firing/types';
 import { FIRING_RULES, SFX_TYPES, DEFAULT_CHANNELS, DEFAULT_SETTINGS, CUES_PER_PAGE, formatTimecode, SHOWVEN_LIBRARY } from './live-firing/constants';
@@ -42,20 +43,11 @@ import DeviceLibraryPanel from './live-firing/DeviceLibraryPanel';
 import MobileLinkMode from './live-firing/MobileLinkMode';
 import PyroFireOnePanel from './live-firing/PyroFireOnePanel';
 import VirtualControllerHub from './VirtualControllerHub';
-import VirtualZK6200 from './VirtualZK6200';
-import VirtualFXButton from './VirtualFXButton';
-import FieldMap2D from './FieldMap2D';
-import ConnectionManagerPanel from './ConnectionManagerPanel';
-import PBusMonitorPanel from './live-firing/PBusMonitorPanel';
-import RadioControlPanel from './RadioControlPanel';
 import MA3ControlPanel from './MA3ControlPanel';
-import VirtualIFMx32QPanel from './live-firing/VirtualIFMx32QPanel';
-import WiFiDirectControlPanel from './live-firing/WiFiDirectControlPanel';
-import ArtNetModulePanel from './live-firing/ArtNetModulePanel';
-import ShowControlPanel from './ShowControlPanel';
-import DMXMonitorPanel from './DMXMonitorPanel';
+import ShowCommanderPanel from './ShowCommanderPanel';
+import DMXMonitorPanel from './dmx/DMXMonitorPanel';
 import DroneCommandPanel from './DroneCommandPanel';
-import BLEDeviceScanner from './BLEDeviceScanner';
+import EasyConnectPanel from './EasyConnectPanel';
 import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
 
 // ═══════════════════════════════════════════════════════════
@@ -63,25 +55,28 @@ import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyro
 // ═══════════════════════════════════════════════════════════
 const MODE_CATEGORIES = [
   {
-    label: '🔥 EXECUTION', modes: [
+    label: 'EXECUTION', modes: [
       { key: 'super_dmx' as FXCMode, label: 'FXK-DMX', icon: Zap },
       { key: 'pyro_fire' as FXCMode, label: 'FXK-PYRO', icon: Flame },
     ],
   },
   {
-    label: '📡 MONITORING', modes: [
+    label: 'MONITORING', modes: [
       { key: 'show_control' as FXCMode, label: 'SHOW CTRL', icon: Activity },
       { key: 'dmx_monitor' as FXCMode, label: 'DMX MON', icon: Radio },
       { key: 'fxk_light' as FXCMode, label: 'FXK-LIGHT', icon: Gauge },
     ],
   },
   {
-    label: '🔧 HARDWARE', modes: [
+    label: 'HARDWARE', modes: [
       { key: 'module' as FXCMode, label: 'MODULE', icon: Globe },
-      { key: 'ble_scan' as FXCMode, label: 'BLE SCAN', icon: Signal },
+      { key: 'ble_scan' as FXCMode, label: 'CONNECT', icon: Signal },
     ],
   },
 ];
+
+const SELF_CONTAINED_PANEL_MODES: FXCMode[] = ['pyro_fire', 'fxk_light', 'ma3', 'show_control', 'dmx_monitor', 'drone_ops'];
+const isSelfContainedMode = (mode: FXCMode) => SELF_CONTAINED_PANEL_MODES.includes(mode);
 
 function MobileModeTabs({ mode, onModeChange }: { mode: FXCMode; onModeChange: (m: FXCMode) => void }) {
   const [expanded, setExpanded] = useState(true);
@@ -157,7 +152,8 @@ function MobileModeTabs({ mode, onModeChange }: { mode: FXCMode; onModeChange: (
 // LOCKOUT PANEL — Finale 3D Risk Group Lockout System
 // ═══════════════════════════════════════════════════════════
 function LockoutPanel({ fs, mob }: { fs: boolean; mob: boolean }) {
-  const { activeLockouts, toggleLockout } = useProjectStore();
+    const activeLockouts = useProjectStore(s => s.activeLockouts);
+  const toggleLockout = useProjectStore(s => s.toggleLockout);
   const groups: RiskGroup[] = ['A', 'B', 'C', 'D', 'E'];
 
   return (
@@ -183,7 +179,7 @@ function LockoutPanel({ fs, mob }: { fs: boolean; mob: boolean }) {
             >
               <span className="font-black" style={{ color: locked ? undefined : RISK_GROUP_COLORS[g] }}>{g}</span>
               <span className={cn("font-normal", fs ? "text-[10px]" : "text-[10px]")}>
-                {locked ? '🔒' : RISK_GROUP_LABELS[g].split(' ')[0]}
+                {locked ? 'LOCKED' : RISK_GROUP_LABELS[g].split(' ')[0]}
               </span>
             </button>
           );
@@ -191,7 +187,7 @@ function LockoutPanel({ fs, mob }: { fs: boolean; mob: boolean }) {
       </div>
       {activeLockouts.length > 0 && (
         <div className={cn("text-center font-bold text-red-400/70 uppercase mt-1", fs ? "text-[10px]" : "text-[10px]")}>
-          ⛔ {activeLockouts.length} group{activeLockouts.length > 1 ? 's' : ''} locked out
+          {activeLockouts.length} GROUP{activeLockouts.length > 1 ? 'S' : ''} LOCKED OUT
         </div>
       )}
     </div>
@@ -341,8 +337,13 @@ function DeviceRow({
 // ═══════════════════════════════════════════════════════════
 export default function LiveFiringPanel({ onClose, initialMode, standalone }: { onClose?: () => void; initialMode?: string; standalone?: boolean }) {
   const isMobile = useIsMobile();
-  const { isPlaying, currentTime, setPlaying, positions } = useProjectStore();
-  const { channels, setChannels: setStoreChannels, updateChannels } = useSfxChannelStore();
+    const isPlaying = useProjectStore(s => s.isPlaying);
+  const currentTime = useProjectStore(s => s.currentTime);
+  const setPlaying = useProjectStore(s => s.setPlaying);
+  const positions = useProjectStore(s => s.positions);
+  const channels = useSfxChannelStore(s => s.channels);
+  const setStoreChannels = useSfxChannelStore(s => s.setChannels);
+  const updateChannels = useSfxChannelStore(s => s.updateChannels);
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
   const setChannels = useCallback((updaterOrValue: SFXChannel[] | ((prev: SFXChannel[]) => SFXChannel[])) => {
@@ -380,18 +381,24 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   const [firingStartTime, setFiringStartTime] = useState<number | null>(null);
   const [batteryVoltage] = useState(11.82);
   const [relayConnected, setRelayConnected] = useState(false);
-  const [relayUrl, setRelayUrl] = useState('ws://localhost:9001');
+  const [relayUrl, setRelayUrl] = useState(() => buildBridgeWebSocketUrl({ path: '' }));
   const [showMode, setShowMode] = useState(false);
   const showModeTapRef = useRef<number>(0);
   const sequenceRef = useRef(0);
   const fireTimers = useRef(new globalThis.Map<string, ReturnType<typeof setTimeout>>());
   const relayWs = useRef<WebSocket | null>(null);
 
+  useEffect(() => {
+    if (!initialMode) return;
+    setMode(initialMode as FXCMode);
+  }, [initialMode]);
+
   // ─── WebSocket Relay connection ───
   const connectRelay = useCallback(() => {
     if (relayWs.current?.readyState === WebSocket.OPEN) return;
     try {
-      const ws = new WebSocket(relayUrl);
+      const protocols = buildBridgeWebSocketProtocols();
+      const ws = protocols.length > 0 ? new WebSocket(relayUrl, protocols) : new WebSocket(relayUrl);
       ws.onopen = () => { setRelayConnected(true); toast.success('🔌 Relay UDP conectado'); };
       ws.onclose = () => { setRelayConnected(false); relayWs.current = null; };
       ws.onerror = () => { setRelayConnected(false); toast.error('Falha ao conectar relay'); };
@@ -449,7 +456,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   }, [cues, channels, setChannels]);
 
   // ─── Swipe gesture for mobile mode switching / close ───
-  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'check_slave', 'ble_scan', 'controllers', 'pbus', 'field_map', 'connections', 'wifi_direct', 'radio', 'ma3', 'artnet_modules', 'mobile_link', 'settings'];
+  const SWIPE_MODES: FXCMode[] = ['super_dmx', 'simple_dmx', 'manual_fire', 'pyro_fire', 'check_slave', 'ble_scan', 'controllers', 'pbus', 'field_map', 'connections', 'radio', 'ma3', 'artnet_modules', 'mobile_link', 'settings'];
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const swipeHandled = useRef(false);
 
@@ -953,7 +960,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
           fs && mob ? "px-3 py-1 text-[10px] tracking-[0.25em]" : fs ? "px-4 py-1.5 text-xs tracking-[0.3em]" : "px-2 py-0.5 text-[10px] tracking-[0.25em]",
           pyroArm && dmxArm ? "text-red-400" : pyroArm ? "text-red-400" : "text-amber-400"
         )} style={{ background: pyroArm ? 'hsl(0 50% 8%)' : 'hsl(40 40% 8%)' }}>
-          {pyroArm && dmxArm ? '⚠ DMX + PYRO ARMED ⚠' : pyroArm ? '⚠ PYRO ARMED ⚠' : 'DMX ARMED'}
+          {pyroArm && dmxArm ? 'DMX + PYRO ARMED' : pyroArm ? 'PYRO ARMED' : 'DMX ARMED'}
         </div>
       )}
       {(pyroArm) && (
@@ -1038,26 +1045,25 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
                 { key: 'manual_fire' as FXCMode, label: 'Manual' },
                 { key: 'auto_fire' as FXCMode, label: 'Auto' },
                 { key: 'check_slave' as FXCMode, label: 'Check' },
-                { key: 'ble_scan' as FXCMode, label: '📡 BLE' },
-                { key: 'settings' as FXCMode, label: '⚙' },
+                { key: 'ble_scan' as FXCMode, label: 'BLE' },
+                { key: 'settings' as FXCMode, label: 'Settings' },
               ]
             : [
                 { key: 'super_dmx' as FXCMode, label: 'Super' },
                 { key: 'simple_dmx' as FXCMode, label: 'Simple' },
                 { key: 'manual_fire' as FXCMode, label: 'Manual' },
-                { key: 'pyro_fire' as FXCMode, label: '🔥 Pyro' },
+                { key: 'pyro_fire' as FXCMode, label: 'Pyro' },
                 { key: 'auto_fire' as FXCMode, label: 'Auto' },
                 { key: 'check_slave' as FXCMode, label: 'Check' },
-                { key: 'ble_scan' as FXCMode, label: '📡 BLE' },
-                { key: 'controllers' as FXCMode, label: '🎛 HW' },
-                { key: 'pbus' as FXCMode, label: '📡 PBUS' },
-                { key: 'ma3' as FXCMode, label: '🎛 MA3' },
-                { key: 'field_map' as FXCMode, label: '🗺 Map' },
-                { key: 'connections' as FXCMode, label: '🔌 Conn' },
-                { key: 'wifi_direct' as FXCMode, label: '📡 WFD' },
-                { key: 'artnet_modules' as FXCMode, label: '🌐 ArtNet' },
-                { key: 'mobile_link' as FXCMode, label: '📡 Link' },
-                { key: 'settings' as FXCMode, label: '⚙' },
+                { key: 'ble_scan' as FXCMode, label: 'BLE' },
+                { key: 'controllers' as FXCMode, label: 'HW' },
+                { key: 'pbus' as FXCMode, label: 'PBUS' },
+                { key: 'ma3' as FXCMode, label: 'MA3' },
+                { key: 'field_map' as FXCMode, label: 'Map' },
+                { key: 'connections' as FXCMode, label: 'Conn' },
+                { key: 'artnet_modules' as FXCMode, label: 'ArtNet' },
+                { key: 'mobile_link' as FXCMode, label: 'Link' },
+                { key: 'settings' as FXCMode, label: 'Settings' },
               ]
           ).map(m => (
             <button key={m.key} onClick={() => { setMode(m.key); setShowDeviceLib(false); }}
@@ -1099,7 +1105,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       <div className={cn("flex items-center justify-between border-t border-border/10", fs && mob ? "px-3 py-1.5" : fs ? "px-6 py-2" : "px-2 py-1")}>
         <div className="flex items-center gap-2">
           <span className={cn("font-mono text-muted-foreground/30", fs && mob ? "text-[10px]" : fs ? "text-[9px]" : "text-[10px]")}>{channels.length}CH · {armedCount}RDY</span>
-          {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[10px]")}>🔥 {firingCount}</span>}
+          {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[10px]")}>FIRE {firingCount}</span>}
         </div>
         <div className="flex items-center gap-1.5">
           {fireone.isConnected && <span className={cn("font-mono text-[10px]", fs ? "text-[10px]" : "")}>
@@ -1122,7 +1128,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         <span className={cn("font-bold text-muted-foreground/50 uppercase tracking-wider", fs ? "text-[10px]" : "text-[8px]")}>Device List</span>
         <div className="flex items-center gap-2">
           <span className={cn("font-mono text-muted-foreground/30", fs ? "text-[9px]" : "text-[8px]")}>{enabledCount}/{channels.length}</span>
-          {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[8px]")}>🔥 {firingCount}</span>}
+          {firingCount > 0 && <span className={cn("font-mono text-red-400 font-bold animate-pulse", fs ? "text-[9px]" : "text-[8px]")}>FIRE {firingCount}</span>}
         </div>
       </div>
       <div className={cn("overflow-y-auto", fs ? "max-h-[300px]" : "max-h-[140px]")}>
@@ -1393,16 +1399,15 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         );
       case 'simple_dmx': return renderSimpleDmx(fs);
       case 'manual_fire': return renderManualFire(fs);
-      case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
+      case 'pyro_fire': return <PyroFireOnePanel fs={fs} fireChannel={fireChannel} channels={channels} pyroArm={pyroArm} dmxArm={dmxArm} handlePanic={handlePanic} artNetConnected={artNetConnected} relayConnected={relayConnected} onArmChange={(armed) => handlePyroArm(armed)} />;
       case 'check_slave': return <CheckSlavePanel fs={fs} pyroArm={pyroArm} />;
       case 'ble_scan': return (
         <div className={cn("flex flex-col gap-3 h-full overflow-y-auto", fs ? "p-3" : "p-2")}>
-          <BLEDeviceScanner context="pyro" />
-          <BLEDeviceScanner context="dmx" compact />
+          <EasyConnectPanel context="pyro" />
         </div>
       );
       case 'mobile_link': return <MobileLinkMode fs={fs} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />;
-      case 'show_control': return <ShowControlPanel fs={fs} />;
+      case 'show_control': return <ShowCommanderPanel fs={fs} />;
       case 'module':
       case 'artnet_modules': return <FXKNetPanel fs={fs} />;
       case 'dmx_monitor': return <DMXMonitorPanel fs={fs} />;
@@ -1418,6 +1423,9 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   // ═══════════════════════════════════════════════════════════
   // FULLSCREEN LAYOUT
   // ═══════════════════════════════════════════════════════════
+  // Desktop standalone uses fs=true for full-size rendering
+  const desktopFs = standalone && !mob;
+
   if (isFullscreen) {
     const fullscreenContent = (
       <div
@@ -1433,18 +1441,25 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
           paddingBottom: mob ? 'max(env(safe-area-inset-bottom), 8px)' : undefined,
         }}
       >
-        {renderStatusBar(true)}
-        {!showMode && renderArmBar(true)}
-        {renderCueKeys(true)}
-        {!showMode && renderSceneModeBar(true)}
-        {showMode ? (
-          <ScrollArea className="flex-1">
-            <MobileLinkMode fs={true} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />
-          </ScrollArea>
+        {/* Self-contained sub-panels: skip ALL outer chrome (scenes, tabs, arm, panic) */}
+        {isSelfContainedMode(mode) ? (
+          <div className="flex-1 min-h-0 overflow-hidden">{renderModeContent(true)}</div>
         ) : (
-          <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+          <>
+            {renderStatusBar(true)}
+            {!showMode && renderArmBar(true)}
+            {renderCueKeys(true)}
+            {!showMode && renderSceneModeBar(true)}
+            {showMode ? (
+              <ScrollArea className="flex-1">
+                <MobileLinkMode fs={true} fireChannel={fireChannel} channels={channels} artNetConnected={artNetConnected} relayConnected={relayConnected} />
+              </ScrollArea>
+            ) : (
+              <ScrollArea className="flex-1">{renderModeContent(true)}</ScrollArea>
+            )}
+            {renderPanic(true)}
+          </>
         )}
-        {renderPanic(true)}
       </div>
     );
 
@@ -1455,12 +1470,19 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
 
   return (
     <div className={cn("h-full flex flex-col overflow-hidden select-none", standalone && "ff-standalone-panel")} style={{ minWidth: standalone ? undefined : 300, maxWidth: standalone ? undefined : 380, background: standalone ? 'transparent' : 'linear-gradient(180deg, hsl(220 15% 8%) 0%, hsl(220 12% 5%) 100%)' }}>
-      {renderStatusBar(false)}
-      {renderArmBar(false)}
-      {renderCueKeys(false)}
-      {renderSceneModeBar(false)}
-      <ScrollArea className="flex-1">{renderModeContent(false)}</ScrollArea>
-      {renderPanic(false)}
+      {/* Self-contained sub-panels: skip ALL outer chrome */}
+      {isSelfContainedMode(mode) ? (
+        <div className="flex-1 min-h-0 overflow-hidden">{renderModeContent(desktopFs)}</div>
+      ) : (
+        <>
+          {renderStatusBar(desktopFs)}
+          {renderArmBar(desktopFs)}
+          {renderCueKeys(desktopFs)}
+          {renderSceneModeBar(desktopFs)}
+          <ScrollArea className="flex-1">{renderModeContent(desktopFs)}</ScrollArea>
+          {renderPanic(desktopFs)}
+        </>
+      )}
     </div>
   );
 }

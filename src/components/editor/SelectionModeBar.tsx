@@ -1,7 +1,9 @@
-import { useProjectStore, type SelectionMode } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type SelectionMode } from '@/types/projectTypes';
 import { MapPin, Zap, Link2, Lasso, Grid3x3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useCallback, useEffect } from 'react';
+import { useRenderCounter } from '@/hooks/useRenderCounter';
 
 const SECTION_OPTIONS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
 const SECTION_COLORS: Record<string, string> = {
@@ -19,7 +21,12 @@ let _lassoActive = false;
 export function isLassoActive() { return _lassoActive; }
 
 export default function SelectionModeBar() {
-  const { selectionMode, setSelectionMode, editorMode, positions, selectMultiplePositionsAndLinkedEvents } = useProjectStore();
+  useRenderCounter('SelectionModeBar');
+    const selectionMode = useProjectStore(s => s.selectionMode);
+  const setSelectionMode = useProjectStore(s => s.setSelectionMode);
+  const editorMode = useProjectStore(s => s.editorMode);
+  const positions = useProjectStore(s => s.positions);
+  const selectMultiplePositionsAndLinkedEvents = useProjectStore(s => s.selectMultiplePositionsAndLinkedEvents);
   const [showSections, setShowSections] = useState(false);
   const [lassoOn, setLassoOn] = useState(false);
 

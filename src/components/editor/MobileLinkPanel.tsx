@@ -2,8 +2,8 @@
  * MobileLinkPanel — Test Art-Net/Relay connectivity & trigger virtual fixtures
  * from mobile → desktop via Supabase Realtime broadcast.
  */
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Cable, Wifi, WifiOff, Plus, Trash2, Flame, X, Lightbulb, Zap, Wind, Snowflake, Sparkles, Smartphone } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Cable, Wifi, WifiOff, Plus, Trash2, Flame, X, Lightbulb, Zap, Wind, Sparkles, Smartphone } from 'lucide-react';
 import { haptics } from '@/lib/haptics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,9 +16,13 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useProjectStore } from '@/store/useProjectStore';
+import {
+  buildBridgeWebSocketProtocols,
+  getBridgeCapabilityHints,
+  getMobileGatewayChannelName,
+} from '@/lib/bridgeGateway';
 
 const FIXTURES_KEY = 'fxk-virtual-fixtures';
-const CHANNEL_NAME = 'mobile-link';
 
 type FixtureType = 'par' | 'wash' | 'strobe' | 'flame' | 'co2' | 'spark';
 
@@ -83,6 +87,8 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const fireEffect = useLiveSfxStore((s) => s.fireEffect);
   const projectId = useProjectStore((s) => s.projectId);
+  const channelName = useMemo(() => getMobileGatewayChannelName(projectId), [projectId]);
+  const bridgeHints = useMemo(() => getBridgeCapabilityHints({ path: '/ws' }), []);
 
   // Load fixtures from localStorage
   useEffect(() => {
@@ -100,7 +106,7 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
 
   // Subscribe to Realtime broadcast
   useEffect(() => {
-    const ch = supabase.channel(CHANNEL_NAME);
+    const ch = supabase.channel(channelName, { config: { broadcast: { self: false } } });
     ch.on('broadcast', { event: 'fixture-fire' }, (msg) => {
       const p = msg.payload as { fixtureId: string; type: FixtureType; color: string; intensity: number };
       fireEffect({
@@ -118,7 +124,7 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
     });
     channelRef.current = ch;
     return () => { supabase.removeChannel(ch); };
-  }, [fireEffect]);
+  }, [channelName, fireEffect]);
 
   // Test Art-Net
   const testArtNet = useCallback(async () => {
@@ -145,10 +151,13 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
     setRelayStatus('testing');
     const t0 = performance.now();
     try {
-      const ws = new WebSocket('ws://localhost:9001');
+      const protocols = buildBridgeWebSocketProtocols();
+      const ws = protocols.length > 0
+        ? new WebSocket(bridgeHints.endpoint, protocols)
+        : new WebSocket(bridgeHints.endpoint);
       const timeout = setTimeout(() => { ws.close(); setRelayStatus('fail'); }, 3000);
       ws.onopen = () => {
-        ws.send(JSON.stringify({ type: 'ping' }));
+        ws.send(JSON.stringify({ type: 'ping', source: 'mobile-link', secure: bridgeHints.secure }));
       };
       ws.onmessage = () => {
         clearTimeout(timeout);
@@ -164,7 +173,7 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
     } catch {
       setRelayStatus('fail');
     }
-  }, []);
+  }, [bridgeHints.endpoint, bridgeHints.secure]);
 
   // Add fixture
   const addFixture = useCallback(() => {
@@ -255,7 +264,7 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
   const statusBadge = (status: 'idle' | 'testing' | 'ok' | 'fail', latency: number | null) => {
     if (status === 'idle') return <Badge variant="outline" className="text-[10px]">—</Badge>;
     if (status === 'testing') return <Badge variant="secondary" className="text-[10px] animate-pulse">Testing…</Badge>;
-    if (status === 'ok') return <Badge className="text-[10px] bg-green-600 text-white">{latency}ms</Badge>;
+    if (status === 'ok') return <Badge className="text-[10px] bg-emerald-600 text-primary-foreground">{latency}ms</Badge>;
     return <Badge variant="destructive" className="text-[10px]">Offline</Badge>;
   };
 
@@ -320,9 +329,12 @@ export default function MobileLinkPanel({ onClose }: MobileLinkPanelProps) {
               onClick={testRelay}
               disabled={relayStatus === 'testing'}
             >
-              <span className="text-[10px] font-bold">Relay UDP</span>
+              <span className="text-[10px] font-bold">{bridgeHints.secure ? 'Gateway HTTPS' : 'Relay UDP'}</span>
               {statusBadge(relayStatus, relayLatency)}
             </Button>
+          </div>
+          <div className="text-[9px] text-muted-foreground font-mono truncate">
+            {bridgeHints.endpoint}
           </div>
         </div>
 

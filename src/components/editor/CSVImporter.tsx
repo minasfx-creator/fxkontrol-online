@@ -8,7 +8,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useProjectStore, type Position, type PositionType } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type Position, type PositionType } from '@/types/projectTypes';
 import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -326,7 +327,7 @@ function buildRow(i: number, cols: string[], ctx: any): ParsedRow {
 // ── Component ───────────────────────────────────────────────────────
 
 export default function CSVImporter({ open, onOpenChange, initialFile }: { open: boolean; onOpenChange: (v: boolean) => void; initialFile?: File | null }) {
-  const { addPosition } = useProjectStore();
+    const addPosition = useProjectStore(s => s.addPosition);
   const [parsed, setParsed] = useState<ParsedRow[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [options, setOptions] = useState<ImportOptions>(DEFAULT_OPTIONS);
@@ -401,7 +402,7 @@ export default function CSVImporter({ open, onOpenChange, initialFile }: { open:
     }
   }, [options, rawText]);
 
-  const handleImport = useCallback(() => {
+  const handleImport = useCallback(async () => {
     for (const row of parsed) {
       addPosition({
         id: `pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
@@ -416,6 +417,53 @@ export default function CSVImporter({ open, onOpenChange, initialFile }: { open:
         color: row.color,
       });
     }
+
+    // ── Sync to ShowPlan (canonical source of truth) ──
+    const hasScriptRows = parsed.some(r => r.eventTime != null || r.prefire != null);
+    if (hasScriptRows) {
+      try {
+        const { importFinaleCSVToShowPlan } = await import('@/core/showplan/importers/FinaleCSVToShowPlan');
+        const rows = parsed
+          .filter(r => r.eventTime != null)
+          .map((r, idx) => ({
+            time: r.eventTime ?? 0,
+            module: Math.floor(idx / 32),
+            channel: idx % 32,
+            effectId: r.description || r.vdl || 'default',
+            caliber: r.size ?? 75,
+            elevation: r.pitch ?? 90,
+            heading: r.heading ?? 0,
+            fuseDelay: (r.prefire ?? 0) * 1000,
+            position: { x: r.x, y: r.y, z: r.z },
+            positionName: r.name,
+            section: undefined,
+          }));
+        const result = importFinaleCSVToShowPlan(rows);
+        console.log(`[CSVImporter] ShowPlan synced: ${result.pyroCues.length} pyro, ${result.dmxCues.length} dmx`);
+        if (result.errors.length > 0) {
+          toast.warning(`${result.errors.length} aviso(s) na validação ShowPlan`);
+        }
+      } catch (e) {
+        console.warn('[CSVImporter] ShowPlan sync failed:', e);
+      }
+    } else {
+      // Position-only import — use generic CSV importer
+      try {
+        const { importGenericCSVToShowPlan } = await import('@/core/showplan/importers/GenericCSVToShowPlan');
+        const rows = parsed.map(r => ({
+          name: r.name,
+          type: r.type === 'drone-pad' ? 'drone-pad' : r.type === 'light' ? 'light' : undefined,
+          x: r.x, y: r.y, z: r.z,
+          heading: r.heading,
+          pitch: r.pitch,
+        }));
+        const result = importGenericCSVToShowPlan(rows);
+        console.log(`[CSVImporter] ShowPlan synced: ${result.positions.length} positions`);
+      } catch (e) {
+        console.warn('[CSVImporter] ShowPlan sync failed:', e);
+      }
+    }
+
     toast.success(`${parsed.length} posições importadas (${detectedFormat || 'CSV'})`);
 
     // Auto-save to library

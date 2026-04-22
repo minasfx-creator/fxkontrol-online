@@ -161,7 +161,7 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
   iron: {
     name: 'Limaduras de Hierro',
     element: 'Fe',
-    color: new THREE.Color(1.0, 0.65, 0.15),
+    color: new THREE.Color(1.0, 0.75, 0.22), // "yellow branching sparks" — Pyrotechnic Chemicals
     temperature: 2800,
     emissionIntensity: 3.0,
     burnRate: 3.5,
@@ -185,7 +185,7 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
   zinc: {
     name: 'Limaduras de Zinc',
     element: 'Zn',
-    color: new THREE.Color(0.85, 0.9, 1.0), // "luz blanca ligeramente azulada"
+    color: new THREE.Color(0.68, 0.82, 1.0), // "bright blue with bluish zinc sparks" — Chemistry of Pyrotechnics
     temperature: 1700,
     emissionIntensity: 3.5,
     burnRate: 2.0,
@@ -542,6 +542,20 @@ const COMPOUNDS: Record<string, ChemicalCompound> = {
     ignitionTemp: 560,
     density: 7.87,
     riskClassification: { fire: 1, reactivity: 1, contact: 0 },
+  },
+  ferrotitanium: {
+    name: 'Ferrotitanium (60/40 Fe/Ti)',
+    element: 'FeTi',
+    color: new THREE.Color(1.0, 0.90, 0.35), // "yellow-white sparks" — Pyrotechnic Chemicals
+    temperature: 3000,
+    emissionIntensity: 4.5,
+    burnRate: 2.8,
+    sparkSize: 1.6,
+    smokeColor: new THREE.Color(0.15, 0.12, 0.08),
+    trailDecay: 0.90,
+    ignitionTemp: 800,
+    density: 6.1,
+    riskClassification: { fire: 2, reactivity: 2, contact: 1 },
   },
   magnalium_alloy: {
     name: 'Magnalium (Mg/Al 50:50)',
@@ -1198,6 +1212,14 @@ export function getChemistryForRendering(formulationId: string | undefined) {
     crackle: form.crackle,
   };
 }
+
+// ── Flash Formula Variations (Complete Book of Flash Powder) ──
+export const FLASH_FORMULAS: Record<string, { name: string; composition: string; burnRate: number; hdrBoost: number }> = {
+  flash_standard: { name: 'Standard Salute', composition: 'KClO4 66% + Al 34%', burnRate: 0.005, hdrBoost: 3.0 },
+  flash_clark: { name: 'Clark Mix', composition: 'KClO4 7 + Al flake 5', burnRate: 0.003, hdrBoost: 3.5 },
+  flash_chinese: { name: 'Chinese Mix', composition: 'KClO4 3 + Al 4 + S 3', burnRate: 0.004, hdrBoost: 3.2 },
+  flash_military_m80: { name: 'Military M-80', composition: 'KClO4 + Mg + Al flake', burnRate: 0.008, hdrBoost: 2.5 },
+};
 
 export function getAllFormulations(): Record<string, RealFormulation> {
   return { ...REAL_FORMULATIONS };

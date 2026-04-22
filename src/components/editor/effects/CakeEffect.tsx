@@ -219,20 +219,21 @@ function CakeShot({
   const breakH = useMemo(() => getBreakHeight(caliber), [caliber]);
   const v0 = useMemo(() => getMortarVelocity(caliber), [caliber]);
   const starLife = useMemo(() => getStarLifetime(caliber), [caliber]);
+  const maxRadius = useMemo(() => getBreakSpeed(caliber) * starLife * 0.4, [caliber, starLife]);
 
   const { velocities, lifetimes } = useMemo(() => {
     const v = new Float32Array(PARTICLES_PER_SHOT * 3);
     const l = new Float32Array(PARTICLES_PER_SHOT);
     const rng = (i: number) => Math.sin(seed * 9999 + i * 7919) * 0.5 + 0.5;
-    const breakSpeed = getBreakSpeed(caliber) * 0.5;
+    const breakSpeed = getBreakSpeed(caliber) * 0.75; // realistic proportion for cake shells
     for (let i = 0; i < PARTICLES_PER_SHOT; i++) {
       const theta = rng(i * 2) * Math.PI * 2;
       const phi = Math.acos(2 * rng(i * 2 + 1) - 1);
-      const speed = breakSpeed * (0.6 + rng(i * 3) * 0.4);
+      const speed = breakSpeed * (0.5 + rng(i * 3) * 0.5);
       v[i * 3] = Math.sin(phi) * Math.cos(theta) * speed;
-      v[i * 3 + 1] = Math.sin(phi) * Math.sin(theta) * speed * 0.85 + 1.5;
+      v[i * 3 + 1] = Math.sin(phi) * Math.sin(theta) * speed * 0.9 + 1.0;
       v[i * 3 + 2] = Math.cos(phi) * speed;
-      l[i] = starLife * (0.6 + rng(i * 4) * 0.4);
+      l[i] = starLife * (0.5 + rng(i * 4) * 0.5);
     }
     return { velocities: v, lifetimes: l };
   }, [seed, caliber, starLife]);
@@ -250,15 +251,14 @@ function CakeShot({
 
   if (isLifting) {
     const liftProgress = progress / liftFraction;
-    const realY = Math.max(0, liftProgress * breakH * 0.7);
+    const realY = Math.max(0, liftProgress * breakH);
     const screenBlend = getThreeBlending('screen');
-    // Trajectory follows angle
-    const lateralX = Math.sin(angle) * liftProgress * breakH * 0.7;
+    const lateralX = Math.sin(angle) * liftProgress * breakH;
     return (
       <group position={offset}>
         <mesh position={[lateralX, realY, Math.cos(angle) * liftProgress * 0.3]}>
           <sphereGeometry args={[0.06 + caliber * 0.01, 6, 6]} />
-          <meshBasicMaterial color="#FFFFCC" transparent opacity={0.9} blending={THREE.AdditiveBlending} depthWrite={false} />
+          <meshBasicMaterial color="#FFFFCC" transparent opacity={0.9} blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
         </mesh>
         {Array.from({ length: 8 }).map((_, j) => {
           const trailY = realY * (1 - j * 0.1);
@@ -266,14 +266,14 @@ function CakeShot({
           return (
             <mesh key={j} position={[lateralX * (1 - j * 0.05), trailY, 0]}>
               <sphereGeometry args={[0.03 + caliber * 0.005, 4, 4]} />
-              <meshBasicMaterial color="#FFCC66" transparent opacity={0.4 * fade} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
+              <meshBasicMaterial color="#FFCC66" transparent opacity={0.4 * fade} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} depthTest={false} />
             </mesh>
           );
         })}
         {progress < 0.04 && (
           <mesh position={[0, 0.15, 0]}>
             <sphereGeometry args={[0.3 + caliber * 0.08, 8, 8]} />
-            <meshBasicMaterial color="#FFEEAA" transparent opacity={0.5 * (1 - progress / 0.04)} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} />
+            <meshBasicMaterial color="#FFEEAA" transparent opacity={0.5 * (1 - progress / 0.04)} blending={screenBlend.blending} blendEquation={screenBlend.blendEquation} blendSrc={screenBlend.blendSrc as any} blendDst={screenBlend.blendDst as any} depthWrite={false} depthTest={false} />
           </mesh>
         )}
       </group>
@@ -284,9 +284,11 @@ function CakeShot({
   const t = burstProgress * starLife;
   const positions = burstPositions;
   const colors = burstColors;
-  const drag = 0.03 + caliber * 0.005;
-  // Burst center position accounts for angle
-  const burstCenterX = Math.sin(angle) * breakH * 0.7;
+  // Caliber-scaled drag: heavier shells = less drag
+  const drag = caliber <= 2 ? 0.055 : caliber <= 3 ? 0.045 : caliber <= 4 ? 0.038 : 0.030;
+  const burstCenterX = Math.sin(angle) * breakH;
+  // Caliber-scaled velocity multiplier
+  const velScale = caliber <= 2 ? 0.45 : caliber <= 3 ? 0.50 : caliber <= 4 ? 0.55 : 0.60;
 
   for (let i = 0; i < PARTICLES_PER_SHOT; i++) {
     const vx = velocities[i * 3], vy = velocities[i * 3 + 1], vz = velocities[i * 3 + 2];
@@ -295,15 +297,24 @@ function CakeShot({
     const fade = Math.max(0, 1 - age);
     const dragFactor = Math.exp(-drag * t);
 
-    positions[i * 3] = burstCenterX + vx * t * 0.35 * dragFactor;
-    positions[i * 3 + 1] = breakH * 0.7 + vy * t * 0.35 * dragFactor + 0.5 * GRAVITY * t * t * 0.12;
-    positions[i * 3 + 2] = vz * t * 0.35 * dragFactor;
+    const px = vx * t * velScale * dragFactor;
+    const py = vy * t * velScale * dragFactor + 0.5 * GRAVITY * t * t * 0.4; // 40% gravity (was 25%)
+    const pz = vz * t * velScale * dragFactor;
+    
+    positions[i * 3] = burstCenterX + px;
+    positions[i * 3 + 1] = breakH + py;
+    positions[i * 3 + 2] = pz;
+
+    // Height extinction
+    const dist = Math.sqrt(px * px + py * py + pz * pz);
+    const extT = maxRadius > 0 ? Math.max(0, Math.min(1, (dist / maxRadius - 0.7) / 0.3)) : 0;
+    const heightExt = 1 - extT;
 
     const flashPhase = Math.max(0, 1 - burstProgress * 8);
     const sparkle = 0.75 + Math.sin(i * 13 + burstProgress * 25) * 0.25;
-    colors[i * 3] = THREE.MathUtils.lerp(baseColor.r, 1.0, flashPhase) * fade * sparkle;
-    colors[i * 3 + 1] = THREE.MathUtils.lerp(baseColor.g, 0.95, flashPhase) * fade * sparkle;
-    colors[i * 3 + 2] = THREE.MathUtils.lerp(baseColor.b, 0.7, flashPhase) * fade * sparkle;
+    colors[i * 3] = THREE.MathUtils.lerp(baseColor.r, 1.0, flashPhase) * fade * sparkle * heightExt;
+    colors[i * 3 + 1] = THREE.MathUtils.lerp(baseColor.g, 0.95, flashPhase) * fade * sparkle * heightExt;
+    colors[i * 3 + 2] = THREE.MathUtils.lerp(baseColor.b, 0.7, flashPhase) * fade * sparkle * heightExt;
   }
 
   return (
@@ -311,9 +322,9 @@ function CakeShot({
       {burstProgress < 0.08 && (() => {
         const sb = getThreeBlending('screen');
         return (
-          <mesh position={[burstCenterX, breakH * 0.7, 0]}>
+          <mesh position={[burstCenterX, breakH, 0]}>
             <sphereGeometry args={[0.8 + caliber * 0.3, 12, 12]} />
-            <meshBasicMaterial color="#FFFFEE" transparent opacity={0.4 * (1 - burstProgress / 0.08)} blending={sb.blending} blendEquation={sb.blendEquation} blendSrc={sb.blendSrc as any} blendDst={sb.blendDst as any} depthWrite={false} />
+            <meshBasicMaterial color="#FFFFEE" transparent opacity={0.4 * (1 - burstProgress / 0.08)} blending={sb.blending} blendEquation={sb.blendEquation} blendSrc={sb.blendSrc as any} blendDst={sb.blendDst as any} depthWrite={false} depthTest={false} />
           </mesh>
         );
       })()}
@@ -322,7 +333,7 @@ function CakeShot({
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />
           <bufferAttribute attach="attributes-color" args={[colors, 3]} />
         </bufferGeometry>
-        <pointsMaterial size={particleVisualSize} vertexColors transparent opacity={0.9} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation />
+        <pointsMaterial size={particleVisualSize} vertexColors transparent opacity={0.9} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} sizeAttenuation />
       </points>
     </group>
   );
@@ -346,6 +357,8 @@ export default function CakeEffect({
   cakeRows,
   angleOffset = 0,
   formulationId,
+  launchHeading = 0,
+  launchPitch = 85,
 }: {
   position: [number, number, number];
   color: string;
@@ -356,6 +369,8 @@ export default function CakeEffect({
   cakeRows?: number;
   angleOffset?: number;
   formulationId?: string;
+  launchHeading?: number;
+  launchPitch?: number;
 }) {
   const shots = useMemo(() => {
     const rows = cakeRows || (shotCount <= 12 ? 1 : Math.max(1, Math.round(Math.sqrt(shotCount))));
@@ -394,10 +409,16 @@ export default function CakeEffect({
     return s;
   }, [shotCount, pattern, cakeRows, angleOffset]);
 
+  const launchRotation = useMemo(() => {
+    const headingRad = -(launchHeading || 0) * Math.PI / 180;
+    const pitchRad = (90 - (launchPitch || 85)) * Math.PI / 180;
+    return new THREE.Euler(pitchRad, headingRad, 0, 'YXZ');
+  }, [launchHeading, launchPitch]);
+
   return (
-    <group position={position}>
+    <group position={position} rotation={launchRotation}>
       {shots.map((shot, i) => {
-        const shotDuration = 1 / shotCount * 2.5;
+        const shotDuration = (1 / shotCount) * (2.0 + caliber * 0.3); // larger caliber = longer per-shot duration
         const shotProgress = (progress - shot.delay) / shotDuration;
         return (
           <CakeShot

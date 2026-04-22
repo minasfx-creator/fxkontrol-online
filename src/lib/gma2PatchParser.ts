@@ -8,7 +8,7 @@
  * - Generic CSV with columns: FixtureID, Name, FixtureType, Universe, Address, X, Y, Z
  */
 
-import type { PositionType } from '@/store/useProjectStore';
+import type { PositionType } from '@/types/projectTypes';
 
 export interface GMA2Fixture {
   fixtureId: number;

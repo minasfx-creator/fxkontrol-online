@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useAddressingStore, DEFAULT_MODULE_SPECS, type AddressSortMode } from '@/store/useAddressingStore';
-import { useProjectStore, EFFECT_LIBRARY } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useRackStore } from '@/store/useRackStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { cn } from '@/lib/utils';
@@ -19,14 +20,27 @@ function getRssiColor(rssi?: number): string {
 }
 
 export default function AddressingPanel({ onClose }: { onClose: () => void }) {
-  const {
-    addresses, moduleSpecs, activeModuleSpecId, splitterBoxes, firingSystems, sortMode,
-    setActiveModuleSpec, autoAssign, clearAddresses, toggleLock, setAddress, removeAddress,
-    setSortMode, addSplitterBox, removeSplitterBox, addFiringSystem, removeFiringSystem,
-  } = useAddressingStore();
+  const addresses = useAddressingStore(s => s.addresses);
+  const moduleSpecs = useAddressingStore(s => s.moduleSpecs);
+  const activeModuleSpecId = useAddressingStore(s => s.activeModuleSpecId);
+  const splitterBoxes = useAddressingStore(s => s.splitterBoxes);
+  const firingSystems = useAddressingStore(s => s.firingSystems);
+  const sortMode = useAddressingStore(s => s.sortMode);
+  const setActiveModuleSpec = useAddressingStore(s => s.setActiveModuleSpec);
+  const autoAssign = useAddressingStore(s => s.autoAssign);
+  const clearAddresses = useAddressingStore(s => s.clearAddresses);
+  const toggleLock = useAddressingStore(s => s.toggleLock);
+  const setAddress = useAddressingStore(s => s.setAddress);
+  const removeAddress = useAddressingStore(s => s.removeAddress);
+  const setSortMode = useAddressingStore(s => s.setSortMode);
+  const addSplitterBox = useAddressingStore(s => s.addSplitterBox);
+  const removeSplitterBox = useAddressingStore(s => s.removeSplitterBox);
+  const addFiringSystem = useAddressingStore(s => s.addFiringSystem);
+  const removeFiringSystem = useAddressingStore(s => s.removeFiringSystem);
 
-  const { timelineItems, positions } = useProjectStore();
-  const { racks } = useRackStore();
+    const timelineItems = useProjectStore(s => s.timelineItems);
+  const positions = useProjectStore(s => s.positions);
+  const racks = useRackStore(s => s.racks);
   const hardware = useFireOneHardware();
   const [tab, setTab] = useState<'addresses' | 'modules' | 'splitters' | 'systems'>('addresses');
 
@@ -112,7 +126,7 @@ export default function AddressingPanel({ onClose }: { onClose: () => void }) {
             <Signal className="h-2 w-2 mr-0.5" /> LIVE
           </Badge>
         )}
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
+        <button onClick={onClose} aria-label="Fechar painel de endereçamento" className="text-muted-foreground hover:text-foreground text-xs">✕</button>
       </div>
 
       {/* Tabs */}

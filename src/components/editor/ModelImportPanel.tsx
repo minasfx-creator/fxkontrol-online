@@ -3,7 +3,8 @@ import { Box, X, Upload, Trash2, RefreshCw, Download, Eye, Settings2, Layers, Ma
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
-import { useProjectStore, type DroneFormation } from '@/store/useProjectStore';
+import { useProjectStore } from '@/store/useProjectStore';
+import { type DroneFormation } from '@/types/projectTypes';
 import { parseModelToFormation, parseKMZToFormation, type ProjectionMode, type SamplingMode, type ModelParseResult, SUPPORTED_EXTENSIONS } from '@/lib/modelToFormation';
 import { cn } from '@/lib/utils';
 
@@ -171,8 +172,8 @@ export default function ModelImportPanel({ onClose }: { onClose: () => void }) {
   }, [result, height, radius, droneFormations, addDroneFormation, setCurrentTime]);
 
   const qualityColor = result ? (
-    result.quality.score >= 80 ? 'text-green-400' :
-    result.quality.score >= 50 ? 'text-yellow-400' : 'text-red-400'
+    result.quality.score >= 80 ? 'text-emerald-400' :
+    result.quality.score >= 50 ? 'text-yellow-400' : 'text-destructive'
   ) : '';
 
   return (

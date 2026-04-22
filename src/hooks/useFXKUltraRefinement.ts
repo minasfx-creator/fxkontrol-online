@@ -97,39 +97,8 @@ export function useFXKUltraRefinement() {
     }
   }, []);
 
-  // Context loss handler
-  const handleContextLoss = useCallback(() => {
-    const now = Date.now();
-    const startWindow = now - RESTART_WINDOW_MS;
-    crashTimestampsRef.current = crashTimestampsRef.current.filter(ts => ts >= startWindow);
-    crashTimestampsRef.current.push(now);
-
-    if (crashTimestampsRef.current.length > MAX_RESTARTS) {
-      hardFailUntilRef.current = now + HARD_FAIL_COOLDOWN_MS;
-      pushLog('[FXK] Hard fail cooldown — too many context losses', 'error');
-      return 'hard_fail_cooldown';
-    }
-
-    // Degrade API
-    const nextApi = clamp(stabilityApiRef.current + 1, 0, GRAPHICS_APIS.length - 1);
-    if (nextApi !== stabilityApiRef.current) {
-      stabilityApiRef.current = nextApi;
-      pushLog(`[FXK] Context loss recovery → API fallback: ${GRAPHICS_APIS[nextApi]}`, 'warn');
-      return 'recover_with_api_fallback';
-    }
-    return 'recover_without_fallback';
-  }, []);
-
-  // Register context loss listener
-  useEffect(() => {
-    const canvas = gl.domElement;
-    const onLost = (e: Event) => {
-      e.preventDefault();
-      handleContextLoss();
-    };
-    canvas.addEventListener('webglcontextlost', onLost);
-    return () => canvas.removeEventListener('webglcontextlost', onLost);
-  }, [gl, handleContextLoss]);
+  // Context loss handling is delegated to ContextLossGuard in SkyCanvas.
+  // No duplicate listener here — single source of truth.
 
   // ═══ Per-frame evaluation (sampled at ~10Hz) ═══
   useFrame((_state, delta) => {

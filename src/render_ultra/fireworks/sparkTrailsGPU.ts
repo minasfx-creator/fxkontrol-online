@@ -80,6 +80,7 @@ export function createSparkTrailSystem() {
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
+    depthTest: false,
   });
 
   const points = new THREE.Points(geometry, material);
