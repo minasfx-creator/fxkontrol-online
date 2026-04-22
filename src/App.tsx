@@ -7,24 +7,26 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { lazy, Suspense } from "react";
 import MainLayout from "@/layouts/MainLayout";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
+import { LazyChunkBoundary } from "@/components/errors/LazyChunkBoundary";
+import { lazyRetry } from "@/lib/lazyRetry";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 // Dashboard lazy-loaded — it's 658 lines with heavy imports
-const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Dashboard = lazy(lazyRetry(() => import("./pages/Dashboard")));
 
 // Lazy-loaded heavy pages
-const Index = lazy(() => import("./pages/Index"));
-const Agenda = lazy(() => import("./pages/Agenda"));
-const Training = lazy(() => import("./pages/Training"));
-const PCBViewer = lazy(() => import("./pages/PCBViewer"));
-const DevicePairing = lazy(() => import("./pages/DevicePairing"));
-const CommandCenter = lazy(() => import("./pages/CommandCenter"));
-const ShowTestSimulator = lazy(() => import("./pages/ShowTestSimulator"));
-const FieldTest = lazy(() => import("./pages/FieldTest"));
-const Settings = lazy(() => import("./pages/Settings"));
-const Admin = lazy(() => import("./pages/Admin"));
-const AccreditationDashboard = lazy(() => import("./pages/AccreditationDashboard"));
+const Index = lazy(lazyRetry(() => import("./pages/Index")));
+const Agenda = lazy(lazyRetry(() => import("./pages/Agenda")));
+const Training = lazy(lazyRetry(() => import("./pages/Training")));
+const PCBViewer = lazy(lazyRetry(() => import("./pages/PCBViewer")));
+const DevicePairing = lazy(lazyRetry(() => import("./pages/DevicePairing")));
+const CommandCenter = lazy(lazyRetry(() => import("./pages/CommandCenter")));
+const ShowTestSimulator = lazy(lazyRetry(() => import("./pages/ShowTestSimulator")));
+const FieldTest = lazy(lazyRetry(() => import("./pages/FieldTest")));
+const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
+const Admin = lazy(lazyRetry(() => import("./pages/Admin")));
+const AccreditationDashboard = lazy(lazyRetry(() => import("./pages/AccreditationDashboard")));
 
 const queryClient = new QueryClient();
 
@@ -55,26 +57,28 @@ function App() {
           <Sonner />
           <BrowserRouter>
             <PageTransitionOverlay />
-            <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-              <Routes>
-                <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
-                <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/editor" element={<Index />} />
-                  <Route path="/agenda" element={<Agenda />} />
-                  <Route path="/training" element={<Training />} />
-                  <Route path="/pcb-viewer" element={<PCBViewer />} />
-                  <Route path="/pairing" element={<DevicePairing />} />
-                  <Route path="/command" element={<CommandCenter />} />
-                  <Route path="/show-test" element={<ShowTestSimulator />} />
-                  <Route path="/field-test" element={<FieldTest />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/admin" element={<Admin />} />
-                  <Route path="/accreditation" element={<AccreditationDashboard />} />
-                </Route>
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
+            <LazyChunkBoundary>
+              <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+                <Routes>
+                  <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+                  <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/editor" element={<Index />} />
+                    <Route path="/agenda" element={<Agenda />} />
+                    <Route path="/training" element={<Training />} />
+                    <Route path="/pcb-viewer" element={<PCBViewer />} />
+                    <Route path="/pairing" element={<DevicePairing />} />
+                    <Route path="/command" element={<CommandCenter />} />
+                    <Route path="/show-test" element={<ShowTestSimulator />} />
+                    <Route path="/field-test" element={<FieldTest />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/admin" element={<Admin />} />
+                    <Route path="/accreditation" element={<AccreditationDashboard />} />
+                  </Route>
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </LazyChunkBoundary>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
