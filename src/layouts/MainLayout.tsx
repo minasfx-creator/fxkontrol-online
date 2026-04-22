@@ -9,15 +9,16 @@ import { haptics } from '@/lib/haptics';
 import { ambientSound } from '@/lib/ambientSound';
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import DockBar from '@/components/DockBar';
+import { lazyRetry } from '@/lib/lazyRetry';
 
 // Dev-only overlay — tree-shaken in production
 const RenderCounterOverlay = import.meta.env.DEV
-  ? lazy(() => import('@/components/dev/RenderCounterOverlay'))
+  ? lazy(lazyRetry(() => import('@/components/dev/RenderCounterOverlay')))
   : () => null;
 
 // Lazy-load heavy components that aren't needed for initial paint
-const AppSidebar = lazy(() => import('@/components/AppSidebar').then(m => ({ default: m.AppSidebar })));
-const FXKAssistant = lazy(() => import('@/components/FXKAssistant').then(m => ({ default: m.FXKAssistant })));
+const AppSidebar = lazy(lazyRetry(() => import('@/components/AppSidebar').then(m => ({ default: m.AppSidebar }))));
+const FXKAssistant = lazy(lazyRetry(() => import('@/components/FXKAssistant').then(m => ({ default: m.FXKAssistant }))));
 
 function SidebarToggleButton() {
   const { state, toggleSidebar } = useSidebar();
