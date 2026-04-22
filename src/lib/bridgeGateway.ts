@@ -26,6 +26,8 @@ export interface BridgeRuntime {
   sessionStorage?: Storage | null;
 }
 
+type BridgeNavigatorLike = Pick<Navigator, 'userAgent' | 'maxTouchPoints'> & { standalone?: boolean };
+
 export interface BridgeCapabilityHints {
   endpoint: string;
   secure: boolean;
@@ -41,9 +43,9 @@ function runtimeLocation(runtime?: BridgeRuntime) {
   return undefined;
 }
 
-function runtimeNavigator(runtime?: BridgeRuntime) {
+function runtimeNavigator(runtime?: BridgeRuntime): BridgeNavigatorLike | undefined {
   if (runtime?.navigator) return runtime.navigator;
-  if (typeof navigator !== 'undefined') return navigator;
+  if (typeof navigator !== 'undefined') return navigator as BridgeNavigatorLike;
   return undefined;
 }
 
