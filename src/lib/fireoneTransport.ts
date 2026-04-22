@@ -8,6 +8,12 @@
  * TransportManager handles priority routing, E-STOP broadcast, and auto-fallback.
  */
 
+import {
+  buildBridgeWebSocketProtocols,
+  buildBridgeWebSocketUrl,
+  requiresSecureBridgeTransport,
+} from '@/lib/bridgeGateway';
+
 export type TransportType = 'serial' | 'radio' | 'wifi' | 'wifi_direct' | 'artnet' | 'cellular';
 export type TransportState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'reconnecting';
 
@@ -274,14 +280,26 @@ export class WiFiTransport implements FireOneTransport {
   }
 
   async connect(config?: Record<string, any>): Promise<void> {
-    const ip = config?.relayIp || '192.168.1.100';
+    const secureRequired = config?.secure ?? requiresSecureBridgeTransport();
+    const explicitHost = config?.relayHost || config?.relayIp;
+    const ip = explicitHost || (secureRequired ? undefined : '192.168.1.100');
     const port = config?.relayPort || 9485;
-    this.relayUrl = `ws://${ip}:${port}`;
+    this.relayUrl = config?.relayUrl || buildBridgeWebSocketUrl({
+      host: ip,
+      port: explicitHost || !secureRequired ? port : undefined,
+      secure: secureRequired,
+      path: config?.relayPath ?? '',
+      defaultInsecurePort: port,
+      defaultSecurePort: config?.secureRelayPort || 9443,
+    });
     this.autoReconnect = config?.autoReconnect !== false;
 
     return new Promise((resolve, reject) => {
       this.setState('connecting');
-      this.ws = new WebSocket(this.relayUrl);
+      const protocols = buildBridgeWebSocketProtocols(config?.bridgeKey);
+      this.ws = protocols.length > 0
+        ? new WebSocket(this.relayUrl, protocols)
+        : new WebSocket(this.relayUrl);
       this.ws.binaryType = 'arraybuffer';
 
       this.ws.onopen = () => {

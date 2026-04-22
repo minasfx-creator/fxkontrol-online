@@ -20,6 +20,7 @@ import {
 import { downloadFile } from '@/lib/exportEngine';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl } from '@/lib/bridgeGateway';
 
 interface DiagnosticLog {
   timestamp: Date;
@@ -56,7 +57,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   }, []);
 
   // WebSocket Relay state
-  const [relayUrl, setRelayUrl] = useState('ws://localhost:9001');
+  const [relayUrl, setRelayUrl] = useState(() => buildBridgeWebSocketUrl({ path: '' }));
   const [relayWs, setRelayWs] = useState<WebSocket | null>(null);
   const [relayConnected, setRelayConnected] = useState(false);
   const [useRelay, setUseRelay] = useState(false);
@@ -64,7 +65,8 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const connectRelay = useCallback(() => {
     if (relayWs) { relayWs.close(); }
     try {
-      const ws = new WebSocket(relayUrl);
+      const protocols = buildBridgeWebSocketProtocols();
+      const ws = protocols.length > 0 ? new WebSocket(relayUrl, protocols) : new WebSocket(relayUrl);
       ws.onopen = () => {
         setRelayConnected(true);
         setConnectionStatus('ok');
@@ -486,7 +488,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                       value={relayUrl}
                       onChange={e => setRelayUrl(e.target.value)}
                       className="h-6 text-[9px] font-mono-code bg-surface-0 border-border flex-1"
-                      placeholder="ws://localhost:9001"
+                      placeholder={buildBridgeWebSocketUrl({ path: '' })}
                     />
                   </div>
                   <div className="flex gap-1">
