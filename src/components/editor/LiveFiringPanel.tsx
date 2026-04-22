@@ -31,6 +31,7 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useSfxChannelStore } from '@/store/useSfxChannelStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
+import { buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl } from '@/lib/bridgeGateway';
 
 import type { SFXChannel, CueEntry, FXCMode, FXCSettings, DeviceLibEntry } from './live-firing/types';
 import { FIRING_RULES, SFX_TYPES, DEFAULT_CHANNELS, DEFAULT_SETTINGS, CUES_PER_PAGE, formatTimecode, SHOWVEN_LIBRARY } from './live-firing/constants';
@@ -380,7 +381,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   const [firingStartTime, setFiringStartTime] = useState<number | null>(null);
   const [batteryVoltage] = useState(11.82);
   const [relayConnected, setRelayConnected] = useState(false);
-  const [relayUrl, setRelayUrl] = useState('ws://localhost:9001');
+  const [relayUrl, setRelayUrl] = useState(() => buildBridgeWebSocketUrl({ path: '' }));
   const [showMode, setShowMode] = useState(false);
   const showModeTapRef = useRef<number>(0);
   const sequenceRef = useRef(0);
@@ -396,7 +397,8 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   const connectRelay = useCallback(() => {
     if (relayWs.current?.readyState === WebSocket.OPEN) return;
     try {
-      const ws = new WebSocket(relayUrl);
+      const protocols = buildBridgeWebSocketProtocols();
+      const ws = protocols.length > 0 ? new WebSocket(relayUrl, protocols) : new WebSocket(relayUrl);
       ws.onopen = () => { setRelayConnected(true); toast.success('🔌 Relay UDP conectado'); };
       ws.onclose = () => { setRelayConnected(false); relayWs.current = null; };
       ws.onerror = () => { setRelayConnected(false); toast.error('Falha ao conectar relay'); };

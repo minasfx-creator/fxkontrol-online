@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import type { FXCSettings } from './types';
 import { DEFAULT_SETTINGS } from './constants';
 import { useDisplayStore } from '@/store/useDisplayStore';
+import { buildBridgeWebSocketUrl } from '@/lib/bridgeGateway';
 
 interface SettingsPanelProps {
   fs: boolean;
@@ -28,6 +29,7 @@ export default function SettingsPanel({ fs, settings, onSettingsChange, relayCon
   const [local, setLocal] = useState<FXCSettings>({ ...settings });
   const displayBacklight = useDisplayStore(s => s.backlight);
   const setDisplayBacklight = useDisplayStore(s => s.setBacklight);
+  const defaultRelayUrl = buildBridgeWebSocketUrl({ path: '' });
 
   const update = (patch: Partial<FXCSettings>) => setLocal(prev => ({ ...prev, ...patch }));
 
@@ -129,8 +131,8 @@ export default function SettingsPanel({ fs, settings, onSettingsChange, relayCon
           </div>
         </div>
         <div className="flex items-center gap-1.5 mt-1">
-          <Input value={relayUrl || 'ws://localhost:9001'} onChange={e => onRelayUrlChange?.(e.target.value)}
-            className={cn(valueCn, "flex-1")} placeholder="ws://localhost:9001" />
+          <Input value={relayUrl || defaultRelayUrl} onChange={e => onRelayUrlChange?.(e.target.value)}
+            className={cn(valueCn, "flex-1")} placeholder={defaultRelayUrl} />
           <Button size="sm" variant={relayConnected ? "destructive" : "default"}
             onClick={() => relayConnected ? onDisconnectRelay?.() : onConnectRelay?.()}
             className={cn(fs ? "h-8 text-[10px] px-3" : "h-5 text-[8px] px-2")}>
