@@ -134,6 +134,10 @@ export class ExecutionRuntimeV1 {
   tick(now: number): void {
     if (!this.running || this.aborted) return;
 
+    // Monotonic guard — never execute on a backwards clock
+    if (now < this.lastNow) return;
+    this.lastNow = now;
+
     const frameIndex = this.clock.getFrameIndex(now);
     if (frameIndex === this.lastExecutedFrame) return;
     if (frameIndex < 0) return;
@@ -145,10 +149,12 @@ export class ExecutionRuntimeV1 {
     }
 
     // Catch-up: execute skipped frames in order to preserve determinism.
-    // lastExecutedFrame is only advanced AFTER a successful frame, so a
-    // partial/aborted frame leaves the cursor on the last good frame.
+    // Bounded to prevent latency-avalanche execution collapse.
     const startIdx = this.lastExecutedFrame + 1;
+    const limit = this.config.maxCatchUpFrames ?? 10;
+    let burst = 0;
     for (let i = Math.max(0, startIdx); i <= frameIndex; i++) {
+      if (burst++ >= limit) break;
       const ok = this.executeFrame(i, now);
       if (!ok) return;
       this.lastExecutedFrame = i;
