@@ -64,8 +64,8 @@ describe('HardwareScheduler', () => {
       payload: { nested: { value: 1 } },
     });
 
-    const diagnostics = scheduler.getDiagnostics() as {
-      queue: Array<{ payload?: { nested?: { value: number } } }>;
+    const diagnostics = scheduler.getDiagnostics() as unknown as {
+      queue: ReadonlyArray<{ payload?: { nested?: { value: number } } }>;
     };
 
     expect(Object.isFrozen(diagnostics)).toBe(true);
