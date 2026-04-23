@@ -114,6 +114,7 @@ export interface JoiIR {
     readonly riskEnvelope: {
       readonly avg: number;
       readonly peak: number;
+      readonly variance: number;
     };
   };
   readonly safety: {
@@ -222,71 +223,69 @@ function analyzeConstraints(ast: JoiAST): string[] {
   return violations;
 }
 
-// ─── Sweep-line: per-node overlap count + max pyro concurrency ─────
-type SweepEvent = { t: number; type: 0 | 1; idx: number }; // 0=start,1=end
+// ─── Sweep-line: per-node overlap + max pyro concurrency ──────────
+// Single-pass dual sweep. Symmetry preserved: a node's overlap counts
+// every interval that was active at its start PLUS every new start that
+// occurred while it was still active.
+type SweepEvent = { t: number; delta: 1 | -1; idx: number };
+
+function sweepOverlap(events: SweepEvent[], n: number): number[] {
+  // ends-before-starts at same t (avoid counting touching intervals)
+  events.sort((a, b) => a.t - b.t || a.delta - b.delta);
+
+  const overlapAtStart = new Array<number>(n).fill(0);
+  const startedBy = new Array<number>(n).fill(0); // # of starts seen up to this node's end
+  let active = 0;
+  let startsCum = 0;
+
+  for (const ev of events) {
+    if (ev.delta === 1) {
+      overlapAtStart[ev.idx] = active;
+      active++;
+      startsCum++;
+    } else {
+      active--;
+      startedBy[ev.idx] = startsCum;
+    }
+  }
+
+  const out = new Array<number>(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    // starts that happened strictly between i.start and i.end
+    // = (startsCum at my end) - (startsCum at my start) - 1 (myself)
+    const startsDuring = Math.max(0, startedBy[i] - overlapAtStart[i] - 1);
+    out[i] = overlapAtStart[i] + startsDuring;
+  }
+  return out;
+}
 
 function computeOverlaps(ast: JoiAST): {
   perNodeOverlap: number[];
   maxPyroConcurrency: number;
 } {
   const n = ast.nodes.length;
-  const perNodeOverlap = new Array<number>(n).fill(0);
-  if (n === 0) return { perNodeOverlap, maxPyroConcurrency: 0 };
+  if (n === 0) return { perNodeOverlap: [], maxPyroConcurrency: 0 };
 
-  // Generic overlap (all nodes) for risk model
-  const events: SweepEvent[] = [];
-  for (let i = 0; i < n; i++) {
-    events.push({ t: ast.nodes[i].start, type: 0, idx: i });
-    events.push({ t: ast.nodes[i].start + ast.nodes[i].duration, type: 1, idx: i });
-  }
-  // ends before starts at same t to avoid counting touching intervals
-  events.sort((a, b) => a.t - b.t || a.type - b.type);
-
-  // Linear sweep using activeCount (avoids O(n²) on dense scenes).
-  // Each new start adds activeCount to itself; each currently active node
-  // gains +1 (tracked separately via end-of-interval increments).
-  // To keep per-node accuracy without iterating `active`, we accumulate
-  // overlap as: starts seen while node was active = (endRank - startRank - 1) overlaps among them.
-  let activeCount = 0;
-  // overlapsAtStart[i] = activeCount when node i started
-  const overlapsAtStart = new Array<number>(n).fill(0);
-  for (const ev of events) {
-    if (ev.type === 0) {
-      overlapsAtStart[ev.idx] = activeCount;
-      activeCount++;
-    } else {
-      activeCount--;
-    }
-  }
-  // Second linear pass: a node's total overlap = (overlapsAtStart) + (starts that occurred while it was active)
-  // Compute "starts during my interval" via second sweep.
-  const startsBefore = new Array<number>(n).fill(0); // cumulative starts up to my end
-  let startsCum = 0;
-  for (const ev of events) {
-    if (ev.type === 1) {
-      startsBefore[ev.idx] = startsCum;
-    } else {
-      startsCum++;
-    }
-  }
-  for (let i = 0; i < n; i++) {
-    // starts that happened strictly between my start and my end
-    const startsDuring = startsBefore[i] - (overlapsAtStart[i] + 1);
-    perNodeOverlap[i] = overlapsAtStart[i] + Math.max(0, startsDuring);
-  }
-
-  // Pyro-only sweep for maxPyroConcurrency
+  const allEvents: SweepEvent[] = [];
   const pyroEvents: SweepEvent[] = [];
   for (let i = 0; i < n; i++) {
-    if (!ast.nodes[i].targets.includes('pyro')) continue;
-    pyroEvents.push({ t: ast.nodes[i].start, type: 0, idx: i });
-    pyroEvents.push({ t: ast.nodes[i].start + ast.nodes[i].duration, type: 1, idx: i });
+    const node = ast.nodes[i];
+    allEvents.push({ t: node.start, delta: 1, idx: i });
+    allEvents.push({ t: node.start + node.duration, delta: -1, idx: i });
+    if (node.targets.includes('pyro')) {
+      pyroEvents.push({ t: node.start, delta: 1, idx: i });
+      pyroEvents.push({ t: node.start + node.duration, delta: -1, idx: i });
+    }
   }
-  pyroEvents.sort((a, b) => a.t - b.t || b.type - a.type); // starts before ends => peak
+
+  const perNodeOverlap = sweepOverlap(allEvents, n);
+
+  // Pyro concurrency peak (starts before ends at same t for true peak)
+  pyroEvents.sort((a, b) => a.t - b.t || b.delta - a.delta);
   let cur = 0;
   let maxPyroConcurrency = 0;
   for (const ev of pyroEvents) {
-    cur += ev.type === 0 ? 1 : -1;
+    cur += ev.delta;
     if (cur > maxPyroConcurrency) maxPyroConcurrency = cur;
   }
 
@@ -327,8 +326,11 @@ function buildIR(
     const overlapCount = perNodeOverlap[i];
     const hasViolation = violationIds.has(n.id) || hasGlobalViolation;
     const risk = computeStepRisk(n, overlapCount, hasViolation);
-    const frameIndex = Math.floor(n.start / FRAME_SIZE_MS);
-    const frameOffset = n.start % FRAME_SIZE_MS;
+    // Integer-arithmetic frame slicing (avoids float drift in HIL bridges)
+    const startUs = Math.round(n.start * 1000);
+    const frameUs = FRAME_SIZE_MS * 1000;
+    const frameIndex = Math.floor(startUs / frameUs);
+    const frameOffset = (startUs % frameUs) / 1000;
 
     const commands: IRCommand[] = n.targets.map((t) => ({
       target: t,
@@ -341,8 +343,9 @@ function buildIR(
       },
     }));
 
+    // Padded frameIndex enables lexicographic ordering = execution ordering
     const sequenceId = fnv1a(
-      `${ast.showId}|${n.id}|${frameIndex}|${n.start}|${n.duration}|${n.targets.join(',')}|${n.kind}`,
+      `${ast.showId}|${frameIndex.toString().padStart(6, '0')}|${n.start}|${n.id}|${n.kind}|${n.targets.join(',')}`,
     );
 
     return Object.freeze<IRStep>({
@@ -360,7 +363,7 @@ function buildIR(
       },
       executionHint: {
         mode: executionLayer,
-        degraded: executionLayer !== 'real' && risk > 0.7,
+        degraded: executionLayer !== 'real' || risk > 0.85,
       },
     });
   });
@@ -398,7 +401,11 @@ function buildIR(
       maxDroneSpeedUsed: 0,
       maxPyroConcurrency,
       dmxChannelLoad,
-      riskEnvelope: { avg: Math.min(1, avgRisk), peak: peakRisk },
+      riskEnvelope: {
+        avg: Math.min(1, avgRisk),
+        peak: peakRisk,
+        variance: Math.max(0, peakRisk - Math.min(1, avgRisk)),
+      },
     },
     safety: {
       collisionRiskScore: Math.min(1, avgRisk),
@@ -457,6 +464,7 @@ export const __internals = {
   buildIR,
   validateIR,
   computeOverlaps,
+  sweepOverlap,
   computeStepRisk,
   fnv1a,
 };
