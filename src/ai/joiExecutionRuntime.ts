@@ -252,6 +252,7 @@ export class ExecutionRuntimeV1 {
         frameIndex: frame.index,
         hash: frame.hash,
         executedCommands: 0,
+        activeSteps: frame.commands.length,
         risk,
         aborted: true,
         abortReason: reason,
