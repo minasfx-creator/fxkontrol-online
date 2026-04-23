@@ -207,6 +207,71 @@ describe('timelineClock/store sync', () => {
     expect(useProjectStore.getState().currentTime).toBe(2);
   });
 
+  it('seek + speed in same frame remains deterministic', () => {
+    timelineClock.setDuration(30);
+    timelineClock.play();
+
+    timelineClock.tick(1);
+    timelineClock.seek(10);
+    timelineClock.setSpeed(2);
+
+    timelineClock.tick(0.5);
+    mirror();
+
+    expect(useProjectStore.getState().currentTime).toBe(11);
+  });
+
+  it('pause → seek → play does not introduce jump', () => {
+    timelineClock.setDuration(30);
+    timelineClock.play();
+    timelineClock.tick(1);
+
+    timelineClock.pause();
+    timelineClock.seek(10);
+    timelineClock.play();
+
+    timelineClock.tick(0.5);
+    mirror();
+
+    expect(useProjectStore.getState().currentTime).toBe(10.5);
+  });
+
+  it('clamps when duration shrinks mid-play', () => {
+    timelineClock.setDuration(30);
+    timelineClock.play();
+    timelineClock.seek(29);
+
+    timelineClock.tick(0.5);
+    timelineClock.setDuration(20);
+    mirror();
+
+    const store = useProjectStore.getState();
+    expect(store.currentTime).toBe(20);
+    expect(store.isPlaying).toBe(false);
+  });
+
+  it('tick(0) is a no-op', () => {
+    timelineClock.setDuration(30);
+    timelineClock.seek(10);
+
+    timelineClock.tick(0);
+    mirror();
+
+    expect(useProjectStore.getState().currentTime).toBe(10);
+  });
+
+  it('remains deterministic across many ticks', () => {
+    timelineClock.setDuration(100);
+    timelineClock.play();
+
+    for (let i = 0; i < 1000; i++) {
+      timelineClock.tick(0.016);
+    }
+
+    mirror();
+    expect(useProjectStore.getState().currentTime).toBeCloseTo(16, 6);
+  });
+
   it('resyncs cleanly after pause when external time has advanced', () => {
     timelineClock.setDuration(120);
     timelineClock.syncExternalTime(20);
