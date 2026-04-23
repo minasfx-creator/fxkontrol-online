@@ -22,6 +22,8 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { parseTelemetryLine } from '@/lib/fireoneTelemetryParser';
+
 export type BridgeTransport = 'ble' | 'ble_lr' | 'usb' | 'websocket' | 'wifi_direct' | 'direct_relay' | 'none';
 
 export interface BridgeStatus {
@@ -560,21 +562,15 @@ export class FireOneHardwareBridge {
         continue;
       }
 
-      for (const token of trimmed.split(';')) {
-        const chunk = token.trim();
-        if (!chunk) continue;
-        if (chunk.startsWith('BAT:')) {
-          const bat = parseFloat(chunk.substring(4));
-          if (!Number.isNaN(bat)) this.batteryVoltage = bat;
-        }
-        if (chunk.startsWith('RSSI:')) {
-          const rssi = parseInt(chunk.substring(5), 10);
-          if (!Number.isNaN(rssi)) {
-            this.rssi = rssi;
-            this.estimatedDistance = this.estimateDistance(rssi);
-          }
-        }
+      // Hardened tolerant parsing of STATUS / BAT / RSSI / PINS / VER frames.
+      const fields = parseTelemetryLine(trimmed);
+      if (fields.batteryVoltage !== undefined) this.batteryVoltage = fields.batteryVoltage;
+      if (fields.batteryPercent !== undefined) this.batteryVoltage = fields.batteryPercent; // legacy field reused
+      if (fields.rssi !== undefined) {
+        this.rssi = fields.rssi;
+        this.estimatedDistance = this.estimateDistance(fields.rssi);
       }
+      if (fields.firmwareVersion !== undefined) this.firmwareVersion = fields.firmwareVersion;
 
       for (const [key, resolver] of this.pendingResolves) {
         if (trimmed.startsWith(key) || trimmed === key) {
