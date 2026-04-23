@@ -131,6 +131,12 @@ export class TransportEmulator {
   // ── Inbound (emulator → bridge) ─────────────────────────────────
   /** Manually inject a response frame (test helper). */
   injectResponse(frame: string) {
+    if (this.cfg.mode === 'burst') {
+      // Burst mode: deliver the same frame N times back-to-back to validate
+      // rate limiter behavior under retry storms. Default 10×.
+      for (let i = 0; i < 10; i++) this.scheduleResponse(frame);
+      return;
+    }
     this.scheduleResponse(frame);
   }
 
