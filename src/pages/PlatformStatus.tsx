@@ -109,6 +109,11 @@ export default function PlatformStatus() {
     : reports.length > 0
       ? 'degraded'
       : 'healthy';
+  const bridgeTone: StatusTone = bridgeDiagnostic.severity === 'error'
+    ? 'blocked'
+    : bridgeDiagnostic.severity === 'warning'
+      ? 'degraded'
+      : 'healthy';
 
   const sections = [
     {
@@ -144,7 +149,7 @@ export default function PlatformStatus() {
     {
       title: 'Local bridge security',
       description: bridgeDiagnostic.summary,
-      tone: bridgeDiagnostic.severity === 'error' ? 'blocked' : bridgeDiagnostic.severity === 'warning' ? 'degraded' : 'healthy',
+      tone: bridgeTone,
       icon: ShieldAlert,
     },
   ];
