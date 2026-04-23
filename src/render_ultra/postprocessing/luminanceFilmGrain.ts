@@ -14,6 +14,8 @@
 import { Effect } from 'postprocessing';
 import { Uniform } from 'three';
 
+type EffectUniformMap = Map<string, Uniform>;
+
 const FILM_GRAIN_FRAGMENT = `
 uniform float intensity;
 uniform float time;
@@ -57,6 +59,10 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 export class LuminanceFilmGrainEffect extends Effect {
+  private get effectUniforms(): EffectUniformMap {
+    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
+  }
+
   constructor({
     intensity = 0.08,
     luminanceResponse = 0.3,
@@ -74,10 +80,10 @@ export class LuminanceFilmGrainEffect extends Effect {
   }
 
   update(_renderer: any, _inputBuffer: any, deltaTime: number) {
-    const t = this.uniforms.get('time') as Uniform;
+    const t = this.effectUniforms.get('time') as Uniform;
     t.value += deltaTime;
   }
 
-  set intensity(v: number) { (this.uniforms.get('intensity') as Uniform).value = v; }
-  set luminanceResponse(v: number) { (this.uniforms.get('luminanceResponse') as Uniform).value = v; }
+  set intensity(v: number) { (this.effectUniforms.get('intensity') as Uniform).value = v; }
+  set luminanceResponse(v: number) { (this.effectUniforms.get('luminanceResponse') as Uniform).value = v; }
 }

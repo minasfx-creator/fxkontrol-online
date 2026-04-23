@@ -15,6 +15,8 @@
 import { Effect } from 'postprocessing';
 import { Uniform } from 'three';
 
+type EffectUniformMap = Map<string, Uniform>;
+
 const ATMOSPHERIC_DEPTH_FRAGMENT = `
 uniform float intensity;
 uniform float nearPlane;
@@ -59,6 +61,10 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 export class AtmosphericDepthEffect extends Effect {
+  private get effectUniforms(): EffectUniformMap {
+    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
+  }
+
   constructor({
     intensity = 0.3,
     nearPlane = 10,
@@ -86,7 +92,7 @@ export class AtmosphericDepthEffect extends Effect {
     });
   }
 
-  set intensity(v: number) { (this.uniforms.get('intensity') as Uniform).value = v; }
-  set desaturation(v: number) { (this.uniforms.get('desaturation') as Uniform).value = v; }
-  set blueShift(v: number) { (this.uniforms.get('blueShift') as Uniform).value = v; }
+  set intensity(v: number) { (this.effectUniforms.get('intensity') as Uniform).value = v; }
+  set desaturation(v: number) { (this.effectUniforms.get('desaturation') as Uniform).value = v; }
+  set blueShift(v: number) { (this.effectUniforms.get('blueShift') as Uniform).value = v; }
 }
