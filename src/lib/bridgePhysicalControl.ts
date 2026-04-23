@@ -685,6 +685,11 @@ export function verifyHilDeterminism(report: HilRunReport): HilDeterminismCheck 
       causal = false;
       violations.push(`done before ack: ${e.commandId}`);
     }
+    // Cover the no-ACK path: done must still come after sent.
+    if (e.doneAt !== undefined && e.sentAt !== undefined && e.doneAt < e.sentAt) {
+      causal = false;
+      violations.push(`done before sent: ${e.commandId}`);
+    }
     if (e.sentAt !== undefined && e.sentAt < report.runStart) {
       causal = false;
       violations.push(`sent before runStart: ${e.commandId}`);
@@ -703,14 +708,17 @@ export function generateHilCertification(
   const determinism = verifyHilDeterminism(report);
   const regression = checkHilRegression(report, rule);
   const drift = computeHilDrift(report);
+  // Empty runs cannot be certified: there is nothing to validate.
+  const hasCommands = report.stats.total > 0;
   return {
-    generatedAt: performance.now(),
+    // Relative to runStart so the certification itself is replay-stable.
+    generatedAt: performance.now() - report.runStart,
     runStart: report.runStart,
     profile: report.profile,
     determinism,
     regression,
     drift,
     stats: report.stats,
-    certified: determinism.replayable && regression.passed,
+    certified: hasCommands && determinism.replayable && regression.passed,
   };
 }
