@@ -54,6 +54,7 @@ class TimelineClock {
   private state: TimelineClockState = { ...DEFAULT_STATE };
   private listeners = new Set<TimelineClockListener>();
   private externalRate = 1;
+  private frameDurationSec: number | null = null;
 
   private markPositionChange(reason: TimelineClockState['lastPositionChange']): void {
     this.state.positionSequence += 1;
@@ -62,6 +63,14 @@ class TimelineClock {
 
   private normalizeTime(time: number): number {
     return Math.round(this.clampTime(time) * TIME_PRECISION) / TIME_PRECISION;
+  }
+
+  private alignToExternalFrame(time: number): number {
+    if (!this.frameDurationSec || this.frameDurationSec <= 0) {
+      return time;
+    }
+
+    return Math.round(time / this.frameDurationSec) * this.frameDurationSec;
   }
 
   play(): void {
@@ -95,7 +104,7 @@ class TimelineClock {
 
   syncExternalTime(time: number): void {
     if (!Number.isFinite(time)) return;
-    const next = this.normalizeTime(time);
+    const next = this.normalizeTime(this.alignToExternalFrame(time));
     const previousTime = this.state.time;
     const wasExternal = this.state.source === 'external';
     this.state.driftSec = next - previousTime;
@@ -124,6 +133,24 @@ class TimelineClock {
     if (next === this.externalRate) return;
     this.externalRate = next;
     this.notify();
+  }
+
+  setFrameDuration(frameDurationSec: number | null): void {
+    if (frameDurationSec === null) {
+      if (this.frameDurationSec === null) return;
+      this.frameDurationSec = null;
+      this.notify();
+      return;
+    }
+
+    if (!Number.isFinite(frameDurationSec) || frameDurationSec <= 0) return;
+    if (this.frameDurationSec === frameDurationSec) return;
+    this.frameDurationSec = frameDurationSec;
+    this.notify();
+  }
+
+  getFrameDuration(): number | null {
+    return this.frameDurationSec;
   }
 
   releaseExternalSync(): void {
@@ -170,7 +197,10 @@ class TimelineClock {
     if (!Number.isFinite(dt) || dt <= 0) return;
     const clampedDt = dt > FREEZE_DT_THRESHOLD ? MAX_DT : dt;
 
-    const nextTime = this.state.time + clampedDt * this.state.speed * this.externalRate;
+    const rawNextTime = this.state.time + clampedDt * this.state.speed * this.externalRate;
+    const nextTime = this.state.source === 'external'
+      ? this.alignToExternalFrame(rawNextTime)
+      : rawNextTime;
     if (nextTime >= this.state.duration) {
       if (this.state.loop) {
         this.state.time = this.normalizeTime(nextTime % this.state.duration);
@@ -192,6 +222,7 @@ class TimelineClock {
 
   reset(): void {
     this.externalRate = 1;
+    this.frameDurationSec = null;
     this.state = { ...DEFAULT_STATE, duration: this.state.duration, lastPositionChange: 'reset' };
     this.notify();
   }
