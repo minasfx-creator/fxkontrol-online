@@ -23,6 +23,7 @@ import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { artnetModuleService } from '@/services/artnetModuleService';
 import { timelineClock } from '@/core/timeline/TimelineClock';
+import TimelineClockPanel from './TimelineClockPanel';
 
 // ── Lazy-loaded modals (only fetched when user opens them) ──
 const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
@@ -597,6 +598,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       {/* ─── RIGHT: Mission-Critical Controls ──── */}
       <div className="flex items-center gap-1.5">
         <TimecodeDisplay />
+        {!isMobile && <TimelineClockPanel />}
 
         {!isMobile && (
           <>
