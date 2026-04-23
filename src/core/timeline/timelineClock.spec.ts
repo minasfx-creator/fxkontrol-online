@@ -17,6 +17,7 @@ function mirror() {
 
 describe('timelineClock/store sync', () => {
   beforeEach(() => {
+    timelineClock.reset();
     timelineClock.setDuration(120);
     timelineClock.setSpeed(1);
     timelineClock.setLoop(false);

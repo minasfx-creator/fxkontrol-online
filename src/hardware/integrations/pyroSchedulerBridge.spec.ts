@@ -183,8 +183,8 @@ describe('PyroSchedulerBridge', () => {
     });
 
     bridge.tick(createClockState({ time: 0 }));
-    bridge.tick(createClockState({ time: 9.8, playing: true, source: 'external', externalSyncSequence: 1, positionSequence: 1, lastPositionChange: 'external-sync' }));
-    bridge.tick(createClockState({ time: 9.82, playing: true, source: 'external', externalSyncSequence: 2, positionSequence: 1, lastPositionChange: 'tick' }));
+    bridge.tick(createClockState({ time: 8.8, playing: true, source: 'external', externalSyncSequence: 1, positionSequence: 1, lastPositionChange: 'external-sync' }));
+    bridge.tick(createClockState({ time: 8.82, playing: true, source: 'external', externalSyncSequence: 2, positionSequence: 1, lastPositionChange: 'tick' }));
     await bridge.flushPending();
 
     expect(bridge.getDiagnostics().lastRebuildReason).toBe('external-sync');

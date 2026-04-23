@@ -114,6 +114,7 @@ export class LTCTransport {
       return null;
     }
 
+    const previousIncomingTime = this.lastIncomingTime;
     this.lastIncomingTime = seconds;
     this.lastSignalAt = receivedAtMs;
     this.sequence += 1;
@@ -160,7 +161,9 @@ export class LTCTransport {
       this.state = 'locked-soft';
       this.lastMode = 'soft';
       this.lastSyncedTime = current;
-      this.lastSyncReason = this.sequence > 1 && this.lastIncomingTime !== null && this.lastIncomingTime === current ? 'seek-confirm' : 'deadband';
+      this.lastSyncReason = previousIncomingTime !== null && Math.abs(current - previousIncomingTime) > this.options.deadbandSec
+        ? 'seek-confirm'
+        : 'deadband';
 
       return {
         incomingTime: seconds,
