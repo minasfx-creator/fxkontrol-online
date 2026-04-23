@@ -606,6 +606,26 @@ export class FireOneHardwareBridge {
       lastErrorAt: this.lastErrorAt,
       linkHealth: this.linkHealth,
       sessionId: this.sessionId,
+      diagnostics: this.getDiagnostics(),
+    };
+  }
+
+  /** Snapshot of the in-flight pending-response queue. */
+  getDiagnostics(): BridgeDiagnostics {
+    const now = Date.now();
+    let oldest = 0;
+    const keys: string[] = [];
+    for (const [, p] of this.pendingResolves) {
+      keys.push(p.key);
+      const age = now - p.createdAt;
+      if (age > oldest) oldest = age;
+    }
+    return {
+      pendingCount: this.pendingResolves.size,
+      pendingKeys: keys,
+      oldestPendingAgeMs: oldest,
+      sessionId: this.sessionId,
+      linkHealth: this.linkHealth,
     };
   }
 
@@ -924,6 +944,24 @@ export class FireOneHardwareBridge {
   }
 
   // ─── Error helpers ───────────────────────────────────
+
+  /**
+   * Register a pending response with full metadata. The session id is captured
+   * at registration time; `handleResponse` uses it to drop frames that arrive
+   * for a previous session (e.g. late OK:FIRE after a reconnect).
+   */
+  private registerPending(key: string, commandType: string, resolver: (value: string) => void): void {
+    // Use connectingSessionId during handshake (before sessionId increments),
+    // sessionId once the link is healthy. This keeps the guard correct in both phases.
+    const session = this.linkHealth === 'healthy' ? this.sessionId : this.connectingSessionId;
+    this.pendingResolves.set(key, {
+      key,
+      commandType,
+      sessionId: session,
+      createdAt: Date.now(),
+      resolver,
+    });
+  }
 
   private setError(code: BridgeReasonCode, message: string, transport?: BridgeTransport): void {
     this.lastErrorCode = code;
