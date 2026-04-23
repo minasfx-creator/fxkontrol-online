@@ -13,6 +13,7 @@ import {
 } from '@/lib/smpteEngine';
 import { useProjectStore } from '@/store/useProjectStore';
 import { timelineClock } from '@/core/timeline/TimelineClock';
+import { resolveSMPTEChase } from '@/core/timeline/smpteChase';
 
 export type ExternalSyncStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 export type ChaseMode = 'hard' | 'soft' | 'jam';
@@ -316,12 +317,12 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
           const projectStore = useProjectStore.getState();
           const currentProjectTime = timelineClock.getTime();
           const diff = Math.abs(projectTime - currentProjectTime);
+          const chase = resolveSMPTEChase(currentProjectTime, Math.max(0, Math.min(projectTime, projectStore.duration)));
 
           switch (state.chaseMode) {
             case 'hard':
-              // Immediately jump to external TC position
-              if (diff > 0.02) {
-                timelineClock.syncExternalTime(Math.max(0, Math.min(projectTime, projectStore.duration)));
+              if (chase.mode !== 'ignore') {
+                timelineClock.syncExternalTime(chase.nextTime);
               }
               if (!projectStore.isPlaying && projectTime > 0) {
                 timelineClock.play();
@@ -329,9 +330,8 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
               break;
 
             case 'soft':
-              // Gradually chase — jump if drift > 0.5s, otherwise let playback catch up
-              if (diff > 0.5) {
-                timelineClock.syncExternalTime(Math.max(0, Math.min(projectTime, projectStore.duration)));
+              if (chase.mode === 'snap' || chase.mode === 'soft') {
+                timelineClock.syncExternalTime(chase.nextTime);
               }
               if (!projectStore.isPlaying && projectTime > 0.1) {
                 timelineClock.play();
@@ -339,9 +339,8 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
               break;
 
             case 'jam':
-              // Jam sync: only sync once then freewheel
               if (state.packetCount <= 3 || diff > 2.0) {
-                timelineClock.syncExternalTime(Math.max(0, Math.min(projectTime, projectStore.duration)));
+                timelineClock.syncExternalTime(chase.mode === 'ignore' ? currentProjectTime : chase.nextTime);
                 if (!projectStore.isPlaying) timelineClock.play();
               }
               break;

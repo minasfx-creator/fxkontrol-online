@@ -2,6 +2,7 @@ import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet, Copy, GripVertical, Zap, Sparkles, ChevronDown, ChevronRight, Clock, Move, Crosshair, Link2, Unlink, Scissors, ClipboardPaste, Eye, EyeOff, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
+import { timelineClock } from '@/core/timeline/TimelineClock';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
 import useGenerativeStore from '@/store/useGenerativeStore';
@@ -1140,20 +1141,20 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
       <div className="flex items-center gap-1 px-2.5 py-1 border-b border-white/[0.04]">
         {/* Play controls */}
         <div className="flex items-center gap-px rounded-lg p-px" style={{ background: 'hsl(var(--muted) / 0.15)' }}>
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => setCurrentTime(0)}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => timelineClock.seek(0)}>
             <SkipBack className="h-3 w-3 text-muted-foreground" />
           </Button>
           <Button
             variant="ghost" size="icon"
             className={cn("h-8 w-8 rounded-md transition-all", isPlaying ? "bg-primary/12 text-primary" : "hover:bg-white/[0.06]")}
-            onClick={() => setPlaying(!isPlaying)}
+            onClick={() => isPlaying ? timelineClock.pause() : timelineClock.play()}
           >
             {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => setPlaying(false)}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => timelineClock.pause()}>
             <Square className="h-2.5 w-2.5 text-muted-foreground" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => setCurrentTime(Math.min(currentTime + 10, duration))}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => timelineClock.seek(Math.min(currentTime + 10, duration))}>
             <SkipForward className="h-3 w-3 text-muted-foreground" />
           </Button>
         </div>

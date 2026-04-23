@@ -19,12 +19,13 @@ import { useTimelineClock } from '@/hooks/useTimelineClock';
 
 // ── Playback state ──
 export function usePlaybackState() {
-  const { time, playing, duration, speed, play, pause, toggle, seek, setSpeed } = useTimelineClock();
+  const { time, playing, duration, speed, source, play, pause, toggle, seek, setSpeed } = useTimelineClock();
   return {
     currentTime: time,
     isPlaying: playing,
     duration,
     playbackSpeed: speed,
+    timelineSource: source,
     setPlaying: (next: boolean) => (next ? play() : pause()),
     togglePlaying: toggle,
     setCurrentTime: seek,
