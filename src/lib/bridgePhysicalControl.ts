@@ -122,6 +122,24 @@ export interface HilRegressionResult {
   };
 }
 
+export interface HilDeterminismCheck {
+  monotonic: boolean;
+  replayable: boolean;
+  causal: boolean;
+  violations: string[];
+}
+
+export interface HilCertificationReport {
+  generatedAt: number;
+  runStart: number;
+  profile: HilFaultProfile;
+  determinism: HilDeterminismCheck;
+  regression: HilRegressionResult;
+  drift: HilDriftHistogram;
+  stats: HilRunReport['stats'];
+  certified: boolean;
+}
+
 export interface FireLockoutInput {
   systemArmed: boolean;
   deadmanHeld: boolean;
@@ -640,5 +658,59 @@ export function replayHilReport(
       for (const t of timers) clearTimeout(t);
       timers.length = 0;
     },
+  };
+}
+
+export function verifyHilDeterminism(report: HilRunReport): HilDeterminismCheck {
+  const violations: string[] = [];
+  const ordered = [...report.timeline]
+    .filter((e) => e.sentAt !== undefined)
+    .sort((a, b) => a.sentAt! - b.sentAt!);
+
+  let monotonic = true;
+  for (let i = 1; i < ordered.length; i++) {
+    if (ordered[i].sentAt! < ordered[i - 1].sentAt!) {
+      monotonic = false;
+      violations.push(`sentAt regression at ${ordered[i].commandId}`);
+    }
+  }
+
+  let causal = true;
+  for (const e of report.timeline) {
+    if (e.ackAt !== undefined && e.sentAt !== undefined && e.ackAt < e.sentAt) {
+      causal = false;
+      violations.push(`ack before sent: ${e.commandId}`);
+    }
+    if (e.doneAt !== undefined && e.ackAt !== undefined && e.doneAt < e.ackAt) {
+      causal = false;
+      violations.push(`done before ack: ${e.commandId}`);
+    }
+    if (e.sentAt !== undefined && e.sentAt < report.runStart) {
+      causal = false;
+      violations.push(`sent before runStart: ${e.commandId}`);
+    }
+  }
+
+  const replayable = monotonic && causal;
+
+  return { monotonic, causal, replayable, violations };
+}
+
+export function generateHilCertification(
+  report: HilRunReport,
+  rule: HilRegressionRule = { maxFailed: 0, maxP95Ms: 120, maxAbsoluteMs: 300, minAckRate: 0.95 },
+): HilCertificationReport {
+  const determinism = verifyHilDeterminism(report);
+  const regression = checkHilRegression(report, rule);
+  const drift = computeHilDrift(report);
+  return {
+    generatedAt: performance.now(),
+    runStart: report.runStart,
+    profile: report.profile,
+    determinism,
+    regression,
+    drift,
+    stats: report.stats,
+    certified: determinism.replayable && regression.passed,
   };
 }
