@@ -318,6 +318,11 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
               >
                 {bridgeStatus?.connected
                   ? `${bridgeStatus.transport.toUpperCase()} · ${bridgeStatus.deviceName}`
+                  : bridgeStatus?.connecting
+                    ? 'CONECTANDO...'
+                  : bridgeStatus?.linkHealth === 'handshaking'
+                    ? 'HANDSHAKE...'
+                  : 'DESCONECTADO'}
                   : bridgeStatus?.linkHealth === 'handshaking'
                     ? 'HANDSHAKE...'
                     : 'DESCONECTADO'}
@@ -340,6 +345,11 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
                   <button
                     key={btn.label}
                     onClick={() => btn.action()}
+                    disabled={!isSupported || Boolean(bridgeStatus?.connecting)}
+                    className={cn(
+                      "rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 transition-all",
+                      "border text-[7px] uppercase font-bold",
+                      (!isSupported || bridgeStatus?.connecting) && "opacity-40 cursor-not-allowed",
                     disabled={!isSupported}
                     className={cn(
                       "rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 transition-all",
@@ -361,6 +371,19 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
             </div>
 
             {!module.transportSupport.ble && (
+              <p className="text-[8px] text-amber-300/80">
+                BLE/WebSerial bloqueados neste ambiente (comum no iPhone Safari). Use app nativo iOS ou Wi-Fi AP seguro (wss://).
+              </p>
+            )}
+            {bridgeStatus?.connecting && (
+              <p className="text-[8px] text-cyan-300/80">
+                Estabelecendo link com hardware... aguarde antes de trocar de transporte.
+              </p>
+            )}
+            {!bridgeStatus?.connected && bridgeStatus?.lastError && (
+              <p className="text-[8px] text-destructive/80">
+                Último erro de conexão: {bridgeStatus.lastError}
+              </p>
               <div className="rounded-md border border-amber-500/30 bg-amber-950/15 px-2 py-1 text-[7px] text-amber-300/80 leading-tight">
                 BLE/WebSerial bloqueados neste ambiente (comum no iPhone Safari). Use app nativo iOS ou Wi-Fi AP seguro (wss://).
               </div>

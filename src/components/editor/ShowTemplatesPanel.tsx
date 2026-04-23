@@ -76,6 +76,25 @@ export default function ShowTemplatesPanel({ onClose }: { onClose: () => void })
     toast.success('Template exported');
   };
 
+  const handleExportAll = () => {
+    if (templates.length === 0) {
+      toast.error('No templates to export');
+      return;
+    }
+    const json = JSON.stringify({
+      schemaVersion: 2,
+      exportedAt: new Date().toISOString(),
+      source: 'fxk-show-templates',
+      templates,
+    }, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `fxk-templates-bundle-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${templates.length} templates exported`);
+  };
+
   const handleImport = () => {
     const input = document.createElement('input');
     input.type = 'file'; input.accept = '.json';
@@ -87,7 +106,13 @@ export default function ShowTemplatesPanel({ onClose }: { onClose: () => void })
         const result = importTemplateJSON(reader.result as string);
         if (result) {
           setTemplates(loadTemplates());
-          toast.success(`Imported "${result.name}"`);
+          if (result.imported.length > 0 && result.skipped > 0) {
+            toast.success(`Imported ${result.imported.length} template(s), skipped ${result.skipped} duplicate/invalid item(s)`);
+          } else if (result.imported.length > 0) {
+            toast.success(`Imported ${result.imported.length} template(s)`);
+          } else {
+            toast.info(`No new templates imported (${result.skipped} skipped)`);
+          }
         } else {
           toast.error('Invalid template file');
         }
@@ -148,10 +173,15 @@ export default function ShowTemplatesPanel({ onClose }: { onClose: () => void })
               ))}
             </div>
 
-            {/* Import button */}
-            <Button size="sm" variant="outline" onClick={handleImport} className="w-full text-[10px] h-6">
-              <Upload className="w-3 h-3 mr-1" /> Import Template (.json)
-            </Button>
+            {/* Import/export buttons */}
+            <div className="grid grid-cols-2 gap-1">
+              <Button size="sm" variant="outline" onClick={handleImport} className="w-full text-[10px] h-6">
+                <Upload className="w-3 h-3 mr-1" /> Import
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleExportAll} className="w-full text-[10px] h-6">
+                <Download className="w-3 h-3 mr-1" /> Export All
+              </Button>
+            </div>
 
             {/* Template list */}
             {filtered.length === 0 ? (

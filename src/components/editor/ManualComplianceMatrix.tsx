@@ -11,10 +11,11 @@
  *    de aspiracional (`self_attested`/`none`).
  *  - `nextAction` rastreável (substitui `action` livre) + `owner` opcional.
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { BookOpen, CheckCircle2, AlertTriangle, Clock, MinusCircle, ShieldAlert, ShieldCheck, HelpCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
 
 type ComplianceStatus =
   | 'IMPLEMENTED'
@@ -33,6 +34,7 @@ interface ComplianceRow {
   requirement: string;
   status: ComplianceStatus;
   evidence: string;
+  action: string;
   evidenceStatus: EvidenceStatus;
   nextAction: string;
   owner?: string;
@@ -64,6 +66,14 @@ const SAFETY_EVIDENCE_PASS: readonly EvidenceStatus[] = ['tested', 'third_party'
 
 const COMPLIANCE_DATA: ComplianceRow[] = [
   // NFPA 1123
+  { source: 'NFPA 1123', clause: '§4.3', requirement: 'Minimum safety distances for aerial shells', status: 'implemented', evidence: 'PyroSafetyZones.tsx + SafetyDistanceConfig', action: 'None' },
+  { source: 'NFPA 1123', clause: '§5.1', requirement: 'Operator qualification verification', status: 'partial', evidence: 'Auth + role system exists', action: 'Add credential check UI', criticalForGoLive: true },
+  { source: 'NFPA 1123', clause: '§6.2', requirement: 'Electrical firing system safety interlocks', status: 'implemented', evidence: 'SafetyInterlockManager + ARM/DISARM flow', action: 'None' },
+  { source: 'NFPA 1123', clause: '§7.1', requirement: 'Weather monitoring and wind limits', status: 'planned', evidence: 'WeatherAdapter interface defined', action: 'Implement weather API integration', criticalForGoLive: true },
+  // NFPA 1126
+  { source: 'NFPA 1126', clause: '§3.3', requirement: 'Proximate audience pyro safety distances', status: 'implemented', evidence: 'SafetyDistanceConfig proximity mode', action: 'None' },
+  { source: 'NFPA 1126', clause: '§4.4', requirement: 'Fallback zone definition', status: 'implemented', evidence: 'PyroSafetyZones fallback volumes', action: 'None' },
+  { source: 'NFPA 1126', clause: '§5.2', requirement: 'Fire watch and suppression equipment log', status: 'planned', evidence: 'AuditTrail can log events', action: 'Add fire watch checklist', criticalForGoLive: true },
   { source: 'NFPA 1123', clause: '§4.3', requirement: 'Minimum safety distances for aerial shells', status: 'IMPLEMENTED', evidence: 'PyroSafetyZones.tsx + SafetyDistanceConfig', evidenceStatus: 'self_attested', nextAction: 'None', owner: 'Safety Eng' },
   { source: 'NFPA 1123', clause: '§5.1', requirement: 'Operator qualification verification', status: 'PARTIAL', evidence: 'Auth + role system exists', evidenceStatus: 'self_attested', nextAction: 'Add credential check UI', owner: 'Platform', criticalForGoLive: true },
   { source: 'NFPA 1123', clause: '§6.2', requirement: 'Electrical firing system safety interlocks', status: 'IMPLEMENTED', evidence: 'SafetyInterlockManager + ARM/DISARM flow', evidenceStatus: 'tested', nextAction: 'None', owner: 'Firmware' },
@@ -77,6 +87,9 @@ const COMPLIANCE_DATA: ComplianceRow[] = [
   { source: 'Showven Manual', clause: 'Ch.5', requirement: 'Machine safety distance (2m minimum)', status: 'IMPLEMENTED', evidence: 'SafetyDistanceConfig showven profile', evidenceStatus: 'self_attested', nextAction: 'None', owner: 'Safety Eng' },
   { source: 'Showven Manual', clause: 'Ch.7', requirement: 'Granule consumption rate tracking', status: 'PARTIAL', evidence: 'ConsumableTracker exists', evidenceStatus: 'self_attested', nextAction: 'Add real-time consumption rate', owner: 'Hardware' },
   // Finale 3D
+  { source: 'Finale 3D', clause: 'Import', requirement: '.vviz file import and trajectory parsing', status: 'implemented', evidence: 'VVizImporter.ts', action: 'None' },
+  { source: 'Finale 3D', clause: 'Export', requirement: 'Finale-compatible position export', status: 'implemented', evidence: 'ExportCoordinator Finale channel', action: 'None' },
+  { source: 'Finale 3D', clause: 'Sync', requirement: 'Timecode synchronization', status: 'partial', evidence: 'SMPTE timecode parser exists', action: 'Add LTC input adapter', criticalForGoLive: true },
   { source: 'Finale 3D', clause: 'Import', requirement: '.vviz file import and trajectory parsing', status: 'IMPLEMENTED', evidence: 'VVizImporter.ts', evidenceStatus: 'tested', nextAction: 'None', owner: 'Importers' },
   { source: 'Finale 3D', clause: 'Export', requirement: 'Finale-compatible position export', status: 'IMPLEMENTED', evidence: 'ExportCoordinator Finale channel', evidenceStatus: 'tested', nextAction: 'None', owner: 'Exporters' },
   { source: 'Finale 3D', clause: 'Sync', requirement: 'Timecode synchronization', status: 'PARTIAL', evidence: 'SMPTE timecode parser exists', evidenceStatus: 'self_attested', nextAction: 'Add LTC input adapter', owner: 'Sync', criticalForGoLive: true },
@@ -85,6 +98,9 @@ const COMPLIANCE_DATA: ComplianceRow[] = [
   { source: 'FireOne Protocol', clause: 'FIR-02', requirement: 'Module/pin addressing scheme', status: 'IMPLEMENTED', evidence: 'AddressingConsole + channel mapping', evidenceStatus: 'tested', nextAction: 'None', owner: 'Hardware' },
   { source: 'FireOne Protocol', clause: 'FIR-03', requirement: 'Continuity test protocol', status: 'IMPLEMENTED', evidence: 'ContinuityMatrix.tsx', evidenceStatus: 'tested', nextAction: 'None', owner: 'Hardware' },
   // Art-Net
+  { source: 'Art-Net Spec', clause: 'ArtPoll', requirement: 'Node discovery via ArtPoll', status: 'partial', evidence: 'ArtNetNodeAdapter exists, discovery simulated', action: 'Implement UDP ArtPoll', criticalForGoLive: true },
+  { source: 'Art-Net Spec', clause: 'ArtDmx', requirement: 'DMX data transmission', status: 'implemented', evidence: 'DMXUniverseManager + Art-Net output', action: 'None' },
+  { source: 'Art-Net Spec', clause: 'ArtSync', requirement: 'Universe synchronization', status: 'planned', evidence: 'Interface defined', action: 'Implement sync packet' },
   { source: 'Art-Net Spec', clause: 'ArtPoll', requirement: 'Node discovery via ArtPoll', status: 'PARTIAL', evidence: 'ArtNetNodeAdapter exists, discovery simulated', evidenceStatus: 'self_attested', nextAction: 'Implement UDP ArtPoll', owner: 'Network', criticalForGoLive: true },
   { source: 'Art-Net Spec', clause: 'ArtDmx', requirement: 'DMX data transmission', status: 'IMPLEMENTED', evidence: 'DMXUniverseManager + Art-Net output', evidenceStatus: 'tested', nextAction: 'None', owner: 'Network' },
   { source: 'Art-Net Spec', clause: 'ArtSync', requirement: 'Universe synchronization', status: 'PLANNED', evidence: 'Interface defined', evidenceStatus: 'none', nextAction: 'Implement sync packet', owner: 'Network' },
@@ -96,6 +112,8 @@ const COMPLIANCE_DATA: ComplianceRow[] = [
   { source: 'ESP32 Datasheet', clause: 'ADC', requirement: 'Battery voltage ADC monitoring', status: 'PARTIAL', evidence: 'BatteryMonitorAdapter ADC simulation', evidenceStatus: 'self_attested', nextAction: 'Connect real ADC', owner: 'Firmware' },
   { source: 'ESP32 Datasheet', clause: 'WiFi', requirement: 'WiFi/ESP-NOW field communication', status: 'PLANNED', evidence: 'Transport interface defined', evidenceStatus: 'none', nextAction: 'Implement ESP-NOW bridge', owner: 'Firmware' },
   // SMPTE
+  { source: 'SMPTE Timecode', clause: 'TC-30', requirement: '30fps timecode sync', status: 'partial', evidence: 'TimelineManager supports 30fps', action: 'Add hardware LTC reader', criticalForGoLive: true },
+  { source: 'SMPTE Timecode', clause: 'TC-MTC', requirement: 'MIDI timecode input', status: 'planned', evidence: 'Interface planned', action: 'Implement Web MIDI API', criticalForGoLive: true },
   { source: 'SMPTE Timecode', clause: 'TC-30', requirement: '30fps timecode sync', status: 'PARTIAL', evidence: 'TimelineManager supports 30fps', evidenceStatus: 'self_attested', nextAction: 'Add hardware LTC reader', owner: 'Sync', criticalForGoLive: true },
   { source: 'SMPTE Timecode', clause: 'TC-MTC', requirement: 'MIDI timecode input', status: 'PLANNED', evidence: 'Interface planned', evidenceStatus: 'none', nextAction: 'Implement Web MIDI API', owner: 'Sync', criticalForGoLive: true },
 ];
@@ -114,6 +132,9 @@ function isGoLiveBlocker(row: ComplianceRow): boolean {
 }
 
 export default function ManualComplianceMatrix() {
+  const [query, setQuery] = useState('');
+  const [showOnlyBlockers, setShowOnlyBlockers] = useState(false);
+
   const counts = useMemo(() => {
     const c: Record<ComplianceStatus, number> = {
       IMPLEMENTED: 0, VERIFIED: 0, PARTIAL: 0, PLANNED: 0, MISSING: 0, BLOCKED: 0, NOT_APPLICABLE: 0,
@@ -143,6 +164,25 @@ export default function ManualComplianceMatrix() {
       .sort((a, b) => a.source.localeCompare(b.source))
   ), []);
 
+  const blockers = useMemo(() => (
+    COMPLIANCE_DATA
+      .filter(r => r.criticalForGoLive && r.status !== 'implemented')
+      .sort((a, b) => a.source.localeCompare(b.source))
+  ), []);
+
+  const filteredRows = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    const base = showOnlyBlockers
+      ? COMPLIANCE_DATA.filter(r => r.criticalForGoLive && r.status !== 'implemented')
+      : COMPLIANCE_DATA;
+    if (!normalized) return base;
+    return base.filter((row) =>
+      `${row.source} ${row.clause} ${row.requirement} ${row.evidence} ${row.action}`
+        .toLowerCase()
+        .includes(normalized),
+    );
+  }, [query, showOnlyBlockers]);
+
   return (
     <div className="flex flex-col h-full p-4 gap-3 bg-background/80">
       {/* Header */}
@@ -169,6 +209,42 @@ export default function ManualComplianceMatrix() {
       </div>
 
       {blockers.length > 0 && (
+        <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[9px] font-mono font-bold text-amber-300 uppercase tracking-wider">Go-Live Blockers</span>
+            <span className="text-[8px] font-mono text-amber-200/80">{blockers.length} em aberto</span>
+          </div>
+          <div className="space-y-1">
+            {blockers.slice(0, 6).map((row) => (
+              <div key={`${row.source}-${row.clause}`} className="flex items-center justify-between gap-2 text-[8px] font-mono">
+                <span className="text-amber-100/90 truncate">{row.source} {row.clause} — {row.requirement}</span>
+                <span className="text-amber-300/90 shrink-0">→ {row.action}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar por fonte, cláusula, requisito ou ação..."
+          className="h-7 text-[11px] font-mono bg-background/60"
+        />
+        <button
+          onClick={() => setShowOnlyBlockers(v => !v)}
+          className={cn(
+            'h-7 px-2 rounded border text-[8px] font-mono uppercase tracking-wider transition-colors',
+            showOnlyBlockers
+              ? 'border-amber-400/50 bg-amber-500/20 text-amber-200'
+              : 'border-border/30 bg-muted/20 text-muted-foreground/80 hover:text-foreground',
+          )}
+        >
+          {showOnlyBlockers ? 'Mostrando blockers' : 'Somente blockers'}
+        </button>
+      </div>
+
         <div className="border border-red-500/30 bg-red-500/5 rounded-md p-2 space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[9px] font-mono font-bold text-red-400 tracking-widest uppercase">Go-Live Blockers</span>
@@ -201,7 +277,7 @@ export default function ManualComplianceMatrix() {
 
       <ScrollArea className="flex-1">
         <div className="space-y-1">
-          {COMPLIANCE_DATA.map((row, i) => {
+          {filteredRows.map((row, i) => {
             const cfg = STATUS_CFG[row.status];
             const evCfg = EVIDENCE_CFG[row.evidenceStatus];
             const Icon = cfg.icon;

@@ -64,6 +64,7 @@ export type LinkHealth = 'disconnected' | 'handshaking' | 'healthy';
 export interface BridgeStatus {
   transport: BridgeTransport;
   connected: boolean;
+  connecting: boolean;
   deviceName: string;
   batteryVoltage?: number;
   firmwareVersion?: string;
@@ -72,6 +73,8 @@ export interface BridgeStatus {
   rxBytes: number;
   rssi?: number;
   estimatedDistance?: number;
+  lastError?: string;
+  linkHealth?: 'disconnected' | 'handshaking' | 'healthy';
   /** Human-readable last error message (legacy). */
   lastError?: string;
   /** Structured last error with stable reason code. */
@@ -224,6 +227,7 @@ const FIRE_CONFIRM_TIMEOUT = 2000;
 export class FireOneHardwareBridge {
   private transport: BridgeTransport = 'none';
   private connected = false;
+  private connecting = false;
   private deviceName = '';
   private firmwareVersion = '';
   private batteryVoltage?: number;
@@ -233,6 +237,7 @@ export class FireOneHardwareBridge {
   private rssi?: number;
   private estimatedDistance?: number;
   private lastError?: string;
+  private linkHealth: 'disconnected' | 'handshaking' | 'healthy' = 'disconnected';
   private lastErrorCode?: BridgeReasonCode;
   private lastErrorAt?: number;
   private linkHealth: LinkHealth = 'disconnected';
@@ -313,8 +318,14 @@ export class FireOneHardwareBridge {
 
   /** BLE padrão — alcance ~30m */
   async connectBLE(): Promise<boolean> {
+    if (this.connecting) {
+      this.lastError = 'Conexão em andamento. Aguarde.';
+      return false;
+    }
+    this.connecting = true;
     try {
       if (!this.getTransportSupport().ble) {
+        this.lastError = 'BLE não suportado neste navegador/dispositivo';
         this.setError('UNSUPPORTED_TRANSPORT', 'BLE não suportado neste navegador/dispositivo', 'ble');
         this.onEvent?.('unsupported_transport', { transport: 'ble' });
         return false;
@@ -329,16 +340,25 @@ export class FireOneHardwareBridge {
 
       return await this.setupBLEDevice(device, 'ble');
     } catch (err) {
+      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar BLE';
       this.setError('BLE_GATT_FAILED', err instanceof Error ? err.message : 'Falha ao conectar BLE', 'ble');
       console.warn('[HardwareBridge] BLE connect failed:', err);
       return false;
+    } finally {
+      this.connecting = false;
     }
   }
 
   /** BLE Long Range (Coded PHY / BLE 5.0) — alcance ~1km */
   async connectBLELongRange(): Promise<boolean> {
+    if (this.connecting) {
+      this.lastError = 'Conexão em andamento. Aguarde.';
+      return false;
+    }
+    this.connecting = true;
     try {
       if (!this.getTransportSupport().ble_lr) {
+        this.lastError = 'BLE Long Range não suportado neste navegador/dispositivo';
         this.setError('UNSUPPORTED_TRANSPORT', 'BLE Long Range não suportado neste navegador/dispositivo', 'ble_lr');
         this.onEvent?.('unsupported_transport', { transport: 'ble_lr' });
         return false;
@@ -356,9 +376,12 @@ export class FireOneHardwareBridge {
 
       return await this.setupBLEDevice(device, 'ble_lr');
     } catch (err) {
+      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar BLE LR';
       this.setError('BLE_GATT_FAILED', err instanceof Error ? err.message : 'Falha ao conectar BLE LR', 'ble_lr');
       console.warn('[HardwareBridge] BLE LR connect failed:', err);
       return false;
+    } finally {
+      this.connecting = false;
     }
   }
 
@@ -395,8 +418,14 @@ export class FireOneHardwareBridge {
   }
 
   async connectUSB(baudRate = 115200): Promise<boolean> {
+    if (this.connecting) {
+      this.lastError = 'Conexão em andamento. Aguarde.';
+      return false;
+    }
+    this.connecting = true;
     try {
       if (!this.getTransportSupport().usb) {
+        this.lastError = 'USB/WebSerial não suportado neste navegador/dispositivo';
         this.setError('UNSUPPORTED_TRANSPORT', 'USB/WebSerial não suportado neste navegador/dispositivo', 'usb');
         this.onEvent?.('unsupported_transport', { transport: 'usb' });
         return false;
@@ -420,15 +449,24 @@ export class FireOneHardwareBridge {
       await this.disconnect();
       return false;
     } catch (err) {
+      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar USB';
       this.setError('SERIAL_OPEN_FAILED', err instanceof Error ? err.message : 'Falha ao conectar USB', 'usb');
       console.warn('[HardwareBridge] USB connect failed:', err);
       return false;
+    } finally {
+      this.connecting = false;
     }
   }
 
   async connectDirectRelay(baudRate = 115200): Promise<boolean> {
+    if (this.connecting) {
+      this.lastError = 'Conexão em andamento. Aguarde.';
+      return false;
+    }
+    this.connecting = true;
     try {
       if (!this.getTransportSupport().direct_relay) {
+        this.lastError = 'Direct Relay/WebSerial não suportado neste navegador/dispositivo';
         this.setError('UNSUPPORTED_TRANSPORT', 'Direct Relay/WebSerial não suportado neste navegador/dispositivo', 'direct_relay');
         this.onEvent?.('unsupported_transport', { transport: 'direct_relay' });
         return false;
@@ -452,13 +490,25 @@ export class FireOneHardwareBridge {
       await this.disconnect();
       return false;
     } catch (err) {
+      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar Direct Relay';
       this.setError('SERIAL_OPEN_FAILED', err instanceof Error ? err.message : 'Falha ao conectar Direct Relay', 'direct_relay');
       console.warn('[HardwareBridge] Direct Relay connect failed:', err);
       return false;
+    } finally {
+      this.connecting = false;
     }
   }
 
   async connectWebSocket(url = 'ws://192.168.4.1:81'): Promise<boolean> {
+    if (this.connecting) {
+      this.lastError = 'Conexão em andamento. Aguarde.';
+      return false;
+    }
+    this.connecting = true;
+    if (!this.getTransportSupport().websocket) {
+      this.lastError = 'WebSocket não suportado neste navegador/dispositivo';
+      this.onEvent?.('unsupported_transport', { transport: 'websocket' });
+      this.connecting = false;
     if (!this.getTransportSupport().websocket) {
       this.setError('UNSUPPORTED_TRANSPORT', 'WebSocket não suportado neste navegador/dispositivo', 'websocket');
       this.onEvent?.('unsupported_transport', { transport: 'websocket' });
@@ -470,6 +520,7 @@ export class FireOneHardwareBridge {
       this.lastConnectArgs = { method: 'websocket', args: endpoint };
       this.reconnectAttempts = 0;
     }
+    this.connecting = false;
     return ok;
   }
 
@@ -478,6 +529,16 @@ export class FireOneHardwareBridge {
    * Tenta auto-discovery via mDNS antes de fallback para IP fixo.
    */
   async connectWiFiDirect(url?: string): Promise<boolean> {
+    if (this.connecting) {
+      this.lastError = 'Conexão em andamento. Aguarde.';
+      return false;
+    }
+    this.connecting = true;
+    const support = this.getTransportSupport();
+    if (!support.wifi_direct) {
+      this.lastError = 'Wi‑Fi Direct indisponível neste ambiente';
+      this.onEvent?.('unsupported_transport', { transport: 'wifi_direct' });
+      this.connecting = false;
     if (!this.getTransportSupport().wifi_direct) {
       this.setError('UNSUPPORTED_TRANSPORT', 'Wi‑Fi Direct indisponível neste ambiente', 'wifi_direct');
       this.onEvent?.('unsupported_transport', { transport: 'wifi_direct' });
@@ -490,9 +551,11 @@ export class FireOneHardwareBridge {
       if (ok) {
         this.lastConnectArgs = { method: 'wifi_direct', args: endpoint };
         this.reconnectAttempts = 0;
+        this.connecting = false;
         return true;
       }
     }
+    this.connecting = false;
     return false;
   }
 
@@ -547,11 +610,13 @@ export class FireOneHardwareBridge {
           if (opened || this.connected) this.handleDisconnect();
         };
         ws.onerror = () => {
+          this.lastError = `Falha ao conectar WebSocket (${url})`;
           this.setError('WEBSOCKET_OPEN_FAILED', `Falha ao conectar WebSocket (${url})`, transport);
           clearTimeout(timer);
           resolve(false);
         };
       } catch {
+        this.lastError = `URL de WebSocket inválida (${url})`;
         this.setError('WEBSOCKET_INVALID_URL', `URL de WebSocket inválida (${url})`, transport);
         resolve(false);
       }
@@ -795,6 +860,7 @@ export class FireOneHardwareBridge {
     return {
       transport: this.transport,
       connected: this.connected,
+      connecting: this.connecting,
       deviceName: this.deviceName,
       batteryVoltage: this.batteryVoltage,
       firmwareVersion: this.firmwareVersion,
@@ -804,6 +870,7 @@ export class FireOneHardwareBridge {
       rssi: this.rssi,
       estimatedDistance: this.estimatedDistance,
       lastError: this.lastError,
+      linkHealth: this.linkHealth,
       lastErrorCode: this.lastErrorCode,
       lastErrorAt: this.lastErrorAt,
       linkHealth: this.linkHealth,
@@ -1011,6 +1078,32 @@ export class FireOneHardwareBridge {
     return false;
   }
 
+  private getWiFiDirectEndpoints(customUrl?: string): string[] {
+    const secureRequired = requiresSecureBridgeTransport();
+    const scheme = secureRequired ? 'wss' : 'ws';
+    return [
+      customUrl ? this.normalizeWebSocketUrl(customUrl) : null,
+      `${scheme}://fxk-esp32.local:81`,
+      `${scheme}://192.168.4.1:81`,
+      `${scheme}://192.168.1.1:81`,
+    ].filter(Boolean) as string[];
+  }
+
+  private normalizeWebSocketUrl(raw: string): string {
+    const secureRequired = requiresSecureBridgeTransport();
+    const defaultScheme = secureRequired ? 'wss' : 'ws';
+    const withScheme = /^[a-z]+:\/\//i.test(raw) ? raw : `${defaultScheme}://${raw}`;
+    try {
+      const parsed = new URL(withScheme);
+      if (secureRequired && parsed.protocol === 'ws:') {
+        parsed.protocol = 'wss:';
+      }
+      return parsed.toString();
+    } catch {
+      return withScheme;
+    }
+  }
+
   private handleResponse(data: string): void {
     this.rxBytes += data.length;
     this.lastPing = Date.now();
@@ -1029,6 +1122,23 @@ export class FireOneHardwareBridge {
         continue;
       }
 
+      for (const token of trimmed.split(';')) {
+        const chunk = token.trim();
+        if (!chunk) continue;
+        if (chunk.startsWith('BAT:')) {
+          const bat = parseFloat(chunk.substring(4));
+          if (!Number.isNaN(bat)) this.batteryVoltage = bat;
+        }
+        if (chunk.startsWith('RSSI:')) {
+          const rssi = parseInt(chunk.substring(5), 10);
+          if (!Number.isNaN(rssi)) {
+            this.rssi = rssi;
+            this.estimatedDistance = this.estimateDistance(rssi);
+          }
+        }
+      }
+
+      for (const [key, resolver] of this.pendingResolves) {
       // Hardened tolerant parsing of STATUS / BAT / RSSI / PINS / VER frames.
       const fields = parseTelemetryLine(trimmed);
       if (fields.batteryVoltage !== undefined) this.batteryVoltage = fields.batteryVoltage;
@@ -1066,8 +1176,13 @@ export class FireOneHardwareBridge {
   private handleDisconnect(): void {
     const wasConnected = this.connected;
     this.connected = false;
+    this.connecting = false;
     this.transport = 'none';
     this.linkHealth = 'disconnected';
+    this.pendingResolves.clear();
+    this.stopHeartbeat();
+    this.stopRssiPolling();
+    if (wasConnected) this.onEvent?.('disconnected', null);
     // Invalidate any in-flight handshake from a previous attempt.
     this.connectingSessionId++;
 
@@ -1130,6 +1245,8 @@ export class FireOneHardwareBridge {
     this.lastPing = Date.now();
     this.linkHealth = 'handshaking';
     const ok = await this.waitForHandshake();
+    if (!ok) {
+      this.lastError = `Handshake timeout (${transport})`;
 
     // Stale-session guard: another attempt or a disconnect raced ahead.
     if (attemptSession !== this.connectingSessionId) {
@@ -1142,6 +1259,8 @@ export class FireOneHardwareBridge {
       return false;
     }
     this.connected = true;
+    this.lastError = undefined;
+    this.linkHealth = 'healthy';
     this.linkHealth = 'healthy';
     this.sessionId++;            // new healthy session id
     this.clearError();
@@ -1161,6 +1280,8 @@ export class FireOneHardwareBridge {
         this.pendingResolves.delete('VER:');
         resolve(ok);
       };
+      this.pendingResolves.set('PONG', () => finish(true));
+      this.pendingResolves.set('VER:', () => finish(true));
       // Drain sentinel ('') from handleDisconnect resolves with falsy → finish(false).
       this.registerPending('PONG', 'HANDSHAKE', (val) => finish(Boolean(val)));
       this.registerPending('VER:', 'HANDSHAKE', (val) => finish(Boolean(val)));
