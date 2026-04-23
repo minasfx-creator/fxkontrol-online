@@ -220,6 +220,7 @@ export class PyroUsbTransport {
       return false;
     }
 
+    this.emitEvent({ type: 'watchdog-fired', timestamp: nowMs });
     await this.emergencyStop('watchdog', nowMs);
     return true;
   }
