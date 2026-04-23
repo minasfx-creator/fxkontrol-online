@@ -187,33 +187,51 @@ export default function DevSimulationPanel() {
           onDragLeave={() => setDragging(false)}
           onDrop={onDrop}
           className={cn(
-            'flex items-center gap-1 mt-1 p-1.5 rounded border border-dashed',
+            'flex flex-col gap-1 mt-1 p-1.5 rounded border border-dashed',
             dragging ? 'border-cyan-400 bg-cyan-500/10' : 'border-border/30'
           )}
         >
-          <span className="text-[7px] text-muted-foreground uppercase mr-2">
-            Replay {replay.cursor}/{replay.total} · {replay.state}
-          </span>
-          <Button size="sm" variant="ghost" disabled={!enabled || replay.state === 'running'}
-            onClick={() => emuRef.current?.replay({ preserveTiming: true })}
-            className="h-6 px-2 text-[8px] gap-1 text-emerald-400">
-            <Play className="w-3 h-3" /> PLAY
-          </Button>
-          <Button size="sm" variant="ghost" disabled={!enabled || replay.state !== 'running'}
-            onClick={() => emuRef.current?.pauseReplay()}
-            className="h-6 px-2 text-[8px] gap-1 text-amber-400">
-            <Pause className="w-3 h-3" /> PAUSE
-          </Button>
-          <Button size="sm" variant="ghost" disabled={!enabled}
-            onClick={() => { emuRef.current?.stepReplay(); setReplay(emuRef.current!.getReplayStatus()); }}
-            className="h-6 px-2 text-[8px] gap-1 text-cyan-400">
-            <SkipForward className="w-3 h-3" /> STEP
-          </Button>
-          <Button size="sm" variant="ghost" disabled={!enabled}
-            onClick={() => { emuRef.current?.stopReplay(); setReplay(emuRef.current!.getReplayStatus()); }}
-            className="h-6 px-2 text-[8px] gap-1 text-red-400">
-            <Square className="w-3 h-3" /> STOP
-          </Button>
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-[7px] text-muted-foreground uppercase mr-2">
+              Replay {replay.cursor}/{replay.total} · {replay.state}
+            </span>
+            <Button size="sm" variant="ghost" disabled={!enabled || replay.state === 'running'}
+              onClick={() => emuRef.current?.replay({ preserveTiming: true, filter: buildFilter() })}
+              className="h-6 px-2 text-[8px] gap-1 text-emerald-400">
+              <Play className="w-3 h-3" /> PLAY
+            </Button>
+            <Button size="sm" variant="ghost" disabled={!enabled || replay.state !== 'running'}
+              onClick={() => emuRef.current?.pauseReplay()}
+              className="h-6 px-2 text-[8px] gap-1 text-amber-400">
+              <Pause className="w-3 h-3" /> PAUSE
+            </Button>
+            <Button size="sm" variant="ghost" disabled={!enabled || replay.state !== 'paused'}
+              onClick={() => emuRef.current?.resumeReplay()}
+              className="h-6 px-2 text-[8px] gap-1 text-emerald-400">
+              <FastForward className="w-3 h-3" /> RESUME
+            </Button>
+            <Button size="sm" variant="ghost" disabled={!enabled}
+              onClick={() => { emuRef.current?.stepReplay(); setReplay(emuRef.current!.getReplayStatus()); }}
+              className="h-6 px-2 text-[8px] gap-1 text-cyan-400">
+              <SkipForward className="w-3 h-3" /> STEP
+            </Button>
+            <Button size="sm" variant="ghost" disabled={!enabled}
+              onClick={() => { emuRef.current?.stopReplay(); setReplay(emuRef.current!.getReplayStatus()); }}
+              className="h-6 px-2 text-[8px] gap-1 text-red-400">
+              <Square className="w-3 h-3" /> STOP
+            </Button>
+            <Input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="filter: CONT,STATUS"
+              className="h-6 text-[9px] w-40 ml-auto"
+              disabled={!enabled}
+            />
+          </div>
+
+          <Suspense fallback={<div className="text-[7px] text-muted-foreground">Loading timeline…</div>}>
+            <EmulatorTraceTimeline frames={frames} cursor={replay.cursor} state={replay.state} />
+          </Suspense>
         </div>
       )}
     </div>
