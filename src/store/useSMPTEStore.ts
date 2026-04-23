@@ -14,6 +14,7 @@ import {
 import { useProjectStore } from '@/store/useProjectStore';
 import { timelineClock } from '@/core/timeline/TimelineClock';
 import { resolveSMPTEChase } from '@/core/timeline/smpteChase';
+import { ltcRuntime, updateTimelineClockFromLTCFps } from '@/hardware/transports/ltcRuntime';
 
 export type ExternalSyncStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 export type ChaseMode = 'hard' | 'soft' | 'jam';
@@ -312,6 +313,9 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
           packetCount: nextPacketCount,
           lastPacketAt: Date.now(),
         });
+
+        ltcRuntime.ingestTime(extSeconds, Date.now(), data.source ?? 'ws', data.priority ?? 0);
+        updateTimelineClockFromLTCFps();
 
         // Chase: drive project playback from external TC
         if (state.mode === 'slave') {
