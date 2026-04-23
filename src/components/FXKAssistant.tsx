@@ -397,6 +397,7 @@ export function FXKAssistant() {
   const [minimized, setMinimized] = useState(false);
   const [closing, setClosing] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [mobileSide, setMobileSide] = useState<'left' | 'right'>('right');
   const [messages, setMessages] = useState<Msg[]>(() => loadHistory());
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -416,6 +417,7 @@ export function FXKAssistant() {
   const [attachment, setAttachment] = useState<AttachedFile | null>(null);
   const [joiMode, setJoiMode] = useState<JoiMode>('show');
   const [lastTrace, setLastTrace] = useState<JOIExecutionTrace | null>(null);
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
 
   // Stable ref for send to avoid stale closure in voice callbacks
   const sendRef = useRef<(text: string) => void>(() => {});
@@ -664,12 +666,34 @@ export function FXKAssistant() {
   const handleClose = useCallback(() => {
     joiSpeech.stop();
     voiceRecognition.stopListening();
+    if (isMobile) {
+      setOpen(false);
+      setClosing(false);
+      return;
+    }
     setClosing(true);
     setTimeout(() => {
       setOpen(false);
       setClosing(false);
-    }, 350);
-  }, [joiSpeech, voiceRecognition]);
+    }, 220);
+  }, [isMobile, joiSpeech, voiceRecognition]);
+
+  const handleMobileTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isMobile) return;
+    const touch = e.touches[0];
+    swipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }, [isMobile]);
+
+  const handleMobileTouchEnd = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isMobile || !swipeStartRef.current) return;
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - swipeStartRef.current.x;
+    const deltaY = touch.clientY - swipeStartRef.current.y;
+    swipeStartRef.current = null;
+
+    if (Math.abs(deltaX) < 56 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) return;
+    setMobileSide(deltaX > 0 ? 'right' : 'left');
+  }, [isMobile]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -685,6 +709,14 @@ export function FXKAssistant() {
 
   const panelWidth = isMobile ? undefined : (expanded ? 560 : 360);
   const isListening = voiceRecognition.state === 'listening';
+  const mobilePanelStyle = isMobile ? {
+    width: 'min(23.5rem, calc(100vw - 1rem))',
+    height: 'min(76dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 5rem))',
+    top: 'max(0.5rem, env(safe-area-inset-top))',
+    bottom: 'calc(4.5rem + env(safe-area-inset-bottom))',
+    left: mobileSide === 'left' ? '0.5rem' : 'auto',
+    right: mobileSide === 'right' ? '0.5rem' : 'auto',
+  } : undefined;
 
   const fabState = joiSpeech.speaking ? 'speaking' : isListening ? 'listening' : loading ? 'processing' : 'idle';
 
@@ -842,14 +874,17 @@ export function FXKAssistant() {
       className={cn(
         "fixed z-[70] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
         closing ? "animate-holo-dissolve" : "animate-holo-materialize",
-        isMobile ? "inset-3 bottom-[76px]" : "bottom-5 right-5 h-[560px]"
+        isMobile ? "max-w-[calc(100vw-1rem)]" : "bottom-5 right-5 h-[560px]"
       )}
+      onTouchStart={handleMobileTouchStart}
+      onTouchEnd={handleMobileTouchEnd}
       style={{
         width: isMobile ? undefined : panelWidth,
         background: 'hsl(220 22% 4% / 0.96)',
         border: '1px solid hsl(190 100% 50% / 0.15)',
         boxShadow: '0 0 50px hsl(190 100% 50% / 0.08), 0 0 100px hsl(38 100% 45% / 0.05), 0 20px 80px hsl(0 0% 0% / 0.7)',
         backdropFilter: 'blur(32px)',
+        ...mobilePanelStyle,
       }}
     >
       {/* Scanline overlay */}
@@ -860,6 +895,9 @@ export function FXKAssistant() {
 
       {/* Header */}
       <div className="relative z-10 flex items-center gap-2.5 px-3 py-3 shrink-0" style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.1)' }}>
+        {isMobile && (
+          <div className="absolute left-1/2 top-1.5 h-1 w-10 -translate-x-1/2 rounded-full bg-border/50" />
+        )}
         {/* Joi face in header — speaking avatar */}
         <div className="relative cursor-pointer hover:brightness-125 transition-all shrink-0">
           <img src={joiFaceIcon} alt="Joi" className="w-10 h-10 rounded-full object-cover transition-all duration-500" style={{
@@ -898,7 +936,7 @@ export function FXKAssistant() {
         {joiSpeech.supported && (
           <button
             onClick={joiSpeech.toggle}
-            className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors"
+            className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors", isMobile ? "h-9 w-9" : "h-6 w-6")}
             title={joiSpeech.enabled ? 'Desativar voz' : 'Ativar voz'}
           >
             {joiSpeech.enabled ? (
@@ -909,7 +947,7 @@ export function FXKAssistant() {
           </button>
         )}
 
-        <button onClick={clearMessages} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Clear">
+        <button onClick={clearMessages} className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors", isMobile ? "h-9 w-9" : "h-6 w-6")} title="Clear">
           <Trash2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.4)' }} />
         </button>
         {!isMobile && (
@@ -917,11 +955,11 @@ export function FXKAssistant() {
             <Maximize2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
           </button>
         )}
-        <button onClick={() => setMinimized(true)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors">
+        <button onClick={() => setMinimized(true)} className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors", isMobile ? "h-9 w-9" : "h-6 w-6")}>
           <Minimize2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
         </button>
-        <button onClick={handleClose} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors">
-          <X className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
+        <button onClick={handleClose} className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors", isMobile ? "h-10 w-10 bg-background/50 border border-border/40" : "h-6 w-6")}>
+          <X className={cn(isMobile ? "h-4 w-4" : "h-3 w-3")} style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
         </button>
       </div>
 
