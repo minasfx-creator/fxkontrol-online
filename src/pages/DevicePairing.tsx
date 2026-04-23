@@ -5,12 +5,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { bleService, initialModuleState, type FXKModuleState } from '@/services/bleService';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
 import {
   Bluetooth, BluetoothConnected, Nfc,
   Battery, BatteryFull, BatteryLow, BatteryMedium, BatteryCharging,
   Shield, ShieldAlert, ShieldCheck, ShieldOff,
   Zap, Radio, CircleDot, AlertTriangle, Check, X, Loader2
 } from 'lucide-react';
+import { getBridgeSecurityDiagnostic } from '@/lib/bridgeGateway';
 
 type PairStep = 'idle' | 'nfc-scanning' | 'nfc-found' | 'ble-connecting' | 'connected' | 'error';
 
@@ -45,6 +47,7 @@ export default function DevicePairing() {
   const [moduleState, setModuleState] = useState<FXKModuleState>(initialModuleState);
   const [nfcDeviceName, setNfcDeviceName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const bridgeDiagnostic = getBridgeSecurityDiagnostic({ path: '/ws' });
 
   useEffect(() => {
     const unsub = bleService.subscribe(setModuleState);
@@ -97,6 +100,8 @@ export default function DevicePairing() {
       </div>
 
       <div className="max-w-lg mx-auto p-4 space-y-4">
+        <BridgeSecurityAlert diagnostic={bridgeDiagnostic} compact />
+
         {/* ═══ Step: Idle ═══ */}
         {(step === 'idle' || step === 'error') && (
           <div className="space-y-4">
@@ -153,6 +158,15 @@ export default function DevicePairing() {
                 <p className="text-xs text-destructive">{error}</p>
               </div>
             )}
+
+            <div className="rounded-lg border border-border/60 bg-card/60 p-3 space-y-2">
+              <p className="text-xs font-semibold text-foreground">Pareamento local para iPhone/PWA</p>
+              <ol className="list-decimal space-y-1 pl-4 text-[11px] text-muted-foreground">
+                <li>Acesse <span className="font-mono text-foreground">https://fxk-relay.local:9443</span> no iPhone.</li>
+                <li>Confie no certificado self-signed do bridge local.</li>
+                <li>Volte ao app e teste o canal seguro via WSS antes do pareamento BLE.</li>
+              </ol>
+            </div>
           </div>
         )}
 

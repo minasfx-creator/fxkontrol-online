@@ -5,6 +5,7 @@ import DMXMonitorGrid from './DMXMonitorGrid';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { Button } from '@/components/ui/button';
+import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,7 +21,7 @@ import {
 import { downloadFile } from '@/lib/exportEngine';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl } from '@/lib/bridgeGateway';
+import { buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl, evaluateBridgeWebSocketConnection, getBridgeSecurityDiagnostic, openBridgeWebSocket, parseBridgeGatewayUrl, saveBridgeGatewayConfig } from '@/lib/bridgeGateway';
 
 interface DiagnosticLog {
   timestamp: Date;
@@ -61,12 +62,20 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const [relayWs, setRelayWs] = useState<WebSocket | null>(null);
   const [relayConnected, setRelayConnected] = useState(false);
   const [useRelay, setUseRelay] = useState(false);
+  const relayDiagnostic = useMemo(() => getBridgeSecurityDiagnostic(relayUrl), [relayUrl]);
 
   const connectRelay = useCallback(() => {
     if (relayWs) { relayWs.close(); }
     try {
+      const guard = evaluateBridgeWebSocketConnection(relayUrl);
+      if (!guard.allowed) {
+        toast.error(guard.reason ?? 'Bridge local bloqueado no contexto atual');
+        return;
+      }
       const protocols = buildBridgeWebSocketProtocols();
-      const ws = protocols.length > 0 ? new WebSocket(relayUrl, protocols) : new WebSocket(relayUrl);
+      const parsed = parseBridgeGatewayUrl(relayUrl);
+      if (parsed) saveBridgeGatewayConfig(parsed);
+      const ws = openBridgeWebSocket(relayUrl, protocols);
       ws.onopen = () => {
         setRelayConnected(true);
         setConnectionStatus('ok');
@@ -98,6 +107,12 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
       toast.error(e.message);
     }
   }, [relayUrl, relayWs, addDiagLog]);
+
+  const handleRelayUrlChange = useCallback((value: string) => {
+    setRelayUrl(value);
+    const parsed = parseBridgeGatewayUrl(value);
+    if (parsed) saveBridgeGatewayConfig(parsed);
+  }, []);
 
   const disconnectRelay = useCallback(() => {
     relayWs?.close();
@@ -486,11 +501,12 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                   <div className="flex gap-1">
                     <Input
                       value={relayUrl}
-                      onChange={e => setRelayUrl(e.target.value)}
+                      onChange={e => handleRelayUrlChange(e.target.value)}
                       className="h-6 text-[9px] font-mono-code bg-surface-0 border-border flex-1"
                       placeholder={buildBridgeWebSocketUrl({ path: '' })}
                     />
                   </div>
+                  <BridgeSecurityAlert diagnostic={relayDiagnostic} compact />
                   <div className="flex gap-1">
                     <Button
                       size="sm" variant={relayConnected ? 'destructive' : 'outline'}
@@ -508,7 +524,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                   )}
                   {!relayConnected && (
                     <p className="text-[8px] text-muted-foreground">
-                      Execute <code className="bg-muted px-1 rounded text-[7px]">node artnet-relay.js</code> na máquina local
+                      Execute <code className="bg-muted px-1 rounded text-[7px]">node artnet-relay.js</code> ou abra o bridge em <code className="bg-muted px-1 rounded text-[7px]">https://fxk-relay.local:9443</code>
                     </p>
                   )}
                 </>

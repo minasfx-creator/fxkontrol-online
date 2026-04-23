@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
+import { getBridgeSecurityDiagnostic } from '@/lib/bridgeGateway';
 
 type StatusTone = 'healthy' | 'degraded' | 'blocked';
 
@@ -54,6 +56,7 @@ export default function PlatformStatus() {
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const bridgeDiagnostic = useMemo(() => getBridgeSecurityDiagnostic({ path: '/ws' }), []);
 
   useEffect(() => {
     if (!user) return;
@@ -137,6 +140,12 @@ export default function PlatformStatus() {
       description: reports.length > 0 ? `${reports.length} relatório(s) recente(s) carregados.` : 'Nenhum relatório executivo salvo ainda.',
       tone: reportTone,
       icon: FileWarning,
+    },
+    {
+      title: 'Local bridge security',
+      description: bridgeDiagnostic.summary,
+      tone: bridgeDiagnostic.severity === 'error' ? 'blocked' : bridgeDiagnostic.severity === 'warning' ? 'degraded' : 'healthy',
+      icon: ShieldAlert,
     },
   ];
 
@@ -227,6 +236,22 @@ export default function PlatformStatus() {
           </CardContent>
         </Card>
       </section>
+
+      <Card className="border-border/60 bg-card/60">
+        <CardHeader>
+          <CardTitle className="text-base">Local bridge security</CardTitle>
+          <CardDescription>Validação de secure context, mixed content, mDNS e compatibilidade com iPhone/PWA.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <BridgeSecurityAlert diagnostic={bridgeDiagnostic} />
+          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <Badge variant="outline">Endpoint: {bridgeDiagnostic.endpoint}</Badge>
+            <Badge variant="outline">Secure context: {bridgeDiagnostic.isSecureContext ? 'OK' : 'BLOCKED'}</Badge>
+            <Badge variant="outline">mDNS: {bridgeDiagnostic.mdnsHost ? 'READY' : 'fallback'}</Badge>
+            <Badge variant="outline">iPhone/PWA: {bridgeDiagnostic.compatibleWithIOSPwa ? 'READY' : 'pending TLS'}</Badge>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="border-border/60 bg-card/60">
         <CardHeader>
