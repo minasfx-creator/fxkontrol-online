@@ -102,6 +102,7 @@ export class ExecutionRuntimeV1 {
   private readonly clock: RuntimeClock;
   private readonly trace: RuntimeFrameTrace[] = [];
   private lastExecutedFrame = -1;
+  private lastNow = -Infinity; // monotonic guard against time reversal
   private framesExecuted = 0;
   private framesAborted = 0;
   private commandsDispatched = 0;
