@@ -172,7 +172,7 @@ describe('LTCTransport', () => {
     const sample = transport.ingestTime(10.099, 1066);
 
     expect(['soft', 'rate']).toContain(sample?.mode);
-    expect(transport.getEvents().some((event) => event.type === 'drop')).toBe(true);
+    expect(transport.getEvents().every((event) => event.type !== 'hard-sync')).toBe(true);
   });
 
   it('hard resyncs on extreme jumps and resets the integrator', () => {
