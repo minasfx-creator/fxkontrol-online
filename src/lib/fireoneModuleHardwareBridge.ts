@@ -182,7 +182,7 @@ export class FireOneHardwareBridge {
   async connectBLE(): Promise<boolean> {
     try {
       if (!this.getTransportSupport().ble) {
-        this.lastError = 'BLE não suportado neste navegador/dispositivo';
+        this.setError('UNSUPPORTED_TRANSPORT', 'BLE não suportado neste navegador/dispositivo', 'ble');
         this.onEvent?.('unsupported_transport', { transport: 'ble' });
         return false;
       }
@@ -196,7 +196,7 @@ export class FireOneHardwareBridge {
 
       return await this.setupBLEDevice(device, 'ble');
     } catch (err) {
-      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar BLE';
+      this.setError('BLE_GATT_FAILED', err instanceof Error ? err.message : 'Falha ao conectar BLE', 'ble');
       console.warn('[HardwareBridge] BLE connect failed:', err);
       return false;
     }
