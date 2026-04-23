@@ -16,13 +16,17 @@
 
 import type { ExecutionPlan, ExecutionFrame, PlannedCommand } from './joiExecutionPlanner';
 import type { ExecutionLayer } from './joiCompilerV2';
+import { __internals as compilerInternals } from './joiCompilerV2';
+
+const fnv1a = compilerInternals.fnv1a;
 
 // ─── Public types ──────────────────────────────────────────────────
 export interface RuntimeConfig {
   readonly safetyThreshold: number; // 0..1 — abort if frame.peakRisk exceeds
   readonly mode: ExecutionLayer;
   readonly enableTrace: boolean;
-  readonly maxTraceFrames?: number; // bounded ring buffer (default: unbounded)
+  readonly maxTraceFrames?: number;  // bounded ring buffer (default: unbounded)
+  readonly maxCatchUpFrames?: number; // bound burst execution after lag (default: 10)
   readonly onAbort?: (frame: ExecutionFrame, reason: AbortReason) => void;
   readonly onFrame?: (frame: ExecutionFrame, executed: number) => void;
   readonly adapter?: CommandAdapter;
