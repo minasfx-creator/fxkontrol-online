@@ -757,10 +757,17 @@ export class FireOneHardwareBridge {
     this.connected = false;
     this.transport = 'none';
     this.linkHealth = 'disconnected';
+    // Invalidate any in-flight handshake from a previous attempt.
+    this.connectingSessionId++;
     this.pendingResolves.clear();
     this.stopHeartbeat();
     this.stopRssiPolling();
-    if (wasConnected) this.onEvent?.('disconnected', null);
+    if (wasConnected) {
+      if (!this.lastErrorCode) {
+        this.setError('TRANSPORT_DISCONNECTED', 'Transport disconnected');
+      }
+      this.onEvent?.('disconnected', null);
+    }
     if (wasConnected && this.lastConnectArgs) {
       this.attemptReconnect();
     }
