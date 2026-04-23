@@ -7,12 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
+import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
 import { Save, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import type { FXCSettings } from './types';
 import { DEFAULT_SETTINGS } from './constants';
 import { useDisplayStore } from '@/store/useDisplayStore';
-import { buildBridgeWebSocketUrl } from '@/lib/bridgeGateway';
+import { buildBridgeWebSocketUrl, type BridgeSecurityDiagnostic } from '@/lib/bridgeGateway';
 
 interface SettingsPanelProps {
   fs: boolean;
@@ -20,12 +21,13 @@ interface SettingsPanelProps {
   onSettingsChange: (s: FXCSettings) => void;
   relayConnected?: boolean;
   relayUrl?: string;
+  relayDiagnostic?: BridgeSecurityDiagnostic;
   onRelayUrlChange?: (url: string) => void;
   onConnectRelay?: () => void;
   onDisconnectRelay?: () => void;
 }
 
-export default function SettingsPanel({ fs, settings, onSettingsChange, relayConnected, relayUrl, onRelayUrlChange, onConnectRelay, onDisconnectRelay }: SettingsPanelProps) {
+export default function SettingsPanel({ fs, settings, onSettingsChange, relayConnected, relayUrl, relayDiagnostic, onRelayUrlChange, onConnectRelay, onDisconnectRelay }: SettingsPanelProps) {
   const [local, setLocal] = useState<FXCSettings>({ ...settings });
   const displayBacklight = useDisplayStore(s => s.backlight);
   const setDisplayBacklight = useDisplayStore(s => s.setBacklight);
@@ -139,6 +141,7 @@ export default function SettingsPanel({ fs, settings, onSettingsChange, relayCon
             {relayConnected ? 'Desconectar' : 'Conectar'}
           </Button>
         </div>
+        {relayDiagnostic ? <BridgeSecurityAlert diagnostic={relayDiagnostic} className="mt-2" compact /> : null}
         <p className={cn("text-muted-foreground/30 mt-1", fs ? "text-[8px]" : "text-[8px]")}>
           Rode <code className="text-cyan-400/50">node artnet-relay.js --target {local.artNetIp}</code> no PC local
         </p>

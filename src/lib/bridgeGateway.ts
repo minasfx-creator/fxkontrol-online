@@ -24,6 +24,7 @@ export interface BridgeRuntime {
   navigator?: Pick<Navigator, 'userAgent' | 'maxTouchPoints'> & { standalone?: boolean };
   localStorage?: Storage | null;
   sessionStorage?: Storage | null;
+  isSecureContext?: boolean;
 }
 
 type BridgeNavigatorLike = Pick<Navigator, 'userAgent' | 'maxTouchPoints'> & { standalone?: boolean };
@@ -37,6 +38,28 @@ export interface BridgeCapabilityHints {
   port: number;
 }
 
+export type BridgeSecuritySeverity = 'info' | 'warning' | 'error';
+
+export interface BridgeSecurityDiagnostic extends BridgeCapabilityHints {
+  pageProtocol: string;
+  bridgeProtocol: string;
+  isSecureContext: boolean;
+  standalonePwa: boolean;
+  mdnsHost: boolean;
+  localNetworkHost: boolean;
+  usesSelfSignedLocalTls: boolean;
+  compatibleWithIOSPwa: boolean;
+  recommendedAction: string;
+  summary: string;
+  severity: BridgeSecuritySeverity;
+}
+
+export interface BridgeConnectionGuardResult {
+  allowed: boolean;
+  diagnostic: BridgeSecurityDiagnostic;
+  reason?: string;
+}
+
 function runtimeLocation(runtime?: BridgeRuntime) {
   if (runtime?.location) return runtime.location;
   if (typeof window !== 'undefined') return window.location;
@@ -47,6 +70,12 @@ function runtimeNavigator(runtime?: BridgeRuntime): BridgeNavigatorLike | undefi
   if (runtime?.navigator) return runtime.navigator;
   if (typeof navigator !== 'undefined') return navigator as BridgeNavigatorLike;
   return undefined;
+}
+
+function runtimeSecureContext(runtime?: BridgeRuntime): boolean {
+  if (typeof runtime?.isSecureContext === 'boolean') return runtime.isSecureContext;
+  if (typeof window !== 'undefined' && typeof window.isSecureContext === 'boolean') return window.isSecureContext;
+  return runtimeLocation(runtime)?.protocol === 'https:';
 }
 
 function runtimeLocalStorage(runtime?: BridgeRuntime) {
@@ -78,6 +107,25 @@ function normalizePath(path: string | undefined): string {
   return path.startsWith('/') ? path : `/${path}`;
 }
 
+function isPrivateIpv4Host(host: string): boolean {
+  return /^(10\.|127\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(host);
+}
+
+export function isMdnsBridgeHost(host: string | null | undefined): boolean {
+  if (!host) return false;
+  return /\.local$/i.test(host.trim());
+}
+
+export function isLocalBridgeHost(host: string | null | undefined): boolean {
+  if (!host) return false;
+  const normalized = host.trim().toLowerCase();
+  return normalized === 'localhost'
+    || normalized === '::1'
+    || normalized === '[::1]'
+    || isMdnsBridgeHost(normalized)
+    || isPrivateIpv4Host(normalized);
+}
+
 function readStoredGatewayConfig(runtime?: BridgeRuntime): BridgeGatewayConfig {
   const raw = storageGet(runtimeLocalStorage(runtime), BRIDGE_GATEWAY_CONFIG_STORAGE);
   if (!raw) return {};
@@ -103,6 +151,22 @@ export function saveBridgeGatewayConfig(config: BridgeGatewayConfig, runtime?: B
   if (typeof config.secure === 'boolean') clean.secure = config.secure;
   if (config.path !== undefined) clean.path = normalizePath(config.path);
   storageSet(runtimeLocalStorage(runtime), BRIDGE_GATEWAY_CONFIG_STORAGE, JSON.stringify(clean));
+}
+
+export function parseBridgeGatewayUrl(raw: string): BridgeGatewayConfig | null {
+  try {
+    const url = new URL(raw);
+    const port = url.port ? Number(url.port) : undefined;
+    return {
+      host: url.hostname || undefined,
+      secure: url.protocol === 'wss:' || url.protocol === 'https:',
+      port,
+      securePort: url.protocol === 'wss:' || url.protocol === 'https:' ? port : undefined,
+      path: normalizePath(url.pathname),
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function isIOSWebKit(nav = runtimeNavigator()): boolean {
@@ -197,6 +261,132 @@ export function getMobileGatewayChannelName(projectId?: string | null): string {
   return `mobile-link:${safeProjectId}`;
 }
 
+function resolveBridgeEndpoint(
+  input: string | BridgeEndpointOptions = {},
+  runtime?: BridgeRuntime,
+): string {
+  return typeof input === 'string' ? input : buildBridgeWebSocketUrl(input, runtime);
+}
+
+function summarizeBridgeDiagnostic(diagnostic: BridgeSecurityDiagnostic): Pick<BridgeSecurityDiagnostic, 'severity' | 'summary' | 'recommendedAction'> {
+  if (diagnostic.mixedContentBlocked) {
+    return {
+      severity: 'error',
+      summary: 'Página HTTPS detectada, mas o bridge local está em WS inseguro. O navegador bloqueará mixed content.',
+      recommendedAction: 'Abra o bridge local em https://fxk-relay.local:9443, confie no certificado self-signed no dispositivo e reconecte em WSS.',
+    };
+  }
+
+  if (diagnostic.iosWebKit && !diagnostic.secure) {
+    return {
+      severity: 'error',
+      summary: 'No iPhone/PWA, o bridge local precisa responder em WSS para o canal local funcionar com confiabilidade.',
+      recommendedAction: 'Use o host mDNS .local com TLS local e pareamento seguro antes de tentar abrir o canal no iPhone.',
+    };
+  }
+
+  if (diagnostic.mdnsHost && !diagnostic.isSecureContext) {
+    return {
+      severity: 'warning',
+      summary: 'Host mDNS local detectado, mas a página atual ainda não está em secure context.',
+      recommendedAction: 'Abra o app em HTTPS/instalado na tela inicial e valide o certificado local antes do pareamento.',
+    };
+  }
+
+  if (diagnostic.localNetworkHost && !diagnostic.secure) {
+    return {
+      severity: 'warning',
+      summary: 'O bridge local está usando fallback inseguro; isso é aceitável apenas em desktop/dev local.',
+      recommendedAction: 'Para iPhone/PWA e operação de campo, migre para fxk-relay.local com WSS e certificado confiável.',
+    };
+  }
+
+  return {
+    severity: 'info',
+    summary: diagnostic.usesSelfSignedLocalTls
+      ? 'Bridge local seguro detectado via mDNS/TLS local.'
+      : 'Diagnóstico do bridge local sem bloqueios estruturais no contexto atual.',
+    recommendedAction: diagnostic.usesSelfSignedLocalTls
+      ? 'Se este for o primeiro acesso no dispositivo, abra o endpoint HTTPS do bridge e confie no certificado antes de operar.'
+      : 'Valide conectividade, pareamento e confiança do certificado local antes do uso em campo.',
+  };
+}
+
+export function getBridgeSecurityDiagnostic(
+  input: string | BridgeEndpointOptions = {},
+  runtime?: BridgeRuntime,
+): BridgeSecurityDiagnostic {
+  const endpoint = resolveBridgeEndpoint(input, runtime);
+  const url = new URL(endpoint);
+  const location = runtimeLocation(runtime);
+  const nav = runtimeNavigator(runtime);
+  const secure = url.protocol === 'wss:';
+  const pageProtocol = location?.protocol ?? 'http:';
+  const standalonePwa = Boolean(nav?.standalone);
+  const mdnsHost = isMdnsBridgeHost(url.hostname);
+  const localNetworkHost = isLocalBridgeHost(url.hostname);
+  const isSecureContext = runtimeSecureContext(runtime);
+  const compatibleWithIOSPwa = secure && (mdnsHost || !localNetworkHost || isSecureContext);
+
+  const diagnosticBase: BridgeSecurityDiagnostic = {
+    endpoint,
+    secure,
+    iosWebKit: isIOSWebKit(nav),
+    mixedContentBlocked: pageProtocol === 'https:' && url.protocol === 'ws:',
+    host: url.hostname,
+    port: Number(url.port),
+    pageProtocol,
+    bridgeProtocol: url.protocol,
+    isSecureContext,
+    standalonePwa,
+    mdnsHost,
+    localNetworkHost,
+    usesSelfSignedLocalTls: secure && mdnsHost,
+    compatibleWithIOSPwa,
+    recommendedAction: '',
+    summary: '',
+    severity: 'info',
+  };
+
+  return {
+    ...diagnosticBase,
+    ...summarizeBridgeDiagnostic(diagnosticBase),
+  };
+}
+
+export function evaluateBridgeWebSocketConnection(
+  input: string | BridgeEndpointOptions = {},
+  runtime?: BridgeRuntime,
+): BridgeConnectionGuardResult {
+  const diagnostic = getBridgeSecurityDiagnostic(input, runtime);
+  const allowed = !diagnostic.mixedContentBlocked && !(diagnostic.iosWebKit && !diagnostic.secure);
+  return {
+    allowed,
+    diagnostic,
+    reason: allowed ? undefined : diagnostic.summary,
+  };
+}
+
+export function assertBridgeWebSocketAllowed(
+  input: string | BridgeEndpointOptions = {},
+  runtime?: BridgeRuntime,
+): BridgeSecurityDiagnostic {
+  const result = evaluateBridgeWebSocketConnection(input, runtime);
+  if (!result.allowed) {
+    throw new Error(result.reason ?? 'Bridge local bloqueado pelo contexto de segurança atual.');
+  }
+  return result.diagnostic;
+}
+
+export function openBridgeWebSocket(
+  endpoint: string,
+  protocols: string[] = [],
+  runtime?: BridgeRuntime,
+): WebSocket {
+  assertBridgeWebSocketAllowed(endpoint, runtime);
+  return protocols.length > 0 ? new WebSocket(endpoint, protocols) : new WebSocket(endpoint);
+}
+
 export function buildBridgeWebSocketUrl(
   options: BridgeEndpointOptions = {},
   runtime?: BridgeRuntime,
@@ -220,17 +410,13 @@ export function getBridgeCapabilityHints(
   options: BridgeEndpointOptions = {},
   runtime?: BridgeRuntime,
 ): BridgeCapabilityHints {
-  const endpoint = buildBridgeWebSocketUrl(options, runtime);
-  const url = new URL(endpoint);
-  const location = runtimeLocation(runtime);
-  const secure = url.protocol === 'wss:';
-
+  const diagnostic = getBridgeSecurityDiagnostic(options, runtime);
   return {
-    endpoint,
-    secure,
-    iosWebKit: isIOSWebKit(runtimeNavigator(runtime)),
-    mixedContentBlocked: location?.protocol === 'https:' && url.protocol === 'ws:',
-    host: url.hostname,
-    port: Number(url.port),
+    endpoint: diagnostic.endpoint,
+    secure: diagnostic.secure,
+    iosWebKit: diagnostic.iosWebKit,
+    mixedContentBlocked: diagnostic.mixedContentBlocked,
+    host: diagnostic.host,
+    port: diagnostic.port,
   };
 }

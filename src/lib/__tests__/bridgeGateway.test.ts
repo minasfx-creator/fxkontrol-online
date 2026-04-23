@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  evaluateBridgeWebSocketConnection,
   buildBridgeWebSocketProtocols,
   buildBridgeWebSocketUrl,
+  getBridgeSecurityDiagnostic,
   getBridgeCapabilityHints,
   getBridgeKey,
+  isLocalBridgeHost,
+  isMdnsBridgeHost,
   getMobileGatewayChannelName,
   maskBridgeKey,
   normalizeBridgeKey,
@@ -127,6 +131,69 @@ describe('bridgeGateway endpoint selection', () => {
     expect(hints.mixedContentBlocked).toBe(false);
     expect(hints.host).toBe('fxk-relay.local');
     expect(hints.port).toBe(9443);
+  });
+
+  it('classifies mdns local tls endpoints for iPhone/PWA pairing', () => {
+    const diagnostic = getBridgeSecurityDiagnostic(
+      { path: '/ws' },
+      {
+        location: { protocol: 'https:', hostname: 'app.fxk.test' } as Location,
+        navigator: {
+          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15',
+          maxTouchPoints: 5,
+          standalone: true,
+        } as Navigator & { standalone: boolean },
+        isSecureContext: true,
+        localStorage: new MemoryStorage(),
+        sessionStorage: new MemoryStorage(),
+      },
+    );
+
+    expect(diagnostic.mdnsHost).toBe(true);
+    expect(diagnostic.usesSelfSignedLocalTls).toBe(true);
+    expect(diagnostic.compatibleWithIOSPwa).toBe(true);
+    expect(diagnostic.severity).toBe('info');
+  });
+
+  it('blocks mixed content relay attempts on secure pages', () => {
+    const guard = evaluateBridgeWebSocketConnection(
+      'ws://192.168.4.1:81',
+      {
+        location: { protocol: 'https:', hostname: 'app.fxk.test' } as Location,
+        navigator: { userAgent: 'Mozilla/5.0 (iPhone)', maxTouchPoints: 5 } as Navigator,
+        isSecureContext: true,
+        localStorage: new MemoryStorage(),
+        sessionStorage: new MemoryStorage(),
+      },
+    );
+
+    expect(guard.allowed).toBe(false);
+    expect(guard.diagnostic.mixedContentBlocked).toBe(true);
+    expect(guard.diagnostic.severity).toBe('error');
+  });
+
+  it('marks ip-only fallback as degraded in insecure desktop contexts', () => {
+    const diagnostic = getBridgeSecurityDiagnostic(
+      'ws://192.168.4.1:81',
+      {
+        location: { protocol: 'http:', hostname: 'localhost' } as Location,
+        navigator: { userAgent: 'Mozilla/5.0', maxTouchPoints: 0 } as Navigator,
+        isSecureContext: false,
+        localStorage: new MemoryStorage(),
+        sessionStorage: new MemoryStorage(),
+      },
+    );
+
+    expect(diagnostic.localNetworkHost).toBe(true);
+    expect(diagnostic.severity).toBe('warning');
+    expect(diagnostic.mixedContentBlocked).toBe(false);
+  });
+
+  it('identifies mdns and local bridge hosts correctly', () => {
+    expect(isMdnsBridgeHost('fxk-relay.local')).toBe(true);
+    expect(isLocalBridgeHost('fxk-relay.local')).toBe(true);
+    expect(isLocalBridgeHost('192.168.4.1')).toBe(true);
+    expect(isLocalBridgeHost('relay.fxk.cloud')).toBe(false);
   });
 
   it('scopes mobile gateway channels by project id', () => {

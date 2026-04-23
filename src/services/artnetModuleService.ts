@@ -4,7 +4,7 @@
  * Supports: direct LAN, WAN via relay server, per-module addressing.
  */
 import { supabase } from '@/integrations/supabase/client';
-import { buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl } from '@/lib/bridgeGateway';
+import { buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl, openBridgeWebSocket } from '@/lib/bridgeGateway';
 
 export type ModuleTransport = 'lan' | 'wan' | 'relay';
 export type ModuleConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error' | 'timeout';
@@ -262,7 +262,7 @@ class ArtNetModuleService {
 
     try {
       const protocols = buildBridgeWebSocketProtocols(module.relayToken);
-      const ws = protocols.length > 0 ? new WebSocket(relayUrl, protocols) : new WebSocket(relayUrl);
+      const ws = openBridgeWebSocket(relayUrl, protocols);
 
       return new Promise((resolve) => {
         const timeout = setTimeout(() => {
