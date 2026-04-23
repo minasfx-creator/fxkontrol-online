@@ -44,6 +44,7 @@ class TimelineClock {
   }
 
   seek(time: number): void {
+    if (!Number.isFinite(time)) return;
     const next = this.clampTime(time);
     this.state.driftSec = 0;
     if (next === this.state.time) {
@@ -57,6 +58,7 @@ class TimelineClock {
   }
 
   syncExternalTime(time: number): void {
+    if (!Number.isFinite(time)) return;
     const next = this.clampTime(time);
     this.state.driftSec = next - this.state.time;
     if (next === this.state.time && this.state.source === 'external') {
@@ -79,7 +81,7 @@ class TimelineClock {
   }
 
   setDuration(duration: number): void {
-    if (!Number.isFinite(duration)) return;
+    if (!Number.isFinite(duration) || duration < 0) return;
     const nextDuration = Math.max(1, duration);
     const prevTime = this.state.time;
     this.state.duration = nextDuration;
@@ -98,7 +100,7 @@ class TimelineClock {
 
   tick(dt: number): void {
     if (!this.state.playing) return;
-    if (dt <= 0) return;
+    if (!Number.isFinite(dt) || dt <= 0) return;
 
     const nextTime = this.state.time + dt * this.state.speed;
     if (nextTime >= this.state.duration) {
