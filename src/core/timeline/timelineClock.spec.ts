@@ -357,7 +357,41 @@ describe('timelineClock/store sync', () => {
     mirror();
     expect(useProjectStore.getState().currentTime).toBe(25);
     expect(useProjectStore.getState().isPlaying).toBe(true);
-    expect(useProjectStore.getState().timelineSource).toBe('local');
+    expect(useProjectStore.getState().timelineSource).toBe('external');
+  });
+
+  it('preserves external source across play pause and seek while tracking monotonic metadata', () => {
+    timelineClock.setDuration(120);
+    timelineClock.syncExternalTime(12);
+    timelineClock.play();
+    timelineClock.pause();
+    timelineClock.seek(30);
+
+    const state = timelineClock.getState();
+    mirror();
+
+    expect(state.source).toBe('external');
+    expect(state.lastPositionChange).toBe('seek');
+    expect(state.positionSequence).toBeGreaterThan(0);
+    expect(state.externalSyncSequence).toBe(1);
+  });
+
+  it('marks seek confirmation when external sync repeats after scrub', () => {
+    timelineClock.setDuration(120);
+    timelineClock.syncExternalTime(18);
+    const before = timelineClock.getState();
+
+    timelineClock.seek(24);
+    timelineClock.syncExternalTime(24);
+
+    const state = timelineClock.getState();
+    mirror();
+
+    expect(state.source).toBe('external');
+    expect(state.lastPositionChange).toBe('external-confirm');
+    expect(state.externalSyncSequence).toBe(before.externalSyncSequence + 1);
+    expect(state.positionSequence).toBe(before.positionSequence + 1);
+    expect(state.lastExternalTargetTime).toBe(24);
   });
 
   it('keeps store mirrored without manual sync calls', () => {

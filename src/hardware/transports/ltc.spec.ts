@@ -73,6 +73,9 @@ describe('LTCTransport', () => {
 
     expect(forward).toMatchObject({ mode: 'hard', syncedTime: 10.75, state: 'locked-hard' });
     expect(backward).toMatchObject({ mode: 'hard', syncedTime: 9.9, state: 'locked-hard' });
+    expect(forward?.reason).toBe('hard-resync');
+    expect(backward?.reason).toBe('rewind-detect');
+    expect(backward?.sequence).toBeGreaterThan(forward?.sequence ?? 0);
     expect(syncExternalTime).toHaveBeenNthCalledWith(1, 10.75);
     expect(syncExternalTime).toHaveBeenNthCalledWith(2, 9.9);
   });
@@ -117,5 +120,32 @@ describe('LTCTransport', () => {
     expect(diagnostics.signalPresent).toBe(true);
     expect(diagnostics.lastIncomingTime).toBe(1);
     expect(diagnostics.state).toBe('locking');
+    expect(diagnostics.lastSequence).toBe(1);
+    expect(diagnostics.lastSyncReason).toBe('idle');
+  });
+
+  it('keeps monotonic sequence through seek-style confirmation and soft chase', () => {
+    const syncExternalTime = vi.fn();
+    let currentTime = 10;
+    const transport = new LTCTransport(
+      {
+        getTime: () => currentTime,
+        syncExternalTime: (time) => {
+          currentTime = time;
+          syncExternalTime(time);
+        },
+      },
+      { lockFrames: 1, deadbandSec: 0.01 },
+    );
+
+    expect(transport.ingestTime(10, 1000)).toBeNull();
+    currentTime = 12;
+    const confirmed = transport.ingestTime(12.005, 1033);
+    const chased = transport.ingestTime(12.04, 1066);
+
+    expect(confirmed).toMatchObject({ reason: 'seek-confirm', mode: 'soft' });
+    expect(chased).toMatchObject({ reason: 'soft-chase', mode: 'soft' });
+    expect((chased?.sequence ?? 0)).toBeGreaterThan(confirmed?.sequence ?? 0);
+    expect(transport.getDiagnostics(1100).lastSequence).toBe(chased?.sequence);
   });
 });
