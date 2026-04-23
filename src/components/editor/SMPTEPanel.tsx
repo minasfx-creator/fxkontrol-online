@@ -14,6 +14,7 @@ import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { formatTimecode, encodeTimecodeToLTC, generateMTCQuarterFrames, secondsToTimecode, type SMPTEFrameRate } from '@/lib/smpteEngine';
 import { formatSMPTE } from '@/lib/smpteUtils';
 import { getOSCClient, buildMA3TimecodeSync, buildMA3TimecodeTransport } from '@/lib/oscEngine';
+import { ltcRuntime, updateTimelineClockFromLTCFps } from '@/hardware/transports/ltcRuntime';
 
 interface SMPTEPanelProps {
   onClose: () => void;
@@ -42,6 +43,26 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
   const tcStr = formatTimecode(tc);
   const ltcSignal = store.running ? encodeTimecodeToLTC(tc) : null;
   const mtcFrames = store.running ? generateMTCQuarterFrames(tc) : [];
+  const pllDiagnostics = ltcRuntime.getPLLDiagnostics();
+  const driftSeries = ltcRuntime.getDriftSeries();
+  const ltcEvents = ltcRuntime.getEvents().slice(-6).reverse();
+  const replayFrames = ltcRuntime.getReplayRecord();
+  const detectedFrameDuration = pllDiagnostics.fps ? 1 / pllDiagnostics.fps : null;
+  const driftBars = driftSeries.drift.slice(-24).map((value, index) => ({
+    id: `${driftSeries.time[index] ?? index}-${index}`,
+    value,
+  }));
+
+  const handleReplay = () => {
+    const snapshot = ltcRuntime.getReplayRecord();
+    if (!snapshot.length) return;
+    ltcRuntime.replay(snapshot);
+    updateTimelineClockFromLTCFps();
+  };
+
+  const handleClearReplay = () => {
+    ltcRuntime.clearReplayRecord();
+  };
 
   useEffect(() => {
     const stc = secondsToTimecode(store.startTimecodeSeconds, store.frameRate, false);
@@ -416,6 +437,86 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
               <MetricRow label="Ext Packets" value={String(store.packetCount)} />
             </>
           )}
+        </div>
+
+        <div className="bg-surface-0 rounded p-2 space-y-2 border border-border">
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] font-mono-code text-muted-foreground font-bold">PLL DIAGNOSTICS</div>
+            <Badge variant="outline" className="h-5 rounded-sm px-1.5 text-[8px] font-mono-code uppercase">
+              {pllDiagnostics.state}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+            <MetricRow label="SRC" value={pllDiagnostics.source ?? '—'} />
+            <MetricRow label="FPS" value={pllDiagnostics.fps?.toFixed(2) ?? '—'} />
+            <MetricRow label="RATE" value={pllDiagnostics.rate.toFixed(5)} warn={Math.abs(pllDiagnostics.rate - 1) > 0.01} />
+            <MetricRow label="INT" value={pllDiagnostics.integral.toFixed(5)} />
+            <MetricRow label="DRIFT" value={pllDiagnostics.driftSec.toFixed(4)} warn={Math.abs(pllDiagnostics.driftSec) > 0.01} />
+            <MetricRow label="AVG" value={pllDiagnostics.avgDriftSec.toFixed(4)} />
+            <MetricRow label="PEAK" value={pllDiagnostics.peakDriftSec.toFixed(4)} warn={pllDiagnostics.peakDriftSec > 0.02} />
+            <MetricRow label="FRAME" value={detectedFrameDuration ? `${detectedFrameDuration.toFixed(5)}s` : '—'} />
+          </div>
+        </div>
+
+        <div className="bg-surface-0 rounded p-2 space-y-2 border border-border">
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] font-mono-code text-muted-foreground font-bold">DRIFT HISTORY</div>
+            <span className="text-[8px] font-mono-code text-muted-foreground">{driftSeries.drift.length} frames</span>
+          </div>
+          <div className="h-16 flex items-end gap-px overflow-hidden rounded border border-border/40 bg-background/40 px-1 py-1">
+            {driftBars.length > 0 ? driftBars.map((bar) => {
+              const magnitude = Math.max(8, Math.min(100, Math.abs(bar.value) * 4000));
+              return (
+                <div
+                  key={bar.id}
+                  className={cn('flex-1 rounded-[1px]', bar.value >= 0 ? 'bg-primary/70' : 'bg-warning/70')}
+                  style={{ height: `${magnitude}%` }}
+                  title={bar.value.toFixed(6)}
+                />
+              );
+            }) : (
+              <div className="flex h-full w-full items-center justify-center text-[8px] font-mono-code text-muted-foreground">
+                No drift samples
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-surface-0 rounded p-2 space-y-2 border border-border">
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] font-mono-code text-muted-foreground font-bold">TRANSPORT EVENTS</div>
+            <span className="text-[8px] font-mono-code text-muted-foreground">{ltcRuntime.getEvents().length} total</span>
+          </div>
+          <div className="space-y-1">
+            {ltcEvents.length > 0 ? ltcEvents.map((event, index) => (
+              <div key={`${event.type}-${index}`} className="flex items-center justify-between rounded border border-border/40 bg-background/30 px-2 py-1 text-[8px] font-mono-code">
+                <span className="text-foreground">{event.type}</span>
+                <span className="text-muted-foreground">
+                  {'from' in event ? `${event.from ?? '∅'} → ${event.to}` : 'rate' in event ? event.rate.toFixed(5) : event.reason}
+                </span>
+              </div>
+            )) : (
+              <div className="text-[8px] font-mono-code text-muted-foreground">No transport events</div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-surface-0 rounded p-2 space-y-2 border border-border">
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] font-mono-code text-muted-foreground font-bold">REPLAY LAB</div>
+            <span className="text-[8px] font-mono-code text-muted-foreground">{replayFrames.length} recorded</span>
+          </div>
+          <div className="flex gap-1">
+            <Button variant="outline" size="sm" className="h-7 flex-1 text-[9px] font-mono-code" onClick={handleReplay} disabled={replayFrames.length === 0}>
+              Replay LTC
+            </Button>
+            <Button variant="outline" size="sm" className="h-7 flex-1 text-[9px] font-mono-code" onClick={handleClearReplay} disabled={replayFrames.length === 0}>
+              Clear Record
+            </Button>
+          </div>
+          <div className="text-[8px] font-mono-code text-muted-foreground">
+            Reingests the recorded LTC frames through the live transport path for deterministic debugging.
+          </div>
         </div>
 
         {/* LTC Signal */}

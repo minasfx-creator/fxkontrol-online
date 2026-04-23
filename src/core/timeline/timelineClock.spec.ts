@@ -412,4 +412,17 @@ describe('timelineClock/store sync', () => {
     expect(resolveSMPTEChase(10, 10.03).mode).toBe('soft');
     expect(resolveSMPTEChase(10, 10.75).mode).toBe('snap');
   });
+
+  it('aligns external ticks to detected frame duration when configured', () => {
+    timelineClock.setDuration(120);
+    timelineClock.syncExternalTime(10);
+    timelineClock.setFrameDuration(1 / 29.97);
+    timelineClock.play();
+
+    timelineClock.tick(1 / 60);
+    mirror();
+
+    expect(timelineClock.getFrameDuration()).toBeCloseTo(1 / 29.97, 6);
+    expect(useProjectStore.getState().currentTime).toBeCloseTo(Math.round((10 + 1 / 60) / (1 / 29.97)) * (1 / 29.97), 6);
+  });
 });

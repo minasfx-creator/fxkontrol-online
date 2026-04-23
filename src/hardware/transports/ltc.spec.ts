@@ -339,4 +339,49 @@ describe('LTCTransport', () => {
     expect(transport.getDriftDiagnostics().fps).toBeGreaterThan(28);
     expect(transport.getDiagnostics(1126).detectedFps).toBeGreaterThan(28);
   });
+
+  it('emits deterministic source-switch hard-sync and rate-change events', () => {
+    const setRate = vi.fn();
+    let currentTime = 10;
+    const transport = new LTCTransport({
+      getTime: () => currentTime,
+      syncExternalTime: (time) => { currentTime = time; },
+      setRate,
+    }, { lockFrames: 1 });
+
+    expect(transport.ingestTime(10, 1000, 'A', 1)).toBeNull();
+    currentTime = 10.033;
+    transport.ingestTime(10.033, 1033, 'A', 1);
+    currentTime = 10.2;
+    transport.ingestTime(10.2, 1034, 'B', 0);
+
+    const events = transport.getEvents();
+    expect(events.some((event) => event.type === 'source-switch')).toBe(true);
+    expect(events.some((event) => event.type === 'hard-sync')).toBe(true);
+    expect(events.some((event) => event.type === 'rate-change')).toBe(true);
+  });
+
+  it('exports drift series and can replay the recorded transport stream', () => {
+    const setRate = vi.fn();
+    let currentTime = 10;
+    const transport = new LTCTransport({
+      getTime: () => currentTime,
+      syncExternalTime: (time) => { currentTime = time; },
+      setRate,
+    }, { lockFrames: 1 });
+
+    expect(transport.ingestTime(10, 1000, 'A', 1)).toBeNull();
+    currentTime = 10.03;
+    transport.ingestTime(10.033, 1033, 'A', 1);
+    currentTime = 10.06;
+    transport.ingestTime(10.066, 1066, 'A', 1);
+
+    const series = transport.getDriftSeries();
+    const record = transport.getReplayRecord();
+    expect(series.drift.length).toBe(series.time.length);
+    expect(record.length).toBeGreaterThan(0);
+
+    transport.replay(record);
+    expect(transport.getReplayRecord().length).toBe(record.length);
+  });
 });
