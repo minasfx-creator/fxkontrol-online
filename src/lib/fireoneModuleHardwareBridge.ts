@@ -782,19 +782,29 @@ export class FireOneHardwareBridge {
   }
 
   private async establishHealthyLink(transport: BridgeTransport, deviceName: string): Promise<boolean> {
+    // Capture session id at the start of this attempt; if a disconnect happens
+    // mid-handshake we'll detect the mismatch and abort cleanly.
+    const attemptSession = ++this.connectingSessionId;
     this.transport = transport;
     this.deviceName = deviceName;
     this.lastPing = Date.now();
     this.linkHealth = 'handshaking';
     const ok = await this.waitForHandshake();
+
+    // Stale-session guard: another attempt or a disconnect raced ahead.
+    if (attemptSession !== this.connectingSessionId) {
+      this.setError('STALE_SESSION', `Handshake from stale session ignored (${transport})`, transport);
+      return false;
+    }
     if (!ok) {
-      this.lastError = `Handshake timeout (${transport})`;
+      this.setError('HANDSHAKE_TIMEOUT', `Handshake timeout (${transport})`, transport);
       this.handleDisconnect();
       return false;
     }
     this.connected = true;
-    this.lastError = undefined;
     this.linkHealth = 'healthy';
+    this.sessionId++;            // new healthy session id
+    this.clearError();
     this.onConnect();
     return true;
   }
@@ -817,5 +827,20 @@ export class FireOneHardwareBridge {
       this.sendCommand('HEARTBEAT\n');
       timer = setTimeout(() => finish(false), timeoutMs);
     });
+  }
+
+  // ─── Error helpers ───────────────────────────────────
+
+  private setError(code: BridgeReasonCode, message: string, transport?: BridgeTransport): void {
+    this.lastErrorCode = code;
+    this.lastError = message;
+    this.lastErrorAt = Date.now();
+    this.onEvent?.('error', { code, message, transport: transport ?? this.transport, at: this.lastErrorAt });
+  }
+
+  private clearError(): void {
+    this.lastError = undefined;
+    this.lastErrorCode = undefined;
+    this.lastErrorAt = undefined;
   }
 }
