@@ -23,6 +23,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { parseTelemetryLine } from '@/lib/fireoneTelemetryParser';
+import { isIOSWebKit, requiresSecureBridgeTransport } from '@/lib/bridgeGateway';
 
 export type BridgeTransport = 'ble' | 'ble_lr' | 'usb' | 'websocket' | 'wifi_direct' | 'direct_relay' | 'none';
 
@@ -108,9 +109,8 @@ export class FireOneHardwareBridge {
     const nav = navigator as any;
     const hasBluetooth = Boolean(nav.bluetooth);
     const hasSerial = Boolean(nav.serial);
-    const secure = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
-    const ua = nav.userAgent || '';
-    const isIOS = /iPad|iPhone|iPod/i.test(ua) || (/Macintosh/i.test(ua) && (nav.maxTouchPoints ?? 0) > 1);
+    const secureRequired = requiresSecureBridgeTransport(window.location, nav);
+    const iosWebKit = isIOSWebKit(nav);
     const websocketAllowed = typeof WebSocket !== 'undefined';
 
     return {
@@ -118,8 +118,8 @@ export class FireOneHardwareBridge {
       ble_lr: hasBluetooth,
       usb: hasSerial,
       direct_relay: hasSerial,
-      websocket: websocketAllowed && secure,
-      wifi_direct: websocketAllowed && secure && !isIOS,
+      websocket: websocketAllowed,
+      wifi_direct: websocketAllowed && !secureRequired && !iosWebKit,
     };
   }
 
@@ -132,6 +132,10 @@ export class FireOneHardwareBridge {
   /** BLE padrão — alcance ~30m */
   async connectBLE(): Promise<boolean> {
     try {
+      if (!this.getTransportSupport().ble) {
+        this.onEvent?.('unsupported_transport', { transport: 'ble' });
+        return false;
+      }
       const nav = navigator as any;
       if (!nav.bluetooth) throw new Error('Web Bluetooth not supported');
 
@@ -151,6 +155,10 @@ export class FireOneHardwareBridge {
   /** BLE Long Range (Coded PHY / BLE 5.0) — alcance ~1km */
   async connectBLELongRange(): Promise<boolean> {
     try {
+      if (!this.getTransportSupport().ble_lr) {
+        this.onEvent?.('unsupported_transport', { transport: 'ble_lr' });
+        return false;
+      }
       const nav = navigator as any;
       if (!nav.bluetooth) throw new Error('Web Bluetooth not supported');
 
@@ -200,6 +208,10 @@ export class FireOneHardwareBridge {
 
   async connectUSB(baudRate = 115200): Promise<boolean> {
     try {
+      if (!this.getTransportSupport().usb) {
+        this.onEvent?.('unsupported_transport', { transport: 'usb' });
+        return false;
+      }
       if (!('serial' in navigator)) throw new Error('WebSerial not supported');
 
       const port = await (navigator as any).serial.requestPort();
@@ -227,6 +239,10 @@ export class FireOneHardwareBridge {
 
   async connectDirectRelay(baudRate = 115200): Promise<boolean> {
     try {
+      if (!this.getTransportSupport().direct_relay) {
+        this.onEvent?.('unsupported_transport', { transport: 'direct_relay' });
+        return false;
+      }
       if (!('serial' in navigator)) throw new Error('WebSerial not supported');
 
       const port = await (navigator as any).serial.requestPort();
@@ -253,9 +269,14 @@ export class FireOneHardwareBridge {
   }
 
   async connectWebSocket(url = 'ws://192.168.4.1:81'): Promise<boolean> {
-    const ok = await this.tryWebSocketConnect(url, 'websocket', 5000);
+    if (!this.getTransportSupport().websocket) {
+      this.onEvent?.('unsupported_transport', { transport: 'websocket' });
+      return false;
+    }
+    const endpoint = this.normalizeWebSocketUrl(url);
+    const ok = await this.tryWebSocketConnect(endpoint, 'websocket', 5000);
     if (ok) {
-      this.lastConnectArgs = { method: 'websocket', args: url };
+      this.lastConnectArgs = { method: 'websocket', args: endpoint };
       this.reconnectAttempts = 0;
     }
     return ok;
@@ -266,12 +287,11 @@ export class FireOneHardwareBridge {
    * Tenta auto-discovery via mDNS antes de fallback para IP fixo.
    */
   async connectWiFiDirect(url?: string): Promise<boolean> {
-    const endpoints = [
-      url,
-      'ws://fxk-esp32.local:81',
-      'ws://192.168.4.1:81',
-      'ws://192.168.1.1:81',
-    ].filter(Boolean) as string[];
+    if (!this.getTransportSupport().wifi_direct) {
+      this.onEvent?.('unsupported_transport', { transport: 'wifi_direct' });
+      return false;
+    }
+    const endpoints = this.getWiFiDirectEndpoints(url);
 
     for (const endpoint of endpoints) {
       const ok = await this.tryWebSocketConnect(endpoint, 'wifi_direct', 3000);
@@ -282,6 +302,32 @@ export class FireOneHardwareBridge {
       }
     }
     return false;
+  }
+
+  private getWiFiDirectEndpoints(customUrl?: string): string[] {
+    const secureRequired = requiresSecureBridgeTransport();
+    const scheme = secureRequired ? 'wss' : 'ws';
+    return [
+      customUrl ? this.normalizeWebSocketUrl(customUrl) : null,
+      `${scheme}://fxk-esp32.local:81`,
+      `${scheme}://192.168.4.1:81`,
+      `${scheme}://192.168.1.1:81`,
+    ].filter(Boolean) as string[];
+  }
+
+  private normalizeWebSocketUrl(raw: string): string {
+    const secureRequired = requiresSecureBridgeTransport();
+    const defaultScheme = secureRequired ? 'wss' : 'ws';
+    const withScheme = /^[a-z]+:\/\//i.test(raw) ? raw : `${defaultScheme}://${raw}`;
+    try {
+      const parsed = new URL(withScheme);
+      if (secureRequired && parsed.protocol === 'ws:') {
+        parsed.protocol = 'wss:';
+      }
+      return parsed.toString();
+    } catch {
+      return withScheme;
+    }
   }
 
   private async tryWebSocketConnect(url: string, transport: BridgeTransport, timeout = 5000): Promise<boolean> {
