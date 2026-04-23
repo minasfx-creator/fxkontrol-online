@@ -221,7 +221,7 @@ export class TransportEmulator {
   getOutboundLog() { return [...this.outboundLog]; }
   getSentCount() { return this.sentCount; }
   getPendingTimers() { return this.timers.size; }
-  resetLog() { this.outboundLog = []; this.trace = []; }
+  resetLog() { this.outboundLog = []; this.trace = []; this.txCount = 0; this.rxCount = 0; }
   getMode(): EmulatorMode { return this.cfg.mode; }
   getConfig(): Required<EmulatorConfig> { return { ...this.cfg }; }
   setMode(mode: EmulatorMode) { this.cfg.mode = mode; }
