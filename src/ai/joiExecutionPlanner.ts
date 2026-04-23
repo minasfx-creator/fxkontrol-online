@@ -38,12 +38,17 @@ export interface ExecutionFrame {
   readonly index: number;
   readonly t0: number;
   readonly t1: number;
-  readonly hash: string; // FNV1a, replay/diff verification
+  readonly hash: string; // FNV1a, full replay/structural identity
   readonly degraded: boolean;
   readonly commands: readonly PlannedCommand[];
+  readonly load: {
+    readonly logical: number;  // scheduling pressure (cmd count)
+    readonly physical: number; // weighted hardware pressure
+  };
   readonly telemetry: {
-    readonly risk: number; // peak risk in frame
-    readonly avgRisk: number;
+    readonly risk: number;     // peak risk in frame (worst-case instant)
+    readonly avgRisk: number;  // baseline load
+    readonly spread: number;   // std-dev of step risks (instability)
     readonly activeSteps: number;
     readonly pyroLoad: number;
     readonly dmxLoad: number;
@@ -102,10 +107,8 @@ export function buildExecutionPlan(ir: JoiIR): ExecutionPlan {
     let drone = 0;
     let riskSum = 0;
     let peakRisk = 0;
-    let degraded = false;
 
     for (const step of steps) {
-      if (step.executionHint.degraded) degraded = true;
       for (const cmd of step.commands) {
         commands.push(
           Object.freeze<PlannedCommand>({
@@ -128,11 +131,27 @@ export function buildExecutionPlan(ir: JoiIR): ExecutionPlan {
 
     const activeSteps = steps.length;
     const avgRisk = activeSteps > 0 ? riskSum / activeSteps : 0;
-    if (avgRisk > 0.85) degraded = true;
 
-    const frameLoad = pyro + dmx + drone;
+    // Risk stability detector — std-dev of per-step risk
+    let varianceSum = 0;
+    for (const step of steps) {
+      const d = step.context.risk - avgRisk;
+      varianceSum += d * d;
+    }
+    const spread = activeSteps > 0 ? Math.sqrt(varianceSum / activeSteps) : 0;
+
+    // Stateless degraded derivation (frame-scoped, pure)
+    const degraded =
+      peakRisk > 0.85 || steps.some((s) => s.executionHint.degraded);
+
+    // Dual load metric — logical (scheduling) vs physical (HIL pressure)
+    const logicalLoad = commands.length;
+    const physicalLoad = pyro * 2 + dmx * 1.2 + drone * 1.5;
+
+    // Replay-safe identity: structural ordering included
+    const stepIds = steps.map((s) => s.sequenceId).join('.');
     const hash = fnv1a(
-      `${ir.showId}|${i}|${commands.length}|${pyro}|${dmx}|${drone}|${peakRisk.toFixed(4)}`,
+      `${ir.showId}|${i}|${commands.length}|${pyro}|${dmx}|${drone}|${peakRisk.toFixed(4)}|${stepIds}`,
     );
 
     frames[i] = Object.freeze<ExecutionFrame>({
@@ -142,9 +161,11 @@ export function buildExecutionPlan(ir: JoiIR): ExecutionPlan {
       hash,
       degraded,
       commands: Object.freeze(commands),
+      load: { logical: logicalLoad, physical: physicalLoad },
       telemetry: {
         risk: peakRisk,
         avgRisk,
+        spread,
         activeSteps,
         pyroLoad: pyro,
         dmxLoad: dmx,
@@ -152,7 +173,7 @@ export function buildExecutionPlan(ir: JoiIR): ExecutionPlan {
       },
     });
 
-    if (frameLoad > maxConcurrency) maxConcurrency = frameLoad;
+    if (logicalLoad > maxConcurrency) maxConcurrency = logicalLoad;
   }
 
   // Risk envelope at planner level (uses peak per frame)
