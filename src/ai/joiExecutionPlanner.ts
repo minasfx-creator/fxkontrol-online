@@ -38,12 +38,17 @@ export interface ExecutionFrame {
   readonly index: number;
   readonly t0: number;
   readonly t1: number;
-  readonly hash: string; // FNV1a, replay/diff verification
+  readonly hash: string; // FNV1a, full replay/structural identity
   readonly degraded: boolean;
   readonly commands: readonly PlannedCommand[];
+  readonly load: {
+    readonly logical: number;  // scheduling pressure (cmd count)
+    readonly physical: number; // weighted hardware pressure
+  };
   readonly telemetry: {
-    readonly risk: number; // peak risk in frame
-    readonly avgRisk: number;
+    readonly risk: number;     // peak risk in frame (worst-case instant)
+    readonly avgRisk: number;  // baseline load
+    readonly spread: number;   // std-dev of step risks (instability)
     readonly activeSteps: number;
     readonly pyroLoad: number;
     readonly dmxLoad: number;
