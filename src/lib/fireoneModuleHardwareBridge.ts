@@ -683,7 +683,9 @@ export class FireOneHardwareBridge {
 
   private async sendAndWaitConfirm(cmd: string, confirmKey: string): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
-      this.pendingResolves.set(confirmKey, () => resolve(true));
+      // Resolver receives the matched line. A non-empty match = real confirmation.
+      // Empty string is the disconnect drain sentinel → resolve false (NOT a confirm).
+      this.pendingResolves.set(confirmKey, (val) => resolve(Boolean(val)));
       this.sendCommand(cmd);
       setTimeout(() => {
         if (this.pendingResolves.has(confirmKey)) {
@@ -694,6 +696,12 @@ export class FireOneHardwareBridge {
     });
   }
 
+  /**
+   * Low-level send. **Intentionally does NOT check linkHealth** — this lets the
+   * handshake (`waitForHandshake`) transmit during `linkHealth: 'handshaking'`
+   * and lets `eStop()` transmit on a degraded link. Health gating lives in
+   * `requireHealthy()` and is enforced by the public command methods only.
+   */
   private async sendCommand(cmd: string): Promise<boolean> {
     const bytes = new TextEncoder().encode(cmd);
     this.txBytes += bytes.length;
