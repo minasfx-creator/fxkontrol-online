@@ -22,17 +22,24 @@ export interface RuntimeConfig {
   readonly safetyThreshold: number; // 0..1 — abort if frame.peakRisk exceeds
   readonly mode: ExecutionLayer;
   readonly enableTrace: boolean;
+  readonly maxTraceFrames?: number; // bounded ring buffer (default: unbounded)
   readonly onAbort?: (frame: ExecutionFrame, reason: AbortReason) => void;
   readonly onFrame?: (frame: ExecutionFrame, executed: number) => void;
   readonly adapter?: CommandAdapter;
 }
 
-export type AbortReason = 'risk_threshold' | 'degraded_frame' | 'external';
+export type AbortReason =
+  | 'risk_threshold'
+  | 'degraded_frame'
+  | 'external'
+  | 'adapter_failure'
+  | 'integrity_mismatch';
 
 export interface CommandAdapter {
-  dispatchPyro?: (cmd: PlannedCommand) => void;
-  dispatchDmx?: (cmd: PlannedCommand) => void;
-  dispatchDrone?: (cmd: PlannedCommand) => void;
+  /** Return false to signal hardware/backpressure failure → runtime aborts. */
+  dispatchPyro?: (cmd: PlannedCommand) => boolean | void;
+  dispatchDmx?: (cmd: PlannedCommand) => boolean | void;
+  dispatchDrone?: (cmd: PlannedCommand) => boolean | void;
 }
 
 export interface RuntimeFrameTrace {
@@ -123,39 +130,61 @@ export class ExecutionRuntimeV1 {
 
     const frameIndex = this.clock.getFrameIndex(now);
     if (frameIndex === this.lastExecutedFrame) return;
-    if (frameIndex < 0 || frameIndex >= this.plan.frames.length) return;
+    if (frameIndex < 0) return;
 
-    // Catch-up: if we skipped frames (jitter/pause), execute each in order
-    // to preserve determinism. Bounded by plan length.
+    // Terminal flush — clock advanced past plan end
+    if (frameIndex >= this.plan.frames.length) {
+      this.stop();
+      return;
+    }
+
+    // Catch-up: execute skipped frames in order to preserve determinism.
+    // lastExecutedFrame is only advanced AFTER a successful frame, so a
+    // partial/aborted frame leaves the cursor on the last good frame.
     const startIdx = this.lastExecutedFrame + 1;
     for (let i = Math.max(0, startIdx); i <= frameIndex; i++) {
-      this.executeFrame(i, now);
-      if (this.aborted) return;
+      const ok = this.executeFrame(i, now);
+      if (!ok) return;
+      this.lastExecutedFrame = i;
     }
   }
 
-  private executeFrame(frameIndex: number, wallTimeMs: number): void {
-    const frame = this.plan.frames[frameIndex];
-    this.lastExecutedFrame = frameIndex;
+  /** Centralized pre-frame safety gate. */
+  private shouldAbort(frame: ExecutionFrame): AbortReason | null {
+    if (frame.telemetry.risk > this.config.safetyThreshold) {
+      return 'risk_threshold';
+    }
+    if (frame.degraded && this.config.mode === 'real') {
+      return 'degraded_frame';
+    }
+    return null;
+  }
 
+  private executeFrame(frameIndex: number, wallTimeMs: number): boolean {
+    const frame = this.plan.frames[frameIndex];
     const risk = frame.telemetry.risk;
 
-    // Safety gate — hard stop on threshold breach
-    if (risk > this.config.safetyThreshold) {
-      this.recordAbort(frame, risk, wallTimeMs, 'risk_threshold');
-      return;
+    // Pre-frame safety gate — runs BEFORE any dispatch
+    const abortReason = this.shouldAbort(frame);
+    if (abortReason) {
+      this.recordAbort(frame, risk, wallTimeMs, abortReason);
+      return false;
     }
 
-    // Optional secondary gate: degraded frames in 'real' mode
-    if (frame.degraded && this.config.mode === 'real') {
-      this.recordAbort(frame, risk, wallTimeMs, 'degraded_frame');
-      return;
+    // Self-integrity check: runtime view must match planner hash
+    if (!frame.hash) {
+      this.recordAbort(frame, risk, wallTimeMs, 'integrity_mismatch');
+      return false;
     }
 
     // Deterministic dispatch — commands already ordered by planner
     let executed = 0;
     for (const cmd of frame.commands) {
-      this.dispatch(cmd);
+      const ok = this.dispatch(cmd);
+      if (!ok) {
+        this.recordAbort(frame, risk, wallTimeMs, 'adapter_failure');
+        return false;
+      }
       executed++;
     }
 
@@ -163,19 +192,18 @@ export class ExecutionRuntimeV1 {
     this.framesExecuted++;
 
     if (this.config.enableTrace) {
-      this.trace.push(
-        Object.freeze<RuntimeFrameTrace>({
-          frameIndex,
-          hash: frame.hash,
-          executedCommands: executed,
-          risk,
-          aborted: false,
-          wallTimeMs,
-        }),
-      );
+      this.pushTrace({
+        frameIndex,
+        hash: frame.hash,
+        executedCommands: executed,
+        risk,
+        aborted: false,
+        wallTimeMs,
+      });
     }
 
     this.config.onFrame?.(frame, executed);
+    return true;
   }
 
   private recordAbort(
@@ -189,38 +217,50 @@ export class ExecutionRuntimeV1 {
     this.running = false;
 
     if (this.config.enableTrace) {
-      this.trace.push(
-        Object.freeze<RuntimeFrameTrace>({
-          frameIndex: frame.index,
-          hash: frame.hash,
-          executedCommands: 0,
-          risk,
-          aborted: true,
-          abortReason: reason,
-          wallTimeMs,
-        }),
-      );
+      this.pushTrace({
+        frameIndex: frame.index,
+        hash: frame.hash,
+        executedCommands: 0,
+        risk,
+        aborted: true,
+        abortReason: reason,
+        wallTimeMs,
+      });
     }
 
     this.config.onAbort?.(frame, reason);
   }
 
-  /** Command execution boundary — isolated adapter pattern. */
-  private dispatch(cmd: PlannedCommand): void {
-    const adapter = this.config.adapter;
-    if (!adapter) return; // dry-run mode
+  /** Bounded ring-buffer push (forensic tail). */
+  private pushTrace(entry: RuntimeFrameTrace): void {
+    const max = this.config.maxTraceFrames;
+    if (max && max > 0 && this.trace.length >= max) {
+      this.trace.shift();
+    }
+    this.trace.push(Object.freeze(entry));
+  }
 
+  /**
+   * Command execution boundary — isolated adapter pattern.
+   * Returns false if adapter signalled failure (backpressure / hardware fault).
+   */
+  private dispatch(cmd: PlannedCommand): boolean {
+    const adapter = this.config.adapter;
+    if (!adapter) return true; // dry-run mode
+
+    let result: boolean | void;
     switch (cmd.target) {
       case 'pyro':
-        adapter.dispatchPyro?.(cmd);
+        result = adapter.dispatchPyro?.(cmd);
         break;
       case 'dmx':
-        adapter.dispatchDmx?.(cmd);
+        result = adapter.dispatchDmx?.(cmd);
         break;
       case 'drone':
-        adapter.dispatchDrone?.(cmd);
+        result = adapter.dispatchDrone?.(cmd);
         break;
     }
+    return result !== false;
   }
 
   /** External abort hook (E-STOP equivalent). */
