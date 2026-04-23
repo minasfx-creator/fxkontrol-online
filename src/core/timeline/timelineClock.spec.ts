@@ -293,7 +293,7 @@ describe('timelineClock/store sync', () => {
     expect(useProjectStore.getState().currentTime).toBe(0);
   });
 
-  it('caps oversized dt values to avoid background tab jumps', () => {
+  it('caps freeze-sized dt values to avoid background tab jumps', () => {
     timelineClock.setDuration(30);
     timelineClock.play();
 
