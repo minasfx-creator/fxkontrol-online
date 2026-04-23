@@ -202,7 +202,17 @@ class BridgePhysicalController {
   }
 
   async simulateHilFire(channelId: string, onAcknowledge: (channel: string, meta: { delayMs: number; reordered: boolean }) => void): Promise<boolean> {
-    return this.hilHarness.fire(channelId, onAcknowledge);
+    return this.hilHarness.fire(channelId, (channel, meta) => {
+      if (meta.reordered) {
+        this.pushHilLog({
+          time: performance.now(),
+          channel,
+          event: 'reorder',
+          delayMs: meta.delayMs,
+        });
+      }
+      onAcknowledge(channel, meta);
+    });
   }
 
   private pushHilLog(entry: HilLogEntry): void {
