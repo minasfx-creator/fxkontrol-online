@@ -48,6 +48,7 @@ export type BridgeReasonCode =
   | 'LINK_NOT_HEALTHY'
   | 'STALE_SESSION'
   | 'COMMAND_TIMEOUT'
+  | 'RETRY_RATE_LIMITED'
   | 'UNKNOWN';
 
 export interface BridgeError {
@@ -96,6 +97,9 @@ export interface BridgeDiagnostics {
   retryByCommandType: Partial<Record<BridgeCommandType, number>>;
   /** Retry totals per concrete pending key (e.g. "CONT:7") — useful to spot a flaky channel. */
   retryByKey: Record<string, number>;
+  /** How many retries were rejected by the rate limiter (per key + total). */
+  rateLimitedByKey: Record<string, number>;
+  rateLimitedTotal: number;
 }
 
 /** Per-command-class retry settings. */
@@ -116,6 +120,33 @@ export interface BridgeRetryPolicy {
 export const DEFAULT_RETRY_POLICY: BridgeRetryPolicy = {
   CONT: { maxRetries: 2, perAttemptTimeoutMs: 2000 },
   CDS:  { maxRetries: 2, perAttemptTimeoutMs: 2000 },
+};
+
+/**
+ * Sliding-window rate limit for retries.
+ *
+ * Two ceilings are enforced inside the same `windowMs`:
+ *  - `maxRetriesPerKey` — protects against a single noisy channel hammering the bus
+ *  - `maxRetriesTotal`  — protects against fleet-wide retry storms
+ *
+ * Limits are evaluated *before* a retry is sent. When a limit trips, the retry
+ * is suppressed, `lastErrorCode` is set to `RETRY_RATE_LIMITED`, and a
+ * `retry_rate_limited` event is emitted.
+ *
+ * NOTE: This is a purely client-side, in-memory limiter living in the hardware
+ * bridge — not a backend rate limiter. Its scope is preventing a single bridge
+ * instance from flooding the wire/transport.
+ */
+export interface BridgeRetryRateLimit {
+  windowMs: number;
+  maxRetriesPerKey: number;
+  maxRetriesTotal: number;
+}
+
+export const DEFAULT_RETRY_RATE_LIMIT: BridgeRetryRateLimit = {
+  windowMs: 60_000,
+  maxRetriesPerKey: 10,
+  maxRetriesTotal: 60,
 };
 
 /** Why a single retry attempt fired. */
