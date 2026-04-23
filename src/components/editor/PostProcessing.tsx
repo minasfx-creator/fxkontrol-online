@@ -11,6 +11,8 @@ import { ACESHuePreserveEffect } from '@/render_ultra/postprocessing/acesHuePres
 import { LuminanceFilmGrainEffect } from '@/render_ultra/postprocessing/luminanceFilmGrain';
 import { AtmosphericDepthEffect } from '@/render_ultra/postprocessing/atmosphericDepth';
 
+type EffectUniformMap = Map<string, Uniform>;
+
 const TONE_MAP: Record<ViewTransform, ToneMappingMode> = {
   'aces-filmic': ToneMappingMode.ACES_FILMIC,
   'agx': ToneMappingMode.AGX,
@@ -47,6 +49,10 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 class SharpenEffect extends Effect {
+  private get effectUniforms(): EffectUniformMap {
+    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
+  }
+
   constructor({ strength = 0.1 }: { strength?: number } = {}) {
     super('SharpenEffect', SHARPEN_FRAGMENT, {
       uniforms: new Map([['strength', new Uniform(strength)]]),
@@ -54,7 +60,7 @@ class SharpenEffect extends Effect {
   }
 
   set strength(value: number) {
-    (this.uniforms.get('strength') as Uniform).value = value;
+    (this.effectUniforms.get('strength') as Uniform).value = value;
   }
 }
 
@@ -115,6 +121,10 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 class HeatDistortionEffect extends Effect {
+  private get effectUniforms(): EffectUniformMap {
+    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
+  }
+
   constructor({ intensity = 0.5, scale = 1.0 }: { intensity?: number; scale?: number } = {}) {
     super('HeatDistortionEffect', HEAT_DISTORTION_FRAGMENT, {
       uniforms: new Map([
@@ -126,12 +136,12 @@ class HeatDistortionEffect extends Effect {
   }
 
   update(_renderer: any, _inputBuffer: any, deltaTime: number) {
-    const timeUniform = this.uniforms.get('time') as Uniform;
+    const timeUniform = this.effectUniforms.get('time') as Uniform;
     timeUniform.value += deltaTime;
   }
 
   set intensity(value: number) {
-    (this.uniforms.get('intensity') as Uniform).value = value;
+    (this.effectUniforms.get('intensity') as Uniform).value = value;
   }
 }
 
@@ -178,6 +188,10 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 class MotionBlurEffect extends Effect {
+  private get effectUniforms(): EffectUniformMap {
+    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
+  }
+
   constructor({ intensity = 0.5 }: { intensity?: number } = {}) {
     super('MotionBlurEffect', MOTION_BLUR_FRAGMENT, {
       uniforms: new Map([['intensity', new Uniform(intensity)]]),
@@ -185,7 +199,7 @@ class MotionBlurEffect extends Effect {
   }
 
   set intensity(value: number) {
-    (this.uniforms.get('intensity') as Uniform).value = value;
+    (this.effectUniforms.get('intensity') as Uniform).value = value;
   }
 }
 
