@@ -173,14 +173,12 @@ class BridgePhysicalController {
   failCommand(id: string, reason: string): void {
     const record = this.commands.get(id);
     if (!record || record.state === 'failed' || record.state === 'done') return;
-    if (record.state !== 'failed') {
-      const now = performance.now();
-      record.state = 'failed';
-      record.updatedAt = now;
-      record.failureReason = reason;
-      record.history.push({ state: 'failed', at: now, reason });
-      this.emit();
-    }
+    const now = performance.now();
+    record.state = 'failed';
+    record.updatedAt = now;
+    record.failureReason = reason;
+    record.history.push({ state: 'failed', at: now, reason });
+    this.emit();
   }
 
   wasChannelFired(channelId: string): boolean {
