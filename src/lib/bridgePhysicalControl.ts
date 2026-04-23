@@ -316,10 +316,10 @@ class BridgePhysicalController {
     record.history.push({ state: next, at: now, reason });
     const timeline = this.commandTimeline.get(id);
     if (timeline) {
-      if (next === 'sent') timeline.sentAt = now;
-      if (next === 'confirmed') timeline.ackAt = now;
-      if (next === 'done') timeline.doneAt = now;
-      if (next === 'failed') timeline.failedAt = now;
+      if (next === 'sent') timeline.sentAt = Math.max(timeline.sentAt ?? 0, now);
+      if (next === 'confirmed') timeline.ackAt = Math.max(timeline.ackAt ?? 0, now);
+      if (next === 'done') timeline.doneAt = Math.max(timeline.doneAt ?? 0, now);
+      if (next === 'failed') timeline.failedAt = Math.max(timeline.failedAt ?? 0, now);
     }
     if (record.channelId) {
       if (next === 'sent') this.pushHilLog({ time: now, channel: record.channelId, event: 'sent' });

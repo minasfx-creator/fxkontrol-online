@@ -819,9 +819,14 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       return;
     }
     bridgePhysicalController.cancelHilCommand(latest.commandId);
+    const pendingTimer = fireTimers.current.get(latest.channel);
+    if (pendingTimer) {
+      clearTimeout(pendingTimer);
+      fireTimers.current.delete(latest.channel);
+    }
     setChannels(prev => prev.map((channel) => channel.id === latest.channel ? { ...channel, firing: false } : channel));
     toast.warning(`CANCEL LIVE aplicado em ${latest.channel}`);
-  }, [commandTimeline]);
+  }, [commandTimeline, setChannels]);
 
   // ─── CUE Key firing with Lock/Tap + firing rules ───
   const fireCueKey = useCallback((keyIndex: number) => {
