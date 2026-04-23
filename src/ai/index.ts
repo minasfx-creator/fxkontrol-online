@@ -32,3 +32,7 @@ export type {
   JoiValidationResult,
 } from './showGraphV2';
 export { createShowGraphV2, validateShowGraphV2 } from './showGraphV2';
+
+// ─── LLM adapter (Sprint LLM-1/2) ──────────────────────────────────
+export type { JoiLLMResponse } from './joiLLMAdapter';
+export { generateJoiGraph } from './joiLLMAdapter';
