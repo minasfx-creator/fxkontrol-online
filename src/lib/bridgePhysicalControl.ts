@@ -56,6 +56,34 @@ export interface PhysicalRuntimeSnapshot {
   activeCommands: PhysicalCommandRecord[];
 }
 
+export interface HilLogEntry {
+  time: number;
+  channel: string;
+  event: 'scheduled' | 'sent' | 'ack' | 'loss' | 'reorder' | 'cancel';
+  delayMs?: number;
+}
+
+export interface CommandTimeline {
+  commandId: string;
+  channel: string;
+  scheduledAt: number;
+  sentAt?: number;
+  ackAt?: number;
+  doneAt?: number;
+  failedAt?: number;
+}
+
+export interface HilRunReport {
+  profile: HilFaultProfile;
+  logs: readonly HilLogEntry[];
+  timeline: readonly CommandTimeline[];
+  stats: {
+    total: number;
+    acked: number;
+    failed: number;
+  };
+}
+
 export interface FireLockoutInput {
   systemArmed: boolean;
   deadmanHeld: boolean;
@@ -72,6 +100,17 @@ export interface FireLockoutResult {
 }
 
 type RuntimeListener = () => void;
+
+function deepFreeze<T>(value: T): Readonly<T> {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
+    return value as Readonly<T>;
+  }
+  Object.freeze(value);
+  for (const nested of Object.values(value as Record<string, unknown>)) {
+    if (nested && typeof nested === 'object') deepFreeze(nested);
+  }
+  return value as Readonly<T>;
+}
 
 const VALID_TRANSITIONS: Record<PhysicalState, PhysicalState[]> = {
   intent: ['queued', 'failed'],
@@ -126,6 +165,9 @@ class BridgePhysicalController {
   private hilModeEnabled = false;
   private hilProfile: HilFaultProfile = { jitterMs: 15, baseDelayMs: 40, packetLossRate: 0, reorderRate: 0 };
   private hilHarness = new HilBridgeHarness(this.hilProfile);
+  private hilLogs: HilLogEntry[] = [];
+  private commandTimeline = new Map<string, CommandTimeline>();
+  private hilTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   subscribe(listener: RuntimeListener): () => void {
     this.listeners.add(listener);
@@ -160,6 +202,69 @@ class BridgePhysicalController {
     return this.hilHarness.fire(channelId, onAcknowledge);
   }
 
+  private pushHilLog(entry: HilLogEntry): void {
+    this.hilLogs.push(entry);
+    if (this.hilLogs.length > 512) {
+      this.hilLogs = this.hilLogs.slice(-512);
+    }
+  }
+
+  getHilLogs(): readonly HilLogEntry[] {
+    return deepFreeze([...this.hilLogs]);
+  }
+
+  getCommandTimeline(): readonly CommandTimeline[] {
+    return deepFreeze([...this.commandTimeline.values()].map((entry) => ({ ...entry })));
+  }
+
+  validateHilBeforeFire(): { ok: boolean; reason?: string } {
+    if (!this.hilModeEnabled) return { ok: true };
+    if (this.hilProfile.packetLossRate > 0.5) return { ok: false, reason: 'loss-rate-too-high' };
+    if (this.hilProfile.baseDelayMs > 500) return { ok: false, reason: 'delay-too-high' };
+    return { ok: true };
+  }
+
+  exportHilReport(): Readonly<HilRunReport> {
+    const timeline = [...this.commandTimeline.values()].map((entry) => ({ ...entry }));
+    const acked = timeline.filter((entry) => entry.ackAt).length;
+    const failed = timeline.filter((entry) => entry.failedAt).length;
+    return deepFreeze({
+      profile: { ...this.hilProfile },
+      logs: [...this.hilLogs],
+      timeline,
+      stats: {
+        total: this.commandTimeline.size,
+        acked,
+        failed,
+      },
+    });
+  }
+
+  registerHilTimer(commandId: string, timer: ReturnType<typeof setTimeout>): void {
+    this.hilTimers.set(commandId, timer);
+  }
+
+  clearHilTimer(commandId: string): void {
+    this.hilTimers.delete(commandId);
+  }
+
+  cancelHilCommand(commandId: string): void {
+    const timer = this.hilTimers.get(commandId);
+    const command = this.commands.get(commandId);
+    if (timer) {
+      clearTimeout(timer);
+      this.hilTimers.delete(commandId);
+    }
+    if (command?.channelId) {
+      this.pushHilLog({
+        time: performance.now(),
+        event: 'cancel',
+        channel: command.channelId,
+      });
+    }
+    this.failCommand(commandId, 'cancelled');
+  }
+
   beginCommand(id: string, target: string, channelId?: string): PhysicalCommandRecord {
     const now = performance.now();
     const record: PhysicalCommandRecord = {
@@ -172,6 +277,14 @@ class BridgePhysicalController {
       history: [{ state: 'intent', at: now }],
     };
     this.commands.set(id, record);
+    if (channelId) {
+      this.commandTimeline.set(id, {
+        commandId: id,
+        channel: channelId,
+        scheduledAt: now,
+      });
+      this.pushHilLog({ time: now, channel: channelId, event: 'scheduled' });
+    }
     this.emit();
     return record;
   }
@@ -185,6 +298,17 @@ class BridgePhysicalController {
     record.updatedAt = now;
     if (next === 'failed') record.failureReason = reason;
     record.history.push({ state: next, at: now, reason });
+    const timeline = this.commandTimeline.get(id);
+    if (timeline) {
+      if (next === 'sent') timeline.sentAt = now;
+      if (next === 'confirmed') timeline.ackAt = now;
+      if (next === 'done') timeline.doneAt = now;
+      if (next === 'failed') timeline.failedAt = now;
+    }
+    if (record.channelId) {
+      if (next === 'sent') this.pushHilLog({ time: now, channel: record.channelId, event: 'sent' });
+      if (next === 'confirmed') this.pushHilLog({ time: now, channel: record.channelId, event: 'ack' });
+    }
     this.emit();
     return record;
   }
@@ -197,6 +321,9 @@ class BridgePhysicalController {
     record.updatedAt = now;
     record.failureReason = reason;
     record.history.push({ state: 'failed', at: now, reason });
+    const timeline = this.commandTimeline.get(id);
+    if (timeline) timeline.failedAt = now;
+    if (record.channelId) this.pushHilLog({ time: now, channel: record.channelId, event: 'loss' });
     this.emit();
   }
 
@@ -331,13 +458,14 @@ export interface HilFaultProfile {
 export class HilBridgeHarness {
   constructor(private profile: HilFaultProfile = { jitterMs: 15, baseDelayMs: 40, packetLossRate: 0, reorderRate: 0 }) {}
 
-  async fire(channelId: string, onAcknowledge: (channel: string) => void): Promise<boolean> {
+  async fire(channelId: string, onAcknowledge: (channel: string, meta: { delayMs: number; reordered: boolean }) => void): Promise<boolean> {
     if (Math.random() < this.profile.packetLossRate) return false;
     const jitter = (Math.random() - 0.5) * 2 * this.profile.jitterMs;
-    const reorderPenalty = Math.random() < this.profile.reorderRate ? this.profile.baseDelayMs : 0;
+    const reordered = Math.random() < this.profile.reorderRate;
+    const reorderPenalty = reordered ? this.profile.baseDelayMs : 0;
     const delay = Math.max(0, this.profile.baseDelayMs + jitter + reorderPenalty);
     await new Promise((resolve) => setTimeout(resolve, delay));
-    onAcknowledge(channelId);
+    onAcknowledge(channelId, { delayMs: delay, reordered });
     return true;
   }
 }
