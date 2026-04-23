@@ -28,6 +28,7 @@ const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
 const Admin = lazy(lazyRetry(() => import("./pages/Admin")));
 const AccreditationDashboard = lazy(lazyRetry(() => import("./pages/AccreditationDashboard")));
 const PlatformStatus = lazy(lazyRetry(() => import("./pages/PlatformStatus")));
+const JoiPanel = lazy(lazyRetry(() => import("./ai/ui/JoiPanel")));
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ function App() {
                     <Route path="/platform-status" element={<PlatformStatus />} />
                     <Route path="/admin" element={<Admin />} />
                     <Route path="/accreditation" element={<AccreditationDashboard />} />
+                    <Route path="/joi" element={<JoiPanel />} />
                   </Route>
                   <Route path="*" element={<NotFound />} />
                 </Routes>
