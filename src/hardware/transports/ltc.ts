@@ -15,7 +15,7 @@ export interface LTCTransportOptions {
   rewindThreshold: number;
 }
 
-export type LTCSyncMode = 'soft' | 'hard';
+export type LTCSyncMode = 'soft' | 'hard' | 'rate';
 
 export type LTCState = 'idle' | 'locking' | 'locked-soft' | 'locked-hard' | 'lost';
 
@@ -24,6 +24,7 @@ export interface LTCSyncSample {
   syncedTime: number;
   driftSec: number;
   mode: LTCSyncMode;
+  rate?: number;
   state: LTCState;
   sequence: number;
   reason: 'soft-chase' | 'deadband' | 'hard-resync' | 'rewind-detect' | 'seek-confirm';
@@ -43,6 +44,8 @@ export interface LTCTransportDiagnostics {
   lockCounter: number;
   unlockCounter: number;
   smoothingFactor: number;
+  currentRate: number;
+  rateIntegral: number;
   deadbandSec: number;
   pauseTimeoutMs: number;
   lockFrames: number;
@@ -92,6 +95,8 @@ export class LTCTransport {
   private locked = false;
   private sequence = 0;
   private lastSyncReason: LTCSyncSample['reason'] | 'idle' = 'idle';
+  private rate = 1;
+  private rateIntegral = 0;
 
   constructor(
     private readonly target: LTCSyncTarget,
@@ -144,6 +149,9 @@ export class LTCTransport {
       this.lastMode = 'hard';
       this.lastSyncedTime = seconds;
       this.lastSyncReason = delta < -this.options.rewindThreshold ? 'rewind-detect' : 'hard-resync';
+      this.rate = 1;
+      this.rateIntegral = 0;
+      this.target.setRate?.(1);
       this.target.syncExternalTime(seconds);
 
       return {
@@ -151,6 +159,7 @@ export class LTCTransport {
         syncedTime: seconds,
         driftSec: delta,
         mode: 'hard',
+        rate: 1,
         state: this.state,
         sequence: this.sequence,
         reason: this.lastSyncReason,
@@ -173,6 +182,7 @@ export class LTCTransport {
         syncedTime: current,
         driftSec: delta,
         mode: 'soft',
+        rate: this.rate,
         state: this.state,
         sequence: this.sequence,
         reason: this.lastSyncReason,
@@ -184,19 +194,26 @@ export class LTCTransport {
       Math.min(this.options.maxCorrectionPerFrame, delta),
     );
 
-    const syncedTime = this.smoothTime(current, clampedDelta);
+    const drift = seconds - current;
+    const kp = this.options.smoothingFactor;
+    const ki = 0.02;
 
-    this.lastSyncedTime = syncedTime;
-    this.lastMode = 'soft';
+    this.rateIntegral += drift * ki;
+    this.rate = 1 + drift * kp + this.rateIntegral;
+    this.rate = Math.max(0.98, Math.min(1.02, this.rate));
+
+    this.lastSyncedTime = current;
+    this.lastMode = 'rate';
     this.state = 'locked-soft';
     this.lastSyncReason = 'soft-chase';
-    this.target.syncExternalTime(syncedTime);
+    this.target.setRate?.(this.rate);
 
     return {
       incomingTime: seconds,
-      syncedTime,
+      syncedTime: current,
       driftSec: delta,
-      mode: 'soft',
+      mode: 'rate',
+      rate: this.rate,
       state: this.state,
       sequence: this.sequence,
       reason: this.lastSyncReason,
@@ -233,6 +250,8 @@ export class LTCTransport {
     this.lastMode = 'idle';
     this.sequence = 0;
     this.lastSyncReason = 'idle';
+    this.rate = 1;
+    this.rateIntegral = 0;
     this.state = 'idle';
     this.lockCounter = 0;
     this.unlockCounter = 0;
@@ -254,6 +273,8 @@ export class LTCTransport {
       lockCounter: this.lockCounter,
       unlockCounter: this.unlockCounter,
       smoothingFactor: this.options.smoothingFactor,
+      currentRate: this.rate,
+      rateIntegral: this.rateIntegral,
       deadbandSec: this.options.deadbandSec,
       pauseTimeoutMs: this.options.pauseTimeoutMs,
       lockFrames: this.options.lockFrames,
@@ -266,10 +287,6 @@ export class LTCTransport {
 
   getState(): LTCState {
     return this.state;
-  }
-
-  private smoothTime(current: number, delta: number): number {
-    return current + delta * this.options.smoothingFactor;
   }
 }
 
