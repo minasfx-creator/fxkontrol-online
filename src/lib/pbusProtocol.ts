@@ -70,13 +70,36 @@ export interface PBusDevice {
 }
 
 export interface PBusEvent {
-  type: 'device-discovered' | 'status-update' | 'cue-update' | 'fire-confirm' | 'arm-confirm' | 'estop' | 'wireless-update' | 'error';
+  type:
+    | 'device-discovered'
+    | 'status-update'
+    | 'cue-update'
+    | 'fire-confirm'
+    | 'arm-confirm'
+    | 'estop'
+    | 'wireless-update'
+    | 'error'
+    | 'state-change'
+    | 'heartbeat-timeout';
   deviceAddress: number;
   timestamp: number;
   data?: any;
 }
 
 export type PBusEventListener = (event: PBusEvent) => void;
+
+/**
+ * Transport state machine — replaces the simplistic isConnected:boolean.
+ * Honest representation of the link lifecycle.
+ */
+export type PBusTransportState =
+  | 'idle'         // never connected
+  | 'connecting'   // user-initiated connect in progress
+  | 'connected'    // healthy, recent heartbeat
+  | 'degraded'     // connected but heartbeat stale or send errors
+  | 'reconnecting' // attempting recovery after error
+  | 'failed'       // gave up; manual reconnect required
+  | 'closed';      // user closed
 
 // ═══════════════════════════════════════════════════════════
 // CRC16-CCITT
@@ -237,6 +260,24 @@ export function parseWirelessStatus(payload: Uint8Array): { rssi433: number; rss
 // PBUS CONTROLLER — Singleton
 // ═══════════════════════════════════════════════════════════
 
+export interface PBusDiagnostics {
+  state: PBusTransportState;
+  lastSeenAt: number | null;
+  lastSendAt: number | null;
+  lastErrorAt: number | null;
+  lastError: string | null;
+  queueDepth: number;
+  sendsTotal: number;
+  sendErrors: number;
+  parseErrors: number;
+  bufferOverflows: number;
+  reconnectAttempts: number;
+}
+
+const DEFAULT_SEND_TIMEOUT_MS = 250;
+const DEFAULT_HEARTBEAT_TIMEOUT_MS = 2000;
+const MAX_RING_BUFFER = 4096;
+
 export class PBusController {
   private port: any = null;
   private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
@@ -247,6 +288,24 @@ export class PBusController {
   private ringWriteOffset = 0;
   private readLoop = false;
 
+  // ── Honest connection state ────────────────────────────────────────
+  private _state: PBusTransportState = 'idle';
+  private _lastSeenAt: number | null = null;
+  private _lastSendAt: number | null = null;
+  private _lastErrorAt: number | null = null;
+  private _lastError: string | null = null;
+  private heartbeatTimerId: ReturnType<typeof setInterval> | null = null;
+  private readonly heartbeatTimeoutMs = DEFAULT_HEARTBEAT_TIMEOUT_MS;
+
+  // ── Send queue (single-flight serial writer) ──────────────────────
+  private writeChain: Promise<void> = Promise.resolve();
+  private _queueDepth = 0;
+  private _sendsTotal = 0;
+  private _sendErrors = 0;
+  private _parseErrors = 0;
+  private _bufferOverflows = 0;
+  private _reconnectAttempts = 0;
+
   discoveredDevices: Map<number, PBusDevice> = new Map();
 
   on(listener: PBusEventListener): () => void {
@@ -255,26 +314,68 @@ export class PBusController {
   }
 
   private emit(event: PBusEvent) {
-    this.listeners.forEach(l => l(event));
+    // Listener safety: never let one bad listener kill fanout
+    for (const l of this.listeners) {
+      try { l(event); } catch { /* swallow */ }
+    }
   }
 
+  private setState(next: PBusTransportState, errorMsg?: string): void {
+    if (this._state === next) return;
+    this._state = next;
+    if (errorMsg) {
+      this._lastError = errorMsg;
+      this._lastErrorAt = Date.now();
+    }
+    this.emit({ type: 'state-change', deviceAddress: 0, timestamp: Date.now(), data: { state: next, error: errorMsg } });
+  }
+
+  /** @deprecated Use getState() / getDiagnostics() — boolean hides degraded/reconnecting */
   get isConnected(): boolean {
-    return this.port !== null && this.readLoop;
+    return this._state === 'connected' || this._state === 'degraded';
+  }
+
+  getState(): PBusTransportState { return this._state; }
+
+  getDiagnostics(): Readonly<PBusDiagnostics> {
+    return {
+      state: this._state,
+      lastSeenAt: this._lastSeenAt,
+      lastSendAt: this._lastSendAt,
+      lastErrorAt: this._lastErrorAt,
+      lastError: this._lastError,
+      queueDepth: this._queueDepth,
+      sendsTotal: this._sendsTotal,
+      sendErrors: this._sendErrors,
+      parseErrors: this._parseErrors,
+      bufferOverflows: this._bufferOverflows,
+      reconnectAttempts: this._reconnectAttempts,
+    };
   }
 
   async connect(): Promise<void> {
     if (!('serial' in navigator)) throw new Error('Web Serial API not supported');
-    const nav = navigator as any;
-    this.port = await nav.serial.requestPort();
-    await this.port.open({ baudRate: PBUS_BAUD_RATE, dataBits: PBUS_DATA_BITS, stopBits: PBUS_STOP_BITS, parity: PBUS_PARITY });
-    this.reader = this.port.readable.getReader();
-    this.writer = this.port.writable.getWriter();
-    this.readLoop = true;
-    this.startReading();
+    this.setState('connecting');
+    try {
+      const nav = navigator as any;
+      this.port = await nav.serial.requestPort();
+      await this.port.open({ baudRate: PBUS_BAUD_RATE, dataBits: PBUS_DATA_BITS, stopBits: PBUS_STOP_BITS, parity: PBUS_PARITY });
+      this.reader = this.port.readable.getReader();
+      this.writer = this.port.writable.getWriter();
+      this.readLoop = true;
+      this._lastSeenAt = Date.now();
+      this.setState('connected');
+      this.startReading();
+      this.startHeartbeatMonitor();
+    } catch (err) {
+      this.setState('failed', err instanceof Error ? err.message : String(err));
+      throw err;
+    }
   }
 
   async disconnect(): Promise<void> {
     this.readLoop = false;
+    this.stopHeartbeatMonitor();
     try {
       if (this.reader) { await this.reader.cancel().catch(() => {}); this.reader.releaseLock(); }
       if (this.writer) { await this.writer.close().catch(() => {}); this.writer.releaseLock(); }
@@ -284,16 +385,59 @@ export class PBusController {
     this.reader = null;
     this.writer = null;
     this.discoveredDevices.clear();
+    this.ringWriteOffset = 0;
+    this.setState('closed');
   }
 
-  async send(frame: Uint8Array): Promise<void> {
-    if (!this.writer) throw new Error('PBUS not connected');
-    await this.writer.write(frame);
+  /**
+   * Single-flight serial send with timeout.
+   * All callers chain on writeChain so writes never interleave bytes —
+   * Web Serial does NOT guarantee atomicity between concurrent awaits.
+   */
+  async send(frame: Uint8Array, timeoutMs = DEFAULT_SEND_TIMEOUT_MS): Promise<void> {
+    if (!this.writer || (this._state !== 'connected' && this._state !== 'degraded')) {
+      throw new Error(`PBUS not connected (state=${this._state})`);
+    }
+    this._queueDepth++;
+    this._sendsTotal++;
+    const previous = this.writeChain;
+    let release!: () => void;
+    this.writeChain = new Promise<void>((res) => { release = res; });
+
+    try {
+      await previous;
+      const writer = this.writer;
+      if (!writer) throw new Error('PBUS writer lost mid-queue');
+
+      // Race the write against a timeout — driver hangs are real
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      const timeout = new Promise<never>((_, rej) => {
+        timer = setTimeout(() => rej(new Error(`PBUS send timeout (${timeoutMs}ms)`)), timeoutMs);
+      });
+      try {
+        await Promise.race([writer.write(frame), timeout]);
+        this._lastSendAt = Date.now();
+      } finally {
+        if (timer !== null) clearTimeout(timer);
+      }
+    } catch (err) {
+      this._sendErrors++;
+      const msg = err instanceof Error ? err.message : String(err);
+      this._lastError = msg;
+      this._lastErrorAt = Date.now();
+      this.emit({ type: 'error', deviceAddress: 0, timestamp: Date.now(), data: msg });
+      // Send failure means link is sick — degrade, don't pretend
+      if (this._state === 'connected') this.setState('degraded', msg);
+      throw err;
+    } finally {
+      this._queueDepth--;
+      release();
+    }
   }
 
   async discoverDevices(maxAddr = MAX_SCAN_ADDR): Promise<void> {
     for (let addr = 1; addr <= maxAddr; addr++) {
-      await this.send(buildDiscoverFrame(addr));
+      try { await this.send(buildDiscoverFrame(addr)); } catch { break; }
       await new Promise(r => setTimeout(r, 40));
     }
   }
@@ -309,22 +453,74 @@ export class PBusController {
   async requestWireless(addr: number): Promise<void> { await this.send(buildWirelessQuery(addr)); }
   async setBand(addr: number, band: PBusWirelessBand): Promise<void> { await this.send(buildSetBandFrame(addr, band)); }
 
+  /**
+   * Read loop. NEVER dies silently — every error path emits and updates state.
+   */
   private async startReading(): Promise<void> {
     while (this.readLoop && this.reader) {
       try {
         const { value, done } = await this.reader.read();
-        if (done) break;
-        if (value) this.processIncoming(value);
-      } catch { break; }
+        if (done) {
+          this.setState('degraded', 'reader stream closed');
+          this.emit({ type: 'error', deviceAddress: 0, timestamp: Date.now(), data: 'reader stream closed' });
+          break;
+        }
+        if (value) {
+          this._lastSeenAt = Date.now();
+          // Recovery: bytes flowing again after degraded
+          if (this._state === 'degraded') this.setState('connected');
+          this.processIncoming(value);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this._lastError = msg;
+        this._lastErrorAt = Date.now();
+        this.setState('failed', msg);
+        this.emit({ type: 'error', deviceAddress: 0, timestamp: Date.now(), data: msg });
+        break;
+      }
+    }
+    this.readLoop = false;
+  }
+
+  /**
+   * Heartbeat monitor: passively watches lastSeenAt and demotes state
+   * to 'degraded' if no bytes in window. Does NOT auto-arm or auto-fire.
+   */
+  private startHeartbeatMonitor(): void {
+    this.stopHeartbeatMonitor();
+    if (typeof setInterval === 'undefined') return;
+    this.heartbeatTimerId = setInterval(() => {
+      if (this._state !== 'connected') return;
+      if (this._lastSeenAt === null) return;
+      const stale = Date.now() - this._lastSeenAt;
+      if (stale > this.heartbeatTimeoutMs) {
+        this.setState('degraded', `no rx for ${stale}ms`);
+        this.emit({ type: 'heartbeat-timeout', deviceAddress: 0, timestamp: Date.now(), data: { staleMs: stale } });
+      }
+    }, Math.max(250, Math.floor(this.heartbeatTimeoutMs / 2)));
+  }
+
+  private stopHeartbeatMonitor(): void {
+    if (this.heartbeatTimerId !== null) {
+      clearInterval(this.heartbeatTimerId);
+      this.heartbeatTimerId = null;
     }
   }
 
   private processIncoming(chunk: Uint8Array): void {
     // Grow ring buffer if needed (rare)
     if (this.ringWriteOffset + chunk.length > this.ringBuffer.length) {
-      if (this.ringWriteOffset + chunk.length > 4096) {
-        // Overflow protection: reset buffer
+      if (this.ringWriteOffset + chunk.length > MAX_RING_BUFFER) {
+        // Overflow protection: reset buffer + record + emit
+        this._bufferOverflows++;
         this.ringWriteOffset = 0;
+        this.emit({
+          type: 'error',
+          deviceAddress: 0,
+          timestamp: Date.now(),
+          data: `PBUS ring buffer overflow (chunk=${chunk.length}, total overflows=${this._bufferOverflows})`,
+        });
         return;
       }
       const newBuf = new Uint8Array(Math.max(this.ringBuffer.length * 2, this.ringWriteOffset + chunk.length));
