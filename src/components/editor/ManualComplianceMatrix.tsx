@@ -16,6 +16,7 @@ interface ComplianceRow {
   status: ComplianceStatus;
   evidence: string;
   action: string;
+  criticalForGoLive?: boolean;
 }
 
 const STATUS_CFG: Record<ComplianceStatus, { icon: typeof CheckCircle2; color: string; bg: string; label: string }> = {
@@ -28,13 +29,13 @@ const STATUS_CFG: Record<ComplianceStatus, { icon: typeof CheckCircle2; color: s
 const COMPLIANCE_DATA: ComplianceRow[] = [
   // NFPA 1123
   { source: 'NFPA 1123', clause: '§4.3', requirement: 'Minimum safety distances for aerial shells', status: 'implemented', evidence: 'PyroSafetyZones.tsx + SafetyDistanceConfig', action: 'None' },
-  { source: 'NFPA 1123', clause: '§5.1', requirement: 'Operator qualification verification', status: 'partial', evidence: 'Auth + role system exists', action: 'Add credential check UI' },
+  { source: 'NFPA 1123', clause: '§5.1', requirement: 'Operator qualification verification', status: 'partial', evidence: 'Auth + role system exists', action: 'Add credential check UI', criticalForGoLive: true },
   { source: 'NFPA 1123', clause: '§6.2', requirement: 'Electrical firing system safety interlocks', status: 'implemented', evidence: 'SafetyInterlockManager + ARM/DISARM flow', action: 'None' },
-  { source: 'NFPA 1123', clause: '§7.1', requirement: 'Weather monitoring and wind limits', status: 'planned', evidence: 'WeatherAdapter interface defined', action: 'Implement weather API integration' },
+  { source: 'NFPA 1123', clause: '§7.1', requirement: 'Weather monitoring and wind limits', status: 'planned', evidence: 'WeatherAdapter interface defined', action: 'Implement weather API integration', criticalForGoLive: true },
   // NFPA 1126
   { source: 'NFPA 1126', clause: '§3.3', requirement: 'Proximate audience pyro safety distances', status: 'implemented', evidence: 'SafetyDistanceConfig proximity mode', action: 'None' },
   { source: 'NFPA 1126', clause: '§4.4', requirement: 'Fallback zone definition', status: 'implemented', evidence: 'PyroSafetyZones fallback volumes', action: 'None' },
-  { source: 'NFPA 1126', clause: '§5.2', requirement: 'Fire watch and suppression equipment log', status: 'planned', evidence: 'AuditTrail can log events', action: 'Add fire watch checklist' },
+  { source: 'NFPA 1126', clause: '§5.2', requirement: 'Fire watch and suppression equipment log', status: 'planned', evidence: 'AuditTrail can log events', action: 'Add fire watch checklist', criticalForGoLive: true },
   // Showven
   { source: 'Showven Manual', clause: 'Ch.3', requirement: 'Cold spark machine DMX addressing', status: 'implemented', evidence: 'DMXUniverseManager + AddressingConsole', action: 'None' },
   { source: 'Showven Manual', clause: 'Ch.5', requirement: 'Machine safety distance (2m minimum)', status: 'implemented', evidence: 'SafetyDistanceConfig showven profile', action: 'None' },
@@ -42,13 +43,13 @@ const COMPLIANCE_DATA: ComplianceRow[] = [
   // Finale 3D
   { source: 'Finale 3D', clause: 'Import', requirement: '.vviz file import and trajectory parsing', status: 'implemented', evidence: 'VVizImporter.ts', action: 'None' },
   { source: 'Finale 3D', clause: 'Export', requirement: 'Finale-compatible position export', status: 'implemented', evidence: 'ExportCoordinator Finale channel', action: 'None' },
-  { source: 'Finale 3D', clause: 'Sync', requirement: 'Timecode synchronization', status: 'partial', evidence: 'SMPTE timecode parser exists', action: 'Add LTC input adapter' },
+  { source: 'Finale 3D', clause: 'Sync', requirement: 'Timecode synchronization', status: 'partial', evidence: 'SMPTE timecode parser exists', action: 'Add LTC input adapter', criticalForGoLive: true },
   // FireOne
   { source: 'FireOne Protocol', clause: 'FIR-01', requirement: '.fir script generation with timing', status: 'implemented', evidence: 'FireOneExportConsole + fireOneExporter.ts', action: 'None' },
   { source: 'FireOne Protocol', clause: 'FIR-02', requirement: 'Module/pin addressing scheme', status: 'implemented', evidence: 'AddressingConsole + channel mapping', action: 'None' },
   { source: 'FireOne Protocol', clause: 'FIR-03', requirement: 'Continuity test protocol', status: 'implemented', evidence: 'ContinuityMatrix.tsx', action: 'None' },
   // Art-Net
-  { source: 'Art-Net Spec', clause: 'ArtPoll', requirement: 'Node discovery via ArtPoll', status: 'partial', evidence: 'ArtNetNodeAdapter exists, discovery simulated', action: 'Implement UDP ArtPoll' },
+  { source: 'Art-Net Spec', clause: 'ArtPoll', requirement: 'Node discovery via ArtPoll', status: 'partial', evidence: 'ArtNetNodeAdapter exists, discovery simulated', action: 'Implement UDP ArtPoll', criticalForGoLive: true },
   { source: 'Art-Net Spec', clause: 'ArtDmx', requirement: 'DMX data transmission', status: 'implemented', evidence: 'DMXUniverseManager + Art-Net output', action: 'None' },
   { source: 'Art-Net Spec', clause: 'ArtSync', requirement: 'Universe synchronization', status: 'planned', evidence: 'Interface defined', action: 'Implement sync packet' },
   // VDL
@@ -59,8 +60,8 @@ const COMPLIANCE_DATA: ComplianceRow[] = [
   { source: 'ESP32 Datasheet', clause: 'ADC', requirement: 'Battery voltage ADC monitoring', status: 'implemented', evidence: 'BatteryMonitorAdapter ADC simulation', action: 'Connect real ADC' },
   { source: 'ESP32 Datasheet', clause: 'WiFi', requirement: 'WiFi/ESP-NOW field communication', status: 'planned', evidence: 'Transport interface defined', action: 'Implement ESP-NOW bridge' },
   // SMPTE
-  { source: 'SMPTE Timecode', clause: 'TC-30', requirement: '30fps timecode sync', status: 'partial', evidence: 'TimelineManager supports 30fps', action: 'Add hardware LTC reader' },
-  { source: 'SMPTE Timecode', clause: 'TC-MTC', requirement: 'MIDI timecode input', status: 'planned', evidence: 'Interface planned', action: 'Implement Web MIDI API' },
+  { source: 'SMPTE Timecode', clause: 'TC-30', requirement: '30fps timecode sync', status: 'partial', evidence: 'TimelineManager supports 30fps', action: 'Add hardware LTC reader', criticalForGoLive: true },
+  { source: 'SMPTE Timecode', clause: 'TC-MTC', requirement: 'MIDI timecode input', status: 'planned', evidence: 'Interface planned', action: 'Implement Web MIDI API', criticalForGoLive: true },
 ];
 
 export default function ManualComplianceMatrix() {
@@ -75,6 +76,12 @@ export default function ManualComplianceMatrix() {
     const impl = counts.implemented + counts.partial * 0.5;
     return total > 0 ? Math.round((impl / total) * 100) : 0;
   }, [counts]);
+
+  const blockers = useMemo(() => (
+    COMPLIANCE_DATA
+      .filter(r => r.criticalForGoLive && r.status !== 'implemented')
+      .sort((a, b) => a.source.localeCompare(b.source))
+  ), []);
 
   return (
     <div className="flex flex-col h-full p-4 gap-3 bg-background/80">
@@ -98,6 +105,23 @@ export default function ManualComplianceMatrix() {
           )}>{complianceScore}% COMPLIANT</span>
         </div>
       </div>
+
+      {blockers.length > 0 && (
+        <div className="border border-red-500/30 bg-red-500/5 rounded-md p-2 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-mono font-bold text-red-400 tracking-widest uppercase">Go-Live Blockers</span>
+            <span className="text-[8px] font-mono text-red-400/80">{blockers.length} em aberto</span>
+          </div>
+          <ul className="space-y-0.5">
+            {blockers.slice(0, 6).map((row) => (
+              <li key={`${row.source}-${row.clause}`} className="text-[9px] font-mono text-foreground/80 leading-tight">
+                <span className="text-red-400/90">{row.source} {row.clause}</span> — {row.requirement}
+                <span className="text-muted-foreground/70"> → {row.action}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Column headers */}
       <div className="grid grid-cols-[120px_60px_1fr_80px_1fr_1fr] gap-1 text-[7px] font-mono text-muted-foreground/50 tracking-widest px-2">
