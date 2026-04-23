@@ -79,6 +79,31 @@ export interface BridgeStatus {
   linkHealth?: LinkHealth;
   /** Monotonic id incremented on every successful link. Pending ops from older sessions are ignored. */
   sessionId: number;
+  /** Live diagnostics about the in-flight pending response queue. */
+  diagnostics?: BridgeDiagnostics;
+}
+
+/** Live snapshot of the pending-response queue. */
+export interface BridgeDiagnostics {
+  pendingCount: number;
+  pendingKeys: string[];
+  oldestPendingAgeMs: number;
+  sessionId: number;
+  linkHealth: LinkHealth;
+}
+
+/**
+ * One in-flight pending response. Carries enough metadata to:
+ *  - reject responses from a previous session (`sessionId` mismatch)
+ *  - reject responses for a different command class (`commandType`)
+ *  - report queue age in `getStatus().diagnostics`
+ */
+interface PendingResponse {
+  key: string;
+  commandType: string;
+  sessionId: number;
+  createdAt: number;
+  resolver: (value: string) => void;
 }
 
 export interface BridgeTransportSupport {
