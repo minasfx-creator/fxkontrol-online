@@ -1,5 +1,3 @@
-import { resolveSMPTEChase, type SMPTEChaseOptions, type SMPTEChaseResult } from '@/core/timeline/smpteChase';
-
 export interface LTCSyncTarget {
   getTime: () => number;
   syncExternalTime: (time: number) => void;
@@ -8,15 +6,25 @@ export interface LTCSyncTarget {
 
 export interface LTCTransportOptions {
   smoothingFactor?: number;
+  deadbandSec?: number;
   pauseTimeoutMs?: number;
-  chase?: SMPTEChaseOptions;
+  lockFrames?: number;
+  unlockFrames?: number;
+  maxCorrectionPerFrame?: number;
+  hardResyncThreshold?: number;
+  rewindThreshold?: number;
 }
+
+export type LTCSyncMode = 'soft' | 'hard';
+
+export type LTCState = 'idle' | 'locking' | 'locked-soft' | 'locked-hard' | 'lost';
 
 export interface LTCSyncSample {
   incomingTime: number;
   syncedTime: number;
   driftSec: number;
-  mode: SMPTEChaseResult['mode'];
+  mode: LTCSyncMode;
+  state: LTCState;
 }
 
 export interface LTCTransportDiagnostics {
@@ -25,15 +33,30 @@ export interface LTCTransportDiagnostics {
   lastSyncedTime: number | null;
   lastSignalAt: number | null;
   lastDriftSec: number;
-  lastMode: SMPTEChaseResult['mode'] | 'idle';
+  lastMode: LTCSyncMode | 'idle';
+  state: LTCState;
+  locked: boolean;
+  lockCounter: number;
+  unlockCounter: number;
   smoothingFactor: number;
+  deadbandSec: number;
   pauseTimeoutMs: number;
+  lockFrames: number;
+  unlockFrames: number;
+  maxCorrectionPerFrame: number;
+  hardResyncThreshold: number;
+  rewindThreshold: number;
 }
 
 const DEFAULT_OPTIONS: Required<LTCTransportOptions> = {
   smoothingFactor: 0.15,
+  deadbandSec: 0.002,
   pauseTimeoutMs: 250,
-  chase: {},
+  lockFrames: 3,
+  unlockFrames: 3,
+  maxCorrectionPerFrame: 0.04,
+  hardResyncThreshold: 0.5,
+  rewindThreshold: 0.1,
 };
 
 function deepFreeze<T>(value: T): Readonly<T> {
@@ -58,7 +81,11 @@ export class LTCTransport {
   private lastSyncedTime: number | null = null;
   private lastSignalAt: number | null = null;
   private lastDriftSec = 0;
-  private lastMode: SMPTEChaseResult['mode'] | 'idle' = 'idle';
+  private lastMode: LTCSyncMode | 'idle' = 'idle';
+  private state: LTCState = 'idle';
+  private lockCounter = 0;
+  private unlockCounter = 0;
+  private locked = false;
 
   constructor(
     private readonly target: LTCSyncTarget,
@@ -66,8 +93,13 @@ export class LTCTransport {
   ) {
     this.options = {
       smoothingFactor: options.smoothingFactor ?? DEFAULT_OPTIONS.smoothingFactor,
+      deadbandSec: options.deadbandSec ?? DEFAULT_OPTIONS.deadbandSec,
       pauseTimeoutMs: options.pauseTimeoutMs ?? DEFAULT_OPTIONS.pauseTimeoutMs,
-      chase: options.chase ?? DEFAULT_OPTIONS.chase,
+      lockFrames: options.lockFrames ?? DEFAULT_OPTIONS.lockFrames,
+      unlockFrames: options.unlockFrames ?? DEFAULT_OPTIONS.unlockFrames,
+      maxCorrectionPerFrame: options.maxCorrectionPerFrame ?? DEFAULT_OPTIONS.maxCorrectionPerFrame,
+      hardResyncThreshold: options.hardResyncThreshold ?? DEFAULT_OPTIONS.hardResyncThreshold,
+      rewindThreshold: options.rewindThreshold ?? DEFAULT_OPTIONS.rewindThreshold,
     };
   }
 
@@ -76,34 +108,76 @@ export class LTCTransport {
       return null;
     }
 
-    const chase = resolveSMPTEChase(this.target.getTime(), seconds, this.options.chase);
-
     this.lastIncomingTime = seconds;
     this.lastSignalAt = receivedAtMs;
-    this.lastDriftSec = chase.driftSec;
-    this.lastMode = chase.mode;
 
-    if (chase.mode === 'ignore') {
+    if (!this.locked) {
+      this.unlockCounter = 0;
+      this.lockCounter += 1;
+
+      if (this.lockCounter >= this.options.lockFrames) {
+        this.locked = true;
+      }
+
+      this.state = 'locking';
+      return null;
+    }
+
+    this.lockCounter = 0;
+    this.unlockCounter = 0;
+
+    const current = this.target.getTime();
+    const delta = seconds - current;
+
+    this.lastDriftSec = delta;
+
+    if (delta < -this.options.rewindThreshold || Math.abs(delta) > this.options.hardResyncThreshold) {
+      this.state = 'locked-hard';
+      this.lastMode = 'hard';
+      this.lastSyncedTime = seconds;
+      this.target.syncExternalTime(seconds);
+
       return {
         incomingTime: seconds,
-        syncedTime: this.target.getTime(),
-        driftSec: chase.driftSec,
-        mode: chase.mode,
+        syncedTime: seconds,
+        driftSec: delta,
+        mode: 'hard',
+        state: this.state,
       };
     }
 
-    const syncedTime = chase.mode === 'soft'
-      ? this.smoothTime(chase.nextTime)
-      : chase.nextTime;
+    if (Math.abs(delta) < this.options.deadbandSec) {
+      this.state = 'locked-soft';
+      this.lastMode = 'soft';
+      this.lastSyncedTime = current;
+
+      return {
+        incomingTime: seconds,
+        syncedTime: current,
+        driftSec: delta,
+        mode: 'soft',
+        state: this.state,
+      };
+    }
+
+    const clampedDelta = Math.max(
+      -this.options.maxCorrectionPerFrame,
+      Math.min(this.options.maxCorrectionPerFrame, delta),
+    );
+
+    const syncedTime = this.smoothTime(current, clampedDelta);
 
     this.lastSyncedTime = syncedTime;
+    this.lastMode = 'soft';
+    this.state = 'locked-soft';
     this.target.syncExternalTime(syncedTime);
 
     return {
       incomingTime: seconds,
       syncedTime,
-      driftSec: chase.driftSec,
-      mode: chase.mode,
+      driftSec: delta,
+      mode: 'soft',
+      state: this.state,
     };
   }
 
@@ -113,7 +187,17 @@ export class LTCTransport {
       : false;
 
     if (!present) {
-      this.target.releaseExternalSync?.();
+      this.lockCounter = 0;
+      this.unlockCounter += 1;
+
+      if (this.unlockCounter >= this.options.unlockFrames && this.locked) {
+        this.locked = false;
+        this.state = 'lost';
+        this.lastMode = 'idle';
+        this.target.releaseExternalSync?.();
+      }
+    } else {
+      this.unlockCounter = 0;
     }
 
     return present;
@@ -125,6 +209,10 @@ export class LTCTransport {
     this.lastSignalAt = null;
     this.lastDriftSec = 0;
     this.lastMode = 'idle';
+    this.state = 'idle';
+    this.lockCounter = 0;
+    this.unlockCounter = 0;
+    this.locked = false;
   }
 
   getDiagnostics(nowMs = Date.now()): Readonly<LTCTransportDiagnostics> {
@@ -135,14 +223,27 @@ export class LTCTransport {
       lastSignalAt: this.lastSignalAt,
       lastDriftSec: this.lastDriftSec,
       lastMode: this.lastMode,
+      state: this.state,
+      locked: this.locked,
+      lockCounter: this.lockCounter,
+      unlockCounter: this.unlockCounter,
       smoothingFactor: this.options.smoothingFactor,
+      deadbandSec: this.options.deadbandSec,
       pauseTimeoutMs: this.options.pauseTimeoutMs,
+      lockFrames: this.options.lockFrames,
+      unlockFrames: this.options.unlockFrames,
+      maxCorrectionPerFrame: this.options.maxCorrectionPerFrame,
+      hardResyncThreshold: this.options.hardResyncThreshold,
+      rewindThreshold: this.options.rewindThreshold,
     });
   }
 
-  private smoothTime(nextTime: number): number {
-    const current = this.target.getTime();
-    return current + (nextTime - current) * this.options.smoothingFactor;
+  getState(): LTCState {
+    return this.state;
+  }
+
+  private smoothTime(current: number, delta: number): number {
+    return current + delta * this.options.smoothingFactor;
   }
 }
 
