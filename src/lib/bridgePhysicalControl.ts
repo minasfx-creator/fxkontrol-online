@@ -74,6 +74,7 @@ export interface CommandTimeline {
 }
 
 export interface HilRunReport {
+  runStart: number;
   profile: HilFaultProfile;
   logs: readonly HilLogEntry[];
   timeline: readonly CommandTimeline[];
@@ -165,6 +166,7 @@ class BridgePhysicalController {
   private hilModeEnabled = false;
   private hilProfile: HilFaultProfile = { jitterMs: 15, baseDelayMs: 40, packetLossRate: 0, reorderRate: 0 };
   private hilHarness = new HilBridgeHarness(this.hilProfile);
+  private hilRunStart = performance.now();
   private hilLogs: HilLogEntry[] = [];
   private commandTimeline = new Map<string, CommandTimeline>();
   private hilTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -195,11 +197,22 @@ class BridgePhysicalController {
       ...(profile ?? {}),
     };
     this.hilHarness = new HilBridgeHarness(this.hilProfile);
+    this.hilRunStart = performance.now();
     this.emit();
   }
 
   async simulateHilFire(channelId: string, onAcknowledge: (channel: string, meta: { delayMs: number; reordered: boolean }) => void): Promise<boolean> {
-    return this.hilHarness.fire(channelId, onAcknowledge);
+    return this.hilHarness.fire(channelId, (channel, meta) => {
+      if (meta.reordered) {
+        this.pushHilLog({
+          time: performance.now(),
+          channel,
+          event: 'reorder',
+          delayMs: meta.delayMs,
+        });
+      }
+      onAcknowledge(channel, meta);
+    });
   }
 
   private pushHilLog(entry: HilLogEntry): void {
@@ -229,6 +242,7 @@ class BridgePhysicalController {
     const acked = timeline.filter((entry) => entry.ackAt).length;
     const failed = timeline.filter((entry) => entry.failedAt).length;
     return deepFreeze({
+      runStart: this.hilRunStart,
       profile: { ...this.hilProfile },
       logs: [...this.hilLogs],
       timeline,
@@ -249,6 +263,8 @@ class BridgePhysicalController {
   }
 
   cancelHilCommand(commandId: string): void {
+    const timeline = this.commandTimeline.get(commandId);
+    if (!timeline || timeline.doneAt || timeline.ackAt) return;
     const timer = this.hilTimers.get(commandId);
     const command = this.commands.get(commandId);
     if (timer) {
