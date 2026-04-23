@@ -584,9 +584,6 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
           </div>
         </div>
 
-          </div>
-        </div>
-
         <div className="bg-surface-0 rounded p-2 space-y-2 border border-border">
           <div className="flex items-center justify-between">
             <div className="text-[10px] font-mono-code text-muted-foreground font-bold">TIMECODE ANALYZER</div>
