@@ -12,3 +12,23 @@ export { compileShowGraph, verifyCompileDeterminism } from './showCompiler';
 
 export type { SafetyCheck } from './validation/aiSafety';
 export { runAISafetyChecks } from './validation/aiSafety';
+
+// ─── Schema V2 (multi-layer: drone + dmx + pyro) ───────────────────
+export type {
+  JoiShowGraphV2,
+  JoiMetadataV2,
+  JoiStage,
+  JoiLayer,
+  JoiDroneLayer,
+  JoiDroneMove,
+  JoiDMXLayer,
+  JoiDMXCue,
+  JoiFixture,
+  JoiPyroLayer,
+  JoiPyroDevice,
+  JoiPyroEvent,
+  JoiConstraints,
+  JoiSafetyZone,
+  JoiValidationResult,
+} from './showGraphV2';
+export { createShowGraphV2, validateShowGraphV2 } from './showGraphV2';
