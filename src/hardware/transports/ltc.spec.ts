@@ -386,4 +386,29 @@ describe('LTCTransport', () => {
     transport.replay(record);
     expect(transport.getReplayRecord().length).toBe(record.length);
   });
+
+  it('supports kalman filtering and event export/subscription', () => {
+    const received: string[] = [];
+    let currentTime = 10;
+    const transport = new LTCTransport({
+      getTime: () => currentTime,
+      syncExternalTime: () => {},
+      setRate: () => {},
+    }, { lockFrames: 1 });
+
+    const unsubscribe = transport.subscribeEvents((event) => {
+      received.push(event.type);
+    });
+
+    transport.setKalmanEnabled(true);
+    expect(transport.isKalmanEnabled()).toBe(true);
+    expect(transport.ingestTime(10, 1000, 'A', 1)).toBeNull();
+    currentTime = 10;
+    transport.ingestTime(10.066, 1033, 'A', 1);
+
+    unsubscribe();
+    const exported = transport.exportEvents();
+    expect(exported).toContain('rate-change');
+    expect(received).toContain('rate-change');
+  });
 });
