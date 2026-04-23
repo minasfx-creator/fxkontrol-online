@@ -77,10 +77,11 @@ describe('PyroSchedulerBridge', () => {
       getShowPlan: () => plan,
       getSafetyState: () => 'ARMED',
       nowMs: () => 9_900,
+      jumpThresholdSec: 100,
     });
 
     bridge.tick(createClockState({ time: 0 }));
-    bridge.tick(createClockState({ time: 9.88, playing: true }));
+    bridge.tick(createClockState({ time: 9.887, playing: true }));
     await bridge.flushPending();
     expect(transport.dispatch).not.toHaveBeenCalled();
 
@@ -101,6 +102,7 @@ describe('PyroSchedulerBridge', () => {
       transport: transport as never,
       getShowPlan: () => plan,
       getSafetyState: () => 'ARMED',
+      jumpThresholdSec: 100,
     });
 
     bridge.tick(createClockState({ time: 0 }));
@@ -119,10 +121,12 @@ describe('PyroSchedulerBridge', () => {
       getShowPlan: () => plan,
       getSafetyState: () => 'ARMED',
       nowMs: () => 9_900,
+      jumpThresholdSec: 100,
     });
 
     bridge.tick(createClockState({ time: 0 }));
-    bridge.tick(createClockState({ time: 11, playing: false }));
+    bridge.tick(createClockState({ time: 0, playing: false }));
+    bridge.tick(createClockState({ time: 10, playing: false }));
     bridge.tick(createClockState({ time: 0, playing: false }));
     bridge.tick(createClockState({ time: 9.889, playing: true }));
     await bridge.flushPending();
@@ -137,6 +141,7 @@ describe('PyroSchedulerBridge', () => {
       transport: transport as never,
       getShowPlan: () => plan,
       getSafetyState: () => 'ARMED',
+      jumpThresholdSec: 100,
     });
 
     bridge.tick(createClockState({ time: 0 }));
@@ -153,6 +158,7 @@ describe('PyroSchedulerBridge', () => {
       getShowPlan: () => plan,
       getSafetyState: () => 'ARMED',
       nowMs: () => 9_900,
+      jumpThresholdSec: 100,
     });
 
     bridge.tick(createClockState({ time: 0 }));
@@ -173,6 +179,7 @@ describe('PyroSchedulerBridge', () => {
       getShowPlan: () => plan,
       getSafetyState: () => 'LOCKED',
       nowMs: () => 9_900,
+      jumpThresholdSec: 100,
     });
 
     bridge.tick(createClockState({ time: 0 }));
@@ -195,6 +202,7 @@ describe('PyroSchedulerBridge', () => {
       getShowPlan: () => plan,
       getSafetyState: () => 'ARMED',
       nowMs: () => 10_000,
+      jumpThresholdSec: 100,
     });
 
     bridge.tick(createClockState({ time: 0 }));
