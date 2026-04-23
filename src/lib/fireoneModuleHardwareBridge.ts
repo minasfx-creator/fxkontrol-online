@@ -1131,7 +1131,6 @@ export class FireOneHardwareBridge {
         }
       }
 
-      for (const [key, resolver] of this.pendingResolves) {
       // Hardened tolerant parsing of STATUS / BAT / RSSI / PINS / VER frames.
       const fields = parseTelemetryLine(trimmed);
       if (fields.batteryVoltage !== undefined) this.batteryVoltage = fields.batteryVoltage;
