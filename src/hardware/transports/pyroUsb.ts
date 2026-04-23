@@ -86,6 +86,8 @@ export class PyroUsbTransport {
   private lastArmAt: number | null = null;
   private lastFireAt: number | null = null;
   private lastWatchdogKickAt: number | null = null;
+  private watchdogTimerId: ReturnType<typeof setInterval> | null = null;
+  private readonly listeners = new Set<PyroUsbEventListener>();
 
   constructor(adapter?: PyroUsbPortAdapter | null, options: PyroUsbTransportOptions = {}) {
     this.watchdogTimeoutMs = options.watchdogTimeoutMs ?? DEFAULT_WATCHDOG_TIMEOUT_MS;
