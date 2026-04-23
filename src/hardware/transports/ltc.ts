@@ -48,6 +48,11 @@ export interface LTCTransportDiagnostics {
   smoothingFactor: number;
   currentRate: number;
   rateIntegral: number;
+  avgDriftSec: number;
+  peakDriftSec: number;
+  detectedFps: number;
+  activeSource: string | null;
+  sourceCount: number;
   deadbandSec: number;
   pauseTimeoutMs: number;
   lockFrames: number;
@@ -55,6 +60,24 @@ export interface LTCTransportDiagnostics {
   maxCorrectionPerFrame: number;
   hardResyncThreshold: number;
   rewindThreshold: number;
+}
+
+export interface LTCDriftDiagnostics {
+  driftSec: number;
+  avgDriftSec: number;
+  peakDriftSec: number;
+  rate: number;
+  integral: number;
+  state: LTCState;
+  fps?: number;
+}
+
+interface LTCSourceState {
+  id: string;
+  lastSeen: number;
+  drift: number;
+  priority: number;
+  lastTime: number | null;
 }
 
 const DEFAULT_OPTIONS: Required<LTCTransportOptions> = {
@@ -99,6 +122,15 @@ export class LTCTransport {
   private lastSyncReason: LTCSyncSample['reason'] | 'idle' = 'idle';
   private rate = 1;
   private rateIntegral = 0;
+  private driftAvg = 0;
+  private driftPeak = 0;
+  private readonly driftAlpha = 0.05;
+  private pllHistory = new Float32Array(120);
+  private pllIndex = 0;
+  private pllCount = 0;
+  private detectedFps = 30;
+  private activeSource: string | null = null;
+  private readonly sources = new Map<string, LTCSourceState>();
 
   constructor(
     private readonly target: LTCSyncTarget,
@@ -116,15 +148,32 @@ export class LTCTransport {
     };
   }
 
-  ingestTime(seconds: number, receivedAtMs = Date.now()): LTCSyncSample | null {
+  ingestTime(seconds: number, receivedAtMs = Date.now(), sourceId = 'default', priority = 0): LTCSyncSample | null {
     if (!Number.isFinite(seconds) || !Number.isFinite(receivedAtMs)) {
       return null;
     }
 
-    const previousIncomingTime = this.lastIncomingTime;
+    const source = this.upsertSource(sourceId, receivedAtMs, priority);
+    const previousIncomingTime = source.lastTime;
+    source.lastTime = seconds;
+    const bestSource = this.selectBestSource(receivedAtMs);
+    const sourceSwitch = bestSource !== null && bestSource.id !== this.activeSource;
+
+    if (sourceSwitch) {
+      this.activeSource = bestSource?.id ?? null;
+    } else if (this.activeSource === null) {
+      this.activeSource = source.id;
+    }
+
+    if (this.activeSource !== source.id) {
+      return null;
+    }
+
     this.lastIncomingTime = seconds;
     this.lastSignalAt = receivedAtMs;
     this.sequence += 1;
+
+    this.updateDetectedFps(seconds, previousIncomingTime);
 
     if (!this.locked) {
       this.unlockCounter = 0;
@@ -145,12 +194,18 @@ export class LTCTransport {
     const delta = seconds - current;
 
     this.lastDriftSec = delta;
+    source.drift = delta;
+    this.recordDrift(delta);
 
-    if (delta < -this.options.rewindThreshold || Math.abs(delta) > this.options.hardResyncThreshold) {
+    if (sourceSwitch || delta < -this.options.rewindThreshold || Math.abs(delta) > this.options.hardResyncThreshold) {
       this.state = 'locked-hard';
       this.lastMode = 'hard';
       this.lastSyncedTime = seconds;
-      this.lastSyncReason = delta < -this.options.rewindThreshold ? 'rewind-detect' : 'hard-resync';
+      this.lastSyncReason = sourceSwitch
+        ? 'hard-resync'
+        : delta < -this.options.rewindThreshold
+          ? 'rewind-detect'
+          : 'hard-resync';
       this.rate = 1;
       this.rateIntegral = 0;
       this.target.setRate?.(1);
@@ -168,8 +223,10 @@ export class LTCTransport {
       };
     }
 
-    if (Math.abs(delta) < this.options.deadbandSec) {
-      const seekConfirmed = previousIncomingTime !== null && Math.abs(current - previousIncomingTime) > this.options.deadbandSec;
+    const deadbandSec = 0.5 / this.detectedFps;
+
+    if (Math.abs(delta) < deadbandSec) {
+      const seekConfirmed = previousIncomingTime !== null && Math.abs(current - previousIncomingTime) > deadbandSec;
       this.state = 'locked-soft';
       this.lastMode = 'soft';
       this.lastSyncedTime = current;
@@ -191,12 +248,9 @@ export class LTCTransport {
       };
     }
 
-    const clampedDelta = Math.max(
-      -this.options.maxCorrectionPerFrame,
-      Math.min(this.options.maxCorrectionPerFrame, delta),
-    );
+    const clampedDelta = Math.max(-(2 / this.detectedFps), Math.min(2 / this.detectedFps, delta));
 
-    const drift = seconds - current;
+    const drift = clampedDelta;
     const kp = this.options.smoothingFactor;
     const ki = 0.02;
 
@@ -254,6 +308,14 @@ export class LTCTransport {
     this.lastSyncReason = 'idle';
     this.rate = 1;
     this.rateIntegral = 0;
+    this.driftAvg = 0;
+    this.driftPeak = 0;
+    this.pllHistory = new Float32Array(120);
+    this.pllIndex = 0;
+    this.pllCount = 0;
+    this.detectedFps = 30;
+    this.activeSource = null;
+    this.sources.clear();
     this.state = 'idle';
     this.lockCounter = 0;
     this.unlockCounter = 0;
@@ -277,6 +339,11 @@ export class LTCTransport {
       smoothingFactor: this.options.smoothingFactor,
       currentRate: this.rate,
       rateIntegral: this.rateIntegral,
+      avgDriftSec: this.driftAvg,
+      peakDriftSec: this.driftPeak,
+      detectedFps: this.detectedFps,
+      activeSource: this.activeSource,
+      sourceCount: this.sources.size,
       deadbandSec: this.options.deadbandSec,
       pauseTimeoutMs: this.options.pauseTimeoutMs,
       lockFrames: this.options.lockFrames,
@@ -289,6 +356,69 @@ export class LTCTransport {
 
   getState(): LTCState {
     return this.state;
+  }
+
+  getDriftDiagnostics(): Readonly<LTCDriftDiagnostics> {
+    return deepFreeze({
+      driftSec: this.lastDriftSec,
+      avgDriftSec: this.driftAvg,
+      peakDriftSec: this.driftPeak,
+      rate: this.rate,
+      integral: this.rateIntegral,
+      state: this.state,
+      fps: this.detectedFps,
+    });
+  }
+
+  getPLLHistory(): readonly number[] {
+    return deepFreeze(Array.from({ length: this.pllCount }, (_, index) => {
+      const start = (this.pllIndex - this.pllCount + this.pllHistory.length) % this.pllHistory.length;
+      return this.pllHistory[(start + index) % this.pllHistory.length];
+    }));
+  }
+
+  private upsertSource(id: string, lastSeen: number, priority: number): LTCSourceState {
+    const existing = this.sources.get(id);
+    if (existing) {
+      existing.lastSeen = lastSeen;
+      existing.priority = priority;
+      return existing;
+    }
+
+    const created: LTCSourceState = { id, lastSeen, drift: 0, priority, lastTime: null };
+    this.sources.set(id, created);
+    return created;
+  }
+
+  private selectBestSource(nowMs: number): LTCSourceState | null {
+    const candidates = [...this.sources.values()]
+      .filter((source) => nowMs - source.lastSeen < this.options.pauseTimeoutMs)
+      .sort((left, right) => left.priority - right.priority || Math.abs(left.drift) - Math.abs(right.drift));
+
+    return candidates[0] ?? null;
+  }
+
+  private updateDetectedFps(seconds: number, previousIncomingTime: number | null): void {
+    if (previousIncomingTime === null) return;
+    const frameDuration = seconds - previousIncomingTime;
+    if (!(frameDuration > 0)) return;
+
+    const candidates = [24, 25, 29.97, 30, 60];
+    const closest = candidates.reduce((best, candidate) => {
+      const bestDistance = Math.abs((1 / best) - frameDuration);
+      const candidateDistance = Math.abs((1 / candidate) - frameDuration);
+      return candidateDistance < bestDistance ? candidate : best;
+    }, this.detectedFps);
+
+    this.detectedFps = this.detectedFps * 0.9 + closest * 0.1;
+  }
+
+  private recordDrift(drift: number): void {
+    this.driftAvg = this.driftAvg * (1 - this.driftAlpha) + drift * this.driftAlpha;
+    this.driftPeak = Math.max(this.driftPeak * 0.98, Math.abs(drift));
+    this.pllHistory[this.pllIndex] = drift;
+    this.pllIndex = (this.pllIndex + 1) % this.pllHistory.length;
+    this.pllCount = Math.min(this.pllCount + 1, this.pllHistory.length);
   }
 }
 
