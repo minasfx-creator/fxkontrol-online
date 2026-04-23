@@ -29,6 +29,9 @@ import { networkHealthService } from '@/core/network/NetworkHealthService';
 import { clusterHealthService } from '@/core/cluster/ClusterHealthService';
 import { healthPersistenceService } from '@/core/cluster/HealthPersistenceService';
 import { timelineClock } from '@/core/timeline/TimelineClock';
+import { executionBridge } from '@/core/execution/executionBridge';
+import { showPlanManager } from '@/core/showplan/ShowPlanManager';
+import { pyroSchedulerBridge } from '@/hardware/integrations/pyroSchedulerBridge';
 import '@/core/cluster/reporters/SafetyHealthReporter';
 import '@/core/cluster/reporters/PerformanceHealthReporter';
 import '@/core/cluster/reporters/NetworkHealthReporter';
@@ -61,6 +64,7 @@ export default function EngineProvider() {
 
   useEffect(() => {
     let lastFlushTick = 0;
+    let lastShowPlanSignature = '';
 
     // ── Boot: load persisted data ──
     (async () => {
@@ -161,6 +165,25 @@ export default function EngineProvider() {
     }, 0);
 
     // ── Snapshot subsystem (priority 200) ──
+    lockstep.register('timelineClock', (_time: number, dt: number) => {
+      timelineClock.tick(dt);
+    }, 100);
+
+    lockstep.register('executionBridge', (_time: number, _dt: number) => {
+      const plan = showPlanManager.current;
+      const signature = `${plan.metadata.id}:${plan.metadata.updatedAt}:${plan.pyroCues.length}:${plan.dmxCues.length}:${plan.dronePaths.length}`;
+      if (signature !== lastShowPlanSignature) {
+        executionBridge.loadShowPlan(plan);
+        lastShowPlanSignature = signature;
+      }
+
+      executionBridge.tick(timelineClock.getTime());
+    }, 150);
+
+    lockstep.register('pyroSchedulerBridge', (_time: number, _dt: number) => {
+      pyroSchedulerBridge.tick(timelineClock.getState());
+    }, 160);
+
     lockstep.register('snapshotManager', (_time: number, _dt: number) => {
       snapshotManager.maybeCapture(lockstep.getTickCount());
     }, 200);
@@ -231,9 +254,13 @@ export default function EngineProvider() {
       unsubImport();
       unsubContinuity();
       lockstep.unregister('commandBus');
+      lockstep.unregister('timelineClock');
+      lockstep.unregister('executionBridge');
+      lockstep.unregister('pyroSchedulerBridge');
       lockstep.unregister('snapshotManager');
       lockstep.unregister('idbFlush');
       commandRelay.stop();
+      pyroSchedulerBridge.reset();
       safetyStateMachine.reset();
       console.log('[EngineProvider] All services stopped');
     };

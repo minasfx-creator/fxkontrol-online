@@ -212,34 +212,15 @@ function DroneRendererSwitch() {
   return <DroneChoreography />;
 }
 
-// --- Playback clock (wired through DeterministicClock → LockstepEngine → ExecutionBridge) ---
+// --- Playback clock (wired through DeterministicClock → LockstepEngine) ---
 import { deterministicClock } from '@/core/time/deterministicClock';
-import { lockstep } from '@/core/reliability/lockstepEngine';
-import { executionBridge } from '@/core/execution/executionBridge';
 import { timelineClock } from '@/core/timeline/TimelineClock';
 
 const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
-  const registeredRef = useRef(false);
-
   // Pump the deterministic clock every R3F frame
   useFrame(() => {
     deterministicClock.tick();
   });
-
-  // Register playback as a lockstep subsystem (once)
-  useEffect(() => {
-    if (registeredRef.current) return;
-    registeredRef.current = true;
-
-    lockstep.register('executionBridge', (_simTime: number, _dt: number) => {
-      executionBridge.tick(timelineClock.getTime());
-    }, 50);
-
-    return () => {
-      lockstep.unregister('executionBridge');
-      registeredRef.current = false;
-    };
-  }, []);
 
   return null;
 });
