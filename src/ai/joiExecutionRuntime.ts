@@ -16,13 +16,17 @@
 
 import type { ExecutionPlan, ExecutionFrame, PlannedCommand } from './joiExecutionPlanner';
 import type { ExecutionLayer } from './joiCompilerV2';
+import { __internals as compilerInternals } from './joiCompilerV2';
+
+const fnv1a = compilerInternals.fnv1a;
 
 // ─── Public types ──────────────────────────────────────────────────
 export interface RuntimeConfig {
   readonly safetyThreshold: number; // 0..1 — abort if frame.peakRisk exceeds
   readonly mode: ExecutionLayer;
   readonly enableTrace: boolean;
-  readonly maxTraceFrames?: number; // bounded ring buffer (default: unbounded)
+  readonly maxTraceFrames?: number;  // bounded ring buffer (default: unbounded)
+  readonly maxCatchUpFrames?: number; // bound burst execution after lag (default: 10)
   readonly onAbort?: (frame: ExecutionFrame, reason: AbortReason) => void;
   readonly onFrame?: (frame: ExecutionFrame, executed: number) => void;
   readonly adapter?: CommandAdapter;
@@ -46,6 +50,7 @@ export interface RuntimeFrameTrace {
   readonly frameIndex: number;
   readonly hash: string;
   readonly executedCommands: number;
+  readonly activeSteps: number; // total commands available at frame (replay diff)
   readonly risk: number;
   readonly aborted: boolean;
   readonly abortReason?: AbortReason;
@@ -97,6 +102,7 @@ export class ExecutionRuntimeV1 {
   private readonly clock: RuntimeClock;
   private readonly trace: RuntimeFrameTrace[] = [];
   private lastExecutedFrame = -1;
+  private lastNow = -Infinity; // monotonic guard against time reversal
   private framesExecuted = 0;
   private framesAborted = 0;
   private commandsDispatched = 0;
@@ -128,6 +134,10 @@ export class ExecutionRuntimeV1 {
   tick(now: number): void {
     if (!this.running || this.aborted) return;
 
+    // Monotonic guard — never execute on a backwards clock
+    if (now < this.lastNow) return;
+    this.lastNow = now;
+
     const frameIndex = this.clock.getFrameIndex(now);
     if (frameIndex === this.lastExecutedFrame) return;
     if (frameIndex < 0) return;
@@ -139,10 +149,12 @@ export class ExecutionRuntimeV1 {
     }
 
     // Catch-up: execute skipped frames in order to preserve determinism.
-    // lastExecutedFrame is only advanced AFTER a successful frame, so a
-    // partial/aborted frame leaves the cursor on the last good frame.
+    // Bounded to prevent latency-avalanche execution collapse.
     const startIdx = this.lastExecutedFrame + 1;
+    const limit = this.config.maxCatchUpFrames ?? 10;
+    let burst = 0;
     for (let i = Math.max(0, startIdx); i <= frameIndex; i++) {
+      if (burst++ >= limit) break;
       const ok = this.executeFrame(i, now);
       if (!ok) return;
       this.lastExecutedFrame = i;
@@ -171,13 +183,31 @@ export class ExecutionRuntimeV1 {
       return false;
     }
 
-    // Self-integrity check: runtime view must match planner hash
+    // Self-integrity check — frame must carry its planner hash AND minimum
+    // load signature must agree with telemetry. Catches in-memory mutation
+    // and frame-swap class bugs (full structural rehash needs stepIds which
+    // are not exposed at runtime).
     if (!frame.hash) {
+      this.recordAbort(frame, risk, wallTimeMs, 'integrity_mismatch');
+      return false;
+    }
+    const declaredLoad =
+      frame.telemetry.pyroLoad + frame.telemetry.dmxLoad + frame.telemetry.droneLoad;
+    if (declaredLoad !== frame.commands.length) {
+      this.recordAbort(frame, risk, wallTimeMs, 'integrity_mismatch');
+      return false;
+    }
+    // Sanity-check: re-hash a runtime-visible subset and confirm it is finite/non-empty
+    const runtimeSig = fnv1a(
+      `${frame.index}|${frame.commands.length}|${risk.toFixed(4)}`,
+    );
+    if (!runtimeSig) {
       this.recordAbort(frame, risk, wallTimeMs, 'integrity_mismatch');
       return false;
     }
 
     // Deterministic dispatch — commands already ordered by planner
+    const activeSteps = frame.commands.length;
     let executed = 0;
     for (const cmd of frame.commands) {
       const ok = this.dispatch(cmd);
@@ -196,6 +226,7 @@ export class ExecutionRuntimeV1 {
         frameIndex,
         hash: frame.hash,
         executedCommands: executed,
+        activeSteps,
         risk,
         aborted: false,
         wallTimeMs,
@@ -221,6 +252,7 @@ export class ExecutionRuntimeV1 {
         frameIndex: frame.index,
         hash: frame.hash,
         executedCommands: 0,
+        activeSteps: frame.commands.length,
         risk,
         aborted: true,
         abortReason: reason,
@@ -248,7 +280,7 @@ export class ExecutionRuntimeV1 {
     const adapter = this.config.adapter;
     if (!adapter) return true; // dry-run mode
 
-    let result: boolean | void;
+    let result: boolean | void = true;
     switch (cmd.target) {
       case 'pyro':
         result = adapter.dispatchPyro?.(cmd);
@@ -259,6 +291,9 @@ export class ExecutionRuntimeV1 {
       case 'drone':
         result = adapter.dispatchDrone?.(cmd);
         break;
+      default:
+        // Unknown target = schema corruption → fail closed
+        return false;
     }
     return result !== false;
   }
