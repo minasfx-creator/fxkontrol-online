@@ -1,126 +1,99 @@
 
-Objetivo: integrar o `PyroUsbTransport` já existente ao playback determinístico para que cues de pyro do `ShowPlan` sejam agendadas, disparadas no tempo correto e nunca retro-disparem em `play`, `pause`, `seek`, `rewind` ou `external sync`.
+Objetivo: consolidar a fundação visual do editor desktop em dark mode com três zonas claras e operacionais: viewport 3D central (`SkyCanvas`), biblioteca de efeitos lateral esquerda (`EffectLibrary`) e timeline/waveform fixa na base (`Timeline` + `AudioWaveform`), mantendo a estética command-grade já existente e reduzindo a sensação de “muitos painéis soltos”.
 
-1. Ajustar a arquitetura base do clock antes da bridge de pyro
-- Registrar explicitamente `timelineClock.tick(dt)` como subsystem do `lockstep` dentro de `src/orchestration/EngineProvider.tsx`, com prioridade anterior ao scheduler de pyro.
-- Parar de depender implicitamente do caminho legado em `SkyCanvas.tsx`, onde hoje só `executionBridge.tick(timelineClock.getTime())` está registrado.
-- Manter a ordem determinística:
-```text
-DeterministicClock
-  -> Lockstep
-     -> commandBus / safety
-     -> timelineClock
-     -> pyroSchedulerBridge
-     -> snapshot / flush
-```
+1. Reestruturar o shell do editor em `src/pages/Index.tsx`
+- Transformar o layout desktop atual em uma composição explícita de 3 áreas persistentes:
+  - centro: `SkyCanvas`
+  - esquerda: painel foundation da `EffectLibrary`
+  - base: timeline foundation com waveform
+- Manter `Toolbar` no topo e preservar `ViewportNavControls`, mas ajustar offsets para respeitar a nova largura da sidebar esquerda e a altura fixa da timeline.
+- Continuar usando `timelineCollapsed` e `viewportMaximized`, porém com comportamento previsível:
+  - colapsar timeline reduz só a base
+  - maximizar viewport esconde painéis foundation
+  - sidebar esquerda continua recolhível em modo mini, não desaparece sem trigger
 
-2. Aproveitar o `PyroUsbTransport` existente e endurecer seu contrato para uso agendado
-- Não recriar o transporte; adaptar `src/hardware/transports/pyroUsb.ts` para o caso real de scheduler.
-- Adicionar um wrapper/adapter opcional para o backend FireOne existente (`FireOneController`) em vez de duplicar protocolo.
-- Garantir conversão operacional:
-  - `ShowPlan.module` 0-based -> `moduleAddress = module + 1`
-  - `ShowPlan.channel` 0-based -> `cueIndex/igniter = channel + 1`
-- Manter regras atuais:
-  - sem auto-arm implícito
-  - lockout/watchdog preservados
-  - diagnostics congelado
-- Se necessário, endurecer validações para refletir endereço físico 1-based no dispatch real.
+2. Promover a `EffectLibrary` de “dock opcional” para sidebar foundation
+- Substituir o left dock atual por uma sidebar persistente com:
+  - header compacto “Effect Library”
+  - busca
+  - chips/filtros
+  - lista/tabela rolável
+- Manter os componentes já existentes da `EffectLibrary`, mas adaptar o container para largura fixa e altura total entre toolbar e timeline.
+- Preservar a possibilidade de recolher para mini-rail com ícones, seguindo a regra do sidebar: sempre deve existir forma visível de expandir novamente.
+- Manter os outros painéis compartilhados (`scene`, `showsettings`) fora da foundation principal, como overlays/drawers, para não competir com a biblioteca.
 
-3. Criar a bridge temporal dedicada de pyro
-- Criar `src/hardware/integrations/pyroSchedulerBridge.ts`.
-- Responsabilidades da bridge:
-  - ler `ShowPlan.pyroCues`
-  - converter cada cue em `ScheduledHardwareEvent<PyroUsbScheduledPayload>`
-  - instanciar e operar um `HardwareScheduler` com `latencyByType.pyro = PYRO_USB_DEFAULT_LATENCY_MS`
-  - despachar apenas `fire` no tempo de execução; `arm/disarm/estop` continuam explícitos fora do timeline
-- Aplicar compensação temporal por cue:
-  - `scheduledTime = max(0, cue.time - cue.fuseDelay / 1000)`
-  - scheduler ainda compensa a latência do transporte no `dispatchAt`
-- IDs de eventos devem ser estáveis por cue para replay previsível e rastreio em diagnostics.
+3. Refinar o container do `SkyCanvas` como palco central
+- Enquadrar o `SkyCanvas` dentro de um “viewport frame” premium:
+  - fundo Vantablack
+  - bordas suaves / glass dark
+  - fade e overlays existentes preservados
+- Garantir que o canvas ocupe todo o espaço restante entre sidebar esquerda e timeline inferior sem sobreposição acidental.
+- Manter a estratégia Synthetic First e os parâmetros visuais premium já definidos em memória.
+- Não introduzir novos controles pesados sobre o canvas nesta fase; foco é base estrutural.
 
-4. Sincronizar corretamente a bridge com movimento do playhead
-- A bridge deve manter `lastClockState` e classificar transições:
-  - avanço contínuo
-  - pause
-  - seek forward
-  - rewind
-  - reset
-  - external sync / locate
+4. Consolidar a timeline inferior como barra de composição principal
+- Reforçar a `Timeline` como painel bottom-docked de largura total, com altura desktop mais estável e leitura melhor.
+- Preservar a transport bar atual, playhead, grupos de tracks e `AudioWaveform`.
+- Ajustar o visual do container da timeline para dark mode premium:
+  - contraste mais alto entre header, régua e tracks
+  - borda superior sutil
+  - superfícies translúcidas consistentes com a sidebar
+- Garantir que a waveform fique claramente integrada ao rodapé e não pareça um bloco separado.
+
+5. Unificar o sistema visual dark mode
+- Aplicar os tokens e memórias existentes:
+  - base Vantablack / superfícies escuras
+  - ciano para sync/timecode
+  - âmbar/laranja para pyro
+  - verde/vermelho só para estados críticos
+- Harmonizar sidebar, viewport frame e timeline com a mesma linguagem:
+  - blur controlado
+  - bordas de baixa opacidade
+  - tipografia mono para dados operacionais
+  - microcontraste para leitura em ambiente escuro
+- Evitar cyberpunk excessivo; manter linguagem mission-control.
+
+6. Ajustar comportamento de overlays e painéis secundários
+- Verificar `activePanel` e painéis flutuantes da direita para que não conflitem com a nova foundation.
 - Regras:
-  - play contínuo: `scheduler.tick(deltaClock)`
-  - pause: não avançar scheduler
-  - seek forward: `scheduler.seek(newTime)` para podar passado
-  - rewind/reset/external jump: limpar e reconstruir fila a partir do tempo atual
-  - jitter pequeno: não reconstruir e não duplicar firing
-- Nunca disparar cues que já ficaram no passado após rebuild.
+  - foundation sempre visível por padrão
+  - painéis secundários continuam contextuais
+  - nenhum painel pode ocultar o trigger de reabertura da sidebar/timeline
+- Manter a regra de UI: nunca aninhar botões dentro de triggers Radix/Shadcn.
 
-5. Isolar pyro real do `executionBridge` legado
-- Hoje `src/core/execution/executionBridge.ts` ainda converte `ShowPlan.pyroCues` para um payload legado incompatível com o transporte novo.
-- Remover pyro real desse caminho legado, mantendo o `executionBridge` apenas para:
-  - simulação
-  - status legado
-  - outros domínios ainda não migrados
-- Evitar dupla execução: `executionBridge` não pode continuar disparando pyro de `ShowPlan` em paralelo à nova bridge.
+7. Preservar performance e estabilidade
+- Reutilizar componentes existentes em vez de recriar:
+  - `SkyCanvas`
+  - `EffectLibrary`
+  - `Timeline`
+  - `AudioWaveform`
+- Evitar adicionar lógica nova no hot path do canvas.
+- Manter lazy loading onde já existe, mas garantir que a foundation apareça com skeletons/fallbacks consistentes.
+- Respeitar as memórias de gestão de recursos e zero-GC nas áreas críticas.
 
-6. Aplicar gates de segurança antes do dispatch real
-- Antes de chamar `pyroTransport.dispatch(...)`, validar:
-  - transporte conectado
-  - sem lockout ativo
-  - watchdog não expirado
-  - módulo armado
-  - `safetyStateMachine.state` em `ARMED` ou `FIRING`
-  - cue ainda válida para o tempo atual
-- Em falha de gate:
-  - não disparar
-  - registrar motivo no diagnostics/log
-  - nunca tentar “compensar” com retry automático, para evitar disparo duplicado
-- Preservar a regra do projeto: sem dados/hardware fake no caminho real.
+8. Validar responsividade do desktop e não quebrar mobile
+- Implementar a foundation apenas no branch desktop do `Index.tsx`.
+- Não alterar a arquitetura mobile com `MobileFloatingPanel` e `MobileTabBar`, exceto se algum ajuste de import/container for necessário.
+- Garantir que os estados compartilhados (`timelineCollapsed`, `viewportMaximized`, `activePanel`) continuem compatíveis com ambos os modos.
 
-7. Expor diagnósticos operacionais da integração
-- A bridge deve expor snapshot congelado com:
-  - `currentClockTime`
-  - `pendingCount`
-  - `nextPyroDispatchTime`
-  - `lastScheduledCueId`
-  - `lastFiredCueId`
-  - `lastRebuildReason`
-  - `transportConnected`
-  - `safetyState`
-- Motivos de rebuild sugeridos:
-  - `boot`
-  - `play`
-  - `seek-forward`
-  - `rewind`
-  - `external-sync`
-  - `showplan-change`
-  - `reset`
+9. QA funcional e visual
+- Verificar:
+  - `/editor` abre com Sky Canvas central, Effect Library à esquerda e Timeline/Waveform na base
+  - colapso/expansão da timeline funciona
+  - sidebar esquerda pode recolher e reabrir
+  - drag/drop/import no viewport continua funcionando
+  - timeline continua selecionando, scrubando e exibindo waveform
+  - overlays do canvas não ficam cobertos incorretamente
+- Fazer uma passada visual para contraste, espaçamento e consistência em dark mode.
 
-8. Cobrir com testes de integração antes de ativar no playback real
-- Criar `src/hardware/integrations/pyroSchedulerBridge.spec.ts`.
-- Casos mínimos:
-  - cue dispara com compensação de `fuseDelay + latency`
-  - seek forward ignora cues perdidas
-  - rewind reconstrói e permite replay determinístico
-  - pause não dispara
-  - external sync/jitter não duplica firing
-  - cue passada após rebuild é ignorada
-  - lockout/watchdog/desarmado bloqueiam dispatch
-  - múltiplos cues no mesmo timestamp preservam ordem estável
-  - mapeamento `module + 1` e `channel + 1` chega corretamente ao dispatch físico
-- Manter os testes atuais de `scheduler`, `ltc` e `pyroUsb` como base de regressão.
-
-Arquivos a criar/editar
-- Criar: `src/hardware/integrations/pyroSchedulerBridge.ts`
-- Criar: `src/hardware/integrations/pyroSchedulerBridge.spec.ts`
-- Editar: `src/orchestration/EngineProvider.tsx`
-- Editar: `src/components/editor/SkyCanvas.tsx`
-- Editar: `src/core/execution/executionBridge.ts`
-- Editar: `src/hardware/transports/pyroUsb.ts` (somente se necessário para adapter/diagnostics/mapeamento)
-- Editar: `src/hardware/index.ts`
+Arquivos principais a editar
+- `src/pages/Index.tsx` — reestruturação do shell desktop
+- `src/components/editor/EffectLibrary.tsx` — adaptação do container para sidebar foundation
+- `src/components/editor/Timeline.tsx` — refinamento visual/layout do rodapé timeline
+- Opcionalmente algum arquivo de estilos/tokens já usado pelo editor, se necessário para superfícies dark/shared chrome
 
 Detalhes técnicos
-- O repositório já possui `PyroUsbTransport`; a fase correta agora é integração temporal, não recriação do transporte.
-- `ShowPlan` é a fonte canônica e já define `pyroCues` com `module`, `channel`, `time` e `fuseDelay`.
-- `EngineProvider` hoje habilita `timelineClock` mas não registra seu tick no `lockstep`; isso precisa ser explícito para o scheduler seguir o clock determinístico.
-- `SkyCanvas` ainda registra `executionBridge` como subsystem de playback; esse acoplamento precisa ser revisto para evitar conflito com pyro real.
-- A implementação deve priorizar segurança operacional sobre “catch-up”: sem retro-fire, sem auto-arm em seek/play/sync, sem retry automático de fire.
+- O projeto já tem os três blocos principais implementados; o trabalho é consolidar o layout foundation, não criar novos módulos do zero.
+- A sidebar esquerda atual já abre `EffectLibrary`, mas como painel flutuante estreito; a mudança principal é torná-la estrutural e persistente.
+- A timeline já possui waveform integrada (`AudioWaveform`) e trilhas operacionais; o foco é hierarquia visual e docking estável.
+- O `SkyCanvas` já está compatível com a direção visual premium do projeto; o ajuste é de moldura/layout, não de engine 3D.
