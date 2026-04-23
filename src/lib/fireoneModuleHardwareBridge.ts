@@ -206,7 +206,7 @@ export class FireOneHardwareBridge {
   async connectBLELongRange(): Promise<boolean> {
     try {
       if (!this.getTransportSupport().ble_lr) {
-        this.lastError = 'BLE Long Range não suportado neste navegador/dispositivo';
+        this.setError('UNSUPPORTED_TRANSPORT', 'BLE Long Range não suportado neste navegador/dispositivo', 'ble_lr');
         this.onEvent?.('unsupported_transport', { transport: 'ble_lr' });
         return false;
       }
@@ -223,7 +223,7 @@ export class FireOneHardwareBridge {
 
       return await this.setupBLEDevice(device, 'ble_lr');
     } catch (err) {
-      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar BLE LR';
+      this.setError('BLE_GATT_FAILED', err instanceof Error ? err.message : 'Falha ao conectar BLE LR', 'ble_lr');
       console.warn('[HardwareBridge] BLE LR connect failed:', err);
       return false;
     }
@@ -264,7 +264,7 @@ export class FireOneHardwareBridge {
   async connectUSB(baudRate = 115200): Promise<boolean> {
     try {
       if (!this.getTransportSupport().usb) {
-        this.lastError = 'USB/WebSerial não suportado neste navegador/dispositivo';
+        this.setError('UNSUPPORTED_TRANSPORT', 'USB/WebSerial não suportado neste navegador/dispositivo', 'usb');
         this.onEvent?.('unsupported_transport', { transport: 'usb' });
         return false;
       }
@@ -287,7 +287,7 @@ export class FireOneHardwareBridge {
       await this.disconnect();
       return false;
     } catch (err) {
-      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar USB';
+      this.setError('SERIAL_OPEN_FAILED', err instanceof Error ? err.message : 'Falha ao conectar USB', 'usb');
       console.warn('[HardwareBridge] USB connect failed:', err);
       return false;
     }
@@ -296,7 +296,7 @@ export class FireOneHardwareBridge {
   async connectDirectRelay(baudRate = 115200): Promise<boolean> {
     try {
       if (!this.getTransportSupport().direct_relay) {
-        this.lastError = 'Direct Relay/WebSerial não suportado neste navegador/dispositivo';
+        this.setError('UNSUPPORTED_TRANSPORT', 'Direct Relay/WebSerial não suportado neste navegador/dispositivo', 'direct_relay');
         this.onEvent?.('unsupported_transport', { transport: 'direct_relay' });
         return false;
       }
@@ -319,7 +319,7 @@ export class FireOneHardwareBridge {
       await this.disconnect();
       return false;
     } catch (err) {
-      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar Direct Relay';
+      this.setError('SERIAL_OPEN_FAILED', err instanceof Error ? err.message : 'Falha ao conectar Direct Relay', 'direct_relay');
       console.warn('[HardwareBridge] Direct Relay connect failed:', err);
       return false;
     }
@@ -327,7 +327,7 @@ export class FireOneHardwareBridge {
 
   async connectWebSocket(url = 'ws://192.168.4.1:81'): Promise<boolean> {
     if (!this.getTransportSupport().websocket) {
-      this.lastError = 'WebSocket não suportado neste navegador/dispositivo';
+      this.setError('UNSUPPORTED_TRANSPORT', 'WebSocket não suportado neste navegador/dispositivo', 'websocket');
       this.onEvent?.('unsupported_transport', { transport: 'websocket' });
       return false;
     }
@@ -346,7 +346,7 @@ export class FireOneHardwareBridge {
    */
   async connectWiFiDirect(url?: string): Promise<boolean> {
     if (!this.getTransportSupport().wifi_direct) {
-      this.lastError = 'Wi‑Fi Direct indisponível neste ambiente';
+      this.setError('UNSUPPORTED_TRANSPORT', 'Wi‑Fi Direct indisponível neste ambiente', 'wifi_direct');
       this.onEvent?.('unsupported_transport', { transport: 'wifi_direct' });
       return false;
     }
@@ -414,12 +414,12 @@ export class FireOneHardwareBridge {
           if (opened || this.connected) this.handleDisconnect();
         };
         ws.onerror = () => {
-          this.lastError = `Falha ao conectar WebSocket (${url})`;
+          this.setError('WEBSOCKET_OPEN_FAILED', `Falha ao conectar WebSocket (${url})`, transport);
           clearTimeout(timer);
           resolve(false);
         };
       } catch {
-        this.lastError = `URL de WebSocket inválida (${url})`;
+        this.setError('WEBSOCKET_INVALID_URL', `URL de WebSocket inválida (${url})`, transport);
         resolve(false);
       }
     });
