@@ -4,10 +4,14 @@ import { LTCTransport } from './ltc';
 describe('LTCTransport', () => {
   it('softens jitter instead of snapping on small chase corrections', () => {
     const syncExternalTime = vi.fn();
+    let currentTime = 10;
     const transport = new LTCTransport(
       {
-        getTime: () => 10,
-        syncExternalTime,
+        getTime: () => currentTime,
+        syncExternalTime: (time) => {
+          currentTime = time;
+          syncExternalTime(time);
+        },
       },
       { smoothingFactor: 0.15 },
     );
@@ -15,11 +19,35 @@ describe('LTCTransport', () => {
     const first = transport.ingestTime(10.033, 1000);
     const second = transport.ingestTime(10.04, 1033);
 
-    expect(first).toMatchObject({ mode: 'soft', syncedTime: 10.033 });
+    expect(first).toMatchObject({ mode: 'soft' });
+    expect(first?.syncedTime).toBeCloseTo(10.00495, 6);
     expect(second?.mode).toBe('soft');
-    expect(second?.syncedTime).toBeCloseTo(10.03405, 6);
+    expect(second?.syncedTime).toBeCloseTo(10.0102075, 6);
     expect(syncExternalTime).toHaveBeenCalledTimes(2);
-    expect(syncExternalTime.mock.lastCall?.[0]).toBeCloseTo(10.03405, 6);
+    expect(syncExternalTime.mock.lastCall?.[0]).toBeCloseTo(10.0102075, 6);
+  });
+
+  it('smooths against the live target time instead of the previous LTC sample', () => {
+    const syncExternalTime = vi.fn();
+    let currentTime = 10;
+    const transport = new LTCTransport(
+      {
+        getTime: () => currentTime,
+        syncExternalTime: (time) => {
+          currentTime = time;
+          syncExternalTime(time);
+        },
+      },
+      { smoothingFactor: 0.15 },
+    );
+
+    transport.ingestTime(10.2, 1000);
+    currentTime = 10.3;
+    const sample = transport.ingestTime(10.4, 1033);
+
+    expect(sample).toMatchObject({ mode: 'soft' });
+    expect(sample?.syncedTime).toBeCloseTo(10.3075, 6);
+    expect(syncExternalTime.mock.lastCall?.[0]).toBeCloseTo(10.3075, 6);
   });
 
   it('snaps immediately on large forward and backward jumps', () => {
@@ -44,10 +72,12 @@ describe('LTCTransport', () => {
 
   it('ignores deadband jitter and tracks pause/resume signal presence', () => {
     const syncExternalTime = vi.fn();
+    const releaseExternalSync = vi.fn();
     const transport = new LTCTransport(
       {
         getTime: () => 10,
         syncExternalTime,
+        releaseExternalSync,
       },
       { pauseTimeoutMs: 250 },
     );
@@ -58,6 +88,7 @@ describe('LTCTransport', () => {
     expect(syncExternalTime).not.toHaveBeenCalled();
     expect(transport.isSignalPresent(1200)).toBe(true);
     expect(transport.isSignalPresent(1301)).toBe(false);
+    expect(releaseExternalSync).toHaveBeenCalledTimes(1);
 
     transport.ingestTime(10.04, 1400);
     expect(transport.isSignalPresent(1500)).toBe(true);
