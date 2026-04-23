@@ -763,7 +763,6 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       };
       const timer = setTimeout(() => {
         if (settings.hilModeEnabled) {
-          bridgePhysicalController.registerHilTimer(commandId, timer);
           void bridgePhysicalController.simulateHilFire(id, (_channelId, meta) => {
             if (meta.reordered) {
               const log = `HIL reorder: ${id} +${Math.round(meta.delayMs)}ms`;
@@ -783,6 +782,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         }
         finalizeCommand();
       }, ch.duration);
+      bridgePhysicalController.registerHilTimer(commandId, timer);
       fireTimers.current.set(id, timer);
     }
   }, [channels, sendArtNetPacket, positions, firingStartTime, fireone, pbus, pyroArm, dmxArm, deadmanHeld, settings.pyroArmRequired, settings.dualConfirmRequired, settings.hilModeEnabled, dualConfirmArmed, relayDiagnostic.watchdogRequired, physicalSnapshot.watchdogState]);
@@ -813,7 +813,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   }, [pyroArm, dmxArm, settings.fireWindowMs, handlePyroArm, handleDmxArm]);
 
   const cancelLiveHil = useCallback(() => {
-    const latest = [...commandTimeline].reverse().find((entry) => !entry.doneAt && !entry.failedAt);
+    const latest = [...commandTimeline].reverse().find((entry) => !entry.doneAt && !entry.failedAt && !entry.ackAt);
     if (!latest) {
       toast.info('Nenhum comando HIL ativo para cancelar');
       return;
