@@ -260,6 +260,39 @@ describe('timelineClock/store sync', () => {
     expect(useProjectStore.getState().currentTime).toBe(10);
   });
 
+  it('ignores negative tick values', () => {
+    timelineClock.setDuration(30);
+    timelineClock.seek(10);
+
+    timelineClock.tick(-1);
+    mirror();
+
+    expect(useProjectStore.getState().currentTime).toBe(10);
+  });
+
+  it('clamps seek to duration bounds', () => {
+    timelineClock.setDuration(30);
+
+    timelineClock.seek(999);
+    mirror();
+    expect(useProjectStore.getState().currentTime).toBe(30);
+
+    timelineClock.seek(-10);
+    mirror();
+    expect(useProjectStore.getState().currentTime).toBe(0);
+  });
+
+  it('speed 0 freezes time deterministically', () => {
+    timelineClock.setDuration(30);
+    timelineClock.play();
+
+    timelineClock.setSpeed(0);
+    timelineClock.tick(1);
+    mirror();
+
+    expect(useProjectStore.getState().currentTime).toBe(0);
+  });
+
   it('remains deterministic across many ticks', () => {
     timelineClock.setDuration(100);
     timelineClock.play();
