@@ -27,12 +27,29 @@ serve(async (req) => {
     const depth = analysisDepth || 'cinematic';
 
     const systemPrompt = buildSystemPrompt(drones, depth, !!depthEstimation, !!objectSegmentation);
+    const baseUserPrompt = buildUserPrompt(
+      selectedFrames.length,
+      drones,
+      context,
+      mode,
+      depth,
+      !!depthEstimation,
+      !!objectSegmentation,
+    );
+
+    const refinement = await runPromptRefinementCycle({
+      apiKey: LOVABLE_API_KEY,
+      basePrompt: baseUserPrompt,
+      droneCount: drones,
+      analysisDepth: depth,
+      mode: mode || "cinematic",
+    });
 
     const userContent: any[] = [];
 
     userContent.push({
       type: "text",
-      text: buildUserPrompt(selectedFrames.length, drones, context, mode, depth, !!depthEstimation, !!objectSegmentation),
+      text: refinement.finalPrompt,
     });
 
     for (let i = 0; i < selectedFrames.length; i++) {
@@ -46,21 +63,19 @@ serve(async (req) => {
       });
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-        ],
-        temperature: 0.6,
-        max_tokens: 16000,
-      }),
+    const response = await callGateway({
+      apiKey: LOVABLE_API_KEY,
+      modelCandidates: [
+        "google/gemini-2.5-pro",
+        "openai/gpt-4.1",
+        "anthropic/claude-sonnet-4",
+      ],
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
+      temperature: 0.6,
+      maxTokens: 16000,
     });
 
     if (!response.ok) {
@@ -114,6 +129,8 @@ serve(async (req) => {
       }
     }
 
+    parsed.promptRefinement = refinement.meta;
+
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -137,6 +154,119 @@ function extractJsonPayload(raw: string): string {
   }
 
   return raw.trim();
+}
+
+interface GatewayCallOptions {
+  apiKey: string;
+  modelCandidates: string[];
+  messages: Array<{ role: "system" | "user" | "assistant"; content: any }>;
+  temperature?: number;
+  maxTokens?: number;
+}
+
+async function callGateway(options: GatewayCallOptions): Promise<Response> {
+  let lastResponse: Response | null = null;
+  for (const model of options.modelCandidates) {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${options.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: options.messages,
+        temperature: options.temperature ?? 0.5,
+        max_tokens: options.maxTokens ?? 4000,
+      }),
+    });
+    if (res.ok) return res;
+    lastResponse = res;
+    if (res.status === 402 || res.status === 429) return res; // do not continue on account/rate errors
+  }
+  return lastResponse ?? new Response(JSON.stringify({ error: "No AI response" }), { status: 500 });
+}
+
+async function runPromptRefinementCycle(params: {
+  apiKey: string;
+  basePrompt: string;
+  droneCount: number;
+  analysisDepth: string;
+  mode: string;
+}): Promise<{ finalPrompt: string; meta: Record<string, any> }> {
+  const { apiKey, basePrompt, droneCount, analysisDepth, mode } = params;
+  let currentPrompt = basePrompt;
+  const history: any[] = [];
+
+  // Cycle 1: optimizer
+  const optimizerResponse = await callGateway({
+    apiKey,
+    modelCandidates: ["openai/gpt-4.1-mini", "google/gemini-2.5-flash", "anthropic/claude-3.5-haiku"],
+    messages: [
+      {
+        role: "system",
+        content: "You are a prompt optimizer for drone-show generation. Return strict JSON only.",
+      },
+      {
+        role: "user",
+        content: `Improve this prompt for higher-quality, safer, physically-realistic drone show generation.
+Context: drones=${droneCount}, depth=${analysisDepth}, mode=${mode}
+Return JSON: {"refinedPrompt":"...","improvements":["..."],"risks":["..."]}\n\nPROMPT:\n${basePrompt}`,
+      },
+    ],
+    temperature: 0.2,
+    maxTokens: 1800,
+  });
+  if (optimizerResponse.ok) {
+    const optimizerJson = await optimizerResponse.json();
+    const optimizerText = optimizerJson.choices?.[0]?.message?.content ?? "";
+    try {
+      const parsed = JSON.parse(extractJsonPayload(optimizerText));
+      if (parsed?.refinedPrompt) currentPrompt = String(parsed.refinedPrompt);
+      history.push({ stage: "optimize", model: optimizerJson.model, improvements: parsed?.improvements ?? [], risks: parsed?.risks ?? [] });
+    } catch {
+      history.push({ stage: "optimize", model: optimizerJson.model, note: "unparsed_response" });
+    }
+  }
+
+  // Cycle 2: critic/reviewer
+  const criticResponse = await callGateway({
+    apiKey,
+    modelCandidates: ["anthropic/claude-sonnet-4", "openai/gpt-4.1", "google/gemini-2.5-pro"],
+    messages: [
+      {
+        role: "system",
+        content: "You are a strict quality reviewer for drone-show prompt engineering. Return strict JSON.",
+      },
+      {
+        role: "user",
+        content: `Review and harden this prompt. Focus on safety, motion feasibility, narrative quality, and JSON compliance.
+Return JSON: {"hardenedPrompt":"...","qualityScore":0-100,"notes":["..."]}\n\nPROMPT:\n${currentPrompt}`,
+      },
+    ],
+    temperature: 0.1,
+    maxTokens: 1800,
+  });
+  if (criticResponse.ok) {
+    const criticJson = await criticResponse.json();
+    const criticText = criticJson.choices?.[0]?.message?.content ?? "";
+    try {
+      const parsed = JSON.parse(extractJsonPayload(criticText));
+      if (parsed?.hardenedPrompt) currentPrompt = String(parsed.hardenedPrompt);
+      history.push({ stage: "critic", model: criticJson.model, qualityScore: parsed?.qualityScore ?? null, notes: parsed?.notes ?? [] });
+    } catch {
+      history.push({ stage: "critic", model: criticJson.model, note: "unparsed_response" });
+    }
+  }
+
+  return {
+    finalPrompt: currentPrompt,
+    meta: {
+      enabled: true,
+      cycles: history,
+      promptLength: currentPrompt.length,
+    },
+  };
 }
 
 // ─── System Prompt Builder ────────────────────────────────────
