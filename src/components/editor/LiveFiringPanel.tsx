@@ -33,6 +33,7 @@ import { useSfxChannelStore } from '@/store/useSfxChannelStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl, evaluateBridgeWebSocketConnection, getBridgeSecurityDiagnostic, openBridgeWebSocket, parseBridgeGatewayUrl, saveBridgeGatewayConfig } from '@/lib/bridgeGateway';
+import { bridgePhysicalController, evaluateFireLockout } from '@/lib/bridgePhysicalControl';
 
 import type { SFXChannel, CueEntry, FXCMode, FXCSettings, DeviceLibEntry } from './live-firing/types';
 import { FIRING_RULES, SFX_TYPES, DEFAULT_CHANNELS, DEFAULT_SETTINGS, CUES_PER_PAGE, formatTimecode, SHOWVEN_LIBRARY } from './live-firing/constants';
@@ -387,13 +388,30 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   const showModeTapRef = useRef<number>(0);
   const sequenceRef = useRef(0);
   const fireTimers = useRef(new globalThis.Map<string, ReturnType<typeof setTimeout>>());
+  const fireWindowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const relayWs = useRef<WebSocket | null>(null);
+  const [dualConfirmArmed, setDualConfirmArmed] = useState(false);
+  const [fireWindowEndsAt, setFireWindowEndsAt] = useState<number | null>(null);
+  const [physicalRevision, setPhysicalRevision] = useState(0);
   const relayDiagnostic = useMemo(() => getBridgeSecurityDiagnostic(relayUrl), [relayUrl]);
+  const physicalSnapshot = useMemo(() => bridgePhysicalController.getSnapshot(), [physicalRevision]);
 
   useEffect(() => {
     if (!initialMode) return;
     setMode(initialMode as FXCMode);
   }, [initialMode]);
+
+  useEffect(() => bridgePhysicalController.subscribe(() => setPhysicalRevision((value) => value + 1)), []);
+
+  useEffect(() => {
+    if (!physicalSnapshot.autoDisarmed || (!pyroArm && !dmxArm)) return;
+    setPyroArm(false);
+    setDmxArm(false);
+    setDeadmanHeld(false);
+    setDualConfirmArmed(false);
+    setFireWindowEndsAt(null);
+    toast.error('Watchdog físico forçou AUTO DISARM por perda de heartbeat', { duration: 5000 });
+  }, [physicalSnapshot.autoDisarmed, pyroArm, dmxArm]);
 
   // ─── WebSocket Relay connection ───
   const connectRelay = useCallback(() => {
@@ -408,11 +426,44 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       const parsed = parseBridgeGatewayUrl(relayUrl);
       if (parsed) saveBridgeGatewayConfig(parsed);
       const ws = openBridgeWebSocket(relayUrl, protocols);
-      ws.onopen = () => { setRelayConnected(true); toast.success('🔌 Relay UDP conectado'); };
-      ws.onclose = () => { setRelayConnected(false); relayWs.current = null; };
-      ws.onerror = () => { setRelayConnected(false); toast.error('Falha ao conectar relay'); };
+      ws.onopen = () => {
+        setRelayConnected(true);
+        bridgePhysicalController.startWatchdog((heartbeat) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ action: 'heartbeat', heartbeat }));
+          }
+        });
+        ws.send(JSON.stringify({ action: 'clock-sync', t0: performance.now() }));
+        toast.success('🔌 Relay UDP conectado');
+      };
+      ws.onclose = () => {
+        setRelayConnected(false);
+        relayWs.current = null;
+        bridgePhysicalController.stopWatchdog();
+      };
+      ws.onerror = () => {
+        setRelayConnected(false);
+        bridgePhysicalController.stopWatchdog();
+        toast.error('Falha ao conectar relay');
+      };
       ws.onmessage = (e) => {
-        try { const msg = JSON.parse(e.data); if (msg.error) console.warn('[Relay]', msg.error); } catch {}
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.action === 'pong' || msg.action === 'heartbeat-pong' || msg.heartbeat) {
+            bridgePhysicalController.ingestHeartbeat(msg.heartbeat ?? msg);
+          }
+          if (msg.action === 'clock-sync' && typeof msg.t0 === 'number' && typeof msg.t1 === 'number' && typeof msg.t2 === 'number') {
+            bridgePhysicalController.recordClockSync({ t0: msg.t0, t1: msg.t1, t2: msg.t2, t3: performance.now() });
+          }
+          if (msg.commandId && typeof msg.state === 'string') {
+            try {
+              bridgePhysicalController.transitionCommand(msg.commandId, msg.state, msg.reason);
+            } catch {
+              if (msg.state === 'failed' && msg.reason) bridgePhysicalController.failCommand(msg.commandId, msg.reason);
+            }
+          }
+          if (msg.error) console.warn('[Relay]', msg.error);
+        } catch {}
       };
       relayWs.current = ws;
     } catch { toast.error('URL do relay inválida'); }
@@ -428,10 +479,11 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
     relayWs.current?.close();
     relayWs.current = null;
     setRelayConnected(false);
+    bridgePhysicalController.stopWatchdog();
   }, []);
 
   // Cleanup relay on unmount
-  useEffect(() => { return () => { relayWs.current?.close(); }; }, []);
+  useEffect(() => { return () => { relayWs.current?.close(); bridgePhysicalController.stopWatchdog(); if (fireWindowTimerRef.current) clearTimeout(fireWindowTimerRef.current); }; }, []);
 
   // ─── Remote LiveFX relay listener ───
   useEffect(() => {
