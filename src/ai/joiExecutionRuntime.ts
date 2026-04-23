@@ -50,6 +50,7 @@ export interface RuntimeFrameTrace {
   readonly frameIndex: number;
   readonly hash: string;
   readonly executedCommands: number;
+  readonly activeSteps: number; // total commands available at frame (replay diff)
   readonly risk: number;
   readonly aborted: boolean;
   readonly abortReason?: AbortReason;
