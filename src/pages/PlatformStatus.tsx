@@ -64,13 +64,13 @@ export default function PlatformStatus() {
       setLoading(true);
       const [incidentResult, reportResult] = await Promise.all([
         supabase
-          .from('health_incidents')
+          .from('health_incidents' as never)
           .select('id, incident_id, severity, subsystem, message, resolved, incident_at')
           .eq('user_id', user.id)
           .order('incident_at', { ascending: false })
           .limit(8),
         supabase
-          .from('executive_reports')
+          .from('executive_reports' as never)
           .select('id, show_name, readiness_status, verification_level, created_at')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
@@ -78,8 +78,8 @@ export default function PlatformStatus() {
       ]);
 
       if (cancelled) return;
-      setIncidents((incidentResult.data ?? []) as IncidentRow[]);
-      setReports((reportResult.data ?? []) as ReportRow[]);
+      setIncidents((incidentResult.data ?? []) as unknown as IncidentRow[]);
+      setReports((reportResult.data ?? []) as unknown as ReportRow[]);
       setLoading(false);
     };
 
