@@ -33,6 +33,7 @@ import '@/core/cluster/reporters/PerformanceHealthReporter';
 import '@/core/cluster/reporters/NetworkHealthReporter';
 import { autoRecoveryService } from '@/core/reliability/AutoRecoveryService';
 import { ReplayOverlay } from '@/components/editor/ReplayOverlay';
+import { useProjectStore } from '@/store/useProjectStore';
 import { toast } from 'sonner';
 
 const FLUSH_INTERVAL_TICKS = 1800; // ~30s at 60Hz
@@ -48,8 +49,14 @@ function safeBoot(label: string, fn: () => void): boolean {
 }
 
 export default function EngineProvider() {
+  const projectId = useProjectStore((s) => s.projectId);
+
   // ── ShowPlan ↔ ProjectStore live sync ──
   useShowPlanSync();
+
+  useEffect(() => {
+    healthPersistenceService.setProjectId(projectId);
+  }, [projectId]);
 
   useEffect(() => {
     let lastFlushTick = 0;
@@ -62,9 +69,7 @@ export default function EngineProvider() {
           indexedDBPersistence.loadCommandLog(),
         ]);
         if (snapshots.length > 0) {
-          for (const snap of snapshots) {
-            (snapshotManager as any)._snapshots.push(snap);
-          }
+          snapshotManager.importSnapshots(snapshots);
           console.log(`[EngineProvider] Restored ${snapshots.length} snapshots from IndexedDB`);
         }
         if (logEntries.length > 0) {
@@ -176,13 +181,13 @@ export default function EngineProvider() {
     });
 
     // ── Register recoverable services ──
-    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || '';
+    const initialProjectId = useProjectStore.getState().projectId;
     const bootFns: Record<string, () => void> = {
       DeterministicClock: () => deterministicClock.start(),
       LockstepEngine: () => lockstep.start(),
       PerformanceProfiler: () => startProfiler(),
       NetworkHealth: () => networkHealthService.start(),
-      HealthPersistence: () => healthPersistenceService.start(projectId),
+      HealthPersistence: () => healthPersistenceService.start(initialProjectId),
     };
     for (const [label, fn] of Object.entries(bootFns)) {
       autoRecoveryService.register(label, fn);

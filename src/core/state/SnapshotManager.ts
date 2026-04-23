@@ -78,6 +78,14 @@ class SnapshotManager {
     return this._snapshots;
   }
 
+  /** Restore a persisted ring buffer without exposing private storage. */
+  importSnapshots(snapshots: readonly Snapshot[]): void {
+    this._snapshots = snapshots.slice(-MAX_SNAPSHOTS);
+    this._lastCaptureTick = this._snapshots.length > 0
+      ? this._snapshots[this._snapshots.length - 1].tick
+      : -Infinity;
+  }
+
   /** Remove snapshots after a tick (for rollback). */
   truncateAfter(tick: number): void {
     this._snapshots = this._snapshots.filter(s => s.tick <= tick);
