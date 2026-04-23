@@ -296,6 +296,8 @@ class BridgePhysicalController {
   }
 
   resetHilRun(): void {
+    for (const t of this.hilTimers.values()) clearTimeout(t);
+    this.hilTimers.clear();
     this.hilRunStart = performance.now();
     this.hilLogs = [];
     this.commandTimeline.clear();
@@ -555,12 +557,13 @@ export function computeHilDrift(report: Pick<HilRunReport, 'logs'>): HilDriftHis
   const max = sorted[sorted.length - 1];
   const bucketSize = Math.max(10, Math.ceil(max / 8));
   const buckets: HilDriftHistogram['buckets'] = [];
-  for (let start = 0; start <= max; start += bucketSize) {
-    const end = start + bucketSize;
-    buckets.push({
-      rangeMs: [start, end],
-      count: sorted.filter((v) => v >= start && v < end).length,
-    });
+  const bucketCount = Math.max(1, Math.floor(max / bucketSize) + 1);
+  for (let i = 0; i < bucketCount; i++) {
+    buckets.push({ rangeMs: [i * bucketSize, (i + 1) * bucketSize], count: 0 });
+  }
+  for (const v of sorted) {
+    const idx = Math.min(buckets.length - 1, Math.floor(v / bucketSize));
+    buckets[idx].count += 1;
   }
 
   return {
@@ -622,7 +625,10 @@ export function replayHilReport(
   const t0 = report.runStart;
   const timers: Array<ReturnType<typeof setTimeout>> = [];
   let scheduled = 0;
-  for (const entry of report.timeline) {
+  const ordered = [...report.timeline]
+    .filter((entry) => entry.sentAt !== undefined)
+    .sort((a, b) => (a.sentAt! - b.sentAt!));
+  for (const entry of ordered) {
     if (entry.sentAt === undefined) continue;
     const delay = Math.max(0, entry.sentAt - t0);
     scheduled += 1;
