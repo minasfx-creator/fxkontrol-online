@@ -282,7 +282,8 @@ export class LTCTransport {
       return null;
     }
 
-    const filteredSeconds = this.clampIncomingJitter(this.filterIncoming(rawSeconds));
+    const kalmanSeconds = this.filterIncoming(rawSeconds);
+    const filteredSeconds = this.clampIncomingJitter(rawSeconds, kalmanSeconds);
     const source = this.upsertSource(sourceId, receivedAtMs, priority);
     const previousIncomingTime = source.lastTime;
     source.lastTime = filteredSeconds;
@@ -772,13 +773,22 @@ export class LTCTransport {
     return this.kalmanEstimate;
   }
 
-  private clampIncomingJitter(time: number): number {
+  private clampIncomingJitter(rawTime: number, filteredTime: number): number {
     if (this.lastIncomingTime === null) {
-      return time;
+      return filteredTime;
+    }
+
+    if (Math.abs(rawTime - this.lastIncomingTime) > this.options.hardResyncThreshold) {
+      return rawTime;
+    }
+
+    const frameDuration = 1 / Math.max(this.detectedFps, 1);
+    if (Math.abs(rawTime - this.lastIncomingTime) > frameDuration * (this.options.dropFrameThresholdFrames + 1)) {
+      return rawTime;
     }
 
     return clamp(
-      time,
+      filteredTime,
       this.lastIncomingTime - this.options.jitterClampSec,
       this.lastIncomingTime + this.options.jitterClampSec,
     );
