@@ -27,6 +27,39 @@ import { isIOSWebKit, requiresSecureBridgeTransport } from '@/lib/bridgeGateway'
 
 export type BridgeTransport = 'ble' | 'ble_lr' | 'usb' | 'websocket' | 'wifi_direct' | 'direct_relay' | 'none';
 
+/**
+ * Standardized reason codes for bridge errors / link state.
+ * Stable, machine-readable identifiers — UI translates for display.
+ */
+export type BridgeReasonCode =
+  | 'OK'
+  | 'UNSUPPORTED_TRANSPORT'
+  | 'TRANSPORT_UNAVAILABLE'
+  | 'PERMISSION_DENIED'
+  | 'HANDSHAKE_TIMEOUT'
+  | 'HEARTBEAT_TIMEOUT'
+  | 'TRANSPORT_DISCONNECTED'
+  | 'WEBSOCKET_OPEN_FAILED'
+  | 'WEBSOCKET_INVALID_URL'
+  | 'SERIAL_OPEN_FAILED'
+  | 'BLE_GATT_FAILED'
+  | 'SEND_FAILED'
+  | 'NOT_CONNECTED'
+  | 'LINK_NOT_HEALTHY'
+  | 'STALE_SESSION'
+  | 'COMMAND_TIMEOUT'
+  | 'UNKNOWN';
+
+export interface BridgeError {
+  code: BridgeReasonCode;
+  message: string;
+  transport?: BridgeTransport;
+  detail?: string;
+  at: number;
+}
+
+export type LinkHealth = 'disconnected' | 'handshaking' | 'healthy';
+
 export interface BridgeStatus {
   transport: BridgeTransport;
   connected: boolean;
@@ -38,8 +71,14 @@ export interface BridgeStatus {
   rxBytes: number;
   rssi?: number;
   estimatedDistance?: number;
+  /** Human-readable last error message (legacy). */
   lastError?: string;
-  linkHealth?: 'disconnected' | 'handshaking' | 'healthy';
+  /** Structured last error with stable reason code. */
+  lastErrorCode?: BridgeReasonCode;
+  lastErrorAt?: number;
+  linkHealth?: LinkHealth;
+  /** Monotonic id incremented on every successful link. Pending ops from older sessions are ignored. */
+  sessionId: number;
 }
 
 export interface BridgeTransportSupport {
@@ -73,7 +112,13 @@ export class FireOneHardwareBridge {
   private rssi?: number;
   private estimatedDistance?: number;
   private lastError?: string;
-  private linkHealth: 'disconnected' | 'handshaking' | 'healthy' = 'disconnected';
+  private lastErrorCode?: BridgeReasonCode;
+  private lastErrorAt?: number;
+  private linkHealth: LinkHealth = 'disconnected';
+  /** Monotonic session id — incremented on every successful link establishment. */
+  private sessionId = 0;
+  /** Session id at the time a connect attempt began — used to invalidate handshakes from stale sessions. */
+  private connectingSessionId = 0;
 
   private bleDevice: any = null;
   private bleCharTx: any = null;
@@ -137,7 +182,7 @@ export class FireOneHardwareBridge {
   async connectBLE(): Promise<boolean> {
     try {
       if (!this.getTransportSupport().ble) {
-        this.lastError = 'BLE não suportado neste navegador/dispositivo';
+        this.setError('UNSUPPORTED_TRANSPORT', 'BLE não suportado neste navegador/dispositivo', 'ble');
         this.onEvent?.('unsupported_transport', { transport: 'ble' });
         return false;
       }
@@ -151,7 +196,7 @@ export class FireOneHardwareBridge {
 
       return await this.setupBLEDevice(device, 'ble');
     } catch (err) {
-      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar BLE';
+      this.setError('BLE_GATT_FAILED', err instanceof Error ? err.message : 'Falha ao conectar BLE', 'ble');
       console.warn('[HardwareBridge] BLE connect failed:', err);
       return false;
     }
@@ -161,7 +206,7 @@ export class FireOneHardwareBridge {
   async connectBLELongRange(): Promise<boolean> {
     try {
       if (!this.getTransportSupport().ble_lr) {
-        this.lastError = 'BLE Long Range não suportado neste navegador/dispositivo';
+        this.setError('UNSUPPORTED_TRANSPORT', 'BLE Long Range não suportado neste navegador/dispositivo', 'ble_lr');
         this.onEvent?.('unsupported_transport', { transport: 'ble_lr' });
         return false;
       }
@@ -178,7 +223,7 @@ export class FireOneHardwareBridge {
 
       return await this.setupBLEDevice(device, 'ble_lr');
     } catch (err) {
-      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar BLE LR';
+      this.setError('BLE_GATT_FAILED', err instanceof Error ? err.message : 'Falha ao conectar BLE LR', 'ble_lr');
       console.warn('[HardwareBridge] BLE LR connect failed:', err);
       return false;
     }
@@ -219,7 +264,7 @@ export class FireOneHardwareBridge {
   async connectUSB(baudRate = 115200): Promise<boolean> {
     try {
       if (!this.getTransportSupport().usb) {
-        this.lastError = 'USB/WebSerial não suportado neste navegador/dispositivo';
+        this.setError('UNSUPPORTED_TRANSPORT', 'USB/WebSerial não suportado neste navegador/dispositivo', 'usb');
         this.onEvent?.('unsupported_transport', { transport: 'usb' });
         return false;
       }
@@ -242,7 +287,7 @@ export class FireOneHardwareBridge {
       await this.disconnect();
       return false;
     } catch (err) {
-      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar USB';
+      this.setError('SERIAL_OPEN_FAILED', err instanceof Error ? err.message : 'Falha ao conectar USB', 'usb');
       console.warn('[HardwareBridge] USB connect failed:', err);
       return false;
     }
@@ -251,7 +296,7 @@ export class FireOneHardwareBridge {
   async connectDirectRelay(baudRate = 115200): Promise<boolean> {
     try {
       if (!this.getTransportSupport().direct_relay) {
-        this.lastError = 'Direct Relay/WebSerial não suportado neste navegador/dispositivo';
+        this.setError('UNSUPPORTED_TRANSPORT', 'Direct Relay/WebSerial não suportado neste navegador/dispositivo', 'direct_relay');
         this.onEvent?.('unsupported_transport', { transport: 'direct_relay' });
         return false;
       }
@@ -274,7 +319,7 @@ export class FireOneHardwareBridge {
       await this.disconnect();
       return false;
     } catch (err) {
-      this.lastError = err instanceof Error ? err.message : 'Falha ao conectar Direct Relay';
+      this.setError('SERIAL_OPEN_FAILED', err instanceof Error ? err.message : 'Falha ao conectar Direct Relay', 'direct_relay');
       console.warn('[HardwareBridge] Direct Relay connect failed:', err);
       return false;
     }
@@ -282,7 +327,7 @@ export class FireOneHardwareBridge {
 
   async connectWebSocket(url = 'ws://192.168.4.1:81'): Promise<boolean> {
     if (!this.getTransportSupport().websocket) {
-      this.lastError = 'WebSocket não suportado neste navegador/dispositivo';
+      this.setError('UNSUPPORTED_TRANSPORT', 'WebSocket não suportado neste navegador/dispositivo', 'websocket');
       this.onEvent?.('unsupported_transport', { transport: 'websocket' });
       return false;
     }
@@ -301,7 +346,7 @@ export class FireOneHardwareBridge {
    */
   async connectWiFiDirect(url?: string): Promise<boolean> {
     if (!this.getTransportSupport().wifi_direct) {
-      this.lastError = 'Wi‑Fi Direct indisponível neste ambiente';
+      this.setError('UNSUPPORTED_TRANSPORT', 'Wi‑Fi Direct indisponível neste ambiente', 'wifi_direct');
       this.onEvent?.('unsupported_transport', { transport: 'wifi_direct' });
       return false;
     }
@@ -369,12 +414,12 @@ export class FireOneHardwareBridge {
           if (opened || this.connected) this.handleDisconnect();
         };
         ws.onerror = () => {
-          this.lastError = `Falha ao conectar WebSocket (${url})`;
+          this.setError('WEBSOCKET_OPEN_FAILED', `Falha ao conectar WebSocket (${url})`, transport);
           clearTimeout(timer);
           resolve(false);
         };
       } catch {
-        this.lastError = `URL de WebSocket inválida (${url})`;
+        this.setError('WEBSOCKET_INVALID_URL', `URL de WebSocket inválida (${url})`, transport);
         resolve(false);
       }
     });
@@ -417,16 +462,40 @@ export class FireOneHardwareBridge {
 
   // ─── Command Methods ─────────────────────────────────
 
+  /**
+   * Health gate for command execution. Returns null if OK to proceed,
+   * otherwise a `BridgeReasonCode` to surface to the caller.
+   *
+   * NOTE: `eStop()` intentionally bypasses this gate — emergency stop must
+   * always attempt transmission, even on a degraded link.
+   */
+  private requireHealthy(): BridgeReasonCode | null {
+    if (!this.connected) return 'NOT_CONNECTED';
+    if (this.linkHealth !== 'healthy') return 'LINK_NOT_HEALTHY';
+    return null;
+  }
+
   async fire(pin: number, durationMs: number): Promise<boolean> {
+    const gate = this.requireHealthy();
+    if (gate) {
+      this.setError(gate, `fire(${pin}) blocked: ${gate}`);
+      return false;
+    }
     const key = `OK:FIRE:${pin}`;
     return this.sendAndWaitConfirm(`FIRE:${pin}:${durationMs}\n`, key);
   }
 
   async fireBatch(mask: number, durationMs: number): Promise<boolean> {
+    const gate = this.requireHealthy();
+    if (gate) {
+      this.setError(gate, `fireBatch blocked: ${gate}`);
+      return false;
+    }
     const maskHex = (mask >>> 0).toString(16).padStart(8, '0');
     return this.sendAndWaitConfirm(`BATCH:${maskHex}:${durationMs}\n`, 'OK:BATCH');
   }
 
+  /** Emergency stop — bypasses requireHealthy() by design. */
   async eStop(): Promise<boolean> {
     return this.sendCommand('ESTOP\n');
   }
@@ -466,6 +535,11 @@ export class FireOneHardwareBridge {
   }
 
   async setGpio(pin: number, high: boolean): Promise<boolean> {
+    const gate = this.requireHealthy();
+    if (gate) {
+      this.setError(gate, `setGpio(${pin}) blocked: ${gate}`);
+      return false;
+    }
     return this.sendCommand(`GPIO:${pin}:${high ? 'HIGH' : 'LOW'}\n`);
   }
 
@@ -486,7 +560,26 @@ export class FireOneHardwareBridge {
       rssi: this.rssi,
       estimatedDistance: this.estimatedDistance,
       lastError: this.lastError,
+      lastErrorCode: this.lastErrorCode,
+      lastErrorAt: this.lastErrorAt,
       linkHealth: this.linkHealth,
+      sessionId: this.sessionId,
+    };
+  }
+
+  /** Convenience: true only when handshake completed and link is healthy. */
+  isHealthy(): boolean {
+    return this.connected && this.linkHealth === 'healthy';
+  }
+
+  /** Last structured error (or undefined if none). */
+  getLastError(): BridgeError | undefined {
+    if (!this.lastErrorCode) return undefined;
+    return {
+      code: this.lastErrorCode,
+      message: this.lastError ?? this.lastErrorCode,
+      transport: this.transport,
+      at: this.lastErrorAt ?? Date.now(),
     };
   }
 
@@ -515,6 +608,7 @@ export class FireOneHardwareBridge {
       });
       if (!responded && this.connected) {
         console.warn('[HardwareBridge] Heartbeat timeout — disconnecting');
+        this.setError('HEARTBEAT_TIMEOUT', 'Heartbeat timeout — link lost');
         this.handleDisconnect();
         this.onEvent?.('heartbeat_timeout', null);
       }
@@ -615,6 +709,7 @@ export class FireOneHardwareBridge {
       }
     } catch (err) {
       console.warn('[HardwareBridge] Send failed:', err);
+      this.setError('SEND_FAILED', err instanceof Error ? err.message : 'Send failed');
     }
     return false;
   }
@@ -664,10 +759,17 @@ export class FireOneHardwareBridge {
     this.connected = false;
     this.transport = 'none';
     this.linkHealth = 'disconnected';
+    // Invalidate any in-flight handshake from a previous attempt.
+    this.connectingSessionId++;
     this.pendingResolves.clear();
     this.stopHeartbeat();
     this.stopRssiPolling();
-    if (wasConnected) this.onEvent?.('disconnected', null);
+    if (wasConnected) {
+      if (!this.lastErrorCode) {
+        this.setError('TRANSPORT_DISCONNECTED', 'Transport disconnected');
+      }
+      this.onEvent?.('disconnected', null);
+    }
     if (wasConnected && this.lastConnectArgs) {
       this.attemptReconnect();
     }
@@ -689,19 +791,29 @@ export class FireOneHardwareBridge {
   }
 
   private async establishHealthyLink(transport: BridgeTransport, deviceName: string): Promise<boolean> {
+    // Capture session id at the start of this attempt; if a disconnect happens
+    // mid-handshake we'll detect the mismatch and abort cleanly.
+    const attemptSession = ++this.connectingSessionId;
     this.transport = transport;
     this.deviceName = deviceName;
     this.lastPing = Date.now();
     this.linkHealth = 'handshaking';
     const ok = await this.waitForHandshake();
+
+    // Stale-session guard: another attempt or a disconnect raced ahead.
+    if (attemptSession !== this.connectingSessionId) {
+      this.setError('STALE_SESSION', `Handshake from stale session ignored (${transport})`, transport);
+      return false;
+    }
     if (!ok) {
-      this.lastError = `Handshake timeout (${transport})`;
+      this.setError('HANDSHAKE_TIMEOUT', `Handshake timeout (${transport})`, transport);
       this.handleDisconnect();
       return false;
     }
     this.connected = true;
-    this.lastError = undefined;
     this.linkHealth = 'healthy';
+    this.sessionId++;            // new healthy session id
+    this.clearError();
     this.onConnect();
     return true;
   }
@@ -724,5 +836,20 @@ export class FireOneHardwareBridge {
       this.sendCommand('HEARTBEAT\n');
       timer = setTimeout(() => finish(false), timeoutMs);
     });
+  }
+
+  // ─── Error helpers ───────────────────────────────────
+
+  private setError(code: BridgeReasonCode, message: string, transport?: BridgeTransport): void {
+    this.lastErrorCode = code;
+    this.lastError = message;
+    this.lastErrorAt = Date.now();
+    this.onEvent?.('error', { code, message, transport: transport ?? this.transport, at: this.lastErrorAt });
+  }
+
+  private clearError(): void {
+    this.lastError = undefined;
+    this.lastErrorCode = undefined;
+    this.lastErrorAt = undefined;
   }
 }
