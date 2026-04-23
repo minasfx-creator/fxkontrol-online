@@ -92,7 +92,7 @@ function sanitizeLayers(raw: unknown[]): JoiStage['layers'] {
   const out: JoiStage['layers'][number][] = [];
   for (const item of raw) {
     const parsed = LayerRawSchema.safeParse(item);
-    if (parsed.success) out.push(parsed.data as JoiStage['layers'][number]);
+    if (parsed.success) out.push(parsed.data as unknown as JoiStage['layers'][number]);
   }
   return out;
 }
