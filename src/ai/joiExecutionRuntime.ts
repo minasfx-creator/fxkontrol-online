@@ -22,17 +22,24 @@ export interface RuntimeConfig {
   readonly safetyThreshold: number; // 0..1 — abort if frame.peakRisk exceeds
   readonly mode: ExecutionLayer;
   readonly enableTrace: boolean;
+  readonly maxTraceFrames?: number; // bounded ring buffer (default: unbounded)
   readonly onAbort?: (frame: ExecutionFrame, reason: AbortReason) => void;
   readonly onFrame?: (frame: ExecutionFrame, executed: number) => void;
   readonly adapter?: CommandAdapter;
 }
 
-export type AbortReason = 'risk_threshold' | 'degraded_frame' | 'external';
+export type AbortReason =
+  | 'risk_threshold'
+  | 'degraded_frame'
+  | 'external'
+  | 'adapter_failure'
+  | 'integrity_mismatch';
 
 export interface CommandAdapter {
-  dispatchPyro?: (cmd: PlannedCommand) => void;
-  dispatchDmx?: (cmd: PlannedCommand) => void;
-  dispatchDrone?: (cmd: PlannedCommand) => void;
+  /** Return false to signal hardware/backpressure failure → runtime aborts. */
+  dispatchPyro?: (cmd: PlannedCommand) => boolean | void;
+  dispatchDmx?: (cmd: PlannedCommand) => boolean | void;
+  dispatchDrone?: (cmd: PlannedCommand) => boolean | void;
 }
 
 export interface RuntimeFrameTrace {
