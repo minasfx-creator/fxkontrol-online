@@ -205,4 +205,118 @@ describe('FireOneHardwareBridge — session hardening', () => {
     await completeHandshake(bridge, internals);
     expect(bridge.getStatus().sessionId).toBe(firstSession + 1);
   });
+
+  /**
+   * CRITICAL — Reconnect scenario.
+   *
+   * The most dangerous remaining failure mode after the disconnect-drain fix:
+   *   session A fires → disconnect → session B reconnects → late OK:FIRE
+   *   from session A arrives on the wire.
+   *
+   * That late frame MUST NOT:
+   *   - confirm any pending command in session B
+   *   - mutate session B's state
+   *   - resurrect the old promise (it was already drained to false)
+   */
+  it('7. Reconnect: late OK:FIRE from previous session does not confirm new session', async () => {
+    const { bridge, internals, sendSpy } = makeBridge();
+
+    // ── Session A ──
+    await completeHandshake(bridge, internals);
+    const sessionA = bridge.getStatus().sessionId;
+    expect(sessionA).toBe(1);
+
+    sendSpy.mockClear();
+    const fireA = bridge.fire(9, 100);
+    await Promise.resolve();
+    expect(internals.pendingResolves.has('OK:FIRE:9')).toBe(true);
+
+    // Transport drops mid-fire
+    internals.handleDisconnect();
+    expect(await fireA).toBe(false);
+    expect(internals.pendingResolves.size).toBe(0);
+
+    // ── Session B ──
+    await completeHandshake(bridge, internals);
+    const sessionB = bridge.getStatus().sessionId;
+    expect(sessionB).toBe(sessionA + 1);
+    expect(bridge.isHealthy()).toBe(true);
+
+    // Late frame from Session A arrives now — must be a no-op for state.
+    const statusBefore = { ...bridge.getStatus() };
+    internals.handleResponse('OK:FIRE:9\n');
+
+    const statusAfter = bridge.getStatus();
+    expect(statusAfter.sessionId).toBe(sessionB);
+    expect(statusAfter.connected).toBe(true);
+    expect(statusAfter.linkHealth).toBe('healthy');
+    // No new error introduced by the stale frame.
+    expect(statusAfter.lastErrorCode).toBe(statusBefore.lastErrorCode);
+
+    // And of course no pending op in B got confirmed by it.
+    expect(internals.pendingResolves.size).toBe(0);
+
+    // A genuine fire in session B still works end-to-end.
+    sendSpy.mockClear();
+    const fireB = bridge.fire(11, 100);
+    await Promise.resolve();
+    internals.handleResponse('OK:FIRE:11\n');
+    expect(await fireB).toBe(true);
+    expect(sendSpy).toHaveBeenCalledWith('FIRE:11:100\n');
+  });
+
+  /**
+   * Log/event contract — turns telemetry into a contract, not just debug noise.
+   * Asserts the structured events we depend on for post-event reconstruction.
+   */
+  describe('event log contract', () => {
+    it('emits disconnected with TRANSPORT_DISCONNECTED on transport drop', async () => {
+      const { bridge, internals, events } = makeBridge();
+      await completeHandshake(bridge, internals);
+      events.length = 0;
+
+      internals.handleDisconnect();
+
+      const evt = events.find(e => e.event === 'disconnected');
+      expect(evt).toBeDefined();
+      expect((evt!.data as any).reasonCode).toBe<BridgeReasonCode>('TRANSPORT_DISCONNECTED');
+      expect((evt!.data as any).linkHealth).toBe('disconnected');
+    });
+
+    it('emits estop_attempt + estop_result with full audit context', async () => {
+      const { bridge, internals, events } = makeBridge();
+      fakeTransportOpen(internals, 'ble');
+      internals.connected = true;
+      internals.linkHealth = 'handshaking';
+      events.length = 0;
+
+      await bridge.eStop();
+
+      const attempt = events.find(e => e.event === 'estop_attempt');
+      const result = events.find(e => e.event === 'estop_result');
+      expect(attempt).toBeDefined();
+      expect(result).toBeDefined();
+      const aData = attempt!.data as any;
+      expect(aData).toMatchObject({
+        linkHealth: 'handshaking',
+        connected: true,
+        transport: 'ble',
+      });
+      expect(typeof aData.sessionId).toBe('number');
+      expect((result!.data as any).ok).toBe(true);
+    });
+
+    it('records STALE_SESSION as lastErrorCode when handshake is invalidated', async () => {
+      const { bridge, internals } = makeBridge();
+      fakeTransportOpen(internals, 'ble');
+      const handshake = internals.establishHealthyLink('ble', 'TEST-ESP32');
+      await Promise.resolve();
+
+      internals.connectingSessionId++; // invalidate
+      internals.handleResponse('PONG\n');
+
+      expect(await handshake).toBe(false);
+      expect(bridge.getStatus().lastErrorCode).toBe<BridgeReasonCode>('STALE_SESSION');
+    });
+  });
 });
