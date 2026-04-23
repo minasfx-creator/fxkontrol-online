@@ -211,6 +211,9 @@ export class FireOneHardwareBridge {
   private connectingSessionId = 0;
   /** Total automatic retries (read-only commands only). Surfaced via diagnostics. */
   private retryCount = 0;
+  private retryByCommandType: Partial<Record<BridgeCommandType, number>> = {};
+  private retryByKey: Record<string, number> = {};
+  private retryPolicy: BridgeRetryPolicy = { ...DEFAULT_RETRY_POLICY };
 
   private bleDevice: any = null;
   private bleCharTx: any = null;
@@ -609,12 +612,14 @@ export class FireOneHardwareBridge {
     return ok;
   }
 
-  async readContinuity(pin: number, maxRetries = 2): Promise<number> {
-    return this.readWithRetry('CONT', pin, maxRetries);
+  async readContinuity(pin: number, maxRetries?: number): Promise<number> {
+    const rule = this.retryPolicy.CONT;
+    return this.readWithRetry('CONT', pin, maxRetries ?? rule.maxRetries, rule.perAttemptTimeoutMs);
   }
 
-  async readCdsVoltage(pin: number, maxRetries = 2): Promise<number> {
-    return this.readWithRetry('CDS', pin, maxRetries);
+  async readCdsVoltage(pin: number, maxRetries?: number): Promise<number> {
+    const rule = this.retryPolicy.CDS;
+    return this.readWithRetry('CDS', pin, maxRetries ?? rule.maxRetries, rule.perAttemptTimeoutMs);
   }
 
   /**
@@ -624,7 +629,7 @@ export class FireOneHardwareBridge {
    *  - only fires for command types in `RETRYABLE_COMMAND_TYPES` (compile-time enforced via param type)
    *  - aborts the moment `linkHealth !== 'healthy'` (no retries on degraded link)
    *  - aborts if `sessionId` changes mid-retry (reconnect happened)
-   *  - bounded by `maxRetries`; default 2 → up to 3 total attempts
+   *  - bounded by `maxRetries`; per-class default lives in `DEFAULT_RETRY_POLICY`
    *
    * Physical commands (FIRE/BATCH/GPIO/ESTOP) deliberately do NOT use this path.
    */
@@ -632,39 +637,53 @@ export class FireOneHardwareBridge {
     commandType: 'CONT' | 'CDS',
     pin: number,
     maxRetries: number,
-    perAttemptTimeoutMs = 2000,
+    perAttemptTimeoutMs: number,
   ): Promise<number> {
     const sessionAtStart = this.sessionId;
     const key = `${commandType}:${pin}`;
 
-    const attemptOnce = (): Promise<number | null> => new Promise<number | null>((resolve) => {
-      this.registerPending(key, commandType, (val) => {
-        const parts = val.split(':');
-        // Empty val = drain sentinel from disconnect → treat as miss (null).
-        if (!val) { resolve(null); return; }
-        resolve(parts.length >= 3 ? parseFloat(parts[2]) : 0);
+    /** Returns [value, reasonIfMiss]. value !== null = real response. */
+    const attemptOnce = (): Promise<{ value: number | null; reason: BridgeRetryReason | null }> =>
+      new Promise((resolve) => {
+        this.registerPending(key, commandType, (val) => {
+          // Empty val = drain sentinel from disconnect → retryable miss.
+          if (!val) { resolve({ value: null, reason: 'empty_drain' }); return; }
+          const parts = val.split(':');
+          if (parts.length < 3) { resolve({ value: null, reason: 'parse_miss' }); return; }
+          const parsed = parseFloat(parts[2]);
+          if (Number.isNaN(parsed)) { resolve({ value: null, reason: 'parse_miss' }); return; }
+          resolve({ value: parsed, reason: null });
+        });
+        this.sendCommand(`${commandType}:${pin}\n`);
+        setTimeout(() => {
+          if (this.pendingResolves.has(key)) {
+            this.pendingResolves.delete(key);
+            resolve({ value: null, reason: 'timeout' });
+          }
+        }, perAttemptTimeoutMs);
       });
-      this.sendCommand(`${commandType}:${pin}\n`);
-      setTimeout(() => {
-        if (this.pendingResolves.has(key)) {
-          this.pendingResolves.delete(key);
-          resolve(null); // null = retryable miss
-        }
-      }, perAttemptTimeoutMs);
-    });
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       // Healthy + same session gate — re-checked before EACH attempt.
       if (this.linkHealth !== 'healthy' || this.sessionId !== sessionAtStart) {
         return 0;
       }
-      const result = await attemptOnce();
-      if (result !== null) return result;
+      const { value, reason } = await attemptOnce();
+      if (value !== null) return value;
       // miss → maybe retry
       if (attempt < maxRetries) {
         this.retryCount++;
+        this.retryByCommandType[commandType] = (this.retryByCommandType[commandType] ?? 0) + 1;
+        this.retryByKey[key] = (this.retryByKey[key] ?? 0) + 1;
         this.onEvent?.('retry', {
-          commandType, key, attempt: attempt + 1, maxRetries, sessionId: this.sessionId,
+          commandType,
+          key,
+          attempt: attempt + 1,
+          maxRetries,
+          sessionId: this.sessionId,
+          linkHealth: this.linkHealth,
+          reason: reason ?? 'timeout',
+          at: Date.now(),
         });
       }
     }
@@ -722,7 +741,21 @@ export class FireOneHardwareBridge {
       sessionId: this.sessionId,
       linkHealth: this.linkHealth,
       retryCount: this.retryCount,
+      retryByCommandType: { ...this.retryByCommandType },
+      retryByKey: { ...this.retryByKey },
     };
+  }
+
+  /** Override the retry policy at runtime (deep-merged with current). */
+  setRetryPolicy(partial: Partial<BridgeRetryPolicy>): void {
+    this.retryPolicy = {
+      CONT: { ...this.retryPolicy.CONT, ...(partial.CONT ?? {}) },
+      CDS:  { ...this.retryPolicy.CDS,  ...(partial.CDS  ?? {}) },
+    };
+  }
+
+  getRetryPolicy(): BridgeRetryPolicy {
+    return { CONT: { ...this.retryPolicy.CONT }, CDS: { ...this.retryPolicy.CDS } };
   }
 
   /** Convenience: true only when handshake completed and link is healthy. */
