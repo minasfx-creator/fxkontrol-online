@@ -90,6 +90,44 @@ export interface BridgeDiagnostics {
   oldestPendingAgeMs: number;
   sessionId: number;
   linkHealth: LinkHealth;
+  /** Total automatic retries attempted (read-only commands only). */
+  retryCount: number;
+}
+
+/**
+ * Standardized command classes. Drives retry policy — `RETRYABLE_COMMAND_TYPES`
+ * is the source of truth for which classes may be auto-retried by the bridge.
+ *
+ * Physical/destructive commands (FIRE / BATCH / GPIO / ESTOP) are *never*
+ * auto-retried, even if the link is healthy. Re-issuing them is the operator's
+ * decision, not the transport layer's.
+ */
+export type BridgeCommandType =
+  | 'HANDSHAKE'
+  | 'HEARTBEAT'
+  | 'VERSION'
+  | 'STATUS'
+  | 'CONT'
+  | 'CDS'
+  | 'FIRE'
+  | 'BATCH'
+  | 'GPIO'
+  | 'ESTOP'
+  | 'CONFIRM'
+  | 'UNKNOWN';
+
+/** Whitelist — only these classes may be auto-retried. */
+export const RETRYABLE_COMMAND_TYPES: ReadonlySet<BridgeCommandType> = new Set<BridgeCommandType>([
+  'STATUS', 'HEARTBEAT', 'VERSION', 'CONT', 'CDS',
+]);
+
+/** Explicit blacklist — physical commands. Documented for clarity; enforced by absence from the whitelist. */
+export const NON_RETRYABLE_COMMAND_TYPES: ReadonlySet<BridgeCommandType> = new Set<BridgeCommandType>([
+  'FIRE', 'BATCH', 'GPIO', 'ESTOP',
+]);
+
+export function isRetryableCommandType(t: BridgeCommandType): boolean {
+  return RETRYABLE_COMMAND_TYPES.has(t);
 }
 
 /**
@@ -100,7 +138,7 @@ export interface BridgeDiagnostics {
  */
 interface PendingResponse {
   key: string;
-  commandType: string;
+  commandType: BridgeCommandType;
   sessionId: number;
   createdAt: number;
   resolver: (value: string) => void;
@@ -144,6 +182,8 @@ export class FireOneHardwareBridge {
   private sessionId = 0;
   /** Session id at the time a connect attempt began — used to invalidate handshakes from stale sessions. */
   private connectingSessionId = 0;
+  /** Total automatic retries (read-only commands only). Surfaced via diagnostics. */
+  private retryCount = 0;
 
   private bleDevice: any = null;
   private bleCharTx: any = null;
@@ -542,38 +582,66 @@ export class FireOneHardwareBridge {
     return ok;
   }
 
-  async readContinuity(pin: number): Promise<number> {
-    const key = `CONT:${pin}`;
-    return new Promise<number>((resolve) => {
-      this.registerPending(key, 'CONT', (val) => {
-        const parts = val.split(':');
-        resolve(parts.length >= 3 ? parseFloat(parts[2]) : 0);
-      });
-      this.sendCommand(`CONT:${pin}\n`);
-      setTimeout(() => {
-        if (this.pendingResolves.has(key)) {
-          this.pendingResolves.delete(key);
-          resolve(0);
-        }
-      }, 2000);
-    });
+  async readContinuity(pin: number, maxRetries = 2): Promise<number> {
+    return this.readWithRetry('CONT', pin, maxRetries);
   }
 
-  async readCdsVoltage(pin: number): Promise<number> {
-    const key = `CDS:${pin}`;
-    return new Promise<number>((resolve) => {
-      this.registerPending(key, 'CDS', (val) => {
+  async readCdsVoltage(pin: number, maxRetries = 2): Promise<number> {
+    return this.readWithRetry('CDS', pin, maxRetries);
+  }
+
+  /**
+   * Shared retrying-read helper for CONT/CDS.
+   *
+   * Retry policy:
+   *  - only fires for command types in `RETRYABLE_COMMAND_TYPES` (compile-time enforced via param type)
+   *  - aborts the moment `linkHealth !== 'healthy'` (no retries on degraded link)
+   *  - aborts if `sessionId` changes mid-retry (reconnect happened)
+   *  - bounded by `maxRetries`; default 2 → up to 3 total attempts
+   *
+   * Physical commands (FIRE/BATCH/GPIO/ESTOP) deliberately do NOT use this path.
+   */
+  private async readWithRetry(
+    commandType: 'CONT' | 'CDS',
+    pin: number,
+    maxRetries: number,
+    perAttemptTimeoutMs = 2000,
+  ): Promise<number> {
+    const sessionAtStart = this.sessionId;
+    const key = `${commandType}:${pin}`;
+
+    const attemptOnce = (): Promise<number | null> => new Promise<number | null>((resolve) => {
+      this.registerPending(key, commandType, (val) => {
         const parts = val.split(':');
+        // Empty val = drain sentinel from disconnect → treat as miss (null).
+        if (!val) { resolve(null); return; }
         resolve(parts.length >= 3 ? parseFloat(parts[2]) : 0);
       });
-      this.sendCommand(`CDS:${pin}\n`);
+      this.sendCommand(`${commandType}:${pin}\n`);
       setTimeout(() => {
         if (this.pendingResolves.has(key)) {
           this.pendingResolves.delete(key);
-          resolve(0);
+          resolve(null); // null = retryable miss
         }
-      }, 2000);
+      }, perAttemptTimeoutMs);
     });
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      // Healthy + same session gate — re-checked before EACH attempt.
+      if (this.linkHealth !== 'healthy' || this.sessionId !== sessionAtStart) {
+        return 0;
+      }
+      const result = await attemptOnce();
+      if (result !== null) return result;
+      // miss → maybe retry
+      if (attempt < maxRetries) {
+        this.retryCount++;
+        this.onEvent?.('retry', {
+          commandType, key, attempt: attempt + 1, maxRetries, sessionId: this.sessionId,
+        });
+      }
+    }
+    return 0;
   }
 
   async setGpio(pin: number, high: boolean): Promise<boolean> {
@@ -626,6 +694,7 @@ export class FireOneHardwareBridge {
       oldestPendingAgeMs: oldest,
       sessionId: this.sessionId,
       linkHealth: this.linkHealth,
+      retryCount: this.retryCount,
     };
   }
 
@@ -950,7 +1019,7 @@ export class FireOneHardwareBridge {
    * at registration time; `handleResponse` uses it to drop frames that arrive
    * for a previous session (e.g. late OK:FIRE after a reconnect).
    */
-  private registerPending(key: string, commandType: string, resolver: (value: string) => void): void {
+  private registerPending(key: string, commandType: BridgeCommandType, resolver: (value: string) => void): void {
     // Use connectingSessionId during handshake (before sessionId increments),
     // sessionId once the link is healthy. This keeps the guard correct in both phases.
     const session = this.linkHealth === 'healthy' ? this.sessionId : this.connectingSessionId;
