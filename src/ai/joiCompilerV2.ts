@@ -464,6 +464,7 @@ export const __internals = {
   buildIR,
   validateIR,
   computeOverlaps,
+  sweepOverlap,
   computeStepRisk,
   fnv1a,
 };
