@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
 import { getBridgeSecurityDiagnostic } from '@/lib/bridgeGateway';
-import { bridgePhysicalController } from '@/lib/bridgePhysicalControl';
+import { bridgePhysicalController, computeHilDrift, checkHilRegression, replayHilReport, type HilRunReport } from '@/lib/bridgePhysicalControl';
+import { toast } from 'sonner';
 
 type StatusTone = 'healthy' | 'degraded' | 'blocked';
 
@@ -62,6 +63,51 @@ export default function PlatformStatus() {
   const physicalSnapshot = useMemo(() => bridgePhysicalController.getSnapshot(), [physicalRevision]);
   const hilLogs = useMemo(() => bridgePhysicalController.getHilLogs(), [physicalRevision]);
   const hilReport = useMemo(() => bridgePhysicalController.exportHilReport(), [physicalRevision]);
+  const drift = useMemo(() => computeHilDrift(hilReport), [hilReport]);
+  const regression = useMemo(
+    () => checkHilRegression(hilReport, { maxFailed: 0, maxP95Ms: 120, maxAbsoluteMs: 300, minAckRate: 0.95 }),
+    [hilReport],
+  );
+  const [savedReport, setSavedReport] = useState<HilRunReport | null>(null);
+  const compare = useMemo(() => {
+    if (!savedReport) return null;
+    const a = computeHilDrift(savedReport);
+    return {
+      lossDelta: hilReport.stats.failed - savedReport.stats.failed,
+      ackDelta: hilReport.stats.acked - savedReport.stats.acked,
+      jitterP95Delta: drift.p95 - a.p95,
+      meanDelta: drift.mean - a.mean,
+    };
+  }, [savedReport, hilReport, drift]);
+
+  const handleExportJSON = () => {
+    const json = bridgePhysicalController.exportHilReportJSON();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hil-report-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('HIL report exportado');
+  };
+
+  const handleReplay = () => {
+    const handle = replayHilReport(hilReport, (channel) => {
+      console.info('[HIL replay] fire', channel);
+    });
+    toast.info(`Replay iniciado (${handle.scheduled} comandos)`);
+  };
+
+  const handleSnapshot = () => {
+    setSavedReport(hilReport);
+    toast.success('Snapshot A salvo para comparação');
+  };
+
+  const handleResetRun = () => {
+    bridgePhysicalController.resetHilRun();
+    toast.info('HIL run resetado');
+  };
 
   useEffect(() => bridgePhysicalController.subscribe(() => setPhysicalRevision((value) => value + 1)), []);
 
