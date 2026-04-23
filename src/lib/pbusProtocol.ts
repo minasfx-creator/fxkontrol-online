@@ -70,13 +70,36 @@ export interface PBusDevice {
 }
 
 export interface PBusEvent {
-  type: 'device-discovered' | 'status-update' | 'cue-update' | 'fire-confirm' | 'arm-confirm' | 'estop' | 'wireless-update' | 'error';
+  type:
+    | 'device-discovered'
+    | 'status-update'
+    | 'cue-update'
+    | 'fire-confirm'
+    | 'arm-confirm'
+    | 'estop'
+    | 'wireless-update'
+    | 'error'
+    | 'state-change'
+    | 'heartbeat-timeout';
   deviceAddress: number;
   timestamp: number;
   data?: any;
 }
 
 export type PBusEventListener = (event: PBusEvent) => void;
+
+/**
+ * Transport state machine — replaces the simplistic isConnected:boolean.
+ * Honest representation of the link lifecycle.
+ */
+export type PBusTransportState =
+  | 'idle'         // never connected
+  | 'connecting'   // user-initiated connect in progress
+  | 'connected'    // healthy, recent heartbeat
+  | 'degraded'     // connected but heartbeat stale or send errors
+  | 'reconnecting' // attempting recovery after error
+  | 'failed'       // gave up; manual reconnect required
+  | 'closed';      // user closed
 
 // ═══════════════════════════════════════════════════════════
 // CRC16-CCITT
