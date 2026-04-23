@@ -7,7 +7,7 @@
  */
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { FireOneModuleEmulator, type ModuleStatus, type ModuleState, type FiringMode, type ScriptEvent } from '@/lib/fireoneModuleEmulator';
-import { FireOneHardwareBridge, type BridgeStatus } from '@/lib/fireoneModuleHardwareBridge';
+import { FireOneHardwareBridge, type BridgeStatus, type BridgeTransportSupport } from '@/lib/fireoneModuleHardwareBridge';
 import { toast } from 'sonner';
 
 export interface UseFireOneModuleReturn {
@@ -38,6 +38,7 @@ export interface UseFireOneModuleReturn {
   firePreset: () => Promise<boolean[]>;
   clearPreset: () => void;
   bridgeStatus: BridgeStatus | null;
+  transportSupport: BridgeTransportSupport;
   connectBLE: () => Promise<boolean>;
   connectBLELongRange: () => Promise<boolean>;
   connectUSB: () => Promise<boolean>;
@@ -51,7 +52,8 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
   const [status, setStatus] = useState<ModuleStatus | null>(null);
   const [powered, setPowered] = useState(false);
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null);
-  
+  const [transportSupport, setTransportSupport] = useState<BridgeTransportSupport>(FireOneHardwareBridge.detectTransportSupport());
+
   const emulatorRef = useRef<FireOneModuleEmulator | null>(null);
   const bridgeRef = useRef<FireOneHardwareBridge | null>(null);
 
@@ -78,13 +80,17 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
     });
     bridgeRef.current = bridge;
     setBridgeStatus(bridge.getStatus());
+    setTransportSupport(bridge.getTransportSupport());
     return () => { bridge.disconnect(); };
   }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
       const bridge = bridgeRef.current;
-      if (bridge) setBridgeStatus(bridge.getStatus());
+      if (bridge) {
+        setBridgeStatus(bridge.getStatus());
+        setTransportSupport(bridge.getTransportSupport());
+      }
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -199,6 +205,7 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
     loadAutoScript, startAutoFire, stopAutoFire,
     downloadUltraScript, setUltraSlot, startUltraFire, stopUltraFire,
     setPreset, firePreset, clearPreset,
+    transportSupport,
     bridgeStatus, connectBLE, connectBLELongRange, connectUSB, connectWS,
     connectWiFiDirect, connectDirectRelay, disconnectHardware,
   };

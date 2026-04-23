@@ -37,6 +37,15 @@ export interface BridgeStatus {
   estimatedDistance?: number;
 }
 
+export interface BridgeTransportSupport {
+  ble: boolean;
+  ble_lr: boolean;
+  usb: boolean;
+  websocket: boolean;
+  wifi_direct: boolean;
+  direct_relay: boolean;
+}
+
 export type BridgeEventHandler = (event: string, data: unknown) => void;
 
 // BLE Service/Characteristic UUIDs (custom for FXK-ESP32)
@@ -80,6 +89,40 @@ export class FireOneHardwareBridge {
 
   constructor(eventHandler?: BridgeEventHandler) {
     this.onEvent = eventHandler ?? null;
+  }
+
+  static detectTransportSupport(): BridgeTransportSupport {
+    if (typeof navigator === 'undefined' || typeof window === 'undefined') {
+      return {
+        ble: false,
+        ble_lr: false,
+        usb: false,
+        websocket: false,
+        wifi_direct: false,
+        direct_relay: false,
+      };
+    }
+
+    const nav = navigator as any;
+    const hasBluetooth = Boolean(nav.bluetooth);
+    const hasSerial = Boolean(nav.serial);
+    const secure = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+    const ua = nav.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/i.test(ua) || (/Macintosh/i.test(ua) && (nav.maxTouchPoints ?? 0) > 1);
+    const websocketAllowed = typeof WebSocket !== 'undefined';
+
+    return {
+      ble: hasBluetooth,
+      ble_lr: hasBluetooth,
+      usb: hasSerial,
+      direct_relay: hasSerial,
+      websocket: websocketAllowed && secure,
+      wifi_direct: websocketAllowed && secure && !isIOS,
+    };
+  }
+
+  getTransportSupport(): BridgeTransportSupport {
+    return FireOneHardwareBridge.detectTransportSupport();
   }
 
   // ─── Connection Methods ──────────────────────────────
@@ -517,13 +560,20 @@ export class FireOneHardwareBridge {
         continue;
       }
 
-      if (trimmed.startsWith('BAT:')) {
-        this.batteryVoltage = parseFloat(trimmed.substring(4));
-      }
-
-      if (trimmed.startsWith('RSSI:')) {
-        this.rssi = parseInt(trimmed.substring(5));
-        this.estimatedDistance = this.estimateDistance(this.rssi);
+      for (const token of trimmed.split(';')) {
+        const chunk = token.trim();
+        if (!chunk) continue;
+        if (chunk.startsWith('BAT:')) {
+          const bat = parseFloat(chunk.substring(4));
+          if (!Number.isNaN(bat)) this.batteryVoltage = bat;
+        }
+        if (chunk.startsWith('RSSI:')) {
+          const rssi = parseInt(chunk.substring(5), 10);
+          if (!Number.isNaN(rssi)) {
+            this.rssi = rssi;
+            this.estimatedDistance = this.estimateDistance(rssi);
+          }
+        }
       }
 
       for (const [key, resolver] of this.pendingResolves) {
