@@ -20,7 +20,12 @@ import {
 } from '@/ai';
 import { cn } from '@/lib/utils';
 
-/** Mock generator — placeholder até Joi LLM real ser plugado (Fase posterior). */
+/**
+ * ⚠️ AI MOCK ONLY — NEVER USED IN PRODUCTION EXECUTION PATH.
+ * Placeholder deterministic generator. Will be replaced by real Joi LLM in Sprint 2.
+ * Output is treated by downstream layers (compile/safety/HIL/cert) exactly the
+ * same as a real Joi output — so this mock cannot bypass any guarantee.
+ */
 function mockGenerateShowGraph(prompt: string): ShowGraph {
   const seed = prompt.length;
   const nodes: ShowGraphNode[] = [];
@@ -57,7 +62,9 @@ export default function JoiPanel() {
     const structure = validateShowGraphStructure(graph);
     const compile = compileShowGraph(graph);
     const deterministic = verifyCompileDeterminism(graph);
-    const safety = compile.timeline ? runAISafetyChecks(compile.timeline) : null;
+    const safety = compile.timeline
+      ? runAISafetyChecks(compile.timeline)
+      : { passed: false, violations: ['no timeline (compile failed)'] as const };
     return { structure, compile, deterministic, safety };
   }, [graph]);
 
@@ -124,12 +131,12 @@ export default function JoiPanel() {
             <Badge
               icon={<Shield className="w-3 h-3" />}
               label="Safety"
-              ok={!!analysis.safety?.passed}
-              detail={analysis.safety?.passed ? 'passed' : `${analysis.safety?.violations.length ?? 0} viol`}
+              ok={analysis.safety.passed}
+              detail={analysis.safety.passed ? 'passed' : `${analysis.safety.violations.length} viol`}
             />
             <Badge
               icon={<Hash className="w-3 h-3" />}
-              label="Deterministic"
+              label={analysis.deterministic ? 'Deterministic ✓' : 'Non-deterministic'}
               ok={analysis.deterministic}
               detail={analysis.compile.timeline?.hash ?? '—'}
             />
@@ -143,7 +150,10 @@ export default function JoiPanel() {
               <span className="text-[9px] font-mono text-muted-foreground/60">{graph.metadata.id}</span>
             </div>
             <pre className="text-[10px] font-mono text-foreground/80 max-h-72 overflow-auto bg-surface-0 rounded-xl p-2 border border-border/10">
-              {JSON.stringify(analysis.compile.timeline, null, 2)}
+              {(() => {
+                const full = JSON.stringify(analysis.compile.timeline, null, 2);
+                return full.length > 5000 ? full.slice(0, 5000) + `\n… (${full.length - 5000} chars truncated — use Export JSON for full)` : full;
+              })()}
             </pre>
           </div>
 
