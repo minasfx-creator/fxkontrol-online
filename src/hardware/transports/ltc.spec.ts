@@ -4,6 +4,7 @@ import { LTCTransport } from './ltc';
 describe('LTCTransport', () => {
   it('locks after hysteresis frames and then softens small corrections with clamp', () => {
     const syncExternalTime = vi.fn();
+    const setRate = vi.fn();
     let currentTime = 10;
     const transport = new LTCTransport(
       {
@@ -12,6 +13,7 @@ describe('LTCTransport', () => {
           currentTime = time;
           syncExternalTime(time);
         },
+        setRate,
       },
       { smoothingFactor: 0.15, lockFrames: 3, maxCorrectionPerFrame: 0.04 },
     );
@@ -22,13 +24,16 @@ describe('LTCTransport', () => {
     const first = transport.ingestTime(10.05, 1099);
     const second = transport.ingestTime(10.06, 1132);
 
-    expect(first).toMatchObject({ mode: 'soft' });
+    expect(first).toMatchObject({ mode: 'rate' });
     expect(first?.state).toBe('locked-soft');
-    expect(first?.syncedTime).toBeCloseTo(10.006, 6);
-    expect(second?.mode).toBe('soft');
-    expect(second?.syncedTime).toBeCloseTo(10.012, 6);
-    expect(syncExternalTime).toHaveBeenCalledTimes(2);
-    expect(syncExternalTime.mock.lastCall?.[0]).toBeCloseTo(10.012, 6);
+    expect(first?.syncedTime).toBeCloseTo(10, 6);
+    expect(first?.rate).toBeGreaterThan(1);
+    expect(second?.mode).toBe('rate');
+    expect(second?.syncedTime).toBeCloseTo(10, 6);
+    expect(second?.rate).toBeGreaterThan(first?.rate ?? 1);
+    expect(syncExternalTime).not.toHaveBeenCalled();
+    expect(setRate).toHaveBeenCalledTimes(2);
+    expect(setRate.mock.lastCall?.[0]).toBeCloseTo(second?.rate ?? 1, 6);
   });
 
   it('uses deadband to ignore micro jitter after lock', () => {
@@ -55,6 +60,7 @@ describe('LTCTransport', () => {
 
   it('hard resyncs on large forward jumps and rewind detection', () => {
     const syncExternalTime = vi.fn();
+    const setRate = vi.fn();
     let currentTime = 10;
     const transport = new LTCTransport(
       {
@@ -63,6 +69,7 @@ describe('LTCTransport', () => {
           currentTime = time;
           syncExternalTime(time);
         },
+        setRate,
       },
       { lockFrames: 1, hardResyncThreshold: 0.5, rewindThreshold: 0.1 },
     );
@@ -76,6 +83,8 @@ describe('LTCTransport', () => {
     expect(forward?.reason).toBe('hard-resync');
     expect(backward?.reason).toBe('rewind-detect');
     expect(backward?.sequence).toBeGreaterThan(forward?.sequence ?? 0);
+    expect(setRate).toHaveBeenNthCalledWith(1, 1);
+    expect(setRate).toHaveBeenNthCalledWith(2, 1);
     expect(syncExternalTime).toHaveBeenNthCalledWith(1, 10.75);
     expect(syncExternalTime).toHaveBeenNthCalledWith(2, 9.9);
   });
@@ -147,6 +156,7 @@ describe('LTCTransport', () => {
 
   it('keeps monotonic sequence through seek-style confirmation and soft chase', () => {
     const syncExternalTime = vi.fn();
+    const setRate = vi.fn();
     let currentTime = 10;
     const transport = new LTCTransport(
       {
@@ -155,6 +165,7 @@ describe('LTCTransport', () => {
           currentTime = time;
           syncExternalTime(time);
         },
+        setRate,
       },
       { lockFrames: 1, deadbandSec: 0.01 },
     );
@@ -165,7 +176,8 @@ describe('LTCTransport', () => {
     const chased = transport.ingestTime(12.04, 1066);
 
     expect(confirmed).toMatchObject({ reason: 'seek-confirm', mode: 'soft' });
-    expect(chased).toMatchObject({ reason: 'soft-chase', mode: 'soft' });
+    expect(chased).toMatchObject({ reason: 'soft-chase', mode: 'rate' });
+    expect(setRate).toHaveBeenCalledTimes(1);
     expect((chased?.sequence ?? 0)).toBeGreaterThan(confirmed?.sequence ?? 0);
     expect(transport.getDiagnostics(1100).lastSequence).toBe(chased?.sequence);
   });

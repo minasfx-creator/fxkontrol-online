@@ -2,6 +2,8 @@ export interface LTCSyncTarget {
   getTime: () => number;
   syncExternalTime: (time: number) => void;
   releaseExternalSync?: () => void;
+  getRate?: () => number;
+  setRate?: (rate: number) => void;
 }
 
 export interface LTCTransportOptions {
