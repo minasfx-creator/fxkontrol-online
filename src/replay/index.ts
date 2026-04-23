@@ -19,5 +19,13 @@ export type {
 export { eventSignature } from "./event-signature";
 export { replayExecution } from "./replay-engine";
 
-export { planToReplay } from "./adapters/plan-to-replay";
-export { traceToReplay } from "./adapters/trace-to-replay";
+export {
+  planToReplay,
+  traceToReplay,
+  defaultPlannerAdapter,
+  mapExecutionPlanToReplayPlan,
+  defaultRuntimeTraceAdapter,
+  mapRuntimeTraceToReplayTrace,
+  type PlannerAdapter,
+  type RuntimeTraceAdapter,
+} from "./adapters";
