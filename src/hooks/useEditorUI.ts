@@ -25,6 +25,7 @@ export function usePlaybackState() {
     isPlaying: playing,
     duration,
     playbackSpeed: speed,
+    timelineSource: source,
     setPlaying: (next: boolean) => (next ? play() : pause()),
     togglePlaying: toggle,
     setCurrentTime: seek,
