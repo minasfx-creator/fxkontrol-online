@@ -533,3 +533,106 @@ export class HilBridgeHarness {
     return true;
   }
 }
+
+function percentile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1));
+  return sorted[idx];
+}
+
+export function computeHilDrift(report: Pick<HilRunReport, 'logs'>): HilDriftHistogram {
+  const samples = report.logs
+    .filter((entry) => entry.event === 'ack' || entry.event === 'reorder')
+    .map((entry) => entry.delayMs ?? 0)
+    .filter((value) => Number.isFinite(value));
+
+  if (samples.length === 0) {
+    return { count: 0, min: 0, max: 0, mean: 0, p50: 0, p95: 0, p99: 0, buckets: [] };
+  }
+
+  const sorted = [...samples].sort((a, b) => a - b);
+  const sum = sorted.reduce((acc, v) => acc + v, 0);
+  const max = sorted[sorted.length - 1];
+  const bucketSize = Math.max(10, Math.ceil(max / 8));
+  const buckets: HilDriftHistogram['buckets'] = [];
+  for (let start = 0; start <= max; start += bucketSize) {
+    const end = start + bucketSize;
+    buckets.push({
+      rangeMs: [start, end],
+      count: sorted.filter((v) => v >= start && v < end).length,
+    });
+  }
+
+  return {
+    count: sorted.length,
+    min: sorted[0],
+    max,
+    mean: sum / sorted.length,
+    p50: percentile(sorted, 50),
+    p95: percentile(sorted, 95),
+    p99: percentile(sorted, 99),
+    buckets,
+  };
+}
+
+export function compareHilReports(a: HilRunReport, b: HilRunReport): HilCompareResult {
+  const driftA = computeHilDrift(a);
+  const driftB = computeHilDrift(b);
+  return {
+    lossDelta: b.stats.failed - a.stats.failed,
+    ackDelta: b.stats.acked - a.stats.acked,
+    totalDelta: b.stats.total - a.stats.total,
+    jitterP95Delta: driftB.p95 - driftA.p95,
+    meanDelta: driftB.mean - driftA.mean,
+  };
+}
+
+export function checkHilRegression(report: HilRunReport, rule: HilRegressionRule): HilRegressionResult {
+  const drift = computeHilDrift(report);
+  const ackRate = report.stats.total === 0 ? 1 : report.stats.acked / report.stats.total;
+  const failures: string[] = [];
+  if (rule.maxFailed !== undefined && report.stats.failed > rule.maxFailed) {
+    failures.push(`failed ${report.stats.failed} > ${rule.maxFailed}`);
+  }
+  if (rule.maxP95Ms !== undefined && drift.p95 > rule.maxP95Ms) {
+    failures.push(`p95 ${drift.p95.toFixed(1)}ms > ${rule.maxP95Ms}ms`);
+  }
+  if (rule.maxAbsoluteMs !== undefined && drift.max > rule.maxAbsoluteMs) {
+    failures.push(`max ${drift.max.toFixed(1)}ms > ${rule.maxAbsoluteMs}ms`);
+  }
+  if (rule.minAckRate !== undefined && ackRate < rule.minAckRate) {
+    failures.push(`ackRate ${(ackRate * 100).toFixed(1)}% < ${(rule.minAckRate * 100).toFixed(1)}%`);
+  }
+  return {
+    passed: failures.length === 0,
+    failures,
+    metrics: { failed: report.stats.failed, p95: drift.p95, max: drift.max, ackRate },
+  };
+}
+
+export interface HilReplayHandle {
+  cancel: () => void;
+  scheduled: number;
+}
+
+export function replayHilReport(
+  report: HilRunReport,
+  fire: (channel: string, entry: CommandTimeline) => void,
+): HilReplayHandle {
+  const t0 = report.runStart;
+  const timers: Array<ReturnType<typeof setTimeout>> = [];
+  let scheduled = 0;
+  for (const entry of report.timeline) {
+    if (entry.sentAt === undefined) continue;
+    const delay = Math.max(0, entry.sentAt - t0);
+    scheduled += 1;
+    timers.push(setTimeout(() => fire(entry.channel, entry), delay));
+  }
+  return {
+    scheduled,
+    cancel: () => {
+      for (const t of timers) clearTimeout(t);
+      timers.length = 0;
+    },
+  };
+}
