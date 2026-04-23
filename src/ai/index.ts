@@ -36,3 +36,17 @@ export { createShowGraphV2, validateShowGraphV2 } from './showGraphV2';
 // ─── LLM adapter (Sprint LLM-1/2) ──────────────────────────────────
 export type { JoiLLMResponse } from './joiLLMAdapter';
 export { generateJoiGraph } from './joiLLMAdapter';
+
+// ─── Compiler v2 (AST → IR, isolado do core) ───────────────────────
+export type {
+  JoiAST,
+  JoiASTNode,
+  JoiNodeKind,
+  JoiTarget,
+  JoiIR,
+  IRStep,
+  IRCommand,
+  IRAction,
+  CompileResultV2,
+} from './joiCompilerV2';
+export { compileJoiV2 } from './joiCompilerV2';
