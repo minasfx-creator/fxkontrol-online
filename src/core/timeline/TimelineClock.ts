@@ -26,6 +26,22 @@ const DEFAULT_STATE: TimelineClockState = {
   driftSec: 0,
 };
 
+function deepFreeze<T>(value: T): Readonly<T> {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
+    return value as Readonly<T>;
+  }
+
+  Object.freeze(value);
+
+  for (const nested of Object.values(value as Record<string, unknown>)) {
+    if (nested && typeof nested === 'object') {
+      deepFreeze(nested);
+    }
+  }
+
+  return value as Readonly<T>;
+}
+
 class TimelineClock {
   private state: TimelineClockState = { ...DEFAULT_STATE };
   private listeners = new Set<TimelineClockListener>();
@@ -150,7 +166,7 @@ class TimelineClock {
   }
 
   getDiagnostics(): Readonly<TimelineClockState> {
-    return Object.freeze({ ...this.state });
+    return deepFreeze(structuredClone(this.state));
   }
 
   subscribe(listener: TimelineClockListener): () => void {
