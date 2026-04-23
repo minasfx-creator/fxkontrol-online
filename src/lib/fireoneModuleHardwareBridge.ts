@@ -73,11 +73,8 @@ export interface BridgeStatus {
   rxBytes: number;
   rssi?: number;
   estimatedDistance?: number;
-  lastError?: string;
-  linkHealth?: 'disconnected' | 'handshaking' | 'healthy';
-  /** Human-readable last error message (legacy). */
-  lastError?: string;
   /** Structured last error with stable reason code. */
+  lastError?: string;
   lastErrorCode?: BridgeReasonCode;
   lastErrorAt?: number;
   linkHealth?: LinkHealth;
@@ -237,7 +234,6 @@ export class FireOneHardwareBridge {
   private rssi?: number;
   private estimatedDistance?: number;
   private lastError?: string;
-  private linkHealth: 'disconnected' | 'handshaking' | 'healthy' = 'disconnected';
   private lastErrorCode?: BridgeReasonCode;
   private lastErrorAt?: number;
   private linkHealth: LinkHealth = 'disconnected';

@@ -160,47 +160,20 @@ export default function ManualComplianceMatrix() {
 
   const blockers = useMemo(() => (
     COMPLIANCE_DATA
-      .filter(isGoLiveBlocker)
-      .sort((a, b) => a.source.localeCompare(b.source))
-  ), []);
-
-  const blockers = useMemo(() => (
-    COMPLIANCE_DATA
-      .filter(r => r.criticalForGoLive && r.status !== 'implemented')
+      .filter(r => r.criticalForGoLive && String(r.status).toUpperCase() !== 'IMPLEMENTED' && String(r.status).toUpperCase() !== 'VERIFIED')
       .sort((a, b) => a.source.localeCompare(b.source))
   ), []);
 
   const filteredRows = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    const base = showOnlyBlockers
-      ? COMPLIANCE_DATA.filter(r => r.criticalForGoLive && r.status !== 'implemented')
-      : COMPLIANCE_DATA;
+    const base = showOnlyBlockers ? blockers : COMPLIANCE_DATA;
     if (!normalized) return base;
     return base.filter((row) =>
-      `${row.source} ${row.clause} ${row.requirement} ${row.evidence} ${row.action}`
+      `${row.source} ${row.clause} ${row.requirement} ${row.evidence} ${row.action ?? ''} ${row.nextAction ?? ''}`
         .toLowerCase()
         .includes(normalized),
     );
-  }, [query, showOnlyBlockers]);
-
-  const blockers = useMemo(() => (
-    COMPLIANCE_DATA
-      .filter(r => r.criticalForGoLive && r.status !== 'implemented')
-      .sort((a, b) => a.source.localeCompare(b.source))
-  ), []);
-
-  const filteredRows = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    const base = showOnlyBlockers
-      ? COMPLIANCE_DATA.filter(r => r.criticalForGoLive && r.status !== 'implemented')
-      : COMPLIANCE_DATA;
-    if (!normalized) return base;
-    return base.filter((row) =>
-      `${row.source} ${row.clause} ${row.requirement} ${row.evidence} ${row.action}`
-        .toLowerCase()
-        .includes(normalized),
-    );
-  }, [query, showOnlyBlockers]);
+  }, [query, showOnlyBlockers, blockers]);
 
   return (
     <div className="flex flex-col h-full p-4 gap-3 bg-background/80">
