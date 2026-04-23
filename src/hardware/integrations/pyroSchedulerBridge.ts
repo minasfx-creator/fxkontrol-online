@@ -117,6 +117,7 @@ export class PyroSchedulerBridge {
     const isJump = Math.abs(delta) > this.jumpThresholdSec;
     const externalReposition = clockState.lastPositionChange === 'external-sync'
       || clockState.lastPositionChange === 'external-confirm';
+    let repositioned = false;
 
     if (changedTime && (externalReposition || delta < 0 || isJump)) {
       if (delta < 0) {
@@ -127,13 +128,14 @@ export class PyroSchedulerBridge {
         this.scheduler.seek(clockState.time);
         this.lastRebuildReason = 'seek-forward';
       }
+      repositioned = true;
     } else if (!previous.playing && clockState.playing && this.lastRebuildReason === 'boot') {
       this.lastRebuildReason = 'play';
     }
 
     this.lastClockState = { ...clockState };
 
-    if (!clockState.playing || delta <= EPSILON) {
+    if (repositioned || !clockState.playing || delta <= EPSILON) {
       return;
     }
 
