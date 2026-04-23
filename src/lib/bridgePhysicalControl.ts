@@ -44,6 +44,8 @@ export interface PhysicalRuntimeSnapshot {
   systemArmed: boolean;
   freezeTriggered: boolean;
   autoDisarmed: boolean;
+  hilModeEnabled: boolean;
+  hilProfile: HilFaultProfile;
   heartbeatIntervalMs: number;
   heartbeatAgeMs: number | null;
   lastHeartbeatSeq: number | null;
@@ -121,6 +123,9 @@ class BridgePhysicalController {
   private systemArmed = false;
   private freezeTriggered = false;
   private autoDisarmed = false;
+  private hilModeEnabled = false;
+  private hilProfile: HilFaultProfile = { jitterMs: 15, baseDelayMs: 40, packetLossRate: 0, reorderRate: 0 };
+  private hilHarness = new HilBridgeHarness(this.hilProfile);
 
   subscribe(listener: RuntimeListener): () => void {
     this.listeners.add(listener);
@@ -139,6 +144,20 @@ class BridgePhysicalController {
       this.autoDisarmed = false;
     }
     this.emit();
+  }
+
+  configureHil(enabled: boolean, profile?: Partial<HilFaultProfile>): void {
+    this.hilModeEnabled = enabled;
+    this.hilProfile = {
+      ...this.hilProfile,
+      ...(profile ?? {}),
+    };
+    this.hilHarness = new HilBridgeHarness(this.hilProfile);
+    this.emit();
+  }
+
+  async simulateHilFire(channelId: string, onAcknowledge: (channel: string) => void): Promise<boolean> {
+    return this.hilHarness.fire(channelId, onAcknowledge);
   }
 
   beginCommand(id: string, target: string, channelId?: string): PhysicalCommandRecord {
@@ -286,6 +305,8 @@ class BridgePhysicalController {
       systemArmed: this.systemArmed,
       freezeTriggered: this.freezeTriggered,
       autoDisarmed: this.autoDisarmed,
+      hilModeEnabled: this.hilModeEnabled,
+      hilProfile: { ...this.hilProfile },
       heartbeatIntervalMs: HEARTBEAT_INTERVAL_MS,
       heartbeatAgeMs,
       lastHeartbeatSeq: this.lastHeartbeatSeq,
