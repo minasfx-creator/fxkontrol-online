@@ -398,6 +398,7 @@ function buildIR(
       maxDroneSpeedUsed: 0,
       maxPyroConcurrency,
       dmxChannelLoad,
+      riskEnvelope: { avg: Math.min(1, avgRisk), peak: peakRisk },
     },
     safety: {
       collisionRiskScore: Math.min(1, avgRisk),
