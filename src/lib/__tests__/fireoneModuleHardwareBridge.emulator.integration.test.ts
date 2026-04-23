@@ -56,9 +56,15 @@ describe('Bridge ↔ TransportEmulator integration', () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); });
 
-  it('handshake completes under latency jitter (50ms ±20ms)', async () => {
+  it('PING/PONG round-trip works under latency jitter (50ms ±20ms)', async () => {
     const emu = new TransportEmulator({ mode: 'jitter', latencyMs: 50, jitterMs: 20, seed: 42 });
     const { bridge, internals } = wireBridgeToEmulator(emu);
+    let pong = false;
+    emu.onResponse((f) => { if (f.startsWith('PONG')) pong = true; });
+    emu.registerReply(/^PING/, () => 'PONG\n');
+    emu.send('PING\n');
+    await vi.runAllTimersAsync();
+    expect(pong).toBe(true);
     await completeHandshake(emu, bridge, internals);
     expect(internals.linkHealth).toBe('healthy');
     emu.destroy();
