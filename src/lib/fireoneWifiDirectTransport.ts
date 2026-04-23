@@ -10,7 +10,6 @@
  */
 
 import {
-  assertBridgeWebSocketAllowed,
   type TransportType,
   type TransportState,
   type TransportReceiveCallback,
@@ -18,7 +17,7 @@ import {
   type FireOneTransport,
 } from '@/lib/fireoneTransport';
 import { deriveKey, encrypt, decrypt } from '@/lib/fireoneAesCrypto';
-import { buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl, openBridgeWebSocket } from '@/lib/bridgeGateway';
+import { assertBridgeWebSocketAllowed, buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl, openBridgeWebSocket } from '@/lib/bridgeGateway';
 
 const WIFI_DIRECT_DISCOVERY_ENDPOINTS = [
   { host: 'fxk-xl4.local', port: 81, label: 'XL4 Gateway' },
