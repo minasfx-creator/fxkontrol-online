@@ -495,9 +495,26 @@ export class FireOneHardwareBridge {
     return this.sendAndWaitConfirm(`BATCH:${maskHex}:${durationMs}\n`, 'OK:BATCH');
   }
 
-  /** Emergency stop — bypasses requireHealthy() by design. */
+  /**
+   * Emergency stop — bypasses requireHealthy() by design.
+   * Always logs an audit event with current link state for post-event analysis,
+   * regardless of whether transmission succeeds.
+   */
   async eStop(): Promise<boolean> {
-    return this.sendCommand('ESTOP\n');
+    this.onEvent?.('estop_attempt', {
+      linkHealth: this.linkHealth,
+      connected: this.connected,
+      transport: this.transport,
+      sessionId: this.sessionId,
+      at: Date.now(),
+    });
+    const ok = await this.sendCommand('ESTOP\n');
+    this.onEvent?.('estop_result', {
+      ok,
+      sessionId: this.sessionId,
+      at: Date.now(),
+    });
+    return ok;
   }
 
   async readContinuity(pin: number): Promise<number> {
@@ -761,14 +778,33 @@ export class FireOneHardwareBridge {
     this.linkHealth = 'disconnected';
     // Invalidate any in-flight handshake from a previous attempt.
     this.connectingSessionId++;
-    this.pendingResolves.clear();
+
+    // Drain pending resolves with sentinel values so awaiters wake up
+    // instead of silently leaking promises. Order: resolve, then clear.
+    if (this.pendingResolves.size > 0) {
+      for (const [key, resolver] of this.pendingResolves) {
+        try {
+          // Empty string is the safe sentinel — sendAndWaitConfirm/handshake
+          // resolvers ignore the value (treat as falsy/no-confirm); numeric
+          // resolvers (CONT/CDS) parse to 0 via parseFloat fallback.
+          resolver('');
+        } catch (e) {
+          console.warn(`[HardwareBridge] pendingResolve drain error for ${key}:`, e);
+        }
+      }
+      this.pendingResolves.clear();
+    }
+
     this.stopHeartbeat();
     this.stopRssiPolling();
     if (wasConnected) {
       if (!this.lastErrorCode) {
         this.setError('TRANSPORT_DISCONNECTED', 'Transport disconnected');
       }
-      this.onEvent?.('disconnected', null);
+      this.onEvent?.('disconnected', {
+        reasonCode: this.lastErrorCode ?? 'TRANSPORT_DISCONNECTED',
+        sessionId: this.sessionId,
+      });
     }
     if (wasConnected && this.lastConnectArgs) {
       this.attemptReconnect();
