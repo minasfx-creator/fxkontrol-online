@@ -531,7 +531,26 @@ export class FireOneHardwareBridge {
       rssi: this.rssi,
       estimatedDistance: this.estimatedDistance,
       lastError: this.lastError,
+      lastErrorCode: this.lastErrorCode,
+      lastErrorAt: this.lastErrorAt,
       linkHealth: this.linkHealth,
+      sessionId: this.sessionId,
+    };
+  }
+
+  /** Convenience: true only when handshake completed and link is healthy. */
+  isHealthy(): boolean {
+    return this.connected && this.linkHealth === 'healthy';
+  }
+
+  /** Last structured error (or undefined if none). */
+  getLastError(): BridgeError | undefined {
+    if (!this.lastErrorCode) return undefined;
+    return {
+      code: this.lastErrorCode,
+      message: this.lastError ?? this.lastErrorCode,
+      transport: this.transport,
+      at: this.lastErrorAt ?? Date.now(),
     };
   }
 
