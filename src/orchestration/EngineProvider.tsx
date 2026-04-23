@@ -28,6 +28,7 @@ import { startProfiler, stopProfiler } from '@/core/performance/PerformanceProfi
 import { networkHealthService } from '@/core/network/NetworkHealthService';
 import { clusterHealthService } from '@/core/cluster/ClusterHealthService';
 import { healthPersistenceService } from '@/core/cluster/HealthPersistenceService';
+import { timelineClock } from '@/core/timeline/TimelineClock';
 import '@/core/cluster/reporters/SafetyHealthReporter';
 import '@/core/cluster/reporters/PerformanceHealthReporter';
 import '@/core/cluster/reporters/NetworkHealthReporter';
@@ -164,6 +165,10 @@ export default function EngineProvider() {
       snapshotManager.maybeCapture(lockstep.getTickCount());
     }, 200);
 
+    lockstep.register('timelineClock', (_time: number, dt: number) => {
+      timelineClock.tick(dt);
+    }, 0);
+
     // ── IndexedDB flush subsystem (priority 300) ──
     lockstep.register('idbFlush', (_time: number, _dt: number) => {
       const tick = lockstep.getTickCount();
@@ -228,6 +233,7 @@ export default function EngineProvider() {
       unsubImport();
       unsubContinuity();
       lockstep.unregister('commandBus');
+      lockstep.unregister('timelineClock');
       lockstep.unregister('snapshotManager');
       lockstep.unregister('idbFlush');
       commandRelay.stop();
