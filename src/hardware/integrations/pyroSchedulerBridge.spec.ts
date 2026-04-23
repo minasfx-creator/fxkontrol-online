@@ -173,6 +173,24 @@ describe('PyroSchedulerBridge', () => {
     expect(transport.dispatch).toHaveBeenCalledTimes(1);
   });
 
+  it('soft chase externo contínuo não força rebuild espúrio', async () => {
+    const transport = createTransportStub();
+    const bridge = new PyroSchedulerBridge({
+      transport: transport as never,
+      getShowPlan: () => plan,
+      getSafetyState: () => 'ARMED',
+      jumpThresholdSec: 100,
+    });
+
+    bridge.tick(createClockState({ time: 0 }));
+    bridge.tick(createClockState({ time: 9.8, playing: true, source: 'external', externalSyncSequence: 1, positionSequence: 1, lastPositionChange: 'external-sync' }));
+    bridge.tick(createClockState({ time: 9.82, playing: true, source: 'external', externalSyncSequence: 2, positionSequence: 1, lastPositionChange: 'tick' }));
+    await bridge.flushPending();
+
+    expect(bridge.getDiagnostics().lastRebuildReason).toBe('external-sync');
+    expect(transport.dispatch).not.toHaveBeenCalled();
+  });
+
   it('bloqueia dispatch em watchdog, lockout, desarmado ou safety não armado', async () => {
     const transport = createTransportStub();
     transport.serviceWatchdog.mockResolvedValue(true);
