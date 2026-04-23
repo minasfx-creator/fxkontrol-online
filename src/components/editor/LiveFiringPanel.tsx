@@ -404,6 +404,15 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   useEffect(() => bridgePhysicalController.subscribe(() => setPhysicalRevision((value) => value + 1)), []);
 
   useEffect(() => {
+    bridgePhysicalController.configureHil(settings.hilModeEnabled, {
+      baseDelayMs: settings.hilBaseDelayMs,
+      jitterMs: settings.hilJitterMs,
+      packetLossRate: settings.hilPacketLossRate,
+      reorderRate: settings.hilReorderRate,
+    });
+  }, [settings.hilModeEnabled, settings.hilBaseDelayMs, settings.hilJitterMs, settings.hilPacketLossRate, settings.hilReorderRate]);
+
+  useEffect(() => {
     if (!physicalSnapshot.autoDisarmed || (!pyroArm && !dmxArm)) return;
     setPyroArm(false);
     setDmxArm(false);
@@ -737,15 +746,29 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       }
       useLiveSfxStore.getState().fireEffect({ id: ch.id, type: ch.type as any, position: pos3d, color: ch.color, intensity: ch.intensity, startedAt: performance.now(), duration: ch.duration });
       if (!firingStartTime) setFiringStartTime(Date.now());
-      const timer = setTimeout(() => {
+      const finalizeCommand = () => {
         setChannels(prev => { const updated = prev.map(c => c.id === id ? { ...c, firing: false } : c); sendArtNetPacket(updated); return updated; });
         bridgePhysicalController.transitionCommand(commandId, 'confirmed');
         bridgePhysicalController.transitionCommand(commandId, 'done');
         fireTimers.current.delete(id);
+      };
+      const timer = setTimeout(() => {
+        if (settings.hilModeEnabled) {
+          void bridgePhysicalController.simulateHilFire(id, () => finalizeCommand()).then((ok) => {
+            if (!ok) {
+              bridgePhysicalController.failCommand(commandId, 'HIL simulated packet loss');
+              fireTimers.current.delete(id);
+              setChannels(prev => { const updated = prev.map(c => c.id === id ? { ...c, firing: false } : c); sendArtNetPacket(updated); return updated; });
+              toast.error(`HIL fault: packet loss em ${id}`);
+            }
+          });
+          return;
+        }
+        finalizeCommand();
       }, ch.duration);
       fireTimers.current.set(id, timer);
     }
-  }, [channels, sendArtNetPacket, positions, firingStartTime, fireone, pbus, pyroArm, dmxArm, deadmanHeld, settings.pyroArmRequired, settings.dualConfirmRequired, dualConfirmArmed, relayDiagnostic.watchdogRequired, physicalSnapshot.watchdogState]);
+  }, [channels, sendArtNetPacket, positions, firingStartTime, fireone, pbus, pyroArm, dmxArm, deadmanHeld, settings.pyroArmRequired, settings.dualConfirmRequired, settings.hilModeEnabled, dualConfirmArmed, relayDiagnostic.watchdogRequired, physicalSnapshot.watchdogState]);
 
   const stopChannel = useCallback((id: string) => {
     const timer = fireTimers.current.get(id);
