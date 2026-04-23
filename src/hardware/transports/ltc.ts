@@ -73,9 +73,9 @@ export interface LTCDriftDiagnostics {
 }
 
 export type LTCEvent =
-  | { type: 'source-switch'; from: string | null; to: string }
-  | { type: 'hard-sync'; reason: LTCSyncSample['reason'] }
-  | { type: 'rate-change'; rate: number };
+  | { type: 'source-switch'; from: string | null; to: string; time: number; sequence: number }
+  | { type: 'hard-sync'; reason: LTCSyncSample['reason']; time: number; sequence: number }
+  | { type: 'rate-change'; rate: number; time: number; sequence: number };
 
 export interface LTCDriftSeries {
   drift: readonly number[];
@@ -89,6 +89,12 @@ export interface LTCReplayFrame {
   incoming: number;
   diagnostics: LTCDriftDiagnostics & { source: string | null };
   sample: LTCSyncSample | null;
+}
+
+export interface LTCReplayOptions {
+  speed?: number;
+  step?: boolean;
+  onFrame?: (frame: LTCReplayFrame, index: number, total: number) => void;
 }
 
 interface LTCSourceState {
@@ -153,6 +159,12 @@ export class LTCTransport {
   private historyTime = new Float32Array(120);
   private events: LTCEvent[] = [];
   private replayRecord: LTCReplayFrame[] = [];
+  private replayCursor = 0;
+  private replayTimer: ReturnType<typeof setTimeout> | null = null;
+  private kalmanEnabled = false;
+  private kalmanEstimate = 0;
+  private kalmanError = 1;
+  private eventSubscribers = new Set<(event: LTCEvent) => void>();
 
   constructor(
     private readonly target: LTCSyncTarget,
