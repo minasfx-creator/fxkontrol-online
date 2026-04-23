@@ -58,3 +58,13 @@ export type {
   PlannedCommand,
 } from './joiExecutionPlanner';
 export { buildExecutionPlan } from './joiExecutionPlanner';
+
+// ─── Execution Runtime v1 (frame scheduler + deterministic dispatch) ─
+export type {
+  RuntimeConfig,
+  RuntimeFrameTrace,
+  RuntimeStats,
+  CommandAdapter,
+  AbortReason,
+} from './joiExecutionRuntime';
+export { ExecutionRuntimeV1, RuntimeClock } from './joiExecutionRuntime';
