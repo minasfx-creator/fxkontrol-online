@@ -21,7 +21,8 @@ export type EmulatorMode =
   | 'out_of_order'
   | 'duplicate'
   | 'disconnect_mid_flight'
-  | 'parse_garbage';
+  | 'parse_garbage'
+  | 'burst';
 
 export interface EmulatorConfig {
   mode: EmulatorMode;
@@ -66,6 +67,12 @@ export class TransportEmulator {
   private autoReplies: Array<{ match: RegExp; reply: (cmd: string) => string | null }> = [];
 
   constructor(cfg: EmulatorConfig) {
+    // Production guard — emulator is dev/test only.
+    // Vite exposes import.meta.env.DEV (true in dev) and MODE ('test' in vitest).
+    const env = (import.meta as unknown as { env?: { DEV?: boolean; MODE?: string; PROD?: boolean } }).env;
+    if (env && env.PROD === true && env.MODE !== 'test') {
+      throw new Error('TransportEmulator must not be used in production');
+    }
     this.cfg = {
       mode: cfg.mode,
       latencyMs: cfg.latencyMs ?? 0,
@@ -124,6 +131,12 @@ export class TransportEmulator {
   // ── Inbound (emulator → bridge) ─────────────────────────────────
   /** Manually inject a response frame (test helper). */
   injectResponse(frame: string) {
+    if (this.cfg.mode === 'burst') {
+      // Burst mode: deliver the same frame N times back-to-back to validate
+      // rate limiter behavior under retry storms. Default 10×.
+      for (let i = 0; i < 10; i++) this.scheduleResponse(frame);
+      return;
+    }
     this.scheduleResponse(frame);
   }
 
@@ -171,9 +184,7 @@ export class TransportEmulator {
   }
 
   private computeDelay(): number {
-    const base = this.cfg.mode === 'latency' || this.cfg.mode === 'jitter'
-      ? this.cfg.latencyMs
-      : this.cfg.latencyMs;
+    const base = this.cfg.latencyMs;
     const jitter = this.cfg.mode === 'jitter' || this.cfg.jitterMs > 0
       ? (this.rng() * 2 - 1) * this.cfg.jitterMs
       : 0;
