@@ -7,7 +7,7 @@
  */
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { FireOneModuleEmulator, type ModuleStatus, type ModuleState, type FiringMode, type ScriptEvent } from '@/lib/fireoneModuleEmulator';
-import { FireOneHardwareBridge, type BridgeStatus } from '@/lib/fireoneModuleHardwareBridge';
+import { FireOneHardwareBridge, type BridgeStatus, type BridgeTransportSupport } from '@/lib/fireoneModuleHardwareBridge';
 import { toast } from 'sonner';
 
 export interface UseFireOneModuleReturn {
@@ -38,6 +38,7 @@ export interface UseFireOneModuleReturn {
   firePreset: () => Promise<boolean[]>;
   clearPreset: () => void;
   bridgeStatus: BridgeStatus | null;
+  transportSupport: BridgeTransportSupport;
   connectBLE: () => Promise<boolean>;
   connectBLELongRange: () => Promise<boolean>;
   connectUSB: () => Promise<boolean>;
@@ -51,6 +52,7 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
   const [status, setStatus] = useState<ModuleStatus | null>(null);
   const [powered, setPowered] = useState(false);
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null);
+  const [transportSupport, setTransportSupport] = useState<BridgeTransportSupport>(FireOneHardwareBridge.detectTransportSupport());
   
   const emulatorRef = useRef<FireOneModuleEmulator | null>(null);
   const bridgeRef = useRef<FireOneHardwareBridge | null>(null);
@@ -74,17 +76,24 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
       } else if (event === 'reconnecting') {
         const { attempt } = data as any;
         toast.info(`Reconectando... tentativa ${attempt}/3`);
+      } else if (event === 'unsupported_transport') {
+        const { transport } = data as any;
+        toast.warning(`Transporte ${String(transport).toUpperCase()} indisponível neste dispositivo`);
       }
     });
     bridgeRef.current = bridge;
     setBridgeStatus(bridge.getStatus());
+    setTransportSupport(bridge.getTransportSupport());
     return () => { bridge.disconnect(); };
   }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
       const bridge = bridgeRef.current;
-      if (bridge) setBridgeStatus(bridge.getStatus());
+      if (bridge) {
+        setBridgeStatus(bridge.getStatus());
+        setTransportSupport(bridge.getTransportSupport());
+      }
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -150,41 +159,52 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
 
   // ─── Bridge connections ────────────────────────────────
 
+  const warnConnectFailure = useCallback((label: string) => {
+    const reason = bridgeRef.current?.getStatus().lastError;
+    toast.error(reason ? `${label} falhou: ${reason}` : `${label} falhou`);
+  }, []);
+
   const connectBLE = useCallback(async () => {
     const ok = await (bridgeRef.current?.connectBLE() ?? false);
     setBridgeStatus(bridgeRef.current?.getStatus() ?? null);
+    if (!ok) warnConnectFailure('Conexão BLE');
     return ok;
-  }, []);
+  }, [warnConnectFailure]);
 
   const connectBLELongRange = useCallback(async () => {
     const ok = await (bridgeRef.current?.connectBLELongRange() ?? false);
     setBridgeStatus(bridgeRef.current?.getStatus() ?? null);
+    if (!ok) warnConnectFailure('Conexão BLE LR');
     return ok;
-  }, []);
+  }, [warnConnectFailure]);
 
   const connectUSB = useCallback(async () => {
     const ok = await (bridgeRef.current?.connectUSB() ?? false);
     setBridgeStatus(bridgeRef.current?.getStatus() ?? null);
+    if (!ok) warnConnectFailure('Conexão USB');
     return ok;
-  }, []);
+  }, [warnConnectFailure]);
 
   const connectWS = useCallback(async (url?: string) => {
     const ok = await (bridgeRef.current?.connectWebSocket(url) ?? false);
     setBridgeStatus(bridgeRef.current?.getStatus() ?? null);
+    if (!ok) warnConnectFailure('Conexão WebSocket');
     return ok;
-  }, []);
+  }, [warnConnectFailure]);
 
   const connectWiFiDirect = useCallback(async (url?: string) => {
     const ok = await (bridgeRef.current?.connectWiFiDirect(url) ?? false);
     setBridgeStatus(bridgeRef.current?.getStatus() ?? null);
+    if (!ok) warnConnectFailure('Conexão Wi‑Fi Direct');
     return ok;
-  }, []);
+  }, [warnConnectFailure]);
 
   const connectDirectRelay = useCallback(async () => {
     const ok = await (bridgeRef.current?.connectDirectRelay() ?? false);
     setBridgeStatus(bridgeRef.current?.getStatus() ?? null);
+    if (!ok) warnConnectFailure('Conexão Direct Relay');
     return ok;
-  }, []);
+  }, [warnConnectFailure]);
 
   const disconnectHardware = useCallback(async () => {
     await bridgeRef.current?.disconnect();
@@ -199,6 +219,7 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
     loadAutoScript, startAutoFire, stopAutoFire,
     downloadUltraScript, setUltraSlot, startUltraFire, stopUltraFire,
     setPreset, firePreset, clearPreset,
+    transportSupport,
     bridgeStatus, connectBLE, connectBLELongRange, connectUSB, connectWS,
     connectWiFiDirect, connectDirectRelay, disconnectHardware,
   };

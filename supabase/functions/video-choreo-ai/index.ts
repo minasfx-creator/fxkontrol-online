@@ -96,18 +96,13 @@ serve(async (req) => {
 
     let parsed;
     try {
-      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, content];
-      parsed = JSON.parse(jsonMatch[1].trim());
+      parsed = JSON.parse(extractJsonPayload(content));
     } catch {
-      try {
-        parsed = JSON.parse(content);
-      } catch {
-        console.error("Failed to parse AI response:", content.substring(0, 500));
-        return new Response(
-          JSON.stringify({ error: "Failed to parse AI response", raw: content.substring(0, 200) }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      console.error("Failed to parse AI response:", content.substring(0, 500));
+      return new Response(
+        JSON.stringify({ error: "Failed to parse AI response", raw: content.substring(0, 200) }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Post-process: ensure all formations have enough points
@@ -130,6 +125,19 @@ serve(async (req) => {
     );
   }
 });
+
+function extractJsonPayload(raw: string): string {
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced?.[1]) return fenced[1].trim();
+
+  const firstBrace = raw.indexOf("{");
+  const lastBrace = raw.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return raw.slice(firstBrace, lastBrace + 1).trim();
+  }
+
+  return raw.trim();
+}
 
 // ─── System Prompt Builder ────────────────────────────────────
 

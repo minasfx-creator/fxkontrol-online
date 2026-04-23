@@ -21,6 +21,18 @@ export interface ShowTemplate {
   tags: string[];
 }
 
+export interface ShowTemplateBundle {
+  schemaVersion: 2;
+  exportedAt: string;
+  source: 'fxk-show-templates';
+  templates: ShowTemplate[];
+}
+
+export interface ImportTemplateResult {
+  imported: ShowTemplate[];
+  skipped: number;
+}
+
 export type TemplateCategory = 'countdown' | 'celebration' | 'logo' | 'abstract' | 'patriotic' | 'holiday' | 'sports' | 'custom';
 
 export const TEMPLATE_CATEGORIES: Record<TemplateCategory, { label: string; emoji: string }> = {
@@ -49,6 +61,15 @@ export function saveTemplate(template: Omit<ShowTemplate, 'id' | 'createdAt'>): 
   return full;
 }
 
+function makeTemplateFingerprint(template: Pick<ShowTemplate, 'name' | 'formationCount' | 'droneCount' | 'duration'>): string {
+  return [
+    template.name.trim().toLowerCase(),
+    Math.round(template.duration || 0),
+    template.droneCount || 0,
+    template.formationCount || 0,
+  ].join('|');
+}
+
 export function loadTemplates(): ShowTemplate[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -68,24 +89,68 @@ export function getTemplate(id: string): ShowTemplate | null {
 }
 
 export function exportTemplateJSON(template: ShowTemplate): string {
-  return JSON.stringify(template, null, 2);
+  const bundle: ShowTemplateBundle = {
+    schemaVersion: 2,
+    exportedAt: new Date().toISOString(),
+    source: 'fxk-show-templates',
+    templates: [template],
+  };
+  return JSON.stringify(bundle, null, 2);
 }
 
-export function importTemplateJSON(json: string): ShowTemplate | null {
+function normalizeTemplate(raw: any): Omit<ShowTemplate, 'id' | 'createdAt'> | null {
+  if (!raw || typeof raw !== 'object') return null;
+  if (!raw.name || !Array.isArray(raw.formations)) return null;
+  const formations = raw.formations.filter(Boolean);
+  const formationCount = formations.length;
+  const droneCount = Number(raw.droneCount) || formations[0]?.droneCount || 0;
+  const inferredDuration = formations.reduce((max: number, f: any) => {
+    const end = Number(f?.startTime || 0) + Number(f?.transitionDuration || 0) + Number(f?.holdDuration || 0);
+    return Math.max(max, end);
+  }, 0);
+  return {
+    name: String(raw.name),
+    description: String(raw.description || ''),
+    category: (raw.category || 'custom') as TemplateCategory,
+    duration: Number(raw.duration) || inferredDuration,
+    droneCount,
+    formationCount,
+    formations,
+    sceneSettings: raw.sceneSettings,
+    tags: Array.isArray(raw.tags) ? raw.tags.map((t: unknown) => String(t)) : [],
+  };
+}
+
+export function importTemplateJSON(json: string): ImportTemplateResult | null {
   try {
     const parsed = JSON.parse(json);
-    if (!parsed.name || !parsed.formations) return null;
-    return saveTemplate({
-      name: parsed.name + ' (Imported)',
-      description: parsed.description || '',
-      category: parsed.category || 'custom',
-      duration: parsed.duration || 0,
-      droneCount: parsed.droneCount || 0,
-      formationCount: parsed.formationCount || 0,
-      formations: parsed.formations || [],
-      sceneSettings: parsed.sceneSettings,
-      tags: parsed.tags || [],
-    });
+    const candidates = Array.isArray(parsed?.templates)
+      ? parsed.templates
+      : Array.isArray(parsed)
+        ? parsed
+        : [parsed];
+
+    const existing = loadTemplates();
+    const existingFingerprints = new Set(existing.map(makeTemplateFingerprint));
+    const imported: ShowTemplate[] = [];
+    let skipped = 0;
+    for (const candidate of candidates) {
+      const normalized = normalizeTemplate(candidate);
+      if (!normalized) { skipped++; continue; }
+      const withImportedSuffix = {
+        ...normalized,
+        name: normalized.name.endsWith(' (Imported)') ? normalized.name : `${normalized.name} (Imported)`,
+      };
+      const fingerprint = makeTemplateFingerprint(withImportedSuffix);
+      if (existingFingerprints.has(fingerprint)) {
+        skipped++;
+        continue;
+      }
+      const saved = saveTemplate(withImportedSuffix);
+      existingFingerprints.add(fingerprint);
+      imported.push(saved);
+    }
+    return imported.length > 0 || skipped > 0 ? { imported, skipped } : null;
   } catch {
     return null;
   }
