@@ -97,6 +97,13 @@ class TimelineClock {
     this.notify();
   }
 
+  releaseExternalSync(): void {
+    if (this.state.source !== 'external') return;
+    this.state.source = 'local';
+    this.state.driftSec = 0;
+    this.notify();
+  }
+
   setSpeed(speed: number): void {
     if (!Number.isFinite(speed)) return;
     const next = Math.max(0, Math.min(speed, 10));
