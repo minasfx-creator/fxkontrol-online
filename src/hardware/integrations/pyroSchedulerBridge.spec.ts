@@ -191,6 +191,26 @@ describe('PyroSchedulerBridge', () => {
     expect(transport.dispatch).not.toHaveBeenCalled();
   });
 
+  it('external confirm não duplica dispatch após scrub seek', async () => {
+    const transport = createTransportStub();
+    const bridge = new PyroSchedulerBridge({
+      transport: transport as never,
+      getShowPlan: () => plan,
+      getSafetyState: () => 'ARMED',
+      nowMs: () => 9_900,
+      jumpThresholdSec: 100,
+    });
+
+    bridge.tick(createClockState({ time: 0 }));
+    bridge.tick(createClockState({ time: 9.889, playing: true, source: 'external', externalSyncSequence: 1, positionSequence: 1, lastPositionChange: 'external-sync' }));
+    await bridge.flushPending();
+    bridge.tick(createClockState({ time: 9.889, playing: true, source: 'external', externalSyncSequence: 2, positionSequence: 2, lastPositionChange: 'external-confirm' }));
+    await bridge.flushPending();
+
+    expect(bridge.getDiagnostics().lastRebuildReason).toBe('external-sync');
+    expect(transport.dispatch).toHaveBeenCalledTimes(1);
+  });
+
   it('bloqueia dispatch em watchdog, lockout, desarmado ou safety não armado', async () => {
     const transport = createTransportStub();
     transport.serviceWatchdog.mockResolvedValue(true);

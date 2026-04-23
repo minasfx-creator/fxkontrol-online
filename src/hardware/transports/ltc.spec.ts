@@ -50,7 +50,8 @@ describe('LTCTransport', () => {
 
     expect(sample).toMatchObject({ mode: 'soft' });
     expect(sample?.syncedTime).toBe(10);
-    expect(syncExternalTime).not.toHaveBeenCalled();
+    expect(syncExternalTime).toHaveBeenCalledTimes(1);
+    expect(syncExternalTime).toHaveBeenCalledWith(10);
   });
 
   it('hard resyncs on large forward jumps and rewind detection', () => {
@@ -122,6 +123,27 @@ describe('LTCTransport', () => {
     expect(diagnostics.state).toBe('locking');
     expect(diagnostics.lastSequence).toBe(1);
     expect(diagnostics.lastSyncReason).toBe('idle');
+  });
+
+  it('keeps deadband samples passive when there is no seek-style confirmation', () => {
+    const syncExternalTime = vi.fn();
+    let currentTime = 10;
+    const transport = new LTCTransport(
+      {
+        getTime: () => currentTime,
+        syncExternalTime: (time) => {
+          currentTime = time;
+          syncExternalTime(time);
+        },
+      },
+      { lockFrames: 1, deadbandSec: 0.01 },
+    );
+
+    expect(transport.ingestTime(10, 1000)).toBeNull();
+    const steady = transport.ingestTime(10.004, 1033);
+
+    expect(steady).toMatchObject({ reason: 'deadband', mode: 'soft', syncedTime: 10 });
+    expect(syncExternalTime).not.toHaveBeenCalled();
   });
 
   it('keeps monotonic sequence through seek-style confirmation and soft chase', () => {
