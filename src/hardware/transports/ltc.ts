@@ -341,12 +341,6 @@ export class LTCTransport {
     this.lastDriftSec = delta;
     source.drift = delta;
 
-    const hardReason = this.resolveHardReason(delta, deltaFrames, sourceSwitch);
-    if (hardReason) {
-      const sample = this.applyHardSync(filteredSeconds, delta, receivedAtMs, hardReason);
-      return this.finishIngest(sample, receivedAtMs, sourceId, priority, rawSeconds, filteredSeconds, filteredSeconds);
-    }
-
     if (this.chaseMode === 'external-master') {
       this.state = 'locked';
       this.lastMode = 'hard';
@@ -368,6 +362,12 @@ export class LTCTransport {
         reason: 'external-master',
       };
 
+      return this.finishIngest(sample, receivedAtMs, sourceId, priority, rawSeconds, filteredSeconds, filteredSeconds);
+    }
+
+    const hardReason = this.resolveHardReason(delta, deltaFrames, sourceSwitch);
+    if (hardReason) {
+      const sample = this.applyHardSync(filteredSeconds, delta, receivedAtMs, hardReason);
       return this.finishIngest(sample, receivedAtMs, sourceId, priority, rawSeconds, filteredSeconds, filteredSeconds);
     }
 
