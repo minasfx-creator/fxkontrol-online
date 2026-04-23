@@ -268,6 +268,12 @@ export default function PlatformStatus() {
             <div className="rounded-md border border-border/50 bg-background/40 p-3">Freeze: {physicalSnapshot.freezeTriggered ? 'ACTIVE' : 'CLEAR'}</div>
             <div className="rounded-md border border-border/50 bg-background/40 p-3">Commands active: {physicalSnapshot.activeCommands.length}</div>
           </div>
+          <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-md border border-border/50 bg-background/40 p-3">HIL mode: {physicalSnapshot.hilModeEnabled ? 'ENABLED' : 'DISABLED'}</div>
+            <div className="rounded-md border border-border/50 bg-background/40 p-3">HIL delay/jitter: {physicalSnapshot.hilProfile.baseDelayMs}ms / {physicalSnapshot.hilProfile.jitterMs}ms</div>
+            <div className="rounded-md border border-border/50 bg-background/40 p-3">Loss: {Math.round(physicalSnapshot.hilProfile.packetLossRate * 100)}%</div>
+            <div className="rounded-md border border-border/50 bg-background/40 p-3">Reorder: {Math.round(physicalSnapshot.hilProfile.reorderRate * 100)}%</div>
+          </div>
         </CardContent>
       </Card>
 

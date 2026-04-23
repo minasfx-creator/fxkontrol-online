@@ -170,6 +170,38 @@ export default function SettingsPanel({ fs, settings, onSettingsChange, relayCon
             </div>
             <Slider value={[local.fireWindowMs]} min={500} max={5000} step={100} onValueChange={([v]) => update({ fireWindowMs: v })} />
           </div>
+          <div className="flex items-center justify-between">
+            <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>HIL harness enabled</span>
+            <Switch checked={local.hilModeEnabled} onCheckedChange={v => update({ hilModeEnabled: v })} />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>HIL base delay</span>
+              <span className={cn("font-mono text-muted-foreground/60", fs ? "text-[9px]" : "text-[8px]")}>{local.hilBaseDelayMs}ms</span>
+            </div>
+            <Slider value={[local.hilBaseDelayMs]} min={0} max={250} step={5} onValueChange={([v]) => update({ hilBaseDelayMs: v })} />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>HIL jitter</span>
+              <span className={cn("font-mono text-muted-foreground/60", fs ? "text-[9px]" : "text-[8px]")}>{local.hilJitterMs}ms</span>
+            </div>
+            <Slider value={[local.hilJitterMs]} min={0} max={120} step={5} onValueChange={([v]) => update({ hilJitterMs: v })} />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>Packet loss</span>
+              <span className={cn("font-mono text-muted-foreground/60", fs ? "text-[9px]" : "text-[8px]")}>{Math.round(local.hilPacketLossRate * 100)}%</span>
+            </div>
+            <Slider value={[local.hilPacketLossRate * 100]} min={0} max={100} step={1} onValueChange={([v]) => update({ hilPacketLossRate: v / 100 })} />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>Reorder rate</span>
+              <span className={cn("font-mono text-muted-foreground/60", fs ? "text-[9px]" : "text-[8px]")}>{Math.round(local.hilReorderRate * 100)}%</span>
+            </div>
+            <Slider value={[local.hilReorderRate * 100]} min={0} max={100} step={1} onValueChange={([v]) => update({ hilReorderRate: v / 100 })} />
+          </div>
         </div>
       </div>
 
