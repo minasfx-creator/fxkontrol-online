@@ -320,6 +320,11 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
           const boundedProjectTime = Math.max(0, Math.min(projectTime, projectStore.duration));
           const chase = resolveSMPTEChase(currentProjectTime, boundedProjectTime);
 
+          if (!timelineClock.isPlaying()) {
+            timelineClock.seek(chase.mode === 'ignore' ? currentProjectTime : chase.nextTime);
+            break;
+          }
+
           switch (state.chaseMode) {
             case 'hard':
               if (chase.mode !== 'ignore') {
