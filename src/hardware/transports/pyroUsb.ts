@@ -377,6 +377,39 @@ export class PyroUsbTransport {
     }
     return Math.round(durationMs);
   }
+
+  // ── Event listeners ───────────────────────────────────────────────
+  on(listener: PyroUsbEventListener): () => void {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  }
+
+  private emitEvent(event: PyroUsbEvent): void {
+    for (const l of this.listeners) {
+      try { l(event); } catch { /* never let one listener kill others */ }
+    }
+  }
+
+  /**
+   * Active watchdog: starts an internal timer that auto-services the watchdog
+   * at half the configured timeout. Replaces the previous passive model where
+   * callers had to remember to invoke serviceWatchdog().
+   */
+  private startWatchdogTimer(): void {
+    this.stopWatchdogTimer();
+    if (typeof setInterval === 'undefined') return; // SSR guard
+    const intervalMs = Math.max(10, Math.floor(this.watchdogTimeoutMs / 2));
+    this.watchdogTimerId = setInterval(() => {
+      this.serviceWatchdog().catch(() => { /* swallow — fault path already records */ });
+    }, intervalMs);
+  }
+
+  private stopWatchdogTimer(): void {
+    if (this.watchdogTimerId !== null) {
+      clearInterval(this.watchdogTimerId);
+      this.watchdogTimerId = null;
+    }
+  }
 }
 
 export const pyroUsbTransport = new PyroUsbTransport();
