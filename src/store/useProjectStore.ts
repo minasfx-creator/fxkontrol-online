@@ -456,5 +456,29 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setDepthLayers: (layers) => set({ depthLayers: layers }),
 }));
 
+timelineClock.setDuration(useProjectStore.getState().duration);
+timelineClock.setSpeed(useProjectStore.getState().playbackSpeed);
+timelineClock.seek(useProjectStore.getState().currentTime);
+
+timelineClock.onChange((state) => {
+  useProjectStore.setState((prev) => {
+    if (
+      prev.currentTime === state.time &&
+      prev.isPlaying === state.playing &&
+      prev.duration === state.duration &&
+      prev.playbackSpeed === state.speed
+    ) {
+      return prev;
+    }
+
+    return {
+      currentTime: state.time,
+      isPlaying: state.playing,
+      duration: state.duration,
+      playbackSpeed: state.speed,
+    };
+  });
+});
+
 // ── effectWorldOrientation re-exported from src/lib for backward compat ──
 export { effectWorldOrientation } from '@/lib/effectOrientation';
