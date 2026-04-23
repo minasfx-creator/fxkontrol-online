@@ -6,7 +6,7 @@ import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEditorKeyboardShortcuts } from '@/hooks/useEditorKeyboardShortcuts';
 import { useViewportDrop } from '@/hooks/useViewportDrop';
-import { Upload, ChevronDown, Sparkles, Paintbrush, Cog, X } from 'lucide-react';
+import { Upload, ChevronDown, ChevronLeft, ChevronRight, Sparkles, Paintbrush, Cog, X } from 'lucide-react';
 import ViewportNavControls from '@/components/editor/ViewportNavControls';
 import { useDisplayStore } from '@/store/useDisplayStore';
 import type { WorldShowPreset } from '@/data/worldShowPresets';
@@ -216,7 +216,7 @@ function Index() {
   const [remoteMode, setRemoteMode] = useState<'cloud' | 'wifi-auto'>('cloud');
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [viewportMaximized, setViewportMaximized] = useState(false);
-  const [leftDockOpen, setLeftDockOpen] = useState<string | null>(null);
+  const [leftDockOpen, setLeftDockOpen] = useState<string | null>('effects');
   const [showMobileWelcome, setShowMobileWelcome] = useState(() => {
     if (!isMobile) return false;
     try { return localStorage.getItem('fxk-mobile-location-set') !== '1'; } catch { return true; }
@@ -308,6 +308,17 @@ function Index() {
     setMobileTab(null);
     setMobilePanelHeight(id === 'effects' ? 'full' : 'half');
   }, []);
+
+  const desktopTopOffset = '56px';
+  const desktopTimelineHeight = viewportMaximized ? '0px' : timelineCollapsed ? '42px' : '34vh';
+  const leftRailWidth = viewportMaximized ? 0 : 56;
+  const leftSidebarWidth = viewportMaximized ? 0 : leftDockOpen === 'effects' ? 312 : 0;
+  const leftOverlayWidth = viewportMaximized || !leftDockOpen || leftDockOpen === 'effects' ? 0 : 312;
+  const rightDockWidth = viewportMaximized ? 0 : 52;
+  const rightPanelWidth = activePanel && !viewportMaximized ? 472 : 0;
+  const canvasLeftInset = `${leftRailWidth + leftSidebarWidth}px`;
+  const canvasRightInset = `${rightDockWidth + rightPanelWidth}px`;
+  const showLeftOverlayPanel = leftDockOpen === 'scene' || leftDockOpen === 'showsettings';
 
   if (appPhase === 'cinematic') return <Suspense fallback={<CanvasLoader />}><CinematicIntro onComplete={() => setAppPhase('splash')} /></Suspense>;
   if (appPhase === 'splash') return <Suspense fallback={<CanvasLoader />}><SplashScreen onStart={() => setAppPhase('editor')} showVideoBackground /></Suspense>;
@@ -490,28 +501,48 @@ function Index() {
   return (
     <div className="absolute inset-0 overflow-hidden bg-background">
       <EngineProvider />
-      {/* ─── Layer 0: Full-screen 3D Canvas ────────────── */}
+      {/* ─── Layer 0: Structured desktop shell ────────────── */}
       <div
-        className="absolute inset-0 w-full h-full z-0 br2049-atmosphere"
+        className="absolute z-0 br2049-atmosphere"
+        style={{
+          top: desktopTopOffset,
+          left: canvasLeftInset,
+          right: canvasRightInset,
+          bottom: desktopTimelineHeight,
+        }}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
-        <CanvasErrorBoundary>
-          <Suspense fallback={<CanvasLoader />}>
-            <SkyCanvas />
-          </Suspense>
-        </CanvasErrorBoundary>
-        <BoxSelectOverlay />
-        <SelectionModeBar />
-        {isDragOver && (
-          <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center bg-primary/5 border-2 border-dashed border-primary/30 backdrop-blur-[2px]">
-            <div className="flex flex-col items-center gap-2 text-primary">
-              <Upload className="h-10 w-10 animate-bounce" />
-              <p className="text-sm font-semibold">Solte o arquivo para importar</p>
+        <div className="relative h-full w-full overflow-hidden border-x border-t border-border/20 bg-surface-0/95 shadow-2xl shadow-background/60">
+          <div className="absolute inset-0 border border-border/10 pointer-events-none" />
+          <div className="absolute inset-x-0 top-0 z-10 flex h-9 items-center justify-between border-b border-border/10 bg-surface-0/72 px-4 backdrop-blur-md pointer-events-none">
+            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              Sky Canvas
+            </div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/80">
+              Design Viewport
             </div>
           </div>
-        )}
+          <div className="absolute inset-0 top-9">
+            <CanvasErrorBoundary>
+              <Suspense fallback={<CanvasLoader />}>
+                <SkyCanvas />
+              </Suspense>
+            </CanvasErrorBoundary>
+            <BoxSelectOverlay />
+            <SelectionModeBar />
+            {isDragOver && (
+              <div className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center bg-primary/5 border-2 border-dashed border-primary/30 backdrop-blur-[2px]">
+                <div className="flex flex-col items-center gap-2 text-primary">
+                  <Upload className="h-10 w-10 animate-bounce" />
+                  <p className="text-sm font-semibold">Solte o arquivo para importar</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ─── Layer 1: Top Bar (z-50) ─────────────────── */}
@@ -522,7 +553,7 @@ function Index() {
 
       {/* ─── Layer 2: Right Dock (icon bar, z-40) ──── */}
       {!viewportMaximized && (
-        <div className="absolute top-14 right-0 z-40" style={{ bottom: timelineCollapsed ? '32px' : '25vh', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+        <div className="absolute top-14 right-0 z-40" style={{ bottom: desktopTimelineHeight, transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
           <PanelTabBar activePanel={activePanel} onTogglePanel={handleTogglePanel} />
         </div>
       )}
@@ -532,7 +563,7 @@ function Index() {
         <div
           className="absolute top-14 right-[52px] z-40 w-[420px] max-w-[40vw]"
           style={{
-            bottom: timelineCollapsed ? '32px' : '25vh',
+            bottom: desktopTimelineHeight,
             transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             background: 'hsl(var(--background) / 0.90)',
             backdropFilter: 'blur(16px) saturate(1.4)',
@@ -553,55 +584,79 @@ function Index() {
         </div>
       )}
 
-      {/* ─── Layer 4: Left Dock (z-40, icons only) ─── */}
+      {/* ─── Layer 4: Left Foundation Rail + Sidebar ─── */}
       {!viewportMaximized && (
-        <div className="absolute top-14 left-0 z-40 w-[44px] flex flex-col items-center py-2 gap-1" style={{ bottom: timelineCollapsed ? '32px' : '25vh', transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)', background: 'hsl(var(--background) / 0.50)', backdropFilter: 'blur(8px)', borderRight: '1px solid hsl(var(--border) / 0.2)' }}>
-          {[
-            { id: 'effects', icon: Sparkles, label: 'Effects' },
-            { id: 'scene', icon: Paintbrush, label: 'Scene' },
-            { id: 'showsettings', icon: Cog, label: 'Settings' },
-          ].map(item => {
-            const Icon = item.icon;
-            return (
+        <>
+          <div
+            className="absolute top-14 left-0 z-40 flex w-14 flex-col border-r border-border/20 bg-surface-0/80 backdrop-blur-md"
+            style={{ bottom: desktopTimelineHeight, transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
+          >
+            <div className="flex h-12 items-center justify-center border-b border-border/10">
               <button
-                key={item.id}
-                onClick={() => { const next = leftDockOpen === item.id ? null : item.id; setLeftDockOpen(next); if (next && SHARED_PANEL_IDS.has(next as PanelId)) setActivePanel(null); }}
-                title={item.label}
-                className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${leftDockOpen === item.id ? 'bg-muted/30 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/20'}`}
+                onClick={() => setLeftDockOpen((prev) => (prev === 'effects' ? null : 'effects'))}
+                title={leftDockOpen === 'effects' ? 'Recolher biblioteca' : 'Expandir biblioteca'}
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-1/70 text-foreground transition-colors hover:bg-surface-2"
               >
-                <Icon className="w-4 h-4" />
+                {leftDockOpen === 'effects' ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </button>
-            );
-          })}
-        </div>
-      )}
+            </div>
 
-      {/* ─── Left Dock Floating Panel ──────────────── */}
-      {leftDockOpen && !viewportMaximized && (
-        <div
-          className="absolute top-14 left-[44px] z-40 w-[280px]"
-          style={{
-            bottom: timelineCollapsed ? '32px' : '25vh',
-            transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            background: 'hsl(var(--background) / 0.92)',
-            backdropFilter: 'blur(16px) saturate(1.4)',
-            borderRight: '1px solid hsl(var(--border) / 0.3)',
-          }}
-        >
-          <div className="flex items-center justify-between px-3 py-2 border-b border-border/10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              {leftDockOpen === 'effects' ? 'Effect Library' : leftDockOpen === 'scene' ? 'Scene Editor' : 'Settings'}
-            </span>
-            <button onClick={() => setLeftDockOpen(null)} className="w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all">
-              <X className="w-3 h-3" />
-            </button>
+            <div className="flex flex-1 flex-col items-center gap-2 py-3">
+              {[
+                { id: 'effects', icon: Sparkles, label: 'Effect Library' },
+                { id: 'scene', icon: Paintbrush, label: 'Scene Editor' },
+                { id: 'showsettings', icon: Cog, label: 'Show Settings' },
+              ].map(item => {
+                const Icon = item.icon;
+                const isActive = leftDockOpen === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      const next = leftDockOpen === item.id ? null : item.id;
+                      setLeftDockOpen(next);
+                      if (next && SHARED_PANEL_IDS.has(next as PanelId)) setActivePanel(null);
+                    }}
+                    title={item.label}
+                    aria-label={item.label}
+                    className={`flex h-10 w-10 items-center justify-center rounded-lg border transition-all ${isActive ? 'border-primary/30 bg-primary/10 text-primary' : 'border-transparent bg-transparent text-muted-foreground hover:border-border/20 hover:bg-surface-1/70 hover:text-foreground'}`}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="h-[calc(100%-36px)] overflow-y-auto">
-            {leftDockOpen === 'effects' && <EffectLibrary />}
-            {leftDockOpen === 'scene' && <SceneEditorPanel onClose={() => setLeftDockOpen(null)} />}
-            {leftDockOpen === 'showsettings' && <ShowSettingsPanel onClose={() => setLeftDockOpen(null)} />}
-          </div>
-        </div>
+
+          {leftDockOpen === 'effects' && (
+            <div
+              className="absolute top-14 left-14 z-30 overflow-hidden border-r border-border/20 bg-surface-0/88 backdrop-blur-xl"
+              style={{ width: '312px', bottom: desktopTimelineHeight, transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
+            >
+              <EffectLibrary className="h-full border-0 bg-transparent" />
+            </div>
+          )}
+
+          {showLeftOverlayPanel && (
+            <div
+              className="absolute top-14 left-14 z-40 overflow-hidden border-r border-border/20 bg-background/92 backdrop-blur-xl"
+              style={{ width: `${leftOverlayWidth}px`, bottom: desktopTimelineHeight, transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
+            >
+              <div className="flex items-center justify-between border-b border-border/10 px-3 py-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {leftDockOpen === 'scene' ? 'Scene Editor' : 'Show Settings'}
+                </span>
+                <button onClick={() => setLeftDockOpen(null)} className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-all hover:bg-muted/30 hover:text-foreground">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+              <div className="h-[calc(100%-36px)] overflow-y-auto">
+                {leftDockOpen === 'scene' && <SceneEditorPanel onClose={() => setLeftDockOpen(null)} />}
+                {leftDockOpen === 'showsettings' && <ShowSettingsPanel onClose={() => setLeftDockOpen(null)} />}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* ─── Layer 6: Nav Controls (Bottom-Right) ──── */}
@@ -611,9 +666,9 @@ function Index() {
       <div
         className="absolute bottom-0 left-0 right-0 z-30"
         style={{
-          height: viewportMaximized ? '0px' : timelineCollapsed ? '32px' : '25vh',
-          background: 'hsl(var(--background) / 0.90)',
-          backdropFilter: 'blur(12px)',
+          height: desktopTimelineHeight,
+          background: 'hsl(var(--surface-0) / 0.94)',
+          backdropFilter: 'blur(18px)',
           borderTop: viewportMaximized ? 'none' : '1px solid hsl(var(--border) / 0.3)',
           transition: 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           overflow: 'hidden',
@@ -622,7 +677,7 @@ function Index() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
           <button
             onClick={() => setTimelineCollapsed(!timelineCollapsed)}
-            className="flex items-center gap-1 px-3 h-6 rounded-t-lg bg-muted/90 border border-border/30 border-b-0 text-muted-foreground hover:text-foreground transition-all backdrop-blur-sm"
+            className="flex items-center gap-1 px-3 h-6 rounded-t-lg bg-surface-1/95 border border-border/30 border-b-0 text-muted-foreground hover:text-foreground transition-all backdrop-blur-sm"
             title={timelineCollapsed ? 'Expandir Timeline' : 'Recolher Timeline'}
           >
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${timelineCollapsed ? 'rotate-180' : ''}`} />
