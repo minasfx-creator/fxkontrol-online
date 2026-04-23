@@ -35,8 +35,8 @@ export default function DevSimulationPanel() {
 
   const spinUp = useCallback((p: EmuProfileName) => {
     teardown();
-    const cfg = { ...EMU_PROFILES[p] };
-    const emu = new TransportEmulator(cfg);
+    const cfg = { ...EMU_PROFILES[p] } as { mode: string; latencyMs?: number; jitterMs?: number; lossRate?: number };
+    const emu = new TransportEmulator(EMU_PROFILES[p]);
     emuRef.current = emu;
     setLatency(cfg.latencyMs ?? 0);
     setJitter(cfg.jitterMs ?? 0);
