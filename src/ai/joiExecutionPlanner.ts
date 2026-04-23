@@ -16,6 +16,9 @@ import type {
   JoiTarget,
   ExecutionLayer,
 } from './joiCompilerV2';
+import { __internals as compilerInternals } from './joiCompilerV2';
+
+const fnv1a = compilerInternals.fnv1a;
 
 // ─── Output types ──────────────────────────────────────────────────
 export interface PlannedCommand {
@@ -35,9 +38,12 @@ export interface ExecutionFrame {
   readonly index: number;
   readonly t0: number;
   readonly t1: number;
+  readonly hash: string; // FNV1a, replay/diff verification
+  readonly degraded: boolean;
   readonly commands: readonly PlannedCommand[];
   readonly telemetry: {
-    readonly risk: number;
+    readonly risk: number; // peak risk in frame
+    readonly avgRisk: number;
     readonly activeSteps: number;
     readonly pyroLoad: number;
     readonly dmxLoad: number;
@@ -71,6 +77,12 @@ function bucketSteps(ir: JoiIR): Map<number, IRStep[]> {
     if (arr) arr.push(step);
     else map.set(step.frameIndex, [step]);
   }
+  // Deterministic intra-frame ordering: t0 → sequenceId
+  for (const arr of map.values()) {
+    arr.sort(
+      (a, b) => a.t0 - b.t0 || a.sequenceId.localeCompare(b.sequenceId),
+    );
+  }
   return map;
 }
 
@@ -89,8 +101,11 @@ export function buildExecutionPlan(ir: JoiIR): ExecutionPlan {
     let dmx = 0;
     let drone = 0;
     let riskSum = 0;
+    let peakRisk = 0;
+    let degraded = false;
 
     for (const step of steps) {
+      if (step.executionHint.degraded) degraded = true;
       for (const cmd of step.commands) {
         commands.push(
           Object.freeze<PlannedCommand>({
@@ -108,18 +123,28 @@ export function buildExecutionPlan(ir: JoiIR): ExecutionPlan {
         else if (cmd.target === 'drone') drone++;
       }
       riskSum += step.context.risk;
+      if (step.context.risk > peakRisk) peakRisk = step.context.risk;
     }
 
     const activeSteps = steps.length;
     const avgRisk = activeSteps > 0 ? riskSum / activeSteps : 0;
+    if (avgRisk > 0.85) degraded = true;
+
+    const frameLoad = pyro + dmx + drone;
+    const hash = fnv1a(
+      `${ir.showId}|${i}|${commands.length}|${pyro}|${dmx}|${drone}|${peakRisk.toFixed(4)}`,
+    );
 
     frames[i] = Object.freeze<ExecutionFrame>({
       index: i,
       t0: i * ir.frameSizeMs,
       t1: (i + 1) * ir.frameSizeMs,
+      hash,
+      degraded,
       commands: Object.freeze(commands),
       telemetry: {
-        risk: avgRisk,
+        risk: peakRisk,
+        avgRisk,
         activeSteps,
         pyroLoad: pyro,
         dmxLoad: dmx,
@@ -127,10 +152,10 @@ export function buildExecutionPlan(ir: JoiIR): ExecutionPlan {
       },
     });
 
-    if (activeSteps > maxConcurrency) maxConcurrency = activeSteps;
+    if (frameLoad > maxConcurrency) maxConcurrency = frameLoad;
   }
 
-  // Risk envelope at planner level
+  // Risk envelope at planner level (uses peak per frame)
   let sumRisk = 0;
   let peak = 0;
   for (const f of frames) {
