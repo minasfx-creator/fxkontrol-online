@@ -82,6 +82,15 @@ export interface LTCDriftSeries {
   time: readonly number[];
 }
 
+export interface LTCReplayFrame {
+  time: number;
+  source: string;
+  priority: number;
+  incoming: number;
+  diagnostics: LTCDriftDiagnostics & { source: string | null };
+  sample: LTCSyncSample | null;
+}
+
 interface LTCSourceState {
   id: string;
   lastSeen: number;
@@ -143,6 +152,7 @@ export class LTCTransport {
   private readonly sources = new Map<string, LTCSourceState>();
   private historyTime = new Float32Array(120);
   private events: LTCEvent[] = [];
+  private replayRecord: LTCReplayFrame[] = [];
 
   constructor(
     private readonly target: LTCSyncTarget,
@@ -182,7 +192,7 @@ export class LTCTransport {
     }
 
     if (this.activeSource !== source.id) {
-      return null;
+      return this.finishIngest(null, receivedAtMs, sourceId, priority, seconds);
     }
 
     this.lastIncomingTime = seconds;
@@ -200,7 +210,7 @@ export class LTCTransport {
       }
 
       this.state = 'locking';
-      return null;
+      return this.finishIngest(null, receivedAtMs, sourceId, priority, seconds);
     }
 
     this.lockCounter = 0;
@@ -228,7 +238,7 @@ export class LTCTransport {
       this.target.setRate?.(1);
       this.target.syncExternalTime(seconds);
 
-      return {
+      return this.finishIngest({
         incomingTime: seconds,
         syncedTime: seconds,
         driftSec: delta,
@@ -237,7 +247,7 @@ export class LTCTransport {
         state: this.state,
         sequence: this.sequence,
         reason: this.lastSyncReason,
-      };
+      }, receivedAtMs, sourceId, priority, seconds);
     }
 
     const deadbandSec = 0.5 / this.detectedFps;
@@ -253,7 +263,7 @@ export class LTCTransport {
         this.target.syncExternalTime(current);
       }
 
-      return {
+      return this.finishIngest({
         incomingTime: seconds,
         syncedTime: current,
         driftSec: delta,
@@ -262,7 +272,7 @@ export class LTCTransport {
         state: this.state,
         sequence: this.sequence,
         reason: this.lastSyncReason,
-      };
+      }, receivedAtMs, sourceId, priority, seconds);
     }
 
     const clampedDelta = Math.max(-(2 / this.detectedFps), Math.min(2 / this.detectedFps, delta));
@@ -282,7 +292,7 @@ export class LTCTransport {
     this.pushEvent({ type: 'rate-change', rate: this.rate });
     this.target.setRate?.(this.rate);
 
-    return {
+    return this.finishIngest({
       incomingTime: seconds,
       syncedTime: current,
       driftSec: delta,
@@ -291,7 +301,7 @@ export class LTCTransport {
       state: this.state,
       sequence: this.sequence,
       reason: this.lastSyncReason,
-    };
+    }, receivedAtMs, sourceId, priority, seconds);
   }
 
   isSignalPresent(nowMs = Date.now()): boolean {
@@ -336,6 +346,7 @@ export class LTCTransport {
     this.sources.clear();
     this.historyTime = new Float32Array(120);
     this.events = [];
+    this.replayRecord = [];
     this.state = 'idle';
     this.lockCounter = 0;
     this.unlockCounter = 0;
@@ -426,6 +437,21 @@ export class LTCTransport {
     return this.detectedFps;
   }
 
+  getReplayRecord(): readonly LTCReplayFrame[] {
+    return deepFreeze([...this.replayRecord]);
+  }
+
+  clearReplayRecord(): void {
+    this.replayRecord = [];
+  }
+
+  replay(record: readonly LTCReplayFrame[]): void {
+    this.reset();
+    for (const frame of record) {
+      this.ingestTime(frame.incoming, frame.time, frame.source, frame.priority);
+    }
+  }
+
   private upsertSource(id: string, lastSeen: number, priority: number): LTCSourceState {
     const existing = this.sources.get(id);
     if (existing) {
@@ -476,6 +502,29 @@ export class LTCTransport {
     if (this.events.length > 256) {
       this.events = this.events.slice(-256);
     }
+  }
+
+  private finishIngest(
+    sample: LTCSyncSample | null,
+    receivedAtMs: number,
+    sourceId: string,
+    priority: number,
+    incoming: number,
+  ): LTCSyncSample | null {
+    this.replayRecord.push({
+      time: receivedAtMs,
+      source: sourceId,
+      priority,
+      incoming,
+      diagnostics: this.getPLLDiagnostics(),
+      sample,
+    });
+
+    if (this.replayRecord.length > 1024) {
+      this.replayRecord = this.replayRecord.slice(-1024);
+    }
+
+    return sample;
   }
 }
 
