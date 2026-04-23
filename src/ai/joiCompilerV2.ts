@@ -304,7 +304,8 @@ function computeStepRisk(
   if (node.targets.includes('pyro')) r += RISK_WEIGHTS.pyro * intensity;
   if (node.targets.includes('drone')) r += RISK_WEIGHTS.drone * intensity;
   if (node.targets.includes('dmx')) r += RISK_WEIGHTS.dmx * intensity;
-  r += RISK_WEIGHTS.overlap * Math.min(1, overlapCount / 4);
+  // Asymptotic saturation: fast initial growth, stable tail (avoids false red spikes)
+  r += RISK_WEIGHTS.overlap * (1 - Math.exp(-overlapCount / 3));
   if (hasViolation) r = Math.max(r, 0.8);
   return Math.min(1, r);
 }
@@ -327,6 +328,7 @@ function buildIR(
     const hasViolation = violationIds.has(n.id) || hasGlobalViolation;
     const risk = computeStepRisk(n, overlapCount, hasViolation);
     const frameIndex = Math.floor(n.start / FRAME_SIZE_MS);
+    const frameOffset = n.start % FRAME_SIZE_MS;
 
     const commands: IRCommand[] = n.targets.map((t) => ({
       target: t,
@@ -347,6 +349,7 @@ function buildIR(
       id: n.id,
       sequenceId,
       frameIndex,
+      frameOffset,
       t0: n.start,
       t1: n.start + n.duration,
       commands: Object.freeze(commands),
@@ -354,6 +357,10 @@ function buildIR(
         activeActors: n.targets.length,
         risk,
         overlapCount,
+      },
+      executionHint: {
+        mode: executionLayer,
+        degraded: executionLayer !== 'real' && risk > 0.7,
       },
     });
   });
