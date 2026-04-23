@@ -5,6 +5,8 @@ export interface TimelineClockState {
   duration: number;
   loop: boolean;
   source: 'local' | 'external';
+  lastExternalSync: number | null;
+  driftSec: number;
 }
 
 type TimelineClockListener = (state: TimelineClockState) => void;
@@ -16,6 +18,8 @@ const DEFAULT_STATE: TimelineClockState = {
   duration: 300,
   loop: false,
   source: 'local',
+  lastExternalSync: null,
+  driftSec: 0,
 };
 
 class TimelineClock {
@@ -41,16 +45,28 @@ class TimelineClock {
 
   seek(time: number): void {
     const next = this.clampTime(time);
-    if (next === this.state.time) return;
+    this.state.driftSec = 0;
+    if (next === this.state.time) {
+      this.state.source = 'local';
+      this.notify();
+      return;
+    }
     this.state.time = next;
+    this.state.source = 'local';
     this.notify();
   }
 
   syncExternalTime(time: number): void {
     const next = this.clampTime(time);
-    if (next === this.state.time && this.state.source === 'external') return;
+    this.state.driftSec = next - this.state.time;
+    if (next === this.state.time && this.state.source === 'external') {
+      this.state.lastExternalSync = Date.now();
+      this.notify();
+      return;
+    }
     this.state.time = next;
     this.state.source = 'external';
+    this.state.lastExternalSync = Date.now();
     this.notify();
   }
 
@@ -91,12 +107,14 @@ class TimelineClock {
         this.state.playing = false;
       }
       this.state.source = 'local';
+      this.state.driftSec = 0;
       this.notify();
       return;
     }
 
     this.state.time = nextTime;
     this.state.source = 'local';
+    this.state.driftSec = 0;
     this.notify();
   }
 

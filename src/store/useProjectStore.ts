@@ -64,6 +64,9 @@ export interface ProjectState {
   timeZoneOffset: number | null;
   terrainElevation: number | null;
   staticMapUrl: string | null;
+  timelineSource: 'local' | 'external';
+  timelineLastExternalSync: number | null;
+  timelineDriftSec: number;
   setGpsOrigin: (origin: { lat: number; lng: number; heading: number; altitude: number }) => void;
   setGeoIntelligence: (data: {
     locationName?: string | null;
@@ -199,6 +202,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   timeZoneOffset: null,
   terrainElevation: null,
   staticMapUrl: null,
+  timelineSource: 'local',
+  timelineLastExternalSync: null,
+  timelineDriftSec: 0,
   setGpsOrigin: (origin) => set({ gpsOrigin: origin }),
   setGeoIntelligence: (data) => set({
     ...(data.locationName !== undefined && { locationName: data.locationName }),
@@ -476,6 +482,9 @@ timelineClock.onChange((state) => {
       isPlaying: state.playing,
       duration: state.duration,
       playbackSpeed: state.speed,
+      timelineSource: state.source,
+      timelineLastExternalSync: state.lastExternalSync,
+      timelineDriftSec: state.driftSec,
     };
   });
 });
