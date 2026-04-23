@@ -159,6 +159,17 @@ export default function SettingsPanel({ fs, settings, onSettingsChange, relayCon
             <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>Delete DEV and CUE need confirm</span>
             <Switch checked={local.deleteConfirm} onCheckedChange={v => update({ deleteConfirm: v })} />
           </div>
+          <div className="flex items-center justify-between">
+            <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>Dual confirm before FIRE</span>
+            <Switch checked={local.dualConfirmRequired} onCheckedChange={v => update({ dualConfirmRequired: v })} />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className={cn("text-muted-foreground/40", fs ? "text-[9px]" : "text-[8px]")}>Fire window</span>
+              <span className={cn("font-mono text-muted-foreground/60", fs ? "text-[9px]" : "text-[8px]")}>{(local.fireWindowMs / 1000).toFixed(1)}s</span>
+            </div>
+            <Slider value={[local.fireWindowMs]} min={500} max={5000} step={100} onValueChange={([v]) => update({ fireWindowMs: v })} />
+          </div>
         </div>
       </div>
 
