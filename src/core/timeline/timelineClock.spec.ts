@@ -293,6 +293,42 @@ describe('timelineClock/store sync', () => {
     expect(useProjectStore.getState().currentTime).toBe(0);
   });
 
+  it('caps freeze-sized dt values to avoid background tab jumps', () => {
+    timelineClock.setDuration(30);
+    timelineClock.play();
+
+    timelineClock.tick(5);
+    mirror();
+
+    expect(useProjectStore.getState().currentTime).toBe(0.25);
+  });
+
+  it('allows external sync while speed is zero', () => {
+    timelineClock.setDuration(30);
+    timelineClock.setSpeed(0);
+
+    timelineClock.syncExternalTime(10);
+    mirror();
+
+    const store = useProjectStore.getState();
+    expect(store.currentTime).toBe(10);
+    expect(store.playbackSpeed).toBe(1);
+    expect(store.timelineSource).toBe('external');
+  });
+
+  it('returns immutable diagnostics without mutating clock state', () => {
+    timelineClock.setDuration(30);
+    timelineClock.seek(12);
+    timelineClock.setSpeed(2);
+
+    const before = timelineClock.getState();
+    const diagnostics = timelineClock.getDiagnostics();
+
+    expect(diagnostics).toEqual(before);
+    expect(Object.isFrozen(diagnostics)).toBe(true);
+    expect(timelineClock.getState()).toEqual(before);
+  });
+
   it('remains deterministic across many ticks', () => {
     timelineClock.setDuration(100);
     timelineClock.play();

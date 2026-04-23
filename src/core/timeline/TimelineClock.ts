@@ -12,6 +12,8 @@ export interface TimelineClockState {
 type TimelineClockListener = (state: TimelineClockState) => void;
 
 const TIME_PRECISION = 1e6;
+const MAX_DT = 0.25;
+const FREEZE_DT_THRESHOLD = 2.5;
 
 const DEFAULT_STATE: TimelineClockState = {
   time: 0,
@@ -108,8 +110,9 @@ class TimelineClock {
   tick(dt: number): void {
     if (!this.state.playing) return;
     if (!Number.isFinite(dt) || dt <= 0) return;
+    const clampedDt = dt > FREEZE_DT_THRESHOLD ? MAX_DT : dt;
 
-    const nextTime = this.state.time + dt * this.state.speed;
+    const nextTime = this.state.time + clampedDt * this.state.speed;
     if (nextTime >= this.state.duration) {
       if (this.state.loop) {
         this.state.time = this.normalizeTime(nextTime % this.state.duration);
@@ -144,6 +147,10 @@ class TimelineClock {
 
   getState(): TimelineClockState {
     return { ...this.state };
+  }
+
+  getDiagnostics(): Readonly<TimelineClockState> {
+    return Object.freeze({ ...this.state });
   }
 
   subscribe(listener: TimelineClockListener): () => void {
