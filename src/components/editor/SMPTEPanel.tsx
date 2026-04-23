@@ -637,7 +637,7 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
               <div key={`${event.type}-${index}`} className="flex items-center justify-between rounded border border-border/40 bg-background/30 px-2 py-1 text-[8px] font-mono-code">
                 <span className="text-foreground">{event.type}</span>
                 <span className="text-muted-foreground">
-                  {'from' in event ? `${event.from ?? '∅'} → ${event.to}` : 'rate' in event ? event.rate.toFixed(5) : 'frames' in event ? `${event.frames} frames` : event.reason ?? 'freewheel'}
+                  {'from' in event ? `${event.from ?? '∅'} → ${event.to}` : 'rate' in event ? event.rate.toFixed(5) : 'frames' in event ? `${event.frames} frames` : 'reason' in event ? event.reason : 'freewheel'}
                 </span>
               </div>
             )) : (
