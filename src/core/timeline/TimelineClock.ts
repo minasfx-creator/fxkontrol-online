@@ -7,6 +7,10 @@ export interface TimelineClockState {
   source: 'local' | 'external';
   lastExternalSync: number | null;
   driftSec: number;
+  externalSyncSequence: number;
+  positionSequence: number;
+  lastExternalTargetTime: number | null;
+  lastPositionChange: 'init' | 'tick' | 'seek' | 'external-sync' | 'external-confirm' | 'release-external' | 'reset' | 'duration-clamp';
 }
 
 type TimelineClockListener = (state: TimelineClockState) => void;
@@ -24,6 +28,10 @@ const DEFAULT_STATE: TimelineClockState = {
   source: 'local',
   lastExternalSync: null,
   driftSec: 0,
+  externalSyncSequence: 0,
+  positionSequence: 0,
+  lastExternalTargetTime: null,
+  lastPositionChange: 'init',
 };
 
 function deepFreeze<T>(value: T): Readonly<T> {
@@ -46,6 +54,11 @@ class TimelineClock {
   private state: TimelineClockState = { ...DEFAULT_STATE };
   private listeners = new Set<TimelineClockListener>();
 
+  private markPositionChange(reason: TimelineClockState['lastPositionChange']): void {
+    this.state.positionSequence += 1;
+    this.state.lastPositionChange = reason;
+  }
+
   private normalizeTime(time: number): number {
     return Math.round(this.clampTime(time) * TIME_PRECISION) / TIME_PRECISION;
   }
@@ -53,7 +66,6 @@ class TimelineClock {
   play(): void {
     if (this.state.playing) return;
     this.state.playing = true;
-    this.state.source = 'local';
     this.notify();
   }
 
@@ -71,29 +83,32 @@ class TimelineClock {
     if (!Number.isFinite(time)) return;
     const next = this.normalizeTime(time);
     this.state.driftSec = 0;
+    this.markPositionChange('seek');
     if (next === this.state.time) {
-      this.state.source = 'local';
       this.notify();
       return;
     }
     this.state.time = next;
-    this.state.source = 'local';
     this.notify();
   }
 
   syncExternalTime(time: number): void {
     if (!Number.isFinite(time)) return;
     const next = this.normalizeTime(time);
-    this.state.driftSec = next - this.state.time;
+    const previousTime = this.state.time;
+    this.state.driftSec = next - previousTime;
+    this.state.source = 'external';
+    this.state.externalSyncSequence += 1;
+    this.state.lastExternalTargetTime = next;
+    this.state.lastExternalSync = Date.now();
     if (next === this.state.time && this.state.source === 'external') {
-      this.state.lastExternalSync = Date.now();
+      this.state.lastPositionChange = this.state.lastPositionChange === 'seek' ? 'external-confirm' : this.state.lastPositionChange;
       this.notify();
       return;
     }
     this.state.time = next;
     this.state.speed = 1;
-    this.state.source = 'external';
-    this.state.lastExternalSync = Date.now();
+    this.markPositionChange('external-sync');
     this.notify();
   }
 
@@ -101,6 +116,8 @@ class TimelineClock {
     if (this.state.source !== 'external') return;
     this.state.source = 'local';
     this.state.driftSec = 0;
+    this.state.lastExternalTargetTime = null;
+    this.state.lastPositionChange = 'release-external';
     this.notify();
   }
 
@@ -118,6 +135,9 @@ class TimelineClock {
     const prevTime = this.state.time;
     this.state.duration = nextDuration;
     this.state.time = this.normalizeTime(prevTime);
+    if (this.state.time !== prevTime) {
+      this.markPositionChange('duration-clamp');
+    }
     if (this.state.time >= this.state.duration && !this.state.loop) {
       this.state.playing = false;
     }
@@ -143,20 +163,20 @@ class TimelineClock {
         this.state.time = this.normalizeTime(this.state.duration);
         this.state.playing = false;
       }
-      this.state.source = 'local';
       this.state.driftSec = 0;
+      this.state.lastPositionChange = 'tick';
       this.notify();
       return;
     }
 
     this.state.time = this.normalizeTime(nextTime);
-    this.state.source = 'local';
     this.state.driftSec = 0;
+    this.state.lastPositionChange = 'tick';
     this.notify();
   }
 
   reset(): void {
-    this.state = { ...DEFAULT_STATE, duration: this.state.duration };
+    this.state = { ...DEFAULT_STATE, duration: this.state.duration, lastPositionChange: 'reset' };
     this.notify();
   }
 
