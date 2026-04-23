@@ -5,13 +5,16 @@
  *
  * Renders a no-op in production builds (guarded by import.meta.env.DEV).
  */
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { TransportEmulator } from '@/dev/transportEmulator';
 import { EMU_PROFILES, EMU_PROFILE_DESCRIPTIONS, type EmuProfileName } from '@/dev/emulatorProfiles';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { FlaskConical, PlugZap, Radio, Download, Trash2, Play, Square, Upload, SkipForward, Pause } from 'lucide-react';
+import { FlaskConical, PlugZap, Radio, Download, Trash2, Play, Square, Upload, SkipForward, Pause, FastForward } from 'lucide-react';
+
+const EmulatorTraceTimeline = lazy(() => import('./EmulatorTraceTimeline'));
 
 const isDev = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV ?? false;
 
@@ -26,6 +29,8 @@ export default function DevSimulationPanel() {
   const [connected, setConnected] = useState(true);
   const [replay, setReplay] = useState<{ state: 'idle' | 'running' | 'paused'; cursor: number; total: number }>({ state: 'idle', cursor: 0, total: 0 });
   const [dragging, setDragging] = useState(false);
+  const [filter, setFilter] = useState('');
+  const [frames, setFrames] = useState<ReadonlyArray<{ dir: 'tx' | 'rx'; data: string; at: number }>>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const emuRef = useRef<TransportEmulator | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -84,13 +89,20 @@ export default function DevSimulationPanel() {
     try {
       const text = await file.text();
       const parsed = JSON.parse(text);
-      if (!parsed.frames || !Array.isArray(parsed.frames)) throw new Error('invalid trace');
-      emuRef.current.loadTrace(parsed);
+      emuRef.current.loadTrace(parsed); // throws on invalid shape
       setReplay(emuRef.current.getReplayStatus());
+      setFrames(emuRef.current.getReplayFrames());
     } catch (e) {
       console.error('[DevSim] trace load failed:', e);
     }
   }, []);
+
+  const buildFilter = useCallback((): ((d: string) => boolean) | undefined => {
+    const q = filter.trim();
+    if (!q) return undefined;
+    const terms = q.split(',').map(s => s.trim()).filter(Boolean);
+    return (d: string) => terms.some(t => d.includes(t));
+  }, [filter]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
