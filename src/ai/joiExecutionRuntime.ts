@@ -280,7 +280,7 @@ export class ExecutionRuntimeV1 {
     const adapter = this.config.adapter;
     if (!adapter) return true; // dry-run mode
 
-    let result: boolean | void;
+    let result: boolean | void = true;
     switch (cmd.target) {
       case 'pyro':
         result = adapter.dispatchPyro?.(cmd);
@@ -291,6 +291,9 @@ export class ExecutionRuntimeV1 {
       case 'drone':
         result = adapter.dispatchDrone?.(cmd);
         break;
+      default:
+        // Unknown target = schema corruption → fail closed
+        return false;
     }
     return result !== false;
   }
