@@ -19,7 +19,7 @@ class ReplayEngine {
   private _listeners = new Set<() => void>();
 
   private emit(): void {
-    for (const listener of this._listeners) {
+    for (const listener of [...this._listeners]) {
       try {
         listener();
       } catch {
@@ -99,13 +99,10 @@ class ReplayEngine {
       commandLog.setEnabled(true);
     }
     timelineClock.seek(this._currentTick / 60);
-    if (this._currentTick >= this._targetTick) {
-      this._state = 'done';
-      this.emit();
-      return false;
-    }
+    const done = this._currentTick >= this._targetTick;
+    if (done) this._state = 'done';
     this.emit();
-    return true;
+    return !done;
   }
 
   stop(): void {
