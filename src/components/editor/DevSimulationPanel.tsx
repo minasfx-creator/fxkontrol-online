@@ -143,7 +143,7 @@ export default function DevSimulationPanel() {
         <SliderRow label={`Loss ${loss.toFixed(0)}%`} value={loss} max={100} step={1} onChange={setLoss} disabled={!enabled} />
       </div>
 
-      <div className="flex items-center gap-1 mt-1">
+      <div className="flex items-center gap-1 mt-1 flex-wrap">
         <Button size="sm" variant="ghost" disabled={!enabled} onClick={() => emuRef.current?.forceDisconnect()}
           className="h-6 px-2 text-[8px] gap-1 text-red-400">
           <PlugZap className="w-3 h-3" /> DISCONNECT
@@ -154,13 +154,56 @@ export default function DevSimulationPanel() {
         </Button>
         <Button size="sm" variant="ghost" disabled={!enabled} onClick={handleExport}
           className="h-6 px-2 text-[8px] gap-1 text-cyan-400">
-          <Download className="w-3 h-3" /> EXPORT TRACE
+          <Download className="w-3 h-3" /> EXPORT
         </Button>
+        <Button size="sm" variant="ghost" disabled={!enabled} onClick={() => fileInputRef.current?.click()}
+          className="h-6 px-2 text-[8px] gap-1 text-cyan-400">
+          <Upload className="w-3 h-3" /> LOAD TRACE
+        </Button>
+        <input ref={fileInputRef} type="file" accept="application/json" hidden
+          onChange={(e) => e.target.files?.[0] && loadTraceFile(e.target.files[0])} />
         <Button size="sm" variant="ghost" disabled={!enabled} onClick={() => emuRef.current?.resetLog()}
           className="h-6 px-2 text-[8px] gap-1 text-muted-foreground ml-auto">
           <Trash2 className="w-3 h-3" /> CLEAR
         </Button>
       </div>
+
+      {/* Replay row — only when a trace is loaded */}
+      {replay.total > 0 && (
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          className={cn(
+            'flex items-center gap-1 mt-1 p-1.5 rounded border border-dashed',
+            dragging ? 'border-cyan-400 bg-cyan-500/10' : 'border-border/30'
+          )}
+        >
+          <span className="text-[7px] text-muted-foreground uppercase mr-2">
+            Replay {replay.cursor}/{replay.total} · {replay.state}
+          </span>
+          <Button size="sm" variant="ghost" disabled={!enabled || replay.state === 'running'}
+            onClick={() => emuRef.current?.replay({ preserveTiming: true })}
+            className="h-6 px-2 text-[8px] gap-1 text-emerald-400">
+            <Play className="w-3 h-3" /> PLAY
+          </Button>
+          <Button size="sm" variant="ghost" disabled={!enabled || replay.state !== 'running'}
+            onClick={() => emuRef.current?.pauseReplay()}
+            className="h-6 px-2 text-[8px] gap-1 text-amber-400">
+            <Pause className="w-3 h-3" /> PAUSE
+          </Button>
+          <Button size="sm" variant="ghost" disabled={!enabled}
+            onClick={() => { emuRef.current?.stepReplay(); setReplay(emuRef.current!.getReplayStatus()); }}
+            className="h-6 px-2 text-[8px] gap-1 text-cyan-400">
+            <SkipForward className="w-3 h-3" /> STEP
+          </Button>
+          <Button size="sm" variant="ghost" disabled={!enabled}
+            onClick={() => { emuRef.current?.stopReplay(); setReplay(emuRef.current!.getReplayStatus()); }}
+            className="h-6 px-2 text-[8px] gap-1 text-red-400">
+            <Square className="w-3 h-3" /> STOP
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
