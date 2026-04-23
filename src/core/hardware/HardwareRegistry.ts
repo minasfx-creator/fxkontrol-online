@@ -219,7 +219,7 @@ class HardwareRegistry {
     for (const [id, dev] of this._devices) {
       if (dev.state !== 'connected' && dev.state !== 'degraded') continue;
       const stale = now - dev.lastSeen;
-      if (stale > DEFAULT_DEAD_TIMEOUT_MS && dev.state !== 'disconnected') {
+      if (stale > DEFAULT_DEAD_TIMEOUT_MS) {
         this._devices.set(id, { ...dev, state: 'disconnected', connected: false });
         blackbox.record('hw', `HardwareRegistry: ${dev.label} timed out (stale=${stale}ms)`);
         changed = true;
