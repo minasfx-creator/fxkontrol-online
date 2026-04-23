@@ -37,6 +37,10 @@ function createClockState(overrides: Partial<TimelineClockState> = {}): Timeline
     source: 'local',
     lastExternalSync: null,
     driftSec: 0,
+    externalSyncSequence: 0,
+    positionSequence: 0,
+    lastExternalTargetTime: null,
+    lastPositionChange: 'init',
     ...overrides,
   };
 }

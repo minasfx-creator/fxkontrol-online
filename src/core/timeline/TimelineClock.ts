@@ -96,12 +96,13 @@ class TimelineClock {
     if (!Number.isFinite(time)) return;
     const next = this.normalizeTime(time);
     const previousTime = this.state.time;
+    const wasExternal = this.state.source === 'external';
     this.state.driftSec = next - previousTime;
     this.state.source = 'external';
     this.state.externalSyncSequence += 1;
     this.state.lastExternalTargetTime = next;
     this.state.lastExternalSync = Date.now();
-    if (next === this.state.time && this.state.source === 'external') {
+    if (next === previousTime && wasExternal) {
       this.state.lastPositionChange = this.state.lastPositionChange === 'seek' ? 'external-confirm' : this.state.lastPositionChange;
       this.notify();
       return;
