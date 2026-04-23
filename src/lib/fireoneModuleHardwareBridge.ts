@@ -1183,6 +1183,9 @@ export class FireOneHardwareBridge {
     this.stopHeartbeat();
     this.stopRssiPolling();
     if (wasConnected) this.onEvent?.('disconnected', null);
+    this.stopHeartbeat();
+    this.stopRssiPolling();
+    if (wasConnected) this.onEvent?.('disconnected', null);
     // Invalidate any in-flight handshake from a previous attempt.
     this.connectingSessionId++;
 
