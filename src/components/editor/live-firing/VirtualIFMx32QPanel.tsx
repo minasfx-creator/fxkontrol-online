@@ -318,7 +318,9 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
               >
                 {bridgeStatus?.connected
                   ? `${bridgeStatus.transport.toUpperCase()} · ${bridgeStatus.deviceName}`
-                  : 'DESCONECTADO'}
+                  : bridgeStatus?.linkHealth === 'handshaking'
+                    ? 'HANDSHAKE...'
+                    : 'DESCONECTADO'}
               </Badge>
             </div>
 
@@ -361,6 +363,11 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
             {!module.transportSupport.ble && (
               <div className="rounded-md border border-amber-500/30 bg-amber-950/15 px-2 py-1 text-[7px] text-amber-300/80 leading-tight">
                 BLE/WebSerial bloqueados neste ambiente (comum no iPhone Safari). Use app nativo iOS ou Wi-Fi AP seguro (wss://).
+              </div>
+            )}
+            {!bridgeStatus?.connected && bridgeStatus?.lastError && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-[7px] text-destructive/90 leading-tight">
+                Último erro de conexão: {bridgeStatus.lastError}
               </div>
             )}
 
