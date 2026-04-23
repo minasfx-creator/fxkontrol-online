@@ -16,6 +16,16 @@ class ReplayEngine {
   private _replayCommands: Map<number, Command[]> = new Map();
   private _currentTick = 0;
   private _targetTick = 0;
+  private _listeners = new Set<() => void>();
+
+  private emit(): void {
+    for (const listener of this._listeners) {
+      try {
+        listener();
+      } catch {
+      }
+    }
+  }
 
   /**
    * Rollback to a specific tick:
@@ -55,6 +65,7 @@ class ReplayEngine {
     timelineClock.seek(targetTick / 60);
 
     this._state = 'done';
+    this.emit();
     return true;
   }
 
@@ -73,6 +84,7 @@ class ReplayEngine {
     this._targetTick = toTick;
     timelineClock.seek(this._currentTick / 60);
     this._state = 'replaying';
+    this.emit();
     return true;
   }
 
@@ -89,8 +101,10 @@ class ReplayEngine {
     timelineClock.seek(this._currentTick / 60);
     if (this._currentTick >= this._targetTick) {
       this._state = 'done';
+      this.emit();
       return false;
     }
+    this.emit();
     return true;
   }
 
@@ -98,6 +112,12 @@ class ReplayEngine {
     this._state = 'idle';
     this._replayCommands.clear();
     timelineClock.pause();
+    this.emit();
+  }
+
+  subscribe(listener: () => void): () => void {
+    this._listeners.add(listener);
+    return () => this._listeners.delete(listener);
   }
 
   getState(): ReplayState {
