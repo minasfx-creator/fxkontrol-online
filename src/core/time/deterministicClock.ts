@@ -19,6 +19,8 @@ const MAX_DELTA = 0.1;          // Cap at 100ms to avoid spiral
 const DRIFT_CORRECTION = 0.01; // Smooth correction factor
 const MAX_CORRECTION = 0.01;   // Clamp external correction to ±10ms per tick
 const MAX_CALLBACKS = 32;
+const MIN_DELTA = 0.000001;
+const MAX_TIME = 86400;
 
 class DeterministicClock {
   private _time = 0;
@@ -28,6 +30,8 @@ class DeterministicClock {
   private _lastPerfTime = 0;
   private _referenceSource: ClockState['referenceSource'] = 'performance';
   private _externalRef: (() => number) | null = null;
+  private _ticking = false;
+  private _needsCompaction = false;
 
   // Pre-allocated callback array
   private _callbacks: (TickCallback | null)[] = new Array(MAX_CALLBACKS).fill(null);
@@ -35,6 +39,7 @@ class DeterministicClock {
 
   /** Start the clock. */
   start(): void {
+    if (this._running) return;
     this._running = true;
     this._lastPerfTime = performance.now() / 1000;
   }
@@ -42,6 +47,7 @@ class DeterministicClock {
   /** Pause the clock (time freezes, no callbacks). */
   pause(): void {
     this._running = false;
+    this._lastPerfTime = performance.now() / 1000;
   }
 
   /** Reset to zero. */
