@@ -530,18 +530,14 @@ export class FireOneHardwareBridge {
    */
   async connectWiFiDirect(url?: string): Promise<boolean> {
     if (this.connecting) {
-      this.lastError = 'Conexão em andamento. Aguarde.';
+      this.setError('CONNECT_IN_PROGRESS', 'Conexão em andamento. Aguarde.');
       return false;
     }
     this.connecting = true;
-    const support = this.getTransportSupport();
-    if (!support.wifi_direct) {
-      this.lastError = 'Wi‑Fi Direct indisponível neste ambiente';
-      this.onEvent?.('unsupported_transport', { transport: 'wifi_direct' });
-      this.connecting = false;
     if (!this.getTransportSupport().wifi_direct) {
       this.setError('UNSUPPORTED_TRANSPORT', 'Wi‑Fi Direct indisponível neste ambiente', 'wifi_direct');
       this.onEvent?.('unsupported_transport', { transport: 'wifi_direct' });
+      this.connecting = false;
       return false;
     }
     const endpoints = this.getWiFiDirectEndpoints(url);
@@ -1179,13 +1175,6 @@ export class FireOneHardwareBridge {
     this.connecting = false;
     this.transport = 'none';
     this.linkHealth = 'disconnected';
-    this.pendingResolves.clear();
-    this.stopHeartbeat();
-    this.stopRssiPolling();
-    if (wasConnected) this.onEvent?.('disconnected', null);
-    this.stopHeartbeat();
-    this.stopRssiPolling();
-    if (wasConnected) this.onEvent?.('disconnected', null);
     // Invalidate any in-flight handshake from a previous attempt.
     this.connectingSessionId++;
 
@@ -1248,9 +1237,6 @@ export class FireOneHardwareBridge {
     this.lastPing = Date.now();
     this.linkHealth = 'handshaking';
     const ok = await this.waitForHandshake();
-    if (!ok) {
-      this.lastError = `Handshake timeout (${transport})`;
-
     // Stale-session guard: another attempt or a disconnect raced ahead.
     if (attemptSession !== this.connectingSessionId) {
       this.setError('STALE_SESSION', `Handshake from stale session ignored (${transport})`, transport);
@@ -1262,8 +1248,6 @@ export class FireOneHardwareBridge {
       return false;
     }
     this.connected = true;
-    this.lastError = undefined;
-    this.linkHealth = 'healthy';
     this.linkHealth = 'healthy';
     this.sessionId++;            // new healthy session id
     this.clearError();

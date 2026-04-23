@@ -49,13 +49,6 @@ serve(async (req) => {
       !!objectSegmentation,
     );
 
-    const refinement = await runPromptRefinementCycle({
-      apiKey: LOVABLE_API_KEY,
-      basePrompt: baseUserPrompt,
-      droneCount: drones,
-      analysisDepth: depth,
-      mode: mode || "cinematic",
-    });
     const refinement = refinePromptCycle
       ? await runPromptRefinementCycle({
           apiKey: LOVABLE_API_KEY,
@@ -203,19 +196,6 @@ interface GatewayCallOptions {
 async function callGateway(options: GatewayCallOptions): Promise<Response> {
   let lastResponse: Response | null = null;
   for (const model of options.modelCandidates) {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${options.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: options.messages,
-        temperature: options.temperature ?? 0.5,
-        max_tokens: options.maxTokens ?? 4000,
-      }),
-    });
     let res: Response;
     let timer: ReturnType<typeof setTimeout> | null = null;
     try {
