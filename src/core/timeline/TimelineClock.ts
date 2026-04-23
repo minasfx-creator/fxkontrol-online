@@ -81,7 +81,7 @@ class TimelineClock {
 
   setSpeed(speed: number): void {
     if (!Number.isFinite(speed)) return;
-    const next = Math.max(0.1, Math.min(speed, 10));
+    const next = Math.max(0, Math.min(speed, 10));
     if (next === this.state.speed) return;
     this.state.speed = next;
     this.notify();
