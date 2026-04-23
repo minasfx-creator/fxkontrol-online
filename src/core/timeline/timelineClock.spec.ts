@@ -175,6 +175,38 @@ describe('timelineClock/store sync', () => {
     expect(useProjectStore.getState().playbackSpeed).toBe(1);
   });
 
+  it('seeks safely during playback without introducing a jump on the next tick', () => {
+    timelineClock.setDuration(30);
+    timelineClock.play();
+    timelineClock.tick(1);
+    mirror();
+    expect(useProjectStore.getState().currentTime).toBe(1);
+
+    timelineClock.seek(10);
+    mirror();
+    expect(useProjectStore.getState().currentTime).toBe(10);
+
+    timelineClock.tick(0.5);
+    mirror();
+    expect(useProjectStore.getState().currentTime).toBe(10.5);
+  });
+
+  it('changes speed mid-play without exploding accumulated time', () => {
+    timelineClock.setDuration(30);
+    timelineClock.play();
+    timelineClock.tick(1);
+    mirror();
+    expect(useProjectStore.getState().currentTime).toBe(1);
+
+    timelineClock.setSpeed(2);
+    mirror();
+    expect(useProjectStore.getState().playbackSpeed).toBe(2);
+
+    timelineClock.tick(0.5);
+    mirror();
+    expect(useProjectStore.getState().currentTime).toBe(2);
+  });
+
   it('resyncs cleanly after pause when external time has advanced', () => {
     timelineClock.setDuration(120);
     timelineClock.syncExternalTime(20);
