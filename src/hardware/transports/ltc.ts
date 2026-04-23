@@ -5,14 +5,14 @@ export interface LTCSyncTarget {
 }
 
 export interface LTCTransportOptions {
-  smoothingFactor?: number;
-  deadbandSec?: number;
-  pauseTimeoutMs?: number;
-  lockFrames?: number;
-  unlockFrames?: number;
-  maxCorrectionPerFrame?: number;
-  hardResyncThreshold?: number;
-  rewindThreshold?: number;
+  smoothingFactor: number;
+  deadbandSec: number;
+  pauseTimeoutMs: number;
+  lockFrames: number;
+  unlockFrames: number;
+  maxCorrectionPerFrame: number;
+  hardResyncThreshold: number;
+  rewindThreshold: number;
 }
 
 export type LTCSyncMode = 'soft' | 'hard';
@@ -80,7 +80,7 @@ function deepFreeze<T>(value: T): Readonly<T> {
 }
 
 export class LTCTransport {
-  private readonly options: Required<LTCTransportOptions>;
+  private readonly options: LTCTransportOptions;
   private lastIncomingTime: number | null = null;
   private lastSyncedTime: number | null = null;
   private lastSignalAt: number | null = null;
@@ -95,7 +95,7 @@ export class LTCTransport {
 
   constructor(
     private readonly target: LTCSyncTarget,
-    options: LTCTransportOptions = {},
+    options: Partial<LTCTransportOptions> = {},
   ) {
     this.options = {
       smoothingFactor: options.smoothingFactor ?? DEFAULT_OPTIONS.smoothingFactor,
@@ -158,12 +158,15 @@ export class LTCTransport {
     }
 
     if (Math.abs(delta) < this.options.deadbandSec) {
+      const seekConfirmed = previousIncomingTime !== null && Math.abs(current - previousIncomingTime) > this.options.deadbandSec;
       this.state = 'locked-soft';
       this.lastMode = 'soft';
       this.lastSyncedTime = current;
-      this.lastSyncReason = previousIncomingTime !== null && Math.abs(current - previousIncomingTime) > this.options.deadbandSec
-        ? 'seek-confirm'
-        : 'deadband';
+      this.lastSyncReason = seekConfirmed ? 'seek-confirm' : 'deadband';
+
+      if (seekConfirmed) {
+        this.target.syncExternalTime(current);
+      }
 
       return {
         incomingTime: seconds,
