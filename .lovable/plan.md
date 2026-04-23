@@ -1,99 +1,141 @@
 
-Objetivo: consolidar a fundação visual do editor desktop em dark mode com três zonas claras e operacionais: viewport 3D central (`SkyCanvas`), biblioteca de efeitos lateral esquerda (`EffectLibrary`) e timeline/waveform fixa na base (`Timeline` + `AudioWaveform`), mantendo a estética command-grade já existente e reduzindo a sensação de “muitos painéis soltos”.
+Objetivo: adicionar suporte robusto a bridge local seguro para iPhone/PWA, com diagnóstico de secure context, mDNS/pairing e alertas explícitos de mixed content antes da conexão falhar silenciosamente.
 
-1. Reestruturar o shell do editor em `src/pages/Index.tsx`
-- Transformar o layout desktop atual em uma composição explícita de 3 áreas persistentes:
-  - centro: `SkyCanvas`
-  - esquerda: painel foundation da `EffectLibrary`
-  - base: timeline foundation com waveform
-- Manter `Toolbar` no topo e preservar `ViewportNavControls`, mas ajustar offsets para respeitar a nova largura da sidebar esquerda e a altura fixa da timeline.
-- Continuar usando `timelineCollapsed` e `viewportMaximized`, porém com comportamento previsível:
-  - colapsar timeline reduz só a base
-  - maximizar viewport esconde painéis foundation
-  - sidebar esquerda continua recolhível em modo mini, não desaparece sem trigger
+1. Consolidar a camada de diagnóstico do bridge local
+- Expandir `src/lib/bridgeGateway.ts` para expor um diagnóstico completo do ambiente, além do `getBridgeCapabilityHints()` já existente.
+- Incluir sinais como:
+  - `isSecureContext`
+  - `pageProtocol`
+  - `bridgeProtocol`
+  - `mixedContentBlocked`
+  - `iosWebKit`
+  - `standalonePwa`
+  - `mdnsHost`
+  - `usesSelfSignedLocalTls`
+  - `recommendedAction`
+- Adicionar helpers para:
+  - validar se uma URL do relay é segura no contexto atual
+  - identificar hosts `.local`
+  - distinguir fallback inseguro (`ws://localhost`, `ws://192.168.x.x`) de endpoint compatível com iPhone/PWA (`wss://*.local` ou host customizado seguro)
 
-2. Promover a `EffectLibrary` de “dock opcional” para sidebar foundation
-- Substituir o left dock atual por uma sidebar persistente com:
-  - header compacto “Effect Library”
-  - busca
-  - chips/filtros
-  - lista/tabela rolável
-- Manter os componentes já existentes da `EffectLibrary`, mas adaptar o container para largura fixa e altura total entre toolbar e timeline.
-- Preservar a possibilidade de recolher para mini-rail com ícones, seguindo a regra do sidebar: sempre deve existir forma visível de expandir novamente.
-- Manter os outros painéis compartilhados (`scene`, `showsettings`) fora da foundation principal, como overlays/drawers, para não competir com a biblioteca.
+2. Formalizar a estratégia HTTPS local + self-signed
+- Manter o padrão já sugerido no código:
+  - host default seguro: `fxk-relay.local`
+  - porta segura: `9443`
+  - fallback inseguro apenas em desktop/local dev
+- Ajustar os builders para privilegiar `wss://fxk-relay.local:9443` em:
+  - páginas HTTPS
+  - contexto installable/PWA
+  - iPhone/iPad WebKit
+- Persistir configuração do gateway com `saveBridgeGatewayConfig()` quando o usuário informar host/porta/canal local.
+- Preparar a UI para orientar o usuário a instalar/confiar no certificado self-signed do bridge local quando necessário, sem fingir que o navegador aceitará isso automaticamente.
 
-3. Refinar o container do `SkyCanvas` como palco central
-- Enquadrar o `SkyCanvas` dentro de um “viewport frame” premium:
-  - fundo Vantablack
-  - bordas suaves / glass dark
-  - fade e overlays existentes preservados
-- Garantir que o canvas ocupe todo o espaço restante entre sidebar esquerda e timeline inferior sem sobreposição acidental.
-- Manter a estratégia Synthetic First e os parâmetros visuais premium já definidos em memória.
-- Não introduzir novos controles pesados sobre o canvas nesta fase; foco é base estrutural.
+3. Adicionar verificação ativa de secure context e mixed content
+- Criar um util/hook compartilhado, por exemplo:
+  - `src/hooks/useBridgeSecurityDiagnostics.ts`
+  ou
+  - `src/lib/bridgeSecurityDiagnostics.ts`
+- Esse diagnóstico deve:
+  - ler `window.isSecureContext`
+  - calcular o endpoint efetivo do relay
+  - detectar se o browser bloqueará `ws://` em página `https://`
+  - classificar severidade: `info | warning | error`
+- Quando houver risco real, retornar mensagens prontas para UI, por exemplo:
+  - “Página segura detectada, mas o relay local está em ws://. O navegador bloqueará mixed content.”
+  - “No iPhone/PWA, o bridge local precisa responder em WSS com certificado confiável.”
+  - “Host .local detectado, mas o contexto ainda não é seguro.”
 
-4. Consolidar a timeline inferior como barra de composição principal
-- Reforçar a `Timeline` como painel bottom-docked de largura total, com altura desktop mais estável e leitura melhor.
-- Preservar a transport bar atual, playhead, grupos de tracks e `AudioWaveform`.
-- Ajustar o visual do container da timeline para dark mode premium:
-  - contraste mais alto entre header, régua e tracks
-  - borda superior sutil
-  - superfícies translúcidas consistentes com a sidebar
-- Garantir que a waveform fique claramente integrada ao rodapé e não pareça um bloco separado.
+4. Exibir alertas visuais nas superfícies onde o bridge é usado
+- Integrar o diagnóstico em telas/painéis já existentes que hoje apenas tentam abrir WebSocket:
+  - `src/pages/DevicePairing.tsx`
+  - `src/components/editor/MobileLinkPanel.tsx`
+  - `src/components/editor/LiveFiringPanel.tsx`
+  - `src/components/editor/dmx/DMXPanel.tsx`
+  - `src/components/editor/live-firing/SettingsPanel.tsx`
+- Adicionar banners/alerts usando o sistema atual (`Alert`/`sonner`) para:
+  - mixed content bloqueado
+  - contexto inseguro
+  - bridge em fallback incompatível com iPhone/PWA
+  - mDNS/host local detectado, mas sem TLS
+- Preferir banner persistente para problemas estruturais e toast apenas para feedback pontual de conexão.
 
-5. Unificar o sistema visual dark mode
-- Aplicar os tokens e memórias existentes:
-  - base Vantablack / superfícies escuras
-  - ciano para sync/timecode
-  - âmbar/laranja para pyro
-  - verde/vermelho só para estados críticos
-- Harmonizar sidebar, viewport frame e timeline com a mesma linguagem:
-  - blur controlado
-  - bordas de baixa opacidade
-  - tipografia mono para dados operacionais
-  - microcontraste para leitura em ambiente escuro
-- Evitar cyberpunk excessivo; manter linguagem mission-control.
+5. Melhorar a experiência de pairing para iPhone
+- Evoluir `DevicePairing` para mostrar um fluxo claro de “pareamento local”:
+  - endpoint atual do bridge
+  - status do secure context
+  - compatibilidade iPhone/PWA
+  - status do certificado local
+- Acrescentar orientação funcional no UI:
+  - abrir o bridge via `https://fxk-relay.local:9443`
+  - confiar no certificado self-signed
+  - voltar ao app e testar o canal local
+- Se NFC/Web NFC não estiver disponível no iPhone, manter o fluxo honesto e apresentar o bridge local seguro como alternativa principal.
 
-6. Ajustar comportamento de overlays e painéis secundários
-- Verificar `activePanel` e painéis flutuantes da direita para que não conflitem com a nova foundation.
-- Regras:
-  - foundation sempre visível por padrão
-  - painéis secundários continuam contextuais
-  - nenhum painel pode ocultar o trigger de reabertura da sidebar/timeline
-- Manter a regra de UI: nunca aninhar botões dentro de triggers Radix/Shadcn.
+6. Tornar a autodiscovery mDNS explícita e auditável
+- Aproveitar os hosts `.local` já usados em `fireoneModuleHardwareBridge.ts` e `fireoneWifiDirectTransport.ts`.
+- Exibir na UI:
+  - host descoberto (`fxk-relay.local`, `fxk-esp32.local`, etc.)
+  - modo de transporte (`ws` vs `wss`)
+  - se o host é adequado para PWA/iPhone
+- Quando o app cair para IP fixo (`192.168.x.x`), marcar isso como fallback degradado em vez de comportamento “normal”.
 
-7. Preservar performance e estabilidade
-- Reutilizar componentes existentes em vez de recriar:
-  - `SkyCanvas`
-  - `EffectLibrary`
-  - `Timeline`
-  - `AudioWaveform`
-- Evitar adicionar lógica nova no hot path do canvas.
-- Manter lazy loading onde já existe, mas garantir que a foundation apareça com skeletons/fallbacks consistentes.
-- Respeitar as memórias de gestão de recursos e zero-GC nas áreas críticas.
+7. Endurecer os pontos de conexão WebSocket
+- Antes de abrir `new WebSocket(...)`, aplicar uma checagem comum:
+  - se mixed content for inevitável, abortar antes
+  - emitir erro legível
+  - evitar tentativas cegas que só acabam em `onerror`
+- Isso deve ser aplicado em:
+  - `MobileLinkPanel`
+  - `LiveFiringPanel`
+  - `DMXPanel`
+  - transports que usam `buildBridgeWebSocketUrl()` como `WiFiTransport` e `WiFiDirectTransport`
+- Resultado esperado: falha previsível, com diagnóstico útil, em vez de falha silenciosa.
 
-8. Validar responsividade do desktop e não quebrar mobile
-- Implementar a foundation apenas no branch desktop do `Index.tsx`.
-- Não alterar a arquitetura mobile com `MobileFloatingPanel` e `MobileTabBar`, exceto se algum ajuste de import/container for necessário.
-- Garantir que os estados compartilhados (`timelineCollapsed`, `viewportMaximized`, `activePanel`) continuem compatíveis com ambos os modos.
+8. Expandir Platform Status para saúde de bridge local
+- Estender `src/pages/PlatformStatus.tsx` com uma seção nova de “Local bridge security”.
+- Exibir:
+  - secure context: OK/BLOCKED
+  - endpoint atual do relay
+  - mixed content risk
+  - compatibilidade PWA/iPhone
+  - mDNS/local discovery readiness
+- Isso transforma o status page em painel operacional para validar o ambiente antes de uso em campo.
 
-9. QA funcional e visual
-- Verificar:
-  - `/editor` abre com Sky Canvas central, Effect Library à esquerda e Timeline/Waveform na base
-  - colapso/expansão da timeline funciona
-  - sidebar esquerda pode recolher e reabrir
-  - drag/drop/import no viewport continua funcionando
-  - timeline continua selecionando, scrubando e exibindo waveform
-  - overlays do canvas não ficam cobertos incorretamente
-- Fazer uma passada visual para contraste, espaçamento e consistência em dark mode.
+9. Cobrir com testes unitários
+- Expandir `src/lib/__tests__/bridgeGateway.test.ts` para validar:
+  - HTTPS + iPhone => `wss://fxk-relay.local:9443`
+  - HTTPS + relay inseguro => mixed content detectado
+  - desktop `http://localhost` => fallback permitido
+  - host `.local` classificado como bridge local
+  - bridge key segue fora da URL
+- Adicionar testes para o novo diagnóstico/hook com cenários:
+  - secure context válido
+  - contexto inseguro
+  - iPhone standalone
+  - mixed content bloqueado
+  - fallback IP-only degradado
 
-Arquivos principais a editar
-- `src/pages/Index.tsx` — reestruturação do shell desktop
-- `src/components/editor/EffectLibrary.tsx` — adaptação do container para sidebar foundation
-- `src/components/editor/Timeline.tsx` — refinamento visual/layout do rodapé timeline
-- Opcionalmente algum arquivo de estilos/tokens já usado pelo editor, se necessário para superfícies dark/shared chrome
+10. Resultado funcional esperado
+- Desktop dev continua funcionando com fallback local inseguro quando apropriado.
+- iPhone/PWA passa a receber rota segura preferencial (`wss://fxk-relay.local:9443`).
+- O usuário vê alertas claros quando algum recurso local seria carregado como mixed content.
+- O app deixa de “tentar e falhar” sem contexto e passa a explicar exatamente o que falta: secure context, certificado local, host mDNS ou endpoint compatível.
 
 Detalhes técnicos
-- O projeto já tem os três blocos principais implementados; o trabalho é consolidar o layout foundation, não criar novos módulos do zero.
-- A sidebar esquerda atual já abre `EffectLibrary`, mas como painel flutuante estreito; a mudança principal é torná-la estrutural e persistente.
-- A timeline já possui waveform integrada (`AudioWaveform`) e trilhas operacionais; o foco é hierarquia visual e docking estável.
-- O `SkyCanvas` já está compatível com a direção visual premium do projeto; o ajuste é de moldura/layout, não de engine 3D.
+- Arquivos mais prováveis:
+  - `src/lib/bridgeGateway.ts`
+  - `src/lib/__tests__/bridgeGateway.test.ts`
+  - novo hook/util de diagnóstico de segurança
+  - `src/pages/DevicePairing.tsx`
+  - `src/components/editor/MobileLinkPanel.tsx`
+  - `src/components/editor/LiveFiringPanel.tsx`
+  - `src/components/editor/dmx/DMXPanel.tsx`
+  - `src/components/editor/live-firing/SettingsPanel.tsx`
+  - `src/pages/PlatformStatus.tsx`
+- Abordagem de UX:
+  - alert persistente para bloqueios estruturais
+  - toast apenas para sucesso/falha transitória
+- Restrições reais do navegador:
+  - página HTTPS + `ws://` = mixed content bloqueado
+  - iPhone/PWA exige secure context para fluxo confiável
+  - certificado self-signed precisa ser confiado no dispositivo; o app só consegue detectar e orientar, não instalar confiança sozinho
