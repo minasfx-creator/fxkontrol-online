@@ -264,6 +264,7 @@ export default function ManualComplianceMatrix() {
         </button>
       </div>
 
+      {blockers.length > 0 && (
         <div className="border border-red-500/30 bg-red-500/5 rounded-md p-2 space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[9px] font-mono font-bold text-red-400 tracking-widest uppercase">Go-Live Blockers</span>

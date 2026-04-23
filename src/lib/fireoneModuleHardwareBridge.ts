@@ -501,17 +501,14 @@ export class FireOneHardwareBridge {
 
   async connectWebSocket(url = 'ws://192.168.4.1:81'): Promise<boolean> {
     if (this.connecting) {
-      this.lastError = 'Conexão em andamento. Aguarde.';
+      this.setError('CONNECT_IN_PROGRESS', 'Conexão em andamento. Aguarde.');
       return false;
     }
     this.connecting = true;
     if (!this.getTransportSupport().websocket) {
-      this.lastError = 'WebSocket não suportado neste navegador/dispositivo';
-      this.onEvent?.('unsupported_transport', { transport: 'websocket' });
-      this.connecting = false;
-    if (!this.getTransportSupport().websocket) {
       this.setError('UNSUPPORTED_TRANSPORT', 'WebSocket não suportado neste navegador/dispositivo', 'websocket');
       this.onEvent?.('unsupported_transport', { transport: 'websocket' });
+      this.connecting = false;
       return false;
     }
     const endpoint = this.normalizeWebSocketUrl(url);
