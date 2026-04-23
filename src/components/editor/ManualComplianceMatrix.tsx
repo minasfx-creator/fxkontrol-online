@@ -32,11 +32,11 @@ interface ComplianceRow {
   source: string;
   clause: string;
   requirement: string;
-  status: ComplianceStatus;
+  status: ComplianceStatus | string;  // tolerate legacy lowercase rows
   evidence: string;
-  action: string;
-  evidenceStatus: EvidenceStatus;
-  nextAction: string;
+  action?: string;
+  evidenceStatus?: EvidenceStatus;
+  nextAction?: string;
   owner?: string;
   criticalForGoLive?: boolean;
 }
@@ -125,7 +125,7 @@ const COMPLIANCE_DATA: ComplianceRow[] = [
  */
 function isGoLiveBlocker(row: ComplianceRow): boolean {
   if (!row.criticalForGoLive) return false;
-  if (!GO_LIVE_PASS_STATUSES.includes(row.status)) return true;
+  if (!GO_LIVE_PASS_STATUSES.includes(String(row.status).toUpperCase() as ComplianceStatus)) return true;
   // Status is IMPLEMENTED/VERIFIED but evidence is too weak for safety-critical:
   if (!SAFETY_EVIDENCE_PASS.includes(row.evidenceStatus)) return true;
   return false;
@@ -160,47 +160,20 @@ export default function ManualComplianceMatrix() {
 
   const blockers = useMemo(() => (
     COMPLIANCE_DATA
-      .filter(isGoLiveBlocker)
-      .sort((a, b) => a.source.localeCompare(b.source))
-  ), []);
-
-  const blockers = useMemo(() => (
-    COMPLIANCE_DATA
-      .filter(r => r.criticalForGoLive && r.status !== 'implemented')
+      .filter(r => r.criticalForGoLive && String(r.status).toUpperCase() !== 'IMPLEMENTED' && String(r.status).toUpperCase() !== 'VERIFIED')
       .sort((a, b) => a.source.localeCompare(b.source))
   ), []);
 
   const filteredRows = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    const base = showOnlyBlockers
-      ? COMPLIANCE_DATA.filter(r => r.criticalForGoLive && r.status !== 'implemented')
-      : COMPLIANCE_DATA;
+    const base = showOnlyBlockers ? blockers : COMPLIANCE_DATA;
     if (!normalized) return base;
     return base.filter((row) =>
-      `${row.source} ${row.clause} ${row.requirement} ${row.evidence} ${row.action}`
+      `${row.source} ${row.clause} ${row.requirement} ${row.evidence} ${row.action ?? ''} ${row.nextAction ?? ''}`
         .toLowerCase()
         .includes(normalized),
     );
-  }, [query, showOnlyBlockers]);
-
-  const blockers = useMemo(() => (
-    COMPLIANCE_DATA
-      .filter(r => r.criticalForGoLive && r.status !== 'implemented')
-      .sort((a, b) => a.source.localeCompare(b.source))
-  ), []);
-
-  const filteredRows = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    const base = showOnlyBlockers
-      ? COMPLIANCE_DATA.filter(r => r.criticalForGoLive && r.status !== 'implemented')
-      : COMPLIANCE_DATA;
-    if (!normalized) return base;
-    return base.filter((row) =>
-      `${row.source} ${row.clause} ${row.requirement} ${row.evidence} ${row.action}`
-        .toLowerCase()
-        .includes(normalized),
-    );
-  }, [query, showOnlyBlockers]);
+  }, [query, showOnlyBlockers, blockers]);
 
   return (
     <div className="flex flex-col h-full p-4 gap-3 bg-background/80">
@@ -264,6 +237,7 @@ export default function ManualComplianceMatrix() {
         </button>
       </div>
 
+      {blockers.length > 0 && (
         <div className="border border-red-500/30 bg-red-500/5 rounded-md p-2 space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[9px] font-mono font-bold text-red-400 tracking-widest uppercase">Go-Live Blockers</span>

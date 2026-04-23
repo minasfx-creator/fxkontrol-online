@@ -49,6 +49,7 @@ export type BridgeReasonCode =
   | 'STALE_SESSION'
   | 'COMMAND_TIMEOUT'
   | 'RETRY_RATE_LIMITED'
+  | 'CONNECT_IN_PROGRESS'
   | 'UNKNOWN';
 
 export interface BridgeError {
@@ -73,11 +74,8 @@ export interface BridgeStatus {
   rxBytes: number;
   rssi?: number;
   estimatedDistance?: number;
-  lastError?: string;
-  linkHealth?: 'disconnected' | 'handshaking' | 'healthy';
-  /** Human-readable last error message (legacy). */
-  lastError?: string;
   /** Structured last error with stable reason code. */
+  lastError?: string;
   lastErrorCode?: BridgeReasonCode;
   lastErrorAt?: number;
   linkHealth?: LinkHealth;
@@ -237,7 +235,6 @@ export class FireOneHardwareBridge {
   private rssi?: number;
   private estimatedDistance?: number;
   private lastError?: string;
-  private linkHealth: 'disconnected' | 'handshaking' | 'healthy' = 'disconnected';
   private lastErrorCode?: BridgeReasonCode;
   private lastErrorAt?: number;
   private linkHealth: LinkHealth = 'disconnected';
@@ -501,17 +498,14 @@ export class FireOneHardwareBridge {
 
   async connectWebSocket(url = 'ws://192.168.4.1:81'): Promise<boolean> {
     if (this.connecting) {
-      this.lastError = 'Conexão em andamento. Aguarde.';
+      this.setError('CONNECT_IN_PROGRESS', 'Conexão em andamento. Aguarde.');
       return false;
     }
     this.connecting = true;
     if (!this.getTransportSupport().websocket) {
-      this.lastError = 'WebSocket não suportado neste navegador/dispositivo';
-      this.onEvent?.('unsupported_transport', { transport: 'websocket' });
-      this.connecting = false;
-    if (!this.getTransportSupport().websocket) {
       this.setError('UNSUPPORTED_TRANSPORT', 'WebSocket não suportado neste navegador/dispositivo', 'websocket');
       this.onEvent?.('unsupported_transport', { transport: 'websocket' });
+      this.connecting = false;
       return false;
     }
     const endpoint = this.normalizeWebSocketUrl(url);
@@ -530,18 +524,14 @@ export class FireOneHardwareBridge {
    */
   async connectWiFiDirect(url?: string): Promise<boolean> {
     if (this.connecting) {
-      this.lastError = 'Conexão em andamento. Aguarde.';
+      this.setError('CONNECT_IN_PROGRESS', 'Conexão em andamento. Aguarde.');
       return false;
     }
     this.connecting = true;
-    const support = this.getTransportSupport();
-    if (!support.wifi_direct) {
-      this.lastError = 'Wi‑Fi Direct indisponível neste ambiente';
-      this.onEvent?.('unsupported_transport', { transport: 'wifi_direct' });
-      this.connecting = false;
     if (!this.getTransportSupport().wifi_direct) {
       this.setError('UNSUPPORTED_TRANSPORT', 'Wi‑Fi Direct indisponível neste ambiente', 'wifi_direct');
       this.onEvent?.('unsupported_transport', { transport: 'wifi_direct' });
+      this.connecting = false;
       return false;
     }
     const endpoints = this.getWiFiDirectEndpoints(url);
@@ -870,7 +860,6 @@ export class FireOneHardwareBridge {
       rssi: this.rssi,
       estimatedDistance: this.estimatedDistance,
       lastError: this.lastError,
-      linkHealth: this.linkHealth,
       lastErrorCode: this.lastErrorCode,
       lastErrorAt: this.lastErrorAt,
       linkHealth: this.linkHealth,
@@ -1078,31 +1067,7 @@ export class FireOneHardwareBridge {
     return false;
   }
 
-  private getWiFiDirectEndpoints(customUrl?: string): string[] {
-    const secureRequired = requiresSecureBridgeTransport();
-    const scheme = secureRequired ? 'wss' : 'ws';
-    return [
-      customUrl ? this.normalizeWebSocketUrl(customUrl) : null,
-      `${scheme}://fxk-esp32.local:81`,
-      `${scheme}://192.168.4.1:81`,
-      `${scheme}://192.168.1.1:81`,
-    ].filter(Boolean) as string[];
-  }
-
-  private normalizeWebSocketUrl(raw: string): string {
-    const secureRequired = requiresSecureBridgeTransport();
-    const defaultScheme = secureRequired ? 'wss' : 'ws';
-    const withScheme = /^[a-z]+:\/\//i.test(raw) ? raw : `${defaultScheme}://${raw}`;
-    try {
-      const parsed = new URL(withScheme);
-      if (secureRequired && parsed.protocol === 'ws:') {
-        parsed.protocol = 'wss:';
-      }
-      return parsed.toString();
-    } catch {
-      return withScheme;
-    }
-  }
+  // (getWiFiDirectEndpoints + normalizeWebSocketUrl already declared above)
 
   private handleResponse(data: string): void {
     this.rxBytes += data.length;
@@ -1138,7 +1103,6 @@ export class FireOneHardwareBridge {
         }
       }
 
-      for (const [key, resolver] of this.pendingResolves) {
       // Hardened tolerant parsing of STATUS / BAT / RSSI / PINS / VER frames.
       const fields = parseTelemetryLine(trimmed);
       if (fields.batteryVoltage !== undefined) this.batteryVoltage = fields.batteryVoltage;
@@ -1179,13 +1143,6 @@ export class FireOneHardwareBridge {
     this.connecting = false;
     this.transport = 'none';
     this.linkHealth = 'disconnected';
-    this.pendingResolves.clear();
-    this.stopHeartbeat();
-    this.stopRssiPolling();
-    if (wasConnected) this.onEvent?.('disconnected', null);
-    this.stopHeartbeat();
-    this.stopRssiPolling();
-    if (wasConnected) this.onEvent?.('disconnected', null);
     // Invalidate any in-flight handshake from a previous attempt.
     this.connectingSessionId++;
 
@@ -1248,9 +1205,6 @@ export class FireOneHardwareBridge {
     this.lastPing = Date.now();
     this.linkHealth = 'handshaking';
     const ok = await this.waitForHandshake();
-    if (!ok) {
-      this.lastError = `Handshake timeout (${transport})`;
-
     // Stale-session guard: another attempt or a disconnect raced ahead.
     if (attemptSession !== this.connectingSessionId) {
       this.setError('STALE_SESSION', `Handshake from stale session ignored (${transport})`, transport);
@@ -1262,8 +1216,6 @@ export class FireOneHardwareBridge {
       return false;
     }
     this.connected = true;
-    this.lastError = undefined;
-    this.linkHealth = 'healthy';
     this.linkHealth = 'healthy';
     this.sessionId++;            // new healthy session id
     this.clearError();
@@ -1283,8 +1235,6 @@ export class FireOneHardwareBridge {
         this.pendingResolves.delete('VER:');
         resolve(ok);
       };
-      this.pendingResolves.set('PONG', () => finish(true));
-      this.pendingResolves.set('VER:', () => finish(true));
       // Drain sentinel ('') from handleDisconnect resolves with falsy → finish(false).
       this.registerPending('PONG', 'HANDSHAKE', (val) => finish(Boolean(val)));
       this.registerPending('VER:', 'HANDSHAKE', (val) => finish(Boolean(val)));
