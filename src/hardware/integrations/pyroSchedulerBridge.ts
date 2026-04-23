@@ -76,6 +76,7 @@ export class PyroSchedulerBridge {
   private lastFiredCueId: string | null = null;
   private lastRebuildReason: PyroSchedulerRebuildReason = 'boot';
   private lastBlockedReason: string | null = null;
+  private pendingDispatch = Promise.resolve();
 
   constructor(options: PyroSchedulerBridgeOptions = {}) {
     this.transport = options.transport ?? pyroUsbTransport;
@@ -87,7 +88,7 @@ export class PyroSchedulerBridge {
     this.scheduler = new HardwareScheduler(
       {
         dispatch: (event) => {
-          void this.dispatchScheduledEvent(event);
+          this.pendingDispatch = this.pendingDispatch.then(() => this.dispatchScheduledEvent(event));
         },
       },
       {
@@ -125,7 +126,7 @@ export class PyroSchedulerBridge {
         this.scheduler.seek(clockState.time);
         this.lastRebuildReason = 'seek-forward';
       }
-    } else if (!previous.playing && clockState.playing) {
+    } else if (!previous.playing && clockState.playing && this.lastRebuildReason === 'boot') {
       this.lastRebuildReason = 'play';
     }
 
@@ -163,6 +164,10 @@ export class PyroSchedulerBridge {
       lastBlockedReason: this.lastBlockedReason,
       scheduler: schedulerDiagnostics,
     });
+  }
+
+  async flushPending(): Promise<void> {
+    await this.pendingDispatch;
   }
 
   private rebuildQueue(plan: Readonly<ShowPlan>, fromTime: number, reason: PyroSchedulerRebuildReason): void {
