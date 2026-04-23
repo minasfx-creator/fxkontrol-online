@@ -125,7 +125,7 @@ const COMPLIANCE_DATA: ComplianceRow[] = [
  */
 function isGoLiveBlocker(row: ComplianceRow): boolean {
   if (!row.criticalForGoLive) return false;
-  if (!GO_LIVE_PASS_STATUSES.includes(row.status)) return true;
+  if (!GO_LIVE_PASS_STATUSES.includes(String(row.status).toUpperCase() as ComplianceStatus)) return true;
   // Status is IMPLEMENTED/VERIFIED but evidence is too weak for safety-critical:
   if (!SAFETY_EVIDENCE_PASS.includes(row.evidenceStatus)) return true;
   return false;

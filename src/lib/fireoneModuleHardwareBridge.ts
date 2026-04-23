@@ -49,6 +49,7 @@ export type BridgeReasonCode =
   | 'STALE_SESSION'
   | 'COMMAND_TIMEOUT'
   | 'RETRY_RATE_LIMITED'
+  | 'CONNECT_IN_PROGRESS'
   | 'UNKNOWN';
 
 export interface BridgeError {
@@ -859,7 +860,6 @@ export class FireOneHardwareBridge {
       rssi: this.rssi,
       estimatedDistance: this.estimatedDistance,
       lastError: this.lastError,
-      linkHealth: this.linkHealth,
       lastErrorCode: this.lastErrorCode,
       lastErrorAt: this.lastErrorAt,
       linkHealth: this.linkHealth,
@@ -1067,31 +1067,7 @@ export class FireOneHardwareBridge {
     return false;
   }
 
-  private getWiFiDirectEndpoints(customUrl?: string): string[] {
-    const secureRequired = requiresSecureBridgeTransport();
-    const scheme = secureRequired ? 'wss' : 'ws';
-    return [
-      customUrl ? this.normalizeWebSocketUrl(customUrl) : null,
-      `${scheme}://fxk-esp32.local:81`,
-      `${scheme}://192.168.4.1:81`,
-      `${scheme}://192.168.1.1:81`,
-    ].filter(Boolean) as string[];
-  }
-
-  private normalizeWebSocketUrl(raw: string): string {
-    const secureRequired = requiresSecureBridgeTransport();
-    const defaultScheme = secureRequired ? 'wss' : 'ws';
-    const withScheme = /^[a-z]+:\/\//i.test(raw) ? raw : `${defaultScheme}://${raw}`;
-    try {
-      const parsed = new URL(withScheme);
-      if (secureRequired && parsed.protocol === 'ws:') {
-        parsed.protocol = 'wss:';
-      }
-      return parsed.toString();
-    } catch {
-      return withScheme;
-    }
-  }
+  // (getWiFiDirectEndpoints + normalizeWebSocketUrl already declared above)
 
   private handleResponse(data: string): void {
     this.rxBytes += data.length;
@@ -1259,8 +1235,6 @@ export class FireOneHardwareBridge {
         this.pendingResolves.delete('VER:');
         resolve(ok);
       };
-      this.pendingResolves.set('PONG', () => finish(true));
-      this.pendingResolves.set('VER:', () => finish(true));
       // Drain sentinel ('') from handleDisconnect resolves with falsy → finish(false).
       this.registerPending('PONG', 'HANDSHAKE', (val) => finish(Boolean(val)));
       this.registerPending('VER:', 'HANDSHAKE', (val) => finish(Boolean(val)));
