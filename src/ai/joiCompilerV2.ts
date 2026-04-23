@@ -342,8 +342,9 @@ function buildIR(
       },
     }));
 
+    // Padded frameIndex enables lexicographic ordering = execution ordering
     const sequenceId = fnv1a(
-      `${ast.showId}|${n.id}|${frameIndex}|${n.start}|${n.duration}|${n.targets.join(',')}|${n.kind}`,
+      `${ast.showId}|${frameIndex.toString().padStart(6, '0')}|${n.start}|${n.id}|${n.kind}|${n.targets.join(',')}`,
     );
 
     return Object.freeze<IRStep>({
@@ -361,7 +362,7 @@ function buildIR(
       },
       executionHint: {
         mode: executionLayer,
-        degraded: executionLayer !== 'real' && risk > 0.7,
+        degraded: executionLayer !== 'real' || risk > 0.85,
       },
     });
   });
@@ -399,7 +400,11 @@ function buildIR(
       maxDroneSpeedUsed: 0,
       maxPyroConcurrency,
       dmxChannelLoad,
-      riskEnvelope: { avg: Math.min(1, avgRisk), peak: peakRisk },
+      riskEnvelope: {
+        avg: Math.min(1, avgRisk),
+        peak: peakRisk,
+        variance: Math.max(0, peakRisk - Math.min(1, avgRisk)),
+      },
     },
     safety: {
       collisionRiskScore: Math.min(1, avgRisk),
