@@ -1,12 +1,14 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { jsonError } from "./response.ts";
+
+type AuthenticatedClient = SupabaseClient<any, "public", any>;
 
 /**
  * Validate the Authorization header and return a Supabase client + userId.
  * Returns an error Response if auth fails.
  */
 export async function requireAuth(req: Request): Promise<
-  | { client: ReturnType<typeof createClient>; userId: string; error?: never }
+  | { client: AuthenticatedClient; userId: string; error?: never }
   | { error: Response; client?: never; userId?: never }
 > {
   const authHeader = req.headers.get("Authorization");

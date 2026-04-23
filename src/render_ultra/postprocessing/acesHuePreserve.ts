@@ -20,6 +20,8 @@
 import { Effect } from 'postprocessing';
 import { Uniform } from 'three';
 
+type EffectUniformMap = Map<string, Uniform>;
+
 const ACES_HUE_PRESERVE_FRAGMENT = `
 uniform float exposure;
 uniform float huePreserveStrength;
@@ -78,6 +80,10 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `;
 
 export class ACESHuePreserveEffect extends Effect {
+  private get effectUniforms(): EffectUniformMap {
+    return (this as unknown as { uniforms: EffectUniformMap }).uniforms;
+  }
+
   constructor({
     exposure = 1.0,
     huePreserveStrength = 0.7,
@@ -96,7 +102,7 @@ export class ACESHuePreserveEffect extends Effect {
     });
   }
 
-  set exposure(v: number) { (this.uniforms.get('exposure') as Uniform).value = v; }
-  set huePreserveStrength(v: number) { (this.uniforms.get('huePreserveStrength') as Uniform).value = v; }
-  set highlightThreshold(v: number) { (this.uniforms.get('highlightThreshold') as Uniform).value = v; }
+  set exposure(v: number) { (this.effectUniforms.get('exposure') as Uniform).value = v; }
+  set huePreserveStrength(v: number) { (this.effectUniforms.get('huePreserveStrength') as Uniform).value = v; }
+  set highlightThreshold(v: number) { (this.effectUniforms.get('highlightThreshold') as Uniform).value = v; }
 }
