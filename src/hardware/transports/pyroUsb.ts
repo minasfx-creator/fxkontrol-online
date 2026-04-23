@@ -88,15 +88,34 @@ export class PyroUsbTransport {
     }
   }
 
+  /**
+   * Bind a transport adapter. Reconnection = NEW SESSION.
+   * Any previously armed modules are INVALIDATED — operator must
+   * explicitly re-arm after a re-bind. This prevents "phantom armed"
+   * state surviving a cable disconnect/reconnect cycle.
+   */
   bindAdapter(adapter: PyroUsbPortAdapter): void {
+    const hadArmed = this.armedModules.size > 0;
     this.adapter = adapter;
-    this.state = this.armedModules.size > 0 ? 'armed' : 'idle';
+    // SAFETY: never preserve armed state across adapter binds
+    this.armedModules.clear();
+    this.lastWatchdogKickAt = null;
+    // If previous state was lockout/fault, keep it — operator must clearLockout()
+    if (this.state !== 'lockout' && this.state !== 'fault') {
+      this.state = 'idle';
+    }
+    if (hadArmed) {
+      this.emitEvent({ type: 'armed-invalidated', timestamp: Date.now() });
+    }
+    this.startWatchdogTimer();
   }
 
   unbindAdapter(): void {
+    this.stopWatchdogTimer();
     this.adapter = null;
     this.armedModules.clear();
     this.lockoutReason = null;
+    this.lastWatchdogKickAt = null;
     this.state = 'disconnected';
   }
 
