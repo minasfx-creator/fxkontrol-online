@@ -24,15 +24,7 @@ type ComplianceStatus =
   | 'PLANNED'
   | 'MISSING'
   | 'BLOCKED'
-  | 'NOT_APPLICABLE'
-  // Legacy lowercase aliases (kept for backward compat with existing data rows)
-  | 'implemented'
-  | 'verified'
-  | 'partial'
-  | 'planned'
-  | 'missing'
-  | 'blocked'
-  | 'not_applicable';
+  | 'NOT_APPLICABLE';
 
 type EvidenceStatus = 'none' | 'self_attested' | 'tested' | 'third_party';
 
@@ -40,18 +32,13 @@ interface ComplianceRow {
   source: string;
   clause: string;
   requirement: string;
-  status: ComplianceStatus;
+  status: ComplianceStatus | string;  // tolerate legacy lowercase rows
   evidence: string;
   action?: string;
   evidenceStatus?: EvidenceStatus;
   nextAction?: string;
   owner?: string;
   criticalForGoLive?: boolean;
-}
-
-/** Normalize lowercase legacy statuses to uppercase canonical form. */
-function normalizeStatus(s: ComplianceStatus): Exclude<ComplianceStatus, Lowercase<string>> {
-  return (typeof s === 'string' ? s.toUpperCase() : s) as never;
 }
 
 const STATUS_CFG: Record<ComplianceStatus, { icon: typeof CheckCircle2; color: string; bg: string; label: string }> = {
