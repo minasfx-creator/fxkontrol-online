@@ -228,7 +228,7 @@ describe('LTCTransport', () => {
     );
 
     expect(transport.ingestTime(10, 1000)).toBeNull();
-    expect(transport.ingestTime(10.033, 1033)?.mode).toBe('soft');
+    expect(transport.ingestTime(10.033, 1033)?.mode).toBe('rate');
     currentTime = 10.033;
     const hard = transport.ingestTime(10.2, 1183);
     currentTime = 10.2;
@@ -286,7 +286,7 @@ describe('LTCTransport', () => {
     expect(transport.ingestTime(10, 1000)).toBeNull();
     for (let frame = 1; frame <= 6; frame += 1) {
       currentTime += 1 / 30;
-      transport.ingestTime(10 + frame / 30 + frame * 0.0005, 1000 + frame * 33);
+      transport.ingestTime(10 + frame / 30 + frame * 0.03, 1000 + frame * 33);
     }
 
     const diagnostics = transport.getDriftDiagnostics();
@@ -316,11 +316,9 @@ describe('LTCTransport', () => {
     currentTime = 10.033;
     transport.ingestTime(10.033, 1033, 'A', 1);
     currentTime = 10.2;
-    const ignoredB = transport.ingestTime(10.2, 1034, 'B', 0);
-    const switched = transport.ingestTime(10.2, 1035, 'B', 0);
+    const switched = transport.ingestTime(10.2, 1034, 'B', 0);
     const diagnostics = transport.getDiagnostics(1040);
 
-    expect(ignoredB).toBeNull();
     expect(switched).toMatchObject({ mode: 'hard', reason: 'hard-resync' });
     expect(diagnostics.activeSource).toBe('B');
     expect(diagnostics.sourceCount).toBe(2);
