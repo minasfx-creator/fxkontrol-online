@@ -242,18 +242,37 @@ function computeOverlaps(ast: JoiAST): {
   // ends before starts at same t to avoid counting touching intervals
   events.sort((a, b) => a.t - b.t || a.type - b.type);
 
-  const active = new Set<number>();
+  // Linear sweep using activeCount (avoids O(n²) on dense scenes).
+  // Each new start adds activeCount to itself; each currently active node
+  // gains +1 (tracked separately via end-of-interval increments).
+  // To keep per-node accuracy without iterating `active`, we accumulate
+  // overlap as: starts seen while node was active = (endRank - startRank - 1) overlaps among them.
+  let activeCount = 0;
+  // overlapsAtStart[i] = activeCount when node i started
+  const overlapsAtStart = new Array<number>(n).fill(0);
   for (const ev of events) {
     if (ev.type === 0) {
-      // entering: this node overlaps with everyone currently active
-      for (const j of active) {
-        perNodeOverlap[ev.idx]++;
-        perNodeOverlap[j]++;
-      }
-      active.add(ev.idx);
+      overlapsAtStart[ev.idx] = activeCount;
+      activeCount++;
     } else {
-      active.delete(ev.idx);
+      activeCount--;
     }
+  }
+  // Second linear pass: a node's total overlap = (overlapsAtStart) + (starts that occurred while it was active)
+  // Compute "starts during my interval" via second sweep.
+  const startsBefore = new Array<number>(n).fill(0); // cumulative starts up to my end
+  let startsCum = 0;
+  for (const ev of events) {
+    if (ev.type === 1) {
+      startsBefore[ev.idx] = startsCum;
+    } else {
+      startsCum++;
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    // starts that happened strictly between my start and my end
+    const startsDuring = startsBefore[i] - (overlapsAtStart[i] + 1);
+    perNodeOverlap[i] = overlapsAtStart[i] + Math.max(0, startsDuring);
   }
 
   // Pyro-only sweep for maxPyroConcurrency
