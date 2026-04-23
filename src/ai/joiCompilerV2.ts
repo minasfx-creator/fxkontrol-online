@@ -1,14 +1,28 @@
 /**
- * Joi Compiler v2 — AST → IR pipeline.
+ * Joi Compiler v2.1 — AST → IR (engine-grade, deterministic).
  *
  * CAMADA EXTERNA, ISOLADA. Não toca:
  *  - core determinístico (showCompiler/ShowGraph clássico)
  *  - HIL / SafetyStateMachine / runtime
  *  - hardware adapters
  *
- * Fluxo:  JoiAST (intenção) → constraint analysis → JoiIR (plano físico) → validateIR
- * Próximas camadas (não implementadas aqui): IR → Timeline determinística → HIL → Cert.
+ * Refinos v2.1:
+ *  - ACTION_MAP declarativo (auditável, LLM-explainable)
+ *  - frameIndex + sequenceId (FNV1a) → determinismo forte / replay
+ *  - Sweep-line O(n log n) para concurrency (substitui O(n²))
+ *  - Weighted risk model (pyro/drone/dmx/overlap)
+ *  - executionLayer flag (simulated | real | shadow)
  */
+
+// ─── Constantes do engine ──────────────────────────────────────────
+export const FRAME_SIZE_MS = 100; // 10 Hz scheduling grid (HIL-ready)
+
+const RISK_WEIGHTS = {
+  pyro: 0.5,
+  drone: 0.3,
+  dmx: 0.1,
+  overlap: 0.1,
+} as const;
 
 // ─── AST ───────────────────────────────────────────────────────────
 export type JoiNodeKind =
@@ -20,6 +34,7 @@ export type JoiNodeKind =
   | 'finale';
 
 export type JoiTarget = 'drone' | 'pyro' | 'dmx';
+export type ExecutionLayer = 'simulated' | 'real' | 'shadow';
 
 export interface JoiASTNode {
   readonly id: string;
@@ -67,27 +82,34 @@ export interface IRCommand {
 
 export interface IRStep {
   readonly id: string;
+  readonly sequenceId: string; // deterministic hash (FNV1a)
+  readonly frameIndex: number; // floor(t0 / FRAME_SIZE_MS)
   readonly t0: number;
   readonly t1: number;
   readonly commands: readonly IRCommand[];
   readonly context: {
     readonly activeActors: number;
     readonly risk: number;
+    readonly overlapCount: number;
   };
 }
 
 export interface JoiIR {
   readonly showId: string;
   readonly version: 'joi-ir-v1';
+  readonly executionLayer: ExecutionLayer;
+  readonly frameSizeMs: number;
   readonly steps: readonly IRStep[];
   readonly globalStats: {
     readonly duration: number;
+    readonly frames: number;
     readonly maxDroneSpeedUsed: number;
     readonly maxPyroConcurrency: number;
     readonly dmxChannelLoad: number;
   };
   readonly safety: {
     readonly collisionRiskScore: number;
+    readonly peakRisk: number;
     readonly constraintViolations: readonly string[];
   };
 }
@@ -102,6 +124,52 @@ export interface CompileResultV2 {
     readonly irValid: boolean;
     readonly constraintPass: boolean;
   };
+}
+
+export interface CompileOptionsV2 {
+  readonly executionLayer?: ExecutionLayer;
+}
+
+// ─── Action mapping declarativo (auditável) ────────────────────────
+type ActionMap = {
+  readonly [T in JoiTarget]: { readonly [K in JoiNodeKind]: IRAction };
+};
+
+export const ACTION_MAP: ActionMap = {
+  drone: {
+    scene: 'pattern',
+    formation: 'pattern',
+    transition: 'move',
+    accent: 'move',
+    pulse: 'hold',
+    finale: 'pattern',
+  },
+  pyro: {
+    scene: 'hold',
+    formation: 'hold',
+    transition: 'hold',
+    accent: 'ignite',
+    pulse: 'ignite',
+    finale: 'ignite',
+  },
+  dmx: {
+    scene: 'color',
+    formation: 'color',
+    transition: 'color',
+    accent: 'intensity',
+    pulse: 'intensity',
+    finale: 'intensity',
+  },
+} as const;
+
+// ─── FNV1a 32-bit (deterministic, no deps) ─────────────────────────
+function fnv1a(input: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = (hash + ((hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24))) >>> 0;
+  }
+  return hash.toString(16).padStart(8, '0');
 }
 
 // ─── AST validation (estrutural) ───────────────────────────────────
@@ -145,73 +213,160 @@ function analyzeConstraints(ast: JoiAST): string[] {
   return violations;
 }
 
-// ─── Action mapping por target (intent → physical action) ──────────
-function actionFor(target: JoiTarget, kind: JoiNodeKind): IRAction {
-  if (target === 'pyro') return kind === 'finale' || kind === 'accent' ? 'ignite' : 'hold';
-  if (target === 'dmx') return kind === 'pulse' ? 'intensity' : 'color';
-  // drone
-  if (kind === 'formation' || kind === 'scene') return 'pattern';
-  if (kind === 'transition') return 'move';
-  return 'hold';
+// ─── Sweep-line: per-node overlap count + max pyro concurrency ─────
+type SweepEvent = { t: number; type: 0 | 1; idx: number }; // 0=start,1=end
+
+function computeOverlaps(ast: JoiAST): {
+  perNodeOverlap: number[];
+  maxPyroConcurrency: number;
+} {
+  const n = ast.nodes.length;
+  const perNodeOverlap = new Array<number>(n).fill(0);
+  if (n === 0) return { perNodeOverlap, maxPyroConcurrency: 0 };
+
+  // Generic overlap (all nodes) for risk model
+  const events: SweepEvent[] = [];
+  for (let i = 0; i < n; i++) {
+    events.push({ t: ast.nodes[i].start, type: 0, idx: i });
+    events.push({ t: ast.nodes[i].start + ast.nodes[i].duration, type: 1, idx: i });
+  }
+  // ends before starts at same t to avoid counting touching intervals
+  events.sort((a, b) => a.t - b.t || a.type - b.type);
+
+  const active = new Set<number>();
+  for (const ev of events) {
+    if (ev.type === 0) {
+      // entering: this node overlaps with everyone currently active
+      for (const j of active) {
+        perNodeOverlap[ev.idx]++;
+        perNodeOverlap[j]++;
+      }
+      active.add(ev.idx);
+    } else {
+      active.delete(ev.idx);
+    }
+  }
+
+  // Pyro-only sweep for maxPyroConcurrency
+  const pyroEvents: SweepEvent[] = [];
+  for (let i = 0; i < n; i++) {
+    if (!ast.nodes[i].targets.includes('pyro')) continue;
+    pyroEvents.push({ t: ast.nodes[i].start, type: 0, idx: i });
+    pyroEvents.push({ t: ast.nodes[i].start + ast.nodes[i].duration, type: 1, idx: i });
+  }
+  pyroEvents.sort((a, b) => a.t - b.t || b.type - a.type); // starts before ends => peak
+  let cur = 0;
+  let maxPyroConcurrency = 0;
+  for (const ev of pyroEvents) {
+    cur += ev.type === 0 ? 1 : -1;
+    if (cur > maxPyroConcurrency) maxPyroConcurrency = cur;
+  }
+
+  return { perNodeOverlap, maxPyroConcurrency };
+}
+
+// ─── Weighted risk per step ────────────────────────────────────────
+function computeStepRisk(
+  node: JoiASTNode,
+  overlapCount: number,
+  hasViolation: boolean,
+): number {
+  const intensity = node.intensity ?? 0.5;
+  let r = 0;
+  if (node.targets.includes('pyro')) r += RISK_WEIGHTS.pyro * intensity;
+  if (node.targets.includes('drone')) r += RISK_WEIGHTS.drone * intensity;
+  if (node.targets.includes('dmx')) r += RISK_WEIGHTS.dmx * intensity;
+  r += RISK_WEIGHTS.overlap * Math.min(1, overlapCount / 4);
+  if (hasViolation) r = Math.max(r, 0.8);
+  return Math.min(1, r);
 }
 
 // ─── IR builder ────────────────────────────────────────────────────
-function buildIR(ast: JoiAST, violations: readonly string[]): JoiIR {
-  const violationCount = violations.length;
-  const baseRisk = violationCount > 0 ? 0.8 : 0.2;
+function buildIR(
+  ast: JoiAST,
+  violations: readonly string[],
+  executionLayer: ExecutionLayer,
+): JoiIR {
+  const violationIds = new Set(
+    violations.map((v) => v.split(':')[0].replace('node ', '').trim()),
+  );
+  const hasGlobalViolation = violations.length > 0;
 
-  const steps: IRStep[] = ast.nodes.map((n) => {
+  const { perNodeOverlap, maxPyroConcurrency } = computeOverlaps(ast);
+
+  const steps: IRStep[] = ast.nodes.map((n, i) => {
+    const overlapCount = perNodeOverlap[i];
+    const hasViolation = violationIds.has(n.id) || hasGlobalViolation;
+    const risk = computeStepRisk(n, overlapCount, hasViolation);
+    const frameIndex = Math.floor(n.start / FRAME_SIZE_MS);
+
     const commands: IRCommand[] = n.targets.map((t) => ({
       target: t,
-      action: actionFor(t, n.kind),
-      params: { ...n.params, intensity: n.intensity ?? 1 },
+      action: ACTION_MAP[t][n.kind],
+      params: Object.freeze({ ...n.params, intensity: n.intensity ?? 1 }),
       constraints: {
-        safe: violationCount === 0,
-        riskScore: Math.min(1, violationCount * 0.1),
+        safe: !hasViolation,
+        riskScore: risk,
         bounded: true,
       },
     }));
+
+    const sequenceId = fnv1a(
+      `${ast.showId}|${n.id}|${frameIndex}|${n.t0 ?? n.start}|${n.targets.join(',')}|${n.kind}`,
+    );
+
     return Object.freeze<IRStep>({
       id: n.id,
+      sequenceId,
+      frameIndex,
       t0: n.start,
       t1: n.start + n.duration,
       commands: Object.freeze(commands),
-      context: { activeActors: n.targets.length, risk: baseRisk },
+      context: {
+        activeActors: n.targets.length,
+        risk,
+        overlapCount,
+      },
     });
   });
+
+  // Deterministic ordering: frameIndex → t0 → sequenceId
+  const orderedSteps = [...steps].sort(
+    (a, b) =>
+      a.frameIndex - b.frameIndex ||
+      a.t0 - b.t0 ||
+      a.sequenceId.localeCompare(b.sequenceId),
+  );
 
   const duration = ast.nodes.reduce(
     (acc, n) => Math.max(acc, n.start + n.duration),
     0,
   );
-
-  // Concurrency: pyro events overlapping in time
-  let maxPyroConcurrency = 0;
-  for (const a of ast.nodes) {
-    if (!a.targets.includes('pyro')) continue;
-    let c = 1;
-    for (const b of ast.nodes) {
-      if (b === a || !b.targets.includes('pyro')) continue;
-      const overlap = b.start < a.start + a.duration && b.start + b.duration > a.start;
-      if (overlap) c++;
-    }
-    maxPyroConcurrency = Math.max(maxPyroConcurrency, c);
-  }
-
+  const frames = Math.ceil(duration / FRAME_SIZE_MS);
   const dmxChannelLoad = ast.nodes.filter((n) => n.targets.includes('dmx')).length;
+
+  const peakRisk = orderedSteps.reduce((m, s) => Math.max(m, s.context.risk), 0);
+  const avgRisk =
+    orderedSteps.length > 0
+      ? orderedSteps.reduce((s, x) => s + x.context.risk, 0) / orderedSteps.length
+      : 0;
 
   return Object.freeze<JoiIR>({
     showId: ast.showId,
     version: 'joi-ir-v1',
-    steps: Object.freeze(steps),
+    executionLayer,
+    frameSizeMs: FRAME_SIZE_MS,
+    steps: Object.freeze(orderedSteps),
     globalStats: {
       duration,
+      frames,
       maxDroneSpeedUsed: 0,
       maxPyroConcurrency,
       dmxChannelLoad,
     },
     safety: {
-      collisionRiskScore: Math.min(1, violationCount * 0.2),
+      collisionRiskScore: Math.min(1, avgRisk),
+      peakRisk,
       constraintViolations: Object.freeze([...violations]),
     },
   });
@@ -221,13 +376,18 @@ function buildIR(ast: JoiAST, violations: readonly string[]): JoiIR {
 function validateIR(ir: JoiIR): boolean {
   return (
     ir.steps.length > 0 &&
-    ir.safety.collisionRiskScore < 1 &&
+    ir.safety.peakRisk < 1 &&
     ir.safety.constraintViolations.length < 10
   );
 }
 
 // ─── Public pipeline ───────────────────────────────────────────────
-export function compileJoiV2(ast: JoiAST): CompileResultV2 {
+export function compileJoiV2(
+  ast: JoiAST,
+  options: CompileOptionsV2 = {},
+): CompileResultV2 {
+  const executionLayer: ExecutionLayer = options.executionLayer ?? 'simulated';
+
   const astErrors = validateAST(ast);
   if (astErrors.length > 0) {
     return {
@@ -238,7 +398,7 @@ export function compileJoiV2(ast: JoiAST): CompileResultV2 {
   }
 
   const violations = analyzeConstraints(ast);
-  const ir = buildIR(ast, violations);
+  const ir = buildIR(ast, violations, executionLayer);
   const irValid = validateIR(ir);
 
   return {
@@ -255,4 +415,12 @@ export function compileJoiV2(ast: JoiAST): CompileResultV2 {
 }
 
 // Helpers expostos para testes / UI de debug
-export const __internals = { validateAST, analyzeConstraints, buildIR, validateIR };
+export const __internals = {
+  validateAST,
+  analyzeConstraints,
+  buildIR,
+  validateIR,
+  computeOverlaps,
+  computeStepRisk,
+  fnv1a,
+};
