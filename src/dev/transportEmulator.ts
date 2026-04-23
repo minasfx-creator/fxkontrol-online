@@ -67,6 +67,12 @@ export class TransportEmulator {
   private autoReplies: Array<{ match: RegExp; reply: (cmd: string) => string | null }> = [];
   private trace: Array<{ dir: 'tx' | 'rx'; data: string; at: number; mode: EmulatorMode }> = [];
   private traceCap = 1000;
+  private txCount = 0;
+  private rxCount = 0;
+  private replayTimers = new Set<ReturnType<typeof setTimeout>>();
+  private replayState: 'idle' | 'running' | 'paused' = 'idle';
+  private replayCursor = 0;
+  private replayFrames: Array<{ dir: 'tx' | 'rx'; data: string; at: number }> = [];
 
   constructor(cfg: EmulatorConfig) {
     // Production guard — emulator is dev/test only.
