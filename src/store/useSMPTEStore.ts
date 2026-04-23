@@ -304,11 +304,12 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
         };
         const extSeconds = timecodeToSeconds(extTc);
         const projectTime = extSeconds - state.startTimecodeSeconds;
+        const nextPacketCount = state.packetCount + 1;
 
         set({
           externalTimecode: extTc,
           externalTimeSeconds: extSeconds,
-          packetCount: state.packetCount + 1,
+          packetCount: nextPacketCount,
           lastPacketAt: Date.now(),
         });
 
@@ -339,7 +340,7 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
               break;
 
             case 'jam':
-              if (state.packetCount <= 3 || Math.abs(chase.driftSec) > 2.0) {
+              if (nextPacketCount === 1 || Math.abs(chase.driftSec) > 2.0) {
                 timelineClock.syncExternalTime(chase.mode === 'ignore' ? currentProjectTime : chase.nextTime);
                 if (!projectStore.isPlaying) timelineClock.play();
               }

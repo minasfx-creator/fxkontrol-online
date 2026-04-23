@@ -135,13 +135,59 @@ describe('timelineClock/store sync', () => {
     timelineClock.setDuration(20);
 
     timelineClock.seek(Number.NaN);
+    timelineClock.seek(Number.NEGATIVE_INFINITY);
+    timelineClock.syncExternalTime(Number.POSITIVE_INFINITY);
     timelineClock.setSpeed(Number.POSITIVE_INFINITY);
     timelineClock.setDuration(Number.NaN);
+    timelineClock.setDuration(-5);
+    timelineClock.tick(Number.NaN);
 
     mirror();
     const store = useProjectStore.getState();
     expect(store.currentTime).toBe(5);
     expect(store.playbackSpeed).toBe(2);
     expect(store.duration).toBe(20);
+  });
+
+  it('preserves deterministic behavior across a full playback lifecycle', () => {
+    timelineClock.setDuration(30);
+    timelineClock.seek(12);
+    mirror();
+
+    timelineClock.play();
+    timelineClock.tick(0.5);
+    timelineClock.pause();
+    mirror();
+    expect(useProjectStore.getState().currentTime).toBe(12.5);
+
+    timelineClock.setDuration(10);
+    mirror();
+    expect(useProjectStore.getState().currentTime).toBe(10);
+    expect(useProjectStore.getState().isPlaying).toBe(false);
+
+    timelineClock.seek(Number.NaN);
+    timelineClock.setSpeed(Number.POSITIVE_INFINITY);
+    mirror();
+    expect(useProjectStore.getState().currentTime).toBe(10);
+    expect(useProjectStore.getState().playbackSpeed).toBe(1);
+  });
+
+  it('resyncs cleanly after pause when external time has advanced', () => {
+    timelineClock.setDuration(120);
+    timelineClock.syncExternalTime(20);
+    timelineClock.pause();
+    mirror();
+
+    timelineClock.syncExternalTime(24.5);
+    mirror();
+    expect(useProjectStore.getState().currentTime).toBe(24.5);
+    expect(useProjectStore.getState().timelineSource).toBe('external');
+
+    timelineClock.play();
+    timelineClock.tick(0.5);
+    mirror();
+    expect(useProjectStore.getState().currentTime).toBe(25);
+    expect(useProjectStore.getState().isPlaying).toBe(true);
+    expect(useProjectStore.getState().timelineSource).toBe('local');
   });
 });
