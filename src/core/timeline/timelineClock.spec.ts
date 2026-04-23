@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { timelineClock } from '@/core/timeline/TimelineClock';
+import { resolveSMPTEChase } from '@/core/timeline/smpteChase';
 import { useProjectStore } from '@/store/useProjectStore';
 import { isDriftFree } from '@/core/timeline/driftGuard';
 
@@ -62,9 +63,11 @@ describe('timelineClock/store sync', () => {
   });
 
   it('syncs external time metadata', () => {
+    timelineClock.setSpeed(2);
     timelineClock.syncExternalTime(8);
     mirror();
     const store = useProjectStore.getState();
+    expect(store.playbackSpeed).toBe(1);
     expect(store.timelineSource).toBe('external');
     expect(store.timelineLastExternalSync).not.toBeNull();
     expect(store.timelineDriftSec).toBe(8);
@@ -189,5 +192,23 @@ describe('timelineClock/store sync', () => {
     expect(useProjectStore.getState().currentTime).toBe(25);
     expect(useProjectStore.getState().isPlaying).toBe(true);
     expect(useProjectStore.getState().timelineSource).toBe('local');
+  });
+
+  it('keeps store mirrored without manual sync calls', () => {
+    timelineClock.seek(14.25);
+    expect(useProjectStore.getState().currentTime).toBe(14.25);
+
+    timelineClock.play();
+    expect(useProjectStore.getState().isPlaying).toBe(true);
+
+    timelineClock.setDuration(10);
+    expect(useProjectStore.getState().currentTime).toBe(10);
+    expect(useProjectStore.getState().duration).toBe(10);
+  });
+
+  it('uses soft chase for jitter and snap only for large drift', () => {
+    expect(resolveSMPTEChase(10, 10.01).mode).toBe('ignore');
+    expect(resolveSMPTEChase(10, 10.03).mode).toBe('soft');
+    expect(resolveSMPTEChase(10, 10.75).mode).toBe('snap');
   });
 });

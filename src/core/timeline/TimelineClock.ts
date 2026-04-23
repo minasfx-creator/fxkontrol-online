@@ -11,6 +11,8 @@ export interface TimelineClockState {
 
 type TimelineClockListener = (state: TimelineClockState) => void;
 
+const TIME_PRECISION = 1e6;
+
 const DEFAULT_STATE: TimelineClockState = {
   time: 0,
   playing: false,
@@ -25,6 +27,10 @@ const DEFAULT_STATE: TimelineClockState = {
 class TimelineClock {
   private state: TimelineClockState = { ...DEFAULT_STATE };
   private listeners = new Set<TimelineClockListener>();
+
+  private normalizeTime(time: number): number {
+    return Math.round(this.clampTime(time) * TIME_PRECISION) / TIME_PRECISION;
+  }
 
   play(): void {
     if (this.state.playing) return;
@@ -45,7 +51,7 @@ class TimelineClock {
 
   seek(time: number): void {
     if (!Number.isFinite(time)) return;
-    const next = this.clampTime(time);
+    const next = this.normalizeTime(time);
     this.state.driftSec = 0;
     if (next === this.state.time) {
       this.state.source = 'local';
@@ -59,7 +65,7 @@ class TimelineClock {
 
   syncExternalTime(time: number): void {
     if (!Number.isFinite(time)) return;
-    const next = this.clampTime(time);
+    const next = this.normalizeTime(time);
     this.state.driftSec = next - this.state.time;
     if (next === this.state.time && this.state.source === 'external') {
       this.state.lastExternalSync = Date.now();
@@ -67,6 +73,7 @@ class TimelineClock {
       return;
     }
     this.state.time = next;
+    this.state.speed = 1;
     this.state.source = 'external';
     this.state.lastExternalSync = Date.now();
     this.notify();
@@ -85,7 +92,7 @@ class TimelineClock {
     const nextDuration = Math.max(1, duration);
     const prevTime = this.state.time;
     this.state.duration = nextDuration;
-    this.state.time = this.clampTime(prevTime);
+    this.state.time = this.normalizeTime(prevTime);
     if (this.state.time >= this.state.duration && !this.state.loop) {
       this.state.playing = false;
     }
@@ -105,9 +112,9 @@ class TimelineClock {
     const nextTime = this.state.time + dt * this.state.speed;
     if (nextTime >= this.state.duration) {
       if (this.state.loop) {
-        this.state.time = nextTime % this.state.duration;
+        this.state.time = this.normalizeTime(nextTime % this.state.duration);
       } else {
-        this.state.time = this.state.duration;
+        this.state.time = this.normalizeTime(this.state.duration);
         this.state.playing = false;
       }
       this.state.source = 'local';
@@ -116,7 +123,7 @@ class TimelineClock {
       return;
     }
 
-    this.state.time = nextTime;
+    this.state.time = this.normalizeTime(nextTime);
     this.state.source = 'local';
     this.state.driftSec = 0;
     this.notify();

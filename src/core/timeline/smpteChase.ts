@@ -1,5 +1,6 @@
 export interface SMPTEChaseOptions {
   deadbandSec?: number;
+  softThresholdSec?: number;
   snapThresholdSec?: number;
   maxCorrectionPerTickSec?: number;
 }
@@ -12,6 +13,7 @@ export interface SMPTEChaseResult {
 
 const DEFAULT_OPTIONS: Required<SMPTEChaseOptions> = {
   deadbandSec: 0.02,
+  softThresholdSec: 0.05,
   snapThresholdSec: 0.5,
   maxCorrectionPerTickSec: 0.05,
 };
@@ -27,6 +29,10 @@ export function resolveSMPTEChase(
 
   if (absDrift <= config.deadbandSec) {
     return { mode: 'ignore', nextTime: localTime, driftSec };
+  }
+
+  if (absDrift <= config.softThresholdSec) {
+    return { mode: 'soft', nextTime: externalTime, driftSec };
   }
 
   if (absDrift >= config.snapThresholdSec) {
