@@ -48,6 +48,8 @@ export interface ExecutionFrame {
     readonly pyroLoad: number;
     readonly dmxLoad: number;
     readonly droneLoad: number;
+    readonly frameLoad: number; // commands count
+    readonly weightedLoad: number; // weighted by target criticality
   };
 }
 
@@ -97,11 +99,13 @@ export function buildExecutionPlan(ir: JoiIR): ExecutionPlan {
   for (let i = 0; i < totalFrames; i++) {
     const steps = buckets.get(i) ?? [];
     const commands: PlannedCommand[] = [];
+
     let pyro = 0;
     let dmx = 0;
     let drone = 0;
-    let riskSum = 0;
-    let peakRisk = 0;
+
+    let frameRiskSum = 0;
+    let framePeakRisk = 0;
     let degraded = false;
 
     for (const step of steps) {
@@ -122,17 +126,22 @@ export function buildExecutionPlan(ir: JoiIR): ExecutionPlan {
         else if (cmd.target === 'dmx') dmx++;
         else if (cmd.target === 'drone') drone++;
       }
-      riskSum += step.context.risk;
-      if (step.context.risk > peakRisk) peakRisk = step.context.risk;
+      frameRiskSum += step.context.risk;
+      if (step.context.risk > framePeakRisk) framePeakRisk = step.context.risk;
     }
 
     const activeSteps = steps.length;
-    const avgRisk = activeSteps > 0 ? riskSum / activeSteps : 0;
+    const avgRisk = activeSteps > 0 ? frameRiskSum / activeSteps : 0;
     if (avgRisk > 0.85) degraded = true;
 
-    const frameLoad = pyro + dmx + drone;
+    // Frame load = command-level concurrency (more accurate than step count)
+    const frameLoad = commands.length;
+    const weightedLoad = pyro * 2 + drone * 1.5 + dmx * 1.2;
+
+    // Hash includes sequenceIds → closes replay drift gap
+    const seqJoin = steps.map((s) => s.sequenceId).join('.');
     const hash = fnv1a(
-      `${ir.showId}|${i}|${commands.length}|${pyro}|${dmx}|${drone}|${peakRisk.toFixed(4)}`,
+      `${ir.showId}|${i}|${commands.length}|${pyro}|${dmx}|${drone}|${framePeakRisk.toFixed(4)}|${seqJoin}`,
     );
 
     frames[i] = Object.freeze<ExecutionFrame>({
@@ -143,19 +152,21 @@ export function buildExecutionPlan(ir: JoiIR): ExecutionPlan {
       degraded,
       commands: Object.freeze(commands),
       telemetry: {
-        risk: peakRisk,
+        risk: framePeakRisk,
         avgRisk,
         activeSteps,
         pyroLoad: pyro,
         dmxLoad: dmx,
         droneLoad: drone,
+        frameLoad,
+        weightedLoad,
       },
     });
 
     if (frameLoad > maxConcurrency) maxConcurrency = frameLoad;
   }
 
-  // Risk envelope at planner level (uses peak per frame)
+  // Risk envelope at planner level (peak per frame + std-dev spread)
   let sumRisk = 0;
   let peak = 0;
   for (const f of frames) {
@@ -163,7 +174,12 @@ export function buildExecutionPlan(ir: JoiIR): ExecutionPlan {
     if (f.telemetry.risk > peak) peak = f.telemetry.risk;
   }
   const avg = frames.length > 0 ? sumRisk / frames.length : 0;
-  const spread = Math.max(0, peak - avg);
+  let varianceSum = 0;
+  for (const f of frames) {
+    const d = f.telemetry.risk - avg;
+    varianceSum += d * d;
+  }
+  const spread = frames.length > 0 ? Math.sqrt(varianceSum / frames.length) : 0;
 
   return Object.freeze<ExecutionPlan>({
     showId: ir.showId,
