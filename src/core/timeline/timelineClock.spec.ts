@@ -70,6 +70,26 @@ describe('timelineClock/store sync', () => {
     expect(store.timelineDriftSec).toBe(8);
   });
 
+  it('keeps mirror aligned across direct store mutators', () => {
+    const store = useProjectStore.getState();
+
+    store.setCurrentTime(18.25);
+    mirror();
+
+    store.setPlaying(true);
+    mirror();
+
+    store.setPlaybackSpeed(1.5);
+    mirror();
+
+    store.setDuration(10);
+    mirror();
+    expect(useProjectStore.getState().currentTime).toBe(10);
+
+    store.setPlaying(false);
+    mirror();
+  });
+
   it('ticks deterministically and respects stop at duration', () => {
     timelineClock.setDuration(2);
     timelineClock.setSpeed(2);
@@ -107,5 +127,21 @@ describe('timelineClock/store sync', () => {
     expect(store.isPlaying).toBe(false);
     expect(store.duration).toBe(64);
     expect(store.playbackSpeed).toBe(1);
+  });
+
+  it('ignores non-finite inputs and preserves deterministic state', () => {
+    timelineClock.seek(5);
+    timelineClock.setSpeed(2);
+    timelineClock.setDuration(20);
+
+    timelineClock.seek(Number.NaN);
+    timelineClock.setSpeed(Number.POSITIVE_INFINITY);
+    timelineClock.setDuration(Number.NaN);
+
+    mirror();
+    const store = useProjectStore.getState();
+    expect(store.currentTime).toBe(5);
+    expect(store.playbackSpeed).toBe(2);
+    expect(store.duration).toBe(20);
   });
 });
