@@ -71,6 +71,7 @@ class TimelineClock {
   }
 
   setSpeed(speed: number): void {
+    if (!Number.isFinite(speed)) return;
     const next = Math.max(0.1, Math.min(speed, 10));
     if (next === this.state.speed) return;
     this.state.speed = next;
@@ -78,6 +79,7 @@ class TimelineClock {
   }
 
   setDuration(duration: number): void {
+    if (!Number.isFinite(duration)) return;
     const nextDuration = Math.max(1, duration);
     const prevTime = this.state.time;
     this.state.duration = nextDuration;
@@ -145,6 +147,9 @@ class TimelineClock {
   }
 
   private clampTime(time: number): number {
+    if (!Number.isFinite(time)) {
+      return this.state.time;
+    }
     return Math.max(0, Math.min(time, this.state.duration));
   }
 
