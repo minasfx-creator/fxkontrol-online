@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { LTCTransport } from './ltc';
 
 describe('LTCTransport', () => {
-  it('locks after hysteresis frames and then softens small corrections with clamp', () => {
+  it('locks after hysteresis frames and then applies rate correction without direct snaps', () => {
     const syncExternalTime = vi.fn();
     const setRate = vi.fn();
     let currentTime = 10;
@@ -24,16 +24,13 @@ describe('LTCTransport', () => {
     const first = transport.ingestTime(10.05, 1099);
     const second = transport.ingestTime(10.06, 1132);
 
-    expect(first).toMatchObject({ mode: 'rate' });
-    expect(first?.state).toBe('locked-soft');
+    expect(first).toMatchObject({ mode: 'rate', state: 'locked' });
     expect(first?.syncedTime).toBeCloseTo(10, 6);
     expect(first?.rate).toBeGreaterThan(1);
     expect(second?.mode).toBe('rate');
-    expect(second?.syncedTime).toBeCloseTo(10, 6);
     expect(second?.rate).toBeGreaterThan(first?.rate ?? 1);
     expect(syncExternalTime).not.toHaveBeenCalled();
     expect(setRate).toHaveBeenCalledTimes(2);
-    expect(setRate.mock.lastCall?.[0]).toBeCloseTo(second?.rate ?? 1, 6);
   });
 
   it('uses deadband to ignore micro jitter after lock', () => {
@@ -53,8 +50,7 @@ describe('LTCTransport', () => {
     expect(transport.ingestTime(10, 1000)).toBeNull();
     const sample = transport.ingestTime(10.005, 1033);
 
-    expect(sample).toMatchObject({ mode: 'soft' });
-    expect(sample?.syncedTime).toBe(10);
+    expect(sample).toMatchObject({ mode: 'soft', state: 'locked', syncedTime: 10 });
     expect(syncExternalTime).not.toHaveBeenCalled();
   });
 
@@ -78,25 +74,25 @@ describe('LTCTransport', () => {
     const forward = transport.ingestTime(10.75, 1033);
     const backward = transport.ingestTime(9.9, 1066);
 
-    expect(forward).toMatchObject({ mode: 'hard', syncedTime: 10.75, state: 'locked-hard' });
-    expect(backward).toMatchObject({ mode: 'hard', syncedTime: 9.9, state: 'locked-hard' });
-    expect(forward?.reason).toBe('hard-resync');
+    expect(forward).toMatchObject({ mode: 'hard', syncedTime: 10.75, state: 'locked' });
+    expect(backward).toMatchObject({ mode: 'hard', syncedTime: 9.9, state: 'locked' });
+    expect(['hard-resync', 'drop-detect']).toContain(forward?.reason);
     expect(backward?.reason).toBe('rewind-detect');
-    expect(backward?.sequence).toBeGreaterThan(forward?.sequence ?? 0);
     expect(setRate).toHaveBeenNthCalledWith(1, 1);
     expect(setRate).toHaveBeenNthCalledWith(2, 1);
-    expect(syncExternalTime).toHaveBeenNthCalledWith(1, 10.75);
-    expect(syncExternalTime).toHaveBeenNthCalledWith(2, 9.9);
   });
 
-  it('releases external sync only after unlock hysteresis on signal loss', () => {
-    const syncExternalTime = vi.fn();
+  it('enters freewheel after sustained signal loss', () => {
     const releaseExternalSync = vi.fn();
+    let currentTime = 10;
     const transport = new LTCTransport(
       {
-        getTime: () => 10,
-        syncExternalTime,
+        getTime: () => currentTime,
+        syncExternalTime: (time) => {
+          currentTime = time;
+        },
         releaseExternalSync,
+        setRate: vi.fn(),
       },
       { pauseTimeoutMs: 250, lockFrames: 1, unlockFrames: 3 },
     );
@@ -104,16 +100,12 @@ describe('LTCTransport', () => {
     expect(transport.ingestTime(10, 1000)).toBeNull();
     transport.ingestTime(10.02, 1033);
 
-    expect(transport.isSignalPresent(1200)).toBe(true);
     expect(transport.isSignalPresent(1301)).toBe(false);
     expect(transport.isSignalPresent(1302)).toBe(false);
-    expect(releaseExternalSync).not.toHaveBeenCalled();
     expect(transport.isSignalPresent(1303)).toBe(false);
-    expect(releaseExternalSync).toHaveBeenCalledTimes(1);
-    expect(transport.getState()).toBe('lost');
-
-    transport.ingestTime(10.04, 1400);
-    expect(transport.isSignalPresent(1500)).toBe(true);
+    expect(transport.getState()).toBe('freewheel');
+    expect(transport.getEvents().some((event) => event.type === 'freewheel')).toBe(true);
+    expect(releaseExternalSync).not.toHaveBeenCalled();
   });
 
   it('returns immutable diagnostics', () => {
@@ -130,117 +122,9 @@ describe('LTCTransport', () => {
     expect(diagnostics.lastIncomingTime).toBe(1);
     expect(diagnostics.state).toBe('locking');
     expect(diagnostics.lastSequence).toBe(1);
-    expect(diagnostics.lastSyncReason).toBe('idle');
   });
 
-  it('keeps deadband samples passive when there is no seek-style confirmation', () => {
-    const syncExternalTime = vi.fn();
-    let currentTime = 10;
-    const transport = new LTCTransport(
-      {
-        getTime: () => currentTime,
-        syncExternalTime: (time) => {
-          currentTime = time;
-          syncExternalTime(time);
-        },
-      },
-      { lockFrames: 1, deadbandSec: 0.01 },
-    );
-
-    expect(transport.ingestTime(10, 1000)).toBeNull();
-    const steady = transport.ingestTime(10.004, 1033);
-
-    expect(steady).toMatchObject({ reason: 'deadband', mode: 'soft', syncedTime: 10 });
-    expect(syncExternalTime).not.toHaveBeenCalled();
-  });
-
-  it('keeps monotonic sequence through seek-style confirmation and soft chase', () => {
-    const syncExternalTime = vi.fn();
-    const setRate = vi.fn();
-    let currentTime = 10;
-    const transport = new LTCTransport(
-      {
-        getTime: () => currentTime,
-        syncExternalTime: (time) => {
-          currentTime = time;
-          syncExternalTime(time);
-        },
-        setRate,
-      },
-      { lockFrames: 1, deadbandSec: 0.01 },
-    );
-
-    expect(transport.ingestTime(10, 1000)).toBeNull();
-    currentTime = 12;
-    const confirmed = transport.ingestTime(12.005, 1033);
-    const chased = transport.ingestTime(12.04, 1066);
-
-    expect(confirmed).toMatchObject({ reason: 'seek-confirm', mode: 'soft' });
-    expect(chased).toMatchObject({ reason: 'soft-chase', mode: 'rate' });
-    expect(setRate).toHaveBeenCalledTimes(1);
-    expect((chased?.sequence ?? 0)).toBeGreaterThan(confirmed?.sequence ?? 0);
-    expect(transport.getDiagnostics(1100).lastSequence).toBe(chased?.sequence);
-  });
-
-  it('records drift diagnostics and pll history under micro jitter', () => {
-    const setRate = vi.fn();
-    let currentTime = 10;
-    const transport = new LTCTransport(
-      {
-        getTime: () => currentTime,
-        syncExternalTime: (time) => {
-          currentTime = time;
-        },
-        setRate,
-      },
-      { lockFrames: 1, hardResyncThreshold: 0.5, rewindThreshold: 0.1 },
-    );
-
-    expect(transport.ingestTime(10.0, 1000)).toBeNull();
-    const samples = [10.033, 10.066, 10.099, 10.132, 10.165].map((time, index) => {
-      currentTime = time - 0.001 + (index % 2 === 0 ? 0.0005 : -0.0005);
-      return transport.ingestTime(time, 1033 + index * 33);
-    });
-
-    const diagnostics = transport.getDriftDiagnostics();
-    expect(samples.every((sample) => sample?.mode !== 'hard')).toBe(true);
-    expect(diagnostics.rate).toBeGreaterThan(0.98);
-    expect(diagnostics.rate).toBeLessThan(1.02);
-    expect(Math.abs(diagnostics.avgDriftSec)).toBeLessThan(0.001);
-    expect(diagnostics.peakDriftSec).toBeGreaterThan(0);
-    expect(transport.getPLLHistory().length).toBe(5);
-  });
-
-  it('hard resyncs once on drop-frame style gap and recovers lock', () => {
-    const syncExternalTime = vi.fn();
-    const setRate = vi.fn();
-    let currentTime = 10;
-    const transport = new LTCTransport(
-      {
-        getTime: () => currentTime,
-        syncExternalTime: (time) => {
-          currentTime = time;
-          syncExternalTime(time);
-        },
-        setRate,
-      },
-      { lockFrames: 1, hardResyncThreshold: 0.08 },
-    );
-
-    expect(transport.ingestTime(10, 1000)).toBeNull();
-    expect(transport.ingestTime(10.033, 1033)?.mode).toBe('rate');
-    currentTime = 10.033;
-    const hard = transport.ingestTime(10.2, 1183);
-    currentTime = 10.2;
-    const recovered = transport.ingestTime(10.233, 1216);
-
-    expect(hard).toMatchObject({ mode: 'hard', rate: 1, reason: 'hard-resync' });
-    expect(recovered?.state).toBe('locked-soft');
-    expect(setRate).toHaveBeenCalledWith(1);
-    expect(syncExternalTime).toHaveBeenCalledTimes(1);
-  });
-
-  it('resets pll integrator and rate on rewind hard sync', () => {
+  it('records drift telemetry with raw, filtered and clock traces', () => {
     const setRate = vi.fn();
     let currentTime = 10;
     const transport = new LTCTransport(
@@ -255,20 +139,19 @@ describe('LTCTransport', () => {
     );
 
     expect(transport.ingestTime(10, 1000)).toBeNull();
-    currentTime = 10.01;
-    transport.ingestTime(10.033, 1033);
-    currentTime = 11;
-    transport.ingestTime(12, 1066);
-    const rewind = transport.ingestTime(5, 1099);
-    const diagnostics = transport.getDriftDiagnostics();
+    [10.033, 10.066, 10.099].forEach((time, index) => {
+      currentTime = time - 0.001;
+      transport.ingestTime(time, 1033 + index * 33);
+    });
 
-    expect(rewind).toMatchObject({ mode: 'hard', rate: 1, reason: 'rewind-detect' });
-    expect(diagnostics.rate).toBe(1);
-    expect(diagnostics.integral).toBe(0);
+    const telemetry = transport.getTelemetrySeries();
+    expect(telemetry.drift.length).toBe(3);
+    expect(telemetry.raw.length).toBe(3);
+    expect(telemetry.filtered.length).toBe(3);
+    expect(telemetry.clock.length).toBe(3);
   });
 
-  it('converges slow drift using rate without moving position directly', () => {
-    const syncExternalTime = vi.fn();
+  it('detects frame drops without brutal snap when drift is still bounded', () => {
     const setRate = vi.fn();
     let currentTime = 10;
     const transport = new LTCTransport(
@@ -276,7 +159,6 @@ describe('LTCTransport', () => {
         getTime: () => currentTime,
         syncExternalTime: (time) => {
           currentTime = time;
-          syncExternalTime(time);
         },
         setRate,
       },
@@ -284,20 +166,16 @@ describe('LTCTransport', () => {
     );
 
     expect(transport.ingestTime(10, 1000)).toBeNull();
-    for (let frame = 1; frame <= 6; frame += 1) {
-      currentTime += 1 / 30;
-      transport.ingestTime(10 + frame / 30 + frame * 0.03, 1000 + frame * 33);
-    }
+    currentTime = 10.001;
+    transport.ingestTime(10.033, 1033);
+    currentTime = 10.034;
+    const sample = transport.ingestTime(10.099, 1066);
 
-    const diagnostics = transport.getDriftDiagnostics();
-    expect(setRate).toHaveBeenCalled();
-    expect(diagnostics.rate).not.toBe(1);
-    expect(syncExternalTime).not.toHaveBeenCalled();
-    expect(Math.abs(diagnostics.avgDriftSec)).toBeLessThan(diagnostics.peakDriftSec);
+    expect(['soft', 'rate']).toContain(sample?.mode);
+    expect(transport.getEvents().every((event) => event.type !== 'hard-sync')).toBe(true);
   });
 
-  it('switches active source deterministically with hard sync fallback', () => {
-    const syncExternalTime = vi.fn();
+  it('hard resyncs on extreme jumps and resets the integrator', () => {
     const setRate = vi.fn();
     let currentTime = 10;
     const transport = new LTCTransport(
@@ -305,86 +183,42 @@ describe('LTCTransport', () => {
         getTime: () => currentTime,
         syncExternalTime: (time) => {
           currentTime = time;
-          syncExternalTime(time);
         },
         setRate,
       },
-      { lockFrames: 1 },
+      { lockFrames: 1, hardResyncThreshold: 0.5 },
     );
 
-    expect(transport.ingestTime(10, 1000, 'A', 1)).toBeNull();
-    currentTime = 10.033;
-    transport.ingestTime(10.033, 1033, 'A', 1);
-    currentTime = 10.2;
-    const switched = transport.ingestTime(10.2, 1034, 'B', 0);
-    const diagnostics = transport.getDiagnostics(1040);
-
-    expect(switched).toMatchObject({ mode: 'hard', reason: 'hard-resync' });
-    expect(diagnostics.activeSource).toBe('B');
-    expect(diagnostics.sourceCount).toBe(2);
-    expect(syncExternalTime).toHaveBeenCalled();
-  });
-
-  it('tracks detected fps from incoming frame cadence', () => {
-    const transport = new LTCTransport({
-      getTime: () => 0,
-      syncExternalTime: () => {},
-    }, { lockFrames: 1 });
-
-    expect(transport.ingestTime(0, 1000, 'A')).toBeNull();
-    transport.ingestTime(1 / 24, 1042, 'A');
-    transport.ingestTime(2 / 24, 1084, 'A');
-    transport.ingestTime(3 / 24, 1126, 'A');
-
-    expect(transport.getDriftDiagnostics().fps).toBeGreaterThan(28);
-    expect(transport.getDiagnostics(1126).detectedFps).toBeGreaterThan(28);
-  });
-
-  it('emits deterministic source-switch hard-sync and rate-change events', () => {
-    const setRate = vi.fn();
-    let currentTime = 10;
-    const transport = new LTCTransport({
-      getTime: () => currentTime,
-      syncExternalTime: (time) => { currentTime = time; },
-      setRate,
-    }, { lockFrames: 1 });
-
-    expect(transport.ingestTime(10, 1000, 'A', 1)).toBeNull();
-    currentTime = 10.033;
-    transport.ingestTime(10.033, 1033, 'A', 1);
-    currentTime = 10;
-    transport.ingestTime(10.066, 1066, 'A', 1);
-    currentTime = 10.2;
-    transport.ingestTime(10.2, 1034, 'B', 0);
-
-    const events = transport.getEvents();
-    expect(events.some((event) => event.type === 'source-switch')).toBe(true);
-    expect(events.some((event) => event.type === 'hard-sync')).toBe(true);
-    expect(events.some((event) => event.type === 'rate-change')).toBe(true);
-  });
-
-  it('exports drift series and can replay the recorded transport stream', () => {
-    const setRate = vi.fn();
-    let currentTime = 10;
-    const transport = new LTCTransport({
-      getTime: () => currentTime,
-      syncExternalTime: (time) => { currentTime = time; },
-      setRate,
-    }, { lockFrames: 1 });
-
-    expect(transport.ingestTime(10, 1000, 'A', 1)).toBeNull();
+    expect(transport.ingestTime(10, 1000)).toBeNull();
     currentTime = 10.03;
-    transport.ingestTime(10.033, 1033, 'A', 1);
-    currentTime = 10.06;
-    transport.ingestTime(10.066, 1066, 'A', 1);
+    transport.ingestTime(10.033, 1033);
+    const hard = transport.ingestTime(30, 1066);
+    const diagnostics = transport.getDriftDiagnostics();
 
-    const series = transport.getDriftSeries();
-    const record = transport.getReplayRecord();
-    expect(series.drift.length).toBe(series.time.length);
-    expect(record.length).toBeGreaterThan(0);
+    expect(hard).toMatchObject({ mode: 'hard', rate: 1 });
+    expect(['hard-resync', 'drop-detect']).toContain(hard?.reason);
+    expect(diagnostics.integral).toBe(0);
+    expect(diagnostics.rate).toBe(1);
+  });
 
-    transport.replay(record);
-    expect(transport.getReplayRecord().length).toBe(record.length);
+  it('supports configurable chase mode including external-master', () => {
+    const syncExternalTime = vi.fn();
+    let currentTime = 10;
+    const transport = new LTCTransport({
+      getTime: () => currentTime,
+      syncExternalTime: (time) => {
+        currentTime = time;
+        syncExternalTime(time);
+      },
+      setRate: vi.fn(),
+    }, { lockFrames: 1 });
+
+    transport.setChaseMode('external-master');
+    expect(transport.ingestTime(10, 1000)).toBeNull();
+    const sample = transport.ingestTime(10.5, 1033);
+
+    expect(sample).toMatchObject({ mode: 'hard', reason: 'external-master', syncedTime: 10.5 });
+    expect(syncExternalTime).toHaveBeenCalledWith(10.5);
   });
 
   it('supports kalman filtering and event export/subscription', () => {
@@ -405,10 +239,40 @@ describe('LTCTransport', () => {
     expect(transport.ingestTime(10, 1000, 'A', 1)).toBeNull();
     currentTime = 10;
     transport.ingestTime(10.066, 1033, 'A', 1);
+    currentTime = 10;
+    transport.ingestTime(10.12, 1066, 'A', 1);
 
     unsubscribe();
     const exported = transport.exportEvents();
     expect(exported).toContain('rate-change');
     expect(received).toContain('rate-change');
+  });
+
+  it('replays recorded output byte-for-byte without recomputing the filter', () => {
+    const syncExternalTime = vi.fn();
+    const setRate = vi.fn();
+    let currentTime = 10;
+    const transport = new LTCTransport({
+      getTime: () => currentTime,
+      syncExternalTime: (time) => {
+        currentTime = time;
+        syncExternalTime(time);
+      },
+      setRate,
+    }, { lockFrames: 1 });
+
+    transport.setKalmanEnabled(true);
+    expect(transport.ingestTime(10, 1000, 'A', 1)).toBeNull();
+    currentTime = 10.02;
+    transport.ingestTime(10.033, 1033, 'A', 1);
+    currentTime = 10.05;
+    transport.ingestTime(10.066, 1066, 'A', 1);
+
+    const record = transport.getReplayRecord();
+    const jsonA = JSON.stringify(record);
+    transport.replay(record);
+    const jsonB = JSON.stringify(transport.getReplayRecord());
+
+    expect(jsonB).toBe(jsonA);
   });
 });

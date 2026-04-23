@@ -17,7 +17,7 @@ import { resolveSMPTEChase } from '@/core/timeline/smpteChase';
 import { ltcRuntime, updateTimelineClockFromLTCFps } from '@/hardware/transports/ltcRuntime';
 
 export type ExternalSyncStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
-export type ChaseMode = 'hard' | 'soft' | 'jam';
+export type ChaseMode = 'tight' | 'smooth' | 'freewheel' | 'external-master';
 
 interface ExternalSyncState {
   externalEnabled: boolean;
@@ -78,7 +78,7 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
   externalEnabled: false,
   wsUrl: DEFAULT_WS_URL,
   status: 'disconnected',
-  chaseMode: 'soft',
+  chaseMode: 'smooth',
   externalTimecode: null,
   externalTimeSeconds: 0,
   latency: 0,
@@ -329,8 +329,10 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
             break;
           }
 
+          ltcRuntime.setChaseMode(state.chaseMode);
+
           switch (state.chaseMode) {
-            case 'hard':
+            case 'tight':
               if (chase.mode !== 'ignore') {
                 timelineClock.syncExternalTime(chase.nextTime);
               }
@@ -339,7 +341,7 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
               }
               break;
 
-            case 'soft':
+            case 'smooth':
               if (chase.mode === 'snap' || chase.mode === 'soft') {
                 timelineClock.syncExternalTime(chase.nextTime);
               }
@@ -348,10 +350,19 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
               }
               break;
 
-            case 'jam':
-              if (nextPacketCount === 1 || Math.abs(chase.driftSec) > 2.0) {
+            case 'freewheel':
+              if (nextPacketCount === 1 || chase.mode === 'snap') {
                 timelineClock.syncExternalTime(chase.mode === 'ignore' ? currentProjectTime : chase.nextTime);
-                if (!projectStore.isPlaying) timelineClock.play();
+              }
+              if (!projectStore.isPlaying && projectTime > 0.1) {
+                timelineClock.play();
+              }
+              break;
+
+            case 'external-master':
+              timelineClock.syncExternalTime(boundedProjectTime);
+              if (!projectStore.isPlaying) {
+                timelineClock.play();
               }
               break;
           }
