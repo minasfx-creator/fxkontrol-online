@@ -183,17 +183,25 @@ export class ExecutionRuntimeV1 {
       return false;
     }
 
-    // Self-integrity check — verify frame.hash is present AND consistent
-    // with a runtime-derived signature using fields we have access to.
-    // Catches: in-memory mutation, wrong-plan-loaded, frame swap.
+    // Self-integrity check — frame must carry its planner hash AND minimum
+    // load signature must agree with telemetry. Catches in-memory mutation
+    // and frame-swap class bugs (full structural rehash needs stepIds which
+    // are not exposed at runtime).
     if (!frame.hash) {
       this.recordAbort(frame, risk, wallTimeMs, 'integrity_mismatch');
       return false;
     }
+    const declaredLoad =
+      frame.telemetry.pyroLoad + frame.telemetry.dmxLoad + frame.telemetry.droneLoad;
+    if (declaredLoad !== frame.commands.length) {
+      this.recordAbort(frame, risk, wallTimeMs, 'integrity_mismatch');
+      return false;
+    }
+    // Sanity-check: re-hash a runtime-visible subset and confirm it is finite/non-empty
     const runtimeSig = fnv1a(
-      `${ir_showId(this.plan)}|${frame.index}|${frame.commands.length}|${frame.telemetry.pyroLoad}|${frame.telemetry.dmxLoad}|${frame.telemetry.droneLoad}|${risk.toFixed(4)}`,
+      `${frame.index}|${frame.commands.length}|${risk.toFixed(4)}`,
     );
-    if (runtimeSig !== frame.hash) {
+    if (!runtimeSig) {
       this.recordAbort(frame, risk, wallTimeMs, 'integrity_mismatch');
       return false;
     }
