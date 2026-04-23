@@ -874,8 +874,9 @@ export class FireOneHardwareBridge {
         this.pendingResolves.delete('VER:');
         resolve(ok);
       };
-      this.pendingResolves.set('PONG', () => finish(true));
-      this.pendingResolves.set('VER:', () => finish(true));
+      // Drain sentinel ('') from handleDisconnect resolves with falsy → finish(false).
+      this.pendingResolves.set('PONG', (val) => finish(Boolean(val)));
+      this.pendingResolves.set('VER:', (val) => finish(Boolean(val)));
       this.sendCommand('VERSION\n');
       this.sendCommand('HEARTBEAT\n');
       timer = setTimeout(() => finish(false), timeoutMs);
