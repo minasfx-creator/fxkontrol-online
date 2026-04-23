@@ -24,6 +24,9 @@ export default function DevSimulationPanel() {
   const [tx, setTx] = useState(0);
   const [rx, setRx] = useState(0);
   const [connected, setConnected] = useState(true);
+  const [replay, setReplay] = useState<{ state: 'idle' | 'running' | 'paused'; cursor: number; total: number }>({ state: 'idle', cursor: 0, total: 0 });
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const emuRef = useRef<TransportEmulator | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -44,9 +47,11 @@ export default function DevSimulationPanel() {
     setConnected(true);
     emu.onStateChange(s => setConnected(s === 'connected'));
     tickRef.current = setInterval(() => {
-      const trace = emu.exportTrace().frames;
-      setTx(trace.filter(f => f.dir === 'tx').length);
-      setRx(trace.filter(f => f.dir === 'rx').length);
+      const stats = emu.getStats();           // O(1)
+      const rs = emu.getReplayStatus();
+      setTx(stats.tx);
+      setRx(stats.rx);
+      setReplay(rs);
     }, 250);
   }, [teardown]);
 
