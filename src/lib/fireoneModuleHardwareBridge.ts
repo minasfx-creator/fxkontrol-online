@@ -154,7 +154,7 @@ export class FireOneHardwareBridge {
   private ws: WebSocket | null = null;
 
   private responseBuffer = '';
-  private pendingResolves: Map<string, (value: string) => void> = new Map();
+  private pendingResolves: Map<string, PendingResponse> = new Map();
   private onEvent: BridgeEventHandler | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private rssiTimer: ReturnType<typeof setInterval> | null = null;
