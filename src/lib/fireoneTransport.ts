@@ -9,8 +9,10 @@
  */
 
 import {
+  assertBridgeWebSocketAllowed,
   buildBridgeWebSocketProtocols,
   buildBridgeWebSocketUrl,
+  openBridgeWebSocket,
   requiresSecureBridgeTransport,
 } from '@/lib/bridgeGateway';
 
@@ -297,9 +299,15 @@ export class WiFiTransport implements FireOneTransport {
     return new Promise((resolve, reject) => {
       this.setState('connecting');
       const protocols = buildBridgeWebSocketProtocols(config?.bridgeKey);
-      this.ws = protocols.length > 0
-        ? new WebSocket(this.relayUrl, protocols)
-        : new WebSocket(this.relayUrl);
+      try {
+        assertBridgeWebSocketAllowed(this.relayUrl);
+        this.ws = openBridgeWebSocket(this.relayUrl, protocols);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Bridge local indisponível para este contexto';
+        this.setState('error', message);
+        reject(new Error(message));
+        return;
+      }
       this.ws.binaryType = 'arraybuffer';
 
       this.ws.onopen = () => {

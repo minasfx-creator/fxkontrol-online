@@ -10,6 +10,7 @@
  */
 
 import {
+  assertBridgeWebSocketAllowed,
   type TransportType,
   type TransportState,
   type TransportReceiveCallback,
@@ -17,7 +18,7 @@ import {
   type FireOneTransport,
 } from '@/lib/fireoneTransport';
 import { deriveKey, encrypt, decrypt } from '@/lib/fireoneAesCrypto';
-import { buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl } from '@/lib/bridgeGateway';
+import { buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl, openBridgeWebSocket } from '@/lib/bridgeGateway';
 
 const WIFI_DIRECT_DISCOVERY_ENDPOINTS = [
   { host: 'fxk-xl4.local', port: 81, label: 'XL4 Gateway' },
@@ -164,7 +165,13 @@ export class WiFiDirectTransport implements FireOneTransport {
       }, DISCOVERY_TIMEOUT);
 
       const protocols = buildBridgeWebSocketProtocols(this._bridgeKey);
-      const ws = protocols.length > 0 ? new WebSocket(url, protocols) : new WebSocket(url);
+      try {
+        assertBridgeWebSocketAllowed(url);
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error('Bridge local bloqueado para Wi‑Fi Direct'));
+        return;
+      }
+      const ws = openBridgeWebSocket(url, protocols);
       ws.binaryType = 'arraybuffer';
 
       ws.onopen = () => {
