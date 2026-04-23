@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
 import { getBridgeSecurityDiagnostic } from '@/lib/bridgeGateway';
-import { bridgePhysicalController, computeHilDrift, checkHilRegression, replayHilReport, type HilRunReport } from '@/lib/bridgePhysicalControl';
+import { bridgePhysicalController, computeHilDrift, checkHilRegression, replayHilReport, generateHilCertification, type HilRunReport } from '@/lib/bridgePhysicalControl';
 import { toast } from 'sonner';
 
 type StatusTone = 'healthy' | 'degraded' | 'blocked';
@@ -68,6 +68,7 @@ export default function PlatformStatus() {
     () => checkHilRegression(hilReport, { maxFailed: 0, maxP95Ms: 120, maxAbsoluteMs: 300, minAckRate: 0.95 }),
     [hilReport],
   );
+  const certification = useMemo(() => generateHilCertification(hilReport), [hilReport]);
   const [savedReport, setSavedReport] = useState<HilRunReport | null>(null);
   const compare = useMemo(() => {
     if (!savedReport) return null;
@@ -107,6 +108,18 @@ export default function PlatformStatus() {
   const handleResetRun = () => {
     bridgePhysicalController.resetHilRun();
     toast.info('HIL run resetado');
+  };
+
+  const handleExportCertification = () => {
+    const json = JSON.stringify(certification, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hil-certification-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(certification.certified ? 'Certification CERTIFIED exportada' : 'Certification (NOT CERTIFIED) exportada');
   };
 
   useEffect(() => bridgePhysicalController.subscribe(() => setPhysicalRevision((value) => value + 1)), []);
@@ -344,6 +357,16 @@ export default function PlatformStatus() {
             <Button size="sm" variant="outline" onClick={handleReplay}>Replay last run</Button>
             <Button size="sm" variant="outline" onClick={handleSnapshot}>Save snapshot A</Button>
             <Button size="sm" variant="outline" onClick={handleResetRun}>Reset run</Button>
+            <Button size="sm" variant="outline" onClick={handleExportCertification}>Export certification</Button>
+          </div>
+          <div className={`rounded-md border p-3 text-xs ${certification.certified ? 'border-primary/30 bg-primary/5 text-primary' : 'border-destructive/30 bg-destructive/5 text-destructive'}`}>
+            <div className="font-semibold mb-1">Certification: {certification.certified ? 'CERTIFIED' : 'NOT CERTIFIED'}</div>
+            <div>monotonic={String(certification.determinism.monotonic)} · causal={String(certification.determinism.causal)} · replayable={String(certification.determinism.replayable)}</div>
+            {certification.determinism.violations.length > 0 && (
+              <ul className="mt-1 list-disc list-inside max-h-20 overflow-y-auto">
+                {certification.determinism.violations.slice(0, 6).map((v) => <li key={v}>{v}</li>)}
+              </ul>
+            )}
           </div>
           <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-md border border-border/50 bg-background/40 p-3">Drift mean: {drift.mean.toFixed(1)}ms</div>
