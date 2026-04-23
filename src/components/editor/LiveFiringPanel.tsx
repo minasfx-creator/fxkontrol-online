@@ -623,6 +623,15 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   // ─── ARM controls ───
   const handlePyroArm = useCallback((armed: boolean) => {
     setPyroArm(armed);
+    bridgePhysicalController.setSystemArmed(armed || dmxArm);
+    if (!armed) {
+      setDualConfirmArmed(false);
+      setFireWindowEndsAt(null);
+      if (fireWindowTimerRef.current) {
+        clearTimeout(fireWindowTimerRef.current);
+        fireWindowTimerRef.current = null;
+      }
+    }
     if (armed) {
       toast.warning('⚠️ PYRO ARMED — LIVE SYSTEM', { duration: 3000 });
       if (fireone.isConnected) fireone.armAll().catch(() => {});
@@ -633,14 +642,26 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       if (fireone.isConnected) fireone.disarmAll().catch(() => {});
       if (pbus.isConnected) pbus.disarmAll().catch(() => {});
     }
-  }, [fireone, pbus]);
+  }, [dmxArm, fireone, pbus]);
 
   const handleDmxArm = useCallback((armed: boolean) => {
     setDmxArm(armed);
+    bridgePhysicalController.setSystemArmed(pyroArm || armed);
     setChannels(prev => prev.map(ch => ({ ...ch, armed: ch.locked ? false : armed })));
     if (armed) toast.warning('DMX ARMED', { duration: 2000 });
-    else { toast.info('DMX disarmed'); setLockedKeys(new Set()); }
-  }, []);
+    else {
+      toast.info('DMX disarmed');
+      setLockedKeys(new Set());
+      if (!pyroArm) {
+        setDualConfirmArmed(false);
+        setFireWindowEndsAt(null);
+        if (fireWindowTimerRef.current) {
+          clearTimeout(fireWindowTimerRef.current);
+          fireWindowTimerRef.current = null;
+        }
+      }
+    }
+  }, [pyroArm]);
 
   const handlePanic = useCallback(() => {
     // Strong haptic burst for PANIC
@@ -653,6 +674,14 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
     setPyroArm(false);
     setDmxArm(false);
     setDeadmanHeld(false);
+    setDualConfirmArmed(false);
+    setFireWindowEndsAt(null);
+    bridgePhysicalController.setSystemArmed(false);
+    bridgePhysicalController.stopWatchdog();
+    if (fireWindowTimerRef.current) {
+      clearTimeout(fireWindowTimerRef.current);
+      fireWindowTimerRef.current = null;
+    }
     setFiringStartTime(null);
     // E-STOP all connected hardware
     if (fireone.isConnected) fireone.emergencyStop().catch(() => {});
@@ -662,6 +691,28 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
 
   // ─── Fire logic ───
   const fireChannel = useCallback((id: string) => {
+    const lockout = evaluateFireLockout({
+      systemArmed: pyroArm || dmxArm,
+      deadmanHeld: deadmanHeld || !settings.pyroArmRequired,
+      dualConfirmRequired: settings.dualConfirmRequired,
+      dualConfirmed: dualConfirmArmed,
+      alreadyFired: bridgePhysicalController.wasChannelFired(id),
+      requiresWatchdog: relayDiagnostic.watchdogRequired,
+      watchdogState: physicalSnapshot.watchdogState,
+    });
+    if (!lockout.allowed) {
+      toast.error(lockout.reason ?? 'FIRE bloqueado pela camada física');
+      return;
+    }
+
+    const commandId = `phys-${id}-${Date.now()}-${sequenceRef.current++}`;
+    bridgePhysicalController.beginCommand(commandId, 'manual-fire', id);
+    bridgePhysicalController.transitionCommand(commandId, 'queued');
+    bridgePhysicalController.transitionCommand(commandId, 'sent');
+    bridgePhysicalController.transitionCommand(commandId, 'acked');
+    bridgePhysicalController.transitionCommand(commandId, 'armed');
+    bridgePhysicalController.transitionCommand(commandId, 'fired');
+
     // Haptic feedback on mobile
     haptics.fire();
     setChannels(prev => { const updated = prev.map(ch => ch.id === id ? { ...ch, firing: true } : ch); sendArtNetPacket(updated); return updated; });
@@ -688,11 +739,13 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       if (!firingStartTime) setFiringStartTime(Date.now());
       const timer = setTimeout(() => {
         setChannels(prev => { const updated = prev.map(c => c.id === id ? { ...c, firing: false } : c); sendArtNetPacket(updated); return updated; });
+        bridgePhysicalController.transitionCommand(commandId, 'confirmed');
+        bridgePhysicalController.transitionCommand(commandId, 'done');
         fireTimers.current.delete(id);
       }, ch.duration);
       fireTimers.current.set(id, timer);
     }
-  }, [channels, sendArtNetPacket, positions, firingStartTime, fireone, pbus]);
+  }, [channels, sendArtNetPacket, positions, firingStartTime, fireone, pbus, pyroArm, dmxArm, deadmanHeld, settings.pyroArmRequired, settings.dualConfirmRequired, dualConfirmArmed, relayDiagnostic.watchdogRequired, physicalSnapshot.watchdogState]);
 
   const stopChannel = useCallback((id: string) => {
     const timer = fireTimers.current.get(id);
