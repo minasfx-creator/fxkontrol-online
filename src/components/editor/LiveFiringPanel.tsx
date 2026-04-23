@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,7 +32,7 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useSfxChannelStore } from '@/store/useSfxChannelStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
-import { buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl } from '@/lib/bridgeGateway';
+import { buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl, evaluateBridgeWebSocketConnection, getBridgeSecurityDiagnostic, openBridgeWebSocket, parseBridgeGatewayUrl, saveBridgeGatewayConfig } from '@/lib/bridgeGateway';
 
 import type { SFXChannel, CueEntry, FXCMode, FXCSettings, DeviceLibEntry } from './live-firing/types';
 import { FIRING_RULES, SFX_TYPES, DEFAULT_CHANNELS, DEFAULT_SETTINGS, CUES_PER_PAGE, formatTimecode, SHOWVEN_LIBRARY } from './live-firing/constants';
@@ -387,6 +388,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   const sequenceRef = useRef(0);
   const fireTimers = useRef(new globalThis.Map<string, ReturnType<typeof setTimeout>>());
   const relayWs = useRef<WebSocket | null>(null);
+  const relayDiagnostic = useMemo(() => getBridgeSecurityDiagnostic(relayUrl), [relayUrl]);
 
   useEffect(() => {
     if (!initialMode) return;
@@ -397,8 +399,15 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   const connectRelay = useCallback(() => {
     if (relayWs.current?.readyState === WebSocket.OPEN) return;
     try {
+      const guard = evaluateBridgeWebSocketConnection(relayUrl);
+      if (!guard.allowed) {
+        toast.error(guard.reason ?? 'Bridge local bloqueado no contexto atual');
+        return;
+      }
       const protocols = buildBridgeWebSocketProtocols();
-      const ws = protocols.length > 0 ? new WebSocket(relayUrl, protocols) : new WebSocket(relayUrl);
+      const parsed = parseBridgeGatewayUrl(relayUrl);
+      if (parsed) saveBridgeGatewayConfig(parsed);
+      const ws = openBridgeWebSocket(relayUrl, protocols);
       ws.onopen = () => { setRelayConnected(true); toast.success('🔌 Relay UDP conectado'); };
       ws.onclose = () => { setRelayConnected(false); relayWs.current = null; };
       ws.onerror = () => { setRelayConnected(false); toast.error('Falha ao conectar relay'); };
@@ -408,6 +417,12 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       relayWs.current = ws;
     } catch { toast.error('URL do relay inválida'); }
   }, [relayUrl]);
+
+  const handleRelayUrlChange = useCallback((url: string) => {
+    setRelayUrl(url);
+    const parsed = parseBridgeGatewayUrl(url);
+    if (parsed) saveBridgeGatewayConfig(parsed);
+  }, []);
 
   const disconnectRelay = useCallback(() => {
     relayWs.current?.close();
@@ -1415,7 +1430,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
       case 'ma3': return <MA3ControlPanel fs={fs} />;
       case 'drone_ops': return <DroneCommandPanel fs={fs} />;
       case 'controllers': return <VirtualControllerHub fs={fs} onSelectMode={(m) => setMode(m as FXCMode)} />;
-      case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} onRelayUrlChange={setRelayUrl} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
+      case 'settings': return <SettingsPanel fs={fs} settings={settings} onSettingsChange={setSettings} relayConnected={relayConnected} relayUrl={relayUrl} relayDiagnostic={relayDiagnostic} onRelayUrlChange={handleRelayUrlChange} onConnectRelay={connectRelay} onDisconnectRelay={disconnectRelay} />;
       default: return renderSimpleDmx(fs);
     }
   };
