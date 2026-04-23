@@ -3,6 +3,7 @@ import { resolveSMPTEChase, type SMPTEChaseOptions, type SMPTEChaseResult } from
 export interface LTCSyncTarget {
   getTime: () => number;
   syncExternalTime: (time: number) => void;
+  releaseExternalSync?: () => void;
 }
 
 export interface LTCTransportOptions {
@@ -107,9 +108,15 @@ export class LTCTransport {
   }
 
   isSignalPresent(nowMs = Date.now()): boolean {
-    return this.lastSignalAt !== null && Number.isFinite(nowMs)
+    const present = this.lastSignalAt !== null && Number.isFinite(nowMs)
       ? nowMs - this.lastSignalAt <= this.options.pauseTimeoutMs
       : false;
+
+    if (!present) {
+      this.target.releaseExternalSync?.();
+    }
+
+    return present;
   }
 
   reset(): void {
@@ -134,11 +141,8 @@ export class LTCTransport {
   }
 
   private smoothTime(nextTime: number): number {
-    if (this.lastSyncedTime === null) {
-      return nextTime;
-    }
-
-    return this.lastSyncedTime + (nextTime - this.lastSyncedTime) * this.options.smoothingFactor;
+    const current = this.target.getTime();
+    return current + (nextTime - current) * this.options.smoothingFactor;
   }
 }
 
