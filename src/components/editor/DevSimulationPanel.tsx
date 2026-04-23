@@ -79,6 +79,26 @@ export default function DevSimulationPanel() {
     URL.revokeObjectURL(url);
   };
 
+  const loadTraceFile = useCallback(async (file: File) => {
+    if (!emuRef.current) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (!parsed.frames || !Array.isArray(parsed.frames)) throw new Error('invalid trace');
+      emuRef.current.loadTrace(parsed);
+      setReplay(emuRef.current.getReplayStatus());
+    } catch (e) {
+      console.error('[DevSim] trace load failed:', e);
+    }
+  }, []);
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const f = e.dataTransfer.files[0];
+    if (f) loadTraceFile(f);
+  }, [loadTraceFile]);
+
   if (!isDev) return null;
 
   return (
