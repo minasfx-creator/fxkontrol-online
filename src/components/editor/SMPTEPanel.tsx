@@ -31,6 +31,9 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
   const [syncToFireOne, setSyncToFireOne] = useState(false);
   const [syncToPBus, setSyncToPBus] = useState(false);
   const [syncToMA3, setSyncToMA3] = useState(false);
+  const [kalmanEnabled, setKalmanEnabled] = useState(() => ltcRuntime.isKalmanEnabled());
+  const [replaySpeed, setReplaySpeed] = useState('1');
+  const [replayPlaying, setReplayPlaying] = useState(false);
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pbusSyncRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ma3SyncRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -52,17 +55,60 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
     id: `${driftSeries.time[index] ?? index}-${index}`,
     value,
   }));
+  const driftWindow = driftSeries.drift.slice(-32);
+  const timeWindow = driftSeries.time.slice(-32);
+  const maxMagnitude = driftWindow.reduce((peak, value) => Math.max(peak, Math.abs(value)), 0.001);
+  const linePoints = driftWindow.map((value, index) => {
+    const x = driftWindow.length <= 1 ? 0 : (index / (driftWindow.length - 1)) * 100;
+    const y = 50 - (value / maxMagnitude) * 42;
+    return `${x},${Math.max(4, Math.min(96, y))}`;
+  }).join(' ');
+  const markerEvents = ltcEvents
+    .map((event) => ({ event, index: timeWindow.findIndex((time) => Math.abs(time - event.time / 1000) < 0.2) }))
+    .filter((entry) => entry.index >= 0);
 
   const handleReplay = () => {
     const snapshot = ltcRuntime.getReplayRecord();
     if (!snapshot.length) return;
-    ltcRuntime.replay(snapshot);
-    updateTimelineClockFromLTCFps();
+    const speed = Number.parseFloat(replaySpeed) || 1;
+    setReplayPlaying(true);
+    ltcRuntime.replayAsync(snapshot, {
+      speed,
+      onFrame: (_, index, total) => {
+        if (index >= total - 1) {
+          setReplayPlaying(false);
+          updateTimelineClockFromLTCFps();
+        }
+      },
+    });
   };
 
   const handleClearReplay = () => {
+    ltcRuntime.stopReplay();
+    setReplayPlaying(false);
     ltcRuntime.clearReplayRecord();
   };
+
+  const handlePauseReplay = () => {
+    ltcRuntime.stopReplay();
+    setReplayPlaying(false);
+  };
+
+  const handleStepReplay = () => {
+    const snapshot = ltcRuntime.getReplayRecord();
+    if (!snapshot.length) return;
+    ltcRuntime.stepReplay(snapshot, {
+      speed: Number.parseFloat(replaySpeed) || 1,
+      onFrame: () => {
+        setReplayPlaying(false);
+        updateTimelineClockFromLTCFps();
+      },
+    });
+  };
+
+  useEffect(() => {
+    ltcRuntime.setKalmanEnabled(kalmanEnabled);
+  }, [kalmanEnabled]);
 
   useEffect(() => {
     const stc = secondsToTimecode(store.startTimecodeSeconds, store.frameRate, false);
@@ -446,6 +492,10 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
               {pllDiagnostics.state}
             </Badge>
           </div>
+          <div className="flex items-center justify-between rounded border border-border/40 bg-background/30 px-2 py-1.5">
+            <Label className="text-[9px] font-mono-code text-muted-foreground">Kalman input filter</Label>
+            <Switch checked={kalmanEnabled} onCheckedChange={setKalmanEnabled} className="scale-75" />
+          </div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-1">
             <MetricRow label="SRC" value={pllDiagnostics.source ?? '—'} />
             <MetricRow label="FPS" value={pllDiagnostics.fps?.toFixed(2) ?? '—'} />
@@ -480,6 +530,35 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
               </div>
             )}
           </div>
+          <div className="relative rounded border border-border/40 bg-background/40 px-1 py-1">
+            <svg viewBox="0 0 100 100" className="h-20 w-full">
+              <line x1="0" y1="50" x2="100" y2="50" className="stroke-border/60" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+              {linePoints && (
+                <polyline
+                  fill="none"
+                  points={linePoints}
+                  className="stroke-primary"
+                  strokeWidth="1.5"
+                  vectorEffect="non-scaling-stroke"
+                />
+              )}
+              {markerEvents.map(({ event, index }) => {
+                const x = driftWindow.length <= 1 ? 0 : (index / Math.max(1, driftWindow.length - 1)) * 100;
+                return (
+                  <line
+                    key={`${event.type}-${event.sequence}`}
+                    x1={x}
+                    y1="8"
+                    x2={x}
+                    y2="92"
+                    className={cn(event.type === 'source-switch' ? 'stroke-warning' : event.type === 'hard-sync' ? 'stroke-destructive' : 'stroke-success')}
+                    strokeWidth="1"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                );
+              })}
+            </svg>
+          </div>
         </div>
 
         <div className="bg-surface-0 rounded p-2 space-y-2 border border-border">
@@ -507,12 +586,31 @@ export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
             <span className="text-[8px] font-mono-code text-muted-foreground">{replayFrames.length} recorded</span>
           </div>
           <div className="flex gap-1">
-            <Button variant="outline" size="sm" className="h-7 flex-1 text-[9px] font-mono-code" onClick={handleReplay} disabled={replayFrames.length === 0}>
-              Replay LTC
+            <Button variant="outline" size="sm" className="h-7 flex-1 text-[9px] font-mono-code" onClick={handleReplay} disabled={replayFrames.length === 0 || replayPlaying}>
+              Play
+            </Button>
+            <Button variant="outline" size="sm" className="h-7 flex-1 text-[9px] font-mono-code" onClick={handlePauseReplay} disabled={!replayPlaying}>
+              Pause
+            </Button>
+          </div>
+          <div className="flex gap-1">
+            <Button variant="outline" size="sm" className="h-7 flex-1 text-[9px] font-mono-code" onClick={handleStepReplay} disabled={replayFrames.length === 0}>
+              Step
             </Button>
             <Button variant="outline" size="sm" className="h-7 flex-1 text-[9px] font-mono-code" onClick={handleClearReplay} disabled={replayFrames.length === 0}>
               Clear Record
             </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-[8px] font-mono-code text-muted-foreground">Replay speed</Label>
+            <Select value={replaySpeed} onValueChange={setReplaySpeed}>
+              <SelectTrigger className="h-7 text-[9px] font-mono-code"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0.5">0.5x</SelectItem>
+                <SelectItem value="1">1.0x</SelectItem>
+                <SelectItem value="2">2.0x</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="text-[8px] font-mono-code text-muted-foreground">
             Reingests the recorded LTC frames through the live transport path for deterministic debugging.

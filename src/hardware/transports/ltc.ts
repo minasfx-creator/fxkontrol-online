@@ -73,9 +73,9 @@ export interface LTCDriftDiagnostics {
 }
 
 export type LTCEvent =
-  | { type: 'source-switch'; from: string | null; to: string }
-  | { type: 'hard-sync'; reason: LTCSyncSample['reason'] }
-  | { type: 'rate-change'; rate: number };
+  | { type: 'source-switch'; from: string | null; to: string; time: number; sequence: number }
+  | { type: 'hard-sync'; reason: LTCSyncSample['reason']; time: number; sequence: number }
+  | { type: 'rate-change'; rate: number; time: number; sequence: number };
 
 export interface LTCDriftSeries {
   drift: readonly number[];
@@ -89,6 +89,12 @@ export interface LTCReplayFrame {
   incoming: number;
   diagnostics: LTCDriftDiagnostics & { source: string | null };
   sample: LTCSyncSample | null;
+}
+
+export interface LTCReplayOptions {
+  speed?: number;
+  step?: boolean;
+  onFrame?: (frame: LTCReplayFrame, index: number, total: number) => void;
 }
 
 interface LTCSourceState {
@@ -153,6 +159,12 @@ export class LTCTransport {
   private historyTime = new Float32Array(120);
   private events: LTCEvent[] = [];
   private replayRecord: LTCReplayFrame[] = [];
+  private replayCursor = 0;
+  private replayTimer: ReturnType<typeof setTimeout> | null = null;
+  private kalmanEnabled = false;
+  private kalmanEstimate = 0;
+  private kalmanError = 1;
+  private eventSubscribers = new Set<(event: LTCEvent) => void>();
 
   constructor(
     private readonly target: LTCSyncTarget,
@@ -175,6 +187,8 @@ export class LTCTransport {
       return null;
     }
 
+    seconds = this.filterIncoming(seconds);
+
     const source = this.upsertSource(sourceId, receivedAtMs, priority);
     const previousIncomingTime = source.lastTime;
     source.lastTime = seconds;
@@ -185,7 +199,7 @@ export class LTCTransport {
       const previousSource = this.activeSource;
       this.activeSource = bestSource?.id ?? null;
       if (this.activeSource) {
-        this.pushEvent({ type: 'source-switch', from: previousSource, to: this.activeSource });
+        this.pushEvent({ type: 'source-switch', from: previousSource, to: this.activeSource, time: receivedAtMs, sequence: this.sequence + 1 });
       }
     } else if (this.activeSource === null) {
       this.activeSource = source.id;
@@ -234,7 +248,7 @@ export class LTCTransport {
           : 'hard-resync';
       this.rate = 1;
       this.rateIntegral = 0;
-      this.pushEvent({ type: 'hard-sync', reason: this.lastSyncReason });
+      this.pushEvent({ type: 'hard-sync', reason: this.lastSyncReason, time: receivedAtMs, sequence: this.sequence });
       this.target.setRate?.(1);
       this.target.syncExternalTime(seconds);
 
@@ -289,7 +303,7 @@ export class LTCTransport {
     this.lastMode = 'rate';
     this.state = 'locked-soft';
     this.lastSyncReason = 'soft-chase';
-    this.pushEvent({ type: 'rate-change', rate: this.rate });
+    this.pushEvent({ type: 'rate-change', rate: this.rate, time: receivedAtMs, sequence: this.sequence });
     this.target.setRate?.(this.rate);
 
     return this.finishIngest({
@@ -452,6 +466,68 @@ export class LTCTransport {
     }
   }
 
+  replayAsync(record: readonly LTCReplayFrame[], options: LTCReplayOptions = {}): void {
+    this.stopReplay();
+    this.reset();
+    const speed = Math.max(0.1, options.speed ?? 1);
+    const step = options.step ?? false;
+    this.replayCursor = 0;
+
+    const advance = () => {
+      if (this.replayCursor >= record.length) {
+        this.stopReplay();
+        return;
+      }
+
+      const frame = record[this.replayCursor];
+      this.ingestTime(frame.incoming, frame.time, frame.source, frame.priority);
+      options.onFrame?.(frame, this.replayCursor, record.length);
+      this.replayCursor += 1;
+
+      if (step || this.replayCursor >= record.length) {
+        return;
+      }
+
+      const nextFrame = record[this.replayCursor];
+      const deltaMs = Math.max(0, (nextFrame.time - frame.time) / speed);
+      this.replayTimer = setTimeout(advance, deltaMs);
+    };
+
+    advance();
+  }
+
+  stopReplay(): void {
+    if (this.replayTimer) {
+      clearTimeout(this.replayTimer);
+      this.replayTimer = null;
+    }
+  }
+
+  stepReplay(record: readonly LTCReplayFrame[], options: Omit<LTCReplayOptions, 'step'> = {}): void {
+    this.replayAsync(record, { ...options, step: true });
+  }
+
+  setKalmanEnabled(enabled: boolean): void {
+    this.kalmanEnabled = enabled;
+    if (!enabled) {
+      this.kalmanEstimate = 0;
+      this.kalmanError = 1;
+    }
+  }
+
+  isKalmanEnabled(): boolean {
+    return this.kalmanEnabled;
+  }
+
+  exportEvents(): string {
+    return JSON.stringify(this.events);
+  }
+
+  subscribeEvents(callback: (event: LTCEvent) => void): () => void {
+    this.eventSubscribers.add(callback);
+    return () => this.eventSubscribers.delete(callback);
+  }
+
   private upsertSource(id: string, lastSeen: number, priority: number): LTCSourceState {
     const existing = this.sources.get(id);
     if (existing) {
@@ -502,6 +578,31 @@ export class LTCTransport {
     if (this.events.length > 256) {
       this.events = this.events.slice(-256);
     }
+    for (const subscriber of this.eventSubscribers) {
+      subscriber(event);
+    }
+  }
+
+  private filterIncoming(time: number): number {
+    if (!this.kalmanEnabled) {
+      return time;
+    }
+
+    if (this.kalmanEstimate === 0) {
+      this.kalmanEstimate = time;
+      return time;
+    }
+
+    const q = 0.00001;
+    const r = 0.001;
+
+    this.kalmanError += q;
+    const k = this.kalmanError / (this.kalmanError + r);
+
+    this.kalmanEstimate = this.kalmanEstimate + k * (time - this.kalmanEstimate);
+    this.kalmanError *= 1 - k;
+
+    return this.kalmanEstimate;
   }
 
   private finishIngest(
