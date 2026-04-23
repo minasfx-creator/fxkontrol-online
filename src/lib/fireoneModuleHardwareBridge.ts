@@ -608,6 +608,7 @@ export class FireOneHardwareBridge {
       });
       if (!responded && this.connected) {
         console.warn('[HardwareBridge] Heartbeat timeout — disconnecting');
+        this.setError('HEARTBEAT_TIMEOUT', 'Heartbeat timeout — link lost');
         this.handleDisconnect();
         this.onEvent?.('heartbeat_timeout', null);
       }
@@ -708,6 +709,7 @@ export class FireOneHardwareBridge {
       }
     } catch (err) {
       console.warn('[HardwareBridge] Send failed:', err);
+      this.setError('SEND_FAILED', err instanceof Error ? err.message : 'Send failed');
     }
     return false;
   }
