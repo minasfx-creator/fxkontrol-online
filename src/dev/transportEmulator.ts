@@ -252,8 +252,31 @@ export class TransportEmulator {
   getStats() { return { tx: this.txCount, rx: this.rxCount, traced: this.trace.length }; }
 
   // ── Trace replay ─────────────────────────────────────────────────
+  private replayFilter: ((data: string) => boolean) | null = null;
+  private replayOpts: { preserveTiming: boolean; speed: number; onComplete?: () => void } = {
+    preserveTiming: true,
+    speed: 1,
+  };
+
+  /** Validate a trace shape — guards against corrupted/foreign JSON. */
+  private isValidTrace(t: unknown): t is { frames: Array<{ dir: 'tx' | 'rx'; data: string; at: number }> } {
+    if (!t || typeof t !== 'object') return false;
+    const frames = (t as { frames?: unknown }).frames;
+    if (!Array.isArray(frames)) return false;
+    return frames.every((f: unknown) => {
+      if (!f || typeof f !== 'object') return false;
+      const ff = f as { dir?: unknown; data?: unknown; at?: unknown };
+      return (ff.dir === 'tx' || ff.dir === 'rx')
+        && typeof ff.data === 'string'
+        && typeof ff.at === 'number';
+    });
+  }
+
   /** Load a previously exported trace. Replaces any in-flight replay state. */
-  loadTrace(trace: { frames: Array<{ dir: 'tx' | 'rx'; data: string; at: number }> }) {
+  loadTrace(trace: unknown) {
+    if (!this.isValidTrace(trace)) {
+      throw new Error('Invalid trace: missing/malformed frames');
+    }
     this.stopReplay();
     this.replayFrames = [...trace.frames];
     this.replayCursor = 0;
@@ -261,56 +284,109 @@ export class TransportEmulator {
   }
 
   /**
-   * Replay loaded trace's RX frames into the bridge.
-   * - preserveTiming=true (default): respects original deltas between frames.
-   * - preserveTiming=false: delivers everything immediately.
-   * - speed: multiplier applied to original deltas (2 = 2× faster).
+   * Replay loaded trace's RX frames into the bridge using an incremental
+   * scheduler — only one timer in flight at a time, enabling true pause and
+   * stable memory for large traces.
+   *
+   * - preserveTiming=true (default): respects original inter-frame deltas.
+   * - preserveTiming=false: delivers everything as fast as possible.
+   * - speed: multiplier applied to deltas (2 = 2× faster).
+   * - filter: only replay RX frames whose data matches the predicate.
    */
-  replay(opts: { preserveTiming?: boolean; speed?: number; onComplete?: () => void } = {}) {
+  replay(opts: {
+    preserveTiming?: boolean;
+    speed?: number;
+    onComplete?: () => void;
+    filter?: (data: string) => boolean;
+  } = {}) {
     if (this.replayFrames.length === 0) return;
-    const preserveTiming = opts.preserveTiming ?? true;
-    const speed = opts.speed ?? 1;
+    this.replayOpts = {
+      preserveTiming: opts.preserveTiming ?? true,
+      speed: opts.speed ?? 1,
+      onComplete: opts.onComplete,
+    };
+    this.replayFilter = opts.filter ?? null;
     this.replayState = 'running';
-    const rxFrames = this.replayFrames.filter(f => f.dir === 'rx');
-    const t0 = rxFrames[0]?.at ?? 0;
-
-    rxFrames.forEach((frame) => {
-      const delta = preserveTiming ? Math.max(0, (frame.at - t0) / speed) : 0;
-      const t = setTimeout(() => {
-        this.replayTimers.delete(t);
-        if (this.replayState !== 'running') return;
-        this.deliverFrame(frame.data);
-        this.replayCursor++;
-        if (this.replayCursor >= rxFrames.length) {
-          this.replayState = 'idle';
-          opts.onComplete?.();
-        }
-      }, delta);
-      this.replayTimers.add(t);
-    });
+    this.scheduleNextReplay();
   }
 
-  /** Step one RX frame at a time — useful for debugging. */
+  /** Find the next RX frame index from a given cursor (respects filter). */
+  private nextRxIndex(from: number): number {
+    for (let i = from; i < this.replayFrames.length; i++) {
+      const f = this.replayFrames[i];
+      if (f.dir !== 'rx') continue;
+      if (this.replayFilter && !this.replayFilter(f.data)) continue;
+      return i;
+    }
+    return -1;
+  }
+
+  private scheduleNextReplay() {
+    if (this.replayState !== 'running') return;
+    const idx = this.nextRxIndex(this.replayCursor);
+    if (idx === -1) {
+      this.replayState = 'idle';
+      this.replayOpts.onComplete?.();
+      return;
+    }
+    const frame = this.replayFrames[idx];
+    // Delta = gap between previous delivered frame and this one (true fidelity).
+    let delta = 0;
+    if (this.replayOpts.preserveTiming) {
+      const prevIdx = this.replayCursor === 0 ? idx : this.replayCursor - 1;
+      const prev = this.replayFrames[Math.max(0, prevIdx)];
+      delta = Math.max(0, (frame.at - prev.at) / this.replayOpts.speed);
+    }
+    const t = setTimeout(() => {
+      this.replayTimers.delete(t);
+      if (this.replayState !== 'running') return;
+      this.deliverFrame(frame.data);
+      this.replayCursor = idx + 1;
+      this.scheduleNextReplay();
+    }, delta);
+    this.replayTimers.add(t);
+  }
+
+  /** Step one RX frame at a time — advances cursor to the next *relevant* RX. */
   stepReplay(): boolean {
-    if (this.replayCursor >= this.replayFrames.length) return false;
-    const frame = this.replayFrames[this.replayCursor++];
-    if (frame.dir === 'rx') this.deliverFrame(frame.data);
-    return this.replayCursor < this.replayFrames.length;
+    const idx = this.nextRxIndex(this.replayCursor);
+    if (idx === -1) return false;
+    this.deliverFrame(this.replayFrames[idx].data);
+    this.replayCursor = idx + 1;
+    return this.nextRxIndex(this.replayCursor) !== -1;
   }
 
-  pauseReplay() { if (this.replayState === 'running') this.replayState = 'paused'; }
+  pauseReplay() {
+    if (this.replayState !== 'running') return;
+    this.replayState = 'paused';
+    for (const t of this.replayTimers) clearTimeout(t);
+    this.replayTimers.clear();
+  }
+
+  resumeReplay() {
+    if (this.replayState !== 'paused') return;
+    this.replayState = 'running';
+    this.scheduleNextReplay();
+  }
+
   stopReplay() {
     this.replayState = 'idle';
     this.replayCursor = 0;
     for (const t of this.replayTimers) clearTimeout(t);
     this.replayTimers.clear();
   }
+
   getReplayStatus() {
     return {
       state: this.replayState,
       cursor: this.replayCursor,
       total: this.replayFrames.length,
     };
+  }
+
+  /** Read-only frames view for the visual timeline. */
+  getReplayFrames(): ReadonlyArray<{ dir: 'tx' | 'rx'; data: string; at: number }> {
+    return this.replayFrames;
   }
 
   // ── Cleanup ─────────────────────────────────────────────────────
