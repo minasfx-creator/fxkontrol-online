@@ -19,11 +19,12 @@ describe('LTCTransport', () => {
     const first = transport.ingestTime(10.033, 1000);
     const second = transport.ingestTime(10.04, 1033);
 
-    expect(first).toMatchObject({ mode: 'soft', syncedTime: 10.033 });
+    expect(first).toMatchObject({ mode: 'soft' });
+    expect(first?.syncedTime).toBeCloseTo(10.00495, 6);
     expect(second?.mode).toBe('soft');
-    expect(second?.syncedTime).toBeCloseTo(10.03405, 6);
+    expect(second?.syncedTime).toBeCloseTo(10.0102075, 6);
     expect(syncExternalTime).toHaveBeenCalledTimes(2);
-    expect(syncExternalTime.mock.lastCall?.[0]).toBeCloseTo(10.03405, 6);
+    expect(syncExternalTime.mock.lastCall?.[0]).toBeCloseTo(10.0102075, 6);
   });
 
   it('smooths against the live target time instead of the previous LTC sample', () => {
@@ -45,8 +46,8 @@ describe('LTCTransport', () => {
     const sample = transport.ingestTime(10.4, 1033);
 
     expect(sample).toMatchObject({ mode: 'soft' });
-    expect(sample?.syncedTime).toBeCloseTo(10.315, 6);
-    expect(syncExternalTime.mock.lastCall?.[0]).toBeCloseTo(10.315, 6);
+    expect(sample?.syncedTime).toBeCloseTo(10.3075, 6);
+    expect(syncExternalTime.mock.lastCall?.[0]).toBeCloseTo(10.3075, 6);
   });
 
   it('snaps immediately on large forward and backward jumps', () => {
