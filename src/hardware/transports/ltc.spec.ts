@@ -19,7 +19,7 @@ describe('LTCTransport', () => {
     expect(second?.mode).toBe('soft');
     expect(second?.syncedTime).toBeCloseTo(10.03405, 6);
     expect(syncExternalTime).toHaveBeenCalledTimes(2);
-    expect(syncExternalTime).toHaveBeenLastCalledWith(10.03405);
+    expect(syncExternalTime.mock.lastCall?.[0]).toBeCloseTo(10.03405, 6);
   });
 
   it('snaps immediately on large forward and backward jumps', () => {
