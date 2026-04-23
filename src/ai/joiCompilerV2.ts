@@ -84,6 +84,7 @@ export interface IRStep {
   readonly id: string;
   readonly sequenceId: string; // deterministic hash (FNV1a)
   readonly frameIndex: number; // floor(t0 / FRAME_SIZE_MS)
+  readonly frameOffset: number; // ms within the frame (t0 % FRAME_SIZE_MS)
   readonly t0: number;
   readonly t1: number;
   readonly commands: readonly IRCommand[];
@@ -91,6 +92,10 @@ export interface IRStep {
     readonly activeActors: number;
     readonly risk: number;
     readonly overlapCount: number;
+  };
+  readonly executionHint: {
+    readonly mode: ExecutionLayer;
+    readonly degraded: boolean;
   };
 }
 
@@ -106,6 +111,10 @@ export interface JoiIR {
     readonly maxDroneSpeedUsed: number;
     readonly maxPyroConcurrency: number;
     readonly dmxChannelLoad: number;
+    readonly riskEnvelope: {
+      readonly avg: number;
+      readonly peak: number;
+    };
   };
   readonly safety: {
     readonly collisionRiskScore: number;
