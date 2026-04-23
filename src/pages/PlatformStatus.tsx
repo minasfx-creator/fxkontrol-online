@@ -60,6 +60,8 @@ export default function PlatformStatus() {
   const [physicalRevision, setPhysicalRevision] = useState(0);
   const bridgeDiagnostic = useMemo(() => getBridgeSecurityDiagnostic({ path: '/ws' }), []);
   const physicalSnapshot = useMemo(() => bridgePhysicalController.getSnapshot(), [physicalRevision]);
+  const hilLogs = useMemo(() => bridgePhysicalController.getHilLogs(), [physicalRevision]);
+  const hilReport = useMemo(() => bridgePhysicalController.exportHilReport(), [physicalRevision]);
 
   useEffect(() => bridgePhysicalController.subscribe(() => setPhysicalRevision((value) => value + 1)), []);
 
@@ -273,6 +275,23 @@ export default function PlatformStatus() {
             <div className="rounded-md border border-border/50 bg-background/40 p-3">HIL delay/jitter: {physicalSnapshot.hilProfile.baseDelayMs}ms / {physicalSnapshot.hilProfile.jitterMs}ms</div>
             <div className="rounded-md border border-border/50 bg-background/40 p-3">Loss: {Math.round(physicalSnapshot.hilProfile.packetLossRate * 100)}%</div>
             <div className="rounded-md border border-border/50 bg-background/40 p-3">Reorder: {Math.round(physicalSnapshot.hilProfile.reorderRate * 100)}%</div>
+          </div>
+          <div className="rounded-md border border-border/50 bg-background/40 p-3 text-xs text-muted-foreground">
+            <div className="mb-2 flex flex-wrap gap-3">
+              <span>Total: {hilReport.stats.total}</span>
+              <span>ACKed: {hilReport.stats.acked}</span>
+              <span>Failed: {hilReport.stats.failed}</span>
+              <span>Logs: {hilLogs.length}</span>
+            </div>
+            <div className="space-y-1 max-h-28 overflow-y-auto">
+              {hilLogs.slice(-8).reverse().map((entry, index) => (
+                <div key={`${entry.time}-${index}`} className="flex items-center justify-between gap-2">
+                  <span>{entry.channel}</span>
+                  <span>{entry.event}</span>
+                  <span>{entry.delayMs ? `${Math.round(entry.delayMs)}ms` : '—'}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>

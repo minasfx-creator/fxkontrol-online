@@ -395,6 +395,8 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   const [physicalRevision, setPhysicalRevision] = useState(0);
   const relayDiagnostic = useMemo(() => getBridgeSecurityDiagnostic(relayUrl), [relayUrl]);
   const physicalSnapshot = useMemo(() => bridgePhysicalController.getSnapshot(), [physicalRevision]);
+  const hilLogs = useMemo(() => bridgePhysicalController.getHilLogs(), [physicalRevision]);
+  const commandTimeline = useMemo(() => bridgePhysicalController.getCommandTimeline(), [physicalRevision]);
 
   useEffect(() => {
     if (!initialMode) return;
@@ -700,6 +702,12 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
 
   // ─── Fire logic ───
   const fireChannel = useCallback((id: string) => {
+    const hilValidation = bridgePhysicalController.validateHilBeforeFire();
+    if (!hilValidation.ok) {
+      toast.error(`HIL blocked: ${hilValidation.reason}`);
+      return;
+    }
+
     const lockout = evaluateFireLockout({
       systemArmed: pyroArm || dmxArm,
       deadmanHeld: deadmanHeld || !settings.pyroArmRequired,
@@ -750,13 +758,22 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         setChannels(prev => { const updated = prev.map(c => c.id === id ? { ...c, firing: false } : c); sendArtNetPacket(updated); return updated; });
         bridgePhysicalController.transitionCommand(commandId, 'confirmed');
         bridgePhysicalController.transitionCommand(commandId, 'done');
+        bridgePhysicalController.clearHilTimer(commandId);
         fireTimers.current.delete(id);
       };
       const timer = setTimeout(() => {
         if (settings.hilModeEnabled) {
-          void bridgePhysicalController.simulateHilFire(id, () => finalizeCommand()).then((ok) => {
+          bridgePhysicalController.registerHilTimer(commandId, timer);
+          void bridgePhysicalController.simulateHilFire(id, (_channelId, meta) => {
+            if (meta.reordered) {
+              const log = `HIL reorder: ${id} +${Math.round(meta.delayMs)}ms`;
+              toast.warning(log, { duration: 1500 });
+            }
+            finalizeCommand();
+          }).then((ok) => {
             if (!ok) {
               bridgePhysicalController.failCommand(commandId, 'HIL simulated packet loss');
+              bridgePhysicalController.clearHilTimer(commandId);
               fireTimers.current.delete(id);
               setChannels(prev => { const updated = prev.map(c => c.id === id ? { ...c, firing: false } : c); sendArtNetPacket(updated); return updated; });
               toast.error(`HIL fault: packet loss em ${id}`);
@@ -794,6 +811,17 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
     }, settings.fireWindowMs);
     toast.success(`FIRE WINDOW aberta por ${(settings.fireWindowMs / 1000).toFixed(1)}s`);
   }, [pyroArm, dmxArm, settings.fireWindowMs, handlePyroArm, handleDmxArm]);
+
+  const cancelLiveHil = useCallback(() => {
+    const latest = [...commandTimeline].reverse().find((entry) => !entry.doneAt && !entry.failedAt);
+    if (!latest) {
+      toast.info('Nenhum comando HIL ativo para cancelar');
+      return;
+    }
+    bridgePhysicalController.cancelHilCommand(latest.commandId);
+    setChannels(prev => prev.map((channel) => channel.id === latest.channel ? { ...channel, firing: false } : channel));
+    toast.warning(`CANCEL LIVE aplicado em ${latest.channel}`);
+  }, [commandTimeline]);
 
   // ─── CUE Key firing with Lock/Tap + firing rules ───
   const fireCueKey = useCallback((keyIndex: number) => {
@@ -1490,6 +1518,25 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
               ? `FIRE WINDOW ACTIVE · ${Math.max(0, Math.ceil((fireWindowEndsAt - Date.now()) / 1000))}s`
               : 'Dual confirm required before FIRE'}
           </div>
+        )}
+        {settings.hilModeEnabled && (
+          <>
+            <Button variant="outline" onClick={cancelLiveHil} className={cn("w-full", isMobileFire ? "h-12 text-sm" : fs ? "h-10 text-xs" : "h-8 text-[10px]")}>
+              CANCEL LIVE
+            </Button>
+            <div className="rounded-md border border-border/40 bg-background/40 p-2 text-[10px] text-muted-foreground">
+              <div className="mb-1 font-semibold text-foreground">HIL live log</div>
+              <div className="space-y-1 max-h-24 overflow-y-auto">
+                {hilLogs.slice(-6).reverse().map((entry, index) => (
+                  <div key={`${entry.time}-${index}`} className="flex items-center justify-between gap-2">
+                    <span>{entry.channel}</span>
+                    <span>{entry.event}</span>
+                    <span>{entry.delayMs ? `${Math.round(entry.delayMs)}ms` : '—'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
         )}
         {/* 2 cols on mobile, 4 on desktop — bigger touch targets on mobile */}
         <div className={cn("grid gap-2", isMobileFire ? "grid-cols-2 gap-3" : fs ? "grid-cols-4 gap-1.5" : "grid-cols-2 gap-1.5")}>
