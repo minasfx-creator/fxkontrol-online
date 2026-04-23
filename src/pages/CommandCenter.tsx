@@ -48,6 +48,7 @@ const ExecutionStatusConsole = lazy(() => import('@/components/editor/ExecutionS
 const ExportReadinessPanel = lazy(() => import('@/components/editor/ExportReadinessPanel'));
 const CurrentStateMatrix = lazy(() => import('@/components/editor/CurrentStateMatrix'));
 const HardwareOverview = lazy(() => import('@/components/editor/HardwareOverview'));
+const DevSimulationPanel = lazy(() => import('@/components/editor/DevSimulationPanel'));
 const RelayBankMonitor = lazy(() => import('@/components/editor/RelayBankMonitor'));
 const BatteryPowerMonitor = lazy(() => import('@/components/editor/BatteryPowerMonitor'));
 const MuxContinuityMonitor = lazy(() => import('@/components/editor/MuxContinuityMonitor'));
@@ -306,7 +307,12 @@ export default function CommandCenter() {
       case 'execution_status': return <ExecutionStatusConsole />;
       case 'export_readiness': return <ExportReadinessPanel />;
       case 'state_matrix': return <CurrentStateMatrix />;
-      case 'hw_overview': return <HardwareOverview />;
+      case 'hw_overview': return (
+        <div className="flex flex-col gap-2 h-full">
+          <Suspense fallback={null}><DevSimulationPanel /></Suspense>
+          <div className="flex-1 min-h-0"><HardwareOverview /></div>
+        </div>
+      );
       case 'relay_bank': return <RelayBankMonitor />;
       case 'battery_power': return <BatteryPowerMonitor />;
       case 'mux_continuity': return <MuxContinuityMonitor />;

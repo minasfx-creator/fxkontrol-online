@@ -65,6 +65,8 @@ export class TransportEmulator {
   private timers = new Set<ReturnType<typeof setTimeout>>();
   /** Auto-reply rules: when bridge sends `match`, queue `reply` after delay. */
   private autoReplies: Array<{ match: RegExp; reply: (cmd: string) => string | null }> = [];
+  private trace: Array<{ dir: 'tx' | 'rx'; data: string; at: number; mode: EmulatorMode }> = [];
+  private traceCap = 1000;
 
   constructor(cfg: EmulatorConfig) {
     // Production guard — emulator is dev/test only.
@@ -117,6 +119,7 @@ export class TransportEmulator {
       return false; // dropped on the wire
     }
     this.outboundLog.push(cmd);
+    this.recordTrace('tx', cmd);
 
     // Process auto-replies for this command
     for (const rule of this.autoReplies) {
@@ -180,6 +183,7 @@ export class TransportEmulator {
       // Truncate or corrupt 30% of frames
       if (this.rng() < 0.3) f = frame.slice(0, Math.max(1, Math.floor(frame.length / 2)));
     }
+    this.recordTrace('rx', f);
     for (const l of this.respListeners) l(f);
   }
 
@@ -211,7 +215,32 @@ export class TransportEmulator {
   getOutboundLog() { return [...this.outboundLog]; }
   getSentCount() { return this.sentCount; }
   getPendingTimers() { return this.timers.size; }
-  resetLog() { this.outboundLog = []; }
+  resetLog() { this.outboundLog = []; this.trace = []; }
+  getMode(): EmulatorMode { return this.cfg.mode; }
+  getConfig(): Required<EmulatorConfig> { return { ...this.cfg }; }
+  setMode(mode: EmulatorMode) { this.cfg.mode = mode; }
+  setLatency(ms: number) { this.cfg.latencyMs = Math.max(0, ms); }
+  setJitter(ms: number) { this.cfg.jitterMs = Math.max(0, ms); }
+  setLossRate(rate: number) { this.cfg.lossRate = Math.min(1, Math.max(0, rate)); }
+
+  // ── Trace recording ─────────────────────────────────────────────
+  /** Export full TX/RX trace as a serializable JSON-ready object. */
+  exportTrace() {
+    return {
+      version: 1,
+      seed: this.cfg.seed,
+      mode: this.cfg.mode,
+      capturedAt: Date.now(),
+      frames: [...this.trace],
+    };
+  }
+
+  private recordTrace(dir: 'tx' | 'rx', data: string) {
+    this.trace.push({ dir, data, at: Date.now(), mode: this.cfg.mode });
+    // Bounded buffer — drop oldest to keep memory flat.
+    if (this.trace.length > this.traceCap) this.trace.shift();
+  }
+
 
   // ── Cleanup ─────────────────────────────────────────────────────
   destroy() {
