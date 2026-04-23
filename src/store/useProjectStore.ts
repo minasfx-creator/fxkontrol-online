@@ -217,16 +217,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setPlaying: (playing) => {
     if (playing) timelineClock.play();
     else timelineClock.pause();
-    set({ isPlaying: timelineClock.isPlaying() });
   },
   setCurrentTime: (time) => {
     timelineClock.seek(time);
-    set({ currentTime: timelineClock.getTime() });
   },
   setDuration: (duration) => {
     timelineClock.setDuration(duration);
-    const state = timelineClock.getState();
-    set({ duration: state.duration, currentTime: state.time, isPlaying: state.playing });
   },
   addTimelineItem: (item) => set((s) => ({ timelineItems: [...s.timelineItems, item] })),
   removeTimelineItem: (id) => set((s) => {
@@ -410,7 +406,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setSnapToBeat: (snap) => set({ snapToBeat: snap }),
   setPlaybackSpeed: (speed) => {
     timelineClock.setSpeed(speed);
-    set({ playbackSpeed: timelineClock.getState().speed });
   },
   setProjectId: (id) => set({ projectId: id }),
 

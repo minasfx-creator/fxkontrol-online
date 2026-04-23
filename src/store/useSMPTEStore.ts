@@ -316,8 +316,8 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
         if (state.mode === 'slave') {
           const projectStore = useProjectStore.getState();
           const currentProjectTime = timelineClock.getTime();
-          const diff = Math.abs(projectTime - currentProjectTime);
-          const chase = resolveSMPTEChase(currentProjectTime, Math.max(0, Math.min(projectTime, projectStore.duration)));
+          const boundedProjectTime = Math.max(0, Math.min(projectTime, projectStore.duration));
+          const chase = resolveSMPTEChase(currentProjectTime, boundedProjectTime);
 
           switch (state.chaseMode) {
             case 'hard':
@@ -339,7 +339,7 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
               break;
 
             case 'jam':
-              if (state.packetCount <= 3 || diff > 2.0) {
+              if (state.packetCount <= 3 || Math.abs(chase.driftSec) > 2.0) {
                 timelineClock.syncExternalTime(chase.mode === 'ignore' ? currentProjectTime : chase.nextTime);
                 if (!projectStore.isPlaying) timelineClock.play();
               }
