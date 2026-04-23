@@ -5,7 +5,7 @@
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import type { Effect } from '@/data/effectLibrary';
-import { timelineEngine } from '@/core/engine/timelineEngine';
+import { timelineClock } from '@/core/timeline/TimelineClock';
 import { toast } from 'sonner';
 import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { readinessEvaluator } from '@/core/hardware/ReadinessEvaluator';
@@ -306,21 +306,18 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
       }
 
       case 'play': {
-        store.setPlaying(true);
-        timelineEngine.play();
+        timelineClock.play();
         return { action, success: true, label: `▶ Playback iniciado` };
       }
 
       case 'pause': {
-        store.setPlaying(false);
-        timelineEngine.pause();
+        timelineClock.pause();
         return { action, success: true, label: `⏸ Playback pausado` };
       }
 
       case 'seek': {
         const t = params.time ?? 0;
-        store.setCurrentTime(t);
-        timelineEngine.seek(t);
+        timelineClock.seek(t);
         return { action, success: true, label: `⏩ Seek para ${t.toFixed(1)}s` };
       }
 
@@ -496,8 +493,7 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
       case 'set_duration': {
         const d = params.duration;
         if (typeof d !== 'number' || d <= 0) return { action, success: false, label: `Duração inválida` };
-        store.setDuration(d);
-        timelineEngine.setDuration(d);
+        timelineClock.setDuration(d);
         return { action, success: true, label: `Duração do show: ${d}s` };
       }
 
