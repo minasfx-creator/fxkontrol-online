@@ -1149,9 +1149,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 /** Viewport playback controls — always visible at bottom center of 3D viewport */
 function ViewportPlaybackControls() {
     const isPlaying = useProjectStore(s => s.isPlaying);
-  const setPlaying = useProjectStore(s => s.setPlaying);
   const currentTime = useProjectStore(s => s.currentTime);
-  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
   const duration = useProjectStore(s => s.duration);
   const playbackSpeed = useProjectStore(s => s.playbackSpeed);
 
@@ -1166,7 +1164,7 @@ function ViewportPlaybackControls() {
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
       {/* Rewind */}
       <button
-        onClick={() => { setCurrentTime(0); setPlaying(false); }}
+        onClick={() => { timelineClock.pause(); timelineClock.seek(0); }}
         className="bg-card/85 backdrop-blur-xl border border-border/25 text-muted-foreground hover:text-foreground hover:bg-card/95 w-8 h-8 rounded-lg flex items-center justify-center transition-all shadow-lg"
         title="Rewind (Home)"
       >
@@ -1175,7 +1173,7 @@ function ViewportPlaybackControls() {
 
       {/* Play/Pause */}
       <button
-        onClick={() => setPlaying(!isPlaying)}
+        onClick={() => isPlaying ? timelineClock.pause() : timelineClock.play()}
         className={cn(
           "backdrop-blur-xl border w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg",
           isPlaying
@@ -1193,7 +1191,7 @@ function ViewportPlaybackControls() {
 
       {/* Stop */}
       <button
-        onClick={() => { setCurrentTime(0); setPlaying(false); }}
+        onClick={() => { timelineClock.pause(); timelineClock.seek(0); }}
         className="bg-card/85 backdrop-blur-xl border border-border/25 text-muted-foreground hover:text-destructive hover:bg-card/95 w-8 h-8 rounded-lg flex items-center justify-center transition-all shadow-lg"
         title="Stop"
       >
@@ -1215,7 +1213,7 @@ function ViewportPlaybackControls() {
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const pct = Math.max(0, Math.min(1, (e.clientX - rect.left - 8) / (rect.width - 16)));
-          setCurrentTime(pct * duration);
+          timelineClock.seek(pct * duration);
         }}
       >
         <div className="relative w-full h-1 bg-border/30 rounded-full overflow-hidden">
@@ -1232,9 +1230,7 @@ function ViewportPlaybackControls() {
 /** Floating menu for fullscreen mode — gives access to key actions */
 function FullscreenEditMenu() {
     const isPlaying = useProjectStore(s => s.isPlaying);
-  const setPlaying = useProjectStore(s => s.setPlaying);
   const currentTime = useProjectStore(s => s.currentTime);
-  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
   const duration = useProjectStore(s => s.duration);
   const [expanded, setExpanded] = useState(false);
 
@@ -1250,13 +1246,13 @@ function FullscreenEditMenu() {
       {expanded && (
         <div className="bg-surface-1/95 backdrop-blur-md border border-border/60 rounded-lg shadow-xl p-2 min-w-[160px] space-y-0.5">
           <button
-            onClick={() => setPlaying(!isPlaying)}
+            onClick={() => isPlaying ? timelineClock.pause() : timelineClock.play()}
             className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 rounded flex items-center gap-2"
           >
             {isPlaying ? '⏸ Pause' : '▶ Play'}
           </button>
           <button
-            onClick={() => { setCurrentTime(0); setPlaying(false); }}
+            onClick={() => { timelineClock.pause(); timelineClock.seek(0); }}
             className="w-full text-left px-3 py-1.5 text-[10px] font-mono-code text-muted-foreground hover:text-foreground hover:bg-surface-3 rounded flex items-center gap-2"
           >
             ⏮ Rewind
