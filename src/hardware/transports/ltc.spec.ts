@@ -352,6 +352,8 @@ describe('LTCTransport', () => {
     expect(transport.ingestTime(10, 1000, 'A', 1)).toBeNull();
     currentTime = 10.033;
     transport.ingestTime(10.033, 1033, 'A', 1);
+    currentTime = 10.06;
+    transport.ingestTime(10.066, 1066, 'A', 1);
     currentTime = 10.2;
     transport.ingestTime(10.2, 1034, 'B', 0);
 
