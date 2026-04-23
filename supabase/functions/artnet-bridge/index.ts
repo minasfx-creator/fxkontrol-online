@@ -44,6 +44,7 @@ serve(async (req: Request) => {
         return jsonError(`Unknown action: ${action}`, 400);
     }
   } catch (error) {
-    return jsonError(error.message, 500);
+    const message = error instanceof Error ? error.message : String(error);
+    return jsonError(message, 500);
   }
 });
