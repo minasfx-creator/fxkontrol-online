@@ -19,6 +19,8 @@ const MAX_DELTA = 0.1;          // Cap at 100ms to avoid spiral
 const DRIFT_CORRECTION = 0.01; // Smooth correction factor
 const MAX_CORRECTION = 0.01;   // Clamp external correction to ±10ms per tick
 const MAX_CALLBACKS = 32;
+const MIN_DELTA = 0.000001;
+const MAX_TIME = 86400;
 
 class DeterministicClock {
   private _time = 0;
@@ -28,6 +30,8 @@ class DeterministicClock {
   private _lastPerfTime = 0;
   private _referenceSource: ClockState['referenceSource'] = 'performance';
   private _externalRef: (() => number) | null = null;
+  private _ticking = false;
+  private _needsCompaction = false;
 
   // Pre-allocated callback array
   private _callbacks: (TickCallback | null)[] = new Array(MAX_CALLBACKS).fill(null);
@@ -35,6 +39,7 @@ class DeterministicClock {
 
   /** Start the clock. */
   start(): void {
+    if (this._running) return;
     this._running = true;
     this._lastPerfTime = performance.now() / 1000;
   }
@@ -42,6 +47,7 @@ class DeterministicClock {
   /** Pause the clock (time freezes, no callbacks). */
   pause(): void {
     this._running = false;
+    this._lastPerfTime = performance.now() / 1000;
   }
 
   /** Reset to zero. */
@@ -62,6 +68,7 @@ class DeterministicClock {
   clearReference(): void {
     this._referenceSource = 'performance';
     this._externalRef = null;
+    this._drift = 0;
   }
 
   /**
@@ -69,39 +76,50 @@ class DeterministicClock {
    * Applies drift correction if external reference is set.
    */
   tick(): void {
-    if (!this._running) return;
+    if (!this._running || this._ticking) return;
 
-    const now = performance.now() / 1000;
-    let rawDelta = now - this._lastPerfTime;
-    this._lastPerfTime = now;
+    this._ticking = true;
 
-    // Cap delta to prevent spiral of death
-    if (rawDelta > MAX_DELTA) rawDelta = MAX_DELTA;
-    if (rawDelta < 0) rawDelta = 0; // Monotonic guard
+    try {
+      const now = performance.now() / 1000;
+      let rawDelta = now - this._lastPerfTime;
+      this._lastPerfTime = now;
 
-    // Drift correction against external reference
-    if (this._externalRef) {
-      const externalTime = this._externalRef();
-      if (Number.isFinite(externalTime)) {
-        this._drift = externalTime - this._time;
+      // Cap delta to prevent spiral of death
+      if (rawDelta > MAX_DELTA) rawDelta = MAX_DELTA;
+      if (rawDelta < 0) rawDelta = 0; // Monotonic guard
 
-        // Smooth correction: nudge delta toward reference without large jumps
-        const correction = Math.max(
-          -MAX_CORRECTION,
-          Math.min(MAX_CORRECTION, this._drift * DRIFT_CORRECTION),
-        );
-        rawDelta += correction;
-        if (rawDelta < 0) rawDelta = 0; // Never go backward
+      // Drift correction against external reference
+      if (this._externalRef) {
+        const externalTime = this._externalRef();
+        if (Number.isFinite(externalTime)) {
+          this._drift = externalTime - this._time;
+
+          // Smooth correction: nudge delta toward reference without large jumps
+          const correction = Math.max(
+            -MAX_CORRECTION,
+            Math.min(MAX_CORRECTION, this._drift * DRIFT_CORRECTION),
+          );
+          rawDelta += correction;
+        }
       }
-    }
 
-    this._delta = rawDelta;
-    this._time += rawDelta;
+      rawDelta = Math.max(MIN_DELTA, rawDelta);
 
-    // Fire callbacks (no allocation)
-    for (let i = 0; i < this._callbackCount; i++) {
-      const cb = this._callbacks[i];
-      if (cb) cb(this._time, this._delta);
+      this._delta = rawDelta;
+      this._time = Math.min(MAX_TIME, Math.round((this._time + rawDelta) * 1e6) / 1e6);
+
+      // Fire callbacks (no allocation)
+      const count = this._callbackCount;
+      for (let i = 0; i < count; i++) {
+        const cb = this._callbacks[i];
+        if (cb) cb(this._time, this._delta);
+      }
+    } finally {
+      this._ticking = false;
+      if (this._needsCompaction) {
+        this.compactCallbacks();
+      }
     }
   }
 
@@ -117,24 +135,20 @@ class DeterministicClock {
 
     return () => {
       this._callbacks[idx] = null;
-      // Compact array
-      const arr = this._callbacks;
-      let write = 0;
-      for (let r = 0; r < this._callbackCount; r++) {
-        if (arr[r] !== null) {
-          arr[write] = arr[r];
-          write++;
-        }
+      if (this._ticking) {
+        this._needsCompaction = true;
+        return;
       }
-      this._callbackCount = write;
-      for (let i = write; i < MAX_CALLBACKS; i++) arr[i] = null;
+      this.compactCallbacks();
     };
   }
 
   /** Set simulation time directly (e.g. from timeline scrub). */
   setTime(t: number): void {
-    this._time = Math.max(0, t);
+    if (!Number.isFinite(t)) return;
+    this._time = Math.min(MAX_TIME, Math.max(0, t));
     this._delta = 0;
+    this._drift = 0;
     this._lastPerfTime = performance.now() / 1000;
   }
 
@@ -152,6 +166,20 @@ class DeterministicClock {
       drift: this._drift,
       referenceSource: this._referenceSource,
     };
+  }
+
+  private compactCallbacks(): void {
+    const arr = this._callbacks;
+    let write = 0;
+    for (let r = 0; r < this._callbackCount; r++) {
+      if (arr[r] !== null) {
+        arr[write] = arr[r];
+        write++;
+      }
+    }
+    this._callbackCount = write;
+    for (let i = write; i < MAX_CALLBACKS; i++) arr[i] = null;
+    this._needsCompaction = false;
   }
 }
 
