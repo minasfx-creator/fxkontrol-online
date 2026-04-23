@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
 import { getBridgeSecurityDiagnostic } from '@/lib/bridgeGateway';
-import { bridgePhysicalController } from '@/lib/bridgePhysicalControl';
+import { bridgePhysicalController, computeHilDrift, checkHilRegression, replayHilReport, type HilRunReport } from '@/lib/bridgePhysicalControl';
+import { toast } from 'sonner';
 
 type StatusTone = 'healthy' | 'degraded' | 'blocked';
 
@@ -62,6 +63,51 @@ export default function PlatformStatus() {
   const physicalSnapshot = useMemo(() => bridgePhysicalController.getSnapshot(), [physicalRevision]);
   const hilLogs = useMemo(() => bridgePhysicalController.getHilLogs(), [physicalRevision]);
   const hilReport = useMemo(() => bridgePhysicalController.exportHilReport(), [physicalRevision]);
+  const drift = useMemo(() => computeHilDrift(hilReport), [hilReport]);
+  const regression = useMemo(
+    () => checkHilRegression(hilReport, { maxFailed: 0, maxP95Ms: 120, maxAbsoluteMs: 300, minAckRate: 0.95 }),
+    [hilReport],
+  );
+  const [savedReport, setSavedReport] = useState<HilRunReport | null>(null);
+  const compare = useMemo(() => {
+    if (!savedReport) return null;
+    const a = computeHilDrift(savedReport);
+    return {
+      lossDelta: hilReport.stats.failed - savedReport.stats.failed,
+      ackDelta: hilReport.stats.acked - savedReport.stats.acked,
+      jitterP95Delta: drift.p95 - a.p95,
+      meanDelta: drift.mean - a.mean,
+    };
+  }, [savedReport, hilReport, drift]);
+
+  const handleExportJSON = () => {
+    const json = bridgePhysicalController.exportHilReportJSON();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hil-report-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('HIL report exportado');
+  };
+
+  const handleReplay = () => {
+    const handle = replayHilReport(hilReport, (channel) => {
+      console.info('[HIL replay] fire', channel);
+    });
+    toast.info(`Replay iniciado (${handle.scheduled} comandos)`);
+  };
+
+  const handleSnapshot = () => {
+    setSavedReport(hilReport);
+    toast.success('Snapshot A salvo para comparação');
+  };
+
+  const handleResetRun = () => {
+    bridgePhysicalController.resetHilRun();
+    toast.info('HIL run resetado');
+  };
 
   useEffect(() => bridgePhysicalController.subscribe(() => setPhysicalRevision((value) => value + 1)), []);
 
@@ -293,6 +339,55 @@ export default function PlatformStatus() {
               ))}
             </div>
           </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={handleExportJSON}>Export JSON</Button>
+            <Button size="sm" variant="outline" onClick={handleReplay}>Replay last run</Button>
+            <Button size="sm" variant="outline" onClick={handleSnapshot}>Save snapshot A</Button>
+            <Button size="sm" variant="outline" onClick={handleResetRun}>Reset run</Button>
+          </div>
+          <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-md border border-border/50 bg-background/40 p-3">Drift mean: {drift.mean.toFixed(1)}ms</div>
+            <div className="rounded-md border border-border/50 bg-background/40 p-3">p50: {drift.p50.toFixed(1)}ms</div>
+            <div className="rounded-md border border-border/50 bg-background/40 p-3">p95: {drift.p95.toFixed(1)}ms</div>
+            <div className="rounded-md border border-border/50 bg-background/40 p-3">max: {drift.max.toFixed(1)}ms</div>
+          </div>
+          {drift.buckets.length > 0 && (
+            <div className="rounded-md border border-border/50 bg-background/40 p-3">
+              <div className="mb-2 text-xs font-semibold text-foreground">Drift histogram</div>
+              <div className="flex items-end gap-1 h-20">
+                {drift.buckets.map((b, i) => {
+                  const maxCount = Math.max(...drift.buckets.map((x) => x.count), 1);
+                  const h = Math.max(4, Math.round((b.count / maxCount) * 72));
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                      <div className="w-full rounded-sm bg-primary/70" style={{ height: `${h}px` }} title={`${b.rangeMs[0]}-${b.rangeMs[1]}ms: ${b.count}`} />
+                      <span className="text-[9px] text-muted-foreground">{b.rangeMs[0]}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          <div className={`rounded-md border p-3 text-xs ${regression.passed ? 'border-primary/30 bg-primary/5 text-primary' : 'border-destructive/30 bg-destructive/5 text-destructive'}`}>
+            <div className="font-semibold mb-1">Regression: {regression.passed ? 'PASS' : 'FAIL'}</div>
+            <div>failed={regression.metrics.failed} · p95={regression.metrics.p95.toFixed(1)}ms · max={regression.metrics.max.toFixed(1)}ms · ack={(regression.metrics.ackRate * 100).toFixed(1)}%</div>
+            {regression.failures.length > 0 && (
+              <ul className="mt-1 list-disc list-inside">
+                {regression.failures.map((f) => <li key={f}>{f}</li>)}
+              </ul>
+            )}
+          </div>
+          {compare && (
+            <div className="rounded-md border border-border/50 bg-background/40 p-3 text-xs text-muted-foreground">
+              <div className="font-semibold text-foreground mb-1">A/B compare (current vs snapshot)</div>
+              <div className="flex flex-wrap gap-3">
+                <span>Δ failed: {compare.lossDelta}</span>
+                <span>Δ acked: {compare.ackDelta}</span>
+                <span>Δ p95: {compare.jitterP95Delta.toFixed(1)}ms</span>
+                <span>Δ mean: {compare.meanDelta.toFixed(1)}ms</span>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
