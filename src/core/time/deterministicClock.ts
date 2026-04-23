@@ -17,6 +17,7 @@ export interface ClockState {
 
 const MAX_DELTA = 0.1;          // Cap at 100ms to avoid spiral
 const DRIFT_CORRECTION = 0.01; // Smooth correction factor
+const MAX_CORRECTION = 0.01;   // Clamp external correction to ±10ms per tick
 const MAX_CALLBACKS = 32;
 
 class DeterministicClock {
@@ -81,11 +82,17 @@ class DeterministicClock {
     // Drift correction against external reference
     if (this._externalRef) {
       const externalTime = this._externalRef();
-      this._drift = externalTime - this._time;
+      if (Number.isFinite(externalTime)) {
+        this._drift = externalTime - this._time;
 
-      // Smooth correction: nudge delta toward reference
-      rawDelta += this._drift * DRIFT_CORRECTION;
-      if (rawDelta < 0) rawDelta = 0; // Never go backward
+        // Smooth correction: nudge delta toward reference without large jumps
+        const correction = Math.max(
+          -MAX_CORRECTION,
+          Math.min(MAX_CORRECTION, this._drift * DRIFT_CORRECTION),
+        );
+        rawDelta += correction;
+        if (rawDelta < 0) rawDelta = 0; // Never go backward
+      }
     }
 
     this._delta = rawDelta;
