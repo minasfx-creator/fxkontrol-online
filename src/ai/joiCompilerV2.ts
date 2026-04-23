@@ -114,6 +114,7 @@ export interface JoiIR {
     readonly riskEnvelope: {
       readonly avg: number;
       readonly peak: number;
+      readonly variance: number;
     };
   };
   readonly safety: {
