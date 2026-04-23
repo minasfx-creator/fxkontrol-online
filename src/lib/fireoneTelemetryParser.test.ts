@@ -68,10 +68,8 @@ describe('parseTelemetryLine', () => {
   });
 
   it('does not throw on non-string input', () => {
-    // @ts-expect-error testing runtime safety
-    expect(parseTelemetryLine(null)).toEqual({});
-    // @ts-expect-error
-    expect(parseTelemetryLine(undefined)).toEqual({});
+    expect(parseTelemetryLine(null as unknown as string)).toEqual({});
+    expect(parseTelemetryLine(undefined as unknown as string)).toEqual({});
   });
 
   it('captures unknown tokens for diagnostics', () => {
