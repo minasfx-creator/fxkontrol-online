@@ -1,114 +1,126 @@
 
-Objetivo: unificar playback em um único clock canônico para que timeline, simulação, replay, SMPTE futuro e scheduler avancem no mesmo tempo determinístico, sem depender de delta do renderer.
+Objetivo: integrar o `PyroUsbTransport` já existente ao playback determinístico para que cues de pyro do `ShowPlan` sejam agendadas, disparadas no tempo correto e nunca retro-disparem em `play`, `pause`, `seek`, `rewind` ou `external sync`.
 
-1. Consolidar a fonte de verdade do tempo
-- Criar `src/core/timeline/TimelineClock.ts` como relógio canônico do show, com API mínima:
-  - `play()`, `pause()`, `seek(t)`, `setSpeed(speed)`, `setDuration(d)`, `setLoop(loop)`
-  - `getTime()`, `getState()`, `isPlaying()`
-  - `tick(dt)` para avanço determinístico por fixed-step
-  - `syncExternalTime(t)` reservado para SMPTE/audio
-  - `onChange(cb)` para UI e subsistemas observarem o mesmo estado
-- Não usar `requestAnimationFrame` para avançar tempo lógico; RAF só pode servir para renderizar/escutar estado.
-
-2. Eliminar a dupla autoridade atual
-- Hoje existem dois caminhos de tempo:
-  - `timelineEngine` em `src/core/engine/timelineEngine.ts`
-  - playback em `src/components/editor/SkyCanvas.tsx` via `deterministicClock + lockstep + setCurrentTime`
-- Refatorar para um único núcleo:
-  - promover `TimelineClock` como engine central;
-  - transformar `timelineEngine` em adapter fino ou removê-lo gradualmente;
-  - remover a lógica de avanço direto de `currentTime` no `PlaybackClock` de `SkyCanvas.tsx`.
-- Resultado: `useProjectStore.currentTime` vira espelho de UI do clock, não motor de tempo.
-
-3. Integrar o clock ao lockstep existente
-- Manter `deterministicClock` e `lockstep` como infraestrutura de fixed-step.
-- Registrar o `TimelineClock` como primeiro subsystem do lockstep, antes de execution/simulation:
+1. Ajustar a arquitetura base do clock antes da bridge de pyro
+- Registrar explicitamente `timelineClock.tick(dt)` como subsystem do `lockstep` dentro de `src/orchestration/EngineProvider.tsx`, com prioridade anterior ao scheduler de pyro.
+- Parar de depender implicitamente do caminho legado em `SkyCanvas.tsx`, onde hoje só `executionBridge.tick(timelineClock.getTime())` está registrado.
+- Manter a ordem determinística:
 ```text
-DeterministicClock -> Lockstep -> TimelineClock -> Simulation/Execution -> Renderer
+DeterministicClock
+  -> Lockstep
+     -> commandBus / safety
+     -> timelineClock
+     -> pyroSchedulerBridge
+     -> snapshot / flush
 ```
-- Ordem sugerida:
-  - `timelineClock` prioridade 0
-  - `simulation/executionBridge` depois
-  - replay/scheduler consumindo `timelineClock.getTime()` / tick atual
 
-4. Sincronizar store/UI sem reintroduzir drift
-- Criar `src/hooks/useTimelineClock.ts` como bridge React para ler e comandar o clock.
-- O hook não deve criar clock novo; deve consumir singleton.
-- O hook deve:
-  - assinar `onChange`
-  - expor `time`, `playing`, `duration`, `speed`
-  - expor `play/pause/seek`
-- Atualizar `usePlaybackState()` em `src/hooks/useEditorUI.ts` para usar o clock como backend do playback.
-- Sincronizar `useProjectStore` a partir do clock:
-  - `currentTime <- TimelineClock.time`
-  - `isPlaying <- TimelineClock.playing`
-  - `duration/playbackSpeed` bidirecional com guardas anti-loop
+2. Aproveitar o `PyroUsbTransport` existente e endurecer seu contrato para uso agendado
+- Não recriar o transporte; adaptar `src/hardware/transports/pyroUsb.ts` para o caso real de scheduler.
+- Adicionar um wrapper/adapter opcional para o backend FireOne existente (`FireOneController`) em vez de duplicar protocolo.
+- Garantir conversão operacional:
+  - `ShowPlan.module` 0-based -> `moduleAddress = module + 1`
+  - `ShowPlan.channel` 0-based -> `cueIndex/igniter = channel + 1`
+- Manter regras atuais:
+  - sem auto-arm implícito
+  - lockout/watchdog preservados
+  - diagnostics congelado
+- Se necessário, endurecer validações para refletir endereço físico 1-based no dispatch real.
 
-5. Conectar comandos existentes ao novo clock
-- Ajustar os pontos que hoje escrevem direto no store e/ou `timelineEngine`:
-  - `src/utils/joiCommandExecutor.ts`
-  - atalhos/toolbar/timeline controls
-  - stop/rewind/play/pause em HUD overlays
-- Regra:
-  - ações de playback chamam `TimelineClock`
-  - store é atualizado como reflexo
-  - nunca “renderer delta -> store currentTime -> timeline”
+3. Criar a bridge temporal dedicada de pyro
+- Criar `src/hardware/integrations/pyroSchedulerBridge.ts`.
+- Responsabilidades da bridge:
+  - ler `ShowPlan.pyroCues`
+  - converter cada cue em `ScheduledHardwareEvent<PyroUsbScheduledPayload>`
+  - instanciar e operar um `HardwareScheduler` com `latencyByType.pyro = PYRO_USB_DEFAULT_LATENCY_MS`
+  - despachar apenas `fire` no tempo de execução; `arm/disarm/estop` continuam explícitos fora do timeline
+- Aplicar compensação temporal por cue:
+  - `scheduledTime = max(0, cue.time - cue.fuseDelay / 1000)`
+  - scheduler ainda compensa a latência do transporte no `dispatchAt`
+- IDs de eventos devem ser estáveis por cue para replay previsível e rastreio em diagnostics.
 
-6. Conectar simulação e execução ao mesmo tempo canônico
-- Trocar consumidores que dependem só de `useProjectStore.currentTime` para derivarem do clock sincronizado, sem quebrar UI atual.
-- Em especial:
-  - `src/components/editor/SkyCanvas.tsx`
-  - `src/components/editor/skycanvas/FireworkRenderer.tsx`
-  - `src/components/editor/skycanvas/LightingSystem.tsx`
-  - bridges de execução/scheduler já registradas no lockstep
-- Onde houver lógica “active burst / elapsed / trigger window”, usar tempo vindo do clock sincronizado para manter render e firing alinhados.
+4. Sincronizar corretamente a bridge com movimento do playhead
+- A bridge deve manter `lastClockState` e classificar transições:
+  - avanço contínuo
+  - pause
+  - seek forward
+  - rewind
+  - reset
+  - external sync / locate
+- Regras:
+  - play contínuo: `scheduler.tick(deltaClock)`
+  - pause: não avançar scheduler
+  - seek forward: `scheduler.seek(newTime)` para podar passado
+  - rewind/reset/external jump: limpar e reconstruir fila a partir do tempo atual
+  - jitter pequeno: não reconstruir e não duplicar firing
+- Nunca disparar cues que já ficaram no passado após rebuild.
 
-7. Preparar replay e seek determinístico
-- Integrar `src/core/engine/ReplayEngine.ts` ao clock:
-  - pause do clock ao iniciar replay/manual seek
-  - `seek()` deve resetar tempo lógico e alinhar `deterministicClock`
-  - rollback/replay devem reaplicar estado e depois reposicionar `TimelineClock`
-- Garantir que seek não deixe o renderer ou executionBridge “um frame atrás”.
+5. Isolar pyro real do `executionBridge` legado
+- Hoje `src/core/execution/executionBridge.ts` ainda converte `ShowPlan.pyroCues` para um payload legado incompatível com o transporte novo.
+- Remover pyro real desse caminho legado, mantendo o `executionBridge` apenas para:
+  - simulação
+  - status legado
+  - outros domínios ainda não migrados
+- Evitar dupla execução: `executionBridge` não pode continuar disparando pyro de `ShowPlan` em paralelo à nova bridge.
 
-8. Preparar SMPTE/audio sem acoplamento prematuro
-- Conectar `TimelineClock` ao `src/core/time/timecodeProvider.ts` e `src/store/useSMPTEStore.ts` apenas no nível de interface:
-  - modo local: clock livre
-  - modo slave futuro: `syncExternalTime()`
-- Isso evita ter `useSMPTEStore` escrevendo diretamente em `useProjectStore.currentTime` como caminho principal.
+6. Aplicar gates de segurança antes do dispatch real
+- Antes de chamar `pyroTransport.dispatch(...)`, validar:
+  - transporte conectado
+  - sem lockout ativo
+  - watchdog não expirado
+  - módulo armado
+  - `safetyStateMachine.state` em `ARMED` ou `FIRING`
+  - cue ainda válida para o tempo atual
+- Em falha de gate:
+  - não disparar
+  - registrar motivo no diagnostics/log
+  - nunca tentar “compensar” com retry automático, para evitar disparo duplicado
+- Preservar a regra do projeto: sem dados/hardware fake no caminho real.
 
-9. Validação do passo
-- Confirmar estes cenários:
-  - Play/Pause/Seek atualizam UI e simulação juntos
-  - O tempo não avança se o renderer travar momentaneamente
-  - Replay volta ao estado correto e continua do mesmo tempo
-  - `FireworkRenderer` e `LightingSystem` leem o mesmo tempo observado na toolbar
-  - `JOI`/atalhos/playback controls continuam funcionando
-- Critério de aceite:
-  - existe um único source of truth de tempo
-  - nenhum subsistema crítico avança por `delta` visual do renderer
-  - app permanece “simulation-first deterministic engine”
+7. Expor diagnósticos operacionais da integração
+- A bridge deve expor snapshot congelado com:
+  - `currentClockTime`
+  - `pendingCount`
+  - `nextPyroDispatchTime`
+  - `lastScheduledCueId`
+  - `lastFiredCueId`
+  - `lastRebuildReason`
+  - `transportConnected`
+  - `safetyState`
+- Motivos de rebuild sugeridos:
+  - `boot`
+  - `play`
+  - `seek-forward`
+  - `rewind`
+  - `external-sync`
+  - `showplan-change`
+  - `reset`
 
-Arquivos principais
-- Novo:
-  - `src/core/timeline/TimelineClock.ts`
-  - `src/hooks/useTimelineClock.ts`
-- Refatorar:
-  - `src/core/engine/timelineEngine.ts`
-  - `src/components/editor/SkyCanvas.tsx`
-  - `src/hooks/useEditorUI.ts`
-  - `src/store/useProjectStore.ts`
-  - `src/utils/joiCommandExecutor.ts`
-  - `src/store/useSMPTEStore.ts`
-  - consumidores de `currentTime` em render/simulation relevantes
+8. Cobrir com testes de integração antes de ativar no playback real
+- Criar `src/hardware/integrations/pyroSchedulerBridge.spec.ts`.
+- Casos mínimos:
+  - cue dispara com compensação de `fuseDelay + latency`
+  - seek forward ignora cues perdidas
+  - rewind reconstrói e permite replay determinístico
+  - pause não dispara
+  - external sync/jitter não duplica firing
+  - cue passada após rebuild é ignorada
+  - lockout/watchdog/desarmado bloqueiam dispatch
+  - múltiplos cues no mesmo timestamp preservam ordem estável
+  - mapeamento `module + 1` e `channel + 1` chega corretamente ao dispatch físico
+- Manter os testes atuais de `scheduler`, `ltc` e `pyroUsb` como base de regressão.
+
+Arquivos a criar/editar
+- Criar: `src/hardware/integrations/pyroSchedulerBridge.ts`
+- Criar: `src/hardware/integrations/pyroSchedulerBridge.spec.ts`
+- Editar: `src/orchestration/EngineProvider.tsx`
+- Editar: `src/components/editor/SkyCanvas.tsx`
+- Editar: `src/core/execution/executionBridge.ts`
+- Editar: `src/hardware/transports/pyroUsb.ts` (somente se necessário para adapter/diagnostics/mapeamento)
+- Editar: `src/hardware/index.ts`
 
 Detalhes técnicos
-- Não implementar o hook com RAF como motor de tempo; isso criaria outra fonte de verdade e manteria o problema.
-- O projeto já possui infraestrutura útil (`deterministicClock`, `lockstep`); o passo correto é reposicionar o clock da timeline dentro dela, não adicionar um terceiro clock paralelo.
-- `useProjectStore.currentTime` deve continuar existindo por compatibilidade de UI/export, mas como estado derivado do clock central.
-- Esse passo desbloqueia corretamente:
-  - replay determinístico
-  - export VVIZ/JSON com timeline locked
-  - SMPTE lock futuro
-  - firing scheduler
-  - command journal replay
-  - multi-client sync
+- O repositório já possui `PyroUsbTransport`; a fase correta agora é integração temporal, não recriação do transporte.
+- `ShowPlan` é a fonte canônica e já define `pyroCues` com `module`, `channel`, `time` e `fuseDelay`.
+- `EngineProvider` hoje habilita `timelineClock` mas não registra seu tick no `lockstep`; isso precisa ser explícito para o scheduler seguir o clock determinístico.
+- `SkyCanvas` ainda registra `executionBridge` como subsystem de playback; esse acoplamento precisa ser revisto para evitar conflito com pyro real.
+- A implementação deve priorizar segurança operacional sobre “catch-up”: sem retro-fire, sem auto-arm em seek/play/sync, sem retry automático de fire.
