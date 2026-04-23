@@ -1,4 +1,4 @@
-import { LayoutDashboard, Clapperboard, CalendarDays, LogOut, Gamepad2, Crosshair, Volume2, VolumeX, Cpu, Bluetooth, Rocket, Settings, Shield, Activity, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Clapperboard, CalendarDays, LogOut, Gamepad2, Crosshair, Volume2, VolumeX, Bluetooth, Rocket, Settings, Shield, Activity, BarChart3 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -32,7 +32,6 @@ const navItems = [
   { title: 'Platform Status', url: '/platform-status', icon: BarChart3, desc: 'Saúde operacional' },
   { title: 'Show Test', url: '/show-test', icon: Rocket, desc: 'Teste de show' },
   { title: 'Pairing', url: '/pairing', icon: Bluetooth, desc: 'Pareamento HW' },
-  { title: 'PCB Viewer', url: '/pcb-viewer', icon: Cpu, desc: 'Hardware M1' },
 ];
 
 export function AppSidebar() {
