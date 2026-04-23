@@ -79,6 +79,31 @@ export interface BridgeStatus {
   linkHealth?: LinkHealth;
   /** Monotonic id incremented on every successful link. Pending ops from older sessions are ignored. */
   sessionId: number;
+  /** Live diagnostics about the in-flight pending response queue. */
+  diagnostics?: BridgeDiagnostics;
+}
+
+/** Live snapshot of the pending-response queue. */
+export interface BridgeDiagnostics {
+  pendingCount: number;
+  pendingKeys: string[];
+  oldestPendingAgeMs: number;
+  sessionId: number;
+  linkHealth: LinkHealth;
+}
+
+/**
+ * One in-flight pending response. Carries enough metadata to:
+ *  - reject responses from a previous session (`sessionId` mismatch)
+ *  - reject responses for a different command class (`commandType`)
+ *  - report queue age in `getStatus().diagnostics`
+ */
+interface PendingResponse {
+  key: string;
+  commandType: string;
+  sessionId: number;
+  createdAt: number;
+  resolver: (value: string) => void;
 }
 
 export interface BridgeTransportSupport {
@@ -129,7 +154,7 @@ export class FireOneHardwareBridge {
   private ws: WebSocket | null = null;
 
   private responseBuffer = '';
-  private pendingResolves: Map<string, (value: string) => void> = new Map();
+  private pendingResolves: Map<string, PendingResponse> = new Map();
   private onEvent: BridgeEventHandler | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private rssiTimer: ReturnType<typeof setInterval> | null = null;
@@ -520,7 +545,7 @@ export class FireOneHardwareBridge {
   async readContinuity(pin: number): Promise<number> {
     const key = `CONT:${pin}`;
     return new Promise<number>((resolve) => {
-      this.pendingResolves.set(key, (val) => {
+      this.registerPending(key, 'CONT', (val) => {
         const parts = val.split(':');
         resolve(parts.length >= 3 ? parseFloat(parts[2]) : 0);
       });
@@ -537,7 +562,7 @@ export class FireOneHardwareBridge {
   async readCdsVoltage(pin: number): Promise<number> {
     const key = `CDS:${pin}`;
     return new Promise<number>((resolve) => {
-      this.pendingResolves.set(key, (val) => {
+      this.registerPending(key, 'CDS', (val) => {
         const parts = val.split(':');
         resolve(parts.length >= 3 ? parseFloat(parts[2]) : 0);
       });
@@ -581,6 +606,26 @@ export class FireOneHardwareBridge {
       lastErrorAt: this.lastErrorAt,
       linkHealth: this.linkHealth,
       sessionId: this.sessionId,
+      diagnostics: this.getDiagnostics(),
+    };
+  }
+
+  /** Snapshot of the in-flight pending-response queue. */
+  getDiagnostics(): BridgeDiagnostics {
+    const now = Date.now();
+    let oldest = 0;
+    const keys: string[] = [];
+    for (const [, p] of this.pendingResolves) {
+      keys.push(p.key);
+      const age = now - p.createdAt;
+      if (age > oldest) oldest = age;
+    }
+    return {
+      pendingCount: this.pendingResolves.size,
+      pendingKeys: keys,
+      oldestPendingAgeMs: oldest,
+      sessionId: this.sessionId,
+      linkHealth: this.linkHealth,
     };
   }
 
@@ -614,7 +659,7 @@ export class FireOneHardwareBridge {
       if (!this.connected) return;
       const key = 'PONG';
       const responded = await new Promise<boolean>((resolve) => {
-        this.pendingResolves.set(key, () => resolve(true));
+        this.registerPending(key, 'HEARTBEAT', () => resolve(true));
         this.sendCommand('HEARTBEAT\n');
         setTimeout(() => {
           if (this.pendingResolves.has(key)) {
@@ -685,7 +730,7 @@ export class FireOneHardwareBridge {
     return new Promise<boolean>((resolve) => {
       // Resolver receives the matched line. A non-empty match = real confirmation.
       // Empty string is the disconnect drain sentinel → resolve false (NOT a confirm).
-      this.pendingResolves.set(confirmKey, (val) => resolve(Boolean(val)));
+      this.registerPending(confirmKey, 'CONFIRM', (val) => resolve(Boolean(val)));
       this.sendCommand(cmd);
       setTimeout(() => {
         if (this.pendingResolves.has(confirmKey)) {
@@ -767,9 +812,21 @@ export class FireOneHardwareBridge {
       }
       if (fields.firmwareVersion !== undefined) this.firmwareVersion = fields.firmwareVersion;
 
-      for (const [key, resolver] of this.pendingResolves) {
+      for (const [key, pending] of this.pendingResolves) {
         if (trimmed.startsWith(key) || trimmed === key) {
-          resolver(trimmed);
+          // Stale-session guard: ignore frames whose pending was registered
+          // in an older session (can happen if a late frame arrives after
+          // a disconnect+reconnect cycle drained but didn't catch this key).
+          if (pending.sessionId !== this.sessionId && pending.sessionId !== this.connectingSessionId) {
+            this.onEvent?.('stale_response_dropped', {
+              key, frame: trimmed,
+              pendingSession: pending.sessionId,
+              currentSession: this.sessionId,
+            });
+            this.pendingResolves.delete(key);
+            break;
+          }
+          pending.resolver(trimmed);
           this.pendingResolves.delete(key);
           break;
         }
@@ -790,12 +847,12 @@ export class FireOneHardwareBridge {
     // Drain pending resolves with sentinel values so awaiters wake up
     // instead of silently leaking promises. Order: resolve, then clear.
     if (this.pendingResolves.size > 0) {
-      for (const [key, resolver] of this.pendingResolves) {
+      for (const [key, pending] of this.pendingResolves) {
         try {
           // Empty string is the safe sentinel — sendAndWaitConfirm/handshake
           // resolvers ignore the value (treat as falsy/no-confirm); numeric
           // resolvers (CONT/CDS) parse to 0 via parseFloat fallback.
-          resolver('');
+          pending.resolver('');
         } catch (e) {
           console.warn(`[HardwareBridge] pendingResolve drain error for ${key}:`, e);
         }
@@ -878,8 +935,8 @@ export class FireOneHardwareBridge {
         resolve(ok);
       };
       // Drain sentinel ('') from handleDisconnect resolves with falsy → finish(false).
-      this.pendingResolves.set('PONG', (val) => finish(Boolean(val)));
-      this.pendingResolves.set('VER:', (val) => finish(Boolean(val)));
+      this.registerPending('PONG', 'HANDSHAKE', (val) => finish(Boolean(val)));
+      this.registerPending('VER:', 'HANDSHAKE', (val) => finish(Boolean(val)));
       this.sendCommand('VERSION\n');
       this.sendCommand('HEARTBEAT\n');
       timer = setTimeout(() => finish(false), timeoutMs);
@@ -887,6 +944,24 @@ export class FireOneHardwareBridge {
   }
 
   // ─── Error helpers ───────────────────────────────────
+
+  /**
+   * Register a pending response with full metadata. The session id is captured
+   * at registration time; `handleResponse` uses it to drop frames that arrive
+   * for a previous session (e.g. late OK:FIRE after a reconnect).
+   */
+  private registerPending(key: string, commandType: string, resolver: (value: string) => void): void {
+    // Use connectingSessionId during handshake (before sessionId increments),
+    // sessionId once the link is healthy. This keeps the guard correct in both phases.
+    const session = this.linkHealth === 'healthy' ? this.sessionId : this.connectingSessionId;
+    this.pendingResolves.set(key, {
+      key,
+      commandType,
+      sessionId: session,
+      createdAt: Date.now(),
+      resolver,
+    });
+  }
 
   private setError(code: BridgeReasonCode, message: string, transport?: BridgeTransport): void {
     this.lastErrorCode = code;
