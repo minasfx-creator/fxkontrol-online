@@ -430,7 +430,7 @@ function EffectTableView({ effects }: { effects: Effect[] }) {
   );
 }
 
-export default function EffectLibrary() {
+export default function EffectLibrary({ className }: { className?: string } = {}) {
   const [search, setSearch] = useState('');
   const [vdlInput, setVdlInput] = useState('');
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set(['morteiros', 'drones']));
@@ -512,7 +512,7 @@ export default function EffectLibrary() {
   };
 
   return (
-    <div className="h-full flex flex-col border-r border-border/10" style={{ background: 'hsl(var(--card))' }}>
+    <div className={cn("h-full flex flex-col border-r border-border/10 bg-card", className)}>
       {/* Header */}
       <div className="px-3 pt-3 pb-2 border-b border-border/10">
         <div className="flex items-center justify-between mb-2">
@@ -521,8 +521,8 @@ export default function EffectLibrary() {
               <Sparkles className="w-3 h-3 text-primary" />
             </div>
             <div>
-              <h2 className="text-[11px] font-bold text-foreground uppercase tracking-[0.12em] font-display leading-none">Effects</h2>
-              <p className="text-[8px] text-muted-foreground/40 mt-0.5 font-mono-code">{filteredEffects.length} items</p>
+              <h2 className="text-[11px] font-bold text-foreground uppercase tracking-[0.12em] font-display leading-none">Effect Library</h2>
+              <p className="text-[8px] text-muted-foreground/40 mt-0.5 font-mono-code">{filteredEffects.length} ready assets</p>
             </div>
           </div>
           <div className="flex items-center gap-1">

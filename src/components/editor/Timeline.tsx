@@ -1136,9 +1136,9 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="flex flex-col h-full border-t border-white/[0.04]" style={{ background: 'hsl(var(--card) / 0.95)', backdropFilter: 'blur(20px)' }}>
+    <div className="flex h-full flex-col border-t border-border/20 bg-card/95 shadow-[inset_0_1px_0_hsl(var(--border)/0.08)] backdrop-blur-xl">
       {/* ─── Transport Bar ─── */}
-      <div className="flex items-center gap-1 px-2.5 py-1 border-b border-white/[0.04]">
+      <div className="flex items-center gap-1 border-b border-border/15 bg-surface-0/70 px-2.5 py-1">
         {/* Play controls */}
         <div className="flex items-center gap-px rounded-lg p-px" style={{ background: 'hsl(var(--muted) / 0.15)' }}>
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => timelineClock.seek(0)}>
@@ -1234,12 +1234,12 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
       </div>
 
       {/* ─── Mini progress bar ─── */}
-      <div className="h-[2px] w-full relative" style={{ background: 'hsl(var(--muted) / 0.08)' }}>
+      <div className="relative h-[2px] w-full bg-muted/10">
         <div className="h-full bg-primary/40 transition-[width] duration-75" style={{ width: `${progressPct}%` }} />
       </div>
 
       {/* ─── Timeline tracks ─── */}
-      <div ref={scrollRef} className="flex-1 overflow-x-auto overflow-y-auto" onClick={handleTrackClick}>
+      <div ref={scrollRef} className="flex-1 overflow-x-auto overflow-y-auto bg-surface-0/45" onClick={handleTrackClick}>
         <div style={{ width: `${duration * pixelsPerSecond + 96}px` }}>
           <div className="flex">
             <div className="w-24 flex-shrink-0" />
