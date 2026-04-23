@@ -68,6 +68,7 @@ class DeterministicClock {
   clearReference(): void {
     this._referenceSource = 'performance';
     this._externalRef = null;
+    this._drift = 0;
   }
 
   /**
@@ -145,7 +146,7 @@ class DeterministicClock {
   /** Set simulation time directly (e.g. from timeline scrub). */
   setTime(t: number): void {
     if (!Number.isFinite(t)) return;
-    this._time = Math.max(0, t);
+    this._time = Math.min(MAX_TIME, Math.max(0, t));
     this._delta = 0;
     this._drift = 0;
     this._lastPerfTime = performance.now() / 1000;
