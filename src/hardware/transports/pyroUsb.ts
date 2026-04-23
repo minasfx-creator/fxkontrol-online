@@ -101,7 +101,9 @@ export class PyroUsbTransport {
   }
 
   isConnected(): boolean {
-    return !!this.adapter && (this.adapter.isConnected?.() ?? true);
+    return this.adapter
+      ? (this.adapter.isConnected?.() ?? true)
+      : this.fireOneController.isConnected;
   }
 
   async dispatch(payload: PyroUsbScheduledPayload, nowMs = Date.now()): Promise<void> {
@@ -347,3 +349,5 @@ export class PyroUsbTransport {
     return Math.round(durationMs);
   }
 }
+
+export const pyroUsbTransport = new PyroUsbTransport();

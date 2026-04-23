@@ -148,22 +148,6 @@ class ExecutionBridge {
   loadShowPlan(plan: ShowPlan): void {
     const cues: TimelineCue[] = [];
 
-    // Pyro cues
-    for (const pc of plan.pyroCues) {
-      cues.push({
-        id: pc.id,
-        type: 'pyro',
-        time: pc.time,
-        data: {
-          positionId: pc.positionId,
-          time: pc.time,
-          effectId: pc.effectId,
-          module: pc.module,
-          channel: pc.channel,
-        } as unknown as PyroCue,
-      });
-    }
-
     // DMX cues
     for (const dc of plan.dmxCues) {
       cues.push({
@@ -193,7 +177,7 @@ class ExecutionBridge {
     // Sort by time and load
     cues.sort((a, b) => a.time - b.time);
     this.loadTimeline(cues);
-    blackbox.record('state', `ExecutionBridge: loaded ShowPlan "${plan.metadata.name}" (${cues.length} cues)`);
+    blackbox.record('state', `ExecutionBridge: loaded ShowPlan "${plan.metadata.name}" (${cues.length} legacy cues, pyro via scheduler bridge)`);
   }
 
   getStats(): Readonly<BridgeStats> { return this._stats; }
