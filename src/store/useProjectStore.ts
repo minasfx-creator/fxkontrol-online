@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { VideoChoreoResult } from '@/lib/videoChoreoEngine';
 import { createDroneFormationSlice } from '@/store/slices/droneFormationSlice';
+import { timelineClock } from '@/core/timeline/TimelineClock';
 
 // ── Effect types & EFFECT_LIBRARY re-exported from src/data for backward compat ──
 export type { Effect, PartType } from '@/data/effectLibrary';
@@ -207,9 +208,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     ...(data.staticMapUrl !== undefined && { staticMapUrl: data.staticMapUrl }),
   }),
 
-  setPlaying: (playing) => set({ isPlaying: playing }),
-  setCurrentTime: (time) => set({ currentTime: time }),
-  setDuration: (duration) => set({ duration }),
+  setPlaying: (playing) => {
+    if (playing) timelineClock.play();
+    else timelineClock.pause();
+    set({ isPlaying: timelineClock.isPlaying() });
+  },
+  setCurrentTime: (time) => {
+    timelineClock.seek(time);
+    set({ currentTime: timelineClock.getTime() });
+  },
+  setDuration: (duration) => {
+    timelineClock.setDuration(duration);
+    const state = timelineClock.getState();
+    set({ duration: state.duration, currentTime: state.time, isPlaying: state.playing });
+  },
   addTimelineItem: (item) => set((s) => ({ timelineItems: [...s.timelineItems, item] })),
   removeTimelineItem: (id) => set((s) => {
     const removed = s.timelineItems.find(i => i.id === id);
@@ -390,7 +402,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setAudioUrl: (url) => set({ audioUrl: url }),
   setBpm: (bpm) => set({ bpm }),
   setSnapToBeat: (snap) => set({ snapToBeat: snap }),
-  setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
+  setPlaybackSpeed: (speed) => {
+    timelineClock.setSpeed(speed);
+    set({ playbackSpeed: timelineClock.getState().speed });
+  },
   setProjectId: (id) => set({ projectId: id }),
 
   combineAsChain: (itemIds, gap = 0) => set((s) => {
@@ -440,6 +455,30 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setVideoChoreoResult: (result) => set({ videoChoreoResult: result }),
   setDepthLayers: (layers) => set({ depthLayers: layers }),
 }));
+
+timelineClock.setDuration(useProjectStore.getState().duration);
+timelineClock.setSpeed(useProjectStore.getState().playbackSpeed);
+timelineClock.seek(useProjectStore.getState().currentTime);
+
+timelineClock.onChange((state) => {
+  useProjectStore.setState((prev) => {
+    if (
+      prev.currentTime === state.time &&
+      prev.isPlaying === state.playing &&
+      prev.duration === state.duration &&
+      prev.playbackSpeed === state.speed
+    ) {
+      return prev;
+    }
+
+    return {
+      currentTime: state.time,
+      isPlaying: state.playing,
+      duration: state.duration,
+      playbackSpeed: state.speed,
+    };
+  });
+});
 
 // ── effectWorldOrientation re-exported from src/lib for backward compat ──
 export { effectWorldOrientation } from '@/lib/effectOrientation';

@@ -7,6 +7,7 @@
 import { commandLog } from '@/core/command/CommandLog';
 import { snapshotManager } from '@/core/state/SnapshotManager';
 import { commandBus, type Command } from '@/core/command/CommandBus';
+import { timelineClock } from '@/core/timeline/TimelineClock';
 
 export type ReplayState = 'idle' | 'replaying' | 'done';
 
@@ -24,6 +25,7 @@ class ReplayEngine {
    * 4. Truncate log & snapshots after targetTick
    */
   rollback(targetTick: number): boolean {
+    timelineClock.pause();
     const snap = snapshotManager.nearest(targetTick);
     if (!snap) {
       console.warn('[ReplayEngine] No snapshot found for tick', targetTick);
@@ -50,6 +52,7 @@ class ReplayEngine {
     // 3. Truncate future
     commandLog.truncateAfter(targetTick);
     snapshotManager.truncateAfter(targetTick);
+    timelineClock.seek(targetTick / 60);
 
     this._state = 'done';
     return true;
@@ -60,6 +63,7 @@ class ReplayEngine {
    * Call tick() each frame to advance one replay tick.
    */
   startReplay(fromTick: number, toTick: number): boolean {
+    timelineClock.pause();
     const snap = snapshotManager.nearest(fromTick);
     if (!snap) return false;
 
@@ -67,6 +71,7 @@ class ReplayEngine {
     this._replayCommands = commandLog.groupedSlice(snap.tick + 1, toTick);
     this._currentTick = snap.tick;
     this._targetTick = toTick;
+    timelineClock.seek(this._currentTick / 60);
     this._state = 'replaying';
     return true;
   }
@@ -81,6 +86,7 @@ class ReplayEngine {
       commandBus.applyAll(cmds);
       commandLog.setEnabled(true);
     }
+    timelineClock.seek(this._currentTick / 60);
     if (this._currentTick >= this._targetTick) {
       this._state = 'done';
       return false;
@@ -91,6 +97,7 @@ class ReplayEngine {
   stop(): void {
     this._state = 'idle';
     this._replayCommands.clear();
+    timelineClock.pause();
   }
 
   getState(): ReplayState {

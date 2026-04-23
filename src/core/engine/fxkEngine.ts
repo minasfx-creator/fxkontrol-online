@@ -11,7 +11,7 @@ import { clusterSync } from '@/core/sync/clusterSyncEngine';
 import { unrealBridge } from '@/core/sync/unrealBridge';
 import { aiOptimizer } from '@/core/performance/aiOptimizer';
 import { autoScaler } from '@/core/reliability/autoScaler';
-import { timelineEngine } from './timelineEngine';
+import { timelineClock } from '@/core/timeline/TimelineClock';
 import { fireworkEngine } from './fireworkEngine';
 
 export type FXKConfig = {
@@ -98,7 +98,7 @@ class FXKEngine {
 
     try {
       // ⏱️ Timeline
-      timelineEngine.tick(delta);
+      timelineClock.tick(delta);
 
       // 🌍 Environment interpolation
       const env = environmentEngine.tick();
@@ -149,7 +149,7 @@ class FXKEngine {
       state: this._state,
       uptime: (performance.now() - this._startTime) / 1000,
       ticks: this._tickCount,
-      timeline: timelineEngine.getState(),
+      timeline: timelineClock.getState(),
       environment: this._config.environment ? environmentEngine.getState() : null,
       cluster: this._config.cluster ? clusterSync.getState() : null,
       unreal: this._config.unreal ? unrealBridge.getState() : null,
