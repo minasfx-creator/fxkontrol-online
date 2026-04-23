@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
 import { getBridgeSecurityDiagnostic } from '@/lib/bridgeGateway';
+import { bridgePhysicalController } from '@/lib/bridgePhysicalControl';
 
 type StatusTone = 'healthy' | 'degraded' | 'blocked';
 
@@ -56,7 +57,11 @@ export default function PlatformStatus() {
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [physicalRevision, setPhysicalRevision] = useState(0);
   const bridgeDiagnostic = useMemo(() => getBridgeSecurityDiagnostic({ path: '/ws' }), []);
+  const physicalSnapshot = useMemo(() => bridgePhysicalController.getSnapshot(), [physicalRevision]);
+
+  useEffect(() => bridgePhysicalController.subscribe(() => setPhysicalRevision((value) => value + 1)), []);
 
   useEffect(() => {
     if (!user) return;
@@ -254,6 +259,14 @@ export default function PlatformStatus() {
             <Badge variant="outline">Secure context: {bridgeDiagnostic.isSecureContext ? 'OK' : 'BLOCKED'}</Badge>
             <Badge variant="outline">mDNS: {bridgeDiagnostic.mdnsHost ? 'READY' : 'fallback'}</Badge>
             <Badge variant="outline">iPhone/PWA: {bridgeDiagnostic.compatibleWithIOSPwa ? 'READY' : 'pending TLS'}</Badge>
+            <Badge variant="outline">Watchdog: {physicalSnapshot.watchdogState.toUpperCase()}</Badge>
+            <Badge variant="outline">Clock offset: {physicalSnapshot.clockOffsetMs.toFixed(1)}ms</Badge>
+          </div>
+          <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-md border border-border/50 bg-background/40 p-3">Heartbeat age: {physicalSnapshot.heartbeatAgeMs === null ? '—' : `${Math.round(physicalSnapshot.heartbeatAgeMs)}ms`}</div>
+            <div className="rounded-md border border-border/50 bg-background/40 p-3">System armed: {physicalSnapshot.systemArmed ? 'YES' : 'NO'}</div>
+            <div className="rounded-md border border-border/50 bg-background/40 p-3">Freeze: {physicalSnapshot.freezeTriggered ? 'ACTIVE' : 'CLEAR'}</div>
+            <div className="rounded-md border border-border/50 bg-background/40 p-3">Commands active: {physicalSnapshot.activeCommands.length}</div>
           </div>
         </CardContent>
       </Card>

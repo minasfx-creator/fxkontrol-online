@@ -1434,24 +1434,38 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
         </div>
         {(dmxArm || pyroArm) && (
           <button
-            onMouseDown={() => { if (deadmanHeld || !settings.pyroArmRequired) channels.filter(ch => ch.enabled).forEach(ch => fireChannel(ch.id)); }}
+            onClick={() => {
+              if (settings.dualConfirmRequired && !dualConfirmArmed) {
+                armFireWindow();
+                return;
+              }
+              if (deadmanHeld || !settings.pyroArmRequired) channels.filter(ch => ch.enabled).forEach(ch => fireChannel(ch.id));
+            }}
+            onMouseDown={() => { if ((!settings.dualConfirmRequired || dualConfirmArmed) && (deadmanHeld || !settings.pyroArmRequired)) channels.filter(ch => ch.enabled).forEach(ch => fireChannel(ch.id)); }}
             onMouseUp={() => channels.forEach(ch => stopChannel(ch.id))}
-            onTouchStart={(e) => { e.preventDefault(); if (deadmanHeld || !settings.pyroArmRequired) channels.filter(ch => ch.enabled).forEach(ch => fireChannel(ch.id)); }}
+            onTouchStart={(e) => { e.preventDefault(); if ((!settings.dualConfirmRequired || dualConfirmArmed) && (deadmanHeld || !settings.pyroArmRequired)) channels.filter(ch => ch.enabled).forEach(ch => fireChannel(ch.id)); }}
             onTouchEnd={(e) => { e.preventDefault(); channels.forEach(ch => stopChannel(ch.id)); }}
-            disabled={settings.pyroArmRequired && !deadmanHeld}
+            disabled={(settings.pyroArmRequired && !deadmanHeld) || (settings.dualConfirmRequired && !dualConfirmArmed && !!fireWindowEndsAt)}
             className={cn(
               "w-full rounded-xl font-black uppercase transition-all border-2",
               isMobileFire ? "py-5 text-lg tracking-[0.3em]" : fs ? "py-5 text-base tracking-[0.3em]" : "py-3 text-[12px] tracking-[0.3em]",
-              deadmanHeld || !settings.pyroArmRequired
+              (deadmanHeld || !settings.pyroArmRequired) && (!settings.dualConfirmRequired || dualConfirmArmed)
                 ? "bg-gradient-to-b from-red-600 via-red-700 to-red-800 text-white border-red-500/40 hover:from-red-500"
                 : "bg-[hsl(220_10%_10%)] text-muted-foreground/20 border-border/10"
             )} style={deadmanHeld ? { boxShadow: '0 0 24px rgba(239,68,68,0.3)' } : undefined}>
-            ⚡ FIRE ALL ({enabledCount})
+            {settings.dualConfirmRequired && !dualConfirmArmed ? 'ARM FIRE WINDOW' : `⚡ FIRE ALL (${enabledCount})`}
           </button>
         )}
         {settings.pyroArmRequired && !deadmanHeld && (pyroArm || dmxArm) && (
           <div className={cn("text-center text-amber-400/50 font-bold uppercase", isMobileFire ? "text-xs" : fs ? "text-[10px]" : "text-[8px]")}>
             Hold DEADMAN to enable firing
+          </div>
+        )}
+        {settings.dualConfirmRequired && (pyroArm || dmxArm) && (
+          <div className={cn("text-center font-bold uppercase", isMobileFire ? "text-xs" : fs ? "text-[10px]" : "text-[8px]", dualConfirmArmed ? 'text-primary' : 'text-muted-foreground/50')}>
+            {dualConfirmArmed && fireWindowEndsAt
+              ? `FIRE WINDOW ACTIVE · ${Math.max(0, Math.ceil((fireWindowEndsAt - Date.now()) / 1000))}s`
+              : 'Dual confirm required before FIRE'}
           </div>
         )}
         {/* 2 cols on mobile, 4 on desktop — bigger touch targets on mobile */}
