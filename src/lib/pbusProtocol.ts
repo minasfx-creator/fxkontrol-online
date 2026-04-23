@@ -511,9 +511,16 @@ export class PBusController {
   private processIncoming(chunk: Uint8Array): void {
     // Grow ring buffer if needed (rare)
     if (this.ringWriteOffset + chunk.length > this.ringBuffer.length) {
-      if (this.ringWriteOffset + chunk.length > 4096) {
-        // Overflow protection: reset buffer
+      if (this.ringWriteOffset + chunk.length > MAX_RING_BUFFER) {
+        // Overflow protection: reset buffer + record + emit
+        this._bufferOverflows++;
         this.ringWriteOffset = 0;
+        this.emit({
+          type: 'error',
+          deviceAddress: 0,
+          timestamp: Date.now(),
+          data: `PBUS ring buffer overflow (chunk=${chunk.length}, total overflows=${this._bufferOverflows})`,
+        });
         return;
       }
       const newBuf = new Uint8Array(Math.max(this.ringBuffer.length * 2, this.ringWriteOffset + chunk.length));
