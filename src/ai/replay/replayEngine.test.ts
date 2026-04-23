@@ -15,7 +15,7 @@ function mkCmd(seq: string, target: 'pyro' | 'dmx' | 'drone', action = 'fire'): 
     target,
     action: action as PlannedCommand['action'],
     params: Object.freeze({}),
-    executionHint: { mode: 'sim' as const, degraded: false },
+    executionHint: { mode: 'simulated' as const, degraded: false },
     risk: 0.1,
   });
 }
@@ -45,7 +45,7 @@ function mkPlan(frames: ExecutionFrame[]): ExecutionPlan {
   return Object.freeze<ExecutionPlan>({
     showId: 'test-show',
     version: 'joi-plan-v1',
-    executionLayer: 'sim',
+    executionLayer: 'simulated',
     frameSizeMs: 16,
     frames: Object.freeze(frames),
     global: {
