@@ -76,6 +76,9 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
       } else if (event === 'reconnecting') {
         const { attempt } = data as any;
         toast.info(`Reconectando... tentativa ${attempt}/3`);
+      } else if (event === 'unsupported_transport') {
+        const { transport } = data as any;
+        toast.warning(`Transporte ${String(transport).toUpperCase()} indisponível neste dispositivo`);
       }
     });
     bridgeRef.current = bridge;
