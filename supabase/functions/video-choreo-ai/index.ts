@@ -12,7 +12,19 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { frameDataUrls, droneCount, context, mode, analysisDepth, depthEstimation, objectSegmentation } = await req.json();
+    const body = await req.json();
+    const {
+      frameDataUrls,
+      droneCount,
+      context,
+      mode,
+      analysisDepth,
+      depthEstimation,
+      objectSegmentation,
+    } = body;
+    const refinePromptCycle = toBoolean(body.refinePromptCycle, true);
+    const formationHardening = toBoolean(body.formationHardening, true);
+    const maxHardeningReview = toBoundedNumber(body.maxHardeningReview, 8, 1, 20);
 
     if (!frameDataUrls || !Array.isArray(frameDataUrls) || frameDataUrls.length === 0) {
       return new Response(
@@ -27,12 +39,31 @@ serve(async (req) => {
     const depth = analysisDepth || 'cinematic';
 
     const systemPrompt = buildSystemPrompt(drones, depth, !!depthEstimation, !!objectSegmentation);
+    const baseUserPrompt = buildUserPrompt(
+      selectedFrames.length,
+      drones,
+      context,
+      mode,
+      depth,
+      !!depthEstimation,
+      !!objectSegmentation,
+    );
+
+    const refinement = refinePromptCycle
+      ? await runPromptRefinementCycle({
+          apiKey: LOVABLE_API_KEY,
+          basePrompt: baseUserPrompt,
+          droneCount: drones,
+          analysisDepth: depth,
+          mode: mode || "cinematic",
+        })
+      : { finalPrompt: baseUserPrompt, meta: { enabled: false } };
 
     const userContent: any[] = [];
 
     userContent.push({
       type: "text",
-      text: buildUserPrompt(selectedFrames.length, drones, context, mode, depth, !!depthEstimation, !!objectSegmentation),
+      text: refinement.finalPrompt,
     });
 
     for (let i = 0; i < selectedFrames.length; i++) {
@@ -46,21 +77,20 @@ serve(async (req) => {
       });
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-        ],
-        temperature: 0.6,
-        max_tokens: 16000,
-      }),
+    const response = await callGateway({
+      apiKey: LOVABLE_API_KEY,
+      modelCandidates: [
+        "google/gemini-2.5-pro",
+        "openai/gpt-4.1",
+        "anthropic/claude-sonnet-4",
+      ],
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
+      temperature: 0.6,
+      maxTokens: 16000,
+      timeoutMs: 45000,
     });
 
     if (!response.ok) {
@@ -96,18 +126,25 @@ serve(async (req) => {
 
     let parsed;
     try {
-      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, content];
-      parsed = JSON.parse(jsonMatch[1].trim());
+      parsed = JSON.parse(extractJsonPayload(content));
     } catch {
-      try {
-        parsed = JSON.parse(content);
-      } catch {
-        console.error("Failed to parse AI response:", content.substring(0, 500));
-        return new Response(
-          JSON.stringify({ error: "Failed to parse AI response", raw: content.substring(0, 200) }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      console.error("Failed to parse AI response:", content.substring(0, 500));
+      return new Response(
+        JSON.stringify({ error: "Failed to parse AI response", raw: content.substring(0, 200) }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const formationHardeningResult = formationHardening
+      ? await hardenExistingFormationsWithAI({
+          apiKey: LOVABLE_API_KEY,
+          formations: Array.isArray(parsed.formations) ? parsed.formations : [],
+          droneCount: drones,
+          maxReviewOverride: maxHardeningReview,
+        })
+      : { formations: [], meta: { enabled: false } };
+    if (formationHardeningResult.formations.length > 0) {
+      parsed.formations = formationHardeningResult.formations;
     }
 
     // Post-process: ensure all formations have enough points
@@ -118,6 +155,9 @@ serve(async (req) => {
         }
       }
     }
+
+    parsed.promptRefinement = refinement.meta;
+    parsed.formationHardening = formationHardeningResult.meta;
 
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -130,6 +170,289 @@ serve(async (req) => {
     );
   }
 });
+
+function extractJsonPayload(raw: string): string {
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced?.[1]) return fenced[1].trim();
+
+  const firstBrace = raw.indexOf("{");
+  const lastBrace = raw.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return raw.slice(firstBrace, lastBrace + 1).trim();
+  }
+
+  return raw.trim();
+}
+
+interface GatewayCallOptions {
+  apiKey: string;
+  modelCandidates: string[];
+  messages: Array<{ role: "system" | "user" | "assistant"; content: any }>;
+  temperature?: number;
+  maxTokens?: number;
+  timeoutMs?: number;
+}
+
+async function callGateway(options: GatewayCallOptions): Promise<Response> {
+  let lastResponse: Response | null = null;
+  for (const model of options.modelCandidates) {
+    let res: Response;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    try {
+      const controller = new AbortController();
+      timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 30000);
+      res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${options.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model,
+          messages: options.messages,
+          temperature: options.temperature ?? 0.5,
+          max_tokens: options.maxTokens ?? 4000,
+        }),
+      });
+    } catch (e) {
+      lastResponse = new Response(JSON.stringify({ error: `Network error: ${String(e)}` }), { status: 599 });
+      continue;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+    if (res.ok) return res;
+    lastResponse = res;
+    if (res.status === 402 || res.status === 429) return res; // do not continue on account/rate errors
+  }
+  return lastResponse ?? new Response(JSON.stringify({ error: "No AI response" }), { status: 500 });
+}
+
+async function runPromptRefinementCycle(params: {
+  apiKey: string;
+  basePrompt: string;
+  droneCount: number;
+  analysisDepth: string;
+  mode: string;
+}): Promise<{ finalPrompt: string; meta: Record<string, any> }> {
+  const { apiKey, basePrompt, droneCount, analysisDepth, mode } = params;
+  let currentPrompt = basePrompt;
+  const history: any[] = [];
+
+  // Cycle 1: optimizer
+  const optimizerResponse = await callGateway({
+    apiKey,
+    modelCandidates: ["openai/gpt-4.1-mini", "google/gemini-2.5-flash", "anthropic/claude-3.5-haiku"],
+    messages: [
+      {
+        role: "system",
+        content: "You are a prompt optimizer for drone-show generation. Return strict JSON only.",
+      },
+      {
+        role: "user",
+        content: `Improve this prompt for higher-quality, safer, physically-realistic drone show generation.
+Context: drones=${droneCount}, depth=${analysisDepth}, mode=${mode}
+Return JSON: {"refinedPrompt":"...","improvements":["..."],"risks":["..."]}\n\nPROMPT:\n${basePrompt}`,
+      },
+    ],
+    temperature: 0.2,
+    maxTokens: 1800,
+    timeoutMs: 18000,
+  });
+  if (optimizerResponse.ok) {
+    const optimizerJson = await optimizerResponse.json();
+    const optimizerText = optimizerJson.choices?.[0]?.message?.content ?? "";
+    try {
+      const parsed = JSON.parse(extractJsonPayload(optimizerText));
+      if (parsed?.refinedPrompt) currentPrompt = String(parsed.refinedPrompt);
+      history.push({ stage: "optimize", model: optimizerJson.model, improvements: parsed?.improvements ?? [], risks: parsed?.risks ?? [] });
+    } catch {
+      history.push({ stage: "optimize", model: optimizerJson.model, note: "unparsed_response" });
+    }
+  }
+
+  // Cycle 2: critic/reviewer
+  const criticResponse = await callGateway({
+    apiKey,
+    modelCandidates: ["anthropic/claude-sonnet-4", "openai/gpt-4.1", "google/gemini-2.5-pro"],
+    messages: [
+      {
+        role: "system",
+        content: "You are a strict quality reviewer for drone-show prompt engineering. Return strict JSON.",
+      },
+      {
+        role: "user",
+        content: `Review and harden this prompt. Focus on safety, motion feasibility, narrative quality, and JSON compliance.
+Return JSON: {"hardenedPrompt":"...","qualityScore":0-100,"notes":["..."]}\n\nPROMPT:\n${currentPrompt}`,
+      },
+    ],
+    temperature: 0.1,
+    maxTokens: 1800,
+    timeoutMs: 18000,
+  });
+  if (criticResponse.ok) {
+    const criticJson = await criticResponse.json();
+    const criticText = criticJson.choices?.[0]?.message?.content ?? "";
+    try {
+      const parsed = JSON.parse(extractJsonPayload(criticText));
+      if (parsed?.hardenedPrompt) currentPrompt = String(parsed.hardenedPrompt);
+      history.push({ stage: "critic", model: criticJson.model, qualityScore: parsed?.qualityScore ?? null, notes: parsed?.notes ?? [] });
+    } catch {
+      history.push({ stage: "critic", model: criticJson.model, note: "unparsed_response" });
+    }
+  }
+
+  return {
+    finalPrompt: currentPrompt,
+    meta: {
+      enabled: true,
+      cycles: history,
+      promptLength: currentPrompt.length,
+    },
+  };
+}
+
+async function hardenExistingFormationsWithAI(params: {
+  apiKey: string;
+  formations: any[];
+  droneCount: number;
+  maxReviewOverride?: number;
+}): Promise<{ formations: any[]; meta: Record<string, any> }> {
+  const { apiKey, formations, droneCount, maxReviewOverride } = params;
+  if (!Array.isArray(formations) || formations.length === 0) {
+    return { formations: [], meta: { enabled: true, reviewed: 0 } };
+  }
+  const maxReview = Math.min(formations.length, Math.max(1, Math.min(Number(maxReviewOverride) || 8, 20)));
+
+  const refined: any[] = [];
+  const reviews: any[] = [];
+
+  for (let i = 0; i < formations.length; i++) {
+    const f = formations[i] || {};
+    if (i >= maxReview) {
+      refined.push(f);
+      reviews.push({ frameIndex: f.frameIndex ?? i, note: "skipped_budget" });
+      continue;
+    }
+    const compact = {
+      frameIndex: f.frameIndex ?? i,
+      description: f.description ?? "",
+      shape: f.shape ?? "scatter",
+      emotion: f.emotion ?? "building",
+      intensity: f.intensity ?? 0.7,
+      color: f.color ?? "#ffffff",
+      secondaryColor: f.secondaryColor ?? "#00ffff",
+      colorGradient: f.colorGradient ?? "none",
+      height: f.height ?? 35,
+      heightVariation: f.heightVariation ?? 0.2,
+      spread: f.spread ?? 1,
+      rotation: f.rotation ?? 0,
+      tilt: f.tilt ?? 0,
+      density: f.density ?? 1,
+      transitionStyle: f.transitionStyle ?? "smooth",
+      transitionEasing: f.transitionEasing ?? "ease-in-out",
+      suggestedHoldDuration: f.suggestedHoldDuration ?? 4,
+      suggestedTransitionDuration: f.suggestedTransitionDuration ?? 5,
+      motionDuringHold: f.motionDuringHold ?? "static",
+      ledEffect: f.ledEffect ?? "solid",
+    };
+
+    const reviewRes = await callGateway({
+      apiKey,
+      modelCandidates: ["google/gemini-2.5-flash", "openai/gpt-4.1-mini", "anthropic/claude-3.5-haiku"],
+      messages: [
+        {
+          role: "system",
+          content: "You refine drone-show formations for safety, readability and transition quality. Return strict JSON only.",
+        },
+        {
+          role: "user",
+          content: `Refine this formation while keeping narrative intent. Keep values physically realistic for ${droneCount} drones.
+Return JSON: {"formation": {...same fields...}, "notes":["..."]}\n\nFORMATION:\n${JSON.stringify(compact)}`,
+        },
+      ],
+      temperature: 0.2,
+      maxTokens: 1200,
+      timeoutMs: 12000,
+    });
+
+    if (!reviewRes.ok) {
+      refined.push(f);
+      reviews.push({ frameIndex: compact.frameIndex, note: "review_failed_status", status: reviewRes.status });
+      continue;
+    }
+
+    try {
+      const reviewJson = await reviewRes.json();
+      const reviewText = reviewJson.choices?.[0]?.message?.content ?? "";
+      const parsed = JSON.parse(extractJsonPayload(reviewText));
+      const patch = sanitizeFormationPatch(parsed?.formation ?? {});
+      refined.push({ ...f, ...patch, frameIndex: f.frameIndex ?? i });
+      reviews.push({ frameIndex: compact.frameIndex, model: reviewJson.model, notes: parsed?.notes ?? [] });
+    } catch {
+      refined.push(f);
+      reviews.push({ frameIndex: compact.frameIndex, note: "unparsed_response" });
+    }
+  }
+
+  return {
+    formations: refined,
+    meta: {
+      enabled: true,
+      reviewed: maxReview,
+      skipped: Math.max(0, formations.length - maxReview),
+      cycles: reviews,
+    },
+  };
+}
+
+function sanitizeFormationPatch(raw: any): Record<string, any> {
+  if (!raw || typeof raw !== "object") return {};
+  const numeric = (value: any, min: number, max: number, fallback: number) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(min, Math.min(max, n));
+  };
+  const safe: Record<string, any> = {
+    description: typeof raw.description === "string" ? raw.description.slice(0, 500) : undefined,
+    shape: typeof raw.shape === "string" ? raw.shape.slice(0, 60) : undefined,
+    emotion: typeof raw.emotion === "string" ? raw.emotion : undefined,
+    color: typeof raw.color === "string" ? raw.color : undefined,
+    secondaryColor: typeof raw.secondaryColor === "string" ? raw.secondaryColor : undefined,
+    colorGradient: typeof raw.colorGradient === "string" ? raw.colorGradient : undefined,
+    transitionStyle: typeof raw.transitionStyle === "string" ? raw.transitionStyle : undefined,
+    transitionEasing: typeof raw.transitionEasing === "string" ? raw.transitionEasing : undefined,
+    motionDuringHold: typeof raw.motionDuringHold === "string" ? raw.motionDuringHold : undefined,
+    ledEffect: typeof raw.ledEffect === "string" ? raw.ledEffect : undefined,
+    intensity: numeric(raw.intensity, 0, 1, 0.7),
+    height: numeric(raw.height, 10, 120, 35),
+    heightVariation: numeric(raw.heightVariation, 0, 1.5, 0.2),
+    spread: numeric(raw.spread, 0.2, 2.5, 1),
+    rotation: numeric(raw.rotation, -360, 360, 0),
+    tilt: numeric(raw.tilt, -90, 90, 0),
+    density: numeric(raw.density, 0.2, 2.0, 1),
+    suggestedHoldDuration: numeric(raw.suggestedHoldDuration, 1, 20, 4),
+    suggestedTransitionDuration: numeric(raw.suggestedTransitionDuration, 1, 20, 5),
+  };
+  return Object.fromEntries(Object.entries(safe).filter(([, v]) => v !== undefined));
+}
+
+function toBoolean(value: unknown, fallback: boolean): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const v = value.trim().toLowerCase();
+    if (["true", "1", "yes", "on"].includes(v)) return true;
+    if (["false", "0", "no", "off"].includes(v)) return false;
+  }
+  if (typeof value === "number") return value !== 0;
+  return fallback;
+}
+
+function toBoundedNumber(value: unknown, fallback: number, min: number, max: number): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
 
 // ─── System Prompt Builder ────────────────────────────────────
 
