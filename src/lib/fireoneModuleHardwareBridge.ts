@@ -83,7 +83,7 @@ export interface BridgeStatus {
   diagnostics?: BridgeDiagnostics;
 }
 
-/** Live snapshot of the pending-response queue. */
+/** Live snapshot of the pending-response queue + retry telemetry. */
 export interface BridgeDiagnostics {
   pendingCount: number;
   pendingKeys: string[];
@@ -92,7 +92,34 @@ export interface BridgeDiagnostics {
   linkHealth: LinkHealth;
   /** Total automatic retries attempted (read-only commands only). */
   retryCount: number;
+  /** Retry totals broken down by command class — useful to spot a flaky read path. */
+  retryByCommandType: Partial<Record<BridgeCommandType, number>>;
+  /** Retry totals per concrete pending key (e.g. "CONT:7") — useful to spot a flaky channel. */
+  retryByKey: Record<string, number>;
 }
+
+/** Per-command-class retry settings. */
+export interface BridgeRetryRule {
+  maxRetries: number;
+  perAttemptTimeoutMs: number;
+}
+
+/**
+ * Full retry policy. Currently only the read-only classes (CONT, CDS) are
+ * configurable — all physical commands are pinned to *no retry* by design.
+ */
+export interface BridgeRetryPolicy {
+  CONT: BridgeRetryRule;
+  CDS: BridgeRetryRule;
+}
+
+export const DEFAULT_RETRY_POLICY: BridgeRetryPolicy = {
+  CONT: { maxRetries: 2, perAttemptTimeoutMs: 2000 },
+  CDS:  { maxRetries: 2, perAttemptTimeoutMs: 2000 },
+};
+
+/** Why a single retry attempt fired. */
+export type BridgeRetryReason = 'timeout' | 'empty_drain' | 'parse_miss';
 
 /**
  * Standardized command classes. Drives retry policy — `RETRYABLE_COMMAND_TYPES`
