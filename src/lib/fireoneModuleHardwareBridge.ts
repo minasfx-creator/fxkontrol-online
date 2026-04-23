@@ -90,6 +90,44 @@ export interface BridgeDiagnostics {
   oldestPendingAgeMs: number;
   sessionId: number;
   linkHealth: LinkHealth;
+  /** Total automatic retries attempted (read-only commands only). */
+  retryCount: number;
+}
+
+/**
+ * Standardized command classes. Drives retry policy — `RETRYABLE_COMMAND_TYPES`
+ * is the source of truth for which classes may be auto-retried by the bridge.
+ *
+ * Physical/destructive commands (FIRE / BATCH / GPIO / ESTOP) are *never*
+ * auto-retried, even if the link is healthy. Re-issuing them is the operator's
+ * decision, not the transport layer's.
+ */
+export type BridgeCommandType =
+  | 'HANDSHAKE'
+  | 'HEARTBEAT'
+  | 'VERSION'
+  | 'STATUS'
+  | 'CONT'
+  | 'CDS'
+  | 'FIRE'
+  | 'BATCH'
+  | 'GPIO'
+  | 'ESTOP'
+  | 'CONFIRM'
+  | 'UNKNOWN';
+
+/** Whitelist — only these classes may be auto-retried. */
+export const RETRYABLE_COMMAND_TYPES: ReadonlySet<BridgeCommandType> = new Set<BridgeCommandType>([
+  'STATUS', 'HEARTBEAT', 'VERSION', 'CONT', 'CDS',
+]);
+
+/** Explicit blacklist — physical commands. Documented for clarity; enforced by absence from the whitelist. */
+export const NON_RETRYABLE_COMMAND_TYPES: ReadonlySet<BridgeCommandType> = new Set<BridgeCommandType>([
+  'FIRE', 'BATCH', 'GPIO', 'ESTOP',
+]);
+
+export function isRetryableCommandType(t: BridgeCommandType): boolean {
+  return RETRYABLE_COMMAND_TYPES.has(t);
 }
 
 /**
@@ -100,7 +138,7 @@ export interface BridgeDiagnostics {
  */
 interface PendingResponse {
   key: string;
-  commandType: string;
+  commandType: BridgeCommandType;
   sessionId: number;
   createdAt: number;
   resolver: (value: string) => void;
