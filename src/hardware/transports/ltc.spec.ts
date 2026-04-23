@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { LTCTransport } from './ltc';
 
 describe('LTCTransport', () => {
-  it('softens jitter instead of snapping on small chase corrections', () => {
+  it('locks after hysteresis frames and then softens small corrections with clamp', () => {
     const syncExternalTime = vi.fn();
     let currentTime = 10;
     const transport = new LTCTransport(
@@ -13,21 +13,25 @@ describe('LTCTransport', () => {
           syncExternalTime(time);
         },
       },
-      { smoothingFactor: 0.15 },
+      { smoothingFactor: 0.15, lockFrames: 3, maxCorrectionPerFrame: 0.04 },
     );
 
-    const first = transport.ingestTime(10.033, 1000);
-    const second = transport.ingestTime(10.04, 1033);
+    expect(transport.ingestTime(10.033, 1000)).toBeNull();
+    expect(transport.ingestTime(10.036, 1033)).toBeNull();
+    expect(transport.ingestTime(10.04, 1066)).toBeNull();
+    const first = transport.ingestTime(10.05, 1099);
+    const second = transport.ingestTime(10.06, 1132);
 
     expect(first).toMatchObject({ mode: 'soft' });
-    expect(first?.syncedTime).toBeCloseTo(10.00495, 6);
+    expect(first?.state).toBe('locked-soft');
+    expect(first?.syncedTime).toBeCloseTo(10.006, 6);
     expect(second?.mode).toBe('soft');
-    expect(second?.syncedTime).toBeCloseTo(10.0102075, 6);
+    expect(second?.syncedTime).toBeCloseTo(10.012, 6);
     expect(syncExternalTime).toHaveBeenCalledTimes(2);
-    expect(syncExternalTime.mock.lastCall?.[0]).toBeCloseTo(10.0102075, 6);
+    expect(syncExternalTime.mock.lastCall?.[0]).toBeCloseTo(10.012, 6);
   });
 
-  it('smooths against the live target time instead of the previous LTC sample', () => {
+  it('uses deadband to ignore micro jitter after lock', () => {
     const syncExternalTime = vi.fn();
     let currentTime = 10;
     const transport = new LTCTransport(
@@ -38,39 +42,42 @@ describe('LTCTransport', () => {
           syncExternalTime(time);
         },
       },
-      { smoothingFactor: 0.15 },
+      { lockFrames: 1, deadbandSec: 0.01 },
     );
 
-    transport.ingestTime(10.2, 1000);
-    currentTime = 10.3;
-    const sample = transport.ingestTime(10.4, 1033);
+    expect(transport.ingestTime(10, 1000)).toBeNull();
+    const sample = transport.ingestTime(10.005, 1033);
 
     expect(sample).toMatchObject({ mode: 'soft' });
-    expect(sample?.syncedTime).toBeCloseTo(10.3075, 6);
-    expect(syncExternalTime.mock.lastCall?.[0]).toBeCloseTo(10.3075, 6);
+    expect(sample?.syncedTime).toBe(10);
+    expect(syncExternalTime).not.toHaveBeenCalled();
   });
 
-  it('snaps immediately on large forward and backward jumps', () => {
+  it('hard resyncs on large forward jumps and rewind detection', () => {
     const syncExternalTime = vi.fn();
     let currentTime = 10;
-    const transport = new LTCTransport({
-      getTime: () => currentTime,
-      syncExternalTime: (time) => {
-        currentTime = time;
-        syncExternalTime(time);
+    const transport = new LTCTransport(
+      {
+        getTime: () => currentTime,
+        syncExternalTime: (time) => {
+          currentTime = time;
+          syncExternalTime(time);
+        },
       },
-    });
+      { lockFrames: 1, hardResyncThreshold: 0.5, rewindThreshold: 0.1 },
+    );
 
-    const forward = transport.ingestTime(10.75, 1000);
-    const backward = transport.ingestTime(9.9, 1033);
+    expect(transport.ingestTime(10, 1000)).toBeNull();
+    const forward = transport.ingestTime(10.75, 1033);
+    const backward = transport.ingestTime(9.9, 1066);
 
-    expect(forward).toMatchObject({ mode: 'snap', syncedTime: 10.75 });
-    expect(backward).toMatchObject({ mode: 'snap', syncedTime: 9.9 });
+    expect(forward).toMatchObject({ mode: 'hard', syncedTime: 10.75, state: 'locked-hard' });
+    expect(backward).toMatchObject({ mode: 'hard', syncedTime: 9.9, state: 'locked-hard' });
     expect(syncExternalTime).toHaveBeenNthCalledWith(1, 10.75);
     expect(syncExternalTime).toHaveBeenNthCalledWith(2, 9.9);
   });
 
-  it('ignores deadband jitter and tracks pause/resume signal presence', () => {
+  it('releases external sync only after unlock hysteresis on signal loss', () => {
     const syncExternalTime = vi.fn();
     const releaseExternalSync = vi.fn();
     const transport = new LTCTransport(
@@ -79,16 +86,19 @@ describe('LTCTransport', () => {
         syncExternalTime,
         releaseExternalSync,
       },
-      { pauseTimeoutMs: 250 },
+      { pauseTimeoutMs: 250, lockFrames: 1, unlockFrames: 3 },
     );
 
-    const ignored = transport.ingestTime(10.01, 1000);
+    expect(transport.ingestTime(10, 1000)).toBeNull();
+    transport.ingestTime(10.02, 1033);
 
-    expect(ignored).toMatchObject({ mode: 'ignore', syncedTime: 10 });
-    expect(syncExternalTime).not.toHaveBeenCalled();
     expect(transport.isSignalPresent(1200)).toBe(true);
     expect(transport.isSignalPresent(1301)).toBe(false);
+    expect(transport.isSignalPresent(1302)).toBe(false);
+    expect(releaseExternalSync).not.toHaveBeenCalled();
+    expect(transport.isSignalPresent(1303)).toBe(false);
     expect(releaseExternalSync).toHaveBeenCalledTimes(1);
+    expect(transport.getState()).toBe('lost');
 
     transport.ingestTime(10.04, 1400);
     expect(transport.isSignalPresent(1500)).toBe(true);
@@ -106,5 +116,6 @@ describe('LTCTransport', () => {
     expect(Object.isFrozen(diagnostics)).toBe(true);
     expect(diagnostics.signalPresent).toBe(true);
     expect(diagnostics.lastIncomingTime).toBe(1);
+    expect(diagnostics.state).toBe('locking');
   });
 });
