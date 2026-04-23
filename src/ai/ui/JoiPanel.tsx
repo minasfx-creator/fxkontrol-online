@@ -20,7 +20,12 @@ import {
 } from '@/ai';
 import { cn } from '@/lib/utils';
 
-/** Mock generator — placeholder até Joi LLM real ser plugado (Fase posterior). */
+/**
+ * ⚠️ AI MOCK ONLY — NEVER USED IN PRODUCTION EXECUTION PATH.
+ * Placeholder deterministic generator. Will be replaced by real Joi LLM in Sprint 2.
+ * Output is treated by downstream layers (compile/safety/HIL/cert) exactly the
+ * same as a real Joi output — so this mock cannot bypass any guarantee.
+ */
 function mockGenerateShowGraph(prompt: string): ShowGraph {
   const seed = prompt.length;
   const nodes: ShowGraphNode[] = [];
@@ -57,7 +62,9 @@ export default function JoiPanel() {
     const structure = validateShowGraphStructure(graph);
     const compile = compileShowGraph(graph);
     const deterministic = verifyCompileDeterminism(graph);
-    const safety = compile.timeline ? runAISafetyChecks(compile.timeline) : null;
+    const safety = compile.timeline
+      ? runAISafetyChecks(compile.timeline)
+      : { passed: false, violations: ['no timeline (compile failed)'] as const };
     return { structure, compile, deterministic, safety };
   }, [graph]);
 
