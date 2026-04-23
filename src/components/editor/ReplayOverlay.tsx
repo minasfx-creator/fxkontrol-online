@@ -22,14 +22,15 @@ export function ReplayOverlay() {
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    const poll = setInterval(() => {
-      const s = replayEngine.getState();
-      setState(s);
+    const sync = () => {
+      setState(replayEngine.getState());
       setProgress(replayEngine.getProgress() * 100);
       setCurrentTick(replayEngine.getCurrentTick());
       setTargetTick(replayEngine.getTargetTick());
-    }, 50);
-    return () => clearInterval(poll);
+    };
+
+    sync();
+    return replayEngine.subscribe(sync);
   }, []);
 
   const handleStop = useCallback(() => {
