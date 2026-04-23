@@ -53,6 +53,7 @@ function deepFreeze<T>(value: T): Readonly<T> {
 class TimelineClock {
   private state: TimelineClockState = { ...DEFAULT_STATE };
   private listeners = new Set<TimelineClockListener>();
+  private externalRate = 1;
 
   private markPositionChange(reason: TimelineClockState['lastPositionChange']): void {
     this.state.positionSequence += 1;
@@ -113,11 +114,24 @@ class TimelineClock {
     this.notify();
   }
 
+  getRate(): number {
+    return this.externalRate;
+  }
+
+  setRate(rate: number): void {
+    if (!Number.isFinite(rate)) return;
+    const next = Math.max(0.98, Math.min(rate, 1.02));
+    if (next === this.externalRate) return;
+    this.externalRate = next;
+    this.notify();
+  }
+
   releaseExternalSync(): void {
     if (this.state.source !== 'external') return;
     this.state.source = 'local';
     this.state.driftSec = 0;
     this.state.lastExternalTargetTime = null;
+    this.externalRate = 1;
     this.state.lastPositionChange = 'release-external';
     this.notify();
   }
@@ -156,7 +170,7 @@ class TimelineClock {
     if (!Number.isFinite(dt) || dt <= 0) return;
     const clampedDt = dt > FREEZE_DT_THRESHOLD ? MAX_DT : dt;
 
-    const nextTime = this.state.time + clampedDt * this.state.speed;
+    const nextTime = this.state.time + clampedDt * this.state.speed * this.externalRate;
     if (nextTime >= this.state.duration) {
       if (this.state.loop) {
         this.state.time = this.normalizeTime(nextTime % this.state.duration);
@@ -177,6 +191,7 @@ class TimelineClock {
   }
 
   reset(): void {
+    this.externalRate = 1;
     this.state = { ...DEFAULT_STATE, duration: this.state.duration, lastPositionChange: 'reset' };
     this.notify();
   }
