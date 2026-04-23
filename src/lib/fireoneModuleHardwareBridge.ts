@@ -545,7 +545,7 @@ export class FireOneHardwareBridge {
   async readContinuity(pin: number): Promise<number> {
     const key = `CONT:${pin}`;
     return new Promise<number>((resolve) => {
-      this.pendingResolves.set(key, (val) => {
+      this.registerPending(key, 'CONT', (val) => {
         const parts = val.split(':');
         resolve(parts.length >= 3 ? parseFloat(parts[2]) : 0);
       });
@@ -562,7 +562,7 @@ export class FireOneHardwareBridge {
   async readCdsVoltage(pin: number): Promise<number> {
     const key = `CDS:${pin}`;
     return new Promise<number>((resolve) => {
-      this.pendingResolves.set(key, (val) => {
+      this.registerPending(key, 'CDS', (val) => {
         const parts = val.split(':');
         resolve(parts.length >= 3 ? parseFloat(parts[2]) : 0);
       });
@@ -639,7 +639,7 @@ export class FireOneHardwareBridge {
       if (!this.connected) return;
       const key = 'PONG';
       const responded = await new Promise<boolean>((resolve) => {
-        this.pendingResolves.set(key, () => resolve(true));
+        this.registerPending(key, 'HEARTBEAT', () => resolve(true));
         this.sendCommand('HEARTBEAT\n');
         setTimeout(() => {
           if (this.pendingResolves.has(key)) {
@@ -710,7 +710,7 @@ export class FireOneHardwareBridge {
     return new Promise<boolean>((resolve) => {
       // Resolver receives the matched line. A non-empty match = real confirmation.
       // Empty string is the disconnect drain sentinel → resolve false (NOT a confirm).
-      this.pendingResolves.set(confirmKey, (val) => resolve(Boolean(val)));
+      this.registerPending(confirmKey, 'CONFIRM', (val) => resolve(Boolean(val)));
       this.sendCommand(cmd);
       setTimeout(() => {
         if (this.pendingResolves.has(confirmKey)) {
@@ -792,9 +792,21 @@ export class FireOneHardwareBridge {
       }
       if (fields.firmwareVersion !== undefined) this.firmwareVersion = fields.firmwareVersion;
 
-      for (const [key, resolver] of this.pendingResolves) {
+      for (const [key, pending] of this.pendingResolves) {
         if (trimmed.startsWith(key) || trimmed === key) {
-          resolver(trimmed);
+          // Stale-session guard: ignore frames whose pending was registered
+          // in an older session (can happen if a late frame arrives after
+          // a disconnect+reconnect cycle drained but didn't catch this key).
+          if (pending.sessionId !== this.sessionId && pending.sessionId !== this.connectingSessionId) {
+            this.onEvent?.('stale_response_dropped', {
+              key, frame: trimmed,
+              pendingSession: pending.sessionId,
+              currentSession: this.sessionId,
+            });
+            this.pendingResolves.delete(key);
+            break;
+          }
+          pending.resolver(trimmed);
           this.pendingResolves.delete(key);
           break;
         }
@@ -815,12 +827,12 @@ export class FireOneHardwareBridge {
     // Drain pending resolves with sentinel values so awaiters wake up
     // instead of silently leaking promises. Order: resolve, then clear.
     if (this.pendingResolves.size > 0) {
-      for (const [key, resolver] of this.pendingResolves) {
+      for (const [key, pending] of this.pendingResolves) {
         try {
           // Empty string is the safe sentinel — sendAndWaitConfirm/handshake
           // resolvers ignore the value (treat as falsy/no-confirm); numeric
           // resolvers (CONT/CDS) parse to 0 via parseFloat fallback.
-          resolver('');
+          pending.resolver('');
         } catch (e) {
           console.warn(`[HardwareBridge] pendingResolve drain error for ${key}:`, e);
         }
@@ -903,8 +915,8 @@ export class FireOneHardwareBridge {
         resolve(ok);
       };
       // Drain sentinel ('') from handleDisconnect resolves with falsy → finish(false).
-      this.pendingResolves.set('PONG', (val) => finish(Boolean(val)));
-      this.pendingResolves.set('VER:', (val) => finish(Boolean(val)));
+      this.registerPending('PONG', 'HANDSHAKE', (val) => finish(Boolean(val)));
+      this.registerPending('VER:', 'HANDSHAKE', (val) => finish(Boolean(val)));
       this.sendCommand('VERSION\n');
       this.sendCommand('HEARTBEAT\n');
       timer = setTimeout(() => finish(false), timeoutMs);
