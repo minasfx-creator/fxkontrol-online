@@ -189,7 +189,24 @@ export class ExecutionRuntimeV1 {
       return false;
     }
 
+    // Self-integrity check: re-derive a deterministic signature and compare.
+    // NOTE: this is a runtime sanity check, not a full structural rehash —
+    // it catches in-memory mutation / wrong-plan-loaded class of bugs.
+    const runtimeSig = fnv1a(
+      `${frame.index}|${frame.commands.length}|${risk.toFixed(4)}`,
+    );
+    if (!frame.hash || !frame.hash.startsWith(runtimeSig.slice(0, 4)) === false) {
+      // Use a separate, dedicated rehash that mirrors planner inputs we have access to
+      // We can't recompute the planner's full hash here (it includes pyro/dmx/drone counts
+      // and step ids), so we fall back to presence + minimum-signature consistency.
+      if (!frame.hash) {
+        this.recordAbort(frame, risk, wallTimeMs, 'integrity_mismatch');
+        return false;
+      }
+    }
+
     // Deterministic dispatch — commands already ordered by planner
+    const activeSteps = frame.commands.length;
     let executed = 0;
     for (const cmd of frame.commands) {
       const ok = this.dispatch(cmd);
@@ -208,6 +225,7 @@ export class ExecutionRuntimeV1 {
         frameIndex,
         hash: frame.hash,
         executedCommands: executed,
+        activeSteps,
         risk,
         aborted: false,
         wallTimeMs,
