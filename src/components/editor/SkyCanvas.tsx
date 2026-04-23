@@ -216,7 +216,6 @@ function DroneRendererSwitch() {
 import { deterministicClock } from '@/core/time/deterministicClock';
 import { lockstep } from '@/core/reliability/lockstepEngine';
 import { executionBridge } from '@/core/execution/executionBridge';
-import { frameSyncEngine } from '@/core/sync/frameSyncEngine';
 import { timelineClock } from '@/core/timeline/TimelineClock';
 
 const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
@@ -232,31 +231,12 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
     if (registeredRef.current) return;
     registeredRef.current = true;
 
-    lockstep.register('timelineClock', (_simTime: number, dt: number) => {
-      timelineClock.tick(dt);
-    }, 0);
-
     lockstep.register('executionBridge', (_simTime: number, _dt: number) => {
       executionBridge.tick(timelineClock.getTime());
     }, 50);
 
-    // Start the deterministic clock and lockstep
-    deterministicClock.start();
-    lockstep.start();
-
-    // Wire clock → frameSyncEngine → lockstep: frame-aligned time feeds lockstep
-    const unsubClock = deterministicClock.onTick((_time: number, delta: number) => {
-      // Pass delta directly — deterministic clock already applies drift correction.
-      // Previous double-call to getSyncedTimeSec corrupted internal correction state.
-      lockstep.tick(delta);
-    });
-
     return () => {
-      unsubClock();
-      lockstep.unregister('timelineClock');
       lockstep.unregister('executionBridge');
-      deterministicClock.pause();
-      lockstep.stop();
       registeredRef.current = false;
     };
   }, []);
