@@ -11,7 +11,7 @@ import { EMU_PROFILES, EMU_PROFILE_DESCRIPTIONS, type EmuProfileName } from '@/d
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
-import { FlaskConical, PlugZap, Radio, Download, Trash2, Play, Square } from 'lucide-react';
+import { FlaskConical, PlugZap, Radio, Download, Trash2, Play, Square, Upload, SkipForward, Pause } from 'lucide-react';
 
 const isDev = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV ?? false;
 
