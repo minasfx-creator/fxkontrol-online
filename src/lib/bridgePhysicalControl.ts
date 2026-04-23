@@ -291,6 +291,17 @@ class BridgePhysicalController {
     });
   }
 
+  exportHilReportJSON(): string {
+    return JSON.stringify(this.exportHilReport(), null, 2);
+  }
+
+  resetHilRun(): void {
+    this.hilRunStart = performance.now();
+    this.hilLogs = [];
+    this.commandTimeline.clear();
+    this.emit();
+  }
+
   registerHilTimer(commandId: string, timer: ReturnType<typeof setTimeout>): void {
     this.hilTimers.set(commandId, timer);
   }
