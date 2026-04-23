@@ -26,6 +26,14 @@ export interface PyroUsbTransportOptions {
 export type PyroUsbTransportState = 'disconnected' | 'idle' | 'armed' | 'lockout' | 'fault';
 export type PyroUsbLockoutReason = 'manual' | 'watchdog' | 'estop' | 'fault';
 
+export type PyroUsbEvent =
+  | { type: 'state-change'; from: PyroUsbTransportState; to: PyroUsbTransportState; timestamp: number }
+  | { type: 'armed-invalidated'; timestamp: number }
+  | { type: 'watchdog-fired'; timestamp: number }
+  | { type: 'fault'; reason: string; timestamp: number };
+
+export type PyroUsbEventListener = (event: PyroUsbEvent) => void;
+
 export type PyroUsbScheduledPayload =
   | { command: 'arm'; moduleAddress: number }
   | { command: 'disarm'; moduleAddress: number }
