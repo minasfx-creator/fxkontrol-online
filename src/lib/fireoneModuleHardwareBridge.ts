@@ -112,7 +112,13 @@ export class FireOneHardwareBridge {
   private rssi?: number;
   private estimatedDistance?: number;
   private lastError?: string;
-  private linkHealth: 'disconnected' | 'handshaking' | 'healthy' = 'disconnected';
+  private lastErrorCode?: BridgeReasonCode;
+  private lastErrorAt?: number;
+  private linkHealth: LinkHealth = 'disconnected';
+  /** Monotonic session id — incremented on every successful link establishment. */
+  private sessionId = 0;
+  /** Session id at the time a connect attempt began — used to invalidate handshakes from stale sessions. */
+  private connectingSessionId = 0;
 
   private bleDevice: any = null;
   private bleCharTx: any = null;
