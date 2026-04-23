@@ -206,6 +206,8 @@ describe('PyroSchedulerBridge', () => {
     await bridge.flushPending();
     bridge.tick(createClockState({ time: 9.889, playing: true, source: 'external', externalSyncSequence: 2, positionSequence: 2, lastPositionChange: 'external-confirm' }));
     await bridge.flushPending();
+    bridge.tick(createClockState({ time: 9.901, playing: true, source: 'external', externalSyncSequence: 2, positionSequence: 2, lastPositionChange: 'tick' }));
+    await bridge.flushPending();
 
     expect(bridge.getDiagnostics().lastRebuildReason).toBe('external-sync');
     expect(transport.dispatch).toHaveBeenCalledTimes(1);

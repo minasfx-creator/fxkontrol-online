@@ -50,8 +50,7 @@ describe('LTCTransport', () => {
 
     expect(sample).toMatchObject({ mode: 'soft' });
     expect(sample?.syncedTime).toBe(10);
-    expect(syncExternalTime).toHaveBeenCalledTimes(1);
-    expect(syncExternalTime).toHaveBeenCalledWith(10);
+    expect(syncExternalTime).not.toHaveBeenCalled();
   });
 
   it('hard resyncs on large forward jumps and rewind detection', () => {
