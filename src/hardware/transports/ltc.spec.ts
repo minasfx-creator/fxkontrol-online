@@ -18,8 +18,9 @@ describe('LTCTransport', () => {
 
     expect(transport.ingestTime(10.033, 1000)).toBeNull();
     expect(transport.ingestTime(10.036, 1033)).toBeNull();
-    const first = transport.ingestTime(10.04, 1066);
-    const second = transport.ingestTime(10.05, 1099);
+    expect(transport.ingestTime(10.04, 1066)).toBeNull();
+    const first = transport.ingestTime(10.05, 1099);
+    const second = transport.ingestTime(10.06, 1132);
 
     expect(first).toMatchObject({ mode: 'soft' });
     expect(first?.state).toBe('locked-soft');
