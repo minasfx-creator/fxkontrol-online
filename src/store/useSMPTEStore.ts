@@ -12,6 +12,7 @@ import {
   parseTimecode,
 } from '@/lib/smpteEngine';
 import { useProjectStore } from '@/store/useProjectStore';
+import { timelineClock } from '@/core/timeline/TimelineClock';
 
 export type ExternalSyncStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 export type ChaseMode = 'hard' | 'soft' | 'jam';
@@ -151,7 +152,7 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
     if (state.externalEnabled && state.status === 'connected' && state.mode === 'slave' && state.externalTimecode) {
       return state.externalTimecode;
     }
-    const t = useProjectStore.getState().currentTime + state.startTimecodeSeconds;
+    const t = timelineClock.getTime() + state.startTimecodeSeconds;
     return secondsToTimecode(t, state.frameRate, state.frameRate === 29.97);
   },
 
@@ -313,35 +314,35 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
         // Chase: drive project playback from external TC
         if (state.mode === 'slave') {
           const projectStore = useProjectStore.getState();
-          const currentProjectTime = projectStore.currentTime;
+          const currentProjectTime = timelineClock.getTime();
           const diff = Math.abs(projectTime - currentProjectTime);
 
           switch (state.chaseMode) {
             case 'hard':
               // Immediately jump to external TC position
               if (diff > 0.02) {
-                projectStore.setCurrentTime(Math.max(0, Math.min(projectTime, projectStore.duration)));
+                timelineClock.syncExternalTime(Math.max(0, Math.min(projectTime, projectStore.duration)));
               }
               if (!projectStore.isPlaying && projectTime > 0) {
-                projectStore.setPlaying(true);
+                timelineClock.play();
               }
               break;
 
             case 'soft':
               // Gradually chase — jump if drift > 0.5s, otherwise let playback catch up
               if (diff > 0.5) {
-                projectStore.setCurrentTime(Math.max(0, Math.min(projectTime, projectStore.duration)));
+                timelineClock.syncExternalTime(Math.max(0, Math.min(projectTime, projectStore.duration)));
               }
               if (!projectStore.isPlaying && projectTime > 0.1) {
-                projectStore.setPlaying(true);
+                timelineClock.play();
               }
               break;
 
             case 'jam':
               // Jam sync: only sync once then freewheel
               if (state.packetCount <= 3 || diff > 2.0) {
-                projectStore.setCurrentTime(Math.max(0, Math.min(projectTime, projectStore.duration)));
-                if (!projectStore.isPlaying) projectStore.setPlaying(true);
+                timelineClock.syncExternalTime(Math.max(0, Math.min(projectTime, projectStore.duration)));
+                if (!projectStore.isPlaying) timelineClock.play();
               }
               break;
           }
@@ -354,14 +355,14 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
           const projectStore = useProjectStore.getState();
           switch (data.command) {
             case 'play':
-              if (!projectStore.isPlaying) projectStore.setPlaying(true);
+              if (!projectStore.isPlaying) timelineClock.play();
               break;
             case 'stop':
-              if (projectStore.isPlaying) projectStore.setPlaying(false);
+              if (projectStore.isPlaying) timelineClock.pause();
               break;
             case 'locate':
               if (typeof data.position === 'number') {
-                projectStore.setCurrentTime(Math.max(0, Math.min(data.position, projectStore.duration)));
+                timelineClock.syncExternalTime(Math.max(0, Math.min(data.position, projectStore.duration)));
               }
               break;
           }
@@ -401,7 +402,7 @@ useProjectStore.subscribe((state, prev) => {
 setInterval(() => {
   const smpte = useSMPTEStore.getState();
   if (!smpte.running) return;
-  const t = useProjectStore.getState().currentTime;
+  const t = timelineClock.getTime();
   const external = smpte.mode === 'slave' && smpte.externalEnabled && smpte.status === 'connected'
     ? smpte.externalTimeSeconds
     : smpte.mode === 'slave' ? t + (Math.random() - 0.5) * 0.002 : undefined;

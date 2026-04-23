@@ -165,9 +165,7 @@ export default function EngineProvider() {
       snapshotManager.maybeCapture(lockstep.getTickCount());
     }, 200);
 
-    lockstep.register('timelineClock', (_time: number, dt: number) => {
-      timelineClock.tick(dt);
-    }, 0);
+    lockstep.setEnabled('timelineClock', true);
 
     // ── IndexedDB flush subsystem (priority 300) ──
     lockstep.register('idbFlush', (_time: number, _dt: number) => {
@@ -233,7 +231,6 @@ export default function EngineProvider() {
       unsubImport();
       unsubContinuity();
       lockstep.unregister('commandBus');
-      lockstep.unregister('timelineClock');
       lockstep.unregister('snapshotManager');
       lockstep.unregister('idbFlush');
       commandRelay.stop();
