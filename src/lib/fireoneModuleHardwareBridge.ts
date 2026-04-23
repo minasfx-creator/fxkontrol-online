@@ -495,9 +495,26 @@ export class FireOneHardwareBridge {
     return this.sendAndWaitConfirm(`BATCH:${maskHex}:${durationMs}\n`, 'OK:BATCH');
   }
 
-  /** Emergency stop — bypasses requireHealthy() by design. */
+  /**
+   * Emergency stop — bypasses requireHealthy() by design.
+   * Always logs an audit event with current link state for post-event analysis,
+   * regardless of whether transmission succeeds.
+   */
   async eStop(): Promise<boolean> {
-    return this.sendCommand('ESTOP\n');
+    this.onEvent?.('estop_attempt', {
+      linkHealth: this.linkHealth,
+      connected: this.connected,
+      transport: this.transport,
+      sessionId: this.sessionId,
+      at: Date.now(),
+    });
+    const ok = await this.sendCommand('ESTOP\n');
+    this.onEvent?.('estop_result', {
+      ok,
+      sessionId: this.sessionId,
+      at: Date.now(),
+    });
+    return ok;
   }
 
   async readContinuity(pin: number): Promise<number> {
@@ -666,7 +683,9 @@ export class FireOneHardwareBridge {
 
   private async sendAndWaitConfirm(cmd: string, confirmKey: string): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
-      this.pendingResolves.set(confirmKey, () => resolve(true));
+      // Resolver receives the matched line. A non-empty match = real confirmation.
+      // Empty string is the disconnect drain sentinel → resolve false (NOT a confirm).
+      this.pendingResolves.set(confirmKey, (val) => resolve(Boolean(val)));
       this.sendCommand(cmd);
       setTimeout(() => {
         if (this.pendingResolves.has(confirmKey)) {
@@ -677,6 +696,12 @@ export class FireOneHardwareBridge {
     });
   }
 
+  /**
+   * Low-level send. **Intentionally does NOT check linkHealth** — this lets the
+   * handshake (`waitForHandshake`) transmit during `linkHealth: 'handshaking'`
+   * and lets `eStop()` transmit on a degraded link. Health gating lives in
+   * `requireHealthy()` and is enforced by the public command methods only.
+   */
   private async sendCommand(cmd: string): Promise<boolean> {
     const bytes = new TextEncoder().encode(cmd);
     this.txBytes += bytes.length;
@@ -761,14 +786,33 @@ export class FireOneHardwareBridge {
     this.linkHealth = 'disconnected';
     // Invalidate any in-flight handshake from a previous attempt.
     this.connectingSessionId++;
-    this.pendingResolves.clear();
+
+    // Drain pending resolves with sentinel values so awaiters wake up
+    // instead of silently leaking promises. Order: resolve, then clear.
+    if (this.pendingResolves.size > 0) {
+      for (const [key, resolver] of this.pendingResolves) {
+        try {
+          // Empty string is the safe sentinel — sendAndWaitConfirm/handshake
+          // resolvers ignore the value (treat as falsy/no-confirm); numeric
+          // resolvers (CONT/CDS) parse to 0 via parseFloat fallback.
+          resolver('');
+        } catch (e) {
+          console.warn(`[HardwareBridge] pendingResolve drain error for ${key}:`, e);
+        }
+      }
+      this.pendingResolves.clear();
+    }
+
     this.stopHeartbeat();
     this.stopRssiPolling();
     if (wasConnected) {
       if (!this.lastErrorCode) {
         this.setError('TRANSPORT_DISCONNECTED', 'Transport disconnected');
       }
-      this.onEvent?.('disconnected', null);
+      this.onEvent?.('disconnected', {
+        reasonCode: this.lastErrorCode ?? 'TRANSPORT_DISCONNECTED',
+        sessionId: this.sessionId,
+      });
     }
     if (wasConnected && this.lastConnectArgs) {
       this.attemptReconnect();
@@ -830,8 +874,9 @@ export class FireOneHardwareBridge {
         this.pendingResolves.delete('VER:');
         resolve(ok);
       };
-      this.pendingResolves.set('PONG', () => finish(true));
-      this.pendingResolves.set('VER:', () => finish(true));
+      // Drain sentinel ('') from handleDisconnect resolves with falsy → finish(false).
+      this.pendingResolves.set('PONG', (val) => finish(Boolean(val)));
+      this.pendingResolves.set('VER:', (val) => finish(Boolean(val)));
       this.sendCommand('VERSION\n');
       this.sendCommand('HEARTBEAT\n');
       timer = setTimeout(() => finish(false), timeoutMs);
