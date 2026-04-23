@@ -81,11 +81,11 @@ describe('PyroSchedulerBridge', () => {
 
     bridge.tick(createClockState({ time: 0 }));
     bridge.tick(createClockState({ time: 9.88, playing: true }));
-    await Promise.resolve();
+    await bridge.flushPending();
     expect(transport.dispatch).not.toHaveBeenCalled();
 
     bridge.tick(createClockState({ time: 9.889, playing: true }));
-    await Promise.resolve();
+    await bridge.flushPending();
 
     expect(transport.dispatch).toHaveBeenCalledWith(
       expect.objectContaining({ command: 'fire', moduleAddress: 1, cueIndex: 0 }),
@@ -106,7 +106,7 @@ describe('PyroSchedulerBridge', () => {
     bridge.tick(createClockState({ time: 0 }));
     bridge.tick(createClockState({ time: 11, playing: false }));
     bridge.tick(createClockState({ time: 11.1, playing: true }));
-    await Promise.resolve();
+    await bridge.flushPending();
 
     expect(transport.dispatch).not.toHaveBeenCalled();
     expect(bridge.getDiagnostics().lastRebuildReason).toBe('seek-forward');
@@ -125,7 +125,7 @@ describe('PyroSchedulerBridge', () => {
     bridge.tick(createClockState({ time: 11, playing: false }));
     bridge.tick(createClockState({ time: 0, playing: false }));
     bridge.tick(createClockState({ time: 9.889, playing: true }));
-    await Promise.resolve();
+    await bridge.flushPending();
 
     expect(bridge.getDiagnostics().lastRebuildReason).toBe('rewind');
     expect(transport.dispatch).toHaveBeenCalledTimes(1);
@@ -141,7 +141,7 @@ describe('PyroSchedulerBridge', () => {
 
     bridge.tick(createClockState({ time: 0 }));
     bridge.tick(createClockState({ time: 12, playing: false }));
-    await Promise.resolve();
+    await bridge.flushPending();
 
     expect(transport.dispatch).not.toHaveBeenCalled();
   });
@@ -157,9 +157,9 @@ describe('PyroSchedulerBridge', () => {
 
     bridge.tick(createClockState({ time: 0 }));
     bridge.tick(createClockState({ time: 9.889, playing: true }));
-    await Promise.resolve();
+    await bridge.flushPending();
     bridge.tick(createClockState({ time: 9.889, playing: true, source: 'external', lastExternalSync: 1 }));
-    await Promise.resolve();
+    await bridge.flushPending();
 
     expect(transport.dispatch).toHaveBeenCalledTimes(1);
   });
@@ -177,7 +177,7 @@ describe('PyroSchedulerBridge', () => {
 
     bridge.tick(createClockState({ time: 0 }));
     bridge.tick(createClockState({ time: 9.889, playing: true }));
-    await Promise.resolve();
+    await bridge.flushPending();
 
     expect(transport.dispatch).not.toHaveBeenCalled();
     expect(bridge.getDiagnostics().lastBlockedReason).toBe('watchdog expired');
@@ -199,7 +199,7 @@ describe('PyroSchedulerBridge', () => {
 
     bridge.tick(createClockState({ time: 0 }));
     bridge.tick(createClockState({ time: 10, playing: true }));
-    await Promise.resolve();
+    await bridge.flushPending();
 
     expect(transport.dispatch.mock.calls.map(([payload]) => payload.cueIndex)).toEqual([0, 1, 2]);
   });
