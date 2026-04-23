@@ -753,6 +753,25 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
     setChannels(prev => { const updated = prev.map(ch => ch.id === id ? { ...ch, firing: false } : ch); sendArtNetPacket(updated); return updated; });
   }, [sendArtNetPacket]);
 
+  const armFireWindow = useCallback(() => {
+    if (!(pyroArm || dmxArm)) {
+      toast.error('Arme PYRO ou DMX antes de abrir a FIRE WINDOW');
+      return;
+    }
+    setDualConfirmArmed(true);
+    const endsAt = Date.now() + settings.fireWindowMs;
+    setFireWindowEndsAt(endsAt);
+    if (fireWindowTimerRef.current) clearTimeout(fireWindowTimerRef.current);
+    fireWindowTimerRef.current = setTimeout(() => {
+      setDualConfirmArmed(false);
+      setFireWindowEndsAt(null);
+      handlePyroArm(false);
+      handleDmxArm(false);
+      toast.warning('FIRE WINDOW encerrada — AUTO DISARM executado');
+    }, settings.fireWindowMs);
+    toast.success(`FIRE WINDOW aberta por ${(settings.fireWindowMs / 1000).toFixed(1)}s`);
+  }, [pyroArm, dmxArm, settings.fireWindowMs, handlePyroArm, handleDmxArm]);
+
   // ─── CUE Key firing with Lock/Tap + firing rules ───
   const fireCueKey = useCallback((keyIndex: number) => {
     const cue = pageCues.find(c => c.keyIndex === keyIndex + pageStart);
