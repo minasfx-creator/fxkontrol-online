@@ -50,3 +50,11 @@ export type {
   CompileResultV2,
 } from './joiCompilerV2';
 export { compileJoiV2 } from './joiCompilerV2';
+
+// ─── Execution Planner v1 (IR → frame schedule) ────────────────────
+export type {
+  ExecutionPlan,
+  ExecutionFrame,
+  PlannedCommand,
+} from './joiExecutionPlanner';
+export { buildExecutionPlan } from './joiExecutionPlanner';
