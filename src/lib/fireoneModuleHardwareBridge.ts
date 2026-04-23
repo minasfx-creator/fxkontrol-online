@@ -812,6 +812,9 @@ export class FireOneHardwareBridge {
       this.onEvent?.('disconnected', {
         reasonCode: this.lastErrorCode ?? 'TRANSPORT_DISCONNECTED',
         sessionId: this.sessionId,
+        transport: this.transport,
+        linkHealth: this.linkHealth,
+        at: Date.now(),
       });
     }
     if (wasConnected && this.lastConnectArgs) {
