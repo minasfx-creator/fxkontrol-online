@@ -85,6 +85,43 @@ export interface HilRunReport {
   };
 }
 
+export interface HilDriftHistogram {
+  count: number;
+  min: number;
+  max: number;
+  mean: number;
+  p50: number;
+  p95: number;
+  p99: number;
+  buckets: Array<{ rangeMs: [number, number]; count: number }>;
+}
+
+export interface HilCompareResult {
+  lossDelta: number;
+  ackDelta: number;
+  jitterP95Delta: number;
+  meanDelta: number;
+  totalDelta: number;
+}
+
+export interface HilRegressionRule {
+  maxFailed?: number;
+  maxP95Ms?: number;
+  maxAbsoluteMs?: number;
+  minAckRate?: number;
+}
+
+export interface HilRegressionResult {
+  passed: boolean;
+  failures: string[];
+  metrics: {
+    failed: number;
+    p95: number;
+    max: number;
+    ackRate: number;
+  };
+}
+
 export interface FireLockoutInput {
   systemArmed: boolean;
   deadmanHeld: boolean;
