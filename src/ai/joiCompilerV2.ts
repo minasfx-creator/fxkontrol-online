@@ -312,7 +312,7 @@ function buildIR(
     }));
 
     const sequenceId = fnv1a(
-      `${ast.showId}|${n.id}|${frameIndex}|${n.t0 ?? n.start}|${n.targets.join(',')}|${n.kind}`,
+      `${ast.showId}|${n.id}|${frameIndex}|${n.start}|${n.duration}|${n.targets.join(',')}|${n.kind}`,
     );
 
     return Object.freeze<IRStep>({
