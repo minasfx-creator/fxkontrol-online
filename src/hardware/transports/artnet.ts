@@ -2,6 +2,7 @@ import { artNetBridge } from '@/core/protocols/ArtNetBridge';
 
 export const ARTNET_DEFAULT_LATENCY_MS = 8;
 export const ARTNET_CHANNELS_PER_UNIVERSE = 512;
+export const ARTNET_MAX_UNIVERSE = 32767;
 
 export interface ArtNetChannelUpdate {
   channel: number;
@@ -29,6 +30,10 @@ export class ArtNetTransport {
   private readonly dirtyUniverses = new Set<number>();
 
   enqueue(payload: ArtNetScheduledPayload): void {
+    if (!Number.isInteger(payload.universe) || payload.universe < 0 || payload.universe > ARTNET_MAX_UNIVERSE) {
+      return;
+    }
+
     const buffer = this.getUniverseBuffer(payload.universe);
 
     for (const update of payload.updates ?? []) {

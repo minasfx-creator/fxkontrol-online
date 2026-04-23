@@ -74,6 +74,36 @@ describe('HardwareScheduler', () => {
     expect(Object.isFrozen(diagnostics.queue[0].payload)).toBe(true);
     expect(Object.isFrozen(diagnostics.queue[0].payload?.nested)).toBe(true);
   });
+
+  it('prunes past events on seek while keeping future dispatches stable', () => {
+    const dispatch = vi.fn();
+    const scheduler = new HardwareScheduler({ dispatch });
+
+    scheduler.schedule({ t: 1, type: 'dmx' });
+    scheduler.schedule({ t: 2, type: 'pyro' });
+    scheduler.schedule({ t: 3, type: 'laser' });
+
+    scheduler.seek(2.1);
+
+    expect(scheduler.getPendingCount()).toBe(1);
+    expect(scheduler.getDiagnostics().nextEventTime).toBe(3);
+    expect(scheduler.tick(0.89)).toBe(0);
+    expect(scheduler.tick(0.01)).toBe(1);
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ t: 3, type: 'laser' }), 3);
+  });
+
+  it('throws when the scheduler queue exceeds the safety cap', () => {
+    const scheduler = new HardwareScheduler({ dispatch: () => {} });
+
+    for (let i = 0; i < 10_000; i++) {
+      scheduler.schedule({ t: i + 1, type: 'dmx' });
+    }
+
+    expect(() => scheduler.schedule({ t: 10_001, type: 'dmx' })).toThrow(
+      'HardwareScheduler queue overflow',
+    );
+  });
 });
 
 describe('ArtNetTransport', () => {
@@ -122,5 +152,19 @@ describe('ArtNetTransport', () => {
         1: 127,
       }),
     );
+  });
+
+  it('ignores invalid universe ids', () => {
+    const sendDmx = vi.spyOn(artNetBridge, 'sendDmx').mockImplementation(() => {});
+    const transport = new ArtNetTransport();
+
+    transport.enqueue({ universe: -1, updates: [{ channel: 1, value: 255 }] });
+    transport.enqueue({ universe: 32768, updates: [{ channel: 1, value: 255 }] });
+
+    const stats = transport.flush();
+
+    expect(stats.sentUniverses).toBe(0);
+    expect(stats.dirtyUniverses).toBe(0);
+    expect(sendDmx).not.toHaveBeenCalled();
   });
 });

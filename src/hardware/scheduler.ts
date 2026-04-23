@@ -31,6 +31,8 @@ interface InternalScheduledEvent<TEvent extends ScheduledHardwareEvent = Schedul
   sequence: number;
 }
 
+const MAX_SCHEDULED_EVENTS = 10_000;
+
 function deepFreeze<T>(value: T): Readonly<T> {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
     return value as Readonly<T>;
@@ -60,6 +62,10 @@ export class HardwareScheduler<TEvent extends ScheduledHardwareEvent = Scheduled
   schedule(event: TEvent): number {
     if (!Number.isFinite(event.t) || event.t < 0) {
       throw new Error('Scheduled event time must be a finite number >= 0');
+    }
+
+    if (this.queue.length >= MAX_SCHEDULED_EVENTS) {
+      throw new Error('HardwareScheduler queue overflow');
     }
 
     const dispatchAt = Math.max(0, event.t - this.resolveLatencySec(event));
@@ -97,6 +103,16 @@ export class HardwareScheduler<TEvent extends ScheduledHardwareEvent = Scheduled
   seek(time: number): void {
     if (!Number.isFinite(time) || time < 0) return;
     this.now = time;
+
+    let writeIndex = 0;
+    for (let readIndex = 0; readIndex < this.queue.length; readIndex++) {
+      const queued = this.queue[readIndex];
+      if (queued.dispatchAt >= time) {
+        this.queue[writeIndex++] = queued;
+      }
+    }
+
+    this.queue.length = writeIndex;
   }
 
   reset(time = 0): void {
