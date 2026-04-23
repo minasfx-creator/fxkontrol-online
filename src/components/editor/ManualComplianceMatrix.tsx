@@ -106,6 +106,23 @@ export default function ManualComplianceMatrix() {
         </div>
       </div>
 
+      {blockers.length > 0 && (
+        <div className="border border-red-500/30 bg-red-500/5 rounded-md p-2 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-mono font-bold text-red-400 tracking-widest uppercase">Go-Live Blockers</span>
+            <span className="text-[8px] font-mono text-red-400/80">{blockers.length} em aberto</span>
+          </div>
+          <ul className="space-y-0.5">
+            {blockers.slice(0, 6).map((row) => (
+              <li key={`${row.source}-${row.clause}`} className="text-[9px] font-mono text-foreground/80 leading-tight">
+                <span className="text-red-400/90">{row.source} {row.clause}</span> — {row.requirement}
+                <span className="text-muted-foreground/70"> → {row.action}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Column headers */}
       <div className="grid grid-cols-[120px_60px_1fr_80px_1fr_1fr] gap-1 text-[7px] font-mono text-muted-foreground/50 tracking-widest px-2">
         <span>SOURCE</span>
