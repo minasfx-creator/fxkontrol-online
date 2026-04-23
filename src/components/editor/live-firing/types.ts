@@ -170,4 +170,6 @@ export interface FXCSettings {
   networkIp: string;
   networkMask: string;
   networkGateway: string;
+  dualConfirmRequired: boolean;
+  fireWindowMs: number;
 }

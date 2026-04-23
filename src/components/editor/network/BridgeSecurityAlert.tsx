@@ -38,7 +38,16 @@ export default function BridgeSecurityAlert({ diagnostic, className, compact = f
           <Badge variant="outline">Contexto seguro: {diagnostic.isSecureContext ? 'OK' : 'bloqueado'}</Badge>
           <Badge variant="outline">Mixed content: {diagnostic.mixedContentBlocked ? 'sim' : 'não'}</Badge>
           <Badge variant="outline">Compatível iPhone/PWA: {diagnostic.compatibleWithIOSPwa ? 'sim' : 'não'}</Badge>
+          <Badge variant="outline">Watchdog: {diagnostic.watchdogRequired ? 'obrigatório' : 'opcional'}</Badge>
         </div>
+        {diagnostic.mixedContentResources.length > 0 ? (
+          <div className="space-y-1 pt-1">
+            <p className="text-xs text-destructive">Recursos bloqueados por mixed content</p>
+            {diagnostic.mixedContentResources.map((resource) => (
+              <Badge key={resource} variant="outline">{resource}</Badge>
+            ))}
+          </div>
+        ) : null}
       </AlertDescription>
     </Alert>
   );

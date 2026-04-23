@@ -49,6 +49,10 @@ export interface BridgeSecurityDiagnostic extends BridgeCapabilityHints {
   localNetworkHost: boolean;
   usesSelfSignedLocalTls: boolean;
   compatibleWithIOSPwa: boolean;
+  watchdogRequired: boolean;
+  heartbeatTransportReady: boolean;
+  mixedContentResources: string[];
+  structuralBlockers: string[];
   recommendedAction: string;
   summary: string;
   severity: BridgeSecuritySeverity;
@@ -301,6 +305,14 @@ function summarizeBridgeDiagnostic(diagnostic: BridgeSecurityDiagnostic): Pick<B
     };
   }
 
+  if (diagnostic.structuralBlockers.length > 0) {
+    return {
+      severity: 'error',
+      summary: 'O bridge local encontrou bloqueios estruturais para operação física segura.',
+      recommendedAction: diagnostic.structuralBlockers.join(' • '),
+    };
+  }
+
   return {
     severity: 'info',
     summary: diagnostic.usesSelfSignedLocalTls
@@ -327,6 +339,17 @@ export function getBridgeSecurityDiagnostic(
   const localNetworkHost = isLocalBridgeHost(url.hostname);
   const isSecureContext = runtimeSecureContext(runtime);
   const compatibleWithIOSPwa = secure && (mdnsHost || !localNetworkHost || isSecureContext);
+  const mixedContentResources = pageProtocol === 'https:' && url.protocol === 'ws:' ? [endpoint] : [];
+  const structuralBlockers: string[] = [];
+  if (pageProtocol === 'https:' && url.protocol === 'ws:') {
+    structuralBlockers.push('Mixed content: página HTTPS não pode abrir bridge em WS inseguro.');
+  }
+  if (isIOSWebKit(nav) && !secure) {
+    structuralBlockers.push('iPhone/PWA exige WSS confiável para bridge local e pairing estável.');
+  }
+  if (secure && mdnsHost && !isSecureContext) {
+    structuralBlockers.push('Abra o app em secure context antes de operar via bridge mDNS/TLS local.');
+  }
 
   const diagnosticBase: BridgeSecurityDiagnostic = {
     endpoint,
@@ -343,6 +366,10 @@ export function getBridgeSecurityDiagnostic(
     localNetworkHost,
     usesSelfSignedLocalTls: secure && mdnsHost,
     compatibleWithIOSPwa,
+    watchdogRequired: secure || mdnsHost || isIOSWebKit(nav),
+    heartbeatTransportReady: secure && !mixedContentResources.length,
+    mixedContentResources,
+    structuralBlockers,
     recommendedAction: '',
     summary: '',
     severity: 'info',
