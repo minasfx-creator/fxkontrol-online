@@ -462,16 +462,40 @@ export class FireOneHardwareBridge {
 
   // ─── Command Methods ─────────────────────────────────
 
+  /**
+   * Health gate for command execution. Returns null if OK to proceed,
+   * otherwise a `BridgeReasonCode` to surface to the caller.
+   *
+   * NOTE: `eStop()` intentionally bypasses this gate — emergency stop must
+   * always attempt transmission, even on a degraded link.
+   */
+  private requireHealthy(): BridgeReasonCode | null {
+    if (!this.connected) return 'NOT_CONNECTED';
+    if (this.linkHealth !== 'healthy') return 'LINK_NOT_HEALTHY';
+    return null;
+  }
+
   async fire(pin: number, durationMs: number): Promise<boolean> {
+    const gate = this.requireHealthy();
+    if (gate) {
+      this.setError(gate, `fire(${pin}) blocked: ${gate}`);
+      return false;
+    }
     const key = `OK:FIRE:${pin}`;
     return this.sendAndWaitConfirm(`FIRE:${pin}:${durationMs}\n`, key);
   }
 
   async fireBatch(mask: number, durationMs: number): Promise<boolean> {
+    const gate = this.requireHealthy();
+    if (gate) {
+      this.setError(gate, `fireBatch blocked: ${gate}`);
+      return false;
+    }
     const maskHex = (mask >>> 0).toString(16).padStart(8, '0');
     return this.sendAndWaitConfirm(`BATCH:${maskHex}:${durationMs}\n`, 'OK:BATCH');
   }
 
+  /** Emergency stop — bypasses requireHealthy() by design. */
   async eStop(): Promise<boolean> {
     return this.sendCommand('ESTOP\n');
   }
