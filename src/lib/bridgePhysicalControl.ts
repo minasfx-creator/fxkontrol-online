@@ -198,7 +198,7 @@ class BridgePhysicalController {
     this.emit();
   }
 
-  async simulateHilFire(channelId: string, onAcknowledge: (channel: string) => void): Promise<boolean> {
+  async simulateHilFire(channelId: string, onAcknowledge: (channel: string, meta: { delayMs: number; reordered: boolean }) => void): Promise<boolean> {
     return this.hilHarness.fire(channelId, onAcknowledge);
   }
 
