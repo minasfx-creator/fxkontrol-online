@@ -333,13 +333,16 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
                 { label: 'RELAY', sub: 'Direto', icon: Zap, action: module.connectDirectRelay, transport: 'direct_relay' as const },
               ].map(btn => {
                 const isActive = bridgeStatus?.connected && bridgeStatus.transport === btn.transport;
+                const isSupported = module.transportSupport[btn.transport];
                 return (
                   <button
                     key={btn.label}
                     onClick={() => btn.action()}
+                    disabled={!isSupported}
                     className={cn(
                       "rounded-lg px-2 py-1.5 flex flex-col items-center gap-0.5 transition-all",
                       "border text-[7px] uppercase font-bold",
+                      !isSupported && "opacity-40 cursor-not-allowed",
                       isActive
                         ? "border-emerald-500/50 bg-emerald-950/30 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.15)]"
                         : "bg-muted/10 hover:bg-muted/20 text-muted-foreground/50 hover:text-foreground/70 border-border/10"
@@ -347,11 +350,19 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
                   >
                     <btn.icon className="w-3.5 h-3.5" />
                     <span>{btn.label}</span>
-                    <span className={cn("text-[6px] font-normal", isActive ? "text-emerald-400/60" : "text-muted-foreground/30")}>{btn.sub}</span>
+                    <span className={cn("text-[6px] font-normal", isActive ? "text-emerald-400/60" : "text-muted-foreground/30")}>
+                      {isSupported ? btn.sub : 'indisponível'}
+                    </span>
                   </button>
                 );
               })}
             </div>
+
+            {!module.transportSupport.ble && (
+              <div className="rounded-md border border-amber-500/30 bg-amber-950/15 px-2 py-1 text-[7px] text-amber-300/80 leading-tight">
+                BLE/WebSerial bloqueados neste ambiente (comum no iPhone Safari). Use app nativo iOS ou Wi-Fi AP seguro (wss://).
+              </div>
+            )}
 
             {/* RSSI / Distance indicator */}
             {bridgeStatus?.connected && (bridgeStatus.rssi != null || bridgeStatus.estimatedDistance != null) && (
