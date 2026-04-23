@@ -243,14 +243,80 @@ export class TransportEmulator {
 
   private recordTrace(dir: 'tx' | 'rx', data: string) {
     this.trace.push({ dir, data, at: Date.now(), mode: this.cfg.mode });
+    if (dir === 'tx') this.txCount++; else this.rxCount++;
     // Bounded buffer — drop oldest to keep memory flat.
     if (this.trace.length > this.traceCap) this.trace.shift();
   }
 
+  /** O(1) live counters for UI polling — no array filter needed. */
+  getStats() { return { tx: this.txCount, rx: this.rxCount, traced: this.trace.length }; }
+
+  // ── Trace replay ─────────────────────────────────────────────────
+  /** Load a previously exported trace. Replaces any in-flight replay state. */
+  loadTrace(trace: { frames: Array<{ dir: 'tx' | 'rx'; data: string; at: number }> }) {
+    this.stopReplay();
+    this.replayFrames = [...trace.frames];
+    this.replayCursor = 0;
+    this.replayState = 'idle';
+  }
+
+  /**
+   * Replay loaded trace's RX frames into the bridge.
+   * - preserveTiming=true (default): respects original deltas between frames.
+   * - preserveTiming=false: delivers everything immediately.
+   * - speed: multiplier applied to original deltas (2 = 2× faster).
+   */
+  replay(opts: { preserveTiming?: boolean; speed?: number; onComplete?: () => void } = {}) {
+    if (this.replayFrames.length === 0) return;
+    const preserveTiming = opts.preserveTiming ?? true;
+    const speed = opts.speed ?? 1;
+    this.replayState = 'running';
+    const rxFrames = this.replayFrames.filter(f => f.dir === 'rx');
+    const t0 = rxFrames[0]?.at ?? 0;
+
+    rxFrames.forEach((frame) => {
+      const delta = preserveTiming ? Math.max(0, (frame.at - t0) / speed) : 0;
+      const t = setTimeout(() => {
+        this.replayTimers.delete(t);
+        if (this.replayState !== 'running') return;
+        this.deliverFrame(frame.data);
+        this.replayCursor++;
+        if (this.replayCursor >= rxFrames.length) {
+          this.replayState = 'idle';
+          opts.onComplete?.();
+        }
+      }, delta);
+      this.replayTimers.add(t);
+    });
+  }
+
+  /** Step one RX frame at a time — useful for debugging. */
+  stepReplay(): boolean {
+    if (this.replayCursor >= this.replayFrames.length) return false;
+    const frame = this.replayFrames[this.replayCursor++];
+    if (frame.dir === 'rx') this.deliverFrame(frame.data);
+    return this.replayCursor < this.replayFrames.length;
+  }
+
+  pauseReplay() { if (this.replayState === 'running') this.replayState = 'paused'; }
+  stopReplay() {
+    this.replayState = 'idle';
+    this.replayCursor = 0;
+    for (const t of this.replayTimers) clearTimeout(t);
+    this.replayTimers.clear();
+  }
+  getReplayStatus() {
+    return {
+      state: this.replayState,
+      cursor: this.replayCursor,
+      total: this.replayFrames.length,
+    };
+  }
 
   // ── Cleanup ─────────────────────────────────────────────────────
   destroy() {
     this.clearTimers();
+    this.stopReplay();
     this.respListeners.clear();
     this.stateListeners.clear();
     this.autoReplies = [];
@@ -261,3 +327,4 @@ export class TransportEmulator {
     this.timers.clear();
   }
 }
+
