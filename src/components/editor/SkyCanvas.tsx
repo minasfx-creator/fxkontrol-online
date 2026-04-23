@@ -217,14 +217,9 @@ import { deterministicClock } from '@/core/time/deterministicClock';
 import { lockstep } from '@/core/reliability/lockstepEngine';
 import { executionBridge } from '@/core/execution/executionBridge';
 import { frameSyncEngine } from '@/core/sync/frameSyncEngine';
+import { timelineClock } from '@/core/timeline/TimelineClock';
 
 const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
-    const isPlaying = useProjectStore(s => s.isPlaying);
-  const currentTime = useProjectStore(s => s.currentTime);
-  const duration = useProjectStore(s => s.duration);
-  const setCurrentTime = useProjectStore(s => s.setCurrentTime);
-  const setPlaying = useProjectStore(s => s.setPlaying);
-  const playbackSpeed = useProjectStore(s => s.playbackSpeed);
   const registeredRef = useRef(false);
 
   // Pump the deterministic clock every R3F frame
@@ -237,51 +232,34 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
     if (registeredRef.current) return;
     registeredRef.current = true;
 
-    // Playback advancement — runs at fixed 60Hz via lockstep
-    lockstep.register('playback', (_simTime: number, dt: number) => {
-      const store = useProjectStore.getState();
-      if (!store.isPlaying) return;
-      const delta = dt * store.playbackSpeed;
-      const next = store.currentTime + delta;
-      if (next >= store.duration) {
-        store.setCurrentTime(store.duration);
-        store.setPlaying(false);
-      } else {
-        store.setCurrentTime(next);
-      }
-    }, 10); // High priority — playback clock runs first
+    lockstep.register('timelineClock', (_simTime: number, dt: number) => {
+      timelineClock.tick(dt);
+    }, 0);
 
-    // ExecutionBridge ticks after playback
-    lockstep.register('executionBridge', (simTime: number, _dt: number) => {
-      executionBridge.tick(simTime);
-    }, 50); // Lower priority — fires after playback updates
+    lockstep.register('executionBridge', (_simTime: number, _dt: number) => {
+      executionBridge.tick(timelineClock.getTime());
+    }, 50);
 
     // Start the deterministic clock and lockstep
     deterministicClock.start();
     lockstep.start();
 
     // Wire clock → frameSyncEngine → lockstep: frame-aligned time feeds lockstep
-    deterministicClock.onTick((_time: number, delta: number) => {
+    const unsubClock = deterministicClock.onTick((_time: number, delta: number) => {
       // Pass delta directly — deterministic clock already applies drift correction.
       // Previous double-call to getSyncedTimeSec corrupted internal correction state.
       lockstep.tick(delta);
     });
 
     return () => {
-      lockstep.unregister('playback');
+      unsubClock();
+      lockstep.unregister('timelineClock');
       lockstep.unregister('executionBridge');
       deterministicClock.pause();
       lockstep.stop();
       registeredRef.current = false;
     };
   }, []);
-
-  // Sync deterministic clock when user scrubs timeline
-  useEffect(() => {
-    if (!isPlaying) {
-      deterministicClock.setTime(currentTime);
-    }
-  }, [currentTime, isPlaying]);
 
   return null;
 });

@@ -11,6 +11,7 @@ import { usePlaybackState, useEditorMode, useHardwareStatus } from '@/hooks/useE
 import { useProjectStore } from '@/store/useProjectStore';
 import { useShowSettings } from '@/hooks/useShowSettings';
 import { useSceneStore } from '@/store/useSceneStore';
+import { timelineClock } from '@/core/timeline/TimelineClock';
 
 function formatTimecode(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -49,10 +50,10 @@ export default React.memo(function MobileHUD() {
 
   const handlePanic = useCallback(() => {
     clearAll();
-    setPlaying(false);
-    setCurrentTime(0);
+    timelineClock.pause();
+    timelineClock.seek(0);
     haptics.panic();
-  }, [clearAll, setPlaying, setCurrentTime]);
+  }, [clearAll]);
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: 'max(8px, env(safe-area-inset-top))' }}>
@@ -94,7 +95,7 @@ export default React.memo(function MobileHUD() {
         {/* Center: Transport — compact 44px targets */}
         <div className="pointer-events-auto flex items-center gap-1">
           <button
-            onClick={() => { haptics.tap(); setPlaying(!isPlaying); }}
+            onClick={() => { haptics.tap(); isPlaying ? timelineClock.pause() : timelineClock.play(); }}
             className="glass-button flex items-center justify-center w-11 h-11 active:scale-90 transition-transform"
           >
             {isPlaying
@@ -103,7 +104,7 @@ export default React.memo(function MobileHUD() {
             }
           </button>
           <button
-            onClick={() => { haptics.toggle(); setPlaying(false); setCurrentTime(0); }}
+            onClick={() => { haptics.toggle(); timelineClock.pause(); timelineClock.seek(0); }}
             className="glass-button flex items-center justify-center w-11 h-11 active:scale-90 transition-transform"
           >
             <Square className="w-4 h-4 text-muted-foreground" />
