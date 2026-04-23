@@ -467,7 +467,10 @@ timelineClock.onChange((state) => {
       prev.currentTime === state.time &&
       prev.isPlaying === state.playing &&
       prev.duration === state.duration &&
-      prev.playbackSpeed === state.speed
+      prev.playbackSpeed === state.speed &&
+      prev.timelineSource === state.source &&
+      prev.timelineLastExternalSync === state.lastExternalSync &&
+      prev.timelineDriftSec === state.driftSec
     ) {
       return prev;
     }
