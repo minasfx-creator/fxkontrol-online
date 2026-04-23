@@ -535,6 +535,11 @@ export class FireOneHardwareBridge {
   }
 
   async setGpio(pin: number, high: boolean): Promise<boolean> {
+    const gate = this.requireHealthy();
+    if (gate) {
+      this.setError(gate, `setGpio(${pin}) blocked: ${gate}`);
+      return false;
+    }
     return this.sendCommand(`GPIO:${pin}:${high ? 'HIGH' : 'LOW'}\n`);
   }
 
