@@ -27,6 +27,39 @@ import { isIOSWebKit, requiresSecureBridgeTransport } from '@/lib/bridgeGateway'
 
 export type BridgeTransport = 'ble' | 'ble_lr' | 'usb' | 'websocket' | 'wifi_direct' | 'direct_relay' | 'none';
 
+/**
+ * Standardized reason codes for bridge errors / link state.
+ * Stable, machine-readable identifiers — UI translates for display.
+ */
+export type BridgeReasonCode =
+  | 'OK'
+  | 'UNSUPPORTED_TRANSPORT'
+  | 'TRANSPORT_UNAVAILABLE'
+  | 'PERMISSION_DENIED'
+  | 'HANDSHAKE_TIMEOUT'
+  | 'HEARTBEAT_TIMEOUT'
+  | 'TRANSPORT_DISCONNECTED'
+  | 'WEBSOCKET_OPEN_FAILED'
+  | 'WEBSOCKET_INVALID_URL'
+  | 'SERIAL_OPEN_FAILED'
+  | 'BLE_GATT_FAILED'
+  | 'SEND_FAILED'
+  | 'NOT_CONNECTED'
+  | 'LINK_NOT_HEALTHY'
+  | 'STALE_SESSION'
+  | 'COMMAND_TIMEOUT'
+  | 'UNKNOWN';
+
+export interface BridgeError {
+  code: BridgeReasonCode;
+  message: string;
+  transport?: BridgeTransport;
+  detail?: string;
+  at: number;
+}
+
+export type LinkHealth = 'disconnected' | 'handshaking' | 'healthy';
+
 export interface BridgeStatus {
   transport: BridgeTransport;
   connected: boolean;
@@ -38,8 +71,14 @@ export interface BridgeStatus {
   rxBytes: number;
   rssi?: number;
   estimatedDistance?: number;
+  /** Human-readable last error message (legacy). */
   lastError?: string;
-  linkHealth?: 'disconnected' | 'handshaking' | 'healthy';
+  /** Structured last error with stable reason code. */
+  lastErrorCode?: BridgeReasonCode;
+  lastErrorAt?: number;
+  linkHealth?: LinkHealth;
+  /** Monotonic id incremented on every successful link. Pending ops from older sessions are ignored. */
+  sessionId: number;
 }
 
 export interface BridgeTransportSupport {
