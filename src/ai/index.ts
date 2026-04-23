@@ -68,3 +68,18 @@ export type {
   AbortReason,
 } from './joiExecutionRuntime';
 export { ExecutionRuntimeV1, RuntimeClock } from './joiExecutionRuntime';
+
+// ─── Replay Engine v1 (deterministic plan ↔ trace verifier) ────────
+export type {
+  ReplayIntegrity,
+  DivergenceType,
+  DivergenceSeverity,
+  ReplayDivergence,
+  ReplayTimingStats,
+  ReplayReport,
+  ObservedEvent,
+  ObservedFrame,
+  RuntimeTrace,
+  ReplayOptions,
+} from './replay';
+export { eventSignature, replayExecution } from './replay';
