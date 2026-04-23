@@ -27,6 +27,7 @@ const FieldTest = lazy(lazyRetry(() => import("./pages/FieldTest")));
 const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
 const Admin = lazy(lazyRetry(() => import("./pages/Admin")));
 const AccreditationDashboard = lazy(lazyRetry(() => import("./pages/AccreditationDashboard")));
+const PlatformStatus = lazy(lazyRetry(() => import("./pages/PlatformStatus")));
 
 const queryClient = new QueryClient();
 
@@ -72,6 +73,7 @@ function App() {
                     <Route path="/show-test" element={<ShowTestSimulator />} />
                     <Route path="/field-test" element={<FieldTest />} />
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/platform-status" element={<PlatformStatus />} />
                     <Route path="/admin" element={<Admin />} />
                     <Route path="/accreditation" element={<AccreditationDashboard />} />
                   </Route>

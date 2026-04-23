@@ -12,7 +12,7 @@ import { prefetchRoute } from '@/lib/prefetchRoutes';
 import { useSceneStore } from '@/store/useSceneStore';
 import {
   LayoutDashboard, Clapperboard, CalendarDays,
-  Crosshair, Gamepad2, Rocket, Activity,
+  Crosshair, Gamepad2, Rocket, Activity, BarChart3,
   Settings, Shield,
 } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
@@ -33,6 +33,7 @@ const DOCK_MAIN: DockItem[] = [
   { icon: CalendarDays, label: 'Agenda', path: '/agenda' },
   { icon: Gamepad2, label: 'Training', path: '/training' },
   { icon: Activity, label: 'Field Test', path: '/field-test', accent: 'hsl(165 100% 42%)' },
+  { icon: BarChart3, label: 'Status', path: '/platform-status' },
   { icon: Rocket, label: 'Show Test', path: '/show-test' },
 ];
 
