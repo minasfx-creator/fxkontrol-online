@@ -8,6 +8,7 @@ import {
   buildFireSequenceFrame,
   buildStatusQuery,
 } from '@/lib/pbusProtocol';
+import { getFireOneController } from '@/lib/fireoneProtocol';
 
 export const PYRO_USB_DEFAULT_LATENCY_MS = 12;
 const DEFAULT_WATCHDOG_TIMEOUT_MS = 250;
@@ -40,6 +41,7 @@ export interface PyroUsbTransportDiagnostics {
   state: PyroUsbTransportState;
   lockoutReason: PyroUsbLockoutReason | null;
   armedModules: ReadonlyArray<number>;
+  adapterType: 'pbus' | 'fireone';
   lastCommandAt: number | null;
   lastArmAt: number | null;
   lastFireAt: number | null;
@@ -66,6 +68,7 @@ function deepFreeze<T>(value: T): Readonly<T> {
 
 export class PyroUsbTransport {
   private adapter: PyroUsbPortAdapter | null = null;
+  private readonly fireOneController = getFireOneController();
   private readonly armedModules = new Set<number>();
   private readonly watchdogTimeoutMs: number;
   private readonly autoLockoutOnWatchdog: boolean;
@@ -154,7 +157,7 @@ export class PyroUsbTransport {
     const addr = this.validateModuleAddress(moduleAddress);
     const cue = this.validateCueIndex(cueIndex);
     const duration = this.validateDurationMs(durationMs);
-    await this.sendFrame(buildFireFrame(addr, cue, duration), nowMs);
+    await this.sendFire(addr, cue, duration, nowMs);
     this.lastFireAt = nowMs;
     this.lastWatchdogKickAt = nowMs;
   }
@@ -167,7 +170,7 @@ export class PyroUsbTransport {
       throw new Error('Pyro fire sequence requires at least one cue');
     }
     const interval = this.validateDurationMs(intervalMs);
-    await this.sendFrame(buildFireSequenceFrame(addr, cues, interval), nowMs);
+    await this.sendFireSequence(addr, cues, interval, nowMs);
     this.lastFireAt = nowMs;
     this.lastWatchdogKickAt = nowMs;
   }
@@ -239,6 +242,7 @@ export class PyroUsbTransport {
       state: this.state,
       lockoutReason: this.lockoutReason,
       armedModules: Array.from(this.armedModules.values()).sort((a, b) => a - b),
+      adapterType: this.usesFireOneAdapter() ? 'fireone' : 'pbus',
       lastCommandAt: this.lastCommandAt,
       lastArmAt: this.lastArmAt,
       lastFireAt: this.lastFireAt,
@@ -246,6 +250,50 @@ export class PyroUsbTransport {
       watchdogTimeoutMs: this.watchdogTimeoutMs,
       watchdogExpired,
     });
+  }
+
+  isModuleArmed(moduleAddress: number): boolean {
+    const addr = this.validateModuleAddress(moduleAddress);
+    return this.armedModules.has(addr);
+  }
+
+  private usesFireOneAdapter(): boolean {
+    return this.adapter === null;
+  }
+
+  private async sendFire(moduleAddress: number, cueIndex: number, durationMs: number, nowMs: number): Promise<void> {
+    if (this.usesFireOneAdapter()) {
+      await this.sendViaFireOne(moduleAddress, cueIndex + 1, durationMs, nowMs);
+      return;
+    }
+
+    await this.sendFrame(buildFireFrame(moduleAddress, cueIndex, durationMs), nowMs);
+  }
+
+  private async sendFireSequence(moduleAddress: number, cueIndices: number[], intervalMs: number, nowMs: number): Promise<void> {
+    if (this.usesFireOneAdapter()) {
+      await this.fireOneController.fireSequence(moduleAddress, cueIndices.map((cue) => cue + 1), intervalMs);
+      this.lastCommandAt = nowMs;
+      return;
+    }
+
+    await this.sendFrame(buildFireSequenceFrame(moduleAddress, cueIndices, intervalMs), nowMs);
+  }
+
+  private async sendViaFireOne(moduleAddress: number, igniterPosition: number, durationMs: number, nowMs: number): Promise<void> {
+    if (!this.fireOneController.isConnected) {
+      this.state = 'disconnected';
+      throw new Error('Pyro USB transport is not connected');
+    }
+
+    try {
+      await this.fireOneController.fireIgniter(moduleAddress, igniterPosition, durationMs);
+      this.lastCommandAt = nowMs;
+    } catch (error) {
+      this.lockoutReason = 'fault';
+      this.state = 'fault';
+      throw error;
+    }
   }
 
   private async sendFrame(frame: Uint8Array, nowMs: number): Promise<void> {
