@@ -214,6 +214,7 @@ function DroneRendererSwitch() {
 
 // --- Playback clock (wired through DeterministicClock → LockstepEngine) ---
 import { deterministicClock } from '@/core/time/deterministicClock';
+import { timelineClock } from '@/core/timeline/TimelineClock';
 
 const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
   // Pump the deterministic clock every R3F frame
