@@ -48,6 +48,7 @@ export type BridgeReasonCode =
   | 'LINK_NOT_HEALTHY'
   | 'STALE_SESSION'
   | 'COMMAND_TIMEOUT'
+  | 'RETRY_RATE_LIMITED'
   | 'UNKNOWN';
 
 export interface BridgeError {
@@ -96,6 +97,9 @@ export interface BridgeDiagnostics {
   retryByCommandType: Partial<Record<BridgeCommandType, number>>;
   /** Retry totals per concrete pending key (e.g. "CONT:7") — useful to spot a flaky channel. */
   retryByKey: Record<string, number>;
+  /** How many retries were rejected by the rate limiter (per key + total). */
+  rateLimitedByKey: Record<string, number>;
+  rateLimitedTotal: number;
 }
 
 /** Per-command-class retry settings. */
@@ -116,6 +120,33 @@ export interface BridgeRetryPolicy {
 export const DEFAULT_RETRY_POLICY: BridgeRetryPolicy = {
   CONT: { maxRetries: 2, perAttemptTimeoutMs: 2000 },
   CDS:  { maxRetries: 2, perAttemptTimeoutMs: 2000 },
+};
+
+/**
+ * Sliding-window rate limit for retries.
+ *
+ * Two ceilings are enforced inside the same `windowMs`:
+ *  - `maxRetriesPerKey` — protects against a single noisy channel hammering the bus
+ *  - `maxRetriesTotal`  — protects against fleet-wide retry storms
+ *
+ * Limits are evaluated *before* a retry is sent. When a limit trips, the retry
+ * is suppressed, `lastErrorCode` is set to `RETRY_RATE_LIMITED`, and a
+ * `retry_rate_limited` event is emitted.
+ *
+ * NOTE: This is a purely client-side, in-memory limiter living in the hardware
+ * bridge — not a backend rate limiter. Its scope is preventing a single bridge
+ * instance from flooding the wire/transport.
+ */
+export interface BridgeRetryRateLimit {
+  windowMs: number;
+  maxRetriesPerKey: number;
+  maxRetriesTotal: number;
+}
+
+export const DEFAULT_RETRY_RATE_LIMIT: BridgeRetryRateLimit = {
+  windowMs: 60_000,
+  maxRetriesPerKey: 10,
+  maxRetriesTotal: 60,
 };
 
 /** Why a single retry attempt fired. */
@@ -214,6 +245,13 @@ export class FireOneHardwareBridge {
   private retryByCommandType: Partial<Record<BridgeCommandType, number>> = {};
   private retryByKey: Record<string, number> = {};
   private retryPolicy: BridgeRetryPolicy = { ...DEFAULT_RETRY_POLICY };
+  private retryRateLimit: BridgeRetryRateLimit = { ...DEFAULT_RETRY_RATE_LIMIT };
+  /** Sliding window of retry timestamps per pending key (ms). */
+  private retryTimestampsByKey: Map<string, number[]> = new Map();
+  /** Sliding window of all retry timestamps for global ceiling (ms). */
+  private retryTimestampsAll: number[] = [];
+  private rateLimitedByKey: Record<string, number> = {};
+  private rateLimitedTotal = 0;
 
   private bleDevice: any = null;
   private bleCharTx: any = null;
@@ -672,6 +710,27 @@ export class FireOneHardwareBridge {
       if (value !== null) return value;
       // miss → maybe retry
       if (attempt < maxRetries) {
+        // Rate-limit gate — evaluated BEFORE consuming a retry slot.
+        const limit = this.checkRetryRateLimit(key);
+        if (limit !== null) {
+          this.rateLimitedTotal++;
+          this.rateLimitedByKey[key] = (this.rateLimitedByKey[key] ?? 0) + 1;
+          this.setError('RETRY_RATE_LIMITED', `Retry suppressed for ${key}: ${limit}`);
+          this.onEvent?.('retry_rate_limited', {
+            key,
+            commandType,
+            scope: limit, // 'per_key' | 'total'
+            retryCountForKey: this.retryByKey[key] ?? 0,
+            retryCountTotal: this.retryCount,
+            windowMs: this.retryRateLimit.windowMs,
+            sessionId: this.sessionId,
+            at: Date.now(),
+          });
+          return 0;
+        }
+
+        const now = Date.now();
+        this.recordRetryTimestamp(key, now);
         this.retryCount++;
         this.retryByCommandType[commandType] = (this.retryByCommandType[commandType] ?? 0) + 1;
         this.retryByKey[key] = (this.retryByKey[key] ?? 0) + 1;
@@ -683,11 +742,40 @@ export class FireOneHardwareBridge {
           sessionId: this.sessionId,
           linkHealth: this.linkHealth,
           reason: reason ?? 'timeout',
-          at: Date.now(),
+          at: now,
         });
       }
     }
     return 0;
+  }
+
+  /**
+   * Returns null if a retry is allowed; otherwise the scope that tripped
+   * (`'per_key'` or `'total'`). Uses a sliding window of `windowMs`.
+   */
+  private checkRetryRateLimit(key: string): 'per_key' | 'total' | null {
+    const now = Date.now();
+    const { windowMs, maxRetriesPerKey, maxRetriesTotal } = this.retryRateLimit;
+    const cutoff = now - windowMs;
+
+    // Prune + count global
+    this.retryTimestampsAll = this.retryTimestampsAll.filter(t => t >= cutoff);
+    if (this.retryTimestampsAll.length >= maxRetriesTotal) return 'total';
+
+    // Prune + count per-key
+    const stamps = this.retryTimestampsByKey.get(key) ?? [];
+    const pruned = stamps.filter(t => t >= cutoff);
+    if (pruned.length !== stamps.length) this.retryTimestampsByKey.set(key, pruned);
+    if (pruned.length >= maxRetriesPerKey) return 'per_key';
+
+    return null;
+  }
+
+  private recordRetryTimestamp(key: string, ts: number): void {
+    this.retryTimestampsAll.push(ts);
+    const stamps = this.retryTimestampsByKey.get(key) ?? [];
+    stamps.push(ts);
+    this.retryTimestampsByKey.set(key, stamps);
   }
 
   async setGpio(pin: number, high: boolean): Promise<boolean> {
@@ -743,7 +831,17 @@ export class FireOneHardwareBridge {
       retryCount: this.retryCount,
       retryByCommandType: { ...this.retryByCommandType },
       retryByKey: { ...this.retryByKey },
+      rateLimitedByKey: { ...this.rateLimitedByKey },
+      rateLimitedTotal: this.rateLimitedTotal,
     };
+  }
+
+  setRetryRateLimit(partial: Partial<BridgeRetryRateLimit>): void {
+    this.retryRateLimit = { ...this.retryRateLimit, ...partial };
+  }
+
+  getRetryRateLimit(): BridgeRetryRateLimit {
+    return { ...this.retryRateLimit };
   }
 
   /** Override the retry policy at runtime (deep-merged with current). */
