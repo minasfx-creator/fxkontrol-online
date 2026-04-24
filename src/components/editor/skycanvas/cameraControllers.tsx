@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
+import type { OrbitControls as OrbitControlsImpl } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useViewportStore } from '@/store/useViewportStore';
