@@ -29,7 +29,12 @@ export function extractFormationFromMesh(
     yUp = true,
     hollow = true,
     maxCandidates = DEFAULT_MAX_CANDIDATES,
+    samplingStrategy = 'weighted',
   } = options;
+  const effectiveStrategy: SamplingStrategy =
+    samplingStrategy === 'poisson+fps' && !isEnabled('swarmgpt_fps_sampling')
+      ? 'weighted'
+      : samplingStrategy;
 
   const empty: ModelExtractionReport = {
     points: [],
