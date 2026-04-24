@@ -949,7 +949,7 @@ export class FireOneHardwareBridge {
           }
         }
       }
-      if (fields.firmwareVersion !== undefined) this.firmwareVersion = fields.firmwareVersion;
+
 
       for (const [key, pending] of this.pendingResolves) {
         if (trimmed.startsWith(key) || trimmed === key) {
