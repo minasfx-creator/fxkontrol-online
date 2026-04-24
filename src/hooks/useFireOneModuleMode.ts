@@ -54,6 +54,7 @@ export function useFireOneModuleMode(): UseFireOneModuleReturn {
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null);
   const [transportSupport, setTransportSupport] = useState<BridgeTransportSupport>(FireOneHardwareBridge.detectTransportSupport());
   
+
   const emulatorRef = useRef<FireOneModuleEmulator | null>(null);
   const bridgeRef = useRef<FireOneHardwareBridge | null>(null);
 

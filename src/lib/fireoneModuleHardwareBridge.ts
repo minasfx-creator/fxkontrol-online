@@ -26,6 +26,41 @@ import { isIOSWebKit, requiresSecureBridgeTransport } from '@/lib/bridgeGateway'
 
 export type BridgeTransport = 'ble' | 'ble_lr' | 'usb' | 'websocket' | 'wifi_direct' | 'direct_relay' | 'none';
 
+/**
+ * Standardized reason codes for bridge errors / link state.
+ * Stable, machine-readable identifiers — UI translates for display.
+ */
+export type BridgeReasonCode =
+  | 'OK'
+  | 'UNSUPPORTED_TRANSPORT'
+  | 'TRANSPORT_UNAVAILABLE'
+  | 'PERMISSION_DENIED'
+  | 'HANDSHAKE_TIMEOUT'
+  | 'HEARTBEAT_TIMEOUT'
+  | 'TRANSPORT_DISCONNECTED'
+  | 'WEBSOCKET_OPEN_FAILED'
+  | 'WEBSOCKET_INVALID_URL'
+  | 'SERIAL_OPEN_FAILED'
+  | 'BLE_GATT_FAILED'
+  | 'SEND_FAILED'
+  | 'NOT_CONNECTED'
+  | 'LINK_NOT_HEALTHY'
+  | 'STALE_SESSION'
+  | 'COMMAND_TIMEOUT'
+  | 'RETRY_RATE_LIMITED'
+  | 'CONNECT_IN_PROGRESS'
+  | 'UNKNOWN';
+
+export interface BridgeError {
+  code: BridgeReasonCode;
+  message: string;
+  transport?: BridgeTransport;
+  detail?: string;
+  at: number;
+}
+
+export type LinkHealth = 'disconnected' | 'handshaking' | 'healthy';
+
 export interface BridgeStatus {
   transport: BridgeTransport;
   connected: boolean;
@@ -85,7 +120,7 @@ export class FireOneHardwareBridge {
   private ws: WebSocket | null = null;
 
   private responseBuffer = '';
-  private pendingResolves: Map<string, (value: string) => void> = new Map();
+  private pendingResolves: Map<string, PendingResponse> = new Map();
   private onEvent: BridgeEventHandler | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private rssiTimer: ReturnType<typeof setInterval> | null = null;
@@ -363,6 +398,32 @@ export class FireOneHardwareBridge {
     return false;
   }
 
+  private getWiFiDirectEndpoints(customUrl?: string): string[] {
+    const secureRequired = requiresSecureBridgeTransport();
+    const scheme = secureRequired ? 'wss' : 'ws';
+    return [
+      customUrl ? this.normalizeWebSocketUrl(customUrl) : null,
+      `${scheme}://fxk-esp32.local:81`,
+      `${scheme}://192.168.4.1:81`,
+      `${scheme}://192.168.1.1:81`,
+    ].filter(Boolean) as string[];
+  }
+
+  private normalizeWebSocketUrl(raw: string): string {
+    const secureRequired = requiresSecureBridgeTransport();
+    const defaultScheme = secureRequired ? 'wss' : 'ws';
+    const withScheme = /^[a-z]+:\/\//i.test(raw) ? raw : `${defaultScheme}://${raw}`;
+    try {
+      const parsed = new URL(withScheme);
+      if (secureRequired && parsed.protocol === 'ws:') {
+        parsed.protocol = 'wss:';
+      }
+      return parsed.toString();
+    } catch {
+      return withScheme;
+    }
+  }
+
   private async tryWebSocketConnect(url: string, transport: BridgeTransport, timeout = 5000): Promise<boolean> {
     return new Promise((resolve) => {
       try {
@@ -436,55 +497,195 @@ export class FireOneHardwareBridge {
 
   // ─── Command Methods ─────────────────────────────────
 
+  /**
+   * Health gate for command execution. Returns null if OK to proceed,
+   * otherwise a `BridgeReasonCode` to surface to the caller.
+   *
+   * NOTE: `eStop()` intentionally bypasses this gate — emergency stop must
+   * always attempt transmission, even on a degraded link.
+   */
+  private requireHealthy(): BridgeReasonCode | null {
+    if (!this.connected) return 'NOT_CONNECTED';
+    if (this.linkHealth !== 'healthy') return 'LINK_NOT_HEALTHY';
+    return null;
+  }
+
   async fire(pin: number, durationMs: number): Promise<boolean> {
+    const gate = this.requireHealthy();
+    if (gate) {
+      this.setError(gate, `fire(${pin}) blocked: ${gate}`);
+      return false;
+    }
     const key = `OK:FIRE:${pin}`;
     return this.sendAndWaitConfirm(`FIRE:${pin}:${durationMs}\n`, key);
   }
 
   async fireBatch(mask: number, durationMs: number): Promise<boolean> {
+    const gate = this.requireHealthy();
+    if (gate) {
+      this.setError(gate, `fireBatch blocked: ${gate}`);
+      return false;
+    }
     const maskHex = (mask >>> 0).toString(16).padStart(8, '0');
     return this.sendAndWaitConfirm(`BATCH:${maskHex}:${durationMs}\n`, 'OK:BATCH');
   }
 
+  /**
+   * Emergency stop — bypasses requireHealthy() by design.
+   * Always logs an audit event with current link state for post-event analysis,
+   * regardless of whether transmission succeeds.
+   */
   async eStop(): Promise<boolean> {
-    return this.sendCommand('ESTOP\n');
+    this.onEvent?.('estop_attempt', {
+      linkHealth: this.linkHealth,
+      connected: this.connected,
+      transport: this.transport,
+      sessionId: this.sessionId,
+      at: Date.now(),
+    });
+    const ok = await this.sendCommand('ESTOP\n');
+    this.onEvent?.('estop_result', {
+      ok,
+      sessionId: this.sessionId,
+      at: Date.now(),
+    });
+    return ok;
   }
 
-  async readContinuity(pin: number): Promise<number> {
-    const key = `CONT:${pin}`;
-    return new Promise<number>((resolve) => {
-      this.pendingResolves.set(key, (val) => {
-        const parts = val.split(':');
-        resolve(parts.length >= 3 ? parseFloat(parts[2]) : 0);
-      });
-      this.sendCommand(`CONT:${pin}\n`);
-      setTimeout(() => {
-        if (this.pendingResolves.has(key)) {
-          this.pendingResolves.delete(key);
-          resolve(0);
-        }
-      }, 2000);
-    });
+  async readContinuity(pin: number, maxRetries?: number): Promise<number> {
+    const rule = this.retryPolicy.CONT;
+    return this.readWithRetry('CONT', pin, maxRetries ?? rule.maxRetries, rule.perAttemptTimeoutMs);
   }
 
-  async readCdsVoltage(pin: number): Promise<number> {
-    const key = `CDS:${pin}`;
-    return new Promise<number>((resolve) => {
-      this.pendingResolves.set(key, (val) => {
-        const parts = val.split(':');
-        resolve(parts.length >= 3 ? parseFloat(parts[2]) : 0);
+  async readCdsVoltage(pin: number, maxRetries?: number): Promise<number> {
+    const rule = this.retryPolicy.CDS;
+    return this.readWithRetry('CDS', pin, maxRetries ?? rule.maxRetries, rule.perAttemptTimeoutMs);
+  }
+
+  /**
+   * Shared retrying-read helper for CONT/CDS.
+   *
+   * Retry policy:
+   *  - only fires for command types in `RETRYABLE_COMMAND_TYPES` (compile-time enforced via param type)
+   *  - aborts the moment `linkHealth !== 'healthy'` (no retries on degraded link)
+   *  - aborts if `sessionId` changes mid-retry (reconnect happened)
+   *  - bounded by `maxRetries`; per-class default lives in `DEFAULT_RETRY_POLICY`
+   *
+   * Physical commands (FIRE/BATCH/GPIO/ESTOP) deliberately do NOT use this path.
+   */
+  private async readWithRetry(
+    commandType: 'CONT' | 'CDS',
+    pin: number,
+    maxRetries: number,
+    perAttemptTimeoutMs: number,
+  ): Promise<number> {
+    const sessionAtStart = this.sessionId;
+    const key = `${commandType}:${pin}`;
+
+    /** Returns [value, reasonIfMiss]. value !== null = real response. */
+    const attemptOnce = (): Promise<{ value: number | null; reason: BridgeRetryReason | null }> =>
+      new Promise((resolve) => {
+        this.registerPending(key, commandType, (val) => {
+          // Empty val = drain sentinel from disconnect → retryable miss.
+          if (!val) { resolve({ value: null, reason: 'empty_drain' }); return; }
+          const parts = val.split(':');
+          if (parts.length < 3) { resolve({ value: null, reason: 'parse_miss' }); return; }
+          const parsed = parseFloat(parts[2]);
+          if (Number.isNaN(parsed)) { resolve({ value: null, reason: 'parse_miss' }); return; }
+          resolve({ value: parsed, reason: null });
+        });
+        this.sendCommand(`${commandType}:${pin}\n`);
+        setTimeout(() => {
+          if (this.pendingResolves.has(key)) {
+            this.pendingResolves.delete(key);
+            resolve({ value: null, reason: 'timeout' });
+          }
+        }, perAttemptTimeoutMs);
       });
-      this.sendCommand(`CDS:${pin}\n`);
-      setTimeout(() => {
-        if (this.pendingResolves.has(key)) {
-          this.pendingResolves.delete(key);
-          resolve(0);
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      // Healthy + same session gate — re-checked before EACH attempt.
+      if (this.linkHealth !== 'healthy' || this.sessionId !== sessionAtStart) {
+        return 0;
+      }
+      const { value, reason } = await attemptOnce();
+      if (value !== null) return value;
+      // miss → maybe retry
+      if (attempt < maxRetries) {
+        // Rate-limit gate — evaluated BEFORE consuming a retry slot.
+        const limit = this.checkRetryRateLimit(key);
+        if (limit !== null) {
+          this.rateLimitedTotal++;
+          this.rateLimitedByKey[key] = (this.rateLimitedByKey[key] ?? 0) + 1;
+          this.setError('RETRY_RATE_LIMITED', `Retry suppressed for ${key}: ${limit}`);
+          this.onEvent?.('retry_rate_limited', {
+            key,
+            commandType,
+            scope: limit, // 'per_key' | 'total'
+            retryCountForKey: this.retryByKey[key] ?? 0,
+            retryCountTotal: this.retryCount,
+            windowMs: this.retryRateLimit.windowMs,
+            sessionId: this.sessionId,
+            at: Date.now(),
+          });
+          return 0;
         }
-      }, 2000);
-    });
+
+        const now = Date.now();
+        this.recordRetryTimestamp(key, now);
+        this.retryCount++;
+        this.retryByCommandType[commandType] = (this.retryByCommandType[commandType] ?? 0) + 1;
+        this.retryByKey[key] = (this.retryByKey[key] ?? 0) + 1;
+        this.onEvent?.('retry', {
+          commandType,
+          key,
+          attempt: attempt + 1,
+          maxRetries,
+          sessionId: this.sessionId,
+          linkHealth: this.linkHealth,
+          reason: reason ?? 'timeout',
+          at: now,
+        });
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * Returns null if a retry is allowed; otherwise the scope that tripped
+   * (`'per_key'` or `'total'`). Uses a sliding window of `windowMs`.
+   */
+  private checkRetryRateLimit(key: string): 'per_key' | 'total' | null {
+    const now = Date.now();
+    const { windowMs, maxRetriesPerKey, maxRetriesTotal } = this.retryRateLimit;
+    const cutoff = now - windowMs;
+
+    // Prune + count global
+    this.retryTimestampsAll = this.retryTimestampsAll.filter(t => t >= cutoff);
+    if (this.retryTimestampsAll.length >= maxRetriesTotal) return 'total';
+
+    // Prune + count per-key
+    const stamps = this.retryTimestampsByKey.get(key) ?? [];
+    const pruned = stamps.filter(t => t >= cutoff);
+    if (pruned.length !== stamps.length) this.retryTimestampsByKey.set(key, pruned);
+    if (pruned.length >= maxRetriesPerKey) return 'per_key';
+
+    return null;
+  }
+
+  private recordRetryTimestamp(key: string, ts: number): void {
+    this.retryTimestampsAll.push(ts);
+    const stamps = this.retryTimestampsByKey.get(key) ?? [];
+    stamps.push(ts);
+    this.retryTimestampsByKey.set(key, stamps);
   }
 
   async setGpio(pin: number, high: boolean): Promise<boolean> {
+    const gate = this.requireHealthy();
+    if (gate) {
+      this.setError(gate, `setGpio(${pin}) blocked: ${gate}`);
+      return false;
+    }
     return this.sendCommand(`GPIO:${pin}:${high ? 'HIGH' : 'LOW'}\n`);
   }
 
@@ -524,7 +725,7 @@ export class FireOneHardwareBridge {
       if (!this.connected) return;
       const key = 'PONG';
       const responded = await new Promise<boolean>((resolve) => {
-        this.pendingResolves.set(key, () => resolve(true));
+        this.registerPending(key, 'HEARTBEAT', () => resolve(true));
         this.sendCommand('HEARTBEAT\n');
         setTimeout(() => {
           if (this.pendingResolves.has(key)) {
@@ -535,6 +736,7 @@ export class FireOneHardwareBridge {
       });
       if (!responded && this.connected) {
         console.warn('[HardwareBridge] Heartbeat timeout — disconnecting');
+        this.setError('HEARTBEAT_TIMEOUT', 'Heartbeat timeout — link lost');
         this.handleDisconnect();
         this.onEvent?.('heartbeat_timeout', null);
       }
@@ -592,7 +794,9 @@ export class FireOneHardwareBridge {
 
   private async sendAndWaitConfirm(cmd: string, confirmKey: string): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
-      this.pendingResolves.set(confirmKey, () => resolve(true));
+      // Resolver receives the matched line. A non-empty match = real confirmation.
+      // Empty string is the disconnect drain sentinel → resolve false (NOT a confirm).
+      this.registerPending(confirmKey, 'CONFIRM', (val) => resolve(Boolean(val)));
       this.sendCommand(cmd);
       setTimeout(() => {
         if (this.pendingResolves.has(confirmKey)) {
@@ -603,6 +807,12 @@ export class FireOneHardwareBridge {
     });
   }
 
+  /**
+   * Low-level send. **Intentionally does NOT check linkHealth** — this lets the
+   * handshake (`waitForHandshake`) transmit during `linkHealth: 'handshaking'`
+   * and lets `eStop()` transmit on a degraded link. Health gating lives in
+   * `requireHealthy()` and is enforced by the public command methods only.
+   */
   private async sendCommand(cmd: string): Promise<boolean> {
     const bytes = new TextEncoder().encode(cmd);
     this.txBytes += bytes.length;
@@ -635,6 +845,7 @@ export class FireOneHardwareBridge {
       }
     } catch (err) {
       console.warn('[HardwareBridge] Send failed:', err);
+      this.setError('SEND_FAILED', err instanceof Error ? err.message : 'Send failed');
     }
     return false;
   }
@@ -698,10 +909,23 @@ export class FireOneHardwareBridge {
           }
         }
       }
+      if (fields.firmwareVersion !== undefined) this.firmwareVersion = fields.firmwareVersion;
 
-      for (const [key, resolver] of this.pendingResolves) {
+      for (const [key, pending] of this.pendingResolves) {
         if (trimmed.startsWith(key) || trimmed === key) {
-          resolver(trimmed);
+          // Stale-session guard: ignore frames whose pending was registered
+          // in an older session (can happen if a late frame arrives after
+          // a disconnect+reconnect cycle drained but didn't catch this key).
+          if (pending.sessionId !== this.sessionId && pending.sessionId !== this.connectingSessionId) {
+            this.onEvent?.('stale_response_dropped', {
+              key, frame: trimmed,
+              pendingSession: pending.sessionId,
+              currentSession: this.sessionId,
+            });
+            this.pendingResolves.delete(key);
+            break;
+          }
+          pending.resolver(trimmed);
           this.pendingResolves.delete(key);
           break;
         }

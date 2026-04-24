@@ -26,6 +26,14 @@ export interface PyroUsbTransportOptions {
 export type PyroUsbTransportState = 'disconnected' | 'idle' | 'armed' | 'lockout' | 'fault';
 export type PyroUsbLockoutReason = 'manual' | 'watchdog' | 'estop' | 'fault';
 
+export type PyroUsbEvent =
+  | { type: 'state-change'; from: PyroUsbTransportState; to: PyroUsbTransportState; timestamp: number }
+  | { type: 'armed-invalidated'; timestamp: number }
+  | { type: 'watchdog-fired'; timestamp: number }
+  | { type: 'fault'; reason: string; timestamp: number };
+
+export type PyroUsbEventListener = (event: PyroUsbEvent) => void;
+
 export type PyroUsbScheduledPayload =
   | { command: 'arm'; moduleAddress: number }
   | { command: 'disarm'; moduleAddress: number }
@@ -78,6 +86,8 @@ export class PyroUsbTransport {
   private lastArmAt: number | null = null;
   private lastFireAt: number | null = null;
   private lastWatchdogKickAt: number | null = null;
+  private watchdogTimerId: ReturnType<typeof setInterval> | null = null;
+  private readonly listeners = new Set<PyroUsbEventListener>();
 
   constructor(adapter?: PyroUsbPortAdapter | null, options: PyroUsbTransportOptions = {}) {
     this.watchdogTimeoutMs = options.watchdogTimeoutMs ?? DEFAULT_WATCHDOG_TIMEOUT_MS;
@@ -88,15 +98,34 @@ export class PyroUsbTransport {
     }
   }
 
+  /**
+   * Bind a transport adapter. Reconnection = NEW SESSION.
+   * Any previously armed modules are INVALIDATED — operator must
+   * explicitly re-arm after a re-bind. This prevents "phantom armed"
+   * state surviving a cable disconnect/reconnect cycle.
+   */
   bindAdapter(adapter: PyroUsbPortAdapter): void {
+    const hadArmed = this.armedModules.size > 0;
     this.adapter = adapter;
-    this.state = this.armedModules.size > 0 ? 'armed' : 'idle';
+    // SAFETY: never preserve armed state across adapter binds
+    this.armedModules.clear();
+    this.lastWatchdogKickAt = null;
+    // If previous state was lockout/fault, keep it — operator must clearLockout()
+    if (this.state !== 'lockout' && this.state !== 'fault') {
+      this.state = 'idle';
+    }
+    if (hadArmed) {
+      this.emitEvent({ type: 'armed-invalidated', timestamp: Date.now() });
+    }
+    this.startWatchdogTimer();
   }
 
   unbindAdapter(): void {
+    this.stopWatchdogTimer();
     this.adapter = null;
     this.armedModules.clear();
     this.lockoutReason = null;
+    this.lastWatchdogKickAt = null;
     this.state = 'disconnected';
   }
 
@@ -191,6 +220,7 @@ export class PyroUsbTransport {
       return false;
     }
 
+    this.emitEvent({ type: 'watchdog-fired', timestamp: nowMs });
     await this.emergencyStop('watchdog', nowMs);
     return true;
   }
@@ -347,6 +377,39 @@ export class PyroUsbTransport {
       throw new Error('Pyro duration must be a finite number between 1 and 65535 ms');
     }
     return Math.round(durationMs);
+  }
+
+  // ── Event listeners ───────────────────────────────────────────────
+  on(listener: PyroUsbEventListener): () => void {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  }
+
+  private emitEvent(event: PyroUsbEvent): void {
+    for (const l of this.listeners) {
+      try { l(event); } catch { /* never let one listener kill others */ }
+    }
+  }
+
+  /**
+   * Active watchdog: starts an internal timer that auto-services the watchdog
+   * at half the configured timeout. Replaces the previous passive model where
+   * callers had to remember to invoke serviceWatchdog().
+   */
+  private startWatchdogTimer(): void {
+    this.stopWatchdogTimer();
+    if (typeof setInterval === 'undefined') return; // SSR guard
+    const intervalMs = Math.max(10, Math.floor(this.watchdogTimeoutMs / 2));
+    this.watchdogTimerId = setInterval(() => {
+      this.serviceWatchdog().catch(() => { /* swallow — fault path already records */ });
+    }, intervalMs);
+  }
+
+  private stopWatchdogTimer(): void {
+    if (this.watchdogTimerId !== null) {
+      clearInterval(this.watchdogTimerId);
+      this.watchdogTimerId = null;
+    }
   }
 }
 

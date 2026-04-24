@@ -12,6 +12,8 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { useShowSettings } from '@/hooks/useShowSettings';
 import { useSceneStore } from '@/store/useSceneStore';
 import { timelineClock } from '@/core/timeline/TimelineClock';
+import { timelineTransport } from '@/core/transport/timelineTransport';
+import { useTransportDiagnostics } from '@/hooks/useTransportDiagnostics';
 
 function formatTimecode(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -32,7 +34,7 @@ function getCountdown(showDate: string | null): string | null {
 
 export default React.memo(function MobileHUD() {
   const navigate = useNavigate();
-  const { currentTime, isPlaying, setPlaying, setCurrentTime } = usePlaybackState();
+  const { currentTime, isPlaying, duration, playbackSpeed, timelineSource } = usePlaybackState();
   const { editorMode, isPlacingMode } = useEditorMode();
   const { activeEffects, clearAll, usbConnected, smpteRunning, isArmed } = useHardwareStatus();
   const positions = useProjectStore(s => s.positions);
@@ -41,6 +43,7 @@ export default React.memo(function MobileHUD() {
   const arMode = useSceneStore(s => s.environment.arMode);
   const updateEnvironment = useSceneStore(s => s.updateEnvironment);
   const countdown = useMemo(() => getCountdown(settings?.show_date ?? null), [settings?.show_date]);
+  const { chip: diagnosticChip, toggle: togglePlayback } = useTransportDiagnostics();
 
   const handleARToggle = useCallback(() => {
     const next = !arMode;
@@ -50,10 +53,12 @@ export default React.memo(function MobileHUD() {
 
   const handlePanic = useCallback(() => {
     clearAll();
-    timelineClock.pause();
-    timelineClock.seek(0);
+    timelineTransport.stop();
     haptics.panic();
   }, [clearAll]);
+
+  // (Diagnostic chip is sourced from useTransportDiagnostics so the desktop
+  //  Timeline and the MobileHUD always agree on what the transport is doing.)
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 pointer-events-none" style={{ paddingTop: 'max(8px, env(safe-area-inset-top))' }}>
@@ -92,10 +97,29 @@ export default React.memo(function MobileHUD() {
           </div>
         )}
 
+        {/* Diagnostic chip (only shows when timeline is in a non-obvious state) */}
+        {diagnosticChip && (
+          <div
+            className={cn(
+              "pointer-events-none status-pill shrink-0 px-1.5 ring-1",
+              diagnosticChip.tone === 'warning' && "ring-[hsl(var(--warning)/0.4)]",
+              diagnosticChip.tone === 'accent' && "ring-[hsl(var(--accent)/0.4)]"
+            )}
+            title={diagnosticChip.reason}
+            aria-label={diagnosticChip.reason}
+          >
+            <span className={cn(
+              "text-[9px] font-bold tabular-nums",
+              diagnosticChip.tone === 'warning' && "text-[hsl(var(--warning))]",
+              diagnosticChip.tone === 'accent' && "text-[hsl(var(--accent))]"
+            )}>{diagnosticChip.label}</span>
+          </div>
+        )}
+
         {/* Center: Transport — compact 44px targets */}
         <div className="pointer-events-auto flex items-center gap-1">
           <button
-            onClick={() => { haptics.tap(); isPlaying ? timelineClock.pause() : timelineClock.play(); }}
+            onClick={() => { haptics.tap(); togglePlayback(); }}
             className="glass-button flex items-center justify-center w-11 h-11 active:scale-90 transition-transform"
           >
             {isPlaying
@@ -104,7 +128,7 @@ export default React.memo(function MobileHUD() {
             }
           </button>
           <button
-            onClick={() => { haptics.toggle(); timelineClock.pause(); timelineClock.seek(0); }}
+            onClick={() => { haptics.toggle(); timelineTransport.stop(); }}
             className="glass-button flex items-center justify-center w-11 h-11 active:scale-90 transition-transform"
           >
             <Square className="w-4 h-4 text-muted-foreground" />

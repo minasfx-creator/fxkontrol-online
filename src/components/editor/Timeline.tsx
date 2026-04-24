@@ -2,7 +2,8 @@ import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet, Copy, GripVertical, Zap, Sparkles, ChevronDown, ChevronRight, Clock, Move, Crosshair, Link2, Unlink, Scissors, ClipboardPaste, Eye, EyeOff, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
-import { timelineClock } from '@/core/timeline/TimelineClock';
+import { timelineTransport } from '@/core/transport/timelineTransport';
+import { useTransportDiagnostics } from '@/hooks/useTransportDiagnostics';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
 import useGenerativeStore from '@/store/useGenerativeStore';
@@ -1025,6 +1026,7 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
   const clearTimelineItemSelection = useProjectStore(s => s.clearTimelineItemSelection);
   const duplicateTimelineItems = useProjectStore(s => s.duplicateTimelineItems);
   const removeMultipleTimelineItems = useProjectStore(s => s.removeMultipleTimelineItems);
+  const { chip: transportChip, toggle: togglePlayback } = useTransportDiagnostics();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pixelsPerSecond, setPixelsPerSecond] = useState(12);
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -1141,20 +1143,20 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
       <div className="flex items-center gap-1 border-b border-border/15 bg-surface-0/70 px-2.5 py-1">
         {/* Play controls */}
         <div className="flex items-center gap-px rounded-lg p-px" style={{ background: 'hsl(var(--muted) / 0.15)' }}>
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => timelineClock.seek(0)}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => timelineTransport.rewind()}>
             <SkipBack className="h-3 w-3 text-muted-foreground" />
           </Button>
           <Button
             variant="ghost" size="icon"
             className={cn("h-8 w-8 rounded-md transition-all", isPlaying ? "bg-primary/12 text-primary" : "hover:bg-white/[0.06]")}
-            onClick={() => isPlaying ? timelineClock.pause() : timelineClock.play()}
+            onClick={() => togglePlayback()}
           >
             {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => timelineClock.pause()}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => timelineTransport.stop()}>
             <Square className="h-2.5 w-2.5 text-muted-foreground" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => timelineClock.seek(Math.min(currentTime + 10, duration))}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => timelineTransport.seekTo(Math.min(currentTime + 10, duration))}>
             <SkipForward className="h-3 w-3 text-muted-foreground" />
           </Button>
         </div>
@@ -1165,6 +1167,25 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
           <span className="text-muted-foreground/20 text-[10px] mx-1">/</span>
           <span className="font-mono text-[13px] text-muted-foreground/35 tabular-nums tracking-tight">{formatTime(duration)}</span>
         </div>
+
+        {/* Transport diagnostic chip — explains why Play may not advance (0×, END, EXT) */}
+        {transportChip && (
+          <div
+            className={cn(
+              "flex items-center px-1.5 h-5 rounded-md ring-1 tabular-nums",
+              transportChip.tone === 'warning' && "ring-[hsl(var(--warning)/0.45)] bg-[hsl(var(--warning)/0.08)]",
+              transportChip.tone === 'accent' && "ring-[hsl(var(--accent)/0.45)] bg-[hsl(var(--accent)/0.08)]",
+            )}
+            title={transportChip.reason}
+            aria-label={transportChip.reason}
+          >
+            <span className={cn(
+              "text-[9px] font-mono font-bold tracking-wider",
+              transportChip.tone === 'warning' && "text-[hsl(var(--warning))]",
+              transportChip.tone === 'accent' && "text-[hsl(var(--accent))]",
+            )}>{transportChip.label}</span>
+          </div>
+        )}
 
         {/* Speed */}
         <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg" style={{ background: 'hsl(var(--muted) / 0.1)' }}>

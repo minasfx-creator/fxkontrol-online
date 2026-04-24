@@ -405,7 +405,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setBpm: (bpm) => set({ bpm }),
   setSnapToBeat: (snap) => set({ snapToBeat: snap }),
   setPlaybackSpeed: (speed) => {
-    timelineClock.setSpeed(speed);
+    // Sanitize: NaN, negative or non-finite values fall back to 1×.
+    // Speed=0 is a valid technical state (external sync hold) and is preserved,
+    // but the operational transport controller will auto-correct it on Play.
+    const safe = Number.isFinite(speed) && speed >= 0 ? speed : 1;
+    timelineClock.setSpeed(safe);
   },
   setProjectId: (id) => set({ projectId: id }),
 

@@ -23,6 +23,7 @@ import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { artnetModuleService } from '@/services/artnetModuleService';
 import { timelineClock } from '@/core/timeline/TimelineClock';
+import { timelineTransport } from '@/core/transport/timelineTransport';
 import TimelineClockPanel from './TimelineClockPanel';
 
 // ── Lazy-loaded modals (only fetched when user opens them) ──
@@ -460,7 +461,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       if (ctrl && e.key === 'd' && !isInput) { e.preventDefault(); const store = useProjectStore.getState(); const ids = store.selectedTimelineItemIds.length > 0 ? store.selectedTimelineItemIds : store.selectedTimelineItemId ? [store.selectedTimelineItemId] : []; if (ids.length) store.duplicateTimelineItems(ids); return; }
       if (isInput) return;
       switch (e.key) {
-        case ' ': e.preventDefault(); { const { isPlaying } = useProjectStore.getState(); isPlaying ? timelineClock.pause() : timelineClock.play(); } break;
+        case ' ': e.preventDefault(); timelineTransport.toggle(); break;
         case 'c': case 'C': onOpenPanel?.('effects'); window.dispatchEvent(new Event('focus-effect-search')); break;
         case 'v': case 'V': onOpenPanel?.('positions'); break;
         case 'p': case 'P': onOpenPanel?.('addressing'); break;
@@ -649,7 +650,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
             </button>
             <button
               onClick={() => {
-                timelineClock.pause();
+                timelineTransport.pause();
                 toast.error('🔴 EMERGENCY STOP');
               }}
               className="h-9 px-4 flex items-center gap-1.5 rounded-xl bg-red-600 text-red-50 hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.3)] transition-all text-[11px] font-black uppercase tracking-wider"

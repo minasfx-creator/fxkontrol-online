@@ -9,8 +9,11 @@ import MainLayout from "@/layouts/MainLayout";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import { LazyChunkBoundary } from "@/components/errors/LazyChunkBoundary";
 import { lazyRetry } from "@/lib/lazyRetry";
+import { useRouteTracing } from "@/observability/useRouteTracing";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+
+const Install = lazy(lazyRetry(() => import("./pages/Install")));
 
 // Dashboard lazy-loaded — it's 658 lines with heavy imports
 const Dashboard = lazy(lazyRetry(() => import("./pages/Dashboard")));
@@ -29,6 +32,7 @@ const Admin = lazy(lazyRetry(() => import("./pages/Admin")));
 const AccreditationDashboard = lazy(lazyRetry(() => import("./pages/AccreditationDashboard")));
 const PlatformStatus = lazy(lazyRetry(() => import("./pages/PlatformStatus")));
 const JoiPanel = lazy(lazyRetry(() => import("./ai/ui/JoiPanel")));
+const SwarmGPT = lazy(lazyRetry(() => import("./pages/SwarmGPT")));
 
 const queryClient = new QueryClient();
 
@@ -50,6 +54,11 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   return user ? <Navigate to="/" replace /> : <>{children}</>;
 }
 
+function RouteTracker() {
+  useRouteTracing();
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -58,11 +67,13 @@ function App() {
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <RouteTracker />
             <PageTransitionOverlay />
             <LazyChunkBoundary>
               <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
                 <Routes>
                   <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+                  <Route path="/install" element={<Install />} />
                   <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/editor" element={<Index />} />
@@ -78,6 +89,7 @@ function App() {
                     <Route path="/admin" element={<Admin />} />
                     <Route path="/accreditation" element={<AccreditationDashboard />} />
                     <Route path="/joi" element={<JoiPanel />} />
+                    <Route path="/swarmgpt" element={<SwarmGPT />} />
                   </Route>
                   <Route path="*" element={<NotFound />} />
                 </Routes>

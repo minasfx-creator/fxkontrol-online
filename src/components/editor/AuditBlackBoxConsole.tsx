@@ -10,10 +10,10 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const EVENT_COLORS: Record<string, string> = {
-  ARM: 'text-amber-400', DISARM: 'text-muted-foreground', FIRE: 'text-red-400',
-  E_STOP: 'text-red-400', VIOLATION: 'text-red-400', STATE_CHANGE: 'text-cyan-400',
-  LOCK: 'text-amber-400', UNLOCK: 'text-muted-foreground', RESET: 'text-emerald-400',
-  CONTINUITY_CHECK: 'text-cyan-400',
+  ARM: 'text-fx-warning', DISARM: 'text-muted-foreground', FIRE: 'text-fx-danger',
+  E_STOP: 'text-fx-danger', VIOLATION: 'text-fx-danger', STATE_CHANGE: 'text-fx-cyan',
+  LOCK: 'text-fx-warning', UNLOCK: 'text-muted-foreground', RESET: 'text-fx-success',
+  CONTINUITY_CHECK: 'text-fx-cyan',
 };
 
 export default function AuditBlackBoxConsole() {
@@ -45,7 +45,7 @@ export default function AuditBlackBoxConsole() {
     <div className="flex flex-col h-full p-4 gap-4 bg-background/80">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-violet-400" />
+          <FileText className="w-4 h-4 text-fx-accent" />
           <span className="text-xs font-mono font-bold tracking-widest text-foreground uppercase">Audit / BlackBox</span>
         </div>
         <div className="flex items-center gap-2">
@@ -61,11 +61,11 @@ export default function AuditBlackBoxConsole() {
       <div className="flex items-center gap-1">
         <button onClick={() => setTab('audit')} className={cn(
           'px-3 py-1 rounded text-[9px] font-mono font-bold tracking-widest transition-all',
-          tab === 'audit' ? 'bg-violet-500/15 text-violet-400 border border-violet-500/30' : 'text-muted-foreground/40 hover:text-muted-foreground/60'
+          tab === 'audit' ? 'bg-fx-accent/15 text-fx-accent border border-fx-accent/30' : 'text-muted-foreground/40 hover:text-muted-foreground/60'
         )}>SAFETY AUDIT</button>
         <button onClick={() => setTab('blackbox')} className={cn(
           'px-3 py-1 rounded text-[9px] font-mono font-bold tracking-widest transition-all',
-          tab === 'blackbox' ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30' : 'text-muted-foreground/40 hover:text-muted-foreground/60'
+          tab === 'blackbox' ? 'bg-fx-cyan/15 text-fx-cyan border border-fx-cyan/30' : 'text-muted-foreground/40 hover:text-muted-foreground/60'
         )}>BLACK BOX</button>
         <span className="ml-auto text-[8px] font-mono text-muted-foreground/40">
           {tab === 'audit' ? `${entries.length} entries` : `${blackbox.getEntryCount()} records`}
@@ -95,7 +95,7 @@ export default function AuditBlackBoxConsole() {
                 {blackbox.export().slice(-50).reverse().map((e, i) => (
                   <div key={i} className="flex items-center gap-2 text-[8px] font-mono py-0.5">
                     <span className="text-muted-foreground/30 w-16 shrink-0">{(e.t / 1000).toFixed(1)}s</span>
-                    <span className="text-cyan-400/70 font-bold w-12 shrink-0">{e.cat}</span>
+                    <span className="text-fx-cyan/70 font-bold w-12 shrink-0">{e.cat}</span>
                     <span className="text-muted-foreground/50 truncate">{e.msg}</span>
                   </div>
                 ))}
