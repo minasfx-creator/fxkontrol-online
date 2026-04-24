@@ -14,6 +14,7 @@ import { CheckCircle2, AlertTriangle, XCircle, Activity, Wifi, Cable, RefreshCw,
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useSfxChannelStore } from "@/store/useSfxChannelStore";
+import { SFX_TYPES } from "@/components/editor/live-firing/constants";
 import { artNetBridge, type ArtNetState } from "@/core/protocols/ArtNetBridge";
 import { linkFailoverPolicy, type ProtocolLink } from "@/core/protocols/LinkFailoverPolicy";
 import { dmxUniverseAdapter } from "@/core/hardware/adapters/DMXUniverseAdapter";
