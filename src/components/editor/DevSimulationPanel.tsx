@@ -20,6 +20,16 @@ const EmulatorTraceTimeline = lazy(() => import('./EmulatorTraceTimeline'));
 
 const isDev = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV ?? false;
 
+function downloadBundle(bundle: BugBundle) {
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `fxk-bug-${bundle.profile}-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function DevSimulationPanel() {
   const [enabled, setEnabled] = useState(false);
   const [profile, setProfile] = useState<EmuProfileName>('CLEAN');
@@ -246,6 +256,64 @@ export default function DevSimulationPanel() {
           <Trash2 className="w-3 h-3" /> CLEAR
         </Button>
       </div>
+
+      {/* ── Field Bug Recorder ─────────────────────────────────── */}
+      <div className="flex items-center gap-1 mt-1 p-1.5 rounded border border-dashed border-red-500/30 bg-red-500/5">
+        <Bug className="w-3 h-3 text-red-400" />
+        <span className="text-[7px] text-muted-foreground uppercase tracking-widest mr-1">Field Bug Recorder</span>
+        {recording ? (
+          <>
+            <Circle className="w-2 h-2 fill-red-400 text-red-400 animate-pulse" />
+            <span className="text-[8px] text-red-400 font-bold">REC {(recordElapsed / 1000).toFixed(1)}s</span>
+            <span className="text-[7px] text-muted-foreground ml-1">tx:{tx} rx:{rx}</span>
+            <Button size="sm" variant="ghost" onClick={() => setShowBugDialog(true)}
+              className="h-6 px-2 text-[8px] gap-1 text-red-400 ml-auto">
+              <Square className="w-3 h-3" /> STOP & EXPORT
+            </Button>
+            <Button size="sm" variant="ghost"
+              onClick={() => { recRef.current.cancel(); setRecording(false); setRecordElapsed(0); }}
+              className="h-6 px-2 text-[8px] text-muted-foreground">
+              CANCEL
+            </Button>
+          </>
+        ) : (
+          <>
+            <span className="text-[7px] text-muted-foreground ml-auto mr-1">
+              capture session → bundle JSON for engineering
+            </span>
+            <Button size="sm" variant="ghost" disabled={!enabled} onClick={startRecording}
+              className="h-6 px-2 text-[8px] gap-1 text-red-400">
+              <Circle className="w-3 h-3" /> START REC
+            </Button>
+          </>
+        )}
+      </div>
+
+      {showBugDialog && (
+        <div className="flex flex-col gap-1 p-2 rounded border border-red-500/30 bg-red-500/5">
+          <span className="text-[8px] text-muted-foreground uppercase tracking-widest">
+            Bug Notes (repro steps, observed vs expected)
+          </span>
+          <Textarea
+            value={bugNotes}
+            onChange={(e) => setBugNotes(e.target.value)}
+            placeholder={'e.g. "After 3rd FIRE cmd on Safari iOS 17, link drops without RECONNECT"'}
+            className="text-[10px] min-h-[60px]"
+            autoFocus
+          />
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="ghost"
+              onClick={() => { setShowBugDialog(false); setBugNotes(''); }}
+              className="h-6 px-2 text-[8px] text-muted-foreground">
+              CANCEL
+            </Button>
+            <Button size="sm" variant="default" onClick={stopRecordingAndExport}
+              className="h-6 px-2 text-[8px] gap-1 ml-auto">
+              <Download className="w-3 h-3" /> EXPORT BUG BUNDLE
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Replay row — only when a trace is loaded */}
       {replay.total > 0 && (
