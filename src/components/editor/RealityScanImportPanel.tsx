@@ -83,6 +83,7 @@ export default function RealityScanImportPanel(props: Props) {
   const [busy, setBusy] = useState(false);
   const [droneCount, setDroneCount] = useState(200);
   const [minDistance, setMinDistance] = useState(2);
+  const [samplingStrategy, setSamplingStrategy] = useState<'weighted' | 'poisson+fps'>('poisson+fps');
 
   const histogram = useMemo(() => {
     if (!parsed) return [];
@@ -127,11 +128,12 @@ export default function RealityScanImportPanel(props: Props) {
           maxSpeed: 8,
           duration: 4,
           cueTime: 0,
+          samplingStrategy,
         },
       );
       props.onFormationReady?.(plan, { fileName: parsed.name, count: parsed.vertices.length });
       props.onLog?.(
-        `[PLY] Formation: ${plan.formation.points.length} drones, fidelity ${plan.fidelity.score.toFixed(2)}`,
+        `[PLY] Formation: ${plan.formation.points.length}/${droneCount} drones via ${samplingStrategy}, fidelity ${plan.fidelity.score.toFixed(2)}`,
         plan.validation.valid ? 'ok' : 'warn',
       );
     } catch (e) {
@@ -258,6 +260,36 @@ export default function RealityScanImportPanel(props: Props) {
                   value={[minDistance]}
                   onValueChange={([v]) => setMinDistance(v)}
                 />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Sampling strategy</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSamplingStrategy('poisson+fps')}
+                  className={`text-[11px] rounded-md border px-2 py-1.5 transition-colors ${
+                    samplingStrategy === 'poisson+fps'
+                      ? 'border-primary bg-primary/15 text-primary'
+                      : 'border-border/40 bg-background/40 text-muted-foreground hover:bg-background/60'
+                  }`}
+                >
+                  Poisson + FPS
+                  <div className="text-[9px] opacity-70">exact count</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSamplingStrategy('weighted')}
+                  className={`text-[11px] rounded-md border px-2 py-1.5 transition-colors ${
+                    samplingStrategy === 'weighted'
+                      ? 'border-primary bg-primary/15 text-primary'
+                      : 'border-border/40 bg-background/40 text-muted-foreground hover:bg-background/60'
+                  }`}
+                >
+                  Weighted
+                  <div className="text-[9px] opacity-70">density-aware</div>
+                </button>
               </div>
             </div>
 

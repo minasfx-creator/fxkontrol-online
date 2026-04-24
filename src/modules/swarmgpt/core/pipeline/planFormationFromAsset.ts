@@ -23,11 +23,14 @@ export function planFormationFromAsset(
     duration: number;
     beatGrid?: BeatGrid;
     cueTime: number;
+    /** Reduction strategy. Default 'weighted'. 'poisson+fps' guarantees exact droneCount. */
+    samplingStrategy?: "weighted" | "poisson+fps";
   },
 ): FormationPlan {
   const nextPoints = createFormationFromAdvancedAsset(asset, {
     droneCount: options.droneCount,
     minDistance: options.minDistance,
+    samplingStrategy: options.samplingStrategy,
   });
 
   const optimized = optimizeDroneTransition(previousPoints, nextPoints, {
