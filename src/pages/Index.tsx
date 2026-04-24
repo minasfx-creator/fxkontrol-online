@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useState, useCallback, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
+import { lazyRetry } from '@/lib/lazyRetry';
 import { commandBus } from '@/core/command/CommandBus';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -139,19 +140,10 @@ const EasyConnectPanel = lz(() => import('@/components/editor/EasyConnectPanel')
 const VenueQuickSelector = lz(() => import('@/components/editor/VenueQuickSelector'));
 const VenueShowOverlay = lz(() => import('@/components/editor/VenueShowOverlay'));
 
-const SkyCanvas = lazy(() =>
-  import('@/components/editor/SkyCanvas').catch((err) => {
-    console.error('[FXK] SkyCanvas chunk failed:', err);
-    const Fallback = () => (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-background gap-3 p-8 text-center">
-        <p className="text-sm font-semibold text-foreground">3D Engine Unavailable</p>
-        <p className="text-xs text-muted-foreground">Could not load the renderer module.</p>
-        <button className="text-xs text-primary underline" onClick={() => window.location.reload()}>Reload</button>
-      </div>
-    );
-    return { default: Fallback };
-  })
-);
+// SkyCanvas: wrapped with lazyRetry so stale-chunk errors after deploy/HMR
+// trigger a single auto-reload (handled by LazyChunkBoundary in App.tsx).
+// Do NOT add a .catch() here — it would swallow the error and prevent retry.
+const SkyCanvas = lazy(lazyRetry(() => import('@/components/editor/SkyCanvas')));
 
 class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
