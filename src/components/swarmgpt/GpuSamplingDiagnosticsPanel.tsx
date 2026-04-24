@@ -89,6 +89,24 @@ export function GpuSamplingDiagnosticsPanel() {
               <span>WebGPU: {run.diagnostics.webgpuAvailable ? "✓" : "✗"}</span>
             </div>
 
+            {run.poisson?.enabled && (
+              <div className="text-[10px] text-muted-foreground font-mono bg-background/30 border border-border/30 rounded-md p-2 space-y-0.5">
+                <div className="flex items-center justify-between text-foreground">
+                  <span className="font-semibold uppercase tracking-wider text-[9px]">
+                    Poisson Preview (GPU)
+                  </span>
+                  <span>{formatDuration(run.poisson.durationMs)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>{formatCount(run.poisson.candidatesIn)} → {formatCount(run.poisson.candidatesAfterPreview)}</span>
+                  <span>
+                    grid {run.poisson.grid.cellsX}×{run.poisson.grid.cellsY}×{run.poisson.grid.cellsZ}
+                  </span>
+                </div>
+                <div className="text-[9px] opacity-70">CPU final pass = safety authority</div>
+              </div>
+            )}
+
             {run.fallbackReason && (
               <div className="flex items-start gap-2 text-[11px] text-warning bg-warning/10 border border-warning/30 rounded-md p-2">
                 <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
