@@ -6,7 +6,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type TransportProtocol = "artnet" | "sacn" | "serial";
+export type TransportProtocol = "artnet" | "sacn";
 
 export interface NetworkEndpoint {
   hostname: string;     // IP or DNS name of the Art-Net/sACN node
@@ -65,7 +65,5 @@ export function defaultPortForProtocol(p: TransportProtocol): number {
       return 6454;
     case "sacn":
       return 5568;
-    case "serial":
-      return 0;
   }
 }
