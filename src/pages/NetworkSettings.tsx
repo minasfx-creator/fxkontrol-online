@@ -154,7 +154,7 @@ export default function NetworkSettings() {
           return true;
         });
         const ports = await runStep("ports", async () => {
-          return await (navigator as { serial: { getPorts: () => Promise<unknown[]> } }).serial.getPorts();
+          return await (navigator as unknown as { serial: { getPorts: () => Promise<unknown[]> } }).serial.getPorts();
         });
         const totalMs = Math.round(performance.now() - startedAt);
         setTest((prev) => ({
