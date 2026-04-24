@@ -1160,7 +1160,7 @@ export class FireOneHardwareBridge {
       // up — handleDisconnect may have already run via drain path.
       if (this.connected || this.transport !== 'none') {
         this.handleDisconnect(this.lastErrorCode);
-      } else if (this.linkHealth !== 'disconnected') {
+      } else {
         this.linkHealth = 'disconnected';
       }
       return false;
