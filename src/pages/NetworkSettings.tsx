@@ -9,7 +9,7 @@
 import { useState, useCallback } from "react";
 import {
   Network, Wifi, Activity, Save, RotateCcw, Loader2,
-  CheckCircle2, XCircle, AlertTriangle, Lightbulb, Copy,
+  CheckCircle2, XCircle, AlertTriangle, Lightbulb, Copy, FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
