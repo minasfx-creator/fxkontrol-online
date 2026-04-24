@@ -62,8 +62,16 @@ export function extractFormationFromMesh(
     return { ...empty, boundingBox: normalized.boundingBox };
   }
 
-  // 3) Weighted Poisson sample to drone count.
-  let selected = weightedPoissonSample(weighted, droneCount, minDistance);
+  // 3) Reduction strategy.
+  const candidatePoints = weighted.map((w) => w.point);
+  let selected: Vec3[];
+  if (effectiveStrategy === 'poisson+fps') {
+    selected = poissonThenFps(candidatePoints, { droneCount, minDistance });
+  } else if (effectiveStrategy === 'poisson') {
+    selected = poissonSample(candidatePoints, droneCount, minDistance);
+  } else {
+    selected = weightedPoissonSample(weighted, droneCount, minDistance);
+  }
 
   // 4) Pad if undersampled — guarantees count via Nível 1 fallback.
   if (selected.length < droneCount) {
