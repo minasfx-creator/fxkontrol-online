@@ -191,11 +191,11 @@ export default function DevSimulationPanel() {
   if (!isDev) return null;
 
   return (
-    <div className="rounded border border-amber-500/30 bg-amber-500/5 p-3 flex flex-col gap-2 font-mono">
+    <div className="rounded border border-fx-warning/30 bg-fx-warning/5 p-3 flex flex-col gap-2 font-mono">
       <div className="flex items-center gap-2">
-        <FlaskConical className="w-4 h-4 text-amber-400" />
+        <FlaskConical className="w-4 h-4 text-fx-warning" />
         <span className="text-[10px] font-bold tracking-widest text-foreground uppercase">Dev Simulation Panel</span>
-        <span className="text-[7px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 uppercase">DEV ONLY</span>
+        <span className="text-[7px] px-1.5 py-0.5 rounded bg-fx-warning/15 text-fx-warning border border-fx-warning/30 uppercase">DEV ONLY</span>
         <Button size="sm" variant={enabled ? 'destructive' : 'default'}
           className="h-6 px-2 text-[8px] ml-auto"
           onClick={() => setEnabled(e => !e)}>
@@ -220,9 +220,9 @@ export default function DevSimulationPanel() {
         </div>
 
         <div className="grid grid-cols-3 gap-2 items-end">
-          <Stat label="TX" value={tx} color="text-cyan-400" />
-          <Stat label="RX" value={rx} color="text-emerald-400" />
-          <Stat label="LINK" value={connected ? 'UP' : 'DOWN'} color={connected ? 'text-emerald-400' : 'text-red-400'} />
+          <Stat label="TX" value={tx} color="text-fx-cyan" />
+          <Stat label="RX" value={rx} color="text-fx-success" />
+          <Stat label="LINK" value={connected ? 'UP' : 'DOWN'} color={connected ? 'text-fx-success' : 'text-fx-danger'} />
         </div>
       </div>
 
@@ -234,19 +234,19 @@ export default function DevSimulationPanel() {
 
       <div className="flex items-center gap-1 mt-1 flex-wrap">
         <Button size="sm" variant="ghost" disabled={!enabled} onClick={() => emuRef.current?.forceDisconnect()}
-          className="h-6 px-2 text-[8px] gap-1 text-red-400">
+          className="h-6 px-2 text-[8px] gap-1 text-fx-danger">
           <PlugZap className="w-3 h-3" /> DISCONNECT
         </Button>
         <Button size="sm" variant="ghost" disabled={!enabled} onClick={() => emuRef.current?.reconnect()}
-          className="h-6 px-2 text-[8px] gap-1 text-emerald-400">
+          className="h-6 px-2 text-[8px] gap-1 text-fx-success">
           <Radio className="w-3 h-3" /> RECONNECT
         </Button>
         <Button size="sm" variant="ghost" disabled={!enabled} onClick={handleExport}
-          className="h-6 px-2 text-[8px] gap-1 text-cyan-400">
+          className="h-6 px-2 text-[8px] gap-1 text-fx-cyan">
           <Download className="w-3 h-3" /> EXPORT
         </Button>
         <Button size="sm" variant="ghost" disabled={!enabled} onClick={() => fileInputRef.current?.click()}
-          className="h-6 px-2 text-[8px] gap-1 text-cyan-400">
+          className="h-6 px-2 text-[8px] gap-1 text-fx-cyan">
           <Upload className="w-3 h-3" /> LOAD TRACE
         </Button>
         <input ref={fileInputRef} type="file" accept="application/json" hidden
@@ -258,16 +258,16 @@ export default function DevSimulationPanel() {
       </div>
 
       {/* ── Field Bug Recorder ─────────────────────────────────── */}
-      <div className="flex items-center gap-1 mt-1 p-1.5 rounded border border-dashed border-red-500/30 bg-red-500/5">
-        <Bug className="w-3 h-3 text-red-400" />
+      <div className="flex items-center gap-1 mt-1 p-1.5 rounded border border-dashed border-fx-danger/30 bg-fx-danger/5">
+        <Bug className="w-3 h-3 text-fx-danger" />
         <span className="text-[7px] text-muted-foreground uppercase tracking-widest mr-1">Field Bug Recorder</span>
         {recording ? (
           <>
-            <Circle className="w-2 h-2 fill-red-400 text-red-400 animate-pulse" />
-            <span className="text-[8px] text-red-400 font-bold">REC {(recordElapsed / 1000).toFixed(1)}s</span>
+            <Circle className="w-2 h-2 fill-fx-danger text-fx-danger animate-pulse" />
+            <span className="text-[8px] text-fx-danger font-bold">REC {(recordElapsed / 1000).toFixed(1)}s</span>
             <span className="text-[7px] text-muted-foreground ml-1">tx:{tx} rx:{rx}</span>
             <Button size="sm" variant="ghost" onClick={() => setShowBugDialog(true)}
-              className="h-6 px-2 text-[8px] gap-1 text-red-400 ml-auto">
+              className="h-6 px-2 text-[8px] gap-1 text-fx-danger ml-auto">
               <Square className="w-3 h-3" /> STOP & EXPORT
             </Button>
             <Button size="sm" variant="ghost"
@@ -282,7 +282,7 @@ export default function DevSimulationPanel() {
               capture session → bundle JSON for engineering
             </span>
             <Button size="sm" variant="ghost" disabled={!enabled} onClick={startRecording}
-              className="h-6 px-2 text-[8px] gap-1 text-red-400">
+              className="h-6 px-2 text-[8px] gap-1 text-fx-danger">
               <Circle className="w-3 h-3" /> START REC
             </Button>
           </>
@@ -290,7 +290,7 @@ export default function DevSimulationPanel() {
       </div>
 
       {showBugDialog && (
-        <div className="flex flex-col gap-1 p-2 rounded border border-red-500/30 bg-red-500/5">
+        <div className="flex flex-col gap-1 p-2 rounded border border-fx-danger/30 bg-fx-danger/5">
           <span className="text-[8px] text-muted-foreground uppercase tracking-widest">
             Bug Notes (repro steps, observed vs expected)
           </span>
@@ -323,7 +323,7 @@ export default function DevSimulationPanel() {
           onDrop={onDrop}
           className={cn(
             'flex flex-col gap-1 mt-1 p-1.5 rounded border border-dashed',
-            dragging ? 'border-cyan-400 bg-cyan-500/10' : 'border-border/30'
+            dragging ? 'border-fx-cyan bg-fx-cyan/10' : 'border-border/30'
           )}
         >
           <div className="flex items-center gap-1 flex-wrap">
@@ -340,22 +340,22 @@ export default function DevSimulationPanel() {
                 setBpHit(null);
                 setFilteredIdx(emuRef.current?.getFilteredIndices() ?? []);
               }}
-              className="h-6 px-2 text-[8px] gap-1 text-emerald-400">
+              className="h-6 px-2 text-[8px] gap-1 text-fx-success">
               <Play className="w-3 h-3" /> PLAY
             </Button>
             <Button size="sm" variant="ghost" disabled={!enabled || replay.state !== 'running'}
               onClick={() => emuRef.current?.pauseReplay()}
-              className="h-6 px-2 text-[8px] gap-1 text-amber-400">
+              className="h-6 px-2 text-[8px] gap-1 text-fx-warning">
               <Pause className="w-3 h-3" /> PAUSE
             </Button>
             <Button size="sm" variant="ghost" disabled={!enabled || replay.state !== 'paused'}
               onClick={() => { setBpHit(null); emuRef.current?.resumeReplay(); }}
-              className="h-6 px-2 text-[8px] gap-1 text-emerald-400">
+              className="h-6 px-2 text-[8px] gap-1 text-fx-success">
               <FastForward className="w-3 h-3" /> RESUME
             </Button>
             <Button size="sm" variant="ghost" disabled={!enabled}
               onClick={() => { emuRef.current?.stepReplay(); setReplay(emuRef.current!.getReplayStatus()); }}
-              className="h-6 px-2 text-[8px] gap-1 text-cyan-400">
+              className="h-6 px-2 text-[8px] gap-1 text-fx-cyan">
               <SkipForward className="w-3 h-3" /> STEP
             </Button>
             <Button size="sm" variant="ghost" disabled={!enabled}
@@ -364,7 +364,7 @@ export default function DevSimulationPanel() {
                 setReplay(emuRef.current!.getReplayStatus());
                 setBpHit(null);
               }}
-              className="h-6 px-2 text-[8px] gap-1 text-red-400">
+              className="h-6 px-2 text-[8px] gap-1 text-fx-danger">
               <Square className="w-3 h-3" /> STOP
             </Button>
           </div>
@@ -386,7 +386,7 @@ export default function DevSimulationPanel() {
             />
             <Button size="sm" variant="ghost" disabled={!enabled}
               onClick={() => emuRef.current?.setBreakpoint(buildBreakpoint() ?? null)}
-              className="h-6 px-2 text-[8px] text-amber-400">
+              className="h-6 px-2 text-[8px] text-fx-warning">
               APPLY BP
             </Button>
           </div>
@@ -415,7 +415,7 @@ export default function DevSimulationPanel() {
                   close
                 </button>
               </div>
-              <div><span className="text-muted-foreground">dir:</span> <span className={frames[inspect].dir === 'tx' ? 'text-cyan-400' : 'text-emerald-400'}>{frames[inspect].dir.toUpperCase()}</span></div>
+              <div><span className="text-muted-foreground">dir:</span> <span className={frames[inspect].dir === 'tx' ? 'text-fx-cyan' : 'text-fx-success'}>{frames[inspect].dir.toUpperCase()}</span></div>
               <div><span className="text-muted-foreground">at:</span> {frames[inspect].at} ({new Date(frames[inspect].at).toISOString().slice(11, 23)})</div>
               <div><span className="text-muted-foreground">Δ prev:</span> {inspect > 0 ? `${frames[inspect].at - frames[inspect - 1].at}ms` : '—'}</div>
               <div className="break-all"><span className="text-muted-foreground">data:</span> <code className="text-foreground">{frames[inspect].data}</code></div>

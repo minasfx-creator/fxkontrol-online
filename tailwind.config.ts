@@ -85,6 +85,17 @@ export default {
           phosphor: "hsl(var(--fxk-phosphor))",
           amber: "hsl(var(--fxk-amber))",
         },
+        // Semantic aliases — Mission Control palette as named intent.
+        // Use these in components instead of raw `text-cyan-400` etc. so the
+        // design system is centralized and the visual language is stable.
+        fx: {
+          cyan:    "hsl(var(--fxk-cyan))",
+          success: "hsl(var(--fxk-green))",
+          warning: "hsl(var(--fxk-amber))",
+          danger:  "hsl(var(--fxk-red))",
+          info:    "hsl(var(--fxk-blue))",
+          accent:  "hsl(var(--fxk-violet))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
