@@ -216,6 +216,11 @@ import {
 } from './skycanvas/viewportToolbars';
 import DroneRendererSwitch from './skycanvas/droneRendererSwitch';
 
+// SkyEnvironment chunk (lazy)
+const EnvironmentV2SwitcherClean = lzn(() => import('./skycanvas/SkyEnvironment'), 'EnvironmentV2Switcher');
+const SceneFogClean = lzn(() => import('./skycanvas/SkyEnvironment'), 'SceneFog');
+const SceneStarsWiredClean = lzn(() => import('./skycanvas/SkyEnvironment'), 'SceneStarsWired');
+
 // WeatherSystem chunk (lazy)
 const WeatherEffects = lzn(() => import('./skycanvas/WeatherSystem'), 'WeatherEffects');
 
