@@ -17,6 +17,7 @@ import {
 import { Trash2, Plus, FileCode, Box, Loader2, Copy, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
 import { parseSVGToFormation } from '@/lib/svgParser';
 import { parseModelToFormation, parseKMZToFormation, SUPPORTED_EXTENSIONS, type ProjectionMode, type SamplingMode, type ModelParseResult } from '@/lib/modelToFormation';
+import FidelityReport, { fidelityFromModelParse } from './formation/FidelityReport';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
