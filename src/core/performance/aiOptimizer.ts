@@ -6,6 +6,7 @@
  */
 
 import { autoScaler, type QualityTier } from '@/core/reliability/autoScaler';
+import { logger } from '@/lib/logger';
 
 export interface PerformanceSnapshot {
   fps: number;
