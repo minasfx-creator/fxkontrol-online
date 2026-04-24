@@ -27,6 +27,7 @@ import {
 import SerialDmxPairingPanel from "./SerialDmxPairingPanel";
 import LiveDmxInspector from "./LiveDmxInspector";
 import DmxTimelinePreview from "./DmxTimelinePreview";
+import { useDiagnosticsThresholds, DEFAULT_THRESHOLDS } from "@/store/useDiagnosticsThresholds";
 
 const LIVE_FIRING_KEYWORDS = [
   "live firing",
