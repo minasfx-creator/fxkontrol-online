@@ -37,6 +37,10 @@ import { bridgePhysicalController, evaluateFireLockout } from '@/lib/bridgePhysi
 
 import type { SFXChannel, CueEntry, FXCMode, FXCSettings, DeviceLibEntry } from './live-firing/types';
 import { FIRING_RULES, SFX_TYPES, DEFAULT_CHANNELS, DEFAULT_SETTINGS, CUES_PER_PAGE, formatTimecode, SHOWVEN_LIBRARY } from './live-firing/constants';
+import MobileModeTabs from './live-firing/MobileModeTabs';
+import LockoutPanel from './live-firing/LockoutPanel';
+import CueKey from './live-firing/CueKey';
+import DeviceRow from './live-firing/DeviceRow';
 import AutoFirePanel from './live-firing/AutoFirePanel';
 import CheckSlavePanel from './live-firing/CheckSlavePanel';
 import FXKNetPanel from './live-firing/FXKNetPanel';
