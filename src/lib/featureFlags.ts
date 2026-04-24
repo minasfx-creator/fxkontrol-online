@@ -57,7 +57,7 @@ const FLAGS = {
    * Physics repair pipeline (matchPointsByCost → validators → repair).
    * Opt-in via planFormationFromAsset({ usePhysicsRepair: true }).
    */
-  swarmgpt_physics_repair: false,
+  swarmgpt_physics_repair: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;

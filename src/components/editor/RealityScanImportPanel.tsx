@@ -21,6 +21,9 @@ import { qualityHistogram } from '@/modules/swarmgpt/advanced/quality/bake';
 import { qualityToRgb } from '@/modules/swarmgpt/advanced/quality/qualityColorRamp';
 import { planFormationFromAsset, type FormationPlan } from '@/modules/swarmgpt/core/pipeline/planFormationFromAsset';
 import type { Vec3 } from '@/modules/swarmgpt/types';
+import type { MotionStyle } from '@/modules/swarmgpt/physics';
+
+const MOTION_STYLES: MotionStyle[] = ['cinematic', 'fast', 'soft', 'snap', 'organic'];
 
 interface ParsedFile {
   name: string;
@@ -84,6 +87,8 @@ export default function RealityScanImportPanel(props: Props) {
   const [droneCount, setDroneCount] = useState(200);
   const [minDistance, setMinDistance] = useState(2);
   const [samplingStrategy, setSamplingStrategy] = useState<'weighted' | 'poisson+fps'>('poisson+fps');
+  const [usePhysicsRepair, setUsePhysicsRepair] = useState(true);
+  const [motionStyle, setMotionStyle] = useState<MotionStyle>('cinematic');
 
   const histogram = useMemo(() => {
     if (!parsed) return [];
@@ -129,12 +134,17 @@ export default function RealityScanImportPanel(props: Props) {
           duration: 4,
           cueTime: 0,
           samplingStrategy,
+          usePhysicsRepair,
+          motionStyle,
         },
       );
       props.onFormationReady?.(plan, { fileName: parsed.name, count: parsed.vertices.length });
+      const phys = plan.physics
+        ? ` | physics: ${plan.physics.ok ? 'ok' : 'repaired'} (issues=${plan.physics.issues.length}, minSep=${plan.physics.metrics.minDistanceObserved.toFixed(2)}m)`
+        : '';
       props.onLog?.(
-        `[PLY] Formation: ${plan.formation.points.length}/${droneCount} drones via ${samplingStrategy}, fidelity ${plan.fidelity.score.toFixed(2)}`,
-        plan.validation.valid ? 'ok' : 'warn',
+        `[PLY] Formation: ${plan.formation.points.length}/${droneCount} drones via ${samplingStrategy}, fidelity ${plan.fidelity.score.toFixed(2)}${phys}`,
+        plan.validation.valid && (!plan.physics || plan.physics.ok) ? 'ok' : 'warn',
       );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -290,6 +300,39 @@ export default function RealityScanImportPanel(props: Props) {
                   Weighted
                   <div className="text-[9px] opacity-70">density-aware</div>
                 </button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 rounded-md border border-border/40 bg-background/40 p-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">Physics repair</Label>
+                <button
+                  type="button"
+                  onClick={() => setUsePhysicsRepair((v) => !v)}
+                  className={`text-[10px] rounded px-2 py-0.5 border transition-colors ${
+                    usePhysicsRepair
+                      ? 'border-primary bg-primary/15 text-primary'
+                      : 'border-border/40 bg-background/40 text-muted-foreground'
+                  }`}
+                >
+                  {usePhysicsRepair ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              <div className={`grid grid-cols-5 gap-1 ${usePhysicsRepair ? '' : 'opacity-40 pointer-events-none'}`}>
+                {MOTION_STYLES.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setMotionStyle(s)}
+                    className={`text-[10px] rounded border px-1 py-1 capitalize transition-colors ${
+                      motionStyle === s
+                        ? 'border-primary bg-primary/15 text-primary'
+                        : 'border-border/40 bg-background/40 text-muted-foreground hover:bg-background/60'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
               </div>
             </div>
 
