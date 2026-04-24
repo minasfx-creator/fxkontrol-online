@@ -105,18 +105,18 @@ export interface BridgeRetryRule {
 }
 
 /** Command classes safe to auto-retry (read-only / lifecycle). */
-export const RETRYABLE_COMMAND_TYPES: ReadonlyArray<BridgeCommandType> = Object.freeze([
+export const RETRYABLE_COMMAND_TYPES: ReadonlySet<BridgeCommandType> = new Set<BridgeCommandType>([
   'HEARTBEAT', 'VERSION', 'STATUS', 'CONT', 'CDS',
 ]);
 
 /** Command classes that MUST NEVER auto-retry (destructive / single-intent). */
-export const NON_RETRYABLE_COMMAND_TYPES: ReadonlyArray<BridgeCommandType> = Object.freeze([
+export const NON_RETRYABLE_COMMAND_TYPES: ReadonlySet<BridgeCommandType> = new Set<BridgeCommandType>([
   'HANDSHAKE', 'CONFIRM', 'FIRE', 'BATCH', 'GPIO', 'ESTOP', 'UNKNOWN',
 ]);
 
 /** Type guard: is this command class allowed to auto-retry? */
 export function isRetryableCommandType(t: BridgeCommandType): boolean {
-  return RETRYABLE_COMMAND_TYPES.includes(t);
+  return RETRYABLE_COMMAND_TYPES.has(t);
 }
 
 /** Default per-class retry rules. */
