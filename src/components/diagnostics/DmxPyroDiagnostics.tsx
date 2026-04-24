@@ -28,6 +28,8 @@ import SerialDmxPairingPanel from "./SerialDmxPairingPanel";
 import LiveDmxInspector from "./LiveDmxInspector";
 import DmxTimelinePreview from "./DmxTimelinePreview";
 import { useDiagnosticsThresholds, DEFAULT_THRESHOLDS } from "@/store/useDiagnosticsThresholds";
+import { compactUniverse, resolveOverlaps, repackAll } from "@/lib/dmx/repackChannels";
+import { toast } from "sonner";
 
 const LIVE_FIRING_KEYWORDS = [
   "live firing",
