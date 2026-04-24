@@ -191,6 +191,43 @@ export default function NetworkSettings() {
     }
   }, [protocol, endpoint]);
 
+  /** Build a human-readable plain-text report of the last test run. */
+  const buildReportText = useCallback((): string => {
+    const ts = new Date().toISOString();
+    const stepLines = test.steps.map((s) => {
+      const status = s.status.toUpperCase().padEnd(7);
+      const dur = typeof s.durationMs === "number" ? `${s.durationMs} ms`.padStart(8) : "       —";
+      const detail = s.detail ? `\n         └─ ${s.detail}` : "";
+      return `  [${status}] ${dur}  ${s.label}${detail}`;
+    }).join("\n");
+
+    return [
+      "FX KONTROL — Connection Report",
+      "================================",
+      `Timestamp:    ${ts}`,
+      `Result:       ${test.status.toUpperCase()}`,
+      `Protocol:     ${protocol.toUpperCase()}`,
+      `Target:       ${endpoint.hostname}:${endpoint.port}`,
+      endpoint.wsRelayUrl ? `WS Relay:     ${endpoint.wsRelayUrl}` : `WS Relay:     (none — using edge function)`,
+      `Total RTT:    ${typeof test.latencyMs === "number" ? `${test.latencyMs} ms` : "—"}`,
+      `Summary:      ${test.message ?? "—"}`,
+      test.detail ? `Detail:       ${test.detail}` : "",
+      test.hint ? `Hint:         ${test.hint}` : "",
+      "",
+      "Steps:",
+      stepLines || "  (none)",
+      "",
+      `User-Agent:   ${navigator.userAgent}`,
+    ].filter(Boolean).join("\n");
+  }, [protocol, endpoint, test]);
+
+  const copyReport = useCallback(() => {
+    navigator.clipboard.writeText(buildReportText()).then(
+      () => toast.success("Report copied to clipboard"),
+      () => toast.error("Couldn't access clipboard"),
+    );
+  }, [buildReportText]);
+
   const copyDiagnostics = useCallback(() => {
     const payload = {
       timestamp: new Date().toISOString(),
@@ -200,7 +237,7 @@ export default function NetworkSettings() {
       userAgent: navigator.userAgent,
     };
     navigator.clipboard.writeText(JSON.stringify(payload, null, 2)).then(
-      () => toast.success("Diagnostics copied to clipboard"),
+      () => toast.success("Diagnostics JSON copied"),
       () => toast.error("Couldn't access clipboard"),
     );
   }, [protocol, endpoint, test]);
