@@ -1015,20 +1015,16 @@ export function FXKAssistant() {
         })}
       </div>
 
-      {/* Context Ribbon — truth badges */}
-      <JOIContextRibbon />
-
-      {/* Insight Panel — blockers/warnings */}
-      <JOIInsightPanel />
-
-      {/* Truth Inspector — adapter integration status */}
-      <JOITruthInspector />
-
-      {/* Execution Trace — resolver pipeline visibility */}
-      <JOIExecutionTracePanel trace={lastTrace} />
-
-      {/* Style Panel — active style management */}
-      <JOIStylePanel />
+      {/* Joi side panels — desktop only. No mobile to keep header/close button clean. */}
+      {!isMobile && (
+        <>
+          <JOIContextRibbon />
+          <JOIInsightPanel />
+          <JOITruthInspector />
+          <JOIExecutionTracePanel trace={lastTrace} />
+          <JOIStylePanel />
+        </>
+      )}
 
       {/* Content area */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
