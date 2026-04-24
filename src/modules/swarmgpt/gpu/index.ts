@@ -12,6 +12,8 @@ export * from "./gpuBuffers";
 export * from "./sampleFieldGpu";
 export * from "./validateDistancesGpu";
 export * from "./gpuFieldEngine";
+export * from "./poissonPreviewGpu";
 export { FIELD_SAMPLE_WGSL } from "./shaders/fieldSample.wgsl";
 export { DISTANCE_VALIDATE_WGSL } from "./shaders/distanceValidate.wgsl";
+export { POISSON_PREVIEW_WGSL } from "./shaders/poissonPreview.wgsl";
 export * from "./diagnosticsStore";
