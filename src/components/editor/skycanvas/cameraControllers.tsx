@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import type { OrbitControls as OrbitControlsImpl } from 'three/examples/jsm/controls/OrbitControls.js';
+// drei's OrbitControls uses three-stdlib's class internally; we type loosely below.
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useViewportStore } from '@/store/useViewportStore';
@@ -196,6 +196,13 @@ export function GroundControls({ onSpeedChange }: { onSpeedChange?: (speed: numb
   return null;
 }
 
+interface OrbitControlsHandle {
+  target: THREE.Vector3;
+  enabled: boolean;
+  mouseButtons: { LEFT: number; MIDDLE: number; RIGHT: number };
+  update: () => void;
+}
+
 export function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   targetPosition: [number, number, number];
   targetLookAt: [number, number, number];
@@ -203,7 +210,7 @@ export function CameraController({ targetPosition, targetLookAt, freeLook, flyMo
   flyMode: boolean;
 }) {
   const { camera } = useThree();
-  const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const controlsRef = useRef<OrbitControlsHandle | null>(null);
   const targetPos = useRef(new THREE.Vector3(...targetPosition));
   const targetLook = useRef(new THREE.Vector3(...targetLookAt));
   const animating = useRef(false);
@@ -503,14 +510,14 @@ export function CameraController({ targetPosition, targetLookAt, freeLook, flyMo
     if (isSelectMode) {
       controlsRef.current.mouseButtons = {
         LEFT: -1,
-        MIDDLE: THREE.MOUSE.ROTATE,
-        RIGHT: THREE.MOUSE.PAN,
+        MIDDLE: THREE.MOUSE.ROTATE as number,
+        RIGHT: THREE.MOUSE.PAN as number,
       };
     } else {
       controlsRef.current.mouseButtons = {
-        LEFT: THREE.MOUSE.ROTATE,
-        MIDDLE: THREE.MOUSE.ROTATE,
-        RIGHT: THREE.MOUSE.PAN,
+        LEFT: THREE.MOUSE.ROTATE as number,
+        MIDDLE: THREE.MOUSE.ROTATE as number,
+        RIGHT: THREE.MOUSE.PAN as number,
       };
     }
   }, [isSelectMode]);
@@ -519,7 +526,7 @@ export function CameraController({ targetPosition, targetLookAt, freeLook, flyMo
 
   return (
     <OrbitControls
-      ref={controlsRef}
+      ref={controlsRef as unknown as React.Ref<never>}
       enableDamping={false}
       rotateSpeed={0.6 * sensitivityScale}
       panSpeed={0.8 * sensitivityScale}
