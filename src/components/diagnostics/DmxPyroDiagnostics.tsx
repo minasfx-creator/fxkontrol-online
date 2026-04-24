@@ -368,6 +368,77 @@ export default function DmxPyroDiagnostics() {
           </ul>
         )}
       </section>
+
+      {/* Live console capture */}
+      <section className="rounded border border-border/30 bg-card/40">
+        <header className="px-3 py-2 border-b border-border/20 flex items-center justify-between gap-2">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/70">
+            Live Console ({captured.length})
+            <span className="ml-3 text-red-400">err {capCounts.error + capCounts.unhandled + capCounts.rejection}</span>
+            <span className="ml-2 text-amber-400">warn {capCounts.warn}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={onlyLiveFiring ? "default" : "outline"}
+              size="sm"
+              className="h-6 gap-1 text-[10px]"
+              onClick={() => setOnlyLiveFiring((v) => !v)}
+              title="Filtrar apenas eventos relacionados a Live Firing / DMX / Pyro"
+            >
+              <Filter className="w-3 h-3" />
+              {onlyLiveFiring ? "Live Firing" : "Todos"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 gap-1 text-[10px]"
+              onClick={() => clearCapturedEntries()}
+            >
+              <Trash2 className="w-3 h-3" />
+              Limpar
+            </Button>
+          </div>
+        </header>
+        {captured.length === 0 ? (
+          <div className="p-4 text-xs font-mono text-muted-foreground/60">
+            Nenhum erro/aviso capturado. Reproduza a falha (abra Live Firing → Pyro Fire) para popular o log.
+          </div>
+        ) : (
+          <div className="max-h-96 overflow-y-auto divide-y divide-border/10">
+            {[...captured].reverse().map((e) => (
+              <div key={e.id} className="px-3 py-2 font-mono text-[11px] leading-snug">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[9px] font-bold uppercase",
+                      e.level === "warn"
+                        ? "bg-amber-500/15 text-amber-400"
+                        : "bg-red-500/15 text-red-400",
+                    )}
+                  >
+                    {e.level}
+                  </span>
+                  <span className="text-muted-foreground/50 text-[10px]">
+                    {new Date(e.ts).toLocaleTimeString("pt-BR", { hour12: false })}
+                  </span>
+                  {e.source && <span className="text-muted-foreground/40 text-[10px] truncate">{e.source}</span>}
+                </div>
+                <div className="mt-1 whitespace-pre-wrap break-words text-foreground/90">{e.message}</div>
+                {e.stack && (
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-[10px] text-muted-foreground/60 hover:text-muted-foreground">
+                      stack trace
+                    </summary>
+                    <pre className="mt-1 text-[10px] text-muted-foreground/70 whitespace-pre-wrap break-words">
+                      {e.stack}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
