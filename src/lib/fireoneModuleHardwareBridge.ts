@@ -219,7 +219,7 @@ export class FireOneHardwareBridge {
   private lastErrorCode?: BridgeReasonCode;
   private retryPolicy: Partial<Record<BridgeCommandType, BridgeRetryRule>> = { ...DEFAULT_RETRY_POLICY };
   private retryRateLimit: { windowMs: number; maxRetriesPerKey: number; maxRetriesTotal: number } = {
-    windowMs: 1000, maxRetriesPerKey: DEFAULT_RETRY_RATE_LIMIT, maxRetriesTotal: DEFAULT_RETRY_RATE_LIMIT * 4,
+    ...DEFAULT_RETRY_RATE_LIMIT,
   };
   private retryCount = 0;
   private retryByKey: Record<string, number> = {};
@@ -235,12 +235,27 @@ export class FireOneHardwareBridge {
     this.lastError = message;
   }
   private registerPending(key: string, commandType: BridgeCommandType, resolver: (val: string) => void): void {
-    this.pendingResolves.set(key, { resolver, sessionId: this.sessionId, commandType });
+    this.pendingResolves.set(key, {
+      key,
+      resolver,
+      sessionId: this.sessionId,
+      commandType,
+      createdAt: Date.now(),
+    });
   }
   isHealthy(): boolean {
     return this.connected && this.linkHealth === 'healthy';
   }
   getDiagnostics(): BridgeDiagnostics {
+    let oldestPendingAgeMs = 0;
+    if (this.pendingResolves.size > 0) {
+      const now = Date.now();
+      let oldest = now;
+      for (const p of this.pendingResolves.values()) {
+        if (p.createdAt < oldest) oldest = p.createdAt;
+      }
+      oldestPendingAgeMs = Math.max(0, now - oldest);
+    }
     return {
       rateLimitedTotal: this.rateLimitedTotal,
       rateLimitedByKey: { ...this.rateLimitedByKey },
@@ -251,6 +266,8 @@ export class FireOneHardwareBridge {
       sessionId: this.sessionId,
       pendingCount: this.pendingResolves.size,
       pendingKeys: Array.from(this.pendingResolves.keys()),
+      linkHealth: this.linkHealth,
+      oldestPendingAgeMs,
     };
   }
   setRetryRateLimit(limit: number | { windowMs?: number; maxRetriesPerKey?: number; maxRetriesTotal?: number }): void {
