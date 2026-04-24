@@ -19,6 +19,11 @@ import {
   type FormationType,
   type FormationConfig,
 } from '@/lib/formations';
+import {
+  coneBeamField, gaussianClusterField, combineFields, mirrorField,
+  poissonDiskSample, applySymmetry, attractToCenter,
+  vec3, type Bounds,
+} from '@/engine/fields';
 
 type Mode = 'presets' | 'single' | 'full-show' | 'music-sync' | 'image' | 'video';
 
