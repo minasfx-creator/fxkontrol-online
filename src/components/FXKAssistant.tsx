@@ -931,30 +931,60 @@ export function FXKAssistant() {
         {joiSpeech.supported && (
           <button
             onClick={joiSpeech.toggle}
-            className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors", isMobile ? "h-9 w-9" : "h-6 w-6")}
+            className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0", isMobile ? "h-10 w-10" : "h-6 w-6")}
             title={joiSpeech.enabled ? 'Desativar voz' : 'Ativar voz'}
+            aria-label={joiSpeech.enabled ? 'Desativar voz' : 'Ativar voz'}
           >
             {joiSpeech.enabled ? (
-              <Volume2 className="h-3 w-3" style={{ color: 'hsl(38 100% 55%)' }} />
+              <Volume2 className="h-3.5 w-3.5" style={{ color: 'hsl(38 100% 55%)' }} />
             ) : (
-              <VolumeX className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.3)' }} />
+              <VolumeX className="h-3.5 w-3.5" style={{ color: 'hsl(190 100% 50% / 0.3)' }} />
             )}
           </button>
         )}
 
-        <button onClick={clearMessages} className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors", isMobile ? "h-9 w-9" : "h-6 w-6")} title="Clear">
+        {/* Clear — desktop only (mobile users can long-clear via Limpar preset) */}
+        <button
+          onClick={clearMessages}
+          className="hidden sm:flex h-6 w-6 items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0"
+          title="Limpar conversa"
+          aria-label="Limpar conversa"
+        >
           <Trash2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.4)' }} />
         </button>
+
         {!isMobile && (
-          <button onClick={() => setExpanded(!expanded)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Expand">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0"
+            title="Expandir"
+            aria-label="Expandir"
+          >
             <Maximize2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
           </button>
         )}
-        <button onClick={() => setMinimized(true)} className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors", isMobile ? "h-9 w-9" : "h-6 w-6")}>
-          <Minimize2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
+
+        <button
+          onClick={() => setMinimized(true)}
+          className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0", isMobile ? "h-10 w-10" : "h-6 w-6")}
+          title="Minimizar"
+          aria-label="Minimizar"
+        >
+          <Minimize2 className={cn(isMobile ? "h-4 w-4" : "h-3 w-3")} style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
         </button>
-        <button onClick={handleClose} className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors", isMobile ? "h-10 w-10 bg-background/50 border border-border/40" : "h-6 w-6")}>
-          <X className={cn(isMobile ? "h-4 w-4" : "h-3 w-3")} style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
+
+        <button
+          onClick={handleClose}
+          className={cn(
+            "flex items-center justify-center rounded-md transition-colors shrink-0",
+            isMobile
+              ? "h-11 w-11 ml-1 bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 active:bg-destructive/35"
+              : "h-6 w-6 hover:bg-white/5"
+          )}
+          title="Fechar"
+          aria-label="Fechar Joi"
+        >
+          <X className={cn(isMobile ? "h-5 w-5" : "h-3 w-3")} style={{ color: isMobile ? 'hsl(0 80% 70%)' : 'hsl(190 100% 50% / 0.6)' }} />
         </button>
       </div>
 
