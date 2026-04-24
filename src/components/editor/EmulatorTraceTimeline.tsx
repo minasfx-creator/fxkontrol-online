@@ -149,7 +149,7 @@ export default function EmulatorTraceTimeline({
       </svg>
 
       <div className={cn('text-[7px] uppercase tracking-widest mt-0.5',
-        state === 'running' ? 'text-amber-400'
+        state === 'running' ? 'text-fx-warning'
           : state === 'paused' ? 'text-muted-foreground'
             : 'text-muted-foreground/60')}>
         {state}
