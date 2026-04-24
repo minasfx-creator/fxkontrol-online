@@ -36,6 +36,7 @@ const PlatformStatus = lazy(lazyRetry(() => import("./pages/PlatformStatus")));
 const JoiPanel = lazy(lazyRetry(() => import("./ai/ui/JoiPanel")));
 const SwarmGPT = lazy(lazyRetry(() => import("./pages/SwarmGPT")));
 const DmxPyroDiagnostics = lazy(lazyRetry(() => import("./components/diagnostics/DmxPyroDiagnostics")));
+const NetworkSettings = lazy(lazyRetry(() => import("./pages/NetworkSettings")));
 
 const queryClient = new QueryClient();
 
@@ -93,6 +94,7 @@ function App() {
                       
                       <Route path="/field-test" element={<FieldTest />} />
                       <Route path="/settings" element={<Settings />} />
+                      <Route path="/settings/network" element={<NetworkSettings />} />
                       <Route path="/platform-status" element={<PlatformStatus />} />
                       <Route path="/admin" element={<Admin />} />
                       <Route path="/accreditation" element={<AccreditationDashboard />} />
