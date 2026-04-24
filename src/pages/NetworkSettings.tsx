@@ -1,12 +1,16 @@
 /**
  * ─── Network Settings ──────────────────────────────────────────────
- * Configure transport (Art-Net / sACN / Serial), hostname, port,
- * WebSocket relay and run a real connection test.
+ * Configure transport protocol (Art-Net / sACN), endpoint hostname/port,
+ * optional WebSocket relay, and run a real connectivity test against
+ * the configured node via the artnet-bridge edge function.
  *
  * Persists to localStorage via useNetworkConfigStore.
  */
 import { useState, useCallback } from "react";
-import { Network, Wifi, Cable, Activity, Save, RotateCcw, Loader2, CheckCircle2, XCircle, AlertTriangle, Lightbulb, Copy } from "lucide-react";
+import {
+  Network, Wifi, Activity, Save, RotateCcw, Loader2,
+  CheckCircle2, XCircle, AlertTriangle, Lightbulb, Copy,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +23,6 @@ import {
   defaultPortForProtocol,
   type TransportProtocol,
 } from "@/store/useNetworkConfigStore";
-import { isWebSerialSupported } from "@/lib/usbEngine";
 
 type StepStatus = "pending" | "running" | "ok" | "fail" | "skip";
 interface TestStep {
@@ -45,9 +48,6 @@ const EMPTY_RESULT: TestResult = { status: "idle", steps: [] };
 /** Map low-level errors to actionable hints. */
 function diagnoseError(message: string, protocol: TransportProtocol): string | undefined {
   const m = message.toLowerCase();
-  if (m.includes("permissions policy") || m.includes("disallowed")) {
-    return "Open the app in a new tab — WebSerial/USB are blocked inside the editor iframe.";
-  }
   if (m.includes("failed to fetch") || m.includes("networkerror") || m.includes("load failed")) {
     return "The browser couldn't reach the backend. Check your internet connection or VPN.";
   }
@@ -65,7 +65,6 @@ function diagnoseError(message: string, protocol: TransportProtocol): string | u
   return undefined;
 }
 
-
 const PROTOCOLS: Array<{
   id: TransportProtocol;
   name: string;
@@ -74,7 +73,6 @@ const PROTOCOLS: Array<{
 }> = [
   { id: "artnet", name: "Art-Net 4", icon: Wifi, desc: "UDP 6454 — DMX over Ethernet (most common)" },
   { id: "sacn", name: "sACN (E1.31)", icon: Network, desc: "UDP 5568 — Streaming ACN multicast" },
-  { id: "serial", name: "USB Serial", icon: Cable, desc: "DMX via USB-C/Lightning adapter (WebSerial)" },
 ];
 
 export default function NetworkSettings() {
@@ -106,19 +104,12 @@ export default function NetworkSettings() {
 
   const runTest = useCallback(async () => {
     const startedAt = performance.now();
-    // Build the step list up-front so the user sees the plan immediately.
-    const steps: TestStep[] =
-      protocol === "serial"
-        ? [
-            { id: "browser", label: "Browser supports WebSerial", status: "pending" },
-            { id: "ports", label: "Enumerate authorized ports", status: "pending" },
-          ]
-        : [
-            { id: "validate", label: "Validate endpoint", status: "pending" },
-            { id: "edge", label: "Reach artnet-bridge edge function", status: "pending" },
-            { id: "probe", label: `Probe ${endpoint.hostname}:${endpoint.port}`, status: "pending" },
-            { id: "reply", label: "Wait for ArtPoll replies", status: "pending" },
-          ];
+    const steps: TestStep[] = [
+      { id: "validate", label: "Validate endpoint", status: "pending" },
+      { id: "edge", label: "Reach artnet-bridge edge function", status: "pending" },
+      { id: "probe", label: `Probe ${endpoint.hostname}:${endpoint.port}`, status: "pending" },
+      { id: "reply", label: "Wait for ArtPoll replies", status: "pending" },
+    ];
 
     setTest({ status: "running", steps });
 
@@ -146,37 +137,13 @@ export default function NetworkSettings() {
     };
 
     try {
-      if (protocol === "serial") {
-        await runStep("browser", () => {
-          if (!isWebSerialSupported()) {
-            throw new Error("WebSerial unavailable. Use Chrome/Edge desktop or open outside of an iframe.");
-          }
-          return true;
-        });
-        const ports = await runStep("ports", async () => {
-          return await (navigator as unknown as { serial: { getPorts: () => Promise<unknown[]> } }).serial.getPorts();
-        });
-        const totalMs = Math.round(performance.now() - startedAt);
-        setTest((prev) => ({
-          ...prev,
-          status: "ok",
-          latencyMs: totalMs,
-          message: `WebSerial OK — ${ports.length} authorized port(s)`,
-          detail: ports.length === 0
-            ? "No port granted yet. Open the DMX Output panel and click 'Open Port' to grant access."
-            : `${ports.length} previously authorized port(s) ready to open.`,
-        }));
-        return;
-      }
-
-      // Art-Net / sACN
       await runStep("validate", () => {
         if (!endpoint.hostname.trim()) throw new Error("Hostname is required");
         if (endpoint.port < 1 || endpoint.port > 65535) throw new Error("Port must be 1–65535");
         return true;
       });
 
-      const { data, error } = await runStep("edge", async () => {
+      const { data } = await runStep("edge", async () => {
         const r = await supabase.functions.invoke("artnet-bridge", {
           body: { action: "poll", targetIp: endpoint.hostname, targetPort: endpoint.port },
         });
@@ -193,7 +160,6 @@ export default function NetworkSettings() {
 
       const replies = await runStep("reply", () => {
         const nodes: unknown[] = Array.isArray(data?.nodes) ? data.nodes : [];
-        // Not receiving replies isn't a hard failure — many networks block broadcast.
         return nodes.length;
       });
 
@@ -219,7 +185,6 @@ export default function NetworkSettings() {
         message: "Connection test failed",
         detail: message,
         hint: diagnoseError(message, protocol),
-        // Mark remaining pending steps as skipped so the UI stays coherent.
         steps: prev.steps.map((s) => (s.status === "pending" ? { ...s, status: "skip" } : s)),
       }));
       toast.error("Connection test failed", { description: message });
@@ -252,7 +217,7 @@ export default function NetworkSettings() {
             <div>
               <h1 className="text-xl font-bold text-foreground">Network Settings</h1>
               <p className="text-xs text-muted-foreground">
-                Configure real hardware transport — Art-Net, sACN, or USB Serial
+                Configure real hardware transport — Art-Net or sACN over IP
               </p>
             </div>
           </div>
@@ -266,7 +231,7 @@ export default function NetworkSettings() {
           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Transport Protocol
           </Label>
-          <div className="grid sm:grid-cols-3 gap-2">
+          <div className="grid sm:grid-cols-2 gap-2">
             {PROTOCOLS.map((p) => {
               const Icon = p.icon;
               const active = protocol === p.id;
@@ -291,69 +256,48 @@ export default function NetworkSettings() {
         </section>
 
         {/* Endpoint */}
-        {protocol !== "serial" && (
-          <section className="space-y-3 rounded-lg border border-border bg-card p-4">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Endpoint
-            </Label>
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-2 space-y-1.5">
-                <Label htmlFor="hostname" className="text-xs">Hostname / IP</Label>
-                <Input
-                  id="hostname"
-                  value={endpoint.hostname}
-                  onChange={(e) => setEndpoint({ hostname: e.target.value.trim() })}
-                  placeholder="192.168.1.100"
-                  className="font-mono text-sm"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="port" className="text-xs">Port</Label>
-                <Input
-                  id="port"
-                  type="number"
-                  min={1}
-                  max={65535}
-                  value={endpoint.port}
-                  onChange={(e) => setEndpoint({ port: Number(e.target.value) || 0 })}
-                  className="font-mono text-sm"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="wsRelay" className="text-xs">WebSocket Relay (optional)</Label>
+        <section className="space-y-3 rounded-lg border border-border bg-card p-4">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Endpoint
+          </Label>
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-2 space-y-1.5">
+              <Label htmlFor="hostname" className="text-xs">Hostname / IP</Label>
               <Input
-                id="wsRelay"
-                value={endpoint.wsRelayUrl}
-                onChange={(e) => setEndpoint({ wsRelayUrl: e.target.value.trim() })}
-                placeholder="wss://relay.example.com/artnet"
+                id="hostname"
+                value={endpoint.hostname}
+                onChange={(e) => setEndpoint({ hostname: e.target.value.trim() })}
+                placeholder="192.168.1.100"
                 className="font-mono text-sm"
               />
-              <p className="text-[10px] text-muted-foreground">
-                Required only for direct browser→UDP relays. Leave empty to use the built-in edge function.
-              </p>
             </div>
-          </section>
-        )}
-
-        {protocol === "serial" && (
-          <section className="rounded-lg border border-border bg-card p-4 flex items-start gap-3">
-            <Cable className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-            <div className="text-xs space-y-1">
-              <p className="font-semibold text-foreground">USB Serial DMX</p>
-              <p className="text-muted-foreground leading-relaxed">
-                No IP/port required. Connect a DMX adapter (Enttec, FTDI, Showven) and grant access from the DMX
-                Output panel. WebSerial only works in Chrome/Edge desktop or Android — not inside the editor iframe.
-              </p>
-              {!isWebSerialSupported() && (
-                <div className="mt-2 flex items-center gap-1.5 text-amber-400">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  <span className="text-[11px]">WebSerial unavailable in this browser/context.</span>
-                </div>
-              )}
+            <div className="space-y-1.5">
+              <Label htmlFor="port" className="text-xs">Port</Label>
+              <Input
+                id="port"
+                type="number"
+                min={1}
+                max={65535}
+                value={endpoint.port}
+                onChange={(e) => setEndpoint({ port: Number(e.target.value) || 0 })}
+                className="font-mono text-sm"
+              />
             </div>
-          </section>
-        )}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="wsRelay" className="text-xs">WebSocket Relay (optional)</Label>
+            <Input
+              id="wsRelay"
+              value={endpoint.wsRelayUrl}
+              onChange={(e) => setEndpoint({ wsRelayUrl: e.target.value.trim() })}
+              placeholder="wss://relay.example.com/artnet"
+              className="font-mono text-sm"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Required only for direct browser→UDP relays. Leave empty to use the built-in edge function.
+            </p>
+          </div>
+        </section>
 
         {/* Advanced */}
         <section className="space-y-4 rounded-lg border border-border bg-card p-4">
@@ -364,7 +308,7 @@ export default function NetworkSettings() {
             <div>
               <Label htmlFor="failover" className="text-sm">Auto failover</Label>
               <p className="text-[11px] text-muted-foreground">
-                Switch to next transport if active link drops (Art-Net → sACN → Serial)
+                Switch to the alternate transport if the active link drops (Art-Net ↔ sACN)
               </p>
             </div>
             <Switch id="failover" checked={autoFailover} onCheckedChange={setAutoFailover} />
