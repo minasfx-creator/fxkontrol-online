@@ -451,6 +451,9 @@ export default function DmxPyroDiagnostics() {
         )}
       </section>
 
+      {/* Threshold configuration */}
+      <ThresholdsConfig />
+
       {/* Findings */}
       <section className="rounded border border-border/30 bg-card/40">
         <header className="px-3 py-2 border-b border-border/20 text-[10px] font-mono uppercase tracking-widest text-muted-foreground/70">
