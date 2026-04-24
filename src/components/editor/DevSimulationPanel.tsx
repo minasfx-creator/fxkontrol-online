@@ -8,15 +8,27 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { TransportEmulator } from '@/dev/transportEmulator';
 import { EMU_PROFILES, EMU_PROFILE_DESCRIPTIONS, type EmuProfileName } from '@/dev/emulatorProfiles';
+import { FieldBugRecorder, isValidBugBundle, type BugBundle } from '@/dev/fieldBugRecorder';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { FlaskConical, PlugZap, Radio, Download, Trash2, Play, Square, Upload, SkipForward, Pause, FastForward } from 'lucide-react';
+import { FlaskConical, PlugZap, Radio, Download, Trash2, Play, Square, Upload, SkipForward, Pause, FastForward, Bug, Circle } from 'lucide-react';
 
 const EmulatorTraceTimeline = lazy(() => import('./EmulatorTraceTimeline'));
 
 const isDev = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV ?? false;
+
+function downloadBundle(bundle: BugBundle) {
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `fxk-bug-${bundle.profile}-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function DevSimulationPanel() {
   const [enabled, setEnabled] = useState(false);
@@ -35,12 +47,20 @@ export default function DevSimulationPanel() {
   const [filteredIdx, setFilteredIdx] = useState<number[]>([]);
   const [bpHit, setBpHit] = useState<number | null>(null);
   const [inspect, setInspect] = useState<number | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [recordElapsed, setRecordElapsed] = useState(0);
+  const [bugNotes, setBugNotes] = useState('');
+  const [showBugDialog, setShowBugDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const emuRef = useRef<TransportEmulator | null>(null);
+  const recRef = useRef<FieldBugRecorder>(new FieldBugRecorder());
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const teardown = useCallback(() => {
     if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
+    if (recRef.current.isRecording()) recRef.current.cancel();
+    setRecording(false);
+    setRecordElapsed(0);
     if (emuRef.current) { emuRef.current.destroy(); emuRef.current = null; }
     setTx(0); setRx(0); setConnected(true);
   }, []);
@@ -67,6 +87,7 @@ export default function DevSimulationPanel() {
       setTx(stats.tx);
       setRx(stats.rx);
       setReplay(rs);
+      if (recRef.current.isRecording()) setRecordElapsed(recRef.current.getElapsedMs());
     }, 250);
   }, [teardown]);
 
@@ -99,16 +120,39 @@ export default function DevSimulationPanel() {
     try {
       const text = await file.text();
       const parsed = JSON.parse(text);
-      emuRef.current.loadTrace(parsed); // throws on invalid shape
+      // Accept either a raw exported trace OR a full BugBundle.
+      const trace = isValidBugBundle(parsed) ? parsed.trace : parsed;
+      emuRef.current.loadTrace(trace);
       setReplay(emuRef.current.getReplayStatus());
       setFrames(emuRef.current.getReplayFrames());
       setFilteredIdx(emuRef.current.getFilteredIndices());
       setBpHit(null);
       setInspect(null);
+      if (isValidBugBundle(parsed)) {
+        console.info('[DevSim] loaded bug bundle:', {
+          profile: parsed.profile, notes: parsed.notes, capturedAt: parsed.capturedAt,
+        });
+      }
     } catch (e) {
       console.error('[DevSim] trace load failed:', e);
     }
   }, []);
+
+  const startRecording = useCallback(() => {
+    if (!emuRef.current) return;
+    recRef.current.start(emuRef.current, profile);
+    setRecording(true);
+    setRecordElapsed(0);
+  }, [profile]);
+
+  const stopRecordingAndExport = useCallback(() => {
+    const bundle = recRef.current.stop(bugNotes);
+    setRecording(false);
+    setShowBugDialog(false);
+    setBugNotes('');
+    if (!bundle) return;
+    downloadBundle(bundle);
+  }, [bugNotes]);
 
   const buildFilter = useCallback((): ((d: string) => boolean) | undefined => {
     const q = filter.trim();
@@ -134,6 +178,7 @@ export default function DevSimulationPanel() {
   const handleSeek = useCallback((idx: number) => {
     emuRef.current?.seekReplay(idx);
     setReplay(emuRef.current!.getReplayStatus());
+    setInspect(idx); // sync inspector with cursor — keeps mental model coherent
   }, []);
 
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -211,6 +256,64 @@ export default function DevSimulationPanel() {
           <Trash2 className="w-3 h-3" /> CLEAR
         </Button>
       </div>
+
+      {/* ── Field Bug Recorder ─────────────────────────────────── */}
+      <div className="flex items-center gap-1 mt-1 p-1.5 rounded border border-dashed border-red-500/30 bg-red-500/5">
+        <Bug className="w-3 h-3 text-red-400" />
+        <span className="text-[7px] text-muted-foreground uppercase tracking-widest mr-1">Field Bug Recorder</span>
+        {recording ? (
+          <>
+            <Circle className="w-2 h-2 fill-red-400 text-red-400 animate-pulse" />
+            <span className="text-[8px] text-red-400 font-bold">REC {(recordElapsed / 1000).toFixed(1)}s</span>
+            <span className="text-[7px] text-muted-foreground ml-1">tx:{tx} rx:{rx}</span>
+            <Button size="sm" variant="ghost" onClick={() => setShowBugDialog(true)}
+              className="h-6 px-2 text-[8px] gap-1 text-red-400 ml-auto">
+              <Square className="w-3 h-3" /> STOP & EXPORT
+            </Button>
+            <Button size="sm" variant="ghost"
+              onClick={() => { recRef.current.cancel(); setRecording(false); setRecordElapsed(0); }}
+              className="h-6 px-2 text-[8px] text-muted-foreground">
+              CANCEL
+            </Button>
+          </>
+        ) : (
+          <>
+            <span className="text-[7px] text-muted-foreground ml-auto mr-1">
+              capture session → bundle JSON for engineering
+            </span>
+            <Button size="sm" variant="ghost" disabled={!enabled} onClick={startRecording}
+              className="h-6 px-2 text-[8px] gap-1 text-red-400">
+              <Circle className="w-3 h-3" /> START REC
+            </Button>
+          </>
+        )}
+      </div>
+
+      {showBugDialog && (
+        <div className="flex flex-col gap-1 p-2 rounded border border-red-500/30 bg-red-500/5">
+          <span className="text-[8px] text-muted-foreground uppercase tracking-widest">
+            Bug Notes (repro steps, observed vs expected)
+          </span>
+          <Textarea
+            value={bugNotes}
+            onChange={(e) => setBugNotes(e.target.value)}
+            placeholder={'e.g. "After 3rd FIRE cmd on Safari iOS 17, link drops without RECONNECT"'}
+            className="text-[10px] min-h-[60px]"
+            autoFocus
+          />
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="ghost"
+              onClick={() => { setShowBugDialog(false); setBugNotes(''); }}
+              className="h-6 px-2 text-[8px] text-muted-foreground">
+              CANCEL
+            </Button>
+            <Button size="sm" variant="default" onClick={stopRecordingAndExport}
+              className="h-6 px-2 text-[8px] gap-1 ml-auto">
+              <Download className="w-3 h-3" /> EXPORT BUG BUNDLE
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Replay row — only when a trace is loaded */}
       {replay.total > 0 && (

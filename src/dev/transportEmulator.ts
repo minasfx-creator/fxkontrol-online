@@ -351,6 +351,9 @@ export class TransportEmulator {
       // Breakpoint check — auto-pause BEFORE delivery so the user can inspect.
       if (this.replayBreakpoint && this.replayBreakpoint(frame)) {
         this.replayState = 'paused';
+        // Advance cursor PAST the trapped frame so RESUME doesn't re-trigger
+        // the same breakpoint immediately (classic debugger semantics).
+        this.replayCursor = idx + 1;
         for (const l of this.breakpointListeners) l(frame, idx);
         return;
       }
@@ -438,13 +441,19 @@ export class TransportEmulator {
     return this.replayFrames;
   }
 
-  /** Returns indices that pass the active filter — for timeline highlighting. */
+  /**
+   * Returns indices that pass the active filter — for timeline highlighting.
+   * Filter applies ONLY to RX frames (TX is always considered out-of-scope
+   * since the filter targets payloads coming from the device). When a filter
+   * is active and a frame is TX, it is dimmed alongside non-matching RX so the
+   * visual semantics stay coherent ("highlight = matches filter").
+   */
   getFilteredIndices(): number[] {
     if (!this.replayFilter) return this.replayFrames.map((_, i) => i);
     const out: number[] = [];
     for (let i = 0; i < this.replayFrames.length; i++) {
       const f = this.replayFrames[i];
-      if (f.dir !== 'rx') { out.push(i); continue; }
+      if (f.dir === 'tx') continue; // dim TX when filter is active
       if (this.replayFilter(f.data)) out.push(i);
     }
     return out;
