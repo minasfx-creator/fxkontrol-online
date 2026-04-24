@@ -37,7 +37,6 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
   const [cdsStatus, setCdsStatus] = useState<boolean[]>(Array(32).fill(false));
   const [cdsTesting, setCdsTesting] = useState(false);
   const [cdsLastTest, setCdsLastTest] = useState<number | null>(null);
-  const [cdsSimMode, setCdsSimMode] = useState(false);
   const bleAvailable = isWebBluetoothAvailable();
 
   const handleScan = async () => {
@@ -80,33 +79,20 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
 
   const handleTestCDS = async () => {
     setCdsTesting(true);
-    if (cdsSimMode) {
-      // Simulation: random channels with staggered reveal
+    try {
+      await fieldTestEngine.bleTestCDS();
       setTimeout(() => {
-        const simulated = Array(32).fill(false).map(() => Math.random() > 0.35);
-        setCdsStatus(simulated);
+        const status = fieldTestEngine.bleCdsStatus;
+        setCdsStatus([...status]);
         setCdsLastTest(Date.now());
         setCdsTesting(false);
-        const active = simulated.filter(Boolean).length;
-        toast.success(`⚡ SIM CDS: ${active}/32 ignitores detectados`);
+        const active = status.filter(Boolean).length;
+        toast.success(`CDS: ${active}/32 ignitores detectados`);
         haptics.success();
-      }, 600);
-    } else {
-      try {
-        await fieldTestEngine.bleTestCDS();
-        setTimeout(() => {
-          const status = fieldTestEngine.bleCdsStatus;
-          setCdsStatus([...status]);
-          setCdsLastTest(Date.now());
-          setCdsTesting(false);
-          const active = status.filter(Boolean).length;
-          toast.success(`CDS: ${active}/32 ignitores detectados`);
-          haptics.success();
-        }, 800);
-      } catch (err: any) {
-        setCdsTesting(false);
-        toast.error(err.message || 'Erro no teste CDS');
-      }
+      }, 800);
+    } catch (err: any) {
+      setCdsTesting(false);
+      toast.error(err.message || 'Erro no teste CDS');
     }
   };
 
@@ -257,7 +243,7 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
       )}
 
       {/* ─── CDS Continuity Visual Grid ─── */}
-      {(connectedId || cdsSimMode) && (
+      {connectedId && (
         <div className="mt-4 space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -267,21 +253,6 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              {/* Sim toggle */}
-              <button
-                className={cn(
-                  "text-[7px] px-1.5 py-0.5 rounded font-mono uppercase border",
-                  cdsSimMode
-                    ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                    : "text-muted-foreground border-border/30"
-                )}
-                onClick={() => {
-                  setCdsSimMode(!cdsSimMode);
-                  if (!cdsSimMode) setCdsStatus(Array(32).fill(false));
-                }}
-              >
-                {cdsSimMode ? '⚡ SIM' : '📡 HW'}
-              </button>
               <Badge variant="outline" className={cn(
                 "text-[8px] h-4 px-1.5 font-mono",
                 activeChannels > 0 ? "border-green-500/40 text-green-400" : "border-muted-foreground/30 text-muted-foreground"
@@ -811,26 +782,13 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
         if (!e.message?.includes('cancelled')) toast.error(e.message);
       }
     } else {
-      // Realtime: simulate discovery via session peer presence
+      // Realtime LAN/WAN: peer modules announce themselves over the session
+      // channel. Wait briefly to give the channel time to deliver presence.
       await new Promise(r => setTimeout(r, 800));
-      if (session.peerConnected) {
-        const mod: DiscoveredModule = {
-          id: `rt-${session.code}-${Date.now()}`,
-          name: `FXK-M1 [${session.code}]`,
-          moduleNumber: discoveredModules.length + 1,
-          rssi: session.transport === 'realtime-lan' ? -45 : -72,
-          channels: 32,
-          status: 'online',
-          lastSeen: Date.now(),
-        };
-        setDiscoveredModules(prev => {
-          const hasPeer = prev.some(m => m.name.includes(session.code));
-          if (hasPeer) return prev;
-          return [...prev, mod];
-        });
-        toast.success('Módulo peer detectado');
-      } else {
+      if (!session.peerConnected) {
         toast.info('Nenhum módulo online — aguardando peer');
+      } else {
+        toast.info('Aguardando anúncio do peer pela sessão');
       }
     }
     setScanningModules(false);

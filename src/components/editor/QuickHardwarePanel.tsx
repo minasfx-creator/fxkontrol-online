@@ -603,7 +603,6 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
             deviceName={otaDevice?.name}
             deviceAddr={otaDevice?.addr}
             deviceTarget={otaDevice?.target}
-            simMode={simMode}
           />
         </Suspense>
       </>
