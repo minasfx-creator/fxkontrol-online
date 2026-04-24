@@ -136,23 +136,39 @@ export function isRetryableCommandType(t: BridgeCommandType): boolean {
   return RETRYABLE_COMMAND_TYPES.has(t);
 }
 
-/** Default per-class retry rules. */
+/**
+ * Default per-class retry rules.
+ *
+ * Only retryable command classes are listed (CONT/CDS). Heartbeat/version are
+ * driven by their own loops and never use `readWithRetry`.
+ */
 export const DEFAULT_RETRY_POLICY: Readonly<Partial<Record<BridgeCommandType, BridgeRetryRule>>> = Object.freeze({
-  HEARTBEAT: { maxRetries: 1, perAttemptTimeoutMs: 1000 },
-  VERSION:   { maxRetries: 1, perAttemptTimeoutMs: 1000 },
-  STATUS:    { maxRetries: 2, perAttemptTimeoutMs: 1500 },
-  CONT:      { maxRetries: 2, perAttemptTimeoutMs: 1500 },
-  CDS:       { maxRetries: 2, perAttemptTimeoutMs: 1500 },
+  CONT: { maxRetries: 2, perAttemptTimeoutMs: 2000 },
+  CDS:  { maxRetries: 2, perAttemptTimeoutMs: 2000 },
 });
 
-/** Default rate limit for retry attempts (per command class, per second). */
-export const DEFAULT_RETRY_RATE_LIMIT = 5;
+/**
+ * Default rate limit for retry attempts. Sliding window:
+ *  - per-key:  10 retries / 60s
+ *  - total:    60 retries / 60s
+ */
+export const DEFAULT_RETRY_RATE_LIMIT: Readonly<{
+  windowMs: number;
+  maxRetriesPerKey: number;
+  maxRetriesTotal: number;
+}> = Object.freeze({
+  windowMs: 60_000,
+  maxRetriesPerKey: 10,
+  maxRetriesTotal: 60,
+});
 
 /** Internal pending-response record (session-scoped to drop stale frames). */
 interface PendingResponse {
+  key: string;
   resolver: (value: string) => void;
   sessionId: number;
   commandType: BridgeCommandType;
+  createdAt: number;
 }
 
 // BLE Service/Characteristic UUIDs (custom for FXK-ESP32)
