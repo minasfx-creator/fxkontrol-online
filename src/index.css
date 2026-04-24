@@ -387,6 +387,42 @@
       inset 0 1px 0 hsl(var(--glass-shine));
   }
 
+  /* SwarmGPT Commander — cyan/violet tinted glass for Core rail */
+  .glass-core {
+    background:
+      linear-gradient(135deg,
+        hsl(var(--fxk-cyan) / 0.08) 0%,
+        hsl(var(--fxk-violet) / 0.06) 100%),
+      hsl(var(--glass-frosted));
+    backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+    border: 1px solid hsl(var(--fxk-cyan) / 0.22);
+    box-shadow:
+      inset 0 1px 0 hsl(var(--fxk-cyan) / 0.14),
+      0 8px 32px hsl(220 30% 1% / 0.5);
+  }
+
+  /* SwarmGPT Commander — amber tinted warn glass for Safety Layer */
+  .glass-warn {
+    background:
+      linear-gradient(135deg,
+        hsl(var(--fxk-amber) / 0.10) 0%,
+        hsl(var(--fxk-orange) / 0.06) 100%),
+      hsl(var(--glass-frosted));
+    backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+    border: 1px solid hsl(var(--fxk-amber) / 0.28);
+    box-shadow: inset 0 1px 0 hsl(var(--fxk-amber) / 0.16);
+  }
+
+  /* SwarmGPT Commander — 42px dotted grid for Stage zone */
+  .commander-grid-bg {
+    background-image:
+      radial-gradient(hsl(var(--fxk-cyan) / 0.10) 1px, transparent 1px);
+    background-size: 42px 42px;
+    background-position: 0 0;
+  }
+
   /* Auth background grid */
   .auth-bg-grid {
     background-image:
