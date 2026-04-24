@@ -1145,20 +1145,45 @@ export class FireOneHardwareBridge {
     this.deviceName = deviceName;
     this.lastPing = Date.now();
     this.linkHealth = 'handshaking';
-    const ok = await this.waitForHandshake();
+    // Stamp this attempt. If `connectingSessionId` advances mid-handshake
+    // (handleDisconnect or a competing connect), we abort with STALE_SESSION.
+    const handshakeSession = ++this.connectingSessionId;
+    const ok = await this.waitForHandshake(3000, handshakeSession);
     if (!ok) {
-      this.lastError = `Handshake timeout (${transport})`;
-      this.handleDisconnect();
+      // Don't overwrite a more specific reason set by handleDisconnect /
+      // stale-session detection in waitForHandshake.
+      if (!this.lastErrorCode || this.lastErrorCode === 'OK') {
+        this.lastErrorCode = 'HANDSHAKE_TIMEOUT';
+      }
+      this.lastError = this.lastError ?? `Handshake failed (${transport})`;
+      // Only call handleDisconnect if we still have transport state to clean
+      // up — handleDisconnect may have already run via drain path.
+      if (this.connected || this.transport !== 'none') {
+        this.handleDisconnect(this.lastErrorCode);
+      } else if (this.linkHealth !== 'disconnected') {
+        this.linkHealth = 'disconnected';
+      }
       return false;
     }
+    // Successful handshake — promote session.
+    this.sessionId++;
     this.connected = true;
     this.lastError = undefined;
+    this.lastErrorCode = 'OK';
     this.linkHealth = 'healthy';
     this.onConnect();
     return true;
   }
 
-  private async waitForHandshake(timeoutMs = 3000): Promise<boolean> {
+  /**
+   * Wait for first PONG or VER frame within `timeoutMs`. Honors stale-session
+   * detection: if `connectingSessionId` advances while we wait, this resolves
+   * `false` and records `STALE_SESSION` so the caller surfaces the right code.
+   * Also resolves `false` on the disconnect-drain sentinel (empty resolver
+   * value) without recording a redundant error code (handleDisconnect already
+   * set TRANSPORT_DISCONNECTED).
+   */
+  private async waitForHandshake(timeoutMs = 3000, expectedSession?: number): Promise<boolean> {
     return new Promise((resolve) => {
       let done = false;
       let timer: ReturnType<typeof setTimeout> | null = null;
@@ -1170,8 +1195,20 @@ export class FireOneHardwareBridge {
         this.pendingResolves.delete('VER:');
         resolve(ok);
       };
-      this.registerPending('PONG', 'HEARTBEAT', () => finish(true));
-      this.registerPending('VER:', 'VERSION', () => finish(true));
+      const handle = (val: string) => {
+        // Empty-string sentinel from handleDisconnect drain.
+        if (!val) { finish(false); return; }
+        // Stale-session check: did a competing connect/disconnect happen?
+        if (expectedSession !== undefined && this.connectingSessionId !== expectedSession) {
+          this.lastErrorCode = 'STALE_SESSION';
+          this.lastError = 'Handshake invalidated by newer session';
+          finish(false);
+          return;
+        }
+        finish(true);
+      };
+      this.registerPending('PONG', 'HEARTBEAT', handle);
+      this.registerPending('VER:', 'VERSION', handle);
       this.sendCommand('VERSION\n');
       this.sendCommand('HEARTBEAT\n');
       timer = setTimeout(() => finish(false), timeoutMs);
