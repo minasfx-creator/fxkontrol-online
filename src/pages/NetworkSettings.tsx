@@ -6,7 +6,7 @@
  * Persists to localStorage via useNetworkConfigStore.
  */
 import { useState, useCallback } from "react";
-import { Network, Wifi, Cable, Activity, Save, RotateCcw, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { Network, Wifi, Cable, Activity, Save, RotateCcw, Loader2, CheckCircle2, XCircle, AlertTriangle, Lightbulb, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,13 +21,50 @@ import {
 } from "@/store/useNetworkConfigStore";
 import { isWebSerialSupported } from "@/lib/usbEngine";
 
+type StepStatus = "pending" | "running" | "ok" | "fail" | "skip";
+interface TestStep {
+  id: string;
+  label: string;
+  status: StepStatus;
+  durationMs?: number;
+  detail?: string;
+}
 type TestStatus = "idle" | "running" | "ok" | "fail";
 interface TestResult {
   status: TestStatus;
   latencyMs?: number;
   message?: string;
   detail?: string;
+  hint?: string;
+  steps: TestStep[];
+  raw?: unknown;
 }
+
+const EMPTY_RESULT: TestResult = { status: "idle", steps: [] };
+
+/** Map low-level errors to actionable hints. */
+function diagnoseError(message: string, protocol: TransportProtocol): string | undefined {
+  const m = message.toLowerCase();
+  if (m.includes("permissions policy") || m.includes("disallowed")) {
+    return "Open the app in a new tab — WebSerial/USB are blocked inside the editor iframe.";
+  }
+  if (m.includes("failed to fetch") || m.includes("networkerror") || m.includes("load failed")) {
+    return "The browser couldn't reach the backend. Check your internet connection or VPN.";
+  }
+  if (m.includes("timeout") || m.includes("timed out")) {
+    return `The ${protocol.toUpperCase()} node didn't reply in time. Verify it's powered on and on the same subnet.`;
+  }
+  if (m.includes("hostname")) return "Enter a valid IPv4 (e.g. 192.168.1.100) or DNS hostname.";
+  if (m.includes("port")) return "Port must be between 1 and 65535.";
+  if (m.includes("websocket") || m.includes("ws://") || m.includes("wss://")) {
+    return "WebSocket relay rejected the connection. Verify the URL and that the relay is running.";
+  }
+  if (m.includes("not found") || m.includes("404")) {
+    return "Edge function not deployed. Try again in a few seconds or contact support.";
+  }
+  return undefined;
+}
+
 
 const PROTOCOLS: Array<{
   id: TransportProtocol;
