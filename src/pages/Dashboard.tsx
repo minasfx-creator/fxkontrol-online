@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
+import PwaInstallCard from '@/components/pwa/PwaInstallCard';
 import {
   Clapperboard, CalendarDays, Plus, FolderOpen,
   Zap, Rocket, Flame, Target, Clock, ArrowRight, Sparkles,
@@ -346,6 +347,7 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto pb-10 relative br2049-rain">
+      <PwaInstallCard />
       {/* ── Hero Banner — Military Cyberpunk HUD ──── */}
       <div className="relative overflow-hidden rounded border bg-surface-1 mb-5 animate-fxk-fade-up"
         style={{ borderColor: 'hsl(32 100% 50% / 0.15)' }}>

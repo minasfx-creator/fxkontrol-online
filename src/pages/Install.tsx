@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/sonner";
+import PwaInstallHero from "@/components/pwa/PwaInstallHero";
 
 type Platform = "ios" | "android" | "other";
 
@@ -103,6 +104,8 @@ export default function Install() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-6 space-y-6">
+        <PwaInstallHero />
+
         <section className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">Instalar FX Kontrol</h1>
           <p className="text-sm text-muted-foreground">
