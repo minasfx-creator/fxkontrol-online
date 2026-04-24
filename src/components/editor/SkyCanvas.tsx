@@ -214,7 +214,6 @@ function DroneRendererSwitch() {
 
 // --- Playback clock (wired through DeterministicClock → LockstepEngine) ---
 import { deterministicClock } from '@/core/time/deterministicClock';
-import { timelineClock } from '@/core/timeline/TimelineClock';
 import { timelineTransport } from '@/core/transport/timelineTransport';
 
 const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
@@ -1195,7 +1194,7 @@ function ViewportPlaybackControls() {
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const pct = Math.max(0, Math.min(1, (e.clientX - rect.left - 8) / (rect.width - 16)));
-          timelineClock.seek(pct * duration);
+          timelineTransport.seekTo(pct * duration);
         }}
       >
         <div className="relative w-full h-1 bg-border/30 rounded-full overflow-hidden">

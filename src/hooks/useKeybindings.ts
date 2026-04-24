@@ -7,7 +7,7 @@ import { useEffect, useCallback } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSceneStore } from '@/store/useSceneStore';
 import { toast } from 'sonner';
-import { timelineClock } from '@/core/timeline/TimelineClock';
+import { timelineTransport } from '@/core/transport/timelineTransport';
 
 // Clipboard for copy/paste
 let _clipboard: {
@@ -32,9 +32,7 @@ export function useKeybindings() {
     // ═══ Space: Play/Pause ═══
     if (e.code === 'Space' && !ctrl && !shift) {
       e.preventDefault();
-      const { isPlaying } = useProjectStore.getState();
-      if (isPlaying) timelineClock.pause();
-      else timelineClock.play();
+      timelineTransport.toggle();
       return;
     }
 

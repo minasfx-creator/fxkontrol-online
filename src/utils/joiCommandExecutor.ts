@@ -5,7 +5,7 @@
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import type { Effect } from '@/data/effectLibrary';
-import { timelineClock } from '@/core/timeline/TimelineClock';
+import { timelineTransport } from '@/core/transport/timelineTransport';
 import { toast } from 'sonner';
 import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { readinessEvaluator } from '@/core/hardware/ReadinessEvaluator';
@@ -306,18 +306,18 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
       }
 
       case 'play': {
-        timelineClock.play();
+        timelineTransport.play();
         return { action, success: true, label: `▶ Playback iniciado` };
       }
 
       case 'pause': {
-        timelineClock.pause();
+        timelineTransport.pause();
         return { action, success: true, label: `⏸ Playback pausado` };
       }
 
       case 'seek': {
         const t = params.time ?? 0;
-        timelineClock.seek(t);
+        timelineTransport.seekTo(t);
         return { action, success: true, label: `⏩ Seek para ${t.toFixed(1)}s` };
       }
 
