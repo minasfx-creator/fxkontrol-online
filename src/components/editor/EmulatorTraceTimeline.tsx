@@ -17,7 +17,12 @@ interface Props {
   frames: ReadonlyArray<TraceFrame>;
   cursor: number;     // index of next frame to deliver
   state: 'idle' | 'running' | 'paused';
+  /** Indices that pass the active filter — others render dimmed. */
+  filteredIndices?: ReadonlyArray<number>;
+  /** Index of last frame that hit a breakpoint (highlighted). */
+  breakpointIndex?: number | null;
   onSeek?: (index: number) => void;
+  onInspect?: (index: number) => void;
 }
 
 const LANE_HEIGHT = 18;
