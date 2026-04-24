@@ -11,8 +11,39 @@
  * Pure presentational. Accepts either a normalized FidelityData object
  * (preferred) or the legacy ModelParseResult.quality shape via a helper.
  */
-import { Activity, Target, Layers, Gauge } from 'lucide-react';
+import { Activity, Target, Layers, Gauge, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+/**
+ * Threshold configuration for color-coding fidelity metrics.
+ * Values are in 0..1 range. A metric ≥ `ok` is green, ≥ `warn` is yellow,
+ * below `warn` is red. Defaults follow the 0.7 / 0.4 convention.
+ */
+export interface FidelityThresholds {
+  coverage: { ok: number; warn: number };
+  distribution: { ok: number; warn: number };
+  /** Candidates per placed drone — ratio. Default ok=4, warn=1. */
+  candidateRatio: { ok: number; warn: number };
+}
+
+export const DEFAULT_FIDELITY_THRESHOLDS: FidelityThresholds = {
+  coverage: { ok: 0.7, warn: 0.4 },
+  distribution: { ok: 0.7, warn: 0.4 },
+  candidateRatio: { ok: 4, warn: 1 },
+};
+
+export interface FidelityRecommendation {
+  /** Which knob the operator should tweak. */
+  setting:
+    | 'minDistance'
+    | 'droneCount'
+    | 'maxCandidates'
+    | 'hollow'
+    | 'scale';
+  /** Human-readable advice (one line). */
+  message: string;
+  severity: 'warn' | 'critical';
+}
 
 export interface FidelityData {
   /** Number of candidate points generated from the raw mesh (pre-Poisson). */
@@ -35,16 +66,26 @@ interface Props {
   data: FidelityData;
   className?: string;
   compact?: boolean;
+  /** Override the default color-coding thresholds. */
+  thresholds?: Partial<FidelityThresholds>;
+  /** Hide the auto-generated recommendations panel. */
+  hideRecommendations?: boolean;
 }
 
 const fmtPct = (v: number) => `${Math.round(clamp01(v) * 100)}%`;
 const fmtInt = (v: number) => v.toLocaleString();
 const clamp01 = (v: number) => (Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0);
 
-function statusFor(value01: number): 'ok' | 'warn' | 'critical' {
+function statusFor(value01: number, t: { ok: number; warn: number }): 'ok' | 'warn' | 'critical' {
   const v = clamp01(value01);
-  if (v >= 0.7) return 'ok';
-  if (v >= 0.4) return 'warn';
+  if (v >= t.ok) return 'ok';
+  if (v >= t.warn) return 'warn';
+  return 'critical';
+}
+
+function statusForRatio(ratio: number, t: { ok: number; warn: number }): 'ok' | 'warn' | 'critical' {
+  if (ratio >= t.ok) return 'ok';
+  if (ratio >= t.warn) return 'warn';
   return 'critical';
 }
 
@@ -56,13 +97,116 @@ function statusColors(status: 'ok' | 'warn' | 'critical') {
   }
 }
 
-export default function FidelityReport({ data, className, compact = false }: Props) {
+/**
+ * Inspect the metrics and return ordered, actionable recommendations.
+ * Pure function — exported for tests / external panels.
+ */
+export function recommendFidelityFixes(
+  data: FidelityData,
+  thresholds: FidelityThresholds = DEFAULT_FIDELITY_THRESHOLDS,
+): FidelityRecommendation[] {
+  const recs: FidelityRecommendation[] = [];
+  const cov = clamp01(data.coverage);
+  const dist = clamp01(data.distribution);
+  const ratio = data.pointCount > 0 ? data.candidateCount / data.pointCount : 0;
+
+  if (cov < thresholds.coverage.warn) {
+    recs.push({
+      setting: 'minDistance',
+      severity: 'critical',
+      message: 'Coverage too low — reduce minDistance so points spread across the model.',
+    });
+    recs.push({
+      setting: 'droneCount',
+      severity: 'warn',
+      message: 'Increase drone count to fill the model footprint.',
+    });
+  } else if (cov < thresholds.coverage.ok) {
+    recs.push({
+      setting: 'minDistance',
+      severity: 'warn',
+      message: 'Coverage is borderline — try a slightly smaller minDistance.',
+    });
+  }
+
+  if (dist < thresholds.distribution.warn) {
+    recs.push({
+      setting: 'maxCandidates',
+      severity: 'critical',
+      message: 'Distribution is uneven — raise maxCandidates to give Poisson more samples.',
+    });
+    recs.push({
+      setting: 'hollow',
+      severity: 'warn',
+      message: 'Enable surface (hollow) sampling for area-weighted uniformity.',
+    });
+  } else if (dist < thresholds.distribution.ok) {
+    recs.push({
+      setting: 'maxCandidates',
+      severity: 'warn',
+      message: 'Distribution is borderline — bump maxCandidates by ~50%.',
+    });
+  }
+
+  if (data.pointCount > 0 && ratio < thresholds.candidateRatio.warn) {
+    recs.push({
+      setting: 'maxCandidates',
+      severity: 'critical',
+      message: 'Too few candidates per drone — raise maxCandidates substantially.',
+    });
+  } else if (ratio > 0 && ratio < thresholds.candidateRatio.ok) {
+    recs.push({
+      setting: 'maxCandidates',
+      severity: 'warn',
+      message: 'Candidate pool is thin — consider raising maxCandidates for cleaner spacing.',
+    });
+  }
+
+  if (data.boundingBox) {
+    const { width, height, depth } = data.boundingBox;
+    const maxDim = Math.max(width, height, depth);
+    if (maxDim > 0 && maxDim < 5) {
+      recs.push({
+        setting: 'scale',
+        severity: 'warn',
+        message: 'Model is very small — increase scale so minDistance is meaningful.',
+      });
+    }
+  }
+
+  // De-duplicate by setting, keeping the most severe.
+  const seen = new Map<string, FidelityRecommendation>();
+  for (const r of recs) {
+    const prev = seen.get(r.setting);
+    if (!prev || (prev.severity === 'warn' && r.severity === 'critical')) {
+      seen.set(r.setting, r);
+    }
+  }
+  return Array.from(seen.values());
+}
+
+export default function FidelityReport({
+  data,
+  className,
+  compact = false,
+  thresholds: thresholdsOverride,
+  hideRecommendations = false,
+}: Props) {
+  const thresholds: FidelityThresholds = {
+    coverage: { ...DEFAULT_FIDELITY_THRESHOLDS.coverage, ...(thresholdsOverride?.coverage ?? {}) },
+    distribution: { ...DEFAULT_FIDELITY_THRESHOLDS.distribution, ...(thresholdsOverride?.distribution ?? {}) },
+    candidateRatio: { ...DEFAULT_FIDELITY_THRESHOLDS.candidateRatio, ...(thresholdsOverride?.candidateRatio ?? {}) },
+  };
+
   const score = typeof data.score === 'number'
     ? Math.max(0, Math.min(100, Math.round(data.score)))
     : Math.round((clamp01(data.coverage) * 0.5 + clamp01(data.distribution) * 0.5) * 100);
 
-  const sStatus = score >= 70 ? 'ok' : score >= 40 ? 'warn' : 'critical';
+  const sStatus = score >= thresholds.coverage.ok * 100 ? 'ok'
+                : score >= thresholds.coverage.warn * 100 ? 'warn' : 'critical';
   const sColor = statusColors(sStatus);
+
+  const candidateRatio = data.pointCount > 0 ? data.candidateCount / data.pointCount : 0;
 
   const rows: Array<{
     icon: React.ElementType;
@@ -76,9 +220,8 @@ export default function FidelityReport({ data, className, compact = false }: Pro
       icon: Layers,
       label: 'Candidates',
       value: fmtInt(data.candidateCount),
-      status: data.candidateCount >= data.pointCount * 4 ? 'ok'
-            : data.candidateCount >= data.pointCount ? 'warn' : 'critical',
-      hint: 'Raw mesh samples fed to the Poisson selector',
+      status: statusForRatio(candidateRatio, thresholds.candidateRatio),
+      hint: `Raw mesh samples fed to the Poisson selector (${candidateRatio.toFixed(1)}× drones)`,
     },
     {
       icon: Target,
@@ -92,7 +235,7 @@ export default function FidelityReport({ data, className, compact = false }: Pro
       label: 'Coverage',
       value: fmtPct(data.coverage),
       bar01: clamp01(data.coverage),
-      status: statusFor(data.coverage),
+      status: statusFor(data.coverage, thresholds.coverage),
       hint: 'How well the points fill the model footprint',
     },
     {
@@ -100,10 +243,13 @@ export default function FidelityReport({ data, className, compact = false }: Pro
       label: 'Distribution',
       value: fmtPct(data.distribution),
       bar01: clamp01(data.distribution),
-      status: statusFor(data.distribution),
+      status: statusFor(data.distribution, thresholds.distribution),
       hint: 'Spatial uniformity of nearest-neighbor spacing',
     },
   ];
+
+  const recommendations = hideRecommendations ? [] : recommendFidelityFixes(data, thresholds);
+
 
   return (
     <div
@@ -166,6 +312,34 @@ export default function FidelityReport({ data, className, compact = false }: Pro
           );
         })}
       </div>
+
+      {/* Recommendations */}
+      {recommendations.length > 0 && (
+        <div className="space-y-1 pt-1 border-t border-border/40">
+          <div className="flex items-center gap-1">
+            <Lightbulb className="h-2.5 w-2.5 text-yellow-400" />
+            <span className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground">
+              Recommendations
+            </span>
+          </div>
+          {recommendations.map((r) => {
+            const c = statusColors(r.severity);
+            return (
+              <div
+                key={r.setting}
+                className={cn('flex items-start gap-1.5 px-1.5 py-1 rounded-sm border', c.bg)}
+              >
+                <span className={cn('text-[9px] font-bold uppercase shrink-0', c.text)}>
+                  {r.setting}
+                </span>
+                <span className="text-[9px] text-foreground/80 leading-tight">
+                  {r.message}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Footer: bbox */}
       {data.boundingBox && (
