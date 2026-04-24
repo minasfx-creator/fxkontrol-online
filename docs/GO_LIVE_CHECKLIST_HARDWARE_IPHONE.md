@@ -37,7 +37,6 @@ Para cada transporte utilizado no lançamento:
 - [ ] Em HTTPS, endpoints WebSocket usam `wss://` quando necessário.
 - [ ] Último erro de conexão (`lastError`) é exibido quando conexão falha.
 - [ ] Sem toast duplicado/falso de “desconectado” durante tentativas sem sessão ativa.
-- [ ] Sem toast duplicado/falso de "desconectado" durante tentativas sem sessão ativa.
 
 ## 5) Fallback e Degradação Controlada
 
@@ -59,7 +58,6 @@ Para cada transporte utilizado no lançamento:
 - [ ] Revisar permissões de rede/local bridge e CORS para produção.
 - [ ] Validar que chaves/tokens não estão expostas no cliente.
 - [ ] Rodar drill de “abort mission”: operação completa de parada segura.
-- [ ] Rodar drill de "abort mission": operação completa de parada segura.
 
 ## 8) Smoke Test de Campo (pré-show)
 

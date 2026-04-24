@@ -322,7 +322,7 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
                     ? 'CONECTANDO...'
                   : bridgeStatus?.linkHealth === 'handshaking'
                     ? 'HANDSHAKE...'
-                    : 'DESCONECTADO'}
+                  : 'DESCONECTADO'}
               </Badge>
             </div>
 
@@ -373,9 +373,9 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
               </p>
             )}
             {!bridgeStatus?.connected && bridgeStatus?.lastError && (
-              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-[7px] text-destructive/90 leading-tight">
-                Último erro de conexão: {bridgeStatus.lastError}
-              </div>
+              <p className="text-[8px] text-destructive/80">
+Último erro de conexão: {bridgeStatus.lastError}
+              </p>
             )}
 
             {/* RSSI / Distance indicator */}
@@ -412,7 +412,7 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
                 <button onClick={module.disconnectHardware} className="text-destructive/60 hover:text-destructive text-[7px]">
                   Desconectar
                 </button>
-              </div>
+</div>        \                                                                                           
             )}
           </div>
 

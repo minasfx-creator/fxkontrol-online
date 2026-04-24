@@ -34,10 +34,7 @@ interface ComplianceRow {
   requirement: string;
   status: ComplianceStatus | string;  // tolerate legacy lowercase rows
   evidence: string;
-  action?: string;
-  evidenceStatus?: EvidenceStatus;
-  nextAction?: string;
-  owner?: string;
+  action: string;
   criticalForGoLive?: boolean;
 }
 
@@ -74,14 +71,6 @@ const COMPLIANCE_DATA: ComplianceRow[] = [
   { source: 'NFPA 1126', clause: '§3.3', requirement: 'Proximate audience pyro safety distances', status: 'implemented', evidence: 'SafetyDistanceConfig proximity mode', action: 'None' },
   { source: 'NFPA 1126', clause: '§4.4', requirement: 'Fallback zone definition', status: 'implemented', evidence: 'PyroSafetyZones fallback volumes', action: 'None' },
   { source: 'NFPA 1126', clause: '§5.2', requirement: 'Fire watch and suppression equipment log', status: 'planned', evidence: 'AuditTrail can log events', action: 'Add fire watch checklist', criticalForGoLive: true },
-  { source: 'NFPA 1123', clause: '§4.3', requirement: 'Minimum safety distances for aerial shells', status: 'IMPLEMENTED', evidence: 'PyroSafetyZones.tsx + SafetyDistanceConfig', evidenceStatus: 'self_attested', nextAction: 'None', owner: 'Safety Eng' },
-  { source: 'NFPA 1123', clause: '§5.1', requirement: 'Operator qualification verification', status: 'PARTIAL', evidence: 'Auth + role system exists', evidenceStatus: 'self_attested', nextAction: 'Add credential check UI', owner: 'Platform', criticalForGoLive: true },
-  { source: 'NFPA 1123', clause: '§6.2', requirement: 'Electrical firing system safety interlocks', status: 'IMPLEMENTED', evidence: 'SafetyInterlockManager + ARM/DISARM flow', evidenceStatus: 'tested', nextAction: 'None', owner: 'Firmware' },
-  { source: 'NFPA 1123', clause: '§7.1', requirement: 'Weather monitoring and wind limits', status: 'PLANNED', evidence: 'WeatherAdapter interface defined', evidenceStatus: 'none', nextAction: 'Implement weather API integration', owner: 'Backend', criticalForGoLive: true },
-  // NFPA 1126
-  { source: 'NFPA 1126', clause: '§3.3', requirement: 'Proximate audience pyro safety distances', status: 'IMPLEMENTED', evidence: 'SafetyDistanceConfig proximity mode', evidenceStatus: 'self_attested', nextAction: 'None', owner: 'Safety Eng' },
-  { source: 'NFPA 1126', clause: '§4.4', requirement: 'Fallback zone definition', status: 'IMPLEMENTED', evidence: 'PyroSafetyZones fallback volumes', evidenceStatus: 'self_attested', nextAction: 'None', owner: 'Safety Eng' },
-  { source: 'NFPA 1126', clause: '§5.2', requirement: 'Fire watch and suppression equipment log', status: 'PLANNED', evidence: 'AuditTrail can log events', evidenceStatus: 'none', nextAction: 'Add fire watch checklist', owner: 'Operations', criticalForGoLive: true },
   // Showven
   { source: 'Showven Manual', clause: 'Ch.3', requirement: 'Cold spark machine DMX addressing', status: 'IMPLEMENTED', evidence: 'DMXUniverseManager + AddressingConsole', evidenceStatus: 'tested', nextAction: 'None', owner: 'Hardware' },
   { source: 'Showven Manual', clause: 'Ch.5', requirement: 'Machine safety distance (2m minimum)', status: 'IMPLEMENTED', evidence: 'SafetyDistanceConfig showven profile', evidenceStatus: 'self_attested', nextAction: 'None', owner: 'Safety Eng' },
@@ -90,9 +79,6 @@ const COMPLIANCE_DATA: ComplianceRow[] = [
   { source: 'Finale 3D', clause: 'Import', requirement: '.vviz file import and trajectory parsing', status: 'implemented', evidence: 'VVizImporter.ts', action: 'None' },
   { source: 'Finale 3D', clause: 'Export', requirement: 'Finale-compatible position export', status: 'implemented', evidence: 'ExportCoordinator Finale channel', action: 'None' },
   { source: 'Finale 3D', clause: 'Sync', requirement: 'Timecode synchronization', status: 'partial', evidence: 'SMPTE timecode parser exists', action: 'Add LTC input adapter', criticalForGoLive: true },
-  { source: 'Finale 3D', clause: 'Import', requirement: '.vviz file import and trajectory parsing', status: 'IMPLEMENTED', evidence: 'VVizImporter.ts', evidenceStatus: 'tested', nextAction: 'None', owner: 'Importers' },
-  { source: 'Finale 3D', clause: 'Export', requirement: 'Finale-compatible position export', status: 'IMPLEMENTED', evidence: 'ExportCoordinator Finale channel', evidenceStatus: 'tested', nextAction: 'None', owner: 'Exporters' },
-  { source: 'Finale 3D', clause: 'Sync', requirement: 'Timecode synchronization', status: 'PARTIAL', evidence: 'SMPTE timecode parser exists', evidenceStatus: 'self_attested', nextAction: 'Add LTC input adapter', owner: 'Sync', criticalForGoLive: true },
   // FireOne
   { source: 'FireOne Protocol', clause: 'FIR-01', requirement: '.fir script generation with timing', status: 'IMPLEMENTED', evidence: 'FireOneExportConsole + fireOneExporter.ts', evidenceStatus: 'tested', nextAction: 'None', owner: 'Exporters' },
   { source: 'FireOne Protocol', clause: 'FIR-02', requirement: 'Module/pin addressing scheme', status: 'IMPLEMENTED', evidence: 'AddressingConsole + channel mapping', evidenceStatus: 'tested', nextAction: 'None', owner: 'Hardware' },
@@ -114,8 +100,6 @@ const COMPLIANCE_DATA: ComplianceRow[] = [
   // SMPTE
   { source: 'SMPTE Timecode', clause: 'TC-30', requirement: '30fps timecode sync', status: 'partial', evidence: 'TimelineManager supports 30fps', action: 'Add hardware LTC reader', criticalForGoLive: true },
   { source: 'SMPTE Timecode', clause: 'TC-MTC', requirement: 'MIDI timecode input', status: 'planned', evidence: 'Interface planned', action: 'Implement Web MIDI API', criticalForGoLive: true },
-  { source: 'SMPTE Timecode', clause: 'TC-30', requirement: '30fps timecode sync', status: 'PARTIAL', evidence: 'TimelineManager supports 30fps', evidenceStatus: 'self_attested', nextAction: 'Add hardware LTC reader', owner: 'Sync', criticalForGoLive: true },
-  { source: 'SMPTE Timecode', clause: 'TC-MTC', requirement: 'MIDI timecode input', status: 'PLANNED', evidence: 'Interface planned', evidenceStatus: 'none', nextAction: 'Implement Web MIDI API', owner: 'Sync', criticalForGoLive: true },
 ];
 
 /**
@@ -174,6 +158,25 @@ export default function ManualComplianceMatrix() {
         .includes(normalized),
     );
   }, [query, showOnlyBlockers, blockers]);
+
+  const blockers = useMemo(() => (
+    COMPLIANCE_DATA
+      .filter(r => r.criticalForGoLive && r.status !== 'implemented')
+      .sort((a, b) => a.source.localeCompare(b.source))
+  ), []);
+
+  const filteredRows = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    const base = showOnlyBlockers
+      ? COMPLIANCE_DATA.filter(r => r.criticalForGoLive && r.status !== 'implemented')
+      : COMPLIANCE_DATA;
+    if (!normalized) return base;
+    return base.filter((row) =>
+      `${row.source} ${row.clause} ${row.requirement} ${row.evidence} ${row.action}`
+        .toLowerCase()
+        .includes(normalized),
+    );
+  }, [query, showOnlyBlockers]);
 
   return (
     <div className="flex flex-col h-full p-4 gap-3 bg-background/80">
@@ -236,26 +239,6 @@ export default function ManualComplianceMatrix() {
           {showOnlyBlockers ? 'Mostrando blockers' : 'Somente blockers'}
         </button>
       </div>
-
-      {blockers.length > 0 && (
-        <div className="border border-red-500/30 bg-red-500/5 rounded-md p-2 space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] font-mono font-bold text-red-400 tracking-widest uppercase">Go-Live Blockers</span>
-            <span className="text-[8px] font-mono text-red-400/80">{blockers.length} em aberto</span>
-          </div>
-          <ul className="space-y-0.5">
-            {blockers.slice(0, 8).map((row) => (
-              <li key={`${row.source}-${row.clause}`} className="text-[9px] font-mono text-foreground/80 leading-tight">
-                <span className="text-red-400/90">{row.source} {row.clause}</span>
-                <span className="text-muted-foreground/60"> [{STATUS_CFG[row.status].label}/{EVIDENCE_CFG[row.evidenceStatus].label}]</span>
-                {' — '}{row.requirement}
-                <span className="text-amber-400/80"> → {row.nextAction}</span>
-                {row.owner && <span className="text-muted-foreground/50"> ({row.owner})</span>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {/* Column headers */}
       <div className="grid grid-cols-[110px_55px_1fr_75px_75px_1fr_70px] gap-1 text-[7px] font-mono text-muted-foreground/50 tracking-widest px-2">

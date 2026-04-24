@@ -1,13 +1,26 @@
-/**
- * SwarmGPT Advanced — Greedy nearest-neighbor matching by Euclidean cost.
- * Re-exports the canonical Nível 1 implementation under the Nível 2 name to
- * keep both public surfaces stable while using a single source of truth.
- */
-import type { Vec3 } from '../../types';
-import { matchPointsGreedy } from '../trajectoryOptimizer';
+import type { Vec3 } from "../../types";
+import { distance3 } from "../../utils/geometry";
 
 export function matchPointsByGreedyCost(from: Vec3[], to: Vec3[]): Vec3[] {
-  if (!from || from.length === 0) return [];
-  if (!to || to.length === 0) return [];
-  return matchPointsGreedy(from, to);
+  if (!Array.isArray(from) || !Array.isArray(to) || from.length === 0 || to.length === 0) return [];
+  const remaining = [...to];
+  const matched: Vec3[] = [];
+
+  for (const origin of from) {
+    if (remaining.length === 0) break;
+    let bestIndex = 0;
+    let bestCost = Infinity;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const cost = distance3(origin, remaining[i]);
+      if (cost < bestCost) {
+        bestCost = cost;
+        bestIndex = i;
+      }
+    }
+    matched.push(remaining.splice(bestIndex, 1)[0]);
+  }
+
+  return matched;
 }
+

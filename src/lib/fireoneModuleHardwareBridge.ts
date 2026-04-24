@@ -22,7 +22,6 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { parseTelemetryLine } from '@/lib/fireoneTelemetryParser';
 import { isIOSWebKit, requiresSecureBridgeTransport } from '@/lib/bridgeGateway';
 
 export type BridgeTransport = 'ble' | 'ble_lr' | 'usb' | 'websocket' | 'wifi_direct' | 'direct_relay' | 'none';
@@ -74,133 +73,8 @@ export interface BridgeStatus {
   rxBytes: number;
   rssi?: number;
   estimatedDistance?: number;
-  /** Structured last error with stable reason code. */
   lastError?: string;
-  lastErrorCode?: BridgeReasonCode;
-  lastErrorAt?: number;
-  linkHealth?: LinkHealth;
-  /** Monotonic id incremented on every successful link. Pending ops from older sessions are ignored. */
-  sessionId: number;
-  /** Live diagnostics about the in-flight pending response queue. */
-  diagnostics?: BridgeDiagnostics;
-}
-
-/** Live snapshot of the pending-response queue + retry telemetry. */
-export interface BridgeDiagnostics {
-  pendingCount: number;
-  pendingKeys: string[];
-  oldestPendingAgeMs: number;
-  sessionId: number;
-  linkHealth: LinkHealth;
-  /** Total automatic retries attempted (read-only commands only). */
-  retryCount: number;
-  /** Retry totals broken down by command class — useful to spot a flaky read path. */
-  retryByCommandType: Partial<Record<BridgeCommandType, number>>;
-  /** Retry totals per concrete pending key (e.g. "CONT:7") — useful to spot a flaky channel. */
-  retryByKey: Record<string, number>;
-  /** How many retries were rejected by the rate limiter (per key + total). */
-  rateLimitedByKey: Record<string, number>;
-  rateLimitedTotal: number;
-}
-
-/** Per-command-class retry settings. */
-export interface BridgeRetryRule {
-  maxRetries: number;
-  perAttemptTimeoutMs: number;
-}
-
-/**
- * Full retry policy. Currently only the read-only classes (CONT, CDS) are
- * configurable — all physical commands are pinned to *no retry* by design.
- */
-export interface BridgeRetryPolicy {
-  CONT: BridgeRetryRule;
-  CDS: BridgeRetryRule;
-}
-
-export const DEFAULT_RETRY_POLICY: BridgeRetryPolicy = {
-  CONT: { maxRetries: 2, perAttemptTimeoutMs: 2000 },
-  CDS:  { maxRetries: 2, perAttemptTimeoutMs: 2000 },
-};
-
-/**
- * Sliding-window rate limit for retries.
- *
- * Two ceilings are enforced inside the same `windowMs`:
- *  - `maxRetriesPerKey` — protects against a single noisy channel hammering the bus
- *  - `maxRetriesTotal`  — protects against fleet-wide retry storms
- *
- * Limits are evaluated *before* a retry is sent. When a limit trips, the retry
- * is suppressed, `lastErrorCode` is set to `RETRY_RATE_LIMITED`, and a
- * `retry_rate_limited` event is emitted.
- *
- * NOTE: This is a purely client-side, in-memory limiter living in the hardware
- * bridge — not a backend rate limiter. Its scope is preventing a single bridge
- * instance from flooding the wire/transport.
- */
-export interface BridgeRetryRateLimit {
-  windowMs: number;
-  maxRetriesPerKey: number;
-  maxRetriesTotal: number;
-}
-
-export const DEFAULT_RETRY_RATE_LIMIT: BridgeRetryRateLimit = {
-  windowMs: 60_000,
-  maxRetriesPerKey: 10,
-  maxRetriesTotal: 60,
-};
-
-/** Why a single retry attempt fired. */
-export type BridgeRetryReason = 'timeout' | 'empty_drain' | 'parse_miss';
-
-/**
- * Standardized command classes. Drives retry policy — `RETRYABLE_COMMAND_TYPES`
- * is the source of truth for which classes may be auto-retried by the bridge.
- *
- * Physical/destructive commands (FIRE / BATCH / GPIO / ESTOP) are *never*
- * auto-retried, even if the link is healthy. Re-issuing them is the operator's
- * decision, not the transport layer's.
- */
-export type BridgeCommandType =
-  | 'HANDSHAKE'
-  | 'HEARTBEAT'
-  | 'VERSION'
-  | 'STATUS'
-  | 'CONT'
-  | 'CDS'
-  | 'FIRE'
-  | 'BATCH'
-  | 'GPIO'
-  | 'ESTOP'
-  | 'CONFIRM'
-  | 'UNKNOWN';
-
-/** Whitelist — only these classes may be auto-retried. */
-export const RETRYABLE_COMMAND_TYPES: ReadonlySet<BridgeCommandType> = new Set<BridgeCommandType>([
-  'STATUS', 'HEARTBEAT', 'VERSION', 'CONT', 'CDS',
-]);
-
-/** Explicit blacklist — physical commands. Documented for clarity; enforced by absence from the whitelist. */
-export const NON_RETRYABLE_COMMAND_TYPES: ReadonlySet<BridgeCommandType> = new Set<BridgeCommandType>([
-  'FIRE', 'BATCH', 'GPIO', 'ESTOP',
-]);
-
-export function isRetryableCommandType(t: BridgeCommandType): boolean {
-  return RETRYABLE_COMMAND_TYPES.has(t);
-}
-
-/**
- * One in-flight pending response. Carries enough metadata to:
- *  - reject responses from a previous session (`sessionId` mismatch)
- *  - reject responses for a different command class (`commandType`)
- *  - report queue age in `getStatus().diagnostics`
- */
-interface PendingResponse {
-  key: string;
-  commandType: BridgeCommandType;
-  sessionId: number;
-  createdAt: number;
-  resolver: (value: string) => void;
+  linkHealth?: 'disconnected' | 'handshaking' | 'healthy';
 }
 
 export interface BridgeTransportSupport {
@@ -235,25 +109,7 @@ export class FireOneHardwareBridge {
   private rssi?: number;
   private estimatedDistance?: number;
   private lastError?: string;
-  private lastErrorCode?: BridgeReasonCode;
-  private lastErrorAt?: number;
-  private linkHealth: LinkHealth = 'disconnected';
-  /** Monotonic session id — incremented on every successful link establishment. */
-  private sessionId = 0;
-  /** Session id at the time a connect attempt began — used to invalidate handshakes from stale sessions. */
-  private connectingSessionId = 0;
-  /** Total automatic retries (read-only commands only). Surfaced via diagnostics. */
-  private retryCount = 0;
-  private retryByCommandType: Partial<Record<BridgeCommandType, number>> = {};
-  private retryByKey: Record<string, number> = {};
-  private retryPolicy: BridgeRetryPolicy = { ...DEFAULT_RETRY_POLICY };
-  private retryRateLimit: BridgeRetryRateLimit = { ...DEFAULT_RETRY_RATE_LIMIT };
-  /** Sliding window of retry timestamps per pending key (ms). */
-  private retryTimestampsByKey: Map<string, number[]> = new Map();
-  /** Sliding window of all retry timestamps for global ceiling (ms). */
-  private retryTimestampsAll: number[] = [];
-  private rateLimitedByKey: Record<string, number> = {};
-  private rateLimitedTotal = 0;
+  private linkHealth: 'disconnected' | 'handshaking' | 'healthy' = 'disconnected';
 
   private bleDevice: any = null;
   private bleCharTx: any = null;
@@ -323,7 +179,6 @@ export class FireOneHardwareBridge {
     try {
       if (!this.getTransportSupport().ble) {
         this.lastError = 'BLE não suportado neste navegador/dispositivo';
-        this.setError('UNSUPPORTED_TRANSPORT', 'BLE não suportado neste navegador/dispositivo', 'ble');
         this.onEvent?.('unsupported_transport', { transport: 'ble' });
         return false;
       }
@@ -338,7 +193,6 @@ export class FireOneHardwareBridge {
       return await this.setupBLEDevice(device, 'ble');
     } catch (err) {
       this.lastError = err instanceof Error ? err.message : 'Falha ao conectar BLE';
-      this.setError('BLE_GATT_FAILED', err instanceof Error ? err.message : 'Falha ao conectar BLE', 'ble');
       console.warn('[HardwareBridge] BLE connect failed:', err);
       return false;
     } finally {
@@ -356,7 +210,6 @@ export class FireOneHardwareBridge {
     try {
       if (!this.getTransportSupport().ble_lr) {
         this.lastError = 'BLE Long Range não suportado neste navegador/dispositivo';
-        this.setError('UNSUPPORTED_TRANSPORT', 'BLE Long Range não suportado neste navegador/dispositivo', 'ble_lr');
         this.onEvent?.('unsupported_transport', { transport: 'ble_lr' });
         return false;
       }
@@ -374,7 +227,6 @@ export class FireOneHardwareBridge {
       return await this.setupBLEDevice(device, 'ble_lr');
     } catch (err) {
       this.lastError = err instanceof Error ? err.message : 'Falha ao conectar BLE LR';
-      this.setError('BLE_GATT_FAILED', err instanceof Error ? err.message : 'Falha ao conectar BLE LR', 'ble_lr');
       console.warn('[HardwareBridge] BLE LR connect failed:', err);
       return false;
     } finally {
@@ -423,7 +275,6 @@ export class FireOneHardwareBridge {
     try {
       if (!this.getTransportSupport().usb) {
         this.lastError = 'USB/WebSerial não suportado neste navegador/dispositivo';
-        this.setError('UNSUPPORTED_TRANSPORT', 'USB/WebSerial não suportado neste navegador/dispositivo', 'usb');
         this.onEvent?.('unsupported_transport', { transport: 'usb' });
         return false;
       }
@@ -447,7 +298,6 @@ export class FireOneHardwareBridge {
       return false;
     } catch (err) {
       this.lastError = err instanceof Error ? err.message : 'Falha ao conectar USB';
-      this.setError('SERIAL_OPEN_FAILED', err instanceof Error ? err.message : 'Falha ao conectar USB', 'usb');
       console.warn('[HardwareBridge] USB connect failed:', err);
       return false;
     } finally {
@@ -464,7 +314,6 @@ export class FireOneHardwareBridge {
     try {
       if (!this.getTransportSupport().direct_relay) {
         this.lastError = 'Direct Relay/WebSerial não suportado neste navegador/dispositivo';
-        this.setError('UNSUPPORTED_TRANSPORT', 'Direct Relay/WebSerial não suportado neste navegador/dispositivo', 'direct_relay');
         this.onEvent?.('unsupported_transport', { transport: 'direct_relay' });
         return false;
       }
@@ -488,7 +337,6 @@ export class FireOneHardwareBridge {
       return false;
     } catch (err) {
       this.lastError = err instanceof Error ? err.message : 'Falha ao conectar Direct Relay';
-      this.setError('SERIAL_OPEN_FAILED', err instanceof Error ? err.message : 'Falha ao conectar Direct Relay', 'direct_relay');
       console.warn('[HardwareBridge] Direct Relay connect failed:', err);
       return false;
     } finally {
@@ -498,12 +346,12 @@ export class FireOneHardwareBridge {
 
   async connectWebSocket(url = 'ws://192.168.4.1:81'): Promise<boolean> {
     if (this.connecting) {
-      this.setError('CONNECT_IN_PROGRESS', 'Conexão em andamento. Aguarde.');
+      this.lastError = 'Conexão em andamento. Aguarde.';
       return false;
     }
     this.connecting = true;
     if (!this.getTransportSupport().websocket) {
-      this.setError('UNSUPPORTED_TRANSPORT', 'WebSocket não suportado neste navegador/dispositivo', 'websocket');
+      this.lastError = 'WebSocket não suportado neste navegador/dispositivo';
       this.onEvent?.('unsupported_transport', { transport: 'websocket' });
       this.connecting = false;
       return false;
@@ -524,12 +372,13 @@ export class FireOneHardwareBridge {
    */
   async connectWiFiDirect(url?: string): Promise<boolean> {
     if (this.connecting) {
-      this.setError('CONNECT_IN_PROGRESS', 'Conexão em andamento. Aguarde.');
+      this.lastError = 'Conexão em andamento. Aguarde.';
       return false;
     }
     this.connecting = true;
-    if (!this.getTransportSupport().wifi_direct) {
-      this.setError('UNSUPPORTED_TRANSPORT', 'Wi‑Fi Direct indisponível neste ambiente', 'wifi_direct');
+    const support = this.getTransportSupport();
+    if (!support.wifi_direct) {
+      this.lastError = 'Wi‑Fi Direct indisponível neste ambiente';
       this.onEvent?.('unsupported_transport', { transport: 'wifi_direct' });
       this.connecting = false;
       return false;
@@ -601,13 +450,11 @@ export class FireOneHardwareBridge {
         };
         ws.onerror = () => {
           this.lastError = `Falha ao conectar WebSocket (${url})`;
-          this.setError('WEBSOCKET_OPEN_FAILED', `Falha ao conectar WebSocket (${url})`, transport);
           clearTimeout(timer);
           resolve(false);
         };
       } catch {
         this.lastError = `URL de WebSocket inválida (${url})`;
-        this.setError('WEBSOCKET_INVALID_URL', `URL de WebSocket inválida (${url})`, transport);
         resolve(false);
       }
     });
@@ -860,71 +707,7 @@ export class FireOneHardwareBridge {
       rssi: this.rssi,
       estimatedDistance: this.estimatedDistance,
       lastError: this.lastError,
-      lastErrorCode: this.lastErrorCode,
-      lastErrorAt: this.lastErrorAt,
       linkHealth: this.linkHealth,
-      sessionId: this.sessionId,
-      diagnostics: this.getDiagnostics(),
-    };
-  }
-
-  /** Snapshot of the in-flight pending-response queue. */
-  getDiagnostics(): BridgeDiagnostics {
-    const now = Date.now();
-    let oldest = 0;
-    const keys: string[] = [];
-    for (const [, p] of this.pendingResolves) {
-      keys.push(p.key);
-      const age = now - p.createdAt;
-      if (age > oldest) oldest = age;
-    }
-    return {
-      pendingCount: this.pendingResolves.size,
-      pendingKeys: keys,
-      oldestPendingAgeMs: oldest,
-      sessionId: this.sessionId,
-      linkHealth: this.linkHealth,
-      retryCount: this.retryCount,
-      retryByCommandType: { ...this.retryByCommandType },
-      retryByKey: { ...this.retryByKey },
-      rateLimitedByKey: { ...this.rateLimitedByKey },
-      rateLimitedTotal: this.rateLimitedTotal,
-    };
-  }
-
-  setRetryRateLimit(partial: Partial<BridgeRetryRateLimit>): void {
-    this.retryRateLimit = { ...this.retryRateLimit, ...partial };
-  }
-
-  getRetryRateLimit(): BridgeRetryRateLimit {
-    return { ...this.retryRateLimit };
-  }
-
-  /** Override the retry policy at runtime (deep-merged with current). */
-  setRetryPolicy(partial: Partial<BridgeRetryPolicy>): void {
-    this.retryPolicy = {
-      CONT: { ...this.retryPolicy.CONT, ...(partial.CONT ?? {}) },
-      CDS:  { ...this.retryPolicy.CDS,  ...(partial.CDS  ?? {}) },
-    };
-  }
-
-  getRetryPolicy(): BridgeRetryPolicy {
-    return { CONT: { ...this.retryPolicy.CONT }, CDS: { ...this.retryPolicy.CDS } };
-  }
-
-  /** Convenience: true only when handshake completed and link is healthy. */
-  isHealthy(): boolean {
-    return this.connected && this.linkHealth === 'healthy';
-  }
-
-  /** Last structured error (or undefined if none). */
-  getLastError(): BridgeError | undefined {
-    if (!this.lastErrorCode) return undefined;
-    return {
-      code: this.lastErrorCode,
-      message: this.lastError ?? this.lastErrorCode,
-      transport: this.transport,
-      at: this.lastErrorAt ?? Date.now(),
     };
   }
 
@@ -1067,7 +850,31 @@ export class FireOneHardwareBridge {
     return false;
   }
 
-  // (getWiFiDirectEndpoints + normalizeWebSocketUrl already declared above)
+  private getWiFiDirectEndpoints(customUrl?: string): string[] {
+    const secureRequired = requiresSecureBridgeTransport();
+    const scheme = secureRequired ? 'wss' : 'ws';
+    return [
+      customUrl ? this.normalizeWebSocketUrl(customUrl) : null,
+      `${scheme}://fxk-esp32.local:81`,
+      `${scheme}://192.168.4.1:81`,
+      `${scheme}://192.168.1.1:81`,
+    ].filter(Boolean) as string[];
+  }
+
+  private normalizeWebSocketUrl(raw: string): string {
+    const secureRequired = requiresSecureBridgeTransport();
+    const defaultScheme = secureRequired ? 'wss' : 'ws';
+    const withScheme = /^[a-z]+:\/\//i.test(raw) ? raw : `${defaultScheme}://${raw}`;
+    try {
+      const parsed = new URL(withScheme);
+      if (secureRequired && parsed.protocol === 'ws:') {
+        parsed.protocol = 'wss:';
+      }
+      return parsed.toString();
+    } catch {
+      return withScheme;
+    }
+  }
 
   private handleResponse(data: string): void {
     this.rxBytes += data.length;
@@ -1102,15 +909,6 @@ export class FireOneHardwareBridge {
           }
         }
       }
-
-      // Hardened tolerant parsing of STATUS / BAT / RSSI / PINS / VER frames.
-      const fields = parseTelemetryLine(trimmed);
-      if (fields.batteryVoltage !== undefined) this.batteryVoltage = fields.batteryVoltage;
-      if (fields.batteryPercent !== undefined) this.batteryVoltage = fields.batteryPercent; // legacy field reused
-      if (fields.rssi !== undefined) {
-        this.rssi = fields.rssi;
-        this.estimatedDistance = this.estimateDistance(fields.rssi);
-      }
       if (fields.firmwareVersion !== undefined) this.firmwareVersion = fields.firmwareVersion;
 
       for (const [key, pending] of this.pendingResolves) {
@@ -1143,39 +941,10 @@ export class FireOneHardwareBridge {
     this.connecting = false;
     this.transport = 'none';
     this.linkHealth = 'disconnected';
-    // Invalidate any in-flight handshake from a previous attempt.
-    this.connectingSessionId++;
-
-    // Drain pending resolves with sentinel values so awaiters wake up
-    // instead of silently leaking promises. Order: resolve, then clear.
-    if (this.pendingResolves.size > 0) {
-      for (const [key, pending] of this.pendingResolves) {
-        try {
-          // Empty string is the safe sentinel — sendAndWaitConfirm/handshake
-          // resolvers ignore the value (treat as falsy/no-confirm); numeric
-          // resolvers (CONT/CDS) parse to 0 via parseFloat fallback.
-          pending.resolver('');
-        } catch (e) {
-          console.warn(`[HardwareBridge] pendingResolve drain error for ${key}:`, e);
-        }
-      }
-      this.pendingResolves.clear();
-    }
-
+    this.pendingResolves.clear();
     this.stopHeartbeat();
     this.stopRssiPolling();
-    if (wasConnected) {
-      if (!this.lastErrorCode) {
-        this.setError('TRANSPORT_DISCONNECTED', 'Transport disconnected');
-      }
-      this.onEvent?.('disconnected', {
-        reasonCode: this.lastErrorCode ?? 'TRANSPORT_DISCONNECTED',
-        sessionId: this.sessionId,
-        transport: this.transport,
-        linkHealth: this.linkHealth,
-        at: Date.now(),
-      });
-    }
+    if (wasConnected) this.onEvent?.('disconnected', null);
     if (wasConnected && this.lastConnectArgs) {
       this.attemptReconnect();
     }
@@ -1197,28 +966,19 @@ export class FireOneHardwareBridge {
   }
 
   private async establishHealthyLink(transport: BridgeTransport, deviceName: string): Promise<boolean> {
-    // Capture session id at the start of this attempt; if a disconnect happens
-    // mid-handshake we'll detect the mismatch and abort cleanly.
-    const attemptSession = ++this.connectingSessionId;
     this.transport = transport;
     this.deviceName = deviceName;
     this.lastPing = Date.now();
     this.linkHealth = 'handshaking';
     const ok = await this.waitForHandshake();
-    // Stale-session guard: another attempt or a disconnect raced ahead.
-    if (attemptSession !== this.connectingSessionId) {
-      this.setError('STALE_SESSION', `Handshake from stale session ignored (${transport})`, transport);
-      return false;
-    }
     if (!ok) {
-      this.setError('HANDSHAKE_TIMEOUT', `Handshake timeout (${transport})`, transport);
+      this.lastError = `Handshake timeout (${transport})`;
       this.handleDisconnect();
       return false;
     }
     this.connected = true;
+    this.lastError = undefined;
     this.linkHealth = 'healthy';
-    this.sessionId++;            // new healthy session id
-    this.clearError();
     this.onConnect();
     return true;
   }
@@ -1235,45 +995,11 @@ export class FireOneHardwareBridge {
         this.pendingResolves.delete('VER:');
         resolve(ok);
       };
-      // Drain sentinel ('') from handleDisconnect resolves with falsy → finish(false).
-      this.registerPending('PONG', 'HANDSHAKE', (val) => finish(Boolean(val)));
-      this.registerPending('VER:', 'HANDSHAKE', (val) => finish(Boolean(val)));
+      this.pendingResolves.set('PONG', () => finish(true));
+      this.pendingResolves.set('VER:', () => finish(true));
       this.sendCommand('VERSION\n');
       this.sendCommand('HEARTBEAT\n');
       timer = setTimeout(() => finish(false), timeoutMs);
     });
-  }
-
-  // ─── Error helpers ───────────────────────────────────
-
-  /**
-   * Register a pending response with full metadata. The session id is captured
-   * at registration time; `handleResponse` uses it to drop frames that arrive
-   * for a previous session (e.g. late OK:FIRE after a reconnect).
-   */
-  private registerPending(key: string, commandType: BridgeCommandType, resolver: (value: string) => void): void {
-    // Use connectingSessionId during handshake (before sessionId increments),
-    // sessionId once the link is healthy. This keeps the guard correct in both phases.
-    const session = this.linkHealth === 'healthy' ? this.sessionId : this.connectingSessionId;
-    this.pendingResolves.set(key, {
-      key,
-      commandType,
-      sessionId: session,
-      createdAt: Date.now(),
-      resolver,
-    });
-  }
-
-  private setError(code: BridgeReasonCode, message: string, transport?: BridgeTransport): void {
-    this.lastErrorCode = code;
-    this.lastError = message;
-    this.lastErrorAt = Date.now();
-    this.onEvent?.('error', { code, message, transport: transport ?? this.transport, at: this.lastErrorAt });
-  }
-
-  private clearError(): void {
-    this.lastError = undefined;
-    this.lastErrorCode = undefined;
-    this.lastErrorAt = undefined;
   }
 }
