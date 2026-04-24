@@ -913,31 +913,8 @@ export class FireOneHardwareBridge {
     return false;
   }
 
-  private getWiFiDirectEndpoints(customUrl?: string): string[] {
-    const secureRequired = requiresSecureBridgeTransport();
-    const scheme = secureRequired ? 'wss' : 'ws';
-    return [
-      customUrl ? this.normalizeWebSocketUrl(customUrl) : null,
-      `${scheme}://fxk-esp32.local:81`,
-      `${scheme}://192.168.4.1:81`,
-      `${scheme}://192.168.1.1:81`,
-    ].filter(Boolean) as string[];
-  }
 
-  private normalizeWebSocketUrl(raw: string): string {
-    const secureRequired = requiresSecureBridgeTransport();
-    const defaultScheme = secureRequired ? 'wss' : 'ws';
-    const withScheme = /^[a-z]+:\/\//i.test(raw) ? raw : `${defaultScheme}://${raw}`;
-    try {
-      const parsed = new URL(withScheme);
-      if (secureRequired && parsed.protocol === 'ws:') {
-        parsed.protocol = 'wss:';
-      }
-      return parsed.toString();
-    } catch {
-      return withScheme;
-    }
-  }
+
 
   private handleResponse(data: string): void {
     this.rxBytes += data.length;
