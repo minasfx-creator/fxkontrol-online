@@ -1,11 +1,15 @@
 /**
- * SmartScriptAssistant — AI-powered show scripting assistant
+ * SmartScriptAssistant — AI-powered show scripting assistant (JOI)
  * Natural language commands → auto-generates timeline items, batch edits, and VDL effects.
  * Activated via Ctrl+Shift+A or toolbar button.
+ *
+ * UX:
+ * - Mobile-first: 44px close target, swipe-down-to-close
+ * - Desktop: compact 340px panel anchored bottom-right
+ * - ESC key closes
  */
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Sparkles, Send, X, Loader2, Wand2, Zap, ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Sparkles, Send, X, Loader2, Wand2 } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
@@ -22,27 +26,51 @@ interface AssistantMessage {
 const EXAMPLE_PROMPTS = [
   'Add 20 gold willows across positions POS-001 to POS-020, staggered 200ms apart',
   'Replace all red peony shells with blue ones',
-  'Create a crescendo finale: start with 3" shells every 2s, escalate to 6" every 0.5s over 30 seconds',
-  'Fill the gap between 45s and 60s with alternating silver and gold effects',
-  'Add mines to all positions in Section A at time 30s',
+  'Create a crescendo finale: 3" shells every 2s, escalate to 6" every 0.5s over 30s',
 ];
+
+// Swipe-to-close threshold (px)
+const SWIPE_CLOSE_THRESHOLD = 80;
 
 export default function SmartScriptAssistant({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [dragY, setDragY] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const dragStartY = useRef<number | null>(null);
 
+  // Focus input on open
   useEffect(() => {
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+      const t = setTimeout(() => inputRef.current?.focus(), 100);
+      return () => clearTimeout(t);
     }
   }, [open]);
 
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
+
+  // ESC to close
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, onClose]);
+
+  // Reset drag offset when closing/opening
+  useEffect(() => {
+    if (!open) setDragY(0);
+  }, [open]);
 
   const processCommand = useCallback(async (command: string) => {
     const userMsg: AssistantMessage = { id: `u-${Date.now()}`, role: 'user', content: command };
@@ -156,16 +184,11 @@ export default function SmartScriptAssistant({ open, onClose }: { open: boolean;
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch (err) {
-      const assistantMsg: AssistantMessage = {
-        id: `a-${Date.now()}`,
-        role: 'assistant',
-        content: `Processing locally... ${command}`,
-      };
-      setMessages(prev => [...prev, assistantMsg]);
-
-      // Attempt local processing
+      // Local-only fallback when edge function unavailable
       const lc = command.toLowerCase();
       const store = useProjectStore.getState();
+      let responseText = `Processing locally... ${command}`;
+      let localActions: { label: string; count: number }[] | undefined;
 
       if (lc.includes('add') && lc.includes('mine')) {
         const sectionMatch = lc.match(/section\s+([a-f])/i);
@@ -191,13 +214,17 @@ export default function SmartScriptAssistant({ open, onClose }: { open: boolean;
             });
           });
           toast.success(`${targets.length} mines added`);
-          setMessages(prev => [...prev.slice(0, -1), {
-            ...prev[prev.length - 1],
-            content: `✅ Added ${targets.length} mines${section ? ` to Section ${section}` : ''} at ${time.toFixed(1)}s`,
-            actions: [{ label: mineEffect.name, count: targets.length }],
-          }]);
+          responseText = `✅ Added ${targets.length} mines${section ? ` to Section ${section}` : ''} at ${time.toFixed(1)}s`;
+          localActions = [{ label: mineEffect.name, count: targets.length }];
         }
       }
+
+      setMessages(prev => [...prev, {
+        id: `a-${Date.now()}`,
+        role: 'assistant',
+        content: responseText,
+        actions: localActions,
+      }]);
     } finally {
       setLoading(false);
     }
@@ -209,36 +236,78 @@ export default function SmartScriptAssistant({ open, onClose }: { open: boolean;
     processCommand(input.trim());
   };
 
+  // Swipe-down-to-close (touch only — vertical drag from header)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    dragStartY.current = e.touches[0].clientY;
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (dragStartY.current === null) return;
+    const dy = e.touches[0].clientY - dragStartY.current;
+    if (dy > 0) setDragY(dy);
+  };
+  const handleTouchEnd = () => {
+    if (dragY > SWIPE_CLOSE_THRESHOLD) {
+      onClose();
+    }
+    setDragY(0);
+    dragStartY.current = null;
+  };
+
   if (!open) return null;
 
   return (
-    <div className="fixed bottom-20 right-4 z-50 w-[380px] max-h-[500px] flex flex-col rounded-2xl border border-border/30 shadow-2xl shadow-black/60 overflow-hidden" style={{ background: 'hsl(var(--card))' }}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/20">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary/20 to-accent/15 flex items-center justify-center">
+    <div
+      role="dialog"
+      aria-label="Smart Script Assistant"
+      className="fixed bottom-20 right-3 z-50 w-[340px] max-w-[calc(100vw-1.5rem)] max-h-[460px] flex flex-col rounded-2xl border border-border/30 shadow-2xl shadow-black/60 overflow-hidden transition-transform"
+      style={{
+        background: 'hsl(var(--card))',
+        transform: `translateY(${dragY}px)`,
+        transition: dragY === 0 ? 'transform 200ms ease-out' : 'none',
+      }}
+    >
+      {/* Header — also doubles as swipe handle on touch */}
+      <div
+        className="flex items-center justify-between px-3 py-2.5 border-b border-border/20 select-none touch-pan-y"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Mobile drag indicator */}
+        <div className="absolute top-1 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-border/40 sm:hidden" />
+
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary/20 to-accent/15 flex items-center justify-center flex-shrink-0">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
           </div>
-          <div>
-            <h3 className="text-[11px] font-bold text-foreground uppercase tracking-wider font-display">Smart Script</h3>
-            <p className="text-[8px] text-muted-foreground/50">AI-powered show design</p>
+          <div className="min-w-0">
+            <h3 className="text-[11px] font-bold text-foreground uppercase tracking-wider font-display truncate">JOI · Smart Script</h3>
+            <p className="text-[8px] text-muted-foreground/60 truncate">AI-powered show design</p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
-          <X className="w-3.5 h-3.5" />
-        </Button>
+
+        {/* Close — 44x44 touch target, native button (no nesting issues) */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close assistant"
+          className="relative -mr-1.5 flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/10 active:bg-accent/20 transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[200px] max-h-[320px]">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[180px] max-h-[280px]">
         {messages.length === 0 && (
           <div className="space-y-2">
             <p className="text-[10px] text-muted-foreground/60 text-center">Try a command:</p>
-            {EXAMPLE_PROMPTS.slice(0, 3).map((prompt, i) => (
+            {EXAMPLE_PROMPTS.map((prompt, i) => (
               <button
                 key={i}
+                type="button"
                 onClick={() => { setInput(prompt); inputRef.current?.focus(); }}
-                className="w-full text-left px-3 py-2 rounded-xl bg-surface-0/50 border border-border/10 text-[10px] text-muted-foreground hover:text-foreground hover:border-border/30 transition-all"
+                className="w-full text-left px-3 py-2 rounded-xl bg-surface-0/50 border border-border/10 text-[10px] text-muted-foreground hover:text-foreground hover:border-border/30 active:bg-surface-0 transition-all"
               >
                 <Wand2 className="w-3 h-3 inline mr-1.5 text-primary/50" />
                 {prompt}
@@ -283,12 +352,17 @@ export default function SmartScriptAssistant({ open, onClose }: { open: boolean;
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder="Describe what to create..."
-          className="flex-1 h-8 px-3 rounded-xl text-[11px] bg-surface-0 border border-border/20 text-foreground outline-none focus:border-primary/40 transition-colors"
+          className="flex-1 h-9 px-3 rounded-xl text-[11px] bg-surface-0 border border-border/20 text-foreground outline-none focus:border-primary/40 transition-colors"
           disabled={loading}
         />
-        <Button type="submit" size="icon" className="h-8 w-8 rounded-xl" disabled={loading || !input.trim()}>
+        <button
+          type="submit"
+          aria-label="Send"
+          disabled={loading || !input.trim()}
+          className="flex items-center justify-center min-w-[36px] h-9 px-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+        >
           <Send className="w-3.5 h-3.5" />
-        </Button>
+        </button>
       </form>
     </div>
   );
