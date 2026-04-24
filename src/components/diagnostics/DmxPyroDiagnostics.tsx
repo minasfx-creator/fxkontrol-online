@@ -10,13 +10,39 @@
  * No commands are sent — strictly observational.
  */
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, AlertTriangle, XCircle, Activity, Wifi, Cable, RefreshCw } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Activity, Wifi, Cable, RefreshCw, Trash2, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useSfxChannelStore } from "@/store/useSfxChannelStore";
 import { artNetBridge, type ArtNetState } from "@/core/protocols/ArtNetBridge";
 import { linkFailoverPolicy, type ProtocolLink } from "@/core/protocols/LinkFailoverPolicy";
 import { dmxUniverseAdapter } from "@/core/hardware/adapters/DMXUniverseAdapter";
+import {
+  getCapturedEntries,
+  clearCapturedEntries,
+  subscribeCapturedEntries,
+  type CapturedEntry,
+} from "@/lib/consoleCapture";
+
+const LIVE_FIRING_KEYWORDS = [
+  "live firing",
+  "pyro",
+  "dmx",
+  "super dmx",
+  "fxc",
+  "fire",
+  "artnet",
+  "art-net",
+  "bridgephysical",
+  "ignition",
+  "tdz",
+  "referenceerror",
+];
+
+function isLiveFiringRelated(e: CapturedEntry): boolean {
+  const haystack = `${e.message} ${e.stack ?? ""} ${e.source ?? ""}`.toLowerCase();
+  return LIVE_FIRING_KEYWORDS.some((k) => haystack.includes(k));
+}
 
 type Severity = "ok" | "warn" | "fail";
 
@@ -137,6 +163,22 @@ export default function DmxPyroDiagnostics() {
     for (const f of findings) c[f.severity]++;
     return c;
   }, [findings]);
+
+  // Live console capture
+  const [capTick, setCapTick] = useState(0);
+  const [onlyLiveFiring, setOnlyLiveFiring] = useState(false);
+  useEffect(() => {
+    return subscribeCapturedEntries(() => setCapTick((t) => t + 1));
+  }, []);
+  const captured = useMemo(() => {
+    const all = getCapturedEntries();
+    return onlyLiveFiring ? all.filter(isLiveFiringRelated) : all;
+  }, [capTick, onlyLiveFiring]);
+  const capCounts = useMemo(() => {
+    const c = { error: 0, warn: 0, unhandled: 0, rejection: 0 };
+    for (const e of captured) c[e.level]++;
+    return c;
+  }, [captured]);
 
   const universeMap = useMemo(() => {
     const m = new Map<number, number>();
