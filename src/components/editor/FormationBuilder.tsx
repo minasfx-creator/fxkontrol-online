@@ -159,9 +159,15 @@ function FormationQueue() {
           return (
             <div
               key={f.id}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData('application/formation-id', f.id);
+                e.dataTransfer.effectAllowed = 'copy';
+              }}
               onClick={() => { selectFormation(f.id); setCurrentTime(f.startTime); }}
+              title="Arraste para a timeline para colocar no tempo do áudio"
               className={cn(
-                "group rounded-sm border cursor-pointer text-[10px] relative transition-all duration-200 ease-out",
+                "group rounded-sm border cursor-grab active:cursor-grabbing text-[10px] relative transition-all duration-200 ease-out",
                 isSelected ? "border-primary/50 bg-primary/10 shadow-[0_0_8px_hsl(var(--electric)/0.15)]" : "border-border/30 hover:border-border hover:bg-surface-2/50",
               )}
             >

@@ -412,7 +412,7 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
                 <button onClick={module.disconnectHardware} className="text-destructive/60 hover:text-destructive text-[7px]">
                   Desconectar
                 </button>
-</div>        \                                                                                           
+              </div>
             )}
           </div>
 

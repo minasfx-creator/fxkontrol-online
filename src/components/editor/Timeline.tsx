@@ -769,6 +769,8 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
   const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
   const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
   const addTimelineItem = useProjectStore(s => s.addTimelineItem);
+  const updateDroneFormation = useProjectStore(s => s.updateDroneFormation);
+  const materializeFormation = useProjectStore(s => s.materializeFormation);
   const bpm = useProjectStore(s => s.bpm);
   const snapToBeat = useProjectStore(s => s.snapToBeat);
   
@@ -776,29 +778,40 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     const hasEffect = e.dataTransfer.types.includes('application/effect-id');
-    if (!hasEffect) return;
+    const hasFormation = e.dataTransfer.types.includes('application/formation-id');
+    if (!hasEffect && !hasFormation) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    const effectId = e.dataTransfer.getData('application/effect-id');
-    if (!effectId) return;
-    const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
-    if (!effect || effect.type !== 'drone') return;
-
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
     time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
+
+    const formationId = e.dataTransfer.getData('application/formation-id');
+    if (formationId) {
+      const formation = useProjectStore.getState().droneFormations.find(f => f.id === formationId);
+      if (!formation) return;
+      const repositioned = { ...formation, startTime: time };
+      updateDroneFormation(formation.id, { startTime: time });
+      materializeFormation(repositioned);
+      return;
+    }
+
+    const effectId = e.dataTransfer.getData('application/effect-id');
+    if (!effectId) return;
+    const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
+    if (!effect || effect.type !== 'drone') return;
 
     addTimelineItem({
       id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       effectId: effect.id, startTime: time, trackIndex: 3,
       position: { x: 0, y: 20, z: 0 },
     });
-  }, [pixelsPerSecond, duration, addTimelineItem, bpm, snapToBeat]);
+  }, [pixelsPerSecond, duration, addTimelineItem, bpm, snapToBeat, updateDroneFormation, materializeFormation]);
 
   if (droneFormations.length === 0) return null;
 
