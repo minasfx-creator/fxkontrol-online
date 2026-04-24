@@ -37,7 +37,6 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
   const [cdsStatus, setCdsStatus] = useState<boolean[]>(Array(32).fill(false));
   const [cdsTesting, setCdsTesting] = useState(false);
   const [cdsLastTest, setCdsLastTest] = useState<number | null>(null);
-  const [cdsSimMode, setCdsSimMode] = useState(false);
   const bleAvailable = isWebBluetoothAvailable();
 
   const handleScan = async () => {
@@ -244,7 +243,7 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
       )}
 
       {/* ─── CDS Continuity Visual Grid ─── */}
-      {(connectedId || cdsSimMode) && (
+      {connectedId && (
         <div className="mt-4 space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -254,21 +253,6 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              {/* Sim toggle */}
-              <button
-                className={cn(
-                  "text-[7px] px-1.5 py-0.5 rounded font-mono uppercase border",
-                  cdsSimMode
-                    ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                    : "text-muted-foreground border-border/30"
-                )}
-                onClick={() => {
-                  setCdsSimMode(!cdsSimMode);
-                  if (!cdsSimMode) setCdsStatus(Array(32).fill(false));
-                }}
-              >
-                {cdsSimMode ? '⚡ SIM' : '📡 HW'}
-              </button>
               <Badge variant="outline" className={cn(
                 "text-[8px] h-4 px-1.5 font-mono",
                 activeChannels > 0 ? "border-green-500/40 text-green-400" : "border-muted-foreground/30 text-muted-foreground"
