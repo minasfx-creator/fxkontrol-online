@@ -53,6 +53,11 @@ const FLAGS = {
    * UI: src/components/editor/RealityScanImportPanel.tsx.
    */
   realityscan_import_ui: true,
+  /**
+   * Physics repair pipeline (matchPointsByCost → validators → repair).
+   * Opt-in via planFormationFromAsset({ usePhysicsRepair: true }).
+   */
+  swarmgpt_physics_repair: false,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
