@@ -35,7 +35,7 @@ describe("planFormationFromAsset", () => {
     expect(plan.transition.fromCount).toBe(2);
     expect(plan.transition.toCount).toBe(2);
     expect(plan.validation.valid).toBe(true);
-    expect(plan.fidelity.pointCoverage).toBeGreaterThan(0);
+    expect(plan.fidelity.coverage).toBeGreaterThan(0);
     expect(plan.snappedTime).toBe(0.5);
   });
 
