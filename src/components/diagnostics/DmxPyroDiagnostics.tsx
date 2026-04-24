@@ -200,9 +200,9 @@ export default function DmxPyroDiagnostics() {
         <StatusCard
           icon={<Cable className="w-4 h-4" />}
           label="Universe Telemetry"
-          value={`${universeSnap.metrics.refresh_hz?.toFixed?.(0) ?? "—"} Hz`}
+          value={`${fmtNum(universeSnap.metrics.refresh_hz, 0)} Hz`}
           severity={universeSnap.online ? (universeSnap.warnings.length ? "warn" : "ok") : "fail"}
-          detail={`Latência ${universeSnap.metrics.latency_ms?.toFixed?.(1) ?? "—"} ms · U${universeSnap.metrics.universe}`}
+          detail={`Latência ${fmtNum(universeSnap.metrics.latency_ms, 1)} ms · U${universeSnap.metrics.universe}`}
         />
       </section>
 
