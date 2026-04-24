@@ -295,7 +295,6 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
             size="sm"
             className={`h-7 text-[10px] w-full gap-1 ${isMobile ? 'h-10 text-xs' : ''}`}
             onClick={connectDevice}
-            disabled={!serialSupported}
           >
             <Plus className="h-3 w-3" />
             Parear Dispositivo USB
