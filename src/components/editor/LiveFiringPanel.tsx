@@ -51,7 +51,7 @@ import ShowCommanderPanel from './ShowCommanderPanel';
 import DMXMonitorPanel from './dmx/DMXMonitorPanel';
 import DroneCommandPanel from './DroneCommandPanel';
 import EasyConnectPanel from './EasyConnectPanel';
-import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyroPhysics';
+
 
 // ═══════════════════════════════════════════════════════════
 // MODE CONFIGURATION
