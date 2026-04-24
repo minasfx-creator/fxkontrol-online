@@ -91,6 +91,7 @@ function App() {
                     <Route path="/accreditation" element={<AccreditationDashboard />} />
                     <Route path="/joi" element={<JoiPanel />} />
                     <Route path="/swarmgpt" element={<SwarmGPT />} />
+                    <Route path="/diagnostics/dmx-pyro" element={<DmxPyroDiagnostics />} />
                   </Route>
                   <Route path="*" element={<NotFound />} />
                 </Routes>
