@@ -33,7 +33,7 @@ function getCountdown(showDate: string | null): string | null {
 
 export default React.memo(function MobileHUD() {
   const navigate = useNavigate();
-  const { currentTime, isPlaying, setPlaying, setCurrentTime, duration, playbackSpeed, timelineSource } = usePlaybackState();
+  const { currentTime, isPlaying, duration, playbackSpeed, timelineSource } = usePlaybackState();
   const { editorMode, isPlacingMode } = useEditorMode();
   const { activeEffects, clearAll, usbConnected, smpteRunning, isArmed } = useHardwareStatus();
   const positions = useProjectStore(s => s.positions);

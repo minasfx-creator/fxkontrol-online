@@ -11,6 +11,7 @@ import { usePlaybackState, useHardwareStatus } from '@/hooks/useEditorUI';
 import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
 import { useShowSettings } from '@/hooks/useShowSettings';
 import { timelineClock } from '@/core/timeline/TimelineClock';
+import { timelineTransport } from '@/core/transport/timelineTransport';
 
 type ShowState = 'READY' | 'ARMED' | 'LIVE' | 'STOPPED';
 
@@ -58,8 +59,7 @@ export default function LiveModeOverlay() {
   // E-STOP
   const handlePanic = useCallback(() => {
     clearAll();
-    timelineClock.pause();
-    timelineClock.seek(0);
+    timelineTransport.stop();
     haptics.panic();
   }, [clearAll]);
 
@@ -135,7 +135,7 @@ export default function LiveModeOverlay() {
           {/* Center: Transport */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => { haptics.tap(); isPlaying ? timelineClock.pause() : timelineClock.play(); }}
+              onClick={() => { haptics.tap(); timelineTransport.toggle(); }}
               className="w-16 h-16 rounded-2xl glass-button flex items-center justify-center active:scale-90 transition-transform"
             >
               {isPlaying
@@ -156,7 +156,7 @@ export default function LiveModeOverlay() {
             </button>
 
             <button
-              onClick={() => { haptics.toggle(); timelineClock.pause(); timelineClock.seek(0); }}
+              onClick={() => { haptics.toggle(); timelineTransport.stop(); }}
               className="w-14 h-14 rounded-2xl glass-button flex items-center justify-center active:scale-90 transition-transform"
             >
               <Square className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
