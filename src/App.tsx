@@ -9,7 +9,7 @@ import MainLayout from "@/layouts/MainLayout";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import { LazyChunkBoundary } from "@/components/errors/LazyChunkBoundary";
 import { lazyRetry } from "@/lib/lazyRetry";
-import { useRouteTracing } from "@/observability";
+import { useRouteTracing } from "@/observability/useRouteTracing";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 

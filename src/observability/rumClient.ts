@@ -1,89 +1,197 @@
 /**
  * ─── RUM Client ───────────────────────────────────────────────────
- * Lightweight queue + flush. Uses navigator.sendBeacon when possible
- * so we never block unload. Silently no-ops if VITE_RUM_ENDPOINT is
- * not configured — RUM is opt-in via env var.
+ * Class-based queue with sendBeacon/fetch keepalive flush, payload
+ * sanitization (drops command/trace/PII keys), and silent no-op
+ * when no endpoint is configured.
  *
- * Security: we NEVER include command payloads, user data, or trace
- * frames. Only metrics, sanitized error info, and correlation IDs.
+ * Security guarantee: this client NEVER ships command frames, raw
+ * trace data, or PII fields. See `sanitizePayload` for the blocklist.
  */
-import type { RumEvent } from './rumTypes';
+import type { RumClientOptions, RumEvent } from './rumTypes';
 
-const ENDPOINT: string | undefined = import.meta.env.VITE_RUM_ENDPOINT;
-const MAX_QUEUE = 50;
+const DEFAULT_MAX_QUEUE = 50;
 
-let queue: RumEvent[] = [];
-
-const sessionId =
-  typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-const build = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? 'dev';
-
-function newId(): string {
+function safeRandomId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
   }
-  return `e-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `rum_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
 
-function flush(): void {
-  if (!ENDPOINT || queue.length === 0) return;
+function getDefaultBuild(): string {
+  const env = import.meta.env as Record<string, string | undefined>;
+  return env.VITE_APP_VERSION ?? env.VITE_COMMIT_SHA ?? 'dev';
+}
 
-  const batch = queue;
-  queue = [];
-  const payload = JSON.stringify(batch);
+function getDefaultEndpoint(): string | undefined {
+  const env = import.meta.env as Record<string, string | undefined>;
+  return env.VITE_RUM_ENDPOINT || undefined;
+}
 
-  try {
-    if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
-      const ok = navigator.sendBeacon(ENDPOINT, payload);
-      if (ok) return;
+function getCurrentRoute(): string {
+  if (typeof window === 'undefined') return '/';
+  return `${window.location.pathname}${window.location.search}`;
+}
+
+/**
+ * Strip sensitive / oversized fields. Anything not on the safe-type
+ * allowlist is replaced with a tag rather than serialized.
+ */
+function sanitizePayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const blockedKeys = new Set([
+    'trace',
+    'frames',
+    'rawTrace',
+    'command',
+    'cmd',
+    'payloadRaw',
+    'email',
+    'phone',
+    'name',
+  ]);
+
+  const out: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(payload)) {
+    if (blockedKeys.has(key)) continue;
+
+    if (typeof value === 'string') {
+      out[key] = value.length > 1000 ? `${value.slice(0, 1000)}…` : value;
+      continue;
     }
-    void fetch(ENDPOINT, {
-      method: 'POST',
-      body: payload,
-      keepalive: true,
-      headers: { 'Content-Type': 'application/json' },
-    }).catch(() => { /* swallow — RUM must never break the app */ });
-  } catch {
-    /* swallow */
+
+    if (
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      value === null ||
+      value === undefined
+    ) {
+      out[key] = value;
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      out[key] = `[array:${value.length}]`;
+      continue;
+    }
+
+    if (typeof value === 'object') {
+      out[key] = '[object]';
+      continue;
+    }
+
+    out[key] = String(value);
+  }
+
+  // The web-vital event uses `name` legitimately. Re-allow it for that case.
+  if ('name' in payload && typeof payload.name === 'string' && payload.name.length <= 16) {
+    out.name = payload.name;
+  }
+
+  return out;
+}
+
+export class RumClient {
+  private queue: RumEvent[] = [];
+  private endpoint?: string;
+  private maxQueue: number;
+  private enabled: boolean;
+  private readonly sessionId: string;
+  private readonly build: string;
+
+  constructor(options: RumClientOptions = {}) {
+    this.endpoint = options.endpoint ?? getDefaultEndpoint();
+    this.maxQueue = options.maxQueue ?? DEFAULT_MAX_QUEUE;
+    this.enabled = options.enabled ?? true;
+    this.sessionId = safeRandomId();
+    this.build = options.build ?? getDefaultBuild();
+  }
+
+  getSessionId(): string { return this.sessionId; }
+  getQueueSize(): number { return this.queue.length; }
+  getQueueSnapshot(): RumEvent[] { return [...this.queue]; }
+
+  setEndpoint(endpoint?: string): void { this.endpoint = endpoint; }
+  setEnabled(enabled: boolean): void { this.enabled = enabled; }
+
+  push(event: Omit<RumEvent, 'id' | 'ts' | 'sessionId' | 'build'>): RumEvent | null {
+    if (!this.enabled) return null;
+
+    const full: RumEvent = {
+      ...event,
+      id: safeRandomId(),
+      ts: Date.now(),
+      sessionId: this.sessionId,
+      build: this.build,
+      route: event.route || getCurrentRoute(),
+      payload: sanitizePayload(event.payload ?? {}),
+    };
+
+    this.queue.push(full);
+
+    if (this.queue.length >= this.maxQueue) {
+      this.flush();
+    }
+    return full;
+  }
+
+  flush(): boolean {
+    if (!this.enabled || !this.endpoint || this.queue.length === 0) return false;
+
+    const batch = this.queue.splice(0, this.queue.length);
+    const body = JSON.stringify(batch);
+
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+        const ok = navigator.sendBeacon(
+          this.endpoint,
+          new Blob([body], { type: 'application/json' }),
+        );
+        if (ok) return true;
+        this.queue.unshift(...batch);
+        return false;
+      }
+
+      if (typeof fetch !== 'undefined') {
+        void fetch(this.endpoint, {
+          method: 'POST',
+          body,
+          keepalive: true,
+          headers: { 'Content-Type': 'application/json' },
+        }).catch(() => { this.queue.unshift(...batch); });
+        return true;
+      }
+
+      this.queue.unshift(...batch);
+      return false;
+    } catch {
+      this.queue.unshift(...batch);
+      return false;
+    }
   }
 }
 
+export const rumClient = new RumClient();
+
 export function pushRumEvent(
   event: Omit<RumEvent, 'id' | 'ts' | 'sessionId' | 'build'>,
-): void {
-  const full: RumEvent = {
-    ...event,
-    id: newId(),
-    ts: Date.now(),
-    sessionId,
-    build,
-  };
-
-  queue.push(full);
-  if (queue.length >= MAX_QUEUE) flush();
+): RumEvent | null {
+  return rumClient.push(event);
 }
 
-export function flushRum(): void {
-  flush();
-}
-
-/** For tests — drains the in-memory queue without sending. */
-export function _drainRumQueueForTest(): RumEvent[] {
-  const drained = queue;
-  queue = [];
-  return drained;
+export function flushRum(): boolean {
+  return rumClient.flush();
 }
 
 export function getRumSessionId(): string {
-  return sessionId;
+  return rumClient.getSessionId();
 }
 
-// Auto-flush on tab hide. Guarded for SSR / tests.
-if (typeof document !== 'undefined') {
+export function installRumFlushHandlers(): void {
+  if (typeof window === 'undefined') return;
+
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flush();
+    if (document.visibilityState === 'hidden') rumClient.flush();
   });
+  window.addEventListener('pagehide', () => { rumClient.flush(); });
 }

@@ -1,40 +1,43 @@
 /**
  * ─── Route Tracing ────────────────────────────────────────────────
- * Emits a RUM event on each route change with `from`, `to`, and the
- * time spent on the previous route. Pair with the `useRouteTracing`
- * hook for React Router integration.
+ * Records `from → to` transitions with dwell time on the previous
+ * route. Pair with `useRouteTracing` for React Router.
  */
-import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
 import { pushRumEvent } from './rumClient';
 
-let lastRoute: string =
-  typeof window !== 'undefined' ? window.location.pathname : '/';
-let lastTs: number =
+let lastRoute =
+  typeof window !== 'undefined'
+    ? `${window.location.pathname}${window.location.search}`
+    : '/';
+
+let lastTs =
   typeof performance !== 'undefined' ? performance.now() : Date.now();
 
 export function trackRouteChange(nextRoute?: string): void {
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  const to = nextRoute ?? (typeof window !== 'undefined' ? window.location.pathname : '/');
+  const route =
+    nextRoute ??
+    (typeof window !== 'undefined'
+      ? `${window.location.pathname}${window.location.search}`
+      : '/');
+
+  if (route === lastRoute) return;
 
   pushRumEvent({
     type: 'route_change',
-    route: to,
+    route,
     payload: {
       from: lastRoute,
-      to,
-      durationMs: Math.round(now - lastTs),
+      to: route,
+      durationMs: Math.max(0, Math.round(now - lastTs)),
     },
   });
 
-  lastRoute = to;
+  lastRoute = route;
   lastTs = now;
 }
 
-/** React Router hook — mount once near the app root, inside <BrowserRouter>. */
-export function useRouteTracing(): void {
-  const loc = useLocation();
-  useEffect(() => {
-    trackRouteChange(loc.pathname);
-  }, [loc.pathname]);
+export function resetRouteTracing(route = '/'): void {
+  lastRoute = route;
+  lastTs = typeof performance !== 'undefined' ? performance.now() : Date.now();
 }

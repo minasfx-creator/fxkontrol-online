@@ -1,15 +1,15 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { initWebVitals } from "@/lib/webVitals";
+import { initWebVitals as initWebVitalsConsole } from "@/lib/webVitals";
 import { initObservability } from "@/observability";
 
 createRoot(document.getElementById("root")!).render(<App />);
 
-// Initialize Web Vitals RUM instrumentation
-initWebVitals();
+// Dev-only Web Vitals console reporter (per-route, color-coded).
+initWebVitalsConsole();
 
-// Initialize production observability (RUM + error capture).
+// Production observability (RUM + error capture + Web Vitals shipping).
 // No-ops silently when VITE_RUM_ENDPOINT is not set.
 initObservability();
 

@@ -1,40 +1,40 @@
 /**
  * ─── Error Capture ────────────────────────────────────────────────
- * Window-level error + unhandledrejection listeners that emit
- * sanitized RUM events with the active replay context attached.
- *
- * We deliberately cap stack length (1KB) and never include args,
- * locals, or DOM content.
+ * Window-level error listeners. Emits sanitized error events with
+ * the active replay/trace IDs attached. Stack traces are capped.
  */
-import { pushRumEvent } from './rumClient';
 import { getReplayContext } from './errorCorrelation';
+import { pushRumEvent } from './rumClient';
+import type { ErrorPayload } from './rumTypes';
 
-function getRoute(): string {
-  return typeof window !== 'undefined' ? window.location.pathname : '/';
+function route(): string {
+  if (typeof window === 'undefined') return '/';
+  return `${window.location.pathname}${window.location.search}`;
 }
 
-function safeMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === 'string') return err;
-  try { return JSON.stringify(err).slice(0, 500); } catch { return 'unknown'; }
+function toErrorPayload(err: unknown, source: ErrorPayload['source']): ErrorPayload {
+  if (err instanceof Error) {
+    return {
+      source,
+      name: err.name,
+      message: err.message.slice(0, 1000),
+      stack: err.stack?.slice(0, 2000),
+    };
+  }
+  return { source, message: String(err).slice(0, 1000) };
 }
 
-function safeStack(err: unknown): string | undefined {
-  if (err instanceof Error && err.stack) return err.stack.slice(0, 1000);
-  return undefined;
-}
-
-export function captureError(err: unknown): void {
+export function captureError(
+  err: unknown,
+  source: ErrorPayload['source'] = 'manual',
+): void {
   const ctx = getReplayContext();
   pushRumEvent({
     type: 'error',
-    route: getRoute(),
+    route: route(),
     replayId: ctx.replayId,
     traceId: ctx.traceId,
-    payload: {
-      message: safeMessage(err),
-      stack: safeStack(err),
-    },
+    payload: toErrorPayload(err, source) as unknown as Record<string, unknown>,
   });
 }
 
@@ -44,10 +44,10 @@ export function initErrorCapture(): void {
   if (installed || typeof window === 'undefined') return;
   installed = true;
 
-  window.addEventListener('error', (e: ErrorEvent) => {
-    captureError(e.error ?? e.message);
+  window.addEventListener('error', (event) => {
+    captureError(event.error ?? event.message, 'window_error');
   });
-  window.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => {
-    captureError(e.reason);
+  window.addEventListener('unhandledrejection', (event) => {
+    captureError(event.reason, 'unhandled_rejection');
   });
 }

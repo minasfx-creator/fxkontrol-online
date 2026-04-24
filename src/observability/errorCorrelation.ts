@@ -1,27 +1,29 @@
 /**
  * ─── Error ↔ Replay Correlation ───────────────────────────────────
- * Tiny module-scoped context that lets error events carry the active
- * replay/trace IDs without coupling the error pipeline to the
- * emulator. The emulator calls setReplayContext when a replay starts
- * and clearReplayContext when it ends.
+ * Module-scoped context bridging the emulator to the error pipeline
+ * without coupling them. Set on replay start, clear on stop.
  */
 
-let currentReplayId: string | null = null;
-let currentTraceId: string | null = null;
+let currentReplayId: string | undefined;
+let currentTraceId: string | undefined;
 
 export function setReplayContext(replayId: string, traceId?: string): void {
   currentReplayId = replayId;
-  currentTraceId = traceId ?? null;
+  currentTraceId = traceId;
 }
 
 export function clearReplayContext(): void {
-  currentReplayId = null;
-  currentTraceId = null;
+  currentReplayId = undefined;
+  currentTraceId = undefined;
 }
 
 export function getReplayContext(): { replayId?: string; traceId?: string } {
-  return {
-    replayId: currentReplayId ?? undefined,
-    traceId: currentTraceId ?? undefined,
-  };
+  return { replayId: currentReplayId, traceId: currentTraceId };
+}
+
+export function createReplayId(prefix = 'replay'): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return `${prefix}_${crypto.randomUUID()}`;
+  }
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
