@@ -1,99 +1,69 @@
+## Problema
 
+No viewport mobile (440px), o botão **X** da janela do Joi (`FXKAssistant`) fica difícil de acertar porque o cabeçalho está superlotado:
 
-## SwarmGPT Advanced — Bug fixes, cleanup & 3D model extraction (Nível 3)
+- Avatar 40px + título flexível + 4 botões mobile (`Voice 36 + Clear 36 + Minimize 36 + Close 40 = 148px`) + gaps ≈ 212px reservados.
+- O botão X tem `h-10 w-10` (40px) mas é o último de uma fila apertada, sem espaço extra ao redor.
+- Abaixo do header ainda há **5 painéis sempre montados** (`JOIContextRibbon`, `JOIInsightPanel`, `JOITruthInspector`, `JOIExecutionTracePanel`, `JOIStylePanel`) que aumentam altura, custo de render e podem sobrepor a área quando expandidos.
 
-Three things in one pass: (1) fix concrete bugs in the advanced module, (2) consolidate duplicated/old code, (3) add **3D model (.glb / .gltf / generic mesh) → drone formation** extraction. Module stays isolated — no UI changes, no pipeline wiring beyond the existing post-processing block.
+Além disso, há código morto acumulado no `FXKAssistant.tsx`:
 
----
+- Imports não utilizados: `OPERATIONAL_PRESETS`, `useProjectStore`, `EFFECT_LIBRARY`, `JOI_MODE_PRESETS`.
+- State `glitching` e setter `setGlitching` (escrito, nunca lido).
+- Const `joiState` calculada e nunca usada.
+- Comentário “Sidebar hologram (expanded only)” sobrando, sem implementação.
+- Comentário “Legacy …” obsoleto.
 
-### A. Bug fixes (advanced module)
+## O que vou fazer
 
-1. **`advanced/poissonSampling.ts`** — remove `Math.random()`.
-   - Replace biased `sort(() => Math.random() - 0.5)` with a **deterministic seeded shuffle** (mulberry32 PRNG seeded from input length + first/last point coords). Result: same input → same output, every run.
-   - Tighten the relax-fallback loop: drop unused `i` index check; use `Set<number>` of selected indices for O(1) lookup instead of `selected.includes(p)` (O(n) reference compare).
+### 1. Header mobile mais limpo e botão X destacado
 
-2. **`advanced/beatSync.ts`** — fix float drift in `buildBeatGrid`.
-   - Compute `count = Math.floor(duration * bpm / 60) + 1`, then `beats[i] = i * 60 / bpm`. No accumulator.
+No `src/components/FXKAssistant.tsx`, dentro do header (linhas ~896–964):
 
-3. **`pipeline/generateSwarmGPTShow.ts`** — pre-index transitions and sort formations.
-   - Build `transitionByTo = new Map<string, DroneTransition>()` once before the matching pass (current `.find()` inside `.map()` is O(F·T)).
-   - After beat-snap, sort `plan.formations` and `plan.transitions` by `startTime` (stable) so collisions surface in `validateChoreographyPlan`.
+- Reordenar e priorizar **X (fechar)** e **Minimizar** como os botões mais à direita, com hit target maior no mobile.
+- No mobile, mover **Voz** e **Limpar** para um menu “overflow” (`•••`) ou simplesmente ocultar o botão de limpar (a ação já existe via comando do usuário e via apagar histórico do navegador). Ficamos com: `Voz | Minimizar | X`.
+- Aumentar o X mobile para `h-11 w-11` com `min-w-[44px]` (padrão Apple HIG de toque) e dar mais respiro (`ml-1` adicional).
+- Garantir que o título use `truncate` corretamente para nunca empurrar os botões.
 
-4. **`advanced/generateOptimizedFormation.ts`** — surface speed-check result.
-   - Return `{ points, speedOk }` from `optimizeTransition` (or keep `Vec3[]` and add `optimizeTransitionWithReport`). Pipeline ignores `speedOk` for now (matches current behavior) but it's available to callers. Backwards-compatible: keep the `Vec3[]`-returning function; add a `*WithReport` sibling.
+### 2. Painéis Joi colapsáveis por padrão / só quando relevantes
 
----
+- `JOIContextRibbon` continua sempre visível (é o ribbon de verdade) mas com `overflow-x-auto` já tem.
+- `JOIInsightPanel` já só renderiza quando há insights — manter.
+- `JOITruthInspector`: condicionar a render a “há devices registrados”. Quando não há, retornar `null`.
+- `JOIExecutionTracePanel`: já só renderiza com `trace !== null` — manter.
+- `JOIStylePanel`: já tem modo colapsado quando não há estilo ativo — manter; garantir que continua `collapsed=true` por default.
 
-### B. Cleanup (consolidation, no behavior change)
+Isso encurta o painel no mobile e libera espaço/atenção visual em torno do header.
 
-5. **Remove duplication between Nível 1 & Nível 2 greedy matching.**
-   - `motion/hungarianLite.ts::matchPointsByGreedyCost` is identical to `trajectoryOptimizer.ts::matchPointsGreedy`. Make `matchPointsByGreedyCost` a thin re-export wrapper around `matchPointsGreedy` so there is one implementation. Both names stay exported (no breaking change).
+### 3. Limpeza de código morto em `FXKAssistant.tsx`
 
-6. **Internal-only `pipeline/postProcess.ts`** (extract from `generateSwarmGPTShow.ts`).
-   - Move the four-step deterministic post-processing block (Poisson → beat-snap → transition matching → re-validate) into a single pure `applyAdvancedPostProcessing(plan, input, config)` helper. `generateSwarmGPTShow` becomes ~40 lines of orchestration. No public API change.
+- Remover imports: `OPERATIONAL_PRESETS`, `useProjectStore`, `EFFECT_LIBRARY`, `JOI_MODE_PRESETS`.
+- Remover state `glitching` / `setGlitching` e as duas chamadas (`setGlitching(true)` e o `setTimeout(setGlitching(false), 800)`), mantendo o `playGlitchBurst()` (este é audio, não visual).
+- Remover a const não utilizada `const joiState = ...`.
+- Remover o comentário órfão `{/* Sidebar hologram (expanded only) */}` e o `{/* Legacy ... */}`.
 
-7. **No old UI to remove** — the SwarmGPT module is isolated; `SwarmGPTPanel.tsx` is the only consumer in the UI layer and is current. Out of scope.
+### 4. Sem mudanças em outros arquivos
 
----
+Não vou tocar em `JoiPanel.tsx` (rota `/joi`, painel separado de dev), nem em `useJoiSpeech`, nem nos serviços de voz/contexto. Escopo: somente cabeçalho do chat + remoção de código morto + condicionar render de 1 sub-painel.
 
-### C. New: 3D model → formation (Nível 3)
+## Detalhes técnicos
 
-New subdirectory `src/modules/swarmgpt/advanced/model3d/` — pure TypeScript, no DOM, no Three.js, no fetch. The UI layer (which already uses `useGLTF` in `SiteModelRenderer.tsx`) extracts vertices and hands them to this module.
+Arquivos editados:
 
-8. **`model3d/types.ts`**
-   ```ts
-   export interface MeshLike {
-     vertices: Vec3[];          // world-space or local-space, caller's choice
-     indices?: number[];        // optional — enables surface-area weighting
-     name?: string;
-   }
-   export interface ExtractFromMeshOptions {
-     droneCount: number;
-     minDistance: number;
-     scale?: number;            // target diameter in meters (default 60)
-     center?: Vec3;             // formation center (default {0, 50, 0})
-     yUp?: boolean;             // mesh Y-up vs Z-up (default true)
-     hollow?: boolean;          // surface-only (default true) vs filled
-     maxCandidates?: number;    // cap before sampling (default 20000)
-   }
-   export interface ModelExtractionReport {
-     points: Vec3[];
-     candidateCount: number;
-     fidelity: FormationFidelityScore;
-     boundingBox: { min: Vec3; max: Vec3 };
-   }
-   ```
+- `src/components/FXKAssistant.tsx`
+  - Imports enxugados.
+  - `glitching` e `joiState` removidos.
+  - Header: layout reorganizado, X com `min-w-[44px] min-h-[44px]` no mobile, gap extra antes do X.
+  - Botão “Limpar” (Trash2) escondido no mobile (`hidden sm:flex`).
 
-9. **`model3d/normalizeMesh.ts`** — `normalizeMeshToBounds(mesh, { scale, center, yUp })`
-   - Compute AABB, recenter on origin, uniform-scale so `max(extent)` = `scale`, swap Y↔Z if `yUp === false`, translate to `center`. Returns new `Vec3[]` and `boundingBox`.
+- `src/components/joi/JOITruthInspector.tsx`
+  - `if (devices.length === 0) return null;` antes do JSX principal.
 
-10. **`model3d/sampleSurfaceArea.ts`** — `sampleTrianglesByArea(vertices, indices, count)`
-    - When indices are present, compute triangle areas, build CDF, sample points uniformly across the surface (area-weighted barycentric sampling). Deterministic via mulberry32 seeded from vertex count. Returns `WeightedPoint[]` (weight = local triangle density).
+Sem novas dependências. Sem migração. Sem mudanças de rota.
 
-11. **`model3d/extractFormationFromMesh.ts`** — orchestrator
-    - Pipeline: `normalizeMeshToBounds` → (if `indices` & `hollow`) `sampleTrianglesByArea` else use raw vertices → cap by `maxCandidates` (deterministic stride) → `weightedPoissonSample(candidates, droneCount, minDistance)` → if undersampled, pad via Nível 1 `poissonSample` fallback to guarantee count → `scoreFormationFidelity` → return `ModelExtractionReport`.
-    - Reuses `weightedPoissonSample`, `realityScanMeshToPointCloud` (for the stride cap), and `scoreFormationFidelity` — no new sampling primitives.
+## Aceitação
 
-12. **`model3d/index.ts`** — barrel for the four files above.
-
-13. **`advanced/index.ts`** — append `export * from './model3d';`.
-
----
-
-### Out of scope (kept for later)
-
-- `.glb` / `.gltf` parsing. The module receives `MeshLike` (already-parsed vertices). UI layer uses existing `useGLTF` to traverse meshes and call `mesh.geometry.attributes.position` → `Vec3[]`. A thin `src/lib/swarmgpt/gltfToMeshLike.ts` adapter (DOM/Three side) is left for the next plan when we wire the UI panel.
-- `SwarmGPTPanel.tsx` UI mode for "3D Model Upload" — separate plan; needs the gltf adapter first.
-- True Hungarian matching, NeRF, video-frame extraction, edge function `swarmgpt-json` (already deferred).
-
-### Validation
-
-- `tsc --noEmit` clean.
-- Pure functions; deterministic (mulberry32, no `Math.random`).
-- `generateSwarmGPTShow` public signature unchanged. `SwarmGPTPanel.tsx` and `supabase/functions/generate-formation/index.ts` untouched (legacy `optimizeTransitionOrder` stays inside the edge function — it's a separate codepath the user already ships).
-
-### Files touched
-
-- **Edit**: `src/modules/swarmgpt/advanced/poissonSampling.ts`, `advanced/beatSync.ts`, `advanced/generateOptimizedFormation.ts`, `advanced/motion/hungarianLite.ts`, `advanced/index.ts`, `pipeline/generateSwarmGPTShow.ts`.
-- **Create**: `src/modules/swarmgpt/pipeline/postProcess.ts`, `src/modules/swarmgpt/utils/random.ts` (mulberry32 + seeded shuffle), `src/modules/swarmgpt/advanced/model3d/{types,normalizeMesh,sampleSurfaceArea,extractFormationFromMesh,index}.ts`.
-
+- No mobile (≤440px): cabeçalho do Joi mostra apenas avatar + título + Voz + Minimizar + **X grande (44×44)**, sem corte do título, X facilmente clicável.
+- No desktop: comportamento inalterado (Voz, Limpar, Expand, Minimizar, X).
+- `npm run build` (typecheck) passa sem warnings de imports/variáveis não usados nos pontos tocados.
+- Janela do Joi continua abrindo, fechando (X), minimizando e os painéis de contexto/insights continuam funcionando.
