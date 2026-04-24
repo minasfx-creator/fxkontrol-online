@@ -1,12 +1,11 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { lazyRetry } from '@/lib/lazyRetry';
 import CommanderHUD from '@/components/swarmgpt/CommanderHUD';
 import CorePanel from '@/components/swarmgpt/CorePanel';
 import StageZone from '@/components/swarmgpt/StageZone';
 import SystemLog, { useSystemLog } from '@/components/swarmgpt/SystemLog';
-
-const SwarmGPTPanel = lazy(lazyRetry(() => import('@/components/editor/SwarmGPTPanel')));
+import { PanelErrorBoundary } from '@/components/swarmgpt/PanelErrorBoundary';
+import SwarmGPTPanel from '@/components/editor/SwarmGPTPanel';
 
 /**
  * SwarmGPT Commander hub — central place for AI choreography generation.
@@ -49,12 +48,9 @@ export default function SwarmGPTPage() {
         {/* Generator (right rail) */}
         <div className="order-2 lg:order-3 flex flex-col gap-3 min-h-[420px] lg:min-h-0">
           <div className="flex-1 min-h-0 glass-premium rounded-xl overflow-hidden">
-            <Suspense
-              fallback={
-                <div className="h-full flex items-center justify-center">
-                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                </div>
-              }
+            <PanelErrorBoundary
+              onError={(e) => append(`[PANEL] ${e.message}`, 'warn')}
+              onReset={() => setBusy(false)}
             >
               <SwarmGPTPanel
                 hideHeader
@@ -65,7 +61,7 @@ export default function SwarmGPTPage() {
                   if (level === 'ok' || level === 'warn') setBusy(false);
                 }}
               />
-            </Suspense>
+            </PanelErrorBoundary>
           </div>
           {/* System log — under generator on desktop, after core on mobile */}
           <div className="hidden lg:block h-44 shrink-0">
