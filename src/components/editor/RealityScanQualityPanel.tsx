@@ -83,7 +83,7 @@ function buildDemoCameras(): CameraView[] {
 
 // ---------- Component ----------
 export default function RealityScanQualityPanel(props: Props) {
-  if (!isEnabled('realityscan_quality_analysis')) return null;
+  const enabled = isEnabled('realityscan_quality_analysis');
 
   const mesh = useMemo(() => props.mesh ?? buildDemoCube(), [props.mesh]);
   const cameras = useMemo(() => props.cameras ?? buildDemoCameras(), [props.cameras]);
@@ -193,7 +193,11 @@ export default function RealityScanQualityPanel(props: Props) {
     off.width = tex.width; off.height = tex.height;
     const ctx = off.getContext('2d');
     if (!ctx) return;
-    const img = new ImageData(tex.pixels, tex.width, tex.height);
+    // Copy into a fresh, ArrayBuffer-backed Uint8ClampedArray so the
+    // ImageData constructor's strict typing is satisfied across TS lib targets.
+    const buf = new Uint8ClampedArray(tex.pixels.length);
+    buf.set(tex.pixels);
+    const img = new ImageData(buf, tex.width, tex.height);
     ctx.putImageData(img, 0, 0);
     off.toBlob((blob) => {
       if (!blob) return;
