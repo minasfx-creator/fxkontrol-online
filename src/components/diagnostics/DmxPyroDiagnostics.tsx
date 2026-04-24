@@ -25,6 +25,7 @@ import {
   type CapturedEntry,
 } from "@/lib/consoleCapture";
 import SerialDmxPairingPanel from "./SerialDmxPairingPanel";
+import LiveDmxInspector from "./LiveDmxInspector";
 
 const LIVE_FIRING_KEYWORDS = [
   "live firing",
@@ -315,6 +316,9 @@ export default function DmxPyroDiagnostics() {
 
       {/* USB-C → DMX pairing */}
       <SerialDmxPairingPanel />
+
+      {/* Live DMX channel-level inspector */}
+      <LiveDmxInspector />
 
       {/* Transport status */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
