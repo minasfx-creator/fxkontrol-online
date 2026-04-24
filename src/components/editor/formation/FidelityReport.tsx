@@ -313,6 +313,34 @@ export default function FidelityReport({
         })}
       </div>
 
+      {/* Recommendations */}
+      {recommendations.length > 0 && (
+        <div className="space-y-1 pt-1 border-t border-border/40">
+          <div className="flex items-center gap-1">
+            <Lightbulb className="h-2.5 w-2.5 text-yellow-400" />
+            <span className="text-[8px] font-bold uppercase tracking-wider text-muted-foreground">
+              Recommendations
+            </span>
+          </div>
+          {recommendations.map((r) => {
+            const c = statusColors(r.severity);
+            return (
+              <div
+                key={r.setting}
+                className={cn('flex items-start gap-1.5 px-1.5 py-1 rounded-sm border', c.bg)}
+              >
+                <span className={cn('text-[9px] font-bold uppercase shrink-0', c.text)}>
+                  {r.setting}
+                </span>
+                <span className="text-[9px] text-foreground/80 leading-tight">
+                  {r.message}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Footer: bbox */}
       {data.boundingBox && (
         <div className="flex justify-between text-[8px] text-muted-foreground pt-0.5 border-t border-border/40">
