@@ -206,6 +206,27 @@ export default function EngineProvider() {
       lockstep.tick(delta);
     });
 
+    // ── RAF pump (independent of R3F) ──
+    // Drives deterministicClock even when no <Canvas> is mounted/visible,
+    // so timeline play works on every route and survives WebGL context loss.
+    let rafId = 0;
+    const pump = () => {
+      deterministicClock.tick();
+      rafId = requestAnimationFrame(pump);
+    };
+    rafId = requestAnimationFrame(pump);
+
+    // Pause pump when tab is hidden to save battery; resume on visible.
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = 0;
+      } else if (rafId === 0) {
+        rafId = requestAnimationFrame(pump);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     // ── Register recoverable services ──
     const initialProjectId = useProjectStore.getState().projectId;
     const bootFns: Record<string, () => void> = {
