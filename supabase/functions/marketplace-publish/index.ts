@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
   }
 
   // --- Verify signature ---
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", artifact));
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", artifact as BufferSource));
   const sha256B64 = bytesToBase64(digest);
   const integrity = { algorithm: "SHA-256" as const, hash: sha256B64, size: artifact.byteLength };
   const payload = buildSignedPayload(body.manifest, integrity);
@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     return jsonResponse({ error: `Key import failed: ${(err as Error).message}` }, 400);
   }
-  const ok = await crypto.subtle.verify(verifyParams, publicKey, sigBytes, payload);
+  const ok = await crypto.subtle.verify(verifyParams, publicKey, sigBytes as BufferSource, payload as BufferSource);
   if (!ok) return jsonResponse({ error: "Signature verification failed." }, 400);
 
   // --- Upsert package row (idempotent by package_id) ---
