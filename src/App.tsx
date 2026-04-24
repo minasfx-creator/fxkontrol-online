@@ -33,6 +33,7 @@ const AccreditationDashboard = lazy(lazyRetry(() => import("./pages/Accreditatio
 const PlatformStatus = lazy(lazyRetry(() => import("./pages/PlatformStatus")));
 const JoiPanel = lazy(lazyRetry(() => import("./ai/ui/JoiPanel")));
 const SwarmGPT = lazy(lazyRetry(() => import("./pages/SwarmGPT")));
+const DmxPyroDiagnostics = lazy(lazyRetry(() => import("./components/diagnostics/DmxPyroDiagnostics")));
 
 const queryClient = new QueryClient();
 
