@@ -5,13 +5,16 @@
  *
  * Renders a no-op in production builds (guarded by import.meta.env.DEV).
  */
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { TransportEmulator } from '@/dev/transportEmulator';
 import { EMU_PROFILES, EMU_PROFILE_DESCRIPTIONS, type EmuProfileName } from '@/dev/emulatorProfiles';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { FlaskConical, PlugZap, Radio, Download, Trash2, Play, Square, Upload, SkipForward, Pause } from 'lucide-react';
+import { FlaskConical, PlugZap, Radio, Download, Trash2, Play, Square, Upload, SkipForward, Pause, FastForward } from 'lucide-react';
+
+const EmulatorTraceTimeline = lazy(() => import('./EmulatorTraceTimeline'));
 
 const isDev = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV ?? false;
 
@@ -26,6 +29,8 @@ export default function DevSimulationPanel() {
   const [connected, setConnected] = useState(true);
   const [replay, setReplay] = useState<{ state: 'idle' | 'running' | 'paused'; cursor: number; total: number }>({ state: 'idle', cursor: 0, total: 0 });
   const [dragging, setDragging] = useState(false);
+  const [filter, setFilter] = useState('');
+  const [frames, setFrames] = useState<ReadonlyArray<{ dir: 'tx' | 'rx'; data: string; at: number }>>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const emuRef = useRef<TransportEmulator | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -84,13 +89,20 @@ export default function DevSimulationPanel() {
     try {
       const text = await file.text();
       const parsed = JSON.parse(text);
-      if (!parsed.frames || !Array.isArray(parsed.frames)) throw new Error('invalid trace');
-      emuRef.current.loadTrace(parsed);
+      emuRef.current.loadTrace(parsed); // throws on invalid shape
       setReplay(emuRef.current.getReplayStatus());
+      setFrames(emuRef.current.getReplayFrames());
     } catch (e) {
       console.error('[DevSim] trace load failed:', e);
     }
   }, []);
+
+  const buildFilter = useCallback((): ((d: string) => boolean) | undefined => {
+    const q = filter.trim();
+    if (!q) return undefined;
+    const terms = q.split(',').map(s => s.trim()).filter(Boolean);
+    return (d: string) => terms.some(t => d.includes(t));
+  }, [filter]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -175,33 +187,51 @@ export default function DevSimulationPanel() {
           onDragLeave={() => setDragging(false)}
           onDrop={onDrop}
           className={cn(
-            'flex items-center gap-1 mt-1 p-1.5 rounded border border-dashed',
+            'flex flex-col gap-1 mt-1 p-1.5 rounded border border-dashed',
             dragging ? 'border-cyan-400 bg-cyan-500/10' : 'border-border/30'
           )}
         >
-          <span className="text-[7px] text-muted-foreground uppercase mr-2">
-            Replay {replay.cursor}/{replay.total} · {replay.state}
-          </span>
-          <Button size="sm" variant="ghost" disabled={!enabled || replay.state === 'running'}
-            onClick={() => emuRef.current?.replay({ preserveTiming: true })}
-            className="h-6 px-2 text-[8px] gap-1 text-emerald-400">
-            <Play className="w-3 h-3" /> PLAY
-          </Button>
-          <Button size="sm" variant="ghost" disabled={!enabled || replay.state !== 'running'}
-            onClick={() => emuRef.current?.pauseReplay()}
-            className="h-6 px-2 text-[8px] gap-1 text-amber-400">
-            <Pause className="w-3 h-3" /> PAUSE
-          </Button>
-          <Button size="sm" variant="ghost" disabled={!enabled}
-            onClick={() => { emuRef.current?.stepReplay(); setReplay(emuRef.current!.getReplayStatus()); }}
-            className="h-6 px-2 text-[8px] gap-1 text-cyan-400">
-            <SkipForward className="w-3 h-3" /> STEP
-          </Button>
-          <Button size="sm" variant="ghost" disabled={!enabled}
-            onClick={() => { emuRef.current?.stopReplay(); setReplay(emuRef.current!.getReplayStatus()); }}
-            className="h-6 px-2 text-[8px] gap-1 text-red-400">
-            <Square className="w-3 h-3" /> STOP
-          </Button>
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-[7px] text-muted-foreground uppercase mr-2">
+              Replay {replay.cursor}/{replay.total} · {replay.state}
+            </span>
+            <Button size="sm" variant="ghost" disabled={!enabled || replay.state === 'running'}
+              onClick={() => emuRef.current?.replay({ preserveTiming: true, filter: buildFilter() })}
+              className="h-6 px-2 text-[8px] gap-1 text-emerald-400">
+              <Play className="w-3 h-3" /> PLAY
+            </Button>
+            <Button size="sm" variant="ghost" disabled={!enabled || replay.state !== 'running'}
+              onClick={() => emuRef.current?.pauseReplay()}
+              className="h-6 px-2 text-[8px] gap-1 text-amber-400">
+              <Pause className="w-3 h-3" /> PAUSE
+            </Button>
+            <Button size="sm" variant="ghost" disabled={!enabled || replay.state !== 'paused'}
+              onClick={() => emuRef.current?.resumeReplay()}
+              className="h-6 px-2 text-[8px] gap-1 text-emerald-400">
+              <FastForward className="w-3 h-3" /> RESUME
+            </Button>
+            <Button size="sm" variant="ghost" disabled={!enabled}
+              onClick={() => { emuRef.current?.stepReplay(); setReplay(emuRef.current!.getReplayStatus()); }}
+              className="h-6 px-2 text-[8px] gap-1 text-cyan-400">
+              <SkipForward className="w-3 h-3" /> STEP
+            </Button>
+            <Button size="sm" variant="ghost" disabled={!enabled}
+              onClick={() => { emuRef.current?.stopReplay(); setReplay(emuRef.current!.getReplayStatus()); }}
+              className="h-6 px-2 text-[8px] gap-1 text-red-400">
+              <Square className="w-3 h-3" /> STOP
+            </Button>
+            <Input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="filter: CONT,STATUS"
+              className="h-6 text-[9px] w-40 ml-auto"
+              disabled={!enabled}
+            />
+          </div>
+
+          <Suspense fallback={<div className="text-[7px] text-muted-foreground">Loading timeline…</div>}>
+            <EmulatorTraceTimeline frames={frames} cursor={replay.cursor} state={replay.state} />
+          </Suspense>
         </div>
       )}
     </div>
