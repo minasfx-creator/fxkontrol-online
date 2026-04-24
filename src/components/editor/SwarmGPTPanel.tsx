@@ -155,7 +155,15 @@ function MiniPreview({ points }: { points: { x: number; z: number }[] }) {
 
 /* ── Main Panel ───────────────────────────────────────────── */
 
-export default function SwarmGPTPanel({ onClose }: { onClose: () => void }) {
+export interface SwarmGPTPanelProps {
+  onClose: () => void;
+  /** When true, hides the internal SWARM OPS header (used when embedded in Commander shell). */
+  hideHeader?: boolean;
+  /** Optional log sink — receives passive lifecycle messages (generate/optimize/safety/export). */
+  onLog?: (message: string, level?: 'info' | 'ai' | 'warn' | 'ok') => void;
+}
+
+export default function SwarmGPTPanel({ onClose, hideHeader = false, onLog }: SwarmGPTPanelProps) {
   const [mode, setMode] = useState<Mode>('single');
   const [prompt, setPrompt] = useState('');
   const [droneCount, setDroneCount] = useState(300);
