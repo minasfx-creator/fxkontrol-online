@@ -42,7 +42,8 @@ export class FieldBus {
   private _checkInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
-    // Register default transports (simulated — real impl would use WebSocket/Serial)
+    // Transports start in a "no link" state. Real transports must be wired
+    // via setTransport()/heartbeat() before send() will succeed.
     this._transports = [
       this._createTransport('wifi'),
       this._createTransport('rs485'),
@@ -53,9 +54,11 @@ export class FieldBus {
   private _createTransport(id: TransportId): Transport {
     return {
       id,
-      send: (_msg: TransportMessage) => true, // Simulated: always succeeds
-      isAlive: () => true,                     // Simulated: always alive
-      lastHeartbeat: Date.now(),
+      // No link is wired yet — refuse to "send" so callers see honest failures
+      // instead of silent drops or fake successes.
+      send: (_msg: TransportMessage) => false,
+      isAlive: () => false,
+      lastHeartbeat: 0,
     };
   }
 
