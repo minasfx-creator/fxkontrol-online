@@ -88,6 +88,56 @@ export interface BridgeTransportSupport {
 
 export type BridgeEventHandler = (event: string, data: unknown) => void;
 
+/** Command class enum — used by retry policy + command inspection. */
+export type BridgeCommandType =
+  | 'HANDSHAKE' | 'HEARTBEAT' | 'VERSION' | 'STATUS'
+  | 'CONT' | 'CDS' | 'CONFIRM'
+  | 'FIRE' | 'BATCH' | 'GPIO' | 'ESTOP'
+  | 'UNKNOWN';
+
+/** Reason a single retry attempt missed (for diagnostics). */
+export type BridgeRetryReason = 'empty_drain' | 'parse_miss' | 'timeout' | 'rate_limited';
+
+/** Per-command retry rule. */
+export interface BridgeRetryRule {
+  maxRetries: number;
+  perAttemptTimeoutMs: number;
+}
+
+/** Command classes safe to auto-retry (read-only / lifecycle). */
+export const RETRYABLE_COMMAND_TYPES: ReadonlyArray<BridgeCommandType> = Object.freeze([
+  'HEARTBEAT', 'VERSION', 'STATUS', 'CONT', 'CDS',
+]);
+
+/** Command classes that MUST NEVER auto-retry (destructive / single-intent). */
+export const NON_RETRYABLE_COMMAND_TYPES: ReadonlyArray<BridgeCommandType> = Object.freeze([
+  'HANDSHAKE', 'CONFIRM', 'FIRE', 'BATCH', 'GPIO', 'ESTOP', 'UNKNOWN',
+]);
+
+/** Type guard: is this command class allowed to auto-retry? */
+export function isRetryableCommandType(t: BridgeCommandType): boolean {
+  return RETRYABLE_COMMAND_TYPES.includes(t);
+}
+
+/** Default per-class retry rules. */
+export const DEFAULT_RETRY_POLICY: Readonly<Partial<Record<BridgeCommandType, BridgeRetryRule>>> = Object.freeze({
+  HEARTBEAT: { maxRetries: 1, perAttemptTimeoutMs: 1000 },
+  VERSION:   { maxRetries: 1, perAttemptTimeoutMs: 1000 },
+  STATUS:    { maxRetries: 2, perAttemptTimeoutMs: 1500 },
+  CONT:      { maxRetries: 2, perAttemptTimeoutMs: 1500 },
+  CDS:       { maxRetries: 2, perAttemptTimeoutMs: 1500 },
+});
+
+/** Default rate limit for retry attempts (per command class, per second). */
+export const DEFAULT_RETRY_RATE_LIMIT = 5;
+
+/** Internal pending-response record (session-scoped to drop stale frames). */
+interface PendingResponse {
+  resolver: (value: string) => void;
+  sessionId: number;
+  commandType: BridgeCommandType;
+}
+
 // BLE Service/Characteristic UUIDs (custom for FXK-ESP32)
 const BLE_SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
 const BLE_CHAR_TX_UUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
