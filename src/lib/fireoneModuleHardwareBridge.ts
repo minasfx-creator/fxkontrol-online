@@ -861,7 +861,10 @@ export class FireOneHardwareBridge {
       rssi: this.rssi,
       estimatedDistance: this.estimatedDistance,
       lastError: this.lastError,
+      lastErrorCode: this.lastErrorCode,
       linkHealth: this.linkHealth,
+      sessionId: this.sessionId,
+      diagnostics: this.getDiagnostics(),
     };
   }
 
