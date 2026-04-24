@@ -15,13 +15,15 @@ export function snapToBeat(time: number, beats: number[]): number {
   return best;
 }
 
-/** Build a uniform beat grid over `[0, duration]` from a BPM value. */
+/**
+ * Build a uniform beat grid over `[0, duration]` from a BPM value.
+ * Each beat is computed as `i * 60 / bpm` (no accumulator → no float drift).
+ */
 export function buildBeatGrid(bpm: number, duration: number): number[] {
   if (bpm <= 0 || duration <= 0) return [];
   const period = 60 / bpm;
-  const beats: number[] = [];
-  for (let t = 0; t <= duration + 1e-6; t += period) {
-    beats.push(t);
-  }
+  const count = Math.floor(duration / period) + 1;
+  const beats: number[] = new Array(count);
+  for (let i = 0; i < count; i++) beats[i] = i * period;
   return beats;
 }
