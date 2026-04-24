@@ -1,78 +1,44 @@
-# Integrar painel HTML do FXKONTROL e centralizar SwarmGPT
+## Goal
+Always render the SwarmGPT panel on `/swarmgpt`, eliminate the dynamic-import failure mode, and surface any runtime/render error inline with a clear reload path — without breaking the rest of the Commander shell.
 
-## Pré-requisito: enviar o HTML
+## Files to create
 
-Não consigo abrir o link de download externo. Para eu seguir, escolha **uma** opção ao aprovar este plano:
+### `src/components/swarmgpt/PanelErrorBoundary.tsx`
+- Class component, state `{ hasError: boolean, error?: Error }`.
+- `static getDerivedStateFromError(error)` → `{ hasError: true, error }`.
+- `componentDidCatch(error, info)` → `console.error('SwarmGPT panel crashed', error, info)` and calls optional `props.onError?.(error)` so the parent can append a `[PANEL] …` line to the existing System Log.
+- Props: `children: ReactNode`, `onError?: (err: Error) => void`, `onReset?: () => void`.
+- Fallback UI fits inside the right-rail glass card (no full-page takeover):
+  - Title: **"Painel SwarmGPT indisponível"**
+  - Short explanatory paragraph (PT-BR).
+  - Truncated `error.message` in a `font-mono text-xs` muted block.
+  - Two `Button`s side-by-side:
+    - **Tentar novamente** → `setState({ hasError: false, error: undefined })` then `props.onReset?.()`.
+    - **Recarregar** → `clearLazyRetryFlag()` (imported from `@/lib/lazyRetry`) then `window.location.reload()`.
+- Uses existing `Button` from `@/components/ui/button` and Tailwind tokens only — no new CSS.
 
-- **(A)** Cole o HTML completo na próxima mensagem, ou
-- **(B)** Anexe o arquivo `.html` no chat, ou
-- **(C)** Diga o caminho dele dentro do projeto (ex.: `public/fxkontrol-panel.html`).
+## Files to modify
 
-Se nenhuma opção vier, eu sigo só com a parte de **centralização e limpeza de duplicações** (passos 2–4 abaixo), usando o layout SwarmGPT atual como base visual.
+### `src/pages/SwarmGPT.tsx`
+- Remove imports: `lazy`, `Suspense` (from `react`), and `lazyRetry` (from `@/lib/lazyRetry`).
+- Replace `const SwarmGPTPanel = lazy(lazyRetry(() => import('@/components/editor/SwarmGPTPanel')));` with a direct top-level `import SwarmGPTPanel from '@/components/editor/SwarmGPTPanel';`.
+- Add `import { PanelErrorBoundary } from '@/components/swarmgpt/PanelErrorBoundary';`.
+- Delete the `<Suspense fallback={…spinner…}>` wrapper around `<SwarmGPTPanel … />`.
+- Wrap the panel render in:
+  ```tsx
+  <PanelErrorBoundary
+    onError={(e) => append(`[PANEL] ${e.message}`, 'warn')}
+    onReset={() => setBusy(false)}
+  >
+    <SwarmGPTPanel hideHeader onClose={() => navigate(-1)} onLog={…unchanged…} />
+  </PanelErrorBoundary>
+  ```
+- Keep the surrounding `glass-premium` container, `useSystemLog` wiring, HUD, Core, Stage, and System Log untouched.
 
----
+## Out of scope
+- `SwarmGPTPanel.tsx` internals.
+- `lazyRetry.ts`, `LazyChunkBoundary.tsx`, routing, other Commander components, global styles.
+- Timeline / transport bar work (separate request).
 
-## Estado atual (mapeado)
-
-SwarmGPT hoje aparece em **3 lugares diferentes**, gerando duplicação:
-
-1. `src/components/editor/SwarmGPTPanel.tsx` — painel completo dentro do editor (`/editor`).
-2. `src/pages/Dashboard.tsx` — atalho "SwarmGPT AI" que aponta para `panel: 'swarmgpt'`.
-3. `src/components/editor/FullscreenCommandMenu.tsx` — entrada no menu de comandos.
-
-Módulo backend isolado em `src/modules/swarmgpt/` (planner/critic/enhancer/repair) — esse fica intacto, é a "alma" do sistema.
-
-## O que vai ser feito
-
-### 1. Importar o painel HTML como referência visual (depende de A/B/C)
-
-- Ler o HTML enviado, extrair: paleta, tipografia, blocos de seção (header, status strip, prompt area, formation grid, transition list, fidelity report), micro-interações.
-- Mapear cada bloco do HTML para componentes React já existentes em `src/components/editor/` (reaproveitar `FidelityReport`, `TransitionPlannerPanel`, etc.) ou criar novos quando não houver equivalente.
-- Não vou copiar `<script>` inline do HTML — toda lógica reusa o módulo `src/modules/swarmgpt/`.
-
-### 2. Criar rota `/swarmgpt` como hub central
-
-- Nova página `src/pages/SwarmGPT.tsx` registrada em `src/App.tsx` dentro do `MainLayout`.
-- Layout baseado no HTML (após etapa 1) ou no `SwarmGPTPanel.tsx` atual (fallback).
-- Reúne em um só lugar: prompt + opções → plano gerado → critique → fidelity → preview de cues prontas para o timeline.
-
-### 3. Remover duplicações da UI
-
-- **Dashboard**: o atalho "SwarmGPT AI" passa a navegar para `/swarmgpt` (em vez de abrir painel local).
-- **Editor (`Index.tsx`)**: remover o lazy-load `SwarmGPTPanel` e o caso `activePanel === 'swarmgpt'`. O botão no editor passa a abrir `/swarmgpt` em nova rota (ou dentro do mesmo tab).
-- **FullscreenCommandMenu**: comando "swarmgpt" passa a navegar para `/swarmgpt`.
-- **Sidebar (`AppSidebar`)**: adicionar item "SwarmGPT" apontando para `/swarmgpt` (verificar antes se já existe).
-- `SwarmGPTPanel.tsx` deixa de ser exportado como painel modal — ou vira o conteúdo da nova página, ou é removido.
-
-### 4. Limpeza de código morto relacionado
-
-- Remover imports de `SwarmGPTPanel` que ficarem órfãos.
-- Remover entrada `activePanel: 'swarmgpt'` da união de tipos no editor.
-- Confirmar que `panel.swarmgpt` em `i18n.ts` continua sendo usado (sidebar/rotas) — manter.
-
-## Detalhes técnicos
-
-- **Roteamento**: `<Route path="/swarmgpt" element={<SwarmGPT />} />` dentro do bloco `MainLayout` em `src/App.tsx`, lazy-loaded com `lazyRetry` seguindo padrão das outras rotas.
-- **Estado**: hub usa o pipeline `generateSwarmGPTShow` de `src/modules/swarmgpt/pipeline/` — mesmo contrato de hoje.
-- **Aplicar ao timeline**: botão "Aplicar" usa `applySwarmGPTCuesToTimeline` de `src/modules/swarmgpt/adapters/` — quando clicado fora de `/editor`, navega para `/editor` após aplicar.
-- **Mobile (440×688)**: o hub respeita o padrão atual do projeto — header compacto, sem painéis flutuantes interceptando clique (regra que já corrigimos no Joi).
-- **Sem alteração no módulo `src/modules/swarmgpt/`** — só consumo.
-
-## Arquivos previstos
-
-Criar:
-- `src/pages/SwarmGPT.tsx`
-
-Editar:
-- `src/App.tsx` (rota nova)
-- `src/pages/Dashboard.tsx` (atalho navega para `/swarmgpt`)
-- `src/pages/Index.tsx` (remove painel modal SwarmGPT)
-- `src/components/editor/FullscreenCommandMenu.tsx` (comando navega)
-- `src/components/AppSidebar.tsx` (item de menu)
-- `src/components/editor/SwarmGPTPanel.tsx` (vira conteúdo da página ou é removido)
-
-## Fora de escopo
-
-- Mexer no módulo `src/modules/swarmgpt/` (planner/critic/enhancer).
-- Alterar pipeline de drones/VVIZ.
-- Mais ajustes no Joi/FXKAssistant (já fechado).
+## Trade-off
+Removing `lazy` ships `SwarmGPTPanel` and its dependency graph in the same chunk as the `/swarmgpt` route entry. Since the panel **is** the route, this is the right call: it removes the dynamic-import failure that was hiding the panel, and guarantees first paint includes it. The new `PanelErrorBoundary` covers any *runtime* error inside the panel without taking down the rest of the Commander shell.
