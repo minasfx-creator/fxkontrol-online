@@ -257,24 +257,40 @@ export default function SmartScriptAssistant({ open, onClose }: { open: boolean;
     <div
       role="dialog"
       aria-label="Smart Script Assistant"
-      className="fixed bottom-20 right-3 z-50 w-[340px] max-w-[calc(100vw-1.5rem)] max-h-[460px] flex flex-col rounded-2xl border border-border/30 shadow-2xl shadow-black/60 overflow-hidden transition-transform"
+      className={cn(
+        "fixed z-50 flex flex-col rounded-2xl border border-border/30 shadow-2xl shadow-black/60 overflow-hidden transition-transform",
+        // Mobile: full-width sheet anchored above the bottom dock
+        "left-2 right-2",
+        // Desktop: compact panel anchored bottom-right
+        "sm:left-auto sm:right-3 sm:w-[360px] sm:bottom-20",
+      )}
       style={{
         background: 'hsl(var(--card))',
+        bottom: 'calc(64px + env(safe-area-inset-bottom))',
+        maxHeight: 'min(70dvh, 560px)',
         transform: `translateY(${dragY}px)`,
         transition: dragY === 0 ? 'transform 200ms ease-out' : 'none',
       }}
     >
-      {/* Header — also doubles as swipe handle on touch */}
+      {/* Mobile drag grabber — own strip above header so it never overlaps title/close */}
       <div
-        className="flex items-center justify-between px-3 py-2.5 border-b border-border/20 select-none touch-pan-y"
+        className="shrink-0 flex justify-center pt-1.5 pb-1 sm:hidden touch-pan-y select-none"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Mobile drag indicator */}
-        <div className="absolute top-1 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-border/40 sm:hidden" />
+        <div className="w-10 h-1 rounded-full bg-border/40" />
+      </div>
 
-        <div className="flex items-center gap-2 min-w-0">
+      {/* Header — also doubles as swipe handle on touch (desktop has no grabber strip) */}
+      <div
+        className="shrink-0 flex items-center justify-between gap-2 px-3 py-2 border-b border-border/20 select-none touch-pan-y"
+        style={{ paddingRight: 'max(0.5rem, env(safe-area-inset-right))' }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary/20 to-accent/15 flex items-center justify-center flex-shrink-0">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
           </div>
@@ -289,14 +305,14 @@ export default function SmartScriptAssistant({ open, onClose }: { open: boolean;
           type="button"
           onClick={onClose}
           aria-label="Close assistant"
-          className="relative -mr-1.5 flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/10 active:bg-accent/20 transition-colors"
+          className="shrink-0 relative flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/10 active:bg-accent/20 transition-colors"
         >
-          <X className="w-4 h-4" />
+          <X className="w-5 h-5 sm:w-4 sm:h-4" />
         </button>
       </div>
 
-      {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[180px] max-h-[280px]">
+      {/* Messages — flex-1 so it absorbs free vertical space without clipping header/input */}
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
         {messages.length === 0 && (
           <div className="space-y-2">
             <p className="text-[10px] text-muted-foreground/60 text-center">Try a command:</p>
