@@ -90,7 +90,7 @@ export function GpuSamplingDiagnosticsPanel() {
             </div>
 
             {run.fallbackReason && (
-              <div className="flex items-start gap-2 text-[11px] text-amber-500 bg-amber-500/10 border border-amber-500/30 rounded-md p-2">
+              <div className="flex items-start gap-2 text-[11px] text-warning bg-warning/10 border border-warning/30 rounded-md p-2">
                 <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
                 <span className="leading-snug">
                   <span className="font-semibold">CPU fallback:</span> {run.fallbackReason}
