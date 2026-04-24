@@ -6,6 +6,8 @@ import StageZone from '@/components/swarmgpt/StageZone';
 import SystemLog, { useSystemLog } from '@/components/swarmgpt/SystemLog';
 import { PanelErrorBoundary } from '@/components/swarmgpt/PanelErrorBoundary';
 import SwarmGPTPanel from '@/components/editor/SwarmGPTPanel';
+import RealityScanQualityPanel from '@/components/editor/RealityScanQualityPanel';
+import { isEnabled } from '@/lib/featureFlags';
 
 /**
  * SwarmGPT Commander hub — central place for AI choreography generation.
