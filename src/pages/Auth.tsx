@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { ambientSound } from '@/lib/ambientSound';
-import minasfxLogo from '@/assets/minasfx-logo-tactical.png';
-import fxkLogo from '@/assets/fxk-logo-tactical.png';
+import minasfxLogo from '@/assets/minasfx-logo-tactical.webp';
+import fxkLogo from '@/assets/fxk-logo-tactical.webp';
 
 const BOOT_LINES = [
   'NEXUS AUTH v4.2 · SECURE CHANNEL',
@@ -121,6 +121,10 @@ export default function Auth() {
               <img
                 src={fxkLogo}
                 alt="FX Kontrol"
+                width={64}
+                height={64}
+                decoding="async"
+                fetchPriority="high"
                 className="h-16 w-16 object-contain"
                 style={{ filter: 'drop-shadow(0 0 12px hsl(32 100% 50% / 0.3))' }}
               />
@@ -178,7 +182,11 @@ export default function Auth() {
           <img
             src={minasfxLogo}
             alt="Minas FX"
-            className="h-6 object-contain opacity-25"
+            width={24}
+            height={24}
+            loading="lazy"
+            decoding="async"
+            className="h-6 w-6 object-contain opacity-25"
           />
         </div>
       </div>
