@@ -14,3 +14,4 @@ export * from "./validateDistancesGpu";
 export * from "./gpuFieldEngine";
 export { FIELD_SAMPLE_WGSL } from "./shaders/fieldSample.wgsl";
 export { DISTANCE_VALIDATE_WGSL } from "./shaders/distanceValidate.wgsl";
+export * from "./diagnosticsStore";
