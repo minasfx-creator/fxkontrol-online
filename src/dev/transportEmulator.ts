@@ -73,6 +73,9 @@ export class TransportEmulator {
   private replayState: 'idle' | 'running' | 'paused' = 'idle';
   private replayCursor = 0;
   private replayFrames: Array<{ dir: 'tx' | 'rx'; data: string; at: number }> = [];
+  private lastDeliveredRxIndex: number | null = null;
+  private replayBreakpoint: ((frame: { dir: 'tx' | 'rx'; data: string; at: number }) => boolean) | null = null;
+  private breakpointListeners = new Set<(frame: { dir: 'tx' | 'rx'; data: string; at: number }, index: number) => void>();
 
   constructor(cfg: EmulatorConfig) {
     // Production guard — emulator is dev/test only.
