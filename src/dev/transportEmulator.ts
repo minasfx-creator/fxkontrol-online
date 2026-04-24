@@ -456,6 +456,7 @@ export class TransportEmulator {
     this.stopReplay();
     this.respListeners.clear();
     this.stateListeners.clear();
+    this.breakpointListeners.clear();
     this.autoReplies = [];
   }
 
