@@ -3,6 +3,11 @@ import App from "./App.tsx";
 import "./index.css";
 import { initWebVitals as initWebVitalsConsole } from "@/lib/webVitals";
 import { initObservability } from "@/observability";
+import { installConsoleCapture } from "@/lib/consoleCapture";
+
+// Install console.error/warn + window error capture as early as possible
+// so the Diagnostics panel can replay startup errors.
+installConsoleCapture();
 
 createRoot(document.getElementById("root")!).render(<App />);
 
