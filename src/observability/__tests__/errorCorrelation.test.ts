@@ -1,24 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import {
-  setReplayContext,
-  getReplayContext,
   clearReplayContext,
+  createReplayId,
+  getReplayContext,
+  setReplayContext,
 } from '../errorCorrelation';
 
 describe('errorCorrelation', () => {
-  beforeEach(() => clearReplayContext());
+  afterEach(() => clearReplayContext());
 
-  it('returns undefined when no replay is active', () => {
-    expect(getReplayContext()).toEqual({ replayId: undefined, traceId: undefined });
-  });
-
-  it('attaches replay + trace IDs', () => {
-    setReplayContext('r-1', 't-1');
-    expect(getReplayContext()).toEqual({ replayId: 'r-1', traceId: 't-1' });
-  });
-
-  it('clears the context', () => {
-    setReplayContext('r-1', 't-1');
+  it('stores and clears replay context', () => {
+    setReplayContext('replay-1', 'trace-1');
+    expect(getReplayContext()).toEqual({ replayId: 'replay-1', traceId: 'trace-1' });
     clearReplayContext();
     expect(getReplayContext()).toEqual({ replayId: undefined, traceId: undefined });
   });
@@ -26,5 +19,11 @@ describe('errorCorrelation', () => {
   it('allows replayId without a traceId', () => {
     setReplayContext('r-only');
     expect(getReplayContext()).toEqual({ replayId: 'r-only', traceId: undefined });
+  });
+
+  it('creates replay ids with prefix', () => {
+    const id = createReplayId('fxk');
+    expect(id.startsWith('fxk_')).toBe(true);
+    expect(id.length).toBeGreaterThan(8);
   });
 });

@@ -1,8 +1,8 @@
 /**
- * ─── RUM Event Types ──────────────────────────────────────────────
- * Stable contract for Real User Monitoring events.
- * Keep payload shapes loose to allow per-event flexibility, but the
- * envelope (id, ts, sessionId, build, route, type) is invariant.
+ * ─── RUM Event Contract ───────────────────────────────────────────
+ * Stable shape for Real User Monitoring events. The envelope
+ * (id/ts/sessionId/build/route/type) is invariant; payload shape
+ * varies per event type but is always sanitized by the client.
  */
 
 export type RumEventType =
@@ -20,10 +20,38 @@ export interface RumEvent {
   build: string;
   sessionId: string;
 
-  /** Correlates an error/event with an active emulator replay session. */
+  /** Correlates the event with an active emulator replay session. */
   replayId?: string;
   /** Correlates with a transport trace bundle. */
   traceId?: string;
 
   payload: Record<string, unknown>;
+}
+
+export interface RumClientOptions {
+  endpoint?: string;
+  build?: string;
+  maxQueue?: number;
+  enabled?: boolean;
+}
+
+export interface WebVitalPayload {
+  name: string;
+  value: number;
+  rating?: string;
+  delta?: number;
+  id?: string;
+}
+
+export interface RouteChangePayload {
+  from: string;
+  to: string;
+  durationMs: number;
+}
+
+export interface ErrorPayload {
+  message: string;
+  name?: string;
+  stack?: string;
+  source?: 'window_error' | 'unhandled_rejection' | 'manual';
 }
