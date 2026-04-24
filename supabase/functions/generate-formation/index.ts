@@ -216,8 +216,13 @@ async function callAI(
   reasoning?: { effort: string },
 ): Promise<any> {
   let lastError: any;
-  
+  // Per-attempt timeout. Total budget across retries must stay under the
+  // 150s gateway idle limit, so cap each attempt aggressively.
+  const PER_ATTEMPT_TIMEOUT_MS = 60_000;
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), PER_ATTEMPT_TIMEOUT_MS);
     try {
         const body: any = {
           model, 
@@ -235,6 +240,7 @@ async function callAI(
             "Content-Type": "application/json",
           },
           body: JSON.stringify(body),
+          signal: controller.signal,
         });
 
       if (!response.ok) {
@@ -2076,7 +2082,10 @@ function selectModels(mode: string, count: number, isFullShow: boolean): { prima
     };
   }
   if (mode === "image") {
-    return { primary: "google/gemini-2.5-pro", fallback: "google/gemini-3-flash-preview" };
+    // Pro is too slow for vision + large drone counts and breaches the 150s
+    // gateway idle timeout. Use the fast-preview vision model as primary and
+    // keep flash as a quick fallback.
+    return { primary: "google/gemini-3-flash-preview", fallback: "google/gemini-2.5-flash" };
   }
   if (count > 500) {
     return { primary: "google/gemini-3-flash-preview", fallback: "google/gemini-2.5-pro" };
