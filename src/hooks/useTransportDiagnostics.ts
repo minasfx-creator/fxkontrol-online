@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { timelineClock, type TimelineClockState } from '@/core/timeline/TimelineClock';
 import { timelineTransport } from '@/core/transport/timelineTransport';
+import { useExternalSyncDiagnostics, type ExternalSyncDiagnostics } from '@/hooks/useExternalSyncDiagnostics';
 
 export type TransportChipTone = 'warning' | 'accent';
 
@@ -31,12 +32,12 @@ export interface TransportChip {
 
 const END_EPSILON = 0.001;
 
-function deriveChip(state: TimelineClockState): TransportChip | null {
+function deriveChip(state: TimelineClockState, ext?: ExternalSyncDiagnostics): TransportChip | null {
   if (state.source === 'external') {
     return {
-      label: 'EXT',
+      label: ext?.label ?? 'EXT',
       tone: 'accent',
-      reason: 'Timeline driven by external sync (SMPTE/MTC). Local Play is overridden.',
+      reason: ext?.description ?? 'Timeline driven by external sync. Local Play is overridden.',
     };
   }
   if (!Number.isFinite(state.speed) || state.speed < 0.05) {
@@ -57,9 +58,12 @@ function deriveChip(state: TimelineClockState): TransportChip | null {
 }
 
 export function useTransportDiagnostics() {
-  const [chip, setChip] = useState<TransportChip | null>(() => deriveChip(timelineClock.getState()));
+  const ext = useExternalSyncDiagnostics();
+  const [clockState, setClockState] = useState<TimelineClockState>(() => timelineClock.getState());
 
-  useEffect(() => timelineClock.onChange((s) => setChip(deriveChip(s))), []);
+  useEffect(() => timelineClock.onChange(setClockState), []);
+
+  const chip = useMemo(() => deriveChip(clockState, ext), [clockState, ext]);
 
   const flushAutoCorrection = useCallback(() => {
     const correction = timelineTransport.consumeLastAutoCorrection();
@@ -87,7 +91,8 @@ export function useTransportDiagnostics() {
 
   return useMemo(() => ({
     chip,
+    external: ext,
     play: playWithFeedback,
     toggle: toggleWithFeedback,
-  }), [chip, playWithFeedback, toggleWithFeedback]);
+  }), [chip, ext, playWithFeedback, toggleWithFeedback]);
 }
