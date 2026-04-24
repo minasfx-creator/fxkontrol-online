@@ -87,9 +87,53 @@ export async function sampleFieldUltra(
           fieldType: options.fieldType,
           params,
         });
+
+        // ── Optional GPU Poisson PREVIEW pass ───────────────────────
+        // Reduces the candidate set the CPU must scan. The CPU final pass
+        // (filterCandidatesByDensity) remains the safety authority — GPU
+        // Poisson is approximate at cell boundaries.
+        let workingData = candidates.data;
+        let workingCount = candidates.count;
+        let poissonStats: import("./diagnosticsStore").SampleRunRecord["poisson"];
+
+        const wantPoisson =
+          options.usePoissonPreview === true &&
+          (options.minDistance ?? 0) > 0 &&
+          candidates.count > options.droneCount * 4;
+
+        if (wantPoisson) {
+          const tP0 = nowMs();
+          const preview = await poissonPreviewGpu(device, {
+            candidates,
+            bounds: options.bounds,
+            minDistance: options.minDistance!,
+          });
+          // Compact accepted candidates into a smaller vec4 buffer for the
+          // CPU pass. This keeps the CPU O(K log K) instead of O(N log N).
+          const n = preview.acceptedIndices.length;
+          const compact = new Float32Array(n * 4);
+          for (let i = 0; i < n; i++) {
+            const src = preview.acceptedIndices[i] * 4;
+            const dst = i * 4;
+            compact[dst] = candidates.data[src];
+            compact[dst + 1] = candidates.data[src + 1];
+            compact[dst + 2] = candidates.data[src + 2];
+            compact[dst + 3] = candidates.data[src + 3];
+          }
+          workingData = compact;
+          workingCount = n;
+          poissonStats = {
+            enabled: true,
+            candidatesIn: candidates.count,
+            candidatesAfterPreview: n,
+            durationMs: nowMs() - tP0,
+            grid: preview.grid,
+          };
+        }
+
         const points = filterCandidatesByDensity(
-          candidates.data,
-          candidates.count,
+          workingData,
+          workingCount,
           options.droneCount,
           options.minDistance ?? 0,
         );
@@ -107,6 +151,7 @@ export async function sampleFieldUltra(
           fieldType: options.fieldType,
           droneCount: options.droneCount,
           diagnostics: result.diagnostics,
+          poisson: poissonStats,
         });
         return result;
       } finally {
