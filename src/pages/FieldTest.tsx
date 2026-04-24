@@ -782,26 +782,13 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
         if (!e.message?.includes('cancelled')) toast.error(e.message);
       }
     } else {
-      // Realtime: simulate discovery via session peer presence
+      // Realtime LAN/WAN: peer modules announce themselves over the session
+      // channel. Wait briefly to give the channel time to deliver presence.
       await new Promise(r => setTimeout(r, 800));
-      if (session.peerConnected) {
-        const mod: DiscoveredModule = {
-          id: `rt-${session.code}-${Date.now()}`,
-          name: `FXK-M1 [${session.code}]`,
-          moduleNumber: discoveredModules.length + 1,
-          rssi: session.transport === 'realtime-lan' ? -45 : -72,
-          channels: 32,
-          status: 'online',
-          lastSeen: Date.now(),
-        };
-        setDiscoveredModules(prev => {
-          const hasPeer = prev.some(m => m.name.includes(session.code));
-          if (hasPeer) return prev;
-          return [...prev, mod];
-        });
-        toast.success('Módulo peer detectado');
-      } else {
+      if (!session.peerConnected) {
         toast.info('Nenhum módulo online — aguardando peer');
+      } else {
+        toast.info('Aguardando anúncio do peer pela sessão');
       }
     }
     setScanningModules(false);
