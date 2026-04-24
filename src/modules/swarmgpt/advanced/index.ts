@@ -18,3 +18,9 @@ export * from './scoring/scoreFormationFidelity';
 
 // Nível 3 — 3D model → formation
 export * from './model3d';
+
+// Nível 4 — utilitários transversais e unificador de assets
+export * from './sampling/farthestPointSampling';
+export * from './sampling/reducePointCloud';
+export * from './image/silhouetteToPoints';
+export * from './assets/createFormationFromAdvancedAsset';
