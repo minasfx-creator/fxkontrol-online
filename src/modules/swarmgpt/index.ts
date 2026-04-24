@@ -15,3 +15,4 @@ export * from "./core/pipeline/planFormationFromAsset";
 export * from "./physics";
 export * from "./fields";
 export * from "./gpu";
+export * from "./marketplace";
