@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useViewportStore } from '@/store/useViewportStore';
@@ -195,13 +196,6 @@ export function GroundControls({ onSpeedChange }: { onSpeedChange?: (speed: numb
   return null;
 }
 
-interface OrbitControlsHandle {
-  target: THREE.Vector3;
-  enabled: boolean;
-  mouseButtons: { LEFT: number; MIDDLE: number; RIGHT: number };
-  update: () => void;
-}
-
 export function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
   targetPosition: [number, number, number];
   targetLookAt: [number, number, number];
@@ -209,7 +203,7 @@ export function CameraController({ targetPosition, targetLookAt, freeLook, flyMo
   flyMode: boolean;
 }) {
   const { camera } = useThree();
-  const controlsRef = useRef<OrbitControlsHandle | null>(null);
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const targetPos = useRef(new THREE.Vector3(...targetPosition));
   const targetLook = useRef(new THREE.Vector3(...targetLookAt));
   const animating = useRef(false);
@@ -525,7 +519,7 @@ export function CameraController({ targetPosition, targetLookAt, freeLook, flyMo
 
   return (
     <OrbitControls
-      ref={controlsRef as unknown as React.Ref<unknown>}
+      ref={controlsRef}
       enableDamping={false}
       rotateSpeed={0.6 * sensitivityScale}
       panSpeed={0.8 * sensitivityScale}
