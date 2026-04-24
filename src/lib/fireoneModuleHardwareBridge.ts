@@ -1069,16 +1069,57 @@ export class FireOneHardwareBridge {
     }
   }
 
-  private handleDisconnect(): void {
+  /**
+   * Transport drop / explicit disconnect handler.
+   *
+   * Critical contract (safety):
+   *  - All pending resolvers are drained with the empty-string sentinel so
+   *    callers (fire / handshake / readWithRetry) settle as `false`/0 and
+   *    never linger as a false confirmation.
+   *  - `connectingSessionId` is bumped so any in-flight handshake or stale
+   *    response from the previous session is invalidated immediately.
+   *  - The `disconnected` event carries full reconstruction context for the
+   *    audit log (reasonCode, transport, linkHealth, sessionId, at).
+   */
+  private handleDisconnect(reasonCode: BridgeReasonCode = 'TRANSPORT_DISCONNECTED'): void {
     const wasConnected = this.connected;
+    const previousTransport = this.transport;
+    const previousSessionId = this.sessionId;
+
+    // Drain pending resolvers BEFORE we clear/reset state. Empty string is
+    // the documented sentinel: sendAndWaitConfirm → false, readWithRetry →
+    // 'empty_drain' (which then surfaces as 0). Never a confirmation.
+    if (this.pendingResolves.size > 0) {
+      const drained = Array.from(this.pendingResolves.values());
+      this.pendingResolves.clear();
+      for (const p of drained) {
+        try { p.resolver(''); } catch { /* swallow */ }
+      }
+    }
+
     this.connected = false;
     this.connecting = false;
     this.transport = 'none';
     this.linkHealth = 'disconnected';
-    this.pendingResolves.clear();
+    // Invalidate any handshake/response-matching that referenced the old
+    // session — late frames from the previous transport will hit the
+    // stale-session guard in handleResponse.
+    this.connectingSessionId++;
+    this.lastErrorCode = reasonCode;
+    this.lastError = `Disconnected: ${reasonCode}`;
     this.stopHeartbeat();
     this.stopRssiPolling();
-    if (wasConnected) this.onEvent?.('disconnected', null);
+
+    if (wasConnected) {
+      this.onEvent?.('disconnected', {
+        reasonCode,
+        transport: 'none',
+        previousTransport,
+        linkHealth: 'disconnected',
+        sessionId: previousSessionId,
+        at: Date.now(),
+      });
+    }
     if (wasConnected && this.lastConnectArgs) {
       this.attemptReconnect();
     }
