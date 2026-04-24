@@ -69,6 +69,8 @@ export interface BridgeDiagnostics {
   retryCount: number;
   retryRateLimit: number;
   sessionId: number;
+  pendingCount: number;
+  pendingKeys: string[];
 }
 
 export interface BridgeStatus {
