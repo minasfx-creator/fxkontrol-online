@@ -9,7 +9,7 @@ import MainLayout from "@/layouts/MainLayout";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import { LazyChunkBoundary } from "@/components/errors/LazyChunkBoundary";
 import { AppErrorBoundary } from "@/components/errors/AppErrorBoundary";
-import { IframeHardwareWarning } from "@/components/IframeHardwareWarning";
+
 import { lazyRetry } from "@/lib/lazyRetry";
 import { useRouteTracing } from "@/observability/useRouteTracing";
 import Auth from "./pages/Auth";
@@ -71,7 +71,6 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <IframeHardwareWarning />
             <BrowserRouter>
               <RouteTracker />
               <PageTransitionOverlay />
