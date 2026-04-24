@@ -61,6 +61,16 @@ export interface BridgeError {
 
 export type LinkHealth = 'disconnected' | 'handshaking' | 'healthy';
 
+export interface BridgeDiagnostics {
+  rateLimitedTotal: number;
+  rateLimitedByKey: Record<string, number>;
+  retryByKey: Record<string, number>;
+  retryByCommandType: Partial<Record<BridgeCommandType, number>>;
+  retryCount: number;
+  retryRateLimit: number;
+  sessionId: number;
+}
+
 export interface BridgeStatus {
   transport: BridgeTransport;
   connected: boolean;
@@ -74,7 +84,10 @@ export interface BridgeStatus {
   rssi?: number;
   estimatedDistance?: number;
   lastError?: string;
+  lastErrorCode?: BridgeReasonCode;
   linkHealth?: 'disconnected' | 'handshaking' | 'healthy';
+  sessionId?: number;
+  diagnostics?: BridgeDiagnostics;
 }
 
 export interface BridgeTransportSupport {
