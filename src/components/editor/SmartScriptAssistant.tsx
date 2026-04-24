@@ -360,20 +360,24 @@ export default function SmartScriptAssistant({ open, onClose }: { open: boolean;
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="px-3 py-2 border-t border-border/20 flex items-center gap-2">
+      <form
+        onSubmit={handleSubmit}
+        className="shrink-0 px-3 py-2 border-t border-border/20 flex items-center gap-2"
+        style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+      >
         <input
           ref={inputRef}
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder="Describe what to create..."
-          className="flex-1 h-9 px-3 rounded-xl text-[11px] bg-surface-0 border border-border/20 text-foreground outline-none focus:border-primary/40 transition-colors"
+          className="flex-1 min-w-0 h-9 px-3 rounded-xl text-[11px] bg-surface-0 border border-border/20 text-foreground outline-none focus:border-primary/40 transition-colors"
           disabled={loading}
         />
         <button
           type="submit"
           aria-label="Send"
           disabled={loading || !input.trim()}
-          className="flex items-center justify-center min-w-[36px] h-9 px-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+          className="shrink-0 flex items-center justify-center min-w-[36px] h-9 px-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 disabled:opacity-40 disabled:pointer-events-none transition-colors"
         >
           <Send className="w-3.5 h-3.5" />
         </button>
