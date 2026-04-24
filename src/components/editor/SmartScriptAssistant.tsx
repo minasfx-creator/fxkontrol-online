@@ -246,10 +246,8 @@ export default function SmartScriptAssistant({ open, onClose }: { open: boolean;
     if (dy > 0) setDragY(dy);
   };
   const handleTouchEnd = () => {
-    if (dragY > SWIPE_CLOSE_THRESHOLD) {
-      onClose();
-    }
-    setDragY(0);
+    if (dragY > SWIPE_CLOSE_THRESHOLD) onClose();
+    if (dragY !== 0) setDragY(0);
     dragStartY.current = null;
   };
 
