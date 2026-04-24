@@ -867,7 +867,7 @@ export function FXKAssistant() {
   return (
     <div
       className={cn(
-        "fixed z-[70] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
+        "fixed z-[10000] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
         closing ? "animate-holo-dissolve" : "animate-holo-materialize",
         isMobile ? "max-w-[calc(100vw-1rem)]" : "bottom-5 right-5 h-[560px]"
       )}
