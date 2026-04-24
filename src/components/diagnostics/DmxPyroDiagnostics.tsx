@@ -34,6 +34,10 @@ const ARTNET_LINK_LABEL: Record<ArtNetState, { label: string; sev: Severity }> =
   error: { label: "ERROR", sev: "fail" },
 };
 
+function fmtNum(v: unknown, digits = 1): string {
+  return typeof v === "number" && Number.isFinite(v) ? v.toFixed(digits) : "—";
+}
+
 function validateChannels(channels: ReturnType<typeof useSfxChannelStore.getState>["channels"]): Finding[] {
   const findings: Finding[] = [];
 
