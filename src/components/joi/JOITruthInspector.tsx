@@ -49,6 +49,8 @@ export function JOITruthInspector() {
     return c;
   }, [devices]);
 
+  if (devices.length === 0) return null;
+
   const Icon = expanded ? ChevronUp : ChevronDown;
 
   return (

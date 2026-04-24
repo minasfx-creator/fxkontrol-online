@@ -65,7 +65,7 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fxk-ai-chat`
 const HISTORY_KEY = 'fxk-ai-history';
 const MAX_HISTORY = 10;
 
-// Legacy PRESETS_DOCS moved to joiModes.ts under 'docs' mode
+
 
 const IDLE_PHRASES = [
   'Aqui firme cuidando de tudo, chefinho!',
@@ -111,7 +111,7 @@ function TypewriterGreeting({ text }: { text: string }) {
   );
 }
 
-// Legacy getContextPresets is replaced by mode-aware presets below
+
 
 function getGreeting(): string {
   const h = new Date().getHours();
