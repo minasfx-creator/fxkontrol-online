@@ -72,8 +72,23 @@ export default function SwarmGPTPage() {
         </div>
 
         {/* Core — last on mobile, left on desktop */}
-        <div className="order-3 lg:order-1 lg:row-start-1">
+        <div className="order-3 lg:order-1 lg:row-start-1 flex flex-col gap-3 min-h-0 overflow-y-auto">
           <CorePanel />
+          {isEnabled('realityscan_quality_analysis') && (
+            <PanelErrorBoundary
+              onError={(e) => append(`[QA] ${e.message}`, 'warn')}
+              onReset={() => {}}
+            >
+              <RealityScanQualityPanel
+                onBakeVertexColors={(rgb) =>
+                  append(`[QA] Vertex colors baked (${rgb.length / 3} verts)`, 'ok')
+                }
+                onBakeTexture={(t) =>
+                  append(`[QA] Texture baked ${t.width}×${t.height}`, 'ok')
+                }
+              />
+            </PanelErrorBoundary>
+          )}
         </div>
 
         {/* Mobile-only system log at the very bottom */}
