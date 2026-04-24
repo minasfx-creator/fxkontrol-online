@@ -203,6 +203,33 @@ export function evaluateFireLockout(input: FireLockoutInput): FireLockoutResult 
   return { allowed: true };
 }
 
+// NOTE: `HilFaultProfile` and `HilBridgeHarness` MUST be declared before
+// `BridgePhysicalController` because the controller references them in field
+// initializers (line ~223). Class declarations live in the Temporal Dead Zone
+// until evaluated, so a forward reference would throw
+// "Cannot access 'HilBridgeHarness' before initialization" at instantiation.
+export interface HilFaultProfile {
+  jitterMs: number;
+  baseDelayMs: number;
+  packetLossRate: number;
+  reorderRate: number;
+}
+
+export class HilBridgeHarness {
+  constructor(private profile: HilFaultProfile = { jitterMs: 15, baseDelayMs: 40, packetLossRate: 0, reorderRate: 0 }) {}
+
+  async fire(channelId: string, onAcknowledge: (channel: string, meta: { delayMs: number; reordered: boolean }) => void): Promise<boolean> {
+    if (Math.random() < this.profile.packetLossRate) return false;
+    const jitter = (Math.random() - 0.5) * 2 * this.profile.jitterMs;
+    const reordered = Math.random() < this.profile.reorderRate;
+    const reorderPenalty = reordered ? this.profile.baseDelayMs : 0;
+    const delay = Math.max(0, this.profile.baseDelayMs + jitter + reorderPenalty);
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    onAcknowledge(channelId, { delayMs: delay, reordered });
+    return true;
+  }
+}
+
 class BridgePhysicalController {
   private commands = new Map<string, PhysicalCommandRecord>();
   private listeners = new Set<RuntimeListener>();
@@ -532,27 +559,8 @@ class BridgePhysicalController {
 
 export const bridgePhysicalController = new BridgePhysicalController();
 
-export interface HilFaultProfile {
-  jitterMs: number;
-  baseDelayMs: number;
-  packetLossRate: number;
-  reorderRate: number;
-}
+// (HilFaultProfile and HilBridgeHarness are declared above, before BridgePhysicalController, to avoid TDZ.)
 
-export class HilBridgeHarness {
-  constructor(private profile: HilFaultProfile = { jitterMs: 15, baseDelayMs: 40, packetLossRate: 0, reorderRate: 0 }) {}
-
-  async fire(channelId: string, onAcknowledge: (channel: string, meta: { delayMs: number; reordered: boolean }) => void): Promise<boolean> {
-    if (Math.random() < this.profile.packetLossRate) return false;
-    const jitter = (Math.random() - 0.5) * 2 * this.profile.jitterMs;
-    const reordered = Math.random() < this.profile.reorderRate;
-    const reorderPenalty = reordered ? this.profile.baseDelayMs : 0;
-    const delay = Math.max(0, this.profile.baseDelayMs + jitter + reorderPenalty);
-    await new Promise((resolve) => setTimeout(resolve, delay));
-    onAcknowledge(channelId, { delayMs: delay, reordered });
-    return true;
-  }
-}
 
 function percentile(sorted: number[], p: number): number {
   if (sorted.length === 0) return 0;
