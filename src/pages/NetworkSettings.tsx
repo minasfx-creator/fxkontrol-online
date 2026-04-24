@@ -388,45 +388,106 @@ export default function NetworkSettings() {
 
         {/* Test */}
         <section className="space-y-3 rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Connection Test
             </Label>
-            <Button onClick={runTest} disabled={test.status === "running"} size="sm">
-              {test.status === "running" ? (
-                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Testing…</>
-              ) : (
-                <><Activity className="w-3.5 h-3.5 mr-1.5" /> Run test</>
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              {test.status === "fail" || test.status === "ok" ? (
+                <Button variant="ghost" size="sm" onClick={copyDiagnostics} className="text-[11px]">
+                  <Copy className="w-3.5 h-3.5 mr-1.5" /> Copy diagnostics
+                </Button>
+              ) : null}
+              <Button
+                onClick={runTest}
+                disabled={test.status === "running"}
+                size="sm"
+                aria-label="Run connection test"
+              >
+                {test.status === "running" ? (
+                  <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Testing…</>
+                ) : (
+                  <><Activity className="w-3.5 h-3.5 mr-1.5" /> Test Connection</>
+                )}
+              </Button>
+            </div>
           </div>
 
-          {test.status !== "idle" && (
-            <div
-              className={`rounded-md border p-3 flex items-start gap-2 ${
-                test.status === "ok"
-                  ? "border-emerald-500/30 bg-emerald-500/5"
-                  : test.status === "fail"
-                  ? "border-destructive/30 bg-destructive/5"
-                  : "border-border bg-muted/20"
-              }`}
-              role="status"
-              aria-live="polite"
-            >
-              {test.status === "ok" && <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />}
-              {test.status === "fail" && <XCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />}
-              {test.status === "running" && <Loader2 className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0 animate-spin" />}
-              <div className="text-xs space-y-0.5 min-w-0 flex-1">
-                <p className="font-semibold text-foreground">
-                  {test.message ?? (test.status === "running" ? "Probing endpoint…" : "")}
-                </p>
-                {test.detail && <p className="text-muted-foreground break-all">{test.detail}</p>}
-                {typeof test.latencyMs === "number" && (
-                  <p className="text-[10px] text-muted-foreground/70 font-mono">
-                    Round-trip: {test.latencyMs} ms
+          {test.status === "idle" ? (
+            <p className="text-[11px] text-muted-foreground">
+              Runs a real probe against the configured endpoint and reports each step.
+            </p>
+          ) : (
+            <div role="status" aria-live="polite" className="space-y-3">
+              {/* Summary banner */}
+              <div
+                className={`rounded-md border p-3 flex items-start gap-2 ${
+                  test.status === "ok"
+                    ? "border-emerald-500/30 bg-emerald-500/5"
+                    : test.status === "fail"
+                    ? "border-destructive/30 bg-destructive/5"
+                    : "border-border bg-muted/20"
+                }`}
+              >
+                {test.status === "ok" && <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />}
+                {test.status === "fail" && <XCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />}
+                {test.status === "running" && <Loader2 className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0 animate-spin" />}
+                <div className="text-xs space-y-0.5 min-w-0 flex-1">
+                  <p className="font-semibold text-foreground">
+                    {test.message ?? (test.status === "running" ? "Probing endpoint…" : "")}
                   </p>
-                )}
+                  {test.detail && <p className="text-muted-foreground break-words">{test.detail}</p>}
+                  {typeof test.latencyMs === "number" && (
+                    <p className="text-[10px] text-muted-foreground/70 font-mono">
+                      Total: {test.latencyMs} ms
+                    </p>
+                  )}
+                </div>
               </div>
+
+              {/* Step list */}
+              <ol className="space-y-1.5">
+                {test.steps.map((step) => {
+                  const Icon =
+                    step.status === "ok" ? CheckCircle2 :
+                    step.status === "fail" ? XCircle :
+                    step.status === "running" ? Loader2 :
+                    step.status === "skip" ? AlertTriangle :
+                    Activity;
+                  const color =
+                    step.status === "ok" ? "text-emerald-400" :
+                    step.status === "fail" ? "text-destructive" :
+                    step.status === "running" ? "text-primary" :
+                    step.status === "skip" ? "text-muted-foreground/50" :
+                    "text-muted-foreground/40";
+                  return (
+                    <li key={step.id} className="flex items-start gap-2 text-xs">
+                      <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${color} ${step.status === "running" ? "animate-spin" : ""}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className={step.status === "skip" ? "text-muted-foreground/60 line-through" : "text-foreground"}>
+                            {step.label}
+                          </span>
+                          {typeof step.durationMs === "number" && (
+                            <span className="text-[10px] font-mono text-muted-foreground/70">{step.durationMs} ms</span>
+                          )}
+                        </div>
+                        {step.detail && (
+                          <p className="text-[10px] text-muted-foreground/80 break-words mt-0.5">{step.detail}</p>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+
+              {/* Actionable hint on failure */}
+              {test.status === "fail" && test.hint && (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 flex items-start gap-2">
+                  <Lightbulb className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+                  <p className="text-[11px] text-amber-100/90 leading-relaxed">{test.hint}</p>
+                </div>
+              )}
             </div>
           )}
         </section>
