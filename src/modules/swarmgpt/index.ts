@@ -13,3 +13,4 @@ export {
 export * from "./core/validation/validateTrajectory";
 export * from "./core/pipeline/planFormationFromAsset";
 export * from "./physics";
+export * from "./fields";
