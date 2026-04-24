@@ -36,6 +36,9 @@ interface ComplianceRow {
   evidence: string;
   action: string;
   criticalForGoLive?: boolean;
+  evidenceStatus?: EvidenceStatus;
+  nextAction?: string;
+  owner?: string;
 }
 
 const STATUS_CFG: Record<ComplianceStatus, { icon: typeof CheckCircle2; color: string; bg: string; label: string }> = {
