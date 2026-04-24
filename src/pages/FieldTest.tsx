@@ -91,10 +91,9 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
         toast.success(`CDS: ${active}/32 ignitores detectados`);
         haptics.success();
       }, 800);
-      } catch (err: any) {
-        setCdsTesting(false);
-        toast.error(err.message || 'Erro no teste CDS');
-      }
+    } catch (err: any) {
+      setCdsTesting(false);
+      toast.error(err.message || 'Erro no teste CDS');
     }
   };
 
