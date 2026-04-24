@@ -34,7 +34,7 @@ interface ComplianceRow {
   requirement: string;
   status: ComplianceStatus | string;  // tolerate legacy lowercase rows
   evidence: string;
-  action: string;
+  action?: string;
   criticalForGoLive?: boolean;
   evidenceStatus?: EvidenceStatus;
   nextAction?: string;
