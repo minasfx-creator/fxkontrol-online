@@ -23,6 +23,7 @@ import { distance } from "../fields/vector";
 import { createGpuDevice } from "./createGpuDevice";
 import { sampleFieldGpu } from "./sampleFieldGpu";
 import { isWebGPUSupported } from "./webgpuSupport";
+import { recordSampleRun } from "./diagnosticsStore";
 import type {
   GpuBounds,
   GpuFieldEngineResult,
