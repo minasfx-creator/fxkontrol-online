@@ -14,3 +14,4 @@ export * from './adapters/applyToTimeline';
 export { extractJsonObject } from './utils/safeJson';
 export { makeId } from './utils/ids';
 export { distance3, clampPoint, isInsideBounds } from './utils/geometry';
+export * from './advanced';
