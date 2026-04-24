@@ -32,6 +32,7 @@ const Admin = lazy(lazyRetry(() => import("./pages/Admin")));
 const AccreditationDashboard = lazy(lazyRetry(() => import("./pages/AccreditationDashboard")));
 const PlatformStatus = lazy(lazyRetry(() => import("./pages/PlatformStatus")));
 const JoiPanel = lazy(lazyRetry(() => import("./ai/ui/JoiPanel")));
+const SwarmGPT = lazy(lazyRetry(() => import("./pages/SwarmGPT")));
 
 const queryClient = new QueryClient();
 
@@ -88,6 +89,7 @@ function App() {
                     <Route path="/admin" element={<Admin />} />
                     <Route path="/accreditation" element={<AccreditationDashboard />} />
                     <Route path="/joi" element={<JoiPanel />} />
+                    <Route path="/swarmgpt" element={<SwarmGPT />} />
                   </Route>
                   <Route path="*" element={<NotFound />} />
                 </Routes>

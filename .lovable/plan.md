@@ -1,69 +1,78 @@
-## Problema
+# Integrar painel HTML do FXKONTROL e centralizar SwarmGPT
 
-No viewport mobile (440px), o botão **X** da janela do Joi (`FXKAssistant`) fica difícil de acertar porque o cabeçalho está superlotado:
+## Pré-requisito: enviar o HTML
 
-- Avatar 40px + título flexível + 4 botões mobile (`Voice 36 + Clear 36 + Minimize 36 + Close 40 = 148px`) + gaps ≈ 212px reservados.
-- O botão X tem `h-10 w-10` (40px) mas é o último de uma fila apertada, sem espaço extra ao redor.
-- Abaixo do header ainda há **5 painéis sempre montados** (`JOIContextRibbon`, `JOIInsightPanel`, `JOITruthInspector`, `JOIExecutionTracePanel`, `JOIStylePanel`) que aumentam altura, custo de render e podem sobrepor a área quando expandidos.
+Não consigo abrir o link de download externo. Para eu seguir, escolha **uma** opção ao aprovar este plano:
 
-Além disso, há código morto acumulado no `FXKAssistant.tsx`:
+- **(A)** Cole o HTML completo na próxima mensagem, ou
+- **(B)** Anexe o arquivo `.html` no chat, ou
+- **(C)** Diga o caminho dele dentro do projeto (ex.: `public/fxkontrol-panel.html`).
 
-- Imports não utilizados: `OPERATIONAL_PRESETS`, `useProjectStore`, `EFFECT_LIBRARY`, `JOI_MODE_PRESETS`.
-- State `glitching` e setter `setGlitching` (escrito, nunca lido).
-- Const `joiState` calculada e nunca usada.
-- Comentário “Sidebar hologram (expanded only)” sobrando, sem implementação.
-- Comentário “Legacy …” obsoleto.
+Se nenhuma opção vier, eu sigo só com a parte de **centralização e limpeza de duplicações** (passos 2–4 abaixo), usando o layout SwarmGPT atual como base visual.
 
-## O que vou fazer
+---
 
-### 1. Header mobile mais limpo e botão X destacado
+## Estado atual (mapeado)
 
-No `src/components/FXKAssistant.tsx`, dentro do header (linhas ~896–964):
+SwarmGPT hoje aparece em **3 lugares diferentes**, gerando duplicação:
 
-- Reordenar e priorizar **X (fechar)** e **Minimizar** como os botões mais à direita, com hit target maior no mobile.
-- No mobile, mover **Voz** e **Limpar** para um menu “overflow” (`•••`) ou simplesmente ocultar o botão de limpar (a ação já existe via comando do usuário e via apagar histórico do navegador). Ficamos com: `Voz | Minimizar | X`.
-- Aumentar o X mobile para `h-11 w-11` com `min-w-[44px]` (padrão Apple HIG de toque) e dar mais respiro (`ml-1` adicional).
-- Garantir que o título use `truncate` corretamente para nunca empurrar os botões.
+1. `src/components/editor/SwarmGPTPanel.tsx` — painel completo dentro do editor (`/editor`).
+2. `src/pages/Dashboard.tsx` — atalho "SwarmGPT AI" que aponta para `panel: 'swarmgpt'`.
+3. `src/components/editor/FullscreenCommandMenu.tsx` — entrada no menu de comandos.
 
-### 2. Painéis Joi colapsáveis por padrão / só quando relevantes
+Módulo backend isolado em `src/modules/swarmgpt/` (planner/critic/enhancer/repair) — esse fica intacto, é a "alma" do sistema.
 
-- `JOIContextRibbon` continua sempre visível (é o ribbon de verdade) mas com `overflow-x-auto` já tem.
-- `JOIInsightPanel` já só renderiza quando há insights — manter.
-- `JOITruthInspector`: condicionar a render a “há devices registrados”. Quando não há, retornar `null`.
-- `JOIExecutionTracePanel`: já só renderiza com `trace !== null` — manter.
-- `JOIStylePanel`: já tem modo colapsado quando não há estilo ativo — manter; garantir que continua `collapsed=true` por default.
+## O que vai ser feito
 
-Isso encurta o painel no mobile e libera espaço/atenção visual em torno do header.
+### 1. Importar o painel HTML como referência visual (depende de A/B/C)
 
-### 3. Limpeza de código morto em `FXKAssistant.tsx`
+- Ler o HTML enviado, extrair: paleta, tipografia, blocos de seção (header, status strip, prompt area, formation grid, transition list, fidelity report), micro-interações.
+- Mapear cada bloco do HTML para componentes React já existentes em `src/components/editor/` (reaproveitar `FidelityReport`, `TransitionPlannerPanel`, etc.) ou criar novos quando não houver equivalente.
+- Não vou copiar `<script>` inline do HTML — toda lógica reusa o módulo `src/modules/swarmgpt/`.
 
-- Remover imports: `OPERATIONAL_PRESETS`, `useProjectStore`, `EFFECT_LIBRARY`, `JOI_MODE_PRESETS`.
-- Remover state `glitching` / `setGlitching` e as duas chamadas (`setGlitching(true)` e o `setTimeout(setGlitching(false), 800)`), mantendo o `playGlitchBurst()` (este é audio, não visual).
-- Remover a const não utilizada `const joiState = ...`.
-- Remover o comentário órfão `{/* Sidebar hologram (expanded only) */}` e o `{/* Legacy ... */}`.
+### 2. Criar rota `/swarmgpt` como hub central
 
-### 4. Sem mudanças em outros arquivos
+- Nova página `src/pages/SwarmGPT.tsx` registrada em `src/App.tsx` dentro do `MainLayout`.
+- Layout baseado no HTML (após etapa 1) ou no `SwarmGPTPanel.tsx` atual (fallback).
+- Reúne em um só lugar: prompt + opções → plano gerado → critique → fidelity → preview de cues prontas para o timeline.
 
-Não vou tocar em `JoiPanel.tsx` (rota `/joi`, painel separado de dev), nem em `useJoiSpeech`, nem nos serviços de voz/contexto. Escopo: somente cabeçalho do chat + remoção de código morto + condicionar render de 1 sub-painel.
+### 3. Remover duplicações da UI
+
+- **Dashboard**: o atalho "SwarmGPT AI" passa a navegar para `/swarmgpt` (em vez de abrir painel local).
+- **Editor (`Index.tsx`)**: remover o lazy-load `SwarmGPTPanel` e o caso `activePanel === 'swarmgpt'`. O botão no editor passa a abrir `/swarmgpt` em nova rota (ou dentro do mesmo tab).
+- **FullscreenCommandMenu**: comando "swarmgpt" passa a navegar para `/swarmgpt`.
+- **Sidebar (`AppSidebar`)**: adicionar item "SwarmGPT" apontando para `/swarmgpt` (verificar antes se já existe).
+- `SwarmGPTPanel.tsx` deixa de ser exportado como painel modal — ou vira o conteúdo da nova página, ou é removido.
+
+### 4. Limpeza de código morto relacionado
+
+- Remover imports de `SwarmGPTPanel` que ficarem órfãos.
+- Remover entrada `activePanel: 'swarmgpt'` da união de tipos no editor.
+- Confirmar que `panel.swarmgpt` em `i18n.ts` continua sendo usado (sidebar/rotas) — manter.
 
 ## Detalhes técnicos
 
-Arquivos editados:
+- **Roteamento**: `<Route path="/swarmgpt" element={<SwarmGPT />} />` dentro do bloco `MainLayout` em `src/App.tsx`, lazy-loaded com `lazyRetry` seguindo padrão das outras rotas.
+- **Estado**: hub usa o pipeline `generateSwarmGPTShow` de `src/modules/swarmgpt/pipeline/` — mesmo contrato de hoje.
+- **Aplicar ao timeline**: botão "Aplicar" usa `applySwarmGPTCuesToTimeline` de `src/modules/swarmgpt/adapters/` — quando clicado fora de `/editor`, navega para `/editor` após aplicar.
+- **Mobile (440×688)**: o hub respeita o padrão atual do projeto — header compacto, sem painéis flutuantes interceptando clique (regra que já corrigimos no Joi).
+- **Sem alteração no módulo `src/modules/swarmgpt/`** — só consumo.
 
-- `src/components/FXKAssistant.tsx`
-  - Imports enxugados.
-  - `glitching` e `joiState` removidos.
-  - Header: layout reorganizado, X com `min-w-[44px] min-h-[44px]` no mobile, gap extra antes do X.
-  - Botão “Limpar” (Trash2) escondido no mobile (`hidden sm:flex`).
+## Arquivos previstos
 
-- `src/components/joi/JOITruthInspector.tsx`
-  - `if (devices.length === 0) return null;` antes do JSX principal.
+Criar:
+- `src/pages/SwarmGPT.tsx`
 
-Sem novas dependências. Sem migração. Sem mudanças de rota.
+Editar:
+- `src/App.tsx` (rota nova)
+- `src/pages/Dashboard.tsx` (atalho navega para `/swarmgpt`)
+- `src/pages/Index.tsx` (remove painel modal SwarmGPT)
+- `src/components/editor/FullscreenCommandMenu.tsx` (comando navega)
+- `src/components/AppSidebar.tsx` (item de menu)
+- `src/components/editor/SwarmGPTPanel.tsx` (vira conteúdo da página ou é removido)
 
-## Aceitação
+## Fora de escopo
 
-- No mobile (≤440px): cabeçalho do Joi mostra apenas avatar + título + Voz + Minimizar + **X grande (44×44)**, sem corte do título, X facilmente clicável.
-- No desktop: comportamento inalterado (Voz, Limpar, Expand, Minimizar, X).
-- `npm run build` (typecheck) passa sem warnings de imports/variáveis não usados nos pontos tocados.
-- Janela do Joi continua abrindo, fechando (X), minimizando e os painéis de contexto/insights continuam funcionando.
+- Mexer no módulo `src/modules/swarmgpt/` (planner/critic/enhancer).
+- Alterar pipeline de drones/VVIZ.
+- Mais ajustes no Joi/FXKAssistant (já fechado).

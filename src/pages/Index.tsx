@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useState, useCallback, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
 import { commandBus } from '@/core/command/CommandBus';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -72,7 +72,7 @@ const GoogleMapsPanel = lz(() => import('@/components/editor/GoogleMapsPanel'));
 const DiagnosticPanel = lz(() => import('@/components/editor/DiagnosticPanel'));
 const QAStudioPanel = lz(() => import('@/components/editor/QAStudioPanel'));
 const LogisticsPanel = lz(() => import('@/components/editor/LogisticsPanel'));
-const SwarmGPTPanel = lz(() => import('@/components/editor/SwarmGPTPanel'));
+// SwarmGPT centralized at /swarmgpt — no longer a modal panel here.
 const SynesthesiaPanel = lz(() => import('@/components/editor/SynesthesiaPanel'));
 const FiringExportPanel = lz(() => import('@/components/editor/FiringExportPanel'));
 const LabelsPanel = lz(() => import('@/components/editor/LabelsPanel'));
@@ -201,6 +201,7 @@ function CanvasLoader() {
    ══════════════════════════════════════════════════════════════════ */
 function Index() {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
   const [venueSelector, setVenueSelector] = useState(false);
@@ -257,6 +258,12 @@ function Index() {
     const panelParam = searchParams.get('panel');
     const modeParam = searchParams.get('mode');
     if (panelParam) {
+      // SwarmGPT lives at /swarmgpt now — redirect any legacy deep links.
+      if (panelParam === 'swarmgpt') {
+        setSearchParams({}, { replace: true });
+        navigate('/swarmgpt');
+        return;
+      }
       setActivePanel(panelParam as PanelId);
       if (modeParam === 'wifi') setRemoteMode('wifi-auto');
       else if (modeParam === 'cloud') setRemoteMode('cloud');
@@ -267,7 +274,7 @@ function Index() {
         setMobilePanelHeight('full');
       }
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, navigate]);
 
   useEffect(() => {
     const dblClickHandler = () => setShowPositionEditor(true);
@@ -283,12 +290,17 @@ function Index() {
       setVenueSelector(true);
       return;
     }
+    // SwarmGPT is now a dedicated page — navigate instead of opening modal.
+    if (id === 'swarmgpt') {
+      navigate('/swarmgpt');
+      return;
+    }
     setActivePanel((prev) => {
       const next = prev === id ? null : id;
       if (next && SHARED_PANEL_IDS.has(next)) setLeftDockOpen(null);
       return next;
     });
-  }, []);
+  }, [navigate]);
 
   const handleLocationSelected = useCallback((location: { name: string; lat: number; lng: number }) => {
     useProjectStore.getState().setGpsOrigin({ lat: location.lat, lng: location.lng, heading: 0, altitude: 0 });
@@ -304,10 +316,14 @@ function Index() {
   }, []);
 
   const handleMobileOpenPanel = useCallback((id: PanelId) => {
+    if (id === 'swarmgpt') {
+      navigate('/swarmgpt');
+      return;
+    }
     setActivePanel(id);
     setMobileTab(null);
     setMobilePanelHeight(id === 'effects' ? 'full' : 'half');
-  }, []);
+  }, [navigate]);
 
   const desktopTopOffset = '56px';
   const desktopTimelineHeight = viewportMaximized ? '0px' : timelineCollapsed ? '42px' : '34vh';
@@ -346,7 +362,7 @@ function Index() {
         {activePanel === 'maps' && <GoogleMapsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'diagnostic' && <DiagnosticPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'logistics' && <LogisticsPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'swarmgpt' && <SwarmGPTPanel onClose={() => setActivePanel(null)} />}
+        {/* swarmgpt moved to /swarmgpt route — no in-editor modal */}
         {activePanel === 'synesthesia' && <SynesthesiaPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'firing' && <FiringExportPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'labels' && <LabelsPanel onClose={() => setActivePanel(null)} />}

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Clapperboard, CalendarDays, LogOut, Gamepad2, Crosshair, Volume2, VolumeX, Bluetooth, Rocket, Settings, Shield, Activity, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Clapperboard, CalendarDays, LogOut, Gamepad2, Crosshair, Volume2, VolumeX, Bluetooth, Rocket, Settings, Shield, Activity, BarChart3, Sparkles } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,6 +26,7 @@ const navItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard, desc: 'Visão geral' },
   { title: 'Command', url: '/command', icon: Crosshair, desc: 'Execução ao vivo' },
   { title: 'Editor 3D', url: '/editor', icon: Clapperboard, desc: 'Design de show' },
+  { title: 'SwarmGPT', url: '/swarmgpt', icon: Sparkles, desc: 'Coreografia IA' },
   { title: 'Agenda', url: '/agenda', icon: CalendarDays, desc: 'Eventos' },
   { title: 'Training', url: '/training', icon: Gamepad2, desc: 'Simulação' },
   { title: 'Field Test', url: '/field-test', icon: Activity, desc: 'Teste de campo' },

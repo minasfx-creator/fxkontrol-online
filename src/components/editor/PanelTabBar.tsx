@@ -43,7 +43,7 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
     title: 'Coreografia',
     icon: Sparkles,
     items: [
-      { id: 'swarmgpt', label: 'SwarmGPT AI', icon: Sparkles, shortcut: 'A' },
+      // SwarmGPT AI moved to dedicated /swarmgpt page — no longer listed here.
       { id: 'videochoreo', label: 'Video Choreo', icon: Video },
       { id: 'synesthesia', label: 'Audio Sync', icon: Music, shortcut: 'Y' },
       { id: 'templates', label: 'Templates', icon: FolderOpen },
