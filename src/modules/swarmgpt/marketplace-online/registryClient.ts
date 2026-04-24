@@ -15,6 +15,11 @@ import { MarketplaceOnlineError } from "./types";
 import type { SignatureAlgorithm } from "../marketplace/remote/types";
 import type { EffectPackageManifest } from "../marketplace/types";
 
+// The generated Database type lags behind newly added tables; cast to a loose
+// client for these reads. RLS still enforces access on the server.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any;
+
 function rowToSummary(row: Record<string, unknown>): OnlinePackageSummary {
   return {
     id: String(row.id),
