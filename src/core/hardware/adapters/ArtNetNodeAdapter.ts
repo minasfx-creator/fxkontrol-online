@@ -93,24 +93,6 @@ export class ArtNetNodeAdapter implements HardwareAdapter<ArtNetNodeState> {
       artpoll_responses: 0,
     };
   }
-
-  simulateConnect(ip: string = '192.168.1.100', universes: number[] = [1, 2, 3]): void {
-    this._connected = 'connected';
-    this._state.node_ip = ip;
-    this._state.universes = universes;
-    this._state.link.connected = true;
-    this._state.link.degraded = false;
-  }
-
-  simulateDegraded(): void {
-    this._connected = 'degraded';
-    this._state.link.degraded = true;
-  }
-
-  simulateDisconnect(): void {
-    this._connected = 'disconnected';
-    this._state.link.connected = false;
-  }
 }
 
 export const artNetNodeAdapter = new ArtNetNodeAdapter();
