@@ -471,7 +471,7 @@ export function exportReportPDF(report: DiagnosticsReport): void {
   doc.setFontSize(7);
   const chHeaders = ["Name", "Type", "Uni", "Addr", "W", "End", "Lock", "En."];
   const chColW = [140, 60, 30, 40, 30, 40, 40, 40];
-  doc.setFillColor(230);
+  doc.setFillColor(230, 230, 230);
   doc.rect(M, y - 8, chColW.reduce((a, b) => a + b, 0), 11, "F");
   x = M;
   chHeaders.forEach((h, i) => {
