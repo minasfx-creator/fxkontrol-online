@@ -65,6 +65,10 @@ function fmtNum(v: unknown, digits = 1): string {
   return typeof v === "number" && Number.isFinite(v) ? v.toFixed(digits) : "—";
 }
 
+const VALID_SFX_TYPES = new Set<string>(SFX_TYPES.map((t) => t.key));
+const ADDRESS_GAP_THRESHOLD = 32;   // gaps > 32 endereços viram aviso
+const UNIVERSE_GAP_THRESHOLD = 1;   // pular > 1 universe entre os usados
+
 function validateChannels(channels: ReturnType<typeof useSfxChannelStore.getState>["channels"]): Finding[] {
   const findings: Finding[] = [];
 
@@ -92,7 +96,7 @@ function validateChannels(channels: ReturnType<typeof useSfxChannelStore.getStat
     }
   }
 
-  // Address range checks.
+  // Per-channel sanity: range, universe range, type, dmxChannels, intensity.
   for (const c of channels) {
     const start = c.dmxAddress;
     const end = c.dmxAddress + c.dmxChannels - 1;
@@ -111,15 +115,46 @@ function validateChannels(channels: ReturnType<typeof useSfxChannelStore.getStat
         message: `${c.name}: universe ${c.dmxUniverse} fora do range Art-Net 0–32767.`,
       });
     }
+    if (!Number.isInteger(c.dmxChannels) || c.dmxChannels < 1 || c.dmxChannels > 64) {
+      findings.push({
+        id: `chcount-${c.id}`,
+        severity: "fail",
+        message: `${c.name}: dmxChannels=${c.dmxChannels} inválido (esperado inteiro 1–64).`,
+        hint: "Verifique o perfil do fixture.",
+      });
+    }
+    if (!c.type || !VALID_SFX_TYPES.has(c.type as string)) {
+      findings.push({
+        id: `type-${c.id}`,
+        severity: "fail",
+        message: `${c.name}: type "${c.type ?? "—"}" não é um SFXType válido.`,
+        hint: `Valores aceitos: ${[...VALID_SFX_TYPES].join(", ")}.`,
+      });
+    }
+    if (typeof c.intensity === "number" && (c.intensity < 0 || c.intensity > 255)) {
+      findings.push({
+        id: `intensity-${c.id}`,
+        severity: "warn",
+        message: `${c.name}: intensity=${c.intensity} fora do range DMX 0–255.`,
+      });
+    }
+    if (typeof c.duration === "number" && c.duration < 0) {
+      findings.push({
+        id: `duration-${c.id}`,
+        severity: "warn",
+        message: `${c.name}: duration negativa (${c.duration} ms).`,
+      });
+    }
   }
 
-  // Overlap detection within the same universe.
+  // Group per universe for overlap + gap analysis.
   const byUniverse = new Map<number, typeof channels>();
   for (const c of channels) {
     const arr = byUniverse.get(c.dmxUniverse) ?? [];
     arr.push(c);
     byUniverse.set(c.dmxUniverse, arr);
   }
+
   for (const [universe, list] of byUniverse) {
     const sorted = [...list].sort((a, b) => a.dmxAddress - b.dmxAddress);
     for (let i = 1; i < sorted.length; i++) {
@@ -133,8 +168,57 @@ function validateChannels(channels: ReturnType<typeof useSfxChannelStore.getStat
           message: `Sobreposição em U${universe}: ${prev.name} (${prev.dmxAddress}–${prevEnd}) ↔ ${cur.name} (a partir de ${cur.dmxAddress}).`,
           hint: "Realoque um dos canais para evitar conflitos de barramento.",
         });
+      } else {
+        const gap = cur.dmxAddress - prevEnd - 1;
+        if (gap >= ADDRESS_GAP_THRESHOLD) {
+          findings.push({
+            id: `gap-${universe}-${prev.id}-${cur.id}`,
+            severity: "warn",
+            message: `Gap grande em U${universe}: ${gap} canais livres entre ${prev.name} (fim ${prevEnd}) e ${cur.name} (início ${cur.dmxAddress}).`,
+            hint: "Compacte o endereçamento para liberar espaço contínuo no universe.",
+          });
+        }
       }
     }
+
+    // Universe quase cheio (>90% ocupação)
+    const totalUsed = sorted.reduce((s, c) => s + c.dmxChannels, 0);
+    if (totalUsed > 0.9 * 512) {
+      findings.push({
+        id: `crowded-${universe}`,
+        severity: "warn",
+        message: `U${universe} está ${Math.round((totalUsed / 512) * 100)}% ocupado (${totalUsed}/512).`,
+        hint: "Considere migrar fixtures para um universe adicional.",
+      });
+    }
+  }
+
+  // Universes não usados / gaps entre universes
+  const usedUniverses = [...byUniverse.keys()].sort((a, b) => a - b);
+  for (let i = 1; i < usedUniverses.length; i++) {
+    const prev = usedUniverses[i - 1];
+    const cur = usedUniverses[i];
+    const skipped = cur - prev - 1;
+    if (skipped > UNIVERSE_GAP_THRESHOLD) {
+      const missing: number[] = [];
+      for (let u = prev + 1; u < cur && missing.length < 8; u++) missing.push(u);
+      findings.push({
+        id: `uni-gap-${prev}-${cur}`,
+        severity: "warn",
+        message: `Universes não usados entre U${prev} e U${cur}: ${missing.map((u) => `U${u}`).join(", ")}${skipped > missing.length ? "…" : ""}.`,
+        hint: "Reagrupe fixtures em universes contíguos para simplificar o patch Art-Net.",
+      });
+    }
+  }
+
+  // Aviso se o endereçamento começa fora de U0/U1 (incomum)
+  if (usedUniverses.length > 0 && usedUniverses[0] > 1) {
+    findings.push({
+      id: "uni-start",
+      severity: "warn",
+      message: `Primeiro universe em uso é U${usedUniverses[0]} — universes 0 e 1 estão vazios.`,
+      hint: "Maioria das consoles inicia no universe 1; verifique se isto é intencional.",
+    });
   }
 
   return findings;
