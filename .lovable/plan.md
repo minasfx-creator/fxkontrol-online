@@ -1,63 +1,108 @@
 
 
-## SwarmGPT Advanced — Nível 2 (asset → formation pipeline)
+## SwarmGPT Advanced — Module X (high-fidelity geometry & motion)
 
-Add asset adapters (SVG, RealityScan mesh, Gaussian Splat), weighted sampling, greedy matching with diagnostics, and a fidelity score. All isolated in `src/modules/swarmgpt/advanced/<subdirs>/`. No UI, no runtime, no edge function. Pure TypeScript, deterministic where possible, reuses `Vec3` and `distance3`.
+Add an isolated `advanced/` submodule that improves visual quality and motion smoothness, plus optional beat sync. Wired into the existing pipeline as a deterministic post-processing step **after** the enhancer/repair loop and **before** the compiler. No UI, no edge function in this scope.
 
 ### New files (all under `src/modules/swarmgpt/advanced/`)
 
-1. **`svg/svgPathToPoints.ts`**
-   - Types: `SvgSamplePoint = { x: number; y: number }`.
-   - `svgPointsToDronePoints(points, { scale, center }) → Vec3[]` — normalizes around centroid, scales by `max(width, height)`, maps SVG Y → world Z (negated), keeps Y = `center.y`.
+1. **`poissonSampling.ts`** — `poissonSample(points, targetCount, minDistance): Vec3[]`
+   - Random shuffle, greedy keep-if-far-enough, padded fallback to guarantee `targetCount`.
+   - Reuses `distance3` from `utils/geometry`.
 
-2. **`gaussian/gaussianToPointCloud.ts`**
-   - Types: `GaussianSplatPoint = { position: Vec3; scale?: Vec3; opacity?: number; color?: string }`.
-   - `gaussianSplatsToPointCloud(splats, { minOpacity = 0.15, maxPoints = 10000 }) → Vec3[]` — opacity filter then slice.
+2. **`trajectoryOptimizer.ts`** — `matchPointsGreedy(from, to)` + `validateSpeed(from, to, duration, maxSpeed)`
+   - Greedy nearest-neighbor pairing to reduce travel distance during transitions.
+   - Boolean speed-feasibility check (m/s).
+   - Note: project already has a separate `src/lib/trajectoryOptimizer.ts` (Catmull-Rom smoothing, velocity clamping). The new file lives inside the SwarmGPT module and serves a different role (point-to-point matching for formation transitions). They do not collide.
 
-3. **`realityscan/realityScanAdapter.ts`**
-   - Types: `RealityScanMeshLike = { vertices: Vec3[]; name?: string }`.
-   - `realityScanMeshToPointCloud(mesh, { maxVertices = 20000 }) → Vec3[]` — deterministic stride sampling when `vertices.length > maxVertices`.
+3. **`beatSync.ts`** — `snapToBeat(time, beats): number`
+   - Returns the closest beat to `time`; pass-through if `beats` is empty.
 
-4. **`sampling/weightedPoissonSampling.ts`**
-   - Types: `WeightedPoint = { point: Vec3; weight?: number }`.
-   - `weightedPoissonSample(candidates, targetCount, minDistance) → Vec3[]` — sort by weight desc, greedy keep-if-far-enough, then relax distance in 0.85x steps down to `0.3 × minDistance`. Returns at most `targetCount` (does not pad — Nível 1's `poissonSample` already pads when called from the pipeline).
+4. **`generateOptimizedFormation.ts`** — orchestrator helpers
+   - `generateOptimizedFormation(rawPoints, droneCount, minDistance)` → Poisson-sampled formation.
+   - `optimizeTransition(from, to, duration, maxSpeed)` → matched target order; falls back to matched order even when speed check fails (caller decides what to do).
 
-5. **`motion/hungarianLite.ts`**
-   - `matchPointsByGreedyCost(from, to) → Vec3[]` — greedy nearest-neighbor pairing. Distinct from existing `matchPointsGreedy` in `trajectoryOptimizer.ts` (kept separate to preserve Nível 1 surface).
+5. **`index.ts`** — re-exports all four files.
 
-6. **`motion/optimizeDroneTransition.ts`**
-   - Types: `TransitionOptimizationReport = { points; maxDistance; avgDistance; maxSpeed; valid }`.
-   - `optimizeDroneTransition(from, to, { duration, maxDroneSpeed }) → TransitionOptimizationReport` — wraps `matchPointsByGreedyCost` and computes diagnostics.
+### Pipeline integration (`pipeline/generateSwarmGPTShow.ts`)
 
-7. **`scoring/scoreFormationFidelity.ts`**
-   - Types: `FormationFidelityScore = { score; coverage; distribution; pointCount }`.
-   - `scoreFormationFidelity(originalCandidates, sampledPoints)` — `score = coverage*0.7 + distribution*0.3`. Guards empty inputs.
+After the repair loop succeeds and before `compilePlanToTimeline(plan)`:
 
-8. **`index.ts`** — append re-exports for all seven new files. Existing Nível 1 exports stay intact.
+```ts
+// Geometry pass — Poisson resample each formation to enforce min distance.
+plan = {
+  ...plan,
+  formations: plan.formations.map(f => ({
+    ...f,
+    points: generateOptimizedFormation(f.points, input.droneCount, config.minDroneDistance),
+  })),
+};
 
-### Constraints
+// Optional beat snap on transitions/formations when bpm provided.
+if (input.bpm && input.bpm > 0) {
+  const beats = buildBeatGrid(input.bpm, input.duration); // local helper
+  plan = {
+    ...plan,
+    formations: plan.formations.map(f => ({ ...f, startTime: snapToBeat(f.startTime, beats) })),
+    transitions: plan.transitions.map(t => ({ ...t, startTime: snapToBeat(t.startTime, beats) })),
+  };
+}
 
-- Use `Vec3` from `src/modules/swarmgpt/types.ts` and `distance3` from `src/modules/swarmgpt/utils/geometry.ts`.
-- No new dependencies, no DOM, no Three.js, no fetch.
-- TypeScript strict-safe; guard empty arrays and zero `duration`.
-- Deterministic (no `Math.random`) for the sampling/matching — only greedy/sorting.
+// Transition matching pass — greedy reorder of `to.points` to minimize travel.
+const formationById = new Map(plan.formations.map(f => [f.id, f]));
+plan = {
+  ...plan,
+  formations: plan.formations.map(f => {
+    const incoming = plan.transitions.find(t => t.toFormationId === f.id);
+    if (!incoming) return f;
+    const fromF = formationById.get(incoming.fromFormationId);
+    if (!fromF) return f;
+    return {
+      ...f,
+      points: optimizeTransition(fromF.points, f.points, incoming.duration, config.maxDroneSpeed),
+    };
+  }),
+};
 
-### Out of scope (saved for next step)
+// Re-validate after deterministic mutations (no extra repair loop — pure geometry).
+const finalValidation = validateChoreographyPlan(plan, input, config);
+if (!finalValidation.ok) return { ok: false, refinedPrompt, plan, critique, validation: finalValidation, error: 'Advanced post-processing produced invalid plan.' };
+```
 
-- `advanced/image/silhouetteToPoints.ts` — needs Canvas/ImageData; revisit when we add a UI/Worker.
-- `advanced/assets/createFormationFromAdvancedAsset.ts` (the unified asset → `DroneFormation` factory).
-- Wiring into `pipeline/generateSwarmGPTShow.ts` — Nível 1 post-processing keeps using `poissonSample`/`matchPointsGreedy`. Nível 2 helpers are opt-in for asset-driven flows that don't exist yet.
-- True Hungarian (O(n³)) matching, NeRF integration, video-frame extraction.
-- Edge function `swarmgpt-json` and UI preview (already deferred from earlier plans).
+### Config additions (`config.ts`)
+
+Add one optional field with a sane default — no breaking changes:
+
+```ts
+export interface SwarmGPTConfig {
+  llm: SwarmGPTLLMClient;
+  minDroneDistance: number;
+  maxRepairAttempts: number;
+  /** Max instantaneous speed (m/s) used by the trajectory optimizer. */
+  maxDroneSpeed: number;
+}
+// createDefaultSwarmGPTConfig: maxDroneSpeed: 8.0  (matches DEFAULT_CONSTRAINTS in src/lib/trajectoryOptimizer.ts)
+```
+
+### Public surface (`index.ts`)
+
+Add `export * from './advanced';` so consumers can import the helpers directly if needed.
+
+### Out of scope (kept for later, per your "nível 2" note)
+
+- Edge function `swarmgpt-json` (the prompt you provided — will be a separate plan).
+- UI preview panel.
+- Hungarian (optimal) matching, NeRF/Gaussian splatting, SVG→formation extractor.
+- Calling `src/lib/trajectoryOptimizer.ts` for Catmull-Rom smoothing of full trajectories (current scope only matches endpoints).
 
 ### Validation
 
 - `tsc --noEmit` clean.
-- Pure functions; no module-level side effects.
-- Existing pipeline behavior unchanged (no edits to `pipeline/`, `config.ts`, or top-level `index.ts` beyond adding the `advanced/index.ts` re-exports — which `src/modules/swarmgpt/index.ts` already wildcard-exports via `export * from './advanced'`).
+- Pure functions — no runtime/timeline coupling.
+- Final `validateChoreographyPlan` re-run guarantees Poisson resample never drops below `droneCount` (fallback path) and bounds/timing remain valid.
 
 ### Files touched
 
-- **Create**: `src/modules/swarmgpt/advanced/svg/svgPathToPoints.ts`, `gaussian/gaussianToPointCloud.ts`, `realityscan/realityScanAdapter.ts`, `sampling/weightedPoissonSampling.ts`, `motion/hungarianLite.ts`, `motion/optimizeDroneTransition.ts`, `scoring/scoreFormationFidelity.ts`.
-- **Edit**: `src/modules/swarmgpt/advanced/index.ts` (append seven re-exports).
+- **Create**: `src/modules/swarmgpt/advanced/{poissonSampling,trajectoryOptimizer,beatSync,generateOptimizedFormation,index}.ts`
+- **Edit**: `src/modules/swarmgpt/config.ts` (add `maxDroneSpeed`), `src/modules/swarmgpt/pipeline/generateSwarmGPTShow.ts` (post-processing block + `buildBeatGrid` helper), `src/modules/swarmgpt/index.ts` (re-export).
 
