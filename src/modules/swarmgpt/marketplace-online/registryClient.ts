@@ -66,7 +66,7 @@ function rowToKey(row: Record<string, unknown>): OnlineSigningKey {
 }
 
 export async function listPackages(): Promise<OnlinePackageSummary[]> {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("effect_packages")
     .select("*")
     .order("updated_at", { ascending: false });
@@ -78,7 +78,7 @@ export async function searchPackages(query: string): Promise<OnlinePackageSummar
   const q = query.trim();
   if (!q) return listPackages();
   const pattern = `%${q.replace(/[%_]/g, "\\$&")}%`;
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("effect_packages")
     .select("*")
     .or(`package_id.ilike.${pattern},name.ilike.${pattern},author.ilike.${pattern},description.ilike.${pattern}`)
@@ -88,7 +88,7 @@ export async function searchPackages(query: string): Promise<OnlinePackageSummar
 }
 
 export async function getPackage(packageId: string): Promise<OnlinePackageSummary | null> {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("effect_packages")
     .select("*")
     .eq("package_id", packageId)
@@ -98,7 +98,7 @@ export async function getPackage(packageId: string): Promise<OnlinePackageSummar
 }
 
 export async function listVersions(packageId: string): Promise<OnlinePackageVersion[]> {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("effect_package_versions")
     .select("*")
     .eq("package_id", packageId)
@@ -111,7 +111,7 @@ export async function getVersion(
   packageId: string,
   version: string,
 ): Promise<OnlinePackageVersion | null> {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("effect_package_versions")
     .select("*")
     .eq("package_id", packageId)
@@ -122,7 +122,7 @@ export async function getVersion(
 }
 
 export async function getSigningKey(keyId: string): Promise<OnlineSigningKey | null> {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("marketplace_signing_keys")
     .select("*")
     .eq("key_id", keyId)
