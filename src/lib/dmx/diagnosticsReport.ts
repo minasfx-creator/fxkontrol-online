@@ -396,7 +396,7 @@ export function exportReportPDF(report: DiagnosticsReport): void {
   const uniHeaders = ["U#", "Fixt.", "Used", "Occ.%", "First", "Last", "Gap"];
   const uniColW = [40, 50, 60, 60, 60, 60, 60];
   let x = M;
-  doc.setFillColor(230);
+  doc.setFillColor(230, 230, 230);
   doc.rect(M, y - 9, uniColW.reduce((a, b) => a + b, 0), 12, "F");
   uniHeaders.forEach((h, i) => {
     doc.text(h, x + 4, y);
