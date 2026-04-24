@@ -63,6 +63,9 @@ export async function sampleFieldUltra(
   const t0 = nowMs();
   const webgpuAvailable = isWebGPUSupported();
   const multiCluster = options.params.clusterCenters && options.params.clusterCenters.length > 1;
+  let fallbackReason: string | undefined;
+  if (!webgpuAvailable) fallbackReason = "WebGPU not supported in this environment";
+  else if (multiCluster) fallbackReason = "Multi-center cluster — GPU shader handles 1 center only";
 
   // ── Try GPU path ───────────────────────────────────────────────────
   if (webgpuAvailable && !multiCluster) {
@@ -83,7 +86,7 @@ export async function sampleFieldUltra(
           options.droneCount,
           options.minDistance ?? 0,
         );
-        return {
+        const result: GpuFieldEngineResult<Vec3> = {
           mode: "gpu",
           points,
           diagnostics: {
@@ -92,11 +95,18 @@ export async function sampleFieldUltra(
             webgpuAvailable: true,
           },
         };
+        recordSampleRun({
+          mode: "gpu",
+          fieldType: options.fieldType,
+          droneCount: options.droneCount,
+          diagnostics: result.diagnostics,
+        });
+        return result;
       } finally {
         device.destroy();
       }
     } catch (err) {
-      // Fall through to CPU. Logged via console for debugging.
+      fallbackReason = err instanceof Error ? err.message : String(err);
       // eslint-disable-next-line no-console
       console.warn("[swarmgpt/gpu] GPU path failed, falling back to CPU:", err);
     }
@@ -119,7 +129,7 @@ export async function sampleFieldUltra(
     minDensity: 0.03,
   });
 
-  return {
+  const result: GpuFieldEngineResult<Vec3> = {
     mode: "cpu",
     points: cpuPoints,
     diagnostics: {
@@ -128,6 +138,14 @@ export async function sampleFieldUltra(
       webgpuAvailable,
     },
   };
+  recordSampleRun({
+    mode: "cpu",
+    fieldType: options.fieldType,
+    droneCount: options.droneCount,
+    diagnostics: result.diagnostics,
+    fallbackReason,
+  });
+  return result;
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────
