@@ -11,8 +11,39 @@
  * Pure presentational. Accepts either a normalized FidelityData object
  * (preferred) or the legacy ModelParseResult.quality shape via a helper.
  */
-import { Activity, Target, Layers, Gauge } from 'lucide-react';
+import { Activity, Target, Layers, Gauge, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+/**
+ * Threshold configuration for color-coding fidelity metrics.
+ * Values are in 0..1 range. A metric ≥ `ok` is green, ≥ `warn` is yellow,
+ * below `warn` is red. Defaults follow the 0.7 / 0.4 convention.
+ */
+export interface FidelityThresholds {
+  coverage: { ok: number; warn: number };
+  distribution: { ok: number; warn: number };
+  /** Candidates per placed drone — ratio. Default ok=4, warn=1. */
+  candidateRatio: { ok: number; warn: number };
+}
+
+export const DEFAULT_FIDELITY_THRESHOLDS: FidelityThresholds = {
+  coverage: { ok: 0.7, warn: 0.4 },
+  distribution: { ok: 0.7, warn: 0.4 },
+  candidateRatio: { ok: 4, warn: 1 },
+};
+
+export interface FidelityRecommendation {
+  /** Which knob the operator should tweak. */
+  setting:
+    | 'minDistance'
+    | 'droneCount'
+    | 'maxCandidates'
+    | 'hollow'
+    | 'scale';
+  /** Human-readable advice (one line). */
+  message: string;
+  severity: 'warn' | 'critical';
+}
 
 export interface FidelityData {
   /** Number of candidate points generated from the raw mesh (pre-Poisson). */
