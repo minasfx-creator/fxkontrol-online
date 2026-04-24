@@ -91,7 +91,8 @@ export function useTransportDiagnostics() {
 
   return useMemo(() => ({
     chip,
+    external: ext,
     play: playWithFeedback,
     toggle: toggleWithFeedback,
-  }), [chip, playWithFeedback, toggleWithFeedback]);
+  }), [chip, ext, playWithFeedback, toggleWithFeedback]);
 }
