@@ -38,6 +38,21 @@ const FLAGS = {
    * UI lives in src/components/editor/RealityScanQualityPanel.tsx.
    */
   realityscan_quality_analysis: true,
+  /**
+   * Hierarchical Poisson → Farthest Point Sampling for drone formations.
+   * Opt-in via samplingStrategy='poisson+fps' on extractFormationFromMesh.
+   */
+  swarmgpt_fps_sampling: true,
+  /**
+   * Optimal Kuhn–Munkres assignment for drone transitions (n ≤ 512).
+   * Opt-in via assignment='hungarian' on optimizeDroneTransition.
+   */
+  swarmgpt_hungarian_optimal: true,
+  /**
+   * RealityScan PLY importer + drag-drop panel feeding planFormationFromAsset.
+   * UI: src/components/editor/RealityScanImportPanel.tsx.
+   */
+  realityscan_import_ui: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;

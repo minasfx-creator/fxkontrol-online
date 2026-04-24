@@ -7,6 +7,7 @@ import SystemLog, { useSystemLog } from '@/components/swarmgpt/SystemLog';
 import { PanelErrorBoundary } from '@/components/swarmgpt/PanelErrorBoundary';
 import SwarmGPTPanel from '@/components/editor/SwarmGPTPanel';
 import RealityScanQualityPanel from '@/components/editor/RealityScanQualityPanel';
+import RealityScanImportPanel from '@/components/editor/RealityScanImportPanel';
 import { isEnabled } from '@/lib/featureFlags';
 
 /**
@@ -86,6 +87,16 @@ export default function SwarmGPTPage() {
                 onBakeTexture={(t) =>
                   append(`[QA] Texture baked ${t.width}×${t.height}`, 'ok')
                 }
+              />
+            </PanelErrorBoundary>
+          )}
+          {isEnabled('realityscan_import_ui') && (
+            <PanelErrorBoundary
+              onError={(e) => append(`[PLY] ${e.message}`, 'warn')}
+              onReset={() => {}}
+            >
+              <RealityScanImportPanel
+                onLog={(msg, level) => append(msg, level ?? 'info')}
               />
             </PanelErrorBoundary>
           )}
