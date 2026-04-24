@@ -14,6 +14,8 @@ export interface MeshLike {
   name?: string;
 }
 
+export type SamplingStrategy = 'weighted' | 'poisson' | 'poisson+fps';
+
 export interface ExtractFromMeshOptions {
   droneCount: number;
   minDistance: number;
@@ -27,6 +29,12 @@ export interface ExtractFromMeshOptions {
   hollow?: boolean;
   /** Cap candidate count before Poisson sampling. Default 20000. */
   maxCandidates?: number;
+  /**
+   * Reduction strategy from candidate cloud → drone count.
+   * Default 'weighted' (existing behavior). 'poisson+fps' requires the
+   * `swarmgpt_fps_sampling` flag to be enabled or it falls back to weighted.
+   */
+  samplingStrategy?: SamplingStrategy;
 }
 
 export interface ModelExtractionReport {

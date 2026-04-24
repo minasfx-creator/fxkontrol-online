@@ -34,8 +34,11 @@ interface ComplianceRow {
   requirement: string;
   status: ComplianceStatus | string;  // tolerate legacy lowercase rows
   evidence: string;
-  action: string;
+  action?: string;
   criticalForGoLive?: boolean;
+  evidenceStatus?: EvidenceStatus;
+  nextAction?: string;
+  owner?: string;
 }
 
 const STATUS_CFG: Record<ComplianceStatus, { icon: typeof CheckCircle2; color: string; bg: string; label: string }> = {
@@ -159,24 +162,6 @@ export default function ManualComplianceMatrix() {
     );
   }, [query, showOnlyBlockers, blockers]);
 
-  const blockers = useMemo(() => (
-    COMPLIANCE_DATA
-      .filter(r => r.criticalForGoLive && r.status !== 'implemented')
-      .sort((a, b) => a.source.localeCompare(b.source))
-  ), []);
-
-  const filteredRows = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    const base = showOnlyBlockers
-      ? COMPLIANCE_DATA.filter(r => r.criticalForGoLive && r.status !== 'implemented')
-      : COMPLIANCE_DATA;
-    if (!normalized) return base;
-    return base.filter((row) =>
-      `${row.source} ${row.clause} ${row.requirement} ${row.evidence} ${row.action}`
-        .toLowerCase()
-        .includes(normalized),
-    );
-  }, [query, showOnlyBlockers]);
 
   return (
     <div className="flex flex-col h-full p-4 gap-3 bg-background/80">

@@ -24,6 +24,40 @@ const FLAGS = {
   turbulence_field: true,
   /** 2× particle budget for ultra-dense displays */
   high_density_particles: false,
+  /**
+   * Run the new src/modules/vviz pipeline (read → parse → reduce → validate →
+   * normalize) as a pre-flight gate before the legacy worker path. Pure
+   * pre-validation: rendering still goes through vvizWorker. If the new
+   * pipeline throws, we fall back transparently to the legacy path so the
+   * viewport never breaks.
+   */
+  vviz_module_pipeline: true,
+  /**
+   * RealityScan 2.0 Quality Analysis: tie-point + mesh coverage scoring with
+   * green→red overlays and bake-to-vertex-color / bake-to-texture actions.
+   * UI lives in src/components/editor/RealityScanQualityPanel.tsx.
+   */
+  realityscan_quality_analysis: true,
+  /**
+   * Hierarchical Poisson → Farthest Point Sampling for drone formations.
+   * Opt-in via samplingStrategy='poisson+fps' on extractFormationFromMesh.
+   */
+  swarmgpt_fps_sampling: true,
+  /**
+   * Optimal Kuhn–Munkres assignment for drone transitions (n ≤ 512).
+   * Opt-in via assignment='hungarian' on optimizeDroneTransition.
+   */
+  swarmgpt_hungarian_optimal: true,
+  /**
+   * RealityScan PLY importer + drag-drop panel feeding planFormationFromAsset.
+   * UI: src/components/editor/RealityScanImportPanel.tsx.
+   */
+  realityscan_import_ui: true,
+  /**
+   * Physics repair pipeline (matchPointsByCost → validators → repair).
+   * Opt-in via planFormationFromAsset({ usePhysicsRepair: true }).
+   */
+  swarmgpt_physics_repair: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;

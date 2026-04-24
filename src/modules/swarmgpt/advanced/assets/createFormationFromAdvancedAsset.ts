@@ -3,7 +3,9 @@ import { gaussianSplatsToPointCloud, type GaussianSplatPoint } from "../gaussian
 import { silhouetteToPoints, type SilhouettePixel } from "../image/silhouetteToPoints";
 import { realityScanMeshToPointCloud, type RealityScanMeshLike } from "../realityscan/realityScanAdapter";
 import { weightedPoissonSample } from "../sampling/weightedPoissonSampling";
+import { poissonThenFps } from "../sampling/poissonThenFps";
 import { svgPointsToDronePoints, type SvgSamplePoint } from "../svg/svgPathToPoints";
+import { isEnabled } from "@/lib/featureFlags";
 
 export type AdvancedAssetInput =
   | { type: "svg"; points: SvgSamplePoint[] }
@@ -12,6 +14,17 @@ export type AdvancedAssetInput =
   | { type: "gaussian_splat"; splats: GaussianSplatPoint[] }
   | { type: "point_cloud"; points: Vec3[] };
 
+/**
+ * Reduction strategy from the source candidate cloud → final drone count.
+ *  - 'weighted' (default): legacy WeightedPoisson — may return fewer than
+ *    droneCount when minDistance crowds the candidates.
+ *  - 'poisson+fps': hierarchical Poisson disk → Farthest Point Sampling.
+ *    Guarantees an output of *exactly* droneCount points (when the candidate
+ *    cloud has at least that many distinct positions). Requires the
+ *    `swarmgpt_fps_sampling` flag; falls back to 'weighted' otherwise.
+ */
+export type AdvancedSamplingStrategy = "weighted" | "poisson+fps";
+
 export interface AdvancedFormationOptions {
   droneCount: number;
   minDistance: number;
@@ -19,6 +32,9 @@ export interface AdvancedFormationOptions {
   altitude?: number;
   center?: Vec3;
   maxSourcePoints?: number;
+  samplingStrategy?: AdvancedSamplingStrategy;
+  /** Oversampling multiplier for the intermediate Poisson set in 'poisson+fps'. Default 4. */
+  fpsOversample?: number;
 }
 
 export function createFormationFromAdvancedAsset(
@@ -30,6 +46,11 @@ export function createFormationFromAdvancedAsset(
   const center = options.center ?? { x: 0, y: options.altitude ?? 30, z: 0 };
   const scale = options.scale ?? 50;
   const maxSourcePoints = Math.max(droneCount, Math.floor(options.maxSourcePoints ?? 20000));
+  const requestedStrategy: AdvancedSamplingStrategy = options.samplingStrategy ?? "weighted";
+  const effectiveStrategy: AdvancedSamplingStrategy =
+    requestedStrategy === "poisson+fps" && !isEnabled("swarmgpt_fps_sampling")
+      ? "weighted"
+      : requestedStrategy;
 
   let cloud: Vec3[] = [];
   switch (asset.type) {
@@ -51,10 +72,18 @@ export function createFormationFromAdvancedAsset(
   }
 
   if (cloud.length === 0) return [];
+
+  if (effectiveStrategy === "poisson+fps") {
+    return poissonThenFps(cloud, {
+      droneCount,
+      minDistance,
+      oversample: options.fpsOversample,
+    });
+  }
+
   return weightedPoissonSample(
     cloud.map((point) => ({ point, weight: 1 })),
     droneCount,
     minDistance,
   );
 }
-

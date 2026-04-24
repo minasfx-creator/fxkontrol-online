@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger';
+
 /**
  * ─── Cluster Sync Engine ────────────────────────────────────────────
  * Master/Client distributed rendering.
@@ -71,7 +73,7 @@ class ClusterSyncEngine {
     }
 
     this._connected = true;
-    console.log(`[ClusterSync] Started as ${role}${wsUrl ? ` → ${wsUrl}` : ' (local only)'}`);
+    logger.dev(`[ClusterSync] Started as ${role}${wsUrl ? ` → ${wsUrl}` : ' (local only)'}`);
   }
 
   stop(): void {
@@ -81,7 +83,7 @@ class ClusterSyncEngine {
     this.ws = null;
     this._connected = false;
     this.role = 'standalone';
-    console.log('[ClusterSync] Stopped');
+    logger.dev('[ClusterSync] Stopped');
   }
 
   /** Master: broadcast current frame state */
@@ -194,7 +196,7 @@ class ClusterSyncEngine {
       this.ws = new WebSocket(url);
 
       this.ws.onopen = () => {
-        console.log('[ClusterSync] WebSocket connected');
+        logger.dev('[ClusterSync] WebSocket connected');
         this._connected = true;
       };
 

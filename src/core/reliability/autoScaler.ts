@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger';
+
 /**
  * ─── Performance Auto-Scaler ────────────────────────────────────────
  * Dynamically adjusts visual quality to maintain stable logic timing.
@@ -64,12 +66,12 @@ class AutoScaler {
       // Stage 1: reduce pixelRatio first
       if (this.pixelRatio > 0.5) {
         this.pixelRatio = Math.max(0.5, this.pixelRatio - 0.15);
-        console.log(`[AutoScaler] Governor: pixelRatio → ${this.pixelRatio.toFixed(2)}`);
+        logger.dev(`[AutoScaler] Governor: pixelRatio → ${this.pixelRatio.toFixed(2)}`);
       } else {
         // Stage 2: drop quality tier
         this.currentTier = TIER_ORDER[idx + 1];
         this.pixelRatio = 1.0; // reset for new tier
-        console.log(`[AutoScaler] Governor: tier → ${this.currentTier}`);
+        logger.dev(`[AutoScaler] Governor: tier → ${this.currentTier}`);
       }
       this.stableFrames = 0;
       this.lastTierChange = Date.now();
@@ -79,10 +81,10 @@ class AutoScaler {
       if (Date.now() - this.lastTierChange > this.restoreDelay) {
         if (this.pixelRatio < 1.0) {
           this.pixelRatio = Math.min(1.0, this.pixelRatio + 0.1);
-          console.log(`[AutoScaler] Governor: restoring pixelRatio → ${this.pixelRatio.toFixed(2)}`);
+          logger.dev(`[AutoScaler] Governor: restoring pixelRatio → ${this.pixelRatio.toFixed(2)}`);
         } else {
           this.currentTier = TIER_ORDER[idx - 1];
-          console.log(`[AutoScaler] Governor: restoring tier → ${this.currentTier}`);
+          logger.dev(`[AutoScaler] Governor: restoring tier → ${this.currentTier}`);
         }
         this.stableFrames = 0;
         this.lastTierChange = Date.now();

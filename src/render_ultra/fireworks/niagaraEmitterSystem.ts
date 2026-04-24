@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import type { SpawnShapeConfig } from './niagaraSpawnShapes';
 import { sampleSpawnShape } from './niagaraSpawnShapes';
 import type { ForceModule } from './niagaraForceModules';
-import { applyForceModule } from './niagaraForceModules';
+import { applyForceModule, createVortex, createOrbit, createCollision } from './niagaraForceModules';
 import type { DataInterface } from './niagaraDataInterfaces';
 import { simRNG } from '@/core/reliability/seededRandom';
 
@@ -656,7 +656,6 @@ export function createCometPreset(): NiagaraEmitter {
 }
 
 export function createVortexPreset(): NiagaraEmitter {
-  const { createVortex, createOrbit } = require('./niagaraForceModules');
   return createEmitter({
     id: 'vortex-effect', name: 'Vortex', maxParticles: 1024,
     spawn: { rate: 100, burstCount: 0 },
@@ -686,7 +685,6 @@ export function createVortexPreset(): NiagaraEmitter {
 }
 
 export function createDebrisPreset(): NiagaraEmitter {
-  const { createCollision } = require('./niagaraForceModules');
   return createEmitter({
     id: 'debris', name: 'Debris', maxParticles: 256,
     spawn: { rate: 0, burstCount: 50, burstInterval: 0 },

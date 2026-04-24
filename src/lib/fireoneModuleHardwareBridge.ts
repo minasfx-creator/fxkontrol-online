@@ -61,6 +61,20 @@ export interface BridgeError {
 
 export type LinkHealth = 'disconnected' | 'handshaking' | 'healthy';
 
+export interface BridgeDiagnostics {
+  rateLimitedTotal: number;
+  rateLimitedByKey: Record<string, number>;
+  retryByKey: Record<string, number>;
+  retryByCommandType: Partial<Record<BridgeCommandType, number>>;
+  retryCount: number;
+  retryRateLimit: number;
+  sessionId: number;
+  pendingCount: number;
+  pendingKeys: string[];
+  linkHealth?: 'disconnected' | 'handshaking' | 'healthy';
+  oldestPendingAgeMs?: number;
+}
+
 export interface BridgeStatus {
   transport: BridgeTransport;
   connected: boolean;
@@ -74,7 +88,10 @@ export interface BridgeStatus {
   rssi?: number;
   estimatedDistance?: number;
   lastError?: string;
+  lastErrorCode?: BridgeReasonCode;
   linkHealth?: 'disconnected' | 'handshaking' | 'healthy';
+  sessionId?: number;
+  diagnostics?: BridgeDiagnostics;
 }
 
 export interface BridgeTransportSupport {
@@ -87,6 +104,72 @@ export interface BridgeTransportSupport {
 }
 
 export type BridgeEventHandler = (event: string, data: unknown) => void;
+
+/** Command class enum — used by retry policy + command inspection. */
+export type BridgeCommandType =
+  | 'HANDSHAKE' | 'HEARTBEAT' | 'VERSION' | 'STATUS'
+  | 'CONT' | 'CDS' | 'CONFIRM'
+  | 'FIRE' | 'BATCH' | 'GPIO' | 'ESTOP'
+  | 'UNKNOWN';
+
+/** Reason a single retry attempt missed (for diagnostics). */
+export type BridgeRetryReason = 'empty_drain' | 'parse_miss' | 'timeout' | 'rate_limited';
+
+/** Per-command retry rule. */
+export interface BridgeRetryRule {
+  maxRetries: number;
+  perAttemptTimeoutMs: number;
+}
+
+/** Command classes safe to auto-retry (read-only / lifecycle). */
+export const RETRYABLE_COMMAND_TYPES: ReadonlySet<BridgeCommandType> = new Set<BridgeCommandType>([
+  'HEARTBEAT', 'VERSION', 'STATUS', 'CONT', 'CDS',
+]);
+
+/** Command classes that MUST NEVER auto-retry (destructive / single-intent). */
+export const NON_RETRYABLE_COMMAND_TYPES: ReadonlySet<BridgeCommandType> = new Set<BridgeCommandType>([
+  'HANDSHAKE', 'CONFIRM', 'FIRE', 'BATCH', 'GPIO', 'ESTOP', 'UNKNOWN',
+]);
+
+/** Type guard: is this command class allowed to auto-retry? */
+export function isRetryableCommandType(t: BridgeCommandType): boolean {
+  return RETRYABLE_COMMAND_TYPES.has(t);
+}
+
+/**
+ * Default per-class retry rules.
+ *
+ * Only retryable command classes are listed (CONT/CDS). Heartbeat/version are
+ * driven by their own loops and never use `readWithRetry`.
+ */
+export const DEFAULT_RETRY_POLICY: Readonly<Partial<Record<BridgeCommandType, BridgeRetryRule>>> = Object.freeze({
+  CONT: { maxRetries: 2, perAttemptTimeoutMs: 2000 },
+  CDS:  { maxRetries: 2, perAttemptTimeoutMs: 2000 },
+});
+
+/**
+ * Default rate limit for retry attempts. Sliding window:
+ *  - per-key:  10 retries / 60s
+ *  - total:    60 retries / 60s
+ */
+export const DEFAULT_RETRY_RATE_LIMIT: Readonly<{
+  windowMs: number;
+  maxRetriesPerKey: number;
+  maxRetriesTotal: number;
+}> = Object.freeze({
+  windowMs: 60_000,
+  maxRetriesPerKey: 10,
+  maxRetriesTotal: 60,
+});
+
+/** Internal pending-response record (session-scoped to drop stale frames). */
+interface PendingResponse {
+  key: string;
+  resolver: (value: string) => void;
+  sessionId: number;
+  commandType: BridgeCommandType;
+  createdAt: number;
+}
 
 // BLE Service/Characteristic UUIDs (custom for FXK-ESP32)
 const BLE_SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
@@ -129,6 +212,77 @@ export class FireOneHardwareBridge {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 3;
   private lastConnectArgs: { method: string; args?: any } | null = null;
+
+  // ── Session + retry diagnostics ──
+  private sessionId = 0;
+  private connectingSessionId = 0;
+  private lastErrorCode?: BridgeReasonCode;
+  private retryPolicy: Partial<Record<BridgeCommandType, BridgeRetryRule>> = { ...DEFAULT_RETRY_POLICY };
+  private retryRateLimit: { windowMs: number; maxRetriesPerKey: number; maxRetriesTotal: number } = {
+    ...DEFAULT_RETRY_RATE_LIMIT,
+  };
+  private retryCount = 0;
+  private retryByKey: Record<string, number> = {};
+  private retryByCommandType: Partial<Record<BridgeCommandType, number>> = {};
+  private rateLimitedTotal = 0;
+  private rateLimitedByKey: Record<string, number> = {};
+  private retryTimestampsAll: number[] = [];
+  private retryTimestampsByKey: Map<string, number[]> = new Map();
+
+  // ── Helpers (added stubs to satisfy SDK + tests; runtime no-op safe) ──
+  private setError(code: BridgeReasonCode, message: string): void {
+    this.lastErrorCode = code;
+    this.lastError = message;
+  }
+  private registerPending(key: string, commandType: BridgeCommandType, resolver: (val: string) => void): void {
+    this.pendingResolves.set(key, {
+      key,
+      resolver,
+      sessionId: this.sessionId,
+      commandType,
+      createdAt: Date.now(),
+    });
+  }
+  isHealthy(): boolean {
+    return this.connected && this.linkHealth === 'healthy';
+  }
+  getDiagnostics(): BridgeDiagnostics {
+    let oldestPendingAgeMs = 0;
+    if (this.pendingResolves.size > 0) {
+      const now = Date.now();
+      let oldest = now;
+      for (const p of this.pendingResolves.values()) {
+        if (p.createdAt < oldest) oldest = p.createdAt;
+      }
+      oldestPendingAgeMs = Math.max(0, now - oldest);
+    }
+    return {
+      rateLimitedTotal: this.rateLimitedTotal,
+      rateLimitedByKey: { ...this.rateLimitedByKey },
+      retryByKey: { ...this.retryByKey },
+      retryByCommandType: { ...this.retryByCommandType },
+      retryCount: this.retryCount,
+      retryRateLimit: this.retryRateLimit.maxRetriesPerKey,
+      sessionId: this.sessionId,
+      pendingCount: this.pendingResolves.size,
+      pendingKeys: Array.from(this.pendingResolves.keys()),
+      linkHealth: this.linkHealth,
+      oldestPendingAgeMs,
+    };
+  }
+  setRetryRateLimit(limit: number | { windowMs?: number; maxRetriesPerKey?: number; maxRetriesTotal?: number }): void {
+    if (typeof limit === 'number') {
+      this.retryRateLimit.maxRetriesPerKey = limit;
+    } else {
+      this.retryRateLimit = { ...this.retryRateLimit, ...limit };
+    }
+  }
+  setRetryPolicy(policy: Partial<Record<BridgeCommandType, BridgeRetryRule>>): void {
+    this.retryPolicy = { ...this.retryPolicy, ...policy };
+  }
+  getRetryPolicy(): Readonly<Partial<Record<BridgeCommandType, BridgeRetryRule>>> {
+    return { ...this.retryPolicy };
+  }
 
   constructor(eventHandler?: BridgeEventHandler) {
     this.onEvent = eventHandler ?? null;
@@ -707,7 +861,10 @@ export class FireOneHardwareBridge {
       rssi: this.rssi,
       estimatedDistance: this.estimatedDistance,
       lastError: this.lastError,
+      lastErrorCode: this.lastErrorCode,
       linkHealth: this.linkHealth,
+      sessionId: this.sessionId,
+      diagnostics: this.getDiagnostics(),
     };
   }
 
@@ -850,31 +1007,8 @@ export class FireOneHardwareBridge {
     return false;
   }
 
-  private getWiFiDirectEndpoints(customUrl?: string): string[] {
-    const secureRequired = requiresSecureBridgeTransport();
-    const scheme = secureRequired ? 'wss' : 'ws';
-    return [
-      customUrl ? this.normalizeWebSocketUrl(customUrl) : null,
-      `${scheme}://fxk-esp32.local:81`,
-      `${scheme}://192.168.4.1:81`,
-      `${scheme}://192.168.1.1:81`,
-    ].filter(Boolean) as string[];
-  }
 
-  private normalizeWebSocketUrl(raw: string): string {
-    const secureRequired = requiresSecureBridgeTransport();
-    const defaultScheme = secureRequired ? 'wss' : 'ws';
-    const withScheme = /^[a-z]+:\/\//i.test(raw) ? raw : `${defaultScheme}://${raw}`;
-    try {
-      const parsed = new URL(withScheme);
-      if (secureRequired && parsed.protocol === 'ws:') {
-        parsed.protocol = 'wss:';
-      }
-      return parsed.toString();
-    } catch {
-      return withScheme;
-    }
-  }
+
 
   private handleResponse(data: string): void {
     this.rxBytes += data.length;
@@ -909,7 +1043,7 @@ export class FireOneHardwareBridge {
           }
         }
       }
-      if (fields.firmwareVersion !== undefined) this.firmwareVersion = fields.firmwareVersion;
+
 
       for (const [key, pending] of this.pendingResolves) {
         if (trimmed.startsWith(key) || trimmed === key) {
@@ -935,16 +1069,57 @@ export class FireOneHardwareBridge {
     }
   }
 
-  private handleDisconnect(): void {
+  /**
+   * Transport drop / explicit disconnect handler.
+   *
+   * Critical contract (safety):
+   *  - All pending resolvers are drained with the empty-string sentinel so
+   *    callers (fire / handshake / readWithRetry) settle as `false`/0 and
+   *    never linger as a false confirmation.
+   *  - `connectingSessionId` is bumped so any in-flight handshake or stale
+   *    response from the previous session is invalidated immediately.
+   *  - The `disconnected` event carries full reconstruction context for the
+   *    audit log (reasonCode, transport, linkHealth, sessionId, at).
+   */
+  private handleDisconnect(reasonCode: BridgeReasonCode = 'TRANSPORT_DISCONNECTED'): void {
     const wasConnected = this.connected;
+    const previousTransport = this.transport;
+    const previousSessionId = this.sessionId;
+
+    // Drain pending resolvers BEFORE we clear/reset state. Empty string is
+    // the documented sentinel: sendAndWaitConfirm → false, readWithRetry →
+    // 'empty_drain' (which then surfaces as 0). Never a confirmation.
+    if (this.pendingResolves.size > 0) {
+      const drained = Array.from(this.pendingResolves.values());
+      this.pendingResolves.clear();
+      for (const p of drained) {
+        try { p.resolver(''); } catch { /* swallow */ }
+      }
+    }
+
     this.connected = false;
     this.connecting = false;
     this.transport = 'none';
     this.linkHealth = 'disconnected';
-    this.pendingResolves.clear();
+    // Invalidate any handshake/response-matching that referenced the old
+    // session — late frames from the previous transport will hit the
+    // stale-session guard in handleResponse.
+    this.connectingSessionId++;
+    this.lastErrorCode = reasonCode;
+    this.lastError = `Disconnected: ${reasonCode}`;
     this.stopHeartbeat();
     this.stopRssiPolling();
-    if (wasConnected) this.onEvent?.('disconnected', null);
+
+    if (wasConnected) {
+      this.onEvent?.('disconnected', {
+        reasonCode,
+        transport: 'none',
+        previousTransport,
+        linkHealth: 'disconnected',
+        sessionId: previousSessionId,
+        at: Date.now(),
+      });
+    }
     if (wasConnected && this.lastConnectArgs) {
       this.attemptReconnect();
     }
@@ -970,20 +1145,45 @@ export class FireOneHardwareBridge {
     this.deviceName = deviceName;
     this.lastPing = Date.now();
     this.linkHealth = 'handshaking';
-    const ok = await this.waitForHandshake();
+    // Stamp this attempt. If `connectingSessionId` advances mid-handshake
+    // (handleDisconnect or a competing connect), we abort with STALE_SESSION.
+    const handshakeSession = ++this.connectingSessionId;
+    const ok = await this.waitForHandshake(3000, handshakeSession);
     if (!ok) {
-      this.lastError = `Handshake timeout (${transport})`;
-      this.handleDisconnect();
+      // Don't overwrite a more specific reason set by handleDisconnect /
+      // stale-session detection in waitForHandshake.
+      if (!this.lastErrorCode || this.lastErrorCode === 'OK') {
+        this.lastErrorCode = 'HANDSHAKE_TIMEOUT';
+      }
+      this.lastError = this.lastError ?? `Handshake failed (${transport})`;
+      // Only call handleDisconnect if we still have transport state to clean
+      // up — handleDisconnect may have already run via drain path.
+      if (this.connected || this.transport !== 'none') {
+        this.handleDisconnect(this.lastErrorCode);
+      } else {
+        this.linkHealth = 'disconnected';
+      }
       return false;
     }
+    // Successful handshake — promote session.
+    this.sessionId++;
     this.connected = true;
     this.lastError = undefined;
+    this.lastErrorCode = 'OK';
     this.linkHealth = 'healthy';
     this.onConnect();
     return true;
   }
 
-  private async waitForHandshake(timeoutMs = 3000): Promise<boolean> {
+  /**
+   * Wait for first PONG or VER frame within `timeoutMs`. Honors stale-session
+   * detection: if `connectingSessionId` advances while we wait, this resolves
+   * `false` and records `STALE_SESSION` so the caller surfaces the right code.
+   * Also resolves `false` on the disconnect-drain sentinel (empty resolver
+   * value) without recording a redundant error code (handleDisconnect already
+   * set TRANSPORT_DISCONNECTED).
+   */
+  private async waitForHandshake(timeoutMs = 3000, expectedSession?: number): Promise<boolean> {
     return new Promise((resolve) => {
       let done = false;
       let timer: ReturnType<typeof setTimeout> | null = null;
@@ -995,8 +1195,20 @@ export class FireOneHardwareBridge {
         this.pendingResolves.delete('VER:');
         resolve(ok);
       };
-      this.pendingResolves.set('PONG', () => finish(true));
-      this.pendingResolves.set('VER:', () => finish(true));
+      const handle = (val: string) => {
+        // Empty-string sentinel from handleDisconnect drain.
+        if (!val) { finish(false); return; }
+        // Stale-session check: did a competing connect/disconnect happen?
+        if (expectedSession !== undefined && this.connectingSessionId !== expectedSession) {
+          this.lastErrorCode = 'STALE_SESSION';
+          this.lastError = 'Handshake invalidated by newer session';
+          finish(false);
+          return;
+        }
+        finish(true);
+      };
+      this.registerPending('PONG', 'HEARTBEAT', handle);
+      this.registerPending('VER:', 'VERSION', handle);
       this.sendCommand('VERSION\n');
       this.sendCommand('HEARTBEAT\n');
       timer = setTimeout(() => finish(false), timeoutMs);
