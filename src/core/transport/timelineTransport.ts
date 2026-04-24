@@ -31,6 +31,11 @@ function rememberSpeed(speed: number): void {
   }
 }
 
+// Track the last user-set valid speed continuously, so that when Play is
+// pressed against a speed=0 (external sync hold, persistence corruption…),
+// we can restore the most recent meaningful value instead of always 1×.
+timelineClock.onChange((state) => rememberSpeed(state.speed));
+
 /** Returns the last user-facing playable speed (≥0.05). */
 export function getLastValidSpeed(): number {
   return lastValidSpeed;
