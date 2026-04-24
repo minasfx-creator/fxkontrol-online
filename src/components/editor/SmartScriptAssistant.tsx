@@ -67,10 +67,10 @@ export default function SmartScriptAssistant({ open, onClose }: { open: boolean;
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
-  // Reset drag offset when closing/opening
+  // Reset drag offset when panel closes (single source of truth alongside touchEnd)
   useEffect(() => {
-    if (!open) setDragY(0);
-  }, [open]);
+    if (!open && dragY !== 0) setDragY(0);
+  }, [open, dragY]);
 
   const processCommand = useCallback(async (command: string) => {
     const userMsg: AssistantMessage = { id: `u-${Date.now()}`, role: 'user', content: command };
