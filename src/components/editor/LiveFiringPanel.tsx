@@ -62,7 +62,10 @@ import { RISK_GROUP_LABELS, RISK_GROUP_COLORS, type RiskGroup } from '@/lib/pyro
 const SELF_CONTAINED_PANEL_MODES: FXCMode[] = ['pyro_fire', 'fxk_light', 'ma3', 'show_control', 'dmx_monitor', 'drone_ops'];
 const isSelfContainedMode = (mode: FXCMode) => SELF_CONTAINED_PANEL_MODES.includes(mode);
 
-
+// ═══════════════════════════════════════════════════════════
+// MAIN PANEL
+// ═══════════════════════════════════════════════════════════
+export default function LiveFiringPanel({ onClose, initialMode, standalone }: { onClose?: () => void; initialMode?: string; standalone?: boolean }) {
   const isMobile = useIsMobile();
     const isPlaying = useProjectStore(s => s.isPlaying);
   const currentTime = useProjectStore(s => s.currentTime);
