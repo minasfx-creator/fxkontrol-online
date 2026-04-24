@@ -12,3 +12,4 @@ export {
 // `advanced/beatSync.snapToBeat`. Import it directly from its module if needed.
 export * from "./core/validation/validateTrajectory";
 export * from "./core/pipeline/planFormationFromAsset";
+export * from "./physics";
