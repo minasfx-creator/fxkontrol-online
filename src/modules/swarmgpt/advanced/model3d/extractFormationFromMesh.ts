@@ -8,10 +8,12 @@ import type { Vec3 } from '../../types';
 import { realityScanMeshToPointCloud } from '../realityscan/realityScanAdapter';
 import { weightedPoissonSample, type WeightedPoint } from '../sampling/weightedPoissonSampling';
 import { poissonSample } from '../poissonSampling';
+import { poissonThenFps } from '../sampling/poissonThenFps';
 import { scoreFormationFidelity } from '../scoring/scoreFormationFidelity';
 import { normalizeMeshToBounds } from './normalizeMesh';
 import { sampleTrianglesByArea } from './sampleSurfaceArea';
-import type { ExtractFromMeshOptions, MeshLike, ModelExtractionReport } from './types';
+import { isEnabled } from '@/lib/featureFlags';
+import type { ExtractFromMeshOptions, MeshLike, ModelExtractionReport, SamplingStrategy } from './types';
 
 const DEFAULT_MAX_CANDIDATES = 20000;
 
