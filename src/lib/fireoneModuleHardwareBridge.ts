@@ -1093,8 +1093,8 @@ export class FireOneHardwareBridge {
         this.pendingResolves.delete('VER:');
         resolve(ok);
       };
-      this.pendingResolves.set('PONG', () => finish(true));
-      this.pendingResolves.set('VER:', () => finish(true));
+      this.registerPending('PONG', 'HEARTBEAT', () => finish(true));
+      this.registerPending('VER:', 'VERSION', () => finish(true));
       this.sendCommand('VERSION\n');
       this.sendCommand('HEARTBEAT\n');
       timer = setTimeout(() => finish(false), timeoutMs);
