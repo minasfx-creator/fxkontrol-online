@@ -28,6 +28,8 @@ import SerialDmxPairingPanel from "./SerialDmxPairingPanel";
 import LiveDmxInspector from "./LiveDmxInspector";
 import DmxTimelinePreview from "./DmxTimelinePreview";
 import { useDiagnosticsThresholds, DEFAULT_THRESHOLDS } from "@/store/useDiagnosticsThresholds";
+import { compactUniverse, resolveOverlaps, repackAll } from "@/lib/dmx/repackChannels";
+import { toast } from "sonner";
 
 const LIVE_FIRING_KEYWORDS = [
   "live firing",
@@ -454,6 +456,9 @@ export default function DmxPyroDiagnostics() {
       {/* Threshold configuration */}
       <ThresholdsConfig />
 
+      {/* Repack actions */}
+      <RepackActions />
+
       {/* Findings */}
       <section className="rounded border border-border/30 bg-card/40">
         <header className="px-3 py-2 border-b border-border/20 text-[10px] font-mono uppercase tracking-widest text-muted-foreground/70">
@@ -694,5 +699,111 @@ function ThresholdField({
       </div>
       <p className="text-[10px] font-mono text-muted-foreground/50 leading-snug">{hint}</p>
     </div>
+  );
+}
+
+function RepackActions() {
+  const channels = useSfxChannelStore((s) => s.channels);
+  const setChannels = useSfxChannelStore((s) => s.setChannels);
+
+  const universes = useMemo(
+    () => Array.from(new Set(channels.map((c) => c.dmxUniverse))).sort((a, b) => a - b),
+    [channels],
+  );
+  const [targetUni, setTargetUni] = useState<number | "all">("all");
+
+  const lockedCount = useMemo(() => channels.filter((c) => c.locked).length, [channels]);
+
+  const apply = (
+    label: string,
+    fn: () => { channels: typeof channels; changed: number; overflow: typeof channels },
+  ) => {
+    const before = channels;
+    const result = fn();
+    if (result.changed === 0 && result.overflow.length === 0) {
+      toast.info(`${label}: nada para alterar.`);
+      return;
+    }
+    setChannels(result.channels);
+    const parts = [`${result.changed} canal(is) movido(s)`];
+    if (result.overflow.length > 0) parts.push(`${result.overflow.length} sem espaço`);
+    toast.success(`${label}: ${parts.join(", ")}.`, {
+      action: {
+        label: "Desfazer",
+        onClick: () => setChannels(before),
+      },
+    });
+  };
+
+  const doCompact = () => {
+    if (targetUni === "all") {
+      apply("Re-empacotar tudo", () => repackAll(channels));
+    } else {
+      apply(`Compactar U${targetUni}`, () => compactUniverse(channels, targetUni));
+    }
+  };
+
+  const doResolveOverlaps = () => apply("Resolver overlaps", () => resolveOverlaps(channels));
+
+  const disabled = channels.length === 0;
+
+  return (
+    <section className="rounded border border-border/30 bg-card/40">
+      <header className="px-3 py-2 border-b border-border/20 flex items-center justify-between">
+        <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/70">
+          Ações de endereçamento
+        </span>
+        <span className="text-[10px] font-mono text-muted-foreground/50">
+          {channels.length} canais · {lockedCount} locked · {universes.length} universe(s)
+        </span>
+      </header>
+
+      <div className="p-3 flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60">
+            Alvo
+          </label>
+          <select
+            value={String(targetUni)}
+            onChange={(e) => setTargetUni(e.target.value === "all" ? "all" : Number(e.target.value))}
+            className="bg-background border border-border/40 rounded px-2 py-1 text-xs font-mono"
+            disabled={disabled}
+          >
+            <option value="all">Todos os universes</option>
+            {universes.map((u) => (
+              <option key={u} value={u}>
+                U{u}
+              </option>
+            ))}
+          </select>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={doCompact}
+            disabled={disabled}
+            className="font-mono text-xs"
+          >
+            {targetUni === "all" ? "Re-empacotar tudo" : `Compactar U${targetUni}`}
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={doResolveOverlaps}
+            disabled={disabled}
+            className="font-mono text-xs"
+          >
+            Resolver overlaps
+          </Button>
+        </div>
+
+        <p className="text-[10px] font-mono text-muted-foreground/50 leading-snug">
+          Compactar remove gaps mantendo a ordem por endereço. Resolver overlaps shifta fixtures sobrepostos
+          para o próximo slot livre. Canais <span className="text-amber-400">locked</span> e desabilitados
+          são preservados. Use <span className="text-foreground">Desfazer</span> no toast para reverter.
+        </p>
+      </div>
+    </section>
   );
 }
