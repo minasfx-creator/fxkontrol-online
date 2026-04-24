@@ -17,6 +17,7 @@ import {
 import { Trash2, Plus, FileCode, Box, Loader2, Copy, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
 import { parseSVGToFormation } from '@/lib/svgParser';
 import { parseModelToFormation, parseKMZToFormation, SUPPORTED_EXTENSIONS, type ProjectionMode, type SamplingMode, type ModelParseResult } from '@/lib/modelToFormation';
+import FidelityReport, { fidelityFromModelParse } from './formation/FidelityReport';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
@@ -392,12 +393,10 @@ function Model3DTab({ droneCount, radius, onPoints }: {
         {parsing ? (<><Loader2 className="h-4 w-4 animate-spin" /><span className="text-[9px]">Processando...</span></>) : (<><Box className="h-5 w-5" /><span className="text-[9px]">{fileName || 'Importar modelo 3D'}</span></>)}
       </button>
       {result && (
-        <div className="bg-surface-2 rounded-sm p-2 space-y-1 text-[9px] font-mono-code">
-          <div className="flex justify-between text-primary font-semibold"><span>{result.format}</span><span>Score: {result.quality.score}/100</span></div>
-          <div className="flex justify-between text-muted-foreground"><span>Vértices</span><span className="text-foreground">{result.originalVertexCount.toLocaleString()}</span></div>
-          <div className="flex justify-between text-muted-foreground"><span>→ Drones</span><span className="text-foreground">{result.points.length}</span></div>
-          <div className="flex justify-between text-muted-foreground"><span>Bbox</span><span className="text-foreground">{result.boundingBox.width}×{result.boundingBox.height}×{result.boundingBox.depth}m</span></div>
-        </div>
+        <FidelityReport
+          data={fidelityFromModelParse(result)}
+          className="text-[9px]"
+        />
       )}
       <p className="text-[8px] text-muted-foreground">Suporta: .OBJ, .STL, .GLB, .GLTF, .SKP, .DAE, .PLY, .KML</p>
     </div>
