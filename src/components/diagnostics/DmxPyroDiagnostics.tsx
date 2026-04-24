@@ -30,6 +30,8 @@ import DmxTimelinePreview from "./DmxTimelinePreview";
 import { useDiagnosticsThresholds, DEFAULT_THRESHOLDS } from "@/store/useDiagnosticsThresholds";
 import { compactUniverse, resolveOverlaps, repackAll } from "@/lib/dmx/repackChannels";
 import { toast } from "sonner";
+import { buildReport, exportReportJSON, exportReportCSV, exportReportPDF } from "@/lib/dmx/diagnosticsReport";
+import { Download, FileJson, FileSpreadsheet, FileText } from "lucide-react";
 
 const LIVE_FIRING_KEYWORDS = [
   "live firing",
