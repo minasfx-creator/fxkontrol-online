@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useState, useCallback, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
 import { commandBus } from '@/core/command/CommandBus';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -72,7 +72,7 @@ const GoogleMapsPanel = lz(() => import('@/components/editor/GoogleMapsPanel'));
 const DiagnosticPanel = lz(() => import('@/components/editor/DiagnosticPanel'));
 const QAStudioPanel = lz(() => import('@/components/editor/QAStudioPanel'));
 const LogisticsPanel = lz(() => import('@/components/editor/LogisticsPanel'));
-const SwarmGPTPanel = lz(() => import('@/components/editor/SwarmGPTPanel'));
+// SwarmGPT centralized at /swarmgpt — no longer a modal panel here.
 const SynesthesiaPanel = lz(() => import('@/components/editor/SynesthesiaPanel'));
 const FiringExportPanel = lz(() => import('@/components/editor/FiringExportPanel'));
 const LabelsPanel = lz(() => import('@/components/editor/LabelsPanel'));
@@ -346,7 +346,7 @@ function Index() {
         {activePanel === 'maps' && <GoogleMapsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'diagnostic' && <DiagnosticPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'logistics' && <LogisticsPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'swarmgpt' && <SwarmGPTPanel onClose={() => setActivePanel(null)} />}
+        {/* swarmgpt moved to /swarmgpt route — no in-editor modal */}
         {activePanel === 'synesthesia' && <SynesthesiaPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'firing' && <FiringExportPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'labels' && <LabelsPanel onClose={() => setActivePanel(null)} />}
