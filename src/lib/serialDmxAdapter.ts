@@ -87,6 +87,11 @@ class SerialDmxAdapter {
     return ports.map((p) => p.getInfo());
   }
 
+  /** Cópia somente-leitura do buffer DMX (513 bytes: start code + 512 ch). */
+  snapshotBuffer(): Uint8Array {
+    return new Uint8Array(this._buffer);
+  }
+
   /** Solicita ao usuário escolher uma porta (precisa ser chamado em handler de clique). */
   async requestAndConnect(forcedMode?: SerialDmxMode): Promise<void> {
     if (!this.isSupported()) {

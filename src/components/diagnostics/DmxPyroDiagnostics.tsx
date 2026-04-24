@@ -25,6 +25,7 @@ import {
   type CapturedEntry,
 } from "@/lib/consoleCapture";
 import SerialDmxPairingPanel from "./SerialDmxPairingPanel";
+import LiveDmxInspector from "./LiveDmxInspector";
 
 const LIVE_FIRING_KEYWORDS = [
   "live firing",
