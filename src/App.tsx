@@ -33,6 +33,7 @@ const AccreditationDashboard = lazy(lazyRetry(() => import("./pages/Accreditatio
 const PlatformStatus = lazy(lazyRetry(() => import("./pages/PlatformStatus")));
 const JoiPanel = lazy(lazyRetry(() => import("./ai/ui/JoiPanel")));
 const SwarmGPT = lazy(lazyRetry(() => import("./pages/SwarmGPT")));
+const DmxPyroDiagnostics = lazy(lazyRetry(() => import("./components/diagnostics/DmxPyroDiagnostics")));
 
 const queryClient = new QueryClient();
 
@@ -90,6 +91,7 @@ function App() {
                     <Route path="/accreditation" element={<AccreditationDashboard />} />
                     <Route path="/joi" element={<JoiPanel />} />
                     <Route path="/swarmgpt" element={<SwarmGPT />} />
+                    <Route path="/diagnostics/dmx-pyro" element={<DmxPyroDiagnostics />} />
                   </Route>
                   <Route path="*" element={<NotFound />} />
                 </Routes>
