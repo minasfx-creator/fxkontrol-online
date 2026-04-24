@@ -1,37 +1,108 @@
 
-## Make JOI panel fluid across mobile widths
 
-Adapt the panel so it scales cleanly from 320px phones up to desktop, never clips content, and keeps the close button comfortably tappable.
+## SwarmGPT Advanced — Module X (high-fidelity geometry & motion)
 
-### Changes (all in `src/components/editor/SmartScriptAssistant.tsx`)
+Add an isolated `advanced/` submodule that improves visual quality and motion smoothness, plus optional beat sync. Wired into the existing pipeline as a deterministic post-processing step **after** the enhancer/repair loop and **before** the compiler. No UI, no edge function in this scope.
 
-1. **Fluid width & position**
-   - Replace fixed `w-[340px] max-w-[calc(100vw-1.5rem)]` + `right-3` anchor with a responsive rule:
-     - Mobile (`< sm`): full-width sheet — `left-2 right-2`, no fixed width, anchored above the bottom dock (`bottom-[calc(64px+env(safe-area-inset-bottom))]`).
-     - Desktop (`sm+`): `sm:left-auto sm:right-3 sm:w-[360px] sm:bottom-20`.
-   - Add `safe-area-inset` padding so the close button is never under a notch / home indicator.
+### New files (all under `src/modules/swarmgpt/advanced/`)
 
-2. **Fluid height — no clipping**
-   - Drop the hard `max-h-[460px]` and the inner messages `min-h-[180px] max-h-[280px]` cap.
-   - Use `max-h-[min(70dvh,560px)]` on the shell, and let the messages area become `flex-1` with `overflow-y-auto`. Header and input stay pinned (`shrink-0`) so the form never gets pushed off-screen on short viewports (e.g. landscape phones).
+1. **`poissonSampling.ts`** — `poissonSample(points, targetCount, minDistance): Vec3[]`
+   - Random shuffle, greedy keep-if-far-enough, padded fallback to guarantee `targetCount`.
+   - Reuses `distance3` from `utils/geometry`.
 
-3. **Thumb-friendly close**
-   - Keep the 44×44 hit area but ensure it sits inside safe area on mobile by adding `pr-[max(0.5rem,env(safe-area-inset-right))]` to the header row.
-   - Slightly enlarge the visible icon target on mobile only (`w-5 h-5 sm:w-4 sm:h-4`) for easier tapping without changing desktop look.
-   - Move the mobile drag-grabber out of the header's flex row (currently `absolute top-1` overlapping the title) into its own `shrink-0` strip above the title row, so it never overlaps the close button or title text on narrow widths.
+2. **`trajectoryOptimizer.ts`** — `matchPointsGreedy(from, to)` + `validateSpeed(from, to, duration, maxSpeed)`
+   - Greedy nearest-neighbor pairing to reduce travel distance during transitions.
+   - Boolean speed-feasibility check (m/s).
+   - Note: project already has a separate `src/lib/trajectoryOptimizer.ts` (Catmull-Rom smoothing, velocity clamping). The new file lives inside the SwarmGPT module and serves a different role (point-to-point matching for formation transitions). They do not collide.
 
-4. **Header layout hardening**
-   - Use `flex-wrap`-safe layout: title block gets `min-w-0 flex-1`, close button `shrink-0`. Already mostly there — verify after grabber repositioning.
-   - Ensure `truncate` still works inside the new flex structure.
+3. **`beatSync.ts`** — `snapToBeat(time, beats): number`
+   - Returns the closest beat to `time`; pass-through if `beats` is empty.
 
-5. **Input row on tiny screens**
-   - Allow input to shrink: `min-w-0` on the `<input>`; keep send button `shrink-0`. Prevents overflow on 320px viewports.
+4. **`generateOptimizedFormation.ts`** — orchestrator helpers
+   - `generateOptimizedFormation(rawPoints, droneCount, minDistance)` → Poisson-sampled formation.
+   - `optimizeTransition(from, to, duration, maxSpeed)` → matched target order; falls back to matched order even when speed check fails (caller decides what to do).
 
-### Out of scope
-- Logic, AI calls, swipe-to-close, ESC handling, examples list — all unchanged.
-- No styling tokens or new dependencies.
+5. **`index.ts`** — re-exports all four files.
+
+### Pipeline integration (`pipeline/generateSwarmGPTShow.ts`)
+
+After the repair loop succeeds and before `compilePlanToTimeline(plan)`:
+
+```ts
+// Geometry pass — Poisson resample each formation to enforce min distance.
+plan = {
+  ...plan,
+  formations: plan.formations.map(f => ({
+    ...f,
+    points: generateOptimizedFormation(f.points, input.droneCount, config.minDroneDistance),
+  })),
+};
+
+// Optional beat snap on transitions/formations when bpm provided.
+if (input.bpm && input.bpm > 0) {
+  const beats = buildBeatGrid(input.bpm, input.duration); // local helper
+  plan = {
+    ...plan,
+    formations: plan.formations.map(f => ({ ...f, startTime: snapToBeat(f.startTime, beats) })),
+    transitions: plan.transitions.map(t => ({ ...t, startTime: snapToBeat(t.startTime, beats) })),
+  };
+}
+
+// Transition matching pass — greedy reorder of `to.points` to minimize travel.
+const formationById = new Map(plan.formations.map(f => [f.id, f]));
+plan = {
+  ...plan,
+  formations: plan.formations.map(f => {
+    const incoming = plan.transitions.find(t => t.toFormationId === f.id);
+    if (!incoming) return f;
+    const fromF = formationById.get(incoming.fromFormationId);
+    if (!fromF) return f;
+    return {
+      ...f,
+      points: optimizeTransition(fromF.points, f.points, incoming.duration, config.maxDroneSpeed),
+    };
+  }),
+};
+
+// Re-validate after deterministic mutations (no extra repair loop — pure geometry).
+const finalValidation = validateChoreographyPlan(plan, input, config);
+if (!finalValidation.ok) return { ok: false, refinedPrompt, plan, critique, validation: finalValidation, error: 'Advanced post-processing produced invalid plan.' };
+```
+
+### Config additions (`config.ts`)
+
+Add one optional field with a sane default — no breaking changes:
+
+```ts
+export interface SwarmGPTConfig {
+  llm: SwarmGPTLLMClient;
+  minDroneDistance: number;
+  maxRepairAttempts: number;
+  /** Max instantaneous speed (m/s) used by the trajectory optimizer. */
+  maxDroneSpeed: number;
+}
+// createDefaultSwarmGPTConfig: maxDroneSpeed: 8.0  (matches DEFAULT_CONSTRAINTS in src/lib/trajectoryOptimizer.ts)
+```
+
+### Public surface (`index.ts`)
+
+Add `export * from './advanced';` so consumers can import the helpers directly if needed.
+
+### Out of scope (kept for later, per your "nível 2" note)
+
+- Edge function `swarmgpt-json` (the prompt you provided — will be a separate plan).
+- UI preview panel.
+- Hungarian (optimal) matching, NeRF/Gaussian splatting, SVG→formation extractor.
+- Calling `src/lib/trajectoryOptimizer.ts` for Catmull-Rom smoothing of full trajectories (current scope only matches endpoints).
 
 ### Validation
-- Verify at 320, 360, 375, 390, 414, 768, 1280 viewports: no horizontal scroll, close button fully visible and tappable, messages list scrolls internally, input always reachable.
+
 - `tsc --noEmit` clean.
-- Existing JOI smoke flow (open → prompt → swipe close → ESC) unchanged.
+- Pure functions — no runtime/timeline coupling.
+- Final `validateChoreographyPlan` re-run guarantees Poisson resample never drops below `droneCount` (fallback path) and bounds/timing remain valid.
+
+### Files touched
+
+- **Create**: `src/modules/swarmgpt/advanced/{poissonSampling,trajectoryOptimizer,beatSync,generateOptimizedFormation,index}.ts`
+- **Edit**: `src/modules/swarmgpt/config.ts` (add `maxDroneSpeed`), `src/modules/swarmgpt/pipeline/generateSwarmGPTShow.ts` (post-processing block + `buildBeatGrid` helper), `src/modules/swarmgpt/index.ts` (re-export).
+
