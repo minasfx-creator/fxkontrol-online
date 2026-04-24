@@ -889,20 +889,34 @@ export function FXKAssistant() {
       {messages.length === 0 && <div className="absolute inset-0 pointer-events-none br2049-rain rounded-xl" style={{ zIndex: 1 }} />}
 
       {/* Header */}
-      <div className="relative z-20 flex items-center gap-2.5 px-3 py-3 shrink-0 pointer-events-auto" style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.1)' }}>
+      <div
+        className={cn(
+          "relative z-20 flex items-center shrink-0 pointer-events-auto",
+          isMobile ? "gap-1.5 px-2 py-2.5" : "gap-2.5 px-3 py-3"
+        )}
+        style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.1)' }}
+      >
         {isMobile && (
           <div className="absolute left-1/2 top-1.5 h-1 w-10 -translate-x-1/2 rounded-full bg-border/50" />
         )}
         {/* Joi face in header — speaking avatar */}
         <div className="relative cursor-pointer hover:brightness-125 transition-all shrink-0">
-          <img src={joiFaceIcon} alt="Joi" className="w-10 h-10 rounded-full object-cover transition-all duration-500" style={{
-            border: joiSpeech.speaking ? '2px solid hsl(38 100% 50% / 0.6)' : '1.5px solid hsl(190 100% 50% / 0.3)',
-            boxShadow: joiSpeech.speaking
-              ? '0 0 20px hsl(38 100% 50% / 0.25), 0 0 8px hsl(38 100% 50% / 0.15)'
-              : '0 0 12px hsl(190 100% 50% / 0.15)',
-            animation: joiSpeech.speaking ? 'joi-avatar-speaking 1.5s ease-in-out infinite' : undefined,
-            transform: joiSpeech.speaking ? 'scale(1.02)' : 'scale(1)',
-          }} />
+          <img
+            src={joiFaceIcon}
+            alt="Joi"
+            className={cn(
+              "rounded-full object-cover transition-all duration-500",
+              isMobile ? "w-8 h-8" : "w-10 h-10"
+            )}
+            style={{
+              border: joiSpeech.speaking ? '2px solid hsl(38 100% 50% / 0.6)' : '1.5px solid hsl(190 100% 50% / 0.3)',
+              boxShadow: joiSpeech.speaking
+                ? '0 0 20px hsl(38 100% 50% / 0.25), 0 0 8px hsl(38 100% 50% / 0.15)'
+                : '0 0 12px hsl(190 100% 50% / 0.15)',
+              animation: joiSpeech.speaking ? 'joi-avatar-speaking 1.5s ease-in-out infinite' : undefined,
+              transform: joiSpeech.speaking ? 'scale(1.02)' : 'scale(1)',
+            }}
+          />
           {joiSpeech.speaking && (
             <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center" style={{ background: 'hsl(38 100% 50%)', boxShadow: '0 0 6px hsl(38 100% 50% / 0.5)' }}>
               <Volume2 className="w-2 h-2 text-black" />
@@ -910,76 +924,80 @@ export function FXKAssistant() {
           )}
         </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-mono font-bold tracking-[0.25em] uppercase" style={{ color: `hsl(${modeConfig.accentHsl})` }}>
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[10px] font-mono font-bold tracking-[0.25em] uppercase truncate" style={{ color: `hsl(${modeConfig.accentHsl})` }}>
               JOI · {modeConfig.shortLabel}
             </span>
-            <div className={cn("w-1.5 h-1.5 rounded-full",
+            <div className={cn("w-1.5 h-1.5 rounded-full shrink-0",
               connectionOk === true ? "bg-green-500" : connectionOk === false ? "bg-red-500" : "bg-muted-foreground/20"
             )} style={{ boxShadow: connectionOk === true ? '0 0 4px hsl(120 70% 50%)' : 'none' }} />
             {joiSpeech.speaking && <SpeakingWave />}
           </div>
-          <span className="text-[7px] font-mono tracking-[0.15em] uppercase transition-all duration-500" style={{
+          <span className="text-[7px] font-mono tracking-[0.15em] uppercase transition-all duration-500 truncate block" style={{
             color: voiceRecognition.state === 'listening' ? 'hsl(190 100% 65%)' : joiSpeech.speaking ? 'hsl(38 100% 65%)' : joiEmotion === 'celebrating' ? 'hsl(42 90% 60%)' : joiEmotion === 'serious' ? 'hsl(32 80% 55%)' : 'hsl(190 100% 50% / 0.4)',
           }}>
             {statusText}
           </span>
         </div>
 
-        {/* Voice toggle */}
-        {joiSpeech.supported && (
+        {/* Action cluster — secondary controls */}
+        <div className={cn("flex items-center shrink-0", isMobile ? "gap-0.5" : "gap-1")}>
+          {/* Voice toggle */}
+          {joiSpeech.supported && (
+            <button
+              onClick={joiSpeech.toggle}
+              className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0", isMobile ? "h-9 w-9" : "h-6 w-6")}
+              title={joiSpeech.enabled ? 'Desativar voz' : 'Ativar voz'}
+              aria-label={joiSpeech.enabled ? 'Desativar voz' : 'Ativar voz'}
+            >
+              {joiSpeech.enabled ? (
+                <Volume2 className="h-3.5 w-3.5" style={{ color: 'hsl(38 100% 55%)' }} />
+              ) : (
+                <VolumeX className="h-3.5 w-3.5" style={{ color: 'hsl(190 100% 50% / 0.3)' }} />
+              )}
+            </button>
+          )}
+
+          {/* Clear — desktop only */}
           <button
-            onClick={joiSpeech.toggle}
-            className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0", isMobile ? "h-10 w-10" : "h-6 w-6")}
-            title={joiSpeech.enabled ? 'Desativar voz' : 'Ativar voz'}
-            aria-label={joiSpeech.enabled ? 'Desativar voz' : 'Ativar voz'}
+            onClick={clearMessages}
+            className="hidden sm:flex h-6 w-6 items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0"
+            title="Limpar conversa"
+            aria-label="Limpar conversa"
           >
-            {joiSpeech.enabled ? (
-              <Volume2 className="h-3.5 w-3.5" style={{ color: 'hsl(38 100% 55%)' }} />
-            ) : (
-              <VolumeX className="h-3.5 w-3.5" style={{ color: 'hsl(190 100% 50% / 0.3)' }} />
-            )}
+            <Trash2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.4)' }} />
           </button>
-        )}
 
-        {/* Clear — desktop only (mobile users can long-clear via Limpar preset) */}
-        <button
-          onClick={clearMessages}
-          className="hidden sm:flex h-6 w-6 items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0"
-          title="Limpar conversa"
-          aria-label="Limpar conversa"
-        >
-          <Trash2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.4)' }} />
-        </button>
+          {!isMobile && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0"
+              title="Expandir"
+              aria-label="Expandir"
+            >
+              <Maximize2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
+            </button>
+          )}
 
-        {!isMobile && (
           <button
-            onClick={() => setExpanded(!expanded)}
-            className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0"
-            title="Expandir"
-            aria-label="Expandir"
+            onClick={() => setMinimized(true)}
+            className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0", isMobile ? "h-9 w-9" : "h-6 w-6")}
+            title="Minimizar"
+            aria-label="Minimizar"
           >
-            <Maximize2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
+            <Minimize2 className={cn(isMobile ? "h-4 w-4" : "h-3 w-3")} style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
           </button>
-        )}
+        </div>
 
-        <button
-          onClick={() => setMinimized(true)}
-          className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0", isMobile ? "h-10 w-10" : "h-6 w-6")}
-          title="Minimizar"
-          aria-label="Minimizar"
-        >
-          <Minimize2 className={cn(isMobile ? "h-4 w-4" : "h-3 w-3")} style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
-        </button>
-
+        {/* Close — always anchored to the far right, isolated from cluster */}
         <button
           onClick={handleClose}
           className={cn(
-            "flex items-center justify-center rounded-md transition-colors shrink-0",
+            "flex items-center justify-center rounded-md transition-colors shrink-0 relative z-10",
             isMobile
               ? "h-11 w-11 ml-1 bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 active:bg-destructive/35"
-              : "h-6 w-6 hover:bg-white/5"
+              : "h-6 w-6 ml-0.5 hover:bg-white/5"
           )}
           title="Fechar"
           aria-label="Fechar Joi"
@@ -987,6 +1005,7 @@ export function FXKAssistant() {
           <X className={cn(isMobile ? "h-5 w-5" : "h-3 w-3")} style={{ color: isMobile ? 'hsl(0 80% 70%)' : 'hsl(190 100% 50% / 0.6)' }} />
         </button>
       </div>
+
 
       {/* Mode selector bar */}
       <div className="relative z-10 flex flex-wrap gap-1 px-2 py-1.5 shrink-0" style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.06)' }}>
