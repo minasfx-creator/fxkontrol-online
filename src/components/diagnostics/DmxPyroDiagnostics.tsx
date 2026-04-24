@@ -288,7 +288,7 @@ export default function DmxPyroDiagnostics() {
                         {start}–{end}
                       </td>
                       <td className="px-3 py-1.5 text-muted-foreground/70">{c.dmxChannels}</td>
-                      <td className="px-3 py-1.5 text-muted-foreground/70">{c.sfxType ?? "—"}</td>
+                      <td className="px-3 py-1.5 text-muted-foreground/70">{c.type ?? "—"}</td>
                     </tr>
                   );
                 })}
