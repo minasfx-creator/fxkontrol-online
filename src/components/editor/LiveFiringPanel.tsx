@@ -10,13 +10,10 @@ import { haptics } from '@/lib/haptics';
 import { createPortal } from 'react-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
-  Flame, Wind, Sparkles, Zap, Play, Square, Plus, Trash2,
-  AlertTriangle, Check, Radio, Lightbulb, ChevronDown,
-  RotateCcw, Save, Upload, Lock, Unlock, Timer, Power,
-  Shield, ShieldAlert, Gauge, Settings, FolderOpen, Wifi,
-  Signal, Thermometer, Activity, Volume2, Eye, EyeOff,
+  AlertTriangle, Check, Radio, Lock, Unlock, Timer,
+  Shield, Settings, Signal, Eye, EyeOff,
   Maximize2, Minimize2, Battery, Hand, ChevronLeft, ChevronRight,
-  Cable, Globe, Map, Cpu, Smartphone, Plug
+  Map,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
