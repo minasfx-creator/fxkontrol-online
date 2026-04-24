@@ -150,7 +150,7 @@ describe('TransportEmulator — seek + breakpoint', () => {
     emu.destroy();
   });
 
-  it('resumeReplay after breakpoint hit continues past the trapped frame', () => {
+  it('resumeReplay after breakpoint hit advances past trapped frame (no infinite loop)', () => {
     const emu = new TransportEmulator({ mode: 'normal' });
     emu.loadTrace({
       frames: [
@@ -163,11 +163,34 @@ describe('TransportEmulator — seek + breakpoint', () => {
     emu.onResponse((f: string) => received.push(f));
     emu.replay({ preserveTiming: false, breakpoint: (f: any) => f.data === 'TRAP\n' });
     vi.runAllTimers();
-    // Clear breakpoint and resume → TRAP delivers, then B
-    emu.setBreakpoint(null);
+    expect(received).toEqual(['A\n']);
+    expect(emu.getReplayStatus().state).toBe('paused');
+    // RESUME with breakpoint still active must NOT re-trigger on the trapped
+    // frame (classic debugger semantics: cursor advances past the trap).
     emu.resumeReplay();
     vi.runAllTimers();
-    expect(received).toEqual(['A\n', 'TRAP\n', 'B\n']);
+    expect(received).toEqual(['A\n', 'B\n']);
+    expect(emu.getReplayStatus().state).toBe('idle');
+    emu.destroy();
+  });
+
+  it('seeking back to a trapped frame re-triggers the breakpoint', () => {
+    const emu = new TransportEmulator({ mode: 'normal' });
+    emu.loadTrace({
+      frames: [
+        { dir: 'rx', data: 'A\n', at: 0 },
+        { dir: 'rx', data: 'TRAP\n', at: 5 },
+      ],
+    });
+    let hits = 0;
+    emu.onBreakpointHit(() => { hits++; });
+    emu.replay({ preserveTiming: false, breakpoint: (f: any) => f.data === 'TRAP\n' });
+    vi.runAllTimers();
+    expect(hits).toBe(1);
+    emu.seekReplay(1); // jump back to TRAP
+    emu.resumeReplay();
+    vi.runAllTimers();
+    expect(hits).toBe(2);
     emu.destroy();
   });
 });
