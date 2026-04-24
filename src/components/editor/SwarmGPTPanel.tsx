@@ -719,6 +719,84 @@ export default function SwarmGPTPanel({ onClose, hideHeader = false, onLog }: Sw
                 </button>
               ))}
             </div>
+
+            {/* ── Field Engine — volumetric pipeline (cone beam + clusters + Poisson) ── */}
+            <div className="mt-2 pt-2 border-t border-border/30 space-y-1.5">
+              <div className="flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-cyan-400" />
+                <span className="text-[9px] font-semibold text-cyan-400 uppercase tracking-wider">Field Engine (Beta)</span>
+              </div>
+              <button
+                onClick={() => {
+                  // Build a symmetric twin-beam scene with bright cluster nodes,
+                  // then Poisson-sample to get evenly-spaced drone positions.
+                  const radius = Math.max(20, Math.sqrt(droneCount) * 2);
+                  const bounds: Bounds = {
+                    min: vec3(-radius, 0, -radius),
+                    max: vec3(radius, radius * 1.2, radius),
+                  };
+                  const beamLeft = coneBeamField(
+                    vec3(-radius * 0.4, 0, 0),
+                    vec3(0.2, 1, 0),
+                    Math.PI / 8,
+                    { color: '#00E5FF' },
+                  );
+                  const cluster = gaussianClusterField(
+                    vec3(0, radius * 0.4, 0),
+                    radius * 0.18,
+                    { peak: 1.4, color: '#A855F7' },
+                  );
+                  const scene = mirrorField(combineFields([beamLeft, cluster]), 'x');
+
+                  // Poisson disk sample: minDistance scales inversely with count.
+                  const minDist = Math.max(0.8, radius / Math.sqrt(droneCount) * 0.9);
+                  const samples = poissonDiskSample(scene, {
+                    count: droneCount,
+                    bounds,
+                    minDistance: minDist,
+                    seed: Date.now() & 0xffff,
+                    maxAttempts: droneCount * 120,
+                  });
+
+                  // Soft pull toward vertical axis for cinematic verticality.
+                  const positions = attractToCenter(samples.map(s => s.position), vec3(0, radius * 0.4, 0), 0.05);
+                  const pts = positions.map(p => ({ x: p.x, y: p.y, z: p.z }));
+
+                  const lastTime = droneFormations.length > 0
+                    ? droneFormations[droneFormations.length - 1].startTime + droneFormations[droneFormations.length - 1].transitionDuration + droneFormations[droneFormations.length - 1].holdDuration
+                    : 0;
+                  addDroneFormation({
+                    id: `field-${Date.now()}`,
+                    formationType: 'custom' as FormationType,
+                    droneCount: pts.length,
+                    height: radius * 0.4,
+                    radius,
+                    spacing: minDist,
+                    rotation: 0,
+                    startTime: lastTime,
+                    transitionDuration: 12,
+                    holdDuration: 15,
+                    color: '#00E5FF',
+                    points: pts.map(p => ({ x: p.x, z: p.z })),
+                  });
+                  setCurrentTime(lastTime);
+                  setLastGeneratedPoints(pts);
+                  toast.success('Field Beam gerado', {
+                    description: `${pts.length} drones · cone beam + cluster (Poisson)`,
+                  });
+                }}
+                className={cn(
+                  "w-full flex items-center justify-center gap-2 px-2 py-1.5 rounded-sm text-[10px] font-semibold transition-colors border",
+                  "border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300",
+                )}
+              >
+                🔦 Field Beam (Volumetric)
+              </button>
+              <p className="text-[8px] text-muted-foreground">
+                💡 Pipeline: cone beam + gaussian cluster → mirror → Poisson disk sample.
+              </p>
+            </div>
+
             <p className="text-[8px] text-muted-foreground">
               💡 Para parâmetros detalhados (raio, rotação, cor), use o Formation Builder (botão + na toolbar).
             </p>
