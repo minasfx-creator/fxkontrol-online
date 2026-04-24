@@ -30,7 +30,11 @@ export default function DevSimulationPanel() {
   const [replay, setReplay] = useState<{ state: 'idle' | 'running' | 'paused'; cursor: number; total: number }>({ state: 'idle', cursor: 0, total: 0 });
   const [dragging, setDragging] = useState(false);
   const [filter, setFilter] = useState('');
+  const [breakpoint, setBreakpoint] = useState('');
   const [frames, setFrames] = useState<ReadonlyArray<{ dir: 'tx' | 'rx'; data: string; at: number }>>([]);
+  const [filteredIdx, setFilteredIdx] = useState<number[]>([]);
+  const [bpHit, setBpHit] = useState<number | null>(null);
+  const [inspect, setInspect] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const emuRef = useRef<TransportEmulator | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
