@@ -23,6 +23,7 @@ import {
   subscribeCapturedEntries,
   type CapturedEntry,
 } from "@/lib/consoleCapture";
+import SerialDmxPairingPanel from "./SerialDmxPairingPanel";
 
 const LIVE_FIRING_KEYWORDS = [
   "live firing",
@@ -226,6 +227,9 @@ export default function DmxPyroDiagnostics() {
           </div>
         </div>
       </section>
+
+      {/* USB-C → DMX pairing */}
+      <SerialDmxPairingPanel />
 
       {/* Transport status */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
