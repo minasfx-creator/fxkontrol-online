@@ -9,6 +9,8 @@ import SwarmGPTPanel from '@/components/editor/SwarmGPTPanel';
 import RealityScanQualityPanel from '@/components/editor/RealityScanQualityPanel';
 import RealityScanImportPanel from '@/components/editor/RealityScanImportPanel';
 import { isEnabled } from '@/lib/featureFlags';
+import { useProjectStore } from '@/store/useProjectStore';
+import { applyPlanToProjectStore } from '@/modules/swarmgpt/adapters/applyPlanToProjectStore';
 
 /**
  * SwarmGPT Commander hub — central place for AI choreography generation.
@@ -19,6 +21,10 @@ export default function SwarmGPTPage() {
   const navigate = useNavigate();
   const { lines, append, clear } = useSystemLog();
   const [busy, setBusy] = useState(false);
+  const addDroneFormation = useProjectStore((s) => s.addDroneFormation);
+  const materializeFormation = useProjectStore((s) => s.materializeFormation);
+  const recalculateFormationTimings = useProjectStore((s) => s.recalculateFormationTimings);
+  const droneFormationsCount = useProjectStore((s) => s.droneFormations.length);
 
   // Validation state derives from log scan (cheap; real wiring lives inside the panel).
   const validationStatus = useMemo<'idle' | 'ok' | 'warn'>(() => {
@@ -97,6 +103,23 @@ export default function SwarmGPTPage() {
             >
               <RealityScanImportPanel
                 onLog={(msg, level) => append(msg, level ?? 'info')}
+                onFormationReady={(plan, src) => {
+                  // Stack new formations after existing ones (8s slot each).
+                  const startTime = droneFormationsCount * 8;
+                  const { formationId, droneCount } = applyPlanToProjectStore(
+                    plan,
+                    {
+                      addDroneFormation,
+                      materializeFormation,
+                      recalculateFormationTimings,
+                    },
+                    { startTime, sourceLabel: src.fileName },
+                  );
+                  append(
+                    `[Timeline] +${droneCount} drones from ${src.fileName} (cue ${formationId.slice(0, 12)}…) — ready for VVIZ export`,
+                    'ok',
+                  );
+                }}
               />
             </PanelErrorBoundary>
           )}
