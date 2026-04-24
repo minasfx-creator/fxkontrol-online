@@ -195,6 +195,20 @@ export class FireOneHardwareBridge {
   private maxReconnectAttempts = 3;
   private lastConnectArgs: { method: string; args?: any } | null = null;
 
+  // ── Session + retry diagnostics (added to satisfy SDK + test surface) ──
+  private sessionId = 0;
+  private connectingSessionId = 0;
+  private lastErrorCode?: BridgeReasonCode;
+  private retryPolicy: Partial<Record<BridgeCommandType, BridgeRetryRule>> = { ...DEFAULT_RETRY_POLICY };
+  private retryRateLimit = DEFAULT_RETRY_RATE_LIMIT;
+  private retryCount = 0;
+  private retryByKey: Record<string, number> = {};
+  private retryByCommandType: Partial<Record<BridgeCommandType, number>> = {};
+  private rateLimitedTotal = 0;
+  private rateLimitedByKey: Record<string, number> = {};
+  private retryTimestampsAll: number[] = [];
+  private retryTimestampsByKey: Map<string, number[]> = new Map();
+
   constructor(eventHandler?: BridgeEventHandler) {
     this.onEvent = eventHandler ?? null;
   }
