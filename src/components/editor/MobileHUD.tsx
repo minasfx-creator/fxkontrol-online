@@ -13,6 +13,7 @@ import { useShowSettings } from '@/hooks/useShowSettings';
 import { useSceneStore } from '@/store/useSceneStore';
 import { timelineClock } from '@/core/timeline/TimelineClock';
 import { timelineTransport } from '@/core/transport/timelineTransport';
+import { useTransportDiagnostics } from '@/hooks/useTransportDiagnostics';
 
 function formatTimecode(seconds: number): string {
   const m = Math.floor(seconds / 60);
