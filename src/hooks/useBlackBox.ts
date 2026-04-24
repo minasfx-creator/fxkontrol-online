@@ -126,7 +126,9 @@ export function useBlackBox() {
     s.setDuration(st.duration);
     if (st.audioUrl) s.setAudioUrl(st.audioUrl);
     s.setBpm(st.bpm);
-    s.setPlaybackSpeed(st.playbackSpeed);
+    // Guard against snapshots restored with speed=0 (timeline would play frozen).
+    const restoredSpeed = Number.isFinite(st.playbackSpeed) && st.playbackSpeed > 0 ? st.playbackSpeed : 1;
+    s.setPlaybackSpeed(restoredSpeed);
 
     st.positions.forEach(p => s.addPosition(p));
     st.timelineItems.forEach(item => s.addTimelineItem(item));
