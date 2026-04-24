@@ -260,6 +260,8 @@ export default function EngineProvider() {
     return () => {
       handleBeforeUnload();
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (rafId) cancelAnimationFrame(rafId);
       autoRecoveryService.dispose();
       clusterHealthService.dispose();
       if (bootResults['HealthPersistence']) healthPersistenceService.stop();
