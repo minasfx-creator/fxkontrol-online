@@ -212,6 +212,8 @@ export default function RealityScanQualityPanel(props: Props) {
 
   const stats = tab === 'tie' ? tie : meshQ;
 
+  if (!enabled) return null;
+
   return (
     <Card className="w-full">
       <CardHeader className="pb-3">
