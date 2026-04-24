@@ -30,6 +30,8 @@ import DmxTimelinePreview from "./DmxTimelinePreview";
 import { useDiagnosticsThresholds, DEFAULT_THRESHOLDS } from "@/store/useDiagnosticsThresholds";
 import { compactUniverse, resolveOverlaps, repackAll } from "@/lib/dmx/repackChannels";
 import { toast } from "sonner";
+import { buildReport, exportReportJSON, exportReportCSV, exportReportPDF } from "@/lib/dmx/diagnosticsReport";
+import { Download, FileJson, FileSpreadsheet, FileText } from "lucide-react";
 
 const LIVE_FIRING_KEYWORDS = [
   "live firing",
@@ -459,6 +461,9 @@ export default function DmxPyroDiagnostics() {
       {/* Repack actions */}
       <RepackActions />
 
+      {/* Report export */}
+      <ReportExport />
+
       {/* Findings */}
       <section className="rounded border border-border/30 bg-card/40">
         <header className="px-3 py-2 border-b border-border/20 text-[10px] font-mono uppercase tracking-widest text-muted-foreground/70">
@@ -802,6 +807,81 @@ function RepackActions() {
           Compactar remove gaps mantendo a ordem por endereço. Resolver overlaps shifta fixtures sobrepostos
           para o próximo slot livre. Canais <span className="text-amber-400">locked</span> e desabilitados
           são preservados. Use <span className="text-foreground">Desfazer</span> no toast para reverter.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function ReportExport() {
+  const channels = useSfxChannelStore((s) => s.channels);
+  const thresholds = useDiagnosticsThresholds();
+
+  const generate = (fmt: "json" | "csv" | "pdf") => {
+    if (channels.length === 0) {
+      toast.info("Nenhum canal SFX configurado para gerar relatório.");
+      return;
+    }
+    try {
+      const report = buildReport(channels, thresholds, "FX KONTROL Show");
+      if (fmt === "json") exportReportJSON(report);
+      else if (fmt === "csv") exportReportCSV(report);
+      else exportReportPDF(report);
+      toast.success(`Relatório ${fmt.toUpperCase()} gerado (${report.findings.length} findings).`);
+    } catch (e) {
+      toast.error(`Falha ao gerar relatório ${fmt.toUpperCase()}: ${(e as Error).message}`);
+    }
+  };
+
+  const disabled = channels.length === 0;
+
+  return (
+    <section className="rounded border border-border/30 bg-card/40">
+      <header className="px-3 py-2 border-b border-border/20 flex items-center justify-between">
+        <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
+          <Download className="w-3 h-3" />
+          Relatório de diagnóstico
+        </span>
+        <span className="text-[10px] font-mono text-muted-foreground/50">
+          Aplica os limites configurados acima
+        </span>
+      </header>
+      <div className="p-3 flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => generate("json")}
+            disabled={disabled}
+            className="font-mono text-xs gap-1.5"
+          >
+            <FileJson className="w-3.5 h-3.5" />
+            JSON
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => generate("csv")}
+            disabled={disabled}
+            className="font-mono text-xs gap-1.5"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            CSV
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => generate("pdf")}
+            disabled={disabled}
+            className="font-mono text-xs gap-1.5"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            PDF
+          </Button>
+        </div>
+        <p className="text-[10px] font-mono text-muted-foreground/50 leading-snug">
+          Resume ocupação por universe, gaps, canais inválidos, overlaps e inventário completo.
+          JSON para integrações, CSV para planilhas, PDF para arquivamento e auditoria.
         </p>
       </div>
     </section>
