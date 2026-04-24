@@ -303,6 +303,39 @@ export default function RealityScanImportPanel(props: Props) {
               </div>
             </div>
 
+            <div className="space-y-1.5 rounded-md border border-border/40 bg-background/40 p-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">Physics repair</Label>
+                <button
+                  type="button"
+                  onClick={() => setUsePhysicsRepair((v) => !v)}
+                  className={`text-[10px] rounded px-2 py-0.5 border transition-colors ${
+                    usePhysicsRepair
+                      ? 'border-primary bg-primary/15 text-primary'
+                      : 'border-border/40 bg-background/40 text-muted-foreground'
+                  }`}
+                >
+                  {usePhysicsRepair ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              <div className={`grid grid-cols-5 gap-1 ${usePhysicsRepair ? '' : 'opacity-40 pointer-events-none'}`}>
+                {MOTION_STYLES.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setMotionStyle(s)}
+                    className={`text-[10px] rounded border px-1 py-1 capitalize transition-colors ${
+                      motionStyle === s
+                        ? 'border-primary bg-primary/15 text-primary'
+                        : 'border-border/40 bg-background/40 text-muted-foreground hover:bg-background/60'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <Button
               size="sm"
               className="w-full"
