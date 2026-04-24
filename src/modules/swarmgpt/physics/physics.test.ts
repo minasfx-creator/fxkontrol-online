@@ -54,7 +54,7 @@ describe('matchPointsByCost', () => {
 describe('compilePhysicalTrajectory + validateKinematics', () => {
   it('produces sample arrays of consistent length', () => {
     const sources: Vec3[] = [{ x: 0, y: 0, z: 0 }, { x: 10, y: 0, z: 0 }];
-    const targets: Vec3[] = [{ x: 10, y: 0, z: 0 }, { x: 0, y: 0, z: 0 }];
+    const targets: Vec3[] = [{ x: 0, y: 0, z: 5 }, { x: 10, y: 0, z: 5 }];
     const m = matchPointsByCost(sources, targets);
     const traj = compilePhysicalTrajectory(sources, targets, m, { duration: 2, sampleRate: 10 });
     expect(traj.dronePaths.length).toBe(2);
@@ -137,13 +137,15 @@ describe('buildPhysicsReport', () => {
 describe('repairPhysicalTransition', () => {
   it('extends duration to fix a speed violation', () => {
     const sources: Vec3[] = [{ x: 0, y: 0, z: 0 }];
-    const targets: Vec3[] = [{ x: 30, y: 0, z: 0 }];
+    const targets: Vec3[] = [{ x: 30, y: 0, z: 0 }]; // 30m in 1s = 30m/s, limit 5m/s
     const r = repairPhysicalTransition(sources, targets, {
-      duration: 1, // 30 m/s over 1s — too fast at maxSpeed=5
+      duration: 1,
       limits: { maxSpeed: 5, minSeparation: 0.5 },
       ease: linear,
+      durationMultipliers: [2, 4, 8], // 8× → 1s/8 → 30/(1*8)=3.75 m/s, ok
     });
     expect(r.report.repairLog.length).toBeGreaterThan(0);
+    expect(r.report.ok).toBe(true);
     expect(r.report.metrics.maxSpeedUsed).toBeLessThanOrEqual(5 + 1e-3);
   });
   it('returns a final blocker when repair fails', () => {
