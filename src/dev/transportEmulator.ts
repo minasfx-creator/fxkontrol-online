@@ -73,6 +73,9 @@ export class TransportEmulator {
   private replayState: 'idle' | 'running' | 'paused' = 'idle';
   private replayCursor = 0;
   private replayFrames: Array<{ dir: 'tx' | 'rx'; data: string; at: number }> = [];
+  private lastDeliveredRxIndex: number | null = null;
+  private replayBreakpoint: ((frame: { dir: 'tx' | 'rx'; data: string; at: number }) => boolean) | null = null;
+  private breakpointListeners = new Set<(frame: { dir: 'tx' | 'rx'; data: string; at: number }, index: number) => void>();
 
   constructor(cfg: EmulatorConfig) {
     // Production guard — emulator is dev/test only.
@@ -280,6 +283,7 @@ export class TransportEmulator {
     this.stopReplay();
     this.replayFrames = [...trace.frames];
     this.replayCursor = 0;
+    this.lastDeliveredRxIndex = null;
     this.replayState = 'idle';
   }
 
@@ -292,12 +296,14 @@ export class TransportEmulator {
    * - preserveTiming=false: delivers everything as fast as possible.
    * - speed: multiplier applied to deltas (2 = 2× faster).
    * - filter: only replay RX frames whose data matches the predicate.
+   * - breakpoint: when it returns true, replay auto-pauses BEFORE delivery.
    */
   replay(opts: {
     preserveTiming?: boolean;
     speed?: number;
     onComplete?: () => void;
     filter?: (data: string) => boolean;
+    breakpoint?: (frame: { dir: 'tx' | 'rx'; data: string; at: number }) => boolean;
   } = {}) {
     if (this.replayFrames.length === 0) return;
     this.replayOpts = {
@@ -306,6 +312,7 @@ export class TransportEmulator {
       onComplete: opts.onComplete,
     };
     this.replayFilter = opts.filter ?? null;
+    this.replayBreakpoint = opts.breakpoint ?? null;
     this.replayState = 'running';
     this.scheduleNextReplay();
   }
@@ -330,17 +337,25 @@ export class TransportEmulator {
       return;
     }
     const frame = this.replayFrames[idx];
-    // Delta = gap between previous delivered frame and this one (true fidelity).
+    // Delta = gap between LAST DELIVERED RX and this one (true wire fidelity).
     let delta = 0;
     if (this.replayOpts.preserveTiming) {
-      const prevIdx = this.replayCursor === 0 ? idx : this.replayCursor - 1;
-      const prev = this.replayFrames[Math.max(0, prevIdx)];
+      const prev = this.lastDeliveredRxIndex !== null
+        ? this.replayFrames[this.lastDeliveredRxIndex]
+        : frame; // first frame in run → no historical reference
       delta = Math.max(0, (frame.at - prev.at) / this.replayOpts.speed);
     }
     const t = setTimeout(() => {
       this.replayTimers.delete(t);
       if (this.replayState !== 'running') return;
+      // Breakpoint check — auto-pause BEFORE delivery so the user can inspect.
+      if (this.replayBreakpoint && this.replayBreakpoint(frame)) {
+        this.replayState = 'paused';
+        for (const l of this.breakpointListeners) l(frame, idx);
+        return;
+      }
       this.deliverFrame(frame.data);
+      this.lastDeliveredRxIndex = idx;
       this.replayCursor = idx + 1;
       this.scheduleNextReplay();
     }, delta);
@@ -352,8 +367,41 @@ export class TransportEmulator {
     const idx = this.nextRxIndex(this.replayCursor);
     if (idx === -1) return false;
     this.deliverFrame(this.replayFrames[idx].data);
+    this.lastDeliveredRxIndex = idx;
     this.replayCursor = idx + 1;
     return this.nextRxIndex(this.replayCursor) !== -1;
+  }
+
+  /** Jump cursor to a specific frame index (for timeline scrub/click). */
+  seekReplay(index: number) {
+    const wasRunning = this.replayState === 'running';
+    if (this.replayState === 'running' || this.replayState === 'paused') {
+      for (const t of this.replayTimers) clearTimeout(t);
+      this.replayTimers.clear();
+    }
+    const clamped = Math.max(0, Math.min(index, this.replayFrames.length));
+    this.replayCursor = clamped;
+    // Re-anchor the previous-RX so deltas continue from the seek point.
+    let prev: number | null = null;
+    for (let i = clamped - 1; i >= 0; i--) {
+      if (this.replayFrames[i].dir === 'rx') { prev = i; break; }
+    }
+    this.lastDeliveredRxIndex = prev;
+    if (wasRunning) {
+      this.replayState = 'running';
+      this.scheduleNextReplay();
+    }
+  }
+
+  /** Subscribe to breakpoint hits — fires AFTER auto-pause, BEFORE delivery. */
+  onBreakpointHit(fn: (frame: { dir: 'tx' | 'rx'; data: string; at: number }, index: number) => void): () => void {
+    this.breakpointListeners.add(fn);
+    return () => this.breakpointListeners.delete(fn);
+  }
+
+  /** Update or clear the breakpoint predicate while replay is in progress. */
+  setBreakpoint(bp: ((frame: { dir: 'tx' | 'rx'; data: string; at: number }) => boolean) | null) {
+    this.replayBreakpoint = bp;
   }
 
   pauseReplay() {
@@ -372,6 +420,7 @@ export class TransportEmulator {
   stopReplay() {
     this.replayState = 'idle';
     this.replayCursor = 0;
+    this.lastDeliveredRxIndex = null;
     for (const t of this.replayTimers) clearTimeout(t);
     this.replayTimers.clear();
   }
@@ -389,12 +438,25 @@ export class TransportEmulator {
     return this.replayFrames;
   }
 
+  /** Returns indices that pass the active filter — for timeline highlighting. */
+  getFilteredIndices(): number[] {
+    if (!this.replayFilter) return this.replayFrames.map((_, i) => i);
+    const out: number[] = [];
+    for (let i = 0; i < this.replayFrames.length; i++) {
+      const f = this.replayFrames[i];
+      if (f.dir !== 'rx') { out.push(i); continue; }
+      if (this.replayFilter(f.data)) out.push(i);
+    }
+    return out;
+  }
+
   // ── Cleanup ─────────────────────────────────────────────────────
   destroy() {
     this.clearTimers();
     this.stopReplay();
     this.respListeners.clear();
     this.stateListeners.clear();
+    this.breakpointListeners.clear();
     this.autoReplies = [];
   }
 

@@ -107,3 +107,67 @@ describe('TransportEmulator — trace replay', () => {
     emu.destroy();
   });
 });
+
+describe('TransportEmulator — seek + breakpoint', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('seekReplay jumps cursor and re-anchors RX delta', () => {
+    const emu = new TransportEmulator({ mode: 'normal' });
+    emu.loadTrace({
+      frames: [
+        { dir: 'rx', data: 'A\n', at: 0 },
+        { dir: 'rx', data: 'B\n', at: 100 },
+        { dir: 'rx', data: 'C\n', at: 250 },
+      ],
+    });
+    const received: string[] = [];
+    emu.onResponse((f: string) => received.push(f));
+    emu.seekReplay(2);
+    emu.stepReplay();
+    expect(received).toEqual(['C\n']);
+    emu.destroy();
+  });
+
+  it('breakpoint auto-pauses BEFORE delivery and fires listener', () => {
+    const emu = new TransportEmulator({ mode: 'normal' });
+    emu.loadTrace({
+      frames: [
+        { dir: 'rx', data: 'OK:1\n', at: 0 },
+        { dir: 'rx', data: 'ERROR:fault\n', at: 10 },
+        { dir: 'rx', data: 'OK:2\n', at: 20 },
+      ],
+    });
+    const received: string[] = [];
+    let bpHit: { idx: number; data: string } | null = null;
+    emu.onResponse((f: string) => received.push(f));
+    emu.onBreakpointHit((frame: any, idx: number) => { bpHit = { idx, data: frame.data }; });
+    emu.replay({ preserveTiming: false, breakpoint: (f: any) => f.data.includes('ERROR') });
+    vi.runAllTimers();
+    expect(received).toEqual(['OK:1\n']);            // ERROR not delivered
+    expect(bpHit).toEqual({ idx: 1, data: 'ERROR:fault\n' });
+    expect(emu.getReplayStatus().state).toBe('paused');
+    emu.destroy();
+  });
+
+  it('resumeReplay after breakpoint hit continues past the trapped frame', () => {
+    const emu = new TransportEmulator({ mode: 'normal' });
+    emu.loadTrace({
+      frames: [
+        { dir: 'rx', data: 'A\n', at: 0 },
+        { dir: 'rx', data: 'TRAP\n', at: 5 },
+        { dir: 'rx', data: 'B\n', at: 10 },
+      ],
+    });
+    const received: string[] = [];
+    emu.onResponse((f: string) => received.push(f));
+    emu.replay({ preserveTiming: false, breakpoint: (f: any) => f.data === 'TRAP\n' });
+    vi.runAllTimers();
+    // Clear breakpoint and resume → TRAP delivers, then B
+    emu.setBreakpoint(null);
+    emu.resumeReplay();
+    vi.runAllTimers();
+    expect(received).toEqual(['A\n', 'TRAP\n', 'B\n']);
+    emu.destroy();
+  });
+});

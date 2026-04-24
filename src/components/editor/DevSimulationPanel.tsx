@@ -30,7 +30,11 @@ export default function DevSimulationPanel() {
   const [replay, setReplay] = useState<{ state: 'idle' | 'running' | 'paused'; cursor: number; total: number }>({ state: 'idle', cursor: 0, total: 0 });
   const [dragging, setDragging] = useState(false);
   const [filter, setFilter] = useState('');
+  const [breakpoint, setBreakpoint] = useState('');
   const [frames, setFrames] = useState<ReadonlyArray<{ dir: 'tx' | 'rx'; data: string; at: number }>>([]);
+  const [filteredIdx, setFilteredIdx] = useState<number[]>([]);
+  const [bpHit, setBpHit] = useState<number | null>(null);
+  const [inspect, setInspect] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const emuRef = useRef<TransportEmulator | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -50,7 +54,13 @@ export default function DevSimulationPanel() {
     setJitter(cfg.jitterMs ?? 0);
     setLoss((cfg.lossRate ?? 0) * 100);
     setConnected(true);
+    setBpHit(null);
     emu.onStateChange(s => setConnected(s === 'connected'));
+    emu.onBreakpointHit((_frame, idx) => {
+      setBpHit(idx);
+      setInspect(idx);
+      setReplay(emu.getReplayStatus());
+    });
     tickRef.current = setInterval(() => {
       const stats = emu.getStats();           // O(1)
       const rs = emu.getReplayStatus();
@@ -92,6 +102,9 @@ export default function DevSimulationPanel() {
       emuRef.current.loadTrace(parsed); // throws on invalid shape
       setReplay(emuRef.current.getReplayStatus());
       setFrames(emuRef.current.getReplayFrames());
+      setFilteredIdx(emuRef.current.getFilteredIndices());
+      setBpHit(null);
+      setInspect(null);
     } catch (e) {
       console.error('[DevSim] trace load failed:', e);
     }
@@ -103,6 +116,25 @@ export default function DevSimulationPanel() {
     const terms = q.split(',').map(s => s.trim()).filter(Boolean);
     return (d: string) => terms.some(t => d.includes(t));
   }, [filter]);
+
+  const buildBreakpoint = useCallback((): ((f: { data: string }) => boolean) | undefined => {
+    const q = breakpoint.trim();
+    if (!q) return undefined;
+    // Support /regex/ syntax, fall back to substring.
+    if (q.startsWith('/') && q.lastIndexOf('/') > 0) {
+      try {
+        const last = q.lastIndexOf('/');
+        const re = new RegExp(q.slice(1, last), q.slice(last + 1));
+        return (f) => re.test(f.data);
+      } catch { /* fallthrough */ }
+    }
+    return (f) => f.data.includes(q);
+  }, [breakpoint]);
+
+  const handleSeek = useCallback((idx: number) => {
+    emuRef.current?.seekReplay(idx);
+    setReplay(emuRef.current!.getReplayStatus());
+  }, []);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -196,7 +228,15 @@ export default function DevSimulationPanel() {
               Replay {replay.cursor}/{replay.total} · {replay.state}
             </span>
             <Button size="sm" variant="ghost" disabled={!enabled || replay.state === 'running'}
-              onClick={() => emuRef.current?.replay({ preserveTiming: true, filter: buildFilter() })}
+              onClick={() => {
+                emuRef.current?.replay({
+                  preserveTiming: true,
+                  filter: buildFilter(),
+                  breakpoint: buildBreakpoint(),
+                });
+                setBpHit(null);
+                setFilteredIdx(emuRef.current?.getFilteredIndices() ?? []);
+              }}
               className="h-6 px-2 text-[8px] gap-1 text-emerald-400">
               <Play className="w-3 h-3" /> PLAY
             </Button>
@@ -206,7 +246,7 @@ export default function DevSimulationPanel() {
               <Pause className="w-3 h-3" /> PAUSE
             </Button>
             <Button size="sm" variant="ghost" disabled={!enabled || replay.state !== 'paused'}
-              onClick={() => emuRef.current?.resumeReplay()}
+              onClick={() => { setBpHit(null); emuRef.current?.resumeReplay(); }}
               className="h-6 px-2 text-[8px] gap-1 text-emerald-400">
               <FastForward className="w-3 h-3" /> RESUME
             </Button>
@@ -216,22 +256,68 @@ export default function DevSimulationPanel() {
               <SkipForward className="w-3 h-3" /> STEP
             </Button>
             <Button size="sm" variant="ghost" disabled={!enabled}
-              onClick={() => { emuRef.current?.stopReplay(); setReplay(emuRef.current!.getReplayStatus()); }}
+              onClick={() => {
+                emuRef.current?.stopReplay();
+                setReplay(emuRef.current!.getReplayStatus());
+                setBpHit(null);
+              }}
               className="h-6 px-2 text-[8px] gap-1 text-red-400">
               <Square className="w-3 h-3" /> STOP
             </Button>
+          </div>
+
+          <div className="flex items-center gap-1 flex-wrap">
             <Input
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="filter: CONT,STATUS"
-              className="h-6 text-[9px] w-40 ml-auto"
+              className="h-6 text-[9px] w-40"
               disabled={!enabled}
             />
+            <Input
+              value={breakpoint}
+              onChange={(e) => setBreakpoint(e.target.value)}
+              placeholder="breakpoint: ERROR or /CONT:\d+:0/"
+              className="h-6 text-[9px] flex-1 min-w-[200px]"
+              disabled={!enabled}
+            />
+            <Button size="sm" variant="ghost" disabled={!enabled}
+              onClick={() => emuRef.current?.setBreakpoint(buildBreakpoint() ?? null)}
+              className="h-6 px-2 text-[8px] text-amber-400">
+              APPLY BP
+            </Button>
           </div>
 
           <Suspense fallback={<div className="text-[7px] text-muted-foreground">Loading timeline…</div>}>
-            <EmulatorTraceTimeline frames={frames} cursor={replay.cursor} state={replay.state} />
+            <EmulatorTraceTimeline
+              frames={frames}
+              cursor={replay.cursor}
+              state={replay.state}
+              filteredIndices={filter.trim() ? filteredIdx : undefined}
+              breakpointIndex={bpHit}
+              onSeek={handleSeek}
+              onInspect={(i) => setInspect(i)}
+            />
           </Suspense>
+
+          {inspect !== null && frames[inspect] && (
+            <div className="mt-1 p-2 rounded border border-border/40 bg-background/40 text-[9px] flex flex-col gap-0.5">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground uppercase tracking-widest text-[7px]">
+                  Frame Inspector · #{inspect}
+                </span>
+                <button
+                  onClick={() => setInspect(null)}
+                  className="text-[7px] text-muted-foreground hover:text-foreground uppercase">
+                  close
+                </button>
+              </div>
+              <div><span className="text-muted-foreground">dir:</span> <span className={frames[inspect].dir === 'tx' ? 'text-cyan-400' : 'text-emerald-400'}>{frames[inspect].dir.toUpperCase()}</span></div>
+              <div><span className="text-muted-foreground">at:</span> {frames[inspect].at} ({new Date(frames[inspect].at).toISOString().slice(11, 23)})</div>
+              <div><span className="text-muted-foreground">Δ prev:</span> {inspect > 0 ? `${frames[inspect].at - frames[inspect - 1].at}ms` : '—'}</div>
+              <div className="break-all"><span className="text-muted-foreground">data:</span> <code className="text-foreground">{frames[inspect].data}</code></div>
+            </div>
+          )}
         </div>
       )}
     </div>
