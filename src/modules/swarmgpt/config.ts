@@ -26,6 +26,8 @@ export interface SwarmGPTConfig {
   minDroneDistance: number;
   /** Max attempts of repair-agent loop before failing. */
   maxRepairAttempts: number;
+  /** Max instantaneous drone speed (m/s) used by the trajectory optimizer. */
+  maxDroneSpeed: number;
 }
 
 /** Suggested model per role — consumed by the future edge function/dispatcher. */
@@ -42,5 +44,6 @@ export function createDefaultSwarmGPTConfig(llm: SwarmGPTLLMClient): SwarmGPTCon
     llm,
     minDroneDistance: 2.5,
     maxRepairAttempts: 2,
+    maxDroneSpeed: 8.0,
   };
 }
