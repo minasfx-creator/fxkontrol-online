@@ -32,6 +32,12 @@ const FLAGS = {
    * viewport never breaks.
    */
   vviz_module_pipeline: true,
+  /**
+   * RealityScan 2.0 Quality Analysis: tie-point + mesh coverage scoring with
+   * green→red overlays and bake-to-vertex-color / bake-to-texture actions.
+   * UI lives in src/components/editor/RealityScanQualityPanel.tsx.
+   */
+  realityscan_quality_analysis: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
