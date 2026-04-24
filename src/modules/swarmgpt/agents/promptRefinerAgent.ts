@@ -36,5 +36,5 @@ Do not include markdown.
   );
 
   const raw = await config.llm.completeJson({ role: 'refiner', system, user });
-  return RefinedPromptSchema.parse(raw);
+  return RefinedPromptSchema.parse(raw) as RefinedPrompt;
 }

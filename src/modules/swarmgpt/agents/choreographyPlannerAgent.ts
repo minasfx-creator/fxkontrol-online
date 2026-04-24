@@ -64,5 +64,5 @@ This is for simulation and creative planning only.
   );
 
   const raw = await config.llm.completeJson({ role: 'planner', system, user });
-  return ChoreographyPlanSchema.parse(raw);
+  return ChoreographyPlanSchema.parse(raw) as ChoreographyPlan;
 }

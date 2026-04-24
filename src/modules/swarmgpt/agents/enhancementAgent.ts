@@ -50,5 +50,5 @@ Do not output executable flight instructions for real hardware.
   );
 
   const raw = await config.llm.completeJson({ role: 'enhancer', system, user });
-  return ChoreographyPlanSchema.parse(raw);
+  return ChoreographyPlanSchema.parse(raw) as ChoreographyPlan;
 }

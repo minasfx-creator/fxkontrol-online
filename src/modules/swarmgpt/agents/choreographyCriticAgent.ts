@@ -48,5 +48,5 @@ Do not rewrite the plan here.
   );
 
   const raw = await config.llm.completeJson({ role: 'critic', system, user });
-  return ChoreographyCritiqueSchema.parse(raw);
+  return ChoreographyCritiqueSchema.parse(raw) as ChoreographyCritique;
 }
