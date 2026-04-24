@@ -8,7 +8,7 @@
  *
  * Behavior preserved 1:1 — only file location changes.
  */
-import { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 // drei's OrbitControls uses three-stdlib's class internally; we type loosely below.
