@@ -64,12 +64,14 @@ export default function Model3DPreview({ file, transform, onTransformChange }: P
 
       {/* Offset Y */}
       <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">Offset Y: {transform.offsetY.toFixed(2)}m</Label>
+        <Label className="text-xs text-muted-foreground">
+          Offset Y: {(transform.offsetY ?? 0).toFixed(2)}m
+        </Label>
         <Slider
           min={-10}
           max={50}
           step={0.1}
-          value={[transform.offsetY]}
+          value={[transform.offsetY ?? 0]}
           onValueChange={([v]) => onTransformChange({ ...transform, offsetY: v })}
         />
       </div>
