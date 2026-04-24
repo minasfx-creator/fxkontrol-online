@@ -5,6 +5,7 @@
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import type { Effect } from '@/data/effectLibrary';
+import { timelineClock } from '@/core/timeline/TimelineClock';
 import { timelineTransport } from '@/core/transport/timelineTransport';
 import { toast } from 'sonner';
 import { verificationEngine } from '@/core/verification/VerificationEngine';
