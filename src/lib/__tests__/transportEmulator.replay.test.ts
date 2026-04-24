@@ -113,7 +113,7 @@ describe('TransportEmulator — seek + breakpoint', () => {
   afterEach(() => { vi.useRealTimers(); });
 
   it('seekReplay jumps cursor and re-anchors RX delta', () => {
-    const emu = new (require('@/dev/transportEmulator').TransportEmulator)({ mode: 'normal' });
+    const emu = new TransportEmulator({ mode: 'normal' });
     emu.loadTrace({
       frames: [
         { dir: 'rx', data: 'A\n', at: 0 },
@@ -130,7 +130,7 @@ describe('TransportEmulator — seek + breakpoint', () => {
   });
 
   it('breakpoint auto-pauses BEFORE delivery and fires listener', () => {
-    const emu = new (require('@/dev/transportEmulator').TransportEmulator)({ mode: 'normal' });
+    const emu = new TransportEmulator({ mode: 'normal' });
     emu.loadTrace({
       frames: [
         { dir: 'rx', data: 'OK:1\n', at: 0 },
@@ -151,7 +151,7 @@ describe('TransportEmulator — seek + breakpoint', () => {
   });
 
   it('resumeReplay after breakpoint hit continues past the trapped frame', () => {
-    const emu = new (require('@/dev/transportEmulator').TransportEmulator)({ mode: 'normal' });
+    const emu = new TransportEmulator({ mode: 'normal' });
     emu.loadTrace({
       frames: [
         { dir: 'rx', data: 'A\n', at: 0 },
