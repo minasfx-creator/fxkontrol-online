@@ -268,12 +268,22 @@ async function callAI(
       }
       return JSON.parse(toolCall.function.arguments);
     } catch (e: any) {
-      if (e.status === 429 || e.status === 402) throw e;
-      lastError = e;
+      if (e.status === 429 || e.status === 402) {
+        clearTimeout(timeoutId);
+        throw e;
+      }
+      if (e?.name === "AbortError") {
+        console.warn(`AI call (${model}) aborted after ${PER_ATTEMPT_TIMEOUT_MS}ms (attempt ${attempt + 1})`);
+        lastError = new Error(`Modelo AI demorou demais (>${PER_ATTEMPT_TIMEOUT_MS / 1000}s)`);
+      } else {
+        lastError = e;
+      }
       if (attempt < maxRetries) {
         console.warn(`Attempt ${attempt + 1} failed, retrying...`);
         await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
       }
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
   
