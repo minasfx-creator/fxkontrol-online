@@ -27,6 +27,7 @@ import {
 import SerialDmxPairingPanel from "./SerialDmxPairingPanel";
 import LiveDmxInspector from "./LiveDmxInspector";
 import DmxTimelinePreview from "./DmxTimelinePreview";
+import { useDiagnosticsThresholds, DEFAULT_THRESHOLDS } from "@/store/useDiagnosticsThresholds";
 
 const LIVE_FIRING_KEYWORDS = [
   "live firing",
@@ -69,10 +70,15 @@ function fmtNum(v: unknown, digits = 1): string {
 }
 
 const VALID_SFX_TYPES = new Set<string>(SFX_TYPES.map((t) => t.key));
-const ADDRESS_GAP_THRESHOLD = 32;   // gaps > 32 endereços viram aviso
-const UNIVERSE_GAP_THRESHOLD = 1;   // pular > 1 universe entre os usados
 
-function validateChannels(channels: ReturnType<typeof useSfxChannelStore.getState>["channels"]): Finding[] {
+function validateChannels(
+  channels: ReturnType<typeof useSfxChannelStore.getState>["channels"],
+  thresholds: import("@/store/useDiagnosticsThresholds").DiagnosticsThresholds,
+): Finding[] {
+  const ADDRESS_GAP_THRESHOLD = thresholds.addressGap;
+  const UNIVERSE_GAP_THRESHOLD = thresholds.universeGap;
+  const UNIVERSE_CAP = thresholds.universeCapPct / 100;
+  const UNIVERSE_START_HINT = thresholds.universeStartHint;
   const findings: Finding[] = [];
 
   if (channels.length === 0) {
@@ -184,13 +190,13 @@ function validateChannels(channels: ReturnType<typeof useSfxChannelStore.getStat
       }
     }
 
-    // Universe quase cheio (>90% ocupação)
+    // Universe quase cheio
     const totalUsed = sorted.reduce((s, c) => s + c.dmxChannels, 0);
-    if (totalUsed > 0.9 * 512) {
+    if (totalUsed > UNIVERSE_CAP * 512) {
       findings.push({
         id: `crowded-${universe}`,
         severity: "warn",
-        message: `U${universe} está ${Math.round((totalUsed / 512) * 100)}% ocupado (${totalUsed}/512).`,
+        message: `U${universe} está ${Math.round((totalUsed / 512) * 100)}% ocupado (${totalUsed}/512), acima do limite ${thresholds.universeCapPct}%.`,
         hint: "Considere migrar fixtures para um universe adicional.",
       });
     }
@@ -214,12 +220,12 @@ function validateChannels(channels: ReturnType<typeof useSfxChannelStore.getStat
     }
   }
 
-  // Aviso se o endereçamento começa fora de U0/U1 (incomum)
-  if (usedUniverses.length > 0 && usedUniverses[0] > 1) {
+  // Aviso se o endereçamento começa fora do limite configurado
+  if (usedUniverses.length > 0 && usedUniverses[0] > UNIVERSE_START_HINT) {
     findings.push({
       id: "uni-start",
       severity: "warn",
-      message: `Primeiro universe em uso é U${usedUniverses[0]} — universes 0 e 1 estão vazios.`,
+      message: `Primeiro universe em uso é U${usedUniverses[0]} — esperado ≤ U${UNIVERSE_START_HINT}.`,
       hint: "Maioria das consoles inicia no universe 1; verifique se isto é intencional.",
     });
   }
@@ -245,7 +251,11 @@ export default function DmxPyroDiagnostics() {
     return () => clearInterval(iv);
   }, []);
 
-  const findings = useMemo(() => validateChannels(channels), [channels, tick]);
+  const thresholds = useDiagnosticsThresholds();
+  const findings = useMemo(
+    () => validateChannels(channels, thresholds),
+    [channels, tick, thresholds.addressGap, thresholds.universeGap, thresholds.universeCapPct, thresholds.universeStartHint],
+  );
   const counts = useMemo(() => {
     const c = { ok: 0, warn: 0, fail: 0 };
     for (const f of findings) c[f.severity]++;
@@ -441,6 +451,9 @@ export default function DmxPyroDiagnostics() {
         )}
       </section>
 
+      {/* Threshold configuration */}
+      <ThresholdsConfig />
+
       {/* Findings */}
       <section className="rounded border border-border/30 bg-card/40">
         <header className="px-3 py-2 border-b border-border/20 text-[10px] font-mono uppercase tracking-widest text-muted-foreground/70">
@@ -573,6 +586,113 @@ function StatusCard({
         <span className="text-sm font-mono font-bold">{value}</span>
       </div>
       {detail && <div className="text-[10px] font-mono text-muted-foreground/60">{detail}</div>}
+    </div>
+  );
+}
+
+function ThresholdsConfig() {
+  const t = useDiagnosticsThresholds();
+  const isDefault =
+    t.addressGap === DEFAULT_THRESHOLDS.addressGap &&
+    t.universeGap === DEFAULT_THRESHOLDS.universeGap &&
+    t.universeCapPct === DEFAULT_THRESHOLDS.universeCapPct &&
+    t.universeStartHint === DEFAULT_THRESHOLDS.universeStartHint;
+
+  return (
+    <section className="rounded border border-border/30 bg-card/40">
+      <header className="px-3 py-2 border-b border-border/20 flex items-center justify-between">
+        <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/70">
+          Limites de validação
+        </span>
+        <button
+          onClick={() => t.reset()}
+          disabled={isDefault}
+          className={cn(
+            "text-[10px] font-mono px-2 py-0.5 rounded border",
+            isDefault
+              ? "opacity-40 cursor-not-allowed border-border/20"
+              : "border-border/40 hover:bg-muted/30",
+          )}
+        >
+          Restaurar padrões
+        </button>
+      </header>
+      <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <ThresholdField
+          label="Gap de endereços (≥)"
+          suffix="canais"
+          hint="Aviso quando há esse número de endereços DMX livres entre dois fixtures contíguos."
+          min={1} max={511} step={1}
+          value={t.addressGap}
+          onChange={(v) => t.set("addressGap", v)}
+        />
+        <ThresholdField
+          label="Gap de universes (>)"
+          suffix="universes"
+          hint="Aviso quando esse número de universes consecutivos não está sendo usado entre dois universes ativos."
+          min={0} max={32} step={1}
+          value={t.universeGap}
+          onChange={(v) => t.set("universeGap", v)}
+        />
+        <ThresholdField
+          label="Universe cheio (≥)"
+          suffix="%"
+          hint="Aviso quando a ocupação de canais (de 512) atingir esse percentual."
+          min={50} max={100} step={1}
+          value={t.universeCapPct}
+          onChange={(v) => t.set("universeCapPct", v)}
+        />
+        <ThresholdField
+          label="Universe inicial esperado (≤)"
+          suffix="universe"
+          hint="Aviso quando o primeiro universe em uso for maior que esse valor."
+          min={0} max={32} step={1}
+          value={t.universeStartHint}
+          onChange={(v) => t.set("universeStartHint", v)}
+        />
+      </div>
+    </section>
+  );
+}
+
+function ThresholdField({
+  label, suffix, hint, value, min, max, step, onChange,
+}: {
+  label: string;
+  suffix: string;
+  hint: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (v: number) => void;
+}) {
+  const clamp = (v: number) => Math.max(min, Math.min(max, Math.round(v / step) * step));
+  return (
+    <div className="rounded border border-border/30 bg-background/40 p-2 flex flex-col gap-1.5">
+      <div className="text-[9px] uppercase tracking-widest text-muted-foreground/60">{label}</div>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(clamp(parseFloat(e.target.value || "0")))}
+          className="w-20 bg-background border border-border/40 rounded px-2 py-1 text-xs font-mono"
+        />
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(clamp(parseFloat(e.target.value)))}
+          className="flex-1 accent-primary"
+        />
+        <span className="text-[10px] font-mono text-muted-foreground/60 w-14 text-right">{suffix}</span>
+      </div>
+      <p className="text-[10px] font-mono text-muted-foreground/50 leading-snug">{hint}</p>
     </div>
   );
 }
