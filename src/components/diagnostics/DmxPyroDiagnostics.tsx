@@ -26,6 +26,7 @@ import {
 } from "@/lib/consoleCapture";
 import SerialDmxPairingPanel from "./SerialDmxPairingPanel";
 import LiveDmxInspector from "./LiveDmxInspector";
+import DmxTimelinePreview from "./DmxTimelinePreview";
 
 const LIVE_FIRING_KEYWORDS = [
   "live firing",
@@ -319,6 +320,9 @@ export default function DmxPyroDiagnostics() {
 
       {/* Live DMX channel-level inspector */}
       <LiveDmxInspector />
+
+      {/* Bottom timeline preview of universes/channels */}
+      <DmxTimelinePreview />
 
       {/* Transport status */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
