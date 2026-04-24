@@ -69,10 +69,15 @@ function fmtNum(v: unknown, digits = 1): string {
 }
 
 const VALID_SFX_TYPES = new Set<string>(SFX_TYPES.map((t) => t.key));
-const ADDRESS_GAP_THRESHOLD = 32;   // gaps > 32 endereços viram aviso
-const UNIVERSE_GAP_THRESHOLD = 1;   // pular > 1 universe entre os usados
 
-function validateChannels(channels: ReturnType<typeof useSfxChannelStore.getState>["channels"]): Finding[] {
+function validateChannels(
+  channels: ReturnType<typeof useSfxChannelStore.getState>["channels"],
+  thresholds: import("@/store/useDiagnosticsThresholds").DiagnosticsThresholds,
+): Finding[] {
+  const ADDRESS_GAP_THRESHOLD = thresholds.addressGap;
+  const UNIVERSE_GAP_THRESHOLD = thresholds.universeGap;
+  const UNIVERSE_CAP = thresholds.universeCapPct / 100;
+  const UNIVERSE_START_HINT = thresholds.universeStartHint;
   const findings: Finding[] = [];
 
   if (channels.length === 0) {
@@ -184,13 +189,13 @@ function validateChannels(channels: ReturnType<typeof useSfxChannelStore.getStat
       }
     }
 
-    // Universe quase cheio (>90% ocupação)
+    // Universe quase cheio
     const totalUsed = sorted.reduce((s, c) => s + c.dmxChannels, 0);
-    if (totalUsed > 0.9 * 512) {
+    if (totalUsed > UNIVERSE_CAP * 512) {
       findings.push({
         id: `crowded-${universe}`,
         severity: "warn",
-        message: `U${universe} está ${Math.round((totalUsed / 512) * 100)}% ocupado (${totalUsed}/512).`,
+        message: `U${universe} está ${Math.round((totalUsed / 512) * 100)}% ocupado (${totalUsed}/512), acima do limite ${thresholds.universeCapPct}%.`,
         hint: "Considere migrar fixtures para um universe adicional.",
       });
     }
@@ -214,12 +219,12 @@ function validateChannels(channels: ReturnType<typeof useSfxChannelStore.getStat
     }
   }
 
-  // Aviso se o endereçamento começa fora de U0/U1 (incomum)
-  if (usedUniverses.length > 0 && usedUniverses[0] > 1) {
+  // Aviso se o endereçamento começa fora do limite configurado
+  if (usedUniverses.length > 0 && usedUniverses[0] > UNIVERSE_START_HINT) {
     findings.push({
       id: "uni-start",
       severity: "warn",
-      message: `Primeiro universe em uso é U${usedUniverses[0]} — universes 0 e 1 estão vazios.`,
+      message: `Primeiro universe em uso é U${usedUniverses[0]} — esperado ≤ U${UNIVERSE_START_HINT}.`,
       hint: "Maioria das consoles inicia no universe 1; verifique se isto é intencional.",
     });
   }
