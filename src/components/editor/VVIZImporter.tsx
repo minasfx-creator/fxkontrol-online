@@ -14,6 +14,8 @@ import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { toast } from 'sonner';
 import { getDeviceProfile } from '@/lib/deviceCapability';
 import { supabase } from '@/integrations/supabase/client';
+import { isEnabled } from '@/lib/featureFlags';
+import { importVvizFile } from '@/modules/vviz';
 // tus-js-client loaded dynamically to reduce initial bundle
 
 type ImportPhase = 'idle' | 'uploading' | 'reading' | 'parsing' | 'importing' | 'done';
@@ -325,7 +327,32 @@ export default function VVIZImporter({
         }
         buffer = result;
       } else {
-        // Small file → direct FileReader (zero-copy)
+        // Small file → optional pre-flight via @/modules/vviz, then direct
+        // FileReader (zero-copy) for the worker. Pre-flight is a structural
+        // sanity check (size cap, JSON parse, top-level shape). It does NOT
+        // feed the renderer — vvizWorker remains the source of drone data.
+        if (isEnabled('vviz_module_pipeline')) {
+          setPhase('parsing');
+          setProgressLabel('Pré-validação (módulo vviz)...');
+          setProgress(3);
+          try {
+            await importVvizFile(file, {
+              maxFileMb: Math.max(1, Math.ceil(TUS_THRESHOLD / 1024 / 1024)),
+              onProgress: (p) => {
+                if (runId !== parseRunRef.current) return;
+                setProgress(Math.min(8, 3 + Math.round(p.progress * 5)));
+                if (p.message) setProgressLabel(`Pré-validação: ${p.message}`);
+              },
+            });
+            if (runId !== parseRunRef.current) return;
+          } catch (err) {
+            // Pre-flight failure: surface, then fall through to legacy worker
+            // so we never block a renderable file on a stricter checker.
+            console.warn('[VVIZImporter] Pré-validação falhou, usando fallback:', err);
+            toast.warning('Pré-validação falhou — usando importador legado.');
+          }
+        }
+
         setPhase('reading');
         setProgressLabel('Lendo arquivo...');
         setProgress(5);

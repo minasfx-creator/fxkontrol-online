@@ -24,6 +24,14 @@ const FLAGS = {
   turbulence_field: true,
   /** 2× particle budget for ultra-dense displays */
   high_density_particles: false,
+  /**
+   * Run the new src/modules/vviz pipeline (read → parse → reduce → validate →
+   * normalize) as a pre-flight gate before the legacy worker path. Pure
+   * pre-validation: rendering still goes through vvizWorker. If the new
+   * pipeline throws, we fall back transparently to the legacy path so the
+   * viewport never breaks.
+   */
+  vviz_module_pipeline: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
