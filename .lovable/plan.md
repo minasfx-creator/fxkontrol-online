@@ -1,81 +1,29 @@
 
-Objetivo: corrigir o caso em que o botão Play muda de estado, mas o tempo da timeline continua em 0 e não avança.
+## Cleanup `SmartScriptAssistant.tsx`
 
-1. Fechar a causa real com um teste de integração do motor
-- Adicionar um teste cobrindo o fluxo completo: `play()` → `deterministicClock` → `lockstep` → `timelineClock.tick()` → espelho em `useProjectStore`.
-- Cobrir 3 cenários que hoje parecem gerar “play sem movimento”:
-  - velocidade persistida em `0`
-  - timeline no fim da duração
-  - play via UI móvel/compacta, não só via chamadas diretas ao clock
-- Isso evita corrigir só o sintoma.
+Quick, surgical pass to remove dead code and reduce render churn in the JOI assistant panel.
 
-2. Centralizar o transporte da timeline
-- Criar um controlador único de transporte para substituir chamadas soltas como `timelineClock.play()` espalhadas em:
-  - `Timeline.tsx`
-  - `MobileHUD.tsx`
-  - `LiveModeOverlay.tsx`
-  - `SkyCanvas.tsx`
-  - `Toolbar.tsx`
-  - `ShowCommanderPanel.tsx`
-- Esse controlador deve padronizar:
-  - `play()`
-  - `pause()`
-  - `toggle()`
-  - `stop()`
-  - `rewind()`
-  - `playFromStartIfEnded()`
-  - `ensurePlayableSpeed()`
+### Changes
+1. **Drop unused imports** — scan icon imports from `lucide-react`, shadcn primitives, hooks, and utility modules; remove anything not referenced after the last refactor (e.g. leftover `Zap`, `ChevronDown`, `Button`, etc.).
+2. **Trim `EXAMPLE_PROMPTS`** — keep only the 3 prompts actually rendered; remove the residual array entries no longer surfaced in the UI.
+3. **Remove unreachable branches**
+   - Drop dead conditionals in the `catch` / error path that referenced removed states.
+   - Remove guards that depend on flags or props no longer passed in.
+   - Collapse `if/else` branches that always evaluate the same way after the swipe-to-close + Escape refactor.
+4. **Rerender hygiene**
+   - Memoize the trimmed `EXAMPLE_PROMPTS` as a module-level constant (already const, but ensure no inline object literals are rebuilt per render in the header/footer).
+   - Replace any inline `() => {}` handlers in static elements with `useCallback` only where they cross a memoized child boundary; otherwise leave alone (cheap).
+   - Ensure the swipe-drag `useState` (`dragY`) is reset to `0` in a single place to avoid redundant state writes.
 
-3. Corrigir os dois estados UX que parecem “bug”
-- Se a velocidade estiver `0`, o Play deve:
-  - restaurar para a última velocidade válida, ou
-  - cair para `1x` por padrão
-- Se `currentTime >= duration`, o Play deve:
-  - fazer `seek(0)` antes de tocar
-- Isso mantém o suporte técnico a speed `0` no motor, mas impede que a UI entre em estado “parece quebrado”.
+### Out of scope
+- No behavior changes (close button, Escape, swipe-to-close, dimensions remain identical).
+- No styling changes.
+- No new dependencies.
 
-4. Blindar persistência e restauração
-- Revisar carregamento de projeto e restauração de sessão em:
-  - `useProjectPersistence.ts`
-  - `useBlackBox.ts`
-- Garantir que velocidade salva inválida ou `0` não deixe a timeline “tocando parada” ao reabrir o editor.
-- Preservar casos avançados de sync externo sem quebrar o modo normal local.
+### Validation
+- `tsc --noEmit` must report 0 errors.
+- Existing JOI-related tests must still pass.
+- Manual smoke: open panel, send a prompt, swipe to close, press Escape — all unchanged.
 
-5. Melhorar feedback visual para o operador
-- Exibir estado mínimo de diagnóstico perto dos controles de playback:
-  - `0x`
-  - `END`
-  - `EXT`
-- Em mobile, mostrar esse feedback no HUD, porque o painel grande da timeline nem sempre está visível.
-- Se o Play precisar autocorrigir velocidade ou reiniciar do fim, mostrar feedback discreto.
-
-6. Limpar duplicação/código morto no transporte
-- Remover lógica repetida de play/pause/stop dispersa pelos componentes.
-- Deixar apenas o controlador central como caminho operacional da UI.
-- Isso reduz regressões futuras e simplifica manutenção.
-
-7. Validar fim a fim
-- Validar:
-  - Play no editor desktop
-  - Play no HUD mobile
-  - Play no overlay live
-  - Stop/rewind
-  - seek + play
-  - timeline no fim + play
-  - velocidade `0` + play
-  - source `external` vs `local`
-- Confirmar que `currentTime` e barra de progresso avançam continuamente e que o ícone reflete estado real.
-
-Detalhes técnicos
-- O código já mostra que o botão muda `playing=true`, então o problema não parece ser clique/handler.
-- O clock independente em `EngineProvider` já existe; portanto o próximo ajuste deve focar no caminho de transporte e em estados inválidos da timeline, não só no RAF.
-- O ponto mais suspeito hoje é a combinação de:
-  - velocidade persistida em `0`
-  - chamadas diretas e duplicadas a `timelineClock.play()`
-  - ausência de autocorreção quando o usuário aperta Play em estado não reproduzível
-
-Resultado esperado
-- Play sempre faz a timeline andar no modo local.
-- Play no fim reinicia corretamente.
-- Velocidade inválida não deixa a UI “rodando parada”.
-- Um único caminho de transporte passa a governar desktop, mobile e overlays.
+### Files touched
+- `src/components/editor/SmartScriptAssistant.tsx` (only)
