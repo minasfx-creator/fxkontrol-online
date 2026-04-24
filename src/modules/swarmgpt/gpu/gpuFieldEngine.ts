@@ -40,6 +40,12 @@ export type SampleFieldUltraOptions = {
   droneCount: number;
   /** Optional minimum distance between accepted points (CPU filter). */
   minDistance?: number;
+  /**
+   * Opt into the GPU Poisson-disk *preview* downsample before the CPU final
+   * filter. Drastically reduces the candidate set the CPU has to inspect for
+   * large `candidateCount`. The CPU pass remains the safety authority.
+   */
+  usePoissonPreview?: boolean;
   seed: number;
   /** Field-specific params; see fieldSample.wgsl.ts for layout per type. */
   params: {
