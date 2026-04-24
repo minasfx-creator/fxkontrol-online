@@ -40,6 +40,17 @@ export function planFormationFromAsset(
     minDistance: options.minDistance,
   });
 
+  // Surface spacing-induced under-population: if Poisson sampling could not
+  // honor droneCount because the source asset's points are closer than
+  // minDistance, report it as a minDistanceViolation so callers can react.
+  if (optimized.points.length < options.droneCount) {
+    const deficit = options.droneCount - optimized.points.length;
+    validation.violations.push(
+      `minDistanceViolation:underPopulated:${optimized.points.length}/${options.droneCount}:deficit=${deficit}`,
+    );
+    validation.valid = false;
+  }
+
   const fidelity = scoreFormationFidelity(nextPoints, optimized.points);
   const snappedTime = options.beatGrid
     ? snapToBeat(options.cueTime, options.beatGrid.offsets)
