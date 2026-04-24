@@ -54,7 +54,13 @@ export default function DevSimulationPanel() {
     setJitter(cfg.jitterMs ?? 0);
     setLoss((cfg.lossRate ?? 0) * 100);
     setConnected(true);
+    setBpHit(null);
     emu.onStateChange(s => setConnected(s === 'connected'));
+    emu.onBreakpointHit((_frame, idx) => {
+      setBpHit(idx);
+      setInspect(idx);
+      setReplay(emu.getReplayStatus());
+    });
     tickRef.current = setInterval(() => {
       const stats = emu.getStats();           // O(1)
       const rs = emu.getReplayStatus();
@@ -96,6 +102,9 @@ export default function DevSimulationPanel() {
       emuRef.current.loadTrace(parsed); // throws on invalid shape
       setReplay(emuRef.current.getReplayStatus());
       setFrames(emuRef.current.getReplayFrames());
+      setFilteredIdx(emuRef.current.getFilteredIndices());
+      setBpHit(null);
+      setInspect(null);
     } catch (e) {
       console.error('[DevSim] trace load failed:', e);
     }
@@ -107,6 +116,25 @@ export default function DevSimulationPanel() {
     const terms = q.split(',').map(s => s.trim()).filter(Boolean);
     return (d: string) => terms.some(t => d.includes(t));
   }, [filter]);
+
+  const buildBreakpoint = useCallback((): ((f: { data: string }) => boolean) | undefined => {
+    const q = breakpoint.trim();
+    if (!q) return undefined;
+    // Support /regex/ syntax, fall back to substring.
+    if (q.startsWith('/') && q.lastIndexOf('/') > 0) {
+      try {
+        const last = q.lastIndexOf('/');
+        const re = new RegExp(q.slice(1, last), q.slice(last + 1));
+        return (f) => re.test(f.data);
+      } catch { /* fallthrough */ }
+    }
+    return (f) => f.data.includes(q);
+  }, [breakpoint]);
+
+  const handleSeek = useCallback((idx: number) => {
+    emuRef.current?.seekReplay(idx);
+    setReplay(emuRef.current!.getReplayStatus());
+  }, []);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
