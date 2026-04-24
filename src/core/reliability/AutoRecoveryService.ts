@@ -7,6 +7,7 @@
 
 import { clusterHealthService } from '@/core/cluster/ClusterHealthService';
 import { serviceRegistry } from '@/core/cluster/ServiceRegistry';
+import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
 
 export type RecoveryState = 'pending' | 'recovering' | 'recovered' | 'failed' | 'tripped';
@@ -93,7 +94,7 @@ class AutoRecoveryService {
       const delay = BASE_DELAY * Math.pow(2, svc.attempts);
       svc.nextRetryAt = Date.now() + delay;
       svc.state = 'pending';
-      console.log(`[AutoRecovery] ${label} retry deferred — upstream(s) tripped: ${upstream.trippedUpstreams.join(', ')}`);
+      logger.dev(`[AutoRecovery] ${label} retry deferred — upstream(s) tripped: ${upstream.trippedUpstreams.join(', ')}`);
       svc.timerId = setTimeout(() => this.scheduleRecovery(label), delay);
       return;
     }
@@ -102,7 +103,7 @@ class AutoRecoveryService {
     svc.nextRetryAt = Date.now() + delay;
     svc.state = 'pending';
 
-    console.log(`[AutoRecovery] ${label} retry #${svc.attempts + 1} in ${delay}ms`);
+    logger.dev(`[AutoRecovery] ${label} retry #${svc.attempts + 1} in ${delay}ms`);
 
     svc.timerId = setTimeout(() => {
       svc.state = 'recovering';
@@ -114,7 +115,7 @@ class AutoRecoveryService {
         svc.timerId = null;
         clusterHealthService.reportRecovery(label, `${label} recuperado após ${svc.attempts} tentativa(s)`);
         toast.success(`✅ ${label} recuperado com sucesso`);
-        console.log(`[AutoRecovery] ${label} recovered after ${svc.attempts} attempt(s)`);
+        logger.dev(`[AutoRecovery] ${label} recovered after ${svc.attempts} attempt(s)`);
       } catch (e) {
         console.warn(`[AutoRecovery] ${label} retry #${svc.attempts} failed:`, e);
         clusterHealthService.reportBootFailure(label, `Retry #${svc.attempts} failed: ${String(e)}`);
@@ -140,7 +141,7 @@ class AutoRecoveryService {
     svc.attempts = 0;
     svc.state = 'pending';
     svc.nextRetryAt = null;
-    console.log(`[AutoRecovery] ${label} manually reset by operator`);
+    logger.dev(`[AutoRecovery] ${label} manually reset by operator`);
     toast(`🔄 ${label} — reset manual iniciado`);
     this.scheduleRecovery(label);
   }

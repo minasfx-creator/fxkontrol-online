@@ -3,6 +3,7 @@
  * Watchdog, progressive degradation, crash-loop cooldown,
  * API fallback (WebGPU → WebGL2 → static preview).
  */
+import { logger } from '@/lib/logger';
 
 // ── Render API Detection & Fallback ──────────────────────────
 export type RenderAPI = 'webgpu' | 'webgl2' | 'webgl1' | 'static';
@@ -167,7 +168,7 @@ export function watchdogTick(currentFPS: number): DegradationLevel {
       const old = _watchdog.level;
       _watchdog.level = newLevel;
       _watchdog.consecutiveLowFrames = 0;
-      console.log(`[Watchdog] Degradation: ${old} → ${newLevel} (FPS: ${currentFPS.toFixed(1)})`);
+      logger.dev(`[Watchdog] Degradation: ${old} → ${newLevel} (FPS: ${currentFPS.toFixed(1)})`);
       _watchdog.callbacks.forEach(cb => cb(newLevel));
     }
   } else {
