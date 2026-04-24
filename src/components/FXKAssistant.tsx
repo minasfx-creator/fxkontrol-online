@@ -398,7 +398,7 @@ export function FXKAssistant() {
   const [messages, setMessages] = useState<Msg[]>(() => loadHistory());
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [glitching, setGlitching] = useState(false);
+  
   const [isTyping, setIsTyping] = useState(false);
   const [idlePhrase, setIdlePhrase] = useState(0);
   const [connectionOk, setConnectionOk] = useState<boolean | null>(null);
@@ -532,7 +532,7 @@ export function FXKAssistant() {
   const presets = useMemo(() => {
     return getPresetsForMode(joiMode).map(p => ({ label: p.label, icon: p.icon, prompt: p.prompt }));
   }, [joiMode]);
-  const joiState = loading ? 'active' : isTyping ? 'active' : 'idle';
+  
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -557,9 +557,7 @@ export function FXKAssistant() {
 
   const send = useCallback(async (text: string) => {
     if ((!text.trim() && !attachment) || loading) return;
-    setGlitching(true);
     playGlitchBurst();
-    setTimeout(() => setGlitching(false), 800);
 
     // Build user message with attachment context
     let userContent = text.trim();
