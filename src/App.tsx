@@ -9,6 +9,7 @@ import MainLayout from "@/layouts/MainLayout";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import { LazyChunkBoundary } from "@/components/errors/LazyChunkBoundary";
 import { lazyRetry } from "@/lib/lazyRetry";
+import { useRouteTracing } from "@/observability";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -50,6 +51,11 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   return user ? <Navigate to="/" replace /> : <>{children}</>;
 }
 
+function RouteTracker() {
+  useRouteTracing();
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -58,6 +64,7 @@ function App() {
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <RouteTracker />
             <PageTransitionOverlay />
             <LazyChunkBoundary>
               <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>

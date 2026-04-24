@@ -2,11 +2,16 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { initWebVitals } from "@/lib/webVitals";
+import { initObservability } from "@/observability";
 
 createRoot(document.getElementById("root")!).render(<App />);
 
 // Initialize Web Vitals RUM instrumentation
 initWebVitals();
+
+// Initialize production observability (RUM + error capture).
+// No-ops silently when VITE_RUM_ENDPOINT is not set.
+initObservability();
 
 // Dismiss splash screen after React mounts — use idle callback to let browser paint first
 const dismissSplash = () => (window as any).__splashDone?.();
