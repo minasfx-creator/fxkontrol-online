@@ -867,7 +867,7 @@ export function FXKAssistant() {
   return (
     <div
       className={cn(
-        "fixed z-[70] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
+        "fixed z-[10000] rounded-xl flex flex-col overflow-hidden fxk-panel transition-all duration-300",
         closing ? "animate-holo-dissolve" : "animate-holo-materialize",
         isMobile ? "max-w-[calc(100vw-1rem)]" : "bottom-5 right-5 h-[560px]"
       )}
@@ -889,7 +889,7 @@ export function FXKAssistant() {
       {messages.length === 0 && <div className="absolute inset-0 pointer-events-none br2049-rain rounded-xl" style={{ zIndex: 1 }} />}
 
       {/* Header */}
-      <div className="relative z-10 flex items-center gap-2.5 px-3 py-3 shrink-0" style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.1)' }}>
+      <div className="relative z-20 flex items-center gap-2.5 px-3 py-3 shrink-0 pointer-events-auto" style={{ borderBottom: '1px solid hsl(190 100% 50% / 0.1)' }}>
         {isMobile && (
           <div className="absolute left-1/2 top-1.5 h-1 w-10 -translate-x-1/2 rounded-full bg-border/50" />
         )}
