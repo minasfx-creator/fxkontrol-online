@@ -13,6 +13,8 @@ import { useRouteTracing } from "@/observability/useRouteTracing";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
+const Install = lazy(lazyRetry(() => import("./pages/Install")));
+
 // Dashboard lazy-loaded — it's 658 lines with heavy imports
 const Dashboard = lazy(lazyRetry(() => import("./pages/Dashboard")));
 
@@ -70,6 +72,7 @@ function App() {
               <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
                 <Routes>
                   <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+                  <Route path="/install" element={<Install />} />
                   <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/editor" element={<Index />} />
