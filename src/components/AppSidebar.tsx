@@ -1,4 +1,4 @@
-import { LayoutDashboard, Clapperboard, CalendarDays, LogOut, Gamepad2, Crosshair, Volume2, VolumeX, Bluetooth, Rocket, Settings, Shield, Activity, BarChart3, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Clapperboard, CalendarDays, LogOut, Gamepad2, Crosshair, Volume2, VolumeX, Bluetooth, Rocket, Settings, Shield, Activity, BarChart3, Sparkles, Network } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -33,6 +33,7 @@ const navItems = [
   { title: 'Platform Status', url: '/platform-status', icon: BarChart3, desc: 'Saúde operacional' },
   
   { title: 'Pairing', url: '/pairing', icon: Bluetooth, desc: 'Pareamento HW' },
+  { title: 'Network', url: '/settings/network', icon: Network, desc: 'Rede & transporte' },
 ];
 
 export function AppSidebar() {
