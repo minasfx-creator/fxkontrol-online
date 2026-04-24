@@ -9,6 +9,7 @@ import MainLayout from "@/layouts/MainLayout";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import { LazyChunkBoundary } from "@/components/errors/LazyChunkBoundary";
 import { AppErrorBoundary } from "@/components/errors/AppErrorBoundary";
+import { IframeHardwareWarning } from "@/components/IframeHardwareWarning";
 import { lazyRetry } from "@/lib/lazyRetry";
 import { useRouteTracing } from "@/observability/useRouteTracing";
 import Auth from "./pages/Auth";
@@ -26,7 +27,7 @@ const Training = lazy(lazyRetry(() => import("./pages/Training")));
 const PCBViewer = lazy(lazyRetry(() => import("./pages/PCBViewer")));
 const DevicePairing = lazy(lazyRetry(() => import("./pages/DevicePairing")));
 const CommandCenter = lazy(lazyRetry(() => import("./pages/CommandCenter")));
-const ShowTestSimulator = lazy(lazyRetry(() => import("./pages/ShowTestSimulator")));
+
 const FieldTest = lazy(lazyRetry(() => import("./pages/FieldTest")));
 const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
 const Admin = lazy(lazyRetry(() => import("./pages/Admin")));
@@ -69,6 +70,7 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <IframeHardwareWarning />
             <BrowserRouter>
               <RouteTracker />
               <PageTransitionOverlay />
@@ -88,7 +90,7 @@ function App() {
                       <Route path="/pcb-viewer" element={<PCBViewer />} />
                       <Route path="/pairing" element={<DevicePairing />} />
                       <Route path="/command" element={<CommandCenter />} />
-                      <Route path="/show-test" element={<ShowTestSimulator />} />
+                      
                       <Route path="/field-test" element={<FieldTest />} />
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/platform-status" element={<PlatformStatus />} />

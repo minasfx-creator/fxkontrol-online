@@ -34,7 +34,7 @@ const DOCK_MAIN: DockItem[] = [
   { icon: Gamepad2, label: 'Training', path: '/training' },
   { icon: Activity, label: 'Field Test', path: '/field-test', accent: 'hsl(165 100% 42%)' },
   { icon: BarChart3, label: 'Status', path: '/platform-status' },
-  { icon: Rocket, label: 'Show Test', path: '/show-test' },
+  
 ];
 
 const DOCK_SYSTEM: DockItem[] = [

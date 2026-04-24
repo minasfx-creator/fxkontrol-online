@@ -103,18 +103,6 @@ export class RelayBankAdapter32 implements HardwareAdapter<RelayBankState> {
     this._state = this._createDefaultState();
   }
 
-  simulateConnect(): void { this._connected = 'connected'; }
-  simulateDisconnect(): void { this._connected = 'disconnected'; }
-
-  /** Set specific channel continuity for test scenarios */
-  simulateChannel(channel: number, continuity: RelayChannelState['continuity'], resistance: number = 1.5): void {
-    if (channel >= 0 && channel < 32) {
-      this._state.channel_states[channel].continuity = continuity;
-      this._state.channel_states[channel].resistance_ohms = resistance;
-      this._state.channel_states[channel].last_checked = Date.now();
-      this._updateCounts();
-    }
-  }
 
   private _updateCounts(): void {
     this._state.healthy_channels = this._state.channel_states.filter(c => c.continuity === 'ok').length;

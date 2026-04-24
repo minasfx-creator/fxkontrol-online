@@ -40,7 +40,7 @@ const DEVICE_ICONS: Record<string, typeof Cpu> = {
 };
 
 export default function HardwareOverview() {
-  const { devices, snapshots, health, readiness, events, refresh, evaluateReadiness, loadTestScenario, startPolling, isPolling } = useHardwareRegistry();
+  const { devices, snapshots, health, readiness, events, refresh, evaluateReadiness, startPolling, isPolling } = useHardwareRegistry();
   const [healthReport, setHealthReport] = useState<HealthReport | null>(null);
   const [discoveryResults, setDiscoveryResults] = useState<DiscoveryResult[]>([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -79,12 +79,6 @@ export default function HardwareOverview() {
           <span className="text-[7px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase">{mode}</span>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono"
-            onClick={() => loadTestScenario('mixed')}>LOAD MIXED</Button>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono"
-            onClick={() => loadTestScenario('healthy')}>HEALTHY</Button>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono"
-            onClick={() => loadTestScenario('critical')}>CRITICAL</Button>
           <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono gap-1"
             onClick={handleScan} disabled={isScanning}>
             <Search className="w-3 h-3" /> {isScanning ? 'SCANNING…' : 'SCAN'}

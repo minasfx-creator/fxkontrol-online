@@ -63,10 +63,6 @@ export class ShiftRegisterAdapter74HC595 implements HardwareAdapter<ShiftRegiste
     this._state.comm_state = 'ok';
     this._state.outputs = new Array(32).fill(false);
   }
-
-  simulateConnect(): void { this._connected = 'connected'; this._state.comm_state = 'ok'; }
-  simulateDisconnect(): void { this._connected = 'disconnected'; }
-  simulateFault(): void { this._state.comm_state = 'fault'; this._connected = 'degraded'; }
 }
 
 export const shiftRegisterAdapter = new ShiftRegisterAdapter74HC595();

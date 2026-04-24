@@ -31,7 +31,7 @@ const navItems = [
   { title: 'Training', url: '/training', icon: Gamepad2, desc: 'Simulação' },
   { title: 'Field Test', url: '/field-test', icon: Activity, desc: 'Teste de campo' },
   { title: 'Platform Status', url: '/platform-status', icon: BarChart3, desc: 'Saúde operacional' },
-  { title: 'Show Test', url: '/show-test', icon: Rocket, desc: 'Teste de show' },
+  
   { title: 'Pairing', url: '/pairing', icon: Bluetooth, desc: 'Pareamento HW' },
 ];
 
