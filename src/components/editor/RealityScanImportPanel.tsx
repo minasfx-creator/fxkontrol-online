@@ -21,6 +21,9 @@ import { qualityHistogram } from '@/modules/swarmgpt/advanced/quality/bake';
 import { qualityToRgb } from '@/modules/swarmgpt/advanced/quality/qualityColorRamp';
 import { planFormationFromAsset, type FormationPlan } from '@/modules/swarmgpt/core/pipeline/planFormationFromAsset';
 import type { Vec3 } from '@/modules/swarmgpt/types';
+import type { MotionStyle } from '@/modules/swarmgpt/physics';
+
+const MOTION_STYLES: MotionStyle[] = ['cinematic', 'fast', 'soft', 'snap', 'organic'];
 
 interface ParsedFile {
   name: string;
@@ -84,6 +87,8 @@ export default function RealityScanImportPanel(props: Props) {
   const [droneCount, setDroneCount] = useState(200);
   const [minDistance, setMinDistance] = useState(2);
   const [samplingStrategy, setSamplingStrategy] = useState<'weighted' | 'poisson+fps'>('poisson+fps');
+  const [usePhysicsRepair, setUsePhysicsRepair] = useState(true);
+  const [motionStyle, setMotionStyle] = useState<MotionStyle>('cinematic');
 
   const histogram = useMemo(() => {
     if (!parsed) return [];
@@ -129,12 +134,17 @@ export default function RealityScanImportPanel(props: Props) {
           duration: 4,
           cueTime: 0,
           samplingStrategy,
+          usePhysicsRepair,
+          motionStyle,
         },
       );
       props.onFormationReady?.(plan, { fileName: parsed.name, count: parsed.vertices.length });
+      const phys = plan.physics
+        ? ` | physics: ${plan.physics.ok ? 'ok' : 'repaired'} (issues=${plan.physics.issues.length}, minSep=${plan.physics.metrics.minDistanceObserved.toFixed(2)}m)`
+        : '';
       props.onLog?.(
-        `[PLY] Formation: ${plan.formation.points.length}/${droneCount} drones via ${samplingStrategy}, fidelity ${plan.fidelity.score.toFixed(2)}`,
-        plan.validation.valid ? 'ok' : 'warn',
+        `[PLY] Formation: ${plan.formation.points.length}/${droneCount} drones via ${samplingStrategy}, fidelity ${plan.fidelity.score.toFixed(2)}${phys}`,
+        plan.validation.valid && (!plan.physics || plan.physics.ok) ? 'ok' : 'warn',
       );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
