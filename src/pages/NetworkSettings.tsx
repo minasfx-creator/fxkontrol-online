@@ -83,7 +83,7 @@ export default function NetworkSettings() {
     setProtocol, setEndpoint, setAutoFailover, setPollIntervalMs, reset,
   } = useNetworkConfigStore();
 
-  const [test, setTest] = useState<TestResult>({ status: "idle" });
+  const [test, setTest] = useState<TestResult>(EMPTY_RESULT);
 
   const handleProtocolChange = (p: TransportProtocol) => {
     setProtocol(p);
@@ -93,7 +93,6 @@ export default function NetworkSettings() {
   };
 
   const handleSave = () => {
-    // Already persisted by zustand/persist on every change; this is a UX confirmation.
     toast.success("Network settings saved", {
       description: `${protocol.toUpperCase()} → ${endpoint.hostname}:${endpoint.port}`,
     });
@@ -101,64 +100,145 @@ export default function NetworkSettings() {
 
   const handleReset = () => {
     reset();
-    setTest({ status: "idle" });
+    setTest(EMPTY_RESULT);
     toast.info("Restored default network settings");
   };
 
   const runTest = useCallback(async () => {
-    setTest({ status: "running" });
     const startedAt = performance.now();
+    // Build the step list up-front so the user sees the plan immediately.
+    const steps: TestStep[] =
+      protocol === "serial"
+        ? [
+            { id: "browser", label: "Browser supports WebSerial", status: "pending" },
+            { id: "ports", label: "Enumerate authorized ports", status: "pending" },
+          ]
+        : [
+            { id: "validate", label: "Validate endpoint", status: "pending" },
+            { id: "edge", label: "Reach artnet-bridge edge function", status: "pending" },
+            { id: "probe", label: `Probe ${endpoint.hostname}:${endpoint.port}`, status: "pending" },
+            { id: "reply", label: "Wait for ArtPoll replies", status: "pending" },
+          ];
+
+    setTest({ status: "running", steps });
+
+    const updateStep = (id: string, patch: Partial<TestStep>) =>
+      setTest((prev) => ({
+        ...prev,
+        steps: prev.steps.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+      }));
+
+    const runStep = async <T,>(id: string, fn: () => Promise<T> | T): Promise<T> => {
+      const t0 = performance.now();
+      updateStep(id, { status: "running" });
+      try {
+        const result = await fn();
+        updateStep(id, { status: "ok", durationMs: Math.round(performance.now() - t0) });
+        return result;
+      } catch (err) {
+        updateStep(id, {
+          status: "fail",
+          durationMs: Math.round(performance.now() - t0),
+          detail: err instanceof Error ? err.message : String(err),
+        });
+        throw err;
+      }
+    };
 
     try {
       if (protocol === "serial") {
-        if (!isWebSerialSupported()) {
-          throw new Error("WebSerial unavailable. Use Chrome/Edge desktop or open outside of an iframe.");
-        }
-        // Probe by listing previously authorized ports — does not prompt.
-        const ports = await (navigator as any).serial.getPorts();
-        setTest({
-          status: "ok",
-          latencyMs: Math.round(performance.now() - startedAt),
-          message: `WebSerial OK — ${ports.length} authorized port(s)`,
-          detail: ports.length === 0 ? "No port granted yet. Use 'Open Port' in DMX Output to grant access." : undefined,
+        await runStep("browser", () => {
+          if (!isWebSerialSupported()) {
+            throw new Error("WebSerial unavailable. Use Chrome/Edge desktop or open outside of an iframe.");
+          }
+          return true;
         });
+        const ports = await runStep("ports", async () => {
+          return await (navigator as { serial: { getPorts: () => Promise<unknown[]> } }).serial.getPorts();
+        });
+        const totalMs = Math.round(performance.now() - startedAt);
+        setTest((prev) => ({
+          ...prev,
+          status: "ok",
+          latencyMs: totalMs,
+          message: `WebSerial OK — ${ports.length} authorized port(s)`,
+          detail: ports.length === 0
+            ? "No port granted yet. Open the DMX Output panel and click 'Open Port' to grant access."
+            : `${ports.length} previously authorized port(s) ready to open.`,
+        }));
         return;
       }
 
-      // Art-Net / sACN: poll via the artnet-bridge edge function.
-      if (!endpoint.hostname.trim()) throw new Error("Hostname is required");
-      if (endpoint.port < 1 || endpoint.port > 65535) throw new Error("Port must be 1–65535");
-
-      const { data, error } = await supabase.functions.invoke("artnet-bridge", {
-        body: {
-          action: "poll",
-          targetIp: endpoint.hostname,
-          targetPort: endpoint.port,
-        },
+      // Art-Net / sACN
+      await runStep("validate", () => {
+        if (!endpoint.hostname.trim()) throw new Error("Hostname is required");
+        if (endpoint.port < 1 || endpoint.port > 65535) throw new Error("Port must be 1–65535");
+        return true;
       });
 
-      if (error) throw new Error(error.message ?? "Edge function error");
+      const { data, error } = await runStep("edge", async () => {
+        const r = await supabase.functions.invoke("artnet-bridge", {
+          body: { action: "poll", targetIp: endpoint.hostname, targetPort: endpoint.port },
+        });
+        if (r.error) throw new Error(r.error.message ?? "Edge function error");
+        return r;
+      });
 
-      const latencyMs = Math.round(performance.now() - startedAt);
-      const okShape = data && (data.ok === true || data.success === true || Array.isArray(data.nodes));
-      if (!okShape && data?.error) throw new Error(String(data.error));
+      await runStep("probe", () => {
+        if (!data || (data.success !== true && data.ok !== true && !Array.isArray(data.nodes))) {
+          throw new Error(typeof data?.error === "string" ? data.error : "Bridge returned an unexpected payload");
+        }
+        return true;
+      });
 
-      setTest({
+      const replies = await runStep("reply", () => {
+        const nodes: unknown[] = Array.isArray(data?.nodes) ? data.nodes : [];
+        // Not receiving replies isn't a hard failure — many networks block broadcast.
+        return nodes.length;
+      });
+
+      const totalMs = Math.round(performance.now() - startedAt);
+      setTest((prev) => ({
+        ...prev,
         status: "ok",
-        latencyMs,
+        latencyMs: totalMs,
         message: `Reachable via ${protocol.toUpperCase()}`,
-        detail: data?.nodes?.length ? `${data.nodes.length} node(s) replied` : "Bridge responded — no ArtPoll replies received",
-      });
+        detail: replies > 0
+          ? `${replies} Art-Net node(s) replied to ArtPoll.`
+          : "Bridge responded successfully. No ArtPoll replies received — verify the node is on the same subnet and broadcasts are allowed.",
+        raw: data,
+      }));
+      toast.success("Connection test passed", { description: `${protocol.toUpperCase()} • ${totalMs} ms` });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      setTest({
+      const totalMs = Math.round(performance.now() - startedAt);
+      setTest((prev) => ({
+        ...prev,
         status: "fail",
-        latencyMs: Math.round(performance.now() - startedAt),
+        latencyMs: totalMs,
         message: "Connection test failed",
         detail: message,
-      });
+        hint: diagnoseError(message, protocol),
+        // Mark remaining pending steps as skipped so the UI stays coherent.
+        steps: prev.steps.map((s) => (s.status === "pending" ? { ...s, status: "skip" } : s)),
+      }));
+      toast.error("Connection test failed", { description: message });
     }
   }, [protocol, endpoint]);
+
+  const copyDiagnostics = useCallback(() => {
+    const payload = {
+      timestamp: new Date().toISOString(),
+      protocol,
+      endpoint,
+      result: test,
+      userAgent: navigator.userAgent,
+    };
+    navigator.clipboard.writeText(JSON.stringify(payload, null, 2)).then(
+      () => toast.success("Diagnostics copied to clipboard"),
+      () => toast.error("Couldn't access clipboard"),
+    );
+  }, [protocol, endpoint, test]);
 
   return (
     <div className="min-h-[100dvh] bg-background p-4 md:p-8">
