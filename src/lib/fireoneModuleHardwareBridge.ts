@@ -71,6 +71,8 @@ export interface BridgeDiagnostics {
   sessionId: number;
   pendingCount: number;
   pendingKeys: string[];
+  linkHealth?: 'disconnected' | 'handshaking' | 'healthy';
+  oldestPendingAgeMs?: number;
 }
 
 export interface BridgeStatus {
