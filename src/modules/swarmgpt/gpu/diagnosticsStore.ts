@@ -15,6 +15,14 @@ export type SampleRunRecord = {
   diagnostics: GpuFieldEngineDiagnostics;
   /** Reason the GPU path was skipped, when mode === "cpu". */
   fallbackReason?: string;
+  /** Set when the GPU Poisson preview pass actually ran. */
+  poisson?: {
+    enabled: boolean;
+    candidatesIn: number;
+    candidatesAfterPreview: number;
+    durationMs: number;
+    grid: { cellsX: number; cellsY: number; cellsZ: number; cellSize: number };
+  };
   timestamp: number;
 };
 
