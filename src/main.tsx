@@ -41,9 +41,10 @@ if (isPreviewHost || isInIframe) {
     registrations.forEach((r) => r.unregister());
   });
 } else {
-  // Production: register PWA service worker
-  import("virtual:pwa-register").then(({ registerSW }) => {
-    registerSW({ immediate: true });
+  // Production: register PWA service worker with polished update UX
+  // (toast-based "Nova versão disponível" + "Pronto para uso offline").
+  import("@/pwa/registerPwaUpdate").then(({ registerPwaUpdate }) => {
+    void registerPwaUpdate();
   }).catch(() => {
     // PWA module not available — silently skip
   });
