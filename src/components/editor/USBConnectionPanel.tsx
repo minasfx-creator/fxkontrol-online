@@ -13,8 +13,6 @@ import {
   type USBLog,
   type ConnectionState,
   DEVICE_PROFILES,
-  isWebSerialSupported,
-  isWebUSBSupported,
   requestSerialPort,
   openSerialConnection,
   closeSerialConnection,
@@ -51,9 +49,6 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
   const [expandedDevice, setExpandedDevice] = useState<string | null>(null);
   const [showLogs, setShowLogs] = useState(true);
   const readLoopRefs = useRef<Map<string, boolean>>(new Map());
-
-  const serialSupported = isWebSerialSupported();
-  const usbSupported = isWebUSBSupported();
 
   const addLog = useCallback((log: Omit<USBLog, 'timestamp'>) => {
     setLogs(prev => [{ ...log, timestamp: new Date() }, ...prev].slice(0, 200));
@@ -234,30 +229,11 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
           <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground">Conexão USB</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="flex items-center gap-0.5 mr-1">
-            {serialSupported && (
-              <span className="text-[8px] px-1 py-0.5 rounded bg-green-500/20 text-green-400">Serial</span>
-            )}
-            {usbSupported && (
-              <span className="text-[8px] px-1 py-0.5 rounded bg-cyan-500/20 text-cyan-400">USB</span>
-            )}
-            {!serialSupported && !usbSupported && (
-              <span className="text-[8px] px-1 py-0.5 rounded bg-destructive/20 text-destructive">N/A</span>
-            )}
-          </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 space-y-3 scrollbar-thin">
-        {/* API Support Warning */}
-        {!serialSupported && (
-          <div className="bg-destructive/10 border border-destructive/30 rounded-sm p-2 text-[9px] text-destructive">
-            <p className="font-bold mb-0.5">⚠ Web Serial API indisponível</p>
-            <p>Use Chrome/Edge/Opera em Android ou Desktop. Safari/Firefox não suportam Web Serial.</p>
-          </div>
-        )}
-
         {/* Device Status */}
         <div className="grid grid-cols-3 gap-1 text-center">
           <div className="bg-surface-2 rounded-sm p-1">
@@ -319,7 +295,6 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
             size="sm"
             className={`h-7 text-[10px] w-full gap-1 ${isMobile ? 'h-10 text-xs' : ''}`}
             onClick={connectDevice}
-            disabled={!serialSupported}
           >
             <Plus className="h-3 w-3" />
             Parear Dispositivo USB

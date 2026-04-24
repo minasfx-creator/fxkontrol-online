@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
-  isWebBluetoothSupported,
   scanBluetoothDevices,
   connectBLEDevice,
   disconnectBLE,
@@ -39,10 +38,8 @@ export default function BLEDeviceScanner({ context, compact = false, onDeviceCon
   const theme = CONSOLE_THEMES[context];
   const [scanning, setScanning] = useState(false);
   const [realDevices, setRealDevices] = useState<BLEConnectedDevice[]>([]);
-  const supported = isWebBluetoothSupported();
 
   const handleScan = useCallback(async () => {
-    if (!supported) { toast.error('Web Bluetooth not supported in this browser'); return; }
     setScanning(true);
     try {
       const device = await scanBluetoothDevices();
@@ -59,7 +56,7 @@ export default function BLEDeviceScanner({ context, compact = false, onDeviceCon
       if (err?.name !== 'NotFoundError') toast.error(err?.message || 'BLE scan failed');
     }
     setScanning(false);
-  }, [supported, onDeviceConnected]);
+  }, [onDeviceConnected]);
 
   const connectedCount = realDevices.filter(d => d.connected).length;
 
@@ -83,17 +80,11 @@ export default function BLEDeviceScanner({ context, compact = false, onDeviceCon
         variant="outline"
         className={cn('w-full gap-2 text-[10px]', theme.border, theme.accent, compact ? 'h-8' : 'h-10')}
         onClick={handleScan}
-        disabled={scanning || !supported}
+        disabled={scanning}
       >
         {scanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
         {scanning ? 'Scanning…' : `Scan ${theme.label}`}
       </Button>
-
-      {!supported && (
-        <p className="text-[9px] text-amber-400/80 text-center py-1">
-          Web Bluetooth unavailable. Use Chrome/Edge desktop or open outside an iframe.
-        </p>
-      )}
 
       {/* Real BLE devices */}
       <div className={cn('space-y-1.5', compact ? 'max-h-36' : 'max-h-56', 'overflow-y-auto')}>
@@ -131,7 +122,7 @@ export default function BLEDeviceScanner({ context, compact = false, onDeviceCon
         ))}
       </div>
 
-      {realDevices.length === 0 && !scanning && supported && (
+      {realDevices.length === 0 && !scanning && (
         <p className="text-[9px] text-muted-foreground/50 text-center py-2">
           Press Scan to detect BLE devices
         </p>
