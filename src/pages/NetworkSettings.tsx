@@ -9,7 +9,7 @@
 import { useState, useCallback } from "react";
 import {
   Network, Wifi, Activity, Save, RotateCcw, Loader2,
-  CheckCircle2, XCircle, AlertTriangle, Lightbulb, Copy,
+  CheckCircle2, XCircle, AlertTriangle, Lightbulb, Copy, FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -191,6 +191,43 @@ export default function NetworkSettings() {
     }
   }, [protocol, endpoint]);
 
+  /** Build a human-readable plain-text report of the last test run. */
+  const buildReportText = useCallback((): string => {
+    const ts = new Date().toISOString();
+    const stepLines = test.steps.map((s) => {
+      const status = s.status.toUpperCase().padEnd(7);
+      const dur = typeof s.durationMs === "number" ? `${s.durationMs} ms`.padStart(8) : "       —";
+      const detail = s.detail ? `\n         └─ ${s.detail}` : "";
+      return `  [${status}] ${dur}  ${s.label}${detail}`;
+    }).join("\n");
+
+    return [
+      "FX KONTROL — Connection Report",
+      "================================",
+      `Timestamp:    ${ts}`,
+      `Result:       ${test.status.toUpperCase()}`,
+      `Protocol:     ${protocol.toUpperCase()}`,
+      `Target:       ${endpoint.hostname}:${endpoint.port}`,
+      endpoint.wsRelayUrl ? `WS Relay:     ${endpoint.wsRelayUrl}` : `WS Relay:     (none — using edge function)`,
+      `Total RTT:    ${typeof test.latencyMs === "number" ? `${test.latencyMs} ms` : "—"}`,
+      `Summary:      ${test.message ?? "—"}`,
+      test.detail ? `Detail:       ${test.detail}` : "",
+      test.hint ? `Hint:         ${test.hint}` : "",
+      "",
+      "Steps:",
+      stepLines || "  (none)",
+      "",
+      `User-Agent:   ${navigator.userAgent}`,
+    ].filter(Boolean).join("\n");
+  }, [protocol, endpoint, test]);
+
+  const copyReport = useCallback(() => {
+    navigator.clipboard.writeText(buildReportText()).then(
+      () => toast.success("Report copied to clipboard"),
+      () => toast.error("Couldn't access clipboard"),
+    );
+  }, [buildReportText]);
+
   const copyDiagnostics = useCallback(() => {
     const payload = {
       timestamp: new Date().toISOString(),
@@ -200,7 +237,7 @@ export default function NetworkSettings() {
       userAgent: navigator.userAgent,
     };
     navigator.clipboard.writeText(JSON.stringify(payload, null, 2)).then(
-      () => toast.success("Diagnostics copied to clipboard"),
+      () => toast.success("Diagnostics JSON copied"),
       () => toast.error("Couldn't access clipboard"),
     );
   }, [protocol, endpoint, test]);
@@ -338,9 +375,14 @@ export default function NetworkSettings() {
             </Label>
             <div className="flex items-center gap-2">
               {test.status === "fail" || test.status === "ok" ? (
-                <Button variant="ghost" size="sm" onClick={copyDiagnostics} className="text-[11px]">
-                  <Copy className="w-3.5 h-3.5 mr-1.5" /> Copy diagnostics
-                </Button>
+                <>
+                  <Button variant="ghost" size="sm" onClick={copyReport} className="text-[11px]">
+                    <FileText className="w-3.5 h-3.5 mr-1.5" /> Copy report
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={copyDiagnostics} className="text-[11px]">
+                    <Copy className="w-3.5 h-3.5 mr-1.5" /> Copy JSON
+                  </Button>
+                </>
               ) : null}
               <Button
                 onClick={runTest}
@@ -430,6 +472,91 @@ export default function NetworkSettings() {
                 <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 flex items-start gap-2">
                   <Lightbulb className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
                   <p className="text-[11px] text-amber-100/90 leading-relaxed">{test.hint}</p>
+                </div>
+              )}
+
+              {/* Detailed connection report (terminal status only) */}
+              {(test.status === "ok" || test.status === "fail") && (
+                <div className="rounded-md border border-border bg-muted/10 overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border bg-muted/20">
+                    <div className="flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Connection Report
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] px-2"
+                      onClick={copyReport}
+                      aria-label="Copy connection report"
+                    >
+                      <Copy className="w-3 h-3 mr-1" /> Copy
+                    </Button>
+                  </div>
+
+                  {/* Key/value summary grid */}
+                  <dl className="grid grid-cols-[110px_1fr] gap-x-3 gap-y-1 px-3 py-2.5 text-[11px]">
+                    <dt className="text-muted-foreground">Result</dt>
+                    <dd className={`font-mono font-semibold ${test.status === "ok" ? "text-emerald-400" : "text-destructive"}`}>
+                      {test.status.toUpperCase()}
+                    </dd>
+
+                    <dt className="text-muted-foreground">Protocol</dt>
+                    <dd className="font-mono text-foreground">{protocol.toUpperCase()}</dd>
+
+                    <dt className="text-muted-foreground">Target</dt>
+                    <dd className="font-mono text-foreground break-all">
+                      {endpoint.hostname}:{endpoint.port}
+                    </dd>
+
+                    <dt className="text-muted-foreground">WS Relay</dt>
+                    <dd className="font-mono text-foreground break-all">
+                      {endpoint.wsRelayUrl || <span className="text-muted-foreground/60">edge function</span>}
+                    </dd>
+
+                    <dt className="text-muted-foreground">Total RTT</dt>
+                    <dd className="font-mono text-foreground">
+                      {typeof test.latencyMs === "number" ? `${test.latencyMs} ms` : "—"}
+                    </dd>
+
+                    <dt className="text-muted-foreground">Timestamp</dt>
+                    <dd className="font-mono text-foreground/80 text-[10px]">
+                      {new Date().toISOString()}
+                    </dd>
+                  </dl>
+
+                  {/* Per-step latency breakdown */}
+                  {test.steps.length > 0 && (
+                    <div className="border-t border-border px-3 py-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                        Step latency
+                      </p>
+                      <ul className="space-y-0.5">
+                        {test.steps.map((s) => (
+                          <li key={s.id} className="flex items-baseline justify-between gap-3 text-[10px] font-mono">
+                            <span className="text-foreground/80 truncate">
+                              <span
+                                className={
+                                  s.status === "ok" ? "text-emerald-400" :
+                                  s.status === "fail" ? "text-destructive" :
+                                  s.status === "skip" ? "text-muted-foreground/60" :
+                                  "text-muted-foreground"
+                                }
+                              >
+                                ●
+                              </span>{" "}
+                              {s.label}
+                            </span>
+                            <span className="text-muted-foreground/80 shrink-0">
+                              {typeof s.durationMs === "number" ? `${s.durationMs} ms` : "—"}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
