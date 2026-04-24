@@ -1032,9 +1032,8 @@ export function FXKAssistant() {
 
       {/* Content area */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
-        {/* Sidebar hologram (expanded only) */}
-
         {/* Messages */}
+
         <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-2 space-y-3 scrollbar-thin">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-3 opacity-90">
