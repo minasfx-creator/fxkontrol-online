@@ -6,7 +6,7 @@
  * Persists to localStorage via useNetworkConfigStore.
  */
 import { useState, useCallback } from "react";
-import { Network, Wifi, Cable, Activity, Save, RotateCcw, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { Network, Wifi, Cable, Activity, Save, RotateCcw, Loader2, CheckCircle2, XCircle, AlertTriangle, Lightbulb, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,13 +21,50 @@ import {
 } from "@/store/useNetworkConfigStore";
 import { isWebSerialSupported } from "@/lib/usbEngine";
 
+type StepStatus = "pending" | "running" | "ok" | "fail" | "skip";
+interface TestStep {
+  id: string;
+  label: string;
+  status: StepStatus;
+  durationMs?: number;
+  detail?: string;
+}
 type TestStatus = "idle" | "running" | "ok" | "fail";
 interface TestResult {
   status: TestStatus;
   latencyMs?: number;
   message?: string;
   detail?: string;
+  hint?: string;
+  steps: TestStep[];
+  raw?: unknown;
 }
+
+const EMPTY_RESULT: TestResult = { status: "idle", steps: [] };
+
+/** Map low-level errors to actionable hints. */
+function diagnoseError(message: string, protocol: TransportProtocol): string | undefined {
+  const m = message.toLowerCase();
+  if (m.includes("permissions policy") || m.includes("disallowed")) {
+    return "Open the app in a new tab — WebSerial/USB are blocked inside the editor iframe.";
+  }
+  if (m.includes("failed to fetch") || m.includes("networkerror") || m.includes("load failed")) {
+    return "The browser couldn't reach the backend. Check your internet connection or VPN.";
+  }
+  if (m.includes("timeout") || m.includes("timed out")) {
+    return `The ${protocol.toUpperCase()} node didn't reply in time. Verify it's powered on and on the same subnet.`;
+  }
+  if (m.includes("hostname")) return "Enter a valid IPv4 (e.g. 192.168.1.100) or DNS hostname.";
+  if (m.includes("port")) return "Port must be between 1 and 65535.";
+  if (m.includes("websocket") || m.includes("ws://") || m.includes("wss://")) {
+    return "WebSocket relay rejected the connection. Verify the URL and that the relay is running.";
+  }
+  if (m.includes("not found") || m.includes("404")) {
+    return "Edge function not deployed. Try again in a few seconds or contact support.";
+  }
+  return undefined;
+}
+
 
 const PROTOCOLS: Array<{
   id: TransportProtocol;
@@ -46,7 +83,7 @@ export default function NetworkSettings() {
     setProtocol, setEndpoint, setAutoFailover, setPollIntervalMs, reset,
   } = useNetworkConfigStore();
 
-  const [test, setTest] = useState<TestResult>({ status: "idle" });
+  const [test, setTest] = useState<TestResult>(EMPTY_RESULT);
 
   const handleProtocolChange = (p: TransportProtocol) => {
     setProtocol(p);
@@ -56,7 +93,6 @@ export default function NetworkSettings() {
   };
 
   const handleSave = () => {
-    // Already persisted by zustand/persist on every change; this is a UX confirmation.
     toast.success("Network settings saved", {
       description: `${protocol.toUpperCase()} → ${endpoint.hostname}:${endpoint.port}`,
     });
@@ -64,64 +100,145 @@ export default function NetworkSettings() {
 
   const handleReset = () => {
     reset();
-    setTest({ status: "idle" });
+    setTest(EMPTY_RESULT);
     toast.info("Restored default network settings");
   };
 
   const runTest = useCallback(async () => {
-    setTest({ status: "running" });
     const startedAt = performance.now();
+    // Build the step list up-front so the user sees the plan immediately.
+    const steps: TestStep[] =
+      protocol === "serial"
+        ? [
+            { id: "browser", label: "Browser supports WebSerial", status: "pending" },
+            { id: "ports", label: "Enumerate authorized ports", status: "pending" },
+          ]
+        : [
+            { id: "validate", label: "Validate endpoint", status: "pending" },
+            { id: "edge", label: "Reach artnet-bridge edge function", status: "pending" },
+            { id: "probe", label: `Probe ${endpoint.hostname}:${endpoint.port}`, status: "pending" },
+            { id: "reply", label: "Wait for ArtPoll replies", status: "pending" },
+          ];
+
+    setTest({ status: "running", steps });
+
+    const updateStep = (id: string, patch: Partial<TestStep>) =>
+      setTest((prev) => ({
+        ...prev,
+        steps: prev.steps.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+      }));
+
+    const runStep = async <T,>(id: string, fn: () => Promise<T> | T): Promise<T> => {
+      const t0 = performance.now();
+      updateStep(id, { status: "running" });
+      try {
+        const result = await fn();
+        updateStep(id, { status: "ok", durationMs: Math.round(performance.now() - t0) });
+        return result;
+      } catch (err) {
+        updateStep(id, {
+          status: "fail",
+          durationMs: Math.round(performance.now() - t0),
+          detail: err instanceof Error ? err.message : String(err),
+        });
+        throw err;
+      }
+    };
 
     try {
       if (protocol === "serial") {
-        if (!isWebSerialSupported()) {
-          throw new Error("WebSerial unavailable. Use Chrome/Edge desktop or open outside of an iframe.");
-        }
-        // Probe by listing previously authorized ports — does not prompt.
-        const ports = await (navigator as any).serial.getPorts();
-        setTest({
-          status: "ok",
-          latencyMs: Math.round(performance.now() - startedAt),
-          message: `WebSerial OK — ${ports.length} authorized port(s)`,
-          detail: ports.length === 0 ? "No port granted yet. Use 'Open Port' in DMX Output to grant access." : undefined,
+        await runStep("browser", () => {
+          if (!isWebSerialSupported()) {
+            throw new Error("WebSerial unavailable. Use Chrome/Edge desktop or open outside of an iframe.");
+          }
+          return true;
         });
+        const ports = await runStep("ports", async () => {
+          return await (navigator as unknown as { serial: { getPorts: () => Promise<unknown[]> } }).serial.getPorts();
+        });
+        const totalMs = Math.round(performance.now() - startedAt);
+        setTest((prev) => ({
+          ...prev,
+          status: "ok",
+          latencyMs: totalMs,
+          message: `WebSerial OK — ${ports.length} authorized port(s)`,
+          detail: ports.length === 0
+            ? "No port granted yet. Open the DMX Output panel and click 'Open Port' to grant access."
+            : `${ports.length} previously authorized port(s) ready to open.`,
+        }));
         return;
       }
 
-      // Art-Net / sACN: poll via the artnet-bridge edge function.
-      if (!endpoint.hostname.trim()) throw new Error("Hostname is required");
-      if (endpoint.port < 1 || endpoint.port > 65535) throw new Error("Port must be 1–65535");
-
-      const { data, error } = await supabase.functions.invoke("artnet-bridge", {
-        body: {
-          action: "poll",
-          targetIp: endpoint.hostname,
-          targetPort: endpoint.port,
-        },
+      // Art-Net / sACN
+      await runStep("validate", () => {
+        if (!endpoint.hostname.trim()) throw new Error("Hostname is required");
+        if (endpoint.port < 1 || endpoint.port > 65535) throw new Error("Port must be 1–65535");
+        return true;
       });
 
-      if (error) throw new Error(error.message ?? "Edge function error");
+      const { data, error } = await runStep("edge", async () => {
+        const r = await supabase.functions.invoke("artnet-bridge", {
+          body: { action: "poll", targetIp: endpoint.hostname, targetPort: endpoint.port },
+        });
+        if (r.error) throw new Error(r.error.message ?? "Edge function error");
+        return r;
+      });
 
-      const latencyMs = Math.round(performance.now() - startedAt);
-      const okShape = data && (data.ok === true || data.success === true || Array.isArray(data.nodes));
-      if (!okShape && data?.error) throw new Error(String(data.error));
+      await runStep("probe", () => {
+        if (!data || (data.success !== true && data.ok !== true && !Array.isArray(data.nodes))) {
+          throw new Error(typeof data?.error === "string" ? data.error : "Bridge returned an unexpected payload");
+        }
+        return true;
+      });
 
-      setTest({
+      const replies = await runStep("reply", () => {
+        const nodes: unknown[] = Array.isArray(data?.nodes) ? data.nodes : [];
+        // Not receiving replies isn't a hard failure — many networks block broadcast.
+        return nodes.length;
+      });
+
+      const totalMs = Math.round(performance.now() - startedAt);
+      setTest((prev) => ({
+        ...prev,
         status: "ok",
-        latencyMs,
+        latencyMs: totalMs,
         message: `Reachable via ${protocol.toUpperCase()}`,
-        detail: data?.nodes?.length ? `${data.nodes.length} node(s) replied` : "Bridge responded — no ArtPoll replies received",
-      });
+        detail: replies > 0
+          ? `${replies} Art-Net node(s) replied to ArtPoll.`
+          : "Bridge responded successfully. No ArtPoll replies received — verify the node is on the same subnet and broadcasts are allowed.",
+        raw: data,
+      }));
+      toast.success("Connection test passed", { description: `${protocol.toUpperCase()} • ${totalMs} ms` });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      setTest({
+      const totalMs = Math.round(performance.now() - startedAt);
+      setTest((prev) => ({
+        ...prev,
         status: "fail",
-        latencyMs: Math.round(performance.now() - startedAt),
+        latencyMs: totalMs,
         message: "Connection test failed",
         detail: message,
-      });
+        hint: diagnoseError(message, protocol),
+        // Mark remaining pending steps as skipped so the UI stays coherent.
+        steps: prev.steps.map((s) => (s.status === "pending" ? { ...s, status: "skip" } : s)),
+      }));
+      toast.error("Connection test failed", { description: message });
     }
   }, [protocol, endpoint]);
+
+  const copyDiagnostics = useCallback(() => {
+    const payload = {
+      timestamp: new Date().toISOString(),
+      protocol,
+      endpoint,
+      result: test,
+      userAgent: navigator.userAgent,
+    };
+    navigator.clipboard.writeText(JSON.stringify(payload, null, 2)).then(
+      () => toast.success("Diagnostics copied to clipboard"),
+      () => toast.error("Couldn't access clipboard"),
+    );
+  }, [protocol, endpoint, test]);
 
   return (
     <div className="min-h-[100dvh] bg-background p-4 md:p-8">
@@ -271,45 +388,106 @@ export default function NetworkSettings() {
 
         {/* Test */}
         <section className="space-y-3 rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Connection Test
             </Label>
-            <Button onClick={runTest} disabled={test.status === "running"} size="sm">
-              {test.status === "running" ? (
-                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Testing…</>
-              ) : (
-                <><Activity className="w-3.5 h-3.5 mr-1.5" /> Run test</>
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              {test.status === "fail" || test.status === "ok" ? (
+                <Button variant="ghost" size="sm" onClick={copyDiagnostics} className="text-[11px]">
+                  <Copy className="w-3.5 h-3.5 mr-1.5" /> Copy diagnostics
+                </Button>
+              ) : null}
+              <Button
+                onClick={runTest}
+                disabled={test.status === "running"}
+                size="sm"
+                aria-label="Run connection test"
+              >
+                {test.status === "running" ? (
+                  <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Testing…</>
+                ) : (
+                  <><Activity className="w-3.5 h-3.5 mr-1.5" /> Test Connection</>
+                )}
+              </Button>
+            </div>
           </div>
 
-          {test.status !== "idle" && (
-            <div
-              className={`rounded-md border p-3 flex items-start gap-2 ${
-                test.status === "ok"
-                  ? "border-emerald-500/30 bg-emerald-500/5"
-                  : test.status === "fail"
-                  ? "border-destructive/30 bg-destructive/5"
-                  : "border-border bg-muted/20"
-              }`}
-              role="status"
-              aria-live="polite"
-            >
-              {test.status === "ok" && <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />}
-              {test.status === "fail" && <XCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />}
-              {test.status === "running" && <Loader2 className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0 animate-spin" />}
-              <div className="text-xs space-y-0.5 min-w-0 flex-1">
-                <p className="font-semibold text-foreground">
-                  {test.message ?? (test.status === "running" ? "Probing endpoint…" : "")}
-                </p>
-                {test.detail && <p className="text-muted-foreground break-all">{test.detail}</p>}
-                {typeof test.latencyMs === "number" && (
-                  <p className="text-[10px] text-muted-foreground/70 font-mono">
-                    Round-trip: {test.latencyMs} ms
+          {test.status === "idle" ? (
+            <p className="text-[11px] text-muted-foreground">
+              Runs a real probe against the configured endpoint and reports each step.
+            </p>
+          ) : (
+            <div role="status" aria-live="polite" className="space-y-3">
+              {/* Summary banner */}
+              <div
+                className={`rounded-md border p-3 flex items-start gap-2 ${
+                  test.status === "ok"
+                    ? "border-emerald-500/30 bg-emerald-500/5"
+                    : test.status === "fail"
+                    ? "border-destructive/30 bg-destructive/5"
+                    : "border-border bg-muted/20"
+                }`}
+              >
+                {test.status === "ok" && <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />}
+                {test.status === "fail" && <XCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />}
+                {test.status === "running" && <Loader2 className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0 animate-spin" />}
+                <div className="text-xs space-y-0.5 min-w-0 flex-1">
+                  <p className="font-semibold text-foreground">
+                    {test.message ?? (test.status === "running" ? "Probing endpoint…" : "")}
                   </p>
-                )}
+                  {test.detail && <p className="text-muted-foreground break-words">{test.detail}</p>}
+                  {typeof test.latencyMs === "number" && (
+                    <p className="text-[10px] text-muted-foreground/70 font-mono">
+                      Total: {test.latencyMs} ms
+                    </p>
+                  )}
+                </div>
               </div>
+
+              {/* Step list */}
+              <ol className="space-y-1.5">
+                {test.steps.map((step) => {
+                  const Icon =
+                    step.status === "ok" ? CheckCircle2 :
+                    step.status === "fail" ? XCircle :
+                    step.status === "running" ? Loader2 :
+                    step.status === "skip" ? AlertTriangle :
+                    Activity;
+                  const color =
+                    step.status === "ok" ? "text-emerald-400" :
+                    step.status === "fail" ? "text-destructive" :
+                    step.status === "running" ? "text-primary" :
+                    step.status === "skip" ? "text-muted-foreground/50" :
+                    "text-muted-foreground/40";
+                  return (
+                    <li key={step.id} className="flex items-start gap-2 text-xs">
+                      <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${color} ${step.status === "running" ? "animate-spin" : ""}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className={step.status === "skip" ? "text-muted-foreground/60 line-through" : "text-foreground"}>
+                            {step.label}
+                          </span>
+                          {typeof step.durationMs === "number" && (
+                            <span className="text-[10px] font-mono text-muted-foreground/70">{step.durationMs} ms</span>
+                          )}
+                        </div>
+                        {step.detail && (
+                          <p className="text-[10px] text-muted-foreground/80 break-words mt-0.5">{step.detail}</p>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+
+              {/* Actionable hint on failure */}
+              {test.status === "fail" && test.hint && (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 flex items-start gap-2">
+                  <Lightbulb className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+                  <p className="text-[11px] text-amber-100/90 leading-relaxed">{test.hint}</p>
+                </div>
+              )}
             </div>
           )}
         </section>
