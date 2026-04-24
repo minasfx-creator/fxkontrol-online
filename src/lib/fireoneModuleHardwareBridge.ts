@@ -195,12 +195,14 @@ export class FireOneHardwareBridge {
   private maxReconnectAttempts = 3;
   private lastConnectArgs: { method: string; args?: any } | null = null;
 
-  // ── Session + retry diagnostics (added to satisfy SDK + test surface) ──
+  // ── Session + retry diagnostics ──
   private sessionId = 0;
   private connectingSessionId = 0;
   private lastErrorCode?: BridgeReasonCode;
   private retryPolicy: Partial<Record<BridgeCommandType, BridgeRetryRule>> = { ...DEFAULT_RETRY_POLICY };
-  private retryRateLimit = DEFAULT_RETRY_RATE_LIMIT;
+  private retryRateLimit: { windowMs: number; maxRetriesPerKey: number; maxRetriesTotal: number } = {
+    windowMs: 1000, maxRetriesPerKey: DEFAULT_RETRY_RATE_LIMIT, maxRetriesTotal: DEFAULT_RETRY_RATE_LIMIT * 4,
+  };
   private retryCount = 0;
   private retryByKey: Record<string, number> = {};
   private retryByCommandType: Partial<Record<BridgeCommandType, number>> = {};
@@ -208,6 +210,44 @@ export class FireOneHardwareBridge {
   private rateLimitedByKey: Record<string, number> = {};
   private retryTimestampsAll: number[] = [];
   private retryTimestampsByKey: Map<string, number[]> = new Map();
+
+  // ── Helpers (added stubs to satisfy SDK + tests; runtime no-op safe) ──
+  private setError(code: BridgeReasonCode, message: string): void {
+    this.lastErrorCode = code;
+    this.lastError = message;
+  }
+  private registerPending(key: string, commandType: BridgeCommandType, resolver: (val: string) => void): void {
+    this.pendingResolves.set(key, { resolver, sessionId: this.sessionId, commandType });
+  }
+  isHealthy(): boolean {
+    return this.connected && this.linkHealth === 'healthy';
+  }
+  getDiagnostics(): BridgeDiagnostics {
+    return {
+      rateLimitedTotal: this.rateLimitedTotal,
+      rateLimitedByKey: { ...this.rateLimitedByKey },
+      retryByKey: { ...this.retryByKey },
+      retryByCommandType: { ...this.retryByCommandType },
+      retryCount: this.retryCount,
+      retryRateLimit: this.retryRateLimit.maxRetriesPerKey,
+      sessionId: this.sessionId,
+      pendingCount: this.pendingResolves.size,
+      pendingKeys: Array.from(this.pendingResolves.keys()),
+    };
+  }
+  setRetryRateLimit(limit: number | { windowMs?: number; maxRetriesPerKey?: number; maxRetriesTotal?: number }): void {
+    if (typeof limit === 'number') {
+      this.retryRateLimit.maxRetriesPerKey = limit;
+    } else {
+      this.retryRateLimit = { ...this.retryRateLimit, ...limit };
+    }
+  }
+  setRetryPolicy(policy: Partial<Record<BridgeCommandType, BridgeRetryRule>>): void {
+    this.retryPolicy = { ...this.retryPolicy, ...policy };
+  }
+  getRetryPolicy(): Readonly<Partial<Record<BridgeCommandType, BridgeRetryRule>>> {
+    return { ...this.retryPolicy };
+  }
 
   constructor(eventHandler?: BridgeEventHandler) {
     this.onEvent = eventHandler ?? null;
