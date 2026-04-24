@@ -15,3 +15,6 @@ export * from './sampling/weightedPoissonSampling';
 export * from './motion/hungarianLite';
 export * from './motion/optimizeDroneTransition';
 export * from './scoring/scoreFormationFidelity';
+
+// Nível 3 — 3D model → formation
+export * from './model3d';

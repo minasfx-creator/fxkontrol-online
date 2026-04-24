@@ -15,12 +15,7 @@ import { enhancementAgent } from '../agents/enhancementAgent';
 import { repairAgent } from '../agents/repairAgent';
 import { validateChoreographyPlan } from '../validation/validateChoreographyPlan';
 import { compilePlanToTimeline } from '../compiler/compilePlanToTimeline';
-import {
-  generateOptimizedFormation,
-  optimizeTransition,
-  snapToBeat,
-  buildBeatGrid,
-} from '../advanced';
+import { applyAdvancedPostProcessing } from './postProcess';
 
 export async function generateSwarmGPTShow(
   input: SwarmGPTInput,
@@ -58,57 +53,9 @@ export async function generateSwarmGPTShow(
       };
     }
 
-    // ---------- Advanced post-processing (deterministic) ----------
+    // Deterministic post-processing (Poisson → beat snap → matching → sort).
+    plan = applyAdvancedPostProcessing(plan, input, config);
 
-    // 1) Geometry pass — Poisson resample each formation to enforce min distance.
-    plan = {
-      ...plan,
-      formations: plan.formations.map((f) => ({
-        ...f,
-        points: generateOptimizedFormation(f.points, input.droneCount, config.minDroneDistance),
-      })),
-    };
-
-    // 2) Optional beat snap when bpm provided.
-    if (input.bpm && input.bpm > 0) {
-      const beats = buildBeatGrid(input.bpm, input.duration);
-      if (beats.length > 0) {
-        plan = {
-          ...plan,
-          formations: plan.formations.map((f) => ({
-            ...f,
-            startTime: snapToBeat(f.startTime, beats),
-          })),
-          transitions: plan.transitions.map((t) => ({
-            ...t,
-            startTime: snapToBeat(t.startTime, beats),
-          })),
-        };
-      }
-    }
-
-    // 3) Transition matching pass — reorder `to.points` to minimize travel.
-    const formationById = new Map(plan.formations.map((f) => [f.id, f]));
-    plan = {
-      ...plan,
-      formations: plan.formations.map((f) => {
-        const incoming = plan.transitions.find((t) => t.toFormationId === f.id);
-        if (!incoming) return f;
-        const fromF = formationById.get(incoming.fromFormationId);
-        if (!fromF) return f;
-        return {
-          ...f,
-          points: optimizeTransition(
-            fromF.points,
-            f.points,
-            incoming.duration,
-            config.maxDroneSpeed,
-          ),
-        };
-      }),
-    };
-
-    // 4) Re-validate after deterministic mutations.
     const finalValidation = validateChoreographyPlan(plan, input, config);
     if (!finalValidation.ok) {
       return {
