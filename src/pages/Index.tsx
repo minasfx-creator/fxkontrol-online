@@ -201,6 +201,7 @@ function CanvasLoader() {
    ══════════════════════════════════════════════════════════════════ */
 function Index() {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
   const [venueSelector, setVenueSelector] = useState(false);
@@ -257,6 +258,12 @@ function Index() {
     const panelParam = searchParams.get('panel');
     const modeParam = searchParams.get('mode');
     if (panelParam) {
+      // SwarmGPT lives at /swarmgpt now — redirect any legacy deep links.
+      if (panelParam === 'swarmgpt') {
+        setSearchParams({}, { replace: true });
+        navigate('/swarmgpt');
+        return;
+      }
       setActivePanel(panelParam as PanelId);
       if (modeParam === 'wifi') setRemoteMode('wifi-auto');
       else if (modeParam === 'cloud') setRemoteMode('cloud');
@@ -267,7 +274,7 @@ function Index() {
         setMobilePanelHeight('full');
       }
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, navigate]);
 
   useEffect(() => {
     const dblClickHandler = () => setShowPositionEditor(true);
@@ -283,12 +290,17 @@ function Index() {
       setVenueSelector(true);
       return;
     }
+    // SwarmGPT is now a dedicated page — navigate instead of opening modal.
+    if (id === 'swarmgpt') {
+      navigate('/swarmgpt');
+      return;
+    }
     setActivePanel((prev) => {
       const next = prev === id ? null : id;
       if (next && SHARED_PANEL_IDS.has(next)) setLeftDockOpen(null);
       return next;
     });
-  }, []);
+  }, [navigate]);
 
   const handleLocationSelected = useCallback((location: { name: string; lat: number; lng: number }) => {
     useProjectStore.getState().setGpsOrigin({ lat: location.lat, lng: location.lng, heading: 0, altitude: 0 });
@@ -304,10 +316,14 @@ function Index() {
   }, []);
 
   const handleMobileOpenPanel = useCallback((id: PanelId) => {
+    if (id === 'swarmgpt') {
+      navigate('/swarmgpt');
+      return;
+    }
     setActivePanel(id);
     setMobileTab(null);
     setMobilePanelHeight(id === 'effects' ? 'full' : 'half');
-  }, []);
+  }, [navigate]);
 
   const desktopTopOffset = '56px';
   const desktopTimelineHeight = viewportMaximized ? '0px' : timelineCollapsed ? '42px' : '34vh';
