@@ -251,7 +251,11 @@ export default function DmxPyroDiagnostics() {
     return () => clearInterval(iv);
   }, []);
 
-  const findings = useMemo(() => validateChannels(channels), [channels, tick]);
+  const thresholds = useDiagnosticsThresholds();
+  const findings = useMemo(
+    () => validateChannels(channels, thresholds),
+    [channels, tick, thresholds.addressGap, thresholds.universeGap, thresholds.universeCapPct, thresholds.universeStartHint],
+  );
   const counts = useMemo(() => {
     const c = { ok: 0, warn: 0, fail: 0 };
     for (const f of findings) c[f.severity]++;
