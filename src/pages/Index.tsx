@@ -145,19 +145,107 @@ const VenueShowOverlay = lz(() => import('@/components/editor/VenueShowOverlay')
 // Do NOT add a .catch() here — it would swallow the error and prevent retry.
 const SkyCanvas = lazy(lazyRetry(() => import('@/components/editor/SkyCanvas')));
 
-class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  state = { hasError: false };
-  static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.warn('[FXK] Canvas failed to load:', error.message);
+interface CanvasErrorState {
+  hasError: boolean;
+  error?: Error;
+  componentStack?: string;
+  extras: string[]; // captured window errors / unhandled rejections
+}
+
+class CanvasErrorBoundary extends Component<{ children: ReactNode }, CanvasErrorState> {
+  state: CanvasErrorState = { hasError: false, extras: [] };
+  private onWindowError = (e: ErrorEvent) => {
+    const line = `[window.error] ${e.message} @ ${e.filename}:${e.lineno}:${e.colno}${e.error?.stack ? '\n' + e.error.stack : ''}`;
+    this.setState((s) => ({ ...s, extras: [...s.extras, line].slice(-20) }));
+  };
+  private onRejection = (e: PromiseRejectionEvent) => {
+    const reason = e.reason;
+    const text = reason instanceof Error ? `${reason.message}\n${reason.stack ?? ''}` : String(reason);
+    this.setState((s) => ({ ...s, extras: [...s.extras, `[unhandledrejection] ${text}`].slice(-20) }));
+  };
+  componentDidMount() {
+    window.addEventListener('error', this.onWindowError);
+    window.addEventListener('unhandledrejection', this.onRejection);
   }
+  componentWillUnmount() {
+    window.removeEventListener('error', this.onWindowError);
+    window.removeEventListener('unhandledrejection', this.onRejection);
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('[FXK] Canvas failed to load:', error, info.componentStack);
+    this.setState({ componentStack: info.componentStack ?? undefined });
+  }
+  private copyReport = async () => {
+    const { error, componentStack, extras } = this.state;
+    const report = [
+      `FX Kontrol — SkyCanvas Error Report`,
+      `When: ${new Date().toISOString()}`,
+      `UA: ${navigator.userAgent}`,
+      ``,
+      `== Error ==`,
+      error?.message ?? '(no message)',
+      ``,
+      `== Stack ==`,
+      error?.stack ?? '(no stack)',
+      ``,
+      `== Component Stack ==`,
+      componentStack ?? '(none)',
+      ``,
+      `== Window Events ==`,
+      extras.length ? extras.join('\n\n') : '(none)',
+    ].join('\n');
+    try { await navigator.clipboard.writeText(report); } catch { /* ignore */ }
+  };
   render() {
     if (this.state.hasError) {
+      const { error, componentStack, extras } = this.state;
       return (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-background gap-3 p-8 text-center">
-          <p className="text-sm font-semibold text-foreground">3D Engine Error</p>
-          <p className="text-xs text-muted-foreground">WebGL context could not be initialized.</p>
-          <button className="text-xs text-primary underline" onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}>Reload</button>
+        <div className="w-full h-full flex flex-col bg-background text-foreground overflow-auto p-4 gap-3 font-mono text-[11px]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-destructive">SkyCanvas crashed</p>
+              <p className="text-[10px] text-muted-foreground">React/Three.js error captured below — share with support.</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                className="px-2 py-1 rounded border border-border bg-card hover:bg-accent text-[10px]"
+                onClick={this.copyReport}
+              >Copy report</button>
+              <button
+                className="px-2 py-1 rounded border border-border bg-card hover:bg-accent text-[10px]"
+                onClick={() => this.setState({ hasError: false, error: undefined, componentStack: undefined })}
+              >Retry</button>
+              <button
+                className="px-2 py-1 rounded border border-border bg-card hover:bg-accent text-[10px]"
+                onClick={() => window.location.reload()}
+              >Reload</button>
+            </div>
+          </div>
+
+          <section className="border border-border rounded p-2 bg-card/40">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Error</p>
+            <p className="text-destructive whitespace-pre-wrap break-words">{error?.message ?? '(no message)'}</p>
+          </section>
+
+          <section className="border border-border rounded p-2 bg-card/40">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Stack trace</p>
+            <pre className="whitespace-pre-wrap break-words text-muted-foreground">{error?.stack ?? '(no stack available)'}</pre>
+          </section>
+
+          <section className="border border-border rounded p-2 bg-card/40">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">React component stack</p>
+            <pre className="whitespace-pre-wrap break-words text-muted-foreground">{componentStack ?? '(none — error thrown outside React tree)'}</pre>
+          </section>
+
+          {extras.length > 0 && (
+            <section className="border border-border rounded p-2 bg-card/40">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Window errors / promise rejections ({extras.length})</p>
+              <pre className="whitespace-pre-wrap break-words text-muted-foreground">{extras.join('\n\n')}</pre>
+            </section>
+          )}
         </div>
       );
     }
