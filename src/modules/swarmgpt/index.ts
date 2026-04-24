@@ -8,6 +8,7 @@ export {
   type TransitionCostMatrix,
   type BeatGrid,
 } from "./core/types";
-export * from "./core/audio/snapToBeat";
+// `core/audio/snapToBeat` is intentionally not re-exported — it duplicates
+// `advanced/beatSync.snapToBeat`. Import it directly from its module if needed.
 export * from "./core/validation/validateTrajectory";
 export * from "./core/pipeline/planFormationFromAsset";
