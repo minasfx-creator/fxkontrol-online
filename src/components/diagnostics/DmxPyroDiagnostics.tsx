@@ -10,13 +10,39 @@
  * No commands are sent — strictly observational.
  */
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, AlertTriangle, XCircle, Activity, Wifi, Cable, RefreshCw } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Activity, Wifi, Cable, RefreshCw, Trash2, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useSfxChannelStore } from "@/store/useSfxChannelStore";
 import { artNetBridge, type ArtNetState } from "@/core/protocols/ArtNetBridge";
 import { linkFailoverPolicy, type ProtocolLink } from "@/core/protocols/LinkFailoverPolicy";
 import { dmxUniverseAdapter } from "@/core/hardware/adapters/DMXUniverseAdapter";
+import {
+  getCapturedEntries,
+  clearCapturedEntries,
+  subscribeCapturedEntries,
+  type CapturedEntry,
+} from "@/lib/consoleCapture";
+
+const LIVE_FIRING_KEYWORDS = [
+  "live firing",
+  "pyro",
+  "dmx",
+  "super dmx",
+  "fxc",
+  "fire",
+  "artnet",
+  "art-net",
+  "bridgephysical",
+  "ignition",
+  "tdz",
+  "referenceerror",
+];
+
+function isLiveFiringRelated(e: CapturedEntry): boolean {
+  const haystack = `${e.message} ${e.stack ?? ""} ${e.source ?? ""}`.toLowerCase();
+  return LIVE_FIRING_KEYWORDS.some((k) => haystack.includes(k));
+}
 
 type Severity = "ok" | "warn" | "fail";
 
@@ -137,6 +163,22 @@ export default function DmxPyroDiagnostics() {
     for (const f of findings) c[f.severity]++;
     return c;
   }, [findings]);
+
+  // Live console capture
+  const [capTick, setCapTick] = useState(0);
+  const [onlyLiveFiring, setOnlyLiveFiring] = useState(false);
+  useEffect(() => {
+    return subscribeCapturedEntries(() => setCapTick((t) => t + 1));
+  }, []);
+  const captured = useMemo(() => {
+    const all = getCapturedEntries();
+    return onlyLiveFiring ? all.filter(isLiveFiringRelated) : all;
+  }, [capTick, onlyLiveFiring]);
+  const capCounts = useMemo(() => {
+    const c = { error: 0, warn: 0, unhandled: 0, rejection: 0 };
+    for (const e of captured) c[e.level]++;
+    return c;
+  }, [captured]);
 
   const universeMap = useMemo(() => {
     const m = new Map<number, number>();
@@ -324,6 +366,77 @@ export default function DmxPyroDiagnostics() {
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      {/* Live console capture */}
+      <section className="rounded border border-border/30 bg-card/40">
+        <header className="px-3 py-2 border-b border-border/20 flex items-center justify-between gap-2">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/70">
+            Live Console ({captured.length})
+            <span className="ml-3 text-red-400">err {capCounts.error + capCounts.unhandled + capCounts.rejection}</span>
+            <span className="ml-2 text-amber-400">warn {capCounts.warn}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={onlyLiveFiring ? "default" : "outline"}
+              size="sm"
+              className="h-6 gap-1 text-[10px]"
+              onClick={() => setOnlyLiveFiring((v) => !v)}
+              title="Filtrar apenas eventos relacionados a Live Firing / DMX / Pyro"
+            >
+              <Filter className="w-3 h-3" />
+              {onlyLiveFiring ? "Live Firing" : "Todos"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 gap-1 text-[10px]"
+              onClick={() => clearCapturedEntries()}
+            >
+              <Trash2 className="w-3 h-3" />
+              Limpar
+            </Button>
+          </div>
+        </header>
+        {captured.length === 0 ? (
+          <div className="p-4 text-xs font-mono text-muted-foreground/60">
+            Nenhum erro/aviso capturado. Reproduza a falha (abra Live Firing → Pyro Fire) para popular o log.
+          </div>
+        ) : (
+          <div className="max-h-96 overflow-y-auto divide-y divide-border/10">
+            {[...captured].reverse().map((e) => (
+              <div key={e.id} className="px-3 py-2 font-mono text-[11px] leading-snug">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[9px] font-bold uppercase",
+                      e.level === "warn"
+                        ? "bg-amber-500/15 text-amber-400"
+                        : "bg-red-500/15 text-red-400",
+                    )}
+                  >
+                    {e.level}
+                  </span>
+                  <span className="text-muted-foreground/50 text-[10px]">
+                    {new Date(e.ts).toLocaleTimeString("pt-BR", { hour12: false })}
+                  </span>
+                  {e.source && <span className="text-muted-foreground/40 text-[10px] truncate">{e.source}</span>}
+                </div>
+                <div className="mt-1 whitespace-pre-wrap break-words text-foreground/90">{e.message}</div>
+                {e.stack && (
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-[10px] text-muted-foreground/60 hover:text-muted-foreground">
+                      stack trace
+                    </summary>
+                    <pre className="mt-1 text-[10px] text-muted-foreground/70 whitespace-pre-wrap break-words">
+                      {e.stack}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </section>
     </div>
