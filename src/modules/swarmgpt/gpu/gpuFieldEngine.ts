@@ -22,6 +22,7 @@ import type { VectorField } from "../fields/types";
 import { distance } from "../fields/vector";
 import { createGpuDevice } from "./createGpuDevice";
 import { sampleFieldGpu } from "./sampleFieldGpu";
+import { poissonPreviewGpu } from "./poissonPreviewGpu";
 import { isWebGPUSupported } from "./webgpuSupport";
 import { recordSampleRun } from "./diagnosticsStore";
 import type {
