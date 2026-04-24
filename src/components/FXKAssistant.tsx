@@ -5,15 +5,12 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
 type JoiEmotion = 'caring' | 'celebrating' | 'serious';
-import { X, Minimize2, Send, Zap, ShieldCheck, Activity, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, AlertTriangle, FileText, Download, Gavel, Plane, MapPin, Globe, Volume2, VolumeX, Mic, MicOff, Play, Paperclip, File, Image as ImageIcon, XCircle } from 'lucide-react';
+import { X, Minimize2, Send, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, FileText, Globe, Volume2, VolumeX, Mic, MicOff, Play, Paperclip, File, Image as ImageIcon, XCircle } from 'lucide-react';
 const lazyExportPdf = () => import('@/utils/joiPdfExport').then(m => m.exportJoiPdf);
 const lazyExportDocx = () => import('@/utils/joiDocxExport').then(m => m.exportJoiDocx);
 import { parseKmzReadyBlock, stripKmzReadyBlock, downloadAeroKmz } from '@/utils/joiAeroKmzExport';
 import { executeJoiCommands, stripJoiCommands, hasJoiCommands, type JoiCommandResult } from '@/utils/joiCommandExecutor';
 import JoiCommandFeedback from '@/components/JoiCommandFeedback';
-import { OPERATIONAL_PRESETS } from '@/components/JoiCommandPresets';
-import { useProjectStore } from '@/store/useProjectStore';
-import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -21,7 +18,7 @@ import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useJoiSpeech } from '@/hooks/useJoiSpeech';
 import joiFaceIcon from '@/assets/joi-face-icon.png';
 import { joiContextBuilder } from '@/core/joi/JoiContextBuilder';
-import { JOI_MODES, JOI_MODE_PRESETS, getPresetsForMode, getModeConfig, type JoiMode } from '@/core/joi/joiModes';
+import { JOI_MODES, getPresetsForMode, getModeConfig, type JoiMode } from '@/core/joi/joiModes';
 import { JOIContextRibbon } from '@/components/joi/JOIContextRibbon';
 import { JOIInsightPanel } from '@/components/joi/JOIInsightPanel';
 import { JOITruthInspector } from '@/components/joi/JOITruthInspector';
@@ -68,7 +65,7 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fxk-ai-chat`
 const HISTORY_KEY = 'fxk-ai-history';
 const MAX_HISTORY = 10;
 
-// Legacy PRESETS_DOCS moved to joiModes.ts under 'docs' mode
+
 
 const IDLE_PHRASES = [
   'Aqui firme cuidando de tudo, chefinho!',
@@ -114,7 +111,7 @@ function TypewriterGreeting({ text }: { text: string }) {
   );
 }
 
-// Legacy getContextPresets is replaced by mode-aware presets below
+
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -401,7 +398,7 @@ export function FXKAssistant() {
   const [messages, setMessages] = useState<Msg[]>(() => loadHistory());
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [glitching, setGlitching] = useState(false);
+  
   const [isTyping, setIsTyping] = useState(false);
   const [idlePhrase, setIdlePhrase] = useState(0);
   const [connectionOk, setConnectionOk] = useState<boolean | null>(null);
@@ -535,7 +532,7 @@ export function FXKAssistant() {
   const presets = useMemo(() => {
     return getPresetsForMode(joiMode).map(p => ({ label: p.label, icon: p.icon, prompt: p.prompt }));
   }, [joiMode]);
-  const joiState = loading ? 'active' : isTyping ? 'active' : 'idle';
+  
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -560,9 +557,7 @@ export function FXKAssistant() {
 
   const send = useCallback(async (text: string) => {
     if ((!text.trim() && !attachment) || loading) return;
-    setGlitching(true);
     playGlitchBurst();
-    setTimeout(() => setGlitching(false), 800);
 
     // Build user message with attachment context
     let userContent = text.trim();
@@ -936,30 +931,60 @@ export function FXKAssistant() {
         {joiSpeech.supported && (
           <button
             onClick={joiSpeech.toggle}
-            className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors", isMobile ? "h-9 w-9" : "h-6 w-6")}
+            className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0", isMobile ? "h-10 w-10" : "h-6 w-6")}
             title={joiSpeech.enabled ? 'Desativar voz' : 'Ativar voz'}
+            aria-label={joiSpeech.enabled ? 'Desativar voz' : 'Ativar voz'}
           >
             {joiSpeech.enabled ? (
-              <Volume2 className="h-3 w-3" style={{ color: 'hsl(38 100% 55%)' }} />
+              <Volume2 className="h-3.5 w-3.5" style={{ color: 'hsl(38 100% 55%)' }} />
             ) : (
-              <VolumeX className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.3)' }} />
+              <VolumeX className="h-3.5 w-3.5" style={{ color: 'hsl(190 100% 50% / 0.3)' }} />
             )}
           </button>
         )}
 
-        <button onClick={clearMessages} className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors", isMobile ? "h-9 w-9" : "h-6 w-6")} title="Clear">
+        {/* Clear — desktop only (mobile users can long-clear via Limpar preset) */}
+        <button
+          onClick={clearMessages}
+          className="hidden sm:flex h-6 w-6 items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0"
+          title="Limpar conversa"
+          aria-label="Limpar conversa"
+        >
           <Trash2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.4)' }} />
         </button>
+
         {!isMobile && (
-          <button onClick={() => setExpanded(!expanded)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors" title="Expand">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0"
+            title="Expandir"
+            aria-label="Expandir"
+          >
             <Maximize2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
           </button>
         )}
-        <button onClick={() => setMinimized(true)} className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors", isMobile ? "h-9 w-9" : "h-6 w-6")}>
-          <Minimize2 className="h-3 w-3" style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
+
+        <button
+          onClick={() => setMinimized(true)}
+          className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors shrink-0", isMobile ? "h-10 w-10" : "h-6 w-6")}
+          title="Minimizar"
+          aria-label="Minimizar"
+        >
+          <Minimize2 className={cn(isMobile ? "h-4 w-4" : "h-3 w-3")} style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
         </button>
-        <button onClick={handleClose} className={cn("flex items-center justify-center rounded hover:bg-white/5 transition-colors", isMobile ? "h-10 w-10 bg-background/50 border border-border/40" : "h-6 w-6")}>
-          <X className={cn(isMobile ? "h-4 w-4" : "h-3 w-3")} style={{ color: 'hsl(190 100% 50% / 0.6)' }} />
+
+        <button
+          onClick={handleClose}
+          className={cn(
+            "flex items-center justify-center rounded-md transition-colors shrink-0",
+            isMobile
+              ? "h-11 w-11 ml-1 bg-destructive/15 border border-destructive/30 hover:bg-destructive/25 active:bg-destructive/35"
+              : "h-6 w-6 hover:bg-white/5"
+          )}
+          title="Fechar"
+          aria-label="Fechar Joi"
+        >
+          <X className={cn(isMobile ? "h-5 w-5" : "h-3 w-3")} style={{ color: isMobile ? 'hsl(0 80% 70%)' : 'hsl(190 100% 50% / 0.6)' }} />
         </button>
       </div>
 
@@ -1007,9 +1032,8 @@ export function FXKAssistant() {
 
       {/* Content area */}
       <div className="relative z-10 flex flex-1 overflow-hidden">
-        {/* Sidebar hologram (expanded only) */}
-
         {/* Messages */}
+
         <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 py-2 space-y-3 scrollbar-thin">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-3 opacity-90">
