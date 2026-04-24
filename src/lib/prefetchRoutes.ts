@@ -33,7 +33,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   '/editor': () => import('@/pages/Index'),
   '/agenda': () => import('@/pages/Agenda'),
   '/training': () => import('@/pages/Training'),
-  '/show-test': () => import('@/pages/ShowTestSimulator'),
+  
   '/settings': () => import('@/pages/Settings'),
   '/admin': () => import('@/pages/Admin'),
   '/field-test': () => import('@/pages/FieldTest'),
