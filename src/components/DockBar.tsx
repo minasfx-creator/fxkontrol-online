@@ -215,7 +215,7 @@ export default function DockBar() {
                     <TooltipContent
                       side="top"
                       sideOffset={8}
-                      className="glass-menu px-3 py-1.5 text-[10px] font-semibold tracking-wider"
+                      className="glass-menu rounded-panel px-3 py-2 text-[10px] font-semibold tracking-wider"
                     >
                       {item.label}
                     </TooltipContent>
