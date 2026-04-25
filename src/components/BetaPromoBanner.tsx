@@ -1,12 +1,35 @@
-import { useState } from 'react';
-import { Sparkles, X, Megaphone, MessageSquarePlus, Plug } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Sparkles, X, Megaphone, MessageSquarePlus, Plug, Clock } from 'lucide-react';
 import BetaFeedbackDialog from './BetaFeedbackDialog';
 
 type DialogCategory = 'bug' | 'suggestion' | 'integration' | 'other';
 
 const STORAGE_KEY = 'beta_promo_banner_dismissed_v1';
 
-export default function BetaPromoBanner() {
+// Default end date for the Beta promotion. Override via prop or VITE_BETA_PROMO_ENDS_AT (ISO string).
+const DEFAULT_ENDS_AT =
+  (import.meta.env.VITE_BETA_PROMO_ENDS_AT as string | undefined) ??
+  '2026-06-30T23:59:59-03:00';
+
+interface BetaPromoBannerProps {
+  /** ISO datetime string when the promo should auto-hide. Pass null to disable schedule. */
+  endsAt?: string | null;
+}
+
+function formatRemaining(ms: number): string {
+  if (ms <= 0) return '';
+  const totalSec = Math.floor(ms / 1000);
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
+  const seconds = totalSec % 60;
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
+export default function BetaPromoBanner({ endsAt = DEFAULT_ENDS_AT }: BetaPromoBannerProps = {}) {
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem(STORAGE_KEY) === '1';
