@@ -254,6 +254,7 @@ export const useUSBDeviceStore = create<USBDeviceStore>((set, get) => ({
     }));
   },
 
+  getConnectedDMXDevices: () => {
     return get().dmxDevices.filter(d => d.state === 'connected' && d.type === 'dmx');
   },
 
