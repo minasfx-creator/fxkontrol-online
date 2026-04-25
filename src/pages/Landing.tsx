@@ -139,73 +139,42 @@ const PRICING = [
 
 export default function Landing() {
   useEffect(() => {
+    // Todo o SEO da landing é derivado de LANDING_SITE em src/config/landing.ts.
+    // Edite aquele arquivo para mudar provedor / canonical / OG.
+    const seo = buildLandingSeo(LANDING_SITE);
+
     const prevTitle = document.title;
-    document.title = TITLE;
+    const prevHtmlLang = document.documentElement.lang;
+    document.title = seo.title;
+    document.documentElement.lang = seo.htmlLang;
+
     const restorers: Array<() => void> = [];
-    const apply = (attr: "name" | "property", key: string, content: string) => {
-      const { el, prev, created } = upsertMeta(attr, key, content);
+
+    for (const m of seo.metas) {
+      const { el, prev, created } = upsertMeta(m.attr, m.key, m.content);
       restorers.push(() => {
         if (created) el.remove();
         else if (prev !== null) el.setAttribute("content", prev);
       });
-    };
-    const applyLink = (rel: string, href: string, extra?: Record<string, string>) => {
-      const { el, prev, created } = upsertLink(rel, href, extra);
+    }
+    for (const l of seo.links) {
+      const { el, prev, created } = upsertLink(l.rel, l.href, l.extra);
       restorers.push(() => {
         if (created) el.remove();
         else if (prev !== null) el.setAttribute("href", prev);
       });
-    };
+    }
 
-    apply("name", "description", DESC);
-    apply("name", "robots", "index,follow");
-    apply("name", "author", "Minas FX");
-    apply("name", "keywords", "shows pirotécnicos, drone show, DMX, ArtNet, sACN, Finale 3D, SFX, FX KONTROL, Minas FX, pirotecnia profissional");
-    apply("property", "og:type", "website");
-    apply("property", "og:site_name", "FX KONTROL");
-    apply("property", "og:locale", "pt_BR");
-    apply("property", "og:url", CANONICAL);
-    apply("property", "og:title", TITLE);
-    apply("property", "og:description", DESC);
-    apply("property", "og:image", OG_IMAGE);
-    apply("property", "og:image:alt", "FX KONTROL — editor 3D de shows pirotécnicos e drones");
-    apply("name", "twitter:card", "summary_large_image");
-    apply("name", "twitter:site", "@MinasFX");
-    apply("name", "twitter:title", TITLE);
-    apply("name", "twitter:description", DESC);
-    apply("name", "twitter:image", OG_IMAGE);
-    apply("name", "twitter:image:alt", "FX KONTROL — editor 3D de shows pirotécnicos e drones");
-    applyLink("canonical", CANONICAL);
-
-    // Performance: preconnect + preload critical origins for the OG image and fonts.
-    applyLink("preconnect", "https://storage.googleapis.com", { crossorigin: "" });
-    applyLink("dns-prefetch", "https://storage.googleapis.com");
-    applyLink("preload", OG_IMAGE, { as: "image", fetchpriority: "high" });
-
-    // JSON-LD structured data for the landing page.
     const ld = document.createElement("script");
     ld.type = "application/ld+json";
     ld.id = "ld-landing";
-    ld.text = JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "WebPage",
-      name: TITLE,
-      description: DESC,
-      url: CANONICAL,
-      inLanguage: "pt-BR",
-      primaryImageOfPage: OG_IMAGE,
-      isPartOf: {
-        "@type": "WebSite",
-        name: "FX KONTROL",
-        url: "https://fxkontrol.online/",
-      },
-      publisher: { "@type": "Organization", name: "Minas FX" },
-    });
+    ld.text = JSON.stringify(seo.jsonLd);
     document.head.appendChild(ld);
     restorers.push(() => ld.remove());
 
     return () => {
       document.title = prevTitle;
+      document.documentElement.lang = prevHtmlLang;
       restorers.forEach((r) => r());
     };
   }, []);
