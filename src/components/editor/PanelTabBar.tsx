@@ -4,10 +4,24 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { Search, Star } from 'lucide-react';
+import { isEnabled, type FeatureFlag } from '@/lib/featureFlags';
 
 export type PanelId = 'script' | 'wind' | 'reports' | 'racks' | 'addressing' | 'inventory' | 'waypoints' | 'effects' | 'properties' | 'positions' | 'boids' | 'pid' | 'dmx' | 'battery' | 'mavlink' | 'smpte' | 'maps' | 'diagnostic' | 'logistics' | 'swarmgpt' | 'synesthesia' | 'firing' | 'labels' | 'video' | 'models' | 'safety' | 'scripting' | 'audience' | 'indoor' | 'chains' | 'groups' | 'scene' | 'soundlevel' | 'aroverlay' | 'share' | 'particles' | 'versioning' | 'weather' | 'collisions' | 'approval' | 'trajectory' | 'templates' | 'telemetry' | 'flightlog' | 'marketplace' | 'sitelayout' | 'showsettings' | 'calibration' | 'livefiring' | 'fleet' | 'geofence' | 'storyboard' | 'showcontrol' | 'inspector' | 'lightprogram' | 'safetycheck' | 'takeoffgrid' | 'transitions' | 'lasercontrol' | 'suppliers' | 'usb' | 'videochoreo' | 'showven' | 'generative' | 'sitemodels' | 'setlist' | 'rider' | 'budget' | 'showpreview' | 'mobilelink' | 'linkmonitor' | 'controllers' | 'fieldmap' | 'connections' | 'radio' | 'ma3' | 'sacnmonitor' | 'showcommander' | 'bluetooth' | 'nfc' | 'remotecontrol' | 'dmxoutput' | 'easyconnect' | 'worldshows' | 'qastudio';
 
-export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
+/** Panels gated by feature flags — hidden when flag is OFF. */
+const PANEL_FLAGS: Partial<Record<PanelId, FeatureFlag>> = {
+  // Mobile Link / pairing surfaces
+  mobilelink: 'module_pairing_mobilelink',
+  linkmonitor: 'module_pairing_mobilelink',
+  bluetooth: 'module_pairing_mobilelink',
+  nfc: 'module_pairing_mobilelink',
+  // Organizer-style menus (grouping/categorization)
+  groups: 'module_organizer_menu',
+  chains: 'module_organizer_menu',
+  labels: 'module_organizer_menu',
+};
+
+const RAW_PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
   {
     title: '★ Comando',
     icon: Target,
@@ -152,6 +166,20 @@ export const PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: P
     ],
   },
 ];
+
+/**
+ * Filtered sections — items gated by feature flags are excluded when their
+ * flag is OFF. Empty sections (all items hidden) are also dropped.
+ */
+export const PANEL_SECTIONS = RAW_PANEL_SECTIONS
+  .map(section => ({
+    ...section,
+    items: section.items.filter(item => {
+      const flag = PANEL_FLAGS[item.id];
+      return !flag || isEnabled(flag);
+    }),
+  }))
+  .filter(section => section.items.length > 0);
 
 interface PanelTabBarProps {
   activePanel: PanelId | null;

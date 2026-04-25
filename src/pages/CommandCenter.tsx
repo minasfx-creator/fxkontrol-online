@@ -34,6 +34,7 @@ const DMXMonitorPanel = lazy(() => import('@/components/editor/dmx/DMXMonitorPan
 const FieldTestDesktop = lazy(() => import('@/components/editor/FieldTestDesktop'));
 const QuickHardwarePanel = lazy(() => import('@/components/editor/QuickHardwarePanel'));
 const VerificationConsole = lazy(() => import('@/components/editor/VerificationBar'));
+import { isEnabled } from '@/lib/featureFlags';
 const ContinuityMatrix = lazy(() => import('@/components/editor/ContinuityMatrix'));
 const ShowPlanInspector = lazy(() => import('@/components/editor/ShowPlanInspector'));
 const SystemOverviewConsole = lazy(() => import('@/components/editor/SystemOverviewConsole'));
@@ -292,8 +293,8 @@ export default function CommandCenter() {
       case 'module': return <FXKNetPanel fs />;
       case 'hardware': return <QuickHardwarePanel fs />;
       case 'dmx_monitor': return <DMXMonitorPanel fs />;
-      case 'field_test': return <FieldTestDesktop />;
-      case 'verification': return <div className="flex flex-col h-full"><VerificationConsole /><div className="flex-1 overflow-auto"><ShowPlanInspector /></div></div>;
+      case 'field_test': return isEnabled('module_pairing_mobilelink') ? <FieldTestDesktop /> : <div className="p-4 text-xs text-muted-foreground">Field Test desabilitado por feature flag.</div>;
+      case 'verification': return isEnabled('module_verification') ? <div className="flex flex-col h-full"><VerificationConsole /><div className="flex-1 overflow-auto"><ShowPlanInspector /></div></div> : <div className="p-4 text-xs text-muted-foreground">Verification desabilitado por feature flag.</div>;
       case 'continuity': return <ContinuityMatrix />;
       case 'sys_overview': return <SystemOverviewConsole />;
       case 'safety_console': return <SafetyConsole />;
