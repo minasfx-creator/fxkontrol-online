@@ -777,7 +777,7 @@ function Index() {
           overflow: 'hidden',
         }}
       >
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center gap-1">
           <button
             onClick={() => setTimelineCollapsed(!timelineCollapsed)}
             className="flex items-center gap-1 px-3 h-6 rounded-t-lg bg-surface-1/95 border border-border/30 border-b-0 text-muted-foreground hover:text-foreground transition-all backdrop-blur-sm"
@@ -785,6 +785,17 @@ function Index() {
           >
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${timelineCollapsed ? 'rotate-180' : ''}`} />
             <span className="text-[9px] font-semibold uppercase tracking-wider">Timeline</span>
+          </button>
+          <button
+            onClick={() => {
+              resetTimelineView();
+              window.location.reload();
+            }}
+            className="flex items-center justify-center w-6 h-6 rounded-t-lg bg-surface-1/95 border border-border/30 border-b-0 text-muted-foreground hover:text-foreground transition-all backdrop-blur-sm"
+            title="Reset Timeline View (zoom / scroll / collapsed)"
+            aria-label="Reset Timeline View"
+          >
+            <RotateCcw className="w-3 h-3" />
           </button>
         </div>
         {!timelineCollapsed && <Timeline />}
