@@ -19,22 +19,17 @@ import NotFound from "./pages/NotFound";
 
 const Install = lazy(lazyRetry(() => import("./pages/Install")));
 
-// Dashboard lazy-loaded — it's 658 lines with heavy imports
-const Dashboard = lazy(lazyRetry(() => import("./pages/Dashboard")));
+// Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
+const Office = lazy(lazyRetry(() => import("./pages/Office")));
 
 // Lazy-loaded heavy pages
 const Index = lazy(lazyRetry(() => import("./pages/Index")));
-const Agenda = lazy(lazyRetry(() => import("./pages/Agenda")));
-const Training = lazy(lazyRetry(() => import("./pages/Training")));
 const CommandCenter = lazy(lazyRetry(() => import("./pages/CommandCenter")));
 
 // Field ops console — wraps DevicePairing + FieldTest + MobileLinkPanel as tabs.
 const FieldOps = lazy(lazyRetry(() => import("./pages/FieldOps")));
 const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
-const Admin = lazy(lazyRetry(() => import("./pages/Admin")));
-const AccreditationDashboard = lazy(lazyRetry(() => import("./pages/AccreditationDashboard")));
 const PlatformStatus = lazy(lazyRetry(() => import("./pages/PlatformStatus")));
-const JoiPanel = lazy(lazyRetry(() => import("./ai/ui/JoiPanel")));
 const SwarmGPT = lazy(lazyRetry(() => import("./pages/SwarmGPT")));
 const DmxPyroDiagnostics = lazy(lazyRetry(() => import("./components/diagnostics/DmxPyroDiagnostics")));
 const NetworkSettings = lazy(lazyRetry(() => import("./pages/NetworkSettings")));
@@ -70,10 +65,10 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   const [params] = useSearchParams();
   if (loading) return null;
   if (user) {
-    // Resume the originally-requested route. Falls back to /editor so signed-in
-    // users land directly in the 3D viewport instead of the Dashboard splash.
+    // Resume the originally-requested route. Falls back to /office (Etapa 1
+    // do refactor 3-áreas) so signed-in users land na visão geral consolidada.
     const raw = params.get("next");
-    const target = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/editor";
+    const target = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/office";
     return <Navigate to={target} replace />;
   }
   return <>{children}</>;
@@ -114,22 +109,28 @@ function App() {
                         confirmation screen is the only thing visible while the webhook lands. */}
                     <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
                     <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-                      <Route path="/" element={<Dashboard />} />
+                      {/* ── 3 grandes áreas ───────────────────────────────────── */}
+                      <Route path="/" element={<Navigate to="/office" replace />} />
+                      <Route path="/office" element={<Office />} />
                       <Route path="/editor" element={<Index />} />
-                      <Route path="/agenda" element={<Agenda />} />
-                      <Route path="/training" element={<Training />} />
-                      {/* Unified field ops console (Pairing | Field Test | Mobile Link). Gated. */}
-                      <Route path="/field" element={isEnabled('module_pairing_mobilelink') ? <FieldOps /> : <Navigate to="/" replace />} />
-                      {/* Legacy routes — redirect to consolidated /field with hash anchor (or home if disabled). */}
-                      <Route path="/pairing" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#pairing" replace /> : <Navigate to="/" replace />} />
-                      <Route path="/field-test" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#field-test" replace /> : <Navigate to="/" replace />} />
                       <Route path="/command" element={<CommandCenter />} />
+
+                      {/* ── Redirects: rotas antigas → nova estrutura ─────────── */}
+                      <Route path="/agenda" element={<Navigate to="/office?tab=agenda" replace />} />
+                      <Route path="/training" element={<Navigate to="/office?tab=training" replace />} />
+                      <Route path="/admin" element={<Navigate to="/office?tab=compliance" replace />} />
+                      <Route path="/accreditation" element={<Navigate to="/office?tab=documents" replace />} />
+                      <Route path="/joi" element={<Navigate to="/office?tab=joi" replace />} />
+
+                      {/* ── Field ops (gated) ─────────────────────────────────── */}
+                      <Route path="/field" element={isEnabled('module_pairing_mobilelink') ? <FieldOps /> : <Navigate to="/office" replace />} />
+                      <Route path="/pairing" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#pairing" replace /> : <Navigate to="/office" replace />} />
+                      <Route path="/field-test" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#field-test" replace /> : <Navigate to="/office" replace />} />
+
+                      {/* ── Settings & sistema ────────────────────────────────── */}
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/settings/network" element={<NetworkSettings />} />
                       <Route path="/platform-status" element={<PlatformStatus />} />
-                      <Route path="/admin" element={<Admin />} />
-                      <Route path="/accreditation" element={<AccreditationDashboard />} />
-                      <Route path="/joi" element={<JoiPanel />} />
                       <Route path="/swarmgpt" element={<SwarmGPT />} />
                     </Route>
                     <Route path="*" element={<NotFound />} />
