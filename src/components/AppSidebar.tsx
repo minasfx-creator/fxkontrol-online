@@ -28,7 +28,7 @@ import minasfxLogo from '@/assets/minasfx-logo-white.png';
 // via redirects em App.tsx (zero quebra para bookmarks).
 const navItems = [
   { title: 'Office', url: '/office', icon: Briefcase, desc: 'Produtividade & docs' },
-  { title: 'Studio', url: '/editor', icon: Wand2, desc: 'Criação 3D AI-first' },
+  { title: 'Studio', url: '/studio', icon: Wand2, desc: 'Criação 3D AI-first' },
   { title: 'Command', url: '/command', icon: Crosshair, desc: 'Execução ao vivo' },
 ];
 
