@@ -414,14 +414,12 @@ function Index() {
 
   const desktopTopOffset = '56px';
   const desktopTimelineHeight = viewportMaximized ? '0px' : timelineCollapsed ? '42px' : '34vh';
-  const leftRailWidth = viewportMaximized ? 0 : 56;
-  const leftSidebarWidth = viewportMaximized ? 0 : leftDockOpen === 'effects' ? 312 : 0;
-  const leftOverlayWidth = viewportMaximized || !leftDockOpen || leftDockOpen === 'effects' ? 0 : 312;
+  const leftRailWidth = 0; // rail removed
+  const leftSidebarWidth = 0;
   const rightDockWidth = viewportMaximized ? 0 : 52;
   const rightPanelWidth = activePanel && !viewportMaximized ? 472 : 0;
   const canvasLeftInset = `${leftRailWidth + leftSidebarWidth}px`;
   const canvasRightInset = `${rightDockWidth + rightPanelWidth}px`;
-  const showLeftOverlayPanel = leftDockOpen === 'scene' || leftDockOpen === 'showsettings';
 
   if (appPhase === 'cinematic') return <Suspense fallback={<CanvasLoader />}><CinematicIntro onComplete={() => setAppPhase('splash')} /></Suspense>;
   if (appPhase === 'splash') return <Suspense fallback={<CanvasLoader />}><SplashScreen onStart={() => setAppPhase('editor')} showVideoBackground /></Suspense>;
