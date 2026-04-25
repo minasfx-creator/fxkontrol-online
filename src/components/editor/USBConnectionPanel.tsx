@@ -387,6 +387,15 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
             {devices.map(device => {
               const stateInfo = STATE_INDICATORS[device.state];
               const isExpanded = expandedDevice === device.id;
+              const adapter = detectDMXAdapter(device.profile);
+              // Saída DMX USB só é habilitada se: (1) tipo dmx, (2) adapter
+              // reconhecido, (3) porta autorizada pelo navegador (writer existe)
+              // e (4) estado === 'connected'.
+              const dmxOutputReady =
+                device.profile.type === 'dmx' &&
+                adapter.kind !== 'non-dmx' &&
+                device.state === 'connected' &&
+                !!device.writer;
               return (
                 <div key={device.id} className="bg-surface-2 rounded-sm overflow-hidden">
                   {/* Device Header */}
@@ -405,6 +414,45 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                     </div>
                     {isExpanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
                   </button>
+
+                  {/* Recognition + DMX-output readiness panel (always visible) */}
+                  {device.profile.type === 'dmx' && (
+                    <div className="px-1.5 pb-1.5 space-y-1">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className={`text-[8px] px-1.5 py-0.5 rounded-sm font-semibold ${adapter.badgeClass}`}>
+                          {adapter.label}
+                        </span>
+                        <span className="text-[8px] px-1.5 py-0.5 rounded-sm bg-surface-0 text-muted-foreground font-mono-code">
+                          {adapter.protocol}
+                        </span>
+                        {adapter.rdmCapable && (
+                          <span className="text-[8px] px-1.5 py-0.5 rounded-sm bg-primary/15 text-primary font-semibold">
+                            RDM
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 text-[8px]">
+                        {dmxOutputReady ? (
+                          <>
+                            <CheckCircle2 className="w-2.5 h-2.5 text-green-500 shrink-0" />
+                            <span className="text-green-400">
+                              Saída DMX USB pronta · porta autorizada · {device.profile.baudRate} baud
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
+                            <span className="text-muted-foreground">
+                              {device.state === 'connecting' && 'Aguardando autorização do navegador...'}
+                              {device.state === 'disconnected' && 'Saída DMX desabilitada — não conectado'}
+                              {device.state === 'error' && 'Saída DMX desabilitada — erro de conexão'}
+                              {device.state === 'connected' && !device.writer && 'Saída DMX desabilitada — porta sem writer'}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Expanded Controls */}
                   {isExpanded && (
@@ -437,11 +485,16 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                               variant="outline"
                               className={`h-6 text-[9px] w-full gap-1 ${isMobile ? 'h-9 text-xs' : ''}`}
                               onClick={() => sendDMXTest(device.id)}
+                              disabled={!dmxOutputReady}
+                              title={dmxOutputReady ? 'Enviar frame DMX de teste' : 'Aguardando autorização e conexão da porta'}
                             >
                               <Zap className="h-3 w-3" />
-                              DMX Test Frame (Rainbow)
+                              {dmxOutputReady
+                                ? 'DMX Test Frame (Rainbow)'
+                                : 'DMX Test (aguardando autorização)'}
                             </Button>
                           )}
+
 
                           {/* Last received data */}
                           {device.lastData && (
