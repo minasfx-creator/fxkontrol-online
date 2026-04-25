@@ -7,7 +7,7 @@ import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEditorKeyboardShortcuts } from '@/hooks/useEditorKeyboardShortcuts';
 import { useViewportDrop } from '@/hooks/useViewportDrop';
-import { Upload, ChevronDown, ChevronLeft, ChevronRight, Sparkles, Paintbrush, Cog, X } from 'lucide-react';
+import { Upload, ChevronDown, ChevronLeft, ChevronRight, Sparkles, Paintbrush, Cog, X, RotateCcw } from 'lucide-react';
 import ViewportNavControls from '@/components/editor/ViewportNavControls';
 import { useDisplayStore } from '@/store/useDisplayStore';
 import type { WorldShowPreset } from '@/data/worldShowPresets';
