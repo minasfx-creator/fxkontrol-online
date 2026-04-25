@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { Usb, Bluetooth, Wifi, Cable } from 'lucide-react';
 import { unifiedDiscovery } from '@/core/discovery/UnifiedDiscoveryService';
+import { useTransportFilters } from '@/core/discovery/useTransportFilters';
 import type { DiscoveredDevice, DiscoveryTransport } from '@/core/discovery/types';
 import { cn } from '@/lib/utils';
 
