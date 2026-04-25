@@ -157,7 +157,7 @@ class WebUsbDiscoverer implements TransportDiscoverer {
     const onDisconnect = (ev: Event) => {
       const d = (ev as USBConnectionEvent).device;
       if (!d) return;
-      const id = `webusb:${keyFor({ vendorId: d.vendorId, productId: d.productId })}${d.serialNumber ? ':' + d.serialNumber : ''}`;
+      const id = `webusb:${keyFor({ vendorId: d.vendorId, productId: d.productId, serialNumber: d.serialNumber })}`;
       const dev = this._devices.get(id);
       if (dev) {
         this._devices.delete(id);
