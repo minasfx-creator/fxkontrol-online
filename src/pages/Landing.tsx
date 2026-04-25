@@ -219,6 +219,7 @@ export default function Landing() {
             <Link to="/pricing" className="rounded transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background">Planos</Link>
           </nav>
           <div className="flex flex-shrink-0 items-center gap-2">
+            <LandingThemeToggle />
             <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
               <Link to="/auth">Entrar</Link>
             </Button>
