@@ -13,6 +13,7 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { Crosshair } from 'lucide-react';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
+import { useClockTimeRef } from '@/hooks/useClockTimeRef';
 
 // Variáveis Globais de Memória Estática (Previnem o "Garbage Collector Stutter")
 const _O = new THREE.Object3D();
