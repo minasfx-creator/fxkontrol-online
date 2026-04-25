@@ -636,20 +636,12 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                             </Button>
                           </div>
 
-                          {device.profile.type === 'dmx' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className={`h-6 text-[9px] w-full gap-1 ${isMobile ? 'h-9 text-xs' : ''}`}
-                              onClick={() => sendDMXTest(device.id)}
-                              disabled={!dmxOutputReady}
-                              title={dmxOutputReady ? 'Enviar frame DMX de teste' : 'Aguardando autorização e conexão da porta'}
-                            >
-                              <Zap className="h-3 w-3" />
-                              {dmxOutputReady
-                                ? 'DMX Test Frame (Rainbow)'
-                                : 'DMX Test (aguardando autorização)'}
-                            </Button>
+                          {/* Generic adapter Hold-to-Confirm gate */}
+                          {needsConfirmation && (
+                            <GenericAdapterConfirm
+                              deviceId={device.id}
+                              deviceLabel={device.profile.label}
+                            />
                           )}
 
 
