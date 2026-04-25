@@ -10,6 +10,7 @@
  */
 
 import { logger } from '@/lib/logger';
+import { getReopenMatchPolicy } from './useReopenMatchPolicy';
 
 const STORAGE_KEY = 'fxk:portRegistry:v1';
 const MAX_ENTRIES = 50;
@@ -73,11 +74,32 @@ function save(entries: PortRegistryEntry[]): void {
   }
 }
 
-export function keyFor(opts: { vendorId?: number; productId?: number; host?: string }): string {
+/**
+ * Build the canonical registry key for a device.
+ *
+ * When `serialNumber` is provided AND the active reopen-match policy is
+ * `'vidpid+serial'`, the serial is appended so different physical units
+ * of the same VID:PID family get distinct registry entries (and therefore
+ * independent auto-reopen state). Otherwise the legacy VID:PID-only key
+ * is returned for backwards compatibility.
+ */
+export function keyFor(opts: {
+  vendorId?: number;
+  productId?: number;
+  host?: string;
+  serialNumber?: string;
+  /** Override the global policy (mainly for tests / explicit callers). */
+  policy?: 'vidpid' | 'vidpid+serial';
+}): string {
   if (opts.host) return `host:${opts.host}`;
   const vid = opts.vendorId?.toString(16).padStart(4, '0') ?? 'xxxx';
   const pid = opts.productId?.toString(16).padStart(4, '0') ?? 'xxxx';
-  return `${vid}:${pid}`;
+  const base = `${vid}:${pid}`;
+  const policy = opts.policy ?? getReopenMatchPolicy();
+  if (policy === 'vidpid+serial' && opts.serialNumber) {
+    return `${base}:${opts.serialNumber}`;
+  }
+  return base;
 }
 
 export const portRegistry = {
@@ -134,6 +156,8 @@ export const portRegistry = {
     vendorId?: number;
     productId?: number;
     host?: string;
+    /** USB serial number — honored only when policy is `vidpid+serial`. */
+    serialNumber?: string;
     label: string;
     profileId?: string;
     dmxAdapterKind?: string;
@@ -142,6 +166,7 @@ export const portRegistry = {
       vendorId: opts.vendorId,
       productId: opts.productId,
       host: opts.host,
+      serialNumber: opts.serialNumber,
     });
     const cur = this.get(key);
     return this.upsert({
