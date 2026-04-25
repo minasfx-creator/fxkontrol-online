@@ -1,10 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Sparkles, X, Megaphone, MessageSquarePlus, Plug, Clock } from 'lucide-react';
+import { Sparkles, X, Megaphone, MessageSquarePlus, Plug, Clock, Mail, CheckCircle2, Loader2 } from 'lucide-react';
+import { z } from 'zod';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import BetaFeedbackDialog from './BetaFeedbackDialog';
 
 type DialogCategory = 'bug' | 'suggestion' | 'integration' | 'other';
 
 const STORAGE_KEY = 'beta_promo_banner_dismissed_v1';
+const PRESIGNUP_KEY = 'beta_presignup_email_v1';
+
+// Promotional pricing details — surfaced in the confirmation message.
+const PROMO = {
+  monthly: 'R$ 149/mês',
+  yearly: 'R$ 1.490/ano',
+  retail: 'R$ 349/mês',
+  savings: '57% OFF',
+  perks: ['Lock-in vitalício do preço', 'Acesso prioritário a novos módulos', 'Suporte direto com a engenharia'],
+} as const;
+
+const emailSchema = z.string().trim().toLowerCase().email('Email inválido').max(255);
 
 // Default end date for the Beta promotion. Override via prop or VITE_BETA_PROMO_ENDS_AT (ISO string).
 const DEFAULT_ENDS_AT =
@@ -37,6 +52,15 @@ export default function BetaPromoBanner({ endsAt = DEFAULT_ENDS_AT }: BetaPromoB
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [dialogCategory, setDialogCategory] = useState<DialogCategory>('bug');
 
+  // Pre-signup capture
+  const [presignupOpen, setPresignupOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [confirmedEmail, setConfirmedEmail] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(PRESIGNUP_KEY);
+  });
+
   // Schedule: parse end date once, then tick every second to drive countdown + auto-hide.
   const endsAtMs = useMemo(() => {
     if (!endsAt) return null;
@@ -68,6 +92,42 @@ export default function BetaPromoBanner({ endsAt = DEFAULT_ENDS_AT }: BetaPromoB
   const handleDismiss = () => {
     localStorage.setItem(STORAGE_KEY, '1');
     setDismissed(true);
+  };
+
+  const handlePresignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = emailSchema.safeParse(email);
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message ?? 'Email inválido');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { error } = await (supabase as any).from('beta_feedback').insert({
+        category: 'presignup',
+        message: `Pre-signup: ${parsed.data}`,
+        contact_email: parsed.data,
+        route: typeof window !== 'undefined' ? window.location.pathname : null,
+        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        app_version: (import.meta.env.VITE_APP_VERSION as string | undefined) ?? 'beta',
+        metadata: { source: 'beta_promo_banner', promo: PROMO },
+      });
+      if (error) throw error;
+      localStorage.setItem(PRESIGNUP_KEY, parsed.data);
+      setConfirmedEmail(parsed.data);
+      setEmail('');
+      setPresignupOpen(false);
+      toast.success('Pré-assinatura confirmada!', {
+        description: `${parsed.data} · ${PROMO.monthly} (${PROMO.savings} vs ${PROMO.retail})`,
+      });
+    } catch (err: any) {
+      console.error('[BetaPromoBanner] presignup failed', err);
+      toast.error('Falha ao registrar', {
+        description: err?.message ?? 'Tente novamente em instantes.',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -154,6 +214,89 @@ export default function BetaPromoBanner({ endsAt = DEFAULT_ENDS_AT }: BetaPromoB
             </p>
           </div>
         </div>
+
+        {/* Pre-signup email capture */}
+        {confirmedEmail ? (
+          <div
+            className="shrink-0 hidden sm:flex items-center gap-1.5 h-7 px-2.5 rounded text-[10px] md:text-[11px] font-bold uppercase tracking-wider"
+            style={{
+              background: 'hsl(140 60% 40% / 0.18)',
+              color: 'hsl(140 70% 70%)',
+              border: '1px solid hsl(140 60% 45% / 0.5)',
+            }}
+            title={`Pré-assinatura confirmada para ${confirmedEmail} · ${PROMO.monthly}`}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            <span className="hidden md:inline">Pré-assinatura ativa</span>
+            <span className="md:hidden">Confirmado</span>
+          </div>
+        ) : presignupOpen ? (
+          <form onSubmit={handlePresignup} className="shrink-0 flex items-center gap-1">
+            <input
+              type="email"
+              value={email}
+              onChange={(ev) => setEmail(ev.target.value)}
+              autoFocus
+              required
+              maxLength={255}
+              placeholder="seu@email.com"
+              disabled={submitting}
+              className="h-7 w-[160px] sm:w-[200px] px-2 rounded text-[11px] bg-background/80 border outline-none focus:ring-1"
+              style={{
+                borderColor: 'hsl(32 100% 50% / 0.5)',
+                color: 'hsl(var(--foreground))',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={submitting}
+              className="h-7 px-2.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all active:scale-95 disabled:opacity-60"
+              style={{
+                background: 'hsl(32 100% 50% / 0.35)',
+                color: 'hsl(32 100% 80%)',
+                border: '1px solid hsl(32 100% 50% / 0.6)',
+              }}
+            >
+              {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Garantir'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setPresignupOpen(false); setEmail(''); }}
+              aria-label="Cancelar"
+              className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </form>
+        ) : (
+          <>
+            <button
+              onClick={() => setPresignupOpen(true)}
+              className="shrink-0 hidden sm:flex items-center gap-1.5 h-7 px-2.5 rounded text-[10px] md:text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95"
+              style={{
+                background: 'hsl(32 100% 50% / 0.3)',
+                color: 'hsl(32 100% 80%)',
+                border: '1px solid hsl(32 100% 50% / 0.6)',
+              }}
+              title={`Pré-assinatura ${PROMO.monthly} · ${PROMO.savings} vs ${PROMO.retail}`}
+            >
+              <Mail className="h-3.5 w-3.5" />
+              <span>Pré-assinar {PROMO.monthly}</span>
+            </button>
+            <button
+              onClick={() => setPresignupOpen(true)}
+              aria-label="Pré-assinar com email"
+              className="shrink-0 sm:hidden flex items-center justify-center h-7 w-7 rounded transition-all active:scale-90"
+              style={{
+                background: 'hsl(32 100% 50% / 0.3)',
+                color: 'hsl(32 100% 80%)',
+                border: '1px solid hsl(32 100% 50% / 0.6)',
+              }}
+            >
+              <Mail className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
 
         {/* Integrate Equipment link (desktop) */}
         <button
