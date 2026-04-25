@@ -12,8 +12,14 @@ export default function BetaPromoBanner() {
     return localStorage.getItem(STORAGE_KEY) === '1';
   });
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [dialogCategory, setDialogCategory] = useState<DialogCategory>('bug');
 
   if (dismissed) return null;
+
+  const openFeedback = (cat: DialogCategory) => {
+    setDialogCategory(cat);
+    setFeedbackOpen(true);
+  };
 
   const handleDismiss = () => {
     localStorage.setItem(STORAGE_KEY, '1');
