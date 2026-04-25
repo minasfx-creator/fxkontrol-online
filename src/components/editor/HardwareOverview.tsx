@@ -21,6 +21,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { DiscoveryGrid } from './hardware/DiscoveryGrid';
+import { TransportFilterChips } from './hardware/TransportFilterChips';
 import { unifiedDiscovery } from '@/core/discovery/UnifiedDiscoveryService';
 import {
   buildDiscoveryReports, notifyDiscoveryReports, getRetryableTransports,
@@ -186,8 +187,11 @@ export default function HardwareOverview() {
       )}
 
       {/* Real Discovery Grid (Serial / USB / BLE / Art-Net) */}
-      <div className="space-y-1">
-        <span className="text-[7px] font-mono text-muted-foreground/50 uppercase tracking-wider">Real Discovery — transports</span>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <span className="text-[7px] font-mono text-muted-foreground/50 uppercase tracking-wider">Real Discovery — transports</span>
+          <TransportFilterChips />
+        </div>
         <DiscoveryGrid />
       </div>
 
