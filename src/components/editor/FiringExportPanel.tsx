@@ -356,6 +356,10 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
         <Button
           variant="outline" size="sm" className="w-full h-7 text-[10px]"
           onClick={() => {
+            if (!canExport) {
+              promptUpgrade({ reason: 'export', feature: 'Export All' });
+              return;
+            }
             FIRING_SYSTEMS.forEach(sys => handleExport(sys));
             toast.success('Exported to all systems!');
           }}
