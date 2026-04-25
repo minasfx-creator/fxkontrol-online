@@ -139,7 +139,7 @@ class WebSerialDiscoverer implements TransportDiscoverer {
       serial: EventTarget & { getPorts(): Promise<SerialPortLike[]> };
     };
     const onConnect = (ev: Event) => {
-      const port = (ev as SerialEvt).port ?? (ev.target as SerialPortLike);
+      const port = (ev as SerialEvt).port ?? ((ev.target as unknown) as SerialPortLike | undefined);
       if (!port) return;
       const dev = portToDevice(port);
       this._portByDeviceId.set(dev.id, port);
@@ -148,7 +148,7 @@ class WebSerialDiscoverer implements TransportDiscoverer {
       logger.info('[WebSerialDiscoverer] hot-plug connect', dev.id);
     };
     const onDisconnect = (ev: Event) => {
-      const port = (ev as SerialEvt).port ?? (ev.target as SerialPortLike);
+      const port = (ev as SerialEvt).port ?? ((ev.target as unknown) as SerialPortLike | undefined);
       if (!port) return;
       const info = port.getInfo();
       const id = `webserial:${keyFor({ vendorId: info.usbVendorId, productId: info.usbProductId })}`;
