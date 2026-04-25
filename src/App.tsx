@@ -25,10 +25,9 @@ const Dashboard = lazy(lazyRetry(() => import("./pages/Dashboard")));
 const Index = lazy(lazyRetry(() => import("./pages/Index")));
 const Agenda = lazy(lazyRetry(() => import("./pages/Agenda")));
 const Training = lazy(lazyRetry(() => import("./pages/Training")));
-const DevicePairing = lazy(lazyRetry(() => import("./pages/DevicePairing")));
 const CommandCenter = lazy(lazyRetry(() => import("./pages/CommandCenter")));
 
-const FieldTest = lazy(lazyRetry(() => import("./pages/FieldTest")));
+// Field ops console — wraps DevicePairing + FieldTest + MobileLinkPanel as tabs.
 const FieldOps = lazy(lazyRetry(() => import("./pages/FieldOps")));
 const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
 const Admin = lazy(lazyRetry(() => import("./pages/Admin")));
