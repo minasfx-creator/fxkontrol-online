@@ -55,6 +55,10 @@ interface USBDeviceStore {
   confirmGenericAdapter: (deviceId: string, mode: GenericConfirmMode) => void;
   /** Revoke a prior generic-adapter confirmation. */
   revokeGenericAdapter: (deviceId: string) => void;
+  /** Pin a per-device DMX profile (Open DMX vs ENTTEC Pro vs vendor preset). */
+  setProfileOverride: (deviceId: string, kind: DMXProfileOverrideKind) => void;
+  /** Clear the profile override and fall back to label-based detection. */
+  clearProfileOverride: (deviceId: string) => void;
   getConnectedDMXDevices: () => USBDMXDevice[];
   /** Only devices that are connected, authorized AND ready to TX (recognized or confirmed). */
   getAuthorizedDMXDevices: () => USBDMXDevice[];
