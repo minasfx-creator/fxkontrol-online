@@ -113,11 +113,12 @@ function App() {
                     <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
                     <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                       {/* ── 3 grandes áreas ───────────────────────────────────── */}
-                      <Route path="/" element={<Navigate to="/office" replace />} />
+                      {/* Default landing → Studio 3D viewport (entrada principal). */}
+                      <Route path="/" element={<Navigate to="/studio" replace />} />
                       <Route path="/office" element={<Office />} />
-                      <Route path="/editor" element={<Index />} />
-                      {/* Studio = editor 3D pré-carregado com o modal de prompt AI-first */}
-                      <Route path="/studio" element={<Navigate to="/editor?prompt=1" replace />} />
+                      {/* Studio = editor 3D. /editor mantido como alias legacy. */}
+                      <Route path="/studio" element={<Index />} />
+                      <Route path="/editor" element={<Navigate to="/studio" replace />} />
                       <Route path="/command" element={<CommandCenter />} />
 
                       {/* ── Redirects: rotas antigas → nova estrutura ─────────── */}
