@@ -11,6 +11,8 @@ import { downloadKMZ, downloadAnimatedKML } from '@/lib/kmzExporter';
 import { exportSkyc, downloadSkycFile, exportShowCSV, exportVideoChoreoSkyc } from '@/lib/skycExporter';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import { promptUpgrade } from '@/lib/upgradePrompt';
 
 export default function FiringExportPanel({ onClose }: { onClose: () => void }) {
   const [search, setSearch] = useState('');
@@ -19,6 +21,7 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
   const positions = useProjectStore(s => s.positions);
   const projectName = useProjectStore(s => s.projectName);
   const hardware = useFireOneHardware();
+  const { canExport } = useEntitlements();
 
   const pyroCount = items.filter(i => {
     const e = useProjectStore.getState().timelineItems.find(t => t.id === i.id);
@@ -32,6 +35,10 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
   );
 
   const handleExport = useCallback((sys: FiringSystem) => {
+    if (!canExport) {
+      promptUpgrade({ reason: 'export', feature: sys.name });
+      return;
+    }
     try {
       const content = sys.exportFn(items, positions);
       const filename = `${projectName.replace(/\s+/g, '_')}_${sys.id}.${sys.fileExt}`;
@@ -40,7 +47,7 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
     } catch (err) {
       toast.error(`Export failed: ${(err as Error).message}`);
     }
-  }, [items, positions, projectName]);
+  }, [items, positions, projectName, canExport]);
 
   const grouped = {
     '🇺🇸 Americas': filtered.filter(s => ['🇺🇸', '🇧🇷', '🌐'].includes(s.country)),
