@@ -556,20 +556,22 @@ export default function Landing() {
         </div>
       </section>
 
+      </main>
+
       {/* ── FOOTER ─────────────────────────────────────────────────────── */}
       <footer className="border-t border-border/40 bg-[hsl(var(--surface-1))] py-10">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 text-xs text-muted-foreground sm:px-6 md:flex-row md:px-8">
           <div className="flex items-center gap-2">
-            <div className="h-5 w-5 rounded-md bg-gradient-to-br from-primary to-[hsl(var(--electric-glow))]" />
+            <div aria-hidden="true" className="h-5 w-5 rounded-md bg-gradient-to-br from-primary to-[hsl(var(--electric-glow))]" />
             <span className="font-bold tracking-[0.18em] text-foreground/80">FX KONTROL</span>
             <span>© {new Date().getFullYear()} Minas FX</span>
           </div>
-          <div className="flex items-center gap-5">
+          <nav aria-label="Rodapé" className="flex items-center gap-5">
             <Link to="/legal/terms" className="transition hover:text-foreground">Termos</Link>
             <Link to="/legal/privacy" className="transition hover:text-foreground">Privacidade</Link>
             <Link to="/legal/refund" className="transition hover:text-foreground">Reembolso</Link>
             <Link to="/pricing" className="transition hover:text-foreground">Planos</Link>
-          </div>
+          </nav>
         </div>
       </footer>
     </div>
