@@ -87,8 +87,8 @@ async function auditVariant(target: Target): Promise<VariantReport> {
     ),
   );
 
-  // Wait for useEffect + head injection.
-  await new Promise((r) => setTimeout(r, 100));
+  // Wait for useEffect + head injection (commit + microtasks + rAF).
+  await new Promise((r) => setTimeout(r, 300));
 
   const head = dom.window.document.head;
   const get = (sel: string) =>
