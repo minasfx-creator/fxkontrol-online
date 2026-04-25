@@ -46,6 +46,14 @@ export function DiscoveryGrid() {
     ['webserial', 'webusb', 'webble', 'mdns-artnet'] as DiscoveryTransport[]
   ).filter(t => enabled[t] !== false);
 
+  if (transports.length === 0) {
+    return (
+      <div className="rounded border border-amber-500/30 bg-amber-500/5 p-2 text-[8px] font-mono text-amber-300/90 text-center">
+        Todos os transportes estão filtrados. Reative pelo menos um nos chips acima.
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
       {transports.map(t => {
