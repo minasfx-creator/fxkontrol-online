@@ -67,7 +67,15 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
 
   const [usbStreaming, setUsbStreaming] = useState(false);
   const [usbStreamFps, setUsbStreamFps] = useState<10 | 20 | 40>(persistedFps);
-  const [usbStreamStats, setUsbStreamStats] = useState({ frames: 0, lastLatencyMs: 0 });
+  const [usbStreamStats, setUsbStreamStats] = useState({
+    frames: 0,
+    lastLatencyMs: 0,
+    avgLatencyMs: 0,
+    maxLatencyMs: 0,
+  });
+  // Acumuladores zero-GC para latência (EWMA + max). Atualizados em todo
+  // tick; UI é re-renderizada no máx ~5 Hz para evitar render storm @ 40Hz.
+  const latencyAccRef = useRef({ avg: 0, max: 0, lastFlushMs: 0 });
   const universesRef = useRef<DMXUniverse[]>([]);
   const autoResumeAttemptedRef = useRef(false);
 
@@ -317,7 +325,21 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     fps: usbStreamFps,
     enabled: usbStreaming,
     onTick: ({ frames, latencyMs }) => {
-      setUsbStreamStats({ frames, lastLatencyMs: latencyMs });
+      // EWMA (α=0.2) para média suavizada + max running. Zero alocações.
+      const acc = latencyAccRef.current;
+      acc.avg = acc.avg === 0 ? latencyMs : acc.avg * 0.8 + latencyMs * 0.2;
+      if (latencyMs > acc.max) acc.max = latencyMs;
+      // Throttle de UI: flush a cada ~200ms (5Hz) — independe do FPS DMX.
+      const now = performance.now();
+      if (now - acc.lastFlushMs >= 200) {
+        acc.lastFlushMs = now;
+        setUsbStreamStats({
+          frames,
+          lastLatencyMs: latencyMs,
+          avgLatencyMs: Math.round(acc.avg),
+          maxLatencyMs: acc.max,
+        });
+      }
     },
     onError: (err) => {
       addDiagLog({ timestamp: new Date(), type: 'error', message: `USB stream falhou: ${err.message}` });
@@ -341,7 +363,10 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
       toast.error('Nenhum dispositivo DMX USB conectado');
       return;
     }
-    setUsbStreamStats({ frames: 0, lastLatencyMs: 0 });
+    setUsbStreamStats({ frames: 0, lastLatencyMs: 0, avgLatencyMs: 0, maxLatencyMs: 0 });
+    latencyAccRef.current.avg = 0;
+    latencyAccRef.current.max = 0;
+    latencyAccRef.current.lastFlushMs = 0;
     setUsbStreaming(true);
     setPersistedStreamingDesired(true);
     addDiagLog({
