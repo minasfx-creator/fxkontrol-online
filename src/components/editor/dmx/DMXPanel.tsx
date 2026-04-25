@@ -6,6 +6,7 @@ import { useUSBDMXBroadcast } from '@/hooks/useUSBDMXBroadcast';
 import DMXMonitorGrid from './DMXMonitorGrid';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useDMXPanelPrefs } from '@/store/useDMXPanelPrefs';
+import { useFrameDropMonitor } from '@/hooks/useFrameDropMonitor';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { Button } from '@/components/ui/button';
 import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
