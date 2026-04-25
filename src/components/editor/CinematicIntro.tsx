@@ -114,15 +114,12 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
     return () => clearTimeout(t);
   }, [phase, onComplete]);
 
-  const handleVideo1End = useCallback(() => setPhase('cross-fade'), []);
   const handleVideo2End = useCallback(() => setPhase('start-wait'), []);
 
   const handleSkip = useCallback(() => {
     if (!canSkip) return;
     if (phase === 'start-wait' || phase === 'boot-start') return;
-    video1Ref.current?.pause();
     video2Ref.current?.pause();
-    setV1Opacity(0);
     setV2Opacity(0);
     if (useFallback || phase === 'boot-text' || phase === 'boot-logo') {
       setPhase('boot-start');
@@ -141,7 +138,6 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
   const handleVideoError = useCallback(() => {
     setUseFallback(true);
     if (phase === 'black-in') return; // will be caught in black-in effect
-    setV1Opacity(0);
     setV2Opacity(0);
     setPhase('boot-text');
   }, [phase]);
