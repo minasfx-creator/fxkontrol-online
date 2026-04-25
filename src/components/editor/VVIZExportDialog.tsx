@@ -58,7 +58,7 @@ export default function VVIZExportDialog({ open, onOpenChange }: VVIZExportDialo
     } finally {
       setExporting(false);
     }
-  }, [projectName, duration, timelineItems, positions, trajectories, droneFormations, showName, positionRate, colorRate, coordFrame, noTrail, onOpenChange]);
+  }, [projectName, duration, timelineItems, positions, trajectories, droneFormations, showName, positionRate, colorRate, coordFrame, noTrail, onOpenChange, canExport]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
