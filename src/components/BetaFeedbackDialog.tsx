@@ -323,6 +323,64 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
             />
           </div>
 
+          {/* Attachments */}
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
+              Anexos <span className="opacity-60">(PNG/JPG/WEBP/PDF · até 5 MB · máx {MAX_FILES})</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <label
+                className={`inline-flex items-center gap-2 rounded-md border border-dashed border-border bg-background hover:bg-accent px-3 py-2 text-xs font-medium cursor-pointer transition-colors ${
+                  files.length >= MAX_FILES ? 'opacity-50 pointer-events-none' : ''
+                }`}
+              >
+                <Paperclip className="h-3.5 w-3.5" />
+                Adicionar arquivo
+                <input
+                  type="file"
+                  multiple
+                  accept={ACCEPTED_TYPES.join(',')}
+                  className="hidden"
+                  onChange={(e) => {
+                    handleAddFiles(e.target.files);
+                    e.target.value = '';
+                  }}
+                  disabled={files.length >= MAX_FILES}
+                />
+              </label>
+              <span className="text-[10px] text-muted-foreground">
+                {files.length}/{MAX_FILES}
+              </span>
+            </div>
+            {files.length > 0 && (
+              <ul className="mt-2 space-y-1">
+                {files.map((f, i) => {
+                  const isImg = f.type.startsWith('image/');
+                  return (
+                    <li
+                      key={`${f.name}-${i}`}
+                      className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2 py-1.5 text-[11px]"
+                    >
+                      {isImg ? <ImageIcon className="h-3.5 w-3.5 text-primary" /> : <FileText className="h-3.5 w-3.5 text-primary" />}
+                      <span className="flex-1 truncate">{f.name}</span>
+                      <span className="text-muted-foreground text-[10px]">
+                        {(f.size / 1024).toFixed(0)} KB
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(i)}
+                        className="text-muted-foreground hover:text-destructive transition-colors"
+                        aria-label={`Remover ${f.name}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
           {/* Tech context preview */}
           {techContext && (
             <div className="rounded-md border border-border bg-muted/30 p-3 text-[10px] font-mono text-muted-foreground space-y-0.5">
