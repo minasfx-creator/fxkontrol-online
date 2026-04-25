@@ -772,6 +772,9 @@ function Index() {
       <RadialMenu />
       <LiveCard />
       <SmartScriptAssistant open={smartScriptOpen} onClose={() => setSmartScriptOpen(false)} />
+      <Suspense fallback={null}>
+        <StudioPromptModal open={studioPromptOpen} onOpenChange={setStudioPromptOpen} />
+      </Suspense>
 
     </div>
   );
