@@ -549,7 +549,11 @@ export default function SkyCanvas() {
         performance={{ min: isLowTierMobile ? 0.35 : 0.5 }}
         onCreated={() => {
           recoveringContextRef.current = false;
-          setTimeout(() => setCanvasReady(true), 100);
+          if (canvasReadyTimerRef.current) clearTimeout(canvasReadyTimerRef.current);
+          canvasReadyTimerRef.current = setTimeout(() => {
+            setCanvasReady(true);
+            canvasReadyTimerRef.current = null;
+          }, 100);
         }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={60} near={0.1} far={500000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode || groundMode} flyMode={flyMode || groundMode} />
