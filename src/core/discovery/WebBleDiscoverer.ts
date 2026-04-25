@@ -78,6 +78,7 @@ class WebBleDiscoverer implements TransportDiscoverer {
       for (const d of devs) {
         const dev = bleToDiscovered(d);
         seen.add(dev.id);
+        this._rawByDeviceId.set(dev.id, d);
         const prev = this._devices.get(dev.id);
         this._devices.set(dev.id, dev);
         this._emit({ type: prev ? 'updated' : 'discovered', device: dev });
@@ -86,6 +87,7 @@ class WebBleDiscoverer implements TransportDiscoverer {
       for (const [id, dev] of this._devices) {
         if (!seen.has(id)) {
           this._devices.delete(id);
+          this._rawByDeviceId.delete(id);
           this._emit({ type: 'lost', device: { ...dev, online: false } });
         }
       }
