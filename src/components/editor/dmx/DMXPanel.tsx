@@ -73,6 +73,10 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     lastLatencyMs: 0,
     avgLatencyMs: 0,
     maxLatencyMs: 0,
+    fpsActual: 0,           // FPS medido (frames/janela), p/ comparar com fps alvo
+    writeErrors: 0,         // contador acumulado de erros de escrita USB
+    lastErrorMsg: '' as string,
+    lastErrorTs: 0,         // performance.now() do último erro
   });
   // E-STOP latência: trip se >LATENCY_ESTOP_MS por LATENCY_ESTOP_STRIKES ticks consecutivos.
   // Compliance Core (Safety Critical): E-STOP latency <50ms.
@@ -81,7 +85,21 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const [latencyEstopReason, setLatencyEstopReason] = useState<string | null>(null);
   // Acumuladores zero-GC para latência (EWMA + max + strikes E-STOP).
   // UI re-render no máx ~5 Hz para evitar render storm @ 40Hz.
-  const latencyAccRef = useRef({ avg: 0, max: 0, lastFlushMs: 0, strikes: 0 });
+  const latencyAccRef = useRef({
+    avg: 0,
+    max: 0,
+    lastFlushMs: 0,
+    strikes: 0,
+    // Janela rolante p/ FPS real
+    windowStartMs: 0,
+    windowStartFrames: 0,
+    fpsActual: 0,
+    // Histórico de latência p/ sparkline (ring buffer pré-alocado, zero-GC)
+    history: new Float32Array(120),  // 120 amostras × 200ms = 24s
+    historyIdx: 0,
+    historyFilled: 0,
+  });
+  const writeErrorsRef = useRef({ count: 0, lastMsg: '', lastTs: 0 });
   const universesRef = useRef<DMXUniverse[]>([]);
   const autoResumeAttemptedRef = useRef(false);
 
