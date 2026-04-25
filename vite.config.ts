@@ -65,6 +65,8 @@ export default defineConfig(({ mode }) => ({
           "**/*Diagram-*.js",
           "**/layout-*.js",
           "**/vdlParser-*.js",
+          // Auto-injetado pelo precache-guard: arquivos de public/ acima do limite.
+          ...guard.globIgnores,
         ],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/~oauth/],
