@@ -1042,12 +1042,16 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
   const removeMultipleTimelineItems = useProjectStore(s => s.removeMultipleTimelineItems);
   const { chip: transportChip, toggle: togglePlayback } = useTransportDiagnostics();
   const scrollRef = useRef<HTMLDivElement>(null);
-  // Hydrate zoom + scroll from localStorage. Clamp zoom to current min/max so
-  // a stale persisted value can never put the user outside valid bounds.
-  const persistedView = useRef(loadTimelineView()).current;
+  // Hydrate zoom + scroll from localStorage. Wrapped in try/catch — if the
+  // storage layer ever throws (Safari private mode, SecurityError, etc.) we
+  // fall back to safe defaults so the timeline never fails to mount.
+  const persistedView = useRef<ReturnType<typeof loadTimelineView>>(
+    (() => { try { return loadTimelineView(); } catch { return {}; } })()
+  ).current;
   const [pixelsPerSecond, setPixelsPerSecond] = useState(() => {
     const v = persistedView.pixelsPerSecond;
-    return typeof v === 'number' && isFinite(v) ? Math.min(MAX_PPS, Math.max(MIN_PPS, v)) : 12;
+    if (typeof v !== 'number' || !Number.isFinite(v)) return 12;
+    return Math.min(MAX_PPS, Math.max(MIN_PPS, v));
   });
   const [scrollLeft, setScrollLeft] = useState(0);
   const [viewportWidth, setViewportWidth] = useState(1200);
