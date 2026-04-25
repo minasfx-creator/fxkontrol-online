@@ -215,6 +215,11 @@ export default function MainLayout() {
                         ? 'animate-page-materialize-in'
                         : ''
                   }`}
+                  // `view-transition-name` opts this subtree into the native
+                  // crossfade. Persistent chrome (sidebar, dock, header) lives
+                  // *outside* this div so it stays put across the transition —
+                  // only the route content morphs.
+                  style={{ viewTransitionName: 'route-content' }}
                 >
                   <Outlet />
                 </div>
