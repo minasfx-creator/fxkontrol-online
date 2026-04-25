@@ -259,7 +259,7 @@ export default function Landing() {
           </div>
 
           {/* Hero "screenshot" — gradient mockup of the 3D editor */}
-          <div className="relative mx-auto mt-16 max-w-6xl">
+          <div className="relative mx-auto mt-10 max-w-6xl sm:mt-16">
             <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-primary/30 via-[hsl(var(--fxk-cyan)/0.2)] to-[hsl(var(--fxk-violet)/0.25)] opacity-40 blur-2xl" />
             <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-[hsl(var(--surface-1))] shadow-[0_50px_120px_-20px_hsl(220_30%_1%/0.9)]">
               <div className="flex h-9 items-center gap-2 border-b border-border/50 bg-[hsl(var(--surface-2))] px-4">
@@ -314,17 +314,17 @@ export default function Landing() {
       </section>
 
       {/* ── FEATURES ───────────────────────────────────────────────────── */}
-      <section id="features" className="relative border-t border-border/40 bg-[hsl(var(--surface-1))] py-24 md:py-32">
-        <div className="mx-auto max-w-7xl px-5 md:px-8">
+      <section id="features" className="relative border-t border-border/40 bg-[hsl(var(--surface-1))] py-16 sm:py-24 md:py-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-primary">Recursos</p>
-            <h2 className="text-4xl font-black tracking-tight md:text-5xl">
+            <h2 className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
               Mesmo core do Finale. <br />
               <span className="text-muted-foreground">Mais moderno. Mais acessível.</span>
             </h2>
           </div>
 
-          <div className="mt-16 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 sm:mt-16 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => (
               <Card
                 key={f.title}
@@ -345,12 +345,12 @@ export default function Landing() {
       </section>
 
       {/* ── DEMO ───────────────────────────────────────────────────────── */}
-      <section id="demo" className="relative border-t border-border/40 py-24 md:py-32">
-        <div className="mx-auto max-w-7xl px-5 md:px-8">
-          <div className="grid items-center gap-12 lg:grid-cols-2">
+      <section id="demo" className="relative border-t border-border/40 py-16 sm:py-24 md:py-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
+          <div className="grid items-center gap-10 sm:gap-12 lg:grid-cols-2">
             <div>
               <p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-primary">Demo</p>
-              <h2 className="text-4xl font-black tracking-tight md:text-5xl">
+              <h2 className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
                 O editor 3D que <span className="text-primary">dispara o show de verdade</span>.
               </h2>
               <p className="mt-5 max-w-lg text-base leading-relaxed text-muted-foreground">
@@ -458,11 +458,11 @@ export default function Landing() {
       </section>
 
       {/* ── PRICING ────────────────────────────────────────────────────── */}
-      <section id="pricing" className="relative border-t border-border/40 bg-[hsl(var(--surface-1))] py-24 md:py-32">
-        <div className="mx-auto max-w-7xl px-5 md:px-8">
+      <section id="pricing" className="relative border-t border-border/40 bg-[hsl(var(--surface-1))] py-16 sm:py-24 md:py-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-primary">Preço</p>
-            <h2 className="text-4xl font-black tracking-tight md:text-5xl">
+            <h2 className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
               Preço de ataque por mercado.
             </h2>
             <p className="mx-auto mt-4 max-w-lg text-base text-muted-foreground">
@@ -470,7 +470,7 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="mt-16 grid gap-5 md:grid-cols-3">
+          <div className="mt-10 sm:mt-16 grid gap-5 md:grid-cols-3">
             {PRICING.map((plan) => (
               <Card
                 key={plan.name}
@@ -511,12 +511,12 @@ export default function Landing() {
       </section>
 
       {/* ── FINAL CTA ──────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden border-t border-border/40 py-28 md:py-36">
+      <section className="relative overflow-hidden border-t border-border/40 py-20 sm:py-28 md:py-36">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute left-1/2 top-1/2 h-[400px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,hsl(var(--primary)/0.25),transparent_70%)] blur-3xl" />
         </div>
-        <div className="relative mx-auto max-w-3xl px-5 text-center md:px-8">
-          <h2 className="text-4xl font-black tracking-tight md:text-6xl">
+        <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6 md:px-8">
+          <h2 className="text-3xl font-black tracking-tight sm:text-4xl md:text-6xl">
             Construa o próximo show <br />
             <span className="bg-gradient-to-r from-primary via-[hsl(var(--electric-glow))] to-[hsl(var(--fxk-gold))] bg-clip-text text-transparent">
               antes do concorrente.
@@ -541,7 +541,7 @@ export default function Landing() {
 
       {/* ── FOOTER ─────────────────────────────────────────────────────── */}
       <footer className="border-t border-border/40 bg-[hsl(var(--surface-1))] py-10">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-5 text-xs text-muted-foreground md:flex-row md:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 text-xs text-muted-foreground sm:px-6 md:flex-row md:px-8">
           <div className="flex items-center gap-2">
             <div className="h-5 w-5 rounded-md bg-gradient-to-br from-primary to-[hsl(var(--electric-glow))]" />
             <span className="font-bold tracking-[0.18em] text-foreground/80">FX KONTROL</span>
