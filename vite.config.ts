@@ -4,6 +4,12 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { visualizer } from "rollup-plugin-visualizer";
+import { precacheGuard } from "./scripts/vite-plugin-precache-guard";
+
+// Build-time guard: arquivos em public/ acima de 2 MiB são EXCLUÍDOS do
+// precache do PWA (Workbox) e logados no console como WARN. Evita que
+// vídeos/imagens pesadas inflem o Service Worker e quebrem o install.
+const guard = precacheGuard({ maxBytes: 2 * 1024 * 1024 });
 
 export default defineConfig(({ mode }) => ({
   server: {
@@ -59,6 +65,8 @@ export default defineConfig(({ mode }) => ({
           "**/*Diagram-*.js",
           "**/layout-*.js",
           "**/vdlParser-*.js",
+          // Auto-injetado pelo precache-guard: arquivos de public/ acima do limite.
+          ...guard.globIgnores,
         ],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/~oauth/],
@@ -94,6 +102,7 @@ export default defineConfig(({ mode }) => ({
         ],
       },
     }),
+    guard.plugin,
     mode === "production" && visualizer({
       filename: "dist/bundle-analysis.html",
       gzipSize: true,
