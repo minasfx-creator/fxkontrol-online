@@ -19,13 +19,11 @@ import NotFound from "./pages/NotFound";
 
 const Install = lazy(lazyRetry(() => import("./pages/Install")));
 
-// Dashboard lazy-loaded — it's 658 lines with heavy imports
-const Dashboard = lazy(lazyRetry(() => import("./pages/Dashboard")));
+// Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
+const Office = lazy(lazyRetry(() => import("./pages/Office")));
 
 // Lazy-loaded heavy pages
 const Index = lazy(lazyRetry(() => import("./pages/Index")));
-const Agenda = lazy(lazyRetry(() => import("./pages/Agenda")));
-const Training = lazy(lazyRetry(() => import("./pages/Training")));
 const CommandCenter = lazy(lazyRetry(() => import("./pages/CommandCenter")));
 
 // Field ops console — wraps DevicePairing + FieldTest + MobileLinkPanel as tabs.
