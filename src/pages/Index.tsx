@@ -447,7 +447,16 @@ function Index() {
         {activePanel === 'properties' && <PropertiesPanel />}
         {activePanel === 'script' && <ScriptWindow />}
         {activePanel === 'waypoints' && <WaypointEditor onClose={() => setActivePanel(null)} />}
-        {activePanel === 'effects' && <EffectEditor onClose={() => setActivePanel(null)} />}
+        {activePanel === 'effects' && (
+          <div className="flex h-full flex-col overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <EffectLibrary />
+            </div>
+            <div className="max-h-[42%] shrink-0 overflow-hidden border-t border-border/20 bg-surface-0/60">
+              <EffectEditor onClose={() => setActivePanel(null)} />
+            </div>
+          </div>
+        )}
         {activePanel === 'wind' && <WindCameraPanel />}
         {activePanel === 'reports' && <ReportsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'racks' && <RackManager onClose={() => setActivePanel(null)} />}
