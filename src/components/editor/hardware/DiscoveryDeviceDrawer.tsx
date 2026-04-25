@@ -288,11 +288,6 @@ export function DiscoveryDeviceDrawer({ device, open, onOpenChange }: Props) {
     </Sheet>
   );
 }
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
 
 function Row({ label, value, mono, onCopy }: { label: string; value: string; mono?: boolean; onCopy?: () => void }) {
   return (
