@@ -8,6 +8,7 @@ import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { getEffectById as getEffectByIdFromMap } from '@/data/effectLibraryMap';
 import { getCompound, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
 import { getBreakHeight } from '@/lib/pyroPhysics';
+import { timelineClock } from '@/core/timeline/TimelineClock';
 
 // ═══ Module-level active burst counter for conditional PostProcessing ═══
 let _activeBurstCount = 0;
