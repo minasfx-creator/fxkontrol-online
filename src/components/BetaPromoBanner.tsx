@@ -215,6 +215,89 @@ export default function BetaPromoBanner({ endsAt = DEFAULT_ENDS_AT }: BetaPromoB
           </div>
         </div>
 
+        {/* Pre-signup email capture */}
+        {confirmedEmail ? (
+          <div
+            className="shrink-0 hidden sm:flex items-center gap-1.5 h-7 px-2.5 rounded text-[10px] md:text-[11px] font-bold uppercase tracking-wider"
+            style={{
+              background: 'hsl(140 60% 40% / 0.18)',
+              color: 'hsl(140 70% 70%)',
+              border: '1px solid hsl(140 60% 45% / 0.5)',
+            }}
+            title={`Pré-assinatura confirmada para ${confirmedEmail} · ${PROMO.monthly}`}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            <span className="hidden md:inline">Pré-assinatura ativa</span>
+            <span className="md:hidden">Confirmado</span>
+          </div>
+        ) : presignupOpen ? (
+          <form onSubmit={handlePresignup} className="shrink-0 flex items-center gap-1">
+            <input
+              type="email"
+              value={email}
+              onChange={(ev) => setEmail(ev.target.value)}
+              autoFocus
+              required
+              maxLength={255}
+              placeholder="seu@email.com"
+              disabled={submitting}
+              className="h-7 w-[160px] sm:w-[200px] px-2 rounded text-[11px] bg-background/80 border outline-none focus:ring-1"
+              style={{
+                borderColor: 'hsl(32 100% 50% / 0.5)',
+                color: 'hsl(var(--foreground))',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={submitting}
+              className="h-7 px-2.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all active:scale-95 disabled:opacity-60"
+              style={{
+                background: 'hsl(32 100% 50% / 0.35)',
+                color: 'hsl(32 100% 80%)',
+                border: '1px solid hsl(32 100% 50% / 0.6)',
+              }}
+            >
+              {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Garantir'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setPresignupOpen(false); setEmail(''); }}
+              aria-label="Cancelar"
+              className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </form>
+        ) : (
+          <>
+            <button
+              onClick={() => setPresignupOpen(true)}
+              className="shrink-0 hidden sm:flex items-center gap-1.5 h-7 px-2.5 rounded text-[10px] md:text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95"
+              style={{
+                background: 'hsl(32 100% 50% / 0.3)',
+                color: 'hsl(32 100% 80%)',
+                border: '1px solid hsl(32 100% 50% / 0.6)',
+              }}
+              title={`Pré-assinatura ${PROMO.monthly} · ${PROMO.savings} vs ${PROMO.retail}`}
+            >
+              <Mail className="h-3.5 w-3.5" />
+              <span>Pré-assinar {PROMO.monthly}</span>
+            </button>
+            <button
+              onClick={() => setPresignupOpen(true)}
+              aria-label="Pré-assinar com email"
+              className="shrink-0 sm:hidden flex items-center justify-center h-7 w-7 rounded transition-all active:scale-90"
+              style={{
+                background: 'hsl(32 100% 50% / 0.3)',
+                color: 'hsl(32 100% 80%)',
+                border: '1px solid hsl(32 100% 50% / 0.6)',
+              }}
+            >
+              <Mail className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
+
         {/* Integrate Equipment link (desktop) */}
         <button
           onClick={() => openFeedback('integration')}
