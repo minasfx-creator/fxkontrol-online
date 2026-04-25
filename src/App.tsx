@@ -66,10 +66,10 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   const [params] = useSearchParams();
   if (loading) return null;
   if (user) {
-    // Resume the originally-requested route. Falls back to /office (Etapa 1
-    // do refactor 3-áreas) so signed-in users land na visão geral consolidada.
+    // Resume the originally-requested route. Falls back to /studio (viewport
+    // 3D principal) so signed-in users land directly on the editor.
     const raw = params.get("next");
-    const target = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/office";
+    const target = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/studio";
     return <Navigate to={target} replace />;
   }
   return <>{children}</>;
@@ -113,11 +113,12 @@ function App() {
                     <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
                     <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                       {/* ── 3 grandes áreas ───────────────────────────────────── */}
-                      <Route path="/" element={<Navigate to="/office" replace />} />
+                      {/* Default landing → Studio 3D viewport (entrada principal). */}
+                      <Route path="/" element={<Navigate to="/studio" replace />} />
                       <Route path="/office" element={<Office />} />
-                      <Route path="/editor" element={<Index />} />
-                      {/* Studio = editor 3D pré-carregado com o modal de prompt AI-first */}
-                      <Route path="/studio" element={<Navigate to="/editor?prompt=1" replace />} />
+                      {/* Studio = editor 3D. /editor mantido como alias legacy. */}
+                      <Route path="/studio" element={<Index />} />
+                      <Route path="/editor" element={<Navigate to="/studio" replace />} />
                       <Route path="/command" element={<CommandCenter />} />
 
                       {/* ── Redirects: rotas antigas → nova estrutura ─────────── */}
