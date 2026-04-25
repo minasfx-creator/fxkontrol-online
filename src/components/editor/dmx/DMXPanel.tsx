@@ -686,15 +686,32 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                     <span className="text-[8px] text-muted-foreground font-mono-code">{usbStreamFps}Hz</span>
                   </div>
 
-                  <Slider
-                    value={[usbStreamFps]}
-                    min={10}
-                    max={44}
-                    step={1}
-                    onValueChange={([v]) => setUsbStreamFps(v)}
-                    disabled={usbStreaming}
-                    className="py-1"
-                  />
+                  {/* Seletor de taxa — atualiza Hz sem fechar a porta USB */}
+                  <div className="grid grid-cols-3 gap-1">
+                    {([10, 20, 40] as const).map(hz => {
+                      const active = usbStreamFps === hz;
+                      return (
+                        <button
+                          key={hz}
+                          type="button"
+                          onClick={() => handleFpsChange(hz)}
+                          className={`h-7 rounded-sm text-[10px] font-mono-code font-bold transition-colors ${
+                            active
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-surface-2 text-muted-foreground hover:bg-surface-3 hover:text-foreground'
+                          }`}
+                          title={`Taxa de broadcast: ${hz} Hz`}
+                        >
+                          {hz} Hz
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[8px] text-muted-foreground/70 leading-tight">
+                    {usbStreaming
+                      ? '✓ Pode trocar a taxa durante o streaming — porta USB permanece aberta.'
+                      : '10Hz baixa carga · 20Hz padrão · 40Hz máximo (DMX512 spec).'}
+                  </p>
 
                   <Button
                     size="sm"
