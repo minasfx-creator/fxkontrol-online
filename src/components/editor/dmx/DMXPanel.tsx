@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap, Usb, Monitor, Play, Square } from 'lucide-react';
 import { logger } from '@/lib/logger';
+import { useUSBDMXBroadcast } from '@/hooks/useUSBDMXBroadcast';
 import DMXMonitorGrid from './DMXMonitorGrid';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
@@ -55,25 +56,15 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const [showMonitor, setShowMonitor] = useState(false);
 
   // Continuous USB DMX streaming (Universe 1 → all connected USB devices)
+  // Loop, throttle anti-stacking e cleanup encapsulados em useUSBDMXBroadcast.
   const [usbStreaming, setUsbStreaming] = useState(false);
-  const [usbStreamFps, setUsbStreamFps] = useState(40);
+  const [usbStreamFps, setUsbStreamFps] = useState<10 | 20 | 40>(40);
   const [usbStreamStats, setUsbStreamStats] = useState({ frames: 0, lastLatencyMs: 0 });
-  const usbStreamIntervalRef = useRef<number | null>(null);
-  const usbStreamInFlightRef = useRef(false);
   const universesRef = useRef<DMXUniverse[]>([]);
 
-  // Keep ref in sync (lets the interval read latest universe 1 without restarting)
+  // Keep ref in sync (hook lê via getChannels() sempre o último universo 1)
   useEffect(() => { universesRef.current = universes; }, [universes]);
 
-  // Cleanup interval on unmount — Memory mgmt (Core)
-  useEffect(() => {
-    return () => {
-      if (usbStreamIntervalRef.current !== null) {
-        window.clearInterval(usbStreamIntervalRef.current);
-        usbStreamIntervalRef.current = null;
-      }
-    };
-  }, []);
 
   const addDiagLog = useCallback((log: DiagnosticLog) => {
     setDiagLogs(prev => [log, ...prev].slice(0, 50));
@@ -305,45 +296,33 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   };
 
   // ── Continuous USB DMX streaming (Universe 1) ─────────────────────
-  // Tick atualizado via ref para que mudanças de FPS reiniciem APENAS o
-  // setInterval — a porta serial e o writer permanecem abertos.
-  const tickRef = useRef<() => Promise<void>>(async () => {});
-  tickRef.current = async () => {
-    if (usbStreamInFlightRef.current) return; // throttle natural
-    const uni1 = universesRef.current[0];
-    if (!uni1) return;
-    usbStreamInFlightRef.current = true;
-    const t0 = performance.now();
-    try {
-      const result = await sendDMXToAll(uni1.channels);
-      const latency = Math.round(performance.now() - t0);
-      setUsbStreamStats(s => ({ frames: s.frames + 1, lastLatencyMs: latency }));
-      if ((Date.now() / 1000 | 0) % 5 === 0 && Math.random() < 0.05) {
-        logger.info('[DMXPanel] USB stream tick', { frames: result.deviceCount, latency });
-      }
-    } catch (e: any) {
-      logger.warn('[DMXPanel] USB stream send failed — stopping', e);
-      addDiagLog({ timestamp: new Date(), type: 'error', message: `USB stream falhou: ${e.message || 'erro'}` });
+  // Loop, throttle anti-stacking, auto-stop em erro e cleanup do interval
+  // estão encapsulados em useUSBDMXBroadcast. Mudar usbStreamFps reinicia
+  // APENAS o setInterval — a porta USB permanece aberta.
+  const getUni1Channels = useCallback((): Uint8Array | null => {
+    return universesRef.current[0]?.channels ?? null;
+  }, []);
+
+  useUSBDMXBroadcast({
+    getChannels: getUni1Channels,
+    fps: usbStreamFps,
+    enabled: usbStreaming,
+    onTick: ({ frames, latencyMs }) => {
+      setUsbStreamStats({ frames, lastLatencyMs: latencyMs });
+    },
+    onError: (err) => {
+      addDiagLog({ timestamp: new Date(), type: 'error', message: `USB stream falhou: ${err.message}` });
       toast.error('Falha no streaming USB — parado');
-      stopUsbStream();
-    } finally {
-      usbStreamInFlightRef.current = false;
-    }
-  };
+      setUsbStreaming(false);
+    },
+  });
 
   const stopUsbStream = useCallback(() => {
-    if (usbStreamIntervalRef.current !== null) {
-      window.clearInterval(usbStreamIntervalRef.current);
-      usbStreamIntervalRef.current = null;
-    }
-    usbStreamInFlightRef.current = false;
     setUsbStreaming(false);
     addDiagLog({ timestamp: new Date(), type: 'info', message: 'USB streaming parado' });
-    logger.info('[DMXPanel] USB streaming stopped');
   }, [addDiagLog]);
 
   const startUsbStream = useCallback(() => {
-    if (usbStreamIntervalRef.current !== null) return;
     if (universesRef.current.length === 0) {
       toast.error('Faça o Auto-Patch primeiro (Universo 1 é a fonte)');
       return;
@@ -352,32 +331,16 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
       toast.error('Nenhum dispositivo DMX USB conectado');
       return;
     }
-    setUsbStreaming(true);
     setUsbStreamStats({ frames: 0, lastLatencyMs: 0 });
+    setUsbStreaming(true);
     addDiagLog({
       timestamp: new Date(), type: 'info',
       message: `USB streaming iniciado · Uni 1 → ${connectedUSBDMX.length} device(s) @ ${usbStreamFps}Hz`,
     });
-    logger.info('[DMXPanel] USB streaming started', { fps: usbStreamFps, devices: connectedUSBDMX.length });
-    // o effect abaixo cria o setInterval com base em usbStreaming + usbStreamFps
   }, [connectedUSBDMX.length, addDiagLog, usbStreamFps]);
 
-  // Recria APENAS o setInterval quando FPS muda durante streaming.
-  // A porta serial NÃO é tocada — só a cadência do tick.
-  useEffect(() => {
-    if (!usbStreaming) return;
-    const periodMs = Math.max(23, Math.round(1000 / usbStreamFps));
-    usbStreamIntervalRef.current = window.setInterval(() => { void tickRef.current(); }, periodMs);
-    logger.info('[DMXPanel] USB stream interval (re)armed', { fps: usbStreamFps, periodMs });
-    return () => {
-      if (usbStreamIntervalRef.current !== null) {
-        window.clearInterval(usbStreamIntervalRef.current);
-        usbStreamIntervalRef.current = null;
-      }
-    };
-  }, [usbStreaming, usbStreamFps]);
-
   // Handler do seletor de taxa: muda Hz mesmo durante streaming.
+  // O hook reinicia internamente apenas o setInterval, sem fechar a porta.
   const handleFpsChange = useCallback((hz: 10 | 20 | 40) => {
     setUsbStreamFps(hz);
     if (usbStreaming) {
@@ -387,6 +350,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
       });
     }
   }, [usbStreaming, addDiagLog]);
+
 
 
   const sendFireOneDMX = async () => {
