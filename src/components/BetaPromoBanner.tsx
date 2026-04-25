@@ -94,6 +94,42 @@ export default function BetaPromoBanner({ endsAt = DEFAULT_ENDS_AT }: BetaPromoB
     setDismissed(true);
   };
 
+  const handlePresignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = emailSchema.safeParse(email);
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message ?? 'Email inválido');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { error } = await (supabase as any).from('beta_feedback').insert({
+        category: 'presignup',
+        message: `Pre-signup: ${parsed.data}`,
+        contact_email: parsed.data,
+        route: typeof window !== 'undefined' ? window.location.pathname : null,
+        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        app_version: (import.meta.env.VITE_APP_VERSION as string | undefined) ?? 'beta',
+        metadata: { source: 'beta_promo_banner', promo: PROMO },
+      });
+      if (error) throw error;
+      localStorage.setItem(PRESIGNUP_KEY, parsed.data);
+      setConfirmedEmail(parsed.data);
+      setEmail('');
+      setPresignupOpen(false);
+      toast.success('Pré-assinatura confirmada!', {
+        description: `${parsed.data} · ${PROMO.monthly} (${PROMO.savings} vs ${PROMO.retail})`,
+      });
+    } catch (err: any) {
+      console.error('[BetaPromoBanner] presignup failed', err);
+      toast.error('Falha ao registrar', {
+        description: err?.message ?? 'Tente novamente em instantes.',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <>
     <div
