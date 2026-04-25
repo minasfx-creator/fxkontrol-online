@@ -35,13 +35,16 @@ const TONE_TEXT: Record<string, string> = {
 export function DiscoveryGrid() {
   const [devices, setDevices] = useState<DiscoveredDevice[]>(unifiedDiscovery.getDevices());
   const support = unifiedDiscovery.supportMatrix();
+  const enabled = useTransportFilters(s => s.enabled);
 
   useEffect(() => {
     setDevices(unifiedDiscovery.getDevices());
     return unifiedDiscovery.watch(() => setDevices(unifiedDiscovery.getDevices()));
   }, []);
 
-  const transports: DiscoveryTransport[] = ['webserial', 'webusb', 'webble', 'mdns-artnet'];
+  const transports: DiscoveryTransport[] = (
+    ['webserial', 'webusb', 'webble', 'mdns-artnet'] as DiscoveryTransport[]
+  ).filter(t => enabled[t] !== false);
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
