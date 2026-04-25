@@ -4,6 +4,7 @@ import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, C
 import { logger } from '@/lib/logger';
 import { useUSBDMXBroadcast } from '@/hooks/useUSBDMXBroadcast';
 import DMXMonitorGrid from './DMXMonitorGrid';
+import DMXBroadcastDiagnostics from './DMXBroadcastDiagnostics';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useDMXPanelPrefs } from '@/store/useDMXPanelPrefs';
 import { useFrameDropMonitor } from '@/hooks/useFrameDropMonitor';
