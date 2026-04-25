@@ -435,8 +435,9 @@ function Index() {
   const canvasLeftInset = `${leftRailWidth + leftSidebarWidth}px`;
   const canvasRightInset = `${rightDockWidth + rightPanelWidth}px`;
 
-  if (appPhase === 'cinematic') return <Suspense fallback={<CanvasLoader />}><CinematicIntro onComplete={() => setAppPhase('splash')} /></Suspense>;
-  if (appPhase === 'splash') return <Suspense fallback={<CanvasLoader />}><SplashScreen onStart={() => setAppPhase('editor')} showVideoBackground /></Suspense>;
+  // Phase screens (CinematicIntro / SplashScreen) desativados — boot vai direto para o editor.
+  // appPhase ainda é mantido para compatibilidade com deep-links (?panel=, ?prompt=1).
+  void appPhase;
 
   const renderPanelContent = () => {
     if (!activePanel) return null;
