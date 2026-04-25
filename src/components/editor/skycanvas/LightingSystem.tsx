@@ -262,6 +262,7 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function Groun
     uReflectionColor: { value: new THREE.Color(0.1, 0.15, 0.2) },
     uReflectionIntensity: { value: 0.5 },
   });
+  const clockTimeRef = useClockTimeRef();
 
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
@@ -274,7 +275,8 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function Groun
     const u = uniformsRef.current;
     u.uTime.value = clock.getElapsedTime();
 
-    const { timelineItems, currentTime } = useProjectStore.getState();
+    const { timelineItems } = useProjectStore.getState();
+    const currentTime = clockTimeRef.current;
     let flashIntensity = 0;
     const _reusableColor = u.uReflectionColor.value;
 
