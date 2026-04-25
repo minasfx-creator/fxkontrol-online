@@ -83,6 +83,14 @@ class MdnsArtnetDiscoverer implements TransportDiscoverer {
     return Array.from(this._devices.values());
   }
 
+  /** Drop an Art-Net node from the cache; it will reappear on next ArtPoll if still online. */
+  async forgetDevice(deviceId: string): Promise<boolean> {
+    const dev = this._devices.get(deviceId);
+    this._devices.delete(deviceId);
+    if (dev) this._emit({ type: 'lost', device: { ...dev, online: false } });
+    return false;
+  }
+
   private _emit(ev: DiscoveryEvent): void {
     for (const fn of this._listeners) {
       try { fn(ev); } catch (e) { logger.warn('[MdnsArtnetDiscoverer] listener err', e); }

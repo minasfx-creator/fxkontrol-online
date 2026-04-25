@@ -102,6 +102,25 @@ class WebSerialDiscoverer implements TransportDiscoverer {
     return this._portByDeviceId.get(deviceId);
   }
 
+  /**
+   * Revoke browser-level permission for the device (Chrome 105+ exposes
+   * `SerialPort.forget()`), drop it from the cache and emit a `lost` event.
+   * Safe to call even when the underlying port is missing.
+   */
+  async forgetDevice(deviceId: string): Promise<boolean> {
+    const port = this._portByDeviceId.get(deviceId) as (SerialPortLike & { forget?: () => Promise<void> }) | undefined;
+    let revoked = false;
+    if (port?.forget) {
+      try { await port.forget(); revoked = true; }
+      catch (e) { logger.warn('[WebSerialDiscoverer] port.forget failed', e); }
+    }
+    const dev = this._devices.get(deviceId);
+    this._portByDeviceId.delete(deviceId);
+    this._devices.delete(deviceId);
+    if (dev) this._emit({ type: 'lost', device: { ...dev, online: false } });
+    return revoked;
+  }
+
   async scan(): Promise<DiscoveredDevice[]> {
     if (!this.isSupported()) return [];
     this._ensureHotPlug();
