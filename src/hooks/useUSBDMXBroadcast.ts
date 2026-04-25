@@ -16,6 +16,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { logger } from '@/lib/logger';
+import { dmxTimingHarness } from '@/core/dmx/timingHarness';
 
 export interface UseUSBDMXBroadcastOptions {
   /** Função que retorna o frame DMX atual (Uint8Array, até 512 bytes). */
@@ -89,8 +90,16 @@ export function useUSBDMXBroadcast(
 
       inFlightRef.current = true;
       const t0 = performance.now();
+      // Per-frame harness: schedule→dispatch already happened upstream;
+      // here we measure encode (ref read) → transport (USB send) → ack.
+      dmxTimingHarness.mark('schedule', t0);
+      dmxTimingHarness.mark('dispatch', t0);
+      dmxTimingHarness.mark('encode');
       try {
         const result = await sendDMXToAll(channels);
+        dmxTimingHarness.mark('transport');
+        dmxTimingHarness.mark('ack');
+        dmxTimingHarness.commit();
         const latencyMs = Math.round(performance.now() - t0);
         framesRef.current += 1;
         onTickRef.current?.({
@@ -99,6 +108,7 @@ export function useUSBDMXBroadcast(
           deviceCount: result.deviceCount,
         });
       } catch (err) {
+        dmxTimingHarness.abort();
         const error = err instanceof Error ? err : new Error(String(err));
         logger.warn('[useUSBDMXBroadcast] send failed — auto-stop', error);
         // Auto-stop em erro: limpa o interval imediatamente

@@ -13,6 +13,7 @@
  */
 
 import { blackbox } from '@/core/reliability/blackBoxRecorder';
+import { dmxTimingHarness } from '@/core/dmx/timingHarness';
 
 export type ArtNetOpCode = 'ArtDmx' | 'ArtPoll' | 'ArtPollReply' | 'ArtSync';
 
@@ -132,12 +133,17 @@ class ArtNetBridge {
   sendDmx(universe: number, channels: Uint8Array, opts?: ArtNetSendOptions): boolean {
     if (this._state !== 'connected' || !this._ws) return false;
 
+    // Timing harness: schedule mark = entry to send. No-op if disabled.
+    dmxTimingHarness.mark('schedule');
+    dmxTimingHarness.mark('dispatch');
+
     // ── #1 Rate cap (skip for critical) ─────────────────────────────
     if (!opts?.critical) {
       const now = performance.now();
       const last = this._lastSendByUniverse.get(universe) ?? -Infinity;
       if (now - last < ARTNET_MIN_INTERVAL_MS) {
         this._throttledCount++;
+        dmxTimingHarness.abort();
         return false;
       }
       this._lastSendByUniverse.set(universe, now);
@@ -155,12 +161,16 @@ class ArtNetBridge {
     this._scratchEnvelope.uni = universe;
     this._scratchEnvelope.seq = seq;
     this._scratchEnvelope.data = dataB64;
+    dmxTimingHarness.mark('encode');
 
     try {
       this._ws.send(JSON.stringify(this._scratchEnvelope));
       this._packetsSent++;
+      dmxTimingHarness.mark('transport');
+      dmxTimingHarness.commit();
       return true;
     } catch {
+      dmxTimingHarness.abort();
       return false;
     }
   }
