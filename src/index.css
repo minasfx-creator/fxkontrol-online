@@ -104,8 +104,35 @@
     --material-thick-bg:   220 18% 5% / 0.86;
     --material-stroke:     0 0% 100% / 0.06;
     --material-stroke-strong: 0 0% 100% / 0.10;
-    --material-highlight:  0 0% 100% / 0.05;  /* inset top — luz reflexa */
+    --material-highlight:  0 0% 100% / 0.05;
     --material-shadow:     0 0% 0% / 0.55;
+
+    /* ── Apple 8pt Spacing Scale ──
+       Single source of truth for paddings/gaps in chrome (Dock, Header,
+       Sidebar, popovers). Components must NOT invent values like `px-2.5`
+       or `gap-1.5` — use these tokens or the Tailwind aliases below.
+       Scale rationale (mirrors macOS Sequoia + iPadOS):
+         space-1 = 4px   hairline gaps inside a single control
+         space-2 = 8px   default gap between siblings, control inset
+         space-3 = 12px  panel inner padding, dock item gap
+         space-4 = 16px  group separation, header inset
+         space-5 = 20px  sheet inset
+         space-6 = 24px  large container padding */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+
+    /* ── Apple Radius Scale ──
+       Semantic, hierarchical. Smaller things nest inside larger things;
+       radii grow with the surface size (iPadOS rule: outer radius ≥ inner
+       radius + padding for concentric corners). */
+    --radius-control: 0.5rem;   /* 8px  — buttons, chips, small inputs */
+    --radius-panel:   0.75rem;  /* 12px — cards, popovers, tooltips */
+    --radius-island:  1rem;     /* 16px — dock, sidebar items, segmented controls */
+    --radius-sheet:   1.25rem;  /* 20px — modals, sheets, large surfaces */
   }
 }
 
