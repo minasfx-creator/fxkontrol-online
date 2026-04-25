@@ -31,9 +31,9 @@ const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => laz
 // ── Verification ──
 
 
-// ── Phase screens ──
-const CinematicIntro = lz(() => import('@/components/editor/CinematicIntro'));
-const SplashScreen = lz(() => import('@/components/editor/SplashScreen'));
+// ── Phase screens (DESATIVADAS) ──
+// CinematicIntro e SplashScreen foram removidos do boot principal. Componentes
+// preservados em src/components/editor/ caso seja necessário reativar via flag.
 
 // ── Core editor components (loaded on first interaction) ──
 const Timeline = lz(() => import('@/components/editor/Timeline'));
