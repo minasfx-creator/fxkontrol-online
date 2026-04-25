@@ -182,11 +182,18 @@ export function startDMXStream(
   stream.streaming = true;
 
   const intervalMs = Math.round(1000 / stream.fps);
+  // Re-entrancy guard: serial writes are async and can outlast intervalMs.
+  // Without inFlight, callbacks pile up and corrupt frame ordering.
+  let inFlight = false;
   stream.intervalId = setInterval(async () => {
+    if (inFlight) return; // skip frame rather than queue/overlap
+    inFlight = true;
     try {
       await sendDMXFrame(stream, getChannels());
     } catch {
       stopDMXStream(stream);
+    } finally {
+      inFlight = false;
     }
   }, intervalMs);
 }
