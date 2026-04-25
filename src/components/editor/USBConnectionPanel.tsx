@@ -21,7 +21,9 @@ import {
   generateDeviceId,
   buildENTTECProPacket,
   buildDMX512Frame,
+  isWebSerialSupported,
 } from '@/lib/usbEngine';
+import { useEditorStore } from '@/store/useEditorStore';
 
 const TYPE_COLORS: Record<string, string> = {
   dmx: 'text-cyan-400',
