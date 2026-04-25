@@ -162,7 +162,7 @@ export function AppSidebar() {
                         <NavLink
                           to={item.url}
                           onClick={handleNavClick}
-                          className={`dock-item gap-3 rounded-2xl mx-1 transition-all duration-300 ease-spring ${
+                          className={`dock-item gap-3 rounded-island mx-2 transition-all duration-300 ease-spring ${
                             active ? 'shadow-[inset_0_0_0_1px_hsl(32_100%_50%/0.15)] bg-white/[0.04]' : 'text-muted-foreground hover:bg-white/[0.03] hover:text-foreground'
                           }`}
                           style={active ? { background: 'hsl(32 100% 50% / 0.1)', color: 'hsl(32 100% 50%)' } : undefined}
@@ -178,7 +178,7 @@ export function AppSidebar() {
                     return (
                       <Tooltip key={item.title}>
                         <TooltipTrigger asChild>{content}</TooltipTrigger>
-                        <TooltipContent side="right" className="glass-hud border-primary/10 text-[10px] font-mono-code">
+                        <TooltipContent side="right" className="glass-hud rounded-panel border-primary/10 text-[10px] font-mono-code px-3 py-2">
                           <p className="font-bold">{item.title}</p>
                           <p className="text-muted-foreground text-[8px]">{item.desc}</p>
                         </TooltipContent>
