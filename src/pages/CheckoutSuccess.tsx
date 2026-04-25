@@ -32,7 +32,9 @@ export default function CheckoutSuccess() {
     const startedAt = Date.now();
 
     const poll = async () => {
-      const { data } = await supabase
+      // `subscriptions` is not yet in generated Supabase types — cast to any
+      // for the table lookup; row shape is validated below.
+      const { data } = await (supabase as any)
         .from('subscriptions')
         .select('product_id, status, current_period_end')
         .eq('user_id', user.id)
@@ -43,13 +45,13 @@ export default function CheckoutSuccess() {
 
       if (cancelled) return;
 
+      const row = data as { product_id: string; status: string; current_period_end: string | null } | null;
       const isLive =
-        data &&
-        (['active', 'trialing'].includes(data.status as string) ||
-          (data.status === 'past_due'));
+        !!row &&
+        (['active', 'trialing', 'past_due'].includes(row.status));
 
-      if (isLive) {
-        setTier(data!.product_id as string);
+      if (isLive && row) {
+        setTier(row.product_id);
         setPhase('confirmed');
         return;
       }
