@@ -20,7 +20,7 @@ import {
   Zap,
   ArrowRight,
   Check,
-  
+  Plane,
   Flame,
   Activity,
   Globe2,
@@ -63,7 +63,7 @@ const FEATURES = [
     desc: "Coreografias, balística, terreno Google 3D Tiles, vento e física industrial — tudo em uma única timeline canônica.",
   },
   {
-    icon: 
+    icon: Plane,
     title: " swarm + pirotecnia",
     desc: "VVIZ streaming para 2000+ drones e PBUS/FireOne/Showven nativos. SIMULAÇÃO = EXECUÇÃO = REALIDADE.",
   },
@@ -438,7 +438,7 @@ export default function Landing() {
                 <Card className="border-border/50 bg-[hsl(var(--surface-2))] p-5">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--fxk-cyan)/0.15)] text-[hsl(var(--fxk-cyan))]">
-                      < className="h-4 w-4" />
+                      <Plane className="h-4 w-4" />
                     </div>
                     <div className="flex-1">
                       <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
