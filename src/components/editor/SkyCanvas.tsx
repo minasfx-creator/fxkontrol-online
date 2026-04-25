@@ -264,7 +264,10 @@ export default function SkyCanvas() {
   const [canvasInstanceKey, setCanvasInstanceKey] = useState(0);
   const recoveringContextRef = useRef(false);
   const handleContextRemount = useCallback(() => setCanvasInstanceKey(prev => prev + 1), []);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768; // eslint-disable-line -- kept as static for perf-sensitive render loop; useIsMobile used at page level
+  // Reactive viewport detection — updates on resize/orientation change via matchMedia.
+  // Avoids the boot-time stale value (e.g. desktop preview rendered as mobile when window
+  // briefly reports < 768px during initial layout, or vice-versa on rotation).
+  const isMobile = useIsMobile();
   const deviceProfile = useMemo(() => getDeviceProfile(), []);
   const isLowTierMobile = isMobile && deviceProfile.tier === 'low';
   const environment = useSceneStore(st => st.environment);
