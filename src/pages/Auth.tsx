@@ -83,6 +83,24 @@ export default function Auth() {
     }
   };
 
+  const handleAppleSignIn = async () => {
+    setLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth('apple', {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) throw result.error;
+      if (result.redirected) return;
+      ambientSound.play('boot');
+      toast.success('Login efetuado!');
+    } catch (err: any) {
+      ambientSound.play('error');
+      toast.error(err?.message ?? 'Falha no login com Apple');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center bg-background relative overflow-hidden br2049-rain">
       {/* Scanline sweep */}
