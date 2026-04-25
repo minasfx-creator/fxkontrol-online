@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { User, Phone, Building2, Briefcase, Save, Shield } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { User, Phone, Building2, Briefcase, Save, Shield, CreditCard, UserCircle } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useNavigate } from 'react-router-dom';
+import BillingTab from '@/components/settings/BillingTab';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -73,97 +75,114 @@ export default function Settings() {
         )}
       </div>
 
-      {/* Profile Card */}
-      <div className="rounded-xl border p-5 space-y-5" style={{ background: 'hsl(var(--surface-0))', borderColor: 'hsl(32 100% 50% / 0.1)' }}>
-        {/* Avatar + email */}
-        <div className="flex items-center gap-4">
-          <div className="h-14 w-14 rounded-full flex items-center justify-center shrink-0" style={{ background: 'hsl(32 100% 50% / 0.15)' }}>
-            <span className="text-lg font-bold" style={{ color: 'hsl(32 100% 50%)' }}>
-              {(form.display_name || user?.email || 'FX').slice(0, 2).toUpperCase()}
-            </span>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-foreground">{form.display_name || 'Operador'}</p>
-            <p className="text-xs text-muted-foreground font-mono">{user?.email}</p>
-            {isAdmin && (
-              <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[8px] font-mono font-bold uppercase tracking-widest"
-                style={{ background: 'hsl(32 100% 50% / 0.15)', color: 'hsl(32 100% 50%)' }}>
-                <Shield className="h-2.5 w-2.5" /> ADMIN
-              </span>
-            )}
-          </div>
-        </div>
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-sm">
+          <TabsTrigger value="profile" className="gap-1.5 text-xs">
+            <UserCircle className="h-3.5 w-3.5" /> Perfil
+          </TabsTrigger>
+          <TabsTrigger value="billing" className="gap-1.5 text-xs">
+            <CreditCard className="h-3.5 w-3.5" /> Cobrança
+          </TabsTrigger>
+        </TabsList>
 
-        <Separator className="opacity-20" />
+        <TabsContent value="profile" className="space-y-6 mt-5">
+          {/* Profile Card */}
+          <div className="rounded-xl border p-5 space-y-5" style={{ background: 'hsl(var(--surface-0))', borderColor: 'hsl(32 100% 50% / 0.1)' }}>
+            {/* Avatar + email */}
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-full flex items-center justify-center shrink-0" style={{ background: 'hsl(32 100% 50% / 0.15)' }}>
+                <span className="text-lg font-bold" style={{ color: 'hsl(32 100% 50%)' }}>
+                  {(form.display_name || user?.email || 'FX').slice(0, 2).toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">{form.display_name || 'Operador'}</p>
+                <p className="text-xs text-muted-foreground font-mono">{user?.email}</p>
+                {isAdmin && (
+                  <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[8px] font-mono font-bold uppercase tracking-widest"
+                    style={{ background: 'hsl(32 100% 50% / 0.15)', color: 'hsl(32 100% 50%)' }}>
+                    <Shield className="h-2.5 w-2.5" /> ADMIN
+                  </span>
+                )}
+              </div>
+            </div>
 
-        {/* Form fields */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-              <User className="h-3 w-3" /> Nome de exibição
-            </Label>
-            <Input value={form.display_name} onChange={e => setForm(f => ({ ...f, display_name: e.target.value }))}
-              className="h-9 text-sm bg-background/50" placeholder="Seu nome" />
+            <Separator className="opacity-20" />
+
+            {/* Form fields */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                  <User className="h-3 w-3" /> Nome de exibição
+                </Label>
+                <Input value={form.display_name} onChange={e => setForm(f => ({ ...f, display_name: e.target.value }))}
+                  className="h-9 text-sm bg-background/50" placeholder="Seu nome" />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                  <Phone className="h-3 w-3" /> Telefone
+                </Label>
+                <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                  className="h-9 text-sm bg-background/50" placeholder="+55 31 99999-0000" />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                  <Building2 className="h-3 w-3" /> Empresa
+                </Label>
+                <Input value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))}
+                  className="h-9 text-sm bg-background/50" placeholder="MinasFX Pirotecnia" />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                  <Briefcase className="h-3 w-3" /> Cargo / Função
+                </Label>
+                <Input value={form.role_title} onChange={e => setForm(f => ({ ...f, role_title: e.target.value }))}
+                  className="h-9 text-sm bg-background/50" placeholder="Técnico Pirotécnico" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Bio / Observações</Label>
+              <textarea
+                value={form.bio}
+                onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
+                className="w-full h-20 rounded-md border border-border bg-background/50 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
+                placeholder="Anotações sobre o operador..."
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={handleSave} disabled={saving} className="gap-2" size="sm"
+                style={{ background: 'hsl(32 100% 50%)', color: 'hsl(220 30% 6%)' }}>
+                <Save className="h-3.5 w-3.5" />
+                {saving ? 'Salvando...' : 'Salvar Perfil'}
+              </Button>
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-              <Phone className="h-3 w-3" /> Telefone
-            </Label>
-            <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-              className="h-9 text-sm bg-background/50" placeholder="+55 31 99999-0000" />
+          {/* Session info */}
+          <div className="rounded-xl border p-4 space-y-2" style={{ background: 'hsl(var(--surface-0))', borderColor: 'hsl(32 100% 50% / 0.08)' }}>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Sessão Ativa</p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="text-muted-foreground">UID:</span>{' '}
+                <span className="font-mono text-[10px] text-foreground/70">{user?.id?.slice(0, 8)}…</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Último login:</span>{' '}
+                <span className="font-mono text-[10px] text-foreground/70">{user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('pt-BR') : '—'}</span>
+              </div>
+            </div>
           </div>
+        </TabsContent>
 
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-              <Building2 className="h-3 w-3" /> Empresa
-            </Label>
-            <Input value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))}
-              className="h-9 text-sm bg-background/50" placeholder="MinasFX Pirotecnia" />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-              <Briefcase className="h-3 w-3" /> Cargo / Função
-            </Label>
-            <Input value={form.role_title} onChange={e => setForm(f => ({ ...f, role_title: e.target.value }))}
-              className="h-9 text-sm bg-background/50" placeholder="Técnico Pirotécnico" />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Bio / Observações</Label>
-          <textarea
-            value={form.bio}
-            onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
-            className="w-full h-20 rounded-md border border-border bg-background/50 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary/50"
-            placeholder="Anotações sobre o operador..."
-          />
-        </div>
-
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={saving} className="gap-2" size="sm"
-            style={{ background: 'hsl(32 100% 50%)', color: 'hsl(220 30% 6%)' }}>
-            <Save className="h-3.5 w-3.5" />
-            {saving ? 'Salvando...' : 'Salvar Perfil'}
-          </Button>
-        </div>
-      </div>
-
-      {/* Session info */}
-      <div className="rounded-xl border p-4 space-y-2" style={{ background: 'hsl(var(--surface-0))', borderColor: 'hsl(32 100% 50% / 0.08)' }}>
-        <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Sessão Ativa</p>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div>
-            <span className="text-muted-foreground">UID:</span>{' '}
-            <span className="font-mono text-[10px] text-foreground/70">{user?.id?.slice(0, 8)}…</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Último login:</span>{' '}
-            <span className="font-mono text-[10px] text-foreground/70">{user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('pt-BR') : '—'}</span>
-          </div>
-        </div>
-      </div>
+        <TabsContent value="billing" className="mt-5">
+          <BillingTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
