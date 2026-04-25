@@ -115,15 +115,24 @@ function adapterFromOverride(kind: DMXProfileOverrideKind): DMXAdapterInfo {
 }
 
 function buildEntry(device: ConnectedDevice): USBDMXDevice {
-  const adapter = detectDMXAdapter(device.profile);
+  const detected = detectDMXAdapter(device.profile);
   const authorized = !!device.writer;
   const stateConnected = device.state === 'connected';
   const regKey = registryKeyFor(device);
   const persisted = regKey ? portRegistry.get(regKey) : undefined;
   const operatorConfirmedGeneric = persisted?.operatorConfirmedGeneric === true;
   const confirmedMode = persisted?.confirmedMode;
-  // ENTTEC Pro packet wrapping: explicit profile label OR confirmed-as-pro mode.
+  const overrideKind = persisted?.profileOverride?.kind;
+
+  // Operator override wins over label-based detection.
+  const adapter = overrideKind ? adapterFromOverride(overrideKind) : detected;
+
+  // ENTTEC Pro packet wrapping: detected pro, override pro, OR confirmed-as-pro mode.
   const isENTTECPro = adapter.kind === 'enttec-pro' || confirmedMode === 'pro';
+
+  // An explicit override counts as operator authorization for output-ready.
+  const overrideAuthorizes = !!overrideKind;
+
   return {
     id: device.id,
     label: device.profile.label,
@@ -137,11 +146,12 @@ function buildEntry(device: ConnectedDevice): USBDMXDevice {
     authorized,
     operatorConfirmedGeneric,
     confirmedMode,
+    profileOverride: overrideKind,
     outputReady:
       device.profile.type === 'dmx' &&
       authorized &&
       stateConnected &&
-      (adapter.recognized || operatorConfirmedGeneric),
+      (adapter.recognized || operatorConfirmedGeneric || overrideAuthorizes),
     device,
   };
 }
