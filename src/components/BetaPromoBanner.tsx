@@ -19,6 +19,7 @@ export default function BetaPromoBanner() {
   };
 
   return (
+    <>
     <div
       role="region"
       aria-label="Beta Test Promotion"
