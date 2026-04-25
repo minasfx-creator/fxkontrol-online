@@ -644,6 +644,24 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                             />
                           )}
 
+                          {device.profile.type === 'dmx' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className={`h-6 text-[9px] w-full gap-1 ${isMobile ? 'h-9 text-xs' : ''}`}
+                              onClick={() => sendDMXTest(device.id)}
+                              disabled={!dmxOutputReady}
+                              title={dmxOutputReady ? 'Enviar frame DMX de teste' : (blockReason ?? 'Aguardando autorização')}
+                            >
+                              <Zap className="h-3 w-3" />
+                              {dmxOutputReady
+                                ? 'DMX Test Frame (Rainbow)'
+                                : needsConfirmation
+                                  ? 'DMX Test (aguardando confirmação)'
+                                  : 'DMX Test (aguardando autorização)'}
+                            </Button>
+                          )}
+
 
                           {/* Last received data */}
                           {device.lastData && (
