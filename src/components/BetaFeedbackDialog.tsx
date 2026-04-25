@@ -198,6 +198,15 @@ export default function BetaFeedbackDialog({ open, onOpenChange, initialCategory
           memory_gb: techContext?.memory_gb,
           cores: techContext?.cores,
           mobile: techContext?.mobile,
+          ...(parsed.data.category === 'integration'
+            ? {
+                equipment: {
+                  brand: equipBrand.trim() || null,
+                  model: equipModel.trim() || null,
+                  protocol: equipProtocol.trim() || null,
+                },
+              }
+            : {}),
         },
       });
 
