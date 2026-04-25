@@ -102,6 +102,7 @@ export default defineConfig(({ mode }) => ({
         ],
       },
     }),
+    guard.plugin,
     mode === "production" && visualizer({
       filename: "dist/bundle-analysis.html",
       gzipSize: true,
