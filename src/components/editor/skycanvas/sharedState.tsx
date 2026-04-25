@@ -27,7 +27,10 @@ let _activeBurstScan: ActiveBurstScanResult | null = null;
 export function getActiveBurstScan() { return _activeBurstScan; }
 
 export function runActiveBurstScan(): ActiveBurstScanResult {
-  const { timelineItems, currentTime } = useProjectStore.getState();
+  const { timelineItems } = useProjectStore.getState();
+  // Authoritative time from the timeline clock (RAF pump in EngineProvider).
+  // Falls back to the store mirror if the clock hasn't been initialised.
+  const currentTime = timelineClock.getTime();
   const freshBursts: ActiveBurstScanResult['freshBursts'] = [];
   const scatterColors: ActiveBurstScanResult['scatterColors'] = [];
   let activeBursts = 0;
