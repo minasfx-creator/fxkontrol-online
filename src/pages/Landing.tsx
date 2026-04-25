@@ -25,13 +25,7 @@ import {
   Activity,
   Globe2,
 } from "lucide-react";
-
-const TITLE = "FX KONTROL — Software de shows pirotécnicos, SFX, DMX e ArtNet";
-const DESC =
-  "Plataforma moderna para design, simulação e controle de shows pirotécnicos, SFX, drones, DMX e ArtNet. Migre do Finale 3D com menos custo e mais automação.";
-const CANONICAL = "https://fxkontrol.online/landing";
-const OG_IMAGE =
-  "https://storage.googleapis.com/gpt-engineer-file-uploads/HNWwID77XlhLhwds00GYkOiIPMm2/social-images/social-1777070046139-ChatGPT_Image_23_de_abr._de_2026,_21_34_00.webp";
+import { LANDING_SITE, buildLandingSeo } from "@/config/landing";
 
 function upsertMeta(attr: "name" | "property", key: string, content: string) {
   let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
