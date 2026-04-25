@@ -158,20 +158,8 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
       }}
       tabIndex={0}
     >
-      {/* Video 1 — Minas FX */}
-      {!useFallback && (
-        <video
-          ref={video1Ref}
-          src="/videos/minas-fx-intro.mp4"
-          className="absolute inset-0 w-full h-full object-contain"
-          style={{ opacity: v1Opacity, transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }}
-          playsInline muted preload="auto"
-          onEnded={handleVideo1End}
-          onError={handleVideoError}
-        />
-      )}
+      {/* Video — FX Kontrol (Minas FX video removido da UX do editor) */}
 
-      {/* Video 2 — FX Kontrol */}
       {!useFallback && (
         <video
           ref={video2Ref}
@@ -281,16 +269,7 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
         </>
       )}
 
-      {/* Cross-fade light sweep */}
-      {sweepActive && (
-        <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden">
-          <div className="absolute top-0 bottom-0 w-[2px]" style={{
-            background: 'linear-gradient(to bottom, transparent 5%, hsl(195 100% 60% / 0.9) 50%, transparent 95%)',
-            boxShadow: '0 0 80px 30px hsl(195 100% 55% / 0.25)',
-            animation: 'fxk-sweep 1s cubic-bezier(0.25, 0.1, 0.25, 1) forwards'
-          }} />
-        </div>
-      )}
+      {/* Cross-fade light sweep removido junto com video1 (Minas FX) */}
 
       {/* Vignette */}
       <div className="absolute inset-0 pointer-events-none z-20" style={{
