@@ -67,7 +67,15 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
 
   const [usbStreaming, setUsbStreaming] = useState(false);
   const [usbStreamFps, setUsbStreamFps] = useState<10 | 20 | 40>(persistedFps);
-  const [usbStreamStats, setUsbStreamStats] = useState({ frames: 0, lastLatencyMs: 0 });
+  const [usbStreamStats, setUsbStreamStats] = useState({
+    frames: 0,
+    lastLatencyMs: 0,
+    avgLatencyMs: 0,
+    maxLatencyMs: 0,
+  });
+  // Acumuladores zero-GC para latência (EWMA + max). Atualizados em todo
+  // tick; UI é re-renderizada no máx ~5 Hz para evitar render storm @ 40Hz.
+  const latencyAccRef = useRef({ avg: 0, max: 0, lastFlushMs: 0 });
   const universesRef = useRef<DMXUniverse[]>([]);
   const autoResumeAttemptedRef = useRef(false);
 
@@ -317,7 +325,21 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     fps: usbStreamFps,
     enabled: usbStreaming,
     onTick: ({ frames, latencyMs }) => {
-      setUsbStreamStats({ frames, lastLatencyMs: latencyMs });
+      // EWMA (α=0.2) para média suavizada + max running. Zero alocações.
+      const acc = latencyAccRef.current;
+      acc.avg = acc.avg === 0 ? latencyMs : acc.avg * 0.8 + latencyMs * 0.2;
+      if (latencyMs > acc.max) acc.max = latencyMs;
+      // Throttle de UI: flush a cada ~200ms (5Hz) — independe do FPS DMX.
+      const now = performance.now();
+      if (now - acc.lastFlushMs >= 200) {
+        acc.lastFlushMs = now;
+        setUsbStreamStats({
+          frames,
+          lastLatencyMs: latencyMs,
+          avgLatencyMs: Math.round(acc.avg),
+          maxLatencyMs: acc.max,
+        });
+      }
     },
     onError: (err) => {
       addDiagLog({ timestamp: new Date(), type: 'error', message: `USB stream falhou: ${err.message}` });
@@ -341,7 +363,10 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
       toast.error('Nenhum dispositivo DMX USB conectado');
       return;
     }
-    setUsbStreamStats({ frames: 0, lastLatencyMs: 0 });
+    setUsbStreamStats({ frames: 0, lastLatencyMs: 0, avgLatencyMs: 0, maxLatencyMs: 0 });
+    latencyAccRef.current.avg = 0;
+    latencyAccRef.current.max = 0;
+    latencyAccRef.current.lastFlushMs = 0;
     setUsbStreaming(true);
     setPersistedStreamingDesired(true);
     addDiagLog({
@@ -373,7 +398,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     if (universes.length === 0) return;
     if (connectedUSBDMX.length === 0) return;
     autoResumeAttemptedRef.current = true;
-    setUsbStreamStats({ frames: 0, lastLatencyMs: 0 });
+    setUsbStreamStats({ frames: 0, lastLatencyMs: 0, avgLatencyMs: 0, maxLatencyMs: 0 });
     setUsbStreaming(true);
     addDiagLog({
       timestamp: new Date(), type: 'info',
@@ -756,10 +781,37 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                   </Button>
 
                   {usbStreaming && (
-                    <div className="flex items-center justify-between text-[8px] text-muted-foreground bg-surface-2 rounded-sm px-1.5 py-1 font-mono-code">
-                      <span>● <span className="text-primary">LIVE</span></span>
-                      <span>{usbStreamStats.frames} frames</span>
-                      <span>{usbStreamStats.lastLatencyMs}ms</span>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[8px] text-muted-foreground bg-surface-2 rounded-sm px-1.5 py-1 font-mono-code">
+                        <span>● <span className="text-primary">LIVE</span></span>
+                        <span>{usbStreamStats.frames} frames</span>
+                        <span title="Latência da última transmissão">last {usbStreamStats.lastLatencyMs}ms</span>
+                      </div>
+                      <div
+                        className="grid grid-cols-2 gap-1 text-[8px] font-mono-code"
+                        aria-live="polite"
+                      >
+                        <div
+                          className="flex items-center justify-between bg-surface-2 rounded-sm px-1.5 py-1"
+                          title="Latência média (EWMA α=0.2)"
+                        >
+                          <span className="text-muted-foreground uppercase tracking-wider">avg</span>
+                          <span className="text-foreground font-bold">{usbStreamStats.avgLatencyMs}ms</span>
+                        </div>
+                        <div
+                          className={`flex items-center justify-between rounded-sm px-1.5 py-1 ${
+                            usbStreamStats.maxLatencyMs > 50
+                              ? 'bg-destructive/10 text-destructive'
+                              : usbStreamStats.maxLatencyMs > 25
+                              ? 'bg-warning/10 text-warning'
+                              : 'bg-surface-2 text-foreground'
+                          }`}
+                          title="Latência máxima observada (pico) — alerta se >25ms (warn) ou >50ms (crítico)"
+                        >
+                          <span className="uppercase tracking-wider opacity-70">max</span>
+                          <span className="font-bold">{usbStreamStats.maxLatencyMs}ms</span>
+                        </div>
+                      </div>
                     </div>
                   )}
 
