@@ -12,6 +12,7 @@ import { AppErrorBoundary } from "@/components/errors/AppErrorBoundary";
 import UpgradeDialog from "@/components/upgrade/UpgradeDialog";
 
 import { lazyRetry } from "@/lib/lazyRetry";
+import { isEnabled } from "@/lib/featureFlags";
 import { useRouteTracing } from "@/observability/useRouteTracing";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -117,11 +118,11 @@ function App() {
                       <Route path="/editor" element={<Index />} />
                       <Route path="/agenda" element={<Agenda />} />
                       <Route path="/training" element={<Training />} />
-                      {/* Unified field ops console (Pairing | Field Test | Mobile Link). */}
-                      <Route path="/field" element={<FieldOps />} />
-                      {/* Legacy routes — redirect to consolidated /field with hash anchor. */}
-                      <Route path="/pairing" element={<Navigate to="/field#pairing" replace />} />
-                      <Route path="/field-test" element={<Navigate to="/field#field-test" replace />} />
+                      {/* Unified field ops console (Pairing | Field Test | Mobile Link). Gated. */}
+                      <Route path="/field" element={isEnabled('module_pairing_mobilelink') ? <FieldOps /> : <Navigate to="/" replace />} />
+                      {/* Legacy routes — redirect to consolidated /field with hash anchor (or home if disabled). */}
+                      <Route path="/pairing" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#pairing" replace /> : <Navigate to="/" replace />} />
+                      <Route path="/field-test" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#field-test" replace /> : <Navigate to="/" replace />} />
                       <Route path="/command" element={<CommandCenter />} />
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/settings/network" element={<NetworkSettings />} />
