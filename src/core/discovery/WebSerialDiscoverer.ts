@@ -20,7 +20,7 @@ interface SerialPortInfo { usbVendorId?: number; usbProductId?: number }
 interface SerialPortLike {
   getInfo(): SerialPortInfo;
 }
-interface SerialEvt extends Event { port?: SerialPortLike; target?: SerialPortLike }
+interface SerialEvt { port?: SerialPortLike; target?: unknown }
 
 const KNOWN_CHIP_FAMILIES: Record<string, string> = {
   '0403:6001': 'ftdi-ft232',
