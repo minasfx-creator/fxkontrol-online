@@ -21,6 +21,12 @@ const PANEL_FLAGS: Partial<Record<PanelId, FeatureFlag>> = {
   labels: 'module_organizer_menu',
 };
 
+/**
+ * Panels owned exclusively by the Toolbar (unified entry point).
+ * Hidden from PanelTabBar to avoid duplicate openers.
+ */
+const TOOLBAR_OWNED: ReadonlySet<PanelId> = new Set<PanelId>(['effects', 'scene', 'showsettings']);
+
 const RAW_PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: PanelId; label: string; icon: typeof Route; shortcut?: string }[] }[] = [
   {
     title: '★ Comando',
@@ -175,6 +181,7 @@ export const PANEL_SECTIONS = RAW_PANEL_SECTIONS
   .map(section => ({
     ...section,
     items: section.items.filter(item => {
+      if (TOOLBAR_OWNED.has(item.id)) return false;
       const flag = PANEL_FLAGS[item.id];
       return !flag || isEnabled(flag);
     }),
