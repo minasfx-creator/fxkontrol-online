@@ -40,6 +40,7 @@ export function detectDMXAdapter(profile: USBDeviceProfile): DMXAdapterInfo {
       protocol: '—',
       rdmCapable: false,
       recognized: false,
+      requiresOperatorConfirmation: false,
     };
   }
   const label = profile.label.toLowerCase();
@@ -51,6 +52,7 @@ export function detectDMXAdapter(profile: USBDeviceProfile): DMXAdapterInfo {
       protocol: 'ENTTEC Widget',
       rdmCapable: true,
       recognized: true,
+      requiresOperatorConfirmation: false,
     };
   }
   if (label.includes('enttec') || label.includes('open dmx')) {
@@ -61,6 +63,7 @@ export function detectDMXAdapter(profile: USBDeviceProfile): DMXAdapterInfo {
       protocol: 'DMX512 Direto',
       rdmCapable: false,
       recognized: true,
+      requiresOperatorConfirmation: false,
     };
   }
   if (label.includes('dmxking') || label.includes('ultradmx')) {
@@ -71,6 +74,7 @@ export function detectDMXAdapter(profile: USBDeviceProfile): DMXAdapterInfo {
       protocol: 'ENTTEC Widget',
       rdmCapable: true,
       recognized: true,
+      requiresOperatorConfirmation: false,
     };
   }
   if (label.includes('eurolite')) {
@@ -81,6 +85,7 @@ export function detectDMXAdapter(profile: USBDeviceProfile): DMXAdapterInfo {
       protocol: 'DMX512 Direto',
       rdmCapable: false,
       recognized: true,
+      requiresOperatorConfirmation: false,
     };
   }
   return {
@@ -90,5 +95,6 @@ export function detectDMXAdapter(profile: USBDeviceProfile): DMXAdapterInfo {
     protocol: 'DMX512 Direto',
     rdmCapable: false,
     recognized: false,
+    requiresOperatorConfirmation: true,
   };
 }
