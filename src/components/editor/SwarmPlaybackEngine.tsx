@@ -63,6 +63,10 @@ export function SwarmPlaybackEngine({
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
+  // Clock-direct time read — keeps the swarm in sync even if the React
+  // prop `manualTime` (driven by the store mirror) is one frame behind.
+  const clockTimeRef = useClockTimeRef();
+
   // Alocação de Baixo Nível
   const stateRef = useRef({
     pathIndices: new Uint32Array(0),
