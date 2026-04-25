@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { LANDING_SITE, buildLandingSeo, enforceLandingCanonicalRedirect } from "@/config/landing";
 import { LandingThemeToggle } from "@/components/landing/LandingThemeToggle";
+import { EarlyAccessForm } from "@/components/landing/EarlyAccessForm";
 
 function upsertMeta(attr: "name" | "property", key: string, content: string) {
   let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
