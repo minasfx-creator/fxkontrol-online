@@ -1764,12 +1764,17 @@ export default function SkyCanvas() {
         <GeoTimeOfDaySync />
         <Suspense fallback={null}>
           <AdaptiveExposureController />
-          {!environment.disableLighting && <GlobalIlluminationController />}
           {!google3DTilesEnabled && <GroundReflections />}
-          {!environment.disableLighting && <LensFlareController />}
-          <ContactShadowsLayer />
           <DebugFeed />
         </Suspense>
+        {/* Heavy lighting effects deferred until idle for faster first paint */}
+        <DelayedMount delay={400}>
+          <Suspense fallback={null}>
+            {!environment.disableLighting && <GlobalIlluminationController />}
+            {!environment.disableLighting && <LensFlareController />}
+            <ContactShadowsLayer />
+          </Suspense>
+        </DelayedMount>
         <DelayedMount delay={2000}>
           <NiagaraVFXController />
         </DelayedMount>
@@ -1783,7 +1788,9 @@ export default function SkyCanvas() {
 
         <Suspense fallback={null}>
           {!google3DTilesEnabled && <Moon />}
-          {!google3DTilesEnabled && !isLowTierMobile && !environment.lowQualityMode && <AtmosphericParticles />}
+          {!google3DTilesEnabled && !isLowTierMobile && !environment.lowQualityMode && (
+            <DelayedMount delay={1500}><AtmosphericParticles /></DelayedMount>
+          )}
           {!google3DTilesEnabled && !isLowTierMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
         </Suspense>
 
