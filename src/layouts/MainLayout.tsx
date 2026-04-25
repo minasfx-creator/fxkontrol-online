@@ -84,25 +84,25 @@ export default function MainLayout() {
     return () => document.removeEventListener('click', handler);
   }, [humStarted]);
 
-  // Route change: holographic dissolve-out → materialize-in
+  // Route change: Apple-style cross-fade (curto, sem teatro).
+  // 180ms dissolve → swap → 220ms materialize. Total ~400ms perceptual,
+  // mas a metade visível porque o materialize começa imediatamente.
   useEffect(() => {
     if (prevPathRef.current !== location.pathname) {
       ambientSound.play('nav');
 
-      // Phase 1: dissolve out current content
       setTransitionPhase('dissolve-out');
 
       if (transitionTimeout.current) clearTimeout(transitionTimeout.current);
 
       transitionTimeout.current = setTimeout(() => {
-        // Phase 2: swap content & materialize in
         setDisplayedPath(location.pathname);
         setTransitionPhase('materialize-in');
 
         transitionTimeout.current = setTimeout(() => {
           setTransitionPhase('idle');
-        }, 700);
-      }, 350);
+        }, 220);
+      }, 180);
 
       prevPathRef.current = location.pathname;
     }
