@@ -233,7 +233,7 @@ export default function Landing() {
       {/* ── HERO ───────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
         {/* Aurora background */}
-        <div className="pointer-events-none absolute inset-0">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
           <div className="absolute -top-40 left-1/2 h-[400px] w-[100vw] max-w-[1200px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.25),transparent_60%)] blur-3xl sm:h-[600px]" />
           <div className="absolute -bottom-40 right-0 h-[350px] w-[100vw] max-w-[800px] rounded-full bg-[radial-gradient(circle_at_center,hsl(var(--fxk-cyan)/0.18),transparent_60%)] blur-3xl sm:h-[500px]" />
           <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--foreground)/0.03)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--foreground)/0.03)_1px,transparent_1px)] [background-size:40px_40px] sm:[background-size:64px_64px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
@@ -258,7 +258,7 @@ export default function Landing() {
             <div className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:mt-9 sm:flex-row sm:items-center">
               <Button asChild size="lg" className="h-12 rounded-full px-6 text-sm font-bold shadow-[0_10px_40px_hsl(var(--primary)/0.3)] sm:px-7">
                 <Link to="/studio">
-                  <Rocket className="mr-2 h-4 w-4" />
+                  <Rocket aria-hidden="true" className="mr-2 h-4 w-4" />
                   Abrir editor 3D
                 </Link>
               </Button>
@@ -287,7 +287,7 @@ export default function Landing() {
                   fxkontrol.online / studio
                 </span>
               </div>
-              <div className="relative aspect-[16/9] w-full bg-gradient-to-br from-[hsl(var(--surface-0))] via-[hsl(220_30%_4%)] to-[hsl(var(--surface-1))]">
+              <div role="img" aria-label="Pré-visualização do editor 3D do FX KONTROL com timeline, HUD ARMED e bursts pirotécnicos" className="relative aspect-[16/9] w-full bg-gradient-to-br from-[hsl(var(--surface-0))] via-[hsl(220_30%_4%)] to-[hsl(var(--surface-1))]">
                 {/* Synthetic 3D scene */}
                 <div className="absolute inset-0">
                   <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-[hsl(var(--surface-0))] to-transparent" />
@@ -331,11 +331,11 @@ export default function Landing() {
       </section>
 
       {/* ── FEATURES ───────────────────────────────────────────────────── */}
-      <section id="features" className="relative border-t border-border/40 bg-[hsl(var(--surface-1))] py-16 sm:py-24 md:py-32">
+      <section id="features" aria-labelledby="features-heading" className="relative border-t border-border/40 bg-[hsl(var(--surface-1))] py-16 sm:py-24 md:py-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-primary">Recursos</p>
-            <h2 className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
+            <h2 id="features-heading" className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
               Mesmo core do Finale. <br />
               <span className="text-muted-foreground">Mais moderno. Mais acessível.</span>
             </h2>
@@ -362,12 +362,12 @@ export default function Landing() {
       </section>
 
       {/* ── DEMO ───────────────────────────────────────────────────────── */}
-      <section id="demo" className="relative border-t border-border/40 py-16 sm:py-24 md:py-32">
+      <section id="demo" aria-labelledby="demo-heading" className="relative border-t border-border/40 py-16 sm:py-24 md:py-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
           <div className="grid items-center gap-10 sm:gap-12 lg:grid-cols-2">
             <div>
               <p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-primary">Demo</p>
-              <h2 className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
+              <h2 id="demo-heading" className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
                 O editor 3D que <span className="text-primary">dispara o show de verdade</span>.
               </h2>
               <p className="mt-5 max-w-lg text-base leading-relaxed text-muted-foreground">
@@ -384,7 +384,7 @@ export default function Landing() {
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-3 text-sm">
                     <div className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-                      <Check className="h-3 w-3" strokeWidth={3} />
+                      <Check aria-hidden="true" className="h-3 w-3" strokeWidth={3} />
                     </div>
                     <span className="text-muted-foreground">{item}</span>
                   </li>
@@ -394,7 +394,7 @@ export default function Landing() {
               <div className="mt-10 flex gap-3">
                 <Button asChild size="lg" className="rounded-full">
                   <Link to="/studio">
-                    <Sparkles className="mr-2 h-4 w-4" />
+                    <Sparkles aria-hidden="true" className="mr-2 h-4 w-4" />
                     Testar agora
                   </Link>
                 </Button>
@@ -411,7 +411,7 @@ export default function Landing() {
                 <Card className="border-border/50 bg-[hsl(var(--surface-2))] p-5">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--fxk-cyan)/0.15)] text-[hsl(var(--fxk-cyan))]">
-                      <Globe2 className="h-4 w-4" />
+                      <Globe2 aria-hidden="true" className="h-4 w-4" />
                     </div>
                     <div className="flex-1">
                       <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -427,7 +427,7 @@ export default function Landing() {
                 <Card className="border-border/50 bg-[hsl(var(--surface-2))] p-5">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                      <Flame className="h-4 w-4" />
+                      <Flame aria-hidden="true" className="h-4 w-4" />
                     </div>
                     <div className="flex-1">
                       <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -441,7 +441,7 @@ export default function Landing() {
                 <Card className="border-border/50 bg-[hsl(var(--surface-2))] p-5">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--fxk-violet)/0.2)] text-[hsl(var(--fxk-violet))]">
-                      <Zap className="h-4 w-4" />
+                      <Zap aria-hidden="true" className="h-4 w-4" />
                     </div>
                     <div className="flex-1">
                       <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -457,7 +457,7 @@ export default function Landing() {
                 <Card className="border-border/50 bg-[hsl(var(--surface-2))] p-5">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--fxk-cyan)/0.15)] text-[hsl(var(--fxk-cyan))]">
-                      <Plane className="h-4 w-4" />
+                      <Plane aria-hidden="true" className="h-4 w-4" />
                     </div>
                     <div className="flex-1">
                       <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -475,11 +475,11 @@ export default function Landing() {
       </section>
 
       {/* ── PRICING ────────────────────────────────────────────────────── */}
-      <section id="pricing" className="relative border-t border-border/40 bg-[hsl(var(--surface-1))] py-16 sm:py-24 md:py-32">
+      <section id="pricing" aria-labelledby="pricing-heading" className="relative border-t border-border/40 bg-[hsl(var(--surface-1))] py-16 sm:py-24 md:py-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-primary">Preço</p>
-            <h2 className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
+            <h2 id="pricing-heading" className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
               Preço de ataque por mercado.
             </h2>
             <p className="mx-auto mt-4 max-w-lg text-base text-muted-foreground">
@@ -513,7 +513,7 @@ export default function Landing() {
                 <ul className="mt-7 flex-1 space-y-2.5">
                   {plan.features.map((feat) => (
                     <li key={feat} className="flex items-start gap-2.5 text-sm">
-                      <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" strokeWidth={3} />
+                      <Check aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" strokeWidth={3} />
                       <span className="text-muted-foreground">{feat}</span>
                     </li>
                   ))}
@@ -529,7 +529,7 @@ export default function Landing() {
 
       {/* ── FINAL CTA ──────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden border-t border-border/40 py-20 sm:py-28 md:py-36">
-        <div className="pointer-events-none absolute inset-0">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
           <div className="absolute left-1/2 top-1/2 h-[400px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,hsl(var(--primary)/0.25),transparent_70%)] blur-3xl" />
         </div>
         <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6 md:px-8">
@@ -545,7 +545,7 @@ export default function Landing() {
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button asChild size="lg" className="h-12 rounded-full px-8 text-sm font-bold shadow-[0_10px_40px_hsl(var(--primary)/0.35)]">
               <Link to="/studio">
-                <Rocket className="mr-2 h-4 w-4" />
+                <Rocket aria-hidden="true" className="mr-2 h-4 w-4" />
                 Abrir editor 3D
               </Link>
             </Button>
