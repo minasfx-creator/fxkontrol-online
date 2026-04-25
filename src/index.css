@@ -89,11 +89,23 @@
     --sidebar-border: 220 15% 8%;
     --sidebar-ring: 32 100% 50%;
 
-    /* Glass — tactical frosted */
+    /* Glass — tactical frosted (legacy aliases) */
     --glass-bg: 220 18% 6% / 0.85;
     --glass-border: 220 12% 18% / 0.4;
     --glass-shine: 32 100% 60% / 0.03;
     --glass-frosted: 220 20% 4% / 0.92;
+
+    /* ── Apple Material System (SwiftUI-inspired) ──
+       3 níveis de hierarquia. Acromáticos por padrão — a cor vem do conteúdo,
+       nunca da moldura. Use `.material-thin/regular/thick` em componentes novos
+       e mantenha os legacy aliases para o que já existe. */
+    --material-thin-bg:    220 16% 8% / 0.55;
+    --material-regular-bg: 220 16% 7% / 0.72;
+    --material-thick-bg:   220 18% 5% / 0.86;
+    --material-stroke:     0 0% 100% / 0.06;
+    --material-stroke-strong: 0 0% 100% / 0.10;
+    --material-highlight:  0 0% 100% / 0.05;  /* inset top — luz reflexa */
+    --material-shadow:     0 0% 0% / 0.55;
   }
 }
 
