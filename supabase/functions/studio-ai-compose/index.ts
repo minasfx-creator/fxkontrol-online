@@ -48,40 +48,33 @@ const TOOL_SCHEMA = {
     description: "Emit a strictly typed ShowPlan with positions and timeline items.",
     parameters: {
       type: "object",
-      additionalProperties: false,
       properties: {
         title: { type: "string" },
-        duration: { type: "number", minimum: 5, maximum: 600 },
+        duration: { type: "number" },
         assumptions: { type: "array", items: { type: "string" } },
         positions: {
           type: "array",
-          minItems: 1,
-          maxItems: 64,
           items: {
             type: "object",
-            additionalProperties: false,
             properties: {
               id: { type: "string", description: "Stable ID, e.g. 'pos-1'" },
               name: { type: "string" },
               type: { type: "string", enum: ["pyro", "drone-pad", "light"] },
-              x: { type: "number" },
-              z: { type: "number" },
+              x: { type: "number", description: "X coordinate in meters" },
+              z: { type: "number", description: "Z coordinate in meters" },
             },
             required: ["id", "name", "type", "x", "z"],
           },
         },
         timeline: {
           type: "array",
-          minItems: 1,
-          maxItems: 200,
           items: {
             type: "object",
-            additionalProperties: false,
             properties: {
               effectId: { type: "string" },
               positionId: { type: "string" },
-              startTime: { type: "number", minimum: 0 },
-              trackIndex: { type: "integer", minimum: 0, maximum: 16 },
+              startTime: { type: "number", description: "Seconds from t=0" },
+              trackIndex: { type: "integer", description: "0-16, default 0" },
               notes: { type: "string" },
             },
             required: ["effectId", "positionId", "startTime"],
