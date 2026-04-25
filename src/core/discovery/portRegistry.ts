@@ -156,6 +156,8 @@ export const portRegistry = {
     vendorId?: number;
     productId?: number;
     host?: string;
+    /** USB serial number — honored only when policy is `vidpid+serial`. */
+    serialNumber?: string;
     label: string;
     profileId?: string;
     dmxAdapterKind?: string;
@@ -164,6 +166,7 @@ export const portRegistry = {
       vendorId: opts.vendorId,
       productId: opts.productId,
       host: opts.host,
+      serialNumber: opts.serialNumber,
     });
     const cur = this.get(key);
     return this.upsert({
