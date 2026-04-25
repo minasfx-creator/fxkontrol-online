@@ -44,8 +44,7 @@ const THRESHOLD_OPEN = 200;    // > 200Ω = open
 function classify(ohms: number): PinStatus {
   if (ohms < THRESHOLD_SHORT) return 'SHORT';
   if (ohms <= THRESHOLD_OK_MAX) return 'OK';
-  if (ohms > THRESHOLD_OPEN) return 'OPEN';
-  // 50–200Ω = marginal, treat as OPEN for safety
+  // 50–200Ω marginal AND > 200Ω no-igniter both treated as OPEN for safety.
   return 'OPEN';
 }
 

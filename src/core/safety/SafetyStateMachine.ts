@@ -8,6 +8,8 @@
  *         SAFE + RESET_SAFETY → IDLE
  */
 
+import { safetyAuditTrail } from './SafetyAuditTrail';
+
 export type SafetyState = 'IDLE' | 'LOCKED' | 'ARMED' | 'FIRING' | 'COOLDOWN' | 'SAFE';
 
 export type SafetyTransition =
@@ -80,11 +82,22 @@ class SafetyStateMachine {
     this._inTransition = true;
     try {
 
-    // E_STOP always allowed from any state
+    // E_STOP always allowed from any state — log to black box (≤100ms requirement)
     if (t === 'E_STOP') {
       this._clearCooldown();
       this._state = 'SAFE';
       const result: TransitionResult = { allowed: true, from, to: 'SAFE' };
+      // Audit FIRST so the event is captured even if a listener throws
+      try {
+        safetyAuditTrail.log({
+          timestamp: Date.now(),
+          tick: 0,
+          event: 'E_STOP',
+          from,
+          to: 'SAFE',
+          detail: `E-STOP triggered from ${from}`,
+        });
+      } catch { /* never block E-STOP on audit failure */ }
       this._notify(t, result);
       return result;
     }
