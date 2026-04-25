@@ -201,6 +201,7 @@ export const LensFlareController = React.forwardRef<THREE.Group, {}>(function Le
   const spritesRef = useRef<THREE.Sprite[]>([]);
   const poolIdx = useRef(0);
   const { scene } = useThree();
+  const clockTimeRef = useClockTimeRef();
 
   useEffect(() => {
     const pool: THREE.Sprite[] = [];
@@ -224,7 +225,8 @@ export const LensFlareController = React.forwardRef<THREE.Group, {}>(function Le
       decayLensFlare(sprite, delta, 3);
     }
 
-    const { timelineItems, currentTime } = useProjectStore.getState();
+    const { timelineItems } = useProjectStore.getState();
+    const currentTime = clockTimeRef.current;
     for (let i = 0; i < timelineItems.length; i++) {
       const item = timelineItems[i];
       const elapsed = currentTime - item.startTime;
