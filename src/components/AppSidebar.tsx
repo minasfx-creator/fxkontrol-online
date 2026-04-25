@@ -126,7 +126,7 @@ export function AppSidebar() {
                         <TooltipTrigger asChild>
                           {navContent}
                         </TooltipTrigger>
-                        <TooltipContent side="right" className="glass-hud border-primary/10 text-[10px] font-mono-code">
+                        <TooltipContent side="right" className="glass-hud rounded-panel border-primary/10 text-[10px] font-mono-code px-3 py-2">
                           <p className="font-bold">{item.title}</p>
                           <p className="text-muted-foreground text-[8px]">{item.desc}</p>
                         </TooltipContent>
