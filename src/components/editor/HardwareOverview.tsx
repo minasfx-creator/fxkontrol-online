@@ -198,6 +198,7 @@ export default function HardwareOverview() {
           </div>
         </div>
         <DiscoveryGrid />
+        <PersistedDevicesPanel />
       </div>
 
       {/* Device Grid */}
