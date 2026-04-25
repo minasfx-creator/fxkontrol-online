@@ -15,8 +15,9 @@ import { generateArtNetPatchCSV, downloadArtNetPatch } from './ArtNetPatchExport
 import { generateDroneCSV, downloadDroneCSV } from './DroneCSVExporter';
 import { generateMegafireScript, downloadMegafireScript } from './MegafireExporter';
 import { generateRJEquipamentosScript, downloadRJEquipamentosScript } from './RJEquipamentosExporter';
+import { generateGalaxisGS2Script, downloadGalaxisGS2Script } from './GalaxisGS2Exporter';
 
-export type ExportTarget = 'fireone' | 'artnet' | 'drone' | 'megafire' | 'rj-traditional' | 'rj-timecode';
+export type ExportTarget = 'fireone' | 'artnet' | 'drone' | 'megafire' | 'rj-traditional' | 'rj-timecode' | 'galaxis-gs2';
 
 export interface ExportAttemptResult {
   target: ExportTarget;
@@ -121,6 +122,18 @@ class ExportCoordinator {
             return result;
           }
           downloadRJEquipamentosScript(variant);
+          const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
+          this._log(result);
+          return result;
+        }
+        case 'galaxis-gs2': {
+          const r = generateGalaxisGS2Script();
+          if (!r.verified || r.errors.length > 0) {
+            const result: ExportAttemptResult = { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
+            this._log(result);
+            return result;
+          }
+          downloadGalaxisGS2Script();
           const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
           this._log(result);
           return result;
