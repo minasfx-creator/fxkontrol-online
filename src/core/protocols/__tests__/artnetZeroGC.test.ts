@@ -35,24 +35,26 @@ describe('Fatia 8 #2 — Art-Net zero-GC payload', () => {
   });
 
   it('payload is a base64 string, NOT a JSON Array(512) (regression sentinel)', () => {
+    const before = fake.payloads.length; // ArtPoll on connect
     bridge.sendDmx(0, buf, { critical: true });
-    expect(fake.payloads.length).toBe(1);
-    const sent = JSON.parse(fake.payloads[0]) as { op: string; data: unknown };
+    const fresh = fake.payloads.slice(before);
+    expect(fresh.length).toBe(1);
+    const sent = JSON.parse(fresh[0]) as { op: string; data: unknown };
     expect(sent.op).toBe('ArtDmx');
     // Must be string (base64), not array — the old impl serialized Array.from(buf).
-    expect(typeof sent.data).toBe('base64'.length > 0 ? 'string' : 'string');
     expect(typeof sent.data).toBe('string');
-    // 512 bytes → 684 base64 chars (688 with padding round-up); must NOT be huge JSON list.
+    // 512 bytes → ≤ 688 base64 chars; must NOT be huge JSON list (~2KB).
     expect((sent.data as string).length).toBeLessThan(800);
   });
 
   it('1000 critical sends complete under 100ms wall-clock budget', () => {
+    const baseline = bridge.getStats().sent;
     const t0 = performance.now();
     for (let i = 0; i < 1000; i++) {
       bridge.sendDmx(i % 16, buf, { critical: true });
     }
     const elapsed = performance.now() - t0;
     expect(elapsed).toBeLessThan(100);
-    expect(bridge.getStats().sent).toBe(1000);
+    expect(bridge.getStats().sent - baseline).toBe(1000);
   });
 });
