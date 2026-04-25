@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Sparkles, X, Megaphone } from 'lucide-react';
+import { Sparkles, X, Megaphone, MessageSquarePlus } from 'lucide-react';
+import BetaFeedbackDialog from './BetaFeedbackDialog';
 
 const STORAGE_KEY = 'beta_promo_banner_dismissed_v1';
 
@@ -8,6 +9,7 @@ export default function BetaPromoBanner() {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem(STORAGE_KEY) === '1';
   });
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   if (dismissed) return null;
 
