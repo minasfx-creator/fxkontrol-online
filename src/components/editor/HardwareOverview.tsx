@@ -93,6 +93,11 @@ export default function HardwareOverview() {
             onClick={handleScan} disabled={isScanning}>
             <Search className="w-3 h-3" /> {isScanning ? 'SCANNING…' : 'SCAN'}
           </Button>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono gap-1 text-amber-400"
+            onClick={handleDeepScan} disabled={isScanning}
+            title="Inclui ArtPoll broadcast via bridge (descobre nós Art-Net na rede)">
+            <Satellite className="w-3 h-3" /> DEEP
+          </Button>
           <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono"
             onClick={() => { refresh(); evaluateReadiness(); setHealthReport(hardwareHealthMonitor.evaluate()); }}>
             <RefreshCw className="w-3 h-3 mr-1" /> POLL
