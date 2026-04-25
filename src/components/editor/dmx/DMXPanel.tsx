@@ -531,25 +531,6 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     });
   }, [persistedStreamingDesired, usbStreaming, universes.length, connectedUSBDMX.length, usbStreamFps, addDiagLog]);
 
-                  {/* Painel de diagnóstico em tempo real do broadcast.
-                      Útil para comparar impacto ao trocar 10/20/40 Hz. */}
-                  <DMXBroadcastDiagnostics
-                    streaming={usbStreaming}
-                    fpsTarget={usbStreamFps}
-                    fpsActual={usbStreamStats.fpsActual}
-                    frames={usbStreamStats.frames}
-                    lastLatencyMs={usbStreamStats.lastLatencyMs}
-                    avgLatencyMs={usbStreamStats.avgLatencyMs}
-                    maxLatencyMs={usbStreamStats.maxLatencyMs}
-                    writeErrors={usbStreamStats.writeErrors}
-                    lastErrorMsg={usbStreamStats.lastErrorMsg}
-                    lastErrorTs={usbStreamStats.lastErrorTs}
-                    latencyHistory={latencyAccRef.current.history}
-                    latencyHistoryIdx={latencyAccRef.current.historyIdx}
-                    latencyHistoryFilled={latencyAccRef.current.historyFilled}
-                    estopMs={LATENCY_ESTOP_MS}
-                  />
-
 
   const sendFireOneDMX = async () => {
     if (universes.length === 0 || !hardware.isConnected) {
