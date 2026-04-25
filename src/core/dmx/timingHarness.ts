@@ -206,8 +206,28 @@ class DMXTimingHarness {
 
   setBudgets(b: Partial<StageBudgets>): void {
     this._budgets = { ...this._budgets, ...b };
+    this._activePreset = null; // custom override
   }
   getBudgets(): Readonly<StageBudgets> { return this._budgets; }
+
+  private _activePreset: DMXBudgetPresetId | null = DEFAULT_BUDGET_PRESET;
+
+  /**
+   * Apply a named budget preset. Resets baseline + recorded frames so
+   * regression detection compares apples-to-apples against the new
+   * target. Returns the applied preset for convenience.
+   */
+  applyBudgetPreset(id: DMXBudgetPresetId): DMXBudgetPreset {
+    const preset = DMX_BUDGET_PRESETS[id];
+    this._budgets = { ...preset.budgets };
+    this._activePreset = id;
+    this._baseline = {};
+    this.reset();
+    logger.info(`[DMX timing] preset → ${preset.label} (${preset.targetHz}Hz, total ${preset.budgets.total}ms)`);
+    return preset;
+  }
+
+  getActivePreset(): DMXBudgetPresetId | null { return this._activePreset; }
 
   /** Begin a new frame; resets in-flight record. */
   begin(): number {
