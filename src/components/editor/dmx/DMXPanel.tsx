@@ -381,19 +381,47 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
         acc.strikes = 0;
       }
 
+      // ── FPS real (frames por janela rolante de 1s) ──
+      const nowFps = performance.now();
+      if (acc.windowStartMs === 0) {
+        acc.windowStartMs = nowFps;
+        acc.windowStartFrames = frames;
+      } else if (nowFps - acc.windowStartMs >= 1000) {
+        const elapsed = (nowFps - acc.windowStartMs) / 1000;
+        acc.fpsActual = (frames - acc.windowStartFrames) / elapsed;
+        acc.windowStartMs = nowFps;
+        acc.windowStartFrames = frames;
+      }
+
       // Throttle de UI: flush a cada ~200ms (5Hz) — independe do FPS DMX.
       const now = performance.now();
       if (now - acc.lastFlushMs >= 200) {
         acc.lastFlushMs = now;
+        // Append no histórico de latência (ring buffer)
+        acc.history[acc.historyIdx] = latencyMs;
+        acc.historyIdx = (acc.historyIdx + 1) % acc.history.length;
+        if (acc.historyFilled < acc.history.length) acc.historyFilled++;
+
+        const we = writeErrorsRef.current;
         setUsbStreamStats({
           frames,
           lastLatencyMs: latencyMs,
           avgLatencyMs: Math.round(acc.avg),
           maxLatencyMs: acc.max,
+          fpsActual: acc.fpsActual,
+          writeErrors: we.count,
+          lastErrorMsg: we.lastMsg,
+          lastErrorTs: we.lastTs,
         });
       }
     },
     onError: (err) => {
+      // Conta o erro mas NÃO derruba o stream — só loga + toast leve.
+      // E-STOP de stream falho continua a cargo do hook (auto-stop em falha grave).
+      const we = writeErrorsRef.current;
+      we.count += 1;
+      we.lastMsg = err.message;
+      we.lastTs = performance.now();
       addDiagLog({ timestamp: new Date(), type: 'error', message: `USB stream falhou: ${err.message}` });
       toast.error('Falha no streaming USB — parado');
       setUsbStreaming(false);
