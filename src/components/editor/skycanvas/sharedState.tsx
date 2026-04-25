@@ -185,12 +185,14 @@ export const CAMERA_PRESETS = [
 // ═══ WebGL Error Boundary ═══
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { captureSkyCanvasError } from '@/lib/skyCanvasDiagnostics';
 
 export class WebGLErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; retryKey: number }> {
   state = { hasError: false, retryKey: 0 };
   static getDerivedStateFromError() { return { hasError: true }; }
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.warn('WebGL unavailable:', error.message);
+    captureSkyCanvasError('WebGLErrorBoundary', error, info.componentStack ?? undefined);
   }
   render() {
     if (this.state.hasError) {
