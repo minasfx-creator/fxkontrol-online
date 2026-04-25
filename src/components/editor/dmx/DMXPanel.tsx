@@ -73,9 +73,14 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     avgLatencyMs: 0,
     maxLatencyMs: 0,
   });
-  // Acumuladores zero-GC para latência (EWMA + max). Atualizados em todo
-  // tick; UI é re-renderizada no máx ~5 Hz para evitar render storm @ 40Hz.
-  const latencyAccRef = useRef({ avg: 0, max: 0, lastFlushMs: 0 });
+  // E-STOP latência: trip se >LATENCY_ESTOP_MS por LATENCY_ESTOP_STRIKES ticks consecutivos.
+  // Compliance Core (Safety Critical): E-STOP latency <50ms.
+  const LATENCY_ESTOP_MS = 50;
+  const LATENCY_ESTOP_STRIKES = 3;
+  const [latencyEstopReason, setLatencyEstopReason] = useState<string | null>(null);
+  // Acumuladores zero-GC para latência (EWMA + max + strikes E-STOP).
+  // UI re-render no máx ~5 Hz para evitar render storm @ 40Hz.
+  const latencyAccRef = useRef({ avg: 0, max: 0, lastFlushMs: 0, strikes: 0 });
   const universesRef = useRef<DMXUniverse[]>([]);
   const autoResumeAttemptedRef = useRef(false);
 
@@ -329,6 +334,34 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
       const acc = latencyAccRef.current;
       acc.avg = acc.avg === 0 ? latencyMs : acc.avg * 0.8 + latencyMs * 0.2;
       if (latencyMs > acc.max) acc.max = latencyMs;
+
+      // ── E-STOP por latência ────────────────────────────────────────
+      // Compliance Core: E-STOP latency <50ms. Trip se 3 ticks
+      // consecutivos excederem o limite — evita falso-positivo de pico
+      // isolado, mas reage rápido (≤75ms @ 40Hz).
+      if (latencyMs > LATENCY_ESTOP_MS) {
+        acc.strikes += 1;
+        if (acc.strikes >= LATENCY_ESTOP_STRIKES) {
+          const reason = `Latência ${latencyMs}ms > ${LATENCY_ESTOP_MS}ms por ${LATENCY_ESTOP_STRIKES} medições consecutivas`;
+          acc.strikes = 0;
+          setLatencyEstopReason(reason);
+          setUsbStreaming(false);
+          setPersistedStreamingDesired(false);
+          addDiagLog({
+            timestamp: new Date(),
+            type: 'error',
+            message: `E-STOP USB streaming · ${reason}`,
+            latency: latencyMs,
+          });
+          toast.error('E-STOP DMX · latência crítica', {
+            description: reason,
+            duration: 8000,
+          });
+        }
+      } else {
+        acc.strikes = 0;
+      }
+
       // Throttle de UI: flush a cada ~200ms (5Hz) — independe do FPS DMX.
       const now = performance.now();
       if (now - acc.lastFlushMs >= 200) {
@@ -367,6 +400,8 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     latencyAccRef.current.avg = 0;
     latencyAccRef.current.max = 0;
     latencyAccRef.current.lastFlushMs = 0;
+    latencyAccRef.current.strikes = 0;
+    setLatencyEstopReason(null);
     setUsbStreaming(true);
     setPersistedStreamingDesired(true);
     addDiagLog({
@@ -727,6 +762,30 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                       {connectedUSBDMX.length} {connectedUSBDMX.length === 1 ? 'device' : 'devices'}
                     </span>
                   </div>
+
+                  {/* E-STOP latency banner — persistente até nova partida */}
+                  {latencyEstopReason && (
+                    <div
+                      role="alert"
+                      aria-live="assertive"
+                      className="border border-destructive bg-destructive/15 text-destructive rounded-sm px-2 py-1.5 space-y-1"
+                    >
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
+                        <Square className="h-3 w-3 fill-current" />
+                        <span>E-STOP DMX · LATÊNCIA CRÍTICA</span>
+                      </div>
+                      <p className="text-[9px] leading-tight opacity-90">
+                        Streaming USB DMX foi parado automaticamente. {latencyEstopReason}.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setLatencyEstopReason(null)}
+                        className="text-[8px] underline opacity-70 hover:opacity-100"
+                      >
+                        Dispensar aviso
+                      </button>
+                    </div>
+                  )}
 
                   {/* Seletor de taxa — atualiza Hz sem fechar a porta USB */}
                   <div className="grid grid-cols-3 gap-1">
