@@ -124,6 +124,9 @@ class SafetyStateMachine {
     }
 
     return result;
+    } finally {
+      this._inTransition = false;
+    }
   }
 
   /** Subscribe to all transition attempts (including denied). */
