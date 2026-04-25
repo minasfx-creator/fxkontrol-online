@@ -3,7 +3,7 @@
  * One-tap "SCAN ALL" discovers BLE, USB, Art-Net, PBUS, Wi-Fi Direct devices
  * Glass-br2049 styling, shows signal/battery/status per device
  */
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Zap, Search, Loader2, RefreshCw, Signal, Battery,
   CheckCircle2, Wifi, Radio, Cpu, Cable, Globe,
@@ -91,6 +91,26 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
   const [simMode, setSimMode] = useState(true);
   const [devices, setDevices] = useState<DiscoveredDevice[]>([]);
   const [testingAll, setTestingAll] = useState(false);
+
+  // Track mount state + pending timers so we never setState after unmount.
+  const mountedRef = useRef(true);
+  const pendingTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      pendingTimersRef.current.forEach((t) => clearTimeout(t));
+      pendingTimersRef.current.clear();
+    };
+  }, []);
+  const safeTimeout = useCallback((cb: () => void, ms: number) => {
+    const id = setTimeout(() => {
+      pendingTimersRef.current.delete(id);
+      if (mountedRef.current) cb();
+    }, ms);
+    pendingTimersRef.current.add(id);
+    return id;
+  }, []);
 
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
