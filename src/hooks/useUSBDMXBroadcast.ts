@@ -13,7 +13,7 @@
  *  - Auto-stop: se o envio lança erro, o loop é interrompido e o
  *    callback `onError` é chamado (UI decide se mostra toast).
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { logger } from '@/lib/logger';
 
@@ -55,6 +55,8 @@ export function useUSBDMXBroadcast(
   const getChannelsRef = useRef(getChannels);
   const onErrorRef = useRef(onError);
   const onTickRef = useRef(onTick);
+  // State: refletido para o consumidor (ref muta sem re-render).
+  const [streaming, setStreaming] = useState(false);
 
   // Sincroniza refs sem reiniciar o loop
   useEffect(() => { getChannelsRef.current = getChannels; }, [getChannels]);
@@ -105,6 +107,7 @@ export function useUSBDMXBroadcast(
           intervalRef.current = null;
         }
         inFlightRef.current = false;
+        setStreaming(false);
         onErrorRef.current?.(error);
       } finally {
         inFlightRef.current = false;
@@ -112,6 +115,7 @@ export function useUSBDMXBroadcast(
     };
 
     intervalRef.current = window.setInterval(tick, periodMs);
+    setStreaming(true);
 
     return () => {
       if (intervalRef.current !== null) {
@@ -119,12 +123,13 @@ export function useUSBDMXBroadcast(
         intervalRef.current = null;
       }
       inFlightRef.current = false;
+      setStreaming(false);
       logger.info('[useUSBDMXBroadcast] stop', { framesSent: framesRef.current });
     };
   }, [enabled, fps, connectedCount, sendDMXToAll]);
 
   return {
-    streaming: intervalRef.current !== null,
+    streaming,
     framesSent: framesRef.current,
   };
 }
