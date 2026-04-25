@@ -122,6 +122,15 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
           : d
       ));
 
+      // Persist authorization metadata so the next session can auto-reopen.
+      const portInfo = port.getInfo?.();
+      portRegistry.recordSuccess({
+        vendorId: portInfo?.usbVendorId,
+        productId: portInfo?.usbProductId,
+        label: effectiveProfile.label,
+        profileId: effectiveProfile.label,
+      });
+
       addLog({ deviceId, direction: 'info', message: `✓ Conectado a ${effectiveProfile.label} @ ${effectiveProfile.baudRate} baud` });
       toast.success(`Conectado: ${effectiveProfile.label}`);
 
@@ -273,6 +282,16 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
         });
         startReadLoop(connectedDevice);
         registerDevice(connectedDevice);
+
+        // Refresh persistence on every successful reopen so timestamps and
+        // last-known label stay current across sessions.
+        portRegistry.recordSuccess({
+          vendorId: info?.usbVendorId,
+          productId: info?.usbProductId,
+          label: effectiveProfile.label,
+          profileId: effectiveProfile.label,
+        });
+
         addLog({
           deviceId,
           direction: 'info',

@@ -60,6 +60,15 @@ function portToDevice(port: SerialPortLike): DiscoveredDevice {
     ?? persisted?.lastLabel
     ?? (chip ? `Serial (${chip.toUpperCase()})` : 'Porta serial USB');
 
+  // Port is in `getPorts()` ⇒ already authorized. Persist so silent
+  // re-open works on the next session even before the discoverer runs.
+  portRegistry.recordSuccess({
+    vendorId: vid,
+    productId: pid,
+    label,
+    profileId: profile?.label,
+  });
+
   return {
     id: `webserial:${key}`,
     transport: 'webserial',
