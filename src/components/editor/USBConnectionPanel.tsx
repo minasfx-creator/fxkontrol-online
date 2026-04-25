@@ -645,6 +645,11 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                             />
                           )}
 
+                          {/* Per-device DMX profile override (Open vs Pro vs vendor) */}
+                          {device.profile.type === 'dmx' && (
+                            <DMXProfileEditor deviceId={device.id} />
+                          )}
+
                           {device.profile.type === 'dmx' && (
                             <Button
                               size="sm"
