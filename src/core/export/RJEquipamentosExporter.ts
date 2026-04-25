@@ -110,7 +110,7 @@ interface FiringEvent {
   cues: PyroCue[];
 }
 
-function buildEvents(sp: ReturnType<typeof showPlanManager.current.constructor> extends never ? never : typeof showPlanManager.current): { events: FiringEvent[]; errors: string[] } {
+function buildEvents(sp: typeof showPlanManager.current): { events: FiringEvent[]; errors: string[] } {
   const errors: string[] = [];
   const groups = new Map<string, FiringEvent>();
 
