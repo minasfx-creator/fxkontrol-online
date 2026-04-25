@@ -9,6 +9,7 @@ import MainLayout from "@/layouts/MainLayout";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import { LazyChunkBoundary } from "@/components/errors/LazyChunkBoundary";
 import { AppErrorBoundary } from "@/components/errors/AppErrorBoundary";
+import UpgradeDialog from "@/components/upgrade/UpgradeDialog";
 
 import { lazyRetry } from "@/lib/lazyRetry";
 import { useRouteTracing } from "@/observability/useRouteTracing";
@@ -78,6 +79,7 @@ function App() {
             <BrowserRouter>
               <RouteTracker />
               <PageTransitionOverlay />
+              <UpgradeDialog />
               <LazyChunkBoundary>
                 <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
                   <Routes>
