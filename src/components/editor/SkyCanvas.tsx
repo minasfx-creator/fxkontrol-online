@@ -1833,11 +1833,15 @@ export default function SkyCanvas() {
         {!google3DTilesEnabled && <ViewportRulers />}
         <CameraBookmarkSaver />
         <SubsystemBoundary name="PostProcessing">
-          {!isLowTierMobile && <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />}
+          {!isLowTierMobile && (
+            <DelayedMount delay={600}>
+              <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />
+            </DelayedMount>
+          )}
         </SubsystemBoundary>
-        {!isLowTierMobile && <StressTestFireworks />}
-        
-        {!isLowTierMobile && <PostExplosionSmokeManager />}
+        {!isLowTierMobile && <DelayedMount delay={1800}><StressTestFireworks /></DelayedMount>}
+
+        {!isLowTierMobile && <DelayedMount delay={1200}><PostExplosionSmokeManager /></DelayedMount>}
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
 
