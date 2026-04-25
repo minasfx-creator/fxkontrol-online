@@ -7,7 +7,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
-type IntroPhase = 'black-in' | 'video1' | 'cross-fade' | 'video2' | 'start-wait' | 'fade-out' | 'done'
+type IntroPhase = 'black-in' | 'video2' | 'start-wait' | 'fade-out' | 'done'
   | 'boot-text' | 'boot-logo' | 'boot-start';
 
 interface CinematicIntroProps {
@@ -29,16 +29,13 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
   const [phase, setPhase] = useState<IntroPhase>('black-in');
   const [canSkip, setCanSkip] = useState(false);
   const [blackOpacity, setBlackOpacity] = useState(1);
-  const [v1Opacity, setV1Opacity] = useState(0);
   const [v2Opacity, setV2Opacity] = useState(0);
-  const [sweepActive, setSweepActive] = useState(false);
   const [startVisible, setStartVisible] = useState(false);
   const [startGlowPulse, setStartGlowPulse] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
   const [visibleLines, setVisibleLines] = useState(0);
   const [logoReveal, setLogoReveal] = useState(false);
   const [progressWidth, setProgressWidth] = useState(0);
-  const video1Ref = useRef<HTMLVideoElement>(null);
   const video2Ref = useRef<HTMLVideoElement>(null);
   const timersRef = useRef<number[]>([]);
 
