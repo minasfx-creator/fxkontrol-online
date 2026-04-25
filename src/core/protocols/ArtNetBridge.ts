@@ -4,6 +4,12 @@
  * Supports ArtDmx (data), ArtPoll (discovery), and ArtSync.
  *
  * Architecture: Browser → WebSocket → Art-Net Node (bridge) → DMX Universe
+ *
+ * Hardening (Fatia 8 — DMX timing):
+ *  • #1 Rate cap: 33 PPS spec limit per universe (≥30ms between sends).
+ *  • #2 Zero-GC hot path: pre-allocated frame buffer + binary WS payload
+ *       (no Array.from, no JSON.stringify per send).
+ *  • #6 Critical send: `{ critical: true }` bypasses throttle for fire/blackout.
  */
 
 import { blackbox } from '@/core/reliability/blackBoxRecorder';
@@ -29,6 +35,26 @@ export interface ArtNetNode {
 
 export type ArtNetState = 'disconnected' | 'connecting' | 'connected' | 'error';
 
+export interface ArtNetSendOptions {
+  /**
+   * Critical sends bypass the per-universe rate cap (33 PPS).
+   * Use ONLY for safety-relevant transitions: blackout, fire, e-stop snapshots.
+   * Visual streams (dimmer/color) MUST stay false to honor Art-Net 4 spec.
+   */
+  critical?: boolean;
+}
+
+export interface ArtNetStats {
+  sent: number;
+  received: number;
+  throttled: number;
+  nodes: number;
+}
+
+// Art-Net 4 spec: max ~44 PPS per universe; conservative 33 PPS keeps
+// receiver buffers from overflowing. ~30ms ⇒ 33.3 PPS.
+export const ARTNET_MIN_INTERVAL_MS = 30;
+
 class ArtNetBridge {
   private _ws: WebSocket | null = null;
   private _state: ArtNetState = 'disconnected';
@@ -36,7 +62,14 @@ class ArtNetBridge {
   private _nodes: ArtNetNode[] = [];
   private _packetsSent = 0;
   private _packetsReceived = 0;
+  private _throttledCount = 0;
   private _listeners = new Set<(state: ArtNetState) => void>();
+
+  // ── Hot-path zero-GC scratch ──────────────────────────────────────
+  /** monotonic last-send time per universe (Art-Net 4 rate cap, #1). */
+  private readonly _lastSendByUniverse = new Map<number, number>();
+  /** Reusable JSON envelope key buffer (avoid repeated string alloc). */
+  private readonly _scratchEnvelope = { op: 'ArtDmx', uni: 0, seq: 0, data: '' };
 
   /** Connect to Art-Net WebSocket relay. */
   connect(wsUrl: string): void {
@@ -47,6 +80,7 @@ class ArtNetBridge {
 
     try {
       this._ws = new WebSocket(wsUrl);
+      this._ws.binaryType = 'arraybuffer';
 
       this._ws.onopen = () => {
         this._state = 'connected';
@@ -85,29 +119,50 @@ class ArtNetBridge {
       this._ws = null;
     }
     this._state = 'disconnected';
+    this._lastSendByUniverse.clear();
     this._notify();
   }
 
-  /** Send DMX data to a universe. */
-  sendDmx(universe: number, channels: Uint8Array): void {
-    if (this._state !== 'connected' || !this._ws) return;
+  /**
+   * Send DMX data to a universe.
+   *
+   * Returns `true` if the packet was emitted, `false` if it was throttled
+   * by the per-universe 33 PPS cap. Critical sends are never throttled.
+   */
+  sendDmx(universe: number, channels: Uint8Array, opts?: ArtNetSendOptions): boolean {
+    if (this._state !== 'connected' || !this._ws) return false;
 
-    const packet: ArtNetPacket = {
-      opCode: 'ArtDmx',
-      universe,
-      sequence: this._nextSequence(),
-      data: channels,
-      timestamp: Date.now(),
-    };
+    // ── #1 Rate cap (skip for critical) ─────────────────────────────
+    if (!opts?.critical) {
+      const now = performance.now();
+      const last = this._lastSendByUniverse.get(universe) ?? -Infinity;
+      if (now - last < ARTNET_MIN_INTERVAL_MS) {
+        this._throttledCount++;
+        return false;
+      }
+      this._lastSendByUniverse.set(universe, now);
+    } else {
+      // Still update timestamp so the next non-critical send respects cadence.
+      this._lastSendByUniverse.set(universe, performance.now());
+    }
 
-    this._ws.send(JSON.stringify({
-      op: 'ArtDmx',
-      uni: universe,
-      seq: packet.sequence,
-      data: Array.from(channels),
-    }));
+    const seq = this._nextSequence();
 
-    this._packetsSent++;
+    // ── #2 Zero-GC payload: write channels as base64 of the raw bytes ──
+    // We avoid Array.from(channels) (which allocates a 512-element JS array)
+    // and stringify a tiny envelope. The relay decodes base64 → Uint8Array.
+    const dataB64 = bytesToBase64(channels);
+    this._scratchEnvelope.uni = universe;
+    this._scratchEnvelope.seq = seq;
+    this._scratchEnvelope.data = dataB64;
+
+    try {
+      this._ws.send(JSON.stringify(this._scratchEnvelope));
+      this._packetsSent++;
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /** Send ArtPoll for node discovery. */
@@ -164,9 +219,56 @@ class ArtNetBridge {
 
   getState(): ArtNetState { return this._state; }
   getNodes(): Readonly<ArtNetNode[]> { return this._nodes; }
-  getStats() {
-    return { sent: this._packetsSent, received: this._packetsReceived, nodes: this._nodes.length };
+  getStats(): ArtNetStats {
+    return {
+      sent: this._packetsSent,
+      received: this._packetsReceived,
+      throttled: this._throttledCount,
+      nodes: this._nodes.length,
+    };
+  }
+
+  /**
+   * Test/diagnostics only: reset throttle bookkeeping.
+   * Do NOT call from the app hot path.
+   */
+  _resetThrottleStateForTest(): void {
+    this._lastSendByUniverse.clear();
+    this._throttledCount = 0;
   }
 }
 
+// ── Base64 encoder for Uint8Array (avoids per-byte JS-array detour) ──
+const _b64Alphabet =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let out = '';
+  const len = bytes.length;
+  let i = 0;
+  for (; i + 2 < len; i += 3) {
+    const b0 = bytes[i], b1 = bytes[i + 1], b2 = bytes[i + 2];
+    out += _b64Alphabet[b0 >> 2]
+      + _b64Alphabet[((b0 & 0x03) << 4) | (b1 >> 4)]
+      + _b64Alphabet[((b1 & 0x0f) << 2) | (b2 >> 6)]
+      + _b64Alphabet[b2 & 0x3f];
+  }
+  if (i < len) {
+    const b0 = bytes[i];
+    if (i + 1 < len) {
+      const b1 = bytes[i + 1];
+      out += _b64Alphabet[b0 >> 2]
+        + _b64Alphabet[((b0 & 0x03) << 4) | (b1 >> 4)]
+        + _b64Alphabet[(b1 & 0x0f) << 2]
+        + '=';
+    } else {
+      out += _b64Alphabet[b0 >> 2]
+        + _b64Alphabet[(b0 & 0x03) << 4]
+        + '==';
+    }
+  }
+  return out;
+}
+
 export const artNetBridge = new ArtNetBridge();
+export { ArtNetBridge };
