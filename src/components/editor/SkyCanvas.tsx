@@ -470,6 +470,7 @@ class SubsystemBoundary extends Component<{ name: string; children: ReactNode },
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(`[FXK SubsystemBoundary:${this.props.name}]`, error, info.componentStack);
     pushLog(`[SubsystemBoundary] ${this.props.name} crashed: ${error.message}`, 'error');
+    captureSkyCanvasError(`SubsystemBoundary:${this.props.name}`, error, info.componentStack ?? undefined);
   }
   render() {
     if (this.state.hasError) return null; // Silently remove crashed subsystem from scene
