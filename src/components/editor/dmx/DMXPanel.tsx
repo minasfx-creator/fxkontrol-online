@@ -54,6 +54,27 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const [showDiag, setShowDiag] = useState(true);
   const [showMonitor, setShowMonitor] = useState(false);
 
+  // Continuous USB DMX streaming (Universe 1 → all connected USB devices)
+  const [usbStreaming, setUsbStreaming] = useState(false);
+  const [usbStreamFps, setUsbStreamFps] = useState(40);
+  const [usbStreamStats, setUsbStreamStats] = useState({ frames: 0, lastLatencyMs: 0 });
+  const usbStreamIntervalRef = useRef<number | null>(null);
+  const usbStreamInFlightRef = useRef(false);
+  const universesRef = useRef<DMXUniverse[]>([]);
+
+  // Keep ref in sync (lets the interval read latest universe 1 without restarting)
+  useEffect(() => { universesRef.current = universes; }, [universes]);
+
+  // Cleanup interval on unmount — Memory mgmt (Core)
+  useEffect(() => {
+    return () => {
+      if (usbStreamIntervalRef.current !== null) {
+        window.clearInterval(usbStreamIntervalRef.current);
+        usbStreamIntervalRef.current = null;
+      }
+    };
+  }, []);
+
   const addDiagLog = useCallback((log: DiagnosticLog) => {
     setDiagLogs(prev => [log, ...prev].slice(0, 50));
   }, []);
