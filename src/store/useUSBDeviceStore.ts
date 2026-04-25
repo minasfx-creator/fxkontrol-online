@@ -124,13 +124,19 @@ export const useUSBDeviceStore = create<USBDeviceStore>((set, get) => ({
       throw new Error('Nenhum dispositivo DMX USB autorizado/reconhecido');
     }
     const t0 = performance.now();
-    let totalBytes = 0;
-    for (const entry of dmxDevices) {
-      const frame = buildDMX512Frame(channels);
-      const data = entry.isENTTECPro ? buildENTTECProPacket(6, frame) : frame;
-      await sendSerialData(entry.device, data);
-      totalBytes += data.length;
-    }
+    // Build frame ONCE (DMX payload is identical for all outputs);
+    // each device may wrap it differently (ENTTEC Pro vs raw DMX512).
+    const frame = buildDMX512Frame(channels);
+    // Send to all writers in parallel — serial `await` in a for-loop
+    // multiplied USB latency by the device count and broke 40Hz timing
+    // when more than one output was authorized.
+    const results = await Promise.all(
+      dmxDevices.map(entry => {
+        const data = entry.isENTTECPro ? buildENTTECProPacket(6, frame) : frame;
+        return sendSerialData(entry.device, data).then(() => data.length);
+      }),
+    );
+    const totalBytes = results.reduce((sum, n) => sum + n, 0);
     return {
       deviceCount: dmxDevices.length,
       totalBytes,
