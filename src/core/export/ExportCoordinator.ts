@@ -126,6 +126,18 @@ class ExportCoordinator {
           this._log(result);
           return result;
         }
+        case 'galaxis-gs2': {
+          const r = generateGalaxisGS2Script();
+          if (!r.verified || r.errors.length > 0) {
+            const result: ExportAttemptResult = { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
+            this._log(result);
+            return result;
+          }
+          downloadGalaxisGS2Script();
+          const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
+          this._log(result);
+          return result;
+        }
       }
     } catch (err) {
       const result: ExportAttemptResult = {
