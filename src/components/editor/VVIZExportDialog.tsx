@@ -33,9 +33,15 @@ export default function VVIZExportDialog({ open, onOpenChange }: VVIZExportDialo
   const [coordFrame, setCoordFrame] = useState<'standard' | 'ogl'>('standard');
   const [noTrail, setNoTrail] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const { canExport } = useEntitlements();
 
   const totalPerfs = timelineItems.length + trajectories.length + (droneFormations[0]?.droneCount ?? 0);
   const handleExport = useCallback(async () => {
+    if (!canExport) {
+      promptUpgrade({ reason: 'export', feature: 'VVIZ (Finale 3D)' });
+      onOpenChange(false);
+      return;
+    }
     setExporting(true);
     try {
       const { exportVVIZ, downloadFile } = await getExportEngine();
