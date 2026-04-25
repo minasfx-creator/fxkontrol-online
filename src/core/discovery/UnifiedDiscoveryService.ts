@@ -133,4 +133,14 @@ class UnifiedDiscoveryService {
 }
 
 export const unifiedDiscovery = new UnifiedDiscoveryService();
+
+// ─── Boot-time silent enumeration ─────────────────────────────────
+// Runs once when this module is first imported. No prompts (uses only
+// `getPorts()` / `getDevices()`), so it just rehydrates persistence and
+// readies hot-plug listeners for already-authorized hardware.
+if (typeof window !== 'undefined') {
+  queueMicrotask(() => {
+    unifiedDiscovery.scanLight().catch(e => logger.warn('[UnifiedDiscovery] boot scan failed', e));
+  });
+}
 export type { DiscoveredDevice, DiscoveryEvent, DiscoveryTransport } from './types';
