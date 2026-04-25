@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Sparkles, X, Megaphone, MessageSquarePlus, Plug, Clock } from 'lucide-react';
+import { Sparkles, X, Megaphone, MessageSquarePlus, Plug, Clock, Mail, CheckCircle2, Loader2 } from 'lucide-react';
+import { z } from 'zod';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import BetaFeedbackDialog from './BetaFeedbackDialog';
 
 type DialogCategory = 'bug' | 'suggestion' | 'integration' | 'other';
