@@ -50,6 +50,11 @@ function cubicBezier(t: number, p0: number, p1: number, p2: number, p3: number):
 }
 
 // ── High-Precision Tick Loop ───────────────────────────────────────
+// Wake-time scheduling avoids cumulative setTimeout drift: each iteration
+// computes the *next* absolute deadline and yields just enough to hit it.
+const TICK_INTERVAL_MS = 1;
+let nextWakeAt = 0;
+
 function tick() {
   if (!isRunning) return;
 
@@ -93,8 +98,11 @@ function tick() {
     });
   }
 
-  // Use high-precision timer (1ms interval via setTimeout)
-  setTimeout(tick, 1);
+  // Wake-time scheduling: target next absolute deadline, not "now + 1ms".
+  // If we ran long, schedule immediately (delay=0) and let the runtime catch up.
+  nextWakeAt += TICK_INTERVAL_MS;
+  const delay = Math.max(0, nextWakeAt - performance.now());
+  setTimeout(tick, delay);
 }
 
 // ── Message Handler ────────────────────────────────────────────────
@@ -108,6 +116,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
       seekOffset = payload?.fromTime || 0;
       firedCueIds.clear();
       lastTickTime = performance.now();
+      nextWakeAt = performance.now();
       // Re-mark already-past cues
       for (const cue of cues) {
         if (cue.startTime < seekOffset) firedCueIds.add(cue.id);
@@ -131,9 +140,28 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
       (self as any).postMessage({ type: 'SEEK_ACK', payload: { time: seekOffset } });
       break;
 
-    case 'UPDATE_CUES':
-      cues = payload?.cues || [];
+    case 'UPDATE_CUES': {
+      // Reseed firedCueIds against the new cue list using current playback time.
+      // Without this, edits during playback either re-fire deleted cues or
+      // silently drop newly-added cues whose ids never enter the fired set.
+      const next: CueData[] = payload?.cues || [];
+      const elapsed = isRunning
+        ? (performance.now() - startTimestamp) * 0.001 * playbackSpeed + seekOffset
+        : seekOffset;
+      const newFired = new Set<string>();
+      for (const cue of next) {
+        const fireTime = cue.startTime - (cue.preFireDelay || 0);
+        // Mark as fired only if the cue id was already fired AND its fire time
+        // is in the past — preserves history without leaking stale ids.
+        if (firedCueIds.has(cue.id) && elapsed >= fireTime) newFired.add(cue.id);
+        // Also mark cues entirely in the past as already-fired to avoid
+        // a flood of immediate dispatches when the user scrubs/edits.
+        else if (elapsed >= fireTime) newFired.add(cue.id);
+      }
+      cues = next;
+      firedCueIds = newFired;
       break;
+    }
 
     case 'SET_BPM':
       bpm = payload?.bpm || 120;
