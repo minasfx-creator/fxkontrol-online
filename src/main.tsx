@@ -4,10 +4,20 @@ import "./index.css";
 import { initWebVitals as initWebVitalsConsole } from "@/lib/webVitals";
 import { initObservability } from "@/observability";
 import { installConsoleCapture } from "@/lib/consoleCapture";
+import { applyGpuTier } from "@/lib/gpuTier";
+import { installInteractionFpsGuard } from "@/lib/interactionFpsGuard";
 
 // Install console.error/warn + window error capture as early as possible
 // so the Diagnostics panel can replay startup errors.
 installConsoleCapture();
+
+// GPU tier detection — writes <html data-gpu-tier="low|high">. Must run
+// before first paint so reduced-blur fallbacks are active for the splash.
+applyGpuTier();
+
+// Suspends backdrop-filter on heavy chrome during scroll/wheel/drag so
+// the timeline + scroll views stay at 60fps regardless of GPU.
+installInteractionFpsGuard();
 
 createRoot(document.getElementById("root")!).render(<App />);
 
