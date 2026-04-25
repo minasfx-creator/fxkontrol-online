@@ -107,6 +107,12 @@ export const LANDING_SITE: LandingSiteConfig = {
     url: "https://storage.googleapis.com/gpt-engineer-file-uploads/HNWwID77XlhLhwds00GYkOiIPMm2/social-images/social-1777070046139-ChatGPT_Image_23_de_abr._de_2026,_21_34_00.webp",
     alt: "FX KONTROL — editor 3D de shows pirotécnicos e drones",
   },
+  // www.* e o subdomínio Lovable publicam a mesma landing — redirecionam pro canônico.
+  aliasHosts: ["www.fxkontrol.online", "fxkontrol-online.lovable.app"],
+  // Previews / editor Lovable: NÃO redireciona (evita loop / quebra do iframe).
+  previewHosts: ["id-preview--", "lovableproject.com", "lovable.app/projects/", "localhost", "127.0.0.1"],
+  // utm_* e fbclid são descartados; só `target` (web|mobile|both) é preservado.
+  preservedQueryParams: ["target"],
 };
 
 /** URL canônica absoluta — derivada de `origin + path`. */
