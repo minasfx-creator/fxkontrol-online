@@ -305,6 +305,32 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   };
 
   // ── Continuous USB DMX streaming (Universe 1) ─────────────────────
+  // Tick atualizado via ref para que mudanças de FPS reiniciem APENAS o
+  // setInterval — a porta serial e o writer permanecem abertos.
+  const tickRef = useRef<() => Promise<void>>(async () => {});
+  tickRef.current = async () => {
+    if (usbStreamInFlightRef.current) return; // throttle natural
+    const uni1 = universesRef.current[0];
+    if (!uni1) return;
+    usbStreamInFlightRef.current = true;
+    const t0 = performance.now();
+    try {
+      const result = await sendDMXToAll(uni1.channels);
+      const latency = Math.round(performance.now() - t0);
+      setUsbStreamStats(s => ({ frames: s.frames + 1, lastLatencyMs: latency }));
+      if ((Date.now() / 1000 | 0) % 5 === 0 && Math.random() < 0.05) {
+        logger.info('[DMXPanel] USB stream tick', { frames: result.deviceCount, latency });
+      }
+    } catch (e: any) {
+      logger.warn('[DMXPanel] USB stream send failed — stopping', e);
+      addDiagLog({ timestamp: new Date(), type: 'error', message: `USB stream falhou: ${e.message || 'erro'}` });
+      toast.error('Falha no streaming USB — parado');
+      stopUsbStream();
+    } finally {
+      usbStreamInFlightRef.current = false;
+    }
+  };
+
   const stopUsbStream = useCallback(() => {
     if (usbStreamIntervalRef.current !== null) {
       window.clearInterval(usbStreamIntervalRef.current);
@@ -326,40 +352,42 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
       toast.error('Nenhum dispositivo DMX USB conectado');
       return;
     }
-
-    const periodMs = Math.max(23, Math.round(1000 / usbStreamFps)); // floor 23ms ≈ 43.5Hz (DMX512 spec)
     setUsbStreaming(true);
     setUsbStreamStats({ frames: 0, lastLatencyMs: 0 });
     addDiagLog({
       timestamp: new Date(), type: 'info',
-      message: `USB streaming iniciado · Uni 1 → ${connectedUSBDMX.length} device(s) @ ${Math.round(1000 / periodMs)}Hz`,
+      message: `USB streaming iniciado · Uni 1 → ${connectedUSBDMX.length} device(s) @ ${usbStreamFps}Hz`,
     });
-    logger.info('[DMXPanel] USB streaming started', { fps: usbStreamFps, periodMs, devices: connectedUSBDMX.length });
+    logger.info('[DMXPanel] USB streaming started', { fps: usbStreamFps, devices: connectedUSBDMX.length });
+    // o effect abaixo cria o setInterval com base em usbStreaming + usbStreamFps
+  }, [connectedUSBDMX.length, addDiagLog, usbStreamFps]);
 
-    usbStreamIntervalRef.current = window.setInterval(async () => {
-      if (usbStreamInFlightRef.current) return; // throttle natural se USB engasgar
-      const uni1 = universesRef.current[0];
-      if (!uni1) return;
-      usbStreamInFlightRef.current = true;
-      const t0 = performance.now();
-      try {
-        const result = await sendDMXToAll(uni1.channels);
-        const latency = Math.round(performance.now() - t0);
-        setUsbStreamStats(s => ({ frames: s.frames + 1, lastLatencyMs: latency }));
-        // Log apenas 1x por segundo aprox. para não poluir
-        if ((Date.now() / 1000 | 0) % 5 === 0 && Math.random() < 0.05) {
-          logger.info('[DMXPanel] USB stream tick', { frames: result.deviceCount, latency });
-        }
-      } catch (e: any) {
-        logger.warn('[DMXPanel] USB stream send failed — stopping', e);
-        addDiagLog({ timestamp: new Date(), type: 'error', message: `USB stream falhou: ${e.message || 'erro'}` });
-        toast.error('Falha no streaming USB — parado');
-        stopUsbStream();
-      } finally {
-        usbStreamInFlightRef.current = false;
+  // Recria APENAS o setInterval quando FPS muda durante streaming.
+  // A porta serial NÃO é tocada — só a cadência do tick.
+  useEffect(() => {
+    if (!usbStreaming) return;
+    const periodMs = Math.max(23, Math.round(1000 / usbStreamFps));
+    usbStreamIntervalRef.current = window.setInterval(() => { void tickRef.current(); }, periodMs);
+    logger.info('[DMXPanel] USB stream interval (re)armed', { fps: usbStreamFps, periodMs });
+    return () => {
+      if (usbStreamIntervalRef.current !== null) {
+        window.clearInterval(usbStreamIntervalRef.current);
+        usbStreamIntervalRef.current = null;
       }
-    }, periodMs);
-  }, [usbStreamFps, connectedUSBDMX.length, sendDMXToAll, addDiagLog, stopUsbStream]);
+    };
+  }, [usbStreaming, usbStreamFps]);
+
+  // Handler do seletor de taxa: muda Hz mesmo durante streaming.
+  const handleFpsChange = useCallback((hz: 10 | 20 | 40) => {
+    setUsbStreamFps(hz);
+    if (usbStreaming) {
+      addDiagLog({
+        timestamp: new Date(), type: 'info',
+        message: `Taxa alterada para ${hz}Hz · porta USB mantida aberta`,
+      });
+    }
+  }, [usbStreaming, addDiagLog]);
+
 
   const sendFireOneDMX = async () => {
     if (universes.length === 0 || !hardware.isConnected) {
@@ -658,15 +686,32 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                     <span className="text-[8px] text-muted-foreground font-mono-code">{usbStreamFps}Hz</span>
                   </div>
 
-                  <Slider
-                    value={[usbStreamFps]}
-                    min={10}
-                    max={44}
-                    step={1}
-                    onValueChange={([v]) => setUsbStreamFps(v)}
-                    disabled={usbStreaming}
-                    className="py-1"
-                  />
+                  {/* Seletor de taxa — atualiza Hz sem fechar a porta USB */}
+                  <div className="grid grid-cols-3 gap-1">
+                    {([10, 20, 40] as const).map(hz => {
+                      const active = usbStreamFps === hz;
+                      return (
+                        <button
+                          key={hz}
+                          type="button"
+                          onClick={() => handleFpsChange(hz)}
+                          className={`h-7 rounded-sm text-[10px] font-mono-code font-bold transition-colors ${
+                            active
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-surface-2 text-muted-foreground hover:bg-surface-3 hover:text-foreground'
+                          }`}
+                          title={`Taxa de broadcast: ${hz} Hz`}
+                        >
+                          {hz} Hz
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[8px] text-muted-foreground/70 leading-tight">
+                    {usbStreaming
+                      ? '✓ Pode trocar a taxa durante o streaming — porta USB permanece aberta.'
+                      : '10Hz baixa carga · 20Hz padrão · 40Hz máximo (DMX512 spec).'}
+                  </p>
 
                   <Button
                     size="sm"
