@@ -8,6 +8,7 @@ import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { getEffectById as getEffectByIdFromMap } from '@/data/effectLibraryMap';
 import { getCompound, type ChemicalCompound } from '@/render_ultra/fireworks/particleChemistry';
 import { getBreakHeight } from '@/lib/pyroPhysics';
+import { timelineClock } from '@/core/timeline/TimelineClock';
 
 // ═══ Module-level active burst counter for conditional PostProcessing ═══
 let _activeBurstCount = 0;
@@ -26,7 +27,10 @@ let _activeBurstScan: ActiveBurstScanResult | null = null;
 export function getActiveBurstScan() { return _activeBurstScan; }
 
 export function runActiveBurstScan(): ActiveBurstScanResult {
-  const { timelineItems, currentTime } = useProjectStore.getState();
+  const { timelineItems } = useProjectStore.getState();
+  // Authoritative time from the timeline clock (RAF pump in EngineProvider).
+  // Falls back to the store mirror if the clock hasn't been initialised.
+  const currentTime = timelineClock.getTime();
   const freshBursts: ActiveBurstScanResult['freshBursts'] = [];
   const scatterColors: ActiveBurstScanResult['scatterColors'] = [];
   let activeBursts = 0;
