@@ -8,9 +8,15 @@ import { useDisplayStore } from '@/store/useDisplayStore';
 import { haptics } from '@/lib/haptics';
 import { ambientSound } from '@/lib/ambientSound';
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import { flushSync } from 'react-dom';
 import DockBar from '@/components/DockBar';
 import BetaPromoBanner from '@/components/BetaPromoBanner';
 import { lazyRetry } from '@/lib/lazyRetry';
+
+// Native View Transitions API support — captured once at module load.
+// Graceful fallback to CSS dissolve/materialize when unavailable.
+const SUPPORTS_VIEW_TRANSITIONS =
+  typeof document !== 'undefined' && 'startViewTransition' in document;
 
 // Dev-only overlay — tree-shaken in production
 const RenderCounterOverlay = import.meta.env.DEV
