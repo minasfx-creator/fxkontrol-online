@@ -113,6 +113,8 @@ function App() {
                       <Route path="/" element={<Navigate to="/office" replace />} />
                       <Route path="/office" element={<Office />} />
                       <Route path="/editor" element={<Index />} />
+                      {/* Studio = editor 3D pré-carregado com o modal de prompt AI-first */}
+                      <Route path="/studio" element={<Navigate to="/editor?prompt=1" replace />} />
                       <Route path="/command" element={<CommandCenter />} />
 
                       {/* ── Redirects: rotas antigas → nova estrutura ─────────── */}
