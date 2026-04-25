@@ -1294,85 +1294,38 @@ button:active {
    Page Swap Transitions — Holographic Dissolve
    ══════════════════════════════════════════════ */
 
-/* Phase 1: Dissolve out — shrink, blur, fade with amber bloom */
+/* ──────────────────────────────────────────────
+   Apple-style page transitions
+   Filosofia: invisível quando funciona. Cross-fade curto + escala
+   imperceptível. Sem blur pesado, sem clip-path holográfico, sem
+   amber sweep — o conteúdo é o herói, a transição é só respiração.
+   ────────────────────────────────────────────── */
+
+/* Phase 1: Soft fade-out — 180ms, leve scale-down */
 @keyframes page-dissolve-out {
-  0% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-    filter: blur(0) brightness(1);
-  }
-  40% {
-    opacity: 0.5;
-    transform: scale(0.985) translateY(3px);
-    filter: blur(4px) brightness(1.2);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.96) translateY(8px);
-    filter: blur(14px) brightness(0.7);
-  }
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.992); }
 }
 .animate-page-dissolve-out {
-  animation: page-dissolve-out 0.35s cubic-bezier(0.4, 0, 1, 1) forwards;
-  will-change: opacity, transform, filter;
+  animation: page-dissolve-out 0.18s cubic-bezier(0.4, 0, 1, 1) forwards;
+  will-change: opacity, transform;
 }
 
-/* Phase 2: Materialize in — assemble from holographic grid */
+/* Phase 2: Soft fade-in — 220ms, leve scale-up com spring */
 @keyframes page-materialize-in {
-  0% {
-    opacity: 0;
-    transform: scale(1.04) translateY(-6px);
-    filter: blur(12px) brightness(1.4);
-    clip-path: inset(6% 3% 6% 3% round 8px);
-  }
-  30% {
-    opacity: 0.5;
-    transform: scale(1.015) translateY(-2px);
-    filter: blur(5px) brightness(1.15);
-    clip-path: inset(2% 1% 2% 1% round 4px);
-  }
-  70% {
-    opacity: 0.92;
-    transform: scale(1.003) translateY(0);
-    filter: blur(1px) brightness(1.03);
-    clip-path: inset(0.5% 0.5% 0.5% 0.5%);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-    filter: blur(0) brightness(1);
-    clip-path: inset(0 0 0 0);
-  }
+  0%   { opacity: 0; transform: scale(1.008); }
+  100% { opacity: 1; transform: scale(1); }
 }
 .animate-page-materialize-in {
-  animation: page-materialize-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
-  will-change: opacity, transform, filter, clip-path;
+  animation: page-materialize-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
 }
 
-/* Amber light sweep across page during swap */
-@keyframes page-sweep {
-  0% {
-    background: linear-gradient(
-      105deg,
-      transparent 0%, transparent 30%,
-      hsl(32 100% 55% / 0.06) 40%,
-      hsl(32 100% 65% / 0.16) 50%,
-      hsl(32 100% 55% / 0.06) 60%,
-      transparent 70%, transparent 100%
-    );
-    transform: translateX(-120%);
-    opacity: 0;
-  }
-  15% { opacity: 1; }
-  85% { opacity: 0.8; }
-  100% {
-    transform: translateX(120%);
-    opacity: 0;
-  }
-}
-.animate-page-sweep {
-  animation: page-sweep 0.65s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
-}
+/* Sweep desativado — kept como no-op para preservar o markup atual.
+   Quando MainLayout monta `<div class="animate-page-sweep">`, ele simplesmente
+   não renderiza nada visível. Removeremos do JSX numa segunda passada. */
+@keyframes page-sweep { 0%, 100% { opacity: 0; } }
+.animate-page-sweep { animation: page-sweep 0.01s linear forwards; opacity: 0; }
 
 /* Voice wave bars — enhanced organic */
 @keyframes voice-wave {
