@@ -40,6 +40,7 @@ const NetworkSettings = lazy(lazyRetry(() => import("./pages/NetworkSettings")))
 const Terms = lazy(lazyRetry(() => import("./pages/legal/Terms")));
 const Refund = lazy(lazyRetry(() => import("./pages/legal/Refund")));
 const Privacy = lazy(lazyRetry(() => import("./pages/legal/Privacy")));
+const CheckoutSuccess = lazy(lazyRetry(() => import("./pages/CheckoutSuccess")));
 
 const queryClient = new QueryClient();
 
