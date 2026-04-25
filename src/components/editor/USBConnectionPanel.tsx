@@ -26,6 +26,7 @@ import {
   attachSerialHotPlug,
 } from '@/lib/usbEngine';
 import { GenericAdapterConfirm } from './usb/GenericAdapterConfirm';
+import { DMXProfileEditor } from './usb/DMXProfileEditor';
 import { portRegistry, keyFor } from '@/core/discovery/portRegistry';
 
 
@@ -642,6 +643,11 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                               deviceId={device.id}
                               deviceLabel={device.profile.label}
                             />
+                          )}
+
+                          {/* Per-device DMX profile override (Open vs Pro vs vendor) */}
+                          {device.profile.type === 'dmx' && (
+                            <DMXProfileEditor deviceId={device.id} />
                           )}
 
                           {device.profile.type === 'dmx' && (

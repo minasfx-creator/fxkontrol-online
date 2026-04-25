@@ -16,6 +16,20 @@ const MAX_ENTRIES = 50;
 
 export type GenericConfirmMode = 'open' | 'pro';
 
+/** Operator-pinned DMX adapter family — overrides label-based detection. */
+export type DMXProfileOverrideKind =
+  | 'enttec-pro'
+  | 'enttec-open'
+  | 'dmxking'
+  | 'eurolite'
+  | 'generic-dmx';
+
+export interface DMXProfileOverride {
+  kind: DMXProfileOverrideKind;
+  /** Persist explicit operator choice timestamp for audit. */
+  setAt: number;
+}
+
 export interface PortRegistryEntry {
   /** Stable key — `${vid}:${pid}` for serial/USB, `host:${ip}` for net. */
   key: string;
@@ -29,6 +43,8 @@ export interface PortRegistryEntry {
   operatorConfirmedGeneric: boolean;
   /** Mode chosen during confirmation (open DMX vs ENTTEC Pro wrapper). */
   confirmedMode?: GenericConfirmMode;
+  /** Per-adapter operator override for protocol/family — wins over label detection. */
+  profileOverride?: DMXProfileOverride;
   firstSeen: number;
   lastSeen: number;
 }
@@ -107,6 +123,32 @@ export const portRegistry = {
 
   isConfirmedGeneric(key: string): boolean {
     return this.get(key)?.operatorConfirmedGeneric === true;
+  },
+
+  /** Pin a DMX adapter family/protocol for this VID:PID. Survives reloads. */
+  setProfileOverride(
+    key: string,
+    kind: DMXProfileOverrideKind,
+    label: string,
+    extras: { vendorId?: number; productId?: number; host?: string } = {},
+  ): PortRegistryEntry {
+    return this.upsert({
+      key,
+      lastLabel: label,
+      operatorConfirmedGeneric: this.get(key)?.operatorConfirmedGeneric ?? false,
+      profileOverride: { kind, setAt: Date.now() },
+      ...extras,
+    });
+  },
+
+  clearProfileOverride(key: string): void {
+    const cur = this.get(key);
+    if (!cur) return;
+    this.upsert({ ...cur, profileOverride: undefined });
+  },
+
+  getProfileOverride(key: string): DMXProfileOverride | undefined {
+    return this.get(key)?.profileOverride;
   },
 
   forget(key: string): void {
