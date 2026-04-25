@@ -148,6 +148,20 @@ export function isWebSerialSupported(): boolean {
 // transport. Re-add behind an explicit feature gate if direct WebUSB is
 // needed for non-serial devices.
 
+export async function requestSerialPort(profile?: USBDeviceProfile): Promise<any> {
+  if (!isWebSerialSupported()) {
+    throw new Error('Web Serial API não suportada neste navegador');
+  }
+  const filters: any[] = [];
+  if (profile?.vendorId) {
+    filters.push({
+      usbVendorId: profile.vendorId,
+      ...(profile.productId ? { usbProductId: profile.productId } : {}),
+    });
+  }
+  return nav.serial.requestPort(filters.length > 0 ? { filters } : undefined);
+}
+
 export async function openSerialConnection(
   port: any,
   profile: USBDeviceProfile
