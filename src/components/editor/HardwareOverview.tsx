@@ -126,6 +126,11 @@ export default function HardwareOverview() {
             title="Inclui ArtPoll broadcast via bridge (descobre nós Art-Net na rede)">
             <Satellite className="w-3 h-3" /> DEEP
           </Button>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono gap-1 text-sky-400"
+            onClick={handleRetryFailed} disabled={isScanning}
+            title="Repete apenas os transportes que falharam (permission denied / erro / vazio) no último scan">
+            <RotateCw className="w-3 h-3" /> RETRY
+          </Button>
           <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono"
             onClick={() => { refresh(); evaluateReadiness(); setHealthReport(hardwareHealthMonitor.evaluate()); }}>
             <RefreshCw className="w-3 h-3 mr-1" /> POLL
