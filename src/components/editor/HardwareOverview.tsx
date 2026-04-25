@@ -77,6 +77,27 @@ export default function HardwareOverview() {
     notifyDiscoveryReports(buildDiscoveryReports(), 'deep');
   }, [refresh]);
 
+  const handleRetryFailed = useCallback(async () => {
+    const failed = getRetryableTransports();
+    if (failed.length === 0) {
+      toast.info('Nada para repetir', {
+        description: 'Nenhum transporte falho no último scan. Rode SCAN ou DEEP primeiro.',
+      });
+      return;
+    }
+    setIsScanning(true);
+    const unsub = unifiedDiscovery.watch(() => setDiscoveryResults(deviceDiscovery.getResults()));
+    try {
+      await unifiedDiscovery.scanTransports(failed);
+    } finally {
+      unsub();
+      setIsScanning(false);
+      refresh();
+      const mode = failed.includes('mdns-artnet') ? 'deep' : 'light';
+      notifyDiscoveryReports(buildDiscoveryReports(), mode);
+    }
+  }, [refresh]);
+
   const handleStartPoller = useCallback(() => {
     telemetryPoller.start();
     startPolling();
