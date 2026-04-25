@@ -44,6 +44,7 @@ const ViewportTransitionOverlay = lz(() => import('@/components/editor/ViewportT
 
 const SmartScriptAssistant = lz(() => import('@/components/editor/SmartScriptAssistant'));
 const ShortcutsOverlay = lz(() => import('@/components/editor/PopupEditors').then(m => ({ default: m.ShortcutsOverlay })));
+const StudioPromptModal = lz(() => import('@/components/studio/StudioPromptModal'));
 
 // ── Mobile shell ──
 const MobileTabBar = lz(() => import('@/components/editor/MobileTabBar'));
