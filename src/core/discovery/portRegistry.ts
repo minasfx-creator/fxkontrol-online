@@ -16,6 +16,20 @@ const MAX_ENTRIES = 50;
 
 export type GenericConfirmMode = 'open' | 'pro';
 
+/** Operator-pinned DMX adapter family — overrides label-based detection. */
+export type DMXProfileOverrideKind =
+  | 'enttec-pro'
+  | 'enttec-open'
+  | 'dmxking'
+  | 'eurolite'
+  | 'generic-dmx';
+
+export interface DMXProfileOverride {
+  kind: DMXProfileOverrideKind;
+  /** Persist explicit operator choice timestamp for audit. */
+  setAt: number;
+}
+
 export interface PortRegistryEntry {
   /** Stable key — `${vid}:${pid}` for serial/USB, `host:${ip}` for net. */
   key: string;
