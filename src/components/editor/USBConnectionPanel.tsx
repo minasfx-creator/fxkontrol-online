@@ -226,6 +226,94 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
     };
   }, []);
 
+  // ── Auto-reopen + hot-plug ─────────────────────────────────────────
+  // On mount: list ports the browser already authorized for this origin
+  // and silently reopen the ones we recognize. Then attach connect/
+  // disconnect listeners so replug is detected without user action.
+  useEffect(() => {
+    if (!isWebSerialSupported()) return;
+
+    const matchProfile = (port: any): USBDeviceProfile | undefined => {
+      const info = port.getInfo?.();
+      if (!info?.usbVendorId) return undefined;
+      return DEVICE_PROFILES.find(p =>
+        p.vendorId === info.usbVendorId
+        && (p.productId == null || p.productId === info.usbProductId),
+      );
+    };
+
+    const reopenPort = async (port: any, source: 'auto' | 'hotplug') => {
+      try {
+        const info = port.getInfo?.();
+        const profileMatch = matchProfile(port);
+        const persisted = info ? portRegistry.get(keyFor({
+          vendorId: info.usbVendorId,
+          productId: info.usbProductId,
+        })) : undefined;
+        const effectiveProfile: USBDeviceProfile = profileMatch
+          ?? DEVICE_PROFILES.find(p => p.label === persisted?.profileId)
+          ?? DEVICE_PROFILES[0];
+        const deviceId = generateDeviceId();
+        const { reader, writer } = await openSerialConnection(port, effectiveProfile);
+        const connectedDevice: ConnectedDevice = {
+          id: deviceId,
+          profile: effectiveProfile,
+          state: 'connected',
+          port,
+          reader,
+          writer,
+          bytesReceived: 0,
+          bytesSent: 0,
+        };
+        setDevices(prev => {
+          // Avoid duplicates if we've already opened this exact SerialPort.
+          if (prev.some(d => d.port === port && d.state === 'connected')) return prev;
+          return [...prev, connectedDevice];
+        });
+        startReadLoop(connectedDevice);
+        registerDevice(connectedDevice);
+        addLog({
+          deviceId,
+          direction: 'info',
+          message: source === 'hotplug'
+            ? `🔌 Reconectado automaticamente: ${effectiveProfile.label}`
+            : `↻ Porta autorizada reaberta: ${effectiveProfile.label}`,
+        });
+        if (source === 'hotplug') toast.success(`Reconectado: ${effectiveProfile.label}`);
+      } catch (e: any) {
+        // Silent on auto-reopen (port may already be open in another tab).
+        if (source === 'hotplug') {
+          addLog({ deviceId: 'hotplug', direction: 'error', message: e?.message ?? 'Falha hot-plug' });
+        }
+      }
+    };
+
+    // Auto-reopen all already-authorized ports.
+    listAuthorizedSerialPorts().then(ports => {
+      for (const port of ports) {
+        // Skip if already in our device list (same SerialPort instance).
+        setDevices(prev => {
+          if (prev.some(d => d.port === port)) return prev;
+          // Trigger reopen outside the setter to avoid double-render.
+          queueMicrotask(() => reopenPort(port, 'auto'));
+          return prev;
+        });
+      }
+    });
+
+    // Hot-plug listeners.
+    const detach = attachSerialHotPlug(
+      port => reopenPort(port, 'hotplug'),
+      port => {
+        setDevices(prev => prev.map(d => d.port === port
+          ? { ...d, state: 'disconnected' as ConnectionState }
+          : d));
+        addLog({ deviceId: 'hotplug', direction: 'info', message: '🔌 Porta desconectada fisicamente' });
+      },
+    );
+    return () => detach();
+  }, [registerDevice, startReadLoop, addLog]);
+
   const profile = DEVICE_PROFILES.find(p => p.label === selectedProfile);
 
   return (
