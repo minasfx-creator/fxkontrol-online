@@ -67,7 +67,8 @@ export function EarlyAccessForm() {
         referrer: typeof document !== "undefined" ? document.referrer.slice(0, 500) || null : null,
       };
 
-      const { error } = await supabase.from("early_access_signups").insert(payload);
+      // Cast: tipos do Supabase ainda não regenerados após a migration recente.
+      const { error } = await (supabase as any).from("early_access_signups").insert(payload);
 
       if (error) {
         // Unique violation no índice case-insensitive em email
