@@ -52,6 +52,15 @@ export default function BetaPromoBanner({ endsAt = DEFAULT_ENDS_AT }: BetaPromoB
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [dialogCategory, setDialogCategory] = useState<DialogCategory>('bug');
 
+  // Pre-signup capture
+  const [presignupOpen, setPresignupOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [confirmedEmail, setConfirmedEmail] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(PRESIGNUP_KEY);
+  });
+
   // Schedule: parse end date once, then tick every second to drive countdown + auto-hide.
   const endsAtMs = useMemo(() => {
     if (!endsAt) return null;
