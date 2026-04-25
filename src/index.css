@@ -89,11 +89,50 @@
     --sidebar-border: 220 15% 8%;
     --sidebar-ring: 32 100% 50%;
 
-    /* Glass — tactical frosted */
+    /* Glass — tactical frosted (legacy aliases) */
     --glass-bg: 220 18% 6% / 0.85;
     --glass-border: 220 12% 18% / 0.4;
     --glass-shine: 32 100% 60% / 0.03;
     --glass-frosted: 220 20% 4% / 0.92;
+
+    /* ── Apple Material System (SwiftUI-inspired) ──
+       3 níveis de hierarquia. Acromáticos por padrão — a cor vem do conteúdo,
+       nunca da moldura. Use `.material-thin/regular/thick` em componentes novos
+       e mantenha os legacy aliases para o que já existe. */
+    --material-thin-bg:    220 16% 8% / 0.55;
+    --material-regular-bg: 220 16% 7% / 0.72;
+    --material-thick-bg:   220 18% 5% / 0.86;
+    --material-stroke:     0 0% 100% / 0.06;
+    --material-stroke-strong: 0 0% 100% / 0.10;
+    --material-highlight:  0 0% 100% / 0.05;
+    --material-shadow:     0 0% 0% / 0.55;
+
+    /* ── Apple 8pt Spacing Scale ──
+       Single source of truth for paddings/gaps in chrome (Dock, Header,
+       Sidebar, popovers). Components must NOT invent values like `px-2.5`
+       or `gap-1.5` — use these tokens or the Tailwind aliases below.
+       Scale rationale (mirrors macOS Sequoia + iPadOS):
+         space-1 = 4px   hairline gaps inside a single control
+         space-2 = 8px   default gap between siblings, control inset
+         space-3 = 12px  panel inner padding, dock item gap
+         space-4 = 16px  group separation, header inset
+         space-5 = 20px  sheet inset
+         space-6 = 24px  large container padding */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+
+    /* ── Apple Radius Scale ──
+       Semantic, hierarchical. Smaller things nest inside larger things;
+       radii grow with the surface size (iPadOS rule: outer radius ≥ inner
+       radius + padding for concentric corners). */
+    --radius-control: 0.5rem;   /* 8px  — buttons, chips, small inputs */
+    --radius-panel:   0.75rem;  /* 12px — cards, popovers, tooltips */
+    --radius-island:  1rem;     /* 16px — dock, sidebar items, segmented controls */
+    --radius-sheet:   1.25rem;  /* 20px — modals, sheets, large surfaces */
   }
 }
 
@@ -483,59 +522,81 @@
 
 /* ===== Apple × Tactical Glass System ===== */
 .glass-hud {
-  background: rgba(8, 10, 16, 0.88);
+  background: hsl(var(--material-regular-bg));
   backdrop-filter: blur(32px) saturate(1.5);
   -webkit-backdrop-filter: blur(32px) saturate(1.5);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
+  border: 1px solid hsl(var(--material-stroke));
+  box-shadow: 0 2px 16px hsl(var(--material-shadow));
 }
 .glass-dock {
-  background: rgba(8, 10, 16, 0.82);
+  background: hsl(var(--material-thick-bg));
   backdrop-filter: blur(48px) saturate(1.8);
   -webkit-backdrop-filter: blur(48px) saturate(1.8);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid hsl(var(--material-stroke));
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.8),
-    0 2px 8px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    0 8px 32px hsl(var(--material-shadow)),
+    0 2px 8px hsl(0 0% 0% / 0.35),
+    inset 0 1px 0 hsl(var(--material-highlight)),
+    inset 0 -1px 0 hsl(0 0% 0% / 0.25);
 }
 
-/* ── 3D Perspective Dock — MBP Inspired ── */
+/* ── Apple Material — 3-tier hierarchy (use estes em componentes novos) ── */
+.material-thin {
+  background: hsl(var(--material-thin-bg));
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid hsl(var(--material-stroke));
+}
+.material-regular {
+  background: hsl(var(--material-regular-bg));
+  backdrop-filter: blur(40px) saturate(1.6);
+  -webkit-backdrop-filter: blur(40px) saturate(1.6);
+  border: 1px solid hsl(var(--material-stroke));
+  box-shadow:
+    0 4px 24px hsl(var(--material-shadow)),
+    inset 0 1px 0 hsl(var(--material-highlight));
+}
+.material-thick {
+  background: hsl(var(--material-thick-bg));
+  backdrop-filter: blur(56px) saturate(1.8);
+  -webkit-backdrop-filter: blur(56px) saturate(1.8);
+  border: 1px solid hsl(var(--material-stroke-strong));
+  box-shadow:
+    0 12px 48px hsl(var(--material-shadow)),
+    0 2px 8px hsl(0 0% 0% / 0.4),
+    inset 0 1px 0 hsl(var(--material-highlight));
+}
+
+/* ── 3D Perspective Dock — MBP Inspired (acromático) ── */
 .dock-3d-glass {
   background: linear-gradient(
     180deg,
-    rgba(18, 22, 32, 0.75) 0%,
-    rgba(8, 10, 16, 0.92) 100%
+    hsl(220 18% 9% / 0.72) 0%,
+    hsl(220 22% 4% / 0.92) 100%
   );
   backdrop-filter: blur(60px) saturate(2);
   -webkit-backdrop-filter: blur(60px) saturate(2);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid hsl(var(--material-stroke));
   box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.85),
-    0 4px 12px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
-    0 0 0 0.5px rgba(255, 165, 0, 0.04);
+    0 12px 40px hsl(0 0% 0% / 0.85),
+    0 4px 12px hsl(0 0% 0% / 0.6),
+    inset 0 1px 0 hsl(var(--material-highlight)),
+    inset 0 -1px 0 hsl(0 0% 0% / 0.4);
   position: relative;
 }
 .dock-reflection {
   background: linear-gradient(
     180deg,
-    rgba(255, 165, 0, 0.03) 0%,
-    transparent 40%,
+    hsl(0 0% 100% / 0.025) 0%,
+    transparent 45%,
     transparent 60%,
-    rgba(255, 165, 0, 0.015) 100%
+    hsl(0 0% 100% / 0.012) 100%
   );
 }
 .dock-scanline {
-  background: repeating-linear-gradient(
-    0deg,
-    transparent 0px,
-    transparent 2px,
-    rgba(255, 165, 0, 0.008) 2px,
-    rgba(255, 165, 0, 0.008) 4px
-  );
+  /* Scanline removida — minimalismo Apple privilegia superfície limpa.
+     Mantido como no-op para preservar o markup. */
+  background: none;
 }
 .dock-item-active {
   background: rgba(255, 255, 255, 0.06);
@@ -702,6 +763,38 @@
 .animate-ios-spring-scale { animation: ios-spring-scale 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
 /* Night Mode — consolidated in .night-mode block below (line ~909) */
+
+/* ===== Landing — Light Theme override =====
+   Aplica-se apenas enquanto a /landing está montada (LandingThemeToggle
+   adiciona/remove a classe `landing-light` no <html>). Reaproveita a
+   receita de tokens do field-mode, garantindo contraste alto sem precisar
+   de um tema claro global. */
+html.landing-light {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 5%;
+  --card: 0 0% 97%;
+  --card-foreground: 0 0% 5%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 5%;
+  --muted: 0 0% 92%;
+  --muted-foreground: 0 0% 35%;
+  --primary: 32 100% 45%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 92%;
+  --secondary-foreground: 0 0% 10%;
+  --accent: 0 0% 90%;
+  --accent-foreground: 0 0% 10%;
+  --destructive: 0 90% 45%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 80%;
+  --input: 0 0% 88%;
+  --ring: 32 100% 45%;
+  --surface-0: 0 0% 98%;
+  --surface-1: 0 0% 95%;
+  --surface-2: 0 0% 92%;
+  --surface-3: 0 0% 88%;
+  --surface-4: 0 0% 84%;
+}
 
 /* ===== Field / Outdoor High-Contrast Mode ===== */
 body.field-mode {
@@ -1260,85 +1353,38 @@ button:active {
    Page Swap Transitions — Holographic Dissolve
    ══════════════════════════════════════════════ */
 
-/* Phase 1: Dissolve out — shrink, blur, fade with amber bloom */
+/* ──────────────────────────────────────────────
+   Apple-style page transitions
+   Filosofia: invisível quando funciona. Cross-fade curto + escala
+   imperceptível. Sem blur pesado, sem clip-path holográfico, sem
+   amber sweep — o conteúdo é o herói, a transição é só respiração.
+   ────────────────────────────────────────────── */
+
+/* Phase 1: Soft fade-out — 180ms, leve scale-down */
 @keyframes page-dissolve-out {
-  0% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-    filter: blur(0) brightness(1);
-  }
-  40% {
-    opacity: 0.5;
-    transform: scale(0.985) translateY(3px);
-    filter: blur(4px) brightness(1.2);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.96) translateY(8px);
-    filter: blur(14px) brightness(0.7);
-  }
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.992); }
 }
 .animate-page-dissolve-out {
-  animation: page-dissolve-out 0.35s cubic-bezier(0.4, 0, 1, 1) forwards;
-  will-change: opacity, transform, filter;
+  animation: page-dissolve-out 0.18s cubic-bezier(0.4, 0, 1, 1) forwards;
+  will-change: opacity, transform;
 }
 
-/* Phase 2: Materialize in — assemble from holographic grid */
+/* Phase 2: Soft fade-in — 220ms, leve scale-up com spring */
 @keyframes page-materialize-in {
-  0% {
-    opacity: 0;
-    transform: scale(1.04) translateY(-6px);
-    filter: blur(12px) brightness(1.4);
-    clip-path: inset(6% 3% 6% 3% round 8px);
-  }
-  30% {
-    opacity: 0.5;
-    transform: scale(1.015) translateY(-2px);
-    filter: blur(5px) brightness(1.15);
-    clip-path: inset(2% 1% 2% 1% round 4px);
-  }
-  70% {
-    opacity: 0.92;
-    transform: scale(1.003) translateY(0);
-    filter: blur(1px) brightness(1.03);
-    clip-path: inset(0.5% 0.5% 0.5% 0.5%);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-    filter: blur(0) brightness(1);
-    clip-path: inset(0 0 0 0);
-  }
+  0%   { opacity: 0; transform: scale(1.008); }
+  100% { opacity: 1; transform: scale(1); }
 }
 .animate-page-materialize-in {
-  animation: page-materialize-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
-  will-change: opacity, transform, filter, clip-path;
+  animation: page-materialize-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
 }
 
-/* Amber light sweep across page during swap */
-@keyframes page-sweep {
-  0% {
-    background: linear-gradient(
-      105deg,
-      transparent 0%, transparent 30%,
-      hsl(32 100% 55% / 0.06) 40%,
-      hsl(32 100% 65% / 0.16) 50%,
-      hsl(32 100% 55% / 0.06) 60%,
-      transparent 70%, transparent 100%
-    );
-    transform: translateX(-120%);
-    opacity: 0;
-  }
-  15% { opacity: 1; }
-  85% { opacity: 0.8; }
-  100% {
-    transform: translateX(120%);
-    opacity: 0;
-  }
-}
-.animate-page-sweep {
-  animation: page-sweep 0.65s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
-}
+/* Sweep desativado — kept como no-op para preservar o markup atual.
+   Quando MainLayout monta `<div class="animate-page-sweep">`, ele simplesmente
+   não renderiza nada visível. Removeremos do JSX numa segunda passada. */
+@keyframes page-sweep { 0%, 100% { opacity: 0; } }
+.animate-page-sweep { animation: page-sweep 0.01s linear forwards; opacity: 0; }
 
 /* Voice wave bars — enhanced organic */
 @keyframes voice-wave {
@@ -2175,4 +2221,131 @@ button:active {
 }
 .joi-eye-shimmer {
   animation: joi-eye-shimmer 3s ease-in-out infinite;
+}
+
+/* ──────────────────────────────────────────────
+   Native View Transitions API
+   Browser-native crossfade between consoles. Wrapped by `MainLayout` via
+   `document.startViewTransition()` when supported (Chromium 111+, Safari 18+).
+   The browser captures snapshots of the old and new DOM and compositor-fades
+   them on the GPU — zero React work during the swap, zero backdrop-filter
+   recomputation, perfectly smooth even on heavy glassmorphism layers.
+   ────────────────────────────────────────────── */
+
+/* Tune the default root crossfade to match the Apple-style timing used
+   elsewhere (220ms, iOS spring easing). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Mix-blend-mode: normal avoids the default `plus-lighter` glow on dark
+     backgrounds — keeps blacks black during the fade. */
+  mix-blend-mode: normal;
+}
+
+/* The named subtree (route content). Slightly longer outgoing fade so the
+   incoming view feels like it lifts in over the previous one — Apple's
+   "incoming-on-top" pattern from iPadOS multitasking. */
+::view-transition-old(route-content) {
+  animation: vt-fade-out 180ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+::view-transition-new(route-content) {
+  animation: vt-fade-in 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes vt-fade-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.992); }
+}
+@keyframes vt-fade-in {
+  from { opacity: 0; transform: scale(1.008); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Respect user motion preference — instant swap when reduced motion is on. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-old(route-content),
+  ::view-transition-new(route-content) {
+    animation-duration: 1ms !important;
+  }
+}
+
+/* ──────────────────────────────────────────────
+   Adaptive blur — performance tier overrides
+   ───────────────────────────────────────────────
+   Two orthogonal axes:
+     1. `[data-gpu-tier="low"]` — sticky for the session. Set by
+        `applyGpuTier()` in main.tsx based on cores/RAM/GPU renderer.
+     2. `[data-interacting="true"]` — transient (200ms after last
+        scroll/wheel/drag). Set by `installInteractionFpsGuard()`.
+   Both collapse the heavy `backdrop-filter` blurs to either a small
+   blur or none, while bumping background opacity slightly so the
+   surface still reads as a panel. Border + shadow stay intact — they
+   carry most of the "frosted glass" affordance for free.
+   The rule of thumb: ≤8px blurs are kept (they're cheap and add the
+   most affordance per pixel). Anything ≥16px gets neutered.
+   ────────────────────────────────────────────── */
+
+/* ── Tier: low GPU (sticky) ── */
+html[data-gpu-tier="low"] .glass-dock,
+html[data-gpu-tier="low"] .dock-3d-glass,
+html[data-gpu-tier="low"] .glass-menu,
+html[data-gpu-tier="low"] .glass-sidebar,
+html[data-gpu-tier="low"] .glass-sheet,
+html[data-gpu-tier="low"] .glass-hud,
+html[data-gpu-tier="low"] .glass-br2049,
+html[data-gpu-tier="low"] .material-thick,
+html[data-gpu-tier="low"] .material-regular {
+  backdrop-filter: blur(6px) saturate(1.2);
+  -webkit-backdrop-filter: blur(6px) saturate(1.2);
+  /* Compensate the lost frosting with a touch more opacity. */
+  background-color: hsl(var(--surface-1) / 0.94);
+}
+html[data-gpu-tier="low"] .glass-premium,
+html[data-gpu-tier="low"] .glass-card-glow,
+html[data-gpu-tier="low"] .glass-core,
+html[data-gpu-tier="low"] .glass-warn,
+html[data-gpu-tier="low"] .material-thin {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  background-color: hsl(var(--surface-1) / 0.88);
+}
+
+/* ── Interaction-time blur suspension (transient) ──
+   Fires DURING scroll/wheel/drag regardless of tier. The blurred
+   surface is replaced by a flat translucent panel for the few hundred
+   ms of the interaction, then the blur returns when the user stops.
+   This is the single biggest FPS win on heavy pages because blur is
+   recomputed every composited frame — and during a fast scroll, that
+   means 60+ kernel convolutions per second per blurred layer. */
+html[data-interacting="true"] .glass-dock,
+html[data-interacting="true"] .dock-3d-glass,
+html[data-interacting="true"] .glass-menu,
+html[data-interacting="true"] .glass-sidebar,
+html[data-interacting="true"] .glass-sheet,
+html[data-interacting="true"] .glass-hud,
+html[data-interacting="true"] .glass-br2049,
+html[data-interacting="true"] .glass-premium,
+html[data-interacting="true"] .glass-card-glow,
+html[data-interacting="true"] .glass-core,
+html[data-interacting="true"] .glass-warn,
+html[data-interacting="true"] .material-thin,
+html[data-interacting="true"] .material-regular,
+html[data-interacting="true"] .material-thick {
+  /* Suspend blur entirely — the compositor skips the convolution pass
+     and just blends a translucent rectangle, which is essentially free. */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background-color: hsl(var(--surface-1) / 0.96);
+}
+
+/* Holographic scan / dock-scanline / page-sweep overlays are
+   decorative — kill them during interactions so the compositor has
+   one less layer to paint. */
+html[data-interacting="true"] .animate-holographic-scan,
+html[data-interacting="true"] .dock-scanline,
+html[data-interacting="true"] .br2049-scanline {
+  display: none;
 }

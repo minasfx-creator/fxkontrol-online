@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle, Moon, Sun, Maximize2, Minimize2 } from 'lucide-react';
+import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle, Moon, Sun, Maximize2, Minimize2, Settings2 } from 'lucide-react';
 import fxkLogo from '@/assets/fxk-logo.png';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -578,6 +578,20 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
             </button>
             <button onClick={() => setFormationOpen(true)} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all" title="Formations">
               <Shapes className="h-3.5 w-3.5" />
+            </button>
+
+            {/* ── Separator ── */}
+            <div className="w-px h-5 bg-border/20" />
+
+            {/* Unified panel openers — Effects / Scene / Show Settings */}
+            <button onClick={() => onOpenPanel?.('effects')} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all" title="Efeitos (C)">
+              <Sparkles className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => onOpenPanel?.('scene')} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all" title="Editor de Cena (N)">
+              <Cog className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => onOpenPanel?.('showsettings')} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground/80 hover:bg-muted/30 transition-all" title="Config. Show">
+              <Settings2 className="h-3.5 w-3.5" />
             </button>
           </div>
         </>

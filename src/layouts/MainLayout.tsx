@@ -8,8 +8,15 @@ import { useDisplayStore } from '@/store/useDisplayStore';
 import { haptics } from '@/lib/haptics';
 import { ambientSound } from '@/lib/ambientSound';
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import { flushSync } from 'react-dom';
 import DockBar from '@/components/DockBar';
+import BetaPromoBanner from '@/components/BetaPromoBanner';
 import { lazyRetry } from '@/lib/lazyRetry';
+
+// Native View Transitions API support — captured once at module load.
+// Graceful fallback to CSS dissolve/materialize when unavailable.
+const SUPPORTS_VIEW_TRANSITIONS =
+  typeof document !== 'undefined' && 'startViewTransition' in document;
 
 // Dev-only overlay — tree-shaken in production
 const RenderCounterOverlay = import.meta.env.DEV
@@ -26,7 +33,7 @@ function SidebarToggleButton() {
   return (
     <button
       onClick={toggleSidebar}
-      className="flex items-center justify-center h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-all active:scale-90"
+      className="flex items-center justify-center h-8 w-8 rounded-control text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-all active:scale-90"
       title={collapsed ? 'Expandir menu' : 'Recolher menu'}
     >
       {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
@@ -39,7 +46,7 @@ function MobileSidebarTrigger() {
   return (
     <button
       onClick={toggleSidebar}
-      className="flex items-center justify-center h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all active:scale-90"
+      className="flex items-center justify-center h-8 w-8 rounded-control text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all active:scale-90"
       title="Menu"
     >
       <Menu className="h-4.5 w-4.5" />
@@ -83,28 +90,49 @@ export default function MainLayout() {
     return () => document.removeEventListener('click', handler);
   }, [humStarted]);
 
-  // Route change: holographic dissolve-out → materialize-in
+  // Route change: native View Transitions when supported (Chromium 111+,
+  // Safari 18+, Edge 111+). Fallback: CSS cross-fade (180ms+220ms).
+  //
+  // Why native:
+  //   • The browser captures both DOM states as compositor-level snapshots
+  //     and animates the swap on the GPU — no React reflow during the fade,
+  //     no JIT layout work, no stutter on heavy consoles.
+  //   • Glassmorphism layers (Dock, Sidebar, Header) keep their `backdrop-
+  //     filter` blur stable across the transition because they're captured
+  //     as bitmap snapshots — no per-frame blur recomputation.
+  //   • Animation timing/easing lives entirely in CSS via the
+  //     `::view-transition-*` pseudo-elements — see index.css.
   useEffect(() => {
-    if (prevPathRef.current !== location.pathname) {
-      ambientSound.play('nav');
+    if (prevPathRef.current === location.pathname) return;
+    ambientSound.play('nav');
+    prevPathRef.current = location.pathname;
 
-      // Phase 1: dissolve out current content
-      setTransitionPhase('dissolve-out');
-
-      if (transitionTimeout.current) clearTimeout(transitionTimeout.current);
-
-      transitionTimeout.current = setTimeout(() => {
-        // Phase 2: swap content & materialize in
-        setDisplayedPath(location.pathname);
-        setTransitionPhase('materialize-in');
-
-        transitionTimeout.current = setTimeout(() => {
-          setTransitionPhase('idle');
-        }, 700);
-      }, 350);
-
-      prevPathRef.current = location.pathname;
+    if (SUPPORTS_VIEW_TRANSITIONS) {
+      // Native path: skip the CSS state-machine and let the browser
+      // crossfade the captured snapshots. flushSync forces React to commit
+      // the new tree synchronously inside the transition callback so the
+      // browser snapshots the *new* state, not the stale one.
+      // We also keep `transitionPhase` at 'idle' so the fallback CSS
+      // animation classes don't fire on top of the native crossfade.
+      setTransitionPhase('idle');
+      (document as Document & { startViewTransition: (cb: () => void) => unknown })
+        .startViewTransition(() => {
+          flushSync(() => setDisplayedPath(location.pathname));
+        });
+      return;
     }
+
+    // Fallback path — CSS dissolve/materialize.
+    setTransitionPhase('dissolve-out');
+    if (transitionTimeout.current) clearTimeout(transitionTimeout.current);
+    transitionTimeout.current = setTimeout(() => {
+      setDisplayedPath(location.pathname);
+      setTransitionPhase('materialize-in');
+      transitionTimeout.current = setTimeout(() => {
+        setTransitionPhase('idle');
+      }, 220);
+    }, 180);
+
     return () => {
       if (transitionTimeout.current) clearTimeout(transitionTimeout.current);
     };
@@ -128,6 +156,9 @@ export default function MainLayout() {
         )}
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
+          {/* Beta Promo Banner */}
+          {!commandImmersive && !isEditor && <BetaPromoBanner />}
+
           {/* ARMED Banner */}
           {isArmed && !commandImmersive && (
             <button
@@ -145,32 +176,26 @@ export default function MainLayout() {
             </button>
           )}
 
-          {/* Header */}
+          {/* Header — Apple minimal: toggle + logo. Sem texto redundante,
+              sem dot pulsante. A sidebar já identifica o app; o header só
+              dá ar e controla a navegação. */}
           {!commandImmersive && !isEditor && (
             <header
               role="banner"
-              className="flex items-center border-b px-3 shrink-0 relative overflow-hidden h-10"
-              style={{
-                background: 'rgba(8, 10, 14, 0.85)',
-                backdropFilter: 'blur(48px) saturate(1.8)',
-                WebkitBackdropFilter: 'blur(48px) saturate(1.8)',
-                borderColor: 'hsl(32 100% 50% / 0.06)',
-              }}
+              className="material-thin flex items-center px-3 shrink-0 relative h-10"
+              style={{ borderBottom: '1px solid hsl(var(--material-stroke))' }}
             >
-              <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-20" />
               {isMobile ? (
                 <MobileSidebarTrigger />
               ) : (
                 <SidebarToggleButton />
               )}
-              <div className="ml-3 flex items-center gap-2 relative z-10">
-                <div className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'hsl(32 100% 50%)', boxShadow: '0 0 6px hsl(32 100% 50% / 0.5)' }} />
-                <span className="text-[10px] font-mono tracking-widest uppercase" style={{ color: 'hsl(32 100% 50% / 0.8)', textShadow: '0 0 8px hsl(32 100% 50% / 0.3)' }}>
-                  FX KONTROL
-                </span>
-              </div>
-              <div className="ml-auto flex items-center gap-2 relative z-10">
-                <img src={minasfxLogo} alt="MinasFX" className="h-4 object-contain opacity-60" />
+              <div className="ml-auto flex items-center relative z-10">
+                <img
+                  src={minasfxLogo}
+                  alt="MinasFX"
+                  className="h-4 object-contain opacity-50 hover:opacity-80 transition-opacity duration-200"
+                />
               </div>
             </header>
           )}
@@ -181,9 +206,6 @@ export default function MainLayout() {
               <Outlet />
             ) : (
               <>
-                {transitionPhase !== 'idle' && (
-                  <div className="absolute inset-0 pointer-events-none z-50 animate-page-sweep" />
-                )}
                 <div
                   key={displayedPath}
                   className={`h-full ${
@@ -193,6 +215,11 @@ export default function MainLayout() {
                         ? 'animate-page-materialize-in'
                         : ''
                   }`}
+                  // `view-transition-name` opts this subtree into the native
+                  // crossfade. Persistent chrome (sidebar, dock, header) lives
+                  // *outside* this div so it stays put across the transition —
+                  // only the route content morphs.
+                  style={{ viewTransitionName: 'route-content' }}
                 >
                   <Outlet />
                 </div>

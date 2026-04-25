@@ -103,21 +103,6 @@ export class ArduinoNanoAdapter implements HardwareAdapter<ArduinoNanoState> {
     this._connected = 'disconnected';
   }
 
-  /** Simulate connection (for test/diagnostic mode) */
-  simulateConnect(): void {
-    this._connected = 'connected';
-    this._state.watchdog_active = true;
-    this._state.loop_frequency_hz = 60;
-  }
-
-  simulateDisconnect(): void {
-    this._connected = 'disconnected';
-    this._state.loop_frequency_hz = 0;
-  }
-
-  simulateError(): void {
-    this._connected = 'error';
-  }
 }
 
 export const arduinoNanoAdapter = new ArduinoNanoAdapter();

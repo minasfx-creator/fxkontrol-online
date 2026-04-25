@@ -26,6 +26,7 @@ import {
   getSkyScatterUniforms,
   setAdaptiveExposureValue,
 } from './sharedState';
+import { useClockTimeRef } from '@/hooks/useClockTimeRef';
 
 import { setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from '../RenderDebugOverlay';
 
@@ -43,10 +44,14 @@ export const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(func
   const exposureRef = useRef(createExposureController());
   const _scatterAccum = useMemo(() => new THREE.Color(), []);
   const _tmpColor = useMemo(() => new THREE.Color(), []);
+  const clockTimeRef = useClockTimeRef();
 
   useFrame(({ gl }, delta) => {
     const state = exposureRef.current;
-    const { timelineItems, currentTime } = useProjectStore.getState();
+    const { timelineItems } = useProjectStore.getState();
+    // Authoritative time read — bypasses React/Zustand scheduling so even
+    // if the store mirror is one frame behind, the renderer stays in sync.
+    const currentTime = clockTimeRef.current;
     let luminance = 0;
     let activeBursts = 0;
     _scatterAccum.setRGB(0, 0, 0);
@@ -196,6 +201,7 @@ export const LensFlareController = React.forwardRef<THREE.Group, {}>(function Le
   const spritesRef = useRef<THREE.Sprite[]>([]);
   const poolIdx = useRef(0);
   const { scene } = useThree();
+  const clockTimeRef = useClockTimeRef();
 
   useEffect(() => {
     const pool: THREE.Sprite[] = [];
@@ -219,7 +225,8 @@ export const LensFlareController = React.forwardRef<THREE.Group, {}>(function Le
       decayLensFlare(sprite, delta, 3);
     }
 
-    const { timelineItems, currentTime } = useProjectStore.getState();
+    const { timelineItems } = useProjectStore.getState();
+    const currentTime = clockTimeRef.current;
     for (let i = 0; i < timelineItems.length; i++) {
       const item = timelineItems[i];
       const elapsed = currentTime - item.startTime;
@@ -255,6 +262,7 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function Groun
     uReflectionColor: { value: new THREE.Color(0.1, 0.15, 0.2) },
     uReflectionIntensity: { value: 0.5 },
   });
+  const clockTimeRef = useClockTimeRef();
 
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
@@ -267,7 +275,8 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function Groun
     const u = uniformsRef.current;
     u.uTime.value = clock.getElapsedTime();
 
-    const { timelineItems, currentTime } = useProjectStore.getState();
+    const { timelineItems } = useProjectStore.getState();
+    const currentTime = clockTimeRef.current;
     let flashIntensity = 0;
     const _reusableColor = u.uReflectionColor.value;
 

@@ -107,23 +107,6 @@ export class MuxReaderAdapterCD4051 implements HardwareAdapter<MultiplexerState[
       { mux_id: 'mux-b', selected_channel: 0, sample_count: 0, fault_state: false, channels: this._initChannels(8) },
     ];
   }
-
-  simulateConnect(): void { this._connected = 'connected'; }
-  simulateDisconnect(): void { this._connected = 'disconnected'; }
-
-  /** Set individual channel state for test scenarios */
-  simulateChannelState(channel: number, state: MuxChannelReading['state']): void {
-    const muxIdx = channel < 8 ? 0 : 1;
-    const chIdx = channel < 8 ? channel : channel - 8;
-    if (this._muxStates[muxIdx]?.channels[chIdx]) {
-      this._muxStates[muxIdx].channels[chIdx].state = state;
-    }
-  }
-
-  simulateMuxFault(muxId: string): void {
-    const mux = this._muxStates.find(m => m.mux_id === muxId);
-    if (mux) { mux.fault_state = true; this._connected = 'degraded'; }
-  }
 }
 
 export const muxReaderAdapter = new MuxReaderAdapterCD4051();

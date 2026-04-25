@@ -229,7 +229,7 @@ export class FireOneHardwareBridge {
   private retryTimestampsAll: number[] = [];
   private retryTimestampsByKey: Map<string, number[]> = new Map();
 
-  // ── Helpers (added stubs to satisfy SDK + tests; runtime no-op safe) ──
+  // ── Internal helpers ──
   private setError(code: BridgeReasonCode, message: string): void {
     this.lastErrorCode = code;
     this.lastError = message;

@@ -34,6 +34,7 @@ const DMXMonitorPanel = lazy(() => import('@/components/editor/dmx/DMXMonitorPan
 const FieldTestDesktop = lazy(() => import('@/components/editor/FieldTestDesktop'));
 const QuickHardwarePanel = lazy(() => import('@/components/editor/QuickHardwarePanel'));
 const VerificationConsole = lazy(() => import('@/components/editor/VerificationBar'));
+import { isEnabled } from '@/lib/featureFlags';
 const ContinuityMatrix = lazy(() => import('@/components/editor/ContinuityMatrix'));
 const ShowPlanInspector = lazy(() => import('@/components/editor/ShowPlanInspector'));
 const SystemOverviewConsole = lazy(() => import('@/components/editor/SystemOverviewConsole'));
@@ -48,7 +49,6 @@ const ExecutionStatusConsole = lazy(() => import('@/components/editor/ExecutionS
 const ExportReadinessPanel = lazy(() => import('@/components/editor/ExportReadinessPanel'));
 const CurrentStateMatrix = lazy(() => import('@/components/editor/CurrentStateMatrix'));
 const HardwareOverview = lazy(() => import('@/components/editor/HardwareOverview'));
-const DevSimulationPanel = lazy(() => import('@/components/editor/DevSimulationPanel'));
 const RelayBankMonitor = lazy(() => import('@/components/editor/RelayBankMonitor'));
 const BatteryPowerMonitor = lazy(() => import('@/components/editor/BatteryPowerMonitor'));
 const MuxContinuityMonitor = lazy(() => import('@/components/editor/MuxContinuityMonitor'));
@@ -98,7 +98,7 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   hardware:     { color: 'hsl(190 80% 50%)',   glow: 'hsl(190 80% 50% / 0.1)',  label: 'HARDWARE',    badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'DEVICE CONNECT & MONITOR' },
   verification: { color: 'hsl(120 70% 42%)',   glow: 'hsl(120 70% 42% / 0.08)', label: 'VERIFY',      badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'SYSTEM VERIFICATION' },
   continuity:   { color: 'hsl(190 100% 50%)',  glow: 'hsl(190 100% 50% / 0.1)', label: 'CONTINUITY',  badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'IGNITER CONTINUITY MATRIX' },
-  sys_overview:   { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'OVERVIEW',    badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'SYSTEM OVERVIEW' },
+  sys_overview:   { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'OFFICE',      badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'OFFICE OVERVIEW' },
   safety_console: { color: 'hsl(0 85% 48%)',     glow: 'hsl(0 85% 48% / 0.1)',     label: 'SAFETY',      badge: 'bg-red-500/15 text-red-400 border-red-500/20', subtitle: 'SAFETY INTERLOCK CONSOLE' },
   field_diag:     { color: 'hsl(190 80% 50%)',   glow: 'hsl(190 80% 50% / 0.1)',   label: 'FIELD DIAG',  badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'HARDWARE DIAGNOSTICS' },
   fireone_export: { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'FIREONE',     badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'FIREONE EXPORT CONSOLE' },
@@ -112,7 +112,7 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   hw_overview:      { color: 'hsl(190 80% 50%)',  glow: 'hsl(190 80% 50% / 0.1)',   label: 'HW OVERVIEW', badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'HARDWARE OVERVIEW' },
   relay_bank:       { color: 'hsl(190 100% 50%)', glow: 'hsl(190 100% 50% / 0.1)',  label: 'RELAY BANK',  badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'RELAY BANK MONITOR' },
   battery_power:    { color: 'hsl(120 70% 42%)',  glow: 'hsl(120 70% 42% / 0.08)',  label: 'BATTERY',     badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'BATTERY & POWER MONITOR' },
-  mux_continuity:   { color: 'hsl(190 80% 50%)',  glow: 'hsl(190 80% 50% / 0.1)',   label: 'MUX/CONT',   badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'MUX / CONTINUITY MONITOR' },
+  mux_continuity:   { color: 'hsl(190 80% 50%)',  glow: 'hsl(190 80% 50% / 0.1)',   label: 'NETWORK',    badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'NETWORK MONITOR' },
   artnet_monitor:   { color: 'hsl(200 80% 48%)',  glow: 'hsl(200 80% 48% / 0.1)',   label: 'ART-NET',     badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20', subtitle: 'ART-NET NODE MONITOR' },
   readiness:        { color: 'hsl(120 70% 42%)',  glow: 'hsl(120 70% 42% / 0.08)',  label: 'READINESS',   badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'READINESS DASHBOARD' },
   manual_compliance:{ color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'COMPLIANCE',  badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'MANUAL COMPLIANCE MATRIX' },
@@ -140,7 +140,7 @@ const MODE_SECTIONS = [
     accent: 'text-amber-400',
     icon: Activity,
     modes: [
-      { key: 'sys_overview' as CommandMode, label: 'OVERVIEW', icon: Activity },
+      { key: 'sys_overview' as CommandMode, label: 'OFFICE', icon: Activity },
       { key: 'state_matrix' as CommandMode, label: 'STATE MTX', icon: Activity },
       { key: 'manual_compliance' as CommandMode, label: 'COMPLIANCE', icon: BookOpen },
       { key: 'exec_report' as CommandMode, label: 'EXEC REPORT', icon: FileBarChart },
@@ -174,7 +174,7 @@ const MODE_SECTIONS = [
       { key: 'hw_overview' as CommandMode, label: 'HW OVERVIEW', icon: Cpu },
       { key: 'relay_bank' as CommandMode, label: 'RELAY BANK', icon: Activity },
       { key: 'battery_power' as CommandMode, label: 'BATTERY', icon: Zap },
-      { key: 'mux_continuity' as CommandMode, label: 'MUX/CONT', icon: Radio },
+      { key: 'mux_continuity' as CommandMode, label: 'NETWORK', icon: Radio },
       { key: 'artnet_monitor' as CommandMode, label: 'ART-NET', icon: Wifi },
       { key: 'readiness' as CommandMode, label: 'READINESS', icon: Shield },
       { key: 'module' as CommandMode, label: 'MODULE', icon: Cpu },
@@ -293,8 +293,8 @@ export default function CommandCenter() {
       case 'module': return <FXKNetPanel fs />;
       case 'hardware': return <QuickHardwarePanel fs />;
       case 'dmx_monitor': return <DMXMonitorPanel fs />;
-      case 'field_test': return <FieldTestDesktop />;
-      case 'verification': return <div className="flex flex-col h-full"><VerificationConsole /><div className="flex-1 overflow-auto"><ShowPlanInspector /></div></div>;
+      case 'field_test': return isEnabled('module_pairing_mobilelink') ? <FieldTestDesktop /> : <div className="p-4 text-xs text-muted-foreground">Field Test desabilitado por feature flag.</div>;
+      case 'verification': return isEnabled('module_verification') ? <div className="flex flex-col h-full"><VerificationConsole /><div className="flex-1 overflow-auto"><ShowPlanInspector /></div></div> : <div className="p-4 text-xs text-muted-foreground">Verification desabilitado por feature flag.</div>;
       case 'continuity': return <ContinuityMatrix />;
       case 'sys_overview': return <SystemOverviewConsole />;
       case 'safety_console': return <SafetyConsole />;
@@ -307,12 +307,7 @@ export default function CommandCenter() {
       case 'execution_status': return <ExecutionStatusConsole />;
       case 'export_readiness': return <ExportReadinessPanel />;
       case 'state_matrix': return <CurrentStateMatrix />;
-      case 'hw_overview': return (
-        <div className="flex flex-col gap-2 h-full">
-          <Suspense fallback={null}><DevSimulationPanel /></Suspense>
-          <div className="flex-1 min-h-0"><HardwareOverview /></div>
-        </div>
-      );
+      case 'hw_overview': return <HardwareOverview />;
       case 'relay_bank': return <RelayBankMonitor />;
       case 'battery_power': return <BatteryPowerMonitor />;
       case 'mux_continuity': return <MuxContinuityMonitor />;

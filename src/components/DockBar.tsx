@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { ambientSound } from '@/lib/ambientSound';
 import { haptics } from '@/lib/haptics';
 import { prefetchRoute } from '@/lib/prefetchRoutes';
+import { isEnabled } from '@/lib/featureFlags';
 import { useSceneStore } from '@/store/useSceneStore';
 import {
   LayoutDashboard, Clapperboard, CalendarDays,
@@ -24,18 +25,20 @@ interface DockItem {
   label: string;
   path: string;
   accent?: string;
+  flag?: 'module_pairing_mobilelink' | 'module_organizer_menu' | 'module_verification' | 'module_pcbviewer';
 }
 
-const DOCK_MAIN: DockItem[] = [
+const DOCK_MAIN_ALL: DockItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: Crosshair, label: 'Command', path: '/command', accent: 'hsl(0 85% 48%)' },
   { icon: Clapperboard, label: 'Editor 3D', path: '/editor', accent: 'hsl(32 100% 50%)' },
   { icon: CalendarDays, label: 'Agenda', path: '/agenda' },
   { icon: Gamepad2, label: 'Training', path: '/training' },
-  { icon: Activity, label: 'Field Test', path: '/field-test', accent: 'hsl(165 100% 42%)' },
+  { icon: Activity, label: 'Field Test', path: '/field-test', accent: 'hsl(165 100% 42%)', flag: 'module_pairing_mobilelink' },
   { icon: BarChart3, label: 'Status', path: '/platform-status' },
-  { icon: Rocket, label: 'Show Test', path: '/show-test' },
 ];
+
+const DOCK_MAIN: DockItem[] = DOCK_MAIN_ALL.filter(item => !item.flag || isEnabled(item.flag));
 
 const DOCK_SYSTEM: DockItem[] = [
   { icon: Settings, label: 'Config', path: '/settings' },
@@ -101,13 +104,16 @@ export default function DockBar() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pointer-events-none"
-      style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))', perspective: '800px' }}>
+      style={{ paddingBottom: 'max(var(--space-2), env(safe-area-inset-bottom))', perspective: '800px' }}>
       <TooltipProvider delayDuration={200}>
         <div
           ref={dockRef}
           className={cn(
-            "pointer-events-auto dock-3d-glass rounded-2xl flex items-end",
-            isMobile ? "px-1 py-1.5 gap-0" : "px-2.5 py-1.5 gap-0.5"
+            // Apple 8pt grid: island radius outside, control radius inside,
+            // p-2 (8px) inset, gap-1 (4px) between items. Concentric corners
+            // hold because 16px - 8px padding = 8px ≥ control radius.
+            "pointer-events-auto dock-3d-glass rounded-island flex items-end p-2 gap-1",
+            isMobile && "p-1 gap-0",
           )}
           onMouseMove={isMobile ? undefined : handleDockMouseMove}
           onMouseLeave={isMobile ? undefined : handleDockMouseLeave}
@@ -121,7 +127,7 @@ export default function DockBar() {
         >
           {/* Ambient reflection layer — desktop only */}
           {!isMobile && (
-            <div className="absolute inset-0 rounded-2xl pointer-events-none overflow-hidden">
+            <div className="absolute inset-0 rounded-island pointer-events-none overflow-hidden">
               <div className="absolute inset-0 dock-reflection" />
               <div className="absolute inset-0 dock-scanline" />
             </div>
@@ -140,9 +146,9 @@ export default function DockBar() {
               <React.Fragment key={item.path}>
                 {i === separatorIndex && (
                   <div className={cn(
-                    "rounded-full self-center",
-                    isMobile ? "w-[2px] h-6 mx-0.5" : "w-[1px] h-6 mx-0.5"
-                  )} style={{ background: isMobile ? 'hsl(var(--primary) / 0.2)' : 'hsl(var(--primary) / 0.1)' }} />
+                    "rounded-full self-center w-px h-6 mx-1",
+                    isMobile && "w-0.5",
+                  )} style={{ background: 'hsl(var(--material-stroke))' }} />
                 )}
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -153,9 +159,9 @@ export default function DockBar() {
                         setHoveredIndex(i);
                         prefetchRoute(item.path);
                       }}
-                      
+
                       className={cn(
-                        "relative flex flex-col items-center justify-center rounded-xl transition-all",
+                        "relative flex flex-col items-center justify-center rounded-control transition-all",
                         "active:scale-90",
                         isMobile ? "w-14 h-16 gap-0.5" : "w-11 h-11",
                         isActive ? "dock-item-active" : "hover:bg-white/[0.04]"
@@ -209,7 +215,7 @@ export default function DockBar() {
                     <TooltipContent
                       side="top"
                       sideOffset={8}
-                      className="glass-menu px-3 py-1.5 text-[10px] font-semibold tracking-wider"
+                      className="glass-menu rounded-panel px-3 py-2 text-[10px] font-semibold tracking-wider"
                     >
                       {item.label}
                     </TooltipContent>

@@ -31,8 +31,8 @@ export function StatusChips() {
     BLOCKED: { color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', icon: XOctagon, label: 'BLOCKED' },
   }[level] ?? { color: 'text-muted-foreground', bg: 'bg-muted/20 border-border/20', icon: XOctagon, label: level };
 
-  const passed = result?.checks.filter(c => c.passed).length ?? 0;
-  const total = result?.checks.length ?? 0;
+  const passed = result?.summary.passed ?? 0;
+  const total = result?.summary.total ?? 0;
 
   return (
     <div className="flex items-center gap-1.5">
@@ -72,8 +72,8 @@ export function SidebarStatusWidget({ collapsed }: { collapsed: boolean }) {
   useEffect(() => { runVerification(); }, [runVerification]);
 
   const isHot = safetyState === 'ARMED' || safetyState === 'FIRING';
-  const passed = result?.checks.filter(c => c.passed).length ?? 0;
-  const total = result?.checks.length ?? 0;
+  const passed = result?.summary.passed ?? 0;
+  const total = result?.summary.total ?? 0;
 
   if (collapsed) {
     return (

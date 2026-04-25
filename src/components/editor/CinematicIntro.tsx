@@ -7,7 +7,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
-type IntroPhase = 'black-in' | 'video1' | 'cross-fade' | 'video2' | 'start-wait' | 'fade-out' | 'done'
+type IntroPhase = 'black-in' | 'video2' | 'start-wait' | 'fade-out' | 'done'
   | 'boot-text' | 'boot-logo' | 'boot-start';
 
 interface CinematicIntroProps {
@@ -29,16 +29,13 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
   const [phase, setPhase] = useState<IntroPhase>('black-in');
   const [canSkip, setCanSkip] = useState(false);
   const [blackOpacity, setBlackOpacity] = useState(1);
-  const [v1Opacity, setV1Opacity] = useState(0);
   const [v2Opacity, setV2Opacity] = useState(0);
-  const [sweepActive, setSweepActive] = useState(false);
   const [startVisible, setStartVisible] = useState(false);
   const [startGlowPulse, setStartGlowPulse] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
   const [visibleLines, setVisibleLines] = useState(0);
   const [logoReveal, setLogoReveal] = useState(false);
   const [progressWidth, setProgressWidth] = useState(0);
-  const video1Ref = useRef<HTMLVideoElement>(null);
   const video2Ref = useRef<HTMLVideoElement>(null);
   const timersRef = useRef<number[]>([]);
 
@@ -53,42 +50,22 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
   }, []);
 
   // ── Phase: black-in → try video or fallback
+  // Video1 (Minas FX) foi removido da UX do editor — pula direto para video2 (FX Kontrol).
   useEffect(() => {
     if (phase !== 'black-in') return;
     const t1 = setTimeout(() => {
       setBlackOpacity(0);
-      if (!useFallback) setV1Opacity(1);
+      if (!useFallback) setV2Opacity(1);
     }, 400);
     const t2 = setTimeout(() => {
       if (useFallback) {
         setPhase('boot-text');
       } else {
-        setPhase('video1');
+        setPhase('video2');
       }
     }, 1200);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [phase, useFallback]);
-
-  // ── Phase: video1 — play Minas FX
-  useEffect(() => {
-    if (phase !== 'video1' || !video1Ref.current) return;
-    video1Ref.current.currentTime = 0;
-    video1Ref.current.play().catch(() => {
-      // Video failed — switch to CSS fallback
-      setUseFallback(true);
-      setV1Opacity(0);
-      setPhase('boot-text');
-    });
-  }, [phase]);
-
-  // ── Phase: cross-fade
-  useEffect(() => {
-    if (phase !== 'cross-fade') return;
-    setSweepActive(true);
-    const t1 = setTimeout(() => { setV1Opacity(0); setV2Opacity(1); }, 200);
-    const t2 = setTimeout(() => { setSweepActive(false); setPhase('video2'); }, 1200);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [phase]);
 
   // ── Phase: video2 — play FX Kontrol
   useEffect(() => {
@@ -137,15 +114,12 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
     return () => clearTimeout(t);
   }, [phase, onComplete]);
 
-  const handleVideo1End = useCallback(() => setPhase('cross-fade'), []);
   const handleVideo2End = useCallback(() => setPhase('start-wait'), []);
 
   const handleSkip = useCallback(() => {
     if (!canSkip) return;
     if (phase === 'start-wait' || phase === 'boot-start') return;
-    video1Ref.current?.pause();
     video2Ref.current?.pause();
-    setV1Opacity(0);
     setV2Opacity(0);
     if (useFallback || phase === 'boot-text' || phase === 'boot-logo') {
       setPhase('boot-start');
@@ -164,7 +138,6 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
   const handleVideoError = useCallback(() => {
     setUseFallback(true);
     if (phase === 'black-in') return; // will be caught in black-in effect
-    setV1Opacity(0);
     setV2Opacity(0);
     setPhase('boot-text');
   }, [phase]);
@@ -185,20 +158,8 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
       }}
       tabIndex={0}
     >
-      {/* Video 1 — Minas FX */}
-      {!useFallback && (
-        <video
-          ref={video1Ref}
-          src="/videos/minas-fx-intro.mp4"
-          className="absolute inset-0 w-full h-full object-contain"
-          style={{ opacity: v1Opacity, transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }}
-          playsInline muted preload="auto"
-          onEnded={handleVideo1End}
-          onError={handleVideoError}
-        />
-      )}
+      {/* Video — FX Kontrol (Minas FX video removido da UX do editor) */}
 
-      {/* Video 2 — FX Kontrol */}
       {!useFallback && (
         <video
           ref={video2Ref}
@@ -308,16 +269,7 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
         </>
       )}
 
-      {/* Cross-fade light sweep */}
-      {sweepActive && (
-        <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden">
-          <div className="absolute top-0 bottom-0 w-[2px]" style={{
-            background: 'linear-gradient(to bottom, transparent 5%, hsl(195 100% 60% / 0.9) 50%, transparent 95%)',
-            boxShadow: '0 0 80px 30px hsl(195 100% 55% / 0.25)',
-            animation: 'fxk-sweep 1s cubic-bezier(0.25, 0.1, 0.25, 1) forwards'
-          }} />
-        </div>
-      )}
+      {/* Cross-fade light sweep removido junto com video1 (Minas FX) */}
 
       {/* Vignette */}
       <div className="absolute inset-0 pointer-events-none z-20" style={{

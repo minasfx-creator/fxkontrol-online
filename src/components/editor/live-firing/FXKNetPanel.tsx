@@ -2,15 +2,20 @@
  * FXKNetPanel — Unified Art-Net Network + Module Control + DMX I/O + Pixel Mapping + Bézier Curves
  * BR2049 holographic aesthetics + network topology + firmware + signal quality
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { cn } from '@/lib/utils';
-import { Globe, Cpu, ArrowLeftRight, Grid3X3, Spline, Radio } from 'lucide-react';
+import { isEnabled } from '@/lib/featureFlags';
+import { Globe, Cpu, ArrowLeftRight, Grid3X3, Spline, Radio, Smartphone, Nfc } from 'lucide-react';
 import ArtNetModulePanel from './ArtNetModulePanel';
 import VirtualIFMx32QPanel from './VirtualIFMx32QPanel';
 import DMXIOPanel from './DMXIOPanel';
 import PixelMappingPanel from './PixelMappingPanel';
 import DMXBezierEditor from '../dmx/DMXBezierEditor';
 import MA3NetworkPanel from './MA3NetworkPanel';
+
+// Heavy panels — lazy so opening Networks doesn't pull NFC/BLE/Realtime code upfront.
+const MobileLinkPanel = lazy(() => import('../MobileLinkPanel'));
+const DevicePairingPage = lazy(() => import('@/pages/DevicePairing'));
 
 interface FXKNetPanelProps {
   fs?: boolean;
@@ -70,19 +75,22 @@ function TopologyMinimap({ moduleCount }: { moduleCount: number }) {
   );
 }
 
-type TabKey = 'network' | 'ma3' | 'module' | 'dmx-io' | 'pixel-map' | 'bezier';
+type TabKey = 'network' | 'ma3' | 'module' | 'dmx-io' | 'pixel-map' | 'bezier' | 'mobile-link' | 'pairing';
 
 export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('network');
 
-  const tabs: { key: TabKey; label: string; icon: typeof Globe; sub: string }[] = [
-    { key: 'network', label: 'NET', icon: Globe, sub: 'ART-NET' },
-    { key: 'ma3', label: 'MA3', icon: Radio, sub: 'NODE' },
-    { key: 'module', label: 'MOD', icon: Cpu, sub: 'FIELD' },
-    { key: 'dmx-io', label: 'I/O', icon: ArrowLeftRight, sub: 'DMX' },
-    { key: 'pixel-map', label: 'PXL', icon: Grid3X3, sub: 'MAP' },
-    { key: 'bezier', label: 'CRV', icon: Spline, sub: 'BÉZIER' },
+  const allTabs: { key: TabKey; label: string; icon: typeof Globe; sub: string; flag?: 'module_pairing_mobilelink' }[] = [
+    { key: 'network',     label: 'NET',  icon: Globe,         sub: 'ART-NET' },
+    { key: 'ma3',         label: 'MA3',  icon: Radio,         sub: 'NODE' },
+    { key: 'module',      label: 'MOD',  icon: Cpu,           sub: 'FIELD' },
+    { key: 'dmx-io',      label: 'I/O',  icon: ArrowLeftRight, sub: 'DMX' },
+    { key: 'pixel-map',   label: 'PXL',  icon: Grid3X3,       sub: 'MAP' },
+    { key: 'bezier',      label: 'CRV',  icon: Spline,        sub: 'BÉZIER' },
+    { key: 'mobile-link', label: 'LINK', icon: Smartphone,    sub: 'MOBILE', flag: 'module_pairing_mobilelink' },
+    { key: 'pairing',     label: 'PAIR', icon: Nfc,           sub: 'NFC·BLE', flag: 'module_pairing_mobilelink' },
   ];
+  const tabs = allTabs.filter(t => !t.flag || isEnabled(t.flag));
 
   return (
     <div className="flex flex-col h-full">
@@ -135,6 +143,20 @@ export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
         {activeTab === 'dmx-io' && <DMXIOPanel fs={fs} />}
         {activeTab === 'pixel-map' && <PixelMappingPanel fs={fs} />}
         {activeTab === 'bezier' && <DMXBezierEditor fs={fs} />}
+        {(activeTab === 'mobile-link' || activeTab === 'pairing') && isEnabled('module_pairing_mobilelink') && (
+          <Suspense
+            fallback={
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
+            <div className="h-full overflow-y-auto">
+              {activeTab === 'mobile-link' && <MobileLinkPanel onClose={() => setActiveTab('network')} />}
+              {activeTab === 'pairing' && <DevicePairingPage />}
+            </div>
+          </Suspense>
+        )}
       </div>
     </div>
   );

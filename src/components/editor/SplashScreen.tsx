@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, forwardRef } from 'react';
-import fxkLogo from '@/assets/fxk-logo-tactical.png';
+import fxkLogo from '@/assets/fxk-logo-tactical.webp';
 import { cn } from '@/lib/utils';
 import { ambientSound } from '@/lib/ambientSound';
 
@@ -187,6 +187,10 @@ const SplashScreen = forwardRef<HTMLDivElement, SplashScreenProps>(function Spla
             <img
               src={fxkLogo}
               alt="FX Kontrol"
+              width={96}
+              height={96}
+              decoding="async"
+              fetchPriority="high"
               className="w-24 h-24 object-contain"
               style={{ filter: 'drop-shadow(0 0 20px hsl(32 100% 50% / 0.3))' }}
             />

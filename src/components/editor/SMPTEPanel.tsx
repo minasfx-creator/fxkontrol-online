@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useSMPTEStore, type ChaseMode } from '@/store/useSMPTEStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
@@ -21,7 +22,43 @@ interface SMPTEPanelProps {
 }
 
 export default function SMPTEPanel({ onClose }: SMPTEPanelProps) {
-  const store = useSMPTEStore();
+  // Select only the fields actually read in render — avoids 30Hz re-renders
+  // caused by the store's continuous tick() updating unrelated fields.
+  const store = useSMPTEStore(
+    useShallow((s) => ({
+      autoFollow: s.autoFollow,
+      chaseMode: s.chaseMode,
+      drift: s.drift,
+      externalEnabled: s.externalEnabled,
+      externalTimecode: s.externalTimecode,
+      frameRate: s.frameRate,
+      jitter: s.jitter,
+      lastPacketAt: s.lastPacketAt,
+      latency: s.latency,
+      locked: s.locked,
+      ltcAudioEnabled: s.ltcAudioEnabled,
+      mode: s.mode,
+      offset: s.offset,
+      packetCount: s.packetCount,
+      running: s.running,
+      startTimecodeSeconds: s.startTimecodeSeconds,
+      status: s.status,
+      wsUrl: s.wsUrl,
+      // Actions (stable references, but included for ergonomic access)
+      connectExternal: s.connectExternal,
+      disconnectExternal: s.disconnectExternal,
+      reset: s.reset,
+      setAutoFollow: s.setAutoFollow,
+      setChaseMode: s.setChaseMode,
+      setExternalEnabled: s.setExternalEnabled,
+      setFrameRate: s.setFrameRate,
+      setLtcAudioEnabled: s.setLtcAudioEnabled,
+      setMode: s.setMode,
+      setRunning: s.setRunning,
+      setStartTimecode: s.setStartTimecode,
+      setWsUrl: s.setWsUrl,
+    })),
+  );
     const currentTime = useProjectStore(s => s.currentTime);
   const isPlaying = useProjectStore(s => s.isPlaying);
   const hardware = useFireOneHardware();

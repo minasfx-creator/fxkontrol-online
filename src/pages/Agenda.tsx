@@ -287,7 +287,7 @@ export default function Agenda() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <button onClick={() => navigate('/editor')} className="text-primary hover:text-primary/80" title="Abrir no Editor">
+                      <button onClick={() => navigate('/studio')} className="text-primary hover:text-primary/80" title="Abrir no Editor">
                         <ExternalLink className="h-3.5 w-3.5" />
                       </button>
                       <button onClick={() => duplicateEvent(ev)} className="text-muted-foreground hover:text-foreground" title="Duplicar">

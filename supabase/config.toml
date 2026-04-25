@@ -1,34 +1,59 @@
 project_id = "kyywqpyhsgdthcqqohyv"
 
+# ──────────────────────────────────────────────────────────────────────
+# Functions that bill the workspace (Lovable AI / Google Maps / Paddle)
+# REQUIRE a valid Supabase user JWT to prevent quota drain.
+# ──────────────────────────────────────────────────────────────────────
 [functions.generate-formation]
-verify_jwt = false
+verify_jwt = true
 
 [functions.get-maps-key]
-verify_jwt = false
+verify_jwt = true
 
+[functions.video-choreo-ai]
+verify_jwt = true
+
+[functions.fxk-ai-chat]
+verify_jwt = true
+
+[functions.studio-ai-compose]
+verify_jwt = true
+
+[functions.joi-compile]
+verify_jwt = true
+
+[functions.google-places-search]
+verify_jwt = true
+
+[functions.google-geo-intelligence]
+verify_jwt = true
+
+[functions.validate-accreditation]
+verify_jwt = true
+
+[functions.warehouse-download]
+verify_jwt = true
+
+# ──────────────────────────────────────────────────────────────────────
+# Hardware bridges — tolerated as JWT-optional because devices on the
+# field network may not always have a fresh user session. Inputs are
+# bounded and there is no AI/paid quota at risk.
+# ──────────────────────────────────────────────────────────────────────
 [functions.artnet-bridge]
 verify_jwt = false
 
 [functions.mavlink-bridge]
 verify_jwt = false
 
-[functions.satellite-tile]
+# ──────────────────────────────────────────────────────────────────────
+# Marketplace publish — used by tooling/admins outside the app. Keep
+# JWT-optional but the handler must verify a publisher key in code.
+# ──────────────────────────────────────────────────────────────────────
+[functions.marketplace-publish]
 verify_jwt = false
 
-[functions.video-choreo-ai]
-verify_jwt = false
-
-[functions.parse-test-report]
-verify_jwt = false
-
-[functions.fxk-ai-chat]
-verify_jwt = false
-
-[functions.warehouse-download]
-verify_jwt = false
-
-[functions.google-places-search]
-verify_jwt = false
-
-[functions.validate-accreditation]
-verify_jwt = false
+# ──────────────────────────────────────────────────────────────────────
+# Internal queue worker — already JWT-required (cron/service).
+# ──────────────────────────────────────────────────────────────────────
+[functions.process-email-queue]
+verify_jwt = true

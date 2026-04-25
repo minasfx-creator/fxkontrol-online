@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { isEnabled } from '@/lib/featureFlags';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -50,18 +51,9 @@ interface NewsItem {
 }
 
 /* ── Constants ──────────────────────────────────────── */
-const MOCK_NEWS: NewsItem[] = [
-  { id: 1, title: 'Drone shows superam fogos em 35% dos eventos corporativos na Europa', category: 'drones', sentiment: 'positive', time: '2min', image: 'https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=280&q=60&fit=crop', source: 'DroneWorld', avatar: '🤖' },
-  { id: 2, title: 'NFPA atualiza norma 1123 para pirotecnia de proximidade', category: 'pyro', sentiment: 'neutral', time: '15min', image: 'https://images.unsplash.com/photo-1498931299472-f7a63a5a1cfa?w=280&q=60&fit=crop', source: 'PyroNews', avatar: '🎆' },
-  { id: 3, title: 'Showven lança novo SparkularFall 2 com controle DMX integrado', category: 'sfx', sentiment: 'positive', time: '28min', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=280&q=60&fit=crop', source: 'SFX Today', avatar: '🔥' },
-  { id: 4, title: 'Rock in Rio 2026 confirma 40 shows com drones sincronizados', category: 'festivals', sentiment: 'positive', time: '45min', image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=280&q=60&fit=crop', source: 'Festival Mag', avatar: '🎪' },
-  { id: 5, title: 'Escassez global de lítio pode afetar baterias de drones em 2027', category: 'drones', sentiment: 'negative', time: '1h', image: 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=280&q=60&fit=crop', source: 'TechBrief', avatar: '🤖' },
-  { id: 6, title: 'Moving heads Ayrton Perseo ganha prêmio LDI Innovation', category: 'lighting', sentiment: 'positive', time: '2h', image: 'https://images.unsplash.com/photo-1504509546545-e000b4a62425?w=280&q=60&fit=crop', source: 'LDI Weekly', avatar: '💡' },
-  { id: 7, title: 'Novo protocolo Art-Net 5 promete latência sub-1ms', category: 'lighting', sentiment: 'positive', time: '3h', image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=280&q=60&fit=crop', source: 'ProLight', avatar: '💡' },
-  { id: 8, title: 'FAA restringe voos de drones em 12 novos aeroportos dos EUA', category: 'drones', sentiment: 'negative', time: '4h', image: 'https://images.unsplash.com/photo-1506947411487-a56738b4ccd4?w=280&q=60&fit=crop', source: 'AviationPost', avatar: '🤖' },
-  { id: 9, title: 'Galaxis lança módulo de disparo com 64 canais e GPS integrado', category: 'pyro', sentiment: 'positive', time: '5h', image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=280&q=60&fit=crop', source: 'FireTech', avatar: '🎆' },
-  { id: 10, title: 'Coachella 2026 bate recorde com 1.200 drones em show de encerramento', category: 'festivals', sentiment: 'positive', time: '6h', image: 'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=280&q=60&fit=crop', source: 'Festival Mag', avatar: '🎪' },
-];
+// News feed is fed from real sources. Until a live ingest pipeline is wired,
+// we render an empty state instead of placeholder/mock items.
+const MOCK_NEWS: NewsItem[] = [];
 
 const CATEGORY_FILTERS: Array<{ key: NewsItem['category'] | 'all'; label: string; emoji: string }> = [
   { key: 'all', label: 'Tudo', emoji: '🌐' },
@@ -247,7 +239,7 @@ function HubCard({
     } else if (panel) {
       navigate(`/editor?panel=${panel}`);
     } else {
-      navigate('/editor');
+      navigate('/studio');
     }
   };
 
@@ -406,7 +398,7 @@ export default function Dashboard() {
                 variant="outline"
                 size="sm"
                 className="hidden md:flex gap-1.5 text-[10px] font-mono tracking-wider border-primary/20 text-primary hover:bg-primary/10 rounded uppercase"
-                onClick={() => navigate('/editor')}
+                onClick={() => navigate('/studio')}
               >
                 <ArrowRight className="h-3 w-3" />
                 RESUME
@@ -524,25 +516,27 @@ export default function Dashboard() {
             </div>
           </button>
 
-          {/* Field Test Card */}
-          <button
-            onClick={() => navigate('/field-test')}
-            className="group relative overflow-hidden rounded-lg border p-3 text-left transition-all duration-300 hover:scale-[1.02] active:scale-[0.97]"
-            style={{ borderColor: 'hsl(165 100% 42% / 0.2)', background: 'rgba(8, 10, 14, 0.8)', backdropFilter: 'blur(24px)' }}
-          >
-            <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent, hsl(165 100% 42% / 0.5), transparent)' }} />
-            <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l pointer-events-none" style={{ borderColor: 'hsl(165 100% 42% / 0.3)' }} />
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'hsl(165 100% 42% / 0.1)', border: '1px solid hsl(165 100% 42% / 0.2)' }}>
-                <Activity className="h-5 w-5" style={{ color: 'hsl(165 100% 42%)' }} />
+          {/* Field Test Card — gated */}
+          {isEnabled('module_pairing_mobilelink') && (
+            <button
+              onClick={() => navigate('/field-test')}
+              className="group relative overflow-hidden rounded-lg border p-3 text-left transition-all duration-300 hover:scale-[1.02] active:scale-[0.97]"
+              style={{ borderColor: 'hsl(165 100% 42% / 0.2)', background: 'rgba(8, 10, 14, 0.8)', backdropFilter: 'blur(24px)' }}
+            >
+              <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent, hsl(165 100% 42% / 0.5), transparent)' }} />
+              <div className="absolute top-0.5 left-0.5 w-2 h-2 border-t border-l pointer-events-none" style={{ borderColor: 'hsl(165 100% 42% / 0.3)' }} />
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'hsl(165 100% 42% / 0.1)', border: '1px solid hsl(165 100% 42% / 0.2)' }}>
+                  <Activity className="h-5 w-5" style={{ color: 'hsl(165 100% 42%)' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold font-display text-foreground tracking-wide uppercase">Field Test</p>
+                  <p className="text-[9px] text-muted-foreground/60 mt-0.5 font-mono">CDS · Continuidade · Diagnóstico · SIM</p>
+                </div>
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-foreground transition-colors shrink-0" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold font-display text-foreground tracking-wide uppercase">Field Test</p>
-                <p className="text-[9px] text-muted-foreground/60 mt-0.5 font-mono">CDS · Continuidade · Diagnóstico · SIM</p>
-              </div>
-              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-foreground transition-colors shrink-0" />
-            </div>
-          </button>
+            </button>
+          )}
         </div>
       </div>
 
@@ -568,7 +562,7 @@ export default function Dashboard() {
           {/* Mobile Command Launcher */}
           <div className="space-y-2 animate-fxk-stagger" style={{ animationDelay: '0.2s' }}>
             <button
-              onClick={() => navigate('/editor?panel=remotecontrol')}
+              onClick={() => navigate('/studio?panel=remotecontrol')}
               className="w-full group relative overflow-hidden rounded-xl border border-accent/20 bg-gradient-to-r from-accent/5 via-card to-primary/5 p-4 text-left transition-all duration-300 hover:border-accent/40 hover:shadow-[0_0_20px_hsl(var(--accent)/0.1)] active:scale-[0.98]"
             >
               <div className="flex items-center gap-3">
@@ -589,13 +583,13 @@ export default function Dashboard() {
             </button>
             <div className="flex gap-2">
               <button
-                onClick={() => navigate('/editor?panel=remotecontrol&mode=wifi')}
+                onClick={() => navigate('/studio?panel=remotecontrol&mode=wifi')}
                 className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent/20 bg-accent/5 text-[9px] font-semibold text-accent hover:bg-accent/10 transition-colors active:scale-95"
               >
                 📶 WiFi
               </button>
               <button
-                onClick={() => navigate('/editor?panel=remotecontrol&mode=cloud')}
+                onClick={() => navigate('/studio?panel=remotecontrol&mode=cloud')}
                 className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/20 bg-primary/5 text-[9px] font-semibold text-primary hover:bg-primary/10 transition-colors active:scale-95"
               >
                 ☁️ Cloud
@@ -612,7 +606,7 @@ export default function Dashboard() {
                 <Flame className="h-3.5 w-3.5 text-accent" />
                 <span className="text-xs font-semibold text-foreground">Eventos</span>
               </div>
-              <Button variant="ghost" size="sm" className="text-[10px] h-5 text-muted-foreground" onClick={() => navigate('/agenda')}>
+              <Button variant="ghost" size="sm" className="text-[10px] h-5 text-muted-foreground" onClick={() => navigate('/office?tab=agenda')}>
                 Agenda
               </Button>
             </div>
@@ -621,7 +615,7 @@ export default function Dashboard() {
                 <div className="py-6 text-center">
                   <CalendarDays className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2" />
                   <p className="text-[10px] text-muted-foreground">Nenhum evento.</p>
-                  <Button variant="outline" size="sm" className="mt-2 text-[10px] h-7" onClick={() => navigate('/agenda')}>
+                  <Button variant="outline" size="sm" className="mt-2 text-[10px] h-7" onClick={() => navigate('/office?tab=agenda')}>
                     <Plus className="h-3 w-3 mr-1" /> Criar
                   </Button>
                 </div>
@@ -632,7 +626,7 @@ export default function Dashboard() {
                   <div
                     key={e.id}
                     className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 cursor-pointer transition-colors group"
-                    onClick={() => navigate('/agenda')}
+                    onClick={() => navigate('/office?tab=agenda')}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="h-7 w-7 rounded-md bg-accent/10 flex items-center justify-center text-sm shrink-0">
@@ -736,7 +730,7 @@ export default function Dashboard() {
                 <FolderOpen className="h-3.5 w-3.5 text-primary" />
                 <span className="text-xs font-semibold text-foreground">Projetos</span>
               </div>
-              <Button variant="ghost" size="sm" className="text-[10px] h-5 text-muted-foreground" onClick={() => navigate('/editor')}>
+              <Button variant="ghost" size="sm" className="text-[10px] h-5 text-muted-foreground" onClick={() => navigate('/studio')}>
                 Todos
               </Button>
             </div>
@@ -745,7 +739,7 @@ export default function Dashboard() {
                 <div className="py-6 text-center">
                   <Rocket className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2" />
                   <p className="text-[10px] text-muted-foreground">Nenhum projeto.</p>
-                  <Button variant="outline" size="sm" className="mt-2 text-[10px] h-7" onClick={() => navigate('/editor')}>
+                  <Button variant="outline" size="sm" className="mt-2 text-[10px] h-7" onClick={() => navigate('/studio')}>
                     <Plus className="h-3 w-3 mr-1" /> Criar
                   </Button>
                 </div>
@@ -754,7 +748,7 @@ export default function Dashboard() {
                 <div
                   key={p.id}
                   className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 cursor-pointer transition-colors group"
-                  onClick={() => { localStorage.setItem('fxk-last-project', p.id); navigate('/editor'); }}
+                  onClick={() => { localStorage.setItem('fxk-last-project', p.id); navigate('/studio'); }}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
@@ -775,7 +769,7 @@ export default function Dashboard() {
           {/* AR Preview Card */}
           <Card className="bg-card border-border/50 hover:border-[hsl(var(--fxk-magenta)/0.3)] transition-colors animate-fxk-stagger cursor-pointer group"
             style={{ animationDelay: '0.55s' }}
-            onClick={() => navigate('/editor?panel=aroverlay')}
+            onClick={() => navigate('/studio?panel=aroverlay')}
           >
             <CardContent className="p-3">
               <div className="flex items-center gap-2 mb-2">
@@ -799,7 +793,7 @@ export default function Dashboard() {
 
           {/* Enter Editor CTA */}
           <button
-            onClick={() => navigate('/editor')}
+            onClick={() => navigate('/studio')}
             className="w-full group relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-4 text-center transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_30px_hsl(var(--primary)/0.1)] active:scale-[0.98] animate-fxk-stagger"
             style={{ animationDelay: '0.6s' }}
           >

@@ -9,12 +9,9 @@ import { toast } from 'sonner';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import {
   type ConnectedDevice,
-  type USBDeviceProfile,
   type USBLog,
   type ConnectionState,
   DEVICE_PROFILES,
-  isWebSerialSupported,
-  isWebUSBSupported,
   requestSerialPort,
   openSerialConnection,
   closeSerialConnection,
@@ -23,7 +20,9 @@ import {
   generateDeviceId,
   buildENTTECProPacket,
   buildDMX512Frame,
+  isWebSerialSupported,
 } from '@/lib/usbEngine';
+
 
 const TYPE_COLORS: Record<string, string> = {
   dmx: 'text-cyan-400',
@@ -39,6 +38,8 @@ const STATE_INDICATORS: Record<ConnectionState, { color: string; label: string }
   error: { color: 'bg-destructive', label: 'Erro' },
 };
 
+import { detectDMXAdapter } from '@/lib/dmxAdapterRecognition';
+
 export default function USBConnectionPanel({ onClose }: { onClose: () => void }) {
   const isMobile = useIsMobile();
   const registerDevice = useUSBDeviceStore(s => s.registerDevice);
@@ -51,9 +52,6 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
   const [expandedDevice, setExpandedDevice] = useState<string | null>(null);
   const [showLogs, setShowLogs] = useState(true);
   const readLoopRefs = useRef<Map<string, boolean>>(new Map());
-
-  const serialSupported = isWebSerialSupported();
-  const usbSupported = isWebUSBSupported();
 
   const addLog = useCallback((log: Omit<USBLog, 'timestamp'>) => {
     setLogs(prev => [{ ...log, timestamp: new Date() }, ...prev].slice(0, 200));
@@ -234,30 +232,11 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
           <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground">Conexão USB</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="flex items-center gap-0.5 mr-1">
-            {serialSupported && (
-              <span className="text-[8px] px-1 py-0.5 rounded bg-green-500/20 text-green-400">Serial</span>
-            )}
-            {usbSupported && (
-              <span className="text-[8px] px-1 py-0.5 rounded bg-cyan-500/20 text-cyan-400">USB</span>
-            )}
-            {!serialSupported && !usbSupported && (
-              <span className="text-[8px] px-1 py-0.5 rounded bg-destructive/20 text-destructive">N/A</span>
-            )}
-          </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 space-y-3 scrollbar-thin">
-        {/* API Support Warning */}
-        {!serialSupported && (
-          <div className="bg-destructive/10 border border-destructive/30 rounded-sm p-2 text-[9px] text-destructive">
-            <p className="font-bold mb-0.5">⚠ Web Serial API indisponível</p>
-            <p>Use Chrome/Edge/Opera em Android ou Desktop. Safari/Firefox não suportam Web Serial.</p>
-          </div>
-        )}
-
         {/* Device Status */}
         <div className="grid grid-cols-3 gap-1 text-center">
           <div className="bg-surface-2 rounded-sm p-1">
@@ -278,8 +257,88 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
           </div>
         </div>
 
+        {/* WebSerial fallback — Safari, Firefox, iOS sem app nativo */}
+        {!isWebSerialSupported() && (() => {
+          const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+          const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+          const isFirefox = /firefox/i.test(ua);
+          const isIOS = /iphone|ipad|ipod/i.test(ua);
+          const browserLabel = isIOS
+            ? 'iOS / Safari'
+            : isSafari
+              ? 'Safari'
+              : isFirefox
+                ? 'Firefox'
+                : 'este navegador';
+          return (
+            <div className="border border-amber-500/40 bg-amber-500/10 rounded-sm p-2 space-y-1.5">
+              <div className="flex items-start gap-1.5">
+                <WifiOff className="h-3.5 w-3.5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-1">
+                  <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">
+                    WebSerial indisponível em {browserLabel}
+                  </p>
+                  <p className="text-[9px] text-foreground/90 leading-snug">
+                    A saída DMX direta via USB-C exige <strong>WebSerial API</strong>, que ainda
+                    não é suportada por {browserLabel}. Use uma das alternativas abaixo:
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-surface-0 rounded-sm p-1.5 space-y-1">
+                <div className="flex items-start gap-1.5">
+                  <Wifi className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-[9px] font-semibold text-primary">
+                      Alternativa 1 — Art-Net via Wi-Fi (recomendado)
+                    </p>
+                    <p className="text-[8px] text-muted-foreground leading-snug">
+                      Use um nó Art-Net na rede local (ex.: ENTTEC ODE Mk3, DMXking eDMX, Star Lighting Artnet8).
+                      Funciona em qualquer navegador, incluindo {browserLabel}.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-7 text-[10px] w-full gap-1"
+                  onClick={() => {
+                    toast.info('Abra o painel DMX → modo Art-Net', {
+                      description: 'Configure IP e porta do nó Art-Net (padrão 6454).',
+                      duration: 6000,
+                    });
+                    onClose();
+                  }}
+                >
+                  <Wifi className="h-3 w-3" />
+                  Abrir painel DMX (Art-Net)
+                </Button>
+              </div>
+
+              <div className="bg-surface-0 rounded-sm p-1.5 space-y-1">
+                <div className="flex items-start gap-1.5">
+                  <Usb className="h-3 w-3 text-cyan-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-[9px] font-semibold text-cyan-400">
+                      Alternativa 2 — Trocar de navegador
+                    </p>
+                    <p className="text-[8px] text-muted-foreground leading-snug">
+                      <strong>Chrome</strong> ou <strong>Edge</strong> (desktop e Android) têm WebSerial nativo.
+                      No iOS use o app nativo do FX KONTROL para acesso USB-C direto.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-[8px] text-muted-foreground/70 italic">
+                Honest Hardware Layer: nenhum frame DMX simulado é enviado quando o hardware não está disponível.
+              </p>
+            </div>
+          );
+        })()}
+
         {/* Connect New Device */}
-        <div className="space-y-1.5 border border-border/50 rounded-sm p-2">
+        <div className={`space-y-1.5 border border-border/50 rounded-sm p-2 ${!isWebSerialSupported() ? 'opacity-50 pointer-events-none' : ''}`}>
           <span className="text-[9px] text-muted-foreground font-semibold uppercase">Conectar Equipamento</span>
 
           <Select value={selectedProfile} onValueChange={setSelectedProfile}>
@@ -319,7 +378,6 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
             size="sm"
             className={`h-7 text-[10px] w-full gap-1 ${isMobile ? 'h-10 text-xs' : ''}`}
             onClick={connectDevice}
-            disabled={!serialSupported}
           >
             <Plus className="h-3 w-3" />
             Parear Dispositivo USB
@@ -333,6 +391,30 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
             {devices.map(device => {
               const stateInfo = STATE_INDICATORS[device.state];
               const isExpanded = expandedDevice === device.id;
+              const adapter = detectDMXAdapter(device.profile);
+              const authorized = !!device.writer;
+              // Saída DMX USB só é habilitada se: (1) tipo dmx,
+              // (2) adapter reconhecido (família conhecida no label do profile
+              // que o usuário autorizou no navegador), (3) porta autorizada
+              // pelo navegador (writer existe) e (4) estado === 'connected'.
+              const dmxOutputReady =
+                device.profile.type === 'dmx' &&
+                adapter.recognized &&
+                authorized &&
+                device.state === 'connected';
+              const blockReason = !dmxOutputReady
+                ? device.profile.type !== 'dmx'
+                  ? 'Tipo do profile não é DMX'
+                  : !authorized
+                    ? device.state === 'connecting'
+                      ? 'Aguardando autorização do navegador...'
+                      : 'Porta não autorizada (sem writer)'
+                    : !adapter.recognized
+                      ? 'Adapter não reconhecido (família genérica) — saída bloqueada'
+                      : device.state === 'connected'
+                        ? 'Pronto'
+                        : `Estado: ${device.state}`
+                : null;
               return (
                 <div key={device.id} className="bg-surface-2 rounded-sm overflow-hidden">
                   {/* Device Header */}
@@ -349,8 +431,79 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                         {stateInfo.label} · ↑{device.bytesSent}B ↓{device.bytesReceived}B
                       </p>
                     </div>
+                    {/* Compact recognition pill always visible (also when collapsed) */}
+                    {device.profile.type === 'dmx' && (
+                      <span
+                        className={`text-[7px] px-1 py-0.5 rounded-sm font-bold uppercase tracking-wider shrink-0 ${
+                          dmxOutputReady
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/40'
+                            : adapter.recognized
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                              : 'bg-destructive/20 text-destructive border border-destructive/40'
+                        }`}
+                        title={blockReason ?? 'Saída DMX pronta'}
+                      >
+                        {dmxOutputReady ? 'DMX OK' : adapter.recognized ? 'AUTH?' : 'UNK'}
+                      </span>
+                    )}
                     {isExpanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
                   </button>
+
+                  {/* Recognition + DMX-output readiness panel (always visible) */}
+                  <div className="px-1.5 pb-1.5 space-y-1">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded-sm font-semibold ${adapter.badgeClass}`}>
+                        {adapter.label}
+                      </span>
+                      <span className="text-[8px] px-1.5 py-0.5 rounded-sm bg-surface-0 text-muted-foreground font-mono-code">
+                        {adapter.protocol}
+                      </span>
+                      {adapter.rdmCapable && (
+                        <span className="text-[8px] px-1.5 py-0.5 rounded-sm bg-primary/15 text-primary font-semibold">
+                          RDM
+                        </span>
+                      )}
+                      {device.profile.type === 'dmx' && (
+                        <span
+                          className={`text-[8px] px-1.5 py-0.5 rounded-sm font-semibold ${
+                            adapter.recognized
+                              ? 'bg-green-500/15 text-green-400 border border-green-500/30'
+                              : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                          }`}
+                        >
+                          {adapter.recognized ? 'Reconhecido' : 'Não reconhecido'}
+                        </span>
+                      )}
+                      <span
+                        className={`text-[8px] px-1.5 py-0.5 rounded-sm font-semibold ${
+                          authorized
+                            ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+                            : 'bg-muted text-muted-foreground border border-border'
+                        }`}
+                      >
+                        {authorized ? 'Autorizado pelo navegador' : 'Aguardando autorização'}
+                      </span>
+                    </div>
+                    {device.profile.type === 'dmx' && (
+                      <div className="flex items-center gap-1 text-[8px]">
+                        {dmxOutputReady ? (
+                          <>
+                            <CheckCircle2 className="w-2.5 h-2.5 text-green-500 shrink-0" />
+                            <span className="text-green-400">
+                              Saída DMX USB pronta · {device.profile.baudRate} baud
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-2.5 h-2.5 text-destructive shrink-0" />
+                            <span className="text-muted-foreground">
+                              Saída DMX bloqueada — {blockReason}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Expanded Controls */}
                   {isExpanded && (
@@ -383,11 +536,16 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                               variant="outline"
                               className={`h-6 text-[9px] w-full gap-1 ${isMobile ? 'h-9 text-xs' : ''}`}
                               onClick={() => sendDMXTest(device.id)}
+                              disabled={!dmxOutputReady}
+                              title={dmxOutputReady ? 'Enviar frame DMX de teste' : 'Aguardando autorização e conexão da porta'}
                             >
                               <Zap className="h-3 w-3" />
-                              DMX Test Frame (Rainbow)
+                              {dmxOutputReady
+                                ? 'DMX Test Frame (Rainbow)'
+                                : 'DMX Test (aguardando autorização)'}
                             </Button>
                           )}
+
 
                           {/* Last received data */}
                           {device.lastData && (

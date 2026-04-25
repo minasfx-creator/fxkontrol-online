@@ -1,5 +1,6 @@
 import React, { lazy, Suspense, useState, useCallback, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
 import { lazyRetry } from '@/lib/lazyRetry';
+import { isEnabled } from '@/lib/featureFlags';
 import { commandBus } from '@/core/command/CommandBus';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -7,12 +8,13 @@ import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useEditorKeyboardShortcuts } from '@/hooks/useEditorKeyboardShortcuts';
 import { useViewportDrop } from '@/hooks/useViewportDrop';
-import { Upload, ChevronDown, ChevronLeft, ChevronRight, Sparkles, Paintbrush, Cog, X } from 'lucide-react';
+import { Upload, ChevronDown, X, RotateCcw } from 'lucide-react';
 import ViewportNavControls from '@/components/editor/ViewportNavControls';
 import { useDisplayStore } from '@/store/useDisplayStore';
 import type { WorldShowPreset } from '@/data/worldShowPresets';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { type MobileTab } from '@/components/editor/MobileTabBar';
+import { loadTimelineView, saveTimelineView, resetTimelineView } from '@/lib/timelineViewState';
 
 // ── Critical-path (static): shell chrome loaded immediately ──
 import Toolbar from '@/components/editor/Toolbar';
@@ -42,6 +44,7 @@ const ViewportTransitionOverlay = lz(() => import('@/components/editor/ViewportT
 
 const SmartScriptAssistant = lz(() => import('@/components/editor/SmartScriptAssistant'));
 const ShortcutsOverlay = lz(() => import('@/components/editor/PopupEditors').then(m => ({ default: m.ShortcutsOverlay })));
+const StudioPromptModal = lz(() => import('@/components/studio/StudioPromptModal'));
 
 // ── Mobile shell ──
 const MobileTabBar = lz(() => import('@/components/editor/MobileTabBar'));
@@ -286,18 +289,28 @@ function Index() {
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
   const [venueSelector, setVenueSelector] = useState(false);
   const [venueOverlay, setVenueOverlay] = useState<WorldShowPreset | null>(null);
-  const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'editor'>('editor');
+  // Default fase = 'cinematic' (intro + splash com setup de geolocalização).
+  // Quando vindo de /studio?prompt=1 ou de deep-links com ?panel=, pulamos direto para 'editor'
+  // (ver useEffect abaixo).
+  const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'editor'>('cinematic');
   const [showGeoSetup, setShowGeoSetup] = useState(false);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
   const [smartScriptOpen, setSmartScriptOpen] = useState(false);
+  const [studioPromptOpen, setStudioPromptOpen] = useState(false);
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
   const [isDragOver, setIsDragOver] = useState(false);
   const [remoteMode, setRemoteMode] = useState<'cloud' | 'wifi-auto'>('cloud');
-  const [timelineCollapsed, setTimelineCollapsed] = useState(false);
+  const [timelineCollapsed, setTimelineCollapsed] = useState(() => {
+    // Defensive: storage may throw (private mode, SecurityError) — never block mount.
+    try { return loadTimelineView().collapsed ?? false; } catch { return false; }
+  });
+  useEffect(() => {
+    try { saveTimelineView({ collapsed: timelineCollapsed }); } catch { /* noop */ }
+  }, [timelineCollapsed]);
   const [viewportMaximized, setViewportMaximized] = useState(false);
-  const [leftDockOpen, setLeftDockOpen] = useState<string | null>('effects');
+  // leftDockOpen removed — Effects/Scene/ShowSettings now opened via Toolbar/PanelTabBar only.
   const [showMobileWelcome, setShowMobileWelcome] = useState(() => {
     if (!isMobile) return false;
     try { return localStorage.getItem('fxk-mobile-location-set') !== '1'; } catch { return true; }
@@ -337,6 +350,15 @@ function Index() {
   useEffect(() => {
     const panelParam = searchParams.get('panel');
     const modeParam = searchParams.get('mode');
+    const promptParam = searchParams.get('prompt');
+    if (promptParam === '1' || promptParam === 'true') {
+      setStudioPromptOpen(true);
+      // Clear the param so refresh doesn't re-trigger after dismissing
+      const next = new URLSearchParams(searchParams);
+      next.delete('prompt');
+      setSearchParams(next, { replace: true });
+      setAppPhase('editor');
+    }
     if (panelParam) {
       // SwarmGPT lives at /swarmgpt now — redirect any legacy deep links.
       if (panelParam === 'swarmgpt') {
@@ -377,7 +399,7 @@ function Index() {
     }
     setActivePanel((prev) => {
       const next = prev === id ? null : id;
-      if (next && SHARED_PANEL_IDS.has(next)) setLeftDockOpen(null);
+      if (next && SHARED_PANEL_IDS.has(next)) { /* shared panel opened */ }
       return next;
     });
   }, [navigate]);
@@ -407,14 +429,12 @@ function Index() {
 
   const desktopTopOffset = '56px';
   const desktopTimelineHeight = viewportMaximized ? '0px' : timelineCollapsed ? '42px' : '34vh';
-  const leftRailWidth = viewportMaximized ? 0 : 56;
-  const leftSidebarWidth = viewportMaximized ? 0 : leftDockOpen === 'effects' ? 312 : 0;
-  const leftOverlayWidth = viewportMaximized || !leftDockOpen || leftDockOpen === 'effects' ? 0 : 312;
+  const leftRailWidth = 0; // rail removed
+  const leftSidebarWidth = 0;
   const rightDockWidth = viewportMaximized ? 0 : 52;
   const rightPanelWidth = activePanel && !viewportMaximized ? 472 : 0;
   const canvasLeftInset = `${leftRailWidth + leftSidebarWidth}px`;
   const canvasRightInset = `${rightDockWidth + rightPanelWidth}px`;
-  const showLeftOverlayPanel = leftDockOpen === 'scene' || leftDockOpen === 'showsettings';
 
   if (appPhase === 'cinematic') return <Suspense fallback={<CanvasLoader />}><CinematicIntro onComplete={() => setAppPhase('splash')} /></Suspense>;
   if (appPhase === 'splash') return <Suspense fallback={<CanvasLoader />}><SplashScreen onStart={() => setAppPhase('editor')} showVideoBackground /></Suspense>;
@@ -427,7 +447,16 @@ function Index() {
         {activePanel === 'properties' && <PropertiesPanel />}
         {activePanel === 'script' && <ScriptWindow />}
         {activePanel === 'waypoints' && <WaypointEditor onClose={() => setActivePanel(null)} />}
-        {activePanel === 'effects' && <EffectEditor onClose={() => setActivePanel(null)} />}
+        {activePanel === 'effects' && (
+          <div className="flex h-full flex-col overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <EffectLibrary />
+            </div>
+            <div className="max-h-[42%] shrink-0 overflow-hidden border-t border-border/20 bg-surface-0/60">
+              <EffectEditor onClose={() => setActivePanel(null)} />
+            </div>
+          </div>
+        )}
         {activePanel === 'wind' && <WindCameraPanel />}
         {activePanel === 'reports' && <ReportsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'racks' && <RackManager onClose={() => setActivePanel(null)} />}
@@ -445,7 +474,7 @@ function Index() {
         {/* swarmgpt moved to /swarmgpt route — no in-editor modal */}
         {activePanel === 'synesthesia' && <SynesthesiaPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'firing' && <FiringExportPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'labels' && <LabelsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'labels' && isEnabled('module_organizer_menu') && <LabelsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'video' && <VideoRecorderPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'models' && <ModelImportPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'suppliers' && <SupplierCatalogPanel onClose={() => setActivePanel(null)} />}
@@ -453,8 +482,8 @@ function Index() {
         {activePanel === 'scripting' && <ScriptingToolsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'audience' && <AudienceAnalyzerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'indoor' && <IndoorSimPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'chains' && <ChainEditorPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'groups' && <PositionGroupsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'chains' && isEnabled('module_organizer_menu') && <ChainEditorPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'groups' && isEnabled('module_organizer_menu') && <PositionGroupsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'scene' && <SceneEditorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'soundlevel' && <SoundLevelPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'aroverlay' && <AROverlayPanel onClose={() => setActivePanel(null)} />}
@@ -492,11 +521,11 @@ function Index() {
         {activePanel === 'rider' && <RiderPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'budget' && <BudgetPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showpreview' && <ShowPreviewPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'mobilelink' && <MobileLinkPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'linkmonitor' && <MobileLinkMonitor onClose={() => setActivePanel(null)} />}
+        {activePanel === 'mobilelink' && isEnabled('module_pairing_mobilelink') && <MobileLinkPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'linkmonitor' && isEnabled('module_pairing_mobilelink') && <MobileLinkMonitor onClose={() => setActivePanel(null)} />}
         {activePanel === 'showcommander' && <ShowCommanderPanel onClose={() => setActivePanel(null)} onOpenPanel={(id) => setActivePanel(id as PanelId)} />}
-        {activePanel === 'bluetooth' && <BluetoothPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'nfc' && <NFCPairPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'bluetooth' && isEnabled('module_pairing_mobilelink') && <BluetoothPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'nfc' && isEnabled('module_pairing_mobilelink') && <NFCPairPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'dmxoutput' && <DMXOutputPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'remotecontrol' && <RemoteControlPanel onClose={() => setActivePanel(null)} initialMode={remoteMode} />}
         {activePanel === 'controllers' && <VirtualControllerHub onClose={() => setActivePanel(null)} />}
@@ -680,80 +709,7 @@ function Index() {
         </div>
       )}
 
-      {/* ─── Layer 4: Left Foundation Rail + Sidebar ─── */}
-      {!viewportMaximized && (
-        <>
-          <div
-            className="absolute top-14 left-0 z-40 flex w-14 flex-col border-r border-border/20 bg-surface-0/80 backdrop-blur-md"
-            style={{ bottom: desktopTimelineHeight, transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
-          >
-            <div className="flex h-12 items-center justify-center border-b border-border/10">
-              <button
-                onClick={() => setLeftDockOpen((prev) => (prev === 'effects' ? null : 'effects'))}
-                title={leftDockOpen === 'effects' ? 'Recolher biblioteca' : 'Expandir biblioteca'}
-                className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-1/70 text-foreground transition-colors hover:bg-surface-2"
-              >
-                {leftDockOpen === 'effects' ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </button>
-            </div>
-
-            <div className="flex flex-1 flex-col items-center gap-2 py-3">
-              {[
-                { id: 'effects', icon: Sparkles, label: 'Effect Library' },
-                { id: 'scene', icon: Paintbrush, label: 'Scene Editor' },
-                { id: 'showsettings', icon: Cog, label: 'Show Settings' },
-              ].map(item => {
-                const Icon = item.icon;
-                const isActive = leftDockOpen === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      const next = leftDockOpen === item.id ? null : item.id;
-                      setLeftDockOpen(next);
-                      if (next && SHARED_PANEL_IDS.has(next as PanelId)) setActivePanel(null);
-                    }}
-                    title={item.label}
-                    aria-label={item.label}
-                    className={`flex h-10 w-10 items-center justify-center rounded-lg border transition-all ${isActive ? 'border-primary/30 bg-primary/10 text-primary' : 'border-transparent bg-transparent text-muted-foreground hover:border-border/20 hover:bg-surface-1/70 hover:text-foreground'}`}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {leftDockOpen === 'effects' && (
-            <div
-              className="absolute top-14 left-14 z-30 overflow-hidden border-r border-border/20 bg-surface-0/88 backdrop-blur-xl"
-              style={{ width: '312px', bottom: desktopTimelineHeight, transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
-            >
-              <EffectLibrary className="h-full border-0 bg-transparent" />
-            </div>
-          )}
-
-          {showLeftOverlayPanel && (
-            <div
-              className="absolute top-14 left-14 z-40 overflow-hidden border-r border-border/20 bg-background/92 backdrop-blur-xl"
-              style={{ width: `${leftOverlayWidth}px`, bottom: desktopTimelineHeight, transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
-            >
-              <div className="flex items-center justify-between border-b border-border/10 px-3 py-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {leftDockOpen === 'scene' ? 'Scene Editor' : 'Show Settings'}
-                </span>
-                <button onClick={() => setLeftDockOpen(null)} className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-all hover:bg-muted/30 hover:text-foreground">
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-              <div className="h-[calc(100%-36px)] overflow-y-auto">
-                {leftDockOpen === 'scene' && <SceneEditorPanel onClose={() => setLeftDockOpen(null)} />}
-                {leftDockOpen === 'showsettings' && <ShowSettingsPanel onClose={() => setLeftDockOpen(null)} />}
-              </div>
-            </div>
-          )}
-        </>
-      )}
+      {/* ─── Layer 4: Left Foundation Rail removed (duplicava Toolbar/PanelTabBar) ─── */}
 
       {/* ─── Layer 6: Nav Controls (Bottom-Right) ──── */}
       {!viewportMaximized && <ViewportNavControls />}
@@ -770,7 +726,7 @@ function Index() {
           overflow: 'hidden',
         }}
       >
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center gap-1">
           <button
             onClick={() => setTimelineCollapsed(!timelineCollapsed)}
             className="flex items-center gap-1 px-3 h-6 rounded-t-lg bg-surface-1/95 border border-border/30 border-b-0 text-muted-foreground hover:text-foreground transition-all backdrop-blur-sm"
@@ -778,6 +734,17 @@ function Index() {
           >
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${timelineCollapsed ? 'rotate-180' : ''}`} />
             <span className="text-[9px] font-semibold uppercase tracking-wider">Timeline</span>
+          </button>
+          <button
+            onClick={() => {
+              resetTimelineView();
+              window.location.reload();
+            }}
+            className="flex items-center justify-center w-6 h-6 rounded-t-lg bg-surface-1/95 border border-border/30 border-b-0 text-muted-foreground hover:text-foreground transition-all backdrop-blur-sm"
+            title="Reset Timeline View (zoom / scroll / collapsed)"
+            aria-label="Reset Timeline View"
+          >
+            <RotateCcw className="w-3 h-3" />
           </button>
         </div>
         {!timelineCollapsed && <Timeline />}
@@ -817,6 +784,9 @@ function Index() {
       <RadialMenu />
       <LiveCard />
       <SmartScriptAssistant open={smartScriptOpen} onClose={() => setSmartScriptOpen(false)} />
+      <Suspense fallback={null}>
+        <StudioPromptModal open={studioPromptOpen} onOpenChange={setStudioPromptOpen} />
+      </Suspense>
 
     </div>
   );
