@@ -16,12 +16,16 @@ import { getProvenanceBadge } from '@/core/hardware/provenance';
 import { cn } from '@/lib/utils';
 import {
   Activity, Cpu, Battery, Radio, Wifi, AlertTriangle,
-  CheckCircle2, XCircle, Zap, Shield, RefreshCw, Search, Gauge, Satellite,
+  CheckCircle2, XCircle, Zap, Shield, RefreshCw, Search, Gauge, Satellite, RotateCw,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { DiscoveryGrid } from './hardware/DiscoveryGrid';
-import { buildDiscoveryReports, notifyDiscoveryReports } from '@/core/discovery/discoveryToasts';
+import { unifiedDiscovery } from '@/core/discovery/UnifiedDiscoveryService';
+import {
+  buildDiscoveryReports, notifyDiscoveryReports, getRetryableTransports,
+} from '@/core/discovery/discoveryToasts';
+import { toast } from 'sonner';
 
 const STATUS_COLORS: Record<string, string> = {
   connected: 'text-emerald-400',
@@ -73,6 +77,27 @@ export default function HardwareOverview() {
     notifyDiscoveryReports(buildDiscoveryReports(), 'deep');
   }, [refresh]);
 
+  const handleRetryFailed = useCallback(async () => {
+    const failed = getRetryableTransports();
+    if (failed.length === 0) {
+      toast.info('Nada para repetir', {
+        description: 'Nenhum transporte falho no último scan. Rode SCAN ou DEEP primeiro.',
+      });
+      return;
+    }
+    setIsScanning(true);
+    const unsub = unifiedDiscovery.watch(() => setDiscoveryResults(deviceDiscovery.getResults()));
+    try {
+      await unifiedDiscovery.scanTransports(failed);
+    } finally {
+      unsub();
+      setIsScanning(false);
+      refresh();
+      const mode = failed.includes('mdns-artnet') ? 'deep' : 'light';
+      notifyDiscoveryReports(buildDiscoveryReports(), mode);
+    }
+  }, [refresh]);
+
   const handleStartPoller = useCallback(() => {
     telemetryPoller.start();
     startPolling();
@@ -100,6 +125,11 @@ export default function HardwareOverview() {
             onClick={handleDeepScan} disabled={isScanning}
             title="Inclui ArtPoll broadcast via bridge (descobre nós Art-Net na rede)">
             <Satellite className="w-3 h-3" /> DEEP
+          </Button>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono gap-1 text-sky-400"
+            onClick={handleRetryFailed} disabled={isScanning}
+            title="Repete apenas os transportes que falharam (permission denied / erro / vazio) no último scan">
+            <RotateCw className="w-3 h-3" /> RETRY
           </Button>
           <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono"
             onClick={() => { refresh(); evaluateReadiness(); setHealthReport(hardwareHealthMonitor.evaluate()); }}>

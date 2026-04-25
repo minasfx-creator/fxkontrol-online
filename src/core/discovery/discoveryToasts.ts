@@ -62,6 +62,28 @@ export function buildDiscoveryReports(): DiscoveryTransportReport[] {
   });
 }
 
+/** Reasons considered "failed" and therefore retryable. */
+const RETRYABLE_REASONS: DiscoveryReportReason[] = ['permission_denied', 'error', 'empty'];
+
+/** Last set of reports emitted via `notifyDiscoveryReports` — used by Retry. */
+let _lastReports: DiscoveryTransportReport[] = [];
+
+export function getLastDiscoveryReports(): DiscoveryTransportReport[] {
+  return _lastReports;
+}
+
+/**
+ * Returns the transports that previously failed (permission denied, error,
+ * or empty). `unsupported` is excluded — retrying it cannot change the
+ * browser's capability matrix.
+ */
+export function getRetryableTransports(): DiscoveryTransport[] {
+  return _lastReports
+    .filter(r => RETRYABLE_REASONS.includes(r.reason))
+    .map(r => r.transport);
+}
+
+
 /**
  * Show toasts for the supplied reports. `mode='light'` skips the empty
  * Art-Net warning (since the cheap scan does not poll the network).
@@ -70,6 +92,7 @@ export function notifyDiscoveryReports(
   reports: DiscoveryTransportReport[],
   mode: 'light' | 'deep' = 'light',
 ): void {
+  _lastReports = reports;
   let anyFound = false;
 
   for (const r of reports) {
