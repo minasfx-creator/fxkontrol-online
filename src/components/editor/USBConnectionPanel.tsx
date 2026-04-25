@@ -282,7 +282,16 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
         });
         startReadLoop(connectedDevice);
         registerDevice(connectedDevice);
-        addLog({
+
+        // Refresh persistence on every successful reopen so timestamps and
+        // last-known label stay current across sessions.
+        portRegistry.recordSuccess({
+          vendorId: info?.usbVendorId,
+          productId: info?.usbProductId,
+          label: effectiveProfile.label,
+          profileId: effectiveProfile.label,
+        });
+
           deviceId,
           direction: 'info',
           message: source === 'hotplug'
