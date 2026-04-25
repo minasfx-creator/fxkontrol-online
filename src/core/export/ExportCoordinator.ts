@@ -16,6 +16,7 @@ import { generateDroneCSV, downloadDroneCSV } from './DroneCSVExporter';
 import { generateMegafireScript, downloadMegafireScript } from './MegafireExporter';
 import { generateRJEquipamentosScript, downloadRJEquipamentosScript } from './RJEquipamentosExporter';
 import { generateGalaxisGS2Script, downloadGalaxisGS2Script } from './GalaxisGS2Exporter';
+import { runRJPreflight, type RJPreflightReport, type RJVariant } from './RJPreflightChecker';
 
 export type ExportTarget = 'fireone' | 'artnet' | 'drone' | 'megafire' | 'rj-traditional' | 'rj-timecode' | 'galaxis-gs2';
 
@@ -25,6 +26,8 @@ export interface ExportAttemptResult {
   timestamp: number;
   issues: string[];
   cueCount: number;
+  /** Preencido apenas para targets RJ (rj-traditional / rj-timecode). */
+  preflight?: RJPreflightReport;
 }
 
 class ExportCoordinator {
