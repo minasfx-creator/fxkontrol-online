@@ -29,10 +29,7 @@ const CommandCenter = lazy(lazyRetry(() => import("./pages/CommandCenter")));
 // Field ops console — wraps DevicePairing + FieldTest + MobileLinkPanel as tabs.
 const FieldOps = lazy(lazyRetry(() => import("./pages/FieldOps")));
 const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
-const Admin = lazy(lazyRetry(() => import("./pages/Admin")));
-const AccreditationDashboard = lazy(lazyRetry(() => import("./pages/AccreditationDashboard")));
 const PlatformStatus = lazy(lazyRetry(() => import("./pages/PlatformStatus")));
-const JoiPanel = lazy(lazyRetry(() => import("./ai/ui/JoiPanel")));
 const SwarmGPT = lazy(lazyRetry(() => import("./pages/SwarmGPT")));
 const DmxPyroDiagnostics = lazy(lazyRetry(() => import("./components/diagnostics/DmxPyroDiagnostics")));
 const NetworkSettings = lazy(lazyRetry(() => import("./pages/NetworkSettings")));
