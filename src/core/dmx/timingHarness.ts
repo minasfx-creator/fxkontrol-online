@@ -53,6 +53,66 @@ export const DEFAULT_BUDGETS: StageBudgets = {
   total: 22.0,     // < 1 DMX frame @ 44Hz
 };
 
+// ── Selectable budget presets ──────────────────────────────────────
+// Lets operators validate the same pipeline against different timing
+// targets without changing code. Pick via `applyBudgetPreset(id)`.
+//
+//   safe       — generous headroom (~30Hz). Good for noisy USB hubs,
+//                hot laptops, or staging environments.
+//   standard   — DMX512 spec target (~44Hz, 22ms). Default.
+//   aggressive — sub-frame target (~60Hz, 16ms). Used to surface
+//                regressions early on tuned production rigs.
+export type DMXBudgetPresetId = 'safe' | 'standard' | 'aggressive';
+
+export interface DMXBudgetPreset {
+  id: DMXBudgetPresetId;
+  label: string;
+  description: string;
+  /** Approximate frame rate this preset validates against. */
+  targetHz: number;
+  budgets: StageBudgets;
+}
+
+export const DMX_BUDGET_PRESETS: Readonly<Record<DMXBudgetPresetId, DMXBudgetPreset>> = {
+  safe: {
+    id: 'safe',
+    label: 'Safe (~30Hz)',
+    description: 'Generous headroom. Use for staging or unstable transports.',
+    targetHz: 30,
+    budgets: {
+      schedule: 2.0,
+      dispatch: 2.0,
+      encode: 4.0,
+      transport: 14.0,
+      ack: 8.0,
+      total: 33.0,
+    },
+  },
+  standard: {
+    id: 'standard',
+    label: 'Standard (44Hz)',
+    description: 'DMX512 spec target. Default production budget.',
+    targetHz: 44,
+    budgets: { ...DEFAULT_BUDGETS },
+  },
+  aggressive: {
+    id: 'aggressive',
+    label: 'Aggressive (60Hz)',
+    description: 'Sub-frame target. Surfaces regressions on tuned rigs.',
+    targetHz: 60,
+    budgets: {
+      schedule: 0.5,
+      dispatch: 0.5,
+      encode: 1.5,
+      transport: 6.0,
+      ack: 3.5,
+      total: 16.0,
+    },
+  },
+};
+
+export const DEFAULT_BUDGET_PRESET: DMXBudgetPresetId = 'standard';
+
 export interface FrameRecord {
   /** Monotonic id, wraps at Number.MAX_SAFE_INTEGER. */
   id: number;
@@ -146,8 +206,28 @@ class DMXTimingHarness {
 
   setBudgets(b: Partial<StageBudgets>): void {
     this._budgets = { ...this._budgets, ...b };
+    this._activePreset = null; // custom override
   }
   getBudgets(): Readonly<StageBudgets> { return this._budgets; }
+
+  private _activePreset: DMXBudgetPresetId | null = DEFAULT_BUDGET_PRESET;
+
+  /**
+   * Apply a named budget preset. Resets baseline + recorded frames so
+   * regression detection compares apples-to-apples against the new
+   * target. Returns the applied preset for convenience.
+   */
+  applyBudgetPreset(id: DMXBudgetPresetId): DMXBudgetPreset {
+    const preset = DMX_BUDGET_PRESETS[id];
+    this._budgets = { ...preset.budgets };
+    this._activePreset = id;
+    this._baseline = {};
+    this.reset();
+    logger.info(`[DMX timing] preset → ${preset.label} (${preset.targetHz}Hz, total ${preset.budgets.total}ms)`);
+    return preset;
+  }
+
+  getActivePreset(): DMXBudgetPresetId | null { return this._activePreset; }
 
   /** Begin a new frame; resets in-flight record. */
   begin(): number {

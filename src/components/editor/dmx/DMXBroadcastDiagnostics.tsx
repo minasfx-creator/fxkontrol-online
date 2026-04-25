@@ -11,6 +11,7 @@
  * Use design tokens semânticos (bg-surface-*, text-foreground, etc.).
  */
 import { useEffect, useRef } from 'react';
+import DMXBudgetPresetSelector from './DMXBudgetPresetSelector';
 
 interface DMXBroadcastDiagnosticsProps {
   streaming: boolean;
@@ -222,6 +223,9 @@ export default function DMXBroadcastDiagnostics({
           </p>
         </div>
       )}
+
+      {/* Selector de preset de budget para o harness de timing */}
+      <DMXBudgetPresetSelector />
     </div>
   );
 }
