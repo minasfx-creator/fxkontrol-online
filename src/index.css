@@ -2212,3 +2212,81 @@ button:active {
     animation-duration: 1ms !important;
   }
 }
+
+/* ──────────────────────────────────────────────
+   Adaptive blur — performance tier overrides
+   ───────────────────────────────────────────────
+   Two orthogonal axes:
+     1. `[data-gpu-tier="low"]` — sticky for the session. Set by
+        `applyGpuTier()` in main.tsx based on cores/RAM/GPU renderer.
+     2. `[data-interacting="true"]` — transient (200ms after last
+        scroll/wheel/drag). Set by `installInteractionFpsGuard()`.
+   Both collapse the heavy `backdrop-filter` blurs to either a small
+   blur or none, while bumping background opacity slightly so the
+   surface still reads as a panel. Border + shadow stay intact — they
+   carry most of the "frosted glass" affordance for free.
+   The rule of thumb: ≤8px blurs are kept (they're cheap and add the
+   most affordance per pixel). Anything ≥16px gets neutered.
+   ────────────────────────────────────────────── */
+
+/* ── Tier: low GPU (sticky) ── */
+html[data-gpu-tier="low"] .glass-dock,
+html[data-gpu-tier="low"] .dock-3d-glass,
+html[data-gpu-tier="low"] .glass-menu,
+html[data-gpu-tier="low"] .glass-sidebar,
+html[data-gpu-tier="low"] .glass-sheet,
+html[data-gpu-tier="low"] .glass-hud,
+html[data-gpu-tier="low"] .glass-br2049,
+html[data-gpu-tier="low"] .material-thick,
+html[data-gpu-tier="low"] .material-regular {
+  backdrop-filter: blur(6px) saturate(1.2);
+  -webkit-backdrop-filter: blur(6px) saturate(1.2);
+  /* Compensate the lost frosting with a touch more opacity. */
+  background-color: hsl(var(--surface-1) / 0.94);
+}
+html[data-gpu-tier="low"] .glass-premium,
+html[data-gpu-tier="low"] .glass-card-glow,
+html[data-gpu-tier="low"] .glass-core,
+html[data-gpu-tier="low"] .glass-warn,
+html[data-gpu-tier="low"] .material-thin {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  background-color: hsl(var(--surface-1) / 0.88);
+}
+
+/* ── Interaction-time blur suspension (transient) ──
+   Fires DURING scroll/wheel/drag regardless of tier. The blurred
+   surface is replaced by a flat translucent panel for the few hundred
+   ms of the interaction, then the blur returns when the user stops.
+   This is the single biggest FPS win on heavy pages because blur is
+   recomputed every composited frame — and during a fast scroll, that
+   means 60+ kernel convolutions per second per blurred layer. */
+html[data-interacting="true"] .glass-dock,
+html[data-interacting="true"] .dock-3d-glass,
+html[data-interacting="true"] .glass-menu,
+html[data-interacting="true"] .glass-sidebar,
+html[data-interacting="true"] .glass-sheet,
+html[data-interacting="true"] .glass-hud,
+html[data-interacting="true"] .glass-br2049,
+html[data-interacting="true"] .glass-premium,
+html[data-interacting="true"] .glass-card-glow,
+html[data-interacting="true"] .glass-core,
+html[data-interacting="true"] .glass-warn,
+html[data-interacting="true"] .material-thin,
+html[data-interacting="true"] .material-regular,
+html[data-interacting="true"] .material-thick {
+  /* Suspend blur entirely — the compositor skips the convolution pass
+     and just blends a translucent rectangle, which is essentially free. */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background-color: hsl(var(--surface-1) / 0.96);
+}
+
+/* Holographic scan / dock-scanline / page-sweep overlays are
+   decorative — kill them during interactions so the compositor has
+   one less layer to paint. */
+html[data-interacting="true"] .animate-holographic-scan,
+html[data-interacting="true"] .dock-scanline,
+html[data-interacting="true"] .br2049-scanline {
+  display: none;
+}
