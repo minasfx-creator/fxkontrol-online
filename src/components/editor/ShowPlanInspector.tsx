@@ -4,7 +4,7 @@
  */
 import { useCallback, useState } from 'react';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
-import { useVerificationEngine } from '@/core/verification/useVerificationEngine';
+import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { downloadFireOneScript } from '@/core/export/FireOneExporter';
 import { downloadArtNetPatch } from '@/core/export/ArtNetPatchExporter';
 import { downloadDroneCSV } from '@/core/export/DroneCSVExporter';
@@ -38,7 +38,7 @@ function CheckIcon({ issue }: { issue: VerificationIssue }) {
 export default function ShowPlanInspector() {
   const [, setTick] = useState(0);
   const sp = showPlanManager.current;
-  const { level, result, runVerification } = useVerificationEngine();
+  const { level, result, runVerification } = useVerificationStore();
 
   const handleLoadTestData = useCallback(() => {
     showPlanManager.loadTestData();

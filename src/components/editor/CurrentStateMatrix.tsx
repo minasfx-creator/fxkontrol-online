@@ -5,7 +5,7 @@
 import { useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
-import { useVerificationEngine } from '@/core/verification/useVerificationEngine';
+import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { useHardwareRegistry } from '@/core/hardware/useHardwareRegistry';
 import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry';
 import { getProvenanceBadge, type IntegrationMode, type EvidenceLevel } from '@/core/hardware/provenance';
@@ -47,7 +47,7 @@ const EVIDENCE_COLORS: Record<EvidenceLevel, string> = {
 
 export default function CurrentStateMatrix() {
   const sp = showPlanManager.current;
-  const { level } = useVerificationEngine();
+  const { level } = useVerificationStore();
   const { devices, snapshots, refresh } = useHardwareRegistry();
   const navigate = useNavigate();
 
