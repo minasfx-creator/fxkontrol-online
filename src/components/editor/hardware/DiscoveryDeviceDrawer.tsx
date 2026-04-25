@@ -118,6 +118,29 @@ export function DiscoveryDeviceDrawer({ device, open, onOpenChange }: Props) {
     toast.success(`Re-scan ${meta.label} concluído`);
   };
 
+  const handleForget = async () => {
+    const ok = typeof window !== 'undefined'
+      ? window.confirm(
+          `Esquecer "${device.label}"?\n\n` +
+          `• Permissão do navegador será revogada (quando suportado).\n` +
+          `• Registro persistente removido — não será reaberto automaticamente.\n` +
+          `• Para reusar, será necessário autorizar novamente.`,
+        )
+      : true;
+    if (!ok) return;
+    try {
+      const { revoked } = await unifiedDiscovery.forgetDevice(device.id);
+      toast.success(
+        revoked
+          ? `${device.label} esquecido (permissão revogada)`
+          : `${device.label} removido do registro local`,
+      );
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(`Falha ao esquecer dispositivo: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-md bg-card/95 backdrop-blur overflow-y-auto">
