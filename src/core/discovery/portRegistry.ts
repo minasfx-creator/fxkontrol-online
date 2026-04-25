@@ -95,15 +95,7 @@ export function keyFor(opts: {
   const vid = opts.vendorId?.toString(16).padStart(4, '0') ?? 'xxxx';
   const pid = opts.productId?.toString(16).padStart(4, '0') ?? 'xxxx';
   const base = `${vid}:${pid}`;
-  // Lazy import to avoid a hard dependency cycle (portRegistry is imported
-  // by the policy store's consumers, not the other way around).
-  let policy = opts.policy;
-  if (!policy) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      policy = (require('./useReopenMatchPolicy') as typeof import('./useReopenMatchPolicy')).getReopenMatchPolicy();
-    } catch { policy = 'vidpid'; }
-  }
+  const policy = opts.policy ?? getReopenMatchPolicy();
   if (policy === 'vidpid+serial' && opts.serialNumber) {
     return `${base}:${opts.serialNumber}`;
   }
