@@ -233,8 +233,10 @@ function DelayedMount({ delay = 2000, children }: { delay?: number; children: Re
   return ready ? <>{children}</> : null;
 }
 
-// Module-level refs — preserved for PostProcessing activeBurstCount in JSX below
-let _activeBurstCount = 0;
+// NOTE: `_activeBurstCount` lives in skycanvas/sharedState.tsx and is updated by
+// runActiveBurstScan() each frame. Read via getActiveBurstCount(). Do NOT
+// re-declare a local copy here — that previously shadowed the live counter
+// and caused PostProcessing bloom to never react to bursts.
 
 
 export default function SkyCanvas() {
