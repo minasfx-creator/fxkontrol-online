@@ -222,6 +222,9 @@ export default function BetaFeedbackDialog({ open, onOpenChange, initialCategory
       setSeverity('medium');
       setCategory('bug');
       setFiles([]);
+      setEquipBrand('');
+      setEquipModel('');
+      setEquipProtocol('');
       onOpenChange(false);
     } catch (err: any) {
       console.error('[BetaFeedback] submit failed', err);
