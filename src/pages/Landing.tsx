@@ -25,7 +25,7 @@ import {
   Activity,
   Globe2,
 } from "lucide-react";
-import { LANDING_SITE, buildLandingSeo } from "@/config/landing";
+import { LANDING_SITE, buildLandingSeo, enforceLandingCanonicalRedirect } from "@/config/landing";
 
 function upsertMeta(attr: "name" | "property", key: string, content: string) {
   let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
@@ -139,8 +139,14 @@ const PRICING = [
 
 export default function Landing() {
   useEffect(() => {
-    // Todo o SEO da landing é derivado de LANDING_SITE em src/config/landing.ts.
-    // Edite aquele arquivo para mudar provedor / canonical / OG.
+    // Anti-duplicidade SEO: se chegou por host-alias / path errado / utm_*,
+    // normaliza para canônico (spa-replace ou hard-redirect cross-origin).
+    // No-op em iframe/preview Lovable e em SSR.
+    const redirect = enforceLandingCanonicalRedirect(LANDING_SITE);
+    // Se for hard-redirect, a página vai recarregar — não precisa setar tags.
+    if (redirect.kind === "hard-redirect") return;
+
+    // Todo o SEO é derivado de LANDING_SITE em src/config/landing.ts.
     const seo = buildLandingSeo(LANDING_SITE);
 
     const prevTitle = document.title;
