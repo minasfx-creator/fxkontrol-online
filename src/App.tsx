@@ -66,10 +66,10 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   const [params] = useSearchParams();
   if (loading) return null;
   if (user) {
-    // Resume the originally-requested route. Falls back to /office (Etapa 1
-    // do refactor 3-áreas) so signed-in users land na visão geral consolidada.
+    // Resume the originally-requested route. Falls back to /studio (viewport
+    // 3D principal) so signed-in users land directly on the editor.
     const raw = params.get("next");
-    const target = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/office";
+    const target = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/studio";
     return <Navigate to={target} replace />;
   }
   return <>{children}</>;
