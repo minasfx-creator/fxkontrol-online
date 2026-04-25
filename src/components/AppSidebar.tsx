@@ -1,4 +1,4 @@
-import { LayoutDashboard, Clapperboard, CalendarDays, LogOut, Gamepad2, Crosshair, Volume2, VolumeX, Bluetooth, Rocket, Settings, Shield, Activity, BarChart3, Sparkles, Network } from 'lucide-react';
+import { Briefcase, Wand2, Crosshair, LogOut, Volume2, VolumeX, Settings, Shield } from 'lucide-react';
 import { isEnabled } from '@/lib/featureFlags';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
