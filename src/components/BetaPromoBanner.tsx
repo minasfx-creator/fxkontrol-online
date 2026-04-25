@@ -76,6 +76,32 @@ export default function BetaPromoBanner() {
         </div>
 
         <button
+          onClick={() => setFeedbackOpen(true)}
+          className="shrink-0 hidden sm:flex items-center gap-1.5 h-7 px-2.5 rounded text-[10px] md:text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95"
+          style={{
+            background: 'hsl(32 100% 50% / 0.25)',
+            color: 'hsl(32 100% 75%)',
+            border: '1px solid hsl(32 100% 50% / 0.5)',
+          }}
+        >
+          <MessageSquarePlus className="h-3.5 w-3.5" />
+          <span>Feedback</span>
+        </button>
+
+        <button
+          onClick={() => setFeedbackOpen(true)}
+          aria-label="Enviar feedback"
+          className="shrink-0 sm:hidden flex items-center justify-center h-7 w-7 rounded transition-all active:scale-90"
+          style={{
+            background: 'hsl(32 100% 50% / 0.2)',
+            color: 'hsl(32 100% 70%)',
+            border: '1px solid hsl(32 100% 50% / 0.4)',
+          }}
+        >
+          <MessageSquarePlus className="h-3.5 w-3.5" />
+        </button>
+
+        <button
           onClick={handleDismiss}
           aria-label="Dispensar banner promocional"
           className="shrink-0 flex items-center justify-center h-6 w-6 rounded text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-all active:scale-90"
@@ -84,5 +110,7 @@ export default function BetaPromoBanner() {
         </button>
       </div>
     </div>
+    <BetaFeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
+    </>
   );
 }
