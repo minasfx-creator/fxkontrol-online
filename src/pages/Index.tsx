@@ -296,8 +296,13 @@ function Index() {
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
   const [isDragOver, setIsDragOver] = useState(false);
   const [remoteMode, setRemoteMode] = useState<'cloud' | 'wifi-auto'>('cloud');
-  const [timelineCollapsed, setTimelineCollapsed] = useState(() => loadTimelineView().collapsed ?? false);
-  useEffect(() => { saveTimelineView({ collapsed: timelineCollapsed }); }, [timelineCollapsed]);
+  const [timelineCollapsed, setTimelineCollapsed] = useState(() => {
+    // Defensive: storage may throw (private mode, SecurityError) — never block mount.
+    try { return loadTimelineView().collapsed ?? false; } catch { return false; }
+  });
+  useEffect(() => {
+    try { saveTimelineView({ collapsed: timelineCollapsed }); } catch { /* noop */ }
+  }, [timelineCollapsed]);
   const [viewportMaximized, setViewportMaximized] = useState(false);
   const [leftDockOpen, setLeftDockOpen] = useState<string | null>('effects');
   const [showMobileWelcome, setShowMobileWelcome] = useState(() => {
