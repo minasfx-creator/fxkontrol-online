@@ -276,14 +276,42 @@ export default function SkyCanvas() {
   const presentationMode = useSceneStore(st => st.settings.presentationMode);
   // MissionSetupOverlay removed — scene loads immediately
 
-  // Exit fly mode when pointer lock is lost (ESC)
+  // ── Pointer-lock sync ────────────────────────────────────────────────
+  // Esc (or any browser-initiated unlock) must clear *all* free-look camera
+  // modes, not just `flyMode`. Previously only flyMode was reset, leaving
+  // the user trapped in groundMode/freeLook with no visible cursor and the
+  // controllers still mounted — the "ghost fly" bug.
+  //
+  // We register the listener once (no `flyMode` dep) and read the latest
+  // state from refs to avoid the stale-closure race when the user double-
+  // taps Esc faster than React commits.
+  const flyModeRef = useRef(flyMode);
+  const groundModeRef = useRef(groundMode);
+  const freeLookRef = useRef(freeLook);
+  useEffect(() => { flyModeRef.current = flyMode; }, [flyMode]);
+  useEffect(() => { groundModeRef.current = groundMode; }, [groundMode]);
+  useEffect(() => { freeLookRef.current = freeLook; }, [freeLook]);
+
   useEffect(() => {
     const onLockChange = () => {
-      if (!document.pointerLockElement && flyMode) setFlyMode(false);
+      if (document.pointerLockElement) return; // entered lock — nothing to do
+      // Lock released (Esc, tab-switch, alert, etc.) — drop every immersive mode.
+      if (flyModeRef.current) setFlyMode(false);
+      if (groundModeRef.current) setGroundMode(false);
+      if (freeLookRef.current) setFreeLook(false);
+    };
+    const onLockError = () => {
+      // Browser refused the lock request — make sure UI doesn't show a phantom mode.
+      if (flyModeRef.current) setFlyMode(false);
+      if (groundModeRef.current) setGroundMode(false);
     };
     document.addEventListener('pointerlockchange', onLockChange);
-    return () => document.removeEventListener('pointerlockchange', onLockChange);
-  }, [flyMode]);
+    document.addEventListener('pointerlockerror', onLockError);
+    return () => {
+      document.removeEventListener('pointerlockchange', onLockChange);
+      document.removeEventListener('pointerlockerror', onLockError);
+    };
+  }, []);
 
   // Ctrl+Shift+D — toggle debug overlay
   useEffect(() => {
