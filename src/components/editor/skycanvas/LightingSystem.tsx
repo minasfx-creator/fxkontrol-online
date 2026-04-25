@@ -44,10 +44,14 @@ export const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(func
   const exposureRef = useRef(createExposureController());
   const _scatterAccum = useMemo(() => new THREE.Color(), []);
   const _tmpColor = useMemo(() => new THREE.Color(), []);
+  const clockTimeRef = useClockTimeRef();
 
   useFrame(({ gl }, delta) => {
     const state = exposureRef.current;
-    const { timelineItems, currentTime } = useProjectStore.getState();
+    const { timelineItems } = useProjectStore.getState();
+    // Authoritative time read — bypasses React/Zustand scheduling so even
+    // if the store mirror is one frame behind, the renderer stays in sync.
+    const currentTime = clockTimeRef.current;
     let luminance = 0;
     let activeBursts = 0;
     _scatterAccum.setRGB(0, 0, 0);
