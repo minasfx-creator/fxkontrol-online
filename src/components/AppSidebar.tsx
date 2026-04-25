@@ -57,14 +57,14 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible={isMobile ? 'offcanvas' : 'icon'} className={`glass-sidebar ${!showLabels ? 'sidebar-collapsed' : ''}`}>
       <SidebarContent>
-        {/* Brand with MinasFX logo */}
-        <div className={`px-3 pt-4 pb-2 ${!showLabels ? 'flex justify-center' : ''} animate-holo-materialize`}>
+        {/* Brand — 8pt: p-3 inset, gap-2 between logo & title */}
+        <div className={`p-3 ${!showLabels ? 'flex justify-center' : ''} animate-holo-materialize`}>
           {!showLabels ? (
-            <div className="h-8 w-8 rounded-lg flex items-center justify-center overflow-hidden" style={{ background: 'hsl(32 100% 50% / 0.15)' }}>
+            <div className="h-8 w-8 rounded-control flex items-center justify-center overflow-hidden" style={{ background: 'hsl(32 100% 50% / 0.15)' }}>
               <img src={minasfxLogo} alt="MinasFX" className="h-5 object-contain" />
             </div>
           ) : (
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <img src={minasfxLogo} alt="MinasFX" className="h-7 object-contain shrink-0" style={{ filter: 'drop-shadow(0 0 6px hsl(32 100% 50% / 0.3))' }} />
               <div>
                 <p className="text-xs font-bold text-foreground tracking-wide" style={{ textShadow: '0 0 8px hsl(32 100% 50% / 0.2)' }}>FX KONTROL</p>
@@ -72,7 +72,7 @@ export function AppSidebar() {
               </div>
             </div>
           )}
-          {showLabels && <div className="mt-2 h-[1px]" style={{ background: 'linear-gradient(90deg, hsl(32 100% 50% / 0.2), transparent)' }} />}
+          {showLabels && <div className="mt-2 h-px" style={{ background: 'hsl(var(--material-stroke))' }} />}
         </div>
 
         <SidebarGroup>
