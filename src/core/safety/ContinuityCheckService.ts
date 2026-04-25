@@ -38,8 +38,7 @@ export interface ContinuityReader {
 
 const TOTAL_PINS = 32;
 const THRESHOLD_SHORT = 0.5;   // < 0.5Ω = short
-const THRESHOLD_OK_MAX = 50;   // 0.5–50Ω = OK
-const THRESHOLD_OPEN = 200;    // > 200Ω = open
+const THRESHOLD_OK_MAX = 50;   // 0.5–50Ω = OK; > 50Ω = OPEN (marginal treated as OPEN)
 
 function classify(ohms: number): PinStatus {
   if (ohms < THRESHOLD_SHORT) return 'SHORT';
