@@ -44,8 +44,12 @@ function upsertMeta(attr: "name" | "property", key: string, content: string) {
   el.setAttribute("content", content);
   return { el, prev, created: prev === null };
 }
-function upsertLink(rel: string, href: string) {
-  let el = document.head.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
+function upsertLink(rel: string, href: string, extra?: Record<string, string>) {
+  const selector = extra?.as
+    ? `link[rel="${rel}"][href="${href}"]`
+    : `link[rel="${rel}"]`;
+  let el = document.head.querySelector<HTMLLinkElement>(selector);
+  const created = !el;
   if (!el) {
     el = document.createElement("link");
     el.setAttribute("rel", rel);
@@ -53,7 +57,8 @@ function upsertLink(rel: string, href: string) {
   }
   const prev = el.getAttribute("href");
   el.setAttribute("href", href);
-  return { el, prev, created: prev === null };
+  if (extra) for (const [k, v] of Object.entries(extra)) el.setAttribute(k, v);
+  return { el, prev, created };
 }
 
 const FEATURES = [
