@@ -6,6 +6,7 @@ import { useUSBDMXBroadcast } from '@/hooks/useUSBDMXBroadcast';
 import DMXMonitorGrid from './DMXMonitorGrid';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useDMXPanelPrefs } from '@/store/useDMXPanelPrefs';
+import { useFrameDropMonitor } from '@/hooks/useFrameDropMonitor';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { Button } from '@/components/ui/button';
 import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
@@ -410,9 +411,29 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     });
   }, [connectedUSBDMX.length, addDiagLog, usbStreamFps, setPersistedStreamingDesired]);
 
+  // ─── Safety Mode: bloqueia 40Hz quando o navegador/CPU está sobrecarregado ───
+  // Mede FPS médio do rAF; se ficar <45fps por ≥2.5s, considera "overloaded".
+  // Recupera quando volta a ≥55fps por ≥4s (hysteresis evita flicker).
+  const { avgFps, isOverloaded } = useFrameDropMonitor();
+  const safetyDowngradeNotifiedRef = useRef(false);
+
   // Handler do seletor de taxa: muda Hz mesmo durante streaming.
   // O hook reinicia internamente apenas o setInterval, sem fechar a porta.
+  // Em Safety Mode (overload sustentado), 40Hz fica bloqueado e qualquer
+  // tentativa é convertida para 20Hz com aviso ao operador.
   const handleFpsChange = useCallback((hz: 10 | 20 | 40) => {
+    if (hz === 40 && isOverloaded) {
+      toast.warning('Safety Mode ativo · 40Hz bloqueado', {
+        description: `CPU/GPU sobrecarregada (${avgFps.toFixed(0)}fps). Mantendo 20Hz para evitar perda de frames DMX.`,
+      });
+      addDiagLog({
+        timestamp: new Date(), type: 'error',
+        message: `Seleção de 40Hz bloqueada · Safety Mode (${avgFps.toFixed(0)}fps avg) · revertido para 20Hz`,
+      });
+      setUsbStreamFps(20);
+      setPersistedFps(20);
+      return;
+    }
     setUsbStreamFps(hz);
     setPersistedFps(hz);
     if (usbStreaming) {
@@ -421,7 +442,29 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
         message: `Taxa alterada para ${hz}Hz · porta USB mantida aberta`,
       });
     }
-  }, [usbStreaming, addDiagLog, setPersistedFps]);
+  }, [usbStreaming, addDiagLog, setPersistedFps, isOverloaded, avgFps]);
+
+  // Auto-downgrade: se ficar overloaded enquanto está em 40Hz, força 20Hz.
+  useEffect(() => {
+    if (isOverloaded && usbStreamFps === 40) {
+      if (!safetyDowngradeNotifiedRef.current) {
+        safetyDowngradeNotifiedRef.current = true;
+        toast.warning('Safety Mode · downgrade automático para 20Hz', {
+          description: `Frame drops sustentados detectados (${avgFps.toFixed(0)}fps). Restaure quando a carga normalizar.`,
+        });
+        addDiagLog({
+          timestamp: new Date(), type: 'error',
+          message: `Safety Mode · 40Hz → 20Hz automático (${avgFps.toFixed(0)}fps avg)`,
+        });
+      }
+      setUsbStreamFps(20);
+      setPersistedFps(20);
+    }
+    if (!isOverloaded) {
+      safetyDowngradeNotifiedRef.current = false;
+    }
+  }, [isOverloaded, usbStreamFps, avgFps, addDiagLog, setPersistedFps]);
+
 
   // Auto-resume: ao remontar o painel, se o usuário tinha streaming ON e
   // os pré-requisitos estão atendidos (universo patchado + device conectado),
@@ -787,32 +830,47 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                     </div>
                   )}
 
-                  {/* Seletor de taxa — atualiza Hz sem fechar a porta USB */}
+                  {/* Seletor de taxa — atualiza Hz sem fechar a porta USB.
+                      40Hz é bloqueado em Safety Mode (frame drops sustentados). */}
                   <div className="grid grid-cols-3 gap-1">
                     {([10, 20, 40] as const).map(hz => {
                       const active = usbStreamFps === hz;
+                      const blocked = hz === 40 && isOverloaded;
                       return (
                         <button
                           key={hz}
                           type="button"
                           onClick={() => handleFpsChange(hz)}
-                          className={`h-7 rounded-sm text-[10px] font-mono-code font-bold transition-colors ${
+                          className={`relative h-7 rounded-sm text-[10px] font-mono-code font-bold transition-colors ${
                             active
                               ? 'bg-primary text-primary-foreground'
-                              : 'bg-surface-2 text-muted-foreground hover:bg-surface-3 hover:text-foreground'
+                              : blocked
+                                ? 'bg-surface-2 text-muted-foreground/40 cursor-not-allowed'
+                                : 'bg-surface-2 text-muted-foreground hover:bg-surface-3 hover:text-foreground'
                           }`}
-                          title={`Taxa de broadcast: ${hz} Hz`}
+                          title={
+                            blocked
+                              ? `Bloqueado · Safety Mode (${avgFps.toFixed(0)}fps avg). Restaurará quando a CPU normalizar.`
+                              : `Taxa de broadcast: ${hz} Hz`
+                          }
+                          aria-disabled={blocked}
                         >
                           {hz} Hz
+                          {blocked && (
+                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive animate-pulse" aria-hidden />
+                          )}
                         </button>
                       );
                     })}
                   </div>
-                  <p className="text-[8px] text-muted-foreground/70 leading-tight">
-                    {usbStreaming
-                      ? '✓ Pode trocar a taxa durante o streaming — porta USB permanece aberta.'
-                      : '10Hz baixa carga · 20Hz padrão · 40Hz máximo (DMX512 spec).'}
+                  <p className="text-[8px] leading-tight text-muted-foreground/70">
+                    {isOverloaded
+                      ? `⚠ Safety Mode · 40Hz bloqueado (${avgFps.toFixed(0)}fps avg). Reduza a carga visual para liberar.`
+                      : usbStreaming
+                        ? '✓ Pode trocar a taxa durante o streaming — porta USB permanece aberta.'
+                        : '10Hz baixa carga · 20Hz padrão · 40Hz máximo (DMX512 spec).'}
                   </p>
+
 
                   <Button
                     size="sm"
