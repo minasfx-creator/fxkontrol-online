@@ -24,6 +24,11 @@ export interface DMXAdapterInfo {
   rdmCapable: boolean;
   /** True when the label maps to a known DMX adapter family (not a generic FTDI guess). */
   recognized: boolean;
+  /**
+   * True when the adapter family is unknown (generic FTDI/CH340/CP210x) and
+   * therefore needs explicit operator confirmation before transmitting DMX.
+   */
+  requiresOperatorConfirmation: boolean;
 }
 
 export function detectDMXAdapter(profile: USBDeviceProfile): DMXAdapterInfo {
