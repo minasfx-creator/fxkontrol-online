@@ -237,6 +237,36 @@ function DelayedMount({ delay = 2000, children }: { delay?: number; children: Re
 // re-declare a local copy here — that previously shadowed the live counter
 // and caused PostProcessing bloom to never react to bursts.
 
+/**
+ * PostProcessingBridge — keeps PostProcessing's `activeBurstCount` prop in sync
+ * with the live counter from sharedState without re-rendering the entire
+ * SkyCanvas tree. Reads inside `useFrame` (R3F internal RAF, no extra timer)
+ * and only commits a React state update when the *bucket* (cap-clamped value)
+ * changes, so PostProcessing re-renders at most when burst load shifts.
+ *
+ * Why a bridge:
+ *   • The previous implementation read `_activeBurstCount` (a local shadow of
+ *     0) directly inside JSX, so PostProcessing only ever saw 0 → bloom
+ *     was effectively dead during explosions.
+ *   • Reading `getActiveBurstCount()` inline in JSX would still be wrong
+ *     because JSX is only re-evaluated on parent re-render — values would
+ *     freeze between renders.
+ */
+function PostProcessingBridge({ isMobile, isLowTierMobile }: { isMobile: boolean; isLowTierMobile: boolean }) {
+  const [count, setCount] = useState(0);
+  const lastRef = useRef(0);
+  useFrame(() => {
+    const raw = _getActiveBurstCount();
+    const clamped = isMobile ? Math.min(raw, 8) : raw;
+    if (clamped !== lastRef.current) {
+      lastRef.current = clamped;
+      setCount(clamped);
+    }
+  });
+  if (isLowTierMobile) return null;
+  return <PostProcessing activeBurstCount={count} />;
+}
+
 
 export default function SkyCanvas() {
   // Professional keybindings (Finale 3D)
