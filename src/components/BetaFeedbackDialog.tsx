@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
-import { Bug, Lightbulb, Plug, MessageSquare, Send, Loader2 } from 'lucide-react';
+import { Bug, Lightbulb, Plug, MessageSquare, Send, Loader2, Paperclip, X, FileText, Image as ImageIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -59,6 +59,17 @@ const SEVERITIES: { value: Severity; label: string; color: string }[] = [
   { value: 'critical', label: 'Crítica', color: 'hsl(0 80% 60%)' },
 ];
 
+const MAX_FILES = 3;
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
+
+interface AttachmentMeta {
+  path: string;
+  name: string;
+  size: number;
+  type: string;
+}
+
 export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -67,6 +78,8 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   // Prefill email from auth user
   useEffect(() => {
@@ -89,6 +102,55 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
     };
   }, [open]);
 
+  const handleAddFiles = (incoming: FileList | null) => {
+    if (!incoming || incoming.length === 0) return;
+    const next: File[] = [...files];
+    const errors: string[] = [];
+    Array.from(incoming).forEach((f) => {
+      if (next.length >= MAX_FILES) {
+        errors.push(`Máximo ${MAX_FILES} arquivos`);
+        return;
+      }
+      if (!ACCEPTED_TYPES.includes(f.type)) {
+        errors.push(`${f.name}: tipo não suportado`);
+        return;
+      }
+      if (f.size > MAX_FILE_SIZE) {
+        errors.push(`${f.name}: excede 5 MB`);
+        return;
+      }
+      next.push(f);
+    });
+    setFiles(next);
+    if (errors.length) {
+      toast({ title: 'Alguns arquivos foram ignorados', description: errors.join(' · '), variant: 'destructive' });
+    }
+  };
+
+  const removeFile = (idx: number) => setFiles((prev) => prev.filter((_, i) => i !== idx));
+
+  const uploadAttachments = async (): Promise<AttachmentMeta[]> => {
+    if (files.length === 0) return [];
+    setUploading(true);
+    const uploaded: AttachmentMeta[] = [];
+    try {
+      for (const f of files) {
+        const ext = f.name.split('.').pop() || 'bin';
+        const safeName = f.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
+        const path = `beta-feedback/${(user?.id ?? 'anon')}/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+        const { error } = await supabase.storage.from('assets').upload(path, f, {
+          contentType: f.type,
+          upsert: false,
+        });
+        if (error) throw error;
+        uploaded.push({ path, name: f.name, size: f.size, type: f.type });
+      }
+      return uploaded;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async () => {
     const parsed = feedbackSchema.safeParse({
       category,
@@ -108,6 +170,8 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
 
     setSubmitting(true);
     try {
+      const attachments = await uploadAttachments();
+
       const { error } = await (supabase as any).from('beta_feedback').insert({
         user_id: user?.id ?? null,
         category: parsed.data.category,
@@ -118,6 +182,7 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
         user_agent: techContext?.user_agent ?? null,
         viewport: techContext?.viewport ?? null,
         app_version: techContext?.app_version ?? null,
+        attachments,
         metadata: {
           tier: techContext?.tier,
           memory_gb: techContext?.memory_gb,
@@ -130,11 +195,14 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
 
       toast({
         title: 'Feedback enviado',
-        description: 'Obrigado por contribuir com a fase Beta!',
+        description: attachments.length
+          ? `Obrigado! ${attachments.length} anexo(s) incluído(s).`
+          : 'Obrigado por contribuir com a fase Beta!',
       });
       setMessage('');
       setSeverity('medium');
       setCategory('bug');
+      setFiles([]);
       onOpenChange(false);
     } catch (err: any) {
       console.error('[BetaFeedback] submit failed', err);
@@ -255,6 +323,64 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
             />
           </div>
 
+          {/* Attachments */}
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
+              Anexos <span className="opacity-60">(PNG/JPG/WEBP/PDF · até 5 MB · máx {MAX_FILES})</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <label
+                className={`inline-flex items-center gap-2 rounded-md border border-dashed border-border bg-background hover:bg-accent px-3 py-2 text-xs font-medium cursor-pointer transition-colors ${
+                  files.length >= MAX_FILES ? 'opacity-50 pointer-events-none' : ''
+                }`}
+              >
+                <Paperclip className="h-3.5 w-3.5" />
+                Adicionar arquivo
+                <input
+                  type="file"
+                  multiple
+                  accept={ACCEPTED_TYPES.join(',')}
+                  className="hidden"
+                  onChange={(e) => {
+                    handleAddFiles(e.target.files);
+                    e.target.value = '';
+                  }}
+                  disabled={files.length >= MAX_FILES}
+                />
+              </label>
+              <span className="text-[10px] text-muted-foreground">
+                {files.length}/{MAX_FILES}
+              </span>
+            </div>
+            {files.length > 0 && (
+              <ul className="mt-2 space-y-1">
+                {files.map((f, i) => {
+                  const isImg = f.type.startsWith('image/');
+                  return (
+                    <li
+                      key={`${f.name}-${i}`}
+                      className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2 py-1.5 text-[11px]"
+                    >
+                      {isImg ? <ImageIcon className="h-3.5 w-3.5 text-primary" /> : <FileText className="h-3.5 w-3.5 text-primary" />}
+                      <span className="flex-1 truncate">{f.name}</span>
+                      <span className="text-muted-foreground text-[10px]">
+                        {(f.size / 1024).toFixed(0)} KB
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(i)}
+                        className="text-muted-foreground hover:text-destructive transition-colors"
+                        aria-label={`Remover ${f.name}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
           {/* Tech context preview */}
           {techContext && (
             <div className="rounded-md border border-border bg-muted/30 p-3 text-[10px] font-mono text-muted-foreground space-y-0.5">
@@ -276,16 +402,16 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting || message.trim().length < 10}>
-            {submitting ? (
+          <Button onClick={handleSubmit} disabled={submitting || uploading || message.trim().length < 10}>
+            {submitting || uploading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Enviando…
+                {uploading ? 'Enviando anexos…' : 'Enviando…'}
               </>
             ) : (
               <>
                 <Send className="h-4 w-4" />
-                Enviar Feedback
+                Enviar Feedback{files.length > 0 ? ` (+${files.length})` : ''}
               </>
             )}
           </Button>
