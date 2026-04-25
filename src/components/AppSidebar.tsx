@@ -193,13 +193,13 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Footer with user + sound control */}
-      <SidebarFooter className="p-2 space-y-1">
+      {/* Footer with user + sound control — 8pt: p-3 inset, gap-2 stack */}
+      <SidebarFooter className="p-3 space-y-2">
         {/* Sound toggle */}
         <Button
           variant="ghost"
           size={!showLabels ? 'icon' : 'sm'}
-          className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground text-xs"
+          className="w-full justify-start gap-2 rounded-control text-muted-foreground hover:text-foreground text-xs"
           onClick={toggleSound}
         >
           {soundMuted ? <VolumeX className="h-3.5 w-3.5 shrink-0" /> : <Volume2 className="h-3.5 w-3.5 shrink-0" />}
@@ -207,7 +207,7 @@ export function AppSidebar() {
         </Button>
 
         {showLabels && (
-          <div className="flex items-center gap-2 px-2 py-1.5 rounded-xl animate-holo-materialize" style={{ background: 'hsl(32 100% 50% / 0.05)', animationDelay: '0.3s' }}>
+          <div className="flex items-center gap-2 p-2 rounded-island animate-holo-materialize" style={{ background: 'hsl(32 100% 50% / 0.05)', animationDelay: '0.3s' }}>
             <div className="h-7 w-7 rounded-full flex items-center justify-center shrink-0 relative" style={{ background: 'hsl(32 100% 50% / 0.15)' }}>
               <span className="text-[9px] font-bold" style={{ color: 'hsl(32 100% 50%)' }}>{initials}</span>
               {/* Online status dot */}
@@ -222,7 +222,7 @@ export function AppSidebar() {
         <Button
           variant="ghost"
           size={!showLabels ? 'icon' : 'sm'}
-          className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive text-xs"
+          className="w-full justify-start gap-2 rounded-control text-muted-foreground hover:text-destructive text-xs"
           onClick={() => signOut()}
         >
           <LogOut className="h-3.5 w-3.5 shrink-0" />
