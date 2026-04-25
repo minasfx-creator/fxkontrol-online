@@ -73,9 +73,14 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     avgLatencyMs: 0,
     maxLatencyMs: 0,
   });
-  // Acumuladores zero-GC para latência (EWMA + max). Atualizados em todo
-  // tick; UI é re-renderizada no máx ~5 Hz para evitar render storm @ 40Hz.
-  const latencyAccRef = useRef({ avg: 0, max: 0, lastFlushMs: 0 });
+  // E-STOP latência: trip se >LATENCY_ESTOP_MS por LATENCY_ESTOP_STRIKES ticks consecutivos.
+  // Compliance Core (Safety Critical): E-STOP latency <50ms.
+  const LATENCY_ESTOP_MS = 50;
+  const LATENCY_ESTOP_STRIKES = 3;
+  const [latencyEstopReason, setLatencyEstopReason] = useState<string | null>(null);
+  // Acumuladores zero-GC para latência (EWMA + max + strikes E-STOP).
+  // UI re-render no máx ~5 Hz para evitar render storm @ 40Hz.
+  const latencyAccRef = useRef({ avg: 0, max: 0, lastFlushMs: 0, strikes: 0 });
   const universesRef = useRef<DMXUniverse[]>([]);
   const autoResumeAttemptedRef = useRef(false);
 
