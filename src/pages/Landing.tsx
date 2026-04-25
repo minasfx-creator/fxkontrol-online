@@ -183,35 +183,52 @@ export default function Landing() {
 
   return (
     <div className="fixed inset-0 z-[200] overflow-y-auto bg-background text-foreground antialiased">
+      {/* Skip-to-content for keyboard / screen-reader users */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[300] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-primary-foreground focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
+      >
+        Pular para o conteúdo
+      </a>
+
       {/* ── NAV ────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 border-b border-border/40 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6 md:px-8">
-          <Link to="/landing" className="flex flex-shrink-0 items-center gap-2">
-            <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-primary to-[hsl(var(--electric-glow))] shadow-[0_0_24px_hsl(var(--primary)/0.4)] sm:h-7 sm:w-7" />
+          <Link
+            to="/landing"
+            aria-label="FX KONTROL — Página inicial"
+            className="flex flex-shrink-0 items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <div
+              aria-hidden="true"
+              className="h-6 w-6 rounded-lg bg-gradient-to-br from-primary to-[hsl(var(--electric-glow))] shadow-[0_0_24px_hsl(var(--primary)/0.4)] sm:h-7 sm:w-7"
+            />
             <span className="text-xs font-black tracking-[0.18em] sm:text-sm">
               FX <span className="text-primary">KONTROL</span>
             </span>
           </Link>
-          <nav className="hidden items-center gap-6 text-sm text-muted-foreground lg:flex xl:gap-7">
-            <a href="#features" className="transition hover:text-foreground">Recursos</a>
-            <a href="#demo" className="transition hover:text-foreground">Demo</a>
-            <a href="#pricing" className="transition hover:text-foreground">Preço</a>
-            <Link to="/pricing" className="transition hover:text-foreground">Planos</Link>
+          <nav aria-label="Principal" className="hidden items-center gap-6 text-sm text-muted-foreground lg:flex xl:gap-7">
+            <a href="#features" className="rounded transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background">Recursos</a>
+            <a href="#demo" className="rounded transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background">Demo</a>
+            <a href="#pricing" className="rounded transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background">Preço</a>
+            <Link to="/pricing" className="rounded transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background">Planos</Link>
           </nav>
           <div className="flex flex-shrink-0 items-center gap-2">
             <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
               <Link to="/auth">Entrar</Link>
             </Button>
             <Button asChild size="sm" className="rounded-full px-3 text-xs sm:px-4 sm:text-sm">
-              <Link to="/studio">
-                <span className="hidden xs:inline sm:inline">Abrir Studio</span>
-                <span className="inline xs:hidden sm:hidden">Studio</span>
-                <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              <Link to="/studio" aria-label="Abrir o editor 3D Studio">
+                <span className="hidden sm:inline">Abrir Studio</span>
+                <span className="inline sm:hidden">Studio</span>
+                <ArrowRight aria-hidden="true" className="ml-1 h-3.5 w-3.5" />
               </Link>
             </Button>
           </div>
         </div>
       </header>
+
+      <main id="main">
 
       {/* ── HERO ───────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
