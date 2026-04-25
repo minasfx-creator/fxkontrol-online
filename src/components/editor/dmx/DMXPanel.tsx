@@ -334,6 +334,34 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
       const acc = latencyAccRef.current;
       acc.avg = acc.avg === 0 ? latencyMs : acc.avg * 0.8 + latencyMs * 0.2;
       if (latencyMs > acc.max) acc.max = latencyMs;
+
+      // ── E-STOP por latência ────────────────────────────────────────
+      // Compliance Core: E-STOP latency <50ms. Trip se 3 ticks
+      // consecutivos excederem o limite — evita falso-positivo de pico
+      // isolado, mas reage rápido (≤75ms @ 40Hz).
+      if (latencyMs > LATENCY_ESTOP_MS) {
+        acc.strikes += 1;
+        if (acc.strikes >= LATENCY_ESTOP_STRIKES) {
+          const reason = `Latência ${latencyMs}ms > ${LATENCY_ESTOP_MS}ms por ${LATENCY_ESTOP_STRIKES} medições consecutivas`;
+          acc.strikes = 0;
+          setLatencyEstopReason(reason);
+          setUsbStreaming(false);
+          setPersistedStreamingDesired(false);
+          addDiagLog({
+            timestamp: new Date(),
+            type: 'error',
+            message: `E-STOP USB streaming · ${reason}`,
+            latency: latencyMs,
+          });
+          toast.error('E-STOP DMX · latência crítica', {
+            description: reason,
+            duration: 8000,
+          });
+        }
+      } else {
+        acc.strikes = 0;
+      }
+
       // Throttle de UI: flush a cada ~200ms (5Hz) — independe do FPS DMX.
       const now = performance.now();
       if (now - acc.lastFlushMs >= 200) {
