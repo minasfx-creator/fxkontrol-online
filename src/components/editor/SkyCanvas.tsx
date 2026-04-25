@@ -232,8 +232,40 @@ function DelayedMount({ delay = 2000, children }: { delay?: number; children: Re
   return ready ? <>{children}</> : null;
 }
 
-// Module-level refs — preserved for PostProcessing activeBurstCount in JSX below
-let _activeBurstCount = 0;
+// NOTE: `_activeBurstCount` lives in skycanvas/sharedState.tsx and is updated by
+// runActiveBurstScan() each frame. Read via getActiveBurstCount(). Do NOT
+// re-declare a local copy here — that previously shadowed the live counter
+// and caused PostProcessing bloom to never react to bursts.
+
+/**
+ * PostProcessingBridge — keeps PostProcessing's `activeBurstCount` prop in sync
+ * with the live counter from sharedState without re-rendering the entire
+ * SkyCanvas tree. Reads inside `useFrame` (R3F internal RAF, no extra timer)
+ * and only commits a React state update when the *bucket* (cap-clamped value)
+ * changes, so PostProcessing re-renders at most when burst load shifts.
+ *
+ * Why a bridge:
+ *   • The previous implementation read `_activeBurstCount` (a local shadow of
+ *     0) directly inside JSX, so PostProcessing only ever saw 0 → bloom
+ *     was effectively dead during explosions.
+ *   • Reading `getActiveBurstCount()` inline in JSX would still be wrong
+ *     because JSX is only re-evaluated on parent re-render — values would
+ *     freeze between renders.
+ */
+function PostProcessingBridge({ isMobile, isLowTierMobile }: { isMobile: boolean; isLowTierMobile: boolean }) {
+  const [count, setCount] = useState(0);
+  const lastRef = useRef(0);
+  useFrame(() => {
+    const raw = _getActiveBurstCount();
+    const clamped = isMobile ? Math.min(raw, 8) : raw;
+    if (clamped !== lastRef.current) {
+      lastRef.current = clamped;
+      setCount(clamped);
+    }
+  });
+  if (isLowTierMobile) return null;
+  return <PostProcessing activeBurstCount={count} />;
+}
 
 
 export default function SkyCanvas() {
@@ -483,6 +515,18 @@ export default function SkyCanvas() {
   // ResizeObserver removed — R3F Canvas resize={{ debounce: 50 }} handles this natively
 
   const [canvasReady, setCanvasReady] = useState(false);
+  // Tracks the deferred fade-in timer so we can cancel it on unmount/remount
+  // (context loss, Canvas key bump). Without this, an orphaned setTimeout
+  // would call setCanvasReady on an unmounted component → React warning + leak.
+  const canvasReadyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (canvasReadyTimerRef.current) {
+      clearTimeout(canvasReadyTimerRef.current);
+      canvasReadyTimerRef.current = null;
+    }
+  }, []);
+  // Reset the fade when the Canvas remounts after a context loss.
+  useEffect(() => { setCanvasReady(false); }, [canvasInstanceKey]);
 
   return (
     <div ref={containerRef} className="w-full h-full relative bg-[#050810] transition-opacity duration-700 ease-out" data-sky-canvas style={{ cursor: cursorStyle, opacity: canvasReady ? 1 : 0 }}>
@@ -505,7 +549,11 @@ export default function SkyCanvas() {
         performance={{ min: isLowTierMobile ? 0.35 : 0.5 }}
         onCreated={() => {
           recoveringContextRef.current = false;
-          setTimeout(() => setCanvasReady(true), 100);
+          if (canvasReadyTimerRef.current) clearTimeout(canvasReadyTimerRef.current);
+          canvasReadyTimerRef.current = setTimeout(() => {
+            setCanvasReady(true);
+            canvasReadyTimerRef.current = null;
+          }, 100);
         }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={60} near={0.1} far={500000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode || groundMode} flyMode={flyMode || groundMode} />
@@ -581,7 +629,7 @@ export default function SkyCanvas() {
         {!google3DTilesEnabled && <ViewportRulers />}
         <CameraBookmarkSaver />
         <SubsystemBoundary name="PostProcessing">
-          {!isLowTierMobile && <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />}
+          <PostProcessingBridge isMobile={isMobile} isLowTierMobile={isLowTierMobile} />
         </SubsystemBoundary>
         {!isLowTierMobile && <StressTestFireworks />}
         
