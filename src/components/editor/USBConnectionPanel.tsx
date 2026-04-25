@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import {
   type ConnectedDevice,
-  type USBDeviceProfile,
+  type USBDeviceProfile as _USBDeviceProfile,
   type USBLog,
   type ConnectionState,
   DEVICE_PROFILES,
