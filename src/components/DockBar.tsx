@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { ambientSound } from '@/lib/ambientSound';
 import { haptics } from '@/lib/haptics';
 import { prefetchRoute } from '@/lib/prefetchRoutes';
+import { isEnabled } from '@/lib/featureFlags';
 import { useSceneStore } from '@/store/useSceneStore';
 import {
   LayoutDashboard, Clapperboard, CalendarDays,
@@ -24,18 +25,20 @@ interface DockItem {
   label: string;
   path: string;
   accent?: string;
+  flag?: 'module_pairing_mobilelink' | 'module_organizer_menu' | 'module_verification' | 'module_pcbviewer';
 }
 
-const DOCK_MAIN: DockItem[] = [
+const DOCK_MAIN_ALL: DockItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: Crosshair, label: 'Command', path: '/command', accent: 'hsl(0 85% 48%)' },
   { icon: Clapperboard, label: 'Editor 3D', path: '/editor', accent: 'hsl(32 100% 50%)' },
   { icon: CalendarDays, label: 'Agenda', path: '/agenda' },
   { icon: Gamepad2, label: 'Training', path: '/training' },
-  { icon: Activity, label: 'Field Test', path: '/field-test', accent: 'hsl(165 100% 42%)' },
+  { icon: Activity, label: 'Field Test', path: '/field-test', accent: 'hsl(165 100% 42%)', flag: 'module_pairing_mobilelink' },
   { icon: BarChart3, label: 'Status', path: '/platform-status' },
-  
 ];
+
+const DOCK_MAIN: DockItem[] = DOCK_MAIN_ALL.filter(item => !item.flag || isEnabled(item.flag));
 
 const DOCK_SYSTEM: DockItem[] = [
   { icon: Settings, label: 'Config', path: '/settings' },

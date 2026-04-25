@@ -1,5 +1,6 @@
 import React, { lazy, Suspense, useState, useCallback, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
 import { lazyRetry } from '@/lib/lazyRetry';
+import { isEnabled } from '@/lib/featureFlags';
 import { commandBus } from '@/core/command/CommandBus';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -450,7 +451,7 @@ function Index() {
         {/* swarmgpt moved to /swarmgpt route — no in-editor modal */}
         {activePanel === 'synesthesia' && <SynesthesiaPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'firing' && <FiringExportPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'labels' && <LabelsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'labels' && isEnabled('module_organizer_menu') && <LabelsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'video' && <VideoRecorderPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'models' && <ModelImportPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'suppliers' && <SupplierCatalogPanel onClose={() => setActivePanel(null)} />}
@@ -458,8 +459,8 @@ function Index() {
         {activePanel === 'scripting' && <ScriptingToolsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'audience' && <AudienceAnalyzerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'indoor' && <IndoorSimPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'chains' && <ChainEditorPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'groups' && <PositionGroupsPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'chains' && isEnabled('module_organizer_menu') && <ChainEditorPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'groups' && isEnabled('module_organizer_menu') && <PositionGroupsPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'scene' && <SceneEditorPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'soundlevel' && <SoundLevelPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'aroverlay' && <AROverlayPanel onClose={() => setActivePanel(null)} />}
@@ -497,11 +498,11 @@ function Index() {
         {activePanel === 'rider' && <RiderPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'budget' && <BudgetPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showpreview' && <ShowPreviewPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'mobilelink' && <MobileLinkPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'linkmonitor' && <MobileLinkMonitor onClose={() => setActivePanel(null)} />}
+        {activePanel === 'mobilelink' && isEnabled('module_pairing_mobilelink') && <MobileLinkPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'linkmonitor' && isEnabled('module_pairing_mobilelink') && <MobileLinkMonitor onClose={() => setActivePanel(null)} />}
         {activePanel === 'showcommander' && <ShowCommanderPanel onClose={() => setActivePanel(null)} onOpenPanel={(id) => setActivePanel(id as PanelId)} />}
-        {activePanel === 'bluetooth' && <BluetoothPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'nfc' && <NFCPairPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'bluetooth' && isEnabled('module_pairing_mobilelink') && <BluetoothPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'nfc' && isEnabled('module_pairing_mobilelink') && <NFCPairPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'dmxoutput' && <DMXOutputPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'remotecontrol' && <RemoteControlPanel onClose={() => setActivePanel(null)} initialMode={remoteMode} />}
         {activePanel === 'controllers' && <VirtualControllerHub onClose={() => setActivePanel(null)} />}
