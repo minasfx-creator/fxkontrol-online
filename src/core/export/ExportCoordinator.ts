@@ -111,6 +111,20 @@ class ExportCoordinator {
           this._log(result);
           return result;
         }
+        case 'rj-traditional':
+        case 'rj-timecode': {
+          const variant = target === 'rj-traditional' ? 'traditional' : 'timecode';
+          const r = generateRJEquipamentosScript(variant);
+          if (!r.verified || r.errors.length > 0) {
+            const result: ExportAttemptResult = { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
+            this._log(result);
+            return result;
+          }
+          downloadRJEquipamentosScript(variant);
+          const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
+          this._log(result);
+          return result;
+        }
       }
     } catch (err) {
       const result: ExportAttemptResult = {
