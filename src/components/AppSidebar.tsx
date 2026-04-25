@@ -1,4 +1,5 @@
 import { LayoutDashboard, Clapperboard, CalendarDays, LogOut, Gamepad2, Crosshair, Volume2, VolumeX, Bluetooth, Rocket, Settings, Shield, Activity, BarChart3, Sparkles, Network } from 'lucide-react';
+import { isEnabled } from '@/lib/featureFlags';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,19 +23,20 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import minasfxLogo from '@/assets/minasfx-logo-white.png';
 
-const navItems = [
+const allNavItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard, desc: 'Visão geral' },
   { title: 'Command', url: '/command', icon: Crosshair, desc: 'Execução ao vivo' },
   { title: 'Editor 3D', url: '/editor', icon: Clapperboard, desc: 'Design de show' },
   { title: 'SwarmGPT', url: '/swarmgpt', icon: Sparkles, desc: 'Coreografia IA' },
   { title: 'Agenda', url: '/agenda', icon: CalendarDays, desc: 'Eventos' },
   { title: 'Training', url: '/training', icon: Gamepad2, desc: 'Simulação' },
-  { title: 'Field Test', url: '/field-test', icon: Activity, desc: 'Teste de campo' },
+  { title: 'Field Test', url: '/field-test', icon: Activity, desc: 'Teste de campo', flag: 'module_pairing_mobilelink' as const },
   { title: 'Platform Status', url: '/platform-status', icon: BarChart3, desc: 'Saúde operacional' },
-  
-  { title: 'Pairing', url: '/pairing', icon: Bluetooth, desc: 'Pareamento HW' },
+  { title: 'Pairing', url: '/pairing', icon: Bluetooth, desc: 'Pareamento HW', flag: 'module_pairing_mobilelink' as const },
   { title: 'Network', url: '/settings/network', icon: Network, desc: 'Rede & transporte' },
 ];
+
+const navItems = allNavItems.filter(item => !item.flag || isEnabled(item.flag));
 
 export function AppSidebar() {
   const { state } = useSidebar();
