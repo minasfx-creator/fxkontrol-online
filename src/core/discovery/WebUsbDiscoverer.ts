@@ -36,8 +36,13 @@ function isWebUsbSupported(): boolean {
 function deviceToDiscovered(d: USBDeviceLike): DiscoveredDevice {
   const k = `${d.vendorId.toString(16).padStart(4, '0')}:${d.productId.toString(16).padStart(4, '0')}`;
   const known = KNOWN_USB_FAMILIES[k];
-  const id = `webusb:${keyFor({ vendorId: d.vendorId, productId: d.productId })}${d.serialNumber ? ':' + d.serialNumber : ''}`;
-  const persisted = portRegistry.get(keyFor({ vendorId: d.vendorId, productId: d.productId }));
+  const registryKey = keyFor({
+    vendorId: d.vendorId,
+    productId: d.productId,
+    serialNumber: d.serialNumber,
+  });
+  const id = `webusb:${registryKey}`;
+  const persisted = portRegistry.get(registryKey);
   const label = d.productName?.trim()
     || known?.label
     || persisted?.lastLabel
@@ -49,6 +54,7 @@ function deviceToDiscovered(d: USBDeviceLike): DiscoveredDevice {
   portRegistry.recordSuccess({
     vendorId: d.vendorId,
     productId: d.productId,
+    serialNumber: d.serialNumber,
     label,
   });
 
