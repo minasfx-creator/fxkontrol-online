@@ -252,7 +252,7 @@ export function DiscoveryDeviceDrawer({ device, open, onOpenChange }: Props) {
           )}
 
           {/* Actions */}
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex flex-wrap items-center gap-2 pt-1">
             <Button
               size="sm"
               variant="outline"
@@ -269,7 +269,25 @@ export function DiscoveryDeviceDrawer({ device, open, onOpenChange }: Props) {
             >
               <Copy className="w-3 h-3" /> COPY JSON
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[9px] font-mono gap-1.5 ml-auto border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={handleForget}
+              title="Revoga permissão do navegador e remove do registro persistente"
+            >
+              <Trash2 className="w-3 h-3" /> FORGET DEVICE
+            </Button>
           </div>
+          <p className="text-[8px] font-mono text-muted-foreground/70 leading-relaxed">
+            FORGET revoga a permissão do navegador (quando suportado) e apaga a entrada persistida —
+            o dispositivo não será reaberto automaticamente em sessões futuras.
+          </p>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
         </div>
       </SheetContent>
     </Sheet>
