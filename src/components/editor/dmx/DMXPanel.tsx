@@ -830,32 +830,47 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                     </div>
                   )}
 
-                  {/* Seletor de taxa — atualiza Hz sem fechar a porta USB */}
+                  {/* Seletor de taxa — atualiza Hz sem fechar a porta USB.
+                      40Hz é bloqueado em Safety Mode (frame drops sustentados). */}
                   <div className="grid grid-cols-3 gap-1">
                     {([10, 20, 40] as const).map(hz => {
                       const active = usbStreamFps === hz;
+                      const blocked = hz === 40 && isOverloaded;
                       return (
                         <button
                           key={hz}
                           type="button"
                           onClick={() => handleFpsChange(hz)}
-                          className={`h-7 rounded-sm text-[10px] font-mono-code font-bold transition-colors ${
+                          className={`relative h-7 rounded-sm text-[10px] font-mono-code font-bold transition-colors ${
                             active
                               ? 'bg-primary text-primary-foreground'
-                              : 'bg-surface-2 text-muted-foreground hover:bg-surface-3 hover:text-foreground'
+                              : blocked
+                                ? 'bg-surface-2 text-muted-foreground/40 cursor-not-allowed'
+                                : 'bg-surface-2 text-muted-foreground hover:bg-surface-3 hover:text-foreground'
                           }`}
-                          title={`Taxa de broadcast: ${hz} Hz`}
+                          title={
+                            blocked
+                              ? `Bloqueado · Safety Mode (${avgFps.toFixed(0)}fps avg). Restaurará quando a CPU normalizar.`
+                              : `Taxa de broadcast: ${hz} Hz`
+                          }
+                          aria-disabled={blocked}
                         >
                           {hz} Hz
+                          {blocked && (
+                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive animate-pulse" aria-hidden />
+                          )}
                         </button>
                       );
                     })}
                   </div>
-                  <p className="text-[8px] text-muted-foreground/70 leading-tight">
-                    {usbStreaming
-                      ? '✓ Pode trocar a taxa durante o streaming — porta USB permanece aberta.'
-                      : '10Hz baixa carga · 20Hz padrão · 40Hz máximo (DMX512 spec).'}
+                  <p className="text-[8px] leading-tight text-muted-foreground/70">
+                    {isOverloaded
+                      ? `⚠ Safety Mode · 40Hz bloqueado (${avgFps.toFixed(0)}fps avg). Reduza a carga visual para liberar.`
+                      : usbStreaming
+                        ? '✓ Pode trocar a taxa durante o streaming — porta USB permanece aberta.'
+                        : '10Hz baixa carga · 20Hz padrão · 40Hz máximo (DMX512 spec).'}
                   </p>
+
 
                   <Button
                     size="sm"
