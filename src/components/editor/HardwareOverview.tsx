@@ -16,10 +16,11 @@ import { getProvenanceBadge } from '@/core/hardware/provenance';
 import { cn } from '@/lib/utils';
 import {
   Activity, Cpu, Battery, Radio, Wifi, AlertTriangle,
-  CheckCircle2, XCircle, Zap, Shield, RefreshCw, Search, Gauge,
+  CheckCircle2, XCircle, Zap, Shield, RefreshCw, Search, Gauge, Satellite,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { DiscoveryGrid } from './hardware/DiscoveryGrid';
 
 const STATUS_COLORS: Record<string, string> = {
   connected: 'text-emerald-400',
@@ -55,6 +56,15 @@ export default function HardwareOverview() {
     setIsScanning(true);
     const unsub = deviceDiscovery.onChange(() => setDiscoveryResults(deviceDiscovery.getResults()));
     await deviceDiscovery.scan();
+    unsub();
+    setIsScanning(false);
+    refresh();
+  }, [refresh]);
+
+  const handleDeepScan = useCallback(async () => {
+    setIsScanning(true);
+    const unsub = deviceDiscovery.onChange(() => setDiscoveryResults(deviceDiscovery.getResults()));
+    await deviceDiscovery.scan({ deep: true });
     unsub();
     setIsScanning(false);
     refresh();
