@@ -186,7 +186,10 @@ describe('DMXTimingHarness — console reporting', () => {
     for (let i = 0; i < 64; i++) frame(h, { schedule: 0, transport: 20 });
     const n = h.logRegressions();
     expect(n).toBeGreaterThan(0);
-    expect(warnSpy).toHaveBeenCalledTimes(n);
+    // ≥ n: budget-breach warns may also fire during the regression batch.
+    expect(warnSpy.mock.calls.length).toBeGreaterThanOrEqual(n);
+    const regressionMsgs = warnSpy.mock.calls.filter(c => String(c[0]).includes('regression'));
+    expect(regressionMsgs.length).toBe(n);
   });
 });
 
