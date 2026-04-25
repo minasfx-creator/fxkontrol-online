@@ -5,10 +5,11 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Usb, Bluetooth, Wifi, Cable } from 'lucide-react';
+import { Usb, Bluetooth, Wifi, Cable, AlertTriangle } from 'lucide-react';
 import { unifiedDiscovery } from '@/core/discovery/UnifiedDiscoveryService';
 import { useTransportFilters } from '@/core/discovery/useTransportFilters';
 import type { DiscoveredDevice, DiscoveryTransport } from '@/core/discovery/types';
+import { DiscoveryDeviceDrawer } from './DiscoveryDeviceDrawer';
 import { cn } from '@/lib/utils';
 
 const TRANSPORT_META: Record<DiscoveryTransport, { label: string; Icon: typeof Usb; tone: string }> = {
