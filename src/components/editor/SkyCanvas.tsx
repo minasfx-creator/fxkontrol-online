@@ -652,9 +652,30 @@ function GoogleEarthLighting() {
 const WeatherEffects = lzn(() => import('./skycanvas/WeatherSystem'), 'WeatherEffects');
 
 // Delayed mount wrapper — lets base renderer stabilize before heavy VFX
+/**
+ * DelayedMount — defers heavy subsystems until the browser is idle
+ * (or after `delay` ms as a fallback). Lets first paint happen with
+ * the bare scene, then progressively mounts FX in idle slices.
+ */
 function DelayedMount({ delay = 2000, children }: { delay?: number; children: ReactNode }) {
   const [ready, setReady] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setReady(true), delay); return () => clearTimeout(t); }, [delay]);
+  useEffect(() => {
+    let cancelled = false;
+    let idleId: number | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    const cic = (window as unknown as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback;
+    if (typeof ric === 'function') {
+      idleId = ric(() => { if (!cancelled) setReady(true); }, { timeout: Math.max(delay, 500) });
+    } else {
+      timeoutId = setTimeout(() => { if (!cancelled) setReady(true); }, delay);
+    }
+    return () => {
+      cancelled = true;
+      if (idleId !== null && typeof cic === 'function') cic(idleId);
+      if (timeoutId !== null) clearTimeout(timeoutId);
+    };
+  }, [delay]);
   return ready ? <>{children}</> : null;
 }
 
@@ -1708,7 +1729,7 @@ export default function SkyCanvas() {
   const [canvasReady, setCanvasReady] = useState(false);
 
   return (
-    <div ref={containerRef} className="w-full h-full relative bg-[#050810] transition-opacity duration-700 ease-out" data-sky-canvas style={{ cursor: cursorStyle, opacity: canvasReady ? 1 : 0 }}>
+    <div ref={containerRef} className="w-full h-full relative bg-[#050810] transition-opacity duration-300 ease-out" data-sky-canvas style={{ cursor: cursorStyle, opacity: canvasReady ? 1 : 0.001 }}>
       <WebGLErrorBoundary>
       <Canvas
         key={canvasInstanceKey}
@@ -1728,7 +1749,8 @@ export default function SkyCanvas() {
         performance={{ min: isLowTierMobile ? 0.35 : 0.5 }}
         onCreated={() => {
           recoveringContextRef.current = false;
-          setTimeout(() => setCanvasReady(true), 100);
+          // Reveal immediately — GL context ready and bg color is already painted.
+          setCanvasReady(true);
         }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={60} near={0.1} far={500000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode || groundMode} flyMode={flyMode || groundMode} />
@@ -1742,12 +1764,17 @@ export default function SkyCanvas() {
         <GeoTimeOfDaySync />
         <Suspense fallback={null}>
           <AdaptiveExposureController />
-          {!environment.disableLighting && <GlobalIlluminationController />}
           {!google3DTilesEnabled && <GroundReflections />}
-          {!environment.disableLighting && <LensFlareController />}
-          <ContactShadowsLayer />
           <DebugFeed />
         </Suspense>
+        {/* Heavy lighting effects deferred until idle for faster first paint */}
+        <DelayedMount delay={400}>
+          <Suspense fallback={null}>
+            {!environment.disableLighting && <GlobalIlluminationController />}
+            {!environment.disableLighting && <LensFlareController />}
+            <ContactShadowsLayer />
+          </Suspense>
+        </DelayedMount>
         <DelayedMount delay={2000}>
           <NiagaraVFXController />
         </DelayedMount>
@@ -1761,7 +1788,9 @@ export default function SkyCanvas() {
 
         <Suspense fallback={null}>
           {!google3DTilesEnabled && <Moon />}
-          {!google3DTilesEnabled && !isLowTierMobile && !environment.lowQualityMode && <AtmosphericParticles />}
+          {!google3DTilesEnabled && !isLowTierMobile && !environment.lowQualityMode && (
+            <DelayedMount delay={1500}><AtmosphericParticles /></DelayedMount>
+          )}
           {!google3DTilesEnabled && !isLowTierMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
         </Suspense>
 
@@ -1804,11 +1833,15 @@ export default function SkyCanvas() {
         {!google3DTilesEnabled && <ViewportRulers />}
         <CameraBookmarkSaver />
         <SubsystemBoundary name="PostProcessing">
-          {!isLowTierMobile && <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />}
+          {!isLowTierMobile && (
+            <DelayedMount delay={600}>
+              <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />
+            </DelayedMount>
+          )}
         </SubsystemBoundary>
-        {!isLowTierMobile && <StressTestFireworks />}
-        
-        {!isLowTierMobile && <PostExplosionSmokeManager />}
+        {!isLowTierMobile && <DelayedMount delay={1800}><StressTestFireworks /></DelayedMount>}
+
+        {!isLowTierMobile && <DelayedMount delay={1200}><PostExplosionSmokeManager /></DelayedMount>}
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
 
