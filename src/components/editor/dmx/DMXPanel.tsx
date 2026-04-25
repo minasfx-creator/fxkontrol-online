@@ -427,7 +427,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
         description: `CPU/GPU sobrecarregada (${avgFps.toFixed(0)}fps). Mantendo 20Hz para evitar perda de frames DMX.`,
       });
       addDiagLog({
-        timestamp: new Date(), type: 'warning',
+        timestamp: new Date(), type: 'error',
         message: `Seleção de 40Hz bloqueada · Safety Mode (${avgFps.toFixed(0)}fps avg) · revertido para 20Hz`,
       });
       setUsbStreamFps(20);
@@ -453,7 +453,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
           description: `Frame drops sustentados detectados (${avgFps.toFixed(0)}fps). Restaure quando a carga normalizar.`,
         });
         addDiagLog({
-          timestamp: new Date(), type: 'warning',
+          timestamp: new Date(), type: 'error',
           message: `Safety Mode · 40Hz → 20Hz automático (${avgFps.toFixed(0)}fps avg)`,
         });
       }
