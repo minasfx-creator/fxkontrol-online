@@ -184,6 +184,14 @@ class ExportCoordinator {
     return [...this._history].reverse().find(a => a.target === target) ?? null;
   }
 
+  /**
+   * Dry-run de preflight RJ — não baixa arquivo, não modifica histórico.
+   * Use para alimentar UI/relatório de "o que será bloqueado / com fallback".
+   */
+  dryRunRJ(variant: RJVariant): RJPreflightReport {
+    return runRJPreflight(variant);
+  }
+
   private _log(result: ExportAttemptResult): void {
     this._history.push(result);
     if (this._history.length > 100) this._history = this._history.slice(-50);
