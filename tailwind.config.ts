@@ -111,6 +111,16 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        // ── Apple semantic radius scale ──
+        // Use these in chrome (Dock, Header, Sidebar, popovers) instead of
+        // ad-hoc `rounded-xl` / `rounded-2xl`. Concentric rule: outer radius
+        // should be ≥ inner radius + padding (e.g. dock with `radius-island`
+        // 16px and `p-2` 8px → items use `radius-control` 8px so corners
+        // stay parallel).
+        control: "var(--radius-control)", // 8px  — buttons, chips, inputs
+        panel:   "var(--radius-panel)",   // 12px — cards, popovers, tooltips
+        island:  "var(--radius-island)",  // 16px — dock, sidebar items
+        sheet:   "var(--radius-sheet)",   // 20px — modals, sheets
       },
       transitionTimingFunction: {
         'spring': 'cubic-bezier(0, 0.55, 0.45, 1)',
