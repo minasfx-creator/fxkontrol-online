@@ -781,10 +781,37 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                   </Button>
 
                   {usbStreaming && (
-                    <div className="flex items-center justify-between text-[8px] text-muted-foreground bg-surface-2 rounded-sm px-1.5 py-1 font-mono-code">
-                      <span>● <span className="text-primary">LIVE</span></span>
-                      <span>{usbStreamStats.frames} frames</span>
-                      <span>{usbStreamStats.lastLatencyMs}ms</span>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[8px] text-muted-foreground bg-surface-2 rounded-sm px-1.5 py-1 font-mono-code">
+                        <span>● <span className="text-primary">LIVE</span></span>
+                        <span>{usbStreamStats.frames} frames</span>
+                        <span title="Latência da última transmissão">last {usbStreamStats.lastLatencyMs}ms</span>
+                      </div>
+                      <div
+                        className="grid grid-cols-2 gap-1 text-[8px] font-mono-code"
+                        aria-live="polite"
+                      >
+                        <div
+                          className="flex items-center justify-between bg-surface-2 rounded-sm px-1.5 py-1"
+                          title="Latência média (EWMA α=0.2)"
+                        >
+                          <span className="text-muted-foreground uppercase tracking-wider">avg</span>
+                          <span className="text-foreground font-bold">{usbStreamStats.avgLatencyMs}ms</span>
+                        </div>
+                        <div
+                          className={`flex items-center justify-between rounded-sm px-1.5 py-1 ${
+                            usbStreamStats.maxLatencyMs > 50
+                              ? 'bg-destructive/10 text-destructive'
+                              : usbStreamStats.maxLatencyMs > 25
+                              ? 'bg-warning/10 text-warning'
+                              : 'bg-surface-2 text-foreground'
+                          }`}
+                          title="Latência máxima observada (pico) — alerta se >25ms (warn) ou >50ms (crítico)"
+                        >
+                          <span className="uppercase tracking-wider opacity-70">max</span>
+                          <span className="font-bold">{usbStreamStats.maxLatencyMs}ms</span>
+                        </div>
+                      </div>
                     </div>
                   )}
 
