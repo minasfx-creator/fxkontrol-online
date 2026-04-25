@@ -13,8 +13,9 @@ import { deviceEventLog } from '@/core/hardware/DeviceEventLog';
 import { generateFireOneScript, downloadFireOneScript } from './FireOneExporter';
 import { generateArtNetPatchCSV, downloadArtNetPatch } from './ArtNetPatchExporter';
 import { generateDroneCSV, downloadDroneCSV } from './DroneCSVExporter';
+import { generateMegafireScript, downloadMegafireScript } from './MegafireExporter';
 
-export type ExportTarget = 'fireone' | 'artnet' | 'drone';
+export type ExportTarget = 'fireone' | 'artnet' | 'drone' | 'megafire';
 
 export interface ExportAttemptResult {
   target: ExportTarget;
@@ -94,6 +95,18 @@ class ExportCoordinator {
           }
           downloadDroneCSV();
           const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.droneCount };
+          this._log(result);
+          return result;
+        }
+        case 'megafire': {
+          const r = generateMegafireScript();
+          if (!r.verified || r.errors.length > 0) {
+            const result: ExportAttemptResult = { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
+            this._log(result);
+            return result;
+          }
+          downloadMegafireScript();
+          const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
           this._log(result);
           return result;
         }
