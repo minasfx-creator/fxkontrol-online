@@ -40,6 +40,7 @@ const NetworkSettings = lazy(lazyRetry(() => import("./pages/NetworkSettings")))
 const Terms = lazy(lazyRetry(() => import("./pages/legal/Terms")));
 const Refund = lazy(lazyRetry(() => import("./pages/legal/Refund")));
 const Privacy = lazy(lazyRetry(() => import("./pages/legal/Privacy")));
+const CheckoutSuccess = lazy(lazyRetry(() => import("./pages/CheckoutSuccess")));
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,9 @@ function App() {
                     <Route path="/legal/terms" element={<Terms />} />
                     <Route path="/legal/refund" element={<Refund />} />
                     <Route path="/legal/privacy" element={<Privacy />} />
+                    {/* Checkout success — auth-gated but standalone (no MainLayout chrome) so the
+                        confirmation screen is the only thing visible while the webhook lands. */}
+                    <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
                     <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/editor" element={<Index />} />
