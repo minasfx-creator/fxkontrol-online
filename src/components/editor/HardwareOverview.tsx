@@ -152,6 +152,12 @@ export default function HardwareOverview() {
         </div>
       )}
 
+      {/* Real Discovery Grid (Serial / USB / BLE / Art-Net) */}
+      <div className="space-y-1">
+        <span className="text-[7px] font-mono text-muted-foreground/50 uppercase tracking-wider">Real Discovery — transports</span>
+        <DiscoveryGrid />
+      </div>
+
       {/* Device Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 flex-1 overflow-auto">
         {devices.map(dev => {
