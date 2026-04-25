@@ -58,6 +58,7 @@ class SafetyStateMachine {
   };
   private _listeners: TransitionListener[] = [];
   private _cooldownTimer: ReturnType<typeof setTimeout> | null = null;
+  private _inTransition = false; // re-entrancy guard (prevents listener-triggered loops)
 
   get state(): SafetyState { return this._state; }
   get conditions(): Readonly<InterlockConditions> { return this._conditions; }
@@ -70,6 +71,14 @@ class SafetyStateMachine {
   /** Attempt a transition. Returns result with allowed/denied + reason. */
   transition(t: SafetyTransition): TransitionResult {
     const from = this._state;
+
+    // Re-entrancy guard: a listener triggered another transition while we were
+    // mid-flight. Allow E_STOP through (safety-critical), block everything else.
+    if (this._inTransition && t !== 'E_STOP') {
+      return { allowed: false, from, to: from, reason: 'Transition re-entrancy blocked' };
+    }
+    this._inTransition = true;
+    try {
 
     // E_STOP always allowed from any state
     if (t === 'E_STOP') {
