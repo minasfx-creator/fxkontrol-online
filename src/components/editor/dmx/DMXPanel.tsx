@@ -443,7 +443,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
       toast.error('Nenhum dispositivo DMX USB conectado');
       return;
     }
-    setUsbStreamStats({ frames: 0, lastLatencyMs: 0, avgLatencyMs: 0, maxLatencyMs: 0 });
+    setUsbStreamStats({ frames: 0, lastLatencyMs: 0, avgLatencyMs: 0, maxLatencyMs: 0, fpsActual: 0, writeErrors: 0, lastErrorMsg: "", lastErrorTs: 0 }); writeErrorsRef.current.count = 0; writeErrorsRef.current.lastMsg = ""; writeErrorsRef.current.lastTs = 0; latencyAccRef.current.windowStartMs = 0; latencyAccRef.current.windowStartFrames = 0; latencyAccRef.current.fpsActual = 0; latencyAccRef.current.historyIdx = 0; latencyAccRef.current.historyFilled = 0;
     latencyAccRef.current.avg = 0;
     latencyAccRef.current.max = 0;
     latencyAccRef.current.lastFlushMs = 0;
@@ -522,7 +522,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     if (universes.length === 0) return;
     if (connectedUSBDMX.length === 0) return;
     autoResumeAttemptedRef.current = true;
-    setUsbStreamStats({ frames: 0, lastLatencyMs: 0, avgLatencyMs: 0, maxLatencyMs: 0 });
+    setUsbStreamStats({ frames: 0, lastLatencyMs: 0, avgLatencyMs: 0, maxLatencyMs: 0, fpsActual: 0, writeErrors: 0, lastErrorMsg: "", lastErrorTs: 0 }); writeErrorsRef.current.count = 0; writeErrorsRef.current.lastMsg = ""; writeErrorsRef.current.lastTs = 0; latencyAccRef.current.windowStartMs = 0; latencyAccRef.current.windowStartFrames = 0; latencyAccRef.current.fpsActual = 0; latencyAccRef.current.historyIdx = 0; latencyAccRef.current.historyFilled = 0;
     setUsbStreaming(true);
     addDiagLog({
       timestamp: new Date(), type: 'info',
