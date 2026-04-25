@@ -650,6 +650,29 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                     <span className="text-[8px] text-muted-foreground font-mono-code">{usbStreamFps}Hz</span>
                   </div>
 
+                  {/* Real-time connected DMX device count */}
+                  <div
+                    className={`flex items-center justify-between rounded-sm px-1.5 py-1 text-[9px] font-mono-code ${
+                      connectedUSBDMX.length > 0
+                        ? 'bg-success/10 text-success'
+                        : 'bg-destructive/10 text-destructive'
+                    }`}
+                    aria-live="polite"
+                    title="Dispositivos DMX USB reconhecidos e conectados"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          connectedUSBDMX.length > 0 ? 'bg-success animate-pulse' : 'bg-destructive'
+                        }`}
+                      />
+                      <span className="uppercase font-semibold tracking-wider">Conectados</span>
+                    </span>
+                    <span className="font-bold">
+                      {connectedUSBDMX.length} {connectedUSBDMX.length === 1 ? 'device' : 'devices'}
+                    </span>
+                  </div>
+
                   {/* Seletor de taxa — atualiza Hz sem fechar a porta USB */}
                   <div className="grid grid-cols-3 gap-1">
                     {([10, 20, 40] as const).map(hz => {
@@ -682,7 +705,12 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                     variant={usbStreaming ? 'destructive' : 'default'}
                     className="h-7 text-[10px] w-full gap-1"
                     onClick={usbStreaming ? stopUsbStream : startUsbStream}
-                    disabled={universes.length === 0}
+                    disabled={universes.length === 0 || (!usbStreaming && connectedUSBDMX.length === 0)}
+                    title={
+                      connectedUSBDMX.length === 0 && !usbStreaming
+                        ? 'Nenhum dispositivo DMX USB conectado — conecte um equipamento para habilitar o streaming.'
+                        : undefined
+                    }
                   >
                     {usbStreaming ? (
                       <>
