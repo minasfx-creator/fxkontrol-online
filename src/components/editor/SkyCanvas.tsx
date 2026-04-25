@@ -111,6 +111,7 @@ import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
 import SkyCanvasDiagnosticsPanel from './SkyCanvasDiagnosticsPanel';
 import { captureSkyCanvasError } from '@/lib/skyCanvasDiagnostics';
+import SimplifiedSkyFallback, { detectWebGLCapability } from './SimplifiedSkyFallback';
 import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
 // ═══ Hardening Engine ═══
 import {
