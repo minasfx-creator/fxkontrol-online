@@ -143,7 +143,7 @@ export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
         {activeTab === 'dmx-io' && <DMXIOPanel fs={fs} />}
         {activeTab === 'pixel-map' && <PixelMappingPanel fs={fs} />}
         {activeTab === 'bezier' && <DMXBezierEditor fs={fs} />}
-        {(activeTab === 'mobile-link' || activeTab === 'pairing') && (
+        {(activeTab === 'mobile-link' || activeTab === 'pairing') && isEnabled('module_pairing_mobilelink') && (
           <Suspense
             fallback={
               <div className="w-full h-full flex items-center justify-center">
