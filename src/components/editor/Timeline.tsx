@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import AudioWaveform from './AudioWaveform';
 import PyroTimelineTrack from './PyroTimelineTrack';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
+import { loadTimelineView, saveTimelineView } from '@/lib/timelineViewState';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -1041,9 +1042,49 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
   const removeMultipleTimelineItems = useProjectStore(s => s.removeMultipleTimelineItems);
   const { chip: transportChip, toggle: togglePlayback } = useTransportDiagnostics();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [pixelsPerSecond, setPixelsPerSecond] = useState(12);
+  // Hydrate zoom + scroll from localStorage. Clamp zoom to current min/max so
+  // a stale persisted value can never put the user outside valid bounds.
+  const persistedView = useRef(loadTimelineView()).current;
+  const [pixelsPerSecond, setPixelsPerSecond] = useState(() => {
+    const v = persistedView.pixelsPerSecond;
+    return typeof v === 'number' && isFinite(v) ? Math.min(MAX_PPS, Math.max(MIN_PPS, v)) : 12;
+  });
   const [scrollLeft, setScrollLeft] = useState(0);
   const [viewportWidth, setViewportWidth] = useState(1200);
+
+  // Persist zoom (cheap — fires only when user zooms).
+  useEffect(() => { saveTimelineView({ pixelsPerSecond }); }, [pixelsPerSecond]);
+
+  // Restore scroll position once after the scroll container is mounted and laid out.
+  const scrollRestoredRef = useRef(false);
+  useEffect(() => {
+    if (scrollRestoredRef.current) return;
+    const el = scrollRef.current;
+    const target = persistedView.scrollLeft;
+    if (!el || typeof target !== 'number' || !isFinite(target) || target <= 0) {
+      scrollRestoredRef.current = true;
+      return;
+    }
+    // Wait one frame so child tracks have laid out and scrollWidth is final.
+    const raf = requestAnimationFrame(() => {
+      if (!scrollRef.current) return;
+      scrollRef.current.scrollLeft = target;
+      setScrollLeft(scrollRef.current.scrollLeft);
+      scrollRestoredRef.current = true;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [persistedView.scrollLeft]);
+
+  // Throttled persistence of scroll position (1 write per 250ms max).
+  const scrollSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!scrollRestoredRef.current) return;
+    if (scrollSaveTimer.current) clearTimeout(scrollSaveTimer.current);
+    scrollSaveTimer.current = setTimeout(() => {
+      saveTimelineView({ scrollLeft });
+    }, 250);
+    return () => { if (scrollSaveTimer.current) clearTimeout(scrollSaveTimer.current); };
+  }, [scrollLeft]);
 
   const totalCost = useMemo(() => {
     return timelineItems.reduce((sum, item) => {
