@@ -101,6 +101,34 @@ export default function BetaPromoBanner({ endsAt = DEFAULT_ENDS_AT }: BetaPromoB
           >
             BETA TEST
           </span>
+          {countdown && (
+            <span
+              className="hidden md:inline-flex items-center gap-1 text-[10px] font-mono font-bold tracking-wider uppercase px-2 py-0.5 rounded tabular-nums"
+              title={`Promoção termina em ${new Date(endsAtMs!).toLocaleString()}`}
+              style={{
+                background: urgent ? 'hsl(0 80% 50% / 0.18)' : 'hsl(48 100% 50% / 0.15)',
+                color: urgent ? 'hsl(0 80% 70%)' : 'hsl(48 100% 70%)',
+                border: `1px solid ${urgent ? 'hsl(0 80% 50% / 0.5)' : 'hsl(48 100% 50% / 0.4)'}`,
+              }}
+            >
+              <Clock className="h-3 w-3" />
+              Termina em {countdown}
+            </span>
+          )}
+          {countdown && (
+            <span
+              className="md:hidden inline-flex items-center gap-1 text-[9px] font-mono font-bold tracking-wider uppercase px-1.5 py-0.5 rounded tabular-nums"
+              title={`Termina em ${countdown}`}
+              style={{
+                background: urgent ? 'hsl(0 80% 50% / 0.18)' : 'hsl(48 100% 50% / 0.15)',
+                color: urgent ? 'hsl(0 80% 70%)' : 'hsl(48 100% 70%)',
+                border: `1px solid ${urgent ? 'hsl(0 80% 50% / 0.5)' : 'hsl(48 100% 50% / 0.4)'}`,
+              }}
+            >
+              <Clock className="h-2.5 w-2.5" />
+              {countdown}
+            </span>
+          )}
         </div>
 
         <div className="flex-1 min-w-0 overflow-hidden">
