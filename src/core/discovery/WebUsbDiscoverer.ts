@@ -38,13 +38,24 @@ function deviceToDiscovered(d: USBDeviceLike): DiscoveredDevice {
   const known = KNOWN_USB_FAMILIES[k];
   const id = `webusb:${keyFor({ vendorId: d.vendorId, productId: d.productId })}${d.serialNumber ? ':' + d.serialNumber : ''}`;
   const persisted = portRegistry.get(keyFor({ vendorId: d.vendorId, productId: d.productId }));
+  const label = d.productName?.trim()
+    || known?.label
+    || persisted?.lastLabel
+    || `USB ${k}`;
+
+  // The mere presence in `navigator.usb.getDevices()` means the user has
+  // already authorized this device for our origin. Persist it so the next
+  // session can immediately recognize it without prompting again.
+  portRegistry.recordSuccess({
+    vendorId: d.vendorId,
+    productId: d.productId,
+    label,
+  });
+
   return {
     id,
     transport: 'webusb',
-    label: d.productName?.trim()
-      || known?.label
-      || persisted?.lastLabel
-      || `USB ${k}`,
+    label,
     vendorId: d.vendorId,
     productId: d.productId,
     recognized: !!known,
