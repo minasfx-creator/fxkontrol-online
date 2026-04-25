@@ -108,6 +108,43 @@ class UnifiedDiscoveryService {
     return () => { this._listeners.delete(listener); };
   }
 
+  /**
+   * Forget a device end-to-end:
+   *  1. Revoke browser permission via the transport's native `forget()`
+   *     (Web Serial / WebUSB / WebBluetooth where supported).
+   *  2. Drop it from the transport-level cache (emits a `lost` event).
+   *  3. Delete the persisted `portRegistry` entry so future boot scans
+   *     no longer auto-rehydrate it.
+   *
+   * Returns `{ revoked }` — `revoked: true` means the browser actually
+   * dropped permission and a re-pair will require a fresh user gesture.
+   */
+  async forgetDevice(deviceId: string): Promise<{ revoked: boolean }> {
+    const dev = this._devices.get(deviceId);
+    let revoked = false;
+    try {
+      if (deviceId.startsWith('webserial:')) {
+        revoked = await webSerialDiscoverer.forgetDevice(deviceId);
+      } else if (deviceId.startsWith('webusb:')) {
+        revoked = await webUsbDiscoverer.forgetDevice(deviceId);
+      } else if (deviceId.startsWith('webble:')) {
+        revoked = await webBleDiscoverer.forgetDevice(deviceId);
+      } else if (deviceId.startsWith('mdns-artnet:')) {
+        revoked = await mdnsArtnetDiscoverer.forgetDevice(deviceId);
+      }
+    } catch (e) {
+      logger.warn('[UnifiedDiscovery] forget failed', deviceId, e);
+    }
+    // Always drop the persisted registry entry so auto-reopen stops.
+    if (dev) {
+      const key = keyFor({ vendorId: dev.vendorId, productId: dev.productId, host: dev.host });
+      portRegistry.forget(key);
+    }
+    // Defensive: ensure unified cache is cleared even if no `lost` event fired.
+    this._devices.delete(deviceId);
+    return { revoked };
+  }
+
   /** Wire each discoverer's events into the unified stream — once. */
   private _bridge(): void {
     if (this._bridged) return;
