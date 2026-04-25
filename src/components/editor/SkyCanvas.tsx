@@ -652,9 +652,30 @@ function GoogleEarthLighting() {
 const WeatherEffects = lzn(() => import('./skycanvas/WeatherSystem'), 'WeatherEffects');
 
 // Delayed mount wrapper — lets base renderer stabilize before heavy VFX
+/**
+ * DelayedMount — defers heavy subsystems until the browser is idle
+ * (or after `delay` ms as a fallback). Lets first paint happen with
+ * the bare scene, then progressively mounts FX in idle slices.
+ */
 function DelayedMount({ delay = 2000, children }: { delay?: number; children: ReactNode }) {
   const [ready, setReady] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setReady(true), delay); return () => clearTimeout(t); }, [delay]);
+  useEffect(() => {
+    let cancelled = false;
+    let idleId: number | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    const cic = (window as unknown as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback;
+    if (typeof ric === 'function') {
+      idleId = ric(() => { if (!cancelled) setReady(true); }, { timeout: Math.max(delay, 500) });
+    } else {
+      timeoutId = setTimeout(() => { if (!cancelled) setReady(true); }, delay);
+    }
+    return () => {
+      cancelled = true;
+      if (idleId !== null && typeof cic === 'function') cic(idleId);
+      if (timeoutId !== null) clearTimeout(timeoutId);
+    };
+  }, [delay]);
   return ready ? <>{children}</> : null;
 }
 
