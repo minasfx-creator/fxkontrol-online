@@ -1729,7 +1729,7 @@ export default function SkyCanvas() {
   const [canvasReady, setCanvasReady] = useState(false);
 
   return (
-    <div ref={containerRef} className="w-full h-full relative bg-[#050810] transition-opacity duration-700 ease-out" data-sky-canvas style={{ cursor: cursorStyle, opacity: canvasReady ? 1 : 0 }}>
+    <div ref={containerRef} className="w-full h-full relative bg-[#050810] transition-opacity duration-300 ease-out" data-sky-canvas style={{ cursor: cursorStyle, opacity: canvasReady ? 1 : 0.001 }}>
       <WebGLErrorBoundary>
       <Canvas
         key={canvasInstanceKey}
@@ -1749,7 +1749,8 @@ export default function SkyCanvas() {
         performance={{ min: isLowTierMobile ? 0.35 : 0.5 }}
         onCreated={() => {
           recoveringContextRef.current = false;
-          setTimeout(() => setCanvasReady(true), 100);
+          // Reveal immediately — GL context ready and bg color is already painted.
+          setCanvasReady(true);
         }}>
         <PerspectiveCamera makeDefault position={preset.position} fov={60} near={0.1} far={500000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode || groundMode} flyMode={flyMode || groundMode} />
