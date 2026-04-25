@@ -72,6 +72,48 @@ function registryKeyFor(device: ConnectedDevice): string | undefined {
   return keyFor({ vendorId: info.usbVendorId, productId: info.usbProductId });
 }
 
+/** Synthetic adapter-info preset for an operator-pinned override kind. */
+function adapterFromOverride(kind: DMXProfileOverrideKind): DMXAdapterInfo {
+  switch (kind) {
+    case 'enttec-pro':
+      return {
+        kind: 'enttec-pro', label: 'ENTTEC DMX USB Pro (override)',
+        badgeClass: 'bg-green-500/20 text-green-400 border border-green-500/40',
+        protocol: 'ENTTEC Widget', rdmCapable: true,
+        recognized: true, requiresOperatorConfirmation: false,
+      };
+    case 'enttec-open':
+      return {
+        kind: 'enttec-open', label: 'ENTTEC Open DMX (override)',
+        badgeClass: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40',
+        protocol: 'DMX512 Direto', rdmCapable: false,
+        recognized: true, requiresOperatorConfirmation: false,
+      };
+    case 'dmxking':
+      return {
+        kind: 'dmxking', label: 'DMXking ultraDMX (override)',
+        badgeClass: 'bg-green-500/20 text-green-400 border border-green-500/40',
+        protocol: 'ENTTEC Widget', rdmCapable: true,
+        recognized: true, requiresOperatorConfirmation: false,
+      };
+    case 'eurolite':
+      return {
+        kind: 'eurolite', label: 'Eurolite USB-DMX512 (override)',
+        badgeClass: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40',
+        protocol: 'DMX512 Direto', rdmCapable: false,
+        recognized: true, requiresOperatorConfirmation: false,
+      };
+    case 'generic-dmx':
+    default:
+      return {
+        kind: 'generic-dmx', label: 'DMX Genérico (override)',
+        badgeClass: 'bg-amber-500/20 text-amber-400 border border-amber-500/40',
+        protocol: 'DMX512 Direto', rdmCapable: false,
+        recognized: false, requiresOperatorConfirmation: true,
+      };
+  }
+}
+
 function buildEntry(device: ConnectedDevice): USBDMXDevice {
   const adapter = detectDMXAdapter(device.profile);
   const authorized = !!device.writer;
