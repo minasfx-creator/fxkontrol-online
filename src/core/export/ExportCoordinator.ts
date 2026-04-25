@@ -14,8 +14,9 @@ import { generateFireOneScript, downloadFireOneScript } from './FireOneExporter'
 import { generateArtNetPatchCSV, downloadArtNetPatch } from './ArtNetPatchExporter';
 import { generateDroneCSV, downloadDroneCSV } from './DroneCSVExporter';
 import { generateMegafireScript, downloadMegafireScript } from './MegafireExporter';
+import { generateRJEquipamentosScript, downloadRJEquipamentosScript } from './RJEquipamentosExporter';
 
-export type ExportTarget = 'fireone' | 'artnet' | 'drone' | 'megafire';
+export type ExportTarget = 'fireone' | 'artnet' | 'drone' | 'megafire' | 'rj-traditional' | 'rj-timecode';
 
 export interface ExportAttemptResult {
   target: ExportTarget;
