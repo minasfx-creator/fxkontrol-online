@@ -14,8 +14,9 @@ import { generateFireOneScript, downloadFireOneScript } from './FireOneExporter'
 import { generateArtNetPatchCSV, downloadArtNetPatch } from './ArtNetPatchExporter';
 import { generateDroneCSV, downloadDroneCSV } from './DroneCSVExporter';
 import { generateMegafireScript, downloadMegafireScript } from './MegafireExporter';
+import { generateRJEquipamentosScript, downloadRJEquipamentosScript } from './RJEquipamentosExporter';
 
-export type ExportTarget = 'fireone' | 'artnet' | 'drone' | 'megafire';
+export type ExportTarget = 'fireone' | 'artnet' | 'drone' | 'megafire' | 'rj-traditional' | 'rj-timecode';
 
 export interface ExportAttemptResult {
   target: ExportTarget;
@@ -106,6 +107,20 @@ class ExportCoordinator {
             return result;
           }
           downloadMegafireScript();
+          const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
+          this._log(result);
+          return result;
+        }
+        case 'rj-traditional':
+        case 'rj-timecode': {
+          const variant = target === 'rj-traditional' ? 'traditional' : 'timecode';
+          const r = generateRJEquipamentosScript(variant);
+          if (!r.verified || r.errors.length > 0) {
+            const result: ExportAttemptResult = { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
+            this._log(result);
+            return result;
+          }
+          downloadRJEquipamentosScript(variant);
           const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
           this._log(result);
           return result;
