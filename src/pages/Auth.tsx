@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { lovable } from '@/integrations/lovable';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -59,6 +60,24 @@ export default function Auth() {
     } catch (err: any) {
       ambientSound.play('error');
       toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth('google', {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) throw result.error;
+      if (result.redirected) return;
+      ambientSound.play('boot');
+      toast.success('Login efetuado!');
+    } catch (err: any) {
+      ambientSound.play('error');
+      toast.error(err?.message ?? 'Falha no login com Google');
     } finally {
       setLoading(false);
     }
@@ -164,6 +183,25 @@ export default function Auth() {
               {loading ? 'Aguarde...' : isLogin ? 'Entrar' : 'Cadastrar'}
             </Button>
           </form>
+
+          <div className="relative z-10 flex items-center gap-2">
+            <div className="flex-1 h-px bg-[hsl(32_100%_50%/0.12)]" />
+            <span className="text-[9px] font-mono tracking-[0.2em] uppercase text-muted-foreground">OR</span>
+            <div className="flex-1 h-px bg-[hsl(32_100%_50%/0.12)]" />
+          </div>
+
+          <Button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={loading}
+            variant="outline"
+            className="relative z-10 w-full h-10 rounded-xl font-medium text-sm bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.15)] hover:bg-[hsl(var(--surface-0)/0.9)] hover:border-[hsl(32_100%_50%/0.3)] gap-2"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.4 14.6 2.5 12 2.5 6.8 2.5 2.6 6.7 2.6 12s4.2 9.5 9.4 9.5c5.4 0 9-3.8 9-9.2 0-.6-.1-1.1-.2-1.6H12z"/>
+            </svg>
+            Continuar com Google
+          </Button>
 
           <p className="text-center text-xs text-muted-foreground relative z-10">
             {isLogin ? 'Não tem conta? ' : 'Já tem conta? '}
