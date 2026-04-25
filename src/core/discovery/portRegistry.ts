@@ -10,6 +10,7 @@
  */
 
 import { logger } from '@/lib/logger';
+import { getReopenMatchPolicy } from './useReopenMatchPolicy';
 
 const STORAGE_KEY = 'fxk:portRegistry:v1';
 const MAX_ENTRIES = 50;
