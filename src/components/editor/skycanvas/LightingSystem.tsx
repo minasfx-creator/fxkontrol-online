@@ -26,6 +26,7 @@ import {
   getSkyScatterUniforms,
   setAdaptiveExposureValue,
 } from './sharedState';
+import { useClockTimeRef } from '@/hooks/useClockTimeRef';
 
 import { setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from '../RenderDebugOverlay';
 
