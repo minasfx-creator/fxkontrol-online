@@ -1,6 +1,7 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
-import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap, Usb, Monitor } from 'lucide-react';
+import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap, Usb, Monitor, Play, Square } from 'lucide-react';
+import { logger } from '@/lib/logger';
 import DMXMonitorGrid from './DMXMonitorGrid';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
@@ -52,6 +53,27 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
   const [showDiag, setShowDiag] = useState(true);
   const [showMonitor, setShowMonitor] = useState(false);
+
+  // Continuous USB DMX streaming (Universe 1 → all connected USB devices)
+  const [usbStreaming, setUsbStreaming] = useState(false);
+  const [usbStreamFps, setUsbStreamFps] = useState(40);
+  const [usbStreamStats, setUsbStreamStats] = useState({ frames: 0, lastLatencyMs: 0 });
+  const usbStreamIntervalRef = useRef<number | null>(null);
+  const usbStreamInFlightRef = useRef(false);
+  const universesRef = useRef<DMXUniverse[]>([]);
+
+  // Keep ref in sync (lets the interval read latest universe 1 without restarting)
+  useEffect(() => { universesRef.current = universes; }, [universes]);
+
+  // Cleanup interval on unmount — Memory mgmt (Core)
+  useEffect(() => {
+    return () => {
+      if (usbStreamIntervalRef.current !== null) {
+        window.clearInterval(usbStreamIntervalRef.current);
+        usbStreamIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   const addDiagLog = useCallback((log: DiagnosticLog) => {
     setDiagLogs(prev => [log, ...prev].slice(0, 50));
@@ -281,6 +303,63 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
       setSending(false);
     }
   };
+
+  // ── Continuous USB DMX streaming (Universe 1) ─────────────────────
+  const stopUsbStream = useCallback(() => {
+    if (usbStreamIntervalRef.current !== null) {
+      window.clearInterval(usbStreamIntervalRef.current);
+      usbStreamIntervalRef.current = null;
+    }
+    usbStreamInFlightRef.current = false;
+    setUsbStreaming(false);
+    addDiagLog({ timestamp: new Date(), type: 'info', message: 'USB streaming parado' });
+    logger.info('[DMXPanel] USB streaming stopped');
+  }, [addDiagLog]);
+
+  const startUsbStream = useCallback(() => {
+    if (usbStreamIntervalRef.current !== null) return;
+    if (universesRef.current.length === 0) {
+      toast.error('Faça o Auto-Patch primeiro (Universo 1 é a fonte)');
+      return;
+    }
+    if (connectedUSBDMX.length === 0) {
+      toast.error('Nenhum dispositivo DMX USB conectado');
+      return;
+    }
+
+    const periodMs = Math.max(23, Math.round(1000 / usbStreamFps)); // floor 23ms ≈ 43.5Hz (DMX512 spec)
+    setUsbStreaming(true);
+    setUsbStreamStats({ frames: 0, lastLatencyMs: 0 });
+    addDiagLog({
+      timestamp: new Date(), type: 'info',
+      message: `USB streaming iniciado · Uni 1 → ${connectedUSBDMX.length} device(s) @ ${Math.round(1000 / periodMs)}Hz`,
+    });
+    logger.info('[DMXPanel] USB streaming started', { fps: usbStreamFps, periodMs, devices: connectedUSBDMX.length });
+
+    usbStreamIntervalRef.current = window.setInterval(async () => {
+      if (usbStreamInFlightRef.current) return; // throttle natural se USB engasgar
+      const uni1 = universesRef.current[0];
+      if (!uni1) return;
+      usbStreamInFlightRef.current = true;
+      const t0 = performance.now();
+      try {
+        const result = await sendDMXToAll(uni1.channels);
+        const latency = Math.round(performance.now() - t0);
+        setUsbStreamStats(s => ({ frames: s.frames + 1, lastLatencyMs: latency }));
+        // Log apenas 1x por segundo aprox. para não poluir
+        if ((Date.now() / 1000 | 0) % 5 === 0 && Math.random() < 0.05) {
+          logger.info('[DMXPanel] USB stream tick', { frames: result.deviceCount, latency });
+        }
+      } catch (e: any) {
+        logger.warn('[DMXPanel] USB stream send failed — stopping', e);
+        addDiagLog({ timestamp: new Date(), type: 'error', message: `USB stream falhou: ${e.message || 'erro'}` });
+        toast.error('Falha no streaming USB — parado');
+        stopUsbStream();
+      } finally {
+        usbStreamInFlightRef.current = false;
+      }
+    }, periodMs);
+  }, [usbStreamFps, connectedUSBDMX.length, sendDMXToAll, addDiagLog, stopUsbStream]);
 
   const sendFireOneDMX = async () => {
     if (universes.length === 0 || !hardware.isConnected) {
@@ -559,15 +638,71 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                   ))}
                 </div>
 
-                {/* Send via USB */}
+                {/* Send via USB (single shot) */}
                 <Button
                   size="sm" className="h-6 text-[10px] w-full gap-1"
                   onClick={sendUSBDirect}
-                  disabled={universes.length === 0 || sending}
+                  disabled={universes.length === 0 || sending || usbStreaming}
                 >
                   <Usb className="h-3 w-3" />
                   {sending ? 'Enviando...' : `Send USB (${connectedUSBDMX.length} device${connectedUSBDMX.length > 1 ? 's' : ''})`}
                 </Button>
+
+                {/* Continuous streaming (Universe 1) */}
+                <div className="border-t border-border/50 pt-2 mt-1 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Activity className={`h-3 w-3 ${usbStreaming ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
+                    <span className="text-[9px] text-muted-foreground font-semibold uppercase flex-1">
+                      Streaming Contínuo (Uni 1)
+                    </span>
+                    <span className="text-[8px] text-muted-foreground font-mono-code">{usbStreamFps}Hz</span>
+                  </div>
+
+                  <Slider
+                    value={[usbStreamFps]}
+                    min={10}
+                    max={44}
+                    step={1}
+                    onValueChange={([v]) => setUsbStreamFps(v)}
+                    disabled={usbStreaming}
+                    className="py-1"
+                  />
+
+                  <Button
+                    size="sm"
+                    variant={usbStreaming ? 'destructive' : 'default'}
+                    className="h-7 text-[10px] w-full gap-1"
+                    onClick={usbStreaming ? stopUsbStream : startUsbStream}
+                    disabled={universes.length === 0}
+                  >
+                    {usbStreaming ? (
+                      <>
+                        <Square className="h-3 w-3 fill-current" />
+                        Parar Streaming
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-3 w-3 fill-current" />
+                        Iniciar Streaming Uni 1 → USB
+                      </>
+                    )}
+                  </Button>
+
+                  {usbStreaming && (
+                    <div className="flex items-center justify-between text-[8px] text-muted-foreground bg-surface-2 rounded-sm px-1.5 py-1 font-mono-code">
+                      <span>● <span className="text-primary">LIVE</span></span>
+                      <span>{usbStreamStats.frames} frames</span>
+                      <span>{usbStreamStats.lastLatencyMs}ms</span>
+                    </div>
+                  )}
+
+                  {!usbStreaming && (
+                    <p className="text-[8px] text-muted-foreground/70">
+                      Envia o universo 1 ({universes[0]?.channels.length ?? 0} canais) repetidamente para todos os dispositivos USB conectados.
+                    </p>
+                  )}
+                </div>
+
               </>
             )}
           </div>
