@@ -98,6 +98,18 @@ class ExportCoordinator {
           this._log(result);
           return result;
         }
+        case 'megafire': {
+          const r = generateMegafireScript();
+          if (!r.verified || r.errors.length > 0) {
+            const result: ExportAttemptResult = { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
+            this._log(result);
+            return result;
+          }
+          downloadMegafireScript();
+          const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
+          this._log(result);
+          return result;
+        }
       }
     } catch (err) {
       const result: ExportAttemptResult = {
