@@ -638,15 +638,71 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                   ))}
                 </div>
 
-                {/* Send via USB */}
+                {/* Send via USB (single shot) */}
                 <Button
                   size="sm" className="h-6 text-[10px] w-full gap-1"
                   onClick={sendUSBDirect}
-                  disabled={universes.length === 0 || sending}
+                  disabled={universes.length === 0 || sending || usbStreaming}
                 >
                   <Usb className="h-3 w-3" />
                   {sending ? 'Enviando...' : `Send USB (${connectedUSBDMX.length} device${connectedUSBDMX.length > 1 ? 's' : ''})`}
                 </Button>
+
+                {/* Continuous streaming (Universe 1) */}
+                <div className="border-t border-border/50 pt-2 mt-1 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Activity className={`h-3 w-3 ${usbStreaming ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
+                    <span className="text-[9px] text-muted-foreground font-semibold uppercase flex-1">
+                      Streaming Contínuo (Uni 1)
+                    </span>
+                    <span className="text-[8px] text-muted-foreground font-mono-code">{usbStreamFps}Hz</span>
+                  </div>
+
+                  <Slider
+                    value={[usbStreamFps]}
+                    min={10}
+                    max={44}
+                    step={1}
+                    onValueChange={([v]) => setUsbStreamFps(v)}
+                    disabled={usbStreaming}
+                    className="py-1"
+                  />
+
+                  <Button
+                    size="sm"
+                    variant={usbStreaming ? 'destructive' : 'default'}
+                    className="h-7 text-[10px] w-full gap-1"
+                    onClick={usbStreaming ? stopUsbStream : startUsbStream}
+                    disabled={universes.length === 0}
+                  >
+                    {usbStreaming ? (
+                      <>
+                        <Square className="h-3 w-3 fill-current" />
+                        Parar Streaming
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-3 w-3 fill-current" />
+                        Iniciar Streaming Uni 1 → USB
+                      </>
+                    )}
+                  </Button>
+
+                  {usbStreaming && (
+                    <div className="flex items-center justify-between text-[8px] text-muted-foreground bg-surface-2 rounded-sm px-1.5 py-1 font-mono-code">
+                      <span>● <span className="text-primary">LIVE</span></span>
+                      <span>{usbStreamStats.frames} frames</span>
+                      <span>{usbStreamStats.lastLatencyMs}ms</span>
+                    </div>
+                  )}
+
+                  {!usbStreaming && (
+                    <p className="text-[8px] text-muted-foreground/70">
+                      Envia o universo 1 ({universes[0]?.channels.length ?? 0} canais) repetidamente para todos os dispositivos USB conectados.
+                    </p>
+                  )}
+                </div>
+
               </>
             )}
           </div>
