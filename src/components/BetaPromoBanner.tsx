@@ -8,6 +8,18 @@ import BetaFeedbackDialog from './BetaFeedbackDialog';
 type DialogCategory = 'bug' | 'suggestion' | 'integration' | 'other';
 
 const STORAGE_KEY = 'beta_promo_banner_dismissed_v1';
+const PRESIGNUP_KEY = 'beta_presignup_email_v1';
+
+// Promotional pricing details — surfaced in the confirmation message.
+const PROMO = {
+  monthly: 'R$ 149/mês',
+  yearly: 'R$ 1.490/ano',
+  retail: 'R$ 349/mês',
+  savings: '57% OFF',
+  perks: ['Lock-in vitalício do preço', 'Acesso prioritário a novos módulos', 'Suporte direto com a engenharia'],
+} as const;
+
+const emailSchema = z.string().trim().toLowerCase().email('Email inválido').max(255);
 
 // Default end date for the Beta promotion. Override via prop or VITE_BETA_PROMO_ENDS_AT (ISO string).
 const DEFAULT_ENDS_AT =
