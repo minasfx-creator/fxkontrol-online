@@ -38,6 +38,8 @@ export interface DiscoveredDevice {
   family?: string;
   /** Last time the device was confirmed present */
   lastSeen: number;
+  /** Optional last-known error from this transport for this device. */
+  lastError?: { message: string; at: number; code?: string };
   /** Free-form metadata for transport-specific fields */
   metadata?: Record<string, unknown>;
 }
