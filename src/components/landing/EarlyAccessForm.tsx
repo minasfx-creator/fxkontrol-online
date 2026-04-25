@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { z } from "zod";
-import { Loader2, CheckCircle2, Mail, Sparkles } from "lucide-react";
+import { Loader2, CheckCircle2, Mail, Sparkles, AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -14,6 +15,14 @@ import { toast } from "sonner";
  *
  * Persiste em `public.early_access_signups` via Supabase (RLS: insert anon+auth).
  * Mostra confirmação inline após sucesso. Sem PII em logs.
+ *
+ * Estados granulares:
+ *   - `submitting`: bloqueia inputs via <fieldset disabled> (preserva valores) +
+ *     skeleton shimmer nos labels + barra indeterminada no botão.
+ *   - `lastError`: exibe banner com CTA "Tentar novamente" (retry preserva os
+ *     valores já digitados — usamos uncontrolled inputs).
+ *   - `errors`: erros de validação por campo (Zod), com `aria-invalid` e
+ *     mensagem associada via `aria-describedby`.
  */
 
 const SignupSchema = z.object({
@@ -25,10 +34,41 @@ const SignupSchema = z.object({
 
 type FieldErrors = Partial<Record<"email" | "name" | "company" | "use_case", string>>;
 
+/** Label com skeleton shimmer enquanto `loading=true`. */
+function FieldLabel({
+  htmlFor,
+  loading,
+  required,
+  children,
+}: {
+  htmlFor: string;
+  loading: boolean;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Label htmlFor={htmlFor} className="flex items-center gap-2">
+      <span className={cn(loading && "opacity-60")}>{children}</span>
+      {required && (
+        <span aria-hidden="true" className="text-destructive">*</span>
+      )}
+      {loading && (
+        <span
+          aria-hidden="true"
+          className="ml-auto h-1 w-10 overflow-hidden rounded-full bg-muted"
+        >
+          <span className="block h-full w-full animate-pulse bg-primary/60" />
+        </span>
+      )}
+    </Label>
+  );
+}
+
 export function EarlyAccessForm() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [lastError, setLastError] = useState<string | null>(null);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -51,9 +91,11 @@ export function EarlyAccessForm() {
         company: flat.company?.[0],
         use_case: flat.use_case?.[0],
       });
+      setLastError(null);
       return;
     }
     setErrors({});
+    setLastError(null);
     setSubmitting(true);
 
     try {
@@ -83,7 +125,11 @@ export function EarlyAccessForm() {
       setDone(true);
       toast.success("Cadastro recebido! Entraremos em contato em breve.");
     } catch (err) {
-      toast.error("Não foi possível enviar agora. Tente novamente em instantes.");
+      // Mantém os valores digitados (uncontrolled inputs) — usuário pode
+      // simplesmente clicar em "Tentar novamente".
+      const msg = "Não foi possível enviar agora. Verifique sua conexão e tente novamente.";
+      setLastError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -114,89 +160,166 @@ export function EarlyAccessForm() {
   }
 
   return (
-    <Card className="mx-auto max-w-xl border-border/60 bg-card/40 p-6 backdrop-blur sm:p-8">
+    <Card
+      className={cn(
+        "mx-auto max-w-xl border-border/60 bg-card/40 p-6 backdrop-blur transition-opacity sm:p-8",
+        submitting && "opacity-95",
+      )}
+      aria-busy={submitting}
+    >
       <form onSubmit={onSubmit} noValidate className="space-y-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="ea-email">
-            E-mail <span aria-hidden="true" className="text-destructive">*</span>
-          </Label>
-          <div className="relative">
-            <Mail aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              id="ea-email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              placeholder="voce@empresa.com"
-              aria-invalid={!!errors.email}
-              aria-describedby={errors.email ? "ea-email-error" : undefined}
-              className="pl-9"
-              disabled={submitting}
-            />
-          </div>
-          {errors.email && (
-            <p id="ea-email-error" role="alert" className="text-xs text-destructive">
-              {errors.email}
-            </p>
+        {/* fieldset disabled = bloqueia TODOS os controles aninhados sem
+            limpar valores (uncontrolled) — preserva entrada após falha. */}
+        <fieldset disabled={submitting} className="space-y-4 disabled:cursor-not-allowed">
+          {lastError && (
+            <div
+              role="alert"
+              className="flex items-start gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive"
+            >
+              <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium">Falha ao enviar</p>
+                <p className="mt-0.5 opacity-90">{lastError}</p>
+              </div>
+            </div>
           )}
-        </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="ea-name">Nome</Label>
-            <Input
-              id="ea-name"
-              name="name"
-              type="text"
-              autoComplete="name"
-              placeholder="Seu nome"
-              maxLength={120}
-              aria-invalid={!!errors.name}
-              disabled={submitting}
-            />
-            {errors.name && <p role="alert" className="text-xs text-destructive">{errors.name}</p>}
+            <FieldLabel htmlFor="ea-email" loading={submitting} required>
+              E-mail
+            </FieldLabel>
+            <div className="relative">
+              <Mail
+                aria-hidden="true"
+                className={cn(
+                  "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground",
+                  submitting && "opacity-50",
+                )}
+              />
+              <Input
+                id="ea-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                placeholder="voce@empresa.com"
+                aria-invalid={!!errors.email}
+                aria-describedby={errors.email ? "ea-email-error" : undefined}
+                className={cn(
+                  "pl-9",
+                  submitting && "animate-pulse",
+                  errors.email && "border-destructive focus-visible:ring-destructive",
+                )}
+              />
+            </div>
+            {errors.email && (
+              <p id="ea-email-error" role="alert" className="text-xs text-destructive">
+                {errors.email}
+              </p>
+            )}
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="ea-company">Empresa</Label>
-            <Input
-              id="ea-company"
-              name="company"
-              type="text"
-              autoComplete="organization"
-              placeholder="Sua empresa"
-              maxLength={160}
-              aria-invalid={!!errors.company}
-              disabled={submitting}
-            />
-            {errors.company && <p role="alert" className="text-xs text-destructive">{errors.company}</p>}
-          </div>
-        </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="ea-use-case">Como pretende usar o FX KONTROL?</Label>
-          <Textarea
-            id="ea-use-case"
-            name="use_case"
-            placeholder="Pirotecnia, drones, lasers, SFX… conte um pouco do show."
-            maxLength={1000}
-            rows={3}
-            aria-invalid={!!errors.use_case}
-            disabled={submitting}
-          />
-          {errors.use_case && <p role="alert" className="text-xs text-destructive">{errors.use_case}</p>}
-        </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <FieldLabel htmlFor="ea-name" loading={submitting}>
+                Nome
+              </FieldLabel>
+              <Input
+                id="ea-name"
+                name="name"
+                type="text"
+                autoComplete="name"
+                placeholder="Seu nome"
+                maxLength={120}
+                aria-invalid={!!errors.name}
+                aria-describedby={errors.name ? "ea-name-error" : undefined}
+                className={cn(
+                  submitting && "animate-pulse",
+                  errors.name && "border-destructive focus-visible:ring-destructive",
+                )}
+              />
+              {errors.name && (
+                <p id="ea-name-error" role="alert" className="text-xs text-destructive">
+                  {errors.name}
+                </p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <FieldLabel htmlFor="ea-company" loading={submitting}>
+                Empresa
+              </FieldLabel>
+              <Input
+                id="ea-company"
+                name="company"
+                type="text"
+                autoComplete="organization"
+                placeholder="Sua empresa"
+                maxLength={160}
+                aria-invalid={!!errors.company}
+                aria-describedby={errors.company ? "ea-company-error" : undefined}
+                className={cn(
+                  submitting && "animate-pulse",
+                  errors.company && "border-destructive focus-visible:ring-destructive",
+                )}
+              />
+              {errors.company && (
+                <p id="ea-company-error" role="alert" className="text-xs text-destructive">
+                  {errors.company}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <FieldLabel htmlFor="ea-use-case" loading={submitting}>
+              Como pretende usar o FX KONTROL?
+            </FieldLabel>
+            <Textarea
+              id="ea-use-case"
+              name="use_case"
+              placeholder="Pirotecnia, drones, lasers, SFX… conte um pouco do show."
+              maxLength={1000}
+              rows={3}
+              aria-invalid={!!errors.use_case}
+              aria-describedby={errors.use_case ? "ea-use-case-error" : undefined}
+              className={cn(
+                submitting && "animate-pulse",
+                errors.use_case && "border-destructive focus-visible:ring-destructive",
+              )}
+            />
+            {errors.use_case && (
+              <p id="ea-use-case-error" role="alert" className="text-xs text-destructive">
+                {errors.use_case}
+              </p>
+            )}
+          </div>
+        </fieldset>
 
         <Button
           type="submit"
           size="lg"
           disabled={submitting}
-          className="h-12 w-full rounded-full text-sm font-bold shadow-[0_10px_40px_hsl(var(--primary)/0.35)]"
+          aria-live="polite"
+          className="relative h-12 w-full overflow-hidden rounded-full text-sm font-bold shadow-[0_10px_40px_hsl(var(--primary)/0.35)]"
         >
+          {/* Barra indeterminada de progresso (somente durante envio) */}
+          {submitting && (
+            <span
+              aria-hidden="true"
+              className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-primary-foreground/10"
+            >
+              <span className="block h-full w-1/3 animate-[shimmer_1.2s_ease-in-out_infinite] bg-primary-foreground/70" />
+            </span>
+          )}
           {submitting ? (
             <>
               <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
               Enviando…
+            </>
+          ) : lastError ? (
+            <>
+              <RotateCcw aria-hidden="true" className="mr-2 h-4 w-4" />
+              Tentar novamente
             </>
           ) : (
             <>
