@@ -44,6 +44,7 @@ const ViewportTransitionOverlay = lz(() => import('@/components/editor/ViewportT
 
 const SmartScriptAssistant = lz(() => import('@/components/editor/SmartScriptAssistant'));
 const ShortcutsOverlay = lz(() => import('@/components/editor/PopupEditors').then(m => ({ default: m.ShortcutsOverlay })));
+const StudioPromptModal = lz(() => import('@/components/studio/StudioPromptModal'));
 
 // ── Mobile shell ──
 const MobileTabBar = lz(() => import('@/components/editor/MobileTabBar'));
@@ -294,6 +295,7 @@ function Index() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
   const [smartScriptOpen, setSmartScriptOpen] = useState(false);
+  const [studioPromptOpen, setStudioPromptOpen] = useState(false);
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
   const [isDragOver, setIsDragOver] = useState(false);
   const [remoteMode, setRemoteMode] = useState<'cloud' | 'wifi-auto'>('cloud');
@@ -345,6 +347,15 @@ function Index() {
   useEffect(() => {
     const panelParam = searchParams.get('panel');
     const modeParam = searchParams.get('mode');
+    const promptParam = searchParams.get('prompt');
+    if (promptParam === '1' || promptParam === 'true') {
+      setStudioPromptOpen(true);
+      // Clear the param so refresh doesn't re-trigger after dismissing
+      const next = new URLSearchParams(searchParams);
+      next.delete('prompt');
+      setSearchParams(next, { replace: true });
+      setAppPhase('editor');
+    }
     if (panelParam) {
       // SwarmGPT lives at /swarmgpt now — redirect any legacy deep links.
       if (panelParam === 'swarmgpt') {
@@ -761,6 +772,9 @@ function Index() {
       <RadialMenu />
       <LiveCard />
       <SmartScriptAssistant open={smartScriptOpen} onClose={() => setSmartScriptOpen(false)} />
+      <Suspense fallback={null}>
+        <StudioPromptModal open={studioPromptOpen} onOpenChange={setStudioPromptOpen} />
+      </Suspense>
 
     </div>
   );
