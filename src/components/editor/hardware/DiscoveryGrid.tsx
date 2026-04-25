@@ -35,8 +35,27 @@ const TONE_TEXT: Record<string, string> = {
 
 export function DiscoveryGrid() {
   const [devices, setDevices] = useState<DiscoveredDevice[]>(unifiedDiscovery.getDevices());
+  const [selected, setSelected] = useState<DiscoveredDevice | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const support = unifiedDiscovery.supportMatrix();
   const enabled = useTransportFilters(s => s.enabled);
+
+  useEffect(() => {
+    setDevices(unifiedDiscovery.getDevices());
+    return unifiedDiscovery.watch(() => setDevices(unifiedDiscovery.getDevices()));
+  }, []);
+
+  // Keep the selected snapshot in sync with new discovery events.
+  useEffect(() => {
+    if (!selected) return;
+    const fresh = devices.find(d => d.id === selected.id);
+    if (fresh && fresh !== selected) setSelected(fresh);
+  }, [devices, selected]);
+
+  const openDrawer = (d: DiscoveredDevice) => {
+    setSelected(d);
+    setDrawerOpen(true);
+  };
 
   useEffect(() => {
     setDevices(unifiedDiscovery.getDevices());
