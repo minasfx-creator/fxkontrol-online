@@ -38,6 +38,7 @@ const Refund = lazy(lazyRetry(() => import("./pages/legal/Refund")));
 const Privacy = lazy(lazyRetry(() => import("./pages/legal/Privacy")));
 const CheckoutSuccess = lazy(lazyRetry(() => import("./pages/CheckoutSuccess")));
 const Pricing = lazy(lazyRetry(() => import("./pages/Pricing")));
+const Landing = lazy(lazyRetry(() => import("./pages/Landing")));
 
 const queryClient = new QueryClient();
 
@@ -105,6 +106,8 @@ function App() {
                     <Route path="/legal/privacy" element={<Privacy />} />
                     {/* Public pricing — must be reachable without login (marketing + Paddle compliance). */}
                     <Route path="/pricing" element={<Pricing />} />
+                    {/* Public marketing landing — Apple-style HTML served via iframe; CTAs navigate parent SPA. */}
+                    <Route path="/landing" element={<Landing />} />
                     {/* Checkout success — auth-gated but standalone (no MainLayout chrome) so the
                         confirmation screen is the only thing visible while the webhook lands. */}
                     <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
