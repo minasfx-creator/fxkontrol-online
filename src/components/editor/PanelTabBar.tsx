@@ -167,6 +167,20 @@ const RAW_PANEL_SECTIONS: { title: string; icon: typeof Route; items: { id: Pane
   },
 ];
 
+/**
+ * Filtered sections — items gated by feature flags are excluded when their
+ * flag is OFF. Empty sections (all items hidden) are also dropped.
+ */
+export const PANEL_SECTIONS = RAW_PANEL_SECTIONS
+  .map(section => ({
+    ...section,
+    items: section.items.filter(item => {
+      const flag = PANEL_FLAGS[item.id];
+      return !flag || isEnabled(flag);
+    }),
+  }))
+  .filter(section => section.items.length > 0);
+
 interface PanelTabBarProps {
   activePanel: PanelId | null;
   onTogglePanel: (id: PanelId) => void;
