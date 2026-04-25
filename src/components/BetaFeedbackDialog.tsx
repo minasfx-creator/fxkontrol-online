@@ -402,16 +402,16 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting || message.trim().length < 10}>
-            {submitting ? (
+          <Button onClick={handleSubmit} disabled={submitting || uploading || message.trim().length < 10}>
+            {submitting || uploading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Enviando…
+                {uploading ? 'Enviando anexos…' : 'Enviando…'}
               </>
             ) : (
               <>
                 <Send className="h-4 w-4" />
-                Enviar Feedback
+                Enviar Feedback{files.length > 0 ? ` (+${files.length})` : ''}
               </>
             )}
           </Button>
