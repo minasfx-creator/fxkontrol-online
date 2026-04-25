@@ -52,10 +52,21 @@ export function useViewportDrop(setIsDragOver: (v: boolean) => void) {
     if (e.dataTransfer.files?.length > 0) {
       const file = e.dataTransfer.files[0];
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
+
+      // Audio shortcut — drop an MP3/WAV anywhere on the editor and it
+      // becomes the project's synced audio track immediately.
+      if (isAudioFile(file)) {
+        e.preventDefault();
+        supabase.auth.getSession().then(({ data }) => {
+          uploadAudioForProject(file, data.session?.user?.id ?? null);
+        });
+        return;
+      }
+
       if (SUPPORTED_DROP_EXTENSIONS.includes(ext)) {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent('viewport-file-drop', { detail: { file, type: getDropType(ext) } }));
-        toast.info(`📂 ${file.name} dropped — opening importer...`);
+        toast.info(`${file.name} dropped — opening importer...`);
         return;
       }
     }
