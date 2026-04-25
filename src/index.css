@@ -495,59 +495,81 @@
 
 /* ===== Apple × Tactical Glass System ===== */
 .glass-hud {
-  background: rgba(8, 10, 16, 0.88);
+  background: hsl(var(--material-regular-bg));
   backdrop-filter: blur(32px) saturate(1.5);
   -webkit-backdrop-filter: blur(32px) saturate(1.5);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
+  border: 1px solid hsl(var(--material-stroke));
+  box-shadow: 0 2px 16px hsl(var(--material-shadow));
 }
 .glass-dock {
-  background: rgba(8, 10, 16, 0.82);
+  background: hsl(var(--material-thick-bg));
   backdrop-filter: blur(48px) saturate(1.8);
   -webkit-backdrop-filter: blur(48px) saturate(1.8);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid hsl(var(--material-stroke));
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.8),
-    0 2px 8px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    0 8px 32px hsl(var(--material-shadow)),
+    0 2px 8px hsl(0 0% 0% / 0.35),
+    inset 0 1px 0 hsl(var(--material-highlight)),
+    inset 0 -1px 0 hsl(0 0% 0% / 0.25);
 }
 
-/* ── 3D Perspective Dock — MBP Inspired ── */
+/* ── Apple Material — 3-tier hierarchy (use estes em componentes novos) ── */
+.material-thin {
+  background: hsl(var(--material-thin-bg));
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid hsl(var(--material-stroke));
+}
+.material-regular {
+  background: hsl(var(--material-regular-bg));
+  backdrop-filter: blur(40px) saturate(1.6);
+  -webkit-backdrop-filter: blur(40px) saturate(1.6);
+  border: 1px solid hsl(var(--material-stroke));
+  box-shadow:
+    0 4px 24px hsl(var(--material-shadow)),
+    inset 0 1px 0 hsl(var(--material-highlight));
+}
+.material-thick {
+  background: hsl(var(--material-thick-bg));
+  backdrop-filter: blur(56px) saturate(1.8);
+  -webkit-backdrop-filter: blur(56px) saturate(1.8);
+  border: 1px solid hsl(var(--material-stroke-strong));
+  box-shadow:
+    0 12px 48px hsl(var(--material-shadow)),
+    0 2px 8px hsl(0 0% 0% / 0.4),
+    inset 0 1px 0 hsl(var(--material-highlight));
+}
+
+/* ── 3D Perspective Dock — MBP Inspired (acromático) ── */
 .dock-3d-glass {
   background: linear-gradient(
     180deg,
-    rgba(18, 22, 32, 0.75) 0%,
-    rgba(8, 10, 16, 0.92) 100%
+    hsl(220 18% 9% / 0.72) 0%,
+    hsl(220 22% 4% / 0.92) 100%
   );
   backdrop-filter: blur(60px) saturate(2);
   -webkit-backdrop-filter: blur(60px) saturate(2);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid hsl(var(--material-stroke));
   box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.85),
-    0 4px 12px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
-    0 0 0 0.5px rgba(255, 165, 0, 0.04);
+    0 12px 40px hsl(0 0% 0% / 0.85),
+    0 4px 12px hsl(0 0% 0% / 0.6),
+    inset 0 1px 0 hsl(var(--material-highlight)),
+    inset 0 -1px 0 hsl(0 0% 0% / 0.4);
   position: relative;
 }
 .dock-reflection {
   background: linear-gradient(
     180deg,
-    rgba(255, 165, 0, 0.03) 0%,
-    transparent 40%,
+    hsl(0 0% 100% / 0.025) 0%,
+    transparent 45%,
     transparent 60%,
-    rgba(255, 165, 0, 0.015) 100%
+    hsl(0 0% 100% / 0.012) 100%
   );
 }
 .dock-scanline {
-  background: repeating-linear-gradient(
-    0deg,
-    transparent 0px,
-    transparent 2px,
-    rgba(255, 165, 0, 0.008) 2px,
-    rgba(255, 165, 0, 0.008) 4px
-  );
+  /* Scanline removida — minimalismo Apple privilegia superfície limpa.
+     Mantido como no-op para preservar o markup. */
+  background: none;
 }
 .dock-item-active {
   background: rgba(255, 255, 255, 0.06);
