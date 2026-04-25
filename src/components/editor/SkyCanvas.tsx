@@ -129,6 +129,7 @@ import {
   getActiveBurstCount as _getActiveBurstCount,
   runActiveBurstScan,
   getActiveBurstScan,
+  getActiveBurstCount,
   hexToCompound,
   getEffectById,
   getWindForce,
