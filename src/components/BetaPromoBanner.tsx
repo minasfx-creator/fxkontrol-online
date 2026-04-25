@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Sparkles, X, Megaphone, MessageSquarePlus } from 'lucide-react';
+import { Sparkles, X, Megaphone, MessageSquarePlus, Plug } from 'lucide-react';
 import BetaFeedbackDialog from './BetaFeedbackDialog';
+
+type DialogCategory = 'bug' | 'suggestion' | 'integration' | 'other';
 
 const STORAGE_KEY = 'beta_promo_banner_dismissed_v1';
 
