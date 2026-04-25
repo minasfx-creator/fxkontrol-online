@@ -123,6 +123,110 @@ export function landingCanonical(cfg: LandingSiteConfig = LANDING_SITE): string 
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Redirects seguros — anti-duplicidade de URL para SEO
+// ─────────────────────────────────────────────────────────────────────
+
+export type RedirectAction =
+  | { kind: "noop"; reason: string }
+  | { kind: "spa-replace"; to: string; reason: string }
+  | { kind: "hard-redirect"; to: string; reason: string };
+
+/**
+ * Decide se a URL atual deve ser redirecionada para a canônica.
+ * Pure function — testável sem DOM. Use `enforceLandingCanonicalRedirect()`
+ * para aplicar o efeito colateral no browser.
+ *
+ * Regras (ordem):
+ *  1. Host em `previewHosts` → noop.
+ *  2. Host em `aliasHosts` ou ≠ canônico → hard-redirect (cross-origin).
+ *  3. Path ≠ canônico (trailing-slash etc) → spa-replace.
+ *  4. Query com parâmetros não-preservados (utm_*, fbclid…) → spa-replace limpo.
+ *  5. Caso contrário → noop.
+ */
+export function decideLandingRedirect(
+  currentHref: string,
+  cfg: LandingSiteConfig = LANDING_SITE,
+): RedirectAction {
+  let url: URL;
+  try {
+    url = new URL(currentHref);
+  } catch {
+    return { kind: "noop", reason: "url-invalid" };
+  }
+
+  const canonicalUrl = new URL(landingCanonical(cfg));
+  const previewHosts = cfg.previewHosts ?? [];
+  const aliasHosts = cfg.aliasHosts ?? [];
+  const preserved = new Set(cfg.preservedQueryParams ?? ["target"]);
+
+  if (previewHosts.some((h) => url.host.includes(h) || url.hostname.includes(h))) {
+    return { kind: "noop", reason: "preview-host" };
+  }
+
+  const isAlias = aliasHosts.includes(url.host);
+  const hostMismatch = url.host !== canonicalUrl.host;
+  if (isAlias || hostMismatch) {
+    const target = new URL(canonicalUrl.toString());
+    url.searchParams.forEach((v, k) => {
+      if (preserved.has(k)) target.searchParams.set(k, v);
+    });
+    target.hash = url.hash;
+    if (target.toString() === url.toString()) {
+      return { kind: "noop", reason: "already-canonical" };
+    }
+    return {
+      kind: "hard-redirect",
+      to: target.toString(),
+      reason: isAlias ? "alias-host" : "host-mismatch",
+    };
+  }
+
+  const pathMismatch = url.pathname !== canonicalUrl.pathname;
+  const dirtyParams: string[] = [];
+  url.searchParams.forEach((_v, k) => {
+    if (!preserved.has(k)) dirtyParams.push(k);
+  });
+
+  if (!pathMismatch && dirtyParams.length === 0) {
+    return { kind: "noop", reason: "canonical" };
+  }
+
+  const cleaned = new URL(url.toString());
+  cleaned.pathname = canonicalUrl.pathname;
+  for (const k of dirtyParams) cleaned.searchParams.delete(k);
+  return {
+    kind: "spa-replace",
+    to: cleaned.pathname + cleaned.search + cleaned.hash,
+    reason: pathMismatch ? "path-normalized" : "query-cleaned",
+  };
+}
+
+/**
+ * Aplica o redirect canônico no browser. Safe-by-default:
+ *  - SSR (sem window) → noop
+ *  - Iframe / preview Lovable → noop
+ *  - spa-replace → history.replaceState (sem reload)
+ *  - hard-redirect → location.replace (sem back-loop)
+ */
+export function enforceLandingCanonicalRedirect(
+  cfg: LandingSiteConfig = LANDING_SITE,
+): RedirectAction {
+  if (typeof window === "undefined") return { kind: "noop", reason: "ssr" };
+  try {
+    if (window.self !== window.top) return { kind: "noop", reason: "iframe" };
+  } catch {
+    return { kind: "noop", reason: "iframe-cross-origin" };
+  }
+  const action = decideLandingRedirect(window.location.href, cfg);
+  if (action.kind === "spa-replace") {
+    window.history.replaceState(window.history.state, "", action.to);
+  } else if (action.kind === "hard-redirect") {
+    window.location.replace(action.to);
+  }
+  return action;
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Geradores de meta tags (consumidos por src/pages/Landing.tsx)
 // ─────────────────────────────────────────────────────────────────────
 
