@@ -23,6 +23,7 @@ type Severity = 'low' | 'medium' | 'high' | 'critical';
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialCategory?: Category;
 }
 
 const APP_VERSION =
@@ -70,16 +71,25 @@ interface AttachmentMeta {
   type: string;
 }
 
-export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
+export default function BetaFeedbackDialog({ open, onOpenChange, initialCategory }: Props) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [category, setCategory] = useState<Category>('bug');
+  const [category, setCategory] = useState<Category>(initialCategory ?? 'bug');
   const [severity, setSeverity] = useState<Severity>('medium');
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  // Equipment integration extra fields
+  const [equipBrand, setEquipBrand] = useState('');
+  const [equipModel, setEquipModel] = useState('');
+  const [equipProtocol, setEquipProtocol] = useState('');
+
+  // Sync category when dialog reopens with a different initialCategory
+  useEffect(() => {
+    if (open && initialCategory) setCategory(initialCategory);
+  }, [open, initialCategory]);
 
   // Prefill email from auth user
   useEffect(() => {
@@ -188,6 +198,15 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
           memory_gb: techContext?.memory_gb,
           cores: techContext?.cores,
           mobile: techContext?.mobile,
+          ...(parsed.data.category === 'integration'
+            ? {
+                equipment: {
+                  brand: equipBrand.trim() || null,
+                  model: equipModel.trim() || null,
+                  protocol: equipProtocol.trim() || null,
+                },
+              }
+            : {}),
         },
       });
 
@@ -203,6 +222,9 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
       setSeverity('medium');
       setCategory('bug');
       setFiles([]);
+      setEquipBrand('');
+      setEquipModel('');
+      setEquipProtocol('');
       onOpenChange(false);
     } catch (err: any) {
       console.error('[BetaFeedback] submit failed', err);
@@ -291,6 +313,44 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
               })}
             </div>
           </div>
+
+          {/* Equipment integration fields */}
+          {category === 'integration' && (
+            <div
+              className="rounded-md border p-3 space-y-2"
+              style={{
+                borderColor: 'hsl(32 100% 50% / 0.35)',
+                background: 'hsl(32 100% 50% / 0.06)',
+              }}
+            >
+              <div className="text-[10px] font-mono font-bold uppercase tracking-widest" style={{ color: 'hsl(32 100% 70%)' }}>
+                Equipamento / Sistema
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  value={equipBrand}
+                  onChange={(e) => setEquipBrand(e.target.value)}
+                  placeholder="Marca (ex: Showven)"
+                  maxLength={80}
+                />
+                <Input
+                  value={equipModel}
+                  onChange={(e) => setEquipModel(e.target.value)}
+                  placeholder="Modelo (ex: cFlamer mVolcano)"
+                  maxLength={80}
+                />
+              </div>
+              <Input
+                value={equipProtocol}
+                onChange={(e) => setEquipProtocol(e.target.value)}
+                placeholder="Protocolo / Conexão (ex: DMX, Art-Net, PBUS, BLE, Wi-Fi)"
+                maxLength={120}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Inclua manuais, links ou specs técnicas na mensagem ou anexos para acelerar a integração.
+              </p>
+            </div>
+          )}
 
           {/* Message */}
           <div>

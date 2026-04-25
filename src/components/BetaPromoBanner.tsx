@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Sparkles, X, Megaphone, MessageSquarePlus } from 'lucide-react';
+import { Sparkles, X, Megaphone, MessageSquarePlus, Plug } from 'lucide-react';
 import BetaFeedbackDialog from './BetaFeedbackDialog';
+
+type DialogCategory = 'bug' | 'suggestion' | 'integration' | 'other';
 
 const STORAGE_KEY = 'beta_promo_banner_dismissed_v1';
 
@@ -10,8 +12,14 @@ export default function BetaPromoBanner() {
     return localStorage.getItem(STORAGE_KEY) === '1';
   });
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [dialogCategory, setDialogCategory] = useState<DialogCategory>('bug');
 
   if (dismissed) return null;
+
+  const openFeedback = (cat: DialogCategory) => {
+    setDialogCategory(cat);
+    setFeedbackOpen(true);
+  };
 
   const handleDismiss = () => {
     localStorage.setItem(STORAGE_KEY, '1');
@@ -75,8 +83,38 @@ export default function BetaPromoBanner() {
           </div>
         </div>
 
+        {/* Integrate Equipment link (desktop) */}
         <button
-          onClick={() => setFeedbackOpen(true)}
+          onClick={() => openFeedback('integration')}
+          className="shrink-0 hidden md:flex items-center gap-1.5 h-7 px-2.5 rounded text-[10px] md:text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95"
+          style={{
+            background: 'hsl(32 100% 50% / 0.15)',
+            color: 'hsl(32 100% 70%)',
+            border: '1px dashed hsl(32 100% 50% / 0.5)',
+          }}
+          title="Solicitar integração de novo equipamento (marca, modelo, protocolo)"
+        >
+          <Plug className="h-3.5 w-3.5" />
+          <span>Integrar Equipamento</span>
+        </button>
+
+        {/* Integrate Equipment icon (mobile/tablet) */}
+        <button
+          onClick={() => openFeedback('integration')}
+          aria-label="Solicitar integração de novo equipamento"
+          className="shrink-0 md:hidden flex items-center justify-center h-7 w-7 rounded transition-all active:scale-90"
+          style={{
+            background: 'hsl(32 100% 50% / 0.15)',
+            color: 'hsl(32 100% 70%)',
+            border: '1px dashed hsl(32 100% 50% / 0.4)',
+          }}
+          title="Integrar equipamento"
+        >
+          <Plug className="h-3.5 w-3.5" />
+        </button>
+
+        <button
+          onClick={() => openFeedback('bug')}
           className="shrink-0 hidden sm:flex items-center gap-1.5 h-7 px-2.5 rounded text-[10px] md:text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95"
           style={{
             background: 'hsl(32 100% 50% / 0.25)',
@@ -89,7 +127,7 @@ export default function BetaPromoBanner() {
         </button>
 
         <button
-          onClick={() => setFeedbackOpen(true)}
+          onClick={() => openFeedback('bug')}
           aria-label="Enviar feedback"
           className="shrink-0 sm:hidden flex items-center justify-center h-7 w-7 rounded transition-all active:scale-90"
           style={{
@@ -110,7 +148,7 @@ export default function BetaPromoBanner() {
         </button>
       </div>
     </div>
-    <BetaFeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
+    <BetaFeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} initialCategory={dialogCategory} />
     </>
   );
 }
