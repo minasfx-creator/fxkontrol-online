@@ -21,6 +21,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { DiscoveryGrid } from './hardware/DiscoveryGrid';
+import { buildDiscoveryReports, notifyDiscoveryReports } from '@/core/discovery/discoveryToasts';
 
 const STATUS_COLORS: Record<string, string> = {
   connected: 'text-emerald-400',
@@ -59,6 +60,7 @@ export default function HardwareOverview() {
     unsub();
     setIsScanning(false);
     refresh();
+    notifyDiscoveryReports(buildDiscoveryReports(), 'light');
   }, [refresh]);
 
   const handleDeepScan = useCallback(async () => {
@@ -68,6 +70,7 @@ export default function HardwareOverview() {
     unsub();
     setIsScanning(false);
     refresh();
+    notifyDiscoveryReports(buildDiscoveryReports(), 'deep');
   }, [refresh]);
 
   const handleStartPoller = useCallback(() => {
