@@ -11,6 +11,7 @@ import {
   type ConnectedDevice,
   type USBLog,
   type ConnectionState,
+  type USBDeviceProfile,
   DEVICE_PROFILES,
   requestSerialPort,
   openSerialConnection,
@@ -21,7 +22,11 @@ import {
   buildENTTECProPacket,
   buildDMX512Frame,
   isWebSerialSupported,
+  listAuthorizedSerialPorts,
+  attachSerialHotPlug,
 } from '@/lib/usbEngine';
+import { GenericAdapterConfirm } from './usb/GenericAdapterConfirm';
+import { portRegistry, keyFor } from '@/core/discovery/portRegistry';
 
 
 const TYPE_COLORS: Record<string, string> = {
@@ -221,6 +226,94 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
     };
   }, []);
 
+  // ── Auto-reopen + hot-plug ─────────────────────────────────────────
+  // On mount: list ports the browser already authorized for this origin
+  // and silently reopen the ones we recognize. Then attach connect/
+  // disconnect listeners so replug is detected without user action.
+  useEffect(() => {
+    if (!isWebSerialSupported()) return;
+
+    const matchProfile = (port: any): USBDeviceProfile | undefined => {
+      const info = port.getInfo?.();
+      if (!info?.usbVendorId) return undefined;
+      return DEVICE_PROFILES.find(p =>
+        p.vendorId === info.usbVendorId
+        && (p.productId == null || p.productId === info.usbProductId),
+      );
+    };
+
+    const reopenPort = async (port: any, source: 'auto' | 'hotplug') => {
+      try {
+        const info = port.getInfo?.();
+        const profileMatch = matchProfile(port);
+        const persisted = info ? portRegistry.get(keyFor({
+          vendorId: info.usbVendorId,
+          productId: info.usbProductId,
+        })) : undefined;
+        const effectiveProfile: USBDeviceProfile = profileMatch
+          ?? DEVICE_PROFILES.find(p => p.label === persisted?.profileId)
+          ?? DEVICE_PROFILES[0];
+        const deviceId = generateDeviceId();
+        const { reader, writer } = await openSerialConnection(port, effectiveProfile);
+        const connectedDevice: ConnectedDevice = {
+          id: deviceId,
+          profile: effectiveProfile,
+          state: 'connected',
+          port,
+          reader,
+          writer,
+          bytesReceived: 0,
+          bytesSent: 0,
+        };
+        setDevices(prev => {
+          // Avoid duplicates if we've already opened this exact SerialPort.
+          if (prev.some(d => d.port === port && d.state === 'connected')) return prev;
+          return [...prev, connectedDevice];
+        });
+        startReadLoop(connectedDevice);
+        registerDevice(connectedDevice);
+        addLog({
+          deviceId,
+          direction: 'info',
+          message: source === 'hotplug'
+            ? `🔌 Reconectado automaticamente: ${effectiveProfile.label}`
+            : `↻ Porta autorizada reaberta: ${effectiveProfile.label}`,
+        });
+        if (source === 'hotplug') toast.success(`Reconectado: ${effectiveProfile.label}`);
+      } catch (e: any) {
+        // Silent on auto-reopen (port may already be open in another tab).
+        if (source === 'hotplug') {
+          addLog({ deviceId: 'hotplug', direction: 'error', message: e?.message ?? 'Falha hot-plug' });
+        }
+      }
+    };
+
+    // Auto-reopen all already-authorized ports.
+    listAuthorizedSerialPorts().then(ports => {
+      for (const port of ports) {
+        // Skip if already in our device list (same SerialPort instance).
+        setDevices(prev => {
+          if (prev.some(d => d.port === port)) return prev;
+          // Trigger reopen outside the setter to avoid double-render.
+          queueMicrotask(() => reopenPort(port, 'auto'));
+          return prev;
+        });
+      }
+    });
+
+    // Hot-plug listeners.
+    const detach = attachSerialHotPlug(
+      port => reopenPort(port, 'hotplug'),
+      port => {
+        setDevices(prev => prev.map(d => d.port === port
+          ? { ...d, state: 'disconnected' as ConnectionState }
+          : d));
+        addLog({ deviceId: 'hotplug', direction: 'info', message: '🔌 Porta desconectada fisicamente' });
+      },
+    );
+    return () => detach();
+  }, [registerDevice, startReadLoop, addLog]);
+
   const profile = DEVICE_PROFILES.find(p => p.label === selectedProfile);
 
   return (
@@ -393,15 +486,28 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
               const isExpanded = expandedDevice === device.id;
               const adapter = detectDMXAdapter(device.profile);
               const authorized = !!device.writer;
+              // Persisted operator confirmation for this VID/PID (generic adapters).
+              const portInfo = device.port?.getInfo?.();
+              const regKey = portInfo
+                ? keyFor({ vendorId: portInfo.usbVendorId, productId: portInfo.usbProductId })
+                : null;
+              const operatorConfirmedGeneric = regKey
+                ? portRegistry.isConfirmedGeneric(regKey)
+                : false;
               // Saída DMX USB só é habilitada se: (1) tipo dmx,
-              // (2) adapter reconhecido (família conhecida no label do profile
-              // que o usuário autorizou no navegador), (3) porta autorizada
-              // pelo navegador (writer existe) e (4) estado === 'connected'.
+              // (2) adapter reconhecido OU operador confirmou genérico,
+              // (3) porta autorizada (writer existe) e (4) estado === 'connected'.
               const dmxOutputReady =
                 device.profile.type === 'dmx' &&
-                adapter.recognized &&
                 authorized &&
-                device.state === 'connected';
+                device.state === 'connected' &&
+                (adapter.recognized || operatorConfirmedGeneric);
+              const needsConfirmation =
+                device.profile.type === 'dmx' &&
+                authorized &&
+                device.state === 'connected' &&
+                !adapter.recognized &&
+                !operatorConfirmedGeneric;
               const blockReason = !dmxOutputReady
                 ? device.profile.type !== 'dmx'
                   ? 'Tipo do profile não é DMX'
@@ -409,8 +515,8 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                     ? device.state === 'connecting'
                       ? 'Aguardando autorização do navegador...'
                       : 'Porta não autorizada (sem writer)'
-                    : !adapter.recognized
-                      ? 'Adapter não reconhecido (família genérica) — saída bloqueada'
+                    : !adapter.recognized && !operatorConfirmedGeneric
+                      ? 'Adapter genérico — confirmação do operador necessária'
                       : device.state === 'connected'
                         ? 'Pronto'
                         : `Estado: ${device.state}`
@@ -530,6 +636,14 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                             </Button>
                           </div>
 
+                          {/* Generic adapter Hold-to-Confirm gate */}
+                          {needsConfirmation && (
+                            <GenericAdapterConfirm
+                              deviceId={device.id}
+                              deviceLabel={device.profile.label}
+                            />
+                          )}
+
                           {device.profile.type === 'dmx' && (
                             <Button
                               size="sm"
@@ -537,12 +651,14 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                               className={`h-6 text-[9px] w-full gap-1 ${isMobile ? 'h-9 text-xs' : ''}`}
                               onClick={() => sendDMXTest(device.id)}
                               disabled={!dmxOutputReady}
-                              title={dmxOutputReady ? 'Enviar frame DMX de teste' : 'Aguardando autorização e conexão da porta'}
+                              title={dmxOutputReady ? 'Enviar frame DMX de teste' : (blockReason ?? 'Aguardando autorização')}
                             >
                               <Zap className="h-3 w-3" />
                               {dmxOutputReady
                                 ? 'DMX Test Frame (Rainbow)'
-                                : 'DMX Test (aguardando autorização)'}
+                                : needsConfirmation
+                                  ? 'DMX Test (aguardando confirmação)'
+                                  : 'DMX Test (aguardando autorização)'}
                             </Button>
                           )}
 

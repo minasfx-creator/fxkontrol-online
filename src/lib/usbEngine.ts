@@ -143,10 +143,9 @@ export function isWebSerialSupported(): boolean {
   return 'serial' in navigator;
 }
 
-// NOTE: WebUSB helpers (`isWebUSBSupported`, `requestUSBDevice`) were
-// removed — never instantiated anywhere. Web Serial is the only authorized
-// transport. Re-add behind an explicit feature gate if direct WebUSB is
-// needed for non-serial devices.
+export function isWebUSBSupported(): boolean {
+  return typeof navigator !== 'undefined' && 'usb' in navigator;
+}
 
 export async function requestSerialPort(profile?: USBDeviceProfile): Promise<any> {
   if (!isWebSerialSupported()) {
@@ -160,6 +159,52 @@ export async function requestSerialPort(profile?: USBDeviceProfile): Promise<any
     });
   }
   return nav.serial.requestPort(filters.length > 0 ? { filters } : undefined);
+}
+
+/**
+ * Enumerate ports the user has already authorized for this origin.
+ * Returns raw SerialPort objects (no prompt). Useful for auto-reopening
+ * known adapters after a page reload or hot-plug reconnect.
+ */
+export async function listAuthorizedSerialPorts(): Promise<any[]> {
+  if (!isWebSerialSupported()) return [];
+  try {
+    return await nav.serial.getPorts();
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Attach hot-plug listeners to navigator.serial. Calls `onConnect`/
+ * `onDisconnect` whenever an authorized port appears or is removed.
+ * Returns an unsubscribe function.
+ */
+export function attachSerialHotPlug(
+  onConnect: (port: any) => void,
+  onDisconnect: (port: any) => void,
+): () => void {
+  if (!isWebSerialSupported()) return () => {};
+  const handleConnect = (ev: Event) => {
+    const port = (ev as any).port ?? ev.target;
+    if (port) onConnect(port);
+  };
+  const handleDisconnect = (ev: Event) => {
+    const port = (ev as any).port ?? ev.target;
+    if (port) onDisconnect(port);
+  };
+  try {
+    nav.serial.addEventListener('connect', handleConnect);
+    nav.serial.addEventListener('disconnect', handleDisconnect);
+  } catch {
+    return () => {};
+  }
+  return () => {
+    try {
+      nav.serial.removeEventListener('connect', handleConnect);
+      nav.serial.removeEventListener('disconnect', handleDisconnect);
+    } catch { /* ignore */ }
+  };
 }
 
 export async function openSerialConnection(

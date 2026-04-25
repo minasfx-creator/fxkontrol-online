@@ -4,8 +4,9 @@
  *
  * Honest Hardware Layer: a device is only considered ready to transmit DMX
  * when (1) the browser has authorized the port (writer present), (2) the
- * adapter family was recognized from the authorized profile label, and
- * (3) the connection is in `connected` state.
+ * adapter family was recognized from the authorized profile label OR the
+ * operator explicitly confirmed a generic adapter, and (3) the connection
+ * is in `connected` state.
  */
 import { create } from 'zustand';
 import type { ConnectedDevice } from '@/lib/usbEngine';
@@ -15,6 +16,8 @@ import {
   buildDMX512Frame,
 } from '@/lib/usbEngine';
 import { detectDMXAdapter, type DMXAdapterKind } from '@/lib/dmxAdapterRecognition';
+import { portRegistry, keyFor, type GenericConfirmMode } from '@/core/discovery/portRegistry';
+import { logger } from '@/lib/logger';
 
 export interface USBDMXDevice {
   id: string;
@@ -30,7 +33,11 @@ export interface USBDMXDevice {
   recognized: boolean;
   /** True if browser exposed a writer (port was authorized successfully). */
   authorized: boolean;
-  /** True iff connected + authorized + recognized — gates DMX transmission. */
+  /** Operator explicitly confirmed transmitting on a generic adapter. */
+  operatorConfirmedGeneric: boolean;
+  /** Mode chosen during generic confirmation (open vs pro wrapper). */
+  confirmedMode?: GenericConfirmMode;
+  /** True iff connected + authorized + (recognized OR operator-confirmed). */
   outputReady: boolean;
   device: ConnectedDevice;
 }
@@ -39,33 +46,51 @@ interface USBDeviceStore {
   dmxDevices: USBDMXDevice[];
   registerDevice: (device: ConnectedDevice) => void;
   unregisterDevice: (deviceId: string) => void;
+  /** Operator explicitly authorizes DMX output on a generic adapter. */
+  confirmGenericAdapter: (deviceId: string, mode: GenericConfirmMode) => void;
+  /** Revoke a prior generic-adapter confirmation. */
+  revokeGenericAdapter: (deviceId: string) => void;
   getConnectedDMXDevices: () => USBDMXDevice[];
-  /** Only devices that are connected, authorized AND recognized. */
+  /** Only devices that are connected, authorized AND ready to TX (recognized or confirmed). */
   getAuthorizedDMXDevices: () => USBDMXDevice[];
   sendDMXFrame: (deviceId: string, channels: Uint8Array) => Promise<{ bytesSent: number; latencyMs: number }>;
   sendDMXToAll: (channels: Uint8Array) => Promise<{ deviceCount: number; totalBytes: number; latencyMs: number }>;
+}
+
+function registryKeyFor(device: ConnectedDevice): string | undefined {
+  const info = device.port?.getInfo?.();
+  if (!info) return undefined;
+  return keyFor({ vendorId: info.usbVendorId, productId: info.usbProductId });
 }
 
 function buildEntry(device: ConnectedDevice): USBDMXDevice {
   const adapter = detectDMXAdapter(device.profile);
   const authorized = !!device.writer;
   const stateConnected = device.state === 'connected';
+  const regKey = registryKeyFor(device);
+  const persisted = regKey ? portRegistry.get(regKey) : undefined;
+  const operatorConfirmedGeneric = persisted?.operatorConfirmedGeneric === true;
+  const confirmedMode = persisted?.confirmedMode;
+  // ENTTEC Pro packet wrapping: explicit profile label OR confirmed-as-pro mode.
+  const isENTTECPro = adapter.kind === 'enttec-pro' || confirmedMode === 'pro';
   return {
     id: device.id,
     label: device.profile.label,
     type: device.profile.type,
     state: stateConnected ? 'connected' : 'disconnected',
-    isENTTECPro: adapter.kind === 'enttec-pro',
+    isENTTECPro,
     adapterKind: adapter.kind,
     adapterLabel: adapter.label,
     protocol: adapter.protocol,
     recognized: adapter.recognized,
     authorized,
+    operatorConfirmedGeneric,
+    confirmedMode,
     outputReady:
       device.profile.type === 'dmx' &&
-      adapter.recognized &&
       authorized &&
-      stateConnected,
+      stateConnected &&
+      (adapter.recognized || operatorConfirmedGeneric),
     device,
   };
 }
@@ -89,6 +114,50 @@ export const useUSBDeviceStore = create<USBDeviceStore>((set, get) => ({
     }));
   },
 
+  confirmGenericAdapter: (deviceId: string, mode: GenericConfirmMode) => {
+    const entry = get().dmxDevices.find(d => d.id === deviceId);
+    if (!entry) return;
+    const regKey = registryKeyFor(entry.device);
+    const info = entry.device.port?.getInfo?.();
+    if (regKey) {
+      portRegistry.confirmGeneric(regKey, mode, entry.label, {
+        vendorId: info?.usbVendorId,
+        productId: info?.usbProductId,
+      });
+    }
+    logger.warn('[USBDeviceStore] generic adapter operator-confirmed', {
+      deviceId, mode, label: entry.label, regKey,
+    });
+    set(state => ({
+      dmxDevices: state.dmxDevices.map(d => d.id === deviceId
+        ? {
+            ...d,
+            operatorConfirmedGeneric: true,
+            confirmedMode: mode,
+            isENTTECPro: d.adapterKind === 'enttec-pro' || mode === 'pro',
+            outputReady: d.type === 'dmx' && d.authorized && d.state === 'connected',
+          }
+        : d),
+    }));
+  },
+
+  revokeGenericAdapter: (deviceId: string) => {
+    const entry = get().dmxDevices.find(d => d.id === deviceId);
+    if (!entry) return;
+    const regKey = registryKeyFor(entry.device);
+    if (regKey) portRegistry.forget(regKey);
+    set(state => ({
+      dmxDevices: state.dmxDevices.map(d => d.id === deviceId
+        ? {
+            ...d,
+            operatorConfirmedGeneric: false,
+            confirmedMode: undefined,
+            outputReady: d.type === 'dmx' && d.authorized && d.state === 'connected' && d.recognized,
+          }
+        : d),
+    }));
+  },
+
   getConnectedDMXDevices: () => {
     return get().dmxDevices.filter(d => d.state === 'connected' && d.type === 'dmx');
   },
@@ -105,8 +174,8 @@ export const useUSBDeviceStore = create<USBDeviceStore>((set, get) => ({
         `Saída DMX bloqueada: ${
           !entry.authorized
             ? 'porta não autorizada pelo navegador'
-            : !entry.recognized
-              ? 'adapter não reconhecido'
+            : !entry.recognized && !entry.operatorConfirmedGeneric
+              ? 'adapter genérico aguardando confirmação do operador'
               : 'dispositivo não conectado'
         }`,
       );
@@ -124,12 +193,7 @@ export const useUSBDeviceStore = create<USBDeviceStore>((set, get) => ({
       throw new Error('Nenhum dispositivo DMX USB autorizado/reconhecido');
     }
     const t0 = performance.now();
-    // Build frame ONCE (DMX payload is identical for all outputs);
-    // each device may wrap it differently (ENTTEC Pro vs raw DMX512).
     const frame = buildDMX512Frame(channels);
-    // Send to all writers in parallel — serial `await` in a for-loop
-    // multiplied USB latency by the device count and broke 40Hz timing
-    // when more than one output was authorized.
     const results = await Promise.all(
       dmxDevices.map(entry => {
         const data = entry.isENTTECPro ? buildENTTECProPacket(6, frame) : frame;

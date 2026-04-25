@@ -16,10 +16,11 @@ import { getProvenanceBadge } from '@/core/hardware/provenance';
 import { cn } from '@/lib/utils';
 import {
   Activity, Cpu, Battery, Radio, Wifi, AlertTriangle,
-  CheckCircle2, XCircle, Zap, Shield, RefreshCw, Search, Gauge,
+  CheckCircle2, XCircle, Zap, Shield, RefreshCw, Search, Gauge, Satellite,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { DiscoveryGrid } from './hardware/DiscoveryGrid';
 
 const STATUS_COLORS: Record<string, string> = {
   connected: 'text-emerald-400',
@@ -60,6 +61,15 @@ export default function HardwareOverview() {
     refresh();
   }, [refresh]);
 
+  const handleDeepScan = useCallback(async () => {
+    setIsScanning(true);
+    const unsub = deviceDiscovery.onChange(() => setDiscoveryResults(deviceDiscovery.getResults()));
+    await deviceDiscovery.scan({ deep: true });
+    unsub();
+    setIsScanning(false);
+    refresh();
+  }, [refresh]);
+
   const handleStartPoller = useCallback(() => {
     telemetryPoller.start();
     startPolling();
@@ -82,6 +92,11 @@ export default function HardwareOverview() {
           <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono gap-1"
             onClick={handleScan} disabled={isScanning}>
             <Search className="w-3 h-3" /> {isScanning ? 'SCANNING…' : 'SCAN'}
+          </Button>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono gap-1 text-amber-400"
+            onClick={handleDeepScan} disabled={isScanning}
+            title="Inclui ArtPoll broadcast via bridge (descobre nós Art-Net na rede)">
+            <Satellite className="w-3 h-3" /> DEEP
           </Button>
           <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono"
             onClick={() => { refresh(); evaluateReadiness(); setHealthReport(hardwareHealthMonitor.evaluate()); }}>
@@ -136,6 +151,12 @@ export default function HardwareOverview() {
           ))}
         </div>
       )}
+
+      {/* Real Discovery Grid (Serial / USB / BLE / Art-Net) */}
+      <div className="space-y-1">
+        <span className="text-[7px] font-mono text-muted-foreground/50 uppercase tracking-wider">Real Discovery — transports</span>
+        <DiscoveryGrid />
+      </div>
 
       {/* Device Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 flex-1 overflow-auto">
