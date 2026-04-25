@@ -33,7 +33,7 @@ function SidebarToggleButton() {
   return (
     <button
       onClick={toggleSidebar}
-      className="flex items-center justify-center h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-all active:scale-90"
+      className="flex items-center justify-center h-8 w-8 rounded-control text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-all active:scale-90"
       title={collapsed ? 'Expandir menu' : 'Recolher menu'}
     >
       {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
@@ -46,7 +46,7 @@ function MobileSidebarTrigger() {
   return (
     <button
       onClick={toggleSidebar}
-      className="flex items-center justify-center h-8 w-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all active:scale-90"
+      className="flex items-center justify-center h-8 w-8 rounded-control text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all active:scale-90"
       title="Menu"
     >
       <Menu className="h-4.5 w-4.5" />
