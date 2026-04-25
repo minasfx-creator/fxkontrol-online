@@ -109,6 +109,8 @@ import { isFlyingTo } from '@/core/camera/geoCamera';
 import ClientPresentationMode from './ClientPresentationMode';
 import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
+import SkyCanvasDiagnosticsPanel from './SkyCanvasDiagnosticsPanel';
+import { captureSkyCanvasError } from '@/lib/skyCanvasDiagnostics';
 import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
 // ═══ Hardening Engine ═══
 import {
@@ -470,6 +472,7 @@ class SubsystemBoundary extends Component<{ name: string; children: ReactNode },
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(`[FXK SubsystemBoundary:${this.props.name}]`, error, info.componentStack);
     pushLog(`[SubsystemBoundary] ${this.props.name} crashed: ${error.message}`, 'error');
+    captureSkyCanvasError(`SubsystemBoundary:${this.props.name}`, error, info.componentStack ?? undefined);
   }
   render() {
     if (this.state.hasError) return null; // Silently remove crashed subsystem from scene
@@ -1982,6 +1985,7 @@ export default function SkyCanvas() {
 
       {/* Debug overlay toggle + panel */}
       {!isMobile && showDebugOverlay && <RenderDebugPanel />}
+      {!isMobile && showDebugOverlay && <SkyCanvasDiagnosticsPanel />}
 
       {/* Fullscreen floating edit menu */}
       {isFullscreen && <FullscreenEditMenu />}
