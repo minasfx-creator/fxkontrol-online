@@ -179,9 +179,6 @@ export default function MainLayout() {
               <Outlet />
             ) : (
               <>
-                {transitionPhase !== 'idle' && (
-                  <div className="absolute inset-0 pointer-events-none z-50 animate-page-sweep" />
-                )}
                 <div
                   key={displayedPath}
                   className={`h-full ${
