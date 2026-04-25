@@ -9,6 +9,7 @@ import { haptics } from '@/lib/haptics';
 import { ambientSound } from '@/lib/ambientSound';
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import DockBar from '@/components/DockBar';
+import BetaPromoBanner from '@/components/BetaPromoBanner';
 import { lazyRetry } from '@/lib/lazyRetry';
 
 // Dev-only overlay — tree-shaken in production
@@ -128,6 +129,9 @@ export default function MainLayout() {
         )}
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
+          {/* Beta Promo Banner */}
+          {!commandImmersive && !isEditor && <BetaPromoBanner />}
+
           {/* ARMED Banner */}
           {isArmed && !commandImmersive && (
             <button
