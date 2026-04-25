@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger';
 import { useUSBDMXBroadcast } from '@/hooks/useUSBDMXBroadcast';
 import DMXMonitorGrid from './DMXMonitorGrid';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
+import { useDMXPanelPrefs } from '@/store/useDMXPanelPrefs';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { Button } from '@/components/ui/button';
 import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
@@ -57,10 +58,18 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
 
   // Continuous USB DMX streaming (Universe 1 → all connected USB devices)
   // Loop, throttle anti-stacking e cleanup encapsulados em useUSBDMXBroadcast.
+  // Preferências (FPS + intenção de streaming) persistidas em localStorage
+  // via useDMXPanelPrefs — reaplicadas ao remontar o painel.
+  const persistedFps = useDMXPanelPrefs(s => s.usbStreamFps);
+  const persistedStreamingDesired = useDMXPanelPrefs(s => s.usbStreamingDesired);
+  const setPersistedFps = useDMXPanelPrefs(s => s.setUsbStreamFps);
+  const setPersistedStreamingDesired = useDMXPanelPrefs(s => s.setUsbStreamingDesired);
+
   const [usbStreaming, setUsbStreaming] = useState(false);
-  const [usbStreamFps, setUsbStreamFps] = useState<10 | 20 | 40>(40);
+  const [usbStreamFps, setUsbStreamFps] = useState<10 | 20 | 40>(persistedFps);
   const [usbStreamStats, setUsbStreamStats] = useState({ frames: 0, lastLatencyMs: 0 });
   const universesRef = useRef<DMXUniverse[]>([]);
+  const autoResumeAttemptedRef = useRef(false);
 
   // Keep ref in sync (hook lê via getChannels() sempre o último universo 1)
   useEffect(() => { universesRef.current = universes; }, [universes]);
