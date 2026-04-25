@@ -125,6 +125,32 @@ export const portRegistry = {
     return this.get(key)?.operatorConfirmedGeneric === true;
   },
 
+  /** Pin a DMX adapter family/protocol for this VID:PID. Survives reloads. */
+  setProfileOverride(
+    key: string,
+    kind: DMXProfileOverrideKind,
+    label: string,
+    extras: { vendorId?: number; productId?: number; host?: string } = {},
+  ): PortRegistryEntry {
+    return this.upsert({
+      key,
+      lastLabel: label,
+      operatorConfirmedGeneric: this.get(key)?.operatorConfirmedGeneric ?? false,
+      profileOverride: { kind, setAt: Date.now() },
+      ...extras,
+    });
+  },
+
+  clearProfileOverride(key: string): void {
+    const cur = this.get(key);
+    if (!cur) return;
+    this.upsert({ ...cur, profileOverride: undefined });
+  },
+
+  getProfileOverride(key: string): DMXProfileOverride | undefined {
+    return this.get(key)?.profileOverride;
+  },
+
   forget(key: string): void {
     const all = load().filter(e => e.key !== key);
     save(all);
