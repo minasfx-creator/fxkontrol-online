@@ -314,6 +314,44 @@ export default function BetaFeedbackDialog({ open, onOpenChange, initialCategory
             </div>
           </div>
 
+          {/* Equipment integration fields */}
+          {category === 'integration' && (
+            <div
+              className="rounded-md border p-3 space-y-2"
+              style={{
+                borderColor: 'hsl(32 100% 50% / 0.35)',
+                background: 'hsl(32 100% 50% / 0.06)',
+              }}
+            >
+              <div className="text-[10px] font-mono font-bold uppercase tracking-widest" style={{ color: 'hsl(32 100% 70%)' }}>
+                Equipamento / Sistema
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  value={equipBrand}
+                  onChange={(e) => setEquipBrand(e.target.value)}
+                  placeholder="Marca (ex: Showven)"
+                  maxLength={80}
+                />
+                <Input
+                  value={equipModel}
+                  onChange={(e) => setEquipModel(e.target.value)}
+                  placeholder="Modelo (ex: cFlamer mVolcano)"
+                  maxLength={80}
+                />
+              </div>
+              <Input
+                value={equipProtocol}
+                onChange={(e) => setEquipProtocol(e.target.value)}
+                placeholder="Protocolo / Conexão (ex: DMX, Art-Net, PBUS, BLE, Wi-Fi)"
+                maxLength={120}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Inclua manuais, links ou specs técnicas na mensagem ou anexos para acelerar a integração.
+              </p>
+            </div>
+          )}
+
           {/* Message */}
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
