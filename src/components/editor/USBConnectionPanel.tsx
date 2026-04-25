@@ -292,6 +292,7 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
           profileId: effectiveProfile.label,
         });
 
+        addLog({
           deviceId,
           direction: 'info',
           message: source === 'hotplug'
