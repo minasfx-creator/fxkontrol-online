@@ -486,15 +486,28 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
               const isExpanded = expandedDevice === device.id;
               const adapter = detectDMXAdapter(device.profile);
               const authorized = !!device.writer;
+              // Persisted operator confirmation for this VID/PID (generic adapters).
+              const portInfo = device.port?.getInfo?.();
+              const regKey = portInfo
+                ? keyFor({ vendorId: portInfo.usbVendorId, productId: portInfo.usbProductId })
+                : null;
+              const operatorConfirmedGeneric = regKey
+                ? portRegistry.isConfirmedGeneric(regKey)
+                : false;
               // Saída DMX USB só é habilitada se: (1) tipo dmx,
-              // (2) adapter reconhecido (família conhecida no label do profile
-              // que o usuário autorizou no navegador), (3) porta autorizada
-              // pelo navegador (writer existe) e (4) estado === 'connected'.
+              // (2) adapter reconhecido OU operador confirmou genérico,
+              // (3) porta autorizada (writer existe) e (4) estado === 'connected'.
               const dmxOutputReady =
                 device.profile.type === 'dmx' &&
-                adapter.recognized &&
                 authorized &&
-                device.state === 'connected';
+                device.state === 'connected' &&
+                (adapter.recognized || operatorConfirmedGeneric);
+              const needsConfirmation =
+                device.profile.type === 'dmx' &&
+                authorized &&
+                device.state === 'connected' &&
+                !adapter.recognized &&
+                !operatorConfirmedGeneric;
               const blockReason = !dmxOutputReady
                 ? device.profile.type !== 'dmx'
                   ? 'Tipo do profile não é DMX'
@@ -502,8 +515,8 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                     ? device.state === 'connecting'
                       ? 'Aguardando autorização do navegador...'
                       : 'Porta não autorizada (sem writer)'
-                    : !adapter.recognized
-                      ? 'Adapter não reconhecido (família genérica) — saída bloqueada'
+                    : !adapter.recognized && !operatorConfirmedGeneric
+                      ? 'Adapter genérico — confirmação do operador necessária'
                       : device.state === 'connected'
                         ? 'Pronto'
                         : `Estado: ${device.state}`
