@@ -763,6 +763,30 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                     </span>
                   </div>
 
+                  {/* E-STOP latency banner — persistente até nova partida */}
+                  {latencyEstopReason && (
+                    <div
+                      role="alert"
+                      aria-live="assertive"
+                      className="border border-destructive bg-destructive/15 text-destructive rounded-sm px-2 py-1.5 space-y-1"
+                    >
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
+                        <Square className="h-3 w-3 fill-current" />
+                        <span>E-STOP DMX · LATÊNCIA CRÍTICA</span>
+                      </div>
+                      <p className="text-[9px] leading-tight opacity-90">
+                        Streaming USB DMX foi parado automaticamente. {latencyEstopReason}.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setLatencyEstopReason(null)}
+                        className="text-[8px] underline opacity-70 hover:opacity-100"
+                      >
+                        Dispensar aviso
+                      </button>
+                    </div>
+                  )}
+
                   {/* Seletor de taxa — atualiza Hz sem fechar a porta USB */}
                   <div className="grid grid-cols-3 gap-1">
                     {([10, 20, 40] as const).map(hz => {
