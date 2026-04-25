@@ -31,9 +31,9 @@ const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => laz
 // ── Verification ──
 
 
-// ── Phase screens ──
-const CinematicIntro = lz(() => import('@/components/editor/CinematicIntro'));
-const SplashScreen = lz(() => import('@/components/editor/SplashScreen'));
+// ── Phase screens (DESATIVADAS) ──
+// CinematicIntro e SplashScreen foram removidos do boot principal. Componentes
+// preservados em src/components/editor/ caso seja necessário reativar via flag.
 
 // ── Core editor components (loaded on first interaction) ──
 const Timeline = lz(() => import('@/components/editor/Timeline'));
@@ -289,10 +289,9 @@ function Index() {
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
   const [venueSelector, setVenueSelector] = useState(false);
   const [venueOverlay, setVenueOverlay] = useState<WorldShowPreset | null>(null);
-  // Default fase = 'cinematic' (intro + splash com setup de geolocalização).
-  // Quando vindo de /studio?prompt=1 ou de deep-links com ?panel=, pulamos direto para 'editor'
-  // (ver useEffect abaixo).
-  const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'editor'>('cinematic');
+  // Boot direto no editor — Cinematic/Splash legados removidos da rota principal.
+  // (Componentes preservados em src/components/editor/ caso queiram ser reativados via flag.)
+  const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'editor'>('editor');
   const [showGeoSetup, setShowGeoSetup] = useState(false);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -436,8 +435,9 @@ function Index() {
   const canvasLeftInset = `${leftRailWidth + leftSidebarWidth}px`;
   const canvasRightInset = `${rightDockWidth + rightPanelWidth}px`;
 
-  if (appPhase === 'cinematic') return <Suspense fallback={<CanvasLoader />}><CinematicIntro onComplete={() => setAppPhase('splash')} /></Suspense>;
-  if (appPhase === 'splash') return <Suspense fallback={<CanvasLoader />}><SplashScreen onStart={() => setAppPhase('editor')} showVideoBackground /></Suspense>;
+  // Phase screens (CinematicIntro / SplashScreen) desativados — boot vai direto para o editor.
+  // appPhase ainda é mantido para compatibilidade com deep-links (?panel=, ?prompt=1).
+  void appPhase;
 
   const renderPanelContent = () => {
     if (!activePanel) return null;
