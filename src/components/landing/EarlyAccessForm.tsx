@@ -308,7 +308,7 @@ export function EarlyAccessForm() {
               aria-hidden="true"
               className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-primary-foreground/10"
             >
-              <span className="block h-full w-1/3 animate-[shimmer_1.2s_ease-in-out_infinite] bg-primary-foreground/70" />
+              <span className="block h-full w-1/3 animate-[fxk-shimmer_1.2s_ease-in-out_infinite] bg-primary-foreground/70" />
             </span>
           )}
           {submitting ? (
