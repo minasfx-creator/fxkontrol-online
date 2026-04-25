@@ -21,6 +21,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { DiscoveryGrid } from './hardware/DiscoveryGrid';
+import { TransportFilterChips } from './hardware/TransportFilterChips';
 import { unifiedDiscovery } from '@/core/discovery/UnifiedDiscoveryService';
 import {
   buildDiscoveryReports, notifyDiscoveryReports, getRetryableTransports,
