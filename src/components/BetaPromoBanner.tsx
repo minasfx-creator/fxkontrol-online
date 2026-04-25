@@ -37,7 +37,28 @@ export default function BetaPromoBanner({ endsAt = DEFAULT_ENDS_AT }: BetaPromoB
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [dialogCategory, setDialogCategory] = useState<DialogCategory>('bug');
 
-  if (dismissed) return null;
+  // Schedule: parse end date once, then tick every second to drive countdown + auto-hide.
+  const endsAtMs = useMemo(() => {
+    if (!endsAt) return null;
+    const t = Date.parse(endsAt);
+    return Number.isFinite(t) ? t : null;
+  }, [endsAt]);
+
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (endsAtMs == null) return;
+    if (now >= endsAtMs) return; // expired — no need to tick
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [endsAtMs, now]);
+
+  const expired = endsAtMs != null && now >= endsAtMs;
+  const remainingMs = endsAtMs != null ? Math.max(0, endsAtMs - now) : 0;
+  const countdown = endsAtMs != null && !expired ? formatRemaining(remainingMs) : '';
+  // Highlight the chip in red during the final 24h
+  const urgent = endsAtMs != null && remainingMs > 0 && remainingMs < 24 * 3600 * 1000;
+
+  if (dismissed || expired) return null;
 
   const openFeedback = (cat: DialogCategory) => {
     setDialogCategory(cat);
