@@ -62,6 +62,28 @@ class UnifiedDiscoveryService {
     }
   }
 
+  /** Re-run only the supplied transports (used by "Retry failed transports"). */
+  async scanTransports(transports: DiscoveryTransport[]): Promise<DiscoveredDevice[]> {
+    this._bridge();
+    this._isScanning = true;
+    try {
+      const map: Record<DiscoveryTransport, TransportDiscoverer> = {
+        webserial: webSerialDiscoverer,
+        webusb: webUsbDiscoverer,
+        webble: webBleDiscoverer,
+        'mdns-artnet': mdnsArtnetDiscoverer,
+      };
+      await Promise.allSettled(
+        transports
+          .filter((t, i, a) => a.indexOf(t) === i)
+          .map(t => map[t]?.scan().catch(e => { logger.warn('[UnifiedDiscovery] retry failed', t, e); return []; })),
+      );
+      return this.getDevices();
+    } finally {
+      this._isScanning = false;
+    }
+  }
+
   /** Full deep scan: includes Art-Net poll over the network bridge. */
   async scanDeep(): Promise<DiscoveredDevice[]> {
     this._bridge();
