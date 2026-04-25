@@ -112,7 +112,13 @@ export function SwarmPlaybackEngine({
     const engine = stateRef.current;
 
     if (manualTime !== null) {
-      engine.internalTime = manualTime;
+      // Caller is following the timeline — read the freshest clock value
+      // directly. The `manualTime` prop is still consumed via React render
+      // scheduling, so we treat it as a hint that the timeline is the
+      // authority and override with the clock time, falling back to the
+      // prop when the clock somehow has not advanced (NaN / pre-mount).
+      const clockT = clockTimeRef.current;
+      engine.internalTime = Number.isFinite(clockT) ? clockT : manualTime;
       engine.pathIndices.fill(0);
       engine.colorIndices.fill(0);
     } else if (isPlaying) {
