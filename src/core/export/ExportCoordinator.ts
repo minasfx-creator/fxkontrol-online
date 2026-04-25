@@ -16,6 +16,7 @@ import { generateDroneCSV, downloadDroneCSV } from './DroneCSVExporter';
 import { generateMegafireScript, downloadMegafireScript } from './MegafireExporter';
 import { generateRJEquipamentosScript, downloadRJEquipamentosScript } from './RJEquipamentosExporter';
 import { generateGalaxisGS2Script, downloadGalaxisGS2Script } from './GalaxisGS2Exporter';
+import { runRJPreflight, type RJPreflightReport, type RJVariant } from './RJPreflightChecker';
 
 export type ExportTarget = 'fireone' | 'artnet' | 'drone' | 'megafire' | 'rj-traditional' | 'rj-timecode' | 'galaxis-gs2';
 
@@ -25,6 +26,8 @@ export interface ExportAttemptResult {
   timestamp: number;
   issues: string[];
   cueCount: number;
+  /** Preencido apenas para targets RJ (rj-traditional / rj-timecode). */
+  preflight?: RJPreflightReport;
 }
 
 class ExportCoordinator {
@@ -114,15 +117,42 @@ class ExportCoordinator {
         }
         case 'rj-traditional':
         case 'rj-timecode': {
-          const variant = target === 'rj-traditional' ? 'traditional' : 'timecode';
+          const variant: RJVariant = target === 'rj-traditional' ? 'traditional' : 'timecode';
+
+          // Preflight cue-a-cue ANTES de gerar/baixar
+          const preflight = runRJPreflight(variant);
+
+          // Bloqueio duro: nada exportável
+          if (preflight.willBeEmpty) {
+            const result: ExportAttemptResult = {
+              target, success: false, timestamp,
+              issues: [`[BLOCKED] ${preflight.summary}. Nenhum cue restou exportável.`],
+              cueCount: 0, preflight,
+            };
+            this._log(result);
+            return result;
+          }
+
           const r = generateRJEquipamentosScript(variant);
           if (!r.verified || r.errors.length > 0) {
-            const result: ExportAttemptResult = { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
+            const result: ExportAttemptResult = {
+              target, success: false, timestamp,
+              issues: r.errors, cueCount: r.cueCount, preflight,
+            };
             this._log(result);
             return result;
           }
           downloadRJEquipamentosScript(variant);
-          const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
+
+          // Issues informativas (fallbacks/warns ainda passam)
+          const fallbackIssues = preflight.entries
+            .filter(e => e.disposition === 'fallback' || e.disposition === 'warn' || e.disposition === 'blocked')
+            .map(e => `[${e.disposition.toUpperCase()}] cue#${e.cueIndex + 1} (mod ${e.module1Based}, ch ${e.channel1Based}, ${e.timeMs}ms): ${e.reasons.join('; ')}`);
+
+          const result: ExportAttemptResult = {
+            target, success: true, timestamp,
+            issues: fallbackIssues, cueCount: r.cueCount, preflight,
+          };
           this._log(result);
           return result;
         }
@@ -152,6 +182,14 @@ class ExportCoordinator {
   getHistory(): ExportAttemptResult[] { return [...this._history]; }
   getLastAttempt(target: ExportTarget): ExportAttemptResult | null {
     return [...this._history].reverse().find(a => a.target === target) ?? null;
+  }
+
+  /**
+   * Dry-run de preflight RJ — não baixa arquivo, não modifica histórico.
+   * Use para alimentar UI/relatório de "o que será bloqueado / com fallback".
+   */
+  dryRunRJ(variant: RJVariant): RJPreflightReport {
+    return runRJPreflight(variant);
   }
 
   private _log(result: ExportAttemptResult): void {
