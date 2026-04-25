@@ -535,6 +535,39 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── EARLY ACCESS ───────────────────────────────────────────────── */}
+      <section
+        id="early-access"
+        aria-labelledby="early-access-heading"
+        className="relative border-t border-border/40 bg-[hsl(var(--surface-1))] py-16 sm:py-24 md:py-32"
+      >
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+          <div className="absolute left-1/2 top-1/2 h-[300px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,hsl(var(--fxk-cyan)/0.18),transparent_70%)] blur-3xl" />
+        </div>
+        <div className="relative mx-auto max-w-3xl px-4 sm:px-6 md:px-8">
+          <div className="mb-8 text-center sm:mb-10">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground backdrop-blur">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[hsl(var(--fxk-cyan))]" />
+              Vagas limitadas
+            </div>
+            <h2
+              id="early-access-heading"
+              className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl"
+            >
+              Entre no{" "}
+              <span className="bg-gradient-to-r from-primary via-[hsl(var(--electric-glow))] to-[hsl(var(--fxk-gold))] bg-clip-text text-transparent">
+                Early Access
+              </span>
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-sm text-muted-foreground sm:text-base">
+              Operadores selecionados recebem acesso antecipado, suporte direto da engenharia e prioridade
+              em novos módulos (drones, lasers, pyro dual-band).
+            </p>
+          </div>
+          <EarlyAccessForm />
+        </div>
+      </section>
+
       {/* ── FINAL CTA ──────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden border-t border-border/40 py-20 sm:py-28 md:py-36">
         <div aria-hidden="true" className="pointer-events-none absolute inset-0">
