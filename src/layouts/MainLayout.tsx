@@ -149,32 +149,26 @@ export default function MainLayout() {
             </button>
           )}
 
-          {/* Header */}
+          {/* Header — Apple minimal: toggle + logo. Sem texto redundante,
+              sem dot pulsante. A sidebar já identifica o app; o header só
+              dá ar e controla a navegação. */}
           {!commandImmersive && !isEditor && (
             <header
               role="banner"
-              className="flex items-center border-b px-3 shrink-0 relative overflow-hidden h-10"
-              style={{
-                background: 'rgba(8, 10, 14, 0.85)',
-                backdropFilter: 'blur(48px) saturate(1.8)',
-                WebkitBackdropFilter: 'blur(48px) saturate(1.8)',
-                borderColor: 'hsl(32 100% 50% / 0.06)',
-              }}
+              className="material-thin flex items-center px-3 shrink-0 relative h-10"
+              style={{ borderBottom: '1px solid hsl(var(--material-stroke))' }}
             >
-              <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-20" />
               {isMobile ? (
                 <MobileSidebarTrigger />
               ) : (
                 <SidebarToggleButton />
               )}
-              <div className="ml-3 flex items-center gap-2 relative z-10">
-                <div className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'hsl(32 100% 50%)', boxShadow: '0 0 6px hsl(32 100% 50% / 0.5)' }} />
-                <span className="text-[10px] font-mono tracking-widest uppercase" style={{ color: 'hsl(32 100% 50% / 0.8)', textShadow: '0 0 8px hsl(32 100% 50% / 0.3)' }}>
-                  FX KONTROL
-                </span>
-              </div>
-              <div className="ml-auto flex items-center gap-2 relative z-10">
-                <img src={minasfxLogo} alt="MinasFX" className="h-4 object-contain opacity-60" />
+              <div className="ml-auto flex items-center relative z-10">
+                <img
+                  src={minasfxLogo}
+                  alt="MinasFX"
+                  className="h-4 object-contain opacity-50 hover:opacity-80 transition-opacity duration-200"
+                />
               </div>
             </header>
           )}
