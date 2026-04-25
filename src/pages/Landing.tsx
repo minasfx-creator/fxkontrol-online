@@ -26,6 +26,7 @@ import {
   Globe2,
 } from "lucide-react";
 import { LANDING_SITE, buildLandingSeo, enforceLandingCanonicalRedirect } from "@/config/landing";
+import { LandingThemeToggle } from "@/components/landing/LandingThemeToggle";
 
 function upsertMeta(attr: "name" | "property", key: string, content: string) {
   let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
