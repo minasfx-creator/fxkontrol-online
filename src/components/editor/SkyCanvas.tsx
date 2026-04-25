@@ -20,6 +20,7 @@ import PostExplosionSmokeManager from './effects/PostExplosionSmokeManager';
 import PositionTransformGizmo from './PositionTransformGizmo';
 import KeybindingCheatSheet, { KeybindingTrigger } from './KeybindingCheatSheet';
 import { useKeybindings } from '@/hooks/useKeybindings';
+import { useIsMobile } from '@/hooks/use-mobile';
 import ViewportRulers from './ViewportRulers';
 import TrajectoryPaths from './TrajectoryPaths';
 import DroneChoreography from './DroneChoreography';
