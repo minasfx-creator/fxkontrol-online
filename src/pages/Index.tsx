@@ -289,10 +289,9 @@ function Index() {
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
   const [venueSelector, setVenueSelector] = useState(false);
   const [venueOverlay, setVenueOverlay] = useState<WorldShowPreset | null>(null);
-  // Default fase = 'cinematic' (intro + splash com setup de geolocalização).
-  // Quando vindo de /studio?prompt=1 ou de deep-links com ?panel=, pulamos direto para 'editor'
-  // (ver useEffect abaixo).
-  const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'editor'>('cinematic');
+  // Boot direto no editor — Cinematic/Splash legados removidos da rota principal.
+  // (Componentes preservados em src/components/editor/ caso queiram ser reativados via flag.)
+  const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'editor'>('editor');
   const [showGeoSetup, setShowGeoSetup] = useState(false);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
