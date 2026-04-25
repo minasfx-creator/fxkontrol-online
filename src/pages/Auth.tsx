@@ -83,6 +83,24 @@ export default function Auth() {
     }
   };
 
+  const handleAppleSignIn = async () => {
+    setLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth('apple', {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) throw result.error;
+      if (result.redirected) return;
+      ambientSound.play('boot');
+      toast.success('Login efetuado!');
+    } catch (err: any) {
+      ambientSound.play('error');
+      toast.error(err?.message ?? 'Falha no login com Apple');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center bg-background relative overflow-hidden br2049-rain">
       {/* Scanline sweep */}
@@ -201,6 +219,19 @@ export default function Auth() {
               <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.4 14.6 2.5 12 2.5 6.8 2.5 2.6 6.7 2.6 12s4.2 9.5 9.4 9.5c5.4 0 9-3.8 9-9.2 0-.6-.1-1.1-.2-1.6H12z"/>
             </svg>
             Continuar com Google
+          </Button>
+
+          <Button
+            type="button"
+            onClick={handleAppleSignIn}
+            disabled={loading}
+            variant="outline"
+            className="relative z-10 w-full h-10 rounded-xl font-medium text-sm bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.15)] hover:bg-[hsl(var(--surface-0)/0.9)] hover:border-[hsl(32_100%_50%/0.3)] gap-2"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+              <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+            </svg>
+            Continuar com Apple
           </Button>
 
           <p className="text-center text-xs text-muted-foreground relative z-10">
