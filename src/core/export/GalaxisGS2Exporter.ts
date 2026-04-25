@@ -288,7 +288,7 @@ export function generateGalaxisGS2Script(): GalaxisExportResult {
 
     rows.push(buildEffectRow({
       cueNumber: cueField,
-      dtField === undefined ? '' : dtField as any, // placeholder
+      dtCs: dtField,
       eventTimeSec: c.time,
       prefireSec: (c.fuseDelay ?? 0) / 1000,
       durationSec: estimateDuration(c),
@@ -302,7 +302,7 @@ export function generateGalaxisGS2Script(): GalaxisExportResult {
       scId: scIdCounter++,
       partNumber: c.effectId ?? '',
       vdl: '',
-    } as any));
+    }));
   }
 
   const usedRowCount = rows.length;
