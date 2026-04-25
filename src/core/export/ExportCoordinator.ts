@@ -117,15 +117,42 @@ class ExportCoordinator {
         }
         case 'rj-traditional':
         case 'rj-timecode': {
-          const variant = target === 'rj-traditional' ? 'traditional' : 'timecode';
+          const variant: RJVariant = target === 'rj-traditional' ? 'traditional' : 'timecode';
+
+          // Preflight cue-a-cue ANTES de gerar/baixar
+          const preflight = runRJPreflight(variant);
+
+          // Bloqueio duro: nada exportável
+          if (preflight.willBeEmpty) {
+            const result: ExportAttemptResult = {
+              target, success: false, timestamp,
+              issues: [`[BLOCKED] ${preflight.summary}. Nenhum cue restou exportável.`],
+              cueCount: 0, preflight,
+            };
+            this._log(result);
+            return result;
+          }
+
           const r = generateRJEquipamentosScript(variant);
           if (!r.verified || r.errors.length > 0) {
-            const result: ExportAttemptResult = { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
+            const result: ExportAttemptResult = {
+              target, success: false, timestamp,
+              issues: r.errors, cueCount: r.cueCount, preflight,
+            };
             this._log(result);
             return result;
           }
           downloadRJEquipamentosScript(variant);
-          const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
+
+          // Issues informativas (fallbacks/warns ainda passam)
+          const fallbackIssues = preflight.entries
+            .filter(e => e.disposition === 'fallback' || e.disposition === 'warn' || e.disposition === 'blocked')
+            .map(e => `[${e.disposition.toUpperCase()}] cue#${e.cueIndex + 1} (mod ${e.module1Based}, ch ${e.channel1Based}, ${e.timeMs}ms): ${e.reasons.join('; ')}`);
+
+          const result: ExportAttemptResult = {
+            target, success: true, timestamp,
+            issues: fallbackIssues, cueCount: r.cueCount, preflight,
+          };
           this._log(result);
           return result;
         }
