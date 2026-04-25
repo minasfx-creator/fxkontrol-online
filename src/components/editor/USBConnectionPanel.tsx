@@ -21,7 +21,9 @@ import {
   generateDeviceId,
   buildENTTECProPacket,
   buildDMX512Frame,
+  isWebSerialSupported,
 } from '@/lib/usbEngine';
+
 
 const TYPE_COLORS: Record<string, string> = {
   dmx: 'text-cyan-400',
@@ -333,8 +335,88 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
           </div>
         </div>
 
+        {/* WebSerial fallback — Safari, Firefox, iOS sem app nativo */}
+        {!isWebSerialSupported() && (() => {
+          const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+          const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+          const isFirefox = /firefox/i.test(ua);
+          const isIOS = /iphone|ipad|ipod/i.test(ua);
+          const browserLabel = isIOS
+            ? 'iOS / Safari'
+            : isSafari
+              ? 'Safari'
+              : isFirefox
+                ? 'Firefox'
+                : 'este navegador';
+          return (
+            <div className="border border-amber-500/40 bg-amber-500/10 rounded-sm p-2 space-y-1.5">
+              <div className="flex items-start gap-1.5">
+                <WifiOff className="h-3.5 w-3.5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-1">
+                  <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">
+                    WebSerial indisponível em {browserLabel}
+                  </p>
+                  <p className="text-[9px] text-foreground/90 leading-snug">
+                    A saída DMX direta via USB-C exige <strong>WebSerial API</strong>, que ainda
+                    não é suportada por {browserLabel}. Use uma das alternativas abaixo:
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-surface-0 rounded-sm p-1.5 space-y-1">
+                <div className="flex items-start gap-1.5">
+                  <Wifi className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-[9px] font-semibold text-primary">
+                      Alternativa 1 — Art-Net via Wi-Fi (recomendado)
+                    </p>
+                    <p className="text-[8px] text-muted-foreground leading-snug">
+                      Use um nó Art-Net na rede local (ex.: ENTTEC ODE Mk3, DMXking eDMX, Star Lighting Artnet8).
+                      Funciona em qualquer navegador, incluindo {browserLabel}.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-7 text-[10px] w-full gap-1"
+                  onClick={() => {
+                    toast.info('Abra o painel DMX → modo Art-Net', {
+                      description: 'Configure IP e porta do nó Art-Net (padrão 6454).',
+                      duration: 6000,
+                    });
+                    onClose();
+                  }}
+                >
+                  <Wifi className="h-3 w-3" />
+                  Abrir painel DMX (Art-Net)
+                </Button>
+              </div>
+
+              <div className="bg-surface-0 rounded-sm p-1.5 space-y-1">
+                <div className="flex items-start gap-1.5">
+                  <Usb className="h-3 w-3 text-cyan-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-[9px] font-semibold text-cyan-400">
+                      Alternativa 2 — Trocar de navegador
+                    </p>
+                    <p className="text-[8px] text-muted-foreground leading-snug">
+                      <strong>Chrome</strong> ou <strong>Edge</strong> (desktop e Android) têm WebSerial nativo.
+                      No iOS use o app nativo do FX KONTROL para acesso USB-C direto.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-[8px] text-muted-foreground/70 italic">
+                Honest Hardware Layer: nenhum frame DMX simulado é enviado quando o hardware não está disponível.
+              </p>
+            </div>
+          );
+        })()}
+
         {/* Connect New Device */}
-        <div className="space-y-1.5 border border-border/50 rounded-sm p-2">
+        <div className={`space-y-1.5 border border-border/50 rounded-sm p-2 ${!isWebSerialSupported() ? 'opacity-50 pointer-events-none' : ''}`}>
           <span className="text-[9px] text-muted-foreground font-semibold uppercase">Conectar Equipamento</span>
 
           <Select value={selectedProfile} onValueChange={setSelectedProfile}>
