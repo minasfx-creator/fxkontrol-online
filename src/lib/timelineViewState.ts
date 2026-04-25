@@ -177,6 +177,21 @@ export function saveTimelineView(patch: Partial<TimelineViewState>): void {
   }
 }
 
+/**
+ * Wipe the persisted timeline view (zoom, scroll, collapsed). Safe to call
+ * even if storage is unavailable. Returns true if a delete was attempted.
+ * Caller is responsible for reloading / resetting in-memory state.
+ */
+export function resetTimelineView(): boolean {
+  if (!hasStorage()) return false;
+  try {
+    window.localStorage.removeItem(KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Test-only: reset the cached storage probe (so unit tests can re-run hasStorage). */
 export function __resetStorageProbe(): void {
   storageProbe = null;
