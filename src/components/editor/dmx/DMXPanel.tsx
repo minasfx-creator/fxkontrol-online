@@ -411,9 +411,29 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     });
   }, [connectedUSBDMX.length, addDiagLog, usbStreamFps, setPersistedStreamingDesired]);
 
+  // ─── Safety Mode: bloqueia 40Hz quando o navegador/CPU está sobrecarregado ───
+  // Mede FPS médio do rAF; se ficar <45fps por ≥2.5s, considera "overloaded".
+  // Recupera quando volta a ≥55fps por ≥4s (hysteresis evita flicker).
+  const { avgFps, isOverloaded } = useFrameDropMonitor();
+  const safetyDowngradeNotifiedRef = useRef(false);
+
   // Handler do seletor de taxa: muda Hz mesmo durante streaming.
   // O hook reinicia internamente apenas o setInterval, sem fechar a porta.
+  // Em Safety Mode (overload sustentado), 40Hz fica bloqueado e qualquer
+  // tentativa é convertida para 20Hz com aviso ao operador.
   const handleFpsChange = useCallback((hz: 10 | 20 | 40) => {
+    if (hz === 40 && isOverloaded) {
+      toast.warning('Safety Mode ativo · 40Hz bloqueado', {
+        description: `CPU/GPU sobrecarregada (${avgFps.toFixed(0)}fps). Mantendo 20Hz para evitar perda de frames DMX.`,
+      });
+      addDiagLog({
+        timestamp: new Date(), type: 'warning',
+        message: `Seleção de 40Hz bloqueada · Safety Mode (${avgFps.toFixed(0)}fps avg) · revertido para 20Hz`,
+      });
+      setUsbStreamFps(20);
+      setPersistedFps(20);
+      return;
+    }
     setUsbStreamFps(hz);
     setPersistedFps(hz);
     if (usbStreaming) {
@@ -422,7 +442,29 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
         message: `Taxa alterada para ${hz}Hz · porta USB mantida aberta`,
       });
     }
-  }, [usbStreaming, addDiagLog, setPersistedFps]);
+  }, [usbStreaming, addDiagLog, setPersistedFps, isOverloaded, avgFps]);
+
+  // Auto-downgrade: se ficar overloaded enquanto está em 40Hz, força 20Hz.
+  useEffect(() => {
+    if (isOverloaded && usbStreamFps === 40) {
+      if (!safetyDowngradeNotifiedRef.current) {
+        safetyDowngradeNotifiedRef.current = true;
+        toast.warning('Safety Mode · downgrade automático para 20Hz', {
+          description: `Frame drops sustentados detectados (${avgFps.toFixed(0)}fps). Restaure quando a carga normalizar.`,
+        });
+        addDiagLog({
+          timestamp: new Date(), type: 'warning',
+          message: `Safety Mode · 40Hz → 20Hz automático (${avgFps.toFixed(0)}fps avg)`,
+        });
+      }
+      setUsbStreamFps(20);
+      setPersistedFps(20);
+    }
+    if (!isOverloaded) {
+      safetyDowngradeNotifiedRef.current = false;
+    }
+  }, [isOverloaded, usbStreamFps, avgFps, addDiagLog, setPersistedFps]);
+
 
   // Auto-resume: ao remontar o painel, se o usuário tinha streaming ON e
   // os pré-requisitos estão atendidos (universo patchado + device conectado),
