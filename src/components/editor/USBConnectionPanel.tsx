@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import {
   type ConnectedDevice,
-  type USBDeviceProfile,
   type USBLog,
   type ConnectionState,
   DEVICE_PROFILES,
@@ -39,84 +38,7 @@ const STATE_INDICATORS: Record<ConnectionState, { color: string; label: string }
   error: { color: 'bg-destructive', label: 'Erro' },
 };
 
-/**
- * Reconhecimento de adaptadores DMX a partir do label do profile autorizado
- * pelo navegador. WebSerial não expõe VID/PID diretamente em todas as
- * plataformas, então usamos o label escolhido pelo usuário como verdade
- * (Honest Hardware Layer: nunca inferimos hardware que não foi autorizado).
- */
-type DMXAdapterKind =
-  | 'enttec-pro'
-  | 'enttec-open'
-  | 'dmxking'
-  | 'eurolite'
-  | 'generic-dmx'
-  | 'non-dmx';
-
-interface DMXAdapterInfo {
-  kind: DMXAdapterKind;
-  label: string;
-  badgeClass: string;
-  protocol: 'ENTTEC Widget' | 'DMX512 Direto' | '—';
-  rdmCapable: boolean;
-}
-
-function detectDMXAdapter(profile: USBDeviceProfile): DMXAdapterInfo {
-  if (profile.type !== 'dmx') {
-    return {
-      kind: 'non-dmx',
-      label: 'Não é DMX',
-      badgeClass: 'bg-muted text-muted-foreground',
-      protocol: '—',
-      rdmCapable: false,
-    };
-  }
-  const label = profile.label.toLowerCase();
-  if (label.includes('enttec') && label.includes('pro')) {
-    return {
-      kind: 'enttec-pro',
-      label: 'ENTTEC DMX USB Pro',
-      badgeClass: 'bg-green-500/20 text-green-400 border border-green-500/40',
-      protocol: 'ENTTEC Widget',
-      rdmCapable: true,
-    };
-  }
-  if (label.includes('enttec') || label.includes('open dmx')) {
-    return {
-      kind: 'enttec-open',
-      label: 'ENTTEC Open DMX',
-      badgeClass: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40',
-      protocol: 'DMX512 Direto',
-      rdmCapable: false,
-    };
-  }
-  if (label.includes('dmxking') || label.includes('ultradmx')) {
-    return {
-      kind: 'dmxking',
-      label: 'DMXking ultraDMX',
-      badgeClass: 'bg-green-500/20 text-green-400 border border-green-500/40',
-      protocol: 'ENTTEC Widget',
-      rdmCapable: true,
-    };
-  }
-  if (label.includes('eurolite')) {
-    return {
-      kind: 'eurolite',
-      label: 'Eurolite USB-DMX512',
-      badgeClass: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40',
-      protocol: 'DMX512 Direto',
-      rdmCapable: false,
-    };
-  }
-  return {
-    kind: 'generic-dmx',
-    label: 'DMX Genérico (FTDI/CH340)',
-    badgeClass: 'bg-amber-500/20 text-amber-400 border border-amber-500/40',
-    protocol: 'DMX512 Direto',
-    rdmCapable: false,
-  };
-}
-
+import { detectDMXAdapter } from '@/lib/dmxAdapterRecognition';
 
 export default function USBConnectionPanel({ onClose }: { onClose: () => void }) {
   const isMobile = useIsMobile();
@@ -470,14 +392,29 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
               const stateInfo = STATE_INDICATORS[device.state];
               const isExpanded = expandedDevice === device.id;
               const adapter = detectDMXAdapter(device.profile);
-              // Saída DMX USB só é habilitada se: (1) tipo dmx, (2) adapter
-              // reconhecido, (3) porta autorizada pelo navegador (writer existe)
-              // e (4) estado === 'connected'.
+              const authorized = !!device.writer;
+              // Saída DMX USB só é habilitada se: (1) tipo dmx,
+              // (2) adapter reconhecido (família conhecida no label do profile
+              // que o usuário autorizou no navegador), (3) porta autorizada
+              // pelo navegador (writer existe) e (4) estado === 'connected'.
               const dmxOutputReady =
                 device.profile.type === 'dmx' &&
-                adapter.kind !== 'non-dmx' &&
-                device.state === 'connected' &&
-                !!device.writer;
+                adapter.recognized &&
+                authorized &&
+                device.state === 'connected';
+              const blockReason = !dmxOutputReady
+                ? device.profile.type !== 'dmx'
+                  ? 'Tipo do profile não é DMX'
+                  : !authorized
+                    ? device.state === 'connecting'
+                      ? 'Aguardando autorização do navegador...'
+                      : 'Porta não autorizada (sem writer)'
+                    : !adapter.recognized
+                      ? 'Adapter não reconhecido (família genérica) — saída bloqueada'
+                      : device.state === 'connected'
+                        ? 'Pronto'
+                        : `Estado: ${device.state}`
+                : null;
               return (
                 <div key={device.id} className="bg-surface-2 rounded-sm overflow-hidden">
                   {/* Device Header */}
@@ -494,47 +431,79 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
                         {stateInfo.label} · ↑{device.bytesSent}B ↓{device.bytesReceived}B
                       </p>
                     </div>
+                    {/* Compact recognition pill always visible (also when collapsed) */}
+                    {device.profile.type === 'dmx' && (
+                      <span
+                        className={`text-[7px] px-1 py-0.5 rounded-sm font-bold uppercase tracking-wider shrink-0 ${
+                          dmxOutputReady
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/40'
+                            : adapter.recognized
+                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                              : 'bg-destructive/20 text-destructive border border-destructive/40'
+                        }`}
+                        title={blockReason ?? 'Saída DMX pronta'}
+                      >
+                        {dmxOutputReady ? 'DMX OK' : adapter.recognized ? 'AUTH?' : 'UNK'}
+                      </span>
+                    )}
                     {isExpanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
                   </button>
 
                   {/* Recognition + DMX-output readiness panel (always visible) */}
-                  {device.profile.type === 'dmx' && (
-                    <div className="px-1.5 pb-1.5 space-y-1">
-                      <div className="flex items-center gap-1 flex-wrap">
-                        <span className={`text-[8px] px-1.5 py-0.5 rounded-sm font-semibold ${adapter.badgeClass}`}>
-                          {adapter.label}
+                  <div className="px-1.5 pb-1.5 space-y-1">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded-sm font-semibold ${adapter.badgeClass}`}>
+                        {adapter.label}
+                      </span>
+                      <span className="text-[8px] px-1.5 py-0.5 rounded-sm bg-surface-0 text-muted-foreground font-mono-code">
+                        {adapter.protocol}
+                      </span>
+                      {adapter.rdmCapable && (
+                        <span className="text-[8px] px-1.5 py-0.5 rounded-sm bg-primary/15 text-primary font-semibold">
+                          RDM
                         </span>
-                        <span className="text-[8px] px-1.5 py-0.5 rounded-sm bg-surface-0 text-muted-foreground font-mono-code">
-                          {adapter.protocol}
+                      )}
+                      {device.profile.type === 'dmx' && (
+                        <span
+                          className={`text-[8px] px-1.5 py-0.5 rounded-sm font-semibold ${
+                            adapter.recognized
+                              ? 'bg-green-500/15 text-green-400 border border-green-500/30'
+                              : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                          }`}
+                        >
+                          {adapter.recognized ? 'Reconhecido' : 'Não reconhecido'}
                         </span>
-                        {adapter.rdmCapable && (
-                          <span className="text-[8px] px-1.5 py-0.5 rounded-sm bg-primary/15 text-primary font-semibold">
-                            RDM
-                          </span>
-                        )}
-                      </div>
+                      )}
+                      <span
+                        className={`text-[8px] px-1.5 py-0.5 rounded-sm font-semibold ${
+                          authorized
+                            ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+                            : 'bg-muted text-muted-foreground border border-border'
+                        }`}
+                      >
+                        {authorized ? 'Autorizado pelo navegador' : 'Aguardando autorização'}
+                      </span>
+                    </div>
+                    {device.profile.type === 'dmx' && (
                       <div className="flex items-center gap-1 text-[8px]">
                         {dmxOutputReady ? (
                           <>
                             <CheckCircle2 className="w-2.5 h-2.5 text-green-500 shrink-0" />
                             <span className="text-green-400">
-                              Saída DMX USB pronta · porta autorizada · {device.profile.baudRate} baud
+                              Saída DMX USB pronta · {device.profile.baudRate} baud
                             </span>
                           </>
                         ) : (
                           <>
-                            <XCircle className="w-2.5 h-2.5 text-muted-foreground shrink-0" />
+                            <XCircle className="w-2.5 h-2.5 text-destructive shrink-0" />
                             <span className="text-muted-foreground">
-                              {device.state === 'connecting' && 'Aguardando autorização do navegador...'}
-                              {device.state === 'disconnected' && 'Saída DMX desabilitada — não conectado'}
-                              {device.state === 'error' && 'Saída DMX desabilitada — erro de conexão'}
-                              {device.state === 'connected' && !device.writer && 'Saída DMX desabilitada — porta sem writer'}
+                              Saída DMX bloqueada — {blockReason}
                             </span>
                           </>
                         )}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {/* Expanded Controls */}
                   {isExpanded && (

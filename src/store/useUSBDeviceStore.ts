@@ -1,6 +1,11 @@
 /**
  * Shared USB Device Store
  * Bridge between USBConnectionPanel and DMXPanel for direct USB DMX output.
+ *
+ * Honest Hardware Layer: a device is only considered ready to transmit DMX
+ * when (1) the browser has authorized the port (writer present), (2) the
+ * adapter family was recognized from the authorized profile label, and
+ * (3) the connection is in `connected` state.
  */
 import { create } from 'zustand';
 import type { ConnectedDevice } from '@/lib/usbEngine';
@@ -9,6 +14,7 @@ import {
   buildENTTECProPacket,
   buildDMX512Frame,
 } from '@/lib/usbEngine';
+import { detectDMXAdapter, type DMXAdapterKind } from '@/lib/dmxAdapterRecognition';
 
 export interface USBDMXDevice {
   id: string;
@@ -16,6 +22,16 @@ export interface USBDMXDevice {
   type: 'dmx' | 'firing' | 'timecode' | 'serial' | 'pbus' | 'radio';
   state: 'connected' | 'disconnected';
   isENTTECPro: boolean;
+  /** Adapter family detected from the authorized profile label. */
+  adapterKind: DMXAdapterKind;
+  adapterLabel: string;
+  protocol: 'ENTTEC Widget' | 'DMX512 Direto' | '—';
+  /** True if the adapter family is in the recognized list (not generic). */
+  recognized: boolean;
+  /** True if browser exposed a writer (port was authorized successfully). */
+  authorized: boolean;
+  /** True iff connected + authorized + recognized — gates DMX transmission. */
+  outputReady: boolean;
   device: ConnectedDevice;
 }
 
@@ -24,22 +40,41 @@ interface USBDeviceStore {
   registerDevice: (device: ConnectedDevice) => void;
   unregisterDevice: (deviceId: string) => void;
   getConnectedDMXDevices: () => USBDMXDevice[];
+  /** Only devices that are connected, authorized AND recognized. */
+  getAuthorizedDMXDevices: () => USBDMXDevice[];
   sendDMXFrame: (deviceId: string, channels: Uint8Array) => Promise<{ bytesSent: number; latencyMs: number }>;
   sendDMXToAll: (channels: Uint8Array) => Promise<{ deviceCount: number; totalBytes: number; latencyMs: number }>;
+}
+
+function buildEntry(device: ConnectedDevice): USBDMXDevice {
+  const adapter = detectDMXAdapter(device.profile);
+  const authorized = !!device.writer;
+  const stateConnected = device.state === 'connected';
+  return {
+    id: device.id,
+    label: device.profile.label,
+    type: device.profile.type,
+    state: stateConnected ? 'connected' : 'disconnected',
+    isENTTECPro: adapter.kind === 'enttec-pro',
+    adapterKind: adapter.kind,
+    adapterLabel: adapter.label,
+    protocol: adapter.protocol,
+    recognized: adapter.recognized,
+    authorized,
+    outputReady:
+      device.profile.type === 'dmx' &&
+      adapter.recognized &&
+      authorized &&
+      stateConnected,
+    device,
+  };
 }
 
 export const useUSBDeviceStore = create<USBDeviceStore>((set, get) => ({
   dmxDevices: [],
 
   registerDevice: (device: ConnectedDevice) => {
-    const entry: USBDMXDevice = {
-      id: device.id,
-      label: device.profile.label,
-      type: device.profile.type,
-      state: device.state === 'connected' ? 'connected' : 'disconnected',
-      isENTTECPro: device.profile.label.includes('Pro'),
-      device,
-    };
+    const entry = buildEntry(device);
     set(state => ({
       dmxDevices: [
         ...state.dmxDevices.filter(d => d.id !== device.id),
@@ -58,10 +93,23 @@ export const useUSBDeviceStore = create<USBDeviceStore>((set, get) => ({
     return get().dmxDevices.filter(d => d.state === 'connected' && d.type === 'dmx');
   },
 
+  getAuthorizedDMXDevices: () => {
+    return get().dmxDevices.filter(d => d.outputReady);
+  },
+
   sendDMXFrame: async (deviceId: string, channels: Uint8Array) => {
     const entry = get().dmxDevices.find(d => d.id === deviceId);
-    if (!entry || entry.state !== 'connected') {
-      throw new Error('Dispositivo USB não conectado');
+    if (!entry) throw new Error('Dispositivo USB não encontrado');
+    if (!entry.outputReady) {
+      throw new Error(
+        `Saída DMX bloqueada: ${
+          !entry.authorized
+            ? 'porta não autorizada pelo navegador'
+            : !entry.recognized
+              ? 'adapter não reconhecido'
+              : 'dispositivo não conectado'
+        }`,
+      );
     }
     const t0 = performance.now();
     const frame = buildDMX512Frame(channels);
@@ -71,9 +119,9 @@ export const useUSBDeviceStore = create<USBDeviceStore>((set, get) => ({
   },
 
   sendDMXToAll: async (channels: Uint8Array) => {
-    const dmxDevices = get().getConnectedDMXDevices();
+    const dmxDevices = get().getAuthorizedDMXDevices();
     if (dmxDevices.length === 0) {
-      throw new Error('Nenhum dispositivo DMX USB conectado');
+      throw new Error('Nenhum dispositivo DMX USB autorizado/reconhecido');
     }
     const t0 = performance.now();
     let totalBytes = 0;
