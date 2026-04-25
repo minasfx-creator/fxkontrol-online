@@ -228,6 +228,7 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           <Button
             variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
             onClick={() => {
+              if (!canExport) { promptUpgrade({ reason: 'export', feature: 'Animated KML' }); return; }
               try {
                 const store = useProjectStore.getState();
                 downloadAnimatedKML({
@@ -255,9 +256,8 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           <Button
             variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
             onClick={() => {
+              if (!canExport) { promptUpgrade({ reason: 'export', feature: 'Static KML' }); return; }
               try {
-                const store = useProjectStore.getState();
-                const kml = exportFormationsToKML(
                   store.droneFormations, store.trajectories,
                   store.positions, store.gpsOrigin, store.projectName,
                 );
@@ -275,6 +275,7 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           <Button
             variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
             onClick={() => {
+              if (!canExport) { promptUpgrade({ reason: 'export', feature: 'SKYC (Skybrush)' }); return; }
               try {
                 const store = useProjectStore.getState();
                 const skyc = exportSkyc({
@@ -299,6 +300,7 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           <Button
             variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
             onClick={() => {
+              if (!canExport) { promptUpgrade({ reason: 'export', feature: 'Show CSV (Skybrush)' }); return; }
               try {
                 const store = useProjectStore.getState();
                 const skyc = exportSkyc({
@@ -324,6 +326,7 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
           <Button
             variant="outline" size="sm" className="w-full h-7 text-[10px] justify-start"
             onClick={() => {
+              if (!canExport) { promptUpgrade({ reason: 'export', feature: 'Video Choreo SKYC' }); return; }
               try {
                 const store = useProjectStore.getState();
                 // Check if videoChoreoResult exists in store
