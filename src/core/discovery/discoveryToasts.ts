@@ -9,6 +9,7 @@
 
 import { toast } from 'sonner';
 import { unifiedDiscovery } from './UnifiedDiscoveryService';
+import { getEnabledTransports } from './useTransportFilters';
 import type { DiscoveryTransport } from './types';
 
 export type DiscoveryReportReason =
