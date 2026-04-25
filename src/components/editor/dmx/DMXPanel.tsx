@@ -400,6 +400,8 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     latencyAccRef.current.avg = 0;
     latencyAccRef.current.max = 0;
     latencyAccRef.current.lastFlushMs = 0;
+    latencyAccRef.current.strikes = 0;
+    setLatencyEstopReason(null);
     setUsbStreaming(true);
     setPersistedStreamingDesired(true);
     addDiagLog({
