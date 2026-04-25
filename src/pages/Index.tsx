@@ -347,6 +347,15 @@ function Index() {
   useEffect(() => {
     const panelParam = searchParams.get('panel');
     const modeParam = searchParams.get('mode');
+    const promptParam = searchParams.get('prompt');
+    if (promptParam === '1' || promptParam === 'true') {
+      setStudioPromptOpen(true);
+      // Clear the param so refresh doesn't re-trigger after dismissing
+      const next = new URLSearchParams(searchParams);
+      next.delete('prompt');
+      setSearchParams(next, { replace: true });
+      setAppPhase('editor');
+    }
     if (panelParam) {
       // SwarmGPT lives at /swarmgpt now — redirect any legacy deep links.
       if (panelParam === 'swarmgpt') {
