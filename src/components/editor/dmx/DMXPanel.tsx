@@ -398,7 +398,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     if (universes.length === 0) return;
     if (connectedUSBDMX.length === 0) return;
     autoResumeAttemptedRef.current = true;
-    setUsbStreamStats({ frames: 0, lastLatencyMs: 0 });
+    setUsbStreamStats({ frames: 0, lastLatencyMs: 0, avgLatencyMs: 0, maxLatencyMs: 0 });
     setUsbStreaming(true);
     addDiagLog({
       timestamp: new Date(), type: 'info',
