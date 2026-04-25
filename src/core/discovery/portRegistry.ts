@@ -43,6 +43,8 @@ export interface PortRegistryEntry {
   operatorConfirmedGeneric: boolean;
   /** Mode chosen during confirmation (open DMX vs ENTTEC Pro wrapper). */
   confirmedMode?: GenericConfirmMode;
+  /** Per-adapter operator override for protocol/family — wins over label detection. */
+  profileOverride?: DMXProfileOverride;
   firstSeen: number;
   lastSeen: number;
 }
