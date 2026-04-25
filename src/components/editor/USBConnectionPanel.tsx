@@ -26,6 +26,7 @@ import {
   attachSerialHotPlug,
 } from '@/lib/usbEngine';
 import { GenericAdapterConfirm } from './usb/GenericAdapterConfirm';
+import { DMXProfileEditor } from './usb/DMXProfileEditor';
 import { portRegistry, keyFor } from '@/core/discovery/portRegistry';
 
 
