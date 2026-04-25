@@ -185,26 +185,28 @@ export default function Landing() {
     <div className="fixed inset-0 z-[200] overflow-y-auto bg-background text-foreground antialiased">
       {/* ── NAV ────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 border-b border-border/40 bg-background/70 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
-          <Link to="/landing" className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary to-[hsl(var(--electric-glow))] shadow-[0_0_24px_hsl(var(--primary)/0.4)]" />
-            <span className="text-sm font-black tracking-[0.18em]">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6 md:px-8">
+          <Link to="/landing" className="flex flex-shrink-0 items-center gap-2">
+            <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-primary to-[hsl(var(--electric-glow))] shadow-[0_0_24px_hsl(var(--primary)/0.4)] sm:h-7 sm:w-7" />
+            <span className="text-xs font-black tracking-[0.18em] sm:text-sm">
               FX <span className="text-primary">KONTROL</span>
             </span>
           </Link>
-          <nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
+          <nav className="hidden items-center gap-6 text-sm text-muted-foreground lg:flex xl:gap-7">
             <a href="#features" className="transition hover:text-foreground">Recursos</a>
             <a href="#demo" className="transition hover:text-foreground">Demo</a>
             <a href="#pricing" className="transition hover:text-foreground">Preço</a>
             <Link to="/pricing" className="transition hover:text-foreground">Planos</Link>
           </nav>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-shrink-0 items-center gap-2">
             <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
               <Link to="/auth">Entrar</Link>
             </Button>
-            <Button asChild size="sm" className="rounded-full">
+            <Button asChild size="sm" className="rounded-full px-3 text-xs sm:px-4 sm:text-sm">
               <Link to="/studio">
-                Abrir Studio <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                <span className="hidden xs:inline sm:inline">Abrir Studio</span>
+                <span className="inline xs:hidden sm:hidden">Studio</span>
+                <ArrowRight className="ml-1 h-3.5 w-3.5" />
               </Link>
             </Button>
           </div>
@@ -215,49 +217,49 @@ export default function Landing() {
       <section className="relative overflow-hidden">
         {/* Aurora background */}
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-40 left-1/2 h-[600px] w-[1200px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.25),transparent_60%)] blur-3xl" />
-          <div className="absolute -bottom-40 right-0 h-[500px] w-[800px] rounded-full bg-[radial-gradient(circle_at_center,hsl(var(--fxk-cyan)/0.18),transparent_60%)] blur-3xl" />
-          <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--foreground)/0.03)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--foreground)/0.03)_1px,transparent_1px)] [background-size:64px_64px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
+          <div className="absolute -top-40 left-1/2 h-[400px] w-[100vw] max-w-[1200px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.25),transparent_60%)] blur-3xl sm:h-[600px]" />
+          <div className="absolute -bottom-40 right-0 h-[350px] w-[100vw] max-w-[800px] rounded-full bg-[radial-gradient(circle_at_center,hsl(var(--fxk-cyan)/0.18),transparent_60%)] blur-3xl sm:h-[500px]" />
+          <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--foreground)/0.03)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--foreground)/0.03)_1px,transparent_1px)] [background-size:40px_40px] sm:[background-size:64px_64px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
         </div>
 
-        <div className="relative mx-auto max-w-7xl px-5 pb-24 pt-28 md:px-8 md:pb-32 md:pt-36">
+        <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-20 sm:px-6 sm:pb-24 sm:pt-28 md:px-8 md:pb-32 md:pt-36">
           <div className="mx-auto max-w-4xl text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3 py-1 text-xs uppercase tracking-[0.2em] text-muted-foreground backdrop-blur">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground backdrop-blur sm:mb-6 sm:text-xs sm:tracking-[0.2em]">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[hsl(var(--success))]" />
               Plataforma viva — v5 Reliability
             </div>
-            <h1 className="font-display text-5xl font-black leading-[1.05] tracking-tight md:text-7xl">
+            <h1 className="font-display text-[2.25rem] font-black leading-[1.05] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
               O novo padrão para shows{" "}
               <span className="bg-gradient-to-r from-primary via-[hsl(var(--electric-glow))] to-[hsl(var(--fxk-gold))] bg-clip-text text-transparent">
                 pirotécnicos & SFX
               </span>
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
+            <p className="mx-auto mt-5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:mt-6 sm:text-base md:text-lg">
               Desenhe, simule e dispare shows com pirotecnia, drones, lasers, DMX e ArtNet — em uma só plataforma.
               Mesma fidelidade do Finale 3D, com automação moderna e segurança crítica.
             </p>
-            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Button asChild size="lg" className="h-12 rounded-full px-7 text-sm font-bold shadow-[0_10px_40px_hsl(var(--primary)/0.3)]">
+            <div className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:mt-9 sm:flex-row sm:items-center">
+              <Button asChild size="lg" className="h-12 rounded-full px-6 text-sm font-bold shadow-[0_10px_40px_hsl(var(--primary)/0.3)] sm:px-7">
                 <Link to="/studio">
                   <Rocket className="mr-2 h-4 w-4" />
                   Abrir editor 3D
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="h-12 rounded-full border-border/60 bg-card/40 px-7 text-sm font-semibold backdrop-blur">
+              <Button asChild variant="outline" size="lg" className="h-12 rounded-full border-border/60 bg-card/40 px-6 text-sm font-semibold backdrop-blur sm:px-7">
                 <Link to="/pricing">Ver planos</Link>
               </Button>
             </div>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70 sm:mt-10 sm:gap-x-8 sm:gap-y-3 sm:text-xs sm:tracking-[0.18em]">
               <span>Showven™ PBUS</span>
               <span>FireOne FXK-PYRO</span>
               <span>Art-Net 4/5</span>
-              <span>VVIZ s</span>
+              <span>VVIZ Drones</span>
               <span>SMPTE LTC</span>
             </div>
           </div>
 
           {/* Hero "screenshot" — gradient mockup of the 3D editor */}
-          <div className="relative mx-auto mt-16 max-w-6xl">
+          <div className="relative mx-auto mt-10 max-w-6xl sm:mt-16">
             <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-primary/30 via-[hsl(var(--fxk-cyan)/0.2)] to-[hsl(var(--fxk-violet)/0.25)] opacity-40 blur-2xl" />
             <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-[hsl(var(--surface-1))] shadow-[0_50px_120px_-20px_hsl(220_30%_1%/0.9)]">
               <div className="flex h-9 items-center gap-2 border-b border-border/50 bg-[hsl(var(--surface-2))] px-4">
@@ -312,17 +314,17 @@ export default function Landing() {
       </section>
 
       {/* ── FEATURES ───────────────────────────────────────────────────── */}
-      <section id="features" className="relative border-t border-border/40 bg-[hsl(var(--surface-1))] py-24 md:py-32">
-        <div className="mx-auto max-w-7xl px-5 md:px-8">
+      <section id="features" className="relative border-t border-border/40 bg-[hsl(var(--surface-1))] py-16 sm:py-24 md:py-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-primary">Recursos</p>
-            <h2 className="text-4xl font-black tracking-tight md:text-5xl">
+            <h2 className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
               Mesmo core do Finale. <br />
               <span className="text-muted-foreground">Mais moderno. Mais acessível.</span>
             </h2>
           </div>
 
-          <div className="mt-16 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 sm:mt-16 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => (
               <Card
                 key={f.title}
@@ -343,12 +345,12 @@ export default function Landing() {
       </section>
 
       {/* ── DEMO ───────────────────────────────────────────────────────── */}
-      <section id="demo" className="relative border-t border-border/40 py-24 md:py-32">
-        <div className="mx-auto max-w-7xl px-5 md:px-8">
-          <div className="grid items-center gap-12 lg:grid-cols-2">
+      <section id="demo" className="relative border-t border-border/40 py-16 sm:py-24 md:py-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
+          <div className="grid items-center gap-10 sm:gap-12 lg:grid-cols-2">
             <div>
               <p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-primary">Demo</p>
-              <h2 className="text-4xl font-black tracking-tight md:text-5xl">
+              <h2 className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
                 O editor 3D que <span className="text-primary">dispara o show de verdade</span>.
               </h2>
               <p className="mt-5 max-w-lg text-base leading-relaxed text-muted-foreground">
@@ -456,11 +458,11 @@ export default function Landing() {
       </section>
 
       {/* ── PRICING ────────────────────────────────────────────────────── */}
-      <section id="pricing" className="relative border-t border-border/40 bg-[hsl(var(--surface-1))] py-24 md:py-32">
-        <div className="mx-auto max-w-7xl px-5 md:px-8">
+      <section id="pricing" className="relative border-t border-border/40 bg-[hsl(var(--surface-1))] py-16 sm:py-24 md:py-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-primary">Preço</p>
-            <h2 className="text-4xl font-black tracking-tight md:text-5xl">
+            <h2 className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
               Preço de ataque por mercado.
             </h2>
             <p className="mx-auto mt-4 max-w-lg text-base text-muted-foreground">
@@ -468,7 +470,7 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="mt-16 grid gap-5 md:grid-cols-3">
+          <div className="mt-10 sm:mt-16 grid gap-5 md:grid-cols-3">
             {PRICING.map((plan) => (
               <Card
                 key={plan.name}
@@ -509,12 +511,12 @@ export default function Landing() {
       </section>
 
       {/* ── FINAL CTA ──────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden border-t border-border/40 py-28 md:py-36">
+      <section className="relative overflow-hidden border-t border-border/40 py-20 sm:py-28 md:py-36">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute left-1/2 top-1/2 h-[400px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,hsl(var(--primary)/0.25),transparent_70%)] blur-3xl" />
         </div>
-        <div className="relative mx-auto max-w-3xl px-5 text-center md:px-8">
-          <h2 className="text-4xl font-black tracking-tight md:text-6xl">
+        <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6 md:px-8">
+          <h2 className="text-3xl font-black tracking-tight sm:text-4xl md:text-6xl">
             Construa o próximo show <br />
             <span className="bg-gradient-to-r from-primary via-[hsl(var(--electric-glow))] to-[hsl(var(--fxk-gold))] bg-clip-text text-transparent">
               antes do concorrente.
@@ -539,7 +541,7 @@ export default function Landing() {
 
       {/* ── FOOTER ─────────────────────────────────────────────────────── */}
       <footer className="border-t border-border/40 bg-[hsl(var(--surface-1))] py-10">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-5 text-xs text-muted-foreground md:flex-row md:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 text-xs text-muted-foreground sm:px-6 md:flex-row md:px-8">
           <div className="flex items-center gap-2">
             <div className="h-5 w-5 rounded-md bg-gradient-to-br from-primary to-[hsl(var(--electric-glow))]" />
             <span className="font-bold tracking-[0.18em] text-foreground/80">FX KONTROL</span>
