@@ -74,10 +74,29 @@ function deviceToDiscovered(d: USBDeviceLike): DiscoveredDevice {
 class WebUsbDiscoverer implements TransportDiscoverer {
   readonly id = 'webusb' as const;
   private _devices = new Map<string, DiscoveredDevice>();
+  private _rawByDeviceId = new Map<string, USBDeviceLike>();
   private _listeners = new Set<(ev: DiscoveryEvent) => void>();
   private _attached = false;
 
   isSupported(): boolean { return isWebUsbSupported(); }
+
+  /**
+   * Revoke browser-level permission for the device (Chrome exposes
+   * `USBDevice.forget()`), drop it from the cache and emit a `lost` event.
+   */
+  async forgetDevice(deviceId: string): Promise<boolean> {
+    const raw = this._rawByDeviceId.get(deviceId) as (USBDeviceLike & { forget?: () => Promise<void> }) | undefined;
+    let revoked = false;
+    if (raw?.forget) {
+      try { await raw.forget(); revoked = true; }
+      catch (e) { logger.warn('[WebUsbDiscoverer] device.forget failed', e); }
+    }
+    const dev = this._devices.get(deviceId);
+    this._rawByDeviceId.delete(deviceId);
+    this._devices.delete(deviceId);
+    if (dev) this._emit({ type: 'lost', device: { ...dev, online: false } });
+    return revoked;
+  }
 
   async scan(): Promise<DiscoveredDevice[]> {
     if (!this.isSupported()) return [];
@@ -89,6 +108,7 @@ class WebUsbDiscoverer implements TransportDiscoverer {
       for (const d of devs) {
         const dev = deviceToDiscovered(d);
         seen.add(dev.id);
+        this._rawByDeviceId.set(dev.id, d);
         const prev = this._devices.get(dev.id);
         this._devices.set(dev.id, dev);
         this._emit({ type: prev ? 'updated' : 'discovered', device: dev });
@@ -96,6 +116,7 @@ class WebUsbDiscoverer implements TransportDiscoverer {
       for (const [id, dev] of this._devices) {
         if (!seen.has(id)) {
           this._devices.delete(id);
+          this._rawByDeviceId.delete(id);
           this._emit({ type: 'lost', device: { ...dev, online: false } });
         }
       }
