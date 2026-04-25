@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { DiscoveryGrid } from './hardware/DiscoveryGrid';
 import { TransportFilterChips } from './hardware/TransportFilterChips';
 import { ReopenMatchPolicySelector } from './hardware/ReopenMatchPolicySelector';
+import { PersistedDevicesPanel } from './hardware/PersistedDevicesPanel';
 import { unifiedDiscovery } from '@/core/discovery/UnifiedDiscoveryService';
 import {
   buildDiscoveryReports, notifyDiscoveryReports, getRetryableTransports,
@@ -197,6 +198,7 @@ export default function HardwareOverview() {
           </div>
         </div>
         <DiscoveryGrid />
+        <PersistedDevicesPanel />
       </div>
 
       {/* Device Grid */}
