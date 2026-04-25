@@ -384,7 +384,7 @@ function Index() {
     }
     setActivePanel((prev) => {
       const next = prev === id ? null : id;
-      if (next && SHARED_PANEL_IDS.has(next)) setLeftDockOpen(null);
+      if (next && SHARED_PANEL_IDS.has(next)) { /* shared panel opened */ }
       return next;
     });
   }, [navigate]);
