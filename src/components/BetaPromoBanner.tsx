@@ -92,7 +92,34 @@ export default function BetaPromoBanner({ endsAt = DEFAULT_ENDS_AT }: BetaPromoB
   const handleDismiss = () => {
     localStorage.setItem(STORAGE_KEY, '1');
     setDismissed(true);
+    toast('Banner Beta dispensado', {
+      description: 'Você pode reabrir a promoção em Ajuda → Mostrar banner Beta.',
+      duration: 8000,
+      action: {
+        label: 'Reabrir agora',
+        onClick: () => {
+          localStorage.removeItem(STORAGE_KEY);
+          setDismissed(false);
+          // Notify any settings/help menu listening for the toggle
+          window.dispatchEvent(new CustomEvent('beta-banner:show'));
+        },
+      },
+    });
+    // Notify settings/help menus that the banner is now hidden so they can
+    // surface a "Mostrar banner Beta" entry.
+    window.dispatchEvent(new CustomEvent('beta-banner:hidden'));
   };
+
+  // Allow other parts of the app (Help/Settings menu) to re-enable the banner
+  // by dispatching a `beta-banner:show` event on the window.
+  useEffect(() => {
+    const onShow = () => {
+      localStorage.removeItem(STORAGE_KEY);
+      setDismissed(false);
+    };
+    window.addEventListener('beta-banner:show', onShow);
+    return () => window.removeEventListener('beta-banner:show', onShow);
+  }, []);
 
   const handlePresignup = async (e: React.FormEvent) => {
     e.preventDefault();
