@@ -50,42 +50,22 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
   }, []);
 
   // ── Phase: black-in → try video or fallback
+  // Video1 (Minas FX) foi removido da UX do editor — pula direto para video2 (FX Kontrol).
   useEffect(() => {
     if (phase !== 'black-in') return;
     const t1 = setTimeout(() => {
       setBlackOpacity(0);
-      if (!useFallback) setV1Opacity(1);
+      if (!useFallback) setV2Opacity(1);
     }, 400);
     const t2 = setTimeout(() => {
       if (useFallback) {
         setPhase('boot-text');
       } else {
-        setPhase('video1');
+        setPhase('video2');
       }
     }, 1200);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [phase, useFallback]);
-
-  // ── Phase: video1 — play Minas FX
-  useEffect(() => {
-    if (phase !== 'video1' || !video1Ref.current) return;
-    video1Ref.current.currentTime = 0;
-    video1Ref.current.play().catch(() => {
-      // Video failed — switch to CSS fallback
-      setUseFallback(true);
-      setV1Opacity(0);
-      setPhase('boot-text');
-    });
-  }, [phase]);
-
-  // ── Phase: cross-fade
-  useEffect(() => {
-    if (phase !== 'cross-fade') return;
-    setSweepActive(true);
-    const t1 = setTimeout(() => { setV1Opacity(0); setV2Opacity(1); }, 200);
-    const t2 = setTimeout(() => { setSweepActive(false); setPhase('video2'); }, 1200);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [phase]);
 
   // ── Phase: video2 — play FX Kontrol
   useEffect(() => {
