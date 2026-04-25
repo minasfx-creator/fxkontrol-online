@@ -98,7 +98,7 @@ const CONSOLE_ACCENTS: Record<string, { color: string; glow: string; label: stri
   hardware:     { color: 'hsl(190 80% 50%)',   glow: 'hsl(190 80% 50% / 0.1)',  label: 'HARDWARE',    badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'DEVICE CONNECT & MONITOR' },
   verification: { color: 'hsl(120 70% 42%)',   glow: 'hsl(120 70% 42% / 0.08)', label: 'VERIFY',      badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', subtitle: 'SYSTEM VERIFICATION' },
   continuity:   { color: 'hsl(190 100% 50%)',  glow: 'hsl(190 100% 50% / 0.1)', label: 'CONTINUITY',  badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'IGNITER CONTINUITY MATRIX' },
-  sys_overview:   { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'OVERVIEW',    badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'SYSTEM OVERVIEW' },
+  sys_overview:   { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'OFFICE',      badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'OFFICE OVERVIEW' },
   safety_console: { color: 'hsl(0 85% 48%)',     glow: 'hsl(0 85% 48% / 0.1)',     label: 'SAFETY',      badge: 'bg-red-500/15 text-red-400 border-red-500/20', subtitle: 'SAFETY INTERLOCK CONSOLE' },
   field_diag:     { color: 'hsl(190 80% 50%)',   glow: 'hsl(190 80% 50% / 0.1)',   label: 'FIELD DIAG',  badge: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20', subtitle: 'HARDWARE DIAGNOSTICS' },
   fireone_export: { color: 'hsl(32 100% 50%)',   glow: 'hsl(32 100% 50% / 0.08)',  label: 'FIREONE',     badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20', subtitle: 'FIREONE EXPORT CONSOLE' },
@@ -140,7 +140,7 @@ const MODE_SECTIONS = [
     accent: 'text-amber-400',
     icon: Activity,
     modes: [
-      { key: 'sys_overview' as CommandMode, label: 'OVERVIEW', icon: Activity },
+      { key: 'sys_overview' as CommandMode, label: 'OFFICE', icon: Activity },
       { key: 'state_matrix' as CommandMode, label: 'STATE MTX', icon: Activity },
       { key: 'manual_compliance' as CommandMode, label: 'COMPLIANCE', icon: BookOpen },
       { key: 'exec_report' as CommandMode, label: 'EXEC REPORT', icon: FileBarChart },
