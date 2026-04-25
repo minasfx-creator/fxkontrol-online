@@ -125,6 +125,44 @@ export const portRegistry = {
     return this.get(key)?.operatorConfirmedGeneric === true;
   },
 
+  /**
+   * Record a successful authorization/open event for a port. Persists
+   * the metadata used to silently re-open the device on the next session.
+   * Preserves any existing operator confirmations / profile overrides.
+   */
+  recordSuccess(opts: {
+    vendorId?: number;
+    productId?: number;
+    host?: string;
+    label: string;
+    profileId?: string;
+    dmxAdapterKind?: string;
+  }): PortRegistryEntry {
+    const key = keyFor({
+      vendorId: opts.vendorId,
+      productId: opts.productId,
+      host: opts.host,
+    });
+    const cur = this.get(key);
+    return this.upsert({
+      key,
+      vendorId: opts.vendorId ?? cur?.vendorId,
+      productId: opts.productId ?? cur?.productId,
+      host: opts.host ?? cur?.host,
+      lastLabel: opts.label,
+      profileId: opts.profileId ?? cur?.profileId,
+      dmxAdapterKind: opts.dmxAdapterKind ?? cur?.dmxAdapterKind,
+      operatorConfirmedGeneric: cur?.operatorConfirmedGeneric ?? false,
+      confirmedMode: cur?.confirmedMode,
+      profileOverride: cur?.profileOverride,
+    });
+  },
+
+  /** Sorted by lastSeen desc — useful for "recently authorized" inventories. */
+  listRecent(): PortRegistryEntry[] {
+    return load().sort((a, b) => b.lastSeen - a.lastSeen);
+  },
+
   /** Pin a DMX adapter family/protocol for this VID:PID. Survives reloads. */
   setProfileOverride(
     key: string,
