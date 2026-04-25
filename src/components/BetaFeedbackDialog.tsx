@@ -108,7 +108,7 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('beta_feedback').insert({
+      const { error } = await (supabase as any).from('beta_feedback').insert({
         user_id: user?.id ?? null,
         category: parsed.data.category,
         severity: parsed.data.severity ?? null,
