@@ -328,8 +328,9 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
 
   const stopUsbStream = useCallback(() => {
     setUsbStreaming(false);
+    setPersistedStreamingDesired(false);
     addDiagLog({ timestamp: new Date(), type: 'info', message: 'USB streaming parado' });
-  }, [addDiagLog]);
+  }, [addDiagLog, setPersistedStreamingDesired]);
 
   const startUsbStream = useCallback(() => {
     if (universesRef.current.length === 0) {
@@ -342,23 +343,43 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     }
     setUsbStreamStats({ frames: 0, lastLatencyMs: 0 });
     setUsbStreaming(true);
+    setPersistedStreamingDesired(true);
     addDiagLog({
       timestamp: new Date(), type: 'info',
       message: `USB streaming iniciado · Uni 1 → ${connectedUSBDMX.length} device(s) @ ${usbStreamFps}Hz`,
     });
-  }, [connectedUSBDMX.length, addDiagLog, usbStreamFps]);
+  }, [connectedUSBDMX.length, addDiagLog, usbStreamFps, setPersistedStreamingDesired]);
 
   // Handler do seletor de taxa: muda Hz mesmo durante streaming.
   // O hook reinicia internamente apenas o setInterval, sem fechar a porta.
   const handleFpsChange = useCallback((hz: 10 | 20 | 40) => {
     setUsbStreamFps(hz);
+    setPersistedFps(hz);
     if (usbStreaming) {
       addDiagLog({
         timestamp: new Date(), type: 'info',
         message: `Taxa alterada para ${hz}Hz · porta USB mantida aberta`,
       });
     }
-  }, [usbStreaming, addDiagLog]);
+  }, [usbStreaming, addDiagLog, setPersistedFps]);
+
+  // Auto-resume: ao remontar o painel, se o usuário tinha streaming ON e
+  // os pré-requisitos estão atendidos (universo patchado + device conectado),
+  // reinicia o broadcast automaticamente. Tenta apenas uma vez por mount.
+  useEffect(() => {
+    if (autoResumeAttemptedRef.current) return;
+    if (!persistedStreamingDesired) return;
+    if (usbStreaming) return;
+    if (universes.length === 0) return;
+    if (connectedUSBDMX.length === 0) return;
+    autoResumeAttemptedRef.current = true;
+    setUsbStreamStats({ frames: 0, lastLatencyMs: 0 });
+    setUsbStreaming(true);
+    addDiagLog({
+      timestamp: new Date(), type: 'info',
+      message: `USB streaming retomado das preferências @ ${usbStreamFps}Hz`,
+    });
+  }, [persistedStreamingDesired, usbStreaming, universes.length, connectedUSBDMX.length, usbStreamFps, addDiagLog]);
 
 
 
