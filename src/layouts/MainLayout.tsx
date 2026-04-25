@@ -90,28 +90,49 @@ export default function MainLayout() {
     return () => document.removeEventListener('click', handler);
   }, [humStarted]);
 
-  // Route change: Apple-style cross-fade (curto, sem teatro).
-  // 180ms dissolve → swap → 220ms materialize. Total ~400ms perceptual,
-  // mas a metade visível porque o materialize começa imediatamente.
+  // Route change: native View Transitions when supported (Chromium 111+,
+  // Safari 18+, Edge 111+). Fallback: CSS cross-fade (180ms+220ms).
+  //
+  // Why native:
+  //   • The browser captures both DOM states as compositor-level snapshots
+  //     and animates the swap on the GPU — no React reflow during the fade,
+  //     no JIT layout work, no stutter on heavy consoles.
+  //   • Glassmorphism layers (Dock, Sidebar, Header) keep their `backdrop-
+  //     filter` blur stable across the transition because they're captured
+  //     as bitmap snapshots — no per-frame blur recomputation.
+  //   • Animation timing/easing lives entirely in CSS via the
+  //     `::view-transition-*` pseudo-elements — see index.css.
   useEffect(() => {
-    if (prevPathRef.current !== location.pathname) {
-      ambientSound.play('nav');
+    if (prevPathRef.current === location.pathname) return;
+    ambientSound.play('nav');
+    prevPathRef.current = location.pathname;
 
-      setTransitionPhase('dissolve-out');
-
-      if (transitionTimeout.current) clearTimeout(transitionTimeout.current);
-
-      transitionTimeout.current = setTimeout(() => {
-        setDisplayedPath(location.pathname);
-        setTransitionPhase('materialize-in');
-
-        transitionTimeout.current = setTimeout(() => {
-          setTransitionPhase('idle');
-        }, 220);
-      }, 180);
-
-      prevPathRef.current = location.pathname;
+    if (SUPPORTS_VIEW_TRANSITIONS) {
+      // Native path: skip the CSS state-machine and let the browser
+      // crossfade the captured snapshots. flushSync forces React to commit
+      // the new tree synchronously inside the transition callback so the
+      // browser snapshots the *new* state, not the stale one.
+      // We also keep `transitionPhase` at 'idle' so the fallback CSS
+      // animation classes don't fire on top of the native crossfade.
+      setTransitionPhase('idle');
+      (document as Document & { startViewTransition: (cb: () => void) => unknown })
+        .startViewTransition(() => {
+          flushSync(() => setDisplayedPath(location.pathname));
+        });
+      return;
     }
+
+    // Fallback path — CSS dissolve/materialize.
+    setTransitionPhase('dissolve-out');
+    if (transitionTimeout.current) clearTimeout(transitionTimeout.current);
+    transitionTimeout.current = setTimeout(() => {
+      setDisplayedPath(location.pathname);
+      setTransitionPhase('materialize-in');
+      transitionTimeout.current = setTimeout(() => {
+        setTransitionPhase('idle');
+      }, 220);
+    }, 180);
+
     return () => {
       if (transitionTimeout.current) clearTimeout(transitionTimeout.current);
     };
