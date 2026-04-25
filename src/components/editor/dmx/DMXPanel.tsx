@@ -304,6 +304,63 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     }
   };
 
+  // ── Continuous USB DMX streaming (Universe 1) ─────────────────────
+  const stopUsbStream = useCallback(() => {
+    if (usbStreamIntervalRef.current !== null) {
+      window.clearInterval(usbStreamIntervalRef.current);
+      usbStreamIntervalRef.current = null;
+    }
+    usbStreamInFlightRef.current = false;
+    setUsbStreaming(false);
+    addDiagLog({ timestamp: new Date(), type: 'info', message: 'USB streaming parado' });
+    logger.info('[DMXPanel] USB streaming stopped');
+  }, [addDiagLog]);
+
+  const startUsbStream = useCallback(() => {
+    if (usbStreamIntervalRef.current !== null) return;
+    if (universesRef.current.length === 0) {
+      toast.error('Faça o Auto-Patch primeiro (Universo 1 é a fonte)');
+      return;
+    }
+    if (connectedUSBDMX.length === 0) {
+      toast.error('Nenhum dispositivo DMX USB conectado');
+      return;
+    }
+
+    const periodMs = Math.max(23, Math.round(1000 / usbStreamFps)); // floor 23ms ≈ 43.5Hz (DMX512 spec)
+    setUsbStreaming(true);
+    setUsbStreamStats({ frames: 0, lastLatencyMs: 0 });
+    addDiagLog({
+      timestamp: new Date(), type: 'info',
+      message: `USB streaming iniciado · Uni 1 → ${connectedUSBDMX.length} device(s) @ ${Math.round(1000 / periodMs)}Hz`,
+    });
+    logger.info('[DMXPanel] USB streaming started', { fps: usbStreamFps, periodMs, devices: connectedUSBDMX.length });
+
+    usbStreamIntervalRef.current = window.setInterval(async () => {
+      if (usbStreamInFlightRef.current) return; // throttle natural se USB engasgar
+      const uni1 = universesRef.current[0];
+      if (!uni1) return;
+      usbStreamInFlightRef.current = true;
+      const t0 = performance.now();
+      try {
+        const result = await sendDMXToAll(uni1.channels);
+        const latency = Math.round(performance.now() - t0);
+        setUsbStreamStats(s => ({ frames: s.frames + 1, lastLatencyMs: latency }));
+        // Log apenas 1x por segundo aprox. para não poluir
+        if ((Date.now() / 1000 | 0) % 5 === 0 && Math.random() < 0.05) {
+          logger.info('[DMXPanel] USB stream tick', { frames: result.deviceCount, latency });
+        }
+      } catch (e: any) {
+        logger.warn('[DMXPanel] USB stream send failed — stopping', e);
+        addDiagLog({ timestamp: new Date(), type: 'error', message: `USB stream falhou: ${e.message || 'erro'}` });
+        toast.error('Falha no streaming USB — parado');
+        stopUsbStream();
+      } finally {
+        usbStreamInFlightRef.current = false;
+      }
+    }, periodMs);
+  }, [usbStreamFps, connectedUSBDMX.length, sendDMXToAll, addDiagLog, stopUsbStream]);
+
   const sendFireOneDMX = async () => {
     if (universes.length === 0 || !hardware.isConnected) {
       toast.error(!hardware.isConnected ? 'FireOne não conectado' : 'Faça o Auto-Patch primeiro');
