@@ -613,7 +613,7 @@ export default function SkyCanvas() {
         {!google3DTilesEnabled && <ViewportRulers />}
         <CameraBookmarkSaver />
         <SubsystemBoundary name="PostProcessing">
-          {!isLowTierMobile && <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />}
+          <PostProcessingBridge isMobile={isMobile} isLowTierMobile={isLowTierMobile} />
         </SubsystemBoundary>
         {!isLowTierMobile && <StressTestFireworks />}
         
