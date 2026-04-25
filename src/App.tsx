@@ -37,6 +37,9 @@ const JoiPanel = lazy(lazyRetry(() => import("./ai/ui/JoiPanel")));
 const SwarmGPT = lazy(lazyRetry(() => import("./pages/SwarmGPT")));
 const DmxPyroDiagnostics = lazy(lazyRetry(() => import("./components/diagnostics/DmxPyroDiagnostics")));
 const NetworkSettings = lazy(lazyRetry(() => import("./pages/NetworkSettings")));
+const Terms = lazy(lazyRetry(() => import("./pages/legal/Terms")));
+const Refund = lazy(lazyRetry(() => import("./pages/legal/Refund")));
+const Privacy = lazy(lazyRetry(() => import("./pages/legal/Privacy")));
 
 const queryClient = new QueryClient();
 
@@ -82,6 +85,10 @@ function App() {
                     {/* Public diagnostics — intentionally outside ProtectedRoute so it can
                         be opened without login while debugging Live Firing / DMX issues. */}
                     <Route path="/diagnostics/dmx-pyro" element={<DmxPyroDiagnostics />} />
+                    {/* Public legal pages — required by Paddle (Merchant of Record) and must be crawlable without auth. */}
+                    <Route path="/legal/terms" element={<Terms />} />
+                    <Route path="/legal/refund" element={<Refund />} />
+                    <Route path="/legal/privacy" element={<Privacy />} />
                     <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/editor" element={<Index />} />
