@@ -181,6 +181,7 @@ export const PANEL_SECTIONS = RAW_PANEL_SECTIONS
   .map(section => ({
     ...section,
     items: section.items.filter(item => {
+      if (TOOLBAR_OWNED.has(item.id)) return false;
       const flag = PANEL_FLAGS[item.id];
       return !flag || isEnabled(flag);
     }),
