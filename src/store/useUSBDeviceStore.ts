@@ -219,7 +219,41 @@ export const useUSBDeviceStore = create<USBDeviceStore>((set, get) => ({
     }));
   },
 
-  getConnectedDMXDevices: () => {
+  setProfileOverride: (deviceId: string, kind: DMXProfileOverrideKind) => {
+    const entry = get().dmxDevices.find(d => d.id === deviceId);
+    if (!entry) return;
+    const regKey = registryKeyFor(entry.device);
+    const info = entry.device.port?.getInfo?.();
+    if (regKey) {
+      portRegistry.setProfileOverride(regKey, kind, entry.label, {
+        vendorId: info?.usbVendorId,
+        productId: info?.usbProductId,
+      });
+    }
+    logger.warn('[USBDeviceStore] DMX profile override set', {
+      deviceId, kind, label: entry.label, regKey,
+    });
+    // Re-derive the entry so adapterKind/protocol/recognized/outputReady are consistent.
+    const rebuilt = buildEntry(entry.device);
+    set(state => ({
+      dmxDevices: state.dmxDevices.map(d => d.id === deviceId ? rebuilt : d),
+    }));
+  },
+
+  clearProfileOverride: (deviceId: string) => {
+    const entry = get().dmxDevices.find(d => d.id === deviceId);
+    if (!entry) return;
+    const regKey = registryKeyFor(entry.device);
+    if (regKey) portRegistry.clearProfileOverride(regKey);
+    logger.warn('[USBDeviceStore] DMX profile override cleared', {
+      deviceId, label: entry.label, regKey,
+    });
+    const rebuilt = buildEntry(entry.device);
+    set(state => ({
+      dmxDevices: state.dmxDevices.map(d => d.id === deviceId ? rebuilt : d),
+    }));
+  },
+
     return get().dmxDevices.filter(d => d.state === 'connected' && d.type === 'dmx');
   },
 
