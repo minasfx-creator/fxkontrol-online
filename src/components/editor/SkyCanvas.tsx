@@ -1985,6 +1985,7 @@ export default function SkyCanvas() {
 
       {/* Debug overlay toggle + panel */}
       {!isMobile && showDebugOverlay && <RenderDebugPanel />}
+      {!isMobile && showDebugOverlay && <SkyCanvasDiagnosticsPanel />}
 
       {/* Fullscreen floating edit menu */}
       {isFullscreen && <FullscreenEditMenu />}
