@@ -13,7 +13,7 @@ import { useDisplayStore } from '@/store/useDisplayStore';
 import type { WorldShowPreset } from '@/data/worldShowPresets';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { type MobileTab } from '@/components/editor/MobileTabBar';
-import { loadTimelineView, saveTimelineView } from '@/lib/timelineViewState';
+import { loadTimelineView, saveTimelineView, resetTimelineView } from '@/lib/timelineViewState';
 
 // ── Critical-path (static): shell chrome loaded immediately ──
 import Toolbar from '@/components/editor/Toolbar';
