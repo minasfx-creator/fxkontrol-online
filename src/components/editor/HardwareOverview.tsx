@@ -16,12 +16,16 @@ import { getProvenanceBadge } from '@/core/hardware/provenance';
 import { cn } from '@/lib/utils';
 import {
   Activity, Cpu, Battery, Radio, Wifi, AlertTriangle,
-  CheckCircle2, XCircle, Zap, Shield, RefreshCw, Search, Gauge, Satellite,
+  CheckCircle2, XCircle, Zap, Shield, RefreshCw, Search, Gauge, Satellite, RotateCw,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { DiscoveryGrid } from './hardware/DiscoveryGrid';
-import { buildDiscoveryReports, notifyDiscoveryReports } from '@/core/discovery/discoveryToasts';
+import { unifiedDiscovery } from '@/core/discovery/UnifiedDiscoveryService';
+import {
+  buildDiscoveryReports, notifyDiscoveryReports, getRetryableTransports,
+} from '@/core/discovery/discoveryToasts';
+import { toast } from 'sonner';
 
 const STATUS_COLORS: Record<string, string> = {
   connected: 'text-emerald-400',
