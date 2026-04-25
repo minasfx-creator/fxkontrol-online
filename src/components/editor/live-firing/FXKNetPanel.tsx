@@ -4,6 +4,7 @@
  */
 import { useState, useMemo, lazy, Suspense } from 'react';
 import { cn } from '@/lib/utils';
+import { isEnabled } from '@/lib/featureFlags';
 import { Globe, Cpu, ArrowLeftRight, Grid3X3, Spline, Radio, Smartphone, Nfc } from 'lucide-react';
 import ArtNetModulePanel from './ArtNetModulePanel';
 import VirtualIFMx32QPanel from './VirtualIFMx32QPanel';
@@ -79,16 +80,17 @@ type TabKey = 'network' | 'ma3' | 'module' | 'dmx-io' | 'pixel-map' | 'bezier' |
 export default function FXKNetPanel({ fs = false }: FXKNetPanelProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('network');
 
-  const tabs: { key: TabKey; label: string; icon: typeof Globe; sub: string }[] = [
+  const allTabs: { key: TabKey; label: string; icon: typeof Globe; sub: string; flag?: 'module_pairing_mobilelink' }[] = [
     { key: 'network',     label: 'NET',  icon: Globe,         sub: 'ART-NET' },
     { key: 'ma3',         label: 'MA3',  icon: Radio,         sub: 'NODE' },
     { key: 'module',      label: 'MOD',  icon: Cpu,           sub: 'FIELD' },
     { key: 'dmx-io',      label: 'I/O',  icon: ArrowLeftRight, sub: 'DMX' },
     { key: 'pixel-map',   label: 'PXL',  icon: Grid3X3,       sub: 'MAP' },
     { key: 'bezier',      label: 'CRV',  icon: Spline,        sub: 'BÉZIER' },
-    { key: 'mobile-link', label: 'LINK', icon: Smartphone,    sub: 'MOBILE' },
-    { key: 'pairing',     label: 'PAIR', icon: Nfc,           sub: 'NFC·BLE' },
+    { key: 'mobile-link', label: 'LINK', icon: Smartphone,    sub: 'MOBILE', flag: 'module_pairing_mobilelink' },
+    { key: 'pairing',     label: 'PAIR', icon: Nfc,           sub: 'NFC·BLE', flag: 'module_pairing_mobilelink' },
   ];
+  const tabs = allTabs.filter(t => !t.flag || isEnabled(t.flag));
 
   return (
     <div className="flex flex-col h-full">
