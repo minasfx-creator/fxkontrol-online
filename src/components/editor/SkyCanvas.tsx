@@ -1728,6 +1728,17 @@ export default function SkyCanvas() {
   // ResizeObserver removed — R3F Canvas resize={{ debounce: 50 }} handles this natively
 
   const [canvasReady, setCanvasReady] = useState(false);
+  const [webglRetryKey, setWebglRetryKey] = useState(0);
+
+  // Proactive WebGL capability probe — render simplified fallback if unsupported.
+  const webglIssue = useMemo(() => detectWebGLCapability(), [webglRetryKey]);
+  if (webglIssue) {
+    return (
+      <div ref={containerRef} className="w-full h-full relative bg-[#050810]" data-sky-canvas>
+        <SimplifiedSkyFallback reason={webglIssue} onRetry={() => setWebglRetryKey(k => k + 1)} />
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} className="w-full h-full relative bg-[#050810] transition-opacity duration-300 ease-out" data-sky-canvas style={{ cursor: cursorStyle, opacity: canvasReady ? 1 : 0.001 }}>
