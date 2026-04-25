@@ -10,9 +10,8 @@
  * Pro / Enterprise: open Paddle overlay. If unauthenticated, redirect to /auth
  * with ?next=/pricing&plan=<priceId> so we can resume after sign-in.
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
 import { Check, Sparkles, ArrowRight, Loader2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -152,17 +151,37 @@ export default function Pricing() {
     );
   }, [searchParams]);
 
+  // SEO — set title + description without an external lib
+  useEffect(() => {
+    const prevTitle = document.title;
+    document.title = "Preços — FX KONTROL";
+    const ensureMeta = (name: string, content: string) => {
+      let el = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+      if (!el) {
+        el = document.createElement("meta");
+        el.name = name;
+        document.head.appendChild(el);
+      }
+      el.content = content;
+    };
+    ensureMeta(
+      "description",
+      "Planos FX KONTROL: Free, Pro e Enterprise. Exportação Finale 3D, drone shows, hardware completo e JOI AI ilimitado.",
+    );
+    let canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.rel = "canonical";
+      document.head.appendChild(canonical);
+    }
+    canonical.href = "https://www.fxkontrol.online/pricing";
+    return () => {
+      document.title = prevTitle;
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
-      <Helmet>
-        <title>Preços — FX KONTROL</title>
-        <meta
-          name="description"
-          content="Planos FX KONTROL: Free, Pro e Enterprise. Exportação Finale 3D, drone shows, hardware completo e JOI AI ilimitado."
-        />
-        <link rel="canonical" href="https://www.fxkontrol.online/pricing" />
-      </Helmet>
-
       <PaymentTestModeBanner />
 
       {/* Header */}
