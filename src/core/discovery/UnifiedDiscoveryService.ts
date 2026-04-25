@@ -13,6 +13,7 @@ import { webSerialDiscoverer } from './WebSerialDiscoverer';
 import { webUsbDiscoverer } from './WebUsbDiscoverer';
 import { webBleDiscoverer } from './WebBleDiscoverer';
 import { mdnsArtnetDiscoverer } from './MdnsArtnetDiscoverer';
+import { portRegistry, keyFor } from './portRegistry';
 import type { DiscoveredDevice, DiscoveryEvent, TransportDiscoverer, DiscoveryTransport } from './types';
 
 class UnifiedDiscoveryService {
