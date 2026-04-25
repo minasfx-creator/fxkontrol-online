@@ -25,11 +25,11 @@ const Dashboard = lazy(lazyRetry(() => import("./pages/Dashboard")));
 const Index = lazy(lazyRetry(() => import("./pages/Index")));
 const Agenda = lazy(lazyRetry(() => import("./pages/Agenda")));
 const Training = lazy(lazyRetry(() => import("./pages/Training")));
-const PCBViewer = lazy(lazyRetry(() => import("./pages/PCBViewer")));
 const DevicePairing = lazy(lazyRetry(() => import("./pages/DevicePairing")));
 const CommandCenter = lazy(lazyRetry(() => import("./pages/CommandCenter")));
 
 const FieldTest = lazy(lazyRetry(() => import("./pages/FieldTest")));
+const FieldOps = lazy(lazyRetry(() => import("./pages/FieldOps")));
 const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
 const Admin = lazy(lazyRetry(() => import("./pages/Admin")));
 const AccreditationDashboard = lazy(lazyRetry(() => import("./pages/AccreditationDashboard")));
@@ -118,11 +118,12 @@ function App() {
                       <Route path="/editor" element={<Index />} />
                       <Route path="/agenda" element={<Agenda />} />
                       <Route path="/training" element={<Training />} />
-                      <Route path="/pcb-viewer" element={<PCBViewer />} />
-                      <Route path="/pairing" element={<DevicePairing />} />
+                      {/* Unified field ops console (Pairing | Field Test | Mobile Link). */}
+                      <Route path="/field" element={<FieldOps />} />
+                      {/* Legacy routes — redirect to consolidated /field with hash anchor. */}
+                      <Route path="/pairing" element={<Navigate to="/field#pairing" replace />} />
+                      <Route path="/field-test" element={<Navigate to="/field#field-test" replace />} />
                       <Route path="/command" element={<CommandCenter />} />
-                      
-                      <Route path="/field-test" element={<FieldTest />} />
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/settings/network" element={<NetworkSettings />} />
                       <Route path="/platform-status" element={<PlatformStatus />} />
