@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
-import { Bug, Lightbulb, Plug, MessageSquare, Send, Loader2 } from 'lucide-react';
+import { Bug, Lightbulb, Plug, MessageSquare, Send, Loader2, Paperclip, X, FileText, Image as ImageIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
