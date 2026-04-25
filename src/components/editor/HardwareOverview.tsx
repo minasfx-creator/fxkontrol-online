@@ -191,7 +191,10 @@ export default function HardwareOverview() {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <span className="text-[7px] font-mono text-muted-foreground/50 uppercase tracking-wider">Real Discovery — transports</span>
-          <TransportFilterChips />
+          <div className="flex items-center gap-3 flex-wrap">
+            <ReopenMatchPolicySelector />
+            <TransportFilterChips />
+          </div>
         </div>
         <DiscoveryGrid />
       </div>
