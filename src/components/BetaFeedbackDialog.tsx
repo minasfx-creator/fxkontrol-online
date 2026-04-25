@@ -23,6 +23,7 @@ type Severity = 'low' | 'medium' | 'high' | 'critical';
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialCategory?: Category;
 }
 
 const APP_VERSION =
