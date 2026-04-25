@@ -3,7 +3,7 @@
  * Shows status for each exporter with OperationalMode badge and issue details.
  */
 import { useState, useEffect } from 'react';
-import { useVerificationEngine } from '@/core/verification/useVerificationEngine';
+import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { exportCoordinator, type ExportTarget } from '@/core/export/ExportCoordinator';
 import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
@@ -80,7 +80,7 @@ function ExportChannel({ label, icon: Icon, color, count, countLabel, canExport,
 }
 
 export default function ExportReadinessPanel() {
-  const { level, result, runVerification } = useVerificationEngine();
+  const { level, result, runVerification } = useVerificationStore();
   const sp = showPlanManager.current;
   const canExport = level === 'READY_FOR_EXPORT' || level === 'READY_FOR_FIELD';
   const mode = operationalModeGuard.mode;

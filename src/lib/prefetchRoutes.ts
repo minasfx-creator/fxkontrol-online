@@ -36,7 +36,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   
   '/settings': () => import('@/pages/Settings'),
   '/admin': () => import('@/pages/Admin'),
-  '/field-test': () => import('@/pages/FieldTest'),
+  '/field': () => import('@/pages/FieldOps'),
 };
 
 export function prefetchRoute(path: string) {

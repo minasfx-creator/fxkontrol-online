@@ -4,7 +4,7 @@
  */
 import { useState, useCallback } from 'react';
 import { generateFireOneScript, downloadFireOneScript } from '@/core/export/FireOneExporter';
-import { useVerificationEngine } from '@/core/verification/useVerificationEngine';
+import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { cn } from '@/lib/utils';
 import { FileOutput, Download, CheckCircle2, XOctagon, RefreshCw, AlertTriangle } from 'lucide-react';
@@ -15,7 +15,7 @@ export default function FireOneExportConsole() {
   const [preview, setPreview] = useState<string>('');
   const [exportErrors, setExportErrors] = useState<string[]>([]);
   const [verified, setVerified] = useState<boolean | null>(null);
-  const { level, result, runVerification } = useVerificationEngine();
+  const { level, result, runVerification } = useVerificationStore();
   const sp = showPlanManager.current;
   const canExport = level === 'READY_FOR_EXPORT' || level === 'READY_FOR_FIELD';
 

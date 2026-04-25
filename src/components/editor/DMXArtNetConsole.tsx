@@ -6,7 +6,7 @@
 import { useState, useCallback } from 'react';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { generateArtNetPatchCSV, downloadArtNetPatch } from '@/core/export/ArtNetPatchExporter';
-import { useVerificationEngine } from '@/core/verification/useVerificationEngine';
+import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { artNetBridge } from '@/core/protocols/ArtNetBridge';
 import { linkFailoverPolicy } from '@/core/protocols/LinkFailoverPolicy';
 import { cn } from '@/lib/utils';
@@ -19,7 +19,7 @@ export default function DMXArtNetConsole() {
   const [preview, setPreview] = useState('');
   const [cueCount, setCueCount] = useState(0);
   const [exportErrors, setExportErrors] = useState<string[]>([]);
-  const { level } = useVerificationEngine();
+  const { level } = useVerificationStore();
   const canExport = level === 'READY_FOR_EXPORT' || level === 'READY_FOR_FIELD';
   const refresh = useCallback(() => setTick(t => t + 1), []);
 

@@ -57,8 +57,8 @@ export default function VerificationBar() {
 
   const config = LEVEL_CONFIG[level];
   const Icon = config.icon;
-  const passed = result?.checks.filter(c => c.passed).length ?? 0;
-  const total = result?.checks.length ?? 0;
+  const passed = result?.summary.passed ?? 0;
+  const total = result?.summary.total ?? 0;
 
   return (
     <Collapsible>
@@ -96,7 +96,7 @@ export default function VerificationBar() {
 
       <CollapsibleContent>
         <div className={cn('border-b px-3 py-2 space-y-1', config.bg, config.border)}>
-          {result?.checks.map(check => (
+          {result?.issues.map(check => (
             <div key={check.id} className="flex items-center gap-2 text-[9px] font-mono">
               <span className={check.passed ? 'text-emerald-400' : check.severity === 'error' ? 'text-red-400' : 'text-amber-400'}>
                 {check.passed ? '●' : '○'}
