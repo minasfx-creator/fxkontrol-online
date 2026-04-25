@@ -11,6 +11,7 @@ import {
   type ConnectedDevice,
   type USBLog,
   type ConnectionState,
+  type USBDeviceProfile,
   DEVICE_PROFILES,
   requestSerialPort,
   openSerialConnection,
@@ -21,7 +22,11 @@ import {
   buildENTTECProPacket,
   buildDMX512Frame,
   isWebSerialSupported,
+  listAuthorizedSerialPorts,
+  attachSerialHotPlug,
 } from '@/lib/usbEngine';
+import { GenericAdapterConfirm } from './usb/GenericAdapterConfirm';
+import { portRegistry, keyFor } from '@/core/discovery/portRegistry';
 
 
 const TYPE_COLORS: Record<string, string> = {
