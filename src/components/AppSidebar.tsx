@@ -94,9 +94,9 @@ export function AppSidebar() {
                           to={item.url}
                           end={item.url === '/'}
                           onClick={handleNavClick}
-                          className={`dock-item gap-3 rounded-2xl mx-1 transition-all duration-300 ease-spring ${
-                            isActive 
-                              ? 'shadow-[inset_0_0_0_1px_hsl(32_100%_50%/0.15)] bg-white/[0.04]' 
+                          className={`dock-item gap-3 rounded-island mx-2 transition-all duration-300 ease-spring ${
+                            isActive
+                              ? 'shadow-[inset_0_0_0_1px_hsl(32_100%_50%/0.15)] bg-white/[0.04]'
                               : 'text-muted-foreground hover:bg-white/[0.03] hover:text-foreground'
                           }`}
                           style={{
