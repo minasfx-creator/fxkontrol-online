@@ -515,6 +515,18 @@ export default function SkyCanvas() {
   // ResizeObserver removed — R3F Canvas resize={{ debounce: 50 }} handles this natively
 
   const [canvasReady, setCanvasReady] = useState(false);
+  // Tracks the deferred fade-in timer so we can cancel it on unmount/remount
+  // (context loss, Canvas key bump). Without this, an orphaned setTimeout
+  // would call setCanvasReady on an unmounted component → React warning + leak.
+  const canvasReadyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (canvasReadyTimerRef.current) {
+      clearTimeout(canvasReadyTimerRef.current);
+      canvasReadyTimerRef.current = null;
+    }
+  }, []);
+  // Reset the fade when the Canvas remounts after a context loss.
+  useEffect(() => { setCanvasReady(false); }, [canvasInstanceKey]);
 
   return (
     <div ref={containerRef} className="w-full h-full relative bg-[#050810] transition-opacity duration-700 ease-out" data-sky-canvas style={{ cursor: cursorStyle, opacity: canvasReady ? 1 : 0 }}>
