@@ -47,10 +47,14 @@ const NEXT_STEP_EMPTY: Record<DiscoveryTransport, string> = {
   'mdns-artnet': 'Garanta que os nós Art-Net estejam na mesma sub-rede e que o computador tenha IP 2.x.x.x ou 10.x.x.x.',
 };
 
-/** Build a per-transport report from the current unified snapshot. */
+/**
+ * Build a per-transport report from the current unified snapshot.
+ * Honors the operator's transport filter chips — disabled transports are
+ * omitted from the report (and therefore from toasts and Retry).
+ */
 export function buildDiscoveryReports(): DiscoveryTransportReport[] {
   const support = unifiedDiscovery.supportMatrix();
-  const transports: DiscoveryTransport[] = ['webserial', 'webusb', 'webble', 'mdns-artnet'];
+  const transports = getEnabledTransports();
   return transports.map(t => {
     if (!support[t]) {
       return { transport: t, reason: 'unsupported' as const, count: 0 };
