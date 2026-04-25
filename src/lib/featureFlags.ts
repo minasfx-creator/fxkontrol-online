@@ -58,6 +58,20 @@ const FLAGS = {
    * Opt-in via planFormationFromAsset({ usePhysicsRepair: true }).
    */
   swarmgpt_physics_repair: true,
+
+  // ============================================================
+  // CLEANUP / DEPRECATION FLAGS — turn modules OFF without deleting.
+  // Set to `false` to hide the UI surface; underlying code stays in tree
+  // so behavior can be validated before final removal. Default: true (visible).
+  // ============================================================
+  /** Pre-flight VerificationEngine UI (VerificationBar in CommandCenter, readiness panels). */
+  module_verification: true,
+  /** Legacy PCBViewer panels (currently no consumers — flag reserved for future cleanup). */
+  module_pcbviewer: false,
+  /** Device pairing + Mobile Link surfaces (sidebar entries, /pairing nav, MobileLink panels). */
+  module_pairing_mobilelink: true,
+  /** Organizer menu items (groupings/categorization shortcuts in FullscreenCommandMenu). */
+  module_organizer_menu: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
