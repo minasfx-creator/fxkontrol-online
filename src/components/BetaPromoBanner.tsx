@@ -82,6 +82,18 @@ export default function BetaPromoBanner({ endsAt = DEFAULT_ENDS_AT }: BetaPromoB
   // Highlight the chip in red during the final 24h
   const urgent = endsAtMs != null && remainingMs > 0 && remainingMs < 24 * 3600 * 1000;
 
+  // Allow other parts of the app (Help/Settings menu) to re-enable the banner
+  // by dispatching a `beta-banner:show` event on the window. Must be declared
+  // before any early return to keep hook order stable.
+  useEffect(() => {
+    const onShow = () => {
+      localStorage.removeItem(STORAGE_KEY);
+      setDismissed(false);
+    };
+    window.addEventListener('beta-banner:show', onShow);
+    return () => window.removeEventListener('beta-banner:show', onShow);
+  }, []);
+
   if (dismissed || expired) return null;
 
   const openFeedback = (cat: DialogCategory) => {
@@ -92,8 +104,21 @@ export default function BetaPromoBanner({ endsAt = DEFAULT_ENDS_AT }: BetaPromoB
   const handleDismiss = () => {
     localStorage.setItem(STORAGE_KEY, '1');
     setDismissed(true);
+    toast('Banner Beta dispensado', {
+      description: 'Você pode reabrir a promoção em Ajuda → Mostrar banner Beta.',
+      duration: 8000,
+      action: {
+        label: 'Reabrir agora',
+        onClick: () => {
+          localStorage.removeItem(STORAGE_KEY);
+          setDismissed(false);
+          window.dispatchEvent(new CustomEvent('beta-banner:show'));
+        },
+      },
+    });
+    // Notify settings/help menus so they can surface a "Mostrar banner Beta" entry.
+    window.dispatchEvent(new CustomEvent('beta-banner:hidden'));
   };
-
   const handlePresignup = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsed = emailSchema.safeParse(email);
