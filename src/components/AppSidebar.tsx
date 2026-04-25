@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { GlassQualityToggle } from '@/components/GlassQualityToggle';
 import minasfxLogo from '@/assets/minasfx-logo-white.png';
 
 // ─── Refactor 3-áreas ────────────────────────────────────────────
@@ -205,6 +206,9 @@ export function AppSidebar() {
           {soundMuted ? <VolumeX className="h-3.5 w-3.5 shrink-0" /> : <Volume2 className="h-3.5 w-3.5 shrink-0" />}
           {showLabels && <span className="text-[9px] font-mono-code">{soundMuted ? 'SOM OFF' : 'SOM ON'}</span>}
         </Button>
+
+        {/* Glass Quality cycle: Auto → High → Low */}
+        <GlassQualityToggle collapsed={!showLabels} />
 
         {showLabels && (
           <div className="flex items-center gap-2 p-2 rounded-island animate-holo-materialize" style={{ background: 'hsl(32 100% 50% / 0.05)', animationDelay: '0.3s' }}>
