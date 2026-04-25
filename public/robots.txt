@@ -26,4 +26,4 @@ Disallow: /command
 Disallow: /admin
 Disallow: /field-test
 
-Sitemap: https://fxkontrol.com/sitemap.xml
+Sitemap: https://fxkontrol.online/sitemap.xml
