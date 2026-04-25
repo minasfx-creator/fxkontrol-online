@@ -143,39 +143,10 @@ export function isWebSerialSupported(): boolean {
   return 'serial' in navigator;
 }
 
-export function isWebUSBSupported(): boolean {
-  return 'usb' in navigator;
-}
-
-export async function requestSerialPort(profile?: USBDeviceProfile): Promise<any> {
-  if (!isWebSerialSupported()) {
-    throw new Error('Web Serial API não suportada neste navegador');
-  }
-  const filters: any[] = [];
-  if (profile?.vendorId) {
-    filters.push({
-      usbVendorId: profile.vendorId,
-      ...(profile.productId ? { usbProductId: profile.productId } : {}),
-    });
-  }
-  return nav.serial.requestPort(filters.length > 0 ? { filters } : undefined);
-}
-
-export async function requestUSBDevice(profile?: USBDeviceProfile): Promise<any> {
-  if (!isWebUSBSupported()) {
-    throw new Error('WebUSB API não suportada neste navegador');
-  }
-  const filters: any[] = [];
-  if (profile?.vendorId) {
-    filters.push({
-      vendorId: profile.vendorId,
-      ...(profile.productId ? { productId: profile.productId } : {}),
-    });
-  }
-  return nav.usb.requestDevice({
-    filters: filters.length > 0 ? filters : [{ vendorId: 0x0403 }],
-  });
-}
+// NOTE: WebUSB helpers (`isWebUSBSupported`, `requestUSBDevice`) were
+// removed — never instantiated anywhere. Web Serial is the only authorized
+// transport. Re-add behind an explicit feature gate if direct WebUSB is
+// needed for non-serial devices.
 
 export async function openSerialConnection(
   port: any,
