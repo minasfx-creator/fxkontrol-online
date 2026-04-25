@@ -155,8 +155,8 @@ export default function Landing() {
         else if (prev !== null) el.setAttribute("content", prev);
       });
     };
-    const applyLink = (rel: string, href: string) => {
-      const { el, prev, created } = upsertLink(rel, href);
+    const applyLink = (rel: string, href: string, extra?: Record<string, string>) => {
+      const { el, prev, created } = upsertLink(rel, href, extra);
       restorers.push(() => {
         if (created) el.remove();
         else if (prev !== null) el.setAttribute("href", prev);
@@ -166,6 +166,7 @@ export default function Landing() {
     apply("name", "description", DESC);
     apply("name", "robots", "index,follow");
     apply("name", "author", "Minas FX");
+    apply("name", "keywords", "shows pirotécnicos, drone show, DMX, ArtNet, sACN, Finale 3D, SFX, FX KONTROL, Minas FX, pirotecnia profissional");
     apply("property", "og:type", "website");
     apply("property", "og:site_name", "FX KONTROL");
     apply("property", "og:locale", "pt_BR");
@@ -173,12 +174,41 @@ export default function Landing() {
     apply("property", "og:title", TITLE);
     apply("property", "og:description", DESC);
     apply("property", "og:image", OG_IMAGE);
+    apply("property", "og:image:alt", "FX KONTROL — editor 3D de shows pirotécnicos e drones");
     apply("name", "twitter:card", "summary_large_image");
     apply("name", "twitter:site", "@MinasFX");
     apply("name", "twitter:title", TITLE);
     apply("name", "twitter:description", DESC);
     apply("name", "twitter:image", OG_IMAGE);
+    apply("name", "twitter:image:alt", "FX KONTROL — editor 3D de shows pirotécnicos e drones");
     applyLink("canonical", CANONICAL);
+
+    // Performance: preconnect + preload critical origins for the OG image and fonts.
+    applyLink("preconnect", "https://storage.googleapis.com", { crossorigin: "" });
+    applyLink("dns-prefetch", "https://storage.googleapis.com");
+    applyLink("preload", OG_IMAGE, { as: "image", fetchpriority: "high" });
+
+    // JSON-LD structured data for the landing page.
+    const ld = document.createElement("script");
+    ld.type = "application/ld+json";
+    ld.id = "ld-landing";
+    ld.text = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: TITLE,
+      description: DESC,
+      url: CANONICAL,
+      inLanguage: "pt-BR",
+      primaryImageOfPage: OG_IMAGE,
+      isPartOf: {
+        "@type": "WebSite",
+        name: "FX KONTROL",
+        url: "https://fxkontrol.online/",
+      },
+      publisher: { "@type": "Organization", name: "Minas FX" },
+    });
+    document.head.appendChild(ld);
+    restorers.push(() => ld.remove());
 
     return () => {
       document.title = prevTitle;
