@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Cable, Usb, Bluetooth, Wifi, AlertTriangle, CheckCircle2,
-  ShieldAlert, ExternalLink, RotateCw, Copy,
+  ShieldAlert, ExternalLink, RotateCw, Copy, Trash2,
 } from 'lucide-react';
 import type { DiscoveredDevice, DiscoveryTransport } from '@/core/discovery/types';
 import { unifiedDiscovery } from '@/core/discovery/UnifiedDiscoveryService';
