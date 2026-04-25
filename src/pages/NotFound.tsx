@@ -35,7 +35,7 @@ const NotFound = () => {
           O módulo <code className="text-primary font-mono text-xs">{location.pathname}</code> não existe no sistema.
         </p>
         <Button asChild variant="outline" className="border-primary/20 text-primary hover:bg-primary/10">
-          <a href="/">← Voltar ao Dashboard</a>
+          <Link to="/studio">← Voltar ao Studio</Link>
         </Button>
       </div>
     </div>
