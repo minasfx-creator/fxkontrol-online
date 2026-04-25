@@ -71,16 +71,25 @@ interface AttachmentMeta {
   type: string;
 }
 
-export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
+export default function BetaFeedbackDialog({ open, onOpenChange, initialCategory }: Props) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [category, setCategory] = useState<Category>('bug');
+  const [category, setCategory] = useState<Category>(initialCategory ?? 'bug');
   const [severity, setSeverity] = useState<Severity>('medium');
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  // Equipment integration extra fields
+  const [equipBrand, setEquipBrand] = useState('');
+  const [equipModel, setEquipModel] = useState('');
+  const [equipProtocol, setEquipProtocol] = useState('');
+
+  // Sync category when dialog reopens with a different initialCategory
+  useEffect(() => {
+    if (open && initialCategory) setCategory(initialCategory);
+  }, [open, initialCategory]);
 
   // Prefill email from auth user
   useEffect(() => {
