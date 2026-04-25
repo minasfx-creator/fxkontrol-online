@@ -92,6 +92,7 @@ export function notifyDiscoveryReports(
   reports: DiscoveryTransportReport[],
   mode: 'light' | 'deep' = 'light',
 ): void {
+  _lastReports = reports;
   let anyFound = false;
 
   for (const r of reports) {
