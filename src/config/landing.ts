@@ -39,7 +39,7 @@ export type LandingProvider =
 export interface LandingSiteConfig {
   /** Identificador do provedor de hospedagem. */
   provider: LandingProvider;
-  /** Origem absoluta (sem barra final). Ex.: `https://fxkontrol.online` */
+  /** Origem absoluta canônica (sem barra final). Ex.: `https://fxkontrol.online` */
   origin: string;
   /** Caminho da landing dentro da origem. Ex.: `/landing` */
   path: string;
@@ -57,6 +57,23 @@ export interface LandingSiteConfig {
   keywords: string[];
   /** Imagem social (1200x630 recomendada). */
   ogImage: { url: string; alt: string };
+  /**
+   * Hosts considerados "alias" do canônico (sem protocolo). Acessos por esses
+   * hosts disparam redirect 301-equivalente (location.replace) para a origem
+   * canônica. Hosts de preview/dev devem ficar em `previewHosts` (não redireciona).
+   * Ex.: `["www.fxkontrol.online", "fxkontrol-online.lovable.app"]`
+   */
+  aliasHosts?: string[];
+  /**
+   * Hosts onde a landing roda mas NÃO deve redirecionar (preview, dev,
+   * editor Lovable). Match parcial (`includes`).
+   */
+  previewHosts?: string[];
+  /**
+   * Querystrings preservadas no redirect. Tudo fora dessa lista é descartado
+   * para evitar duplicidade indexável (ex.: utm_*, fbclid). Default: ["target"].
+   */
+  preservedQueryParams?: string[];
 }
 
 /**
