@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { useProjectStore } from '@/store/useProjectStore';
 import { toast } from 'sonner';
 import { Download, FileJson } from 'lucide-react';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import { promptUpgrade } from '@/lib/upgradePrompt';
 
 const getExportEngine = () => import('@/lib/exportEngine');
 
