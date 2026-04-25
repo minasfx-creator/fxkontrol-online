@@ -1,6 +1,7 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
-import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap, Usb, Monitor } from 'lucide-react';
+import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap, Usb, Monitor, Play, Square } from 'lucide-react';
+import { logger } from '@/lib/logger';
 import DMXMonitorGrid from './DMXMonitorGrid';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
