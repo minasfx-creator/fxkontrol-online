@@ -203,6 +203,7 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
     if (simMode) {
       // Simulate discovery delay
       await new Promise(r => setTimeout(r, 1500));
+      if (!mountedRef.current) return;
       setDevices(generateSimDevices(context));
       toast.success(`${generateSimDevices(context).length} devices found (SIM)`);
     } else {
@@ -212,26 +213,28 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
           artnetModuleService.discoverModules?.(),
           // BLE and USB require user gesture, handled separately
         ]);
+        if (!mountedRef.current) return;
         toast.success(`Scan complete — ${realDevices.length} devices`);
       } catch (e) {
-        toast.error('Scan failed');
+        if (mountedRef.current) toast.error('Scan failed');
       }
     }
-    setScanning(false);
+    if (mountedRef.current) setScanning(false);
   }, [simMode, context, realDevices.length]);
 
   const handleTestAll = useCallback(async () => {
     setTestingAll(true);
     toast.info('🔍 Running CDS tests on all connected devices...');
     await new Promise(r => setTimeout(r, 2000));
+    if (!mountedRef.current) return;
     toast.success('All CDS tests passed ✓');
     setTestingAll(false);
   }, []);
 
   const handleTestDevice = useCallback((device: DiscoveredDevice) => {
     toast.info(`Testing ${device.name}...`);
-    setTimeout(() => toast.success(`${device.name}: CDS OK ✓`), 800);
-  }, []);
+    safeTimeout(() => toast.success(`${device.name}: CDS OK ✓`), 800);
+  }, [safeTimeout]);
 
   const onlineCount = activeDevices.filter(d => d.status === 'online').length;
   const totalCount = activeDevices.length;
