@@ -13,6 +13,7 @@ import { useDisplayStore } from '@/store/useDisplayStore';
 import type { WorldShowPreset } from '@/data/worldShowPresets';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { type MobileTab } from '@/components/editor/MobileTabBar';
+import { loadTimelineView, saveTimelineView } from '@/lib/timelineViewState';
 
 // ── Critical-path (static): shell chrome loaded immediately ──
 import Toolbar from '@/components/editor/Toolbar';
@@ -295,7 +296,8 @@ function Index() {
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
   const [isDragOver, setIsDragOver] = useState(false);
   const [remoteMode, setRemoteMode] = useState<'cloud' | 'wifi-auto'>('cloud');
-  const [timelineCollapsed, setTimelineCollapsed] = useState(false);
+  const [timelineCollapsed, setTimelineCollapsed] = useState(() => loadTimelineView().collapsed ?? false);
+  useEffect(() => { saveTimelineView({ collapsed: timelineCollapsed }); }, [timelineCollapsed]);
   const [viewportMaximized, setViewportMaximized] = useState(false);
   const [leftDockOpen, setLeftDockOpen] = useState<string | null>('effects');
   const [showMobileWelcome, setShowMobileWelcome] = useState(() => {
