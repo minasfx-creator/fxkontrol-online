@@ -13,8 +13,9 @@ import { deviceEventLog } from '@/core/hardware/DeviceEventLog';
 import { generateFireOneScript, downloadFireOneScript } from './FireOneExporter';
 import { generateArtNetPatchCSV, downloadArtNetPatch } from './ArtNetPatchExporter';
 import { generateDroneCSV, downloadDroneCSV } from './DroneCSVExporter';
+import { generateMegafireScript, downloadMegafireScript } from './MegafireExporter';
 
-export type ExportTarget = 'fireone' | 'artnet' | 'drone';
+export type ExportTarget = 'fireone' | 'artnet' | 'drone' | 'megafire';
 
 export interface ExportAttemptResult {
   target: ExportTarget;
