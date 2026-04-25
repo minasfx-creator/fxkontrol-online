@@ -40,7 +40,9 @@ export interface USBDMXDevice {
   operatorConfirmedGeneric: boolean;
   /** Mode chosen during generic confirmation (open vs pro wrapper). */
   confirmedMode?: GenericConfirmMode;
-  /** True iff connected + authorized + (recognized OR operator-confirmed). */
+  /** Operator-pinned profile override kind (wins over label detection). */
+  profileOverride?: DMXProfileOverrideKind;
+  /** True iff connected + authorized + (recognized OR operator-confirmed OR override set). */
   outputReady: boolean;
   device: ConnectedDevice;
 }
