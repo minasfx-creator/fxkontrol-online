@@ -304,7 +304,7 @@ function Index() {
     try { saveTimelineView({ collapsed: timelineCollapsed }); } catch { /* noop */ }
   }, [timelineCollapsed]);
   const [viewportMaximized, setViewportMaximized] = useState(false);
-  const [leftDockOpen, setLeftDockOpen] = useState<string | null>('effects');
+  // leftDockOpen removed — Effects/Scene/ShowSettings now opened via Toolbar/PanelTabBar only.
   const [showMobileWelcome, setShowMobileWelcome] = useState(() => {
     if (!isMobile) return false;
     try { return localStorage.getItem('fxk-mobile-location-set') !== '1'; } catch { return true; }
