@@ -15,8 +15,11 @@ import {
   buildENTTECProPacket,
   buildDMX512Frame,
 } from '@/lib/usbEngine';
-import { detectDMXAdapter, type DMXAdapterKind } from '@/lib/dmxAdapterRecognition';
-import { portRegistry, keyFor, type GenericConfirmMode } from '@/core/discovery/portRegistry';
+import { detectDMXAdapter, type DMXAdapterKind, type DMXAdapterInfo } from '@/lib/dmxAdapterRecognition';
+import {
+  portRegistry, keyFor,
+  type GenericConfirmMode, type DMXProfileOverrideKind,
+} from '@/core/discovery/portRegistry';
 import { logger } from '@/lib/logger';
 
 export interface USBDMXDevice {
