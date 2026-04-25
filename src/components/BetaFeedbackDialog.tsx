@@ -59,6 +59,17 @@ const SEVERITIES: { value: Severity; label: string; color: string }[] = [
   { value: 'critical', label: 'Crítica', color: 'hsl(0 80% 60%)' },
 ];
 
+const MAX_FILES = 3;
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
+
+interface AttachmentMeta {
+  path: string;
+  name: string;
+  size: number;
+  type: string;
+}
+
 export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -67,6 +78,8 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   // Prefill email from auth user
   useEffect(() => {
