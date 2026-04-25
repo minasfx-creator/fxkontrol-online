@@ -64,7 +64,7 @@ const FEATURES = [
   },
   {
     icon: Plane,
-    title: " swarm + pirotecnia",
+    title: "Drones swarm + pirotecnia",
     desc: "VVIZ streaming para 2000+ drones e PBUS/FireOne/Showven nativos. SIMULAÇÃO = EXECUÇÃO = REALIDADE.",
   },
   {
