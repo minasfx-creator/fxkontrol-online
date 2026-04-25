@@ -144,6 +144,7 @@ class WebUsbDiscoverer implements TransportDiscoverer {
       const d = (ev as USBConnectionEvent).device;
       if (!d) return;
       const dev = deviceToDiscovered(d);
+      this._rawByDeviceId.set(dev.id, d);
       this._devices.set(dev.id, dev);
       this._emit({ type: 'discovered', device: dev });
     };
@@ -154,6 +155,7 @@ class WebUsbDiscoverer implements TransportDiscoverer {
       const dev = this._devices.get(id);
       if (dev) {
         this._devices.delete(id);
+        this._rawByDeviceId.delete(id);
         this._emit({ type: 'lost', device: { ...dev, online: false } });
       }
     };
