@@ -258,6 +258,8 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
             onClick={() => {
               if (!canExport) { promptUpgrade({ reason: 'export', feature: 'Static KML' }); return; }
               try {
+                const store = useProjectStore.getState();
+                const kml = exportFormationsToKML(
                   store.droneFormations, store.trajectories,
                   store.positions, store.gpsOrigin, store.projectName,
                 );
