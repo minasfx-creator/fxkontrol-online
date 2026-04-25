@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger';
 import { useUSBDMXBroadcast } from '@/hooks/useUSBDMXBroadcast';
 import DMXMonitorGrid from './DMXMonitorGrid';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
+import { useDMXPanelPrefs } from '@/store/useDMXPanelPrefs';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { Button } from '@/components/ui/button';
 import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
@@ -57,10 +58,18 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
 
   // Continuous USB DMX streaming (Universe 1 → all connected USB devices)
   // Loop, throttle anti-stacking e cleanup encapsulados em useUSBDMXBroadcast.
+  // Preferências (FPS + intenção de streaming) persistidas em localStorage
+  // via useDMXPanelPrefs — reaplicadas ao remontar o painel.
+  const persistedFps = useDMXPanelPrefs(s => s.usbStreamFps);
+  const persistedStreamingDesired = useDMXPanelPrefs(s => s.usbStreamingDesired);
+  const setPersistedFps = useDMXPanelPrefs(s => s.setUsbStreamFps);
+  const setPersistedStreamingDesired = useDMXPanelPrefs(s => s.setUsbStreamingDesired);
+
   const [usbStreaming, setUsbStreaming] = useState(false);
-  const [usbStreamFps, setUsbStreamFps] = useState<10 | 20 | 40>(40);
+  const [usbStreamFps, setUsbStreamFps] = useState<10 | 20 | 40>(persistedFps);
   const [usbStreamStats, setUsbStreamStats] = useState({ frames: 0, lastLatencyMs: 0 });
   const universesRef = useRef<DMXUniverse[]>([]);
+  const autoResumeAttemptedRef = useRef(false);
 
   // Keep ref in sync (hook lê via getChannels() sempre o último universo 1)
   useEffect(() => { universesRef.current = universes; }, [universes]);
@@ -319,8 +328,9 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
 
   const stopUsbStream = useCallback(() => {
     setUsbStreaming(false);
+    setPersistedStreamingDesired(false);
     addDiagLog({ timestamp: new Date(), type: 'info', message: 'USB streaming parado' });
-  }, [addDiagLog]);
+  }, [addDiagLog, setPersistedStreamingDesired]);
 
   const startUsbStream = useCallback(() => {
     if (universesRef.current.length === 0) {
@@ -333,23 +343,43 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
     }
     setUsbStreamStats({ frames: 0, lastLatencyMs: 0 });
     setUsbStreaming(true);
+    setPersistedStreamingDesired(true);
     addDiagLog({
       timestamp: new Date(), type: 'info',
       message: `USB streaming iniciado · Uni 1 → ${connectedUSBDMX.length} device(s) @ ${usbStreamFps}Hz`,
     });
-  }, [connectedUSBDMX.length, addDiagLog, usbStreamFps]);
+  }, [connectedUSBDMX.length, addDiagLog, usbStreamFps, setPersistedStreamingDesired]);
 
   // Handler do seletor de taxa: muda Hz mesmo durante streaming.
   // O hook reinicia internamente apenas o setInterval, sem fechar a porta.
   const handleFpsChange = useCallback((hz: 10 | 20 | 40) => {
     setUsbStreamFps(hz);
+    setPersistedFps(hz);
     if (usbStreaming) {
       addDiagLog({
         timestamp: new Date(), type: 'info',
         message: `Taxa alterada para ${hz}Hz · porta USB mantida aberta`,
       });
     }
-  }, [usbStreaming, addDiagLog]);
+  }, [usbStreaming, addDiagLog, setPersistedFps]);
+
+  // Auto-resume: ao remontar o painel, se o usuário tinha streaming ON e
+  // os pré-requisitos estão atendidos (universo patchado + device conectado),
+  // reinicia o broadcast automaticamente. Tenta apenas uma vez por mount.
+  useEffect(() => {
+    if (autoResumeAttemptedRef.current) return;
+    if (!persistedStreamingDesired) return;
+    if (usbStreaming) return;
+    if (universes.length === 0) return;
+    if (connectedUSBDMX.length === 0) return;
+    autoResumeAttemptedRef.current = true;
+    setUsbStreamStats({ frames: 0, lastLatencyMs: 0 });
+    setUsbStreaming(true);
+    addDiagLog({
+      timestamp: new Date(), type: 'info',
+      message: `USB streaming retomado das preferências @ ${usbStreamFps}Hz`,
+    });
+  }, [persistedStreamingDesired, usbStreaming, universes.length, connectedUSBDMX.length, usbStreamFps, addDiagLog]);
 
 
 
