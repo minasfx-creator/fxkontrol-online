@@ -102,6 +102,55 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
     };
   }, [open]);
 
+  const handleAddFiles = (incoming: FileList | null) => {
+    if (!incoming || incoming.length === 0) return;
+    const next: File[] = [...files];
+    const errors: string[] = [];
+    Array.from(incoming).forEach((f) => {
+      if (next.length >= MAX_FILES) {
+        errors.push(`Máximo ${MAX_FILES} arquivos`);
+        return;
+      }
+      if (!ACCEPTED_TYPES.includes(f.type)) {
+        errors.push(`${f.name}: tipo não suportado`);
+        return;
+      }
+      if (f.size > MAX_FILE_SIZE) {
+        errors.push(`${f.name}: excede 5 MB`);
+        return;
+      }
+      next.push(f);
+    });
+    setFiles(next);
+    if (errors.length) {
+      toast({ title: 'Alguns arquivos foram ignorados', description: errors.join(' · '), variant: 'destructive' });
+    }
+  };
+
+  const removeFile = (idx: number) => setFiles((prev) => prev.filter((_, i) => i !== idx));
+
+  const uploadAttachments = async (): Promise<AttachmentMeta[]> => {
+    if (files.length === 0) return [];
+    setUploading(true);
+    const uploaded: AttachmentMeta[] = [];
+    try {
+      for (const f of files) {
+        const ext = f.name.split('.').pop() || 'bin';
+        const safeName = f.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
+        const path = `beta-feedback/${(user?.id ?? 'anon')}/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+        const { error } = await supabase.storage.from('assets').upload(path, f, {
+          contentType: f.type,
+          upsert: false,
+        });
+        if (error) throw error;
+        uploaded.push({ path, name: f.name, size: f.size, type: f.type });
+      }
+      return uploaded;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async () => {
     const parsed = feedbackSchema.safeParse({
       category,
@@ -121,6 +170,8 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
 
     setSubmitting(true);
     try {
+      const attachments = await uploadAttachments();
+
       const { error } = await (supabase as any).from('beta_feedback').insert({
         user_id: user?.id ?? null,
         category: parsed.data.category,
@@ -131,6 +182,7 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
         user_agent: techContext?.user_agent ?? null,
         viewport: techContext?.viewport ?? null,
         app_version: techContext?.app_version ?? null,
+        attachments,
         metadata: {
           tier: techContext?.tier,
           memory_gb: techContext?.memory_gb,
@@ -143,11 +195,14 @@ export default function BetaFeedbackDialog({ open, onOpenChange }: Props) {
 
       toast({
         title: 'Feedback enviado',
-        description: 'Obrigado por contribuir com a fase Beta!',
+        description: attachments.length
+          ? `Obrigado! ${attachments.length} anexo(s) incluído(s).`
+          : 'Obrigado por contribuir com a fase Beta!',
       });
       setMessage('');
       setSeverity('medium');
       setCategory('bug');
+      setFiles([]);
       onOpenChange(false);
     } catch (err: any) {
       console.error('[BetaFeedback] submit failed', err);
