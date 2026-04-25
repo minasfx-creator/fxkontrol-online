@@ -306,10 +306,8 @@ export function EarlyAccessForm() {
           {submitting && (
             <span
               aria-hidden="true"
-              className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-primary-foreground/10"
-            >
-              <span className="block h-full w-1/3 animate-[fxk-shimmer_1.2s_ease-in-out_infinite] bg-primary-foreground/70" />
-            </span>
+              className="absolute inset-x-0 bottom-0 h-0.5 animate-[fxk-shimmer_1.4s_linear_infinite] bg-[linear-gradient(90deg,transparent_0%,hsl(var(--primary-foreground)/0.8)_50%,transparent_100%)] bg-[length:200%_100%]"
+            />
           )}
           {submitting ? (
             <>
