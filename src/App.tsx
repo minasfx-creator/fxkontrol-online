@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { lazy, Suspense } from "react";
 import MainLayout from "@/layouts/MainLayout";
@@ -48,6 +48,7 @@ const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) {
     return (
       <div className="min-h-[100dvh] w-full flex items-center justify-center bg-background">
@@ -55,13 +56,27 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  return user ? <>{children}</> : <Navigate to="/auth" replace />;
+  if (!user) {
+    // Preserve where the user was trying to go so AuthRoute can resume there post-login.
+    const next = `${location.pathname}${location.search}${location.hash}`;
+    const search = next && next !== "/" ? `?next=${encodeURIComponent(next)}` : "";
+    return <Navigate to={`/auth${search}`} replace />;
+  }
+  return <>{children}</>;
 }
 
 function AuthRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const [params] = useSearchParams();
   if (loading) return null;
-  return user ? <Navigate to="/" replace /> : <>{children}</>;
+  if (user) {
+    // Resume the originally-requested route. Falls back to /editor so signed-in
+    // users land directly in the 3D viewport instead of the Dashboard splash.
+    const raw = params.get("next");
+    const target = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/editor";
+    return <Navigate to={target} replace />;
+  }
+  return <>{children}</>;
 }
 
 function RouteTracker() {
