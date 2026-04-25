@@ -145,17 +145,8 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
         bytesReceived: 0,
         bytesSent: 0,
       };
-        startReadLoop(connectedDevice);
-        registerDevice(connectedDevice);
-
-        // Refresh persistence on every successful reopen so timestamps and
-        // last-known label stay current across sessions.
-        portRegistry.recordSuccess({
-          vendorId: info?.usbVendorId,
-          productId: info?.usbProductId,
-          label: effectiveProfile.label,
-          profileId: effectiveProfile.label,
-        });
+      startReadLoop(connectedDevice);
+      registerDevice(connectedDevice);
 
       haptics.success();
     } catch (e: any) {
