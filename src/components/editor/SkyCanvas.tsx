@@ -1737,13 +1737,43 @@ export default function SkyCanvas() {
 
   const [canvasReady, setCanvasReady] = useState(false);
   const [webglRetryKey, setWebglRetryKey] = useState(0);
+  // Silent-failure guard: in some Chrome builds (e.g. SwiftShader deprecated, GPU disabled) R3F
+  // mounts without throwing yet produces no <canvas> child. Without this check the user sees a
+  // pure-black viewport with no fallback. We poll the container shortly after mount and trip
+  // the fallback if no real canvas attached.
+  const [silentCanvasFailure, setSilentCanvasFailure] = useState<string | null>(null);
+  useEffect(() => {
+    if (silentCanvasFailure) return;
+    const probeAt = [600, 1500, 3000];
+    const timers = probeAt.map((delay) =>
+      window.setTimeout(() => {
+        const node = containerRef.current;
+        if (!node) return;
+        const c = node.querySelector('canvas');
+        const empty = !c || (c.clientWidth === 0 && c.clientHeight === 0);
+        if (empty && delay === 3000) {
+          setSilentCanvasFailure(
+            'WebGL canvas could not be created (likely GPU/driver blocked).',
+          );
+        }
+      }, delay),
+    );
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, [silentCanvasFailure, webglRetryKey]);
 
   // Proactive WebGL capability probe — render simplified fallback if unsupported.
   const webglIssue = useMemo(() => detectWebGLCapability(), [webglRetryKey]);
-  if (webglIssue) {
+  const fallbackReason = webglIssue || silentCanvasFailure;
+  if (fallbackReason) {
     return (
       <div ref={containerRef} className="w-full h-full relative bg-[#050810]" data-sky-canvas>
-        <SimplifiedSkyFallback reason={webglIssue} onRetry={() => setWebglRetryKey(k => k + 1)} />
+        <SimplifiedSkyFallback
+          reason={fallbackReason}
+          onRetry={() => {
+            setSilentCanvasFailure(null);
+            setWebglRetryKey((k) => k + 1);
+          }}
+        />
       </div>
     );
   }
