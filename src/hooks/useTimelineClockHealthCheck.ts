@@ -146,11 +146,17 @@ export function useTimelineClockHealthCheck(options: TimelineClockHealthOptions 
         const result = resyncTimeline({
           surfaceToasts: false,
           reason: `Watchdog detected ${Math.round(stalledFor)}ms stall.`,
+          softAlign: driftCorrectionEnabled,
+          softAlignMs: driftCorrectionMs,
         });
         toast.warning('Timeline resynced', {
-          description: wasExternal
-            ? 'External audio stopped advancing. Re-locked clock to audio and retried playback.'
-            : 'Playback stalled. Re-locked clock to audio and retried playback.',
+          description: driftCorrectionEnabled
+            ? wasExternal
+              ? `External audio stopped advancing. Gliding clock to audio over ${driftCorrectionMs} ms.`
+              : `Playback stalled. Gliding clock to audio over ${driftCorrectionMs} ms.`
+            : wasExternal
+              ? 'External audio stopped advancing. Re-locked clock to audio and retried playback.'
+              : 'Playback stalled. Re-locked clock to audio and retried playback.',
         });
         console.warn(
           '[TimelineClockHealth] Stall after',
