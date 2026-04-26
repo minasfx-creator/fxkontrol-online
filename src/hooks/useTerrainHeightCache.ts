@@ -23,6 +23,7 @@ import { useTerrainCacheConfig } from './useTerrainCacheConfig';
 import { createTerrainCachePersistence, type TerrainCachePersistenceHandle, type TilesetKind } from './terrainCachePersistence';
 import { createTerrainLocalCache, type TerrainLocalCacheHandle } from './terrainCacheLocalStorage';
 import { terrainCacheControl, type TerrainCacheController } from './terrainCacheControl';
+import { useTerrainPersistenceMode } from './useTerrainPersistenceMode';
 
 const _ray = new THREE.Raycaster();
 const _origin = new THREE.Vector3();
@@ -88,6 +89,9 @@ export function useTerrainHeightCache(
   persistence?: TerrainCachePersistenceOptions,
 ): TerrainHeightCache {
   const { scene } = useThree();
+  // Subscribed: changing the mode in the UI re-runs the effect and rebuilds
+  // the local cache backend (e.g. switch IDB → sessionStorage live).
+  const persistenceMode = useTerrainPersistenceMode((s) => s.mode);
   // Resolved Y values (positions actually sitting on a tile mesh)
   const cacheRef = useRef<Map<string, number>>(new Map());
   const frameRef = useRef(0);
@@ -109,8 +113,8 @@ export function useTerrainHeightCache(
   const persistenceRef = useRef<TerrainCachePersistenceHandle | null>(null);
   const localRef = useRef<TerrainLocalCacheHandle | null>(null);
   const persistKey = persistence
-    ? `${persistence.projectId}:${persistence.userId}:${persistence.tilesetKind ?? 'google3d'}:${persistence.tilesetVersion ?? 'v1'}:${persistence.maxAgeDays ?? 30}`
-    : '';
+    ? `${persistence.projectId}:${persistence.userId}:${persistence.tilesetKind ?? 'google3d'}:${persistence.tilesetVersion ?? 'v1'}:${persistence.maxAgeDays ?? 30}:${persistenceMode}`
+    : `mode:${persistenceMode}`;
   useEffect(() => {
     if (!persistence || !persistence.projectId) {
       persistenceRef.current?.dispose();
@@ -120,18 +124,20 @@ export function useTerrainHeightCache(
       return;
     }
 
-    // Local cache: works without auth (projectId-scoped).
+    // Local cache: works without auth (projectId-scoped). Mode controls
+    // backend (IDB / sessionStorage / memory-only).
     const local = createTerrainLocalCache({
       projectId: persistence.projectId,
       tilesetKind: persistence.tilesetKind ?? 'google3d',
       tilesetVersion: persistence.tilesetVersion ?? 'v1',
       maxAgeDays: persistence.maxAgeDays ?? 30,
+      mode: persistenceMode,
     });
     localRef.current = local;
     void local.hydrate(cacheRef.current).then((n) => {
       if (n > 0) {
         terrainMetrics.setCacheSize(cacheRef.current.size);
-        console.log(`[terrainCache] hydrated ${n} resolved heights from local browser cache`);
+        console.log(`[terrainCache] hydrated ${n} resolved heights from local cache (mode=${persistenceMode})`);
       }
     });
 
