@@ -1,20 +1,22 @@
-## Problem
+## Bugs found
 
-`QuickJumpMenu` is fixed at `top-2 left-2 z-[60]`, sitting on top of the editor Toolbar's left side at `/studio` (file menu, transport, status pills). Same spot also collides with the mobile sidebar hamburger.
+**1. `isEditor` checks wrong path** — `src/layouts/MainLayout.tsx:67` uses `location.pathname === '/editor'`, but the actual editor route is `/studio` (`/editor` is just a redirect in `App.tsx`). Result on `/studio`: `isEditor` is false → AppSidebar + header render around the editor (shrinking the viewport), and the redundant Studio NavLink shows up even when we're already inside Studio.
+**Fix:** change to `location.pathname === '/studio'`.
 
-## Fix (single file: `src/components/QuickJumpMenu.tsx`)
+**2. Redundant "Studio" pill in header** — Lines 204–218 of `MainLayout.tsx` render a NavLink to `/studio` that QuickJumpMenu now duplicates (and exposes 2 more targets).
+**Fix:** delete the NavLink block; drop the now-unused `Wand2` and `NavLink` imports.
 
-1. **Reposition to top-right**: change container from `fixed top-2 left-2` → `fixed top-2 right-2`. The `/studio` Toolbar's right side is empty (it ends with the JOI / status cluster but leaves room), and on other routes the header right-side has space too.
-2. **Flip dropdown anchor**: change `absolute top-full left-0` → `absolute top-full right-0` so the menu opens leftward and stays on-screen.
-3. **Keep z-[60]** so it stays above Toolbar's z-50 menus, but no longer overlaps anything since it's now on the opposite side.
-4. **No changes to `MainLayout.tsx`, `Toolbar.tsx`, or other files.**
+**3. FXK-DRONES never highlights as active** — `QuickJumpMenu.tsx` checks `pathname + search === '/studio?panel=drones'`, but `Index.tsx` (around line 356) strips `?panel=` from the URL immediately after opening the panel, so the active state never matches.
+**Fix:** drop the misleading active comparison for the drones item; only highlight Studio (any `/studio*`) and AI Choreography. Cleaner UX matches the actual URL state.
 
-## Why top-right (vs. just shifting left padding)
+**4. iOS notch / safe area** — `fixed top-2 right-2` can sit under the status bar / dynamic island on iPhone PWA.
+**Fix:** offset the container with `top: calc(0.5rem + env(safe-area-inset-top))` and `right: calc(0.5rem + env(safe-area-inset-right))`.
 
-- The Tactical Dock + file menu + transport already crowd the **left** of the Toolbar — even a small offset would still collide on mobile (440px viewport).
-- Top-right is consistently empty across `/studio`, `/index`, `/ai-choreography`.
-- Avoids the mobile hamburger (top-left) entirely.
+## Files
+
+- `src/layouts/MainLayout.tsx` — fix `isEditor`, remove redundant NavLink + imports.
+- `src/components/QuickJumpMenu.tsx` — drop drones active-state, add safe-area offsets.
 
 ## Out of scope
 
-No changes to active-state detection for `?panel=drones` or removing the redundant Studio NavLink in `MainLayout` — those were separate cosmetic items from the prior bug review and the user only asked about the overlay collision.
+Wiring QuickJumpMenu to the actual open-panel store in `Index.tsx` (would let DRONES highlight correctly while the panel is open) — larger refactor; happy to follow up if you want it.

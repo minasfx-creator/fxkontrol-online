@@ -42,8 +42,12 @@ export default function QuickJumpMenu() {
   return (
     <div
       ref={ref}
-      className="fixed top-2 right-2 z-[60] pointer-events-auto"
-      style={{ fontFamily: 'inherit' }}
+      className="fixed z-[60] pointer-events-auto"
+      style={{
+        top: 'calc(0.5rem + env(safe-area-inset-top))',
+        right: 'calc(0.5rem + env(safe-area-inset-right))',
+        fontFamily: 'inherit',
+      }}
     >
       <button
         onClick={() => setOpen(o => !o)}
@@ -77,8 +81,13 @@ export default function QuickJumpMenu() {
           }}
         >
           {ITEMS.map(({ label, path, icon: Icon, desc }) => {
-            const active = location.pathname + location.search === path
-              || (path === '/studio' && location.pathname === '/studio' && !location.search);
+            // Drone panel deep-link clears ?panel= immediately, so we only
+            // highlight stable routes: Studio (any /studio*) and AI Choreography.
+            const cleanPath = path.split('?')[0];
+            const active = path.includes('?')
+              ? false
+              : location.pathname === cleanPath
+                || (cleanPath === '/studio' && location.pathname.startsWith('/studio'));
             return (
               <button
                 key={path}
