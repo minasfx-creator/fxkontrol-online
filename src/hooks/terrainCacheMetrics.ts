@@ -72,6 +72,7 @@ export const terrainMetrics = {
   recordUnresolvedSample() { _state.unresolvedSamples++; },
   recordRevalidation() { _state.revalidations++; },
   recordDrift() { _state.driftEvents++; },
+  recordOneShotResolve() { _state.oneShotResolves++; },
   recordLodChange() { _state.lodChanges++; },
   setCacheSize(n: number) { _state.cacheSize = n; },
   setTrackedPositions(n: number) { _state.trackedPositions = n; },
