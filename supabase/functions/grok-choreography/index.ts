@@ -271,6 +271,16 @@ Deno.serve(async (req) => {
     const fps = body.fps ?? 10;
     const userPrompt = body.prompt ?? "";
 
+    log("info", "accepted", {
+      bytes: received,
+      numDrones,
+      duration,
+      fps,
+      promptLen: userPrompt.length,
+      hasImage: !!body.imageDataUrl,
+      imageBytes: body.imageDataUrl?.length ?? 0,
+    });
+
 
     const userContent: Array<Record<string, unknown>> = [
       {
