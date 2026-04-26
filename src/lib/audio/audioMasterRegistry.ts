@@ -62,11 +62,17 @@ export interface ResyncOptions {
   surfaceToasts?: boolean;
   /** Optional reason string included in the toast for context. */
   reason?: string;
+  /** When true, glide the timeline to `audio.currentTime` over `softAlignMs`
+   *  using the drift corrector instead of hard-seeking. Eliminates the
+   *  visible jump on the playhead / 3D viewport after a recovery. */
+  softAlign?: boolean;
+  /** Ramp duration for `softAlign`, in ms. Ignored when `softAlign` is false. */
+  softAlignMs?: number;
 }
 
 export interface ResyncResult {
   ok: boolean;
-  reason: 'no-audio' | 'snapped' | 'restarted' | 'failed';
+  reason: 'no-audio' | 'snapped' | 'glided' | 'restarted' | 'failed';
   detail?: string;
 }
 
