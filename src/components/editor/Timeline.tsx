@@ -1218,6 +1218,19 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => timelineTransport.seekTo(Math.min(currentTime + 10, duration))}>
             <SkipForward className="h-3 w-3 text-muted-foreground" />
           </Button>
+          {/* Resync timeline — re-locks TimelineClock to audio.currentTime
+              and retries playback. Useful when the watchdog detects a
+              stall or the operator wants to force a re-lock manually. */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 rounded-md hover:bg-accent/[0.12]"
+            disabled={!getAudioMaster()}
+            title="Resync timeline to audio"
+            onClick={() => resyncTimeline({ reason: 'Manual resync from toolbar.' })}
+          >
+            <RefreshCw className="h-3 w-3 text-accent" />
+          </Button>
         </div>
 
         {/* Timecode — large mono display */}
