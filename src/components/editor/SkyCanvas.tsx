@@ -109,6 +109,7 @@ import { isFlyingTo } from '@/core/camera/geoCamera';
 import ClientPresentationMode from './ClientPresentationMode';
 import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
+import TerrainCacheMetricsPanel from './TerrainCacheMetricsPanel';
 import SkyCanvasDiagnosticsPanel from './SkyCanvasDiagnosticsPanel';
 import { captureSkyCanvasError } from '@/lib/skyCanvasDiagnostics';
 import SimplifiedSkyFallback, { detectWebGLCapability } from './SimplifiedSkyFallback';
