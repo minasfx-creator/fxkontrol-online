@@ -199,5 +199,5 @@ export function useTimelineClockHealthCheck(options: TimelineClockHealthOptions 
       window.clearInterval(intervalId);
       timelineHealthStore._set({ status: 'idle', stalledForMs: 0 });
     };
-  }, [stallThresholdMs, sampleIntervalMs, recoveryCooldownMs]);
+  }, [stallThresholdMs, sampleIntervalMs, recoveryCooldownMs, driftCorrectionEnabled, driftCorrectionMs]);
 }
