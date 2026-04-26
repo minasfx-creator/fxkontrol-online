@@ -22,6 +22,7 @@ import { terrainMetrics } from './terrainCacheMetrics';
 import { useTerrainCacheConfig } from './useTerrainCacheConfig';
 import { createTerrainCachePersistence, type TerrainCachePersistenceHandle, type TilesetKind } from './terrainCachePersistence';
 import { createTerrainLocalCache, type TerrainLocalCacheHandle } from './terrainCacheLocalStorage';
+import { terrainCacheControl, type TerrainCacheController } from './terrainCacheControl';
 
 const _ray = new THREE.Raycaster();
 const _origin = new THREE.Vector3();
@@ -97,6 +98,9 @@ export function useTerrainHeightCache(
   const tilesGroupRef = useRef<THREE.Object3D | null>(null);
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
+  // Imperative trigger from UI/controller: when bumped, the next useFrame
+  // does a full revalidation pass regardless of the interval.
+  const forceRevalidateRef = useRef(false);
 
   // ── Persistence (cloud + local browser) ──
   // Local IDB hydrates first (synchronous-ish, ~ms) so pins snap before the
