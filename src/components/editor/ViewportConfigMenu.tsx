@@ -186,6 +186,20 @@ export default function ViewportConfigMenu({
             <span>HUD Crosshairs</span>
             {env.showHUDCrosshairs && <span className="ml-auto text-[8px] text-primary">ON</span>}
           </button>
+          <button
+            onClick={() => updateEnvironment({ showTerrainDebug: !env.showTerrainDebug })}
+            className={cn(
+              "w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-all hover:bg-muted/30",
+              env.showTerrainDebug ? "text-primary" : "text-muted-foreground"
+            )}
+          >
+            <Mountain className="w-3.5 h-3.5" />
+            <div className="flex flex-col">
+              <span>Terrain Debug</span>
+              <span className="text-[8px] text-muted-foreground/50">Cached vs raycast · drift &gt; 0.5m</span>
+            </div>
+            {env.showTerrainDebug && <span className="ml-auto text-[8px] text-primary">ON</span>}
+          </button>
 
           <div className="h-px bg-border/20 mx-2 my-1" />
 
