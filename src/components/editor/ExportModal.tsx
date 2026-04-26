@@ -6,12 +6,12 @@ import { useState, useMemo } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type TimelineItem, type Position } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
-import { exportFiringCSV, downloadFile } from '@/lib/exportEngine';
+import { exportFiringCSV, exportFiringJSON, exportVVIZ, downloadFile } from '@/lib/exportEngine';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Download, FileSpreadsheet, MapPin, Eye } from 'lucide-react';
+import { Download, FileSpreadsheet, FileJson, MapPin, Eye, Plane } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
