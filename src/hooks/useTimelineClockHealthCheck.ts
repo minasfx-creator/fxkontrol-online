@@ -39,8 +39,13 @@ import { timelineClock } from '@/core/timeline/TimelineClock';
 import { lockstep } from '@/core/reliability/lockstepEngine';
 import { useProjectStore } from '@/store/useProjectStore';
 import { getAudioMaster, resyncTimeline } from '@/lib/audio/audioMasterRegistry';
+import { timelineHealthStore } from '@/core/health/timelineHealthStore';
 
 const PLAYBACK_SUBSYSTEM_ID = 'playback';
+/** How long the badge stays in 'recovered' state after a successful recovery
+ *  before falling back to 'running'. Pure UX value — does not affect any
+ *  recovery logic. */
+const RECOVERED_DISPLAY_MS = 2500;
 
 export interface TimelineClockHealthOptions {
   /** Milliseconds without forward progress before we declare a stall. */
