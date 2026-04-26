@@ -103,6 +103,9 @@ export function useTerrainHeightCache(
       return;
     }
 
+    // Snapshot operator-tuned config once per frame (sliders mutate between frames)
+    const cfg = useTerrainCacheConfig.getState();
+
     // Count current tile meshes to detect LOD changes
     let meshCount = 0;
     tilesGroup.traverse((c) => {
