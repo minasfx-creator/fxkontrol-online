@@ -118,7 +118,11 @@ class TimelineClock {
       return;
     }
     this.state.time = next;
-    this.state.speed = 1;
+    // NOTE: do NOT overwrite `state.speed` here. The audio element already
+    // mirrors `playbackSpeed` via `playbackRate`, so syncing the external
+    // clock only requires *following* the audio's `currentTime`. Forcing
+    // speed=1 used to clobber the operator's chosen playback speed and
+    // confuse the transport diagnostics chip.
     this.markPositionChange('external-sync');
     this.notify();
   }
