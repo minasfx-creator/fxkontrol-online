@@ -135,8 +135,8 @@ export function resyncTimeline(options: ResyncOptions = {}): ResyncResult {
     } else {
       // 'skipped' (offset under threshold), 'hard-seek' (offset > 3s), or
       // 'disabled' all already left the clock in a sane state — nothing more
-      // to do here. We still report the original requested mode.
-      aligned = result === 'started' ? 'glided' : 'snapped';
+      // to do here. Report as snapped so the operator sees a stable label.
+      aligned = 'snapped';
     }
   } else {
     timelineClock.seek(target);
