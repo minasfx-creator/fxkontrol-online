@@ -318,6 +318,27 @@ export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
               </table>
             </div>
           </TabsContent>
+
+          {/* ─── VVIZ DRONES ─── */}
+          <TabsContent value="vviz" className="flex-1 overflow-auto flex flex-col gap-2 mt-2">
+            <p className="text-[10px] text-muted-foreground">
+              Coreografia de drones no formato Finale 3D <strong>VVIZ 1.0</strong>.
+              Cada agente é exportado com <code className="text-primary">homeX/homeY/homeZ/homeH</code> e
+              traversal em deltas <code className="text-primary">dx, dy, dz, dh</code> (eixos X direita, Y cima, Z frente).
+            </p>
+            <div className="grid grid-cols-3 gap-2 text-[9px]">
+              <Badge variant="outline" className="justify-center">{droneCount} agentes</Badge>
+              <Badge variant="outline" className="justify-center">X · Y · Z · H</Badge>
+              <Badge variant="outline" className="justify-center">Standard frame</Badge>
+            </div>
+            <Button onClick={handleDownloadVVIZ} className="w-full" size="sm">
+              <Plane className="w-3.5 h-3.5 mr-2" /> Download .vviz
+            </Button>
+            <p className="text-[9px] text-muted-foreground/60">
+              Para opções avançadas (Position/Color rate, OGL frame, no-trail) abra o diálogo
+              dedicado <em>Exportar VVIZ</em> na barra de ferramentas.
+            </p>
+          </TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>
