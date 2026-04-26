@@ -62,7 +62,7 @@ function EventRow({ event }: RowProps) {
       <Icon
         className={cn(
           'mt-0.5 h-3 w-3 shrink-0',
-          isExternal ? 'text-accent' : 'text-amber-400',
+          isExternal ? 'text-accent' : 'text-warning',
         )}
       />
       <div className="min-w-0 flex-1 space-y-0.5">
