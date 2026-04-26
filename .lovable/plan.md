@@ -1,69 +1,64 @@
-# Round 4 — End-to-End Audit, Cleanup & Polish
+# Round 5 — End-to-End Audit & Final Housekeeping
 
-## ✅ Health Snapshot (read-only audit just performed)
-- **Tests:** 604 / 604 passing (incl. the 4 new visual-regression snapshots from last round)
-- **Typecheck:** clean (`tsc --noEmit`)
-- **Dev-server runtime:** no errors, no warnings in log
-- **ESLint:** 643 errors total — but only **~35 are actionable**; the rest are `no-explicit-any` at protocol/worker boundaries (intentional, out of scope per Round 2 policy)
+## ✅ Health Snapshot (just verified, read-only)
 
-Platform is healthy. This round is **pure cleanup + 1 real bug fix**, no behavior changes.
+| Check | Result |
+|---|---|
+| **Tests** | **604 / 604 passing** ✅ |
+| **Typecheck** (`tsc --noEmit`) | clean ✅ |
+| **Dev runtime** | no console errors / warnings ✅ |
+| **ESLint** | 607 issues — 575 are intentional `no-explicit-any` at protocol/worker boundaries (out-of-scope per Round 2 policy) |
 
----
-
-## 🐛 Real Bug to Fix (1)
-
-### `no-case-declarations` in `src/core/joi/joiModes.ts:210`
-A `let`/`const` inside a `switch case` without braces leaks into sibling cases — classic source of "wrong mode behavior" bugs. Wrap the case body in `{ … }` to scope the declaration.
+Platform is **healthy and stable**. This round is **pure housekeeping** — no behavior changes, no new features, ~6 files touched.
 
 ---
 
-## 🧹 Lint Auto-Fix Pass (~30 issues)
+## 🐛 Real Issues Found (1)
 
-### `prefer-const` (24 occurrences, all `--fix`-safe)
-Variables declared `let` but never reassigned across:
-- `src/components/editor/SkyCanvas.tsx` (8 — the `_skyScatterUniforms_local`, `_adaptiveExposure_local`, etc.)
-- `src/core/timeline/Timeline.tsx`, `src/lib/ildaParser.ts`, `src/lib/kmlParser.ts`, `src/modules/swarmgpt/**` (~16 more)
+### Obsolete snapshots in `EditorLayout.visual.test.tsx`
+After Round 4 added semantic assertions to the editor visual-regression suite, the original 3 snapshot keys are stale (titles changed from "matches snapshot" → "matches snapshot + uses dark tokens"). Vitest reports:
+```
+Snapshots  3 obsolete
+  ↳ src/components/editor/__tests__/EditorLayout.visual.test.tsx
+```
 
-These are mechanical, zero-risk. Will run `eslint --fix` scoped to this rule only, then review the diff.
-
-### `no-empty-object-type` (8 occurrences)
-Convert empty `interface X {}` to either:
-- `type X = BaseType` when extending, or
-- delete entirely if unused
-
-Files: `src/components/ui/badge.tsx`, plus 7 component prop interfaces flagged by ESLint.
+**Fix:** delete the 3 stale entries from `EditorLayout.visual.test.tsx.snap`. Zero risk — current snapshots are already matching.
 
 ---
 
-## 🎨 UI / UX Micro-Polish
+## 🧹 Lint Cleanup (~32 actionable items)
 
-### Visual Regression Snapshot Hardening
-The 3 new snapshots added last round (`EditorLayout.visual.test.tsx`) currently render components in isolation. Add **a smoke assertion** that:
-1. Each snapshot contains the expected dark-mode token classes (e.g., `bg-card/85`, `text-muted-foreground`)
-2. The mode chip in `ViewportBar` renders with correct `aria-label` for screen readers
+### `prefer-const` × 4 (auto-fix safe)
+Stragglers missed by Round 4's `--fix` pass — variables declared `let` but never reassigned. Will run `eslint --fix --rule prefer-const` scoped to those files only.
 
-This makes the snapshots **semantically meaningful**, not just structural — so a class-name refactor that breaks dark mode will fail the test with a clear message instead of a generic snapshot diff.
+### `no-useless-escape` × 1
+Single unnecessary backslash in a regex (likely `\/` → `/`). One-char fix.
 
-### `SafetyGateSettings` — confirm Round 2 polish landed correctly
-Quick visual verification (read-only) that the `text-emerald-400/90` "Modo livre ativo" hint is wired to the master switch state and not stuck on.
+### `no-control-regex` × 3 (suppress with reason)
+These regexes intentionally match control characters in **binary protocol parsing** (PBUS / DMX / serial). They are NOT bugs. Will add `// eslint-disable-next-line no-control-regex -- intentional: parses binary protocol frame` above each.
+
+### `no-empty` × 24 (suppress with reason)
+Round 3 audit already confirmed: virtually all are intentional best-effort browser-API guards (clipboard, fullscreen, AudioContext close, port revoke). Will add `// eslint-disable-next-line no-empty -- best-effort: <api> failures are non-fatal` above each, matching the pattern already used elsewhere.
+
+This converts noise into **documented intent**, so future lint reports surface only real issues.
 
 ---
 
-## 🚫 Out of Scope (intentional)
+## 🚫 Out of Scope (intentional, unchanged)
 
-- **Remaining 575 `no-explicit-any`** — workers, binary protocols (PBUS/DMX), Web Serial DataView. Per Round 2 policy: keep with `// eslint-disable-next-line ... -- reason` comments only when touched for other work. Not a blanket rewrite.
-- **New features** — cleanup only.
-- **Browser E2E testing of all 31 routes** — better as a targeted user-flow request. Let me know which flow matters most (Studio, Live Firing, Auth, AI Choreo, Office) and I'll run a focused browser pass next round.
+- **575 `no-explicit-any`** at workers / PBUS / DMX / DataView — per Round 2 policy, only fix when touched for other work. No blanket rewrite.
+- **No new features, no UI changes** — Round 4 already polished SafetyGate; nothing else flagged this round.
+- **Browser E2E across all 31 routes** — better as a targeted user-flow request. Tell me which flow matters most (Studio, Live Firing, Auth, AI Choreo, or Office) and I'll run a focused browser pass next round.
 
 ---
 
 ## ✅ Verification Plan
 
-1. `bunx vitest run` → expect **604 passing**, plus the new semantic assertions on the 3 visual snapshots.
+1. `bunx vitest run` → expect **604 passing, 0 obsolete snapshots**.
 2. `npx tsc --noEmit` → clean.
-3. `bunx eslint src --quiet` → expect **643 → ~610** (24 `prefer-const` + 8 `empty-object-type` + 1 `no-case-declarations` resolved).
-4. Manual: open `/settings?tab=safety`, toggle master switch, confirm green hint appears/disappears.
+3. `bunx eslint src --quiet` → expect **607 → ~575** (the remaining `any` baseline).
+4. Spot-check one suppressed `no-empty` and `no-control-regex` to confirm the comments make intent obvious.
 
 ---
 
-**Estimated impact:** ~12 files touched, all mechanical except the `joiModes.ts` switch-case scope fix (the only real bug).
+**Estimated impact:** ~6 files touched, all mechanical (snapshot prune + comment additions + 4 `let→const`). Zero runtime behavior change.
