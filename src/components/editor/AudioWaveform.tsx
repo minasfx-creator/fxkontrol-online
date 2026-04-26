@@ -99,6 +99,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playControllerRef = useRef<ReturnType<typeof playAudioWithRetry> | null>(null);
   const resizeStartY = useRef(0);
   const resizeStartH = useRef(0);
 
