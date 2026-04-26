@@ -75,8 +75,9 @@ export default function SafetyGateSettings() {
               <strong>hardware real em show ao vivo</strong>.
             </p>
             {!master && (
-              <p className="text-[11px] text-primary/80 mt-2 font-mono">
-                ✓ Modo livre ativo. Sem bloqueios. Ative camadas individuais abaixo se você usa hardware ao vivo.
+              <p className="text-[11px] mt-2 font-mono flex items-center gap-1.5 text-emerald-400/90">
+                <span aria-hidden="true">✓</span>
+                <span>Modo livre ativo. Sem bloqueios. Ative camadas individuais abaixo se você usa hardware ao vivo.</span>
               </p>
             )}
           </div>
