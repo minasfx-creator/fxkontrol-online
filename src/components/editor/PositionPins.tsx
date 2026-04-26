@@ -855,6 +855,7 @@ export default function PositionPins() {
       {positions.map((pos) => (
         <Pin key={pos.id} position={pos} terrainY={getHeight(pos.x, pos.z)} onRightClick={handleRightClick} />
       ))}
+      <TerrainDebugOverlay cache={{ getHeight, heights: new Map() }} />
     </>
   );
 }
