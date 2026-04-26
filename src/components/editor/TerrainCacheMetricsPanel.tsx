@@ -78,6 +78,7 @@ export default function TerrainCacheMetricsPanel() {
       <Sep />
 
       <Row label="Unresolved Rays" value={`${m.unresolvedSamples}`} />
+      <Row label="One-Shot Resolves" value={`${m.oneShotResolves}`} color={m.oneShotResolves > 0 ? 'hsl(207, 80%, 65%)' : 'inherit'} />
       <Row label="Revalidations" value={`${m.revalidations}`} />
       <Row label="Drift Events" value={`${m.driftEvents}`} color={m.driftEvents > 0 ? 'hsl(45, 95%, 55%)' : 'inherit'} />
       <Row label="LOD Changes" value={`${m.lodChanges}`} color={m.lodChanges > 0 ? 'hsl(207, 80%, 65%)' : 'inherit'} />
