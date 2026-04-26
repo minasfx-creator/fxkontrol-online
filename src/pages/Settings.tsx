@@ -6,16 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { User, Phone, Building2, Briefcase, Save, Shield, CreditCard, UserCircle } from 'lucide-react';
+import { User, Phone, Building2, Briefcase, Save, Shield, CreditCard, UserCircle, ShieldCheck } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import BillingTab from '@/components/settings/BillingTab';
+import SafetyGateSettings from '@/components/settings/SafetyGateSettings';
 
 export default function Settings() {
   const { user } = useAuth();
   const { profile, loading, updateProfile } = useProfile();
   const { isAdmin } = useAdminRole();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'safety' || searchParams.get('tab') === 'billing'
+    ? (searchParams.get('tab') as string)
+    : 'profile';
 
   const [form, setForm] = useState({
     display_name: '',
@@ -75,10 +80,17 @@ export default function Settings() {
         )}
       </div>
 
-      <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-sm">
+      <Tabs
+        value={initialTab}
+        onValueChange={(v) => setSearchParams(v === 'profile' ? {} : { tab: v }, { replace: true })}
+        className="w-full"
+      >
+        <TabsList className="grid w-full grid-cols-3 max-w-md">
           <TabsTrigger value="profile" className="gap-1.5 text-xs">
             <UserCircle className="h-3.5 w-3.5" /> Perfil
+          </TabsTrigger>
+          <TabsTrigger value="safety" className="gap-1.5 text-xs">
+            <ShieldCheck className="h-3.5 w-3.5" /> Segurança
           </TabsTrigger>
           <TabsTrigger value="billing" className="gap-1.5 text-xs">
             <CreditCard className="h-3.5 w-3.5" /> Cobrança
@@ -177,6 +189,10 @@ export default function Settings() {
               </div>
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="safety" className="mt-5">
+          <SafetyGateSettings />
         </TabsContent>
 
         <TabsContent value="billing" className="mt-5">
