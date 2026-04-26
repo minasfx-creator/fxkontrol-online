@@ -4,6 +4,7 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useAudioMasterClock } from '@/hooks/useAudioMasterClock';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -140,6 +141,10 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       audioRef.current = null;
     };
   }, [audioUrl]);
+
+  // Audio element drives the timeline as master clock — eliminates drift
+  // between music and 3D viewport / FX spawns.
+  useAudioMasterClock(audioRef, audioUrl);
 
   // Sync volume / mute
   useEffect(() => {
