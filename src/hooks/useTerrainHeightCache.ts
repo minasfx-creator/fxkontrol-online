@@ -18,6 +18,7 @@
 import { useRef, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { terrainMetrics } from './terrainCacheMetrics';
 
 const _ray = new THREE.Raycaster();
 const _origin = new THREE.Vector3();
