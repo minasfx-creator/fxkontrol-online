@@ -110,6 +110,9 @@ export function PersistedDevicesPanel() {
   const [tick, setTick] = useState(0);
   const [devices, setDevices] = useState<DiscoveredDevice[]>(unifiedDiscovery.getDevices());
   const [isRescanning, setIsRescanning] = useState(false);
+  const [query, setQuery] = useState('');
+  const [transportFilter, setTransportFilter] = useState<DiscoveryTransport | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<Status | 'all'>('all');
 
   const handleRescan = async () => {
     if (isRescanning) return;
