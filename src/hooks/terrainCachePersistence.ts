@@ -99,7 +99,7 @@ export function createTerrainCachePersistence(opts: {
         drained.push(k);
         if (rows.length >= MAX_BATCH) break;
       }
-      const { error } = await supabase
+      const { error } = await db
         .from('terrain_height_cache')
         .upsert(rows, { onConflict: 'project_id,tileset_kind,x_tenths,z_tenths' });
       if (error) {
@@ -128,7 +128,7 @@ export function createTerrainCachePersistence(opts: {
         let total = 0;
         // Paginate to bypass Supabase's default 1k row limit.
         while (true) {
-          const { data, error } = await supabase
+          const { data, error } = await db
             .from('terrain_height_cache')
             .select('x_tenths,z_tenths,y')
             .eq('project_id', opts.projectId)
