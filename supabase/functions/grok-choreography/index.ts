@@ -71,20 +71,97 @@ function counterSnapshot() {
   };
 }
 
+// ─── Persistence to public.grok_choreography_metrics ────────────────────────
+// Fire-and-forget inserts via PostgREST using the service role key. We never
+// block the response on persistence — failures are logged but never thrown.
+// RLS on the table only allows service_role to write; admins can read.
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const METRICS_TABLE = "grok_choreography_metrics";
+
+type MetricRow = {
+  event_type: "snapshot" | "decision";
+  request_id?: string | null;
+  stage?: string | null;
+  outcome?: string | null;
+  status?: number | null;
+  reason?: string | null;
+  model?: string | null;
+  bytes?: number | null;
+  duration_ms?: number | null;
+  isolate_started_at?: string | null;
+  counters: Record<string, unknown>;
+};
+
+function persistMetric(row: MetricRow) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return;
+  const promise = fetch(`${SUPABASE_URL}/rest/v1/${METRICS_TABLE}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SUPABASE_SERVICE_ROLE_KEY,
+      "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Prefer": "return=minimal",
+    },
+    body: JSON.stringify(row),
+  })
+    .then((resp) => {
+      if (!resp.ok) {
+        return resp.text().then((body) => {
+          console.warn(JSON.stringify({
+            ts: new Date().toISOString(),
+            level: "warn",
+            fn: "grok-choreography",
+            stage: "metrics_persist",
+            outcome: "persist_failed",
+            status: resp.status,
+            event_type: row.event_type,
+            error: body.slice(0, 300),
+          }));
+        });
+      }
+    })
+    .catch((e) => {
+      console.warn(JSON.stringify({
+        ts: new Date().toISOString(),
+        level: "warn",
+        fn: "grok-choreography",
+        stage: "metrics_persist",
+        outcome: "persist_error",
+        event_type: row.event_type,
+        error: e instanceof Error ? e.message : "unknown",
+      }));
+    });
+  // Keep the isolate alive long enough to flush the insert when available.
+  // @ts-ignore — EdgeRuntime is a Deno Deploy global, may be undefined locally.
+  if (typeof EdgeRuntime !== "undefined" && typeof EdgeRuntime.waitUntil === "function") {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(promise);
+  }
+}
+
 // Periodic snapshot — emits a single structured line every 60s if the isolate
-// stays warm. Idempotent: only the first request in a cold isolate arms it.
+// stays warm AND persists a snapshot row to the metrics table for trend analysis
+// across cold starts. Idempotent: only the first request in a cold isolate arms it.
 let _snapshotTimer: number | null = null;
 function ensureSnapshotTimer() {
   if (_snapshotTimer !== null) return;
   _snapshotTimer = setInterval(() => {
     if (counters.total === 0) return;
+    const snap = counterSnapshot();
     console.log(JSON.stringify({
       ts: new Date().toISOString(),
       level: "info",
       fn: "grok-choreography",
       stage: "counters_snapshot",
-      ...counterSnapshot(),
+      ...snap,
     }));
+    persistMetric({
+      event_type: "snapshot",
+      stage: "counters_snapshot",
+      isolate_started_at: counters.startedAt,
+      counters: snap,
+    });
   }, 60_000) as unknown as number;
 }
 
