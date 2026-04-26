@@ -92,7 +92,11 @@ export default function QuickJumpMenu() {
   return (
     <div
       ref={ref}
-      className="fixed z-[60] pointer-events-auto"
+      // z-[80] sits above editor toolbars/popovers (typical z-50) but well
+      // below the PANIC button (z-[9999]). Insets use safe-area + a bit
+      // more breathing room on mobile so the chip never abuts a top-bar
+      // action button.
+      className="fixed z-[80] pointer-events-auto"
       style={{
         top: 'calc(0.5rem + env(safe-area-inset-top))',
         right: 'calc(0.5rem + env(safe-area-inset-right))',
@@ -101,9 +105,13 @@ export default function QuickJumpMenu() {
     >
       <button
         onClick={() => setOpen((o) => !o)}
+        // Mobile: tighter chip (h-6, no label) so it's a discreet icon
+        // that won't crowd the editor's own top-bar buttons. Desktop
+        // restores the original h-7 pill with label.
         className={cn(
-          'flex items-center gap-1.5 h-7 px-2 rounded-control text-[11px] font-medium tracking-wide transition-all active:scale-95',
+          'flex items-center gap-1.5 rounded-control text-[11px] font-medium tracking-wide transition-all active:scale-95',
           'backdrop-blur-xl border',
+          'h-6 px-1.5 sm:h-7 sm:px-2',
         )}
         style={{
           background: 'hsl(var(--background) / 0.6)',
@@ -114,6 +122,7 @@ export default function QuickJumpMenu() {
         title="Navegação rápida"
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label="Navegação rápida"
       >
         <CurrentIcon className="h-3.5 w-3.5" />
         <span className="hidden sm:inline">{current.label}</span>
