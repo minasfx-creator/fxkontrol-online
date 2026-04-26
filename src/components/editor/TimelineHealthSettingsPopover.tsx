@@ -96,12 +96,13 @@ export function TimelineHealthSettingsPopover() {
           <Settings2 className="h-3 w-3" />
         </Button>
       </RealPopoverTrigger>
-      <RealPopoverContent
-        side="bottom"
-        align="end"
-        sideOffset={6}
-        className="z-50 w-80 rounded-lg border border-border/40 bg-popover/95 p-3 text-popover-foreground shadow-xl backdrop-blur-xl"
-      >
+      <RealPopoverPortal>
+        <RealPopoverContent
+          side="bottom"
+          align="end"
+          sideOffset={6}
+          className="z-50 w-80 rounded-lg border border-border/40 bg-popover/95 p-3 text-popover-foreground shadow-xl backdrop-blur-xl"
+        >
         <div className="mb-2 flex items-center justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-foreground">
