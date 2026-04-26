@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { timelineTransport } from '@/core/transport/timelineTransport';
 import { resyncTimeline, getAudioMaster } from '@/lib/audio/audioMasterRegistry';
+import { TimelineHealthBadge } from '@/components/editor/TimelineHealthBadge';
 import { useTransportDiagnostics } from '@/hooks/useTransportDiagnostics';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
