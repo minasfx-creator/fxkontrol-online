@@ -593,10 +593,10 @@ Deno.serve(async (req) => {
     if (!grokResp) {
       const status = lastStatus === 429 ? 429 : lastStatus === 401 ? 401 : lastStatus === 402 ? 402 : 502;
       log("error", "upstream", { reason: "all_models_failed", lastStatus, outcome: "error", status });
-      if (lastStatus === 429) return jsonError(429, "xAI rate limit reached. Try again shortly.");
-      if (lastStatus === 401) return jsonError(401, "Invalid XAI_API_KEY.");
-      if (lastStatus === 402) return jsonError(402, "xAI credits exhausted.");
-      return jsonError(502, `xAI upstream error (${lastStatus}) — all fallback models failed.`);
+      if (lastStatus === 429) return jsonError("xAI rate limit reached. Try again shortly.", 429);
+      if (lastStatus === 401) return jsonError("Invalid XAI_API_KEY — update the secret in Lovable Cloud → Backend → Secrets.", 401);
+      if (lastStatus === 402) return jsonError("xAI credits exhausted — top up your xAI account.", 402);
+      return jsonError(`xAI upstream error (${lastStatus}) — all fallback models failed.`, 502);
     }
 
     const grokJson = await grokResp.json();
