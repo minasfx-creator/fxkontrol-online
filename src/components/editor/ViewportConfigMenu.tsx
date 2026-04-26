@@ -3,7 +3,7 @@
  * Consolidates Camera Presets, Navigation Mode, Display Options
  */
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Camera, ScanEye, Navigation, ChevronDown, Grid3X3, Ruler, Eye, Footprints, Cpu, Zap, Crosshair } from 'lucide-react';
+import { Camera, ScanEye, Navigation, ChevronDown, Grid3X3, Ruler, Eye, Footprints, Cpu, Zap, Crosshair, Mountain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSceneStore } from '@/store/useSceneStore';
 import { CAMERA_PRESETS } from './skycanvas/sharedState';
