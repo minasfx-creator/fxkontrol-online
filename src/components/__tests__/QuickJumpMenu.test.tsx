@@ -72,13 +72,13 @@ describe('QuickJumpMenu — active state', () => {
     expect(getActiveLabels(menu)).toEqual(['Studio']);
   });
 
-  it('falls back to Studio label on unmatched routes without crashing', () => {
-    renderAt('/');
-    const trigger = screen.getByRole('button', { name: /Navegação rápida/i });
-    // Trigger label only renders sm+ (hidden on mobile), but still present in DOM
-    expect(trigger).toBeInTheDocument();
+  it('shows neutral "Jump" label on unmatched routes (no item is marked active)', () => {
+    const { container } = renderAt('/');
+    // Trigger label only renders sm+ (hidden on mobile via .hidden class), but
+    // is still in the DOM — query directly for the label span.
+    expect(container.textContent).toContain('Jump');
+    expect(container.textContent).not.toContain('Studio');
     const menu = openMenu();
-    // /  doesn't match any item → no menuitem should be marked active
     expect(getActiveLabels(menu)).toEqual([]);
   });
 });

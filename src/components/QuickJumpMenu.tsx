@@ -13,7 +13,7 @@
  */
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Wand2, Plane, Sparkles, ChevronDown } from 'lucide-react';
+import { Wand2, Plane, Sparkles, Compass, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Item = {
@@ -65,14 +65,15 @@ export default function QuickJumpMenu() {
     [location.search],
   );
 
-  // Resolve the current active item from URL state. Falls back to Studio
-  // (the default landing) when nothing matches, so the pill always shows
-  // something sensible.
+  // Resolve the current active item from URL state. When nothing matches
+  // (e.g. user is on /office, /settings, /command, etc.) we surface a
+  // neutral "Jump" affordance instead of falsely claiming Studio is active.
   const current = useMemo(
-    () => ITEMS.find((i) => i.match(location.pathname, searchParams)) ?? ITEMS[0],
+    () => ITEMS.find((i) => i.match(location.pathname, searchParams)) ?? null,
     [location.pathname, searchParams],
   );
-  const CurrentIcon = current.icon;
+  const CurrentIcon = current?.icon ?? Compass;
+  const currentLabel = current?.label ?? 'Jump';
 
   // Click-away to close the dropdown.
   useEffect(() => {
@@ -125,7 +126,7 @@ export default function QuickJumpMenu() {
         aria-label="Navegação rápida"
       >
         <CurrentIcon className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">{current.label}</span>
+        <span className="hidden sm:inline">{currentLabel}</span>
         <ChevronDown className={cn('h-3 w-3 transition-transform', open && 'rotate-180')} />
       </button>
 
