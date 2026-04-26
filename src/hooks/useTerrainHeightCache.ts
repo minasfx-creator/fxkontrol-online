@@ -205,6 +205,7 @@ export function useTerrainHeightCache(
 
     const cache = cacheRef.current;
     const persist = persistenceRef.current;
+    const local = localRef.current;
 
     // ── Pass 1: always sample positions that have NO resolved height yet.
     //   Bounded per-frame so we never spike the frame budget.
@@ -220,6 +221,7 @@ export function useTerrainHeightCache(
       if (y !== null) {
         cache.set(key, y);
         persist?.markDirty(key, xt, zt, y);
+        local?.markDirty(key, xt, zt, y);
       }
       unresolvedSampled++;
     }
@@ -252,6 +254,7 @@ export function useTerrainHeightCache(
         if (prev !== undefined) terrainMetrics.recordDrift();
         cache.set(key, y);
         persist?.markDirty(key, xt, zt, y);
+        local?.markDirty(key, xt, zt, y);
       }
     }
     revalidateIndexRef.current = endIdx >= positions.length ? 0 : endIdx;
@@ -280,6 +283,7 @@ export function useTerrainHeightCache(
       if (y !== null) {
         cache.set(key, y);
         persistenceRef.current?.markDirty(key, xt, zt, y);
+        localRef.current?.markDirty(key, xt, zt, y);
         terrainMetrics.recordOneShotResolve();
         terrainMetrics.recordGet(true);
         terrainMetrics.setCacheSize(cache.size);
