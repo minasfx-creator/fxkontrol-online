@@ -159,10 +159,30 @@ export default function AIChoreographyPage() {
   };
 
   const generate = async () => {
-    if (!preview && !prompt.trim()) {
-      toast.error('Suba uma imagem/vídeo ou escreva um briefing.');
+    // ─── Client-side prevalidation (mirrors edge function zod schema) ───
+    const candidate = {
+      prompt: prompt.trim() || undefined,
+      imageDataUrl: preview ?? undefined,
+      numDrones,
+      durationSeconds: duration,
+      fps,
+    };
+    const parsed = grokRequestSchema.safeParse(candidate);
+    if (!parsed.success) {
+      const flat = parsed.error.flatten();
+      const fe: Record<string, string> = {};
+      for (const [k, v] of Object.entries(flat.fieldErrors)) {
+        if (v?.[0]) fe[k] = v[0];
+      }
+      const formMsg = flat.formErrors[0];
+      setFieldErrors(fe);
+      const firstMsg = Object.values(fe)[0] ?? formMsg ?? 'Campos inválidos.';
+      toast.error(firstMsg, {
+        description: Object.keys(fe).length > 1 ? `+${Object.keys(fe).length - 1} outro(s) campo(s) com erro.` : undefined,
+      });
       return;
     }
+    setFieldErrors({});
     setBusy(true);
     setMacro(null); setShow(null);
     try {
