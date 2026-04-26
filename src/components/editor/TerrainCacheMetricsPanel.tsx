@@ -10,6 +10,7 @@ import { RotateCcw, X } from 'lucide-react';
 
 export default function TerrainCacheMetricsPanel() {
   const show = useSceneStore(s => s.environment.showTerrainMetrics);
+  const overlayActive = useSceneStore(s => s.environment.showTerrainDebug);
   const updateEnvironment = useSceneStore(s => s.updateEnvironment);
   const [m, setM] = useState<TerrainCacheMetrics>(() => terrainMetrics.snapshot());
 
