@@ -12,6 +12,7 @@ import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useLOD } from '@/hooks/useLOD';
 import { getLiftTime, getBreakHeight, getBreakSpeed, getTypedPrefire, getTypedDuration, getStarLifetime, type FinalePartType } from '@/lib/pyroPhysics';
 import { useTerrainHeightCache } from '@/hooks/useTerrainHeightCache';
+import { useAuth } from '@/hooks/useAuth';
 import { parseVDL, vdlToEffect } from '@/lib/vdlParser';
 import { temporalFlicker, getFlickerParams, strobeFlicker, getCombustionHdrBoost } from '@/lib/pyroNoise';
 import { updateFrustum, isSphereInFrustum } from '@/lib/frustumCuller';
@@ -1149,8 +1150,14 @@ export function TimelineEffects() {
   const timelineItems = useProjectStore(s => s.timelineItems);
   const currentTime = useProjectStore(s => s.currentTime);
   const positions = useProjectStore(s => s.positions);
+  const projectId = useProjectStore(s => s.projectId);
+  const { user } = useAuth();
   const sceneSettings = useSceneStore(st => st.settings);
-  const { getHeight } = useTerrainHeightCache(positions, sceneSettings.google3DTilesEnabled);
+  const persistence = useMemo(
+    () => (projectId && user?.id ? { projectId, userId: user.id } : undefined),
+    [projectId, user?.id],
+  );
+  const { getHeight } = useTerrainHeightCache(positions, sceneSettings.google3DTilesEnabled, persistence);
   const activeEffects = useMemo(() => {
     const effectScale = sceneSettings.effectScale;
     const weatherDampening = sceneSettings.weather === 'heavy-rain' ? 0.6 :
