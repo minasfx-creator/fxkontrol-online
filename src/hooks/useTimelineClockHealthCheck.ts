@@ -56,14 +56,13 @@ export interface TimelineClockHealthOptions {
   recoveryCooldownMs?: number;
 }
 
-const DEFAULTS: Required<TimelineClockHealthOptions> = {
-  stallThresholdMs: 750,
-  sampleIntervalMs: 200,
-  recoveryCooldownMs: 4000,
-};
-
 export function useTimelineClockHealthCheck(options: TimelineClockHealthOptions = {}) {
-  const { stallThresholdMs, sampleIntervalMs, recoveryCooldownMs } = { ...DEFAULTS, ...options };
+  // Operator-tunable defaults from the persisted settings store. Explicit
+  // `options` (e.g. from tests) still win over the operator preference.
+  const settings = useTimelineHealthSettings();
+  const stallThresholdMs   = options.stallThresholdMs   ?? settings.stallThresholdMs;
+  const sampleIntervalMs   = options.sampleIntervalMs   ?? settings.sampleIntervalMs;
+  const recoveryCooldownMs = options.recoveryCooldownMs ?? settings.recoveryCooldownMs;
 
   // We intentionally read `isPlaying` from the store imperatively inside the
   // interval (not as a hook subscription) so the watchdog does not re-mount
