@@ -64,6 +64,8 @@ export function useTimelineClockHealthCheck(options: TimelineClockHealthOptions 
   const stallThresholdMs   = options.stallThresholdMs   ?? settings.stallThresholdMs;
   const sampleIntervalMs   = options.sampleIntervalMs   ?? settings.sampleIntervalMs;
   const recoveryCooldownMs = options.recoveryCooldownMs ?? settings.recoveryCooldownMs;
+  const driftCorrectionEnabled = settings.driftCorrectionEnabled;
+  const driftCorrectionMs = settings.driftCorrectionMs;
 
   // We intentionally read `isPlaying` from the store imperatively inside the
   // interval (not as a hook subscription) so the watchdog does not re-mount
@@ -144,11 +146,17 @@ export function useTimelineClockHealthCheck(options: TimelineClockHealthOptions 
         const result = resyncTimeline({
           surfaceToasts: false,
           reason: `Watchdog detected ${Math.round(stalledFor)}ms stall.`,
+          softAlign: driftCorrectionEnabled,
+          softAlignMs: driftCorrectionMs,
         });
         toast.warning('Timeline resynced', {
-          description: wasExternal
-            ? 'External audio stopped advancing. Re-locked clock to audio and retried playback.'
-            : 'Playback stalled. Re-locked clock to audio and retried playback.',
+          description: driftCorrectionEnabled
+            ? wasExternal
+              ? `External audio stopped advancing. Gliding clock to audio over ${driftCorrectionMs} ms.`
+              : `Playback stalled. Gliding clock to audio over ${driftCorrectionMs} ms.`
+            : wasExternal
+              ? 'External audio stopped advancing. Re-locked clock to audio and retried playback.'
+              : 'Playback stalled. Re-locked clock to audio and retried playback.',
         });
         console.warn(
           '[TimelineClockHealth] Stall after',
@@ -191,5 +199,5 @@ export function useTimelineClockHealthCheck(options: TimelineClockHealthOptions 
       window.clearInterval(intervalId);
       timelineHealthStore._set({ status: 'idle', stalledForMs: 0 });
     };
-  }, [stallThresholdMs, sampleIntervalMs, recoveryCooldownMs]);
+  }, [stallThresholdMs, sampleIntervalMs, recoveryCooldownMs, driftCorrectionEnabled, driftCorrectionMs]);
 }
