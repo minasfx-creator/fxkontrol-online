@@ -625,7 +625,7 @@ function Index() {
   // ═══ DESKTOP LAYOUT — Full Immersive Viewport ═══
   return (
     <div className="absolute inset-0 overflow-hidden bg-background">
-      <EngineProvider />
+      {/* EngineProvider is mounted once at MainLayout (covers mobile + every route). */}
       {/* ─── Layer 0: Structured desktop shell ────────────── */}
       <div
         className="absolute z-0 br2049-atmosphere"
