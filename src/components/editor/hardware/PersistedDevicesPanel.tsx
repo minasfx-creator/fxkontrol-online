@@ -342,6 +342,7 @@ export function PersistedDevicesPanel() {
           );
         })}
       </ul>
+      )}
     </div>
   );
 }
