@@ -334,6 +334,15 @@ export function PersistedDevicesPanel() {
               <Button
                 size="sm"
                 variant="ghost"
+                className="h-6 w-6 p-0 text-muted-foreground/60 hover:text-primary"
+                onClick={() => setTroubleshootKey(row.entry.key)}
+                title="Troubleshoot — abrir drawer de diagnóstico"
+              >
+                <Wrench className="w-3 h-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
                 className="h-6 w-6 p-0 text-muted-foreground/60 hover:text-destructive"
                 onClick={() => handleForget(row)}
                 title="Esquecer este dispositivo"
@@ -345,6 +354,20 @@ export function PersistedDevicesPanel() {
         })}
       </ul>
       )}
+      {(() => {
+        const active = troubleshootKey ? rows.find(r => r.entry.key === troubleshootKey) : null;
+        return (
+          <PersistedDeviceTroubleshootSheet
+            open={!!active}
+            onOpenChange={(o) => { if (!o) setTroubleshootKey(null); }}
+            entry={active?.entry ?? null}
+            device={active?.device}
+            status={active?.status ?? 'offline'}
+            reason={active?.reason ?? ''}
+            transport={active ? transportOf(active) : 'unknown'}
+          />
+        );
+      })()}
     </div>
   );
 }
