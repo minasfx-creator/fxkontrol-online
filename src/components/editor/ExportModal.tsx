@@ -146,27 +146,52 @@ function generateFiringPreview(timelineItems: TimelineItem[], positions: Positio
 // ═══════════════════════════════════════════════════════════
 export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
     const projectName = useProjectStore(s => s.projectName);
+  const duration = useProjectStore(s => s.duration);
   const timelineItems = useProjectStore(s => s.timelineItems);
   const positions = useProjectStore(s => s.positions);
+  const trajectories = useProjectStore(s => s.trajectories);
+  const droneFormations = useProjectStore(s => s.droneFormations);
   const [activeTab, setActiveTab] = useState('firing');
 
   const pyroCount = useMemo(() =>
     timelineItems.filter(i => EFFECT_LIBRARY.find(e => e.id === i.effectId)?.type === 'firework').length
   , [timelineItems]);
+  const droneCount = useMemo(() =>
+    timelineItems.filter(i => EFFECT_LIBRARY.find(e => e.id === i.effectId)?.type === 'drone').length
+    + trajectories.length
+    + (droneFormations[0]?.droneCount ?? 0)
+  , [timelineItems, trajectories, droneFormations]);
 
   const firingPreview = useMemo(() => generateFiringPreview(timelineItems, positions), [timelineItems, positions]);
   const setupRows = useMemo(() => generateSetupReport(timelineItems, positions), [timelineItems, positions]);
 
+  const safeName = projectName.replace(/\s+/g, '_');
+
   const handleDownloadFiring = () => {
     const csv = exportFiringCSV(timelineItems, positions);
-    downloadFile(csv, `${projectName.replace(/\s+/g, '_')}_firing_script.csv`, 'text/csv');
+    downloadFile(csv, `${safeName}_firing_script.csv`, 'text/csv');
     toast.success('Firing Script CSV exportado!');
+  };
+
+  const handleDownloadFiringJSON = () => {
+    const json = exportFiringJSON(projectName, timelineItems, positions);
+    downloadFile(json, `${safeName}_firing_script.json`, 'application/json');
+    toast.success('Firing Script JSON exportado!');
   };
 
   const handleDownloadSetup = () => {
     const csv = exportSetupCSV(timelineItems, positions);
-    downloadFile(csv, `${projectName.replace(/\s+/g, '_')}_setup_report.csv`, 'text/csv');
+    downloadFile(csv, `${safeName}_setup_report.csv`, 'text/csv');
     toast.success('Setup Report CSV exportado!');
+  };
+
+  const handleDownloadVVIZ = () => {
+    const content = exportVVIZ(
+      projectName, duration, timelineItems, positions, trajectories, droneFormations,
+      { showName: projectName, coordinateFrame: 'standard' },
+    );
+    downloadFile(content, `${safeName}.vviz`, 'application/json');
+    toast.success('VVIZ (X, Y, Z, Heading) exportado!');
   };
 
   return (
