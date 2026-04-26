@@ -215,6 +215,31 @@ export function createTerrainCachePersistence(opts: {
         return 0;
       }
     },
+    async clearAll() {
+      if (disposed) return 0;
+      try {
+        // Cancel any pending writes — they would re-create what we're deleting.
+        pending.clear();
+        if (timer) { clearTimeout(timer); timer = null; }
+        const { data, error } = await db
+          .from('terrain_height_cache')
+          .delete({ count: 'exact' })
+          .eq('project_id', opts.projectId)
+          .eq('tileset_kind', tilesetKind)
+          .eq('tileset_version', tilesetVersion)
+          .select('id');
+        if (error) {
+          console.warn('[terrainCache] clearAll failed:', error.message);
+          return 0;
+        }
+        const n = Array.isArray(data) ? data.length : 0;
+        if (n > 0) console.log(`[terrainCache] cleared ${n} cloud rows for current scope`);
+        return n;
+      } catch (e) {
+        console.warn('[terrainCache] clearAll threw:', e);
+        return 0;
+      }
+    },
     dispose() {
       disposed = true;
       if (timer) { clearTimeout(timer); timer = null; }
