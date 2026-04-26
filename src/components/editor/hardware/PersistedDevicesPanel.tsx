@@ -155,6 +155,31 @@ export function PersistedDevicesPanel() {
     // `tick` forces re-evaluation after a manual forget.
   }, [devices, tick]);
 
+  const transportOf = (row: RowState): DiscoveryTransport | 'unknown' => {
+    if (row.device?.transport) return row.device.transport;
+    if (row.entry.host) return 'mdns-artnet';
+    return 'unknown';
+  };
+
+  const filteredRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return rows.filter(row => {
+      if (statusFilter !== 'all' && row.status !== statusFilter) return false;
+      if (transportFilter !== 'all' && transportOf(row) !== transportFilter) return false;
+      if (q) {
+        const hay = [
+          row.entry.lastLabel,
+          row.entry.key,
+          row.entry.profileId ?? '',
+          row.entry.host ?? '',
+          row.device?.name ?? '',
+        ].join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [rows, query, transportFilter, statusFilter]);
+
   const handleForget = async (row: RowState) => {
     const ok = window.confirm(
       `Esquecer "${row.entry.lastLabel}"?\n\nEntrada persistida será removida e o auto-reopen será interrompido.`,
