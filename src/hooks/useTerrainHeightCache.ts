@@ -152,7 +152,7 @@ export function useTerrainHeightCache(
       terrainMetrics.recordRevalidation();
       if (y === null) continue;
       const prev = cache.get(key);
-      if (prev === undefined || Math.abs(prev - y) > HEIGHT_DRIFT_THRESHOLD) {
+      if (prev === undefined || Math.abs(prev - y) > cfg.heightDriftThreshold) {
         if (prev !== undefined) terrainMetrics.recordDrift();
         cache.set(key, y);
       }
