@@ -150,7 +150,8 @@ export function TimelineHealthSettingsPopover() {
             isDefault={settings.sampleIntervalMs === TIMELINE_HEALTH_DEFAULTS.sampleIntervalMs}
           />
         </div>
-      </RealPopoverContent>
+        </RealPopoverContent>
+      </RealPopoverPortal>
     </RealPopover>
   );
 }
