@@ -440,12 +440,23 @@ Deno.serve(async (req) => {
       if (resp.ok) {
         grokResp = resp;
         usedModel = model;
+        log("info", "upstream", { model, status: resp.status, outcome: "upstream_ok" });
         break;
       }
 
       lastStatus = resp.status;
       lastErrTxt = await resp.text();
       console.error(`xAI error [model=${model}] ${resp.status}`, lastErrTxt);
+      log("warn", "upstream", {
+        model,
+        status: resp.status,
+        outcome: "upstream_fail",
+        reason: resp.status === 429 ? "rate_limit"
+          : resp.status === 401 ? "auth"
+          : resp.status === 402 ? "credits"
+          : resp.status === 404 ? "model_not_found"
+          : "other",
+      });
 
       // Auth/quota errors apply to all models — stop early, don't waste calls.
       if (resp.status === 401 || resp.status === 402 || resp.status === 429) break;
@@ -458,6 +469,8 @@ Deno.serve(async (req) => {
     }
 
     if (!grokResp) {
+      const status = lastStatus === 429 ? 429 : lastStatus === 401 ? 401 : lastStatus === 402 ? 402 : 502;
+      log("error", "upstream", { reason: "all_models_failed", lastStatus, outcome: "error", status });
       if (lastStatus === 429) return jsonError(429, "xAI rate limit reached. Try again shortly.");
       if (lastStatus === 401) return jsonError(401, "Invalid XAI_API_KEY.");
       if (lastStatus === 402) return jsonError(402, "xAI credits exhausted.");
