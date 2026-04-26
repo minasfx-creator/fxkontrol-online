@@ -73,6 +73,11 @@ export interface TerrainCachePersistenceOptions {
   userId: string;
   /** Defaults to 'google3d'. Use a different value if you want isolated caches per tileset. */
   tilesetKind?: TilesetKind;
+  /** Logical version label for the current tileset content. Stale-version rows
+   *  are skipped on hydrate and purged on mount. Defaults to CACHE_SCHEMA_VERSION. */
+  tilesetVersion?: string;
+  /** Max age in days for cached rows; older rows are ignored & purged. 0 = unlimited. */
+  maxAgeDays?: number;
 }
 
 export function useTerrainHeightCache(
@@ -97,7 +102,9 @@ export function useTerrainHeightCache(
   // hydrate, prepopulate the cache so pins snap to the surface immediately,
   // before Google 3D Tiles even start streaming.
   const persistenceRef = useRef<TerrainCachePersistenceHandle | null>(null);
-  const persistKey = persistence ? `${persistence.projectId}:${persistence.userId}:${persistence.tilesetKind ?? 'google3d'}` : '';
+  const persistKey = persistence
+    ? `${persistence.projectId}:${persistence.userId}:${persistence.tilesetKind ?? 'google3d'}:${persistence.tilesetVersion ?? 'v1'}:${persistence.maxAgeDays ?? 30}`
+    : '';
   useEffect(() => {
     if (!persistence || !persistence.projectId || !persistence.userId) {
       persistenceRef.current?.dispose();
@@ -108,9 +115,13 @@ export function useTerrainHeightCache(
       projectId: persistence.projectId,
       userId: persistence.userId,
       tilesetKind: persistence.tilesetKind,
+      tilesetVersion: persistence.tilesetVersion,
+      maxAgeDays: persistence.maxAgeDays,
     });
     persistenceRef.current = handle;
-    // Hydrate asynchronously; new entries do not overwrite existing in-memory ones.
+    // 1) Purge stale rows (other version OR > maxAgeDays). Best-effort, fire-and-forget.
+    void handle.purgeExpired();
+    // 2) Hydrate; new entries do not overwrite existing in-memory ones.
     void handle.hydrate(cacheRef.current).then((n) => {
       if (n > 0) {
         terrainMetrics.setCacheSize(cacheRef.current.size);
