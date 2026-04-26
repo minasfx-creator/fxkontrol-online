@@ -184,10 +184,17 @@ export function useTimelineClockHealthCheck(options: TimelineClockHealthOptions 
       // sees that the watchdog actually intervened. The next advancing tick
       // will downgrade it to 'running'.
       recoveredUntil = now + RECOVERED_DISPLAY_MS;
+      const recoveryPath: 'audio-resync' | 'lockstep-fallback' = audio ? 'audio-resync' : 'lockstep-fallback';
       timelineHealthStore._set({
         status: 'recovered',
         stalledForMs: Math.round(stalledFor),
-        lastRecoveryPath: audio ? 'audio-resync' : 'lockstep-fallback',
+        lastRecoveryPath: recoveryPath,
+      });
+      timelineHealthStore._logEvent({
+        stalledForMs: Math.round(stalledFor),
+        recoveryPath,
+        wasExternalSource: wasExternal,
+        softAligned: !!audio && driftCorrectionEnabled,
       });
 
       // Reset the sample so we don't immediately retrigger.
