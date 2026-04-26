@@ -1247,6 +1247,7 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
             same watchdog that drives auto-recovery (`useTimelineClockHealthCheck`). */}
         <div className="flex items-center gap-1">
           <TimelineHealthBadge />
+          <TimelineHealthLogPopover />
           <TimelineHealthSettingsPopover />
         </div>
 
