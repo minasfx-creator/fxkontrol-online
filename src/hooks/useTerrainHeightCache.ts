@@ -80,6 +80,10 @@ export function useTerrainHeightCache(
   const revalidateIndexRef = useRef(0);
   // Tracks the last-seen tile mesh count; a delta means LOD changed → revalidate
   const lastMeshCountRef = useRef(0);
+  // Latest reference to the tiles group; used by the one-shot fallback in getHeight()
+  const tilesGroupRef = useRef<THREE.Object3D | null>(null);
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
 
   useFrame(() => {
     const _t0 = performance.now();
