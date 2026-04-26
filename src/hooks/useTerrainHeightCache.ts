@@ -19,19 +19,15 @@ import { useRef, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { terrainMetrics } from './terrainCacheMetrics';
+import { useTerrainCacheConfig } from './useTerrainCacheConfig';
 
 const _ray = new THREE.Raycaster();
 const _origin = new THREE.Vector3();
 const _down = new THREE.Vector3(0, -1, 0);
 
-/** How often to re-validate already-resolved heights (every N frames) */
-const REVALIDATE_INTERVAL = 30; // ~0.5s at 60fps
-/** Max already-resolved positions to re-check per validation tick */
-const REVALIDATE_BATCH = 8;
-/** Max unresolved positions to sample per frame (cheap, keeps new pins on ground) */
-const UNRESOLVED_BATCH_PER_FRAME = 16;
-/** Drift (meters) above which we treat the cached height as stale */
-const HEIGHT_DRIFT_THRESHOLD = 0.5;
+// Defaults are now defined in useTerrainCacheConfig.TERRAIN_CACHE_DEFAULTS.
+// The hot path reads the latest values via useTerrainCacheConfig.getState()
+// each frame so operator-driven slider changes take effect immediately.
 
 export interface TerrainHeightCache {
   /**
