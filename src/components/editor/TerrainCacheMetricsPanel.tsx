@@ -5,8 +5,9 @@
  */
 import { useEffect, useState } from 'react';
 import { terrainMetrics, type TerrainCacheMetrics } from '@/hooks/terrainCacheMetrics';
+import { useTerrainCacheConfig, TERRAIN_CACHE_DEFAULTS } from '@/hooks/useTerrainCacheConfig';
 import { useSceneStore } from '@/store/useSceneStore';
-import { RotateCcw, X } from 'lucide-react';
+import { RotateCcw, X, Sliders } from 'lucide-react';
 
 export default function TerrainCacheMetricsPanel() {
   const show = useSceneStore(s => s.environment.showTerrainMetrics);
