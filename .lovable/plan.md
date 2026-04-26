@@ -1,72 +1,69 @@
-# Round 2: Lint Cleanup, Reliability Hardening & UX Micro-polish
+# Round 4 — End-to-End Audit, Cleanup & Polish
 
-Round 1 already fixed the 4 failing tests, the duplicate Lockstep warning, and added the Free Mode hint. **Tests 600/600 ✅, typecheck ✅, build ✅, dev-server log clean ✅, no console warnings.**
+## ✅ Health Snapshot (read-only audit just performed)
+- **Tests:** 604 / 604 passing (incl. the 4 new visual-regression snapshots from last round)
+- **Typecheck:** clean (`tsc --noEmit`)
+- **Dev-server runtime:** no errors, no warnings in log
+- **ESLint:** 643 errors total — but only **~35 are actionable**; the rest are `no-explicit-any` at protocol/worker boundaries (intentional, out of scope per Round 2 policy)
 
-This round goes one layer deeper: **lint debt, reliability of the 15 unused-expressions (often real bugs), and small UX details.**
-
----
-
-## 🐛 Real Bugs to Fix
-
-### 1. `no-unused-expressions` (15 occurrences) — likely silent dead code
-ESLint flags 15 expressions whose result is discarded. These are usually real bugs (someone wrote `foo === bar;` instead of `foo = bar;`, or `someFn?.()` was lost). I'll review each and fix the genuine ones (typically 80–100% turn out to be bugs). Files mostly in adapters/bridges.
-
-### 2. `no-empty-object-type` (8 occurrences)
-Interfaces declared as `interface X {}` (extending nothing). Either delete the empty interface or convert to `type X = ...` so it doesn't accidentally accept anything-shaped objects.
-
-### 3. ESLint auto-fixable (24 occurrences)
-Run `eslint --fix` on the safe rules only (whitespace, unused imports, prefer-const). Reviewed before committing.
+Platform is healthy. This round is **pure cleanup + 1 real bug fix**, no behavior changes.
 
 ---
 
-## 🧹 `no-explicit-any` Triage (575 occurrences)
+## 🐛 Real Bug to Fix (1)
 
-I will **NOT** blanket-fix these — many are legitimate (Web Serial DataView, worker postMessage, external SDK types). Instead:
-
-- **Targeted pass on hot-path files** (timeline, safety, command bus, transport): replace `any` with `unknown` + type narrowing where it's actually safer.
-- **Workers (`dmxTimingWorker.ts`, `videoTrackingWorker.ts`)**: keep `any` at the message boundary but document why (binary protocol, dynamic dispatch). Add `// eslint-disable-next-line @typescript-eslint/no-explicit-any -- binary protocol boundary` with reason.
-- Aim: cut the 575 down to ~500 *justified* anys, not zero.
-
-This is a multi-day refactor if done blindly, so I'll cap this round at **~50–80 of the most impactful conversions** (the ones in `src/core/safety`, `src/core/timeline`, `src/orchestration`).
+### `no-case-declarations` in `src/core/joi/joiModes.ts:210`
+A `let`/`const` inside a `switch case` without braces leaks into sibling cases — classic source of "wrong mode behavior" bugs. Wrap the case body in `{ … }` to scope the declaration.
 
 ---
 
-## ✨ UI/UX Micro-polish
+## 🧹 Lint Auto-Fix Pass (~30 issues)
 
-### 4. Settings → Segurança tab — keyboard accessibility
-Verify that the master switch and 4 layer toggles are keyboard-reachable in tab order, and that the disabled toggles (when master is off) are correctly `aria-disabled`. The current code uses Radix `<Switch>` (accessible by default) — just need to confirm the `disabled` prop is wired.
+### `prefer-const` (24 occurrences, all `--fix`-safe)
+Variables declared `let` but never reassigned across:
+- `src/components/editor/SkyCanvas.tsx` (8 — the `_skyScatterUniforms_local`, `_adaptiveExposure_local`, etc.)
+- `src/core/timeline/Timeline.tsx`, `src/lib/ildaParser.ts`, `src/lib/kmlParser.ts`, `src/modules/swarmgpt/**` (~16 more)
 
-### 5. LockoutPanel mobile (440×688) — verify chip wrap
-The `Lockout desativado` info chip in `LockoutPanel.tsx` was added in Round 1. Confirm it doesn't overflow on the 440px viewport and the link to Settings has a ≥44px touch target.
+These are mechanical, zero-risk. Will run `eslint --fix` scoped to this rule only, then review the diff.
 
-### 6. Free Mode hint — distinguish from error/warning colors
-The Round 1 hint uses `text-primary/80`. On the orange-tinted Safety background it might read as an alert. Switch to a calmer success-tinted shade (e.g. `text-emerald-400/90`) for unambiguous "all good" semantics.
+### `no-empty-object-type` (8 occurrences)
+Convert empty `interface X {}` to either:
+- `type X = BaseType` when extending, or
+- delete entirely if unused
 
----
-
-## 📦 Bundle / Performance (informational only)
-
-- `three-core` chunk: 230 KB gzip — already isolated; no action.
-- No new perf regressions detected vs. last build.
+Files: `src/components/ui/badge.tsx`, plus 7 component prop interfaces flagged by ESLint.
 
 ---
 
-## ✅ Verification Plan
+## 🎨 UI / UX Micro-Polish
 
-1. `bunx vitest run` → expect 600 passing, 0 failing.
-2. `npx tsc --noEmit` → clean.
-3. `bunx eslint src --quiet` → expect 660 → ~570 (cut from `unused-expressions`, `empty-object-type`, auto-fixable, and targeted `any` pass).
-4. Manual: open `/settings?tab=safety`, tab through all controls, verify focus ring + disabled state.
-5. Visual diff on `LockoutPanel` at 440px.
+### Visual Regression Snapshot Hardening
+The 3 new snapshots added last round (`EditorLayout.visual.test.tsx`) currently render components in isolation. Add **a smoke assertion** that:
+1. Each snapshot contains the expected dark-mode token classes (e.g., `bg-card/85`, `text-muted-foreground`)
+2. The mode chip in `ViewportBar` renders with correct `aria-label` for screen readers
+
+This makes the snapshots **semantically meaningful**, not just structural — so a class-name refactor that breaks dark mode will fail the test with a clear message instead of a generic snapshot diff.
+
+### `SafetyGateSettings` — confirm Round 2 polish landed correctly
+Quick visual verification (read-only) that the `text-emerald-400/90` "Modo livre ativo" hint is wired to the master switch state and not stuck on.
 
 ---
 
 ## 🚫 Out of Scope (intentional)
 
-- **Full eradication of all 575 `any`s** — would require touching 80+ files in workers/protocols and risk regressions in the binary DMX/PBUS pipeline for cosmetic gain. Better as a dedicated typed-protocol epic.
-- **Adding new features** — explicitly cleanup-only this round.
-- **End-to-end browser testing of all 31 routes** — better suited to a targeted session against a specific user flow (let me know which one matters most: Studio, Live Firing, Auth, AI Choreography, Office, etc.).
+- **Remaining 575 `no-explicit-any`** — workers, binary protocols (PBUS/DMX), Web Serial DataView. Per Round 2 policy: keep with `// eslint-disable-next-line ... -- reason` comments only when touched for other work. Not a blanket rewrite.
+- **New features** — cleanup only.
+- **Browser E2E testing of all 31 routes** — better as a targeted user-flow request. Let me know which flow matters most (Studio, Live Firing, Auth, AI Choreo, Office) and I'll run a focused browser pass next round.
 
 ---
 
-**Estimated impact:** ~10–15 files edited. Mostly fixing real bugs hidden behind `unused-expressions`, plus a small UI polish on the new Safety Gate UI.
+## ✅ Verification Plan
+
+1. `bunx vitest run` → expect **604 passing**, plus the new semantic assertions on the 3 visual snapshots.
+2. `npx tsc --noEmit` → clean.
+3. `bunx eslint src --quiet` → expect **643 → ~610** (24 `prefer-const` + 8 `empty-object-type` + 1 `no-case-declarations` resolved).
+4. Manual: open `/settings?tab=safety`, toggle master switch, confirm green hint appears/disappears.
+
+---
+
+**Estimated impact:** ~12 files touched, all mechanical except the `joiModes.ts` switch-case scope fix (the only real bug).
