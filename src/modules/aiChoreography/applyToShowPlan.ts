@@ -33,7 +33,8 @@ export function applyAIChoreographyToShowPlan(
 
   let cues = 0;
   for (const f of sortedF) {
-    const frameIdx = Math.min(show.drones[0]?.frames.length - 1 ?? 0, Math.round(f.timestamp * fps));
+    const lastIdx = (show.drones[0]?.frames.length ?? 1) - 1;
+    const frameIdx = Math.min(lastIdx, Math.max(0, Math.round(f.timestamp * fps)));
     const points = show.drones.map(d => {
       const fr = d.frames[frameIdx];
       return { x: fr.x, z: fr.z };
