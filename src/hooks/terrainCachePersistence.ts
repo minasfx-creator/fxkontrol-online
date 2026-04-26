@@ -20,7 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 // (it was added in a recent migration). Fall back to an untyped client view
 // for this table so the typecheck passes; runtime behavior is identical.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = supabase as unknown as { from: (table: string) => any };
+const db = supabase as unknown as { from: (table: string) => any; rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> };
 
 export interface PersistedHeight {
   x_tenths: number;
