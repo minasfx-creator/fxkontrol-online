@@ -64,6 +64,8 @@ export function useTimelineClockHealthCheck(options: TimelineClockHealthOptions 
   const stallThresholdMs   = options.stallThresholdMs   ?? settings.stallThresholdMs;
   const sampleIntervalMs   = options.sampleIntervalMs   ?? settings.sampleIntervalMs;
   const recoveryCooldownMs = options.recoveryCooldownMs ?? settings.recoveryCooldownMs;
+  const driftCorrectionEnabled = settings.driftCorrectionEnabled;
+  const driftCorrectionMs = settings.driftCorrectionMs;
 
   // We intentionally read `isPlaying` from the store imperatively inside the
   // interval (not as a hook subscription) so the watchdog does not re-mount
