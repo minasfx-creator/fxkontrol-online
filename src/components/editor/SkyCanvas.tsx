@@ -221,6 +221,14 @@ import { deterministicClock } from '@/core/time/deterministicClock';
 import { lockstep } from '@/core/reliability/lockstepEngine';
 import { executionBridge } from '@/core/execution/executionBridge';
 import { frameSyncEngine } from '@/core/sync/frameSyncEngine';
+import { useTimelineClockHealthCheck } from '@/hooks/useTimelineClockHealthCheck';
+
+/** Invisible component that watches `timelineClock.time` for stalls and forces
+ *  the lockstep playback fallback if the clock freezes while `isPlaying`. */
+const TimelineClockWatchdog = () => {
+  useTimelineClockHealthCheck();
+  return null;
+};
 
 const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
     const isPlaying = useProjectStore(s => s.isPlaying);
