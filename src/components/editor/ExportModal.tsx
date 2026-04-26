@@ -212,23 +212,32 @@ export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="w-full grid grid-cols-2 h-8">
+          <TabsList className="w-full grid grid-cols-3 h-8">
             <TabsTrigger value="firing" className="text-[10px]">
               <Download className="w-3 h-3 mr-1" /> Firing Script
             </TabsTrigger>
             <TabsTrigger value="setup" className="text-[10px]">
               <MapPin className="w-3 h-3 mr-1" /> Setup Report
             </TabsTrigger>
+            <TabsTrigger value="vviz" className="text-[10px]">
+              <Plane className="w-3 h-3 mr-1" /> VVIZ Drones
+            </TabsTrigger>
           </TabsList>
 
           {/* ─── FIRING SCRIPT ─── */}
           <TabsContent value="firing" className="flex-1 overflow-hidden flex flex-col gap-2 mt-2">
             <p className="text-[10px] text-muted-foreground">
-              Ordem cronológica para consolas de disparo (Cobra, FireTEK, FireOne). Colunas: Cue, Module, Pin, EventTime, PreFire, Effect, Caliber, Position.
+              Ordem cronológica para consolas de disparo (Cobra, FireTEK, FireOne, FXcommander).
+              Mesma ordenação para CSV (consolas tradicionais) e JSON (bridges programáticos).
             </p>
-            <Button onClick={handleDownloadFiring} className="w-full" size="sm">
-              <Download className="w-3.5 h-3.5 mr-2" /> Download Firing Script (CSV)
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={handleDownloadFiring} size="sm">
+                <FileSpreadsheet className="w-3.5 h-3.5 mr-2" /> CSV
+              </Button>
+              <Button onClick={handleDownloadFiringJSON} variant="secondary" size="sm">
+                <FileJson className="w-3.5 h-3.5 mr-2" /> JSON
+              </Button>
+            </div>
 
             {/* Preview table */}
             <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/60 pt-1">
