@@ -11,6 +11,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+import { Pool } from "https://deno.land/x/postgres@v0.19.3/mod.ts";
+
 const XAI_URL = "https://api.x.ai/v1/chat/completions";
 
 /**
@@ -71,20 +73,106 @@ function counterSnapshot() {
   };
 }
 
+// ─── Persistence to public.grok_choreography_metrics ────────────────────────
+// Direct Postgres connection (Supabase pooler) — bypasses PostgREST and
+// avoids the "JWT issued at future" clock-skew rejections we saw when using
+// the service role key + REST. Fire-and-forget; never blocks the response.
+const SUPABASE_DB_URL = Deno.env.get("SUPABASE_DB_URL") ?? "";
+const METRICS_TABLE = "grok_choreography_metrics";
+
+type MetricRow = {
+  event_type: "snapshot" | "decision";
+  request_id?: string | null;
+  stage?: string | null;
+  outcome?: string | null;
+  status?: number | null;
+  reason?: string | null;
+  model?: string | null;
+  bytes?: number | null;
+  duration_ms?: number | null;
+  isolate_started_at?: string | null;
+  counters: Record<string, unknown>;
+};
+
+let _pool: Pool | null = null;
+function getPool(): Pool | null {
+  if (_pool) return _pool;
+  if (!SUPABASE_DB_URL) return null;
+  // Small pool — most isolates do <10 inserts/min. lazy=true defers TCP setup.
+  _pool = new Pool(SUPABASE_DB_URL, 2, true);
+  return _pool;
+}
+
+async function persistMetricImpl(row: MetricRow): Promise<void> {
+  const pool = getPool();
+  if (!pool) return;
+  const client = await pool.connect();
+  try {
+    await client.queryObject(
+      `INSERT INTO public.${METRICS_TABLE}
+        (event_type, request_id, stage, outcome, status, reason, model, bytes, duration_ms, isolate_started_at, counters)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)`,
+      [
+        row.event_type,
+        row.request_id ?? null,
+        row.stage ?? null,
+        row.outcome ?? null,
+        row.status ?? null,
+        row.reason ?? null,
+        row.model ?? null,
+        row.bytes ?? null,
+        row.duration_ms ?? null,
+        row.isolate_started_at ?? null,
+        JSON.stringify(row.counters ?? {}),
+      ],
+    );
+  } finally {
+    client.release();
+  }
+}
+
+function persistMetric(row: MetricRow) {
+  const promise = persistMetricImpl(row).catch((e) => {
+    console.warn(JSON.stringify({
+      ts: new Date().toISOString(),
+      level: "warn",
+      fn: "grok-choreography",
+      stage: "metrics_persist",
+      outcome: "persist_failed",
+      event_type: row.event_type,
+      error: e instanceof Error ? e.message.slice(0, 300) : "unknown",
+    }));
+  });
+  // Keep the isolate alive long enough to flush the insert when available.
+  // @ts-ignore — EdgeRuntime is a Deno Deploy global, may be undefined locally.
+  if (typeof EdgeRuntime !== "undefined" && typeof EdgeRuntime.waitUntil === "function") {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(promise);
+  }
+}
+
 // Periodic snapshot — emits a single structured line every 60s if the isolate
-// stays warm. Idempotent: only the first request in a cold isolate arms it.
+// stays warm AND persists a snapshot row to the metrics table for trend analysis
+// across cold starts. Idempotent: only the first request in a cold isolate arms it.
 let _snapshotTimer: number | null = null;
 function ensureSnapshotTimer() {
   if (_snapshotTimer !== null) return;
   _snapshotTimer = setInterval(() => {
     if (counters.total === 0) return;
+    const snap = counterSnapshot();
     console.log(JSON.stringify({
       ts: new Date().toISOString(),
       level: "info",
       fn: "grok-choreography",
       stage: "counters_snapshot",
-      ...counterSnapshot(),
+      ...snap,
     }));
+    persistMetric({
+      event_type: "snapshot",
+      stage: "counters_snapshot",
+      isolate_started_at: counters.startedAt,
+      counters: snap,
+    });
   }, 60_000) as unknown as number;
 }
 
@@ -247,6 +335,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    const snap = outcome ? counterSnapshot() : undefined;
     const line = JSON.stringify({
       ts: new Date().toISOString(),
       level,
@@ -254,11 +343,32 @@ Deno.serve(async (req) => {
       requestId,
       stage,
       ...fields,
-      counters: outcome ? counterSnapshot() : undefined,
+      counters: snap,
     });
     if (level === "error") console.error(line);
     else if (level === "warn") console.warn(line);
     else console.log(line);
+
+    // Persist terminal request decisions so trends survive cold starts.
+    // Skip intermediate signals (upstream_ok/upstream_fail) — the request
+    // still ends in `completed` or `error`, which we record below.
+    if (snap && outcome && (outcome === "accepted" || outcome === "rejected" || outcome === "completed" || outcome === "error")) {
+      const bytesField = typeof fields.bytes === "number" ? fields.bytes : null;
+      const durationField = typeof fields.durationMs === "number" ? fields.durationMs : null;
+      persistMetric({
+        event_type: "decision",
+        request_id: requestId,
+        stage,
+        outcome,
+        status: status ? Number(status) : null,
+        reason: reason ?? null,
+        model: model ?? null,
+        bytes: bytesField,
+        duration_ms: durationField,
+        isolate_started_at: counters.startedAt,
+        counters: snap,
+      });
+    }
   };
 
   /** Strip values: keep only field names + counts + first error code per field. PII-safe. */
