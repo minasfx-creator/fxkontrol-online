@@ -88,7 +88,7 @@ class AmbientSoundEngine {
 
   stopHum() {
     if (this.humOsc) {
-      try { this.humOsc.stop(); } catch {}
+      try { this.humOsc.stop(); } catch { /* best-effort: oscillator may already be stopped */ }
       this.humOsc = null;
     }
     this.humGain = null;

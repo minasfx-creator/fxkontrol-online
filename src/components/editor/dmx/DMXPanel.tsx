@@ -144,7 +144,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
           if (msg.action === 'pong') {
             addDiagLog({ timestamp: new Date(), type: 'info', message: `Relay pong — ${msg.packetsSent} pkts enviados, uptime ${Math.round(msg.uptime)}s` });
           }
-        } catch {}
+        } catch { /* best-effort: malformed relay message ignored */ }
       };
       ws.onclose = () => {
         setRelayConnected(false);

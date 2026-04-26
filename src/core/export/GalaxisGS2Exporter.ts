@@ -58,6 +58,7 @@ const SC_ID_BASE = 10_000;
 
 /** Filtra caracteres ilegais. Spec: ' " , ; \ TAB LF. */
 function sanitize(input: string, maxLen = 80): string {
+  // eslint-disable-next-line no-control-regex -- intentional: strips ASCII control chars per Galaxis GS2 spec
   const cleaned = input.replace(/['",;\\\t\r\n\x00-\x1F\x7F]/g, ' ').trim();
   return cleaned.length > maxLen ? cleaned.slice(0, maxLen) : cleaned;
 }
