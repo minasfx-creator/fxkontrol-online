@@ -10,8 +10,9 @@ import { Progress } from '@/components/ui/progress';
 import { useProjectStore } from '@/store/useProjectStore';
 import {
   Shield, ShieldAlert, Radio, Signal, Battery, MapPin,
-  Navigation, Activity, Layers, ChevronRight, Crosshair
+  Navigation, Activity, Layers, ChevronRight, Crosshair, Sparkles
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import BLEDeviceScanner from '@/components/editor/BLEDeviceScanner';
 
 interface DroneCommandPanelProps {
