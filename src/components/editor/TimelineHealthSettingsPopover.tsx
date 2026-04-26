@@ -152,6 +152,44 @@ export function TimelineHealthSettingsPopover() {
             onChange={(v) => settings.set({ sampleIntervalMs: v })}
             isDefault={settings.sampleIntervalMs === TIMELINE_HEALTH_DEFAULTS.sampleIntervalMs}
           />
+
+          <Separator className="my-1" />
+
+          {/* Drift correction — soft re-alignment to audio after recovery
+              instead of an instant jump on the playhead. */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Drift correction
+                </Label>
+                <p className="text-[10px] leading-tight text-muted-foreground/80">
+                  After recovery, glide the timeline to audio over the ramp below
+                  instead of snapping. Eliminates visible playhead jumps.
+                </p>
+              </div>
+              <Switch
+                checked={settings.driftCorrectionEnabled}
+                onCheckedChange={(v) => settings.set({ driftCorrectionEnabled: v })}
+                aria-label="Enable drift correction"
+              />
+            </div>
+            <div
+              className={cn(
+                'transition-opacity',
+                settings.driftCorrectionEnabled ? 'opacity-100' : 'pointer-events-none opacity-40',
+              )}
+            >
+              <SettingRow
+                label="Ramp duration"
+                description="Time to absorb the offset between timeline and audio. Longer = smoother but slower lock."
+                value={settings.driftCorrectionMs}
+                bounds={TIMELINE_HEALTH_BOUNDS.driftCorrectionMs}
+                onChange={(v) => settings.set({ driftCorrectionMs: v })}
+                isDefault={settings.driftCorrectionMs === TIMELINE_HEALTH_DEFAULTS.driftCorrectionMs}
+              />
+            </div>
+          </div>
         </div>
         </RealPopoverContent>
       </RealPopoverPortal>
