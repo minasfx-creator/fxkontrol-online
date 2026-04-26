@@ -172,11 +172,24 @@ export function useTimelineClockHealthCheck(options: TimelineClockHealthOptions 
         );
       }
 
+      // Mark the badge as 'recovered' for a short window so the operator
+      // sees that the watchdog actually intervened. The next advancing tick
+      // will downgrade it to 'running'.
+      recoveredUntil = now + RECOVERED_DISPLAY_MS;
+      timelineHealthStore._set({
+        status: 'recovered',
+        stalledForMs: Math.round(stalledFor),
+        lastRecoveryPath: audio ? 'audio-resync' : 'lockstep-fallback',
+      });
+
       // Reset the sample so we don't immediately retrigger.
       lastTimeRef.current = timelineClock.getTime();
       lastAdvancedAtRef.current = now;
     }, sampleIntervalMs);
 
-    return () => window.clearInterval(intervalId);
+    return () => {
+      window.clearInterval(intervalId);
+      timelineHealthStore._set({ status: 'idle', stalledForMs: 0 });
+    };
   }, [stallThresholdMs, sampleIntervalMs, recoveryCooldownMs]);
 }
