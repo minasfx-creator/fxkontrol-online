@@ -52,6 +52,8 @@ export interface TerrainCachePersistenceHandle {
   flush: () => Promise<void>;
   /** Server-side purge of expired/stale-version rows. Returns deleted count. */
   purgeExpired: () => Promise<number>;
+  /** Server-side delete of ALL rows for the current scope. Returns deleted count. */
+  clearAll: () => Promise<number>;
   /** Disable further writes/reads (cleanup). */
   dispose: () => void;
 }
@@ -210,6 +212,31 @@ export function createTerrainCachePersistence(opts: {
         return n;
       } catch (e) {
         console.warn('[terrainCache] purge threw:', e);
+        return 0;
+      }
+    },
+    async clearAll() {
+      if (disposed) return 0;
+      try {
+        // Cancel any pending writes — they would re-create what we're deleting.
+        pending.clear();
+        if (timer) { clearTimeout(timer); timer = null; }
+        const { data, error } = await db
+          .from('terrain_height_cache')
+          .delete({ count: 'exact' })
+          .eq('project_id', opts.projectId)
+          .eq('tileset_kind', tilesetKind)
+          .eq('tileset_version', tilesetVersion)
+          .select('id');
+        if (error) {
+          console.warn('[terrainCache] clearAll failed:', error.message);
+          return 0;
+        }
+        const n = Array.isArray(data) ? data.length : 0;
+        if (n > 0) console.log(`[terrainCache] cleared ${n} cloud rows for current scope`);
+        return n;
+      } catch (e) {
+        console.warn('[terrainCache] clearAll threw:', e);
         return 0;
       }
     },

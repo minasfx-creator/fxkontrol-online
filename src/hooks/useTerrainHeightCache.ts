@@ -22,6 +22,7 @@ import { terrainMetrics } from './terrainCacheMetrics';
 import { useTerrainCacheConfig } from './useTerrainCacheConfig';
 import { createTerrainCachePersistence, type TerrainCachePersistenceHandle, type TilesetKind } from './terrainCachePersistence';
 import { createTerrainLocalCache, type TerrainLocalCacheHandle } from './terrainCacheLocalStorage';
+import { terrainCacheControl, type TerrainCacheController } from './terrainCacheControl';
 
 const _ray = new THREE.Raycaster();
 const _origin = new THREE.Vector3();
@@ -97,6 +98,9 @@ export function useTerrainHeightCache(
   const tilesGroupRef = useRef<THREE.Object3D | null>(null);
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
+  // Imperative trigger from UI/controller: when bumped, the next useFrame
+  // does a full revalidation pass regardless of the interval.
+  const forceRevalidateRef = useRef(false);
 
   // ── Persistence (cloud + local browser) ──
   // Local IDB hydrates first (synchronous-ish, ~ms) so pins snap before the
@@ -227,7 +231,9 @@ export function useTerrainHeightCache(
     }
 
     frameRef.current++;
-    const shouldRevalidate = lodChanged || frameRef.current % cfg.revalidateInterval === 0;
+    const forced = forceRevalidateRef.current;
+    if (forced) forceRevalidateRef.current = false;
+    const shouldRevalidate = forced || lodChanged || frameRef.current % cfg.revalidateInterval === 0;
     if (!shouldRevalidate) {
       terrainMetrics.setCacheSize(cache.size);
       terrainMetrics.recordFrame(performance.now() - _t0);
@@ -237,7 +243,10 @@ export function useTerrainHeightCache(
     // ── Pass 2: re-validate resolved positions in a rolling batch.
     //   When the LOD changed we sweep a larger batch immediately so pins
     //   re-snap to the new surface without a visible jump-and-settle.
-    const batchSize = lodChanged ? Math.min(positions.length, cfg.revalidateBatch * 4) : cfg.revalidateBatch;
+    // Forced revalidation also gets the wide batch so the operator sees an
+    // immediate, visible re-snap (not a 30-frame trickle).
+    const wideSweep = lodChanged || forced;
+    const batchSize = wideSweep ? Math.min(positions.length, cfg.revalidateBatch * 4) : cfg.revalidateBatch;
     const startIdx = revalidateIndexRef.current % positions.length;
     const endIdx = Math.min(startIdx + batchSize, positions.length);
 
@@ -296,6 +305,55 @@ export function useTerrainHeightCache(
 
   const isResolved = useCallback((x: number, z: number): boolean => {
     return cacheRef.current.has(posKey(x, z));
+  }, []);
+
+  // ── Imperative control surface (UI actions) ──
+  // Registered as a singleton so panels/buttons can act on the cache without
+  // prop drilling. Operations only touch refs; the hot path is unaffected.
+  useEffect(() => {
+    const ctrl: TerrainCacheController = {
+      clearMemory: () => {
+        cacheRef.current.clear();
+        lastMeshCountRef.current = 0;
+        revalidateIndexRef.current = 0;
+        terrainMetrics.setCacheSize(0);
+        forceRevalidateRef.current = true;
+        console.log('[terrainCache] memory cleared (UI action)');
+      },
+      forceRevalidate: () => {
+        forceRevalidateRef.current = true;
+      },
+      clearLocal: async () => {
+        cacheRef.current.clear();
+        terrainMetrics.setCacheSize(0);
+        forceRevalidateRef.current = true;
+        await localRef.current?.clear();
+        console.log('[terrainCache] memory + local browser cache cleared');
+      },
+      clearCloud: async () => {
+        const n = (await persistenceRef.current?.clearAll()) ?? 0;
+        // Also drop in-memory so subsequent revalidations write a fresh set.
+        cacheRef.current.clear();
+        terrainMetrics.setCacheSize(0);
+        forceRevalidateRef.current = true;
+        return n;
+      },
+      hardReset: async () => {
+        cacheRef.current.clear();
+        lastMeshCountRef.current = 0;
+        revalidateIndexRef.current = 0;
+        terrainMetrics.setCacheSize(0);
+        forceRevalidateRef.current = true;
+        await Promise.all([
+          localRef.current?.clear(),
+          persistenceRef.current?.clearAll(),
+        ]);
+        console.log('[terrainCache] hard reset complete (memory + local + cloud)');
+      },
+      getSize: () => cacheRef.current.size,
+    };
+    terrainCacheControl.register(ctrl);
+    return () => terrainCacheControl.unregister(ctrl);
   }, []);
 
   return { getHeight, isResolved, heights: cacheRef.current };
