@@ -110,8 +110,26 @@ export default function AIChoreographyPage() {
           fps,
         },
       });
-      if (error) throw new Error(error.message);
-      if (!data?.ok) throw new Error(data?.error ?? 'falha no Grok');
+
+      // supabase.functions.invoke wraps non-2xx responses in FunctionsHttpError;
+      // the real `{ok:false,error:"…"}` payload lives on error.context (a Response).
+      if (error) {
+        let upstreamMsg = error.message || 'Erro desconhecido';
+        let status: number | undefined;
+        const ctx = (error as any).context;
+        if (ctx && typeof ctx.json === 'function') {
+          try {
+            status = ctx.status;
+            const body = await ctx.clone().json();
+            if (body?.error) upstreamMsg = String(body.error);
+          } catch {
+            try { upstreamMsg = await ctx.clone().text(); } catch { /* ignore */ }
+          }
+        }
+        throw new Error(friendlyUpstream(upstreamMsg, status));
+      }
+      if (!data?.ok) throw new Error(friendlyUpstream(data?.error ?? 'falha no Grok'));
+
       const macroData = data.macro as MacroChoreography;
       setMacro(macroData);
       toast.success(`Macro gerada (${macroData.formations?.length ?? 0} keyframes). Expandindo trajetórias…`);
@@ -123,7 +141,7 @@ export default function AIChoreographyPage() {
       toast.success(`${expanded.drones.length} drones · ${expanded.drones[0]?.frames.length ?? 0} frames · pico ${expanded.maxSpeedObserved.toFixed(1)} m/s`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      toast.error(`Falha: ${msg}`);
+      toast.error(msg, { duration: 7000 });
     } finally {
       setBusy(false);
     }
