@@ -97,7 +97,7 @@ function EventRow({ event }: RowProps) {
           {event.softAligned && (
             <Badge
               variant="outline"
-              className="h-4 px-1 text-[9px] uppercase tracking-wider border-emerald-500/40 text-emerald-400"
+              className="h-4 px-1 text-[9px] uppercase tracking-wider border-success/40 text-success"
             >
               glided
             </Badge>
