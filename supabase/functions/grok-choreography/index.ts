@@ -142,10 +142,48 @@ const reqSchema = z
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // ─── Per-request correlation id (used in every log line + echoed to client) ───
+  const requestId =
+    req.headers.get("x-request-id") ||
+    (typeof crypto?.randomUUID === "function" ? crypto.randomUUID() : `req_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`);
+
+  /**
+   * Structured log helper. Always JSON, single line, no prompt/imageDataUrl content.
+   * Stage = where in the pipeline the event happened (size_guard | json_parse | schema | upstream | …).
+   */
+  const log = (level: "info" | "warn" | "error", stage: string, fields: Record<string, unknown>) => {
+    const line = JSON.stringify({
+      ts: new Date().toISOString(),
+      level,
+      fn: "grok-choreography",
+      requestId,
+      stage,
+      ...fields,
+    });
+    if (level === "error") console.error(line);
+    else if (level === "warn") console.warn(line);
+    else console.log(line);
+  };
+
+  /** Strip values: keep only field names + counts + first error code per field. PII-safe. */
+  const summarizeZodErrors = (flat: { fieldErrors: Record<string, string[] | undefined>; formErrors: string[] }) => {
+    const fieldShape: Record<string, { errorCount: number; firstCode: string }> = {};
+    for (const [field, msgs] of Object.entries(flat.fieldErrors)) {
+      if (!msgs || msgs.length === 0) continue;
+      fieldShape[field] = { errorCount: msgs.length, firstCode: classifyZodMessage(msgs[0]) };
+    }
+    return {
+      invalidFieldCount: Object.keys(fieldShape).length,
+      formErrorCount: flat.formErrors.length,
+      fields: fieldShape,
+    };
+  };
+
   try {
     const XAI_API_KEY = Deno.env.get("XAI_API_KEY");
     if (!XAI_API_KEY) {
-      return jsonError(500, "XAI_API_KEY is not configured");
+      log("error", "config", { reason: "missing_xai_key" });
+      return jsonError(500, "XAI_API_KEY is not configured", { requestId });
     }
 
     // 0. Hard payload size guard — reject oversize requests BEFORE buffering JSON.
@@ -159,17 +197,19 @@ Deno.serve(async (req) => {
     if (declaredLen !== null) {
       const n = Number(declaredLen);
       if (!Number.isFinite(n) || n < 0) {
-        return jsonError(400, "Invalid Content-Length header.");
+        log("warn", "size_guard", { reason: "invalid_content_length", declared: declaredLen });
+        return jsonError(400, "Invalid Content-Length header.", { requestId });
       }
       if (n > MAX_BODY_BYTES) {
-        return jsonError(413, `Payload too large: ${n} bytes (max ${MAX_BODY_HUMAN}).`);
+        log("warn", "size_guard", { reason: "header_oversize", declaredBytes: n, maxBytes: MAX_BODY_BYTES });
+        return jsonError(413, `Payload too large: ${n} bytes (max ${MAX_BODY_HUMAN}).`, { requestId });
       }
     }
 
-    // 0b. Stream-and-count guard — clients can lie about Content-Length or omit it
-    //     (e.g. chunked transfer). Cap actual bytes read to MAX_BODY_BYTES + 1.
+    // 0b. Stream-and-count guard — clients can lie about Content-Length or omit it.
     if (!req.body) {
-      return jsonError(400, "Empty request body.");
+      log("warn", "size_guard", { reason: "empty_body" });
+      return jsonError(400, "Empty request body.", { requestId });
     }
     const reader = req.body.getReader();
     const chunks: Uint8Array[] = [];
@@ -182,13 +222,15 @@ Deno.serve(async (req) => {
           received += value.byteLength;
           if (received > MAX_BODY_BYTES) {
             try { await reader.cancel(); } catch { /* ignore */ }
-            return jsonError(413, `Payload too large: exceeded ${MAX_BODY_HUMAN} while reading body.`);
+            log("warn", "size_guard", { reason: "stream_oversize", receivedBytes: received, maxBytes: MAX_BODY_BYTES });
+            return jsonError(413, `Payload too large: exceeded ${MAX_BODY_HUMAN} while reading body.`, { requestId });
           }
           chunks.push(value);
         }
       }
     } catch (e) {
-      return jsonError(400, `Failed to read request body: ${e instanceof Error ? e.message : "unknown"}`);
+      log("warn", "size_guard", { reason: "body_read_failed", error: e instanceof Error ? e.message : "unknown" });
+      return jsonError(400, `Failed to read request body: ${e instanceof Error ? e.message : "unknown"}`, { requestId });
     }
 
     // 1. Parse JSON safely
@@ -200,18 +242,27 @@ Deno.serve(async (req) => {
       const text = new TextDecoder().decode(merged);
       raw = text.length === 0 ? {} : JSON.parse(text);
     } catch {
-      return jsonError(400, "Invalid JSON body.");
+      log("warn", "json_parse", { reason: "invalid_json", bytes: received });
+      return jsonError(400, "Invalid JSON body.", { requestId });
     }
 
     // 2. Validate with zod (single source of truth for limits + messages)
     const parsed = reqSchema.safeParse(raw);
     if (!parsed.success) {
       const flat = parsed.error.flatten();
+      const summary = summarizeZodErrors(flat);
+      log("warn", "schema", {
+        reason: "validation_failed",
+        bytes: received,
+        ...summary,
+        // Cardinality-only signals about the (rejected) payload — never the values.
+        topLevelKeys: raw && typeof raw === "object" ? Object.keys(raw as Record<string, unknown>).slice(0, 20) : [],
+      });
       const firstField = Object.entries(flat.fieldErrors)[0];
       const msg = firstField
         ? `${firstField[0]}: ${firstField[1]?.[0]}`
         : flat.formErrors[0] ?? "Invalid request payload";
-      return jsonError(422, msg, { fieldErrors: flat.fieldErrors, formErrors: flat.formErrors });
+      return jsonError(422, msg, { requestId, fieldErrors: flat.fieldErrors, formErrors: flat.formErrors });
     }
 
     const body = parsed.data;
@@ -219,6 +270,16 @@ Deno.serve(async (req) => {
     const duration = body.durationSeconds ?? 60;
     const fps = body.fps ?? 10;
     const userPrompt = body.prompt ?? "";
+
+    log("info", "accepted", {
+      bytes: received,
+      numDrones,
+      duration,
+      fps,
+      promptLen: userPrompt.length,
+      hasImage: !!body.imageDataUrl,
+      imageBytes: body.imageDataUrl?.length ?? 0,
+    });
 
 
     const userContent: Array<Record<string, unknown>> = [
@@ -338,4 +399,22 @@ function jsonError(status: number, message: string, details?: Record<string, unk
     JSON.stringify({ ok: false, error: message, ...(details ? { details } : {}) }),
     { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
+}
+
+/**
+ * Map a zod error message to a low-cardinality code so logs can be aggregated.
+ * Pattern-only — never includes user values.
+ */
+function classifyZodMessage(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes("required")) return "required";
+  if (m.includes("greater than or equal") || m.includes("at least")) return "min";
+  if (m.includes("less than or equal") || m.includes("at most")) return "max";
+  if (m.includes("integer")) return "not_integer";
+  if (m.includes("finite")) return "not_finite";
+  if (m.includes("regex") || m.includes("invalid string") || m.includes("must be a data:")) return "regex";
+  if (m.includes("exceeds") || m.includes("too long") || m.includes("too_big")) return "too_big";
+  if (m.includes("provide at least")) return "missing_one_of";
+  if (m.includes("max must be greater than min")) return "bounds_inverted";
+  return "other";
 }
