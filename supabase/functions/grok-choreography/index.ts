@@ -557,19 +557,31 @@ Deno.serve(async (req) => {
       lastStatus = resp.status;
       lastErrTxt = await resp.text();
       console.error(`xAI error [model=${model}] ${resp.status}`, lastErrTxt);
+
+      // xAI returns HTTP 400 with body "Incorrect API key provided" when the
+      // key is wrong (instead of a proper 401). Promote to auth so the client
+      // shows the actionable "update XAI_API_KEY" toast instead of a generic 502.
+      const isAuthLike =
+        resp.status === 401 ||
+        /incorrect api key|invalid api key|api key.*invalid|unauthorized|authentication/i.test(lastErrTxt);
+      const effectiveStatus = isAuthLike ? 401 : resp.status;
+
       log("warn", "upstream", {
         model,
-        status: resp.status,
+        status: effectiveStatus,
         outcome: "upstream_fail",
-        reason: resp.status === 429 ? "rate_limit"
-          : resp.status === 401 ? "auth"
-          : resp.status === 402 ? "credits"
-          : resp.status === 404 ? "model_not_found"
+        reason: effectiveStatus === 429 ? "rate_limit"
+          : effectiveStatus === 401 ? "auth"
+          : effectiveStatus === 402 ? "credits"
+          : effectiveStatus === 404 ? "model_not_found"
           : "other",
       });
 
       // Auth/quota errors apply to all models — stop early, don't waste calls.
-      if (resp.status === 401 || resp.status === 402 || resp.status === 429) break;
+      if (isAuthLike || resp.status === 402 || resp.status === 429) {
+        lastStatus = effectiveStatus;
+        break;
+      }
 
       // Only fall through on 400/404-style "model not found / unsupported" errors.
       const isModelIssue =
