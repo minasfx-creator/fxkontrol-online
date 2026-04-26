@@ -7,8 +7,10 @@ import { useEffect, useState } from 'react';
 import { terrainMetrics, type TerrainCacheMetrics } from '@/hooks/terrainCacheMetrics';
 import { useTerrainCacheConfig, TERRAIN_CACHE_DEFAULTS } from '@/hooks/useTerrainCacheConfig';
 import { terrainCacheControl } from '@/hooks/terrainCacheControl';
+import { useTerrainPersistenceMode, TERRAIN_MODE_DESCRIPTIONS } from '@/hooks/useTerrainPersistenceMode';
+import type { LocalCacheMode } from '@/hooks/terrainCacheLocalStorage';
 import { useSceneStore } from '@/store/useSceneStore';
-import { RotateCcw, X, Sliders, Eraser, RefreshCw, Cloud, HardDrive, Zap } from 'lucide-react';
+import { RotateCcw, X, Sliders, Eraser, RefreshCw, Cloud, HardDrive, Zap, Database } from 'lucide-react';
 
 export default function TerrainCacheMetricsPanel() {
   const show = useSceneStore(s => s.environment.showTerrainMetrics);
@@ -92,9 +94,74 @@ export default function TerrainCacheMetricsPanel() {
       <Row label="Peak (60f)" value={`${m.peakFrameMs.toFixed(2)}ms`} />
       <Row label="Frame #" value={`${m.frame}`} />
 
+      <PersistenceModeSection />
       <ActionsSection />
       <TuningSection />
     </div>
+  );
+}
+
+/** ── Persistence mode selector (per-project / per-session / memory only) ── */
+function PersistenceModeSection() {
+  const mode = useTerrainPersistenceMode((s) => s.mode);
+  const setMode = useTerrainPersistenceMode((s) => s.setMode);
+  const desc = TERRAIN_MODE_DESCRIPTIONS[mode];
+
+  const modes: LocalCacheMode[] = ['project', 'session', 'none'];
+  const colorFor = (m: LocalCacheMode) =>
+    m === 'project' ? 'hsl(207, 80%, 60%)'
+    : m === 'session' ? 'hsl(280, 70%, 65%)'
+    : 'hsl(0, 0%, 60%)';
+
+  return (
+    <>
+      <Sep />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, marginBottom: 4 }}>
+        <Database size={9} style={{ color: 'hsla(190, 80%, 65%, 0.9)' }} />
+        <span style={{ fontSize: '8px', fontWeight: 700, letterSpacing: '0.12em', color: 'hsla(190, 80%, 65%, 0.9)' }}>
+          PERSISTENCE
+        </span>
+      </div>
+
+      <div role="radiogroup" aria-label="Local cache persistence mode" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
+        {modes.map((m) => {
+          const active = mode === m;
+          const c = colorFor(m);
+          return (
+            <button
+              key={m}
+              role="radio"
+              aria-checked={active}
+              onClick={() => setMode(m)}
+              title={TERRAIN_MODE_DESCRIPTIONS[m].help}
+              style={{
+                padding: '4px 4px',
+                borderRadius: 3,
+                border: `1px solid ${active ? c : `${c}40`}`,
+                background: active ? `${c}30` : 'transparent',
+                color: active ? c : `hsla(0,0%,75%,0.85)`,
+                fontSize: '9px',
+                fontWeight: active ? 700 : 500,
+                cursor: 'pointer',
+                textTransform: 'capitalize',
+              }}
+            >
+              {TERRAIN_MODE_DESCRIPTIONS[m].label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{
+        marginTop: 4,
+        fontSize: '8.5px',
+        color: 'hsla(0,0%,65%,0.85)',
+        lineHeight: 1.4,
+        fontStyle: 'italic',
+      }}>
+        {desc.help}
+      </div>
+    </>
   );
 }
 
