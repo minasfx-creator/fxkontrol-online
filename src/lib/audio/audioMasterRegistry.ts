@@ -26,6 +26,10 @@ import { timelineClock } from '@/core/timeline/TimelineClock';
 import { lockstep } from '@/core/reliability/lockstepEngine';
 import { playAudioWithRetry, type PlayController } from '@/lib/audio/playAudioWithRetry';
 import { useProjectStore } from '@/store/useProjectStore';
+import {
+  startDriftCorrection,
+  cancelDriftCorrection,
+} from '@/core/health/timelineDriftCorrector';
 
 const PLAYBACK_SUBSYSTEM_ID = 'playback';
 
