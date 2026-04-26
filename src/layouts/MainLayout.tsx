@@ -156,6 +156,9 @@ export default function MainLayout() {
         className="h-[100dvh] flex w-full bg-background br2049-vignette overflow-hidden"
         style={{ filter: `brightness(${backlight / 100})` }}
       >
+        {/* Global quick-jump menu — always visible top-left, even inside editor/command */}
+        <QuickJumpMenu />
+
         {!commandImmersive && !isEditor && (
           <Suspense fallback={null}>
             <AppSidebar />
