@@ -92,14 +92,52 @@ REGRAS ESTRITAS:
 - Cores em hex #RRGGBB. Use a paleta da imagem/vídeo de referência quando possível.
 - Extraia formas, contornos, cores e movimento do asset visual recebido.`;
 
-interface ReqBody {
-  prompt?: string;
-  imageDataUrl?: string;
-  numDrones?: number;
-  durationSeconds?: number;
-  fps?: number;
-  bounds?: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
-}
+import { z } from "https://esm.sh/zod@3.23.8";
+
+// Hard limits — keep in sync with client-side guards (MAX_FILE_MB = 8).
+const LIMITS = {
+  promptMaxChars: 2000,
+  imageDataUrlMaxBytes: 10 * 1024 * 1024, // ~10 MB raw string (≈7.5 MB binary after b64)
+  numDrones: { min: 10, max: 5000 },
+  durationSeconds: { min: 5, max: 600 },
+  fps: { min: 5, max: 30 },
+  bounds: { absMax: 1000 }, // m
+} as const;
+
+const boundsSchema = z
+  .object({
+    minX: z.number().finite().gte(-LIMITS.bounds.absMax).lte(LIMITS.bounds.absMax),
+    maxX: z.number().finite().gte(-LIMITS.bounds.absMax).lte(LIMITS.bounds.absMax),
+    minY: z.number().finite().gte(0).lte(LIMITS.bounds.absMax),
+    maxY: z.number().finite().gte(0).lte(LIMITS.bounds.absMax),
+    minZ: z.number().finite().gte(-LIMITS.bounds.absMax).lte(LIMITS.bounds.absMax),
+    maxZ: z.number().finite().gte(-LIMITS.bounds.absMax).lte(LIMITS.bounds.absMax),
+  })
+  .refine((b) => b.maxX > b.minX && b.maxY > b.minY && b.maxZ > b.minZ, {
+    message: "bounds: max must be greater than min on every axis",
+  });
+
+const reqSchema = z
+  .object({
+    prompt: z.string().trim().max(LIMITS.promptMaxChars).optional(),
+    imageDataUrl: z
+      .string()
+      .max(LIMITS.imageDataUrlMaxBytes, {
+        message: `imageDataUrl exceeds ${(LIMITS.imageDataUrlMaxBytes / 1024 / 1024).toFixed(0)} MB limit`,
+      })
+      .regex(/^data:(image|video)\/[a-zA-Z0-9.+-]+;base64,/, {
+        message: "imageDataUrl must be a data: URL with image/* or video/* mime type",
+      })
+      .optional(),
+    numDrones: z.number().int().min(LIMITS.numDrones.min).max(LIMITS.numDrones.max).optional(),
+    durationSeconds: z.number().min(LIMITS.durationSeconds.min).max(LIMITS.durationSeconds.max).optional(),
+    fps: z.number().int().min(LIMITS.fps.min).max(LIMITS.fps.max).optional(),
+    bounds: boundsSchema.optional(),
+  })
+  .refine((v) => (v.prompt && v.prompt.length > 0) || !!v.imageDataUrl, {
+    message: "Provide at least 'prompt' (non-empty) or 'imageDataUrl'.",
+    path: ["prompt"],
+  });
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -110,15 +148,31 @@ Deno.serve(async (req) => {
       return jsonError(500, "XAI_API_KEY is not configured");
     }
 
-    const body = (await req.json().catch(() => ({}))) as ReqBody;
-    const numDrones = clampInt(body.numDrones ?? 500, 10, 5000);
-    const duration = clampNum(body.durationSeconds ?? 60, 5, 600);
-    const fps = clampInt(body.fps ?? 10, 5, 30);
-    const userPrompt = (body.prompt ?? "").toString().slice(0, 2000);
-
-    if (!body.imageDataUrl && !userPrompt) {
-      return jsonError(400, "Provide at least 'imageDataUrl' or 'prompt'.");
+    // 1. Parse JSON safely
+    let raw: unknown;
+    try {
+      raw = await req.json();
+    } catch {
+      return jsonError(400, "Invalid JSON body.");
     }
+
+    // 2. Validate with zod (single source of truth for limits + messages)
+    const parsed = reqSchema.safeParse(raw);
+    if (!parsed.success) {
+      const flat = parsed.error.flatten();
+      const firstField = Object.entries(flat.fieldErrors)[0];
+      const msg = firstField
+        ? `${firstField[0]}: ${firstField[1]?.[0]}`
+        : flat.formErrors[0] ?? "Invalid request payload";
+      return jsonError(422, msg, { fieldErrors: flat.fieldErrors, formErrors: flat.formErrors });
+    }
+
+    const body = parsed.data;
+    const numDrones = body.numDrones ?? 500;
+    const duration = body.durationSeconds ?? 60;
+    const fps = body.fps ?? 10;
+    const userPrompt = body.prompt ?? "";
+
 
     const userContent: Array<Record<string, unknown>> = [
       {
@@ -232,15 +286,9 @@ Deno.serve(async (req) => {
   }
 });
 
-function jsonError(status: number, message: string) {
-  return new Response(JSON.stringify({ ok: false, error: message }), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-function clampInt(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, Math.floor(Number(n) || min)));
-}
-function clampNum(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, Number(n) || min));
+function jsonError(status: number, message: string, details?: Record<string, unknown>) {
+  return new Response(
+    JSON.stringify({ ok: false, error: message, ...(details ? { details } : {}) }),
+    { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
 }
