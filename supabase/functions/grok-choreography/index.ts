@@ -95,44 +95,36 @@ type MetricRow = {
   counters: Record<string, unknown>;
 };
 
+// Lazily build the service-role client. Using supabase-js avoids the
+// "JWT issued at future" clock-skew rejections we saw with raw PostgREST.
+let _serviceClient: ReturnType<typeof createClient> | null = null;
+function getServiceClient() {
+  if (_serviceClient) return _serviceClient;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
+  _serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  return _serviceClient;
+}
+
 function persistMetric(row: MetricRow) {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return;
-  const promise = fetch(`${SUPABASE_URL}/rest/v1/${METRICS_TABLE}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "apikey": SUPABASE_SERVICE_ROLE_KEY,
-      "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      "Prefer": "return=minimal",
-    },
-    body: JSON.stringify(row),
-  })
-    .then((resp) => {
-      if (!resp.ok) {
-        return resp.text().then((body) => {
-          console.warn(JSON.stringify({
-            ts: new Date().toISOString(),
-            level: "warn",
-            fn: "grok-choreography",
-            stage: "metrics_persist",
-            outcome: "persist_failed",
-            status: resp.status,
-            event_type: row.event_type,
-            error: body.slice(0, 300),
-          }));
-        });
+  const client = getServiceClient();
+  if (!client) return;
+  const promise = client
+    .from(METRICS_TABLE)
+    .insert(row)
+    .then(({ error }) => {
+      if (error) {
+        console.warn(JSON.stringify({
+          ts: new Date().toISOString(),
+          level: "warn",
+          fn: "grok-choreography",
+          stage: "metrics_persist",
+          outcome: "persist_failed",
+          event_type: row.event_type,
+          error: error.message?.slice(0, 300) ?? "unknown",
+        }));
       }
-    })
-    .catch((e) => {
-      console.warn(JSON.stringify({
-        ts: new Date().toISOString(),
-        level: "warn",
-        fn: "grok-choreography",
-        stage: "metrics_persist",
-        outcome: "persist_error",
-        event_type: row.event_type,
-        error: e instanceof Error ? e.message : "unknown",
-      }));
     });
   // Keep the isolate alive long enough to flush the insert when available.
   // @ts-ignore — EdgeRuntime is a Deno Deploy global, may be undefined locally.
