@@ -1,22 +1,29 @@
-## Bugs found
+## Goal
+Remove the redundant `QuickJumpMenu` pill (top-right) on routes where the `AppSidebar` is already visible, since the sidebar already provides Studio + AI Choreography navigation. Keep the pill on `/studio` and `/command`, where the sidebar is hidden and the pill is the only quick-jump affordance.
 
-**1. `isEditor` checks wrong path** — `src/layouts/MainLayout.tsx:67` uses `location.pathname === '/editor'`, but the actual editor route is `/studio` (`/editor` is just a redirect in `App.tsx`). Result on `/studio`: `isEditor` is false → AppSidebar + header render around the editor (shrinking the viewport), and the redundant Studio NavLink shows up even when we're already inside Studio.
-**Fix:** change to `location.pathname === '/studio'`.
+## Change
+**File:** `src/layouts/MainLayout.tsx`
 
-**2. Redundant "Studio" pill in header** — Lines 204–218 of `MainLayout.tsx` render a NavLink to `/studio` that QuickJumpMenu now duplicates (and exposes 2 more targets).
-**Fix:** delete the NavLink block; drop the now-unused `Wand2` and `NavLink` imports.
+Currently (around line 154):
+```tsx
+{/* Global quick-jump menu — always visible top-left, even inside editor/command */}
+<QuickJumpMenu />
+```
 
-**3. FXK-DRONES never highlights as active** — `QuickJumpMenu.tsx` checks `pathname + search === '/studio?panel=drones'`, but `Index.tsx` (around line 356) strips `?panel=` from the URL immediately after opening the panel, so the active state never matches.
-**Fix:** drop the misleading active comparison for the drones item; only highlight Studio (any `/studio*`) and AI Choreography. Cleaner UX matches the actual URL state.
+Change to render it only when the sidebar is hidden — i.e. on the immersive routes (`/studio` and `/command`):
+```tsx
+{(isEditor || commandImmersive) && <QuickJumpMenu />}
+```
 
-**4. iOS notch / safe area** — `fixed top-2 right-2` can sit under the status bar / dynamic island on iPhone PWA.
-**Fix:** offset the container with `top: calc(0.5rem + env(safe-area-inset-top))` and `right: calc(0.5rem + env(safe-area-inset-right))`.
+`isEditor` and `commandImmersive` are already computed earlier in the component, so no new state is needed.
 
-## Files
+## Why this scope
+- On regular routes, `AppSidebar` lists Studio (and the rest of the app) — the pill duplicates that.
+- On `/studio` and `/command`, the sidebar is intentionally hidden for a fullscreen workspace; without the pill there'd be no quick way back to other surfaces.
+- The stale "top-left" JSDoc in `QuickJumpMenu.tsx` (the pill is actually positioned top-right) is unrelated and out of scope — happy to clean it up in a follow-up if you want.
 
-- `src/layouts/MainLayout.tsx` — fix `isEditor`, remove redundant NavLink + imports.
-- `src/components/QuickJumpMenu.tsx` — drop drones active-state, add safe-area offsets.
-
-## Out of scope
-
-Wiring QuickJumpMenu to the actual open-panel store in `Index.tsx` (would let DRONES highlight correctly while the panel is open) — larger refactor; happy to follow up if you want it.
+## Verification
+- `/` (Index) → no pill, sidebar visible. ✅
+- `/studio` → pill visible, sidebar hidden. ✅
+- `/command` → pill visible, sidebar hidden. ✅
+- No other files reference `QuickJumpMenu`, so no further cleanup needed.
