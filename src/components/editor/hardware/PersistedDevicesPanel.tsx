@@ -19,7 +19,8 @@
  */
 
 import { useEffect, useState, useMemo } from 'react';
-import { Cable, Usb, Bluetooth, Wifi, Trash2, AlertTriangle, RefreshCw, Search, X } from 'lucide-react';
+import { Cable, Usb, Bluetooth, Wifi, Trash2, AlertTriangle, RefreshCw, Search, X, Wrench } from 'lucide-react';
+import { PersistedDeviceTroubleshootSheet } from './PersistedDeviceTroubleshootSheet';
 import { Input } from '@/components/ui/input';
 import type { DiscoveryTransport } from '@/core/discovery/types';
 import { portRegistry, type PortRegistryEntry } from '@/core/discovery/portRegistry';
@@ -113,6 +114,7 @@ export function PersistedDevicesPanel() {
   const [query, setQuery] = useState('');
   const [transportFilter, setTransportFilter] = useState<DiscoveryTransport | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<Status | 'all'>('all');
+  const [troubleshootKey, setTroubleshootKey] = useState<string | null>(null);
 
   const handleRescan = async () => {
     if (isRescanning) return;
