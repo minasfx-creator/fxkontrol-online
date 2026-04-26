@@ -390,3 +390,21 @@ function jsonError(status: number, message: string, details?: Record<string, unk
     { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
 }
+
+/**
+ * Map a zod error message to a low-cardinality code so logs can be aggregated.
+ * Pattern-only — never includes user values.
+ */
+function classifyZodMessage(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes("required")) return "required";
+  if (m.includes("greater than or equal") || m.includes("at least")) return "min";
+  if (m.includes("less than or equal") || m.includes("at most")) return "max";
+  if (m.includes("integer")) return "not_integer";
+  if (m.includes("finite")) return "not_finite";
+  if (m.includes("regex") || m.includes("invalid string") || m.includes("must be a data:")) return "regex";
+  if (m.includes("exceeds") || m.includes("too long") || m.includes("too_big")) return "too_big";
+  if (m.includes("provide at least")) return "missing_one_of";
+  if (m.includes("max must be greater than min")) return "bounds_inverted";
+  return "other";
+}
