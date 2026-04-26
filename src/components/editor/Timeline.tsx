@@ -1244,7 +1244,10 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
 
         {/* Clock health badge — running / stalled / recovered, fed by the
             same watchdog that drives auto-recovery (`useTimelineClockHealthCheck`). */}
-        <TimelineHealthBadge />
+        <div className="flex items-center gap-1">
+          <TimelineHealthBadge />
+          <TimelineHealthSettingsPopover />
+        </div>
 
         {/* Transport diagnostic chip — explains why Play may not advance (0×, END, EXT) */}
         {transportChip && (
