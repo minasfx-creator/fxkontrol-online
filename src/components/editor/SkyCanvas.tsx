@@ -1849,6 +1849,7 @@ export default function SkyCanvas() {
         {!google3DTilesEnabled && !isLowTierMobile && <StageFixtures />}
         {!google3DTilesEnabled && !isMobile && !isLowTierMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
         <PlaybackClock />
+        <TimelineClockWatchdog />
         {!isMobile && <CameraAnimator />}
         {!isMobile && <CameraPathPreview />}
         {!google3DTilesEnabled && <ViewportRulers />}
