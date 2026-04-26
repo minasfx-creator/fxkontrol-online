@@ -24,6 +24,27 @@ import type { MacroChoreography, ExpandedShow } from '@/modules/aiChoreography/t
 
 const MAX_FILE_MB = 8;
 
+/** Map raw upstream errors (xAI / edge function) to actionable Portuguese messages. */
+function friendlyUpstream(raw: string, status?: number): string {
+  const m = (raw || '').toLowerCase();
+  if (status === 429 || /rate.?limit|too many requests/.test(m))
+    return 'Limite de requisições atingido. Aguarde alguns segundos e tente novamente.';
+  if (status === 402 || /credit|payment required|insufficient.*balance|quota/.test(m))
+    return 'Créditos da AI esgotados. Recarregue em Settings → Workspace → Usage.';
+  if (status === 401 || /api key|unauthorized|invalid.*key/.test(m))
+    return 'Chave XAI_API_KEY inválida ou expirada. Atualize o secret no backend.';
+  if (status === 413 || /payload too large|request entity too large|too large|max.*size/.test(m))
+    return `Asset muito grande (limite ${MAX_FILE_MB}MB). Comprima a imagem/vídeo antes de enviar.`;
+  if (/model.*not.*found|does not exist|unsupported|deprecat/.test(m))
+    return `Modelo Grok indisponível: ${raw}. O fallback automático também falhou — atualize a lista de modelos.`;
+  if (/timeout|timed out|deadline/.test(m))
+    return 'Timeout ao chamar o Grok. Tente novamente ou reduza a duração do show.';
+  if (/tool call|tool arguments|not valid json|structured/.test(m))
+    return 'Grok respondeu em formato inválido. Tente novamente — costuma resolver.';
+  if (status && status >= 500) return `Falha upstream (${status}): ${raw}`;
+  return raw;
+}
+
 async function fileToDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -110,8 +131,26 @@ export default function AIChoreographyPage() {
           fps,
         },
       });
-      if (error) throw new Error(error.message);
-      if (!data?.ok) throw new Error(data?.error ?? 'falha no Grok');
+
+      // supabase.functions.invoke wraps non-2xx responses in FunctionsHttpError;
+      // the real `{ok:false,error:"…"}` payload lives on error.context (a Response).
+      if (error) {
+        let upstreamMsg = error.message || 'Erro desconhecido';
+        let status: number | undefined;
+        const ctx = (error as any).context;
+        if (ctx && typeof ctx.json === 'function') {
+          try {
+            status = ctx.status;
+            const body = await ctx.clone().json();
+            if (body?.error) upstreamMsg = String(body.error);
+          } catch {
+            try { upstreamMsg = await ctx.clone().text(); } catch { /* ignore */ }
+          }
+        }
+        throw new Error(friendlyUpstream(upstreamMsg, status));
+      }
+      if (!data?.ok) throw new Error(friendlyUpstream(data?.error ?? 'falha no Grok'));
+
       const macroData = data.macro as MacroChoreography;
       setMacro(macroData);
       toast.success(`Macro gerada (${macroData.formations?.length ?? 0} keyframes). Expandindo trajetórias…`);
@@ -123,7 +162,7 @@ export default function AIChoreographyPage() {
       toast.success(`${expanded.drones.length} drones · ${expanded.drones[0]?.frames.length ?? 0} frames · pico ${expanded.maxSpeedObserved.toFixed(1)} m/s`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      toast.error(`Falha: ${msg}`);
+      toast.error(msg, { duration: 7000 });
     } finally {
       setBusy(false);
     }
