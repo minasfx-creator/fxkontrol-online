@@ -16,6 +16,12 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 
+// The generated Database types may not yet include `terrain_height_cache`
+// (it was added in a recent migration). Fall back to an untyped client view
+// for this table so the typecheck passes; runtime behavior is identical.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as unknown as { from: (table: string) => any };
+
 export interface PersistedHeight {
   x_tenths: number;
   z_tenths: number;
