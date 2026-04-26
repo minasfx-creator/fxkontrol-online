@@ -31,6 +31,7 @@ const FieldOps = lazy(lazyRetry(() => import("./pages/FieldOps")));
 const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
 const PlatformStatus = lazy(lazyRetry(() => import("./pages/PlatformStatus")));
 const SwarmGPT = lazy(lazyRetry(() => import("./pages/SwarmGPT")));
+const AIChoreography = lazy(lazyRetry(() => import("./pages/AIChoreography")));
 const DmxPyroDiagnostics = lazy(lazyRetry(() => import("./components/diagnostics/DmxPyroDiagnostics")));
 const NetworkSettings = lazy(lazyRetry(() => import("./pages/NetworkSettings")));
 const Terms = lazy(lazyRetry(() => import("./pages/legal/Terms")));
@@ -138,6 +139,7 @@ function App() {
                       <Route path="/settings/network" element={<NetworkSettings />} />
                       <Route path="/platform-status" element={<PlatformStatus />} />
                       <Route path="/swarmgpt" element={<SwarmGPT />} />
+                      <Route path="/ai-choreography" element={<AIChoreography />} />
                     </Route>
                     <Route path="*" element={<NotFound />} />
                   </Routes>
