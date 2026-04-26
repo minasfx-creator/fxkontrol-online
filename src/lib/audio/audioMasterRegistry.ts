@@ -95,7 +95,7 @@ export interface ResyncResult {
  *      another chance and the operator sees the timeline move.
  */
 export function resyncTimeline(options: ResyncOptions = {}): ResyncResult {
-  const { surfaceToasts = true, reason } = options;
+  const { surfaceToasts = true, reason, softAlign = false, softAlignMs } = options;
   const entry = registered;
   if (!entry) {
     if (surfaceToasts) {
@@ -109,25 +109,51 @@ export function resyncTimeline(options: ResyncOptions = {}): ResyncResult {
   const { audio, cancelActivePlay } = entry;
   const isPlaying = useProjectStore.getState().isPlaying;
 
-  // 1+2+3 — clean state
+  // 1+2+3 — clean state. Cancel any in-flight drift correction too: a fresh
+  // resync supersedes whatever ramp was running.
   cancelActivePlay();
+  cancelDriftCorrection();
   activeResyncController?.cancel();
   activeResyncController = null;
   timelineClock.releaseExternalSync();
   lockstep.setEnabled(PLAYBACK_SUBSYSTEM_ID, true);
 
-  // 4 — snap clock to audio
+  // 4 — align clock to audio. Hard snap by default; soft glide when the
+  // caller (typically the watchdog after a stall) wants to absorb the offset
+  // gracefully so the operator never sees a jump on the playhead.
   const target = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
-  timelineClock.seek(target);
+  let aligned: 'snapped' | 'glided' = 'snapped';
+  if (softAlign) {
+    const result = startDriftCorrection({
+      // Track the audio live during the ramp so we catch up to a *moving*
+      // target rather than a frozen sample.
+      getTarget: () => (Number.isFinite(audio.currentTime) ? audio.currentTime : target),
+      durationMs: softAlignMs,
+    });
+    if (result === 'started') {
+      aligned = 'glided';
+    } else {
+      // 'skipped' (offset under threshold), 'hard-seek' (offset > 3s), or
+      // 'disabled' all already left the clock in a sane state — nothing more
+      // to do here. We still report the original requested mode.
+      aligned = result === 'started' ? 'glided' : 'snapped';
+    }
+  } else {
+    timelineClock.seek(target);
+  }
 
-  // 5 — if we're not in a Play state we just snapped and we're done.
+  // 5 — if we're not in a Play state we just aligned and we're done.
   if (!isPlaying) {
     if (surfaceToasts) {
       toast.success('Timeline resynced', {
-        description: reason ?? `Snapped clock to ${target.toFixed(2)}s.`,
+        description:
+          reason ??
+          (aligned === 'glided'
+            ? `Gliding clock to ${target.toFixed(2)}s.`
+            : `Snapped clock to ${target.toFixed(2)}s.`),
       });
     }
-    return { ok: true, reason: 'snapped' };
+    return { ok: true, reason: aligned };
   }
 
   // 5b — restart playback with retry. The success / awaiting-gesture /
