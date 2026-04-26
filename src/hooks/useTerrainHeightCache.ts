@@ -164,10 +164,36 @@ export function useTerrainHeightCache(
   });
 
   const getHeight = useCallback((x: number, z: number): number => {
-    const v = cacheRef.current.get(posKey(x, z));
-    terrainMetrics.recordGet(v !== undefined);
-    return v ?? 0;
+    const cache = cacheRef.current;
+    const key = posKey(x, z);
+    const v = cache.get(key);
+    if (v !== undefined) {
+      terrainMetrics.recordGet(true);
+      return v;
+    }
+    // ── One-shot fallback ──
+    // Position not yet resolved: try a synchronous raycast against the
+    // currently loaded tiles. If a tile mesh exists under the XZ ray, we
+    // resolve immediately and cache, so the pin never falls to y=0 between
+    // its first render and the next useFrame pass.
+    const tilesGroup = tilesGroupRef.current;
+    if (enabledRef.current && tilesGroup) {
+      const y = sampleTerrain(tilesGroup, x, z);
+      if (y !== null) {
+        cache.set(key, y);
+        terrainMetrics.recordOneShotResolve();
+        terrainMetrics.recordGet(true);
+        terrainMetrics.setCacheSize(cache.size);
+        return y;
+      }
+    }
+    terrainMetrics.recordGet(false);
+    return 0;
   }, []);
 
-  return { getHeight, heights: cacheRef.current };
+  const isResolved = useCallback((x: number, z: number): boolean => {
+    return cacheRef.current.has(posKey(x, z));
+  }, []);
+
+  return { getHeight, isResolved, heights: cacheRef.current };
 }
