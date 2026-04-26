@@ -243,7 +243,10 @@ export function useTerrainHeightCache(
     // ── Pass 2: re-validate resolved positions in a rolling batch.
     //   When the LOD changed we sweep a larger batch immediately so pins
     //   re-snap to the new surface without a visible jump-and-settle.
-    const batchSize = lodChanged ? Math.min(positions.length, cfg.revalidateBatch * 4) : cfg.revalidateBatch;
+    // Forced revalidation also gets the wide batch so the operator sees an
+    // immediate, visible re-snap (not a 30-frame trickle).
+    const wideSweep = lodChanged || forced;
+    const batchSize = wideSweep ? Math.min(positions.length, cfg.revalidateBatch * 4) : cfg.revalidateBatch;
     const startIdx = revalidateIndexRef.current % positions.length;
     const endIdx = Math.min(startIdx + batchSize, positions.length);
 
