@@ -82,7 +82,9 @@ export function TimelineHealthSettingsPopover() {
   const isAllDefault =
     settings.stallThresholdMs === TIMELINE_HEALTH_DEFAULTS.stallThresholdMs &&
     settings.recoveryCooldownMs === TIMELINE_HEALTH_DEFAULTS.recoveryCooldownMs &&
-    settings.sampleIntervalMs === TIMELINE_HEALTH_DEFAULTS.sampleIntervalMs;
+    settings.sampleIntervalMs === TIMELINE_HEALTH_DEFAULTS.sampleIntervalMs &&
+    settings.driftCorrectionEnabled === TIMELINE_HEALTH_DEFAULTS.driftCorrectionEnabled &&
+    settings.driftCorrectionMs === TIMELINE_HEALTH_DEFAULTS.driftCorrectionMs;
 
   return (
     <RealPopover>
