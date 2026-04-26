@@ -128,7 +128,7 @@ export function TimelineHealthLogPopover() {
           <ScrollText className="h-3 w-3" />
           {hasEvents && (
             <span
-              className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-amber-400"
+              className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-warning"
               aria-hidden="true"
             />
           )}
