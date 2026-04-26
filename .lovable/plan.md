@@ -1,54 +1,59 @@
-# Round 6 — Studio / 3D Viewport Functional Walkthrough
+# Round 7 — Targeted Fix + Canvas-Free E2E Walkthrough
 
-## ✅ Pre-flight (already verified, read-only)
+## Health baseline (carried from Round 6)
+- Tests: 604/604 ✅
+- Typecheck: clean ✅
+- Lint: 758 (all in 3 documented out-of-scope buckets)
+- Last fix shipped: silent black-viewport guard in `SkyCanvas.tsx`
 
-| Check | Result |
+## 1. 🐛 Real production bug — `grok-choreography` returns 502
+
+Edge function logs show every request failing:
+```
+xAI error [model=grok-4] 400 "Incorrect API key provided: cu***"
+upstream:all_models_failed → 502
+```
+
+The AI Choreo (Grok path) is **broken in production** because the `XAI_API_KEY` secret is invalid (looks like a Cursor key was pasted). I'll:
+
+1. Read `supabase/functions/grok-choreography/index.ts` to confirm the secret name and fallback chain.
+2. Check whether the function has a graceful degrade path when xAI rejects the key (currently it bubbles 502 — we should return a structured `{ ok: false, reason: "AI_KEY_INVALID" }` so the UI can show a friendly message instead of a generic network error).
+3. Add a clear error-message branch in the function: if upstream returns 401/403 or "Incorrect API key", surface `reason: "AI_KEY_INVALID"` with HTTP 503 + actionable copy.
+4. Update the calling UI (likely `src/modules/swarmgpt/...` or a Choreo panel) to render that reason as a toast: *"AI choreography service unavailable — admin must update the xAI key in Cloud secrets."*
+5. Tell the user to re-add a valid `XAI_API_KEY` via the secrets panel. (I won't touch the secret itself.)
+
+## 2. Canvas-free E2E walkthrough
+
+Routes/flows the headless browser **can** exercise meaningfully:
+
+| Flow | What I'll verify |
 |---|---|
-| Tests | **604 / 604 passing** ✅ |
-| Typecheck | clean ✅ |
-| Dev runtime | no errors; FPS ~135–145 (session replay) ✅ |
-| ESLint | 758 issues — **0 new actionable items**; all in 3 documented out-of-scope buckets (`no-explicit-any` × 575, `exhaustive-deps` × 132, `react-refresh/only-export-components` × 51) |
+| **`/auth`** | Page loads, form fields have labels, submit disabled when empty, error banner on bad creds, no console errors |
+| **`/office`** (or equivalent landing) | Dashboard cards render, navigation works, no 4xx/5xx in network tab |
+| **`/settings`** | Tabs render, Safety Gate opt-in toggles persist, DMX budget preset selector visible |
+| **Live Firing safety UI** (panel inside `/studio` shell — doesn't need 3D canvas) | Hold-to-Confirm button physics, E-STOP visible, preflight gating banner shows when not ready |
 
-→ **No mechanical lint round needed.** Switching mode to a focused functional pass.
+For each: smoke-screenshot → observe → interact with primary control → screenshot → console scan.
 
----
+## 3. Inline polish (only if discovered during pass)
+- Missing `aria-label` on icon-only buttons in audited pages
+- Theme-token violations (raw hex instead of `bg-card`/`border-border`)
+- Console warnings from React (key props, hydration, etc.)
 
-## 🎯 Scope: `/studio` → `<Index />` (SkyCanvas + editor shell)
+Larger findings get reported, not auto-fixed, to keep the diff reviewable.
 
-### Walkthrough steps (browser automation, ~10–14 actions)
+## 4. Verification before handoff
+- `tsc --noEmit` clean
+- `vitest run` 604+/604+ passing
+- Re-run edge logs to confirm `grok-choreography` now returns the structured 503 instead of opaque 502
 
-1. **Boot snapshot** — navigate to `/studio`, screenshot, capture console + network. Confirm SkyCanvas mounts cleanly (Premium Startup: starDensity 1.3, moon 0.8, fog 0.35 per memory).
-2. **Viewport top bar (`ViewportBar`)** — observe chips, click each visible mode toggle (Synthetic / Terrain / Studio), screenshot transitions, watch console for WebGPU/WebGL2 fallback decisions.
-3. **Right sidebar (`ViewportNavControls`)** — hover/click each icon button, verify tooltips + `aria-label` (Round 4 added these), confirm panels open/close without nesting violations.
-4. **Camera controls per editor standard (memory: refinamento-viewport)** — middle-mouse-orbit, right-mouse-pan, wheel-zoom. Validate via observe + drag where supported; if drag fails (known dnd-kit limitation), report it instead of looping retries.
-5. **Bottom timeline (`TimelineClockPanel`)** — confirm SMPTE clock ticks, scrub a few frames, check 4px dead-zone snap behavior (memory: timeline-ux-precision-snapping).
-6. **World Shows panel** — open, pick one preset (e.g., Copacabana), confirm fixtures load + camera reframes, screenshot.
-7. **Operator / Walk Mode toggle** — flip on, verify altitude lock to 1.7m + ±80° pitch clamp (memory: ground-operator-mode-altitude-lock); flip back off.
-8. **Performance probe** — `browser--performance_profile` to capture JS heap, DOM nodes, layout count after the walkthrough; flag anything > sane thresholds.
-9. **Network tab** — list XHR/fetch during the run, flag any 4xx/5xx (especially Google 3D Tiles + edge functions).
-10. **Console final scan** — error/warn filter; cross-reference with code if anything new surfaces.
+## Out of scope
+- 3D viewport interactions (canvas unavailable in headless tool — already documented)
+- The 575 `no-explicit-any` baseline at protocol boundaries
+- Touching/rotating the actual `XAI_API_KEY` secret (user action required)
 
-### Destructive actions explicitly skipped
-- No fire / E-STOP / arming triggers
-- No write to ShowPlan via persisted mutations
-- No live-firing mode entry
-
----
-
-## 🛠 Deliverables after the walkthrough
-
-1. **Bug report** — any console errors, broken interactions, missing `aria-label`s, layout overflows, slow interactions (>100ms script time on a click). For each: file + line + proposed one-line fix.
-2. **UX polish list** — tooltip gaps, focus-ring inconsistencies, inconsistent spacing/tokens vs. `interface/estetica-command-grade-mission-control` palette (Vantablack #050810, Cyan/Green/Amber/Red semantics).
-3. **Fix the small stuff inline** — for trivial issues found (typos, missing `aria-label`, wrong token), patch them in the same round and report; per browser policy I will **stop and tell you** before bigger refactors.
-4. **Final verification** — re-run vitest + tsc to prove nothing regressed.
-
----
-
-## 🚫 Explicitly out of scope
-- The 758 documented lint warnings (no-explicit-any baseline / shadcn variant exports / intentional exhaustive-deps).
-- Drag-and-drop heavy interactions (dnd-kit is browser-automation hostile per limitations).
-- Live Firing, Auth, AI Choreo, Office, Hardware Discovery flows — separate rounds on request.
-
----
-
-**Estimated impact:** ~10–14 browser actions, ~3–8 small file patches if issues are found, full vitest re-run at the end. No schema changes, no migrations.
+## Deliverables
+- `supabase/functions/grok-choreography/index.ts` — graceful 503 + reason code
+- 1 UI file — toast/banner for `AI_KEY_INVALID`
+- E2E report with screenshots + any small fixes applied inline
+- Action item for the user: rotate `XAI_API_KEY` in Cloud secrets
