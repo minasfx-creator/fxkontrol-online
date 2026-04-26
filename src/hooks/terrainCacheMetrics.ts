@@ -43,6 +43,7 @@ const _state: TerrainCacheMetrics = {
   unresolvedSamples: 0,
   revalidations: 0,
   driftEvents: 0,
+  oneShotResolves: 0,
   lodChanges: 0,
   cacheSize: 0,
   trackedPositions: 0,
