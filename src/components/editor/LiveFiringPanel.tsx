@@ -199,7 +199,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
             }
           }
           if (msg.error) console.warn('[Relay]', msg.error);
-        } catch {}
+        } catch { /* best-effort: malformed relay message — already logged via console.warn above */ }
       };
       relayWs.current = ws;
     } catch { toast.error('URL do relay inválida'); }

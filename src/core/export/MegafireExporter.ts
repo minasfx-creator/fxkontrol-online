@@ -28,6 +28,7 @@ export interface MegafireExportResult {
 /** Filtra caracteres ilegais para o formato (sem quoting/escaping). */
 function sanitize(input: string): string {
   // Remove `;`, TAB, LF, CR e demais controles. Preserva UTF-8 imprimível.
+  // eslint-disable-next-line no-control-regex -- intentional: strips ASCII control chars per Megafire CSV spec
   return input.replace(/[;\t\r\n\x00-\x1F\x7F]/g, ' ').trim();
 }
 

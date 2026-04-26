@@ -132,7 +132,7 @@ function loadHistory(): Msg[] {
 function saveHistory(msgs: Msg[]) {
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(msgs.slice(-MAX_HISTORY)));
-  } catch {}
+  } catch { /* best-effort: localStorage may be full or disabled */ }
 }
 
 async function streamChat(

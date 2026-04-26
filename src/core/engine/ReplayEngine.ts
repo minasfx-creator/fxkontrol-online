@@ -23,6 +23,7 @@ class ReplayEngine {
       try {
         listener();
       } catch {
+        /* listener errors must not break the notification loop */
       }
     }
   }

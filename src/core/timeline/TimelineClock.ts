@@ -269,6 +269,7 @@ class TimelineClock {
       try {
         listener(snapshot);
       } catch {
+        /* listener errors must not break the notification loop */
       }
     }
   }

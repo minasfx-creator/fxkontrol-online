@@ -40,6 +40,7 @@ export interface RJExportResult {
 
 /** Filtra caracteres ilegais conforme spec (sem escaping/quoting). */
 function sanitize(input: string): string {
+  // eslint-disable-next-line no-control-regex -- intentional: strips ASCII control chars per RJ Equipamentos spec
   return input.replace(/['",;\\\t\r\n\x00-\x1F\x7F]/g, ' ').trim();
 }
 
