@@ -32,18 +32,26 @@ export interface TimelineHealthSettings {
   stallThresholdMs: number;
   recoveryCooldownMs: number;
   sampleIntervalMs: number;
+  /** When true, recovery glides the timeline to audio.currentTime over
+   *  `driftCorrectionMs` instead of snapping. */
+  driftCorrectionEnabled: boolean;
+  /** Ramp duration for the drift correction in ms. */
+  driftCorrectionMs: number;
 }
 
 export const TIMELINE_HEALTH_DEFAULTS: TimelineHealthSettings = {
   stallThresholdMs: 750,
   recoveryCooldownMs: 4000,
   sampleIntervalMs: 200,
+  driftCorrectionEnabled: true,
+  driftCorrectionMs: 1500,
 };
 
 export const TIMELINE_HEALTH_BOUNDS = {
   stallThresholdMs: { min: 250, max: 5000, step: 50 },
   recoveryCooldownMs: { min: 500, max: 30000, step: 250 },
   sampleIntervalMs: { min: 50, max: 1000, step: 50 },
+  driftCorrectionMs: { min: 250, max: 5000, step: 50 },
 } as const;
 
 function clamp(value: number, min: number, max: number): number {
@@ -67,6 +75,15 @@ export function clampSettings(s: Partial<TimelineHealthSettings>): TimelineHealt
       s.sampleIntervalMs ?? TIMELINE_HEALTH_DEFAULTS.sampleIntervalMs,
       TIMELINE_HEALTH_BOUNDS.sampleIntervalMs.min,
       TIMELINE_HEALTH_BOUNDS.sampleIntervalMs.max,
+    ),
+    driftCorrectionEnabled:
+      typeof s.driftCorrectionEnabled === 'boolean'
+        ? s.driftCorrectionEnabled
+        : TIMELINE_HEALTH_DEFAULTS.driftCorrectionEnabled,
+    driftCorrectionMs: clamp(
+      s.driftCorrectionMs ?? TIMELINE_HEALTH_DEFAULTS.driftCorrectionMs,
+      TIMELINE_HEALTH_BOUNDS.driftCorrectionMs.min,
+      TIMELINE_HEALTH_BOUNDS.driftCorrectionMs.max,
     ),
   };
 }
