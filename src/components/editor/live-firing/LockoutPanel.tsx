@@ -1,11 +1,18 @@
 /**
  * LockoutPanel — Finale 3D Risk Group Lockout System UI.
  * Reads / toggles Risk Groups (A–E) from useProjectStore.
+ *
+ * Honors `safetyGate.lockoutGroups`: when the layer is OFF (default),
+ * the full panel collapses to a tiny informational chip linking to
+ * Settings, so beginner users don't see the red lockout grid at all.
  */
-import { Shield } from 'lucide-react';
+import { Shield, ShieldOff } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
 import { RISK_GROUP_COLORS, RISK_GROUP_LABELS, type RiskGroup } from '@/lib/pyroPhysics';
+import { safetyGate } from '@/core/safety/safetyGate';
 
 interface LockoutPanelProps {
   fs: boolean;
@@ -16,6 +23,42 @@ export default function LockoutPanel({ fs, mob }: LockoutPanelProps) {
   const activeLockouts = useProjectStore(s => s.activeLockouts);
   const toggleLockout = useProjectStore(s => s.toggleLockout);
   const groups: RiskGroup[] = ['A', 'B', 'C', 'D', 'E'];
+
+  // Re-render when the gate config changes.
+  const [enforced, setEnforced] = useState(() => safetyGate.isEnforced('lockoutGroups'));
+  useEffect(
+    () => safetyGate.subscribe(() => setEnforced(safetyGate.isEnforced('lockoutGroups'))),
+    [],
+  );
+
+  // Layer disabled — show a minimal informational chip only.
+  if (!enforced) {
+    return (
+      <div
+        className={cn(
+          'border-t border-border/15 flex items-center justify-between gap-2',
+          fs ? 'px-4 py-1.5' : 'px-2 py-1',
+        )}
+        style={{ background: 'hsl(220 12% 7%)' }}
+      >
+        <div className="flex items-center gap-1.5 text-muted-foreground/50">
+          <ShieldOff className={cn(fs ? 'w-3 h-3' : 'w-2.5 h-2.5')} />
+          <span className={cn('font-mono uppercase tracking-wider', fs ? 'text-[9px]' : 'text-[8px]')}>
+            Lockout desativado
+          </span>
+        </div>
+        <Link
+          to="/settings?tab=safety"
+          className={cn(
+            'font-mono uppercase tracking-wider text-primary/70 hover:text-primary transition-colors',
+            fs ? 'text-[9px]' : 'text-[8px]',
+          )}
+        >
+          Ativar →
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("border-t border-border/15", fs && mob ? "px-3 py-1.5" : fs ? "px-4 py-2" : "px-2 py-1")} style={{ background: 'hsl(220 12% 7%)' }}>
