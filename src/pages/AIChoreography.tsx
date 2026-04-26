@@ -7,6 +7,7 @@
  * 2000+ drones deterministically with collision QA.
  */
 import { useMemo, useRef, useState } from 'react';
+import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, Play, Sparkles, Download, Layers, AlertTriangle, Gauge } from 'lucide-react';
 import { Button } from '@/components/ui/button';
