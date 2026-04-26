@@ -128,61 +128,86 @@ async function idbDelete(key: string): Promise<void> {
   });
 }
 
-// ── localStorage fallback (used when IDB throws) ────────────────────────────
+// ── Web Storage helpers (parameterized over storage type) ──────────────────
+// Used as: (a) localStorage fallback when IDB throws (mode='project'), and
+// (b) the primary backend when mode='session' (uses sessionStorage).
 
-function lsGet(key: string): StoredEntry | null {
+function wsGet(storage: Storage | null, key: string): StoredEntry | null {
+  if (!storage) return null;
   try {
-    const raw = localStorage.getItem(LS_PREFIX + key);
+    const raw = storage.getItem(LS_PREFIX + key);
     return raw ? (JSON.parse(raw) as StoredEntry) : null;
   } catch { return null; }
 }
-function lsPut(key: string, v: StoredEntry): void {
-  try { localStorage.setItem(LS_PREFIX + key, JSON.stringify(v)); }
-  catch (e) { console.warn('[terrainCacheLocal] localStorage put failed:', e); }
+function wsPut(storage: Storage | null, key: string, v: StoredEntry): void {
+  if (!storage) return;
+  try { storage.setItem(LS_PREFIX + key, JSON.stringify(v)); }
+  catch (e) { console.warn('[terrainCacheLocal] storage put failed:', e); }
 }
-function lsDelete(key: string): void {
-  try { localStorage.removeItem(LS_PREFIX + key); } catch { /* noop */ }
+function wsDelete(storage: Storage | null, key: string): void {
+  if (!storage) return;
+  try { storage.removeItem(LS_PREFIX + key); } catch { /* noop */ }
+}
+
+function safeStorage(kind: 'local' | 'session'): Storage | null {
+  try {
+    return kind === 'session' ? sessionStorage : localStorage;
+  } catch { return null; }
 }
 
 // ── Public factory ──────────────────────────────────────────────────────────
 
 export function createTerrainLocalCache(scope: LocalCacheScope): TerrainLocalCacheHandle {
+  const mode: LocalCacheMode = scope.mode ?? 'project';
   const key = scopeKey(scope);
   // In-memory mirror of every key→y currently persisted (or queued). Lets the
   // debounced flush serialize the *full* set in one shot, which avoids
-  // read-modify-write races and makes flush O(1) trips to IDB per scope.
+  // read-modify-write races.
   const mirror = new Map<string, number>();
   let dirty = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let disposed = false;
-  let useLs = false; // flips true once IDB has failed once
+  let useLs = false; // flips true once IDB has failed once (project mode only)
   let flushing = false;
 
+  // Backend selector:
+  //  - 'none'    : no I/O; mirror still works for in-memory mode but no flush.
+  //  - 'session' : sessionStorage (per-tab, cleared on tab close).
+  //  - 'project' : IndexedDB primary, localStorage fallback (long-lived).
+  const sessionStore = mode === 'session' ? safeStorage('session') : null;
+  const lsStore = mode === 'project' ? safeStorage('local') : null;
+
   async function readEntry(): Promise<StoredEntry | null> {
-    if (useLs) return lsGet(key);
+    if (mode === 'none') return null;
+    if (mode === 'session') return wsGet(sessionStore, key);
+    if (useLs) return wsGet(lsStore, key);
     try {
       return await idbGet(key);
     } catch (e) {
       console.warn('[terrainCacheLocal] IDB get failed, falling back to localStorage:', e);
       useLs = true;
-      return lsGet(key);
+      return wsGet(lsStore, key);
     }
   }
 
   async function writeEntry(entry: StoredEntry): Promise<void> {
-    if (useLs) { lsPut(key, entry); return; }
+    if (mode === 'none') return;
+    if (mode === 'session') { wsPut(sessionStore, key, entry); return; }
+    if (useLs) { wsPut(lsStore, key, entry); return; }
     try {
       await idbPut(key, entry);
     } catch (e) {
       console.warn('[terrainCacheLocal] IDB put failed, falling back to localStorage:', e);
       useLs = true;
-      lsPut(key, entry);
+      wsPut(lsStore, key, entry);
     }
   }
 
   async function deleteEntry(): Promise<void> {
-    if (useLs) { lsDelete(key); return; }
-    try { await idbDelete(key); } catch { lsDelete(key); }
+    if (mode === 'none') return;
+    if (mode === 'session') { wsDelete(sessionStore, key); return; }
+    try { await idbDelete(key); } catch { /* fall through to LS cleanup */ }
+    wsDelete(lsStore, key);
   }
 
   async function flushNow(): Promise<void> {
