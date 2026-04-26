@@ -81,7 +81,7 @@ function EventRow({ event }: RowProps) {
               'h-4 px-1 text-[9px] uppercase tracking-wider',
               isExternal
                 ? 'border-accent/40 text-accent'
-                : 'border-amber-400/40 text-amber-400',
+                : 'border-warning/40 text-warning',
             )}
           >
             {isExternal ? 'External sync' : 'Local driver'}
