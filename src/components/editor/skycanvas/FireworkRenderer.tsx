@@ -1206,6 +1206,18 @@ export function TimelineEffects() {
 
       if (!effect) return null;
 
+      // ── Per-item overrides from PropertiesPanel (color, unit count) ──
+      // These let the operator tune individual cues without forking the library
+      // effect. Duration override is applied below via `durationOverride` on the
+      // item itself (typed-duration computation reads it).
+      if (item.colorOverride || item.flightCount) {
+        effect = {
+          ...effect,
+          ...(item.colorOverride ? { color: item.colorOverride } : {}),
+          ...(item.flightCount && item.flightCount > 0 ? { shotCount: item.flightCount } : {}),
+        } as typeof effect;
+      }
+
       let resolvedPos = item.position;
       let launchHeading = 0;
       let launchPitch = 85;
