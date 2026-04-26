@@ -17,6 +17,8 @@ export interface TerrainCacheMetrics {
   revalidations: number;
   /** Cache writes triggered by drift > threshold (height changed). */
   driftEvents: number;
+  /** One-shot synchronous raycasts triggered by getHeight() on a cache miss. */
+  oneShotResolves: number;
   /** LOD changes detected (tile mesh count delta). */
   lodChanges: number;
   /** Cache size (resolved entries). */
