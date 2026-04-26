@@ -1,64 +1,54 @@
-# Round 5 — End-to-End Audit & Final Housekeeping
+# Round 6 — Studio / 3D Viewport Functional Walkthrough
 
-## ✅ Health Snapshot (just verified, read-only)
+## ✅ Pre-flight (already verified, read-only)
 
 | Check | Result |
 |---|---|
-| **Tests** | **604 / 604 passing** ✅ |
-| **Typecheck** (`tsc --noEmit`) | clean ✅ |
-| **Dev runtime** | no console errors / warnings ✅ |
-| **ESLint** | 607 issues — 575 are intentional `no-explicit-any` at protocol/worker boundaries (out-of-scope per Round 2 policy) |
+| Tests | **604 / 604 passing** ✅ |
+| Typecheck | clean ✅ |
+| Dev runtime | no errors; FPS ~135–145 (session replay) ✅ |
+| ESLint | 758 issues — **0 new actionable items**; all in 3 documented out-of-scope buckets (`no-explicit-any` × 575, `exhaustive-deps` × 132, `react-refresh/only-export-components` × 51) |
 
-Platform is **healthy and stable**. This round is **pure housekeeping** — no behavior changes, no new features, ~6 files touched.
-
----
-
-## 🐛 Real Issues Found (1)
-
-### Obsolete snapshots in `EditorLayout.visual.test.tsx`
-After Round 4 added semantic assertions to the editor visual-regression suite, the original 3 snapshot keys are stale (titles changed from "matches snapshot" → "matches snapshot + uses dark tokens"). Vitest reports:
-```
-Snapshots  3 obsolete
-  ↳ src/components/editor/__tests__/EditorLayout.visual.test.tsx
-```
-
-**Fix:** delete the 3 stale entries from `EditorLayout.visual.test.tsx.snap`. Zero risk — current snapshots are already matching.
+→ **No mechanical lint round needed.** Switching mode to a focused functional pass.
 
 ---
 
-## 🧹 Lint Cleanup (~32 actionable items)
+## 🎯 Scope: `/studio` → `<Index />` (SkyCanvas + editor shell)
 
-### `prefer-const` × 4 (auto-fix safe)
-Stragglers missed by Round 4's `--fix` pass — variables declared `let` but never reassigned. Will run `eslint --fix --rule prefer-const` scoped to those files only.
+### Walkthrough steps (browser automation, ~10–14 actions)
 
-### `no-useless-escape` × 1
-Single unnecessary backslash in a regex (likely `\/` → `/`). One-char fix.
+1. **Boot snapshot** — navigate to `/studio`, screenshot, capture console + network. Confirm SkyCanvas mounts cleanly (Premium Startup: starDensity 1.3, moon 0.8, fog 0.35 per memory).
+2. **Viewport top bar (`ViewportBar`)** — observe chips, click each visible mode toggle (Synthetic / Terrain / Studio), screenshot transitions, watch console for WebGPU/WebGL2 fallback decisions.
+3. **Right sidebar (`ViewportNavControls`)** — hover/click each icon button, verify tooltips + `aria-label` (Round 4 added these), confirm panels open/close without nesting violations.
+4. **Camera controls per editor standard (memory: refinamento-viewport)** — middle-mouse-orbit, right-mouse-pan, wheel-zoom. Validate via observe + drag where supported; if drag fails (known dnd-kit limitation), report it instead of looping retries.
+5. **Bottom timeline (`TimelineClockPanel`)** — confirm SMPTE clock ticks, scrub a few frames, check 4px dead-zone snap behavior (memory: timeline-ux-precision-snapping).
+6. **World Shows panel** — open, pick one preset (e.g., Copacabana), confirm fixtures load + camera reframes, screenshot.
+7. **Operator / Walk Mode toggle** — flip on, verify altitude lock to 1.7m + ±80° pitch clamp (memory: ground-operator-mode-altitude-lock); flip back off.
+8. **Performance probe** — `browser--performance_profile` to capture JS heap, DOM nodes, layout count after the walkthrough; flag anything > sane thresholds.
+9. **Network tab** — list XHR/fetch during the run, flag any 4xx/5xx (especially Google 3D Tiles + edge functions).
+10. **Console final scan** — error/warn filter; cross-reference with code if anything new surfaces.
 
-### `no-control-regex` × 3 (suppress with reason)
-These regexes intentionally match control characters in **binary protocol parsing** (PBUS / DMX / serial). They are NOT bugs. Will add `// eslint-disable-next-line no-control-regex -- intentional: parses binary protocol frame` above each.
-
-### `no-empty` × 24 (suppress with reason)
-Round 3 audit already confirmed: virtually all are intentional best-effort browser-API guards (clipboard, fullscreen, AudioContext close, port revoke). Will add `// eslint-disable-next-line no-empty -- best-effort: <api> failures are non-fatal` above each, matching the pattern already used elsewhere.
-
-This converts noise into **documented intent**, so future lint reports surface only real issues.
-
----
-
-## 🚫 Out of Scope (intentional, unchanged)
-
-- **575 `no-explicit-any`** at workers / PBUS / DMX / DataView — per Round 2 policy, only fix when touched for other work. No blanket rewrite.
-- **No new features, no UI changes** — Round 4 already polished SafetyGate; nothing else flagged this round.
-- **Browser E2E across all 31 routes** — better as a targeted user-flow request. Tell me which flow matters most (Studio, Live Firing, Auth, AI Choreo, or Office) and I'll run a focused browser pass next round.
+### Destructive actions explicitly skipped
+- No fire / E-STOP / arming triggers
+- No write to ShowPlan via persisted mutations
+- No live-firing mode entry
 
 ---
 
-## ✅ Verification Plan
+## 🛠 Deliverables after the walkthrough
 
-1. `bunx vitest run` → expect **604 passing, 0 obsolete snapshots**.
-2. `npx tsc --noEmit` → clean.
-3. `bunx eslint src --quiet` → expect **607 → ~575** (the remaining `any` baseline).
-4. Spot-check one suppressed `no-empty` and `no-control-regex` to confirm the comments make intent obvious.
+1. **Bug report** — any console errors, broken interactions, missing `aria-label`s, layout overflows, slow interactions (>100ms script time on a click). For each: file + line + proposed one-line fix.
+2. **UX polish list** — tooltip gaps, focus-ring inconsistencies, inconsistent spacing/tokens vs. `interface/estetica-command-grade-mission-control` palette (Vantablack #050810, Cyan/Green/Amber/Red semantics).
+3. **Fix the small stuff inline** — for trivial issues found (typos, missing `aria-label`, wrong token), patch them in the same round and report; per browser policy I will **stop and tell you** before bigger refactors.
+4. **Final verification** — re-run vitest + tsc to prove nothing regressed.
 
 ---
 
-**Estimated impact:** ~6 files touched, all mechanical (snapshot prune + comment additions + 4 `let→const`). Zero runtime behavior change.
+## 🚫 Explicitly out of scope
+- The 758 documented lint warnings (no-explicit-any baseline / shadcn variant exports / intentional exhaustive-deps).
+- Drag-and-drop heavy interactions (dnd-kit is browser-automation hostile per limitations).
+- Live Firing, Auth, AI Choreo, Office, Hardware Discovery flows — separate rounds on request.
+
+---
+
+**Estimated impact:** ~10–14 browser actions, ~3–8 small file patches if issues are found, full vitest re-run at the end. No schema changes, no migrations.
