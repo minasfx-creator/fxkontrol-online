@@ -74,11 +74,10 @@ function counterSnapshot() {
 }
 
 // ─── Persistence to public.grok_choreography_metrics ────────────────────────
-// Fire-and-forget inserts via PostgREST using the service role key. We never
-// block the response on persistence — failures are logged but never thrown.
-// RLS on the table only allows service_role to write; admins can read.
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+// Direct Postgres connection (Supabase pooler) — bypasses PostgREST and
+// avoids the "JWT issued at future" clock-skew rejections we saw when using
+// the service role key + REST. Fire-and-forget; never blocks the response.
+const SUPABASE_DB_URL = Deno.env.get("SUPABASE_DB_URL") ?? "";
 const METRICS_TABLE = "grok_choreography_metrics";
 
 type MetricRow = {
@@ -95,37 +94,55 @@ type MetricRow = {
   counters: Record<string, unknown>;
 };
 
-// Lazily build the service-role client. Using supabase-js avoids the
-// "JWT issued at future" clock-skew rejections we saw with raw PostgREST.
-let _serviceClient: ReturnType<typeof createClient> | null = null;
-function getServiceClient() {
-  if (_serviceClient) return _serviceClient;
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
-  _serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  return _serviceClient;
+let _pool: Pool | null = null;
+function getPool(): Pool | null {
+  if (_pool) return _pool;
+  if (!SUPABASE_DB_URL) return null;
+  // Small pool — most isolates do <10 inserts/min. lazy=true defers TCP setup.
+  _pool = new Pool(SUPABASE_DB_URL, 2, true);
+  return _pool;
+}
+
+async function persistMetricImpl(row: MetricRow): Promise<void> {
+  const pool = getPool();
+  if (!pool) return;
+  const client = await pool.connect();
+  try {
+    await client.queryObject(
+      `INSERT INTO public.${METRICS_TABLE}
+        (event_type, request_id, stage, outcome, status, reason, model, bytes, duration_ms, isolate_started_at, counters)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)`,
+      [
+        row.event_type,
+        row.request_id ?? null,
+        row.stage ?? null,
+        row.outcome ?? null,
+        row.status ?? null,
+        row.reason ?? null,
+        row.model ?? null,
+        row.bytes ?? null,
+        row.duration_ms ?? null,
+        row.isolate_started_at ?? null,
+        JSON.stringify(row.counters ?? {}),
+      ],
+    );
+  } finally {
+    client.release();
+  }
 }
 
 function persistMetric(row: MetricRow) {
-  const client = getServiceClient();
-  if (!client) return;
-  const promise = client
-    .from(METRICS_TABLE)
-    .insert(row)
-    .then(({ error }) => {
-      if (error) {
-        console.warn(JSON.stringify({
-          ts: new Date().toISOString(),
-          level: "warn",
-          fn: "grok-choreography",
-          stage: "metrics_persist",
-          outcome: "persist_failed",
-          event_type: row.event_type,
-          error: error.message?.slice(0, 300) ?? "unknown",
-        }));
-      }
-    });
+  const promise = persistMetricImpl(row).catch((e) => {
+    console.warn(JSON.stringify({
+      ts: new Date().toISOString(),
+      level: "warn",
+      fn: "grok-choreography",
+      stage: "metrics_persist",
+      outcome: "persist_failed",
+      event_type: row.event_type,
+      error: e instanceof Error ? e.message.slice(0, 300) : "unknown",
+    }));
+  });
   // Keep the isolate alive long enough to flush the insert when available.
   // @ts-ignore — EdgeRuntime is a Deno Deploy global, may be undefined locally.
   if (typeof EdgeRuntime !== "undefined" && typeof EdgeRuntime.waitUntil === "function") {
