@@ -41,7 +41,7 @@ interface Props {
 const STATUS_TONE: Record<TroubleshootStatus, string> = {
   ready: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
   offline: 'border-muted-foreground/30 bg-muted/20 text-muted-foreground',
-  'needs-permission': 'border-amber-500/40 bg-amber-500/10 text-amber-300',
+  'needs-permission': 'border-amber-500/40 bg-amber-500/10 text-warning',
   'confirm-generic': 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300',
   error: 'border-destructive/50 bg-destructive/10 text-destructive',
 };
@@ -181,12 +181,12 @@ export function PersistedDeviceTroubleshootSheet({
                 : 'Auto-reopen aceita qualquer unidade do mesmo VID:PID. Bom para hot-swap de spares idênticos.'}
             </p>
             {keyHasSerial && policy === 'vidpid' && (
-              <p className="text-[9px] text-amber-300 leading-relaxed">
+              <p className="text-[9px] text-warning leading-relaxed">
                 ⚠ Este registro foi gravado sob política <code>vidpid+serial</code>. Mudar para <code>vidpid</code> agora não fará efeito retroativo — autorize novamente para regravar a chave.
               </p>
             )}
             {!keyHasSerial && policy === 'vidpid+serial' && transport === 'webusb' && (
-              <p className="text-[9px] text-amber-300 leading-relaxed">
+              <p className="text-[9px] text-warning leading-relaxed">
                 ⚠ Chave atual não inclui serial — provavelmente o dispositivo não expõe um, ou foi gravada antes da política mudar. Reautorize para regravar.
               </p>
             )}
