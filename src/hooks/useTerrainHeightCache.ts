@@ -160,17 +160,23 @@ export function useTerrainHeightCache(
     lastMeshCountRef.current = meshCount;
 
     const cache = cacheRef.current;
+    const persist = persistenceRef.current;
 
     // ── Pass 1: always sample positions that have NO resolved height yet.
     //   Bounded per-frame so we never spike the frame budget.
     let unresolvedSampled = 0;
     for (let i = 0; i < positions.length && unresolvedSampled < cfg.unresolvedBatchPerFrame; i++) {
       const pos = positions[i];
-      const key = posKey(pos.x, pos.z);
+      const xt = (pos.x * 10) | 0;
+      const zt = (pos.z * 10) | 0;
+      const key = `${xt}:${zt}`;
       if (cache.has(key)) continue;
       const y = sampleTerrain(tilesGroup, pos.x, pos.z);
       terrainMetrics.recordUnresolvedSample();
-      if (y !== null) cache.set(key, y);
+      if (y !== null) {
+        cache.set(key, y);
+        persist?.markDirty(key, xt, zt, y);
+      }
       unresolvedSampled++;
     }
 
@@ -191,7 +197,9 @@ export function useTerrainHeightCache(
 
     for (let i = startIdx; i < endIdx; i++) {
       const pos = positions[i];
-      const key = posKey(pos.x, pos.z);
+      const xt = (pos.x * 10) | 0;
+      const zt = (pos.z * 10) | 0;
+      const key = `${xt}:${zt}`;
       const y = sampleTerrain(tilesGroup, pos.x, pos.z);
       terrainMetrics.recordRevalidation();
       if (y === null) continue;
@@ -199,6 +207,7 @@ export function useTerrainHeightCache(
       if (prev === undefined || Math.abs(prev - y) > cfg.heightDriftThreshold) {
         if (prev !== undefined) terrainMetrics.recordDrift();
         cache.set(key, y);
+        persist?.markDirty(key, xt, zt, y);
       }
     }
     revalidateIndexRef.current = endIdx >= positions.length ? 0 : endIdx;
@@ -208,7 +217,9 @@ export function useTerrainHeightCache(
 
   const getHeight = useCallback((x: number, z: number): number => {
     const cache = cacheRef.current;
-    const key = posKey(x, z);
+    const xt = (x * 10) | 0;
+    const zt = (z * 10) | 0;
+    const key = `${xt}:${zt}`;
     const v = cache.get(key);
     if (v !== undefined) {
       terrainMetrics.recordGet(true);
@@ -224,6 +235,7 @@ export function useTerrainHeightCache(
       const y = sampleTerrain(tilesGroup, x, z);
       if (y !== null) {
         cache.set(key, y);
+        persistenceRef.current?.markDirty(key, xt, zt, y);
         terrainMetrics.recordOneShotResolve();
         terrainMetrics.recordGet(true);
         terrainMetrics.setCacheSize(cache.size);
