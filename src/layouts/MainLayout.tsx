@@ -1,8 +1,7 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { PanelLeftClose, PanelLeft, AlertOctagon, Menu, Wand2 } from 'lucide-react';
-import { NavLink } from '@/components/NavLink';
+import { PanelLeftClose, PanelLeft, AlertOctagon, Menu } from 'lucide-react';
 import minasfxLogo from '@/assets/minasfx-logo-white.png';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useDisplayStore } from '@/store/useDisplayStore';
@@ -64,7 +63,7 @@ function MobileSidebarTrigger() {
 export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const isEditor = location.pathname === '/editor';
+  const isEditor = location.pathname === '/studio';
   const isCommand = location.pathname === '/command';
   const commandImmersive = isCommand;
   const isMobile = useIsMobile();
@@ -201,21 +200,6 @@ export default function MainLayout() {
                 <SidebarToggleButton />
               )}
               <div className="ml-auto flex items-center gap-3 relative z-10">
-                {location.pathname !== '/studio' && (
-                  <NavLink
-                    to="/studio"
-                    className="flex items-center gap-1.5 h-7 px-2.5 rounded-control text-[11px] font-medium tracking-wide transition-all active:scale-95"
-                    style={{
-                      background: 'hsl(32 100% 50% / 0.12)',
-                      color: 'hsl(32 100% 50%)',
-                      boxShadow: 'inset 0 0 0 1px hsl(32 100% 50% / 0.25)',
-                    }}
-                    title="Abrir editor 3D (Studio)"
-                  >
-                    <Wand2 className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Studio</span>
-                  </NavLink>
-                )}
                 <img
                   src={minasfxLogo}
                   alt="MinasFX"
