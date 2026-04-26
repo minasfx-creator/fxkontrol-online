@@ -175,9 +175,9 @@ import { estimateFireworkStarCost } from './skycanvas/FireworkRenderer';
 export function getActiveBurstCount() { return _getActiveBurstCount(); }
 
 // Module-level refs shared between SkyGradient / AdaptiveExposure / fireworks
-let _skyScatterUniforms_local: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
-let _adaptiveExposure_local = 1.2;
-let _activeBurstScan_local: ActiveBurstScanResult | null = null;
+const _skyScatterUniforms_local: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
+const _adaptiveExposure_local = 1.2;
+const _activeBurstScan_local: ActiveBurstScanResult | null = null;
 
 // lumaTonemapScale REMOVED — PostProcessing ACES Filmic is the single tonemap pass
 
@@ -490,10 +490,10 @@ class SubsystemBoundary extends Component<{ name: string; children: ReactNode },
 }
 
 // Module-level refs — local aliases for backward compat within this file
-let _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
-let _adaptiveExposure = 1.2;
-let _activeBurstScan: ActiveBurstScanResult | null = null;
-let _activeBurstCount = 0;
+const _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
+const _adaptiveExposure = 1.2;
+const _activeBurstScan: ActiveBurstScanResult | null = null;
+const _activeBurstCount = 0;
 
 // FireworkBurst, LightPoint, estimateFireworkStarCost, TimelineEffects, LiveSFXEffects
 // → Extracted to skycanvas/FireworkRenderer.tsx
@@ -901,7 +901,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     const ty = THREE.MathUtils.clamp(controls.target.y, 0, 50000);
     const tz = THREE.MathUtils.clamp(controls.target.z, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
 
-    let cy = THREE.MathUtils.clamp(camera.position.y, CAMERA_MIN_Y, CAMERA_MAX_Y);
+    const cy = THREE.MathUtils.clamp(camera.position.y, CAMERA_MIN_Y, CAMERA_MAX_Y);
     _lastValidY.current = cy;
 
     const cx = THREE.MathUtils.clamp(camera.position.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
@@ -1548,7 +1548,7 @@ export default function SkyCanvas() {
   const [canvasInstanceKey, setCanvasInstanceKey] = useState(0);
   const recoveringContextRef = useRef(false);
   const handleContextRemount = useCallback(() => setCanvasInstanceKey(prev => prev + 1), []);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768; // eslint-disable-line -- kept as static for perf-sensitive render loop; useIsMobile used at page level
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;  
   const deviceProfile = useMemo(() => getDeviceProfile(), []);
   const isLowTierMobile = isMobile && deviceProfile.tier === 'low';
   const environment = useSceneStore(st => st.environment);
