@@ -137,7 +137,21 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     audio.playbackRate = playbackSpeed;
     audioRef.current = audio;
 
+    // Expose this audio element to the global registry so the toolbar
+    // "Resync timeline" button and the watchdog can re-lock the clock to
+    // the audio without prop-drilling. We pass a `cancelActivePlay` thunk
+    // so the registry can stop our in-flight retry controller before
+    // issuing its own.
+    const unregister = registerAudioMaster({
+      audio,
+      cancelActivePlay: () => {
+        playControllerRef.current?.cancel();
+        playControllerRef.current = null;
+      },
+    });
+
     return () => {
+      unregister();
       audio.pause();
       audio.src = '';
       audioRef.current = null;
