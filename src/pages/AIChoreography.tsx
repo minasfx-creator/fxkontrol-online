@@ -237,7 +237,7 @@ export default function AIChoreographyPage() {
                 <Stat label="Pico m/s" value={show.maxSpeedObserved.toFixed(1)} />
               </div>
               {show.collisions.length > 0 && (
-                <div className="flex items-start gap-2 rounded bg-amber-500/10 border border-amber-500/30 p-2 text-xs text-amber-200">
+                <div className="flex items-start gap-2 rounded border border-warning/40 bg-warning/10 p-2 text-xs text-warning-foreground">
                   <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                   <span>{show.collisions.length} possíveis colisões (&lt; 2 m). Revise antes do voo real.</span>
                 </div>
