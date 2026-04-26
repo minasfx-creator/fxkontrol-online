@@ -191,6 +191,10 @@ export default function Settings() {
           </div>
         </TabsContent>
 
+        <TabsContent value="safety" className="mt-5">
+          <SafetyGateSettings />
+        </TabsContent>
+
         <TabsContent value="billing" className="mt-5">
           <BillingTab />
         </TabsContent>
