@@ -19,19 +19,15 @@ import { useRef, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { terrainMetrics } from './terrainCacheMetrics';
+import { useTerrainCacheConfig } from './useTerrainCacheConfig';
 
 const _ray = new THREE.Raycaster();
 const _origin = new THREE.Vector3();
 const _down = new THREE.Vector3(0, -1, 0);
 
-/** How often to re-validate already-resolved heights (every N frames) */
-const REVALIDATE_INTERVAL = 30; // ~0.5s at 60fps
-/** Max already-resolved positions to re-check per validation tick */
-const REVALIDATE_BATCH = 8;
-/** Max unresolved positions to sample per frame (cheap, keeps new pins on ground) */
-const UNRESOLVED_BATCH_PER_FRAME = 16;
-/** Drift (meters) above which we treat the cached height as stale */
-const HEIGHT_DRIFT_THRESHOLD = 0.5;
+// Defaults are now defined in useTerrainCacheConfig.TERRAIN_CACHE_DEFAULTS.
+// The hot path reads the latest values via useTerrainCacheConfig.getState()
+// each frame so operator-driven slider changes take effect immediately.
 
 export interface TerrainHeightCache {
   /**
@@ -107,6 +103,9 @@ export function useTerrainHeightCache(
       return;
     }
 
+    // Snapshot operator-tuned config once per frame (sliders mutate between frames)
+    const cfg = useTerrainCacheConfig.getState();
+
     // Count current tile meshes to detect LOD changes
     let meshCount = 0;
     tilesGroup.traverse((c) => {
@@ -121,7 +120,7 @@ export function useTerrainHeightCache(
     // ── Pass 1: always sample positions that have NO resolved height yet.
     //   Bounded per-frame so we never spike the frame budget.
     let unresolvedSampled = 0;
-    for (let i = 0; i < positions.length && unresolvedSampled < UNRESOLVED_BATCH_PER_FRAME; i++) {
+    for (let i = 0; i < positions.length && unresolvedSampled < cfg.unresolvedBatchPerFrame; i++) {
       const pos = positions[i];
       const key = posKey(pos.x, pos.z);
       if (cache.has(key)) continue;
@@ -132,7 +131,7 @@ export function useTerrainHeightCache(
     }
 
     frameRef.current++;
-    const shouldRevalidate = lodChanged || frameRef.current % REVALIDATE_INTERVAL === 0;
+    const shouldRevalidate = lodChanged || frameRef.current % cfg.revalidateInterval === 0;
     if (!shouldRevalidate) {
       terrainMetrics.setCacheSize(cache.size);
       terrainMetrics.recordFrame(performance.now() - _t0);
@@ -142,7 +141,7 @@ export function useTerrainHeightCache(
     // ── Pass 2: re-validate resolved positions in a rolling batch.
     //   When the LOD changed we sweep a larger batch immediately so pins
     //   re-snap to the new surface without a visible jump-and-settle.
-    const batchSize = lodChanged ? Math.min(positions.length, REVALIDATE_BATCH * 4) : REVALIDATE_BATCH;
+    const batchSize = lodChanged ? Math.min(positions.length, cfg.revalidateBatch * 4) : cfg.revalidateBatch;
     const startIdx = revalidateIndexRef.current % positions.length;
     const endIdx = Math.min(startIdx + batchSize, positions.length);
 
@@ -153,7 +152,7 @@ export function useTerrainHeightCache(
       terrainMetrics.recordRevalidation();
       if (y === null) continue;
       const prev = cache.get(key);
-      if (prev === undefined || Math.abs(prev - y) > HEIGHT_DRIFT_THRESHOLD) {
+      if (prev === undefined || Math.abs(prev - y) > cfg.heightDriftThreshold) {
         if (prev !== undefined) terrainMetrics.recordDrift();
         cache.set(key, y);
       }
