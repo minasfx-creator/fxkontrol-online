@@ -120,7 +120,7 @@ export function useTerrainHeightCache(
     // ── Pass 1: always sample positions that have NO resolved height yet.
     //   Bounded per-frame so we never spike the frame budget.
     let unresolvedSampled = 0;
-    for (let i = 0; i < positions.length && unresolvedSampled < UNRESOLVED_BATCH_PER_FRAME; i++) {
+    for (let i = 0; i < positions.length && unresolvedSampled < cfg.unresolvedBatchPerFrame; i++) {
       const pos = positions[i];
       const key = posKey(pos.x, pos.z);
       if (cache.has(key)) continue;
