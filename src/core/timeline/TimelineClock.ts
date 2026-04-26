@@ -86,7 +86,7 @@ class TimelineClock {
   }
 
   toggle(): void {
-    this.state.playing ? this.pause() : this.play();
+    if (this.state.playing) this.pause(); else this.play();
   }
 
   seek(time: number): void {

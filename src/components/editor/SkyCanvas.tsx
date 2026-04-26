@@ -2022,7 +2022,11 @@ export default function SkyCanvas() {
             onClick={() => {
               const el = document.querySelector('[data-sky-canvas]') as HTMLElement;
               if (!el) return;
-              document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
+              if (document.fullscreenElement) {
+                void document.exitFullscreen();
+              } else {
+                void el.requestFullscreen();
+              }
             }}
             className="w-7 h-7 rounded-md flex items-center justify-center transition-all border bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
           >

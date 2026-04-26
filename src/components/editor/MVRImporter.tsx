@@ -136,7 +136,7 @@ export default function MVRImporter({ open, onOpenChange, initialFile }: Props) 
   const toggleFixture = (idx: number) => {
     setSelected(prev => {
       const next = new Set(prev);
-      next.has(idx) ? next.delete(idx) : next.add(idx);
+      if (next.has(idx)) next.delete(idx); else next.add(idx);
       return next;
     });
   };
