@@ -136,8 +136,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    const grokBody = {
-      model: "grok-4",
+    // Vision-capable Grok models, tried in order. If xAI deprecates one,
+    // the next is attempted automatically. Keep most-preferred first.
+    const MODEL_FALLBACKS = ["grok-4", "grok-4-fast", "grok-2-vision-latest"];
+
+    const buildBody = (model: string) => ({
+      model,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userContent },
@@ -155,24 +159,48 @@ Deno.serve(async (req) => {
       tool_choice: { type: "function", function: { name: "emit_macro_choreography" } },
       temperature: 0.6,
       max_tokens: 8000,
-    };
-
-    const grokResp = await fetch(XAI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${XAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(grokBody),
     });
 
-    if (!grokResp.ok) {
-      const txt = await grokResp.text();
-      console.error("xAI error", grokResp.status, txt);
-      if (grokResp.status === 429) return jsonError(429, "xAI rate limit reached. Try again shortly.");
-      if (grokResp.status === 401) return jsonError(401, "Invalid XAI_API_KEY.");
-      if (grokResp.status === 402) return jsonError(402, "xAI credits exhausted.");
-      return jsonError(502, `xAI upstream error (${grokResp.status})`);
+    let grokResp: Response | null = null;
+    let lastErrTxt = "";
+    let lastStatus = 0;
+    let usedModel = "";
+
+    for (const model of MODEL_FALLBACKS) {
+      const resp = await fetch(XAI_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${XAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(buildBody(model)),
+      });
+
+      if (resp.ok) {
+        grokResp = resp;
+        usedModel = model;
+        break;
+      }
+
+      lastStatus = resp.status;
+      lastErrTxt = await resp.text();
+      console.error(`xAI error [model=${model}] ${resp.status}`, lastErrTxt);
+
+      // Auth/quota errors apply to all models — stop early, don't waste calls.
+      if (resp.status === 401 || resp.status === 402 || resp.status === 429) break;
+
+      // Only fall through on 400/404-style "model not found / unsupported" errors.
+      const isModelIssue =
+        resp.status === 404 ||
+        /model.*not.*found|does not exist|unsupported|deprecat/i.test(lastErrTxt);
+      if (!isModelIssue) break;
+    }
+
+    if (!grokResp) {
+      if (lastStatus === 429) return jsonError(429, "xAI rate limit reached. Try again shortly.");
+      if (lastStatus === 401) return jsonError(401, "Invalid XAI_API_KEY.");
+      if (lastStatus === 402) return jsonError(402, "xAI credits exhausted.");
+      return jsonError(502, `xAI upstream error (${lastStatus}) — all fallback models failed.`);
     }
 
     const grokJson = await grokResp.json();
@@ -192,6 +220,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: true,
         macro,
+        model: usedModel,
         usage: grokJson?.usage ?? null,
         echo: { numDrones, duration, fps },
       }),
