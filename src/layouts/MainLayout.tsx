@@ -155,8 +155,9 @@ export default function MainLayout() {
         className="h-[100dvh] flex w-full bg-background br2049-vignette overflow-hidden"
         style={{ filter: `brightness(${backlight / 100})` }}
       >
-        {/* Global quick-jump menu — always visible top-left, even inside editor/command */}
-        <QuickJumpMenu />
+        {/* Quick-jump pill — only on immersive routes (sidebar hidden);
+            on normal routes the AppSidebar already covers this nav. */}
+        {(isEditor || commandImmersive) && <QuickJumpMenu />}
 
         {!commandImmersive && !isEditor && (
           <Suspense fallback={null}>
