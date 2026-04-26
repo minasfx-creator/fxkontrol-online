@@ -156,31 +156,57 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     if (audioRef.current) audioRef.current.playbackRate = playbackSpeed;
   }, [playbackSpeed]);
 
-  // Sync play / pause
+  // Sync play / pause — robust against autoplay-policy / AbortError races.
+  // Uses `playAudioWithRetry` so a temporarily blocked Play (autoplay
+  // rejection, racing pause, transient decode stall) does not leave the
+  // timeline frozen at 0. The retry controller is cancelled on pause /
+  // unmount so we never resume audio against the operator's intent.
+  const playControllerRef = useRef<ReturnType<typeof playAudioWithRetry> | null>(null);
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    // Always cancel any in-flight retry before changing state.
+    playControllerRef.current?.cancel();
+    playControllerRef.current = null;
 
     if (isPlaying) {
       if (Math.abs(audio.currentTime - currentTime) > 0.15) {
         audio.currentTime = currentTime;
       }
-      // If the browser refuses to start playback (autoplay policy, decode
-      // error, hardware busy…) surface it to the operator instead of
-      // silently swallowing the error — otherwise the timeline appears
-      // frozen at 0 and Play "doesn't work". `useAudioMasterClock` already
-      // detects the stall and hands the clock back to the lockstep playback
-      // subsystem, so the show still advances visually.
-      audio.play().catch((err) => {
-        const reason = err?.name === 'NotAllowedError'
-          ? 'Click anywhere on the page first, then press Play again.'
-          : (err?.message ?? 'Audio playback failed.');
-        toast.error('Audio could not start', { description: reason });
-        console.warn('[AudioWaveform] audio.play() rejected:', err);
+
+      let gestureToastId: string | number | undefined;
+      playControllerRef.current = playAudioWithRetry(audio, {
+        onSuccess: () => {
+          if (gestureToastId !== undefined) toast.dismiss(gestureToastId);
+        },
+        onAwaitingGesture: () => {
+          // Browser is blocking on the autoplay policy. Tell the operator we
+          // are waiting and that any click will recover instantly. Persistent
+          // until the retry succeeds or we give up.
+          gestureToastId = toast.warning('Tap to start audio', {
+            description: 'Browser blocked autoplay. Click anywhere to start the show.',
+            duration: Infinity,
+          });
+        },
+        onPermanentFailure: (err) => {
+          if (gestureToastId !== undefined) toast.dismiss(gestureToastId);
+          const name = (err as { name?: string } | null)?.name ?? '';
+          const description = name === 'NotAllowedError'
+            ? 'Browser kept blocking playback. Click the page and press Play again.'
+            : ((err as { message?: string } | null)?.message ?? 'Audio playback failed.');
+          toast.error('Audio could not start', { description });
+          console.warn('[AudioWaveform] audio.play() retries exhausted:', err);
+        },
       });
     } else {
       audio.pause();
     }
+
+    return () => {
+      playControllerRef.current?.cancel();
+      playControllerRef.current = null;
+    };
   }, [isPlaying]);
 
   // Sync seek (when user clicks timeline)
