@@ -26,12 +26,26 @@ const FLUSH_DEBOUNCE_MS = 800;
 const MAX_ENTRIES_PER_SCOPE = 50_000; // Soft safety cap (~50k * 16B = 0.8MB)
 const LS_PREFIX = 'fxk:terrain:';
 
+/**
+ * Persistence mode for the browser-local cache.
+ *  - 'project': IndexedDB (long-lived, scoped per `${projectId}:kind:version`).
+ *               Survives reloads + tab close. Default.
+ *  - 'session': sessionStorage only. Survives reloads of the SAME tab; clears
+ *               on tab close. Good when you want to test fresh terrain
+ *               sampling each work session without re-using stale heights.
+ *  - 'none':    in-memory only (no browser persistence). Hot-reload still
+ *               benefits from cloud hydrate if enabled.
+ */
+export type LocalCacheMode = 'project' | 'session' | 'none';
+
 export interface LocalCacheScope {
   projectId: string;
   tilesetKind: string;
   tilesetVersion: string;
   /** Max age in days; entries older than this are skipped on hydrate. 0 = no TTL. */
   maxAgeDays: number;
+  /** Persistence mode (default 'project'). */
+  mode?: LocalCacheMode;
 }
 
 interface StoredEntry {
