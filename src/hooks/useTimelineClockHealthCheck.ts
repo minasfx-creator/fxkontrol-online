@@ -111,29 +111,47 @@ export function useTimelineClockHealthCheck(options: TimelineClockHealthOptions 
       lastRecoveryAtRef.current = now;
 
       const wasExternal = clockState.source === 'external';
-      // Release any stale external sync claim so the local clock owns time again.
-      if (wasExternal) {
-        timelineClock.releaseExternalSync();
+      const audio = getAudioMaster();
+
+      // Prefer the audio-aware resync path when an audio master is registered:
+      // it snaps `timelineClock.time` to `audio.currentTime` *and* retries
+      // `audio.play()` with backoff, so the show continues with audio rather
+      // than silently dropping to a muted lockstep fallback.
+      if (audio) {
+        const result = resyncTimeline({
+          surfaceToasts: false,
+          reason: `Watchdog detected ${Math.round(stalledFor)}ms stall.`,
+        });
+        toast.warning('Timeline resynced', {
+          description: wasExternal
+            ? 'External audio stopped advancing. Re-locked clock to audio and retried playback.'
+            : 'Playback stalled. Re-locked clock to audio and retried playback.',
+        });
+        console.warn(
+          '[TimelineClockHealth] Stall after',
+          Math.round(stalledFor),
+          'ms — auto-resync result:',
+          result,
+        );
+      } else {
+        // No audio master: fall back to the local lockstep path.
+        if (wasExternal) timelineClock.releaseExternalSync();
+        lockstep.setEnabled(PLAYBACK_SUBSYSTEM_ID, true);
+        toast.warning('Playback recovered', {
+          description: wasExternal
+            ? 'External sync source stopped advancing. Switched to local playback to keep the show running.'
+            : 'Timeline stopped advancing. Restarted the local playback driver.',
+        });
+        console.warn(
+          '[TimelineClockHealth] Stall after',
+          Math.round(stalledFor),
+          'ms — forced lockstep fallback (no audio master).',
+        );
       }
-      // Make sure the lockstep playback subsystem is enabled — this is the
-      // only path that can actually advance `timelineClock.time` without an
-      // external master.
-      lockstep.setEnabled(PLAYBACK_SUBSYSTEM_ID, true);
 
       // Reset the sample so we don't immediately retrigger.
       lastTimeRef.current = timelineClock.getTime();
       lastAdvancedAtRef.current = now;
-
-      const description = wasExternal
-        ? 'External sync source stopped advancing. Switched to local playback to keep the show running.'
-        : 'Timeline stopped advancing. Restarted the local playback driver.';
-      toast.warning('Playback recovered', { description });
-      console.warn(
-        '[TimelineClockHealth] Stall detected after',
-        Math.round(stalledFor),
-        'ms — forced fallback to lockstep playback. wasExternal=',
-        wasExternal,
-      );
     }, sampleIntervalMs);
 
     return () => window.clearInterval(intervalId);
