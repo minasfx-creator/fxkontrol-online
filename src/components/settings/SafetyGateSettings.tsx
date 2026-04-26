@@ -74,6 +74,11 @@ export default function SafetyGateSettings() {
               interlocks, sem fricção. Ative os bloqueios apenas se você opera{' '}
               <strong>hardware real em show ao vivo</strong>.
             </p>
+            {!master && (
+              <p className="text-[11px] text-primary/80 mt-2 font-mono">
+                ✓ Modo livre ativo. Sem bloqueios. Ative camadas individuais abaixo se você usa hardware ao vivo.
+              </p>
+            )}
           </div>
         </div>
 
