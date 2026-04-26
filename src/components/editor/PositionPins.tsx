@@ -11,6 +11,7 @@ import { useAddressingStore } from '@/store/useAddressingStore';
 import { getBreakHeight } from '@/lib/pyroPhysics';
 import * as THREE from 'three';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
+import TerrainDebugOverlay from './TerrainDebugOverlay';
 
 const PYRO_COLOR = '#FF6B35';
 const DRONE_COLOR = '#00B4D8';
