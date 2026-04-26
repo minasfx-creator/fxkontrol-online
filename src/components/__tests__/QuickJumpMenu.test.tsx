@@ -41,8 +41,11 @@ describe('QuickJumpMenu — placement', () => {
     const root = container.firstChild as HTMLElement;
     expect(root.className).toContain('fixed');
     expect(root.className).toContain('z-[80]');
-    expect(root.style.top).toContain('safe-area-inset-top');
-    expect(root.style.right).toContain('safe-area-inset-right');
+    // jsdom drops env()/calc() from CSSStyleDeclaration; assert against
+    // the raw style attribute string instead so we still verify intent.
+    const styleAttr = root.getAttribute('style') ?? '';
+    expect(styleAttr).toContain('safe-area-inset-top');
+    expect(styleAttr).toContain('safe-area-inset-right');
   });
 });
 
