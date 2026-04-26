@@ -634,7 +634,7 @@ function collectParticlesFromSystems(
 
 // ── Main Component ──────────────────────────────────────────────────
 
-const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
+const NiagaraVFXController = React.forwardRef<THREE.Group, Record<string, never>>(
   function NiagaraVFXController(_props, _ref) {
     const { scene, camera, size } = useThree();
     const activeSystems = useRef<ActiveVFXSystem[]>([]);

@@ -1025,7 +1025,7 @@ function PlayheadIndicator({ pixelsPerSecond }: { pixelsPerSecond: number }) {
 const MIN_PPS = 4;
 const MAX_PPS = 80;
 
-const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, _ref) {
+const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(function Timeline(_props, _ref) {
   useRenderCounter('Timeline');
     const isPlaying = useProjectStore(s => s.isPlaying);
   const setPlaying = useProjectStore(s => s.setPlaying);
