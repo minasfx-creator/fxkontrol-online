@@ -481,14 +481,24 @@ Deno.serve(async (req) => {
     const toolCall = grokJson?.choices?.[0]?.message?.tool_calls?.[0];
     const argsStr = toolCall?.function?.arguments;
     if (!argsStr) {
+      log("error", "upstream", { reason: "no_tool_call", model: usedModel, outcome: "error", status: 502 });
       return jsonError(502, "xAI did not return a structured tool call.");
     }
     let macro: unknown;
     try {
       macro = JSON.parse(argsStr);
     } catch (e) {
+      log("error", "upstream", { reason: "tool_args_invalid_json", model: usedModel, outcome: "error", status: 502 });
       return jsonError(502, "xAI tool arguments not valid JSON.");
     }
+
+    log("info", "completed", {
+      model: usedModel,
+      promptTokens: grokJson?.usage?.prompt_tokens ?? null,
+      completionTokens: grokJson?.usage?.completion_tokens ?? null,
+      outcome: "completed",
+      status: 200,
+    });
 
     return new Response(
       JSON.stringify({
@@ -502,6 +512,7 @@ Deno.serve(async (req) => {
     );
   } catch (e) {
     console.error("grok-choreography error", e);
+    log("error", "exception", { error: e instanceof Error ? e.message : "unknown", outcome: "error", status: 500 });
     return jsonError(500, e instanceof Error ? e.message : "Unknown error");
   }
 });
