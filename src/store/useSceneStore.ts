@@ -717,6 +717,7 @@ export interface EnvironmentState {
   droneRendererMode: 'instanced' | 'swarm';  // instanced = PBR/LOD, swarm = tactical engine
   showHUDCrosshairs: boolean;    // AR-style HUD crosshairs overlay
   showTerrainDebug: boolean;     // Debug overlay: cached vs raycast terrain height per pin (drift > 0.5m highlighted)
+  showTerrainMetrics: boolean;   // Debug HUD: useTerrainHeightCache counters (hits/misses/drift/frame ms)
   arMode: boolean;               // AR overlay mode toggle
   arOverlayOpacity: number;      // 0-1 AR overlay opacity
   arBlendMode: 'screen' | 'add' | 'normal' | 'overlay';
@@ -801,6 +802,7 @@ const DEFAULT_ENVIRONMENT: EnvironmentState = {
   droneRendererMode: 'instanced',
   showHUDCrosshairs: false,
   showTerrainDebug: false,
+  showTerrainMetrics: false,
   arMode: false,
   arOverlayOpacity: 0.85,
   arBlendMode: 'screen',

@@ -200,6 +200,20 @@ export default function ViewportConfigMenu({
             </div>
             {env.showTerrainDebug && <span className="ml-auto text-[8px] text-primary">ON</span>}
           </button>
+          <button
+            onClick={() => updateEnvironment({ showTerrainMetrics: !env.showTerrainMetrics })}
+            className={cn(
+              "w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 transition-all hover:bg-muted/30",
+              env.showTerrainMetrics ? "text-primary" : "text-muted-foreground"
+            )}
+          >
+            <Mountain className="w-3.5 h-3.5" />
+            <div className="flex flex-col">
+              <span>Terrain Cache Metrics</span>
+              <span className="text-[8px] text-muted-foreground/50">hits · misses · drift · frame ms</span>
+            </div>
+            {env.showTerrainMetrics && <span className="ml-auto text-[8px] text-primary">ON</span>}
+          </button>
 
           <div className="h-px bg-border/20 mx-2 my-1" />
 
