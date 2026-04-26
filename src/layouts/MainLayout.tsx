@@ -12,6 +12,7 @@ import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { flushSync } from 'react-dom';
 import DockBar from '@/components/DockBar';
 import BetaPromoBanner from '@/components/BetaPromoBanner';
+import QuickJumpMenu from '@/components/QuickJumpMenu';
 import { lazyRetry } from '@/lib/lazyRetry';
 
 // Native View Transitions API support — captured once at module load.
