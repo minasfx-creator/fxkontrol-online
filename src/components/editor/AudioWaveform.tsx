@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useAudioMasterClock } from '@/hooks/useAudioMasterClock';
 import { playAudioWithRetry } from '@/lib/audio/playAudioWithRetry';
+import { registerAudioMaster } from '@/lib/audio/audioMasterRegistry';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
