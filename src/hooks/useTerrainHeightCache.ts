@@ -34,8 +34,17 @@ const UNRESOLVED_BATCH_PER_FRAME = 16;
 const HEIGHT_DRIFT_THRESHOLD = 0.5;
 
 export interface TerrainHeightCache {
-  /** Get cached terrain Y for a given XZ position. Returns 0 if no terrain hit yet. */
+  /**
+   * Get cached terrain Y for a given XZ position. Returns 0 if no terrain hit yet.
+   *
+   * One-shot fallback: when the position is not in the cache and the tiles
+   * group is currently in the scene, performs a synchronous raycast and
+   * caches the result, so newly created pins land on the surface on the
+   * very first render instead of dropping to y=0.
+   */
   getHeight: (x: number, z: number) => number;
+  /** True iff a terrain hit has been resolved for this XZ (cached). */
+  isResolved: (x: number, z: number) => boolean;
   /** Raw map for direct access */
   heights: Map<string, number>;
 }
@@ -71,12 +80,17 @@ export function useTerrainHeightCache(
   const revalidateIndexRef = useRef(0);
   // Tracks the last-seen tile mesh count; a delta means LOD changed → revalidate
   const lastMeshCountRef = useRef(0);
+  // Latest reference to the tiles group; used by the one-shot fallback in getHeight()
+  const tilesGroupRef = useRef<THREE.Object3D | null>(null);
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
 
   useFrame(() => {
     const _t0 = performance.now();
     if (!enabled || positions.length === 0) {
       // When tiles are disabled, drop the cache so we don't reuse stale values
       if (cacheRef.current.size > 0) cacheRef.current.clear();
+      tilesGroupRef.current = null;
       terrainMetrics.setTrackedPositions(positions.length);
       terrainMetrics.setCacheSize(0);
       terrainMetrics.setTilesGroupFound(false);
@@ -84,7 +98,8 @@ export function useTerrainHeightCache(
       return;
     }
 
-    const tilesGroup = scene.getObjectByName('GoogleTilesGroup');
+    const tilesGroup = scene.getObjectByName('GoogleTilesGroup') ?? null;
+    tilesGroupRef.current = tilesGroup;
     terrainMetrics.setTilesGroupFound(!!tilesGroup);
     terrainMetrics.setTrackedPositions(positions.length);
     if (!tilesGroup) {
@@ -149,10 +164,36 @@ export function useTerrainHeightCache(
   });
 
   const getHeight = useCallback((x: number, z: number): number => {
-    const v = cacheRef.current.get(posKey(x, z));
-    terrainMetrics.recordGet(v !== undefined);
-    return v ?? 0;
+    const cache = cacheRef.current;
+    const key = posKey(x, z);
+    const v = cache.get(key);
+    if (v !== undefined) {
+      terrainMetrics.recordGet(true);
+      return v;
+    }
+    // ── One-shot fallback ──
+    // Position not yet resolved: try a synchronous raycast against the
+    // currently loaded tiles. If a tile mesh exists under the XZ ray, we
+    // resolve immediately and cache, so the pin never falls to y=0 between
+    // its first render and the next useFrame pass.
+    const tilesGroup = tilesGroupRef.current;
+    if (enabledRef.current && tilesGroup) {
+      const y = sampleTerrain(tilesGroup, x, z);
+      if (y !== null) {
+        cache.set(key, y);
+        terrainMetrics.recordOneShotResolve();
+        terrainMetrics.recordGet(true);
+        terrainMetrics.setCacheSize(cache.size);
+        return y;
+      }
+    }
+    terrainMetrics.recordGet(false);
+    return 0;
   }, []);
 
-  return { getHeight, heights: cacheRef.current };
+  const isResolved = useCallback((x: number, z: number): boolean => {
+    return cacheRef.current.has(posKey(x, z));
+  }, []);
+
+  return { getHeight, isResolved, heights: cacheRef.current };
 }

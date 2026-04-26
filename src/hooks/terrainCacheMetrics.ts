@@ -17,6 +17,8 @@ export interface TerrainCacheMetrics {
   revalidations: number;
   /** Cache writes triggered by drift > threshold (height changed). */
   driftEvents: number;
+  /** One-shot synchronous raycasts triggered by getHeight() on a cache miss. */
+  oneShotResolves: number;
   /** LOD changes detected (tile mesh count delta). */
   lodChanges: number;
   /** Cache size (resolved entries). */
@@ -41,6 +43,7 @@ const _state: TerrainCacheMetrics = {
   unresolvedSamples: 0,
   revalidations: 0,
   driftEvents: 0,
+  oneShotResolves: 0,
   lodChanges: 0,
   cacheSize: 0,
   trackedPositions: 0,
@@ -69,6 +72,7 @@ export const terrainMetrics = {
   recordUnresolvedSample() { _state.unresolvedSamples++; },
   recordRevalidation() { _state.revalidations++; },
   recordDrift() { _state.driftEvents++; },
+  recordOneShotResolve() { _state.oneShotResolves++; },
   recordLodChange() { _state.lodChanges++; },
   setCacheSize(n: number) { _state.cacheSize = n; },
   setTrackedPositions(n: number) { _state.trackedPositions = n; },
@@ -95,6 +99,7 @@ export const terrainMetrics = {
     _state.hits = 0; _state.misses = 0;
     _state.unresolvedSamples = 0; _state.revalidations = 0;
     _state.driftEvents = 0; _state.lodChanges = 0;
+    _state.oneShotResolves = 0;
     _state.lastFrameMs = 0; _state.avgFrameMs = 0; _state.peakFrameMs = 0;
     _state.frame = 0;
     _frameTimes.length = 0;
