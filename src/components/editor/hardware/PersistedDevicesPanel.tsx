@@ -19,7 +19,7 @@
  */
 
 import { useEffect, useState, useMemo } from 'react';
-import { Cable, Usb, Bluetooth, Wifi, Trash2, AlertTriangle } from 'lucide-react';
+import { Cable, Usb, Bluetooth, Wifi, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { portRegistry, type PortRegistryEntry } from '@/core/discovery/portRegistry';
 import { unifiedDiscovery } from '@/core/discovery/UnifiedDiscoveryService';
 import type { DiscoveredDevice } from '@/core/discovery/types';
@@ -107,6 +107,22 @@ function classify(entry: PortRegistryEntry, device?: DiscoveredDevice): { status
 export function PersistedDevicesPanel() {
   const [tick, setTick] = useState(0);
   const [devices, setDevices] = useState<DiscoveredDevice[]>(unifiedDiscovery.getDevices());
+  const [isRescanning, setIsRescanning] = useState(false);
+
+  const handleRescan = async () => {
+    if (isRescanning) return;
+    setIsRescanning(true);
+    try {
+      await unifiedDiscovery.scanLight();
+      setDevices(unifiedDiscovery.getDevices());
+      setTick(t => t + 1);
+      toast.success('Rescan concluído — status atualizado');
+    } catch (e) {
+      toast.error(`Rescan falhou: ${(e as Error).message}`);
+    } finally {
+      setIsRescanning(false);
+    }
+  };
 
   // Re-render when the unified discovery stream changes (covers hot-plug
   // and `forgetDevice` events that mutate the registry indirectly).
@@ -148,23 +164,43 @@ export function PersistedDevicesPanel() {
     toast.success(`${row.entry.lastLabel} removido do registro`);
   };
 
+  const rescanButton = (
+    <Button
+      size="sm"
+      variant="outline"
+      className="h-6 px-2 gap-1 text-[8px] font-mono uppercase tracking-wider"
+      onClick={handleRescan}
+      disabled={isRescanning}
+      title="Forçar rescan silencioso (getPorts/getDevices) e recalcular badges"
+    >
+      <RefreshCw className={cn('w-3 h-3', isRescanning && 'animate-spin')} />
+      {isRescanning ? 'Rescanning…' : 'Rescan now'}
+    </Button>
+  );
+
   if (rows.length === 0) {
     return (
-      <div className="rounded border border-border/40 bg-card/30 p-3 text-[8px] font-mono text-muted-foreground/60 text-center">
-        Nenhum dispositivo persistido ainda. Autorize um adaptador para habilitar auto-reopen na próxima sessão.
+      <div className="rounded border border-border/40 bg-card/30 p-3 space-y-2 text-center">
+        <div className="text-[8px] font-mono text-muted-foreground/60">
+          Nenhum dispositivo persistido ainda. Autorize um adaptador para habilitar auto-reopen na próxima sessão.
+        </div>
+        <div className="flex justify-center">{rescanButton}</div>
       </div>
     );
   }
 
   return (
     <div className="rounded border border-border/40 bg-card/30 p-2 space-y-1.5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <span className="text-[7px] font-mono uppercase tracking-wider text-muted-foreground/70">
           Persisted devices ({rows.length})
         </span>
-        <span className="text-[7px] font-mono text-muted-foreground/50">
-          status calculado vs unified discovery snapshot
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="hidden sm:inline text-[7px] font-mono text-muted-foreground/50">
+            status calculado vs unified discovery snapshot
+          </span>
+          {rescanButton}
+        </div>
       </div>
       <ul className="space-y-1">
         {rows.map(row => {
