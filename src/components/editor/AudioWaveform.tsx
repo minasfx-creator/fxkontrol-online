@@ -4,6 +4,7 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useAudioMasterClock } from '@/hooks/useAudioMasterClock';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
