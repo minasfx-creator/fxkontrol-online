@@ -39,8 +39,13 @@ import { timelineClock } from '@/core/timeline/TimelineClock';
 import { lockstep } from '@/core/reliability/lockstepEngine';
 import { useProjectStore } from '@/store/useProjectStore';
 import { getAudioMaster, resyncTimeline } from '@/lib/audio/audioMasterRegistry';
+import { timelineHealthStore } from '@/core/health/timelineHealthStore';
 
 const PLAYBACK_SUBSYSTEM_ID = 'playback';
+/** How long the badge stays in 'recovered' state after a successful recovery
+ *  before falling back to 'running'. Pure UX value — does not affect any
+ *  recovery logic. */
+const RECOVERED_DISPLAY_MS = 2500;
 
 export interface TimelineClockHealthOptions {
   /** Milliseconds without forward progress before we declare a stall. */
@@ -69,6 +74,7 @@ export function useTimelineClockHealthCheck(options: TimelineClockHealthOptions 
   const recoveringRef = useRef<boolean>(false);
 
   useEffect(() => {
+    let recoveredUntil = 0;
     const intervalId = window.setInterval(() => {
       const state = useProjectStore.getState();
       if (!state.isPlaying) {
@@ -77,6 +83,8 @@ export function useTimelineClockHealthCheck(options: TimelineClockHealthOptions 
         lastTimeRef.current = timelineClock.getTime();
         lastAdvancedAtRef.current = performance.now();
         recoveringRef.current = false;
+        recoveredUntil = 0;
+        timelineHealthStore._set({ status: 'idle', stalledForMs: 0 });
         return;
       }
 
@@ -89,6 +97,7 @@ export function useTimelineClockHealthCheck(options: TimelineClockHealthOptions 
       if (atEnd) {
         lastTimeRef.current = t;
         lastAdvancedAtRef.current = now;
+        timelineHealthStore._set({ status: 'idle', stalledForMs: 0 });
         return;
       }
 
@@ -96,17 +105,30 @@ export function useTimelineClockHealthCheck(options: TimelineClockHealthOptions 
         lastTimeRef.current = t;
         lastAdvancedAtRef.current = now;
         recoveringRef.current = false;
+        // After a successful recovery we keep the 'recovered' badge for a
+        // short window so the operator actually notices it before the badge
+        // settles on 'running'.
+        const status: 'running' | 'recovered' = now < recoveredUntil ? 'recovered' : 'running';
+        timelineHealthStore._set({ status, stalledForMs: 0 });
         return;
       }
 
       const stalledFor = now - lastAdvancedAtRef.current;
-      if (stalledFor < stallThresholdMs) return;
+      if (stalledFor < stallThresholdMs) {
+        // Still under threshold but not advancing this tick → keep
+        // running/recovered status; only update stalledForMs for tooltip use.
+        timelineHealthStore._set({ stalledForMs: Math.round(stalledFor) });
+        return;
+      }
 
       // ── Stall detected ─ force the fallback path ────────────────────────
       // Skip if we just attempted recovery — give the lockstep a chance to
       // actually start advancing before we shout again.
       const sinceLastRecovery = now - lastRecoveryAtRef.current;
-      if (recoveringRef.current && sinceLastRecovery < recoveryCooldownMs) return;
+      if (recoveringRef.current && sinceLastRecovery < recoveryCooldownMs) {
+        timelineHealthStore._set({ status: 'stalled', stalledForMs: Math.round(stalledFor) });
+        return;
+      }
 
       recoveringRef.current = true;
       lastRecoveryAtRef.current = now;
@@ -150,11 +172,24 @@ export function useTimelineClockHealthCheck(options: TimelineClockHealthOptions 
         );
       }
 
+      // Mark the badge as 'recovered' for a short window so the operator
+      // sees that the watchdog actually intervened. The next advancing tick
+      // will downgrade it to 'running'.
+      recoveredUntil = now + RECOVERED_DISPLAY_MS;
+      timelineHealthStore._set({
+        status: 'recovered',
+        stalledForMs: Math.round(stalledFor),
+        lastRecoveryPath: audio ? 'audio-resync' : 'lockstep-fallback',
+      });
+
       // Reset the sample so we don't immediately retrigger.
       lastTimeRef.current = timelineClock.getTime();
       lastAdvancedAtRef.current = now;
     }, sampleIntervalMs);
 
-    return () => window.clearInterval(intervalId);
+    return () => {
+      window.clearInterval(intervalId);
+      timelineHealthStore._set({ status: 'idle', stalledForMs: 0 });
+    };
   }, [stallThresholdMs, sampleIntervalMs, recoveryCooldownMs]);
 }

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { timelineTransport } from '@/core/transport/timelineTransport';
 import { resyncTimeline, getAudioMaster } from '@/lib/audio/audioMasterRegistry';
+import { TimelineHealthBadge } from '@/components/editor/TimelineHealthBadge';
 import { useTransportDiagnostics } from '@/hooks/useTransportDiagnostics';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
@@ -1239,6 +1240,10 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
           <span className="text-muted-foreground/20 text-[10px] mx-1">/</span>
           <span className="font-mono text-[13px] text-muted-foreground/35 tabular-nums tracking-tight">{formatTime(duration)}</span>
         </div>
+
+        {/* Clock health badge — running / stalled / recovered, fed by the
+            same watchdog that drives auto-recovery (`useTimelineClockHealthCheck`). */}
+        <TimelineHealthBadge />
 
         {/* Transport diagnostic chip — explains why Play may not advance (0×, END, EXT) */}
         {transportChip && (
