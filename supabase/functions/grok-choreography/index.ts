@@ -278,7 +278,7 @@ Deno.serve(async (req) => {
   try {
     const XAI_API_KEY = Deno.env.get("XAI_API_KEY");
     if (!XAI_API_KEY) {
-      log("error", "config", { reason: "missing_xai_key" });
+      log("error", "config", { reason: "missing_xai_key", outcome: "error", status: 500 });
       return jsonError(500, "XAI_API_KEY is not configured", { requestId });
     }
 
@@ -293,18 +293,18 @@ Deno.serve(async (req) => {
     if (declaredLen !== null) {
       const n = Number(declaredLen);
       if (!Number.isFinite(n) || n < 0) {
-        log("warn", "size_guard", { reason: "invalid_content_length", declared: declaredLen });
+        log("warn", "size_guard", { reason: "invalid_content_length", declared: declaredLen, outcome: "rejected", status: 400 });
         return jsonError(400, "Invalid Content-Length header.", { requestId });
       }
       if (n > MAX_BODY_BYTES) {
-        log("warn", "size_guard", { reason: "header_oversize", declaredBytes: n, maxBytes: MAX_BODY_BYTES });
+        log("warn", "size_guard", { reason: "header_oversize", declaredBytes: n, maxBytes: MAX_BODY_BYTES, outcome: "rejected", status: 413 });
         return jsonError(413, `Payload too large: ${n} bytes (max ${MAX_BODY_HUMAN}).`, { requestId });
       }
     }
 
     // 0b. Stream-and-count guard — clients can lie about Content-Length or omit it.
     if (!req.body) {
-      log("warn", "size_guard", { reason: "empty_body" });
+      log("warn", "size_guard", { reason: "empty_body", outcome: "rejected", status: 400 });
       return jsonError(400, "Empty request body.", { requestId });
     }
     const reader = req.body.getReader();
@@ -318,14 +318,14 @@ Deno.serve(async (req) => {
           received += value.byteLength;
           if (received > MAX_BODY_BYTES) {
             try { await reader.cancel(); } catch { /* ignore */ }
-            log("warn", "size_guard", { reason: "stream_oversize", receivedBytes: received, maxBytes: MAX_BODY_BYTES });
+            log("warn", "size_guard", { reason: "stream_oversize", receivedBytes: received, maxBytes: MAX_BODY_BYTES, outcome: "rejected", status: 413 });
             return jsonError(413, `Payload too large: exceeded ${MAX_BODY_HUMAN} while reading body.`, { requestId });
           }
           chunks.push(value);
         }
       }
     } catch (e) {
-      log("warn", "size_guard", { reason: "body_read_failed", error: e instanceof Error ? e.message : "unknown" });
+      log("warn", "size_guard", { reason: "body_read_failed", error: e instanceof Error ? e.message : "unknown", outcome: "rejected", status: 400 });
       return jsonError(400, `Failed to read request body: ${e instanceof Error ? e.message : "unknown"}`, { requestId });
     }
 
@@ -338,7 +338,7 @@ Deno.serve(async (req) => {
       const text = new TextDecoder().decode(merged);
       raw = text.length === 0 ? {} : JSON.parse(text);
     } catch {
-      log("warn", "json_parse", { reason: "invalid_json", bytes: received });
+      log("warn", "json_parse", { reason: "invalid_json", bytes: received, outcome: "rejected", status: 400 });
       return jsonError(400, "Invalid JSON body.", { requestId });
     }
 
@@ -353,6 +353,8 @@ Deno.serve(async (req) => {
         ...summary,
         // Cardinality-only signals about the (rejected) payload — never the values.
         topLevelKeys: raw && typeof raw === "object" ? Object.keys(raw as Record<string, unknown>).slice(0, 20) : [],
+        outcome: "rejected",
+        status: 422,
       });
       const firstField = Object.entries(flat.fieldErrors)[0];
       const msg = firstField
@@ -375,6 +377,7 @@ Deno.serve(async (req) => {
       promptLen: userPrompt.length,
       hasImage: !!body.imageDataUrl,
       imageBytes: body.imageDataUrl?.length ?? 0,
+      outcome: "accepted",
     });
 
 
