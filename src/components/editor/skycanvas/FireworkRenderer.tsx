@@ -1237,7 +1237,9 @@ export function TimelineEffects() {
       const isGroundType = partType === 'gerb' || partType === 'waterfall' || partType === 'flame' || partType === 'fan' || partType === 'ground' || partType === 'sfx' || partType === 'light';
 
       const prefireDuration = getTypedPrefire(partType, caliber, effect.prefire);
-      const typedDuration = getTypedDuration(partType, caliber, effect.duration, effect.shotCount);
+      // Honor per-item duration override from PropertiesPanel
+      const baseDuration = item.durationOverride ?? effect.duration;
+      const typedDuration = getTypedDuration(partType, caliber, baseDuration, effect.shotCount);
       const weatherDuration = typedDuration * weatherDampening * humidityFactor;
       const totalDuration = (isShellType ? prefireDuration : 0) + weatherDuration;
 
