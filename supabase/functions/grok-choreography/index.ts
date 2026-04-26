@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
     }
 
     const grokBody = {
-      model: "grok-2-vision-1212",
+      model: "grok-4",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userContent },
