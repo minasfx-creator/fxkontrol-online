@@ -52,6 +52,8 @@ export interface TerrainCachePersistenceHandle {
   flush: () => Promise<void>;
   /** Server-side purge of expired/stale-version rows. Returns deleted count. */
   purgeExpired: () => Promise<number>;
+  /** Server-side delete of ALL rows for the current scope. Returns deleted count. */
+  clearAll: () => Promise<number>;
   /** Disable further writes/reads (cleanup). */
   dispose: () => void;
 }
