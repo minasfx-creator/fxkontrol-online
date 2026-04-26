@@ -142,6 +142,10 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     };
   }, [audioUrl]);
 
+  // Audio element drives the timeline as master clock — eliminates drift
+  // between music and 3D viewport / FX spawns.
+  useAudioMasterClock(audioRef, audioUrl);
+
   // Sync volume / mute
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = muted ? 0 : volume;
