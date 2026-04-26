@@ -34,8 +34,17 @@ const UNRESOLVED_BATCH_PER_FRAME = 16;
 const HEIGHT_DRIFT_THRESHOLD = 0.5;
 
 export interface TerrainHeightCache {
-  /** Get cached terrain Y for a given XZ position. Returns 0 if no terrain hit yet. */
+  /**
+   * Get cached terrain Y for a given XZ position. Returns 0 if no terrain hit yet.
+   *
+   * One-shot fallback: when the position is not in the cache and the tiles
+   * group is currently in the scene, performs a synchronous raycast and
+   * caches the result, so newly created pins land on the surface on the
+   * very first render instead of dropping to y=0.
+   */
   getHeight: (x: number, z: number) => number;
+  /** True iff a terrain hit has been resolved for this XZ (cached). */
+  isResolved: (x: number, z: number) => boolean;
   /** Raw map for direct access */
   heights: Map<string, number>;
 }
