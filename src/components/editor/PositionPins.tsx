@@ -11,6 +11,7 @@ import { useAddressingStore } from '@/store/useAddressingStore';
 import { getBreakHeight } from '@/lib/pyroPhysics';
 import * as THREE from 'three';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
+import TerrainDebugOverlay from './TerrainDebugOverlay';
 
 const PYRO_COLOR = '#FF6B35';
 const DRONE_COLOR = '#00B4D8';
@@ -842,7 +843,8 @@ export default function PositionPins() {
   const positions = useProjectStore(s => s.positions);
   const google3DTilesEnabled = useSceneStore(s => s.settings.google3DTilesEnabled);
   const [contextMenu, setContextMenu] = useState<{ pos: Position; screen: { x: number; y: number } } | null>(null);
-  const { getHeight } = useTerrainHeightCache(positions, google3DTilesEnabled);
+  const cache = useTerrainHeightCache(positions, google3DTilesEnabled);
+  const { getHeight } = cache;
 
   const handleRightClick = useCallback((pos: Position, screenPos: { x: number; y: number }) => {
     setContextMenu({ pos, screen: screenPos });
@@ -855,6 +857,7 @@ export default function PositionPins() {
       {positions.map((pos) => (
         <Pin key={pos.id} position={pos} terrainY={getHeight(pos.x, pos.z)} onRightClick={handleRightClick} />
       ))}
+      <TerrainDebugOverlay cache={cache} />
     </>
   );
 }
