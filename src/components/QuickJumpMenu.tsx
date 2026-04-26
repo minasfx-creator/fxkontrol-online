@@ -42,7 +42,7 @@ export default function QuickJumpMenu() {
   return (
     <div
       ref={ref}
-      className="fixed top-2 left-2 z-[60] pointer-events-auto"
+      className="fixed top-2 right-2 z-[60] pointer-events-auto"
       style={{ fontFamily: 'inherit' }}
     >
       <button
@@ -69,7 +69,7 @@ export default function QuickJumpMenu() {
       {open && (
         <div
           role="menu"
-          className="absolute top-full left-0 mt-1 min-w-[180px] rounded-panel overflow-hidden backdrop-blur-xl border animate-in fade-in slide-in-from-top-1 duration-150"
+          className="absolute top-full right-0 mt-1 min-w-[180px] rounded-panel overflow-hidden backdrop-blur-xl border animate-in fade-in slide-in-from-top-1 duration-150"
           style={{
             background: 'hsl(var(--background) / 0.85)',
             borderColor: 'hsl(32 100% 50% / 0.2)',
