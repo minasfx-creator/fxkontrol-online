@@ -99,6 +99,7 @@ export const terrainMetrics = {
     _state.hits = 0; _state.misses = 0;
     _state.unresolvedSamples = 0; _state.revalidations = 0;
     _state.driftEvents = 0; _state.lodChanges = 0;
+    _state.oneShotResolves = 0;
     _state.lastFrameMs = 0; _state.avgFrameMs = 0; _state.peakFrameMs = 0;
     _state.frame = 0;
     _frameTimes.length = 0;
