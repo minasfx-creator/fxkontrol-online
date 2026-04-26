@@ -21,9 +21,10 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import {
-  Popover as RealPopover,
-  PopoverContent as RealPopoverContent,
-  PopoverTrigger as RealPopoverTrigger,
+  Root as RealPopover,
+  Trigger as RealPopoverTrigger,
+  Portal as RealPopoverPortal,
+  Content as RealPopoverContent,
 } from '@radix-ui/react-popover';
 import {
   useTimelineHealthSettings,
