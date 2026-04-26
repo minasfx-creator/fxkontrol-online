@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useAudioMasterClock } from '@/hooks/useAudioMasterClock';
 import { playAudioWithRetry } from '@/lib/audio/playAudioWithRetry';
+import { registerAudioMaster } from '@/lib/audio/audioMasterRegistry';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -98,6 +99,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playControllerRef = useRef<ReturnType<typeof playAudioWithRetry> | null>(null);
   const resizeStartY = useRef(0);
   const resizeStartH = useRef(0);
 
@@ -136,7 +138,21 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     audio.playbackRate = playbackSpeed;
     audioRef.current = audio;
 
+    // Expose this audio element to the global registry so the toolbar
+    // "Resync timeline" button and the watchdog can re-lock the clock to
+    // the audio without prop-drilling. We pass a `cancelActivePlay` thunk
+    // so the registry can stop our in-flight retry controller before
+    // issuing its own.
+    const unregister = registerAudioMaster({
+      audio,
+      cancelActivePlay: () => {
+        playControllerRef.current?.cancel();
+        playControllerRef.current = null;
+      },
+    });
+
     return () => {
+      unregister();
       audio.pause();
       audio.src = '';
       audioRef.current = null;
@@ -162,7 +178,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   // rejection, racing pause, transient decode stall) does not leave the
   // timeline frozen at 0. The retry controller is cancelled on pause /
   // unmount so we never resume audio against the operator's intent.
-  const playControllerRef = useRef<ReturnType<typeof playAudioWithRetry> | null>(null);
+  // (playControllerRef is declared above near the other refs.)
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
