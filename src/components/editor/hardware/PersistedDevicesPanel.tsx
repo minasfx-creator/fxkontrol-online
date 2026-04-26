@@ -172,7 +172,7 @@ export function PersistedDevicesPanel() {
           row.entry.key,
           row.entry.profileId ?? '',
           row.entry.host ?? '',
-          row.device?.name ?? '',
+          row.device?.label ?? '',
         ].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
