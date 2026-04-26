@@ -21,6 +21,7 @@ import * as THREE from 'three';
 import { terrainMetrics } from './terrainCacheMetrics';
 import { useTerrainCacheConfig } from './useTerrainCacheConfig';
 import { createTerrainCachePersistence, type TerrainCachePersistenceHandle, type TilesetKind } from './terrainCachePersistence';
+import { createTerrainLocalCache, type TerrainLocalCacheHandle } from './terrainCacheLocalStorage';
 
 const _ray = new THREE.Raycaster();
 const _origin = new THREE.Vector3();
