@@ -13,6 +13,81 @@ const corsHeaders = {
 
 const XAI_URL = "https://api.x.ai/v1/chat/completions";
 
+/**
+ * ─── Aggregated counters (per-isolate, in-memory) ──────────────────────────
+ * Survive across requests within the same edge-function instance. Reset on
+ * cold start. Logged on every event (cumulative) and as a periodic snapshot
+ * so success/failure rates can be tracked over time without external storage.
+ *
+ * Keys are intentionally low-cardinality:
+ *   stage   — pipeline stage (size_guard, json_parse, schema, upstream, accepted, completed, config)
+ *   outcome — accepted | rejected | upstream_ok | upstream_fail | completed | error
+ *   status  — HTTP status code returned to the client (string for JSON-friendliness)
+ *   reason  — short rejection reason code (header_oversize, validation_failed, …)
+ */
+const counters = {
+  startedAt: new Date().toISOString(),
+  total: 0,
+  byOutcome: {} as Record<string, number>,
+  byStatus: {} as Record<string, number>,
+  byStageOutcome: {} as Record<string, number>, // `${stage}:${outcome}`
+  byReason: {} as Record<string, number>,       // `${stage}:${reason}`
+  byUpstreamModel: {} as Record<string, number>, // `${model}:${ok|fail}`
+};
+
+function bump(map: Record<string, number>, key: string, delta = 1) {
+  map[key] = (map[key] ?? 0) + delta;
+}
+
+function counterSnapshot() {
+  const accepted = counters.byOutcome["accepted"] ?? 0;
+  const rejected = counters.byOutcome["rejected"] ?? 0;
+  const completed = counters.byOutcome["completed"] ?? 0;
+  const errored = counters.byOutcome["error"] ?? 0;
+  const upstreamOk = counters.byOutcome["upstream_ok"] ?? 0;
+  const upstreamFail = counters.byOutcome["upstream_fail"] ?? 0;
+  const totalDecisions = accepted + rejected;
+  const acceptRate = totalDecisions > 0 ? +(accepted / totalDecisions).toFixed(4) : null;
+  const upstreamTotal = upstreamOk + upstreamFail;
+  const upstreamSuccessRate = upstreamTotal > 0 ? +(upstreamOk / upstreamTotal).toFixed(4) : null;
+  const completionRate = accepted > 0 ? +(completed / accepted).toFixed(4) : null;
+  return {
+    startedAt: counters.startedAt,
+    total: counters.total,
+    accepted,
+    rejected,
+    completed,
+    errored,
+    upstreamOk,
+    upstreamFail,
+    acceptRate,
+    upstreamSuccessRate,
+    completionRate,
+    byOutcome: counters.byOutcome,
+    byStatus: counters.byStatus,
+    byStageOutcome: counters.byStageOutcome,
+    byReason: counters.byReason,
+    byUpstreamModel: counters.byUpstreamModel,
+  };
+}
+
+// Periodic snapshot — emits a single structured line every 60s if the isolate
+// stays warm. Idempotent: only the first request in a cold isolate arms it.
+let _snapshotTimer: number | null = null;
+function ensureSnapshotTimer() {
+  if (_snapshotTimer !== null) return;
+  _snapshotTimer = setInterval(() => {
+    if (counters.total === 0) return;
+    console.log(JSON.stringify({
+      ts: new Date().toISOString(),
+      level: "info",
+      fn: "grok-choreography",
+      stage: "counters_snapshot",
+      ...counterSnapshot(),
+    }));
+  }, 60_000) as unknown as number;
+}
+
 const macroSchema = {
   type: "object",
   properties: {
@@ -147,11 +222,31 @@ Deno.serve(async (req) => {
     req.headers.get("x-request-id") ||
     (typeof crypto?.randomUUID === "function" ? crypto.randomUUID() : `req_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`);
 
+  ensureSnapshotTimer();
+
   /**
    * Structured log helper. Always JSON, single line, no prompt/imageDataUrl content.
    * Stage = where in the pipeline the event happened (size_guard | json_parse | schema | upstream | …).
+   * When `fields.outcome` / `fields.status` / `fields.reason` are present they also bump
+   * aggregated counters and the cumulative snapshot is appended to every log line.
    */
   const log = (level: "info" | "warn" | "error", stage: string, fields: Record<string, unknown>) => {
+    const outcome = typeof fields.outcome === "string" ? fields.outcome : undefined;
+    const status = fields.status !== undefined ? String(fields.status) : undefined;
+    const reason = typeof fields.reason === "string" ? fields.reason : undefined;
+    const model = typeof fields.model === "string" ? fields.model : undefined;
+
+    if (outcome) {
+      counters.total += 1;
+      bump(counters.byOutcome, outcome);
+      bump(counters.byStageOutcome, `${stage}:${outcome}`);
+      if (status) bump(counters.byStatus, status);
+      if (reason) bump(counters.byReason, `${stage}:${reason}`);
+      if (model && (outcome === "upstream_ok" || outcome === "upstream_fail")) {
+        bump(counters.byUpstreamModel, `${model}:${outcome === "upstream_ok" ? "ok" : "fail"}`);
+      }
+    }
+
     const line = JSON.stringify({
       ts: new Date().toISOString(),
       level,
@@ -159,6 +254,7 @@ Deno.serve(async (req) => {
       requestId,
       stage,
       ...fields,
+      counters: outcome ? counterSnapshot() : undefined,
     });
     if (level === "error") console.error(line);
     else if (level === "warn") console.warn(line);
@@ -182,7 +278,7 @@ Deno.serve(async (req) => {
   try {
     const XAI_API_KEY = Deno.env.get("XAI_API_KEY");
     if (!XAI_API_KEY) {
-      log("error", "config", { reason: "missing_xai_key" });
+      log("error", "config", { reason: "missing_xai_key", outcome: "error", status: 500 });
       return jsonError(500, "XAI_API_KEY is not configured", { requestId });
     }
 
@@ -197,18 +293,18 @@ Deno.serve(async (req) => {
     if (declaredLen !== null) {
       const n = Number(declaredLen);
       if (!Number.isFinite(n) || n < 0) {
-        log("warn", "size_guard", { reason: "invalid_content_length", declared: declaredLen });
+        log("warn", "size_guard", { reason: "invalid_content_length", declared: declaredLen, outcome: "rejected", status: 400 });
         return jsonError(400, "Invalid Content-Length header.", { requestId });
       }
       if (n > MAX_BODY_BYTES) {
-        log("warn", "size_guard", { reason: "header_oversize", declaredBytes: n, maxBytes: MAX_BODY_BYTES });
+        log("warn", "size_guard", { reason: "header_oversize", declaredBytes: n, maxBytes: MAX_BODY_BYTES, outcome: "rejected", status: 413 });
         return jsonError(413, `Payload too large: ${n} bytes (max ${MAX_BODY_HUMAN}).`, { requestId });
       }
     }
 
     // 0b. Stream-and-count guard — clients can lie about Content-Length or omit it.
     if (!req.body) {
-      log("warn", "size_guard", { reason: "empty_body" });
+      log("warn", "size_guard", { reason: "empty_body", outcome: "rejected", status: 400 });
       return jsonError(400, "Empty request body.", { requestId });
     }
     const reader = req.body.getReader();
@@ -222,14 +318,14 @@ Deno.serve(async (req) => {
           received += value.byteLength;
           if (received > MAX_BODY_BYTES) {
             try { await reader.cancel(); } catch { /* ignore */ }
-            log("warn", "size_guard", { reason: "stream_oversize", receivedBytes: received, maxBytes: MAX_BODY_BYTES });
+            log("warn", "size_guard", { reason: "stream_oversize", receivedBytes: received, maxBytes: MAX_BODY_BYTES, outcome: "rejected", status: 413 });
             return jsonError(413, `Payload too large: exceeded ${MAX_BODY_HUMAN} while reading body.`, { requestId });
           }
           chunks.push(value);
         }
       }
     } catch (e) {
-      log("warn", "size_guard", { reason: "body_read_failed", error: e instanceof Error ? e.message : "unknown" });
+      log("warn", "size_guard", { reason: "body_read_failed", error: e instanceof Error ? e.message : "unknown", outcome: "rejected", status: 400 });
       return jsonError(400, `Failed to read request body: ${e instanceof Error ? e.message : "unknown"}`, { requestId });
     }
 
@@ -242,7 +338,7 @@ Deno.serve(async (req) => {
       const text = new TextDecoder().decode(merged);
       raw = text.length === 0 ? {} : JSON.parse(text);
     } catch {
-      log("warn", "json_parse", { reason: "invalid_json", bytes: received });
+      log("warn", "json_parse", { reason: "invalid_json", bytes: received, outcome: "rejected", status: 400 });
       return jsonError(400, "Invalid JSON body.", { requestId });
     }
 
@@ -257,6 +353,8 @@ Deno.serve(async (req) => {
         ...summary,
         // Cardinality-only signals about the (rejected) payload — never the values.
         topLevelKeys: raw && typeof raw === "object" ? Object.keys(raw as Record<string, unknown>).slice(0, 20) : [],
+        outcome: "rejected",
+        status: 422,
       });
       const firstField = Object.entries(flat.fieldErrors)[0];
       const msg = firstField
@@ -279,6 +377,7 @@ Deno.serve(async (req) => {
       promptLen: userPrompt.length,
       hasImage: !!body.imageDataUrl,
       imageBytes: body.imageDataUrl?.length ?? 0,
+      outcome: "accepted",
     });
 
 
@@ -341,12 +440,23 @@ Deno.serve(async (req) => {
       if (resp.ok) {
         grokResp = resp;
         usedModel = model;
+        log("info", "upstream", { model, status: resp.status, outcome: "upstream_ok" });
         break;
       }
 
       lastStatus = resp.status;
       lastErrTxt = await resp.text();
       console.error(`xAI error [model=${model}] ${resp.status}`, lastErrTxt);
+      log("warn", "upstream", {
+        model,
+        status: resp.status,
+        outcome: "upstream_fail",
+        reason: resp.status === 429 ? "rate_limit"
+          : resp.status === 401 ? "auth"
+          : resp.status === 402 ? "credits"
+          : resp.status === 404 ? "model_not_found"
+          : "other",
+      });
 
       // Auth/quota errors apply to all models — stop early, don't waste calls.
       if (resp.status === 401 || resp.status === 402 || resp.status === 429) break;
@@ -359,6 +469,8 @@ Deno.serve(async (req) => {
     }
 
     if (!grokResp) {
+      const status = lastStatus === 429 ? 429 : lastStatus === 401 ? 401 : lastStatus === 402 ? 402 : 502;
+      log("error", "upstream", { reason: "all_models_failed", lastStatus, outcome: "error", status });
       if (lastStatus === 429) return jsonError(429, "xAI rate limit reached. Try again shortly.");
       if (lastStatus === 401) return jsonError(401, "Invalid XAI_API_KEY.");
       if (lastStatus === 402) return jsonError(402, "xAI credits exhausted.");
@@ -369,14 +481,24 @@ Deno.serve(async (req) => {
     const toolCall = grokJson?.choices?.[0]?.message?.tool_calls?.[0];
     const argsStr = toolCall?.function?.arguments;
     if (!argsStr) {
+      log("error", "upstream", { reason: "no_tool_call", model: usedModel, outcome: "error", status: 502 });
       return jsonError(502, "xAI did not return a structured tool call.");
     }
     let macro: unknown;
     try {
       macro = JSON.parse(argsStr);
     } catch (e) {
+      log("error", "upstream", { reason: "tool_args_invalid_json", model: usedModel, outcome: "error", status: 502 });
       return jsonError(502, "xAI tool arguments not valid JSON.");
     }
+
+    log("info", "completed", {
+      model: usedModel,
+      promptTokens: grokJson?.usage?.prompt_tokens ?? null,
+      completionTokens: grokJson?.usage?.completion_tokens ?? null,
+      outcome: "completed",
+      status: 200,
+    });
 
     return new Response(
       JSON.stringify({
@@ -390,6 +512,7 @@ Deno.serve(async (req) => {
     );
   } catch (e) {
     console.error("grok-choreography error", e);
+    log("error", "exception", { error: e instanceof Error ? e.message : "unknown", outcome: "error", status: 500 });
     return jsonError(500, e instanceof Error ? e.message : "Unknown error");
   }
 });
