@@ -15,11 +15,12 @@
  *    handful of rays) so newly-added pins never render at y=0.
  *  - Resolved positions are re-validated in batches at a slower cadence.
  */
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { terrainMetrics } from './terrainCacheMetrics';
 import { useTerrainCacheConfig } from './useTerrainCacheConfig';
+import { createTerrainCachePersistence, type TerrainCachePersistenceHandle, type TilesetKind } from './terrainCachePersistence';
 
 const _ray = new THREE.Raycaster();
 const _origin = new THREE.Vector3();
@@ -65,9 +66,19 @@ function sampleTerrain(tilesGroup: THREE.Object3D, x: number, z: number): number
  * @param positions - Array of {x, z} positions to track
  * @param enabled - Whether terrain height querying is active (e.g. google3DTilesEnabled)
  */
+export interface TerrainCachePersistenceOptions {
+  /** Project this cache belongs to (rows are scoped per project). */
+  projectId: string;
+  /** Owner user (RLS requires it on insert). */
+  userId: string;
+  /** Defaults to 'google3d'. Use a different value if you want isolated caches per tileset. */
+  tilesetKind?: TilesetKind;
+}
+
 export function useTerrainHeightCache(
   positions: { x: number; z: number }[],
   enabled: boolean,
+  persistence?: TerrainCachePersistenceOptions,
 ): TerrainHeightCache {
   const { scene } = useThree();
   // Resolved Y values (positions actually sitting on a tile mesh)
@@ -80,6 +91,39 @@ export function useTerrainHeightCache(
   const tilesGroupRef = useRef<THREE.Object3D | null>(null);
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
+
+  // ── Cloud persistence (optional) ──
+  // Recreate the handle when the project/user/tileset identity changes; on
+  // hydrate, prepopulate the cache so pins snap to the surface immediately,
+  // before Google 3D Tiles even start streaming.
+  const persistenceRef = useRef<TerrainCachePersistenceHandle | null>(null);
+  const persistKey = persistence ? `${persistence.projectId}:${persistence.userId}:${persistence.tilesetKind ?? 'google3d'}` : '';
+  useEffect(() => {
+    if (!persistence || !persistence.projectId || !persistence.userId) {
+      persistenceRef.current?.dispose();
+      persistenceRef.current = null;
+      return;
+    }
+    const handle = createTerrainCachePersistence({
+      projectId: persistence.projectId,
+      userId: persistence.userId,
+      tilesetKind: persistence.tilesetKind,
+    });
+    persistenceRef.current = handle;
+    // Hydrate asynchronously; new entries do not overwrite existing in-memory ones.
+    void handle.hydrate(cacheRef.current).then((n) => {
+      if (n > 0) {
+        terrainMetrics.setCacheSize(cacheRef.current.size);
+        console.log(`[terrainCache] hydrated ${n} resolved heights from cloud`);
+      }
+    });
+    return () => {
+      void handle.flush();
+      handle.dispose();
+      if (persistenceRef.current === handle) persistenceRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [persistKey]);
 
   useFrame(() => {
     const _t0 = performance.now();
