@@ -40,6 +40,7 @@ import { lockstep } from '@/core/reliability/lockstepEngine';
 import { useProjectStore } from '@/store/useProjectStore';
 import { getAudioMaster, resyncTimeline } from '@/lib/audio/audioMasterRegistry';
 import { timelineHealthStore } from '@/core/health/timelineHealthStore';
+import { useTimelineHealthSettings } from '@/hooks/useTimelineHealthSettings';
 
 const PLAYBACK_SUBSYSTEM_ID = 'playback';
 /** How long the badge stays in 'recovered' state after a successful recovery
