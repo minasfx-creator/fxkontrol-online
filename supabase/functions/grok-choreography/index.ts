@@ -13,6 +13,81 @@ const corsHeaders = {
 
 const XAI_URL = "https://api.x.ai/v1/chat/completions";
 
+/**
+ * ─── Aggregated counters (per-isolate, in-memory) ──────────────────────────
+ * Survive across requests within the same edge-function instance. Reset on
+ * cold start. Logged on every event (cumulative) and as a periodic snapshot
+ * so success/failure rates can be tracked over time without external storage.
+ *
+ * Keys are intentionally low-cardinality:
+ *   stage   — pipeline stage (size_guard, json_parse, schema, upstream, accepted, completed, config)
+ *   outcome — accepted | rejected | upstream_ok | upstream_fail | completed | error
+ *   status  — HTTP status code returned to the client (string for JSON-friendliness)
+ *   reason  — short rejection reason code (header_oversize, validation_failed, …)
+ */
+const counters = {
+  startedAt: new Date().toISOString(),
+  total: 0,
+  byOutcome: {} as Record<string, number>,
+  byStatus: {} as Record<string, number>,
+  byStageOutcome: {} as Record<string, number>, // `${stage}:${outcome}`
+  byReason: {} as Record<string, number>,       // `${stage}:${reason}`
+  byUpstreamModel: {} as Record<string, number>, // `${model}:${ok|fail}`
+};
+
+function bump(map: Record<string, number>, key: string, delta = 1) {
+  map[key] = (map[key] ?? 0) + delta;
+}
+
+function counterSnapshot() {
+  const accepted = counters.byOutcome["accepted"] ?? 0;
+  const rejected = counters.byOutcome["rejected"] ?? 0;
+  const completed = counters.byOutcome["completed"] ?? 0;
+  const errored = counters.byOutcome["error"] ?? 0;
+  const upstreamOk = counters.byOutcome["upstream_ok"] ?? 0;
+  const upstreamFail = counters.byOutcome["upstream_fail"] ?? 0;
+  const totalDecisions = accepted + rejected;
+  const acceptRate = totalDecisions > 0 ? +(accepted / totalDecisions).toFixed(4) : null;
+  const upstreamTotal = upstreamOk + upstreamFail;
+  const upstreamSuccessRate = upstreamTotal > 0 ? +(upstreamOk / upstreamTotal).toFixed(4) : null;
+  const completionRate = accepted > 0 ? +(completed / accepted).toFixed(4) : null;
+  return {
+    startedAt: counters.startedAt,
+    total: counters.total,
+    accepted,
+    rejected,
+    completed,
+    errored,
+    upstreamOk,
+    upstreamFail,
+    acceptRate,
+    upstreamSuccessRate,
+    completionRate,
+    byOutcome: counters.byOutcome,
+    byStatus: counters.byStatus,
+    byStageOutcome: counters.byStageOutcome,
+    byReason: counters.byReason,
+    byUpstreamModel: counters.byUpstreamModel,
+  };
+}
+
+// Periodic snapshot — emits a single structured line every 60s if the isolate
+// stays warm. Idempotent: only the first request in a cold isolate arms it.
+let _snapshotTimer: number | null = null;
+function ensureSnapshotTimer() {
+  if (_snapshotTimer !== null) return;
+  _snapshotTimer = setInterval(() => {
+    if (counters.total === 0) return;
+    console.log(JSON.stringify({
+      ts: new Date().toISOString(),
+      level: "info",
+      fn: "grok-choreography",
+      stage: "counters_snapshot",
+      ...counterSnapshot(),
+    }));
+  }, 60_000) as unknown as number;
+}
+
 const macroSchema = {
   type: "object",
   properties: {
