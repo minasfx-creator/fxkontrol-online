@@ -178,7 +178,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   // rejection, racing pause, transient decode stall) does not leave the
   // timeline frozen at 0. The retry controller is cancelled on pause /
   // unmount so we never resume audio against the operator's intent.
-  const playControllerRef = useRef<ReturnType<typeof playAudioWithRetry> | null>(null);
+  // (playControllerRef is declared above near the other refs.)
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
