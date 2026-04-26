@@ -90,6 +90,7 @@ export function useTerrainHeightCache(
     if (!enabled || positions.length === 0) {
       // When tiles are disabled, drop the cache so we don't reuse stale values
       if (cacheRef.current.size > 0) cacheRef.current.clear();
+      tilesGroupRef.current = null;
       terrainMetrics.setTrackedPositions(positions.length);
       terrainMetrics.setCacheSize(0);
       terrainMetrics.setTilesGroupFound(false);
@@ -97,7 +98,8 @@ export function useTerrainHeightCache(
       return;
     }
 
-    const tilesGroup = scene.getObjectByName('GoogleTilesGroup');
+    const tilesGroup = scene.getObjectByName('GoogleTilesGroup') ?? null;
+    tilesGroupRef.current = tilesGroup;
     terrainMetrics.setTilesGroupFound(!!tilesGroup);
     terrainMetrics.setTrackedPositions(positions.length);
     if (!tilesGroup) {
