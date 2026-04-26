@@ -25,6 +25,48 @@ import type { MacroChoreography, ExpandedShow } from '@/modules/aiChoreography/t
 
 const MAX_FILE_MB = 8;
 
+// ─── Mirror of server-side schema (supabase/functions/grok-choreography) ───
+// Keep limits in sync. Field-level errors are surfaced to the operator before any network call.
+const CLIENT_LIMITS = {
+  promptMaxChars: 2000,
+  imageDataUrlMaxBytes: 10 * 1024 * 1024,
+  numDrones: { min: 10, max: 5000 },
+  durationSeconds: { min: 5, max: 600 },
+  fps: { min: 5, max: 30 },
+} as const;
+
+const grokRequestSchema = z
+  .object({
+    prompt: z
+      .string()
+      .trim()
+      .max(CLIENT_LIMITS.promptMaxChars, `Briefing acima de ${CLIENT_LIMITS.promptMaxChars} caracteres.`)
+      .optional(),
+    imageDataUrl: z
+      .string()
+      .max(CLIENT_LIMITS.imageDataUrlMaxBytes, `Asset acima de ${(CLIENT_LIMITS.imageDataUrlMaxBytes / 1024 / 1024).toFixed(0)} MB.`)
+      .regex(/^data:(image|video)\/[a-zA-Z0-9.+-]+;base64,/, 'Asset inválido (use imagem ou vídeo).')
+      .optional(),
+    numDrones: z
+      .number()
+      .int('numDrones precisa ser inteiro')
+      .min(CLIENT_LIMITS.numDrones.min, `numDrones mínimo ${CLIENT_LIMITS.numDrones.min}.`)
+      .max(CLIENT_LIMITS.numDrones.max, `numDrones máximo ${CLIENT_LIMITS.numDrones.max}.`),
+    durationSeconds: z
+      .number()
+      .min(CLIENT_LIMITS.durationSeconds.min, `Duração mínima ${CLIENT_LIMITS.durationSeconds.min}s.`)
+      .max(CLIENT_LIMITS.durationSeconds.max, `Duração máxima ${CLIENT_LIMITS.durationSeconds.max}s.`),
+    fps: z
+      .number()
+      .int('fps precisa ser inteiro')
+      .min(CLIENT_LIMITS.fps.min, `fps mínimo ${CLIENT_LIMITS.fps.min}.`)
+      .max(CLIENT_LIMITS.fps.max, `fps máximo ${CLIENT_LIMITS.fps.max}.`),
+  })
+  .refine((v) => (v.prompt && v.prompt.length > 0) || !!v.imageDataUrl, {
+    message: 'Suba uma imagem/vídeo ou escreva um briefing.',
+    path: ['prompt'],
+  });
+
 /** Map raw upstream errors (xAI / edge function) to actionable Portuguese messages. */
 function friendlyUpstream(raw: string, status?: number): string {
   const m = (raw || '').toLowerCase();
