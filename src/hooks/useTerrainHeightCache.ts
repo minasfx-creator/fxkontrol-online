@@ -73,14 +73,24 @@ export function useTerrainHeightCache(
   const lastMeshCountRef = useRef(0);
 
   useFrame(() => {
+    const _t0 = performance.now();
     if (!enabled || positions.length === 0) {
       // When tiles are disabled, drop the cache so we don't reuse stale values
       if (cacheRef.current.size > 0) cacheRef.current.clear();
+      terrainMetrics.setTrackedPositions(positions.length);
+      terrainMetrics.setCacheSize(0);
+      terrainMetrics.setTilesGroupFound(false);
+      terrainMetrics.recordFrame(performance.now() - _t0);
       return;
     }
 
     const tilesGroup = scene.getObjectByName('GoogleTilesGroup');
-    if (!tilesGroup) return;
+    terrainMetrics.setTilesGroupFound(!!tilesGroup);
+    terrainMetrics.setTrackedPositions(positions.length);
+    if (!tilesGroup) {
+      terrainMetrics.recordFrame(performance.now() - _t0);
+      return;
+    }
 
     // Count current tile meshes to detect LOD changes
     let meshCount = 0;
@@ -88,6 +98,7 @@ export function useTerrainHeightCache(
       if ((c as THREE.Mesh).isMesh) meshCount++;
     });
     const lodChanged = meshCount !== lastMeshCountRef.current;
+    if (lodChanged && lastMeshCountRef.current !== 0) terrainMetrics.recordLodChange();
     lastMeshCountRef.current = meshCount;
 
     const cache = cacheRef.current;
@@ -100,13 +111,18 @@ export function useTerrainHeightCache(
       const key = posKey(pos.x, pos.z);
       if (cache.has(key)) continue;
       const y = sampleTerrain(tilesGroup, pos.x, pos.z);
+      terrainMetrics.recordUnresolvedSample();
       if (y !== null) cache.set(key, y);
       unresolvedSampled++;
     }
 
     frameRef.current++;
     const shouldRevalidate = lodChanged || frameRef.current % REVALIDATE_INTERVAL === 0;
-    if (!shouldRevalidate) return;
+    if (!shouldRevalidate) {
+      terrainMetrics.setCacheSize(cache.size);
+      terrainMetrics.recordFrame(performance.now() - _t0);
+      return;
+    }
 
     // ── Pass 2: re-validate resolved positions in a rolling batch.
     //   When the LOD changed we sweep a larger batch immediately so pins
@@ -119,17 +135,23 @@ export function useTerrainHeightCache(
       const pos = positions[i];
       const key = posKey(pos.x, pos.z);
       const y = sampleTerrain(tilesGroup, pos.x, pos.z);
+      terrainMetrics.recordRevalidation();
       if (y === null) continue;
       const prev = cache.get(key);
       if (prev === undefined || Math.abs(prev - y) > HEIGHT_DRIFT_THRESHOLD) {
+        if (prev !== undefined) terrainMetrics.recordDrift();
         cache.set(key, y);
       }
     }
     revalidateIndexRef.current = endIdx >= positions.length ? 0 : endIdx;
+    terrainMetrics.setCacheSize(cache.size);
+    terrainMetrics.recordFrame(performance.now() - _t0);
   });
 
   const getHeight = useCallback((x: number, z: number): number => {
-    return cacheRef.current.get(posKey(x, z)) ?? 0;
+    const v = cacheRef.current.get(posKey(x, z));
+    terrainMetrics.recordGet(v !== undefined);
+    return v ?? 0;
   }, []);
 
   return { getHeight, heights: cacheRef.current };
