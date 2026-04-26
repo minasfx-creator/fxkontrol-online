@@ -7,8 +7,10 @@ import { useEffect, useState } from 'react';
 import { terrainMetrics, type TerrainCacheMetrics } from '@/hooks/terrainCacheMetrics';
 import { useTerrainCacheConfig, TERRAIN_CACHE_DEFAULTS } from '@/hooks/useTerrainCacheConfig';
 import { terrainCacheControl } from '@/hooks/terrainCacheControl';
+import { useTerrainPersistenceMode, TERRAIN_MODE_DESCRIPTIONS } from '@/hooks/useTerrainPersistenceMode';
+import type { LocalCacheMode } from '@/hooks/terrainCacheLocalStorage';
 import { useSceneStore } from '@/store/useSceneStore';
-import { RotateCcw, X, Sliders, Eraser, RefreshCw, Cloud, HardDrive, Zap } from 'lucide-react';
+import { RotateCcw, X, Sliders, Eraser, RefreshCw, Cloud, HardDrive, Zap, Database } from 'lucide-react';
 
 export default function TerrainCacheMetricsPanel() {
   const show = useSceneStore(s => s.environment.showTerrainMetrics);
@@ -92,6 +94,7 @@ export default function TerrainCacheMetricsPanel() {
       <Row label="Peak (60f)" value={`${m.peakFrameMs.toFixed(2)}ms`} />
       <Row label="Frame #" value={`${m.frame}`} />
 
+      <PersistenceModeSection />
       <ActionsSection />
       <TuningSection />
     </div>
