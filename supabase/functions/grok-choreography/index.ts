@@ -286,15 +286,9 @@ Deno.serve(async (req) => {
   }
 });
 
-function jsonError(status: number, message: string) {
-  return new Response(JSON.stringify({ ok: false, error: message }), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-function clampInt(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, Math.floor(Number(n) || min)));
-}
-function clampNum(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, Number(n) || min));
+function jsonError(status: number, message: string, details?: Record<string, unknown>) {
+  return new Response(
+    JSON.stringify({ ok: false, error: message, ...(details ? { details } : {}) }),
+    { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
 }
