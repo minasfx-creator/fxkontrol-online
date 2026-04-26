@@ -19,7 +19,9 @@
  */
 
 import { useEffect, useState, useMemo } from 'react';
-import { Cable, Usb, Bluetooth, Wifi, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Cable, Usb, Bluetooth, Wifi, Trash2, AlertTriangle, RefreshCw, Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import type { DiscoveryTransport } from '@/core/discovery/types';
 import { portRegistry, type PortRegistryEntry } from '@/core/discovery/portRegistry';
 import { unifiedDiscovery } from '@/core/discovery/UnifiedDiscoveryService';
 import type { DiscoveredDevice } from '@/core/discovery/types';
