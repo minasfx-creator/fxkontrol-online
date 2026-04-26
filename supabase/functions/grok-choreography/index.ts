@@ -324,6 +324,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    const snap = outcome ? counterSnapshot() : undefined;
     const line = JSON.stringify({
       ts: new Date().toISOString(),
       level,
@@ -331,11 +332,32 @@ Deno.serve(async (req) => {
       requestId,
       stage,
       ...fields,
-      counters: outcome ? counterSnapshot() : undefined,
+      counters: snap,
     });
     if (level === "error") console.error(line);
     else if (level === "warn") console.warn(line);
     else console.log(line);
+
+    // Persist terminal request decisions so trends survive cold starts.
+    // Skip intermediate signals (upstream_ok/upstream_fail) — the request
+    // still ends in `completed` or `error`, which we record below.
+    if (snap && outcome && (outcome === "accepted" || outcome === "rejected" || outcome === "completed" || outcome === "error")) {
+      const bytesField = typeof fields.bytes === "number" ? fields.bytes : null;
+      const durationField = typeof fields.durationMs === "number" ? fields.durationMs : null;
+      persistMetric({
+        event_type: "decision",
+        request_id: requestId,
+        stage,
+        outcome,
+        status: status ? Number(status) : null,
+        reason: reason ?? null,
+        model: model ?? null,
+        bytes: bytesField,
+        duration_ms: durationField,
+        isolate_started_at: counters.startedAt,
+        counters: snap,
+      });
+    }
   };
 
   /** Strip values: keep only field names + counts + first error code per field. PII-safe. */
