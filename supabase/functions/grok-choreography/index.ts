@@ -148,10 +148,57 @@ Deno.serve(async (req) => {
       return jsonError(500, "XAI_API_KEY is not configured");
     }
 
+    // 0. Hard payload size guard — reject oversize requests BEFORE buffering JSON.
+    //    Server cap is slightly above the field-level imageDataUrl limit (10 MB)
+    //    to allow JSON envelope overhead (keys, prompt text, base64 padding).
+    const MAX_BODY_BYTES = 12 * 1024 * 1024; // 12 MB
+    const MAX_BODY_HUMAN = `${(MAX_BODY_BYTES / 1024 / 1024).toFixed(0)} MB`;
+
+    // 0a. Cheap header check — trust but verify.
+    const declaredLen = req.headers.get("content-length");
+    if (declaredLen !== null) {
+      const n = Number(declaredLen);
+      if (!Number.isFinite(n) || n < 0) {
+        return jsonError(400, "Invalid Content-Length header.");
+      }
+      if (n > MAX_BODY_BYTES) {
+        return jsonError(413, `Payload too large: ${n} bytes (max ${MAX_BODY_HUMAN}).`);
+      }
+    }
+
+    // 0b. Stream-and-count guard — clients can lie about Content-Length or omit it
+    //     (e.g. chunked transfer). Cap actual bytes read to MAX_BODY_BYTES + 1.
+    if (!req.body) {
+      return jsonError(400, "Empty request body.");
+    }
+    const reader = req.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let received = 0;
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) {
+          received += value.byteLength;
+          if (received > MAX_BODY_BYTES) {
+            try { await reader.cancel(); } catch { /* ignore */ }
+            return jsonError(413, `Payload too large: exceeded ${MAX_BODY_HUMAN} while reading body.`);
+          }
+          chunks.push(value);
+        }
+      }
+    } catch (e) {
+      return jsonError(400, `Failed to read request body: ${e instanceof Error ? e.message : "unknown"}`);
+    }
+
     // 1. Parse JSON safely
     let raw: unknown;
     try {
-      raw = await req.json();
+      const merged = new Uint8Array(received);
+      let off = 0;
+      for (const c of chunks) { merged.set(c, off); off += c.byteLength; }
+      const text = new TextDecoder().decode(merged);
+      raw = text.length === 0 ? {} : JSON.parse(text);
     } catch {
       return jsonError(400, "Invalid JSON body.");
     }
