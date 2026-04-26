@@ -7,6 +7,7 @@
  * 2000+ drones deterministically with collision QA.
  */
 import { useMemo, useRef, useState } from 'react';
+import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, Play, Sparkles, Download, Layers, AlertTriangle, Gauge } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,48 @@ import { applyAIChoreographyToShowPlan } from '@/modules/aiChoreography/applyToS
 import type { MacroChoreography, ExpandedShow } from '@/modules/aiChoreography/types';
 
 const MAX_FILE_MB = 8;
+
+// ─── Mirror of server-side schema (supabase/functions/grok-choreography) ───
+// Keep limits in sync. Field-level errors are surfaced to the operator before any network call.
+const CLIENT_LIMITS = {
+  promptMaxChars: 2000,
+  imageDataUrlMaxBytes: 10 * 1024 * 1024,
+  numDrones: { min: 10, max: 5000 },
+  durationSeconds: { min: 5, max: 600 },
+  fps: { min: 5, max: 30 },
+} as const;
+
+const grokRequestSchema = z
+  .object({
+    prompt: z
+      .string()
+      .trim()
+      .max(CLIENT_LIMITS.promptMaxChars, `Briefing acima de ${CLIENT_LIMITS.promptMaxChars} caracteres.`)
+      .optional(),
+    imageDataUrl: z
+      .string()
+      .max(CLIENT_LIMITS.imageDataUrlMaxBytes, `Asset acima de ${(CLIENT_LIMITS.imageDataUrlMaxBytes / 1024 / 1024).toFixed(0)} MB.`)
+      .regex(/^data:(image|video)\/[a-zA-Z0-9.+-]+;base64,/, 'Asset inválido (use imagem ou vídeo).')
+      .optional(),
+    numDrones: z
+      .number()
+      .int('numDrones precisa ser inteiro')
+      .min(CLIENT_LIMITS.numDrones.min, `numDrones mínimo ${CLIENT_LIMITS.numDrones.min}.`)
+      .max(CLIENT_LIMITS.numDrones.max, `numDrones máximo ${CLIENT_LIMITS.numDrones.max}.`),
+    durationSeconds: z
+      .number()
+      .min(CLIENT_LIMITS.durationSeconds.min, `Duração mínima ${CLIENT_LIMITS.durationSeconds.min}s.`)
+      .max(CLIENT_LIMITS.durationSeconds.max, `Duração máxima ${CLIENT_LIMITS.durationSeconds.max}s.`),
+    fps: z
+      .number()
+      .int('fps precisa ser inteiro')
+      .min(CLIENT_LIMITS.fps.min, `fps mínimo ${CLIENT_LIMITS.fps.min}.`)
+      .max(CLIENT_LIMITS.fps.max, `fps máximo ${CLIENT_LIMITS.fps.max}.`),
+  })
+  .refine((v) => (v.prompt && v.prompt.length > 0) || !!v.imageDataUrl, {
+    message: 'Suba uma imagem/vídeo ou escreva um briefing.',
+    path: ['prompt'],
+  });
 
 /** Map raw upstream errors (xAI / edge function) to actionable Portuguese messages. */
 function friendlyUpstream(raw: string, status?: number): string {
@@ -93,6 +136,7 @@ export default function AIChoreographyPage() {
   const [busy, setBusy] = useState(false);
   const [macro, setMacro] = useState<MacroChoreography | null>(null);
   const [show, setShow] = useState<ExpandedShow | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const addDroneFormation = useProjectStore(s => s.addDroneFormation);
   const materializeFormation = useProjectStore(s => s.materializeFormation);
@@ -115,10 +159,30 @@ export default function AIChoreographyPage() {
   };
 
   const generate = async () => {
-    if (!preview && !prompt.trim()) {
-      toast.error('Suba uma imagem/vídeo ou escreva um briefing.');
+    // ─── Client-side prevalidation (mirrors edge function zod schema) ───
+    const candidate = {
+      prompt: prompt.trim() || undefined,
+      imageDataUrl: preview ?? undefined,
+      numDrones,
+      durationSeconds: duration,
+      fps,
+    };
+    const parsed = grokRequestSchema.safeParse(candidate);
+    if (!parsed.success) {
+      const flat = parsed.error.flatten();
+      const fe: Record<string, string> = {};
+      for (const [k, v] of Object.entries(flat.fieldErrors)) {
+        if (v?.[0]) fe[k] = v[0];
+      }
+      const formMsg = flat.formErrors[0];
+      setFieldErrors(fe);
+      const firstMsg = Object.values(fe)[0] ?? formMsg ?? 'Campos inválidos.';
+      toast.error(firstMsg, {
+        description: Object.keys(fe).length > 1 ? `+${Object.keys(fe).length - 1} outro(s) campo(s) com erro.` : undefined,
+      });
       return;
     }
+    setFieldErrors({});
     setBusy(true);
     setMacro(null); setShow(null);
     try {
@@ -231,9 +295,17 @@ export default function AIChoreographyPage() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value.slice(0, 2000))}
               rows={4}
-              className="mt-1 text-sm"
+              className={`mt-1 text-sm ${fieldErrors.prompt ? 'border-destructive focus-visible:ring-destructive' : ''}`}
               placeholder="Estilo, paleta, momentos-chave, marca…"
+              aria-invalid={!!fieldErrors.prompt}
+              aria-describedby={fieldErrors.prompt ? 'brief-err' : undefined}
             />
+            {fieldErrors.prompt && (
+              <p id="brief-err" className="mt-1 text-xs text-destructive">{fieldErrors.prompt}</p>
+            )}
+            {fieldErrors.imageDataUrl && (
+              <p className="mt-1 text-xs text-destructive">{fieldErrors.imageDataUrl}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-3">
@@ -242,21 +314,30 @@ export default function AIChoreographyPage() {
               <Input type="number" min={10} max={5000} step={10}
                 value={numDrones}
                 onChange={(e) => setNumDrones(Math.max(10, Math.min(5000, parseInt(e.target.value) || 500)))}
+                aria-invalid={!!fieldErrors.numDrones}
+                className={fieldErrors.numDrones ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
+              {fieldErrors.numDrones && <p className="mt-1 text-xs text-destructive">{fieldErrors.numDrones}</p>}
             </div>
             <div>
               <Label className="text-xs uppercase text-muted-foreground">Duração (s)</Label>
               <Input type="number" min={5} max={600}
                 value={duration}
                 onChange={(e) => setDuration(Math.max(5, Math.min(600, parseFloat(e.target.value) || 60)))}
+                aria-invalid={!!fieldErrors.durationSeconds}
+                className={fieldErrors.durationSeconds ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
+              {fieldErrors.durationSeconds && <p className="mt-1 text-xs text-destructive">{fieldErrors.durationSeconds}</p>}
             </div>
             <div>
               <Label className="text-xs uppercase text-muted-foreground">FPS</Label>
               <Input type="number" min={5} max={30}
                 value={fps}
                 onChange={(e) => setFps(Math.max(5, Math.min(30, parseInt(e.target.value) || 10)))}
+                aria-invalid={!!fieldErrors.fps}
+                className={fieldErrors.fps ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
+              {fieldErrors.fps && <p className="mt-1 text-xs text-destructive">{fieldErrors.fps}</p>}
             </div>
           </div>
 
