@@ -30,7 +30,7 @@ export default function TerrainCacheMetricsPanel() {
     <div
       className="absolute z-30 pointer-events-auto select-none rounded-md border backdrop-blur-md"
       style={{
-        top: 56,
+        top: overlayActive ? 220 : 56,
         right: 12,
         background: 'hsla(220, 20%, 8%, 0.9)',
         borderColor: 'hsla(220, 20%, 28%, 0.55)',
