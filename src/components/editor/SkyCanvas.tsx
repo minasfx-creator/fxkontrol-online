@@ -263,10 +263,9 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
       }
     }, 10); // High priority — playback clock runs first
 
-    // ExecutionBridge ticks after playback
-    lockstep.register('executionBridge', (simTime: number, _dt: number) => {
-      executionBridge.tick(simTime);
-    }, 50); // Lower priority — fires after playback updates
+    // NOTE: `executionBridge` is registered exclusively by `EngineProvider`
+    // (priority 150). Do NOT re-register it here — duplicate registrations
+    // log a [Lockstep] warning and silently no-op the second one.
 
     // Start the deterministic clock and lockstep
     deterministicClock.start();
@@ -281,7 +280,7 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
 
     return () => {
       lockstep.unregister('playback');
-      lockstep.unregister('executionBridge');
+      // executionBridge unregister handled by EngineProvider (sole owner).
       deterministicClock.pause();
       lockstep.stop();
       registeredRef.current = false;

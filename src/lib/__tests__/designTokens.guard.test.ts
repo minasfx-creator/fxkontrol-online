@@ -16,9 +16,10 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 
+// NOTE: keep this list in sync with the actual filesystem. Removed components
+// (DevSimulationPanel, EmulatorTraceTimeline) were dropped from the repo —
+// don't re-add them without restoring the source files first.
 const MIGRATED_FILES = [
-  'src/components/editor/DevSimulationPanel.tsx',
-  'src/components/editor/EmulatorTraceTimeline.tsx',
   'src/components/editor/AuditBlackBoxConsole.tsx',
 ];
 
