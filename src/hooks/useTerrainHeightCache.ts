@@ -131,7 +131,7 @@ export function useTerrainHeightCache(
     }
 
     frameRef.current++;
-    const shouldRevalidate = lodChanged || frameRef.current % REVALIDATE_INTERVAL === 0;
+    const shouldRevalidate = lodChanged || frameRef.current % cfg.revalidateInterval === 0;
     if (!shouldRevalidate) {
       terrainMetrics.setCacheSize(cache.size);
       terrainMetrics.recordFrame(performance.now() - _t0);
