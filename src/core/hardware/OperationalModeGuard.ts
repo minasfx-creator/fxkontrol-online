@@ -6,6 +6,7 @@
  */
 
 import type { AllowedOperation, OperationalMode } from './types';
+import { safetyGate } from '@/core/safety/safetyGate';
 
 const MODE_PERMISSIONS: Record<OperationalMode, AllowedOperation[]> = {
   'preview':         ['simulate', 'preview', 'validate', 'diagnostics'],
@@ -31,6 +32,14 @@ class OperationalModeGuard {
 
   /** Check if operation is allowed under current mode */
   check(operation: AllowedOperation): { allowed: boolean; reason: string } {
+    // Gate bypass — when mode guard is disabled by user preference,
+    // every operation is allowed regardless of operational mode.
+    if (!safetyGate.isEnforced('modeGuard')) {
+      return {
+        allowed: true,
+        reason: `Operation '${operation}' allowed (mode guard disabled by user)`,
+      };
+    }
     const allowed = MODE_PERMISSIONS[this._mode]?.includes(operation) ?? false;
     return {
       allowed,
