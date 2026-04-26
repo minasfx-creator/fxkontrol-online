@@ -249,7 +249,7 @@ export function scanSceneTransforms(scene: { traverse: (cb: (obj: any) => void) 
 
   let corrupted = 0;
   let fixed = 0;
-  let removed = 0;
+  const removed = 0;
 
   scene.traverse((obj: any) => {
     if (!obj.position || !obj.rotation || !obj.scale) return;

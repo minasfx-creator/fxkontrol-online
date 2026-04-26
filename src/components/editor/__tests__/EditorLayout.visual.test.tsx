@@ -33,19 +33,30 @@ function renderInDark(ui: React.ReactNode) {
 }
 
 describe('Editor layout — visual regression (dark mode)', () => {
-  it('ViewportBar (top toolbar) matches snapshot', () => {
+  it('ViewportBar (top toolbar) matches snapshot + uses dark tokens', () => {
     const { container } = renderInDark(<ViewportBar />);
-    expect(container.firstChild).toMatchSnapshot();
+    const root = container.firstChild as HTMLElement;
+    expect(root).toMatchSnapshot();
+    // Semantic guards: dark-mode design tokens must be present.
+    expect(root.className).toMatch(/bg-card\/85/);
+    expect(root.className).toMatch(/border-border\/25/);
   });
 
-  it('ViewportNavControls (right sidebar) matches snapshot', () => {
+  it('ViewportNavControls (right sidebar) matches snapshot + has a11y labels', () => {
     const { container } = renderInDark(<ViewportNavControls />);
     expect(container.firstChild).toMatchSnapshot();
+    // Every nav button must expose an aria-label for screen readers.
+    const buttons = container.querySelectorAll('button');
+    expect(buttons.length).toBeGreaterThan(0);
+    buttons.forEach((b) => expect(b.getAttribute('aria-label')).toBeTruthy());
   });
 
-  it('TimelineClockPanel (bottom timeline) matches snapshot', () => {
+  it('TimelineClockPanel (bottom timeline) matches snapshot + uses muted tokens', () => {
     const { container } = renderInDark(<TimelineClockPanel />);
-    expect(container.firstChild).toMatchSnapshot();
+    const root = container.firstChild as HTMLElement;
+    expect(root).toMatchSnapshot();
+    expect(root.className).toMatch(/bg-background\/40/);
+    expect(root.className).toMatch(/border-border\/20/);
   });
 
   it('document root has the dark class applied', () => {

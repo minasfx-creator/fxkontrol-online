@@ -269,7 +269,7 @@ export function optimizeTrajectories(
   const violations: TrajectoryViolation[] = [];
   let totalDist = 0;
   let maxVel = 0;
-  let maxAccel = 0;
+  const maxAccel = 0;
 
   // Step 1: Smooth
   const smoothed = rawTrajectories.map(traj =>

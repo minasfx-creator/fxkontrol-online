@@ -10,7 +10,7 @@ import { MapPin, Navigation, Layers, Cpu, Mountain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Module-level stats updated by the render loop
-let _geoHudData = {
+const _geoHudData = {
   camLat: 0,
   camLng: 0,
   altMSL: 0,

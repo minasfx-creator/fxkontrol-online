@@ -39,7 +39,7 @@ const _giProbeColor = new THREE.Color();
 // AdaptiveExposureController
 // Uses getEffectById() for O(1) lookups instead of EFFECT_LIBRARY.find()
 // ═══════════════════════════════════════════════════════════════════════
-export const AdaptiveExposureController = React.forwardRef<THREE.Group, {}>(function AdaptiveExposureController(_props, _ref) {
+export const AdaptiveExposureController = React.forwardRef<THREE.Group, Record<string, never>>(function AdaptiveExposureController(_props, _ref) {
   useRenderCounter('AdaptiveExposure');
   const exposureRef = useRef(createExposureController());
   const _scatterAccum = useMemo(() => new THREE.Color(), []);
@@ -130,7 +130,7 @@ export function ContactShadowsLayer() {
 // ═══════════════════════════════════════════════════════════════════════
 // DebugFeed — FPS counter, draw calls, adaptive LOD (already zero-GC)
 // ═══════════════════════════════════════════════════════════════════════
-export const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_props, _ref) {
+export const DebugFeed = React.forwardRef<THREE.Group, Record<string, never>>(function DebugFeed(_props, _ref) {
   const { gl, camera } = useThree();
   const frameCount = useRef(0);
   const lastTime = useRef(performance.now());
@@ -157,7 +157,7 @@ export const DebugFeed = React.forwardRef<THREE.Group, {}>(function DebugFeed(_p
 // GlobalIlluminationController — explosion-driven GI probes
 // Zero-GC: reuses _giProbeColor instead of compound.color.clone()
 // ═══════════════════════════════════════════════════════════════════════
-export const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(function GlobalIlluminationController(_props, _ref) {
+export const GlobalIlluminationController = React.forwardRef<THREE.Group, Record<string, never>>(function GlobalIlluminationController(_props, _ref) {
   const giRef = useRef<GlobalIlluminationSystem | null>(null);
   const { scene } = useThree();
   const _probePos = useMemo(() => new THREE.Vector3(), []);
@@ -197,7 +197,7 @@ export const GlobalIlluminationController = React.forwardRef<THREE.Group, {}>(fu
 // LensFlareController — cinematic optics on bright bursts
 // Zero-GC: reuses _flarePos/_flareColor singletons, uses getEffectById() O(1)
 // ═══════════════════════════════════════════════════════════════════════
-export const LensFlareController = React.forwardRef<THREE.Group, {}>(function LensFlareController(_props, _ref) {
+export const LensFlareController = React.forwardRef<THREE.Group, Record<string, never>>(function LensFlareController(_props, _ref) {
   const spritesRef = useRef<THREE.Sprite[]>([]);
   const poolIdx = useRef(0);
   const { scene } = useThree();
@@ -253,7 +253,7 @@ export const LensFlareController = React.forwardRef<THREE.Group, {}>(function Le
 // GroundReflections — wet-floor reflections from explosions
 // Zero-GC: uses getEffectById() O(1), reuses uniform color in-place
 // ═══════════════════════════════════════════════════════════════════════
-export const GroundReflections = React.forwardRef<THREE.Mesh, {}>(function GroundReflections(_props, _ref) {
+export const GroundReflections = React.forwardRef<THREE.Mesh, Record<string, never>>(function GroundReflections(_props, _ref) {
   const groundStyle = useSceneStore(st => st.settings.groundStyle);
   const meshRef = useRef<THREE.Mesh>(null);
   const uniformsRef = useRef({

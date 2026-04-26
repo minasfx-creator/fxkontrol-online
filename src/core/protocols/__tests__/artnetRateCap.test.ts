@@ -64,7 +64,7 @@ describe('Fatia 8 #1 — Art-Net rate cap', () => {
   });
 
   it('rate cap is per-universe (one universe does not throttle another)', () => {
-    let now = 9000;
+    const now = 9000;
     vi.spyOn(performance, 'now').mockImplementation(() => now);
 
     expect(bridge.sendDmx(0, buf)).toBe(true);
