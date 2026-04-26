@@ -2032,6 +2032,7 @@ export default function SkyCanvas() {
       {/* Debug overlay toggle + panel */}
       {!isMobile && showDebugOverlay && <RenderDebugPanel />}
       {!isMobile && showDebugOverlay && <SkyCanvasDiagnosticsPanel />}
+      {!isMobile && <TerrainCacheMetricsPanel />}
 
       {/* Fullscreen floating edit menu */}
       {isFullscreen && <FullscreenEditMenu />}
