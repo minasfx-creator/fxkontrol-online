@@ -295,9 +295,17 @@ export default function AIChoreographyPage() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value.slice(0, 2000))}
               rows={4}
-              className="mt-1 text-sm"
+              className={`mt-1 text-sm ${fieldErrors.prompt ? 'border-destructive focus-visible:ring-destructive' : ''}`}
               placeholder="Estilo, paleta, momentos-chave, marca…"
+              aria-invalid={!!fieldErrors.prompt}
+              aria-describedby={fieldErrors.prompt ? 'brief-err' : undefined}
             />
+            {fieldErrors.prompt && (
+              <p id="brief-err" className="mt-1 text-xs text-destructive">{fieldErrors.prompt}</p>
+            )}
+            {fieldErrors.imageDataUrl && (
+              <p className="mt-1 text-xs text-destructive">{fieldErrors.imageDataUrl}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-3">
@@ -306,21 +314,30 @@ export default function AIChoreographyPage() {
               <Input type="number" min={10} max={5000} step={10}
                 value={numDrones}
                 onChange={(e) => setNumDrones(Math.max(10, Math.min(5000, parseInt(e.target.value) || 500)))}
+                aria-invalid={!!fieldErrors.numDrones}
+                className={fieldErrors.numDrones ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
+              {fieldErrors.numDrones && <p className="mt-1 text-xs text-destructive">{fieldErrors.numDrones}</p>}
             </div>
             <div>
               <Label className="text-xs uppercase text-muted-foreground">Duração (s)</Label>
               <Input type="number" min={5} max={600}
                 value={duration}
                 onChange={(e) => setDuration(Math.max(5, Math.min(600, parseFloat(e.target.value) || 60)))}
+                aria-invalid={!!fieldErrors.durationSeconds}
+                className={fieldErrors.durationSeconds ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
+              {fieldErrors.durationSeconds && <p className="mt-1 text-xs text-destructive">{fieldErrors.durationSeconds}</p>}
             </div>
             <div>
               <Label className="text-xs uppercase text-muted-foreground">FPS</Label>
               <Input type="number" min={5} max={30}
                 value={fps}
                 onChange={(e) => setFps(Math.max(5, Math.min(30, parseInt(e.target.value) || 10)))}
+                aria-invalid={!!fieldErrors.fps}
+                className={fieldErrors.fps ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
+              {fieldErrors.fps && <p className="mt-1 text-xs text-destructive">{fieldErrors.fps}</p>}
             </div>
           </div>
 
