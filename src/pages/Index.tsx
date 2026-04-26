@@ -22,7 +22,7 @@ import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import RadialMenu from '@/components/editor/RadialMenu';
-import EngineProvider from '@/orchestration/EngineProvider';
+// EngineProvider moved to MainLayout (boots once, all routes, mobile + desktop).
 import LiveCard from '@/components/editor/LiveCard';
 
 // ── Lazy helper — one-liner for 80+ panels ──
@@ -625,7 +625,7 @@ function Index() {
   // ═══ DESKTOP LAYOUT — Full Immersive Viewport ═══
   return (
     <div className="absolute inset-0 overflow-hidden bg-background">
-      <EngineProvider />
+      {/* EngineProvider is mounted once at MainLayout (covers mobile + every route). */}
       {/* ─── Layer 0: Structured desktop shell ────────────── */}
       <div
         className="absolute z-0 br2049-atmosphere"

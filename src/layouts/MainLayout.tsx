@@ -26,6 +26,11 @@ const RenderCounterOverlay = import.meta.env.DEV
 // Lazy-load heavy components that aren't needed for initial paint
 const AppSidebar = lazy(lazyRetry(() => import('@/components/AppSidebar').then(m => ({ default: m.AppSidebar }))));
 const FXKAssistant = lazy(lazyRetry(() => import('@/components/FXKAssistant').then(m => ({ default: m.FXKAssistant }))));
+// Deterministic kernel (timeline clock pump, lockstep, persistence) — must
+// mount on EVERY protected route AND on mobile so Play actually advances time.
+// Previously this was nested inside <Index> desktop branch only, which left
+// the timeline frozen on mobile and on routes other than /studio.
+const EngineProvider = lazy(lazyRetry(() => import('@/orchestration/EngineProvider')));
 
 function SidebarToggleButton() {
   const { state, toggleSidebar } = useSidebar();
@@ -228,6 +233,11 @@ export default function MainLayout() {
           </main>
         </div>
       </div>
+
+      {/* Deterministic kernel — boots once for the entire app session */}
+      <Suspense fallback={null}>
+        <EngineProvider />
+      </Suspense>
 
       {/* Overlays OUTSIDE the filtered div so position:fixed works correctly */}
       <Suspense fallback={null}>
