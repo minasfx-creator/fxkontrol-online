@@ -1240,6 +1240,10 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
           <span className="font-mono text-[13px] text-muted-foreground/35 tabular-nums tracking-tight">{formatTime(duration)}</span>
         </div>
 
+        {/* Clock health badge — running / stalled / recovered, fed by the
+            same watchdog that drives auto-recovery (`useTimelineClockHealthCheck`). */}
+        <TimelineHealthBadge />
+
         {/* Transport diagnostic chip — explains why Play may not advance (0×, END, EXT) */}
         {transportChip && (
           <div
