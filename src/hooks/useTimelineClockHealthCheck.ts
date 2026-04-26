@@ -38,6 +38,7 @@ import { toast } from 'sonner';
 import { timelineClock } from '@/core/timeline/TimelineClock';
 import { lockstep } from '@/core/reliability/lockstepEngine';
 import { useProjectStore } from '@/store/useProjectStore';
+import { getAudioMaster, resyncTimeline } from '@/lib/audio/audioMasterRegistry';
 
 const PLAYBACK_SUBSYSTEM_ID = 'playback';
 
