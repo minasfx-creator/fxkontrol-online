@@ -25,6 +25,8 @@ export interface TimelineItem {
   positionName?: string;
   notes?: string;
   flightCount?: number;
+  /** Per-item color override; if set, replaces the library effect color for this cue only. */
+  colorOverride?: string;
   hazard?: string;
   rack?: number;
   tube?: number;
