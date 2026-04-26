@@ -21,6 +21,7 @@ import * as THREE from 'three';
 import { terrainMetrics } from './terrainCacheMetrics';
 import { useTerrainCacheConfig } from './useTerrainCacheConfig';
 import { createTerrainCachePersistence, type TerrainCachePersistenceHandle, type TilesetKind } from './terrainCachePersistence';
+import { createTerrainLocalCache, type TerrainLocalCacheHandle } from './terrainCacheLocalStorage';
 
 const _ray = new THREE.Raycaster();
 const _origin = new THREE.Vector3();
@@ -97,41 +98,73 @@ export function useTerrainHeightCache(
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
 
-  // ── Cloud persistence (optional) ──
-  // Recreate the handle when the project/user/tileset identity changes; on
-  // hydrate, prepopulate the cache so pins snap to the surface immediately,
-  // before Google 3D Tiles even start streaming.
+  // ── Persistence (cloud + local browser) ──
+  // Local IDB hydrates first (synchronous-ish, ~ms) so pins snap before the
+  // network round-trip. Cloud is the canonical store and overwrites local
+  // mismatches on subsequent revalidations. Both are version + TTL gated.
   const persistenceRef = useRef<TerrainCachePersistenceHandle | null>(null);
+  const localRef = useRef<TerrainLocalCacheHandle | null>(null);
   const persistKey = persistence
     ? `${persistence.projectId}:${persistence.userId}:${persistence.tilesetKind ?? 'google3d'}:${persistence.tilesetVersion ?? 'v1'}:${persistence.maxAgeDays ?? 30}`
     : '';
   useEffect(() => {
-    if (!persistence || !persistence.projectId || !persistence.userId) {
+    if (!persistence || !persistence.projectId) {
       persistenceRef.current?.dispose();
       persistenceRef.current = null;
+      localRef.current?.dispose();
+      localRef.current = null;
       return;
     }
-    const handle = createTerrainCachePersistence({
+
+    // Local cache: works without auth (projectId-scoped).
+    const local = createTerrainLocalCache({
       projectId: persistence.projectId,
-      userId: persistence.userId,
-      tilesetKind: persistence.tilesetKind,
-      tilesetVersion: persistence.tilesetVersion,
-      maxAgeDays: persistence.maxAgeDays,
+      tilesetKind: persistence.tilesetKind ?? 'google3d',
+      tilesetVersion: persistence.tilesetVersion ?? 'v1',
+      maxAgeDays: persistence.maxAgeDays ?? 30,
     });
-    persistenceRef.current = handle;
-    // 1) Purge stale rows (other version OR > maxAgeDays). Best-effort, fire-and-forget.
-    void handle.purgeExpired();
-    // 2) Hydrate; new entries do not overwrite existing in-memory ones.
-    void handle.hydrate(cacheRef.current).then((n) => {
+    localRef.current = local;
+    void local.hydrate(cacheRef.current).then((n) => {
       if (n > 0) {
         terrainMetrics.setCacheSize(cacheRef.current.size);
-        console.log(`[terrainCache] hydrated ${n} resolved heights from cloud`);
+        console.log(`[terrainCache] hydrated ${n} resolved heights from local browser cache`);
       }
     });
+
+    // Cloud cache: requires userId (RLS).
+    let cloud: TerrainCachePersistenceHandle | null = null;
+    if (persistence.userId) {
+      cloud = createTerrainCachePersistence({
+        projectId: persistence.projectId,
+        userId: persistence.userId,
+        tilesetKind: persistence.tilesetKind,
+        tilesetVersion: persistence.tilesetVersion,
+        maxAgeDays: persistence.maxAgeDays,
+      });
+      persistenceRef.current = cloud;
+      void cloud.purgeExpired();
+      void cloud.hydrate(cacheRef.current).then((n) => {
+        if (n > 0) {
+          terrainMetrics.setCacheSize(cacheRef.current.size);
+          console.log(`[terrainCache] hydrated ${n} resolved heights from cloud`);
+        }
+      });
+    }
+
+    // Save before tab close — IDB writes won't survive an unflushed close.
+    const onBeforeUnload = () => { void local.flush(); };
+    window.addEventListener('beforeunload', onBeforeUnload);
+
     return () => {
-      void handle.flush();
-      handle.dispose();
-      if (persistenceRef.current === handle) persistenceRef.current = null;
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      void local.flush();
+      local.dispose();
+      if (localRef.current === local) localRef.current = null;
+      if (cloud) {
+        void cloud.flush();
+        cloud.dispose();
+        if (persistenceRef.current === cloud) persistenceRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [persistKey]);
@@ -172,6 +205,7 @@ export function useTerrainHeightCache(
 
     const cache = cacheRef.current;
     const persist = persistenceRef.current;
+    const local = localRef.current;
 
     // ── Pass 1: always sample positions that have NO resolved height yet.
     //   Bounded per-frame so we never spike the frame budget.
@@ -187,6 +221,7 @@ export function useTerrainHeightCache(
       if (y !== null) {
         cache.set(key, y);
         persist?.markDirty(key, xt, zt, y);
+        local?.markDirty(key, xt, zt, y);
       }
       unresolvedSampled++;
     }
@@ -219,6 +254,7 @@ export function useTerrainHeightCache(
         if (prev !== undefined) terrainMetrics.recordDrift();
         cache.set(key, y);
         persist?.markDirty(key, xt, zt, y);
+        local?.markDirty(key, xt, zt, y);
       }
     }
     revalidateIndexRef.current = endIdx >= positions.length ? 0 : endIdx;
@@ -247,6 +283,7 @@ export function useTerrainHeightCache(
       if (y !== null) {
         cache.set(key, y);
         persistenceRef.current?.markDirty(key, xt, zt, y);
+        localRef.current?.markDirty(key, xt, zt, y);
         terrainMetrics.recordOneShotResolve();
         terrainMetrics.recordGet(true);
         terrainMetrics.setCacheSize(cache.size);
