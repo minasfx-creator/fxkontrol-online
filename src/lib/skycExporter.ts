@@ -266,7 +266,8 @@ function generateValidation(
   duration: number,
   fps: number = 4,
 ): SkycValidation {
-  let maxAlt = 0, maxVel = 0, maxAcc = 0, minProx = Infinity, totalDist = 0;
+  let maxAlt = 0, maxAcc = 0, totalDist = 0;
+  let maxVel = 0, minProx = Infinity;
   const altProfile: SkycValidation['altitudeProfile'] = [];
   const velProfile: SkycValidation['velocityProfile'] = [];
   const proxProfile: SkycValidation['proximityProfile'] = [];
