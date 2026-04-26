@@ -1,24 +1,56 @@
 /**
- * QuickJumpMenu — Tiny global top-left navigation pill.
+ * QuickJumpMenu — Tiny global navigation pill (top-right).
  *
- * Always-visible (including inside /studio fullscreen editor) so the operator
- * can jump in one click between the three main creative surfaces:
+ * Visible only on immersive routes (/studio, /command) where the AppSidebar
+ * is hidden. Provides one-click access between the three creative surfaces:
  *   • Studio          → 3D editor
- *   • FXK-DRONES      → Drone command panel (lives inside Studio, scrolls to it)
+ *   • FXK-DRONES      → Drone command panel (deep-link via ?panel=drones)
  *   • AI Choreography → Grok Vision generator
  *
- * Sits at top-left, glassmorphic, ~28px tall — designed not to fight the
- * Tactical Dock (which is vertical, also top-left but lower).
+ * Active-state detection is URL-driven and matches both pathname and the
+ * `?panel=` search param so the highlight stays correct after navigation
+ * (including deep-links and browser back/forward).
  */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Wand2, Plane, Sparkles, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const ITEMS = [
-  { label: 'Studio', path: '/studio', icon: Wand2, desc: 'Editor 3D' },
-  { label: 'FXK-DRONES', path: '/studio?panel=drones', icon: Plane, desc: 'Console de drones' },
-  { label: 'AI Choreography', path: '/ai-choreography', icon: Sparkles, desc: 'Grok Vision' },
+type Item = {
+  label: string;
+  path: string;          // route to navigate to (with optional ?query)
+  icon: typeof Wand2;
+  desc: string;
+  match: (pathname: string, params: URLSearchParams) => boolean;
+};
+
+const ITEMS: readonly Item[] = [
+  {
+    label: 'Studio',
+    path: '/studio',
+    icon: Wand2,
+    desc: 'Editor 3D',
+    // Active on /studio when no special panel param is targeting another item.
+    match: (p, q) => p === '/studio' && q.get('panel') !== 'drones',
+  },
+  {
+    label: 'FXK-DRONES',
+    path: '/studio?panel=drones',
+    icon: Plane,
+    desc: 'Console de drones',
+    // Active when explicitly targeting the drones panel via deep-link.
+    // Note: Index.tsx clears ?panel= shortly after handling it, so this
+    // primarily highlights during the navigation tick — that's intentional
+    // and matches what URL-driven nav can observe.
+    match: (p, q) => p === '/studio' && q.get('panel') === 'drones',
+  },
+  {
+    label: 'AI Choreography',
+    path: '/ai-choreography',
+    icon: Sparkles,
+    desc: 'Grok Vision',
+    match: (p) => p === '/ai-choreography' || p.startsWith('/ai-choreography/'),
+  },
 ] as const;
 
 export default function QuickJumpMenu() {
@@ -27,6 +59,22 @@ export default function QuickJumpMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  // Recompute search params whenever location.search changes.
+  const searchParams = useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search],
+  );
+
+  // Resolve the current active item from URL state. Falls back to Studio
+  // (the default landing) when nothing matches, so the pill always shows
+  // something sensible.
+  const current = useMemo(
+    () => ITEMS.find((i) => i.match(location.pathname, searchParams)) ?? ITEMS[0],
+    [location.pathname, searchParams],
+  );
+  const CurrentIcon = current.icon;
+
+  // Click-away to close the dropdown.
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
@@ -36,8 +84,10 @@ export default function QuickJumpMenu() {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
 
-  const current = ITEMS.find(i => location.pathname.startsWith(i.path.split('?')[0])) ?? ITEMS[0];
-  const CurrentIcon = current.icon;
+  // Close on route/search change (e.g. after user picks an item).
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname, location.search]);
 
   return (
     <div
@@ -50,10 +100,10 @@ export default function QuickJumpMenu() {
       }}
     >
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen((o) => !o)}
         className={cn(
           'flex items-center gap-1.5 h-7 px-2 rounded-control text-[11px] font-medium tracking-wide transition-all active:scale-95',
-          'backdrop-blur-xl border'
+          'backdrop-blur-xl border',
         )}
         style={{
           background: 'hsl(var(--background) / 0.6)',
@@ -80,27 +130,27 @@ export default function QuickJumpMenu() {
             boxShadow: '0 8px 24px hsl(0 0% 0% / 0.5)',
           }}
         >
-          {ITEMS.map(({ label, path, icon: Icon, desc }) => {
-            // Drone panel deep-link clears ?panel= immediately, so we only
-            // highlight stable routes: Studio (any /studio*) and AI Choreography.
-            const cleanPath = path.split('?')[0];
-            const active = path.includes('?')
-              ? false
-              : location.pathname === cleanPath
-                || (cleanPath === '/studio' && location.pathname.startsWith('/studio'));
+          {ITEMS.map((item) => {
+            const { label, path, icon: Icon, desc } = item;
+            const active = item.match(location.pathname, searchParams);
             return (
               <button
                 key={path}
                 role="menuitem"
+                aria-current={active ? 'page' : undefined}
                 onClick={() => {
                   setOpen(false);
                   navigate(path);
                 }}
                 className={cn(
                   'w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors',
-                  'hover:bg-white/[0.06]'
+                  'hover:bg-white/[0.06]',
                 )}
-                style={active ? { background: 'hsl(32 100% 50% / 0.1)', color: 'hsl(32 100% 50%)' } : undefined}
+                style={
+                  active
+                    ? { background: 'hsl(32 100% 50% / 0.12)', color: 'hsl(32 100% 50%)' }
+                    : undefined
+                }
               >
                 <Icon className="h-3.5 w-3.5 shrink-0" />
                 <div className="flex flex-col leading-tight">
