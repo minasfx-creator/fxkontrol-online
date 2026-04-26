@@ -222,11 +222,31 @@ Deno.serve(async (req) => {
     req.headers.get("x-request-id") ||
     (typeof crypto?.randomUUID === "function" ? crypto.randomUUID() : `req_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`);
 
+  ensureSnapshotTimer();
+
   /**
    * Structured log helper. Always JSON, single line, no prompt/imageDataUrl content.
    * Stage = where in the pipeline the event happened (size_guard | json_parse | schema | upstream | …).
+   * When `fields.outcome` / `fields.status` / `fields.reason` are present they also bump
+   * aggregated counters and the cumulative snapshot is appended to every log line.
    */
   const log = (level: "info" | "warn" | "error", stage: string, fields: Record<string, unknown>) => {
+    const outcome = typeof fields.outcome === "string" ? fields.outcome : undefined;
+    const status = fields.status !== undefined ? String(fields.status) : undefined;
+    const reason = typeof fields.reason === "string" ? fields.reason : undefined;
+    const model = typeof fields.model === "string" ? fields.model : undefined;
+
+    if (outcome) {
+      counters.total += 1;
+      bump(counters.byOutcome, outcome);
+      bump(counters.byStageOutcome, `${stage}:${outcome}`);
+      if (status) bump(counters.byStatus, status);
+      if (reason) bump(counters.byReason, `${stage}:${reason}`);
+      if (model && (outcome === "upstream_ok" || outcome === "upstream_fail")) {
+        bump(counters.byUpstreamModel, `${model}:${outcome === "upstream_ok" ? "ok" : "fail"}`);
+      }
+    }
+
     const line = JSON.stringify({
       ts: new Date().toISOString(),
       level,
@@ -234,6 +254,7 @@ Deno.serve(async (req) => {
       requestId,
       stage,
       ...fields,
+      counters: outcome ? counterSnapshot() : undefined,
     });
     if (level === "error") console.error(line);
     else if (level === "warn") console.warn(line);
