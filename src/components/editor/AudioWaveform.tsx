@@ -165,7 +165,19 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       if (Math.abs(audio.currentTime - currentTime) > 0.15) {
         audio.currentTime = currentTime;
       }
-      audio.play().catch(() => {});
+      // If the browser refuses to start playback (autoplay policy, decode
+      // error, hardware busy…) surface it to the operator instead of
+      // silently swallowing the error — otherwise the timeline appears
+      // frozen at 0 and Play "doesn't work". `useAudioMasterClock` already
+      // detects the stall and hands the clock back to the lockstep playback
+      // subsystem, so the show still advances visually.
+      audio.play().catch((err) => {
+        const reason = err?.name === 'NotAllowedError'
+          ? 'Click anywhere on the page first, then press Play again.'
+          : (err?.message ?? 'Audio playback failed.');
+        toast.error('Audio could not start', { description: reason });
+        console.warn('[AudioWaveform] audio.play() rejected:', err);
+      });
     } else {
       audio.pause();
     }
