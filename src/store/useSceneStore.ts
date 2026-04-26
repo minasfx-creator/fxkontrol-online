@@ -802,6 +802,7 @@ const DEFAULT_ENVIRONMENT: EnvironmentState = {
   droneRendererMode: 'instanced',
   showHUDCrosshairs: false,
   showTerrainDebug: false,
+  showTerrainMetrics: false,
   arMode: false,
   arOverlayOpacity: 0.85,
   arBlendMode: 'screen',
