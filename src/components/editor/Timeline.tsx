@@ -753,11 +753,12 @@ function TimelineTrackRow({
   );
 }
 
-const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number }>(function WaypointTrackRow({ pixelsPerSecond, duration }, ref) {
+const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number; scrollRef: React.RefObject<HTMLDivElement> }>(function WaypointTrackRow({ pixelsPerSecond, duration, scrollRef }, ref) {
     const trajectories = useProjectStore(s => s.trajectories);
   const positions = useProjectStore(s => s.positions);
   const selectedTrajectoryId = useProjectStore(s => s.selectedTrajectoryId);
   const selectTrajectory = useProjectStore(s => s.selectTrajectory);
+  const { scrollLeft, viewportWidth } = useScrollViewport(scrollRef);
   const wpEvents = useMemo(() => {
     return trajectories.flatMap((traj) => {
       const pad = positions.find((p) => p.id === traj.positionId);
@@ -775,9 +776,14 @@ const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: num
       </div>
       <div className="flex-1 relative h-8" style={{ background: 'hsl(var(--background) / 0.4)' }}>
         {wpEvents.map(({ wp, traj, pad, index, nextWp }) => {
-          const isSelected = selectedTrajectoryId === traj.id;
           const endTime = nextWp ? nextWp.time : wp.time + 1;
+          const itemLeftPx = wp.time * pixelsPerSecond;
           const widthPx = Math.max((endTime - wp.time) * pixelsPerSecond, 14);
+          // Horizontal culling — skip waypoints outside the visible window.
+          if (!isInScrollWindow(itemLeftPx, widthPx, { scrollLeft, viewportWidth }, { labelOffsetPx: 96 })) {
+            return null;
+          }
+          const isSelected = selectedTrajectoryId === traj.id;
           return (
             <button
               key={wp.id}
@@ -786,7 +792,7 @@ const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: num
                 "absolute top-0.5 h-7 rounded-md flex items-center px-1 text-[8px] font-mono transition-all cursor-pointer border",
                 isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]"
               )}
-              style={{ left: `${wp.time * pixelsPerSecond}px`, width: `${widthPx}px`, backgroundColor: `${pad.color || '#00B4D8'}15` }}
+              style={{ left: `${itemLeftPx}px`, width: `${widthPx}px`, backgroundColor: `${pad.color || '#00B4D8'}15` }}
             >
               <div className="w-[2px] h-full rounded-full mr-0.5 flex-shrink-0" style={{ backgroundColor: pad.color || '#00B4D8' }} />
               <span className="truncate text-muted-foreground/60">WP{index + 1}</span>
