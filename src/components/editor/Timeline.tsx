@@ -17,6 +17,7 @@ import AudioWaveform from './AudioWaveform';
 import PyroTimelineTrack from './PyroTimelineTrack';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { loadTimelineView, saveTimelineView } from '@/lib/timelineViewState';
+import { useScrollViewport, isInScrollWindow } from '@/hooks/useScrollViewport';
 import {
   resolveDropTime,
   formatDropTimestamp,
@@ -361,18 +362,8 @@ function TimelineTrackRow({
   label: string; trackIndex: number; pixelsPerSecond: number; color: string; duration: number;
   scrollRef: React.RefObject<HTMLDivElement>;
 }) {
-  // Track scroll position for item virtualization
-  const [scrollLeft, setScrollLeft] = useState(0);
-  const [viewportWidth, setViewportWidth] = useState(1200);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const update = () => { setScrollLeft(el.scrollLeft); setViewportWidth(el.clientWidth); };
-    update();
-    el.addEventListener('scroll', update, { passive: true });
-    return () => el.removeEventListener('scroll', update);
-  }, [scrollRef]);
+  // Track scroll position via shared hook (replaces local useEffect duplicated in 6 rows)
+  const { scrollLeft, viewportWidth } = useScrollViewport(scrollRef);
     const timelineItems = useProjectStore(s => s.timelineItems);
   const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
   const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
@@ -385,6 +376,10 @@ function TimelineTrackRow({
   const positions = useProjectStore(s => s.positions);
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
   const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
+  // Subscribe to linkedTimelineItemIds outside the .map hot path. A Set
+  // gives O(1) membership checks per item instead of O(n) Array.includes.
+  const linkedTimelineItemIds = useProjectStore(s => s.linkedTimelineItemIds);
+  const linkedIdSet = useMemo(() => new Set(linkedTimelineItemIds), [linkedTimelineItemIds]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [dropPreview, setDropPreview] = useState<{ time: number; snap: SnapReason } | null>(null);
   const [muted, setMuted] = useState(false);
@@ -716,16 +711,16 @@ function TimelineTrackRow({
         {!muted && items.map((item) => {
           const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
           if (!effect) return null;
-          // Virtualize: skip items outside visible scroll range
+          // Virtualize: skip items outside visible scroll range (uses shared helper)
           const effectDuration = item.durationOverride ?? effect.duration;
           const itemLeftPx = item.startTime * pixelsPerSecond;
-          const itemRightPx = itemLeftPx + Math.max(effectDuration * pixelsPerSecond, 28);
-          const visibleLeft = scrollLeft - 96 - 200; // account for label column + buffer
-          const visibleRight = scrollLeft - 96 + viewportWidth + 200;
-          if (itemRightPx < visibleLeft || itemLeftPx > visibleRight) return null;
+          const itemWidthPx = Math.max(effectDuration * pixelsPerSecond, 28);
+          if (!isInScrollWindow(itemLeftPx, itemWidthPx, { scrollLeft, viewportWidth }, { labelOffsetPx: 96 })) {
+            return null;
+          }
 
-          const linkedIds = useProjectStore.getState().linkedTimelineItemIds;
-          const isLinked = linkedIds.includes(item.id);
+          // O(1) Set lookup instead of getState()+Array.includes() per item.
+          const isLinked = linkedIdSet.has(item.id);
           return (
             <DraggableTimelineItem
               key={item.id} item={item} effect={effect} pixelsPerSecond={pixelsPerSecond}
@@ -758,11 +753,12 @@ function TimelineTrackRow({
   );
 }
 
-const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number }>(function WaypointTrackRow({ pixelsPerSecond, duration }, ref) {
+const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number; scrollRef: React.RefObject<HTMLDivElement> }>(function WaypointTrackRow({ pixelsPerSecond, duration, scrollRef }, ref) {
     const trajectories = useProjectStore(s => s.trajectories);
   const positions = useProjectStore(s => s.positions);
   const selectedTrajectoryId = useProjectStore(s => s.selectedTrajectoryId);
   const selectTrajectory = useProjectStore(s => s.selectTrajectory);
+  const { scrollLeft, viewportWidth } = useScrollViewport(scrollRef);
   const wpEvents = useMemo(() => {
     return trajectories.flatMap((traj) => {
       const pad = positions.find((p) => p.id === traj.positionId);
@@ -780,9 +776,14 @@ const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: num
       </div>
       <div className="flex-1 relative h-8" style={{ background: 'hsl(var(--background) / 0.4)' }}>
         {wpEvents.map(({ wp, traj, pad, index, nextWp }) => {
-          const isSelected = selectedTrajectoryId === traj.id;
           const endTime = nextWp ? nextWp.time : wp.time + 1;
+          const itemLeftPx = wp.time * pixelsPerSecond;
           const widthPx = Math.max((endTime - wp.time) * pixelsPerSecond, 14);
+          // Horizontal culling — skip waypoints outside the visible window.
+          if (!isInScrollWindow(itemLeftPx, widthPx, { scrollLeft, viewportWidth }, { labelOffsetPx: 96 })) {
+            return null;
+          }
+          const isSelected = selectedTrajectoryId === traj.id;
           return (
             <button
               key={wp.id}
@@ -791,7 +792,7 @@ const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: num
                 "absolute top-0.5 h-7 rounded-md flex items-center px-1 text-[8px] font-mono transition-all cursor-pointer border",
                 isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]"
               )}
-              style={{ left: `${wp.time * pixelsPerSecond}px`, width: `${widthPx}px`, backgroundColor: `${pad.color || '#00B4D8'}15` }}
+              style={{ left: `${itemLeftPx}px`, width: `${widthPx}px`, backgroundColor: `${pad.color || '#00B4D8'}15` }}
             >
               <div className="w-[2px] h-full rounded-full mr-0.5 flex-shrink-0" style={{ backgroundColor: pad.color || '#00B4D8' }} />
               <span className="truncate text-muted-foreground/60">WP{index + 1}</span>
@@ -803,10 +804,11 @@ const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: num
   );
 });
 
-const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number }>(function FormationTrackRow({ pixelsPerSecond, duration }, _ref) {
+const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number; scrollRef: React.RefObject<HTMLDivElement> }>(function FormationTrackRow({ pixelsPerSecond, duration, scrollRef }, _ref) {
     const droneFormations = useProjectStore(s => s.droneFormations);
   const selectFormation = useProjectStore(s => s.selectFormation);
   const selectedFormationId = useProjectStore(s => s.selectedFormationId);
+  const { scrollLeft, viewportWidth } = useScrollViewport(scrollRef);
   if (droneFormations.length === 0) return null;
 
   return (
@@ -818,7 +820,11 @@ const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: nu
       <div className="flex-1 relative h-8" style={{ background: 'hsl(var(--background) / 0.4)' }}>
         {droneFormations.map((f, i) => {
           const totalDuration = f.transitionDuration + f.holdDuration;
+          const itemLeftPx = f.startTime * pixelsPerSecond;
           const widthPx = Math.max(totalDuration * pixelsPerSecond, 20);
+          if (!isInScrollWindow(itemLeftPx, widthPx, { scrollLeft, viewportWidth }, { labelOffsetPx: 96 })) {
+            return null;
+          }
           const isSelected = selectedFormationId === f.id;
           const preset = FORMATION_PRESETS_MAP[f.formationType];
           return (
@@ -829,7 +835,7 @@ const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: nu
                 "absolute top-0.5 h-7 rounded-md flex items-center px-1.5 text-[8px] font-mono transition-all cursor-pointer border",
                 isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]"
               )}
-              style={{ left: `${f.startTime * pixelsPerSecond}px`, width: `${widthPx}px`, backgroundColor: `${f.color}15` }}
+              style={{ left: `${itemLeftPx}px`, width: `${widthPx}px`, backgroundColor: `${f.color}15` }}
             >
               <div className="w-[2px] h-full rounded-full mr-1 flex-shrink-0" style={{ backgroundColor: f.color }} />
               <span className="truncate text-muted-foreground/60">{preset || f.formationType} #{i + 1}</span>
@@ -851,7 +857,8 @@ const FORMATION_PRESETS_MAP: Record<string, string> = {
 };
 
 // ── DRONE FX Track — only visible when formations exist ──
-function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
+function DroneFXTrackRow({ pixelsPerSecond, duration, scrollRef }: { pixelsPerSecond: number; duration: number; scrollRef: React.RefObject<HTMLDivElement> }) {
+  const { scrollLeft, viewportWidth } = useScrollViewport(scrollRef);
     const droneFormations = useProjectStore(s => s.droneFormations);
   const timelineItems = useProjectStore(s => s.timelineItems);
   const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
@@ -991,7 +998,8 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
 }
 
 // ── LASER Track — shows laser cues with live preview state ──
-function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
+function LaserTrackRow({ pixelsPerSecond, duration, scrollRef }: { pixelsPerSecond: number; duration: number; scrollRef: React.RefObject<HTMLDivElement> }) {
+  const { scrollLeft, viewportWidth } = useScrollViewport(scrollRef);
     const timelineItems = useProjectStore(s => s.timelineItems);
   const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
   const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
@@ -1536,14 +1544,14 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
             <TimelineTrackRow label="PYRO SYS" trackIndex={0} pixelsPerSecond={pixelsPerSecond} color="#FF6B35" duration={duration} scrollRef={scrollRef} />
             <TimelineTrackRow label="DRONE SYS" trackIndex={1} pixelsPerSecond={pixelsPerSecond} color="#00B4D8" duration={duration} scrollRef={scrollRef} />
             <TimelineTrackRow label="LIGHT SYS" trackIndex={2} pixelsPerSecond={pixelsPerSecond} color="#FBBF24" duration={duration} scrollRef={scrollRef} />
-            <LaserTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
+            <LaserTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} scrollRef={scrollRef} />
             <GenerativeTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
           </CollapsibleTrackGroup>
           {/* ── CHOREOGRAPHY group ── */}
           <CollapsibleTrackGroup label="CHOREOGRAPHY" defaultOpen>
-            <FormationTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
-            <DroneFXTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
-            <WaypointTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
+            <FormationTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} scrollRef={scrollRef} />
+            <DroneFXTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} scrollRef={scrollRef} />
+            <WaypointTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} scrollRef={scrollRef} />
           </CollapsibleTrackGroup>
           <AudioWaveform pixelsPerSecond={pixelsPerSecond} />
         </div>
