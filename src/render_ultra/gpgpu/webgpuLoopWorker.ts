@@ -22,7 +22,7 @@ import type {
   WorkerOutbound,
   WorkerErrorMsg,
 } from './workerProtocol';
-import { WebGPUParticleLoop } from './webgpuLoop';
+import { WebGPUParticleLoop, type LoopConfig } from './webgpuLoop';
 import type { WebGPUContext } from './webgpuDevice';
 
 declare const self: DedicatedWorkerGlobalScope;
@@ -52,7 +52,7 @@ async function initInWorker(
   off: OffscreenCanvas,
   computeWGSL: string,
   sortWGSL: string,
-  config?: Parameters<typeof WebGPUParticleLoop>[2],
+  config?: Partial<LoopConfig>,
 ): Promise<void> {
   if (typeof navigator === 'undefined' || !navigator.gpu) {
     fail('NO_NAVIGATOR_GPU', 'navigator.gpu unavailable in worker context.');
