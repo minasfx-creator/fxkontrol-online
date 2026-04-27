@@ -689,6 +689,30 @@ function TimelineTrackRow({
             }}
           />
         )}
+        {/* ── Drop preview guide (live snap timestamp + reason) ── */}
+        {dropPreview && (() => {
+          const accent = snapAccent(dropPreview.snap);
+          const leftPx = dropPreview.time * pixelsPerSecond;
+          return (
+            <>
+              <div
+                className={cn("absolute top-0 bottom-0 w-px pointer-events-none z-30", accent.text.replace('text-', 'bg-'))}
+                style={{ left: `${leftPx}px`, opacity: 0.85 }}
+                aria-hidden
+              />
+              <div
+                className={cn(
+                  "absolute -top-4 px-1.5 py-[1px] rounded-sm text-[8px] font-mono tabular-nums pointer-events-none z-30 ring-1 bg-background/90 backdrop-blur-sm fxk-drop-guide",
+                  accent.ring, accent.text,
+                )}
+                style={{ left: `${leftPx}px`, transform: 'translateX(-50%)' }}
+                aria-hidden
+              >
+                {formatDropTimestamp(dropPreview.time)} · {accent.label}
+              </div>
+            </>
+          );
+        })()}
         {!muted && items.map((item) => {
           const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
           if (!effect) return null;
