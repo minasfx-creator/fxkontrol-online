@@ -124,7 +124,7 @@ export function PlaybackProfilerPanel() {
               </div>
             </div>
             {report.truncated && (
-              <div className="mt-1 text-[10px] text-amber-500">
+              <div className="mt-1 text-[10px] text-warning">
                 buffer truncated (10k samples cap)
               </div>
             )}
