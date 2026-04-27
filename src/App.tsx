@@ -18,8 +18,14 @@ const UpgradeDialog = lazy(() => import("@/components/upgrade/UpgradeDialog"));
 import { lazyRetry } from "@/lib/lazyRetry";
 import { isEnabled } from "@/lib/featureFlags";
 import { useRouteTracing } from "@/observability/useRouteTracing";
-import { PlaybackProfilerProvider } from "@/core/performance/PlaybackProfilerProvider";
-import { PlaybackProfilerPanel } from "@/components/dev/PlaybackProfilerPanel";
+// Profiler is dev-only and lazy so production rota pública doesn't ship it.
+const PlaybackProfilerProvider = lazy(() =>
+  import("@/core/performance/PlaybackProfilerProvider").then((m) => ({ default: m.PlaybackProfilerProvider })),
+);
+const PlaybackProfilerPanel = lazy(() =>
+  import("@/components/dev/PlaybackProfilerPanel").then((m) => ({ default: m.PlaybackProfilerPanel })),
+);
+const IS_DEV = import.meta.env.DEV;
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -99,8 +105,14 @@ function App() {
               <RouteTracker />
               <PageTransitionOverlay />
               <UpgradeDialog />
-              <PlaybackProfilerPanel />
+              {IS_DEV && (
+                <Suspense fallback={null}>
+                  <PlaybackProfilerPanel />
+                </Suspense>
+              )}
               <LazyChunkBoundary>
+                {IS_DEV ? (
+                <Suspense fallback={null}>
                 <PlaybackProfilerProvider id="app">
                 <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
                   <Routes>
