@@ -143,9 +143,52 @@ export default function AIChoreographyPage() {
   const [reasoningResult, setReasoningResult] = useState<GrokReasoningResult | null>(null);
   const [reasoningOpen, setReasoningOpen] = useState(true);
 
+  const projectId = useProjectStore(s => s.projectId);
   const addDroneFormation = useProjectStore(s => s.addDroneFormation);
   const materializeFormation = useProjectStore(s => s.materializeFormation);
   const recalculateFormationTimings = useProjectStore(s => s.recalculateFormationTimings);
+
+  // ─── Persist reasoning advisory per project (localStorage) ───
+  // Key by projectId so reopening AI Choreography for the same show restores
+  // the last "Refinar com raciocínio" output instead of resetting to empty.
+  const reasoningStorageKey = `fxk:ai-choreography:reasoning:${projectId ?? 'default'}`;
+
+  // Load on project switch
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(reasoningStorageKey);
+      if (!raw) {
+        setReasoningResult(null);
+        return;
+      }
+      const parsed = JSON.parse(raw) as { result: GrokReasoningResult; open: boolean } | null;
+      if (parsed && parsed.result && typeof parsed.result.text === 'string') {
+        setReasoningResult(parsed.result);
+        setReasoningOpen(parsed.open ?? true);
+      } else {
+        setReasoningResult(null);
+      }
+    } catch {
+      setReasoningResult(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reasoningStorageKey]);
+
+  // Save on change
+  useEffect(() => {
+    try {
+      if (reasoningResult) {
+        localStorage.setItem(
+          reasoningStorageKey,
+          JSON.stringify({ result: reasoningResult, open: reasoningOpen }),
+        );
+      } else {
+        localStorage.removeItem(reasoningStorageKey);
+      }
+    } catch {
+      /* quota / privacy mode — silently ignore */
+    }
+  }, [reasoningStorageKey, reasoningResult, reasoningOpen]);
 
   const onFile = async (f: File | null) => {
     if (!f) return;
