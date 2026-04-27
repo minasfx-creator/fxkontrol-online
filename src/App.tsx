@@ -19,6 +19,8 @@ import { lazyRetry } from "@/lib/lazyRetry";
 import { isEnabled } from "@/lib/featureFlags";
 import { useRouteTracing } from "@/observability/useRouteTracing";
 // Profiler is dev-only and lazy so production rota pública doesn't ship it.
+import { useHardwareSyncLoop } from "@/hooks/useHardwareSyncLoop";
+
 const PlaybackProfilerProvider = lazy(() =>
   import("@/core/performance/PlaybackProfilerProvider").then((m) => ({ default: m.PlaybackProfilerProvider })),
 );
@@ -94,6 +96,7 @@ function RouteTracker() {
 }
 
 function App() {
+  useHardwareSyncLoop(44);
   return (
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
