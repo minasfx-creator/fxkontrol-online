@@ -462,11 +462,14 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   const starMaterial = useMemo(() => _sharedStarMaterial(), [_starMaterialVersion]);
 
   useEffect(() => {
+    // Capture refs at effect-run time so cleanup sees stable instances.
+    const points = pointsRef.current;
+    const trail = trailRef.current;
     return () => {
-      if (pointsRef.current) pointsRef.current.geometry.dispose();
-      if (trailRef.current) {
-        trailRef.current.geometry.dispose();
-        if (trailRef.current.material instanceof THREE.Material) trailRef.current.material.dispose();
+      if (points) points.geometry.dispose();
+      if (trail) {
+        trail.geometry.dispose();
+        if (trail.material instanceof THREE.Material) trail.material.dispose();
       }
     };
   }, []);
