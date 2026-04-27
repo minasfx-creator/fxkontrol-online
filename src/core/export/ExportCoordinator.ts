@@ -10,6 +10,8 @@ import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
 import { verificationLog } from '@/core/verification/VerificationLog';
 import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { deviceEventLog } from '@/core/hardware/DeviceEventLog';
+import { showPlanManager } from '@/core/showplan/ShowPlanManager';
+import { recordVerificationReport } from '@/core/journal/reportBridge';
 import { generateFireOneScript, downloadFireOneScript } from './FireOneExporter';
 import { generateArtNetPatchCSV, downloadArtNetPatch } from './ArtNetPatchExporter';
 import { generateDroneCSV, downloadDroneCSV } from './DroneCSVExporter';
@@ -48,9 +50,15 @@ class ExportCoordinator {
       return result;
     }
 
-    // 2. Run verification and log it
+    // 2. Run verification, log it, and persist an executive report snapshot
+    //    (one row per export attempt = canonical go/no-go audit trail).
     const vResult = verificationEngine.run();
     verificationLog.record(vResult);
+    void recordVerificationReport({
+      showName: showPlanManager.current.metadata.name,
+      result: vResult,
+      context: { trigger: 'export', target },
+    });
 
     // 3. Check readiness
     const readiness = readinessEvaluator.evaluate();
