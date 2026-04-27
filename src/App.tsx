@@ -5,11 +5,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { lazy, Suspense } from "react";
-import MainLayout from "@/layouts/MainLayout";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import { LazyChunkBoundary } from "@/components/errors/LazyChunkBoundary";
 import { AppErrorBoundary } from "@/components/errors/AppErrorBoundary";
-import UpgradeDialog from "@/components/upgrade/UpgradeDialog";
+
+// MainLayout + UpgradeDialog are lazy-split so the public routes
+// (/landing, /auth, /legal/*, /pricing) don't pay for the dashboard
+// chrome (Sidebar, DockBar, Tactical UI) on first load.
+const MainLayout = lazy(() => import("@/layouts/MainLayout"));
+const UpgradeDialog = lazy(() => import("@/components/upgrade/UpgradeDialog"));
 
 import { lazyRetry } from "@/lib/lazyRetry";
 import { isEnabled } from "@/lib/featureFlags";
