@@ -386,6 +386,7 @@ function TimelineTrackRow({
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
   const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [dropPreview, setDropPreview] = useState<{ time: number; snap: SnapReason } | null>(null);
   const [muted, setMuted] = useState(false);
   const [trackCtxMenu, setTrackCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const items = timelineItems.filter((i) => i.trackIndex === trackIndex);
@@ -399,12 +400,41 @@ function TimelineTrackRow({
     return SECTION_COLORS[pos.section] || undefined;
   }, [positions]);
 
+  const computeDropPreview = useCallback((e: React.DragEvent): { time: number; snap: SnapReason } | null => {
+    const effectId = e.dataTransfer.getData('application/effect-id');
+    // dataTransfer.getData() returns "" during dragOver in most browsers — fall back to types.
+    const placingEffect = effectId
+      ? EFFECT_LIBRARY.find((ef) => ef.id === effectId)
+      : undefined;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const rawTime = x / pixelsPerSecond;
+    const trackNeighbours = items.map((it) => ({
+      id: it.id,
+      startTime: it.startTime,
+      effectId: it.effectId,
+      durationOverride: it.durationOverride,
+    }));
+    return resolveDropTime({
+      rawTime,
+      duration,
+      pixelsPerSecond,
+      bpm,
+      snapToBeat,
+      currentTime: useProjectStore.getState().currentTime,
+      neighbours: trackNeighbours,
+      placing: placingEffect ? { effectId: placingEffect.id } : undefined,
+    });
+  }, [pixelsPerSecond, duration, bpm, snapToBeat, items]);
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
-    const effectId = e.dataTransfer.types.includes('application/effect-id');
-    if (!effectId) return;
+    const hasEffect = e.dataTransfer.types.includes('application/effect-id');
+    if (!hasEffect) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
-  }, []);
+    const preview = computeDropPreview(e);
+    if (preview) setDropPreview(preview);
+  }, [computeDropPreview]);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     if (!e.dataTransfer.types.includes('application/effect-id')) return;
@@ -413,12 +443,16 @@ function TimelineTrackRow({
   }, [trackIndex]);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false);
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+      setDropPreview(null);
+    }
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
+    setDropPreview(null);
     const effectId = e.dataTransfer.getData('application/effect-id');
     if (!effectId) return;
     const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
@@ -430,8 +464,18 @@ function TimelineTrackRow({
 
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
-    time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
+    const { time } = resolveDropTime({
+      rawTime: x / pixelsPerSecond,
+      duration,
+      pixelsPerSecond,
+      bpm,
+      snapToBeat,
+      currentTime: useProjectStore.getState().currentTime,
+      neighbours: items.map((it) => ({
+        id: it.id, startTime: it.startTime, effectId: it.effectId, durationOverride: it.durationOverride,
+      })),
+      placing: { effectId: effect.id },
+    });
 
     const targetIds = selectedPositionIds.length > 0
       ? selectedPositionIds.filter(id => positions.find(p => p.id === id)?.type === 'pyro')
@@ -440,24 +484,28 @@ function TimelineTrackRow({
         : [];
 
     if (targetIds.length > 0) {
+      let firstId: string | null = null;
       targetIds.forEach((posId, i) => {
         const pos = positions.find(p => p.id === posId);
         if (!pos) return;
+        const id = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${i}`;
+        if (i === 0) firstId = id;
         addTimelineItem({
-          id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${i}`,
-          effectId: effect.id, startTime: time, trackIndex,
+          id, effectId: effect.id, startTime: time, trackIndex,
           position: { x: pos.x, y: pos.y, z: pos.z },
           positionId: posId, positionIds: targetIds.length > 1 ? targetIds : undefined, positionName: pos.name,
         });
       });
+      if (firstId) markRecentDrop(firstId);
     } else {
+      const id = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       addTimelineItem({
-        id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        effectId: effect.id, startTime: time, trackIndex,
+        id, effectId: effect.id, startTime: time, trackIndex,
         position: { x: (Math.random() - 0.5) * 16, y: effect.type === 'firework' ? 0 : 5 + Math.random() * 10, z: (Math.random() - 0.5) * 8 },
       });
+      markRecentDrop(id);
     }
-  }, [pixelsPerSecond, duration, trackIndex, addTimelineItem, bpm, snapToBeat, positions, selectedPositionId, selectedPositionIds]);
+  }, [pixelsPerSecond, duration, trackIndex, addTimelineItem, bpm, snapToBeat, positions, selectedPositionId, selectedPositionIds, items]);
 
   const handleItemDragStart = useCallback((e: React.MouseEvent, itemId: string) => {
     const item = timelineItems.find(i => i.id === itemId);
