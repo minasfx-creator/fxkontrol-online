@@ -110,8 +110,7 @@ export default function BetaFeedbackDialog({ open, onOpenChange, initialCategory
       cores: profile.cores,
       mobile: profile.isMobile,
     };
-    // `open` intentionally excluded — we want a fresh snapshot each time
-    // the dialog opens, but the values themselves don't depend on `open`.
+    // `open` intentionally excluded: snapshot is captured once per mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
