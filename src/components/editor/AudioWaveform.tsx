@@ -226,14 +226,29 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     };
   }, [isPlaying]);
 
-  // Sync seek (when user clicks timeline)
+  // Sync seek (when user clicks timeline / scrubs).
+  //
+  // Why this MUST run while playing too:
+  //   When `isPlaying === true`, `useAudioMasterClock` is the timeline driver
+  //   — every RAF it copies `audio.currentTime` into the timeline. If the
+  //   operator scrubs the playhead while playing, the store's `currentTime`
+  //   jumps to the new target but the audio element keeps playing from the
+  //   old position. On the very next RAF the audio master writes the OLD
+  //   position back into the store, so the playhead visibly snaps back and
+  //   the scrub is silently lost.
+  //
+  // The 0.15 s threshold prevents an echo-loop with the audio master: when
+  // the audio is the source of `currentTime` (master pushes audio→store),
+  // they are always within ~one RAF (≈16 ms) of each other, so this guard
+  // is a no-op. It only fires when the user (or another driver such as
+  // SMPTE chase) actually moved the playhead away from the audio position.
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || isPlaying) return;
+    if (!audio) return;
     if (Math.abs(audio.currentTime - currentTime) > 0.15) {
       audio.currentTime = currentTime;
     }
-  }, [currentTime, isPlaying]);
+  }, [currentTime]);
 
   // Load and decode audio for waveform + BPM
   const loadAudio = useCallback(async (url: string) => {
