@@ -14,6 +14,8 @@ import UpgradeDialog from "@/components/upgrade/UpgradeDialog";
 import { lazyRetry } from "@/lib/lazyRetry";
 import { isEnabled } from "@/lib/featureFlags";
 import { useRouteTracing } from "@/observability/useRouteTracing";
+import { PlaybackProfilerProvider } from "@/core/performance/PlaybackProfilerProvider";
+import { PlaybackProfilerPanel } from "@/components/dev/PlaybackProfilerPanel";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -93,7 +95,9 @@ function App() {
               <RouteTracker />
               <PageTransitionOverlay />
               <UpgradeDialog />
+              <PlaybackProfilerPanel />
               <LazyChunkBoundary>
+                <PlaybackProfilerProvider id="app">
                 <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
                   <Routes>
                     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
@@ -144,6 +148,7 @@ function App() {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
+                </PlaybackProfilerProvider>
               </LazyChunkBoundary>
             </BrowserRouter>
           </TooltipProvider>
