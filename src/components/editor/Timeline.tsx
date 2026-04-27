@@ -219,6 +219,8 @@ const DraggableTimelineItem = React.memo(React.forwardRef<HTMLButtonElement, {
   const effectDuration = item.durationOverride ?? effect.duration;
   const widthPx = Math.max(effectDuration * pixelsPerSecond, 28);
   const [resizing, setResizing] = useState<'left' | 'right' | null>(null);
+  const recentDropId = useRecentDropId();
+  const isRecentDrop = recentDropId === item.id;
 
   const handleResizeStart = useCallback((e: React.MouseEvent, edge: 'left' | 'right') => {
     e.stopPropagation();
