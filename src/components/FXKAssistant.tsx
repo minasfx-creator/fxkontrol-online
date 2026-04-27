@@ -642,26 +642,65 @@ export function FXKAssistant() {
     });
 
     try {
-      await streamChat(apiMessages as any, upsert, () => {
+      if (reasoningMode) {
+        // ─── Reasoning path: non-streaming /v1/responses via grok-responses ───
+        // Flatten the latest user turn + system context into a single `input`
+        // (Responses API doesn't accept a multi-turn `messages` array the
+        // same way chat completions does — a flat instruction-style prompt
+        // gives the most predictable result during the preview rollout).
+        const recentTurns = [...messages, userMsg]
+          .slice(-6)
+          .map(m => `${m.role.toUpperCase()}: ${m.content}`)
+          .join('\n\n');
+        const result = await callGrokReasoning({
+          system: `${contextMsg.content}\n\nResponda em português, claro e direto. Use markdown quando ajudar.`,
+          input: recentTurns,
+          reasoning: { effort: 'medium' },
+          maxOutputTokens: 4000,
+        });
+        const reasoningSuffix = result.reasoning
+          ? `\n\n<details><summary>🧠 Cadeia de raciocínio</summary>\n\n${result.reasoning}\n\n</details>`
+          : '';
+        const tokenSuffix = result.usage.reasoning_tokens
+          ? `\n\n<sub>${result.model} · ${result.usage.reasoning_tokens} reasoning tokens · ${(result.durationMs / 1000).toFixed(1)}s</sub>`
+          : '';
+        const full = `${result.text}${reasoningSuffix}${tokenSuffix}`;
+        soFar = full;
+        setMessages(prev => [...prev, { role: 'assistant', content: full, ts: Date.now() }]);
         setLoading(false);
-        if (hasJoiCommands(soFar)) {
-          const results = executeJoiCommands(soFar);
+        if (hasJoiCommands(full)) {
+          const results = executeJoiCommands(full);
           if (results.length > 0) {
             setMessages(prev => prev.map((m, i) =>
-              i === prev.length - 1 && m.role === 'assistant'
-                ? { ...m, cmdResults: results }
-                : m
+              i === prev.length - 1 && m.role === 'assistant' ? { ...m, cmdResults: results } : m
             ));
           }
         }
-      }, ctrl.signal);
+      } else {
+        await streamChat(apiMessages as any, upsert, () => {
+          setLoading(false);
+          if (hasJoiCommands(soFar)) {
+            const results = executeJoiCommands(soFar);
+            if (results.length > 0) {
+              setMessages(prev => prev.map((m, i) =>
+                i === prev.length - 1 && m.role === 'assistant'
+                  ? { ...m, cmdResults: results }
+                  : m
+              ));
+            }
+          }
+        }, ctrl.signal);
+      }
     } catch (e: any) {
       if (e.name !== 'AbortError') {
-        setMessages(prev => [...prev, { role: 'assistant', content: `⚠ ${e.message}`, ts: Date.now() }]);
+        const friendly = isAuthFailure(e)
+          ? `⚠ ${e.message}\n\n_Verifique a chave XAI_API_KEY no backend (Lovable Cloud → Backend → Secrets)._`
+          : `⚠ ${e.message}`;
+        setMessages(prev => [...prev, { role: 'assistant', content: friendly, ts: Date.now() }]);
       }
       setLoading(false);
     }
-  }, [messages, loading, attachment]);
+  }, [messages, loading, attachment, reasoningMode]);
 
   // Keep sendRef fresh
   sendRef.current = send;
