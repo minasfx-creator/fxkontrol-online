@@ -1,115 +1,118 @@
-# Plan — Grok 4.20 Reasoning via /v1/responses
+# Performance Hardening — Plano por Fases Medidas
 
-Add a dedicated reasoning surface using xAI's **Responses API** and the new **`grok-4.20-reasoning`** model, without disturbing the green choreography pipeline.
+## Diagnóstico (medido agora, sem alterar nada)
 
-## 1. New edge function: `supabase/functions/grok-responses/index.ts`
+| Métrica | Valor | Status |
+|---|---|---|
+| Legacy stores ativos | 22 (em `src/store/`) | 🔴 0 migrados |
+| `src/store/domains/` | Barrel re-export vazio (12 LOC úteis) | 🟡 ilusão de consolidação |
+| Novos macro-stores | 4 scaffolds, **0 consumidores** | 🟡 não usados |
+| `useStore()` sem selector | **0** | ✅ não é o problema |
+| `useShallow` no codebase | 5 chamadas | 🔴 subutilizado |
+| `React.memo` | 14 ocorrências | 🟡 baixo |
+| Rotas lazy | 31/31 | ✅ |
+| Heavy deps | three, drei, fiber, postprocessing, recharts, jspdf | 🟡 candidatas a split |
+| `useProjectStore` consumidores | **182** | 🔴 maior risco de migração |
+| `useSceneStore` consumidores | 55 | 🔴 |
+| WebGPU buffer ops | `webgpuLoop`, `gpuComputeParticles`, 4× swarmgpt | precisa profile real |
 
-A focused, well-instrumented wrapper around `POST https://api.x.ai/v1/responses`.
+## Limites desta sessão (read-only / sandbox)
 
-**Contract (POST JSON body):**
-```ts
-{
-  input: string,                           // required, 1..8000 chars (Zod-validated)
-  system?: string,                         // optional system steer
-  model?: string,                          // default "grok-4.20-reasoning"
-  reasoning?: { effort?: "low" | "medium" | "high" },  // default "medium"
-  maxOutputTokens?: number,                // default 4000, capped at 16k
-  temperature?: number,                    // default 0.4
-}
-```
+- Não consigo medir bundle gzip real sem `vite build` (default mode).
+- Não consigo rodar React Profiler nem WebGPU timing queries (sandbox sem GPU adapter).
+- Migrar 22 stores em 1 sessão tocaria 335+ call sites — risco confirmado nas últimas 2 sessões; mantemos a regra "pequenas fases reversíveis".
 
-**Response:**
-```ts
-{
-  ok: true,
-  text: string,                            // flattened response.output_text
-  reasoning?: string,                      // surfaced thinking (when present)
-  model: string,                           // echo of model actually used
-  usage: { input_tokens, output_tokens, reasoning_tokens? },
-  requestId: string,                       // for log correlation
-}
-```
+## Plano de ataque (executar em sessões separadas, gated por evidência)
 
-**Failure modes (mirroring `grok-choreography` patterns):**
-- Reuse the same key-format guard (`/^xai-[A-Za-z0-9_-]{20,}$/`) → 401 with the friendly "rotate the secret" copy.
-- Map upstream 401/403 → `auth`, 429 → `rate_limit`, 402 → `credits`, 404 (model) → `model_not_found`, others → `upstream_error`.
-- 5 s connect timeout, 60 s overall (reasoning models are slower than chat).
-- Structured logging (stage / outcome / status / model / duration_ms) so it shows up in the existing `edge_function_logs` analytics surface.
+---
 
-**Why a separate function (not extending `grok-choreography`):**
-- Different endpoint shape (`/v1/responses` payload differs from `chat/completions`).
-- No tool-call schema → simpler surface, smaller blast radius.
-- Lets `grok-choreography` keep its tested fallback chain unchanged.
+### **Fase P1 — Baseline mensurável** (30–45 min, baixo risco)
 
-**No `config.toml` change needed** — defaults (verify_jwt = false managed by Lovable Cloud) are correct.
+Sem otimizar nada ainda. Só tornar mensurável.
 
-## 2. Client adapter: `src/lib/grokResponses.ts`
+1. Rodar `vite build` e capturar `dist/assets/*.js` ordenados por tamanho (gzip + brotli).
+2. Usar `rollup-plugin-visualizer` (já é devDep candidata) para gerar treemap → identificar top-10 chunks.
+3. Rodar `knip` em modo report (não delete) → lista de exports/arquivos órfãos.
+4. Snapshot atual em `docs/perf/baseline-2026-04-27.md`.
 
-Tiny typed wrapper:
-```ts
-export interface GrokReasoningRequest { ... }
-export interface GrokReasoningResult { text: string; reasoning?: string; usage: ...; model: string }
-export async function callGrokReasoning(req): Promise<GrokReasoningResult>
-```
-- Uses `supabase.functions.invoke('grok-responses', { body })`.
-- Maps known error reasons → user-facing toast strings (re-uses the same auth-error detection logic from `AIChoreography.tsx` so the existing "Diagnosticar chave" CTA still appears).
+**Saída:** números concretos para "antes/depois" das próximas fases.
 
-Includes a Vitest unit covering: success unwrap, auth-error mapping, network error → friendly fallback. Matches the project's "always wrap unknown errors" convention.
+---
 
-## 3. Surface A — AI Choreography refinement
+### **Fase P2 — Dead code surgical (8 stores baratos)** (1 sessão, médio risco)
 
-In `src/pages/AIChoreography.tsx` (the page the user is currently on):
+Alvos com ≤4 consumidores cada — fácil migrar e deletar. Total ~22 call sites.
 
-- Add a **"Refine with reasoning"** secondary button next to the existing generate CTA, enabled only after a macro choreography has been produced.
-- Click → sends the current macro plan + the original prompt to `grok-responses` with a curated system prompt: *"You are a critique-and-improve assistant. Identify weaknesses (timing collisions, monotony, safety distance issues) and propose concrete edits. Return concise bullet-point recommendations."*
-- The reasoning output is rendered in a new collapsible **"Reasoning Notes"** panel under the macro preview (not auto-applied — operators still own the choreography).
-- Shows token usage + reasoning_tokens in a small footer for transparency.
-- Disabled while busy; toast shows the same diagnostic CTA on auth failure.
+| Store | Consumidores | Destino |
+|---|---|---|
+| `useNetworkConfigStore` | 2 | `hardwareSyncStore` |
+| `useDMXPanelPrefs` | 0 | deletar direto |
+| `useDiagnosticsThresholds` | 3 | `uiWorkspaceStore.preferences` |
+| `useAICoPilotStore` | 3 | `uiWorkspaceStore` (slice aiCoPilot) |
+| `useAddressingStore` | 4 | `hardwareSyncStore` |
+| `useGenerativeStore` | 4 | `simulationStore` |
+| `useInventoryStore` | 4 | `missionStore` (project metadata) |
+| `useMAVLinkStore` | 4 | `hardwareSyncStore` |
 
-**Why critique-only (not auto-apply):** consistent with `mem://restricoes/seguranca-latencia-e-auditoria-v5-crificos` (operator must own destructive changes), and matches the JOI Honesty Layer (`mem://arquitetura/camada-verdade-integracao-provenance-honesty`).
+Política: deletar imediatamente após migrar (já aprovada nas sessões anteriores).
+Também deletar `src/store/domains/` (barrel inútil que mascara o problema).
 
-## 4. Surface B — JOI assistant chat (FXKAssistant)
+**Saída esperada:** 22 → 14 stores legacy. ~3–5KB gzip economizados (estimativa preliminar).
 
-In `src/components/FXKAssistant.tsx`:
+---
 
-- Add a **"Reasoning"** toggle (segmented control next to the input: `Standard` / `Reasoning`) defaulting to `Standard` so the existing fast streaming path (`fxk-ai-chat` → Lovable AI Gateway) is unchanged.
-- When `Reasoning` is selected:
-  - Route the request to `grok-responses` instead of streaming from `fxk-ai-chat`.
-  - Non-streaming for now (Responses API streaming format is different — keep scope small). UI shows a "Thinking…" indicator with the orb pulse.
-  - When response arrives, render `text` as the assistant message AND, if `reasoning` is present, append a `<details>` block titled "Cadeia de raciocínio" so power users can audit.
-- Tooltip on the toggle: *"Slower (15-30s) but stronger at multi-step planning, validation explanations, and safety reasoning. Costs more tokens."*
+### **Fase P3 — Zustand hot path hardening** (1 sessão, baixo risco)
 
-Persist the toggle in `localStorage` (`fxk:joi:reasoning-mode`) so user preference sticks.
+Sem migrar nada novo. Apenas tornar consumidores existentes mais baratos.
 
-## 5. Tests & verification
+1. Auditar todos os componentes em `src/components/viewport/`, `src/components/timeline/`, `src/render_ultra/` que assinam stores. Medida atual: 5 `useShallow` no codebase inteiro — meta: ≥30 nos hot paths.
+2. Converter selectors multi-campo para `useShallow(selector)` onde aplicável.
+3. Para valores DMX/OSC em alta frequência: trocar `useStore(s => s.universe[u][c])` por **transient `store.subscribe`** dentro de `useEffect` + ref local — zero re-render.
+4. Adicionar `React.memo` cirúrgico em itens de lista (timeline rows, device cards, cue items).
+5. Documentar padrão em `docs/perf/zustand-hot-path.md`.
 
-- **Unit:** `src/lib/__tests__/grokResponses.test.ts` (3-4 cases).
-- **Edge function smoke test via curl_edge_functions** after deploy: send a tiny prompt, assert `ok: true` and that `model` echoes `grok-4.20-reasoning`. If xAI rejects the model name (preview availability), the function will return `model_not_found` and we'll fall back to `grok-4` automatically (added as a single-step fallback, mirroring choreography's pattern).
-- **Regression:** full vitest run (currently 656/656) + tsc.
-- **Lint:** target zero new warnings (continue the cleanup trajectory).
+**Saída esperada:** redução mensurável de re-renders no React DevTools Profiler (precisa medição em browser real do usuário, não sandbox).
 
-## 6. Out of scope (explicit)
+---
 
-- **No** changes to `grok-choreography` — its fallback chain stays `grok-4` → `grok-4-fast` → `grok-2-vision-latest`.
-- **No** streaming on the Responses API path (deferred — let's confirm the model is healthy and useful first).
-- **No** auto-apply of reasoning suggestions to the macro choreography (operator-controlled).
-- **No** new secrets — reuses existing `XAI_API_KEY`.
+### **Fase P4 — Bundle splitting agressivo** (1 sessão, baixo risco)
 
-## Files created / edited
+1. Configurar `vite.config.ts` com `manualChunks`:
+   - `vendor-three`: three + @react-three/*
+   - `vendor-charts`: recharts
+   - `vendor-pdf`: jspdf
+   - `vendor-supabase`: @supabase/*
+2. Garantir que rota pública (`Landing`) **não importa** nada de three/recharts/jspdf (verificar com visualizer).
+3. Lazy-load `recharts` e `jspdf` apenas nos painéis que usam (ExecutiveReportConsole, charts).
+4. Re-medir: meta `< 220KB gzip` na rota `/`.
 
-**Created**
-- `supabase/functions/grok-responses/index.ts`
-- `src/lib/grokResponses.ts`
-- `src/lib/__tests__/grokResponses.test.ts`
+---
 
-**Edited**
-- `src/pages/AIChoreography.tsx` — adds "Refine with reasoning" button + Reasoning Notes panel
-- `src/components/FXKAssistant.tsx` — adds Standard/Reasoning toggle + non-streaming reasoning path
+### **Fase P5 — WebGPU resource hygiene** (1 sessão, alto risco — só com aprovação separada)
 
-## Acceptance checks (post-deploy)
+Não tocar agora. Requer:
+- Profile real em browser do usuário (`browser--performance_profile` + start/stop profiling).
+- Validação visual de cada compute pass (sandbox sem GPU não valida).
+- Revisão pareada porque kernel WGSL v3 é a propriedade técnica mais crítica do produto.
 
-1. `curl_edge_functions` to `/grok-responses` with `{"input":"ping"}` returns `ok:true` and a non-empty `text`.
-2. AI Choreography page: generate a plan → click "Refine with reasoning" → critique appears within ~30s.
-3. JOI assistant: toggle to Reasoning → ask "Why does this safety distance matter?" → reasoning chain renders in the collapsible.
-4. Auth-failure path still surfaces the existing "Diagnosticar chave" toast CTA.
-5. 656+ tests green; tsc clean.
+Escopo previsto: auditar `device.destroy()` em rota changes, `buffer.destroy()` em recriação de pipelines, epoch counter em readbacks assíncronos (já documentado no useful-context).
+
+---
+
+### **Fases NÃO planejadas para próxima sessão (com motivo)**
+
+| Item do pedido | Por que não agora |
+|---|---|
+| Migrar `useProjectStore` (182 sites) | Sozinho merece 3–4 sessões dedicadas |
+| Migrar `useSceneStore` (55 sites) | Toca render path; precisa profile antes/depois |
+| React 19 features (useTransition, Compiler) | Requer upgrade React+ToleranciaTipos; outra missão |
+| Virtualização de listas longas | Depende de medir quais listas realmente custam |
+| Performance budgets no CI | Faz sentido só após P1 estabelecer baseline |
+
+---
+
+## Recomendação
+
+Aprovar **uma fase por vez**, na ordem P1 → P2 → P3 → P4. P5 fica sem agendamento até termos profile real. Cada fase entrega um Optimization Report parcial com números medidos, não estimativas.
+
+Confirme qual fase rodar nesta próxima sessão (sugestão: **P1**, porque sem baseline as outras fases não têm como provar ganho).
