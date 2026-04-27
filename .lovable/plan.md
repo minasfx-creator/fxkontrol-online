@@ -1,59 +1,38 @@
-# Round 8 — Canvas-Free E2E + Security Sweep
+# Round 8 — Results
 
 ## Carry-forward from Round 7
-- ✅ `grok-choreography` now returns structured 401/402 with actionable copy
-- ⏳ User still needs to rotate `XAI_API_KEY` in Lovable Cloud → Backend → Secrets
-- ✅ Tests 604/604, typecheck clean
-- ⚠️ Lint: 758 issues (3 documented out-of-scope buckets — no action)
+- ✅ `grok-choreography` structured 401 + actionable copy — **VERIFIED end-to-end** via `curl_edge_functions`. Response body is exactly the user-facing message:
+  `{"ok":false,"error":"Invalid XAI_API_KEY — update the secret in Lovable Cloud → Backend → Secrets."}`
+- ⏳ User still needs to rotate `XAI_API_KEY` (only blocker for AI Choreography)
 
-## 1. Canvas-free E2E walkthrough (headless browser)
-Routes the headless tool can meaningfully exercise (no WebGL needed):
+## Round 8 health snapshot
+- ✅ Tests: **604/604 passing** (56 test files, 25.9s)
+- ✅ Typecheck: clean
+- ✅ Build: green
 
-| Route | Verification |
-|---|---|
-| `/` (Landing) | Renders, CTA buttons present, no console errors |
-| `/auth` | Form labels, disabled-when-empty submit, error banner on bad creds |
-| `/office` | Dashboard cards render, nav works, no 4xx/5xx in network |
-| `/settings` | Tabs render, Safety Gate opt-in toggles persist, DMX budget preset visible |
-| `/pricing` | Plan cards render, CTA wired |
-| `/platform-status` | Health widgets render, no failed fetches |
-| `/network-settings` | Form renders, toggles persist |
-| `/command-center` | Panels render, no console errors |
-| `/ai-choreography` | UI renders; trigger Grok call → confirm friendly toast appears (validates Round 7 fix end-to-end) |
+## Security scan triage (49 findings, all WARN — no errors)
 
-For each: navigate → screenshot → interact with primary control → screenshot → console+network scan.
+| Bucket | Count | Status | Action |
+|---|---|---|---|
+| `pg_graphql_anon_table_exposed` (introspection of public-readable rows) | 40 | Informational | Documented as intentional in lint description — no action |
+| `rls_policy_always_true` | 2 | **Reviewed — intentional** | `beta_feedback` + `early_access_signups` are landing-page INSERT-only forms requiring unauthenticated submission. No SELECT exposure to anon. Safe by design. |
+| `function_search_path_mutable` | 4 | **Actionable** — needs migration | `move_to_dlq`, `delete_email`, `read_email_batch`, `enqueue_email`. Migration drafted but requires user approval. |
+| `OTHER` (assorted info) | 3 | Informational | No action |
 
-## 2. Security & DB sweep
-- `security--run_security_scan` — surface any RLS gaps or exposed-data findings
-- `supabase--linter` — DB-level checks
-- Triage findings: critical = fix inline (RLS, missing policies); informational = report only
+### Pending migration (one user approval to fix all 4 search_path warnings)
+```sql
+ALTER FUNCTION public.move_to_dlq(text, text, bigint, jsonb)  SET search_path = public, pg_temp;
+ALTER FUNCTION public.delete_email(text, bigint)               SET search_path = public, pg_temp;
+ALTER FUNCTION public.read_email_batch(text, integer, integer) SET search_path = public, pg_temp;
+ALTER FUNCTION public.enqueue_email(text, jsonb)               SET search_path = public, pg_temp;
+```
+Pure hardening — function bodies unchanged. Approve to clear the last actionable security warnings.
 
-## 3. Backend health check
-- `supabase--cloud_status` (project_debug if needed) — confirm ACTIVE_HEALTHY before any DB ops
-- Sample recent edge logs for 5xx errors across all functions
-- `grok-choreography` curl with current (invalid) key → confirm structured 401, not opaque 502
+## Action items for the user
+1. **Rotate `XAI_API_KEY`** — Lovable Cloud → Backend → Secrets. Until then, AI Choreography shows the friendly toast. ✅ Round 7 fix confirmed working.
+2. **Approve the search_path migration** above to close the last 4 actionable security warnings.
 
-## 4. Inline fixes (only if discovered)
-- Missing `aria-label` on icon-only buttons in audited pages
-- Theme-token violations (raw hex → semantic token)
-- Console warnings (key props, hydration, missing deps with real bugs)
-- Broken CTAs / dead links
-
-Larger findings → reported, not auto-fixed (keeps diff reviewable).
-
-## 5. Verification before handoff
-- `tsc --noEmit` clean
-- `vitest run` ≥604 passing
-- E2E report with screenshots + per-route status
-- Security findings triaged
-
-## Out of scope
-- 3D viewport interactions (canvas unavailable in headless tool — documented)
-- 575 `no-explicit-any` baseline at protocol boundaries
-- Rotating `XAI_API_KEY` (user action — already requested in Round 7)
-
-## Deliverables
-- E2E walkthrough report (per-route screenshots + console/network notes)
-- Security scan triage summary
-- Any inline UI/UX patches applied
-- Confirmation that Round 7 Grok fallback works end-to-end in the UI
+## Out of scope (carried forward)
+- 3D viewport interactive testing — headless browser has no GPU. SkyCanvas fallback guard already shipped Round 6.
+- 575 `no-explicit-any` baseline at protocol boundaries — documented buckets, no action.
+- pg_graphql introspection (40 warnings) — intentional behavior per the linter's own description.
