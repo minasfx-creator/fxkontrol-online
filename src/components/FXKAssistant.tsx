@@ -1088,6 +1088,26 @@ export function FXKAssistant() {
             </button>
           );
         })}
+        {/* Reasoning toggle — routes to grok-4.20-reasoning when enabled. */}
+        <button
+          onClick={() => {
+            const next = !reasoningMode;
+            setReasoningMode(next);
+            try { localStorage.setItem('fxk:joi:reasoning-mode', next ? '1' : '0'); } catch { /* ignore */ }
+          }}
+          className="ml-auto shrink-0 px-2 py-1 rounded text-[7px] font-mono tracking-wider uppercase transition-all flex items-center gap-1"
+          style={{
+            background: reasoningMode ? 'hsl(280 70% 60% / 0.15)' : 'transparent',
+            border: reasoningMode ? '1px solid hsl(280 70% 60% / 0.4)' : '1px solid hsl(190 100% 50% / 0.1)',
+            color: reasoningMode ? 'hsl(280 80% 75%)' : 'hsl(190 100% 50% / 0.5)',
+          }}
+          title={reasoningMode
+            ? 'Reasoning ON — grok-4.20-reasoning via /v1/responses (15-30s, deeper analysis)'
+            : 'Standard streaming via Lovable AI Gateway. Click to switch to deep reasoning.'}
+        >
+          {reasoningMode ? <Brain className="h-2.5 w-2.5" /> : <Zap className="h-2.5 w-2.5" />}
+          {reasoningMode ? 'REASONING' : 'STANDARD'}
+        </button>
       </div>
 
       {/* Joi side panels — desktop only. No mobile to keep header/close button clean. */}
