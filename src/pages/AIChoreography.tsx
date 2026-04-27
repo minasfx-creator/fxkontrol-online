@@ -9,12 +9,13 @@
 import { useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Play, Sparkles, Download, Layers, AlertTriangle, Gauge } from 'lucide-react';
+import { ArrowLeft, Upload, Play, Sparkles, Download, Layers, AlertTriangle, Gauge, Brain, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -22,6 +23,7 @@ import { expandMacroToTrajectories } from '@/modules/aiChoreography/expander';
 import { downloadExpandedShowCSV, downloadExpandedShowJSON } from '@/modules/aiChoreography/exporter';
 import { applyAIChoreographyToShowPlan } from '@/modules/aiChoreography/applyToShowPlan';
 import type { MacroChoreography, ExpandedShow } from '@/modules/aiChoreography/types';
+import { callGrokReasoning, isAuthFailure, type GrokReasoningResult } from '@/lib/grokResponses';
 
 const MAX_FILE_MB = 8;
 
