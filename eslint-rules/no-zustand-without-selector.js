@@ -25,10 +25,10 @@
  * which is a judgement call. The error message points the operator
  * at the two valid shapes.
  */
-'use strict';
+
 
 /** @type {import('eslint').Rule.RuleModule} */
-module.exports = {
+export default {
   meta: {
     type: 'problem',
     docs: {
