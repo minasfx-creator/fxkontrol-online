@@ -139,6 +139,9 @@ export default function AIChoreographyPage() {
   const [macro, setMacro] = useState<MacroChoreography | null>(null);
   const [show, setShow] = useState<ExpandedShow | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [refining, setRefining] = useState(false);
+  const [reasoningResult, setReasoningResult] = useState<GrokReasoningResult | null>(null);
+  const [reasoningOpen, setReasoningOpen] = useState(true);
 
   const addDroneFormation = useProjectStore(s => s.addDroneFormation);
   const materializeFormation = useProjectStore(s => s.materializeFormation);
