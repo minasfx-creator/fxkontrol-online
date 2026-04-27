@@ -104,6 +104,10 @@ export default defineConfig(({ mode }) => ({
       },
     }),
     guard.plugin,
+    // Hard CI gate: fail the build if the public route initial JS
+    // (entry + modulepreloads) exceeds 180 KB gzip. Set
+    // `failOnExceed: false` for warn-only during a refactor window.
+    bundleBudget({ maxKBGzip: 180 }),
     mode === "production" && visualizer({
       filename: "dist/bundle-analysis.html",
       gzipSize: true,
