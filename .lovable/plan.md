@@ -1,59 +1,59 @@
-# Round 7 — Targeted Fix + Canvas-Free E2E Walkthrough
+# Round 8 — Canvas-Free E2E + Security Sweep
 
-## Health baseline (carried from Round 6)
-- Tests: 604/604 ✅
-- Typecheck: clean ✅
-- Lint: 758 (all in 3 documented out-of-scope buckets)
-- Last fix shipped: silent black-viewport guard in `SkyCanvas.tsx`
+## Carry-forward from Round 7
+- ✅ `grok-choreography` now returns structured 401/402 with actionable copy
+- ⏳ User still needs to rotate `XAI_API_KEY` in Lovable Cloud → Backend → Secrets
+- ✅ Tests 604/604, typecheck clean
+- ⚠️ Lint: 758 issues (3 documented out-of-scope buckets — no action)
 
-## 1. 🐛 Real production bug — `grok-choreography` returns 502
+## 1. Canvas-free E2E walkthrough (headless browser)
+Routes the headless tool can meaningfully exercise (no WebGL needed):
 
-Edge function logs show every request failing:
-```
-xAI error [model=grok-4] 400 "Incorrect API key provided: cu***"
-upstream:all_models_failed → 502
-```
-
-The AI Choreo (Grok path) is **broken in production** because the `XAI_API_KEY` secret is invalid (looks like a Cursor key was pasted). I'll:
-
-1. Read `supabase/functions/grok-choreography/index.ts` to confirm the secret name and fallback chain.
-2. Check whether the function has a graceful degrade path when xAI rejects the key (currently it bubbles 502 — we should return a structured `{ ok: false, reason: "AI_KEY_INVALID" }` so the UI can show a friendly message instead of a generic network error).
-3. Add a clear error-message branch in the function: if upstream returns 401/403 or "Incorrect API key", surface `reason: "AI_KEY_INVALID"` with HTTP 503 + actionable copy.
-4. Update the calling UI (likely `src/modules/swarmgpt/...` or a Choreo panel) to render that reason as a toast: *"AI choreography service unavailable — admin must update the xAI key in Cloud secrets."*
-5. Tell the user to re-add a valid `XAI_API_KEY` via the secrets panel. (I won't touch the secret itself.)
-
-## 2. Canvas-free E2E walkthrough
-
-Routes/flows the headless browser **can** exercise meaningfully:
-
-| Flow | What I'll verify |
+| Route | Verification |
 |---|---|
-| **`/auth`** | Page loads, form fields have labels, submit disabled when empty, error banner on bad creds, no console errors |
-| **`/office`** (or equivalent landing) | Dashboard cards render, navigation works, no 4xx/5xx in network tab |
-| **`/settings`** | Tabs render, Safety Gate opt-in toggles persist, DMX budget preset selector visible |
-| **Live Firing safety UI** (panel inside `/studio` shell — doesn't need 3D canvas) | Hold-to-Confirm button physics, E-STOP visible, preflight gating banner shows when not ready |
+| `/` (Landing) | Renders, CTA buttons present, no console errors |
+| `/auth` | Form labels, disabled-when-empty submit, error banner on bad creds |
+| `/office` | Dashboard cards render, nav works, no 4xx/5xx in network |
+| `/settings` | Tabs render, Safety Gate opt-in toggles persist, DMX budget preset visible |
+| `/pricing` | Plan cards render, CTA wired |
+| `/platform-status` | Health widgets render, no failed fetches |
+| `/network-settings` | Form renders, toggles persist |
+| `/command-center` | Panels render, no console errors |
+| `/ai-choreography` | UI renders; trigger Grok call → confirm friendly toast appears (validates Round 7 fix end-to-end) |
 
-For each: smoke-screenshot → observe → interact with primary control → screenshot → console scan.
+For each: navigate → screenshot → interact with primary control → screenshot → console+network scan.
 
-## 3. Inline polish (only if discovered during pass)
+## 2. Security & DB sweep
+- `security--run_security_scan` — surface any RLS gaps or exposed-data findings
+- `supabase--linter` — DB-level checks
+- Triage findings: critical = fix inline (RLS, missing policies); informational = report only
+
+## 3. Backend health check
+- `supabase--cloud_status` (project_debug if needed) — confirm ACTIVE_HEALTHY before any DB ops
+- Sample recent edge logs for 5xx errors across all functions
+- `grok-choreography` curl with current (invalid) key → confirm structured 401, not opaque 502
+
+## 4. Inline fixes (only if discovered)
 - Missing `aria-label` on icon-only buttons in audited pages
-- Theme-token violations (raw hex instead of `bg-card`/`border-border`)
-- Console warnings from React (key props, hydration, etc.)
+- Theme-token violations (raw hex → semantic token)
+- Console warnings (key props, hydration, missing deps with real bugs)
+- Broken CTAs / dead links
 
-Larger findings get reported, not auto-fixed, to keep the diff reviewable.
+Larger findings → reported, not auto-fixed (keeps diff reviewable).
 
-## 4. Verification before handoff
+## 5. Verification before handoff
 - `tsc --noEmit` clean
-- `vitest run` 604+/604+ passing
-- Re-run edge logs to confirm `grok-choreography` now returns the structured 503 instead of opaque 502
+- `vitest run` ≥604 passing
+- E2E report with screenshots + per-route status
+- Security findings triaged
 
 ## Out of scope
-- 3D viewport interactions (canvas unavailable in headless tool — already documented)
-- The 575 `no-explicit-any` baseline at protocol boundaries
-- Touching/rotating the actual `XAI_API_KEY` secret (user action required)
+- 3D viewport interactions (canvas unavailable in headless tool — documented)
+- 575 `no-explicit-any` baseline at protocol boundaries
+- Rotating `XAI_API_KEY` (user action — already requested in Round 7)
 
 ## Deliverables
-- `supabase/functions/grok-choreography/index.ts` — graceful 503 + reason code
-- 1 UI file — toast/banner for `AI_KEY_INVALID`
-- E2E report with screenshots + any small fixes applied inline
-- Action item for the user: rotate `XAI_API_KEY` in Cloud secrets
+- E2E walkthrough report (per-route screenshots + console/network notes)
+- Security scan triage summary
+- Any inline UI/UX patches applied
+- Confirmation that Round 7 Grok fallback works end-to-end in the UI
