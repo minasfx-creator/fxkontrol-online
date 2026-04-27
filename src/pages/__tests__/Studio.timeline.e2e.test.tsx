@@ -214,9 +214,9 @@ describe('Studio · transport ↔ store cross-component sync', () => {
   it('store-side seek is observed by hook subscribers', () => {
     const { result } = renderHook(() => useTimelineClock());
 
-    act(() => useProjectStore.getState().seekTo(15));
+    act(() => useProjectStore.getState().setCurrentTime(15));
 
-    // seekTo in the store routes through timelineClock; hook must reflect it.
+    // setCurrentTime routes through timelineClock; hook must reflect it.
     expect(result.current.time).toBe(15);
   });
 });
