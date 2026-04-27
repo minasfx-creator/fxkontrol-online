@@ -44,13 +44,32 @@ export default function FiringExportPanel({ onClose }: { onClose: () => void }) 
       promptUpgrade({ reason: 'export', feature: sys.name });
       return;
     }
+    // Pre-flight: block invalid inputs and surface field-level reasons.
+    const report = validateFiringExportInputs(items, positions);
+    if (!report.ok) {
+      const first = report.errors[0];
+      toast.error(`Export blocked · ${report.errors.length} error(s)`, {
+        description: first ? formatFinding(first) : report.summary,
+      });
+      report.errors.slice(0, 3).forEach((e) => console.warn('[export-validation]', formatFinding(e)));
+      return;
+    }
+    if (report.warnings.length > 0) {
+      toast.warning(`${report.warnings.length} warning(s) — proceeding`, {
+        description: formatFinding(report.warnings[0]),
+      });
+    }
     try {
       const content = sys.exportFn(items, positions);
       const filename = `${projectName.replace(/\s+/g, '_')}_${sys.id}.${sys.fileExt}`;
       downloadFile(content, filename, sys.mimeType);
       toast.success(`Exported to ${sys.name} format`);
     } catch (err) {
-      toast.error(`Export failed: ${(err as Error).message}`);
+      if (err instanceof ExportValidationError) {
+        toast.error(`Export failed · validation`, { description: err.message.split('\n')[0] });
+      } else {
+        toast.error(`Export failed: ${(err as Error).message}`);
+      }
     }
   }, [items, positions, projectName, canExport]);
 
