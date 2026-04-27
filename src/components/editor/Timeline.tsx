@@ -17,6 +17,7 @@ import AudioWaveform from './AudioWaveform';
 import PyroTimelineTrack from './PyroTimelineTrack';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { loadTimelineView, saveTimelineView } from '@/lib/timelineViewState';
+import { useScrollViewport, isInScrollWindow } from '@/hooks/useScrollViewport';
 import {
   resolveDropTime,
   formatDropTimestamp,
