@@ -858,7 +858,7 @@ const FORMATION_PRESETS_MAP: Record<string, string> = {
 
 // ── DRONE FX Track — only visible when formations exist ──
 function DroneFXTrackRow({ pixelsPerSecond, duration, scrollRef }: { pixelsPerSecond: number; duration: number; scrollRef: React.RefObject<HTMLDivElement> }) {
-  const { scrollLeft: _sl, viewportWidth: _vw } = useScrollViewport(scrollRef);
+  const { scrollLeft, viewportWidth } = useScrollViewport(scrollRef);
     const droneFormations = useProjectStore(s => s.droneFormations);
   const timelineItems = useProjectStore(s => s.timelineItems);
   const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
@@ -999,7 +999,7 @@ function DroneFXTrackRow({ pixelsPerSecond, duration, scrollRef }: { pixelsPerSe
 
 // ── LASER Track — shows laser cues with live preview state ──
 function LaserTrackRow({ pixelsPerSecond, duration, scrollRef }: { pixelsPerSecond: number; duration: number; scrollRef: React.RefObject<HTMLDivElement> }) {
-  const { scrollLeft: _slLaser, viewportWidth: _vwLaser } = useScrollViewport(scrollRef);
+  const { scrollLeft, viewportWidth } = useScrollViewport(scrollRef);
     const timelineItems = useProjectStore(s => s.timelineItems);
   const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
   const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
