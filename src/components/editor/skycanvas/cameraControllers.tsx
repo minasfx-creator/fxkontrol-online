@@ -461,12 +461,14 @@ export function CameraController({ targetPosition, targetLookAt, freeLook, flyMo
 
   const sensitivityScale = 0.7;
 
-  // Broadcast OrbitControls ref to GeoCameraController
+  // Broadcast OrbitControls ref to GeoCameraController. Mutable ref intentionally
+  // omitted from deps — broadcasts once on mount when the ref is populated.
   useEffect(() => {
     if (controlsRef.current) {
       window.dispatchEvent(new CustomEvent('r3f-controls-ready', { detail: { controls: controlsRef.current } }));
     }
-  }, [controlsRef.current]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Disable OrbitControls while box-select is active
   useEffect(() => {

@@ -250,6 +250,8 @@ export default function PerformanceProfilerTab() {
     return last60.map(f => f.frameTimeMs > 0 ? 1000 / f.frameTimeMs : 60);
   }, [frames]);
 
+  // `frames` is a forced-recompute signal — getMetricsSnapshot() reads external state.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const obs = useMemo(() => getMetricsSnapshot(), [frames]);
 
   return (

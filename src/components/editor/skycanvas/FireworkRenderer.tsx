@@ -457,6 +457,8 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
   }, [STAR_COUNT, TRAIL_LENGTH]);
 
   const trailVertCount = particleBuffers.trailVertCount;
+  // `_starMaterialVersion` is a module-level invalidation counter (mutable signal).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const starMaterial = useMemo(() => _sharedStarMaterial(), [_starMaterialVersion]);
 
   useEffect(() => {
