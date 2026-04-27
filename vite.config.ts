@@ -201,6 +201,11 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    include: ['three', '@react-three/fiber', '@react-three/drei'],
+    // NOTE: three / @react-three/* removed from include — they're
+    // only used in lazy routes (Studio, SkyCanvas, ru-* chunks) and
+    // pre-bundling them was forcing the dev server to eagerly resolve
+    // them on the public entry, which leaked into the production
+    // modulepreload manifest. Keep this list minimal.
+    include: [],
   },
 }));
