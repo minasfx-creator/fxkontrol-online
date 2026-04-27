@@ -392,6 +392,31 @@ Deno.serve(async (req) => {
       return jsonError(500, "XAI_API_KEY is not configured", { requestId });
     }
 
+    // Boot-time format pre-flight. xAI keys always start with `xai-` and are
+    // long opaque strings. Reject obvious mis-pastes (Cursor `cu-…`, OpenAI
+    // `sk-…`, raw secrets accidentally pasted from another vendor) BEFORE
+    // burning a network round-trip — the upstream returns a generic 400
+    // "Incorrect API key" body that's much harder to act on than a server-
+    // side hint that names the actual problem.
+    const trimmedKey = XAI_API_KEY.trim();
+    const looksLikeXai = /^xai-[A-Za-z0-9_-]{20,}$/.test(trimmedKey);
+    if (!looksLikeXai) {
+      const prefix = trimmedKey.slice(0, 4) || "(empty)";
+      log("error", "config", {
+        reason: "key_format_invalid",
+        prefix,
+        length: trimmedKey.length,
+        outcome: "error",
+        status: 401,
+      });
+      return jsonError(
+        401,
+        `XAI_API_KEY format invalid (prefix "${prefix}"). xAI keys start with "xai-". ` +
+          `Copy a fresh key from https://console.x.ai/team/default/api-keys and update the secret in Lovable Cloud → Backend → Secrets.`,
+        { requestId },
+      );
+    }
+
     // 0. Hard payload size guard — reject oversize requests BEFORE buffering JSON.
     //    Server cap is slightly above the field-level imageDataUrl limit (10 MB)
     //    to allow JSON envelope overhead (keys, prompt text, base64 padding).
