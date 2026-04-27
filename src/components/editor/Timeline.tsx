@@ -17,6 +17,14 @@ import AudioWaveform from './AudioWaveform';
 import PyroTimelineTrack from './PyroTimelineTrack';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { loadTimelineView, saveTimelineView } from '@/lib/timelineViewState';
+import {
+  resolveDropTime,
+  formatDropTimestamp,
+  snapAccent,
+  markRecentDrop,
+  useRecentDropId,
+  type SnapReason,
+} from './timelineDropFx';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
