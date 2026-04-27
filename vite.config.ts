@@ -133,6 +133,24 @@ export default defineConfig(({ mode }) => ({
     cssCodeSplit: true,
     // Minification
     minify: 'esbuild',
+    // ── Modulepreload pruning ─────────────────────────────────────
+    // Default Vite behavior is to <link rel="modulepreload"> EVERY
+    // chunk transitively reachable from any route, including lazy
+    // ones. That inflates the public-route initial payload with
+    // three / r3f / postprocessing even though they're never
+    // executed on /landing, /auth, /pricing.
+    //
+    // We override `resolveDependencies` to ONLY preload chunks that
+    // are direct deps of the entry — heavy 3D/render chunks are
+    // fetched on-demand when the user enters a lazy route that
+    // actually imports them. The `lazy-chunks` Workbox runtimeCache
+    // (already configured) keeps repeat visits fast.
+    modulePreload: {
+      resolveDependencies: (filename, deps) => {
+        const HEAVY = /\b(three-core|r3f|postprocessing|postprocessing-core|ru-|vendor-tiles|vendor-export|recharts|cytoscape|mermaid|katex|wardley|html2canvas|architectureDiagram|FireworkRenderer|SkyCanvas|LiveFiringPanel|FXKAssistant|FXKNetPanel|index\.es)\b/;
+        return deps.filter((d) => !HEAVY.test(d));
+      },
+    },
     rollupOptions: {
       output: {
         // Stable chunk names for long-term caching
