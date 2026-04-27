@@ -17,6 +17,14 @@ import AudioWaveform from './AudioWaveform';
 import PyroTimelineTrack from './PyroTimelineTrack';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { loadTimelineView, saveTimelineView } from '@/lib/timelineViewState';
+import {
+  resolveDropTime,
+  formatDropTimestamp,
+  snapAccent,
+  markRecentDrop,
+  useRecentDropId,
+  type SnapReason,
+} from './timelineDropFx';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -211,6 +219,8 @@ const DraggableTimelineItem = React.memo(React.forwardRef<HTMLButtonElement, {
   const effectDuration = item.durationOverride ?? effect.duration;
   const widthPx = Math.max(effectDuration * pixelsPerSecond, 28);
   const [resizing, setResizing] = useState<'left' | 'right' | null>(null);
+  const recentDropId = useRecentDropId();
+  const isRecentDrop = recentDropId === item.id;
 
   const handleResizeStart = useCallback((e: React.MouseEvent, edge: 'left' | 'right') => {
     e.stopPropagation();
@@ -271,7 +281,8 @@ const DraggableTimelineItem = React.memo(React.forwardRef<HTMLButtonElement, {
               ? "border-accent/40 shadow-[0_0_8px_hsl(var(--accent)/0.15)] z-10 ring-1 ring-accent/20 border-dashed"
               : isMultiSelected
                 ? "border-primary/25 z-10"
-                : "border-white/[0.04] hover:border-white/[0.08] hover:shadow-sm"
+              : "border-white/[0.04] hover:border-white/[0.08] hover:shadow-sm",
+          isRecentDrop && "fxk-drop-flash"
         )}
         style={{
           width: `${widthPx}px`,
@@ -375,6 +386,7 @@ function TimelineTrackRow({
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
   const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [dropPreview, setDropPreview] = useState<{ time: number; snap: SnapReason } | null>(null);
   const [muted, setMuted] = useState(false);
   const [trackCtxMenu, setTrackCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const items = timelineItems.filter((i) => i.trackIndex === trackIndex);
@@ -388,12 +400,41 @@ function TimelineTrackRow({
     return SECTION_COLORS[pos.section] || undefined;
   }, [positions]);
 
+  const computeDropPreview = useCallback((e: React.DragEvent): { time: number; snap: SnapReason } | null => {
+    const effectId = e.dataTransfer.getData('application/effect-id');
+    // dataTransfer.getData() returns "" during dragOver in most browsers — fall back to types.
+    const placingEffect = effectId
+      ? EFFECT_LIBRARY.find((ef) => ef.id === effectId)
+      : undefined;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const rawTime = x / pixelsPerSecond;
+    const trackNeighbours = items.map((it) => ({
+      id: it.id,
+      startTime: it.startTime,
+      effectId: it.effectId,
+      durationOverride: it.durationOverride,
+    }));
+    return resolveDropTime({
+      rawTime,
+      duration,
+      pixelsPerSecond,
+      bpm,
+      snapToBeat,
+      currentTime: useProjectStore.getState().currentTime,
+      neighbours: trackNeighbours,
+      placing: placingEffect ? { effectId: placingEffect.id } : undefined,
+    });
+  }, [pixelsPerSecond, duration, bpm, snapToBeat, items]);
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
-    const effectId = e.dataTransfer.types.includes('application/effect-id');
-    if (!effectId) return;
+    const hasEffect = e.dataTransfer.types.includes('application/effect-id');
+    if (!hasEffect) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
-  }, []);
+    const preview = computeDropPreview(e);
+    if (preview) setDropPreview(preview);
+  }, [computeDropPreview]);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     if (!e.dataTransfer.types.includes('application/effect-id')) return;
@@ -402,12 +443,16 @@ function TimelineTrackRow({
   }, [trackIndex]);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false);
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+      setDropPreview(null);
+    }
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
+    setDropPreview(null);
     const effectId = e.dataTransfer.getData('application/effect-id');
     if (!effectId) return;
     const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
@@ -419,8 +464,18 @@ function TimelineTrackRow({
 
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
-    time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
+    const { time } = resolveDropTime({
+      rawTime: x / pixelsPerSecond,
+      duration,
+      pixelsPerSecond,
+      bpm,
+      snapToBeat,
+      currentTime: useProjectStore.getState().currentTime,
+      neighbours: items.map((it) => ({
+        id: it.id, startTime: it.startTime, effectId: it.effectId, durationOverride: it.durationOverride,
+      })),
+      placing: { effectId: effect.id },
+    });
 
     const targetIds = selectedPositionIds.length > 0
       ? selectedPositionIds.filter(id => positions.find(p => p.id === id)?.type === 'pyro')
@@ -429,24 +484,28 @@ function TimelineTrackRow({
         : [];
 
     if (targetIds.length > 0) {
+      let firstId: string | null = null;
       targetIds.forEach((posId, i) => {
         const pos = positions.find(p => p.id === posId);
         if (!pos) return;
+        const id = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${i}`;
+        if (i === 0) firstId = id;
         addTimelineItem({
-          id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${i}`,
-          effectId: effect.id, startTime: time, trackIndex,
+          id, effectId: effect.id, startTime: time, trackIndex,
           position: { x: pos.x, y: pos.y, z: pos.z },
           positionId: posId, positionIds: targetIds.length > 1 ? targetIds : undefined, positionName: pos.name,
         });
       });
+      if (firstId) markRecentDrop(firstId);
     } else {
+      const id = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       addTimelineItem({
-        id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        effectId: effect.id, startTime: time, trackIndex,
+        id, effectId: effect.id, startTime: time, trackIndex,
         position: { x: (Math.random() - 0.5) * 16, y: effect.type === 'firework' ? 0 : 5 + Math.random() * 10, z: (Math.random() - 0.5) * 8 },
       });
+      markRecentDrop(id);
     }
-  }, [pixelsPerSecond, duration, trackIndex, addTimelineItem, bpm, snapToBeat, positions, selectedPositionId, selectedPositionIds]);
+  }, [pixelsPerSecond, duration, trackIndex, addTimelineItem, bpm, snapToBeat, positions, selectedPositionId, selectedPositionIds, items]);
 
   const handleItemDragStart = useCallback((e: React.MouseEvent, itemId: string) => {
     const item = timelineItems.find(i => i.id === itemId);
@@ -630,6 +689,30 @@ function TimelineTrackRow({
             }}
           />
         )}
+        {/* ── Drop preview guide (live snap timestamp + reason) ── */}
+        {dropPreview && (() => {
+          const accent = snapAccent(dropPreview.snap);
+          const leftPx = dropPreview.time * pixelsPerSecond;
+          return (
+            <>
+              <div
+                className={cn("absolute top-0 bottom-0 w-px pointer-events-none z-30", accent.text.replace('text-', 'bg-'))}
+                style={{ left: `${leftPx}px`, opacity: 0.85 }}
+                aria-hidden
+              />
+              <div
+                className={cn(
+                  "absolute -top-4 px-1.5 py-[1px] rounded-sm text-[8px] font-mono tabular-nums pointer-events-none z-30 ring-1 bg-background/90 backdrop-blur-sm fxk-drop-guide",
+                  accent.ring, accent.text,
+                )}
+                style={{ left: `${leftPx}px`, transform: 'translateX(-50%)' }}
+                aria-hidden
+              >
+                {formatDropTimestamp(dropPreview.time)} · {accent.label}
+              </div>
+            </>
+          );
+        })()}
         {!muted && items.map((item) => {
           const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
           if (!effect) return null;
@@ -778,8 +861,23 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
   const materializeFormation = useProjectStore(s => s.materializeFormation);
   const bpm = useProjectStore(s => s.bpm);
   const snapToBeat = useProjectStore(s => s.snapToBeat);
-  
+  const recentDropId = useRecentDropId();
+
   const droneFxItems = useMemo(() => timelineItems.filter((i) => i.trackIndex === 3), [timelineItems]);
+  const [dropPreview, setDropPreview] = useState<{ time: number; snap: SnapReason } | null>(null);
+
+  const computePreview = useCallback((e: React.DragEvent): { time: number; snap: SnapReason } => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    return resolveDropTime({
+      rawTime: x / pixelsPerSecond,
+      duration, pixelsPerSecond, bpm, snapToBeat,
+      currentTime: useProjectStore.getState().currentTime,
+      neighbours: droneFxItems.map((it) => ({
+        id: it.id, startTime: it.startTime, effectId: it.effectId, durationOverride: it.durationOverride,
+      })),
+    });
+  }, [pixelsPerSecond, duration, bpm, snapToBeat, droneFxItems]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     const hasEffect = e.dataTransfer.types.includes('application/effect-id');
@@ -787,14 +885,17 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
     if (!hasEffect && !hasFormation) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
+    setDropPreview(computePreview(e));
+  }, [computePreview]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropPreview(null);
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
-    time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
+    setDropPreview(null);
+    const { time } = computePreview(e);
 
     const formationId = e.dataTransfer.getData('application/formation-id');
     if (formationId) {
@@ -811,12 +912,13 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
     const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
     if (!effect || effect.type !== 'drone') return;
 
+    const id = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     addTimelineItem({
-      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      effectId: effect.id, startTime: time, trackIndex: 3,
+      id, effectId: effect.id, startTime: time, trackIndex: 3,
       position: { x: 0, y: 20, z: 0 },
     });
-  }, [pixelsPerSecond, duration, addTimelineItem, bpm, snapToBeat, updateDroneFormation, materializeFormation]);
+    markRecentDrop(id);
+  }, [addTimelineItem, computePreview, updateDroneFormation, materializeFormation]);
 
   if (droneFormations.length === 0) return null;
 
@@ -829,7 +931,7 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
       <div
         className="flex-1 relative h-8"
         style={{ background: 'hsl(var(--background) / 0.4)' }}
-        onDragOver={handleDragOver} onDrop={handleDrop}
+        onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
       >
         {droneFormations.map((f) => {
           const totalDuration = f.transitionDuration + f.holdDuration;
@@ -843,13 +945,15 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
           const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
           if (!effect) return null;
           const isSelected = selectedTimelineItemId === item.id;
+          const isRecentDrop = recentDropId === item.id;
           return (
             <button
               key={item.id}
               onClick={(e) => { e.stopPropagation(); selectTimelineItem(item.id); }}
               className={cn(
                 "absolute top-0.5 h-7 rounded-md flex items-center px-1.5 text-[8px] font-mono transition-all cursor-pointer border",
-                isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]"
+                isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]",
+                isRecentDrop && "fxk-drop-flash",
               )}
               style={{ left: `${item.startTime * pixelsPerSecond}px`, width: `${Math.max(effect.duration * pixelsPerSecond, 20)}px`, backgroundColor: `${effect.color}15` }}
             >
@@ -858,6 +962,29 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
             </button>
           );
         })}
+        {dropPreview && (() => {
+          const accent = snapAccent(dropPreview.snap);
+          const leftPx = dropPreview.time * pixelsPerSecond;
+          return (
+            <>
+              <div
+                className={cn("absolute top-0 bottom-0 w-px pointer-events-none z-30", accent.text.replace('text-', 'bg-'))}
+                style={{ left: `${leftPx}px`, opacity: 0.85 }}
+                aria-hidden
+              />
+              <div
+                className={cn(
+                  "absolute -top-4 px-1.5 py-[1px] rounded-sm text-[8px] font-mono tabular-nums pointer-events-none z-30 ring-1 bg-background/90 backdrop-blur-sm fxk-drop-guide",
+                  accent.ring, accent.text,
+                )}
+                style={{ left: `${leftPx}px`, transform: 'translateX(-50%)' }}
+                aria-hidden
+              >
+                {formatDropTimestamp(dropPreview.time)} · {accent.label}
+              </div>
+            </>
+          );
+        })()}
       </div>
     </div>
   );
@@ -873,35 +1000,55 @@ function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number;
   const snapToBeat = useProjectStore(s => s.snapToBeat);
   const laserEnabled = useLaserPreviewStore((s) => s.globalEnabled);
   const [collapsed, setCollapsed] = useState(false);
+  const recentDropId = useRecentDropId();
 
   const laserItems = useMemo(() => timelineItems.filter((i) => {
     const effect = EFFECT_LIBRARY.find((e) => e.id === i.effectId);
     return effect?.type === 'laser';
   }), [timelineItems]);
 
+  const [dropPreview, setDropPreview] = useState<{ time: number; snap: SnapReason } | null>(null);
+
+  const computePreview = useCallback((e: React.DragEvent): { time: number; snap: SnapReason } => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    return resolveDropTime({
+      rawTime: x / pixelsPerSecond,
+      duration, pixelsPerSecond, bpm, snapToBeat,
+      currentTime: useProjectStore.getState().currentTime,
+      neighbours: laserItems.map((it) => ({
+        id: it.id, startTime: it.startTime, effectId: it.effectId, durationOverride: it.durationOverride,
+      })),
+    });
+  }, [pixelsPerSecond, duration, bpm, snapToBeat, laserItems]);
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     const hasEffect = e.dataTransfer.types.includes('application/effect-id');
     if (!hasEffect) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
+    setDropPreview(computePreview(e));
+  }, [computePreview]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropPreview(null);
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    setDropPreview(null);
     const effectId = e.dataTransfer.getData('application/effect-id');
     if (!effectId) return;
     const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
     if (!effect || effect.type !== 'laser') return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
-    time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
+    const { time } = computePreview(e);
+    const id = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     addTimelineItem({
-      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      effectId: effect.id, startTime: time, trackIndex: 4,
+      id, effectId: effect.id, startTime: time, trackIndex: 4,
       position: { x: 0, y: 0.5, z: 0 },
     });
-  }, [pixelsPerSecond, duration, addTimelineItem, bpm, snapToBeat]);
+    markRecentDrop(id);
+  }, [addTimelineItem, computePreview]);
 
   return (
     <div className="flex border-b border-white/[0.03]">
@@ -912,11 +1059,16 @@ function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number;
         {laserEnabled && <div className="w-1.5 h-1.5 rounded-full bg-green-400 ml-auto animate-pulse" />}
       </div>
       {!collapsed && (
-        <div className="flex-1 relative h-8" style={{ background: 'hsl(var(--background) / 0.4)' }} onDragOver={handleDragOver} onDrop={handleDrop}>
+        <div
+          className="flex-1 relative h-8"
+          style={{ background: 'hsl(var(--background) / 0.4)' }}
+          onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
+        >
           {laserItems.map((item) => {
             const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
             if (!effect) return null;
             const isSelected = selectedTimelineItemId === item.id;
+            const isRecentDrop = recentDropId === item.id;
             const widthPx = Math.max(effect.duration * pixelsPerSecond, 20);
             return (
               <button
@@ -924,7 +1076,8 @@ function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number;
                 onClick={(e) => { e.stopPropagation(); selectTimelineItem(item.id); }}
                 className={cn(
                   "absolute top-0.5 h-7 rounded-md flex items-center px-1.5 text-[8px] font-mono transition-all cursor-pointer border",
-                  isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]"
+                  isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]",
+                  isRecentDrop && "fxk-drop-flash",
                 )}
                 style={{ left: `${item.startTime * pixelsPerSecond}px`, width: `${widthPx}px`, backgroundColor: `${effect.color}15` }}
               >
@@ -933,6 +1086,29 @@ function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number;
               </button>
             );
           })}
+          {dropPreview && (() => {
+            const accent = snapAccent(dropPreview.snap);
+            const leftPx = dropPreview.time * pixelsPerSecond;
+            return (
+              <>
+                <div
+                  className={cn("absolute top-0 bottom-0 w-px pointer-events-none z-30", accent.text.replace('text-', 'bg-'))}
+                  style={{ left: `${leftPx}px`, opacity: 0.85 }}
+                  aria-hidden
+                />
+                <div
+                  className={cn(
+                    "absolute -top-4 px-1.5 py-[1px] rounded-sm text-[8px] font-mono tabular-nums pointer-events-none z-30 ring-1 bg-background/90 backdrop-blur-sm fxk-drop-guide",
+                    accent.ring, accent.text,
+                  )}
+                  style={{ left: `${leftPx}px`, transform: 'translateX(-50%)' }}
+                  aria-hidden
+                >
+                  {formatDropTimestamp(dropPreview.time)} · {accent.label}
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
       {collapsed && <div className="flex-1 h-2" style={{ background: 'hsl(var(--background) / 0.2)' }} />}
