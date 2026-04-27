@@ -7,6 +7,19 @@
 
 import { eventBus } from '@/core/system/eventBus';
 import type { ShowPlan } from '@/core/showplan/ShowPlan';
+import {
+  validateVvizCues,
+  formatVvizCoordinate,
+  assertValid,
+  type ValidationReport,
+} from './exportValidation';
+
+/**
+ * All exporters in this module run their inputs through `exportValidation`
+ * before writing a single byte. On failure they throw `ExportValidationError`,
+ * which carries a structured `ValidationReport` listing every offending row
+ * and field. UI callers should catch the error and render the report inline.
+ */
 
 /** Download a JSON project file */
 export function exportProjectJSON(project: Record<string, unknown>, filename = 'fxk_project.json'): void {
