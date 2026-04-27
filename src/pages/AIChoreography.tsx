@@ -280,6 +280,77 @@ export default function AIChoreographyPage() {
     toast.success(`+${r.cuesCreated} cues no ShowPlan (${r.droneCount} drones).`);
   };
 
+  /**
+   * Send the macro plan + original brief to grok-4.20-reasoning for a critique.
+   * The result is rendered as advisory notes — never auto-applied (operator owns
+   * the choreography per the safety/audit policy).
+   */
+  const refineWithReasoning = async () => {
+    if (!macro) return;
+    setRefining(true);
+    setReasoningResult(null);
+    const t = toast.loading('Analisando coreografia com Grok 4.20 Reasoning…');
+    try {
+      const compactMacro = {
+        metadata: macro.metadata,
+        formations: macro.formations.map(f => ({
+          timestamp: f.timestamp,
+          name: f.name,
+          description: f.description,
+          groups: f.groups.map(g => ({
+            shape: g.shape, num_drones: g.num_drones, center: g.center, radius: g.radius, color: g.color,
+          })),
+        })),
+        transitions: macro.transitions,
+        safety: macro.safety,
+      };
+      const result = await callGrokReasoning({
+        system:
+          'You are a senior drone-show choreographer reviewing a generated macro plan. ' +
+          'Identify weaknesses (timing collisions, monotony, weak transitions, color clashes, safety distance issues, weak crescendo). ' +
+          'Return concise bullet-point recommendations grouped by severity (HIGH / MEDIUM / LOW). Do NOT rewrite the JSON — only critique. ' +
+          'Be specific (cite formation names and timestamps). Respond in Portuguese.',
+        input:
+          `Briefing original do operador:\n"""${prompt.trim() || '(sem briefing)'}"""\n\n` +
+          `Macro choreography (compactada):\n\`\`\`json\n${JSON.stringify(compactMacro, null, 2).slice(0, 6000)}\n\`\`\``,
+        reasoning: { effort: 'medium' },
+        maxOutputTokens: 4000,
+        temperature: 0.4,
+      });
+      toast.dismiss(t);
+      setReasoningResult(result);
+      setReasoningOpen(true);
+      toast.success(`Crítica gerada (${result.usage.reasoning_tokens ?? 0} reasoning tokens · ${(result.durationMs / 1000).toFixed(1)}s)`);
+    } catch (e) {
+      toast.dismiss(t);
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg, {
+        duration: 8000,
+        action: isAuthFailure(e)
+          ? {
+              label: 'Diagnosticar chave',
+              onClick: async () => {
+                const tt = toast.loading('Testando XAI_API_KEY…');
+                try {
+                  const { data, error } = await supabase.functions.invoke('xai-key-health', { method: 'GET' });
+                  toast.dismiss(tt);
+                  if (error) { toast.error(`Health-check falhou: ${error.message}`); return; }
+                  if (data?.valid) toast.success(`Chave OK (${data.masked}). Tente refinar de novo.`);
+                  else toast.error(`${data?.masked ?? '—'} · ${data?.reason ?? 'unknown'}`, { description: data?.hint, duration: 12000 });
+                } catch (err) {
+                  toast.dismiss(tt);
+                  toast.error(`Health-check falhou: ${err instanceof Error ? err.message : String(err)}`);
+                }
+              },
+            }
+          : undefined,
+      });
+    } finally {
+      setRefining(false);
+    }
+  };
+
+
   const macroPreview = useMemo(() => {
     if (!macro) return '';
     return JSON.stringify({ metadata: macro.metadata, formations: macro.formations.slice(0, 3) }, null, 2);
