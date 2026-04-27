@@ -147,7 +147,10 @@ export default defineConfig(({ mode }) => ({
     // (already configured) keeps repeat visits fast.
     modulePreload: {
       resolveDependencies: (filename, deps) => {
-        const HEAVY = /\b(three-core|r3f|postprocessing|postprocessing-core|ru-|vendor-tiles|vendor-export|recharts|cytoscape|mermaid|katex|wardley|html2canvas|architectureDiagram|FireworkRenderer|SkyCanvas|LiveFiringPanel|FXKAssistant|FXKNetPanel|index\.es)\b/;
+        // Heavy chunks NEVER needed by /landing, /auth, /pricing, /legal/*.
+        // Only loaded on-demand by lazy routes (Studio, CommandCenter, etc).
+        // The lazy-chunks Workbox runtimeCache keeps repeat visits fast.
+        const HEAVY = /\b(three-core|r3f|postprocessing|postprocessing-core|ru-|vendor-tiles|vendor-export|vendor-misc|vendor-forms|vendor-markdown|vendor-capacitor|recharts|cytoscape|mermaid|katex|wardley|html2canvas|architectureDiagram|FireworkRenderer|SkyCanvas|LiveFiringPanel|FXKAssistant|FXKNetPanel|index\.es)\b/;
         return deps.filter((d) => !HEAVY.test(d));
       },
     },
