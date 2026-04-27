@@ -5,7 +5,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
 type JoiEmotion = 'caring' | 'celebrating' | 'serious';
-import { X, Minimize2, Send, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, FileText, Globe, Volume2, VolumeX, Mic, MicOff, Play, Paperclip, File, Image as ImageIcon, XCircle } from 'lucide-react';
+import { X, Minimize2, Send, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, FileText, Globe, Volume2, VolumeX, Mic, MicOff, Play, Paperclip, File, Image as ImageIcon, XCircle, Brain, Zap } from 'lucide-react';
+import { callGrokReasoning, isAuthFailure } from '@/lib/grokResponses';
 const lazyExportPdf = () => import('@/utils/joiPdfExport').then(m => m.exportJoiPdf);
 const lazyExportDocx = () => import('@/utils/joiDocxExport').then(m => m.exportJoiDocx);
 import { parseKmzReadyBlock, stripKmzReadyBlock, downloadAeroKmz } from '@/utils/joiAeroKmzExport';
