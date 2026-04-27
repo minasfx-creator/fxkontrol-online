@@ -74,8 +74,8 @@ function friendlyUpstream(raw: string, status?: number): string {
     return 'Limite de requisições atingido. Aguarde alguns segundos e tente novamente.';
   if (status === 402 || /credit|payment required|insufficient.*balance|quota/.test(m))
     return 'Créditos da AI esgotados. Recarregue em Settings → Workspace → Usage.';
-  if (status === 401 || /api key|unauthorized|invalid.*key/.test(m))
-    return 'Chave XAI_API_KEY inválida ou expirada. Atualize o secret no backend.';
+  if (status === 401 || /api key|unauthorized|invalid.*key|key format invalid|xai_api_key/.test(m))
+    return 'Chave XAI_API_KEY inválida ou no formato errado (precisa começar com "xai-"). Atualize o secret no backend.';
   if (status === 413 || /payload too large|request entity too large|too large|max.*size/.test(m))
     return `Asset muito grande (limite ${MAX_FILE_MB}MB). Comprima a imagem/vídeo antes de enviar.`;
   if (/model.*not.*found|does not exist|unsupported|deprecat/.test(m))
@@ -226,7 +226,42 @@ export default function AIChoreographyPage() {
       toast.success(`${expanded.drones.length} drones · ${expanded.drones[0]?.frames.length ?? 0} frames · pico ${expanded.maxSpeedObserved.toFixed(1)} m/s`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      toast.error(msg, { duration: 7000 });
+      // Auth-flavoured failures get a self-diagnosis CTA: a single click pings
+      // the lightweight `xai-key-health` endpoint and surfaces the verdict
+      // (format wrong, upstream 401, network issue, etc.) so operators don't
+      // have to guess whether the key, the workspace, or the network is at
+      // fault.
+      const looksAuth = /xai_api_key|api key|chave xai|unauthorized|401/i.test(msg);
+      toast.error(msg, {
+        duration: 7000,
+        action: looksAuth
+          ? {
+              label: 'Diagnosticar chave',
+              onClick: async () => {
+                const t = toast.loading('Testando XAI_API_KEY…');
+                try {
+                  const { data, error } = await supabase.functions.invoke('xai-key-health', { method: 'GET' });
+                  toast.dismiss(t);
+                  if (error) {
+                    toast.error(`Health-check falhou: ${error.message}`);
+                    return;
+                  }
+                  if (data?.valid) {
+                    toast.success(`Chave OK (${data.masked}). Tente gerar de novo.`);
+                  } else {
+                    toast.error(`${data?.masked ?? '—'} · ${data?.reason ?? 'unknown'}`, {
+                      description: data?.hint ?? 'Sem dica disponível.',
+                      duration: 12000,
+                    });
+                  }
+                } catch (e) {
+                  toast.dismiss(t);
+                  toast.error(`Health-check falhou: ${e instanceof Error ? e.message : String(e)}`);
+                }
+              },
+            }
+          : undefined,
+      });
     } finally {
       setBusy(false);
     }
