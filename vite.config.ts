@@ -194,7 +194,9 @@ export default defineConfig(({ mode }) => ({
             'vendor-tiles': ['3d-tiles-renderer'],
             'vendor-capacitor': ['@capacitor/core', '@capacitor/haptics'],
             'vendor-markdown': ['react-markdown'],
-            'vendor-icons': ['lucide-react'],
+            // NOTE: lucide-react intentionally NOT chunked. Letting Rollup
+            // tree-shake per-icon means /landing only ships the 2-3 icons it
+            // actually uses (~1KB) instead of the full 24KB barrel.
           };
           for (const [chunk, pkgs] of Object.entries(vendorChunks)) {
             if (pkgs.some(pkg => id.includes(`node_modules/${pkg}`))) return chunk;
