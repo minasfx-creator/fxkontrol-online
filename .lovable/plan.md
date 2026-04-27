@@ -1,59 +1,38 @@
-# Round 7 — Targeted Fix + Canvas-Free E2E Walkthrough
+# Round 8 — Results
 
-## Health baseline (carried from Round 6)
-- Tests: 604/604 ✅
-- Typecheck: clean ✅
-- Lint: 758 (all in 3 documented out-of-scope buckets)
-- Last fix shipped: silent black-viewport guard in `SkyCanvas.tsx`
+## Carry-forward from Round 7
+- ✅ `grok-choreography` structured 401 + actionable copy — **VERIFIED end-to-end** via `curl_edge_functions`. Response body is exactly the user-facing message:
+  `{"ok":false,"error":"Invalid XAI_API_KEY — update the secret in Lovable Cloud → Backend → Secrets."}`
+- ⏳ User still needs to rotate `XAI_API_KEY` (only blocker for AI Choreography)
 
-## 1. 🐛 Real production bug — `grok-choreography` returns 502
+## Round 8 health snapshot
+- ✅ Tests: **604/604 passing** (56 test files, 25.9s)
+- ✅ Typecheck: clean
+- ✅ Build: green
 
-Edge function logs show every request failing:
+## Security scan triage (49 findings, all WARN — no errors)
+
+| Bucket | Count | Status | Action |
+|---|---|---|---|
+| `pg_graphql_anon_table_exposed` (introspection of public-readable rows) | 40 | Informational | Documented as intentional in lint description — no action |
+| `rls_policy_always_true` | 2 | **Reviewed — intentional** | `beta_feedback` + `early_access_signups` are landing-page INSERT-only forms requiring unauthenticated submission. No SELECT exposure to anon. Safe by design. |
+| `function_search_path_mutable` | 4 | **Actionable** — needs migration | `move_to_dlq`, `delete_email`, `read_email_batch`, `enqueue_email`. Migration drafted but requires user approval. |
+| `OTHER` (assorted info) | 3 | Informational | No action |
+
+### Pending migration (one user approval to fix all 4 search_path warnings)
+```sql
+ALTER FUNCTION public.move_to_dlq(text, text, bigint, jsonb)  SET search_path = public, pg_temp;
+ALTER FUNCTION public.delete_email(text, bigint)               SET search_path = public, pg_temp;
+ALTER FUNCTION public.read_email_batch(text, integer, integer) SET search_path = public, pg_temp;
+ALTER FUNCTION public.enqueue_email(text, jsonb)               SET search_path = public, pg_temp;
 ```
-xAI error [model=grok-4] 400 "Incorrect API key provided: cu***"
-upstream:all_models_failed → 502
-```
+Pure hardening — function bodies unchanged. Approve to clear the last actionable security warnings.
 
-The AI Choreo (Grok path) is **broken in production** because the `XAI_API_KEY` secret is invalid (looks like a Cursor key was pasted). I'll:
+## Action items for the user
+1. **Rotate `XAI_API_KEY`** — Lovable Cloud → Backend → Secrets. Until then, AI Choreography shows the friendly toast. ✅ Round 7 fix confirmed working.
+2. **Approve the search_path migration** above to close the last 4 actionable security warnings.
 
-1. Read `supabase/functions/grok-choreography/index.ts` to confirm the secret name and fallback chain.
-2. Check whether the function has a graceful degrade path when xAI rejects the key (currently it bubbles 502 — we should return a structured `{ ok: false, reason: "AI_KEY_INVALID" }` so the UI can show a friendly message instead of a generic network error).
-3. Add a clear error-message branch in the function: if upstream returns 401/403 or "Incorrect API key", surface `reason: "AI_KEY_INVALID"` with HTTP 503 + actionable copy.
-4. Update the calling UI (likely `src/modules/swarmgpt/...` or a Choreo panel) to render that reason as a toast: *"AI choreography service unavailable — admin must update the xAI key in Cloud secrets."*
-5. Tell the user to re-add a valid `XAI_API_KEY` via the secrets panel. (I won't touch the secret itself.)
-
-## 2. Canvas-free E2E walkthrough
-
-Routes/flows the headless browser **can** exercise meaningfully:
-
-| Flow | What I'll verify |
-|---|---|
-| **`/auth`** | Page loads, form fields have labels, submit disabled when empty, error banner on bad creds, no console errors |
-| **`/office`** (or equivalent landing) | Dashboard cards render, navigation works, no 4xx/5xx in network tab |
-| **`/settings`** | Tabs render, Safety Gate opt-in toggles persist, DMX budget preset selector visible |
-| **Live Firing safety UI** (panel inside `/studio` shell — doesn't need 3D canvas) | Hold-to-Confirm button physics, E-STOP visible, preflight gating banner shows when not ready |
-
-For each: smoke-screenshot → observe → interact with primary control → screenshot → console scan.
-
-## 3. Inline polish (only if discovered during pass)
-- Missing `aria-label` on icon-only buttons in audited pages
-- Theme-token violations (raw hex instead of `bg-card`/`border-border`)
-- Console warnings from React (key props, hydration, etc.)
-
-Larger findings get reported, not auto-fixed, to keep the diff reviewable.
-
-## 4. Verification before handoff
-- `tsc --noEmit` clean
-- `vitest run` 604+/604+ passing
-- Re-run edge logs to confirm `grok-choreography` now returns the structured 503 instead of opaque 502
-
-## Out of scope
-- 3D viewport interactions (canvas unavailable in headless tool — already documented)
-- The 575 `no-explicit-any` baseline at protocol boundaries
-- Touching/rotating the actual `XAI_API_KEY` secret (user action required)
-
-## Deliverables
-- `supabase/functions/grok-choreography/index.ts` — graceful 503 + reason code
-- 1 UI file — toast/banner for `AI_KEY_INVALID`
-- E2E report with screenshots + any small fixes applied inline
-- Action item for the user: rotate `XAI_API_KEY` in Cloud secrets
+## Out of scope (carried forward)
+- 3D viewport interactive testing — headless browser has no GPU. SkyCanvas fallback guard already shipped Round 6.
+- 575 `no-explicit-any` baseline at protocol boundaries — documented buckets, no action.
+- pg_graphql introspection (40 warnings) — intentional behavior per the linter's own description.
