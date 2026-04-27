@@ -804,10 +804,11 @@ const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: num
   );
 });
 
-const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number }>(function FormationTrackRow({ pixelsPerSecond, duration }, _ref) {
+const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number; scrollRef: React.RefObject<HTMLDivElement> }>(function FormationTrackRow({ pixelsPerSecond, duration, scrollRef }, _ref) {
     const droneFormations = useProjectStore(s => s.droneFormations);
   const selectFormation = useProjectStore(s => s.selectFormation);
   const selectedFormationId = useProjectStore(s => s.selectedFormationId);
+  const { scrollLeft, viewportWidth } = useScrollViewport(scrollRef);
   if (droneFormations.length === 0) return null;
 
   return (
@@ -819,7 +820,11 @@ const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: nu
       <div className="flex-1 relative h-8" style={{ background: 'hsl(var(--background) / 0.4)' }}>
         {droneFormations.map((f, i) => {
           const totalDuration = f.transitionDuration + f.holdDuration;
+          const itemLeftPx = f.startTime * pixelsPerSecond;
           const widthPx = Math.max(totalDuration * pixelsPerSecond, 20);
+          if (!isInScrollWindow(itemLeftPx, widthPx, { scrollLeft, viewportWidth }, { labelOffsetPx: 96 })) {
+            return null;
+          }
           const isSelected = selectedFormationId === f.id;
           const preset = FORMATION_PRESETS_MAP[f.formationType];
           return (
@@ -830,7 +835,7 @@ const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: nu
                 "absolute top-0.5 h-7 rounded-md flex items-center px-1.5 text-[8px] font-mono transition-all cursor-pointer border",
                 isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]"
               )}
-              style={{ left: `${f.startTime * pixelsPerSecond}px`, width: `${widthPx}px`, backgroundColor: `${f.color}15` }}
+              style={{ left: `${itemLeftPx}px`, width: `${widthPx}px`, backgroundColor: `${f.color}15` }}
             >
               <div className="w-[2px] h-full rounded-full mr-1 flex-shrink-0" style={{ backgroundColor: f.color }} />
               <span className="truncate text-muted-foreground/60">{preset || f.formationType} #{i + 1}</span>
