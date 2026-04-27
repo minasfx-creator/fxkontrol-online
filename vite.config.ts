@@ -5,6 +5,7 @@ import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { visualizer } from "rollup-plugin-visualizer";
 import { precacheGuard } from "./scripts/vite-plugin-precache-guard";
+import { bundleBudget } from "./scripts/vite-plugin-bundle-budget";
 
 // Build-time guard: arquivos em public/ acima de 2 MiB são EXCLUÍDOS do
 // precache do PWA (Workbox) e logados no console como WARN. Evita que
