@@ -53,8 +53,7 @@ export function createStore<T extends object>(
     return create<T>()(
       devtools(
         subscribeWithSelector(
-          // @ts-expect-error — middleware tuple narrows when persist is omitted
-          immer(initializer),
+          immer(initializer as never) as never,
         ),
         { name: storageName, enabled: import.meta.env.DEV },
       ),
