@@ -275,6 +275,8 @@ export default function DmxPyroDiagnostics() {
   const captured = useMemo(() => {
     const all = getCapturedEntries();
     return onlyLiveFiring ? all.filter(isLiveFiringRelated) : all;
+    // `capTick` is a forced-recompute signal driven by subscribeCapturedEntries.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [capTick, onlyLiveFiring]);
   const capCounts = useMemo(() => {
     const c = { error: 0, warn: 0, unhandled: 0, rejection: 0 };
