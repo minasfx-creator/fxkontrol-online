@@ -67,12 +67,13 @@ export function useExecutiveReport() {
       return null;
     }
 
+    const id = String((data as { id: string }).id);
     addLocal({
-      id: data.id,
+      id,
       showName: input.show_name,
       readinessStatus: input.readiness_status,
     });
-    return data.id;
+    return id;
   }, [addLocal]);
 
   return submit;
