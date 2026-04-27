@@ -60,15 +60,21 @@ export function buildUnrealPayload(
 export function exportDroneWaypointsCSV(
   waypoints: { droneId: string; time: number; x: number; y: number; z: number }[],
   filename = 'fxk_drone_waypoints.csv',
-): void {
+): ValidationReport {
+  const report = validateVvizCues(
+    waypoints.map((w) => ({ time: w.time, x: w.x, y: w.y, z: w.z })),
+  );
+  assertValid(report);
+
   const header = 'DroneID,Time,X,Y,Z\n';
-  const rows = waypoints.map(w =>
-    `${w.droneId},${w.time.toFixed(3)},${w.x.toFixed(2)},${w.y.toFixed(2)},${w.z.toFixed(2)}`
+  const rows = waypoints.map((w) =>
+    `${w.droneId},${w.time.toFixed(3)},${formatVvizCoordinate(w.x, 'local')},${formatVvizCoordinate(w.y, 'local')},${formatVvizCoordinate(w.z, 'local')}`,
   ).join('\n');
 
   const blob = new Blob([header + rows], { type: 'text/csv' });
   triggerDownload(blob, filename);
   eventBus.emit('SYSTEM.EXPORT', { format: 'csv', filename, waypointCount: waypoints.length });
+  return report;
 }
 
 /**
