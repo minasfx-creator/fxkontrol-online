@@ -801,7 +801,7 @@ function GroundClickPlane() {
         time,
       });
     }
-  }, [editorMode, addPosition, setEditorMode, addWaypoint, selectedTrajectoryId, drawHeight, getTerrainY]);
+  }, [editorMode, addPosition, addWaypoint, selectedTrajectoryId, drawHeight, getTerrainY]);
 
   const removeVfx = useCallback((id: string) => {
     setVfxList(prev => prev.filter(v => v.id !== id));

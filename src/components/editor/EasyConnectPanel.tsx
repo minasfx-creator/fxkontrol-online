@@ -97,10 +97,11 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
   const pendingTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   useEffect(() => {
     mountedRef.current = true;
+    const pendingTimers = pendingTimersRef.current;
     return () => {
       mountedRef.current = false;
-      pendingTimersRef.current.forEach((t) => clearTimeout(t));
-      pendingTimersRef.current.clear();
+      pendingTimers.forEach((t) => clearTimeout(t));
+      pendingTimers.clear();
     };
   }, []);
   const safeTimeout = useCallback((cb: () => void, ms: number) => {

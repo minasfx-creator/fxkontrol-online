@@ -440,7 +440,7 @@ function TimelineTrackRow({
     if (!e.dataTransfer.types.includes('application/effect-id')) return;
     e.preventDefault();
     setIsDragOver(true);
-  }, [trackIndex]);
+  }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {

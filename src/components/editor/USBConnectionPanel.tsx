@@ -231,8 +231,9 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
 
   // Cleanup on unmount
   useEffect(() => {
+    const readLoops = readLoopRefs.current;
     return () => {
-      readLoopRefs.current.forEach((_, key) => readLoopRefs.current.set(key, false));
+      readLoops.forEach((_, key) => readLoops.set(key, false));
     };
   }, []);
 

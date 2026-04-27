@@ -671,6 +671,9 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, Record<string, never>
       scene.add(haze.mesh);
       heatHazeRef.current = haze;
 
+      // Capture ref at effect-run time so cleanup sees the same trail set.
+      const ribbonTrails = ribbonTrailsRef.current;
+
       return () => {
         scene.remove(sparkRenderer.mesh);
         scene.remove(smokeRenderer.mesh);
@@ -679,7 +682,7 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, Record<string, never>
         smokeRenderer.dispose();
         haze.dispose();
         // Dispose ribbon trails
-        ribbonTrailsRef.current.forEach(rt => {
+        ribbonTrails.forEach(rt => {
           scene.remove(rt.mesh);
           rt.dispose();
         });

@@ -155,6 +155,7 @@ export function PersistedDevicesPanel() {
       return { entry, device, status, reason };
     });
     // `tick` forces re-evaluation after a manual forget.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [devices, tick]);
 
   const transportOf = (row: RowState): DiscoveryTransport | 'unknown' => {
