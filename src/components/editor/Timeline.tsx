@@ -711,16 +711,16 @@ function TimelineTrackRow({
         {!muted && items.map((item) => {
           const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
           if (!effect) return null;
-          // Virtualize: skip items outside visible scroll range
+          // Virtualize: skip items outside visible scroll range (uses shared helper)
           const effectDuration = item.durationOverride ?? effect.duration;
           const itemLeftPx = item.startTime * pixelsPerSecond;
-          const itemRightPx = itemLeftPx + Math.max(effectDuration * pixelsPerSecond, 28);
-          const visibleLeft = scrollLeft - 96 - 200; // account for label column + buffer
-          const visibleRight = scrollLeft - 96 + viewportWidth + 200;
-          if (itemRightPx < visibleLeft || itemLeftPx > visibleRight) return null;
+          const itemWidthPx = Math.max(effectDuration * pixelsPerSecond, 28);
+          if (!isInScrollWindow(itemLeftPx, itemWidthPx, { scrollLeft, viewportWidth }, { labelOffsetPx: 96 })) {
+            return null;
+          }
 
-          const linkedIds = useProjectStore.getState().linkedTimelineItemIds;
-          const isLinked = linkedIds.includes(item.id);
+          // O(1) Set lookup instead of getState()+Array.includes() per item.
+          const isLinked = linkedIdSet.has(item.id);
           return (
             <DraggableTimelineItem
               key={item.id} item={item} effect={effect} pixelsPerSecond={pixelsPerSecond}
