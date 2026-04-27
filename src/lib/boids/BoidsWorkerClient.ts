@@ -173,7 +173,7 @@ export class BoidsWorkerClient {
     // Use the spare as input: copy current "ready" into it so reads
     // during in-flight remain stable, then transfer the spare.
     this.spare.set(this.ready);
-    const out = this.spare.buffer as ArrayBuffer;
+    const out = this.spare.buffer as unknown as ArrayBuffer;
     this.inFlight = out;
     const msg: BoidsWorkerInbound = {
       type: 'step', buf: out, n: this.n, dt, seq,
