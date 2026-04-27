@@ -161,7 +161,6 @@ function App() {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
-                </PlaybackProfilerProvider>
               </LazyChunkBoundary>
             </BrowserRouter>
           </TooltipProvider>
