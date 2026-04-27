@@ -201,9 +201,15 @@ export function exportFlightPlan(
  * Compatible with ArduPilot Mission Planner and QGC.
  */
 export function toWaypointFileFormat(plan: FlightPlan): string {
+  assertValid(validateMAVLinkPlan(plan));
   const lines = ['QGC WPL 110'];
 
   for (const wp of plan.waypoints) {
+    // RTL waypoints carry zero coords by spec — skip per-axis formatting then.
+    const isRtl = wp.command === 20;
+    const latStr = isRtl ? wp.lat.toFixed(8) : formatVvizCoordinate(wp.lat, 'lat');
+    const lngStr = isRtl ? wp.lng.toFixed(8) : formatVvizCoordinate(wp.lng, 'lon');
+    const altStr = isRtl ? wp.alt.toFixed(6) : formatVvizCoordinate(wp.alt, 'alt');
     lines.push([
       wp.seq,
       wp.current,
@@ -213,9 +219,9 @@ export function toWaypointFileFormat(plan: FlightPlan): string {
       wp.param2.toFixed(6),
       wp.param3.toFixed(6),
       wp.param4.toFixed(6),
-      wp.lat.toFixed(8),
-      wp.lng.toFixed(8),
-      wp.alt.toFixed(6),
+      latStr,
+      lngStr,
+      altStr,
       wp.autocontinue,
     ].join('\t'));
   }
@@ -227,6 +233,7 @@ export function toWaypointFileFormat(plan: FlightPlan): string {
  * Format flight plan as JSON (DJI-compatible structure).
  */
 export function toJSONFormat(plan: FlightPlan): string {
+  assertValid(validateMAVLinkPlan(plan));
   return JSON.stringify({
     version: '1.0',
     generator: 'FX Kontrol Mission Planner',
