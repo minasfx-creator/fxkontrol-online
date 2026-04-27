@@ -4,9 +4,19 @@
  * AI co-pilot state, feature flags, and operational telemetry mirrors
  * (command_journal + executive_reports rolling buffers).
  *
- * The `consolidatedStores` flag here is the master switch that
- * `migrateLegacyStores()` checks on bootstrap.
+ * SLICE TOPOLOGY (minimize subscription fan-out):
+ *   • layout    — openPanels, aiCoPilotOpen (PERSISTED)
+ *   • prefs     — preferences (PERSISTED)
+ *   • flags     — featureFlags (PERSISTED) — `consolidatedStores` is the
+ *                 master switch checked by `migrateLegacyStores()`
+ *   • telemetry — commandJournal, executiveReports (HIGH frequency,
+ *                 rolling buffers — NEVER persisted)
+ *
+ * Critical: telemetry slice can churn at >5Hz under load. Layout
+ * panels (TacticalDock, header, status bar) MUST use the layout/prefs
+ * slice selectors so they don't re-render on every journal entry.
  */
+import { useShallow } from 'zustand/react/shallow';
 import { createStore } from './createStore';
 
 export interface CommandJournalEntry {
@@ -33,24 +43,25 @@ export type FeatureFlags = {
   [key: string]: boolean;
 };
 
-export interface UIWorkspaceState {
-  // ── Layout slice ─────────────────────────────────────────────────
+export interface UIWorkspaceLayoutSlice {
   openPanels: string[];
-
-  // ── Preferences slice ────────────────────────────────────────────
-  preferences: Record<string, unknown>;
-
-  // ── Feature flag slice ───────────────────────────────────────────
-  featureFlags: FeatureFlags;
-
-  // ── AI co-pilot slice ────────────────────────────────────────────
   aiCoPilotOpen: boolean;
+}
 
-  // ── Telemetry slice (rolling buffers, not full mirror) ───────────
+export interface UIWorkspacePrefsSlice {
+  preferences: Record<string, unknown>;
+}
+
+export interface UIWorkspaceFlagsSlice {
+  featureFlags: FeatureFlags;
+}
+
+export interface UIWorkspaceTelemetrySlice {
   commandJournal: CommandJournalEntry[];
   executiveReports: ExecutiveReportEntry[];
+}
 
-  // ── Actions ──────────────────────────────────────────────────────
+export interface UIWorkspaceActions {
   togglePanel: (panel: string) => void;
   setPreference: <V>(key: string, value: V) => void;
   setFeatureFlag: (key: keyof FeatureFlags | string, value: boolean) => void;
@@ -60,20 +71,31 @@ export interface UIWorkspaceState {
   clearTelemetryBuffers: () => void;
 }
 
+export type UIWorkspaceState =
+  & UIWorkspaceLayoutSlice
+  & UIWorkspacePrefsSlice
+  & UIWorkspaceFlagsSlice
+  & UIWorkspaceTelemetrySlice
+  & UIWorkspaceActions;
+
 const MAX_JOURNAL = 100;
 const MAX_REPORTS = 50;
 
 export const useUIWorkspaceStore = createStore<UIWorkspaceState>(
   'ui',
   (set) => ({
+    // layout
     openPanels: ['timeline', 'hardware', 'viewport'],
+    aiCoPilotOpen: false,
+    // prefs
     preferences: {},
+    // flags
     featureFlags: {
       consolidatedStores: false,
       safetyGateUI: true,
       grokTelemetryFull: false,
     },
-    aiCoPilotOpen: false,
+    // telemetry (hot)
     commandJournal: [],
     executiveReports: [],
 
@@ -103,11 +125,48 @@ export const useUIWorkspaceStore = createStore<UIWorkspaceState>(
     }),
   }),
   {
+    // Persist ONLY layout + prefs + flags. Telemetry buffers are
+    // explicitly excluded — they would bloat localStorage and are
+    // never useful across sessions.
     partialize: (state) => ({
       openPanels: state.openPanels,
+      aiCoPilotOpen: state.aiCoPilotOpen,
       preferences: state.preferences,
       featureFlags: state.featureFlags,
-      aiCoPilotOpen: state.aiCoPilotOpen,
     }),
   },
 );
+
+// ── Slice selectors ──────────────────────────────────────────────
+export const useUIWorkspaceLayout = () =>
+  useUIWorkspaceStore(useShallow((s): UIWorkspaceLayoutSlice => ({
+    openPanels: s.openPanels,
+    aiCoPilotOpen: s.aiCoPilotOpen,
+  })));
+
+export const useUIWorkspacePrefs = () =>
+  useUIWorkspaceStore(useShallow((s): UIWorkspacePrefsSlice => ({
+    preferences: s.preferences,
+  })));
+
+export const useUIWorkspaceFlags = () =>
+  useUIWorkspaceStore(useShallow((s): UIWorkspaceFlagsSlice => ({
+    featureFlags: s.featureFlags,
+  })));
+
+export const useUIWorkspaceTelemetry = () =>
+  useUIWorkspaceStore(useShallow((s): UIWorkspaceTelemetrySlice => ({
+    commandJournal: s.commandJournal,
+    executiveReports: s.executiveReports,
+  })));
+
+export const useUIWorkspaceActions = (): UIWorkspaceActions =>
+  useUIWorkspaceStore(useShallow((s) => ({
+    togglePanel: s.togglePanel,
+    setPreference: s.setPreference,
+    setFeatureFlag: s.setFeatureFlag,
+    toggleAICopilot: s.toggleAICopilot,
+    addCommandToJournal: s.addCommandToJournal,
+    addExecutiveReport: s.addExecutiveReport,
+    clearTelemetryBuffers: s.clearTelemetryBuffers,
+  })));

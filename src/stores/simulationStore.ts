@@ -3,55 +3,72 @@
  * Macro-store consolidating WebGPU kernel state, boids/laser physics,
  * viewport/camera, replay buffer, and Honest Hardware mode flag.
  *
- * Status: SCAFFOLD. The WebGPU Unified Compute Kernel (WGSL v3, RT3+RT4)
- * stays in src/render_ultra/ — this store only mirrors the *control
- * surface* (mode, ready flag, replay handle) so UI panels can subscribe
- * without reaching into the renderer directly.
+ * SLICE TOPOLOGY (minimize subscription fan-out):
+ *   • mode      — simulationMode, honestHardwareEnabled, viewportMode (PERSISTED)
+ *   • compute   — webgpuReady, computePassCount (HIGH frequency, every frame)
+ *   • physics   — boidsConfig (mid frequency, edits)
+ *   • replay    — replayBufferSize, replayPlaying (mid frequency)
+ *
+ * Critical: `computePassCount` ticks every frame. UI must NEVER
+ * subscribe to the full state — use `useSimulationMode()` etc.
  */
+import { useShallow } from 'zustand/react/shallow';
 import { createStore } from './createStore';
 
 export type SimulationMode = 'live' | 'simulated' | 'replay';
 export type ViewportMode = 'editor' | 'walk' | 'studio';
 
-export interface SimulationState {
-  // ── WebGPU slice (control surface only) ──────────────────────────
-  webgpuReady: boolean;
-  computePassCount: number;
-
-  // ── Mode slice ───────────────────────────────────────────────────
+export interface SimulationModeSlice {
   simulationMode: SimulationMode;
   honestHardwareEnabled: boolean;
-
-  // ── Viewport slice ───────────────────────────────────────────────
   viewportMode: ViewportMode;
+}
 
-  // ── Physics slice (boids/laser params, sparse) ───────────────────
+export interface SimulationComputeSlice {
+  webgpuReady: boolean;
+  computePassCount: number;
+}
+
+export interface SimulationPhysicsSlice {
   boidsConfig: { count: number; speed: number } | null;
+}
 
-  // ── Replay slice ─────────────────────────────────────────────────
+export interface SimulationReplaySlice {
   replayBufferSize: number;
   replayPlaying: boolean;
+}
 
-  // ── Actions ──────────────────────────────────────────────────────
+export interface SimulationActions {
   setWebgpuReady: (ready: boolean) => void;
   tickComputePass: () => void;
   toggleMode: (mode: SimulationMode) => void;
   setViewportMode: (mode: ViewportMode) => void;
   enableHonestHardware: (enabled: boolean) => void;
-  setBoidsConfig: (cfg: SimulationState['boidsConfig']) => void;
+  setBoidsConfig: (cfg: SimulationPhysicsSlice['boidsConfig']) => void;
   setReplayBufferSize: (n: number) => void;
   setReplayPlaying: (playing: boolean) => void;
 }
 
+export type SimulationState =
+  & SimulationModeSlice
+  & SimulationComputeSlice
+  & SimulationPhysicsSlice
+  & SimulationReplaySlice
+  & SimulationActions;
+
 export const useSimulationStore = createStore<SimulationState>(
   'simulation',
   (set) => ({
-    webgpuReady: false,
-    computePassCount: 0,
+    // mode (durable)
     simulationMode: 'simulated',
     honestHardwareEnabled: true, // Honest by default per project memory
     viewportMode: 'editor',
+    // compute (hot)
+    webgpuReady: false,
+    computePassCount: 0,
+    // physics
     boidsConfig: null,
+    // replay
     replayBufferSize: 0,
     replayPlaying: false,
 
@@ -65,6 +82,7 @@ export const useSimulationStore = createStore<SimulationState>(
     setReplayPlaying: (playing) => set((s) => { s.replayPlaying = playing; }),
   }),
   {
+    // Aggressive partialize: only mode slice persists.
     partialize: (state) => ({
       simulationMode: state.simulationMode,
       honestHardwareEnabled: state.honestHardwareEnabled,
@@ -72,3 +90,40 @@ export const useSimulationStore = createStore<SimulationState>(
     }),
   },
 );
+
+// ── Slice selectors ──────────────────────────────────────────────
+export const useSimulationMode = () =>
+  useSimulationStore(useShallow((s): SimulationModeSlice => ({
+    simulationMode: s.simulationMode,
+    honestHardwareEnabled: s.honestHardwareEnabled,
+    viewportMode: s.viewportMode,
+  })));
+
+export const useSimulationCompute = () =>
+  useSimulationStore(useShallow((s): SimulationComputeSlice => ({
+    webgpuReady: s.webgpuReady,
+    computePassCount: s.computePassCount,
+  })));
+
+export const useSimulationPhysics = () =>
+  useSimulationStore(useShallow((s): SimulationPhysicsSlice => ({
+    boidsConfig: s.boidsConfig,
+  })));
+
+export const useSimulationReplay = () =>
+  useSimulationStore(useShallow((s): SimulationReplaySlice => ({
+    replayBufferSize: s.replayBufferSize,
+    replayPlaying: s.replayPlaying,
+  })));
+
+export const useSimulationActions = (): SimulationActions =>
+  useSimulationStore(useShallow((s) => ({
+    setWebgpuReady: s.setWebgpuReady,
+    tickComputePass: s.tickComputePass,
+    toggleMode: s.toggleMode,
+    setViewportMode: s.setViewportMode,
+    enableHonestHardware: s.enableHonestHardware,
+    setBoidsConfig: s.setBoidsConfig,
+    setReplayBufferSize: s.setReplayBufferSize,
+    setReplayPlaying: s.setReplayPlaying,
+  })));
