@@ -46,7 +46,8 @@ const CinematicIntro = React.forwardRef<HTMLDivElement, CinematicIntroProps>(fun
 
   // Cleanup all timers
   useEffect(() => {
-    return () => timersRef.current.forEach(clearTimeout);
+    const timers = timersRef.current;
+    return () => timers.forEach(clearTimeout);
   }, []);
 
   // ── Phase: black-in → try video or fallback

@@ -677,7 +677,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
     }]);
   }, [channels, dmxArm]);
 
-  useEffect(() => { return () => { fireTimers.current.forEach(timer => clearTimeout(timer)); }; }, []);
+  useEffect(() => { const timers = fireTimers.current; return () => { timers.forEach(timer => clearTimeout(timer)); }; }, []);
 
   // Auto-fullscreen on mobile (but NOT when embedded in Command Center standalone mode)
   useEffect(() => {
