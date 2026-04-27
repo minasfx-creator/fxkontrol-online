@@ -47,7 +47,7 @@ export interface JournalEntryInput {
 }
 
 export function useCommandJournal() {
-  const projectId = useProjectStore((s) => s.id);
+  const projectId = useProjectStore((s) => s.projectId);
   const addLocal = useUIWorkspaceStore((s) => s.addCommandToJournal);
 
   const append = useCallback(async (entry: JournalEntryInput): Promise<void> => {
@@ -85,7 +85,8 @@ export function useCommandJournal() {
       status: entry.result === 'error' ? 'error' : entry.result ? 'completed' : 'pending',
     };
 
-    const { error } = await supabase.from('command_journal').insert(row);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase types stale until next regen, table exists with RLS in DB
+    const { error } = await (supabase.from('command_journal' as any) as any).insert(row);
     if (error && typeof console !== 'undefined') {
       console.warn('[command_journal] persist failed:', error.message);
     }

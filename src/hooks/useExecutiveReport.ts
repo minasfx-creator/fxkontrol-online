@@ -43,8 +43,8 @@ export function useExecutiveReport() {
       return null;
     }
 
-    const { data, error } = await supabase
-      .from('executive_reports')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- supabase types stale until next regen, table exists with RLS in DB
+    const { data, error } = await (supabase.from('executive_reports' as any) as any)
       .insert({
         user_id: user.id,
         show_name: input.show_name,
