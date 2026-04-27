@@ -60,6 +60,13 @@ export function useAudioMasterClock(
 ) {
   const isPlaying = useProjectStore((s) => s.isPlaying);
   const audioMasterActiveRef = useRef(false);
+  // Stale-frame guard: when `isPlaying` flips to false the effect tears down
+  // RAF, but on a heavy frame the next pump can still fire once before the
+  // cleanup runs. The closure read of `isPlaying` is stale (true), so without
+  // this ref the pump pushes one extra `syncExternalTime(t)` after pause —
+  // visibly bumping the playhead by ~16 ms when the operator stops playback.
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -99,7 +106,11 @@ export function useAudioMasterClock(
 
     const pump = () => {
       const a = audioRef.current;
-      if (!a) {
+      // Stale-frame guard: bail immediately if Play was toggled off between
+      // the previous RAF and this one (cleanup races with a queued pump on
+      // heavy frames). Without this we'd push one extra `syncExternalTime`
+      // after the operator pressed Pause.
+      if (!a || !isPlayingRef.current) {
         disengageMaster();
         return;
       }
