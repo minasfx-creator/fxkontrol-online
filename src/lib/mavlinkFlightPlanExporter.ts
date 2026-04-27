@@ -286,3 +286,8 @@ export function downloadFlightPlan(
   a.click();
   URL.revokeObjectURL(url);
 }
+
+/** Re-export the validator so UI panels can preflight before download. */
+export function validateFlightPlan(plan: FlightPlan): ValidationReport {
+  return validateMAVLinkPlan(plan);
+}
