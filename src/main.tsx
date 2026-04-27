@@ -4,12 +4,18 @@ import "./index.css";
 import { initWebVitals as initWebVitalsConsole } from "@/lib/webVitals";
 import { initObservability } from "@/observability";
 import { installConsoleCapture } from "@/lib/consoleCapture";
+import { initRuntimeMonitor } from "@/lib/runtimeMonitor";
 import { applyGpuTier } from "@/lib/gpuTier";
 import { installInteractionFpsGuard } from "@/lib/interactionFpsGuard";
 
 // Install console.error/warn + window error capture as early as possible
 // so the Diagnostics panel can replay startup errors.
 installConsoleCapture();
+
+// E2E + manual-QA surface. Exposes window.__fxkRuntimeMonitor with
+// `mark(name)` / `since(name)` / `snapshot()` so test harnesses can
+// assert "no new errors or warnings during scenario X".
+initRuntimeMonitor();
 
 // GPU tier detection — writes <html data-gpu-tier="low|high">. Must run
 // before first paint so reduced-blur fallbacks are active for the splash.
