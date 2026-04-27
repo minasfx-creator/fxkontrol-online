@@ -281,7 +281,8 @@ const DraggableTimelineItem = React.memo(React.forwardRef<HTMLButtonElement, {
               ? "border-accent/40 shadow-[0_0_8px_hsl(var(--accent)/0.15)] z-10 ring-1 ring-accent/20 border-dashed"
               : isMultiSelected
                 ? "border-primary/25 z-10"
-                : "border-white/[0.04] hover:border-white/[0.08] hover:shadow-sm"
+              : "border-white/[0.04] hover:border-white/[0.08] hover:shadow-sm",
+          isRecentDrop && "fxk-drop-flash"
         )}
         style={{
           width: `${widthPx}px`,
