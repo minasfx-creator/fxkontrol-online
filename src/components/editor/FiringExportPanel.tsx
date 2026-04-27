@@ -13,6 +13,11 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { promptUpgrade } from '@/lib/upgradePrompt';
+import {
+  validateFiringExportInputs,
+  formatFinding,
+  ExportValidationError,
+} from '@/core/export/exportValidation';
 
 export default function FiringExportPanel({ onClose }: { onClose: () => void }) {
   const [search, setSearch] = useState('');
