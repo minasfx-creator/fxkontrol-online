@@ -257,6 +257,14 @@ Deno.serve(async (req) => {
   } catch (err) {
     clearTimeout(timer);
     const aborted = err instanceof Error && err.name === "AbortError";
+    const duration = Date.now() - startedAt;
+    persistMetric({
+      outcome: aborted ? "timeout" : "error",
+      reason: aborted ? "timeout" : "network_error",
+      status: aborted ? 504 : 502,
+      model: usedModel,
+      duration_ms: duration,
+    });
     return jsonError(
       aborted ? "xAI request timed out (60s)." : `Network error reaching xAI: ${err instanceof Error ? err.message : String(err)}`,
       aborted ? 504 : 502,
@@ -289,6 +297,17 @@ Deno.serve(async (req) => {
         : `Upstream returned ${resp.status}.`;
 
     console.error(`[grok-responses] upstream ${resp.status} model=${usedModel}:`, errText.slice(0, 400));
+    persistMetric({
+      outcome: reason === "rate_limit" ? "rate_limit"
+        : reason === "credits" ? "credits"
+        : reason === "auth" ? "refused"
+        : "error",
+      reason,
+      status: resp.status,
+      model: usedModel,
+      duration_ms: Date.now() - startedAt,
+      bytes: errText.length,
+    });
     return jsonError(`xAI ${reason} (${resp.status}): ${errText.slice(0, 200)}`, resp.status >= 500 ? 502 : resp.status, {
       reason,
       hint,
@@ -300,6 +319,13 @@ Deno.serve(async (req) => {
   try {
     payload = await resp.json();
   } catch (err) {
+    persistMetric({
+      outcome: "error",
+      reason: "parse_error",
+      status: 502,
+      model: usedModel,
+      duration_ms: Date.now() - startedAt,
+    });
     return jsonError(`Failed to parse xAI response: ${err instanceof Error ? err.message : String(err)}`, 502, {
       reason: "parse_error",
     });
@@ -307,8 +333,26 @@ Deno.serve(async (req) => {
 
   const text = extractText(payload);
   if (!text) {
+    persistMetric({
+      outcome: "error",
+      reason: "empty_response",
+      status: 502,
+      model: usedModel,
+      duration_ms: Date.now() - startedAt,
+      request_id: payload.id ?? null,
+    });
     return jsonError("xAI returned an empty response.", 502, { reason: "empty_response", model: usedModel });
   }
+
+  const duration = Date.now() - startedAt;
+  persistMetric({
+    outcome: "success",
+    status: 200,
+    model: payload.model ?? usedModel,
+    duration_ms: duration,
+    request_id: payload.id ?? null,
+    bytes: text.length,
+  });
 
   return jsonOk({
     ok: true,
@@ -317,6 +361,6 @@ Deno.serve(async (req) => {
     model: payload.model ?? usedModel,
     usage: payload.usage ?? {},
     requestId: payload.id ?? null,
-    durationMs: Date.now() - startedAt,
+    durationMs: duration,
   });
 });
