@@ -1000,35 +1000,55 @@ function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number;
   const snapToBeat = useProjectStore(s => s.snapToBeat);
   const laserEnabled = useLaserPreviewStore((s) => s.globalEnabled);
   const [collapsed, setCollapsed] = useState(false);
+  const recentDropId = useRecentDropId();
 
   const laserItems = useMemo(() => timelineItems.filter((i) => {
     const effect = EFFECT_LIBRARY.find((e) => e.id === i.effectId);
     return effect?.type === 'laser';
   }), [timelineItems]);
 
+  const [dropPreview, setDropPreview] = useState<{ time: number; snap: SnapReason } | null>(null);
+
+  const computePreview = useCallback((e: React.DragEvent): { time: number; snap: SnapReason } => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    return resolveDropTime({
+      rawTime: x / pixelsPerSecond,
+      duration, pixelsPerSecond, bpm, snapToBeat,
+      currentTime: useProjectStore.getState().currentTime,
+      neighbours: laserItems.map((it) => ({
+        id: it.id, startTime: it.startTime, effectId: it.effectId, durationOverride: it.durationOverride,
+      })),
+    });
+  }, [pixelsPerSecond, duration, bpm, snapToBeat, laserItems]);
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     const hasEffect = e.dataTransfer.types.includes('application/effect-id');
     if (!hasEffect) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
+    setDropPreview(computePreview(e));
+  }, [computePreview]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropPreview(null);
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    setDropPreview(null);
     const effectId = e.dataTransfer.getData('application/effect-id');
     if (!effectId) return;
     const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
     if (!effect || effect.type !== 'laser') return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
-    time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
+    const { time } = computePreview(e);
+    const id = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     addTimelineItem({
-      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      effectId: effect.id, startTime: time, trackIndex: 4,
+      id, effectId: effect.id, startTime: time, trackIndex: 4,
       position: { x: 0, y: 0.5, z: 0 },
     });
-  }, [pixelsPerSecond, duration, addTimelineItem, bpm, snapToBeat]);
+    markRecentDrop(id);
+  }, [addTimelineItem, computePreview]);
 
   return (
     <div className="flex border-b border-white/[0.03]">
@@ -1039,11 +1059,16 @@ function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number;
         {laserEnabled && <div className="w-1.5 h-1.5 rounded-full bg-green-400 ml-auto animate-pulse" />}
       </div>
       {!collapsed && (
-        <div className="flex-1 relative h-8" style={{ background: 'hsl(var(--background) / 0.4)' }} onDragOver={handleDragOver} onDrop={handleDrop}>
+        <div
+          className="flex-1 relative h-8"
+          style={{ background: 'hsl(var(--background) / 0.4)' }}
+          onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
+        >
           {laserItems.map((item) => {
             const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
             if (!effect) return null;
             const isSelected = selectedTimelineItemId === item.id;
+            const isRecentDrop = recentDropId === item.id;
             const widthPx = Math.max(effect.duration * pixelsPerSecond, 20);
             return (
               <button
@@ -1051,7 +1076,8 @@ function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number;
                 onClick={(e) => { e.stopPropagation(); selectTimelineItem(item.id); }}
                 className={cn(
                   "absolute top-0.5 h-7 rounded-md flex items-center px-1.5 text-[8px] font-mono transition-all cursor-pointer border",
-                  isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]"
+                  isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]",
+                  isRecentDrop && "fxk-drop-flash",
                 )}
                 style={{ left: `${item.startTime * pixelsPerSecond}px`, width: `${widthPx}px`, backgroundColor: `${effect.color}15` }}
               >
@@ -1060,6 +1086,29 @@ function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number;
               </button>
             );
           })}
+          {dropPreview && (() => {
+            const accent = snapAccent(dropPreview.snap);
+            const leftPx = dropPreview.time * pixelsPerSecond;
+            return (
+              <>
+                <div
+                  className={cn("absolute top-0 bottom-0 w-px pointer-events-none z-30", accent.text.replace('text-', 'bg-'))}
+                  style={{ left: `${leftPx}px`, opacity: 0.85 }}
+                  aria-hidden
+                />
+                <div
+                  className={cn(
+                    "absolute -top-4 px-1.5 py-[1px] rounded-sm text-[8px] font-mono tabular-nums pointer-events-none z-30 ring-1 bg-background/90 backdrop-blur-sm fxk-drop-guide",
+                    accent.ring, accent.text,
+                  )}
+                  style={{ left: `${leftPx}px`, transform: 'translateX(-50%)' }}
+                  aria-hidden
+                >
+                  {formatDropTimestamp(dropPreview.time)} · {accent.label}
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
       {collapsed && <div className="flex-1 h-2" style={{ background: 'hsl(var(--background) / 0.2)' }} />}
