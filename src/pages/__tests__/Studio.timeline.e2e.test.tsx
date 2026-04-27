@@ -174,8 +174,9 @@ describe('Studio · TimelineScrubber (real component, no GPU)', () => {
 
   it('renders tick markers and the current playhead label', () => {
     render(<TimelineScrubber snapshots={[]} />);
-    expect(screen.getByText('Tick 0')).toBeInTheDocument();
-    expect(screen.getByText(/Tick \d+/)).toBeInTheDocument();
+    // Both the left-edge label and the centred "Tick N" label render at tick 0.
+    expect(screen.getAllByText('Tick 0').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Tick \d+/).length).toBeGreaterThanOrEqual(2);
   });
 
   it('renders one DOM marker per snapshot', () => {
