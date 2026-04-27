@@ -109,7 +109,9 @@ export default defineConfig(({ mode }) => ({
     // plugin still measures and prints the per-chunk breakdown on every build,
     // so regressions remain visible. Flip `failOnExceed: true` once we're
     // under budget to make this a hard CI gate.
-    bundleBudget({ maxKBGzip: 180, failOnExceed: false }),
+    // Hard CI gate: 180 KB gzip ceiling on /landing payload. Achieved
+    // via modulepreload pruning + lucide tree-shaking + lazy routes.
+    bundleBudget({ maxKBGzip: 180, failOnExceed: true }),
     mode === "production" && visualizer({
       filename: "dist/bundle-analysis.html",
       gzipSize: true,
@@ -133,6 +135,27 @@ export default defineConfig(({ mode }) => ({
     cssCodeSplit: true,
     // Minification
     minify: 'esbuild',
+    // ── Modulepreload pruning ─────────────────────────────────────
+    // Default Vite behavior is to <link rel="modulepreload"> EVERY
+    // chunk transitively reachable from any route, including lazy
+    // ones. That inflates the public-route initial payload with
+    // three / r3f / postprocessing even though they're never
+    // executed on /landing, /auth, /pricing.
+    //
+    // We override `resolveDependencies` to ONLY preload chunks that
+    // are direct deps of the entry — heavy 3D/render chunks are
+    // fetched on-demand when the user enters a lazy route that
+    // actually imports them. The `lazy-chunks` Workbox runtimeCache
+    // (already configured) keeps repeat visits fast.
+    modulePreload: {
+      resolveDependencies: (filename, deps) => {
+        // Heavy chunks NEVER needed by /landing, /auth, /pricing, /legal/*.
+        // Only loaded on-demand by lazy routes (Studio, CommandCenter, etc).
+        // The lazy-chunks Workbox runtimeCache keeps repeat visits fast.
+        const HEAVY = /\b(three-core|r3f|postprocessing|postprocessing-core|ru-|vendor-tiles|vendor-export|vendor-misc|vendor-forms|vendor-markdown|vendor-capacitor|recharts|cytoscape|mermaid|katex|wardley|html2canvas|architectureDiagram|FireworkRenderer|SkyCanvas|LiveFiringPanel|FXKAssistant|FXKNetPanel|index\.es)\b/;
+        return deps.filter((d) => !HEAVY.test(d));
+      },
+    },
     rollupOptions: {
       output: {
         // Stable chunk names for long-term caching
@@ -173,7 +196,9 @@ export default defineConfig(({ mode }) => ({
             'vendor-tiles': ['3d-tiles-renderer'],
             'vendor-capacitor': ['@capacitor/core', '@capacitor/haptics'],
             'vendor-markdown': ['react-markdown'],
-            'vendor-icons': ['lucide-react'],
+            // NOTE: lucide-react intentionally NOT chunked. Letting Rollup
+            // tree-shake per-icon means /landing only ships the 2-3 icons it
+            // actually uses (~1KB) instead of the full 24KB barrel.
           };
           for (const [chunk, pkgs] of Object.entries(vendorChunks)) {
             if (pkgs.some(pkg => id.includes(`node_modules/${pkg}`))) return chunk;
@@ -183,6 +208,11 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    include: ['three', '@react-three/fiber', '@react-three/drei'],
+    // NOTE: three / @react-three/* removed from include — they're
+    // only used in lazy routes (Studio, SkyCanvas, ru-* chunks) and
+    // pre-bundling them was forcing the dev server to eagerly resolve
+    // them on the public entry, which leaked into the production
+    // modulepreload manifest. Keep this list minimal.
+    include: [],
   },
 }));
