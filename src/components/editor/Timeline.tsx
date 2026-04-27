@@ -1544,14 +1544,14 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
             <TimelineTrackRow label="PYRO SYS" trackIndex={0} pixelsPerSecond={pixelsPerSecond} color="#FF6B35" duration={duration} scrollRef={scrollRef} />
             <TimelineTrackRow label="DRONE SYS" trackIndex={1} pixelsPerSecond={pixelsPerSecond} color="#00B4D8" duration={duration} scrollRef={scrollRef} />
             <TimelineTrackRow label="LIGHT SYS" trackIndex={2} pixelsPerSecond={pixelsPerSecond} color="#FBBF24" duration={duration} scrollRef={scrollRef} />
-            <LaserTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
+            <LaserTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} scrollRef={scrollRef} />
             <GenerativeTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
           </CollapsibleTrackGroup>
           {/* ── CHOREOGRAPHY group ── */}
           <CollapsibleTrackGroup label="CHOREOGRAPHY" defaultOpen>
-            <FormationTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
-            <DroneFXTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
-            <WaypointTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
+            <FormationTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} scrollRef={scrollRef} />
+            <DroneFXTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} scrollRef={scrollRef} />
+            <WaypointTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} scrollRef={scrollRef} />
           </CollapsibleTrackGroup>
           <AudioWaveform pixelsPerSecond={pixelsPerSecond} />
         </div>
