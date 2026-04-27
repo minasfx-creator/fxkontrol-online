@@ -362,18 +362,8 @@ function TimelineTrackRow({
   label: string; trackIndex: number; pixelsPerSecond: number; color: string; duration: number;
   scrollRef: React.RefObject<HTMLDivElement>;
 }) {
-  // Track scroll position for item virtualization
-  const [scrollLeft, setScrollLeft] = useState(0);
-  const [viewportWidth, setViewportWidth] = useState(1200);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const update = () => { setScrollLeft(el.scrollLeft); setViewportWidth(el.clientWidth); };
-    update();
-    el.addEventListener('scroll', update, { passive: true });
-    return () => el.removeEventListener('scroll', update);
-  }, [scrollRef]);
+  // Track scroll position via shared hook (replaces local useEffect duplicated in 6 rows)
+  const { scrollLeft, viewportWidth } = useScrollViewport(scrollRef);
     const timelineItems = useProjectStore(s => s.timelineItems);
   const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
   const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
@@ -386,6 +376,10 @@ function TimelineTrackRow({
   const positions = useProjectStore(s => s.positions);
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
   const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
+  // Subscribe to linkedTimelineItemIds outside the .map hot path. A Set
+  // gives O(1) membership checks per item instead of O(n) Array.includes.
+  const linkedTimelineItemIds = useProjectStore(s => s.linkedTimelineItemIds);
+  const linkedIdSet = useMemo(() => new Set(linkedTimelineItemIds), [linkedTimelineItemIds]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [dropPreview, setDropPreview] = useState<{ time: number; snap: SnapReason } | null>(null);
   const [muted, setMuted] = useState(false);
