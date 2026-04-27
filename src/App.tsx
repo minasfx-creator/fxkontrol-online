@@ -111,9 +111,6 @@ function App() {
                 </Suspense>
               )}
               <LazyChunkBoundary>
-                {IS_DEV ? (
-                <Suspense fallback={null}>
-                <PlaybackProfilerProvider id="app">
                 <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
                   <Routes>
                     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
