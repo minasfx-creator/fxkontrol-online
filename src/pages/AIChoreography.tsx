@@ -6,7 +6,7 @@
  * Hybrid scale: LLM only emits ≤50 groups + keyframes. Local expander handles
  * 2000+ drones deterministically with collision QA.
  */
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, Play, Sparkles, Download, Layers, AlertTriangle, Gauge, Brain, ChevronDown } from 'lucide-react';
