@@ -425,6 +425,12 @@ export function FXKAssistant() {
   const [attachment, setAttachment] = useState<AttachedFile | null>(null);
   const [joiMode, setJoiMode] = useState<JoiMode>('show');
   const [lastTrace, setLastTrace] = useState<JOIExecutionTrace | null>(null);
+  // Reasoning mode: when on, requests are routed to grok-4.20-reasoning via
+  // /v1/responses (slower, deeper) instead of the streaming Lovable AI Gateway.
+  // Persisted per-user so the preference sticks across sessions.
+  const [reasoningMode, setReasoningMode] = useState<boolean>(() => {
+    try { return localStorage.getItem('fxk:joi:reasoning-mode') === '1'; } catch { return false; }
+  });
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
 
   // Stable ref for send to avoid stale closure in voice callbacks
