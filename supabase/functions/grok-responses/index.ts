@@ -21,8 +21,75 @@
  * "Diagnosticar chave" CTA in the AI Choreography page keeps working.
  */
 import { z } from "https://esm.sh/zod@3.23.8";
+import { Pool } from "https://deno.land/x/postgres@v0.19.3/mod.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { jsonOk, jsonError } from "../_shared/response.ts";
+
+// ─── Telemetry persistence ────────────────────────────────────────────────
+// Mirrors the fire-and-forget pattern from grok-choreography. Every request —
+// success OR failure — produces exactly one row in public.grok_choreography_metrics
+// so the AI usage dashboard never sees null outcomes for client-initiated calls.
+// Direct DB connection (not PostgREST) avoids JWT clock-skew issues.
+const SUPABASE_DB_URL = Deno.env.get("SUPABASE_DB_URL") ?? "";
+let _pool: Pool | null = null;
+function getPool(): Pool | null {
+  if (_pool) return _pool;
+  if (!SUPABASE_DB_URL) return null;
+  _pool = new Pool(SUPABASE_DB_URL, 2, true);
+  return _pool;
+}
+
+interface MetricRow {
+  outcome: "success" | "error" | "timeout" | "refused" | "rate_limit" | "credits";
+  reason?: string | null;
+  status?: number | null;
+  model?: string | null;
+  duration_ms?: number | null;
+  request_id?: string | null;
+  bytes?: number | null;
+}
+
+async function persistMetricImpl(row: MetricRow): Promise<void> {
+  const pool = getPool();
+  if (!pool) return;
+  const client = await pool.connect();
+  try {
+    await client.queryObject(
+      `INSERT INTO public.grok_choreography_metrics
+        (event_type, request_id, stage, outcome, status, reason, model, bytes, duration_ms, counters)
+       VALUES ('decision', $1, 'responses', $2, $3, $4, $5, $6, $7, '{}'::jsonb)`,
+      [
+        row.request_id ?? null,
+        row.outcome,
+        row.status ?? null,
+        row.reason ?? null,
+        row.model ?? null,
+        row.bytes ?? null,
+        row.duration_ms ?? null,
+      ],
+    );
+  } finally {
+    client.release();
+  }
+}
+
+function persistMetric(row: MetricRow): void {
+  const promise = persistMetricImpl(row).catch((e) => {
+    console.warn(JSON.stringify({
+      ts: new Date().toISOString(),
+      level: "warn",
+      fn: "grok-responses",
+      stage: "metrics_persist",
+      outcome: "persist_failed",
+      error: e instanceof Error ? e.message.slice(0, 300) : "unknown",
+    }));
+  });
+  // @ts-ignore — EdgeRuntime is a Deno Deploy global
+  if (typeof EdgeRuntime !== "undefined" && typeof EdgeRuntime.waitUntil === "function") {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(promise);
+  }
+}
 
 const XAI_RESPONSES_URL = "https://api.x.ai/v1/responses";
 const DEFAULT_MODEL = "grok-4.20-reasoning";
