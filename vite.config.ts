@@ -5,6 +5,7 @@ import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { visualizer } from "rollup-plugin-visualizer";
 import { precacheGuard } from "./scripts/vite-plugin-precache-guard";
+import { bundleBudget } from "./scripts/vite-plugin-bundle-budget";
 
 // Build-time guard: arquivos em public/ acima de 2 MiB são EXCLUÍDOS do
 // precache do PWA (Workbox) e logados no console como WARN. Evita que
@@ -103,6 +104,10 @@ export default defineConfig(({ mode }) => ({
       },
     }),
     guard.plugin,
+    // Hard CI gate: fail the build if the public route initial JS
+    // (entry + modulepreloads) exceeds 180 KB gzip. Set
+    // `failOnExceed: false` for warn-only during a refactor window.
+    bundleBudget({ maxKBGzip: 180 }),
     mode === "production" && visualizer({
       filename: "dist/bundle-analysis.html",
       gzipSize: true,

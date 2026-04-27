@@ -5,17 +5,27 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { lazy, Suspense } from "react";
-import MainLayout from "@/layouts/MainLayout";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import { LazyChunkBoundary } from "@/components/errors/LazyChunkBoundary";
 import { AppErrorBoundary } from "@/components/errors/AppErrorBoundary";
-import UpgradeDialog from "@/components/upgrade/UpgradeDialog";
+
+// MainLayout + UpgradeDialog are lazy-split so the public routes
+// (/landing, /auth, /legal/*, /pricing) don't pay for the dashboard
+// chrome (Sidebar, DockBar, Tactical UI) on first load.
+const MainLayout = lazy(() => import("@/layouts/MainLayout"));
+const UpgradeDialog = lazy(() => import("@/components/upgrade/UpgradeDialog"));
 
 import { lazyRetry } from "@/lib/lazyRetry";
 import { isEnabled } from "@/lib/featureFlags";
 import { useRouteTracing } from "@/observability/useRouteTracing";
-import { PlaybackProfilerProvider } from "@/core/performance/PlaybackProfilerProvider";
-import { PlaybackProfilerPanel } from "@/components/dev/PlaybackProfilerPanel";
+// Profiler is dev-only and lazy so production rota pública doesn't ship it.
+const PlaybackProfilerProvider = lazy(() =>
+  import("@/core/performance/PlaybackProfilerProvider").then((m) => ({ default: m.PlaybackProfilerProvider })),
+);
+const PlaybackProfilerPanel = lazy(() =>
+  import("@/components/dev/PlaybackProfilerPanel").then((m) => ({ default: m.PlaybackProfilerPanel })),
+);
+const IS_DEV = import.meta.env.DEV;
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -95,9 +105,12 @@ function App() {
               <RouteTracker />
               <PageTransitionOverlay />
               <UpgradeDialog />
-              <PlaybackProfilerPanel />
+              {IS_DEV && (
+                <Suspense fallback={null}>
+                  <PlaybackProfilerPanel />
+                </Suspense>
+              )}
               <LazyChunkBoundary>
-                <PlaybackProfilerProvider id="app">
                 <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
                   <Routes>
                     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
@@ -148,7 +161,6 @@ function App() {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
-                </PlaybackProfilerProvider>
               </LazyChunkBoundary>
             </BrowserRouter>
           </TooltipProvider>
