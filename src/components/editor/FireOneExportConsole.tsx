@@ -10,12 +10,13 @@ import { cn } from '@/lib/utils';
 import { FileOutput, Download, CheckCircle2, XOctagon, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useShallow } from 'zustand/react/shallow';
 
 export default function FireOneExportConsole() {
   const [preview, setPreview] = useState<string>('');
   const [exportErrors, setExportErrors] = useState<string[]>([]);
   const [verified, setVerified] = useState<boolean | null>(null);
-  const { level, result, runVerification } = useVerificationStore();
+  const { level, result, runVerification } = useVerificationStore(useShallow((s) => ({ level: s.level, result: s.result, runVerification: s.runVerification })));
   const sp = showPlanManager.current;
   const canExport = level === 'READY_FOR_EXPORT' || level === 'READY_FOR_FIELD';
 
