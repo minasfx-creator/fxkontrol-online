@@ -447,13 +447,30 @@ function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable, onRecover
   // don't permanently degrade the renderer.
   const attemptTimestampsRef = useRef<number[]>([]);
   const scheduledTimerRef = useRef<number | null>(null);
+  // Tracks whether this guard (and therefore the parent <Canvas>) is still mounted.
+  // Prevents scheduled remounts from firing into a torn-down React tree (e.g. when
+  // the user navigates away from /studio during the recovery backoff window).
+  const mountedRef = useRef(true);
+  // Hard re-entry guard for `onLost`. Some drivers fire `webglcontextlost`
+  // multiple times in rapid succession while disposing GPGPU FBOs — without
+  // this gate each event would schedule its own remount, producing a storm of
+  // competing Canvas instances all trying to acquire a fresh GL context.
+  const recoveryInFlightRef = useRef(false);
 
   useEffect(() => {
     const canvas = gl.domElement;
+    mountedRef.current = true;
 
     const RECOVERY_WINDOW_MS = 60_000;
     // Backoff per attempt (ms). Index = attempt number - 1.
     const BACKOFF_LADDER = [250, 1000, 4000];
+
+    const clearScheduledTimer = () => {
+      if (scheduledTimerRef.current !== null) {
+        window.clearTimeout(scheduledTimerRef.current);
+        scheduledTimerRef.current = null;
+      }
+    };
 
     const performRecovery = (attemptInWindow: number) => {
       // Telemetry — every attempt is captured with attempt number.
@@ -499,8 +516,20 @@ function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable, onRecover
         id: 'fxk-webgl-recovery',
       });
 
+      // Always cancel any previously-scheduled remount before queuing a new one.
+      // Without this, a cooldown-path schedule followed by a direct path schedule
+      // (or vice versa) would fire two `onRemount()` calls back-to-back, each
+      // mounting a fresh <Canvas> while the previous one is still releasing GPU
+      // memory — the exact "competing instances" failure mode.
+      clearScheduledTimer();
       scheduledTimerRef.current = window.setTimeout(() => {
         scheduledTimerRef.current = null;
+        if (!mountedRef.current) {
+          // Parent route (e.g. /studio) unmounted while we were waiting — do
+          // nothing. The next visit will start fresh.
+          recoveryInFlightRef.current = false;
+          return;
+        }
         recoveringRef.current = true;
         onRemount();
       }, delayMs);
@@ -508,7 +537,13 @@ function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable, onRecover
 
     const onLost = (e: Event) => {
       e.preventDefault();
-      if (recoveringRef.current) return;
+      // Two layers of re-entry protection:
+      //  1. `recoveringRef` — set after a remount has been triggered.
+      //  2. `recoveryInFlightRef` — set the moment we *accept* a loss event,
+      //     so duplicate `webglcontextlost` events fired during disposal
+      //     (common on Mesa/ANGLE drivers) cannot queue parallel recoveries.
+      if (recoveringRef.current || recoveryInFlightRef.current) return;
+      recoveryInFlightRef.current = true;
 
       recordContextLoss();
 
@@ -536,11 +571,13 @@ function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable, onRecover
           `WebGL context loss storm — automatic retry in ${Math.ceil(waitMs / 1000)}s. ` +
           `You can also click Retry to recover immediately.`
         );
-        // Schedule the auto-retry: when cooldown expires we call performRecovery
-        // with the current (degraded) attempt count so the next remount keeps
-        // the lower visual budget.
+        clearScheduledTimer();
         scheduledTimerRef.current = window.setTimeout(() => {
           scheduledTimerRef.current = null;
+          if (!mountedRef.current) {
+            recoveryInFlightRef.current = false;
+            return;
+          }
           // Reset the cooldown record so the next attempt isn't immediately
           // re-classified as "in cooldown". We keep our local attemptInWindow
           // counter so degradation still escalates.
@@ -556,6 +593,7 @@ function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable, onRecover
     const onRestored = () => {
       console.log('[FXK Recovery] WebGL context restored');
       recoveringRef.current = false;
+      recoveryInFlightRef.current = false;
       toast.success('Viewport 3D recuperado', {
         id: 'fxk-webgl-recovery',
         duration: 2500,
@@ -566,12 +604,13 @@ function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable, onRecover
     canvas.addEventListener('webglcontextlost', onLost as EventListener);
     canvas.addEventListener('webglcontextrestored', onRestored as EventListener);
     return () => {
+      mountedRef.current = false;
       canvas.removeEventListener('webglcontextlost', onLost as EventListener);
       canvas.removeEventListener('webglcontextrestored', onRestored as EventListener);
-      if (scheduledTimerRef.current !== null) {
-        window.clearTimeout(scheduledTimerRef.current);
-        scheduledTimerRef.current = null;
-      }
+      clearScheduledTimer();
+      // If the guard tears down mid-recovery, release the in-flight latch so a
+      // future mount can accept loss events again.
+      recoveryInFlightRef.current = false;
     };
   }, [gl, scene, recoveringRef, onRemount, onUnrecoverable, onRecovered]);
 
