@@ -70,6 +70,7 @@ export class MultiTransportLink {
   private _mode: LinkMode = 'single';
   private _participants: DiscoveryTransport[] = [];
   private _health = new Map<DiscoveryTransport, LinkHealth>();
+  private _consecutiveFailures = new Map<DiscoveryTransport, number>();
   private _listeners = new Set<Listener>();
   private _totalTxOk = 0;
   private _totalTxErr = 0;
