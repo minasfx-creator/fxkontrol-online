@@ -106,6 +106,21 @@ export default function Install() {
       <main className="mx-auto max-w-3xl px-4 py-6 space-y-6">
         <PwaInstallHero />
 
+        <Link
+          to="/pairing/usb"
+          className="block rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors p-4"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-primary">Já instalou? Pareie um dispositivo USB →</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Wizard guiado iOS-first para autorizar e classificar acessórios físicos.
+              </p>
+            </div>
+            <ArrowLeft className="w-4 h-4 text-primary rotate-180 flex-shrink-0" />
+          </div>
+        </Link>
+
         <section className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">Instalar FX Kontrol</h1>
           <p className="text-sm text-muted-foreground">
