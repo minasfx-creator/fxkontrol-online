@@ -1,86 +1,104 @@
+## Plano: Diagnóstico Robusto de Conexão iPhone ↔ USB
 
-# Desligar todos os hardwares simulados — Detecção real apenas
+### Causa Raiz
 
-## Estado atual (já honesto na maior parte)
+O iOS Safari (PWA) **não suporta WebUSB nem Web Serial API** — qualquer chamada `navigator.serial.requestPort()` ou `navigator.usb.requestDevice()` falha silenciosamente ou nem aparece no botão. Hoje o app trata isso como "nenhum dispositivo encontrado", confundindo o usuário. A conexão USB no iPhone só funciona via build nativo Capacitor + plugin serial + adaptador MFi.
 
-A "Honest Hardware Layer" anterior já garante que:
-- `createSimulatedProvenance()` retorna `integration_mode: 'not_integrated'` por padrão
-- `UnifiedHardwareRegistry` exibe banner: *"No synthetic data is being generated"*
-- Não há fixtures em `src/dev/` (pasta vazia), nem fleet de UAVs simulados auto-spawnado
+Além disso, mesmo no caminho nativo, faltam:
+1. Detecção de plataforma (iOS Safari vs iOS Capacitor vs desktop)
+2. Mensagens de erro acionáveis (cabo errado, falta de MFi, sem permissão)
+3. Fallback BLE quando USB não está disponível
+4. Bridge do `@capacitor-community/serial` para os adapters existentes
 
-**Porém**, ainda existem 4 vazamentos de dados sintéticos quando um adapter aparece como `connected`:
-- Adapters `pollTelemetry()` em `ArduinoNanoAdapter`, `ArtNetNodeAdapter`, `BatteryMonitorAdapter`, `DMXUniverseAdapter`, `MuxReaderAdapterCD4051`, `RelayBankAdapter32` injetam valores via `Math.random()`
-- `ContinuityCheckService._simulateRead()` é chamado quando nenhum reader real é passado
-- `fireoneModuleEmulator` tem `simulateHardware: true` por padrão (continuidade aleatória)
-- `grandMA3Node.simulateInput()` injeta universos DMX falsos
-- Flag `dev_hardware_simulator` mencionada no memory **não existe** em `featureFlags.ts` — precisa ser adicionada como gate central
+### Mudanças
 
-## Mudanças propostas
+**1. Detector de capacidade (`src/lib/platformCapabilities.ts`) — novo**
+Identifica: `ios-safari-pwa`, `ios-capacitor`, `android-capacitor`, `desktop-chrome`, `desktop-firefox`, `desktop-safari`. Retorna `{ webSerial, webUsb, webBle, capacitorSerial, capacitorBle }` e `recommendedTransports[]`.
 
-### 1. Adicionar flag central `dev_hardware_simulator` (default `false`)
-**Arquivo:** `src/lib/featureFlags.ts`
-- Nova flag `dev_hardware_simulator: false`
-- Helper `isHardwareSimulatorEnabled()` para uso direto
+**2. Bridge Capacitor Serial (`src/core/discovery/CapacitorSerialDiscoverer.ts`) — novo**
+- Tenta carregar dinamicamente `@capacitor-community/serial` (lazy import, sem quebrar build web).
+- Implementa a mesma interface `TransportDiscoverer` dos web discoverers.
+- No iPhone nativo enumera `/dev/cu.usbserial-*` via plugin.
+- Registra no `UnifiedHardwareRegistry` lado-a-lado com WebSerial.
 
-### 2. Gatear toda geração sintética nos adapters
-**Arquivos:** todos em `src/core/hardware/adapters/*.ts` que usam `Math.random()`
-- ArduinoNanoAdapter, ArtNetNodeAdapter, BatteryMonitorAdapter, DMXUniverseAdapter, MuxReaderAdapterCD4051, RelayBankAdapter32
-- Pattern: envolver bloco de geração sintética com `if (isHardwareSimulatorEnabled() && this._connected === 'connected') { ... }` 
-- Quando flag OFF: `pollTelemetry()` mantém valores zerados/iniciais. UI mostra valores "frios" (0Hz, 0V, sem leituras) → operador percebe imediatamente que não há hardware real respondendo
+**3. Diagnóstico claro no `USBConnectionPanel` e `EasyConnectPanel`**
+- Banner no topo quando capability check falha:
+  - iOS Safari PWA → "USB não disponível no Safari. Instale o app FX KONTROL nativo (link para `/install` ou docs)."
+  - iOS Capacitor sem plugin → "Plugin serial ausente — execute `npx cap sync ios` após instalar `@capacitor-community/serial`."
+  - Desktop sem permissão → "Clique em CONECTAR para autorizar o dispositivo."
+- Botão "Diagnosticar" expande relatório:
+  - Plataforma detectada
+  - APIs disponíveis (✓/✗)
+  - Plugins Capacitor carregados
+  - Cabo recomendado (Lightning Camera Adapter / USB-C OTG ativo)
+  - Lista de VID/PID conhecidos
+- Mensagens de erro de `requestPort()` agora mapeadas:
+  - `NotFoundError` → "Nenhum dispositivo selecionado ou nenhum compatível."
+  - `SecurityError` → "Permissão negada — verifique HTTPS e gesto do usuário."
+  - `NotAllowedError` → "iOS bloqueou o acesso — use o app nativo."
 
-### 3. Gatear `ContinuityCheckService._simulateRead()`
-**Arquivo:** `src/core/safety/ContinuityCheckService.ts`
-- Quando `reader` ausente e flag OFF: marcar pin como `UNKNOWN` com `ohms: Infinity` (sem inventar resistências aleatórias)
-- Mensagem de log: `"NO_READER — pin marked UNKNOWN"`
+**4. Atualizar `capacitor.config.ts`**
+- Adicionar plugin config block para `CapacitorSerial` com timeout, baud padrão.
+- Comentário inline com checklist de Info.plist.
 
-### 4. Gatear `fireoneModuleEmulator`
-**Arquivo:** `src/lib/fireoneModuleEmulator.ts`
-- Default de `simulateHardware` muda de `true` para `false` quando flag OFF
-- Continuidade falsa (`Math.random() > 0.3`) só roda com flag ON
+**5. Atualizar `docs/iphone-usb-serial.md`**
+- Tabela "Sintoma → Diagnóstico → Ação" expandida.
+- Seção "Como o app diagnostica automaticamente" descrevendo o painel novo.
+- Comando de install: `npm install @capacitor-community/serial && npx cap sync ios`.
 
-### 5. Gatear `grandMA3Node.simulateInput()`
-**Arquivo:** `src/lib/grandMA3Node.ts`
-- Método `simulateInput()` vira no-op quando flag OFF (com `console.warn` informativo)
+**6. Hook `useHardwareDiagnostics` (`src/hooks/useHardwareDiagnostics.ts`) — novo**
+Centraliza: capability detection, ping de cada discoverer, contagem de portas autorizadas vs visíveis, classificação do problema. Consumido pelos painéis de UI.
 
-### 6. Atualizar banner do `UnifiedHardwareRegistry`
-**Arquivo:** `src/core/hardware/UnifiedHardwareRegistry.ts`
-- Banner enfatiza estado: *"Hardware simulator: OFF. Pure real-hardware discovery via Web Serial / WebUSB / WebBLE / Art-Net."*
+**7. Adicionar fallback BLE automático no `EasyConnectPanel`**
+- Quando capability detector retornar iOS Safari, esconder a aba USB e destacar BLE como caminho primário.
+- Mostrar tooltip "USB indisponível no Safari" no chip USB desabilitado.
 
-### 7. Painel Settings → Hardware (informativo)
-**Novo:** `src/components/settings/HardwareSimulatorSettings.tsx`
-- Banner mostrando estado da flag (OFF — modo testes), lista dos 8 adapters em estado `not_integrated`, instruções de reativação
+### Detalhes Técnicos
 
-## Resultado esperado
-
-- ✅ **Zero `Math.random()`** alimentando UI sem hardware real conectado
-- ✅ Adapters listados, mas todos visivelmente "frios" (0/0/UNKNOWN) até descoberta real
-- ✅ Discovery real (Web Serial/USB/BLE/Art-Net) continua 100% funcional — apenas ele alimenta dados
-- ✅ Continuidade pinos = `UNKNOWN` sem reader real (não passa para `OK` falso)
-- ✅ FireOne emulator/MA3 não inventam estado
-- ✅ Reativação trivial: flip `dev_hardware_simulator: true` em `featureFlags.ts`
-
-## Detalhes técnicos
-
+**Estrutura de diagnóstico:**
 ```text
-ANTES:                                  DEPOIS:
-adapter.pollTelemetry()                 adapter.pollTelemetry()
- └─ if connected:                        └─ if connected && simulator ON:
-     state.x = Math.random() * 4             state.x = Math.random() * 4
-                                           else: state.x permanece 0/inicial
-
-ContinuityCheckService                  ContinuityCheckService
- └─ if !reader: simulateRead()           └─ if !reader && simulator OFF:
-                                              ohms = Infinity, status = UNKNOWN
-                                            else: simulateRead()
-
-fireoneModuleEmulator                   fireoneModuleEmulator
- simulateHardware = true (default)       simulateHardware = simulator flag ON
+PlatformCapabilities {
+  platform: 'ios-safari-pwa'
+  webSerial: false  → bloqueio raiz
+  webUsb: false
+  webBle: false
+  capacitorSerial: false (não rodando em Capacitor)
+  recommendation: 'install-native-app'
+  hint: 'Acesse /install para baixar o app nativo'
+}
 ```
 
-**Memory update:** atualizar `mem://funcionalidades/honest-hardware-layer` para refletir que `dev_hardware_simulator` agora existe como flag real (default OFF) e gateia todos os pontos sintéticos remanescentes.
+**Lazy load do plugin (não quebra build web):**
+```ts
+async function loadCapSerial() {
+  if (!window.Capacitor?.isNativePlatform()) return null;
+  try {
+    const mod = await import('@capacitor-community/serial');
+    return mod.Serial;
+  } catch { return null; }
+}
+```
 
-**Não-mudanças (preservados):**
-- `provenance.ts` (já honesto)
-- `UnifiedHardwareRegistry.registerAdapter()` (já registra como `not_integrated`)
-- Caminho de discovery real (`portRegistry`, `unifiedDiscovery`, `ArtPoll`)
-- Componentes de UI que renderizam adapters (já lidam com estado `disconnected`)
+**Ordem do `UnifiedHardwareRegistry` no iPhone nativo:**
+`CapacitorSerial` → `CapacitorBLE` → fallback web APIs (caso rode em Chrome iOS futuramente).
+
+### Arquivos
+
+**Novos:**
+- `src/lib/platformCapabilities.ts`
+- `src/core/discovery/CapacitorSerialDiscoverer.ts`
+- `src/hooks/useHardwareDiagnostics.ts`
+- `src/components/editor/hardware/HardwareDiagnosticsBanner.tsx`
+
+**Editados:**
+- `src/core/hardware/UnifiedHardwareRegistry.ts` (registra CapacitorSerialDiscoverer)
+- `src/components/editor/USBConnectionPanel.tsx` (banner + erros mapeados)
+- `src/components/editor/EasyConnectPanel.tsx` (fallback BLE no iOS)
+- `src/lib/usbEngine.ts` (mapeamento de erros em `requestSerialPort`)
+- `capacitor.config.ts` (plugin block)
+- `docs/iphone-usb-serial.md` (troubleshooting expandido)
+
+### Fora do Escopo
+
+- Não vamos instalar `@capacitor-community/serial` no `package.json` automaticamente (decisão do usuário fazer no clone local + `npx cap sync`). O código carrega via dynamic import e degrada graciosamente.
+- Não vamos reativar nenhum sistema de bloqueio — diagnóstico é puramente informativo.
