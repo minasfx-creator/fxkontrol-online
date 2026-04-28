@@ -2095,14 +2095,17 @@ export default function SkyCanvas() {
         <CameraBookmarkSaver />
         <SubsystemBoundary name="PostProcessing">
           {!isLowTierMobile && (
-            <DelayedMount delay={600}>
+            // Bumped 600ms → 1200ms — PostProcessing allocates the largest
+            // single FBO (HDR + bloom mip chain). Holding it back until after
+            // the first idle frames dramatically reduces boot context loss.
+            <DelayedMount delay={1200}>
               <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />
             </DelayedMount>
           )}
         </SubsystemBoundary>
-        {!isLowTierMobile && <DelayedMount delay={1800}><StressTestFireworks /></DelayedMount>}
+        {!isLowTierMobile && <DelayedMount delay={3200}><StressTestFireworks /></DelayedMount>}
 
-        {!isLowTierMobile && <DelayedMount delay={1200}><PostExplosionSmokeManager /></DelayedMount>}
+        {!isLowTierMobile && <DelayedMount delay={2500}><PostExplosionSmokeManager /></DelayedMount>}
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
 
