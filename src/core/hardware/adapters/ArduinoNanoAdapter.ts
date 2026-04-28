@@ -79,13 +79,17 @@ export class ArduinoNanoAdapter implements HardwareAdapter<ArduinoNanoState> {
   getProvenance(): ProvenanceInfo { this._provenance.last_seen_at = Date.now(); this._provenance.data_freshness_ms = 0; return { ...this._provenance }; }
 
   pollTelemetry(): void {
-    if (this._connected === 'connected') {
-      this._state.uptime_ms += 1000;
-      this._state.loop_frequency_hz = 58 + Math.random() * 4;
-      this._state.free_ram_bytes = 1600 + Math.floor(Math.random() * 400);
-      // Simulate ADC readings (continuity MUX, battery voltage)
-      this._state.analog_pins = this._state.analog_pins.map(() => Math.floor(Math.random() * 1024));
-    }
+    if (this._connected !== 'connected') return;
+    // Honest-hardware: only emit synthetic values when simulator gate is ON.
+    // OFF (default): values stay frozen — operator sees instantly that no
+    // real hardware is responding.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { isHardwareSimulatorEnabled } = require('@/lib/featureFlags') as typeof import('@/lib/featureFlags');
+    if (!isHardwareSimulatorEnabled()) return;
+    this._state.uptime_ms += 1000;
+    this._state.loop_frequency_hz = 58 + Math.random() * 4;
+    this._state.free_ram_bytes = 1600 + Math.floor(Math.random() * 400);
+    this._state.analog_pins = this._state.analog_pins.map(() => Math.floor(Math.random() * 1024));
   }
 
   runDiagnostics(): { healthy: boolean; issues: string[] } {
