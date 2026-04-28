@@ -84,7 +84,9 @@ export class FXK16ModuleAdapter implements HardwareAdapter<RelayBankState> {
       online: this._connected === 'connected',
       warnings, errors,
       metrics: {
-        model: 'FXK16',
+        model: this.firmwareModel,
+        protocol_family: this.protocolFamily,
+        compatible_with: this.compatibleWith,
         total: 16,
         healthy: this._state.healthy_channels,
         faults: this._state.fault_channels.length,
