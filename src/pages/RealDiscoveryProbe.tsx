@@ -31,6 +31,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   ArrowLeft, RefreshCw, Radio, Usb, Bluetooth, Network,
   ShieldCheck, ShieldAlert, Pin, PinOff, ArrowRightLeft, Send, Layers,
@@ -278,19 +279,28 @@ export default function RealDiscoveryProbe() {
               Refresh metrics
             </Button>
             <div className="flex items-center gap-2 pl-2 border-l border-border">
-              <Switch id="auto-refresh" checked={autoRefresh} onCheckedChange={setAutoRefresh} />
+              <Checkbox
+                id="auto-refresh"
+                checked={autoRefresh}
+                onCheckedChange={(v) => setAutoRefresh(v === true)}
+              />
               <label htmlFor="auto-refresh" className="text-sm font-medium cursor-pointer">
-                Auto-refresh ({(refreshMs / 1000).toFixed(1)}s)
+                Auto-refresh every
               </label>
               <input
-                aria-label="Refresh interval (ms)"
+                aria-label="Refresh interval (seconds)"
                 type="number"
-                min={250}
-                step={250}
-                value={refreshMs}
-                onChange={(e) => setRefreshMs(Math.max(250, Number(e.target.value) || 1000))}
-                className="w-20 h-8 rounded-md border border-input bg-background px-2 text-sm"
+                min={1}
+                step={1}
+                value={Math.max(1, Math.round(refreshMs / 1000))}
+                onChange={(e) => {
+                  const sec = Math.max(1, Number(e.target.value) || 1);
+                  setRefreshMs(sec * 1000);
+                }}
+                className="w-16 h-8 rounded-md border border-input bg-background px-2 text-sm"
+                title="Re-render interval in seconds (no discovery scan)"
               />
+              <span className="text-xs text-muted-foreground">s</span>
             </div>
             <div className="ml-auto text-xs text-muted-foreground">
               {scanning ? 'Scanning…' : 'Idle'} · {physicals.length} physical · {totalLinks} link(s)
