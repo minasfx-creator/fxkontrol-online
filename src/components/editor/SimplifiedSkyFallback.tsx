@@ -1,10 +1,14 @@
-import { AlertTriangle, RotateCw } from 'lucide-react';
+import { AlertTriangle, RotateCw, RefreshCw } from 'lucide-react';
 
 /**
  * SimplifiedSkyFallback — pure CSS sky scene shown when the WebGL pipeline
  * cannot run (no WebGL support, context loss in cooldown, or boundary crash).
  * Renders a stylized horizon with moon + stars and a clear status banner so
  * the editor remains usable for non-3D tasks.
+ *
+ * The "Retry" action attempts to reinitialize the renderer in-place (no page
+ * reload, preserves all editor state). The "Reload Page" escape hatch is
+ * available as a last resort if Retry repeatedly fails.
  */
 export default function SimplifiedSkyFallback({
   reason = 'WebGL could not be initialized.',
