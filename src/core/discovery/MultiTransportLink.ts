@@ -68,6 +68,7 @@ export class MultiTransportLink {
   private _listeners = new Set<Listener>();
   private _totalTxOk = 0;
   private _totalTxErr = 0;
+  private _totalTxTimeout = 0;
   private _lastDispatch?: MultiTransportLinkSnapshot['lastDispatch'];
   private _unsubAggregator: (() => void) | null = null;
 
