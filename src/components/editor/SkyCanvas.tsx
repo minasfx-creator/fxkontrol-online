@@ -2300,6 +2300,7 @@ export default function SkyCanvas() {
       {/* Debug overlay toggle + panel */}
       {!isMobile && showDebugOverlay && <RenderDebugPanel />}
       {!isMobile && showDebugOverlay && <SkyCanvasDiagnosticsPanel />}
+      {!isMobile && showDebugOverlay && import.meta.env.DEV && <GpuRendererDiagnosticsPanel />}
       {!isMobile && <TerrainCacheMetricsPanel />}
 
       {/* Fullscreen floating edit menu */}
