@@ -421,9 +421,10 @@ function FXKQualityController() {
 /**
  * ContextLossGuard — handles WebGL context loss/restore with proper cleanup.
  */
-function ContextLossGuard({ recoveringRef, onRemount }: {
+function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable }: {
   recoveringRef: React.MutableRefObject<boolean>;
   onRemount: () => void;
+  onUnrecoverable?: (reason: string) => void;
 }) {
   const { gl, scene } = useThree();
 
@@ -438,6 +439,11 @@ function ContextLossGuard({ recoveringRef, onRemount }: {
       const shouldRecover = reportCrash();
       if (!shouldRecover || isInCooldown()) {
         console.error('[FXK] WebGL context lost — in cooldown, suppressing remount');
+        // Surface a user-visible fallback so the viewport doesn't stay black.
+        onUnrecoverable?.(
+          'WebGL context was lost repeatedly and the renderer is in cooldown. ' +
+          'Click Retry to attempt recovery or reload the page.'
+        );
         return;
       }
 
@@ -467,7 +473,7 @@ function ContextLossGuard({ recoveringRef, onRemount }: {
       canvas.removeEventListener('webglcontextlost', onLost as EventListener);
       canvas.removeEventListener('webglcontextrestored', onRestored as EventListener);
     };
-  }, [gl, scene, recoveringRef, onRemount]);
+  }, [gl, scene, recoveringRef, onRemount, onUnrecoverable]);
 
   return null;
 }
