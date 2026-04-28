@@ -581,6 +581,15 @@ function TransportMetricsTable({
                 {isParticipant && !isActive && (
                   <Badge variant="outline" className="text-[9px]">tx</Badge>
                 )}
+                {device.quarantinedTransports?.[id] && (
+                  <Badge
+                    variant="outline"
+                    className="text-[9px] border-amber-500/60 text-amber-500"
+                    title={device.quarantinedTransports[id]?.reason}
+                  >
+                    quarantined
+                  </Badge>
+                )}
               </div>
               <div className="col-span-2">
                 <span
