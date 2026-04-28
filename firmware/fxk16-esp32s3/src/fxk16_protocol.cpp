@@ -1,6 +1,7 @@
 // ─── FXK16 — ASCII protocol parser implementation ────────────────
 #include "fxk16_protocol.h"
 #include "fxk16_config.h"
+#include "fxk16_pinmap.h"
 #include "fxk16_relay.h"
 #include <string.h>
 #include <stdio.h>
@@ -50,6 +51,18 @@ static void handleLine(char* line, ResponseSink sink) {
   if (strcmp(line, "IDENTIFY") == 0) {
     emitf(sink, "MODEL:%s;CH:%u;FW:%s;ID:%s",
           FXK16_MODEL, (unsigned)FXK16_CHANNELS, FXK16_FW_VERSION, FXK16_MODEL);
+    return;
+  }
+
+  // ── PINMAP — dump the canonical channel↔GPIO↔terminal table for
+  // field verification. One MAP line per channel, terminated by OK:PINMAP.
+  if (strcmp(line, "PINMAP") == 0) {
+    for (uint8_t i = 0; i < FXK16_CHANNELS; i++) {
+      const ChannelMap& row = CHANNEL_MAP[i];
+      emitf(sink, "MAP:%u:GPIO%u:%s",
+            (unsigned)row.channel, (unsigned)row.gpio, row.terminal);
+    }
+    sink("OK:PINMAP");
     return;
   }
 
