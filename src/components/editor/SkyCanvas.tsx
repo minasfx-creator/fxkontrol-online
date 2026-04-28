@@ -1823,11 +1823,24 @@ export default function SkyCanvas() {
           stencil: false,
           logarithmicDepthBuffer: !isLowTierMobile,
           outputColorSpace: THREE.SRGBColorSpace,
+          // Don't refuse the context on integrated/marginal GPUs — we'd rather
+          // start in a degraded state than fall back to the static placeholder.
+          failIfMajorPerformanceCaveat: false,
         }}
-        dpr={isLowTierMobile ? [1, 1] : isMobile ? [1, 1.25] : [1.5, 2]}
+        // DPR cap: high-DPI desktops were rendering ~2.6 megapixels which —
+        // combined with bloom/SSR/GPGPU render targets — was exhausting the
+        // WebGL context on /studio boot. Cap at 1.5 on desktop, lower on mobile.
+        dpr={
+          isLowTierMobile
+            ? [1, 1]
+            : isMobile
+              ? [1, 1.25]
+              : [1, Math.min((typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1, 1.5)]
+        }
         performance={{ min: isLowTierMobile ? 0.35 : 0.5 }}
-        onCreated={() => {
+        onCreated={(state) => {
           recoveringContextRef.current = false;
+          rendererRef.current = state.gl;
           // Reveal immediately — GL context ready and bg color is already painted.
           setCanvasReady(true);
         }}>
@@ -1836,7 +1849,11 @@ export default function SkyCanvas() {
         {flyMode && !groundMode && <FlyControls onSpeedChange={flySpeedCb} />}
         {groundMode && <GroundControls onSpeedChange={flySpeedCb} />}
 
-        <ContextLossGuard recoveringRef={recoveringContextRef} onRemount={handleContextRemount} />
+        <ContextLossGuard
+          recoveringRef={recoveringContextRef}
+          onRemount={handleContextRemount}
+          onUnrecoverable={(reason) => setSilentCanvasFailure(reason)}
+        />
         <HardeningWatchdog />
         <FXKQualityController />
         <SceneLighting />
