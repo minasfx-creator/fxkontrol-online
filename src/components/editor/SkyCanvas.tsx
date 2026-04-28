@@ -550,6 +550,7 @@ function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable, onRecover
       recoveryInFlightRef.current = true;
 
       recordContextLoss();
+      logWebglEvent('lost');
 
       // Prune old attempts outside the rolling window.
       const now = Date.now();
