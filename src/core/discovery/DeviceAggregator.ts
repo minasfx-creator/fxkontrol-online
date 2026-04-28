@@ -321,10 +321,13 @@ class DeviceAggregator {
     dev: PhysicalDevice,
     excludeOffline = false,
   ): DiscoveryTransport | null {
+    const isQuarantined = (t: DiscoveryTransport): boolean =>
+      !!dev.quarantinedTransports?.[t];
     const isCandidate = (t: DiscoveryTransport): boolean => {
       const l = dev.links[t];
       if (!l) return false;
       if (excludeOffline && !l.online) return false;
+      if (isQuarantined(t)) return false;
       return true;
     };
 
@@ -332,11 +335,13 @@ class DeviceAggregator {
     if (dev.preferredTransport && isCandidate(dev.preferredTransport)) {
       return dev.preferredTransport;
     }
-    // Otherwise priority-order pick.
+    // Otherwise priority-order pick (skipping quarantined).
     for (const t of DEFAULT_PRIORITY) {
       if (isCandidate(t)) return t;
     }
-    // Fallback: any link, even offline, to keep UI stable.
+    // Last resort: any present link (even quarantined / offline) so the
+    // device card stays anchored. Active dispatch will still be blocked
+    // until quarantine is cleared.
     for (const t of DEFAULT_PRIORITY) {
       if (dev.links[t]) return t;
     }
