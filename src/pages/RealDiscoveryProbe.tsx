@@ -64,9 +64,12 @@ export default function RealDiscoveryProbe() {
   const [scanning, setScanning] = useState(false);
   const [autoLoop, setAutoLoop] = useState(true);
   const [intervalMs, setIntervalMs] = useState(3000);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshMs, setRefreshMs] = useState(1000);
   const [tick, setTick] = useState(0);
   const logIdRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
 
   const support = useMemo(() => unifiedDiscovery.supportMatrix(), []);
@@ -142,6 +145,28 @@ export default function RealDiscoveryProbe() {
       }
     };
   }, [autoLoop, intervalMs]);
+
+  // ── Auto-refresh: pulls fresh aggregator state + metrics WITHOUT
+  // re-running discovery scans. Lightweight UI tick only.
+  useEffect(() => {
+    if (refreshTimerRef.current) {
+      clearInterval(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+    if (!autoRefresh) return;
+    const pull = () => {
+      if (!mountedRef.current) return;
+      refreshDevices();
+      setTick((t) => t + 1);
+    };
+    refreshTimerRef.current = setInterval(pull, Math.max(250, refreshMs));
+    return () => {
+      if (refreshTimerRef.current) {
+        clearInterval(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
+  }, [autoRefresh, refreshMs]);
 
   const gateStats = realOnlyGate.getStats();
   void tick;
@@ -242,6 +267,21 @@ export default function RealDiscoveryProbe() {
               <RefreshCw className={`h-4 w-4 ${scanning ? 'animate-spin' : ''}`} />
               Scan now
             </Button>
+            <div className="flex items-center gap-2 pl-2 border-l border-border">
+              <Switch id="auto-refresh" checked={autoRefresh} onCheckedChange={setAutoRefresh} />
+              <label htmlFor="auto-refresh" className="text-sm font-medium cursor-pointer">
+                Auto-refresh ({(refreshMs / 1000).toFixed(1)}s)
+              </label>
+              <input
+                aria-label="Refresh interval (ms)"
+                type="number"
+                min={250}
+                step={250}
+                value={refreshMs}
+                onChange={(e) => setRefreshMs(Math.max(250, Number(e.target.value) || 1000))}
+                className="w-20 h-8 rounded-md border border-input bg-background px-2 text-sm"
+              />
+            </div>
             <div className="ml-auto text-xs text-muted-foreground">
               {scanning ? 'Scanning…' : 'Idle'} · {physicals.length} physical · {totalLinks} link(s)
               {aggregationStats.multi > 0 && (
