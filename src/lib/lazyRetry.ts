@@ -18,7 +18,7 @@ function markRetried(): boolean {
 export function clearLazyRetryFlag(): void {
   try {
     sessionStorage.removeItem(RETRY_STORAGE_KEY);
-  } catch {}
+  } catch { /* best-effort: sessionStorage may be unavailable */ }
 }
 
 export function lazyRetry<T>(importer: () => Promise<T>): () => Promise<T> {

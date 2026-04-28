@@ -284,11 +284,13 @@ export default function PyroFireOnePanel({
 
   useEffect(() => {
     // Subscribe channels once
-    pyroSyncChannel.current.subscribe();
-    mobileLinkChannel.current.subscribe();
+    const pyroSync = pyroSyncChannel.current;
+    const mobileLink = mobileLinkChannel.current;
+    pyroSync.subscribe();
+    mobileLink.subscribe();
     return () => {
-      supabase.removeChannel(pyroSyncChannel.current);
-      supabase.removeChannel(mobileLinkChannel.current);
+      supabase.removeChannel(pyroSync);
+      supabase.removeChannel(mobileLink);
     };
   }, []);
 

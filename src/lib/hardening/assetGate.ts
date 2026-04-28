@@ -118,7 +118,7 @@ export function analyzeSceneGraph(root: any): GLTFSceneStats {
   let maxDepth = 0;
   let textureCount = 0;
   let maxTextureDim = 0;
-  let animationCount = 0;
+  const animationCount = 0;
   const textures = new Set<any>();
 
   function walk(node: any, depth: number) {

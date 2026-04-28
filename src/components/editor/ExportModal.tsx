@@ -6,12 +6,12 @@ import { useState, useMemo } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type TimelineItem, type Position } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
-import { exportFiringCSV, downloadFile } from '@/lib/exportEngine';
+import { exportFiringCSV, exportFiringJSON, exportVVIZ, downloadFile } from '@/lib/exportEngine';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Download, FileSpreadsheet, MapPin, Eye } from 'lucide-react';
+import { Download, FileSpreadsheet, FileJson, MapPin, Eye, Plane } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -146,27 +146,52 @@ function generateFiringPreview(timelineItems: TimelineItem[], positions: Positio
 // ═══════════════════════════════════════════════════════════
 export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
     const projectName = useProjectStore(s => s.projectName);
+  const duration = useProjectStore(s => s.duration);
   const timelineItems = useProjectStore(s => s.timelineItems);
   const positions = useProjectStore(s => s.positions);
+  const trajectories = useProjectStore(s => s.trajectories);
+  const droneFormations = useProjectStore(s => s.droneFormations);
   const [activeTab, setActiveTab] = useState('firing');
 
   const pyroCount = useMemo(() =>
     timelineItems.filter(i => EFFECT_LIBRARY.find(e => e.id === i.effectId)?.type === 'firework').length
   , [timelineItems]);
+  const droneCount = useMemo(() =>
+    timelineItems.filter(i => EFFECT_LIBRARY.find(e => e.id === i.effectId)?.type === 'drone').length
+    + trajectories.length
+    + (droneFormations[0]?.droneCount ?? 0)
+  , [timelineItems, trajectories, droneFormations]);
 
   const firingPreview = useMemo(() => generateFiringPreview(timelineItems, positions), [timelineItems, positions]);
   const setupRows = useMemo(() => generateSetupReport(timelineItems, positions), [timelineItems, positions]);
 
+  const safeName = projectName.replace(/\s+/g, '_');
+
   const handleDownloadFiring = () => {
     const csv = exportFiringCSV(timelineItems, positions);
-    downloadFile(csv, `${projectName.replace(/\s+/g, '_')}_firing_script.csv`, 'text/csv');
+    downloadFile(csv, `${safeName}_firing_script.csv`, 'text/csv');
     toast.success('Firing Script CSV exportado!');
+  };
+
+  const handleDownloadFiringJSON = () => {
+    const json = exportFiringJSON(projectName, timelineItems, positions);
+    downloadFile(json, `${safeName}_firing_script.json`, 'application/json');
+    toast.success('Firing Script JSON exportado!');
   };
 
   const handleDownloadSetup = () => {
     const csv = exportSetupCSV(timelineItems, positions);
-    downloadFile(csv, `${projectName.replace(/\s+/g, '_')}_setup_report.csv`, 'text/csv');
+    downloadFile(csv, `${safeName}_setup_report.csv`, 'text/csv');
     toast.success('Setup Report CSV exportado!');
+  };
+
+  const handleDownloadVVIZ = () => {
+    const content = exportVVIZ(
+      projectName, duration, timelineItems, positions, trajectories, droneFormations,
+      { showName: projectName, coordinateFrame: 'standard' },
+    );
+    downloadFile(content, `${safeName}.vviz`, 'application/json');
+    toast.success('VVIZ (X, Y, Z, Heading) exportado!');
   };
 
   return (
@@ -187,23 +212,32 @@ export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="w-full grid grid-cols-2 h-8">
+          <TabsList className="w-full grid grid-cols-3 h-8">
             <TabsTrigger value="firing" className="text-[10px]">
               <Download className="w-3 h-3 mr-1" /> Firing Script
             </TabsTrigger>
             <TabsTrigger value="setup" className="text-[10px]">
               <MapPin className="w-3 h-3 mr-1" /> Setup Report
             </TabsTrigger>
+            <TabsTrigger value="vviz" className="text-[10px]">
+              <Plane className="w-3 h-3 mr-1" /> VVIZ Drones
+            </TabsTrigger>
           </TabsList>
 
           {/* ─── FIRING SCRIPT ─── */}
           <TabsContent value="firing" className="flex-1 overflow-hidden flex flex-col gap-2 mt-2">
             <p className="text-[10px] text-muted-foreground">
-              Ordem cronológica para consolas de disparo (Cobra, FireTEK, FireOne). Colunas: Cue, Module, Pin, EventTime, PreFire, Effect, Caliber, Position.
+              Ordem cronológica para consolas de disparo (Cobra, FireTEK, FireOne, FXcommander).
+              Mesma ordenação para CSV (consolas tradicionais) e JSON (bridges programáticos).
             </p>
-            <Button onClick={handleDownloadFiring} className="w-full" size="sm">
-              <Download className="w-3.5 h-3.5 mr-2" /> Download Firing Script (CSV)
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={handleDownloadFiring} size="sm">
+                <FileSpreadsheet className="w-3.5 h-3.5 mr-2" /> CSV
+              </Button>
+              <Button onClick={handleDownloadFiringJSON} variant="secondary" size="sm">
+                <FileJson className="w-3.5 h-3.5 mr-2" /> JSON
+              </Button>
+            </div>
 
             {/* Preview table */}
             <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/60 pt-1">
@@ -283,6 +317,27 @@ export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
                 </tbody>
               </table>
             </div>
+          </TabsContent>
+
+          {/* ─── VVIZ DRONES ─── */}
+          <TabsContent value="vviz" className="flex-1 overflow-auto flex flex-col gap-2 mt-2">
+            <p className="text-[10px] text-muted-foreground">
+              Coreografia de drones no formato Finale 3D <strong>VVIZ 1.0</strong>.
+              Cada agente é exportado com <code className="text-primary">homeX/homeY/homeZ/homeH</code> e
+              traversal em deltas <code className="text-primary">dx, dy, dz, dh</code> (eixos X direita, Y cima, Z frente).
+            </p>
+            <div className="grid grid-cols-3 gap-2 text-[9px]">
+              <Badge variant="outline" className="justify-center">{droneCount} agentes</Badge>
+              <Badge variant="outline" className="justify-center">X · Y · Z · H</Badge>
+              <Badge variant="outline" className="justify-center">Standard frame</Badge>
+            </div>
+            <Button onClick={handleDownloadVVIZ} className="w-full" size="sm">
+              <Plane className="w-3.5 h-3.5 mr-2" /> Download .vviz
+            </Button>
+            <p className="text-[9px] text-muted-foreground/60">
+              Para opções avançadas (Position/Color rate, OGL frame, no-trail) abra o diálogo
+              dedicado <em>Exportar VVIZ</em> na barra de ferramentas.
+            </p>
           </TabsContent>
         </Tabs>
       </DialogContent>

@@ -205,7 +205,7 @@ export function generateShape(shape: 'circle' | 'star' | 'heart' | 'logo', point
         });
       }
       break;
-    default:
+    default: {
       // Simple logo placeholder — diamond
       const diamond = [
         { x: 0, y: 0.4 }, { x: 0.3, y: 0 }, { x: 0, y: -0.4 }, { x: -0.3, y: 0 }, { x: 0, y: 0.4 },
@@ -217,6 +217,8 @@ export function generateShape(shape: 'circle' | 'star' | 'heart' | 'logo', point
           blanking: i === 0, lastPoint: i === diamond.length - 1,
         });
       });
+      break;
+    }
   }
   
   return result;

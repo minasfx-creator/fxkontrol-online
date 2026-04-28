@@ -260,7 +260,7 @@ class BridgePhysicalController {
 
   private emit(): void {
     this.listeners.forEach((listener) => {
-      try { listener(); } catch {}
+      try { listener(); } catch { /* listener errors must not break notification loop */ }
     });
   }
 

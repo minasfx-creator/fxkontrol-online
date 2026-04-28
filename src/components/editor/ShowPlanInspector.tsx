@@ -19,6 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { VerificationIssue } from '@/core/verification/types';
+import { useShallow } from 'zustand/react/shallow';
 
 function CountBadge({ count, color }: { count: number; color: string }) {
   return (
@@ -38,7 +39,7 @@ function CheckIcon({ issue }: { issue: VerificationIssue }) {
 export default function ShowPlanInspector() {
   const [, setTick] = useState(0);
   const sp = showPlanManager.current;
-  const { level, result, runVerification } = useVerificationStore();
+  const { level, result, runVerification } = useVerificationStore(useShallow((s) => ({ level: s.level, result: s.result, runVerification: s.runVerification })));
 
   const handleLoadTestData = useCallback(() => {
     showPlanManager.loadTestData();

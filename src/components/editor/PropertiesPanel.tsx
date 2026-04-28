@@ -263,9 +263,97 @@ export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor
                 </div>
               </div>
 
+              {/* ── EDITABLE — selected timeline cue overrides ── */}
+              {selectedItem && (() => {
+                const itemColor = selectedItem.colorOverride ?? selectedEffect.color;
+                const itemDuration = selectedItem.durationOverride ?? selectedEffect.duration;
+                const itemUnits = selectedItem.flightCount ?? selectedEffect.shotCount ?? 1;
+                return (
+                  <div className="rounded-xl p-2.5 space-y-2.5" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+                    <p className="text-[10px] text-muted-foreground/50 font-semibold uppercase tracking-wider font-display">Cue Overrides</p>
+
+                    {/* Position X/Y/Z */}
+                    <div>
+                      <p className="text-[9px] text-muted-foreground/60 mb-1 font-display">Position (m)</p>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <NumberField label="X" value={selectedItem.position.x} onChange={(v) => updateTimelineItem(selectedItem.id, { position: { ...selectedItem.position, x: v } })} color="hsl(0 72% 51%)" />
+                        <NumberField label="Y" value={selectedItem.position.y} onChange={(v) => updateTimelineItem(selectedItem.id, { position: { ...selectedItem.position, y: v } })} color="hsl(142 70% 45%)" />
+                        <NumberField label="Z" value={selectedItem.position.z} onChange={(v) => updateTimelineItem(selectedItem.id, { position: { ...selectedItem.position, z: v } })} color="hsl(207 90% 54%)" />
+                      </div>
+                    </div>
+
+                    {/* Color */}
+                    <div>
+                      <p className="text-[9px] text-muted-foreground/60 mb-1 font-display">Color</p>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="color"
+                          value={itemColor}
+                          onChange={(e) => updateTimelineItem(selectedItem.id, { colorOverride: e.target.value })}
+                          className="h-7 w-9 rounded-lg bg-surface-0/50 border border-border/15 cursor-pointer"
+                          aria-label="Cue color"
+                        />
+                        <Input
+                          value={itemColor}
+                          onChange={(e) => updateTimelineItem(selectedItem.id, { colorOverride: e.target.value })}
+                          className="h-7 text-[10px] font-mono-code px-2 rounded-lg bg-surface-0/50 border-border/15 flex-1 focus:border-primary/30"
+                          placeholder="#RRGGBB"
+                        />
+                        {selectedItem.colorOverride && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-[9px] text-muted-foreground hover:text-foreground"
+                            onClick={() => updateTimelineItem(selectedItem.id, { colorOverride: undefined })}
+                            title="Reset to library color"
+                          >
+                            Reset
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Unit count + Duration */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div>
+                        <p className="text-[9px] text-muted-foreground/60 mb-1 font-display">Unit Count</p>
+                        <NumberField
+                          label="N"
+                          value={itemUnits}
+                          step={1}
+                          onChange={(v) => updateTimelineItem(selectedItem.id, { flightCount: Math.max(1, Math.round(v)) })}
+                          color="hsl(48 96% 53%)"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-muted-foreground/60 mb-1 font-display">Duration (s)</p>
+                        <NumberField
+                          label="t"
+                          value={itemDuration}
+                          step={0.1}
+                          onChange={(v) => updateTimelineItem(selectedItem.id, { durationOverride: Math.max(0.1, v) })}
+                          color="hsl(280 70% 60%)"
+                        />
+                      </div>
+                    </div>
+
+                    {(selectedItem.flightCount !== undefined || selectedItem.durationOverride !== undefined) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full h-6 text-[9px] text-muted-foreground hover:text-foreground"
+                        onClick={() => updateTimelineItem(selectedItem.id, { flightCount: undefined, durationOverride: undefined })}
+                      >
+                        Reset count & duration to defaults
+                      </Button>
+                    )}
+                  </div>
+                );
+              })()}
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-xl p-2.5" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
-                  <p className="text-[10px] text-muted-foreground/40 mb-0.5 font-display">Duration</p>
+                  <p className="text-[10px] text-muted-foreground/40 mb-0.5 font-display">Library Duration</p>
                   <p className="text-xs font-mono-code text-foreground font-semibold">{selectedEffect.duration}s</p>
                 </div>
                 <div className="rounded-xl p-2.5" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>

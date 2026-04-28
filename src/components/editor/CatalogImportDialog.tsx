@@ -306,9 +306,9 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
                   <button
                     key={i}
                     onClick={() => {
-                      setSelectedEffects(prev => {
+                       setSelectedEffects(prev => {
                         const next = new Set(prev);
-                        next.has(i) ? next.delete(i) : next.add(i);
+                        if (next.has(i)) next.delete(i); else next.add(i);
                         return next;
                       });
                     }}

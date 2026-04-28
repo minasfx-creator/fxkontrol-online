@@ -112,7 +112,7 @@ describe('ArtNetTransport', () => {
   });
 
   it('builds and flushes aggregated universe frames', () => {
-    const sendDmx = vi.spyOn(artNetBridge, 'sendDmx').mockImplementation(() => {});
+    const sendDmx = vi.spyOn(artNetBridge, 'sendDmx').mockImplementation(() => true);
     const transport = new ArtNetTransport();
 
     const scheduler = new HardwareScheduler<ScheduledHardwareEvent<ArtNetScheduledPayload>>(
@@ -155,7 +155,7 @@ describe('ArtNetTransport', () => {
   });
 
   it('ignores invalid universe ids', () => {
-    const sendDmx = vi.spyOn(artNetBridge, 'sendDmx').mockImplementation(() => {});
+    const sendDmx = vi.spyOn(artNetBridge, 'sendDmx').mockImplementation(() => true);
     const transport = new ArtNetTransport();
 
     transport.enqueue({ universe: -1, updates: [{ channel: 1, value: 255 }] });

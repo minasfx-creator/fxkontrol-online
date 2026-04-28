@@ -109,13 +109,17 @@ import { isFlyingTo } from '@/core/camera/geoCamera';
 import ClientPresentationMode from './ClientPresentationMode';
 import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
+import TerrainCacheMetricsPanel from './TerrainCacheMetricsPanel';
 import SkyCanvasDiagnosticsPanel from './SkyCanvasDiagnosticsPanel';
+import GpuRendererDiagnosticsPanel from './GpuRendererDiagnosticsPanel';
+import { setActiveRenderer } from '@/lib/activeRendererRegistry';
+import { logWebglEvent } from '@/lib/webglEventLog';
 import { captureSkyCanvasError } from '@/lib/skyCanvasDiagnostics';
 import SimplifiedSkyFallback, { detectWebGLCapability } from './SimplifiedSkyFallback';
 import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
 // ═══ Hardening Engine ═══
 import {
-  reportCrash, isInCooldown, recordContextLoss,
+  reportCrash, resetCrashRecord, getCrashRecord, isInCooldown, recordContextLoss,
   watchdogTick, pushFrameMetrics, startMetricsReporting, stopMetricsReporting,
   scanSceneTransforms, checkFrameBudget, checkSceneHealth, deepDispose, disposeAllTracked,
   getDegradationLevel, onDegradationChange,
@@ -174,9 +178,9 @@ import { estimateFireworkStarCost } from './skycanvas/FireworkRenderer';
 export function getActiveBurstCount() { return _getActiveBurstCount(); }
 
 // Module-level refs shared between SkyGradient / AdaptiveExposure / fireworks
-let _skyScatterUniforms_local: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
-let _adaptiveExposure_local = 1.2;
-let _activeBurstScan_local: ActiveBurstScanResult | null = null;
+const _skyScatterUniforms_local: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
+const _adaptiveExposure_local = 1.2;
+const _activeBurstScan_local: ActiveBurstScanResult | null = null;
 
 // lumaTonemapScale REMOVED — PostProcessing ACES Filmic is the single tonemap pass
 
@@ -220,6 +224,14 @@ import { deterministicClock } from '@/core/time/deterministicClock';
 import { lockstep } from '@/core/reliability/lockstepEngine';
 import { executionBridge } from '@/core/execution/executionBridge';
 import { frameSyncEngine } from '@/core/sync/frameSyncEngine';
+import { useTimelineClockHealthCheck } from '@/hooks/useTimelineClockHealthCheck';
+
+/** Invisible component that watches `timelineClock.time` for stalls and forces
+ *  the lockstep playback fallback if the clock freezes while `isPlaying`. */
+const TimelineClockWatchdog = () => {
+  useTimelineClockHealthCheck();
+  return null;
+};
 
 const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref) {
     const isPlaying = useProjectStore(s => s.isPlaying);
@@ -254,10 +266,9 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
       }
     }, 10); // High priority — playback clock runs first
 
-    // ExecutionBridge ticks after playback
-    lockstep.register('executionBridge', (simTime: number, _dt: number) => {
-      executionBridge.tick(simTime);
-    }, 50); // Lower priority — fires after playback updates
+    // NOTE: `executionBridge` is registered exclusively by `EngineProvider`
+    // (priority 150). Do NOT re-register it here — duplicate registrations
+    // log a [Lockstep] warning and silently no-op the second one.
 
     // Start the deterministic clock and lockstep
     deterministicClock.start();
@@ -272,7 +283,7 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
 
     return () => {
       lockstep.unregister('playback');
-      lockstep.unregister('executionBridge');
+      // executionBridge unregister handled by EngineProvider (sole owner).
       deterministicClock.pause();
       lockstep.stop();
       registeredRef.current = false;
@@ -411,55 +422,203 @@ function FXKQualityController() {
 }
 
 /**
- * ContextLossGuard — handles WebGL context loss/restore with proper cleanup.
+ * ContextLossGuard — handles WebGL context loss/restore with proper cleanup
+ * and automatic, progressive recovery (backoff + per-attempt degradation).
+ *
+ * Recovery strategy
+ * ─────────────────
+ *  attempt 1 → wait 250ms → remount Canvas, keep current quality
+ *  attempt 2 → wait 1000ms → force lowQualityMode + halve bloomStrength
+ *  attempt 3 → wait 4000ms → also drop GPGPU/heavy shaders
+ *  ≥4         → enter cooldown, schedule auto-retry when cooldown expires
+ *
+ * Each step also disposes scene resources (deepDispose + disposeAllTracked +
+ * resetPools) to release GPU memory before requesting a fresh context.
+ *
+ * If `webglcontextrestored` fires natively we treat that as the authoritative
+ * "recovered" signal; otherwise the new <Canvas> instance's onCreated clears
+ * `recoveringRef`. A toast informs the operator throughout.
  */
-function ContextLossGuard({ recoveringRef, onRemount }: {
+function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable, onRecovered }: {
   recoveringRef: React.MutableRefObject<boolean>;
   onRemount: () => void;
+  onUnrecoverable?: (reason: string) => void;
+  onRecovered?: () => void;
 }) {
   const { gl, scene } = useThree();
+  // Per-mount attempt counter — pruned to a 60s window so isolated incidents
+  // don't permanently degrade the renderer.
+  const attemptTimestampsRef = useRef<number[]>([]);
+  const scheduledTimerRef = useRef<number | null>(null);
+  // Tracks whether this guard (and therefore the parent <Canvas>) is still mounted.
+  // Prevents scheduled remounts from firing into a torn-down React tree (e.g. when
+  // the user navigates away from /studio during the recovery backoff window).
+  const mountedRef = useRef(true);
+  // Hard re-entry guard for `onLost`. Some drivers fire `webglcontextlost`
+  // multiple times in rapid succession while disposing GPGPU FBOs — without
+  // this gate each event would schedule its own remount, producing a storm of
+  // competing Canvas instances all trying to acquire a fresh GL context.
+  const recoveryInFlightRef = useRef(false);
 
   useEffect(() => {
     const canvas = gl.domElement;
+    mountedRef.current = true;
 
-    const onLost = (e: Event) => {
-      e.preventDefault();
-      if (recoveringRef.current) return;
+    const RECOVERY_WINDOW_MS = 60_000;
+    // Backoff per attempt (ms). Index = attempt number - 1.
+    const BACKOFF_LADDER = [250, 1000, 4000];
 
-      recordContextLoss();
-      const shouldRecover = reportCrash();
-      if (!shouldRecover || isInCooldown()) {
-        console.error('[FXK] WebGL context lost — in cooldown, suppressing remount');
-        return;
+    const clearScheduledTimer = () => {
+      if (scheduledTimerRef.current !== null) {
+        window.clearTimeout(scheduledTimerRef.current);
+        scheduledTimerRef.current = null;
+      }
+    };
+
+    const performRecovery = (attemptInWindow: number) => {
+      // Telemetry — every attempt is captured with attempt number.
+      captureSkyCanvasError(
+        'WebGLContextLoss',
+        new Error(`WebGL context lost (auto-recovery attempt #${attemptInWindow})`),
+      );
+      logWebglEvent('remount-attempt', `attempt #${attemptInWindow}`);
+
+      // Per-attempt degradation: turn the visual budget down progressively.
+      try {
+        const store = useSceneStore.getState();
+        if (attemptInWindow >= 2 && !store.environment.lowQualityMode) {
+          store.updateEnvironment({ lowQualityMode: true });
+          pushLog('[FXK Recovery] Forced lowQualityMode after 2nd context loss', 'warn');
+        }
+        if (attemptInWindow >= 2) {
+          const cur = store.settings.bloomStrength ?? 1.0;
+          if (cur > 0.25) store.updateSettings({ bloomStrength: Math.max(0.2, cur * 0.5) });
+        }
+        if (attemptInWindow >= 3) {
+          // Final-stage degradation: kill heavy effects entirely.
+          store.updateSettings({ bloomStrength: 0 });
+        }
+      } catch (storeErr) {
+        console.warn('[FXK Recovery] Could not apply degradation:', storeErr);
       }
 
-      // Deep dispose scene resources before remount to prevent memory leaks
+      // Deep dispose scene resources before remount to release GPU memory.
       try {
         deepDispose(scene);
         disposeAllTracked();
-        pushLog('[FXK] Deep disposed scene resources after context loss', 'warn');
+        pushLog(`[FXK Recovery] Deep disposed scene before attempt #${attemptInWindow}`, 'warn');
       } catch (disposeErr) {
-        console.warn('[FXK] Error during deep dispose:', disposeErr);
+        console.warn('[FXK Recovery] Error during deep dispose:', disposeErr);
+      }
+      try { resetPools(); } catch { /* ignore */ }
+
+      const delayMs = BACKOFF_LADDER[Math.min(attemptInWindow - 1, BACKOFF_LADDER.length - 1)];
+      console.warn(`[FXK Recovery] Remounting WebGL renderer in ${delayMs}ms (attempt #${attemptInWindow})`);
+      toast.message('Recuperando viewport 3D…', {
+        description: `Recriando renderer (tentativa ${attemptInWindow})`,
+        duration: Math.max(delayMs + 1500, 2500),
+        id: 'fxk-webgl-recovery',
+      });
+
+      // Always cancel any previously-scheduled remount before queuing a new one.
+      // Without this, a cooldown-path schedule followed by a direct path schedule
+      // (or vice versa) would fire two `onRemount()` calls back-to-back, each
+      // mounting a fresh <Canvas> while the previous one is still releasing GPU
+      // memory — the exact "competing instances" failure mode.
+      clearScheduledTimer();
+      scheduledTimerRef.current = window.setTimeout(() => {
+        scheduledTimerRef.current = null;
+        if (!mountedRef.current) {
+          // Parent route (e.g. /studio) unmounted while we were waiting — do
+          // nothing. The next visit will start fresh.
+          recoveryInFlightRef.current = false;
+          return;
+        }
+        recoveringRef.current = true;
+        onRemount();
+      }, delayMs);
+    };
+
+    const onLost = (e: Event) => {
+      e.preventDefault();
+      // Two layers of re-entry protection:
+      //  1. `recoveringRef` — set after a remount has been triggered.
+      //  2. `recoveryInFlightRef` — set the moment we *accept* a loss event,
+      //     so duplicate `webglcontextlost` events fired during disposal
+      //     (common on Mesa/ANGLE drivers) cannot queue parallel recoveries.
+      if (recoveringRef.current || recoveryInFlightRef.current) return;
+      recoveryInFlightRef.current = true;
+
+      recordContextLoss();
+      logWebglEvent('lost');
+
+      // Prune old attempts outside the rolling window.
+      const now = Date.now();
+      attemptTimestampsRef.current = attemptTimestampsRef.current.filter(
+        (t) => now - t < RECOVERY_WINDOW_MS,
+      );
+      attemptTimestampsRef.current.push(now);
+      const attemptInWindow = attemptTimestampsRef.current.length;
+
+      const shouldRecover = reportCrash();
+      if (!shouldRecover || isInCooldown()) {
+        const cooldownUntil = getCrashRecord().cooldownUntil;
+        const waitMs = Math.max(0, cooldownUntil - now);
+        console.error(
+          `[FXK Recovery] In cooldown — auto-retry scheduled in ${(waitMs / 1000).toFixed(1)}s`,
+        );
+        toast.warning('Viewport 3D em cooldown', {
+          description: `Tentativa automática em ${Math.ceil(waitMs / 1000)}s`,
+          duration: Math.max(waitMs + 500, 3000),
+          id: 'fxk-webgl-recovery',
+        });
+        onUnrecoverable?.(
+          `WebGL context loss storm — automatic retry in ${Math.ceil(waitMs / 1000)}s. ` +
+          `You can also click Retry to recover immediately.`
+        );
+        clearScheduledTimer();
+        scheduledTimerRef.current = window.setTimeout(() => {
+          scheduledTimerRef.current = null;
+          if (!mountedRef.current) {
+            recoveryInFlightRef.current = false;
+            return;
+          }
+          // Reset the cooldown record so the next attempt isn't immediately
+          // re-classified as "in cooldown". We keep our local attemptInWindow
+          // counter so degradation still escalates.
+          resetCrashRecord();
+          performRecovery(attemptInWindow);
+        }, waitMs + 250);
+        return;
       }
 
-      recoveringRef.current = true;
-      console.warn('[FXK] WebGL context lost — remounting renderer');
-      resetPools();
-      onRemount();
+      performRecovery(attemptInWindow);
     };
 
     const onRestored = () => {
-      console.log('[FXK] WebGL context restored');
+      console.log('[FXK Recovery] WebGL context restored');
       recoveringRef.current = false;
+      recoveryInFlightRef.current = false;
+      logWebglEvent('restored');
+      toast.success('Viewport 3D recuperado', {
+        id: 'fxk-webgl-recovery',
+        duration: 2500,
+      });
+      onRecovered?.();
     };
 
     canvas.addEventListener('webglcontextlost', onLost as EventListener);
     canvas.addEventListener('webglcontextrestored', onRestored as EventListener);
     return () => {
+      mountedRef.current = false;
       canvas.removeEventListener('webglcontextlost', onLost as EventListener);
       canvas.removeEventListener('webglcontextrestored', onRestored as EventListener);
+      clearScheduledTimer();
+      // If the guard tears down mid-recovery, release the in-flight latch so a
+      // future mount can accept loss events again.
+      recoveryInFlightRef.current = false;
     };
-  }, [gl, scene, recoveringRef, onRemount]);
+  }, [gl, scene, recoveringRef, onRemount, onUnrecoverable, onRecovered]);
 
   return null;
 }
@@ -482,10 +641,10 @@ class SubsystemBoundary extends Component<{ name: string; children: ReactNode },
 }
 
 // Module-level refs — local aliases for backward compat within this file
-let _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
-let _adaptiveExposure = 1.2;
-let _activeBurstScan: ActiveBurstScanResult | null = null;
-let _activeBurstCount = 0;
+const _skyScatterUniforms: { uExplosionScatter: { value: THREE.Color }; uScatterIntensity: { value: number } } | null = null;
+const _adaptiveExposure = 1.2;
+const _activeBurstScan: ActiveBurstScanResult | null = null;
+const _activeBurstCount = 0;
 
 // FireworkBurst, LightPoint, estimateFireworkStarCost, TimelineEffects, LiveSFXEffects
 // → Extracted to skycanvas/FireworkRenderer.tsx
@@ -893,7 +1052,7 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
     const ty = THREE.MathUtils.clamp(controls.target.y, 0, 50000);
     const tz = THREE.MathUtils.clamp(controls.target.z, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
 
-    let cy = THREE.MathUtils.clamp(camera.position.y, CAMERA_MIN_Y, CAMERA_MAX_Y);
+    const cy = THREE.MathUtils.clamp(camera.position.y, CAMERA_MIN_Y, CAMERA_MAX_Y);
     _lastValidY.current = cy;
 
     const cx = THREE.MathUtils.clamp(camera.position.x, -WORLD_HALF_EXTENT, WORLD_HALF_EXTENT);
@@ -1131,12 +1290,14 @@ function CameraController({ targetPosition, targetLookAt, freeLook, flyMode }: {
 
   const sensitivityScale = 0.7;
 
-  // Broadcast OrbitControls ref to GeoCameraController
+  // Broadcast OrbitControls ref to GeoCameraController. Mutable ref intentionally
+  // omitted from deps — broadcasts once on mount when the ref is populated.
   useEffect(() => {
     if (controlsRef.current) {
       window.dispatchEvent(new CustomEvent('r3f-controls-ready', { detail: { controls: controlsRef.current } }));
     }
-  }, [controlsRef.current]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Disable OrbitControls while box-select is active
   useEffect(() => {
@@ -1540,7 +1701,7 @@ export default function SkyCanvas() {
   const [canvasInstanceKey, setCanvasInstanceKey] = useState(0);
   const recoveringContextRef = useRef(false);
   const handleContextRemount = useCallback(() => setCanvasInstanceKey(prev => prev + 1), []);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768; // eslint-disable-line -- kept as static for perf-sensitive render loop; useIsMobile used at page level
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;  
   const deviceProfile = useMemo(() => getDeviceProfile(), []);
   const isLowTierMobile = isMobile && deviceProfile.tier === 'low';
   const environment = useSceneStore(st => st.environment);
@@ -1548,6 +1709,10 @@ export default function SkyCanvas() {
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const presentationMode = useSceneStore(st => st.settings.presentationMode);
   // MissionSetupOverlay removed — scene loads immediately
+
+  // Clear the active-renderer registry on full SkyCanvas unmount so dev
+  // diagnostics panels don't keep polling a disposed renderer.
+  useEffect(() => () => { setActiveRenderer(null); }, []);
 
   // Exit fly mode when pointer lock is lost (ESC)
   useEffect(() => {
@@ -1729,24 +1894,113 @@ export default function SkyCanvas() {
 
   const [canvasReady, setCanvasReady] = useState(false);
   const [webglRetryKey, setWebglRetryKey] = useState(0);
+  // Silent-failure guard: in some Chrome builds (e.g. SwiftShader deprecated, GPU disabled) R3F
+  // mounts without throwing yet produces no <canvas> child. Without this check the user sees a
+  // pure-black viewport with no fallback. We poll the container shortly after mount and trip
+  // the fallback if no real canvas attached.
+  const [silentCanvasFailure, setSilentCanvasFailure] = useState<string | null>(null);
+  // Ref to the live R3F WebGLRenderer so we can probe `isContextLost()`
+  // (set in <Canvas onCreated>). Used both by the silent-failure probe and
+  // by the manual retry button.
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+
+  useEffect(() => {
+    if (silentCanvasFailure) return;
+    // Two-phase WebGL health watcher:
+    //
+    //  1. Boot probes at 600/1500/3000ms — catch the case where R3F mounts
+    //     without a real <canvas> child (some Chrome builds with GPU disabled),
+    //     OR where the context is dead-on-arrival.
+    //
+    //  2. Continuous poll every 1s — catches context losses that occur AFTER
+    //     the boot window (e.g. heavy effects warming up at 3-4s, or a driver
+    //     deciding to revoke the context mid-session). Without this, a black
+    //     viewport could persist indefinitely if the auto-recovery `setTimeout`
+    //     was cancelled or the context-lost event was suppressed by the OS.
+    const probeAt = [600, 1500, 3000];
+    const probeTimers = probeAt.map((delay) =>
+      window.setTimeout(() => {
+        const node = containerRef.current;
+        if (!node) return;
+        const c = node.querySelector('canvas');
+        const empty = !c || (c.clientWidth === 0 && c.clientHeight === 0);
+        const ctxLost = !!rendererRef.current?.getContext()?.isContextLost?.();
+        if ((empty || ctxLost) && delay === 3000) {
+          setSilentCanvasFailure(
+            ctxLost
+              ? 'WebGL context was lost during startup (likely GPU pressure). Click Retry to recover.'
+              : 'WebGL canvas could not be created (likely GPU/driver blocked).',
+          );
+        }
+      }, delay),
+    );
+
+    // Continuous health poll (starts after 4s — past the boot probe window).
+    let lostStreak = 0;
+    const REQUIRED_STREAK = 3; // ~3s of confirmed loss before tripping fallback
+    const pollInterval = window.setInterval(() => {
+      if (silentCanvasFailure) return;
+      const gl = rendererRef.current;
+      if (!gl) return;
+      const ctx = gl.getContext();
+      const lost = !!ctx?.isContextLost?.();
+      if (lost) {
+        lostStreak++;
+        if (lostStreak >= REQUIRED_STREAK) {
+          setSilentCanvasFailure(
+            'WebGL context lost and not recovered automatically. Click Retry to reinitialize the 3D viewport.',
+          );
+        }
+      } else {
+        lostStreak = 0;
+      }
+    }, 1000);
+
+    return () => {
+      probeTimers.forEach((t) => window.clearTimeout(t));
+      window.clearInterval(pollInterval);
+    };
+  }, [silentCanvasFailure, webglRetryKey]);
 
   // Proactive WebGL capability probe — render simplified fallback if unsupported.
+  // `webglRetryKey` is a forced-recompute signal driven by the retry button.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const webglIssue = useMemo(() => detectWebGLCapability(), [webglRetryKey]);
-  if (webglIssue) {
+  const fallbackReason = webglIssue || silentCanvasFailure;
+
+  const handleFallbackRetry = useCallback(() => {
+    // Reset the crash-loop cooldown so the user can manually attempt recovery
+    // after a context-loss storm without a full page reload.
+    try { resetCrashRecord(); } catch { /* ignore */ }
+    recoveringContextRef.current = false;
+    setSilentCanvasFailure(null);
+    setWebglRetryKey((k) => k + 1);
+    // Force the Canvas itself to remount so a fresh GL context is acquired.
+    setCanvasInstanceKey((k) => k + 1);
+  }, []);
+
+  if (fallbackReason) {
     return (
       <div ref={containerRef} className="w-full h-full relative bg-[#050810]" data-sky-canvas>
-        <SimplifiedSkyFallback reason={webglIssue} onRetry={() => setWebglRetryKey(k => k + 1)} />
+        <SimplifiedSkyFallback
+          reason={fallbackReason}
+          onRetry={handleFallbackRetry}
+        />
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className="w-full h-full relative bg-[#050810] transition-opacity duration-300 ease-out" data-sky-canvas style={{ cursor: cursorStyle, opacity: canvasReady ? 1 : 0.001 }}>
+    <div ref={containerRef} className="w-full h-full relative bg-[#050810] transition-opacity duration-300 ease-out" data-sky-canvas style={{ cursor: cursorStyle, opacity: 1 }}>
       <WebGLErrorBoundary>
       <Canvas
         key={canvasInstanceKey}
         resize={{ debounce: 50, scroll: false }}
-        shadows
+        // Use BasicShadowMap on boot — PCF/PCFSoft allocate large depth FBOs
+        // and stalled the GPU during /studio cold-start. Quality controllers
+        // can promote to PCFSoftShadowMap later via gl.shadowMap.type once
+        // the warm-up window clears.
+        shadows={isLowTierMobile ? false : { type: THREE.BasicShadowMap, enabled: true }}
         gl={{
           antialias: !isLowTierMobile,
           toneMapping: THREE.ACESFilmicToneMapping,
@@ -1754,22 +2008,51 @@ export default function SkyCanvas() {
           powerPreference: isLowTierMobile ? 'default' : 'high-performance',
           alpha: false,
           stencil: false,
-          logarithmicDepthBuffer: !isLowTierMobile,
+          // logarithmicDepthBuffer forces a secondary depth pipeline on many
+          // Intel/AMD drivers and was a major contributor to GPU pressure on
+          // cold-start. Disabled — far plane reduced to 200km below to keep
+          // depth precision acceptable without it.
+          logarithmicDepthBuffer: false,
           outputColorSpace: THREE.SRGBColorSpace,
+          // Don't refuse the context on integrated/marginal GPUs — we'd rather
+          // start in a degraded state than fall back to the static placeholder.
+          failIfMajorPerformanceCaveat: false,
         }}
-        dpr={isLowTierMobile ? [1, 1] : isMobile ? [1, 1.25] : [1.5, 2]}
+        // DPR cap: high-DPI desktops were rendering ~2.6 megapixels which —
+        // combined with bloom/SSR/GPGPU render targets — was exhausting the
+        // WebGL context on /studio boot. Cap at 1.5 on desktop, lower on mobile.
+        dpr={
+          isLowTierMobile
+            ? [1, 1]
+            : isMobile
+              ? [1, 1.25]
+              : [1, Math.min((typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1, 1.5)]
+        }
         performance={{ min: isLowTierMobile ? 0.35 : 0.5 }}
-        onCreated={() => {
+        onCreated={(state) => {
           recoveringContextRef.current = false;
+          rendererRef.current = state.gl;
+          // Publish to module-level registry so dev diagnostics panels (which
+          // live outside the R3F tree) can poll renderer.info / read GPU info.
+          setActiveRenderer(state.gl);
           // Reveal immediately — GL context ready and bg color is already painted.
           setCanvasReady(true);
         }}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={60} near={0.1} far={500000} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={60} near={0.1} far={200000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode || groundMode} flyMode={flyMode || groundMode} />
         {flyMode && !groundMode && <FlyControls onSpeedChange={flySpeedCb} />}
         {groundMode && <GroundControls onSpeedChange={flySpeedCb} />}
 
-        <ContextLossGuard recoveringRef={recoveringContextRef} onRemount={handleContextRemount} />
+        <ContextLossGuard
+          recoveringRef={recoveringContextRef}
+          onRemount={handleContextRemount}
+          onUnrecoverable={(reason) => setSilentCanvasFailure(reason)}
+          onRecovered={() => {
+            // Clear any lingering "in cooldown" fallback once the native
+            // webglcontextrestored event confirms the context is back.
+            setSilentCanvasFailure(null);
+          }}
+        />
         <HardeningWatchdog />
         <FXKQualityController />
         <SceneLighting />
@@ -1779,15 +2062,27 @@ export default function SkyCanvas() {
           {!google3DTilesEnabled && <GroundReflections />}
           <DebugFeed />
         </Suspense>
-        {/* Heavy lighting effects deferred until idle for faster first paint */}
-        <DelayedMount delay={400}>
+        {/* Heavy lighting effects deferred until idle for faster first paint.
+            Staggered across 1.5s–3s so each heavy FBO allocation (GI shadow
+            cascade, lens-flare RT, contact-shadow depth pass, Niagara CPU
+            warm-up) lands on its own frame instead of all stacking onto the
+            GPGPU/bloom warm-up — primary cause of cold-start context loss. */}
+        <DelayedMount delay={2200}>
           <Suspense fallback={null}>
             {!environment.disableLighting && <GlobalIlluminationController />}
+          </Suspense>
+        </DelayedMount>
+        <DelayedMount delay={2600}>
+          <Suspense fallback={null}>
             {!environment.disableLighting && <LensFlareController />}
+          </Suspense>
+        </DelayedMount>
+        <DelayedMount delay={1800}>
+          <Suspense fallback={null}>
             <ContactShadowsLayer />
           </Suspense>
         </DelayedMount>
-        <DelayedMount delay={2000}>
+        <DelayedMount delay={3000}>
           <NiagaraVFXController />
         </DelayedMount>
 
@@ -1801,9 +2096,9 @@ export default function SkyCanvas() {
         <Suspense fallback={null}>
           {!google3DTilesEnabled && <Moon />}
           {!google3DTilesEnabled && !isLowTierMobile && !environment.lowQualityMode && (
-            <DelayedMount delay={1500}><AtmosphericParticles /></DelayedMount>
+            <DelayedMount delay={2800}><AtmosphericParticles /></DelayedMount>
           )}
-          {!google3DTilesEnabled && !isLowTierMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
+          {!google3DTilesEnabled && !isLowTierMobile && <DelayedMount delay={3500}><WeatherEffects /></DelayedMount>}
         </Suspense>
 
         {/* ═══ Ground / Terrain ═══ */}
@@ -1840,20 +2135,24 @@ export default function SkyCanvas() {
         {!google3DTilesEnabled && !isLowTierMobile && <StageFixtures />}
         {!google3DTilesEnabled && !isMobile && !isLowTierMobile && <DelayedMount delay={3000}><AudioSpectrumVisualizer /></DelayedMount>}
         <PlaybackClock />
+        <TimelineClockWatchdog />
         {!isMobile && <CameraAnimator />}
         {!isMobile && <CameraPathPreview />}
         {!google3DTilesEnabled && <ViewportRulers />}
         <CameraBookmarkSaver />
         <SubsystemBoundary name="PostProcessing">
           {!isLowTierMobile && (
-            <DelayedMount delay={600}>
+            // Bumped 600ms → 1200ms — PostProcessing allocates the largest
+            // single FBO (HDR + bloom mip chain). Holding it back until after
+            // the first idle frames dramatically reduces boot context loss.
+            <DelayedMount delay={1200}>
               <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />
             </DelayedMount>
           )}
         </SubsystemBoundary>
-        {!isLowTierMobile && <DelayedMount delay={1800}><StressTestFireworks /></DelayedMount>}
+        {!isLowTierMobile && <DelayedMount delay={3200}><StressTestFireworks /></DelayedMount>}
 
-        {!isLowTierMobile && <DelayedMount delay={1200}><PostExplosionSmokeManager /></DelayedMount>}
+        {!isLowTierMobile && <DelayedMount delay={2500}><PostExplosionSmokeManager /></DelayedMount>}
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
 
@@ -2013,7 +2312,11 @@ export default function SkyCanvas() {
             onClick={() => {
               const el = document.querySelector('[data-sky-canvas]') as HTMLElement;
               if (!el) return;
-              document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
+              if (document.fullscreenElement) {
+                void document.exitFullscreen();
+              } else {
+                void el.requestFullscreen();
+              }
             }}
             className="w-7 h-7 rounded-md flex items-center justify-center transition-all border bg-surface-1/80 border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
           >
@@ -2031,6 +2334,8 @@ export default function SkyCanvas() {
       {/* Debug overlay toggle + panel */}
       {!isMobile && showDebugOverlay && <RenderDebugPanel />}
       {!isMobile && showDebugOverlay && <SkyCanvasDiagnosticsPanel />}
+      {!isMobile && showDebugOverlay && import.meta.env.DEV && <GpuRendererDiagnosticsPanel />}
+      {!isMobile && <TerrainCacheMetricsPanel />}
 
       {/* Fullscreen floating edit menu */}
       {isFullscreen && <FullscreenEditMenu />}

@@ -5,7 +5,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { playGlitchBurst } from '@/utils/glitchSound';
 type JoiEmotion = 'caring' | 'celebrating' | 'serious';
-import { X, Minimize2, Send, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, FileText, Globe, Volume2, VolumeX, Mic, MicOff, Play, Paperclip, File, Image as ImageIcon, XCircle } from 'lucide-react';
+import { X, Minimize2, Send, Sparkles, Maximize2, Trash2, ThumbsUp, ThumbsDown, FileText, Globe, Volume2, VolumeX, Mic, MicOff, Play, Paperclip, File, Image as ImageIcon, XCircle, Brain, Zap } from 'lucide-react';
+import { callGrokReasoning, isAuthFailure } from '@/lib/grokResponses';
 const lazyExportPdf = () => import('@/utils/joiPdfExport').then(m => m.exportJoiPdf);
 const lazyExportDocx = () => import('@/utils/joiDocxExport').then(m => m.exportJoiDocx);
 import { parseKmzReadyBlock, stripKmzReadyBlock, downloadAeroKmz } from '@/utils/joiAeroKmzExport';
@@ -132,7 +133,7 @@ function loadHistory(): Msg[] {
 function saveHistory(msgs: Msg[]) {
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(msgs.slice(-MAX_HISTORY)));
-  } catch {}
+  } catch { /* best-effort: localStorage may be full or disabled */ }
 }
 
 async function streamChat(
@@ -424,6 +425,12 @@ export function FXKAssistant() {
   const [attachment, setAttachment] = useState<AttachedFile | null>(null);
   const [joiMode, setJoiMode] = useState<JoiMode>('show');
   const [lastTrace, setLastTrace] = useState<JOIExecutionTrace | null>(null);
+  // Reasoning mode: when on, requests are routed to grok-4.20-reasoning via
+  // /v1/responses (slower, deeper) instead of the streaming Lovable AI Gateway.
+  // Persisted per-user so the preference sticks across sessions.
+  const [reasoningMode, setReasoningMode] = useState<boolean>(() => {
+    try { return localStorage.getItem('fxk:joi:reasoning-mode') === '1'; } catch { return false; }
+  });
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
 
   // Stable ref for send to avoid stale closure in voice callbacks
@@ -635,26 +642,65 @@ export function FXKAssistant() {
     });
 
     try {
-      await streamChat(apiMessages as any, upsert, () => {
+      if (reasoningMode) {
+        // ─── Reasoning path: non-streaming /v1/responses via grok-responses ───
+        // Flatten the latest user turn + system context into a single `input`
+        // (Responses API doesn't accept a multi-turn `messages` array the
+        // same way chat completions does — a flat instruction-style prompt
+        // gives the most predictable result during the preview rollout).
+        const recentTurns = [...messages, userMsg]
+          .slice(-6)
+          .map(m => `${m.role.toUpperCase()}: ${m.content}`)
+          .join('\n\n');
+        const result = await callGrokReasoning({
+          system: `${contextMsg.content}\n\nResponda em português, claro e direto. Use markdown quando ajudar.`,
+          input: recentTurns,
+          reasoning: { effort: 'medium' },
+          maxOutputTokens: 4000,
+        });
+        const reasoningSuffix = result.reasoning
+          ? `\n\n<details><summary>🧠 Cadeia de raciocínio</summary>\n\n${result.reasoning}\n\n</details>`
+          : '';
+        const tokenSuffix = result.usage.reasoning_tokens
+          ? `\n\n<sub>${result.model} · ${result.usage.reasoning_tokens} reasoning tokens · ${(result.durationMs / 1000).toFixed(1)}s</sub>`
+          : '';
+        const full = `${result.text}${reasoningSuffix}${tokenSuffix}`;
+        soFar = full;
+        setMessages(prev => [...prev, { role: 'assistant', content: full, ts: Date.now() }]);
         setLoading(false);
-        if (hasJoiCommands(soFar)) {
-          const results = executeJoiCommands(soFar);
+        if (hasJoiCommands(full)) {
+          const results = executeJoiCommands(full);
           if (results.length > 0) {
             setMessages(prev => prev.map((m, i) =>
-              i === prev.length - 1 && m.role === 'assistant'
-                ? { ...m, cmdResults: results }
-                : m
+              i === prev.length - 1 && m.role === 'assistant' ? { ...m, cmdResults: results } : m
             ));
           }
         }
-      }, ctrl.signal);
+      } else {
+        await streamChat(apiMessages as any, upsert, () => {
+          setLoading(false);
+          if (hasJoiCommands(soFar)) {
+            const results = executeJoiCommands(soFar);
+            if (results.length > 0) {
+              setMessages(prev => prev.map((m, i) =>
+                i === prev.length - 1 && m.role === 'assistant'
+                  ? { ...m, cmdResults: results }
+                  : m
+              ));
+            }
+          }
+        }, ctrl.signal);
+      }
     } catch (e: any) {
       if (e.name !== 'AbortError') {
-        setMessages(prev => [...prev, { role: 'assistant', content: `⚠ ${e.message}`, ts: Date.now() }]);
+        const friendly = isAuthFailure(e)
+          ? `⚠ ${e.message}\n\n_Verifique a chave XAI_API_KEY no backend (Lovable Cloud → Backend → Secrets)._`
+          : `⚠ ${e.message}`;
+        setMessages(prev => [...prev, { role: 'assistant', content: friendly, ts: Date.now() }]);
       }
       setLoading(false);
     }
-  }, [messages, loading, attachment]);
+  }, [messages, loading, attachment, reasoningMode]);
 
   // Keep sendRef fresh
   sendRef.current = send;
@@ -1042,6 +1088,26 @@ export function FXKAssistant() {
             </button>
           );
         })}
+        {/* Reasoning toggle — routes to grok-4.20-reasoning when enabled. */}
+        <button
+          onClick={() => {
+            const next = !reasoningMode;
+            setReasoningMode(next);
+            try { localStorage.setItem('fxk:joi:reasoning-mode', next ? '1' : '0'); } catch { /* ignore */ }
+          }}
+          className="ml-auto shrink-0 px-2 py-1 rounded text-[7px] font-mono tracking-wider uppercase transition-all flex items-center gap-1"
+          style={{
+            background: reasoningMode ? 'hsl(280 70% 60% / 0.15)' : 'transparent',
+            border: reasoningMode ? '1px solid hsl(280 70% 60% / 0.4)' : '1px solid hsl(190 100% 50% / 0.1)',
+            color: reasoningMode ? 'hsl(280 80% 75%)' : 'hsl(190 100% 50% / 0.5)',
+          }}
+          title={reasoningMode
+            ? 'Reasoning ON — grok-4.20-reasoning via /v1/responses (15-30s, deeper analysis)'
+            : 'Standard streaming via Lovable AI Gateway. Click to switch to deep reasoning.'}
+        >
+          {reasoningMode ? <Brain className="h-2.5 w-2.5" /> : <Zap className="h-2.5 w-2.5" />}
+          {reasoningMode ? 'REASONING' : 'STANDARD'}
+        </button>
       </div>
 
       {/* Joi side panels — desktop only. No mobile to keep header/close button clean. */}

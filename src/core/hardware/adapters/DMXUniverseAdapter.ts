@@ -6,6 +6,7 @@
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState } from '../types';
 import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
+import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 export interface DMXUniverseState {
   universe_id: number;
@@ -70,8 +71,9 @@ class DMXUniverseAdapterImpl implements HardwareAdapter<DMXUniverseState> {
 
   pollTelemetry(): void {
     // Honest-hardware: only emit jitter when we actually have a link
-    // (set via _injectState). Default state stays zeroed.
+    // (set via _injectState) AND simulator gate is ON.
     if (!this._state.link.connected) return;
+    if (!isHardwareSimulatorEnabled()) return;
     this._state.refresh_rate_hz = Math.max(0, 44 + (Math.random() - 0.5) * 4);
     this._state.link.latency_ms = Math.max(0.5, 1.2 + (Math.random() - 0.5) * 1);
     this._connectionState = 'connected';

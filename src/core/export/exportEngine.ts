@@ -7,6 +7,19 @@
 
 import { eventBus } from '@/core/system/eventBus';
 import type { ShowPlan } from '@/core/showplan/ShowPlan';
+import {
+  validateVvizCues,
+  formatVvizCoordinate,
+  assertValid,
+  type ValidationReport,
+} from './exportValidation';
+
+/**
+ * All exporters in this module run their inputs through `exportValidation`
+ * before writing a single byte. On failure they throw `ExportValidationError`,
+ * which carries a structured `ValidationReport` listing every offending row
+ * and field. UI callers should catch the error and render the report inline.
+ */
 
 /** Download a JSON project file */
 export function exportProjectJSON(project: Record<string, unknown>, filename = 'fxk_project.json'): void {
@@ -19,15 +32,19 @@ export function exportProjectJSON(project: Record<string, unknown>, filename = '
 export function exportTimelineCSV(
   cues: { time: number; x: number; y: number; z: number; effectId: string; position?: string }[],
   filename = 'fxk_timeline.csv',
-): void {
+): ValidationReport {
+  const report = validateVvizCues(cues.map((c) => ({ time: c.time, x: c.x, y: c.y, z: c.z })));
+  assertValid(report);
+
   const header = 'Time,X,Y,Z,EffectID,Position\n';
-  const rows = cues.map(c =>
-    `${c.time.toFixed(3)},${c.x.toFixed(2)},${c.y.toFixed(2)},${c.z.toFixed(2)},${c.effectId},${c.position ?? ''}`
+  const rows = cues.map((c) =>
+    `${c.time.toFixed(3)},${formatVvizCoordinate(c.x, 'local')},${formatVvizCoordinate(c.y, 'local')},${formatVvizCoordinate(c.z, 'local')},${c.effectId},${c.position ?? ''}`,
   ).join('\n');
 
   const blob = new Blob([header + rows], { type: 'text/csv' });
   triggerDownload(blob, filename);
   eventBus.emit('SYSTEM.EXPORT', { format: 'csv', filename, cueCount: cues.length });
+  return report;
 }
 
 /** Build Unreal-ready camera + timeline payload */
@@ -43,15 +60,21 @@ export function buildUnrealPayload(
 export function exportDroneWaypointsCSV(
   waypoints: { droneId: string; time: number; x: number; y: number; z: number }[],
   filename = 'fxk_drone_waypoints.csv',
-): void {
+): ValidationReport {
+  const report = validateVvizCues(
+    waypoints.map((w) => ({ time: w.time, x: w.x, y: w.y, z: w.z })),
+  );
+  assertValid(report);
+
   const header = 'DroneID,Time,X,Y,Z\n';
-  const rows = waypoints.map(w =>
-    `${w.droneId},${w.time.toFixed(3)},${w.x.toFixed(2)},${w.y.toFixed(2)},${w.z.toFixed(2)}`
+  const rows = waypoints.map((w) =>
+    `${w.droneId},${w.time.toFixed(3)},${formatVvizCoordinate(w.x, 'local')},${formatVvizCoordinate(w.y, 'local')},${formatVvizCoordinate(w.z, 'local')}`,
   ).join('\n');
 
   const blob = new Blob([header + rows], { type: 'text/csv' });
   triggerDownload(blob, filename);
   eventBus.emit('SYSTEM.EXPORT', { format: 'csv', filename, waypointCount: waypoints.length });
+  return report;
 }
 
 /**

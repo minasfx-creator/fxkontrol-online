@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useShallow } from 'zustand/react/shallow';
 import {
   useNetworkConfigStore,
   defaultPortForProtocol,
@@ -79,7 +80,10 @@ export default function NetworkSettings() {
   const {
     protocol, endpoint, autoFailover, pollIntervalMs,
     setProtocol, setEndpoint, setAutoFailover, setPollIntervalMs, reset,
-  } = useNetworkConfigStore();
+  } = useNetworkConfigStore(useShallow((s) => ({
+    protocol: s.protocol, endpoint: s.endpoint, autoFailover: s.autoFailover, pollIntervalMs: s.pollIntervalMs,
+    setProtocol: s.setProtocol, setEndpoint: s.setEndpoint, setAutoFailover: s.setAutoFailover, setPollIntervalMs: s.setPollIntervalMs, reset: s.reset,
+  })));
 
   const [test, setTest] = useState<TestResult>(EMPTY_RESULT);
 

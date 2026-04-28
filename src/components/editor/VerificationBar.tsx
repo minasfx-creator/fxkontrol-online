@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { Shield, CheckCircle2, AlertTriangle, XOctagon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useShallow } from 'zustand/react/shallow';
 import {
   Collapsible,
   CollapsibleContent,
@@ -48,7 +49,7 @@ const LEVEL_CONFIG = {
 } as const;
 
 export default function VerificationBar() {
-  const { result, level, isRunning, runVerification } = useVerificationStore();
+  const { result, level, isRunning, runVerification } = useVerificationStore(useShallow((s) => ({ result: s.result, level: s.level, isRunning: s.isRunning, runVerification: s.runVerification })));
 
   // Run verification on mount
   useEffect(() => {

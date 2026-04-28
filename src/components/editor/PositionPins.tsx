@@ -6,11 +6,13 @@ import { type Position } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useSceneStore } from '@/store/useSceneStore';
 import { useTerrainHeightCache } from '@/hooks/useTerrainHeightCache';
+import { useAuth } from '@/hooks/useAuth';
 import { useUndoStore } from '@/store/useUndoStore';
 import { useAddressingStore } from '@/store/useAddressingStore';
 import { getBreakHeight } from '@/lib/pyroPhysics';
 import * as THREE from 'three';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
+import TerrainDebugOverlay from './TerrainDebugOverlay';
 
 const PYRO_COLOR = '#FF6B35';
 const DRONE_COLOR = '#00B4D8';
@@ -799,7 +801,7 @@ function GroundClickPlane() {
         time,
       });
     }
-  }, [editorMode, addPosition, setEditorMode, addWaypoint, selectedTrajectoryId, drawHeight, getTerrainY]);
+  }, [editorMode, addPosition, addWaypoint, selectedTrajectoryId, drawHeight, getTerrainY]);
 
   const removeVfx = useCallback((id: string) => {
     setVfxList(prev => prev.filter(v => v.id !== id));
@@ -840,9 +842,16 @@ function GroundDeselectPlane() {
 
 export default function PositionPins() {
   const positions = useProjectStore(s => s.positions);
+  const projectId = useProjectStore(s => s.projectId);
+  const { user } = useAuth();
   const google3DTilesEnabled = useSceneStore(s => s.settings.google3DTilesEnabled);
   const [contextMenu, setContextMenu] = useState<{ pos: Position; screen: { x: number; y: number } } | null>(null);
-  const { getHeight } = useTerrainHeightCache(positions, google3DTilesEnabled);
+  const persistence = useMemo(
+    () => (projectId && user?.id ? { projectId, userId: user.id } : undefined),
+    [projectId, user?.id],
+  );
+  const cache = useTerrainHeightCache(positions, google3DTilesEnabled, persistence);
+  const { getHeight } = cache;
 
   const handleRightClick = useCallback((pos: Position, screenPos: { x: number; y: number }) => {
     setContextMenu({ pos, screen: screenPos });
@@ -855,6 +864,7 @@ export default function PositionPins() {
       {positions.map((pos) => (
         <Pin key={pos.id} position={pos} terrainY={getHeight(pos.x, pos.z)} onRightClick={handleRightClick} />
       ))}
+      <TerrainDebugOverlay cache={cache} />
     </>
   );
 }

@@ -86,7 +86,7 @@ class TimelineClock {
   }
 
   toggle(): void {
-    this.state.playing ? this.pause() : this.play();
+    if (this.state.playing) this.pause(); else this.play();
   }
 
   seek(time: number): void {
@@ -118,6 +118,10 @@ class TimelineClock {
       return;
     }
     this.state.time = next;
+    // External time sources (SMPTE/MTC/audio master) define real-time
+    // playback by contract. Force speed back to 1 so the operator's local
+    // scrub/half-speed/0 state cannot stall or accelerate the chase.
+    // The transport chip displays `source=external` to make this explicit.
     this.state.speed = 1;
     this.markPositionChange('external-sync');
     this.notify();
@@ -265,6 +269,7 @@ class TimelineClock {
       try {
         listener(snapshot);
       } catch {
+        /* listener errors must not break the notification loop */
       }
     }
   }

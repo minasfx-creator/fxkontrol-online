@@ -13,6 +13,7 @@ import {
 } from '@/lib/generativeEngine';
 import useGenerativeStore from '@/store/useGenerativeStore';
 import { setFixtureColor, type DMXUniverse } from '@/lib/dmxEngine';
+import { useShallow } from 'zustand/react/shallow';
 
 interface GenerativeEffectsPanelProps {
   onClose: () => void;
@@ -30,7 +31,7 @@ const AUDIO_BAND_OPTIONS: { value: AudioBand; label: string; color: string }[] =
 ];
 
 export default function GenerativeEffectsPanel({ onClose }: GenerativeEffectsPanelProps) {
-  const genStore = useGenerativeStore();
+  const genStore = useGenerativeStore(useShallow((s) => ({ layers: s.layers, enabled: s.enabled, playing: s.playing, setLayers: s.setLayers, setEnabled: s.setEnabled, setPlaying: s.setPlaying })));
 
   const [layers, setLayers] = useState<GenerativeLayer[]>(() => {
     return genStore.layers.map(l => ({ ...l }));

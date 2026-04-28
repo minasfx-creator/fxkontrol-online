@@ -11,6 +11,7 @@ import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { flushSync } from 'react-dom';
 import DockBar from '@/components/DockBar';
 import BetaPromoBanner from '@/components/BetaPromoBanner';
+import QuickJumpMenu from '@/components/QuickJumpMenu';
 import { lazyRetry } from '@/lib/lazyRetry';
 
 // Native View Transitions API support — captured once at module load.
@@ -26,6 +27,11 @@ const RenderCounterOverlay = import.meta.env.DEV
 // Lazy-load heavy components that aren't needed for initial paint
 const AppSidebar = lazy(lazyRetry(() => import('@/components/AppSidebar').then(m => ({ default: m.AppSidebar }))));
 const FXKAssistant = lazy(lazyRetry(() => import('@/components/FXKAssistant').then(m => ({ default: m.FXKAssistant }))));
+// Deterministic kernel (timeline clock pump, lockstep, persistence) — must
+// mount on EVERY protected route AND on mobile so Play actually advances time.
+// Previously this was nested inside <Index> desktop branch only, which left
+// the timeline frozen on mobile and on routes other than /studio.
+const EngineProvider = lazy(lazyRetry(() => import('@/orchestration/EngineProvider')));
 
 function SidebarToggleButton() {
   const { state, toggleSidebar } = useSidebar();
@@ -57,7 +63,7 @@ function MobileSidebarTrigger() {
 export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const isEditor = location.pathname === '/editor';
+  const isEditor = location.pathname === '/studio';
   const isCommand = location.pathname === '/command';
   const commandImmersive = isCommand;
   const isMobile = useIsMobile();
@@ -149,6 +155,10 @@ export default function MainLayout() {
         className="h-[100dvh] flex w-full bg-background br2049-vignette overflow-hidden"
         style={{ filter: `brightness(${backlight / 100})` }}
       >
+        {/* Quick-jump pill — only on immersive routes (sidebar hidden);
+            on normal routes the AppSidebar already covers this nav. */}
+        {(isEditor || commandImmersive) && <QuickJumpMenu />}
+
         {!commandImmersive && !isEditor && (
           <Suspense fallback={null}>
             <AppSidebar />
@@ -190,7 +200,7 @@ export default function MainLayout() {
               ) : (
                 <SidebarToggleButton />
               )}
-              <div className="ml-auto flex items-center relative z-10">
+              <div className="ml-auto flex items-center gap-3 relative z-10">
                 <img
                   src={minasfxLogo}
                   alt="MinasFX"
@@ -228,6 +238,11 @@ export default function MainLayout() {
           </main>
         </div>
       </div>
+
+      {/* Deterministic kernel — boots once for the entire app session */}
+      <Suspense fallback={null}>
+        <EngineProvider />
+      </Suspense>
 
       {/* Overlays OUTSIDE the filtered div so position:fixed works correctly */}
       <Suspense fallback={null}>

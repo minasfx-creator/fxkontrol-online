@@ -22,18 +22,22 @@ import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import RadialMenu from '@/components/editor/RadialMenu';
-import EngineProvider from '@/orchestration/EngineProvider';
+// EngineProvider moved to MainLayout (boots once, all routes, mobile + desktop).
 import LiveCard from '@/components/editor/LiveCard';
 
 // ── Lazy helper — one-liner for 80+ panels ──
-const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
+// All Studio lazy imports go through `lazyRetry` so a stale chunk after
+// deploy/HMR doesn't crash the whole editor — it transparently retries the
+// dynamic import once before bubbling to the LazyChunkBoundary.
+const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) =>
+  lazy(lazyRetry(loader));
 
 // ── Verification ──
 
 
-// ── Phase screens ──
-const CinematicIntro = lz(() => import('@/components/editor/CinematicIntro'));
-const SplashScreen = lz(() => import('@/components/editor/SplashScreen'));
+// ── Phase screens (DESATIVADAS) ──
+// CinematicIntro e SplashScreen foram removidos do boot principal. Componentes
+// preservados em src/components/editor/ caso seja necessário reativar via flag.
 
 // ── Core editor components (loaded on first interaction) ──
 const Timeline = lz(() => import('@/components/editor/Timeline'));
@@ -289,10 +293,9 @@ function Index() {
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
   const [venueSelector, setVenueSelector] = useState(false);
   const [venueOverlay, setVenueOverlay] = useState<WorldShowPreset | null>(null);
-  // Default fase = 'cinematic' (intro + splash com setup de geolocalização).
-  // Quando vindo de /studio?prompt=1 ou de deep-links com ?panel=, pulamos direto para 'editor'
-  // (ver useEffect abaixo).
-  const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'editor'>('cinematic');
+  // Boot direto no editor — Cinematic/Splash legados removidos da rota principal.
+  // (Componentes preservados em src/components/editor/ caso queiram ser reativados via flag.)
+  const [appPhase, setAppPhase] = useState<'cinematic' | 'splash' | 'editor'>('editor');
   const [showGeoSetup, setShowGeoSetup] = useState(false);
   const [showPositionEditor, setShowPositionEditor] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -436,8 +439,9 @@ function Index() {
   const canvasLeftInset = `${leftRailWidth + leftSidebarWidth}px`;
   const canvasRightInset = `${rightDockWidth + rightPanelWidth}px`;
 
-  if (appPhase === 'cinematic') return <Suspense fallback={<CanvasLoader />}><CinematicIntro onComplete={() => setAppPhase('splash')} /></Suspense>;
-  if (appPhase === 'splash') return <Suspense fallback={<CanvasLoader />}><SplashScreen onStart={() => setAppPhase('editor')} showVideoBackground /></Suspense>;
+  // Phase screens (CinematicIntro / SplashScreen) desativados — boot vai direto para o editor.
+  // appPhase ainda é mantido para compatibilidade com deep-links (?panel=, ?prompt=1).
+  void appPhase;
 
   const renderPanelContent = () => {
     if (!activePanel) return null;
@@ -625,7 +629,7 @@ function Index() {
   // ═══ DESKTOP LAYOUT — Full Immersive Viewport ═══
   return (
     <div className="absolute inset-0 overflow-hidden bg-background">
-      <EngineProvider />
+      {/* EngineProvider is mounted once at MainLayout (covers mobile + every route). */}
       {/* ─── Layer 0: Structured desktop shell ────────────── */}
       <div
         className="absolute z-0 br2049-atmosphere"

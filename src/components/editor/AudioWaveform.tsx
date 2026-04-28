@@ -4,6 +4,9 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useAudioMasterClock } from '@/hooks/useAudioMasterClock';
+import { playAudioWithRetry } from '@/lib/audio/playAudioWithRetry';
+import { registerAudioMaster } from '@/lib/audio/audioMasterRegistry';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -96,6 +99,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playControllerRef = useRef<ReturnType<typeof playAudioWithRetry> | null>(null);
   const resizeStartY = useRef(0);
   const resizeStartH = useRef(0);
 
@@ -134,12 +138,30 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     audio.playbackRate = playbackSpeed;
     audioRef.current = audio;
 
+    // Expose this audio element to the global registry so the toolbar
+    // "Resync timeline" button and the watchdog can re-lock the clock to
+    // the audio without prop-drilling. We pass a `cancelActivePlay` thunk
+    // so the registry can stop our in-flight retry controller before
+    // issuing its own.
+    const unregister = registerAudioMaster({
+      audio,
+      cancelActivePlay: () => {
+        playControllerRef.current?.cancel();
+        playControllerRef.current = null;
+      },
+    });
+
     return () => {
+      unregister();
       audio.pause();
       audio.src = '';
       audioRef.current = null;
     };
   }, [audioUrl]);
+
+  // Audio element drives the timeline as master clock — eliminates drift
+  // between music and 3D viewport / FX spawns.
+  useAudioMasterClock(audioRef, audioUrl);
 
   // Sync volume / mute
   useEffect(() => {
@@ -151,29 +173,82 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     if (audioRef.current) audioRef.current.playbackRate = playbackSpeed;
   }, [playbackSpeed]);
 
-  // Sync play / pause
+  // Sync play / pause — robust against autoplay-policy / AbortError races.
+  // Uses `playAudioWithRetry` so a temporarily blocked Play (autoplay
+  // rejection, racing pause, transient decode stall) does not leave the
+  // timeline frozen at 0. The retry controller is cancelled on pause /
+  // unmount so we never resume audio against the operator's intent.
+  // (playControllerRef is declared above near the other refs.)
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    // Always cancel any in-flight retry before changing state.
+    playControllerRef.current?.cancel();
+    playControllerRef.current = null;
 
     if (isPlaying) {
       if (Math.abs(audio.currentTime - currentTime) > 0.15) {
         audio.currentTime = currentTime;
       }
-      audio.play().catch(() => {});
+
+      let gestureToastId: string | number | undefined;
+      playControllerRef.current = playAudioWithRetry(audio, {
+        onSuccess: () => {
+          if (gestureToastId !== undefined) toast.dismiss(gestureToastId);
+        },
+        onAwaitingGesture: () => {
+          // Browser is blocking on the autoplay policy. Tell the operator we
+          // are waiting and that any click will recover instantly. Persistent
+          // until the retry succeeds or we give up.
+          gestureToastId = toast.warning('Tap to start audio', {
+            description: 'Browser blocked autoplay. Click anywhere to start the show.',
+            duration: Infinity,
+          });
+        },
+        onPermanentFailure: (err) => {
+          if (gestureToastId !== undefined) toast.dismiss(gestureToastId);
+          const name = (err as { name?: string } | null)?.name ?? '';
+          const description = name === 'NotAllowedError'
+            ? 'Browser kept blocking playback. Click the page and press Play again.'
+            : ((err as { message?: string } | null)?.message ?? 'Audio playback failed.');
+          toast.error('Audio could not start', { description });
+          console.warn('[AudioWaveform] audio.play() retries exhausted:', err);
+        },
+      });
     } else {
       audio.pause();
     }
+
+    return () => {
+      playControllerRef.current?.cancel();
+      playControllerRef.current = null;
+    };
   }, [isPlaying]);
 
-  // Sync seek (when user clicks timeline)
+  // Sync seek (when user clicks timeline / scrubs).
+  //
+  // Why this MUST run while playing too:
+  //   When `isPlaying === true`, `useAudioMasterClock` is the timeline driver
+  //   — every RAF it copies `audio.currentTime` into the timeline. If the
+  //   operator scrubs the playhead while playing, the store's `currentTime`
+  //   jumps to the new target but the audio element keeps playing from the
+  //   old position. On the very next RAF the audio master writes the OLD
+  //   position back into the store, so the playhead visibly snaps back and
+  //   the scrub is silently lost.
+  //
+  // The 0.15 s threshold prevents an echo-loop with the audio master: when
+  // the audio is the source of `currentTime` (master pushes audio→store),
+  // they are always within ~one RAF (≈16 ms) of each other, so this guard
+  // is a no-op. It only fires when the user (or another driver such as
+  // SMPTE chase) actually moved the playhead away from the audio position.
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || isPlaying) return;
+    if (!audio) return;
     if (Math.abs(audio.currentTime - currentTime) > 0.15) {
       audio.currentTime = currentTime;
     }
-  }, [currentTime, isPlaying]);
+  }, [currentTime]);
 
   // Load and decode audio for waveform + BPM
   const loadAudio = useCallback(async (url: string) => {

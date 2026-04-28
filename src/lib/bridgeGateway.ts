@@ -99,11 +99,11 @@ function storageGet(storage: Storage | null, key: string): string | null {
 }
 
 function storageSet(storage: Storage | null, key: string, value: string): void {
-  try { storage?.setItem(key, value); } catch {}
+  try { storage?.setItem(key, value); } catch { /* best-effort: storage may be full or unavailable */ }
 }
 
 function storageRemove(storage: Storage | null, key: string): void {
-  try { storage?.removeItem(key); } catch {}
+  try { storage?.removeItem(key); } catch { /* best-effort: storage may be unavailable */ }
 }
 
 function normalizePath(path: string | undefined): string {

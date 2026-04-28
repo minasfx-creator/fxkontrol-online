@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { X, Activity, Wifi, WifiOff, Battery, Navigation, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useShallow } from 'zustand/react/shallow';
 
 interface DroneStatus {
   id: number;
@@ -27,7 +28,7 @@ interface DroneStatus {
 export default function TelemetryDashboard({ onClose }: { onClose: () => void }) {
     const droneFormations = useProjectStore(s => s.droneFormations);
   const currentTime = useProjectStore(s => s.currentTime);
-  const { drones, connected } = useMAVLinkStore();
+  const { drones, connected } = useMAVLinkStore(useShallow((s) => ({ drones: s.drones, connected: s.connected })));
   const [selectedDrone, setSelectedDrone] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'detail'>('grid');
   const gridContainerRef = useRef<HTMLDivElement>(null);

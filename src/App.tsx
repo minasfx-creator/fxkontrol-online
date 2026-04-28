@@ -5,19 +5,35 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { lazy, Suspense } from "react";
-import MainLayout from "@/layouts/MainLayout";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import { LazyChunkBoundary } from "@/components/errors/LazyChunkBoundary";
 import { AppErrorBoundary } from "@/components/errors/AppErrorBoundary";
-import UpgradeDialog from "@/components/upgrade/UpgradeDialog";
+
+// MainLayout + UpgradeDialog are lazy-split so the public routes
+// (/landing, /auth, /legal/*, /pricing) don't pay for the dashboard
+// chrome (Sidebar, DockBar, Tactical UI) on first load.
+const MainLayout = lazy(() => import("@/layouts/MainLayout"));
+const UpgradeDialog = lazy(() => import("@/components/upgrade/UpgradeDialog"));
 
 import { lazyRetry } from "@/lib/lazyRetry";
 import { isEnabled } from "@/lib/featureFlags";
 import { useRouteTracing } from "@/observability/useRouteTracing";
+// Profiler is dev-only and lazy so production rota pública doesn't ship it.
+import { useHardwareSyncLoop } from "@/hooks/useHardwareSyncLoop";
+
+const PlaybackProfilerProvider = lazy(() =>
+  import("@/core/performance/PlaybackProfilerProvider").then((m) => ({ default: m.PlaybackProfilerProvider })),
+);
+const PlaybackProfilerPanel = lazy(() =>
+  import("@/components/dev/PlaybackProfilerPanel").then((m) => ({ default: m.PlaybackProfilerPanel })),
+);
+const IS_DEV = import.meta.env.DEV;
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const Install = lazy(lazyRetry(() => import("./pages/Install")));
+const UsbPairingWizard = lazy(lazyRetry(() => import("./pages/UsbPairingWizard")));
+const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
 const Office = lazy(lazyRetry(() => import("./pages/Office")));
@@ -31,6 +47,7 @@ const FieldOps = lazy(lazyRetry(() => import("./pages/FieldOps")));
 const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
 const PlatformStatus = lazy(lazyRetry(() => import("./pages/PlatformStatus")));
 const SwarmGPT = lazy(lazyRetry(() => import("./pages/SwarmGPT")));
+const AIChoreography = lazy(lazyRetry(() => import("./pages/AIChoreography")));
 const DmxPyroDiagnostics = lazy(lazyRetry(() => import("./components/diagnostics/DmxPyroDiagnostics")));
 const NetworkSettings = lazy(lazyRetry(() => import("./pages/NetworkSettings")));
 const Terms = lazy(lazyRetry(() => import("./pages/legal/Terms")));
@@ -53,9 +70,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user) {
-    // Preserve where the user was trying to go so AuthRoute can resume there post-login.
-    const next = `${location.pathname}${location.search}${location.hash}`;
-    const search = next && next !== "/" ? `?next=${encodeURIComponent(next)}` : "";
+    // Preserve where the user was trying to go so AuthRoute can resume there
+    // post-login. Skip preservation for entry / public routes — landing back
+    // there after login is never useful.
+    const path = location.pathname;
+    const skip = path === '/' || path === '/landing' || path === '/auth';
+    const next = skip ? '' : `${path}${location.search}${location.hash}`;
+    const search = next ? `?next=${encodeURIComponent(next)}` : '';
     return <Navigate to={`/auth${search}`} replace />;
   }
   return <>{children}</>;
@@ -66,10 +87,18 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   const [params] = useSearchParams();
   if (loading) return null;
   if (user) {
-    // Resume the originally-requested route. Falls back to /studio (viewport
-    // 3D principal) so signed-in users land directly on the editor.
-    const raw = params.get("next");
-    const target = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/studio";
+    // Resume the originally-requested route ONLY when it is a safe deep-link.
+    // Otherwise default to /studio (3D viewport principal) so first-time
+    // signups / Google sign-ins land directly on the editor — never on Office.
+    const raw = params.get('next');
+    const safe =
+      raw &&
+      raw.startsWith('/') &&
+      !raw.startsWith('//') &&
+      raw !== '/' &&
+      !raw.startsWith('/auth') &&
+      !raw.startsWith('/landing');
+    const target = safe ? raw! : '/studio';
     return <Navigate to={target} replace />;
   }
   return <>{children}</>;
@@ -81,6 +110,7 @@ function RouteTracker() {
 }
 
 function App() {
+  useHardwareSyncLoop(44);
   return (
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -92,6 +122,11 @@ function App() {
               <RouteTracker />
               <PageTransitionOverlay />
               <UpgradeDialog />
+              {IS_DEV && (
+                <Suspense fallback={null}>
+                  <PlaybackProfilerPanel />
+                </Suspense>
+              )}
               <LazyChunkBoundary>
                 <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
                   <Routes>
@@ -100,6 +135,9 @@ function App() {
                     {/* Public diagnostics — intentionally outside ProtectedRoute so it can
                         be opened without login while debugging Live Firing / DMX issues. */}
                     <Route path="/diagnostics/dmx-pyro" element={<DmxPyroDiagnostics />} />
+                    {/* Public real-hardware discovery probe — loops scanLight() and shows
+                        every device the browser sees, with zero simulated data. */}
+                    <Route path="/dev/real-discovery" element={<RealDiscoveryProbe />} />
                     {/* Public legal pages — required by Paddle (Merchant of Record) and must be crawlable without auth. */}
                     <Route path="/legal/terms" element={<Terms />} />
                     <Route path="/legal/refund" element={<Refund />} />
@@ -131,6 +169,8 @@ function App() {
                       {/* ── Field ops (gated) ─────────────────────────────────── */}
                       <Route path="/field" element={isEnabled('module_pairing_mobilelink') ? <FieldOps /> : <Navigate to="/office" replace />} />
                       <Route path="/pairing" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#pairing" replace /> : <Navigate to="/office" replace />} />
+                      {/* iOS-first guided USB authorization wizard. */}
+                      <Route path="/pairing/usb" element={<UsbPairingWizard />} />
                       <Route path="/field-test" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#field-test" replace /> : <Navigate to="/office" replace />} />
 
                       {/* ── Settings & sistema ────────────────────────────────── */}
@@ -138,6 +178,7 @@ function App() {
                       <Route path="/settings/network" element={<NetworkSettings />} />
                       <Route path="/platform-status" element={<PlatformStatus />} />
                       <Route path="/swarmgpt" element={<SwarmGPT />} />
+                      <Route path="/ai-choreography" element={<AIChoreography />} />
                     </Route>
                     <Route path="*" element={<NotFound />} />
                   </Routes>

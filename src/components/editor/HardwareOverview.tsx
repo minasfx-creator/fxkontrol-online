@@ -16,10 +16,19 @@ import { getProvenanceBadge } from '@/core/hardware/provenance';
 import { cn } from '@/lib/utils';
 import {
   Activity, Cpu, Battery, Radio, Wifi, AlertTriangle,
-  CheckCircle2, XCircle, Zap, Shield, RefreshCw, Search, Gauge,
+  CheckCircle2, XCircle, Zap, Shield, RefreshCw, Search, Gauge, Satellite, RotateCw,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { DiscoveryGrid } from './hardware/DiscoveryGrid';
+import { TransportFilterChips } from './hardware/TransportFilterChips';
+import { ReopenMatchPolicySelector } from './hardware/ReopenMatchPolicySelector';
+import { PersistedDevicesPanel } from './hardware/PersistedDevicesPanel';
+import { unifiedDiscovery } from '@/core/discovery/UnifiedDiscoveryService';
+import {
+  buildDiscoveryReports, notifyDiscoveryReports, getRetryableTransports,
+} from '@/core/discovery/discoveryToasts';
+import { toast } from 'sonner';
 
 const STATUS_COLORS: Record<string, string> = {
   connected: 'text-emerald-400',
@@ -58,6 +67,38 @@ export default function HardwareOverview() {
     unsub();
     setIsScanning(false);
     refresh();
+    notifyDiscoveryReports(buildDiscoveryReports(), 'light');
+  }, [refresh]);
+
+  const handleDeepScan = useCallback(async () => {
+    setIsScanning(true);
+    const unsub = deviceDiscovery.onChange(() => setDiscoveryResults(deviceDiscovery.getResults()));
+    await deviceDiscovery.scan({ deep: true });
+    unsub();
+    setIsScanning(false);
+    refresh();
+    notifyDiscoveryReports(buildDiscoveryReports(), 'deep');
+  }, [refresh]);
+
+  const handleRetryFailed = useCallback(async () => {
+    const failed = getRetryableTransports();
+    if (failed.length === 0) {
+      toast.info('Nada para repetir', {
+        description: 'Nenhum transporte falho no último scan. Rode SCAN ou DEEP primeiro.',
+      });
+      return;
+    }
+    setIsScanning(true);
+    const unsub = unifiedDiscovery.watch(() => setDiscoveryResults(deviceDiscovery.getResults()));
+    try {
+      await unifiedDiscovery.scanTransports(failed);
+    } finally {
+      unsub();
+      setIsScanning(false);
+      refresh();
+      const mode = failed.includes('mdns-artnet') ? 'deep' : 'light';
+      notifyDiscoveryReports(buildDiscoveryReports(), mode);
+    }
   }, [refresh]);
 
   const handleStartPoller = useCallback(() => {
@@ -82,6 +123,16 @@ export default function HardwareOverview() {
           <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono gap-1"
             onClick={handleScan} disabled={isScanning}>
             <Search className="w-3 h-3" /> {isScanning ? 'SCANNING…' : 'SCAN'}
+          </Button>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono gap-1 text-amber-400"
+            onClick={handleDeepScan} disabled={isScanning}
+            title="Inclui ArtPoll broadcast via bridge (descobre nós Art-Net na rede)">
+            <Satellite className="w-3 h-3" /> DEEP
+          </Button>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono gap-1 text-sky-400"
+            onClick={handleRetryFailed} disabled={isScanning}
+            title="Repete apenas os transportes que falharam (permission denied / erro / vazio) no último scan">
+            <RotateCw className="w-3 h-3" /> RETRY
           </Button>
           <Button variant="ghost" size="sm" className="h-6 px-2 text-[8px] font-mono"
             onClick={() => { refresh(); evaluateReadiness(); setHealthReport(hardwareHealthMonitor.evaluate()); }}>
@@ -136,6 +187,19 @@ export default function HardwareOverview() {
           ))}
         </div>
       )}
+
+      {/* Real Discovery Grid (Serial / USB / BLE / Art-Net) */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <span className="text-[7px] font-mono text-muted-foreground/50 uppercase tracking-wider">Real Discovery — transports</span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <ReopenMatchPolicySelector />
+            <TransportFilterChips />
+          </div>
+        </div>
+        <DiscoveryGrid />
+        <PersistedDevicesPanel />
+      </div>
 
       {/* Device Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 flex-1 overflow-auto">

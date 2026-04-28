@@ -24,6 +24,11 @@ export interface DMXAdapterInfo {
   rdmCapable: boolean;
   /** True when the label maps to a known DMX adapter family (not a generic FTDI guess). */
   recognized: boolean;
+  /**
+   * True when the adapter family is unknown (generic FTDI/CH340/CP210x) and
+   * therefore needs explicit operator confirmation before transmitting DMX.
+   */
+  requiresOperatorConfirmation: boolean;
 }
 
 export function detectDMXAdapter(profile: USBDeviceProfile): DMXAdapterInfo {
@@ -35,6 +40,7 @@ export function detectDMXAdapter(profile: USBDeviceProfile): DMXAdapterInfo {
       protocol: '—',
       rdmCapable: false,
       recognized: false,
+      requiresOperatorConfirmation: false,
     };
   }
   const label = profile.label.toLowerCase();
@@ -46,6 +52,7 @@ export function detectDMXAdapter(profile: USBDeviceProfile): DMXAdapterInfo {
       protocol: 'ENTTEC Widget',
       rdmCapable: true,
       recognized: true,
+      requiresOperatorConfirmation: false,
     };
   }
   if (label.includes('enttec') || label.includes('open dmx')) {
@@ -56,6 +63,7 @@ export function detectDMXAdapter(profile: USBDeviceProfile): DMXAdapterInfo {
       protocol: 'DMX512 Direto',
       rdmCapable: false,
       recognized: true,
+      requiresOperatorConfirmation: false,
     };
   }
   if (label.includes('dmxking') || label.includes('ultradmx')) {
@@ -66,6 +74,7 @@ export function detectDMXAdapter(profile: USBDeviceProfile): DMXAdapterInfo {
       protocol: 'ENTTEC Widget',
       rdmCapable: true,
       recognized: true,
+      requiresOperatorConfirmation: false,
     };
   }
   if (label.includes('eurolite')) {
@@ -76,6 +85,7 @@ export function detectDMXAdapter(profile: USBDeviceProfile): DMXAdapterInfo {
       protocol: 'DMX512 Direto',
       rdmCapable: false,
       recognized: true,
+      requiresOperatorConfirmation: false,
     };
   }
   return {
@@ -85,5 +95,6 @@ export function detectDMXAdapter(profile: USBDeviceProfile): DMXAdapterInfo {
     protocol: 'DMX512 Direto',
     rdmCapable: false,
     recognized: false,
+    requiresOperatorConfirmation: true,
   };
 }

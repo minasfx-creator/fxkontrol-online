@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { VideoChoreoResult } from '@/lib/videoChoreoEngine';
 import { createDroneFormationSlice } from '@/store/slices/droneFormationSlice';
 import { timelineClock } from '@/core/timeline/TimelineClock';
+import { buildDemoTimeline } from '@/lib/demoTimeline';
 
 // ── Effect types & EFFECT_LIBRARY re-exported from src/data for backward compat ──
 export type { Effect, PartType } from '@/data/effectLibrary';
@@ -215,8 +216,49 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   }),
 
   setPlaying: (playing) => {
-    if (playing) timelineClock.play();
-    else timelineClock.pause();
+    if (playing) {
+      // ── Defensive auto-recovery on every Play press ──
+      // Without these guards, Play silently no-ops in three real-world cases
+      // we hit in field testing:
+      //  1) playbackSpeed was persisted as 0 / NaN (legacy projects, external
+      //     sync hold) → tick() multiplies by 0 and the time never advances.
+      //  2) currentTime is at the end of the timeline → first tick clamps to
+      //     duration and pauses again before any frame renders.
+      //  3) The timeline is completely empty → user sees nothing happen and
+      //     concludes "Play is broken". We seed a Fire-All demo so every
+      //     renderer (pyro/drone/sfx/laser/light) lights up immediately.
+      const clockState = timelineClock.getState();
+      if (!Number.isFinite(clockState.speed) || clockState.speed <= 0) {
+        timelineClock.setSpeed(1);
+      }
+      if (clockState.time >= clockState.duration - 0.001) {
+        timelineClock.seek(0);
+      }
+      const s = get();
+      if (s.timelineItems.length === 0) {
+        const demo = buildDemoTimeline();
+        if (demo) {
+          // Merge (do not replace): if user already has demo positions from a
+          // previous Play, keep them; otherwise append everything in one set().
+          set((cur) => ({
+            positions: [
+              ...cur.positions,
+              ...demo.positions.filter((p) => !cur.positions.some((cp) => cp.id === p.id)),
+            ],
+            timelineItems: [
+              ...cur.timelineItems,
+              ...demo.items.filter((i) => !cur.timelineItems.some((ci) => ci.id === i.id)),
+            ],
+          }));
+          if (demo.duration > timelineClock.getState().duration) {
+            timelineClock.setDuration(demo.duration);
+          }
+        }
+      }
+      timelineClock.play();
+    } else {
+      timelineClock.pause();
+    }
   },
   setCurrentTime: (time) => {
     timelineClock.seek(time);
