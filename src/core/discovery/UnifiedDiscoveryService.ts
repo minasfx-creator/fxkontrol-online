@@ -99,6 +99,7 @@ class UnifiedDiscoveryService {
         webUsbDiscoverer.scan(),
         webBleDiscoverer.scan(),
         mdnsArtnetDiscoverer.scan(),
+        capacitorSerialDiscoverer.scan(),
       ]);
       return this.getDevices();
     } finally {
