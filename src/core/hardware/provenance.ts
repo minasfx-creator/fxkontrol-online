@@ -49,8 +49,31 @@ export interface ProvenanceInfo {
   writable: false;                // ALWAYS false — enforced at type level
 }
 
-/** Default provenance for simulated adapters */
+/**
+ * Default provenance for adapters with no real hardware backing.
+ *
+ * ⚠️  TESTING PHASE: returns `not_integrated` so the UI never shows
+ * fake data as if it were real. Adapters that want explicit synthetic
+ * data must call `createForcedSimulatedProvenance()` (gated behind a
+ * dev-only flag — currently no callers).
+ *
+ * Original simulated semantics preserved at:
+ *     src/_quarantine/safety/safetyGate.original.ts.txt
+ */
 export function createSimulatedProvenance(transport: TransportType = 'none'): ProvenanceInfo {
+  return {
+    integration_mode: 'not_integrated',
+    provenance: 'synthetic',
+    evidence_level: 'ui_only',
+    transport_type: transport,
+    last_seen_at: 0,
+    data_freshness_ms: Infinity,
+    writable: false,
+  };
+}
+
+/** Explicit opt-in if a dev tool truly needs synthetic data. */
+export function createForcedSimulatedProvenance(transport: TransportType = 'none'): ProvenanceInfo {
   return {
     integration_mode: 'simulated',
     provenance: 'synthetic',
