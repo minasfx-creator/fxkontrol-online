@@ -1750,6 +1750,11 @@ export default function SkyCanvas() {
   // pure-black viewport with no fallback. We poll the container shortly after mount and trip
   // the fallback if no real canvas attached.
   const [silentCanvasFailure, setSilentCanvasFailure] = useState<string | null>(null);
+  // Ref to the live R3F WebGLRenderer so we can probe `isContextLost()`
+  // (set in <Canvas onCreated>). Used both by the silent-failure probe and
+  // by the manual retry button.
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+
   useEffect(() => {
     if (silentCanvasFailure) return;
     const probeAt = [600, 1500, 3000];
@@ -1759,9 +1764,14 @@ export default function SkyCanvas() {
         if (!node) return;
         const c = node.querySelector('canvas');
         const empty = !c || (c.clientWidth === 0 && c.clientHeight === 0);
-        if (empty && delay === 3000) {
+        // Also catch the "canvas exists with size but GL context is lost"
+        // case — without this the user sees a black viewport with no fallback.
+        const ctxLost = !!rendererRef.current?.getContext()?.isContextLost?.();
+        if ((empty || ctxLost) && delay === 3000) {
           setSilentCanvasFailure(
-            'WebGL canvas could not be created (likely GPU/driver blocked).',
+            ctxLost
+              ? 'WebGL context was lost during startup (likely GPU pressure). Click Retry to recover.'
+              : 'WebGL canvas could not be created (likely GPU/driver blocked).',
           );
         }
       }, delay),
@@ -1774,15 +1784,24 @@ export default function SkyCanvas() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const webglIssue = useMemo(() => detectWebGLCapability(), [webglRetryKey]);
   const fallbackReason = webglIssue || silentCanvasFailure;
+
+  const handleFallbackRetry = useCallback(() => {
+    // Reset the crash-loop cooldown so the user can manually attempt recovery
+    // after a context-loss storm without a full page reload.
+    try { resetCrashRecord(); } catch { /* ignore */ }
+    recoveringContextRef.current = false;
+    setSilentCanvasFailure(null);
+    setWebglRetryKey((k) => k + 1);
+    // Force the Canvas itself to remount so a fresh GL context is acquired.
+    setCanvasInstanceKey((k) => k + 1);
+  }, []);
+
   if (fallbackReason) {
     return (
       <div ref={containerRef} className="w-full h-full relative bg-[#050810]" data-sky-canvas>
         <SimplifiedSkyFallback
           reason={fallbackReason}
-          onRetry={() => {
-            setSilentCanvasFailure(null);
-            setWebglRetryKey((k) => k + 1);
-          }}
+          onRetry={handleFallbackRetry}
         />
       </div>
     );
