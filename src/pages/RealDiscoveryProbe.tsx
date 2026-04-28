@@ -2,15 +2,12 @@
  * ─── Real Discovery Probe ──────────────────────────────────────────
  * Public diagnostic page that runs the unified discovery pipeline in a
  * loop and renders, in real time, every device the browser actually
- * sees. Zero simulations, zero synthetic events:
+ * sees. Zero simulations, zero synthetic events.
  *
- *   • Uses ONLY `unifiedDiscovery.scanLight()` — no prompts, no UDP poll.
- *   • Subscribes to the discovery event stream (discovered/updated/lost).
- *   • Surfaces the support matrix per transport (Web Serial / WebUSB /
- *     WebBLE / Art-Net) so an operator instantly sees what the runtime
- *     is even capable of.
- *   • Reports `realOnlyGate` stats so it's obvious that no fake data
- *     is reaching the UI while the page runs.
+ * Now powered by the `deviceAggregator` so each physical device is shown
+ * once with chips for every transport it's reachable on (Web Serial,
+ * WebUSB, BLE, Art-Net). Operator can pin a preferred transport per
+ * device; automatic fallback is surfaced when the active link drops.
  *
  * Route: /dev/real-discovery — public (mounted outside ProtectedRoute).
  */
@@ -18,38 +15,53 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { unifiedDiscovery } from '@/core/discovery/UnifiedDiscoveryService';
-import type { DiscoveredDevice, DiscoveryEvent, DiscoveryTransport } from '@/core/discovery/types';
+import { deviceAggregator } from '@/core/discovery/DeviceAggregator';
+import type {
+  DiscoveryEvent,
+  DiscoveryTransport,
+  PhysicalDevice,
+  PhysicalDeviceEvent,
+} from '@/core/discovery/types';
 import { realOnlyGate } from '@/core/hardware/realOnlyGate';
 import { isRealOnlyMode, isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, RefreshCw, Radio, Usb, Bluetooth, Network, ShieldCheck, ShieldAlert } from 'lucide-react';
+import {
+  ArrowLeft, RefreshCw, Radio, Usb, Bluetooth, Network,
+  ShieldCheck, ShieldAlert, Pin, PinOff, ArrowRightLeft,
+} from 'lucide-react';
 
-const TRANSPORTS: { id: DiscoveryTransport; label: string; icon: typeof Usb }[] = [
-  { id: 'webserial', label: 'Web Serial', icon: Usb },
-  { id: 'webusb', label: 'WebUSB', icon: Usb },
-  { id: 'webble', label: 'Web Bluetooth', icon: Bluetooth },
-  { id: 'mdns-artnet', label: 'Art-Net (mDNS)', icon: Network },
+const TRANSPORTS: { id: DiscoveryTransport; label: string; short: string; icon: typeof Usb }[] = [
+  { id: 'webserial', label: 'Web Serial', short: 'Serial', icon: Usb },
+  { id: 'webusb', label: 'WebUSB', short: 'USB', icon: Usb },
+  { id: 'webble', label: 'Web Bluetooth', short: 'BLE', icon: Bluetooth },
+  { id: 'mdns-artnet', label: 'Art-Net (mDNS)', short: 'Art-Net', icon: Network },
 ];
+
+const TRANSPORT_LABEL: Record<DiscoveryTransport, string> = {
+  webserial: 'Serial',
+  webusb: 'USB',
+  webble: 'BLE',
+  'mdns-artnet': 'Art-Net',
+};
 
 interface LogLine {
   id: number;
   at: number;
-  type: DiscoveryEvent['type'];
-  deviceId: string;
+  type: DiscoveryEvent['type'] | PhysicalDeviceEvent['type'];
   label: string;
-  transport: DiscoveryTransport;
+  detail: string;
 }
 
 export default function RealDiscoveryProbe() {
-  const [devices, setDevices] = useState<DiscoveredDevice[]>([]);
+  const [physicals, setPhysicals] = useState<PhysicalDevice[]>([]);
   const [log, setLog] = useState<LogLine[]>([]);
   const [scanning, setScanning] = useState(false);
   const [autoLoop, setAutoLoop] = useState(true);
   const [intervalMs, setIntervalMs] = useState(3000);
-  const [tick, setTick] = useState(0); // forces gate-stats refresh
+  const [tick, setTick] = useState(0);
   const logIdRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
@@ -58,22 +70,32 @@ export default function RealDiscoveryProbe() {
   const realOnly = isRealOnlyMode();
   const simulatorOn = isHardwareSimulatorEnabled();
 
-  // ── Subscribe to live discovery events ──────────────────────────
+  const refreshDevices = () => {
+    if (!mountedRef.current) return;
+    setPhysicals(deviceAggregator.getDevices());
+  };
+
+  // ── Subscribe to aggregator stream ──────────────────────────────
   useEffect(() => {
     mountedRef.current = true;
-    setDevices(unifiedDiscovery.getDevices());
+    setPhysicals(deviceAggregator.getDevices());
 
-    const off = unifiedDiscovery.watch((ev) => {
+    const off = deviceAggregator.watch((ev) => {
       if (!mountedRef.current) return;
-      setDevices(unifiedDiscovery.getDevices());
+      refreshDevices();
       setLog((prev) => {
+        const detail =
+          ev.type === 'promoted'
+            ? `${ev.previousActive ?? '∅'} → ${ev.transport ?? '?'}`
+            : ev.transport
+              ? TRANSPORT_LABEL[ev.transport]
+              : `${Object.keys(ev.device.links).length} link(s)`;
         const next: LogLine = {
           id: ++logIdRef.current,
           at: Date.now(),
           type: ev.type,
-          deviceId: ev.device.id,
           label: ev.device.label,
-          transport: ev.device.transport,
+          detail,
         };
         const merged = [next, ...prev];
         return merged.length > 80 ? merged.slice(0, 80) : merged;
@@ -100,11 +122,11 @@ export default function RealDiscoveryProbe() {
       try {
         await unifiedDiscovery.scanLight();
       } catch {
-        // swallow — scanLight already logs internally
+        /* swallow — scanLight already logs internally */
       } finally {
         if (mountedRef.current) {
           setScanning(false);
-          setTick((t) => t + 1); // refresh gate stats
+          setTick((t) => t + 1);
         }
       }
     };
@@ -119,20 +141,12 @@ export default function RealDiscoveryProbe() {
   }, [autoLoop, intervalMs]);
 
   const gateStats = realOnlyGate.getStats();
-  // gateStats reads change over time; tick is intentionally referenced
-  // to trigger a re-render after each loop iteration.
   void tick;
 
-  const grouped = useMemo(() => {
-    const m: Record<DiscoveryTransport, DiscoveredDevice[]> = {
-      webserial: [],
-      webusb: [],
-      webble: [],
-      'mdns-artnet': [],
-    };
-    for (const d of devices) m[d.transport]?.push(d);
-    return m;
-  }, [devices]);
+  const totalLinks = useMemo(
+    () => physicals.reduce((sum, p) => sum + Object.keys(p.links).length, 0),
+    [physicals],
+  );
 
   const triggerOnce = async () => {
     setScanning(true);
@@ -196,14 +210,13 @@ export default function RealDiscoveryProbe() {
               Scan now
             </Button>
             <div className="ml-auto text-xs text-muted-foreground">
-              {scanning ? 'Scanning…' : 'Idle'} · {devices.length} device(s) seen
+              {scanning ? 'Scanning…' : 'Idle'} · {physicals.length} physical · {totalLinks} link(s)
             </div>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            This page calls <code className="font-mono">unifiedDiscovery.scanLight()</code> in a loop. It uses
-            only <code>getPorts()</code> / <code>getDevices()</code> APIs — no permission prompts and no synthetic
-            data. Devices appear here ONLY if the browser already has authorization for them or if they hot-plug into
-            an authorized port.
+            Devices are aggregated across transports — the same controller seen on Web Serial AND WebUSB
+            (or BLE + USB) appears as a single card with one chip per transport. Click a chip to pin the
+            preferred transport; automatic fallback kicks in if the active link drops.
           </p>
         </Card>
 
@@ -213,7 +226,7 @@ export default function RealDiscoveryProbe() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {TRANSPORTS.map(({ id, label, icon: Icon }) => {
               const ok = support[id];
-              const count = grouped[id]?.length ?? 0;
+              const count = physicals.reduce((n, p) => n + (p.links[id] ? 1 : 0), 0);
               return (
                 <div
                   key={id}
@@ -229,7 +242,7 @@ export default function RealDiscoveryProbe() {
                     <Badge variant={ok ? 'default' : 'destructive'} className="text-[10px]">
                       {ok ? 'Supported' : 'Unavailable'}
                     </Badge>
-                    <span className="text-muted-foreground">{count} found</span>
+                    <span className="text-muted-foreground">{count} link(s)</span>
                   </div>
                 </div>
               );
@@ -237,75 +250,26 @@ export default function RealDiscoveryProbe() {
           </div>
         </Card>
 
-        {/* ── Devices by transport ───────────────────────────── */}
+        {/* ── Physical devices ───────────────────────────────── */}
         <Card className="p-4">
-          <h2 className="text-sm font-semibold mb-3">Live devices ({devices.length})</h2>
-          {devices.length === 0 ? (
+          <h2 className="text-sm font-semibold mb-3">
+            Physical devices ({physicals.length})
+          </h2>
+          {physicals.length === 0 ? (
             <div className="text-center py-10 text-sm text-muted-foreground">
               No real device detected yet.
               <br />
               <span className="text-xs">
-                Plug in hardware and authorize it once via <Link to="/pairing/usb" className="underline">/pairing/usb</Link>.
+                Plug in hardware and authorize it once via{' '}
+                <Link to="/pairing/usb" className="underline">/pairing/usb</Link>.
                 After that, this loop will see it on every scan.
               </span>
             </div>
           ) : (
-            <div className="space-y-4">
-              {TRANSPORTS.map(({ id, label }) => {
-                const list = grouped[id] ?? [];
-                if (list.length === 0) return null;
-                return (
-                  <section key={id}>
-                    <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                      {label} · {list.length}
-                    </h3>
-                    <div className="grid gap-2">
-                      {list.map((d) => (
-                        <div
-                          key={d.id}
-                          className="rounded-md border border-border bg-card/50 p-3 text-sm"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="font-medium truncate">{d.label}</div>
-                              <div className="text-xs text-muted-foreground font-mono truncate">
-                                {d.id}
-                              </div>
-                            </div>
-                            <div className="flex flex-col items-end gap-1 shrink-0">
-                              <Badge variant={d.online ? 'default' : 'secondary'} className="text-[10px]">
-                                {d.online ? 'online' : 'offline'}
-                              </Badge>
-                              {d.authorized && (
-                                <Badge variant="outline" className="text-[10px]">authorized</Badge>
-                              )}
-                              {d.recognized && (
-                                <Badge variant="outline" className="text-[10px]">recognized</Badge>
-                              )}
-                            </div>
-                          </div>
-                          <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                            {typeof d.vendorId === 'number' && (
-                              <span>VID: <code className="font-mono">0x{d.vendorId.toString(16).padStart(4, '0')}</code></span>
-                            )}
-                            {typeof d.productId === 'number' && (
-                              <span>PID: <code className="font-mono">0x{d.productId.toString(16).padStart(4, '0')}</code></span>
-                            )}
-                            {d.host && <span>host: {d.host}</span>}
-                            {d.family && <span>family: {d.family}</span>}
-                            <span>last seen: {new Date(d.lastSeen).toLocaleTimeString()}</span>
-                          </div>
-                          {d.lastError && (
-                            <div className="mt-2 text-[11px] text-destructive">
-                              ⚠ {d.lastError.message}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                );
-              })}
+            <div className="grid gap-3">
+              {physicals.map((dev) => (
+                <PhysicalDeviceCard key={dev.aggregateId} device={dev} />
+              ))}
             </div>
           )}
         </Card>
@@ -325,18 +289,14 @@ export default function RealDiscoveryProbe() {
               at {new Date(gateStats.lastRejectedAt).toLocaleTimeString()}
             </div>
           )}
-          <p className="mt-3 text-xs text-muted-foreground">
-            Rejected counters confirm that telemetry from <code>not_integrated</code> adapters is being
-            blocked at the gate. With no real hardware connected, all four counters should remain at zero.
-          </p>
         </Card>
 
         {/* ── Event log ──────────────────────────────────────── */}
         <Card className="p-4">
-          <h2 className="text-sm font-semibold mb-3">Discovery event log (most recent first)</h2>
+          <h2 className="text-sm font-semibold mb-3">Aggregator event log</h2>
           {log.length === 0 ? (
             <div className="text-xs text-muted-foreground py-6 text-center">
-              No events yet — events appear here as devices appear, change or disappear.
+              No events yet — events appear here as devices appear, change, are promoted or disappear.
             </div>
           ) : (
             <ol className="space-y-1 max-h-80 overflow-auto pr-2 text-xs font-mono">
@@ -346,12 +306,18 @@ export default function RealDiscoveryProbe() {
                     {new Date(l.at).toLocaleTimeString()}
                   </span>
                   <Badge
-                    variant={l.type === 'lost' ? 'destructive' : l.type === 'updated' ? 'secondary' : 'default'}
-                    className="text-[10px] w-20 justify-center shrink-0"
+                    variant={
+                      l.type === 'lost' || l.type === 'link-lost' || l.type === 'removed'
+                        ? 'destructive'
+                        : l.type === 'promoted'
+                          ? 'default'
+                          : 'secondary'
+                    }
+                    className="text-[10px] w-24 justify-center shrink-0"
                   >
                     {l.type}
                   </Badge>
-                  <span className="text-muted-foreground shrink-0 w-24">{l.transport}</span>
+                  <span className="text-muted-foreground shrink-0 w-24">{l.detail}</span>
                   <span className="truncate">{l.label}</span>
                 </li>
               ))}
@@ -360,6 +326,104 @@ export default function RealDiscoveryProbe() {
         </Card>
       </div>
     </main>
+  );
+}
+
+function PhysicalDeviceCard({ device }: { device: PhysicalDevice }) {
+  const linkEntries = TRANSPORTS.filter((t) => device.links[t.id]);
+  const promoted = device.lastPromotion;
+
+  const handlePin = (t: DiscoveryTransport) => {
+    if (device.preferredTransport === t) {
+      deviceAggregator.clearPreferredTransport(device.aggregateId);
+    } else {
+      deviceAggregator.setPreferredTransport(device.aggregateId, t);
+    }
+  };
+
+  return (
+    <div className="rounded-md border border-border bg-card/50 p-3 text-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="font-medium truncate">{device.label}</div>
+          <div className="text-xs text-muted-foreground font-mono truncate">
+            {device.aggregateId}
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <Badge variant={device.online ? 'default' : 'secondary'} className="text-[10px]">
+            {device.online ? 'online' : 'offline'}
+          </Badge>
+          <span className="text-[10px] text-muted-foreground">
+            {linkEntries.length} transport(s)
+          </span>
+        </div>
+      </div>
+
+      {/* Transport chips */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {linkEntries.map(({ id, short, icon: Icon }) => {
+          const link = device.links[id]!;
+          const isActive = device.activeTransport === id;
+          const isPreferred = device.preferredTransport === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => handlePin(id)}
+              className={[
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs transition-colors',
+                isActive
+                  ? 'border-primary bg-primary/15 text-primary'
+                  : link.online
+                    ? 'border-border bg-muted/30 hover:bg-muted/60'
+                    : 'border-destructive/30 bg-destructive/5 text-muted-foreground',
+              ].join(' ')}
+              title={
+                isPreferred
+                  ? `Preferred: ${short}. Click to clear.`
+                  : `Pin ${short} as preferred transport.`
+              }
+            >
+              <Icon className="h-3 w-3" />
+              <span className="font-medium">{short}</span>
+              {isActive && <Badge variant="outline" className="text-[9px] ml-1">active</Badge>}
+              {isPreferred ? (
+                <Pin className="h-3 w-3 text-primary" />
+              ) : (
+                <PinOff className="h-3 w-3 opacity-30" />
+              )}
+              {!link.online && <span className="text-[9px] uppercase">offline</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Identity row */}
+      <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+        {typeof device.vendorId === 'number' && (
+          <span>VID: <code className="font-mono">0x{device.vendorId.toString(16).padStart(4, '0')}</code></span>
+        )}
+        {typeof device.productId === 'number' && (
+          <span>PID: <code className="font-mono">0x{device.productId.toString(16).padStart(4, '0')}</code></span>
+        )}
+        {device.serialNumber && <span>S/N: <code className="font-mono">{device.serialNumber}</code></span>}
+        {device.host && <span>host: {device.host}</span>}
+        <span>last seen: {new Date(device.lastSeen).toLocaleTimeString()}</span>
+      </div>
+
+      {/* Promotion banner */}
+      {promoted && (
+        <div className="mt-3 flex items-center gap-2 text-[11px] text-primary">
+          <ArrowRightLeft className="h-3 w-3" />
+          <span>
+            Promoted <code className="font-mono">{promoted.from ?? '∅'}</code> →{' '}
+            <code className="font-mono">{promoted.to}</code> ({promoted.reason}) at{' '}
+            {new Date(promoted.at).toLocaleTimeString()}
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 

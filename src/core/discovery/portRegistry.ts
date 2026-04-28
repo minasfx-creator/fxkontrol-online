@@ -11,6 +11,7 @@
 
 import { logger } from '@/lib/logger';
 import { getReopenMatchPolicy } from './useReopenMatchPolicy';
+import type { DiscoveryTransport } from './types';
 
 const STORAGE_KEY = 'fxk:portRegistry:v1';
 const MAX_ENTRIES = 50;
@@ -46,6 +47,8 @@ export interface PortRegistryEntry {
   confirmedMode?: GenericConfirmMode;
   /** Per-adapter operator override for protocol/family — wins over label detection. */
   profileOverride?: DMXProfileOverride;
+  /** Operator-pinned transport for multi-link devices. Survives reloads. */
+  preferredTransport?: DiscoveryTransport;
   firstSeen: number;
   lastSeen: number;
 }
@@ -212,6 +215,32 @@ export const portRegistry = {
 
   getProfileOverride(key: string): DMXProfileOverride | undefined {
     return this.get(key)?.profileOverride;
+  },
+
+  /** Pin operator's preferred transport for a multi-link physical device. */
+  setPreferredTransport(key: string, transport: DiscoveryTransport, label?: string): PortRegistryEntry {
+    const cur = this.get(key);
+    return this.upsert({
+      key,
+      vendorId: cur?.vendorId,
+      productId: cur?.productId,
+      host: cur?.host,
+      lastLabel: label ?? cur?.lastLabel ?? key,
+      operatorConfirmedGeneric: cur?.operatorConfirmedGeneric ?? false,
+      confirmedMode: cur?.confirmedMode,
+      profileOverride: cur?.profileOverride,
+      preferredTransport: transport,
+    });
+  },
+
+  getPreferredTransport(key: string): DiscoveryTransport | undefined {
+    return this.get(key)?.preferredTransport;
+  },
+
+  clearPreferredTransport(key: string): void {
+    const cur = this.get(key);
+    if (!cur) return;
+    this.upsert({ ...cur, preferredTransport: undefined });
   },
 
   forget(key: string): void {

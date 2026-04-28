@@ -1,117 +1,125 @@
-## Plano: Wizard de Permissão USB iOS-First
+## Multi-Transport por Dispositivo
 
-### Objetivo
+Hoje cada transport (Web Serial, WebUSB, WebBLE, Art-Net) gera um `DiscoveredDevice` independente — o mesmo controlador físico aparece como 2-3 entradas distintas. Vou unificar isso introduzindo uma **identidade lógica** (`PhysicalDevice`) que agrega todos os links observados e permite escolher o transporte ativo com fallback.
 
-Criar uma página `/pairing/usb` dedicada ao processo de autorização de hardware USB no iPhone, em formato wizard (passo-a-passo), com QA visual em cada etapa, detecção contextual de plataforma e log auditável do acessório/protocolo selecionado.
+---
 
-### Fluxo do Wizard (5 passos)
+### O que muda para o usuário
+
+- A página `/dev/real-discovery` e o `EasyConnectPanel` passam a mostrar **um card por dispositivo físico**, com chips "Serial / USB / BLE / Art-Net" indicando todos os transports disponíveis para aquele aparelho.
+- O usuário pode clicar em um chip para fixar o transport preferido (ex: "usar Web Serial neste FXcommander, não BLE").
+- Se o transport ativo cair (cabo desconectado, BLE fora de alcance), o sistema **promove automaticamente** o próximo transport saudável e registra o evento — sem perder a sessão.
+
+---
+
+### Arquitetura
 
 ```text
-┌─ 1. WELCOME ─────────────────────────────────────────────┐
-│  Detecta plataforma. Mostra rota correta:                │
-│  • iOS Safari PWA → "Use o app nativo" (CTA /install)    │
-│  • iOS Capacitor s/ plugin → instruções npm install      │
-│  • iOS Capacitor c/ plugin → SEGUIR PARA PASSO 2         │
-│  • Desktop / Android → também segue (caminho universal)  │
-└──────────────────────────────────────────────────────────┘
-            ↓
-┌─ 2. CABLE CHECK ─────────────────────────────────────────┐
-│  Ilustração do cabo correto (Lightning Camera Adapter    │
-│  ou USB-C OTG). Checklist visual:                        │
-│  ☐ Adaptador MFi conectado (visual)                      │
-│  ☐ Hardware ligado (LED de power)                        │
-│  ☐ Cabo de DADOS (não só carga)                          │
-│  Botão "Já está tudo conectado" → PASSO 3                │
-└──────────────────────────────────────────────────────────┘
-            ↓
-┌─ 3. AUTHORIZE ───────────────────────────────────────────┐
-│  Botão grande "AUTORIZAR DISPOSITIVO" — chama            │
-│  requestSerialPort() ou plugin Capacitor.                │
-│  Mostra spinner e banner de erro acionável               │
-│  (USBConnectionError com hint).                          │
-│  Sucesso → captura {vid, pid, label, manufacturer,       │
-│             serialNumber, protocol} → PASSO 4            │
-└──────────────────────────────────────────────────────────┘
-            ↓
-┌─ 4. CLASSIFY ────────────────────────────────────────────┐
-│  Mostra dispositivo autorizado + dropdown de protocolo:  │
-│  • Showven PBUS (19200)  • ENTTEC DMX Pro (57600)        │
-│  • DMX512 Open (250000)  • FireOne Custom                │
-│  • Genérico (escolhe baud/parity)                        │
-│  Auto-sugere baseado em VID/PID conhecido.               │
-│  Botão "Confirmar" → registra em portRegistry +          │
-│  pairingAuditLog → PASSO 5                               │
-└──────────────────────────────────────────────────────────┘
-            ↓
-┌─ 5. SUCCESS ─────────────────────────────────────────────┐
-│  Resumo: dispositivo + protocolo + timestamp.            │
-│  Linha de auditoria: "Autorizado por [user] às HH:MM:SS  │
-│  via [transport] em [device.label]".                     │
-│  CTAs: [Conectar outro] [Abrir Studio] [Ver log]         │
-└──────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│  TransportDiscoverers (já existem — sem mudança)              │
+│  webserial · webusb · webble · mdns-artnet · capacitorSerial  │
+└────────────────┬──────────────────────────────────────────────┘
+                 │ DiscoveryEvent (1 por link físico)
+                 ▼
+┌───────────────────────────────────────────────────────────────┐
+│  UnifiedDiscoveryService (existe — alimenta o agregador)      │
+└────────────────┬──────────────────────────────────────────────┘
+                 │
+                 ▼
+┌───────────────────────────────────────────────────────────────┐
+│  DeviceAggregator  (NOVO)                                     │
+│  • aggregateKey(device) → "vid:pid:serial" ou "host:..."      │
+│  • Map<aggregateKey, PhysicalDevice>                          │
+│  • PhysicalDevice.links: Record<Transport, DiscoveredDevice>  │
+│  • activeTransport + preferredTransport                       │
+│  • promoteOnLoss() → escolhe próximo link online              │
+└────────────────┬──────────────────────────────────────────────┘
+                 │ PhysicalDeviceEvent (added / link-added /
+                 │   link-lost / promoted / removed)
+                 ▼
+        UI: RealDiscoveryProbe, EasyConnectPanel
 ```
 
-### Componentes & Arquivos
+---
 
-**Novos:**
-- `src/pages/UsbPairingWizard.tsx` — página principal, máquina de estados de 5 steps com `useReducer`. Mobile-first (max-w-md, vh-full no iPhone), Vantablack + Cyan.
-- `src/components/pairing/WizardStepIndicator.tsx` — barra de progresso 5 dots cyan/muted.
-- `src/components/pairing/WelcomeStep.tsx` — usa `useHardwareDiagnostics` para roteamento condicional.
-- `src/components/pairing/CableCheckStep.tsx` — ilustração SVG inline (Lightning + adaptador) + checklist tap-to-confirm.
-- `src/components/pairing/AuthorizeStep.tsx` — botão grande + spinner + erro inline com `USBConnectionError.hint`.
-- `src/components/pairing/ClassifyStep.tsx` — dropdown de protocolo com auto-sugestão.
-- `src/components/pairing/SuccessStep.tsx` — card resumo + CTAs.
-- `src/lib/pairingAuditLog.ts` — log persistente (localStorage) das autorizações: `{ at, vid, pid, label, protocol, transport, success, errorCode? }`. Capped a 100 entradas. Exporta `recordPairing()`, `getRecentPairings()`, `clearPairings()`.
+### Detalhes técnicos
 
-**Editados:**
-- `src/App.tsx` — registrar `<Route path="/pairing/usb" element={<ProtectedRoute><UsbPairingWizard /></ProtectedRoute>} />` (lazy import).
-- `src/pages/Install.tsx` — adicionar CTA "Já instalou? Pareie um dispositivo USB →" linkando para `/pairing/usb`.
+**1. `src/core/discovery/aggregateKey.ts` (novo)**
+- Função `aggregateKey({ vendorId, productId, serialNumber, host, bleAddress }): string` que gera uma chave canônica cross-transport:
+  - USB/Serial com `serialNumber`: `phys:vid:pid:serial`
+  - USB/Serial sem serial: `phys:vid:pid` (mesma família vira mesmo dispositivo — comportamento legado preservado)
+  - BLE: `phys:ble:${bleAddress || name}`
+  - Art-Net: `phys:host:${ip}`
+- Função `linksMatch(a, b)`: heurística pra unificar serial+USB do mesmo cabo (mesmo VID:PID, ambos online em <2s) — necessária porque o mesmo CH340 aparece como WebSerial e WebUSB.
 
-### Detalhes Técnicos
+**2. `src/core/discovery/types.ts` (estender)**
+- Novo tipo `PhysicalDevice`:
+  ```ts
+  interface PhysicalDevice {
+    aggregateId: string;
+    label: string;
+    vendorId?: number; productId?: number;
+    serialNumber?: string;
+    links: Partial<Record<DiscoveryTransport, DiscoveredDevice>>;
+    activeTransport: DiscoveryTransport | null;
+    preferredTransport: DiscoveryTransport | null;
+    online: boolean;
+    firstSeen: number; lastSeen: number;
+  }
+  type PhysicalDeviceEvent =
+    | { type: 'added'; device: PhysicalDevice }
+    | { type: 'link-added'; device: PhysicalDevice; transport: DiscoveryTransport }
+    | { type: 'link-lost'; device: PhysicalDevice; transport: DiscoveryTransport }
+    | { type: 'promoted'; device: PhysicalDevice; from: DiscoveryTransport | null; to: DiscoveryTransport }
+    | { type: 'removed'; device: PhysicalDevice };
+  ```
 
-**Máquina de estados (useReducer):**
-```ts
-type Step = 'welcome' | 'cable' | 'authorize' | 'classify' | 'success';
-type Action =
-  | { type: 'NEXT' }
-  | { type: 'BACK' }
-  | { type: 'AUTHORIZED'; device: AuthorizedDevice }
-  | { type: 'PROTOCOL_SELECTED'; profile: USBDeviceProfile }
-  | { type: 'ERROR'; error: USBConnectionError }
-  | { type: 'RESET' };
-```
+**3. `src/core/discovery/DeviceAggregator.ts` (novo)**
+- Singleton `deviceAggregator` que se subscreve em `unifiedDiscovery.watch()`.
+- Transport priority default: `webserial > webusb > webble > mdns-artnet` (serial é mais determinístico p/ DMX/PBUS).
+- `setPreferredTransport(aggregateId, transport)` persistido em `portRegistry` via novo campo `preferredTransport`.
+- `promoteOnLoss()`: quando `link-lost` deixa o `activeTransport` offline, escolhe o próximo link online seguindo a prioridade (respeitando preferência se ainda online).
+- API pública: `getDevices()`, `getDevice(id)`, `watch(fn)`, `setPreferredTransport()`.
 
-**Audit log entry:**
-```ts
-interface PairingAuditEntry {
-  id: string;            // crypto.randomUUID()
-  at: number;            // Date.now()
-  transport: 'webserial' | 'webusb' | 'capacitor-serial';
-  vendorId?: number;
-  productId?: number;
-  serialNumber?: string;
-  label: string;
-  protocolKind: string;  // 'pbus' | 'enttec-pro' | etc.
-  protocolLabel: string;
-  baudRate: number;
-  success: boolean;
-  errorCode?: string;
-  platform: Platform;    // de platformCapabilities
-}
-```
+**4. `src/core/discovery/portRegistry.ts` (estender)**
+- Adicionar `preferredTransport?: DiscoveryTransport` em `PortRegistryEntry`.
+- Métodos `setPreferredTransport(key, t)` / `getPreferredTransport(key)` — chave é a mesma `keyFor()` existente.
 
-**iOS-first responsivo:**
-- Layout `min-h-dvh` (dynamic viewport — evita corte com toolbar Safari).
-- Botões `min-h-[56px]` (Apple HIG touch target).
-- Safe-area padding via `env(safe-area-inset-*)`.
-- `<HardwareDiagnosticsBanner compact />` no topo de cada step para contexto.
-- Suporta gesto de swipe (back) no Step 1 fechar a página.
+**5. `src/pages/RealDiscoveryProbe.tsx` (atualizar)**
+- Substituir lista plana de devices por lista de `PhysicalDevice`.
+- Cada card mostra:
+  - Label + VID/PID/serial
+  - Chips dos transports presentes (ativo destacado em ciano, demais em cinza)
+  - Click no chip → `setPreferredTransport()`
+  - Indicador "Promoted from X to Y" quando ocorre fallback
+- Adicionar contador "N físico(s) · M link(s)" no header.
 
-**Roteamento contextual no Welcome step:**
-- Se `recommendation === 'install-native-app'` → CTA primário vai para `/install`, secundário "Continuar mesmo assim" libera o wizard (operador pode estar em desktop testando).
-- Se `recommendation === 'install-cap-plugin'` → instrução copy-pasteable.
+**6. `src/components/editor/EasyConnectPanel.tsx` (ajuste leve)**
+- Trocar `unifiedDiscovery.getDevices()` por `deviceAggregator.getDevices()` e renderizar 1 entrada por dispositivo físico, listando os transports como sub-itens.
+- Preservar todo o fluxo de autorização atual — apenas a deduplicação muda.
 
-### Fora do Escopo
+**7. Memória**
+- Criar `mem://funcionalidades/multi-transport-aggregation.md` documentando aggregateKey, PhysicalDevice, prioridade de transport, fallback automático e persistência de preferredTransport.
 
-- Não criamos backend para sincronizar log entre dispositivos — fica em localStorage (auditoria local). Se o usuário quiser cloud, pode ser adicionado depois via Supabase.
-- Não substituímos o `USBConnectionPanel` existente — o wizard é uma rota dedicada complementar ("primeiro pareamento"); o painel continua útil para uso recorrente.
+---
+
+### Compatibilidade
+
+- `UnifiedDiscoveryService`, `portRegistry.recordSuccess`, hot-plug e o gate `realOnlyMode` permanecem **inalterados** — o aggregator é uma camada acima, não substitui nada.
+- Pontos do código que ainda querem o stream cru continuam usando `unifiedDiscovery.watch()` direto (zero breaking changes em hooks e adapters existentes).
+- A heurística serial+USB de mesmo cabo é conservadora: se em dúvida, mantém entradas separadas (falso negativo > falso positivo).
+
+---
+
+### Arquivos
+
+**Criar**
+- `src/core/discovery/aggregateKey.ts`
+- `src/core/discovery/DeviceAggregator.ts`
+
+**Editar**
+- `src/core/discovery/types.ts` — adicionar `PhysicalDevice`, `PhysicalDeviceEvent`
+- `src/core/discovery/portRegistry.ts` — adicionar `preferredTransport` + getters/setters
+- `src/pages/RealDiscoveryProbe.tsx` — UI por dispositivo físico, chips de transport, fallback visível
+- `src/components/editor/EasyConnectPanel.tsx` — consumir aggregator
+- `mem://index.md` + `mem://funcionalidades/multi-transport-aggregation.md`
