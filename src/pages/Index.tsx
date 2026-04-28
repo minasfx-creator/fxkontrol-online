@@ -24,6 +24,7 @@ import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import RadialMenu from '@/components/editor/RadialMenu';
 // EngineProvider moved to MainLayout (boots once, all routes, mobile + desktop).
 import LiveCard from '@/components/editor/LiveCard';
+import { StudioErrorBoundary } from '@/components/errors/StudioErrorBoundary';
 
 // ── Lazy helper — one-liner for 80+ panels ──
 // All Studio lazy imports go through `lazyRetry` so a stale chunk after
@@ -558,7 +559,7 @@ function Index() {
     return (
        <div className="absolute inset-0 w-full h-full overflow-hidden bg-background">
         <div className="absolute inset-0 w-full h-full br2049-atmosphere">
-          <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas /></Suspense></CanvasErrorBoundary>
+          <StudioErrorBoundary area="3D viewport"><CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas /></Suspense></CanvasErrorBoundary></StudioErrorBoundary>
         </div>
         <LiveModeOverlay />
       </div>
@@ -567,7 +568,7 @@ function Index() {
     return (
     <div className="absolute inset-0 w-full h-full overflow-hidden bg-background">
         <div className="absolute inset-0 w-full h-full">
-          <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas key="mobile-skycanvas" /></Suspense></CanvasErrorBoundary>
+          <StudioErrorBoundary area="3D viewport"><CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas key="mobile-skycanvas" /></Suspense></CanvasErrorBoundary></StudioErrorBoundary>
           <BoxSelectOverlay />
         </div>
 
@@ -652,11 +653,13 @@ function Index() {
             </div>
           </div>
           <div className="absolute inset-0 top-9">
-            <CanvasErrorBoundary>
-              <Suspense fallback={<CanvasLoader />}>
-                <SkyCanvas />
-              </Suspense>
-            </CanvasErrorBoundary>
+            <StudioErrorBoundary area="3D viewport">
+              <CanvasErrorBoundary>
+                <Suspense fallback={<CanvasLoader />}>
+                  <SkyCanvas />
+                </Suspense>
+              </CanvasErrorBoundary>
+            </StudioErrorBoundary>
             <BoxSelectOverlay />
             <SelectionModeBar />
             {isDragOver && (
