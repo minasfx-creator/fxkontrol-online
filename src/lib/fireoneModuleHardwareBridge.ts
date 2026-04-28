@@ -906,6 +906,7 @@ export class FireOneHardwareBridge {
     const m = (this.deviceModel ?? '').toUpperCase();
     if (m === 'FXK16') return 'pyroslave_c16';
     return undefined;
+  }
 
   // ─── Private ──────────────────────────────────────────
 
