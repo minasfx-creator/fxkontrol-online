@@ -526,3 +526,122 @@ function Stat({ label, value, tone }: { label: string; value: number; tone: 'ok'
     </div>
   );
 }
+
+function TransportMetricsTable({
+  device,
+  snap,
+}: {
+  device: PhysicalDevice;
+  snap: MultiTransportLinkSnapshot;
+}) {
+  const rows = TRANSPORTS.filter((t) => device.links[t.id] || snap.health[t.id]);
+  if (rows.length === 0) return null;
+
+  const fmtAgo = (ts: number) => {
+    if (!ts) return '—';
+    const sec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+    if (sec < 60) return `${sec}s ago`;
+    if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+    return `${Math.floor(sec / 3600)}h ago`;
+  };
+
+  return (
+    <div className="mt-3 rounded-md border border-border overflow-hidden">
+      <div className="bg-muted/30 px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground grid grid-cols-12 gap-2">
+        <div className="col-span-2">Transport</div>
+        <div className="col-span-2">Status</div>
+        <div className="col-span-1 text-right">OK</div>
+        <div className="col-span-1 text-right">Timeout</div>
+        <div className="col-span-1 text-right">Errors</div>
+        <div className="col-span-2 text-right">Latency (ema/max)</div>
+        <div className="col-span-3">Last event</div>
+      </div>
+      <div className="divide-y divide-border">
+        {rows.map(({ id, short, icon: Icon }) => {
+          const linkData = device.links[id];
+          const h = snap.health[id];
+          const isParticipant = snap.participants.includes(id);
+          const isActive = device.activeTransport === id;
+          // Connection state derived from link presence + health.online flag.
+          const connState: 'connected' | 'offline' | 'unseen' =
+            !linkData ? 'unseen' : linkData.online ? 'connected' : 'offline';
+          const lastFail = h?.lastFailAt ?? 0;
+          const lastOk = h?.lastOkAt ?? 0;
+          return (
+            <div
+              key={id}
+              className={`px-2 py-1.5 text-[11px] grid grid-cols-12 gap-2 items-center ${
+                isActive ? 'bg-primary/5' : ''
+              }`}
+            >
+              <div className="col-span-2 inline-flex items-center gap-1.5 font-medium">
+                <Icon className="h-3 w-3" />
+                {short}
+                {isActive && <Badge variant="outline" className="text-[9px]">active</Badge>}
+                {isParticipant && !isActive && (
+                  <Badge variant="outline" className="text-[9px]">tx</Badge>
+                )}
+              </div>
+              <div className="col-span-2">
+                <span
+                  className={
+                    connState === 'connected'
+                      ? 'inline-flex items-center gap-1 text-primary'
+                      : connState === 'offline'
+                        ? 'inline-flex items-center gap-1 text-destructive'
+                        : 'inline-flex items-center gap-1 text-muted-foreground'
+                  }
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      connState === 'connected'
+                        ? 'bg-primary'
+                        : connState === 'offline'
+                          ? 'bg-destructive'
+                          : 'bg-muted-foreground/50'
+                    }`}
+                    aria-hidden
+                  />
+                  {connState}
+                </span>
+              </div>
+              <div className="col-span-1 text-right font-mono text-primary">
+                {h?.txOk ?? 0}
+              </div>
+              <div className={`col-span-1 text-right font-mono ${
+                (h?.txTimeout ?? 0) > 0 ? 'text-amber-500' : 'text-muted-foreground'
+              }`}>
+                {h?.txTimeout ?? 0}
+              </div>
+              <div className={`col-span-1 text-right font-mono ${
+                (h?.txErr ?? 0) > 0 ? 'text-destructive' : 'text-muted-foreground'
+              }`}>
+                {h?.txErr ?? 0}
+              </div>
+              <div className="col-span-2 text-right font-mono text-muted-foreground">
+                {h && (h.txOk + h.txErr + h.txTimeout) > 0
+                  ? `${h.latencyMs.toFixed(1)} / ${h.maxLatencyMs.toFixed(1)}ms`
+                  : '—'}
+              </div>
+              <div className="col-span-3 text-muted-foreground">
+                {h?.lastError ? (
+                  <span className="text-destructive truncate inline-block max-w-full" title={h.lastError}>
+                    ⚠ {h.lastError}
+                  </span>
+                ) : lastOk ? (
+                  <span>OK · {fmtAgo(lastOk)}</span>
+                ) : lastFail ? (
+                  <span className="text-amber-500">fail · {fmtAgo(lastFail)}</span>
+                ) : linkData?.lastSeen ? (
+                  <span>seen · {fmtAgo(linkData.lastSeen)}</span>
+                ) : (
+                  '—'
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
