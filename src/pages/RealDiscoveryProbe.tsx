@@ -64,9 +64,12 @@ export default function RealDiscoveryProbe() {
   const [scanning, setScanning] = useState(false);
   const [autoLoop, setAutoLoop] = useState(true);
   const [intervalMs, setIntervalMs] = useState(3000);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshMs, setRefreshMs] = useState(1000);
   const [tick, setTick] = useState(0);
   const logIdRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
 
   const support = useMemo(() => unifiedDiscovery.supportMatrix(), []);
