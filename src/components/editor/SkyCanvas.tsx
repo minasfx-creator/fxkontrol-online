@@ -1991,7 +1991,7 @@ export default function SkyCanvas() {
           // Reveal immediately — GL context ready and bg color is already painted.
           setCanvasReady(true);
         }}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={60} near={0.1} far={500000} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={60} near={0.1} far={200000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode || groundMode} flyMode={flyMode || groundMode} />
         {flyMode && !groundMode && <FlyControls onSpeedChange={flySpeedCb} />}
         {groundMode && <GroundControls onSpeedChange={flySpeedCb} />}
