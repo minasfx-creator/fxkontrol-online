@@ -251,6 +251,18 @@ class DeviceAggregator {
     dev.links[link.transport] = link;
     this._linkIndex.set(link.id, aggId);
 
+    // A fresh `discovered` event for a previously quarantined transport
+    // means the OS sees the device again — give it another chance.
+    if (isNewLink && dev.quarantinedTransports?.[link.transport]) {
+      delete dev.quarantinedTransports[link.transport];
+      if (Object.keys(dev.quarantinedTransports).length === 0) {
+        dev.quarantinedTransports = undefined;
+      }
+      if (!silent) {
+        this._emit({ type: 'link-recovered', device: dev, transport: link.transport });
+      }
+    }
+
     // Promote label / metadata when richer info arrives.
     if (link.label && link.label.length > dev.label.length) dev.label = link.label;
     dev.vendorId = dev.vendorId ?? link.vendorId;
