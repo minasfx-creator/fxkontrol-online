@@ -28,6 +28,7 @@ import {
 import { GenericAdapterConfirm } from './usb/GenericAdapterConfirm';
 import { DMXProfileEditor } from './usb/DMXProfileEditor';
 import { portRegistry, keyFor } from '@/core/discovery/portRegistry';
+import { HardwareDiagnosticsBanner } from './hardware/HardwareDiagnosticsBanner';
 
 
 const TYPE_COLORS: Record<string, string> = {
@@ -150,9 +151,13 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
 
       haptics.success();
     } catch (e: any) {
-      if (e.name === 'NotFoundError') {
+      // USBConnectionError carrega code + hint acionável (mapeado em usbEngine)
+      const code: string | undefined = e?.code;
+      const hint: string | undefined = e?.hint;
+      if (code === 'cancelled' || e?.name === 'NotFoundError') {
         addLog({ deviceId, direction: 'info', message: 'Seleção cancelada pelo usuário' });
         setDevices(prev => prev.filter(d => d.id !== deviceId));
+        toast.info('Seleção cancelada', { description: hint });
         return;
       }
       setDevices(prev => prev.map(d =>
@@ -160,8 +165,11 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
           ? { ...d, state: 'error' as ConnectionState, error: e.message }
           : d
       ));
-      addLog({ deviceId, direction: 'error', message: e.message || 'Falha na conexão' });
-      toast.error(e.message || 'Falha na conexão USB');
+      addLog({ deviceId, direction: 'error', message: `${e.message}${hint ? ` — ${hint}` : ''}` });
+      toast.error(e.message || 'Falha na conexão USB', {
+        description: hint,
+        duration: code === 'ios-blocked' || code === 'unsupported' ? 10000 : 5000,
+      });
     }
   }, [selectedProfile, customBaud, addLog, startReadLoop]);
 
@@ -351,6 +359,9 @@ export default function USBConnectionPanel({ onClose }: { onClose: () => void })
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 space-y-3 scrollbar-thin">
+        {/* Diagnóstico de plataforma + APIs (iPhone Safari, plugin Capacitor, etc.) */}
+        <HardwareDiagnosticsBanner compact />
+
         {/* Device Status */}
         <div className="grid grid-cols-3 gap-1 text-center">
           <div className="bg-surface-2 rounded-sm p-1">

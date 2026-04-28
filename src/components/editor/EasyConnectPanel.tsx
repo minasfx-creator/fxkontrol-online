@@ -19,6 +19,7 @@ import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { artnetModuleService } from '@/services/artnetModuleService';
+import { HardwareDiagnosticsBanner } from './hardware/HardwareDiagnosticsBanner';
 
 export type EasyConnectContext = 'all' | 'pyro' | 'dmx' | 'light';
 
@@ -288,6 +289,11 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
             </button>
           )}
         </div>
+      </div>
+
+      {/* Diagnóstico de hardware (iPhone Safari, plugin Capacitor faltando, etc.) */}
+      <div className="px-3 pt-2">
+        <HardwareDiagnosticsBanner compact />
       </div>
 
       {/* Device list */}
