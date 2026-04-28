@@ -32,6 +32,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const Install = lazy(lazyRetry(() => import("./pages/Install")));
+const UsbPairingWizard = lazy(lazyRetry(() => import("./pages/UsbPairingWizard")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
 const Office = lazy(lazyRetry(() => import("./pages/Office")));
@@ -164,6 +165,8 @@ function App() {
                       {/* ── Field ops (gated) ─────────────────────────────────── */}
                       <Route path="/field" element={isEnabled('module_pairing_mobilelink') ? <FieldOps /> : <Navigate to="/office" replace />} />
                       <Route path="/pairing" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#pairing" replace /> : <Navigate to="/office" replace />} />
+                      {/* iOS-first guided USB authorization wizard. */}
+                      <Route path="/pairing/usb" element={<UsbPairingWizard />} />
                       <Route path="/field-test" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#field-test" replace /> : <Navigate to="/office" replace />} />
 
                       {/* ── Settings & sistema ────────────────────────────────── */}
