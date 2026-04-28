@@ -144,12 +144,26 @@ export type LinkSendStatus = 'idle' | 'sending' | 'ok' | 'fail';
 
 export interface LinkHealth {
   transport: DiscoveryTransport;
+  /** Successful dispatches. */
   txOk: number;
+  /** Hard errors (sender threw, NO_REAL_SENDER, protocol fail, etc). */
   txErr: number;
+  /** Dispatches that exceeded the per-link timeout budget. */
+  txTimeout: number;
   /** EMA latency (alpha 0.3). */
   latencyMs: number;
+  /** Worst observed latency (ms) since session start. */
+  maxLatencyMs: number;
+  /** Wall-clock of the most recent dispatch attempt. */
   lastAt: number;
+  /** Wall-clock of the most recent successful dispatch. */
+  lastOkAt: number;
+  /** Wall-clock of the most recent failed/timeout dispatch. */
+  lastFailAt: number;
+  /** Last error message (timeout or hard error). */
   lastError?: string;
+  /** True when the underlying DiscoveredDevice link is currently online. */
+  online: boolean;
   status: LinkSendStatus;
 }
 
@@ -161,6 +175,7 @@ export interface MultiTransportLinkSnapshot {
   health: Partial<Record<DiscoveryTransport, LinkHealth>>;
   totalTxOk: number;
   totalTxErr: number;
+  totalTxTimeout: number;
   lastDispatch?: {
     at: number;
     okCount: number;

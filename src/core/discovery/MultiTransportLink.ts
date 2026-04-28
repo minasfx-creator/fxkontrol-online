@@ -38,6 +38,9 @@ import type {
 
 const PRIORITY: DiscoveryTransport[] = ['webserial', 'webusb', 'webble', 'mdns-artnet'];
 const EMA_ALPHA = 0.3;
+/** Per-link timeout budget for a dispatch (ms). Anything slower is counted
+ *  as a `timeout` instead of a hard error. */
+const DEFAULT_TIMEOUT_MS = 1500;
 
 type Listener = (event: MultiTransportEvent) => void;
 
@@ -46,8 +49,13 @@ function emptyHealth(transport: DiscoveryTransport): LinkHealth {
     transport,
     txOk: 0,
     txErr: 0,
+    txTimeout: 0,
     latencyMs: 0,
+    maxLatencyMs: 0,
     lastAt: 0,
+    lastOkAt: 0,
+    lastFailAt: 0,
+    online: false,
     status: 'idle',
   };
 }
@@ -60,6 +68,7 @@ export class MultiTransportLink {
   private _listeners = new Set<Listener>();
   private _totalTxOk = 0;
   private _totalTxErr = 0;
+  private _totalTxTimeout = 0;
   private _lastDispatch?: MultiTransportLinkSnapshot['lastDispatch'];
   private _unsubAggregator: (() => void) | null = null;
 
@@ -96,6 +105,12 @@ export class MultiTransportLink {
 
   getSnapshot(): MultiTransportLinkSnapshot {
     const dev = this.getDevice();
+    // Refresh `online` field on cached entries from the latest aggregator view.
+    if (dev) {
+      for (const [t, h] of this._health) {
+        h.online = !!dev.links[t]?.online;
+      }
+    }
     const health: Partial<Record<DiscoveryTransport, LinkHealth>> = {};
     for (const [t, h] of this._health) health[t] = { ...h };
     return {
@@ -106,6 +121,7 @@ export class MultiTransportLink {
       health,
       totalTxOk: this._totalTxOk,
       totalTxErr: this._totalTxErr,
+      totalTxTimeout: this._totalTxTimeout,
       lastDispatch: this._lastDispatch ? { ...this._lastDispatch } : undefined,
     };
   }
@@ -145,16 +161,28 @@ export class MultiTransportLink {
     const results = await Promise.all(
       this._participants.map(async (t): Promise<DispatchResult> => {
         const t0 = performance.now();
+        let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
         try {
           const send = transportSenderRegistry.getSender(t);
-          await send(dev, stamped);
+          const sendPromise = Promise.resolve().then(() => send(dev, stamped));
+          const timeoutPromise = new Promise<never>((_, rej) => {
+            timeoutHandle = setTimeout(
+              () => rej(new Error(`TIMEOUT:${t}:${DEFAULT_TIMEOUT_MS}ms`)),
+              DEFAULT_TIMEOUT_MS,
+            );
+          });
+          await Promise.race([sendPromise, timeoutPromise]);
+          if (timeoutHandle) clearTimeout(timeoutHandle);
           const latency = performance.now() - t0;
           this._recordOk(t, latency);
           return { transport: t, ok: true, latencyMs: latency };
         } catch (e) {
+          if (timeoutHandle) clearTimeout(timeoutHandle);
           const latency = performance.now() - t0;
           const msg = e instanceof Error ? e.message : String(e);
-          this._recordErr(t, latency, msg);
+          const isTimeout = msg.startsWith('TIMEOUT:');
+          if (isTimeout) this._recordTimeout(t, latency, msg);
+          else this._recordErr(t, latency, msg);
           return { transport: t, ok: false, latencyMs: latency, error: msg };
         }
       }),
@@ -175,6 +203,7 @@ export class MultiTransportLink {
     if (ev.device.aggregateId !== this.aggregateId) return;
     if (
       ev.type === 'link-added' ||
+      ev.type === 'link-updated' ||
       ev.type === 'link-lost' ||
       ev.type === 'promoted' ||
       ev.type === 'added'
@@ -183,6 +212,10 @@ export class MultiTransportLink {
       this._recomputeParticipants();
       if (this._participants.join(',') !== before) {
         this._emit('participants-changed');
+      } else {
+        // online flags or activeTransport may have changed without
+        // altering participant list — still surface a health refresh.
+        this._emit('health');
       }
     }
   }
@@ -211,8 +244,13 @@ export class MultiTransportLink {
       this._participants = active ? [active] : [];
     }
 
-    // Ensure health entry exists for every participant.
-    for (const t of this._participants) this._ensureHealth(t);
+    // Ensure health entry exists for every known link AND keep online flag synced.
+    for (const t of PRIORITY) {
+      const linkData = dev.links[t];
+      if (!linkData) continue;
+      const h = this._ensureHealth(t);
+      h.online = !!linkData.online;
+    }
   }
 
   private _ensureHealth(transport: DiscoveryTransport): LinkHealth {
@@ -227,26 +265,46 @@ export class MultiTransportLink {
   private _recordOk(transport: DiscoveryTransport, latencyMs: number): void {
     const h = this._ensureHealth(transport);
     h.txOk += 1;
-    h.lastAt = Date.now();
+    const now = Date.now();
+    h.lastAt = now;
+    h.lastOkAt = now;
     h.lastError = undefined;
     h.status = 'ok';
     h.latencyMs = h.latencyMs === 0
       ? latencyMs
       : EMA_ALPHA * latencyMs + (1 - EMA_ALPHA) * h.latencyMs;
+    if (latencyMs > h.maxLatencyMs) h.maxLatencyMs = latencyMs;
     this._totalTxOk += 1;
   }
 
   private _recordErr(transport: DiscoveryTransport, latencyMs: number, error: string): void {
     const h = this._ensureHealth(transport);
     h.txErr += 1;
-    h.lastAt = Date.now();
+    const now = Date.now();
+    h.lastAt = now;
+    h.lastFailAt = now;
     h.lastError = error;
     h.status = 'fail';
-    // Still update EMA so failing-fast stubs don't skew latency to 0.
     h.latencyMs = h.latencyMs === 0
       ? latencyMs
       : EMA_ALPHA * latencyMs + (1 - EMA_ALPHA) * h.latencyMs;
+    if (latencyMs > h.maxLatencyMs) h.maxLatencyMs = latencyMs;
     this._totalTxErr += 1;
+  }
+
+  private _recordTimeout(transport: DiscoveryTransport, latencyMs: number, error: string): void {
+    const h = this._ensureHealth(transport);
+    h.txTimeout += 1;
+    const now = Date.now();
+    h.lastAt = now;
+    h.lastFailAt = now;
+    h.lastError = error;
+    h.status = 'fail';
+    h.latencyMs = h.latencyMs === 0
+      ? latencyMs
+      : EMA_ALPHA * latencyMs + (1 - EMA_ALPHA) * h.latencyMs;
+    if (latencyMs > h.maxLatencyMs) h.maxLatencyMs = latencyMs;
+    this._totalTxTimeout += 1;
   }
 
   private _persistMode(): void {
