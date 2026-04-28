@@ -151,6 +151,36 @@ export default function RealDiscoveryProbe() {
     [physicals],
   );
 
+  // ── Multi-transport aggregation breakdown ──────────────────────
+  // Buckets devices by how many distinct transports reach them, and
+  // singles out the ones that are reachable on 2+ links — that's the
+  // exact case the aggregator is designed to surface.
+  const aggregationStats = useMemo(() => {
+    const byLinkCount = new Map<number, number>(); // linkCount → device count
+    let multi = 0;
+    let multiOnline = 0;
+    for (const p of physicals) {
+      const n = Object.keys(p.links).length;
+      byLinkCount.set(n, (byLinkCount.get(n) ?? 0) + 1);
+      if (n >= 2) {
+        multi += 1;
+        const onlineCount = Object.values(p.links).filter((l) => l?.online).length;
+        if (onlineCount >= 2) multiOnline += 1;
+      }
+    }
+    return { byLinkCount, multi, multiOnline };
+  }, [physicals]);
+
+  // Multi-transport devices first (2+ links), then by lastSeen desc.
+  const sortedPhysicals = useMemo(() => {
+    return [...physicals].sort((a, b) => {
+      const al = Object.keys(a.links).length;
+      const bl = Object.keys(b.links).length;
+      if (al !== bl) return bl - al;
+      return b.lastSeen - a.lastSeen;
+    });
+  }, [physicals]);
+
   const triggerOnce = async () => {
     setScanning(true);
     try { await unifiedDiscovery.scanLight(); } finally {
