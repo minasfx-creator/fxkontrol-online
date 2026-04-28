@@ -161,16 +161,28 @@ export class MultiTransportLink {
     const results = await Promise.all(
       this._participants.map(async (t): Promise<DispatchResult> => {
         const t0 = performance.now();
+        let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
         try {
           const send = transportSenderRegistry.getSender(t);
-          await send(dev, stamped);
+          const sendPromise = Promise.resolve().then(() => send(dev, stamped));
+          const timeoutPromise = new Promise<never>((_, rej) => {
+            timeoutHandle = setTimeout(
+              () => rej(new Error(`TIMEOUT:${t}:${DEFAULT_TIMEOUT_MS}ms`)),
+              DEFAULT_TIMEOUT_MS,
+            );
+          });
+          await Promise.race([sendPromise, timeoutPromise]);
+          if (timeoutHandle) clearTimeout(timeoutHandle);
           const latency = performance.now() - t0;
           this._recordOk(t, latency);
           return { transport: t, ok: true, latencyMs: latency };
         } catch (e) {
+          if (timeoutHandle) clearTimeout(timeoutHandle);
           const latency = performance.now() - t0;
           const msg = e instanceof Error ? e.message : String(e);
-          this._recordErr(t, latency, msg);
+          const isTimeout = msg.startsWith('TIMEOUT:');
+          if (isTimeout) this._recordTimeout(t, latency, msg);
+          else this._recordErr(t, latency, msg);
           return { transport: t, ok: false, latencyMs: latency, error: msg };
         }
       }),
