@@ -2049,9 +2049,9 @@ export default function SkyCanvas() {
         <Suspense fallback={null}>
           {!google3DTilesEnabled && <Moon />}
           {!google3DTilesEnabled && !isLowTierMobile && !environment.lowQualityMode && (
-            <DelayedMount delay={1500}><AtmosphericParticles /></DelayedMount>
+            <DelayedMount delay={2800}><AtmosphericParticles /></DelayedMount>
           )}
-          {!google3DTilesEnabled && !isLowTierMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
+          {!google3DTilesEnabled && !isLowTierMobile && <DelayedMount delay={3500}><WeatherEffects /></DelayedMount>}
         </Suspense>
 
         {/* ═══ Ground / Terrain ═══ */}
