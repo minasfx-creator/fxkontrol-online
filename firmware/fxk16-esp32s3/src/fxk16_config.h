@@ -12,7 +12,7 @@
 
 // Direct mapping: C1->RELAY_PINS[0], C2->RELAY_PINS[1], ..., C16->RELAY_PINS[15].
 // Avoids strapping pins (0, 3, 45, 46) and USB-OTG pins (19, 20).
-static const uint8_t RELAY_PINS[FXK16_CHANNELS] = {
+static constexpr uint8_t RELAY_PINS[FXK16_CHANNELS] = {
    4,  5,  6,  7,   // C1..C4
   15, 16, 35, 36,   // C5..C8
   17, 18,  8,  9,   // C9..C12
