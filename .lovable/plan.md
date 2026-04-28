@@ -1,72 +1,86 @@
 
-# Remoção total dos sistemas de bloqueio — Modo Testes Aberto
+# Desligar todos os hardwares simulados — Detecção real apenas
 
-## Estado atual
+## Estado atual (já honesto na maior parte)
 
-A quarentena anterior já neutralizou as 4 camadas principais (todas retornam permissivo):
+A "Honest Hardware Layer" anterior já garante que:
+- `createSimulatedProvenance()` retorna `integration_mode: 'not_integrated'` por padrão
+- `UnifiedHardwareRegistry` exibe banner: *"No synthetic data is being generated"*
+- Não há fixtures em `src/dev/` (pasta vazia), nem fleet de UAVs simulados auto-spawnado
 
-- `safetyGate.isEnforced()` → sempre `false`
-- `OperationalModeGuard.check()` → sempre `allowed: true` (porque depende do safetyGate)
-- `useItemLocked()` → sempre `false`
-- `LockoutPanel` → modo informativo
-- `safetyGate.setShowState` → set direto, sem hard gate
-
-## Bloqueios remanescentes encontrados
-
-Apesar do shim, três pontos ainda podem barrar simulação/export por estado interno:
-
-1. **`ExportCoordinator.execute()`** — passos 1 e 3 chamam `operationalModeGuard.check('export')` e `readinessEvaluator.evaluate()` e abortam com `success: false` se `allowed_operations` não inclui `'export'`. Como o ModeGuard agora é permissivo, o passo 1 já passa, mas o passo 3 ainda pode bloquear (depende de status de hardware real).
-2. **`ReadinessEvaluator._isOperationAllowed`** — `'export'` exige status específico de hardware, e `'simulate'`/`'preview'` retornam `false` quando `status === 'BLOCKED'`. Sem hardware real conectado isto pode resultar em `BLOCKED` e impedir simulação.
-3. **`SafetyGateSettings` em `Settings.tsx`** — UI ainda expõe toggles que chamam `setMaster/setLayer` (no-ops), causando confusão ao operador.
+**Porém**, ainda existem 4 vazamentos de dados sintéticos quando um adapter aparece como `connected`:
+- Adapters `pollTelemetry()` em `ArduinoNanoAdapter`, `ArtNetNodeAdapter`, `BatteryMonitorAdapter`, `DMXUniverseAdapter`, `MuxReaderAdapterCD4051`, `RelayBankAdapter32` injetam valores via `Math.random()`
+- `ContinuityCheckService._simulateRead()` é chamado quando nenhum reader real é passado
+- `fireoneModuleEmulator` tem `simulateHardware: true` por padrão (continuidade aleatória)
+- `grandMA3Node.simulateInput()` injeta universos DMX falsos
+- Flag `dev_hardware_simulator` mencionada no memory **não existe** em `featureFlags.ts` — precisa ser adicionada como gate central
 
 ## Mudanças propostas
 
-### 1. `src/core/export/ExportCoordinator.ts`
-- Remover o early-return do passo 1 (mode guard) — manter `verificationEngine.run()` apenas como log/auditoria, não como gate.
-- Remover o early-return do passo 3 (readiness) — registrar issues como `warnings[]` no resultado mas seguir com o export.
-- Adicionar campo `warnings: string[]` em `ExportAttemptResult` para o operador continuar enxergando avisos sem ser bloqueado.
+### 1. Adicionar flag central `dev_hardware_simulator` (default `false`)
+**Arquivo:** `src/lib/featureFlags.ts`
+- Nova flag `dev_hardware_simulator: false`
+- Helper `isHardwareSimulatorEnabled()` para uso direto
 
-### 2. `src/core/hardware/ReadinessEvaluator.ts`
-- Em `_isOperationAllowed()`: forçar `return true` para `'simulate'`, `'preview'`, `'export'`, `'validate'`, `'diagnostics'`, `'sync_read_only'`.
-- Manter `evaluate()` calculando `status`, `issues`, `warnings` normalmente (telemetria continua honesta) — apenas a tradução para `allowed_operations` vira "tudo permitido".
+### 2. Gatear toda geração sintética nos adapters
+**Arquivos:** todos em `src/core/hardware/adapters/*.ts` que usam `Math.random()`
+- ArduinoNanoAdapter, ArtNetNodeAdapter, BatteryMonitorAdapter, DMXUniverseAdapter, MuxReaderAdapterCD4051, RelayBankAdapter32
+- Pattern: envolver bloco de geração sintética com `if (isHardwareSimulatorEnabled() && this._connected === 'connected') { ... }` 
+- Quando flag OFF: `pollTelemetry()` mantém valores zerados/iniciais. UI mostra valores "frios" (0Hz, 0V, sem leituras) → operador percebe imediatamente que não há hardware real respondendo
 
-### 3. `src/components/settings/SafetyGateSettings.tsx`
-- Substituir o painel inteiro por um banner informativo: "🟡 Sistemas de bloqueio em quarentena para fase de testes. Restauração: `src/_quarantine/safety/`."
-- Sem switches funcionais. Mantém a aba existindo para não quebrar navegação.
+### 3. Gatear `ContinuityCheckService._simulateRead()`
+**Arquivo:** `src/core/safety/ContinuityCheckService.ts`
+- Quando `reader` ausente e flag OFF: marcar pin como `UNKNOWN` com `ohms: Infinity` (sem inventar resistências aleatórias)
+- Mensagem de log: `"NO_READER — pin marked UNKNOWN"`
 
-### 4. `src/components/editor/SafetySummaryBar.tsx` e `VerificationBar.tsx`
-- Conferir e remover qualquer renderização de "BLOCKED"/"NOT READY" que use cor vermelha bloqueante. Trocar por etiquetas neutras (informativas) — a barra continua existindo, mas sem comunicar bloqueio operacional.
+### 4. Gatear `fireoneModuleEmulator`
+**Arquivo:** `src/lib/fireoneModuleEmulator.ts`
+- Default de `simulateHardware` muda de `true` para `false` quando flag OFF
+- Continuidade falsa (`Math.random() > 0.3`) só roda com flag ON
 
-### 5. `src/utils/joiCommandExecutor.ts`
-- O JOI consulta `readiness.blocked_operations` e `operationalModeGuard.mode` para responder ao operador. Manter a leitura, mas como `blocked_operations` ficará vazio após a mudança em (2), a saída naturalmente passa a ser "tudo permitido". Sem edição direta necessária.
+### 5. Gatear `grandMA3Node.simulateInput()`
+**Arquivo:** `src/lib/grandMA3Node.ts`
+- Método `simulateInput()` vira no-op quando flag OFF (com `console.warn` informativo)
 
-## Arquivos preservados (quarentena, sem mudança)
+### 6. Atualizar banner do `UnifiedHardwareRegistry`
+**Arquivo:** `src/core/hardware/UnifiedHardwareRegistry.ts`
+- Banner enfatiza estado: *"Hardware simulator: OFF. Pure real-hardware discovery via Web Serial / WebUSB / WebBLE / Art-Net."*
 
-- `src/_quarantine/safety/*.original.*` — fonte de verdade para reativação
-- `src/core/safety/safetyGate.ts` (shim no-op) — mantido
-- `src/core/hardware/OperationalModeGuard.ts` — já gateado por safetyGate; mantido
-- `src/lib/uiLockHelper.ts` — já neutralizado; mantido
+### 7. Painel Settings → Hardware (informativo)
+**Novo:** `src/components/settings/HardwareSimulatorSettings.tsx`
+- Banner mostrando estado da flag (OFF — modo testes), lista dos 8 adapters em estado `not_integrated`, instruções de reativação
 
 ## Resultado esperado
 
-- ✅ Toda simulação roda sem hard gate
-- ✅ Todo export executa (gera arquivo) mesmo sem hardware conectado — issues viram warnings no resultado
-- ✅ Telemetria, verificação, readiness continuam **calculando e exibindo** estado real (honestidade preservada) — apenas não bloqueiam mais
-- ✅ Reativação para produção: restaurar `src/_quarantine/safety/safetyGate.original.ts` + reverter os 2 early-returns no ExportCoordinator + restaurar gates em ReadinessEvaluator (commit único reversível)
+- ✅ **Zero `Math.random()`** alimentando UI sem hardware real conectado
+- ✅ Adapters listados, mas todos visivelmente "frios" (0/0/UNKNOWN) até descoberta real
+- ✅ Discovery real (Web Serial/USB/BLE/Art-Net) continua 100% funcional — apenas ele alimenta dados
+- ✅ Continuidade pinos = `UNKNOWN` sem reader real (não passa para `OK` falso)
+- ✅ FireOne emulator/MA3 não inventam estado
+- ✅ Reativação trivial: flip `dev_hardware_simulator: true` em `featureFlags.ts`
 
 ## Detalhes técnicos
 
 ```text
-Antes:                              Depois:
-ExportCoordinator.execute()         ExportCoordinator.execute()
- ├─ ModeGuard gate ──► block         ├─ ModeGuard.check()  ──► log only
- ├─ verification.run()               ├─ verification.run() ──► log only
- ├─ Readiness gate ──► block         ├─ readiness.evaluate() ──► warnings[]
- └─ exporter.run()                   └─ exporter.run()  ── always reached
+ANTES:                                  DEPOIS:
+adapter.pollTelemetry()                 adapter.pollTelemetry()
+ └─ if connected:                        └─ if connected && simulator ON:
+     state.x = Math.random() * 4             state.x = Math.random() * 4
+                                           else: state.x permanece 0/inicial
 
-ReadinessEvaluator._isOperationAllowed(op, status, issues)
-  → switch(op): retorna SEMPRE true (fase de testes)
-  → status/issues continuam visíveis na UI para diagnóstico
+ContinuityCheckService                  ContinuityCheckService
+ └─ if !reader: simulateRead()           └─ if !reader && simulator OFF:
+                                              ohms = Infinity, status = UNKNOWN
+                                            else: simulateRead()
+
+fireoneModuleEmulator                   fireoneModuleEmulator
+ simulateHardware = true (default)       simulateHardware = simulator flag ON
 ```
 
-Memory `mem://funcionalidades/safety-gate-opt-in.md` será atualizada para registrar o estado "quarentena total" e o caminho de reativação.
+**Memory update:** atualizar `mem://funcionalidades/honest-hardware-layer` para refletir que `dev_hardware_simulator` agora existe como flag real (default OFF) e gateia todos os pontos sintéticos remanescentes.
+
+**Não-mudanças (preservados):**
+- `provenance.ts` (já honesto)
+- `UnifiedHardwareRegistry.registerAdapter()` (já registra como `not_integrated`)
+- Caminho de discovery real (`portRegistry`, `unifiedDiscovery`, `ArtPoll`)
+- Componentes de UI que renderizam adapters (já lidam com estado `disconnected`)

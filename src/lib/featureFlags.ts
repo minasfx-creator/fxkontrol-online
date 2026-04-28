@@ -72,6 +72,14 @@ const FLAGS = {
   module_pairing_mobilelink: true,
   /** Organizer menu items (groupings/categorization shortcuts in FullscreenCommandMenu). */
   module_organizer_menu: true,
+
+  // ============================================================
+  // HARDWARE SIMULATOR — Master gate for ALL synthetic data.
+  // OFF (default): adapters/ContinuityCheck/FireOne/MA3 emit ZERO
+  // synthetic values. Only real hardware via Web Serial / WebUSB /
+  // WebBLE / Art-Net feeds the UI. Flip to true ONLY for dev tooling.
+  // ============================================================
+  dev_hardware_simulator: false,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
@@ -82,4 +90,9 @@ export function isEnabled(flag: FeatureFlag): boolean {
 
 export function getFlags(): Readonly<typeof FLAGS> {
   return FLAGS;
+}
+
+/** Convenience: master gate for all synthetic hardware data. */
+export function isHardwareSimulatorEnabled(): boolean {
+  return FLAGS.dev_hardware_simulator;
 }
