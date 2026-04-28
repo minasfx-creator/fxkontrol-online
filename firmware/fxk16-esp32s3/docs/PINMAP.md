@@ -64,3 +64,18 @@ PINMAP
 If any line disagrees with this table, **the firmware wins** — re-pull
 the source and re-flash. The host app will reject mismatched
 `MODEL`/`CH` tokens during handshake.
+
+## Print layouts
+
+Two SVG diagrams reflect the same canonical mapping above:
+
+- **`wiring.svg`** — landscape bench reference (large, on-screen review).
+- **`wiring_a4.svg`** — A4 portrait (210×297 mm), side-by-side ESP32 ↔ relay
+  board with each `GPIO → IN<n>` drawn as a straight horizontal trace.
+  Print with **"Actual size"** (no scaling) — the SVG declares physical mm
+  units so the page comes out to scale. Black & white safe; color is used
+  only as accent (red = +5V, blue = GND).
+
+Both diagrams are generated to mirror `CHANNEL_MAP[]` in
+`fxk16_pinmap.h`; if you rewire the bench, regenerate **both** in the same
+commit that updates the firmware.
