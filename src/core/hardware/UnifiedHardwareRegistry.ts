@@ -7,6 +7,7 @@
 
 import type { HardwareAdapter, HardwareDevice, HardwareStatusSnapshot, DeviceEvent } from './types';
 import type { ProvenanceInfo } from './provenance';
+import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 import { arduinoNanoAdapter } from './adapters/ArduinoNanoAdapter';
 import { shiftRegisterAdapter } from './adapters/ShiftRegisterAdapter74HC595';
 import { muxReaderAdapter } from './adapters/MuxReaderAdapterCD4051';
@@ -116,12 +117,24 @@ class UnifiedHardwareRegistry {
     return { online, total, warnings, errors, score: Math.max(0, Math.min(100, score)) };
   }
 
-  /** Poll all adapters for telemetry */
+  /**
+   * Poll all adapters for telemetry.
+   *
+   * Honest-hardware policy: when `dev_hardware_simulator` is OFF (default),
+   * we only invoke `pollTelemetry()` on adapters that are actually
+   * `connected` to a real device. This means a registry tick on an empty
+   * fleet is a complete no-op — zero `Math.random()` calls anywhere.
+   */
   pollAll(): void {
+    const simOn = isHardwareSimulatorEnabled();
+    let touched = 0;
     for (const adapter of this._adapters.values()) {
+      const connected = adapter.getConnectionState() === 'connected';
+      if (!simOn && !connected) continue;
       adapter.pollTelemetry();
+      touched++;
     }
-    this._notify();
+    if (touched > 0) this._notify();
   }
 
   /** Run diagnostics on all adapters */
@@ -133,9 +146,23 @@ class UnifiedHardwareRegistry {
     return results;
   }
 
-  /** Start automatic polling (read-only telemetry) */
+  /**
+   * Start automatic polling (read-only telemetry).
+   *
+   * Skipped entirely when the simulator gate is OFF AND no adapter is
+   * `connected`. Re-evaluated lazily inside `pollAll()` so adapters that
+   * become connected later still get polled without restarting the timer.
+   */
   startPolling(intervalMs: number = 1000): void {
     this.stopPolling();
+    const anyConnected = Array.from(this._adapters.values()).some(
+      a => a.getConnectionState() === 'connected',
+    );
+    if (!isHardwareSimulatorEnabled() && !anyConnected) {
+      // No real hardware AND simulator off → don't burn a timer.
+      // Caller can re-invoke startPolling() once a device connects.
+      return;
+    }
     this._pollInterval = setInterval(() => this.pollAll(), intervalMs);
   }
 
