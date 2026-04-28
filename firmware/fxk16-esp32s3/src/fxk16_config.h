@@ -34,3 +34,17 @@ static const uint8_t RELAY_PINS[FXK16_CHANNELS] = {
 #define FIRE_MAX_DURATION_MS  5000
 #define WATCHDOG_TIMEOUT_S    2
 #define HEARTBEAT_BLINK_MS    500
+
+// ── Optional boot self-test ───────────────────────────────────────
+// Define FXK16_BOOT_SELFTEST at compile time (e.g. via platformio.ini
+// `build_flags = -DFXK16_BOOT_SELFTEST`) to pulse each relay sequentially
+// at boot. Intended for bench bring-up ONLY — the routine refuses to run
+// unless the UNSAFE_GPIO_JUMPER is shorted to GND, so an unattended unit
+// in the field will NEVER fire ignitors at power-on even if the flag was
+// left enabled by mistake. Pulse width and inter-channel gap are tunable.
+#ifndef FXK16_SELFTEST_PULSE_MS
+#define FXK16_SELFTEST_PULSE_MS  30
+#endif
+#ifndef FXK16_SELFTEST_GAP_MS
+#define FXK16_SELFTEST_GAP_MS    70
+#endif
