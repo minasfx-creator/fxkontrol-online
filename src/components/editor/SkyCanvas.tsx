@@ -111,6 +111,9 @@ import { GeoToolsScene, GeoToolClickHandler } from './GeoToolsR3F';
 import { RenderDebugToggle, RenderDebugPanel, setDebugExposure, setDebugBurstLoad, setDebugLOD, setDebugRendererInfo } from './RenderDebugOverlay';
 import TerrainCacheMetricsPanel from './TerrainCacheMetricsPanel';
 import SkyCanvasDiagnosticsPanel from './SkyCanvasDiagnosticsPanel';
+import GpuRendererDiagnosticsPanel from './GpuRendererDiagnosticsPanel';
+import { setActiveRenderer } from '@/lib/activeRendererRegistry';
+import { logWebglEvent } from '@/lib/webglEventLog';
 import { captureSkyCanvasError } from '@/lib/skyCanvasDiagnostics';
 import SimplifiedSkyFallback, { detectWebGLCapability } from './SimplifiedSkyFallback';
 import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
@@ -478,6 +481,7 @@ function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable, onRecover
         'WebGLContextLoss',
         new Error(`WebGL context lost (auto-recovery attempt #${attemptInWindow})`),
       );
+      logWebglEvent('remount-attempt', `attempt #${attemptInWindow}`);
 
       // Per-attempt degradation: turn the visual budget down progressively.
       try {
@@ -546,6 +550,7 @@ function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable, onRecover
       recoveryInFlightRef.current = true;
 
       recordContextLoss();
+      logWebglEvent('lost');
 
       // Prune old attempts outside the rolling window.
       const now = Date.now();
@@ -594,6 +599,7 @@ function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable, onRecover
       console.log('[FXK Recovery] WebGL context restored');
       recoveringRef.current = false;
       recoveryInFlightRef.current = false;
+      logWebglEvent('restored');
       toast.success('Viewport 3D recuperado', {
         id: 'fxk-webgl-recovery',
         duration: 2500,
@@ -1704,6 +1710,10 @@ export default function SkyCanvas() {
   const presentationMode = useSceneStore(st => st.settings.presentationMode);
   // MissionSetupOverlay removed — scene loads immediately
 
+  // Clear the active-renderer registry on full SkyCanvas unmount so dev
+  // diagnostics panels don't keep polling a disposed renderer.
+  useEffect(() => () => { setActiveRenderer(null); }, []);
+
   // Exit fly mode when pointer lock is lost (ESC)
   useEffect(() => {
     const onLockChange = () => {
@@ -1988,6 +1998,9 @@ export default function SkyCanvas() {
         onCreated={(state) => {
           recoveringContextRef.current = false;
           rendererRef.current = state.gl;
+          // Publish to module-level registry so dev diagnostics panels (which
+          // live outside the R3F tree) can poll renderer.info / read GPU info.
+          setActiveRenderer(state.gl);
           // Reveal immediately — GL context ready and bg color is already painted.
           setCanvasReady(true);
         }}>
@@ -2287,6 +2300,7 @@ export default function SkyCanvas() {
       {/* Debug overlay toggle + panel */}
       {!isMobile && showDebugOverlay && <RenderDebugPanel />}
       {!isMobile && showDebugOverlay && <SkyCanvasDiagnosticsPanel />}
+      {!isMobile && showDebugOverlay && import.meta.env.DEV && <GpuRendererDiagnosticsPanel />}
       {!isMobile && <TerrainCacheMetricsPanel />}
 
       {/* Fullscreen floating edit menu */}
