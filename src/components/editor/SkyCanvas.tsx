@@ -1710,6 +1710,10 @@ export default function SkyCanvas() {
   const presentationMode = useSceneStore(st => st.settings.presentationMode);
   // MissionSetupOverlay removed — scene loads immediately
 
+  // Clear the active-renderer registry on full SkyCanvas unmount so dev
+  // diagnostics panels don't keep polling a disposed renderer.
+  useEffect(() => () => { setActiveRenderer(null); }, []);
+
   // Exit fly mode when pointer lock is lost (ESC)
   useEffect(() => {
     const onLockChange = () => {
