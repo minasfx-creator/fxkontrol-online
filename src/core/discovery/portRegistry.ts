@@ -11,7 +11,7 @@
 
 import { logger } from '@/lib/logger';
 import { getReopenMatchPolicy } from './useReopenMatchPolicy';
-import type { DiscoveryTransport } from './types';
+import type { DiscoveryTransport, LinkMode } from './types';
 
 const STORAGE_KEY = 'fxk:portRegistry:v1';
 const MAX_ENTRIES = 50;
@@ -49,6 +49,8 @@ export interface PortRegistryEntry {
   profileOverride?: DMXProfileOverride;
   /** Operator-pinned transport for multi-link devices. Survives reloads. */
   preferredTransport?: DiscoveryTransport;
+  /** Operator-selected concurrency mode for parallel dispatch. */
+  linkMode?: LinkMode;
   firstSeen: number;
   lastSeen: number;
 }
@@ -241,6 +243,33 @@ export const portRegistry = {
     const cur = this.get(key);
     if (!cur) return;
     this.upsert({ ...cur, preferredTransport: undefined });
+  },
+
+  /** Pin operator's concurrency mode (single/dual/broadcast). */
+  setLinkMode(key: string, mode: LinkMode, label?: string): PortRegistryEntry {
+    const cur = this.get(key);
+    return this.upsert({
+      key,
+      vendorId: cur?.vendorId,
+      productId: cur?.productId,
+      host: cur?.host,
+      lastLabel: label ?? cur?.lastLabel ?? key,
+      operatorConfirmedGeneric: cur?.operatorConfirmedGeneric ?? false,
+      confirmedMode: cur?.confirmedMode,
+      profileOverride: cur?.profileOverride,
+      preferredTransport: cur?.preferredTransport,
+      linkMode: mode,
+    });
+  },
+
+  getLinkMode(key: string): LinkMode | undefined {
+    return this.get(key)?.linkMode;
+  },
+
+  clearLinkMode(key: string): void {
+    const cur = this.get(key);
+    if (!cur) return;
+    this.upsert({ ...cur, linkMode: undefined });
   },
 
   forget(key: string): void {
