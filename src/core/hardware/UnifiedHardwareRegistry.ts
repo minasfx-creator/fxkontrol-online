@@ -38,8 +38,9 @@ class UnifiedHardwareRegistry {
       const total = this._adapters.size;
       console.info(
         `%c[FXK Hardware] ${total} adapter(s) registered as NOT_INTEGRATED.\n` +
-        `Real hardware will be detected via Web Serial / WebUSB / WebBLE / Art-Net discovery.\n` +
-        `No synthetic data is being generated.`,
+        `Hardware simulator: OFF (dev_hardware_simulator flag).\n` +
+        `Pure real-hardware discovery via Web Serial / WebUSB / WebBLE / Art-Net.\n` +
+        `No synthetic data is being generated — adapters stay frozen until real device responds.`,
         'color: #06b6d4; font-weight: bold;',
       );
     }
