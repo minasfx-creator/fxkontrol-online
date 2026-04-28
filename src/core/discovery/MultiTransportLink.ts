@@ -41,6 +41,11 @@ const EMA_ALPHA = 0.3;
 /** Per-link timeout budget for a dispatch (ms). Anything slower is counted
  *  as a `timeout` instead of a hard error. */
 const DEFAULT_TIMEOUT_MS = 1500;
+/** Consecutive timeouts/errors on a single link that trip auto-quarantine. */
+const FAILURE_QUARANTINE_THRESHOLD = 3;
+/** Errors that should NOT trigger quarantine — they're contract-level
+ *  signals (no real sender wired up), not flaky hardware. */
+const QUARANTINE_IGNORED_PREFIXES = ['NO_REAL_SENDER:'];
 
 type Listener = (event: MultiTransportEvent) => void;
 
