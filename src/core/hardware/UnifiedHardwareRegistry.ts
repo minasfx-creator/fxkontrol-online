@@ -32,6 +32,17 @@ class UnifiedHardwareRegistry {
     this.registerAdapter(artNetNodeAdapter);
     this.registerAdapter(fireOneProfileAdapter);
     this.registerAdapter(dmxUniverseAdapter);
+
+    // ── Honesty banner ─────────────────────────────────────────
+    if (typeof console !== 'undefined') {
+      const total = this._adapters.size;
+      console.info(
+        `%c[FXK Hardware] ${total} adapter(s) registered as NOT_INTEGRATED.\n` +
+        `Real hardware will be detected via Web Serial / WebUSB / WebBLE / Art-Net discovery.\n` +
+        `No synthetic data is being generated.`,
+        'color: #06b6d4; font-weight: bold;',
+      );
+    }
   }
 
   registerAdapter(adapter: HardwareAdapter<unknown>): void {
