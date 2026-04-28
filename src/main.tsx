@@ -45,13 +45,20 @@ initWebVitalsConsole();
 // No-ops silently when VITE_RUM_ENDPOINT is not set.
 initObservability();
 
-// Dismiss splash screen after React mounts — use idle callback to let browser paint first
-const dismissSplash = () => (window as any).__splashDone?.();
+// Dismiss splash screen after React mounts. The static HTML splash in index.html
+// covers the viewport at z-index 9999, so if __splashDone() never fires the user
+// sees a black screen with the orange logo even though SkyCanvas is mounting
+// behind it. We use BOTH requestIdleCallback (preferred) AND an unconditional
+// safety timeout — under heavy R3F mount work the main thread can stay busy
+// long enough that the idle callback never fires before the user gives up.
+const dismissSplash = () => {
+  try { (window as any).__splashDone?.(); } catch { /* noop */ }
+};
 if (typeof requestIdleCallback === 'function') {
   requestIdleCallback(dismissSplash, { timeout: 1500 });
-} else {
-  setTimeout(dismissSplash, 100);
 }
+// Hard safety net — runs regardless of idle availability or main-thread pressure.
+setTimeout(dismissSplash, 1500);
 
 // ── PWA Service Worker Registration ──
 // Only register in production and NOT inside iframes/preview hosts
