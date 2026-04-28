@@ -44,8 +44,26 @@ class TxCallbacks : public NimBLECharacteristicCallbacks {
   }
 };
 
+// Identification banner emitted on every fresh link-up (USB-CDC boot and
+// each BLE connect). Single-line, semicolon-separated tokens — parsed by
+// FireOneHardwareBridge so the app recognizes the module as FXK16 (16ch)
+// before the host even sends its first VERSION/STATUS query.
+static void emitIdentifyBanner(void (*sink)(const char*)) {
+  char line[96];
+  snprintf(line, sizeof(line),
+           "MODEL:%s;CH:%u;FW:%s;ID:%s",
+           FXK16_MODEL, (unsigned)FXK16_CHANNELS,
+           FXK16_FW_VERSION, FXK16_MODEL);
+  sink(line);
+}
+
 class ServerCallbacks : public NimBLEServerCallbacks {
-  void onConnect(NimBLEServer*)    override { g_bleConnected = true;  }
+  void onConnect(NimBLEServer*)    override {
+    g_bleConnected = true;
+    // Push identification immediately so the app's handshake captures
+    // MODEL/CH on the first frame, regardless of which command it sends.
+    emitIdentifyBanner(sinkBle);
+  }
   void onDisconnect(NimBLEServer*) override { g_bleConnected = false;
     NimBLEDevice::startAdvertising();
   }
@@ -94,6 +112,12 @@ void setup() {
   // 4. Watchdog
   esp_task_wdt_init(WATCHDOG_TIMEOUT_S, true);
   esp_task_wdt_add(NULL);
+
+  // 5. Boot banner — host's USB-CDC may not be open yet, but as soon as it
+  //    attaches the buffered line will arrive and identify the module. Cheap
+  //    and idempotent: even if the host misses it, the explicit handshake
+  //    (`VERSION`) replies with the same MODEL/CH tokens.
+  emitIdentifyBanner(sinkSerial);
 }
 
 void loop() {

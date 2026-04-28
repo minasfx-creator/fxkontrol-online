@@ -30,12 +30,26 @@ static void handleLine(char* line, ResponseSink sink) {
   // ── Lifecycle ────────────────────────────────────────────────
   if (strcmp(line, "HEARTBEAT") == 0) { sink("PONG"); return; }
   if (strcmp(line, "VERSION")   == 0) {
+    // Reply 1: classic VER: token (consumed by handshake `waitForHandshake`).
     emitf(sink, "VER:%s-%s", FXK16_MODEL, FXK16_FW_VERSION);
+    // Reply 2: identification banner — parsed by FireOneHardwareBridge's
+    // generic token loop (split by ';'), so the app captures MODEL/CH on the
+    // very first round-trip without needing a follow-up STATUS call.
+    emitf(sink, "MODEL:%s;CH:%u;FW:%s",
+          FXK16_MODEL, (unsigned)FXK16_CHANNELS, FXK16_FW_VERSION);
     return;
   }
   if (strcmp(line, "STATUS") == 0) {
     emitf(sink, "BAT:0.0;PINS:%u;RSSI:-30;MODEL:%s;CH:%u",
           (unsigned)pinsMask(), FXK16_MODEL, (unsigned)FXK16_CHANNELS);
+    return;
+  }
+  // Explicit IDENTIFY alias — some discovery flows query this instead of
+  // STATUS to avoid pulling battery/RSSI noise. Returns ONLY identification
+  // tokens, in a single semicolon-separated line.
+  if (strcmp(line, "IDENTIFY") == 0) {
+    emitf(sink, "MODEL:%s;CH:%u;FW:%s;ID:%s",
+          FXK16_MODEL, (unsigned)FXK16_CHANNELS, FXK16_FW_VERSION, FXK16_MODEL);
     return;
   }
 
