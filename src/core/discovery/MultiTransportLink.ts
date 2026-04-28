@@ -203,6 +203,7 @@ export class MultiTransportLink {
     if (ev.device.aggregateId !== this.aggregateId) return;
     if (
       ev.type === 'link-added' ||
+      ev.type === 'link-updated' ||
       ev.type === 'link-lost' ||
       ev.type === 'promoted' ||
       ev.type === 'added'
@@ -211,6 +212,10 @@ export class MultiTransportLink {
       this._recomputeParticipants();
       if (this._participants.join(',') !== before) {
         this._emit('participants-changed');
+      } else {
+        // online flags or activeTransport may have changed without
+        // altering participant list — still surface a health refresh.
+        this._emit('health');
       }
     }
   }
