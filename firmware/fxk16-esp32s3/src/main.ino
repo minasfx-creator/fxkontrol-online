@@ -6,6 +6,7 @@
 //   4. Enable hardware watchdog.
 #include <Arduino.h>
 #include <NimBLEDevice.h>
+#include <esp_mac.h>
 #include <esp_task_wdt.h>
 
 #include "fxk16_config.h"
@@ -38,7 +39,7 @@ static void sinkBoth(const char* line) {
 }
 
 class TxCallbacks : public NimBLECharacteristicCallbacks {
-  void onWrite(NimBLECharacteristic* c) override {
+  void onWrite(NimBLECharacteristic* c, NimBLEConnInfo&) override {
     std::string v = c->getValue();
     for (char ch : v) fxk16::protocolFeedByte((uint8_t)ch, sinkBoth);
   }
@@ -58,13 +59,13 @@ static void emitIdentifyBanner(void (*sink)(const char*)) {
 }
 
 class ServerCallbacks : public NimBLEServerCallbacks {
-  void onConnect(NimBLEServer*)    override {
+  void onConnect(NimBLEServer*, NimBLEConnInfo&) override {
     g_bleConnected = true;
     // Push identification immediately so the app's handshake captures
     // MODEL/CH on the first frame, regardless of which command it sends.
     emitIdentifyBanner(sinkBle);
   }
-  void onDisconnect(NimBLEServer*) override { g_bleConnected = false;
+  void onDisconnect(NimBLEServer*, NimBLEConnInfo&, int) override { g_bleConnected = false;
     NimBLEDevice::startAdvertising();
   }
 };
@@ -90,7 +91,6 @@ static void bleInit() {
   auto* adv = NimBLEDevice::getAdvertising();
   adv->addServiceUUID(SVC_UUID);
   adv->setName(name);
-  adv->setScanResponse(true);
   adv->start();
 }
 
@@ -110,7 +110,12 @@ void setup() {
   bleInit();
 
   // 4. Watchdog
-  esp_task_wdt_init(WATCHDOG_TIMEOUT_S, true);
+  const esp_task_wdt_config_t wdtConfig = {
+    .timeout_ms = WATCHDOG_TIMEOUT_S * 1000,
+    .idle_core_mask = (1 << portNUM_PROCESSORS) - 1,
+    .trigger_panic = true,
+  };
+  esp_task_wdt_init(&wdtConfig);
   esp_task_wdt_add(NULL);
 
   // 5. Boot banner — host's USB-CDC may not be open yet, but as soon as it
