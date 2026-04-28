@@ -1194,7 +1194,10 @@ export function StageGround({ satelliteTexture }: { satelliteTexture: string | n
 
       {sc.showScalePoles && [-80, -40, 0, 40, 80].map((x) => (
         <group key={`pole-${x}`} position={[x, 0, -60]}>
-          <mesh position={[0, 50, 0]} castShadow>
+          <mesh position={[0, 50, 0]}>
+            {/* castShadow removed — helper scale poles should not cast shadows
+                (extra shadow casters contribute to WebGL context loss on the
+                desktop /studio viewport). */}
             <cylinderGeometry args={[0.08, 0.1, 100, 8]} />
             <meshStandardMaterial color="#555555" metalness={0.7} roughness={0.25} />
           </mesh>
