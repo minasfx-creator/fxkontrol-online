@@ -109,3 +109,8 @@ export function getFlags(): Readonly<typeof FLAGS> {
 export function isHardwareSimulatorEnabled(): boolean {
   return FLAGS.dev_hardware_simulator;
 }
+
+/** Convenience: real-only mode (only verified-handshake adapters emit data). */
+export function isRealOnlyMode(): boolean {
+  return FLAGS.real_only_mode;
+}
