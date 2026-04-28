@@ -97,16 +97,39 @@ once a port is authorized.
 
 ---
 
+## Auto-diagnóstico no app
+
+A partir desta versão, todo painel de conexão (USB e EasyConnect) exibe
+um banner **Hardware Diagnostics** no topo. Ele mostra em tempo real:
+
+| Campo | O que indica |
+|-------|--------------|
+| Plataforma | iOS Safari / iOS Capacitor / Android / Desktop Chrome / etc. |
+| Web Serial / WebUSB / Web Bluetooth | ✓ ou ✗ — disponibilidade real da API no runtime atual |
+| Capacitor Nativo | ✓ se o app foi compilado via Capacitor |
+| Plugin Serial / BLE (Cap) | ✓ se o plugin foi instalado e sincronizado |
+| Causa raiz | Texto humano explicando POR QUE não conecta |
+| Como resolver | Lista numerada de passos acionáveis |
+
+No iPhone, o banner detecta automaticamente se você está rodando o
+PWA Safari (bloqueio raiz da Apple) ou o app nativo (caminho liberado),
+e oferece o passo-a-passo correspondente.
+
 ## Troubleshooting "iPhone won't see the USB device"
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
+| Banner mostra "iOS Safari / PWA" | Você está no Safari, sem app nativo | Instale o build Capacitor (passos acima) |
+| Banner mostra "Plugin serial faltando" | Capacitor sem `@capacitor-community/serial` | `npm install @capacitor-community/serial && npx cap sync ios` |
 | Lightning adapter shows "accessory not supported" | Not MFi-certified | Use Apple-certified Lightning→USB-3 Camera Adapter, NOT a generic OTG cable |
 | USB-C iPad: device draws too much power | iPad gives ~500mA | Use a powered USB hub between iPad and target |
 | App lists no ports | Plugin not synced | `npm run build && npx cap sync ios` then re-run from Xcode |
 | Port appears then disappears | Background suspend killed I/O | Add `external-accessory` to `UIBackgroundModes` (step 3) |
 | MFi protocol not whitelisted | Device uses non-standard protocol | Contact device vendor for the protocol string, add to `UISupportedExternalAccessoryProtocols` |
 | `cap sync` errors about CocoaPods | Pods out of date | `cd ios/App && pod install --repo-update` |
+| Erro `NotAllowedError` no toast | iOS bloqueou Web API | Use o app nativo — não há jeito no Safari |
+| Erro `SecurityError` | HTTPS ausente ou iframe restrito | Abra direto na URL https:// (não em iframe de outro domínio) |
+| Erro `NotFoundError` ao clicar Conectar | Usuário fechou a janela do navegador | Clique CONECTAR de novo e selecione o dispositivo |
 
 ---
 
