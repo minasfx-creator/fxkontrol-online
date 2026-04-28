@@ -1952,7 +1952,11 @@ export default function SkyCanvas() {
       <Canvas
         key={canvasInstanceKey}
         resize={{ debounce: 50, scroll: false }}
-        shadows
+        // Use BasicShadowMap on boot — PCF/PCFSoft allocate large depth FBOs
+        // and stalled the GPU during /studio cold-start. Quality controllers
+        // can promote to PCFSoftShadowMap later via gl.shadowMap.type once
+        // the warm-up window clears.
+        shadows={isLowTierMobile ? false : { type: THREE.BasicShadowMap, enabled: true }}
         gl={{
           antialias: !isLowTierMobile,
           toneMapping: THREE.ACESFilmicToneMapping,
