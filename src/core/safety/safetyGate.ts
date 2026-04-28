@@ -1,21 +1,27 @@
 /**
- * ─── Safety Gate ───────────────────────────────────────────────────
- * Single source of truth for "are blocking systems enforced?".
+ * ─── Safety Gate — QUARANTINED FOR TESTING ─────────────────────────
  *
- * Default: ALL OFF. New users get a frictionless experience.
- * Power users / live hardware operators can opt in via Settings.
+ * ⚠️  ALL BLOCKING LAYERS ARE PERMANENTLY DISABLED  ⚠️
  *
- * Layers:
- *   - lockoutGroups   : Lockout Groups (A–E) on Live Firing Panel
- *   - interlockChain  : LOCK → ARM → FIRE state machine
- *   - modeGuard       : OperationalModeGuard (preview/dry-run/export…)
- *   - uiLocks         : per-item .locked flags in editor stores
+ * This module has been quarantined for the testing phase.
+ * Original implementation preserved at:
+ *     src/_quarantine/safety/safetyGate.original.ts
  *
- * Master switch overrides everything: if master is OFF, all layers are
- * treated as OFF regardless of individual settings.
+ * BEHAVIOR:
+ *   - `isEnforced(layer)` ALWAYS returns false
+ *   - `anyEnforced` ALWAYS returns false
+ *   - `enableAll()` / `setMaster()` / `setLayer()` are NO-OPS
+ *   - Original config schema and listener API preserved (zero refactor)
  *
- * Persistence: localStorage key `fxk:safety-gate:v1`.
- * Lives outside React — pure observable singleton.
+ * TO RE-ACTIVATE FOR PRODUCTION DEPLOY:
+ *   1. `cp src/_quarantine/safety/safetyGate.original.ts src/core/safety/safetyGate.ts`
+ *   2. Re-enable the Settings → Segurança tab in `src/pages/Settings.tsx`
+ *   3. Run full safety regression suite (E-STOP <50ms, interlock chain)
+ *
+ * Why a shim instead of deletion?
+ *   • Preserves all import sites (~16 files reference safetyGate)
+ *   • Listener API used by reactive UIs stays intact (no React errors)
+ *   • Zero-friction reversal when ready to ship
  */
 
 export type SafetyLayer =
@@ -32,104 +38,68 @@ export interface SafetyGateConfig {
   uiLocks: boolean;
 }
 
-const STORAGE_KEY = 'fxk:safety-gate:v1';
-
-// Default = everyone is free. No friction for first-time users.
-const DEFAULT_CONFIG: SafetyGateConfig = {
+const QUARANTINED_CONFIG: SafetyGateConfig = Object.freeze({
   masterEnabled: false,
   lockoutGroups: false,
   interlockChain: false,
   modeGuard: false,
   uiLocks: false,
-};
-
-function loadFromStorage(): SafetyGateConfig {
-  if (typeof localStorage === 'undefined') return { ...DEFAULT_CONFIG };
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_CONFIG };
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_CONFIG, ...parsed };
-  } catch {
-    return { ...DEFAULT_CONFIG };
-  }
-}
-
-function persist(cfg: SafetyGateConfig): void {
-  if (typeof localStorage === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
-  } catch {
-    /* quota / private mode — silent fail */
-  }
-}
+});
 
 class SafetyGate {
-  private _cfg: SafetyGateConfig = loadFromStorage();
   private _listeners = new Set<(cfg: SafetyGateConfig) => void>();
 
-  /** Snapshot of current config (read-only). */
   get config(): Readonly<SafetyGateConfig> {
-    return this._cfg;
+    return QUARANTINED_CONFIG;
   }
 
-  /** True if a given safety layer should currently block actions. */
-  isEnforced(layer: SafetyLayer): boolean {
-    if (!this._cfg.masterEnabled) return false;
-    return !!this._cfg[layer];
+  /** Always false — quarantined. */
+  isEnforced(_layer: SafetyLayer): boolean {
+    return false;
   }
 
-  /** True if any layer would block (used for UI banners). */
+  /** Always false — quarantined. */
   get anyEnforced(): boolean {
-    if (!this._cfg.masterEnabled) return false;
-    return (
-      this._cfg.lockoutGroups ||
-      this._cfg.interlockChain ||
-      this._cfg.modeGuard ||
-      this._cfg.uiLocks
-    );
+    return false;
   }
 
-  setMaster(on: boolean): void {
-    this._cfg = { ...this._cfg, masterEnabled: on };
-    persist(this._cfg);
-    this._notify();
+  /** No-op — re-activation must be done via file restore. */
+  setMaster(_on: boolean): void {
+    if (typeof console !== 'undefined') {
+      console.info('[SafetyGate] QUARANTINED — setMaster() ignored. Restore from src/_quarantine/safety/.');
+    }
   }
 
-  setLayer(layer: SafetyLayer, on: boolean): void {
-    this._cfg = { ...this._cfg, [layer]: on };
-    persist(this._cfg);
-    this._notify();
+  /** No-op — re-activation must be done via file restore. */
+  setLayer(_layer: SafetyLayer, _on: boolean): void {
+    if (typeof console !== 'undefined') {
+      console.info('[SafetyGate] QUARANTINED — setLayer() ignored. Restore from src/_quarantine/safety/.');
+    }
   }
 
-  /** Enable the full classic mission-critical experience. */
+  /** No-op — quarantined. */
   enableAll(): void {
-    this._cfg = {
-      masterEnabled: true,
-      lockoutGroups: true,
-      interlockChain: true,
-      modeGuard: true,
-      uiLocks: true,
-    };
-    persist(this._cfg);
-    this._notify();
+    if (typeof console !== 'undefined') {
+      console.warn('[SafetyGate] QUARANTINED — enableAll() blocked. To re-enable safety blocking, restore from src/_quarantine/safety/safetyGate.original.ts');
+    }
   }
 
-  /** Disable everything (back to free / beginner mode). */
+  /** Already disabled. */
   disableAll(): void {
-    this._cfg = { ...DEFAULT_CONFIG };
-    persist(this._cfg);
-    this._notify();
+    /* no-op — already permanently disabled */
   }
 
   subscribe(fn: (cfg: SafetyGateConfig) => void): () => void {
     this._listeners.add(fn);
-    return () => this._listeners.delete(fn);
-  }
-
-  private _notify(): void {
-    for (const fn of this._listeners) fn(this._cfg);
+    return () => { this._listeners.delete(fn); };
   }
 }
 
 export const safetyGate = new SafetyGate();
+
+if (typeof console !== 'undefined') {
+  console.info(
+    '%c[FXK] Safety blocking layers QUARANTINED for testing. Restore from src/_quarantine/safety/ before production.',
+    'color: #f59e0b; font-weight: bold;',
+  );
+}
