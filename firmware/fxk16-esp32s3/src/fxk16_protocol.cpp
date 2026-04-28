@@ -54,6 +54,18 @@ static void handleLine(char* line, ResponseSink sink) {
     return;
   }
 
+  // ── PINMAP — dump the canonical channel↔GPIO↔terminal table for
+  // field verification. One MAP line per channel, terminated by OK:PINMAP.
+  if (strcmp(line, "PINMAP") == 0) {
+    for (uint8_t i = 0; i < FXK16_CHANNELS; i++) {
+      const ChannelMap& row = CHANNEL_MAP[i];
+      emitf(sink, "MAP:%u:GPIO%u:%s",
+            (unsigned)row.channel, (unsigned)row.gpio, row.terminal);
+    }
+    sink("OK:PINMAP");
+    return;
+  }
+
   // ── ESTOP / RESET ────────────────────────────────────────────
   if (strcmp(line, "ESTOP") == 0) { estopLatch();   sink("OK:ESTOP"); return; }
   if (strcmp(line, "RESET") == 0) { estopRelease(); sink("OK:RESET"); return; }
