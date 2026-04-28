@@ -267,6 +267,21 @@ export default function RealDiscoveryProbe() {
               <RefreshCw className={`h-4 w-4 ${scanning ? 'animate-spin' : ''}`} />
               Scan now
             </Button>
+            <div className="flex items-center gap-2 pl-2 border-l border-border">
+              <Switch id="auto-refresh" checked={autoRefresh} onCheckedChange={setAutoRefresh} />
+              <label htmlFor="auto-refresh" className="text-sm font-medium cursor-pointer">
+                Auto-refresh ({(refreshMs / 1000).toFixed(1)}s)
+              </label>
+              <input
+                aria-label="Refresh interval (ms)"
+                type="number"
+                min={250}
+                step={250}
+                value={refreshMs}
+                onChange={(e) => setRefreshMs(Math.max(250, Number(e.target.value) || 1000))}
+                className="w-20 h-8 rounded-md border border-input bg-background px-2 text-sm"
+              />
+            </div>
             <div className="ml-auto text-xs text-muted-foreground">
               {scanning ? 'Scanning…' : 'Idle'} · {physicals.length} physical · {totalLinks} link(s)
               {aggregationStats.multi > 0 && (
