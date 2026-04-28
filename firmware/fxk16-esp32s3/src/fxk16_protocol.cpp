@@ -1,6 +1,7 @@
 // ─── FXK16 — ASCII protocol parser implementation ────────────────
 #include "fxk16_protocol.h"
 #include "fxk16_config.h"
+#include "fxk16_pinmap.h"
 #include "fxk16_relay.h"
 #include <string.h>
 #include <stdio.h>
