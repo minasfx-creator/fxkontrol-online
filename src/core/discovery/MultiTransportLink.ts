@@ -281,6 +281,8 @@ export class MultiTransportLink {
       : EMA_ALPHA * latencyMs + (1 - EMA_ALPHA) * h.latencyMs;
     if (latencyMs > h.maxLatencyMs) h.maxLatencyMs = latencyMs;
     this._totalTxOk += 1;
+    // Healthy dispatch — reset failure streak.
+    this._consecutiveFailures.set(transport, 0);
   }
 
   private _recordErr(transport: DiscoveryTransport, latencyMs: number, error: string): void {
@@ -296,6 +298,7 @@ export class MultiTransportLink {
       : EMA_ALPHA * latencyMs + (1 - EMA_ALPHA) * h.latencyMs;
     if (latencyMs > h.maxLatencyMs) h.maxLatencyMs = latencyMs;
     this._totalTxErr += 1;
+    this._tickFailure(transport, error);
   }
 
   private _recordTimeout(transport: DiscoveryTransport, latencyMs: number, error: string): void {
@@ -311,6 +314,42 @@ export class MultiTransportLink {
       : EMA_ALPHA * latencyMs + (1 - EMA_ALPHA) * h.latencyMs;
     if (latencyMs > h.maxLatencyMs) h.maxLatencyMs = latencyMs;
     this._totalTxTimeout += 1;
+    this._tickFailure(transport, error);
+  }
+
+  /**
+   * Increment the consecutive-failure counter for a transport and trip
+   * auto-quarantine when the threshold is reached. Quarantine is honored
+   * by DeviceAggregator._chooseActive() — the active transport will be
+   * promoted to the next-best healthy link and our participants list is
+   * recomputed so subsequent dispatches stop targeting the bad link.
+   *
+   * Honest-hardware contract preserved: errors classified as
+   * `NO_REAL_SENDER:*` (no real adapter wired in) are NOT counted —
+   * those are configuration signals, not flaky links.
+   */
+  private _tickFailure(transport: DiscoveryTransport, error: string): void {
+    if (QUARANTINE_IGNORED_PREFIXES.some((p) => error.startsWith(p))) return;
+
+    const next = (this._consecutiveFailures.get(transport) ?? 0) + 1;
+    this._consecutiveFailures.set(transport, next);
+    if (next < FAILURE_QUARANTINE_THRESHOLD) return;
+
+    // Trip the aggregator. It will promote a fresh active transport when
+    // the failed one was active, and emit a 'link-quarantined' event.
+    try {
+      deviceAggregator.quarantineTransport(this.aggregateId, transport, error, next);
+    } catch (e) {
+      logger.warn('[MultiTransportLink] quarantineTransport threw', e);
+    }
+    // Aggregator event will trigger _onAggregatorEvent → recompute, but
+    // force an immediate participant refresh so the in-flight dispatch
+    // result loop sees the new layout right away.
+    const before = this._participants.join(',');
+    this._recomputeParticipants();
+    if (this._participants.join(',') !== before) this._emit('participants-changed');
+    // Reset counter so a recovered link doesn't immediately re-quarantine.
+    this._consecutiveFailures.set(transport, 0);
   }
 
   private _persistMode(): void {
