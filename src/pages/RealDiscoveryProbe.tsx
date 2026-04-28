@@ -244,6 +244,12 @@ export default function RealDiscoveryProbe() {
             </Button>
             <div className="ml-auto text-xs text-muted-foreground">
               {scanning ? 'Scanning…' : 'Idle'} · {physicals.length} physical · {totalLinks} link(s)
+              {aggregationStats.multi > 0 && (
+                <> · <span className="text-primary font-medium">{aggregationStats.multi} multi-transport</span>
+                {aggregationStats.multiOnline > 0 && (
+                  <span className="text-muted-foreground"> ({aggregationStats.multiOnline} online)</span>
+                )}</>
+              )}
             </div>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
