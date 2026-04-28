@@ -192,7 +192,16 @@ export default function Settings() {
         </TabsContent>
 
         <TabsContent value="safety" className="mt-5">
-          <SafetyGateSettings />
+          <div className="rounded border border-amber-500/30 bg-amber-500/5 p-4 font-mono text-[11px]">
+            <div className="text-amber-400 font-bold uppercase tracking-widest mb-2">⚠ Quarantined for testing</div>
+            <p className="text-muted-foreground leading-relaxed">
+              All blocking layers (Lockout Groups, Interlock Chain, Mode Guard, UI Locks) are
+              <span className="text-emerald-400"> permanently disabled</span> during the testing phase.
+            </p>
+            <p className="text-muted-foreground/70 mt-2">
+              Re-activation path documented at <code className="text-cyan-400">src/_quarantine/safety/README.md</code>.
+            </p>
+          </div>
         </TabsContent>
 
         <TabsContent value="billing" className="mt-5">
