@@ -217,6 +217,32 @@ export const portRegistry = {
     return this.get(key)?.profileOverride;
   },
 
+  /** Pin operator's preferred transport for a multi-link physical device. */
+  setPreferredTransport(key: string, transport: DiscoveryTransport, label?: string): PortRegistryEntry {
+    const cur = this.get(key);
+    return this.upsert({
+      key,
+      vendorId: cur?.vendorId,
+      productId: cur?.productId,
+      host: cur?.host,
+      lastLabel: label ?? cur?.lastLabel ?? key,
+      operatorConfirmedGeneric: cur?.operatorConfirmedGeneric ?? false,
+      confirmedMode: cur?.confirmedMode,
+      profileOverride: cur?.profileOverride,
+      preferredTransport: transport,
+    });
+  },
+
+  getPreferredTransport(key: string): DiscoveryTransport | undefined {
+    return this.get(key)?.preferredTransport;
+  },
+
+  clearPreferredTransport(key: string): void {
+    const cur = this.get(key);
+    if (!cur) return;
+    this.upsert({ ...cur, preferredTransport: undefined });
+  },
+
   forget(key: string): void {
     const all = load().filter(e => e.key !== key);
     save(all);
