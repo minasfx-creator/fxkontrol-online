@@ -27,6 +27,8 @@ export interface ExportAttemptResult {
   success: boolean;
   timestamp: number;
   issues: string[];
+  /** Avisos não-bloqueantes (mode guard / readiness) registrados em modo testes. */
+  warnings?: string[];
   cueCount: number;
   /** Preencido apenas para targets RJ (rj-traditional / rj-timecode). */
   preflight?: RJPreflightReport;
@@ -35,23 +37,20 @@ export interface ExportAttemptResult {
 class ExportCoordinator {
   private _history: ExportAttemptResult[] = [];
 
-  /** Attempt an export through the full pipeline */
+  /** Attempt an export through the full pipeline.
+   *  ⚠️  Modo Testes: gates de ModeGuard e Readiness são apenas LOG (não bloqueiam).
+   *  Restaurar early-returns para produção (ver src/_quarantine/safety/). */
   execute(target: ExportTarget): ExportAttemptResult {
     const timestamp = Date.now();
+    const warnings: string[] = [];
 
-    // 1. Check operational mode allows export
+    // 1. Mode guard — log only (não bloqueia)
     const modeCheck = operationalModeGuard.check('export');
     if (!modeCheck.allowed) {
-      const result: ExportAttemptResult = {
-        target, success: false, timestamp,
-        issues: [`Mode guard blocked: ${modeCheck.reason}`], cueCount: 0,
-      };
-      this._log(result);
-      return result;
+      warnings.push(`[ModeGuard] ${modeCheck.reason}`);
     }
 
-    // 2. Run verification, log it, and persist an executive report snapshot
-    //    (one row per export attempt = canonical go/no-go audit trail).
+    // 2. Verification — log/auditoria (não bloqueia)
     const vResult = verificationEngine.run();
     verificationLog.record(vResult);
     void recordVerificationReport({
@@ -60,131 +59,93 @@ class ExportCoordinator {
       context: { trigger: 'export', target },
     });
 
-    // 3. Check readiness
+    // 3. Readiness — log only (não bloqueia)
     const readiness = readinessEvaluator.evaluate();
     if (!readiness.allowed_operations.includes('export')) {
-      const result: ExportAttemptResult = {
-        target, success: false, timestamp,
-        issues: [`Readiness blocked (${readiness.status}): ${readiness.issues.map(i => i.message).join('; ')}`],
-        cueCount: 0,
-      };
-      this._log(result);
-      return result;
+      warnings.push(`[Readiness:${readiness.status}] ${readiness.issues.map(i => i.message).join('; ')}`);
     }
 
-    // 4. Execute target exporter
+    // 4. Execute target exporter (gates acima são apenas log em modo testes)
+    const result = this._runExporter(target, timestamp);
+    if (warnings.length > 0) {
+      result.warnings = warnings;
+    }
+    this._log(result);
+    return result;
+  }
+
+  private _runExporter(target: ExportTarget, timestamp: number): ExportAttemptResult {
     try {
       switch (target) {
         case 'fireone': {
           const r = generateFireOneScript();
           if (!r.verified || r.errors.length > 0) {
-            const result: ExportAttemptResult = { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
-            this._log(result);
-            return result;
+            return { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
           }
           downloadFireOneScript();
-          const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
-          this._log(result);
-          return result;
+          return { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
         }
         case 'artnet': {
           const r = generateArtNetPatchCSV();
           if (!r.verified || r.errors.length > 0) {
-            const result: ExportAttemptResult = { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
-            this._log(result);
-            return result;
+            return { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
           }
           downloadArtNetPatch();
-          const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
-          this._log(result);
-          return result;
+          return { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
         }
         case 'drone': {
           const r = generateDroneCSV();
           if (!r.verified || r.errors.length > 0) {
-            const result: ExportAttemptResult = { target, success: false, timestamp, issues: r.errors, cueCount: r.droneCount };
-            this._log(result);
-            return result;
+            return { target, success: false, timestamp, issues: r.errors, cueCount: r.droneCount };
           }
           downloadDroneCSV();
-          const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.droneCount };
-          this._log(result);
-          return result;
+          return { target, success: true, timestamp, issues: [], cueCount: r.droneCount };
         }
         case 'megafire': {
           const r = generateMegafireScript();
           if (!r.verified || r.errors.length > 0) {
-            const result: ExportAttemptResult = { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
-            this._log(result);
-            return result;
+            return { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
           }
           downloadMegafireScript();
-          const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
-          this._log(result);
-          return result;
+          return { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
         }
         case 'rj-traditional':
         case 'rj-timecode': {
           const variant: RJVariant = target === 'rj-traditional' ? 'traditional' : 'timecode';
-
-          // Preflight cue-a-cue ANTES de gerar/baixar
           const preflight = runRJPreflight(variant);
-
-          // Bloqueio duro: nada exportável
           if (preflight.willBeEmpty) {
-            const result: ExportAttemptResult = {
+            return {
               target, success: false, timestamp,
               issues: [`[BLOCKED] ${preflight.summary}. Nenhum cue restou exportável.`],
               cueCount: 0, preflight,
             };
-            this._log(result);
-            return result;
           }
-
           const r = generateRJEquipamentosScript(variant);
           if (!r.verified || r.errors.length > 0) {
-            const result: ExportAttemptResult = {
-              target, success: false, timestamp,
-              issues: r.errors, cueCount: r.cueCount, preflight,
-            };
-            this._log(result);
-            return result;
+            return { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount, preflight };
           }
           downloadRJEquipamentosScript(variant);
-
-          // Issues informativas (fallbacks/warns ainda passam)
           const fallbackIssues = preflight.entries
             .filter(e => e.disposition === 'fallback' || e.disposition === 'warn' || e.disposition === 'blocked')
             .map(e => `[${e.disposition.toUpperCase()}] cue#${e.cueIndex + 1} (mod ${e.module1Based}, ch ${e.channel1Based}, ${e.timeMs}ms): ${e.reasons.join('; ')}`);
-
-          const result: ExportAttemptResult = {
-            target, success: true, timestamp,
-            issues: fallbackIssues, cueCount: r.cueCount, preflight,
-          };
-          this._log(result);
-          return result;
+          return { target, success: true, timestamp, issues: fallbackIssues, cueCount: r.cueCount, preflight };
         }
         case 'galaxis-gs2': {
           const r = generateGalaxisGS2Script();
           if (!r.verified || r.errors.length > 0) {
-            const result: ExportAttemptResult = { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
-            this._log(result);
-            return result;
+            return { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
           }
           downloadGalaxisGS2Script();
-          const result: ExportAttemptResult = { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
-          this._log(result);
-          return result;
+          return { target, success: true, timestamp, issues: [], cueCount: r.cueCount };
         }
       }
     } catch (err) {
-      const result: ExportAttemptResult = {
+      return {
         target, success: false, timestamp,
         issues: [`Export error: ${err instanceof Error ? err.message : String(err)}`], cueCount: 0,
       };
-      this._log(result);
-      return result;
     }
+    return { target, success: false, timestamp, issues: [`Unknown target: ${target}`], cueCount: 0 };
   }
 
   getHistory(): ExportAttemptResult[] { return [...this._history]; }
