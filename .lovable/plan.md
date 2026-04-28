@@ -1,118 +1,65 @@
-# Performance Hardening — Plano por Fases Medidas
+# Fix: Viewport 3D preto no modo desktop (`/studio`) — `THREE.WebGLRenderer: Context Lost`
 
-## Diagnóstico (medido agora, sem alterar nada)
+## Diagnóstico
 
-| Métrica | Valor | Status |
-|---|---|---|
-| Legacy stores ativos | 22 (em `src/store/`) | 🔴 0 migrados |
-| `src/store/domains/` | Barrel re-export vazio (12 LOC úteis) | 🟡 ilusão de consolidação |
-| Novos macro-stores | 4 scaffolds, **0 consumidores** | 🟡 não usados |
-| `useStore()` sem selector | **0** | ✅ não é o problema |
-| `useShallow` no codebase | 5 chamadas | 🔴 subutilizado |
-| `React.memo` | 14 ocorrências | 🟡 baixo |
-| Rotas lazy | 31/31 | ✅ |
-| Heavy deps | three, drei, fiber, postprocessing, recharts, jspdf | 🟡 candidatas a split |
-| `useProjectStore` consumidores | **182** | 🔴 maior risco de migração |
-| `useSceneStore` consumidores | 55 | 🔴 |
-| WebGPU buffer ops | `webgpuLoop`, `gpuComputeParticles`, 4× swarmgpt | precisa profile real |
+O console confirma o sintoma reportado:
 
-## Limites desta sessão (read-only / sandbox)
+```
+[AdaptiveLOD] FPS 138 → raising to ULTRA
+THREE.WebGLRenderer: Context Lost.
+```
 
-- Não consigo medir bundle gzip real sem `vite build` (default mode).
-- Não consigo rodar React Profiler nem WebGPU timing queries (sandbox sem GPU adapter).
-- Migrar 22 stores em 1 sessão tocaria 335+ call sites — risco confirmado nas últimas 2 sessões; mantemos a regra "pequenas fases reversíveis".
+Sequência do bug:
+1. `/studio` carrega → `SkyCanvas` cria `<Canvas>` com `dpr={[1.5, 2]}`, `shadows`, `logarithmicDepthBuffer`, `powerPreference: 'high-performance'`.
+2. AdaptiveLOD detecta 138 FPS e **promove para ULTRA** muito cedo (segundos após boot, antes do mundo terminar de carregar).
+3. A escalada para ULTRA dispara: shadow map maior, mais luzes com `castShadow`, GI/LensFlare/ContactShadows montados via `DelayedMount(400)`, GPGPU em alta resolução. O driver perde o contexto WebGL.
+4. `ContextLossGuard` chama `reportCrash()` — após 3 perdas em janela curta entra em **cooldown de 10s** e suprime o remount: `console.error('[FXK] WebGL context lost — in cooldown, suppressing remount')`. Resultado: canvas fica preto permanentemente, mas o HUD continua atualizando o FPS (~144) porque é DOM puro — exatamente o que vemos no session replay.
+5. O `silentCanvasFailure` probe (3s) não dispara porque o `<canvas>` existe e tem dimensões — só está sem contexto. Logo o `SimplifiedSkyFallback` nunca aparece e o usuário fica sem saída.
 
-## Plano de ataque (executar em sessões separadas, gated por evidência)
+## Causas raiz (4 bugs)
 
----
+1. **Promoção precoce para ULTRA**: AdaptiveLOD reage ao FPS do splash/cena vazia (138 fps fácil), aumenta carga e crasha o GPU.
+2. **DPR agressivo em desktop**: `dpr=[1.5, 2]` em monitor 1067×672 com `devicePixelRatio=1.25` força ~2.6 megapíxels efetivos somados aos render targets de bloom/SSR/GPGPU.
+3. **Cooldown sem fallback visível**: quando `reportCrash` entra em cooldown, o usuário não recebe mensagem nem pode fazer retry — o `SimplifiedSkyFallback` só responde a `webglIssue`/`silentCanvasFailure`, não a context-loss em cooldown.
+4. **Falta detecção de "canvas sem contexto"**: o probe verifica dimensões mas não `gl.isContextLost()`.
 
-### **Fase P1 — Baseline mensurável** (30–45 min, baixo risco)
+## Plano de implementação
 
-Sem otimizar nada ainda. Só tornar mensurável.
+### 1. Reduzir pressão inicial sobre o GPU (`src/components/editor/SkyCanvas.tsx`)
+- Cap de DPR desktop: `dpr={isMobile ? [1, 1.25] : [1, Math.min(window.devicePixelRatio, 1.5)]}` (era `[1.5, 2]`).
+- Aumentar `DelayedMount` de heavy lighting de **400 ms → 1500 ms** para dar tempo do mundo estabilizar antes de adicionar GI/LensFlare/ContactShadows.
+- Adicionar `failIfMajorPerformanceCaveat: false` ao `gl` config (evita falha em GPUs marginais).
 
-1. Rodar `vite build` e capturar `dist/assets/*.js` ordenados por tamanho (gzip + brotli).
-2. Usar `rollup-plugin-visualizer` (já é devDep candidata) para gerar treemap → identificar top-10 chunks.
-3. Rodar `knip` em modo report (não delete) → lista de exports/arquivos órfãos.
-4. Snapshot atual em `docs/perf/baseline-2026-04-27.md`.
+### 2. Aquecer AdaptiveLOD (`src/hooks/useFXKUltraRefinement.ts` ou onde mora a promoção)
+- Ignorar amostras de FPS nos primeiros **5 segundos** após mount (warm-up window). Hoje promove para ULTRA com 138 fps medidos antes do mundo carregar.
+- Exigir 3 amostras consecutivas acima do threshold para promover (debounce já parece existir para descer; aplicar simétrico para subir).
 
-**Saída:** números concretos para "antes/depois" das próximas fases.
+### 3. Tornar context-loss cooldown visível e recuperável (`src/components/editor/skycanvas/watchdogs.tsx` + `SkyCanvas.tsx`)
+- `ContextLossGuard.onLost`: quando `isInCooldown()` for true, **propagar** o estado para o componente pai via callback `onUnrecoverable(reason)`.
+- `SkyCanvas` recebe esse callback, seta `setSilentCanvasFailure('WebGL context lost repeatedly — entering safe mode. Click retry to attempt recovery.')` e renderiza o `SimplifiedSkyFallback` existente.
+- Botão "Retry" do fallback: zerar `_crashRecord` em `runtimeSafety.ts` (exportar `resetCrashRecord()`) antes de `setWebglRetryKey(k+1)`.
 
----
+### 4. Detectar canvas sem contexto no probe silencioso
+- Em `silentCanvasFailure` probe: além de checar dimensões, chamar `gl?.isContextLost?.()` no renderer R3F (acessível via ref do `onCreated`). Se contexto perdido aos 3s, acionar fallback.
 
-### **Fase P2 — Dead code surgical (8 stores baratos)** (1 sessão, médio risco)
+### 5. Reduzir shadow casters (alinhado com memória de boas práticas R3F)
+- `src/components/editor/skycanvas/sceneLighting.tsx`: garantir que apenas a `moon` directional cast shadow (já é o caso). Verificar `GroundSystem.tsx:1197` (`<mesh castShadow>` em altura 50m) — desnecessário para um helper, remover `castShadow`.
 
-Alvos com ≤4 consumidores cada — fácil migrar e deletar. Total ~22 call sites.
+## Arquivos afetados
 
-| Store | Consumidores | Destino |
-|---|---|---|
-| `useNetworkConfigStore` | 2 | `hardwareSyncStore` |
-| `useDMXPanelPrefs` | 0 | deletar direto |
-| `useDiagnosticsThresholds` | 3 | `uiWorkspaceStore.preferences` |
-| `useAICoPilotStore` | 3 | `uiWorkspaceStore` (slice aiCoPilot) |
-| `useAddressingStore` | 4 | `hardwareSyncStore` |
-| `useGenerativeStore` | 4 | `simulationStore` |
-| `useInventoryStore` | 4 | `missionStore` (project metadata) |
-| `useMAVLinkStore` | 4 | `hardwareSyncStore` |
+```text
+src/components/editor/SkyCanvas.tsx              (DPR cap, DelayedMount delay, gl flag, callback prop)
+src/components/editor/skycanvas/watchdogs.tsx    (onUnrecoverable callback no ContextLossGuard)
+src/components/editor/skycanvas/GroundSystem.tsx (remover castShadow do helper mesh)
+src/hooks/useFXKUltraRefinement.ts               (warm-up window de 5s antes de promover qualidade)
+src/lib/hardening/runtimeSafety.ts               (exportar resetCrashRecord)
+```
 
-Política: deletar imediatamente após migrar (já aprovada nas sessões anteriores).
-Também deletar `src/store/domains/` (barrel inútil que mascara o problema).
+## Validação pós-fix
 
-**Saída esperada:** 22 → 14 stores legacy. ~3–5KB gzip economizados (estimativa preliminar).
+- Recarregar `/studio` → canvas 3D renderiza mundo (skybox + ground) dentro de 1s.
+- Console não mostra `WebGL context lost` no boot.
+- Forçar perda manual via DevTools (`gl.getExtension('WEBGL_lose_context').loseContext()`) → fallback aparece com botão Retry funcional.
+- Bundle size inalterado (somente lógica).
 
----
-
-### **Fase P3 — Zustand hot path hardening** (1 sessão, baixo risco)
-
-Sem migrar nada novo. Apenas tornar consumidores existentes mais baratos.
-
-1. Auditar todos os componentes em `src/components/viewport/`, `src/components/timeline/`, `src/render_ultra/` que assinam stores. Medida atual: 5 `useShallow` no codebase inteiro — meta: ≥30 nos hot paths.
-2. Converter selectors multi-campo para `useShallow(selector)` onde aplicável.
-3. Para valores DMX/OSC em alta frequência: trocar `useStore(s => s.universe[u][c])` por **transient `store.subscribe`** dentro de `useEffect` + ref local — zero re-render.
-4. Adicionar `React.memo` cirúrgico em itens de lista (timeline rows, device cards, cue items).
-5. Documentar padrão em `docs/perf/zustand-hot-path.md`.
-
-**Saída esperada:** redução mensurável de re-renders no React DevTools Profiler (precisa medição em browser real do usuário, não sandbox).
-
----
-
-### **Fase P4 — Bundle splitting agressivo** (1 sessão, baixo risco)
-
-1. Configurar `vite.config.ts` com `manualChunks`:
-   - `vendor-three`: three + @react-three/*
-   - `vendor-charts`: recharts
-   - `vendor-pdf`: jspdf
-   - `vendor-supabase`: @supabase/*
-2. Garantir que rota pública (`Landing`) **não importa** nada de three/recharts/jspdf (verificar com visualizer).
-3. Lazy-load `recharts` e `jspdf` apenas nos painéis que usam (ExecutiveReportConsole, charts).
-4. Re-medir: meta `< 220KB gzip` na rota `/`.
-
----
-
-### **Fase P5 — WebGPU resource hygiene** (1 sessão, alto risco — só com aprovação separada)
-
-Não tocar agora. Requer:
-- Profile real em browser do usuário (`browser--performance_profile` + start/stop profiling).
-- Validação visual de cada compute pass (sandbox sem GPU não valida).
-- Revisão pareada porque kernel WGSL v3 é a propriedade técnica mais crítica do produto.
-
-Escopo previsto: auditar `device.destroy()` em rota changes, `buffer.destroy()` em recriação de pipelines, epoch counter em readbacks assíncronos (já documentado no useful-context).
-
----
-
-### **Fases NÃO planejadas para próxima sessão (com motivo)**
-
-| Item do pedido | Por que não agora |
-|---|---|
-| Migrar `useProjectStore` (182 sites) | Sozinho merece 3–4 sessões dedicadas |
-| Migrar `useSceneStore` (55 sites) | Toca render path; precisa profile antes/depois |
-| React 19 features (useTransition, Compiler) | Requer upgrade React+ToleranciaTipos; outra missão |
-| Virtualização de listas longas | Depende de medir quais listas realmente custam |
-| Performance budgets no CI | Faz sentido só após P1 estabelecer baseline |
-
----
-
-## Recomendação
-
-Aprovar **uma fase por vez**, na ordem P1 → P2 → P3 → P4. P5 fica sem agendamento até termos profile real. Cada fase entrega um Optimization Report parcial com números medidos, não estimativas.
-
-Confirme qual fase rodar nesta próxima sessão (sugestão: **P1**, porque sem baseline as outras fases não têm como provar ganho).
+Sem mudanças em backend, rotas ou store. Mudanças isoladas ao pipeline de render do `SkyCanvas`.
