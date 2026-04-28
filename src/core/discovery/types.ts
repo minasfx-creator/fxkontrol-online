@@ -175,6 +175,7 @@ export interface MultiTransportLinkSnapshot {
   health: Partial<Record<DiscoveryTransport, LinkHealth>>;
   totalTxOk: number;
   totalTxErr: number;
+  totalTxTimeout: number;
   lastDispatch?: {
     at: number;
     okCount: number;
