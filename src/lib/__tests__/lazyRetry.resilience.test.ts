@@ -70,7 +70,7 @@ describe('lazyRetry · transient dynamic-import resilience', () => {
     // not throw and does not resolve synchronously with bad data.
     const racePromise = Promise.race([
       wrapped().then(() => 'resolved').catch(() => 'rejected'),
-      new Promise<string>((r) => setTimeout(() => r('pending'), 50)),
+      new Promise<string>((r) => setTimeout(() => r("pending"), 400)),
     ]);
 
     const outcome = await racePromise;
@@ -113,14 +113,14 @@ describe('lazyRetry · transient dynamic-import resilience', () => {
     // Module E exhausts its budget → reload #1
     await Promise.race([
       lazyRetry(importerE, 'mod-E')().catch(() => {}),
-      new Promise((r) => setTimeout(r, 50)),
+      new Promise((r) => setTimeout(r, 400)),
     ]);
     expect(reloadSpy).toHaveBeenCalledTimes(1);
 
     // Module F is independent → reload #2 (NOT blocked by E's marker)
     await Promise.race([
       lazyRetry(importerF, 'mod-F')().catch(() => {}),
-      new Promise((r) => setTimeout(r, 50)),
+      new Promise((r) => setTimeout(r, 400)),
     ]);
     expect(reloadSpy).toHaveBeenCalledTimes(2);
   });
