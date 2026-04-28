@@ -234,7 +234,8 @@ export class MultiTransportLink {
       this._participants = [];
       return;
     }
-    const onlineLinks = PRIORITY.filter((t) => dev.links[t]?.online);
+    const quarantined = dev.quarantinedTransports ?? {};
+    const onlineLinks = PRIORITY.filter((t) => dev.links[t]?.online && !quarantined[t]);
 
     if (this._mode === 'broadcast') {
       this._participants = onlineLinks;
