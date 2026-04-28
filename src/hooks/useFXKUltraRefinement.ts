@@ -142,8 +142,11 @@ export function useFXKUltraRefinement() {
 
     const canChangeQuality = (now - lastQualityChangeRef.current) > QUALITY_CHANGE_COOLDOWN_MS;
 
+    const nowPerf = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const inWarmup = (nowPerf - mountedAtRef.current) < WARMUP_MS;
+
     if (hardPressure && canChangeQuality) {
-      // Degrade quality
+      // Degrade quality (always allowed, even in warm-up — protects the GPU)
       if (qualityIndexRef.current < QUALITY_LEVELS.length - 1) {
         qualityIndexRef.current++;
         lastQualityChangeRef.current = now;
@@ -151,6 +154,7 @@ export function useFXKUltraRefinement() {
       // Disable heavy effects
       effectBudgetRef.current.heavyShaders = false;
       effectBudgetRef.current.particlesHighQuality = false;
+      promoteStreakRef.current = 0;
     } else if (softPressure && canChangeQuality) {
       if (qualityIndexRef.current < QUALITY_LEVELS.length - 1) {
         qualityIndexRef.current++;
@@ -158,21 +162,31 @@ export function useFXKUltraRefinement() {
       }
       effectBudgetRef.current.bloom = false;
       effectBudgetRef.current.volumetricFog = false;
-    } else if (!softPressure && !hardPressure && canChangeQuality) {
-      // Recover
-      if (qualityIndexRef.current > 0) {
-        qualityIndexRef.current--;
-        lastQualityChangeRef.current = now;
+      promoteStreakRef.current = 0;
+    } else if (!softPressure && !hardPressure && canChangeQuality && !inWarmup) {
+      // Recover — but require N consecutive headroom samples to avoid promoting
+      // off a single empty-frame spike (e.g. before the world finishes loading).
+      promoteStreakRef.current++;
+      if (promoteStreakRef.current >= PROMOTE_STREAK) {
+        promoteStreakRef.current = 0;
+        if (qualityIndexRef.current > 0) {
+          qualityIndexRef.current--;
+          lastQualityChangeRef.current = now;
+        }
+        const level = QUALITY_LEVELS[qualityIndexRef.current];
+        if (level === 'cinematic' || level === 'high') {
+          effectBudgetRef.current = {
+            bloom: true,
+            volumetricFog: true,
+            heavyShaders: true,
+            particlesHighQuality: true,
+          };
+        }
       }
-      const level = QUALITY_LEVELS[qualityIndexRef.current];
-      if (level === 'cinematic' || level === 'high') {
-        effectBudgetRef.current = {
-          bloom: true,
-          volumetricFog: true,
-          heavyShaders: true,
-          particlesHighQuality: true,
-        };
-      }
+    } else {
+      // In warm-up or pressure neutral — reset streak so promotion only happens
+      // after a sustained stable period post-warmup.
+      promoteStreakRef.current = 0;
     }
 
     // ═══ Render Stability ═══
