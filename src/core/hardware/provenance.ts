@@ -114,3 +114,44 @@ export function getProvenanceBadge(mode: IntegrationMode): { label: string; colo
     case 'not_integrated': return { label: 'NOT INTEGRATED', color: 'red' };
   }
 }
+
+// ─── Real-Only Handshake Helpers ──────────────────────────────────
+//
+// In real-only mode (default), an adapter stays `not_integrated` until
+// the physical device responds to a handshake (firmware reply, ArtPoll
+// reply, BLE characteristic read, etc.). Only after `markHandshakeOk`
+// does the adapter transition to `live_read_only` and become eligible
+// to emit telemetry / events.
+
+/** Promote provenance to live_read_only after a verified device reply. */
+export function markHandshakeOk(
+  prov: ProvenanceInfo,
+  transport: TransportType = prov.transport_type,
+): ProvenanceInfo {
+  prov.integration_mode = 'live_read_only';
+  prov.provenance = 'passive_device_feed';
+  prov.evidence_level = 'telemetry_verified';
+  prov.transport_type = transport;
+  prov.last_seen_at = Date.now();
+  prov.data_freshness_ms = 0;
+  return prov;
+}
+
+/** Reset provenance back to not_integrated after disconnect / timeout. */
+export function markHandshakeLost(prov: ProvenanceInfo): ProvenanceInfo {
+  prov.integration_mode = 'not_integrated';
+  prov.provenance = 'synthetic';
+  prov.evidence_level = 'ui_only';
+  prov.last_seen_at = 0;
+  prov.data_freshness_ms = Infinity;
+  return prov;
+}
+
+/**
+ * Is this provenance allowed to emit data in real-only mode?
+ * `live_read_only` and `replay` are accepted; everything else is blocked.
+ */
+export function isProvenanceVerified(prov: ProvenanceInfo): boolean {
+  return prov.integration_mode === 'live_read_only'
+    || prov.integration_mode === 'replay';
+}
