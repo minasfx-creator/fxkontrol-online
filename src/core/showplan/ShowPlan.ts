@@ -99,19 +99,37 @@ export interface SafetyConstraints {
 
 // ── Hardware Configuration ──────────────────────────────────────────
 
+/**
+ * Protocol family used by the bridge to dispatch frames.
+ * Mirrors `ModuleProtocolFamily` in useAddressingStore (kept duplicated
+ * here to keep ShowPlan independent from the UI layer).
+ */
+export type HardwareProtocolFamily =
+  | 'showven-c16-compatible'
+  | 'fireone-ascii'
+  | 'pbus'
+  | 'generic';
+
 export interface HardwareModuleConfig {
   id: string;
   label: string;
   /**
    * Module hardware family.
    *  - 'nano-relay-32'   : Arduino Nano + 74HC595 + 32-relay board
-   *  - 'fxk16-esp32s3'   : ESP32-S3 v1.3 + 16-relay board (channelCount: 16)
+   *  - 'fxk16-esp32s3'   : ESP32-S3 v1.3 + 16-relay board (channelCount: 16,
+   *                        wire-compatible with Showven PyroSlave C16)
    */
   type: 'nano-relay-32' | 'fxk16-esp32s3';
   channelCount: number;      // 32 (nano-relay-32) or 16 (fxk16-esp32s3)
   address: number;           // bus address
   serialPort?: string;       // e.g. COM3, /dev/ttyUSB0
   batteryVoltage?: number;   // nominal 12V
+  /** Protocol family the bridge should dispatch through. */
+  protocolFamily?: HardwareProtocolFamily;
+  /** Firmware MODEL token reported by the device on handshake (e.g. 'FXK16'). */
+  firmwareModel?: string;
+  /** Showven preset id this module is wire-compatible with (e.g. 'pyroslave_c16'). */
+  compatibleWith?: string;
 }
 
 export interface HardwareConfig {

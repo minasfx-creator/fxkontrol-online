@@ -95,6 +95,16 @@ export interface BridgeStatus {
   deviceModel?: string;
   /** Channel count reported by `CH:` token in STATUS reply (e.g. 16). */
   channelCount?: number;
+  /**
+   * Protocol family inferred from `deviceModel`. Used by the dispatcher to
+   * pick the right command framer. Currently:
+   *  - 'FXK16'      → 'showven-c16-compatible' (16ch, 1:1, ASCII)
+   *  - 'IFMX-I32Q'  → 'fireone-ascii'
+   *  - else         → 'generic'
+   */
+  protocolFamily?: 'showven-c16-compatible' | 'fireone-ascii' | 'pbus' | 'generic';
+  /** Showven preset id this device is wire-compatible with (when known). */
+  compatibleWith?: string;
   diagnostics?: BridgeDiagnostics;
 }
 
@@ -872,8 +882,30 @@ export class FireOneHardwareBridge {
       sessionId: this.sessionId,
       deviceModel: this.deviceModel,
       channelCount: this.channelCount,
+      protocolFamily: this.inferProtocolFamily(),
+      compatibleWith: this.inferCompatibleWith(),
       diagnostics: this.getDiagnostics(),
     };
+  }
+
+  /**
+   * Map the firmware-reported `MODEL:` token to a protocol family the
+   * dispatcher understands. Pure function of `this.deviceModel` — safe to
+   * call from any thread/context (no side effects).
+   */
+  private inferProtocolFamily(): BridgeStatus['protocolFamily'] {
+    const m = (this.deviceModel ?? '').toUpperCase();
+    if (m === 'FXK16')                  return 'showven-c16-compatible';
+    if (m === 'IFMX-I32Q' || m === 'IFMX-I32') return 'fireone-ascii';
+    if (m.startsWith('PYROSLAVE'))      return 'pbus';
+    return this.deviceModel ? 'generic' : undefined;
+  }
+
+  /** Map MODEL token to a Showven preset id when wire-compatible. */
+  private inferCompatibleWith(): string | undefined {
+    const m = (this.deviceModel ?? '').toUpperCase();
+    if (m === 'FXK16') return 'pyroslave_c16';
+    return undefined;
   }
 
   // ─── Private ──────────────────────────────────────────
