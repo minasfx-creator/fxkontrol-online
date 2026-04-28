@@ -47,6 +47,7 @@ const Install = lazy(lazyRetry(() => import("./pages/Install")));
 const UsbPairingWizard = lazy(lazyRetry(() => import("./pages/UsbPairingWizard")));
 const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
 const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage")));
+const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
 const Office = lazy(lazyRetry(() => import("./pages/Office")));
@@ -154,6 +155,9 @@ function App() {
                     {/* FXK16 hardware validation harness — Web Serial / BLE,
                         hold-to-fire per channel, diagnostic-only (bypasses ShowPlan). */}
                     <Route path="/dev/fxk16-validate" element={<FXK16ValidatePage />} />
+                    {/* FXK16 calibration & diagnostics — handshake card, detected-channel
+                        count, manual hold-to-fire and armed auto-sweep C1..C16. */}
+                    <Route path="/dev/fxk16-calibrate" element={<FXK16CalibrationPage />} />
                     {/* Public legal pages — required by Paddle (Merchant of Record) and must be crawlable without auth. */}
                     <Route path="/legal/terms" element={<Terms />} />
                     <Route path="/legal/refund" element={<Refund />} />
