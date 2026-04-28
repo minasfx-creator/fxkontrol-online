@@ -30,6 +30,7 @@ import TimelineClockPanel from './TimelineClockPanel';
 const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
 const FormationBuilder = lz(() => import('./FormationBuilder'));
 const CSVImporter = lz(() => import('./CSVImporter'));
+const VDLImportPanel = lz(() => import('./VDLImportPanel'));
 const VVIZImporter = lz(() => import('./VVIZImporter'));
 const UAssetImporter = lz(() => import('./UAssetImporter'));
 const GMA2PatchImporter = lz(() => import('./GMA2PatchImporter'));
@@ -377,6 +378,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
   const { saveProject } = useProjectPersistence();
   const [formationOpen, setFormationOpen] = useState(false);
   const [csvOpen, setCsvOpen] = useState(false);
+  const [vdlOpen, setVdlOpen] = useState(false);
   const [vvizOpen, setVvizOpen] = useState(false);
   const [browserOpen, setBrowserOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
@@ -535,6 +537,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       {!isMobile && (
         <div className="flex items-center gap-0.5">
           <DropdownMenu label="Import" icon={Upload} items={[
+            { label: 'VDL Script (Pyro/DMX)', icon: FileText, onClick: () => setVdlOpen(true) },
             { label: 'CSV Positions', icon: Upload, onClick: () => setCsvOpen(true) },
             { label: 'VVIZ (Finale 3D)', icon: FileJson, onClick: () => setVvizOpen(true) },
             { label: 'UE .uasset', icon: FileCode, onClick: () => setUassetOpen(true) },
@@ -692,6 +695,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
       <Suspense fallback={null}>
         {formationOpen && <FormationBuilder open={formationOpen} onOpenChange={setFormationOpen} />}
         {csvOpen && <CSVImporter open={csvOpen} onOpenChange={(v) => { setCsvOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'csv' ? droppedFile.file : null} />}
+        {vdlOpen && <VDLImportPanel open={vdlOpen} onOpenChange={setVdlOpen} />}
         {vvizOpen && <VVIZImporter open={vvizOpen} onOpenChange={(v) => { setVvizOpen(v); if (!v) setDroppedFile(null); }} initialFile={droppedFile?.type === 'vviz' ? droppedFile.file : null} />}
         {browserOpen && <ProjectBrowser open={browserOpen} onOpenChange={setBrowserOpen} />}
         {catalogOpen && <CatalogImportDialog open={catalogOpen} onOpenChange={setCatalogOpen} />}
