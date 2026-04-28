@@ -1952,7 +1952,11 @@ export default function SkyCanvas() {
       <Canvas
         key={canvasInstanceKey}
         resize={{ debounce: 50, scroll: false }}
-        shadows
+        // Use BasicShadowMap on boot — PCF/PCFSoft allocate large depth FBOs
+        // and stalled the GPU during /studio cold-start. Quality controllers
+        // can promote to PCFSoftShadowMap later via gl.shadowMap.type once
+        // the warm-up window clears.
+        shadows={isLowTierMobile ? false : { type: THREE.BasicShadowMap, enabled: true }}
         gl={{
           antialias: !isLowTierMobile,
           toneMapping: THREE.ACESFilmicToneMapping,
@@ -1960,7 +1964,11 @@ export default function SkyCanvas() {
           powerPreference: isLowTierMobile ? 'default' : 'high-performance',
           alpha: false,
           stencil: false,
-          logarithmicDepthBuffer: !isLowTierMobile,
+          // logarithmicDepthBuffer forces a secondary depth pipeline on many
+          // Intel/AMD drivers and was a major contributor to GPU pressure on
+          // cold-start. Disabled — far plane reduced to 200km below to keep
+          // depth precision acceptable without it.
+          logarithmicDepthBuffer: false,
           outputColorSpace: THREE.SRGBColorSpace,
           // Don't refuse the context on integrated/marginal GPUs — we'd rather
           // start in a degraded state than fall back to the static placeholder.
@@ -1983,7 +1991,7 @@ export default function SkyCanvas() {
           // Reveal immediately — GL context ready and bg color is already painted.
           setCanvasReady(true);
         }}>
-        <PerspectiveCamera makeDefault position={preset.position} fov={60} near={0.1} far={500000} />
+        <PerspectiveCamera makeDefault position={preset.position} fov={60} near={0.1} far={200000} />
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode || groundMode} flyMode={flyMode || groundMode} />
         {flyMode && !groundMode && <FlyControls onSpeedChange={flySpeedCb} />}
         {groundMode && <GroundControls onSpeedChange={flySpeedCb} />}
@@ -2008,17 +2016,26 @@ export default function SkyCanvas() {
           <DebugFeed />
         </Suspense>
         {/* Heavy lighting effects deferred until idle for faster first paint.
-            Bumped from 400ms → 1500ms: GI + LensFlare + ContactShadows arriving
-            too early was stacking onto the GPGPU/bloom warm-up and triggering
-            WebGL context loss on /studio boot. */}
-        <DelayedMount delay={1500}>
+            Staggered across 1.5s–3s so each heavy FBO allocation (GI shadow
+            cascade, lens-flare RT, contact-shadow depth pass, Niagara CPU
+            warm-up) lands on its own frame instead of all stacking onto the
+            GPGPU/bloom warm-up — primary cause of cold-start context loss. */}
+        <DelayedMount delay={2200}>
           <Suspense fallback={null}>
             {!environment.disableLighting && <GlobalIlluminationController />}
+          </Suspense>
+        </DelayedMount>
+        <DelayedMount delay={2600}>
+          <Suspense fallback={null}>
             {!environment.disableLighting && <LensFlareController />}
+          </Suspense>
+        </DelayedMount>
+        <DelayedMount delay={1800}>
+          <Suspense fallback={null}>
             <ContactShadowsLayer />
           </Suspense>
         </DelayedMount>
-        <DelayedMount delay={2000}>
+        <DelayedMount delay={3000}>
           <NiagaraVFXController />
         </DelayedMount>
 
@@ -2032,9 +2049,9 @@ export default function SkyCanvas() {
         <Suspense fallback={null}>
           {!google3DTilesEnabled && <Moon />}
           {!google3DTilesEnabled && !isLowTierMobile && !environment.lowQualityMode && (
-            <DelayedMount delay={1500}><AtmosphericParticles /></DelayedMount>
+            <DelayedMount delay={2800}><AtmosphericParticles /></DelayedMount>
           )}
-          {!google3DTilesEnabled && !isLowTierMobile && <DelayedMount delay={2500}><WeatherEffects /></DelayedMount>}
+          {!google3DTilesEnabled && !isLowTierMobile && <DelayedMount delay={3500}><WeatherEffects /></DelayedMount>}
         </Suspense>
 
         {/* ═══ Ground / Terrain ═══ */}
@@ -2078,14 +2095,17 @@ export default function SkyCanvas() {
         <CameraBookmarkSaver />
         <SubsystemBoundary name="PostProcessing">
           {!isLowTierMobile && (
-            <DelayedMount delay={600}>
+            // Bumped 600ms → 1200ms — PostProcessing allocates the largest
+            // single FBO (HDR + bloom mip chain). Holding it back until after
+            // the first idle frames dramatically reduces boot context loss.
+            <DelayedMount delay={1200}>
               <PostProcessing activeBurstCount={isMobile ? Math.min(_activeBurstCount, 8) : _activeBurstCount} />
             </DelayedMount>
           )}
         </SubsystemBoundary>
-        {!isLowTierMobile && <DelayedMount delay={1800}><StressTestFireworks /></DelayedMount>}
+        {!isLowTierMobile && <DelayedMount delay={3200}><StressTestFireworks /></DelayedMount>}
 
-        {!isLowTierMobile && <DelayedMount delay={1200}><PostExplosionSmokeManager /></DelayedMount>}
+        {!isLowTierMobile && <DelayedMount delay={2500}><PostExplosionSmokeManager /></DelayedMount>}
         <BoxSelectR3F />
         <PerfCollector statsRef={perfStatsRef} />
 
