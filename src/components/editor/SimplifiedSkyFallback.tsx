@@ -79,10 +79,10 @@ export default function SimplifiedSkyFallback({
         }}
       />
 
-      {/* Status banner */}
+      {/* Status banner — compact, top-centered */}
       <div className="absolute inset-x-0 top-6 flex justify-center pointer-events-none">
         <div
-          className="pointer-events-auto flex items-center gap-3 px-4 py-2.5 rounded-md border backdrop-blur-md max-w-[480px]"
+          className="pointer-events-auto flex items-center gap-3 px-4 py-2.5 rounded-md border backdrop-blur-md max-w-[520px]"
           style={{
             background: 'hsla(220, 25%, 8%, 0.85)',
             borderColor: 'hsla(45, 80%, 55%, 0.4)',
@@ -92,33 +92,73 @@ export default function SimplifiedSkyFallback({
           <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="text-[10px] font-bold uppercase tracking-wider text-yellow-400">
-              Simplified Sky Fallback
+              3D Viewport Unavailable
             </div>
-            <div className="text-[10px] text-muted-foreground truncate">{reason}</div>
+            <div className="text-[10px] text-muted-foreground truncate" title={reason}>{reason}</div>
           </div>
-          {onRetry && (
-            <button
-              onClick={onRetry}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] uppercase tracking-wider bg-card/80 border border-border/40 text-muted-foreground hover:text-foreground hover:border-border transition-all"
-            >
-              <RotateCw className="w-3 h-3" />
-              Retry
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Center info */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      {/* Recovery card — primary actions, centered. Surfaces both an in-place
+          Retry (preserves editor state) and a Reload Page escape hatch for
+          the rare case where Retry alone can't recover the GL pipeline. */}
+      <div className="absolute inset-0 flex items-center justify-center px-6">
         <div
-          className="text-center px-6"
-          style={{ fontFamily: 'ui-monospace, "JetBrains Mono", monospace' }}
+          className="pointer-events-auto w-full max-w-[440px] rounded-xl border backdrop-blur-md p-6"
+          style={{
+            background: 'hsla(220, 25%, 8%, 0.92)',
+            borderColor: 'hsla(207, 80%, 55%, 0.35)',
+            boxShadow: '0 20px 60px hsla(220, 50%, 2%, 0.6), 0 0 30px hsla(207, 80%, 50%, 0.12)',
+            fontFamily: 'ui-monospace, "JetBrains Mono", monospace',
+          }}
+          role="alertdialog"
+          aria-live="polite"
+          aria-label="3D viewport recovery"
         >
-          <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground/60 mb-1">
-            FX KONTROL · Editor
+          <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground/60 mb-2 text-center">
+            FX KONTROL · Recovery
           </div>
-          <div className="text-xs text-muted-foreground/80">
-            3D viewport unavailable — editor controls still active
+          <div className="text-sm text-foreground/90 mb-1 text-center font-semibold">
+            3D viewport stopped responding
+          </div>
+          <div className="text-[11px] text-muted-foreground mb-5 text-center leading-relaxed">
+            All editor controls (timeline, panels, hardware) remain active.
+            <br />
+            Try recovering the renderer below — your project state is preserved.
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                autoFocus
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-all focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
+                style={{
+                  background: 'hsla(187, 90%, 45%, 0.18)',
+                  borderWidth: 1,
+                  borderStyle: 'solid',
+                  borderColor: 'hsla(187, 90%, 55%, 0.65)',
+                  color: 'hsl(187, 90%, 75%)',
+                  boxShadow: '0 0 18px hsla(187, 90%, 50%, 0.25), inset 0 0 12px hsla(187, 90%, 50%, 0.08)',
+                }}
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+                Retry · Reinitialize Renderer
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => { try { window.location.reload(); } catch { /* ignore */ } }}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-md text-[10px] uppercase tracking-wider bg-card/60 border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/70 transition-all focus:outline-none focus:ring-2 focus:ring-border/60"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Reload Page
+            </button>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-border/20 text-[9px] uppercase tracking-wider text-muted-foreground/50 text-center">
+            Tip · close other GPU-heavy tabs before retrying
           </div>
         </div>
       </div>
