@@ -2016,17 +2016,26 @@ export default function SkyCanvas() {
           <DebugFeed />
         </Suspense>
         {/* Heavy lighting effects deferred until idle for faster first paint.
-            Bumped from 400ms → 1500ms: GI + LensFlare + ContactShadows arriving
-            too early was stacking onto the GPGPU/bloom warm-up and triggering
-            WebGL context loss on /studio boot. */}
-        <DelayedMount delay={1500}>
+            Staggered across 1.5s–3s so each heavy FBO allocation (GI shadow
+            cascade, lens-flare RT, contact-shadow depth pass, Niagara CPU
+            warm-up) lands on its own frame instead of all stacking onto the
+            GPGPU/bloom warm-up — primary cause of cold-start context loss. */}
+        <DelayedMount delay={2200}>
           <Suspense fallback={null}>
             {!environment.disableLighting && <GlobalIlluminationController />}
+          </Suspense>
+        </DelayedMount>
+        <DelayedMount delay={2600}>
+          <Suspense fallback={null}>
             {!environment.disableLighting && <LensFlareController />}
+          </Suspense>
+        </DelayedMount>
+        <DelayedMount delay={1800}>
+          <Suspense fallback={null}>
             <ContactShadowsLayer />
           </Suspense>
         </DelayedMount>
-        <DelayedMount delay={2000}>
+        <DelayedMount delay={3000}>
           <NiagaraVFXController />
         </DelayedMount>
 
