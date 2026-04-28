@@ -95,6 +95,16 @@ export interface BridgeStatus {
   deviceModel?: string;
   /** Channel count reported by `CH:` token in STATUS reply (e.g. 16). */
   channelCount?: number;
+  /**
+   * Protocol family inferred from `deviceModel`. Used by the dispatcher to
+   * pick the right command framer. Currently:
+   *  - 'FXK16'      → 'showven-c16-compatible' (16ch, 1:1, ASCII)
+   *  - 'IFMX-I32Q'  → 'fireone-ascii'
+   *  - else         → 'generic'
+   */
+  protocolFamily?: 'showven-c16-compatible' | 'fireone-ascii' | 'pbus' | 'generic';
+  /** Showven preset id this device is wire-compatible with (when known). */
+  compatibleWith?: string;
   diagnostics?: BridgeDiagnostics;
 }
 
