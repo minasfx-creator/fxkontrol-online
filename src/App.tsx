@@ -8,6 +8,18 @@ import { lazy, Suspense } from "react";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import { LazyChunkBoundary } from "@/components/errors/LazyChunkBoundary";
 import { AppErrorBoundary } from "@/components/errors/AppErrorBoundary";
+import CanvasLoaderWithTimeout from "@/components/editor/CanvasLoaderWithTimeout";
+
+// Route-level Suspense fallback. Same timeout-aware loader used inside Studio,
+// so a stalled route-level dynamic import surfaces a "Reload Studio" button
+// after 8s instead of leaving the user trapped on a spinner.
+function RouteLoaderWithTimeout() {
+  return (
+    <div className="min-h-[100dvh] w-full">
+      <CanvasLoaderWithTimeout timeoutMs={8000} label="Loading..." />
+    </div>
+  );
+}
 
 // MainLayout + UpgradeDialog are lazy-split so the public routes
 // (/landing, /auth, /legal/*, /pricing) don't pay for the dashboard
@@ -128,7 +140,7 @@ function App() {
                 </Suspense>
               )}
               <LazyChunkBoundary>
-                <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+                <Suspense fallback={<RouteLoaderWithTimeout />}>
                   <Routes>
                     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
                     <Route path="/install" element={<Install />} />
