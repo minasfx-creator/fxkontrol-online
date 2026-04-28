@@ -16,9 +16,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { unifiedDiscovery } from '@/core/discovery/UnifiedDiscoveryService';
 import { deviceAggregator } from '@/core/discovery/DeviceAggregator';
+import { multiTransportRegistry } from '@/core/discovery/multiTransportRegistry';
 import type {
   DiscoveryEvent,
   DiscoveryTransport,
+  LinkMode,
+  MultiTransportLinkSnapshot,
   PhysicalDevice,
   PhysicalDeviceEvent,
 } from '@/core/discovery/types';
@@ -30,7 +33,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import {
   ArrowLeft, RefreshCw, Radio, Usb, Bluetooth, Network,
-  ShieldCheck, ShieldAlert, Pin, PinOff, ArrowRightLeft,
+  ShieldCheck, ShieldAlert, Pin, PinOff, ArrowRightLeft, Send, Layers,
 } from 'lucide-react';
 
 const TRANSPORTS: { id: DiscoveryTransport; label: string; short: string; icon: typeof Usb }[] = [
@@ -333,11 +336,35 @@ function PhysicalDeviceCard({ device }: { device: PhysicalDevice }) {
   const linkEntries = TRANSPORTS.filter((t) => device.links[t.id]);
   const promoted = device.lastPromotion;
 
+  // Multi-transport coordinator for this device.
+  const link = useMemo(
+    () => multiTransportRegistry.getOrCreate(device.aggregateId),
+    [device.aggregateId],
+  );
+  const [snap, setSnap] = useState<MultiTransportLinkSnapshot>(() => link.getSnapshot());
+  const [pinging, setPinging] = useState(false);
+
+  useEffect(() => {
+    setSnap(link.getSnapshot());
+    return link.watch(() => setSnap(link.getSnapshot()));
+  }, [link]);
+
   const handlePin = (t: DiscoveryTransport) => {
     if (device.preferredTransport === t) {
       deviceAggregator.clearPreferredTransport(device.aggregateId);
     } else {
       deviceAggregator.setPreferredTransport(device.aggregateId, t);
+    }
+  };
+
+  const handleMode = (mode: LinkMode) => link.setMode(mode);
+
+  const handlePing = async () => {
+    setPinging(true);
+    try {
+      await link.dispatch({ kind: 'ping', meta: { source: 'real-discovery-probe' } });
+    } finally {
+      setPinging(false);
     }
   };
 
@@ -360,24 +387,28 @@ function PhysicalDeviceCard({ device }: { device: PhysicalDevice }) {
         </div>
       </div>
 
-      {/* Transport chips */}
+      {/* Transport chips with per-link health */}
       <div className="mt-3 flex flex-wrap gap-2">
         {linkEntries.map(({ id, short, icon: Icon }) => {
-          const link = device.links[id]!;
+          const linkData = device.links[id]!;
           const isActive = device.activeTransport === id;
           const isPreferred = device.preferredTransport === id;
+          const isParticipant = snap.participants.includes(id);
+          const health = snap.health[id];
           return (
             <button
               key={id}
               type="button"
               onClick={() => handlePin(id)}
               className={[
-                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs transition-colors',
+                'inline-flex flex-col items-start gap-1 px-2.5 py-1.5 rounded-md border text-xs transition-colors min-w-[120px]',
                 isActive
                   ? 'border-primary bg-primary/15 text-primary'
-                  : link.online
-                    ? 'border-border bg-muted/30 hover:bg-muted/60'
-                    : 'border-destructive/30 bg-destructive/5 text-muted-foreground',
+                  : isParticipant
+                    ? 'border-primary/40 bg-primary/5'
+                    : linkData.online
+                      ? 'border-border bg-muted/30 hover:bg-muted/60'
+                      : 'border-destructive/30 bg-destructive/5 text-muted-foreground',
               ].join(' ')}
               title={
                 isPreferred
@@ -385,19 +416,74 @@ function PhysicalDeviceCard({ device }: { device: PhysicalDevice }) {
                   : `Pin ${short} as preferred transport.`
               }
             >
-              <Icon className="h-3 w-3" />
-              <span className="font-medium">{short}</span>
-              {isActive && <Badge variant="outline" className="text-[9px] ml-1">active</Badge>}
-              {isPreferred ? (
-                <Pin className="h-3 w-3 text-primary" />
-              ) : (
-                <PinOff className="h-3 w-3 opacity-30" />
+              <span className="inline-flex items-center gap-1.5">
+                <Icon className="h-3 w-3" />
+                <span className="font-medium">{short}</span>
+                {isActive && <Badge variant="outline" className="text-[9px]">active</Badge>}
+                {isParticipant && !isActive && (
+                  <Badge variant="outline" className="text-[9px]">tx</Badge>
+                )}
+                {isPreferred ? (
+                  <Pin className="h-3 w-3 text-primary" />
+                ) : (
+                  <PinOff className="h-3 w-3 opacity-30" />
+                )}
+                {!linkData.online && <span className="text-[9px] uppercase">offline</span>}
+              </span>
+              {health && (health.txOk > 0 || health.txErr > 0) && (
+                <span className="text-[10px] font-mono text-muted-foreground">
+                  ok {health.txOk} · err {health.txErr} · {health.latencyMs.toFixed(1)}ms
+                  {health.status === 'fail' && <span className="text-destructive"> ⚠</span>}
+                </span>
               )}
-              {!link.online && <span className="text-[9px] uppercase">offline</span>}
             </button>
           );
         })}
       </div>
+
+      {/* Concurrency mode + ping */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+          <Layers className="h-3 w-3" /> Mode:
+        </span>
+        {(['single', 'dual', 'broadcast'] as LinkMode[]).map((m) => (
+          <Button
+            key={m}
+            type="button"
+            size="sm"
+            variant={snap.mode === m ? 'default' : 'outline'}
+            className="h-6 px-2 text-[11px] capitalize"
+            onClick={() => handleMode(m)}
+          >
+            {m}
+          </Button>
+        ))}
+        <span className="text-[11px] text-muted-foreground ml-1">
+          → {snap.participants.length} participant(s)
+        </span>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="ml-auto h-6 px-2 text-[11px] gap-1"
+          onClick={handlePing}
+          disabled={pinging || snap.participants.length === 0}
+        >
+          <Send className={`h-3 w-3 ${pinging ? 'animate-pulse' : ''}`} />
+          Send test ping
+        </Button>
+      </div>
+
+      {snap.lastDispatch && (
+        <div className="mt-2 text-[11px] text-muted-foreground">
+          Last dispatch:{' '}
+          <span className={snap.lastDispatch.failCount > 0 ? 'text-amber-500' : 'text-primary'}>
+            {snap.lastDispatch.okCount}/{snap.lastDispatch.okCount + snap.lastDispatch.failCount} OK
+          </span>{' '}
+          · {snap.lastDispatch.avgLatencyMs.toFixed(1)}ms avg ·{' '}
+          {new Date(snap.lastDispatch.at).toLocaleTimeString()}
+        </div>
+      )}
 
       {/* Identity row */}
       <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
