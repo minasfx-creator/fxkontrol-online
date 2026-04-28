@@ -1964,7 +1964,11 @@ export default function SkyCanvas() {
           powerPreference: isLowTierMobile ? 'default' : 'high-performance',
           alpha: false,
           stencil: false,
-          logarithmicDepthBuffer: !isLowTierMobile,
+          // logarithmicDepthBuffer forces a secondary depth pipeline on many
+          // Intel/AMD drivers and was a major contributor to GPU pressure on
+          // cold-start. Disabled — far plane reduced to 200km below to keep
+          // depth precision acceptable without it.
+          logarithmicDepthBuffer: false,
           outputColorSpace: THREE.SRGBColorSpace,
           // Don't refuse the context on integrated/marginal GPUs — we'd rather
           // start in a degraded state than fall back to the static placeholder.
