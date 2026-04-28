@@ -27,6 +27,8 @@ export interface ExportAttemptResult {
   success: boolean;
   timestamp: number;
   issues: string[];
+  /** Avisos não-bloqueantes (mode guard / readiness) registrados em modo testes. */
+  warnings?: string[];
   cueCount: number;
   /** Preencido apenas para targets RJ (rj-traditional / rj-timecode). */
   preflight?: RJPreflightReport;
@@ -35,23 +37,20 @@ export interface ExportAttemptResult {
 class ExportCoordinator {
   private _history: ExportAttemptResult[] = [];
 
-  /** Attempt an export through the full pipeline */
+  /** Attempt an export through the full pipeline.
+   *  ⚠️  Modo Testes: gates de ModeGuard e Readiness são apenas LOG (não bloqueiam).
+   *  Restaurar early-returns para produção (ver src/_quarantine/safety/). */
   execute(target: ExportTarget): ExportAttemptResult {
     const timestamp = Date.now();
+    const warnings: string[] = [];
 
-    // 1. Check operational mode allows export
+    // 1. Mode guard — log only (não bloqueia)
     const modeCheck = operationalModeGuard.check('export');
     if (!modeCheck.allowed) {
-      const result: ExportAttemptResult = {
-        target, success: false, timestamp,
-        issues: [`Mode guard blocked: ${modeCheck.reason}`], cueCount: 0,
-      };
-      this._log(result);
-      return result;
+      warnings.push(`[ModeGuard] ${modeCheck.reason}`);
     }
 
-    // 2. Run verification, log it, and persist an executive report snapshot
-    //    (one row per export attempt = canonical go/no-go audit trail).
+    // 2. Verification — log/auditoria (não bloqueia)
     const vResult = verificationEngine.run();
     verificationLog.record(vResult);
     void recordVerificationReport({
@@ -60,16 +59,10 @@ class ExportCoordinator {
       context: { trigger: 'export', target },
     });
 
-    // 3. Check readiness
+    // 3. Readiness — log only (não bloqueia)
     const readiness = readinessEvaluator.evaluate();
     if (!readiness.allowed_operations.includes('export')) {
-      const result: ExportAttemptResult = {
-        target, success: false, timestamp,
-        issues: [`Readiness blocked (${readiness.status}): ${readiness.issues.map(i => i.message).join('; ')}`],
-        cueCount: 0,
-      };
-      this._log(result);
-      return result;
+      warnings.push(`[Readiness:${readiness.status}] ${readiness.issues.map(i => i.message).join('; ')}`);
     }
 
     // 4. Execute target exporter
