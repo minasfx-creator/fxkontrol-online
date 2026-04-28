@@ -87,12 +87,24 @@ export interface PhysicalDevice {
   online: boolean;
   firstSeen: number;
   lastSeen: number;
+  /**
+   * Transports temporarily excluded from active selection due to repeated
+   * dispatch failures/timeouts. Populated by MultiTransportLink and
+   * cleared by `clearQuarantine` or when a fresh discovery `updated`
+   * event re-validates the link. NOT persisted — quarantine is session
+   * scoped so a reload gives every transport a fresh chance.
+   */
+  quarantinedTransports?: Partial<Record<DiscoveryTransport, {
+    at: number;
+    reason: string;
+    consecutiveFailures: number;
+  }>>;
   /** Last automatic promotion (for UI surfacing). */
   lastPromotion?: {
     from: DiscoveryTransport | null;
     to: DiscoveryTransport;
     at: number;
-    reason: 'link-lost' | 'preference-applied' | 'initial';
+    reason: 'link-lost' | 'preference-applied' | 'initial' | 'link-degraded';
   };
 }
 
@@ -101,6 +113,8 @@ export type PhysicalDeviceEventType =
   | 'link-added'
   | 'link-updated'
   | 'link-lost'
+  | 'link-quarantined'
+  | 'link-recovered'
   | 'promoted'
   | 'removed';
 
@@ -109,6 +123,8 @@ export interface PhysicalDeviceEvent {
   device: PhysicalDevice;
   transport?: DiscoveryTransport;
   previousActive?: DiscoveryTransport | null;
+  /** Optional human-readable reason (used by quarantine/promotion events). */
+  reason?: string;
 }
 
 // ─── Multi-Transport Concurrent Dispatch ──────────────────────────
