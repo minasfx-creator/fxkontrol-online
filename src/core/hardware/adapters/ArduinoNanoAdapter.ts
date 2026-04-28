@@ -6,6 +6,7 @@
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState } from '../types';
 import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
+import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 export interface ArduinoNanoState {
   firmware: string;
@@ -83,8 +84,6 @@ export class ArduinoNanoAdapter implements HardwareAdapter<ArduinoNanoState> {
     // Honest-hardware: only emit synthetic values when simulator gate is ON.
     // OFF (default): values stay frozen — operator sees instantly that no
     // real hardware is responding.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { isHardwareSimulatorEnabled } = require('@/lib/featureFlags') as typeof import('@/lib/featureFlags');
     if (!isHardwareSimulatorEnabled()) return;
     this._state.uptime_ms += 1000;
     this._state.loop_frequency_hz = 58 + Math.random() * 4;
