@@ -127,6 +127,65 @@ class DeviceAggregator {
     }
   }
 
+  /**
+   * Mark a transport as failed for this aggregate and immediately promote
+   * the next-best healthy link. Called by MultiTransportLink when a
+   * transport accumulates consecutive failures/timeouts. Session-scoped.
+   *
+   * NEVER fabricates telemetry — only swaps which real transport is
+   * considered active. The link itself stays in `dev.links` so the UI
+   * still surfaces its health and the operator can manually re-pin it.
+   */
+  quarantineTransport(
+    aggregateId: string,
+    transport: DiscoveryTransport,
+    reason: string,
+    consecutiveFailures: number,
+  ): PhysicalDevice | undefined {
+    const dev = this._devices.get(aggregateId);
+    if (!dev) return undefined;
+    if (!dev.links[transport]) return dev;
+
+    const q = dev.quarantinedTransports ?? {};
+    q[transport] = { at: Date.now(), reason, consecutiveFailures };
+    dev.quarantinedTransports = q;
+
+    this._emit({
+      type: 'link-quarantined',
+      device: dev,
+      transport,
+      reason,
+    });
+
+    // If the failed transport is currently active, promote a fresh one.
+    if (dev.activeTransport === transport) {
+      const previousActive = dev.activeTransport;
+      const next = this._chooseActive(dev, /*excludeOffline*/ true);
+      if (next && next !== previousActive) {
+        dev.activeTransport = next;
+        dev.lastPromotion = {
+          from: previousActive,
+          to: next,
+          at: Date.now(),
+          reason: 'link-degraded',
+        };
+        this._emit({ type: 'promoted', device: dev, transport: next, previousActive, reason });
+      }
+    }
+    return dev;
+  }
+
+  /** Remove a quarantine flag — link becomes eligible for active again. */
+  clearQuarantine(aggregateId: string, transport: DiscoveryTransport): void {
+    const dev = this._devices.get(aggregateId);
+    if (!dev?.quarantinedTransports?.[transport]) return;
+    delete dev.quarantinedTransports[transport];
+    if (Object.keys(dev.quarantinedTransports).length === 0) {
+      dev.quarantinedTransports = undefined;
+    }
+    this._emit({ type: 'link-recovered', device: dev, transport });
+  }
+
   // ─── Internals ─────────────────────────────────────────────────
 
   private _ingest(ev: DiscoveryEvent, silent: boolean): void {
@@ -191,6 +250,18 @@ class DeviceAggregator {
     const isNewLink = !dev.links[link.transport];
     dev.links[link.transport] = link;
     this._linkIndex.set(link.id, aggId);
+
+    // A fresh `discovered` event for a previously quarantined transport
+    // means the OS sees the device again — give it another chance.
+    if (isNewLink && dev.quarantinedTransports?.[link.transport]) {
+      delete dev.quarantinedTransports[link.transport];
+      if (Object.keys(dev.quarantinedTransports).length === 0) {
+        dev.quarantinedTransports = undefined;
+      }
+      if (!silent) {
+        this._emit({ type: 'link-recovered', device: dev, transport: link.transport });
+      }
+    }
 
     // Promote label / metadata when richer info arrives.
     if (link.label && link.label.length > dev.label.length) dev.label = link.label;
@@ -262,10 +333,13 @@ class DeviceAggregator {
     dev: PhysicalDevice,
     excludeOffline = false,
   ): DiscoveryTransport | null {
+    const isQuarantined = (t: DiscoveryTransport): boolean =>
+      !!dev.quarantinedTransports?.[t];
     const isCandidate = (t: DiscoveryTransport): boolean => {
       const l = dev.links[t];
       if (!l) return false;
       if (excludeOffline && !l.online) return false;
+      if (isQuarantined(t)) return false;
       return true;
     };
 
@@ -273,11 +347,13 @@ class DeviceAggregator {
     if (dev.preferredTransport && isCandidate(dev.preferredTransport)) {
       return dev.preferredTransport;
     }
-    // Otherwise priority-order pick.
+    // Otherwise priority-order pick (skipping quarantined).
     for (const t of DEFAULT_PRIORITY) {
       if (isCandidate(t)) return t;
     }
-    // Fallback: any link, even offline, to keep UI stable.
+    // Last resort: any present link (even quarantined / offline) so the
+    // device card stays anchored. Active dispatch will still be blocked
+    // until quarantine is cleared.
     for (const t of DEFAULT_PRIORITY) {
       if (dev.links[t]) return t;
     }
