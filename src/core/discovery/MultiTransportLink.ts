@@ -211,6 +211,8 @@ export class MultiTransportLink {
       ev.type === 'link-added' ||
       ev.type === 'link-updated' ||
       ev.type === 'link-lost' ||
+      ev.type === 'link-quarantined' ||
+      ev.type === 'link-recovered' ||
       ev.type === 'promoted' ||
       ev.type === 'added'
     ) {
