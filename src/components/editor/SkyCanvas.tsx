@@ -1994,6 +1994,9 @@ export default function SkyCanvas() {
         onCreated={(state) => {
           recoveringContextRef.current = false;
           rendererRef.current = state.gl;
+          // Publish to module-level registry so dev diagnostics panels (which
+          // live outside the R3F tree) can poll renderer.info / read GPU info.
+          setActiveRenderer(state.gl);
           // Reveal immediately — GL context ready and bg color is already painted.
           setCanvasReady(true);
         }}>
