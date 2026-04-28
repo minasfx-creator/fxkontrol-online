@@ -9,6 +9,8 @@
  * - Bidirectional: Can act as both input and output node simultaneously
  */
 
+import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
+
 // ═══ Types ═══
 export type MA3NodeMode = 'input' | 'output' | 'bidirectional';
 export type MA3Protocol = 'artnet' | 'sacn';
