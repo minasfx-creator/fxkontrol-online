@@ -127,6 +127,65 @@ class DeviceAggregator {
     }
   }
 
+  /**
+   * Mark a transport as failed for this aggregate and immediately promote
+   * the next-best healthy link. Called by MultiTransportLink when a
+   * transport accumulates consecutive failures/timeouts. Session-scoped.
+   *
+   * NEVER fabricates telemetry — only swaps which real transport is
+   * considered active. The link itself stays in `dev.links` so the UI
+   * still surfaces its health and the operator can manually re-pin it.
+   */
+  quarantineTransport(
+    aggregateId: string,
+    transport: DiscoveryTransport,
+    reason: string,
+    consecutiveFailures: number,
+  ): PhysicalDevice | undefined {
+    const dev = this._devices.get(aggregateId);
+    if (!dev) return undefined;
+    if (!dev.links[transport]) return dev;
+
+    const q = dev.quarantinedTransports ?? {};
+    q[transport] = { at: Date.now(), reason, consecutiveFailures };
+    dev.quarantinedTransports = q;
+
+    this._emit({
+      type: 'link-quarantined',
+      device: dev,
+      transport,
+      reason,
+    });
+
+    // If the failed transport is currently active, promote a fresh one.
+    if (dev.activeTransport === transport) {
+      const previousActive = dev.activeTransport;
+      const next = this._chooseActive(dev, /*excludeOffline*/ true);
+      if (next && next !== previousActive) {
+        dev.activeTransport = next;
+        dev.lastPromotion = {
+          from: previousActive,
+          to: next,
+          at: Date.now(),
+          reason: 'link-degraded',
+        };
+        this._emit({ type: 'promoted', device: dev, transport: next, previousActive, reason });
+      }
+    }
+    return dev;
+  }
+
+  /** Remove a quarantine flag — link becomes eligible for active again. */
+  clearQuarantine(aggregateId: string, transport: DiscoveryTransport): void {
+    const dev = this._devices.get(aggregateId);
+    if (!dev?.quarantinedTransports?.[transport]) return;
+    delete dev.quarantinedTransports[transport];
+    if (Object.keys(dev.quarantinedTransports).length === 0) {
+      dev.quarantinedTransports = undefined;
+    }
+    this._emit({ type: 'link-recovered', device: dev, transport });
+  }
+
   // ─── Internals ─────────────────────────────────────────────────
 
   private _ingest(ev: DiscoveryEvent, silent: boolean): void {
