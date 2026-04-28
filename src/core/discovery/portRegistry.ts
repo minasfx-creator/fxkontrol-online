@@ -245,6 +245,33 @@ export const portRegistry = {
     this.upsert({ ...cur, preferredTransport: undefined });
   },
 
+  /** Pin operator's concurrency mode (single/dual/broadcast). */
+  setLinkMode(key: string, mode: LinkMode, label?: string): PortRegistryEntry {
+    const cur = this.get(key);
+    return this.upsert({
+      key,
+      vendorId: cur?.vendorId,
+      productId: cur?.productId,
+      host: cur?.host,
+      lastLabel: label ?? cur?.lastLabel ?? key,
+      operatorConfirmedGeneric: cur?.operatorConfirmedGeneric ?? false,
+      confirmedMode: cur?.confirmedMode,
+      profileOverride: cur?.profileOverride,
+      preferredTransport: cur?.preferredTransport,
+      linkMode: mode,
+    });
+  },
+
+  getLinkMode(key: string): LinkMode | undefined {
+    return this.get(key)?.linkMode;
+  },
+
+  clearLinkMode(key: string): void {
+    const cur = this.get(key);
+    if (!cur) return;
+    this.upsert({ ...cur, linkMode: undefined });
+  },
+
   forget(key: string): void {
     const all = load().filter(e => e.key !== key);
     save(all);
