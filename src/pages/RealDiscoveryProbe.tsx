@@ -632,8 +632,23 @@ function TransportMetricsTable({
                   ? `${h.latencyMs.toFixed(1)} / ${h.maxLatencyMs.toFixed(1)}ms`
                   : '—'}
               </div>
-              <div className="col-span-3 text-muted-foreground">
-                {h?.lastError ? (
+              <div className="col-span-3 text-muted-foreground inline-flex items-center gap-2">
+                {device.quarantinedTransports?.[id] ? (
+                  <>
+                    <span className="text-amber-500 truncate" title={device.quarantinedTransports[id]?.reason}>
+                      ⏸ quarantined ({device.quarantinedTransports[id]?.consecutiveFailures}× fail)
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-5 px-1.5 text-[10px] ml-auto"
+                      onClick={() => deviceAggregator.clearQuarantine(device.aggregateId, id)}
+                    >
+                      retry
+                    </Button>
+                  </>
+                ) : h?.lastError ? (
                   <span className="text-destructive truncate inline-block max-w-full" title={h.lastError}>
                     ⚠ {h.lastError}
                   </span>
