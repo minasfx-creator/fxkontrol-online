@@ -112,6 +112,12 @@ void setup() {
   // 4. Watchdog
   esp_task_wdt_init(WATCHDOG_TIMEOUT_S, true);
   esp_task_wdt_add(NULL);
+
+  // 5. Boot banner — host's USB-CDC may not be open yet, but as soon as it
+  //    attaches the buffered line will arrive and identify the module. Cheap
+  //    and idempotent: even if the host misses it, the explicit handshake
+  //    (`VERSION`) replies with the same MODEL/CH tokens.
+  emitIdentifyBanner(sinkSerial);
 }
 
 void loop() {
