@@ -7,6 +7,8 @@
  * 
  * State machine: IDLE → SAFE_SENSE → READY → ARMED → FIRING
  * Firing modes: Manual, Semi-Auto, Auto (Timecode), UltraFire
+ */
+
 import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 
