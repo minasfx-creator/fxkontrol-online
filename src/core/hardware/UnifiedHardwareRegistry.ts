@@ -7,7 +7,9 @@
 
 import type { HardwareAdapter, HardwareDevice, HardwareStatusSnapshot, DeviceEvent } from './types';
 import type { ProvenanceInfo } from './provenance';
-import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
+import { isProvenanceVerified } from './provenance';
+import { isHardwareSimulatorEnabled, isRealOnlyMode } from '@/lib/featureFlags';
+import { realOnlyGate } from './realOnlyGate';
 import { arduinoNanoAdapter } from './adapters/ArduinoNanoAdapter';
 import { shiftRegisterAdapter } from './adapters/ShiftRegisterAdapter74HC595';
 import { muxReaderAdapter } from './adapters/MuxReaderAdapterCD4051';
@@ -34,14 +36,19 @@ class UnifiedHardwareRegistry {
     this.registerAdapter(fireOneProfileAdapter);
     this.registerAdapter(dmxUniverseAdapter);
 
+    // Wire the real-only gate so it can resolve provenance for events.
+    realOnlyGate.registerProvenanceLookup((id) => this._adapters.get(id)?.getProvenance());
+
     // ── Honesty banner ─────────────────────────────────────────
     if (typeof console !== 'undefined') {
       const total = this._adapters.size;
+      const realOnly = isRealOnlyMode();
       console.info(
         `%c[FXK Hardware] ${total} adapter(s) registered as NOT_INTEGRATED.\n` +
         `Hardware simulator: OFF (dev_hardware_simulator flag).\n` +
+        `Real-only mode: ${realOnly ? 'ON' : 'OFF'} (real_only_mode flag).\n` +
         `Pure real-hardware discovery via Web Serial / WebUSB / WebBLE / Art-Net.\n` +
-        `No synthetic data is being generated — adapters stay frozen until real device responds.`,
+        `Adapters stay frozen until they receive a real handshake reply.`,
         'color: #06b6d4; font-weight: bold;',
       );
     }
@@ -127,10 +134,14 @@ class UnifiedHardwareRegistry {
    */
   pollAll(): void {
     const simOn = isHardwareSimulatorEnabled();
+    const realOnly = isRealOnlyMode();
     let touched = 0;
     for (const adapter of this._adapters.values()) {
       const connected = adapter.getConnectionState() === 'connected';
       if (!simOn && !connected) continue;
+      // Real-only defense: even if connected, don't poll until the
+      // adapter has marked a verified handshake (live_read_only).
+      if (realOnly && !isProvenanceVerified(adapter.getProvenance())) continue;
       adapter.pollTelemetry();
       touched++;
     }

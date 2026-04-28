@@ -80,6 +80,19 @@ const FLAGS = {
   // WebBLE / Art-Net feeds the UI. Flip to true ONLY for dev tooling.
   // ============================================================
   dev_hardware_simulator: false,
+
+  // ============================================================
+  // REAL-ONLY MODE — Strict honest hardware enforcement.
+  // ON (default): UI só considera um device "integrado" após
+  //   handshake real (resposta confirmada do hardware via Web
+  //   Serial/USB/BLE/Art-Net). Qualquer tentativa de emitir
+  //   telemetria/eventos a partir de um adapter `not_integrated`
+  //   é silenciosamente rejeitada e contabilizada em
+  //   `realOnlyGate.getRejectedCount()`.
+  // OFF: comportamento legado (snapshots sem provenance verificada
+  //   passam pela ingestão).
+  // ============================================================
+  real_only_mode: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
@@ -95,4 +108,9 @@ export function getFlags(): Readonly<typeof FLAGS> {
 /** Convenience: master gate for all synthetic hardware data. */
 export function isHardwareSimulatorEnabled(): boolean {
   return FLAGS.dev_hardware_simulator;
+}
+
+/** Convenience: real-only mode (only verified-handshake adapters emit data). */
+export function isRealOnlyMode(): boolean {
+  return FLAGS.real_only_mode;
 }
