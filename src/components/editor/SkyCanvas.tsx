@@ -116,7 +116,7 @@ import SimplifiedSkyFallback, { detectWebGLCapability } from './SimplifiedSkyFal
 import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
 // ═══ Hardening Engine ═══
 import {
-  reportCrash, isInCooldown, recordContextLoss,
+  reportCrash, resetCrashRecord, isInCooldown, recordContextLoss,
   watchdogTick, pushFrameMetrics, startMetricsReporting, stopMetricsReporting,
   scanSceneTransforms, checkFrameBudget, checkSceneHealth, deepDispose, disposeAllTracked,
   getDegradationLevel, onDegradationChange,
@@ -421,9 +421,10 @@ function FXKQualityController() {
 /**
  * ContextLossGuard — handles WebGL context loss/restore with proper cleanup.
  */
-function ContextLossGuard({ recoveringRef, onRemount }: {
+function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable }: {
   recoveringRef: React.MutableRefObject<boolean>;
   onRemount: () => void;
+  onUnrecoverable?: (reason: string) => void;
 }) {
   const { gl, scene } = useThree();
 
@@ -438,6 +439,11 @@ function ContextLossGuard({ recoveringRef, onRemount }: {
       const shouldRecover = reportCrash();
       if (!shouldRecover || isInCooldown()) {
         console.error('[FXK] WebGL context lost — in cooldown, suppressing remount');
+        // Surface a user-visible fallback so the viewport doesn't stay black.
+        onUnrecoverable?.(
+          'WebGL context was lost repeatedly and the renderer is in cooldown. ' +
+          'Click Retry to attempt recovery or reload the page.'
+        );
         return;
       }
 
@@ -467,7 +473,7 @@ function ContextLossGuard({ recoveringRef, onRemount }: {
       canvas.removeEventListener('webglcontextlost', onLost as EventListener);
       canvas.removeEventListener('webglcontextrestored', onRestored as EventListener);
     };
-  }, [gl, scene, recoveringRef, onRemount]);
+  }, [gl, scene, recoveringRef, onRemount, onUnrecoverable]);
 
   return null;
 }
@@ -1744,6 +1750,11 @@ export default function SkyCanvas() {
   // pure-black viewport with no fallback. We poll the container shortly after mount and trip
   // the fallback if no real canvas attached.
   const [silentCanvasFailure, setSilentCanvasFailure] = useState<string | null>(null);
+  // Ref to the live R3F WebGLRenderer so we can probe `isContextLost()`
+  // (set in <Canvas onCreated>). Used both by the silent-failure probe and
+  // by the manual retry button.
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+
   useEffect(() => {
     if (silentCanvasFailure) return;
     const probeAt = [600, 1500, 3000];
@@ -1753,9 +1764,14 @@ export default function SkyCanvas() {
         if (!node) return;
         const c = node.querySelector('canvas');
         const empty = !c || (c.clientWidth === 0 && c.clientHeight === 0);
-        if (empty && delay === 3000) {
+        // Also catch the "canvas exists with size but GL context is lost"
+        // case — without this the user sees a black viewport with no fallback.
+        const ctxLost = !!rendererRef.current?.getContext()?.isContextLost?.();
+        if ((empty || ctxLost) && delay === 3000) {
           setSilentCanvasFailure(
-            'WebGL canvas could not be created (likely GPU/driver blocked).',
+            ctxLost
+              ? 'WebGL context was lost during startup (likely GPU pressure). Click Retry to recover.'
+              : 'WebGL canvas could not be created (likely GPU/driver blocked).',
           );
         }
       }, delay),
@@ -1768,15 +1784,24 @@ export default function SkyCanvas() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const webglIssue = useMemo(() => detectWebGLCapability(), [webglRetryKey]);
   const fallbackReason = webglIssue || silentCanvasFailure;
+
+  const handleFallbackRetry = useCallback(() => {
+    // Reset the crash-loop cooldown so the user can manually attempt recovery
+    // after a context-loss storm without a full page reload.
+    try { resetCrashRecord(); } catch { /* ignore */ }
+    recoveringContextRef.current = false;
+    setSilentCanvasFailure(null);
+    setWebglRetryKey((k) => k + 1);
+    // Force the Canvas itself to remount so a fresh GL context is acquired.
+    setCanvasInstanceKey((k) => k + 1);
+  }, []);
+
   if (fallbackReason) {
     return (
       <div ref={containerRef} className="w-full h-full relative bg-[#050810]" data-sky-canvas>
         <SimplifiedSkyFallback
           reason={fallbackReason}
-          onRetry={() => {
-            setSilentCanvasFailure(null);
-            setWebglRetryKey((k) => k + 1);
-          }}
+          onRetry={handleFallbackRetry}
         />
       </div>
     );
@@ -1798,11 +1823,24 @@ export default function SkyCanvas() {
           stencil: false,
           logarithmicDepthBuffer: !isLowTierMobile,
           outputColorSpace: THREE.SRGBColorSpace,
+          // Don't refuse the context on integrated/marginal GPUs — we'd rather
+          // start in a degraded state than fall back to the static placeholder.
+          failIfMajorPerformanceCaveat: false,
         }}
-        dpr={isLowTierMobile ? [1, 1] : isMobile ? [1, 1.25] : [1.5, 2]}
+        // DPR cap: high-DPI desktops were rendering ~2.6 megapixels which —
+        // combined with bloom/SSR/GPGPU render targets — was exhausting the
+        // WebGL context on /studio boot. Cap at 1.5 on desktop, lower on mobile.
+        dpr={
+          isLowTierMobile
+            ? [1, 1]
+            : isMobile
+              ? [1, 1.25]
+              : [1, Math.min((typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1, 1.5)]
+        }
         performance={{ min: isLowTierMobile ? 0.35 : 0.5 }}
-        onCreated={() => {
+        onCreated={(state) => {
           recoveringContextRef.current = false;
+          rendererRef.current = state.gl;
           // Reveal immediately — GL context ready and bg color is already painted.
           setCanvasReady(true);
         }}>
@@ -1811,7 +1849,11 @@ export default function SkyCanvas() {
         {flyMode && !groundMode && <FlyControls onSpeedChange={flySpeedCb} />}
         {groundMode && <GroundControls onSpeedChange={flySpeedCb} />}
 
-        <ContextLossGuard recoveringRef={recoveringContextRef} onRemount={handleContextRemount} />
+        <ContextLossGuard
+          recoveringRef={recoveringContextRef}
+          onRemount={handleContextRemount}
+          onUnrecoverable={(reason) => setSilentCanvasFailure(reason)}
+        />
         <HardeningWatchdog />
         <FXKQualityController />
         <SceneLighting />
@@ -1821,8 +1863,11 @@ export default function SkyCanvas() {
           {!google3DTilesEnabled && <GroundReflections />}
           <DebugFeed />
         </Suspense>
-        {/* Heavy lighting effects deferred until idle for faster first paint */}
-        <DelayedMount delay={400}>
+        {/* Heavy lighting effects deferred until idle for faster first paint.
+            Bumped from 400ms → 1500ms: GI + LensFlare + ContactShadows arriving
+            too early was stacking onto the GPGPU/bloom warm-up and triggering
+            WebGL context loss on /studio boot. */}
+        <DelayedMount delay={1500}>
           <Suspense fallback={null}>
             {!environment.disableLighting && <GlobalIlluminationController />}
             {!environment.disableLighting && <LensFlareController />}
