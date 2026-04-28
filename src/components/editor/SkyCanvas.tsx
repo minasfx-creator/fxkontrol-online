@@ -116,7 +116,7 @@ import SimplifiedSkyFallback, { detectWebGLCapability } from './SimplifiedSkyFal
 import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
 // ═══ Hardening Engine ═══
 import {
-  reportCrash, resetCrashRecord, isInCooldown, recordContextLoss,
+  reportCrash, resetCrashRecord, getCrashRecord, isInCooldown, recordContextLoss,
   watchdogTick, pushFrameMetrics, startMetricsReporting, stopMetricsReporting,
   scanSceneTransforms, checkFrameBudget, checkSceneHealth, deepDispose, disposeAllTracked,
   getDegradationLevel, onDegradationChange,
@@ -419,52 +419,148 @@ function FXKQualityController() {
 }
 
 /**
- * ContextLossGuard — handles WebGL context loss/restore with proper cleanup.
+ * ContextLossGuard — handles WebGL context loss/restore with proper cleanup
+ * and automatic, progressive recovery (backoff + per-attempt degradation).
+ *
+ * Recovery strategy
+ * ─────────────────
+ *  attempt 1 → wait 250ms → remount Canvas, keep current quality
+ *  attempt 2 → wait 1000ms → force lowQualityMode + halve bloomStrength
+ *  attempt 3 → wait 4000ms → also drop GPGPU/heavy shaders
+ *  ≥4         → enter cooldown, schedule auto-retry when cooldown expires
+ *
+ * Each step also disposes scene resources (deepDispose + disposeAllTracked +
+ * resetPools) to release GPU memory before requesting a fresh context.
+ *
+ * If `webglcontextrestored` fires natively we treat that as the authoritative
+ * "recovered" signal; otherwise the new <Canvas> instance's onCreated clears
+ * `recoveringRef`. A toast informs the operator throughout.
  */
-function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable }: {
+function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable, onRecovered }: {
   recoveringRef: React.MutableRefObject<boolean>;
   onRemount: () => void;
   onUnrecoverable?: (reason: string) => void;
+  onRecovered?: () => void;
 }) {
   const { gl, scene } = useThree();
+  // Per-mount attempt counter — pruned to a 60s window so isolated incidents
+  // don't permanently degrade the renderer.
+  const attemptTimestampsRef = useRef<number[]>([]);
+  const scheduledTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const canvas = gl.domElement;
+
+    const RECOVERY_WINDOW_MS = 60_000;
+    // Backoff per attempt (ms). Index = attempt number - 1.
+    const BACKOFF_LADDER = [250, 1000, 4000];
+
+    const performRecovery = (attemptInWindow: number) => {
+      // Telemetry — every attempt is captured with attempt number.
+      captureSkyCanvasError(
+        'WebGLContextLoss',
+        new Error(`WebGL context lost (auto-recovery attempt #${attemptInWindow})`),
+      );
+
+      // Per-attempt degradation: turn the visual budget down progressively.
+      try {
+        const store = useSceneStore.getState();
+        if (attemptInWindow >= 2 && !store.environment.lowQualityMode) {
+          store.updateEnvironment({ lowQualityMode: true });
+          pushLog('[FXK Recovery] Forced lowQualityMode after 2nd context loss', 'warn');
+        }
+        if (attemptInWindow >= 2) {
+          const cur = store.settings.bloomStrength ?? 1.0;
+          if (cur > 0.25) store.updateSettings({ bloomStrength: Math.max(0.2, cur * 0.5) });
+        }
+        if (attemptInWindow >= 3) {
+          // Final-stage degradation: kill heavy effects entirely.
+          store.updateSettings({ bloomStrength: 0 });
+        }
+      } catch (storeErr) {
+        console.warn('[FXK Recovery] Could not apply degradation:', storeErr);
+      }
+
+      // Deep dispose scene resources before remount to release GPU memory.
+      try {
+        deepDispose(scene);
+        disposeAllTracked();
+        pushLog(`[FXK Recovery] Deep disposed scene before attempt #${attemptInWindow}`, 'warn');
+      } catch (disposeErr) {
+        console.warn('[FXK Recovery] Error during deep dispose:', disposeErr);
+      }
+      try { resetPools(); } catch { /* ignore */ }
+
+      const delayMs = BACKOFF_LADDER[Math.min(attemptInWindow - 1, BACKOFF_LADDER.length - 1)];
+      console.warn(`[FXK Recovery] Remounting WebGL renderer in ${delayMs}ms (attempt #${attemptInWindow})`);
+      toast.message('Recuperando viewport 3D…', {
+        description: `Recriando renderer (tentativa ${attemptInWindow})`,
+        duration: Math.max(delayMs + 1500, 2500),
+        id: 'fxk-webgl-recovery',
+      });
+
+      scheduledTimerRef.current = window.setTimeout(() => {
+        scheduledTimerRef.current = null;
+        recoveringRef.current = true;
+        onRemount();
+      }, delayMs);
+    };
 
     const onLost = (e: Event) => {
       e.preventDefault();
       if (recoveringRef.current) return;
 
       recordContextLoss();
+
+      // Prune old attempts outside the rolling window.
+      const now = Date.now();
+      attemptTimestampsRef.current = attemptTimestampsRef.current.filter(
+        (t) => now - t < RECOVERY_WINDOW_MS,
+      );
+      attemptTimestampsRef.current.push(now);
+      const attemptInWindow = attemptTimestampsRef.current.length;
+
       const shouldRecover = reportCrash();
       if (!shouldRecover || isInCooldown()) {
-        console.error('[FXK] WebGL context lost — in cooldown, suppressing remount');
-        // Surface a user-visible fallback so the viewport doesn't stay black.
-        onUnrecoverable?.(
-          'WebGL context was lost repeatedly and the renderer is in cooldown. ' +
-          'Click Retry to attempt recovery or reload the page.'
+        const cooldownUntil = getCrashRecord().cooldownUntil;
+        const waitMs = Math.max(0, cooldownUntil - now);
+        console.error(
+          `[FXK Recovery] In cooldown — auto-retry scheduled in ${(waitMs / 1000).toFixed(1)}s`,
         );
+        toast.warning('Viewport 3D em cooldown', {
+          description: `Tentativa automática em ${Math.ceil(waitMs / 1000)}s`,
+          duration: Math.max(waitMs + 500, 3000),
+          id: 'fxk-webgl-recovery',
+        });
+        onUnrecoverable?.(
+          `WebGL context loss storm — automatic retry in ${Math.ceil(waitMs / 1000)}s. ` +
+          `You can also click Retry to recover immediately.`
+        );
+        // Schedule the auto-retry: when cooldown expires we call performRecovery
+        // with the current (degraded) attempt count so the next remount keeps
+        // the lower visual budget.
+        scheduledTimerRef.current = window.setTimeout(() => {
+          scheduledTimerRef.current = null;
+          // Reset the cooldown record so the next attempt isn't immediately
+          // re-classified as "in cooldown". We keep our local attemptInWindow
+          // counter so degradation still escalates.
+          resetCrashRecord();
+          performRecovery(attemptInWindow);
+        }, waitMs + 250);
         return;
       }
 
-      // Deep dispose scene resources before remount to prevent memory leaks
-      try {
-        deepDispose(scene);
-        disposeAllTracked();
-        pushLog('[FXK] Deep disposed scene resources after context loss', 'warn');
-      } catch (disposeErr) {
-        console.warn('[FXK] Error during deep dispose:', disposeErr);
-      }
-
-      recoveringRef.current = true;
-      console.warn('[FXK] WebGL context lost — remounting renderer');
-      resetPools();
-      onRemount();
+      performRecovery(attemptInWindow);
     };
 
     const onRestored = () => {
-      console.log('[FXK] WebGL context restored');
+      console.log('[FXK Recovery] WebGL context restored');
       recoveringRef.current = false;
+      toast.success('Viewport 3D recuperado', {
+        id: 'fxk-webgl-recovery',
+        duration: 2500,
+      });
+      onRecovered?.();
     };
 
     canvas.addEventListener('webglcontextlost', onLost as EventListener);
@@ -472,8 +568,12 @@ function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable }: {
     return () => {
       canvas.removeEventListener('webglcontextlost', onLost as EventListener);
       canvas.removeEventListener('webglcontextrestored', onRestored as EventListener);
+      if (scheduledTimerRef.current !== null) {
+        window.clearTimeout(scheduledTimerRef.current);
+        scheduledTimerRef.current = null;
+      }
     };
-  }, [gl, scene, recoveringRef, onRemount, onUnrecoverable]);
+  }, [gl, scene, recoveringRef, onRemount, onUnrecoverable, onRecovered]);
 
   return null;
 }
@@ -1853,6 +1953,11 @@ export default function SkyCanvas() {
           recoveringRef={recoveringContextRef}
           onRemount={handleContextRemount}
           onUnrecoverable={(reason) => setSilentCanvasFailure(reason)}
+          onRecovered={() => {
+            // Clear any lingering "in cooldown" fallback once the native
+            // webglcontextrestored event confirms the context is back.
+            setSilentCanvasFailure(null);
+          }}
         />
         <HardeningWatchdog />
         <FXKQualityController />
