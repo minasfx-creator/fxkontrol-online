@@ -481,6 +481,7 @@ function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable, onRecover
         'WebGLContextLoss',
         new Error(`WebGL context lost (auto-recovery attempt #${attemptInWindow})`),
       );
+      logWebglEvent('remount-attempt', `attempt #${attemptInWindow}`);
 
       // Per-attempt degradation: turn the visual budget down progressively.
       try {
