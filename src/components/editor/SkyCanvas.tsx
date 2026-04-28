@@ -116,7 +116,7 @@ import SimplifiedSkyFallback, { detectWebGLCapability } from './SimplifiedSkyFal
 import { clampNiagaraHDR, getNiagaraBudgets, setAdaptivePipelineState } from '@/lib/niagaraBlenderRules';
 // ═══ Hardening Engine ═══
 import {
-  reportCrash, resetCrashRecord, isInCooldown, recordContextLoss,
+  reportCrash, resetCrashRecord, getCrashRecord, isInCooldown, recordContextLoss,
   watchdogTick, pushFrameMetrics, startMetricsReporting, stopMetricsReporting,
   scanSceneTransforms, checkFrameBudget, checkSceneHealth, deepDispose, disposeAllTracked,
   getDegradationLevel, onDegradationChange,
