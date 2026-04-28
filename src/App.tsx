@@ -33,6 +33,7 @@ import NotFound from "./pages/NotFound";
 
 const Install = lazy(lazyRetry(() => import("./pages/Install")));
 const UsbPairingWizard = lazy(lazyRetry(() => import("./pages/UsbPairingWizard")));
+const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
 const Office = lazy(lazyRetry(() => import("./pages/Office")));
@@ -134,6 +135,9 @@ function App() {
                     {/* Public diagnostics — intentionally outside ProtectedRoute so it can
                         be opened without login while debugging Live Firing / DMX issues. */}
                     <Route path="/diagnostics/dmx-pyro" element={<DmxPyroDiagnostics />} />
+                    {/* Public real-hardware discovery probe — loops scanLight() and shows
+                        every device the browser sees, with zero simulated data. */}
+                    <Route path="/dev/real-discovery" element={<RealDiscoveryProbe />} />
                     {/* Public legal pages — required by Paddle (Merchant of Record) and must be crawlable without auth. */}
                     <Route path="/legal/terms" element={<Terms />} />
                     <Route path="/legal/refund" element={<Refund />} />
