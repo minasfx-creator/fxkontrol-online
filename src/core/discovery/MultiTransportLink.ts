@@ -105,6 +105,12 @@ export class MultiTransportLink {
 
   getSnapshot(): MultiTransportLinkSnapshot {
     const dev = this.getDevice();
+    // Refresh `online` field on cached entries from the latest aggregator view.
+    if (dev) {
+      for (const [t, h] of this._health) {
+        h.online = !!dev.links[t]?.online;
+      }
+    }
     const health: Partial<Record<DiscoveryTransport, LinkHealth>> = {};
     for (const [t, h] of this._health) health[t] = { ...h };
     return {
@@ -115,6 +121,7 @@ export class MultiTransportLink {
       health,
       totalTxOk: this._totalTxOk,
       totalTxErr: this._totalTxErr,
+      totalTxTimeout: this._totalTxTimeout,
       lastDispatch: this._lastDispatch ? { ...this._lastDispatch } : undefined,
     };
   }
