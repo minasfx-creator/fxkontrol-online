@@ -16,7 +16,7 @@
 import { logger } from '@/lib/logger';
 import { unifiedDiscovery } from './UnifiedDiscoveryService';
 import { aggregateKeyFor } from './aggregateKey';
-import { portRegistry, keyFor } from './portRegistry';
+import { portRegistry, keyFor, aliasCandidatesFor } from './portRegistry';
 import type {
   DiscoveredDevice,
   DiscoveryEvent,
@@ -215,6 +215,13 @@ class DeviceAggregator {
           reason: previousActive === null ? 'initial' : 'preference-applied',
         };
       }
+    }
+
+    // Persist cross-transport identity unification — collapses duplicate
+    // portRegistry entries when the same physical device is touched via
+    // multiple transports (Web Serial + WebUSB, BLE + USB, etc.).
+    if (isNewAggregate || isNewLink) {
+      this._unifyRegistryAliases(dev);
     }
 
     if (silent) return;
