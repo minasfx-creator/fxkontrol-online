@@ -1953,6 +1953,11 @@ export default function SkyCanvas() {
           recoveringRef={recoveringContextRef}
           onRemount={handleContextRemount}
           onUnrecoverable={(reason) => setSilentCanvasFailure(reason)}
+          onRecovered={() => {
+            // Clear any lingering "in cooldown" fallback once the native
+            // webglcontextrestored event confirms the context is back.
+            setSilentCanvasFailure(null);
+          }}
         />
         <HardeningWatchdog />
         <FXKQualityController />
