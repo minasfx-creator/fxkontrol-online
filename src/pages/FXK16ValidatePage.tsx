@@ -52,7 +52,7 @@ export default function FXK16ValidatePage() {
     const tick = setInterval(() => setStatus(bridge.getStatus()), 500);
     return () => {
       clearInterval(tick);
-      void bridge.disconnect?.();
+      void bridge.disconnect();
       bridgeRef.current = null;
     };
   }, []);
@@ -90,7 +90,7 @@ export default function FXK16ValidatePage() {
     // by abusing its readWithRetry contract is unsafe; instead trigger STATUS
     // which includes MODEL/CH tokens.
     sendAndLog('STATUS');
-    await b.requestStatus?.();
+    await b.requestStatus();
   }, [sendAndLog]);
 
   const fireChannel = useCallback(
@@ -98,7 +98,7 @@ export default function FXK16ValidatePage() {
       const b = bridgeRef.current;
       if (!b?.isHealthy?.()) return;
       sendAndLog(`FIRE:${channel}:${FIRE_PULSE_MS}`);
-      const ok = await b.fire?.(channel, FIRE_PULSE_MS);
+      const ok = await b.fire(channel, FIRE_PULSE_MS);
       setChannelStatus((arr) => {
         const next = [...arr];
         next[channel - 1] = ok ? 'ok' : 'error';
