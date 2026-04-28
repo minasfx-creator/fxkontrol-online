@@ -146,6 +146,28 @@ export default function RealDiscoveryProbe() {
     };
   }, [autoLoop, intervalMs]);
 
+  // ── Auto-refresh: pulls fresh aggregator state + metrics WITHOUT
+  // re-running discovery scans. Lightweight UI tick only.
+  useEffect(() => {
+    if (refreshTimerRef.current) {
+      clearInterval(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+    if (!autoRefresh) return;
+    const pull = () => {
+      if (!mountedRef.current) return;
+      refreshDevices();
+      setTick((t) => t + 1);
+    };
+    refreshTimerRef.current = setInterval(pull, Math.max(250, refreshMs));
+    return () => {
+      if (refreshTimerRef.current) {
+        clearInterval(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
+  }, [autoRefresh, refreshMs]);
+
   const gateStats = realOnlyGate.getStats();
   void tick;
 
