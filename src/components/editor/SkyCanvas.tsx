@@ -1863,8 +1863,11 @@ export default function SkyCanvas() {
           {!google3DTilesEnabled && <GroundReflections />}
           <DebugFeed />
         </Suspense>
-        {/* Heavy lighting effects deferred until idle for faster first paint */}
-        <DelayedMount delay={400}>
+        {/* Heavy lighting effects deferred until idle for faster first paint.
+            Bumped from 400ms → 1500ms: GI + LensFlare + ContactShadows arriving
+            too early was stacking onto the GPGPU/bloom warm-up and triggering
+            WebGL context loss on /studio boot. */}
+        <DelayedMount delay={1500}>
           <Suspense fallback={null}>
             {!environment.disableLighting && <GlobalIlluminationController />}
             {!environment.disableLighting && <LensFlareController />}
