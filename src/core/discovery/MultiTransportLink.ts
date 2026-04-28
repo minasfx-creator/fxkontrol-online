@@ -38,6 +38,9 @@ import type {
 
 const PRIORITY: DiscoveryTransport[] = ['webserial', 'webusb', 'webble', 'mdns-artnet'];
 const EMA_ALPHA = 0.3;
+/** Per-link timeout budget for a dispatch (ms). Anything slower is counted
+ *  as a `timeout` instead of a hard error. */
+const DEFAULT_TIMEOUT_MS = 1500;
 
 type Listener = (event: MultiTransportEvent) => void;
 
@@ -46,8 +49,13 @@ function emptyHealth(transport: DiscoveryTransport): LinkHealth {
     transport,
     txOk: 0,
     txErr: 0,
+    txTimeout: 0,
     latencyMs: 0,
+    maxLatencyMs: 0,
     lastAt: 0,
+    lastOkAt: 0,
+    lastFailAt: 0,
+    online: false,
     status: 'idle',
   };
 }
