@@ -1,65 +1,48 @@
-# Fix: Viewport 3D preto no modo desktop (`/studio`) — `THREE.WebGLRenderer: Context Lost`
+## Problema
+
+Fluxo relatado: Landing → Auth/Cadastro → cai em **Office Dashboard** em vez do **Studio (viewport 3D)**.
 
 ## Diagnóstico
 
-O console confirma o sintoma reportado:
+1. **Roteamento já aponta para `/studio`** como destino padrão pós-login (`AuthRoute` em `App.tsx`: fallback = `/studio`; `/` → `/studio`). Os CTAs do Landing (`Link to="/studio"`) também estão corretos.
 
-```
-[AdaptiveLOD] FPS 138 → raising to ULTRA
-THREE.WebGLRenderer: Context Lost.
-```
+2. **Causa real (vista no console runtime do `/studio`):**
+   ```
+   TypeError: Failed to fetch dynamically imported module:
+     /src/components/editor/Timeline.tsx
+   ```
+   - Em `src/pages/Index.tsx` linha 39, `Timeline` é carregado com o helper `lz()` simples — **sem `lazyRetry`** — diferente do `SkyCanvas` (linha 149). Quando o chunk fica obsoleto (deploy/HMR), o erro propaga para o `LazyChunkBoundary`, que substitui a tela por "Falha ao carregar a interface · Recarregar aplicativo".
+   - Mesmo após "Recarregar", se o usuário tiver `/office` como última rota visitada (sidebar) ou se algum link lateral for clicado, ele sai do Studio. O sintoma "cai no Office" é a tela Office sendo a única que renderiza com sucesso enquanto o Studio quebra silenciosamente.
 
-Sequência do bug:
-1. `/studio` carrega → `SkyCanvas` cria `<Canvas>` com `dpr={[1.5, 2]}`, `shadows`, `logarithmicDepthBuffer`, `powerPreference: 'high-performance'`.
-2. AdaptiveLOD detecta 138 FPS e **promove para ULTRA** muito cedo (segundos após boot, antes do mundo terminar de carregar).
-3. A escalada para ULTRA dispara: shadow map maior, mais luzes com `castShadow`, GI/LensFlare/ContactShadows montados via `DelayedMount(400)`, GPGPU em alta resolução. O driver perde o contexto WebGL.
-4. `ContextLossGuard` chama `reportCrash()` — após 3 perdas em janela curta entra em **cooldown de 10s** e suprime o remount: `console.error('[FXK] WebGL context lost — in cooldown, suppressing remount')`. Resultado: canvas fica preto permanentemente, mas o HUD continua atualizando o FPS (~144) porque é DOM puro — exatamente o que vemos no session replay.
-5. O `silentCanvasFailure` probe (3s) não dispara porque o `<canvas>` existe e tem dimensões — só está sem contexto. Logo o `SimplifiedSkyFallback` nunca aparece e o usuário fica sem saída.
+3. **Sinais corroborantes:** LCP de 25 s no `/studio`, vários warnings no AppErrorBoundary, e o card de "Recarregar" não preserva a rota.
 
-## Causas raiz (4 bugs)
+## Plano de Correção
 
-1. **Promoção precoce para ULTRA**: AdaptiveLOD reage ao FPS do splash/cena vazia (138 fps fácil), aumenta carga e crasha o GPU.
-2. **DPR agressivo em desktop**: `dpr=[1.5, 2]` em monitor 1067×672 com `devicePixelRatio=1.25` força ~2.6 megapíxels efetivos somados aos render targets de bloom/SSR/GPGPU.
-3. **Cooldown sem fallback visível**: quando `reportCrash` entra em cooldown, o usuário não recebe mensagem nem pode fazer retry — o `SimplifiedSkyFallback` só responde a `webglIssue`/`silentCanvasFailure`, não a context-loss em cooldown.
-4. **Falta detecção de "canvas sem contexto"**: o probe verifica dimensões mas não `gl.isContextLost()`.
+### 1. Blindar imports lazy do Studio (`src/pages/Index.tsx`)
+- Trocar o helper `lz(...)` para envolver TODOS os `import()` com `lazyRetry()` (mesmo padrão já usado em `SkyCanvas`). Isso reexecuta o `import()` automaticamente em caso de chunk stale antes de jogar para o ErrorBoundary.
+- Aplicar especificamente em `Timeline`, `EffectsLibrary`, painéis laterais e qualquer `lz(...)` restante no arquivo.
 
-## Plano de implementação
+### 2. Fallback do `LazyChunkBoundary` que NÃO perde a rota (`src/components/errors/LazyChunkBoundary.tsx`)
+- Manter `window.location.reload()` como ação principal, mas:
+  - Renderizar um segundo botão **"Voltar ao Studio"** (`window.location.href = '/studio'`) para reforçar a rota correta.
+  - Exibir a rota atual e o nome do módulo que falhou (do `error.message`) para diagnóstico.
+- Adicionar tentativa automática única de `reload()` com guarda em `sessionStorage` (evita loop) — só se ainda não recarregou nesta sessão para esse path.
 
-### 1. Reduzir pressão inicial sobre o GPU (`src/components/editor/SkyCanvas.tsx`)
-- Cap de DPR desktop: `dpr={isMobile ? [1, 1.25] : [1, Math.min(window.devicePixelRatio, 1.5)]}` (era `[1.5, 2]`).
-- Aumentar `DelayedMount` de heavy lighting de **400 ms → 1500 ms** para dar tempo do mundo estabilizar antes de adicionar GI/LensFlare/ContactShadows.
-- Adicionar `failIfMajorPerformanceCaveat: false` ao `gl` config (evita falha em GPUs marginais).
+### 3. Reforçar destino pós-login (`src/App.tsx`)
+- Em `AuthRoute`, ignorar `next` quando ele apontar para `/auth`, `/landing` ou `/` (já tratado parcialmente). Adicionar também ignore se `next === '/office'` **somente** quando vier diretamente do Landing (param `from=landing`), garantindo que cadastro novo sempre caia em `/studio`.
+- Em `ProtectedRoute`, NÃO preservar `next` para a rota `/landing` (não faz sentido voltar para landing após login).
 
-### 2. Aquecer AdaptiveLOD (`src/hooks/useFXKUltraRefinement.ts` ou onde mora a promoção)
-- Ignorar amostras de FPS nos primeiros **5 segundos** após mount (warm-up window). Hoje promove para ULTRA com 138 fps medidos antes do mundo carregar.
-- Exigir 3 amostras consecutivas acima do threshold para promover (debounce já parece existir para descer; aplicar simétrico para subir).
-
-### 3. Tornar context-loss cooldown visível e recuperável (`src/components/editor/skycanvas/watchdogs.tsx` + `SkyCanvas.tsx`)
-- `ContextLossGuard.onLost`: quando `isInCooldown()` for true, **propagar** o estado para o componente pai via callback `onUnrecoverable(reason)`.
-- `SkyCanvas` recebe esse callback, seta `setSilentCanvasFailure('WebGL context lost repeatedly — entering safe mode. Click retry to attempt recovery.')` e renderiza o `SimplifiedSkyFallback` existente.
-- Botão "Retry" do fallback: zerar `_crashRecord` em `runtimeSafety.ts` (exportar `resetCrashRecord()`) antes de `setWebglRetryKey(k+1)`.
-
-### 4. Detectar canvas sem contexto no probe silencioso
-- Em `silentCanvasFailure` probe: além de checar dimensões, chamar `gl?.isContextLost?.()` no renderer R3F (acessível via ref do `onCreated`). Se contexto perdido aos 3s, acionar fallback.
-
-### 5. Reduzir shadow casters (alinhado com memória de boas práticas R3F)
-- `src/components/editor/skycanvas/sceneLighting.tsx`: garantir que apenas a `moon` directional cast shadow (já é o caso). Verificar `GroundSystem.tsx:1197` (`<mesh castShadow>` em altura 50m) — desnecessário para um helper, remover `castShadow`.
+### 4. Smoke test manual
+- Fazer logout, abrir `/landing`, clicar CTA → `/auth?next=/studio` → login → deve cair em `/studio` com Timeline carregada.
+- Forçar erro de chunk (limpar cache) → ver fallback com botão "Voltar ao Studio" funcional.
 
 ## Arquivos afetados
 
-```text
-src/components/editor/SkyCanvas.tsx              (DPR cap, DelayedMount delay, gl flag, callback prop)
-src/components/editor/skycanvas/watchdogs.tsx    (onUnrecoverable callback no ContextLossGuard)
-src/components/editor/skycanvas/GroundSystem.tsx (remover castShadow do helper mesh)
-src/hooks/useFXKUltraRefinement.ts               (warm-up window de 5s antes de promover qualidade)
-src/lib/hardening/runtimeSafety.ts               (exportar resetCrashRecord)
-```
+- `src/pages/Index.tsx` — envolver todos `lazy(import(...))` com `lazyRetry`.
+- `src/components/errors/LazyChunkBoundary.tsx` — fallback melhorado + auto-reload guarded.
+- `src/App.tsx` — endurecer `AuthRoute`/`ProtectedRoute` para nunca cair em `/office` no primeiro login.
 
-## Validação pós-fix
+## Fora do escopo
 
-- Recarregar `/studio` → canvas 3D renderiza mundo (skybox + ground) dentro de 1s.
-- Console não mostra `WebGL context lost` no boot.
-- Forçar perda manual via DevTools (`gl.getExtension('WEBGL_lose_context').loseContext()`) → fallback aparece com botão Retry funcional.
-- Bundle size inalterado (somente lógica).
-
-Sem mudanças em backend, rotas ou store. Mudanças isoladas ao pipeline de render do `SkyCanvas`.
+- Otimização do LCP de 25 s do Studio (já tratada em iterações anteriores via DelayedMount/boot-safe profile).
+- Recovery de WebGL context loss (já implementado).

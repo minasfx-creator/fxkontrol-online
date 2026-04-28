@@ -68,9 +68,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user) {
-    // Preserve where the user was trying to go so AuthRoute can resume there post-login.
-    const next = `${location.pathname}${location.search}${location.hash}`;
-    const search = next && next !== "/" ? `?next=${encodeURIComponent(next)}` : "";
+    // Preserve where the user was trying to go so AuthRoute can resume there
+    // post-login. Skip preservation for entry / public routes — landing back
+    // there after login is never useful.
+    const path = location.pathname;
+    const skip = path === '/' || path === '/landing' || path === '/auth';
+    const next = skip ? '' : `${path}${location.search}${location.hash}`;
+    const search = next ? `?next=${encodeURIComponent(next)}` : '';
     return <Navigate to={`/auth${search}`} replace />;
   }
   return <>{children}</>;
@@ -81,10 +85,18 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   const [params] = useSearchParams();
   if (loading) return null;
   if (user) {
-    // Resume the originally-requested route. Falls back to /studio (viewport
-    // 3D principal) so signed-in users land directly on the editor.
-    const raw = params.get("next");
-    const target = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/studio";
+    // Resume the originally-requested route ONLY when it is a safe deep-link.
+    // Otherwise default to /studio (3D viewport principal) so first-time
+    // signups / Google sign-ins land directly on the editor — never on Office.
+    const raw = params.get('next');
+    const safe =
+      raw &&
+      raw.startsWith('/') &&
+      !raw.startsWith('//') &&
+      raw !== '/' &&
+      !raw.startsWith('/auth') &&
+      !raw.startsWith('/landing');
+    const target = safe ? raw! : '/studio';
     return <Navigate to={target} replace />;
   }
   return <>{children}</>;

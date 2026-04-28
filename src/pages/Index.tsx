@@ -26,7 +26,11 @@ import RadialMenu from '@/components/editor/RadialMenu';
 import LiveCard from '@/components/editor/LiveCard';
 
 // ── Lazy helper — one-liner for 80+ panels ──
-const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
+// All Studio lazy imports go through `lazyRetry` so a stale chunk after
+// deploy/HMR doesn't crash the whole editor — it transparently retries the
+// dynamic import once before bubbling to the LazyChunkBoundary.
+const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) =>
+  lazy(lazyRetry(loader));
 
 // ── Verification ──
 
