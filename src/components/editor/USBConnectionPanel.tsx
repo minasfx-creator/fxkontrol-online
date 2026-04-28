@@ -28,6 +28,7 @@ import {
 import { GenericAdapterConfirm } from './usb/GenericAdapterConfirm';
 import { DMXProfileEditor } from './usb/DMXProfileEditor';
 import { portRegistry, keyFor } from '@/core/discovery/portRegistry';
+import { HardwareDiagnosticsBanner } from './hardware/HardwareDiagnosticsBanner';
 
 
 const TYPE_COLORS: Record<string, string> = {
