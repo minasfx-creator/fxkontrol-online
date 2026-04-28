@@ -102,8 +102,13 @@ export interface SafetyConstraints {
 export interface HardwareModuleConfig {
   id: string;
   label: string;
-  type: 'nano-relay-32';     // Arduino Nano + 74HC595 + relay board
-  channelCount: number;      // 32
+  /**
+   * Module hardware family.
+   *  - 'nano-relay-32'   : Arduino Nano + 74HC595 + 32-relay board
+   *  - 'fxk16-esp32s3'   : ESP32-S3 v1.3 + 16-relay board (channelCount: 16)
+   */
+  type: 'nano-relay-32' | 'fxk16-esp32s3';
+  channelCount: number;      // 32 (nano-relay-32) or 16 (fxk16-esp32s3)
   address: number;           // bus address
   serialPort?: string;       // e.g. COM3, /dev/ttyUSB0
   batteryVoltage?: number;   // nominal 12V

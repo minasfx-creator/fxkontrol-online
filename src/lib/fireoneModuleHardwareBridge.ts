@@ -91,6 +91,10 @@ export interface BridgeStatus {
   lastErrorCode?: BridgeReasonCode;
   linkHealth?: 'disconnected' | 'handshaking' | 'healthy';
   sessionId?: number;
+  /** Module model reported by `MODEL:` token in STATUS reply (e.g. 'FXK16'). */
+  deviceModel?: string;
+  /** Channel count reported by `CH:` token in STATUS reply (e.g. 16). */
+  channelCount?: number;
   diagnostics?: BridgeDiagnostics;
 }
 
@@ -185,6 +189,8 @@ export class FireOneHardwareBridge {
   private connecting = false;
   private deviceName = '';
   private firmwareVersion = '';
+  private deviceModel?: string;
+  private channelCount?: number;
   private batteryVoltage?: number;
   private txBytes = 0;
   private rxBytes = 0;
@@ -864,6 +870,8 @@ export class FireOneHardwareBridge {
       lastErrorCode: this.lastErrorCode,
       linkHealth: this.linkHealth,
       sessionId: this.sessionId,
+      deviceModel: this.deviceModel,
+      channelCount: this.channelCount,
       diagnostics: this.getDiagnostics(),
     };
   }
@@ -1040,6 +1048,24 @@ export class FireOneHardwareBridge {
           if (!Number.isNaN(rssi)) {
             this.rssi = rssi;
             this.estimatedDistance = this.estimateDistance(rssi);
+          }
+        }
+        // Module identification tokens (FXK16 firmware emits these on STATUS):
+        //   MODEL:FXK16  → device family
+        //   CH:16        → declared channel count
+        // Backward compatible: older firmwares simply omit the tokens.
+        if (chunk.startsWith('MODEL:')) {
+          const model = chunk.substring(6).trim();
+          if (model && model !== this.deviceModel) {
+            this.deviceModel = model;
+            this.onEvent?.('module_model', model);
+          }
+        }
+        if (chunk.startsWith('CH:')) {
+          const ch = parseInt(chunk.substring(3), 10);
+          if (!Number.isNaN(ch) && ch !== this.channelCount) {
+            this.channelCount = ch;
+            this.onEvent?.('module_channels', ch);
           }
         }
       }

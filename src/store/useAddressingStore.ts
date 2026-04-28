@@ -17,6 +17,7 @@ export const DEFAULT_MODULE_SPECS: ModuleSpec[] = [
   { id: 'fireone-i32q', name: 'FireOne IFMx-i32Q', slatCount: 1, pinsPerSlat: 32, firingSystem: 'Default' },
   { id: 'pyrodigital-32', name: 'PyroDigital 32', slatCount: 4, pinsPerSlat: 8, firingSystem: 'Default' },
   { id: 'galaxis-g2', name: 'Galaxis G2', slatCount: 5, pinsPerSlat: 20, firingSystem: 'Default' },
+  { id: 'fxk16', name: 'FXK16 — 16ch (ESP32-S3)', slatCount: 1, pinsPerSlat: 16, firingSystem: 'Default' },
   { id: 'custom', name: 'Custom Module', slatCount: 5, pinsPerSlat: 20, firingSystem: 'Default' },
 ];
 
