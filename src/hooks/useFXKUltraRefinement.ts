@@ -81,6 +81,16 @@ export function useFXKUltraRefinement() {
   const lastQualityChangeRef = useRef(0);
   const QUALITY_CHANGE_COOLDOWN_MS = 3000;
 
+  // Warm-up window — ignore FPS samples for the first N ms after mount.
+  // Without this the controller measures the empty splash scene at 138fps and
+  // immediately promotes to ULTRA, only to crash the WebGL context once the
+  // real world (GPGPU + GI + lens flares + heavy shadows) finishes loading.
+  const mountedAtRef = useRef(typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const WARMUP_MS = 5000;
+  // Require N consecutive "headroom" samples before promoting quality up.
+  const promoteStreakRef = useRef(0);
+  const PROMOTE_STREAK = 3;
+
   // Wire into scene store for lowQualityMode
   const applyQualityToScene = useCallback((level: FXKQualityLevel, budget: typeof effectBudgetRef.current) => {
     const store = useSceneStore.getState();
