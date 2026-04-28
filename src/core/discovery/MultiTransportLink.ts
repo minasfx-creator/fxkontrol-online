@@ -255,26 +255,46 @@ export class MultiTransportLink {
   private _recordOk(transport: DiscoveryTransport, latencyMs: number): void {
     const h = this._ensureHealth(transport);
     h.txOk += 1;
-    h.lastAt = Date.now();
+    const now = Date.now();
+    h.lastAt = now;
+    h.lastOkAt = now;
     h.lastError = undefined;
     h.status = 'ok';
     h.latencyMs = h.latencyMs === 0
       ? latencyMs
       : EMA_ALPHA * latencyMs + (1 - EMA_ALPHA) * h.latencyMs;
+    if (latencyMs > h.maxLatencyMs) h.maxLatencyMs = latencyMs;
     this._totalTxOk += 1;
   }
 
   private _recordErr(transport: DiscoveryTransport, latencyMs: number, error: string): void {
     const h = this._ensureHealth(transport);
     h.txErr += 1;
-    h.lastAt = Date.now();
+    const now = Date.now();
+    h.lastAt = now;
+    h.lastFailAt = now;
     h.lastError = error;
     h.status = 'fail';
-    // Still update EMA so failing-fast stubs don't skew latency to 0.
     h.latencyMs = h.latencyMs === 0
       ? latencyMs
       : EMA_ALPHA * latencyMs + (1 - EMA_ALPHA) * h.latencyMs;
+    if (latencyMs > h.maxLatencyMs) h.maxLatencyMs = latencyMs;
     this._totalTxErr += 1;
+  }
+
+  private _recordTimeout(transport: DiscoveryTransport, latencyMs: number, error: string): void {
+    const h = this._ensureHealth(transport);
+    h.txTimeout += 1;
+    const now = Date.now();
+    h.lastAt = now;
+    h.lastFailAt = now;
+    h.lastError = error;
+    h.status = 'fail';
+    h.latencyMs = h.latencyMs === 0
+      ? latencyMs
+      : EMA_ALPHA * latencyMs + (1 - EMA_ALPHA) * h.latencyMs;
+    if (latencyMs > h.maxLatencyMs) h.maxLatencyMs = latencyMs;
+    this._totalTxTimeout += 1;
   }
 
   private _persistMode(): void {
