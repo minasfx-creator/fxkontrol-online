@@ -1906,15 +1906,24 @@ export default function SkyCanvas() {
 
   useEffect(() => {
     if (silentCanvasFailure) return;
+    // Two-phase WebGL health watcher:
+    //
+    //  1. Boot probes at 600/1500/3000ms — catch the case where R3F mounts
+    //     without a real <canvas> child (some Chrome builds with GPU disabled),
+    //     OR where the context is dead-on-arrival.
+    //
+    //  2. Continuous poll every 1s — catches context losses that occur AFTER
+    //     the boot window (e.g. heavy effects warming up at 3-4s, or a driver
+    //     deciding to revoke the context mid-session). Without this, a black
+    //     viewport could persist indefinitely if the auto-recovery `setTimeout`
+    //     was cancelled or the context-lost event was suppressed by the OS.
     const probeAt = [600, 1500, 3000];
-    const timers = probeAt.map((delay) =>
+    const probeTimers = probeAt.map((delay) =>
       window.setTimeout(() => {
         const node = containerRef.current;
         if (!node) return;
         const c = node.querySelector('canvas');
         const empty = !c || (c.clientWidth === 0 && c.clientHeight === 0);
-        // Also catch the "canvas exists with size but GL context is lost"
-        // case — without this the user sees a black viewport with no fallback.
         const ctxLost = !!rendererRef.current?.getContext()?.isContextLost?.();
         if ((empty || ctxLost) && delay === 3000) {
           setSilentCanvasFailure(
@@ -1925,7 +1934,32 @@ export default function SkyCanvas() {
         }
       }, delay),
     );
-    return () => timers.forEach((t) => window.clearTimeout(t));
+
+    // Continuous health poll (starts after 4s — past the boot probe window).
+    let lostStreak = 0;
+    const REQUIRED_STREAK = 3; // ~3s of confirmed loss before tripping fallback
+    const pollInterval = window.setInterval(() => {
+      if (silentCanvasFailure) return;
+      const gl = rendererRef.current;
+      if (!gl) return;
+      const ctx = gl.getContext();
+      const lost = !!ctx?.isContextLost?.();
+      if (lost) {
+        lostStreak++;
+        if (lostStreak >= REQUIRED_STREAK) {
+          setSilentCanvasFailure(
+            'WebGL context lost and not recovered automatically. Click Retry to reinitialize the 3D viewport.',
+          );
+        }
+      } else {
+        lostStreak = 0;
+      }
+    }, 1000);
+
+    return () => {
+      probeTimers.forEach((t) => window.clearTimeout(t));
+      window.clearInterval(pollInterval);
+    };
   }, [silentCanvasFailure, webglRetryKey]);
 
   // Proactive WebGL capability probe — render simplified fallback if unsupported.
