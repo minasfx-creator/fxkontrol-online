@@ -599,6 +599,7 @@ function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable, onRecover
       console.log('[FXK Recovery] WebGL context restored');
       recoveringRef.current = false;
       recoveryInFlightRef.current = false;
+      logWebglEvent('restored');
       toast.success('Viewport 3D recuperado', {
         id: 'fxk-webgl-recovery',
         duration: 2500,
