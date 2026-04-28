@@ -36,6 +36,26 @@ const config: CapacitorConfig = {
     backgroundColor: '#050810',
     allowMixedContent: true,
   },
+  // ─── Plugin config ──────────────────────────────────────────────
+  // O plugin @capacitor-community/serial é resolvido em runtime via
+  // window.Capacitor.Plugins.Serial. Não precisa estar listado aqui
+  // para funcionar — basta `npm install @capacitor-community/serial`
+  // e `npx cap sync ios` no projeto local.
+  //
+  // CHECKLIST iOS Info.plist (após `npx cap add ios`):
+  //   • UISupportedExternalAccessoryProtocols
+  //       - com.silabs.cp210x   (CP210x — Showven, ENTTEC clones)
+  //       - com.ftdichip.cdc.acm (FTDI FT232 — ENTTEC genuíno)
+  //   • UIBackgroundModes
+  //       - external-accessory
+  //       - bluetooth-central
+  //   • NSBluetoothAlwaysUsageDescription
+  //   • NSBluetoothPeripheralUsageDescription
+  //
+  // Detalhes em docs/iphone-usb-serial.md.
+  plugins: {
+    CapacitorHttp: { enabled: true },
+  },
 };
 
 export default config;
