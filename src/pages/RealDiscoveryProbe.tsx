@@ -267,6 +267,16 @@ export default function RealDiscoveryProbe() {
               <RefreshCw className={`h-4 w-4 ${scanning ? 'animate-spin' : ''}`} />
               Scan now
             </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => { refreshDevices(); setTick((t) => t + 1); }}
+              className="gap-2"
+              title="Re-render device list and link metrics from the aggregator without running a discovery scan"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh metrics
+            </Button>
             <div className="flex items-center gap-2 pl-2 border-l border-border">
               <Switch id="auto-refresh" checked={autoRefresh} onCheckedChange={setAutoRefresh} />
               <label htmlFor="auto-refresh" className="text-sm font-medium cursor-pointer">
