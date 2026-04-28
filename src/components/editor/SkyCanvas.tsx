@@ -447,13 +447,30 @@ function ContextLossGuard({ recoveringRef, onRemount, onUnrecoverable, onRecover
   // don't permanently degrade the renderer.
   const attemptTimestampsRef = useRef<number[]>([]);
   const scheduledTimerRef = useRef<number | null>(null);
+  // Tracks whether this guard (and therefore the parent <Canvas>) is still mounted.
+  // Prevents scheduled remounts from firing into a torn-down React tree (e.g. when
+  // the user navigates away from /studio during the recovery backoff window).
+  const mountedRef = useRef(true);
+  // Hard re-entry guard for `onLost`. Some drivers fire `webglcontextlost`
+  // multiple times in rapid succession while disposing GPGPU FBOs — without
+  // this gate each event would schedule its own remount, producing a storm of
+  // competing Canvas instances all trying to acquire a fresh GL context.
+  const recoveryInFlightRef = useRef(false);
 
   useEffect(() => {
     const canvas = gl.domElement;
+    mountedRef.current = true;
 
     const RECOVERY_WINDOW_MS = 60_000;
     // Backoff per attempt (ms). Index = attempt number - 1.
     const BACKOFF_LADDER = [250, 1000, 4000];
+
+    const clearScheduledTimer = () => {
+      if (scheduledTimerRef.current !== null) {
+        window.clearTimeout(scheduledTimerRef.current);
+        scheduledTimerRef.current = null;
+      }
+    };
 
     const performRecovery = (attemptInWindow: number) => {
       // Telemetry — every attempt is captured with attempt number.
