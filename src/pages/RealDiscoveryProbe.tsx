@@ -289,10 +289,87 @@ export default function RealDiscoveryProbe() {
           </div>
         </Card>
 
+        {/* ── Multi-transport aggregation breakdown ─────────── */}
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+            <h2 className="text-sm font-semibold inline-flex items-center gap-2">
+              <Layers className="h-4 w-4 text-primary" />
+              Multi-transport aggregation
+            </h2>
+            <span className="text-[11px] text-muted-foreground">
+              real-only · no synthetic events
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <Stat label="Single-link devices" value={aggregationStats.byLinkCount.get(1) ?? 0} tone="ok" />
+            <Stat label="Multi-transport (2+)" value={aggregationStats.multi} tone="ok" />
+            <Stat label="Multi online (≥2 online)" value={aggregationStats.multiOnline} tone="ok" />
+            <Stat label="Total physical devices" value={physicals.length} tone="ok" />
+          </div>
+          {aggregationStats.multi > 0 ? (
+            <div className="mt-3 space-y-1">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                Devices reachable on multiple transports
+              </div>
+              {sortedPhysicals
+                .filter((p) => Object.keys(p.links).length >= 2)
+                .map((p) => {
+                  const links = TRANSPORTS.filter((t) => p.links[t.id]);
+                  return (
+                    <div
+                      key={p.aggregateId}
+                      className="flex items-center gap-2 text-xs border border-border rounded-md px-2 py-1.5 bg-card/30"
+                    >
+                      <span className="truncate font-medium flex-1 min-w-0">{p.label}</span>
+                      <span className="font-mono text-[10px] text-muted-foreground truncate max-w-[200px]">
+                        {p.aggregateId}
+                      </span>
+                      <div className="flex gap-1 shrink-0">
+                        {links.map(({ id, short, icon: Icon }) => {
+                          const l = p.links[id]!;
+                          const isActive = p.activeTransport === id;
+                          return (
+                            <span
+                              key={id}
+                              className={[
+                                'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] border',
+                                isActive
+                                  ? 'border-primary bg-primary/15 text-primary'
+                                  : l.online
+                                    ? 'border-border bg-muted/30'
+                                    : 'border-destructive/30 bg-destructive/5 text-muted-foreground',
+                              ].join(' ')}
+                              title={`${short} · ${l.online ? 'online' : 'offline'}${
+                                isActive ? ' · active' : ''
+                              }`}
+                            >
+                              <Icon className="h-2.5 w-2.5" />
+                              {short}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-muted-foreground">
+              No physical device is currently reachable on more than one transport. Plug the same
+              controller on Web Serial AND WebUSB (or expose it on Art-Net + USB) to see aggregation here.
+            </p>
+          )}
+        </Card>
+
         {/* ── Physical devices ───────────────────────────────── */}
         <Card className="p-4">
           <h2 className="text-sm font-semibold mb-3">
             Physical devices ({physicals.length})
+            {aggregationStats.multi > 0 && (
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                — multi-transport listed first
+              </span>
+            )}
           </h2>
           {physicals.length === 0 ? (
             <div className="text-center py-10 text-sm text-muted-foreground">
@@ -306,7 +383,7 @@ export default function RealDiscoveryProbe() {
             </div>
           ) : (
             <div className="grid gap-3">
-              {physicals.map((dev) => (
+              {sortedPhysicals.map((dev) => (
                 <PhysicalDeviceCard key={dev.aggregateId} device={dev} />
               ))}
             </div>
