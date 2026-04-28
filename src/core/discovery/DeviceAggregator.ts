@@ -301,6 +301,51 @@ class DeviceAggregator {
     return null;
   }
 
+  /**
+   * Tell the portRegistry that every transport-specific key for this
+   * physical device refers to the same canonical entry. Idempotent and
+   * safe to call on every link change.
+   */
+  private _unifyRegistryAliases(dev: PhysicalDevice): void {
+    const aliases = new Set<string>([dev.aggregateId]);
+
+    // Per-link aliases — every transport may have generated its own key.
+    for (const link of Object.values(dev.links)) {
+      if (!link) continue;
+      const meta = (link.metadata ?? {}) as Record<string, unknown>;
+      const serial = typeof meta.serialNumber === 'string' ? meta.serialNumber : undefined;
+      const bleAddress =
+        typeof meta.bleAddress === 'string' ? meta.bleAddress :
+        typeof meta.address === 'string' ? (meta.address as string) : undefined;
+      for (const a of aliasCandidatesFor({
+        vendorId: link.vendorId,
+        productId: link.productId,
+        serialNumber: serial,
+        host: link.host,
+        bleAddress,
+      })) aliases.add(a);
+      // Also include the raw discovery id as a soft alias for back-lookup.
+      aliases.add(link.id);
+    }
+
+    // Aggregate-level identity (covers the case where the device-level
+    // serial is known even when no individual link reported it).
+    for (const a of aliasCandidatesFor({
+      vendorId: dev.vendorId,
+      productId: dev.productId,
+      serialNumber: dev.serialNumber,
+      host: dev.host,
+      aggregateId: dev.aggregateId,
+    })) aliases.add(a);
+
+    if (aliases.size === 0) return;
+    try {
+      portRegistry.unifyAliases([...aliases], { label: dev.label });
+    } catch (e) {
+      logger.warn('[DeviceAggregator] unifyAliases failed', e);
+    }
+  }
+
   private _emit(ev: PhysicalDeviceEvent): void {
     for (const l of this._listeners) {
       try { l(ev); } catch (e) { logger.warn('[DeviceAggregator] listener threw', e); }
