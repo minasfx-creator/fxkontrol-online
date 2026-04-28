@@ -61,3 +61,52 @@ export interface TransportDiscoverer {
   /** Current cached devices (no I/O). */
   getDevices(): DiscoveredDevice[];
 }
+
+// ─── Multi-Transport Aggregation ──────────────────────────────────
+/**
+ * A single physical device that may be reachable through multiple
+ * transports simultaneously. Built by `DeviceAggregator` from the raw
+ * `DiscoveredDevice` stream.
+ */
+export interface PhysicalDevice {
+  /** Canonical cross-transport id — see `aggregateKey()`. */
+  aggregateId: string;
+  /** Best-effort display label (longest non-empty link label wins). */
+  label: string;
+  vendorId?: number;
+  productId?: number;
+  serialNumber?: string;
+  host?: string;
+  /** Sparse map — present links only. */
+  links: Partial<Record<DiscoveryTransport, DiscoveredDevice>>;
+  /** Transport currently chosen as primary (may be null when all offline). */
+  activeTransport: DiscoveryTransport | null;
+  /** Operator-pinned transport (persisted in portRegistry). */
+  preferredTransport: DiscoveryTransport | null;
+  /** True when at least one link is online. */
+  online: boolean;
+  firstSeen: number;
+  lastSeen: number;
+  /** Last automatic promotion (for UI surfacing). */
+  lastPromotion?: {
+    from: DiscoveryTransport | null;
+    to: DiscoveryTransport;
+    at: number;
+    reason: 'link-lost' | 'preference-applied' | 'initial';
+  };
+}
+
+export type PhysicalDeviceEventType =
+  | 'added'
+  | 'link-added'
+  | 'link-updated'
+  | 'link-lost'
+  | 'promoted'
+  | 'removed';
+
+export interface PhysicalDeviceEvent {
+  type: PhysicalDeviceEventType;
+  device: PhysicalDevice;
+  transport?: DiscoveryTransport;
+  previousActive?: DiscoveryTransport | null;
+}

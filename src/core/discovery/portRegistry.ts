@@ -11,6 +11,7 @@
 
 import { logger } from '@/lib/logger';
 import { getReopenMatchPolicy } from './useReopenMatchPolicy';
+import type { DiscoveryTransport } from './types';
 
 const STORAGE_KEY = 'fxk:portRegistry:v1';
 const MAX_ENTRIES = 50;
@@ -46,6 +47,8 @@ export interface PortRegistryEntry {
   confirmedMode?: GenericConfirmMode;
   /** Per-adapter operator override for protocol/family — wins over label detection. */
   profileOverride?: DMXProfileOverride;
+  /** Operator-pinned transport for multi-link devices. Survives reloads. */
+  preferredTransport?: DiscoveryTransport;
   firstSeen: number;
   lastSeen: number;
 }
