@@ -6,6 +6,7 @@
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, LinkHealthState } from '../types';
 import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
+import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 export interface ArtNetNodeState {
   node_ip: string;
@@ -68,13 +69,13 @@ export class ArtNetNodeAdapter implements HardwareAdapter<ArtNetNodeState> {
   getProvenance(): ProvenanceInfo { return { ...this._provenance, last_seen_at: Date.now(), data_freshness_ms: 0 }; }
 
   pollTelemetry(): void {
-    if (this._connected === 'connected' || this._connected === 'degraded') {
-      this._state.packets_per_second = 30 + Math.floor(Math.random() * 10);
-      this._state.link.latency_ms = this._state.link.degraded ? 35 + Math.random() * 30 : 2 + Math.random() * 5;
-      this._state.link.packet_loss = this._state.link.degraded ? 2 + Math.random() * 5 : Math.random() * 0.5;
-      this._state.link.last_packet = Date.now();
-      this._state.artpoll_responses++;
-    }
+    if (this._connected !== 'connected' && this._connected !== 'degraded') return;
+    if (!isHardwareSimulatorEnabled()) return;
+    this._state.packets_per_second = 30 + Math.floor(Math.random() * 10);
+    this._state.link.latency_ms = this._state.link.degraded ? 35 + Math.random() * 30 : 2 + Math.random() * 5;
+    this._state.link.packet_loss = this._state.link.degraded ? 2 + Math.random() * 5 : Math.random() * 0.5;
+    this._state.link.last_packet = Date.now();
+    this._state.artpoll_responses++;
   }
 
   runDiagnostics(): { healthy: boolean; issues: string[] } {
