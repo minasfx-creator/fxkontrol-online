@@ -24,6 +24,12 @@ export class FXK16ModuleAdapter implements HardwareAdapter<RelayBankState> {
   readonly deviceId = 'fxk16-esp32s3';
   readonly deviceType = 'relay-bank' as const;
   readonly label = 'FXK16 — 16ch (ESP32-S3)';
+  /** Protocol family — mirrors ModuleSpec.protocolFamily / HardwareModuleConfig.protocolFamily. */
+  readonly protocolFamily = 'showven-c16-compatible' as const;
+  /** Firmware MODEL token reported by the device on handshake. */
+  readonly firmwareModel = 'FXK16' as const;
+  /** Showven preset this adapter is wire-compatible with. */
+  readonly compatibleWith = 'pyroslave_c16' as const;
   private _provenance: ProvenanceInfo = createSimulatedProvenance('serial_usb');
 
   private _connected: DeviceConnectionState = 'disconnected';
