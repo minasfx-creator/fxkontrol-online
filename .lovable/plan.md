@@ -1,48 +1,72 @@
-## Problema
 
-Fluxo relatado: Landing → Auth/Cadastro → cai em **Office Dashboard** em vez do **Studio (viewport 3D)**.
+# Remoção total dos sistemas de bloqueio — Modo Testes Aberto
 
-## Diagnóstico
+## Estado atual
 
-1. **Roteamento já aponta para `/studio`** como destino padrão pós-login (`AuthRoute` em `App.tsx`: fallback = `/studio`; `/` → `/studio`). Os CTAs do Landing (`Link to="/studio"`) também estão corretos.
+A quarentena anterior já neutralizou as 4 camadas principais (todas retornam permissivo):
 
-2. **Causa real (vista no console runtime do `/studio`):**
-   ```
-   TypeError: Failed to fetch dynamically imported module:
-     /src/components/editor/Timeline.tsx
-   ```
-   - Em `src/pages/Index.tsx` linha 39, `Timeline` é carregado com o helper `lz()` simples — **sem `lazyRetry`** — diferente do `SkyCanvas` (linha 149). Quando o chunk fica obsoleto (deploy/HMR), o erro propaga para o `LazyChunkBoundary`, que substitui a tela por "Falha ao carregar a interface · Recarregar aplicativo".
-   - Mesmo após "Recarregar", se o usuário tiver `/office` como última rota visitada (sidebar) ou se algum link lateral for clicado, ele sai do Studio. O sintoma "cai no Office" é a tela Office sendo a única que renderiza com sucesso enquanto o Studio quebra silenciosamente.
+- `safetyGate.isEnforced()` → sempre `false`
+- `OperationalModeGuard.check()` → sempre `allowed: true` (porque depende do safetyGate)
+- `useItemLocked()` → sempre `false`
+- `LockoutPanel` → modo informativo
+- `safetyGate.setShowState` → set direto, sem hard gate
 
-3. **Sinais corroborantes:** LCP de 25 s no `/studio`, vários warnings no AppErrorBoundary, e o card de "Recarregar" não preserva a rota.
+## Bloqueios remanescentes encontrados
 
-## Plano de Correção
+Apesar do shim, três pontos ainda podem barrar simulação/export por estado interno:
 
-### 1. Blindar imports lazy do Studio (`src/pages/Index.tsx`)
-- Trocar o helper `lz(...)` para envolver TODOS os `import()` com `lazyRetry()` (mesmo padrão já usado em `SkyCanvas`). Isso reexecuta o `import()` automaticamente em caso de chunk stale antes de jogar para o ErrorBoundary.
-- Aplicar especificamente em `Timeline`, `EffectsLibrary`, painéis laterais e qualquer `lz(...)` restante no arquivo.
+1. **`ExportCoordinator.execute()`** — passos 1 e 3 chamam `operationalModeGuard.check('export')` e `readinessEvaluator.evaluate()` e abortam com `success: false` se `allowed_operations` não inclui `'export'`. Como o ModeGuard agora é permissivo, o passo 1 já passa, mas o passo 3 ainda pode bloquear (depende de status de hardware real).
+2. **`ReadinessEvaluator._isOperationAllowed`** — `'export'` exige status específico de hardware, e `'simulate'`/`'preview'` retornam `false` quando `status === 'BLOCKED'`. Sem hardware real conectado isto pode resultar em `BLOCKED` e impedir simulação.
+3. **`SafetyGateSettings` em `Settings.tsx`** — UI ainda expõe toggles que chamam `setMaster/setLayer` (no-ops), causando confusão ao operador.
 
-### 2. Fallback do `LazyChunkBoundary` que NÃO perde a rota (`src/components/errors/LazyChunkBoundary.tsx`)
-- Manter `window.location.reload()` como ação principal, mas:
-  - Renderizar um segundo botão **"Voltar ao Studio"** (`window.location.href = '/studio'`) para reforçar a rota correta.
-  - Exibir a rota atual e o nome do módulo que falhou (do `error.message`) para diagnóstico.
-- Adicionar tentativa automática única de `reload()` com guarda em `sessionStorage` (evita loop) — só se ainda não recarregou nesta sessão para esse path.
+## Mudanças propostas
 
-### 3. Reforçar destino pós-login (`src/App.tsx`)
-- Em `AuthRoute`, ignorar `next` quando ele apontar para `/auth`, `/landing` ou `/` (já tratado parcialmente). Adicionar também ignore se `next === '/office'` **somente** quando vier diretamente do Landing (param `from=landing`), garantindo que cadastro novo sempre caia em `/studio`.
-- Em `ProtectedRoute`, NÃO preservar `next` para a rota `/landing` (não faz sentido voltar para landing após login).
+### 1. `src/core/export/ExportCoordinator.ts`
+- Remover o early-return do passo 1 (mode guard) — manter `verificationEngine.run()` apenas como log/auditoria, não como gate.
+- Remover o early-return do passo 3 (readiness) — registrar issues como `warnings[]` no resultado mas seguir com o export.
+- Adicionar campo `warnings: string[]` em `ExportAttemptResult` para o operador continuar enxergando avisos sem ser bloqueado.
 
-### 4. Smoke test manual
-- Fazer logout, abrir `/landing`, clicar CTA → `/auth?next=/studio` → login → deve cair em `/studio` com Timeline carregada.
-- Forçar erro de chunk (limpar cache) → ver fallback com botão "Voltar ao Studio" funcional.
+### 2. `src/core/hardware/ReadinessEvaluator.ts`
+- Em `_isOperationAllowed()`: forçar `return true` para `'simulate'`, `'preview'`, `'export'`, `'validate'`, `'diagnostics'`, `'sync_read_only'`.
+- Manter `evaluate()` calculando `status`, `issues`, `warnings` normalmente (telemetria continua honesta) — apenas a tradução para `allowed_operations` vira "tudo permitido".
 
-## Arquivos afetados
+### 3. `src/components/settings/SafetyGateSettings.tsx`
+- Substituir o painel inteiro por um banner informativo: "🟡 Sistemas de bloqueio em quarentena para fase de testes. Restauração: `src/_quarantine/safety/`."
+- Sem switches funcionais. Mantém a aba existindo para não quebrar navegação.
 
-- `src/pages/Index.tsx` — envolver todos `lazy(import(...))` com `lazyRetry`.
-- `src/components/errors/LazyChunkBoundary.tsx` — fallback melhorado + auto-reload guarded.
-- `src/App.tsx` — endurecer `AuthRoute`/`ProtectedRoute` para nunca cair em `/office` no primeiro login.
+### 4. `src/components/editor/SafetySummaryBar.tsx` e `VerificationBar.tsx`
+- Conferir e remover qualquer renderização de "BLOCKED"/"NOT READY" que use cor vermelha bloqueante. Trocar por etiquetas neutras (informativas) — a barra continua existindo, mas sem comunicar bloqueio operacional.
 
-## Fora do escopo
+### 5. `src/utils/joiCommandExecutor.ts`
+- O JOI consulta `readiness.blocked_operations` e `operationalModeGuard.mode` para responder ao operador. Manter a leitura, mas como `blocked_operations` ficará vazio após a mudança em (2), a saída naturalmente passa a ser "tudo permitido". Sem edição direta necessária.
 
-- Otimização do LCP de 25 s do Studio (já tratada em iterações anteriores via DelayedMount/boot-safe profile).
-- Recovery de WebGL context loss (já implementado).
+## Arquivos preservados (quarentena, sem mudança)
+
+- `src/_quarantine/safety/*.original.*` — fonte de verdade para reativação
+- `src/core/safety/safetyGate.ts` (shim no-op) — mantido
+- `src/core/hardware/OperationalModeGuard.ts` — já gateado por safetyGate; mantido
+- `src/lib/uiLockHelper.ts` — já neutralizado; mantido
+
+## Resultado esperado
+
+- ✅ Toda simulação roda sem hard gate
+- ✅ Todo export executa (gera arquivo) mesmo sem hardware conectado — issues viram warnings no resultado
+- ✅ Telemetria, verificação, readiness continuam **calculando e exibindo** estado real (honestidade preservada) — apenas não bloqueiam mais
+- ✅ Reativação para produção: restaurar `src/_quarantine/safety/safetyGate.original.ts` + reverter os 2 early-returns no ExportCoordinator + restaurar gates em ReadinessEvaluator (commit único reversível)
+
+## Detalhes técnicos
+
+```text
+Antes:                              Depois:
+ExportCoordinator.execute()         ExportCoordinator.execute()
+ ├─ ModeGuard gate ──► block         ├─ ModeGuard.check()  ──► log only
+ ├─ verification.run()               ├─ verification.run() ──► log only
+ ├─ Readiness gate ──► block         ├─ readiness.evaluate() ──► warnings[]
+ └─ exporter.run()                   └─ exporter.run()  ── always reached
+
+ReadinessEvaluator._isOperationAllowed(op, status, issues)
+  → switch(op): retorna SEMPRE true (fase de testes)
+  → status/issues continuam visíveis na UI para diagnóstico
+```
+
+Memory `mem://funcionalidades/safety-gate-opt-in.md` será atualizada para registrar o estado "quarentena total" e o caminho de reativação.
