@@ -485,6 +485,9 @@ function PhysicalDeviceCard({ device }: { device: PhysicalDevice }) {
         </div>
       )}
 
+      {/* Per-transport metrics table */}
+      <TransportMetricsTable device={device} snap={snap} />
+
       {/* Identity row */}
       <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
         {typeof device.vendorId === 'number' && (
