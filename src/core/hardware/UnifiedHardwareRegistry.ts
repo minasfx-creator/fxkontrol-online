@@ -14,6 +14,7 @@ import { arduinoNanoAdapter } from './adapters/ArduinoNanoAdapter';
 import { shiftRegisterAdapter } from './adapters/ShiftRegisterAdapter74HC595';
 import { muxReaderAdapter } from './adapters/MuxReaderAdapterCD4051';
 import { relayBankAdapter } from './adapters/RelayBankAdapter32';
+import { fxk16ModuleAdapter } from './adapters/FXK16ModuleAdapter';
 import { batteryMonitorAdapter } from './adapters/BatteryMonitorAdapter';
 import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
 import { fireOneProfileAdapter } from './adapters/FireOneProfileAdapter';
@@ -31,6 +32,7 @@ class UnifiedHardwareRegistry {
     this.registerAdapter(shiftRegisterAdapter);
     this.registerAdapter(muxReaderAdapter);
     this.registerAdapter(relayBankAdapter);
+    this.registerAdapter(fxk16ModuleAdapter);
     this.registerAdapter(batteryMonitorAdapter);
     this.registerAdapter(artNetNodeAdapter);
     this.registerAdapter(fireOneProfileAdapter);
