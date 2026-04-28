@@ -239,8 +239,13 @@ export class MultiTransportLink {
       this._participants = active ? [active] : [];
     }
 
-    // Ensure health entry exists for every participant.
-    for (const t of this._participants) this._ensureHealth(t);
+    // Ensure health entry exists for every known link AND keep online flag synced.
+    for (const t of PRIORITY) {
+      const linkData = dev.links[t];
+      if (!linkData) continue;
+      const h = this._ensureHealth(t);
+      h.online = !!linkData.online;
+    }
   }
 
   private _ensureHealth(transport: DiscoveryTransport): LinkHealth {
