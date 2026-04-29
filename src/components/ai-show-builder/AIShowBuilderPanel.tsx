@@ -254,7 +254,10 @@ function PlanPreview({
         </ScrollArea>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={onReview} className="gap-2">
+          <Pencil className="h-4 w-4" /> Revisar e editar
+        </Button>
         <Button onClick={onApply} disabled={!validation.ok}>
           Aplicar no mundo 3D
         </Button>
