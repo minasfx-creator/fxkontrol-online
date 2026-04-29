@@ -170,6 +170,8 @@ export const GlobalIlluminationController = React.forwardRef<THREE.Group, Record
     (window as any).__giSystem = giRef.current;
     return () => {
       delete (window as any).__giSystem;
+      // Detach hemisphere light from scene + clear probes (M5).
+      giRef.current?.dispose();
       giRef.current = null;
     };
   }, [scene]);
