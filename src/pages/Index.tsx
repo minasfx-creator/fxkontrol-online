@@ -393,8 +393,8 @@ function Index() {
       setVenueSelector(true);
       return;
     }
-    // SwarmGPT/AI choreography → consolidated under /ai-builder.
-    if (id === 'swarmgpt' || id === 'ai-builder') {
+    // SwarmGPT consolidated under /ai-builder.
+    if (id === 'swarmgpt') {
       navigate('/ai-builder');
       return;
     }
@@ -420,7 +420,7 @@ function Index() {
 
   const handleMobileOpenPanel = useCallback((id: PanelId) => {
     if (id === 'swarmgpt') {
-      navigate('/swarmgpt');
+      navigate('/ai-builder');
       return;
     }
     setActivePanel(id);
