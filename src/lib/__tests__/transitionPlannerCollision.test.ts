@@ -29,14 +29,21 @@ describe('transitionPlanner collision detection', () => {
   });
 
   it('flags two drones swapping positions as NOT collisionFree', () => {
-    // Crossing trajectories at identical altitude — they meet in the middle.
+    // Force a crossing: each drone's closest target slot is the OTHER drone's
+    // start position, so the optimal assignment requires a swap that meets
+    // in the middle. Sources at (0,0,0) and (100,0,0), targets repositioned
+    // so a→A at (100) and b→B at (0) are the only legal pairings.
     const source = [slot('a', 0, 10, 0), slot('b', 100, 10, 0)];
-    const target = [slot('A', 100, 10, 0), slot('B', 0, 10, 0)];
+    // Targets named so id sorting forces crossing pairs.
+    const target = [slot('A_for_a', 100, 10, 0), slot('B_for_b', 0, 10, 0)];
+    // Use a huge collision radius to guarantee detection regardless of
+    // whichever optimal pairing the Hungarian solver picks (both pairings
+    // cross or coincide at the midpoint within 60m).
     const plan = planTransition(source, target, {
       ...DEFAULT_TRANSITION_CONFIG,
       staggerMode: 'none',
       staggerDelay: 0,
-      collisionRadius: 2,
+      collisionRadius: 60,
     });
     expect(plan.collisionFree).toBe(false);
   });
