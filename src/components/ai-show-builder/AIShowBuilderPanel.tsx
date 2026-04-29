@@ -186,10 +186,12 @@ function PlanPreview({
   plan,
   validation,
   onApply,
+  onReview,
 }: {
   plan: ShowPlan;
   validation: ShowPlanValidationResult;
   onApply: () => void;
+  onReview: () => void;
 }) {
   return (
     <div className="rounded-md border border-border/50 bg-background/40 p-3 space-y-3">
