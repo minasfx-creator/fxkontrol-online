@@ -5,7 +5,7 @@
  * gera ShowPlan (determinístico), valida e materializa no
  * useProjectStore. Inspecionável antes de aplicar.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -18,6 +18,12 @@ import type { ShowPlan, ShowPlanValidationResult, ShowSiteConfig } from '@/lib/a
 import { generateShowPlanWithProviderDetailed } from '@/lib/aiShowBuilder/generateShowPlanWithProvider';
 import { validateShowPlan } from '@/lib/aiShowBuilder/validateShowPlan';
 import { materializeShowPlan } from '@/lib/aiShowBuilder/materializeShowPlan';
+import {
+  getAiShowBuilderLayoutMode,
+  getPipelineModel,
+  type AiShowBuilderLayoutMode,
+  type AiShowPipelineModel,
+} from '@/lib/aiShowBuilder/pipelineModel';
 import ShowPlanReviewEditor from './ShowPlanReviewEditor';
 
 
@@ -45,11 +51,33 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
   const [plan, setPlan] = useState<ShowPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<AiShowBuilderLayoutMode>(() =>
+    getAiShowBuilderLayoutMode(),
+  );
 
+  // Reage a resize/orientação. Só afeta apresentação — nunca dados.
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const update = () => setLayoutMode(getAiShowBuilderLayoutMode());
+    const mqDesktop = window.matchMedia('(min-width: 1024px)');
+    const mqLandscape = window.matchMedia('(orientation: landscape)');
+    mqDesktop.addEventListener('change', update);
+    mqLandscape.addEventListener('change', update);
+    return () => {
+      mqDesktop.removeEventListener('change', update);
+      mqLandscape.removeEventListener('change', update);
+    };
+  }, []);
 
   const validation: ShowPlanValidationResult | null = useMemo(
     () => (plan ? validateShowPlan(plan, site) : null),
     [plan, site],
+  );
+
+  // Modelo renderizável canônico — idêntico em todos os layoutModes.
+  const pipelineModel: AiShowPipelineModel | null = useMemo(
+    () => (plan ? getPipelineModel(plan, layoutMode) : null),
+    [plan, layoutMode],
   );
 
   const addChip = (chip: string) => {
@@ -165,9 +193,11 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
           )}
         </div>
 
-        {plan && validation && !reviewing && (
+        {plan && validation && pipelineModel && !reviewing && (
           <PlanPreview
             plan={plan}
+            model={pipelineModel}
+            layoutMode={layoutMode}
             validation={validation}
             onApply={handleApply}
             onReview={() => setReviewing(true)}
@@ -193,35 +223,47 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
 
 function PlanPreview({
   plan,
+  model,
+  layoutMode,
   validation,
   onApply,
   onReview,
 }: {
   plan: ShowPlan;
+  model: AiShowPipelineModel;
+  layoutMode: AiShowBuilderLayoutMode;
   validation: ShowPlanValidationResult;
   onApply: () => void;
   onReview: () => void;
 }) {
+  // Apenas apresentação muda por layout. Dados vêm sempre de `model`.
+  const sectionsGridClass =
+    layoutMode === 'desktop'
+      ? 'grid grid-cols-3 gap-2 text-xs'
+      : layoutMode === 'mobileLandscape'
+        ? 'grid grid-cols-3 gap-2 text-xs'
+        : 'grid grid-cols-2 gap-2 text-xs';
+
   return (
     <div className="rounded-md border border-border/50 bg-background/40 p-3 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h4 className="text-sm font-semibold text-foreground">{plan.title}</h4>
           <p className="text-xs text-muted-foreground">
-            Estilo: {plan.style} · {plan.duration.toFixed(0)}s
+            Estilo: {plan.style} · {model.duration.toFixed(0)}s
           </p>
         </div>
         <div className="flex gap-3 text-xs text-muted-foreground">
-          <span><strong className="text-foreground">{plan.positions.length}</strong> posições</span>
-          <span><strong className="text-foreground">{plan.timelineItems.length}</strong> cues</span>
+          <span><strong className="text-foreground">{model.positions.length}</strong> posições</span>
+          <span><strong className="text-foreground">{model.timelineItems.length}</strong> cues</span>
           <span><strong className="text-foreground">{plan.trajectories.length}</strong> trajetórias</span>
         </div>
       </div>
 
       <Separator />
 
-      <div className="grid grid-cols-3 gap-2 text-xs">
-        {plan.sections.map((sec) => (
+      <div className={sectionsGridClass}>
+        {model.sections.map((sec) => (
           <div key={sec.id} className="rounded border border-border/40 p-2 bg-card/30">
             <div className="font-semibold text-foreground">{sec.name}</div>
             <div className="text-muted-foreground">
