@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useFleetStore } from '@/store/useFleetStore';
+import { useSceneStore } from '@/store/useSceneStore';
 import { flockwave } from '@/lib/flockwaveProtocol';
 import { runPreflightChecks, exportPreflightReport } from '@/lib/preflightChecks';
 import type { UAVStatus } from '@/lib/flockwaveProtocol';
