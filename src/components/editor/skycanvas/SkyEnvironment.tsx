@@ -12,7 +12,7 @@ import { createSkyAtmosphereV2 } from '@/render_ultra/environment/skyAtmosphereV
 import { createVolumetricCloudLayer } from '@/render_ultra/environment/volumetricClouds';
 import { createWaterSystem, WATER_PRESETS } from '@/render_ultra/environment/waterRendering';
 import { evaluateTimeOfDay } from '@/render_ultra/environment/timeOfDay';
-import { createDecalSystem, updateDecals, clearDecals } from '@/render_ultra/environment/groundDecals';
+import { createDecalSystem, updateDecals, disposeDecalSystem } from '@/render_ultra/environment/groundDecals';
 
 // ── Sky Atmosphere V2 ──
 export function SkyAtmosphereV2Layer() {
