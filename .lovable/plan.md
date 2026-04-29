@@ -1,65 +1,84 @@
-## FXK16 BLE Pairing Wizard
+## FXK16 Typed Command API for FXKPYRO
 
-Add a guided BLE pairing flow that scans for `FXK16-XXXXXX` devices, connects over the BLE-UART service, reads the firmware handshake (`MODEL:FXK16;CH:16;FW:1.3.0;ID:...`), and shows real-time per-attempt status. Mirrors the existing 5-step USB wizard pattern (`/pairing/usb`) so operators get a consistent experience across transports.
+Add a small, strongly-typed command surface on top of the existing `useFXK16Bridge` / `FireOneHardwareBridge` so FXKPYRO panels stop calling raw `fire(ch, ms): boolean` and instead get **discriminated `CommandResponse` results** with stable error codes — including a client-side **ARM gate** that prevents `fire`/`fireBatch` from ever reaching the wire on a disarmed bridge.
 
 ### What gets built
 
-**New route**: `/pairing/ble` (lazy in `src/App.tsx`)
+1. **`src/lib/fxk16/commandApi.ts`** — pure types + a `createFxk16CommandApi(bridge)` factory. No React.
+2. **`src/hooks/useFXK16Commands.ts`** — React hook wrapping the singleton bridge, exposing the typed API with a reactive `armed` flag (singleton-scoped, persists across mounts).
+3. **`src/components/editor/live-firing/FXK16ConnectionPanel.tsx`** — wire the existing Test FIRE / E-STOP buttons through the new API; show last error code + add an ARM/DISARM toggle (Hold-to-Confirm 800ms) gating the Test FIRE.
+4. **`mem://funcionalidades/fxk16-typed-command-api.md`** + index entry.
 
-**Page**: `src/pages/BlePairingWizard.tsx` — 4 steps
-1. **Welcome** — checks Web Bluetooth support, platform hints (iOS = unsupported → suggest USB wizard, Android Chrome / desktop = OK)
-2. **Scan** — calls `navigator.bluetooth.requestDevice` filtered by `namePrefix: 'FXK16-'` + service `0000ffe0-...`. Picker shows only matching devices.
-3. **Handshake** — opens GATT, subscribes to RX notify char, sends `VERSION\n` then `STATUS\n` on TX char, waits up to 3s for `MODEL:FXK16;CH:16;FW:...;ID:...`. Parses tokens and displays them.
-4. **Success** — shows model, channel count, firmware, device ID; CTAs: "Pair another", "Open FXK Pyro Console", "Done".
+### Public surface (typed)
 
-**Per-attempt status panel** (visible from step 2 onward): a scrollable list of attempts with timestamp, device name, outcome chip (Connecting / Handshake OK / Timeout / Cancelled / GATT error), latency in ms, and the raw handshake line. Capped at 20 entries (in-memory + persisted to `pairingAuditLog` for cross-session history).
+```ts
+type Fxk16Channel = number; // runtime-validated 1..16
 
-**Reuses existing infrastructure**:
-- `FireOneHardwareBridge.connectBLE()` already implements the GATT setup + `establishHealthyLink` handshake that parses `MODEL:` and `CH:` tokens. The wizard wraps it with explicit per-attempt event capture.
-- `pairingAuditLog.recordPairing()` for success/failure log entries (transport: `'ble'`).
-- `portRegistry.upsert` keyed by `ble:${deviceId}` so the device is remembered for auto-reconnect by `DeviceAggregator`.
-- `WizardStepIndicator` and step-shell layout from `src/components/pairing/`.
+type Fxk16ErrorCode =
+  | 'NOT_CONNECTED'        // bridge offline
+  | 'WRONG_DEVICE'         // connected but not FXK16
+  | 'NOT_ARMED'            // client-side ARM gate blocked
+  | 'INVALID_CHANNEL'      // outside 1..16
+  | 'INVALID_DURATION'     // <=0 or >10000ms
+  | 'EMPTY_CHANNEL_SET'    // setChannels([]) / batch([])
+  | 'LINK_DEGRADED'        // bridge.linkHealth !== 'healthy'
+  | 'BRIDGE_REJECTED'      // bridge returned false
+  | 'BRIDGE_THREW'         // exception during sendCommand
+  | 'TIMEOUT';             // FIRE_CONFIRM_TIMEOUT in bridge
 
-**New components** under `src/components/pairing/ble/`:
-- `BleWelcomeStep.tsx`
-- `BleScanStep.tsx` (wraps requestDevice; surfaces NotFoundError, SecurityError, NotSupportedError with actionable hints)
-- `BleHandshakeStep.tsx` (drives bridge, shows attempt log)
-- `BleSuccessStep.tsx`
-- `AttemptLogList.tsx` (shared status panel)
+type Ok<T = void>  = { ok: true;  value: T };
+type Err           = { ok: false; code: Fxk16ErrorCode; message: string; cause?: unknown };
+type CommandResponse<T = void> = Ok<T> | Err;
 
-**Entry points wired**:
-- "Pair via Bluetooth" button added to `EasyConnectPanel.tsx` next to the existing USB wizard CTA.
-- Link added to the hardware overview at `/command?mode=hw_overview`.
+interface Fxk16CommandApi {
+  // State queries (sync)
+  isReady(): boolean;        // connected + isFXK16 + healthy
+  isArmed(): boolean;
 
-### Technical details
+  // ARM gate (client-side, bridge has no ARM opcode)
+  arm():    CommandResponse;
+  disarm(): CommandResponse;
 
-- BLE UUIDs already match the FXK16 firmware (`fireoneModuleHardwareBridge.ts` constants, also defined in `firmware/fxk16-esp32s3/src/main.ino`):
-  - Service `0000ffe0-0000-1000-8000-00805f9b34fb`
-  - TX (host→device, write) `0000ffe1-...`
-  - RX (device→host, notify) `0000ffe2-...`
-- Handshake parser: read notify chunks, accumulate until `\n`, match `MODEL:FXK16` AND `CH:16` within 3s window. Extract `FW:` and `ID:` tokens for display.
-- All timers tracked via `useRef` and cleared on unmount (per Core memory rule).
-- Hard-gate compliance: this wizard only **discovers and identifies** — never sends FIRE. No CommandBus interaction. Live operational firing continues to flow through the existing `UI → ShowPlan → CommandBus → SafetyStateMachine → FieldBus` path.
-- Honest hardware: on failure, no synthetic device is registered. `portRegistry.upsert` is called only on confirmed handshake.
-- iOS handling: Web Bluetooth is unavailable in iOS Safari/WKWebView. The Welcome step detects this via `platformCapabilities` and routes the user to `/pairing/usb` with an explanation.
+  // Firing — all guarded by isReady() + isArmed()
+  fire(channel: Fxk16Channel, durationMs: number): Promise<CommandResponse<{ channel: number; durationMs: number }>>;
+  fireBatch(channels: Fxk16Channel[], durationMs: number): Promise<CommandResponse<{ mask: number; channels: number[]; durationMs: number }>>;
 
-### Files touched
+  // Channel selection state (which channels the operator "armed" for next BATCH)
+  setChannels(channels: Fxk16Channel[]): CommandResponse<{ channels: number[]; mask: number }>;
+  getSelectedChannels(): Fxk16Channel[];
+  fireSelected(durationMs: number): Promise<CommandResponse<{ mask: number; channels: number[]; durationMs: number }>>;
 
-```text
-src/App.tsx                                       (+1 lazy route)
-src/pages/BlePairingWizard.tsx                    (new)
-src/components/pairing/ble/BleWelcomeStep.tsx     (new)
-src/components/pairing/ble/BleScanStep.tsx        (new)
-src/components/pairing/ble/BleHandshakeStep.tsx   (new)
-src/components/pairing/ble/BleSuccessStep.tsx     (new)
-src/components/pairing/ble/AttemptLogList.tsx     (new)
-src/components/editor/EasyConnectPanel.tsx        (+ BLE wizard CTA)
+  // Always allowed, bypasses ARM (matches bridge.eStop semantics)
+  stop(): Promise<CommandResponse>;        // alias eStop, also auto-disarms
+  eStop(): Promise<CommandResponse>;       // raw eStop
+}
 ```
 
-No firmware, store, or backend changes required. No new dependencies. No DB migrations.
+### Key behaviors
+
+- **ARM gate is local.** `arm()` flips an in-memory flag on the singleton; `disarm()` clears it. Any non-emergency firing call returns `{ ok:false, code:'NOT_ARMED' }` synchronously when disarmed — no bytes hit the wire. `stop()` and `eStop()` ignore ARM and additionally call `disarm()` after success (fail-safe).
+- **Validation before bridge.** Channel range, duration range, empty arrays, and `isReady()` are all checked before touching `bridge.fire/fireBatch`. Mask is built via existing `channelsToMask()` to keep the single source of truth.
+- **No protocol invention.** No new ASCII opcodes. `fire`/`fireBatch`/`eStop` map 1:1 to the existing firmware verbs (`FIRE:` / `BATCH:` / `ESTOP`). `setChannels` is purely a UI staging buffer — `fireSelected` is what actually sends `BATCH:`.
+- **Error mapping.** Bridge returns `boolean`; on `false` we read `bridge.getStatus().lastErrorCode` and translate (`HEARTBEAT_TIMEOUT` / `LINK_NOT_HEALTHY` → `LINK_DEGRADED`, `COMMAND_TIMEOUT` → `TIMEOUT`, etc.). `try/catch` around the call surfaces `BRIDGE_THREW` with `cause`.
+- **Singleton-scoped ARM.** Stored on the same module as `useFXK16Bridge` so a second panel sees the same ARM state — and an unmount/remount doesn't silently re-arm.
+- **Auto-disarm on link loss.** Subscribes to bridge events `disconnected` / `heartbeat_timeout` and clears the ARM flag; toast `"FXK16 desarmado: link perdido"`.
+
+### Files
+
+```text
+src/lib/fxk16/
+  commandApi.ts                  (new)  pure types + factory, fully unit-testable
+src/hooks/
+  useFXK16Commands.ts            (new)  reactive wrapper around the singleton
+src/components/editor/live-firing/
+  FXK16ConnectionPanel.tsx       (edit) ARM toggle + typed-error display, Test FIRE through new API
+mem://funcionalidades/
+  fxk16-typed-command-api.md     (new)  feature memory
+mem://index.md                   (edit) one new line
+```
 
 ### Out of scope
 
-- Firing/test commands from the wizard (use `/dev/fxk16-validate` for that).
-- BLE Long Range pairing (separate `connectBLELongRange` already exists; can be added as a step variant later).
-- Multi-device batch pairing.
+- No firmware changes (FXK16 sketch already deployed).
+- No new transport. Continues to ride USB/BLE via `FireOneHardwareBridge`.
+- No ARM protocol opcode — adding one would require firmware work and would violate the honest-hardware rule (no synthetic capabilities). If you later want hardware-backed ARM, that's a follow-up.
