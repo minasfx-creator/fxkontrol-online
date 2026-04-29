@@ -156,8 +156,22 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
           )}
         </div>
 
-        {plan && validation && (
-          <PlanPreview plan={plan} validation={validation} onApply={handleApply} />
+        {plan && validation && !reviewing && (
+          <PlanPreview
+            plan={plan}
+            validation={validation}
+            onApply={handleApply}
+            onReview={() => setReviewing(true)}
+          />
+        )}
+
+        {plan && reviewing && (
+          <ShowPlanReviewEditor
+            plan={plan}
+            site={site}
+            onChange={setPlan}
+            onClose={() => setReviewing(false)}
+          />
         )}
 
         <p className="text-[11px] text-muted-foreground italic pt-1">
