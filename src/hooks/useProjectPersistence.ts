@@ -3,15 +3,36 @@ import { supabase } from '@/integrations/supabase/client';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { saveProjectAtomic } from '@/lib/persistence/saveProjectAtomic';
+import type {
+  ProjectSavePayload,
+  PositionSavePayload,
+  TimelineItemSavePayload,
+  TrajectorySavePayload,
+} from '@/lib/persistence/savePayloadTypes';
+import { validateSavePayload } from '@/lib/persistence/validateSavePayload';
+
+// Narrow indexed-access helpers so we don't need `any` to read optional
+// timeline-item fields the in-memory model carries but doesn't type yet.
+// (Once the store gains positionId/positionName/notes natively, drop these.)
+type TimelineItemExtra = {
+  positionId?: string | null;
+  positionName?: string | null;
+  notes?: string | null;
+};
 
 /**
  * Project persistence hook.
  *
- * Transactionality: `saveProject` calls the Postgres RPC `save_project_atomic`,
- * which wipes and re-inserts positions / timeline_items / trajectories /
- * waypoints inside a single transaction. Either the whole save commits or
- * nothing changes — eliminates the partial-save failure mode (insert error
- * leaving the user with empty positions table) without client-side rollback.
+ * Transactionality: `saveProject` calls the Postgres RPC `save_project_atomic`
+ * (via the typed `saveProjectAtomic` wrapper), which wipes and re-inserts
+ * positions / timeline_items / trajectories / waypoints inside a single
+ * transaction. Either the whole save commits or nothing changes — eliminates
+ * the partial-save failure mode without client-side rollback.
+ *
+ * Pre-flight validation runs BEFORE the RPC call so obvious user errors
+ * (empty name, NaN coords, out-of-order waypoints) surface as a clear toast
+ * instead of a generic transaction-reverted message.
  */
 export function useProjectPersistence() {
   const { user } = useAuth();
@@ -27,48 +48,62 @@ export function useProjectPersistence() {
       audioUrl, bpm, playbackSpeed, projectId,
     } = state;
 
-    try {
-      // Build payloads as plain JSON — RPC handles all DB writes atomically.
-      const p_project = {
-        name: projectName,
-        duration,
-        audio_url: audioUrl,
-        bpm,
-        playback_speed: playbackSpeed,
-      };
+    // ── Build typed RPC payloads (snake_case to match the SQL function). ──
+    const p_project: ProjectSavePayload = {
+      name: projectName,
+      duration,
+      audio_url: audioUrl ?? null,
+      bpm: bpm ?? null,
+      playback_speed: playbackSpeed,
+    };
 
-      const p_positions = positions.map((p, i) => ({
-        name: p.name, type: p.type, x: p.x, y: p.y, z: p.z,
-        heading: p.heading, pitch: p.pitch, roll: p.roll,
-        color: p.color, sort_order: i,
-      }));
+    const p_positions: PositionSavePayload[] = positions.map((p, i) => ({
+      name: p.name,
+      type: p.type,
+      x: p.x, y: p.y, z: p.z,
+      heading: p.heading, pitch: p.pitch, roll: p.roll,
+      color: p.color,
+      sort_order: i,
+    }));
 
-      const p_timeline_items = timelineItems.map((item) => ({
+    const p_timeline_items: TimelineItemSavePayload[] = timelineItems.map((item) => {
+      const extra = item as unknown as TimelineItemExtra;
+      return {
         effect_id: item.effectId,
         start_time: item.startTime,
         track_index: item.trackIndex,
         pos_x: item.position.x, pos_y: item.position.y, pos_z: item.position.z,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        position_id: (item as any).positionId || null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        position_name: (item as any).positionName || null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        notes: (item as any).notes || null,
-      }));
+        position_id: extra.positionId ?? null,
+        position_name: extra.positionName ?? null,
+        notes: extra.notes ?? null,
+      };
+    });
 
-      const p_trajectories = trajectories.map((t) => ({
-        id: t.id,
-        name: t.name,
-        position_id: t.positionId ?? null,
-        waypoints: (t.waypoints || []).map((w, i) => ({
-          x: w.position.x, y: w.position.y, z: w.position.z,
-          time_seconds: w.time, sort_order: i,
-        })),
-      }));
+    const p_trajectories: TrajectorySavePayload[] = trajectories.map((t) => ({
+      id: t.id ?? null,
+      name: t.name,
+      position_id: t.positionId ?? null,
+      waypoints: (t.waypoints ?? []).map((w, i) => ({
+        x: w.position.x, y: w.position.y, z: w.position.z,
+        time_seconds: w.time,
+        sort_order: i,
+      })),
+    }));
 
-      // RPC name not yet in generated types — cast through unknown.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: returnedId, error } = await (supabase.rpc as any)('save_project_atomic', {
+    // ── Pre-flight validation: fail fast with a clear message. ──
+    const validation = validateSavePayload({
+      projectName, duration,
+      positions: p_positions,
+      timelineItems: p_timeline_items,
+      trajectories: p_trajectories,
+    });
+    if (!validation.ok) {
+      toast.error(validation.message);
+      return false;
+    }
+
+    try {
+      const { data: returnedId, error } = await saveProjectAtomic({
         p_project_id: projectId ?? null,
         p_project,
         p_positions,
@@ -78,7 +113,7 @@ export function useProjectPersistence() {
 
       if (error) throw error;
       if (returnedId && !projectId) {
-        useProjectStore.getState().setProjectId(returnedId as unknown as string);
+        useProjectStore.getState().setProjectId(returnedId);
       }
 
       lastSavedRef.current = JSON.stringify({
