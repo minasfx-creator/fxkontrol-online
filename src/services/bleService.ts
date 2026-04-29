@@ -179,6 +179,7 @@ class BLEService {
   }
 
   async disconnect() {
+    this.detachListeners();
     if (this.device?.gatt?.connected) {
       this.device.gatt.disconnect();
     }
