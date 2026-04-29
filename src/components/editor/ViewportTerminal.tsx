@@ -11,7 +11,7 @@ export interface LogEntry {
 
 // Global log store
 let logEntries: LogEntry[] = [];
-let listeners: Set<() => void> = new Set();
+const listeners: Set<() => void> = new Set();
 
 export function pushLog(message: string, level: LogEntry['level'] = 'info') {
   const entry: LogEntry = {

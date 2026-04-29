@@ -159,7 +159,7 @@ export async function sampleFieldUltra(
       }
     } catch (err) {
       fallbackReason = err instanceof Error ? err.message : String(err);
-      // eslint-disable-next-line no-console
+       
       console.warn("[swarmgpt/gpu] GPU path failed, falling back to CPU:", err);
     }
   }

@@ -232,7 +232,7 @@ export default function CommandCenter() {
     }
     // Fullscreen on landscape mobile
     if (isMobile && mql.matches) {
-      try { document.documentElement.requestFullscreen?.(); } catch {}
+      try { document.documentElement.requestFullscreen?.(); } catch { /* best-effort: fullscreen may be blocked by browser policy */ }
     }
     return () => {
       mql.removeEventListener('change', onChange);
@@ -240,7 +240,7 @@ export default function CommandCenter() {
         orientation.unlock();
       }
       if (document.fullscreenElement) {
-        try { document.exitFullscreen?.(); } catch {}
+        try { document.exitFullscreen?.(); } catch { /* best-effort: exitFullscreen may fail if state changed */ }
       }
     };
   }, [isMobile]);

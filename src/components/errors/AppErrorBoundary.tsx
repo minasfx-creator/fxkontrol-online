@@ -23,7 +23,7 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, State> 
   }
 
   componentDidCatch(error: unknown, info: ErrorInfo) {
-    // eslint-disable-next-line no-console
+     
     console.error("[AppErrorBoundary] uncaught render error", error, info);
   }
 

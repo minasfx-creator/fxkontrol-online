@@ -13,6 +13,7 @@ import { webSerialDiscoverer } from './WebSerialDiscoverer';
 import { webUsbDiscoverer } from './WebUsbDiscoverer';
 import { webBleDiscoverer } from './WebBleDiscoverer';
 import { mdnsArtnetDiscoverer } from './MdnsArtnetDiscoverer';
+import { capacitorSerialDiscoverer } from './CapacitorSerialDiscoverer';
 import { portRegistry, keyFor } from './portRegistry';
 import type { DiscoveredDevice, DiscoveryEvent, TransportDiscoverer, DiscoveryTransport } from './types';
 
@@ -22,6 +23,8 @@ class UnifiedDiscoveryService {
     webUsbDiscoverer,
     webBleDiscoverer,
     mdnsArtnetDiscoverer,
+    // Capacitor native — só ativa em build iOS/Android com plugin serial
+    capacitorSerialDiscoverer,
   ];
   private _devices = new Map<string, DiscoveredDevice>();
   private _listeners = new Set<(ev: DiscoveryEvent) => void>();
@@ -56,6 +59,7 @@ class UnifiedDiscoveryService {
         webSerialDiscoverer.scan(),
         webUsbDiscoverer.scan(),
         webBleDiscoverer.scan(),
+        capacitorSerialDiscoverer.scan(),
       ]);
       return this.getDevices();
     } finally {
@@ -95,6 +99,7 @@ class UnifiedDiscoveryService {
         webUsbDiscoverer.scan(),
         webBleDiscoverer.scan(),
         mdnsArtnetDiscoverer.scan(),
+        capacitorSerialDiscoverer.scan(),
       ]);
       return this.getDevices();
     } finally {

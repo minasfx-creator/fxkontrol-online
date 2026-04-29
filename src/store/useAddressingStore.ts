@@ -2,22 +2,58 @@ import { create } from 'zustand';
 
 // ─── Module Specification ───────────────────────────────────────────
 
+/**
+ * Protocol family — used by the bridge to choose the correct dispatcher
+ * (PBUS framer vs. ASCII line protocol vs. proprietary FireOne wire).
+ *
+ *  - 'showven-c16-compatible' : ASCII protocol over USB-CDC/BLE that mirrors
+ *    the Showven PyroSlave C16 channel layout (16 ch, 1:1 indexing). Used by
+ *    the FXK16 (ESP32-S3 v1.3 + 16-relay board).
+ *  - 'fireone-ascii'          : FireOne IFMx-i32Q ASCII bridge.
+ *  - 'pbus'                   : Showven dual-band PBUS frames (19200/CRC16).
+ *  - 'generic'                : Legacy / unspecified.
+ */
+export type ModuleProtocolFamily =
+  | 'showven-c16-compatible'
+  | 'fireone-ascii'
+  | 'pbus'
+  | 'generic';
+
 export interface ModuleSpec {
   id: string;
   name: string;            // e.g. "Cobra 18R2"
   slatCount: number;       // physical slats per module
   pinsPerSlat: number;     // pins per slat
   firingSystem: string;    // universe / firing system name
+  /** Protocol family the bridge should dispatch through. Optional for legacy specs. */
+  protocolFamily?: ModuleProtocolFamily;
+  /** Firmware MODEL token (matches the `MODEL:` reply from the device). */
+  firmwareModel?: string;
+  /** ID of a Showven preset this module is wire-compatible with. */
+  compatibleWith?: string;
+  /** Human-readable summary surfaced in the addressing UI. */
+  description?: string;
 }
 
 export const DEFAULT_MODULE_SPECS: ModuleSpec[] = [
-  { id: 'cobra-18r2', name: 'Cobra 18R2', slatCount: 6, pinsPerSlat: 18, firingSystem: 'Default' },
-  { id: 'cobra-18r3', name: 'Cobra 18R3', slatCount: 9, pinsPerSlat: 18, firingSystem: 'Default' },
-  { id: 'fireone-32', name: 'FireOne 32ch', slatCount: 4, pinsPerSlat: 8, firingSystem: 'Default' },
-  { id: 'fireone-i32q', name: 'FireOne IFMx-i32Q', slatCount: 1, pinsPerSlat: 32, firingSystem: 'Default' },
-  { id: 'pyrodigital-32', name: 'PyroDigital 32', slatCount: 4, pinsPerSlat: 8, firingSystem: 'Default' },
-  { id: 'galaxis-g2', name: 'Galaxis G2', slatCount: 5, pinsPerSlat: 20, firingSystem: 'Default' },
-  { id: 'custom', name: 'Custom Module', slatCount: 5, pinsPerSlat: 20, firingSystem: 'Default' },
+  { id: 'cobra-18r2', name: 'Cobra 18R2', slatCount: 6, pinsPerSlat: 18, firingSystem: 'Default', protocolFamily: 'generic' },
+  { id: 'cobra-18r3', name: 'Cobra 18R3', slatCount: 9, pinsPerSlat: 18, firingSystem: 'Default', protocolFamily: 'generic' },
+  { id: 'fireone-32', name: 'FireOne 32ch', slatCount: 4, pinsPerSlat: 8, firingSystem: 'Default', protocolFamily: 'fireone-ascii' },
+  { id: 'fireone-i32q', name: 'FireOne IFMx-i32Q', slatCount: 1, pinsPerSlat: 32, firingSystem: 'Default', protocolFamily: 'fireone-ascii', firmwareModel: 'IFMX-I32Q' },
+  { id: 'pyrodigital-32', name: 'PyroDigital 32', slatCount: 4, pinsPerSlat: 8, firingSystem: 'Default', protocolFamily: 'generic' },
+  { id: 'galaxis-g2', name: 'Galaxis G2', slatCount: 5, pinsPerSlat: 20, firingSystem: 'Default', protocolFamily: 'generic' },
+  {
+    id: 'fxk16',
+    name: 'FXK16 — 16ch (ESP32-S3)',
+    slatCount: 1,
+    pinsPerSlat: 16,
+    firingSystem: 'Default',
+    protocolFamily: 'showven-c16-compatible',
+    firmwareModel: 'FXK16',
+    compatibleWith: 'pyroslave_c16',
+    description: '16-channel relay module (ESP32-S3 v1.3) — wire-compatible with Showven PyroSlave C16 (1:1 channel layout, ASCII over USB-CDC/BLE-UART).',
+  },
+  { id: 'custom', name: 'Custom Module', slatCount: 5, pinsPerSlat: 20, firingSystem: 'Default', protocolFamily: 'generic' },
 ];
 
 // ─── Address Assignment ─────────────────────────────────────────────

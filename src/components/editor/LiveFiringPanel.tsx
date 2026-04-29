@@ -119,8 +119,12 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   const [fireWindowEndsAt, setFireWindowEndsAt] = useState<number | null>(null);
   const [physicalRevision, setPhysicalRevision] = useState(0);
   const relayDiagnostic = useMemo(() => getBridgeSecurityDiagnostic(relayUrl), [relayUrl]);
+  // `physicalRevision` is a forced-recompute signal — controller state is mutable.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const physicalSnapshot = useMemo(() => bridgePhysicalController.getSnapshot(), [physicalRevision]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const hilLogs = useMemo(() => bridgePhysicalController.getHilLogs(), [physicalRevision]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const commandTimeline = useMemo(() => bridgePhysicalController.getCommandTimeline(), [physicalRevision]);
 
   useEffect(() => {
@@ -199,7 +203,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
             }
           }
           if (msg.error) console.warn('[Relay]', msg.error);
-        } catch {}
+        } catch { /* best-effort: malformed relay message — already logged via console.warn above */ }
       };
       relayWs.current = ws;
     } catch { toast.error('URL do relay inválida'); }
@@ -673,7 +677,7 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
     }]);
   }, [channels, dmxArm]);
 
-  useEffect(() => { return () => { fireTimers.current.forEach(timer => clearTimeout(timer)); }; }, []);
+  useEffect(() => { const timers = fireTimers.current; return () => { timers.forEach(timer => clearTimeout(timer)); }; }, []);
 
   // Auto-fullscreen on mobile (but NOT when embedded in Command Center standalone mode)
   useEffect(() => {

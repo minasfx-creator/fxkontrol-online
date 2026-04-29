@@ -110,7 +110,9 @@ export default function BetaFeedbackDialog({ open, onOpenChange, initialCategory
       cores: profile.cores,
       mobile: profile.isMobile,
     };
-  }, [open]);
+    // `open` intentionally excluded: snapshot is captured once per mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAddFiles = (incoming: FileList | null) => {
     if (!incoming || incoming.length === 0) return;

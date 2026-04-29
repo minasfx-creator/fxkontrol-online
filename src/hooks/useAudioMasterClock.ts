@@ -60,6 +60,13 @@ export function useAudioMasterClock(
 ) {
   const isPlaying = useProjectStore((s) => s.isPlaying);
   const audioMasterActiveRef = useRef(false);
+  // Stale-frame guard: when `isPlaying` flips to false the effect tears down
+  // RAF, but on a heavy frame the next pump can still fire once before the
+  // cleanup runs. The closure read of `isPlaying` is stale (true), so without
+  // this ref the pump pushes one extra `syncExternalTime(t)` after pause —
+  // visibly bumping the playhead by ~16 ms when the operator stops playback.
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -99,7 +106,11 @@ export function useAudioMasterClock(
 
     const pump = () => {
       const a = audioRef.current;
-      if (!a) {
+      // Stale-frame guard: bail immediately if Play was toggled off between
+      // the previous RAF and this one (cleanup races with a queued pump on
+      // heavy frames). Without this we'd push one extra `syncExternalTime`
+      // after the operator pressed Pause.
+      if (!a || !isPlayingRef.current) {
         disengageMaster();
         return;
       }
@@ -123,9 +134,14 @@ export function useAudioMasterClock(
 
       if (isAdvancing) {
         engageMaster();
-        // `audio.currentTime` is in seconds, monotonic while playing, and
-        // already accounts for `playbackRate` and any browser scheduling jitter.
-        timelineClock.syncExternalTime(t);
+        // `audio.currentTime` is in seconds in the *original audio file*
+        // coordinate system. The store's `currentTime` is in *show time*,
+        // which equals `audioTime - audioInPoint` once a non-destructive
+        // trim is applied. We read the in-point on every pump (rather than
+        // putting it in the deps) so trim adjustments take effect instantly
+        // without tearing down the RAF loop or the lockstep handoff.
+        const inP = useProjectStore.getState().audioInPoint;
+        timelineClock.syncExternalTime(t - inP);
       } else if (masterEngaged) {
         // Audio is no longer advancing (autoplay block, stall, decode error).
         // Hand the timeline back to the lockstep so the show keeps moving.

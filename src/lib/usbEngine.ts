@@ -147,9 +147,68 @@ export function isWebUSBSupported(): boolean {
   return typeof navigator !== 'undefined' && 'usb' in navigator;
 }
 
+/**
+ * Mapeia erros nativos de `requestPort()` para mensagens acionáveis.
+ * Especialmente importante no iPhone, onde Safari PWA bloqueia tudo.
+ */
+export class USBConnectionError extends Error {
+  constructor(
+    message: string,
+    public code: 'unsupported' | 'cancelled' | 'denied' | 'ios-blocked' | 'no-gesture' | 'unknown',
+    public hint?: string,
+  ) {
+    super(message);
+    this.name = 'USBConnectionError';
+  }
+}
+
+function mapRequestError(e: unknown): USBConnectionError {
+  const err = e as { name?: string; message?: string };
+  const name = err?.name ?? '';
+  const msg = err?.message ?? String(e);
+  if (name === 'NotFoundError') {
+    return new USBConnectionError(
+      'Nenhum dispositivo selecionado.',
+      'cancelled',
+      'Você fechou a janela do navegador. Clique em CONECTAR novamente e selecione o dispositivo.',
+    );
+  }
+  if (name === 'SecurityError') {
+    return new USBConnectionError(
+      'Permissão bloqueada pelo navegador.',
+      'denied',
+      'A página precisa estar em HTTPS e a chamada precisa partir de um clique. Verifique também se o site não está sendo carregado dentro de um iframe restrito.',
+    );
+  }
+  if (name === 'NotAllowedError') {
+    // No iOS Safari, qualquer chamada nem chega aqui — mas se chegou, é bloqueio.
+    return new USBConnectionError(
+      'Acesso negado pelo sistema.',
+      'ios-blocked',
+      'Em iOS, USB/Serial só funciona no app nativo (build Capacitor) com adaptador MFi. Veja o painel de Diagnóstico.',
+    );
+  }
+  if (/user gesture/i.test(msg)) {
+    return new USBConnectionError(
+      'Ação requer um clique do usuário.',
+      'no-gesture',
+      'Clique no botão CONECTAR diretamente — não é possível autorizar via código automático.',
+    );
+  }
+  return new USBConnectionError(
+    msg || 'Falha desconhecida ao requisitar a porta.',
+    'unknown',
+    'Tente desconectar e reconectar o cabo USB. Se persistir, abra o painel de Diagnóstico.',
+  );
+}
+
 export async function requestSerialPort(profile?: USBDeviceProfile): Promise<any> {
   if (!isWebSerialSupported()) {
-    throw new Error('Web Serial API não suportada neste navegador');
+    throw new USBConnectionError(
+      'Web Serial API não suportada neste navegador.',
+      'unsupported',
+      'Use Chrome, Edge ou Opera no desktop / Android. No iPhone, é necessário o app nativo.',
+    );
   }
   const filters: any[] = [];
   if (profile?.vendorId) {
@@ -158,7 +217,11 @@ export async function requestSerialPort(profile?: USBDeviceProfile): Promise<any
       ...(profile.productId ? { usbProductId: profile.productId } : {}),
     });
   }
-  return nav.serial.requestPort(filters.length > 0 ? { filters } : undefined);
+  try {
+    return await nav.serial.requestPort(filters.length > 0 ? { filters } : undefined);
+  } catch (e) {
+    throw mapRequestError(e);
+  }
 }
 
 /**

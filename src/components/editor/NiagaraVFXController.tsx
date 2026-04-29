@@ -634,7 +634,7 @@ function collectParticlesFromSystems(
 
 // ── Main Component ──────────────────────────────────────────────────
 
-const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
+const NiagaraVFXController = React.forwardRef<THREE.Group, Record<string, never>>(
   function NiagaraVFXController(_props, _ref) {
     const { scene, camera, size } = useThree();
     const activeSystems = useRef<ActiveVFXSystem[]>([]);
@@ -671,6 +671,9 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
       scene.add(haze.mesh);
       heatHazeRef.current = haze;
 
+      // Capture ref at effect-run time so cleanup sees the same trail set.
+      const ribbonTrails = ribbonTrailsRef.current;
+
       return () => {
         scene.remove(sparkRenderer.mesh);
         scene.remove(smokeRenderer.mesh);
@@ -679,7 +682,7 @@ const NiagaraVFXController = React.forwardRef<THREE.Group, {}>(
         smokeRenderer.dispose();
         haze.dispose();
         // Dispose ribbon trails
-        ribbonTrailsRef.current.forEach(rt => {
+        ribbonTrails.forEach(rt => {
           scene.remove(rt.mesh);
           rt.dispose();
         });

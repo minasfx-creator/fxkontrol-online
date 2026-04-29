@@ -19,6 +19,7 @@ import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { artnetModuleService } from '@/services/artnetModuleService';
+import { HardwareDiagnosticsBanner } from './hardware/HardwareDiagnosticsBanner';
 
 export type EasyConnectContext = 'all' | 'pyro' | 'dmx' | 'light';
 
@@ -97,10 +98,11 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
   const pendingTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   useEffect(() => {
     mountedRef.current = true;
+    const pendingTimers = pendingTimersRef.current;
     return () => {
       mountedRef.current = false;
-      pendingTimersRef.current.forEach((t) => clearTimeout(t));
-      pendingTimersRef.current.clear();
+      pendingTimers.forEach((t) => clearTimeout(t));
+      pendingTimers.clear();
     };
   }, []);
   const safeTimeout = useCallback((cb: () => void, ms: number) => {
@@ -287,6 +289,11 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
             </button>
           )}
         </div>
+      </div>
+
+      {/* Diagnóstico de hardware (iPhone Safari, plugin Capacitor faltando, etc.) */}
+      <div className="px-3 pt-2">
+        <HardwareDiagnosticsBanner compact />
       </div>
 
       {/* Device list */}

@@ -192,7 +192,7 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
     const state = get();
     if (state._ltcInterval) clearInterval(state._ltcInterval);
     if (state._audioCtx) {
-      try { state._audioCtx.close(); } catch {}
+      try { state._audioCtx.close(); } catch { /* best-effort: AudioContext may already be closed */ }
     }
     set({ _audioCtx: null, _ltcInterval: null });
   },
@@ -216,7 +216,7 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
     const state = get();
     // Clean up existing connection
     if (state._ws) {
-      try { state._ws.close(); } catch {}
+      try { state._ws.close(); } catch { /* best-effort: WebSocket may already be closed */ }
     }
     if (state._pingInterval) clearInterval(state._pingInterval);
     if (state._reconnectTimeout) clearTimeout(state._reconnectTimeout);
@@ -248,7 +248,7 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
         try {
           const data = JSON.parse(event.data);
           get()._handleExternalMessage(data);
-        } catch {}
+        } catch { /* best-effort: malformed external message ignored */ }
       };
 
       ws.onerror = () => {
@@ -277,7 +277,7 @@ export const useSMPTEStore = create<SMPTEStoreState>((set, get) => ({
   disconnectExternal: () => {
     const state = get();
     if (state._ws) {
-      try { state._ws.close(); } catch {}
+      try { state._ws.close(); } catch { /* best-effort: WebSocket may already be closed */ }
     }
     if (state._pingInterval) clearInterval(state._pingInterval);
     if (state._reconnectTimeout) clearTimeout(state._reconnectTimeout);

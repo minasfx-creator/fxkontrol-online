@@ -6,15 +6,16 @@
  * Hybrid scale: LLM only emits ≤50 groups + keyframes. Local expander handles
  * 2000+ drones deterministically with collision QA.
  */
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Play, Sparkles, Download, Layers, AlertTriangle, Gauge } from 'lucide-react';
+import { ArrowLeft, Upload, Play, Sparkles, Download, Layers, AlertTriangle, Gauge, Brain, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -22,6 +23,7 @@ import { expandMacroToTrajectories } from '@/modules/aiChoreography/expander';
 import { downloadExpandedShowCSV, downloadExpandedShowJSON } from '@/modules/aiChoreography/exporter';
 import { applyAIChoreographyToShowPlan } from '@/modules/aiChoreography/applyToShowPlan';
 import type { MacroChoreography, ExpandedShow } from '@/modules/aiChoreography/types';
+import { callGrokReasoning, isAuthFailure, type GrokReasoningResult } from '@/lib/grokResponses';
 
 const MAX_FILE_MB = 8;
 
@@ -74,8 +76,8 @@ function friendlyUpstream(raw: string, status?: number): string {
     return 'Limite de requisições atingido. Aguarde alguns segundos e tente novamente.';
   if (status === 402 || /credit|payment required|insufficient.*balance|quota/.test(m))
     return 'Créditos da AI esgotados. Recarregue em Settings → Workspace → Usage.';
-  if (status === 401 || /api key|unauthorized|invalid.*key/.test(m))
-    return 'Chave XAI_API_KEY inválida ou expirada. Atualize o secret no backend.';
+  if (status === 401 || /api key|unauthorized|invalid.*key|key format invalid|xai_api_key/.test(m))
+    return 'Chave XAI_API_KEY inválida ou no formato errado (precisa começar com "xai-"). Atualize o secret no backend.';
   if (status === 413 || /payload too large|request entity too large|too large|max.*size/.test(m))
     return `Asset muito grande (limite ${MAX_FILE_MB}MB). Comprima a imagem/vídeo antes de enviar.`;
   if (/model.*not.*found|does not exist|unsupported|deprecat/.test(m))
@@ -137,10 +139,56 @@ export default function AIChoreographyPage() {
   const [macro, setMacro] = useState<MacroChoreography | null>(null);
   const [show, setShow] = useState<ExpandedShow | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [refining, setRefining] = useState(false);
+  const [reasoningResult, setReasoningResult] = useState<GrokReasoningResult | null>(null);
+  const [reasoningOpen, setReasoningOpen] = useState(true);
 
+  const projectId = useProjectStore(s => s.projectId);
   const addDroneFormation = useProjectStore(s => s.addDroneFormation);
   const materializeFormation = useProjectStore(s => s.materializeFormation);
   const recalculateFormationTimings = useProjectStore(s => s.recalculateFormationTimings);
+
+  // ─── Persist reasoning advisory per project (localStorage) ───
+  // Key by projectId so reopening AI Choreography for the same show restores
+  // the last "Refinar com raciocínio" output instead of resetting to empty.
+  const reasoningStorageKey = `fxk:ai-choreography:reasoning:${projectId ?? 'default'}`;
+
+  // Load on project switch
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(reasoningStorageKey);
+      if (!raw) {
+        setReasoningResult(null);
+        return;
+      }
+      const parsed = JSON.parse(raw) as { result: GrokReasoningResult; open: boolean } | null;
+      if (parsed && parsed.result && typeof parsed.result.text === 'string') {
+        setReasoningResult(parsed.result);
+        setReasoningOpen(parsed.open ?? true);
+      } else {
+        setReasoningResult(null);
+      }
+    } catch {
+      setReasoningResult(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reasoningStorageKey]);
+
+  // Save on change
+  useEffect(() => {
+    try {
+      if (reasoningResult) {
+        localStorage.setItem(
+          reasoningStorageKey,
+          JSON.stringify({ result: reasoningResult, open: reasoningOpen }),
+        );
+      } else {
+        localStorage.removeItem(reasoningStorageKey);
+      }
+    } catch {
+      /* quota / privacy mode — silently ignore */
+    }
+  }, [reasoningStorageKey, reasoningResult, reasoningOpen]);
 
   const onFile = async (f: File | null) => {
     if (!f) return;
@@ -226,7 +274,42 @@ export default function AIChoreographyPage() {
       toast.success(`${expanded.drones.length} drones · ${expanded.drones[0]?.frames.length ?? 0} frames · pico ${expanded.maxSpeedObserved.toFixed(1)} m/s`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      toast.error(msg, { duration: 7000 });
+      // Auth-flavoured failures get a self-diagnosis CTA: a single click pings
+      // the lightweight `xai-key-health` endpoint and surfaces the verdict
+      // (format wrong, upstream 401, network issue, etc.) so operators don't
+      // have to guess whether the key, the workspace, or the network is at
+      // fault.
+      const looksAuth = /xai_api_key|api key|chave xai|unauthorized|401/i.test(msg);
+      toast.error(msg, {
+        duration: 7000,
+        action: looksAuth
+          ? {
+              label: 'Diagnosticar chave',
+              onClick: async () => {
+                const t = toast.loading('Testando XAI_API_KEY…');
+                try {
+                  const { data, error } = await supabase.functions.invoke('xai-key-health', { method: 'GET' });
+                  toast.dismiss(t);
+                  if (error) {
+                    toast.error(`Health-check falhou: ${error.message}`);
+                    return;
+                  }
+                  if (data?.valid) {
+                    toast.success(`Chave OK (${data.masked}). Tente gerar de novo.`);
+                  } else {
+                    toast.error(`${data?.masked ?? '—'} · ${data?.reason ?? 'unknown'}`, {
+                      description: data?.hint ?? 'Sem dica disponível.',
+                      duration: 12000,
+                    });
+                  }
+                } catch (e) {
+                  toast.dismiss(t);
+                  toast.error(`Health-check falhou: ${e instanceof Error ? e.message : String(e)}`);
+                }
+              },
+            }
+          : undefined,
+      });
     } finally {
       setBusy(false);
     }
@@ -239,6 +322,77 @@ export default function AIChoreographyPage() {
     });
     toast.success(`+${r.cuesCreated} cues no ShowPlan (${r.droneCount} drones).`);
   };
+
+  /**
+   * Send the macro plan + original brief to grok-4.20-reasoning for a critique.
+   * The result is rendered as advisory notes — never auto-applied (operator owns
+   * the choreography per the safety/audit policy).
+   */
+  const refineWithReasoning = async () => {
+    if (!macro) return;
+    setRefining(true);
+    setReasoningResult(null);
+    const t = toast.loading('Analisando coreografia com Grok 4.20 Reasoning…');
+    try {
+      const compactMacro = {
+        metadata: macro.metadata,
+        formations: macro.formations.map(f => ({
+          timestamp: f.timestamp,
+          name: f.name,
+          description: f.description,
+          groups: f.groups.map(g => ({
+            shape: g.shape, num_drones: g.num_drones, center: g.center, radius: g.radius, color: g.color,
+          })),
+        })),
+        transitions: macro.transitions,
+        safety: macro.safety,
+      };
+      const result = await callGrokReasoning({
+        system:
+          'You are a senior drone-show choreographer reviewing a generated macro plan. ' +
+          'Identify weaknesses (timing collisions, monotony, weak transitions, color clashes, safety distance issues, weak crescendo). ' +
+          'Return concise bullet-point recommendations grouped by severity (HIGH / MEDIUM / LOW). Do NOT rewrite the JSON — only critique. ' +
+          'Be specific (cite formation names and timestamps). Respond in Portuguese.',
+        input:
+          `Briefing original do operador:\n"""${prompt.trim() || '(sem briefing)'}"""\n\n` +
+          `Macro choreography (compactada):\n\`\`\`json\n${JSON.stringify(compactMacro, null, 2).slice(0, 6000)}\n\`\`\``,
+        reasoning: { effort: 'medium' },
+        maxOutputTokens: 4000,
+        temperature: 0.4,
+      });
+      toast.dismiss(t);
+      setReasoningResult(result);
+      setReasoningOpen(true);
+      toast.success(`Crítica gerada (${result.usage.reasoning_tokens ?? 0} reasoning tokens · ${(result.durationMs / 1000).toFixed(1)}s)`);
+    } catch (e) {
+      toast.dismiss(t);
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg, {
+        duration: 8000,
+        action: isAuthFailure(e)
+          ? {
+              label: 'Diagnosticar chave',
+              onClick: async () => {
+                const tt = toast.loading('Testando XAI_API_KEY…');
+                try {
+                  const { data, error } = await supabase.functions.invoke('xai-key-health', { method: 'GET' });
+                  toast.dismiss(tt);
+                  if (error) { toast.error(`Health-check falhou: ${error.message}`); return; }
+                  if (data?.valid) toast.success(`Chave OK (${data.masked}). Tente refinar de novo.`);
+                  else toast.error(`${data?.masked ?? '—'} · ${data?.reason ?? 'unknown'}`, { description: data?.hint, duration: 12000 });
+                } catch (err) {
+                  toast.dismiss(tt);
+                  toast.error(`Health-check falhou: ${err instanceof Error ? err.message : String(err)}`);
+                }
+              },
+            }
+          : undefined,
+      });
+    } finally {
+      setRefining(false);
+    }
+  };
+
 
   const macroPreview = useMemo(() => {
     if (!macro) return '';
@@ -378,14 +532,30 @@ export default function AIChoreographyPage() {
         </section>
 
         {/* Preview */}
-        <section className="rounded-xl border border-border/40 bg-card p-4 min-h-[60dvh]">
-          <div className="flex items-center gap-2 mb-2">
+        <section className="rounded-xl border border-border/40 bg-card p-4 min-h-[60dvh] space-y-3">
+          <div className="flex items-center gap-2">
             <Gauge className="w-4 h-4 text-primary" />
             <h2 className="text-sm font-semibold">Macro JSON (preview)</h2>
             {macro && <span className="text-xs text-muted-foreground">{macro.metadata.title}</span>}
+            {macro && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={refineWithReasoning}
+                disabled={refining || busy}
+                className="ml-auto"
+                title="Send the macro plan to grok-4.20-reasoning for a critique. Slower but deeper. Suggestions are advisory — never auto-applied."
+              >
+                {refining ? (
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> Analisando…</span>
+                ) : (
+                  <span className="flex items-center gap-1.5"><Brain className="w-3.5 h-3.5" /> Refinar com raciocínio</span>
+                )}
+              </Button>
+            )}
           </div>
           {macro ? (
-            <pre className="text-xs leading-relaxed overflow-auto max-h-[70dvh] rounded bg-background/60 p-3 border border-border/40">
+            <pre className="text-xs leading-relaxed overflow-auto max-h-[40dvh] rounded bg-background/60 p-3 border border-border/40">
 {macroPreview}
             </pre>
           ) : (
@@ -393,7 +563,39 @@ export default function AIChoreographyPage() {
               Suba um asset, descreva o briefing e clique em <b className="mx-1">Gerar coreografia</b>.
             </div>
           )}
+
+          {reasoningResult && (
+            <Collapsible open={reasoningOpen} onOpenChange={setReasoningOpen}>
+              <div className="rounded-lg border border-primary/30 bg-primary/5">
+                <CollapsibleTrigger className="w-full flex items-center gap-2 px-3 py-2 text-left">
+                  <Brain className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-semibold">Notas de raciocínio (advisory)</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">
+                    {reasoningResult.model} · {reasoningResult.usage.output_tokens ?? 0} out
+                    {reasoningResult.usage.reasoning_tokens ? ` · ${reasoningResult.usage.reasoning_tokens} thinking` : ''}
+                    {reasoningResult.durationMs ? ` · ${(reasoningResult.durationMs / 1000).toFixed(1)}s` : ''}
+                  </span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${reasoningOpen ? 'rotate-180' : ''}`} />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-3 pb-3 space-y-2">
+                    <pre className="whitespace-pre-wrap text-xs leading-relaxed font-sans text-foreground/90">{reasoningResult.text}</pre>
+                    {reasoningResult.reasoning && (
+                      <details className="text-[11px] text-muted-foreground">
+                        <summary className="cursor-pointer hover:text-foreground transition-colors">Cadeia de raciocínio interna</summary>
+                        <pre className="whitespace-pre-wrap mt-2 p-2 rounded bg-background/60 border border-border/40">{reasoningResult.reasoning}</pre>
+                      </details>
+                    )}
+                    <p className="text-[10px] text-muted-foreground italic">
+                      Sugestões consultivas — nunca aplicadas automaticamente. Você decide se ajusta o briefing e regenera.
+                    </p>
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+          )}
         </section>
+
       </main>
     </div>
   );

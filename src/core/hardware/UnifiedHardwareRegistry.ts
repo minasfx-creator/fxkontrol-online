@@ -7,10 +7,14 @@
 
 import type { HardwareAdapter, HardwareDevice, HardwareStatusSnapshot, DeviceEvent } from './types';
 import type { ProvenanceInfo } from './provenance';
+import { isProvenanceVerified } from './provenance';
+import { isHardwareSimulatorEnabled, isRealOnlyMode } from '@/lib/featureFlags';
+import { realOnlyGate } from './realOnlyGate';
 import { arduinoNanoAdapter } from './adapters/ArduinoNanoAdapter';
 import { shiftRegisterAdapter } from './adapters/ShiftRegisterAdapter74HC595';
 import { muxReaderAdapter } from './adapters/MuxReaderAdapterCD4051';
 import { relayBankAdapter } from './adapters/RelayBankAdapter32';
+import { fxk16ModuleAdapter } from './adapters/FXK16ModuleAdapter';
 import { batteryMonitorAdapter } from './adapters/BatteryMonitorAdapter';
 import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
 import { fireOneProfileAdapter } from './adapters/FireOneProfileAdapter';
@@ -28,10 +32,28 @@ class UnifiedHardwareRegistry {
     this.registerAdapter(shiftRegisterAdapter);
     this.registerAdapter(muxReaderAdapter);
     this.registerAdapter(relayBankAdapter);
+    this.registerAdapter(fxk16ModuleAdapter);
     this.registerAdapter(batteryMonitorAdapter);
     this.registerAdapter(artNetNodeAdapter);
     this.registerAdapter(fireOneProfileAdapter);
     this.registerAdapter(dmxUniverseAdapter);
+
+    // Wire the real-only gate so it can resolve provenance for events.
+    realOnlyGate.registerProvenanceLookup((id) => this._adapters.get(id)?.getProvenance());
+
+    // ── Honesty banner ─────────────────────────────────────────
+    if (typeof console !== 'undefined') {
+      const total = this._adapters.size;
+      const realOnly = isRealOnlyMode();
+      console.info(
+        `%c[FXK Hardware] ${total} adapter(s) registered as NOT_INTEGRATED.\n` +
+        `Hardware simulator: OFF (dev_hardware_simulator flag).\n` +
+        `Real-only mode: ${realOnly ? 'ON' : 'OFF'} (real_only_mode flag).\n` +
+        `Pure real-hardware discovery via Web Serial / WebUSB / WebBLE / Art-Net.\n` +
+        `Adapters stay frozen until they receive a real handshake reply.`,
+        'color: #06b6d4; font-weight: bold;',
+      );
+    }
   }
 
   registerAdapter(adapter: HardwareAdapter<unknown>): void {
@@ -104,12 +126,28 @@ class UnifiedHardwareRegistry {
     return { online, total, warnings, errors, score: Math.max(0, Math.min(100, score)) };
   }
 
-  /** Poll all adapters for telemetry */
+  /**
+   * Poll all adapters for telemetry.
+   *
+   * Honest-hardware policy: when `dev_hardware_simulator` is OFF (default),
+   * we only invoke `pollTelemetry()` on adapters that are actually
+   * `connected` to a real device. This means a registry tick on an empty
+   * fleet is a complete no-op — zero `Math.random()` calls anywhere.
+   */
   pollAll(): void {
+    const simOn = isHardwareSimulatorEnabled();
+    const realOnly = isRealOnlyMode();
+    let touched = 0;
     for (const adapter of this._adapters.values()) {
+      const connected = adapter.getConnectionState() === 'connected';
+      if (!simOn && !connected) continue;
+      // Real-only defense: even if connected, don't poll until the
+      // adapter has marked a verified handshake (live_read_only).
+      if (realOnly && !isProvenanceVerified(adapter.getProvenance())) continue;
       adapter.pollTelemetry();
+      touched++;
     }
-    this._notify();
+    if (touched > 0) this._notify();
   }
 
   /** Run diagnostics on all adapters */
@@ -121,9 +159,23 @@ class UnifiedHardwareRegistry {
     return results;
   }
 
-  /** Start automatic polling (read-only telemetry) */
+  /**
+   * Start automatic polling (read-only telemetry).
+   *
+   * Skipped entirely when the simulator gate is OFF AND no adapter is
+   * `connected`. Re-evaluated lazily inside `pollAll()` so adapters that
+   * become connected later still get polled without restarting the timer.
+   */
   startPolling(intervalMs: number = 1000): void {
     this.stopPolling();
+    const anyConnected = Array.from(this._adapters.values()).some(
+      a => a.getConnectionState() === 'connected',
+    );
+    if (!isHardwareSimulatorEnabled() && !anyConnected) {
+      // No real hardware AND simulator off → don't burn a timer.
+      // Caller can re-invoke startPolling() once a device connects.
+      return;
+    }
     this._pollInterval = setInterval(() => this.pollAll(), intervalMs);
   }
 

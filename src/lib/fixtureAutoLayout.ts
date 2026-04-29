@@ -98,7 +98,7 @@ export function computeFixtureLayout(
   const results: LayoutResult[] = new Array(fixtures.length);
 
   for (const [category, indices] of groups) {
-    let config = { ...(configs[category] || DEFAULT_CONFIG) };
+    const config = { ...(configs[category] || DEFAULT_CONFIG) };
 
     // Apply per-category overrides
     const ov = categoryOverrides?.[category];

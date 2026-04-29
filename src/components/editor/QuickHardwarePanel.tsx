@@ -192,7 +192,7 @@ export default function QuickHardwarePanel({ open, onClose, fs }: QuickHardwareP
     haptics.tap();
     setExpandedGroups(prev => {
       const next = new Set(prev);
-      next.has(g) ? next.delete(g) : next.add(g);
+      if (next.has(g)) next.delete(g); else next.add(g);
       return next;
     });
   }, []);

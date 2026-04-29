@@ -29,5 +29,17 @@ export { SMOKE_COMPUTE_WGSL, RENDER_WGSL, LIGHT_SCATTER_WGSL } from './wgsl';
 export { WebGPUParticleLoop } from './webgpuLoop';
 export type { LoopConfig } from './webgpuLoop';
 
+// Off-main-thread proxy + worker protocol (preferred entry point —
+// falls back to the synchronous WebGPUParticleLoop when OffscreenCanvas
+// or worker WebGPU is unavailable).
+export { WebGPUParticleLoopProxy } from './webgpuLoopProxy';
+export type { ProxyInitResult, ProxyStats } from './webgpuLoopProxy';
+export type {
+  WorkerInbound,
+  WorkerOutbound,
+  WorkerStatsMsg,
+  WorkerErrorMsg,
+} from './workerProtocol';
+
 // Legacy WebGL fallback
 export { ParticleGPGPU } from './ParticleGPGPU';

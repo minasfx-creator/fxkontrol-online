@@ -11,6 +11,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+import { Pool } from "https://deno.land/x/postgres@v0.19.3/mod.ts";
+
 const XAI_URL = "https://api.x.ai/v1/chat/completions";
 
 /**
@@ -71,20 +73,106 @@ function counterSnapshot() {
   };
 }
 
+// ─── Persistence to public.grok_choreography_metrics ────────────────────────
+// Direct Postgres connection (Supabase pooler) — bypasses PostgREST and
+// avoids the "JWT issued at future" clock-skew rejections we saw when using
+// the service role key + REST. Fire-and-forget; never blocks the response.
+const SUPABASE_DB_URL = Deno.env.get("SUPABASE_DB_URL") ?? "";
+const METRICS_TABLE = "grok_choreography_metrics";
+
+type MetricRow = {
+  event_type: "snapshot" | "decision";
+  request_id?: string | null;
+  stage?: string | null;
+  outcome?: string | null;
+  status?: number | null;
+  reason?: string | null;
+  model?: string | null;
+  bytes?: number | null;
+  duration_ms?: number | null;
+  isolate_started_at?: string | null;
+  counters: Record<string, unknown>;
+};
+
+let _pool: Pool | null = null;
+function getPool(): Pool | null {
+  if (_pool) return _pool;
+  if (!SUPABASE_DB_URL) return null;
+  // Small pool — most isolates do <10 inserts/min. lazy=true defers TCP setup.
+  _pool = new Pool(SUPABASE_DB_URL, 2, true);
+  return _pool;
+}
+
+async function persistMetricImpl(row: MetricRow): Promise<void> {
+  const pool = getPool();
+  if (!pool) return;
+  const client = await pool.connect();
+  try {
+    await client.queryObject(
+      `INSERT INTO public.${METRICS_TABLE}
+        (event_type, request_id, stage, outcome, status, reason, model, bytes, duration_ms, isolate_started_at, counters)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)`,
+      [
+        row.event_type,
+        row.request_id ?? null,
+        row.stage ?? null,
+        row.outcome ?? null,
+        row.status ?? null,
+        row.reason ?? null,
+        row.model ?? null,
+        row.bytes ?? null,
+        row.duration_ms ?? null,
+        row.isolate_started_at ?? null,
+        JSON.stringify(row.counters ?? {}),
+      ],
+    );
+  } finally {
+    client.release();
+  }
+}
+
+function persistMetric(row: MetricRow) {
+  const promise = persistMetricImpl(row).catch((e) => {
+    console.warn(JSON.stringify({
+      ts: new Date().toISOString(),
+      level: "warn",
+      fn: "grok-choreography",
+      stage: "metrics_persist",
+      outcome: "persist_failed",
+      event_type: row.event_type,
+      error: e instanceof Error ? e.message.slice(0, 300) : "unknown",
+    }));
+  });
+  // Keep the isolate alive long enough to flush the insert when available.
+  // @ts-ignore — EdgeRuntime is a Deno Deploy global, may be undefined locally.
+  if (typeof EdgeRuntime !== "undefined" && typeof EdgeRuntime.waitUntil === "function") {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(promise);
+  }
+}
+
 // Periodic snapshot — emits a single structured line every 60s if the isolate
-// stays warm. Idempotent: only the first request in a cold isolate arms it.
+// stays warm AND persists a snapshot row to the metrics table for trend analysis
+// across cold starts. Idempotent: only the first request in a cold isolate arms it.
 let _snapshotTimer: number | null = null;
 function ensureSnapshotTimer() {
   if (_snapshotTimer !== null) return;
   _snapshotTimer = setInterval(() => {
     if (counters.total === 0) return;
+    const snap = counterSnapshot();
     console.log(JSON.stringify({
       ts: new Date().toISOString(),
       level: "info",
       fn: "grok-choreography",
       stage: "counters_snapshot",
-      ...counterSnapshot(),
+      ...snap,
     }));
+    persistMetric({
+      event_type: "snapshot",
+      stage: "counters_snapshot",
+      isolate_started_at: counters.startedAt,
+      counters: snap,
+    });
   }, 60_000) as unknown as number;
 }
 
@@ -247,6 +335,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    const snap = outcome ? counterSnapshot() : undefined;
     const line = JSON.stringify({
       ts: new Date().toISOString(),
       level,
@@ -254,11 +343,32 @@ Deno.serve(async (req) => {
       requestId,
       stage,
       ...fields,
-      counters: outcome ? counterSnapshot() : undefined,
+      counters: snap,
     });
     if (level === "error") console.error(line);
     else if (level === "warn") console.warn(line);
     else console.log(line);
+
+    // Persist terminal request decisions so trends survive cold starts.
+    // Skip intermediate signals (upstream_ok/upstream_fail) — the request
+    // still ends in `completed` or `error`, which we record below.
+    if (snap && outcome && (outcome === "accepted" || outcome === "rejected" || outcome === "completed" || outcome === "error")) {
+      const bytesField = typeof fields.bytes === "number" ? fields.bytes : null;
+      const durationField = typeof fields.durationMs === "number" ? fields.durationMs : null;
+      persistMetric({
+        event_type: "decision",
+        request_id: requestId,
+        stage,
+        outcome,
+        status: status ? Number(status) : null,
+        reason: reason ?? null,
+        model: model ?? null,
+        bytes: bytesField,
+        duration_ms: durationField,
+        isolate_started_at: counters.startedAt,
+        counters: snap,
+      });
+    }
   };
 
   /** Strip values: keep only field names + counts + first error code per field. PII-safe. */
@@ -280,6 +390,31 @@ Deno.serve(async (req) => {
     if (!XAI_API_KEY) {
       log("error", "config", { reason: "missing_xai_key", outcome: "error", status: 500 });
       return jsonError(500, "XAI_API_KEY is not configured", { requestId });
+    }
+
+    // Boot-time format pre-flight. xAI keys always start with `xai-` and are
+    // long opaque strings. Reject obvious mis-pastes (Cursor `cu-…`, OpenAI
+    // `sk-…`, raw secrets accidentally pasted from another vendor) BEFORE
+    // burning a network round-trip — the upstream returns a generic 400
+    // "Incorrect API key" body that's much harder to act on than a server-
+    // side hint that names the actual problem.
+    const trimmedKey = XAI_API_KEY.trim();
+    const looksLikeXai = /^xai-[A-Za-z0-9_-]{20,}$/.test(trimmedKey);
+    if (!looksLikeXai) {
+      const prefix = trimmedKey.slice(0, 4) || "(empty)";
+      log("error", "config", {
+        reason: "key_format_invalid",
+        prefix,
+        length: trimmedKey.length,
+        outcome: "error",
+        status: 401,
+      });
+      return jsonError(
+        401,
+        `XAI_API_KEY format invalid (prefix "${prefix}"). xAI keys start with "xai-". ` +
+          `Copy a fresh key from https://console.x.ai/team/default/api-keys and update the secret in Lovable Cloud → Backend → Secrets.`,
+        { requestId },
+      );
     }
 
     // 0. Hard payload size guard — reject oversize requests BEFORE buffering JSON.
@@ -447,19 +582,31 @@ Deno.serve(async (req) => {
       lastStatus = resp.status;
       lastErrTxt = await resp.text();
       console.error(`xAI error [model=${model}] ${resp.status}`, lastErrTxt);
+
+      // xAI returns HTTP 400 with body "Incorrect API key provided" when the
+      // key is wrong (instead of a proper 401). Promote to auth so the client
+      // shows the actionable "update XAI_API_KEY" toast instead of a generic 502.
+      const isAuthLike =
+        resp.status === 401 ||
+        /incorrect api key|invalid api key|api key.*invalid|unauthorized|authentication/i.test(lastErrTxt);
+      const effectiveStatus = isAuthLike ? 401 : resp.status;
+
       log("warn", "upstream", {
         model,
-        status: resp.status,
+        status: effectiveStatus,
         outcome: "upstream_fail",
-        reason: resp.status === 429 ? "rate_limit"
-          : resp.status === 401 ? "auth"
-          : resp.status === 402 ? "credits"
-          : resp.status === 404 ? "model_not_found"
+        reason: effectiveStatus === 429 ? "rate_limit"
+          : effectiveStatus === 401 ? "auth"
+          : effectiveStatus === 402 ? "credits"
+          : effectiveStatus === 404 ? "model_not_found"
           : "other",
       });
 
       // Auth/quota errors apply to all models — stop early, don't waste calls.
-      if (resp.status === 401 || resp.status === 402 || resp.status === 429) break;
+      if (isAuthLike || resp.status === 402 || resp.status === 429) {
+        lastStatus = effectiveStatus;
+        break;
+      }
 
       // Only fall through on 400/404-style "model not found / unsupported" errors.
       const isModelIssue =
@@ -472,8 +619,8 @@ Deno.serve(async (req) => {
       const status = lastStatus === 429 ? 429 : lastStatus === 401 ? 401 : lastStatus === 402 ? 402 : 502;
       log("error", "upstream", { reason: "all_models_failed", lastStatus, outcome: "error", status });
       if (lastStatus === 429) return jsonError(429, "xAI rate limit reached. Try again shortly.");
-      if (lastStatus === 401) return jsonError(401, "Invalid XAI_API_KEY.");
-      if (lastStatus === 402) return jsonError(402, "xAI credits exhausted.");
+      if (lastStatus === 401) return jsonError(401, "Invalid XAI_API_KEY — update the secret in Lovable Cloud → Backend → Secrets.");
+      if (lastStatus === 402) return jsonError(402, "xAI credits exhausted — top up your xAI account.");
       return jsonError(502, `xAI upstream error (${lastStatus}) — all fallback models failed.`);
     }
 

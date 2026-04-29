@@ -72,7 +72,7 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
   const togglePin = useCallback((pin: number) => {
     setSelectedPins(prev => {
       const next = new Set(prev);
-      next.has(pin) ? next.delete(pin) : next.add(pin);
+      if (next.has(pin)) next.delete(pin); else next.add(pin);
       return next;
     });
   }, []);
