@@ -65,14 +65,14 @@ function PyroControllerCard({
   const startArmHold = useCallback(() => {
     if (armed) {
       const r = api.disarm();
-      if (r.ok) toast.success('DISARMED');
+      if (r.ok === true) toast.success('DISARMED');
       else toast.error(`DISARM falhou: ${r.message}`);
       return;
     }
     setHolding('arm');
     holdTimer.current = setTimeout(() => {
       const r = api.arm();
-      if (r.ok) toast.success('ARMED — pronto para disparar');
+      if (r.ok === true) toast.success('ARMED — pronto para disparar');
       else toast.error(`ARM falhou: ${r.message}`);
       clearHold();
     }, HOLD_MS);
@@ -86,7 +86,7 @@ function PyroControllerCard({
     setHolding('fire');
     holdTimer.current = setTimeout(async () => {
       const r = await api.fire(1, PULSE_MS);
-      if (r.ok) toast.success('FIRE CH1 ✓');
+      if (r.ok === true) toast.success('FIRE CH1 ✓');
       else toast.error(`FIRE falhou: ${r.message}`);
       clearHold();
     }, HOLD_MS);
@@ -94,7 +94,7 @@ function PyroControllerCard({
 
   const onEStop = useCallback(async () => {
     const r = await api.stop();
-    if (r.ok) toast.success('E-STOP enviado — desarmado');
+    if (r.ok === true) toast.success('E-STOP enviado — desarmado');
     else toast.error(`E-STOP falhou: ${r.message}`);
   }, [api]);
 
