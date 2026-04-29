@@ -14,7 +14,7 @@ import {
   setActiveShowPlanProvider,
 } from '../generateShowPlanWithProvider';
 import { validateShowPlan } from '../validateShowPlan';
-import { DEFAULT_SITE_CONFIG, type ShowPlan, type ShowPlanProvider } from '../types';
+import { DEFAULT_SITE_CONFIG, type ShowPlan } from '../types';
 import type { ShowPlanProvider as ProviderIface } from '../aiShowPlanProvider';
 
 const SITE = {
