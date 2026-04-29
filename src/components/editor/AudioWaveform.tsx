@@ -779,6 +779,60 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
           style={{ width: `${duration * pixelsPerSecond}px`, height: `${trackHeight}px` }}
         />
 
+        {/* Trim mode: draggable In/Out handles + dimmed regions outside the
+            pending window. Commits to the store via Apply. */}
+        {trimMode && audioOriginalDuration != null && (
+          <>
+            <div
+              className="absolute top-0 bg-background/60 pointer-events-none"
+              style={{ left: 0, width: `${Math.max(0, inHandleX)}px`, height: '100%' }}
+            />
+            <div
+              className="absolute top-0 bg-background/60 pointer-events-none"
+              style={{
+                left: `${outHandleX}px`,
+                width: `${Math.max(0, duration * pixelsPerSecond - outHandleX)}px`,
+                height: '100%',
+              }}
+            />
+            <div
+              className="absolute top-0 cursor-ew-resize bg-warning hover:bg-warning/80 z-20"
+              style={{ left: `${inHandleX - 3}px`, width: '6px', height: '100%' }}
+              onMouseDown={startHandleDrag('in')}
+              title={`In: ${pendingIn.toFixed(2)}s (press I at playhead)`}
+            />
+            <div
+              className="absolute top-0 cursor-ew-resize bg-warning hover:bg-warning/80 z-20"
+              style={{ left: `${outHandleX - 3}px`, width: '6px', height: '100%' }}
+              onMouseDown={startHandleDrag('out')}
+              title={`Out: ${pendingOut.toFixed(2)}s (press O at playhead)`}
+            />
+            <div className="absolute top-1 left-1 flex items-center gap-1 bg-surface-1/95 border border-warning/40 rounded px-1.5 py-0.5 z-30">
+              <span className="text-[9px] font-mono-code text-warning tabular-nums">
+                {pendingIn.toFixed(2)}s → {pendingOut.toFixed(2)}s ({(pendingOut - pendingIn).toFixed(2)}s)
+              </span>
+              <button onClick={handleApplyTrim} className="text-safety hover:text-safety/80" title="Apply (Enter)">
+                <Check className="h-3 w-3" />
+              </button>
+              <button onClick={() => setTrimMode(false)} className="text-muted-foreground hover:text-foreground" title="Cancel (Esc)">
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          </>
+        )}
+
+        {!trimMode && isTrimmed && (
+          <div className="absolute top-1 left-1 flex items-center gap-1 bg-surface-1/95 border border-warning/30 rounded px-1.5 py-0.5 z-20">
+            <Scissors className="h-2.5 w-2.5 text-warning" />
+            <span className="text-[9px] font-mono-code text-warning tabular-nums">
+              {audioInPoint.toFixed(2)}s–{(audioOutPoint ?? audioOriginalDuration ?? 0).toFixed(2)}s
+            </span>
+            <button onClick={handleResetTrim} className="text-muted-foreground hover:text-foreground" title="Reset trim">
+              <RotateCcw className="h-2.5 w-2.5" />
+            </button>
+          </div>
+        )}
+
         {/* Cue marker tooltips (DOM overlay for hover) */}
         {cueMarkers.map((cue) => (
           <div
