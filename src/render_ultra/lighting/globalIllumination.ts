@@ -68,4 +68,17 @@ export class GlobalIlluminationSystem {
   }
 
   get activeProbes() { return this.probes.length; }
+
+  /**
+   * Remove the hemisphere probe from the scene and clear all transient
+   * probes. THREE.HemisphereLight has no GPU-side resources to free, but
+   * we must detach it from the scene graph to avoid leaking it across
+   * unmounts / show restarts.
+   */
+  dispose(): void {
+    this.scene.remove(this.hemLight);
+    this.probes.length = 0;
+    this.accumColor.set(0, 0, 0);
+    this.accumIntensity = 0;
+  }
 }
