@@ -217,7 +217,15 @@ export const LensFlareController = React.forwardRef<THREE.Group, Record<string, 
     }
     spritesRef.current = pool;
     return () => {
-      pool.forEach(s => scene.remove(s));
+      // Dispose CanvasTexture + SpriteMaterial for every pooled sprite (M5).
+      // createLensFlareSprite() builds one CanvasTexture per sprite — without
+      // this loop we leak ~10 256×256 textures on each remount.
+      pool.forEach(s => {
+        scene.remove(s);
+        const mat = s.material as THREE.SpriteMaterial;
+        mat.map?.dispose();
+        mat.dispose();
+      });
       spritesRef.current = [];
     };
   }, [scene]);
