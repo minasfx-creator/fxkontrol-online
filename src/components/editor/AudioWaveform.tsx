@@ -84,6 +84,13 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     const currentTime = useProjectStore(s => s.currentTime);
   const duration = useProjectStore(s => s.duration);
   const audioUrl = useProjectStore(s => s.audioUrl);
+  const audioInPoint = useProjectStore(s => s.audioInPoint);
+  const audioOutPoint = useProjectStore(s => s.audioOutPoint);
+  const audioOriginalDuration = useProjectStore(s => s.audioOriginalDuration);
+  const setAudioOriginalDuration = useProjectStore(s => s.setAudioOriginalDuration);
+  const applyAudioTrim = useProjectStore(s => s.applyAudioTrim);
+  const resetAudioTrim = useProjectStore(s => s.resetAudioTrim);
+  const setPlaying = useProjectStore(s => s.setPlaying);
   const bpm = useProjectStore(s => s.bpm);
   const isPlaying = useProjectStore(s => s.isPlaying);
   const playbackSpeed = useProjectStore(s => s.playbackSpeed);
