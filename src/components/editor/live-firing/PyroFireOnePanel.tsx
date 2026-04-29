@@ -30,6 +30,7 @@ import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { parseFireOneCSV, parseFireOneFIR, exportFireOneCSV, downloadFile, autoDetectAndParse } from '@/lib/fireoneScriptParser';
 import type { WirelessConnectionMode } from '@/lib/fireoneProtocol';
 import { artnetModuleService } from '@/services/artnetModuleService';
+import { FXK16ConnectionPanel } from './FXK16ConnectionPanel';
 
 interface FireLogEntry {
   cueId: string;
@@ -1631,6 +1632,10 @@ export default function PyroFireOnePanel({
       {renderFileInput()}
       {renderHeader()}
       {renderConnectionBar()}
+      {/* FXK16 — 16ch ESP32-S3 relay quick-connect (USB / BLE) */}
+      <div className={cn(sz === 'xl' ? 'px-6 py-2' : sz === 'fs' ? 'px-4 py-1.5' : 'px-2 py-1')}>
+        <FXK16ConnectionPanel compact={sz !== 'xl'} />
+      </div>
       {renderMasterArm()}
       {renderStatusStrip()}
       {renderModeTabs()}
