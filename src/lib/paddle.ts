@@ -16,9 +16,34 @@ declare global {
   }
 }
 
-/** Single source of truth for the active Paddle environment, derived from token prefix. */
+/** True when a Paddle client token is configured. Use this to gate any UI
+ *  that opens checkout — calling getPaddleEnvironment() without a token
+ *  now THROWS to prevent accidental "live" defaulting. */
+export function isPaddleConfigured(): boolean {
+  return typeof clientToken === "string" && clientToken.length > 0;
+}
+
+/**
+ * Single source of truth for the active Paddle environment.
+ *
+ * WHY: the previous implementation defaulted to "live" when the token was
+ * missing or malformed (any prefix other than "test_"). On a misconfigured
+ * deploy that meant Paddle.js silently initialised in production mode,
+ * which would have charged real cards in test scenarios. We now refuse to
+ * guess: callers must check `isPaddleConfigured()` first, or be prepared
+ * to catch.
+ */
 export function getPaddleEnvironment(): "sandbox" | "live" {
-  return clientToken?.startsWith("test_") ? "sandbox" : "live";
+  if (!clientToken) {
+    throw new Error(
+      "[paddle] VITE_PAYMENTS_CLIENT_TOKEN is not set — refusing to default to live. Configure the token before invoking checkout.",
+    );
+  }
+  if (clientToken.startsWith("test_")) return "sandbox";
+  if (clientToken.startsWith("live_")) return "live";
+  throw new Error(
+    "[paddle] VITE_PAYMENTS_CLIENT_TOKEN has an unrecognised prefix — must start with 'test_' or 'live_'.",
+  );
 }
 
 let paddleInitialized = false;
