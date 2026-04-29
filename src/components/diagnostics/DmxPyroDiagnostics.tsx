@@ -246,7 +246,13 @@ export default function DmxPyroDiagnostics() {
 
   useEffect(() => {
     const iv = setInterval(() => {
-      dmxUniverseAdapter.pollTelemetry();
+      // Only poll the DMX adapter if it's actually connected — avoids
+      // synthetic Math.random() in the universe adapter when no real DMX
+      // device is attached. ArtNet bridge + link state polls are pure
+      // reads of stored state, so they always run.
+      if (dmxUniverseAdapter.getConnectionState() === 'connected') {
+        dmxUniverseAdapter.pollTelemetry();
+      }
       setArtnetState(artNetBridge.getState());
       setActiveLink(linkFailoverPolicy.getActiveLink());
       setUniverseSnap(dmxUniverseAdapter.getSnapshot());

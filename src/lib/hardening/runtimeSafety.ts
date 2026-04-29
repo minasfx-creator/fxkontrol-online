@@ -101,6 +101,20 @@ export function reportCrash(): boolean {
 }
 
 export function getCrashRecord(): Readonly<CrashRecord> { return _crashRecord; }
+
+/**
+ * Reset the crash-loop record. Used by the user-facing "Retry" button in the
+ * WebGL fallback so the operator can manually attempt to recover the renderer
+ * after a context-loss cooldown without a full page reload.
+ */
+export function resetCrashRecord(): void {
+  _crashRecord.timestamps = [];
+  _crashRecord.inCooldown = false;
+  _crashRecord.cooldownUntil = 0;
+  // Keep totalCrashes for telemetry; only the rolling window is cleared.
+  console.warn('[RuntimeSafety] Crash record reset by user retry');
+}
+
 export function isInCooldown(): boolean {
   if (!_crashRecord.inCooldown) return false;
   if (Date.now() >= _crashRecord.cooldownUntil) {

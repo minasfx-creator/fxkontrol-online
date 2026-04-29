@@ -1,115 +1,120 @@
-# Plan — Grok 4.20 Reasoning via /v1/responses
+## Objetivo
 
-Add a dedicated reasoning surface using xAI's **Responses API** and the new **`grok-4.20-reasoning`** model, without disturbing the green choreography pipeline.
+Adicionar controles **In/Out** (recorte não-destrutivo) ao áudio na timeline. O recorte:
 
-## 1. New edge function: `supabase/functions/grok-responses/index.ts`
+1. Mapeia o tempo da timeline `[0 .. (out − in)]` para o tempo do áudio `[in .. out]` durante reprodução, scrub e exportação.
+2. Recalcula a **waveform** mostrando só a região recortada.
+3. Recalcula a **duração** do projeto (`duration = out − in`).
+4. Re-timestampa **automaticamente** os efeitos da timeline para preservar seu alinhamento musical relativo ao novo `t=0`.
+5. É **não-destrutivo**: o arquivo de áudio original não é alterado; só `audioInPoint` e `audioOutPoint` são persistidos. Pode ser desfeito (Reset) recuperando os efeitos de antes do trim.
 
-A focused, well-instrumented wrapper around `POST https://api.x.ai/v1/responses`.
+## Mudanças
 
-**Contract (POST JSON body):**
+### 1. Store — pontos In/Out + ação de trim com recálculo
+
+**`src/store/useProjectStore.ts`**
+
+Novos campos:
+- `audioInPoint: number` (segundos no áudio original, default `0`)
+- `audioOutPoint: number | null` (segundos no áudio original, `null` = fim do arquivo)
+- `audioOriginalDuration: number | null` (preenchido após decodificação; necessário para clamp dos pontos)
+- `audioTrimHistory: { in: number; out: number | null; timestamp: number; itemSnapshot: TimelineItem[] } | null` (1 nível de undo; opcional para ação "Reset trim")
+
+Setters:
+- `setAudioInPoint(t)`, `setAudioOutPoint(t)` — só atualizam o valor (uso em drag visual; não recalcula nada).
+- `setAudioOriginalDuration(d)` — chamado pelo `loadAudio()` após `decodeAudioData`.
+- **`applyAudioTrim(inT, outT)`** — ação atômica que:
+  1. Faz clamp: `0 ≤ inT < outT ≤ audioOriginalDuration`. Rejeita janela menor que `0.05s`.
+  2. Calcula `delta = inT - audioInPoint` e `newDuration = outT - inT`.
+  3. Para cada `TimelineItem` / `CueMarker` / `CameraKeyframe` / `Trajectory.waypoints`: `t' = t - delta`. Items que ficarem com `t' < 0` ou `t' > newDuration` são **filtrados** (mas o `audioTrimHistory` guarda snapshot original para undo).
+  4. Atualiza `audioInPoint`, `audioOutPoint`, `duration = newDuration`, `currentTime = clamp(currentTime - delta, 0, newDuration)`.
+  5. Salva snapshot no `audioTrimHistory` (1 nível de undo).
+- **`resetAudioTrim()`** — restaura `audioInPoint=0`, `audioOutPoint=null`, `duration = audioOriginalDuration`, e se houver `audioTrimHistory`, restaura `timelineItems` para o snapshot e reverte os deltas dos demais (cues/camera/waypoints) somando o delta original de volta.
+
+### 2. Mapeamento timeline ↔ áudio
+
+**`src/lib/audio/audioTrimMapping.ts`** (novo, puro):
 ```ts
-{
-  input: string,                           // required, 1..8000 chars (Zod-validated)
-  system?: string,                         // optional system steer
-  model?: string,                          // default "grok-4.20-reasoning"
-  reasoning?: { effort?: "low" | "medium" | "high" },  // default "medium"
-  maxOutputTokens?: number,                // default 4000, capped at 16k
-  temperature?: number,                    // default 0.4
-}
+export const timelineToAudio = (t: number, inP: number) => t + inP;
+export const audioToTimeline = (a: number, inP: number) => a - inP;
+export const clampToTrim   = (a: number, inP: number, outP: number | null, origDur: number) =>
+  Math.min(outP ?? origDur, Math.max(inP, a));
 ```
 
-**Response:**
-```ts
-{
-  ok: true,
-  text: string,                            // flattened response.output_text
-  reasoning?: string,                      // surfaced thinking (when present)
-  model: string,                           // echo of model actually used
-  usage: { input_tokens, output_tokens, reasoning_tokens? },
-  requestId: string,                       // for log correlation
-}
-```
+Aplicado em:
 
-**Failure modes (mirroring `grok-choreography` patterns):**
-- Reuse the same key-format guard (`/^xai-[A-Za-z0-9_-]{20,}$/`) → 401 with the friendly "rotate the secret" copy.
-- Map upstream 401/403 → `auth`, 429 → `rate_limit`, 402 → `credits`, 404 (model) → `model_not_found`, others → `upstream_error`.
-- 5 s connect timeout, 60 s overall (reasoning models are slower than chat).
-- Structured logging (stage / outcome / status / model / duration_ms) so it shows up in the existing `edge_function_logs` analytics surface.
+- **`AudioWaveform.tsx`** — `useEffect` que cria o `<Audio>`: assim que o áudio carrega e `audioInPoint > 0`, faz `audio.currentTime = audioInPoint`. Adiciona listener `timeupdate`: se `audio.currentTime >= (audioOutPoint ?? duration)`, pausa e dispara `setPlaying(false)`. Sync de seek: agora compara `audio.currentTime` com `currentTime + audioInPoint` (com a mesma tolerância 0.15s).
+- **`useAudioMasterClock.ts`** — quando lê `audio.currentTime`, escreve `timelineClock.syncExternalTime(audio.currentTime - audioInPoint)`. Lê `audioInPoint` via `useProjectStore.getState()` no callback (não como dep do hook, pra evitar reinit).
 
-**Why a separate function (not extending `grok-choreography`):**
-- Different endpoint shape (`/v1/responses` payload differs from `chat/completions`).
-- No tool-call schema → simpler surface, smaller blast radius.
-- Lets `grok-choreography` keep its tested fallback chain unchanged.
+### 3. Recálculo de waveform restrito à região
 
-**No `config.toml` change needed** — defaults (verify_jwt = false managed by Lovable Cloud) are correct.
+**`AudioWaveform.tsx`** — `loadAudio()`:
+- Após `decodeAudioData`, chama `setAudioOriginalDuration(audioBuffer.duration)`.
+- A janela usada para downsample passa a ser `[audioInPoint .. audioOutPoint ?? audioBuffer.duration]`:
+  - `startSample = floor(audioInPoint * sampleRate)`
+  - `endSample = floor((audioOutPoint ?? audioBuffer.duration) * sampleRate)`
+  - `samples = floor(newDuration * pixelsPerSecond * 2)`
+  - `blockSize = floor((endSample - startSample) / samples)`
+  - Loop sobre `rawData.subarray(startSample, endSample)`.
+- Re-executa quando `audioInPoint` ou `audioOutPoint` mudam (adicionar às deps de `loadAudio` + `useEffect` que o invoca).
+- Cache: guarda o `AudioBuffer` decodificado em `audioBufferRef` para evitar re-fetch a cada mudança de in/out — só o downsample é refeito.
 
-## 2. Client adapter: `src/lib/grokResponses.ts`
+### 4. UI — handles In/Out + toolbar de trim
 
-Tiny typed wrapper:
-```ts
-export interface GrokReasoningRequest { ... }
-export interface GrokReasoningResult { text: string; reasoning?: string; usage: ...; model: string }
-export async function callGrokReasoning(req): Promise<GrokReasoningResult>
-```
-- Uses `supabase.functions.invoke('grok-responses', { body })`.
-- Maps known error reasons → user-facing toast strings (re-uses the same auth-error detection logic from `AIChoreography.tsx` so the existing "Diagnosticar chave" CTA still appears).
+Estende **`AudioWaveform.tsx`** (lane existente, sem novo arquivo grande):
 
-Includes a Vitest unit covering: success unwrap, auth-error mapping, network error → friendly fallback. Matches the project's "always wrap unknown errors" convention.
+- Dois handles verticais sobrepostos ao canvas: traço vertical (`Scissors` icon no topo) na posição `(audioInPoint - audioInPoint) * pps = 0` e `(audioOutPoint - audioInPoint) * pps = duration * pps`. Inicialmente nas bordas; viram interativos só quando o usuário entra em "Trim Mode".
+- Toggle "Trim" (ícone `Scissors`) na coluna de controles à esquerda (perto do botão Snap). Estado local `trimMode`.
+- Quando `trimMode === true`:
+  - Aparecem dois handles draggáveis (largura 6 px, altura total da lane, cor `hsl(var(--warning))`).
+  - Drag atualiza um estado local `pendingIn / pendingOut` (preview ao vivo, sem mexer no áudio nem na timeline ainda — apenas redesenha overlay sombreado nas regiões fora do range).
+  - Botões `Apply trim` (chama `applyAudioTrim(pendingIn, pendingOut)`) e `Cancel`. Ao aplicar, mostra toast com `delta` aplicado e nº de cues/items removidos.
+  - Atalhos: `I` define `pendingIn = currentTime + audioInPoint`; `O` define `pendingOut = currentTime + audioInPoint`. Apenas quando `trimMode === true` e foco fora de inputs.
+- Quando `audioInPoint > 0 || audioOutPoint != null` (já recortado), aparece chip `Trimmed · X.XXs–Y.YYs` com botão `Reset` (chama `resetAudioTrim()`).
 
-## 3. Surface A — AI Choreography refinement
+### 5. Re-timestampagem automática dos efeitos
 
-In `src/pages/AIChoreography.tsx` (the page the user is currently on):
+Implementada em `applyAudioTrim` (passo 1.3 acima). Regras:
 
-- Add a **"Refine with reasoning"** secondary button next to the existing generate CTA, enabled only after a macro choreography has been produced.
-- Click → sends the current macro plan + the original prompt to `grok-responses` with a curated system prompt: *"You are a critique-and-improve assistant. Identify weaknesses (timing collisions, monotony, safety distance issues) and propose concrete edits. Return concise bullet-point recommendations."*
-- The reasoning output is rendered in a new collapsible **"Reasoning Notes"** panel under the macro preview (not auto-applied — operators still own the choreography).
-- Shows token usage + reasoning_tokens in a small footer for transparency.
-- Disabled while busy; toast shows the same diagnostic CTA on auth failure.
+| Entidade | Campo de tempo | Ação |
+|---|---|---|
+| `TimelineItem` | `startTime` | `t' = t - delta`; remove se `t' < -0.05` ou `t' > newDuration + 0.05` |
+| `CueMarker` | `time` | mesmo |
+| `CameraKeyframe` | `time` | mesmo |
+| `Trajectory.waypoints[].time` | `time` | mesmo (waypoints removidos se ficarem fora) |
+| `DroneFormation` | `startTime` | mesmo (formações inteiras removidas se startTime fora) |
 
-**Why critique-only (not auto-apply):** consistent with `mem://restricoes/seguranca-latencia-e-auditoria-v5-crificos` (operator must own destructive changes), and matches the JOI Honesty Layer (`mem://arquitetura/camada-verdade-integracao-provenance-honesty`).
+Toast de sumário: `Trimmed audio · removed N items / M cues outside new window`.
 
-## 4. Surface B — JOI assistant chat (FXKAssistant)
+### 6. Persistência e exportações
 
-In `src/components/FXKAssistant.tsx`:
+- `useProjectPersistence.ts`: incluir `audioInPoint`, `audioOutPoint`, `audioOriginalDuration` no snapshot serializado (com migration: se ausentes, defaults `0` / `null` / `null`).
+- Exportações VVIZ/CSV/JSON (`exportEngine.ts`): **nenhuma mudança nos timestamps emitidos** — eles já refletem o `startTime` pós-trim do store, que é o tempo "show". Adicionar metadata-comment opcional `// audio in=X out=Y` no header dos exports é fora do escopo desta tarefa.
 
-- Add a **"Reasoning"** toggle (segmented control next to the input: `Standard` / `Reasoning`) defaulting to `Standard` so the existing fast streaming path (`fxk-ai-chat` → Lovable AI Gateway) is unchanged.
-- When `Reasoning` is selected:
-  - Route the request to `grok-responses` instead of streaming from `fxk-ai-chat`.
-  - Non-streaming for now (Responses API streaming format is different — keep scope small). UI shows a "Thinking…" indicator with the orb pulse.
-  - When response arrives, render `text` as the assistant message AND, if `reasoning` is present, append a `<details>` block titled "Cadeia de raciocínio" so power users can audit.
-- Tooltip on the toggle: *"Slower (15-30s) but stronger at multi-step planning, validation explanations, and safety reasoning. Costs more tokens."*
+### 7. Edge cases protegidos
 
-Persist the toggle in `localStorage` (`fxk:joi:reasoning-mode`) so user preference sticks.
+- Áudio ainda decodificando quando o usuário clica `Apply trim` → desabilita botão até `audioOriginalDuration != null`.
+- Reset trim sem snapshot disponível (projeto recarregado) → restaura só `in=0, out=null, duration=audioOriginalDuration` sem mexer em items (com toast `History indisponível, items mantidos`).
+- Áudio trocado (`setAudioUrl(novoUrl)`): zera `audioInPoint`, `audioOutPoint`, `audioOriginalDuration` e `audioTrimHistory` para evitar aplicar trim de outro arquivo.
+- `currentTime` durante trim mode: continua usando o sistema de coordenadas da **timeline atual** (pré-aplicação); só após `Apply` o store muda.
 
-## 5. Tests & verification
+### 8. Testes
 
-- **Unit:** `src/lib/__tests__/grokResponses.test.ts` (3-4 cases).
-- **Edge function smoke test via curl_edge_functions** after deploy: send a tiny prompt, assert `ok: true` and that `model` echoes `grok-4.20-reasoning`. If xAI rejects the model name (preview availability), the function will return `model_not_found` and we'll fall back to `grok-4` automatically (added as a single-step fallback, mirroring choreography's pattern).
-- **Regression:** full vitest run (currently 656/656) + tsc.
-- **Lint:** target zero new warnings (continue the cleanup trajectory).
+`src/lib/audio/__tests__/audioTrimMapping.test.ts` (novo):
+- `timelineToAudio(0, 5) === 5`; `audioToTimeline(5, 5) === 0`.
+- `clampToTrim` respeita bordas com e sem `outPoint`.
 
-## 6. Out of scope (explicit)
+`src/store/__tests__/applyAudioTrim.test.ts` (novo):
+- Trim `[2, 8]` em projeto com items em `t=1, 3, 7, 9` → resultado: items em `1, 5` (os de `t=1` e `t=9` removidos), `duration=6`.
+- Snapshot preservado em `audioTrimHistory`; `resetAudioTrim` restaura ambos.
+- Trim com `inT >= outT` ou janela < 50ms → no-op + warning.
 
-- **No** changes to `grok-choreography` — its fallback chain stays `grok-4` → `grok-4-fast` → `grok-2-vision-latest`.
-- **No** streaming on the Responses API path (deferred — let's confirm the model is healthy and useful first).
-- **No** auto-apply of reasoning suggestions to the macro choreography (operator-controlled).
-- **No** new secrets — reuses existing `XAI_API_KEY`.
+### Arquivos tocados
 
-## Files created / edited
-
-**Created**
-- `supabase/functions/grok-responses/index.ts`
-- `src/lib/grokResponses.ts`
-- `src/lib/__tests__/grokResponses.test.ts`
-
-**Edited**
-- `src/pages/AIChoreography.tsx` — adds "Refine with reasoning" button + Reasoning Notes panel
-- `src/components/FXKAssistant.tsx` — adds Standard/Reasoning toggle + non-streaming reasoning path
-
-## Acceptance checks (post-deploy)
-
-1. `curl_edge_functions` to `/grok-responses` with `{"input":"ping"}` returns `ok:true` and a non-empty `text`.
-2. AI Choreography page: generate a plan → click "Refine with reasoning" → critique appears within ~30s.
-3. JOI assistant: toggle to Reasoning → ask "Why does this safety distance matter?" → reasoning chain renders in the collapsible.
-4. Auth-failure path still surfaces the existing "Diagnosticar chave" toast CTA.
-5. 656+ tests green; tsc clean.
+- `src/store/useProjectStore.ts` — campos, setters, `applyAudioTrim`, `resetAudioTrim`, hook em `setAudioUrl`.
+- `src/lib/audio/audioTrimMapping.ts` — **novo** (helpers puros).
+- `src/components/editor/AudioWaveform.tsx` — handles UI, modo trim, atalhos `I/O`, downsample restrito, sync com `audioInPoint`, fim-de-trim em `timeupdate`, cache de `AudioBuffer`.
+- `src/hooks/useAudioMasterClock.ts` — subtrai `audioInPoint` ao escrever no `timelineClock`.
+- `src/hooks/useProjectPersistence.ts` — serializa/deserializa novos campos com migration.
+- `src/lib/audio/__tests__/audioTrimMapping.test.ts` — **novo**.
+- `src/store/__tests__/applyAudioTrim.test.ts` — **novo**.

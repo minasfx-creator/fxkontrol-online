@@ -121,7 +121,10 @@ export function ContactShadowsLayer() {
       scale={80}
       blur={s.contactShadowsBlur}
       far={50}
-      resolution={256}
+      // Reduced 256 → 128: depth FBO is 4× smaller, blur radius (~2px) hides
+      // the resolution drop at this scale. Saves ~256KB GPU memory + a render
+      // pass per frame, helping cold-start stay under context-loss thresholds.
+      resolution={128}
       color="#000000"
     />
   );

@@ -128,22 +128,14 @@ class ReadinessEvaluator {
     return this.evaluate().allowed_operations.includes(operation);
   }
 
-  private _isOperationAllowed(op: AllowedOperation, status: ReadinessStatus, issues: ReadinessIssue[]): boolean {
-    const hasErrors = issues.some(i => i.severity === 'error');
-    switch (op) {
-      case 'diagnostics':
-      case 'validate':
-        return true;
-      case 'preview':
-      case 'simulate':
-        return status !== 'BLOCKED';
-      case 'export':
-        return status === 'READY_FOR_EXPORT' || status === 'READY_FOR_HARDWARE_SYNC' || status === 'READY_FOR_LIVE_READ_ONLY';
-      case 'sync_read_only':
-        return (status === 'READY_FOR_HARDWARE_SYNC' || status === 'READY_FOR_LIVE_READ_ONLY') && !hasErrors;
-      default:
-        return false;
-    }
+  /**
+   * ⚠️  Modo Testes: TODAS as operações são permitidas independentemente do status.
+   *  `evaluate()` continua calculando status/issues/warnings honestamente para a UI,
+   *  mas a tradução para `allowed_operations` foi neutralizada.
+   *  Restaurar lógica binária para produção (ver src/_quarantine/safety/).
+   */
+  private _isOperationAllowed(_op: AllowedOperation, _status: ReadinessStatus, _issues: ReadinessIssue[]): boolean {
+    return true;
   }
 }
 

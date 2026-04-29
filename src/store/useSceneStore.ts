@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ViewTransform } from '@/lib/niagaraBlenderRules';
+import type { ViewTransform } from '@/lib/niagaraBlenderRules.types';
 import type { TerrainData, TerrainConfig } from '@/lib/heightmapToTerrain';
 
 export type GroundStyle = 'finale-dark' | 'google-earth' | 'flat-black' | 'concrete' | 'sfx-stage' | 'synthetic-grass' | 'custom';

@@ -24,9 +24,14 @@ import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import RadialMenu from '@/components/editor/RadialMenu';
 // EngineProvider moved to MainLayout (boots once, all routes, mobile + desktop).
 import LiveCard from '@/components/editor/LiveCard';
+import { StudioErrorBoundary } from '@/components/errors/StudioErrorBoundary';
 
 // ── Lazy helper — one-liner for 80+ panels ──
-const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
+// All Studio lazy imports go through `lazyRetry` so a stale chunk after
+// deploy/HMR doesn't crash the whole editor — it transparently retries the
+// dynamic import once before bubbling to the LazyChunkBoundary.
+const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) =>
+  lazy(lazyRetry(loader));
 
 // ── Verification ──
 
@@ -264,15 +269,12 @@ function PanelLoader() {
   );
 }
 
+// CanvasLoader: spinner with an 8s safety timeout that surfaces a "Reload Studio"
+// button if a dynamic import for SkyCanvas (or any deep chunk) silently stalls.
+// Prevents the infinite-spinner trap when Vite/HMR drops a module after restart.
+import CanvasLoaderWithTimeout from '@/components/editor/CanvasLoaderWithTimeout';
 function CanvasLoader() {
-  return (
-    <div className="w-full h-full flex items-center justify-center bg-background">
-      <div className="text-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-xs text-muted-foreground font-mono">Loading 3D Engine...</p>
-      </div>
-    </div>
-  );
+  return <CanvasLoaderWithTimeout timeoutMs={8000} label="Loading 3D Engine..." />;
 }
 
 // Drop extensions and logic moved to useViewportDrop hook
@@ -557,7 +559,7 @@ function Index() {
     return (
        <div className="absolute inset-0 w-full h-full overflow-hidden bg-background">
         <div className="absolute inset-0 w-full h-full br2049-atmosphere">
-          <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas /></Suspense></CanvasErrorBoundary>
+          <StudioErrorBoundary area="3D viewport"><CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas /></Suspense></CanvasErrorBoundary></StudioErrorBoundary>
         </div>
         <LiveModeOverlay />
       </div>
@@ -566,7 +568,7 @@ function Index() {
     return (
     <div className="absolute inset-0 w-full h-full overflow-hidden bg-background">
         <div className="absolute inset-0 w-full h-full">
-          <CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas key="mobile-skycanvas" /></Suspense></CanvasErrorBoundary>
+          <StudioErrorBoundary area="3D viewport"><CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas key="mobile-skycanvas" /></Suspense></CanvasErrorBoundary></StudioErrorBoundary>
           <BoxSelectOverlay />
         </div>
 
@@ -651,11 +653,13 @@ function Index() {
             </div>
           </div>
           <div className="absolute inset-0 top-9">
-            <CanvasErrorBoundary>
-              <Suspense fallback={<CanvasLoader />}>
-                <SkyCanvas />
-              </Suspense>
-            </CanvasErrorBoundary>
+            <StudioErrorBoundary area="3D viewport">
+              <CanvasErrorBoundary>
+                <Suspense fallback={<CanvasLoader />}>
+                  <SkyCanvas />
+                </Suspense>
+              </CanvasErrorBoundary>
+            </StudioErrorBoundary>
             <BoxSelectOverlay />
             <SelectionModeBar />
             {isDragOver && (

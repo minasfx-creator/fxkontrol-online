@@ -11,6 +11,7 @@ import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry
 import { getProvenanceBadge, type IntegrationMode, type EvidenceLevel } from '@/core/hardware/provenance';
 import { cn } from '@/lib/utils';
 import { Activity, CheckCircle2, AlertTriangle, MinusCircle, XCircle } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 
 type MatrixStatus = 'exists' | 'partial' | 'placeholder' | 'absent';
 
@@ -47,7 +48,7 @@ const EVIDENCE_COLORS: Record<EvidenceLevel, string> = {
 
 export default function CurrentStateMatrix() {
   const sp = showPlanManager.current;
-  const { level } = useVerificationStore();
+  const level = useVerificationStore((s) => s.level);
   const { devices, snapshots, refresh } = useHardwareRegistry();
   const navigate = useNavigate();
 

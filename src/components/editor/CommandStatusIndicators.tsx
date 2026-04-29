@@ -7,10 +7,11 @@ import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
 import { cn } from '@/lib/utils';
 import { Shield, CheckCircle2, XOctagon, AlertTriangle, Lock } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 
 /** Compact inline indicators for top bars */
 export function StatusChips() {
-  const { level, result, runVerification } = useVerificationStore();
+  const { level, result, runVerification } = useVerificationStore(useShallow((s) => ({ level: s.level, result: s.result, runVerification: s.runVerification })));
   const safetyState = safetyStateMachine.state;
 
   useEffect(() => { runVerification(); }, [runVerification]);
@@ -66,7 +67,7 @@ export function StatusChips() {
 
 /** Sidebar footer widget — more detailed */
 export function SidebarStatusWidget({ collapsed }: { collapsed: boolean }) {
-  const { level, result, runVerification } = useVerificationStore();
+  const { level, result, runVerification } = useVerificationStore(useShallow((s) => ({ level: s.level, result: s.result, runVerification: s.runVerification })));
   const safetyState = safetyStateMachine.state;
 
   useEffect(() => { runVerification(); }, [runVerification]);

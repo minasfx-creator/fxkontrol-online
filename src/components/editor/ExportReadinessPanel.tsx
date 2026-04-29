@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { VerificationIssue } from '@/core/verification/types';
+import { useShallow } from 'zustand/react/shallow';
 
 function IssueRow({ issue }: { issue: VerificationIssue }) {
   const color = issue.passed ? 'text-emerald-400' : issue.severity === 'error' ? 'text-red-400' : issue.severity === 'warning' ? 'text-amber-400' : 'text-blue-400';
@@ -80,7 +81,7 @@ function ExportChannel({ label, icon: Icon, color, count, countLabel, canExport,
 }
 
 export default function ExportReadinessPanel() {
-  const { level, result, runVerification } = useVerificationStore();
+  const { level, result, runVerification } = useVerificationStore(useShallow((s) => ({ level: s.level, result: s.result, runVerification: s.runVerification })));
   const sp = showPlanManager.current;
   const canExport = level === 'READY_FOR_EXPORT' || level === 'READY_FOR_FIELD';
   const mode = operationalModeGuard.mode;

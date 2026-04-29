@@ -61,3 +61,154 @@ export interface TransportDiscoverer {
   /** Current cached devices (no I/O). */
   getDevices(): DiscoveredDevice[];
 }
+
+// ─── Multi-Transport Aggregation ──────────────────────────────────
+/**
+ * A single physical device that may be reachable through multiple
+ * transports simultaneously. Built by `DeviceAggregator` from the raw
+ * `DiscoveredDevice` stream.
+ */
+export interface PhysicalDevice {
+  /** Canonical cross-transport id — see `aggregateKey()`. */
+  aggregateId: string;
+  /** Best-effort display label (longest non-empty link label wins). */
+  label: string;
+  vendorId?: number;
+  productId?: number;
+  serialNumber?: string;
+  host?: string;
+  /** Sparse map — present links only. */
+  links: Partial<Record<DiscoveryTransport, DiscoveredDevice>>;
+  /** Transport currently chosen as primary (may be null when all offline). */
+  activeTransport: DiscoveryTransport | null;
+  /** Operator-pinned transport (persisted in portRegistry). */
+  preferredTransport: DiscoveryTransport | null;
+  /** True when at least one link is online. */
+  online: boolean;
+  firstSeen: number;
+  lastSeen: number;
+  /**
+   * Transports temporarily excluded from active selection due to repeated
+   * dispatch failures/timeouts. Populated by MultiTransportLink and
+   * cleared by `clearQuarantine` or when a fresh discovery `updated`
+   * event re-validates the link. NOT persisted — quarantine is session
+   * scoped so a reload gives every transport a fresh chance.
+   */
+  quarantinedTransports?: Partial<Record<DiscoveryTransport, {
+    at: number;
+    reason: string;
+    consecutiveFailures: number;
+  }>>;
+  /** Last automatic promotion (for UI surfacing). */
+  lastPromotion?: {
+    from: DiscoveryTransport | null;
+    to: DiscoveryTransport;
+    at: number;
+    reason: 'link-lost' | 'preference-applied' | 'initial' | 'link-degraded';
+  };
+}
+
+export type PhysicalDeviceEventType =
+  | 'added'
+  | 'link-added'
+  | 'link-updated'
+  | 'link-lost'
+  | 'link-quarantined'
+  | 'link-recovered'
+  | 'promoted'
+  | 'removed';
+
+export interface PhysicalDeviceEvent {
+  type: PhysicalDeviceEventType;
+  device: PhysicalDevice;
+  transport?: DiscoveryTransport;
+  previousActive?: DiscoveryTransport | null;
+  /** Optional human-readable reason (used by quarantine/promotion events). */
+  reason?: string;
+}
+
+// ─── Multi-Transport Concurrent Dispatch ──────────────────────────
+/**
+ * Concurrency mode for sending payloads to a PhysicalDevice across
+ * multiple transports simultaneously.
+ *
+ *  • `single`    — only the active transport is used (legacy behavior).
+ *  • `dual`      — active + next-best online link receive every dispatch.
+ *  • `broadcast` — every online link receives every dispatch in parallel.
+ */
+export type LinkMode = 'single' | 'dual' | 'broadcast';
+
+/** Free-form payload routed through MultiTransportLink. */
+export interface TransportPayload {
+  kind: string;
+  /** Optional bytes (DMX universe, PBUS frame, etc.). */
+  bytes?: Uint8Array;
+  /** Free-form metadata (channel, address, opcode...). */
+  meta?: Record<string, unknown>;
+  /** Wall-clock origin time, used for end-to-end latency stats. */
+  at?: number;
+}
+
+export interface DispatchResult {
+  transport: DiscoveryTransport;
+  ok: boolean;
+  latencyMs: number;
+  error?: string;
+}
+
+export type LinkSendStatus = 'idle' | 'sending' | 'ok' | 'fail';
+
+export interface LinkHealth {
+  transport: DiscoveryTransport;
+  /** Successful dispatches. */
+  txOk: number;
+  /** Hard errors (sender threw, NO_REAL_SENDER, protocol fail, etc). */
+  txErr: number;
+  /** Dispatches that exceeded the per-link timeout budget. */
+  txTimeout: number;
+  /** EMA latency (alpha 0.3). */
+  latencyMs: number;
+  /** Worst observed latency (ms) since session start. */
+  maxLatencyMs: number;
+  /** Wall-clock of the most recent dispatch attempt. */
+  lastAt: number;
+  /** Wall-clock of the most recent successful dispatch. */
+  lastOkAt: number;
+  /** Wall-clock of the most recent failed/timeout dispatch. */
+  lastFailAt: number;
+  /** Last error message (timeout or hard error). */
+  lastError?: string;
+  /** True when the underlying DiscoveredDevice link is currently online. */
+  online: boolean;
+  status: LinkSendStatus;
+}
+
+export interface MultiTransportLinkSnapshot {
+  aggregateId: string;
+  mode: LinkMode;
+  participants: DiscoveryTransport[];
+  primary: DiscoveryTransport | null;
+  health: Partial<Record<DiscoveryTransport, LinkHealth>>;
+  totalTxOk: number;
+  totalTxErr: number;
+  totalTxTimeout: number;
+  lastDispatch?: {
+    at: number;
+    okCount: number;
+    failCount: number;
+    avgLatencyMs: number;
+  };
+}
+
+export type MultiTransportEventType =
+  | 'mode-changed'
+  | 'participants-changed'
+  | 'tx'
+  | 'health';
+
+export interface MultiTransportEvent {
+  type: MultiTransportEventType;
+  aggregateId: string;
+  snapshot: MultiTransportLinkSnapshot;
+  results?: DispatchResult[];
+}
