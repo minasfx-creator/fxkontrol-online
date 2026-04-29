@@ -140,11 +140,9 @@ const BluetoothPanel = lz(() => import('@/components/editor/BluetoothPanel'));
 const NFCPairPanel = lz(() => import('@/components/editor/NFCPairPanel'));
 const DMXOutputPanel = lz(() => import('@/components/editor/dmx/DMXOutputPanel'));
 const RemoteControlPanel = lz(() => import('@/components/editor/RemoteControlPanel'));
-const ConnectionManagerPanel = lz(() => import('@/components/editor/ConnectionManagerPanel'));
 const RadioControlPanel = lz(() => import('@/components/editor/RadioControlPanel'));
 const MA3ControlPanel = lz(() => import('@/components/editor/MA3ControlPanel'));
 const SACNMonitorPanel = lz(() => import('@/components/editor/SACNMonitorPanel'));
-const EasyConnectPanel = lz(() => import('@/components/editor/EasyConnectPanel'));
 const VenueQuickSelector = lz(() => import('@/components/editor/VenueQuickSelector'));
 const VenueShowOverlay = lz(() => import('@/components/editor/VenueShowOverlay'));
 
