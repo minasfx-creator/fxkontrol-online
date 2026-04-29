@@ -66,7 +66,9 @@ export function useProjectPersistence() {
         })),
       }));
 
-      const { data: returnedId, error } = await supabase.rpc('save_project_atomic', {
+      // RPC name not yet in generated types — cast through unknown.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: returnedId, error } = await (supabase.rpc as any)('save_project_atomic', {
         p_project_id: projectId ?? null,
         p_project,
         p_positions,
@@ -76,7 +78,7 @@ export function useProjectPersistence() {
 
       if (error) throw error;
       if (returnedId && !projectId) {
-        useProjectStore.getState().setProjectId(returnedId as string);
+        useProjectStore.getState().setProjectId(returnedId as unknown as string);
       }
 
       lastSavedRef.current = JSON.stringify({
