@@ -7,6 +7,7 @@
 
 import type { AllowedOperation, OperationalMode } from './types';
 import { safetyGate } from '@/core/safety/safetyGate';
+import { workMode } from '@/core/safety/workMode';
 
 const MODE_PERMISSIONS: Record<OperationalMode, AllowedOperation[]> = {
   'preview':         ['simulate', 'preview', 'validate', 'diagnostics'],
