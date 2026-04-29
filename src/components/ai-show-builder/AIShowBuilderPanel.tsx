@@ -195,6 +195,23 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
           )}
         </div>
 
+        {/* Live 3D preview + permanent PromptBar — always visible. */}
+        <div className="relative h-[320px] rounded-md overflow-hidden border border-border/50">
+          <ShowEngineHost plan={plan} />
+          <div className="absolute left-2 right-2 bottom-2 z-30">
+            <PromptBar
+              site={site}
+              currentPlan={plan}
+              onPlan={(p) => { setPlan(p); setVariation((v) => v + 1); }}
+              onApply={handleApply}
+              onResetView={() => {
+                // ResetView dispatched via custom event so any mounted engine listens.
+                window.dispatchEvent(new CustomEvent('show-engine-reset-view'));
+              }}
+            />
+          </div>
+        </div>
+
         {plan && validation && pipelineModel && !reviewing && (
           <PlanPreview
             plan={plan}
