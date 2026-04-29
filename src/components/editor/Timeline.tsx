@@ -1608,6 +1608,41 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
     if (ids.length > 0) duplicateTimelineItems(ids);
   };
 
+  /** Quantize selected timeline items' startTime to the active grid (auto/beat/frame).
+   *  No-op when snapMode === 'off' or when grid.interval <= 0. Reports outcome via toast. */
+  const handleQuantizeSelected = useCallback(() => {
+    const ids = selectedTimelineItemIds.length > 0
+      ? selectedTimelineItemIds
+      : selectedTimelineItemId ? [selectedTimelineItemId] : [];
+    if (ids.length === 0) {
+      toast.info('Quantize: no timeline items selected');
+      return;
+    }
+    if (snapMode === 'off') {
+      toast.warning('Quantize: snap mode is OFF — switch to Auto/Beat/Frame first');
+      return;
+    }
+    const grid = getActiveGrid({ bpm, snapMode });
+    if (!grid.interval || grid.interval <= 0) {
+      toast.warning('Quantize: active grid has no interval');
+      return;
+    }
+    const updateItem = useProjectStore.getState().updateTimelineItem;
+    const items = useProjectStore.getState().timelineItems;
+    let moved = 0;
+    ids.forEach((id) => {
+      const it = items.find((i) => i.id === id);
+      if (!it) return;
+      const q = quantizeTime(it.startTime, grid);
+      const clamped = Math.max(0, Math.min(duration || q, q));
+      if (Math.abs(clamped - it.startTime) > 1e-6) {
+        updateItem(id, { startTime: clamped });
+        moved++;
+      }
+    });
+    toast.success(`Quantized ${moved}/${ids.length} item${ids.length > 1 ? 's' : ''} to ${grid.label}`);
+  }, [selectedTimelineItemIds, selectedTimelineItemId, snapMode, bpm, duration]);
+
   const zoomIn = () => setPixelsPerSecond((p) => Math.min(MAX_PPS, p * 1.3));
   const zoomOut = () => setPixelsPerSecond((p) => Math.max(MIN_PPS, p / 1.3));
   const zoomPercent = Math.round((pixelsPerSecond / 12) * 100);
