@@ -6,7 +6,7 @@
  */
 
 import { readinessEvaluator } from '@/core/hardware/ReadinessEvaluator';
-import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
+// operationalModeGuard removed — export is design-time, no mode gating.
 import { verificationLog } from '@/core/verification/VerificationLog';
 import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { deviceEventLog } from '@/core/hardware/DeviceEventLog';
