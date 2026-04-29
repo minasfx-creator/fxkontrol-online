@@ -50,7 +50,8 @@ class WebBleDiscoverer implements TransportDiscoverer {
   private _devices = new Map<string, DiscoveredDevice>();
   private _rawByDeviceId = new Map<string, BluetoothDeviceLike>();
   private _listeners = new Set<(ev: DiscoveryEvent) => void>();
-  private _attachedIds = new Set<string>();
+  /** Disconnect handler refs by deviceId — needed for clean removeEventListener. */
+  private _gattHandlers = new Map<string, () => void>();
 
   isSupported(): boolean { return isWebBleSupported(); }
 
