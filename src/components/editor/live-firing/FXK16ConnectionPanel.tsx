@@ -91,7 +91,7 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
       holdTimer.current = null;
       const r = api.arm();
       setLast(summarize('ARM', r));
-      if (r.ok) toast.success('FXK16 ARMADO');
+      if (r.ok === true) toast.success('FXK16 ARMADO');
       else toast.error(`ARM falhou: ${r.message}`);
     }, HOLD_MS);
   }, [api, armed, ready]);
@@ -108,7 +108,7 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
       holdTimer.current = null;
       const r = await api.fire(testCh, PULSE_MS);
       setLast(summarize(`FIRE ch${testCh}`, r));
-      if (!r.ok) toast.error(`FIRE falhou: ${r.code} — ${r.message}`);
+      if (r.ok === false) toast.error(`FIRE falhou: ${r.code} — ${r.message}`);
     }, HOLD_MS);
   }, [api, armed, ready, testCh]);
 
@@ -123,7 +123,7 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
   const onEStop = useCallback(async () => {
     const r = await api.stop();
     setLast(summarize('E-STOP', r));
-    if (r.ok) toast.warning('E-STOP enviado — FXK16 desarmado');
+    if (r.ok === true) toast.warning('E-STOP enviado — FXK16 desarmado');
     else toast.error(`E-STOP falhou: ${r.code} — ${r.message}`);
   }, [api]);
 
