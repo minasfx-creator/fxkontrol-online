@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useFleetStore } from '@/store/useFleetStore';
+import { useSceneStore } from '@/store/useSceneStore';
 import { flockwave } from '@/lib/flockwaveProtocol';
 import { runPreflightChecks, exportPreflightReport } from '@/lib/preflightChecks';
 import type { UAVStatus } from '@/lib/flockwaveProtocol';
@@ -134,6 +135,9 @@ export default function FleetManagementPanel({ onClose }: FleetManagementPanelPr
   const clearPreflightResults = useFleetStore(s => s.clearPreflightResults);
   const geofence = useFleetStore(s => s.geofence);
   const showState = useFleetStore(s => s.showState);
+  // Real wind reading from scene/weather store (m/s). Falls back to a safe
+  // default of 3 m/s if the scene has not yet been initialised.
+  const sceneWindSpeed = useSceneStore(s => s.settings.windSpeed);
 
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
@@ -199,7 +203,7 @@ export default function FleetManagementPanel({ onClose }: FleetManagementPanelPr
     const { results, summary } = runPreflightChecks({
       uavs: uavList,
       geofence: geofence.enabled ? geofence : null,
-      windSpeed: 3, // TODO: get from weather
+      windSpeed: sceneWindSpeed ?? 3,
       visibility: 10000,
       showUploaded: showState !== 'idle',
       authorized: showState === 'authorized' || showState === 'running',
@@ -212,7 +216,7 @@ export default function FleetManagementPanel({ onClose }: FleetManagementPanelPr
     } else {
       toast.error(`Preflight FAILED — ${summary.criticalFails} critical failures`);
     }
-  }, [uavs, geofence, showState, preflightConfig, setPreflightResults]);
+  }, [uavs, geofence, showState, preflightConfig, setPreflightResults, sceneWindSpeed]);
 
   const handleExportPreflight = useCallback(() => {
     if (!preflightSummary) return;

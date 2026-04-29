@@ -223,6 +223,7 @@ export class Show3DEngine {
 
   renderFrame(delta: number): void {
     if (!this.renderer) return;
+    this.tickEffects(performance.now());
     this.renderer.render(this.scene, this.camera);
 
     this.frameAcc += delta;
@@ -305,23 +306,87 @@ export class Show3DEngine {
     }
   }
 
-  private applyCue(_cue: import('./timelineCompiler').CompiledCue): void {
-    // Preview engine: cues are visualised as transient flashes on the
-    // associated position. Real pyro/drones are handled by SkyCanvas.
-    // Intentionally minimal here — full pipeline plugs in via Phase 9.
+  /**
+   * Visualise a compiled cue as a transient flash on the associated
+   * position marker. Strictly visual — no FieldBus / hardware side-effects.
+   *
+   * Spawns a short-lived emissive sphere into the effects layer and
+   * registers it for automatic cleanup once its TTL expires. The render
+   * loop ticks the active flashes each frame.
+   */
+  private applyCue(cue: import('./timelineCompiler').CompiledCue): void {
+    const ttlMs = Math.max(150, (cue.endTime - cue.startTime) * 1000 || 1500);
+    for (const cmd of cue.commands) {
+      const anchor = cmd.positionId ? this.findPositionMarker(cmd.positionId) : null;
+      const px = anchor?.position.x ?? 0;
+      const py = anchor?.position.y ?? 1;
+      const pz = anchor?.position.z ?? 0;
+      const baseColor = cmd.kind === 'spawn-pyro' ? 0xffaa44
+        : cmd.kind === 'finale-burst' ? 0xff66cc
+        : cmd.kind === 'move-drone' ? 0x66ccff
+        : 0xffffff;
+      const intensity = cmd.intensity === 'high' ? 1.6 : cmd.intensity === 'low' ? 0.6 : 1.0;
+
+      const geom = new THREE.SphereGeometry(0.8 + intensity * 0.6, 12, 12);
+      const mat = new THREE.MeshBasicMaterial({ color: baseColor, transparent: true, opacity: 0.85 });
+      const flash = new THREE.Mesh(geom, mat);
+      flash.position.set(px, py + 0.5, pz);
+      flash.userData.cueFlash = { spawnedAt: performance.now(), ttlMs, baseOpacity: 0.85 };
+      this.effectsLayer.add(flash);
+    }
+  }
+
+  private findPositionMarker(positionId: string): THREE.Object3D | null {
+    for (const child of this.staticLayer.children) {
+      if (child.userData?.positionId === positionId) return child;
+    }
+    return null;
+  }
+
+  private tickEffects(now: number): void {
+    // Fade and reap transient cue flashes. Reverse loop so splice is safe.
+    const children = this.effectsLayer.children;
+    for (let i = children.length - 1; i >= 0; i--) {
+      const child = children[i] as THREE.Mesh;
+      const meta = child.userData?.cueFlash as { spawnedAt: number; ttlMs: number; baseOpacity: number } | undefined;
+      if (!meta) continue;
+      const age = now - meta.spawnedAt;
+      if (age >= meta.ttlMs) {
+        children.splice(i, 1);
+        child.geometry?.dispose();
+        const m = child.material as THREE.Material | THREE.Material[];
+        if (Array.isArray(m)) m.forEach(x => x.dispose()); else m?.dispose();
+        continue;
+      }
+      const k = 1 - age / meta.ttlMs;
+      (child.material as THREE.MeshBasicMaterial).opacity = meta.baseOpacity * k;
+      child.scale.setScalar(1 + (1 - k) * 0.8);
+    }
   }
 
   private clearLayer(group: THREE.Group): void {
     while (group.children.length) {
       const child = group.children.pop() as THREE.Object3D;
-      // Dispose meshes
-      if ((child as THREE.Mesh).geometry) {
-        (child as THREE.Mesh).geometry.dispose();
+      const mesh = child as THREE.Mesh;
+      if (mesh.geometry) mesh.geometry.dispose();
+      const mat = mesh.material as THREE.Material | THREE.Material[] | undefined;
+      if (Array.isArray(mat)) {
+        for (const m of mat) this.disposeMaterial(m);
+      } else if (mat) {
+        this.disposeMaterial(mat);
       }
-      const mat = (child as THREE.Mesh).material;
-      if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
-      else if (mat) (mat as THREE.Material).dispose();
     }
+  }
+
+  private disposeMaterial(m: THREE.Material): void {
+    // Dispose any textures attached to common material slots before the
+    // material itself, so GPU resources are not leaked across reloads.
+    const anyMat = m as unknown as Record<string, { dispose?: () => void } | null | undefined>;
+    for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'alphaMap', 'aoMap']) {
+      const tex = anyMat[key];
+      if (tex && typeof tex.dispose === 'function') tex.dispose();
+    }
+    m.dispose();
   }
 
   private attachContextHandlers(canvas: HTMLCanvasElement): void {
