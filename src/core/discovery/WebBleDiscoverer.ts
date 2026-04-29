@@ -111,18 +111,29 @@ class WebBleDiscoverer implements TransportDiscoverer {
   }
 
   private _attachGattWatcher(d: BluetoothDeviceLike, id: string): void {
-    if (this._attachedIds.has(id) || typeof d.addEventListener !== 'function') return;
+    if (this._gattHandlers.has(id) || typeof d.addEventListener !== 'function') return;
+    const handler = () => {
+      const prev = this._devices.get(id);
+      if (prev) {
+        const updated = { ...prev, online: false, lastSeen: Date.now() };
+        this._devices.set(id, updated);
+        this._emit({ type: 'updated', device: updated });
+      }
+    };
     try {
-      d.addEventListener('gattserverdisconnected', () => {
-        const prev = this._devices.get(id);
-        if (prev) {
-          const updated = { ...prev, online: false, lastSeen: Date.now() };
-          this._devices.set(id, updated);
-          this._emit({ type: 'updated', device: updated });
-        }
-      });
-      this._attachedIds.add(id);
+      d.addEventListener('gattserverdisconnected', handler);
+      this._gattHandlers.set(id, handler);
     } catch { /* ignore */ }
+  }
+
+  private _detachGattWatcher(id: string): void {
+    const handler = this._gattHandlers.get(id);
+    if (!handler) return;
+    const raw = this._rawByDeviceId.get(id);
+    try {
+      raw?.removeEventListener?.('gattserverdisconnected', handler);
+    } catch { /* ignore */ }
+    this._gattHandlers.delete(id);
   }
 
   private _emit(ev: DiscoveryEvent): void {
