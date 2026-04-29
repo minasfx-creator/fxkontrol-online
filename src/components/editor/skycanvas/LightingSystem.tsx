@@ -25,6 +25,7 @@ import {
   getActiveBurstScan,
   getSkyScatterUniforms,
   setAdaptiveExposureValue,
+  runActiveBurstScan,
 } from './sharedState';
 import { useClockTimeRef } from '@/hooks/useClockTimeRef';
 
@@ -364,4 +365,19 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, Record<string, nev
       />
     </mesh>
   );
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// ActiveBurstScanDriver — runs runActiveBurstScan() once per frame BEFORE
+// any consumer (GI / LensFlare / Reflections / Exposure) reads it.
+// Without this, getActiveBurstScan() returns null and no light effect
+// fires when the timeline reaches a cue. Mount as the FIRST child inside
+// the Canvas so its useFrame callback registers ahead of consumers.
+// Zero-GC: a single function call per frame, no allocations.
+// ═══════════════════════════════════════════════════════════════════════
+export const ActiveBurstScanDriver = React.forwardRef<null, Record<string, never>>(function ActiveBurstScanDriver(_props, _ref) {
+  useFrame(() => {
+    runActiveBurstScan();
+  });
+  return null;
 });

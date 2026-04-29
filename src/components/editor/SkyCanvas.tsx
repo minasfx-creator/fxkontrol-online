@@ -170,6 +170,7 @@ const DebugFeed = lzn(() => import('./skycanvas/LightingSystem'), 'DebugFeed');
 const GlobalIlluminationController = lzn(() => import('./skycanvas/LightingSystem'), 'GlobalIlluminationController');
 const LensFlareController = lzn(() => import('./skycanvas/LightingSystem'), 'LensFlareController');
 const GroundReflections = lzn(() => import('./skycanvas/LightingSystem'), 'GroundReflections');
+const ActiveBurstScanDriver = lzn(() => import('./skycanvas/LightingSystem'), 'ActiveBurstScanDriver');
 
 // estimateFireworkStarCost is a function, import eagerly from barrel (tiny)
 import { estimateFireworkStarCost } from './skycanvas/FireworkRenderer';
@@ -2063,6 +2064,13 @@ export default function SkyCanvas() {
         <CameraController targetPosition={[...preset.position]} targetLookAt={[...preset.target]} freeLook={freeLook || flyMode || groundMode} flyMode={flyMode || groundMode} />
         {flyMode && !groundMode && <FlyControls onSpeedChange={flySpeedCb} />}
         {groundMode && <GroundControls onSpeedChange={flySpeedCb} />}
+
+        {/* Per-frame burst scan — MUST mount first so getActiveBurstScan() is
+            populated before any consumer (GI, LensFlare, Reflections, Exposure)
+            reads it. Without this, light effects never fire on Play. */}
+        <Suspense fallback={null}>
+          <ActiveBurstScanDriver />
+        </Suspense>
 
         <ContextLossGuard
           recoveringRef={recoveringContextRef}
