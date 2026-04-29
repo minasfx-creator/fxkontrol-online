@@ -92,7 +92,7 @@ class SafetyStateMachine {
         safetyAuditTrail.log({
           timestamp: Date.now(),
           tick: 0,
-          event: 'AI_BLOCKED',
+          event: 'VIOLATION',
           from,
           to: from,
           detail: guard.reason ?? 'AI guardrail blocked transition',
