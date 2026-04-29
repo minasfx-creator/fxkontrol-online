@@ -63,8 +63,7 @@ const CommandCenter = lazy(lazyRetry(() => import("./pages/CommandCenter")));
 const FieldOps = lazy(lazyRetry(() => import("./pages/FieldOps")));
 const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
 const PlatformStatus = lazy(lazyRetry(() => import("./pages/PlatformStatus")));
-const SwarmGPT = lazy(lazyRetry(() => import("./pages/SwarmGPT")));
-const AIChoreography = lazy(lazyRetry(() => import("./pages/AIChoreography")));
+// Legacy AI pages (SwarmGPT / AIChoreography) consolidated under /ai-builder.
 const AIBuilder = lazy(lazyRetry(() => import("./pages/AIBuilder")));
 const DmxPyroDiagnostics = lazy(lazyRetry(() => import("./components/diagnostics/DmxPyroDiagnostics")));
 const NetworkSettings = lazy(lazyRetry(() => import("./pages/NetworkSettings")));
@@ -210,9 +209,6 @@ function App() {
                       {/* Legacy AI entry points → consolidated under /ai-builder */}
                       <Route path="/swarmgpt" element={<Navigate to="/ai-builder" replace />} />
                       <Route path="/ai-choreography" element={<Navigate to="/ai-builder" replace />} />
-                      {/* Kept lazy refs to avoid breaking deep imports during build */}
-                      {false && <Route path="/_swarmgpt-legacy" element={<SwarmGPT />} />}
-                      {false && <Route path="/_aichoreo-legacy" element={<AIChoreography />} />}
                     </Route>
                     <Route path="*" element={<NotFound />} />
                   </Routes>
