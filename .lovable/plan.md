@@ -1,120 +1,192 @@
-## Objetivo
+# Engine 3D + AI Show Builder — Hardening Plan
 
-Adicionar controles **In/Out** (recorte não-destrutivo) ao áudio na timeline. O recorte:
+Goal: eliminate "black viewport" failures, decouple ShowPlan from Three.js, and add a permanent PromptBar with deterministic playback/scrub.
 
-1. Mapeia o tempo da timeline `[0 .. (out − in)]` para o tempo do áudio `[in .. out]` durante reprodução, scrub e exportação.
-2. Recalcula a **waveform** mostrando só a região recortada.
-3. Recalcula a **duração** do projeto (`duration = out − in`).
-4. Re-timestampa **automaticamente** os efeitos da timeline para preservar seu alinhamento musical relativo ao novo `t=0`.
-5. É **não-destrutivo**: o arquivo de áudio original não é alterado; só `audioInPoint` e `audioOutPoint` são persistidos. Pode ser desfeito (Reset) recuperando os efeitos de antes do trim.
+The work splits into **8 self-contained phases**. Each one is independently shippable; later phases assume earlier ones.
 
-## Mudanças
+---
 
-### 1. Store — pontos In/Out + ação de trim com recálculo
+## Phase 1 — Viewport state machine + overlays
 
-**`src/store/useProjectStore.ts`**
-
-Novos campos:
-- `audioInPoint: number` (segundos no áudio original, default `0`)
-- `audioOutPoint: number | null` (segundos no áudio original, `null` = fim do arquivo)
-- `audioOriginalDuration: number | null` (preenchido após decodificação; necessário para clamp dos pontos)
-- `audioTrimHistory: { in: number; out: number | null; timestamp: number; itemSnapshot: TimelineItem[] } | null` (1 nível de undo; opcional para ação "Reset trim")
-
-Setters:
-- `setAudioInPoint(t)`, `setAudioOutPoint(t)` — só atualizam o valor (uso em drag visual; não recalcula nada).
-- `setAudioOriginalDuration(d)` — chamado pelo `loadAudio()` após `decodeAudioData`.
-- **`applyAudioTrim(inT, outT)`** — ação atômica que:
-  1. Faz clamp: `0 ≤ inT < outT ≤ audioOriginalDuration`. Rejeita janela menor que `0.05s`.
-  2. Calcula `delta = inT - audioInPoint` e `newDuration = outT - inT`.
-  3. Para cada `TimelineItem` / `CueMarker` / `CameraKeyframe` / `Trajectory.waypoints`: `t' = t - delta`. Items que ficarem com `t' < 0` ou `t' > newDuration` são **filtrados** (mas o `audioTrimHistory` guarda snapshot original para undo).
-  4. Atualiza `audioInPoint`, `audioOutPoint`, `duration = newDuration`, `currentTime = clamp(currentTime - delta, 0, newDuration)`.
-  5. Salva snapshot no `audioTrimHistory` (1 nível de undo).
-- **`resetAudioTrim()`** — restaura `audioInPoint=0`, `audioOutPoint=null`, `duration = audioOriginalDuration`, e se houver `audioTrimHistory`, restaura `timelineItems` para o snapshot e reverte os deltas dos demais (cues/camera/waypoints) somando o delta original de volta.
-
-### 2. Mapeamento timeline ↔ áudio
-
-**`src/lib/audio/audioTrimMapping.ts`** (novo, puro):
+New: `src/lib/showEngine/viewportState.ts`
 ```ts
-export const timelineToAudio = (t: number, inP: number) => t + inP;
-export const audioToTimeline = (a: number, inP: number) => a - inP;
-export const clampToTrim   = (a: number, inP: number, outP: number | null, origDur: number) =>
-  Math.min(outP ?? origDur, Math.max(inP, a));
+export type ViewportState =
+  | 'booting' | 'ready' | 'empty'
+  | 'rendering' | 'error' | 'contextLost';
 ```
 
-Aplicado em:
+New components in `src/components/show-engine/overlays/`:
+- `ViewportBootingOverlay.tsx` — "Inicializando cena 3D…"
+- `EmptySceneOverlay.tsx` — "Nenhuma cena carregada" + CTA "Gerar com IA".
+- `ViewportErrorOverlay.tsx` — error message + "Resetar cena".
+- `RecoverWebGLOverlay.tsx` — "Recuperar WebGL" button (calls `engine.recoverContext()`).
 
-- **`AudioWaveform.tsx`** — `useEffect` que cria o `<Audio>`: assim que o áudio carrega e `audioInPoint > 0`, faz `audio.currentTime = audioInPoint`. Adiciona listener `timeupdate`: se `audio.currentTime >= (audioOutPoint ?? duration)`, pausa e dispara `setPlaying(false)`. Sync de seek: agora compara `audio.currentTime` com `currentTime + audioInPoint` (com a mesma tolerância 0.15s).
-- **`useAudioMasterClock.ts`** — quando lê `audio.currentTime`, escreve `timelineClock.syncExternalTime(audio.currentTime - audioInPoint)`. Lê `audioInPoint` via `useProjectStore.getState()` no callback (não como dep do hook, pra evitar reinit).
+Wired into the canvas host (Studio + AIBuilder preview) so the canvas is **never** rendered alone — it's always behind one of these overlays whenever state ≠ `ready`/`rendering`.
 
-### 3. Recálculo de waveform restrito à região
+## Phase 2 — EngineDiagnostics + WebGL recovery
 
-**`AudioWaveform.tsx`** — `loadAudio()`:
-- Após `decodeAudioData`, chama `setAudioOriginalDuration(audioBuffer.duration)`.
-- A janela usada para downsample passa a ser `[audioInPoint .. audioOutPoint ?? audioBuffer.duration]`:
-  - `startSample = floor(audioInPoint * sampleRate)`
-  - `endSample = floor((audioOutPoint ?? audioBuffer.duration) * sampleRate)`
-  - `samples = floor(newDuration * pixelsPerSecond * 2)`
-  - `blockSize = floor((endSample - startSample) / samples)`
-  - Loop sobre `rawData.subarray(startSample, endSample)`.
-- Re-executa quando `audioInPoint` ou `audioOutPoint` mudam (adicionar às deps de `loadAudio` + `useEffect` que o invoca).
-- Cache: guarda o `AudioBuffer` decodificado em `audioBufferRef` para evitar re-fetch a cada mudança de in/out — só o downsample é refeito.
+New: `src/lib/showEngine/EngineDiagnostics.ts`
+```ts
+export interface EngineDiagnostics {
+  webglAvailable: boolean;
+  contextLost: boolean;
+  fps: number;
+  drawCalls: number;
+  triangles: number;
+  sceneObjects: number;
+  lastError?: string;
+}
+```
 
-### 4. UI — handles In/Out + toolbar de trim
+- Subscriber model (`subscribe(cb)`) so React panels can read without polling.
+- Reuse existing `webglEventLog.ts` and `hardening` watchdog metrics.
+- Add `webglcontextlost` / `webglcontextrestored` listeners at the engine level (centralised, not per-component).
+- Dev-only `<EngineDiagnosticsPanel/>` (toggle with `?debug=engine`) showing the struct live.
 
-Estende **`AudioWaveform.tsx`** (lane existente, sem novo arquivo grande):
+## Phase 3 — Show3DEngine façade with layers
 
-- Dois handles verticais sobrepostos ao canvas: traço vertical (`Scissors` icon no topo) na posição `(audioInPoint - audioInPoint) * pps = 0` e `(audioOutPoint - audioInPoint) * pps = duration * pps`. Inicialmente nas bordas; viram interativos só quando o usuário entra em "Trim Mode".
-- Toggle "Trim" (ícone `Scissors`) na coluna de controles à esquerda (perto do botão Snap). Estado local `trimMode`.
-- Quando `trimMode === true`:
-  - Aparecem dois handles draggáveis (largura 6 px, altura total da lane, cor `hsl(var(--warning))`).
-  - Drag atualiza um estado local `pendingIn / pendingOut` (preview ao vivo, sem mexer no áudio nem na timeline ainda — apenas redesenha overlay sombreado nas regiões fora do range).
-  - Botões `Apply trim` (chama `applyAudioTrim(pendingIn, pendingOut)`) e `Cancel`. Ao aplicar, mostra toast com `delta` aplicado e nº de cues/items removidos.
-  - Atalhos: `I` define `pendingIn = currentTime + audioInPoint`; `O` define `pendingOut = currentTime + audioInPoint`. Apenas quando `trimMode === true` e foco fora de inputs.
-- Quando `audioInPoint > 0 || audioOutPoint != null` (já recortado), aparece chip `Trimmed · X.XXs–Y.YYs` com botão `Reset` (chama `resetAudioTrim()`).
+New: `src/lib/showEngine/Show3DEngine.ts`
+```ts
+class Show3DEngine {
+  staticLayer:  THREE.Group;  // site, grid, positions
+  dynamicLayer: THREE.Group;  // drones, moving lights
+  effectsLayer: THREE.Group;  // pyro, particles, smoke
+  debugLayer:   THREE.Group;  // axes, bbox, frustum
 
-### 5. Re-timestampagem automática dos efeitos
+  init(canvas: HTMLCanvasElement): void;
+  dispose(): void;
+  seek(showTime: number, opts?: { mode: 'playback' | 'scrub' }): void;
+  renderFrame(realDelta: number): void;
+  recoverContext(): void;
+  getDiagnostics(): EngineDiagnostics;
+}
+```
 
-Implementada em `applyAudioTrim` (passo 1.3 acima). Regras:
+- Renderer created **once** with `antialias: true, alpha: false, powerPreference: 'high-performance'`.
+- `setPixelRatio(Math.min(devicePixelRatio, 2))`.
+- Disposes cleanly on unmount (mirror existing `deepDispose`).
+- Exposes a single `CameraController` (Phase 5).
 
-| Entidade | Campo de tempo | Ação |
-|---|---|---|
-| `TimelineItem` | `startTime` | `t' = t - delta`; remove se `t' < -0.05` ou `t' > newDuration + 0.05` |
-| `CueMarker` | `time` | mesmo |
-| `CameraKeyframe` | `time` | mesmo |
-| `Trajectory.waypoints[].time` | `time` | mesmo (waypoints removidos se ficarem fora) |
-| `DroneFormation` | `startTime` | mesmo (formações inteiras removidas se startTime fora) |
+This is the only class React talks to. No component creates meshes directly anymore.
 
-Toast de sumário: `Trimmed audio · removed N items / M cues outside new window`.
+## Phase 4 — SceneAdapter (ShowPlan → SceneGraph)
 
-### 6. Persistência e exportações
+New: `src/lib/showEngine/SceneAdapter.ts`
+```ts
+type SceneGraph = {
+  root: SceneNode;
+  site: SiteNode;
+  positions: PositionNode[];
+  drones: DroneNode[];
+  pyro: PyroNode[];
+};
 
-- `useProjectPersistence.ts`: incluir `audioInPoint`, `audioOutPoint`, `audioOriginalDuration` no snapshot serializado (com migration: se ausentes, defaults `0` / `null` / `null`).
-- Exportações VVIZ/CSV/JSON (`exportEngine.ts`): **nenhuma mudança nos timestamps emitidos** — eles já refletem o `startTime` pós-trim do store, que é o tempo "show". Adicionar metadata-comment opcional `// audio in=X out=Y` no header dos exports é fora do escopo desta tarefa.
+export function adaptShowPlanToSceneGraph(plan: ShowPlan): SceneGraph;
+```
 
-### 7. Edge cases protegidos
+- Pure function, fully unit-testable (no Three.js types in the public shape — only plain data).
+- Engine consumes the SceneGraph and builds layer contents.
+- Decouples canonical `ShowPlan` from rendering; future formats (drones-only, pyro-only) plug in via additional adapters.
 
-- Áudio ainda decodificando quando o usuário clica `Apply trim` → desabilita botão até `audioOriginalDuration != null`.
-- Reset trim sem snapshot disponível (projeto recarregado) → restaura só `in=0, out=null, duration=audioOriginalDuration` sem mexer em items (com toast `History indisponível, items mantidos`).
-- Áudio trocado (`setAudioUrl(novoUrl)`): zera `audioInPoint`, `audioOutPoint`, `audioOriginalDuration` e `audioTrimHistory` para evitar aplicar trim de outro arquivo.
-- `currentTime` durante trim mode: continua usando o sistema de coordenadas da **timeline atual** (pré-aplicação); só após `Apply` o store muda.
+New: `src/lib/showEngine/validateSceneGraph.ts`
+- `validateSceneGraph(graph)` — non-empty children, finite coords, valid site bounds.
+- `validateViewportRenderable(engine)` — renderer size > 0, camera aspect finite, scene.children > 0.
+- Surfaces results into the viewport state machine (`error` if invalid).
 
-### 8. Testes
+## Phase 5 — CameraController + Reset View
 
-`src/lib/audio/__tests__/audioTrimMapping.test.ts` (novo):
-- `timelineToAudio(0, 5) === 5`; `audioToTimeline(5, 5) === 0`.
-- `clampToTrim` respeita bordas com e sem `outPoint`.
+New: `src/lib/showEngine/CameraController.ts`
+```ts
+frameSite(site)
+focusPosition(positionId)
+focusAll()
+resetView()
+updateAspect(w, h)
+```
 
-`src/store/__tests__/applyAudioTrim.test.ts` (novo):
-- Trim `[2, 8]` em projeto com items em `t=1, 3, 7, 9` → resultado: items em `1, 5` (os de `t=1` e `t=9` removidos), `duration=6`.
-- Snapshot preservado em `audioTrimHistory`; `resetAudioTrim` restaura ambos.
-- Trim com `inT >= outT` ou janela < 50ms → no-op + warning.
+- Auto-call `frameSite(plan.site)` on first scene load (fixes "loaded but camera looks at void" black viewport).
+- Persistent floating button "Reset View" in the editor toolbar.
+- Listens to `ResizeObserver` on canvas container.
 
-### Arquivos tocados
+## Phase 6 — TimelineCompiler + deterministic seek + EffectPool
 
-- `src/store/useProjectStore.ts` — campos, setters, `applyAudioTrim`, `resetAudioTrim`, hook em `setAudioUrl`.
-- `src/lib/audio/audioTrimMapping.ts` — **novo** (helpers puros).
-- `src/components/editor/AudioWaveform.tsx` — handles UI, modo trim, atalhos `I/O`, downsample restrito, sync com `audioInPoint`, fim-de-trim em `timeupdate`, cache de `AudioBuffer`.
-- `src/hooks/useAudioMasterClock.ts` — subtrai `audioInPoint` ao escrever no `timelineClock`.
-- `src/hooks/useProjectPersistence.ts` — serializa/deserializa novos campos com migration.
-- `src/lib/audio/__tests__/audioTrimMapping.test.ts` — **novo**.
-- `src/store/__tests__/applyAudioTrim.test.ts` — **novo**.
+New: `src/lib/showEngine/timelineCompiler.ts`
+```ts
+type CompiledCue = {
+  id: string; startTime: number; endTime: number;
+  commands: SceneCommand[];
+};
+type CompiledTimeline = { cues: CompiledCue[]; duration: number };
+export function compileTimeline(plan: ShowPlan): CompiledTimeline;
+```
+
+- Compile once on plan load (memoized by `plan.id` + version).
+- `engine.seek(time, { mode })`:
+  - `playback`: incremental (apply only newly-active commands).
+  - `scrub`: clear `effectsLayer`, rewind to `time`, replay in fast-forward to settle persistent state.
+- Render loop uses `realDelta` (smooth) but visual state always derives from `showTime` (deterministic) — separation explicit.
+
+New: `src/lib/showEngine/EffectPool.ts`
+```ts
+class EffectPool<T> { acquire(): T; release(item: T): void; }
+```
+
+- Pre-allocated pools for sparks/smoke/flash meshes.
+- Reuses existing `geometryPool` / `bufferPool` patterns.
+
+## Phase 7 — Permanent PromptBar
+
+New: `src/components/show-engine/PromptBar.tsx`
+- Fixed overlay above the timeline, visible **always** in `/studio` and `/ai-builder` editors (not only inside the side panel).
+- Layout: input (multiline-collapsed) · provider/status chip (`local-deterministic`, `remote`, `fallback`) · buttons: **Gerar**, **Refinar**, **Reset View**.
+- Placeholder: *"Descreva o show ou ajuste a cena… ex: finale dourado com drones em espiral"*.
+- Shortcuts:
+  - `Enter` → generate/refine
+  - `Shift+Enter` → newline
+  - `Cmd/Ctrl+Enter` → apply (materializeShowPlan)
+  - `Esc` → close suggestions, never hide bar
+- Calls existing `generateShowPlanWithProviderDetailed` and shows `fellBack` indicator in real time.
+- Stays mounted across viewport resize/orientation changes (uses unified `pipelineModel`, no per-breakpoint divergence).
+
+## Phase 8 — Tests + acceptance
+
+New tests under `src/lib/showEngine/__tests__/`:
+- `viewportState.test.ts` — transitions are exhaustive.
+- `sceneAdapter.test.ts` — deterministic ShowPlan → SceneGraph (snapshot).
+- `validateSceneGraph.test.ts` — empty plan flagged, invalid coords flagged.
+- `timelineCompiler.test.ts` — compile is pure, scrub does not accumulate effects.
+- `effectPool.test.ts` — acquire/release re-uses instances.
+- `engine.contextLoss.test.ts` — simulate `webglcontextlost` event → state goes to `contextLost`, `recoverContext()` returns to `ready`.
+
+Acceptance checklist (explicit):
+1. Viewport never shows raw black: an overlay matches every non-`ready` state.
+2. Empty editor shows "Nenhuma cena carregada" + CTA.
+3. After plan load, camera frames the site automatically.
+4. `scene.children.length > 0` after init (asserted via diagnostics).
+5. **Reset View** works from PromptBar.
+6. PromptBar is visible on `/studio` and `/ai-builder`, all viewports.
+7. Timeline scrub does not accumulate ghost particles.
+8. `webglcontextlost` shows the recovery overlay; `recoverContext()` restores rendering.
+9. No React component imports `THREE.Mesh` directly to mutate scene; all goes through `Show3DEngine`.
+10. Timeline modules have **zero** imports from `three`.
+
+---
+
+## Out of scope (explicit)
+
+- Replacing the existing SkyCanvas pipeline wholesale — this plan **wraps** it behind `Show3DEngine` so the existing FXK engine, watchdogs, hardening and FXKQualityController keep running underneath.
+- Changing the ShowPlan schema or the local/remote provider contract.
+- Replacing the existing `pipelineModel` parity work — it stays as the canonical data layer.
+
+## File summary
+
+New (≈18 files):
+- `src/lib/showEngine/{viewportState,EngineDiagnostics,Show3DEngine,SceneAdapter,validateSceneGraph,CameraController,timelineCompiler,EffectPool}.ts`
+- `src/components/show-engine/PromptBar.tsx`
+- `src/components/show-engine/overlays/{ViewportBootingOverlay,EmptySceneOverlay,ViewportErrorOverlay,RecoverWebGLOverlay,EngineDiagnosticsPanel}.tsx`
+- 6 test files under `src/lib/showEngine/__tests__/`
+
+Edited (≈4 files):
+- `src/components/ai-show-builder/AIShowBuilderPanel.tsx` — wire PromptBar + Reset View.
+- `src/pages/AIBuilder.tsx` and Studio host — mount engine + overlays.
+- `src/lib/aiShowBuilder/materializeShowPlan.ts` — emit a "plan applied" event the engine subscribes to (for auto `frameSite`).
