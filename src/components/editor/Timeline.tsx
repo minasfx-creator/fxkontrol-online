@@ -1470,10 +1470,20 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
           updateItem(id, { startTime: finalTime });
         });
       }
+
+      // ── Quantize to grid (Q) — aligns selected items to active snap mode ──
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'q' || e.key === 'Q')) {
+        const ids = selectedTimelineItemIds.length > 0
+          ? selectedTimelineItemIds
+          : selectedTimelineItemId ? [selectedTimelineItemId] : [];
+        if (ids.length === 0) return;
+        e.preventDefault();
+        handleQuantizeSelected();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, selectedTimelineItemId, selectedTimelineItemIds, timelineItems, bpm, snapMode, duration]);
+  }, [isPlaying, selectedTimelineItemId, selectedTimelineItemIds, timelineItems, bpm, snapMode, duration, handleQuantizeSelected]);
 
   // ─── Drag-to-scrub on the track + playhead ──────────────────────────
   // Pointer Events cover mouse, touch and pen in one handler.
