@@ -223,6 +223,7 @@ export class Show3DEngine {
 
   renderFrame(delta: number): void {
     if (!this.renderer) return;
+    this.tickEffects(performance.now());
     this.renderer.render(this.scene, this.camera);
 
     this.frameAcc += delta;
