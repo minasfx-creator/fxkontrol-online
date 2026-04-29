@@ -305,10 +305,11 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (Math.abs(audio.currentTime - currentTime) > 0.15) {
-      audio.currentTime = currentTime;
+    const targetFileTime = currentTime + audioInPoint;
+    if (Math.abs(audio.currentTime - targetFileTime) > 0.15) {
+      audio.currentTime = targetFileTime;
     }
-  }, [currentTime]);
+  }, [currentTime, audioInPoint]);
 
   // Load and decode audio for waveform + BPM
   const loadAudio = useCallback(async (url: string) => {
