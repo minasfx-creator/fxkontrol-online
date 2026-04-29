@@ -1714,6 +1714,27 @@ export default function SkyCanvas() {
   // diagnostics panels don't keep polling a disposed renderer.
   useEffect(() => () => { setActiveRenderer(null); }, []);
 
+  // ── Boot instrumentation: log mount + GPU stack so the user can tell
+  //    us whether the desktop hang is at module load, before R3F mount,
+  //    or during the first frame. Cheap (one log per mount, no leaks).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hasWebGPU = typeof (navigator as Navigator & { gpu?: unknown }).gpu !== 'undefined';
+    let hasWebGL2 = false;
+    try { hasWebGL2 = !!document.createElement('canvas').getContext('webgl2'); } catch { /* ignore */ }
+    const params = new URLSearchParams(window.location.search);
+    // eslint-disable-next-line no-console
+    console.info('[FXK SkyCanvas] mount', {
+      webgpu: hasWebGPU,
+      webgl2: hasWebGL2,
+      backendOverride: params.get('backend') ?? '(none)',
+      vw: window.innerWidth,
+      vh: window.innerHeight,
+      dpr: window.devicePixelRatio,
+      ua: navigator.userAgent.slice(0, 80),
+    });
+  }, []);
+
   // Exit fly mode when pointer lock is lost (ESC)
   useEffect(() => {
     const onLockChange = () => {
