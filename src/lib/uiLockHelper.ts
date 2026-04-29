@@ -6,9 +6,12 @@
  */
 
 import { safetyGate } from '@/core/safety/safetyGate';
+import { workMode } from '@/core/safety/workMode';
 
 export function isItemLocked(item: { locked?: boolean } | null | undefined): boolean {
   if (!item) return false;
+  // Advisory in design/simulation; enforced only in real_operation.
+  if (!workMode.isRealOperation()) return false;
   if (!safetyGate.isEnforced('uiLocks')) return false;
   return !!item.locked;
 }
