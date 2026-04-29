@@ -97,7 +97,7 @@ export function useProjectPersistence() {
       timelineItems: p_timeline_items,
       trajectories: p_trajectories,
     });
-    if (!validation.ok) {
+    if (validation.ok !== true) {
       toast.error(validation.message);
       return false;
     }
