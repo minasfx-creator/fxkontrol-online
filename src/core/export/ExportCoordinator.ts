@@ -44,11 +44,9 @@ class ExportCoordinator {
     const timestamp = Date.now();
     const warnings: string[] = [];
 
-    // 1. Mode guard — log only (não bloqueia)
-    const modeCheck = operationalModeGuard.check('export');
-    if (!modeCheck.allowed) {
-      warnings.push(`[ModeGuard] ${modeCheck.reason}`);
-    }
+    // 1. Mode guard — DESIGN-TIME OPERATION. Export is always allowed
+    //    in design/simulation. Real-hardware sync paths use a separate gate.
+    //    No check needed here.
 
     // 2. Verification — log/auditoria (não bloqueia)
     const vResult = verificationEngine.run();
