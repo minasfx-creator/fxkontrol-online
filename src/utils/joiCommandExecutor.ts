@@ -200,9 +200,43 @@ function resolveEffect(params: Record<string, any>): Effect | undefined {
 }
 
 /** Execute a single command, return result */
+/**
+ * AI guardrail: actions that touch physical hardware, safety state,
+ * armament, firing, energization, or work-mode transitions are
+ * NEVER allowed from JOI/AI execution paths. Listed explicitly so
+ * future additions are forced to opt-in via human UI.
+ */
+const AI_FORBIDDEN_ACTIONS = new Set<string>([
+  'arm', 'arm_system', 'disarm', 'disarm_system',
+  'fire', 'fire_cue', 'fire_channel', 'fire_all',
+  'e_stop', 'estop', 'emergency_stop',
+  'lock_state', 'unlock_state', 'reset_safety',
+  'energize', 'power_on', 'power_off',
+  'set_work_mode', 'switch_to_real_operation',
+  'safety_bypass', 'override_lockout',
+  'hardware_write', 'send_dmx', 'send_artnet',
+]);
+
 function executeCommand(cmd: JoiCommand): JoiCommandResult {
   const store = useProjectStore.getState();
   const { action, params } = cmd;
+
+  // Hard block: AI cannot arm, fire, energize, or change work mode.
+  if (AI_FORBIDDEN_ACTIONS.has(action.toLowerCase())) {
+    deviceEventLog.log({
+      type: 'state_change',
+      device_id: 'joi-ai',
+      severity: 'warning',
+      message: `[AI Guardrail] Ação física '${action}' bloqueada — IA não pode armar/disparar/energizar.`,
+      timestamp: Date.now(),
+    });
+    return {
+      action,
+      success: false,
+      label: `Ação '${action}' bloqueada`,
+      detail: 'IA não pode executar comandos físicos (armar, disparar, energizar, alterar modo de operação). Ação requer operador autorizado via UI.',
+    };
+  }
 
   try {
     switch (action) {
