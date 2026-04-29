@@ -41,21 +41,22 @@ function toPosition(p: PlannedPosition): Position {
   };
 }
 
-function toTimelineItem(item: PlannedTimelineItem, index: number): TimelineItem {
+function toTimelineItem(item: PlannedTimelineItem): TimelineItem {
+  const trackIndex =
+    item.type === 'drone_move' ? 0 :
+    item.type === 'pyro_effect' ? 1 :
+    item.type === 'finale' ? 2 : 3;
   return {
     id: item.id,
     effectId: item.effectId ?? `ai-${item.type}`,
     startTime: Math.max(0, item.startTime),
-    trackIndex: item.type === 'drone_move' ? 0
-              : item.type === 'pyro_effect' ? 1
-              : item.type === 'finale' ? 2
-              : 3,
+    trackIndex,
     position: { x: 0, y: 0, z: 0 },
     positionId: item.positionId,
     positionName: item.positionName,
     notes: item.notes ?? `${item.label} (gerado por IA)`,
     durationOverride: item.duration,
-  } as TimelineItem & { _index?: number } & Record<string, never> extends infer X ? TimelineItem : TimelineItem;
+  };
 }
 
 function toTrajectory(t: PlannedTrajectory): Trajectory | null {
