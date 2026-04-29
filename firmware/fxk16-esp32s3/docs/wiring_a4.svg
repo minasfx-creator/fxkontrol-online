@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 210 297">
+<style>
+text { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; fill: #111827; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.title { font-size: 4.4px; font-weight: 700; }
+.subtitle { font-size: 2.6px; fill: #475569; }
+.card-title { font-size: 3.2px; font-weight: 700; }
+.card-sub { font-size: 2.2px; fill: #475569; }
+.row-label { font-size: 2.6px; font-weight: 600; }
+.row-mono { font-size: 2.6px; font-weight: 600; }
+.legend { font-size: 2.4px; fill: #111827; }
+.footer { font-size: 2.2px; fill: #475569; }
+.aux { font-size: 2.3px; fill: #475569; }
+.aux-h { font-size: 2.5px; font-weight: 700; fill: #111827; }
+</style>
+<rect width="210" height="297" fill="#ffffff"/>
+<rect x="8" y="8" width="194" height="281" fill="none" stroke="#e5e7eb" stroke-width="0.2"/>
+<text class="title" x="10" y="15">FXK16 — Wiring (A4 print, v1.3 canonical)</text>
+<text class="subtitle" x="10" y="20">ESP32-S3 v1.3 (YD-ESP32-S3 N16R8) → 16-channel relay board (active-LOW). Source of truth: firmware/fxk16-esp32s3/src/fxk16_pinmap.h</text>
+<line x1="10" y1="22.5" x2="200" y2="22.5" stroke="#111827" stroke-width="0.35"/>
+<rect x="16" y="34" width="70" height="185.2" rx="1.8" ry="1.8" fill="white" stroke="#111827" stroke-width="0.4"/>
+<text class="card-title" x="19" y="39">ESP32-S3 v1.3</text>
+<text class="card-sub" x="19" y="42.6">USB-C • N16R8</text>
+<line x1="18" y1="44.5" x2="84" y2="44.5" stroke="#e5e7eb" stroke-width="0.3"/>
+<rect x="124" y="34" width="70" height="185.2" rx="1.8" ry="1.8" fill="white" stroke="#111827" stroke-width="0.4"/>
+<text class="card-title" x="127" y="39">16-Relay Board</text>
+<text class="card-sub" x="127" y="42.6">Active-LOW • IN1..IN16</text>
+<line x1="126" y1="44.5" x2="192" y2="44.5" stroke="#e5e7eb" stroke-width="0.3"/>
+<text class="card-sub" x="19" y="46">Ch • GPIO</text>
+<text class="card-sub" x="83" y="46" text-anchor="end">→</text>
+<text class="card-sub" x="127" y="46">←</text>
+<text class="card-sub" x="191" y="46" text-anchor="end">Terminal</text>
+<rect x="17" y="48.4" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<rect x="125" y="48.4" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<text class="row-label" x="19" y="52.0">C1</text>
+<text class="row-mono mono" x="27" y="52.0">GPIO4</text>
+<circle cx="82" cy="51.1" r="0.7" fill="#111827"/>
+<line x1="82" y1="51.1" x2="128" y2="51.1" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="51.1" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="52.0">IN1</text>
+<text class="row-label" x="191" y="52.0" text-anchor="end">→ CH1 OUT</text>
+<text class="row-label" x="19" y="62.2">C2</text>
+<text class="row-mono mono" x="27" y="62.2">GPIO5</text>
+<circle cx="82" cy="61.300000000000004" r="0.7" fill="#111827"/>
+<line x1="82" y1="61.300000000000004" x2="128" y2="61.300000000000004" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="61.300000000000004" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="62.2">IN2</text>
+<text class="row-label" x="191" y="62.2" text-anchor="end">→ CH2 OUT</text>
+<rect x="17" y="68.80000000000001" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<rect x="125" y="68.80000000000001" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<text class="row-label" x="19" y="72.4">C3</text>
+<text class="row-mono mono" x="27" y="72.4">GPIO6</text>
+<circle cx="82" cy="71.5" r="0.7" fill="#111827"/>
+<line x1="82" y1="71.5" x2="128" y2="71.5" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="71.5" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="72.4">IN3</text>
+<text class="row-label" x="191" y="72.4" text-anchor="end">→ CH3 OUT</text>
+<text class="row-label" x="19" y="82.6">C4</text>
+<text class="row-mono mono" x="27" y="82.6">GPIO7</text>
+<circle cx="82" cy="81.69999999999999" r="0.7" fill="#111827"/>
+<line x1="82" y1="81.69999999999999" x2="128" y2="81.69999999999999" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="81.69999999999999" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="82.6">IN4</text>
+<text class="row-label" x="191" y="82.6" text-anchor="end">→ CH4 OUT</text>
+<rect x="17" y="89.2" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<rect x="125" y="89.2" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<text class="row-label" x="19" y="92.8">C5</text>
+<text class="row-mono mono" x="27" y="92.8">GPIO15</text>
+<circle cx="82" cy="91.89999999999999" r="0.7" fill="#111827"/>
+<line x1="82" y1="91.89999999999999" x2="128" y2="91.89999999999999" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="91.89999999999999" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="92.8">IN5</text>
+<text class="row-label" x="191" y="92.8" text-anchor="end">→ CH5 OUT</text>
+<text class="row-label" x="19" y="103.0">C6</text>
+<text class="row-mono mono" x="27" y="103.0">GPIO16</text>
+<circle cx="82" cy="102.1" r="0.7" fill="#111827"/>
+<line x1="82" y1="102.1" x2="128" y2="102.1" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="102.1" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="103.0">IN6</text>
+<text class="row-label" x="191" y="103.0" text-anchor="end">→ CH6 OUT</text>
+<rect x="17" y="109.6" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<rect x="125" y="109.6" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<text class="row-label" x="19" y="113.19999999999999">C7</text>
+<text class="row-mono mono" x="27" y="113.19999999999999">GPIO35</text>
+<circle cx="82" cy="112.29999999999998" r="0.7" fill="#111827"/>
+<line x1="82" y1="112.29999999999998" x2="128" y2="112.29999999999998" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="112.29999999999998" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="113.19999999999999">IN7</text>
+<text class="row-label" x="191" y="113.19999999999999" text-anchor="end">→ CH7 OUT</text>
+<text class="row-label" x="19" y="123.39999999999999">C8</text>
+<text class="row-mono mono" x="27" y="123.39999999999999">GPIO36</text>
+<circle cx="82" cy="122.49999999999999" r="0.7" fill="#111827"/>
+<line x1="82" y1="122.49999999999999" x2="128" y2="122.49999999999999" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="122.49999999999999" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="123.39999999999999">IN8</text>
+<text class="row-label" x="191" y="123.39999999999999" text-anchor="end">→ CH8 OUT</text>
+<rect x="17" y="130.0" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<rect x="125" y="130.0" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<text class="row-label" x="19" y="133.6">C9</text>
+<text class="row-mono mono" x="27" y="133.6">GPIO17</text>
+<circle cx="82" cy="132.7" r="0.7" fill="#111827"/>
+<line x1="82" y1="132.7" x2="128" y2="132.7" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="132.7" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="133.6">IN9</text>
+<text class="row-label" x="191" y="133.6" text-anchor="end">→ CH9 OUT</text>
+<text class="row-label" x="19" y="143.8">C10</text>
+<text class="row-mono mono" x="27" y="143.8">GPIO18</text>
+<circle cx="82" cy="142.9" r="0.7" fill="#111827"/>
+<line x1="82" y1="142.9" x2="128" y2="142.9" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="142.9" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="143.8">IN10</text>
+<text class="row-label" x="191" y="143.8" text-anchor="end">→ CH10 OUT</text>
+<rect x="17" y="150.4" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<rect x="125" y="150.4" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<text class="row-label" x="19" y="154.0">C11</text>
+<text class="row-mono mono" x="27" y="154.0">GPIO8</text>
+<circle cx="82" cy="153.1" r="0.7" fill="#111827"/>
+<line x1="82" y1="153.1" x2="128" y2="153.1" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="153.1" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="154.0">IN11</text>
+<text class="row-label" x="191" y="154.0" text-anchor="end">→ CH11 OUT</text>
+<text class="row-label" x="19" y="164.2">C12</text>
+<text class="row-mono mono" x="27" y="164.2">GPIO9</text>
+<circle cx="82" cy="163.29999999999998" r="0.7" fill="#111827"/>
+<line x1="82" y1="163.29999999999998" x2="128" y2="163.29999999999998" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="163.29999999999998" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="164.2">IN12</text>
+<text class="row-label" x="191" y="164.2" text-anchor="end">→ CH12 OUT</text>
+<rect x="17" y="170.79999999999998" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<rect x="125" y="170.79999999999998" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<text class="row-label" x="19" y="174.39999999999998">C13</text>
+<text class="row-mono mono" x="27" y="174.39999999999998">GPIO10</text>
+<circle cx="82" cy="173.49999999999997" r="0.7" fill="#111827"/>
+<line x1="82" y1="173.49999999999997" x2="128" y2="173.49999999999997" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="173.49999999999997" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="174.39999999999998">IN13</text>
+<text class="row-label" x="191" y="174.39999999999998" text-anchor="end">→ CH13 OUT</text>
+<text class="row-label" x="19" y="184.6">C14</text>
+<text class="row-mono mono" x="27" y="184.6">GPIO11</text>
+<circle cx="82" cy="183.7" r="0.7" fill="#111827"/>
+<line x1="82" y1="183.7" x2="128" y2="183.7" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="183.7" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="184.6">IN14</text>
+<text class="row-label" x="191" y="184.6" text-anchor="end">→ CH14 OUT</text>
+<rect x="17" y="191.2" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<rect x="125" y="191.2" width="68" height="9.799999999999999" fill="#f8fafc"/>
+<text class="row-label" x="19" y="194.79999999999998">C15</text>
+<text class="row-mono mono" x="27" y="194.79999999999998">GPIO12</text>
+<circle cx="82" cy="193.89999999999998" r="0.7" fill="#111827"/>
+<line x1="82" y1="193.89999999999998" x2="128" y2="193.89999999999998" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="193.89999999999998" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="194.79999999999998">IN15</text>
+<text class="row-label" x="191" y="194.79999999999998" text-anchor="end">→ CH15 OUT</text>
+<text class="row-label" x="19" y="205.0">C16</text>
+<text class="row-mono mono" x="27" y="205.0">GPIO13</text>
+<circle cx="82" cy="204.1" r="0.7" fill="#111827"/>
+<line x1="82" y1="204.1" x2="128" y2="204.1" stroke="#111827" stroke-width="0.4"/>
+<circle cx="128" cy="204.1" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="row-mono mono" x="129" y="205.0">IN16</text>
+<text class="row-label" x="191" y="205.0" text-anchor="end">→ CH16 OUT</text>
+<text class="row-label" x="19" y="219.2" fill="#b91c1c">+5V</text>
+<circle cx="82" cy="218.29999999999998" r="0.8" fill="#b91c1c"/>
+<line x1="82" y1="217.79999999999998" x2="128" y2="217.79999999999998" stroke="#b91c1c" stroke-width="0.45"/>
+<line x1="82" y1="218.79999999999998" x2="128" y2="218.79999999999998" stroke="#b91c1c" stroke-width="0.45"/>
+<circle cx="128" cy="218.29999999999998" r="0.8" fill="#b91c1c"/>
+<text class="row-label" x="191" y="219.2" text-anchor="end" fill="#b91c1c">VCC</text>
+<text class="row-label" x="19" y="223.7" fill="#1d4ed8">GND</text>
+<circle cx="82" cy="222.79999999999998" r="0.8" fill="#1d4ed8"/>
+<line x1="82" y1="222.29999999999998" x2="128" y2="222.29999999999998" stroke="#1d4ed8" stroke-width="0.45"/>
+<line x1="82" y1="223.29999999999998" x2="128" y2="223.29999999999998" stroke="#1d4ed8" stroke-width="0.45"/>
+<circle cx="128" cy="222.79999999999998" r="0.8" fill="#1d4ed8"/>
+<text class="row-label" x="191" y="223.7" text-anchor="end" fill="#1d4ed8">GND</text>
+<rect x="10" y="225.2" width="190" height="22" rx="1.5" ry="1.5" fill="white" stroke="#475569" stroke-width="0.3"/>
+<text class="aux-h" x="13" y="229.7">Reserved auxiliary pins — DO NOT wire to relay inputs</text>
+<text class="aux" x="13" y="234.2">• ESTOP button</text>
+<text class="aux mono" x="65" y="234.2">GPIO 14</text>
+<text class="aux" x="95" y="234.2">INPUT_PULLUP</text>
+<text class="aux" x="13" y="237.39999999999998">• Unsafe-GPIO jumper</text>
+<text class="aux mono" x="65" y="237.39999999999998">GPIO 21</text>
+<text class="aux" x="95" y="237.39999999999998">INPUT_PULLUP (must be LOW for self-test)</text>
+<text class="aux" x="13" y="240.6">• Heartbeat LED</text>
+<text class="aux mono" x="65" y="240.6">GPIO 48</text>
+<text class="aux" x="95" y="240.6">OUTPUT (RGB on-board)</text>
+<text class="aux" x="13" y="243.79999999999998">• USB-CDC D+/D−</text>
+<text class="aux mono" x="65" y="243.79999999999998">GPIO 19/20</text>
+<text class="aux" x="95" y="243.79999999999998">USB native (do not repurpose)</text>
+<text class="aux-h" x="10" y="253.2">Legend</text>
+<line x1="32" y1="252.0" x2="44" y2="252.0" stroke="#111827" stroke-width="0.4"/>
+<circle cx="44" cy="252.0" r="0.9" fill="white" stroke="#111827" stroke-width="0.35"/>
+<text class="legend" x="47" y="253.2">signal (active-LOW)</text>
+<line x1="88" y1="251.5" x2="100" y2="251.5" stroke="#b91c1c" stroke-width="0.45"/>
+<line x1="88" y1="252.5" x2="100" y2="252.5" stroke="#b91c1c" stroke-width="0.45"/>
+<text class="legend" x="103" y="253.2">+5V</text>
+<line x1="118" y1="251.5" x2="130" y2="251.5" stroke="#1d4ed8" stroke-width="0.45"/>
+<line x1="118" y1="252.5" x2="130" y2="252.5" stroke="#1d4ed8" stroke-width="0.45"/>
+<text class="legend" x="133" y="253.2">GND</text>
+<line x1="10" y1="283" x2="200" y2="283" stroke="#e5e7eb" stroke-width="0.25"/>
+<text class="footer" x="10" y="286">Pinmap source: firmware/fxk16-esp32s3/src/fxk16_pinmap.h • static_assert-guarded • prints true-to-size on A4 (Actual size).</text>
+<text class="footer" x="200" y="286" text-anchor="end">FXK16 v1.3 • A4 portrait</text>
+</svg>

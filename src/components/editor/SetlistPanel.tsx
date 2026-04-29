@@ -12,8 +12,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import {
-  Music, Plus, Trash2, GripVertical, Clock, Upload,
-  ArrowDownUp, X, ChevronUp, ChevronDown, Save
+  Music, Plus, Trash2, Clock, Upload,
+  X, ChevronUp, ChevronDown, Save
 } from 'lucide-react';
 
 interface Track {
@@ -43,7 +43,6 @@ export default function SetlistPanel({ onClose }: SetlistPanelProps) {
   const projectId = useProjectStore((s) => s.projectId);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ title: '', artist: '', bpm: '128', duration: '210', key: 'Am' });
 

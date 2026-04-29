@@ -1,89 +1,120 @@
-# Firmware FXK16 (ESP32-S3 v1.3 + Relé 16ch) + Reconhecimento no Sistema
+## Objetivo
 
-Vou entregar **dois pacotes** complementares: (1) o firmware real para o ESP32-S3 (Arduino IDE / PlatformIO) compatível com o bridge ASCII já usado pelo FXK (`FireOneHardwareBridge`), e (2) o registro do módulo "FXK16 — 16ch" no app, para que apareça automaticamente nas listas de seleção de hardware, addressing e ShowPlan.
+Adicionar controles **In/Out** (recorte não-destrutivo) ao áudio na timeline. O recorte:
 
-## Mapeamento de pinos (conforme solicitado: C1→Relé1, C2→Relé2, …)
+1. Mapeia o tempo da timeline `[0 .. (out − in)]` para o tempo do áudio `[in .. out]` durante reprodução, scrub e exportação.
+2. Recalcula a **waveform** mostrando só a região recortada.
+3. Recalcula a **duração** do projeto (`duration = out − in`).
+4. Re-timestampa **automaticamente** os efeitos da timeline para preservar seu alinhamento musical relativo ao novo `t=0`.
+5. É **não-destrutivo**: o arquivo de áudio original não é alterado; só `audioInPoint` e `audioOutPoint` são persistidos. Pode ser desfeito (Reset) recuperando os efeitos de antes do trim.
 
-Mapeamento default ESP32-S3 v1.3 → módulo de 16 relés (ativo-baixo, padrão dos boards de 16 relés JQC-3FF/Songle). Pinos escolhidos para evitar strapping pins (0, 3, 45, 46) e o boot button (GPIO0):
+## Mudanças
 
-```text
-Canal  ESP32-S3 GPIO   Canal  ESP32-S3 GPIO
-C1  ->  GPIO 4         C9   -> GPIO 17
-C2  ->  GPIO 5         C10  -> GPIO 18
-C3  ->  GPIO 6         C11  -> GPIO 8
-C4  ->  GPIO 7         C12  -> GPIO 9
-C5  ->  GPIO 15        C13  -> GPIO 10
-C6  ->  GPIO 16        C14  -> GPIO 11
-C7  ->  GPIO 35        C15  -> GPIO 12
-C8  ->  GPIO 36        C16  -> GPIO 13
+### 1. Store — pontos In/Out + ação de trim com recálculo
+
+**`src/store/useProjectStore.ts`**
+
+Novos campos:
+- `audioInPoint: number` (segundos no áudio original, default `0`)
+- `audioOutPoint: number | null` (segundos no áudio original, `null` = fim do arquivo)
+- `audioOriginalDuration: number | null` (preenchido após decodificação; necessário para clamp dos pontos)
+- `audioTrimHistory: { in: number; out: number | null; timestamp: number; itemSnapshot: TimelineItem[] } | null` (1 nível de undo; opcional para ação "Reset trim")
+
+Setters:
+- `setAudioInPoint(t)`, `setAudioOutPoint(t)` — só atualizam o valor (uso em drag visual; não recalcula nada).
+- `setAudioOriginalDuration(d)` — chamado pelo `loadAudio()` após `decodeAudioData`.
+- **`applyAudioTrim(inT, outT)`** — ação atômica que:
+  1. Faz clamp: `0 ≤ inT < outT ≤ audioOriginalDuration`. Rejeita janela menor que `0.05s`.
+  2. Calcula `delta = inT - audioInPoint` e `newDuration = outT - inT`.
+  3. Para cada `TimelineItem` / `CueMarker` / `CameraKeyframe` / `Trajectory.waypoints`: `t' = t - delta`. Items que ficarem com `t' < 0` ou `t' > newDuration` são **filtrados** (mas o `audioTrimHistory` guarda snapshot original para undo).
+  4. Atualiza `audioInPoint`, `audioOutPoint`, `duration = newDuration`, `currentTime = clamp(currentTime - delta, 0, newDuration)`.
+  5. Salva snapshot no `audioTrimHistory` (1 nível de undo).
+- **`resetAudioTrim()`** — restaura `audioInPoint=0`, `audioOutPoint=null`, `duration = audioOriginalDuration`, e se houver `audioTrimHistory`, restaura `timelineItems` para o snapshot e reverte os deltas dos demais (cues/camera/waypoints) somando o delta original de volta.
+
+### 2. Mapeamento timeline ↔ áudio
+
+**`src/lib/audio/audioTrimMapping.ts`** (novo, puro):
+```ts
+export const timelineToAudio = (t: number, inP: number) => t + inP;
+export const audioToTimeline = (a: number, inP: number) => a - inP;
+export const clampToTrim   = (a: number, inP: number, outP: number | null, origDur: number) =>
+  Math.min(outP ?? origDur, Math.max(inP, a));
 ```
 
-Constantes ficam no topo do `.ino` em um `const uint8_t RELAY_PINS[16] = {...}` para fácil ajuste sem tocar a lógica. LED on-board (GPIO 48) usado como heartbeat. ESTOP físico opcional em GPIO 14 (INPUT_PULLUP, ativa em LOW).
+Aplicado em:
 
-## Arquivos novos
+- **`AudioWaveform.tsx`** — `useEffect` que cria o `<Audio>`: assim que o áudio carrega e `audioInPoint > 0`, faz `audio.currentTime = audioInPoint`. Adiciona listener `timeupdate`: se `audio.currentTime >= (audioOutPoint ?? duration)`, pausa e dispara `setPlaying(false)`. Sync de seek: agora compara `audio.currentTime` com `currentTime + audioInPoint` (com a mesma tolerância 0.15s).
+- **`useAudioMasterClock.ts`** — quando lê `audio.currentTime`, escreve `timelineClock.syncExternalTime(audio.currentTime - audioInPoint)`. Lê `audioInPoint` via `useProjectStore.getState()` no callback (não como dep do hook, pra evitar reinit).
 
-```text
-firmware/fxk16-esp32s3/
-  README.md                    # pinout, flashing, flags de segurança
-  platformio.ini               # board = esp32-s3-devkitc-1, framework arduino
-  src/
-    main.ino                   # entry, setup() / loop()
-    fxk16_protocol.h/.cpp      # parser ASCII compatível com FireOneHardwareBridge
-    fxk16_relay.h/.cpp         # driver dos 16 relés + safety (estop, watchdog)
-    fxk16_continuity.h/.cpp    # leitura de continuidade (ADC stub, opcional)
-    fxk16_config.h             # MODEL, CHANNELS, FW_VERSION, BLE_NAME_PREFIX
-```
+### 3. Recálculo de waveform restrito à região
 
-## Comportamento do firmware
+**`AudioWaveform.tsx`** — `loadAudio()`:
+- Após `decodeAudioData`, chama `setAudioOriginalDuration(audioBuffer.duration)`.
+- A janela usada para downsample passa a ser `[audioInPoint .. audioOutPoint ?? audioBuffer.duration]`:
+  - `startSample = floor(audioInPoint * sampleRate)`
+  - `endSample = floor((audioOutPoint ?? audioBuffer.duration) * sampleRate)`
+  - `samples = floor(newDuration * pixelsPerSecond * 2)`
+  - `blockSize = floor((endSample - startSample) / samples)`
+  - Loop sobre `rawData.subarray(startSample, endSample)`.
+- Re-executa quando `audioInPoint` ou `audioOutPoint` mudam (adicionar às deps de `loadAudio` + `useEffect` que o invoca).
+- Cache: guarda o `AudioBuffer` decodificado em `audioBufferRef` para evitar re-fetch a cada mudança de in/out — só o downsample é refeito.
 
-- **Identificação**: anuncia BLE com nome `FXK16-<MAC6>` (prefixo `FXK` já é varrido pelo bridge em `src/lib/fireoneModuleHardwareBridge.ts:376`) e expõe o serviço UART `0000ffe0/ffe1/ffe2` (já esperado pelo bridge).
-- **Transporte**: USB-CDC (Serial @ 115200) e BLE simultaneamente. Mesmo parser ASCII usado em ambos.
-- **Protocolo ASCII** (compatível 1:1 com o contrato em `fireoneModuleHardwareBridge.ts` linhas 12–22):
-  - `HEARTBEAT\n` → `PONG\n`
-  - `VERSION\n` → `VER:FXK16-1.0.0\n` *(o bridge popula `firmwareVersion`)*
-  - `STATUS\n` → `BAT:<v>;PINS:<mask16>;RSSI:<dbm>;MODEL:FXK16;CH:16\n` *(novos tokens `MODEL` e `CH` — bridge ignora os desconhecidos hoje, mas vamos passar a lê-los — ver §"Mudanças no app")*
-  - `FIRE:<pin>:<ms>\n` → fecha relé `RELAY_PINS[pin-1]` por `ms`, responde `OK:FIRE:<pin>\n`. Bloqueia se ESTOP latched, se `pin` fora de `[1..16]` ou se `ms` > 5000 → `ERR:FIRE:<pin>:<reason>\n`.
-  - `BATCH:<mask16>:<ms>\n` → dispara múltiplos canais por bitmask, responde `OK:BATCH:<mask16>\n`.
-  - `GPIO:<pin>:HIGH|LOW\n` → controle direto (apenas se `dev_unsafe_gpio` jumper em LOW; senão `ERR:GPIO:LOCKED`).
-  - `CONT:<pin>\n` → `CONT:<pin>:<ohms>\n` (stub: 9999 se sem hardware de leitura).
-  - `CDS:<pin>\n` → `CDS:<pin>:<volts>\n` (stub).
-  - `ESTOP\n` → corta todos os relés, latch lockout até reset de energia ou comando `RESET\n`. Responde `OK:ESTOP\n`.
-- **Safety guards** (gravados no firmware, não dependem do host):
-  - Watchdog de hardware (TWDT) 2 s rearmado no loop.
-  - Pulse limiter por canal: máximo 5000 ms; auto-open do relé garantido por timer FreeRTOS independente do parser (se host travar, relé abre).
-  - Contador de FIRE/canal persistido em NVS para auditoria.
-  - Boot state: todos os pinos `OUTPUT` + `digitalWrite(HIGH)` (relés ativos-baixo = abertos) **antes** de habilitar o transporte.
+### 4. UI — handles In/Out + toolbar de trim
 
-## Mudanças no app (reconhecimento)
+Estende **`AudioWaveform.tsx`** (lane existente, sem novo arquivo grande):
 
-Pequenas, cirúrgicas, sem refatorar:
+- Dois handles verticais sobrepostos ao canvas: traço vertical (`Scissors` icon no topo) na posição `(audioInPoint - audioInPoint) * pps = 0` e `(audioOutPoint - audioInPoint) * pps = duration * pps`. Inicialmente nas bordas; viram interativos só quando o usuário entra em "Trim Mode".
+- Toggle "Trim" (ícone `Scissors`) na coluna de controles à esquerda (perto do botão Snap). Estado local `trimMode`.
+- Quando `trimMode === true`:
+  - Aparecem dois handles draggáveis (largura 6 px, altura total da lane, cor `hsl(var(--warning))`).
+  - Drag atualiza um estado local `pendingIn / pendingOut` (preview ao vivo, sem mexer no áudio nem na timeline ainda — apenas redesenha overlay sombreado nas regiões fora do range).
+  - Botões `Apply trim` (chama `applyAudioTrim(pendingIn, pendingOut)`) e `Cancel`. Ao aplicar, mostra toast com `delta` aplicado e nº de cues/items removidos.
+  - Atalhos: `I` define `pendingIn = currentTime + audioInPoint`; `O` define `pendingOut = currentTime + audioInPoint`. Apenas quando `trimMode === true` e foco fora de inputs.
+- Quando `audioInPoint > 0 || audioOutPoint != null` (já recortado), aparece chip `Trimmed · X.XXs–Y.YYs` com botão `Reset` (chama `resetAudioTrim()`).
 
-1. **`src/store/useAddressingStore.ts`** — acrescentar entrada em `DEFAULT_MODULE_SPECS`:
-   ```ts
-   { id: 'fxk16', name: 'FXK16 — 16ch (ESP32-S3)', slatCount: 1, pinsPerSlat: 16, firingSystem: 'Default' },
-   ```
-2. **`src/core/showplan/ShowPlan.ts`** — ampliar a union `HardwareModuleConfig.type` para incluir `'fxk16-esp32s3'` e documentar `channelCount: 16`.
-3. **`src/core/hardware/adapters/`** — criar `FXK16ModuleAdapter.ts` (espelha `RelayBankAdapter32.ts` mas com `maxChannels: 16`, `label: 'FXK16 — 16ch ESP32-S3'`, `protocols: ['serial-115200', 'ble-uart', 'usb-cdc']`). Registrar em `UnifiedHardwareRegistry.ts` ao lado do `relayBankAdapter`.
-4. **`src/lib/fireoneModuleHardwareBridge.ts`** — no parser de tokens (linha 1031), aceitar e expor:
-   - `MODEL:<str>` → guarda em `this.deviceModel` e dispara `onEvent('module_model', model)`.
-   - `CH:<n>` → guarda em `this.channelCount`.
-   Inclui ambos no objeto retornado por `getStatus()` ao lado de `firmwareVersion`. Permite ao registry promover o adapter genérico para `FXK16ModuleAdapter` quando o handshake retornar `MODEL:FXK16`.
-5. **Sem mudanças** em timeline, UI principal, engine 3D, exporters ou safety state machine.
+### 5. Re-timestampagem automática dos efeitos
 
-## Critérios de aceite
+Implementada em `applyAudioTrim` (passo 1.3 acima). Regras:
 
-- Plugar o ESP32-S3 via USB e abrir `/dev/real-discovery`: aparece como `FXK16-<MAC6>` no transport `serial`, com `MODEL: FXK16` e `Channels: 16` no painel.
-- Em Addressing Panel, o módulo "FXK16 — 16ch (ESP32-S3)" aparece no dropdown de specs.
-- `FIRE:1:50` no console serial fecha o relé conectado a GPIO 4 por 50 ms e responde `OK:FIRE:1`.
-- Comando `ESTOP` abre todos os 16 relés em < 50 ms (medido via osciloscópio ou GPIO logger) e mantém latch.
-- Build do app sem erros TS; testes existentes do bridge continuam passando.
+| Entidade | Campo de tempo | Ação |
+|---|---|---|
+| `TimelineItem` | `startTime` | `t' = t - delta`; remove se `t' < -0.05` ou `t' > newDuration + 0.05` |
+| `CueMarker` | `time` | mesmo |
+| `CameraKeyframe` | `time` | mesmo |
+| `Trajectory.waypoints[].time` | `time` | mesmo (waypoints removidos se ficarem fora) |
+| `DroneFormation` | `startTime` | mesmo (formações inteiras removidas se startTime fora) |
 
-## Detalhes técnicos (resumo)
+Toast de sumário: `Trimmed audio · removed N items / M cues outside new window`.
 
-- Toolchain: Arduino-ESP32 core ≥ 3.0 (IDF 5.1) — necessário para BLE `NimBLE` ou `BLEDevice` UART nativo no S3.
-- `platformio.ini` define `board = esp32-s3-devkitc-1`, `monitor_speed = 115200`, `lib_deps = h2zero/NimBLE-Arduino`.
-- O parser é byte-stream (`\n` terminator) com buffer de 128 B; mesma forma que o bridge consome (`responseBuffer.split('\n')`, linha 1018).
-- Identificação `MODEL:FXK16` é o único token novo no contrato — backward compatible: bridges antigos simplesmente ignoram.
-- Nenhum segredo / NVS sensível é gravado pelo firmware nesta versão (AES PSK fica para um próximo passo se quiser endurecer).
+### 6. Persistência e exportações
 
-Após sua aprovação, eu crio o diretório `firmware/fxk16-esp32s3/` com todos os arquivos acima e aplico as 4 mudanças no app.
+- `useProjectPersistence.ts`: incluir `audioInPoint`, `audioOutPoint`, `audioOriginalDuration` no snapshot serializado (com migration: se ausentes, defaults `0` / `null` / `null`).
+- Exportações VVIZ/CSV/JSON (`exportEngine.ts`): **nenhuma mudança nos timestamps emitidos** — eles já refletem o `startTime` pós-trim do store, que é o tempo "show". Adicionar metadata-comment opcional `// audio in=X out=Y` no header dos exports é fora do escopo desta tarefa.
+
+### 7. Edge cases protegidos
+
+- Áudio ainda decodificando quando o usuário clica `Apply trim` → desabilita botão até `audioOriginalDuration != null`.
+- Reset trim sem snapshot disponível (projeto recarregado) → restaura só `in=0, out=null, duration=audioOriginalDuration` sem mexer em items (com toast `History indisponível, items mantidos`).
+- Áudio trocado (`setAudioUrl(novoUrl)`): zera `audioInPoint`, `audioOutPoint`, `audioOriginalDuration` e `audioTrimHistory` para evitar aplicar trim de outro arquivo.
+- `currentTime` durante trim mode: continua usando o sistema de coordenadas da **timeline atual** (pré-aplicação); só após `Apply` o store muda.
+
+### 8. Testes
+
+`src/lib/audio/__tests__/audioTrimMapping.test.ts` (novo):
+- `timelineToAudio(0, 5) === 5`; `audioToTimeline(5, 5) === 0`.
+- `clampToTrim` respeita bordas com e sem `outPoint`.
+
+`src/store/__tests__/applyAudioTrim.test.ts` (novo):
+- Trim `[2, 8]` em projeto com items em `t=1, 3, 7, 9` → resultado: items em `1, 5` (os de `t=1` e `t=9` removidos), `duration=6`.
+- Snapshot preservado em `audioTrimHistory`; `resetAudioTrim` restaura ambos.
+- Trim com `inT >= outT` ou janela < 50ms → no-op + warning.
+
+### Arquivos tocados
+
+- `src/store/useProjectStore.ts` — campos, setters, `applyAudioTrim`, `resetAudioTrim`, hook em `setAudioUrl`.
+- `src/lib/audio/audioTrimMapping.ts` — **novo** (helpers puros).
+- `src/components/editor/AudioWaveform.tsx` — handles UI, modo trim, atalhos `I/O`, downsample restrito, sync com `audioInPoint`, fim-de-trim em `timeupdate`, cache de `AudioBuffer`.
+- `src/hooks/useAudioMasterClock.ts` — subtrai `audioInPoint` ao escrever no `timelineClock`.
+- `src/hooks/useProjectPersistence.ts` — serializa/deserializa novos campos com migration.
+- `src/lib/audio/__tests__/audioTrimMapping.test.ts` — **novo**.
+- `src/store/__tests__/applyAudioTrim.test.ts` — **novo**.

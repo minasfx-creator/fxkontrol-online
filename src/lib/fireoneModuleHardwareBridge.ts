@@ -193,6 +193,47 @@ const BLE_CHAR_RX_UUID = '0000ffe2-0000-1000-8000-00805f9b34fb';
 const HEARTBEAT_INTERVAL = 5000;
 const FIRE_CONFIRM_TIMEOUT = 2000;
 
+/**
+ * USB-CDC vendor IDs commonly found on FXK16 / ESP32-S3 / ESP32 relay boards.
+ * Used to (a) filter the WebSerial port-picker so users see only relevant
+ * devices, and (b) auto-reuse already-authorized ports on subsequent connects.
+ *  - 0x303A: Espressif Systems (native ESP32-S3 USB-CDC)
+ *  - 0x10C4: Silicon Labs CP210x (CP2102/CP2104 USB-UART)
+ *  - 0x1A86: QinHeng / WCH CH340/CH341 (very common on ESP32 dev boards)
+ *  - 0x0403: FTDI FT232 family
+ *  - 0x067B: Prolific PL2303
+ */
+export const FXK_USB_FILTERS: Array<{ usbVendorId: number }> = [
+  { usbVendorId: 0x303A }, // Espressif
+  { usbVendorId: 0x10C4 }, // Silicon Labs CP210x
+  { usbVendorId: 0x1A86 }, // CH340/CH341
+  { usbVendorId: 0x0403 }, // FTDI
+  { usbVendorId: 0x067B }, // Prolific
+];
+
+function matchesFxkVendor(info: { usbVendorId?: number }): boolean {
+  return typeof info?.usbVendorId === 'number'
+    && FXK_USB_FILTERS.some((f) => f.usbVendorId === info.usbVendorId);
+}
+
+function describeUsbDevice(info: { usbVendorId?: number; usbProductId?: number }): string {
+  const vid = info?.usbVendorId;
+  const pid = info?.usbProductId;
+  const vendor =
+    vid === 0x303A ? 'ESP32-S3' :
+    vid === 0x10C4 ? 'CP210x' :
+    vid === 0x1A86 ? 'CH340' :
+    vid === 0x0403 ? 'FTDI' :
+    vid === 0x067B ? 'PL2303' :
+    'USB-CDC';
+  if (vid != null && pid != null) {
+    const hex = (n: number) => n.toString(16).toUpperCase().padStart(4, '0');
+    return `${vendor} (${hex(vid)}:${hex(pid)})`;
+  }
+  return vendor;
+}
+
+
 export class FireOneHardwareBridge {
   private transport: BridgeTransport = 'none';
   private connected = false;
@@ -439,35 +480,96 @@ export class FireOneHardwareBridge {
   async connectUSB(baudRate = 115200): Promise<boolean> {
     if (this.connecting) {
       this.lastError = 'Conexão em andamento. Aguarde.';
+      this.lastErrorCode = 'CONNECT_IN_PROGRESS';
       return false;
     }
     this.connecting = true;
     try {
       if (!this.getTransportSupport().usb) {
-        this.lastError = 'USB/WebSerial não suportado neste navegador/dispositivo';
+        this.lastError = 'USB/WebSerial não suportado neste navegador. Use Chrome/Edge desktop ou Android.';
+        this.lastErrorCode = 'UNSUPPORTED_TRANSPORT';
         this.onEvent?.('unsupported_transport', { transport: 'usb' });
         return false;
       }
-      if (!('serial' in navigator)) throw new Error('WebSerial not supported');
+      if (!('serial' in navigator)) {
+        this.lastError = 'WebSerial indisponível (use Chrome/Edge desktop)';
+        this.lastErrorCode = 'UNSUPPORTED_TRANSPORT';
+        return false;
+      }
 
-      const port = await (navigator as any).serial.requestPort();
-      await port.open({ baudRate });
+      // 1) Try silent rehydrate of a previously-authorized FXK16/ESP32 port.
+      // 2) Otherwise, prompt with VID filters so only known USB-CDC chips show up.
+      let port: any = null;
+      try {
+        const granted: any[] = await (navigator as any).serial.getPorts?.() ?? [];
+        if (Array.isArray(granted) && granted.length > 0) {
+          // Prefer a port whose info matches an FXK-class VID; fall back to the
+          // first granted port (covers boards that don't expose VID/PID).
+          port = granted.find((p) => {
+            try { return matchesFxkVendor(p.getInfo?.() ?? {}); } catch { return false; }
+          }) ?? granted[0];
+        }
+      } catch (e) {
+        // getPorts may throw on some browsers — fall through to picker.
+        console.warn('[HardwareBridge] serial.getPorts failed:', e);
+      }
+
+      if (!port) {
+        try {
+          port = await (navigator as any).serial.requestPort({ filters: FXK_USB_FILTERS });
+        } catch (pickErr: any) {
+          // NotFoundError = user cancelled the chooser. Fall back to "show all"
+          // so users with non-listed VID/PID can still select their adapter.
+          if (pickErr?.name === 'NotFoundError') {
+            try {
+              port = await (navigator as any).serial.requestPort();
+            } catch (e2: any) {
+              if (e2?.name === 'NotFoundError') {
+                this.lastError = 'Nenhuma porta selecionada. Plugue o FXK16 e clique USB novamente.';
+                this.lastErrorCode = 'PERMISSION_DENIED';
+                return false;
+              }
+              throw e2;
+            }
+          } else {
+            throw pickErr;
+          }
+        }
+      }
+
+      try {
+        await port.open({ baudRate });
+      } catch (openErr: any) {
+        this.lastError = `Falha ao abrir porta USB: ${openErr?.message ?? openErr}. Feche outros apps que possam estar usando o adaptador.`;
+        this.lastErrorCode = 'SERIAL_OPEN_FAILED';
+        return false;
+      }
 
       this.serialPort = port;
       this.serialReader = port.readable!.getReader();
       this.serialWriter = port.writable!.getWriter();
 
+      // Friendly device name from VID/PID for the status row.
+      const info = (() => { try { return port.getInfo?.() ?? {}; } catch { return {}; } })();
+      const friendlyName = describeUsbDevice(info);
+
       this.readSerialLoop();
-      const ok = await this.establishHealthyLink('usb', 'ESP32-USB');
+      const ok = await this.establishHealthyLink('usb', friendlyName);
       if (ok) {
         this.lastConnectArgs = { method: 'usb' };
         this.reconnectAttempts = 0;
         return true;
       }
+      // Handshake failed — surface a precise reason if we don't have one.
+      if (!this.lastError) {
+        this.lastError = 'FXK16 não respondeu ao handshake (3s). Verifique cabo, firmware e botão RST.';
+      }
       await this.disconnect();
       return false;
-    } catch (err) {
+    } catch (err: any) {
       this.lastError = err instanceof Error ? err.message : 'Falha ao conectar USB';
+      this.lastErrorCode = this.lastErrorCode === 'OK' || !this.lastErrorCode
+        ? 'SERIAL_OPEN_FAILED' : this.lastErrorCode;
       console.warn('[HardwareBridge] USB connect failed:', err);
       return false;
     } finally {
