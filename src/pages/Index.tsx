@@ -122,7 +122,7 @@ const FlightCheckTab = lz(() => import('@/components/editor/safety/FlightCheckTa
 const TakeoffGridPanel = lz(() => import('@/components/editor/TakeoffGridPanel'));
 const TransitionPlannerPanel = lz(() => import('@/components/editor/TransitionPlannerPanel'));
 const LaserControlPanel = lz(() => import('@/components/editor/LaserControlPanel'));
-const USBConnectionPanel = lz(() => import('@/components/editor/USBConnectionPanel'));
+const HardwareHubPanel = lz(() => import('@/components/editor/HardwareHubPanel'));
 const VideoChoreoPanel = lz(() => import('@/components/editor/VideoChoreoPanel'));
 const ShowvenEquipmentPanel = lz(() => import('@/components/editor/ShowvenEquipmentPanel'));
 const GenerativeEffectsPanel = lz(() => import('@/components/editor/GenerativeEffectsPanel'));
@@ -140,11 +140,9 @@ const BluetoothPanel = lz(() => import('@/components/editor/BluetoothPanel'));
 const NFCPairPanel = lz(() => import('@/components/editor/NFCPairPanel'));
 const DMXOutputPanel = lz(() => import('@/components/editor/dmx/DMXOutputPanel'));
 const RemoteControlPanel = lz(() => import('@/components/editor/RemoteControlPanel'));
-const ConnectionManagerPanel = lz(() => import('@/components/editor/ConnectionManagerPanel'));
 const RadioControlPanel = lz(() => import('@/components/editor/RadioControlPanel'));
 const MA3ControlPanel = lz(() => import('@/components/editor/MA3ControlPanel'));
 const SACNMonitorPanel = lz(() => import('@/components/editor/SACNMonitorPanel'));
-const EasyConnectPanel = lz(() => import('@/components/editor/EasyConnectPanel'));
 const VenueQuickSelector = lz(() => import('@/components/editor/VenueQuickSelector'));
 const VenueShowOverlay = lz(() => import('@/components/editor/VenueShowOverlay'));
 
@@ -543,7 +541,7 @@ function Index() {
         {activePanel === 'takeoffgrid' && <TakeoffGridPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'transitions' && <TransitionPlannerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'lasercontrol' && <LaserControlPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'usb' && <USBConnectionPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'usb' && <HardwareHubPanel onClose={() => setActivePanel(null)} initialTab="usb" />}
         {activePanel === 'videochoreo' && <VideoChoreoPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showven' && <ShowvenEquipmentPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'generative' && <GenerativeEffectsPanel onClose={() => setActivePanel(null)} />}
@@ -561,11 +559,11 @@ function Index() {
         {activePanel === 'remotecontrol' && <RemoteControlPanel onClose={() => setActivePanel(null)} initialMode={remoteMode} />}
         {activePanel === 'controllers' && <VirtualControllerHub onClose={() => setActivePanel(null)} />}
         {activePanel === 'fieldmap' && <FieldMap2D onClose={() => setActivePanel(null)} />}
-        {activePanel === 'connections' && <ConnectionManagerPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'connections' && <HardwareHubPanel onClose={() => setActivePanel(null)} initialTab="connections" />}
         {activePanel === 'radio' && <RadioControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'ma3' && <MA3ControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'sacnmonitor' && <SACNMonitorPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'easyconnect' && <EasyConnectPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'easyconnect' && <HardwareHubPanel onClose={() => setActivePanel(null)} initialTab="easy" />}
         {activePanel === 'qastudio' && <QAStudioPanel onClose={() => setActivePanel(null)} />}
         
       </>
