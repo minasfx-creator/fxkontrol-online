@@ -26,6 +26,15 @@ import {
   useRecentDropId,
   type SnapReason,
 } from './timelineDropFx';
+import {
+  getActiveGrid,
+  snapTime,
+  quantizeTime,
+  stepTime,
+  getSubdivisions,
+  type SnapMode,
+} from './timelineGrid';
+import { timecodeProvider } from '@/core/time/timecodeProvider';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -34,41 +43,42 @@ function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
 }
 
-function snapTimeToBeat(time: number, bpm: number | null, snapEnabled: boolean, pixelsPerSecond: number): number {
-  if (!snapEnabled || !bpm) return time;
-  const beatInterval = 60 / bpm;
-  const nearestBeat = Math.round(time / beatInterval) * beatInterval;
-  const threshold = 8 / pixelsPerSecond;
-  return Math.abs(time - nearestBeat) < threshold ? nearestBeat : time;
-}
+// ── TimelineGrid: replaces the old beat-only `BeatGrid`. Now renders beat OR
+//    frame OR second subdivisions depending on the active `snapMode`, BPM and
+//    zoom level. Virtualised to the visible scroll window.
+const TimelineGrid = React.forwardRef<HTMLDivElement, {
+  duration: number;
+  pixelsPerSecond: number;
+  bpm: number | null;
+  snapMode: SnapMode;
+  scrollLeft?: number;
+  viewportWidth?: number;
+}>(function TimelineGrid({ duration, pixelsPerSecond, bpm, snapMode, scrollLeft = 0, viewportWidth = 1200 }, _ref) {
+  const grid = getActiveGrid({ bpm, snapMode });
+  if (grid.unit === 'none') return null;
+  const lines = getSubdivisions({ grid, duration, pixelsPerSecond, scrollLeft, viewportWidth });
+  if (lines.length === 0) return null;
 
-const BeatGrid = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number; bpm: number | null; scrollLeft?: number; viewportWidth?: number }>(function BeatGrid({ duration, pixelsPerSecond, bpm, scrollLeft = 0, viewportWidth = 1200 }, _ref) {
-  if (!bpm) return null;
-  const beatInterval = 60 / bpm;
-
-  // Virtualize: only render lines visible in the scroll viewport + buffer
-  const buffer = 200; // px
-  const startTime = Math.max(0, (scrollLeft - buffer) / pixelsPerSecond);
-  const endTime = Math.min(duration, (scrollLeft + viewportWidth + buffer) / pixelsPerSecond);
-  const firstBeat = Math.floor(startTime / beatInterval) * beatInterval;
-
-  const lines = [];
-  for (let t = firstBeat; t < endTime; t += beatInterval) {
-    if (t < 0) continue;
-    const isMeasure = Math.round(t / beatInterval) % 4 === 0;
-    lines.push(
-      <div
-        key={t}
-        className="absolute top-0 bottom-0 pointer-events-none"
-        style={{
-          left: `${t * pixelsPerSecond}px`,
-          width: '1px',
-          backgroundColor: isMeasure ? 'hsl(var(--accent) / 0.2)' : 'hsl(var(--accent) / 0.06)',
-        }}
-      />
-    );
-  }
-  return <>{lines}</>;
+  return (
+    <>
+      {lines.map((l) => {
+        // Three-tier opacity: major (measure / second), unit (beat / frame), sub (¼ / 6-frame).
+        const opacity = l.weight === 'major' ? 0.35 : l.weight === 'unit' ? 0.18 : 0.08;
+        const tone = grid.unit === 'beat' ? '--accent' : '--primary';
+        return (
+          <div
+            key={`${l.weight}-${l.t}`}
+            className="absolute top-0 bottom-0 pointer-events-none"
+            style={{
+              left: `${l.t * pixelsPerSecond}px`,
+              width: '1px',
+              backgroundColor: `hsl(var(${tone}) / ${opacity})`,
+            }}
+          />
+        );
+      })}
+    </>
+  );
 });
 
 const TimeRuler = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number; scrollLeft?: number; viewportWidth?: number }>(function TimeRuler({ duration, pixelsPerSecond, scrollLeft = 0, viewportWidth = 1200 }, _ref) {
@@ -370,6 +380,7 @@ function TimelineTrackRow({
   const addTimelineItem = useProjectStore(s => s.addTimelineItem);
   const bpm = useProjectStore(s => s.bpm);
   const snapToBeat = useProjectStore(s => s.snapToBeat);
+  const snapMode = useProjectStore(s => s.snapMode);
   const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
   const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
   const toggleTimelineItemSelection = useProjectStore(s => s.toggleTimelineItemSelection);
@@ -521,28 +532,39 @@ function TimelineTrackRow({
 
       const dt = dx / pixelsPerSecond;
       let newTime = Math.max(0, Math.min(startTime + dt, duration));
-      newTime = snapTimeToBeat(newTime, bpm, snapToBeat, pixelsPerSecond);
+
+      // Modifier keys: Shift = force quantize to grid centre; Alt = no snap.
+      const grid = getActiveGrid({ bpm, snapMode });
+      if (me.altKey) {
+        // free move — skip both grid and edge snap
+      } else if (me.shiftKey) {
+        newTime = quantizeTime(newTime, grid);
+      } else {
+        newTime = snapTime(newTime, grid, pixelsPerSecond);
+      }
 
       // ── Magnetic snap to adjacent items (edge-to-edge) ──
-      const snapThresholdSec = 6 / pixelsPerSecond;
-      const currentEffect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
-      const currentDuration = item.durationOverride ?? currentEffect?.duration ?? 2;
+      if (!me.altKey) {
+        const snapThresholdSec = 6 / pixelsPerSecond;
+        const currentEffect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
+        const currentDuration = item.durationOverride ?? currentEffect?.duration ?? 2;
 
-      for (const other of timelineItems) {
-        if (other.id === itemId || other.trackIndex !== item.trackIndex) continue;
-        const otherEffect = EFFECT_LIBRARY.find(ef => ef.id === other.effectId);
-        const otherDur = other.durationOverride ?? otherEffect?.duration ?? 2;
-        const otherEnd = other.startTime + otherDur;
+        for (const other of timelineItems) {
+          if (other.id === itemId || other.trackIndex !== item.trackIndex) continue;
+          const otherEffect = EFFECT_LIBRARY.find(ef => ef.id === other.effectId);
+          const otherDur = other.durationOverride ?? otherEffect?.duration ?? 2;
+          const otherEnd = other.startTime + otherDur;
 
-        // Snap my start to other's end
-        if (Math.abs(newTime - otherEnd) < snapThresholdSec) {
-          newTime = otherEnd;
-          break;
-        }
-        // Snap my end to other's start
-        if (Math.abs((newTime + currentDuration) - other.startTime) < snapThresholdSec) {
-          newTime = other.startTime - currentDuration;
-          break;
+          // Snap my start to other's end
+          if (Math.abs(newTime - otherEnd) < snapThresholdSec) {
+            newTime = otherEnd;
+            break;
+          }
+          // Snap my end to other's start
+          if (Math.abs((newTime + currentDuration) - other.startTime) < snapThresholdSec) {
+            newTime = other.startTime - currentDuration;
+            break;
+          }
         }
       }
 
@@ -1238,6 +1260,8 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
   const setPlaybackSpeed = useProjectStore(s => s.setPlaybackSpeed);
   const bpm = useProjectStore(s => s.bpm);
   const snapToBeat = useProjectStore(s => s.snapToBeat);
+  const snapMode = useProjectStore(s => s.snapMode);
+  const setSnapMode = useProjectStore(s => s.setSnapMode);
   const setSnapToBeat = useProjectStore(s => s.setSnapToBeat);
   const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
   const clearTimelineItemSelection = useProjectStore(s => s.clearTimelineItemSelection);
@@ -1362,10 +1386,59 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
         const allIds = timelineItems.map(i => i.id);
         allIds.forEach(id => useProjectStore.getState().toggleTimelineItemSelection(id));
       }
+
+      // ── Zoom shortcuts (Ctrl/Cmd + / - / 0) ──
+      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')) {
+        e.preventDefault();
+        setPixelsPerSecond((p) => Math.min(MAX_PPS, p * 1.3));
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        e.preventDefault();
+        setPixelsPerSecond((p) => Math.max(MIN_PPS, p / 1.3));
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+        e.preventDefault();
+        const el = scrollRef.current;
+        const w = el ? el.clientWidth - 96 : 1200;
+        if (duration > 0 && w > 0) {
+          setPixelsPerSecond(Math.min(MAX_PPS, Math.max(MIN_PPS, w / duration)));
+        }
+      }
+
+      // ── Nudge shortcuts: arrow keys move selection by 1 grid unit ──
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const ids = selectedTimelineItemIds.length > 0
+          ? selectedTimelineItemIds
+          : selectedTimelineItemId ? [selectedTimelineItemId] : [];
+        if (ids.length === 0) return;
+        e.preventDefault();
+        const dir = e.key === 'ArrowRight' ? 1 : -1;
+        const fps = timecodeProvider.getFPS() || 60;
+        let delta: number;
+        if (e.altKey) {
+          delta = dir / fps; // 1 frame
+        } else if (e.shiftKey) {
+          delta = dir * 1; // 1 second
+        } else {
+          const grid = getActiveGrid({ bpm, snapMode });
+          delta = dir * (grid.interval > 0 ? grid.interval : 1 / fps);
+        }
+        const updateItem = useProjectStore.getState().updateTimelineItem;
+        ids.forEach((id) => {
+          const it = useProjectStore.getState().timelineItems.find((i) => i.id === id);
+          if (!it) return;
+          const next = Math.max(0, Math.min(duration, it.startTime + delta));
+          // Ctrl/Cmd: also quantize the result to the active grid centre.
+          const finalTime = (e.ctrlKey || e.metaKey)
+            ? quantizeTime(next, getActiveGrid({ bpm, snapMode }))
+            : next;
+          updateItem(id, { startTime: finalTime });
+        });
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, selectedTimelineItemId, selectedTimelineItemIds, timelineItems]);
+  }, [isPlaying, selectedTimelineItemId, selectedTimelineItemIds, timelineItems, bpm, snapMode, duration]);
 
   // ─── Drag-to-scrub on the track + playhead ──────────────────────────
   // Pointer Events cover mouse, touch and pen in one handler.
@@ -1456,7 +1529,8 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
 
       const finalTime = pendingScrubTimeRef.current ?? computeTimeFromClientX(e.clientX);
       pendingScrubTimeRef.current = null;
-      const snapped = snapTimeToBeat(finalTime, bpm, snapToBeat, pixelsPerSecond);
+      const grid = getActiveGrid({ bpm, snapMode });
+      const snapped = snapTime(finalTime, grid, pixelsPerSecond);
       setCurrentTime(snapped);
 
       try {
@@ -1475,7 +1549,7 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
         timelineTransport.play();
       }
     },
-    [bpm, snapToBeat, pixelsPerSecond, computeTimeFromClientX, setCurrentTime],
+    [bpm, snapMode, pixelsPerSecond, computeTimeFromClientX, setCurrentTime],
   );
 
   // Cancel any pending RAF on unmount.
@@ -1604,16 +1678,32 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
           <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-white/[0.06]" onClick={zoomIn}><ZoomIn className="h-2.5 w-2.5 text-muted-foreground/50" /></Button>
         </div>
 
-        {/* Beat snap */}
-        <button
-          className={cn("flex items-center gap-1 text-[8px] font-mono px-1.5 py-0.5 rounded-lg transition-all",
-            snapToBeat ? "bg-accent/10 text-accent" : "text-muted-foreground/25 hover:text-muted-foreground/40")}
-          onClick={() => setSnapToBeat(!snapToBeat)}
-          style={!snapToBeat ? { background: 'hsl(var(--muted) / 0.1)' } : undefined}
-        >
-          <Magnet className="h-2.5 w-2.5" />
-          {bpm && <span className="tabular-nums">{bpm}</span>}
-        </button>
+        {/* Snap mode segmented control: Auto / Beat / Frame / Off */}
+        {(() => {
+          const activeGrid = getActiveGrid({ bpm, snapMode });
+          return (
+            <div className="flex items-center gap-1">
+              <div className="flex items-center gap-px rounded-lg p-px" style={{ background: 'hsl(var(--muted) / 0.1)' }} title="Snap mode (drag/drop quantization)">
+                <Magnet className="h-2.5 w-2.5 text-muted-foreground/50 ml-1 mr-0.5" />
+                {(['auto', 'beat', 'frame', 'off'] as const).map((m) => (
+                  <button
+                    key={m}
+                    className={cn(
+                      "text-[8px] font-mono uppercase px-1.5 py-0.5 rounded-md transition-all tracking-wider",
+                      snapMode === m
+                        ? "bg-accent/12 text-accent"
+                        : "text-muted-foreground/35 hover:text-muted-foreground/55",
+                    )}
+                    onClick={() => setSnapMode(m)}
+                  >{m}</button>
+                ))}
+              </div>
+              <span className="text-[8px] font-mono text-muted-foreground/45 tabular-nums" title="Active snap unit">
+                {activeGrid.label}
+              </span>
+            </div>
+          );
+        })()}
 
         {/* LIVE indicator placeholder */}
         <div className="badge-live hidden" id="live-badge">● LIVE</div>
@@ -1664,7 +1754,7 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
             <div className="w-24 flex-shrink-0" />
             <div className="flex-1 relative">
               <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
-              <BeatGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
+              <TimelineGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} snapMode={snapMode} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               {/* Playhead — DOM-direct updates via transient Zustand subscription (zero re-renders) */}
               <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} onScrubPointerDown={handleScrubPointerDown} />
 

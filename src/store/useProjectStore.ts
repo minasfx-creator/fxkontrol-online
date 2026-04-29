@@ -47,6 +47,12 @@ export interface ProjectState {
   audioUrl: string | null;
   bpm: number | null;
   snapToBeat: boolean;
+  /** Snap-to-grid mode for timeline drag/drop/nudge.
+   *  - `auto` (default): beat if BPM is set, else frame.
+   *  - `beat`: always beat (falls back to frame if no BPM).
+   *  - `frame`: always frame (uses `timecodeProvider.getFPS()`).
+   *  - `off`: no snapping. */
+  snapMode: 'auto' | 'beat' | 'frame' | 'off';
   playbackSpeed: number;
   projectId: string | null;
   cameraKeyframes: CameraKeyframe[];
@@ -119,6 +125,7 @@ export interface ProjectState {
   setAudioUrl: (url: string | null) => void;
   setBpm: (bpm: number | null) => void;
   setSnapToBeat: (snap: boolean) => void;
+  setSnapMode: (mode: 'auto' | 'beat' | 'frame' | 'off') => void;
   setPlaybackSpeed: (speed: number) => void;
   setProjectId: (id: string | null) => void;
   combineAsChain: (itemIds: string[], gap?: number) => void;
@@ -185,6 +192,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   audioUrl: null,
   bpm: null,
   snapToBeat: false,
+  snapMode: 'auto',
   playbackSpeed: 1,
   projectId: null,
   cameraKeyframes: [],
@@ -445,7 +453,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   }),
   setAudioUrl: (url) => set({ audioUrl: url }),
   setBpm: (bpm) => set({ bpm }),
-  setSnapToBeat: (snap) => set({ snapToBeat: snap }),
+  setSnapToBeat: (snap) => set({ snapToBeat: snap, snapMode: snap ? 'auto' : 'off' }),
+  setSnapMode: (mode) => set({ snapMode: mode, snapToBeat: mode !== 'off' }),
   setPlaybackSpeed: (speed) => {
     // Sanitize: NaN, negative or non-finite values fall back to 1×.
     // Speed=0 is a valid technical state (external sync hold) and is preserved,
