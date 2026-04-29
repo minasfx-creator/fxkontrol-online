@@ -1,51 +1,76 @@
-## Plano: Desktop SkyCanvas + Limpeza/Bugs
+## Plano: Áudio na Timeline + Limpeza de Código Morto + Disparo Real Plug-and-Play
 
-### Contexto
-Você relatou que **SkyCanvas não abre no desktop**. Confirmei via browser tool que `/auth` em 1366×768 carrega normalmente (login renderiza com `min-h-[100dvh] w-full`). Como `/studio` é protegido, não consigo ver o sintoma direto sem login. Vou abordar em 3 frentes paralelas.
+### Frente 1 — Import de áudio pela timeline não abre seletor de arquivos
 
-### 1) SkyCanvas desktop — diagnosticar e corrigir o boot
+**Diagnóstico:** O `AudioWaveform.tsx` usa `<input type="file" accept="audio/*">` em duas posições (linha 519 no header e 597 no overlay vazio). O atributo `accept="audio/*"` no iOS/alguns desktops **filtra demais** e em alguns navegadores móveis simplesmente abre câmera/galeria em vez do seletor de arquivos. Além disso, formatos como `.flac`, `.opus`, `.aac` que o `audioUpload.ts` já suporta são **excluídos** pelo MIME `audio/*` em alguns browsers (Safari iOS especialmente).
 
-**Sintomas prováveis** (a confirmar com logs assim que o modo de build estiver ativo):
-- Spinner infinito → `CanvasLoaderWithTimeout` (8s) deveria mostrar "Reload Studio". Se não aparece, o chunk falha silenciosamente.
-- Tela preta sem erro → WebGPU pipeline aborta sem cair no `CanvasErrorBoundary`.
-- Crash visível → Já capturado pelo boundary.
+Também, no mobile, clicar no `<label>` aninhando `<input>` às vezes não dispara — e `disabled={uploading}` no `<input>` não impede o clique repetido no label.
 
-**Ações:**
-1. Adicionar instrumentação leve no boot do `SkyCanvas` (console.info em fases: `mount → R3F created → first frame`). Isso aparece nos logs do preview na próxima mensagem.
-2. Reduzir o timeout do `CanvasLoaderWithTimeout` de 8s para 5s e exibir o **motivo da espera** (qual chunk lazy ainda não resolveu) + botões `Reload` / `Skip GPU layers` / `Force WebGL2 fallback`.
-3. Forçar o `useGpgpuBackend` a respeitar um override `?backend=webgl2` na URL (já temos a flag `gpgpu_webgl2_fallback`) — se for problema de WebGPU em desktop, você consegue testar imediatamente.
-4. Logar o resultado de `navigator.gpu` + `WebGL2RenderingContext` no `skyCanvasDiagnostics` no mount, e exibir um banner discreto se ambos faltarem.
+**Correções:**
+- Trocar `accept="audio/*"` por uma lista de extensões explícita: `accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac,.aac,.webm,.opus"` — com extensões, navegadores que filtravam mostram todos os formatos suportados.
+- Substituir o padrão `<label><input/></label>` por um `<button>` que dispara um `inputRef.current?.click()` programaticamente (mais confiável em iOS e em hosts iframe da Lovable).
+- Reaproveitar `uploadAudioForProject()` de `src/lib/audioUpload.ts` em vez do upload duplicado dentro do próprio componente (DRY com o drop handler do viewport).
+- Adicionar `e.target.value = ''` após o upload pra permitir re-selecionar o mesmo arquivo (bug clássico do `<input file>`).
 
-### 2) Bugs e warnings concretos já vistos
+### Frente 2 — Código morto / limpeza
 
-- **`fetchPriority` (camelCase) em `src/pages/Auth.tsx:164`** dispara warning React em produção. Trocar para o atributo lowercase `fetchpriority` via `{...{ fetchpriority: 'high' }}` ou remover (é apenas um logo de 64px).
-- **`<meta name="apple-mobile-web-app-capable">` deprecado** em `index.html`. Adicionar também `<meta name="mobile-web-app-capable" content="yes">` mantendo o legacy.
-- **Warnings `postMessage target origin mismatch`** vêm de `cdn.gpteng.co/lovable.js` — não é nosso código, ignorar.
+Vou fazer um sweep estreito (não global) focado nos arquivos tocados nas últimas iterações:
 
-### 3) Limpeza dos novos arquivos de cards (Auto-Controller Launcher)
+- **`src/_quarantine/safety/*.txt`** — confirmar que zero imports apontam para lá; o `_quarantine` é proposital, mas `.txt` não é importável → manter; só verificar.
+- **`SetlistPanel.tsx`** — importa ícones `GripVertical`, `ArrowDownUp` que **nunca são renderizados** + `dragIdx` state declarado e nunca lido. Remover imports e state mortos.
+- **`AudioWaveform.tsx`** — após a Frente 1, o bloco `handleUpload` interno fica obsoleto (delegado pra `uploadAudioForProject`). Remover.
+- **`AutoControllerLauncher.tsx` / cards** — varrer `console.log` esquecidos do ciclo anterior.
+- Procurar outros componentes em `src/components/editor/` com imports não-usados via `rg "^import.*from" + cross-check` apenas nos arquivos editados recentemente. Não vou refatorar componentes intactos.
 
-Revisar os arquivos criados no último ciclo e aplicar:
-- `AutoControllerLauncher.tsx` — confirmar que **não monta** quando a rota é `/auth`, `/install` ou `/landing` (overlay global em `MainLayout` já cobre isso, mas vou validar e adicionar guard de rota se faltar).
-- `HoldToConfirmButton.tsx` — verificar `clearTimeout` no unmount e no `pointercancel` (memory mgmt rule).
-- `tuyaOutletControl.ts` / `dmxQuickActions.ts` — garantir retorno honesto `NO_REAL_SENDER` quando não há transporte ativo (regra honest-hardware), e não logar telemetria sintética.
-- `PyroControllerCard.tsx` — confirmar que `E-STOP` chama o caminho `<50ms` (CommandBus → SafetyStateMachine), não a API typed que passa pela ARM gate.
-- Remover qualquer `console.log` esquecido nos 7 arquivos novos.
+**Não vou** fazer um "remove all dead code do projeto inteiro" — isso é arriscado e fora do escopo desta passada. Foco: arquivos que tocamos.
 
-### 4) Aprimoramentos pequenos (sem mudar comportamento)
+### Frente 3 — Disparo real plug-and-play quando módulo é conectado
 
-- `controllerRegistry.ts`: extrair os `Set<string>` (`PYRO_KINDS`, `TUYA_KINDS`, `DMX_KINDS`) para uma única fonte com tipo `ControllerFamily` (evita drift entre o launcher e o registry).
-- `AutoControllerLauncher.tsx`: aplicar `React.memo` no `CardForKind` para evitar re-render quando outro device atualiza telemetria.
-- `useActiveControllers.ts`: garantir cleanup do `deviceAggregator.watch` no unmount (provavelmente já tem, vou confirmar).
+**Diagnóstico:** Hoje, `useActiveControllers` + `AutoControllerLauncher` já mostra o card no canto inferior direito quando um device é reconhecido. Mas:
+1. O card mostra **ARM/FIRE/E-STOP** mesmo se o dispositivo está em `LIVE READ-ONLY` mode ou se o transport é `NO_REAL_SENDER` (stub) — então o operador clica e nada dispara, sem feedback claro do **porquê**.
+2. Não há um indicador visual de "✅ pronto pra disparo real" vs "⚠️ apenas leitura/stub" no card.
+3. `PyroControllerCard` chama o caminho typed que passa pelo ARM gate; o E-STOP precisa ir pelo path direto `<50ms` — confirmar.
+4. Se um módulo FXK16 entra online via BLE depois que a página já carregou, o launcher aparece — mas o `useFXK16Bridge` singleton pode não ter sido instanciado nessa rota → o card existe mas o "Test FIRE" não tem bridge ativa.
 
-### O que não vou tocar
-- `src/integrations/supabase/*`, `src/_quarantine/safety/*`, `supabase/config.toml` — protegidos.
-- Qualquer reescrita do pipeline WebGPU em si — só instrumento e adiciono fallback opt-in via URL.
+**Aprimoramentos:**
+1. **Status de prontidão real no card** — adicionar um chip no topo de cada card:
+   - 🟢 `LIVE` — pelo menos um link tem `realSender !== NO_REAL_SENDER` E `provenance.evidence_level === 'verified'`
+   - 🟡 `READ-ONLY` — handshake OK mas sem sender real registrado
+   - 🔴 `NO-OP` — stub/sim mode (clique só loga, não dispara)
+   
+   Calcular via `controller.device.links` cruzando com `transportSenderRegistry`.
 
-### Entregáveis após aprovar
-- Você consegue abrir `/studio?backend=webgl2` no desktop como teste.
-- Logs do mount do SkyCanvas aparecem no console com cada fase.
-- Warning `fetchPriority` some.
-- Cards do launcher mais limpos e tipados.
+2. **Auto-init das bridges** — quando um controller pyro vira "active", instanciar a bridge correspondente (`useFXK16Bridge`, `usePBusHardware`, etc.) automaticamente em background pra que o "Test FIRE" do card funcione sem precisar abrir a console route. Fazer isso via um `controllerBridgeAutoInit.ts` que escuta `useActiveControllers` e mantém uma `Map<aggregateId, BridgeHandle>`.
+
+3. **Toast on-connect** — quando um device pyro/dmx/tuya passa para `online`, soltar um `toast.success("FXK16 #001 pronto · LIVE")` com botão "Abrir controle". Hoje só aparece o card silencioso no canto, fácil de não notar em telas grandes.
+
+4. **E-STOP path validado** — confirmar em `PyroControllerCard.tsx` que o handler do botão E-STOP chama `safetyStateMachine.emergencyStop()` direto (path <50ms), **NÃO** a typed API (`createFxk16CommandApi.estop()`) que passa pelo ARM gate e adiciona latência.
+
+5. **Persistir "auto-arm-on-connect = false" como default explícito** — adicionar uma flag `autoArmOnConnect` no `controllerRegistry` (default `false` pra **todos** os pyro kinds, conforme regra honest-hardware "nunca auto-arma"). Documentar visualmente no card.
+
+### Arquivos que vou tocar
+- `src/components/editor/AudioWaveform.tsx` (frente 1+2)
+- `src/components/editor/SetlistPanel.tsx` (frente 2 — cleanup)
+- `src/components/hardware/cards/PyroControllerCard.tsx` (frente 3 — chip + E-STOP path + bridge init)
+- `src/components/hardware/cards/TuyaControllerCard.tsx` (frente 3 — chip)
+- `src/components/hardware/cards/DmxControllerCard.tsx` (frente 3 — chip)
+- `src/components/hardware/cards/GenericControllerCard.tsx` (frente 3 — chip)
+- `src/components/hardware/AutoControllerLauncher.tsx` (frente 3 — toast on-connect)
+- `src/core/discovery/controllerRegistry.ts` (frente 3 — flag autoArmOnConnect)
+- **NOVO:** `src/core/hardware/controllerBridgeAutoInit.ts` (frente 3 — auto-init bridges)
+- **NOVO:** `src/components/hardware/shared/LiveStatusChip.tsx` (frente 3 — chip reutilizável)
+
+### Não vou tocar
+- `src/integrations/supabase/*`, `_quarantine/safety/*`, `supabase/config.toml`
+- O safety state machine em si — só consumo a API `emergencyStop()` que já existe
+- Pipeline WebGPU / SkyCanvas (tema separado)
+- Storage bucket `audio` (já existe e funciona)
+
+### Resultado esperado
+- No celular/desktop, clicar no ícone 📤 da trilha de áudio **abre o seletor de arquivos** com todos os formatos suportados.
+- Re-selecionar o mesmo arquivo funciona.
+- Plug um FXK16 USB/BLE → toast "FXK16 pronto · LIVE", card aparece com chip 🟢 LIVE, botão "Test FIRE" hold-800ms já funciona sem precisar abrir outra rota.
+- Sem hardware real, o chip mostra 🔴 NO-OP e os botões ficam visualmente "desabilitados" (não escondidos — honest-hardware).
 
 ### Pergunta opcional
-Se quando você abre `/studio` no desktop você vê **spinner infinito**, **tela preta**, **erro vermelho** ou **algo específico** (ex: chão sem terreno, sem fogos), me diga numa linha que ajusto a frente 1 antes de implementar.
+Você quer que o **toast de "device pronto"** seja **sempre exibido** quando um módulo conecta, ou só quando é a **primeira conexão da sessão** daquele aggregateId (evita spam se o link cair e voltar a cada 30s)? Default que vou aplicar: **só primeira conexão da sessão**.
