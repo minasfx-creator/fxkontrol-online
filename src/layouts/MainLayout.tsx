@@ -27,6 +27,7 @@ const RenderCounterOverlay = import.meta.env.DEV
 // Lazy-load heavy components that aren't needed for initial paint
 const AppSidebar = lazy(lazyRetry(() => import('@/components/AppSidebar').then(m => ({ default: m.AppSidebar }))));
 const FXKAssistant = lazy(lazyRetry(() => import('@/components/FXKAssistant').then(m => ({ default: m.FXKAssistant }))));
+const AutoControllerLauncher = lazy(lazyRetry(() => import('@/components/hardware/AutoControllerLauncher').then(m => ({ default: m.AutoControllerLauncher }))));
 // Deterministic kernel (timeline clock pump, lockstep, persistence) — must
 // mount on EVERY protected route AND on mobile so Play actually advances time.
 // Previously this was nested inside <Index> desktop branch only, which left
@@ -247,6 +248,12 @@ export default function MainLayout() {
       {/* Overlays OUTSIDE the filtered div so position:fixed works correctly */}
       <Suspense fallback={null}>
         <FXKAssistant />
+      </Suspense>
+
+      {/* Auto-launcher: any recognised module/equipment online → controller card
+          appears bottom-right with ARM/FIRE/E-STOP ready. */}
+      <Suspense fallback={null}>
+        <AutoControllerLauncher />
       </Suspense>
 
       {isArmed && !commandImmersive && (
