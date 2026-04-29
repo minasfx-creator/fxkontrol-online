@@ -541,7 +541,7 @@ function Index() {
         {activePanel === 'takeoffgrid' && <TakeoffGridPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'transitions' && <TransitionPlannerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'lasercontrol' && <LaserControlPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'usb' && <USBConnectionPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'usb' && <HardwareHubPanel onClose={() => setActivePanel(null)} initialTab="usb" />}
         {activePanel === 'videochoreo' && <VideoChoreoPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showven' && <ShowvenEquipmentPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'generative' && <GenerativeEffectsPanel onClose={() => setActivePanel(null)} />}
