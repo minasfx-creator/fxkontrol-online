@@ -135,6 +135,9 @@ export default function FleetManagementPanel({ onClose }: FleetManagementPanelPr
   const clearPreflightResults = useFleetStore(s => s.clearPreflightResults);
   const geofence = useFleetStore(s => s.geofence);
   const showState = useFleetStore(s => s.showState);
+  // Real wind reading from scene/weather store (m/s). Falls back to a safe
+  // default of 3 m/s if the scene has not yet been initialised.
+  const sceneWindSpeed = useSceneStore(s => s.settings.windSpeed);
 
   const fireone = useFireOneHardware();
   const pbus = usePBusHardware();
