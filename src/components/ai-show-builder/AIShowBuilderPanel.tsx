@@ -6,7 +6,7 @@
  * useProjectStore. Inspecionável antes de aplicar.
  */
 import { useCallback, useMemo, useState } from 'react';
-import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,8 @@ import type { ShowPlan, ShowPlanValidationResult, ShowSiteConfig } from '@/lib/a
 import { generateShowPlanFromPrompt } from '@/lib/aiShowBuilder/generateShowPlan';
 import { validateShowPlan } from '@/lib/aiShowBuilder/validateShowPlan';
 import { materializeShowPlan } from '@/lib/aiShowBuilder/materializeShowPlan';
+import ShowPlanReviewEditor from './ShowPlanReviewEditor';
+
 
 const QUICK_CHIPS: string[] = [
   '12 posições',
@@ -42,6 +44,8 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
   const [variation, setVariation] = useState(0);
   const [plan, setPlan] = useState<ShowPlan | null>(null);
   const [busy, setBusy] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+
 
   const validation: ShowPlanValidationResult | null = useMemo(
     () => (plan ? validateShowPlan(plan, site) : null),
@@ -152,8 +156,22 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
           )}
         </div>
 
-        {plan && validation && (
-          <PlanPreview plan={plan} validation={validation} onApply={handleApply} />
+        {plan && validation && !reviewing && (
+          <PlanPreview
+            plan={plan}
+            validation={validation}
+            onApply={handleApply}
+            onReview={() => setReviewing(true)}
+          />
+        )}
+
+        {plan && reviewing && (
+          <ShowPlanReviewEditor
+            plan={plan}
+            site={site}
+            onChange={setPlan}
+            onClose={() => setReviewing(false)}
+          />
         )}
 
         <p className="text-[11px] text-muted-foreground italic pt-1">
@@ -168,10 +186,12 @@ function PlanPreview({
   plan,
   validation,
   onApply,
+  onReview,
 }: {
   plan: ShowPlan;
   validation: ShowPlanValidationResult;
   onApply: () => void;
+  onReview: () => void;
 }) {
   return (
     <div className="rounded-md border border-border/50 bg-background/40 p-3 space-y-3">
@@ -234,7 +254,10 @@ function PlanPreview({
         </ScrollArea>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={onReview} className="gap-2">
+          <Pencil className="h-4 w-4" /> Revisar e editar
+        </Button>
         <Button onClick={onApply} disabled={!validation.ok}>
           Aplicar no mundo 3D
         </Button>
