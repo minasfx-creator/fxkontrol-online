@@ -311,6 +311,31 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     }
   }, [currentTime, audioInPoint]);
 
+  // Build the visible waveform from a decoded AudioBuffer, restricted to
+  // the active trim window `[in..out]`. Extracted so re-trim only re-runs
+  // the cheap downsample (no re-fetch / re-decode).
+  const rebuildWaveform = useCallback((buf: AudioBuffer) => {
+    const sr = buf.sampleRate;
+    const inP = useProjectStore.getState().audioInPoint;
+    const outP = useProjectStore.getState().audioOutPoint ?? buf.duration;
+    const startSample = Math.max(0, Math.floor(inP * sr));
+    const endSample = Math.min(buf.length, Math.floor(outP * sr));
+    const windowLen = Math.max(1, endSample - startSample);
+    const windowDur = Math.max(0.01, outP - inP);
+    const samples = Math.max(1, Math.floor(windowDur * pixelsPerSecond * 2));
+    const blockSize = Math.max(1, Math.floor(windowLen / samples));
+    const rawData = buf.getChannelData(0);
+    const downsampled = new Float32Array(samples);
+    for (let i = 0; i < samples; i++) {
+      let sum = 0;
+      const start = startSample + i * blockSize;
+      const end = Math.min(endSample, start + blockSize);
+      for (let j = start; j < end; j++) sum += Math.abs(rawData[j]);
+      downsampled[i] = sum / Math.max(1, end - start);
+    }
+    setWaveformData(downsampled);
+  }, [pixelsPerSecond]);
+
   // Load and decode audio for waveform + BPM
   const loadAudio = useCallback(async (url: string) => {
     try {
@@ -322,36 +347,26 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       }
 
       const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+      audioBufferRef.current = audioBuffer;
+      // Publish original duration so the trim handles know the upper bound.
+      setAudioOriginalDuration(audioBuffer.duration);
 
-      // Auto-adjust project duration to match audio length
-      const audioDuration = audioBuffer.duration;
-      if (audioDuration > 0) {
+      // Auto-adjust project duration to match the *trim window* if any (or
+      // the full audio when no trim was previously saved).
+      const inP = useProjectStore.getState().audioInPoint;
+      const outP = useProjectStore.getState().audioOutPoint ?? audioBuffer.duration;
+      const windowDur = Math.max(0, outP - inP);
+      if (windowDur > 0) {
         const store = useProjectStore.getState();
-        // Only extend — never shrink below current items
         const maxItemEnd = store.timelineItems.reduce((max, item) => {
           const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
           return Math.max(max, item.startTime + (effect?.duration ?? 3));
         }, 0);
-        const newDuration = Math.max(audioDuration, maxItemEnd);
+        const newDuration = Math.max(windowDur, maxItemEnd);
         store.setDuration(Math.ceil(newDuration));
       }
 
-      const rawData = audioBuffer.getChannelData(0);
-      const effectiveDuration = audioDuration > 0 ? Math.ceil(audioDuration) : duration;
-      const samples = Math.floor(effectiveDuration * pixelsPerSecond * 2);
-      const blockSize = Math.floor(rawData.length / samples);
-      const downsampled = new Float32Array(samples);
-
-      for (let i = 0; i < samples; i++) {
-        let sum = 0;
-        const start = i * blockSize;
-        for (let j = 0; j < blockSize && start + j < rawData.length; j++) {
-          sum += Math.abs(rawData[start + j]);
-        }
-        downsampled[i] = sum / blockSize;
-      }
-
-      setWaveformData(downsampled);
+      rebuildWaveform(audioBuffer);
 
       const detectedBpm = detectBPM(audioBuffer);
       setBpm(detectedBpm);
@@ -362,7 +377,16 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       console.error('Failed to decode audio:', err);
       toast.error('Erro ao decodificar áudio');
     }
-  }, [duration, pixelsPerSecond, setBpm]);
+  }, [duration, pixelsPerSecond, setBpm, setAudioOriginalDuration, rebuildWaveform]);
+
+  // Re-downsample whenever the trim window or zoom changes, without
+  // re-fetching the audio. Skipped while the operator is mid-drag — we
+  // refresh on drag end / Apply to keep dragging silky.
+  useEffect(() => {
+    if (audioBufferRef.current && !draggingHandle) {
+      rebuildWaveform(audioBufferRef.current);
+    }
+  }, [audioInPoint, audioOutPoint, pixelsPerSecond, draggingHandle, rebuildWaveform]);
 
   useEffect(() => {
     if (audioUrl) loadAudio(audioUrl);
