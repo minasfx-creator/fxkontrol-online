@@ -161,7 +161,7 @@ export default function Auth() {
                 width={64}
                 height={64}
                 decoding="async"
-                fetchPriority="high"
+                {...({ fetchpriority: 'high' } as Record<string, string>)}
                 className="h-16 w-16 object-contain"
                 style={{ filter: 'drop-shadow(0 0 12px hsl(32 100% 50% / 0.3))' }}
               />

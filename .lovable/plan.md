@@ -1,69 +1,51 @@
-# Cards diretos para Tuya e DMX no Auto-Controller Launcher
+## Plano: Desktop SkyCanvas + Limpeza/Bugs
 
-Hoje, quando um Tuya, ENTTEC, FTDI/CH340/CP210x ou Art-Net node fica online, o overlay mostra apenas um botão genérico "Abrir controle". Vamos substituir por **ações inline** que executam de fato — respeitando a política honest-hardware (nada de botão fake; se não houver caminho real, o botão fica desabilitado com tooltip explicando).
+### Contexto
+Você relatou que **SkyCanvas não abre no desktop**. Confirmei via browser tool que `/auth` em 1366×768 carrega normalmente (login renderiza com `min-h-[100dvh] w-full`). Como `/studio` é protegido, não consigo ver o sintoma direto sem login. Vou abordar em 3 frentes paralelas.
 
-## Comportamento por tipo
+### 1) SkyCanvas desktop — diagnosticar e corrigir o boot
 
-### Tuya / CubeMesh (smart outlets)
-- **ON** e **OFF** por dispositivo (sem ARM — não é safety-critical, latência 200–800 ms já documentada).
-- Hold-to-Confirm **400 ms** (mais leve que pyro) para evitar toque acidental.
-- **ALL OFF** vermelho (envia OFF para todos os outlets Tuya/CubeMesh online).
-- Badge amarelo "LOW-PRECISION" para reforçar que não serve para pyro.
-- Como hoje não há `tuya-control` edge function nem bridge real, os botões chamam um adapter `tuyaOutletControl.ts` novo que:
-  - Se houver `link.transport === 'webble'` ativo → escreve no characteristic Tuya BLE-mesh já mapeado em `WebBleDiscoverer`.
-  - Caso contrário → mostra toast `NO_REAL_SENDER — pareie via /pairing/ble` e mantém o botão visualmente "armed-but-blocked" (cinza, não verde fake).
+**Sintomas prováveis** (a confirmar com logs assim que o modo de build estiver ativo):
+- Spinner infinito → `CanvasLoaderWithTimeout` (8s) deveria mostrar "Reload Studio". Se não aparece, o chunk falha silenciosamente.
+- Tela preta sem erro → WebGPU pipeline aborta sem cair no `CanvasErrorBoundary`.
+- Crash visível → Já capturado pelo boundary.
 
-### ENTTEC / DMX-generic / Art-Net node
-- **BLACKOUT** (vermelho, ação primária): chama `dmxUniverseManager.blackout(universe)` para o universo associado ao device, ou `blackoutAll()` se desconhecido.
-- **HOLD ON 100%**: snapshot temporário 255 em todos os canais por 1 s (útil para teste de conexão), via `setChannels` + `flush({ critical: true })`.
-- **PING / ArtPoll** para Art-Net node (`artnetModuleService.ping(ip)`), com badge mostrando RTT da última sondagem.
-- Sem ARM (DMX não tem estado armado por protocolo).
-- Multi-universo: se o device declarar `links[t].universes`, mostra um seletor compacto.
+**Ações:**
+1. Adicionar instrumentação leve no boot do `SkyCanvas` (console.info em fases: `mount → R3F created → first frame`). Isso aparece nos logs do preview na próxima mensagem.
+2. Reduzir o timeout do `CanvasLoaderWithTimeout` de 8s para 5s e exibir o **motivo da espera** (qual chunk lazy ainda não resolveu) + botões `Reload` / `Skip GPU layers` / `Force WebGL2 fallback`.
+3. Forçar o `useGpgpuBackend` a respeitar um override `?backend=webgl2` na URL (já temos a flag `gpgpu_webgl2_fallback`) — se for problema de WebGPU em desktop, você consegue testar imediatamente.
+4. Logar o resultado de `navigator.gpu` + `WebGL2RenderingContext` no `skyCanvasDiagnostics` no mount, e exibir um banner discreto se ambos faltarem.
 
-### Pyro (FXK16 / FireOne / Showven) — **inalterado**
-Continua exatamente como está hoje (ARM hold-800ms, TEST CH1, E-STOP, Console).
+### 2) Bugs e warnings concretos já vistos
 
-## Estrutura de código
+- **`fetchPriority` (camelCase) em `src/pages/Auth.tsx:164`** dispara warning React em produção. Trocar para o atributo lowercase `fetchpriority` via `{...{ fetchpriority: 'high' }}` ou remover (é apenas um logo de 64px).
+- **`<meta name="apple-mobile-web-app-capable">` deprecado** em `index.html`. Adicionar também `<meta name="mobile-web-app-capable" content="yes">` mantendo o legacy.
+- **Warnings `postMessage target origin mismatch`** vêm de `cdn.gpteng.co/lovable.js` — não é nosso código, ignorar.
 
-```text
-src/components/hardware/
-  AutoControllerLauncher.tsx        (refator: roteia por kind)
-  cards/
-    PyroControllerCard.tsx          (extraído do arquivo atual)
-    TuyaControllerCard.tsx          (novo)
-    DmxControllerCard.tsx           (novo — ENTTEC + dmx-generic + artnet-node)
-    GenericControllerCard.tsx       (mantido p/ kind 'unknown' fallback)
-  shared/
-    HoldToConfirmButton.tsx         (novo — utilitário reaproveitável,
-                                     extrai a lógica hold já duplicada)
+### 3) Limpeza dos novos arquivos de cards (Auto-Controller Launcher)
 
-src/core/hardware/
-  tuyaOutletControl.ts              (novo adapter honest-hardware)
-  dmxQuickActions.ts                (novo wrapper sobre DMXUniverseManager
-                                     + ArtNetBridge para blackout/hold)
-```
+Revisar os arquivos criados no último ciclo e aplicar:
+- `AutoControllerLauncher.tsx` — confirmar que **não monta** quando a rota é `/auth`, `/install` ou `/landing` (overlay global em `MainLayout` já cobre isso, mas vou validar e adicionar guard de rota se faltar).
+- `HoldToConfirmButton.tsx` — verificar `clearTimeout` no unmount e no `pointercancel` (memory mgmt rule).
+- `tuyaOutletControl.ts` / `dmxQuickActions.ts` — garantir retorno honesto `NO_REAL_SENDER` quando não há transporte ativo (regra honest-hardware), e não logar telemetria sintética.
+- `PyroControllerCard.tsx` — confirmar que `E-STOP` chama o caminho `<50ms` (CommandBus → SafetyStateMachine), não a API typed que passa pela ARM gate.
+- Remover qualquer `console.log` esquecido nos 7 arquivos novos.
 
-`controllerRegistry.ts` ganha:
-- `capabilities.quickActions: Array<'on'|'off'|'blackout'|'hold-on'|'ping'|'all-off'>` para o card saber o que renderizar sem switch interno gigante.
+### 4) Aprimoramentos pequenos (sem mudar comportamento)
 
-## Arquivos editados
+- `controllerRegistry.ts`: extrair os `Set<string>` (`PYRO_KINDS`, `TUYA_KINDS`, `DMX_KINDS`) para uma única fonte com tipo `ControllerFamily` (evita drift entre o launcher e o registry).
+- `AutoControllerLauncher.tsx`: aplicar `React.memo` no `CardForKind` para evitar re-render quando outro device atualiza telemetria.
+- `useActiveControllers.ts`: garantir cleanup do `deviceAggregator.watch` no unmount (provavelmente já tem, vou confirmar).
 
-- `src/components/hardware/AutoControllerLauncher.tsx` — remove `GenericControllerCard` inline; passa a importar e rotear via `kind`.
-- `src/core/discovery/controllerRegistry.ts` — adiciona `quickActions` em cada profile.
-- `src/hooks/useActiveControllers.ts` — sem mudança funcional (apenas re-exporta `kind` se necessário).
+### O que não vou tocar
+- `src/integrations/supabase/*`, `src/_quarantine/safety/*`, `supabase/config.toml` — protegidos.
+- Qualquer reescrita do pipeline WebGPU em si — só instrumento e adiciono fallback opt-in via URL.
 
-## Detalhes técnicos relevantes
+### Entregáveis após aprovar
+- Você consegue abrir `/studio?backend=webgl2` no desktop como teste.
+- Logs do mount do SkyCanvas aparecem no console com cada fase.
+- Warning `fetchPriority` some.
+- Cards do launcher mais limpos e tipados.
 
-- **Política honest-hardware preservada**: nenhum card "simula" sucesso. Se o transport real não está disponível (`NO_REAL_SENDER`), o botão renderiza desabilitado + tooltip `Pareie pelo wizard primeiro`.
-- **Memory hygiene**: timers do hold em `useRef`, limpos em `onMouseUp` / `onTouchEnd` / `onMouseLeave` / unmount.
-- **Critical send**: blackout DMX usa `flush({ critical: true })` para bypass do rate-cap 33 PPS (já suportado em `ArtNetBridge`).
-- **A11y**: cada card mantém `role="region"` + `aria-label`; ações destrutivas marcam `aria-pressed` durante hold.
-- **Telemetria**: cada execução loga em `blackbox.record('cmd', …)` para o black-box 100 ms já existente.
-- **Restrição UI**: nenhum botão é colocado dentro de `CollapsibleTrigger` (regra Radix).
-
-## Não-objetivos
-
-- Não cria UI nova fora do overlay.
-- Não modifica `useFXK16Commands`, `DeviceAggregator` nem o pairing wizard.
-- Não adiciona nova edge function Tuya — se faltar, o card é honesto sobre isso.
-- Não mexe na ordem de empilhamento nem no posicionamento (continua bottom-right, vertical).
+### Pergunta opcional
+Se quando você abre `/studio` no desktop você vê **spinner infinito**, **tela preta**, **erro vermelho** ou **algo específico** (ex: chão sem terreno, sem fogos), me diga numa linha que ajusto a frente 1 antes de implementar.
