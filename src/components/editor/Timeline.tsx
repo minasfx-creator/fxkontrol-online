@@ -1,5 +1,6 @@
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet, Copy, GripVertical, Zap, Sparkles, ChevronDown, ChevronRight, Clock, Move, Crosshair, Link2, Unlink, Scissors, ClipboardPaste, Eye, EyeOff, Headphones, RefreshCw } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet, Copy, GripVertical, Zap, Sparkles, ChevronDown, ChevronRight, Clock, Move, Crosshair, Link2, Unlink, Scissors, ClipboardPaste, Eye, EyeOff, Headphones, RefreshCw, AlignVerticalJustifyCenter } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
@@ -1469,6 +1470,16 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
           updateItem(id, { startTime: finalTime });
         });
       }
+
+      // ── Quantize to grid (Q) — aligns selected items to active snap mode ──
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'q' || e.key === 'Q')) {
+        const ids = selectedTimelineItemIds.length > 0
+          ? selectedTimelineItemIds
+          : selectedTimelineItemId ? [selectedTimelineItemId] : [];
+        if (ids.length === 0) return;
+        e.preventDefault();
+        quantizeRef.current?.();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -1606,6 +1617,46 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
     const ids = selectedTimelineItemIds.length > 0 ? selectedTimelineItemIds : selectedTimelineItemId ? [selectedTimelineItemId] : [];
     if (ids.length > 0) duplicateTimelineItems(ids);
   };
+
+  const quantizeRef = useRef<(() => void) | null>(null);
+
+  /** Quantize selected timeline items' startTime to the active grid (auto/beat/frame).
+   *  No-op when snapMode === 'off' or when grid.interval <= 0. Reports outcome via toast. */
+  const handleQuantizeSelected = useCallback(() => {
+    const ids = selectedTimelineItemIds.length > 0
+      ? selectedTimelineItemIds
+      : selectedTimelineItemId ? [selectedTimelineItemId] : [];
+    if (ids.length === 0) {
+      toast.info('Quantize: no timeline items selected');
+      return;
+    }
+    if (snapMode === 'off') {
+      toast.warning('Quantize: snap mode is OFF — switch to Auto/Beat/Frame first');
+      return;
+    }
+    const grid = getActiveGrid({ bpm, snapMode });
+    if (!grid.interval || grid.interval <= 0) {
+      toast.warning('Quantize: active grid has no interval');
+      return;
+    }
+    const updateItem = useProjectStore.getState().updateTimelineItem;
+    const items = useProjectStore.getState().timelineItems;
+    let moved = 0;
+    ids.forEach((id) => {
+      const it = items.find((i) => i.id === id);
+      if (!it) return;
+      const q = quantizeTime(it.startTime, grid);
+      const clamped = Math.max(0, Math.min(duration || q, q));
+      if (Math.abs(clamped - it.startTime) > 1e-6) {
+        updateItem(id, { startTime: clamped });
+        moved++;
+      }
+    });
+    toast.success(`Quantized ${moved}/${ids.length} item${ids.length > 1 ? 's' : ''} to ${grid.label}`);
+  }, [selectedTimelineItemIds, selectedTimelineItemId, snapMode, bpm, duration]);
+
+  // Keep ref in sync so keyboard shortcut (Q) can call latest version without re-binding listeners.
+  useEffect(() => { quantizeRef.current = handleQuantizeSelected; }, [handleQuantizeSelected]);
 
   const zoomIn = () => setPixelsPerSecond((p) => Math.min(MAX_PPS, p * 1.3));
   const zoomOut = () => setPixelsPerSecond((p) => Math.max(MIN_PPS, p / 1.3));
@@ -1749,6 +1800,30 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
             <Button variant="ghost" size="icon" className="h-5 w-5 rounded" onClick={handleDuplicate}><Copy className="h-2.5 w-2.5" /></Button>
           </div>
         )}
+
+        {/* Quantize to grid — aligns selected items to the active snap mode (Q) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "h-6 w-6 rounded-md transition-all",
+            (selectionCount > 0 && snapMode !== 'off')
+              ? "text-accent hover:bg-accent/10"
+              : "text-muted-foreground/30 hover:text-muted-foreground/50",
+          )}
+          disabled={selectionCount === 0 || snapMode === 'off'}
+          onClick={handleQuantizeSelected}
+          title={
+            selectionCount === 0
+              ? 'Quantize: select items first'
+              : snapMode === 'off'
+                ? 'Quantize: enable snap (Auto/Beat/Frame)'
+                : `Quantize ${selectionCount} item${selectionCount > 1 ? 's' : ''} to ${getActiveGrid({ bpm, snapMode }).label} (Q)`
+          }
+          aria-label="Quantize selected items to grid"
+        >
+          <AlignVerticalJustifyCenter className="h-3 w-3" />
+        </Button>
 
         <div className="flex-1" />
 
