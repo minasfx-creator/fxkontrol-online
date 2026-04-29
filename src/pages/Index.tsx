@@ -122,7 +122,7 @@ const FlightCheckTab = lz(() => import('@/components/editor/safety/FlightCheckTa
 const TakeoffGridPanel = lz(() => import('@/components/editor/TakeoffGridPanel'));
 const TransitionPlannerPanel = lz(() => import('@/components/editor/TransitionPlannerPanel'));
 const LaserControlPanel = lz(() => import('@/components/editor/LaserControlPanel'));
-const USBConnectionPanel = lz(() => import('@/components/editor/USBConnectionPanel'));
+const HardwareHubPanel = lz(() => import('@/components/editor/HardwareHubPanel'));
 const VideoChoreoPanel = lz(() => import('@/components/editor/VideoChoreoPanel'));
 const ShowvenEquipmentPanel = lz(() => import('@/components/editor/ShowvenEquipmentPanel'));
 const GenerativeEffectsPanel = lz(() => import('@/components/editor/GenerativeEffectsPanel'));
