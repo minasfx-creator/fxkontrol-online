@@ -1,67 +1,120 @@
 ## Objetivo
 
-Permitir **arrastar o playhead na timeline** (ruler/track) com o mouse/toque e ver o **SkyCanvas atualizando em tempo real** (drones, light points e explosões/shells) sem precisar dar Play.
+Adicionar controles **In/Out** (recorte não-destrutivo) ao áudio na timeline. O recorte:
 
-## Diagnóstico atual
+1. Mapeia o tempo da timeline `[0 .. (out − in)]` para o tempo do áudio `[in .. out]` durante reprodução, scrub e exportação.
+2. Recalcula a **waveform** mostrando só a região recortada.
+3. Recalcula a **duração** do projeto (`duration = out − in`).
+4. Re-timestampa **automaticamente** os efeitos da timeline para preservar seu alinhamento musical relativo ao novo `t=0`.
+5. É **não-destrutivo**: o arquivo de áudio original não é alterado; só `audioInPoint` e `audioOutPoint` são persistidos. Pode ser desfeito (Reset) recuperando os efeitos de antes do trim.
 
-1. `Timeline.tsx` só tem **clique único** no track (`handleTrackClick` → `setCurrentTime`). Não existe `mousedown + mousemove + mouseup` para arrastar.
-2. `PlayheadIndicator` (linha 1190) é puramente visual — não captura mouse.
-3. O pipeline de tempo já funciona corretamente:
-   - `setCurrentTime(t)` → `timelineClock.seek(t)` → `onChange` listener (store/useProjectStore.ts:510) → store atualiza → componentes re-renderizam.
-   - `Canvas` está em `frameloop="always"` (default), `useFrame` roda continuamente mesmo pausado.
-   - `DroneRendererSwitch` / `DroneChoreography` consomem `currentTime` da store ✅.
-   - `TimelineEffects` (FireworkRenderer.tsx:1156) consome `currentTime` ✅.
-   - `ShellExplosionManager` recebe `currentTime` como prop ✅.
-4. **Mas**: `FireworkBurst.useFrame` calcula partículas usando `progress` (derivado de `currentTime`), e o efeito só é renderizado enquanto `currentTime` está dentro da janela `[startTime, startTime+totalDuration]`. Portanto **scrub instantâneo já vai funcionar para shells/drones assim que houver drag**.
-5. Audio `AudioWaveform.tsx:255` já tem guard de 0.15s para não devolver o tempo antigo durante scrub ✅.
+## Mudanças
 
-## Mudanças propostas
+### 1. Store — pontos In/Out + ação de trim com recálculo
 
-### 1. Drag-to-scrub no ruler e na faixa do playhead — `src/components/editor/Timeline.tsx`
+**`src/store/useProjectStore.ts`**
 
-Substituir o `onClick={handleTrackClick}` do scroll container por um par `onPointerDown`/`onPointerMove`/`onPointerUp` (Pointer Events para cobrir mouse + touch + caneta de uma vez):
+Novos campos:
+- `audioInPoint: number` (segundos no áudio original, default `0`)
+- `audioOutPoint: number | null` (segundos no áudio original, `null` = fim do arquivo)
+- `audioOriginalDuration: number | null` (preenchido após decodificação; necessário para clamp dos pontos)
+- `audioTrimHistory: { in: number; out: number | null; timestamp: number; itemSnapshot: TimelineItem[] } | null` (1 nível de undo; opcional para ação "Reset trim")
 
-- `onPointerDown`: capturar o ponteiro (`setPointerCapture`), calcular `time` a partir do clientX (mesma fórmula atual), chamar `setCurrentTime(time)`, marcar `scrubbingRef = true`. Salvar se `wasPlaying = isPlaying` e dar `pause()` (`timelineTransport.pause()`) durante o scrub para não brigar com lockstep.
-- `onPointerMove`: se `scrubbingRef`, recalcular `time` e chamar `setCurrentTime(time)` a cada move (com `requestAnimationFrame` throttle para no máx. 1 update por frame).
-- `onPointerUp`/`onPointerCancel`: liberar capture, `scrubbingRef = false`. Se `wasPlaying`, retomar com `timelineTransport.play()`. Aplicar `snapTimeToBeat` somente no release final (não a cada move) para feedback fluido + snap final preciso.
-- `clearTimelineItemSelection()` continua sendo chamado no down se não houver shift/ctrl/meta.
+Setters:
+- `setAudioInPoint(t)`, `setAudioOutPoint(t)` — só atualizam o valor (uso em drag visual; não recalcula nada).
+- `setAudioOriginalDuration(d)` — chamado pelo `loadAudio()` após `decodeAudioData`.
+- **`applyAudioTrim(inT, outT)`** — ação atômica que:
+  1. Faz clamp: `0 ≤ inT < outT ≤ audioOriginalDuration`. Rejeita janela menor que `0.05s`.
+  2. Calcula `delta = inT - audioInPoint` e `newDuration = outT - inT`.
+  3. Para cada `TimelineItem` / `CueMarker` / `CameraKeyframe` / `Trajectory.waypoints`: `t' = t - delta`. Items que ficarem com `t' < 0` ou `t' > newDuration` são **filtrados** (mas o `audioTrimHistory` guarda snapshot original para undo).
+  4. Atualiza `audioInPoint`, `audioOutPoint`, `duration = newDuration`, `currentTime = clamp(currentTime - delta, 0, newDuration)`.
+  5. Salva snapshot no `audioTrimHistory` (1 nível de undo).
+- **`resetAudioTrim()`** — restaura `audioInPoint=0`, `audioOutPoint=null`, `duration = audioOriginalDuration`, e se houver `audioTrimHistory`, restaura `timelineItems` para o snapshot e reverte os deltas dos demais (cues/camera/waypoints) somando o delta original de volta.
 
-Isto preserva o single-click (down+up no mesmo ponto) e adiciona o drag.
+### 2. Mapeamento timeline ↔ áudio
 
-### 2. Tornar `PlayheadIndicator` arrastável — `Timeline.tsx`
+**`src/lib/audio/audioTrimMapping.ts`** (novo, puro):
+```ts
+export const timelineToAudio = (t: number, inP: number) => t + inP;
+export const audioToTimeline = (a: number, inP: number) => a - inP;
+export const clampToTrim   = (a: number, inP: number, outP: number | null, origDur: number) =>
+  Math.min(outP ?? origDur, Math.max(inP, a));
+```
 
-Adicionar `pointer-events-auto` + `cursor-ew-resize` na haste do playhead (atualmente `pointer-events-none`) e plugar os mesmos handlers do item 1, para o operador poder agarrar a linha do playhead diretamente. A bolinha do topo ganha um “handle” maior (12px) para alvo confortável em mobile.
+Aplicado em:
 
-### 3. Garantir que o snap só ocorra em momentos certos
+- **`AudioWaveform.tsx`** — `useEffect` que cria o `<Audio>`: assim que o áudio carrega e `audioInPoint > 0`, faz `audio.currentTime = audioInPoint`. Adiciona listener `timeupdate`: se `audio.currentTime >= (audioOutPoint ?? duration)`, pausa e dispara `setPlaying(false)`. Sync de seek: agora compara `audio.currentTime` com `currentTime + audioInPoint` (com a mesma tolerância 0.15s).
+- **`useAudioMasterClock.ts`** — quando lê `audio.currentTime`, escreve `timelineClock.syncExternalTime(audio.currentTime - audioInPoint)`. Lê `audioInPoint` via `useProjectStore.getState()` no callback (não como dep do hook, pra evitar reinit).
 
-`snapTimeToBeat` hoje é aplicado a cada clique. Durante drag isso causa “stair-step” visual desagradável. Aplicar:
-- Sem snap durante `pointermove` (movimento contínuo).
-- Snap no `pointerup` (commit final).
+### 3. Recálculo de waveform restrito à região
 
-### 4. Auto-pause durante scrub (qualidade de vida)
+**`AudioWaveform.tsx`** — `loadAudio()`:
+- Após `decodeAudioData`, chama `setAudioOriginalDuration(audioBuffer.duration)`.
+- A janela usada para downsample passa a ser `[audioInPoint .. audioOutPoint ?? audioBuffer.duration]`:
+  - `startSample = floor(audioInPoint * sampleRate)`
+  - `endSample = floor((audioOutPoint ?? audioBuffer.duration) * sampleRate)`
+  - `samples = floor(newDuration * pixelsPerSecond * 2)`
+  - `blockSize = floor((endSample - startSample) / samples)`
+  - Loop sobre `rawData.subarray(startSample, endSample)`.
+- Re-executa quando `audioInPoint` ou `audioOutPoint` mudam (adicionar às deps de `loadAudio` + `useEffect` que o invoca).
+- Cache: guarda o `AudioBuffer` decodificado em `audioBufferRef` para evitar re-fetch a cada mudança de in/out — só o downsample é refeito.
 
-Quando o operador começa a arrastar enquanto está tocando, pausar via `timelineTransport.pause()` no `pointerdown` e retomar no `pointerup` se estava tocando. Evita que o lockstep playback continue avançando junto e crie corrida.
+### 4. UI — handles In/Out + toolbar de trim
 
-### 5. Sem mudanças necessárias em SkyCanvas / FireworkRenderer / ShellExplosionManager / DroneChoreography
+Estende **`AudioWaveform.tsx`** (lane existente, sem novo arquivo grande):
 
-Esses já reagem a `currentTime` via store. A correção é puramente de input no Timeline.
+- Dois handles verticais sobrepostos ao canvas: traço vertical (`Scissors` icon no topo) na posição `(audioInPoint - audioInPoint) * pps = 0` e `(audioOutPoint - audioInPoint) * pps = duration * pps`. Inicialmente nas bordas; viram interativos só quando o usuário entra em "Trim Mode".
+- Toggle "Trim" (ícone `Scissors`) na coluna de controles à esquerda (perto do botão Snap). Estado local `trimMode`.
+- Quando `trimMode === true`:
+  - Aparecem dois handles draggáveis (largura 6 px, altura total da lane, cor `hsl(var(--warning))`).
+  - Drag atualiza um estado local `pendingIn / pendingOut` (preview ao vivo, sem mexer no áudio nem na timeline ainda — apenas redesenha overlay sombreado nas regiões fora do range).
+  - Botões `Apply trim` (chama `applyAudioTrim(pendingIn, pendingOut)`) e `Cancel`. Ao aplicar, mostra toast com `delta` aplicado e nº de cues/items removidos.
+  - Atalhos: `I` define `pendingIn = currentTime + audioInPoint`; `O` define `pendingOut = currentTime + audioInPoint`. Apenas quando `trimMode === true` e foco fora de inputs.
+- Quando `audioInPoint > 0 || audioOutPoint != null` (já recortado), aparece chip `Trimmed · X.XXs–Y.YYs` com botão `Reset` (chama `resetAudioTrim()`).
 
-## Detalhes técnicos
+### 5. Re-timestampagem automática dos efeitos
 
-- Pointer Events (`onPointerDown` etc.) cobrem mouse, touch e Apple Pencil em um só handler — evita duplicar `touchstart`/`mousedown` como o `TimelineScrubber` faz.
-- Throttle por `requestAnimationFrame`: guardar `pendingTimeRef`; no rAF callback chamar `setCurrentTime(pendingTimeRef.current)`. Cancelar rAF no unmount/up.
-- Não tocar em `timelineClock.ts` nem no listener de `useProjectStore.ts:510` — eles já propagam `seek` corretamente (`lastPositionChange = 'seek'` força `notify()`).
-- `PlayheadIndicator` precisa receber `scrollRef` ou usar `getBoundingClientRect` da própria haste para calcular delta — preferir reutilizar o handler global do scroll container e deixar a haste apenas passar o evento (sem `stopPropagation`).
-- Manter `touch-action: none` no scroll container para prevenir scroll horizontal do navegador durante o drag em mobile.
+Implementada em `applyAudioTrim` (passo 1.3 acima). Regras:
 
-## Arquivos modificados
+| Entidade | Campo de tempo | Ação |
+|---|---|---|
+| `TimelineItem` | `startTime` | `t' = t - delta`; remove se `t' < -0.05` ou `t' > newDuration + 0.05` |
+| `CueMarker` | `time` | mesmo |
+| `CameraKeyframe` | `time` | mesmo |
+| `Trajectory.waypoints[].time` | `time` | mesmo (waypoints removidos se ficarem fora) |
+| `DroneFormation` | `startTime` | mesmo (formações inteiras removidas se startTime fora) |
 
-- `src/components/editor/Timeline.tsx` — refatorar `handleTrackClick` em `handlePointerDown/Move/Up`, ajustar `PlayheadIndicator` para ser arrastável, adicionar `touch-action: none`.
+Toast de sumário: `Trimmed audio · removed N items / M cues outside new window`.
 
-## Critério de aceite
+### 6. Persistência e exportações
 
-- Arrastar a régua/playhead com mouse: drones se movem para a formação correspondente em tempo real, shells aparecem/desaparecem na janela `[startTime, startTime+duration]` enquanto o cursor passa, light points atualizam.
-- Em mobile (touch), mesmo comportamento sem trigger de scroll horizontal.
-- Single-click continua pulando para o instante (snap-to-beat aplicado).
-- Se estava tocando, pausa automaticamente ao começar drag e retoma ao soltar.
-- Sem regressões em: marquee de seleção, drag de itens, resize de itens, atalhos de teclado.
+- `useProjectPersistence.ts`: incluir `audioInPoint`, `audioOutPoint`, `audioOriginalDuration` no snapshot serializado (com migration: se ausentes, defaults `0` / `null` / `null`).
+- Exportações VVIZ/CSV/JSON (`exportEngine.ts`): **nenhuma mudança nos timestamps emitidos** — eles já refletem o `startTime` pós-trim do store, que é o tempo "show". Adicionar metadata-comment opcional `// audio in=X out=Y` no header dos exports é fora do escopo desta tarefa.
+
+### 7. Edge cases protegidos
+
+- Áudio ainda decodificando quando o usuário clica `Apply trim` → desabilita botão até `audioOriginalDuration != null`.
+- Reset trim sem snapshot disponível (projeto recarregado) → restaura só `in=0, out=null, duration=audioOriginalDuration` sem mexer em items (com toast `History indisponível, items mantidos`).
+- Áudio trocado (`setAudioUrl(novoUrl)`): zera `audioInPoint`, `audioOutPoint`, `audioOriginalDuration` e `audioTrimHistory` para evitar aplicar trim de outro arquivo.
+- `currentTime` durante trim mode: continua usando o sistema de coordenadas da **timeline atual** (pré-aplicação); só após `Apply` o store muda.
+
+### 8. Testes
+
+`src/lib/audio/__tests__/audioTrimMapping.test.ts` (novo):
+- `timelineToAudio(0, 5) === 5`; `audioToTimeline(5, 5) === 0`.
+- `clampToTrim` respeita bordas com e sem `outPoint`.
+
+`src/store/__tests__/applyAudioTrim.test.ts` (novo):
+- Trim `[2, 8]` em projeto com items em `t=1, 3, 7, 9` → resultado: items em `1, 5` (os de `t=1` e `t=9` removidos), `duration=6`.
+- Snapshot preservado em `audioTrimHistory`; `resetAudioTrim` restaura ambos.
+- Trim com `inT >= outT` ou janela < 50ms → no-op + warning.
+
+### Arquivos tocados
+
+- `src/store/useProjectStore.ts` — campos, setters, `applyAudioTrim`, `resetAudioTrim`, hook em `setAudioUrl`.
+- `src/lib/audio/audioTrimMapping.ts` — **novo** (helpers puros).
+- `src/components/editor/AudioWaveform.tsx` — handles UI, modo trim, atalhos `I/O`, downsample restrito, sync com `audioInPoint`, fim-de-trim em `timeupdate`, cache de `AudioBuffer`.
+- `src/hooks/useAudioMasterClock.ts` — subtrai `audioInPoint` ao escrever no `timelineClock`.
+- `src/hooks/useProjectPersistence.ts` — serializa/deserializa novos campos com migration.
+- `src/lib/audio/__tests__/audioTrimMapping.test.ts` — **novo**.
+- `src/store/__tests__/applyAudioTrim.test.ts` — **novo**.

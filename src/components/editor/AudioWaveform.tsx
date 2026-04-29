@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { Upload, Music, Zap, Volume2, VolumeX, GripHorizontal, Minus, Plus, Flag, Trash2 } from 'lucide-react';
+import { Upload, Music, Zap, Volume2, VolumeX, GripHorizontal, Minus, Plus, Flag, Trash2, Scissors, Check, X, RotateCcw } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useAuth } from '@/hooks/useAuth';
@@ -84,6 +84,13 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     const currentTime = useProjectStore(s => s.currentTime);
   const duration = useProjectStore(s => s.duration);
   const audioUrl = useProjectStore(s => s.audioUrl);
+  const audioInPoint = useProjectStore(s => s.audioInPoint);
+  const audioOutPoint = useProjectStore(s => s.audioOutPoint);
+  const audioOriginalDuration = useProjectStore(s => s.audioOriginalDuration);
+  const setAudioOriginalDuration = useProjectStore(s => s.setAudioOriginalDuration);
+  const applyAudioTrim = useProjectStore(s => s.applyAudioTrim);
+  const resetAudioTrim = useProjectStore(s => s.resetAudioTrim);
+  const setPlaying = useProjectStore(s => s.setPlaying);
   const bpm = useProjectStore(s => s.bpm);
   const isPlaying = useProjectStore(s => s.isPlaying);
   const playbackSpeed = useProjectStore(s => s.playbackSpeed);
@@ -102,6 +109,14 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   const [volume, setVolume] = useState(0.8);
   const [trackHeight, setTrackHeight] = useState(MIN_HEIGHT);
   const [isResizing, setIsResizing] = useState(false);
+  // Trim mode: when true the operator can drag In/Out handles. Pending
+  // values live here (in *original audio file* seconds) and are only
+  // committed to the store on Apply. This keeps the waveform/timeline live
+  // while the operator scrubs the handles without thrashing the store.
+  const [trimMode, setTrimMode] = useState(false);
+  const [pendingIn, setPendingIn] = useState<number>(0);
+  const [pendingOut, setPendingOut] = useState<number>(0);
+  const [draggingHandle, setDraggingHandle] = useState<'in' | 'out' | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -109,6 +124,9 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   const playControllerRef = useRef<ReturnType<typeof playAudioWithRetry> | null>(null);
   const resizeStartY = useRef(0);
   const resizeStartH = useRef(0);
+  // Cache the decoded AudioBuffer so re-trimming only re-runs the
+  // downsample (cheap), never a re-fetch + decodeAudioData (slow, network).
+  const audioBufferRef = useRef<AudioBuffer | null>(null);
 
   // Resize via drag handle
   const onResizeStart = useCallback((e: React.MouseEvent) => {
@@ -170,6 +188,37 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   // between music and 3D viewport / FX spawns.
   useAudioMasterClock(audioRef, audioUrl);
 
+  // Trim window enforcement on the <audio> element:
+  //   1. When the in-point changes (or audio is freshly loaded), seek the
+  //      audio element to `audioInPoint` so playback starts from the trim.
+  //      Skipped while the user is actively dragging the In handle to avoid
+  //      audible scrubbing on every pixel of drag.
+  //   2. While playing, monitor `timeupdate` and pause/clamp the moment we
+  //      cross the out-point. The store's `setPlaying(false)` is called so
+  //      the lockstep / UI also see the stop, not just the audio element.
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (draggingHandle !== 'in' && audio.currentTime < audioInPoint - 0.05) {
+      try { audio.currentTime = audioInPoint; } catch { /* readyState too low */ }
+    }
+  }, [audioInPoint, audioUrl, draggingHandle]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const out = audioOutPoint ?? (audioOriginalDuration ?? Infinity);
+    const onTimeUpdate = () => {
+      if (audio.currentTime >= out - 1e-3) {
+        audio.pause();
+        try { audio.currentTime = out; } catch { /* ignore */ }
+        setPlaying(false);
+      }
+    };
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    return () => audio.removeEventListener('timeupdate', onTimeUpdate);
+  }, [audioOutPoint, audioOriginalDuration, audioUrl, setPlaying]);
+
   // Sync volume / mute
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = muted ? 0 : volume;
@@ -195,8 +244,12 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     playControllerRef.current = null;
 
     if (isPlaying) {
-      if (Math.abs(audio.currentTime - currentTime) > 0.15) {
-        audio.currentTime = currentTime;
+      // Show-time → file-time conversion: the store's `currentTime` runs
+      // 0..duration relative to `audioInPoint`; the audio element runs in
+      // the original file's coordinate system.
+      const targetFileTime = currentTime + audioInPoint;
+      if (Math.abs(audio.currentTime - targetFileTime) > 0.15) {
+        audio.currentTime = targetFileTime;
       }
 
       let gestureToastId: string | number | undefined;
@@ -252,10 +305,36 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (Math.abs(audio.currentTime - currentTime) > 0.15) {
-      audio.currentTime = currentTime;
+    const targetFileTime = currentTime + audioInPoint;
+    if (Math.abs(audio.currentTime - targetFileTime) > 0.15) {
+      audio.currentTime = targetFileTime;
     }
-  }, [currentTime]);
+  }, [currentTime, audioInPoint]);
+
+  // Build the visible waveform from a decoded AudioBuffer, restricted to
+  // the active trim window `[in..out]`. Extracted so re-trim only re-runs
+  // the cheap downsample (no re-fetch / re-decode).
+  const rebuildWaveform = useCallback((buf: AudioBuffer) => {
+    const sr = buf.sampleRate;
+    const inP = useProjectStore.getState().audioInPoint;
+    const outP = useProjectStore.getState().audioOutPoint ?? buf.duration;
+    const startSample = Math.max(0, Math.floor(inP * sr));
+    const endSample = Math.min(buf.length, Math.floor(outP * sr));
+    const windowLen = Math.max(1, endSample - startSample);
+    const windowDur = Math.max(0.01, outP - inP);
+    const samples = Math.max(1, Math.floor(windowDur * pixelsPerSecond * 2));
+    const blockSize = Math.max(1, Math.floor(windowLen / samples));
+    const rawData = buf.getChannelData(0);
+    const downsampled = new Float32Array(samples);
+    for (let i = 0; i < samples; i++) {
+      let sum = 0;
+      const start = startSample + i * blockSize;
+      const end = Math.min(endSample, start + blockSize);
+      for (let j = start; j < end; j++) sum += Math.abs(rawData[j]);
+      downsampled[i] = sum / Math.max(1, end - start);
+    }
+    setWaveformData(downsampled);
+  }, [pixelsPerSecond]);
 
   // Load and decode audio for waveform + BPM
   const loadAudio = useCallback(async (url: string) => {
@@ -268,36 +347,26 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       }
 
       const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+      audioBufferRef.current = audioBuffer;
+      // Publish original duration so the trim handles know the upper bound.
+      setAudioOriginalDuration(audioBuffer.duration);
 
-      // Auto-adjust project duration to match audio length
-      const audioDuration = audioBuffer.duration;
-      if (audioDuration > 0) {
+      // Auto-adjust project duration to match the *trim window* if any (or
+      // the full audio when no trim was previously saved).
+      const inP = useProjectStore.getState().audioInPoint;
+      const outP = useProjectStore.getState().audioOutPoint ?? audioBuffer.duration;
+      const windowDur = Math.max(0, outP - inP);
+      if (windowDur > 0) {
         const store = useProjectStore.getState();
-        // Only extend — never shrink below current items
         const maxItemEnd = store.timelineItems.reduce((max, item) => {
           const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
           return Math.max(max, item.startTime + (effect?.duration ?? 3));
         }, 0);
-        const newDuration = Math.max(audioDuration, maxItemEnd);
+        const newDuration = Math.max(windowDur, maxItemEnd);
         store.setDuration(Math.ceil(newDuration));
       }
 
-      const rawData = audioBuffer.getChannelData(0);
-      const effectiveDuration = audioDuration > 0 ? Math.ceil(audioDuration) : duration;
-      const samples = Math.floor(effectiveDuration * pixelsPerSecond * 2);
-      const blockSize = Math.floor(rawData.length / samples);
-      const downsampled = new Float32Array(samples);
-
-      for (let i = 0; i < samples; i++) {
-        let sum = 0;
-        const start = i * blockSize;
-        for (let j = 0; j < blockSize && start + j < rawData.length; j++) {
-          sum += Math.abs(rawData[start + j]);
-        }
-        downsampled[i] = sum / blockSize;
-      }
-
-      setWaveformData(downsampled);
+      rebuildWaveform(audioBuffer);
 
       const detectedBpm = detectBPM(audioBuffer);
       setBpm(detectedBpm);
@@ -308,7 +377,16 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       console.error('Failed to decode audio:', err);
       toast.error('Erro ao decodificar áudio');
     }
-  }, [duration, pixelsPerSecond, setBpm]);
+  }, [duration, pixelsPerSecond, setBpm, setAudioOriginalDuration, rebuildWaveform]);
+
+  // Re-downsample whenever the trim window or zoom changes, without
+  // re-fetching the audio. Skipped while the operator is mid-drag — we
+  // refresh on drag end / Apply to keep dragging silky.
+  useEffect(() => {
+    if (audioBufferRef.current && !draggingHandle) {
+      rebuildWaveform(audioBufferRef.current);
+    }
+  }, [audioInPoint, audioOutPoint, pixelsPerSecond, draggingHandle, rebuildWaveform]);
 
   useEffect(() => {
     if (audioUrl) loadAudio(audioUrl);
@@ -486,6 +564,95 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     }
   }, [pixelsPerSecond, cueMarkers, removeCueMarker]);
 
+  // ── Trim handlers ────────────────────────────────────────────────
+  const trimWindowDur = (audioOutPoint ?? audioOriginalDuration ?? 0) - audioInPoint;
+  const isTrimmed = audioInPoint > 0 || (audioOutPoint != null && audioOriginalDuration != null && audioOutPoint < audioOriginalDuration);
+
+  const handleApplyTrim = useCallback(() => {
+    const r = applyAudioTrim(pendingIn, pendingOut);
+    if (!r.ok) {
+      toast.error(r.error ?? 'Trim inválido');
+      return;
+    }
+    setTrimMode(false);
+    toast.success(
+      `Trim aplicado · ${(pendingOut - pendingIn).toFixed(2)}s` +
+      ((r.removedItems ?? 0) + (r.removedCues ?? 0) > 0
+        ? ` · ${r.removedItems ?? 0} cues / ${r.removedCues ?? 0} markers fora removidos`
+        : ''),
+    );
+  }, [applyAudioTrim, pendingIn, pendingOut]);
+
+  const handleResetTrim = useCallback(() => {
+    resetAudioTrim();
+    setTrimMode(false);
+    toast.success('Trim removido — áudio restaurado');
+  }, [resetAudioTrim]);
+
+  // Drag start for an In/Out handle. Drag updates `pending*` only; commit
+  // happens via the Apply button to keep the timeline stable while scrubbing.
+  const startHandleDrag = useCallback((which: 'in' | 'out') => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const container = containerRef.current;
+    if (!container || audioOriginalDuration == null) return;
+    setDraggingHandle(which);
+    const rect = container.getBoundingClientRect();
+
+    const onMove = (ev: MouseEvent) => {
+      const x = ev.clientX - rect.left + container.scrollLeft;
+      // The canvas always represents `[audioInPoint .. audioOutPoint]` so
+      // x=0 maps to audioInPoint, but during trim mode we want raw file-time
+      // — easiest is to anchor on the *current* in/out (pre-trim) and scale.
+      const showTime = x / pixelsPerSecond;
+      const fileTime = audioInPoint + showTime;
+      const clamped = Math.max(0, Math.min(audioOriginalDuration, fileTime));
+      if (which === 'in') {
+        setPendingIn(Math.min(clamped, pendingOut - 0.05));
+      } else {
+        setPendingOut(Math.max(clamped, pendingIn + 0.05));
+      }
+    };
+    const onUp = () => {
+      setDraggingHandle(null);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [audioInPoint, audioOriginalDuration, pendingIn, pendingOut, pixelsPerSecond]);
+
+  // Keyboard shortcuts: I/O set pending in/out at playhead, Esc cancels.
+  useEffect(() => {
+    if (!trimMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      const tgt = e.target as HTMLElement | null;
+      if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
+      if (e.key === 'i' || e.key === 'I') {
+        const t = currentTime + audioInPoint;
+        setPendingIn(Math.min(t, pendingOut - 0.05));
+        e.preventDefault();
+      } else if (e.key === 'o' || e.key === 'O') {
+        const t = currentTime + audioInPoint;
+        setPendingOut(Math.max(t, pendingIn + 0.05));
+        e.preventDefault();
+      } else if (e.key === 'Escape') {
+        setTrimMode(false);
+        e.preventDefault();
+      } else if (e.key === 'Enter') {
+        handleApplyTrim();
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [trimMode, currentTime, audioInPoint, pendingIn, pendingOut, handleApplyTrim]);
+
+  // Pixel positions of the In/Out handles within the canvas (which spans
+  // `[audioInPoint .. audioOutPoint]` in file-time).
+  const inHandleX = (pendingIn - audioInPoint) * pixelsPerSecond;
+  const outHandleX = (pendingOut - audioInPoint) * pixelsPerSecond;
+
   const isExpanded = trackHeight > MIN_HEIGHT;
 
   return (
@@ -548,6 +715,27 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
               <Zap className="h-2.5 w-2.5" />
             </button>
           )}
+          {audioUrl && audioOriginalDuration != null && (
+            <button
+              className={cn(
+                "text-[8px] font-mono-code px-1 py-0.5 rounded-sm border",
+                trimMode
+                  ? "bg-warning/20 text-warning border-warning/40"
+                  : "bg-surface-2 text-muted-foreground border-border hover:text-warning"
+              )}
+              onClick={() => {
+                const next = !trimMode;
+                if (next) {
+                  setPendingIn(audioInPoint);
+                  setPendingOut(audioOutPoint ?? audioOriginalDuration);
+                }
+                setTrimMode(next);
+              }}
+              title="Trim audio (set In/Out)"
+            >
+              <Scissors className="h-2.5 w-2.5" />
+            </button>
+          )}
         </div>
 
         {/* Height controls + BPM */}
@@ -590,6 +778,60 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
           className="w-full h-full"
           style={{ width: `${duration * pixelsPerSecond}px`, height: `${trackHeight}px` }}
         />
+
+        {/* Trim mode: draggable In/Out handles + dimmed regions outside the
+            pending window. Commits to the store via Apply. */}
+        {trimMode && audioOriginalDuration != null && (
+          <>
+            <div
+              className="absolute top-0 bg-background/60 pointer-events-none"
+              style={{ left: 0, width: `${Math.max(0, inHandleX)}px`, height: '100%' }}
+            />
+            <div
+              className="absolute top-0 bg-background/60 pointer-events-none"
+              style={{
+                left: `${outHandleX}px`,
+                width: `${Math.max(0, duration * pixelsPerSecond - outHandleX)}px`,
+                height: '100%',
+              }}
+            />
+            <div
+              className="absolute top-0 cursor-ew-resize bg-warning hover:bg-warning/80 z-20"
+              style={{ left: `${inHandleX - 3}px`, width: '6px', height: '100%' }}
+              onMouseDown={startHandleDrag('in')}
+              title={`In: ${pendingIn.toFixed(2)}s (press I at playhead)`}
+            />
+            <div
+              className="absolute top-0 cursor-ew-resize bg-warning hover:bg-warning/80 z-20"
+              style={{ left: `${outHandleX - 3}px`, width: '6px', height: '100%' }}
+              onMouseDown={startHandleDrag('out')}
+              title={`Out: ${pendingOut.toFixed(2)}s (press O at playhead)`}
+            />
+            <div className="absolute top-1 left-1 flex items-center gap-1 bg-surface-1/95 border border-warning/40 rounded px-1.5 py-0.5 z-30">
+              <span className="text-[9px] font-mono-code text-warning tabular-nums">
+                {pendingIn.toFixed(2)}s → {pendingOut.toFixed(2)}s ({(pendingOut - pendingIn).toFixed(2)}s)
+              </span>
+              <button onClick={handleApplyTrim} className="text-safety hover:text-safety/80" title="Apply (Enter)">
+                <Check className="h-3 w-3" />
+              </button>
+              <button onClick={() => setTrimMode(false)} className="text-muted-foreground hover:text-foreground" title="Cancel (Esc)">
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          </>
+        )}
+
+        {!trimMode && isTrimmed && (
+          <div className="absolute top-1 left-1 flex items-center gap-1 bg-surface-1/95 border border-warning/30 rounded px-1.5 py-0.5 z-20">
+            <Scissors className="h-2.5 w-2.5 text-warning" />
+            <span className="text-[9px] font-mono-code text-warning tabular-nums">
+              {audioInPoint.toFixed(2)}s–{(audioOutPoint ?? audioOriginalDuration ?? 0).toFixed(2)}s
+            </span>
+            <button onClick={handleResetTrim} className="text-muted-foreground hover:text-foreground" title="Reset trim">
+              <RotateCcw className="h-2.5 w-2.5" />
+            </button>
+          </div>
+        )}
 
         {/* Cue marker tooltips (DOM overlay for hover) */}
         {cueMarkers.map((cue) => (
