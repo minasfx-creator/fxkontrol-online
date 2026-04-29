@@ -139,7 +139,9 @@ export function GroundDecalManager() {
     scene.add(group);
     return () => {
       scene.remove(group);
-      clearDecals();
+      // Full singleton teardown — disposes geometries, shader materials,
+      // and clears the active decal pool (M5).
+      disposeDecalSystem();
     };
   }, [scene]);
 
