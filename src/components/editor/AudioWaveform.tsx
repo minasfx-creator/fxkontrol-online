@@ -105,6 +105,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const playControllerRef = useRef<ReturnType<typeof playAudioWithRetry> | null>(null);
   const resizeStartY = useRef(0);
   const resizeStartH = useRef(0);
@@ -416,26 +417,28 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     ctx.stroke();
   }, [waveformData, beats, currentTime, duration, pixelsPerSecond, trackHeight, cueMarkers]);
 
+  const openFilePicker = useCallback(() => {
+    if (uploading) return;
+    if (!user) {
+      toast.error('Faça login para enviar áudio');
+      return;
+    }
+    // Programmatic click on the hidden <input> — more reliable than the
+    // <label><input/></label> pattern on iOS Safari and inside the Lovable
+    // preview iframe (some browsers swallow synthetic clicks bubbled from
+    // <label>).
+    fileInputRef.current?.click();
+  }, [uploading, user]);
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // Always reset so re-selecting the same file re-fires `change`.
+    e.target.value = '';
     if (!file || !user) return;
 
     setUploading(true);
     try {
-      const path = `${user.id}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage.from('audio').upload(path, file);
-      if (uploadError) throw uploadError;
-
-      const { data: signedData, error: signError } = await supabase.storage
-        .from('audio')
-        .createSignedUrl(path, 3600);
-
-      if (signError) throw signError;
-
-      setAudioUrl(signedData.signedUrl);
-      toast.success('Áudio enviado!');
-    } catch (err: any) {
-      toast.error(err.message || 'Erro no upload');
+      await uploadAudioForProject(file, user.id);
     } finally {
       setUploading(false);
     }
