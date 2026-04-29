@@ -11,11 +11,11 @@
  * command API (`useFXK16Commands`); E-STOP bypasses ARM and
  * auto-disarms.
  */
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bluetooth, Usb, Power, AlertTriangle, Flame, CheckCircle2, RadioTower,
-  ExternalLink, Loader2, Lock, Unlock,
+  ExternalLink, Loader2, Lock, Unlock, HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,9 +25,28 @@ import { toast } from 'sonner';
 import { useFXK16Bridge, FXK16_MAX_CHANNEL } from '@/hooks/useFXK16Bridge';
 import { useFXK16Commands } from '@/hooks/useFXK16Commands';
 import type { CommandResponse, Fxk16ErrorCode } from '@/lib/fxk16/commandApi';
+import { detectPlatformCapabilities } from '@/lib/platformCapabilities';
 
 const HOLD_MS = 800;
 const PULSE_MS = 50;
+
+/** Map a bridge reason code to an actionable, human-readable hint. */
+function usbErrorHint(code?: string, msg?: string): string | null {
+  switch (code) {
+    case 'UNSUPPORTED_TRANSPORT':
+      return 'Use Chrome/Edge desktop ou Chrome Android. Safari/iOS não suportam WebSerial.';
+    case 'PERMISSION_DENIED':
+      return 'Selecione a porta do FXK16 no diálogo do navegador (CP210x / CH340 / ESP32-S3).';
+    case 'SERIAL_OPEN_FAILED':
+      return 'Porta ocupada ou cabo defeituoso. Feche Arduino IDE / outros apps e tente novamente.';
+    case 'HANDSHAKE_TIMEOUT':
+      return 'FXK16 não respondeu. Confirme firmware FXK16, pressione RST na placa e reconecte.';
+    case 'HEARTBEAT_TIMEOUT':
+      return 'Link caiu após conectar. Verifique cabo e estabilidade de energia.';
+    default:
+      return msg ? null : null;
+  }
+}
 
 interface Props {
   /** Tighter padding for embedding in panel headers. */
@@ -55,6 +74,8 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
   const { status, isFXK16, isConnected, connectUSB, connectBLE, disconnect } =
     useFXK16Bridge();
   const { api, armed, ready } = useFXK16Commands();
+  const caps = useMemo(() => detectPlatformCapabilities(), []);
+  const usbHint = usbErrorHint((status as any).lastErrorCode, status.lastError);
 
   const [busy, setBusy] = useState<'usb' | 'ble' | 'disc' | null>(null);
   const [testCh, setTestCh] = useState(1);
@@ -174,7 +195,21 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
       {status.lastError && !isConnected && (
         <div className="rounded-md border border-red-500/40 bg-red-500/10 px-2 py-1.5 flex items-start gap-1.5">
           <AlertTriangle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
-          <p className="text-[10px] text-red-200 break-words">{status.lastError}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] text-red-200 break-words">{status.lastError}</p>
+            {usbHint && (
+              <p className="mt-1 text-[10px] text-amber-200/90 break-words flex items-start gap-1">
+                <HelpCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                <span>{usbHint}</span>
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!caps.webSerial && !isConnected && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[10px] text-amber-200">
+          WebSerial indisponível neste navegador. USB direto requer Chrome/Edge desktop ou Chrome Android — use BLE como alternativa.
         </div>
       )}
 
@@ -203,7 +238,8 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
             variant="outline"
             className="h-10 gap-1.5 text-[11px]"
             onClick={onConnectUSB}
-            disabled={busy !== null || status.connecting}
+            disabled={busy !== null || status.connecting || !caps.webSerial}
+            title={caps.webSerial ? 'Conectar FXK16 via USB-CDC (CP210x / CH340 / ESP32-S3)' : 'WebSerial indisponível neste navegador'}
           >
             {busy === 'usb' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Usb className="w-3.5 h-3.5" />}
             USB
