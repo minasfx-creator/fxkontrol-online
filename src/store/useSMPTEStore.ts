@@ -418,13 +418,43 @@ useProjectStore.subscribe((state, prev) => {
   }
 });
 
-// Continuous tick at ~30Hz when running
-setInterval(() => {
-  const smpte = useSMPTEStore.getState();
-  if (!smpte.running) return;
-  const t = timelineClock.getTime();
-  const external = smpte.mode === 'slave' && smpte.externalEnabled && smpte.status === 'connected'
-    ? smpte.externalTimeSeconds
-    : smpte.mode === 'slave' ? t + (Math.random() - 0.5) * 0.002 : undefined;
-  smpte.tick(t, external);
-}, 33);
+// ── SMPTE tick loop (~30Hz) ───────────────────────────────────────────
+// WHY: this used to be a top-level setInterval, which meant every Vite HMR
+// reload of this module spawned a new ticker without clearing the old one.
+// After a few hot reloads the store was being ticked 5–10× per frame,
+// burning CPU and producing observable jitter in the timeline. We now
+// expose an explicit start/stop pair, guarded by a window-level singleton
+// so even multiple module instances (HMR, Capacitor isolates) cannot
+// overlap.
+const SMPTE_TICKER_KEY = "__fxk_smpte_ticker__" as const;
+
+type GlobalWithTicker = typeof globalThis & {
+  [SMPTE_TICKER_KEY]?: ReturnType<typeof setInterval> | null;
+};
+
+export function startSmpteTicker(): void {
+  const g = globalThis as GlobalWithTicker;
+  if (g[SMPTE_TICKER_KEY]) return; // already running
+  g[SMPTE_TICKER_KEY] = setInterval(() => {
+    const smpte = useSMPTEStore.getState();
+    if (!smpte.running) return;
+    const t = timelineClock.getTime();
+    const external = smpte.mode === 'slave' && smpte.externalEnabled && smpte.status === 'connected'
+      ? smpte.externalTimeSeconds
+      : smpte.mode === 'slave' ? t + (Math.random() - 0.5) * 0.002 : undefined;
+    smpte.tick(t, external);
+  }, 33);
+}
+
+export function stopSmpteTicker(): void {
+  const g = globalThis as GlobalWithTicker;
+  if (g[SMPTE_TICKER_KEY]) {
+    clearInterval(g[SMPTE_TICKER_KEY]!);
+    g[SMPTE_TICKER_KEY] = null;
+  }
+}
+
+// Vite HMR: dispose old ticker before the next module instance installs one.
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => stopSmpteTicker());
+}
