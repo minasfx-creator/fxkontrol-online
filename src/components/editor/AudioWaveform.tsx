@@ -626,6 +626,27 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
               <Zap className="h-2.5 w-2.5" />
             </button>
           )}
+          {audioUrl && audioOriginalDuration != null && (
+            <button
+              className={cn(
+                "text-[8px] font-mono-code px-1 py-0.5 rounded-sm border",
+                trimMode
+                  ? "bg-warning/20 text-warning border-warning/40"
+                  : "bg-surface-2 text-muted-foreground border-border hover:text-warning"
+              )}
+              onClick={() => {
+                const next = !trimMode;
+                if (next) {
+                  setPendingIn(audioInPoint);
+                  setPendingOut(audioOutPoint ?? audioOriginalDuration);
+                }
+                setTrimMode(next);
+              }}
+              title="Trim audio (set In/Out)"
+            >
+              <Scissors className="h-2.5 w-2.5" />
+            </button>
+          )}
         </div>
 
         {/* Height controls + BPM */}
