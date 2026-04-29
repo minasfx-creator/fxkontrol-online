@@ -559,7 +559,7 @@ function Index() {
         {activePanel === 'remotecontrol' && <RemoteControlPanel onClose={() => setActivePanel(null)} initialMode={remoteMode} />}
         {activePanel === 'controllers' && <VirtualControllerHub onClose={() => setActivePanel(null)} />}
         {activePanel === 'fieldmap' && <FieldMap2D onClose={() => setActivePanel(null)} />}
-        {activePanel === 'connections' && <ConnectionManagerPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'connections' && <HardwareHubPanel onClose={() => setActivePanel(null)} initialTab="connections" />}
         {activePanel === 'radio' && <RadioControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'ma3' && <MA3ControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'sacnmonitor' && <SACNMonitorPanel onClose={() => setActivePanel(null)} />}
