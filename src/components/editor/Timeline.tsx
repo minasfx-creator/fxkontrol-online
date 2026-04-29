@@ -26,6 +26,15 @@ import {
   useRecentDropId,
   type SnapReason,
 } from './timelineDropFx';
+import {
+  getActiveGrid,
+  snapTime,
+  quantizeTime,
+  stepTime,
+  getSubdivisions,
+  type SnapMode,
+} from './timelineGrid';
+import { timecodeProvider } from '@/core/time/timecodeProvider';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -34,41 +43,42 @@ function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
 }
 
-function snapTimeToBeat(time: number, bpm: number | null, snapEnabled: boolean, pixelsPerSecond: number): number {
-  if (!snapEnabled || !bpm) return time;
-  const beatInterval = 60 / bpm;
-  const nearestBeat = Math.round(time / beatInterval) * beatInterval;
-  const threshold = 8 / pixelsPerSecond;
-  return Math.abs(time - nearestBeat) < threshold ? nearestBeat : time;
-}
+// ── TimelineGrid: replaces the old beat-only `BeatGrid`. Now renders beat OR
+//    frame OR second subdivisions depending on the active `snapMode`, BPM and
+//    zoom level. Virtualised to the visible scroll window.
+const TimelineGrid = React.forwardRef<HTMLDivElement, {
+  duration: number;
+  pixelsPerSecond: number;
+  bpm: number | null;
+  snapMode: SnapMode;
+  scrollLeft?: number;
+  viewportWidth?: number;
+}>(function TimelineGrid({ duration, pixelsPerSecond, bpm, snapMode, scrollLeft = 0, viewportWidth = 1200 }, _ref) {
+  const grid = getActiveGrid({ bpm, snapMode });
+  if (grid.unit === 'none') return null;
+  const lines = getSubdivisions({ grid, duration, pixelsPerSecond, scrollLeft, viewportWidth });
+  if (lines.length === 0) return null;
 
-const BeatGrid = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number; bpm: number | null; scrollLeft?: number; viewportWidth?: number }>(function BeatGrid({ duration, pixelsPerSecond, bpm, scrollLeft = 0, viewportWidth = 1200 }, _ref) {
-  if (!bpm) return null;
-  const beatInterval = 60 / bpm;
-
-  // Virtualize: only render lines visible in the scroll viewport + buffer
-  const buffer = 200; // px
-  const startTime = Math.max(0, (scrollLeft - buffer) / pixelsPerSecond);
-  const endTime = Math.min(duration, (scrollLeft + viewportWidth + buffer) / pixelsPerSecond);
-  const firstBeat = Math.floor(startTime / beatInterval) * beatInterval;
-
-  const lines = [];
-  for (let t = firstBeat; t < endTime; t += beatInterval) {
-    if (t < 0) continue;
-    const isMeasure = Math.round(t / beatInterval) % 4 === 0;
-    lines.push(
-      <div
-        key={t}
-        className="absolute top-0 bottom-0 pointer-events-none"
-        style={{
-          left: `${t * pixelsPerSecond}px`,
-          width: '1px',
-          backgroundColor: isMeasure ? 'hsl(var(--accent) / 0.2)' : 'hsl(var(--accent) / 0.06)',
-        }}
-      />
-    );
-  }
-  return <>{lines}</>;
+  return (
+    <>
+      {lines.map((l) => {
+        // Three-tier opacity: major (measure / second), unit (beat / frame), sub (¼ / 6-frame).
+        const opacity = l.weight === 'major' ? 0.35 : l.weight === 'unit' ? 0.18 : 0.08;
+        const tone = grid.unit === 'beat' ? '--accent' : '--primary';
+        return (
+          <div
+            key={`${l.weight}-${l.t}`}
+            className="absolute top-0 bottom-0 pointer-events-none"
+            style={{
+              left: `${l.t * pixelsPerSecond}px`,
+              width: '1px',
+              backgroundColor: `hsl(var(${tone}) / ${opacity})`,
+            }}
+          />
+        );
+      })}
+    </>
+  );
 });
 
 const TimeRuler = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number; scrollLeft?: number; viewportWidth?: number }>(function TimeRuler({ duration, pixelsPerSecond, scrollLeft = 0, viewportWidth = 1200 }, _ref) {
