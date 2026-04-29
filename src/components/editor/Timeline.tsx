@@ -1650,7 +1650,15 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
       </div>
 
       {/* ─── Timeline tracks ─── */}
-      <div ref={scrollRef} className="flex-1 overflow-x-auto overflow-y-auto bg-surface-0/45" onClick={handleTrackClick}>
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-x-auto overflow-y-auto bg-surface-0/45"
+        onPointerDown={handleScrubPointerDown}
+        onPointerMove={handleScrubPointerMove}
+        onPointerUp={endScrub}
+        onPointerCancel={endScrub}
+        style={{ touchAction: scrubbingRef.current ? 'none' : 'auto' }}
+      >
         <div style={{ width: `${duration * pixelsPerSecond + 96}px` }}>
           <div className="flex">
             <div className="w-24 flex-shrink-0" />
@@ -1658,7 +1666,8 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
               <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               <BeatGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               {/* Playhead — DOM-direct updates via transient Zustand subscription (zero re-renders) */}
-              <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} />
+              <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} onScrubPointerDown={handleScrubPointerDown} />
+
             </div>
           </div>
           {/* ── FIRING SYSTEMS group ── */}
