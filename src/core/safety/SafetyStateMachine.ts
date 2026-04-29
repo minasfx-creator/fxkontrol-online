@@ -148,17 +148,25 @@ class SafetyStateMachine {
       return result;
     }
 
+    // Defensive cleanup: any transition that exits COOLDOWN or ARMED
+    // (other than entering COOLDOWN itself) must invalidate any pending
+    // auto-advance timer to keep the machine deterministic.
+    if (from === 'COOLDOWN' || from === 'ARMED') {
+      if (target !== 'COOLDOWN') this._clearCooldown();
+    }
+
     // Execute transition
     this._state = target;
     const result: TransitionResult = { allowed: true, from, to: target };
     this._notify(t, result);
 
-    // Auto-advance COOLDOWN after 2s
+    // Auto-advance COOLDOWN after 2s. Internal timer uses caller='system'
+    // so the AI guardrail never blocks the natural FIRE→COOLDOWN→ARMED loop.
     if (target === 'COOLDOWN') {
       this._cooldownTimer = setTimeout(() => {
         this._cooldownTimer = null;
         if (this._state === 'COOLDOWN') {
-          this.transition('COOLDOWN_COMPLETE');
+          this.transition('COOLDOWN_COMPLETE', { caller: 'system' });
         }
       }, 2000);
     }
