@@ -25,6 +25,8 @@ import {
   type AiShowPipelineModel,
 } from '@/lib/aiShowBuilder/pipelineModel';
 import ShowPlanReviewEditor from './ShowPlanReviewEditor';
+import ShowEngineHost from '@/components/show-engine/ShowEngineHost';
+import PromptBar from '@/components/show-engine/PromptBar';
 
 
 const QUICK_CHIPS: string[] = [
