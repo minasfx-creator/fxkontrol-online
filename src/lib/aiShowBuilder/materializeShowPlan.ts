@@ -74,19 +74,36 @@ function toTrajectory(t: PlannedTrajectory): Trajectory | null {
   };
 }
 
+export interface MaterializeOptions {
+  /**
+   * Se `true`, apaga positions/timelineItems/trajectories existentes ANTES
+   * de aplicar o plano. Só deve ser passado após confirmação explícita do
+   * usuário (ex.: dialog "Substituir conteúdo atual?").
+   * Default: `false` (sempre aditivo).
+   */
+  replaceExisting?: boolean;
+}
+
 export interface MaterializeResult {
   positionsAdded: number;
   timelineItemsAdded: number;
   trajectoriesAdded: number;
   duration: number;
+  replacedExisting: boolean;
+  hadExistingContent: boolean;
 }
 
-export function materializeShowPlan(plan: ShowPlan): MaterializeResult {
+export function materializeShowPlan(
+  plan: ShowPlan,
+  options: MaterializeOptions = {},
+): MaterializeResult {
   const store = useProjectStore.getState();
-  const isEmpty =
-    store.positions.length === 0 &&
-    store.timelineItems.length === 0 &&
-    store.trajectories.length === 0;
+  const hadExistingContent =
+    store.positions.length > 0 ||
+    store.timelineItems.length > 0 ||
+    store.trajectories.length > 0;
+  const isEmpty = !hadExistingContent;
+  const replace = options.replaceExisting === true && hadExistingContent;
 
   // Mapeia coordenadas das positions para encaixar nos timeline items
   const posIndex = new Map<string, PlannedPosition>();
@@ -105,18 +122,31 @@ export function materializeShowPlan(plan: ShowPlan): MaterializeResult {
     .map(toTrajectory)
     .filter((t): t is Trajectory => t !== null);
 
-  // Update project name only if vazio
-  if (isEmpty) {
+  // Substituição APENAS quando explicitamente confirmada
+  if (replace) {
+    // Remove em snapshot pra não mutar arrays durante iteração
+    const existingTrajectoryIds = store.trajectories.map((t) => t.id);
+    const existingTimelineIds   = store.timelineItems.map((t) => t.id);
+    const existingPositionIds   = store.positions.map((p) => p.id);
+    for (const id of existingTrajectoryIds) store.removeTrajectory?.(id);
+    for (const id of existingTimelineIds)   store.removeTimelineItem?.(id);
+    for (const id of existingPositionIds)   store.removePosition?.(id);
+  }
+
+  // Update project name apenas se vazio (ou recém-limpo)
+  if (isEmpty || replace) {
     store.setProjectName(plan.title);
   }
 
-  // Duração: estende caso o plano peça mais
-  const targetDuration = Math.max(store.duration ?? 0, plan.duration);
+  // Duração: estende caso o plano peça mais (ou aplica direto se replace)
+  const targetDuration = replace
+    ? plan.duration
+    : Math.max(store.duration ?? 0, plan.duration);
   if (targetDuration !== store.duration) {
     store.setDuration(targetDuration);
   }
 
-  // Adições não-destrutivas
+  // Adições (sempre aditivas a partir daqui)
   for (const p of newPositions) store.addPosition(p);
   for (const it of newItems) store.addTimelineItem(it);
   for (const tr of newTrajectories) store.addTrajectory(tr);
@@ -126,5 +156,18 @@ export function materializeShowPlan(plan: ShowPlan): MaterializeResult {
     timelineItemsAdded: newItems.length,
     trajectoriesAdded: newTrajectories.length,
     duration: targetDuration,
+    replacedExisting: replace,
+    hadExistingContent,
   };
 }
+
+/**
+ * Helper para a UI decidir se precisa pedir confirmação antes de aplicar.
+ * Use junto com um diálogo "Já existe conteúdo no projeto. Adicionar ou
+ * substituir?".
+ */
+export function projectHasExistingContent(): boolean {
+  const s = useProjectStore.getState();
+  return s.positions.length > 0 || s.timelineItems.length > 0 || s.trajectories.length > 0;
+}
+
