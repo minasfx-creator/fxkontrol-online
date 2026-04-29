@@ -238,7 +238,8 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
             variant="outline"
             className="h-10 gap-1.5 text-[11px]"
             onClick={onConnectUSB}
-            disabled={busy !== null || status.connecting}
+            disabled={busy !== null || status.connecting || !caps.webSerial}
+            title={caps.webSerial ? 'Conectar FXK16 via USB-CDC (CP210x / CH340 / ESP32-S3)' : 'WebSerial indisponível neste navegador'}
           >
             {busy === 'usb' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Usb className="w-3.5 h-3.5" />}
             USB
