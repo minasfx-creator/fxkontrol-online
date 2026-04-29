@@ -1,6 +1,11 @@
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet, Copy, GripVertical, Zap, Sparkles, ChevronDown, ChevronRight, Clock, Move, Crosshair, Link2, Unlink, Scissors, ClipboardPaste, Eye, EyeOff, Headphones, RefreshCw, AlignVerticalJustifyCenter } from 'lucide-react';
-import { toast } from 'sonner';
+// Lazy toast: import('sonner') keeps it out of the initial JS bundle (budget guard).
+const toast = {
+  info: (m: string) => { void import('sonner').then(({ toast }) => toast.info(m)); },
+  warning: (m: string) => { void import('sonner').then(({ toast }) => toast.warning(m)); },
+  success: (m: string) => { void import('sonner').then(({ toast }) => toast.success(m)); },
+};
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSMPTEStore } from '@/store/useSMPTEStore';
