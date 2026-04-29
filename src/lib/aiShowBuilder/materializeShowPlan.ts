@@ -93,8 +93,8 @@ export function materializeShowPlan(plan: ShowPlan): MaterializeResult {
   for (const p of plan.positions) posIndex.set(p.id, p);
 
   const newPositions: Position[] = plan.positions.map(toPosition);
-  const newItems: TimelineItem[] = plan.timelineItems.map((item, i) => {
-    const base = toTimelineItem(item, i);
+  const newItems: TimelineItem[] = plan.timelineItems.map((item) => {
+    const base = toTimelineItem(item);
     const linked = item.positionId ? posIndex.get(item.positionId) : undefined;
     if (linked) {
       base.position = { x: linked.x, y: linked.y, z: linked.z };
