@@ -38,6 +38,11 @@ class BLEService {
   private cmdChar: any = null;
   private statusChar: any = null;
   private cdsChar: any = null;
+  // Saved listener refs so disconnect() can detach cleanly and prevent
+  // duplicate notifications across reconnects.
+  private onGattDisconnect: (() => void) | null = null;
+  private onStatusChanged: ((e: any) => void) | null = null;
+  private onCdsChanged: ((e: any) => void) | null = null;
   private state: FXKModuleState = { ...initialModuleState };
   private listeners: Set<StateListener> = new Set();
 
