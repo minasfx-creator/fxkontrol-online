@@ -1,14 +1,24 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { initWebVitals as initWebVitalsConsole } from "@/lib/webVitals";
-import { initObservability } from "@/observability";
 import { installConsoleCapture } from "@/lib/consoleCapture";
 import { initRuntimeMonitor } from "@/lib/runtimeMonitor";
 import { applyGpuTier } from "@/lib/gpuTier";
 import { installInteractionFpsGuard } from "@/lib/interactionFpsGuard";
-import { installSafetyJournalBridge } from "@/core/journal/journalBridge";
 import { migrateLegacyStores } from "@/stores/migration";
+
+// Heavy / non-blocking modules deferred to idle so the public route
+// (landing/auth/legal) doesn't pay for them in the initial bundle.
+//   - observability  → ~RUM client + web-vitals shipping
+//   - journalBridge  → pulls supabase + safety state machine (>40KB)
+//   - webVitals dev  → console reporter (dev only)
+const scheduleIdle = (fn: () => void) => {
+  if (typeof requestIdleCallback === "function") {
+    requestIdleCallback(fn, { timeout: 2000 });
+  } else {
+    setTimeout(fn, 0);
+  }
+};
 
 // Install console.error/warn + window error capture as early as possible
 // so the Diagnostics panel can replay startup errors.
@@ -32,18 +42,28 @@ installInteractionFpsGuard();
 migrateLegacyStores();
 
 // Persist every SafetyStateMachine transition (ARM/DISARM/FIRE/E_STOP/...)
-// to public.command_journal. Lives outside React so E_STOP audit trail
-// survives even if the React tree crashes.
-installSafetyJournalBridge();
+// to public.command_journal. Lazy-loaded at idle so supabase + state machine
+// stay out of the initial public-route bundle.
+scheduleIdle(() => {
+  void import("@/core/journal/journalBridge").then(({ installSafetyJournalBridge }) => {
+    installSafetyJournalBridge();
+  });
+});
 
 createRoot(document.getElementById("root")!).render(<App />);
 
-// Dev-only Web Vitals console reporter (per-route, color-coded).
-initWebVitalsConsole();
+// Dev-only Web Vitals console reporter — lazy + dev-only.
+if (import.meta.env.DEV) {
+  scheduleIdle(() => {
+    void import("@/lib/webVitals").then(({ initWebVitals }) => initWebVitals());
+  });
+}
 
 // Production observability (RUM + error capture + Web Vitals shipping).
-// No-ops silently when VITE_RUM_ENDPOINT is not set.
-initObservability();
+// Lazy at idle so the entry chunk stays lean. No-op without VITE_RUM_ENDPOINT.
+scheduleIdle(() => {
+  void import("@/observability").then(({ initObservability }) => initObservability());
+});
 
 // Dismiss splash screen after React mounts. The static HTML splash in index.html
 // covers the viewport at z-index 9999, so if it isn't removed the user sees a
