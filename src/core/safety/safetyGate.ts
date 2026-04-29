@@ -86,12 +86,7 @@ class SafetyGate {
   isEnforced(layer: SafetyLayer): boolean {
     // Work-mode gate: in design/simulation NOTHING blocks the user.
     // Physical interlocks only exist in real_operation.
-    // Lazy import to avoid circular dependency at module init time.
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { workMode } = require('./workMode') as typeof import('./workMode');
-      if (!workMode.isRealOperation()) return false;
-    } catch { /* if workMode unavailable, fall through to legacy behavior */ }
+    if (!workMode.isRealOperation()) return false;
 
     if (isStrict()) return true;
     if (!this._cfg.masterEnabled) return false;
