@@ -36,15 +36,15 @@ export type Fxk16ErrorCode =
   | 'BRIDGE_THREW'
   | 'TIMEOUT';
 
-export interface Ok<T = void> { ok: true; value: T }
-export interface Err {
+export type Ok<T = void> = { ok: true; value: T };
+export type Err = {
   ok: false;
   code: Fxk16ErrorCode;
   message: string;
   /** Underlying bridge reason code, when available. */
   bridgeCode?: BridgeReasonCode;
   cause?: unknown;
-}
+};
 export type CommandResponse<T = void> = Ok<T> | Err;
 
 export interface FireResult {
