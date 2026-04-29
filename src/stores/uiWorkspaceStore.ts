@@ -1,20 +1,19 @@
 /**
  * ─── uiWorkspaceStore ─────────────────────────────────────────────
- * Macro-store consolidating UI layout, panels, preferences, undo/redo,
- * AI co-pilot state, feature flags, and operational telemetry mirrors
- * (command_journal + executive_reports rolling buffers).
+ * Macro-store for UI layout + prefs + journal/report mirrors.
  *
- * SLICE TOPOLOGY (minimize subscription fan-out):
+ * Canonical sources (DO NOT mirror here):
+ *   - Feature flags: @/lib/featureFlags (used by 40+ files)
+ *
+ * SLICE TOPOLOGY:
  *   • layout    — openPanels, aiCoPilotOpen (PERSISTED)
  *   • prefs     — preferences (PERSISTED)
- *   • flags     — featureFlags (PERSISTED) — `consolidatedStores` is the
- *                 master switch checked by `migrateLegacyStores()`
- *   • telemetry — commandJournal, executiveReports (HIGH frequency,
- *                 rolling buffers — NEVER persisted)
+ *   • telemetry — commandJournal, executiveReports (HIGH freq,
+ *                 rolling buffers, NEVER persisted)
  *
- * Critical: telemetry slice can churn at >5Hz under load. Layout
- * panels (TacticalDock, header, status bar) MUST use the layout/prefs
- * slice selectors so they don't re-render on every journal entry.
+ * Telemetry slice can churn at >5Hz under load. Layout panels MUST
+ * use the layout/prefs slice selectors so they don't re-render on
+ * every journal entry.
  */
 import { useShallow } from 'zustand/react/shallow';
 import { createStore } from './createStore';
@@ -33,16 +32,6 @@ export interface ExecutiveReportEntry {
   readinessStatus: string;
 }
 
-export type FeatureFlags = {
-  /** Master switch for the 23 → 4 store consolidation. */
-  consolidatedStores: boolean;
-  /** Show SafetyGate panel/badge in the operator UI. */
-  safetyGateUI: boolean;
-  /** Require `outcome` on every Grok telemetry event. */
-  grokTelemetryFull: boolean;
-  [key: string]: boolean;
-};
-
 export interface UIWorkspaceLayoutSlice {
   openPanels: string[];
   aiCoPilotOpen: boolean;
@@ -50,10 +39,6 @@ export interface UIWorkspaceLayoutSlice {
 
 export interface UIWorkspacePrefsSlice {
   preferences: Record<string, unknown>;
-}
-
-export interface UIWorkspaceFlagsSlice {
-  featureFlags: FeatureFlags;
 }
 
 export interface UIWorkspaceTelemetrySlice {
@@ -64,7 +49,6 @@ export interface UIWorkspaceTelemetrySlice {
 export interface UIWorkspaceActions {
   togglePanel: (panel: string) => void;
   setPreference: <V>(key: string, value: V) => void;
-  setFeatureFlag: (key: keyof FeatureFlags | string, value: boolean) => void;
   toggleAICopilot: () => void;
   addCommandToJournal: (entry: Omit<CommandJournalEntry, 'timestamp'>) => void;
   addExecutiveReport: (entry: Omit<ExecutiveReportEntry, 'timestamp'>) => void;
@@ -74,7 +58,6 @@ export interface UIWorkspaceActions {
 export type UIWorkspaceState =
   & UIWorkspaceLayoutSlice
   & UIWorkspacePrefsSlice
-  & UIWorkspaceFlagsSlice
   & UIWorkspaceTelemetrySlice
   & UIWorkspaceActions;
 
@@ -89,12 +72,6 @@ export const useUIWorkspaceStore = createStore<UIWorkspaceState>(
     aiCoPilotOpen: false,
     // prefs
     preferences: {},
-    // flags
-    featureFlags: {
-      consolidatedStores: false,
-      safetyGateUI: true,
-      grokTelemetryFull: false,
-    },
     // telemetry (hot)
     commandJournal: [],
     executiveReports: [],
@@ -105,7 +82,6 @@ export const useUIWorkspaceStore = createStore<UIWorkspaceState>(
       else s.openPanels.push(panel);
     }),
     setPreference: (key, value) => set((s) => { s.preferences[key] = value; }),
-    setFeatureFlag: (key, value) => set((s) => { s.featureFlags[key] = value; }),
     toggleAICopilot: () => set((s) => { s.aiCoPilotOpen = !s.aiCoPilotOpen; }),
     addCommandToJournal: (entry) => set((s) => {
       s.commandJournal.unshift({ ...entry, timestamp: Date.now() });
@@ -125,14 +101,12 @@ export const useUIWorkspaceStore = createStore<UIWorkspaceState>(
     }),
   }),
   {
-    // Persist ONLY layout + prefs + flags. Telemetry buffers are
-    // explicitly excluded — they would bloat localStorage and are
-    // never useful across sessions.
+    // Persist ONLY layout + prefs. Telemetry buffers are excluded —
+    // they would bloat localStorage and aren't useful across sessions.
     partialize: (state) => ({
       openPanels: state.openPanels,
       aiCoPilotOpen: state.aiCoPilotOpen,
       preferences: state.preferences,
-      featureFlags: state.featureFlags,
     }),
   },
 );
@@ -149,11 +123,6 @@ export const useUIWorkspacePrefs = () =>
     preferences: s.preferences,
   })));
 
-export const useUIWorkspaceFlags = () =>
-  useUIWorkspaceStore(useShallow((s): UIWorkspaceFlagsSlice => ({
-    featureFlags: s.featureFlags,
-  })));
-
 export const useUIWorkspaceTelemetry = () =>
   useUIWorkspaceStore(useShallow((s): UIWorkspaceTelemetrySlice => ({
     commandJournal: s.commandJournal,
@@ -164,7 +133,6 @@ export const useUIWorkspaceActions = (): UIWorkspaceActions =>
   useUIWorkspaceStore(useShallow((s) => ({
     togglePanel: s.togglePanel,
     setPreference: s.setPreference,
-    setFeatureFlag: s.setFeatureFlag,
     toggleAICopilot: s.toggleAICopilot,
     addCommandToJournal: s.addCommandToJournal,
     addExecutiveReport: s.addExecutiveReport,
