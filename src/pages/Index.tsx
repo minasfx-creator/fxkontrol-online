@@ -818,7 +818,7 @@ function Index() {
       <LiveCard />
       <SmartScriptAssistant open={smartScriptOpen} onClose={() => setSmartScriptOpen(false)} />
       <Suspense fallback={null}>
-        <StudioPromptModal open={studioPromptOpen} onOpenChange={setStudioPromptOpen} />
+        <StudioPromptModal open={studioPromptOpen} onOpenChange={handleStudioPromptOpenChange} />
       </Suspense>
 
     </div>
