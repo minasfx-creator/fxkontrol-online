@@ -51,11 +51,33 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
   const [plan, setPlan] = useState<ShowPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<AiShowBuilderLayoutMode>(() =>
+    getAiShowBuilderLayoutMode(),
+  );
 
+  // Reage a resize/orientação. Só afeta apresentação — nunca dados.
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const update = () => setLayoutMode(getAiShowBuilderLayoutMode());
+    const mqDesktop = window.matchMedia('(min-width: 1024px)');
+    const mqLandscape = window.matchMedia('(orientation: landscape)');
+    mqDesktop.addEventListener('change', update);
+    mqLandscape.addEventListener('change', update);
+    return () => {
+      mqDesktop.removeEventListener('change', update);
+      mqLandscape.removeEventListener('change', update);
+    };
+  }, []);
 
   const validation: ShowPlanValidationResult | null = useMemo(
     () => (plan ? validateShowPlan(plan, site) : null),
     [plan, site],
+  );
+
+  // Modelo renderizável canônico — idêntico em todos os layoutModes.
+  const pipelineModel: AiShowPipelineModel | null = useMemo(
+    () => (plan ? getPipelineModel(plan, layoutMode) : null),
+    [plan, layoutMode],
   );
 
   const addChip = (chip: string) => {
