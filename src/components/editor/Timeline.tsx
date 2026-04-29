@@ -2,6 +2,7 @@ import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet, Copy, GripVertical, Zap, Sparkles, ChevronDown, ChevronRight, Clock, Move, Crosshair, Link2, Unlink, Scissors, ClipboardPaste, Eye, EyeOff, Headphones, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { timelineTransport } from '@/core/transport/timelineTransport';
 import { resyncTimeline, getAudioMaster } from '@/lib/audio/audioMasterRegistry';
 import { TimelineHealthBadge } from '@/components/editor/TimelineHealthBadge';
@@ -1214,20 +1215,44 @@ function CollapsibleTrackGroup({ label, defaultOpen = true, children }: { label:
  *  blocks clicks on timeline items below it. */
 function PlayheadIndicator({
   pixelsPerSecond,
+  snapMode,
   onScrubPointerDown,
 }: {
   pixelsPerSecond: number;
+  snapMode: SnapMode;
   onScrubPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const tcRef = useRef<HTMLDivElement>(null);
+  const showTimecode = snapMode === 'frame';
+
   useEffect(() => {
+    const formatTC = (t: number): string => {
+      // Frame-accurate HH:MM:SS:FF using current SMPTE frame rate (drop-frame aware)
+      const fr = useSMPTEStore.getState().frameRate;
+      const isDrop = fr === 29.97;
+      const nominalFps = isDrop ? 30 : Math.round(fr);
+      const totalFrames = Math.max(0, Math.round(t * fr));
+      const fps = nominalFps;
+      const ff = totalFrames % fps;
+      const totalSec = Math.floor(totalFrames / fps);
+      const ss = totalSec % 60;
+      const mm = Math.floor(totalSec / 60) % 60;
+      const hh = Math.floor(totalSec / 3600);
+      const sep = isDrop ? ';' : ':';
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      return `${pad(hh)}:${pad(mm)}:${pad(ss)}${sep}${pad(ff)}`;
+    };
+
     const initial = useProjectStore.getState().currentTime;
     if (ref.current) ref.current.style.transform = `translateX(${initial * pixelsPerSecond}px)`;
+    if (tcRef.current && showTimecode) tcRef.current.textContent = formatTC(initial);
     const unsub = useProjectStore.subscribe((state) => {
       if (ref.current) ref.current.style.transform = `translateX(${state.currentTime * pixelsPerSecond}px)`;
+      if (tcRef.current && showTimecode) tcRef.current.textContent = formatTC(state.currentTime);
     });
     return unsub;
-  }, [pixelsPerSecond]);
+  }, [pixelsPerSecond, showTimecode]);
 
   return (
     <div ref={ref} className="absolute top-0 bottom-0 w-px z-20 pointer-events-none" style={{ transform: 'translateX(0px)' }}>
@@ -1239,6 +1264,15 @@ function PlayheadIndicator({
         onPointerDown={onScrubPointerDown}
       />
       <div className="absolute top-0 w-px h-full bg-gradient-to-b from-primary via-primary/30 to-transparent" />
+      {showTimecode && (
+        <div
+          ref={tcRef}
+          aria-label="Playhead timecode"
+          className="absolute top-4 left-1.5 px-1.5 py-0.5 rounded-sm bg-background/85 border border-primary/40 text-primary text-[10px] font-mono leading-none whitespace-nowrap shadow-[0_0_6px_hsl(var(--primary)/0.35)] tabular-nums select-none"
+        >
+          00:00:00:00
+        </div>
+      )}
     </div>
   );
 }
@@ -1756,7 +1790,7 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
               <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               <TimelineGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} snapMode={snapMode} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               {/* Playhead — DOM-direct updates via transient Zustand subscription (zero re-renders) */}
-              <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} onScrubPointerDown={handleScrubPointerDown} />
+              <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} snapMode={snapMode} onScrubPointerDown={handleScrubPointerDown} />
 
             </div>
           </div>
