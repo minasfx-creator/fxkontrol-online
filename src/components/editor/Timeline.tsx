@@ -1655,6 +1655,9 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
     toast.success(`Quantized ${moved}/${ids.length} item${ids.length > 1 ? 's' : ''} to ${grid.label}`);
   }, [selectedTimelineItemIds, selectedTimelineItemId, snapMode, bpm, duration]);
 
+  // Keep ref in sync so keyboard shortcut (Q) can call latest version without re-binding listeners.
+  useEffect(() => { quantizeRef.current = handleQuantizeSelected; }, [handleQuantizeSelected]);
+
   const zoomIn = () => setPixelsPerSecond((p) => Math.min(MAX_PPS, p * 1.3));
   const zoomOut = () => setPixelsPerSecond((p) => Math.max(MIN_PPS, p / 1.3));
   const zoomPercent = Math.round((pixelsPerSecond / 12) * 100);
