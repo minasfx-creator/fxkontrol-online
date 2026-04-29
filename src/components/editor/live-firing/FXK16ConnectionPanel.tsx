@@ -195,7 +195,21 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
       {status.lastError && !isConnected && (
         <div className="rounded-md border border-red-500/40 bg-red-500/10 px-2 py-1.5 flex items-start gap-1.5">
           <AlertTriangle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
-          <p className="text-[10px] text-red-200 break-words">{status.lastError}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] text-red-200 break-words">{status.lastError}</p>
+            {usbHint && (
+              <p className="mt-1 text-[10px] text-amber-200/90 break-words flex items-start gap-1">
+                <HelpCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                <span>{usbHint}</span>
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!caps.webSerial && !isConnected && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[10px] text-amber-200">
+          WebSerial indisponível neste navegador. USB direto requer Chrome/Edge desktop ou Chrome Android — use BLE como alternativa.
         </div>
       )}
 
