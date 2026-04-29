@@ -93,6 +93,16 @@ const FLAGS = {
   //   passam pela ingestão).
   // ============================================================
   real_only_mode: true,
+
+  // ============================================================
+  // SAFETY GATE STRICT — Re-arms ALL blocking layers (lockoutGroups,
+  // interlockChain, modeGuard, uiLocks). When ON:
+  //   - safetyGate.enableAll() runs at boot
+  //   - setMaster(false) / setLayer(_, false) are NO-OPS (cannot disable)
+  //   - SettingsGate UI renders read-only "STRICT MODE LOCKED" badges
+  // Default: TRUE in production. Flip OFF only for explicit dev sessions.
+  // ============================================================
+  safety_gate_strict: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
