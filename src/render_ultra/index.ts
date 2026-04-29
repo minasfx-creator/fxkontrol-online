@@ -99,7 +99,7 @@ export { createWaterSystem, WATER_PRESETS } from './environment/waterRendering';
 export type { WaterConfig } from './environment/waterRendering';
 export { evaluateTimeOfDay, getShowTimeHour, TOD_PRESETS } from './environment/timeOfDay';
 export type { TimeOfDayState } from './environment/timeOfDay';
-export { createDecalSystem, spawnScorchMark, spawnLightSplash, updateDecals, clearDecals, getActiveDecalCount } from './environment/groundDecals';
+export { createDecalSystem, disposeDecalSystem, spawnScorchMark, spawnLightSplash, updateDecals, clearDecals, getActiveDecalCount } from './environment/groundDecals';
 export type { DecalInstance, DecalType } from './environment/groundDecals';
 
 // Lighting
