@@ -380,6 +380,7 @@ function TimelineTrackRow({
   const addTimelineItem = useProjectStore(s => s.addTimelineItem);
   const bpm = useProjectStore(s => s.bpm);
   const snapToBeat = useProjectStore(s => s.snapToBeat);
+  const snapMode = useProjectStore(s => s.snapMode);
   const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
   const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
   const toggleTimelineItemSelection = useProjectStore(s => s.toggleTimelineItemSelection);
@@ -531,28 +532,39 @@ function TimelineTrackRow({
 
       const dt = dx / pixelsPerSecond;
       let newTime = Math.max(0, Math.min(startTime + dt, duration));
-      newTime = snapTimeToBeat(newTime, bpm, snapToBeat, pixelsPerSecond);
+
+      // Modifier keys: Shift = force quantize to grid centre; Alt = no snap.
+      const grid = getActiveGrid({ bpm, snapMode });
+      if (me.altKey) {
+        // free move — skip both grid and edge snap
+      } else if (me.shiftKey) {
+        newTime = quantizeTime(newTime, grid);
+      } else {
+        newTime = snapTime(newTime, grid, pixelsPerSecond);
+      }
 
       // ── Magnetic snap to adjacent items (edge-to-edge) ──
-      const snapThresholdSec = 6 / pixelsPerSecond;
-      const currentEffect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
-      const currentDuration = item.durationOverride ?? currentEffect?.duration ?? 2;
+      if (!me.altKey) {
+        const snapThresholdSec = 6 / pixelsPerSecond;
+        const currentEffect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
+        const currentDuration = item.durationOverride ?? currentEffect?.duration ?? 2;
 
-      for (const other of timelineItems) {
-        if (other.id === itemId || other.trackIndex !== item.trackIndex) continue;
-        const otherEffect = EFFECT_LIBRARY.find(ef => ef.id === other.effectId);
-        const otherDur = other.durationOverride ?? otherEffect?.duration ?? 2;
-        const otherEnd = other.startTime + otherDur;
+        for (const other of timelineItems) {
+          if (other.id === itemId || other.trackIndex !== item.trackIndex) continue;
+          const otherEffect = EFFECT_LIBRARY.find(ef => ef.id === other.effectId);
+          const otherDur = other.durationOverride ?? otherEffect?.duration ?? 2;
+          const otherEnd = other.startTime + otherDur;
 
-        // Snap my start to other's end
-        if (Math.abs(newTime - otherEnd) < snapThresholdSec) {
-          newTime = otherEnd;
-          break;
-        }
-        // Snap my end to other's start
-        if (Math.abs((newTime + currentDuration) - other.startTime) < snapThresholdSec) {
-          newTime = other.startTime - currentDuration;
-          break;
+          // Snap my start to other's end
+          if (Math.abs(newTime - otherEnd) < snapThresholdSec) {
+            newTime = otherEnd;
+            break;
+          }
+          // Snap my end to other's start
+          if (Math.abs((newTime + currentDuration) - other.startTime) < snapThresholdSec) {
+            newTime = other.startTime - currentDuration;
+            break;
+          }
         }
       }
 
