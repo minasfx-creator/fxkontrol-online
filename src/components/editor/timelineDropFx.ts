@@ -12,8 +12,14 @@
  */
 import { useSyncExternalStore } from 'react';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import {
+  getActiveGrid,
+  snapTime,
+  quantizeTime,
+  type SnapMode,
+} from './timelineGrid';
 
-export type SnapReason = 'free' | 'beat' | 'edge' | 'playhead';
+export type SnapReason = 'free' | 'beat' | 'edge' | 'playhead' | 'frame' | 'force' | 'forced-free';
 
 export interface ResolvedDropTime {
   time: number;
@@ -25,8 +31,14 @@ export interface ResolveDropTimeArgs {
   duration: number;
   pixelsPerSecond: number;
   bpm: number | null;
-  snapToBeat: boolean;
+  /** Either the new snapMode (preferred) or the legacy boolean. Both supported. */
+  snapMode?: SnapMode;
+  snapToBeat?: boolean;
   currentTime: number;
+  /** Force quantization regardless of distance (Shift held). */
+  forceSnap?: boolean;
+  /** Disable all snapping for this drop (Alt held). */
+  disableSnap?: boolean;
   /** Same shape as items in useProjectStore.timelineItems, optional. */
   neighbours?: ReadonlyArray<{
     id?: string;
@@ -52,20 +64,32 @@ function effectDurationFor(effectId?: string, durationOverride?: number): number
   return e?.duration ?? 2;
 }
 
-/** Combined snap resolver. Last winner: playhead > edge > beat > free. */
+/** Combined snap resolver. Last winner: playhead > edge > grid > free. */
 export function resolveDropTime(args: ResolveDropTimeArgs): ResolvedDropTime {
-  const { duration, pixelsPerSecond, bpm, snapToBeat, currentTime, neighbours, placing } = args;
+  const { duration, pixelsPerSecond, bpm, currentTime, neighbours, placing } = args;
+  const snapMode: SnapMode = args.snapMode
+    ?? (args.snapToBeat === false ? 'off' : 'auto');
+
   let time = Math.max(0, Math.min(args.rawTime, duration));
   let snap: SnapReason = 'free';
 
-  // 1) Beat snap (cheapest, lowest priority)
-  if (snapToBeat && bpm && bpm > 0) {
-    const beat = 60 / bpm;
-    const nearest = Math.round(time / beat) * beat;
-    if (Math.abs(time - nearest) < BEAT_SNAP_PX / pixelsPerSecond) {
-      time = nearest;
-      snap = 'beat';
-    }
+  // Operator override: Alt = no snap.
+  if (args.disableSnap) {
+    return { time, snap: 'forced-free' };
+  }
+
+  const grid = getActiveGrid({ bpm, snapMode });
+
+  // Operator override: Shift = force quantize to grid centre.
+  if (args.forceSnap && grid.unit !== 'none') {
+    return { time: Math.max(0, Math.min(quantizeTime(time, grid), duration)), snap: 'force' };
+  }
+
+  // 1) Grid snap (beat or frame, decided by `getActiveGrid`).
+  const snapped = snapTime(time, grid, pixelsPerSecond, BEAT_SNAP_PX);
+  if (snapped !== time) {
+    time = snapped;
+    snap = grid.unit === 'frame' ? 'frame' : 'beat';
   }
 
   // 2) Adjacent-item edge snap (start↔end)
@@ -111,10 +135,13 @@ export function formatDropTimestamp(seconds: number): string {
 /** Tailwind-ready color tokens for the snap-reason marker pill. */
 export function snapAccent(reason: SnapReason): { ring: string; text: string; label: string } {
   switch (reason) {
-    case 'playhead': return { ring: 'ring-accent/70',  text: 'text-accent',  label: 'PLAYHEAD' };
-    case 'edge':     return { ring: 'ring-primary/70', text: 'text-primary', label: 'EDGE' };
-    case 'beat':     return { ring: 'ring-warning/70', text: 'text-warning', label: 'BEAT' };
-    default:         return { ring: 'ring-muted-foreground/40', text: 'text-muted-foreground', label: 'FREE' };
+    case 'playhead':     return { ring: 'ring-accent/70',  text: 'text-accent',  label: 'PLAYHEAD' };
+    case 'edge':         return { ring: 'ring-primary/70', text: 'text-primary', label: 'EDGE' };
+    case 'beat':         return { ring: 'ring-warning/70', text: 'text-warning', label: 'BEAT' };
+    case 'frame':        return { ring: 'ring-warning/70', text: 'text-warning', label: 'FRAME' };
+    case 'force':        return { ring: 'ring-accent/80',  text: 'text-accent',  label: '⇥ FORCE' };
+    case 'forced-free':  return { ring: 'ring-muted-foreground/40', text: 'text-muted-foreground', label: '✕ FREE' };
+    default:             return { ring: 'ring-muted-foreground/40', text: 'text-muted-foreground', label: 'FREE' };
   }
 }
 
