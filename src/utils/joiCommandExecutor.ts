@@ -203,31 +203,23 @@ function resolveEffect(params: Record<string, any>): Effect | undefined {
 /**
  * AI guardrail: actions that touch physical hardware, safety state,
  * armament, firing, energization, or work-mode transitions are
- * NEVER allowed from JOI/AI execution paths. Listed explicitly so
- * future additions are forced to opt-in via human UI.
+ * NEVER allowed from JOI/AI execution paths. The canonical list lives
+ * in src/core/safety/aiGuardrail.ts so SSM and JOI share one source.
  */
-const AI_FORBIDDEN_ACTIONS = new Set<string>([
-  'arm', 'arm_system', 'disarm', 'disarm_system',
-  'fire', 'fire_cue', 'fire_channel', 'fire_all',
-  'e_stop', 'estop', 'emergency_stop',
-  'lock_state', 'unlock_state', 'reset_safety',
-  'energize', 'power_on', 'power_off',
-  'set_work_mode', 'switch_to_real_operation',
-  'safety_bypass', 'override_lockout',
-  'hardware_write', 'send_dmx', 'send_artnet',
-]);
+import { evaluate as evaluateAiGuardrail } from '@/core/safety/aiGuardrail';
 
 function executeCommand(cmd: JoiCommand): JoiCommandResult {
   const store = useProjectStore.getState();
   const { action, params } = cmd;
 
   // Hard block: AI cannot arm, fire, energize, or change work mode.
-  if (AI_FORBIDDEN_ACTIONS.has(action.toLowerCase())) {
+  const guard = evaluateAiGuardrail(action, 'agent');
+  if (!guard.allowed) {
     deviceEventLog.log(
       'joi-ai',
       'state_change',
       `[AI Guardrail] Ação física '${action}' bloqueada — IA não pode armar/disparar/energizar.`,
-      { action, blocked: true },
+      { action, blocked: true, reason: guard.reason },
     );
     return {
       action,
