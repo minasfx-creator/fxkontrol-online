@@ -20,7 +20,11 @@ export function isItemLocked(item: { locked?: boolean } | null | undefined): boo
 import { useEffect, useState } from 'react';
 
 export function useItemLocked(item: { locked?: boolean } | null | undefined): boolean {
-  const [enforced, setEnforced] = useState(() => safetyGate.isEnforced('uiLocks'));
-  useEffect(() => safetyGate.subscribe(() => setEnforced(safetyGate.isEnforced('uiLocks'))), []);
-  return enforced && !!item?.locked;
+  const [, force] = useState(0);
+  useEffect(() => {
+    const u1 = safetyGate.subscribe(() => force((n) => n + 1));
+    const u2 = workMode.subscribe(() => force((n) => n + 1));
+    return () => { u1(); u2(); };
+  }, []);
+  return isItemLocked(item);
 }
