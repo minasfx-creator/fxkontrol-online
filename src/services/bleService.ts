@@ -109,9 +109,13 @@ class BLEService {
 
       if (!this.device.gatt) return false;
 
-      this.device.addEventListener('gattserverdisconnected', () => {
+      // Detach any stale handlers from a previous connection before re-attaching.
+      this.detachListeners();
+
+      this.onGattDisconnect = () => {
         this.setState({ connected: false, armed: false });
-      });
+      };
+      this.device.addEventListener('gattserverdisconnected', this.onGattDisconnect);
 
       this.server = await this.device.gatt.connect();
       const service = await this.server.getPrimaryService(FXK_SERVICE_UUID);
@@ -122,25 +126,27 @@ class BLEService {
 
       // Subscribe to status notifications
       await this.statusChar.startNotifications();
-      this.statusChar.addEventListener('characteristicvaluechanged', (e: any) => {
+      this.onStatusChanged = (e: any) => {
         const value = e.target.value as DataView;
         this.setState({
           batteryLevel: value.getUint8(0),
           armed: value.getUint8(1) === 1,
           firmwareVersion: `${value.getUint8(2)}.${value.getUint8(3)}.${value.getUint8(4)}`,
         });
-      });
+      };
+      this.statusChar.addEventListener('characteristicvaluechanged', this.onStatusChanged);
 
       // Subscribe to CDS notifications
       await this.cdsChar.startNotifications();
-      this.cdsChar.addEventListener('characteristicvaluechanged', (e: any) => {
+      this.onCdsChanged = (e: any) => {
         const value = e.target.value as DataView;
         const cds: boolean[] = [];
         for (let i = 0; i < 32; i++) {
           cds.push((value.getUint8(Math.floor(i / 8)) & (1 << (i % 8))) !== 0);
         }
         this.setState({ cdsStatus: cds });
-      });
+      };
+      this.cdsChar.addEventListener('characteristicvaluechanged', this.onCdsChanged);
 
       this.setState({
         connected: true,
@@ -152,6 +158,24 @@ class BLEService {
       console.warn('[BLE] Connection failed:', err);
       return false;
     }
+  }
+
+  /** Remove all attached BLE listeners to prevent duplicate notifications on reconnect. */
+  private detachListeners() {
+    try {
+      if (this.device && this.onGattDisconnect) {
+        this.device.removeEventListener?.('gattserverdisconnected', this.onGattDisconnect);
+      }
+      if (this.statusChar && this.onStatusChanged) {
+        this.statusChar.removeEventListener?.('characteristicvaluechanged', this.onStatusChanged);
+      }
+      if (this.cdsChar && this.onCdsChanged) {
+        this.cdsChar.removeEventListener?.('characteristicvaluechanged', this.onCdsChanged);
+      }
+    } catch { /* ignore */ }
+    this.onGattDisconnect = null;
+    this.onStatusChanged = null;
+    this.onCdsChanged = null;
   }
 
   async disconnect() {
