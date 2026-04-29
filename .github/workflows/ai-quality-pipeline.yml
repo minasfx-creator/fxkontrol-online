@@ -1,0 +1,88 @@
+name: FXKontrol Quality Pipeline
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+jobs:
+  quality:
+    name: Lint, Typecheck, Test and Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: TypeScript check
+        run: npx tsc --noEmit
+      - name: ESLint
+        run: npm run lint
+      - name: Run tests with coverage
+        run: npx vitest run --coverage
+      - name: Build project
+        run: npm run build
+  security:
+    name: Secret and dependency scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Audit npm dependencies
+        run: npm audit --audit-level=high
+        continue-on-error: true
+  architecture-guard:
+    name: FXKontrol Architecture Guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Block committed env files
+        run: |
+          set -e
+          found=$(find . -type f \( -name ".env" -o -name ".env.production" -o -name ".env.development" \) ! -name ".env.example" ! -path "./node_modules/*" || true)
+          if [ -n "$found" ]; then
+            echo "Real .env files must not be committed:"
+            echo "$found"
+            exit 1
+          fi
+      - name: Detect unsafe Supabase cache
+        run: |
+          if grep -RIn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.mjs" -E "supabase.*cache|cache.*supabase" vite.config.* src/ public/ 2>/dev/null | grep -viE "//|/\*|\*"; then
+            echo "Review Supabase caching manually. Authenticated Supabase API responses must not be cached."
+            exit 1
+          fi
+      - name: Detect hardcoded Datadog keys
+        run: |
+          if grep -RIn "ddapp_" .github/ src/ supabase/ 2>/dev/null; then
+            echo "Hardcoded Datadog app key detected."
+            exit 1
+          fi
+      - name: Detect unsafe Paddle live fallback
+        run: |
+          if grep -RIn -E "startsWith.*test_.*live" src/ 2>/dev/null; then
+            echo "Paddle must not default to live when token is missing."
+            exit 1
+          fi
+      - name: Detect global setInterval in stores/lib
+        run: |
+          matches=$(grep -RIn "setInterval" src/store src/lib 2>/dev/null | grep -viE "//|/\*" || true)
+          if [ -n "$matches" ]; then
+            echo "Global timers detected. Use lifecycle-controlled start/stop functions."
+            echo "$matches"
+            exit 1
+          fi
