@@ -45,6 +45,25 @@ export interface ProjectState {
   drawHeight: number;
   waypointUndoStack: { trajectoryId: string; waypoint: Waypoint }[];
   audioUrl: string | null;
+  /** Non-destructive trim: start point inside the original audio file (s). */
+  audioInPoint: number;
+  /** Non-destructive trim: end point inside the original audio file (s).
+   *  `null` = use the file's natural end. */
+  audioOutPoint: number | null;
+  /** Decoded length of the original audio file (s). Set by AudioWaveform
+   *  after `decodeAudioData` succeeds; needed to clamp trim handles. */
+  audioOriginalDuration: number | null;
+  /** Single-level undo snapshot for the last applied trim. Stores the trim
+   *  window that was active *before* the apply, plus the timeline items it
+   *  removed (so Reset can restore them). All other entities re-add the
+   *  saved `delta` to their times — no per-entity snapshot needed. */
+  audioTrimHistory: {
+    prevIn: number;
+    prevOut: number | null;
+    delta: number;
+    removedItems: TimelineItem[];
+    timestamp: number;
+  } | null;
   bpm: number | null;
   snapToBeat: boolean;
   /** Snap-to-grid mode for timeline drag/drop/nudge.
