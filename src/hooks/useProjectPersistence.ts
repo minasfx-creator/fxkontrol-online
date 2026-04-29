@@ -7,15 +7,11 @@ import { toast } from 'sonner';
 /**
  * Project persistence hook.
  *
- * NOTE on transactionality: ideally `saveProject` would call a Postgres RPC
- * (`save_project_atomic`) so positions/timeline_items/trajectories are wiped
- * and re-inserted in a single transaction. The migration tool failed to
- * deploy that RPC in this turn, so we fall back to a client-side
- * snapshot-and-rollback: we read the current rows BEFORE deleting, and if
- * any insert step fails we re-insert the snapshot. Not as strong as a true
- * tx (a crash mid-rollback still loses data), but eliminates the most
- * common failure mode (insert returns an error → user is left with empty
- * positions table). Promote to RPC once the migration tool recovers.
+ * Transactionality: `saveProject` calls the Postgres RPC `save_project_atomic`,
+ * which wipes and re-inserts positions / timeline_items / trajectories /
+ * waypoints inside a single transaction. Either the whole save commits or
+ * nothing changes — eliminates the partial-save failure mode (insert error
+ * leaving the user with empty positions table) without client-side rollback.
  */
 export function useProjectPersistence() {
   const { user } = useAuth();
@@ -31,105 +27,56 @@ export function useProjectPersistence() {
       audioUrl, bpm, playbackSpeed, projectId,
     } = state;
 
-    const projectData = {
-      name: projectName,
-      duration,
-      audio_url: audioUrl,
-      bpm,
-      playback_speed: playbackSpeed,
-      user_id: user.id,
-    };
-
     try {
-      let id = projectId;
-
-      if (id) {
-        const { error } = await supabase.from('projects').update(projectData).eq('id', id);
-        if (error) throw error;
-      } else {
-        const { data, error } = await supabase.from('projects').insert(projectData).select('id').single();
-        if (error) throw error;
-        id = data.id;
-        useProjectStore.getState().setProjectId(id);
-      }
-
-      if (!id) throw new Error('project id missing after upsert');
-
-      // ── Snapshot existing rows BEFORE delete (manual rollback safety net).
-      const [posSnap, tlSnap, trajSnap] = await Promise.all([
-        supabase.from('positions').select('*').eq('project_id', id),
-        supabase.from('timeline_items').select('*').eq('project_id', id),
-        supabase.from('trajectories').select('id, name, position_id, waypoints:waypoints(*)').eq('project_id', id),
-      ]);
-
-      const rollback = async () => {
-        try {
-          if (posSnap.data?.length) await supabase.from('positions').insert(posSnap.data);
-          if (tlSnap.data?.length) await supabase.from('timeline_items').insert(tlSnap.data);
-          if (trajSnap.data?.length) {
-            const trajRows = trajSnap.data.map((t) => ({ id: t.id, project_id: id!, name: t.name, position_id: t.position_id }));
-            await supabase.from('trajectories').insert(trajRows);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const wpRows = trajSnap.data.flatMap((t: any) => (t.waypoints || []).map((w: any) => ({ ...w, trajectory_id: t.id })));
-            if (wpRows.length) await supabase.from('waypoints').insert(wpRows);
-          }
-        } catch (rbErr) {
-          console.error('[saveProject] rollback failed:', rbErr);
-          toast.error('Erro ao reverter save parcial — verifique o backup');
-        }
+      // Build payloads as plain JSON — RPC handles all DB writes atomically.
+      const p_project = {
+        name: projectName,
+        duration,
+        audio_url: audioUrl,
+        bpm,
+        playback_speed: playbackSpeed,
       };
 
-      // 1. positions
-      await supabase.from('positions').delete().eq('project_id', id);
-      if (positions.length > 0) {
-        const posRows = positions.map((p, i) => ({
-          project_id: id!, name: p.name, type: p.type, x: p.x, y: p.y, z: p.z,
-          heading: p.heading, pitch: p.pitch, roll: p.roll, color: p.color, sort_order: i,
-        }));
-        const { error } = await supabase.from('positions').insert(posRows);
-        if (error) { await rollback(); throw error; }
-      }
+      const p_positions = positions.map((p, i) => ({
+        name: p.name, type: p.type, x: p.x, y: p.y, z: p.z,
+        heading: p.heading, pitch: p.pitch, roll: p.roll,
+        color: p.color, sort_order: i,
+      }));
 
-      // 2. timeline_items
-      await supabase.from('timeline_items').delete().eq('project_id', id);
-      if (timelineItems.length > 0) {
-        const tlRows = timelineItems.map((item) => ({
-          project_id: id!, effect_id: item.effectId, start_time: item.startTime, track_index: item.trackIndex,
-          pos_x: item.position.x, pos_y: item.position.y, pos_z: item.position.z,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          position_id: (item as any).positionId || null,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          position_name: (item as any).positionName || null,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          notes: (item as any).notes || null,
-        }));
-        const { error } = await supabase.from('timeline_items').insert(tlRows);
-        if (error) { await rollback(); throw error; }
-      }
+      const p_timeline_items = timelineItems.map((item) => ({
+        effect_id: item.effectId,
+        start_time: item.startTime,
+        track_index: item.trackIndex,
+        pos_x: item.position.x, pos_y: item.position.y, pos_z: item.position.z,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        position_id: (item as any).positionId || null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        position_name: (item as any).positionName || null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        notes: (item as any).notes || null,
+      }));
 
-      // 3. trajectories + waypoints (previously NEVER persisted — ghost feature)
-      const oldTrajIds = (trajSnap.data || []).map((t) => t.id);
-      if (oldTrajIds.length) {
-        await supabase.from('waypoints').delete().in('trajectory_id', oldTrajIds);
-      }
-      await supabase.from('trajectories').delete().eq('project_id', id);
-      if (trajectories.length > 0) {
-        const trajRows = trajectories.map((t) => ({
-          id: t.id, project_id: id!, name: t.name, position_id: t.positionId,
-        }));
-        const { error: trajErr } = await supabase.from('trajectories').insert(trajRows);
-        if (trajErr) { await rollback(); throw trajErr; }
+      const p_trajectories = trajectories.map((t) => ({
+        id: t.id,
+        name: t.name,
+        position_id: t.positionId ?? null,
+        waypoints: (t.waypoints || []).map((w, i) => ({
+          x: w.position.x, y: w.position.y, z: w.position.z,
+          time_seconds: w.time, sort_order: i,
+        })),
+      }));
 
-        const wpRows = trajectories.flatMap((t) =>
-          (t.waypoints || []).map((w, i) => ({
-            trajectory_id: t.id, x: w.position.x, y: w.position.y, z: w.position.z,
-            time_seconds: w.time, sort_order: i,
-          })),
-        );
-        if (wpRows.length) {
-          const { error: wpErr } = await supabase.from('waypoints').insert(wpRows);
-          if (wpErr) { await rollback(); throw wpErr; }
-        }
+      const { data: returnedId, error } = await supabase.rpc('save_project_atomic', {
+        p_project_id: projectId ?? null,
+        p_project,
+        p_positions,
+        p_timeline_items,
+        p_trajectories,
+      });
+
+      if (error) throw error;
+      if (returnedId && !projectId) {
+        useProjectStore.getState().setProjectId(returnedId as string);
       }
 
       lastSavedRef.current = JSON.stringify({
@@ -141,7 +88,7 @@ export function useProjectPersistence() {
       return true;
     } catch (err) {
       console.error('Save error:', err);
-      toast.error('Erro ao salvar — alterações revertidas para o estado anterior');
+      toast.error('Erro ao salvar — nenhuma alteração foi aplicada (transação revertida)');
       return false;
     }
   }, [user]);
