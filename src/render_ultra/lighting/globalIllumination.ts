@@ -18,8 +18,10 @@ export class GlobalIlluminationSystem {
   private hemLight: THREE.HemisphereLight;
   private accumColor = new THREE.Color(0, 0, 0);
   private accumIntensity = 0;
+  private scene: THREE.Scene;
 
   constructor(scene: THREE.Scene) {
+    this.scene = scene;
     // Dynamic hemisphere light driven by explosion probes
     this.hemLight = new THREE.HemisphereLight(0x000000, 0x000000, 0);
     scene.add(this.hemLight);
