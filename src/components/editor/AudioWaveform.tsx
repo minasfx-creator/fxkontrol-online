@@ -523,10 +523,16 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
             </button>
           )}
 
-          <label className="cursor-pointer">
-            <Upload className="h-3 w-3 text-muted-foreground hover:text-primary" />
-            <input type="file" accept="audio/*" className="hidden" onChange={handleUpload} disabled={uploading} />
-          </label>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-primary disabled:opacity-40"
+            onClick={openFilePicker}
+            disabled={uploading}
+            title={uploading ? 'Enviando…' : 'Importar áudio (MP3, WAV, FLAC, OGG, M4A, AAC, OPUS)'}
+            aria-label="Importar arquivo de áudio"
+          >
+            <Upload className="h-3 w-3" />
+          </button>
 
           {bpm && (
             <button
@@ -600,13 +606,27 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
 
         {!audioUrl && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <label className="cursor-pointer flex items-center gap-1 text-[10px] text-muted-foreground/50 hover:text-muted-foreground">
+            <button
+              type="button"
+              className="cursor-pointer flex items-center gap-1 text-[10px] text-muted-foreground/60 hover:text-muted-foreground disabled:opacity-40"
+              onClick={openFilePicker}
+              disabled={uploading}
+              aria-label="Importar arquivo de áudio"
+            >
               <Upload className="h-3 w-3" />
-              Upload MP3/WAV
-              <input type="file" accept="audio/*" className="hidden" onChange={handleUpload} disabled={uploading} />
-            </label>
+              {uploading ? 'Enviando…' : 'Importar áudio (MP3, WAV, FLAC, OGG, M4A…)'}
+            </button>
           </div>
         )}
+
+        {/* Single shared hidden <input>: programmatic .click() from buttons. */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={AUDIO_FILE_ACCEPT}
+          className="hidden"
+          onChange={handleUpload}
+        />
 
         {/* Cue count + Height indicator */}
         {isExpanded && (
