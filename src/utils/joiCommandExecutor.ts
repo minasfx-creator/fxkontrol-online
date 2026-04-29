@@ -223,13 +223,12 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
 
   // Hard block: AI cannot arm, fire, energize, or change work mode.
   if (AI_FORBIDDEN_ACTIONS.has(action.toLowerCase())) {
-    deviceEventLog.log({
-      type: 'state_change',
-      device_id: 'joi-ai',
-      severity: 'warning',
-      message: `[AI Guardrail] Ação física '${action}' bloqueada — IA não pode armar/disparar/energizar.`,
-      timestamp: Date.now(),
-    });
+    deviceEventLog.log(
+      'joi-ai',
+      'state_change',
+      `[AI Guardrail] Ação física '${action}' bloqueada — IA não pode armar/disparar/energizar.`,
+      { action, blocked: true },
+    );
     return {
       action,
       success: false,
