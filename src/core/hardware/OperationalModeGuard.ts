@@ -32,6 +32,16 @@ class OperationalModeGuard {
 
   /** Check if operation is allowed under current mode */
   check(operation: AllowedOperation): { allowed: boolean; reason: string } {
+    // Work-mode gate: in design/simulation, every operation is permitted.
+    // Only physical paths in real_operation may consult this guard.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { workMode } = require('@/core/safety/workMode') as typeof import('@/core/safety/workMode');
+      if (!workMode.isRealOperation()) {
+        return { allowed: true, reason: `Operation '${operation}' allowed (design/simulation mode)` };
+      }
+    } catch { /* fall through */ }
+
     // Gate bypass — when mode guard is disabled by user preference,
     // every operation is allowed regardless of operational mode.
     if (!safetyGate.isEnforced('modeGuard')) {
