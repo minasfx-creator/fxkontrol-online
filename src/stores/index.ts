@@ -1,23 +1,22 @@
 /**
  * ─── Consolidated Stores — Public Surface ─────────────────────────
- * Import points for the 4 macro-stores. Legacy stores in
- * `src/store/` remain available during the migration window and
- * are gated by `useUIWorkspaceStore.featureFlags.consolidatedStores`.
+ * Macro-store barrel. After the H1 audit, only the actually-consumed
+ * macro stores remain:
+ *   • hardwareSyncStore — DMX/ArtNet hot path + bridge status
+ *   • uiWorkspaceStore  — layout, prefs, feature flags, journal/report mirrors
  *
- * PREFER slice selectors (e.g. `useMissionPlayback`,
- * `useHardwareBridges`) over the raw store hooks — they use
+ * The previously-defined `missionStore` and `simulationStore` were
+ * removed (zero consumers; their concerns are owned by per-domain
+ * stores in `src/store/` such as `useFleetStore`, `useViewportStore`,
+ * `useSceneStore`, and the timeline hooks).
+ *
+ * PREFER slice selectors (e.g. `useHardwareBridges`,
+ * `useUIWorkspaceFlags`) over the raw store hooks — they use
  * `useShallow` and only re-render when the slice itself changes.
  */
 export { createStore, useShallow } from './createStore';
 
 // Stores
-export {
-  useMissionStore,
-  useMissionDurable,
-  useMissionTimeline,
-  useMissionPlayback,
-  useMissionActions,
-} from './missionStore';
 export {
   useHardwareSyncStore,
   useHardwareAuth,
@@ -25,14 +24,6 @@ export {
   useHardwareDiscovery,
   useHardwareActions,
 } from './hardwareSyncStore';
-export {
-  useSimulationStore,
-  useSimulationMode,
-  useSimulationCompute,
-  useSimulationPhysics,
-  useSimulationReplay,
-  useSimulationActions,
-} from './simulationStore';
 export {
   useUIWorkspaceStore,
   useUIWorkspaceLayout,
@@ -45,15 +36,6 @@ export { migrateLegacyStores } from './migration';
 
 // Types
 export type {
-  MissionState,
-  MissionDurableSlice,
-  MissionTimelineSlice,
-  MissionPlaybackSlice,
-  MissionActions,
-  PlaybackState,
-  SafetyInterlock,
-} from './missionStore';
-export type {
   HardwareSyncState,
   HardwareAuthSlice,
   HardwareBridgesSlice,
@@ -64,16 +46,6 @@ export type {
   BridgeStatus,
   AuthorizedPort,
 } from './hardwareSyncStore';
-export type {
-  SimulationState,
-  SimulationModeSlice,
-  SimulationComputeSlice,
-  SimulationPhysicsSlice,
-  SimulationReplaySlice,
-  SimulationActions,
-  SimulationMode,
-  ViewportMode,
-} from './simulationStore';
 export type {
   UIWorkspaceState,
   UIWorkspaceLayoutSlice,

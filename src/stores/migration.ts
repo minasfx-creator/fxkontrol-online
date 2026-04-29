@@ -1,13 +1,15 @@
 /**
  * ─── Legacy → Consolidated Store Migration ────────────────────────
- * One-shot migration helper. Runs on bootstrap, gated by the
- * `consolidatedStores` feature flag in uiWorkspaceStore.
+ * Currently a NO-OP. Per-domain stores in `src/store/` are the
+ * canonical source for their respective domains; the surviving
+ * macro-stores in `src/stores/` (hardwareSync, uiWorkspace) are
+ * additive — they don't subsume legacy state.
  *
- * Idempotent: once the flag flips to true, subsequent boots no-op.
+ * Kept as a stable hook in case a future refactor needs to copy
+ * data across stores during boot. Idempotent.
  *
- * Migration is intentionally additive — legacy stores are NOT cleared
- * here. Removing them is a separate cleanup pass after consumers have
- * been ported and we've validated no regressions in production.
+ * Do NOT log "Consolidating legacy stores" — it was misleading
+ * (no copy ever happened).
  */
 import { useUIWorkspaceStore } from './uiWorkspaceStore';
 
@@ -19,40 +21,10 @@ export interface MigrationResult {
 
 export function migrateLegacyStores(): MigrationResult {
   const ui = useUIWorkspaceStore.getState();
-
   if (ui.featureFlags.consolidatedStores) {
     return { ran: false, reason: 'already-migrated' };
   }
-
-  if (typeof console !== 'undefined') {
-    console.info(
-      '%c[Stores] Consolidating legacy stores → 4 macro stores',
-      'color:#22d3ee;font-weight:bold',
-    );
-  }
-
-  // ── Future migration calls go here ───────────────────────────────
-  // Example shape (intentionally commented — flip on per-domain as
-  // legacy slices are absorbed):
-  //
-  //   import { useTimelineStore } from '@/store/useTimelineStore';
-  //   useMissionStore.setState({
-  //     timeline: useTimelineStore.getState().items,
-  //   });
-
-  const copied: NonNullable<MigrationResult['copied']> = {
-    mission: 0, hardware: 0, simulation: 0, ui: 0,
-  };
-
+  // Flip the flag so the (currently empty) migration path is marked done.
   ui.setFeatureFlag('consolidatedStores', true);
-
-  if (typeof console !== 'undefined') {
-    console.info(
-      '%c[Stores] Migration complete',
-      'color:#34d399;font-weight:bold',
-      copied,
-    );
-  }
-
-  return { ran: true, copied };
+  return { ran: true, copied: { mission: 0, hardware: 0, simulation: 0, ui: 0 } };
 }
