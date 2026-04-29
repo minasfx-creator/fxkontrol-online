@@ -16,6 +16,7 @@ interface BluetoothDeviceLike {
   name?: string;
   gatt?: { connected?: boolean };
   addEventListener?: (type: string, fn: () => void) => void;
+  removeEventListener?: (type: string, fn: () => void) => void;
   forget?: () => Promise<void>;
 }
 
