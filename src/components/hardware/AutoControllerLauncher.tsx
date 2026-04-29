@@ -13,6 +13,7 @@
  * Honest-hardware: never auto-arms, never auto-fires, never fakes a
  * write success.
  */
+import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useActiveControllers, type ActiveController } from '@/hooks/useActiveControllers';
 import type { ControllerKind } from '@/core/discovery/controllerRegistry';
@@ -25,7 +26,7 @@ const PYRO_KINDS: ReadonlySet<ControllerKind> = new Set(['fxk16', 'fireone', 'sh
 const TUYA_KINDS: ReadonlySet<ControllerKind> = new Set(['tuya', 'cubemesh']);
 const DMX_KINDS: ReadonlySet<ControllerKind> = new Set(['enttec', 'dmx-generic', 'artnet-node']);
 
-function CardForKind({
+const CardForKind = memo(function CardForKind({
   controller,
   onClose,
   onOpenConsole,
@@ -45,7 +46,7 @@ function CardForKind({
     return <DmxControllerCard controller={controller} onClose={onClose} onOpenConsole={onOpenConsole} />;
   }
   return <GenericControllerCard controller={controller} onClose={onClose} onOpenConsole={onOpenConsole} />;
-}
+});
 
 export function AutoControllerLauncher() {
   const { pending, acknowledge } = useActiveControllers();
