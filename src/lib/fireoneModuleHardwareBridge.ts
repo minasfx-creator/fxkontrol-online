@@ -193,6 +193,47 @@ const BLE_CHAR_RX_UUID = '0000ffe2-0000-1000-8000-00805f9b34fb';
 const HEARTBEAT_INTERVAL = 5000;
 const FIRE_CONFIRM_TIMEOUT = 2000;
 
+/**
+ * USB-CDC vendor IDs commonly found on FXK16 / ESP32-S3 / ESP32 relay boards.
+ * Used to (a) filter the WebSerial port-picker so users see only relevant
+ * devices, and (b) auto-reuse already-authorized ports on subsequent connects.
+ *  - 0x303A: Espressif Systems (native ESP32-S3 USB-CDC)
+ *  - 0x10C4: Silicon Labs CP210x (CP2102/CP2104 USB-UART)
+ *  - 0x1A86: QinHeng / WCH CH340/CH341 (very common on ESP32 dev boards)
+ *  - 0x0403: FTDI FT232 family
+ *  - 0x067B: Prolific PL2303
+ */
+export const FXK_USB_FILTERS: Array<{ usbVendorId: number }> = [
+  { usbVendorId: 0x303A }, // Espressif
+  { usbVendorId: 0x10C4 }, // Silicon Labs CP210x
+  { usbVendorId: 0x1A86 }, // CH340/CH341
+  { usbVendorId: 0x0403 }, // FTDI
+  { usbVendorId: 0x067B }, // Prolific
+];
+
+function matchesFxkVendor(info: { usbVendorId?: number }): boolean {
+  return typeof info?.usbVendorId === 'number'
+    && FXK_USB_FILTERS.some((f) => f.usbVendorId === info.usbVendorId);
+}
+
+function describeUsbDevice(info: { usbVendorId?: number; usbProductId?: number }): string {
+  const vid = info?.usbVendorId;
+  const pid = info?.usbProductId;
+  const vendor =
+    vid === 0x303A ? 'ESP32-S3' :
+    vid === 0x10C4 ? 'CP210x' :
+    vid === 0x1A86 ? 'CH340' :
+    vid === 0x0403 ? 'FTDI' :
+    vid === 0x067B ? 'PL2303' :
+    'USB-CDC';
+  if (vid != null && pid != null) {
+    const hex = (n: number) => n.toString(16).toUpperCase().padStart(4, '0');
+    return `${vendor} (${hex(vid)}:${hex(pid)})`;
+  }
+  return vendor;
+}
+
+
 export class FireOneHardwareBridge {
   private transport: BridgeTransport = 'none';
   private connected = false;
