@@ -188,6 +188,37 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   // between music and 3D viewport / FX spawns.
   useAudioMasterClock(audioRef, audioUrl);
 
+  // Trim window enforcement on the <audio> element:
+  //   1. When the in-point changes (or audio is freshly loaded), seek the
+  //      audio element to `audioInPoint` so playback starts from the trim.
+  //      Skipped while the user is actively dragging the In handle to avoid
+  //      audible scrubbing on every pixel of drag.
+  //   2. While playing, monitor `timeupdate` and pause/clamp the moment we
+  //      cross the out-point. The store's `setPlaying(false)` is called so
+  //      the lockstep / UI also see the stop, not just the audio element.
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (draggingHandle !== 'in' && audio.currentTime < audioInPoint - 0.05) {
+      try { audio.currentTime = audioInPoint; } catch { /* readyState too low */ }
+    }
+  }, [audioInPoint, audioUrl, draggingHandle]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const out = audioOutPoint ?? (audioOriginalDuration ?? Infinity);
+    const onTimeUpdate = () => {
+      if (audio.currentTime >= out - 1e-3) {
+        audio.pause();
+        try { audio.currentTime = out; } catch { /* ignore */ }
+        setPlaying(false);
+      }
+    };
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    return () => audio.removeEventListener('timeupdate', onTimeUpdate);
+  }, [audioOutPoint, audioOriginalDuration, audioUrl, setPlaying]);
+
   // Sync volume / mute
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = muted ? 0 : volume;
