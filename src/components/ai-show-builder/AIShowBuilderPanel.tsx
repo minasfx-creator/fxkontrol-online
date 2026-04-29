@@ -6,7 +6,7 @@
  * useProjectStore. Inspecionável antes de aplicar.
  */
 import { useCallback, useMemo, useState } from 'react';
-import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,8 @@ import type { ShowPlan, ShowPlanValidationResult, ShowSiteConfig } from '@/lib/a
 import { generateShowPlanFromPrompt } from '@/lib/aiShowBuilder/generateShowPlan';
 import { validateShowPlan } from '@/lib/aiShowBuilder/validateShowPlan';
 import { materializeShowPlan } from '@/lib/aiShowBuilder/materializeShowPlan';
+import ShowPlanReviewEditor from './ShowPlanReviewEditor';
+
 
 const QUICK_CHIPS: string[] = [
   '12 posições',
