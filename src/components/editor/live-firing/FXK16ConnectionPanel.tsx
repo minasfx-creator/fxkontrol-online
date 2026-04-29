@@ -43,8 +43,11 @@ interface LastResult {
 }
 
 function summarize<T>(label: string, r: CommandResponse<T>): LastResult {
-  if (r.ok) return { label, ok: true, at: Date.now() };
-  return { label, ok: false, code: r.code, message: r.message, at: Date.now() };
+  const at = Date.now();
+  if (r.ok === true) {
+    return { label, ok: true, at };
+  }
+  return { label, ok: false, code: r.code, message: r.message, at };
 }
 
 export function FXK16ConnectionPanel({ compact = false }: Props) {
