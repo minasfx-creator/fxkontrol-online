@@ -2,13 +2,19 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { Upload, Music, Zap, Volume2, VolumeX, GripHorizontal, Minus, Plus, Flag, Trash2 } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useAudioMasterClock } from '@/hooks/useAudioMasterClock';
 import { playAudioWithRetry } from '@/lib/audio/playAudioWithRetry';
 import { registerAudioMaster } from '@/lib/audio/audioMasterRegistry';
+import { uploadAudioForProject } from '@/lib/audioUpload';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+// File-picker accept list — explicit extensions in addition to `audio/*` so
+// Safari iOS and a few Android browsers (which silently filter out .flac /
+// .opus / .aac under the bare MIME wildcard) still expose every supported
+// format. Mirrors `SUPPORTED_AUDIO_EXTENSIONS` in `src/lib/audioUpload.ts`.
+const AUDIO_FILE_ACCEPT = 'audio/*,.mp3,.wav,.ogg,.m4a,.flac,.aac,.webm,.opus';
 
 function detectBPM(audioBuffer: AudioBuffer): number {
   const data = audioBuffer.getChannelData(0);
@@ -99,6 +105,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const playControllerRef = useRef<ReturnType<typeof playAudioWithRetry> | null>(null);
   const resizeStartY = useRef(0);
   const resizeStartH = useRef(0);
@@ -410,26 +417,28 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     ctx.stroke();
   }, [waveformData, beats, currentTime, duration, pixelsPerSecond, trackHeight, cueMarkers]);
 
+  const openFilePicker = useCallback(() => {
+    if (uploading) return;
+    if (!user) {
+      toast.error('Faça login para enviar áudio');
+      return;
+    }
+    // Programmatic click on the hidden <input> — more reliable than the
+    // <label><input/></label> pattern on iOS Safari and inside the Lovable
+    // preview iframe (some browsers swallow synthetic clicks bubbled from
+    // <label>).
+    fileInputRef.current?.click();
+  }, [uploading, user]);
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // Always reset so re-selecting the same file re-fires `change`.
+    e.target.value = '';
     if (!file || !user) return;
 
     setUploading(true);
     try {
-      const path = `${user.id}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage.from('audio').upload(path, file);
-      if (uploadError) throw uploadError;
-
-      const { data: signedData, error: signError } = await supabase.storage
-        .from('audio')
-        .createSignedUrl(path, 3600);
-
-      if (signError) throw signError;
-
-      setAudioUrl(signedData.signedUrl);
-      toast.success('Áudio enviado!');
-    } catch (err: any) {
-      toast.error(err.message || 'Erro no upload');
+      await uploadAudioForProject(file, user.id);
     } finally {
       setUploading(false);
     }
@@ -514,10 +523,16 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
             </button>
           )}
 
-          <label className="cursor-pointer">
-            <Upload className="h-3 w-3 text-muted-foreground hover:text-primary" />
-            <input type="file" accept="audio/*" className="hidden" onChange={handleUpload} disabled={uploading} />
-          </label>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-primary disabled:opacity-40"
+            onClick={openFilePicker}
+            disabled={uploading}
+            title={uploading ? 'Enviando…' : 'Importar áudio (MP3, WAV, FLAC, OGG, M4A, AAC, OPUS)'}
+            aria-label="Importar arquivo de áudio"
+          >
+            <Upload className="h-3 w-3" />
+          </button>
 
           {bpm && (
             <button
@@ -591,13 +606,27 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
 
         {!audioUrl && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <label className="cursor-pointer flex items-center gap-1 text-[10px] text-muted-foreground/50 hover:text-muted-foreground">
+            <button
+              type="button"
+              className="cursor-pointer flex items-center gap-1 text-[10px] text-muted-foreground/60 hover:text-muted-foreground disabled:opacity-40"
+              onClick={openFilePicker}
+              disabled={uploading}
+              aria-label="Importar arquivo de áudio"
+            >
               <Upload className="h-3 w-3" />
-              Upload MP3/WAV
-              <input type="file" accept="audio/*" className="hidden" onChange={handleUpload} disabled={uploading} />
-            </label>
+              {uploading ? 'Enviando…' : 'Importar áudio (MP3, WAV, FLAC, OGG, M4A…)'}
+            </button>
           </div>
         )}
+
+        {/* Single shared hidden <input>: programmatic .click() from buttons. */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={AUDIO_FILE_ACCEPT}
+          className="hidden"
+          onChange={handleUpload}
+        />
 
         {/* Cue count + Height indicator */}
         {isExpanded && (

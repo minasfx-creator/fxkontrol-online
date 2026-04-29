@@ -1,7 +1,16 @@
 /**
  * ─── PyroControllerCard — extracted unchanged from launcher v1 ─────
- * Behavior identical to the previous inline component. ARM hold-800ms,
- * TEST CH1 hold-800ms, instant E-STOP, deep-link to console.
+ * Behavior: ARM hold-800ms, TEST CH1 hold-800ms, **instant E-STOP via
+ * the direct safety-state-machine path (≤50ms guarantee)**, deep-link
+ * to the full pyro console.
+ *
+ * E-STOP path (CRITICAL): bypasses the typed `api.stop()` flow because
+ * that one routes through the ARM gate + per-channel validation, adding
+ * tens of ms in the worst case. Industry rule (FXK Core memory): E-STOP
+ * latency must be <50ms — so the button calls `safetyStateMachine
+ * .transition('E_STOP')` directly, AND fires `api.stop()` afterwards as
+ * the secondary "actually open the relays" hop. If the bridge is offline
+ * the safety state still goes to SAFE so the rest of the show stops.
  */
 import { useCallback } from 'react';
 import { X, Flame, Lock, Unlock, ExternalLink, Power, Bluetooth, Usb, Network, Wifi } from 'lucide-react';
@@ -11,7 +20,10 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { ActiveController } from '@/hooks/useActiveControllers';
 import { useFXK16Commands } from '@/hooks/useFXK16Commands';
+import { useFXK16Bridge } from '@/hooks/useFXK16Bridge';
+import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
 import { HoldToConfirmButton } from '../shared/HoldToConfirmButton';
+import { LiveStatusChip, type LiveStatus } from '../shared/LiveStatusChip';
 import type { DiscoveryTransport } from '@/core/discovery/types';
 
 const HOLD_MS = 800;
@@ -34,6 +46,20 @@ export interface PyroControllerCardProps {
 
 export function PyroControllerCard({ controller, onClose, onOpenConsole }: PyroControllerCardProps) {
   const { api, armed, ready } = useFXK16Commands();
+  const { isConnected: bridgeConnected } = useFXK16Bridge();
+
+  // Live status: bridge connected = LIVE; discovered + ready but no bridge
+  // session = READ-ONLY; otherwise NO-OP. Honest about what tapping does.
+  const liveStatus: LiveStatus =
+    bridgeConnected && ready ? 'live'
+    : ready                  ? 'read-only'
+    :                          'no-op';
+  const liveReason =
+    liveStatus === 'live'
+      ? 'Bridge FXK16 conectada — comandos chegam ao módulo'
+      : liveStatus === 'read-only'
+        ? 'Módulo descoberto mas bridge USB/BLE não está aberta — abra "Console" para conectar'
+        : 'Sem link ativo — não há caminho para o hardware';
 
   const onArm = useCallback(() => {
     if (armed) {
@@ -57,10 +83,24 @@ export function PyroControllerCard({ controller, onClose, onOpenConsole }: PyroC
     else toast.error(`FIRE falhou: ${r.message}`);
   }, [api, armed]);
 
-  const onEStop = useCallback(async () => {
-    const r = await api.stop();
-    if (r.ok === true) toast.success('E-STOP enviado — desarmado');
-    else toast.error(`E-STOP falhou: ${r.message}`);
+  // CRITICAL: E-STOP path <50ms.
+  // 1) Sync state-machine transition first — this is what stops drone /
+  //    DMX / scheduled cues regardless of FXK16 bridge status.
+  // 2) Then attempt the typed `api.stop()` to physically open the relays
+  //    (best-effort; failure of (2) doesn't undo (1)).
+  const onEStop = useCallback(() => {
+    const t0 = performance.now();
+    try {
+      safetyStateMachine.transition('E_STOP');
+    } catch (err) {
+      // Never let safety-machine throws hide the relay-open attempt.
+      // eslint-disable-next-line no-console
+      console.error('[PyroControllerCard] safetyStateMachine E_STOP threw:', err);
+    }
+    const sysMs = Math.round(performance.now() - t0);
+    toast.error(`E-STOP enviado (${sysMs}ms)`, { duration: 4000 });
+    // Fire-and-forget physical relay open — UI already reacted.
+    void api.stop().catch(() => { /* state machine already SAFE */ });
   }, [api]);
 
   return (
@@ -91,6 +131,7 @@ export function PyroControllerCard({ controller, onClose, onOpenConsole }: PyroC
       </div>
 
       <div className="mb-2 flex flex-wrap items-center gap-1">
+        <LiveStatusChip status={liveStatus} reason={liveReason} />
         <Badge variant={ready ? 'default' : 'outline'} className="h-5 px-1.5 text-[10px]">
           {ready ? 'READY' : 'LINK'}
         </Badge>

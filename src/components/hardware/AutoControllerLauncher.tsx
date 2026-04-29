@@ -13,8 +13,9 @@
  * Honest-hardware: never auto-arms, never auto-fires, never fakes a
  * write success.
  */
-import { memo } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useActiveControllers, type ActiveController } from '@/hooks/useActiveControllers';
 import type { ControllerKind } from '@/core/discovery/controllerRegistry';
 import { PyroControllerCard } from './cards/PyroControllerCard';
@@ -51,6 +52,32 @@ const CardForKind = memo(function CardForKind({
 export function AutoControllerLauncher() {
   const { pending, acknowledge } = useActiveControllers();
   const navigate = useNavigate();
+
+  // Session-scoped set of aggregateIds we've already toasted about.
+  // Avoids spam when a flaky link drops + recovers every few seconds.
+  const announcedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    for (const c of pending) {
+      if (announcedRef.current.has(c.aggregateId)) continue;
+      announcedRef.current.add(c.aggregateId);
+      const isPyro = PYRO_KINDS.has(c.profile.kind);
+      const tone = isPyro ? toast.warning : toast.success;
+      tone(`${c.profile.label} conectado`, {
+        description: `${c.device.label} · pronto para controle`,
+        duration: 6000,
+        action: c.profile.consoleRoute
+          ? {
+              label: 'Abrir',
+              onClick: () => {
+                if (c.profile.consoleRoute) navigate(c.profile.consoleRoute);
+                acknowledge(c.aggregateId);
+              },
+            }
+          : undefined,
+      });
+    }
+  }, [pending, navigate, acknowledge]);
 
   if (pending.length === 0) return null;
 

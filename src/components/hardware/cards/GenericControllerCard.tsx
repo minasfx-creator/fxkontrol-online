@@ -8,6 +8,7 @@ import { X, AlertTriangle, ExternalLink, Bluetooth, Usb, Network, Wifi } from 'l
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { ActiveController } from '@/hooks/useActiveControllers';
+import { LiveStatusChip } from '../shared/LiveStatusChip';
 import type { DiscoveryTransport } from '@/core/discovery/types';
 
 function TransportIcon({ transport }: { transport: DiscoveryTransport | null }) {
@@ -49,6 +50,10 @@ export function GenericControllerCard({ controller, onClose, onOpenConsole }: Ge
       </div>
 
       <div className="mb-2 flex flex-wrap gap-1">
+        <LiveStatusChip
+          status="read-only"
+          reason="Dispositivo descoberto mas sem ações inline — abra Console para classificar"
+        />
         <Badge variant="default" className="h-5 px-1.5 text-[10px]">ONLINE</Badge>
         {capabilities.safetyCritical && (
           <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">PYRO</Badge>

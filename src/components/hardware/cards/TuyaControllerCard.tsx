@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import type { ActiveController } from '@/hooks/useActiveControllers';
 import { tuyaOutletControl } from '@/core/hardware/tuyaOutletControl';
 import { HoldToConfirmButton } from '../shared/HoldToConfirmButton';
+import { LiveStatusChip, type LiveStatus } from '../shared/LiveStatusChip';
 import type { DiscoveryTransport } from '@/core/discovery/types';
 
 const HOLD_MS = 400;
@@ -82,18 +83,24 @@ export function TuyaControllerCard({ controller, onClose, onOpenConsole }: TuyaC
       </div>
 
       <div className="mb-2 flex flex-wrap items-center gap-1">
+        <LiveStatusChip
+          status={(realSender && dev.online ? 'live' : dev.online ? 'read-only' : 'no-op') as LiveStatus}
+          reason={
+            !dev.online
+              ? 'Outlet offline'
+              : realSender
+                ? 'Sender BLE Tuya ativo'
+                : 'Sem caminho de escrita Tuya BLE — pareie via /pairing/ble'
+          }
+        />
         <Badge variant="default" className="h-5 px-1.5 text-[10px]">ONLINE</Badge>
         <Badge
           variant="outline"
           className="h-5 border-yellow-500/40 px-1.5 text-[10px] text-yellow-500"
+          title="Tuya outlets têm latência 200–800ms — NUNCA use para timing pyro <50ms"
         >
           LOW-PRECISION
         </Badge>
-        {!realSender && (
-          <Badge variant="outline" className="h-5 px-1.5 text-[10px] text-muted-foreground">
-            NO SENDER
-          </Badge>
-        )}
       </div>
 
       <div className="grid grid-cols-2 gap-1.5">
