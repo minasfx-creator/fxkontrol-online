@@ -203,7 +203,7 @@ export default function FleetManagementPanel({ onClose }: FleetManagementPanelPr
     const { results, summary } = runPreflightChecks({
       uavs: uavList,
       geofence: geofence.enabled ? geofence : null,
-      windSpeed: 3, // TODO: get from weather
+      windSpeed: sceneWindSpeed ?? 3,
       visibility: 10000,
       showUploaded: showState !== 'idle',
       authorized: showState === 'authorized' || showState === 'running',
