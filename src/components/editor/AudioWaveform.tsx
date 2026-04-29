@@ -109,6 +109,14 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   const [volume, setVolume] = useState(0.8);
   const [trackHeight, setTrackHeight] = useState(MIN_HEIGHT);
   const [isResizing, setIsResizing] = useState(false);
+  // Trim mode: when true the operator can drag In/Out handles. Pending
+  // values live here (in *original audio file* seconds) and are only
+  // committed to the store on Apply. This keeps the waveform/timeline live
+  // while the operator scrubs the handles without thrashing the store.
+  const [trimMode, setTrimMode] = useState(false);
+  const [pendingIn, setPendingIn] = useState<number>(0);
+  const [pendingOut, setPendingOut] = useState<number>(0);
+  const [draggingHandle, setDraggingHandle] = useState<'in' | 'out' | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -116,6 +124,9 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   const playControllerRef = useRef<ReturnType<typeof playAudioWithRetry> | null>(null);
   const resizeStartY = useRef(0);
   const resizeStartH = useRef(0);
+  // Cache the decoded AudioBuffer so re-trimming only re-runs the
+  // downsample (cheap), never a re-fetch + decodeAudioData (slow, network).
+  const audioBufferRef = useRef<AudioBuffer | null>(null);
 
   // Resize via drag handle
   const onResizeStart = useCallback((e: React.MouseEvent) => {
