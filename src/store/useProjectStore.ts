@@ -142,6 +142,16 @@ export interface ProjectState {
   setDrawHeight: (h: number) => void;
   undoLastWaypoint: () => void;
   setAudioUrl: (url: string | null) => void;
+  setAudioOriginalDuration: (d: number | null) => void;
+  setAudioInPoint: (t: number) => void;
+  setAudioOutPoint: (t: number | null) => void;
+  /** Atomically apply a trim window: re-times every timeline item / cue /
+   *  camera keyframe / waypoint by `-delta`, drops items outside the new
+   *  window, updates `duration` and `currentTime`, saves an undo snapshot. */
+  applyAudioTrim: (inT: number, outT: number) => { ok: boolean; error?: string; removedItems?: number; removedCues?: number };
+  /** Restore `in=0, out=null` and revert times. If a trim history snapshot
+   *  exists, removed items are restored too. */
+  resetAudioTrim: () => void;
   setBpm: (bpm: number | null) => void;
   setSnapToBeat: (snap: boolean) => void;
   setSnapMode: (mode: 'auto' | 'beat' | 'frame' | 'off') => void;
