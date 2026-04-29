@@ -91,7 +91,7 @@ export function PyroControllerCard({ controller, onClose, onOpenConsole }: PyroC
   const onEStop = useCallback(() => {
     const t0 = performance.now();
     try {
-      safetyStateMachine.transition('E_STOP', 'PyroControllerCard.onEStop');
+      safetyStateMachine.transition('E_STOP');
     } catch (err) {
       // Never let safety-machine throws hide the relay-open attempt.
       // eslint-disable-next-line no-console
