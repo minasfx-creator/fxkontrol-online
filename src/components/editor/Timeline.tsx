@@ -1801,6 +1801,30 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
           </div>
         )}
 
+        {/* Quantize to grid — aligns selected items to the active snap mode (Q) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "h-6 w-6 rounded-md transition-all",
+            (selectionCount > 0 && snapMode !== 'off')
+              ? "text-accent hover:bg-accent/10"
+              : "text-muted-foreground/30 hover:text-muted-foreground/50",
+          )}
+          disabled={selectionCount === 0 || snapMode === 'off'}
+          onClick={handleQuantizeSelected}
+          title={
+            selectionCount === 0
+              ? 'Quantize: select items first'
+              : snapMode === 'off'
+                ? 'Quantize: enable snap (Auto/Beat/Frame)'
+                : `Quantize ${selectionCount} item${selectionCount > 1 ? 's' : ''} to ${getActiveGrid({ bpm, snapMode }).label} (Q)`
+          }
+          aria-label="Quantize selected items to grid"
+        >
+          <AlignVerticalJustifyCenter className="h-3 w-3" />
+        </Button>
+
         <div className="flex-1" />
 
         {/* Stats */}
