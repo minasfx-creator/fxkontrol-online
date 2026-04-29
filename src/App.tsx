@@ -45,6 +45,7 @@ import NotFound from "./pages/NotFound";
 
 const Install = lazy(lazyRetry(() => import("./pages/Install")));
 const UsbPairingWizard = lazy(lazyRetry(() => import("./pages/UsbPairingWizard")));
+const BlePairingWizard = lazy(lazyRetry(() => import("./pages/BlePairingWizard")));
 const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
 const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage")));
 const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
@@ -191,6 +192,9 @@ function App() {
                       <Route path="/pairing" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#pairing" replace /> : <Navigate to="/office" replace />} />
                       {/* iOS-first guided USB authorization wizard. */}
                       <Route path="/pairing/usb" element={<UsbPairingWizard />} />
+                      {/* BLE pairing wizard — scans for FXK16-XXXXXX, performs
+                          handshake (VERSION+STATUS), shows per-attempt status. */}
+                      <Route path="/pairing/ble" element={<BlePairingWizard />} />
                       <Route path="/field-test" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#field-test" replace /> : <Navigate to="/office" replace />} />
 
                       {/* ── Settings & sistema ────────────────────────────────── */}
