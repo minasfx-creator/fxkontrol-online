@@ -1,5 +1,4 @@
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
@@ -26,6 +25,9 @@ function RouteLoaderWithTimeout() {
 // chrome (Sidebar, DockBar, Tactical UI) on first load.
 const MainLayout = lazy(() => import("@/layouts/MainLayout"));
 const UpgradeDialog = lazy(() => import("@/components/upgrade/UpgradeDialog"));
+const SonnerToaster = lazy(() =>
+  import("@/components/ui/sonner").then((m) => ({ default: m.Toaster })),
+);
 
 import { lazyRetry } from "@/lib/lazyRetry";
 import { isEnabled } from "@/lib/featureFlags";
@@ -132,7 +134,9 @@ function App() {
         <AuthProvider>
           <TooltipProvider>
             <Toaster />
-            <Sonner />
+            <Suspense fallback={null}>
+              <SonnerToaster />
+            </Suspense>
             <BrowserRouter>
               <RouteTracker />
               <PageTransitionOverlay />
