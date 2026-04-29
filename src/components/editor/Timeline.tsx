@@ -1441,6 +1441,9 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
       }
 
       // ── Nudge shortcuts: arrow keys move selection by 1 grid unit ──
+      // Multi-select preserves relative spacing: we compute ONE effective delta clamped
+      // by the group's leftmost/rightmost startTime so the entire selection moves rigidly
+      // without ever collapsing or stretching when hitting [0, duration] bounds.
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         const ids = selectedTimelineItemIds.length > 0
           ? selectedTimelineItemIds
@@ -1458,16 +1461,35 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
           const grid = getActiveGrid({ bpm, snapMode });
           delta = dir * (grid.interval > 0 ? grid.interval : 1 / fps);
         }
+        const allItems = useProjectStore.getState().timelineItems;
+        const selected = ids
+          .map((id) => allItems.find((i) => i.id === id))
+          .filter((i): i is NonNullable<typeof i> => !!i);
+        if (selected.length === 0) return;
+
+        // Compute the group's allowed shift so spacing is preserved.
+        const minStart = selected.reduce((m, it) => Math.min(m, it.startTime), Infinity);
+        const maxStart = selected.reduce((m, it) => Math.max(m, it.startTime), -Infinity);
+        const minAllowed = -minStart;                           // can't push leftmost below 0
+        const maxAllowed = Math.max(0, duration - maxStart);    // can't push rightmost past duration
+        let effectiveDelta = Math.max(minAllowed, Math.min(maxAllowed, delta));
+
+        // Ctrl/Cmd: snap the GROUP shift to the grid (single quantize on delta), still rigid.
+        if (e.ctrlKey || e.metaKey) {
+          const grid = getActiveGrid({ bpm, snapMode });
+          if (grid.interval > 0) {
+            const snappedTarget = quantizeTime(minStart + effectiveDelta, grid);
+            effectiveDelta = snappedTarget - minStart;
+            // Re-clamp after snapping so we still respect bounds.
+            effectiveDelta = Math.max(minAllowed, Math.min(maxAllowed, effectiveDelta));
+          }
+        }
+
+        if (Math.abs(effectiveDelta) < 1e-9) return; // nothing to do (already at edge)
+
         const updateItem = useProjectStore.getState().updateTimelineItem;
-        ids.forEach((id) => {
-          const it = useProjectStore.getState().timelineItems.find((i) => i.id === id);
-          if (!it) return;
-          const next = Math.max(0, Math.min(duration, it.startTime + delta));
-          // Ctrl/Cmd: also quantize the result to the active grid centre.
-          const finalTime = (e.ctrlKey || e.metaKey)
-            ? quantizeTime(next, getActiveGrid({ bpm, snapMode }))
-            : next;
-          updateItem(id, { startTime: finalTime });
+        selected.forEach((it) => {
+          updateItem(it.id, { startTime: it.startTime + effectiveDelta });
         });
       }
 
