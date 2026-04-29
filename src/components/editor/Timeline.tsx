@@ -1260,6 +1260,8 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
   const setPlaybackSpeed = useProjectStore(s => s.setPlaybackSpeed);
   const bpm = useProjectStore(s => s.bpm);
   const snapToBeat = useProjectStore(s => s.snapToBeat);
+  const snapMode = useProjectStore(s => s.snapMode);
+  const setSnapMode = useProjectStore(s => s.setSnapMode);
   const setSnapToBeat = useProjectStore(s => s.setSnapToBeat);
   const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
   const clearTimelineItemSelection = useProjectStore(s => s.clearTimelineItemSelection);
@@ -1498,7 +1500,7 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
         timelineTransport.play();
       }
     },
-    [bpm, snapToBeat, pixelsPerSecond, computeTimeFromClientX, setCurrentTime],
+    [bpm, snapMode, pixelsPerSecond, computeTimeFromClientX, setCurrentTime],
   );
 
   // Cancel any pending RAF on unmount.
