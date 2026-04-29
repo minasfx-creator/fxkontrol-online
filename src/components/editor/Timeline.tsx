@@ -1386,10 +1386,59 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
         const allIds = timelineItems.map(i => i.id);
         allIds.forEach(id => useProjectStore.getState().toggleTimelineItemSelection(id));
       }
+
+      // ── Zoom shortcuts (Ctrl/Cmd + / - / 0) ──
+      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')) {
+        e.preventDefault();
+        setPixelsPerSecond((p) => Math.min(MAX_PPS, p * 1.3));
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        e.preventDefault();
+        setPixelsPerSecond((p) => Math.max(MIN_PPS, p / 1.3));
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+        e.preventDefault();
+        const el = scrollRef.current;
+        const w = el ? el.clientWidth - 96 : 1200;
+        if (duration > 0 && w > 0) {
+          setPixelsPerSecond(Math.min(MAX_PPS, Math.max(MIN_PPS, w / duration)));
+        }
+      }
+
+      // ── Nudge shortcuts: arrow keys move selection by 1 grid unit ──
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const ids = selectedTimelineItemIds.length > 0
+          ? selectedTimelineItemIds
+          : selectedTimelineItemId ? [selectedTimelineItemId] : [];
+        if (ids.length === 0) return;
+        e.preventDefault();
+        const dir = e.key === 'ArrowRight' ? 1 : -1;
+        const fps = timecodeProvider.getFPS() || 60;
+        let delta: number;
+        if (e.altKey) {
+          delta = dir / fps; // 1 frame
+        } else if (e.shiftKey) {
+          delta = dir * 1; // 1 second
+        } else {
+          const grid = getActiveGrid({ bpm, snapMode });
+          delta = dir * (grid.interval > 0 ? grid.interval : 1 / fps);
+        }
+        const updateItem = useProjectStore.getState().updateTimelineItem;
+        ids.forEach((id) => {
+          const it = useProjectStore.getState().timelineItems.find((i) => i.id === id);
+          if (!it) return;
+          const next = Math.max(0, Math.min(duration, it.startTime + delta));
+          // Ctrl/Cmd: also quantize the result to the active grid centre.
+          const finalTime = (e.ctrlKey || e.metaKey)
+            ? quantizeTime(next, getActiveGrid({ bpm, snapMode }))
+            : next;
+          updateItem(id, { startTime: finalTime });
+        });
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, selectedTimelineItemId, selectedTimelineItemIds, timelineItems]);
+  }, [isPlaying, selectedTimelineItemId, selectedTimelineItemIds, timelineItems, bpm, snapMode, duration]);
 
   // ─── Drag-to-scrub on the track + playhead ──────────────────────────
   // Pointer Events cover mouse, touch and pen in one handler.
