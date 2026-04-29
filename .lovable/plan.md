@@ -1,129 +1,120 @@
 ## Objetivo
 
-Tornar drag-and-drop de blocos da timeline previsível, com snapping consistente à grade (beats e/ou frames), zoom que altera a precisão do snap em pixels-constantes, e atalhos de teclado para nudge fino e zoom. Hoje:
+Adicionar controles **In/Out** (recorte não-destrutivo) ao áudio na timeline. O recorte:
 
-- Snapping só age em **drop** (item novo) e em **drag de item existente**, e somente para **beats** (precisa de BPM) e bordas adjacentes — **não há snap em frames** (necessário em projetos pirotécnicos sem BPM).
-- O threshold de snap é fixo em pixels (`8 / pixelsPerSecond`), o que é correto, mas o operador não tem modo "force snap" (Shift/Alt) nem como **desabilitar momentaneamente** o snap durante um drag.
-- Não há atalhos para nudge (mover seleção 1 frame / 1 beat por vez) nem para zoom (`Ctrl +/-`, `Ctrl 0`).
-- Sem feedback visual da grade-de-frames ao dar zoom in profundo.
+1. Mapeia o tempo da timeline `[0 .. (out − in)]` para o tempo do áudio `[in .. out]` durante reprodução, scrub e exportação.
+2. Recalcula a **waveform** mostrando só a região recortada.
+3. Recalcula a **duração** do projeto (`duration = out − in`).
+4. Re-timestampa **automaticamente** os efeitos da timeline para preservar seu alinhamento musical relativo ao novo `t=0`.
+5. É **não-destrutivo**: o arquivo de áudio original não é alterado; só `audioInPoint` e `audioOutPoint` são persistidos. Pode ser desfeito (Reset) recuperando os efeitos de antes do trim.
 
-## Mudanças propostas
+## Mudanças
 
-### 1. Grade unificada beats + frames + segundos
+### 1. Store — pontos In/Out + ação de trim com recálculo
 
-**Novo helper** `src/components/editor/timelineGrid.ts`:
+**`src/store/useProjectStore.ts`**
 
-- `getActiveGrid({ bpm, snapMode, fps, pixelsPerSecond })` retorna `{ unit: 'beat'|'frame'|'second', interval: number, subdivisions: number[] }` decidindo automaticamente a unidade ativa:
-  - `snapMode === 'beat'` e `bpm > 0` → unit beat (interval = 60/bpm).
-  - `snapMode === 'frame'` → unit frame (interval = 1/fps, fps lido de `timecodeProvider.getFPS()`).
-  - `snapMode === 'off'` → sem snap.
-  - `snapMode === 'auto'` (novo padrão): beat se `bpm > 0`, senão frame.
-- `snapTime(time, grid, pixelsPerSecond, threshold = 8)` substitui `snapTimeToBeat` e `resolveDropTime`'s lógica de beat — única função de snap-grid usada em todo o `Timeline.tsx`.
-- `quantizeTime(time, grid)` (sem threshold — força snap, usado por nudge de teclado).
-- `getSubdivisions(grid, viewport, pixelsPerSecond)` decide automaticamente densidade de linhas: ao dar zoom in suficiente para ≥ 12 px por frame, mostra grid de frames; caso contrário, beats; caso contrário, segundos.
+Novos campos:
+- `audioInPoint: number` (segundos no áudio original, default `0`)
+- `audioOutPoint: number | null` (segundos no áudio original, `null` = fim do arquivo)
+- `audioOriginalDuration: number | null` (preenchido após decodificação; necessário para clamp dos pontos)
+- `audioTrimHistory: { in: number; out: number | null; timestamp: number; itemSnapshot: TimelineItem[] } | null` (1 nível de undo; opcional para ação "Reset trim")
 
-### 2. Estado + UI: `snapMode` (`auto | beat | frame | off`)
+Setters:
+- `setAudioInPoint(t)`, `setAudioOutPoint(t)` — só atualizam o valor (uso em drag visual; não recalcula nada).
+- `setAudioOriginalDuration(d)` — chamado pelo `loadAudio()` após `decodeAudioData`.
+- **`applyAudioTrim(inT, outT)`** — ação atômica que:
+  1. Faz clamp: `0 ≤ inT < outT ≤ audioOriginalDuration`. Rejeita janela menor que `0.05s`.
+  2. Calcula `delta = inT - audioInPoint` e `newDuration = outT - inT`.
+  3. Para cada `TimelineItem` / `CueMarker` / `CameraKeyframe` / `Trajectory.waypoints`: `t' = t - delta`. Items que ficarem com `t' < 0` ou `t' > newDuration` são **filtrados** (mas o `audioTrimHistory` guarda snapshot original para undo).
+  4. Atualiza `audioInPoint`, `audioOutPoint`, `duration = newDuration`, `currentTime = clamp(currentTime - delta, 0, newDuration)`.
+  5. Salva snapshot no `audioTrimHistory` (1 nível de undo).
+- **`resetAudioTrim()`** — restaura `audioInPoint=0`, `audioOutPoint=null`, `duration = audioOriginalDuration`, e se houver `audioTrimHistory`, restaura `timelineItems` para o snapshot e reverte os deltas dos demais (cues/camera/waypoints) somando o delta original de volta.
 
-**Loja** (`useProjectStore`): adicionar campo `snapMode: 'auto' | 'beat' | 'frame' | 'off'` (default `'auto'`). Migrar campo legado `snapToBeat` → `snapMode = snapToBeat ? 'auto' : 'off'` no `partialize`/migrate (mantém compat com projetos salvos).
+### 2. Mapeamento timeline ↔ áudio
 
-**Toolbar Timeline** (`Timeline.tsx`, perto do botão `Magnet` em ~linha 1602): substituir o toggle único por um pequeno segmented control de 4 estados (Auto / Beat / Frame / Off) com tooltip explicando que "Auto = beat se BPM, senão frame". O `Magnet` permanece como ícone do grupo.
-
-### 3. BeatGrid → TimelineGrid (renderiza beats OU frames OU segundos)
-
-Renomear `BeatGrid` para `TimelineGrid` e renderizar a partir de `getSubdivisions(...)`. Manter virtualização atual (buffer 200 px). Usar 3 níveis de opacidade:
-
-- Linha de unidade principal: `opacity 0.4`.
-- Linha de subdivisão (½, ¼ no caso de beat; 6 frames no caso de frame): `opacity 0.18`.
-- Compass/segundo cheio: `opacity 0.6`.
-
-Não tocar no `TimeRuler` — segue lógica de segundos atual.
-
-### 4. Snap durante drag de item existente
-
-Em `handleItemDragStart` (linha 505) e em `EffectBlockRow` resize (linha 236), substituir:
-
+**`src/lib/audio/audioTrimMapping.ts`** (novo, puro):
 ```ts
-newTime = snapTimeToBeat(newTime, bpm, snapToBeat, pixelsPerSecond);
+export const timelineToAudio = (t: number, inP: number) => t + inP;
+export const audioToTimeline = (a: number, inP: number) => a - inP;
+export const clampToTrim   = (a: number, inP: number, outP: number | null, origDur: number) =>
+  Math.min(outP ?? origDur, Math.max(inP, a));
 ```
 
-por:
+Aplicado em:
 
-```ts
-const grid = getActiveGrid({ bpm, snapMode, fps, pixelsPerSecond });
-const forceSnap = me.shiftKey;       // Shift = força quantização no centro da grade
-const disableSnap = me.altKey;        // Alt = move livre, ignorando snap
-newTime = disableSnap ? newTime
-        : forceSnap   ? quantizeTime(newTime, grid)
-                      : snapTime(newTime, grid, pixelsPerSecond);
-```
+- **`AudioWaveform.tsx`** — `useEffect` que cria o `<Audio>`: assim que o áudio carrega e `audioInPoint > 0`, faz `audio.currentTime = audioInPoint`. Adiciona listener `timeupdate`: se `audio.currentTime >= (audioOutPoint ?? duration)`, pausa e dispara `setPlaying(false)`. Sync de seek: agora compara `audio.currentTime` com `currentTime + audioInPoint` (com a mesma tolerância 0.15s).
+- **`useAudioMasterClock.ts`** — quando lê `audio.currentTime`, escreve `timelineClock.syncExternalTime(audio.currentTime - audioInPoint)`. Lê `audioInPoint` via `useProjectStore.getState()` no callback (não como dep do hook, pra evitar reinit).
 
-A mesma lógica vai para o resize handle (linha 236) e para o drop handler (linha 462) — todos passam a usar o mesmo `getActiveGrid`/`snapTime`.
+### 3. Recálculo de waveform restrito à região
 
-O snap edge-to-edge (item adjacente) já existente é preservado e roda **depois** do snap-grid; o último vencedor define o `SnapReason` mostrado no preview.
+**`AudioWaveform.tsx`** — `loadAudio()`:
+- Após `decodeAudioData`, chama `setAudioOriginalDuration(audioBuffer.duration)`.
+- A janela usada para downsample passa a ser `[audioInPoint .. audioOutPoint ?? audioBuffer.duration]`:
+  - `startSample = floor(audioInPoint * sampleRate)`
+  - `endSample = floor((audioOutPoint ?? audioBuffer.duration) * sampleRate)`
+  - `samples = floor(newDuration * pixelsPerSecond * 2)`
+  - `blockSize = floor((endSample - startSample) / samples)`
+  - Loop sobre `rawData.subarray(startSample, endSample)`.
+- Re-executa quando `audioInPoint` ou `audioOutPoint` mudam (adicionar às deps de `loadAudio` + `useEffect` que o invoca).
+- Cache: guarda o `AudioBuffer` decodificado em `audioBufferRef` para evitar re-fetch a cada mudança de in/out — só o downsample é refeito.
 
-### 5. Atalhos de teclado
+### 4. UI — handles In/Out + toolbar de trim
 
-Adicionar ao `handleKeyDown` da Timeline (linha 1348), só ativos quando `selectedTimelineItemIds.length > 0` ou `selectedTimelineItemId` existe **e** o foco não está em um input:
+Estende **`AudioWaveform.tsx`** (lane existente, sem novo arquivo grande):
 
-| Atalho | Ação |
-|---|---|
-| `←` / `→` | Nudge 1 unidade da grade (1 beat ou 1 frame conforme `snapMode`/`bpm`) |
-| `Shift + ←` / `Shift + →` | Nudge 1 segundo |
-| `Alt + ←` / `Alt + →` | Nudge 1 frame (sempre frame, ignora `snapMode`) |
-| `Ctrl/Cmd + ←` / `→` | Snap exato à unidade da grade (quantize) |
-| `Ctrl/Cmd + +` / `=` | Zoom in (centrado no playhead) |
-| `Ctrl/Cmd + -` | Zoom out (centrado no playhead) |
-| `Ctrl/Cmd + 0` | Zoom para fit (viewport inteiro mostra `duration`) |
-| `[` / `]` | Diminuir / aumentar `pixelsPerSecond` em passos discretos (4, 8, 15, 25, 40, 60, 80) |
+- Dois handles verticais sobrepostos ao canvas: traço vertical (`Scissors` icon no topo) na posição `(audioInPoint - audioInPoint) * pps = 0` e `(audioOutPoint - audioInPoint) * pps = duration * pps`. Inicialmente nas bordas; viram interativos só quando o usuário entra em "Trim Mode".
+- Toggle "Trim" (ícone `Scissors`) na coluna de controles à esquerda (perto do botão Snap). Estado local `trimMode`.
+- Quando `trimMode === true`:
+  - Aparecem dois handles draggáveis (largura 6 px, altura total da lane, cor `hsl(var(--warning))`).
+  - Drag atualiza um estado local `pendingIn / pendingOut` (preview ao vivo, sem mexer no áudio nem na timeline ainda — apenas redesenha overlay sombreado nas regiões fora do range).
+  - Botões `Apply trim` (chama `applyAudioTrim(pendingIn, pendingOut)`) e `Cancel`. Ao aplicar, mostra toast com `delta` aplicado e nº de cues/items removidos.
+  - Atalhos: `I` define `pendingIn = currentTime + audioInPoint`; `O` define `pendingOut = currentTime + audioInPoint`. Apenas quando `trimMode === true` e foco fora de inputs.
+- Quando `audioInPoint > 0 || audioOutPoint != null` (já recortado), aparece chip `Trimmed · X.XXs–Y.YYs` com botão `Reset` (chama `resetAudioTrim()`).
 
-Os zoom shortcuts reutilizam o cálculo de "preserva ponto sob playhead" já presente no wheel handler (linha 1326-1338).
+### 5. Re-timestampagem automática dos efeitos
 
-Nudge implementado via `updateTimelineItem` em todos os ids selecionados; se múltiplos itens, todos movem o mesmo delta (não cada um para sua grade individual — operadores esperam movimento solidário).
+Implementada em `applyAudioTrim` (passo 1.3 acima). Regras:
 
-### 6. Modificadores Shift / Alt durante drop
+| Entidade | Campo de tempo | Ação |
+|---|---|---|
+| `TimelineItem` | `startTime` | `t' = t - delta`; remove se `t' < -0.05` ou `t' > newDuration + 0.05` |
+| `CueMarker` | `time` | mesmo |
+| `CameraKeyframe` | `time` | mesmo |
+| `Trajectory.waypoints[].time` | `time` | mesmo (waypoints removidos se ficarem fora) |
+| `DroneFormation` | `startTime` | mesmo (formações inteiras removidas se startTime fora) |
 
-No `handleDrop` (linha 447) e `handleDragOver` (linha 425), passar `e.shiftKey` e `e.altKey` para `resolveDropTime` e propagar para o `snapTime`/`quantizeTime` em `timelineDropFx.ts`. Atualizar a interface `ResolveDropTimeArgs` com `forceSnap?: boolean; disableSnap?: boolean`.
+Toast de sumário: `Trimmed audio · removed N items / M cues outside new window`.
 
-A pílula de `SnapReason` na preview ganha um ícone extra quando `forceSnap` está ativo ("⇥ FORCE") ou `disableSnap` ("✕ FREE").
+### 6. Persistência e exportações
 
-### 7. Indicador de unidade ativa
+- `useProjectPersistence.ts`: incluir `audioInPoint`, `audioOutPoint`, `audioOriginalDuration` no snapshot serializado (com migration: se ausentes, defaults `0` / `null` / `null`).
+- Exportações VVIZ/CSV/JSON (`exportEngine.ts`): **nenhuma mudança nos timestamps emitidos** — eles já refletem o `startTime` pós-trim do store, que é o tempo "show". Adicionar metadata-comment opcional `// audio in=X out=Y` no header dos exports é fora do escopo desta tarefa.
 
-Pequeno chip ao lado do controle `snapMode`: `BEAT 120 BPM`, `FRAME 30 fps`, `OFF`, ou `AUTO → BEAT/FRAME`. Texto `text-[10px]` no estilo Mission Control existente.
+### 7. Edge cases protegidos
 
-## Detalhes técnicos
+- Áudio ainda decodificando quando o usuário clica `Apply trim` → desabilita botão até `audioOriginalDuration != null`.
+- Reset trim sem snapshot disponível (projeto recarregado) → restaura só `in=0, out=null, duration=audioOriginalDuration` sem mexer em items (com toast `History indisponível, items mantidos`).
+- Áudio trocado (`setAudioUrl(novoUrl)`): zera `audioInPoint`, `audioOutPoint`, `audioOriginalDuration` e `audioTrimHistory` para evitar aplicar trim de outro arquivo.
+- `currentTime` durante trim mode: continua usando o sistema de coordenadas da **timeline atual** (pré-aplicação); só após `Apply` o store muda.
 
-- `fps` vem de `timecodeProvider.getFPS()` (default 60). Se o projeto tem SMPTE configurado em outro framerate, `timecodeProvider` já reflete. Não estamos introduzindo novo estado; só lendo.
-- `snapMode` persistido via Zustand persist (já há partialize). Migration:
-  ```ts
-  migrate: (persisted, version) => {
-    if (version < N) {
-      return { ...persisted, snapMode: persisted.snapToBeat === false ? 'off' : 'auto' };
-    }
-    return persisted;
-  }
-  ```
-- A função `snapTimeToBeat` antiga é apagada; todas as 8 chamadas migradas para `snapTime`. Isso elimina drift entre track rows que reimplementaram a mesma lógica.
-- Threshold em pixels constante (`8 px`) garante que ao dar zoom in o snap fica mais permissivo em unidades de tempo (mais granular), exatamente o que se espera para "ajuste fino com zoom".
-- Em `getSubdivisions`, quando `1/fps * pixelsPerSecond >= 12`, ativa subdivisão de frames; quando `beat * pixelsPerSecond >= 18`, mostra ¼ beats. Sempre virtualizado pela janela visível.
-- Atalhos não conflitam com `useKeybindings.ts` (arrow keys e `[]` não usados; `Ctrl+0/+/-` não usados — `Ctrl+a/c/v/d` são preservados).
-- Espaço continua reservado ao `useKeybindings` global (play/pause).
+### 8. Testes
 
-## Critério de aceite
+`src/lib/audio/__tests__/audioTrimMapping.test.ts` (novo):
+- `timelineToAudio(0, 5) === 5`; `audioToTimeline(5, 5) === 0`.
+- `clampToTrim` respeita bordas com e sem `outPoint`.
 
-- Drag de item existente em projeto **sem BPM** snapa para frames quando `snapMode = auto` ou `frame`.
-- Em projeto com BPM, drag snapa para beats (default), e mudando o controle para `frame` snapa para frames.
-- Segurar **Shift** durante drag força snap exato (quantize); segurar **Alt** desativa snap (movimento livre).
-- `Ctrl + +` e `Ctrl + -` dão zoom in/out preservando o ponto do playhead sob o cursor virtual; `Ctrl + 0` faz fit.
-- `←`/`→` movem a seleção exatamente uma unidade da grade; `Alt+←/→` movem 1 frame; `Shift+←/→` movem 1 segundo.
-- Grade visual mostra frames automaticamente quando há zoom suficiente; senão beats; senão segundos.
-- Projetos antigos (com `snapToBeat` salvo) carregam com `snapMode = auto` (se era true) ou `off` (se era false), sem perder configuração.
-- Build OK, tests existentes passam, novos tests para `snapTime`/`quantizeTime`/`getActiveGrid` em `src/components/editor/__tests__/timelineGrid.spec.ts` passam.
+`src/store/__tests__/applyAudioTrim.test.ts` (novo):
+- Trim `[2, 8]` em projeto com items em `t=1, 3, 7, 9` → resultado: items em `1, 5` (os de `t=1` e `t=9` removidos), `duration=6`.
+- Snapshot preservado em `audioTrimHistory`; `resetAudioTrim` restaura ambos.
+- Trim com `inT >= outT` ou janela < 50ms → no-op + warning.
 
-## Arquivos modificados
+### Arquivos tocados
 
-- **Novo**: `src/components/editor/timelineGrid.ts` — `getActiveGrid`, `snapTime`, `quantizeTime`, `getSubdivisions`.
-- **Novo**: `src/components/editor/__tests__/timelineGrid.spec.ts`.
-- `src/store/useProjectStore.ts` — adicionar `snapMode`, migration de `snapToBeat`.
-- `src/components/editor/Timeline.tsx` — remover `snapTimeToBeat` local, migrar todas as chamadas para `snapTime`/`quantizeTime`; renomear `BeatGrid` → `TimelineGrid`; adicionar atalhos de nudge/zoom; segmented control no toolbar.
-- `src/components/editor/timelineDropFx.ts` — `resolveDropTime` aceita `forceSnap`/`disableSnap` e usa `snapTime` do helper novo.
-- `src/components/editor/PyroTimelineTrack.tsx` (se usar snap próprio) — alinhar ao mesmo helper.
+- `src/store/useProjectStore.ts` — campos, setters, `applyAudioTrim`, `resetAudioTrim`, hook em `setAudioUrl`.
+- `src/lib/audio/audioTrimMapping.ts` — **novo** (helpers puros).
+- `src/components/editor/AudioWaveform.tsx` — handles UI, modo trim, atalhos `I/O`, downsample restrito, sync com `audioInPoint`, fim-de-trim em `timeupdate`, cache de `AudioBuffer`.
+- `src/hooks/useAudioMasterClock.ts` — subtrai `audioInPoint` ao escrever no `timelineClock`.
+- `src/hooks/useProjectPersistence.ts` — serializa/deserializa novos campos com migration.
+- `src/lib/audio/__tests__/audioTrimMapping.test.ts` — **novo**.
+- `src/store/__tests__/applyAudioTrim.test.ts` — **novo**.
