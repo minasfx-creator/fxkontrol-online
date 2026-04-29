@@ -235,7 +235,7 @@ function SitePreview3D({ config }: { config: ShowSiteConfig }) {
           <meshBasicMaterial color="#22d3ee" transparent opacity={0.08} />
         </mesh>
         <lineSegments position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <edgesGeometry args={[new (require('three').PlaneGeometry)(w, d)]} />
+          <edgesGeometry args={[new THREE.PlaneGeometry(w, d)]} />
           <lineBasicMaterial color="#22d3ee" />
         </lineSegments>
 
