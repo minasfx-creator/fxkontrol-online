@@ -2,13 +2,19 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { Upload, Music, Zap, Volume2, VolumeX, GripHorizontal, Minus, Plus, Flag, Trash2 } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useAudioMasterClock } from '@/hooks/useAudioMasterClock';
 import { playAudioWithRetry } from '@/lib/audio/playAudioWithRetry';
 import { registerAudioMaster } from '@/lib/audio/audioMasterRegistry';
+import { uploadAudioForProject } from '@/lib/audioUpload';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+// File-picker accept list — explicit extensions in addition to `audio/*` so
+// Safari iOS and a few Android browsers (which silently filter out .flac /
+// .opus / .aac under the bare MIME wildcard) still expose every supported
+// format. Mirrors `SUPPORTED_AUDIO_EXTENSIONS` in `src/lib/audioUpload.ts`.
+const AUDIO_FILE_ACCEPT = 'audio/*,.mp3,.wav,.ogg,.m4a,.flac,.aac,.webm,.opus';
 
 function detectBPM(audioBuffer: AudioBuffer): number {
   const data = audioBuffer.getChannelData(0);
