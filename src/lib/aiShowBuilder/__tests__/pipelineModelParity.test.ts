@@ -76,7 +76,7 @@ describe('aiShowBuilder responsive model parity', () => {
       site: SITE,
       variationSeed: 1,
     });
-    const model = getPipelineModel(plan, 'desktop') as Record<string, unknown>;
+    const model = getPipelineModel(plan, 'desktop') as unknown as Record<string, unknown>;
 
     // Campos legados proibidos no modelo renderizável.
     expect(model.timeline).toBeUndefined();
