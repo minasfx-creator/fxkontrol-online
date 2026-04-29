@@ -1618,6 +1618,8 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
     if (ids.length > 0) duplicateTimelineItems(ids);
   };
 
+  const quantizeRef = useRef<(() => void) | null>(null);
+
   /** Quantize selected timeline items' startTime to the active grid (auto/beat/frame).
    *  No-op when snapMode === 'off' or when grid.interval <= 0. Reports outcome via toast. */
   const handleQuantizeSelected = useCallback(() => {
