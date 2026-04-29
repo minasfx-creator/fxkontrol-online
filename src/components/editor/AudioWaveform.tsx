@@ -244,8 +244,12 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     playControllerRef.current = null;
 
     if (isPlaying) {
-      if (Math.abs(audio.currentTime - currentTime) > 0.15) {
-        audio.currentTime = currentTime;
+      // Show-time → file-time conversion: the store's `currentTime` runs
+      // 0..duration relative to `audioInPoint`; the audio element runs in
+      // the original file's coordinate system.
+      const targetFileTime = currentTime + audioInPoint;
+      if (Math.abs(audio.currentTime - targetFileTime) > 0.15) {
+        audio.currentTime = targetFileTime;
       }
 
       let gestureToastId: string | number | undefined;
