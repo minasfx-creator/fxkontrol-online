@@ -4,7 +4,10 @@
  * Define o local físico onde o show será criado. O resultado alimenta
  * o gerador e o validador (limites, espaçamento, altura).
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { Grid, OrbitControls } from '@react-three/drei';
+import * as THREE from 'three';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,13 +34,28 @@ export default function ShowSiteSetup({ initial, onConfirm }: Props) {
     return Number.isFinite(n) && n >= 0 ? n : fallback;
   };
 
-  const ratio = config.depth / Math.max(config.width, 1);
   const audienceLabel: Record<AudiencePosition, string> = {
     front: 'Frente',
     left: 'Esquerda',
     right: 'Direita',
     '360': '360°',
   };
+
+  // Validação básica
+  const errors = useMemo(() => {
+    const e: string[] = [];
+    if (!config.name.trim()) e.push('Informe um nome para o local.');
+    if (config.width < 10) e.push('Largura mínima recomendada: 10 m.');
+    if (config.depth < 10) e.push('Profundidade mínima recomendada: 10 m.');
+    if (config.maxHeight < 5) e.push('Altura máxima mínima: 5 m.');
+    if (config.safetyDistance < 1) e.push('Distância de segurança mínima: 1 m.');
+    if (config.safetyDistance * 2 >= Math.min(config.width, config.depth))
+      e.push('Zona de segurança maior que a área útil — reduza o valor.');
+    if (config.width > 2000 || config.depth > 2000) e.push('Dimensões acima de 2000 m não são suportadas.');
+    return e;
+  }, [config]);
+
+  const canConfirm = errors.length === 0;
 
   return (
     <Card className="border-border/40 bg-card/50">
@@ -133,17 +151,25 @@ export default function ShowSiteSetup({ initial, onConfirm }: Props) {
           </div>
         </div>
 
-        {/* Visualização simples */}
+        {/* Visualização 3D */}
         <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Pré-visualização do local</Label>
-          <SitePreview config={config} ratio={ratio} />
+          <Label className="text-xs text-muted-foreground">Pré-visualização 3D</Label>
+          <SitePreview3D config={config} />
+          <p className="text-[11px] text-muted-foreground">
+            Arraste para orbitar · scroll para zoom · zona âmbar = margem de segurança
+          </p>
         </div>
 
+        {errors.length > 0 && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 space-y-1">
+            {errors.map((e) => (
+              <p key={e} className="text-xs text-destructive">• {e}</p>
+            ))}
+          </div>
+        )}
+
         <div className="flex justify-end pt-2">
-          <Button
-            onClick={() => onConfirm(config)}
-            disabled={config.width <= 0 || config.depth <= 0 || config.maxHeight <= 0}
-          >
+          <Button onClick={() => onConfirm(config)} disabled={!canConfirm}>
             Continuar para criação
           </Button>
         </div>
@@ -152,55 +178,104 @@ export default function ShowSiteSetup({ initial, onConfirm }: Props) {
   );
 }
 
-function SitePreview({ config, ratio }: { config: ShowSiteConfig; ratio: number }) {
-  const previewW = 320;
-  const previewH = Math.max(80, Math.min(220, previewW * ratio));
-  const safetyPct = Math.min(0.45, config.safetyDistance / Math.max(config.width, 1));
-  const isFront = config.audiencePosition === 'front';
-  const is360 = config.audiencePosition === '360';
+function SitePreview3D({ config }: { config: ShowSiteConfig }) {
+  const w = Math.max(config.width, 1);
+  const d = Math.max(config.depth, 1);
+  const h = Math.max(config.maxHeight, 1);
+  const safety = Math.min(config.safetyDistance, Math.min(w, d) / 2 - 0.1);
+  const innerW = Math.max(w - safety * 2, 0.1);
+  const innerD = Math.max(d - safety * 2, 0.1);
+
+  // Câmera enquadra o maior lado
+  const span = Math.max(w, d, h);
+  const camPos: [number, number, number] = [span * 0.9, span * 0.7, span * 1.1];
+
+  // Posição do público
+  const aud = config.audiencePosition;
+  const audienceMeshes: Array<{ pos: [number, number, number]; size: [number, number, number] }> = [];
+  const audThickness = Math.max(span * 0.02, 1);
+  const audHeight = Math.max(span * 0.04, 1.5);
+  if (aud === 'front' || aud === '360') {
+    audienceMeshes.push({ pos: [0, audHeight / 2, d / 2 + audThickness / 2], size: [w, audHeight, audThickness] });
+  }
+  if (aud === 'left' || aud === '360') {
+    audienceMeshes.push({ pos: [-w / 2 - audThickness / 2, audHeight / 2, 0], size: [audThickness, audHeight, d] });
+  }
+  if (aud === 'right' || aud === '360') {
+    audienceMeshes.push({ pos: [w / 2 + audThickness / 2, audHeight / 2, 0], size: [audThickness, audHeight, d] });
+  }
+  if (aud === '360') {
+    audienceMeshes.push({ pos: [0, audHeight / 2, -d / 2 - audThickness / 2], size: [w, audHeight, audThickness] });
+  }
+
   return (
-    <div
-      className="relative mx-auto rounded-md border border-primary/30 bg-[hsl(var(--background))] overflow-hidden"
-      style={{ width: previewW, height: previewH }}
-    >
-      {/* Grid */}
-      <div
-        className="absolute inset-0 opacity-30"
-        style={{
-          backgroundImage:
-            'linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)',
-          backgroundSize: `${previewW / 12}px ${previewH / 6}px`,
-        }}
-      />
-      {/* Safety zone */}
-      <div
-        className="absolute border border-amber-500/40 bg-amber-500/5"
-        style={{
-          inset: `${safetyPct * 100}%`,
-        }}
-      />
-      {/* Audience indicator */}
-      {is360 && (
-        <div className="absolute inset-0 ring-2 ring-cyan-400/40 rounded-md pointer-events-none" />
-      )}
-      {!is360 && (
-        <div
-          className="absolute bg-cyan-400/30 text-[10px] uppercase tracking-wider text-cyan-200 flex items-center justify-center"
-          style={{
-            left: config.audiencePosition === 'right' ? 'auto' : config.audiencePosition === 'left' ? 0 : 0,
-            right: config.audiencePosition === 'right' ? 0 : config.audiencePosition === 'left' ? 'auto' : 0,
-            top: isFront ? 'auto' : 0,
-            bottom: isFront ? 0 : (config.audiencePosition === 'left' || config.audiencePosition === 'right') ? 0 : 'auto',
-            width: isFront ? '100%' : 22,
-            height: isFront ? 22 : '100%',
-          }}
-        >
-          Público
-        </div>
-      )}
-      <span className="absolute top-1 left-2 text-[10px] text-muted-foreground">
-        {config.width}m × {config.depth}m · max {config.maxHeight}m
+    <div className="relative w-full h-[260px] rounded-md border border-primary/30 bg-[hsl(var(--background))] overflow-hidden">
+      <Canvas camera={{ position: camPos, fov: 45, near: 0.1, far: span * 10 }} dpr={[1, 1.5]}>
+        <ambientLight intensity={0.55} />
+        <directionalLight position={[span, span * 1.5, span]} intensity={0.6} />
+
+        {/* Grid do chão */}
+        <Grid
+          args={[Math.max(w, d) * 1.5, Math.max(w, d) * 1.5]}
+          cellSize={Math.max(1, Math.round(span / 40))}
+          cellThickness={0.6}
+          cellColor="#3a4a5a"
+          sectionSize={Math.max(5, Math.round(span / 8))}
+          sectionThickness={1.1}
+          sectionColor="#22d3ee"
+          fadeDistance={span * 3}
+          fadeStrength={1}
+          infiniteGrid={false}
+          position={[0, 0.001, 0]}
+        />
+
+        {/* Retângulo do site (contorno externo) */}
+        <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[w, d]} />
+          <meshBasicMaterial color="#22d3ee" transparent opacity={0.08} />
+        </mesh>
+        <lineSegments position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <edgesGeometry args={[new THREE.PlaneGeometry(w, d)]} />
+          <lineBasicMaterial color="#22d3ee" />
+        </lineSegments>
+
+        {/* Zona de segurança (anel âmbar) */}
+        <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[Math.min(innerW, innerD) / 2, Math.max(w, d) / 2, 4, 1]} />
+          <meshBasicMaterial color="#f59e0b" transparent opacity={0.15} />
+        </mesh>
+
+        {/* Caixa interna útil */}
+        <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[innerW, innerD]} />
+          <meshBasicMaterial color="#10b981" transparent opacity={0.1} />
+        </mesh>
+
+        {/* Volume de altura máxima (wireframe) */}
+        <mesh position={[0, h / 2, 0]}>
+          <boxGeometry args={[innerW, h, innerD]} />
+          <meshBasicMaterial color="#22d3ee" wireframe transparent opacity={0.25} />
+        </mesh>
+
+        {/* Público */}
+        {audienceMeshes.map((m, i) => (
+          <mesh key={i} position={m.pos}>
+            <boxGeometry args={m.size} />
+            <meshStandardMaterial color="#0ea5e9" transparent opacity={0.55} />
+          </mesh>
+        ))}
+
+        <OrbitControls
+          enablePan={false}
+          minDistance={span * 0.4}
+          maxDistance={span * 3}
+          maxPolarAngle={Math.PI / 2.05}
+        />
+      </Canvas>
+      <span className="pointer-events-none absolute top-1 left-2 text-[10px] text-muted-foreground">
+        {config.width}m × {config.depth}m · max {config.maxHeight}m · safety {config.safetyDistance}m
       </span>
     </div>
   );
 }
+
