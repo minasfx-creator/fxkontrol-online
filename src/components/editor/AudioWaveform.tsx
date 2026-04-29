@@ -564,6 +564,95 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     }
   }, [pixelsPerSecond, cueMarkers, removeCueMarker]);
 
+  // ── Trim handlers ────────────────────────────────────────────────
+  const trimWindowDur = (audioOutPoint ?? audioOriginalDuration ?? 0) - audioInPoint;
+  const isTrimmed = audioInPoint > 0 || (audioOutPoint != null && audioOriginalDuration != null && audioOutPoint < audioOriginalDuration);
+
+  const handleApplyTrim = useCallback(() => {
+    const r = applyAudioTrim(pendingIn, pendingOut);
+    if (!r.ok) {
+      toast.error(r.error ?? 'Trim inválido');
+      return;
+    }
+    setTrimMode(false);
+    toast.success(
+      `Trim aplicado · ${(pendingOut - pendingIn).toFixed(2)}s` +
+      ((r.removedItems ?? 0) + (r.removedCues ?? 0) > 0
+        ? ` · ${r.removedItems ?? 0} cues / ${r.removedCues ?? 0} markers fora removidos`
+        : ''),
+    );
+  }, [applyAudioTrim, pendingIn, pendingOut]);
+
+  const handleResetTrim = useCallback(() => {
+    resetAudioTrim();
+    setTrimMode(false);
+    toast.success('Trim removido — áudio restaurado');
+  }, [resetAudioTrim]);
+
+  // Drag start for an In/Out handle. Drag updates `pending*` only; commit
+  // happens via the Apply button to keep the timeline stable while scrubbing.
+  const startHandleDrag = useCallback((which: 'in' | 'out') => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const container = containerRef.current;
+    if (!container || audioOriginalDuration == null) return;
+    setDraggingHandle(which);
+    const rect = container.getBoundingClientRect();
+
+    const onMove = (ev: MouseEvent) => {
+      const x = ev.clientX - rect.left + container.scrollLeft;
+      // The canvas always represents `[audioInPoint .. audioOutPoint]` so
+      // x=0 maps to audioInPoint, but during trim mode we want raw file-time
+      // — easiest is to anchor on the *current* in/out (pre-trim) and scale.
+      const showTime = x / pixelsPerSecond;
+      const fileTime = audioInPoint + showTime;
+      const clamped = Math.max(0, Math.min(audioOriginalDuration, fileTime));
+      if (which === 'in') {
+        setPendingIn(Math.min(clamped, pendingOut - 0.05));
+      } else {
+        setPendingOut(Math.max(clamped, pendingIn + 0.05));
+      }
+    };
+    const onUp = () => {
+      setDraggingHandle(null);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [audioInPoint, audioOriginalDuration, pendingIn, pendingOut, pixelsPerSecond]);
+
+  // Keyboard shortcuts: I/O set pending in/out at playhead, Esc cancels.
+  useEffect(() => {
+    if (!trimMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      const tgt = e.target as HTMLElement | null;
+      if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
+      if (e.key === 'i' || e.key === 'I') {
+        const t = currentTime + audioInPoint;
+        setPendingIn(Math.min(t, pendingOut - 0.05));
+        e.preventDefault();
+      } else if (e.key === 'o' || e.key === 'O') {
+        const t = currentTime + audioInPoint;
+        setPendingOut(Math.max(t, pendingIn + 0.05));
+        e.preventDefault();
+      } else if (e.key === 'Escape') {
+        setTrimMode(false);
+        e.preventDefault();
+      } else if (e.key === 'Enter') {
+        handleApplyTrim();
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [trimMode, currentTime, audioInPoint, pendingIn, pendingOut, handleApplyTrim]);
+
+  // Pixel positions of the In/Out handles within the canvas (which spans
+  // `[audioInPoint .. audioOutPoint]` in file-time).
+  const inHandleX = (pendingIn - audioInPoint) * pixelsPerSecond;
+  const outHandleX = (pendingOut - audioInPoint) * pixelsPerSecond;
+
   const isExpanded = trackHeight > MIN_HEIGHT;
 
   return (
