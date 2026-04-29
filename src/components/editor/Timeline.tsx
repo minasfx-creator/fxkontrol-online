@@ -1629,16 +1629,32 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
           <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-white/[0.06]" onClick={zoomIn}><ZoomIn className="h-2.5 w-2.5 text-muted-foreground/50" /></Button>
         </div>
 
-        {/* Beat snap */}
-        <button
-          className={cn("flex items-center gap-1 text-[8px] font-mono px-1.5 py-0.5 rounded-lg transition-all",
-            snapToBeat ? "bg-accent/10 text-accent" : "text-muted-foreground/25 hover:text-muted-foreground/40")}
-          onClick={() => setSnapToBeat(!snapToBeat)}
-          style={!snapToBeat ? { background: 'hsl(var(--muted) / 0.1)' } : undefined}
-        >
-          <Magnet className="h-2.5 w-2.5" />
-          {bpm && <span className="tabular-nums">{bpm}</span>}
-        </button>
+        {/* Snap mode segmented control: Auto / Beat / Frame / Off */}
+        {(() => {
+          const activeGrid = getActiveGrid({ bpm, snapMode });
+          return (
+            <div className="flex items-center gap-1">
+              <div className="flex items-center gap-px rounded-lg p-px" style={{ background: 'hsl(var(--muted) / 0.1)' }} title="Snap mode (drag/drop quantization)">
+                <Magnet className="h-2.5 w-2.5 text-muted-foreground/50 ml-1 mr-0.5" />
+                {(['auto', 'beat', 'frame', 'off'] as const).map((m) => (
+                  <button
+                    key={m}
+                    className={cn(
+                      "text-[8px] font-mono uppercase px-1.5 py-0.5 rounded-md transition-all tracking-wider",
+                      snapMode === m
+                        ? "bg-accent/12 text-accent"
+                        : "text-muted-foreground/35 hover:text-muted-foreground/55",
+                    )}
+                    onClick={() => setSnapMode(m)}
+                  >{m}</button>
+                ))}
+              </div>
+              <span className="text-[8px] font-mono text-muted-foreground/45 tabular-nums" title="Active snap unit">
+                {activeGrid.label}
+              </span>
+            </div>
+          );
+        })()}
 
         {/* LIVE indicator placeholder */}
         <div className="badge-live hidden" id="live-badge">● LIVE</div>
