@@ -1,64 +1,37 @@
-## Phase 2 — Functional Bugs
+## Phase 4 — Cleanup (Concluída)
 
-Execute the three remaining functional fixes identified in the audit, with guardian tests.
+Remoções confirmadas (zero importadores externos verificados via rg + busca global):
 
-### 1. C4 — Quarantine flaky safety tests
+### Pastas dead-barrel
+- `src/_legacy/` (timelineECS.ts, ultraFirePreloadEngine.ts) — só auto-referenciava-se internamente.
+- `src/store/domains/` (hardware/simulation/workspace/ai/index) — barrel de redireção sem consumidores; `src/stores/` é a superfície oficial.
+- `src/hardware/index.ts` — barrel órfão; consumidores importam direto dos sub-paths.
 
-**Problem:** `safetyStateMachine.strict.test.ts` fails due to `safetyGate.isStrict` inconsistency post-Phase-1 refactor (gate is now opt-in via `WorkMode`, breaking strict-mode assumption).
+### Arquivos órfãos (UI + libs isoladas)
+- `src/components/common/VirtualizedList.tsx`
+- `src/components/editor/SplashScreen.tsx`
+- `src/components/settings/HardwareSimulatorSettings.tsx`
+- `src/components/swarmgpt/GpuSamplingDiagnosticsPanel.tsx`
+- `src/components/editor/skycanvas/{cameraControllers,droneRendererSwitch,sceneLighting,viewportToolbars,watchdogs}.tsx`
+- `src/lib/transportReadiness.ts`
+- `src/lib/aiShowBuilder/remoteShowPlanProvider.ts`
+- `src/hooks/useBoidsWorker.ts` (nota: `BoidsWorkerClient` é usado direto)
+- `src/hooks/useCommandJournal.ts`
+- `src/hooks/useExecutiveReport.ts`
+- `src/workers/dmxTimingWorker.ts`
+- `src/modules/swarmgpt/utils/safeJson.ts`
 
-**Fix:**
-- Move the failing test to `src/core/safety/__tests__/quarantine/safetyStateMachine.strict.test.ts`
-- Add a `README.md` explaining the deferred reason (waiting for strict-mode reconciliation with `WorkMode`)
-- Update `vitest.config.ts` to exclude `**/__tests__/quarantine/**`
+### Postura conservadora — mantidos para revisão futura
+Estes apareceram como órfãos pelo grep, mas podem ser:
+- registrados em runtime (registries / lazy maps),
+- entrypoints de subsistemas em adoção (`core/hardware/{HardwareRegistry,IngestionLayer,ManualModeState}`, `core/joi/JOIArtifactGenerator`, `core/sync/MultiSiteCoordinator`, `core/verification/VerificationPass`, `core/performance/memoryManager`, `core/project/projectManager`, `core/hud/HUDLayerManager`, `core/environment/sunSystem`, `core/interaction/terrainRaycaster`, `core/types/domainTypes`),
+- ou parte do pipeline SwarmGPT em estabilização (`modules/swarmgpt/{adapters/applyToTimeline,advanced/sampling/reducePointCloud,pipeline/generateSwarmGPTShow}`, `data/parametricEffects`).
 
-**Risk:** Low — quarantine, not deletion. Restored once strict-mode policy is finalized.
+Decisão: **NÃO remover** sem inspeção dirigida em fase própria; o risco/benefício não compensa nesta fase.
 
-### 2. H2 — Implement `Show3DEngine.applyCue()`
+## Próxima fase sugerida — Phase 5 (Otimizações)
 
-**Problem:** `applyCue()` in `src/lib/showEngine/Show3DEngine.ts` is an empty stub. AI-compiled cues compile but never render.
-
-**Fix:**
-- Use existing `EffectPool` (`src/lib/showEngine/EffectPool.ts`) to spawn a marker mesh per cue
-- Marker: small sprite/billboard at `cue.position` colored from `cue.color` (VDL-mapped fallback white)
-- TTL = `cue.duration ?? 1500ms`; auto-release back to pool on expiry via internal tick (use existing animation loop, no new RAF)
-- Layer-aware: route into `cue.layer` group so `clearLayer()` (already exists) cleans them
-- Strictly visual — no FieldBus or hardware side-effects
-- Dispose textures on `clearLayer` (also fixes M5 GPU leak)
-
-**Risk:** Medium — touches render loop. Mitigate with feature-flag `engine3d_apply_cue` (default ON in design/simulation, OFF if leak detected).
-
-### 3. M4 — Real collision in `transitionPlanner`
-
-**Problem:** `src/.../transitionPlanner.ts` hard-codes `collisionFree: true`; `FleetManagementPanel.tsx` uses constant `windSpeed = 3`.
-
-**Fix:**
-- Replace `collisionFree: true` with a call to `applyCollisionAvoidance()` (already implemented in `src/lib/collisionAvoidance.ts`) over sampled waypoints; set `collisionFree = result.closestPair >= MIN_SEPARATION`
-- Read `windSpeed` from `useFleetStore().environment.windSpeed` (already in store) instead of literal `3`; default to 3 if undefined for back-compat
-
-**Risk:** Low — pure planning logic, no safety path. Existing avoidance algorithm is unit-tested.
-
-### 4. Guardian tests
-
-- `__tests__/show3DEngineApplyCue.test.ts` — spawn → TTL expiry → pool release; `clearLayer` disposes textures
-- `__tests__/transitionPlannerCollision.test.ts` — two intersecting paths flagged `collisionFree: false`; clear paths flagged `true`
-- `__tests__/transitionPlannerWind.test.ts` — pulls `windSpeed` from store, not literal
-
-### Files touched
-
-- `src/lib/showEngine/Show3DEngine.ts` (applyCue + clearLayer dispose)
-- `src/lib/showEngine/__tests__/show3DEngineApplyCue.test.ts` (new)
-- `src/<...>/transitionPlanner.ts` (locate via rg)
-- `src/components/<...>/FleetManagementPanel.tsx` (windSpeed read)
-- 2 new transition planner tests
-- `src/core/safety/__tests__/quarantine/` (move + README)
-- `vitest.config.ts` (exclude quarantine)
-
-### Out of scope (deferred to later phases)
-
-- Phase 3: panel fusion (`EasyConnectPanel` consolidation)
-- Phase 4: `_legacy` removal, barrel cleanup
-- Phase 5: dual-store unification (H1), discoverer listener leaks (H4), logger rollout (M3)
-
-### Memory
-
-No new memory entries required — `applyCue` aligns with existing **ShowPlan Truth** and **Zero-GC Specs** rules; collision fix aligns with **Safety Engine** memory.
+- H1 — Unificar dual-store (`src/store/*` ↔ `src/stores/*`) com `migrateLegacyStores`.
+- H4 — Auditar listeners em discoverers/transport (vazamento on unmount).
+- M5 — Auditoria de dispose de texturas/materiais nos subsystems restantes (não-Show3DEngine).
+- M3 — Rollout do logger estruturado (`logger.ts`) substituindo `console.*` em paths quentes.
