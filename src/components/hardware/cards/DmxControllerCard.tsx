@@ -20,6 +20,7 @@ import { dmxQuickActions } from '@/core/hardware/dmxQuickActions';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { LiveStatusChip, type LiveStatus } from '../shared/LiveStatusChip';
 import type { DiscoveryTransport } from '@/core/discovery/types';
 
 function TransportIcon({ transport }: { transport: DiscoveryTransport | null }) {
@@ -92,6 +93,16 @@ export function DmxControllerCard({ controller, onClose, onOpenConsole }: DmxCon
       </div>
 
       <div className="mb-2 flex flex-wrap items-center gap-1">
+        <LiveStatusChip
+          status={(universes.length > 0 && dev.online ? 'live' : dev.online ? 'read-only' : 'no-op') as LiveStatus}
+          reason={
+            !dev.online
+              ? 'Adapter DMX offline'
+              : universes.length === 0
+                ? 'Nenhum universo registrado — comandos não chegam ao bus'
+                : `${universes.length} universo(s) DMX ativos`
+          }
+        />
         <Badge variant="default" className="h-5 px-1.5 text-[10px]">ONLINE</Badge>
         <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
           {universes.length} universo{universes.length === 1 ? '' : 's'}
