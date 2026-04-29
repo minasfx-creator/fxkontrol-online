@@ -44,6 +44,8 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
   const [variation, setVariation] = useState(0);
   const [plan, setPlan] = useState<ShowPlan | null>(null);
   const [busy, setBusy] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+
 
   const validation: ShowPlanValidationResult | null = useMemo(
     () => (plan ? validateShowPlan(plan, site) : null),
