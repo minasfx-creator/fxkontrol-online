@@ -1186,8 +1186,17 @@ function CollapsibleTrackGroup({ label, defaultOpen = true, children }: { label:
   );
 }
 
-/** Playhead rendered via direct DOM manipulation — no React re-renders during playback */
-function PlayheadIndicator({ pixelsPerSecond }: { pixelsPerSecond: number }) {
+/** Playhead rendered via direct DOM manipulation — no React re-renders during playback.
+ *  The top "handle" (bolinha) is interactive so the operator can grab the playhead
+ *  directly to scrub. The vertical line stays pointer-events-none so it never
+ *  blocks clicks on timeline items below it. */
+function PlayheadIndicator({
+  pixelsPerSecond,
+  onScrubPointerDown,
+}: {
+  pixelsPerSecond: number;
+  onScrubPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const initial = useProjectStore.getState().currentTime;
@@ -1200,7 +1209,13 @@ function PlayheadIndicator({ pixelsPerSecond }: { pixelsPerSecond: number }) {
 
   return (
     <div ref={ref} className="absolute top-0 bottom-0 w-px z-20 pointer-events-none" style={{ transform: 'translateX(0px)' }}>
-      <div className="w-2 h-2 bg-primary rounded-full -translate-x-[3px] -translate-y-px shadow-[0_0_8px_hsl(var(--primary)/0.4)]" />
+      {/* Grab handle — larger hit area for touch (12px) */}
+      <div
+        role="slider"
+        aria-label="Scrub playhead"
+        className="absolute -top-1 -left-2 w-4 h-4 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.5)] pointer-events-auto cursor-ew-resize touch-none"
+        onPointerDown={onScrubPointerDown}
+      />
       <div className="absolute top-0 w-px h-full bg-gradient-to-b from-primary via-primary/30 to-transparent" />
     </div>
   );
@@ -1352,19 +1367,127 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPlaying, selectedTimelineItemId, selectedTimelineItemIds, timelineItems]);
 
-  const handleTrackClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const scrollLeft = scrollRef.current?.scrollLeft ?? 0;
-      const x = e.clientX - rect.left + scrollLeft - 96;
-      if (x < 0) return;
-      let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
-      time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
-      setCurrentTime(time);
+  // ─── Drag-to-scrub on the track + playhead ──────────────────────────
+  // Pointer Events cover mouse, touch and pen in one handler.
+  // While dragging, we throttle store writes to one per RAF so that the
+  // SkyCanvas (drones, light points, shells) re-renders smoothly without
+  // flooding zustand subscribers. Snap-to-beat is applied only on release
+  // to avoid stair-stepping during the drag.
+  const scrubbingRef = useRef(false);
+  const wasPlayingBeforeScrubRef = useRef(false);
+  const pendingScrubTimeRef = useRef<number | null>(null);
+  const scrubRafRef = useRef<number | null>(null);
+  const activePointerIdRef = useRef<number | null>(null);
+  const scrubTargetElRef = useRef<HTMLElement | null>(null);
+
+  const computeTimeFromClientX = useCallback(
+    (clientX: number): number => {
+      const el = scrollRef.current;
+      if (!el) return 0;
+      const rect = el.getBoundingClientRect();
+      const x = clientX - rect.left + el.scrollLeft - 96;
+      if (x < 0) return 0;
+      return Math.max(0, Math.min(x / pixelsPerSecond, duration));
+    },
+    [duration, pixelsPerSecond],
+  );
+
+  const flushScrubTime = useCallback(() => {
+    scrubRafRef.current = null;
+    const t = pendingScrubTimeRef.current;
+    if (t !== null) setCurrentTime(t);
+  }, [setCurrentTime]);
+
+  const queueScrubTime = useCallback((time: number) => {
+    pendingScrubTimeRef.current = time;
+    if (scrubRafRef.current !== null) return;
+    scrubRafRef.current = requestAnimationFrame(flushScrubTime);
+  }, [flushScrubTime]);
+
+  const handleScrubPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      // Ignore non-primary buttons (right click, middle click)
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
+      // Don't intercept clicks on timeline items, resize handles, etc.
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-timeline-item]')) return;
+
+      scrubbingRef.current = true;
+      activePointerIdRef.current = e.pointerId;
+      scrubTargetElRef.current = e.currentTarget;
+      wasPlayingBeforeScrubRef.current = useProjectStore.getState().isPlaying;
+      if (wasPlayingBeforeScrubRef.current) timelineTransport.pause();
+
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore — some embedded browsers throw on capture */
+      }
+
+      const time = computeTimeFromClientX(e.clientX);
+      queueScrubTime(time);
+
       if (!e.shiftKey && !e.ctrlKey && !e.metaKey) clearTimelineItemSelection();
     },
-    [duration, pixelsPerSecond, setCurrentTime, bpm, snapToBeat, clearTimelineItemSelection]
+    [computeTimeFromClientX, queueScrubTime, clearTimelineItemSelection],
   );
+
+  const handleScrubPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!scrubbingRef.current) return;
+      if (activePointerIdRef.current !== null && e.pointerId !== activePointerIdRef.current) return;
+      const time = computeTimeFromClientX(e.clientX);
+      queueScrubTime(time);
+    },
+    [computeTimeFromClientX, queueScrubTime],
+  );
+
+  const endScrub = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!scrubbingRef.current) return;
+      if (activePointerIdRef.current !== null && e.pointerId !== activePointerIdRef.current) return;
+      scrubbingRef.current = false;
+
+      // Flush any pending RAF write before applying snap.
+      if (scrubRafRef.current !== null) {
+        cancelAnimationFrame(scrubRafRef.current);
+        scrubRafRef.current = null;
+      }
+
+      const finalTime = pendingScrubTimeRef.current ?? computeTimeFromClientX(e.clientX);
+      pendingScrubTimeRef.current = null;
+      const snapped = snapTimeToBeat(finalTime, bpm, snapToBeat, pixelsPerSecond);
+      setCurrentTime(snapped);
+
+      try {
+        const captureTarget = scrubTargetElRef.current ?? e.currentTarget;
+        if (captureTarget && captureTarget.hasPointerCapture?.(e.pointerId)) {
+          captureTarget.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        /* ignore */
+      }
+      activePointerIdRef.current = null;
+      scrubTargetElRef.current = null;
+
+      if (wasPlayingBeforeScrubRef.current) {
+        wasPlayingBeforeScrubRef.current = false;
+        timelineTransport.play();
+      }
+    },
+    [bpm, snapToBeat, pixelsPerSecond, computeTimeFromClientX, setCurrentTime],
+  );
+
+  // Cancel any pending RAF on unmount.
+  useEffect(() => {
+    return () => {
+      if (scrubRafRef.current !== null) {
+        cancelAnimationFrame(scrubRafRef.current);
+        scrubRafRef.current = null;
+      }
+    };
+  }, []);
+
 
   const handleDeleteSelected = () => {
     if (selectedTimelineItemIds.length > 0) { removeMultipleTimelineItems(selectedTimelineItemIds); }
@@ -1527,7 +1650,15 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
       </div>
 
       {/* ─── Timeline tracks ─── */}
-      <div ref={scrollRef} className="flex-1 overflow-x-auto overflow-y-auto bg-surface-0/45" onClick={handleTrackClick}>
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-x-auto overflow-y-auto bg-surface-0/45"
+        onPointerDown={handleScrubPointerDown}
+        onPointerMove={handleScrubPointerMove}
+        onPointerUp={endScrub}
+        onPointerCancel={endScrub}
+        style={{ touchAction: scrubbingRef.current ? 'none' : 'auto' }}
+      >
         <div style={{ width: `${duration * pixelsPerSecond + 96}px` }}>
           <div className="flex">
             <div className="w-24 flex-shrink-0" />
@@ -1535,7 +1666,8 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
               <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               <BeatGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               {/* Playhead — DOM-direct updates via transient Zustand subscription (zero re-renders) */}
-              <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} />
+              <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} onScrubPointerDown={handleScrubPointerDown} />
+
             </div>
           </div>
           {/* ── FIRING SYSTEMS group ── */}
