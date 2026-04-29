@@ -21,7 +21,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+// Lazy toast to keep sonner out of the eager initial bundle.
+const toast = {
+  info: (m: string) => { void import('sonner').then(({ toast }) => toast.info(m)); },
+  success: (m: string) => { void import('sonner').then(({ toast }) => toast.success(m)); },
+  warning: (m: string) => { void import('sonner').then(({ toast }) => toast.warning(m)); },
+  error: (m: string) => { void import('sonner').then(({ toast }) => toast.error(m)); },
+};
 import { useFXK16Bridge, FXK16_MAX_CHANNEL } from '@/hooks/useFXK16Bridge';
 import { useFXK16Commands } from '@/hooks/useFXK16Commands';
 import type { CommandResponse, Fxk16ErrorCode } from '@/lib/fxk16/commandApi';
