@@ -1790,7 +1790,7 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
               <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               <TimelineGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} snapMode={snapMode} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               {/* Playhead — DOM-direct updates via transient Zustand subscription (zero re-renders) */}
-              <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} onScrubPointerDown={handleScrubPointerDown} />
+              <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} snapMode={snapMode} onScrubPointerDown={handleScrubPointerDown} />
 
             </div>
           </div>
