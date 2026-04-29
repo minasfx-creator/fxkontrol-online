@@ -169,6 +169,9 @@ export default function EngineProvider() {
       timelineClock.tick(dt);
     }, 100);
 
+    // SOLE owner of the 'executionBridge' lockstep system. SkyCanvas used to
+    // register a second one — do not re-introduce that. Keep registration
+    // here so it follows the EngineProvider lifecycle (mount/unmount).
     lockstep.register('executionBridge', (_time: number, _dt: number) => {
       const plan = showPlanManager.current;
       const signature = `${plan.metadata.id}:${plan.metadata.updatedAt}:${plan.pyroCues.length}:${plan.dmxCues.length}:${plan.dronePaths.length}`;

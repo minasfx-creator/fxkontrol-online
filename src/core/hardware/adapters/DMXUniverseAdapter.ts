@@ -6,6 +6,7 @@
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState } from '../types';
 import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
+import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 export interface DMXUniverseState {
   universe_id: number;
@@ -17,14 +18,16 @@ export interface DMXUniverseState {
   link: { connected: boolean; latency_ms: number; errors: number };
 }
 
+// Honest-hardware default: disconnected, zeroed link, no fake telemetry.
+// Tests/UI may inject state via _injectState() to drive synthetic scenarios.
 const DEFAULT_STATE: DMXUniverseState = {
   universe_id: 1,
   protocol: 'DMX512',
   channel_count: 512,
   occupied_channels: 0,
-  refresh_rate_hz: 44,
+  refresh_rate_hz: 0,
   max_refresh_rate_hz: 44,
-  link: { connected: true, latency_ms: 1.2, errors: 0 },
+  link: { connected: false, latency_ms: 0, errors: 0 },
 };
 
 class DMXUniverseAdapterImpl implements HardwareAdapter<DMXUniverseState> {
@@ -33,8 +36,8 @@ class DMXUniverseAdapterImpl implements HardwareAdapter<DMXUniverseState> {
   readonly label = 'DMX Universe 1';
   private _provenance: ProvenanceInfo = createSimulatedProvenance('ethernet_udp');
 
-  private _state: DMXUniverseState = { ...DEFAULT_STATE };
-  private _connectionState: DeviceConnectionState = 'connected';
+  private _state: DMXUniverseState = { ...DEFAULT_STATE, link: { ...DEFAULT_STATE.link } };
+  private _connectionState: DeviceConnectionState = 'disconnected';
 
   getConnectionState(): DeviceConnectionState { return this._connectionState; }
 
@@ -67,10 +70,13 @@ class DMXUniverseAdapterImpl implements HardwareAdapter<DMXUniverseState> {
   getProvenance(): ProvenanceInfo { return { ...this._provenance, last_seen_at: Date.now(), data_freshness_ms: 0 }; }
 
   pollTelemetry(): void {
-    // Simulate minor jitter
-    this._state.refresh_rate_hz = DEFAULT_STATE.refresh_rate_hz + (Math.random() - 0.5) * 4;
-    this._state.link.latency_ms = Math.max(0.5, DEFAULT_STATE.link.latency_ms + (Math.random() - 0.5) * 1);
-    this._connectionState = this._state.link.connected ? 'connected' : 'disconnected';
+    // Honest-hardware: only emit jitter when we actually have a link
+    // (set via _injectState) AND simulator gate is ON.
+    if (!this._state.link.connected) return;
+    if (!isHardwareSimulatorEnabled()) return;
+    this._state.refresh_rate_hz = Math.max(0, 44 + (Math.random() - 0.5) * 4);
+    this._state.link.latency_ms = Math.max(0.5, 1.2 + (Math.random() - 0.5) * 1);
+    this._connectionState = 'connected';
   }
 
   runDiagnostics(): { healthy: boolean; issues: string[] } {
@@ -82,8 +88,8 @@ class DMXUniverseAdapterImpl implements HardwareAdapter<DMXUniverseState> {
   }
 
   reset(): void {
-    this._state = { ...DEFAULT_STATE };
-    this._connectionState = 'connected';
+    this._state = { ...DEFAULT_STATE, link: { ...DEFAULT_STATE.link } };
+    this._connectionState = 'disconnected';
   }
 
   /** Test injection */

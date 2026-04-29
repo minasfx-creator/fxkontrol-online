@@ -13,13 +13,14 @@ import { cn } from '@/lib/utils';
 import { Radio, RefreshCw, Wifi, WifiOff, Download, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useShallow } from 'zustand/react/shallow';
 
 export default function DMXArtNetConsole() {
   const [, setTick] = useState(0);
   const [preview, setPreview] = useState('');
   const [cueCount, setCueCount] = useState(0);
   const [exportErrors, setExportErrors] = useState<string[]>([]);
-  const { level } = useVerificationStore();
+  const level = useVerificationStore((s) => s.level);
   const canExport = level === 'READY_FOR_EXPORT' || level === 'READY_FOR_FIELD';
   const refresh = useCallback(() => setTick(t => t + 1), []);
 

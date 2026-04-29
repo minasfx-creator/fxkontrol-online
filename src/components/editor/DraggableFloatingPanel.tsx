@@ -28,7 +28,7 @@ function getStoredPos(id: string, fallback: { x: number; y: number }) {
       const parsed = JSON.parse(raw);
       if (typeof parsed.x === 'number' && typeof parsed.y === 'number') return parsed;
     }
-  } catch {}
+  } catch { /* best-effort: localStorage may be full or disabled */ }
   return fallback;
 }
 
@@ -113,7 +113,7 @@ export default function DraggableFloatingPanel({
     const final = dodgeCollisions(panelId, raw.x, raw.y, el?.offsetWidth ?? 48, el?.offsetHeight ?? 48);
     const clamped = clamp(final.x, final.y);
     setPos(clamped);
-    try { localStorage.setItem(`dfp-${panelId}`, JSON.stringify(clamped)); } catch {}
+    try { localStorage.setItem(`dfp-${panelId}`, JSON.stringify(clamped)); } catch { /* best-effort: localStorage may be full or disabled */ }
   }, [dragging, clamp, panelId]);
 
   const handleMinimize = useCallback(() => {

@@ -25,13 +25,9 @@ import {
   Activity,
   Globe2,
 } from "lucide-react";
-
-const TITLE = "FX KONTROL — Software de shows pirotécnicos, SFX, DMX e ArtNet";
-const DESC =
-  "Plataforma moderna para design, simulação e controle de shows pirotécnicos, SFX, drones, DMX e ArtNet. Migre do Finale 3D com menos custo e mais automação.";
-const CANONICAL = "https://fxkontrol.online/landing";
-const OG_IMAGE =
-  "https://storage.googleapis.com/gpt-engineer-file-uploads/HNWwID77XlhLhwds00GYkOiIPMm2/social-images/social-1777070046139-ChatGPT_Image_23_de_abr._de_2026,_21_34_00.webp";
+import { LANDING_SITE, buildLandingSeo, enforceLandingCanonicalRedirect } from "@/config/landing";
+import { LandingThemeToggle } from "@/components/landing/LandingThemeToggle";
+import { EarlyAccessForm } from "@/components/landing/EarlyAccessForm";
 
 function upsertMeta(attr: "name" | "property", key: string, content: string) {
   let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
@@ -145,73 +141,48 @@ const PRICING = [
 
 export default function Landing() {
   useEffect(() => {
+    // Anti-duplicidade SEO: se chegou por host-alias / path errado / utm_*,
+    // normaliza para canônico (spa-replace ou hard-redirect cross-origin).
+    // No-op em iframe/preview Lovable e em SSR.
+    const redirect = enforceLandingCanonicalRedirect(LANDING_SITE);
+    // Se for hard-redirect, a página vai recarregar — não precisa setar tags.
+    if (redirect.kind === "hard-redirect") return;
+
+    // Todo o SEO é derivado de LANDING_SITE em src/config/landing.ts.
+    const seo = buildLandingSeo(LANDING_SITE);
+
     const prevTitle = document.title;
-    document.title = TITLE;
+    const prevHtmlLang = document.documentElement.lang;
+    document.title = seo.title;
+    document.documentElement.lang = seo.htmlLang;
+
     const restorers: Array<() => void> = [];
-    const apply = (attr: "name" | "property", key: string, content: string) => {
-      const { el, prev, created } = upsertMeta(attr, key, content);
+
+    for (const m of seo.metas) {
+      const { el, prev, created } = upsertMeta(m.attr, m.key, m.content);
       restorers.push(() => {
         if (created) el.remove();
         else if (prev !== null) el.setAttribute("content", prev);
       });
-    };
-    const applyLink = (rel: string, href: string, extra?: Record<string, string>) => {
-      const { el, prev, created } = upsertLink(rel, href, extra);
+    }
+    for (const l of seo.links) {
+      const { el, prev, created } = upsertLink(l.rel, l.href, l.extra);
       restorers.push(() => {
         if (created) el.remove();
         else if (prev !== null) el.setAttribute("href", prev);
       });
-    };
+    }
 
-    apply("name", "description", DESC);
-    apply("name", "robots", "index,follow");
-    apply("name", "author", "Minas FX");
-    apply("name", "keywords", "shows pirotécnicos, drone show, DMX, ArtNet, sACN, Finale 3D, SFX, FX KONTROL, Minas FX, pirotecnia profissional");
-    apply("property", "og:type", "website");
-    apply("property", "og:site_name", "FX KONTROL");
-    apply("property", "og:locale", "pt_BR");
-    apply("property", "og:url", CANONICAL);
-    apply("property", "og:title", TITLE);
-    apply("property", "og:description", DESC);
-    apply("property", "og:image", OG_IMAGE);
-    apply("property", "og:image:alt", "FX KONTROL — editor 3D de shows pirotécnicos e drones");
-    apply("name", "twitter:card", "summary_large_image");
-    apply("name", "twitter:site", "@MinasFX");
-    apply("name", "twitter:title", TITLE);
-    apply("name", "twitter:description", DESC);
-    apply("name", "twitter:image", OG_IMAGE);
-    apply("name", "twitter:image:alt", "FX KONTROL — editor 3D de shows pirotécnicos e drones");
-    applyLink("canonical", CANONICAL);
-
-    // Performance: preconnect + preload critical origins for the OG image and fonts.
-    applyLink("preconnect", "https://storage.googleapis.com", { crossorigin: "" });
-    applyLink("dns-prefetch", "https://storage.googleapis.com");
-    applyLink("preload", OG_IMAGE, { as: "image", fetchpriority: "high" });
-
-    // JSON-LD structured data for the landing page.
     const ld = document.createElement("script");
     ld.type = "application/ld+json";
     ld.id = "ld-landing";
-    ld.text = JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "WebPage",
-      name: TITLE,
-      description: DESC,
-      url: CANONICAL,
-      inLanguage: "pt-BR",
-      primaryImageOfPage: OG_IMAGE,
-      isPartOf: {
-        "@type": "WebSite",
-        name: "FX KONTROL",
-        url: "https://fxkontrol.online/",
-      },
-      publisher: { "@type": "Organization", name: "Minas FX" },
-    });
+    ld.text = JSON.stringify(seo.jsonLd);
     document.head.appendChild(ld);
     restorers.push(() => ld.remove());
 
     return () => {
       document.title = prevTitle;
+      document.documentElement.lang = prevHtmlLang;
       restorers.forEach((r) => r());
     };
   }, []);
@@ -246,9 +217,11 @@ export default function Landing() {
             <a href="#features" className="rounded transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background">Recursos</a>
             <a href="#demo" className="rounded transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background">Demo</a>
             <a href="#pricing" className="rounded transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background">Preço</a>
+            <a href="#early-access" className="rounded transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background">Early Access</a>
             <Link to="/pricing" className="rounded transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background">Planos</Link>
           </nav>
           <div className="flex flex-shrink-0 items-center gap-2">
+            <LandingThemeToggle />
             <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
               <Link to="/auth">Entrar</Link>
             </Button>
@@ -559,6 +532,39 @@ export default function Landing() {
               </Card>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── EARLY ACCESS ───────────────────────────────────────────────── */}
+      <section
+        id="early-access"
+        aria-labelledby="early-access-heading"
+        className="relative border-t border-border/40 bg-[hsl(var(--surface-1))] py-16 sm:py-24 md:py-32"
+      >
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+          <div className="absolute left-1/2 top-1/2 h-[300px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,hsl(var(--fxk-cyan)/0.18),transparent_70%)] blur-3xl" />
+        </div>
+        <div className="relative mx-auto max-w-3xl px-4 sm:px-6 md:px-8">
+          <div className="mb-8 text-center sm:mb-10">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground backdrop-blur">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[hsl(var(--fxk-cyan))]" />
+              Vagas limitadas
+            </div>
+            <h2
+              id="early-access-heading"
+              className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl"
+            >
+              Entre no{" "}
+              <span className="bg-gradient-to-r from-primary via-[hsl(var(--electric-glow))] to-[hsl(var(--fxk-gold))] bg-clip-text text-transparent">
+                Early Access
+              </span>
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-sm text-muted-foreground sm:text-base">
+              Operadores selecionados recebem acesso antecipado, suporte direto da engenharia e prioridade
+              em novos módulos (drones, lasers, pyro dual-band).
+            </p>
+          </div>
+          <EarlyAccessForm />
         </div>
       </section>
 

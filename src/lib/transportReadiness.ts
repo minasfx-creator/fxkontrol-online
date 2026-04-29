@@ -149,7 +149,7 @@ function wifiDirectReadiness(api: boolean, secure: boolean, platform: Platform, 
 /** Structured diagnostic log — emit when readiness changes. */
 export function logReadiness(snapshot: ReadinessSnapshot): void {
   for (const t of Object.values(snapshot.transports)) {
-    // eslint-disable-next-line no-console
+     
     console.info('[transport-readiness]', {
       scope: 'transport-readiness',
       transport: t.transport,

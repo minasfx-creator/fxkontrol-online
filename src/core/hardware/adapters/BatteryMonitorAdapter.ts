@@ -6,6 +6,7 @@
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, BatteryState } from '../types';
 import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
+import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 export class BatteryMonitorAdapter implements HardwareAdapter<BatteryState> {
   readonly deviceId = 'battery-12v';
@@ -51,7 +52,8 @@ export class BatteryMonitorAdapter implements HardwareAdapter<BatteryState> {
 
   pollTelemetry(): void {
     if (this._connected !== 'connected') return;
-    // Simulate slow discharge
+    if (!isHardwareSimulatorEnabled()) return;
+    // Simulate slow discharge (only when simulator gate is ON)
     if (!this._state.charging && this._state.voltage > 10.5) {
       this._state.voltage -= 0.001 + Math.random() * 0.002;
     }

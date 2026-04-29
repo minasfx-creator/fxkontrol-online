@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { VideoChoreoResult } from '@/lib/videoChoreoEngine';
 import { createDroneFormationSlice } from '@/store/slices/droneFormationSlice';
 import { timelineClock } from '@/core/timeline/TimelineClock';
+import { buildDemoTimeline } from '@/lib/demoTimeline';
 
 // ── Effect types & EFFECT_LIBRARY re-exported from src/data for backward compat ──
 export type { Effect, PartType } from '@/data/effectLibrary';
@@ -44,8 +45,33 @@ export interface ProjectState {
   drawHeight: number;
   waypointUndoStack: { trajectoryId: string; waypoint: Waypoint }[];
   audioUrl: string | null;
+  /** Non-destructive trim: start point inside the original audio file (s). */
+  audioInPoint: number;
+  /** Non-destructive trim: end point inside the original audio file (s).
+   *  `null` = use the file's natural end. */
+  audioOutPoint: number | null;
+  /** Decoded length of the original audio file (s). Set by AudioWaveform
+   *  after `decodeAudioData` succeeds; needed to clamp trim handles. */
+  audioOriginalDuration: number | null;
+  /** Single-level undo snapshot for the last applied trim. Stores the trim
+   *  window that was active *before* the apply, plus the timeline items it
+   *  removed (so Reset can restore them). All other entities re-add the
+   *  saved `delta` to their times — no per-entity snapshot needed. */
+  audioTrimHistory: {
+    prevIn: number;
+    prevOut: number | null;
+    delta: number;
+    removedItems: TimelineItem[];
+    timestamp: number;
+  } | null;
   bpm: number | null;
   snapToBeat: boolean;
+  /** Snap-to-grid mode for timeline drag/drop/nudge.
+   *  - `auto` (default): beat if BPM is set, else frame.
+   *  - `beat`: always beat (falls back to frame if no BPM).
+   *  - `frame`: always frame (uses `timecodeProvider.getFPS()`).
+   *  - `off`: no snapping. */
+  snapMode: 'auto' | 'beat' | 'frame' | 'off';
   playbackSpeed: number;
   projectId: string | null;
   cameraKeyframes: CameraKeyframe[];
@@ -116,8 +142,19 @@ export interface ProjectState {
   setDrawHeight: (h: number) => void;
   undoLastWaypoint: () => void;
   setAudioUrl: (url: string | null) => void;
+  setAudioOriginalDuration: (d: number | null) => void;
+  setAudioInPoint: (t: number) => void;
+  setAudioOutPoint: (t: number | null) => void;
+  /** Atomically apply a trim window: re-times every timeline item / cue /
+   *  camera keyframe / waypoint by `-delta`, drops items outside the new
+   *  window, updates `duration` and `currentTime`, saves an undo snapshot. */
+  applyAudioTrim: (inT: number, outT: number) => { ok: boolean; error?: string; removedItems?: number; removedCues?: number };
+  /** Restore `in=0, out=null` and revert times. If a trim history snapshot
+   *  exists, removed items are restored too. */
+  resetAudioTrim: () => void;
   setBpm: (bpm: number | null) => void;
   setSnapToBeat: (snap: boolean) => void;
+  setSnapMode: (mode: 'auto' | 'beat' | 'frame' | 'off') => void;
   setPlaybackSpeed: (speed: number) => void;
   setProjectId: (id: string | null) => void;
   combineAsChain: (itemIds: string[], gap?: number) => void;
@@ -182,8 +219,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   drawHeight: 10,
   waypointUndoStack: [],
   audioUrl: null,
+  audioInPoint: 0,
+  audioOutPoint: null,
+  audioOriginalDuration: null,
+  audioTrimHistory: null,
   bpm: null,
   snapToBeat: false,
+  snapMode: 'auto',
   playbackSpeed: 1,
   projectId: null,
   cameraKeyframes: [],
@@ -215,8 +257,49 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   }),
 
   setPlaying: (playing) => {
-    if (playing) timelineClock.play();
-    else timelineClock.pause();
+    if (playing) {
+      // ── Defensive auto-recovery on every Play press ──
+      // Without these guards, Play silently no-ops in three real-world cases
+      // we hit in field testing:
+      //  1) playbackSpeed was persisted as 0 / NaN (legacy projects, external
+      //     sync hold) → tick() multiplies by 0 and the time never advances.
+      //  2) currentTime is at the end of the timeline → first tick clamps to
+      //     duration and pauses again before any frame renders.
+      //  3) The timeline is completely empty → user sees nothing happen and
+      //     concludes "Play is broken". We seed a Fire-All demo so every
+      //     renderer (pyro/drone/sfx/laser/light) lights up immediately.
+      const clockState = timelineClock.getState();
+      if (!Number.isFinite(clockState.speed) || clockState.speed <= 0) {
+        timelineClock.setSpeed(1);
+      }
+      if (clockState.time >= clockState.duration - 0.001) {
+        timelineClock.seek(0);
+      }
+      const s = get();
+      if (s.timelineItems.length === 0) {
+        const demo = buildDemoTimeline();
+        if (demo) {
+          // Merge (do not replace): if user already has demo positions from a
+          // previous Play, keep them; otherwise append everything in one set().
+          set((cur) => ({
+            positions: [
+              ...cur.positions,
+              ...demo.positions.filter((p) => !cur.positions.some((cp) => cp.id === p.id)),
+            ],
+            timelineItems: [
+              ...cur.timelineItems,
+              ...demo.items.filter((i) => !cur.timelineItems.some((ci) => ci.id === i.id)),
+            ],
+          }));
+          if (demo.duration > timelineClock.getState().duration) {
+            timelineClock.setDuration(demo.duration);
+          }
+        }
+      }
+      timelineClock.play();
+    } else {
+      timelineClock.pause();
+    }
   },
   setCurrentTime: (time) => {
     timelineClock.seek(time);
@@ -401,9 +484,151 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       ),
     };
   }),
-  setAudioUrl: (url) => set({ audioUrl: url }),
+  setAudioUrl: (url) => set((s) => {
+    // When the audio source changes, the previous trim window no longer
+    // makes sense (it referred to a different file's coordinate system).
+    // Wipe trim state so the operator starts fresh on the new file.
+    if (url !== s.audioUrl) {
+      return {
+        audioUrl: url,
+        audioInPoint: 0,
+        audioOutPoint: null,
+        audioOriginalDuration: null,
+        audioTrimHistory: null,
+      };
+    }
+    return { audioUrl: url };
+  }),
+  setAudioOriginalDuration: (d) => set({ audioOriginalDuration: d }),
+  setAudioInPoint: (t) => set({ audioInPoint: Math.max(0, t) }),
+  setAudioOutPoint: (t) => set({ audioOutPoint: t == null ? null : Math.max(0, t) }),
+  applyAudioTrim: (inT, outT) => {
+    const s = get();
+    // Validate using the pure helper (kept here as inline guards to avoid
+    // an extra import cycle into the store).
+    if (!Number.isFinite(inT) || !Number.isFinite(outT)) {
+      return { ok: false, error: 'Trim points must be finite.' };
+    }
+    if (inT < 0 || outT <= inT || outT - inT < 0.05) {
+      return { ok: false, error: 'Invalid trim window (must be ≥ 50ms, in < out).' };
+    }
+    if (s.audioOriginalDuration != null && outT > s.audioOriginalDuration + 1e-3) {
+      return { ok: false, error: 'Out point exceeds audio length.' };
+    }
+    // `delta` is the shift applied to every show-time entity. The current
+    // store coordinates run from 0..duration relative to `audioInPoint`; the
+    // new ones must run from 0..(outT-inT) relative to `inT`.
+    const delta = inT - s.audioInPoint;
+    const newDuration = outT - inT;
+    const TOL = 0.05;
+
+    // Re-time and filter timeline items.
+    const removedItems: TimelineItem[] = [];
+    const nextItems = s.timelineItems.flatMap<TimelineItem>((item) => {
+      const t = item.startTime - delta;
+      if (t < -TOL || t > newDuration + TOL) {
+        removedItems.push(item);
+        return [];
+      }
+      return [{ ...item, startTime: Math.max(0, Math.min(newDuration, t)) }];
+    });
+
+    // Re-time cues (drop those outside).
+    const nextCues = s.cueMarkers.flatMap<CueMarker>((c) => {
+      const t = c.time - delta;
+      if (t < -TOL || t > newDuration + TOL) return [];
+      return [{ ...c, time: Math.max(0, Math.min(newDuration, t)) }];
+    });
+
+    // Re-time camera keyframes (drop those outside).
+    const nextCam = s.cameraKeyframes.flatMap<CameraKeyframe>((kf) => {
+      const t = kf.time - delta;
+      if (t < -TOL || t > newDuration + TOL) return [];
+      return [{ ...kf, time: Math.max(0, Math.min(newDuration, t)) }];
+    });
+
+    // Re-time waypoints inside trajectories (drop those outside; keep
+    // trajectory itself even if empty so the position is preserved).
+    const nextTraj = s.trajectories.map<Trajectory>((tr) => ({
+      ...tr,
+      waypoints: tr.waypoints.flatMap<Waypoint>((wp) => {
+        const t = wp.time - delta;
+        if (t < -TOL || t > newDuration + TOL) return [];
+        return [{ ...wp, time: Math.max(0, Math.min(newDuration, t)) }];
+      }),
+    }));
+
+    // Re-time drone formations (drop entire formation if startTime falls out).
+    const nextFormations = s.droneFormations.flatMap<DroneFormation>((f) => {
+      const t = f.startTime - delta;
+      if (t < -TOL || t > newDuration + TOL) return [];
+      return [{ ...f, startTime: Math.max(0, Math.min(newDuration, t)) }];
+    });
+
+    const newCurrentTime = Math.max(0, Math.min(newDuration, s.currentTime - delta));
+
+    set({
+      audioInPoint: inT,
+      audioOutPoint: outT,
+      duration: newDuration,
+      timelineItems: nextItems,
+      cueMarkers: nextCues,
+      cameraKeyframes: nextCam,
+      trajectories: nextTraj,
+      droneFormations: nextFormations,
+      audioTrimHistory: {
+        prevIn: s.audioInPoint,
+        prevOut: s.audioOutPoint,
+        delta,
+        removedItems,
+        timestamp: Date.now(),
+      },
+    });
+    timelineClock.setDuration(newDuration);
+    timelineClock.seek(newCurrentTime);
+
+    return { ok: true, removedItems: removedItems.length, removedCues: s.cueMarkers.length - nextCues.length };
+  },
+  resetAudioTrim: () => {
+    const s = get();
+    const origDur = s.audioOriginalDuration;
+    if (origDur == null) {
+      // Nothing to reset to — just clear the points without touching items.
+      set({ audioInPoint: 0, audioOutPoint: null, audioTrimHistory: null });
+      return;
+    }
+    const hist = s.audioTrimHistory;
+    const newDuration = origDur;
+    if (hist) {
+      // Shift everything back by -delta and re-insert removed items at their
+      // original (pre-trim) timestamps.
+      const d = hist.delta;
+      const items = [
+        ...s.timelineItems.map((i) => ({ ...i, startTime: i.startTime + d })),
+        ...hist.removedItems,
+      ];
+      set({
+        audioInPoint: 0,
+        audioOutPoint: null,
+        duration: newDuration,
+        timelineItems: items,
+        cueMarkers: s.cueMarkers.map((c) => ({ ...c, time: c.time + d })),
+        cameraKeyframes: s.cameraKeyframes.map((kf) => ({ ...kf, time: kf.time + d })),
+        trajectories: s.trajectories.map((tr) => ({
+          ...tr,
+          waypoints: tr.waypoints.map((wp) => ({ ...wp, time: wp.time + d })),
+        })),
+        droneFormations: s.droneFormations.map((f) => ({ ...f, startTime: f.startTime + d })),
+        audioTrimHistory: null,
+      });
+    } else {
+      set({ audioInPoint: 0, audioOutPoint: null, duration: newDuration, audioTrimHistory: null });
+    }
+    timelineClock.setDuration(newDuration);
+  },
   setBpm: (bpm) => set({ bpm }),
-  setSnapToBeat: (snap) => set({ snapToBeat: snap }),
+  setSnapToBeat: (snap) => set({ snapToBeat: snap, snapMode: snap ? 'auto' : 'off' }),
+  setSnapMode: (mode) => set({ snapMode: mode, snapToBeat: mode !== 'off' }),
   setPlaybackSpeed: (speed) => {
     // Sanitize: NaN, negative or non-finite values fall back to 1×.
     // Speed=0 is a valid technical state (external sync hold) and is preserved,

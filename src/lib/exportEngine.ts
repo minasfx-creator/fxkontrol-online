@@ -423,11 +423,99 @@ export function exportFiringCSV(
   });
 
   const header = 'Cue,Module,Slat,Pin,EventTime(s),PreFireTime(s),EffectName,Caliber,Duration(s),Position,X,Y,Z,Heading,Pitch,Angle';
+  const escape = (v: string) => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
   const rows = cues.map((c) =>
-    `${c.cue},${c.module},${c.slat},${c.pin},${c.eventTime},${c.preFireTime},${c.effectName},${c.caliber},${c.duration},${c.posName},${c.x},${c.y},${c.z},${c.heading},${c.pitch},${c.angle}`
+    `${c.cue},${c.module},${c.slat},${c.pin},${c.eventTime},${c.preFireTime},${escape(c.effectName)},${c.caliber},${c.duration},${escape(c.posName)},${c.x},${c.y},${c.z},${c.heading},${c.pitch},${c.angle}`
   );
 
   return header + '\n' + rows.join('\n');
+}
+
+/**
+ * Build the same firing cue list returned by exportFiringCSV but as a
+ * structured JSON document. Suitable for ingestion by JSON-driven firing
+ * consoles (FXcommander Pro, Cobra JSON profile, custom FXK bridges).
+ *
+ * Schema is stable and versioned (`schemaVersion`) so external tools can
+ * pin against breaking changes.
+ */
+export interface FiringScriptJSON {
+  schemaVersion: '1.0';
+  generator: 'FXKontrol';
+  generatedAt: string;
+  show: {
+    name: string;
+    cueCount: number;
+    moduleCount: number;
+    durationSec: number;
+  };
+  cues: FiringCue[];
+}
+
+export function exportFiringJSON(
+  projectName: string,
+  timelineItems: TimelineItem[],
+  positions: Position[],
+): string {
+  const csv = exportFiringCSV(timelineItems, positions);
+  // Re-parse the CSV body into structured rows. Cheaper than duplicating
+  // the cue assembly logic and guarantees CSV/JSON exports stay aligned.
+  const lines = csv.split('\n').slice(1).filter(Boolean);
+  const cues: FiringCue[] = lines.map((line) => {
+    // Tolerant CSV split (handles quoted fields with commas)
+    const cells: string[] = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+        else inQuotes = !inQuotes;
+      } else if (ch === ',' && !inQuotes) {
+        cells.push(cur);
+        cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+    cells.push(cur);
+    return {
+      cue: Number(cells[0]),
+      module: Number(cells[1]),
+      slat: Number(cells[2]),
+      pin: Number(cells[3]),
+      eventTime: Number(cells[4]),
+      preFireTime: Number(cells[5]),
+      effectName: cells[6],
+      caliber: cells[7],
+      duration: Number(cells[8]),
+      posName: cells[9],
+      x: Number(cells[10]),
+      y: Number(cells[11]),
+      z: Number(cells[12]),
+      heading: Number(cells[13]),
+      pitch: Number(cells[14]),
+      angle: Number(cells[15]),
+    };
+  });
+
+  const moduleCount = cues.length === 0 ? 0 : Math.max(...cues.map(c => c.module));
+  const durationSec = cues.length === 0 ? 0 : Math.max(...cues.map(c => c.eventTime + c.duration));
+
+  const doc: FiringScriptJSON = {
+    schemaVersion: '1.0',
+    generator: 'FXKontrol',
+    generatedAt: new Date().toISOString(),
+    show: {
+      name: projectName,
+      cueCount: cues.length,
+      moduleCount,
+      durationSec: Math.round(durationSec * 1000) / 1000,
+    },
+    cues,
+  };
+
+  return JSON.stringify(doc, null, 2);
 }
 
 // ─── Boids Simulation → VVIZ Export ──────────────────────────────────

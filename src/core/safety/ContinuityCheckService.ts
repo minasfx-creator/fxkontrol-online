@@ -12,6 +12,7 @@
 
 import { safetyStateMachine } from './SafetyStateMachine';
 import { safetyAuditTrail } from './SafetyAuditTrail';
+import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 export type PinStatus = 'UNKNOWN' | 'OK' | 'OPEN' | 'SHORT';
 
@@ -38,14 +39,12 @@ export interface ContinuityReader {
 
 const TOTAL_PINS = 32;
 const THRESHOLD_SHORT = 0.5;   // < 0.5Ω = short
-const THRESHOLD_OK_MAX = 50;   // 0.5–50Ω = OK
-const THRESHOLD_OPEN = 200;    // > 200Ω = open
+const THRESHOLD_OK_MAX = 50;   // 0.5–50Ω = OK; > 50Ω = OPEN (marginal treated as OPEN)
 
 function classify(ohms: number): PinStatus {
   if (ohms < THRESHOLD_SHORT) return 'SHORT';
   if (ohms <= THRESHOLD_OK_MAX) return 'OK';
-  if (ohms > THRESHOLD_OPEN) return 'OPEN';
-  // 50–200Ω = marginal, treat as OPEN for safety
+  // 50–200Ω marginal AND > 200Ω no-igniter both treated as OPEN for safety.
   return 'OPEN';
 }
 
@@ -69,10 +68,16 @@ class ContinuityCheckService {
 
     for (let i = 0; i < TOTAL_PINS; i++) {
       try {
-        const ohms = reader
-          ? await reader.readContinuity(i)
-          : this._simulateRead(i);
-        this._pins[i] = { pin: i, ohms, status: classify(ohms), lastChecked: now };
+        if (reader) {
+          const ohms = await reader.readContinuity(i);
+          this._pins[i] = { pin: i, ohms, status: classify(ohms), lastChecked: now };
+        } else if (isHardwareSimulatorEnabled()) {
+          const ohms = this._simulateRead(i);
+          this._pins[i] = { pin: i, ohms, status: classify(ohms), lastChecked: now };
+        } else {
+          // No reader, no simulator → honest UNKNOWN (do not invent data)
+          this._pins[i] = { pin: i, ohms: Infinity, status: 'UNKNOWN', lastChecked: now };
+        }
       } catch {
         this._pins[i] = { pin: i, ohms: Infinity, status: 'UNKNOWN', lastChecked: now };
       }
@@ -92,10 +97,15 @@ class ContinuityCheckService {
     if (pin < 0 || pin >= TOTAL_PINS) throw new Error(`Invalid pin: ${pin}`);
     const now = Date.now();
     try {
-      const ohms = reader
-        ? await reader.readContinuity(pin)
-        : this._simulateRead(pin);
-      this._pins[pin] = { pin, ohms, status: classify(ohms), lastChecked: now };
+      if (reader) {
+        const ohms = await reader.readContinuity(pin);
+        this._pins[pin] = { pin, ohms, status: classify(ohms), lastChecked: now };
+      } else if (isHardwareSimulatorEnabled()) {
+        const ohms = this._simulateRead(pin);
+        this._pins[pin] = { pin, ohms, status: classify(ohms), lastChecked: now };
+      } else {
+        this._pins[pin] = { pin, ohms: Infinity, status: 'UNKNOWN', lastChecked: now };
+      }
     } catch {
       this._pins[pin] = { pin, ohms: Infinity, status: 'UNKNOWN', lastChecked: now };
     }

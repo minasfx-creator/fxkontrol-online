@@ -8,6 +8,8 @@
  *         SAFE + RESET_SAFETY → IDLE
  */
 
+import { safetyAuditTrail } from './SafetyAuditTrail';
+
 export type SafetyState = 'IDLE' | 'LOCKED' | 'ARMED' | 'FIRING' | 'COOLDOWN' | 'SAFE';
 
 export type SafetyTransition =
@@ -58,6 +60,7 @@ class SafetyStateMachine {
   };
   private _listeners: TransitionListener[] = [];
   private _cooldownTimer: ReturnType<typeof setTimeout> | null = null;
+  private _inTransition = false; // re-entrancy guard (prevents listener-triggered loops)
 
   get state(): SafetyState { return this._state; }
   get conditions(): Readonly<InterlockConditions> { return this._conditions; }
@@ -71,11 +74,30 @@ class SafetyStateMachine {
   transition(t: SafetyTransition): TransitionResult {
     const from = this._state;
 
-    // E_STOP always allowed from any state
+    // Re-entrancy guard: a listener triggered another transition while we were
+    // mid-flight. Allow E_STOP through (safety-critical), block everything else.
+    if (this._inTransition && t !== 'E_STOP') {
+      return { allowed: false, from, to: from, reason: 'Transition re-entrancy blocked' };
+    }
+    this._inTransition = true;
+    try {
+
+    // E_STOP always allowed from any state — log to black box (≤100ms requirement)
     if (t === 'E_STOP') {
       this._clearCooldown();
       this._state = 'SAFE';
       const result: TransitionResult = { allowed: true, from, to: 'SAFE' };
+      // Audit FIRST so the event is captured even if a listener throws
+      try {
+        safetyAuditTrail.log({
+          timestamp: Date.now(),
+          tick: 0,
+          event: 'E_STOP',
+          from,
+          to: 'SAFE',
+          detail: `E-STOP triggered from ${from}`,
+        });
+      } catch { /* never block E-STOP on audit failure */ }
       this._notify(t, result);
       return result;
     }
@@ -115,6 +137,9 @@ class SafetyStateMachine {
     }
 
     return result;
+    } finally {
+      this._inTransition = false;
+    }
   }
 
   /** Subscribe to all transition attempts (including denied). */

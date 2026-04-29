@@ -221,20 +221,26 @@ export default function CommandCenter() {
     const onChange = () => setIsLandscape(mql.matches);
     onChange();
     mql.addEventListener('change', onChange);
-    if (isMobile && screen.orientation?.lock) {
-      screen.orientation.lock('landscape').catch(() => {});
+    // ScreenOrientation.lock/unlock are experimental and missing from TS lib.dom.
+    // Narrow via a structural cast — runtime behavior unchanged (optional-chained).
+    const orientation = screen.orientation as (ScreenOrientation & {
+      lock?: (o: 'landscape' | 'portrait' | 'any' | 'natural' | 'landscape-primary' | 'landscape-secondary' | 'portrait-primary' | 'portrait-secondary') => Promise<void>;
+      unlock?: () => void;
+    }) | undefined;
+    if (isMobile && orientation?.lock) {
+      orientation.lock('landscape').catch(() => {});
     }
     // Fullscreen on landscape mobile
     if (isMobile && mql.matches) {
-      try { document.documentElement.requestFullscreen?.(); } catch {}
+      try { document.documentElement.requestFullscreen?.(); } catch { /* best-effort: fullscreen may be blocked by browser policy */ }
     }
     return () => {
       mql.removeEventListener('change', onChange);
-      if (isMobile && screen.orientation?.unlock) {
-        screen.orientation.unlock();
+      if (isMobile && orientation?.unlock) {
+        orientation.unlock();
       }
       if (document.fullscreenElement) {
-        try { document.exitFullscreen?.(); } catch {}
+        try { document.exitFullscreen?.(); } catch { /* best-effort: exitFullscreen may fail if state changed */ }
       }
     };
   }, [isMobile]);

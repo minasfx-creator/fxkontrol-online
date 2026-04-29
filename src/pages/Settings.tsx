@@ -6,16 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { User, Phone, Building2, Briefcase, Save, Shield, CreditCard, UserCircle } from 'lucide-react';
+import { User, Phone, Building2, Briefcase, Save, Shield, CreditCard, UserCircle, ShieldCheck } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import BillingTab from '@/components/settings/BillingTab';
+import SafetyGateSettings from '@/components/settings/SafetyGateSettings';
 
 export default function Settings() {
   const { user } = useAuth();
   const { profile, loading, updateProfile } = useProfile();
   const { isAdmin } = useAdminRole();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'safety' || searchParams.get('tab') === 'billing'
+    ? (searchParams.get('tab') as string)
+    : 'profile';
 
   const [form, setForm] = useState({
     display_name: '',
@@ -67,7 +72,7 @@ export default function Settings() {
             variant="outline"
             size="sm"
             className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate('/office?tab=compliance')}
           >
             <Shield className="h-3.5 w-3.5" />
             <span className="text-xs font-mono">ADMIN</span>
@@ -75,10 +80,17 @@ export default function Settings() {
         )}
       </div>
 
-      <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-sm">
+      <Tabs
+        value={initialTab}
+        onValueChange={(v) => setSearchParams(v === 'profile' ? {} : { tab: v }, { replace: true })}
+        className="w-full"
+      >
+        <TabsList className="grid w-full grid-cols-3 max-w-md">
           <TabsTrigger value="profile" className="gap-1.5 text-xs">
             <UserCircle className="h-3.5 w-3.5" /> Perfil
+          </TabsTrigger>
+          <TabsTrigger value="safety" className="gap-1.5 text-xs">
+            <ShieldCheck className="h-3.5 w-3.5" /> Segurança
           </TabsTrigger>
           <TabsTrigger value="billing" className="gap-1.5 text-xs">
             <CreditCard className="h-3.5 w-3.5" /> Cobrança
@@ -176,6 +188,19 @@ export default function Settings() {
                 <span className="font-mono text-[10px] text-foreground/70">{user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('pt-BR') : '—'}</span>
               </div>
             </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="safety" className="mt-5">
+          <div className="rounded border border-amber-500/30 bg-amber-500/5 p-4 font-mono text-[11px]">
+            <div className="text-amber-400 font-bold uppercase tracking-widest mb-2">⚠ Quarantined for testing</div>
+            <p className="text-muted-foreground leading-relaxed">
+              All blocking layers (Lockout Groups, Interlock Chain, Mode Guard, UI Locks) are
+              <span className="text-emerald-400"> permanently disabled</span> during the testing phase.
+            </p>
+            <p className="text-muted-foreground/70 mt-2">
+              Re-activation path documented at <code className="text-cyan-400">src/_quarantine/safety/README.md</code>.
+            </p>
           </div>
         </TabsContent>
 

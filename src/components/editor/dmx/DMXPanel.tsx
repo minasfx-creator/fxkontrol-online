@@ -1,8 +1,13 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
-import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap, Usb, Monitor } from 'lucide-react';
+import { Lightbulb, Plus, Trash2, Send, Wifi, Activity, CheckCircle2, XCircle, Clock, Zap, Usb, Monitor, Play, Square } from 'lucide-react';
+import { logger } from '@/lib/logger';
+import { useUSBDMXBroadcast } from '@/hooks/useUSBDMXBroadcast';
 import DMXMonitorGrid from './DMXMonitorGrid';
+import DMXBroadcastDiagnostics from './DMXBroadcastDiagnostics';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
+import { useDMXPanelPrefs } from '@/store/useDMXPanelPrefs';
+import { useFrameDropMonitor } from '@/hooks/useFrameDropMonitor';
 import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { Button } from '@/components/ui/button';
 import BridgeSecurityAlert from '@/components/editor/network/BridgeSecurityAlert';
@@ -53,6 +58,56 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
   const [showDiag, setShowDiag] = useState(true);
   const [showMonitor, setShowMonitor] = useState(false);
 
+  // Continuous USB DMX streaming (Universe 1 → all connected USB devices)
+  // Loop, throttle anti-stacking e cleanup encapsulados em useUSBDMXBroadcast.
+  // Preferências (FPS + intenção de streaming) persistidas em localStorage
+  // via useDMXPanelPrefs — reaplicadas ao remontar o painel.
+  const persistedFps = useDMXPanelPrefs(s => s.usbStreamFps);
+  const persistedStreamingDesired = useDMXPanelPrefs(s => s.usbStreamingDesired);
+  const setPersistedFps = useDMXPanelPrefs(s => s.setUsbStreamFps);
+  const setPersistedStreamingDesired = useDMXPanelPrefs(s => s.setUsbStreamingDesired);
+
+  const [usbStreaming, setUsbStreaming] = useState(false);
+  const [usbStreamFps, setUsbStreamFps] = useState<10 | 20 | 40>(persistedFps);
+  const [usbStreamStats, setUsbStreamStats] = useState({
+    frames: 0,
+    lastLatencyMs: 0,
+    avgLatencyMs: 0,
+    maxLatencyMs: 0,
+    fpsActual: 0,           // FPS medido (frames/janela), p/ comparar com fps alvo
+    writeErrors: 0,         // contador acumulado de erros de escrita USB
+    lastErrorMsg: '' as string,
+    lastErrorTs: 0,         // performance.now() do último erro
+  });
+  // E-STOP latência: trip se >LATENCY_ESTOP_MS por LATENCY_ESTOP_STRIKES ticks consecutivos.
+  // Compliance Core (Safety Critical): E-STOP latency <50ms.
+  const LATENCY_ESTOP_MS = 50;
+  const LATENCY_ESTOP_STRIKES = 3;
+  const [latencyEstopReason, setLatencyEstopReason] = useState<string | null>(null);
+  // Acumuladores zero-GC para latência (EWMA + max + strikes E-STOP).
+  // UI re-render no máx ~5 Hz para evitar render storm @ 40Hz.
+  const latencyAccRef = useRef({
+    avg: 0,
+    max: 0,
+    lastFlushMs: 0,
+    strikes: 0,
+    // Janela rolante p/ FPS real
+    windowStartMs: 0,
+    windowStartFrames: 0,
+    fpsActual: 0,
+    // Histórico de latência p/ sparkline (ring buffer pré-alocado, zero-GC)
+    history: new Float32Array(120),  // 120 amostras × 200ms = 24s
+    historyIdx: 0,
+    historyFilled: 0,
+  });
+  const writeErrorsRef = useRef({ count: 0, lastMsg: '', lastTs: 0 });
+  const universesRef = useRef<DMXUniverse[]>([]);
+  const autoResumeAttemptedRef = useRef(false);
+
+  // Keep ref in sync (hook lê via getChannels() sempre o último universo 1)
+  useEffect(() => { universesRef.current = universes; }, [universes]);
+
+
   const addDiagLog = useCallback((log: DiagnosticLog) => {
     setDiagLogs(prev => [log, ...prev].slice(0, 50));
   }, []);
@@ -89,7 +144,7 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
           if (msg.action === 'pong') {
             addDiagLog({ timestamp: new Date(), type: 'info', message: `Relay pong — ${msg.packetsSent} pkts enviados, uptime ${Math.round(msg.uptime)}s` });
           }
-        } catch {}
+        } catch { /* best-effort: malformed relay message ignored */ }
       };
       ws.onclose = () => {
         setRelayConnected(false);
@@ -281,6 +336,201 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
       setSending(false);
     }
   };
+
+  // ── Continuous USB DMX streaming (Universe 1) ─────────────────────
+  // Loop, throttle anti-stacking, auto-stop em erro e cleanup do interval
+  // estão encapsulados em useUSBDMXBroadcast. Mudar usbStreamFps reinicia
+  // APENAS o setInterval — a porta USB permanece aberta.
+  const getUni1Channels = useCallback((): Uint8Array | null => {
+    return universesRef.current[0]?.channels ?? null;
+  }, []);
+
+  useUSBDMXBroadcast({
+    getChannels: getUni1Channels,
+    fps: usbStreamFps,
+    enabled: usbStreaming,
+    onTick: ({ frames, latencyMs }) => {
+      // EWMA (α=0.2) para média suavizada + max running. Zero alocações.
+      const acc = latencyAccRef.current;
+      acc.avg = acc.avg === 0 ? latencyMs : acc.avg * 0.8 + latencyMs * 0.2;
+      if (latencyMs > acc.max) acc.max = latencyMs;
+
+      // ── E-STOP por latência ────────────────────────────────────────
+      // Compliance Core: E-STOP latency <50ms. Trip se 3 ticks
+      // consecutivos excederem o limite — evita falso-positivo de pico
+      // isolado, mas reage rápido (≤75ms @ 40Hz).
+      if (latencyMs > LATENCY_ESTOP_MS) {
+        acc.strikes += 1;
+        if (acc.strikes >= LATENCY_ESTOP_STRIKES) {
+          const reason = `Latência ${latencyMs}ms > ${LATENCY_ESTOP_MS}ms por ${LATENCY_ESTOP_STRIKES} medições consecutivas`;
+          acc.strikes = 0;
+          setLatencyEstopReason(reason);
+          setUsbStreaming(false);
+          setPersistedStreamingDesired(false);
+          addDiagLog({
+            timestamp: new Date(),
+            type: 'error',
+            message: `E-STOP USB streaming · ${reason}`,
+            latency: latencyMs,
+          });
+          toast.error('E-STOP DMX · latência crítica', {
+            description: reason,
+            duration: 8000,
+          });
+        }
+      } else {
+        acc.strikes = 0;
+      }
+
+      // ── FPS real (frames por janela rolante de 1s) ──
+      const nowFps = performance.now();
+      if (acc.windowStartMs === 0) {
+        acc.windowStartMs = nowFps;
+        acc.windowStartFrames = frames;
+      } else if (nowFps - acc.windowStartMs >= 1000) {
+        const elapsed = (nowFps - acc.windowStartMs) / 1000;
+        acc.fpsActual = (frames - acc.windowStartFrames) / elapsed;
+        acc.windowStartMs = nowFps;
+        acc.windowStartFrames = frames;
+      }
+
+      // Throttle de UI: flush a cada ~200ms (5Hz) — independe do FPS DMX.
+      const now = performance.now();
+      if (now - acc.lastFlushMs >= 200) {
+        acc.lastFlushMs = now;
+        // Append no histórico de latência (ring buffer)
+        acc.history[acc.historyIdx] = latencyMs;
+        acc.historyIdx = (acc.historyIdx + 1) % acc.history.length;
+        if (acc.historyFilled < acc.history.length) acc.historyFilled++;
+
+        const we = writeErrorsRef.current;
+        setUsbStreamStats({
+          frames,
+          lastLatencyMs: latencyMs,
+          avgLatencyMs: Math.round(acc.avg),
+          maxLatencyMs: acc.max,
+          fpsActual: acc.fpsActual,
+          writeErrors: we.count,
+          lastErrorMsg: we.lastMsg,
+          lastErrorTs: we.lastTs,
+        });
+      }
+    },
+    onError: (err) => {
+      // Conta o erro mas NÃO derruba o stream — só loga + toast leve.
+      // E-STOP de stream falho continua a cargo do hook (auto-stop em falha grave).
+      const we = writeErrorsRef.current;
+      we.count += 1;
+      we.lastMsg = err.message;
+      we.lastTs = performance.now();
+      addDiagLog({ timestamp: new Date(), type: 'error', message: `USB stream falhou: ${err.message}` });
+      toast.error('Falha no streaming USB — parado');
+      setUsbStreaming(false);
+    },
+  });
+
+  const stopUsbStream = useCallback(() => {
+    setUsbStreaming(false);
+    setPersistedStreamingDesired(false);
+    addDiagLog({ timestamp: new Date(), type: 'info', message: 'USB streaming parado' });
+  }, [addDiagLog, setPersistedStreamingDesired]);
+
+  const startUsbStream = useCallback(() => {
+    if (universesRef.current.length === 0) {
+      toast.error('Faça o Auto-Patch primeiro (Universo 1 é a fonte)');
+      return;
+    }
+    if (connectedUSBDMX.length === 0) {
+      toast.error('Nenhum dispositivo DMX USB conectado');
+      return;
+    }
+    setUsbStreamStats({ frames: 0, lastLatencyMs: 0, avgLatencyMs: 0, maxLatencyMs: 0, fpsActual: 0, writeErrors: 0, lastErrorMsg: "", lastErrorTs: 0 }); writeErrorsRef.current.count = 0; writeErrorsRef.current.lastMsg = ""; writeErrorsRef.current.lastTs = 0; latencyAccRef.current.windowStartMs = 0; latencyAccRef.current.windowStartFrames = 0; latencyAccRef.current.fpsActual = 0; latencyAccRef.current.historyIdx = 0; latencyAccRef.current.historyFilled = 0;
+    latencyAccRef.current.avg = 0;
+    latencyAccRef.current.max = 0;
+    latencyAccRef.current.lastFlushMs = 0;
+    latencyAccRef.current.strikes = 0;
+    setLatencyEstopReason(null);
+    setUsbStreaming(true);
+    setPersistedStreamingDesired(true);
+    addDiagLog({
+      timestamp: new Date(), type: 'info',
+      message: `USB streaming iniciado · Uni 1 → ${connectedUSBDMX.length} device(s) @ ${usbStreamFps}Hz`,
+    });
+  }, [connectedUSBDMX.length, addDiagLog, usbStreamFps, setPersistedStreamingDesired]);
+
+  // ─── Safety Mode: bloqueia 40Hz quando o navegador/CPU está sobrecarregado ───
+  // Mede FPS médio do rAF; se ficar <45fps por ≥2.5s, considera "overloaded".
+  // Recupera quando volta a ≥55fps por ≥4s (hysteresis evita flicker).
+  const { avgFps, isOverloaded } = useFrameDropMonitor();
+  const safetyDowngradeNotifiedRef = useRef(false);
+
+  // Handler do seletor de taxa: muda Hz mesmo durante streaming.
+  // O hook reinicia internamente apenas o setInterval, sem fechar a porta.
+  // Em Safety Mode (overload sustentado), 40Hz fica bloqueado e qualquer
+  // tentativa é convertida para 20Hz com aviso ao operador.
+  const handleFpsChange = useCallback((hz: 10 | 20 | 40) => {
+    if (hz === 40 && isOverloaded) {
+      toast.warning('Safety Mode ativo · 40Hz bloqueado', {
+        description: `CPU/GPU sobrecarregada (${avgFps.toFixed(0)}fps). Mantendo 20Hz para evitar perda de frames DMX.`,
+      });
+      addDiagLog({
+        timestamp: new Date(), type: 'error',
+        message: `Seleção de 40Hz bloqueada · Safety Mode (${avgFps.toFixed(0)}fps avg) · revertido para 20Hz`,
+      });
+      setUsbStreamFps(20);
+      setPersistedFps(20);
+      return;
+    }
+    setUsbStreamFps(hz);
+    setPersistedFps(hz);
+    if (usbStreaming) {
+      addDiagLog({
+        timestamp: new Date(), type: 'info',
+        message: `Taxa alterada para ${hz}Hz · porta USB mantida aberta`,
+      });
+    }
+  }, [usbStreaming, addDiagLog, setPersistedFps, isOverloaded, avgFps]);
+
+  // Auto-downgrade: se ficar overloaded enquanto está em 40Hz, força 20Hz.
+  useEffect(() => {
+    if (isOverloaded && usbStreamFps === 40) {
+      if (!safetyDowngradeNotifiedRef.current) {
+        safetyDowngradeNotifiedRef.current = true;
+        toast.warning('Safety Mode · downgrade automático para 20Hz', {
+          description: `Frame drops sustentados detectados (${avgFps.toFixed(0)}fps). Restaure quando a carga normalizar.`,
+        });
+        addDiagLog({
+          timestamp: new Date(), type: 'error',
+          message: `Safety Mode · 40Hz → 20Hz automático (${avgFps.toFixed(0)}fps avg)`,
+        });
+      }
+      setUsbStreamFps(20);
+      setPersistedFps(20);
+    }
+    if (!isOverloaded) {
+      safetyDowngradeNotifiedRef.current = false;
+    }
+  }, [isOverloaded, usbStreamFps, avgFps, addDiagLog, setPersistedFps]);
+
+
+  // Auto-resume: ao remontar o painel, se o usuário tinha streaming ON e
+  // os pré-requisitos estão atendidos (universo patchado + device conectado),
+  // reinicia o broadcast automaticamente. Tenta apenas uma vez por mount.
+  useEffect(() => {
+    if (autoResumeAttemptedRef.current) return;
+    if (!persistedStreamingDesired) return;
+    if (usbStreaming) return;
+    if (universes.length === 0) return;
+    if (connectedUSBDMX.length === 0) return;
+    autoResumeAttemptedRef.current = true;
+    setUsbStreamStats({ frames: 0, lastLatencyMs: 0, avgLatencyMs: 0, maxLatencyMs: 0, fpsActual: 0, writeErrors: 0, lastErrorMsg: "", lastErrorTs: 0 }); writeErrorsRef.current.count = 0; writeErrorsRef.current.lastMsg = ""; writeErrorsRef.current.lastTs = 0; latencyAccRef.current.windowStartMs = 0; latencyAccRef.current.windowStartFrames = 0; latencyAccRef.current.fpsActual = 0; latencyAccRef.current.historyIdx = 0; latencyAccRef.current.historyFilled = 0;
+    setUsbStreaming(true);
+    addDiagLog({
+      timestamp: new Date(), type: 'info',
+      message: `USB streaming retomado das preferências @ ${usbStreamFps}Hz`,
+    });
+  }, [persistedStreamingDesired, usbStreaming, universes.length, connectedUSBDMX.length, usbStreamFps, addDiagLog]);
+
 
   const sendFireOneDMX = async () => {
     if (universes.length === 0 || !hardware.isConnected) {
@@ -559,15 +809,200 @@ export default function DMXPanel({ onClose }: { onClose: () => void }) {
                   ))}
                 </div>
 
-                {/* Send via USB */}
+                {/* Send via USB (single shot) */}
                 <Button
                   size="sm" className="h-6 text-[10px] w-full gap-1"
                   onClick={sendUSBDirect}
-                  disabled={universes.length === 0 || sending}
+                  disabled={universes.length === 0 || sending || usbStreaming}
                 >
                   <Usb className="h-3 w-3" />
                   {sending ? 'Enviando...' : `Send USB (${connectedUSBDMX.length} device${connectedUSBDMX.length > 1 ? 's' : ''})`}
                 </Button>
+
+                {/* Continuous streaming (Universe 1) */}
+                <div className="border-t border-border/50 pt-2 mt-1 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Activity className={`h-3 w-3 ${usbStreaming ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
+                    <span className="text-[9px] text-muted-foreground font-semibold uppercase flex-1">
+                      Streaming Contínuo (Uni 1)
+                    </span>
+                    <span className="text-[8px] text-muted-foreground font-mono-code">{usbStreamFps}Hz</span>
+                  </div>
+
+                  {/* Real-time connected DMX device count */}
+                  <div
+                    className={`flex items-center justify-between rounded-sm px-1.5 py-1 text-[9px] font-mono-code ${
+                      connectedUSBDMX.length > 0
+                        ? 'bg-success/10 text-success'
+                        : 'bg-destructive/10 text-destructive'
+                    }`}
+                    aria-live="polite"
+                    title="Dispositivos DMX USB reconhecidos e conectados"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          connectedUSBDMX.length > 0 ? 'bg-success animate-pulse' : 'bg-destructive'
+                        }`}
+                      />
+                      <span className="uppercase font-semibold tracking-wider">Conectados</span>
+                    </span>
+                    <span className="font-bold">
+                      {connectedUSBDMX.length} {connectedUSBDMX.length === 1 ? 'device' : 'devices'}
+                    </span>
+                  </div>
+
+                  {/* E-STOP latency banner — persistente até nova partida */}
+                  {latencyEstopReason && (
+                    <div
+                      role="alert"
+                      aria-live="assertive"
+                      className="border border-destructive bg-destructive/15 text-destructive rounded-sm px-2 py-1.5 space-y-1"
+                    >
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
+                        <Square className="h-3 w-3 fill-current" />
+                        <span>E-STOP DMX · LATÊNCIA CRÍTICA</span>
+                      </div>
+                      <p className="text-[9px] leading-tight opacity-90">
+                        Streaming USB DMX foi parado automaticamente. {latencyEstopReason}.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setLatencyEstopReason(null)}
+                        className="text-[8px] underline opacity-70 hover:opacity-100"
+                      >
+                        Dispensar aviso
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Seletor de taxa — atualiza Hz sem fechar a porta USB.
+                      40Hz é bloqueado em Safety Mode (frame drops sustentados). */}
+                  <div className="grid grid-cols-3 gap-1">
+                    {([10, 20, 40] as const).map(hz => {
+                      const active = usbStreamFps === hz;
+                      const blocked = hz === 40 && isOverloaded;
+                      return (
+                        <button
+                          key={hz}
+                          type="button"
+                          onClick={() => handleFpsChange(hz)}
+                          className={`relative h-7 rounded-sm text-[10px] font-mono-code font-bold transition-colors ${
+                            active
+                              ? 'bg-primary text-primary-foreground'
+                              : blocked
+                                ? 'bg-surface-2 text-muted-foreground/40 cursor-not-allowed'
+                                : 'bg-surface-2 text-muted-foreground hover:bg-surface-3 hover:text-foreground'
+                          }`}
+                          title={
+                            blocked
+                              ? `Bloqueado · Safety Mode (${avgFps.toFixed(0)}fps avg). Restaurará quando a CPU normalizar.`
+                              : `Taxa de broadcast: ${hz} Hz`
+                          }
+                          aria-disabled={blocked}
+                        >
+                          {hz} Hz
+                          {blocked && (
+                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive animate-pulse" aria-hidden />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[8px] leading-tight text-muted-foreground/70">
+                    {isOverloaded
+                      ? `⚠ Safety Mode · 40Hz bloqueado (${avgFps.toFixed(0)}fps avg). Reduza a carga visual para liberar.`
+                      : usbStreaming
+                        ? '✓ Pode trocar a taxa durante o streaming — porta USB permanece aberta.'
+                        : '10Hz baixa carga · 20Hz padrão · 40Hz máximo (DMX512 spec).'}
+                  </p>
+
+                  {/* Painel de diagnóstico em tempo real do broadcast.
+                      Útil para comparar impacto ao trocar 10/20/40 Hz. */}
+                  <DMXBroadcastDiagnostics
+                    streaming={usbStreaming}
+                    fpsTarget={usbStreamFps}
+                    fpsActual={usbStreamStats.fpsActual}
+                    frames={usbStreamStats.frames}
+                    lastLatencyMs={usbStreamStats.lastLatencyMs}
+                    avgLatencyMs={usbStreamStats.avgLatencyMs}
+                    maxLatencyMs={usbStreamStats.maxLatencyMs}
+                    writeErrors={usbStreamStats.writeErrors}
+                    lastErrorMsg={usbStreamStats.lastErrorMsg}
+                    lastErrorTs={usbStreamStats.lastErrorTs}
+                    latencyHistory={latencyAccRef.current.history}
+                    latencyHistoryIdx={latencyAccRef.current.historyIdx}
+                    latencyHistoryFilled={latencyAccRef.current.historyFilled}
+                    estopMs={LATENCY_ESTOP_MS}
+                  />
+
+                  <Button
+                    size="sm"
+                    variant={usbStreaming ? 'destructive' : 'default'}
+                    className="h-7 text-[10px] w-full gap-1"
+                    onClick={usbStreaming ? stopUsbStream : startUsbStream}
+                    disabled={universes.length === 0 || (!usbStreaming && connectedUSBDMX.length === 0)}
+                    title={
+                      connectedUSBDMX.length === 0 && !usbStreaming
+                        ? 'Nenhum dispositivo DMX USB conectado — conecte um equipamento para habilitar o streaming.'
+                        : undefined
+                    }
+                  >
+                    {usbStreaming ? (
+                      <>
+                        <Square className="h-3 w-3 fill-current" />
+                        Parar Streaming
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-3 w-3 fill-current" />
+                        Iniciar Streaming Uni 1 → USB
+                      </>
+                    )}
+                  </Button>
+
+                  {usbStreaming && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[8px] text-muted-foreground bg-surface-2 rounded-sm px-1.5 py-1 font-mono-code">
+                        <span>● <span className="text-primary">LIVE</span></span>
+                        <span>{usbStreamStats.frames} frames</span>
+                        <span title="Latência da última transmissão">last {usbStreamStats.lastLatencyMs}ms</span>
+                      </div>
+                      <div
+                        className="grid grid-cols-2 gap-1 text-[8px] font-mono-code"
+                        aria-live="polite"
+                      >
+                        <div
+                          className="flex items-center justify-between bg-surface-2 rounded-sm px-1.5 py-1"
+                          title="Latência média (EWMA α=0.2)"
+                        >
+                          <span className="text-muted-foreground uppercase tracking-wider">avg</span>
+                          <span className="text-foreground font-bold">{usbStreamStats.avgLatencyMs}ms</span>
+                        </div>
+                        <div
+                          className={`flex items-center justify-between rounded-sm px-1.5 py-1 ${
+                            usbStreamStats.maxLatencyMs > 50
+                              ? 'bg-destructive/10 text-destructive'
+                              : usbStreamStats.maxLatencyMs > 25
+                              ? 'bg-warning/10 text-warning'
+                              : 'bg-surface-2 text-foreground'
+                          }`}
+                          title="Latência máxima observada (pico) — alerta se >25ms (warn) ou >50ms (crítico)"
+                        >
+                          <span className="uppercase tracking-wider opacity-70">max</span>
+                          <span className="font-bold">{usbStreamStats.maxLatencyMs}ms</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!usbStreaming && (
+                    <p className="text-[8px] text-muted-foreground/70">
+                      Envia o universo 1 ({universes[0]?.channels.length ?? 0} canais) repetidamente para todos os dispositivos USB conectados.
+                    </p>
+                  )}
+                </div>
+
               </>
             )}
           </div>

@@ -65,8 +65,10 @@ export default function VVIZImporter({
     };
   }, []);
 
+  // `open` is a forced-recompute signal — re-reads the live store on each open.
   const existingDroneCount = useMemo(() => {
     return useProjectStore.getState().positions.filter(p => p.type === 'drone-pad').length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const commitChunks = useCallback(async (

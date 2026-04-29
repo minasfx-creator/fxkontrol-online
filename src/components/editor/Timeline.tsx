@@ -1,8 +1,19 @@
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet, Copy, GripVertical, Zap, Sparkles, ChevronDown, ChevronRight, Clock, Move, Crosshair, Link2, Unlink, Scissors, ClipboardPaste, Eye, EyeOff, Headphones } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Square, Trash2, ZoomIn, ZoomOut, Magnet, Copy, GripVertical, Zap, Sparkles, ChevronDown, ChevronRight, Clock, Move, Crosshair, Link2, Unlink, Scissors, ClipboardPaste, Eye, EyeOff, Headphones, RefreshCw, AlignVerticalJustifyCenter } from 'lucide-react';
+// Lazy toast: import('sonner') keeps it out of the initial JS bundle (budget guard).
+const toast = {
+  info: (m: string) => { void import('sonner').then(({ toast }) => toast.info(m)); },
+  warning: (m: string) => { void import('sonner').then(({ toast }) => toast.warning(m)); },
+  success: (m: string) => { void import('sonner').then(({ toast }) => toast.success(m)); },
+};
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useSMPTEStore } from '@/store/useSMPTEStore';
 import { timelineTransport } from '@/core/transport/timelineTransport';
+import { resyncTimeline, getAudioMaster } from '@/lib/audio/audioMasterRegistry';
+import { TimelineHealthBadge } from '@/components/editor/TimelineHealthBadge';
+import { TimelineHealthSettingsPopover } from '@/components/editor/TimelineHealthSettingsPopover';
+import { TimelineHealthLogPopover } from '@/components/editor/TimelineHealthLogPopover';
 import { useTransportDiagnostics } from '@/hooks/useTransportDiagnostics';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
@@ -13,6 +24,24 @@ import AudioWaveform from './AudioWaveform';
 import PyroTimelineTrack from './PyroTimelineTrack';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { loadTimelineView, saveTimelineView } from '@/lib/timelineViewState';
+import { useScrollViewport, isInScrollWindow } from '@/hooks/useScrollViewport';
+import {
+  resolveDropTime,
+  formatDropTimestamp,
+  snapAccent,
+  markRecentDrop,
+  useRecentDropId,
+  type SnapReason,
+} from './timelineDropFx';
+import {
+  getActiveGrid,
+  snapTime,
+  quantizeTime,
+  stepTime,
+  getSubdivisions,
+  type SnapMode,
+} from './timelineGrid';
+import { timecodeProvider } from '@/core/time/timecodeProvider';
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -21,41 +50,42 @@ function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
 }
 
-function snapTimeToBeat(time: number, bpm: number | null, snapEnabled: boolean, pixelsPerSecond: number): number {
-  if (!snapEnabled || !bpm) return time;
-  const beatInterval = 60 / bpm;
-  const nearestBeat = Math.round(time / beatInterval) * beatInterval;
-  const threshold = 8 / pixelsPerSecond;
-  return Math.abs(time - nearestBeat) < threshold ? nearestBeat : time;
-}
+// ── TimelineGrid: replaces the old beat-only `BeatGrid`. Now renders beat OR
+//    frame OR second subdivisions depending on the active `snapMode`, BPM and
+//    zoom level. Virtualised to the visible scroll window.
+const TimelineGrid = React.forwardRef<HTMLDivElement, {
+  duration: number;
+  pixelsPerSecond: number;
+  bpm: number | null;
+  snapMode: SnapMode;
+  scrollLeft?: number;
+  viewportWidth?: number;
+}>(function TimelineGrid({ duration, pixelsPerSecond, bpm, snapMode, scrollLeft = 0, viewportWidth = 1200 }, _ref) {
+  const grid = getActiveGrid({ bpm, snapMode });
+  if (grid.unit === 'none') return null;
+  const lines = getSubdivisions({ grid, duration, pixelsPerSecond, scrollLeft, viewportWidth });
+  if (lines.length === 0) return null;
 
-const BeatGrid = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number; bpm: number | null; scrollLeft?: number; viewportWidth?: number }>(function BeatGrid({ duration, pixelsPerSecond, bpm, scrollLeft = 0, viewportWidth = 1200 }, _ref) {
-  if (!bpm) return null;
-  const beatInterval = 60 / bpm;
-
-  // Virtualize: only render lines visible in the scroll viewport + buffer
-  const buffer = 200; // px
-  const startTime = Math.max(0, (scrollLeft - buffer) / pixelsPerSecond);
-  const endTime = Math.min(duration, (scrollLeft + viewportWidth + buffer) / pixelsPerSecond);
-  const firstBeat = Math.floor(startTime / beatInterval) * beatInterval;
-
-  const lines = [];
-  for (let t = firstBeat; t < endTime; t += beatInterval) {
-    if (t < 0) continue;
-    const isMeasure = Math.round(t / beatInterval) % 4 === 0;
-    lines.push(
-      <div
-        key={t}
-        className="absolute top-0 bottom-0 pointer-events-none"
-        style={{
-          left: `${t * pixelsPerSecond}px`,
-          width: '1px',
-          backgroundColor: isMeasure ? 'hsl(var(--accent) / 0.2)' : 'hsl(var(--accent) / 0.06)',
-        }}
-      />
-    );
-  }
-  return <>{lines}</>;
+  return (
+    <>
+      {lines.map((l) => {
+        // Three-tier opacity: major (measure / second), unit (beat / frame), sub (¼ / 6-frame).
+        const opacity = l.weight === 'major' ? 0.35 : l.weight === 'unit' ? 0.18 : 0.08;
+        const tone = grid.unit === 'beat' ? '--accent' : '--primary';
+        return (
+          <div
+            key={`${l.weight}-${l.t}`}
+            className="absolute top-0 bottom-0 pointer-events-none"
+            style={{
+              left: `${l.t * pixelsPerSecond}px`,
+              width: '1px',
+              backgroundColor: `hsl(var(${tone}) / ${opacity})`,
+            }}
+          />
+        );
+      })}
+    </>
+  );
 });
 
 const TimeRuler = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number; scrollLeft?: number; viewportWidth?: number }>(function TimeRuler({ duration, pixelsPerSecond, scrollLeft = 0, viewportWidth = 1200 }, _ref) {
@@ -207,6 +237,8 @@ const DraggableTimelineItem = React.memo(React.forwardRef<HTMLButtonElement, {
   const effectDuration = item.durationOverride ?? effect.duration;
   const widthPx = Math.max(effectDuration * pixelsPerSecond, 28);
   const [resizing, setResizing] = useState<'left' | 'right' | null>(null);
+  const recentDropId = useRecentDropId();
+  const isRecentDrop = recentDropId === item.id;
 
   const handleResizeStart = useCallback((e: React.MouseEvent, edge: 'left' | 'right') => {
     e.stopPropagation();
@@ -267,7 +299,8 @@ const DraggableTimelineItem = React.memo(React.forwardRef<HTMLButtonElement, {
               ? "border-accent/40 shadow-[0_0_8px_hsl(var(--accent)/0.15)] z-10 ring-1 ring-accent/20 border-dashed"
               : isMultiSelected
                 ? "border-primary/25 z-10"
-                : "border-white/[0.04] hover:border-white/[0.08] hover:shadow-sm"
+              : "border-white/[0.04] hover:border-white/[0.08] hover:shadow-sm",
+          isRecentDrop && "fxk-drop-flash"
         )}
         style={{
           width: `${widthPx}px`,
@@ -346,31 +379,27 @@ function TimelineTrackRow({
   label: string; trackIndex: number; pixelsPerSecond: number; color: string; duration: number;
   scrollRef: React.RefObject<HTMLDivElement>;
 }) {
-  // Track scroll position for item virtualization
-  const [scrollLeft, setScrollLeft] = useState(0);
-  const [viewportWidth, setViewportWidth] = useState(1200);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const update = () => { setScrollLeft(el.scrollLeft); setViewportWidth(el.clientWidth); };
-    update();
-    el.addEventListener('scroll', update, { passive: true });
-    return () => el.removeEventListener('scroll', update);
-  }, [scrollRef]);
+  // Track scroll position via shared hook (replaces local useEffect duplicated in 6 rows)
+  const { scrollLeft, viewportWidth } = useScrollViewport(scrollRef);
     const timelineItems = useProjectStore(s => s.timelineItems);
   const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
   const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
   const addTimelineItem = useProjectStore(s => s.addTimelineItem);
   const bpm = useProjectStore(s => s.bpm);
   const snapToBeat = useProjectStore(s => s.snapToBeat);
+  const snapMode = useProjectStore(s => s.snapMode);
   const updateTimelineItem = useProjectStore(s => s.updateTimelineItem);
   const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
   const toggleTimelineItemSelection = useProjectStore(s => s.toggleTimelineItemSelection);
   const positions = useProjectStore(s => s.positions);
   const selectedPositionId = useProjectStore(s => s.selectedPositionId);
   const selectedPositionIds = useProjectStore(s => s.selectedPositionIds);
+  // Subscribe to linkedTimelineItemIds outside the .map hot path. A Set
+  // gives O(1) membership checks per item instead of O(n) Array.includes.
+  const linkedTimelineItemIds = useProjectStore(s => s.linkedTimelineItemIds);
+  const linkedIdSet = useMemo(() => new Set(linkedTimelineItemIds), [linkedTimelineItemIds]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [dropPreview, setDropPreview] = useState<{ time: number; snap: SnapReason } | null>(null);
   const [muted, setMuted] = useState(false);
   const [trackCtxMenu, setTrackCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const items = timelineItems.filter((i) => i.trackIndex === trackIndex);
@@ -384,26 +413,59 @@ function TimelineTrackRow({
     return SECTION_COLORS[pos.section] || undefined;
   }, [positions]);
 
+  const computeDropPreview = useCallback((e: React.DragEvent): { time: number; snap: SnapReason } | null => {
+    const effectId = e.dataTransfer.getData('application/effect-id');
+    // dataTransfer.getData() returns "" during dragOver in most browsers — fall back to types.
+    const placingEffect = effectId
+      ? EFFECT_LIBRARY.find((ef) => ef.id === effectId)
+      : undefined;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const rawTime = x / pixelsPerSecond;
+    const trackNeighbours = items.map((it) => ({
+      id: it.id,
+      startTime: it.startTime,
+      effectId: it.effectId,
+      durationOverride: it.durationOverride,
+    }));
+    return resolveDropTime({
+      rawTime,
+      duration,
+      pixelsPerSecond,
+      bpm,
+      snapToBeat,
+      currentTime: useProjectStore.getState().currentTime,
+      neighbours: trackNeighbours,
+      placing: placingEffect ? { effectId: placingEffect.id } : undefined,
+    });
+  }, [pixelsPerSecond, duration, bpm, snapToBeat, items]);
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
-    const effectId = e.dataTransfer.types.includes('application/effect-id');
-    if (!effectId) return;
+    const hasEffect = e.dataTransfer.types.includes('application/effect-id');
+    if (!hasEffect) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
-  }, []);
+    const preview = computeDropPreview(e);
+    if (preview) setDropPreview(preview);
+  }, [computeDropPreview]);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     if (!e.dataTransfer.types.includes('application/effect-id')) return;
     e.preventDefault();
     setIsDragOver(true);
-  }, [trackIndex]);
+  }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false);
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+      setDropPreview(null);
+    }
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
+    setDropPreview(null);
     const effectId = e.dataTransfer.getData('application/effect-id');
     if (!effectId) return;
     const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
@@ -415,8 +477,18 @@ function TimelineTrackRow({
 
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
-    time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
+    const { time } = resolveDropTime({
+      rawTime: x / pixelsPerSecond,
+      duration,
+      pixelsPerSecond,
+      bpm,
+      snapToBeat,
+      currentTime: useProjectStore.getState().currentTime,
+      neighbours: items.map((it) => ({
+        id: it.id, startTime: it.startTime, effectId: it.effectId, durationOverride: it.durationOverride,
+      })),
+      placing: { effectId: effect.id },
+    });
 
     const targetIds = selectedPositionIds.length > 0
       ? selectedPositionIds.filter(id => positions.find(p => p.id === id)?.type === 'pyro')
@@ -425,24 +497,28 @@ function TimelineTrackRow({
         : [];
 
     if (targetIds.length > 0) {
+      let firstId: string | null = null;
       targetIds.forEach((posId, i) => {
         const pos = positions.find(p => p.id === posId);
         if (!pos) return;
+        const id = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${i}`;
+        if (i === 0) firstId = id;
         addTimelineItem({
-          id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${i}`,
-          effectId: effect.id, startTime: time, trackIndex,
+          id, effectId: effect.id, startTime: time, trackIndex,
           position: { x: pos.x, y: pos.y, z: pos.z },
           positionId: posId, positionIds: targetIds.length > 1 ? targetIds : undefined, positionName: pos.name,
         });
       });
+      if (firstId) markRecentDrop(firstId);
     } else {
+      const id = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       addTimelineItem({
-        id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        effectId: effect.id, startTime: time, trackIndex,
+        id, effectId: effect.id, startTime: time, trackIndex,
         position: { x: (Math.random() - 0.5) * 16, y: effect.type === 'firework' ? 0 : 5 + Math.random() * 10, z: (Math.random() - 0.5) * 8 },
       });
+      markRecentDrop(id);
     }
-  }, [pixelsPerSecond, duration, trackIndex, addTimelineItem, bpm, snapToBeat, positions, selectedPositionId, selectedPositionIds]);
+  }, [pixelsPerSecond, duration, trackIndex, addTimelineItem, bpm, snapToBeat, positions, selectedPositionId, selectedPositionIds, items]);
 
   const handleItemDragStart = useCallback((e: React.MouseEvent, itemId: string) => {
     const item = timelineItems.find(i => i.id === itemId);
@@ -463,28 +539,39 @@ function TimelineTrackRow({
 
       const dt = dx / pixelsPerSecond;
       let newTime = Math.max(0, Math.min(startTime + dt, duration));
-      newTime = snapTimeToBeat(newTime, bpm, snapToBeat, pixelsPerSecond);
+
+      // Modifier keys: Shift = force quantize to grid centre; Alt = no snap.
+      const grid = getActiveGrid({ bpm, snapMode });
+      if (me.altKey) {
+        // free move — skip both grid and edge snap
+      } else if (me.shiftKey) {
+        newTime = quantizeTime(newTime, grid);
+      } else {
+        newTime = snapTime(newTime, grid, pixelsPerSecond);
+      }
 
       // ── Magnetic snap to adjacent items (edge-to-edge) ──
-      const snapThresholdSec = 6 / pixelsPerSecond;
-      const currentEffect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
-      const currentDuration = item.durationOverride ?? currentEffect?.duration ?? 2;
+      if (!me.altKey) {
+        const snapThresholdSec = 6 / pixelsPerSecond;
+        const currentEffect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
+        const currentDuration = item.durationOverride ?? currentEffect?.duration ?? 2;
 
-      for (const other of timelineItems) {
-        if (other.id === itemId || other.trackIndex !== item.trackIndex) continue;
-        const otherEffect = EFFECT_LIBRARY.find(ef => ef.id === other.effectId);
-        const otherDur = other.durationOverride ?? otherEffect?.duration ?? 2;
-        const otherEnd = other.startTime + otherDur;
+        for (const other of timelineItems) {
+          if (other.id === itemId || other.trackIndex !== item.trackIndex) continue;
+          const otherEffect = EFFECT_LIBRARY.find(ef => ef.id === other.effectId);
+          const otherDur = other.durationOverride ?? otherEffect?.duration ?? 2;
+          const otherEnd = other.startTime + otherDur;
 
-        // Snap my start to other's end
-        if (Math.abs(newTime - otherEnd) < snapThresholdSec) {
-          newTime = otherEnd;
-          break;
-        }
-        // Snap my end to other's start
-        if (Math.abs((newTime + currentDuration) - other.startTime) < snapThresholdSec) {
-          newTime = other.startTime - currentDuration;
-          break;
+          // Snap my start to other's end
+          if (Math.abs(newTime - otherEnd) < snapThresholdSec) {
+            newTime = otherEnd;
+            break;
+          }
+          // Snap my end to other's start
+          if (Math.abs((newTime + currentDuration) - other.startTime) < snapThresholdSec) {
+            newTime = other.startTime - currentDuration;
+            break;
+          }
         }
       }
 
@@ -626,19 +713,43 @@ function TimelineTrackRow({
             }}
           />
         )}
+        {/* ── Drop preview guide (live snap timestamp + reason) ── */}
+        {dropPreview && (() => {
+          const accent = snapAccent(dropPreview.snap);
+          const leftPx = dropPreview.time * pixelsPerSecond;
+          return (
+            <>
+              <div
+                className={cn("absolute top-0 bottom-0 w-px pointer-events-none z-30", accent.text.replace('text-', 'bg-'))}
+                style={{ left: `${leftPx}px`, opacity: 0.85 }}
+                aria-hidden
+              />
+              <div
+                className={cn(
+                  "absolute -top-4 px-1.5 py-[1px] rounded-sm text-[8px] font-mono tabular-nums pointer-events-none z-30 ring-1 bg-background/90 backdrop-blur-sm fxk-drop-guide",
+                  accent.ring, accent.text,
+                )}
+                style={{ left: `${leftPx}px`, transform: 'translateX(-50%)' }}
+                aria-hidden
+              >
+                {formatDropTimestamp(dropPreview.time)} · {accent.label}
+              </div>
+            </>
+          );
+        })()}
         {!muted && items.map((item) => {
           const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
           if (!effect) return null;
-          // Virtualize: skip items outside visible scroll range
+          // Virtualize: skip items outside visible scroll range (uses shared helper)
           const effectDuration = item.durationOverride ?? effect.duration;
           const itemLeftPx = item.startTime * pixelsPerSecond;
-          const itemRightPx = itemLeftPx + Math.max(effectDuration * pixelsPerSecond, 28);
-          const visibleLeft = scrollLeft - 96 - 200; // account for label column + buffer
-          const visibleRight = scrollLeft - 96 + viewportWidth + 200;
-          if (itemRightPx < visibleLeft || itemLeftPx > visibleRight) return null;
+          const itemWidthPx = Math.max(effectDuration * pixelsPerSecond, 28);
+          if (!isInScrollWindow(itemLeftPx, itemWidthPx, { scrollLeft, viewportWidth }, { labelOffsetPx: 96 })) {
+            return null;
+          }
 
-          const linkedIds = useProjectStore.getState().linkedTimelineItemIds;
-          const isLinked = linkedIds.includes(item.id);
+          // O(1) Set lookup instead of getState()+Array.includes() per item.
+          const isLinked = linkedIdSet.has(item.id);
           return (
             <DraggableTimelineItem
               key={item.id} item={item} effect={effect} pixelsPerSecond={pixelsPerSecond}
@@ -671,11 +782,12 @@ function TimelineTrackRow({
   );
 }
 
-const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number }>(function WaypointTrackRow({ pixelsPerSecond, duration }, ref) {
+const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number; scrollRef: React.RefObject<HTMLDivElement> }>(function WaypointTrackRow({ pixelsPerSecond, duration, scrollRef }, ref) {
     const trajectories = useProjectStore(s => s.trajectories);
   const positions = useProjectStore(s => s.positions);
   const selectedTrajectoryId = useProjectStore(s => s.selectedTrajectoryId);
   const selectTrajectory = useProjectStore(s => s.selectTrajectory);
+  const { scrollLeft, viewportWidth } = useScrollViewport(scrollRef);
   const wpEvents = useMemo(() => {
     return trajectories.flatMap((traj) => {
       const pad = positions.find((p) => p.id === traj.positionId);
@@ -693,9 +805,14 @@ const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: num
       </div>
       <div className="flex-1 relative h-8" style={{ background: 'hsl(var(--background) / 0.4)' }}>
         {wpEvents.map(({ wp, traj, pad, index, nextWp }) => {
-          const isSelected = selectedTrajectoryId === traj.id;
           const endTime = nextWp ? nextWp.time : wp.time + 1;
+          const itemLeftPx = wp.time * pixelsPerSecond;
           const widthPx = Math.max((endTime - wp.time) * pixelsPerSecond, 14);
+          // Horizontal culling — skip waypoints outside the visible window.
+          if (!isInScrollWindow(itemLeftPx, widthPx, { scrollLeft, viewportWidth }, { labelOffsetPx: 96 })) {
+            return null;
+          }
+          const isSelected = selectedTrajectoryId === traj.id;
           return (
             <button
               key={wp.id}
@@ -704,7 +821,7 @@ const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: num
                 "absolute top-0.5 h-7 rounded-md flex items-center px-1 text-[8px] font-mono transition-all cursor-pointer border",
                 isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]"
               )}
-              style={{ left: `${wp.time * pixelsPerSecond}px`, width: `${widthPx}px`, backgroundColor: `${pad.color || '#00B4D8'}15` }}
+              style={{ left: `${itemLeftPx}px`, width: `${widthPx}px`, backgroundColor: `${pad.color || '#00B4D8'}15` }}
             >
               <div className="w-[2px] h-full rounded-full mr-0.5 flex-shrink-0" style={{ backgroundColor: pad.color || '#00B4D8' }} />
               <span className="truncate text-muted-foreground/60">WP{index + 1}</span>
@@ -716,10 +833,11 @@ const WaypointTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: num
   );
 });
 
-const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number }>(function FormationTrackRow({ pixelsPerSecond, duration }, _ref) {
+const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: number; duration: number; scrollRef: React.RefObject<HTMLDivElement> }>(function FormationTrackRow({ pixelsPerSecond, duration, scrollRef }, _ref) {
     const droneFormations = useProjectStore(s => s.droneFormations);
   const selectFormation = useProjectStore(s => s.selectFormation);
   const selectedFormationId = useProjectStore(s => s.selectedFormationId);
+  const { scrollLeft, viewportWidth } = useScrollViewport(scrollRef);
   if (droneFormations.length === 0) return null;
 
   return (
@@ -731,7 +849,11 @@ const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: nu
       <div className="flex-1 relative h-8" style={{ background: 'hsl(var(--background) / 0.4)' }}>
         {droneFormations.map((f, i) => {
           const totalDuration = f.transitionDuration + f.holdDuration;
+          const itemLeftPx = f.startTime * pixelsPerSecond;
           const widthPx = Math.max(totalDuration * pixelsPerSecond, 20);
+          if (!isInScrollWindow(itemLeftPx, widthPx, { scrollLeft, viewportWidth }, { labelOffsetPx: 96 })) {
+            return null;
+          }
           const isSelected = selectedFormationId === f.id;
           const preset = FORMATION_PRESETS_MAP[f.formationType];
           return (
@@ -742,7 +864,7 @@ const FormationTrackRow = React.forwardRef<HTMLDivElement, { pixelsPerSecond: nu
                 "absolute top-0.5 h-7 rounded-md flex items-center px-1.5 text-[8px] font-mono transition-all cursor-pointer border",
                 isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]"
               )}
-              style={{ left: `${f.startTime * pixelsPerSecond}px`, width: `${widthPx}px`, backgroundColor: `${f.color}15` }}
+              style={{ left: `${itemLeftPx}px`, width: `${widthPx}px`, backgroundColor: `${f.color}15` }}
             >
               <div className="w-[2px] h-full rounded-full mr-1 flex-shrink-0" style={{ backgroundColor: f.color }} />
               <span className="truncate text-muted-foreground/60">{preset || f.formationType} #{i + 1}</span>
@@ -764,7 +886,8 @@ const FORMATION_PRESETS_MAP: Record<string, string> = {
 };
 
 // ── DRONE FX Track — only visible when formations exist ──
-function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
+function DroneFXTrackRow({ pixelsPerSecond, duration, scrollRef }: { pixelsPerSecond: number; duration: number; scrollRef: React.RefObject<HTMLDivElement> }) {
+  const { scrollLeft, viewportWidth } = useScrollViewport(scrollRef);
     const droneFormations = useProjectStore(s => s.droneFormations);
   const timelineItems = useProjectStore(s => s.timelineItems);
   const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
@@ -774,8 +897,23 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
   const materializeFormation = useProjectStore(s => s.materializeFormation);
   const bpm = useProjectStore(s => s.bpm);
   const snapToBeat = useProjectStore(s => s.snapToBeat);
-  
+  const recentDropId = useRecentDropId();
+
   const droneFxItems = useMemo(() => timelineItems.filter((i) => i.trackIndex === 3), [timelineItems]);
+  const [dropPreview, setDropPreview] = useState<{ time: number; snap: SnapReason } | null>(null);
+
+  const computePreview = useCallback((e: React.DragEvent): { time: number; snap: SnapReason } => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    return resolveDropTime({
+      rawTime: x / pixelsPerSecond,
+      duration, pixelsPerSecond, bpm, snapToBeat,
+      currentTime: useProjectStore.getState().currentTime,
+      neighbours: droneFxItems.map((it) => ({
+        id: it.id, startTime: it.startTime, effectId: it.effectId, durationOverride: it.durationOverride,
+      })),
+    });
+  }, [pixelsPerSecond, duration, bpm, snapToBeat, droneFxItems]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     const hasEffect = e.dataTransfer.types.includes('application/effect-id');
@@ -783,14 +921,17 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
     if (!hasEffect && !hasFormation) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
+    setDropPreview(computePreview(e));
+  }, [computePreview]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropPreview(null);
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
-    time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
+    setDropPreview(null);
+    const { time } = computePreview(e);
 
     const formationId = e.dataTransfer.getData('application/formation-id');
     if (formationId) {
@@ -807,12 +948,13 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
     const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
     if (!effect || effect.type !== 'drone') return;
 
+    const id = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     addTimelineItem({
-      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      effectId: effect.id, startTime: time, trackIndex: 3,
+      id, effectId: effect.id, startTime: time, trackIndex: 3,
       position: { x: 0, y: 20, z: 0 },
     });
-  }, [pixelsPerSecond, duration, addTimelineItem, bpm, snapToBeat, updateDroneFormation, materializeFormation]);
+    markRecentDrop(id);
+  }, [addTimelineItem, computePreview, updateDroneFormation, materializeFormation]);
 
   if (droneFormations.length === 0) return null;
 
@@ -825,7 +967,7 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
       <div
         className="flex-1 relative h-8"
         style={{ background: 'hsl(var(--background) / 0.4)' }}
-        onDragOver={handleDragOver} onDrop={handleDrop}
+        onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
       >
         {droneFormations.map((f) => {
           const totalDuration = f.transitionDuration + f.holdDuration;
@@ -839,13 +981,15 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
           const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
           if (!effect) return null;
           const isSelected = selectedTimelineItemId === item.id;
+          const isRecentDrop = recentDropId === item.id;
           return (
             <button
               key={item.id}
               onClick={(e) => { e.stopPropagation(); selectTimelineItem(item.id); }}
               className={cn(
                 "absolute top-0.5 h-7 rounded-md flex items-center px-1.5 text-[8px] font-mono transition-all cursor-pointer border",
-                isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]"
+                isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]",
+                isRecentDrop && "fxk-drop-flash",
               )}
               style={{ left: `${item.startTime * pixelsPerSecond}px`, width: `${Math.max(effect.duration * pixelsPerSecond, 20)}px`, backgroundColor: `${effect.color}15` }}
             >
@@ -854,13 +998,37 @@ function DroneFXTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: numbe
             </button>
           );
         })}
+        {dropPreview && (() => {
+          const accent = snapAccent(dropPreview.snap);
+          const leftPx = dropPreview.time * pixelsPerSecond;
+          return (
+            <>
+              <div
+                className={cn("absolute top-0 bottom-0 w-px pointer-events-none z-30", accent.text.replace('text-', 'bg-'))}
+                style={{ left: `${leftPx}px`, opacity: 0.85 }}
+                aria-hidden
+              />
+              <div
+                className={cn(
+                  "absolute -top-4 px-1.5 py-[1px] rounded-sm text-[8px] font-mono tabular-nums pointer-events-none z-30 ring-1 bg-background/90 backdrop-blur-sm fxk-drop-guide",
+                  accent.ring, accent.text,
+                )}
+                style={{ left: `${leftPx}px`, transform: 'translateX(-50%)' }}
+                aria-hidden
+              >
+                {formatDropTimestamp(dropPreview.time)} · {accent.label}
+              </div>
+            </>
+          );
+        })()}
       </div>
     </div>
   );
 }
 
 // ── LASER Track — shows laser cues with live preview state ──
-function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number; duration: number }) {
+function LaserTrackRow({ pixelsPerSecond, duration, scrollRef }: { pixelsPerSecond: number; duration: number; scrollRef: React.RefObject<HTMLDivElement> }) {
+  const { scrollLeft, viewportWidth } = useScrollViewport(scrollRef);
     const timelineItems = useProjectStore(s => s.timelineItems);
   const selectedTimelineItemId = useProjectStore(s => s.selectedTimelineItemId);
   const selectTimelineItem = useProjectStore(s => s.selectTimelineItem);
@@ -869,35 +1037,55 @@ function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number;
   const snapToBeat = useProjectStore(s => s.snapToBeat);
   const laserEnabled = useLaserPreviewStore((s) => s.globalEnabled);
   const [collapsed, setCollapsed] = useState(false);
+  const recentDropId = useRecentDropId();
 
   const laserItems = useMemo(() => timelineItems.filter((i) => {
     const effect = EFFECT_LIBRARY.find((e) => e.id === i.effectId);
     return effect?.type === 'laser';
   }), [timelineItems]);
 
+  const [dropPreview, setDropPreview] = useState<{ time: number; snap: SnapReason } | null>(null);
+
+  const computePreview = useCallback((e: React.DragEvent): { time: number; snap: SnapReason } => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    return resolveDropTime({
+      rawTime: x / pixelsPerSecond,
+      duration, pixelsPerSecond, bpm, snapToBeat,
+      currentTime: useProjectStore.getState().currentTime,
+      neighbours: laserItems.map((it) => ({
+        id: it.id, startTime: it.startTime, effectId: it.effectId, durationOverride: it.durationOverride,
+      })),
+    });
+  }, [pixelsPerSecond, duration, bpm, snapToBeat, laserItems]);
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     const hasEffect = e.dataTransfer.types.includes('application/effect-id');
     if (!hasEffect) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
+    setDropPreview(computePreview(e));
+  }, [computePreview]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropPreview(null);
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    setDropPreview(null);
     const effectId = e.dataTransfer.getData('application/effect-id');
     if (!effectId) return;
     const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
     if (!effect || effect.type !== 'laser') return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
-    time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
+    const { time } = computePreview(e);
+    const id = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     addTimelineItem({
-      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      effectId: effect.id, startTime: time, trackIndex: 4,
+      id, effectId: effect.id, startTime: time, trackIndex: 4,
       position: { x: 0, y: 0.5, z: 0 },
     });
-  }, [pixelsPerSecond, duration, addTimelineItem, bpm, snapToBeat]);
+    markRecentDrop(id);
+  }, [addTimelineItem, computePreview]);
 
   return (
     <div className="flex border-b border-white/[0.03]">
@@ -908,11 +1096,16 @@ function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number;
         {laserEnabled && <div className="w-1.5 h-1.5 rounded-full bg-green-400 ml-auto animate-pulse" />}
       </div>
       {!collapsed && (
-        <div className="flex-1 relative h-8" style={{ background: 'hsl(var(--background) / 0.4)' }} onDragOver={handleDragOver} onDrop={handleDrop}>
+        <div
+          className="flex-1 relative h-8"
+          style={{ background: 'hsl(var(--background) / 0.4)' }}
+          onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
+        >
           {laserItems.map((item) => {
             const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
             if (!effect) return null;
             const isSelected = selectedTimelineItemId === item.id;
+            const isRecentDrop = recentDropId === item.id;
             const widthPx = Math.max(effect.duration * pixelsPerSecond, 20);
             return (
               <button
@@ -920,7 +1113,8 @@ function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number;
                 onClick={(e) => { e.stopPropagation(); selectTimelineItem(item.id); }}
                 className={cn(
                   "absolute top-0.5 h-7 rounded-md flex items-center px-1.5 text-[8px] font-mono transition-all cursor-pointer border",
-                  isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]"
+                  isSelected ? "border-primary/50 shadow-[0_0_6px_hsl(var(--primary)/0.15)] z-10" : "border-white/[0.04] hover:border-white/[0.08]",
+                  isRecentDrop && "fxk-drop-flash",
                 )}
                 style={{ left: `${item.startTime * pixelsPerSecond}px`, width: `${widthPx}px`, backgroundColor: `${effect.color}15` }}
               >
@@ -929,6 +1123,29 @@ function LaserTrackRow({ pixelsPerSecond, duration }: { pixelsPerSecond: number;
               </button>
             );
           })}
+          {dropPreview && (() => {
+            const accent = snapAccent(dropPreview.snap);
+            const leftPx = dropPreview.time * pixelsPerSecond;
+            return (
+              <>
+                <div
+                  className={cn("absolute top-0 bottom-0 w-px pointer-events-none z-30", accent.text.replace('text-', 'bg-'))}
+                  style={{ left: `${leftPx}px`, opacity: 0.85 }}
+                  aria-hidden
+                />
+                <div
+                  className={cn(
+                    "absolute -top-4 px-1.5 py-[1px] rounded-sm text-[8px] font-mono tabular-nums pointer-events-none z-30 ring-1 bg-background/90 backdrop-blur-sm fxk-drop-guide",
+                    accent.ring, accent.text,
+                  )}
+                  style={{ left: `${leftPx}px`, transform: 'translateX(-50%)' }}
+                  aria-hidden
+                >
+                  {formatDropTimestamp(dropPreview.time)} · {accent.label}
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
       {collapsed && <div className="flex-1 h-2" style={{ background: 'hsl(var(--background) / 0.2)' }} />}
@@ -998,22 +1215,70 @@ function CollapsibleTrackGroup({ label, defaultOpen = true, children }: { label:
   );
 }
 
-/** Playhead rendered via direct DOM manipulation — no React re-renders during playback */
-function PlayheadIndicator({ pixelsPerSecond }: { pixelsPerSecond: number }) {
+/** Playhead rendered via direct DOM manipulation — no React re-renders during playback.
+ *  The top "handle" (bolinha) is interactive so the operator can grab the playhead
+ *  directly to scrub. The vertical line stays pointer-events-none so it never
+ *  blocks clicks on timeline items below it. */
+function PlayheadIndicator({
+  pixelsPerSecond,
+  snapMode,
+  onScrubPointerDown,
+}: {
+  pixelsPerSecond: number;
+  snapMode: SnapMode;
+  onScrubPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
+  const tcRef = useRef<HTMLDivElement>(null);
+  const showTimecode = snapMode === 'frame';
+
   useEffect(() => {
+    const formatTC = (t: number): string => {
+      // Frame-accurate HH:MM:SS:FF using current SMPTE frame rate (drop-frame aware)
+      const fr = useSMPTEStore.getState().frameRate;
+      const isDrop = fr === 29.97;
+      const nominalFps = isDrop ? 30 : Math.round(fr);
+      const totalFrames = Math.max(0, Math.round(t * fr));
+      const fps = nominalFps;
+      const ff = totalFrames % fps;
+      const totalSec = Math.floor(totalFrames / fps);
+      const ss = totalSec % 60;
+      const mm = Math.floor(totalSec / 60) % 60;
+      const hh = Math.floor(totalSec / 3600);
+      const sep = isDrop ? ';' : ':';
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      return `${pad(hh)}:${pad(mm)}:${pad(ss)}${sep}${pad(ff)}`;
+    };
+
     const initial = useProjectStore.getState().currentTime;
     if (ref.current) ref.current.style.transform = `translateX(${initial * pixelsPerSecond}px)`;
+    if (tcRef.current && showTimecode) tcRef.current.textContent = formatTC(initial);
     const unsub = useProjectStore.subscribe((state) => {
       if (ref.current) ref.current.style.transform = `translateX(${state.currentTime * pixelsPerSecond}px)`;
+      if (tcRef.current && showTimecode) tcRef.current.textContent = formatTC(state.currentTime);
     });
     return unsub;
-  }, [pixelsPerSecond]);
+  }, [pixelsPerSecond, showTimecode]);
 
   return (
     <div ref={ref} className="absolute top-0 bottom-0 w-px z-20 pointer-events-none" style={{ transform: 'translateX(0px)' }}>
-      <div className="w-2 h-2 bg-primary rounded-full -translate-x-[3px] -translate-y-px shadow-[0_0_8px_hsl(var(--primary)/0.4)]" />
+      {/* Grab handle — larger hit area for touch (12px) */}
+      <div
+        role="slider"
+        aria-label="Scrub playhead"
+        className="absolute -top-1 -left-2 w-4 h-4 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.5)] pointer-events-auto cursor-ew-resize touch-none"
+        onPointerDown={onScrubPointerDown}
+      />
       <div className="absolute top-0 w-px h-full bg-gradient-to-b from-primary via-primary/30 to-transparent" />
+      {showTimecode && (
+        <div
+          ref={tcRef}
+          aria-label="Playhead timecode"
+          className="absolute top-4 left-1.5 px-1.5 py-0.5 rounded-sm bg-background/85 border border-primary/40 text-primary text-[10px] font-mono leading-none whitespace-nowrap shadow-[0_0_6px_hsl(var(--primary)/0.35)] tabular-nums select-none"
+        >
+          00:00:00:00
+        </div>
+      )}
     </div>
   );
 }
@@ -1021,7 +1286,7 @@ function PlayheadIndicator({ pixelsPerSecond }: { pixelsPerSecond: number }) {
 const MIN_PPS = 4;
 const MAX_PPS = 80;
 
-const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, _ref) {
+const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(function Timeline(_props, _ref) {
   useRenderCounter('Timeline');
     const isPlaying = useProjectStore(s => s.isPlaying);
   const setPlaying = useProjectStore(s => s.setPlaying);
@@ -1035,6 +1300,8 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
   const setPlaybackSpeed = useProjectStore(s => s.setPlaybackSpeed);
   const bpm = useProjectStore(s => s.bpm);
   const snapToBeat = useProjectStore(s => s.snapToBeat);
+  const snapMode = useProjectStore(s => s.snapMode);
+  const setSnapMode = useProjectStore(s => s.setSnapMode);
   const setSnapToBeat = useProjectStore(s => s.setSnapToBeat);
   const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
   const clearTimelineItemSelection = useProjectStore(s => s.clearTimelineItemSelection);
@@ -1159,24 +1426,214 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
         const allIds = timelineItems.map(i => i.id);
         allIds.forEach(id => useProjectStore.getState().toggleTimelineItemSelection(id));
       }
+
+      // ── Zoom shortcuts (Ctrl/Cmd + / - / 0) ──
+      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')) {
+        e.preventDefault();
+        setPixelsPerSecond((p) => Math.min(MAX_PPS, p * 1.3));
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        e.preventDefault();
+        setPixelsPerSecond((p) => Math.max(MIN_PPS, p / 1.3));
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+        e.preventDefault();
+        const el = scrollRef.current;
+        const w = el ? el.clientWidth - 96 : 1200;
+        if (duration > 0 && w > 0) {
+          setPixelsPerSecond(Math.min(MAX_PPS, Math.max(MIN_PPS, w / duration)));
+        }
+      }
+
+      // ── Nudge shortcuts: arrow keys move selection by 1 grid unit ──
+      // Multi-select preserves relative spacing: we compute ONE effective delta clamped
+      // by the group's leftmost/rightmost startTime so the entire selection moves rigidly
+      // without ever collapsing or stretching when hitting [0, duration] bounds.
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const ids = selectedTimelineItemIds.length > 0
+          ? selectedTimelineItemIds
+          : selectedTimelineItemId ? [selectedTimelineItemId] : [];
+        if (ids.length === 0) return;
+        e.preventDefault();
+        const dir = e.key === 'ArrowRight' ? 1 : -1;
+        const fps = timecodeProvider.getFPS() || 60;
+        let delta: number;
+        if (e.altKey) {
+          delta = dir / fps; // 1 frame
+        } else if (e.shiftKey) {
+          delta = dir * 1; // 1 second
+        } else {
+          const grid = getActiveGrid({ bpm, snapMode });
+          delta = dir * (grid.interval > 0 ? grid.interval : 1 / fps);
+        }
+        const allItems = useProjectStore.getState().timelineItems;
+        const selected = ids
+          .map((id) => allItems.find((i) => i.id === id))
+          .filter((i): i is NonNullable<typeof i> => !!i);
+        if (selected.length === 0) return;
+
+        // Compute the group's allowed shift so spacing is preserved.
+        const minStart = selected.reduce((m, it) => Math.min(m, it.startTime), Infinity);
+        const maxStart = selected.reduce((m, it) => Math.max(m, it.startTime), -Infinity);
+        const minAllowed = -minStart;                           // can't push leftmost below 0
+        const maxAllowed = Math.max(0, duration - maxStart);    // can't push rightmost past duration
+        let effectiveDelta = Math.max(minAllowed, Math.min(maxAllowed, delta));
+
+        // Ctrl/Cmd: snap the GROUP shift to the grid (single quantize on delta), still rigid.
+        if (e.ctrlKey || e.metaKey) {
+          const grid = getActiveGrid({ bpm, snapMode });
+          if (grid.interval > 0) {
+            const snappedTarget = quantizeTime(minStart + effectiveDelta, grid);
+            effectiveDelta = snappedTarget - minStart;
+            // Re-clamp after snapping so we still respect bounds.
+            effectiveDelta = Math.max(minAllowed, Math.min(maxAllowed, effectiveDelta));
+          }
+        }
+
+        if (Math.abs(effectiveDelta) < 1e-9) return; // nothing to do (already at edge)
+
+        const updateItem = useProjectStore.getState().updateTimelineItem;
+        selected.forEach((it) => {
+          updateItem(it.id, { startTime: it.startTime + effectiveDelta });
+        });
+      }
+
+      // ── Quantize to grid (Q) — aligns selected items to active snap mode ──
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'q' || e.key === 'Q')) {
+        const ids = selectedTimelineItemIds.length > 0
+          ? selectedTimelineItemIds
+          : selectedTimelineItemId ? [selectedTimelineItemId] : [];
+        if (ids.length === 0) return;
+        e.preventDefault();
+        quantizeRef.current?.();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, selectedTimelineItemId, selectedTimelineItemIds, timelineItems]);
+  }, [isPlaying, selectedTimelineItemId, selectedTimelineItemIds, timelineItems, bpm, snapMode, duration]);
 
-  const handleTrackClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const scrollLeft = scrollRef.current?.scrollLeft ?? 0;
-      const x = e.clientX - rect.left + scrollLeft - 96;
-      if (x < 0) return;
-      let time = Math.max(0, Math.min(x / pixelsPerSecond, duration));
-      time = snapTimeToBeat(time, bpm, snapToBeat, pixelsPerSecond);
-      setCurrentTime(time);
+  // ─── Drag-to-scrub on the track + playhead ──────────────────────────
+  // Pointer Events cover mouse, touch and pen in one handler.
+  // While dragging, we throttle store writes to one per RAF so that the
+  // SkyCanvas (drones, light points, shells) re-renders smoothly without
+  // flooding zustand subscribers. Snap-to-beat is applied only on release
+  // to avoid stair-stepping during the drag.
+  const scrubbingRef = useRef(false);
+  const wasPlayingBeforeScrubRef = useRef(false);
+  const pendingScrubTimeRef = useRef<number | null>(null);
+  const scrubRafRef = useRef<number | null>(null);
+  const activePointerIdRef = useRef<number | null>(null);
+  const scrubTargetElRef = useRef<HTMLElement | null>(null);
+
+  const computeTimeFromClientX = useCallback(
+    (clientX: number): number => {
+      const el = scrollRef.current;
+      if (!el) return 0;
+      const rect = el.getBoundingClientRect();
+      const x = clientX - rect.left + el.scrollLeft - 96;
+      if (x < 0) return 0;
+      return Math.max(0, Math.min(x / pixelsPerSecond, duration));
+    },
+    [duration, pixelsPerSecond],
+  );
+
+  const flushScrubTime = useCallback(() => {
+    scrubRafRef.current = null;
+    const t = pendingScrubTimeRef.current;
+    if (t !== null) setCurrentTime(t);
+  }, [setCurrentTime]);
+
+  const queueScrubTime = useCallback((time: number) => {
+    pendingScrubTimeRef.current = time;
+    if (scrubRafRef.current !== null) return;
+    scrubRafRef.current = requestAnimationFrame(flushScrubTime);
+  }, [flushScrubTime]);
+
+  const handleScrubPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      // Ignore non-primary buttons (right click, middle click)
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
+      // Don't intercept clicks on timeline items, resize handles, etc.
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-timeline-item]')) return;
+
+      scrubbingRef.current = true;
+      activePointerIdRef.current = e.pointerId;
+      scrubTargetElRef.current = e.currentTarget;
+      wasPlayingBeforeScrubRef.current = useProjectStore.getState().isPlaying;
+      if (wasPlayingBeforeScrubRef.current) timelineTransport.pause();
+
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore — some embedded browsers throw on capture */
+      }
+
+      const time = computeTimeFromClientX(e.clientX);
+      queueScrubTime(time);
+
       if (!e.shiftKey && !e.ctrlKey && !e.metaKey) clearTimelineItemSelection();
     },
-    [duration, pixelsPerSecond, setCurrentTime, bpm, snapToBeat, clearTimelineItemSelection]
+    [computeTimeFromClientX, queueScrubTime, clearTimelineItemSelection],
   );
+
+  const handleScrubPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!scrubbingRef.current) return;
+      if (activePointerIdRef.current !== null && e.pointerId !== activePointerIdRef.current) return;
+      const time = computeTimeFromClientX(e.clientX);
+      queueScrubTime(time);
+    },
+    [computeTimeFromClientX, queueScrubTime],
+  );
+
+  const endScrub = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!scrubbingRef.current) return;
+      if (activePointerIdRef.current !== null && e.pointerId !== activePointerIdRef.current) return;
+      scrubbingRef.current = false;
+
+      // Flush any pending RAF write before applying snap.
+      if (scrubRafRef.current !== null) {
+        cancelAnimationFrame(scrubRafRef.current);
+        scrubRafRef.current = null;
+      }
+
+      const finalTime = pendingScrubTimeRef.current ?? computeTimeFromClientX(e.clientX);
+      pendingScrubTimeRef.current = null;
+      const grid = getActiveGrid({ bpm, snapMode });
+      const snapped = snapTime(finalTime, grid, pixelsPerSecond);
+      setCurrentTime(snapped);
+
+      try {
+        const captureTarget = scrubTargetElRef.current ?? e.currentTarget;
+        if (captureTarget && captureTarget.hasPointerCapture?.(e.pointerId)) {
+          captureTarget.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        /* ignore */
+      }
+      activePointerIdRef.current = null;
+      scrubTargetElRef.current = null;
+
+      if (wasPlayingBeforeScrubRef.current) {
+        wasPlayingBeforeScrubRef.current = false;
+        timelineTransport.play();
+      }
+    },
+    [bpm, snapMode, pixelsPerSecond, computeTimeFromClientX, setCurrentTime],
+  );
+
+  // Cancel any pending RAF on unmount.
+  useEffect(() => {
+    return () => {
+      if (scrubRafRef.current !== null) {
+        cancelAnimationFrame(scrubRafRef.current);
+        scrubRafRef.current = null;
+      }
+    };
+  }, []);
+
 
   const handleDeleteSelected = () => {
     if (selectedTimelineItemIds.length > 0) { removeMultipleTimelineItems(selectedTimelineItemIds); }
@@ -1187,6 +1644,46 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
     const ids = selectedTimelineItemIds.length > 0 ? selectedTimelineItemIds : selectedTimelineItemId ? [selectedTimelineItemId] : [];
     if (ids.length > 0) duplicateTimelineItems(ids);
   };
+
+  const quantizeRef = useRef<(() => void) | null>(null);
+
+  /** Quantize selected timeline items' startTime to the active grid (auto/beat/frame).
+   *  No-op when snapMode === 'off' or when grid.interval <= 0. Reports outcome via toast. */
+  const handleQuantizeSelected = useCallback(() => {
+    const ids = selectedTimelineItemIds.length > 0
+      ? selectedTimelineItemIds
+      : selectedTimelineItemId ? [selectedTimelineItemId] : [];
+    if (ids.length === 0) {
+      toast.info('Quantize: no timeline items selected');
+      return;
+    }
+    if (snapMode === 'off') {
+      toast.warning('Quantize: snap mode is OFF — switch to Auto/Beat/Frame first');
+      return;
+    }
+    const grid = getActiveGrid({ bpm, snapMode });
+    if (!grid.interval || grid.interval <= 0) {
+      toast.warning('Quantize: active grid has no interval');
+      return;
+    }
+    const updateItem = useProjectStore.getState().updateTimelineItem;
+    const items = useProjectStore.getState().timelineItems;
+    let moved = 0;
+    ids.forEach((id) => {
+      const it = items.find((i) => i.id === id);
+      if (!it) return;
+      const q = quantizeTime(it.startTime, grid);
+      const clamped = Math.max(0, Math.min(duration || q, q));
+      if (Math.abs(clamped - it.startTime) > 1e-6) {
+        updateItem(id, { startTime: clamped });
+        moved++;
+      }
+    });
+    toast.success(`Quantized ${moved}/${ids.length} item${ids.length > 1 ? 's' : ''} to ${grid.label}`);
+  }, [selectedTimelineItemIds, selectedTimelineItemId, snapMode, bpm, duration]);
+
+  // Keep ref in sync so keyboard shortcut (Q) can call latest version without re-binding listeners.
+  useEffect(() => { quantizeRef.current = handleQuantizeSelected; }, [handleQuantizeSelected]);
 
   const zoomIn = () => setPixelsPerSecond((p) => Math.min(MAX_PPS, p * 1.3));
   const zoomOut = () => setPixelsPerSecond((p) => Math.max(MIN_PPS, p / 1.3));
@@ -1217,6 +1714,19 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white/[0.06]" onClick={() => timelineTransport.seekTo(Math.min(currentTime + 10, duration))}>
             <SkipForward className="h-3 w-3 text-muted-foreground" />
           </Button>
+          {/* Resync timeline — re-locks TimelineClock to audio.currentTime
+              and retries playback. Useful when the watchdog detects a
+              stall or the operator wants to force a re-lock manually. */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 rounded-md hover:bg-accent/[0.12]"
+            disabled={!getAudioMaster()}
+            title="Resync timeline to audio"
+            onClick={() => resyncTimeline({ reason: 'Manual resync from toolbar.' })}
+          >
+            <RefreshCw className="h-3 w-3 text-accent" />
+          </Button>
         </div>
 
         {/* Timecode — large mono display */}
@@ -1224,6 +1734,14 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
           <span className="font-mono text-[13px] text-primary font-bold tabular-nums tracking-tight">{formatTime(currentTime)}</span>
           <span className="text-muted-foreground/20 text-[10px] mx-1">/</span>
           <span className="font-mono text-[13px] text-muted-foreground/35 tabular-nums tracking-tight">{formatTime(duration)}</span>
+        </div>
+
+        {/* Clock health badge — running / stalled / recovered, fed by the
+            same watchdog that drives auto-recovery (`useTimelineClockHealthCheck`). */}
+        <div className="flex items-center gap-1">
+          <TimelineHealthBadge />
+          <TimelineHealthLogPopover />
+          <TimelineHealthSettingsPopover />
         </div>
 
         {/* Transport diagnostic chip — explains why Play may not advance (0×, END, EXT) */}
@@ -1272,16 +1790,32 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
           <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-white/[0.06]" onClick={zoomIn}><ZoomIn className="h-2.5 w-2.5 text-muted-foreground/50" /></Button>
         </div>
 
-        {/* Beat snap */}
-        <button
-          className={cn("flex items-center gap-1 text-[8px] font-mono px-1.5 py-0.5 rounded-lg transition-all",
-            snapToBeat ? "bg-accent/10 text-accent" : "text-muted-foreground/25 hover:text-muted-foreground/40")}
-          onClick={() => setSnapToBeat(!snapToBeat)}
-          style={!snapToBeat ? { background: 'hsl(var(--muted) / 0.1)' } : undefined}
-        >
-          <Magnet className="h-2.5 w-2.5" />
-          {bpm && <span className="tabular-nums">{bpm}</span>}
-        </button>
+        {/* Snap mode segmented control: Auto / Beat / Frame / Off */}
+        {(() => {
+          const activeGrid = getActiveGrid({ bpm, snapMode });
+          return (
+            <div className="flex items-center gap-1">
+              <div className="flex items-center gap-px rounded-lg p-px" style={{ background: 'hsl(var(--muted) / 0.1)' }} title="Snap mode (drag/drop quantization)">
+                <Magnet className="h-2.5 w-2.5 text-muted-foreground/50 ml-1 mr-0.5" />
+                {(['auto', 'beat', 'frame', 'off'] as const).map((m) => (
+                  <button
+                    key={m}
+                    className={cn(
+                      "text-[8px] font-mono uppercase px-1.5 py-0.5 rounded-md transition-all tracking-wider",
+                      snapMode === m
+                        ? "bg-accent/12 text-accent"
+                        : "text-muted-foreground/35 hover:text-muted-foreground/55",
+                    )}
+                    onClick={() => setSnapMode(m)}
+                  >{m}</button>
+                ))}
+              </div>
+              <span className="text-[8px] font-mono text-muted-foreground/45 tabular-nums" title="Active snap unit">
+                {activeGrid.label}
+              </span>
+            </div>
+          );
+        })()}
 
         {/* LIVE indicator placeholder */}
         <div className="badge-live hidden" id="live-badge">● LIVE</div>
@@ -1293,6 +1827,30 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
             <Button variant="ghost" size="icon" className="h-5 w-5 rounded" onClick={handleDuplicate}><Copy className="h-2.5 w-2.5" /></Button>
           </div>
         )}
+
+        {/* Quantize to grid — aligns selected items to the active snap mode (Q) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "h-6 w-6 rounded-md transition-all",
+            (selectionCount > 0 && snapMode !== 'off')
+              ? "text-accent hover:bg-accent/10"
+              : "text-muted-foreground/30 hover:text-muted-foreground/50",
+          )}
+          disabled={selectionCount === 0 || snapMode === 'off'}
+          onClick={handleQuantizeSelected}
+          title={
+            selectionCount === 0
+              ? 'Quantize: select items first'
+              : snapMode === 'off'
+                ? 'Quantize: enable snap (Auto/Beat/Frame)'
+                : `Quantize ${selectionCount} item${selectionCount > 1 ? 's' : ''} to ${getActiveGrid({ bpm, snapMode }).label} (Q)`
+          }
+          aria-label="Quantize selected items to grid"
+        >
+          <AlignVerticalJustifyCenter className="h-3 w-3" />
+        </Button>
 
         <div className="flex-1" />
 
@@ -1318,15 +1876,24 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
       </div>
 
       {/* ─── Timeline tracks ─── */}
-      <div ref={scrollRef} className="flex-1 overflow-x-auto overflow-y-auto bg-surface-0/45" onClick={handleTrackClick}>
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-x-auto overflow-y-auto bg-surface-0/45"
+        onPointerDown={handleScrubPointerDown}
+        onPointerMove={handleScrubPointerMove}
+        onPointerUp={endScrub}
+        onPointerCancel={endScrub}
+        style={{ touchAction: scrubbingRef.current ? 'none' : 'auto' }}
+      >
         <div style={{ width: `${duration * pixelsPerSecond + 96}px` }}>
           <div className="flex">
             <div className="w-24 flex-shrink-0" />
             <div className="flex-1 relative">
               <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
-              <BeatGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
+              <TimelineGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} snapMode={snapMode} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               {/* Playhead — DOM-direct updates via transient Zustand subscription (zero re-renders) */}
-              <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} />
+              <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} snapMode={snapMode} onScrubPointerDown={handleScrubPointerDown} />
+
             </div>
           </div>
           {/* ── FIRING SYSTEMS group ── */}
@@ -1335,14 +1902,14 @@ const Timeline = React.forwardRef<HTMLDivElement, {}>(function Timeline(_props, 
             <TimelineTrackRow label="PYRO SYS" trackIndex={0} pixelsPerSecond={pixelsPerSecond} color="#FF6B35" duration={duration} scrollRef={scrollRef} />
             <TimelineTrackRow label="DRONE SYS" trackIndex={1} pixelsPerSecond={pixelsPerSecond} color="#00B4D8" duration={duration} scrollRef={scrollRef} />
             <TimelineTrackRow label="LIGHT SYS" trackIndex={2} pixelsPerSecond={pixelsPerSecond} color="#FBBF24" duration={duration} scrollRef={scrollRef} />
-            <LaserTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
+            <LaserTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} scrollRef={scrollRef} />
             <GenerativeTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
           </CollapsibleTrackGroup>
           {/* ── CHOREOGRAPHY group ── */}
           <CollapsibleTrackGroup label="CHOREOGRAPHY" defaultOpen>
-            <FormationTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
-            <DroneFXTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
-            <WaypointTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} />
+            <FormationTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} scrollRef={scrollRef} />
+            <DroneFXTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} scrollRef={scrollRef} />
+            <WaypointTrackRow pixelsPerSecond={pixelsPerSecond} duration={duration} scrollRef={scrollRef} />
           </CollapsibleTrackGroup>
           <AudioWaveform pixelsPerSecond={pixelsPerSecond} />
         </div>

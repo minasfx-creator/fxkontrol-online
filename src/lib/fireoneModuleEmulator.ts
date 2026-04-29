@@ -9,6 +9,9 @@
  * Firing modes: Manual, Semi-Auto, Auto (Timecode), UltraFire
  */
 
+import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
+
+
 export type ModuleState = 'idle' | 'safe_sense' | 'ready' | 'armed' | 'firing' | 'error' | 'estop_lockout';
 
 export type FiringMode = 'manual' | 'semi_auto' | 'auto' | 'ultrafire' | 'preset';
@@ -157,7 +160,8 @@ export class FireOneModuleEmulator {
     this.onContinuityRead = config.onContinuityRead ?? null;
     this.onStateChange = config.onStateChange ?? null;
     this.onStatusUpdate = config.onStatusUpdate ?? null;
-    this.simulateHardware = config.simulateHardware ?? true;
+    // Default to simulator gate state (OFF in production); explicit true requires sim gate ON.
+    this.simulateHardware = (config.simulateHardware ?? false) && isHardwareSimulatorEnabled();
     this.hardwareMode = config.hardwareMode ?? 'cds';
 
     // Initialize 32 igniter channels

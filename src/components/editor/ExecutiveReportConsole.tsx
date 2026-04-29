@@ -12,7 +12,7 @@ import { FileBarChart, Download, Clock, Shield, Cpu, Activity, AlertTriangle, Ch
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { recordVerificationReport } from '@/core/journal/reportBridge';
 import jsPDF from 'jspdf';
 
 export default function ExecutiveReportConsole() {
@@ -85,23 +85,25 @@ export default function ExecutiveReportConsole() {
   const handleSaveToHistory = useCallback(async () => {
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { toast.error('Login required to save reports'); return; }
-      const { error } = await supabase.from('executive_reports' as never).insert({
-        user_id: user.id,
-        report_data: report as unknown as Record<string, unknown>,
-        show_name: report.show.name,
-        verification_level: report.verification.level,
-        readiness_status: report.readiness.status,
-      } as never);
-      if (error) throw error;
-      toast.success('Report saved to history');
+      // Re-run verification to capture the live snapshot at save-time
+      // (memoized `report` may be stale if user kept the panel open).
+      const vResult = verificationEngine.run();
+      const id = await recordVerificationReport({
+        showName: report.show.name,
+        result: vResult,
+        context: { trigger: 'manual_save', source: 'ExecutiveReportConsole' },
+      });
+      if (id) {
+        toast.success('Report saved to history');
+      } else {
+        toast.error('Login required to persist report (saved locally)');
+      }
     } catch (e: unknown) {
       toast.error(`Save failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
     } finally {
       setSaving(false);
     }
-  }, [report]);
+  }, [report.show.name]);
 
   const handleExportPDF = useCallback(() => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });

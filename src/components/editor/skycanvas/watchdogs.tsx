@@ -25,6 +25,7 @@ import {
 import { resetPools } from '@/lib/geometryPool';
 import { deterministicClock } from '@/core/time/deterministicClock';
 import { getActiveBurstScan } from './sharedState';
+import { captureSkyCanvasError } from '@/lib/skyCanvasDiagnostics';
 
 export const PlaybackClock = React.forwardRef<unknown>(function PlaybackClock(_props, _ref) {
   useFrame(() => { deterministicClock.tick(); });
@@ -150,6 +151,7 @@ export function ContextLossGuard({ recoveringRef, onRemount }: {
       if (recoveringRef.current) return;
 
       recordContextLoss();
+      captureSkyCanvasError('WebGLContextLoss', new Error('WebGL context lost'));
       const shouldRecover = reportCrash();
       if (!shouldRecover || isInCooldown()) {
         console.error('[FXK] WebGL context lost — in cooldown, suppressing remount');
@@ -192,6 +194,7 @@ export class SubsystemBoundary extends Component<{ name: string; children: React
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(`[FXK SubsystemBoundary:${this.props.name}]`, error, info.componentStack);
     pushLog(`[SubsystemBoundary] ${this.props.name} crashed: ${error.message}`, 'error');
+    captureSkyCanvasError(`SubsystemBoundary:${this.props.name}`, error, info.componentStack ?? undefined);
   }
   render() {
     if (this.state.hasError) return null;
