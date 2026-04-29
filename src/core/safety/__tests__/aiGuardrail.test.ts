@@ -22,7 +22,7 @@ describe('aiGuardrail — normalization', () => {
     expect(normalizeAction('ARM_SYSTEM')).toBe('arm_system');
     expect(normalizeAction('arm-system')).toBe('arm_system');
     expect(normalizeAction('Arm System')).toBe('arm_system');
-    expect(normalizeAction('  fire-all  ')).toBe('__fire_all__'.replace(/^_+|_+$/g, '_fire_all_'));
+    expect(normalizeAction('fire-all')).toBe('fire_all');
   });
 
   it('blocks every variant of a forbidden action for agents', () => {
