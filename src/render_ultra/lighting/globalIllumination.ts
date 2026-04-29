@@ -18,8 +18,10 @@ export class GlobalIlluminationSystem {
   private hemLight: THREE.HemisphereLight;
   private accumColor = new THREE.Color(0, 0, 0);
   private accumIntensity = 0;
+  private scene: THREE.Scene;
 
   constructor(scene: THREE.Scene) {
+    this.scene = scene;
     // Dynamic hemisphere light driven by explosion probes
     this.hemLight = new THREE.HemisphereLight(0x000000, 0x000000, 0);
     scene.add(this.hemLight);
@@ -66,4 +68,17 @@ export class GlobalIlluminationSystem {
   }
 
   get activeProbes() { return this.probes.length; }
+
+  /**
+   * Remove the hemisphere probe from the scene and clear all transient
+   * probes. THREE.HemisphereLight has no GPU-side resources to free, but
+   * we must detach it from the scene graph to avoid leaking it across
+   * unmounts / show restarts.
+   */
+  dispose(): void {
+    this.scene.remove(this.hemLight);
+    this.probes.length = 0;
+    this.accumColor.set(0, 0, 0);
+    this.accumIntensity = 0;
+  }
 }

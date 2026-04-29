@@ -308,4 +308,16 @@ export class SmokeSystem {
   }
 
   get particleCount() { return this.particles.length; }
+
+  /**
+   * Free GPU buffers and shader program. Detaches the mesh from any
+   * parent so the SmokeSystem can be garbage-collected after a scene
+   * teardown / show restart.
+   */
+  dispose(): void {
+    this.mesh.parent?.remove(this.mesh);
+    this.geometry.dispose();
+    this.material.dispose();
+    this.particles.length = 0;
+  }
 }
