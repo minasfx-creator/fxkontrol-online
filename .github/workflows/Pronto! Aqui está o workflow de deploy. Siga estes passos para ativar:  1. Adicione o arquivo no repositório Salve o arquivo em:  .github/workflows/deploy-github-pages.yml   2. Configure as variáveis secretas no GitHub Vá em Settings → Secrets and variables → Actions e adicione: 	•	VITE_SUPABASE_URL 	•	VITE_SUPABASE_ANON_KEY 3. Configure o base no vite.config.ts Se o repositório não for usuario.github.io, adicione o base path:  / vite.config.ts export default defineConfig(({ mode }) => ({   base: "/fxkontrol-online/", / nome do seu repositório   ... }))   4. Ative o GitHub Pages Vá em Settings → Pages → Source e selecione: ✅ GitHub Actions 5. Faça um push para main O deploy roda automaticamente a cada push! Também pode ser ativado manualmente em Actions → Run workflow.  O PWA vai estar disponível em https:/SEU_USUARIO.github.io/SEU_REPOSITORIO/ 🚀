@@ -1,0 +1,5 @@
+// vite.config.ts
+export default defineConfig(({ mode }) => ({
+  base: "/fxkontrol-online/", // nome do seu repositório
+  ...
+}))
