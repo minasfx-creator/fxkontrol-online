@@ -9,6 +9,7 @@ import type { Command } from '@/core/command/CommandBus';
 import { safetyStateMachine, type SafetyTransition } from './SafetyStateMachine';
 import { safetyAuditTrail, type AuditEntry } from './SafetyAuditTrail';
 import { safetyGate } from './safetyGate';
+import { workMode } from './workMode';
 
 export interface ValidationResult {
   allowed: boolean;
