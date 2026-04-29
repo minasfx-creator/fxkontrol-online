@@ -74,6 +74,8 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
   const { status, isFXK16, isConnected, connectUSB, connectBLE, disconnect } =
     useFXK16Bridge();
   const { api, armed, ready } = useFXK16Commands();
+  const caps = useMemo(() => detectPlatformCapabilities(), []);
+  const usbHint = usbErrorHint((status as any).lastErrorCode, status.lastError);
 
   const [busy, setBusy] = useState<'usb' | 'ble' | 'disc' | null>(null);
   const [testCh, setTestCh] = useState(1);
