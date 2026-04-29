@@ -88,6 +88,7 @@ class WebBleDiscoverer implements TransportDiscoverer {
       }
       for (const [id, dev] of this._devices) {
         if (!seen.has(id)) {
+          this._detachGattWatcher(id);
           this._devices.delete(id);
           this._rawByDeviceId.delete(id);
           this._emit({ type: 'lost', device: { ...dev, online: false } });
