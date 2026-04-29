@@ -1,75 +1,65 @@
-# Plan — `wiring_a4.svg` (A4 side-by-side print layout)
+## FXK16 BLE Pairing Wizard
 
-Provide a second wiring diagram tailored for **A4 paper printing**, while keeping the **exact same canonical v1.3 mapping** already enforced by `firmware/fxk16-esp32s3/src/fxk16_pinmap.h`. The first `wiring.svg` (landscape, wide) stays untouched.
+Add a guided BLE pairing flow that scans for `FXK16-XXXXXX` devices, connects over the BLE-UART service, reads the firmware handshake (`MODEL:FXK16;CH:16;FW:1.3.0;ID:...`), and shows real-time per-attempt status. Mirrors the existing 5-step USB wizard pattern (`/pairing/usb`) so operators get a consistent experience across transports.
 
-## Goals
+### What gets built
 
-- Fit cleanly on A4 portrait (210×297 mm) with 10 mm safe margins.
-- "Lado a lado" arrangement: ESP32-S3 card on the left, 16-relay board on the right, both at the same vertical scale, so each `GPIO → IN<n>` wire is a short horizontal trace.
-- Print legibly in black & white (line weights + labels), color used only as accent.
-- Reuse the v1.3 mapping verbatim — no hardware contract changes.
+**New route**: `/pairing/ble` (lazy in `src/App.tsx`)
 
-## Canonical mapping (must match firmware)
+**Page**: `src/pages/BlePairingWizard.tsx` — 4 steps
+1. **Welcome** — checks Web Bluetooth support, platform hints (iOS = unsupported → suggest USB wizard, Android Chrome / desktop = OK)
+2. **Scan** — calls `navigator.bluetooth.requestDevice` filtered by `namePrefix: 'FXK16-'` + service `0000ffe0-...`. Picker shows only matching devices.
+3. **Handshake** — opens GATT, subscribes to RX notify char, sends `VERSION\n` then `STATUS\n` on TX char, waits up to 3s for `MODEL:FXK16;CH:16;FW:...;ID:...`. Parses tokens and displays them.
+4. **Success** — shows model, channel count, firmware, device ID; CTAs: "Pair another", "Open FXK Pyro Console", "Done".
+
+**Per-attempt status panel** (visible from step 2 onward): a scrollable list of attempts with timestamp, device name, outcome chip (Connecting / Handshake OK / Timeout / Cancelled / GATT error), latency in ms, and the raw handshake line. Capped at 20 entries (in-memory + persisted to `pairingAuditLog` for cross-session history).
+
+**Reuses existing infrastructure**:
+- `FireOneHardwareBridge.connectBLE()` already implements the GATT setup + `establishHealthyLink` handshake that parses `MODEL:` and `CH:` tokens. The wizard wraps it with explicit per-attempt event capture.
+- `pairingAuditLog.recordPairing()` for success/failure log entries (transport: `'ble'`).
+- `portRegistry.upsert` keyed by `ble:${deviceId}` so the device is remembered for auto-reconnect by `DeviceAggregator`.
+- `WizardStepIndicator` and step-shell layout from `src/components/pairing/`.
+
+**New components** under `src/components/pairing/ble/`:
+- `BleWelcomeStep.tsx`
+- `BleScanStep.tsx` (wraps requestDevice; surfaces NotFoundError, SecurityError, NotSupportedError with actionable hints)
+- `BleHandshakeStep.tsx` (drives bridge, shows attempt log)
+- `BleSuccessStep.tsx`
+- `AttemptLogList.tsx` (shared status panel)
+
+**Entry points wired**:
+- "Pair via Bluetooth" button added to `EasyConnectPanel.tsx` next to the existing USB wizard CTA.
+- Link added to the hardware overview at `/command?mode=hw_overview`.
+
+### Technical details
+
+- BLE UUIDs already match the FXK16 firmware (`fireoneModuleHardwareBridge.ts` constants, also defined in `firmware/fxk16-esp32s3/src/main.ino`):
+  - Service `0000ffe0-0000-1000-8000-00805f9b34fb`
+  - TX (host→device, write) `0000ffe1-...`
+  - RX (device→host, notify) `0000ffe2-...`
+- Handshake parser: read notify chunks, accumulate until `\n`, match `MODEL:FXK16` AND `CH:16` within 3s window. Extract `FW:` and `ID:` tokens for display.
+- All timers tracked via `useRef` and cleared on unmount (per Core memory rule).
+- Hard-gate compliance: this wizard only **discovers and identifies** — never sends FIRE. No CommandBus interaction. Live operational firing continues to flow through the existing `UI → ShowPlan → CommandBus → SafetyStateMachine → FieldBus` path.
+- Honest hardware: on failure, no synthetic device is registered. `portRegistry.upsert` is called only on confirmed handshake.
+- iOS handling: Web Bluetooth is unavailable in iOS Safari/WKWebView. The Welcome step detects this via `platformCapabilities` and routes the user to `/pairing/usb` with an explanation.
+
+### Files touched
 
 ```text
-C1→GPIO4 →IN1     C9 →GPIO17→IN9
-C2→GPIO5 →IN2     C10→GPIO18→IN10
-C3→GPIO6 →IN3     C11→GPIO8 →IN11
-C4→GPIO7 →IN4     C12→GPIO9 →IN12
-C5→GPIO15→IN5     C13→GPIO10→IN13
-C6→GPIO16→IN6     C14→GPIO11→IN14
-C7→GPIO35→IN7     C15→GPIO12→IN15
-C8→GPIO36→IN8     C16→GPIO13→IN16
+src/App.tsx                                       (+1 lazy route)
+src/pages/BlePairingWizard.tsx                    (new)
+src/components/pairing/ble/BleWelcomeStep.tsx     (new)
+src/components/pairing/ble/BleScanStep.tsx        (new)
+src/components/pairing/ble/BleHandshakeStep.tsx   (new)
+src/components/pairing/ble/BleSuccessStep.tsx     (new)
+src/components/pairing/ble/AttemptLogList.tsx     (new)
+src/components/editor/EasyConnectPanel.tsx        (+ BLE wizard CTA)
 ```
 
-Source pulled from `fxk16_pinmap.h::CHANNEL_MAP[]` — single source of truth (matches existing `PINMAP.md` and the first wiring SVG).
+No firmware, store, or backend changes required. No new dependencies. No DB migrations.
 
-## Layout (A4 portrait)
+### Out of scope
 
-```text
-+---------------------- 210 × 297 mm ----------------------+
-| Title: FXK16 Wiring — A4 Print (v1.3 canonical)          |
-|                                                          |
-|  +-------------------+        +-------------------+      |
-|  |  ESP32-S3 v1.3    |        |  16-Relay Board   |      |
-|  |  (left column)    |        |  (right column)   |      |
-|  |  GPIO4   ●--------|--------|--● IN1            |      |
-|  |  GPIO5   ●--------|--------|--● IN2            |      |
-|  |  ...     ●--------|--------|--● ...            |      |
-|  |  GPIO13  ●--------|--------|--● IN16           |      |
-|  |  +5V/GND ●========|========|==● VCC/GND        |      |
-|  +-------------------+        +-------------------+      |
-|                                                          |
-|  Legend:  signal ── (active-LOW)   power ══   gnd ──     |
-|  Footer: pinmap source = fxk16_pinmap.h v1.3             |
-+----------------------------------------------------------+
-```
-
-- Both modules drawn as vertical strips; channel rows aligned 1:1 so wires are straight horizontal segments (no gutter routing needed — that's the whole point of the A4 layout).
-- Aux pins (ESTOP GPIO14, jumper GPIO21, LED GPIO48, USB-CDC) placed in a small reserved block under the ESP32 card with a "do not wire to relay inputs" note.
-- Compact mapping table omitted (the rows themselves are the table) — saves space for A4.
-
-## Files
-
-- **`firmware/fxk16-esp32s3/docs/wiring_a4.svg`** — new file. SVG with `width="210mm" height="297mm" viewBox="0 0 210 297"` (mm units) so it prints true-to-size from any browser/PDF tool with "Actual size".
-- **`firmware/fxk16-esp32s3/docs/PINMAP.md`** — append a short "Print layouts" section linking both diagrams:
-  - `wiring.svg` — landscape bench reference
-  - `wiring_a4.svg` — A4 portrait, print-ready
-- **`/mnt/documents/wiring_a4.svg`** — copy for immediate user download/preview.
-
-## Generation approach (technical)
-
-- One-shot Python script in `/tmp/` (not committed) that emits the SVG procedurally from a single `CHANNELS` list mirroring `CHANNEL_MAP[]`.
-- Use `mm` units throughout; constants for margins (10 mm), card width (~70 mm), row pitch (≈11 mm for 16 rows + headers within the printable height).
-- Stroke widths ≥ 0.35 mm so traces survive B&W laser printing.
-- Font: `Inter, system-ui, sans-serif` with explicit `font-size` in mm; channel labels bold, GPIO numbers monospace-styled via `font-family="ui-monospace, monospace"`.
-- Color accents (kept minimal for B&W friendliness):
-  - Signal traces: `#111827` (near-black)
-  - +5V rail: `#b91c1c` (red), GND: `#111827` with double-line style
-  - Active-LOW indicator: small open circle at the relay end of each signal trace
-- Post-generation QA: rasterize the SVG to PNG at 150 DPI and inspect to confirm no row collisions, all 16 channels present, labels not clipped at the A4 edges. (QA images are temporary, not delivered.)
-
-## Out of scope
-
-- No changes to `fxk16_pinmap.h`, `fxk16_config.h`, firmware, host adapters, or the existing `wiring.svg`.
-- No new build flags or runtime behavior.
+- Firing/test commands from the wizard (use `/dev/fxk16-validate` for that).
+- BLE Long Range pairing (separate `connectBLELongRange` already exists; can be added as a step variant later).
+- Multi-device batch pairing.
