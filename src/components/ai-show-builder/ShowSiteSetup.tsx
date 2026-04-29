@@ -4,7 +4,9 @@
  * Define o local físico onde o show será criado. O resultado alimenta
  * o gerador e o validador (limites, espaçamento, altura).
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { Grid, OrbitControls } from '@react-three/drei';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
