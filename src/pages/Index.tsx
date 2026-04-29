@@ -300,6 +300,19 @@ function Index() {
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
   const [smartScriptOpen, setSmartScriptOpen] = useState(false);
   const [studioPromptOpen, setStudioPromptOpen] = useState(false);
+  // Auto-abrir Assistente IA quando o projeto está totalmente vazio
+  // (sem positions, sem timelineItems, sem trajectories) — uma vez por sessão.
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (sessionStorage.getItem('fxk:aiAssistantAutoOpened') === '1') return;
+      const s = useProjectStore.getState();
+      if (s.positions.length === 0 && s.timelineItems.length === 0 && s.trajectories.length === 0) {
+        sessionStorage.setItem('fxk:aiAssistantAutoOpened', '1');
+        setStudioPromptOpen(true);
+      }
+    } catch { /* ignore storage errors */ }
+  }, []);
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
   const [isDragOver, setIsDragOver] = useState(false);
   const [remoteMode, setRemoteMode] = useState<'cloud' | 'wifi-auto'>('cloud');
@@ -361,10 +374,10 @@ function Index() {
       setAppPhase('editor');
     }
     if (panelParam) {
-      // SwarmGPT lives at /swarmgpt now — redirect any legacy deep links.
-      if (panelParam === 'swarmgpt') {
+      // Legacy AI entries → consolidated under /ai-builder.
+      if (panelParam === 'swarmgpt' || panelParam === 'ai-builder') {
         setSearchParams({}, { replace: true });
-        navigate('/swarmgpt');
+        navigate('/ai-builder');
         return;
       }
       setActivePanel(panelParam as PanelId);
@@ -393,9 +406,9 @@ function Index() {
       setVenueSelector(true);
       return;
     }
-    // SwarmGPT is now a dedicated page — navigate instead of opening modal.
+    // SwarmGPT consolidated under /ai-builder.
     if (id === 'swarmgpt') {
-      navigate('/swarmgpt');
+      navigate('/ai-builder');
       return;
     }
     setActivePanel((prev) => {
@@ -420,7 +433,7 @@ function Index() {
 
   const handleMobileOpenPanel = useCallback((id: PanelId) => {
     if (id === 'swarmgpt') {
-      navigate('/swarmgpt');
+      navigate('/ai-builder');
       return;
     }
     setActivePanel(id);
