@@ -361,10 +361,10 @@ function Index() {
       setAppPhase('editor');
     }
     if (panelParam) {
-      // SwarmGPT lives at /swarmgpt now — redirect any legacy deep links.
-      if (panelParam === 'swarmgpt') {
+      // Legacy AI entries → consolidated under /ai-builder.
+      if (panelParam === 'swarmgpt' || panelParam === 'ai-builder') {
         setSearchParams({}, { replace: true });
-        navigate('/swarmgpt');
+        navigate('/ai-builder');
         return;
       }
       setActivePanel(panelParam as PanelId);
@@ -393,9 +393,9 @@ function Index() {
       setVenueSelector(true);
       return;
     }
-    // SwarmGPT is now a dedicated page — navigate instead of opening modal.
-    if (id === 'swarmgpt') {
-      navigate('/swarmgpt');
+    // SwarmGPT/AI choreography → consolidated under /ai-builder.
+    if (id === 'swarmgpt' || id === 'ai-builder') {
+      navigate('/ai-builder');
       return;
     }
     setActivePanel((prev) => {
