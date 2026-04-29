@@ -11,11 +11,11 @@
  * command API (`useFXK16Commands`); E-STOP bypasses ARM and
  * auto-disarms.
  */
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bluetooth, Usb, Power, AlertTriangle, Flame, CheckCircle2, RadioTower,
-  ExternalLink, Loader2, Lock, Unlock,
+  ExternalLink, Loader2, Lock, Unlock, HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,9 +25,28 @@ import { toast } from 'sonner';
 import { useFXK16Bridge, FXK16_MAX_CHANNEL } from '@/hooks/useFXK16Bridge';
 import { useFXK16Commands } from '@/hooks/useFXK16Commands';
 import type { CommandResponse, Fxk16ErrorCode } from '@/lib/fxk16/commandApi';
+import { detectPlatformCapabilities } from '@/lib/platformCapabilities';
 
 const HOLD_MS = 800;
 const PULSE_MS = 50;
+
+/** Map a bridge reason code to an actionable, human-readable hint. */
+function usbErrorHint(code?: string, msg?: string): string | null {
+  switch (code) {
+    case 'UNSUPPORTED_TRANSPORT':
+      return 'Use Chrome/Edge desktop ou Chrome Android. Safari/iOS não suportam WebSerial.';
+    case 'PERMISSION_DENIED':
+      return 'Selecione a porta do FXK16 no diálogo do navegador (CP210x / CH340 / ESP32-S3).';
+    case 'SERIAL_OPEN_FAILED':
+      return 'Porta ocupada ou cabo defeituoso. Feche Arduino IDE / outros apps e tente novamente.';
+    case 'HANDSHAKE_TIMEOUT':
+      return 'FXK16 não respondeu. Confirme firmware FXK16, pressione RST na placa e reconecte.';
+    case 'HEARTBEAT_TIMEOUT':
+      return 'Link caiu após conectar. Verifique cabo e estabilidade de energia.';
+    default:
+      return msg ? null : null;
+  }
+}
 
 interface Props {
   /** Tighter padding for embedding in panel headers. */
