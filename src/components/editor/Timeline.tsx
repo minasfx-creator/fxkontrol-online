@@ -1478,12 +1478,12 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
           : selectedTimelineItemId ? [selectedTimelineItemId] : [];
         if (ids.length === 0) return;
         e.preventDefault();
-        handleQuantizeSelected();
+        quantizeRef.current?.();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, selectedTimelineItemId, selectedTimelineItemIds, timelineItems, bpm, snapMode, duration, handleQuantizeSelected]);
+  }, [isPlaying, selectedTimelineItemId, selectedTimelineItemIds, timelineItems, bpm, snapMode, duration]);
 
   // ─── Drag-to-scrub on the track + playhead ──────────────────────────
   // Pointer Events cover mouse, touch and pen in one handler.
