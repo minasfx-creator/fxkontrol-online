@@ -36,7 +36,6 @@ describe('SceneAdapter + validators', () => {
 
   it('flags zero-sized site as invalid', () => {
     const graph = adaptShowPlanToSceneGraph({
-      ...({} as never),
       id: 'x',
       title: '',
       duration: 0,
