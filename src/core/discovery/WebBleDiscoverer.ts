@@ -64,9 +64,9 @@ class WebBleDiscoverer implements TransportDiscoverer {
       catch (e) { logger.warn('[WebBleDiscoverer] device.forget failed', e); }
     }
     const dev = this._devices.get(deviceId);
+    this._detachGattWatcher(deviceId);
     this._rawByDeviceId.delete(deviceId);
     this._devices.delete(deviceId);
-    this._attachedIds.delete(deviceId);
     if (dev) this._emit({ type: 'lost', device: { ...dev, online: false } });
     return revoked;
   }
