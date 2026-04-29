@@ -2,23 +2,29 @@
  * FXK16ConnectionPanel — compact connect/status card for the FXKPYRO
  * console. Lets the operator wire the FXK16 (16-ch ESP32-S3 relay
  * board) over USB-CDC or BLE-UART, see live handshake metadata
- * (model, firmware, channels, transport, RSSI), run a quick test FIRE
- * on a chosen channel, and trigger E-STOP.
+ * (model, firmware, channels, transport, RSSI), ARM/DISARM the
+ * client-side firing gate, run a quick test FIRE on a chosen channel,
+ * and trigger E-STOP.
  *
- * READ-ONLY-FRIENDLY: the test FIRE button uses Hold-to-Confirm
- * (800ms) so an accidental tap never discharges the bus.
+ * Test FIRE uses Hold-to-Confirm (800ms) so an accidental tap never
+ * discharges the bus. ARM is enforced client-side via the typed
+ * command API (`useFXK16Commands`); E-STOP bypasses ARM and
+ * auto-disarms.
  */
 import { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bluetooth, Usb, Power, AlertTriangle, Flame, CheckCircle2, RadioTower,
-  ExternalLink, Loader2,
+  ExternalLink, Loader2, Lock, Unlock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import { useFXK16Bridge, FXK16_MAX_CHANNEL } from '@/hooks/useFXK16Bridge';
+import { useFXK16Commands } from '@/hooks/useFXK16Commands';
+import type { CommandResponse, Fxk16ErrorCode } from '@/lib/fxk16/commandApi';
 
 const HOLD_MS = 800;
 const PULSE_MS = 50;
@@ -28,15 +34,31 @@ interface Props {
   compact?: boolean;
 }
 
+interface LastResult {
+  label: string;
+  ok: boolean;
+  code?: Fxk16ErrorCode;
+  message?: string;
+  at: number;
+}
+
+function summarize<T>(label: string, r: CommandResponse<T>): LastResult {
+  return r.ok
+    ? { label, ok: true, at: Date.now() }
+    : { label, ok: false, code: r.code, message: r.message, at: Date.now() };
+}
+
 export function FXK16ConnectionPanel({ compact = false }: Props) {
   const navigate = useNavigate();
-  const { status, isFXK16, isConnected, connectUSB, connectBLE, disconnect, fire, eStop } =
+  const { status, isFXK16, isConnected, connectUSB, connectBLE, disconnect } =
     useFXK16Bridge();
+  const { api, armed, ready } = useFXK16Commands();
 
   const [busy, setBusy] = useState<'usb' | 'ble' | 'disc' | null>(null);
   const [testCh, setTestCh] = useState(1);
-  const [holding, setHolding] = useState(false);
+  const [holdMode, setHoldMode] = useState<'arm' | 'fire' | null>(null);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [last, setLast] = useState<LastResult | null>(null);
 
   const onConnectUSB = useCallback(async () => {
     setBusy('usb'); try { await connectUSB(); } finally { setBusy(null); }
@@ -48,36 +70,77 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
     setBusy('disc'); try { await disconnect(); } finally { setBusy(null); }
   }, [disconnect]);
 
-  const startHold = useCallback(() => {
-    if (!isConnected) return;
-    setHolding(true);
+  // ── ARM toggle (Hold-to-Confirm) ────────────────────────────────
+  const startArmHold = useCallback(() => {
+    if (armed) {
+      // Disarm is instant — no hold required.
+      const r = api.disarm();
+      setLast(summarize('DISARM', r));
+      toast.info('FXK16 desarmado');
+      return;
+    }
+    if (!ready) {
+      toast.error('FXK16 não está pronto (offline ou link degradado)');
+      return;
+    }
+    setHoldMode('arm');
     holdTimer.current = setTimeout(() => {
-      setHolding(false);
+      setHoldMode(null);
       holdTimer.current = null;
-      void fire(testCh, PULSE_MS);
+      const r = api.arm();
+      setLast(summarize('ARM', r));
+      if (r.ok) toast.success('FXK16 ARMADO');
+      else toast.error(`ARM falhou: ${r.message}`);
     }, HOLD_MS);
-  }, [isConnected, testCh, fire]);
+  }, [api, armed, ready]);
+
+  const startFireHold = useCallback(() => {
+    if (!ready) return;
+    if (!armed) {
+      toast.warning('Arme o FXK16 antes de testar FIRE');
+      return;
+    }
+    setHoldMode('fire');
+    holdTimer.current = setTimeout(async () => {
+      setHoldMode(null);
+      holdTimer.current = null;
+      const r = await api.fire(testCh, PULSE_MS);
+      setLast(summarize(`FIRE ch${testCh}`, r));
+      if (!r.ok) toast.error(`FIRE falhou: ${r.code} — ${r.message}`);
+    }, HOLD_MS);
+  }, [api, armed, ready, testCh]);
 
   const cancelHold = useCallback(() => {
     if (holdTimer.current) {
       clearTimeout(holdTimer.current);
       holdTimer.current = null;
     }
-    setHolding(false);
+    setHoldMode(null);
   }, []);
 
+  const onEStop = useCallback(async () => {
+    const r = await api.stop();
+    setLast(summarize('E-STOP', r));
+    if (r.ok) toast.warning('E-STOP enviado — FXK16 desarmado');
+    else toast.error(`E-STOP falhou: ${r.code} — ${r.message}`);
+  }, [api]);
+
   // ── Visual state ────────────────────────────────────────────────
-  const accent = isFXK16 && isConnected
-    ? 'border-emerald-500/40 bg-emerald-500/5'
-    : status.connecting
-      ? 'border-amber-500/40 bg-amber-500/5'
-      : 'border-border/40 bg-card/40';
+  const accent = armed
+    ? 'border-red-500/50 bg-red-500/5'
+    : isFXK16 && isConnected
+      ? 'border-emerald-500/40 bg-emerald-500/5'
+      : status.connecting
+        ? 'border-amber-500/40 bg-amber-500/5'
+        : 'border-border/40 bg-card/40';
 
   const statusChip = !isConnected
     ? <Badge variant="outline" className="text-[9px] border-muted-foreground/40 text-muted-foreground">offline</Badge>
     : !isFXK16
       ? <Badge variant="outline" className="text-[9px] border-amber-500/40 text-amber-300">{status.deviceModel ?? 'unknown'}</Badge>
-      : <Badge className="text-[9px] bg-emerald-600 text-primary-foreground border-0"><CheckCircle2 className="w-2.5 h-2.5 mr-0.5"/>FXK16 OK</Badge>;
+      : armed
+        ? <Badge className="text-[9px] bg-red-600 text-primary-foreground border-0"><Unlock className="w-2.5 h-2.5 mr-0.5"/>ARMED</Badge>
+        : <Badge className="text-[9px] bg-emerald-600 text-primary-foreground border-0"><CheckCircle2 className="w-2.5 h-2.5 mr-0.5"/>FXK16 OK</Badge>;
 
   const transportLabel = status.transport && status.transport !== 'none'
     ? status.transport.toUpperCase()
@@ -113,6 +176,24 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
         </div>
       )}
 
+      {/* Last typed-API result */}
+      {last && (
+        <div className={cn(
+          'rounded-md border px-2 py-1 text-[10px] font-mono flex items-start gap-1.5',
+          last.ok
+            ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-200'
+            : 'border-red-500/40 bg-red-500/10 text-red-200',
+        )}>
+          {last.ok
+            ? <CheckCircle2 className="w-3 h-3 mt-0.5 shrink-0" />
+            : <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />}
+          <span className="break-words">
+            <strong>{last.label}</strong>{' '}
+            {last.ok ? 'OK' : <>{last.code} — {last.message}</>}
+          </span>
+        </div>
+      )}
+
       {/* Connect actions */}
       {!isConnected ? (
         <div className="grid grid-cols-2 gap-2">
@@ -144,10 +225,30 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
         </div>
       ) : (
         <div className="space-y-2">
+          {/* ARM toggle */}
+          <Button
+            variant={armed ? 'destructive' : 'outline'}
+            className={cn(
+              'w-full h-10 gap-1.5 text-[11px] select-none',
+              !armed && holdMode === 'arm' && 'bg-amber-500/20 border-amber-500/60 text-amber-200',
+            )}
+            onPointerDown={startArmHold}
+            onPointerUp={armed ? undefined : cancelHold}
+            onPointerLeave={armed ? undefined : cancelHold}
+            onPointerCancel={armed ? undefined : cancelHold}
+            disabled={!ready && !armed}
+          >
+            {armed
+              ? <><Unlock className="w-3.5 h-3.5" /> DISARM</>
+              : holdMode === 'arm'
+                ? <><Lock className="w-3.5 h-3.5" /> Mantenha {HOLD_MS}ms…</>
+                : <><Lock className="w-3.5 h-3.5" /> ARM (segure {HOLD_MS}ms)</>}
+          </Button>
+
           {/* Test fire row */}
           <div className="rounded-lg border border-border/40 bg-background/40 p-2 space-y-2">
             <p className="text-[9px] uppercase tracking-wider text-muted-foreground">
-              Test FIRE — segure {HOLD_MS}ms
+              Test FIRE — segure {HOLD_MS}ms{!armed && ' (requer ARM)'}
             </p>
             <div className="flex items-center gap-2">
               <Input
@@ -166,15 +267,16 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
                 variant="outline"
                 className={cn(
                   'flex-1 h-9 gap-1.5 text-[11px] select-none',
-                  holding && 'bg-red-500/20 border-red-500/60 text-red-200',
+                  holdMode === 'fire' && 'bg-red-500/20 border-red-500/60 text-red-200',
                 )}
-                onPointerDown={startHold}
+                disabled={!armed}
+                onPointerDown={startFireHold}
                 onPointerUp={cancelHold}
                 onPointerLeave={cancelHold}
                 onPointerCancel={cancelHold}
               >
                 <Flame className="w-3.5 h-3.5" />
-                {holding ? `Disparando…` : `Fire CH ${testCh} (${PULSE_MS}ms)`}
+                {holdMode === 'fire' ? 'Disparando…' : `Fire CH ${testCh} (${PULSE_MS}ms)`}
               </Button>
             </div>
           </div>
@@ -183,7 +285,7 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
             <Button
               variant="destructive"
               className="h-10 gap-1.5 text-[11px]"
-              onClick={() => void eStop()}
+              onClick={onEStop}
             >
               <AlertTriangle className="w-3.5 h-3.5" /> E-STOP
             </Button>
