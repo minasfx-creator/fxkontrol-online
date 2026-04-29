@@ -33,13 +33,28 @@ export default function ShowSiteSetup({ initial, onConfirm }: Props) {
     return Number.isFinite(n) && n >= 0 ? n : fallback;
   };
 
-  const ratio = config.depth / Math.max(config.width, 1);
   const audienceLabel: Record<AudiencePosition, string> = {
     front: 'Frente',
     left: 'Esquerda',
     right: 'Direita',
     '360': '360°',
   };
+
+  // Validação básica
+  const errors = useMemo(() => {
+    const e: string[] = [];
+    if (!config.name.trim()) e.push('Informe um nome para o local.');
+    if (config.width < 10) e.push('Largura mínima recomendada: 10 m.');
+    if (config.depth < 10) e.push('Profundidade mínima recomendada: 10 m.');
+    if (config.maxHeight < 5) e.push('Altura máxima mínima: 5 m.');
+    if (config.safetyDistance < 1) e.push('Distância de segurança mínima: 1 m.');
+    if (config.safetyDistance * 2 >= Math.min(config.width, config.depth))
+      e.push('Zona de segurança maior que a área útil — reduza o valor.');
+    if (config.width > 2000 || config.depth > 2000) e.push('Dimensões acima de 2000 m não são suportadas.');
+    return e;
+  }, [config]);
+
+  const canConfirm = errors.length === 0;
 
   return (
     <Card className="border-border/40 bg-card/50">
