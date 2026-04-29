@@ -1478,7 +1478,8 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
 
       const finalTime = pendingScrubTimeRef.current ?? computeTimeFromClientX(e.clientX);
       pendingScrubTimeRef.current = null;
-      const snapped = snapTimeToBeat(finalTime, bpm, snapToBeat, pixelsPerSecond);
+      const grid = getActiveGrid({ bpm, snapMode });
+      const snapped = snapTime(finalTime, grid, pixelsPerSecond);
       setCurrentTime(snapped);
 
       try {
@@ -1686,7 +1687,7 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
             <div className="w-24 flex-shrink-0" />
             <div className="flex-1 relative">
               <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
-              <BeatGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
+              <TimelineGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} snapMode={snapMode} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               {/* Playhead — DOM-direct updates via transient Zustand subscription (zero re-renders) */}
               <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} onScrubPointerDown={handleScrubPointerDown} />
 
