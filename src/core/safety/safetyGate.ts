@@ -18,6 +18,7 @@
  */
 
 import { isEnabled } from '@/lib/featureFlags';
+import { workMode } from './workMode';
 
 export type SafetyLayer =
   | 'lockoutGroups'
@@ -83,6 +84,10 @@ class SafetyGate {
   get isStrict(): boolean { return isStrict(); }
 
   isEnforced(layer: SafetyLayer): boolean {
+    // Work-mode gate: in design/simulation NOTHING blocks the user.
+    // Physical interlocks only exist in real_operation.
+    if (!workMode.isRealOperation()) return false;
+
     if (isStrict()) return true;
     if (!this._cfg.masterEnabled) return false;
     return !!this._cfg[layer];

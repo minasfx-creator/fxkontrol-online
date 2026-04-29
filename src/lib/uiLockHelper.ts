@@ -6,9 +6,12 @@
  */
 
 import { safetyGate } from '@/core/safety/safetyGate';
+import { workMode } from '@/core/safety/workMode';
 
 export function isItemLocked(item: { locked?: boolean } | null | undefined): boolean {
   if (!item) return false;
+  // Advisory in design/simulation; enforced only in real_operation.
+  if (!workMode.isRealOperation()) return false;
   if (!safetyGate.isEnforced('uiLocks')) return false;
   return !!item.locked;
 }
@@ -17,7 +20,11 @@ export function isItemLocked(item: { locked?: boolean } | null | undefined): boo
 import { useEffect, useState } from 'react';
 
 export function useItemLocked(item: { locked?: boolean } | null | undefined): boolean {
-  const [enforced, setEnforced] = useState(() => safetyGate.isEnforced('uiLocks'));
-  useEffect(() => safetyGate.subscribe(() => setEnforced(safetyGate.isEnforced('uiLocks'))), []);
-  return enforced && !!item?.locked;
+  const [, force] = useState(0);
+  useEffect(() => {
+    const u1 = safetyGate.subscribe(() => force((n) => n + 1));
+    const u2 = workMode.subscribe(() => force((n) => n + 1));
+    return () => { u1(); u2(); };
+  }, []);
+  return isItemLocked(item);
 }
