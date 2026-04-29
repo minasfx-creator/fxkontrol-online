@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { ShowPlan, ShowPlanValidationResult, ShowSiteConfig } from '@/lib/aiShowBuilder/types';
-import { generateShowPlanFromPrompt } from '@/lib/aiShowBuilder/generateShowPlan';
+import { generateShowPlanWithProviderDetailed } from '@/lib/aiShowBuilder/generateShowPlanWithProvider';
 import { validateShowPlan } from '@/lib/aiShowBuilder/validateShowPlan';
 import { materializeShowPlan } from '@/lib/aiShowBuilder/materializeShowPlan';
 import ShowPlanReviewEditor from './ShowPlanReviewEditor';
@@ -56,7 +56,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     setPrompt((p) => (p.trim().length === 0 ? chip : `${p}, ${chip.toLowerCase()}`));
   };
 
-  const handleGenerate = useCallback((seed: number) => {
+  const handleGenerate = useCallback(async (seed: number) => {
     const value = prompt.trim();
     if (value.length < 4) {
       toast.error('Descreva sua ideia com mais detalhes (mínimo 4 caracteres).');
@@ -64,9 +64,18 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     }
     setBusy(true);
     try {
-      const next = generateShowPlanFromPrompt(value, site, seed);
+      const { plan: next, fellBack, providerId } = await generateShowPlanWithProviderDetailed({
+        prompt: value,
+        site,
+        variationSeed: seed,
+      });
       setPlan(next);
       setVariation(seed);
+      if (fellBack) {
+        toast.warning('IA remota indisponível — usando gerador local como fallback.');
+      } else if (providerId !== 'local-deterministic') {
+        toast.success(`Plano gerado via ${providerId}.`);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Falha ao gerar plano';
       toast.error(msg);
@@ -142,11 +151,11 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
 
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => handleGenerate(0)} disabled={busy || prompt.trim().length < 4} className="gap-2">
-            <Wand2 className="h-4 w-4" /> Gerar plano do show
+            <Wand2 className="h-4 w-4" /> {busy ? 'Gerando plano…' : 'Gerar plano do show'}
           </Button>
           {plan && (
             <Button variant="secondary" onClick={() => handleGenerate(variation + 1)} disabled={busy} className="gap-2">
-              <Shuffle className="h-4 w-4" /> Gerar variação
+              <Shuffle className="h-4 w-4" /> {busy ? 'Gerando…' : 'Gerar variação'}
             </Button>
           )}
           {plan && (
