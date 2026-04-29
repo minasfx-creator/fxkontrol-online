@@ -135,19 +135,39 @@ export class Show3DEngine {
     this.resizeObserver = null;
     this.detachContextHandlers();
 
+    // Clear all four layers (geometries, materials, textures).
     this.clearLayer(this.staticLayer);
     this.clearLayer(this.dynamicLayer);
     this.clearLayer(this.effectsLayer);
     this.clearLayer(this.debugLayer);
 
+    // Drop scene-graph & timeline so we don't hold references to large
+    // ShowPlan/CompiledTimeline/cue command arrays after teardown.
+    this.compiled = null;
+    this.graph = null;
+    this.showTime = 0;
+    this.lastFrameAt = 0;
+    this.frameAcc = 0;
+    this.frameCount = 0;
+
     if (this.renderer) {
       const canvas = this.renderer.domElement;
+      // Free any pooled programs/textures/RTs and force the GPU context to
+      // release immediately so a remount can request a fresh context.
+      try { this.renderer.renderLists.dispose(); } catch { /* noop */ }
+      try { this.renderer.setRenderTarget(null); } catch { /* noop */ }
       this.renderer.dispose();
+      try {
+        const ctx = this.renderer.getContext();
+        const ext = ctx?.getExtension?.('WEBGL_lose_context');
+        ext?.loseContext?.();
+      } catch { /* noop */ }
       canvas.parentElement?.removeChild(canvas);
       this.renderer = null;
     }
     this.container = null;
     this.diagnostics.reset();
+    this.viewport.set('booting');
   }
 
   // ─── Plan loading ───────────────────────────────────────────────────
