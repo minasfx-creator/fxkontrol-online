@@ -131,6 +131,7 @@ export function PyroControllerCard({ controller, onClose, onOpenConsole }: PyroC
       </div>
 
       <div className="mb-2 flex flex-wrap items-center gap-1">
+        <LiveStatusChip status={liveStatus} reason={liveReason} />
         <Badge variant={ready ? 'default' : 'outline'} className="h-5 px-1.5 text-[10px]">
           {ready ? 'READY' : 'LINK'}
         </Badge>
