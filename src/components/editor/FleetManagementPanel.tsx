@@ -216,7 +216,7 @@ export default function FleetManagementPanel({ onClose }: FleetManagementPanelPr
     } else {
       toast.error(`Preflight FAILED — ${summary.criticalFails} critical failures`);
     }
-  }, [uavs, geofence, showState, preflightConfig, setPreflightResults]);
+  }, [uavs, geofence, showState, preflightConfig, setPreflightResults, sceneWindSpeed]);
 
   const handleExportPreflight = useCallback(() => {
     if (!preflightSummary) return;
