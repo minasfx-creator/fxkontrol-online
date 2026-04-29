@@ -1186,8 +1186,17 @@ function CollapsibleTrackGroup({ label, defaultOpen = true, children }: { label:
   );
 }
 
-/** Playhead rendered via direct DOM manipulation — no React re-renders during playback */
-function PlayheadIndicator({ pixelsPerSecond }: { pixelsPerSecond: number }) {
+/** Playhead rendered via direct DOM manipulation — no React re-renders during playback.
+ *  The top "handle" (bolinha) is interactive so the operator can grab the playhead
+ *  directly to scrub. The vertical line stays pointer-events-none so it never
+ *  blocks clicks on timeline items below it. */
+function PlayheadIndicator({
+  pixelsPerSecond,
+  onScrubPointerDown,
+}: {
+  pixelsPerSecond: number;
+  onScrubPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const initial = useProjectStore.getState().currentTime;
@@ -1200,7 +1209,13 @@ function PlayheadIndicator({ pixelsPerSecond }: { pixelsPerSecond: number }) {
 
   return (
     <div ref={ref} className="absolute top-0 bottom-0 w-px z-20 pointer-events-none" style={{ transform: 'translateX(0px)' }}>
-      <div className="w-2 h-2 bg-primary rounded-full -translate-x-[3px] -translate-y-px shadow-[0_0_8px_hsl(var(--primary)/0.4)]" />
+      {/* Grab handle — larger hit area for touch (12px) */}
+      <div
+        role="slider"
+        aria-label="Scrub playhead"
+        className="absolute -top-1 -left-2 w-4 h-4 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.5)] pointer-events-auto cursor-ew-resize touch-none"
+        onPointerDown={onScrubPointerDown}
+      />
       <div className="absolute top-0 w-px h-full bg-gradient-to-b from-primary via-primary/30 to-transparent" />
     </div>
   );
