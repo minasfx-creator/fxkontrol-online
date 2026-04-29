@@ -9,8 +9,10 @@
  */
 
 import { safetyAuditTrail } from './SafetyAuditTrail';
+import { evaluate as evaluateGuardrail, type Caller } from './aiGuardrail';
 
 export type SafetyState = 'IDLE' | 'LOCKED' | 'ARMED' | 'FIRING' | 'COOLDOWN' | 'SAFE';
+export type { Caller } from './aiGuardrail';
 
 export type SafetyTransition =
   | 'LOCK_STATE'
@@ -70,9 +72,34 @@ class SafetyStateMachine {
     Object.assign(this._conditions, partial);
   }
 
-  /** Attempt a transition. Returns result with allowed/denied + reason. */
-  transition(t: SafetyTransition): TransitionResult {
+  /**
+   * Attempt a transition. Returns result with allowed/denied + reason.
+   * `caller` defaults to 'human' for backward compatibility. Pass 'agent'
+   * for any AI/JOI/automation path — the central guardrail will hard-block
+   * physical/safety transitions even if the SSM table would allow them.
+   * 'system' is reserved for internal callbacks (cooldown auto-advance).
+   */
+  transition(t: SafetyTransition, opts: { caller?: Caller } = {}): TransitionResult {
     const from = this._state;
+    const caller: Caller = opts.caller ?? 'human';
+
+    // ── AI guardrail (central) ────────────────────────────────────
+    // Even E_STOP is blocked from agent callers — a malicious model
+    // shouldn't be able to terminate a live show.
+    const guard = evaluateGuardrail(t, caller);
+    if (!guard.allowed) {
+      try {
+        safetyAuditTrail.log({
+          timestamp: Date.now(),
+          tick: 0,
+          event: 'VIOLATION',
+          from,
+          to: from,
+          detail: guard.reason ?? 'AI guardrail blocked transition',
+        });
+      } catch { /* never block on audit failure */ }
+      return { allowed: false, from, to: from, reason: guard.reason };
+    }
 
     // Re-entrancy guard: a listener triggered another transition while we were
     // mid-flight. Allow E_STOP through (safety-critical), block everything else.
@@ -121,17 +148,25 @@ class SafetyStateMachine {
       return result;
     }
 
+    // Defensive cleanup: any transition that exits COOLDOWN or ARMED
+    // (other than entering COOLDOWN itself) must invalidate any pending
+    // auto-advance timer to keep the machine deterministic.
+    if (from === 'COOLDOWN' || from === 'ARMED') {
+      if (target !== 'COOLDOWN') this._clearCooldown();
+    }
+
     // Execute transition
     this._state = target;
     const result: TransitionResult = { allowed: true, from, to: target };
     this._notify(t, result);
 
-    // Auto-advance COOLDOWN after 2s
+    // Auto-advance COOLDOWN after 2s. Internal timer uses caller='system'
+    // so the AI guardrail never blocks the natural FIRE→COOLDOWN→ARMED loop.
     if (target === 'COOLDOWN') {
       this._cooldownTimer = setTimeout(() => {
         this._cooldownTimer = null;
         if (this._state === 'COOLDOWN') {
-          this.transition('COOLDOWN_COMPLETE');
+          this.transition('COOLDOWN_COMPLETE', { caller: 'system' });
         }
       }, 2000);
     }

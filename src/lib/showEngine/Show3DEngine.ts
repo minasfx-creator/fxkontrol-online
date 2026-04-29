@@ -43,6 +43,11 @@ export class Show3DEngine {
   private container: HTMLElement | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private rafHandle = 0;
+  // Named handlers so we can cleanly remove them on dispose() — prevents
+  // listener leaks across hot-reload and host re-mount.
+  private onContextLost: ((e: Event) => void) | null = null;
+  private onContextRestored: (() => void) | null = null;
+  private listenerCanvas: HTMLCanvasElement | null = null;
 
   readonly staticLayer = new THREE.Group();
   readonly dynamicLayer = new THREE.Group();
@@ -128,6 +133,7 @@ export class Show3DEngine {
     this.rafHandle = 0;
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
+    this.detachContextHandlers();
 
     this.clearLayer(this.staticLayer);
     this.clearLayer(this.dynamicLayer);
@@ -319,15 +325,33 @@ export class Show3DEngine {
   }
 
   private attachContextHandlers(canvas: HTMLCanvasElement): void {
-    canvas.addEventListener('webglcontextlost', (e) => {
+    this.detachContextHandlers();
+    this.listenerCanvas = canvas;
+    this.onContextLost = (e: Event) => {
       e.preventDefault();
       this.diagnostics.update({ contextLost: true });
       this.viewport.set('contextLost');
-    });
-    canvas.addEventListener('webglcontextrestored', () => {
+    };
+    this.onContextRestored = () => {
       this.diagnostics.update({ contextLost: false });
       this.viewport.set('ready');
-    });
+    };
+    canvas.addEventListener('webglcontextlost', this.onContextLost);
+    canvas.addEventListener('webglcontextrestored', this.onContextRestored);
+  }
+
+  private detachContextHandlers(): void {
+    if (this.listenerCanvas) {
+      if (this.onContextLost) {
+        this.listenerCanvas.removeEventListener('webglcontextlost', this.onContextLost);
+      }
+      if (this.onContextRestored) {
+        this.listenerCanvas.removeEventListener('webglcontextrestored', this.onContextRestored);
+      }
+    }
+    this.onContextLost = null;
+    this.onContextRestored = null;
+    this.listenerCanvas = null;
   }
 
   private attachResizeObserver(container: HTMLElement): void {
