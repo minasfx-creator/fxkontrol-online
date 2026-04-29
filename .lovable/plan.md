@@ -1,76 +1,67 @@
-## Plano: Áudio na Timeline + Limpeza de Código Morto + Disparo Real Plug-and-Play
+## Objetivo
 
-### Frente 1 — Import de áudio pela timeline não abre seletor de arquivos
+Permitir **arrastar o playhead na timeline** (ruler/track) com o mouse/toque e ver o **SkyCanvas atualizando em tempo real** (drones, light points e explosões/shells) sem precisar dar Play.
 
-**Diagnóstico:** O `AudioWaveform.tsx` usa `<input type="file" accept="audio/*">` em duas posições (linha 519 no header e 597 no overlay vazio). O atributo `accept="audio/*"` no iOS/alguns desktops **filtra demais** e em alguns navegadores móveis simplesmente abre câmera/galeria em vez do seletor de arquivos. Além disso, formatos como `.flac`, `.opus`, `.aac` que o `audioUpload.ts` já suporta são **excluídos** pelo MIME `audio/*` em alguns browsers (Safari iOS especialmente).
+## Diagnóstico atual
 
-Também, no mobile, clicar no `<label>` aninhando `<input>` às vezes não dispara — e `disabled={uploading}` no `<input>` não impede o clique repetido no label.
+1. `Timeline.tsx` só tem **clique único** no track (`handleTrackClick` → `setCurrentTime`). Não existe `mousedown + mousemove + mouseup` para arrastar.
+2. `PlayheadIndicator` (linha 1190) é puramente visual — não captura mouse.
+3. O pipeline de tempo já funciona corretamente:
+   - `setCurrentTime(t)` → `timelineClock.seek(t)` → `onChange` listener (store/useProjectStore.ts:510) → store atualiza → componentes re-renderizam.
+   - `Canvas` está em `frameloop="always"` (default), `useFrame` roda continuamente mesmo pausado.
+   - `DroneRendererSwitch` / `DroneChoreography` consomem `currentTime` da store ✅.
+   - `TimelineEffects` (FireworkRenderer.tsx:1156) consome `currentTime` ✅.
+   - `ShellExplosionManager` recebe `currentTime` como prop ✅.
+4. **Mas**: `FireworkBurst.useFrame` calcula partículas usando `progress` (derivado de `currentTime`), e o efeito só é renderizado enquanto `currentTime` está dentro da janela `[startTime, startTime+totalDuration]`. Portanto **scrub instantâneo já vai funcionar para shells/drones assim que houver drag**.
+5. Audio `AudioWaveform.tsx:255` já tem guard de 0.15s para não devolver o tempo antigo durante scrub ✅.
 
-**Correções:**
-- Trocar `accept="audio/*"` por uma lista de extensões explícita: `accept="audio/*,.mp3,.wav,.ogg,.m4a,.flac,.aac,.webm,.opus"` — com extensões, navegadores que filtravam mostram todos os formatos suportados.
-- Substituir o padrão `<label><input/></label>` por um `<button>` que dispara um `inputRef.current?.click()` programaticamente (mais confiável em iOS e em hosts iframe da Lovable).
-- Reaproveitar `uploadAudioForProject()` de `src/lib/audioUpload.ts` em vez do upload duplicado dentro do próprio componente (DRY com o drop handler do viewport).
-- Adicionar `e.target.value = ''` após o upload pra permitir re-selecionar o mesmo arquivo (bug clássico do `<input file>`).
+## Mudanças propostas
 
-### Frente 2 — Código morto / limpeza
+### 1. Drag-to-scrub no ruler e na faixa do playhead — `src/components/editor/Timeline.tsx`
 
-Vou fazer um sweep estreito (não global) focado nos arquivos tocados nas últimas iterações:
+Substituir o `onClick={handleTrackClick}` do scroll container por um par `onPointerDown`/`onPointerMove`/`onPointerUp` (Pointer Events para cobrir mouse + touch + caneta de uma vez):
 
-- **`src/_quarantine/safety/*.txt`** — confirmar que zero imports apontam para lá; o `_quarantine` é proposital, mas `.txt` não é importável → manter; só verificar.
-- **`SetlistPanel.tsx`** — importa ícones `GripVertical`, `ArrowDownUp` que **nunca são renderizados** + `dragIdx` state declarado e nunca lido. Remover imports e state mortos.
-- **`AudioWaveform.tsx`** — após a Frente 1, o bloco `handleUpload` interno fica obsoleto (delegado pra `uploadAudioForProject`). Remover.
-- **`AutoControllerLauncher.tsx` / cards** — varrer `console.log` esquecidos do ciclo anterior.
-- Procurar outros componentes em `src/components/editor/` com imports não-usados via `rg "^import.*from" + cross-check` apenas nos arquivos editados recentemente. Não vou refatorar componentes intactos.
+- `onPointerDown`: capturar o ponteiro (`setPointerCapture`), calcular `time` a partir do clientX (mesma fórmula atual), chamar `setCurrentTime(time)`, marcar `scrubbingRef = true`. Salvar se `wasPlaying = isPlaying` e dar `pause()` (`timelineTransport.pause()`) durante o scrub para não brigar com lockstep.
+- `onPointerMove`: se `scrubbingRef`, recalcular `time` e chamar `setCurrentTime(time)` a cada move (com `requestAnimationFrame` throttle para no máx. 1 update por frame).
+- `onPointerUp`/`onPointerCancel`: liberar capture, `scrubbingRef = false`. Se `wasPlaying`, retomar com `timelineTransport.play()`. Aplicar `snapTimeToBeat` somente no release final (não a cada move) para feedback fluido + snap final preciso.
+- `clearTimelineItemSelection()` continua sendo chamado no down se não houver shift/ctrl/meta.
 
-**Não vou** fazer um "remove all dead code do projeto inteiro" — isso é arriscado e fora do escopo desta passada. Foco: arquivos que tocamos.
+Isto preserva o single-click (down+up no mesmo ponto) e adiciona o drag.
 
-### Frente 3 — Disparo real plug-and-play quando módulo é conectado
+### 2. Tornar `PlayheadIndicator` arrastável — `Timeline.tsx`
 
-**Diagnóstico:** Hoje, `useActiveControllers` + `AutoControllerLauncher` já mostra o card no canto inferior direito quando um device é reconhecido. Mas:
-1. O card mostra **ARM/FIRE/E-STOP** mesmo se o dispositivo está em `LIVE READ-ONLY` mode ou se o transport é `NO_REAL_SENDER` (stub) — então o operador clica e nada dispara, sem feedback claro do **porquê**.
-2. Não há um indicador visual de "✅ pronto pra disparo real" vs "⚠️ apenas leitura/stub" no card.
-3. `PyroControllerCard` chama o caminho typed que passa pelo ARM gate; o E-STOP precisa ir pelo path direto `<50ms` — confirmar.
-4. Se um módulo FXK16 entra online via BLE depois que a página já carregou, o launcher aparece — mas o `useFXK16Bridge` singleton pode não ter sido instanciado nessa rota → o card existe mas o "Test FIRE" não tem bridge ativa.
+Adicionar `pointer-events-auto` + `cursor-ew-resize` na haste do playhead (atualmente `pointer-events-none`) e plugar os mesmos handlers do item 1, para o operador poder agarrar a linha do playhead diretamente. A bolinha do topo ganha um “handle” maior (12px) para alvo confortável em mobile.
 
-**Aprimoramentos:**
-1. **Status de prontidão real no card** — adicionar um chip no topo de cada card:
-   - 🟢 `LIVE` — pelo menos um link tem `realSender !== NO_REAL_SENDER` E `provenance.evidence_level === 'verified'`
-   - 🟡 `READ-ONLY` — handshake OK mas sem sender real registrado
-   - 🔴 `NO-OP` — stub/sim mode (clique só loga, não dispara)
-   
-   Calcular via `controller.device.links` cruzando com `transportSenderRegistry`.
+### 3. Garantir que o snap só ocorra em momentos certos
 
-2. **Auto-init das bridges** — quando um controller pyro vira "active", instanciar a bridge correspondente (`useFXK16Bridge`, `usePBusHardware`, etc.) automaticamente em background pra que o "Test FIRE" do card funcione sem precisar abrir a console route. Fazer isso via um `controllerBridgeAutoInit.ts` que escuta `useActiveControllers` e mantém uma `Map<aggregateId, BridgeHandle>`.
+`snapTimeToBeat` hoje é aplicado a cada clique. Durante drag isso causa “stair-step” visual desagradável. Aplicar:
+- Sem snap durante `pointermove` (movimento contínuo).
+- Snap no `pointerup` (commit final).
 
-3. **Toast on-connect** — quando um device pyro/dmx/tuya passa para `online`, soltar um `toast.success("FXK16 #001 pronto · LIVE")` com botão "Abrir controle". Hoje só aparece o card silencioso no canto, fácil de não notar em telas grandes.
+### 4. Auto-pause durante scrub (qualidade de vida)
 
-4. **E-STOP path validado** — confirmar em `PyroControllerCard.tsx` que o handler do botão E-STOP chama `safetyStateMachine.emergencyStop()` direto (path <50ms), **NÃO** a typed API (`createFxk16CommandApi.estop()`) que passa pelo ARM gate e adiciona latência.
+Quando o operador começa a arrastar enquanto está tocando, pausar via `timelineTransport.pause()` no `pointerdown` e retomar no `pointerup` se estava tocando. Evita que o lockstep playback continue avançando junto e crie corrida.
 
-5. **Persistir "auto-arm-on-connect = false" como default explícito** — adicionar uma flag `autoArmOnConnect` no `controllerRegistry` (default `false` pra **todos** os pyro kinds, conforme regra honest-hardware "nunca auto-arma"). Documentar visualmente no card.
+### 5. Sem mudanças necessárias em SkyCanvas / FireworkRenderer / ShellExplosionManager / DroneChoreography
 
-### Arquivos que vou tocar
-- `src/components/editor/AudioWaveform.tsx` (frente 1+2)
-- `src/components/editor/SetlistPanel.tsx` (frente 2 — cleanup)
-- `src/components/hardware/cards/PyroControllerCard.tsx` (frente 3 — chip + E-STOP path + bridge init)
-- `src/components/hardware/cards/TuyaControllerCard.tsx` (frente 3 — chip)
-- `src/components/hardware/cards/DmxControllerCard.tsx` (frente 3 — chip)
-- `src/components/hardware/cards/GenericControllerCard.tsx` (frente 3 — chip)
-- `src/components/hardware/AutoControllerLauncher.tsx` (frente 3 — toast on-connect)
-- `src/core/discovery/controllerRegistry.ts` (frente 3 — flag autoArmOnConnect)
-- **NOVO:** `src/core/hardware/controllerBridgeAutoInit.ts` (frente 3 — auto-init bridges)
-- **NOVO:** `src/components/hardware/shared/LiveStatusChip.tsx` (frente 3 — chip reutilizável)
+Esses já reagem a `currentTime` via store. A correção é puramente de input no Timeline.
 
-### Não vou tocar
-- `src/integrations/supabase/*`, `_quarantine/safety/*`, `supabase/config.toml`
-- O safety state machine em si — só consumo a API `emergencyStop()` que já existe
-- Pipeline WebGPU / SkyCanvas (tema separado)
-- Storage bucket `audio` (já existe e funciona)
+## Detalhes técnicos
 
-### Resultado esperado
-- No celular/desktop, clicar no ícone 📤 da trilha de áudio **abre o seletor de arquivos** com todos os formatos suportados.
-- Re-selecionar o mesmo arquivo funciona.
-- Plug um FXK16 USB/BLE → toast "FXK16 pronto · LIVE", card aparece com chip 🟢 LIVE, botão "Test FIRE" hold-800ms já funciona sem precisar abrir outra rota.
-- Sem hardware real, o chip mostra 🔴 NO-OP e os botões ficam visualmente "desabilitados" (não escondidos — honest-hardware).
+- Pointer Events (`onPointerDown` etc.) cobrem mouse, touch e Apple Pencil em um só handler — evita duplicar `touchstart`/`mousedown` como o `TimelineScrubber` faz.
+- Throttle por `requestAnimationFrame`: guardar `pendingTimeRef`; no rAF callback chamar `setCurrentTime(pendingTimeRef.current)`. Cancelar rAF no unmount/up.
+- Não tocar em `timelineClock.ts` nem no listener de `useProjectStore.ts:510` — eles já propagam `seek` corretamente (`lastPositionChange = 'seek'` força `notify()`).
+- `PlayheadIndicator` precisa receber `scrollRef` ou usar `getBoundingClientRect` da própria haste para calcular delta — preferir reutilizar o handler global do scroll container e deixar a haste apenas passar o evento (sem `stopPropagation`).
+- Manter `touch-action: none` no scroll container para prevenir scroll horizontal do navegador durante o drag em mobile.
 
-### Pergunta opcional
-Você quer que o **toast de "device pronto"** seja **sempre exibido** quando um módulo conecta, ou só quando é a **primeira conexão da sessão** daquele aggregateId (evita spam se o link cair e voltar a cada 30s)? Default que vou aplicar: **só primeira conexão da sessão**.
+## Arquivos modificados
+
+- `src/components/editor/Timeline.tsx` — refatorar `handleTrackClick` em `handlePointerDown/Move/Up`, ajustar `PlayheadIndicator` para ser arrastável, adicionar `touch-action: none`.
+
+## Critério de aceite
+
+- Arrastar a régua/playhead com mouse: drones se movem para a formação correspondente em tempo real, shells aparecem/desaparecem na janela `[startTime, startTime+duration]` enquanto o cursor passa, light points atualizam.
+- Em mobile (touch), mesmo comportamento sem trigger de scroll horizontal.
+- Single-click continua pulando para o instante (snap-to-beat aplicado).
+- Se estava tocando, pausa automaticamente ao começar drag e retoma ao soltar.
+- Sem regressões em: marquee de seleção, drag de itens, resize de itens, atalhos de teclado.
