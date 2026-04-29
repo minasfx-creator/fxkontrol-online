@@ -45,13 +45,35 @@ initWebVitalsConsole();
 // No-ops silently when VITE_RUM_ENDPOINT is not set.
 initObservability();
 
-// Dismiss splash screen after React mounts — use idle callback to let browser paint first
-const dismissSplash = () => (window as any).__splashDone?.();
+// Dismiss splash screen after React mounts. The static HTML splash in index.html
+// covers the viewport at z-index 9999, so if it isn't removed the user sees a
+// black screen with the orange logo even though SkyCanvas is mounting behind it.
+//
+// Defense in depth — three independent removal paths so a single failure
+// (idle callback never firing under R3F load, IIFE not installing __splashDone,
+// the inline animation stuck at 90%) cannot leave the splash on screen forever:
+//   1. requestIdleCallback   — preferred, gives browser breathing room
+//   2. setTimeout 1500ms     — fires regardless of main-thread pressure
+//   3. Direct DOM removal    — bypass __splashDone entirely if it never wired up
+const dismissSplash = () => {
+  try { (window as any).__splashDone?.(); } catch { /* noop */ }
+  // Hard fallback: if the splash element is still in the DOM ~700ms after we
+  // asked for it to fade, force-remove it. This covers the case where the
+  // inline IIFE in index.html never installed __splashDone (e.g. CSP, parse
+  // error) or where the fade transition is wedged.
+  setTimeout(() => {
+    const el = document.getElementById('splash');
+    if (el) {
+      el.style.opacity = '0';
+      el.style.pointerEvents = 'none';
+      el.remove();
+    }
+  }, 700);
+};
 if (typeof requestIdleCallback === 'function') {
   requestIdleCallback(dismissSplash, { timeout: 1500 });
-} else {
-  setTimeout(dismissSplash, 100);
 }
+setTimeout(dismissSplash, 1500);
 
 // ── PWA Service Worker Registration ──
 // Only register in production and NOT inside iframes/preview hosts

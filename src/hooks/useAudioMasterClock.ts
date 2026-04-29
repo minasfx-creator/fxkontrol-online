@@ -134,9 +134,14 @@ export function useAudioMasterClock(
 
       if (isAdvancing) {
         engageMaster();
-        // `audio.currentTime` is in seconds, monotonic while playing, and
-        // already accounts for `playbackRate` and any browser scheduling jitter.
-        timelineClock.syncExternalTime(t);
+        // `audio.currentTime` is in seconds in the *original audio file*
+        // coordinate system. The store's `currentTime` is in *show time*,
+        // which equals `audioTime - audioInPoint` once a non-destructive
+        // trim is applied. We read the in-point on every pump (rather than
+        // putting it in the deps) so trim adjustments take effect instantly
+        // without tearing down the RAF loop or the lockstep handoff.
+        const inP = useProjectStore.getState().audioInPoint;
+        timelineClock.syncExternalTime(t - inP);
       } else if (masterEngaged) {
         // Audio is no longer advancing (autoplay block, stall, decode error).
         // Hand the timeline back to the lockstep so the show keeps moving.

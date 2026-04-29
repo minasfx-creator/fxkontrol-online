@@ -1,5 +1,4 @@
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
@@ -8,12 +7,27 @@ import { lazy, Suspense } from "react";
 import PageTransitionOverlay from "@/components/ui/PageTransitionOverlay";
 import { LazyChunkBoundary } from "@/components/errors/LazyChunkBoundary";
 import { AppErrorBoundary } from "@/components/errors/AppErrorBoundary";
+import CanvasLoaderWithTimeout from "@/components/editor/CanvasLoaderWithTimeout";
+
+// Route-level Suspense fallback. Same timeout-aware loader used inside Studio,
+// so a stalled route-level dynamic import surfaces a "Reload Studio" button
+// after 8s instead of leaving the user trapped on a spinner.
+function RouteLoaderWithTimeout() {
+  return (
+    <div className="min-h-[100dvh] w-full">
+      <CanvasLoaderWithTimeout timeoutMs={8000} label="Loading..." />
+    </div>
+  );
+}
 
 // MainLayout + UpgradeDialog are lazy-split so the public routes
 // (/landing, /auth, /legal/*, /pricing) don't pay for the dashboard
 // chrome (Sidebar, DockBar, Tactical UI) on first load.
 const MainLayout = lazy(() => import("@/layouts/MainLayout"));
 const UpgradeDialog = lazy(() => import("@/components/upgrade/UpgradeDialog"));
+const SonnerToaster = lazy(() =>
+  import("@/components/ui/sonner").then((m) => ({ default: m.Toaster })),
+);
 
 import { lazyRetry } from "@/lib/lazyRetry";
 import { isEnabled } from "@/lib/featureFlags";
@@ -33,7 +47,10 @@ import NotFound from "./pages/NotFound";
 
 const Install = lazy(lazyRetry(() => import("./pages/Install")));
 const UsbPairingWizard = lazy(lazyRetry(() => import("./pages/UsbPairingWizard")));
+const BlePairingWizard = lazy(lazyRetry(() => import("./pages/BlePairingWizard")));
 const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
+const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage")));
+const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
 const Office = lazy(lazyRetry(() => import("./pages/Office")));
@@ -117,7 +134,9 @@ function App() {
         <AuthProvider>
           <TooltipProvider>
             <Toaster />
-            <Sonner />
+            <Suspense fallback={null}>
+              <SonnerToaster />
+            </Suspense>
             <BrowserRouter>
               <RouteTracker />
               <PageTransitionOverlay />
@@ -128,7 +147,7 @@ function App() {
                 </Suspense>
               )}
               <LazyChunkBoundary>
-                <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+                <Suspense fallback={<RouteLoaderWithTimeout />}>
                   <Routes>
                     <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
                     <Route path="/install" element={<Install />} />
@@ -138,6 +157,12 @@ function App() {
                     {/* Public real-hardware discovery probe — loops scanLight() and shows
                         every device the browser sees, with zero simulated data. */}
                     <Route path="/dev/real-discovery" element={<RealDiscoveryProbe />} />
+                    {/* FXK16 hardware validation harness — Web Serial / BLE,
+                        hold-to-fire per channel, diagnostic-only (bypasses ShowPlan). */}
+                    <Route path="/dev/fxk16-validate" element={<FXK16ValidatePage />} />
+                    {/* FXK16 calibration & diagnostics — handshake card, detected-channel
+                        count, manual hold-to-fire and armed auto-sweep C1..C16. */}
+                    <Route path="/dev/fxk16-calibrate" element={<FXK16CalibrationPage />} />
                     {/* Public legal pages — required by Paddle (Merchant of Record) and must be crawlable without auth. */}
                     <Route path="/legal/terms" element={<Terms />} />
                     <Route path="/legal/refund" element={<Refund />} />
@@ -171,6 +196,9 @@ function App() {
                       <Route path="/pairing" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#pairing" replace /> : <Navigate to="/office" replace />} />
                       {/* iOS-first guided USB authorization wizard. */}
                       <Route path="/pairing/usb" element={<UsbPairingWizard />} />
+                      {/* BLE pairing wizard — scans for FXK16-XXXXXX, performs
+                          handshake (VERSION+STATUS), shows per-attempt status. */}
+                      <Route path="/pairing/ble" element={<BlePairingWizard />} />
                       <Route path="/field-test" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#field-test" replace /> : <Navigate to="/office" replace />} />
 
                       {/* ── Settings & sistema ────────────────────────────────── */}
