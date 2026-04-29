@@ -300,18 +300,34 @@ function Index() {
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
   const [smartScriptOpen, setSmartScriptOpen] = useState(false);
   const [studioPromptOpen, setStudioPromptOpen] = useState(false);
-  // Auto-abrir Assistente IA quando o projeto está totalmente vazio
-  // (sem positions, sem timelineItems, sem trajectories) — uma vez por sessão.
+  // Auto-abrir Assistente IA quando o projeto está totalmente vazio.
+  // Aguarda 1.5s para o store carregar projeto persistido (loadProject é async),
+  // e só dispara se positions / timelineItems / trajectories continuarem vazios.
+  // Flag de sessão é gravada ao FECHAR o modal (não ao abrir) — assim, se o
+  // usuário recarregar antes de interagir, o convite ainda aparece.
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let dismissed = false;
     try {
-      if (typeof window === 'undefined') return;
-      if (sessionStorage.getItem('fxk:aiAssistantAutoOpened') === '1') return;
+      dismissed = sessionStorage.getItem('fxk:aiAssistantDismissed') === '1';
+    } catch { /* ignore */ }
+    if (dismissed) return;
+    const t = window.setTimeout(() => {
       const s = useProjectStore.getState();
-      if (s.positions.length === 0 && s.timelineItems.length === 0 && s.trajectories.length === 0) {
-        sessionStorage.setItem('fxk:aiAssistantAutoOpened', '1');
-        setStudioPromptOpen(true);
-      }
-    } catch { /* ignore storage errors */ }
+      const empty =
+        s.positions.length === 0 &&
+        s.timelineItems.length === 0 &&
+        s.trajectories.length === 0;
+      if (empty) setStudioPromptOpen(true);
+    }, 1500);
+    return () => window.clearTimeout(t);
+  }, []);
+  // Ao fechar o modal, marca que o usuário já viu o convite nesta sessão.
+  const handleStudioPromptOpenChange = useCallback((next: boolean) => {
+    setStudioPromptOpen(next);
+    if (!next) {
+      try { sessionStorage.setItem('fxk:aiAssistantDismissed', '1'); } catch { /* ignore */ }
+    }
   }, []);
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
   const [isDragOver, setIsDragOver] = useState(false);
@@ -802,7 +818,7 @@ function Index() {
       <LiveCard />
       <SmartScriptAssistant open={smartScriptOpen} onClose={() => setSmartScriptOpen(false)} />
       <Suspense fallback={null}>
-        <StudioPromptModal open={studioPromptOpen} onOpenChange={setStudioPromptOpen} />
+        <StudioPromptModal open={studioPromptOpen} onOpenChange={handleStudioPromptOpenChange} />
       </Suspense>
 
     </div>
