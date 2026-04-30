@@ -1,147 +1,64 @@
-# Blueprint UX — Landing → Office → Create → Editor
+# Mover FXK16 do FXKPYRO para o Field Test
 
-Implements the funnel `/landing → /office → /create → /editor/:showId` per the blueprint. Reuses the existing Studio editor, project store, and AI choreography modules — no rewrite. The `/create` Action Layer is the missing piece and the focus of this work.
+Tira o `FXK16ConnectionPanel` de dentro do `PyroFireOnePanel` (Live Firing) e adiciona como uma nova aba dedicada no console `/field` (FieldOps), ao lado de Pairing / Field Test / Mobile Link.
 
-## Scope (MVP 1)
+## Por que mudar
 
-1. `/create` Action Layer route with the four-card hub (blank / template / generated / imported).
-2. `createShowPlan()` factory that resets the project store, seeds defaults, and returns a `showId`.
-3. `/editor/:showId` route that hydrates the existing Studio (`Index.tsx`) from a created plan.
-4. Segment selection step (PYRO / SFX / DRONES / LIGHT / DMX) persisted on the show.
-5. Templates picker (5 starter templates, JSON-defined — no marketplace yet).
-6. AI Generator Wizard (event type / scale / segments / duration) using the existing `aiChoreography/expander.ts`.
-7. Segment-aware topbar in the Studio editor (chips drive `viewport-tools` registry already in place).
-8. Office dashboard: replace current tabs-only landing with the blueprint hub cards (New Show / Open / Templates / Academy / Reports / Devices) above the existing tab strip.
-9. Landing: add the “Como funciona” 4-step strip and make CTAs route to `/office` (logged-in) or `/auth?next=/office`.
+- Hoje o painel FXK16 fica embutido no header do `PyroFireOnePanel.tsx` (linhas 1635-1638), o que mistura **conexão de hardware** (USB/BLE) com **operação de cue/Live Firing**. Cada vez que o operador abre o Live Firing carrega o painel mesmo sem precisar reconectar.
+- Field Ops (`/field`) já é o lugar canônico para pareamento e diagnóstico de transporte (NFC, BLE, transports, Mobile Link). FXK16 pertence a essa família.
+- O singleton `useFXK16Bridge` já é compartilhado por todos os consumidores (`PyroControllerCard`, `LiveStatusChip`, `RealHardwareBridgeDialog`, `cueQueueRunner`) — não há acoplamento de estado com o Pyro. Mover só a UI é seguro.
 
-Out of scope (deferred to MVP 2/3, as in blueprint): Digital Twin report, Marketplace, Academy content, Compliance Export.
+## Mudanças
 
-## Routes
+### 1. Remover do PyroFireOnePanel
+Arquivo: `src/components/editor/live-firing/PyroFireOnePanel.tsx`
 
-```text
-/                  → redirect /studio (kept; default landing for logged-in)
-/landing           → existing public Landing (CTA → /office)
-/office            → Office hub (NEW: blueprint cards + existing tabs)
-/create            → NEW: Action Layer (4 cards)
-/create/blank      → NEW: segment picker + Continue
-/create/template   → NEW: template gallery
-/create/generate   → NEW: AI wizard
-/editor/:showId    → NEW alias of /studio that hydrates by showId
-/studio            → existing Index (kept as canonical viewport)
-```
+- Remover o bloco `{/* FXK16 ... */}` das linhas 1635-1638.
+- Remover o import `FXK16ConnectionPanel` da linha 33.
 
-`/editor` (no id) keeps redirecting to `/studio` for backward compat.
+O painel continua exatamente igual; o que some é só o card de conexão. Status do hardware continua visível no `LiveStatusChip` que já existe no header do FXKPYRO (lê do mesmo `useFXK16Bridge`).
 
-## Data flow
+### 2. Adicionar nova aba no FieldOps
+Arquivo: `src/pages/FieldOps.tsx`
 
-Single new module `src/features/create-flow/createShowPlan.ts`:
+- Estender `TabKey` com `'fxk16'`.
+- Adicionar `{ key: 'fxk16', label: 'FXK16', sub: 'PYRO RELAY', icon: Cable }` ao array `TABS` (entre Pairing e Field Test).
+- Adicionar render condicional `{tab === 'fxk16' && <FXK16Panel />}`.
 
-```text
-createShowPlan({ mode, segments?, templateId?, eventType?, scale?, duration? })
-  ├─ generates showId (crypto.randomUUID)
-  ├─ resets project store via useProjectStore.replaceProjectState({...})
-  ├─ writes meta to localStorage: fxk:show:<id> = { mode, segments, createdAt, name }
-  ├─ for "template": loads JSON from src/features/create-flow/templates/<id>.json
-  ├─ for "generated": calls aiChoreography/expander.ts with the wizard inputs
-  └─ returns showId → caller navigates(`/editor/${showId}`)
-```
+### 3. Novo wrapper de página
+Arquivo novo: `src/components/field/FXK16FieldPanel.tsx`
 
-`/editor/:showId` reads `fxk:show:<id>` on mount; if missing, falls back to current store (legacy behavior). Studio reads `segments` to drive the segmented topbar.
+Wrapper leve que:
+- Renderiza o `FXK16ConnectionPanel` em modo `compact={false}` (versão completa, mais espaçada).
+- Adiciona contexto/help text explicando: handshake VERSION+STATUS, USB vs BLE, Hold-to-Confirm 800 ms para teste de canal.
+- Mostra link discreto para `/dev/fxk16-validate` (harness de validação por canal) e `/dev/fxk16-calibrate` (calibração) — rotas que já existem.
+- Usa o mesmo padrão visual de `DevicePairing` (sticky header, padding consistente com as outras abas).
 
-State extension on `useProjectStore`:
-- add `segments: SegmentType[]` (default `['PYRO']`) to `replaceProjectState` and as a top-level field.
-- add `setSegments(s: SegmentType[])`.
+Não mexe em `useFXK16Bridge`, `useFXK16Commands`, nem em nenhum consumidor downstream — o singleton continua único.
 
-## Files to create
+### 4. Deep-link
+- Hash `#fxk16` já funciona automaticamente pelo `setTabAndHash` existente do FieldOps.
+- Adicionar shortcut: rota `/fxk16` em `App.tsx` que faz `<Navigate to="/field#fxk16" replace />`, para conveniência.
+
+## Arquivos tocados
 
 ```text
-src/pages/
-├─ Create.tsx                     // Action Layer hub (4 cards)
-├─ create/
-│  ├─ CreateBlank.tsx             // segment picker + Continue
-│  ├─ CreateTemplate.tsx          // gallery grid
-│  └─ CreateGenerate.tsx          // wizard (4 steps)
-
-src/features/create-flow/
-├─ createShowPlan.ts              // factory described above
-├─ types.ts                       // CreateMode, ShowPlanMeta
-├─ showMetaStore.ts               // localStorage helpers (fxk:show:<id>)
-├─ templates/
-│  ├─ index.ts                    // template registry (id → meta + loader)
-│  ├─ pyro-sequence.json
-│  ├─ drone-logo.json
-│  ├─ light-chase.json
-│  ├─ festival-full.json
-│  └─ wedding-fx.json
-└─ components/
-   ├─ ActionCard.tsx              // reusable big card w/ icon + title + desc
-   ├─ SegmentChips.tsx            // multi-select PYRO/SFX/DRONES/LIGHT/DMX
-   └─ TemplateCard.tsx
-
-src/features/office/
-└─ OfficeHubCards.tsx             // 6-card hub strip rendered above current tabs
+EDIT  src/components/editor/live-firing/PyroFireOnePanel.tsx   (-2 imports/blocos)
+EDIT  src/pages/FieldOps.tsx                                   (+1 aba, +1 import lazy)
+NEW   src/components/field/FXK16FieldPanel.tsx                 (~80 linhas)
+EDIT  src/App.tsx                                              (+1 redirect /fxk16)
 ```
 
-## Files to edit
+## Não-objetivos
 
-- `src/App.tsx` — add lazy imports + 5 new routes (`/create`, `/create/blank`, `/create/template`, `/create/generate`, `/editor/:showId`).
-- `src/pages/Office.tsx` — render `<OfficeHubCards />` above the tab nav; `New Show` card → `navigate('/create')`, `Open Project` → opens existing project list, others link to existing tabs.
-- `src/pages/Index.tsx` — read `:showId` param, hydrate from `showMetaStore` if present, expose `segments` to the topbar.
-- `src/store/useProjectStore.ts` — add `segments` field + `setSegments` + include in `replaceProjectState`.
-- `src/pages/Landing.tsx` — add 4-step "Como funciona" section before pricing; wire primary CTA to `/office` (auth-gated via existing `AuthRoute`/`ProtectedRoute`).
+- Não muda o protocolo, handshake, comandos, ou flags de feature do FXK16.
+- Não muda nada no `useFXK16Bridge` (singleton continua disponível para o `cueQueueRunner` durante Live Firing).
+- Não toca em segurança/ARM. Hold-to-Confirm 800 ms continua igual.
+- Não remove `FXK16ConnectionPanel` em si — só desacopla do PyroFireOnePanel.
 
-## Editor topbar (segment-aware)
+## Critério de aceitação
 
-The viewport-tools registry already exists (`src/features/viewport-tools/ViewportToolPanel.tsx`). Add a thin top strip in `Index.tsx`:
-
-```text
-[ PYRO ] [ SFX ] [ DRONES ] [ LIGHT ] [ DMX ]   [ Guide ON ] [ Validate ] [ Export ]
-```
-
-- Chips reflect `segments` from the store; clicking a chip sets the active segment that `ViewportToolPanel` already consumes.
-- `Guide ON` toggles a local `useProjectStore.uiHelpers` flag (already present, reused).
-- `Validate` and `Export` reuse existing buttons from the current Studio header (no new logic).
-
-## AI Generator Wizard
-
-`CreateGenerate.tsx` — 4 sequential steps using the existing UI primitives (`Card`, `Button`, segmented chips):
-
-1. Event type: Festival / Casamento / Arena / Corporativo
-2. Scale: Pequeno / Médio / Grande
-3. Segments: multi-select chips
-4. Duration: 30s / 1min / 3min / Custom
-
-`Generate Show` button → `createShowPlan({ mode: 'generated', ... })` which delegates to `src/modules/aiChoreography/expander.ts` (already implemented and used by `AIShowBuilderPanel`). On success → `navigate(\`/editor/\${showId}\`)`.
-
-## ASCII map of the flow
-
-```text
-Landing  ──CTA──►  /auth?next=/office  ──►  /office
-                                              │
-                            ┌─────────────────┼─────────────────┐
-                            ▼                 ▼                 ▼
-                       New Show          Templates           Open
-                            │                 │                 │
-                            ▼                 ▼                 ▼
-                        /create  ──►  /create/template ──►  picker
-                            │
-            ┌───────────────┼───────────────┬───────────────┐
-            ▼               ▼               ▼               ▼
-         blank          template        generate         import
-            │               │               │               │
-            └───────────────┴──► createShowPlan() ──► /editor/:showId
-```
-
-## Acceptance criteria
-
-- From a fresh session, user can: land on `/landing`, click CTA, log in, reach `/office`, click `New Show`, choose `Generate Automatically`, run the 4-step wizard, and arrive on `/editor/<uuid>` with the Studio already populated by the AI expander.
-- `Use Template` flow loads one of the 5 starter JSONs and seeds the project store atomically (no merge with prior state).
-- `Blank` flow seeds an empty plan with the chosen segments and the editor topbar reflects them.
-- `/editor/:showId` survives a hard reload (meta lives in `localStorage`).
-- Existing routes (`/studio`, `/office?tab=...`, `/command`, `/field`) keep working unchanged.
-
-## Non-goals
-
-- No backend persistence in this PR (showId lives in `localStorage`); Supabase persistence stays in `useProjectPersistence` as today.
-- No marketplace, no Academy content, no Digital Twin report.
-- No safety/ARM changes — `createShowPlan` only writes to the design-time store; never touches `SafetyStateMachine`.
+- Abrir `/studio` → Pyro panel não mostra mais o card de conexão FXK16. `LiveStatusChip` continua refletindo o estado.
+- Abrir `/field#fxk16` → mostra o `FXK16FieldPanel` com o card completo de conexão USB/BLE e botões de Test / Validate / Calibrate.
+- Conectar pelo Field Ops → Live Firing reflete o link imediatamente (singleton compartilhado).
+- `/fxk16` redireciona para `/field#fxk16`.
