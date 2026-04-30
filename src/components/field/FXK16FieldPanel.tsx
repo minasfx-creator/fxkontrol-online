@@ -37,6 +37,9 @@ export default function FXK16FieldPanel() {
         {/* Operator config — shared with FieldTest via fxk16FieldConfigStore. */}
         <FXK16FieldSettingsPanel />
 
+        {/* Live activity feed — mirrors FieldTest + Live Firing in real time. */}
+        <FXK16ActivityFeed title="Live Activity" />
+
         {/* Help / context */}
         <div className="rounded-lg border border-border/40 bg-card/30 p-3 space-y-2">
           <div className="flex items-center gap-2">
