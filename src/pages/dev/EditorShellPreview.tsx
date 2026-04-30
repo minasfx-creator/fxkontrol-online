@@ -461,3 +461,33 @@ function Track({ label, colorVar, active, offset }: { label: string; colorVar: s
     </div>
   );
 }
+
+function LayoutIconButton({
+  ariaLabel,
+  onClick,
+  active,
+  children,
+}: {
+  ariaLabel: string;
+  onClick: () => void;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={ariaLabel}
+      aria-label={ariaLabel}
+      aria-pressed={active}
+      className={
+        'flex size-7 items-center justify-center rounded-ds-sm transition-colors ' +
+        (active
+          ? 'bg-status-sync/15 text-status-sync'
+          : 'text-ds-text-muted hover:text-ds-text-primary hover:bg-ds-surface-deep')
+      }
+    >
+      {children}
+    </button>
+  );
+}
