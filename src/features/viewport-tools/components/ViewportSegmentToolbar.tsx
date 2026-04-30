@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { viewportToolRegistry } from '@/features/viewport-tools/registry';
 import { operationLog } from '@/features/viewport-tools/command-dispatcher';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -14,20 +15,29 @@ import '@/features/viewport-tools/segments/registerAll';
 
 const SEGMENTS: SegmentType[] = ['PYRO', 'SFX', 'DRONES', 'LIGHT', 'DMX'];
 
+export type ViewportSegmentToolbarOrientation = 'horizontal-top' | 'vertical-right';
+
 interface Props {
   /** Optional initial segment. Defaults to PYRO. */
   defaultSegment?: SegmentType;
+  /** Layout. 'horizontal-top' (default) keeps legacy top-center bar.
+   *  'vertical-right' renders a thin retractable glass dock on the right edge. */
+  orientation?: ViewportSegmentToolbarOrientation;
 }
 
 /**
- * ViewportSegmentToolbar — fixed bar at the top of the 3D viewport.
+ * ViewportSegmentToolbar — segment switcher for viewport tools.
  * Selecting a segment opens the corresponding ViewportToolPanel as an
- * overlay on the right. Undo/Redo buttons drive the operationLog.
+ * overlay. Undo button drives the operationLog.
  *
  * Visual: Mission Control / Vantablack palette, Cyan = active segment.
  */
-export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Props) {
+export default function ViewportSegmentToolbar({
+  defaultSegment = 'PYRO',
+  orientation = 'horizontal-top',
+}: Props) {
   const [active, setActive] = useState<SegmentType | null>(defaultSegment);
+  const [collapsed, setCollapsed] = useState(false);
   const [, force] = useState(0);
 
   // Effect/Drone config dialog state
