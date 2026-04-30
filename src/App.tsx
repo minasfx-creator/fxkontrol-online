@@ -52,6 +52,7 @@ const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryPro
 const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage")));
 const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")));
 const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
+const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
 const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
@@ -177,6 +178,8 @@ function App() {
                     {/* FXKONTROL DS v1 — public reference page (tokens, segments, status,
                         components, states). No hardware, no auth. */}
                     <Route path="/dev/design-system" element={<DesignSystemShowcase />} />
+                    {/* Live demo of <EditorShell> w/ DS components — pure presentation. */}
+                    <Route path="/dev/editor-shell" element={<EditorShellPreview />} />
                     {/* Public legal pages — required by Paddle (Merchant of Record) and must be crawlable without auth. */}
                     <Route path="/legal/terms" element={<Terms />} />
                     <Route path="/legal/refund" element={<Refund />} />
