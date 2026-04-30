@@ -219,6 +219,41 @@ const plugin: ViewportSegmentPlugin = {
       }
       return null; // dialog handles its own ops
     },
+
+    PYRO_PICK_VDL(_payload, ctx): ViewportOperation | null {
+      const state = useProjectStore.getState();
+      let timelineItemId: string | null = state.selectedTimelineItemId ?? null;
+      if (!timelineItemId && ctx.selectionIds.length > 0) {
+        const sel = new Set(ctx.selectionIds);
+        const first = state.timelineItems.find(
+          (t) => t.positionId && sel.has(t.positionId)
+        );
+        timelineItemId = first?.id ?? null;
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('viewport-tools:open-vdl-picker', {
+            detail: { timelineItemId },
+          })
+        );
+      }
+      return null; // dialog handles its own op
+    },
+
+    PYRO_TOGGLE_SAFETY_OVERLAY(): ViewportOperation | null {
+      const before = useSafetyOverlayStore.getState().pyroSafetyVisible;
+      useSafetyOverlayStore.getState().togglePyroSafety();
+      const after = useSafetyOverlayStore.getState().pyroSafetyVisible;
+      return {
+        id: uid('op'),
+        segment: 'PYRO',
+        command: 'PYRO_TOGGLE_SAFETY_OVERLAY',
+        timestamp: Date.now(),
+        before: { visible: before },
+        after: { visible: after },
+        description: `Safety overlay ${after ? 'shown' : 'hidden'}.`,
+      };
+    },
   },
 };
 
