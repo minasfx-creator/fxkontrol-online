@@ -2114,7 +2114,14 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
           <div className="flex">
             <div className="w-24 flex-shrink-0" />
             <div className="flex-1 relative">
-              <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
+              <TimeRuler
+                duration={duration}
+                pixelsPerSecond={pixelsPerSecond}
+                scrollLeft={scrollLeft}
+                viewportWidth={viewportWidth}
+                audioStartOffset={audioStartOffset}
+                onAudioFileDrop={handleAudioFileDropOnRuler}
+              />
               <TimelineGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} snapMode={snapMode} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               {/* Playhead — DOM-direct updates via transient Zustand subscription (zero re-renders) */}
               <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} snapMode={snapMode} onScrubPointerDown={handleScrubPointerDown} />
