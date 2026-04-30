@@ -677,6 +677,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   replaceProjectState: (snap: any) => set(() => ({
     projectId: snap.projectId ?? null,
     projectName: snap.projectName ?? 'Untitled Show',
+    segments: Array.isArray(snap.segments) && snap.segments.length > 0 ? snap.segments : ['PYRO'],
     duration: snap.duration ?? 120,
     audioUrl: snap.audioUrl ?? null,
     bpm: snap.bpm ?? null,
