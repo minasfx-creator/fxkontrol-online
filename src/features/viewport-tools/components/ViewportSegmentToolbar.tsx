@@ -11,6 +11,7 @@ import EffectConfigDialog from './EffectConfigDialog';
 import DroneConfigDialog from './DroneConfigDialog';
 import VdlPickerDialog from './VdlPickerDialog';
 import DmxPatchDialog from './DmxPatchDialog';
+import ValidatorsReportDialog from './ValidatorsReportDialog';
 import type { SegmentType } from '@/features/viewport-tools/types';
 
 // Side-effect import: registers all 5 segment plugins exactly once.
@@ -76,6 +77,7 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
     open: false,
     tab: 'patch',
   });
+  const [validatorsDialog, setValidatorsDialog] = useState(false);
 
   useEffect(() => operationLog.subscribe(() => force((n) => n + 1)), []);
   useEffect(() => viewportToolRegistry.subscribe(() => force((n) => n + 1)), []);
@@ -105,15 +107,18 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       const detail = (e as CustomEvent).detail as { tab?: 'patch' | 'conflicts' };
       setDmxDialog({ open: true, tab: detail?.tab ?? 'patch' });
     };
+    const onValidators = () => setValidatorsDialog(true);
     window.addEventListener('viewport-tools:open-effect-config', onEffect);
     window.addEventListener('viewport-tools:open-drone-config', onDrone);
     window.addEventListener('viewport-tools:open-vdl-picker', onVdl);
     window.addEventListener('viewport-tools:open-dmx-patch', onDmx);
+    window.addEventListener('viewport-tools:open-validators-report', onValidators);
     return () => {
       window.removeEventListener('viewport-tools:open-effect-config', onEffect);
       window.removeEventListener('viewport-tools:open-drone-config', onDrone);
       window.removeEventListener('viewport-tools:open-vdl-picker', onVdl);
       window.removeEventListener('viewport-tools:open-dmx-patch', onDmx);
+      window.removeEventListener('viewport-tools:open-validators-report', onValidators);
     };
   }, []);
 
@@ -167,6 +172,11 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       const before = (op.before as { visible: boolean }).visible;
       import('@/features/viewport-tools/safetyOverlayStore').then((m) =>
         m.useSafetyOverlayStore.getState().setPyroSafety(before),
+      );
+    } else if (op.command === 'DRONES_TOGGLE_COLLISION') {
+      const before = (op.before as { visible: boolean }).visible;
+      import('@/features/viewport-tools/safetyOverlayStore').then((m) =>
+        m.useSafetyOverlayStore.getState().setDronesCollision(before),
       );
     }
   };
@@ -285,6 +295,10 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       <DmxPatchDialog
         open={dmxDialog.open}
         onClose={() => setDmxDialog((d) => ({ ...d, open: false }))}
+      />
+      <ValidatorsReportDialog
+        open={validatorsDialog}
+        onClose={() => setValidatorsDialog(false)}
       />
     </div>
   );

@@ -1709,6 +1709,7 @@ export default function SkyCanvas() {
   const environment = useSceneStore(st => st.environment);
   const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
   const pyroSafetyVisible = useSafetyOverlayStore((s) => s.pyroSafetyVisible);
+  const dronesCollisionVisible = useSafetyOverlayStore((s) => s.dronesCollisionVisible);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const presentationMode = useSceneStore(st => st.settings.presentationMode);
   // MissionSetupOverlay removed — scene loads immediately
@@ -2155,7 +2156,7 @@ export default function SkyCanvas() {
           <DroneRendererSwitch />
         </SubsystemBoundary>
         {!isMobile && <BoidsVisualizer />}
-        {!isMobile && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
+        {!isMobile && dronesCollisionVisible && <CollisionAvoidanceOverlay config={DEFAULT_AVOIDANCE} />}
         <SubsystemBoundary name="Pyrotechnics">
           <Suspense fallback={null}>
             <TimelineEffects />
