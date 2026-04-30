@@ -8,13 +8,17 @@ import EmptySceneOverlay from './overlays/EmptySceneOverlay';
 import ViewportErrorOverlay from './overlays/ViewportErrorOverlay';
 import RecoverWebGLOverlay from './overlays/RecoverWebGLOverlay';
 import EngineDiagnosticsPanel from './overlays/EngineDiagnosticsPanel';
-import ViewportSegmentToolbar from '@/features/viewport-tools/components/ViewportSegmentToolbar';
+import ViewportSegmentToolbar, { type ViewportSegmentToolbarOrientation } from '@/features/viewport-tools/components/ViewportSegmentToolbar';
 
 interface Props {
   plan: ShowPlan | null;
   className?: string;
   onRequestGenerate?: () => void;
   showDiagnostics?: boolean;
+  /** Layout for the segment toolbar. Defaults to 'horizontal-top' (legacy). */
+  segmentToolbarOrientation?: ViewportSegmentToolbarOrientation;
+  /** When true, do not render the embedded segment toolbar (host page mounts its own). */
+  hideSegmentToolbar?: boolean;
 }
 
 /**
