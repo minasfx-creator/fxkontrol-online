@@ -102,6 +102,34 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
 
   const droneReport = useMemo(() => generateDroneFormationDetailed(droneParams), [droneParams]);
 
+  // ── Cake derived params + live report ─────────────────────
+  const cakeAnchorPos = useMemo(
+    () => positions.find((p) => p.id === cakeAnchorId),
+    [positions, cakeAnchorId],
+  );
+  const cakeParams: CakeParams = useMemo(() => ({
+    anchorPositionId: cakeAnchorId || 'preview',
+    anchor: cakeAnchorPos
+      ? { x: cakeAnchorPos.x, y: cakeAnchorPos.y, z: cakeAnchorPos.z }
+      : { x: 0, y: 0, z: 0 },
+    effectId: cakeEffectId || 'preview',
+    shots: cakeShots,
+    staggerMs: cakeStaggerMs,
+    spreadDeg: cakeSpreadDeg,
+    startTime: cakeStart,
+    rows: cakeRows,
+    rowGapMs: cakeRowGapMs,
+    sweep: cakeSweep,
+    bearingDeg: cakeBearing,
+    tilt: cakeTilt,
+    caliber: cakeCaliber,
+  }), [
+    cakeAnchorId, cakeAnchorPos, cakeEffectId, cakeShots, cakeStaggerMs,
+    cakeSpreadDeg, cakeStart, cakeRows, cakeRowGapMs, cakeSweep,
+    cakeBearing, cakeTilt, cakeCaliber,
+  ]);
+  const cakeReport = useMemo(() => generateCakeDetailed(cakeParams).report, [cakeParams]);
+
   useEffect(() => {
     if (!open) return;
     if (!cakeAnchorId && firstSelectedPyro) setCakeAnchorId(firstSelectedPyro.id);
@@ -115,17 +143,8 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
   };
 
   const submitCake = () => {
-    const anchor = positions.find((p) => p.id === cakeAnchorId);
-    if (!anchor || !cakeEffectId) return;
-    dispatch('viewport-tools:generate-cake', {
-      anchorPositionId: anchor.id,
-      anchor: { x: anchor.x, y: anchor.y, z: anchor.z },
-      effectId: cakeEffectId,
-      shots: cakeShots,
-      staggerMs: cakeStaggerMs,
-      spreadDeg: cakeSpreadDeg,
-      startTime: cakeStart,
-    });
+    if (!cakeAnchorPos || !cakeEffectId) return;
+    dispatch('viewport-tools:generate-cake', cakeParams);
     onClose();
   };
 
