@@ -30,8 +30,44 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
   const [active, setActive] = useState<SegmentType | null>(defaultSegment);
   const [, force] = useState(0);
 
+  // Effect/Drone config dialog state
+  const [effectDialog, setEffectDialog] = useState<{
+    open: boolean;
+    effectId: string | null;
+    timelineItemId: string | null;
+  }>({ open: false, effectId: null, timelineItemId: null });
+  const [droneDialog, setDroneDialog] = useState<{ open: boolean; positionId: string | null }>({
+    open: false,
+    positionId: null,
+  });
+
   useEffect(() => operationLog.subscribe(() => force((n) => n + 1)), []);
   useEffect(() => viewportToolRegistry.subscribe(() => force((n) => n + 1)), []);
+
+  // Bridge CustomEvents from plugin handlers → dialog state.
+  useEffect(() => {
+    const onEffect = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        effectId: string;
+        timelineItemId: string | null;
+      };
+      setEffectDialog({
+        open: true,
+        effectId: detail.effectId,
+        timelineItemId: detail.timelineItemId,
+      });
+    };
+    const onDrone = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { positionId: string };
+      setDroneDialog({ open: true, positionId: detail.positionId });
+    };
+    window.addEventListener('viewport-tools:open-effect-config', onEffect);
+    window.addEventListener('viewport-tools:open-drone-config', onDrone);
+    return () => {
+      window.removeEventListener('viewport-tools:open-effect-config', onEffect);
+      window.removeEventListener('viewport-tools:open-drone-config', onDrone);
+    };
+  }, []);
 
   const undo = () => {
     const op = operationLog.popUndo();
