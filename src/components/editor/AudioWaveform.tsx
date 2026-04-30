@@ -746,7 +746,6 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       return Math.max(0, Math.min(audioOriginalDuration, audioInPoint + showTime));
     };
     const startT = toFileTime(e.clientX);
-    setSelectionDrag({ start: startT, end: startT });
     setPendingIn(startT);
     setPendingOut(Math.min(audioOriginalDuration, startT + 0.05));
     setDraggingHandle('out'); // suppress redownsample while dragging
@@ -755,7 +754,6 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       const t = toFileTime(ev.clientX);
       const a = Math.min(startT, t);
       const b = Math.max(startT, t);
-      setSelectionDrag({ start: a, end: b });
       setPendingIn(a);
       setPendingOut(Math.max(a + 0.05, b));
     };
@@ -1122,7 +1120,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
               <button onClick={handleApplyTrim} className="text-safety hover:text-safety/80" title="Apply (Enter)">
                 <Check className="h-3 w-3" />
               </button>
-              <button onClick={() => { setTrimMode(false); setSelectionDrag(null); }} className="text-muted-foreground hover:text-foreground" title="Cancel (Esc)">
+              <button onClick={() => setTrimMode(false)} className="text-muted-foreground hover:text-foreground" title="Cancel (Esc)">
                 <X className="h-3 w-3" />
               </button>
             </div>
