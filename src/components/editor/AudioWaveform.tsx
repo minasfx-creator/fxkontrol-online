@@ -390,7 +390,13 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
         },
       });
     } else {
+      // Atomic Pause: pause audio AND release master sync no mesmo frame
+      // pra que o clock não fique congelado entre `audio.pause()` e o
+      // cleanup async do useAudioMasterClock effect (que pode ficar 1
+      // RAF atrasado em casos de re-render pesado).
       audio.pause();
+      timelineClock.releaseExternalSync();
+      lockstep.setEnabled('playback', true);
     }
 
     return () => {
