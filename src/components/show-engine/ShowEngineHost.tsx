@@ -8,6 +8,7 @@ import EmptySceneOverlay from './overlays/EmptySceneOverlay';
 import ViewportErrorOverlay from './overlays/ViewportErrorOverlay';
 import RecoverWebGLOverlay from './overlays/RecoverWebGLOverlay';
 import EngineDiagnosticsPanel from './overlays/EngineDiagnosticsPanel';
+import ViewportSegmentToolbar from '@/features/viewport-tools/components/ViewportSegmentToolbar';
 
 interface Props {
   plan: ShowPlan | null;
@@ -68,6 +69,7 @@ export default function ShowEngineHost({
         <RecoverWebGLOverlay onRecover={() => engineRef.current?.recoverContext()} />
       )}
       {showDiagnostics && <EngineDiagnosticsPanel />}
+      {state === 'ready' && <ViewportSegmentToolbar />}
     </div>
   );
 }
