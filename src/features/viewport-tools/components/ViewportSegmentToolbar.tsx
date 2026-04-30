@@ -251,6 +251,22 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       import('@/features/viewport-tools/safetyOverlayStore').then((m) =>
         m.useSafetyOverlayStore.getState().setDronesCollision(before),
       );
+    } else if (op.command === 'PYRO_GENERATE_CAKE') {
+      const ids = new Set((op.after as { addedIds: string[] }).addedIds);
+      useProjectStore.setState((s) => ({
+        timelineItems: s.timelineItems.filter((it) => !ids.has(it.id)),
+      }));
+    } else if (op.command === 'PYRO_GENERATE_MORTAR_FAN') {
+      const after = op.after as { addedPositionIds: string[]; addedItemIds: string[] };
+      const posIds = new Set(after.addedPositionIds);
+      const itemIds = new Set(after.addedItemIds);
+      useProjectStore.setState((s) => ({
+        positions: s.positions.filter((p) => !posIds.has(p.id)),
+        timelineItems: s.timelineItems.filter((it) => !itemIds.has(it.id)),
+      }));
+    } else if (op.command === 'DRONES_GENERATE_FORMATION') {
+      const formationId = (op.after as { formationId: string }).formationId;
+      useProjectStore.getState().removeDroneFormation(formationId);
     }
   };
 
