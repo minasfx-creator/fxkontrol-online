@@ -105,7 +105,7 @@ export default function RealHardwareBridgeDialog({ open, onClose }: Props) {
   };
 
   const eStop = useHoldToConfirm({
-    durationMs: 600,
+    duration: 600,
     onConfirm: () => runner.eStop('user-hold'),
   });
 
@@ -114,7 +114,7 @@ export default function RealHardwareBridgeDialog({ open, onClose }: Props) {
     (status === 'idle' || status === 'finished' || status === 'aborted') &&
     runner.getProgress().total > 0;
   const canRun = fxk.isConnected && status === 'armed';
-  const canCancel = status === 'running' || status === 'armed';
+  const canCancel: boolean = status === 'running' || status === 'armed';
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -247,10 +247,10 @@ export default function RealHardwareBridgeDialog({ open, onClose }: Props) {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onPointerDown={eStop.start}
-            onPointerUp={eStop.cancel}
-            onPointerLeave={eStop.cancel}
-            disabled={!canCancel && status !== 'running' && status !== 'armed'}
+            onPointerDown={eStop.startHold}
+            onPointerUp={eStop.cancelHold}
+            onPointerLeave={eStop.cancelHold}
+            disabled={!canCancel}
             className="relative flex-1 h-10 rounded-lg border border-red-500/60 bg-red-500/10 text-red-200 font-bold tracking-wider uppercase text-xs hover:bg-red-500/20 transition-all disabled:opacity-40 overflow-hidden"
           >
             <div
