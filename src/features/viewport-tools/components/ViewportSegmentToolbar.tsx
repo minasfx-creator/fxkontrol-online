@@ -408,6 +408,7 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
         onClose={() => setGeneratorsDialog(false)}
       />
       <DmxHeatmapOverlay />
+      <EdgeSnapGuides active={drag.dragging} edges={drag.snappedEdges} />
     </div>
   );
 }
