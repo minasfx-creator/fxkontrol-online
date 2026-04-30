@@ -16,6 +16,8 @@ import { registerSegmentPlugin } from '../registry';
 import type { ViewportSegmentPlugin, ViewportOperation } from '../types';
 import { selectAllBySegment } from '../selection-engine';
 import { pyroValidators } from '../validators/pyro.validator';
+import { fireoneValidators } from '../validators/fireone.validator';
+import { showvenValidators } from '../validators/showven.validator';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSafetyOverlayStore } from '../safetyOverlayStore';
 import type { TimelineItem } from '@/types/projectTypes';
@@ -26,7 +28,7 @@ function uid(prefix: string): string {
 
 const plugin: ViewportSegmentPlugin = {
   segment: 'PYRO',
-  validators: pyroValidators,
+  validators: [...pyroValidators, ...fireoneValidators, ...showvenValidators],
   tools: [
     {
       id: 'pyro.select-all',
@@ -94,6 +96,15 @@ const plugin: ViewportSegmentPlugin = {
       command: 'PYRO_TOGGLE_SAFETY_OVERLAY',
       icon: 'ShieldAlert',
       hint: 'Show / hide the geofence + ballistic preview overlays.',
+    },
+    {
+      id: 'pyro.run-validators',
+      label: 'Run Advanced Validators',
+      segment: 'PYRO',
+      scope: 'safety',
+      command: 'PYRO_RUN_VALIDATORS',
+      icon: 'ShieldCheck',
+      hint: 'FireOne stagger + Showven device limits + base PYRO checks.',
     },
   ],
   commandHandlers: {
