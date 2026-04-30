@@ -36,10 +36,10 @@ export function sitemapFromRegistry(options: SitemapPluginOptions = {}): Plugin 
 
   let lastWritten = '';
 
-  // Lightweight TS loader: the registry is intentionally pure (data + string
-  // helpers), so we can read the source and evaluate the exported constants
-  // by transpiling on the fly via esbuild (already a Vite dep, so no new
-  // package). This avoids forcing devs to add a separate ts-node setup.
+  // Lightweight TS loader: the registry is intentionally a *pure* module
+  // (data + string helpers, no external imports beyond `type` ones). We
+  // strip TS-only syntax with a small regex pass and dynamic-import the
+  // result as ESM. This keeps the plugin zero-dep — no esbuild/ts-node.
   async function loadRegistry(): Promise<{
     PUBLIC_ROUTES: Array<{ path: string; changefreq?: string; priority?: number; lastmod?: string }>;
     SITE_ORIGIN: string;
@@ -49,27 +49,63 @@ export function sitemapFromRegistry(options: SitemapPluginOptions = {}): Plugin 
       today?: string,
     ) => string;
   }> {
-    // Use Vite's bundled esbuild to transpile the TS source to a temp file,
-    // then dynamic-import it. Cache-bust with mtime so HMR edits are picked
-    // up without needing to restart the dev server.
-    const { build } = await import('esbuild');
+    const src = await fs.readFile(registryPath, 'utf8');
+    const stripped = stripTypeScript(src);
+
     const stat = await fs.stat(registryPath);
     const tmpDir = path.join(root, 'node_modules', '.cache', 'vite-plugin-sitemap');
     await fs.mkdir(tmpDir, { recursive: true });
     const outFile = path.join(tmpDir, `publicRoutes.${stat.mtimeMs}.mjs`);
-
-    await build({
-      entryPoints: [registryPath],
-      outfile: outFile,
-      bundle: false,
-      format: 'esm',
-      platform: 'node',
-      target: 'node18',
-      logLevel: 'silent',
-    });
+    await fs.writeFile(outFile, stripped, 'utf8');
 
     return await import(pathToFileURL(outFile).href);
   }
+
+  /**
+   * Minimal TS → JS pass for the registry module:
+   *   • drop `import type ... from '...';` lines
+   *   • drop standalone `export type ...` and `export interface ...` blocks
+   *   • drop `: TypeAnnotation` on top-level const declarations (e.g.
+   *     `export const FOO: SitemapRoute[] = [...]` → `export const FOO = [...]`)
+   *   • drop function param/return type annotations
+   *
+   * The registry MUST stay simple enough for these heuristics to suffice
+   * (no decorators, no enums, no namespaces). If you need richer TS, switch
+   * to esbuild — but then add @types/node and esbuild as devDeps.
+   */
+  function stripTypeScript(src: string): string {
+    let out = src;
+    // 1. Remove `import type ... ;`
+    out = out.replace(/^\s*import\s+type\s+[^;]+;\s*$/gm, '');
+    // 2. Remove `export type Foo = ...;` (single line or until matching ;)
+    out = out.replace(/^\s*export\s+type\s+\w[\s\S]*?;\s*$/gm, '');
+    // 3. Remove `export interface Foo { ... }` blocks (balanced braces, depth-1).
+    out = out.replace(/^\s*export\s+interface\s+\w+[^{]*\{[\s\S]*?^\}\s*$/gm, '');
+    // 4. Remove `interface Foo { ... }` (non-exported).
+    out = out.replace(/^\s*interface\s+\w+[^{]*\{[\s\S]*?^\}\s*$/gm, '');
+    // 5. Strip type annotations on simple `const NAME: Type = ` / `let` / `var`.
+    //    Conservative: only when the annotation has no nested braces/parens.
+    out = out.replace(/(\b(?:const|let|var)\s+\w+)\s*:\s*[^=;]+?(\s*=)/g, '$1$2');
+    // 6. Strip return type annotations on functions: `): Type {` → `) {`.
+    //    Conservative: bail if the annotation contains a `{` (object types).
+    out = out.replace(/\)\s*:\s*[^{=;]+?(\s*\{)/g, ')$1');
+    // 7. Strip param annotations: `(name: Type, other: Type = default)`.
+    //    Walk parameter lists conservatively.
+    out = out.replace(/\(([^()]*)\)/g, (_m, inner: string) => {
+      if (!inner.includes(':')) return `(${inner})`;
+      const parts = inner.split(',').map((p) => {
+        const eq = p.indexOf('=');
+        const name = eq === -1 ? p : p.slice(0, eq);
+        const def = eq === -1 ? '' : p.slice(eq);
+        const colon = name.indexOf(':');
+        const cleanName = colon === -1 ? name : name.slice(0, colon);
+        return cleanName + def;
+      });
+      return `(${parts.join(',')})`;
+    });
+    return out;
+  }
+
 
   async function generate(server?: ViteDevServer): Promise<void> {
     try {
