@@ -31,6 +31,7 @@ import {
   snapAccent,
   markRecentDrop,
   useRecentDropId,
+  isEffectAllowedOnTrack,
   type SnapReason,
 } from './timelineDropFx';
 import {
