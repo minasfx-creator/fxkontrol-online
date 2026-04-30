@@ -1001,6 +1001,7 @@ function DroneFXTrackRow({ pixelsPerSecond, duration, scrollRef }: { pixelsPerSe
         <span className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-[0.08em]">Drone FX</span>
       </div>
       <div
+        data-timeline-track={3}
         className="flex-1 relative h-8"
         style={{ background: 'hsl(var(--background) / 0.4)' }}
         onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
