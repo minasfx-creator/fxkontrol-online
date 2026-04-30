@@ -9,8 +9,9 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { WebGLErrorBoundary } from '@/components/editor/skycanvas/sharedState';
 import StudioErrorBoundary from '@/components/errors/StudioErrorBoundary';
+import { lazyRetry } from '@/lib/lazyRetry';
 
-const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
+const SkyCanvas = lazy(lazyRetry(() => import('@/components/editor/SkyCanvas')));
 
 export default function SkyCanvasSmoke() {
   const [tick, setTick] = useState(0);
