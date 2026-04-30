@@ -1632,10 +1632,7 @@ export default function PyroFireOnePanel({
       {renderFileInput()}
       {renderHeader()}
       {renderConnectionBar()}
-      {/* FXK16 — 16ch ESP32-S3 relay quick-connect (USB / BLE) */}
-      <div className={cn(sz === 'xl' ? 'px-6 py-2' : sz === 'fs' ? 'px-4 py-1.5' : 'px-2 py-1')}>
-        <FXK16ConnectionPanel compact={sz !== 'xl'} />
-      </div>
+      {/* FXK16 connection panel moved to /field#fxk16 (FieldOps tab). */}
       {renderMasterArm()}
       {renderStatusStrip()}
       {renderModeTabs()}
