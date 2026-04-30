@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronLeft, GripVertical } from 'lucide-react';
+import { ChevronRight, ChevronLeft, GripVertical, Sparkles } from 'lucide-react';
 import { viewportToolRegistry } from '@/features/viewport-tools/registry';
 import { operationLog } from '@/features/viewport-tools/command-dispatcher';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -16,6 +16,7 @@ import DmxPatchDialog from './DmxPatchDialog';
 import ValidatorsReportDialog from './ValidatorsReportDialog';
 import ExportCenterDialog from './ExportCenterDialog';
 import GeneratorsDialog from './GeneratorsDialog';
+import GuidedModeDialog from './GuidedModeDialog';
 import DmxHeatmapOverlay from './DmxHeatmapOverlay';
 import { generateCakeDetailed, type CakeParams } from '@/features/viewport-tools/generators/cakeGenerator';
 import { generateMortarFan, type MortarFanParams } from '@/features/viewport-tools/generators/mortarFanGenerator';
@@ -88,6 +89,7 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
   const [validatorsDialog, setValidatorsDialog] = useState(false);
   const [exportDialog, setExportDialog] = useState(false);
   const [generatorsDialog, setGeneratorsDialog] = useState(false);
+  const [guidedDialog, setGuidedDialog] = useState(false);
 
   useEffect(() => operationLog.subscribe(() => force((n) => n + 1)), []);
   useEffect(() => viewportToolRegistry.subscribe(() => force((n) => n + 1)), []);
@@ -120,6 +122,7 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
     const onValidators = () => setValidatorsDialog(true);
     const onExport = () => setExportDialog(true);
     const onOpenGenerators = () => setGeneratorsDialog(true);
+    const onOpenGuided = () => setGuidedDialog(true);
 
     // ── Generator commit handlers (mutate store + record undo) ──
     const uid = (p: string) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -187,6 +190,7 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
     window.addEventListener('viewport-tools:open-validators-report', onValidators);
     window.addEventListener('viewport-tools:open-export-center', onExport);
     window.addEventListener('viewport-tools:open-generators', onOpenGenerators);
+    window.addEventListener('viewport-tools:open-guided-mode', onOpenGuided);
     window.addEventListener('viewport-tools:generate-cake', onGenCake);
     window.addEventListener('viewport-tools:generate-mortar-fan', onGenFan);
     window.addEventListener('viewport-tools:generate-drone-formation', onGenDrone);
@@ -198,6 +202,7 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       window.removeEventListener('viewport-tools:open-validators-report', onValidators);
       window.removeEventListener('viewport-tools:open-export-center', onExport);
       window.removeEventListener('viewport-tools:open-generators', onOpenGenerators);
+      window.removeEventListener('viewport-tools:open-guided-mode', onOpenGuided);
       window.removeEventListener('viewport-tools:generate-cake', onGenCake);
       window.removeEventListener('viewport-tools:generate-mortar-fan', onGenFan);
       window.removeEventListener('viewport-tools:generate-drone-formation', onGenDrone);
@@ -344,6 +349,17 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
             );
           })}
           <div className="w-6 h-px bg-cyan-500/20 my-0.5" />
+          <FloatTooltip label="Modo Guiado" side={panelOnLeft ? 'left' : 'right'}>
+            <Button
+              size="sm"
+              variant="ghost"
+              data-no-drag
+              className="h-7 w-9 p-0 text-cyan-300 hover:text-cyan-100 hover:bg-cyan-500/10"
+              onClick={() => setGuidedDialog(true)}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+            </Button>
+          </FloatTooltip>
           <FloatTooltip label="Undo" shortcut="⌘Z" side={panelOnLeft ? 'left' : 'right'}>
             <Button
               size="sm"
@@ -412,6 +428,10 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       <GeneratorsDialog
         open={generatorsDialog}
         onClose={() => setGeneratorsDialog(false)}
+      />
+      <GuidedModeDialog
+        open={guidedDialog}
+        onClose={() => setGuidedDialog(false)}
       />
       <DmxHeatmapOverlay />
       <EdgeSnapGuides active={drag.dragging} edges={drag.snappedEdges} />
