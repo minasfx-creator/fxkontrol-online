@@ -1381,6 +1381,8 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
   const snapMode = useProjectStore(s => s.snapMode);
   const setSnapMode = useProjectStore(s => s.setSnapMode);
   const setSnapToBeat = useProjectStore(s => s.setSnapToBeat);
+  const cloneDragOffsetSec = useProjectStore(s => s.cloneDragOffsetSec);
+  const setCloneDragOffsetSec = useProjectStore(s => s.setCloneDragOffsetSec);
   const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
   const clearTimelineItemSelection = useProjectStore(s => s.clearTimelineItemSelection);
   const duplicateTimelineItems = useProjectStore(s => s.duplicateTimelineItems);
