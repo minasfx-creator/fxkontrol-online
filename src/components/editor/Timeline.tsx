@@ -1869,6 +1869,31 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
   // Progress percentage for the scrubber
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  // Drop an audio file onto the ruler → upload + set `audioStartOffset` so
+  // the file enters the show at the dropped timestamp. Shift = quantize to
+  // beat (when BPM is set); otherwise raw time.
+  const handleAudioFileDropOnRuler = useCallback(
+    async (file: File, time: number, e: React.DragEvent) => {
+      if (!isAudioFile(file)) {
+        void import('sonner').then(({ toast }) => toast.warning(`Unsupported file: ${file.name}`));
+        return;
+      }
+      let snapped = time;
+      if (e.shiftKey && bpm && bpm > 0) {
+        const beatDur = 60 / bpm;
+        snapped = Math.round(time / beatDur) * beatDur;
+      }
+      setAudioStartOffset(snapped);
+      toast.info(`Uploading ${file.name} · audio will start at ${snapped.toFixed(2)}s`);
+      const result = await uploadAudioForProject(file, user?.id);
+      if (result.ok) {
+        toast.success(`🎵 ${file.name} synced · starts at ${snapped.toFixed(2)}s on the timeline`);
+      }
+    },
+    [bpm, setAudioStartOffset, user?.id],
+  );
+
+
   return (
     <div className="flex h-full flex-col border-t border-border/20 bg-card/95 shadow-[inset_0_1px_0_hsl(var(--border)/0.08)] backdrop-blur-xl">
       {/* ─── Transport Bar ─── */}
