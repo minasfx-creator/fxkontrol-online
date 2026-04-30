@@ -23,7 +23,6 @@ import { cn } from '@/lib/utils';
 import AudioWaveform from './AudioWaveform';
 import { isAudioFile, uploadAudioForProject } from '@/lib/audioUpload';
 import { useAuth } from '@/hooks/useAuth';
-import { toast } from 'sonner';
 import PyroTimelineTrack from './PyroTimelineTrack';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { loadTimelineView, saveTimelineView } from '@/lib/timelineViewState';
