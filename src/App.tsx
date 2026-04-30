@@ -50,6 +50,7 @@ const UsbPairingWizard = lazy(lazyRetry(() => import("./pages/UsbPairingWizard")
 const BlePairingWizard = lazy(lazyRetry(() => import("./pages/BlePairingWizard")));
 const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
 const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage")));
+const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")));
 const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
@@ -163,6 +164,9 @@ function App() {
                     {/* FXK16 calibration & diagnostics — handshake card, detected-channel
                         count, manual hold-to-fire and armed auto-sweep C1..C16. */}
                     <Route path="/dev/fxk16-calibrate" element={<FXK16CalibrationPage />} />
+                    {/* Public SkyCanvas smoke route — mounts the 3D viewport in
+                        isolation for E2E QA. No auth, no hardware, no ARM. */}
+                    <Route path="/dev/skycanvas-smoke" element={<SkyCanvasSmoke />} />
                     {/* Public legal pages — required by Paddle (Merchant of Record) and must be crawlable without auth. */}
                     <Route path="/legal/terms" element={<Terms />} />
                     <Route path="/legal/refund" element={<Refund />} />
