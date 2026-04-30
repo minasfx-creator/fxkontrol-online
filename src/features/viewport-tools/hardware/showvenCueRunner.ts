@@ -77,6 +77,22 @@ export class ShowvenCueRunner {
     };
   }
 
+  /**
+   * Update tunables. Safe to call any time except mid-run; takes effect
+   * on the next `load()` (durationMs is baked in at compile time).
+   */
+  setOptions(opts: ShowvenQueueOptions): void {
+    if (this.status === 'running') {
+      throw new Error('Cannot change options while a run is in progress.');
+    }
+    this.opts = {
+      defaultDurationMs: opts.defaultDurationMs ?? this.opts.defaultDurationMs,
+      coalesceWindowMs: opts.coalesceWindowMs ?? this.opts.coalesceWindowMs,
+    };
+  }
+
+  getOptions(): Readonly<Required<ShowvenQueueOptions>> { return this.opts; }
+
   /** Compile a TimelineItem list into a fire schedule. Pure / non-destructive. */
   load(items: ReadonlyArray<TimelineItem>): { loaded: number; skipped: number } {
     if (this.status === 'running') {
