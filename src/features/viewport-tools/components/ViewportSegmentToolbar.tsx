@@ -131,6 +131,18 @@ export default function ViewportSegmentToolbar({
     } else if (op.command === 'DRONES_CREATE_FORMATION') {
       const formationId = (op.after as { formationId: string }).formationId;
       useProjectStore.getState().removeDroneFormation(formationId);
+    } else if (op.command === 'PYRO_VDL_PICK') {
+      const before = (op.before as { item: import('@/types/projectTypes').TimelineItem }).item;
+      useProjectStore.setState((s) => ({
+        timelineItems: s.timelineItems.map((it) => (it.id === before.id ? before : it)),
+      }));
+    } else if (op.command === 'PYRO_TOGGLE_SAFETY_OVERLAY') {
+      // Restore previous visibility state.
+      const before = (op.before as { visible: boolean }).visible;
+      // Lazy import to avoid circular ref.
+      import('@/features/viewport-tools/safetyOverlayStore').then((m) =>
+        m.useSafetyOverlayStore.getState().setPyroSafety(before),
+      );
     }
   };
 
