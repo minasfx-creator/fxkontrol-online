@@ -349,6 +349,17 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
             );
           })}
           <div className="w-6 h-px bg-cyan-500/20 my-0.5" />
+          <FloatTooltip label="Modo Guiado" side={panelOnLeft ? 'left' : 'right'}>
+            <Button
+              size="sm"
+              variant="ghost"
+              data-no-drag
+              className="h-7 w-9 p-0 text-cyan-300 hover:text-cyan-100 hover:bg-cyan-500/10"
+              onClick={() => setGuidedDialog(true)}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+            </Button>
+          </FloatTooltip>
           <FloatTooltip label="Undo" shortcut="⌘Z" side={panelOnLeft ? 'left' : 'right'}>
             <Button
               size="sm"
@@ -417,6 +428,10 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       <GeneratorsDialog
         open={generatorsDialog}
         onClose={() => setGeneratorsDialog(false)}
+      />
+      <GuidedModeDialog
+        open={guidedDialog}
+        onClose={() => setGuidedDialog(false)}
       />
       <DmxHeatmapOverlay />
       <EdgeSnapGuides active={drag.dragging} edges={drag.snappedEdges} />
