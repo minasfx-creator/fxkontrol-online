@@ -261,8 +261,13 @@ export default function FXK16FieldTestPanel() {
         </span>
       </button>
 
+      {/* Always-visible status strip — visible even when collapsed. */}
+      <div className="px-3 pt-2">
+        <FXK16StatusBar compact />
+      </div>
+
       {open && (
-        <div className="border-t border-border/30 p-3 space-y-3">
+        <div className="border-t border-border/30 p-3 space-y-3 mt-2">
           {/* Connect row */}
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={connectUSB} disabled={bridge.isConnected} className="h-7 text-[10px] gap-1.5">
