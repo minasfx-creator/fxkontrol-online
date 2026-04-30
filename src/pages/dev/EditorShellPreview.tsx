@@ -38,6 +38,9 @@ const SEGMENTS: SegmentItem[] = [
 export default function EditorShellPreview() {
   const [active, setActive] = useState('pyro');
 
+  // Persistent shell layout (per-project; demo shell uses 'editor-ds-demo').
+  const layout = useEditorLayout('editor-ds-demo');
+
   /**
    * Staged boot for honest perceived performance:
    *   stage 0 (0–220ms)  → chrome skeletons (panels grayed)
