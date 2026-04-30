@@ -75,7 +75,9 @@ export default function ShowEngineHost({
         <RecoverWebGLOverlay onRecover={() => engineRef.current?.recoverContext()} />
       )}
       {showDiagnostics && <EngineDiagnosticsPanel />}
-      {state === 'ready' && <ViewportSegmentToolbar />}
+      {state === 'ready' && !hideSegmentToolbar && (
+        <ViewportSegmentToolbar orientation={segmentToolbarOrientation} />
+      )}
     </div>
   );
 }
