@@ -3,7 +3,10 @@ import { Button } from '@/components/ui/button';
 import { viewportToolRegistry } from '@/features/viewport-tools/registry';
 import { operationLog } from '@/features/viewport-tools/command-dispatcher';
 import { useProjectStore } from '@/store/useProjectStore';
+import { effectVariantStore } from '@/features/viewport-tools/effectVariants';
 import ViewportToolPanel from './ViewportToolPanel';
+import EffectConfigDialog from './EffectConfigDialog';
+import DroneConfigDialog from './DroneConfigDialog';
 import type { SegmentType } from '@/features/viewport-tools/types';
 
 // Side-effect import: registers all 5 segment plugins exactly once.
@@ -27,8 +30,44 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
   const [active, setActive] = useState<SegmentType | null>(defaultSegment);
   const [, force] = useState(0);
 
+  // Effect/Drone config dialog state
+  const [effectDialog, setEffectDialog] = useState<{
+    open: boolean;
+    effectId: string | null;
+    timelineItemId: string | null;
+  }>({ open: false, effectId: null, timelineItemId: null });
+  const [droneDialog, setDroneDialog] = useState<{ open: boolean; positionId: string | null }>({
+    open: false,
+    positionId: null,
+  });
+
   useEffect(() => operationLog.subscribe(() => force((n) => n + 1)), []);
   useEffect(() => viewportToolRegistry.subscribe(() => force((n) => n + 1)), []);
+
+  // Bridge CustomEvents from plugin handlers → dialog state.
+  useEffect(() => {
+    const onEffect = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        effectId: string;
+        timelineItemId: string | null;
+      };
+      setEffectDialog({
+        open: true,
+        effectId: detail.effectId,
+        timelineItemId: detail.timelineItemId,
+      });
+    };
+    const onDrone = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { positionId: string };
+      setDroneDialog({ open: true, positionId: detail.positionId });
+    };
+    window.addEventListener('viewport-tools:open-effect-config', onEffect);
+    window.addEventListener('viewport-tools:open-drone-config', onDrone);
+    return () => {
+      window.removeEventListener('viewport-tools:open-effect-config', onEffect);
+      window.removeEventListener('viewport-tools:open-drone-config', onDrone);
+    };
+  }, []);
 
   const undo = () => {
     const op = operationLog.popUndo();
@@ -54,6 +93,23 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       useProjectStore.setState((s) => ({
         positions: s.positions.map((p) => map.get(p.id) ?? p),
       }));
+    } else if (op.command === 'PYRO_OVERRIDE_CUE') {
+      const before = (op.before as { item: import('@/types/projectTypes').TimelineItem }).item;
+      useProjectStore.setState((s) => ({
+        timelineItems: s.timelineItems.map((it) => (it.id === before.id ? before : it)),
+      }));
+    } else if (op.command === 'PYRO_VARIANT_SAVE') {
+      const variantId = (op.after as { variantId: string }).variantId;
+      effectVariantStore.remove(variantId);
+    } else if (op.command === 'DRONES_UPDATE_POSITION') {
+      const before = (op.before as { position: import('@/types/projectTypes').Position }).position;
+      useProjectStore.getState().updatePosition(before.id, before);
+    } else if (op.command === 'DRONES_UPDATE_FORMATION') {
+      const before = (op.before as { formation: import('@/types/projectTypes').DroneFormation }).formation;
+      useProjectStore.getState().updateDroneFormation(before.id, before);
+    } else if (op.command === 'DRONES_CREATE_FORMATION') {
+      const formationId = (op.after as { formationId: string }).formationId;
+      useProjectStore.getState().removeDroneFormation(formationId);
     }
   };
 
@@ -94,6 +150,18 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
           <ViewportToolPanel segment={active} />
         </div>
       )}
+
+      <EffectConfigDialog
+        open={effectDialog.open}
+        onClose={() => setEffectDialog((d) => ({ ...d, open: false }))}
+        effectId={effectDialog.effectId}
+        targetTimelineItemId={effectDialog.timelineItemId}
+      />
+      <DroneConfigDialog
+        open={droneDialog.open}
+        onClose={() => setDroneDialog((d) => ({ ...d, open: false }))}
+        positionId={droneDialog.positionId}
+      />
     </div>
   );
 }
