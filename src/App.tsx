@@ -180,6 +180,8 @@ function App() {
                     <Route path="/dev/design-system" element={<DesignSystemShowcase />} />
                     {/* Live demo of <EditorShell> w/ DS components — pure presentation. */}
                     <Route path="/dev/editor-shell" element={<EditorShellPreview />} />
+                    {/* Public alias — promoted shell route. */}
+                    <Route path="/editor-ds" element={<EditorShellPreview />} />
                     {/* Public legal pages — required by Paddle (Merchant of Record) and must be crawlable without auth. */}
                     <Route path="/legal/terms" element={<Terms />} />
                     <Route path="/legal/refund" element={<Refund />} />
