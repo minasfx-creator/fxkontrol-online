@@ -3,7 +3,10 @@ import { Button } from '@/components/ui/button';
 import { viewportToolRegistry } from '@/features/viewport-tools/registry';
 import { operationLog } from '@/features/viewport-tools/command-dispatcher';
 import { useProjectStore } from '@/store/useProjectStore';
+import { effectVariantStore } from '@/features/viewport-tools/effectVariants';
 import ViewportToolPanel from './ViewportToolPanel';
+import EffectConfigDialog from './EffectConfigDialog';
+import DroneConfigDialog from './DroneConfigDialog';
 import type { SegmentType } from '@/features/viewport-tools/types';
 
 // Side-effect import: registers all 5 segment plugins exactly once.
