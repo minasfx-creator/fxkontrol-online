@@ -522,15 +522,38 @@ function TimelineTrackRow({
     const item = timelineItems.find(i => i.id === itemId);
     if (!item) return;
     const startX = e.clientX;
+    const startY = e.clientY;
     const startTime = item.startTime;
+    const startTrackIndex = item.trackIndex;
     let dragActivated = false;
+    let lastTrackIndex = startTrackIndex;
+
+    // Resolve which track row the cursor is currently over.
+    // Returns null if cursor is outside any track or the target rejects this effect type.
+    const resolveTrackUnderCursor = (clientX: number, clientY: number, effectType: string | undefined): number | null => {
+      const stack = (typeof document !== 'undefined' && typeof document.elementsFromPoint === 'function')
+        ? document.elementsFromPoint(clientX, clientY)
+        : (typeof document !== 'undefined' && document.elementFromPoint(clientX, clientY) ? [document.elementFromPoint(clientX, clientY) as Element] : []);
+      for (const el of stack) {
+        const trackEl = (el as HTMLElement).closest?.('[data-timeline-track]') as HTMLElement | null;
+        if (!trackEl) continue;
+        const idx = Number(trackEl.dataset.timelineTrack);
+        if (!Number.isFinite(idx)) continue;
+        return isEffectAllowedOnTrack(effectType, idx) ? idx : null;
+      }
+      return null;
+    };
+
+    const currentEffect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
+    const effectType = currentEffect?.type;
 
     const handleMove = (me: MouseEvent) => {
       const dx = me.clientX - startX;
+      const dy = me.clientY - startY;
 
       // ── Dead zone: 4px threshold prevents accidental drags ──
       if (!dragActivated) {
-        if (Math.abs(dx) < 4) return;
+        if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
         dragActivated = true;
         dragState.current = { itemId, startX, startTime };
       }
@@ -551,11 +574,10 @@ function TimelineTrackRow({
       // ── Magnetic snap to adjacent items (edge-to-edge) ──
       if (!me.altKey) {
         const snapThresholdSec = 6 / pixelsPerSecond;
-        const currentEffect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
-        const currentDuration = item.durationOverride ?? currentEffect?.duration ?? 2;
+        const itemDuration = item.durationOverride ?? currentEffect?.duration ?? 2;
 
         for (const other of timelineItems) {
-          if (other.id === itemId || other.trackIndex !== item.trackIndex) continue;
+          if (other.id === itemId || other.trackIndex !== lastTrackIndex) continue;
           const otherEffect = EFFECT_LIBRARY.find(ef => ef.id === other.effectId);
           const otherDur = other.durationOverride ?? otherEffect?.duration ?? 2;
           const otherEnd = other.startTime + otherDur;
@@ -566,14 +588,29 @@ function TimelineTrackRow({
             break;
           }
           // Snap my end to other's start
-          if (Math.abs((newTime + currentDuration) - other.startTime) < snapThresholdSec) {
-            newTime = other.startTime - currentDuration;
+          if (Math.abs((newTime + itemDuration) - other.startTime) < snapThresholdSec) {
+            newTime = other.startTime - itemDuration;
             break;
           }
         }
       }
 
-      updateTimelineItem(itemId, { startTime: newTime });
+      // ── Vertical: detect target track under cursor and validate type×track ──
+      // Only reassign once we've moved meaningfully on Y to avoid jitter.
+      let nextTrackIndex = lastTrackIndex;
+      if (Math.abs(dy) > 6) {
+        const candidate = resolveTrackUnderCursor(me.clientX, me.clientY, effectType);
+        if (candidate !== null && candidate !== lastTrackIndex) {
+          nextTrackIndex = candidate;
+        }
+      }
+
+      if (nextTrackIndex !== lastTrackIndex) {
+        lastTrackIndex = nextTrackIndex;
+        updateTimelineItem(itemId, { startTime: newTime, trackIndex: nextTrackIndex });
+      } else {
+        updateTimelineItem(itemId, { startTime: newTime });
+      }
     };
     const handleUp = () => {
       dragState.current = null;
@@ -583,7 +620,7 @@ function TimelineTrackRow({
     };
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
-  }, [timelineItems, pixelsPerSecond, duration, bpm, snapToBeat, updateTimelineItem]);
+  }, [timelineItems, pixelsPerSecond, duration, bpm, snapMode, snapToBeat, updateTimelineItem]);
 
   const handleItemSelect = useCallback((e: React.MouseEvent, itemId: string) => {
     e.stopPropagation();
