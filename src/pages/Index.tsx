@@ -754,6 +754,15 @@ function Index() {
         <MasterMenuFloat onOpenPanel={handleTogglePanel} />
       )}
 
+      {/* ─── Layer 2c: Viewport Segment Dock (vertical-right floating) ─
+          PYRO / SFX / DRONES / LIGHT / DMX — replaces the legacy
+          PanelTabBar fixed rail when the floating-chrome flag is on.
+          Drives the viewport-tools registry; dispatches into the
+          existing ShowPlan via the command-dispatcher. */}
+      {!viewportMaximized && floatingChrome && (
+        <ViewportSegmentToolbar orientation="vertical-right" />
+      )}
+
       {/* ─── Layer 3: Floating Panel (z-40) ─────────── */}
       {activePanel && !viewportMaximized && (
         <div
