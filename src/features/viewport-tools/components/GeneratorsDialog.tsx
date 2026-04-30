@@ -32,6 +32,17 @@ import {
   type CakeParams,
   type SweepMode,
 } from '@/features/viewport-tools/generators/cakeGenerator';
+import {
+  DRONE_FORMATION_TEMPLATES,
+  CATEGORY_LABEL,
+  type DroneFormationTemplate,
+  type TemplateCategory,
+} from '@/features/viewport-tools/generators/droneFormationTemplates';
+import {
+  runDigitalTwinFormation,
+  summarizeTwin,
+  type TwinSeverity,
+} from '@/features/viewport-tools/validators/digitalTwinFormation';
 
 const FormationPreview3D = lazy(() => import('./FormationPreview3D'));
 const CakePreview2D = lazy(() => import('./CakePreview2D'));
