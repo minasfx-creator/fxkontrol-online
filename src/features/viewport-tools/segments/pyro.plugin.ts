@@ -165,6 +165,39 @@ const plugin: ViewportSegmentPlugin = {
         after: { clonedIds: clones.map((c) => c.id) },
         description: `Cloned ${clones.length} cue(s) +${offsetSec}s.`,
       };
+
+    PYRO_CONFIGURE_EFFECT(_payload, ctx): ViewportOperation | null {
+      const state = useProjectStore.getState();
+      // Prefer the explicitly selected timeline item; otherwise pick the
+      // first cue belonging to the selected pyro position.
+      let timelineItemId: string | null = state.selectedTimelineItemId ?? null;
+      let effectId: string | null = null;
+
+      if (timelineItemId) {
+        const it = state.timelineItems.find((t) => t.id === timelineItemId);
+        effectId = it?.effectId ?? null;
+      }
+      if (!effectId && ctx.selectionIds.length > 0) {
+        const sel = new Set(ctx.selectionIds);
+        const first = state.timelineItems.find(
+          (t) => t.positionId && sel.has(t.positionId)
+        );
+        if (first) {
+          timelineItemId = first.id;
+          effectId = first.effectId;
+        }
+      }
+
+      if (!effectId) return null;
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('viewport-tools:open-effect-config', {
+            detail: { effectId, timelineItemId },
+          })
+        );
+      }
+      return null; // dialog handles its own ops
     },
   },
 };
