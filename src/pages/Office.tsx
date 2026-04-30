@@ -136,6 +136,9 @@ export default function Office() {
 
   return (
     <div className="flex flex-col min-h-[calc(100dvh-3rem)] w-full">
+      {/* Hub cards — Blueprint UX entry points (above the tab strip) */}
+      {activeTab === 'overview' && <OfficeHubCards />}
+
       {/* Tab strip — horizontal, scrollable on mobile */}
       <nav
         className="flex items-center gap-1 px-3 py-2 border-b overflow-x-auto scrollbar-thin shrink-0"
@@ -180,3 +183,4 @@ export default function Office() {
     </div>
   );
 }
+
