@@ -107,6 +107,15 @@ const plugin: ViewportSegmentPlugin = {
       hint: 'FireOne stagger + Showven device limits + base PYRO checks.',
     },
     {
+      id: 'pyro.open-generators',
+      label: 'Generators (Cake / Fan)',
+      segment: 'PYRO',
+      scope: 'generate',
+      command: 'PYRO_OPEN_GENERATORS',
+      icon: 'Sparkles',
+      hint: 'Parametric Cake (multi-shot) and Mortar Fan generators.',
+    },
+    {
       id: 'pyro.export-center',
       label: 'Export Center',
       segment: 'PYRO',
@@ -303,6 +312,13 @@ const plugin: ViewportSegmentPlugin = {
         after: null,
         description: 'Opened export center.',
       };
+    },
+
+    PYRO_OPEN_GENERATORS(): ViewportOperation | null {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('viewport-tools:open-generators'));
+      }
+      return null; // dialog dispatches its own ops
     },
   },
 };

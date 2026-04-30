@@ -72,6 +72,15 @@ const plugin: ViewportSegmentPlugin = {
       hint: 'Run all validators (PYRO + FireOne + Showven + DRONES proximity).',
     },
     {
+      id: 'drones.open-generators',
+      label: 'Generators (Formations)',
+      segment: 'DRONES',
+      scope: 'generate',
+      command: 'DRONES_OPEN_GENERATORS',
+      icon: 'Sparkles',
+      hint: 'Parametric drone formations (Circle / Grid / Heart / Spiral / Wave).',
+    },
+    {
       id: 'drones.export-mavlink',
       label: 'Export MAVLink Plan',
       segment: 'DRONES',
@@ -194,6 +203,13 @@ const plugin: ViewportSegmentPlugin = {
         after: null,
         description: 'Opened export center.',
       };
+    },
+
+    DRONES_OPEN_GENERATORS(): ViewportOperation | null {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('viewport-tools:open-generators'));
+      }
+      return null;
     },
   },
 };
