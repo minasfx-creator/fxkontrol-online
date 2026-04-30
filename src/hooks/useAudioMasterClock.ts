@@ -136,12 +136,14 @@ export function useAudioMasterClock(
         engageMaster();
         // `audio.currentTime` is in seconds in the *original audio file*
         // coordinate system. The store's `currentTime` is in *show time*,
-        // which equals `audioTime - audioInPoint` once a non-destructive
-        // trim is applied. We read the in-point on every pump (rather than
-        // putting it in the deps) so trim adjustments take effect instantly
-        // without tearing down the RAF loop or the lockstep handoff.
-        const inP = useProjectStore.getState().audioInPoint;
-        timelineClock.syncExternalTime(t - inP);
+        // which equals `audioStartOffset + (audioTime - audioInPoint)` once
+        // a non-destructive trim and/or a ruler-drop start offset are
+        // applied. We read both on every pump so adjustments take effect
+        // instantly without tearing down the RAF loop.
+        const st = useProjectStore.getState();
+        const inP = st.audioInPoint;
+        const startOffset = st.audioStartOffset;
+        timelineClock.syncExternalTime(startOffset + (t - inP));
       } else if (masterEngaged) {
         // Audio is no longer advancing (autoplay block, stall, decode error).
         // Hand the timeline back to the lockstep so the show keeps moving.
