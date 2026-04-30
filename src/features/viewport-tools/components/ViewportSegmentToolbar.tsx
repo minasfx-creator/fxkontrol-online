@@ -17,7 +17,7 @@ import ValidatorsReportDialog from './ValidatorsReportDialog';
 import ExportCenterDialog from './ExportCenterDialog';
 import GeneratorsDialog from './GeneratorsDialog';
 import DmxHeatmapOverlay from './DmxHeatmapOverlay';
-import { generateCake, type CakeParams } from '@/features/viewport-tools/generators/cakeGenerator';
+import { generateCakeDetailed, type CakeParams } from '@/features/viewport-tools/generators/cakeGenerator';
 import { generateMortarFan, type MortarFanParams } from '@/features/viewport-tools/generators/mortarFanGenerator';
 import { generateDroneFormationDetailed, type FormationParams } from '@/features/viewport-tools/generators/droneFormationGenerator';
 import type { SegmentType } from '@/features/viewport-tools/types';
@@ -126,17 +126,20 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
 
     const onGenCake = (e: Event) => {
       const params = (e as CustomEvent).detail as CakeParams;
-      const items = generateCake(params);
+      const { items, report } = generateCakeDetailed(params);
       if (items.length === 0) return;
+      // Canonical truth: ShowPlan via project store. Audit fan-out happens
+      // through the existing op log (and CommandBus bridge if enabled).
       useProjectStore.setState((s) => ({ timelineItems: [...s.timelineItems, ...items] }));
+      const tag = report.warnings.length === 0 ? 'ok' : `warn(${report.warnings.length})`;
       operationLog.push({
         id: uid('op'),
         segment: 'PYRO',
         command: 'PYRO_GENERATE_CAKE',
         timestamp: Date.now(),
         before: null,
-        after: { addedIds: items.map((i) => i.id) },
-        description: `Generated cake: ${items.length} shots @${params.staggerMs}ms / ${params.spreadDeg}°.`,
+        after: { addedIds: items.map((i) => i.id), report },
+        description: `Cake: ${report.shotsTotal} shots · ${report.rows} row(s) · ${report.effectiveStaggerMs}ms · ${tag}.`,
       });
     };
 
