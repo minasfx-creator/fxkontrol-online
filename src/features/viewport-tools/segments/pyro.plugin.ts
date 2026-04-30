@@ -265,6 +265,21 @@ const plugin: ViewportSegmentPlugin = {
         description: `Safety overlay ${after ? 'shown' : 'hidden'}.`,
       };
     },
+
+    PYRO_RUN_VALIDATORS(): ViewportOperation | null {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('viewport-tools:open-validators-report'));
+      }
+      return {
+        id: uid('op'),
+        segment: 'PYRO',
+        command: 'PYRO_RUN_VALIDATORS',
+        timestamp: Date.now(),
+        before: null,
+        after: null,
+        description: 'Opened advanced validators report.',
+      };
+    },
   },
 };
 
