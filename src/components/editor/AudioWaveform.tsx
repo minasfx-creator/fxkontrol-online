@@ -85,6 +85,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   const duration = useProjectStore(s => s.duration);
   const audioUrl = useProjectStore(s => s.audioUrl);
   const audioInPoint = useProjectStore(s => s.audioInPoint);
+  const audioStartOffset = useProjectStore(s => s.audioStartOffset);
   const audioOutPoint = useProjectStore(s => s.audioOutPoint);
   const audioOriginalDuration = useProjectStore(s => s.audioOriginalDuration);
   const setAudioOriginalDuration = useProjectStore(s => s.setAudioOriginalDuration);
@@ -117,6 +118,10 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   const [pendingIn, setPendingIn] = useState<number>(0);
   const [pendingOut, setPendingOut] = useState<number>(0);
   const [draggingHandle, setDraggingHandle] = useState<'in' | 'out' | null>(null);
+  // Audio-only horizontal zoom multiplier (1×–8×). Multiplies `pixelsPerSecond`
+  // when computing the canvas/overlay widths so the operator can stretch the
+  // waveform for precise trimming without affecting the rest of the timeline.
+  const [audioZoom, setAudioZoom] = useState(1);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -333,8 +338,11 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     if (isPlaying) {
       // Show-time → file-time conversion: the store's `currentTime` runs
       // 0..duration relative to `audioInPoint`; the audio element runs in
-      // the original file's coordinate system.
-      const targetFileTime = currentTime + audioInPoint;
+      // the original file's coordinate system. `audioStartOffset` shifts
+      // when the file enters the show — clamp to 0 so we never seek before
+      // the in-point when the playhead is in the silent prelude.
+      const audioInputTime = Math.max(0, currentTime - audioStartOffset);
+      const targetFileTime = audioInputTime + audioInPoint;
       if (Math.abs(audio.currentTime - targetFileTime) > 0.15) {
         audio.currentTime = targetFileTime;
       }
@@ -392,11 +400,12 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const targetFileTime = currentTime + audioInPoint;
+    const audioInputTime = Math.max(0, currentTime - audioStartOffset);
+    const targetFileTime = audioInputTime + audioInPoint;
     if (Math.abs(audio.currentTime - targetFileTime) > 0.15) {
       audio.currentTime = targetFileTime;
     }
-  }, [currentTime, audioInPoint]);
+  }, [currentTime, audioInPoint, audioStartOffset]);
 
   // Build the visible waveform from a decoded AudioBuffer, restricted to
   // the active trim window `[in..out]`. Extracted so re-trim only re-runs
@@ -409,7 +418,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     const endSample = Math.min(buf.length, Math.floor(outP * sr));
     const windowLen = Math.max(1, endSample - startSample);
     const windowDur = Math.max(0.01, outP - inP);
-    const samples = Math.max(1, Math.floor(windowDur * pixelsPerSecond * 2));
+    const samples = Math.max(1, Math.floor(windowDur * pixelsPerSecond * audioZoom * 2));
     const blockSize = Math.max(1, Math.floor(windowLen / samples));
     const rawData = buf.getChannelData(0);
     const downsampled = new Float32Array(samples);
@@ -421,7 +430,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       downsampled[i] = sum / Math.max(1, end - start);
     }
     setWaveformData(downsampled);
-  }, [pixelsPerSecond]);
+  }, [pixelsPerSecond, audioZoom]);
 
   // Load and decode audio for waveform + BPM
   const loadAudio = useCallback(async (url: string) => {
@@ -473,7 +482,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     if (audioBufferRef.current && !draggingHandle) {
       rebuildWaveform(audioBufferRef.current);
     }
-  }, [audioInPoint, audioOutPoint, pixelsPerSecond, draggingHandle, rebuildWaveform]);
+  }, [audioInPoint, audioOutPoint, pixelsPerSecond, audioZoom, draggingHandle, rebuildWaveform]);
 
   useEffect(() => {
     if (audioUrl) loadAudio(audioUrl);
@@ -490,7 +499,10 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = duration * pixelsPerSecond;
+    // Audio-only horizontal zoom: stretches the waveform without affecting
+    // the rest of the timeline. `audioZoom === 1` ⇒ behaves like before.
+    const pps = pixelsPerSecond * audioZoom;
+    const width = duration * pps;
     const height = trackHeight;
     canvas.width = width;
     canvas.height = height;
@@ -500,7 +512,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     // Beat markers
     if (beats.length > 0) {
       beats.forEach((beat, idx) => {
-        const x = beat * pixelsPerSecond;
+        const x = beat * pps;
         const isMeasure = idx % 4 === 0;
         ctx.strokeStyle = isMeasure ? 'hsla(24, 95%, 53%, 0.4)' : 'hsla(24, 95%, 53%, 0.15)';
         ctx.lineWidth = isMeasure ? 1.5 : 0.5;
@@ -510,7 +522,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
         ctx.stroke();
 
         // Measure number
-        if (isMeasure && pixelsPerSecond > 8) {
+        if (isMeasure && pps > 8) {
           ctx.fillStyle = 'hsla(24, 95%, 53%, 0.5)';
           ctx.font = '7px monospace';
           ctx.fillText(`${Math.floor(idx / 4) + 1}`, x + 2, 8);
@@ -518,9 +530,13 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       });
     }
 
-    // Waveform
+    // Waveform — drawn starting at `audioStartOffset` so the operator sees
+    // the audio entering at the timestamp where they dropped it on the ruler.
     if (waveformData) {
       const mid = height / 2;
+      const offsetPx = Math.max(0, audioStartOffset) * pps;
+      const trimWindowSec = (audioOutPoint ?? audioOriginalDuration ?? 0) - audioInPoint;
+      const waveWidth = Math.max(0, trimWindowSec * pps);
       // Gradient for waveform
       const grad = ctx.createLinearGradient(0, 0, 0, height);
       grad.addColorStop(0, 'hsla(207, 90%, 64%, 0.6)');
@@ -529,20 +545,21 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       ctx.fillStyle = grad;
 
       for (let i = 0; i < waveformData.length; i++) {
-        const x = (i / waveformData.length) * width;
+        const x = offsetPx + (i / waveformData.length) * waveWidth;
+        if (x > width) break;
         const barHeight = waveformData[i] * height * 0.85;
-        ctx.fillRect(x, mid - barHeight / 2, Math.max(1, width / waveformData.length - 0.5), barHeight);
+        ctx.fillRect(x, mid - barHeight / 2, Math.max(1, waveWidth / waveformData.length - 0.5), barHeight);
       }
 
       // Played region overlay
-      const playX = currentTime * pixelsPerSecond;
+      const playX = currentTime * pps;
       ctx.fillStyle = 'hsla(207, 90%, 54%, 0.12)';
       ctx.fillRect(0, 0, playX, height);
     }
 
     // Cue markers
     cueMarkers.forEach((cue) => {
-      const cx = cue.time * pixelsPerSecond;
+      const cx = cue.time * pps;
       // Vertical line
       ctx.strokeStyle = cue.color;
       ctx.lineWidth = 2;
@@ -575,12 +592,12 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     // Playhead
     ctx.strokeStyle = 'hsl(207, 90%, 54%)';
     ctx.lineWidth = 2;
-    const playX = currentTime * pixelsPerSecond;
+    const playX = currentTime * pps;
     ctx.beginPath();
     ctx.moveTo(playX, 0);
     ctx.lineTo(playX, height);
     ctx.stroke();
-  }, [waveformData, beats, currentTime, duration, pixelsPerSecond, trackHeight, cueMarkers]);
+  }, [waveformData, beats, currentTime, duration, pixelsPerSecond, audioZoom, trackHeight, cueMarkers, audioStartOffset, audioInPoint, audioOutPoint, audioOriginalDuration]);
 
   const openFilePicker = useCallback(() => {
     if (uploading) return;
@@ -691,7 +708,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       // The canvas always represents `[audioInPoint .. audioOutPoint]` so
       // x=0 maps to audioInPoint, but during trim mode we want raw file-time
       // — easiest is to anchor on the *current* in/out (pre-trim) and scale.
-      const showTime = x / pixelsPerSecond;
+      const showTime = x / (pixelsPerSecond * audioZoom);
       const fileTime = audioInPoint + showTime;
       const clamped = Math.max(0, Math.min(audioOriginalDuration, fileTime));
       if (which === 'in') {
@@ -707,7 +724,74 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-  }, [audioInPoint, audioOriginalDuration, pendingIn, pendingOut, pixelsPerSecond]);
+  }, [audioInPoint, audioOriginalDuration, pendingIn, pendingOut, pixelsPerSecond, audioZoom]);
+
+  // Drag-to-select on the waveform: while in trim mode, mousedown on the
+  // canvas (anywhere outside the handles) starts a fresh selection. The
+  // selection is committed to `pendingIn`/`pendingOut` on the fly so the
+  // operator can press Enter to Apply or Esc to cancel without an extra step.
+  const handleSelectionDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!trimMode || audioOriginalDuration == null) return;
+    // Ignore clicks on handles / overlays.
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-trim-handle]') || target.closest('[data-trim-toolbar]')) return;
+    e.preventDefault();
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const pps = pixelsPerSecond * audioZoom;
+    const toFileTime = (clientX: number) => {
+      const x = clientX - rect.left + container.scrollLeft;
+      const showTime = Math.max(0, x / pps);
+      return Math.max(0, Math.min(audioOriginalDuration, audioInPoint + showTime));
+    };
+    const startT = toFileTime(e.clientX);
+    setPendingIn(startT);
+    setPendingOut(Math.min(audioOriginalDuration, startT + 0.05));
+    setDraggingHandle('out'); // suppress redownsample while dragging
+
+    const onMove = (ev: MouseEvent) => {
+      const t = toFileTime(ev.clientX);
+      const a = Math.min(startT, t);
+      const b = Math.max(startT, t);
+      setPendingIn(a);
+      setPendingOut(Math.max(a + 0.05, b));
+    };
+    const onUp = () => {
+      setDraggingHandle(null);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [trimMode, audioOriginalDuration, audioInPoint, pixelsPerSecond, audioZoom]);
+
+  // Ctrl/⌘ + wheel inside the waveform = audio-only zoom (1×–8×). Anchors
+  // the time under the cursor so the operator zooms *into* the spot they
+  // care about, just like a vector editor.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const rect = container.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left + container.scrollLeft;
+      const oldPps = pixelsPerSecond * audioZoom;
+      const cursorTime = cursorX / Math.max(1e-3, oldPps);
+      const factor = e.deltaY < 0 ? 1.25 : 1 / 1.25;
+      const nextZoom = Math.max(1, Math.min(8, audioZoom * factor));
+      if (nextZoom === audioZoom) return;
+      setAudioZoom(nextZoom);
+      // Re-anchor scroll so the time under the cursor stays put.
+      requestAnimationFrame(() => {
+        const newPps = pixelsPerSecond * nextZoom;
+        container.scrollLeft = cursorTime * newPps - (e.clientX - rect.left);
+      });
+    };
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => container.removeEventListener('wheel', onWheel);
+  }, [audioZoom, pixelsPerSecond]);
 
   // Keyboard shortcuts: I/O set pending in/out at playhead, Esc cancels.
   useEffect(() => {
@@ -737,8 +821,8 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
 
   // Pixel positions of the In/Out handles within the canvas (which spans
   // `[audioInPoint .. audioOutPoint]` in file-time).
-  const inHandleX = (pendingIn - audioInPoint) * pixelsPerSecond;
-  const outHandleX = (pendingOut - audioInPoint) * pixelsPerSecond;
+  const inHandleX = (pendingIn - audioInPoint) * pixelsPerSecond * audioZoom;
+  const outHandleX = (pendingOut - audioInPoint) * pixelsPerSecond * audioZoom;
 
   const isExpanded = trackHeight > MIN_HEIGHT;
 
@@ -912,6 +996,41 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
           </div>
 
           <div className="flex-1" />
+          {/* Audio-only horizontal zoom (1×–8×). Doesn't affect the rest of
+              the timeline — purely a magnifier on the waveform for precise
+              trimming. Ctrl/⌘+wheel over the waveform also zooms with
+              cursor anchoring. */}
+          <button
+            onClick={() => setAudioZoom(z => Math.max(1, +(z / 1.5).toFixed(2)))}
+            disabled={audioZoom <= 1.001}
+            className="text-muted-foreground/50 hover:text-muted-foreground disabled:opacity-20"
+            title="Zoom out áudio (Ctrl+roda)"
+            aria-label="Zoom out audio"
+          >
+            <Minus className="h-2.5 w-2.5" />
+          </button>
+          <span className="text-[7px] font-mono-code text-muted-foreground/40 tabular-nums w-7 text-center">
+            {audioZoom.toFixed(audioZoom >= 10 ? 0 : 1)}×
+          </span>
+          <button
+            onClick={() => setAudioZoom(z => Math.min(8, +(z * 1.5).toFixed(2)))}
+            disabled={audioZoom >= 7.999}
+            className="text-muted-foreground/50 hover:text-muted-foreground disabled:opacity-20"
+            title="Zoom in áudio (Ctrl+roda)"
+            aria-label="Zoom in audio"
+          >
+            <Plus className="h-2.5 w-2.5" />
+          </button>
+          {audioZoom > 1.001 && (
+            <button
+              onClick={() => setAudioZoom(1)}
+              className="text-[7px] font-mono-code text-warning/70 hover:text-warning ml-0.5"
+              title="Reset audio zoom"
+            >
+              1×
+            </button>
+          )}
+          <div className="w-px h-3 bg-border/30 mx-1" />
           <button
             onClick={shrink}
             disabled={trackHeight <= MIN_HEIGHT}
@@ -936,15 +1055,19 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
 
       <div
         ref={containerRef}
-        className="flex-1 relative bg-surface-0/50 overflow-hidden cursor-crosshair"
+        className={cn(
+          "flex-1 relative bg-surface-0/50 overflow-hidden",
+          trimMode ? "cursor-crosshair" : "cursor-crosshair",
+        )}
         style={{ height: `${trackHeight}px` }}
+        onMouseDown={handleSelectionDragStart}
         onDoubleClick={handleWaveformDoubleClick}
         onContextMenu={handleWaveformContextMenu}
       >
         <canvas
           ref={canvasRef}
           className="w-full h-full"
-          style={{ width: `${duration * pixelsPerSecond}px`, height: `${trackHeight}px` }}
+          style={{ width: `${duration * pixelsPerSecond * audioZoom}px`, height: `${trackHeight}px` }}
         />
 
         {/* Trim mode: draggable In/Out handles + dimmed regions outside the
@@ -959,23 +1082,38 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
               className="absolute top-0 bg-background/60 pointer-events-none"
               style={{
                 left: `${outHandleX}px`,
-                width: `${Math.max(0, duration * pixelsPerSecond - outHandleX)}px`,
+                width: `${Math.max(0, duration * pixelsPerSecond * audioZoom - outHandleX)}px`,
+                height: '100%',
+              }}
+            />
+            {/* Selection highlight band over the kept window. */}
+            <div
+              className="absolute top-0 pointer-events-none border-y-2 border-warning/70 bg-warning/[0.06]"
+              style={{
+                left: `${Math.max(0, inHandleX)}px`,
+                width: `${Math.max(0, outHandleX - inHandleX)}px`,
                 height: '100%',
               }}
             />
             <div
+              data-trim-handle="in"
               className="absolute top-0 cursor-ew-resize bg-warning hover:bg-warning/80 z-20"
               style={{ left: `${inHandleX - 3}px`, width: '6px', height: '100%' }}
               onMouseDown={startHandleDrag('in')}
               title={`In: ${pendingIn.toFixed(2)}s (press I at playhead)`}
             />
             <div
+              data-trim-handle="out"
               className="absolute top-0 cursor-ew-resize bg-warning hover:bg-warning/80 z-20"
               style={{ left: `${outHandleX - 3}px`, width: '6px', height: '100%' }}
               onMouseDown={startHandleDrag('out')}
               title={`Out: ${pendingOut.toFixed(2)}s (press O at playhead)`}
             />
-            <div className="absolute top-1 left-1 flex items-center gap-1 bg-surface-1/95 border border-warning/40 rounded px-1.5 py-0.5 z-30">
+            <div
+              data-trim-toolbar
+              className="absolute top-1 left-1 flex items-center gap-1 bg-surface-1/95 border border-warning/40 rounded px-1.5 py-0.5 z-30"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
               <span className="text-[9px] font-mono-code text-warning tabular-nums">
                 {pendingIn.toFixed(2)}s → {pendingOut.toFixed(2)}s ({(pendingOut - pendingIn).toFixed(2)}s)
               </span>
@@ -1006,7 +1144,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
           <div
             key={cue.id}
             className="absolute top-0 group"
-            style={{ left: `${cue.time * pixelsPerSecond}px`, width: '2px', height: '100%' }}
+            style={{ left: `${cue.time * pixelsPerSecond * audioZoom}px`, width: '2px', height: '100%' }}
             title={`${cue.label} — ${cue.time.toFixed(2)}s (right-click to remove)`}
           >
             {/* Hover hitbox */}

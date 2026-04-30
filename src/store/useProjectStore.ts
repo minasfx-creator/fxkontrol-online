@@ -45,6 +45,12 @@ export interface ProjectState {
   drawHeight: number;
   waypointUndoStack: { trajectoryId: string; waypoint: Waypoint }[];
   audioUrl: string | null;
+  /** Show-time offset (seconds) at which the audio file starts playing on the
+   *  timeline. 0 = audio starts at t=0 (default). >0 = audio enters with a
+   *  delay (silence before). Set when the operator drops an audio file on the
+   *  timeline ruler at a non-zero timestamp. Independent of `audioInPoint`,
+   *  which is a non-destructive trim *inside* the file. */
+  audioStartOffset: number;
   /** Non-destructive trim: start point inside the original audio file (s). */
   audioInPoint: number;
   /** Non-destructive trim: end point inside the original audio file (s).
@@ -72,6 +78,9 @@ export interface ProjectState {
    *  - `frame`: always frame (uses `timecodeProvider.getFPS()`).
    *  - `off`: no snapping. */
   snapMode: 'auto' | 'beat' | 'frame' | 'off';
+  /** Time offset (seconds) applied to Alt+drag clones. 0 = clone at original timestamp,
+   *  >0 = nudge clone forward by this amount when user releases without horizontal drag. */
+  cloneDragOffsetSec: number;
   playbackSpeed: number;
   projectId: string | null;
   cameraKeyframes: CameraKeyframe[];
@@ -142,6 +151,7 @@ export interface ProjectState {
   setDrawHeight: (h: number) => void;
   undoLastWaypoint: () => void;
   setAudioUrl: (url: string | null) => void;
+  setAudioStartOffset: (t: number) => void;
   setAudioOriginalDuration: (d: number | null) => void;
   setAudioInPoint: (t: number) => void;
   setAudioOutPoint: (t: number | null) => void;
@@ -155,6 +165,7 @@ export interface ProjectState {
   setBpm: (bpm: number | null) => void;
   setSnapToBeat: (snap: boolean) => void;
   setSnapMode: (mode: 'auto' | 'beat' | 'frame' | 'off') => void;
+  setCloneDragOffsetSec: (sec: number) => void;
   setPlaybackSpeed: (speed: number) => void;
   setProjectId: (id: string | null) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -221,6 +232,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   drawHeight: 10,
   waypointUndoStack: [],
   audioUrl: null,
+  audioStartOffset: 0,
   audioInPoint: 0,
   audioOutPoint: null,
   audioOriginalDuration: null,
@@ -228,6 +240,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   bpm: null,
   snapToBeat: false,
   snapMode: 'auto',
+  cloneDragOffsetSec: 0,
   playbackSpeed: 1,
   projectId: null,
   cameraKeyframes: [],
@@ -490,6 +503,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     // When the audio source changes, the previous trim window no longer
     // makes sense (it referred to a different file's coordinate system).
     // Wipe trim state so the operator starts fresh on the new file.
+    // `audioStartOffset` is preserved on purpose: the operator may have set
+    // it via "drop on ruler" specifically to position the *new* file they're
+    // now uploading. If they want it back at 0 they can drop on t=0.
     if (url !== s.audioUrl) {
       return {
         audioUrl: url,
@@ -501,6 +517,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
     return { audioUrl: url };
   }),
+  setAudioStartOffset: (t) => set({ audioStartOffset: Math.max(0, t) }),
   setAudioOriginalDuration: (d) => set({ audioOriginalDuration: d }),
   setAudioInPoint: (t) => set({ audioInPoint: Math.max(0, t) }),
   setAudioOutPoint: (t) => set({ audioOutPoint: t == null ? null : Math.max(0, t) }),
@@ -631,6 +648,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setBpm: (bpm) => set({ bpm }),
   setSnapToBeat: (snap) => set({ snapToBeat: snap, snapMode: snap ? 'auto' : 'off' }),
   setSnapMode: (mode) => set({ snapMode: mode, snapToBeat: mode !== 'off' }),
+  setCloneDragOffsetSec: (sec) => {
+    // Sanitize: NaN/negative falls back to 0; clamp to a sane upper bound (60s).
+    const safe = Number.isFinite(sec) && sec >= 0 ? Math.min(sec, 60) : 0;
+    set({ cloneDragOffsetSec: safe });
+  },
   setPlaybackSpeed: (speed) => {
     // Sanitize: NaN, negative or non-finite values fall back to 1×.
     // Speed=0 is a valid technical state (external sync hold) and is preserved,

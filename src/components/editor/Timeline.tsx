@@ -21,6 +21,8 @@ import useGenerativeStore from '@/store/useGenerativeStore';
 import { getPreFireTime } from '@/lib/safetyEngine';
 import { cn } from '@/lib/utils';
 import AudioWaveform from './AudioWaveform';
+import { isAudioFile, uploadAudioForProject } from '@/lib/audioUpload';
+import { useAuth } from '@/hooks/useAuth';
 import PyroTimelineTrack from './PyroTimelineTrack';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { loadTimelineView, saveTimelineView } from '@/lib/timelineViewState';
@@ -89,7 +91,20 @@ const TimelineGrid = React.forwardRef<HTMLDivElement, {
   );
 });
 
-const TimeRuler = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number; scrollLeft?: number; viewportWidth?: number }>(function TimeRuler({ duration, pixelsPerSecond, scrollLeft = 0, viewportWidth = 1200 }, _ref) {
+interface TimeRulerProps {
+  duration: number;
+  pixelsPerSecond: number;
+  scrollLeft?: number;
+  viewportWidth?: number;
+  /** Called when the operator drops an audio file on the ruler. `time` is in
+   *  show-seconds, snapped if `snapToBeat` (Shift held = forced quantize). */
+  onAudioFileDrop?: (file: File, time: number, e: React.DragEvent) => void;
+  audioStartOffset?: number;
+}
+const TimeRuler = React.forwardRef<HTMLDivElement, TimeRulerProps>(function TimeRuler(
+  { duration, pixelsPerSecond, scrollLeft = 0, viewportWidth = 1200, onAudioFileDrop, audioStartOffset = 0 },
+  _ref,
+) {
   let step: number;
   if (pixelsPerSecond >= 40) step = 1;
   else if (pixelsPerSecond >= 15) step = 2;
@@ -114,7 +129,86 @@ const TimeRuler = React.forwardRef<HTMLDivElement, { duration: number; pixelsPer
       </div>
     );
   }
-  return <div className="relative h-5 border-b border-border/5">{marks}</div>;
+
+  // ─── Audio file drop on the ruler ────────────────────────────────────
+  // Operator drags an audio file (mp3/wav/…) over the timecode strip and
+  // releases at a given x-position. We compute the show-time at that x and
+  // forward to the parent which uploads + sets `audioStartOffset` so the
+  // waveform begins at that timestamp.
+  const [hoverTime, setHoverTime] = React.useState<number | null>(null);
+
+  const isFileDrag = (e: React.DragEvent) => {
+    const t = e.dataTransfer.types;
+    // Files can be in `Files` (cross-browser) or `application/x-moz-file`.
+    return t.includes('Files') || t.includes('application/x-moz-file');
+  };
+
+  const computeTimeAt = (e: React.DragEvent): number => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, e.clientX - rect.left);
+    return Math.max(0, Math.min(duration, x / pixelsPerSecond));
+  };
+
+  const onDragOver = (e: React.DragEvent) => {
+    if (!onAudioFileDrop || !isFileDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setHoverTime(computeTimeAt(e));
+  };
+  const onDragLeave = (e: React.DragEvent) => {
+    if (!onAudioFileDrop) return;
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setHoverTime(null);
+  };
+  const onDrop = (e: React.DragEvent) => {
+    if (!onAudioFileDrop || !isFileDrag(e)) return;
+    e.preventDefault();
+    setHoverTime(null);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    onAudioFileDrop(file, computeTimeAt(e), e);
+  };
+
+  const offsetPx = Math.max(0, audioStartOffset) * pixelsPerSecond;
+
+  return (
+    <div
+      className={cn(
+        "relative h-5 border-b border-border/5 transition-colors",
+        hoverTime !== null && "bg-primary/[0.06] ring-1 ring-primary/30",
+      )}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      title={onAudioFileDrop ? 'Drop audio file here to set start offset' : undefined}
+    >
+      {marks}
+      {/* Persistent marker showing where the audio currently starts. */}
+      {audioStartOffset > 0 && (
+        <div
+          className="pointer-events-none absolute top-0 bottom-0 flex flex-col items-center"
+          style={{ left: `${offsetPx}px` }}
+          aria-label={`Audio start offset ${audioStartOffset.toFixed(2)}s`}
+        >
+          <div className="w-px h-full bg-cyan-400/60" />
+          <span className="absolute top-0 left-1 text-[8px] font-mono text-cyan-400/80 tabular-nums whitespace-nowrap">
+            ♪ +{audioStartOffset.toFixed(2)}s
+          </span>
+        </div>
+      )}
+      {/* Drop preview line + timecode badge while dragging an audio file. */}
+      {hoverTime !== null && (
+        <div
+          className="pointer-events-none absolute top-0 bottom-0"
+          style={{ left: `${hoverTime * pixelsPerSecond}px` }}
+        >
+          <div className="w-px h-full bg-primary/80" />
+          <span className="absolute -top-4 left-1 text-[9px] font-mono text-primary bg-background/90 px-1 rounded tabular-nums whitespace-nowrap">
+            ♪ → {formatTime(hoverTime)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
 });
 
 // --- Context Menu for Timeline Items ---
@@ -519,14 +613,23 @@ function TimelineTrackRow({
   }, [pixelsPerSecond, duration, trackIndex, addTimelineItem, bpm, snapToBeat, positions, selectedPositionId, selectedPositionIds, items]);
 
   const handleItemDragStart = useCallback((e: React.MouseEvent, itemId: string) => {
-    const item = timelineItems.find(i => i.id === itemId);
-    if (!item) return;
+    const sourceItem = timelineItems.find(i => i.id === itemId);
+    if (!sourceItem) return;
     const startX = e.clientX;
     const startY = e.clientY;
-    const startTime = item.startTime;
-    const startTrackIndex = item.trackIndex;
+    const sourceStartTime = sourceItem.startTime;
+    const sourceTrackIndex = sourceItem.trackIndex;
+
+    // Alt at mousedown = clone-drag mode. The original stays put; a clone is created
+    // on the first meaningful move (after dead zone) and the clone becomes the moved item.
+    const cloneMode = e.altKey;
+    const cloneOffsetSec = useProjectStore.getState().cloneDragOffsetSec ?? 0;
+
     let dragActivated = false;
-    let lastTrackIndex = startTrackIndex;
+    let activeItemId = itemId;            // becomes clone id once cloneMode activates
+    let activeStartTime = sourceStartTime; // anchor used for dx → newTime
+    let lastTrackIndex = sourceTrackIndex;
+    let cloneCreated = false;
 
     // Resolve which track row the cursor is currently over.
     // Returns null if cursor is outside any track or the target rejects this effect type.
@@ -544,8 +647,31 @@ function TimelineTrackRow({
       return null;
     };
 
-    const currentEffect = EFFECT_LIBRARY.find(ef => ef.id === item.effectId);
-    const effectType = currentEffect?.type;
+    const sourceEffect = EFFECT_LIBRARY.find(ef => ef.id === sourceItem.effectId);
+    const effectType = sourceEffect?.type;
+
+    // Materialize the clone on first activation. The clone starts at the source's
+    // timestamp + configured offset; subsequent moves overwrite startTime via dx.
+    const ensureClone = () => {
+      if (cloneCreated) return;
+      cloneCreated = true;
+      const newId = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-clone`;
+      const initialTime = Math.max(0, Math.min(sourceStartTime + cloneOffsetSec, duration));
+      // Deep-ish copy: preserve everything except the id, anchor at offset.
+      const { id: _omit, position, positionIds, ...rest } = sourceItem as any;
+      addTimelineItem({
+        ...rest,
+        id: newId,
+        startTime: initialTime,
+        position: position ? { ...position } : { x: 0, y: 0, z: 0 },
+        ...(positionIds ? { positionIds: [...positionIds] } : {}),
+      });
+      activeItemId = newId;
+      activeStartTime = initialTime;
+      markRecentDrop(newId);
+      // Promote the clone as the now-selected item (consistent with copy/paste UX).
+      useProjectStore.getState().selectTimelineItem(newId);
+    };
 
     const handleMove = (me: MouseEvent) => {
       const dx = me.clientX - startX;
@@ -555,15 +681,18 @@ function TimelineTrackRow({
       if (!dragActivated) {
         if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
         dragActivated = true;
-        dragState.current = { itemId, startX, startTime };
+        if (cloneMode) ensureClone();
+        dragState.current = { itemId: activeItemId, startX, startTime: activeStartTime };
       }
 
       const dt = dx / pixelsPerSecond;
-      let newTime = Math.max(0, Math.min(startTime + dt, duration));
+      let newTime = Math.max(0, Math.min(activeStartTime + dt, duration));
 
-      // Modifier keys: Shift = force quantize to grid centre; Alt = no snap.
+      // Modifier keys: Shift = force quantize to grid centre; Ctrl/Cmd = no snap.
+      // (Alt is reserved for clone-drag and no longer disables snap.)
       const grid = getActiveGrid({ bpm, snapMode });
-      if (me.altKey) {
+      const noSnap = me.ctrlKey || me.metaKey;
+      if (noSnap) {
         // free move — skip both grid and edge snap
       } else if (me.shiftKey) {
         newTime = quantizeTime(newTime, grid);
@@ -572,12 +701,12 @@ function TimelineTrackRow({
       }
 
       // ── Magnetic snap to adjacent items (edge-to-edge) ──
-      if (!me.altKey) {
+      if (!noSnap) {
         const snapThresholdSec = 6 / pixelsPerSecond;
-        const itemDuration = item.durationOverride ?? currentEffect?.duration ?? 2;
+        const itemDuration = sourceItem.durationOverride ?? sourceEffect?.duration ?? 2;
 
         for (const other of timelineItems) {
-          if (other.id === itemId || other.trackIndex !== lastTrackIndex) continue;
+          if (other.id === activeItemId || other.trackIndex !== lastTrackIndex) continue;
           const otherEffect = EFFECT_LIBRARY.find(ef => ef.id === other.effectId);
           const otherDur = other.durationOverride ?? otherEffect?.duration ?? 2;
           const otherEnd = other.startTime + otherDur;
@@ -607,12 +736,17 @@ function TimelineTrackRow({
 
       if (nextTrackIndex !== lastTrackIndex) {
         lastTrackIndex = nextTrackIndex;
-        updateTimelineItem(itemId, { startTime: newTime, trackIndex: nextTrackIndex });
+        updateTimelineItem(activeItemId, { startTime: newTime, trackIndex: nextTrackIndex });
       } else {
-        updateTimelineItem(itemId, { startTime: newTime });
+        updateTimelineItem(activeItemId, { startTime: newTime });
       }
     };
-    const handleUp = () => {
+    const handleUp = (ue: MouseEvent) => {
+      // Click-without-drag in clone mode: still produce a clone at original+offset
+      // so the user can quickly stamp duplicates without dragging.
+      if (cloneMode && !dragActivated) {
+        ensureClone();
+      }
       dragState.current = null;
       dragActivated = false;
       window.removeEventListener('mousemove', handleMove);
@@ -620,7 +754,7 @@ function TimelineTrackRow({
     };
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
-  }, [timelineItems, pixelsPerSecond, duration, bpm, snapMode, snapToBeat, updateTimelineItem]);
+  }, [timelineItems, pixelsPerSecond, duration, bpm, snapMode, snapToBeat, updateTimelineItem, addTimelineItem]);
 
   const handleItemSelect = useCallback((e: React.MouseEvent, itemId: string) => {
     e.stopPropagation();
@@ -1341,7 +1475,12 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
   const snapMode = useProjectStore(s => s.snapMode);
   const setSnapMode = useProjectStore(s => s.setSnapMode);
   const setSnapToBeat = useProjectStore(s => s.setSnapToBeat);
+  const cloneDragOffsetSec = useProjectStore(s => s.cloneDragOffsetSec);
+  const setCloneDragOffsetSec = useProjectStore(s => s.setCloneDragOffsetSec);
   const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
+  const audioStartOffset = useProjectStore(s => s.audioStartOffset);
+  const setAudioStartOffset = useProjectStore(s => s.setAudioStartOffset);
+  const { user } = useAuth();
   const clearTimelineItemSelection = useProjectStore(s => s.clearTimelineItemSelection);
   const duplicateTimelineItems = useProjectStore(s => s.duplicateTimelineItems);
   const removeMultipleTimelineItems = useProjectStore(s => s.removeMultipleTimelineItems);
@@ -1730,6 +1869,31 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
   // Progress percentage for the scrubber
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  // Drop an audio file onto the ruler → upload + set `audioStartOffset` so
+  // the file enters the show at the dropped timestamp. Shift = quantize to
+  // beat (when BPM is set); otherwise raw time.
+  const handleAudioFileDropOnRuler = useCallback(
+    async (file: File, time: number, e: React.DragEvent) => {
+      if (!isAudioFile(file)) {
+        void import('sonner').then(({ toast }) => toast.warning(`Unsupported file: ${file.name}`));
+        return;
+      }
+      let snapped = time;
+      if (e.shiftKey && bpm && bpm > 0) {
+        const beatDur = 60 / bpm;
+        snapped = Math.round(time / beatDur) * beatDur;
+      }
+      setAudioStartOffset(snapped);
+      toast.info(`Uploading ${file.name} · audio will start at ${snapped.toFixed(2)}s`);
+      const result = await uploadAudioForProject(file, user?.id);
+      if (result.ok) {
+        toast.success(`🎵 ${file.name} synced · starts at ${snapped.toFixed(2)}s on the timeline`);
+      }
+    },
+    [bpm, setAudioStartOffset, user?.id],
+  );
+
+
   return (
     <div className="flex h-full flex-col border-t border-border/20 bg-card/95 shadow-[inset_0_1px_0_hsl(var(--border)/0.08)] backdrop-blur-xl">
       {/* ─── Transport Bar ─── */}
@@ -1855,6 +2019,29 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
           );
         })()}
 
+        {/* Alt+drag clone offset (seconds). 0 = stamp at original timestamp. */}
+        <div
+          className="flex items-center gap-1 rounded-lg p-px pl-1.5 pr-1"
+          style={{ background: 'hsl(var(--muted) / 0.1)' }}
+          title="Alt+drag clone offset (seconds). 0 = stamp at original timestamp."
+        >
+          <Copy className="h-2.5 w-2.5 text-muted-foreground/50" />
+          <span className="text-[8px] font-mono uppercase text-muted-foreground/45 tracking-wider">⎇</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            step={0.1}
+            min={0}
+            max={60}
+            value={Number.isFinite(cloneDragOffsetSec) ? cloneDragOffsetSec : 0}
+            onChange={(e) => setCloneDragOffsetSec(parseFloat(e.target.value))}
+            onWheel={(e) => (e.target as HTMLInputElement).blur()}
+            className="w-10 h-5 bg-transparent text-[9px] font-mono tabular-nums text-foreground/80 text-right outline-none focus:text-accent"
+            aria-label="Alt+drag clone offset in seconds"
+          />
+          <span className="text-[8px] font-mono text-muted-foreground/35">s</span>
+        </div>
+
         {/* LIVE indicator placeholder */}
         <div className="badge-live hidden" id="live-badge">● LIVE</div>
 
@@ -1927,7 +2114,14 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
           <div className="flex">
             <div className="w-24 flex-shrink-0" />
             <div className="flex-1 relative">
-              <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
+              <TimeRuler
+                duration={duration}
+                pixelsPerSecond={pixelsPerSecond}
+                scrollLeft={scrollLeft}
+                viewportWidth={viewportWidth}
+                audioStartOffset={audioStartOffset}
+                onAudioFileDrop={handleAudioFileDropOnRuler}
+              />
               <TimelineGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} snapMode={snapMode} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               {/* Playhead — DOM-direct updates via transient Zustand subscription (zero re-renders) */}
               <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} snapMode={snapMode} onScrubPointerDown={handleScrubPointerDown} />
