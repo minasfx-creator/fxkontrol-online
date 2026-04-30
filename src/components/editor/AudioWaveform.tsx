@@ -1002,6 +1002,41 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
           </div>
 
           <div className="flex-1" />
+          {/* Audio-only horizontal zoom (1×–8×). Doesn't affect the rest of
+              the timeline — purely a magnifier on the waveform for precise
+              trimming. Ctrl/⌘+wheel over the waveform also zooms with
+              cursor anchoring. */}
+          <button
+            onClick={() => setAudioZoom(z => Math.max(1, +(z / 1.5).toFixed(2)))}
+            disabled={audioZoom <= 1.001}
+            className="text-muted-foreground/50 hover:text-muted-foreground disabled:opacity-20"
+            title="Zoom out áudio (Ctrl+roda)"
+            aria-label="Zoom out audio"
+          >
+            <Minus className="h-2.5 w-2.5" />
+          </button>
+          <span className="text-[7px] font-mono-code text-muted-foreground/40 tabular-nums w-7 text-center">
+            {audioZoom.toFixed(audioZoom >= 10 ? 0 : 1)}×
+          </span>
+          <button
+            onClick={() => setAudioZoom(z => Math.min(8, +(z * 1.5).toFixed(2)))}
+            disabled={audioZoom >= 7.999}
+            className="text-muted-foreground/50 hover:text-muted-foreground disabled:opacity-20"
+            title="Zoom in áudio (Ctrl+roda)"
+            aria-label="Zoom in audio"
+          >
+            <Plus className="h-2.5 w-2.5" />
+          </button>
+          {audioZoom > 1.001 && (
+            <button
+              onClick={() => setAudioZoom(1)}
+              className="text-[7px] font-mono-code text-warning/70 hover:text-warning ml-0.5"
+              title="Reset audio zoom"
+            >
+              1×
+            </button>
+          )}
+          <div className="w-px h-3 bg-border/30 mx-1" />
           <button
             onClick={shrink}
             disabled={trackHeight <= MIN_HEIGHT}
