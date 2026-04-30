@@ -161,16 +161,19 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
 
     const onGenDrone = (e: Event) => {
       const params = (e as CustomEvent).detail as FormationParams;
-      const formation = generateDroneFormation(params);
+      // Use detailed generator so we surface collision + warnings in the audit log.
+      // Per WorkMode policy: design/simulation never blocks creative ops, only warns.
+      const { formation, collision, warnings } = generateDroneFormationDetailed(params);
       useProjectStore.getState().addDroneFormation(formation);
+      const collisionTag = collision.ok ? 'ok' : `risk(${collision.violations})`;
       operationLog.push({
         id: uid('op'),
         segment: 'DRONES',
         command: 'DRONES_GENERATE_FORMATION',
         timestamp: Date.now(),
         before: null,
-        after: { formationId: formation.id },
-        description: `Generated ${formation.formationType} formation: ${formation.droneCount} drones.`,
+        after: { formationId: formation.id, collision, warnings },
+        description: `Generated ${formation.formationType} formation: ${formation.droneCount} drones · collision ${collisionTag}.`,
       });
     };
 
