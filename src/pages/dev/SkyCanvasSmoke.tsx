@@ -1,17 +1,15 @@
 /**
  * /dev/skycanvas-smoke — Public dev route to mount SkyCanvas in isolation
- * for E2E QA without auth. Mirrors the editor's mount pattern (Suspense +
- * StudioErrorBoundary + CanvasErrorBoundary) so any boundary catch shows up
- * in __fxkRuntimeMonitor exactly as in production.
+ * for E2E QA without auth.
+ *
+ * Refactored: agora usa o `SkyCanvasMount` unificado (mesmo componente
+ * adotado em produção pelo editor oficial). Mantém o overlay de tick
+ * para o operador conferir que o React loop está vivo.
  *
  * Not linked from any nav. Safe to ship — no hardware, no ARM, no FIRE.
  */
-import { lazy, Suspense, useEffect, useState } from 'react';
-import { WebGLErrorBoundary } from '@/components/editor/skycanvas/sharedState';
-import StudioErrorBoundary from '@/components/errors/StudioErrorBoundary';
-import { lazyRetry } from '@/lib/lazyRetry';
-
-const SkyCanvas = lazy(lazyRetry(() => import('@/components/editor/SkyCanvas')));
+import { useEffect, useState } from 'react';
+import SkyCanvasMount from '@/components/editor/SkyCanvasMount';
 
 export default function SkyCanvasSmoke() {
   const [tick, setTick] = useState(0);
@@ -25,19 +23,11 @@ export default function SkyCanvasSmoke() {
       <div className="absolute top-2 left-2 z-50 px-2 py-1 rounded border border-cyan-500/30 bg-black/60 text-[11px]">
         SKYCANVAS · SMOKE · t={tick}s · open devtools for diagnostics
       </div>
-      <StudioErrorBoundary area="3D viewport (smoke)">
-        <WebGLErrorBoundary>
-          <Suspense
-            fallback={
-              <div className="absolute inset-0 grid place-items-center text-cyan-400/70 text-sm">
-                Booting SkyCanvas…
-              </div>
-            }
-          >
-            <SkyCanvas />
-          </Suspense>
-        </WebGLErrorBoundary>
-      </StudioErrorBoundary>
+      <SkyCanvasMount
+        instanceKey="smoke"
+        area="3D viewport (smoke)"
+        loaderLabel="Booting SkyCanvas…"
+      />
     </div>
   );
 }

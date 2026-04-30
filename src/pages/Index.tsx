@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useCallback, useEffect, useRef, Component, type ReactNode, type ErrorInfo } from 'react';
+import React, { lazy, Suspense, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { lazyRetry } from '@/lib/lazyRetry';
 import { isEnabled } from '@/lib/featureFlags';
 import { commandBus } from '@/core/command/CommandBus';
