@@ -72,10 +72,11 @@ export default function FXK16FieldTestPanel() {
 
   const settle = useCallback(function settleFn<T>(label: string, t0: number, res: CommandResponse<T>): CommandResponse<T> {
     const latencyMs = Math.round(performance.now() - t0);
-    if (res.ok) {
+    if (res.ok === true) {
       log({ op: label, status: 'ok', detail: 'success', latencyMs });
     } else {
-      log({ op: label, status: 'error', detail: res.message, code: res.code, latencyMs });
+      const errRes = res as Extract<CommandResponse<T>, { ok: false }>;
+      log({ op: label, status: 'error', detail: errRes.message, code: errRes.code, latencyMs });
     }
     return res;
   }, [log]);
