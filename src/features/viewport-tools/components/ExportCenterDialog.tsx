@@ -21,7 +21,9 @@ import {
   Plane,
   AlertTriangle,
   AlertCircle,
+  PlugZap,
 } from 'lucide-react';
+import RealHardwareBridgeDialog from './RealHardwareBridgeDialog';
 import { runPreExportGate, type ExportGateReport } from '../exporters/preExportGate';
 import {
   exportFireOneFDB,
@@ -47,6 +49,7 @@ export default function ExportCenterDialog({ open, onClose }: Props) {
   const [gate, setGate] = useState<ExportGateReport | null>(null);
   const [toast, setToast] = useState<Toast>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [bridgeOpen, setBridgeOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
