@@ -11,7 +11,7 @@
  * and records the operation log entry (so undo/redo works).
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
-import type { FormationShape } from '@/features/viewport-tools/generators/droneFormationGenerator';
+import {
+  generateDroneFormationDetailed,
+  MIN_DRONE_SEPARATION_M,
+  type FormationShape,
+  type FormationParams,
+} from '@/features/viewport-tools/generators/droneFormationGenerator';
+
+const FormationPreview3D = lazy(() => import('./FormationPreview3D'));
 
 interface Props {
   open: boolean;
