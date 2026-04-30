@@ -461,7 +461,10 @@ function Index() {
   const desktopTimelineHeight = viewportMaximized ? '0px' : timelineCollapsed ? '42px' : '34vh';
   const leftRailWidth = 0; // rail removed
   const leftSidebarWidth = 0;
-  const rightDockWidth = viewportMaximized ? 0 : 52;
+  // Floating-chrome flag: hides the right PanelTabBar dock and switches the
+  // viewport segment toolbar to a vertical-right floating glass dock.
+  const floatingChrome = isEnabled('floating_chrome');
+  const rightDockWidth = viewportMaximized || floatingChrome ? 0 : 52;
   const rightPanelWidth = activePanel && !viewportMaximized ? 472 : 0;
   const canvasLeftInset = `${leftRailWidth + leftSidebarWidth}px`;
   const canvasRightInset = `${rightDockWidth + rightPanelWidth}px`;
