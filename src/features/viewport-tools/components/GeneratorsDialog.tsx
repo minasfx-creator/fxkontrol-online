@@ -225,23 +225,102 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
                 </Select>
               </div>
               <div>
-                <Label className={labelCls}>Shots (1-200)</Label>
+                <Label className={labelCls}>Shots / row (1-200)</Label>
                 <Input className={inputCls} type="number" min={1} max={200} value={cakeShots} onChange={(e) => setCakeShots(+e.target.value)} />
+              </div>
+              <div>
+                <Label className={labelCls}>Rows (1-16)</Label>
+                <Input className={inputCls} type="number" min={1} max={16} value={cakeRows} onChange={(e) => setCakeRows(+e.target.value)} />
               </div>
               <div>
                 <Label className={labelCls}>Stagger (ms)</Label>
                 <Input className={inputCls} type="number" min={0} value={cakeStaggerMs} onChange={(e) => setCakeStaggerMs(+e.target.value)} />
               </div>
               <div>
+                <Label className={labelCls}>Row gap (ms)</Label>
+                <Input className={inputCls} type="number" min={0} value={cakeRowGapMs} onChange={(e) => setCakeRowGapMs(+e.target.value)} />
+              </div>
+              <div>
                 <Label className={labelCls}>Spread (deg, 0-180)</Label>
                 <Input className={inputCls} type="number" min={0} max={180} value={cakeSpreadDeg} onChange={(e) => setCakeSpreadDeg(+e.target.value)} />
+              </div>
+              <div>
+                <Label className={labelCls}>Bearing (deg)</Label>
+                <Input className={inputCls} type="number" value={cakeBearing} onChange={(e) => setCakeBearing(+e.target.value)} />
+              </div>
+              <div>
+                <Label className={labelCls}>Tilt (deg)</Label>
+                <Input className={inputCls} type="number" value={cakeTilt} onChange={(e) => setCakeTilt(+e.target.value)} />
+              </div>
+              <div>
+                <Label className={labelCls}>Caliber (in)</Label>
+                <Input className={inputCls} type="number" min={1} max={12} value={cakeCaliber} onChange={(e) => setCakeCaliber(+e.target.value)} />
+              </div>
+              <div>
+                <Label className={labelCls}>Sweep mode</Label>
+                <Select value={cakeSweep} onValueChange={(v) => setCakeSweep(v as SweepMode)}>
+                  <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-[#050810] border-cyan-500/30 text-cyan-100">
+                    <SelectItem value="linear" className="text-xs">Linear</SelectItem>
+                    <SelectItem value="pingpong" className="text-xs">Ping-Pong</SelectItem>
+                    <SelectItem value="inout" className="text-xs">Ease In-Out</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label className={labelCls}>Start time (s)</Label>
                 <Input className={inputCls} type="number" step={0.1} min={0} value={cakeStart} onChange={(e) => setCakeStart(+e.target.value)} />
               </div>
             </div>
-            <div className="flex justify-end pt-2">
+
+            {/* Validation report */}
+            <div className={`rounded border px-2 py-1.5 text-[10px] font-mono ${
+              cakeReport.warnings.length === 0
+                ? 'border-green-500/30 bg-green-500/5 text-green-300'
+                : cakeReport.effectiveStaggerMs < FIREONE_MIN_STAGGER_MS
+                  ? 'border-red-500/40 bg-red-500/10 text-red-300'
+                  : 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+            }`}>
+              <div className="flex items-center justify-between">
+                <span>
+                  {cakeReport.warnings.length === 0
+                    ? '✓ CAKE OK'
+                    : cakeReport.effectiveStaggerMs < FIREONE_MIN_STAGGER_MS
+                      ? '⚠ STAGGER UNSAFE'
+                      : '⚠ REVIEW'}
+                </span>
+                <span className="opacity-70">
+                  {cakeReport.shotsTotal} shots · {cakeReport.rows} row(s) · {cakeReport.durationSec.toFixed(2)}s · {cakeReport.effectiveStaggerMs}ms
+                </span>
+              </div>
+              {cakeReport.warnings.length > 0 && (
+                <ul className="mt-1 space-y-0.5 opacity-90">
+                  {cakeReport.warnings.map((w, i) => <li key={i}>· {w}</li>)}
+                </ul>
+              )}
+            </div>
+
+            {/* Live 2D preview */}
+            <div className="flex items-center justify-between">
+              <Label className={labelCls}>Top-down preview</Label>
+              <button
+                type="button"
+                onClick={() => setCakeShowPreview((v) => !v)}
+                className="text-[10px] text-cyan-300/70 hover:text-cyan-200 underline"
+              >
+                {cakeShowPreview ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            {cakeShowPreview && (
+              <Suspense fallback={<div className="h-56 rounded border border-cyan-500/10 bg-[#02040a] flex items-center justify-center text-[10px] text-cyan-300/50">loading preview…</div>}>
+                <CakePreview2D params={cakeParams} />
+              </Suspense>
+            )}
+
+            <div className="flex justify-between items-center pt-2">
+              <span className="text-[10px] text-cyan-300/60 font-mono">
+                anchor: {cakeAnchorPos?.name ?? '—'}
+              </span>
               <Button size="sm" onClick={submitCake} disabled={!cakeAnchorId || !cakeEffectId}
                 className="bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/25">
                 Generate Cake
