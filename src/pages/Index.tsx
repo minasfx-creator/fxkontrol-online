@@ -668,15 +668,41 @@ function Index() {
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
-        <div className="relative h-full w-full overflow-hidden border-x border-t border-border/20 bg-surface-0/95 shadow-2xl shadow-background/60">
+        <div
+          className="relative h-full w-full overflow-hidden border-x border-t border-border/20 bg-surface-0/95 shadow-2xl shadow-background/60"
+          style={{
+            // Inner cyan rim — gives the viewport a "broadcast monitor" presence
+            // without competing with the 3D content. Pure visual; no interaction.
+            boxShadow:
+              'inset 0 0 0 1px hsl(var(--border) / 0.18), inset 0 1px 0 0 hsl(var(--primary) / 0.10), 0 30px 60px -30px hsl(var(--background) / 0.9)',
+          }}
+        >
           <div className="absolute inset-0 border border-border/10 pointer-events-none" />
-          <div className="absolute inset-x-0 top-0 z-10 flex h-9 items-center justify-between border-b border-border/10 bg-surface-0/72 px-4 backdrop-blur-md pointer-events-none">
+          {/* Top chrome — broadcast-style header w/ live indicator + viewport label.
+              backdrop-blur + gradient mask so the 3D content fades cleanly behind. */}
+          <div
+            className="absolute inset-x-0 top-0 z-10 flex h-9 items-center justify-between px-4 pointer-events-none"
+            style={{
+              background:
+                'linear-gradient(to bottom, hsl(var(--surface-0) / 0.88) 0%, hsl(var(--surface-0) / 0.55) 70%, hsl(var(--surface-0) / 0) 100%)',
+              backdropFilter: 'blur(10px) saturate(1.2)',
+              WebkitBackdropFilter: 'blur(10px) saturate(1.2)',
+              borderBottom: '1px solid hsl(var(--border) / 0.10)',
+            }}
+          >
             <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Sky Canvas
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inset-0 rounded-full bg-primary animate-ping opacity-60" />
+                <span className="relative h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
+              </span>
+              <span className="text-foreground/85">Sky Canvas</span>
+              <span className="text-muted-foreground/35">·</span>
+              <span className="text-muted-foreground/70 font-mono normal-case tracking-normal">3D Viewport</span>
             </div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/80">
-              Design Viewport
+            <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70">
+              <span className="hidden sm:inline">Design Mode</span>
+              <span className="text-muted-foreground/30">|</span>
+              <span className="text-primary/80">Ready</span>
             </div>
           </div>
           <div className="absolute inset-0 top-9">
