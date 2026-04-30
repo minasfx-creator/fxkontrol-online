@@ -712,7 +712,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       // The canvas always represents `[audioInPoint .. audioOutPoint]` so
       // x=0 maps to audioInPoint, but during trim mode we want raw file-time
       // — easiest is to anchor on the *current* in/out (pre-trim) and scale.
-      const showTime = x / pixelsPerSecond;
+      const showTime = x / (pixelsPerSecond * audioZoom);
       const fileTime = audioInPoint + showTime;
       const clamped = Math.max(0, Math.min(audioOriginalDuration, fileTime));
       if (which === 'in') {
@@ -728,7 +728,76 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-  }, [audioInPoint, audioOriginalDuration, pendingIn, pendingOut, pixelsPerSecond]);
+  }, [audioInPoint, audioOriginalDuration, pendingIn, pendingOut, pixelsPerSecond, audioZoom]);
+
+  // Drag-to-select on the waveform: while in trim mode, mousedown on the
+  // canvas (anywhere outside the handles) starts a fresh selection. The
+  // selection is committed to `pendingIn`/`pendingOut` on the fly so the
+  // operator can press Enter to Apply or Esc to cancel without an extra step.
+  const handleSelectionDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!trimMode || audioOriginalDuration == null) return;
+    // Ignore clicks on handles / overlays.
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-trim-handle]') || target.closest('[data-trim-toolbar]')) return;
+    e.preventDefault();
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const pps = pixelsPerSecond * audioZoom;
+    const toFileTime = (clientX: number) => {
+      const x = clientX - rect.left + container.scrollLeft;
+      const showTime = Math.max(0, x / pps);
+      return Math.max(0, Math.min(audioOriginalDuration, audioInPoint + showTime));
+    };
+    const startT = toFileTime(e.clientX);
+    setSelectionDrag({ start: startT, end: startT });
+    setPendingIn(startT);
+    setPendingOut(Math.min(audioOriginalDuration, startT + 0.05));
+    setDraggingHandle('out'); // suppress redownsample while dragging
+
+    const onMove = (ev: MouseEvent) => {
+      const t = toFileTime(ev.clientX);
+      const a = Math.min(startT, t);
+      const b = Math.max(startT, t);
+      setSelectionDrag({ start: a, end: b });
+      setPendingIn(a);
+      setPendingOut(Math.max(a + 0.05, b));
+    };
+    const onUp = () => {
+      setDraggingHandle(null);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [trimMode, audioOriginalDuration, audioInPoint, pixelsPerSecond, audioZoom]);
+
+  // Ctrl/⌘ + wheel inside the waveform = audio-only zoom (1×–8×). Anchors
+  // the time under the cursor so the operator zooms *into* the spot they
+  // care about, just like a vector editor.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const rect = container.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left + container.scrollLeft;
+      const oldPps = pixelsPerSecond * audioZoom;
+      const cursorTime = cursorX / Math.max(1e-3, oldPps);
+      const factor = e.deltaY < 0 ? 1.25 : 1 / 1.25;
+      const nextZoom = Math.max(1, Math.min(8, audioZoom * factor));
+      if (nextZoom === audioZoom) return;
+      setAudioZoom(nextZoom);
+      // Re-anchor scroll so the time under the cursor stays put.
+      requestAnimationFrame(() => {
+        const newPps = pixelsPerSecond * nextZoom;
+        container.scrollLeft = cursorTime * newPps - (e.clientX - rect.left);
+      });
+    };
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => container.removeEventListener('wheel', onWheel);
+  }, [audioZoom, pixelsPerSecond]);
 
   // Keyboard shortcuts: I/O set pending in/out at playhead, Esc cancels.
   useEffect(() => {
