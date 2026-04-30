@@ -118,6 +118,14 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   const [pendingIn, setPendingIn] = useState<number>(0);
   const [pendingOut, setPendingOut] = useState<number>(0);
   const [draggingHandle, setDraggingHandle] = useState<'in' | 'out' | null>(null);
+  // Audio-only horizontal zoom multiplier (1×–8×). Multiplies `pixelsPerSecond`
+  // when computing the canvas/overlay widths so the operator can stretch the
+  // waveform for precise trimming without affecting the rest of the timeline.
+  const [audioZoom, setAudioZoom] = useState(1);
+  // Live drag-select inside the waveform while in trim mode. Mirrors
+  // `pendingIn`/`pendingOut` but is drawn instantly without waiting for the
+  // mouseup commit — gives the operator visual feedback during the drag.
+  const [selectionDrag, setSelectionDrag] = useState<{ start: number; end: number } | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
