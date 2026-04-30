@@ -2,7 +2,8 @@ import React, { lazy, Suspense, useState, useCallback, useEffect, useRef, Compon
 import { lazyRetry } from '@/lib/lazyRetry';
 import { isEnabled } from '@/lib/featureFlags';
 import { commandBus } from '@/core/command/CommandBus';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
+import { loadShowMeta } from '@/features/create-flow/showMetaStore';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
