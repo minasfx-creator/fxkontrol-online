@@ -298,6 +298,12 @@ export default function EditorShellPreview() {
         </div>
         )}
       </EditorShell>
+
+      <EditorShellOnboardingDialog
+        open={onboardingOpen}
+        onOpenChange={setOnboardingOpen}
+        onDontShowAgain={markOnboarded}
+      />
     </div>
   );
 }
