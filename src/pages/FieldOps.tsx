@@ -10,17 +10,19 @@
  * Old routes /pairing and /field-test redirect here for back-compat.
  */
 import { lazy, Suspense, useState } from 'react';
-import { Nfc, Activity, Smartphone } from 'lucide-react';
+import { Nfc, Activity, Smartphone, Cable } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const DevicePairing = lazy(() => import('./DevicePairing'));
 const FieldTest = lazy(() => import('./FieldTest'));
 const MobileLinkPanel = lazy(() => import('@/components/editor/MobileLinkPanel'));
+const FXK16FieldPanel = lazy(() => import('@/components/field/FXK16FieldPanel'));
 
-type TabKey = 'pairing' | 'field-test' | 'mobile-link';
+type TabKey = 'pairing' | 'fxk16' | 'field-test' | 'mobile-link';
 
 const TABS: { key: TabKey; label: string; sub: string; icon: typeof Nfc }[] = [
   { key: 'pairing',     label: 'PAIRING',     sub: 'NFC · BLE',      icon: Nfc },
+  { key: 'fxk16',       label: 'FXK16',       sub: 'PYRO RELAY',     icon: Cable },
   { key: 'field-test',  label: 'FIELD TEST',  sub: 'TRANSPORTS',     icon: Activity },
   { key: 'mobile-link', label: 'MOBILE LINK', sub: 'PHONE · BRIDGE', icon: Smartphone },
 ];
