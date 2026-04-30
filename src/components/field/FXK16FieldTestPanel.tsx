@@ -150,13 +150,14 @@ export default function FXK16FieldTestPanel() {
     haptics.tap?.();
     holdTimer.current = setTimeout(async () => {
       setHolding(null);
+      bumpAutoDisarm();
       const t0 = performance.now();
       log({ op: `FIRE ch=${channel} ${durationMs}ms`, status: 'pending', detail: 'dispatching…' });
       const res = await api.fire(channel, durationMs);
       settle(`FIRE ch=${channel}`, t0, res);
       if (res.ok) haptics.fire?.();
     }, HOLD_MS);
-  }, [api, armed, channel, durationMs, log, ready, settle]);
+  }, [api, armed, bumpAutoDisarm, channel, durationMs, log, ready, settle]);
 
   const cancelHoldFire = useCallback(() => {
     if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null; }
