@@ -42,6 +42,16 @@ const plugin: ViewportSegmentPlugin = {
       requiresSelection: true,
       hint: 'Arrange selected pads on an evenly-spaced circle.',
     },
+    {
+      id: 'drones.configure',
+      label: 'Configure Drone',
+      segment: 'DRONES',
+      scope: 'edit',
+      command: 'DRONES_CONFIGURE',
+      icon: 'SlidersHorizontal',
+      requiresSelection: true,
+      hint: 'Edit position + formation parameters for the selected drone pad.',
+    },
   ],
   commandHandlers: {
     DRONES_SELECT_ALL(): ViewportOperation | null {
@@ -94,6 +104,23 @@ const plugin: ViewportSegmentPlugin = {
         after: { radius, count: sel.length },
         description: `Arranged ${sel.length} pad(s) on a ${radius}m circle.`,
       };
+    },
+
+    DRONES_CONFIGURE(_payload, ctx): ViewportOperation | null {
+      const state = useProjectStore.getState();
+      const padId = ctx.selectionIds.find((id) => {
+        const p = state.positions.find((q) => q.id === id);
+        return p?.type === 'drone-pad';
+      });
+      if (!padId) return null;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('viewport-tools:open-drone-config', {
+            detail: { positionId: padId },
+          })
+        );
+      }
+      return null;
     },
   },
 };

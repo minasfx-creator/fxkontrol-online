@@ -8,13 +8,20 @@ import EmptySceneOverlay from './overlays/EmptySceneOverlay';
 import ViewportErrorOverlay from './overlays/ViewportErrorOverlay';
 import RecoverWebGLOverlay from './overlays/RecoverWebGLOverlay';
 import EngineDiagnosticsPanel from './overlays/EngineDiagnosticsPanel';
-import ViewportSegmentToolbar from '@/features/viewport-tools/components/ViewportSegmentToolbar';
+import ViewportSegmentToolbar, { type ViewportSegmentToolbarOrientation } from '@/features/viewport-tools/components/ViewportSegmentToolbar';
 
 interface Props {
   plan: ShowPlan | null;
   className?: string;
   onRequestGenerate?: () => void;
   showDiagnostics?: boolean;
+  /** Accepted for backward compatibility; the dock is always rendered as a
+   *  draggable vertical-right glass float in the desktop Mission Control
+   *  layout. The prop is ignored and exists only to keep older call-sites
+   *  type-safe during the chrome refactor. */
+  segmentToolbarOrientation?: ViewportSegmentToolbarOrientation;
+  /** When true, do not render the embedded segment toolbar (host page mounts its own). */
+  hideSegmentToolbar?: boolean;
 }
 
 /**
@@ -27,6 +34,7 @@ export default function ShowEngineHost({
   className,
   onRequestGenerate,
   showDiagnostics,
+  hideSegmentToolbar = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<Show3DEngine | null>(null);
@@ -69,7 +77,7 @@ export default function ShowEngineHost({
         <RecoverWebGLOverlay onRecover={() => engineRef.current?.recoverContext()} />
       )}
       {showDiagnostics && <EngineDiagnosticsPanel />}
-      {state === 'ready' && <ViewportSegmentToolbar />}
+      {state === 'ready' && !hideSegmentToolbar && <ViewportSegmentToolbar />}
     </div>
   );
 }

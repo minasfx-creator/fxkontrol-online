@@ -103,6 +103,12 @@ const FLAGS = {
   // Default: TRUE in production. Flip OFF only for explicit dev sessions.
   // ============================================================
   safety_gate_strict: true,
+
+  // ============================================================
+  // (`floating_chrome` removed — Mission Control desktop chrome is the
+  // only desktop layout now. Mobile shell is gated separately by
+  // `useIsMobile()` in src/pages/Index.tsx.)
+  // ============================================================
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
