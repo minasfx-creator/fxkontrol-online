@@ -153,6 +153,8 @@ const plugin: ViewportSegmentPlugin = {
         }
       }
       if (clones.length === 0) return null;
+      useProjectStore.setState({
+        timelineItems: [...state.timelineItems, ...clones],
       });
       return {
         id: uid('op'),
