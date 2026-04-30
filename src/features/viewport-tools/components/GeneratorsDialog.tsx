@@ -97,7 +97,12 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
   const [droneRotation, setDroneRotation] = useState(0);
   const [droneText, setDroneText] = useState('FXK');
   const [droneStarPoints, setDroneStarPoints] = useState(5);
+  const [droneColor, setDroneColor] = useState('#00e5ff');
+  const [droneTransition, setDroneTransition] = useState(6);
+  const [droneHold, setDroneHold] = useState(8);
   const [showPreview, setShowPreview] = useState(true);
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const [templateCategory, setTemplateCategory] = useState<TemplateCategory | 'all'>('all');
 
   const droneParams: FormationParams = useMemo(() => ({
     shape,
@@ -109,9 +114,35 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
     startTime: droneStart,
     text: droneText,
     starPoints: droneStarPoints,
-  }), [shape, droneCount, droneRadius, droneSpacing, droneHeight, droneRotation, droneStart, droneText, droneStarPoints]);
+    color: droneColor,
+    transitionDuration: droneTransition,
+    holdDuration: droneHold,
+  }), [shape, droneCount, droneRadius, droneSpacing, droneHeight, droneRotation, droneStart, droneText, droneStarPoints, droneColor, droneTransition, droneHold]);
 
   const droneReport = useMemo(() => generateDroneFormationDetailed(droneParams), [droneParams]);
+  const twinReport = useMemo(() => runDigitalTwinFormation(droneParams), [droneParams]);
+
+  const applyTemplate = (tpl: DroneFormationTemplate) => {
+    setShape(tpl.params.shape);
+    setDroneCount(tpl.params.droneCount);
+    setDroneRadius(tpl.params.radius);
+    setDroneSpacing(tpl.params.spacing);
+    setDroneHeight(tpl.params.height);
+    setDroneRotation(tpl.params.rotation ?? 0);
+    setDroneText(tpl.params.text ?? 'FXK');
+    setDroneStarPoints(tpl.params.starPoints ?? 5);
+    setDroneColor(tpl.params.color ?? '#00e5ff');
+    setDroneTransition(tpl.params.transitionDuration ?? 6);
+    setDroneHold(tpl.params.holdDuration ?? 8);
+    setActiveTemplateId(tpl.id);
+  };
+
+  const filteredTemplates = useMemo(
+    () => templateCategory === 'all'
+      ? DRONE_FORMATION_TEMPLATES
+      : DRONE_FORMATION_TEMPLATES.filter((t) => t.category === templateCategory),
+    [templateCategory],
+  );
 
   // ── Cake derived params + live report ─────────────────────
   const cakeAnchorPos = useMemo(
