@@ -5,7 +5,7 @@
  * Mirrors the Editor screen spec in the Figma handoff doc:
  *   Topbar 64 · Tabs 48 · Left 280 · Right 320 · Timeline 180 · Viewport fill.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Save, ShieldCheck, Upload, User2,
   Flame, Sparkles, Send, Lightbulb, Sliders,
@@ -15,6 +15,7 @@ import {
 import {
   EditorShell, DsButton, DsPanel, DsPanelTitle,
   DsSegmentTabs, DsToolItem, type SegmentItem,
+  DsSkeleton, DsPanelSkeleton, DsViewportSkeleton,
 } from '@/components/ds';
 
 const SEGMENTS: SegmentItem[] = [
