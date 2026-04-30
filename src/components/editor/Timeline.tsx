@@ -21,6 +21,8 @@ import useGenerativeStore from '@/store/useGenerativeStore';
 import { getPreFireTime } from '@/lib/safetyEngine';
 import { cn } from '@/lib/utils';
 import AudioWaveform from './AudioWaveform';
+import { isAudioFile, uploadAudioForProject } from '@/lib/audioUpload';
+import { useAuth } from '@/hooks/useAuth';
 import PyroTimelineTrack from './PyroTimelineTrack';
 import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { loadTimelineView, saveTimelineView } from '@/lib/timelineViewState';
@@ -89,7 +91,20 @@ const TimelineGrid = React.forwardRef<HTMLDivElement, {
   );
 });
 
-const TimeRuler = React.forwardRef<HTMLDivElement, { duration: number; pixelsPerSecond: number; scrollLeft?: number; viewportWidth?: number }>(function TimeRuler({ duration, pixelsPerSecond, scrollLeft = 0, viewportWidth = 1200 }, _ref) {
+interface TimeRulerProps {
+  duration: number;
+  pixelsPerSecond: number;
+  scrollLeft?: number;
+  viewportWidth?: number;
+  /** Called when the operator drops an audio file on the ruler. `time` is in
+   *  show-seconds, snapped if `snapToBeat` (Shift held = forced quantize). */
+  onAudioFileDrop?: (file: File, time: number, e: React.DragEvent) => void;
+  audioStartOffset?: number;
+}
+const TimeRuler = React.forwardRef<HTMLDivElement, TimeRulerProps>(function TimeRuler(
+  { duration, pixelsPerSecond, scrollLeft = 0, viewportWidth = 1200, onAudioFileDrop, audioStartOffset = 0 },
+  _ref,
+) {
   let step: number;
   if (pixelsPerSecond >= 40) step = 1;
   else if (pixelsPerSecond >= 15) step = 2;
@@ -114,7 +129,86 @@ const TimeRuler = React.forwardRef<HTMLDivElement, { duration: number; pixelsPer
       </div>
     );
   }
-  return <div className="relative h-5 border-b border-border/5">{marks}</div>;
+
+  // ─── Audio file drop on the ruler ────────────────────────────────────
+  // Operator drags an audio file (mp3/wav/…) over the timecode strip and
+  // releases at a given x-position. We compute the show-time at that x and
+  // forward to the parent which uploads + sets `audioStartOffset` so the
+  // waveform begins at that timestamp.
+  const [hoverTime, setHoverTime] = React.useState<number | null>(null);
+
+  const isFileDrag = (e: React.DragEvent) => {
+    const t = e.dataTransfer.types;
+    // Files can be in `Files` (cross-browser) or `application/x-moz-file`.
+    return t.includes('Files') || t.includes('application/x-moz-file');
+  };
+
+  const computeTimeAt = (e: React.DragEvent): number => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, e.clientX - rect.left);
+    return Math.max(0, Math.min(duration, x / pixelsPerSecond));
+  };
+
+  const onDragOver = (e: React.DragEvent) => {
+    if (!onAudioFileDrop || !isFileDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setHoverTime(computeTimeAt(e));
+  };
+  const onDragLeave = (e: React.DragEvent) => {
+    if (!onAudioFileDrop) return;
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setHoverTime(null);
+  };
+  const onDrop = (e: React.DragEvent) => {
+    if (!onAudioFileDrop || !isFileDrag(e)) return;
+    e.preventDefault();
+    setHoverTime(null);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    onAudioFileDrop(file, computeTimeAt(e), e);
+  };
+
+  const offsetPx = Math.max(0, audioStartOffset) * pixelsPerSecond;
+
+  return (
+    <div
+      className={cn(
+        "relative h-5 border-b border-border/5 transition-colors",
+        hoverTime !== null && "bg-primary/[0.06] ring-1 ring-primary/30",
+      )}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      title={onAudioFileDrop ? 'Drop audio file here to set start offset' : undefined}
+    >
+      {marks}
+      {/* Persistent marker showing where the audio currently starts. */}
+      {audioStartOffset > 0 && (
+        <div
+          className="pointer-events-none absolute top-0 bottom-0 flex flex-col items-center"
+          style={{ left: `${offsetPx}px` }}
+          aria-label={`Audio start offset ${audioStartOffset.toFixed(2)}s`}
+        >
+          <div className="w-px h-full bg-cyan-400/60" />
+          <span className="absolute top-0 left-1 text-[8px] font-mono text-cyan-400/80 tabular-nums whitespace-nowrap">
+            ♪ +{audioStartOffset.toFixed(2)}s
+          </span>
+        </div>
+      )}
+      {/* Drop preview line + timecode badge while dragging an audio file. */}
+      {hoverTime !== null && (
+        <div
+          className="pointer-events-none absolute top-0 bottom-0"
+          style={{ left: `${hoverTime * pixelsPerSecond}px` }}
+        >
+          <div className="w-px h-full bg-primary/80" />
+          <span className="absolute -top-4 left-1 text-[9px] font-mono text-primary bg-background/90 px-1 rounded tabular-nums whitespace-nowrap">
+            ♪ → {formatTime(hoverTime)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
 });
 
 // --- Context Menu for Timeline Items ---
@@ -1384,6 +1478,9 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
   const cloneDragOffsetSec = useProjectStore(s => s.cloneDragOffsetSec);
   const setCloneDragOffsetSec = useProjectStore(s => s.setCloneDragOffsetSec);
   const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
+  const audioStartOffset = useProjectStore(s => s.audioStartOffset);
+  const setAudioStartOffset = useProjectStore(s => s.setAudioStartOffset);
+  const { user } = useAuth();
   const clearTimelineItemSelection = useProjectStore(s => s.clearTimelineItemSelection);
   const duplicateTimelineItems = useProjectStore(s => s.duplicateTimelineItems);
   const removeMultipleTimelineItems = useProjectStore(s => s.removeMultipleTimelineItems);
@@ -1772,6 +1869,31 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
   // Progress percentage for the scrubber
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  // Drop an audio file onto the ruler → upload + set `audioStartOffset` so
+  // the file enters the show at the dropped timestamp. Shift = quantize to
+  // beat (when BPM is set); otherwise raw time.
+  const handleAudioFileDropOnRuler = useCallback(
+    async (file: File, time: number, e: React.DragEvent) => {
+      if (!isAudioFile(file)) {
+        void import('sonner').then(({ toast }) => toast.warning(`Unsupported file: ${file.name}`));
+        return;
+      }
+      let snapped = time;
+      if (e.shiftKey && bpm && bpm > 0) {
+        const beatDur = 60 / bpm;
+        snapped = Math.round(time / beatDur) * beatDur;
+      }
+      setAudioStartOffset(snapped);
+      toast.info(`Uploading ${file.name} · audio will start at ${snapped.toFixed(2)}s`);
+      const result = await uploadAudioForProject(file, user?.id);
+      if (result.ok) {
+        toast.success(`🎵 ${file.name} synced · starts at ${snapped.toFixed(2)}s on the timeline`);
+      }
+    },
+    [bpm, setAudioStartOffset, user?.id],
+  );
+
+
   return (
     <div className="flex h-full flex-col border-t border-border/20 bg-card/95 shadow-[inset_0_1px_0_hsl(var(--border)/0.08)] backdrop-blur-xl">
       {/* ─── Transport Bar ─── */}
@@ -1992,7 +2114,14 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
           <div className="flex">
             <div className="w-24 flex-shrink-0" />
             <div className="flex-1 relative">
-              <TimeRuler duration={duration} pixelsPerSecond={pixelsPerSecond} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
+              <TimeRuler
+                duration={duration}
+                pixelsPerSecond={pixelsPerSecond}
+                scrollLeft={scrollLeft}
+                viewportWidth={viewportWidth}
+                audioStartOffset={audioStartOffset}
+                onAudioFileDrop={handleAudioFileDropOnRuler}
+              />
               <TimelineGrid duration={duration} pixelsPerSecond={pixelsPerSecond} bpm={bpm} snapMode={snapMode} scrollLeft={scrollLeft} viewportWidth={viewportWidth} />
               {/* Playhead — DOM-direct updates via transient Zustand subscription (zero re-renders) */}
               <PlayheadIndicator pixelsPerSecond={pixelsPerSecond} snapMode={snapMode} onScrubPointerDown={handleScrubPointerDown} />
