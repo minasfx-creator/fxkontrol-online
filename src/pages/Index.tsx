@@ -790,28 +790,38 @@ function Index() {
         className="absolute bottom-0 left-0 right-0 z-30"
         style={{
           height: desktopTimelineHeight,
-          background: 'hsl(var(--surface-0) / 0.94)',
+          background:
+            'linear-gradient(to bottom, hsl(var(--surface-0) / 0.97) 0%, hsl(var(--surface-0) / 0.94) 100%)',
           backdropFilter: 'blur(18px)',
-          borderTop: viewportMaximized ? 'none' : '1px solid hsl(var(--border) / 0.3)',
+          WebkitBackdropFilter: 'blur(18px)',
+          borderTop: viewportMaximized ? 'none' : '1px solid hsl(var(--border) / 0.35)',
+          boxShadow: viewportMaximized
+            ? 'none'
+            : '0 -1px 0 hsl(var(--primary) / 0.10), 0 -20px 40px -24px hsl(var(--background) / 0.7)',
           transition: 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           overflow: 'hidden',
         }}
       >
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center gap-1">
+        {/* Tab cluster — collapse + reset live in a unified pill on the timeline edge.
+            Mimics the "scrub bar" treatment of pro NLEs (Premiere, Resolve, Avid). */}
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full z-10 flex items-stretch overflow-hidden rounded-t-lg border border-border/40 border-b-0 bg-surface-1/95 backdrop-blur-sm shadow-[0_-2px_8px_-4px_hsl(var(--background)/0.6)]"
+        >
           <button
             onClick={() => setTimelineCollapsed(!timelineCollapsed)}
-            className="flex items-center gap-1 px-3 h-6 rounded-t-lg bg-surface-1/95 border border-border/30 border-b-0 text-muted-foreground hover:text-foreground transition-all backdrop-blur-sm"
+            className="flex items-center gap-1.5 px-3 h-6 text-muted-foreground hover:text-primary hover:bg-surface-2/80 transition-colors"
             title={timelineCollapsed ? 'Expandir Timeline' : 'Recolher Timeline'}
           >
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${timelineCollapsed ? 'rotate-180' : ''}`} />
-            <span className="text-[9px] font-semibold uppercase tracking-wider">Timeline</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${timelineCollapsed ? 'rotate-180' : ''}`} />
+            <span className="text-[9px] font-semibold uppercase tracking-[0.16em]">Timeline</span>
           </button>
+          <span aria-hidden className="w-px bg-border/40" />
           <button
             onClick={() => {
               resetTimelineView();
               window.location.reload();
             }}
-            className="flex items-center justify-center w-6 h-6 rounded-t-lg bg-surface-1/95 border border-border/30 border-b-0 text-muted-foreground hover:text-foreground transition-all backdrop-blur-sm"
+            className="flex items-center justify-center w-6 h-6 text-muted-foreground/70 hover:text-primary hover:bg-surface-2/80 transition-colors"
             title="Reset Timeline View (zoom / scroll / collapsed)"
             aria-label="Reset Timeline View"
           >
