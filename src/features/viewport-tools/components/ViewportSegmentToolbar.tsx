@@ -14,6 +14,7 @@ import DmxPatchDialog from './DmxPatchDialog';
 import ValidatorsReportDialog from './ValidatorsReportDialog';
 import ExportCenterDialog from './ExportCenterDialog';
 import GeneratorsDialog from './GeneratorsDialog';
+import DmxHeatmapOverlay from './DmxHeatmapOverlay';
 import { generateCake, type CakeParams } from '@/features/viewport-tools/generators/cakeGenerator';
 import { generateMortarFan, type MortarFanParams } from '@/features/viewport-tools/generators/mortarFanGenerator';
 import { generateDroneFormation, type FormationParams } from '@/features/viewport-tools/generators/droneFormationGenerator';
@@ -267,6 +268,11 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
     } else if (op.command === 'DRONES_GENERATE_FORMATION') {
       const formationId = (op.after as { formationId: string }).formationId;
       useProjectStore.getState().removeDroneFormation(formationId);
+    } else if (op.command === 'DMX_TOGGLE_HEATMAP') {
+      const before = (op.before as { visible: boolean }).visible;
+      import('@/features/viewport-tools/safetyOverlayStore').then((m) =>
+        m.useSafetyOverlayStore.getState().setDmxHeatmap(before),
+      );
     }
   };
 
@@ -397,6 +403,7 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
         open={generatorsDialog}
         onClose={() => setGeneratorsDialog(false)}
       />
+      <DmxHeatmapOverlay />
     </div>
   );
 }
