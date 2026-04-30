@@ -123,6 +123,85 @@ export default function ViewportSegmentToolbar({
     }
   };
 
+  // ── Vertical-right (floating glass dock) ─────────────────────────
+  if (orientation === 'vertical-right') {
+    return (
+      <div
+        className={
+          'absolute top-1/2 -translate-y-1/2 right-3 z-30 pointer-events-auto ' +
+          'flex flex-col items-center gap-1 ' +
+          (collapsed
+            ? 'p-1 rounded-full bg-[#050810]/70 border border-cyan-500/15 backdrop-blur'
+            : 'p-1.5 rounded-2xl bg-[#050810]/85 border border-cyan-500/25 backdrop-blur shadow-[0_8px_30px_-12px_rgba(0,255,255,0.25)]')
+        }
+      >
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          className="w-7 h-7 rounded-md flex items-center justify-center text-cyan-300/70 hover:text-cyan-200 hover:bg-cyan-500/10 transition-all"
+          title={collapsed ? 'Expandir ferramentas' : 'Recolher'}
+        >
+          {collapsed ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        </button>
+        {!collapsed && (
+          <>
+            <div className="w-6 h-px bg-cyan-500/20 my-0.5" />
+            {SEGMENTS.map((seg) => {
+              const isActive = active === seg;
+              return (
+                <Button
+                  key={seg}
+                  size="sm"
+                  variant="ghost"
+                  className={
+                    'h-9 w-9 p-0 rounded-lg text-[10px] font-bold tracking-wider transition-all ' +
+                    (isActive
+                      ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/60 hover:bg-cyan-500/25'
+                      : 'text-muted-foreground border border-transparent hover:text-cyan-300 hover:border-cyan-500/30')
+                  }
+                  onClick={() => setActive(isActive ? null : seg)}
+                  title={seg}
+                >
+                  {seg.slice(0, 3)}
+                </Button>
+              );
+            })}
+            <div className="w-6 h-px bg-cyan-500/20 my-0.5" />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 w-9 p-0 text-[10px] text-muted-foreground hover:text-cyan-300"
+              onClick={undo}
+              disabled={!operationLog.canUndo()}
+              title="Undo"
+            >
+              ↶
+            </Button>
+          </>
+        )}
+
+        {active && !collapsed && (
+          <div className="absolute right-[calc(100%+8px)] top-0 max-w-[280px] w-[260px]">
+            <ViewportToolPanel segment={active} />
+          </div>
+        )}
+
+        <EffectConfigDialog
+          open={effectDialog.open}
+          onClose={() => setEffectDialog((d) => ({ ...d, open: false }))}
+          effectId={effectDialog.effectId}
+          targetTimelineItemId={effectDialog.timelineItemId}
+        />
+        <DroneConfigDialog
+          open={droneDialog.open}
+          onClose={() => setDroneDialog((d) => ({ ...d, open: false }))}
+          positionId={droneDialog.positionId}
+        />
+      </div>
+    );
+  }
+
+  // ── Horizontal-top (legacy default) ──────────────────────────────
   return (
     <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 px-2 py-1.5 rounded-md bg-[#050810]/85 backdrop-blur border border-cyan-500/25 shadow-lg pointer-events-auto">
       {SEGMENTS.map((seg) => {
