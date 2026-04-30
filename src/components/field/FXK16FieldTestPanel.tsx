@@ -422,6 +422,9 @@ export default function FXK16FieldTestPanel() {
               </ul>
             )}
           </div>
+
+          {/* Cross-surface activity feed — mirrors FieldOps + Live Firing. */}
+          <FXK16ActivityFeed title="Shared Activity" limit={16} />
         </div>
       )}
 
