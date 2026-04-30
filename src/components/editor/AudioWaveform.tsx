@@ -422,7 +422,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     const endSample = Math.min(buf.length, Math.floor(outP * sr));
     const windowLen = Math.max(1, endSample - startSample);
     const windowDur = Math.max(0.01, outP - inP);
-    const samples = Math.max(1, Math.floor(windowDur * pixelsPerSecond * 2));
+    const samples = Math.max(1, Math.floor(windowDur * pixelsPerSecond * audioZoom * 2));
     const blockSize = Math.max(1, Math.floor(windowLen / samples));
     const rawData = buf.getChannelData(0);
     const downsampled = new Float32Array(samples);
@@ -601,7 +601,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     ctx.moveTo(playX, 0);
     ctx.lineTo(playX, height);
     ctx.stroke();
-  }, [waveformData, beats, currentTime, duration, pixelsPerSecond, trackHeight, cueMarkers, audioStartOffset, audioInPoint, audioOutPoint, audioOriginalDuration]);
+  }, [waveformData, beats, currentTime, duration, pixelsPerSecond, audioZoom, trackHeight, cueMarkers, audioStartOffset, audioInPoint, audioOutPoint, audioOriginalDuration]);
 
   const openFilePicker = useCallback(() => {
     if (uploading) return;
