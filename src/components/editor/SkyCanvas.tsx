@@ -28,6 +28,7 @@ import Rack3DView from './Rack3DView';
 import BoidsVisualizer from './BoidsVisualizer';
 import CollisionAvoidanceOverlay from './CollisionAvoidanceOverlay';
 import PyroSafetyZones from './skycanvas/PyroSafetyZones';
+import { useSafetyOverlayStore } from '@/features/viewport-tools/safetyOverlayStore';
 import GoogleTilesFallback from './skycanvas/GoogleTilesFallback';
 import AudioSpectrumVisualizer from './AudioSpectrumVisualizer';
 import LaserPreviewBeams from './LaserPreviewBeams';
