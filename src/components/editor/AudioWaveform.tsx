@@ -1026,8 +1026,12 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
 
       <div
         ref={containerRef}
-        className="flex-1 relative bg-surface-0/50 overflow-hidden cursor-crosshair"
+        className={cn(
+          "flex-1 relative bg-surface-0/50 overflow-hidden",
+          trimMode ? "cursor-crosshair" : "cursor-crosshair",
+        )}
         style={{ height: `${trackHeight}px` }}
+        onMouseDown={handleSelectionDragStart}
         onDoubleClick={handleWaveformDoubleClick}
         onContextMenu={handleWaveformContextMenu}
       >
@@ -1053,26 +1057,41 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
                 height: '100%',
               }}
             />
+            {/* Selection highlight band over the kept window. */}
             <div
+              className="absolute top-0 pointer-events-none border-y-2 border-warning/70 bg-warning/[0.06]"
+              style={{
+                left: `${Math.max(0, inHandleX)}px`,
+                width: `${Math.max(0, outHandleX - inHandleX)}px`,
+                height: '100%',
+              }}
+            />
+            <div
+              data-trim-handle="in"
               className="absolute top-0 cursor-ew-resize bg-warning hover:bg-warning/80 z-20"
               style={{ left: `${inHandleX - 3}px`, width: '6px', height: '100%' }}
               onMouseDown={startHandleDrag('in')}
               title={`In: ${pendingIn.toFixed(2)}s (press I at playhead)`}
             />
             <div
+              data-trim-handle="out"
               className="absolute top-0 cursor-ew-resize bg-warning hover:bg-warning/80 z-20"
               style={{ left: `${outHandleX - 3}px`, width: '6px', height: '100%' }}
               onMouseDown={startHandleDrag('out')}
               title={`Out: ${pendingOut.toFixed(2)}s (press O at playhead)`}
             />
-            <div className="absolute top-1 left-1 flex items-center gap-1 bg-surface-1/95 border border-warning/40 rounded px-1.5 py-0.5 z-30">
+            <div
+              data-trim-toolbar
+              className="absolute top-1 left-1 flex items-center gap-1 bg-surface-1/95 border border-warning/40 rounded px-1.5 py-0.5 z-30"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
               <span className="text-[9px] font-mono-code text-warning tabular-nums">
                 {pendingIn.toFixed(2)}s → {pendingOut.toFixed(2)}s ({(pendingOut - pendingIn).toFixed(2)}s)
               </span>
               <button onClick={handleApplyTrim} className="text-safety hover:text-safety/80" title="Apply (Enter)">
                 <Check className="h-3 w-3" />
               </button>
-              <button onClick={() => setTrimMode(false)} className="text-muted-foreground hover:text-foreground" title="Cancel (Esc)">
+              <button onClick={() => { setTrimMode(false); setSelectionDrag(null); }} className="text-muted-foreground hover:text-foreground" title="Cancel (Esc)">
                 <X className="h-3 w-3" />
               </button>
             </div>
