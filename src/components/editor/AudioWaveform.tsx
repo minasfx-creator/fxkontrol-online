@@ -590,7 +590,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     ctx.moveTo(playX, 0);
     ctx.lineTo(playX, height);
     ctx.stroke();
-  }, [waveformData, beats, currentTime, duration, pixelsPerSecond, trackHeight, cueMarkers]);
+  }, [waveformData, beats, currentTime, duration, pixelsPerSecond, trackHeight, cueMarkers, audioStartOffset, audioInPoint, audioOutPoint, audioOriginalDuration]);
 
   const openFilePicker = useCallback(() => {
     if (uploading) return;
