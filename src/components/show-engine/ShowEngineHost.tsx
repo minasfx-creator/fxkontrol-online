@@ -31,6 +31,8 @@ export default function ShowEngineHost({
   className,
   onRequestGenerate,
   showDiagnostics,
+  segmentToolbarOrientation = 'horizontal-top',
+  hideSegmentToolbar = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<Show3DEngine | null>(null);
