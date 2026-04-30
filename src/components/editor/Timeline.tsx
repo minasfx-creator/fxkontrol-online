@@ -1897,6 +1897,29 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
           );
         })()}
 
+        {/* Alt+drag clone offset (seconds). 0 = stamp at original timestamp. */}
+        <div
+          className="flex items-center gap-1 rounded-lg p-px pl-1.5 pr-1"
+          style={{ background: 'hsl(var(--muted) / 0.1)' }}
+          title="Alt+drag clone offset (seconds). 0 = stamp at original timestamp."
+        >
+          <Copy className="h-2.5 w-2.5 text-muted-foreground/50" />
+          <span className="text-[8px] font-mono uppercase text-muted-foreground/45 tracking-wider">⎇</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            step={0.1}
+            min={0}
+            max={60}
+            value={Number.isFinite(cloneDragOffsetSec) ? cloneDragOffsetSec : 0}
+            onChange={(e) => setCloneDragOffsetSec(parseFloat(e.target.value))}
+            onWheel={(e) => (e.target as HTMLInputElement).blur()}
+            className="w-10 h-5 bg-transparent text-[9px] font-mono tabular-nums text-foreground/80 text-right outline-none focus:text-accent"
+            aria-label="Alt+drag clone offset in seconds"
+          />
+          <span className="text-[8px] font-mono text-muted-foreground/35">s</span>
+        </div>
+
         {/* LIVE indicator placeholder */}
         <div className="badge-live hidden" id="live-badge">● LIVE</div>
 
