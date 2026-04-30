@@ -1,103 +1,138 @@
-## Goal
+## Objetivo
 
-Refactor the Studio (`/`, `Index.tsx`) chrome per the annotated mockup, **reusing existing modules**. No new business logic — only layout, mounting and visual refinement.
+Refinar a camada "Mission Control" do Studio (`/`, desktop). Três problemas concretos:
 
-## Mockup decode
+1. Menus do topo se encavalam (Master Menu pill sobrepõe o `Toolbar` e o `Studio ▼` flutuante).
+2. UI antiga (rail fixo `PanelTabBar` e o branch `horizontal-top` da `ViewportSegmentToolbar`) ainda está no código, criando redundância visual mesmo gated por flag.
+3. Timeline já recolhe, mas a alça vive no centro (briga com o play-head) e nenhum dos menus flutuantes pode ser arrastado.
+
+Tudo isso é puramente layout / interação. **Nada toca** `ShowPlan`, `CommandBus`, `SafetyStateMachine`, viewport-tools registry ou plugins.
+
+## Mudanças
+
+### 1. Top bar sem encavalamento
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│ [FXK] [☰ Master Menu — NEW, top-center floating]   [Studio ▼ ]  │  ← "Studio" floats top-right
-│       (access to all areas/functions, glassmorphic)             │
-│                                                                 │
-│   (viewport always black, no fixed left rail, no fixed right)   │
-│                                                                 │
-│        ┌──── Floating category dock (PYRO/DRONE/LIGHT/DMX) ──┐  │
-│        │  Glassmorphic, retractable, replaces PanelTabBar    │  │
-│        └─────────────────────────────────────────────────────┘  │
-│                                                                 │
-│                                              ╭─────────╮        │
-│                                              │ Avatar  │ ← float│
-│                                              ╰─────────╯        │
-├─────────────────────────────────────────────────────────────────┤
-│  Timeline (refined UX)                                          │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ [FXK logo]    [⌘ Master Menu]              [Studio ▼] [👤]   │  ← faixa única, h-12
+└──────────────────────────────────────────────────────────────┘
+   z-50          z-50 (mesmo plano)             z-50    z-50
 ```
 
-## Scope (MVP)
+- Manter apenas **uma** faixa superior (`Toolbar`, `h-12`) e mover o `MasterMenuFloat` para *dentro* dela (slot central), eliminando o `position: fixed; top-2 left-1/2; z-[70]` que hoje passa por cima de tudo.
+- `MasterMenuFloat` vira um botão inline (mesma altura do Toolbar). Atalho `⌘M` preservado, palette continua igual (`FullscreenCommandMenu`).
+- `UserAvatarFloat` muda de "bottom-right above timeline" para o **canto direito do Toolbar**, ao lado do Studio mode (popover de profile/sign-out preservado). O float bottom-right é removido — o avatar disputava espaço com `ViewportNavControls` e com o painel de tools verticais.
+- Z-index padronizado: Toolbar e tudo que vive nela em `z-50`. Painéis flutuantes em `z-40`. Dock vertical de segmentos em `z-30`. Timeline em `z-30`. Modais (palette) em `z-[80]`.
 
-1. **Master Menu (top-center, NEW shell, reuses existing panels)**
-2. **Float the Studio mode-switcher** (top-right) over the viewport
-3. **Remove the fixed right `PanelTabBar` rail**; replace with the existing `ViewportSegmentToolbar` (PYRO/SFX/DRONES/LIGHT/DMX) re-skinned as a floating, retractable, glassmorphic dock on the right edge
-4. **Floating user avatar** (bottom-right, above timeline)
-5. **Timeline UX refinement** (visual polish, no behavior change)
+### 2. Deletar UI antiga
 
-## What to build / change
+- Remover **import e mount** de `PanelTabBar` em `src/pages/Index.tsx` (Layer 2 inteiro). O arquivo `PanelTabBar.tsx` permanece no projeto porque exporta `PANEL_SECTIONS` + tipo `PanelId` consumidos por `UnifiedPanelMenu` (mobile) e `MobileTabBar`. Apenas o **componente default** vira não-renderizado no desktop (já é o estado atual via flag, mas o gate condicional e a flag são removidos: comportamento passa a ser definitivo).
+- Remover a flag `floating_chrome` de `src/lib/featureFlags.ts` — o novo layout vira o único caminho, simplificando os condicionais espalhados em `Index.tsx`.
+- Remover o branch `'horizontal-top'` da `ViewportSegmentToolbar`: hoje só existe para o `ShowEngineHost` legacy. Ajustar o `ShowEngineHost` para sempre usar `vertical-right` no desktop (mobile já tem caminho próprio via `MobileTabBar`).
+- Remover a "Layer 4: Left Foundation Rail" comment órfão e os condicionais `!floatingChrome` agora mortos.
 
-### 1. `MasterMenu` — new top-center floating component
-- File: `src/components/editor/MasterMenu.tsx` (new)
-- A glassmorphic pill that opens a command-palette style overlay listing every entry currently in `PanelTabBar` (`PanelId` union — already exhaustive: ~80 panels grouped in `RAW_PANEL_SECTIONS`).
-- Reuse the existing `RAW_PANEL_SECTIONS` array from `PanelTabBar.tsx` by **extracting it to** `src/components/editor/panelSections.ts` (pure data, no new logic). Both `PanelTabBar` (kept for mobile/legacy) and `MasterMenu` import from the same source — no duplication.
-- Click an item → calls the same `handleTogglePanel(id)` already wired in `Index.tsx`. The existing right-side floating panel renderer (`Layer 3` at `Index.tsx:743`) shows the panel — no change to panel rendering.
-- Keyboard: `⌘K` / `Ctrl+K` opens it, `Esc` closes, type-to-filter.
-- Mounted in `Index.tsx` `Layer 1` next to `Toolbar`.
+### 3. Timeline retrátil polida
 
-### 2. Floating Studio mode-switcher
-- The "Studio ▼" pill currently lives inside `Toolbar.tsx` (top-right cluster). Lift it into a small `<StudioModeFloat />` rendered absolutely at `top-2 right-3 z-50` in `Index.tsx`, outside the `Toolbar` flow.
-- Implementation: extract the existing JSX block from `Toolbar.tsx` (the "Studio/Office/Field/Command" mode dropdown) into `src/components/editor/StudioModeFloat.tsx`. Keep using the same router navigation handlers.
-- Visual: black glassmorphic background (`bg-[#050810]/85 backdrop-blur border border-cyan-500/25`), Vantablack palette per memory.
+```text
+                                                   ┌──────────┐
+viewport ............................              │ ▾ Timeline│  ← alça migra para
+─────────────────────────────────────              └──────────┘     o canto direito
+| Timeline (drag-resize 4px no topo)                              da barra
+─────────────────────────────────────
+```
 
-### 3. Right rail → floating category dock
-- Remove the fixed `PanelTabBar` mount at `Index.tsx:737-741` (Layer 2) on **desktop** (keep on mobile via `useIsMobile()` guard so the mobile UnifiedPanelMenu path is untouched).
-- Promote `ViewportSegmentToolbar` (`src/features/viewport-tools/components/ViewportSegmentToolbar.tsx`) to a **right-edge vertical floating dock**:
-  - New prop `orientation?: 'horizontal' | 'vertical-right'` (default keeps current horizontal top-center for backward compatibility in `ShowEngineHost`).
-  - When `vertical-right`: renders as a thin vertical pill on `right-3 top-1/2 -translate-y-1/2`, each segment becomes a 36×36 glass icon. Click expands a horizontally-attached `ViewportToolPanel` overlay (already exists).
-  - The dock is **retractable**: a tiny chevron collapses it to a 24px hover-strip.
-- Remove the duplicate horizontal mount inside `ShowEngineHost` for the `/` route (or keep it conditional via prop) — the new vertical version takes over on desktop. Mobile keeps horizontal.
-- The Floating Panel layer (`Index.tsx:743`) still renders panels triggered by Master Menu; the segment dock instead surfaces **viewport tools** (selection / formations / mirror / time-offset / configure-effect / configure-drone) — exactly what the mockup labels "ferramentas existentes divididas por categoria".
+- Alça de collapse/reset migra de `left-1/2` (centro) para `right-3` na borda superior do bloco da timeline — afastada do play-head, igual ao mockup.
+- Adicionar zona de hover de 4px no topo do bloco da timeline com `cursor: ns-resize` que aciona o drag-resize já existente (handler `handleTimelineResize*`). Hoje a zona não tem affordance visual.
+- Estado collapsed continua persistido em `timelineViewState` (já existe). Adicionar persistência da **altura** (vh) quando o usuário arrasta — campo `timelineHeightVh` no mesmo `loadTimelineView/saveTimelineView`.
+- Quando colapsada, a barra fica `h-7` (apenas a alça), liberando viewport.
 
-### 4. Floating user avatar
-- File: `src/components/editor/UserAvatarFloat.tsx` (new)
-- Reads from existing `useProfile()` hook (already in `src/hooks/useProfile.tsx`).
-- 56×56 round glass card at `bottom-[calc(var(--timeline-h)+12px)] right-3 z-40`. Click opens a small popover with: profile name, role, sign-out (reuse `useAuth().signOut`), settings shortcut.
-- No new auth logic.
+### 4. Drag-and-drop dos menus flutuantes
 
-### 5. Timeline UX refinement (visual only)
-- Keep the existing `Timeline` component intact. Refine the host wrapper at `Index.tsx:789-830`:
-  - Replace the squared border with the same glassmorphic treatment used by the new dock (rounded-t-xl, cyan inner accent, softer shadow).
-  - Move the "Timeline / Reset" pill (line 808) to the **right** edge so it doesn't fight the play-head.
-  - Add a 4px hover affordance (cursor: ns-resize) on the top edge to hint resize (keeps existing handler `handleTimelineResize*`).
-- Strictly visual; no logic change. No timeline rule violations from `Timeline UX Precision` memory.
+Novo hook utilitário `src/components/editor/useDraggableFloat.ts`:
 
-### 6. Always-black viewport
-- Already mostly enforced by `bg-background` + Vantablack tokens. Audit `Index.tsx:587-680` and remove any `bg-card`/border that introduces gray seams behind the floating chrome (turn them to `bg-transparent` since the chrome is now floating).
+```ts
+export function useDraggableFloat(opts: {
+  id: string;                       // chave de persistência localStorage
+  defaultPos: { x: number; y: number; anchor: 'tl'|'tr'|'bl'|'br' };
+  handleSelector?: string;          // só elementos casando o seletor iniciam drag
+  bounds?: 'viewport';              // clamp na janela
+}): {
+  ref: React.RefObject<HTMLDivElement>;
+  style: React.CSSProperties;       // posição absoluta calculada
+  dragHandleProps: { onPointerDown: ... };
+  resetPosition: () => void;
+};
+```
 
-## Things explicitly NOT changed
-- `useProjectStore`, `ShowPlan`, `CommandBus`, `SafetyStateMachine` — untouched.
-- `viewport-tools` registry, plugins, validators, command-dispatcher — untouched. We only add a layout prop to `ViewportSegmentToolbar`.
-- Panels themselves (effects, racks, addressing, etc.) — untouched; same toggle handler.
-- Mobile shell — gated by `useIsMobile()`; current mobile UI preserved.
+Características:
+- Pointer events (mouse + touch unificado), `setPointerCapture`.
+- Dead-zone de 4px antes de iniciar drag (não interfere com clicks).
+- Clamp dentro da viewport (5px de margem).
+- Persiste posição em `localStorage` (`fxk:float-pos:<id>`); reset com double-click no handle.
+- Snap-to-edge a 16px da borda (visual feedback discreto + persistência ancorada na borda mais próxima, sobrevive a resize de janela).
 
-## Files
+Aplicar em:
+- **`ViewportSegmentToolbar`** (vertical-right): handle = a barrinha do topo (chevron). Default ancorado em `right`.
+- **Floating panel ativo** (Layer 3 em `Index.tsx`, `420px` à direita): adicionar header `h-7` glass com ícone de grip (`GripVertical`) que serve de handle. Preserva botão `X` e conteúdo.
+- **`StudioPromptModal`** e **`MasterMenu` palette**: ficam como estão (não são floats, são modais).
+- **Timeline**: NÃO entra em DnD (ancorada por design, só resize vertical).
+- **`UserAvatarFloat`**: deixa de ser float (vira inline no Toolbar), portanto não precisa de DnD.
 
-**New**
-- `src/components/editor/MasterMenu.tsx`
-- `src/components/editor/StudioModeFloat.tsx`
+Cada float ganha pequeno botão "Reset position" no menu de contexto (right-click no handle).
+
+## Detalhes técnicos
+
+**Arquivos novos**
+- `src/components/editor/useDraggableFloat.ts` — hook de drag/persist/clamp/snap.
+- `src/components/editor/FloatHandle.tsx` — header reutilizável (grip + close + reset).
+
+**Arquivos editados**
+- `src/pages/Index.tsx`
+  - Remove `PanelTabBar` import + Layer 2 inteiro.
+  - Remove uso de `floating_chrome` (sempre on).
+  - Remove `UserAvatarFloat` do bottom-right (move para Toolbar).
+  - Layer 3 (panel flutuante) recebe `useDraggableFloat({ id: 'panel-' + activePanel, ... })` + `FloatHandle`.
+  - Layer 7 (timeline): alça vai para `right-3`; adiciona barra de hover-resize 4px no topo; persiste altura.
+- `src/components/editor/Toolbar.tsx`
+  - Adiciona slot central que renderiza `<MasterMenuFloat inline />` e slot direito com `<UserAvatarFloat inline />`.
+- `src/components/editor/MasterMenuFloat.tsx`
+  - Aceita prop `inline?: boolean`. Quando `true`: sem `fixed/z-[70]/top-2 left-1/2`, vira pill normal dentro do flow do Toolbar.
 - `src/components/editor/UserAvatarFloat.tsx`
-- `src/components/editor/panelSections.ts` (extracted data)
+  - Mesma ideia: prop `inline`. Quando inline, sem `bottomOffset`/`fixed`.
+- `src/features/viewport-tools/components/ViewportSegmentToolbar.tsx`
+  - Remove branch `horizontal-top`.
+  - Wrapper externo passa a usar `useDraggableFloat({ id: 'segment-dock', defaultPos: { anchor: 'tr', x: 12, y: 0.5 } })`.
+  - Handle = botão chevron já existente.
+- `src/components/show-engine/ShowEngineHost.tsx`
+  - Drop do parâmetro `orientation` (sempre vertical agora) — ou aceita e ignora para evitar churn.
+- `src/lib/featureFlags.ts`
+  - Remove `floating_chrome` (cleanup).
+- `src/lib/timelineViewState.ts`
+  - Adiciona campo opcional `heightVh: number` ao `loadTimelineView/saveTimelineView`.
 
-**Edited**
-- `src/pages/Index.tsx` — mount the four new floats, hide desktop `PanelTabBar`, polish timeline wrapper.
-- `src/components/editor/Toolbar.tsx` — remove the Studio dropdown block (now in `StudioModeFloat`).
-- `src/components/editor/PanelTabBar.tsx` — import `RAW_PANEL_SECTIONS` from the new `panelSections.ts` (no behavior change; mobile keeps using it).
-- `src/features/viewport-tools/components/ViewportSegmentToolbar.tsx` — add `orientation` prop + vertical-right layout + retract chevron.
-- `src/components/show-engine/ShowEngineHost.tsx` — accept/forward `orientation` so desktop renders vertical-right and mobile stays horizontal.
+**Z-index canon (aplicado consistentemente)**
+```
+Toolbar / inline floats         z-50
+Floating panel (Layer 3)        z-40
+Segment dock (vertical)         z-30
+Timeline                        z-30
+ViewportNavControls             z-20
+Modais (palette, prompts)       z-[80]
+Toasts                          z-[90]
+```
 
-## Acceptance
+## Fora de escopo
 
-- Top of viewport shows: `[FXK] … [Master Menu pill] … [Studio ▼ float]` over a fully black canvas, no gray top bar artifacts.
-- The fixed right strip with stacked icons is gone on desktop; in its place, a thin glass dock with PYRO/SFX/DRONES/LIGHT/DMX, retractable.
-- `⌘K` opens Master Menu; selecting any panel opens it in the existing right-side floating panel area.
-- Bottom-right shows a circular avatar float; click reveals profile/sign-out.
-- Timeline still works identically (drag, scrub, resize, collapse) and looks like a single rounded glass slab.
-- Mobile (`useIsMobile()`): unchanged behavior; tab bar + UnifiedPanelMenu still work.
-- No changes to ShowPlan / CommandBus / Safety paths.
+- `ShowPlan`, `CommandBus`, `SafetyStateMachine`, validators, viewport-tools registry, plugins — intocados.
+- Mobile shell — gated por `useIsMobile()`, sem mudança.
+- Lógica de painéis individuais (effects, racks, addressing, DMX) — intocada.
+- MVP 2 parte 2 (DMX patch UI + conflict checker) e MVP 3 (validators FireOne/Showven) — próximas etapas, não entram nesse refactor.
+
+## Aceitação
+
+- Topo do viewport mostra **uma única faixa** com `[FXK] [⌘ Master Menu] ……… [Studio ▼] [👤]`. Sem sobreposição visual, sem pills "voando" sobre o Toolbar.
+- `PanelTabBar` legado some completamente do desktop (zero render). `floating_chrome` é removido como flag.
+- Dock vertical PYRO/SFX/DRONES/LIGHT/DMX e o painel flutuante de qualquer painel aberto podem ser **arrastados** com pointer/touch, com snap-to-edge e posição persistida entre sessões. Right-click no handle reseta posição.
+- Timeline: alça de collapse/reset no canto direito; banda 4px no topo com cursor `ns-resize` para drag-resize; altura persistida; collapsed → 28px de banda + alça.
+- Sem regressões mobile (`useIsMobile()` continua entregando o `MobileTabBar` + `UnifiedPanelMenu`).
+- Nenhuma chamada nova ao `commandBus` ou ao `ShowPlan`. Build limpo.
