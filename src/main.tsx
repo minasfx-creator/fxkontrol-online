@@ -6,6 +6,15 @@ import { initRuntimeMonitor } from "@/lib/runtimeMonitor";
 import { applyGpuTier } from "@/lib/gpuTier";
 import { installInteractionFpsGuard } from "@/lib/interactionFpsGuard";
 import { migrateLegacyStores } from "@/stores/migration";
+import { assertRuntimeEnv } from "@/lib/envGuard";
+import { startSmpteTicker } from "@/store/useSMPTEStore";
+
+// Fail fast on misconfigured deploys (missing VITE_SUPABASE_URL etc).
+// Throws in prod with a visible banner; warns in dev.
+assertRuntimeEnv();
+
+// Start the singleton SMPTE 30Hz tick loop. Idempotent — safe under HMR.
+startSmpteTicker();
 
 // Heavy / non-blocking modules deferred to idle so the public route
 // (landing/auth/legal) doesn't pay for them in the initial bundle.

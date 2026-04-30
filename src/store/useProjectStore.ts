@@ -157,6 +157,8 @@ export interface ProjectState {
   setSnapMode: (mode: 'auto' | 'beat' | 'frame' | 'off') => void;
   setPlaybackSpeed: (speed: number) => void;
   setProjectId: (id: string | null) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  replaceProjectState: (snap: any) => void;
   combineAsChain: (itemIds: string[], gap?: number) => void;
   breakChain: (chainRef: string) => void;
   addCameraKeyframe: (kf: CameraKeyframe) => void;
@@ -637,6 +639,33 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     timelineClock.setSpeed(safe);
   },
   setProjectId: (id) => set({ projectId: id }),
+  // ── Atomic load: replace ALL persisted slices in one set() call ─────
+  // WHY: loadProject used to call addPosition / addTimelineItem / addTrajectory
+  // in a loop, which APPENDED to whatever was already in the store. Loading
+  // project A then project B left B's data merged with A's — duplicate IDs,
+  // ghost positions, the lot. This single setter wipes the persisted slices
+  // atomically and lets useProjectPersistence stay shallow.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  replaceProjectState: (snap: any) => set(() => ({
+    projectId: snap.projectId ?? null,
+    projectName: snap.projectName ?? 'Untitled Show',
+    duration: snap.duration ?? 120,
+    audioUrl: snap.audioUrl ?? null,
+    bpm: snap.bpm ?? null,
+    playbackSpeed: snap.playbackSpeed ?? 1,
+    positions: Array.isArray(snap.positions) ? snap.positions : [],
+    timelineItems: Array.isArray(snap.timelineItems) ? snap.timelineItems : [],
+    trajectories: Array.isArray(snap.trajectories) ? snap.trajectories : [],
+    cameraKeyframes: Array.isArray(snap.cameraKeyframes) ? snap.cameraKeyframes : [],
+    droneFormations: Array.isArray(snap.droneFormations) ? snap.droneFormations : [],
+    selectedTimelineItemId: null,
+    selectedTimelineItemIds: [],
+    selectedPositionId: null,
+    selectedPositionIds: [],
+    selectedTrajectoryId: null,
+    selectedWaypointId: null,
+    selectedFormationId: null,
+  })),
 
   combineAsChain: (itemIds, gap = 0) => set((s) => {
     if (itemIds.length < 2) return s;

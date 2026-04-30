@@ -6,7 +6,7 @@
  */
 
 import { readinessEvaluator } from '@/core/hardware/ReadinessEvaluator';
-import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
+// operationalModeGuard removed — export is design-time, no mode gating.
 import { verificationLog } from '@/core/verification/VerificationLog';
 import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { deviceEventLog } from '@/core/hardware/DeviceEventLog';
@@ -44,11 +44,9 @@ class ExportCoordinator {
     const timestamp = Date.now();
     const warnings: string[] = [];
 
-    // 1. Mode guard — log only (não bloqueia)
-    const modeCheck = operationalModeGuard.check('export');
-    if (!modeCheck.allowed) {
-      warnings.push(`[ModeGuard] ${modeCheck.reason}`);
-    }
+    // 1. Mode guard — DESIGN-TIME OPERATION. Export is always allowed
+    //    in design/simulation. Real-hardware sync paths use a separate gate.
+    //    No check needed here.
 
     // 2. Verification — log/auditoria (não bloqueia)
     const vResult = verificationEngine.run();

@@ -1,58 +1,17 @@
 /**
  * ─── Legacy → Consolidated Store Migration ────────────────────────
- * One-shot migration helper. Runs on bootstrap, gated by the
- * `consolidatedStores` feature flag in uiWorkspaceStore.
- *
- * Idempotent: once the flag flips to true, subsequent boots no-op.
- *
- * Migration is intentionally additive — legacy stores are NOT cleared
- * here. Removing them is a separate cleanup pass after consumers have
- * been ported and we've validated no regressions in production.
+ * Explicit no-op. Per-domain stores in `src/store/` are canonical.
+ * Kept as a stable export so call sites (main.tsx) don't break, and
+ * so a future cross-store data move has a single, idempotent hook.
  */
-import { useUIWorkspaceStore } from './uiWorkspaceStore';
+let migrated = false;
 
-export interface MigrationResult {
-  ran: boolean;
-  reason?: string;
-  copied?: Partial<Record<'mission' | 'hardware' | 'simulation' | 'ui', number>>;
-}
-
-export function migrateLegacyStores(): MigrationResult {
-  const ui = useUIWorkspaceStore.getState();
-
-  if (ui.featureFlags.consolidatedStores) {
-    return { ran: false, reason: 'already-migrated' };
-  }
-
-  if (typeof console !== 'undefined') {
+export function migrateLegacyStores(): void {
+  if (migrated) return;
+  migrated = true;
+  if (import.meta.env.DEV) {
     console.info(
-      '%c[Stores] Consolidating legacy stores → 4 macro stores',
-      'color:#22d3ee;font-weight:bold',
+      '[stores] No legacy store migration is currently required. Canonical stores remain in src/store/.',
     );
   }
-
-  // ── Future migration calls go here ───────────────────────────────
-  // Example shape (intentionally commented — flip on per-domain as
-  // legacy slices are absorbed):
-  //
-  //   import { useTimelineStore } from '@/store/useTimelineStore';
-  //   useMissionStore.setState({
-  //     timeline: useTimelineStore.getState().items,
-  //   });
-
-  const copied: NonNullable<MigrationResult['copied']> = {
-    mission: 0, hardware: 0, simulation: 0, ui: 0,
-  };
-
-  ui.setFeatureFlag('consolidatedStores', true);
-
-  if (typeof console !== 'undefined') {
-    console.info(
-      '%c[Stores] Migration complete',
-      'color:#34d399;font-weight:bold',
-      copied,
-    );
-  }
-
-  return { ran: true, copied };
 }

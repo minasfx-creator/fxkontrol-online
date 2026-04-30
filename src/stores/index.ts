@@ -1,43 +1,29 @@
 /**
  * ─── Consolidated Stores — Public Surface ─────────────────────────
- * Import points for the 4 macro-stores. Legacy stores in
- * `src/store/` remain available during the migration window and
- * are gated by `useUIWorkspaceStore.featureFlags.consolidatedStores`.
+ * Slim macro-store barrel. After the H1 audit, only what's actually
+ * consumed remains:
+ *   • hardwareSyncStore — DMX/ArtNet hot path + bridge status
+ *   • uiWorkspaceStore  — layout, prefs, journal/report mirrors
  *
- * PREFER slice selectors (e.g. `useMissionPlayback`,
- * `useHardwareBridges`) over the raw store hooks — they use
- * `useShallow` and only re-render when the slice itself changes.
+ * Removed (zero consumers / canonical lives elsewhere):
+ *   • missionStore, simulationStore  — owned by per-domain stores
+ *     in `src/store/` (useFleetStore, useSceneStore, timeline hooks).
+ *   • hardwareSyncStore.auth/discovery — canonical sources are
+ *     `portRegistry` and `unifiedDiscovery`.
+ *   • uiWorkspaceStore.featureFlags    — canonical is `@/lib/featureFlags`.
  */
 export { createStore, useShallow } from './createStore';
 
 // Stores
 export {
-  useMissionStore,
-  useMissionDurable,
-  useMissionTimeline,
-  useMissionPlayback,
-  useMissionActions,
-} from './missionStore';
-export {
   useHardwareSyncStore,
-  useHardwareAuth,
   useHardwareBridges,
-  useHardwareDiscovery,
   useHardwareActions,
 } from './hardwareSyncStore';
-export {
-  useSimulationStore,
-  useSimulationMode,
-  useSimulationCompute,
-  useSimulationPhysics,
-  useSimulationReplay,
-  useSimulationActions,
-} from './simulationStore';
 export {
   useUIWorkspaceStore,
   useUIWorkspaceLayout,
   useUIWorkspacePrefs,
-  useUIWorkspaceFlags,
   useUIWorkspaceTelemetry,
   useUIWorkspaceActions,
 } from './uiWorkspaceStore';
@@ -45,44 +31,19 @@ export { migrateLegacyStores } from './migration';
 
 // Types
 export type {
-  MissionState,
-  MissionDurableSlice,
-  MissionTimelineSlice,
-  MissionPlaybackSlice,
-  MissionActions,
-  PlaybackState,
-  SafetyInterlock,
-} from './missionStore';
-export type {
   HardwareSyncState,
-  HardwareAuthSlice,
   HardwareBridgesSlice,
-  HardwareDiscoverySlice,
   HardwareProtocolSlice,
   HardwareActions,
   BridgeId,
   BridgeStatus,
-  AuthorizedPort,
 } from './hardwareSyncStore';
-export type {
-  SimulationState,
-  SimulationModeSlice,
-  SimulationComputeSlice,
-  SimulationPhysicsSlice,
-  SimulationReplaySlice,
-  SimulationActions,
-  SimulationMode,
-  ViewportMode,
-} from './simulationStore';
 export type {
   UIWorkspaceState,
   UIWorkspaceLayoutSlice,
   UIWorkspacePrefsSlice,
-  UIWorkspaceFlagsSlice,
   UIWorkspaceTelemetrySlice,
   UIWorkspaceActions,
-  FeatureFlags,
   CommandJournalEntry,
   ExecutiveReportEntry,
 } from './uiWorkspaceStore';
-export type { MigrationResult } from './migration';

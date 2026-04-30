@@ -179,16 +179,27 @@ export async function sendBLEFireCommand(
   await connDevice.dmxChar.writeValueWithResponse(cmd);
 }
 
+/**
+ * Subscribe to BLE notifications. Returns an unsubscribe function — call it
+ * on disconnect/cleanup to remove the listener and prevent duplicate events
+ * across reconnects.
+ */
 export function onBLENotification(
   connDevice: BLEConnectedDevice,
   callback: (data: DataView) => void
-): void {
-  if (!connDevice.statusChar) return;
-  connDevice.statusChar.startNotifications();
-  connDevice.statusChar.addEventListener('characteristicvaluechanged', (event: any) => {
+): () => void {
+  if (!connDevice.statusChar) return () => { /* noop */ };
+  const handler = (event: any) => {
     const target = event.target;
     if (target?.value) callback(target.value);
-  });
+  };
+  connDevice.statusChar.startNotifications();
+  connDevice.statusChar.addEventListener('characteristicvaluechanged', handler);
+  return () => {
+    try {
+      connDevice.statusChar?.removeEventListener?.('characteristicvaluechanged', handler);
+    } catch { /* ignore */ }
+  };
 }
 
 export async function disconnectBLE(connDevice: BLEConnectedDevice): Promise<void> {

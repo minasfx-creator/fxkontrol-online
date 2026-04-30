@@ -122,7 +122,7 @@ const FlightCheckTab = lz(() => import('@/components/editor/safety/FlightCheckTa
 const TakeoffGridPanel = lz(() => import('@/components/editor/TakeoffGridPanel'));
 const TransitionPlannerPanel = lz(() => import('@/components/editor/TransitionPlannerPanel'));
 const LaserControlPanel = lz(() => import('@/components/editor/LaserControlPanel'));
-const USBConnectionPanel = lz(() => import('@/components/editor/USBConnectionPanel'));
+const HardwareHubPanel = lz(() => import('@/components/editor/HardwareHubPanel'));
 const VideoChoreoPanel = lz(() => import('@/components/editor/VideoChoreoPanel'));
 const ShowvenEquipmentPanel = lz(() => import('@/components/editor/ShowvenEquipmentPanel'));
 const GenerativeEffectsPanel = lz(() => import('@/components/editor/GenerativeEffectsPanel'));
@@ -140,11 +140,9 @@ const BluetoothPanel = lz(() => import('@/components/editor/BluetoothPanel'));
 const NFCPairPanel = lz(() => import('@/components/editor/NFCPairPanel'));
 const DMXOutputPanel = lz(() => import('@/components/editor/dmx/DMXOutputPanel'));
 const RemoteControlPanel = lz(() => import('@/components/editor/RemoteControlPanel'));
-const ConnectionManagerPanel = lz(() => import('@/components/editor/ConnectionManagerPanel'));
 const RadioControlPanel = lz(() => import('@/components/editor/RadioControlPanel'));
 const MA3ControlPanel = lz(() => import('@/components/editor/MA3ControlPanel'));
 const SACNMonitorPanel = lz(() => import('@/components/editor/SACNMonitorPanel'));
-const EasyConnectPanel = lz(() => import('@/components/editor/EasyConnectPanel'));
 const VenueQuickSelector = lz(() => import('@/components/editor/VenueQuickSelector'));
 const VenueShowOverlay = lz(() => import('@/components/editor/VenueShowOverlay'));
 
@@ -300,6 +298,35 @@ function Index() {
   const [mobileTab, setMobileTab] = useState<MobileTab | null>(null);
   const [smartScriptOpen, setSmartScriptOpen] = useState(false);
   const [studioPromptOpen, setStudioPromptOpen] = useState(false);
+  // Auto-abrir Assistente IA quando o projeto está totalmente vazio.
+  // Aguarda 1.5s para o store carregar projeto persistido (loadProject é async),
+  // e só dispara se positions / timelineItems / trajectories continuarem vazios.
+  // Flag de sessão é gravada ao FECHAR o modal (não ao abrir) — assim, se o
+  // usuário recarregar antes de interagir, o convite ainda aparece.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let dismissed = false;
+    try {
+      dismissed = sessionStorage.getItem('fxk:aiAssistantDismissed') === '1';
+    } catch { /* ignore */ }
+    if (dismissed) return;
+    const t = window.setTimeout(() => {
+      const s = useProjectStore.getState();
+      const empty =
+        s.positions.length === 0 &&
+        s.timelineItems.length === 0 &&
+        s.trajectories.length === 0;
+      if (empty) setStudioPromptOpen(true);
+    }, 1500);
+    return () => window.clearTimeout(t);
+  }, []);
+  // Ao fechar o modal, marca que o usuário já viu o convite nesta sessão.
+  const handleStudioPromptOpenChange = useCallback((next: boolean) => {
+    setStudioPromptOpen(next);
+    if (!next) {
+      try { sessionStorage.setItem('fxk:aiAssistantDismissed', '1'); } catch { /* ignore */ }
+    }
+  }, []);
   const [mobilePanelHeight, setMobilePanelHeight] = useState<'collapsed' | 'half' | 'full'>('collapsed');
   const [isDragOver, setIsDragOver] = useState(false);
   const [remoteMode, setRemoteMode] = useState<'cloud' | 'wifi-auto'>('cloud');
@@ -361,10 +388,10 @@ function Index() {
       setAppPhase('editor');
     }
     if (panelParam) {
-      // SwarmGPT lives at /swarmgpt now — redirect any legacy deep links.
-      if (panelParam === 'swarmgpt') {
+      // Legacy AI entries → consolidated under /ai-builder.
+      if (panelParam === 'swarmgpt' || panelParam === 'ai-builder') {
         setSearchParams({}, { replace: true });
-        navigate('/swarmgpt');
+        navigate('/ai-builder');
         return;
       }
       setActivePanel(panelParam as PanelId);
@@ -393,9 +420,9 @@ function Index() {
       setVenueSelector(true);
       return;
     }
-    // SwarmGPT is now a dedicated page — navigate instead of opening modal.
+    // SwarmGPT consolidated under /ai-builder.
     if (id === 'swarmgpt') {
-      navigate('/swarmgpt');
+      navigate('/ai-builder');
       return;
     }
     setActivePanel((prev) => {
@@ -420,7 +447,7 @@ function Index() {
 
   const handleMobileOpenPanel = useCallback((id: PanelId) => {
     if (id === 'swarmgpt') {
-      navigate('/swarmgpt');
+      navigate('/ai-builder');
       return;
     }
     setActivePanel(id);
@@ -514,7 +541,7 @@ function Index() {
         {activePanel === 'takeoffgrid' && <TakeoffGridPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'transitions' && <TransitionPlannerPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'lasercontrol' && <LaserControlPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'usb' && <USBConnectionPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'usb' && <HardwareHubPanel onClose={() => setActivePanel(null)} initialTab="usb" />}
         {activePanel === 'videochoreo' && <VideoChoreoPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'showven' && <ShowvenEquipmentPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'generative' && <GenerativeEffectsPanel onClose={() => setActivePanel(null)} />}
@@ -532,11 +559,11 @@ function Index() {
         {activePanel === 'remotecontrol' && <RemoteControlPanel onClose={() => setActivePanel(null)} initialMode={remoteMode} />}
         {activePanel === 'controllers' && <VirtualControllerHub onClose={() => setActivePanel(null)} />}
         {activePanel === 'fieldmap' && <FieldMap2D onClose={() => setActivePanel(null)} />}
-        {activePanel === 'connections' && <ConnectionManagerPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'connections' && <HardwareHubPanel onClose={() => setActivePanel(null)} initialTab="connections" />}
         {activePanel === 'radio' && <RadioControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'ma3' && <MA3ControlPanel onClose={() => setActivePanel(null)} />}
         {activePanel === 'sacnmonitor' && <SACNMonitorPanel onClose={() => setActivePanel(null)} />}
-        {activePanel === 'easyconnect' && <EasyConnectPanel onClose={() => setActivePanel(null)} />}
+        {activePanel === 'easyconnect' && <HardwareHubPanel onClose={() => setActivePanel(null)} initialTab="easy" />}
         {activePanel === 'qastudio' && <QAStudioPanel onClose={() => setActivePanel(null)} />}
         
       </>
@@ -641,15 +668,41 @@ function Index() {
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
-        <div className="relative h-full w-full overflow-hidden border-x border-t border-border/20 bg-surface-0/95 shadow-2xl shadow-background/60">
+        <div
+          className="relative h-full w-full overflow-hidden border-x border-t border-border/20 bg-surface-0/95 shadow-2xl shadow-background/60"
+          style={{
+            // Inner cyan rim — gives the viewport a "broadcast monitor" presence
+            // without competing with the 3D content. Pure visual; no interaction.
+            boxShadow:
+              'inset 0 0 0 1px hsl(var(--border) / 0.18), inset 0 1px 0 0 hsl(var(--primary) / 0.10), 0 30px 60px -30px hsl(var(--background) / 0.9)',
+          }}
+        >
           <div className="absolute inset-0 border border-border/10 pointer-events-none" />
-          <div className="absolute inset-x-0 top-0 z-10 flex h-9 items-center justify-between border-b border-border/10 bg-surface-0/72 px-4 backdrop-blur-md pointer-events-none">
+          {/* Top chrome — broadcast-style header w/ live indicator + viewport label.
+              backdrop-blur + gradient mask so the 3D content fades cleanly behind. */}
+          <div
+            className="absolute inset-x-0 top-0 z-10 flex h-9 items-center justify-between px-4 pointer-events-none"
+            style={{
+              background:
+                'linear-gradient(to bottom, hsl(var(--surface-0) / 0.88) 0%, hsl(var(--surface-0) / 0.55) 70%, hsl(var(--surface-0) / 0) 100%)',
+              backdropFilter: 'blur(10px) saturate(1.2)',
+              WebkitBackdropFilter: 'blur(10px) saturate(1.2)',
+              borderBottom: '1px solid hsl(var(--border) / 0.10)',
+            }}
+          >
             <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              Sky Canvas
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inset-0 rounded-full bg-primary animate-ping opacity-60" />
+                <span className="relative h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" />
+              </span>
+              <span className="text-foreground/85">Sky Canvas</span>
+              <span className="text-muted-foreground/35">·</span>
+              <span className="text-muted-foreground/70 font-mono normal-case tracking-normal">3D Viewport</span>
             </div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/80">
-              Design Viewport
+            <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70">
+              <span className="hidden sm:inline">Design Mode</span>
+              <span className="text-muted-foreground/30">|</span>
+              <span className="text-primary/80">Ready</span>
             </div>
           </div>
           <div className="absolute inset-0 top-9">
@@ -694,12 +747,26 @@ function Index() {
           style={{
             bottom: desktopTimelineHeight,
             transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            background: 'hsl(var(--background) / 0.90)',
-            backdropFilter: 'blur(16px) saturate(1.4)',
-            borderLeft: '1px solid hsl(var(--border) / 0.3)',
+            background:
+              'linear-gradient(to right, hsl(var(--background) / 0.96) 0%, hsl(var(--background) / 0.88) 100%)',
+            backdropFilter: 'blur(18px) saturate(1.4)',
+            WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
+            borderLeft: '1px solid hsl(var(--border) / 0.35)',
             borderBottom: '1px solid hsl(var(--border) / 0.2)',
+            boxShadow:
+              '-12px 0 40px -16px hsl(var(--background) / 0.8), inset 1px 0 0 hsl(var(--primary) / 0.18)',
           }}
         >
+          {/* Cyan accent rail — subtle vertical accent on the inner edge that
+              echoes the canvas chrome. Pure visual; non-interactive. */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-0 top-6 bottom-6 w-px"
+            style={{
+              background:
+                'linear-gradient(to bottom, transparent 0%, hsl(var(--primary) / 0.45) 30%, hsl(var(--primary) / 0.45) 70%, transparent 100%)',
+            }}
+          />
           {/* Close button */}
           <button
             onClick={() => setActivePanel(null)}
@@ -723,28 +790,38 @@ function Index() {
         className="absolute bottom-0 left-0 right-0 z-30"
         style={{
           height: desktopTimelineHeight,
-          background: 'hsl(var(--surface-0) / 0.94)',
+          background:
+            'linear-gradient(to bottom, hsl(var(--surface-0) / 0.97) 0%, hsl(var(--surface-0) / 0.94) 100%)',
           backdropFilter: 'blur(18px)',
-          borderTop: viewportMaximized ? 'none' : '1px solid hsl(var(--border) / 0.3)',
+          WebkitBackdropFilter: 'blur(18px)',
+          borderTop: viewportMaximized ? 'none' : '1px solid hsl(var(--border) / 0.35)',
+          boxShadow: viewportMaximized
+            ? 'none'
+            : '0 -1px 0 hsl(var(--primary) / 0.10), 0 -20px 40px -24px hsl(var(--background) / 0.7)',
           transition: 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           overflow: 'hidden',
         }}
       >
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center gap-1">
+        {/* Tab cluster — collapse + reset live in a unified pill on the timeline edge.
+            Mimics the "scrub bar" treatment of pro NLEs (Premiere, Resolve, Avid). */}
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full z-10 flex items-stretch overflow-hidden rounded-t-lg border border-border/40 border-b-0 bg-surface-1/95 backdrop-blur-sm shadow-[0_-2px_8px_-4px_hsl(var(--background)/0.6)]"
+        >
           <button
             onClick={() => setTimelineCollapsed(!timelineCollapsed)}
-            className="flex items-center gap-1 px-3 h-6 rounded-t-lg bg-surface-1/95 border border-border/30 border-b-0 text-muted-foreground hover:text-foreground transition-all backdrop-blur-sm"
+            className="flex items-center gap-1.5 px-3 h-6 text-muted-foreground hover:text-primary hover:bg-surface-2/80 transition-colors"
             title={timelineCollapsed ? 'Expandir Timeline' : 'Recolher Timeline'}
           >
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${timelineCollapsed ? 'rotate-180' : ''}`} />
-            <span className="text-[9px] font-semibold uppercase tracking-wider">Timeline</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${timelineCollapsed ? 'rotate-180' : ''}`} />
+            <span className="text-[9px] font-semibold uppercase tracking-[0.16em]">Timeline</span>
           </button>
+          <span aria-hidden className="w-px bg-border/40" />
           <button
             onClick={() => {
               resetTimelineView();
               window.location.reload();
             }}
-            className="flex items-center justify-center w-6 h-6 rounded-t-lg bg-surface-1/95 border border-border/30 border-b-0 text-muted-foreground hover:text-foreground transition-all backdrop-blur-sm"
+            className="flex items-center justify-center w-6 h-6 text-muted-foreground/70 hover:text-primary hover:bg-surface-2/80 transition-colors"
             title="Reset Timeline View (zoom / scroll / collapsed)"
             aria-label="Reset Timeline View"
           >
@@ -789,7 +866,7 @@ function Index() {
       <LiveCard />
       <SmartScriptAssistant open={smartScriptOpen} onClose={() => setSmartScriptOpen(false)} />
       <Suspense fallback={null}>
-        <StudioPromptModal open={studioPromptOpen} onOpenChange={setStudioPromptOpen} />
+        <StudioPromptModal open={studioPromptOpen} onOpenChange={handleStudioPromptOpenChange} />
       </Suspense>
 
     </div>

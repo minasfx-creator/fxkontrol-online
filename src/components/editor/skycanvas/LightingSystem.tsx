@@ -25,6 +25,7 @@ import {
   getActiveBurstScan,
   getSkyScatterUniforms,
   setAdaptiveExposureValue,
+  runActiveBurstScan,
 } from './sharedState';
 import { useClockTimeRef } from '@/hooks/useClockTimeRef';
 
@@ -170,6 +171,8 @@ export const GlobalIlluminationController = React.forwardRef<THREE.Group, Record
     (window as any).__giSystem = giRef.current;
     return () => {
       delete (window as any).__giSystem;
+      // Detach hemisphere light from scene + clear probes (M5).
+      giRef.current?.dispose();
       giRef.current = null;
     };
   }, [scene]);
@@ -215,7 +218,15 @@ export const LensFlareController = React.forwardRef<THREE.Group, Record<string, 
     }
     spritesRef.current = pool;
     return () => {
-      pool.forEach(s => scene.remove(s));
+      // Dispose CanvasTexture + SpriteMaterial for every pooled sprite (M5).
+      // createLensFlareSprite() builds one CanvasTexture per sprite — without
+      // this loop we leak ~10 256×256 textures on each remount.
+      pool.forEach(s => {
+        scene.remove(s);
+        const mat = s.material as THREE.SpriteMaterial;
+        mat.map?.dispose();
+        mat.dispose();
+      });
       spritesRef.current = [];
     };
   }, [scene]);
@@ -354,4 +365,19 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, Record<string, nev
       />
     </mesh>
   );
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// ActiveBurstScanDriver — runs runActiveBurstScan() once per frame BEFORE
+// any consumer (GI / LensFlare / Reflections / Exposure) reads it.
+// Without this, getActiveBurstScan() returns null and no light effect
+// fires when the timeline reaches a cue. Mount as the FIRST child inside
+// the Canvas so its useFrame callback registers ahead of consumers.
+// Zero-GC: a single function call per frame, no allocations.
+// ═══════════════════════════════════════════════════════════════════════
+export const ActiveBurstScanDriver = React.forwardRef<null, Record<string, never>>(function ActiveBurstScanDriver(_props, _ref) {
+  useFrame(() => {
+    runActiveBurstScan();
+  });
+  return null;
 });

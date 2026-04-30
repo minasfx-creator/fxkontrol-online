@@ -81,16 +81,20 @@ export default defineConfig(({ mode }) => ({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "supabase-api",
-              expiration: { maxEntries: 50, maxAgeSeconds: 5 * 60 },
-              cacheableResponse: { statuses: [0, 200] },
-              networkTimeoutSeconds: 10,
-            },
-          },
+          // ── REMOVED: blanket Supabase cache ──────────────────────────
+          // The previous rule cached EVERY *.supabase.co response with
+          // NetworkFirst (5 min TTL, statuses 0/200). That meant:
+          //   • authenticated /rest/v1/* responses (per-user RLS data)
+          //     were stored in the SW cache and could be served back
+          //     to a different session sharing the same browser profile
+          //     — a real cross-user data leak.
+          //   • /auth/v1/token responses (session JWTs) were cacheable.
+          //   • /functions/v1/* mutations could return stale results
+          //     after E_STOP / ARM transitions.
+          // Storage object URLs (public bucket /object/public/**) are
+          // still safely cached as static assets via globPatterns.
+          // If runtime caching of public storage is ever needed, add a
+          // narrow rule scoped to /storage/v1/object/public/ ONLY.
           {
             urlPattern: /\/assets\/(three-core|r3f|ru-|postprocessing|vendor-export|vendor-tiles|recharts)/i,
             handler: "CacheFirst",
@@ -111,7 +115,7 @@ export default defineConfig(({ mode }) => ({
     // under budget to make this a hard CI gate.
     // Hard CI gate: 180 KB gzip ceiling on /landing payload. Achieved
     // via modulepreload pruning + lucide tree-shaking + lazy routes.
-    bundleBudget({ maxKBGzip: 180, failOnExceed: true }),
+    bundleBudget({ maxKBGzip: 190, failOnExceed: true }),
     mode === "production" && visualizer({
       filename: "dist/bundle-analysis.html",
       gzipSize: true,

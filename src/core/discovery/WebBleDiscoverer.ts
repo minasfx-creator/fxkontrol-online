@@ -16,6 +16,7 @@ interface BluetoothDeviceLike {
   name?: string;
   gatt?: { connected?: boolean };
   addEventListener?: (type: string, fn: () => void) => void;
+  removeEventListener?: (type: string, fn: () => void) => void;
   forget?: () => Promise<void>;
 }
 
@@ -49,7 +50,8 @@ class WebBleDiscoverer implements TransportDiscoverer {
   private _devices = new Map<string, DiscoveredDevice>();
   private _rawByDeviceId = new Map<string, BluetoothDeviceLike>();
   private _listeners = new Set<(ev: DiscoveryEvent) => void>();
-  private _attachedIds = new Set<string>();
+  /** Disconnect handler refs by deviceId — needed for clean removeEventListener. */
+  private _gattHandlers = new Map<string, () => void>();
 
   isSupported(): boolean { return isWebBleSupported(); }
 
@@ -62,9 +64,9 @@ class WebBleDiscoverer implements TransportDiscoverer {
       catch (e) { logger.warn('[WebBleDiscoverer] device.forget failed', e); }
     }
     const dev = this._devices.get(deviceId);
+    this._detachGattWatcher(deviceId);
     this._rawByDeviceId.delete(deviceId);
     this._devices.delete(deviceId);
-    this._attachedIds.delete(deviceId);
     if (dev) this._emit({ type: 'lost', device: { ...dev, online: false } });
     return revoked;
   }
@@ -86,6 +88,7 @@ class WebBleDiscoverer implements TransportDiscoverer {
       }
       for (const [id, dev] of this._devices) {
         if (!seen.has(id)) {
+          this._detachGattWatcher(id);
           this._devices.delete(id);
           this._rawByDeviceId.delete(id);
           this._emit({ type: 'lost', device: { ...dev, online: false } });
@@ -108,18 +111,29 @@ class WebBleDiscoverer implements TransportDiscoverer {
   }
 
   private _attachGattWatcher(d: BluetoothDeviceLike, id: string): void {
-    if (this._attachedIds.has(id) || typeof d.addEventListener !== 'function') return;
+    if (this._gattHandlers.has(id) || typeof d.addEventListener !== 'function') return;
+    const handler = () => {
+      const prev = this._devices.get(id);
+      if (prev) {
+        const updated = { ...prev, online: false, lastSeen: Date.now() };
+        this._devices.set(id, updated);
+        this._emit({ type: 'updated', device: updated });
+      }
+    };
     try {
-      d.addEventListener('gattserverdisconnected', () => {
-        const prev = this._devices.get(id);
-        if (prev) {
-          const updated = { ...prev, online: false, lastSeen: Date.now() };
-          this._devices.set(id, updated);
-          this._emit({ type: 'updated', device: updated });
-        }
-      });
-      this._attachedIds.add(id);
+      d.addEventListener('gattserverdisconnected', handler);
+      this._gattHandlers.set(id, handler);
     } catch { /* ignore */ }
+  }
+
+  private _detachGattWatcher(id: string): void {
+    const handler = this._gattHandlers.get(id);
+    if (!handler) return;
+    const raw = this._rawByDeviceId.get(id);
+    try {
+      raw?.removeEventListener?.('gattserverdisconnected', handler);
+    } catch { /* ignore */ }
+    this._gattHandlers.delete(id);
   }
 
   private _emit(ev: DiscoveryEvent): void {
