@@ -86,7 +86,8 @@ export default function UserAvatarFloat({ bottomOffset = 12, inline = false, cla
       {open && (
         <div
           className={cn(
-            'absolute bottom-full right-0 mb-2 w-56',
+            'absolute right-0 w-56 z-[60]',
+            inline ? 'top-full mt-2' : 'bottom-full mb-2',
             'rounded-xl bg-[#050810]/92 backdrop-blur-xl border border-cyan-500/25',
             'shadow-[0_20px_50px_-12px_rgba(0,0,0,0.8)]',
             'p-3 text-foreground',
