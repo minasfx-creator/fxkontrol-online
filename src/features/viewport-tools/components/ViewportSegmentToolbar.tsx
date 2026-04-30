@@ -17,7 +17,7 @@ import ValidatorsReportDialog from './ValidatorsReportDialog';
 import ExportCenterDialog from './ExportCenterDialog';
 import GeneratorsDialog from './GeneratorsDialog';
 import DmxHeatmapOverlay from './DmxHeatmapOverlay';
-import { generateCake, type CakeParams } from '@/features/viewport-tools/generators/cakeGenerator';
+import { generateCakeDetailed, type CakeParams } from '@/features/viewport-tools/generators/cakeGenerator';
 import { generateMortarFan, type MortarFanParams } from '@/features/viewport-tools/generators/mortarFanGenerator';
 import { generateDroneFormationDetailed, type FormationParams } from '@/features/viewport-tools/generators/droneFormationGenerator';
 import type { SegmentType } from '@/features/viewport-tools/types';
