@@ -160,8 +160,10 @@ export default function EditorShellPreview() {
               </span>
             </div>
             <div className="flex items-center gap-ds-2">
-              {/* Layout controls — collapse rails / timeline + reset (persisted). */}
-              <div className="hidden sm:flex items-center gap-1 rounded-ds-md border border-ds-border-default bg-ds-surface-elevated/60 p-0.5">
+              {/* Layout controls — collapse rails / timeline + reset (persisted).
+                  Escondido em mobile (portrait E landscape) porque a grid lá
+                  é uma pilha vertical sem sidebars laterais. */}
+              <div className="hidden lg:flex items-center gap-1 rounded-ds-md border border-ds-border-default bg-ds-surface-elevated/60 p-0.5">
                 <LayoutIconButton
                   ariaLabel={layout.leftCollapsed ? 'Expandir painel esquerdo' : 'Recolher painel esquerdo'}
                   onClick={layout.toggleLeft}
