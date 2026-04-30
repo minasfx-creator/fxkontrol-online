@@ -24,6 +24,7 @@ import {
   PlugZap,
 } from 'lucide-react';
 import RealHardwareBridgeDialog from './RealHardwareBridgeDialog';
+import ShowvenBridgeDialog from './ShowvenBridgeDialog';
 import { runPreExportGate, type ExportGateReport } from '../exporters/preExportGate';
 import {
   exportFireOneFDB,
@@ -50,6 +51,7 @@ export default function ExportCenterDialog({ open, onClose }: Props) {
   const [toast, setToast] = useState<Toast>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [bridgeOpen, setBridgeOpen] = useState(false);
+  const [showvenBridgeOpen, setShowvenBridgeOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -237,6 +239,20 @@ export default function ExportCenterDialog({ open, onClose }: Props) {
           </span>
         </button>
 
+        {/* Showven FX Commander Bridge — PBus 19200 8N1 dual-band */}
+        <button
+          type="button"
+          onClick={() => setShowvenBridgeOpen(true)}
+          disabled={blocked}
+          className="w-full rounded-lg border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-200 py-2 px-3 flex items-center gap-2 text-xs font-semibold tracking-wider uppercase transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <PlugZap className="h-4 w-4" />
+          Showven FX Commander — PBus dual-band
+          <span className="ml-auto text-[10px] font-normal text-cyan-300/70 normal-case tracking-normal">
+            Web Serial · 19200 8N1 · 433M/868M
+          </span>
+        </button>
+
         {toast && (
           <div
             className={
@@ -262,6 +278,10 @@ export default function ExportCenterDialog({ open, onClose }: Props) {
       <RealHardwareBridgeDialog
         open={bridgeOpen}
         onClose={() => setBridgeOpen(false)}
+      />
+      <ShowvenBridgeDialog
+        open={showvenBridgeOpen}
+        onClose={() => setShowvenBridgeOpen(false)}
       />
     </Dialog>
   );
