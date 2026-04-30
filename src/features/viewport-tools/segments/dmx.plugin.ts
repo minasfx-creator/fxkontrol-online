@@ -87,6 +87,20 @@ const plugin: ViewportSegmentPlugin = {
         description: `DMX conflict scan: ${report.totals.errors} error(s), ${report.totals.warnings} warning(s).`,
       };
     },
+    DMX_TOGGLE_HEATMAP(): ViewportOperation {
+      const before = useSafetyOverlayStore.getState().dmxHeatmapVisible;
+      useSafetyOverlayStore.getState().toggleDmxHeatmap();
+      const after = useSafetyOverlayStore.getState().dmxHeatmapVisible;
+      return {
+        id: uid('op'),
+        segment: 'DMX',
+        command: 'DMX_TOGGLE_HEATMAP',
+        timestamp: Date.now(),
+        before: { visible: before },
+        after: { visible: after },
+        description: `DMX heatmap ${after ? 'shown' : 'hidden'}.`,
+      };
+    },
   },
 };
 
