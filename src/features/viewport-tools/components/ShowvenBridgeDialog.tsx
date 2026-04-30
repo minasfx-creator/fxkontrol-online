@@ -257,6 +257,54 @@ export default function ShowvenBridgeDialog({ open, onClose }: Props) {
           )}
         </div>
 
+        {/* Dispatch profile (per-project, persisted) */}
+        <div className="rounded-lg border border-cyan-500/15 bg-cyan-500/5 p-2 space-y-2">
+          <div className="flex items-center gap-2 text-xs text-cyan-200 font-semibold">
+            <Sliders className="h-3.5 w-3.5" />
+            Dispatch Profile
+            <span className="text-[10px] font-normal text-muted-foreground/70 normal-case">
+              · saved to {projectId ? `project ${projectId.slice(0, 8)}…` : 'global default'}
+            </span>
+            <button
+              type="button"
+              onClick={() => resetProfile(profileKey)}
+              disabled={status === 'running'}
+              className="ml-auto inline-flex items-center gap-1 text-[10px] text-cyan-300/70 hover:text-cyan-200 disabled:opacity-30"
+            >
+              <RotateCcw className="h-3 w-3" /> reset
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <ProfileNumberField
+              label="Default cue duration"
+              unit="ms"
+              value={profile.defaultDurationMs}
+              min={SHOWVEN_BRIDGE_LIMITS.defaultDurationMs.min}
+              max={SHOWVEN_BRIDGE_LIMITS.defaultDurationMs.max}
+              step={10}
+              disabled={status === 'running'}
+              onChange={(v) => setProfile(profileKey, { defaultDurationMs: v })}
+              hint={`pulse width per cue · ${SHOWVEN_BRIDGE_LIMITS.defaultDurationMs.min}–${SHOWVEN_BRIDGE_LIMITS.defaultDurationMs.max}`}
+            />
+            <ProfileNumberField
+              label="Coalesce window"
+              unit="ms"
+              value={profile.coalesceWindowMs}
+              min={SHOWVEN_BRIDGE_LIMITS.coalesceWindowMs.min}
+              max={SHOWVEN_BRIDGE_LIMITS.coalesceWindowMs.max}
+              step={1}
+              disabled={status === 'running'}
+              onChange={(v) => setProfile(profileKey, { coalesceWindowMs: v })}
+              hint={`same-device salvo into FIRE_SEQ · 0=off · max ${SHOWVEN_BRIDGE_LIMITS.coalesceWindowMs.max}`}
+            />
+          </div>
+          {status === 'running' && (
+            <div className="text-[10px] text-amber-300/80">
+              ⚠ Profile changes are locked while RUN is active.
+            </div>
+          )}
+        </div>
+
         {/* Cue load summary */}
         <div className="rounded-lg border border-cyan-500/15 bg-cyan-500/5 p-2 flex items-center gap-3 flex-wrap">
           <div className="text-xs text-cyan-200">
