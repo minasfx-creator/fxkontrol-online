@@ -120,7 +120,7 @@ export default function ExportCenterDialog({ open, onClose }: Props) {
       const r = exportDronesMavlink();
       downloadMavlink(r, format);
       setToast({
-        kind: r.validation.valid ? 'ok' : 'warn',
+        kind: r.validation.ok ? 'ok' : 'warn',
         message: `MAVLink ${format} exported — ${r.droneCount} pad(s), ${r.plan.waypoints.length} waypoint(s).`,
       });
     } catch (e) {
