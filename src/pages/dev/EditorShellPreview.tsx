@@ -5,7 +5,7 @@
  * Mirrors the Editor screen spec in the Figma handoff doc:
  *   Topbar 64 · Tabs 48 · Left 280 · Right 320 · Timeline 180 · Viewport fill.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Save, ShieldCheck, Upload, User2,
   Flame, Sparkles, Send, Lightbulb, Sliders,
@@ -15,6 +15,7 @@ import {
 import {
   EditorShell, DsButton, DsPanel, DsPanelTitle,
   DsSegmentTabs, DsToolItem, type SegmentItem,
+  DsSkeleton, DsPanelSkeleton, DsViewportSkeleton,
 } from '@/components/ds';
 
 const SEGMENTS: SegmentItem[] = [
@@ -31,6 +32,25 @@ const SEGMENTS: SegmentItem[] = [
 
 export default function EditorShellPreview() {
   const [active, setActive] = useState('pyro');
+
+  /**
+   * Staged boot for honest perceived performance:
+   *   stage 0 (0–220ms)  → chrome skeletons (panels grayed)
+   *   stage 1 (220–650ms)→ chrome ready, viewport still loading
+   *   stage 2 (≥650ms)   → fully painted, fade-in viewport content
+   *
+   * Mirrors what a real Studio mount does (assets, GPGPU warmup, ShowPlan
+   * hydration). Pure presentation here — no real async work.
+   */
+  const [stage, setStage] = useState<0 | 1 | 2>(0);
+  useEffect(() => {
+    const t1 = window.setTimeout(() => setStage(1), 220);
+    const t2 = window.setTimeout(() => setStage(2), 650);
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
+  }, []);
+
+  const chromeReady = stage >= 1;
+  const viewportReady = stage >= 2;
 
   return (
     <div className="h-[100dvh] w-full bg-ds-background text-ds-text-primary"
@@ -61,58 +81,87 @@ export default function EditorShellPreview() {
         }
         tabs={
           <div className="flex h-full items-center px-ds-4">
-            <DsSegmentTabs items={SEGMENTS} activeId={active} onChange={setActive} colorPerSegment />
+            {chromeReady ? (
+              <DsSegmentTabs items={SEGMENTS} activeId={active} onChange={setActive} colorPerSegment />
+            ) : (
+              <div className="flex items-center gap-ds-2">
+                {SEGMENTS.map((_, i) => (
+                  <DsSkeleton key={i} h="h-7" w="w-20" rounded="md" />
+                ))}
+              </div>
+            )}
           </div>
         }
         left={
           <div className="flex h-full flex-col gap-ds-4 p-ds-4 overflow-y-auto">
-            <DsPanel>
-              <DsPanelTitle>Selection</DsPanelTitle>
-              <div className="flex flex-col gap-1">
-                <DsToolItem icon={MousePointer2} label="Select" shortcut="V" active />
-                <DsToolItem icon={Move3d}        label="Move"   shortcut="W" />
-                <DsToolItem icon={RotateCcw}     label="Rotate" shortcut="E" />
+            {!chromeReady ? (
+              <>
+                <DsPanelSkeleton rows={3} />
+                <DsPanelSkeleton rows={3} />
+                <DsPanelSkeleton rows={2} />
+              </>
+            ) : (
+              <div className="flex flex-col gap-ds-4 animate-in fade-in duration-300">
+                <DsPanel>
+                  <DsPanelTitle>Selection</DsPanelTitle>
+                  <div className="flex flex-col gap-1">
+                    <DsToolItem icon={MousePointer2} label="Select" shortcut="V" active />
+                    <DsToolItem icon={Move3d}        label="Move"   shortcut="W" />
+                    <DsToolItem icon={RotateCcw}     label="Rotate" shortcut="E" />
+                  </div>
+                </DsPanel>
+                <DsPanel>
+                  <DsPanelTitle>Edit</DsPanelTitle>
+                  <div className="flex flex-col gap-1">
+                    <DsToolItem icon={Pencil} label="Sketch"  shortcut="K" />
+                    <DsToolItem icon={Wrench} label="Patch"   shortcut="P" />
+                    <DsToolItem icon={Cable}  label="Channel" shortcut="C" />
+                  </div>
+                </DsPanel>
+                <DsPanel>
+                  <DsPanelTitle>Safety</DsPanelTitle>
+                  <div className="flex flex-col gap-1">
+                    <DsToolItem icon={ShieldCheck}   label="Continuity" shortcut="G" />
+                    <DsToolItem icon={AlertTriangle} label="E-Stop"     shortcut="␣" critical />
+                  </div>
+                </DsPanel>
               </div>
-            </DsPanel>
-            <DsPanel>
-              <DsPanelTitle>Edit</DsPanelTitle>
-              <div className="flex flex-col gap-1">
-                <DsToolItem icon={Pencil} label="Sketch"  shortcut="K" />
-                <DsToolItem icon={Wrench} label="Patch"   shortcut="P" />
-                <DsToolItem icon={Cable}  label="Channel" shortcut="C" />
-              </div>
-            </DsPanel>
-            <DsPanel>
-              <DsPanelTitle>Safety</DsPanelTitle>
-              <div className="flex flex-col gap-1">
-                <DsToolItem icon={ShieldCheck}   label="Continuity" shortcut="G" />
-                <DsToolItem icon={AlertTriangle} label="E-Stop"     shortcut="␣" critical />
-              </div>
-            </DsPanel>
+            )}
           </div>
         }
         right={
           <div className="flex h-full flex-col gap-ds-4 p-ds-4 overflow-y-auto">
-            <DsPanel>
-              <DsPanelTitle>Inspector</DsPanelTitle>
-              <Field label="Cue ID"   value="PYRO.045" mono />
-              <Field label="Channel"  value="CH 12" mono />
-              <Field label="Type"     value="Comet · 30°" />
-            </DsPanel>
-            <DsPanel>
-              <DsPanelTitle>Position (YZX)</DsPanelTitle>
-              <NumRow a="Y" b="Z" c="X" va="0.00" vb="1.70" vc="-12.40" />
-            </DsPanel>
-            <DsPanel>
-              <DsPanelTitle>Rotation (P/T/S)</DsPanelTitle>
-              <NumRow a="Pan" b="Tilt" c="Spin" va="180°" vb="62°" vc="0°" />
-            </DsPanel>
-            <DsPanel>
-              <DsPanelTitle>Timing</DsPanelTitle>
-              <Field label="Start"    value="00:00:12.400" mono />
-              <Field label="Duration" value="0.85 s"        mono />
-              <Field label="Pre-fire" value="120 ms"        mono />
-            </DsPanel>
+            {!chromeReady ? (
+              <>
+                <DsPanelSkeleton rows={3} />
+                <DsPanelSkeleton rows={3} />
+                <DsPanelSkeleton rows={3} />
+                <DsPanelSkeleton rows={3} />
+              </>
+            ) : (
+              <div className="flex flex-col gap-ds-4 animate-in fade-in duration-300">
+                <DsPanel>
+                  <DsPanelTitle>Inspector</DsPanelTitle>
+                  <Field label="Cue ID"   value="PYRO.045" mono />
+                  <Field label="Channel"  value="CH 12" mono />
+                  <Field label="Type"     value="Comet · 30°" />
+                </DsPanel>
+                <DsPanel>
+                  <DsPanelTitle>Position (YZX)</DsPanelTitle>
+                  <NumRow a="Y" b="Z" c="X" va="0.00" vb="1.70" vc="-12.40" />
+                </DsPanel>
+                <DsPanel>
+                  <DsPanelTitle>Rotation (P/T/S)</DsPanelTitle>
+                  <NumRow a="Pan" b="Tilt" c="Spin" va="180°" vb="62°" vc="0°" />
+                </DsPanel>
+                <DsPanel>
+                  <DsPanelTitle>Timing</DsPanelTitle>
+                  <Field label="Start"    value="00:00:12.400" mono />
+                  <Field label="Duration" value="0.85 s"        mono />
+                  <Field label="Pre-fire" value="120 ms"        mono />
+                </DsPanel>
+              </div>
+            )}
           </div>
         }
         timeline={
@@ -136,9 +185,19 @@ export default function EditorShellPreview() {
                 ))}
               </div>
               {/* Tracks */}
-              {SEGMENTS.map((seg, idx) => (
-                <Track key={seg.id} label={seg.label} colorVar={`--segment-${seg.id}`} active={seg.id === active} offset={idx} />
-              ))}
+              {!viewportReady
+                ? SEGMENTS.map((seg, idx) => (
+                    <div
+                      key={seg.id}
+                      className="relative flex h-7 items-center gap-ds-2 border-b border-ds-border-default/60 px-ds-4"
+                    >
+                      <DsSkeleton h="h-3" w="w-16" />
+                      <DsSkeleton h="h-4" w={`w-[${20 + idx * 8}%]`} />
+                    </div>
+                  ))
+                : SEGMENTS.map((seg, idx) => (
+                    <Track key={seg.id} label={seg.label} colorVar={`--segment-${seg.id}`} active={seg.id === active} offset={idx} />
+                  ))}
               {/* Playhead */}
               <div className="pointer-events-none absolute top-0 bottom-0" style={{ left: '24%' }}>
                 <div className="h-full w-px bg-status-sync" />
@@ -149,7 +208,10 @@ export default function EditorShellPreview() {
         }
       >
         {/* Viewport — placeholder com grade técnica */}
-        <div className="relative h-full w-full overflow-hidden">
+        {!viewportReady ? (
+          <DsViewportSkeleton label="Booting viewport · DS" />
+        ) : (
+        <div className="relative h-full w-full overflow-hidden animate-in fade-in duration-500">
           <div className="absolute inset-0 opacity-[0.18]"
                style={{
                  backgroundImage:
@@ -194,6 +256,7 @@ export default function EditorShellPreview() {
             </div>
           </div>
         </div>
+        )}
       </EditorShell>
     </div>
   );
