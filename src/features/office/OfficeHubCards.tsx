@@ -7,7 +7,7 @@
  */
 import { useNavigate } from 'react-router-dom';
 import {
-  Plus, FolderOpen, LayoutTemplate, GraduationCap, BarChart3, Cable,
+  Plus, FolderOpen, LayoutTemplate, GraduationCap, BarChart3, Cable, LayoutGrid,
   type LucideIcon,
 } from 'lucide-react';
 import { DsCard, DsCardTitle, DsCardDescription, DsCardCta } from '@/components/ds';
@@ -66,6 +66,7 @@ export default function OfficeHubCards({ onOpenProject }: Props) {
     { icon: GraduationCap,  title: 'Academy',          description: 'Tutoriais e simulação guiada.',            cta: 'Aprender →',  onClick: () => navigate('/office?tab=training') },
     { icon: BarChart3,      title: 'Relatórios',       description: 'KPIs e relatórios executivos.',            cta: 'Ver →',       onClick: () => navigate('/office?tab=reports') },
     { icon: Cable,          title: 'Hardware / Devices', description: 'Pareamento, USB, BLE, Art-Net.',         cta: 'Conectar →',  onClick: () => navigate('/pairing/usb') },
+    { icon: LayoutGrid,     title: 'Editor DS (Beta)', description: 'Nova shell DS v1 — Topbar/Tabs/Inspector/Timeline.', cta: 'Abrir →',  onClick: () => navigate('/editor-ds') },
   ];
 
   return (
