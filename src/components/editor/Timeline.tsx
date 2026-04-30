@@ -564,11 +564,13 @@ function TimelineTrackRow({
       const newId = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-clone`;
       const initialTime = Math.max(0, Math.min(sourceStartTime + cloneOffsetSec, duration));
       // Deep-ish copy: preserve everything except the id, anchor at offset.
-      const { id: _omit, ...rest } = sourceItem as any;
+      const { id: _omit, position, positionIds, ...rest } = sourceItem as any;
       addTimelineItem({
         ...rest,
         id: newId,
         startTime: initialTime,
+        position: position ? { ...position } : { x: 0, y: 0, z: 0 },
+        ...(positionIds ? { positionIds: [...positionIds] } : {}),
       });
       activeItemId = newId;
       activeStartTime = initialTime;
