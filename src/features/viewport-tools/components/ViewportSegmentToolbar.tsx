@@ -19,7 +19,7 @@ import GeneratorsDialog from './GeneratorsDialog';
 import DmxHeatmapOverlay from './DmxHeatmapOverlay';
 import { generateCake, type CakeParams } from '@/features/viewport-tools/generators/cakeGenerator';
 import { generateMortarFan, type MortarFanParams } from '@/features/viewport-tools/generators/mortarFanGenerator';
-import { generateDroneFormation, type FormationParams } from '@/features/viewport-tools/generators/droneFormationGenerator';
+import { generateDroneFormationDetailed, type FormationParams } from '@/features/viewport-tools/generators/droneFormationGenerator';
 import type { SegmentType } from '@/features/viewport-tools/types';
 
 // Side-effect import: registers all 5 segment plugins exactly once.
