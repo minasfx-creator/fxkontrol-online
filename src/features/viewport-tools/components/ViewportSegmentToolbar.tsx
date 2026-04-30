@@ -116,12 +116,71 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
     };
     const onValidators = () => setValidatorsDialog(true);
     const onExport = () => setExportDialog(true);
+    const onOpenGenerators = () => setGeneratorsDialog(true);
+
+    // ── Generator commit handlers (mutate store + record undo) ──
+    const uid = (p: string) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const onGenCake = (e: Event) => {
+      const params = (e as CustomEvent).detail as CakeParams;
+      const items = generateCake(params);
+      if (items.length === 0) return;
+      useProjectStore.setState((s) => ({ timelineItems: [...s.timelineItems, ...items] }));
+      operationLog.push({
+        id: uid('op'),
+        segment: 'PYRO',
+        command: 'PYRO_GENERATE_CAKE',
+        timestamp: Date.now(),
+        before: null,
+        after: { addedIds: items.map((i) => i.id) },
+        description: `Generated cake: ${items.length} shots @${params.staggerMs}ms / ${params.spreadDeg}°.`,
+      });
+    };
+
+    const onGenFan = (e: Event) => {
+      const params = (e as CustomEvent).detail as MortarFanParams;
+      const { positions, items } = generateMortarFan(params);
+      if (items.length === 0) return;
+      useProjectStore.setState((s) => ({
+        positions: [...s.positions, ...positions],
+        timelineItems: [...s.timelineItems, ...items],
+      }));
+      operationLog.push({
+        id: uid('op'),
+        segment: 'PYRO',
+        command: 'PYRO_GENERATE_MORTAR_FAN',
+        timestamp: Date.now(),
+        before: null,
+        after: { addedPositionIds: positions.map((p) => p.id), addedItemIds: items.map((i) => i.id) },
+        description: `Generated mortar fan: ${positions.length} mortars / ${params.spacingM}m.`,
+      });
+    };
+
+    const onGenDrone = (e: Event) => {
+      const params = (e as CustomEvent).detail as FormationParams;
+      const formation = generateDroneFormation(params);
+      useProjectStore.getState().addDroneFormation(formation);
+      operationLog.push({
+        id: uid('op'),
+        segment: 'DRONES',
+        command: 'DRONES_GENERATE_FORMATION',
+        timestamp: Date.now(),
+        before: null,
+        after: { formationId: formation.id },
+        description: `Generated ${formation.formationType} formation: ${formation.droneCount} drones.`,
+      });
+    };
+
     window.addEventListener('viewport-tools:open-effect-config', onEffect);
     window.addEventListener('viewport-tools:open-drone-config', onDrone);
     window.addEventListener('viewport-tools:open-vdl-picker', onVdl);
     window.addEventListener('viewport-tools:open-dmx-patch', onDmx);
     window.addEventListener('viewport-tools:open-validators-report', onValidators);
     window.addEventListener('viewport-tools:open-export-center', onExport);
+    window.addEventListener('viewport-tools:open-generators', onOpenGenerators);
+    window.addEventListener('viewport-tools:generate-cake', onGenCake);
+    window.addEventListener('viewport-tools:generate-mortar-fan', onGenFan);
+    window.addEventListener('viewport-tools:generate-drone-formation', onGenDrone);
     return () => {
       window.removeEventListener('viewport-tools:open-effect-config', onEffect);
       window.removeEventListener('viewport-tools:open-drone-config', onDrone);
@@ -129,6 +188,10 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       window.removeEventListener('viewport-tools:open-dmx-patch', onDmx);
       window.removeEventListener('viewport-tools:open-validators-report', onValidators);
       window.removeEventListener('viewport-tools:open-export-center', onExport);
+      window.removeEventListener('viewport-tools:open-generators', onOpenGenerators);
+      window.removeEventListener('viewport-tools:generate-cake', onGenCake);
+      window.removeEventListener('viewport-tools:generate-mortar-fan', onGenFan);
+      window.removeEventListener('viewport-tools:generate-drone-formation', onGenDrone);
     };
   }, []);
 
