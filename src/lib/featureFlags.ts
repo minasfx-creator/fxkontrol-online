@@ -103,6 +103,15 @@ const FLAGS = {
   // Default: TRUE in production. Flip OFF only for explicit dev sessions.
   // ============================================================
   safety_gate_strict: true,
+
+  // ============================================================
+  // FLOATING CHROME — Studio chrome refactor (mockup-driven).
+  // ON: shows top-center MasterMenu pill, bottom-right floating user
+  // avatar, hides desktop PanelTabBar in favor of vertical-right
+  // ViewportSegmentToolbar. OFF: legacy chrome (PanelTabBar visible).
+  // Mobile is unaffected by this flag.
+  // ============================================================
+  floating_chrome: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
