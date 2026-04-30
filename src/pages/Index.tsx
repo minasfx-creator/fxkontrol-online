@@ -747,12 +747,26 @@ function Index() {
           style={{
             bottom: desktopTimelineHeight,
             transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            background: 'hsl(var(--background) / 0.90)',
-            backdropFilter: 'blur(16px) saturate(1.4)',
-            borderLeft: '1px solid hsl(var(--border) / 0.3)',
+            background:
+              'linear-gradient(to right, hsl(var(--background) / 0.96) 0%, hsl(var(--background) / 0.88) 100%)',
+            backdropFilter: 'blur(18px) saturate(1.4)',
+            WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
+            borderLeft: '1px solid hsl(var(--border) / 0.35)',
             borderBottom: '1px solid hsl(var(--border) / 0.2)',
+            boxShadow:
+              '-12px 0 40px -16px hsl(var(--background) / 0.8), inset 1px 0 0 hsl(var(--primary) / 0.18)',
           }}
         >
+          {/* Cyan accent rail — subtle vertical accent on the inner edge that
+              echoes the canvas chrome. Pure visual; non-interactive. */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute left-0 top-6 bottom-6 w-px"
+            style={{
+              background:
+                'linear-gradient(to bottom, transparent 0%, hsl(var(--primary) / 0.45) 30%, hsl(var(--primary) / 0.45) 70%, transparent 100%)',
+            }}
+          />
           {/* Close button */}
           <button
             onClick={() => setActivePanel(null)}
