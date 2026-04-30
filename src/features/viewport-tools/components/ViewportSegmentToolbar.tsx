@@ -93,6 +93,23 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       useProjectStore.setState((s) => ({
         positions: s.positions.map((p) => map.get(p.id) ?? p),
       }));
+    } else if (op.command === 'PYRO_OVERRIDE_CUE') {
+      const before = (op.before as { item: import('@/types/projectTypes').TimelineItem }).item;
+      useProjectStore.setState((s) => ({
+        timelineItems: s.timelineItems.map((it) => (it.id === before.id ? before : it)),
+      }));
+    } else if (op.command === 'PYRO_VARIANT_SAVE') {
+      const variantId = (op.after as { variantId: string }).variantId;
+      effectVariantStore.remove(variantId);
+    } else if (op.command === 'DRONES_UPDATE_POSITION') {
+      const before = (op.before as { position: import('@/types/projectTypes').Position }).position;
+      useProjectStore.getState().updatePosition(before.id, before);
+    } else if (op.command === 'DRONES_UPDATE_FORMATION') {
+      const before = (op.before as { formation: import('@/types/projectTypes').DroneFormation }).formation;
+      useProjectStore.getState().updateDroneFormation(before.id, before);
+    } else if (op.command === 'DRONES_CREATE_FORMATION') {
+      const formationId = (op.after as { formationId: string }).formationId;
+      useProjectStore.getState().removeDroneFormation(formationId);
     }
   };
 
