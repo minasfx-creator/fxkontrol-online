@@ -53,6 +53,36 @@ export default function EditorShellPreview() {
   const chromeReady = stage >= 1;
   const viewportReady = stage >= 2;
 
+  /**
+   * Onboarding modal — first visit only (persisted in localStorage).
+   * Reopen via Help button (?) in topbar or "?" key.
+   */
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(ONBOARDING_KEY)) setOnboardingOpen(true);
+    } catch {
+      // localStorage may be blocked (private mode) — fail open: show once per session.
+      setOnboardingOpen(true);
+    }
+  }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Avoid stealing "?" from inputs/textareas.
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      if (e.key === '?') {
+        e.preventDefault();
+        setOnboardingOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  const markOnboarded = () => {
+    try { localStorage.setItem(ONBOARDING_KEY, '1'); } catch { /* ignore */ }
+  };
+
   return (
     <div className="h-[100dvh] w-full bg-ds-background text-ds-text-primary"
          style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
