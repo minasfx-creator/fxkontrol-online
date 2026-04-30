@@ -105,6 +105,23 @@ const plugin: ViewportSegmentPlugin = {
         description: `Arranged ${sel.length} pad(s) on a ${radius}m circle.`,
       };
     },
+
+    DRONES_CONFIGURE(_payload, ctx): ViewportOperation | null {
+      const state = useProjectStore.getState();
+      const padId = ctx.selectionIds.find((id) => {
+        const p = state.positions.find((q) => q.id === id);
+        return p?.type === 'drone-pad';
+      });
+      if (!padId) return null;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('viewport-tools:open-drone-config', {
+            detail: { positionId: padId },
+          })
+        );
+      }
+      return null;
+    },
   },
 };
 
