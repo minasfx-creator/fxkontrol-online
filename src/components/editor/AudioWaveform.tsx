@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAudioMasterClock } from '@/hooks/useAudioMasterClock';
 import { playAudioWithRetry } from '@/lib/audio/playAudioWithRetry';
 import { registerAudioMaster } from '@/lib/audio/audioMasterRegistry';
+import { timelineClock } from '@/core/timeline/TimelineClock';
+import { lockstep } from '@/core/reliability/lockstepEngine';
 import { uploadAudioForProject } from '@/lib/audioUpload';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -343,9 +345,25 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       // the in-point when the playhead is in the silent prelude.
       const audioInputTime = Math.max(0, currentTime - audioStartOffset);
       const targetFileTime = audioInputTime + audioInPoint;
-      if (Math.abs(audio.currentTime - targetFileTime) > 0.15) {
-        audio.currentTime = targetFileTime;
-      }
+
+      // ─── Atomic Play Sync (Apr-2026) ────────────────────────────────
+      // FORÇA o seek do audio antes de chamar play(), independente do
+      // delta. O guard de 0.15s usado em scrub é apropriado pra evitar
+      // micro-seeks durante reprodução normal, mas no momento exato em
+      // que `isPlaying` flipa para true precisamos garantir que o áudio
+      // SAI exatamente de `targetFileTime` — sem isso o primeiro burst
+      // pode disparar até 150 ms fora do beat.
+      try { audio.currentTime = targetFileTime; } catch { /* readyState too low */ }
+
+      // Pré-engaja o master clock no MESMO frame em que o audio.play()
+      // é chamado. Sem isso, o `useAudioMasterClock` pump levaria 1–3
+      // RAFs para detectar `isAdvancing===true` (precisa ver currentTime
+      // mover entre dois samples), e durante essa janela o lockstep
+      // 'playback' continua avançando o clock localmente — quando o
+      // audio finalmente engaja, há um snap visível em FX e drones.
+      // Engajar agora elimina essa janela de drift.
+      lockstep.setEnabled('playback', false);
+      timelineClock.syncExternalTime(currentTime);
 
       let gestureToastId: string | number | undefined;
       playControllerRef.current = playAudioWithRetry(audio, {
@@ -372,7 +390,13 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
         },
       });
     } else {
+      // Atomic Pause: pause audio AND release master sync no mesmo frame
+      // pra que o clock não fique congelado entre `audio.pause()` e o
+      // cleanup async do useAudioMasterClock effect (que pode ficar 1
+      // RAF atrasado em casos de re-render pesado).
       audio.pause();
+      timelineClock.releaseExternalSync();
+      lockstep.setEnabled('playback', true);
     }
 
     return () => {
