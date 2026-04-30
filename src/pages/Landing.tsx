@@ -249,8 +249,8 @@ export default function Landing() {
 
         <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-20 sm:px-6 sm:pb-24 sm:pt-28 md:px-8 md:pb-32 md:pt-36">
           <div className="mx-auto max-w-4xl text-center">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground backdrop-blur sm:mb-6 sm:text-xs sm:tracking-[0.2em]">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[hsl(var(--success))]" />
+            <div className="mb-5 inline-flex items-center gap-ds-2 rounded-ds-sm border border-ds-border-subtle bg-ds-surface-deep/60 px-ds-3 py-1 text-[10px] uppercase tracking-[0.18em] text-ds-text-secondary backdrop-blur sm:mb-6 sm:text-xs sm:tracking-[0.2em]">
+              <span className="ds-dot ds-dot-sync" />
               Plataforma viva — v5 Reliability
             </div>
             <h1 className="font-display text-[2.25rem] font-black leading-[1.05] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
