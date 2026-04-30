@@ -136,18 +136,14 @@ export default function Office() {
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100dvh-3rem)] w-full">
+    <div className="flex flex-col min-h-[calc(100dvh-3rem)] w-full bg-ds-background text-ds-text-primary">
       {/* Hub cards — Blueprint UX entry points (above the tab strip) */}
       {activeTab === 'overview' && <OfficeHubCards />}
 
-      {/* Tab strip — horizontal, scrollable on mobile */}
+      {/* Tab strip — horizontal, scrollable on mobile (DS tokens) */}
       <nav
-        className="flex items-center gap-1 px-3 py-2 border-b overflow-x-auto scrollbar-thin shrink-0"
-        style={{
-          background: 'hsl(var(--surface-0) / 0.6)',
-          borderColor: 'hsl(32 100% 50% / 0.1)',
-          backdropFilter: 'blur(12px)',
-        }}
+        role="tablist"
+        className="flex items-center gap-ds-1 overflow-x-auto px-ds-3 py-ds-2 border-b border-ds-border-default bg-ds-surface-deep/60 backdrop-blur scrollbar-thin shrink-0"
       >
         {visibleTabs.map((tab) => {
           const Icon = tab.icon;
@@ -155,22 +151,16 @@ export default function Office() {
           return (
             <button
               key={tab.key}
+              role="tab"
+              aria-selected={active}
               onClick={() => setTab(tab.key)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 shrink-0 ${
+              className={`inline-flex items-center gap-ds-2 shrink-0 rounded-ds-md px-ds-3 py-ds-2 text-[12px] font-medium transition-colors ds-focus ${
                 active
-                  ? 'shadow-[inset_0_0_0_1px_hsl(32_100%_50%/0.2)]'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.03]'
+                  ? 'bg-status-sync/10 text-status-sync ds-active-border border'
+                  : 'border border-transparent text-ds-text-secondary hover:text-ds-text-primary hover:bg-ds-surface-elevated'
               }`}
-              style={
-                active
-                  ? {
-                      background: 'hsl(32 100% 50% / 0.1)',
-                      color: 'hsl(32 100% 50%)',
-                    }
-                  : undefined
-              }
             >
-              <Icon className="h-3.5 w-3.5 shrink-0" />
+              <Icon className="size-3.5 shrink-0" />
               <span className="whitespace-nowrap">{tab.label}</span>
             </button>
           );
