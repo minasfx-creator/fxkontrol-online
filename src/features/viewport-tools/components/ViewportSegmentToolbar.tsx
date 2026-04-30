@@ -296,6 +296,10 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
         open={dmxDialog.open}
         onClose={() => setDmxDialog((d) => ({ ...d, open: false }))}
       />
+      <ValidatorsReportDialog
+        open={validatorsDialog}
+        onClose={() => setValidatorsDialog(false)}
+      />
     </div>
   );
 }
