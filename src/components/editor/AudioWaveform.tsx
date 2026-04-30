@@ -827,8 +827,8 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
 
   // Pixel positions of the In/Out handles within the canvas (which spans
   // `[audioInPoint .. audioOutPoint]` in file-time).
-  const inHandleX = (pendingIn - audioInPoint) * pixelsPerSecond;
-  const outHandleX = (pendingOut - audioInPoint) * pixelsPerSecond;
+  const inHandleX = (pendingIn - audioInPoint) * pixelsPerSecond * audioZoom;
+  const outHandleX = (pendingOut - audioInPoint) * pixelsPerSecond * audioZoom;
 
   const isExpanded = trackHeight > MIN_HEIGHT;
 
@@ -1034,7 +1034,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
         <canvas
           ref={canvasRef}
           className="w-full h-full"
-          style={{ width: `${duration * pixelsPerSecond}px`, height: `${trackHeight}px` }}
+          style={{ width: `${duration * pixelsPerSecond * audioZoom}px`, height: `${trackHeight}px` }}
         />
 
         {/* Trim mode: draggable In/Out handles + dimmed regions outside the
@@ -1049,7 +1049,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
               className="absolute top-0 bg-background/60 pointer-events-none"
               style={{
                 left: `${outHandleX}px`,
-                width: `${Math.max(0, duration * pixelsPerSecond - outHandleX)}px`,
+                width: `${Math.max(0, duration * pixelsPerSecond * audioZoom - outHandleX)}px`,
                 height: '100%',
               }}
             />
@@ -1096,7 +1096,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
           <div
             key={cue.id}
             className="absolute top-0 group"
-            style={{ left: `${cue.time * pixelsPerSecond}px`, width: '2px', height: '100%' }}
+            style={{ left: `${cue.time * pixelsPerSecond * audioZoom}px`, width: '2px', height: '100%' }}
             title={`${cue.label} — ${cue.time.toFixed(2)}s (right-click to remove)`}
           >
             {/* Hover hitbox */}
