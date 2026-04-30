@@ -15,7 +15,10 @@ interface Props {
   className?: string;
   onRequestGenerate?: () => void;
   showDiagnostics?: boolean;
-  /** Layout for the segment toolbar. Defaults to 'horizontal-top' (legacy). */
+  /** Accepted for backward compatibility; the dock is always rendered as a
+   *  draggable vertical-right glass float in the desktop Mission Control
+   *  layout. The prop is ignored and exists only to keep older call-sites
+   *  type-safe during the chrome refactor. */
   segmentToolbarOrientation?: ViewportSegmentToolbarOrientation;
   /** When true, do not render the embedded segment toolbar (host page mounts its own). */
   hideSegmentToolbar?: boolean;
@@ -31,7 +34,6 @@ export default function ShowEngineHost({
   className,
   onRequestGenerate,
   showDiagnostics,
-  segmentToolbarOrientation = 'horizontal-top',
   hideSegmentToolbar = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,9 +77,7 @@ export default function ShowEngineHost({
         <RecoverWebGLOverlay onRecover={() => engineRef.current?.recoverContext()} />
       )}
       {showDiagnostics && <EngineDiagnosticsPanel />}
-      {state === 'ready' && !hideSegmentToolbar && (
-        <ViewportSegmentToolbar orientation={segmentToolbarOrientation} />
-      )}
+      {state === 'ready' && !hideSegmentToolbar && <ViewportSegmentToolbar />}
     </div>
   );
 }
