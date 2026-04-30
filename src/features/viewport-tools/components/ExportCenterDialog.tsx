@@ -223,6 +223,20 @@ export default function ExportCenterDialog({ open, onClose }: Props) {
           />
         </div>
 
+        {/* Real Hardware Bridge — push to FXK16 over Web Serial / BLE */}
+        <button
+          type="button"
+          onClick={() => setBridgeOpen(true)}
+          disabled={blocked}
+          className="mt-2 w-full rounded-lg border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-200 py-2 px-3 flex items-center gap-2 text-xs font-semibold tracking-wider uppercase transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <PlugZap className="h-4 w-4" />
+          Real Hardware Bridge — push to FXK16
+          <span className="ml-auto text-[10px] font-normal text-cyan-300/70 normal-case tracking-normal">
+            Web Serial · BLE · 1:1 channels
+          </span>
+        </button>
+
         {toast && (
           <div
             className={
@@ -245,6 +259,10 @@ export default function ExportCenterDialog({ open, onClose }: Props) {
           </div>
         )}
       </DialogContent>
+      <RealHardwareBridgeDialog
+        open={bridgeOpen}
+        onClose={() => setBridgeOpen(false)}
+      />
     </Dialog>
   );
 }
