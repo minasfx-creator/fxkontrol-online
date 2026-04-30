@@ -1,6 +1,6 @@
 import { EffectComposer, Bloom, Vignette, ChromaticAberration, SMAA, Noise, ToneMapping, SSAO, DepthOfField, BrightnessContrast, HueSaturation, SSR } from '@react-three/postprocessing';
 import { KernelSize, BlendFunction, ToneMappingMode, Effect } from 'postprocessing';
-import { Vector2, Uniform } from 'three';
+import { Vector2, Uniform, HalfFloatType } from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
 import type { ViewTransform } from '@/lib/niagaraBlenderRules';
 import { forwardRef, useMemo } from 'react';
