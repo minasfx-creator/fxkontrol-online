@@ -10,6 +10,7 @@
 import { Link } from 'react-router-dom';
 import { Cable, ShieldCheck, Wand2, Activity } from 'lucide-react';
 import { FXK16ConnectionPanel } from '@/components/editor/live-firing/FXK16ConnectionPanel';
+import FXK16FieldSettingsPanel from '@/components/field/FXK16FieldSettingsPanel';
 
 export default function FXK16FieldPanel() {
   return (
@@ -31,6 +32,9 @@ export default function FXK16FieldPanel() {
 
         {/* The actual connection card (singleton bridge). */}
         <FXK16ConnectionPanel compact={false} />
+
+        {/* Operator config — shared with FieldTest via fxk16FieldConfigStore. */}
+        <FXK16FieldSettingsPanel />
 
         {/* Help / context */}
         <div className="rounded-lg border border-border/40 bg-card/30 p-3 space-y-2">

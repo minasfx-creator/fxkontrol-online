@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import FXK16FieldTestPanel from '@/components/field/FXK16FieldTestPanel';
+import FXK16FieldSettingsPanel from '@/components/field/FXK16FieldSettingsPanel';
 
 // ─── Transport Config ─────────────────────────────
 const TRANSPORTS: { id: TestTransport; label: string; desc: string; icon: React.ReactNode; color: string }[] = [
@@ -1027,9 +1028,11 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
             </div>
           )}
 
-          {/* FXK16 end-to-end command harness — shares the singleton bridge
+          {/* FXK16 — operator config (device, transport, mode, parameters)
+              + end-to-end command harness. Both share the singleton bridge
               with PyroFireOnePanel and the /field#fxk16 tab. */}
-          <div className="shrink-0 px-2 pt-2">
+          <div className="shrink-0 px-2 pt-2 space-y-2">
+            <FXK16FieldSettingsPanel />
             <FXK16FieldTestPanel />
           </div>
 

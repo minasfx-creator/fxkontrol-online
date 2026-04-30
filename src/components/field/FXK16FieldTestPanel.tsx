@@ -31,6 +31,7 @@ import type { CommandResponse } from '@/lib/fxk16/commandApi';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useFxk16FieldConfig } from '@/hooks/useFxk16FieldConfig';
 
 interface E2eStep {
   id: string;
@@ -48,18 +49,38 @@ const MAX_LOG = 80;
 export default function FXK16FieldTestPanel() {
   const bridge = useFXK16Bridge();
   const { api, ready, armed } = useFXK16Commands();
+  const { config } = useFxk16FieldConfig();
   const [open, setOpen] = useState(true);
-  const [channel, setChannel] = useState<number>(1);
-  const [durationMs, setDurationMs] = useState<number>(50);
+  // Local field state seeded from config; user can override per session.
+  const [channel, setChannel] = useState<number>(config.defaultChannel);
+  const [durationMs, setDurationMs] = useState<number>(config.durationMs);
   const [batchInput, setBatchInput] = useState<string>('1,3,5,7');
   const [steps, setSteps] = useState<E2eStep[]>([]);
   const [holding, setHolding] = useState<null | 'fire' | 'batch'>(null);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdProgress = useRef<HTMLDivElement | null>(null);
+  const autoDisarmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup any hold timer on unmount.
+  // Resync local fields when the operator changes config defaults.
+  useEffect(() => { setChannel(config.defaultChannel); }, [config.defaultChannel]);
+  useEffect(() => { setDurationMs(config.durationMs); }, [config.durationMs]);
+
+  // Auto-disarm safety: arm any timer reset on each command via `bumpAutoDisarm`.
+  const bumpAutoDisarm = useCallback(() => {
+    if (autoDisarmTimer.current) clearTimeout(autoDisarmTimer.current);
+    if (!armed || config.autoDisarmAfterMs <= 0) return;
+    autoDisarmTimer.current = setTimeout(() => {
+      const res = api.disarm();
+      if (res.ok) toast.info(`Auto-disarm após ${config.autoDisarmAfterMs}ms ociosos`);
+    }, config.autoDisarmAfterMs);
+  }, [api, armed, config.autoDisarmAfterMs]);
+
+  useEffect(() => { bumpAutoDisarm(); }, [bumpAutoDisarm]);
+
+  // Cleanup any hold/disarm timer on unmount.
   useEffect(() => () => {
     if (holdTimer.current) clearTimeout(holdTimer.current);
+    if (autoDisarmTimer.current) clearTimeout(autoDisarmTimer.current);
   }, []);
 
   const log = useCallback((entry: Omit<E2eStep, 'id' | 'ts'>) => {
@@ -129,20 +150,22 @@ export default function FXK16FieldTestPanel() {
     haptics.tap?.();
     holdTimer.current = setTimeout(async () => {
       setHolding(null);
+      bumpAutoDisarm();
       const t0 = performance.now();
       log({ op: `FIRE ch=${channel} ${durationMs}ms`, status: 'pending', detail: 'dispatching…' });
       const res = await api.fire(channel, durationMs);
       settle(`FIRE ch=${channel}`, t0, res);
       if (res.ok) haptics.fire?.();
     }, HOLD_MS);
-  }, [api, armed, channel, durationMs, log, ready, settle]);
+  }, [api, armed, bumpAutoDisarm, channel, durationMs, log, ready, settle]);
 
   const cancelHoldFire = useCallback(() => {
     if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null; }
     if (holding) setHolding(null);
   }, [holding]);
 
-  // ── Batch FIRE ────────────────────────────────────────────
+  // ── Batch FIRE (with optional confirm guard) ──────────────
+  const batchConfirmAt = useRef<number>(0);
   const fireBatch = useCallback(async () => {
     if (!ready || !armed) { toast.error('Pronto + Armado é obrigatório'); return; }
     const channels = batchInput
@@ -150,12 +173,22 @@ export default function FXK16FieldTestPanel() {
       .map((s) => parseInt(s.trim(), 10))
       .filter((n) => Number.isInteger(n) && n >= 1 && n <= FXK16_MAX_CHANNEL);
     if (channels.length === 0) { toast.error('Lista de canais vazia/ inválida'); return; }
+    if (config.confirmBatch) {
+      const now = performance.now();
+      if (now - batchConfirmAt.current > 2000) {
+        batchConfirmAt.current = now;
+        toast.warning(`Toque novamente em 2s para confirmar BATCH (${channels.length} canais)`);
+        return;
+      }
+      batchConfirmAt.current = 0;
+    }
+    bumpAutoDisarm();
     const t0 = performance.now();
     log({ op: `BATCH [${channels.join(',')}] ${durationMs}ms`, status: 'pending', detail: 'dispatching…' });
     const res = await api.fireBatch(channels, durationMs);
     settle(`BATCH n=${channels.length}`, t0, res);
     if (res.ok) haptics.fire?.();
-  }, [api, armed, batchInput, durationMs, log, ready, settle]);
+  }, [api, armed, batchInput, bumpAutoDisarm, config.confirmBatch, durationMs, log, ready, settle]);
 
   // ── E-STOP ────────────────────────────────────────────────
   const eStop = useCallback(async () => {
