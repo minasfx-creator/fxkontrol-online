@@ -14,6 +14,7 @@
 import { registerSegmentPlugin } from '../registry';
 import type { ViewportSegmentPlugin, ViewportOperation } from '../types';
 import { auditDmxPatch } from '../dmx/dmxConflictChecker';
+import { useSafetyOverlayStore } from '../safetyOverlayStore';
 
 function uid(p: string) {
   return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
