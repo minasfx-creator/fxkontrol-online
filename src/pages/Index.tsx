@@ -15,6 +15,8 @@ import type { WorldShowPreset } from '@/data/worldShowPresets';
 import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
 import { type MobileTab } from '@/components/editor/MobileTabBar';
 import { loadTimelineView, saveTimelineView, resetTimelineView } from '@/lib/timelineViewState';
+import { useDraggableFloat } from '@/components/editor/useDraggableFloat';
+import FloatHandle from '@/components/editor/FloatHandle';
 
 // ── Critical-path (static): shell chrome loaded immediately ──
 import Toolbar from '@/components/editor/Toolbar';
@@ -23,8 +25,9 @@ import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import RadialMenu from '@/components/editor/RadialMenu';
-import MasterMenuFloat from '@/components/editor/MasterMenuFloat';
-import UserAvatarFloat from '@/components/editor/UserAvatarFloat';
+// MasterMenuFloat removed — the Toolbar's ⌘K button (FullscreenCommandMenu)
+// already provides the same Master Menu palette and lives inside the top bar.
+// UserAvatarFloat is now mounted inline inside the Toolbar.
 // EngineProvider moved to MainLayout (boots once, all routes, mobile + desktop).
 import LiveCard from '@/components/editor/LiveCard';
 import { StudioErrorBoundary } from '@/components/errors/StudioErrorBoundary';
@@ -337,9 +340,42 @@ function Index() {
     // Defensive: storage may throw (private mode, SecurityError) — never block mount.
     try { return loadTimelineView().collapsed ?? false; } catch { return false; }
   });
+  // Persisted timeline panel height (vh). User drags the top edge to resize.
+  const [timelineHeightVh, setTimelineHeightVh] = useState<number>(() => {
+    try { return loadTimelineView().heightVh ?? 34; } catch { return 34; }
+  });
   useEffect(() => {
-    try { saveTimelineView({ collapsed: timelineCollapsed }); } catch { /* noop */ }
-  }, [timelineCollapsed]);
+    try { saveTimelineView({ collapsed: timelineCollapsed, heightVh: timelineHeightVh }); } catch { /* noop */ }
+  }, [timelineCollapsed, timelineHeightVh]);
+
+  // Drag-to-resize the timeline panel. The 4px hover band at the top of the
+  // timeline owns the pointer; we update height in vh so the panel stays
+  // proportional across window sizes.
+  const timelineResizing = useRef(false);
+  const onTimelineResizeStart = useCallback((e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    timelineResizing.current = true;
+    const startY = e.clientY;
+    const startVh = timelineHeightVh;
+    const onMove = (ev: PointerEvent) => {
+      if (!timelineResizing.current) return;
+      const dy = ev.clientY - startY;
+      // Drag UP = grow timeline (negative dy → +vh).
+      const dvh = (-dy / window.innerHeight) * 100;
+      const next = Math.min(70, Math.max(18, startVh + dvh));
+      setTimelineHeightVh(next);
+    };
+    const onUp = () => {
+      timelineResizing.current = false;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  }, [timelineHeightVh]);
   const [viewportMaximized, setViewportMaximized] = useState(false);
   // leftDockOpen removed — Effects/Scene/ShowSettings now opened via Toolbar/PanelTabBar only.
   const [showMobileWelcome, setShowMobileWelcome] = useState(() => {
@@ -459,14 +495,18 @@ function Index() {
   }, [navigate]);
 
   const desktopTopOffset = '56px';
-  const desktopTimelineHeight = viewportMaximized ? '0px' : timelineCollapsed ? '42px' : '34vh';
+  const desktopTimelineHeight = viewportMaximized
+    ? '0px'
+    : timelineCollapsed
+      ? '28px'
+      : `${timelineHeightVh}vh`;
   const leftRailWidth = 0; // rail removed
   const leftSidebarWidth = 0;
-  // Floating-chrome flag: hides the right PanelTabBar dock and switches the
-  // viewport segment toolbar to a vertical-right floating glass dock.
-  const floatingChrome = isEnabled('floating_chrome');
-  const rightDockWidth = viewportMaximized || floatingChrome ? 0 : 52;
-  const rightPanelWidth = activePanel && !viewportMaximized ? 472 : 0;
+  // Mission Control desktop chrome: PanelTabBar is permanently retired on
+  // desktop; the segment dock is the floating ViewportSegmentToolbar.
+  const rightDockWidth = 0;
+  // The floating panel is now draggable; do not reserve canvas inset for it.
+  const rightPanelWidth = 0;
   const canvasLeftInset = `${leftRailWidth + leftSidebarWidth}px`;
   const canvasRightInset = `${rightDockWidth + rightPanelWidth}px`;
 
