@@ -153,8 +153,6 @@ const plugin: ViewportSegmentPlugin = {
         }
       }
       if (clones.length === 0) return null;
-      useProjectStore.setState({
-        timelineItems: [...state.timelineItems, ...clones],
       });
       return {
         id: uid('op'),
@@ -165,6 +163,7 @@ const plugin: ViewportSegmentPlugin = {
         after: { clonedIds: clones.map((c) => c.id) },
         description: `Cloned ${clones.length} cue(s) +${offsetSec}s.`,
       };
+    },
 
     PYRO_CONFIGURE_EFFECT(_payload, ctx): ViewportOperation | null {
       const state = useProjectStore.getState();
