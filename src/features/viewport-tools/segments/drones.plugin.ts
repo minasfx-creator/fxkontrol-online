@@ -42,6 +42,16 @@ const plugin: ViewportSegmentPlugin = {
       requiresSelection: true,
       hint: 'Arrange selected pads on an evenly-spaced circle.',
     },
+    {
+      id: 'drones.configure',
+      label: 'Configure Drone',
+      segment: 'DRONES',
+      scope: 'edit',
+      command: 'DRONES_CONFIGURE',
+      icon: 'SlidersHorizontal',
+      requiresSelection: true,
+      hint: 'Edit position + formation parameters for the selected drone pad.',
+    },
   ],
   commandHandlers: {
     DRONES_SELECT_ALL(): ViewportOperation | null {
