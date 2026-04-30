@@ -416,8 +416,22 @@ const Pin = forwardRef<THREE.Group, { position: Position; terrainY: number; onRi
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 768;
   const showLabel = labelsVisible && (isMobileView ? (isSelected || isDragging) : (isHovered || isSelected || isDragging));
 
+  // Surface-aware Y resolution:
+  //   • Legacy positions store `y` as a SMALL OFFSET above the terrain
+  //     (added on top of the cached terrainY).
+  //   • Mesh-snapped positions (placed on a stadium roof, deck, etc.)
+  //     store `y` as the ABSOLUTE world Y of the picked surface — already
+  //     above the terrain by several meters. In that case we render at
+  //     `position.y` directly to keep the icon glued to the elevated mesh.
+  // Heuristic: if position.y is meaningfully above terrainY (>1.5m), treat
+  // it as an absolute surface Y; otherwise sum as offset (legacy behavior).
+  const SURFACE_THRESHOLD_M = 1.5;
+  const renderY = (position.y - terrainY) > SURFACE_THRESHOLD_M
+    ? position.y
+    : position.y + terrainY;
+
   return (
-    <group ref={(node) => { (groupRef as any).current = node; if (typeof ref === 'function') ref(node); else if (ref) (ref as any).current = node; }} position={[position.x, position.y + terrainY, position.z]}>
+    <group ref={(node) => { (groupRef as any).current = node; if (typeof ref === 'function') ref(node); else if (ref) (ref as any).current = node; }} position={[position.x, renderY, position.z]}>
       {/* Base disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <circleGeometry args={[isSelected ? 0.65 : 0.5, 32]} />
@@ -725,6 +739,29 @@ function PlacementRingVFX({ position, color, onComplete }: { position: [number, 
   );
 }
 
+/**
+ * GroundClickPlane
+ * ────────────────────────────────────────────────────────────
+ * Placement raycaster for `add-pyro` / `add-drone` / `add-waypoint`.
+ *
+ * Behavior (v2 — mesh-surface snapping):
+ *   1. Pickray from CAMERA through the mouse cursor against the
+ *      `GoogleTilesGroup` (any visible mesh — roof, stand, façade,
+ *      stadium cover, terrain, etc.). The first hit's full XYZ +
+ *      face normal is used.
+ *   2. If no tile hit, fallback to a horizontal Y=0 plane at the
+ *      cursor ray (legacy behavior — keeps placement working when
+ *      tiles are off or outside the loaded radius).
+ *
+ * This lets the operator place positions on top of stadium roofs,
+ * building decks, terraces, etc. — instead of always snapping to
+ * the ground projected XZ.
+ *
+ * The captor plane is kept ONLY as an event surface for cursor-style
+ * R3F events (`onClick`) so the editor mode UX (cursor change, escape
+ * key) is preserved; its `point` is now ignored and replaced by the
+ * camera pickray result.
+ */
 function GroundClickPlane() {
   const editorMode = useProjectStore(s => s.editorMode);
   const addPosition = useProjectStore(s => s.addPosition);
@@ -732,8 +769,14 @@ function GroundClickPlane() {
   const addWaypoint = useProjectStore(s => s.addWaypoint);
   const selectedTrajectoryId = useProjectStore(s => s.selectedTrajectoryId);
   const drawHeight = useProjectStore(s => s.drawHeight);
-  const { scene } = useThree();
+  const { scene, camera, gl } = useThree();
   const [vfxList, setVfxList] = useState<{ id: string; pos: [number, number, number]; color: string }[]>([]);
+
+  // Reusable scratch — avoid GC on every click.
+  const pickRayRef = useRef(new THREE.Raycaster());
+  const ndcRef = useRef(new THREE.Vector2());
+  const fallbackPlaneRef = useRef(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0));
+  const fallbackHitRef = useRef(new THREE.Vector3());
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -745,22 +788,54 @@ function GroundClickPlane() {
     return () => window.removeEventListener('keydown', handler);
   }, [editorMode, setEditorMode]);
 
-  /** Raycast against Google 3D Tiles to get real terrain Y at click point */
-  const getTerrainY = useCallback((x: number, z: number): number => {
-    const tilesGroup = scene.getObjectByName('GoogleTilesGroup');
-    if (!tilesGroup) return 0;
-    const ray = new THREE.Raycaster();
-    const origin = new THREE.Vector3(x, 2000, z);
-    ray.set(origin, new THREE.Vector3(0, -1, 0));
-    ray.far = 4000;
-    const hits = ray.intersectObject(tilesGroup, true);
-    return hits.length > 0 ? hits[0].point.y : 0;
-  }, [scene]);
+  /**
+   * Resolve the pick point under the cursor.
+   * Priority: visible mesh from GoogleTilesGroup → horizontal Y=0 fallback.
+   * Returns null only if even the fallback plane misses (degenerate camera).
+   */
+  const pickSurface = useCallback((clientX: number, clientY: number): { point: THREE.Vector3; normal: THREE.Vector3 | null; surface: 'tiles' | 'plane' } | null => {
+    const rect = gl.domElement.getBoundingClientRect();
+    ndcRef.current.set(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    pickRayRef.current.setFromCamera(ndcRef.current, camera);
 
-  const handleClick = useCallback((e: THREE.Event & { point: THREE.Vector3 }) => {
-    const clickX = Math.round(e.point.x * 10) / 10;
-    const clickZ = Math.round(e.point.z * 10) / 10;
-    const terrainY = getTerrainY(clickX, clickZ);
+    // 1) Try Google Tiles meshes (any visible surface — roof, façade, ground tile)
+    const tilesGroup = scene.getObjectByName('GoogleTilesGroup');
+    if (tilesGroup) {
+      const hits = pickRayRef.current.intersectObject(tilesGroup, true);
+      for (let i = 0; i < hits.length; i++) {
+        const obj = hits[i].object as THREE.Mesh;
+        if (obj.visible && obj.isMesh) {
+          const normal = hits[i].face?.normal
+            ? hits[i].face!.normal.clone().transformDirection(obj.matrixWorld).normalize()
+            : null;
+          return { point: hits[i].point.clone(), normal, surface: 'tiles' };
+        }
+      }
+    }
+
+    // 2) Fallback: intersect horizontal plane at Y=0
+    const ok = pickRayRef.current.ray.intersectPlane(fallbackPlaneRef.current, fallbackHitRef.current);
+    if (ok) {
+      return { point: fallbackHitRef.current.clone(), normal: new THREE.Vector3(0, 1, 0), surface: 'plane' };
+    }
+    return null;
+  }, [scene, camera, gl]);
+
+  const handleClick = useCallback((e: THREE.Event & { nativeEvent?: PointerEvent | MouseEvent } & { point: THREE.Vector3 }) => {
+    const native = e.nativeEvent;
+    if (!native) return;
+
+    const picked = pickSurface(native.clientX, native.clientY);
+    if (!picked) return;
+
+    const clickX = Math.round(picked.point.x * 10) / 10;
+    const clickZ = Math.round(picked.point.z * 10) / 10;
+    // Use the FULL Y from the mesh hit (rounded to cm) — this is what allows
+    // placement on top of roofs / decks instead of the ground projection.
+    const posY = Math.round(picked.point.y * 100) / 100;
 
     if (editorMode === 'add-pyro' || editorMode === 'add-drone') {
       useUndoStore.getState().checkpoint();
@@ -768,7 +843,6 @@ function GroundClickPlane() {
       const prefix = type === 'pyro' ? 'POS' : 'PAD';
       const count = useProjectStore.getState().positions.filter(p => p.type === type).length + 1;
       const id = `pos-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
-      const posY = Math.round(terrainY * 100) / 100;
       addPosition({
         id,
         name: `${prefix}-${count.toString().padStart(3, '0')}`,
@@ -780,9 +854,16 @@ function GroundClickPlane() {
         color: type === 'drone-pad' ? '#00B4D8' : '#FF6B35',
       });
       useProjectStore.getState().selectPosition(id);
-      window.dispatchEvent(new CustomEvent('position-placed', { detail: { id, type } }));
+      window.dispatchEvent(new CustomEvent('position-placed', {
+        detail: {
+          id,
+          type,
+          surface: picked.surface,
+          normal: picked.normal ? { x: picked.normal.x, y: picked.normal.y, z: picked.normal.z } : null,
+        },
+      }));
 
-      // Spawn placement VFX
+      // Spawn placement VFX (snapped to picked surface, including roof Y)
       const vfxColor = type === 'drone-pad' ? '#00B4D8' : '#FF6B35';
       const vfxId = `vfx-${Date.now()}`;
       setVfxList(prev => [...prev, { id: vfxId, pos: [clickX, posY, clickZ], color: vfxColor }]);
@@ -795,13 +876,17 @@ function GroundClickPlane() {
       const sorted = traj ? [...traj.waypoints].sort((a, b) => a.time - b.time) : [];
       const lastWp = sorted[sorted.length - 1];
       const time = lastWp ? lastWp.time + 2 : 2;
+      // Waypoints keep using `drawHeight` as a global Y unless the user
+      // explicitly clicked a tile surface — in that case prefer the surface Y
+      // so trajectories drawn over a stadium roof stay on the roof.
+      const wpY = picked.surface === 'tiles' ? posY : drawHeight;
       addWaypoint(selectedTrajectoryId, {
         id: `wp-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-        position: { x: clickX, y: drawHeight, z: clickZ },
+        position: { x: clickX, y: wpY, z: clickZ },
         time,
       });
     }
-  }, [editorMode, addPosition, addWaypoint, selectedTrajectoryId, drawHeight, getTerrainY]);
+  }, [editorMode, addPosition, addWaypoint, selectedTrajectoryId, drawHeight, pickSurface]);
 
   const removeVfx = useCallback((id: string) => {
     setVfxList(prev => prev.filter(v => v.id !== id));
@@ -811,6 +896,14 @@ function GroundClickPlane() {
 
   return (
     <>
+      {/*
+        Captor plane — large enough to cover the scene so onClick fires anywhere
+        inside the viewport, but its `point` is intentionally IGNORED. The real
+        surface (and Y) is resolved by the camera pickray inside `handleClick`.
+        Placed at Y=0.01 just so it sits visibly above the ground plane in the
+        depth ordering; raised meshes (roofs, decks) are still hit by the pickray
+        because that pickray runs against `GoogleTilesGroup` directly.
+      */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} onClick={handleClick}>
         <planeGeometry args={[20000, 20000]} />
         <meshBasicMaterial visible={false} />
