@@ -181,6 +181,14 @@ export class CueQueueRunner {
   /**
    * Begin dispatching cues. Caller MUST have armed first. The bridge must be
    * connected — otherwise fires will silently fail per honest-hardware rules.
+   *
+   * Two scheduling paths, selected by `clockSource`:
+   *   • 'wall'     → setTimeout from run() baseline. Simple, ignores pauses.
+   *   • 'timeline' → SMPTE-locked rAF loop. Re-anchors every frame against
+   *     `timelineClock.getTime()` so pauses, scrubs, LTC chase and audio
+   *     drift all bend the schedule. Look-ahead window (default 50 ms) is
+   *     the maximum lead used for the per-group setTimeout — that's the
+   *     sub-50 ms target for FXK16 fire latency.
    */
   run(): void {
     if (this.status !== 'armed') {
@@ -195,32 +203,52 @@ export class CueQueueRunner {
     this.startedAt = performance.now();
     this.emit({ type: 'started', cueIndex: 0 });
 
-    // ── Coalesce cues within the same time window into batch fires ──
+    // ── Compile coalesced groups (shared across both paths) ─────────
+    this.compiledGroups = this.compileGroups();
+
+    if (this.opts.clockSource === 'timeline') {
+      this.runTimelineLocked();
+    } else {
+      this.runWallClock();
+    }
+  }
+
+  /** Coalesce cues within `coalesceWindowMs` into single-mask FIRE groups. */
+  private compileGroups(): Array<{
+    fireAtMs: number; durationMs: number; channels: number[]; firstIndex: number;
+  }> {
     const win = this.opts.coalesceWindowMs;
-    const groups: { fireAtMs: number; durationMs: number; channels: number[]; firstIndex: number }[] = [];
+    const groups: Array<{
+      fireAtMs: number; durationMs: number; channels: number[]; firstIndex: number;
+    }> = [];
     let curr: typeof groups[number] | null = null;
     for (let i = 0; i < this.cues.length; i++) {
       const c = this.cues[i];
       if (!curr || c.fireAtMs - curr.fireAtMs > win) {
-        curr = { fireAtMs: c.fireAtMs, durationMs: c.durationMs, channels: [c.channel], firstIndex: i };
+        curr = {
+          fireAtMs: c.fireAtMs,
+          durationMs: c.durationMs,
+          channels: [c.channel],
+          firstIndex: i,
+        };
         groups.push(curr);
-      } else {
-        if (!curr.channels.includes(c.channel)) curr.channels.push(c.channel);
+      } else if (!curr.channels.includes(c.channel)) {
+        curr.channels.push(c.channel);
       }
     }
+    return groups;
+  }
 
-    // Schedule each group with setTimeout. Drift-corrected per-cue from
-    // performance.now() rather than chained setTimeout to keep <50ms target.
-    for (const g of groups) {
+  /** Legacy path — schedules every group up-front from wall-clock baseline. */
+  private runWallClock(): void {
+    for (const g of this.compiledGroups) {
       const t = setTimeout(() => {
         if (this.status !== 'running') return;
-        this.dispatch(g);
+        void this.dispatch(g);
       }, g.fireAtMs);
       this.timers.push(t);
     }
-
-    // Schedule finish marker.
-    const last = groups[groups.length - 1];
+    const last = this.compiledGroups[this.compiledGroups.length - 1];
     const finishAt = (last?.fireAtMs ?? 0) + (last?.durationMs ?? 0) + 200;
     const finT = setTimeout(() => {
       if (this.status === 'running') {
@@ -229,6 +257,108 @@ export class CueQueueRunner {
       }
     }, finishAt);
     this.timers.push(finT);
+  }
+
+  /**
+   * SMPTE-locked path. Anchors fire times to `timelineClock.getTime()` and
+   * re-evaluates every animation frame. Cues whose timeline timestamp falls
+   * within `lookaheadMs` from "now" are armed via setTimeout for the exact
+   * remaining delta. Drift between timeline_clock and wall_clock is sampled
+   * each frame and broadcast as 'drift' events for HUD diagnostics.
+   *
+   * Key honest-hardware properties:
+   *   • If the timeline pauses, no new fires arm — already-armed setTimeouts
+   *     for the next ≤50 ms still resolve (intentionally — those cues were
+   *     already "in flight" from the operator's POV).
+   *   • If the timeline scrubs backwards, `nextGroupIndex` does NOT roll
+   *     back. Re-firing a cue would be a safety violation. The operator
+   *     must explicitly re-arm to replay.
+   *   • Cues whose timestamp is already in the past at run() start are
+   *     dropped (lateDropped++) instead of stacking up an immediate barrage.
+   */
+  private runTimelineLocked(): void {
+    this.timelineStartTime = timelineClock.getTime();
+    this.wallStartMs = performance.now();
+    this.nextGroupIndex = 0;
+    this.firedGroupCount = 0;
+    this.lateDropped = 0;
+    this.peakDrift = 0;
+    this.lastDrift = 0;
+
+    const tick = (): void => {
+      if (this.status !== 'running') {
+        this.rafId = null;
+        return;
+      }
+
+      // Anchor: where is the timeline NOW (in seconds), and how does that
+      // compare to the wall clock baseline captured at run start?
+      const tlNow = timelineClock.getTime();
+      const tlElapsedMs = (tlNow - this.timelineStartTime) * 1000;
+      const wallElapsedMs = performance.now() - this.wallStartMs;
+      // drift > 0 → timeline is ahead of wall (e.g. seek forward / fast LTC)
+      // drift < 0 → timeline is behind wall (paused, slow LTC, audio underrun)
+      const drift = tlElapsedMs - wallElapsedMs;
+      this.lastDrift = drift;
+      if (Math.abs(drift) > Math.abs(this.peakDrift)) this.peakDrift = drift;
+
+      const lookahead = this.opts.lookaheadMs;
+      const horizonMs = tlElapsedMs + lookahead;
+
+      // Arm every group inside the look-ahead window that we haven't fired yet
+      while (this.nextGroupIndex < this.compiledGroups.length) {
+        const g = this.compiledGroups[this.nextGroupIndex];
+        if (g.fireAtMs > horizonMs) break;
+
+        const groupIdx = this.nextGroupIndex;
+        this.nextGroupIndex++;
+
+        // Late cue (already past on first sight) → drop, don't stack
+        if (g.fireAtMs < tlElapsedMs - lookahead) {
+          this.lateDropped++;
+          this.emit({
+            type: 'skipped',
+            cueIndex: g.firstIndex,
+            time: g.fireAtMs / 1000,
+            message: `late by ${Math.round(tlElapsedMs - g.fireAtMs)}ms`,
+          });
+          continue;
+        }
+
+        // Schedule precisely at delta from NOW (positive small ms)
+        const delayMs = Math.max(0, g.fireAtMs - tlElapsedMs);
+        const t = setTimeout(() => {
+          this.pendingTimers.delete(t);
+          if (this.status !== 'running') return;
+          this.firedGroupCount++;
+          void this.dispatch(g);
+        }, delayMs);
+        this.pendingTimers.add(t);
+        this.timers.push(t);
+        // Track group index for diagnostics
+        void groupIdx;
+      }
+
+      // Emit a drift breadcrumb every ~250 ms for the HUD
+      if (Math.abs(drift) > 5 && (this.firedGroupCount & 0x7) === 0) {
+        this.emit({ type: 'drift', cueIndex: this.nextGroupIndex, driftMs: drift });
+      }
+
+      // Finished?
+      if (
+        this.nextGroupIndex >= this.compiledGroups.length &&
+        this.pendingTimers.size === 0
+      ) {
+        this.setStatus('finished');
+        this.emit({ type: 'finished', cueIndex: this.cues.length });
+        this.rafId = null;
+        return;
+      }
+
+      this.rafId = requestAnimationFrame(tick);
+    };
+
+    this.rafId = requestAnimationFrame(tick);
   }
 
   private async dispatch(g: { fireAtMs: number; durationMs: number; channels: number[]; firstIndex: number }) {
