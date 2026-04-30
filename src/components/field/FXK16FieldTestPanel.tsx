@@ -163,7 +163,8 @@ export default function FXK16FieldTestPanel() {
     if (holding) setHolding(null);
   }, [holding]);
 
-  // ── Batch FIRE ────────────────────────────────────────────
+  // ── Batch FIRE (with optional confirm guard) ──────────────
+  const batchConfirmAt = useRef<number>(0);
   const fireBatch = useCallback(async () => {
     if (!ready || !armed) { toast.error('Pronto + Armado é obrigatório'); return; }
     const channels = batchInput
@@ -171,12 +172,22 @@ export default function FXK16FieldTestPanel() {
       .map((s) => parseInt(s.trim(), 10))
       .filter((n) => Number.isInteger(n) && n >= 1 && n <= FXK16_MAX_CHANNEL);
     if (channels.length === 0) { toast.error('Lista de canais vazia/ inválida'); return; }
+    if (config.confirmBatch) {
+      const now = performance.now();
+      if (now - batchConfirmAt.current > 2000) {
+        batchConfirmAt.current = now;
+        toast.warning(`Toque novamente em 2s para confirmar BATCH (${channels.length} canais)`);
+        return;
+      }
+      batchConfirmAt.current = 0;
+    }
+    bumpAutoDisarm();
     const t0 = performance.now();
     log({ op: `BATCH [${channels.join(',')}] ${durationMs}ms`, status: 'pending', detail: 'dispatching…' });
     const res = await api.fireBatch(channels, durationMs);
     settle(`BATCH n=${channels.length}`, t0, res);
     if (res.ok) haptics.fire?.();
-  }, [api, armed, batchInput, durationMs, log, ready, settle]);
+  }, [api, armed, batchInput, bumpAutoDisarm, config.confirmBatch, durationMs, log, ready, settle]);
 
   // ── E-STOP ────────────────────────────────────────────────
   const eStop = useCallback(async () => {
