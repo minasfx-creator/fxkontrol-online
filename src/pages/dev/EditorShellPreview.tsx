@@ -393,15 +393,19 @@ export default function EditorShellPreview() {
         )}
       </EditorShell>
 
-      {/* Drag gutters between rails / above timeline (overlay). */}
-      <EditorLayoutResizers
-        leftWidth={layout.effective.leftWidth}
-        rightWidth={layout.effective.rightWidth}
-        timelineHeight={layout.effective.timelineHeight}
-        onLeftChange={layout.setLeftWidth}
-        onRightChange={layout.setRightWidth}
-        onTimelineChange={layout.setTimelineHeight}
-      />
+      {/* Drag gutters between rails / above timeline (overlay).
+          Apenas em desktop — em mobile (portrait OU landscape) a grid vira
+          pilha vertical sem rails laterais e os gutters perdem sentido. */}
+      <div className="hidden lg:block">
+        <EditorLayoutResizers
+          leftWidth={layout.effective.leftWidth}
+          rightWidth={layout.effective.rightWidth}
+          timelineHeight={layout.effective.timelineHeight}
+          onLeftChange={layout.setLeftWidth}
+          onRightChange={layout.setRightWidth}
+          onTimelineChange={layout.setTimelineHeight}
+        />
+      </div>
 
       <EditorShellOnboardingDialog
         open={onboardingOpen}
