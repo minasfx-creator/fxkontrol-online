@@ -28,6 +28,8 @@ import {
   Zap,
   Search,
   BatteryMedium,
+  Sliders,
+  RotateCcw,
 } from 'lucide-react';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -36,6 +38,11 @@ import {
   type ShowvenRunEvent,
   type ShowvenRunStatus,
 } from '../hardware/showvenCueRunner';
+import {
+  useShowvenBridgeStore,
+  SHOWVEN_BRIDGE_DEFAULTS,
+  SHOWVEN_BRIDGE_LIMITS,
+} from '../hardware/showvenBridgeSettings';
 import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
 
 interface Props {
@@ -46,7 +53,21 @@ interface Props {
 export default function ShowvenBridgeDialog({ open, onClose }: Props) {
   const pbus = usePBusHardware();
   const items = useProjectStore((s) => s.timelineItems);
+  const projectId = useProjectStore((s) => s.projectId);
   const runner = getShowvenCueRunner();
+
+  // Per-project bridge profile (coalesce window + cue duration).
+  const profileKey = projectId || '__global__';
+  const profile =
+    useShowvenBridgeStore((s) => s.profiles[profileKey]) ?? SHOWVEN_BRIDGE_DEFAULTS;
+  const setProfile = useShowvenBridgeStore((s) => s.setProfile);
+  const resetProfile = useShowvenBridgeStore((s) => s.reset);
+
+  // Mirror profile into runner whenever it changes (and runner is idle-ish).
+  useEffect(() => {
+    if (runner.getStatus() === 'running') return;
+    try { runner.setOptions(profile); } catch { /* mid-run guard */ }
+  }, [runner, profile.coalesceWindowMs, profile.defaultDurationMs]);
 
   const [status, setStatus] = useState<ShowvenRunStatus>(runner.getStatus());
   const [progress, setProgress] = useState(runner.getProgress());
