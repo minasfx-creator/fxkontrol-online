@@ -18,11 +18,15 @@ import {
 } from '@/components/ds';
 
 const SEGMENTS: SegmentItem[] = [
-  { id: 'pyro',   label: 'PYRO',   icon: Flame,     count: 12 },
-  { id: 'sfx',    label: 'SFX',    icon: Sparkles,  count: 4 },
-  { id: 'drones', label: 'DRONES', icon: Send,      count: 120 },
+  { id: 'pyro',   label: 'PYRO',   icon: Flame,
+    badge: <span className="rounded-ds-sm bg-segment-pyro/20 px-1.5 text-[10px] font-mono text-segment-pyro">12</span> },
+  { id: 'sfx',    label: 'SFX',    icon: Sparkles,
+    badge: <span className="rounded-ds-sm bg-segment-sfx/20 px-1.5 text-[10px] font-mono text-segment-sfx">4</span> },
+  { id: 'drones', label: 'DRONES', icon: Send,
+    badge: <span className="rounded-ds-sm bg-segment-drones/20 px-1.5 text-[10px] font-mono text-segment-drones">120</span> },
   { id: 'light',  label: 'LIGHT',  icon: Lightbulb },
-  { id: 'dmx',    label: 'DMX',    icon: Sliders,   warn: 3 },
+  { id: 'dmx',    label: 'DMX',    icon: Sliders,
+    badge: <span className="text-[10px] font-mono text-status-warn">⚠ 3</span> },
 ];
 
 export default function EditorShellPreview() {
@@ -46,9 +50,9 @@ export default function EditorShellPreview() {
               </span>
             </div>
             <div className="flex items-center gap-ds-2">
-              <DsButton variant="ghost" size="sm" leftIcon={<Save className="size-4" />}>Save</DsButton>
-              <DsButton variant="secondary" size="sm" leftIcon={<ShieldCheck className="size-4" />}>Validate</DsButton>
-              <DsButton variant="primary" size="sm" leftIcon={<Upload className="size-4" />}>Export</DsButton>
+              <DsButton variant="ghost" size="sm"><Save className="size-4" />Save</DsButton>
+              <DsButton variant="secondary" size="sm"><ShieldCheck className="size-4" />Validate</DsButton>
+              <DsButton variant="primary" size="sm"><Upload className="size-4" />Export</DsButton>
               <button className="ml-ds-2 flex size-8 items-center justify-center rounded-full border border-ds-border-default bg-ds-surface-elevated text-ds-text-secondary hover:text-ds-text-primary">
                 <User2 className="size-4" />
               </button>
@@ -57,7 +61,7 @@ export default function EditorShellPreview() {
         }
         tabs={
           <div className="flex h-full items-center px-ds-4">
-            <DsSegmentTabs items={SEGMENTS} value={active} onChange={setActive} />
+            <DsSegmentTabs items={SEGMENTS} activeId={active} onChange={setActive} colorPerSegment />
           </div>
         }
         left={
