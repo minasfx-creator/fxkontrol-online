@@ -428,3 +428,30 @@ export default function RealHardwareBridgeDialog({ open, onClose }: Props) {
     </Dialog>
   );
 }
+
+interface ClockButtonProps {
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  label: string;
+  hint: string;
+}
+
+function ClockButton({ active, disabled, onClick, label, hint }: ClockButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={
+        'flex-1 rounded-md border px-2 py-1.5 text-left transition-all disabled:opacity-40 ' +
+        (active
+          ? 'border-cyan-400/70 bg-cyan-500/15 text-cyan-100'
+          : 'border-cyan-500/20 bg-transparent text-cyan-200/70 hover:bg-cyan-500/5')
+      }
+    >
+      <div className="text-[11px] font-semibold tracking-wide">{label}</div>
+      <div className="text-[9px] text-muted-foreground/70">{hint}</div>
+    </button>
+  );
+}
