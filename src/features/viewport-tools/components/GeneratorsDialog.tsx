@@ -11,7 +11,7 @@
  * and records the operation log entry (so undo/redo works).
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
-import type { FormationShape } from '@/features/viewport-tools/generators/droneFormationGenerator';
+import {
+  generateDroneFormationDetailed,
+  MIN_DRONE_SEPARATION_M,
+  type FormationShape,
+  type FormationParams,
+} from '@/features/viewport-tools/generators/droneFormationGenerator';
+
+const FormationPreview3D = lazy(() => import('./FormationPreview3D'));
 
 interface Props {
   open: boolean;
@@ -62,6 +69,24 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
   const [droneSpacing, setDroneSpacing] = useState(2);
   const [droneHeight, setDroneHeight] = useState(30);
   const [droneStart, setDroneStart] = useState(0);
+  const [droneRotation, setDroneRotation] = useState(0);
+  const [droneText, setDroneText] = useState('FXK');
+  const [droneStarPoints, setDroneStarPoints] = useState(5);
+  const [showPreview, setShowPreview] = useState(true);
+
+  const droneParams: FormationParams = useMemo(() => ({
+    shape,
+    droneCount,
+    radius: droneRadius,
+    spacing: droneSpacing,
+    height: droneHeight,
+    rotation: droneRotation,
+    startTime: droneStart,
+    text: droneText,
+    starPoints: droneStarPoints,
+  }), [shape, droneCount, droneRadius, droneSpacing, droneHeight, droneRotation, droneStart, droneText, droneStarPoints]);
+
+  const droneReport = useMemo(() => generateDroneFormationDetailed(droneParams), [droneParams]);
 
   useEffect(() => {
     if (!open) return;
@@ -105,14 +130,7 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
   };
 
   const submitDrone = () => {
-    dispatch('viewport-tools:generate-drone-formation', {
-      shape,
-      droneCount,
-      radius: droneRadius,
-      spacing: droneSpacing,
-      height: droneHeight,
-      startTime: droneStart,
-    });
+    dispatch('viewport-tools:generate-drone-formation', droneParams);
     onClose();
   };
 
@@ -256,12 +274,17 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
                 <Label className={labelCls}>Shape</Label>
                 <Select value={shape} onValueChange={(v) => setShape(v as FormationShape)}>
                   <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-[#050810] border-cyan-500/30 text-cyan-100">
-                    <SelectItem value="circle" className="text-xs">Circle</SelectItem>
-                    <SelectItem value="grid" className="text-xs">Grid</SelectItem>
-                    <SelectItem value="heart" className="text-xs">Heart</SelectItem>
-                    <SelectItem value="spiral" className="text-xs">Spiral</SelectItem>
-                    <SelectItem value="wave" className="text-xs">Wave</SelectItem>
+                  <SelectContent className="bg-[#050810] border-cyan-500/30 text-cyan-100 max-h-72">
+                    <SelectItem value="circle" className="text-xs">Circle (2D)</SelectItem>
+                    <SelectItem value="grid" className="text-xs">Grid (2D)</SelectItem>
+                    <SelectItem value="heart" className="text-xs">Heart (2D)</SelectItem>
+                    <SelectItem value="spiral" className="text-xs">Spiral (2D)</SelectItem>
+                    <SelectItem value="wave" className="text-xs">Wave (2D)</SelectItem>
+                    <SelectItem value="star" className="text-xs">Star (2D)</SelectItem>
+                    <SelectItem value="sphere" className="text-xs">Sphere (3D)</SelectItem>
+                    <SelectItem value="helix" className="text-xs">Helix (3D)</SelectItem>
+                    <SelectItem value="cube" className="text-xs">Cube shell (3D)</SelectItem>
+                    <SelectItem value="text" className="text-xs">Text (3D)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -274,19 +297,80 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
                 <Input className={inputCls} type="number" min={0} value={droneHeight} onChange={(e) => setDroneHeight(+e.target.value)} />
               </div>
               <div>
-                <Label className={labelCls}>Radius (m)</Label>
+                <Label className={labelCls}>Radius / scale (m)</Label>
                 <Input className={inputCls} type="number" min={1} value={droneRadius} onChange={(e) => setDroneRadius(+e.target.value)} />
               </div>
               <div>
-                <Label className={labelCls}>Spacing (m, grid)</Label>
+                <Label className={labelCls}>Spacing (m)</Label>
                 <Input className={inputCls} type="number" step={0.5} min={0.5} value={droneSpacing} onChange={(e) => setDroneSpacing(+e.target.value)} />
               </div>
-              <div className="col-span-2">
+              <div>
+                <Label className={labelCls}>Rotation Y (deg)</Label>
+                <Input className={inputCls} type="number" value={droneRotation} onChange={(e) => setDroneRotation(+e.target.value)} />
+              </div>
+              <div>
                 <Label className={labelCls}>Start time (s)</Label>
                 <Input className={inputCls} type="number" step={0.1} min={0} value={droneStart} onChange={(e) => setDroneStart(+e.target.value)} />
               </div>
+              {shape === 'star' && (
+                <div className="col-span-2">
+                  <Label className={labelCls}>Star points (3-12)</Label>
+                  <Input className={inputCls} type="number" min={3} max={12} value={droneStarPoints} onChange={(e) => setDroneStarPoints(+e.target.value)} />
+                </div>
+              )}
+              {shape === 'text' && (
+                <div className="col-span-2">
+                  <Label className={labelCls}>Text (A-Z, 0-9)</Label>
+                  <Input className={inputCls} value={droneText} maxLength={12} onChange={(e) => setDroneText(e.target.value)} />
+                </div>
+              )}
             </div>
-            <div className="flex justify-end pt-2">
+
+            {/* Collision report */}
+            <div className={`rounded border px-2 py-1.5 text-[10px] font-mono ${
+              droneReport.collision.ok
+                ? 'border-green-500/30 bg-green-500/5 text-green-300'
+                : 'border-red-500/40 bg-red-500/10 text-red-300'
+            }`}>
+              <div className="flex items-center justify-between">
+                <span>{droneReport.collision.ok ? '✓ COLLISION OK' : '⚠ COLLISION RISK'}</span>
+                <span className="opacity-70">
+                  min {droneReport.collision.minSpacingM.toFixed(2)}m / threshold {MIN_DRONE_SEPARATION_M}m
+                </span>
+              </div>
+              {droneReport.collision.violations > 0 && (
+                <div className="mt-0.5 opacity-90">
+                  {droneReport.collision.violations} pair(s) below safety distance
+                </div>
+              )}
+              {droneReport.warnings.length > 0 && (
+                <ul className="mt-1 space-y-0.5 text-amber-300/80">
+                  {droneReport.warnings.map((w, i) => <li key={i}>· {w}</li>)}
+                </ul>
+              )}
+            </div>
+
+            {/* Live preview */}
+            <div className="flex items-center justify-between">
+              <Label className={labelCls}>Live 3D preview</Label>
+              <button
+                type="button"
+                onClick={() => setShowPreview((v) => !v)}
+                className="text-[10px] text-cyan-300/70 hover:text-cyan-200 underline"
+              >
+                {showPreview ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            {showPreview && (
+              <Suspense fallback={<div className="h-56 rounded border border-cyan-500/10 bg-[#02040a] flex items-center justify-center text-[10px] text-cyan-300/50">loading preview…</div>}>
+                <FormationPreview3D params={droneParams} />
+              </Suspense>
+            )}
+
+            <div className="flex justify-between items-center pt-2">
+              <span className="text-[10px] text-cyan-300/60 font-mono">
+                {droneReport.formation.droneCount} drones · {shape}
+              </span>
               <Button size="sm" onClick={submitDrone}
                 className="bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/25">
                 Generate Formation
