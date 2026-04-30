@@ -422,6 +422,148 @@ export default function DesignSystemShowcase() {
           </div>
         </Section>
 
+        {/* ── Typography ──────────────────────────────────────────────── */}
+        <Section title="Typography" subtitle="Spec scale: H1 48 / H2 32 / H3 24 / Body 16 / Caption 12. Family: Rajdhani (project default).">
+          <div className="space-y-4">
+            <div className="ds-h1 text-ds-text-primary">H1 · Mission Control</div>
+            <div className="ds-h2 text-ds-text-primary">H2 · Show Authoring</div>
+            <div className="ds-h3 text-ds-text-primary">H3 · Segment Inspector</div>
+            <div className="ds-body text-ds-text-secondary">Body · Operator messages, descriptions, inline help. Stays legible at 16px on dark surfaces and meets WCAG AA against ds-surface-panel.</div>
+            <div className="ds-caption">Caption · meta, units, hints (12px, muted).</div>
+            <div className="ds-mono text-status-sync text-[13px]">ds-mono · 00:00:00.000 · TC SYNC</div>
+            <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-5 text-[10px] font-mono text-ds-text-muted">
+              {[
+                ['ds-h1', '48 / 700'],
+                ['ds-h2', '32 / 600'],
+                ['ds-h3', '24 / 500'],
+                ['ds-body', '16 / 400'],
+                ['ds-caption', '12 / 400'],
+              ].map(([cls, meta]) => (
+                <div key={cls} className="rounded-[6px] border border-ds-border-subtle bg-ds-surface-deep px-2 py-1.5">
+                  <div className="text-ds-text-secondary">{cls}</div>
+                  <div>{meta}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Section>
+
+        {/* ── Spacing 8pt ─────────────────────────────────────────────── */}
+        <Section title="Spacing · 8pt scale" subtitle="4 / 8 / 12 / 16 / 24 / 32 / 48 / 64. Use ds-{1,2,3,4,6,8,12,16} on padding/gap.">
+          <div className="space-y-2">
+            {[
+              { tok: 'ds-1',  px: 4,  cls: 'w-1' },
+              { tok: 'ds-2',  px: 8,  cls: 'w-2' },
+              { tok: 'ds-3',  px: 3,  cls: 'w-3' },
+              { tok: 'ds-4',  px: 16, cls: 'w-4' },
+              { tok: 'ds-6',  px: 24, cls: 'w-6' },
+              { tok: 'ds-8',  px: 32, cls: 'w-8' },
+              { tok: 'ds-12', px: 48, cls: 'w-12' },
+              { tok: 'ds-16', px: 64, cls: 'w-16' },
+            ].map((s) => (
+              <div key={s.tok} className="flex items-center gap-3">
+                <div className="h-3 rounded-[2px] bg-status-sync" style={{ width: `${s.px}px` }} />
+                <code className="font-mono text-[11px] text-ds-text-secondary">{s.tok}</code>
+                <span className="font-mono text-[10px] text-ds-text-muted">{s.px}px</span>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        {/* ── Radius ──────────────────────────────────────────────────── */}
+        <Section title="Radius" subtitle="Spec: sm 6 (badges/chips) · md 10 (buttons/inputs/cards) · lg 16 (panels/modals).">
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { tok: 'rounded-ds-sm', label: 'SM · 6',  cls: 'rounded-ds-sm' },
+              { tok: 'rounded-ds-md', label: 'MD · 10', cls: 'rounded-ds-md' },
+              { tok: 'rounded-ds-lg', label: 'LG · 16', cls: 'rounded-ds-lg' },
+            ].map((r) => (
+              <div key={r.tok} className="space-y-2">
+                <div className={`h-20 border border-ds-border-active bg-ds-surface-elevated ${r.cls}`} />
+                <div className="font-mono text-[11px] text-ds-text-secondary">{r.tok}</div>
+                <div className="font-mono text-[10px] text-ds-text-muted">{r.label}</div>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        {/* ── States Matrix ───────────────────────────────────────────── */}
+        <Section title="States Matrix" subtitle="Default · Hover · Active · Focus · Disabled — applied to a generic .ds-interactive button.">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+            {[
+              { label: 'Default',  className: 'ds-interactive ds-panel' },
+              { label: 'Hover',    className: 'ds-interactive ds-panel bg-ds-surface-elevated border-ds-border-subtle' },
+              { label: 'Active',   className: 'ds-interactive ds-panel ds-active-border text-status-sync' },
+              { label: 'Focus',    className: 'ds-interactive ds-panel', extra: { boxShadow: 'var(--ds-focus-ring)' } },
+              { label: 'Disabled', className: 'ds-interactive ds-panel', disabled: true },
+            ].map((s) => (
+              <button
+                key={s.label}
+                type="button"
+                disabled={s.disabled}
+                className={`h-12 px-3 rounded-ds-md text-[12px] font-mono uppercase tracking-wider ${s.className}`}
+                style={s.extra}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 ds-caption">Cyan = ativo/sync · Verde = OK · Âmbar = warn · Vermelho = critical. Foco usa cyan ring de 2px.</p>
+        </Section>
+
+        {/* ── Editor Shell Preview ────────────────────────────────────── */}
+        <Section title="Editor Shell" subtitle="Constraints layout (não auto-layout). Topbar 64 · Tabs 48 · Left 280 · Right 320 · Timeline 180 · Viewport fill.">
+          <div className="rounded-ds-md border border-ds-border-default overflow-hidden">
+            <div className="ds-editor-grid" style={{ height: 360 }}>
+              <div className="ds-area-topbar bg-ds-surface-deep flex items-center px-4 gap-3">
+                <div className="ds-dot ds-dot-sync" />
+                <span className="font-mono text-[11px] uppercase tracking-wider text-ds-text-secondary">FXKONTROL · Show · Untitled</span>
+                <div className="flex-1" />
+                <span className="ds-status-sync text-[10px] font-mono px-2 py-0.5 rounded-ds-sm">SAVE</span>
+                <span className="ds-status-warn text-[10px] font-mono px-2 py-0.5 rounded-ds-sm">VALIDATE</span>
+                <span className="ds-status-ok   text-[10px] font-mono px-2 py-0.5 rounded-ds-sm">EXPORT</span>
+              </div>
+              <div className="ds-area-tabs bg-ds-surface-panel flex items-end gap-0 px-2">
+                {SEGMENTS.map((s, i) => (
+                  <div key={s.id} className={`px-3 py-2 text-[11px] font-mono uppercase tracking-wider ${i === 0 ? 'text-ds-text-primary ds-segment-pyro-bar' : 'text-ds-text-muted'}`}>
+                    {s.label}
+                  </div>
+                ))}
+              </div>
+              <div className="ds-area-left bg-ds-surface-deep p-3 space-y-2">
+                {['Selection', 'Edit', 'Patch', 'Safety'].map((g) => (
+                  <div key={g} className="ds-caption uppercase tracking-wider">{g}</div>
+                ))}
+              </div>
+              <div className="ds-area-viewport bg-ds-background flex items-center justify-center">
+                <span className="ds-caption">VIEWPORT · fill remaining</span>
+              </div>
+              <div className="ds-area-right bg-ds-surface-deep p-3 space-y-2">
+                {['Position', 'Rotation (YZX)', 'Timing', 'Channel'].map((g) => (
+                  <div key={g} className="ds-caption uppercase tracking-wider">{g}</div>
+                ))}
+              </div>
+              <div className="ds-area-timeline bg-ds-surface-panel p-2">
+                <div className="ds-caption uppercase tracking-wider">Timeline · tracks por segmento</div>
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 ds-caption">
+            Use <code className="font-mono text-status-sync">.ds-editor-grid</code> + áreas (
+            <code className="font-mono">.ds-area-topbar/tabs/left/viewport/right/timeline</code>).
+          </p>
+        </Section>
+
+        {/* ── Theming note ────────────────────────────────────────────── */}
+        <Section title="Theming · Dark / Light" subtitle="DS v1 é dark-first (Vantablack). Light-mode é fora de escopo: o editor é safety-critical e operacional.">
+          <ul className="ds-body text-ds-text-secondary space-y-1.5 list-disc pl-5">
+            <li>Tokens semânticos (<code className="font-mono text-status-sync">--ds-*</code>, <code className="font-mono">--segment-*</code>, <code className="font-mono">--status-*</code>) são a única superfície pública. Componentes <strong>nunca</strong> hardcodam cores.</li>
+            <li>Para um light-mode futuro, redefina <code className="font-mono">--ds-background/surface/text/border</code> em <code className="font-mono">.light</code> — segments e status mantêm a mesma matiz.</li>
+            <li>Cyan = ativo/sync · Verde = validado · Âmbar = atenção · Vermelho = crítico. Estas semânticas são <strong>imutáveis</strong> entre temas.</li>
+            <li>Foco sempre cyan, ring 2px com offset 2px (<code className="font-mono">--ds-focus-ring</code>) — atende WCAG AA.</li>
+          </ul>
+        </Section>
+
         {/* Footer */}
         <footer className="border-t border-ds-border-default pt-6 pb-12 text-center">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ds-text-muted">
