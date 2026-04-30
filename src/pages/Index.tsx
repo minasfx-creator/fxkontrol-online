@@ -738,18 +738,27 @@ function Index() {
         <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} isMaximized={viewportMaximized} onToggleMaximize={() => setViewportMaximized(v => !v)} />
       </div>
 
-      {/* ─── Layer 2: Right Dock (icon bar, z-40) ──── */}
-      {!viewportMaximized && (
+      {/* ─── Layer 2: Right Dock (icon bar, z-40) ────
+          Hidden when floating-chrome flag is ON — replaced by the
+          vertical-right ViewportSegmentToolbar mounted via ShowEngineHost
+          and the MasterMenuFloat at top-center. */}
+      {!viewportMaximized && !floatingChrome && (
         <div className="absolute top-14 right-0 z-40" style={{ bottom: desktopTimelineHeight, transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
           <PanelTabBar activePanel={activePanel} onTogglePanel={handleTogglePanel} />
         </div>
       )}
 
+      {/* ─── Layer 2b: Master Menu (top-center floating, z-[70]) ─ */}
+      {!viewportMaximized && floatingChrome && (
+        <MasterMenuFloat onOpenPanel={handleTogglePanel} />
+      )}
+
       {/* ─── Layer 3: Floating Panel (z-40) ─────────── */}
       {activePanel && !viewportMaximized && (
         <div
-          className="absolute top-14 right-[52px] z-40 w-[420px] max-w-[40vw]"
+          className="absolute top-14 z-40 w-[420px] max-w-[40vw]"
           style={{
+            right: floatingChrome ? '12px' : '52px',
             bottom: desktopTimelineHeight,
             transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             background:
