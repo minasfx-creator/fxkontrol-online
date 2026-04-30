@@ -15,12 +15,15 @@ import { useProfile } from '@/hooks/useProfile';
 import { useNavigate } from 'react-router-dom';
 
 interface Props {
-  /** Distance from bottom (px). Caller passes timeline height + padding. */
-  bottomOffset: number;
+  /** Distance from bottom (px). Used only when `inline` is false. */
+  bottomOffset?: number;
+  /** When true, render as an inline trigger (no fixed positioning) so the
+   *  caller (Toolbar) controls placement. The popover still floats. */
+  inline?: boolean;
   className?: string;
 }
 
-export default function UserAvatarFloat({ bottomOffset, className }: Props) {
+export default function UserAvatarFloat({ bottomOffset = 12, inline = false, className }: Props) {
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
   const navigate = useNavigate();
@@ -47,21 +50,30 @@ export default function UserAvatarFloat({ bottomOffset, className }: Props) {
   const avatarUrl = profile?.avatar_url;
   const role = profile?.role_title;
 
+  const wrapperClass = inline
+    ? cn('relative pointer-events-auto', className)
+    : cn('fixed z-[60] right-3 pointer-events-auto', className);
+  const wrapperStyle = inline ? undefined : { bottom: bottomOffset };
+
+  const triggerClass = inline
+    ? cn(
+        'h-7 w-7 rounded-full overflow-hidden flex items-center justify-center',
+        'bg-muted/30 border border-border/30',
+        'hover:border-cyan-400/50 hover:bg-cyan-500/10 transition-all',
+      )
+    : cn(
+        'h-12 w-12 rounded-full overflow-hidden flex items-center justify-center',
+        'bg-[#050810]/85 backdrop-blur-xl border border-cyan-500/40',
+        'shadow-[0_10px_30px_-8px_rgba(0,255,255,0.35)] hover:border-cyan-400/70 transition-all',
+      );
+
   return (
-    <div
-      ref={ref}
-      className={cn('fixed z-[60] right-3 pointer-events-auto', className)}
-      style={{ bottom: bottomOffset }}
-    >
+    <div ref={ref} className={wrapperClass} style={wrapperStyle}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         title={displayName}
-        className={cn(
-          'h-12 w-12 rounded-full overflow-hidden flex items-center justify-center',
-          'bg-[#050810]/85 backdrop-blur-xl border border-cyan-500/40',
-          'shadow-[0_10px_30px_-8px_rgba(0,255,255,0.35)] hover:border-cyan-400/70 transition-all',
-        )}
+        className={triggerClass}
       >
         {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -74,7 +86,8 @@ export default function UserAvatarFloat({ bottomOffset, className }: Props) {
       {open && (
         <div
           className={cn(
-            'absolute bottom-full right-0 mb-2 w-56',
+            'absolute right-0 w-56 z-[60]',
+            inline ? 'top-full mt-2' : 'bottom-full mb-2',
             'rounded-xl bg-[#050810]/92 backdrop-blur-xl border border-cyan-500/25',
             'shadow-[0_20px_50px_-12px_rgba(0,0,0,0.8)]',
             'p-3 text-foreground',

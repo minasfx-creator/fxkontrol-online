@@ -105,13 +105,10 @@ const FLAGS = {
   safety_gate_strict: true,
 
   // ============================================================
-  // FLOATING CHROME — Studio chrome refactor (mockup-driven).
-  // ON: shows top-center MasterMenu pill, bottom-right floating user
-  // avatar, hides desktop PanelTabBar in favor of vertical-right
-  // ViewportSegmentToolbar. OFF: legacy chrome (PanelTabBar visible).
-  // Mobile is unaffected by this flag.
+  // (`floating_chrome` removed — Mission Control desktop chrome is the
+  // only desktop layout now. Mobile shell is gated separately by
+  // `useIsMobile()` in src/pages/Index.tsx.)
   // ============================================================
-  floating_chrome: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;

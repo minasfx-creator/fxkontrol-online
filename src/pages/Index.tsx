@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useCallback, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
+import React, { lazy, Suspense, useState, useCallback, useEffect, useRef, Component, type ReactNode, type ErrorInfo } from 'react';
 import { lazyRetry } from '@/lib/lazyRetry';
 import { isEnabled } from '@/lib/featureFlags';
 import { commandBus } from '@/core/command/CommandBus';
@@ -12,9 +12,11 @@ import { Upload, ChevronDown, X, RotateCcw } from 'lucide-react';
 import ViewportNavControls from '@/components/editor/ViewportNavControls';
 import { useDisplayStore } from '@/store/useDisplayStore';
 import type { WorldShowPreset } from '@/data/worldShowPresets';
-import PanelTabBar, { type PanelId } from '@/components/editor/PanelTabBar';
+import { type PanelId } from '@/components/editor/PanelTabBar';
 import { type MobileTab } from '@/components/editor/MobileTabBar';
 import { loadTimelineView, saveTimelineView, resetTimelineView } from '@/lib/timelineViewState';
+import { useDraggableFloat } from '@/components/editor/useDraggableFloat';
+import FloatHandle from '@/components/editor/FloatHandle';
 
 // ── Critical-path (static): shell chrome loaded immediately ──
 import Toolbar from '@/components/editor/Toolbar';
@@ -23,8 +25,9 @@ import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import RadialMenu from '@/components/editor/RadialMenu';
-import MasterMenuFloat from '@/components/editor/MasterMenuFloat';
-import UserAvatarFloat from '@/components/editor/UserAvatarFloat';
+// MasterMenuFloat removed — the Toolbar's ⌘K button (FullscreenCommandMenu)
+// already provides the same Master Menu palette and lives inside the top bar.
+// UserAvatarFloat is now mounted inline inside the Toolbar.
 // EngineProvider moved to MainLayout (boots once, all routes, mobile + desktop).
 import LiveCard from '@/components/editor/LiveCard';
 import { StudioErrorBoundary } from '@/components/errors/StudioErrorBoundary';
@@ -282,6 +285,62 @@ function CanvasLoader() {
 
 /* ── Nav Controls extracted to src/components/editor/ViewportNavControls.tsx ── */
 
+/**
+ * DraggableFloatingPanel — wraps the right-side floating panel in a
+ * draggable glass shell. Position is per-panel (so each panel remembers
+ * where the operator parked it). Drag the header to move; double-click
+ * to reset.
+ */
+function DraggableFloatingPanel({
+  panelId,
+  onClose,
+  children,
+}: {
+  panelId: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const drag = useDraggableFloat({
+    id: `panel-${panelId}`,
+    defaultPos: { anchor: 'tr', x: 12, y: 64 },
+    snapPx: 16,
+  });
+  return (
+    <div
+      ref={drag.ref}
+      style={{
+        ...drag.style,
+        zIndex: 40,
+        width: 420,
+        maxWidth: '40vw',
+        maxHeight: 'calc(100vh - 96px)',
+        background:
+          'linear-gradient(to right, hsl(var(--background) / 0.96) 0%, hsl(var(--background) / 0.88) 100%)',
+        backdropFilter: 'blur(18px) saturate(1.4)',
+        WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
+        border: '1px solid hsl(var(--border) / 0.35)',
+        borderRadius: 12,
+        boxShadow:
+          '0 20px 60px -20px hsl(var(--background) / 0.9), inset 0 1px 0 hsl(var(--primary) / 0.18)',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <FloatHandle
+        title={panelId}
+        onClose={onClose}
+        onResetPosition={drag.resetPosition}
+        {...drag.dragHandleProps}
+      />
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+
 /* ══════════════════════════════════════════════════════════════════
    INDEX — Immersive Full-Viewport Layout
    ══════════════════════════════════════════════════════════════════ */
@@ -337,9 +396,42 @@ function Index() {
     // Defensive: storage may throw (private mode, SecurityError) — never block mount.
     try { return loadTimelineView().collapsed ?? false; } catch { return false; }
   });
+  // Persisted timeline panel height (vh). User drags the top edge to resize.
+  const [timelineHeightVh, setTimelineHeightVh] = useState<number>(() => {
+    try { return loadTimelineView().heightVh ?? 34; } catch { return 34; }
+  });
   useEffect(() => {
-    try { saveTimelineView({ collapsed: timelineCollapsed }); } catch { /* noop */ }
-  }, [timelineCollapsed]);
+    try { saveTimelineView({ collapsed: timelineCollapsed, heightVh: timelineHeightVh }); } catch { /* noop */ }
+  }, [timelineCollapsed, timelineHeightVh]);
+
+  // Drag-to-resize the timeline panel. The 4px hover band at the top of the
+  // timeline owns the pointer; we update height in vh so the panel stays
+  // proportional across window sizes.
+  const timelineResizing = useRef(false);
+  const onTimelineResizeStart = useCallback((e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    timelineResizing.current = true;
+    const startY = e.clientY;
+    const startVh = timelineHeightVh;
+    const onMove = (ev: PointerEvent) => {
+      if (!timelineResizing.current) return;
+      const dy = ev.clientY - startY;
+      // Drag UP = grow timeline (negative dy → +vh).
+      const dvh = (-dy / window.innerHeight) * 100;
+      const next = Math.min(70, Math.max(18, startVh + dvh));
+      setTimelineHeightVh(next);
+    };
+    const onUp = () => {
+      timelineResizing.current = false;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  }, [timelineHeightVh]);
   const [viewportMaximized, setViewportMaximized] = useState(false);
   // leftDockOpen removed — Effects/Scene/ShowSettings now opened via Toolbar/PanelTabBar only.
   const [showMobileWelcome, setShowMobileWelcome] = useState(() => {
@@ -459,14 +551,18 @@ function Index() {
   }, [navigate]);
 
   const desktopTopOffset = '56px';
-  const desktopTimelineHeight = viewportMaximized ? '0px' : timelineCollapsed ? '42px' : '34vh';
+  const desktopTimelineHeight = viewportMaximized
+    ? '0px'
+    : timelineCollapsed
+      ? '28px'
+      : `${timelineHeightVh}vh`;
   const leftRailWidth = 0; // rail removed
   const leftSidebarWidth = 0;
-  // Floating-chrome flag: hides the right PanelTabBar dock and switches the
-  // viewport segment toolbar to a vertical-right floating glass dock.
-  const floatingChrome = isEnabled('floating_chrome');
-  const rightDockWidth = viewportMaximized || floatingChrome ? 0 : 52;
-  const rightPanelWidth = activePanel && !viewportMaximized ? 472 : 0;
+  // Mission Control desktop chrome: PanelTabBar is permanently retired on
+  // desktop; the segment dock is the floating ViewportSegmentToolbar.
+  const rightDockWidth = 0;
+  // The floating panel is now draggable; do not reserve canvas inset for it.
+  const rightPanelWidth = 0;
   const canvasLeftInset = `${leftRailWidth + leftSidebarWidth}px`;
   const canvasRightInset = `${rightDockWidth + rightPanelWidth}px`;
 
@@ -739,83 +835,23 @@ function Index() {
         <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} isMaximized={viewportMaximized} onToggleMaximize={() => setViewportMaximized(v => !v)} />
       </div>
 
-      {/* ─── Layer 2: Right Dock (icon bar, z-40) ────
-          Hidden when floating-chrome flag is ON — replaced by the
-          vertical-right ViewportSegmentToolbar mounted via ShowEngineHost
-          and the MasterMenuFloat at top-center. */}
-      {!viewportMaximized && !floatingChrome && (
-        <div className="absolute top-14 right-0 z-40" style={{ bottom: desktopTimelineHeight, transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
-          <PanelTabBar activePanel={activePanel} onTogglePanel={handleTogglePanel} />
-        </div>
-      )}
+      {/* ─── Layer 2: Viewport Segment Dock (draggable vertical glass float) ─
+          PYRO / SFX / DRONES / LIGHT / DMX. Replaces the legacy fixed
+          PanelTabBar rail (deleted). Position is persisted; drag the grip
+          handle to move; double-click handle to reset. */}
+      {!viewportMaximized && <ViewportSegmentToolbar />}
 
-      {/* ─── Layer 2b: Master Menu (top-center floating, z-[70]) ─ */}
-      {!viewportMaximized && floatingChrome && (
-        <MasterMenuFloat onOpenPanel={handleTogglePanel} />
-      )}
-
-      {/* ─── Layer 2c: Viewport Segment Dock (vertical-right floating) ─
-          PYRO / SFX / DRONES / LIGHT / DMX — replaces the legacy
-          PanelTabBar fixed rail when the floating-chrome flag is on.
-          Drives the viewport-tools registry; dispatches into the
-          existing ShowPlan via the command-dispatcher. */}
-      {!viewportMaximized && floatingChrome && (
-        <ViewportSegmentToolbar orientation="vertical-right" />
-      )}
-
-      {/* ─── Layer 3: Floating Panel (z-40) ─────────── */}
+      {/* ─── Layer 3: Floating Panel (draggable, z-40) ─────────── */}
       {activePanel && !viewportMaximized && (
-        <div
-          className="absolute top-14 z-40 w-[420px] max-w-[40vw]"
-          style={{
-            right: floatingChrome ? '12px' : '52px',
-            bottom: desktopTimelineHeight,
-            transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            background:
-              'linear-gradient(to right, hsl(var(--background) / 0.96) 0%, hsl(var(--background) / 0.88) 100%)',
-            backdropFilter: 'blur(18px) saturate(1.4)',
-            WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
-            borderLeft: '1px solid hsl(var(--border) / 0.35)',
-            borderBottom: '1px solid hsl(var(--border) / 0.2)',
-            boxShadow:
-              '-12px 0 40px -16px hsl(var(--background) / 0.8), inset 1px 0 0 hsl(var(--primary) / 0.18)',
-          }}
+        <DraggableFloatingPanel
+          panelId={activePanel}
+          onClose={() => setActivePanel(null)}
         >
-          {/* Cyan accent rail — subtle vertical accent on the inner edge that
-              echoes the canvas chrome. Pure visual; non-interactive. */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute left-0 top-6 bottom-6 w-px"
-            style={{
-              background:
-                'linear-gradient(to bottom, transparent 0%, hsl(var(--primary) / 0.45) 30%, hsl(var(--primary) / 0.45) 70%, transparent 100%)',
-            }}
-          />
-          {/* Close button */}
-          <button
-            onClick={() => setActivePanel(null)}
-            className="absolute top-2 right-2 z-10 w-6 h-6 flex items-center justify-center rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-          >
-            <X className="w-3 h-3 text-muted-foreground" />
-          </button>
-          <div className="h-full overflow-hidden flex flex-col">
-            <Suspense fallback={<PanelLoader />}>{renderPanelContent()}</Suspense>
-          </div>
-        </div>
+          <Suspense fallback={<PanelLoader />}>{renderPanelContent()}</Suspense>
+        </DraggableFloatingPanel>
       )}
 
-      {/* ─── Layer 4: Left Foundation Rail removed (duplicava Toolbar/PanelTabBar) ─── */}
-
-      {/* ─── Layer 5: User Avatar Float (Bottom-Right, above timeline) ── */}
-      {!viewportMaximized && floatingChrome && (
-        <UserAvatarFloat
-          bottomOffset={
-            typeof desktopTimelineHeight === 'string' && desktopTimelineHeight.endsWith('vh')
-              ? Math.round(window.innerHeight * (parseFloat(desktopTimelineHeight) / 100)) + 12
-              : parseInt(desktopTimelineHeight, 10) + 12
-          }
-        />
-      )}
+      {/* ─── Layer 4: User avatar moved into Toolbar (inline). ─── */}
 
       {/* ─── Layer 6: Nav Controls (Bottom-Right) ──── */}
       {!viewportMaximized && <ViewportNavControls />}
@@ -837,10 +873,21 @@ function Index() {
           overflow: 'hidden',
         }}
       >
-        {/* Tab cluster — collapse + reset live in a unified pill on the timeline edge.
-            Mimics the "scrub bar" treatment of pro NLEs (Premiere, Resolve, Avid). */}
+        {/* 4px hover/grab band on the top edge — drag to resize the timeline.
+            Sits above the chrome strip so users discover the resize affordance
+            naturally. Pure presentation: just adjusts `timelineHeightVh`. */}
+        {!timelineCollapsed && (
+          <div
+            onPointerDown={onTimelineResizeStart}
+            className="absolute top-0 left-0 right-0 h-1 z-20 cursor-ns-resize hover:bg-primary/40 transition-colors"
+            title="Arrastar para redimensionar timeline"
+            style={{ touchAction: 'none' }}
+          />
+        )}
+        {/* Timeline chrome pill — moved to the right edge so it does not
+            fight the play-head in the center. */}
         <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full z-10 flex items-stretch overflow-hidden rounded-t-lg border border-border/40 border-b-0 bg-surface-1/95 backdrop-blur-sm shadow-[0_-2px_8px_-4px_hsl(var(--background)/0.6)]"
+          className="absolute top-0 right-3 -translate-y-full z-10 flex items-stretch overflow-hidden rounded-t-lg border border-border/40 border-b-0 bg-surface-1/95 backdrop-blur-sm shadow-[0_-2px_8px_-4px_hsl(var(--background)/0.6)]"
         >
           <button
             onClick={() => setTimelineCollapsed(!timelineCollapsed)}
@@ -854,10 +901,11 @@ function Index() {
           <button
             onClick={() => {
               resetTimelineView();
-              window.location.reload();
+              setTimelineHeightVh(34);
+              setTimelineCollapsed(false);
             }}
             className="flex items-center justify-center w-6 h-6 text-muted-foreground/70 hover:text-primary hover:bg-surface-2/80 transition-colors"
-            title="Reset Timeline View (zoom / scroll / collapsed)"
+            title="Reset Timeline View (zoom / scroll / collapsed / height)"
             aria-label="Reset Timeline View"
           >
             <RotateCcw className="w-3 h-3" />
