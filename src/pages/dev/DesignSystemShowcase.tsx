@@ -511,6 +511,130 @@ export default function DesignSystemShowcase() {
           <p className="mt-3 ds-caption">Cyan = ativo/sync · Verde = OK · Âmbar = warn · Vermelho = critical. Foco usa cyan ring de 2px.</p>
         </Section>
 
+        {/* ── Screens (wireframes) ────────────────────────────────────── */}
+        <Section title="Screens · Wireframes" subtitle="Maquetes em escala reduzida das 5 telas-chave (Landing · Office · Create · Validation · Export). Constraints e auto-layout conforme handoff.">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {/* Landing */}
+            <div className="rounded-ds-md border border-ds-border-default overflow-hidden">
+              <div className="flex items-center justify-between bg-ds-surface-deep px-3 py-2 border-b border-ds-border-default">
+                <span className="ds-caption uppercase tracking-wider text-ds-text-secondary">Landing · 1440 × Auto</span>
+                <span className="font-mono text-[9px] text-ds-text-muted">marketing</span>
+              </div>
+              <div className="bg-ds-background p-3 space-y-2 text-[10px] font-mono text-ds-text-muted">
+                <div className="h-6 rounded-ds-sm bg-ds-surface-panel border border-ds-border-default flex items-center px-2">Navbar 72</div>
+                <div className="h-24 rounded-ds-sm bg-ds-surface-panel border border-ds-border-default grid grid-cols-2 gap-2 p-2">
+                  <div className="rounded-ds-sm bg-ds-surface-deep flex flex-col justify-center p-2">
+                    <div className="h-2 w-3/4 bg-ds-text-disabled/40 rounded mb-1" />
+                    <div className="h-2 w-1/2 bg-ds-text-disabled/30 rounded mb-2" />
+                    <div className="h-4 w-20 bg-status-sync/40 rounded-ds-sm" />
+                  </div>
+                  <div className="rounded-ds-sm border border-status-sync/30 bg-ds-background flex items-center justify-center text-status-sync">Hero Preview</div>
+                </div>
+                <div className="h-10 rounded-ds-sm bg-ds-surface-panel border border-ds-border-default flex items-center px-2">How it works · 300</div>
+                <div className="h-8 rounded-ds-sm bg-ds-surface-panel border border-ds-border-default flex items-center px-2">Capabilities · 200</div>
+                <div className="h-8 rounded-ds-sm bg-ds-surface-panel border border-ds-border-default flex items-center px-2">Use Cases · 200</div>
+                <div className="h-8 rounded-ds-sm bg-ds-surface-panel border border-status-sync/40 flex items-center px-2 text-status-sync">CTA · 200</div>
+                <div className="h-5 rounded-ds-sm bg-ds-surface-panel border border-ds-border-default flex items-center px-2">Footer 120</div>
+              </div>
+            </div>
+
+            {/* Office */}
+            <div className="rounded-ds-md border border-ds-border-default overflow-hidden">
+              <div className="flex items-center justify-between bg-ds-surface-deep px-3 py-2 border-b border-ds-border-default">
+                <span className="ds-caption uppercase tracking-wider text-ds-text-secondary">Office · 1440 × 900</span>
+                <span className="font-mono text-[9px] text-ds-text-muted">dashboard</span>
+              </div>
+              <div className="bg-ds-background p-3 text-[10px] font-mono text-ds-text-muted">
+                <div className="h-5 rounded-ds-sm bg-ds-surface-deep border border-ds-border-default flex items-center px-2 mb-3">Topbar 64</div>
+                <div className="ds-caption mb-2 uppercase tracking-wider">Quick Actions · 2×2 · gap 24</div>
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  {['New Show', 'Templates', 'Recent', 'Academy'].map((c) => (
+                    <div key={c} className="h-14 rounded-ds-md border border-ds-border-default bg-ds-surface-panel p-2 flex items-end text-ds-text-primary">{c}</div>
+                  ))}
+                </div>
+                <div className="ds-caption mb-1 uppercase tracking-wider">Recent Projects</div>
+                <div className="space-y-1">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-6 rounded-ds-sm bg-ds-surface-panel border border-ds-border-default flex items-center justify-between px-2">
+                      <span>Project · {i}</span><span className="ds-dot ds-dot-ok" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Create flow */}
+            <div className="rounded-ds-md border border-ds-border-default overflow-hidden">
+              <div className="flex items-center justify-between bg-ds-surface-deep px-3 py-2 border-b border-ds-border-default">
+                <span className="ds-caption uppercase tracking-wider text-ds-text-secondary">Create · 960 × Auto · centralizado</span>
+                <span className="font-mono text-[9px] text-ds-text-muted">wizard</span>
+              </div>
+              <div className="bg-ds-background p-3 text-[10px] font-mono text-ds-text-muted">
+                <div className="ds-caption mb-2 uppercase tracking-wider">Mode Selector · W 600 · gap 16</div>
+                <div className="space-y-2 mb-3">
+                  {['Blank Canvas', 'From Template', 'AI Generate'].map((m, i) => (
+                    <div key={m} className={`h-10 rounded-ds-md border bg-ds-surface-panel flex items-center px-3 ${i === 0 ? 'border-status-sync text-status-sync' : 'border-ds-border-default text-ds-text-primary'}`}>{m}</div>
+                  ))}
+                </div>
+                <div className="rounded-ds-md border border-ds-border-default bg-ds-surface-panel p-3">
+                  <div className="ds-caption uppercase tracking-wider mb-2">Step Container · padding 24</div>
+                  <div className="h-12 rounded-ds-sm bg-ds-surface-deep mb-3" />
+                  <div className="flex items-center justify-between">
+                    <span className="rounded-ds-sm border border-ds-border-default px-2 py-1">← Back</span>
+                    <span className="rounded-ds-sm bg-status-sync px-2 py-1 text-ds-background">Continue →</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Validation + Export modals */}
+            <div className="rounded-ds-md border border-ds-border-default overflow-hidden">
+              <div className="flex items-center justify-between bg-ds-surface-deep px-3 py-2 border-b border-ds-border-default">
+                <span className="ds-caption uppercase tracking-wider text-ds-text-secondary">Modals · Validation · Export</span>
+                <span className="font-mono text-[9px] text-ds-text-muted">overlays</span>
+              </div>
+              <div className="bg-ds-background p-3 grid grid-cols-2 gap-3 text-[10px] font-mono text-ds-text-muted">
+                <div className="rounded-ds-md border border-ds-border-default bg-ds-surface-panel p-3">
+                  <div className="ds-caption uppercase tracking-wider mb-2 text-ds-text-primary">Validation · 480</div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2"><span className="text-status-ok">✔</span><span>Continuity OK</span></div>
+                    <div className="flex items-center gap-2"><span className="text-status-warn">⚠</span><span>3 channels low V</span></div>
+                    <div className="flex items-center gap-2"><span className="text-status-fail">✕</span><span>Cue 045 unmapped</span></div>
+                  </div>
+                  <div className="mt-3 h-6 rounded-ds-sm bg-status-sync flex items-center justify-center text-ds-background">Fix Issues</div>
+                </div>
+                <div className="rounded-ds-md border border-ds-border-default bg-ds-surface-panel p-3">
+                  <div className="ds-caption uppercase tracking-wider mb-2 text-ds-text-primary">Export · 400</div>
+                  <div className="space-y-1">
+                    {['FireOne', 'DMX', 'Drone API', 'PDF'].map((o, i) => (
+                      <div key={o} className="flex items-center gap-2">
+                        <span className={`size-2.5 rounded-full border ${i === 0 ? 'bg-status-sync border-status-sync' : 'border-ds-border-default'}`} />
+                        <span>{o}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 h-6 rounded-ds-sm bg-status-sync flex items-center justify-center text-ds-background">Export</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between rounded-ds-md border border-status-sync/30 bg-status-sync/10 px-4 py-3">
+            <div>
+              <div className="text-[12px] font-semibold text-status-sync">Editor Shell · live demo</div>
+              <p className="ds-caption text-ds-text-secondary mt-0.5">
+                Preview interativo do <code className="font-mono">&lt;EditorShell&gt;</code> com Topbar · Tabs · Panels · Timeline · Viewport.
+              </p>
+            </div>
+            <a
+              href="/dev/editor-shell"
+              className="rounded-ds-md bg-status-sync px-4 py-2 text-[12px] font-semibold text-ds-background hover:brightness-110"
+            >
+              Abrir /dev/editor-shell →
+            </a>
+          </div>
+        </Section>
+
         {/* ── Editor Shell Preview ────────────────────────────────────── */}
         <Section title="Editor Shell" subtitle="Constraints layout (não auto-layout). Topbar 64 · Tabs 48 · Left 280 · Right 320 · Timeline 180 · Viewport fill.">
           <div className="rounded-ds-md border border-ds-border-default overflow-hidden">
