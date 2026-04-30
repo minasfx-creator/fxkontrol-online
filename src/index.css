@@ -2521,6 +2521,39 @@ html[data-interacting="true"] .br2049-scanline {
   .ds-area-right    { grid-area: right;    border-left: 1px solid hsl(var(--ds-border-default)); overflow-y: auto; }
   .ds-area-timeline { grid-area: timeline; border-top: 1px solid hsl(var(--ds-border-default)); overflow-x: auto; }
 
+  /* ── Mobile parity (portrait + landscape) ──────────────────────────────
+     Em qualquer dispositivo "mobile-class" (largura ≤900px OU altura ≤500px
+     em landscape), o editor adota o MESMO layout fluido do mobile portrait:
+     pilha vertical topbar → tabs → viewport → timeline. As sidebars laterais
+     são removidas do fluxo (devem ser acessadas via dock/painéis flutuantes
+     do MobileFloatingPanel — não espremidas dentro da grid).
+     Isso garante paridade portrait↔landscape e evita o layout-de-desktop
+     comprimido que aparecia em telefones deitados. */
+  @media (max-width: 900px), (orientation: landscape) and (max-height: 500px) {
+    .ds-editor-grid {
+      grid-template-columns: 1fr !important;
+      grid-template-rows:
+        var(--ds-layout-topbar)
+        var(--ds-layout-tabs)
+        1fr
+        var(--ds-layout-timeline) !important;
+      grid-template-areas:
+        "topbar"
+        "tabs"
+        "viewport"
+        "timeline" !important;
+      height: 100dvh;
+    }
+    .ds-area-left,
+    .ds-area-right {
+      display: none !important;
+    }
+    .ds-area-timeline {
+      /* mantém scroll horizontal mas com altura compacta em landscape baixo */
+      max-height: 40dvh;
+    }
+  }
+
   /* Status indicator dot (8px, semantic) */
   .ds-dot { display: inline-block; width: 8px; height: 8px; border-radius: 9999px; }
   .ds-dot-ok   { background-color: hsl(var(--status-ok));   box-shadow: 0 0 8px hsl(var(--status-ok)   / 0.55); }
