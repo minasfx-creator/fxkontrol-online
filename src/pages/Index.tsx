@@ -18,10 +18,13 @@ import { loadTimelineView, saveTimelineView, resetTimelineView } from '@/lib/tim
 
 // ── Critical-path (static): shell chrome loaded immediately ──
 import Toolbar from '@/components/editor/Toolbar';
+import ViewportSegmentToolbar from '@/features/viewport-tools/components/ViewportSegmentToolbar';
 import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import RadialMenu from '@/components/editor/RadialMenu';
+import MasterMenuFloat from '@/components/editor/MasterMenuFloat';
+import UserAvatarFloat from '@/components/editor/UserAvatarFloat';
 // EngineProvider moved to MainLayout (boots once, all routes, mobile + desktop).
 import LiveCard from '@/components/editor/LiveCard';
 import { StudioErrorBoundary } from '@/components/errors/StudioErrorBoundary';
@@ -459,7 +462,10 @@ function Index() {
   const desktopTimelineHeight = viewportMaximized ? '0px' : timelineCollapsed ? '42px' : '34vh';
   const leftRailWidth = 0; // rail removed
   const leftSidebarWidth = 0;
-  const rightDockWidth = viewportMaximized ? 0 : 52;
+  // Floating-chrome flag: hides the right PanelTabBar dock and switches the
+  // viewport segment toolbar to a vertical-right floating glass dock.
+  const floatingChrome = isEnabled('floating_chrome');
+  const rightDockWidth = viewportMaximized || floatingChrome ? 0 : 52;
   const rightPanelWidth = activePanel && !viewportMaximized ? 472 : 0;
   const canvasLeftInset = `${leftRailWidth + leftSidebarWidth}px`;
   const canvasRightInset = `${rightDockWidth + rightPanelWidth}px`;
@@ -733,18 +739,36 @@ function Index() {
         <Toolbar onOpenPanel={(id) => handleTogglePanel(id as PanelId)} isMaximized={viewportMaximized} onToggleMaximize={() => setViewportMaximized(v => !v)} />
       </div>
 
-      {/* ─── Layer 2: Right Dock (icon bar, z-40) ──── */}
-      {!viewportMaximized && (
+      {/* ─── Layer 2: Right Dock (icon bar, z-40) ────
+          Hidden when floating-chrome flag is ON — replaced by the
+          vertical-right ViewportSegmentToolbar mounted via ShowEngineHost
+          and the MasterMenuFloat at top-center. */}
+      {!viewportMaximized && !floatingChrome && (
         <div className="absolute top-14 right-0 z-40" style={{ bottom: desktopTimelineHeight, transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
           <PanelTabBar activePanel={activePanel} onTogglePanel={handleTogglePanel} />
         </div>
       )}
 
+      {/* ─── Layer 2b: Master Menu (top-center floating, z-[70]) ─ */}
+      {!viewportMaximized && floatingChrome && (
+        <MasterMenuFloat onOpenPanel={handleTogglePanel} />
+      )}
+
+      {/* ─── Layer 2c: Viewport Segment Dock (vertical-right floating) ─
+          PYRO / SFX / DRONES / LIGHT / DMX — replaces the legacy
+          PanelTabBar fixed rail when the floating-chrome flag is on.
+          Drives the viewport-tools registry; dispatches into the
+          existing ShowPlan via the command-dispatcher. */}
+      {!viewportMaximized && floatingChrome && (
+        <ViewportSegmentToolbar orientation="vertical-right" />
+      )}
+
       {/* ─── Layer 3: Floating Panel (z-40) ─────────── */}
       {activePanel && !viewportMaximized && (
         <div
-          className="absolute top-14 right-[52px] z-40 w-[420px] max-w-[40vw]"
+          className="absolute top-14 z-40 w-[420px] max-w-[40vw]"
           style={{
+            right: floatingChrome ? '12px' : '52px',
             bottom: desktopTimelineHeight,
             transition: 'bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             background:
@@ -781,6 +805,17 @@ function Index() {
       )}
 
       {/* ─── Layer 4: Left Foundation Rail removed (duplicava Toolbar/PanelTabBar) ─── */}
+
+      {/* ─── Layer 5: User Avatar Float (Bottom-Right, above timeline) ── */}
+      {!viewportMaximized && floatingChrome && (
+        <UserAvatarFloat
+          bottomOffset={
+            typeof desktopTimelineHeight === 'string' && desktopTimelineHeight.endsWith('vh')
+              ? Math.round(window.innerHeight * (parseFloat(desktopTimelineHeight) / 100)) + 12
+              : parseInt(desktopTimelineHeight, 10) + 12
+          }
+        />
+      )}
 
       {/* ─── Layer 6: Nav Controls (Bottom-Right) ──── */}
       {!viewportMaximized && <ViewportNavControls />}
