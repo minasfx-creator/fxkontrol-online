@@ -58,6 +58,13 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
   const [cakeStaggerMs, setCakeStaggerMs] = useState(80);
   const [cakeSpreadDeg, setCakeSpreadDeg] = useState(45);
   const [cakeStart, setCakeStart] = useState(0);
+  const [cakeRows, setCakeRows] = useState(1);
+  const [cakeRowGapMs, setCakeRowGapMs] = useState(250);
+  const [cakeSweep, setCakeSweep] = useState<SweepMode>('linear');
+  const [cakeBearing, setCakeBearing] = useState(0);
+  const [cakeTilt, setCakeTilt] = useState(0);
+  const [cakeCaliber, setCakeCaliber] = useState(3);
+  const [cakeShowPreview, setCakeShowPreview] = useState(true);
 
   // ── Mortar Fan state ──────────────────────────────────────
   const [fanCount, setFanCount] = useState(8);
