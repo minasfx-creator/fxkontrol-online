@@ -32,6 +32,17 @@ import {
   type CakeParams,
   type SweepMode,
 } from '@/features/viewport-tools/generators/cakeGenerator';
+import {
+  DRONE_FORMATION_TEMPLATES,
+  CATEGORY_LABEL,
+  type DroneFormationTemplate,
+  type TemplateCategory,
+} from '@/features/viewport-tools/generators/droneFormationTemplates';
+import {
+  runDigitalTwinFormation,
+  summarizeTwin,
+  type TwinSeverity,
+} from '@/features/viewport-tools/validators/digitalTwinFormation';
 
 const FormationPreview3D = lazy(() => import('./FormationPreview3D'));
 const CakePreview2D = lazy(() => import('./CakePreview2D'));
@@ -86,7 +97,12 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
   const [droneRotation, setDroneRotation] = useState(0);
   const [droneText, setDroneText] = useState('FXK');
   const [droneStarPoints, setDroneStarPoints] = useState(5);
+  const [droneColor, setDroneColor] = useState('#00e5ff');
+  const [droneTransition, setDroneTransition] = useState(6);
+  const [droneHold, setDroneHold] = useState(8);
   const [showPreview, setShowPreview] = useState(true);
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const [templateCategory, setTemplateCategory] = useState<TemplateCategory | 'all'>('all');
 
   const droneParams: FormationParams = useMemo(() => ({
     shape,
@@ -98,9 +114,35 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
     startTime: droneStart,
     text: droneText,
     starPoints: droneStarPoints,
-  }), [shape, droneCount, droneRadius, droneSpacing, droneHeight, droneRotation, droneStart, droneText, droneStarPoints]);
+    color: droneColor,
+    transitionDuration: droneTransition,
+    holdDuration: droneHold,
+  }), [shape, droneCount, droneRadius, droneSpacing, droneHeight, droneRotation, droneStart, droneText, droneStarPoints, droneColor, droneTransition, droneHold]);
 
   const droneReport = useMemo(() => generateDroneFormationDetailed(droneParams), [droneParams]);
+  const twinReport = useMemo(() => runDigitalTwinFormation(droneParams), [droneParams]);
+
+  const applyTemplate = (tpl: DroneFormationTemplate) => {
+    setShape(tpl.params.shape);
+    setDroneCount(tpl.params.droneCount);
+    setDroneRadius(tpl.params.radius);
+    setDroneSpacing(tpl.params.spacing);
+    setDroneHeight(tpl.params.height);
+    setDroneRotation(tpl.params.rotation ?? 0);
+    setDroneText(tpl.params.text ?? 'FXK');
+    setDroneStarPoints(tpl.params.starPoints ?? 5);
+    setDroneColor(tpl.params.color ?? '#00e5ff');
+    setDroneTransition(tpl.params.transitionDuration ?? 6);
+    setDroneHold(tpl.params.holdDuration ?? 8);
+    setActiveTemplateId(tpl.id);
+  };
+
+  const filteredTemplates = useMemo(
+    () => templateCategory === 'all'
+      ? DRONE_FORMATION_TEMPLATES
+      : DRONE_FORMATION_TEMPLATES.filter((t) => t.category === templateCategory),
+    [templateCategory],
+  );
 
   // ── Cake derived params + live report ─────────────────────
   const cakeAnchorPos = useMemo(
@@ -183,7 +225,7 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
         </DialogHeader>
 
         <Tabs defaultValue="cake" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-[#0a0f1a] border border-cyan-500/20">
+          <TabsList className="grid w-full grid-cols-4 bg-[#0a0f1a] border border-cyan-500/20">
             <TabsTrigger value="cake" className="text-xs data-[state=active]:bg-cyan-500/15 data-[state=active]:text-cyan-300">
               Cake
             </TabsTrigger>
@@ -192,6 +234,9 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
             </TabsTrigger>
             <TabsTrigger value="drone" className="text-xs data-[state=active]:bg-cyan-500/15 data-[state=active]:text-cyan-300">
               Drone Formation
+            </TabsTrigger>
+            <TabsTrigger value="templates" className="text-xs data-[state=active]:bg-cyan-500/15 data-[state=active]:text-cyan-300">
+              Templates
             </TabsTrigger>
           </TabsList>
 
@@ -462,6 +507,38 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
               )}
             </div>
 
+            {/* Digital Twin report */}
+            {(() => {
+              const sevColor: Record<TwinSeverity, string> = {
+                ok: 'text-green-300',
+                info: 'text-cyan-300/80',
+                warn: 'text-amber-300',
+                block: 'text-red-300',
+              };
+              const headCls = twinReport.ready
+                ? 'border-green-500/30 bg-green-500/5 text-green-300'
+                : 'border-red-500/40 bg-red-500/10 text-red-300';
+              return (
+                <div className={`rounded border px-2 py-1.5 text-[10px] font-mono ${headCls}`}>
+                  <div className="flex items-center justify-between">
+                    <span>🛰 {summarizeTwin(twinReport)}</span>
+                    <span className="opacity-70">
+                      ⌀{twinReport.metrics.footprintRadiusM.toFixed(0)}m · ceil {twinReport.metrics.altCeilingM}m · {Math.round(twinReport.metrics.densityPerKm3).toLocaleString()}/km³
+                    </span>
+                  </div>
+                  {twinReport.findings.length > 0 && (
+                    <ul className="mt-1 space-y-0.5">
+                      {twinReport.findings.map((f, i) => (
+                        <li key={i} className={sevColor[f.severity]}>
+                          · [{f.severity.toUpperCase()}] {f.message}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Live preview */}
             <div className="flex items-center justify-between">
               <Label className={labelCls}>Live 3D preview</Label>
@@ -482,10 +559,86 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
             <div className="flex justify-between items-center pt-2">
               <span className="text-[10px] text-cyan-300/60 font-mono">
                 {droneReport.formation.droneCount} drones · {shape}
+                {activeTemplateId && ` · tpl:${activeTemplateId}`}
               </span>
               <Button size="sm" onClick={submitDrone}
                 className="bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/25">
                 Generate Formation
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* ── Templates ──────────────────────────────────── */}
+          <TabsContent value="templates" className="space-y-3 mt-4">
+            <div className="flex flex-wrap gap-1.5">
+              {(['all', 'opening', 'brand', 'finale', 'ambient', 'transition', 'demo'] as const).map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setTemplateCategory(cat)}
+                  className={`px-2 py-0.5 rounded border text-[10px] font-mono uppercase tracking-wider transition-colors ${
+                    templateCategory === cat
+                      ? 'border-cyan-400/60 bg-cyan-500/20 text-cyan-200'
+                      : 'border-cyan-500/20 bg-[#0a0f1a] text-cyan-300/60 hover:text-cyan-200'
+                  }`}
+                >
+                  {cat === 'all' ? 'All' : CATEGORY_LABEL[cat]}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 max-h-[420px] overflow-y-auto pr-1">
+              {filteredTemplates.map((tpl) => {
+                const isActive = activeTemplateId === tpl.id;
+                return (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    onClick={() => applyTemplate(tpl)}
+                    className={`text-left rounded border px-2.5 py-2 transition-colors ${
+                      isActive
+                        ? 'border-cyan-400/60 bg-cyan-500/10'
+                        : 'border-cyan-500/20 bg-[#0a0f1a] hover:border-cyan-500/40 hover:bg-cyan-500/5'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-cyan-200">{tpl.name}</span>
+                      <span className="text-[9px] font-mono text-cyan-300/50">
+                        {'★'.repeat(tpl.difficulty)}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 text-[10px] text-cyan-300/60 leading-snug">
+                      {tpl.description}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
+                      <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300/80">
+                        {CATEGORY_LABEL[tpl.category]}
+                      </span>
+                      <span className="text-[9px] font-mono text-cyan-300/50">
+                        {tpl.params.droneCount}🛸 · {tpl.params.height}m · {tpl.shape}
+                      </span>
+                    </div>
+                    {tpl.safetyNote && (
+                      <div className="mt-1 text-[9px] text-amber-300/70">⚠ {tpl.safetyNote}</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between pt-1 border-t border-cyan-500/10">
+              <span className="text-[10px] text-cyan-300/60 font-mono">
+                {activeTemplateId
+                  ? `Loaded into Drone tab — review & generate`
+                  : `Select a template to load parameters`}
+              </span>
+              <Button
+                size="sm"
+                disabled={!activeTemplateId}
+                onClick={submitDrone}
+                className="bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/25 disabled:opacity-40"
+              >
+                Generate from Template
               </Button>
             </div>
           </TabsContent>
