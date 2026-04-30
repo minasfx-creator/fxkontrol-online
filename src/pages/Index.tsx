@@ -2,7 +2,8 @@ import React, { lazy, Suspense, useState, useCallback, useEffect, useRef, Compon
 import { lazyRetry } from '@/lib/lazyRetry';
 import { isEnabled } from '@/lib/featureFlags';
 import { commandBus } from '@/core/command/CommandBus';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
+import { loadShowMeta } from '@/features/create-flow/showMetaStore';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useUndoKeyboard } from '@/hooks/useUndoKeyboard';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -348,6 +349,27 @@ function Index() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { showId: routeShowId } = useParams<{ showId?: string }>();
+
+  // ── /editor/:showId hydration ────────────────────────────────────
+  // When entering through the create-flow, replace the project store with
+  // the persisted ShowPlanMeta so the editor reflects the chosen segments,
+  // duration and name. Falls back silently if no meta is found (legacy
+  // /studio entry, deep-link, etc.).
+  useEffect(() => {
+    if (!routeShowId) return;
+    const meta = loadShowMeta(routeShowId);
+    if (!meta) return;
+    const store = useProjectStore.getState();
+    if (store.projectId === routeShowId) return; // already hydrated
+    store.replaceProjectState({
+      projectId: meta.showId,
+      projectName: meta.name,
+      segments: meta.segments,
+      duration: meta.duration,
+    });
+  }, [routeShowId]);
+
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
   const [venueSelector, setVenueSelector] = useState(false);
   const [venueOverlay, setVenueOverlay] = useState<WorldShowPreset | null>(null);

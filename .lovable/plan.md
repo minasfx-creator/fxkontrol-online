@@ -1,138 +1,147 @@
-## Objetivo
+# Blueprint UX — Landing → Office → Create → Editor
 
-Refinar a camada "Mission Control" do Studio (`/`, desktop). Três problemas concretos:
+Implements the funnel `/landing → /office → /create → /editor/:showId` per the blueprint. Reuses the existing Studio editor, project store, and AI choreography modules — no rewrite. The `/create` Action Layer is the missing piece and the focus of this work.
 
-1. Menus do topo se encavalam (Master Menu pill sobrepõe o `Toolbar` e o `Studio ▼` flutuante).
-2. UI antiga (rail fixo `PanelTabBar` e o branch `horizontal-top` da `ViewportSegmentToolbar`) ainda está no código, criando redundância visual mesmo gated por flag.
-3. Timeline já recolhe, mas a alça vive no centro (briga com o play-head) e nenhum dos menus flutuantes pode ser arrastado.
+## Scope (MVP 1)
 
-Tudo isso é puramente layout / interação. **Nada toca** `ShowPlan`, `CommandBus`, `SafetyStateMachine`, viewport-tools registry ou plugins.
+1. `/create` Action Layer route with the four-card hub (blank / template / generated / imported).
+2. `createShowPlan()` factory that resets the project store, seeds defaults, and returns a `showId`.
+3. `/editor/:showId` route that hydrates the existing Studio (`Index.tsx`) from a created plan.
+4. Segment selection step (PYRO / SFX / DRONES / LIGHT / DMX) persisted on the show.
+5. Templates picker (5 starter templates, JSON-defined — no marketplace yet).
+6. AI Generator Wizard (event type / scale / segments / duration) using the existing `aiChoreography/expander.ts`.
+7. Segment-aware topbar in the Studio editor (chips drive `viewport-tools` registry already in place).
+8. Office dashboard: replace current tabs-only landing with the blueprint hub cards (New Show / Open / Templates / Academy / Reports / Devices) above the existing tab strip.
+9. Landing: add the “Como funciona” 4-step strip and make CTAs route to `/office` (logged-in) or `/auth?next=/office`.
 
-## Mudanças
+Out of scope (deferred to MVP 2/3, as in blueprint): Digital Twin report, Marketplace, Academy content, Compliance Export.
 
-### 1. Top bar sem encavalamento
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│ [FXK logo]    [⌘ Master Menu]              [Studio ▼] [👤]   │  ← faixa única, h-12
-└──────────────────────────────────────────────────────────────┘
-   z-50          z-50 (mesmo plano)             z-50    z-50
-```
-
-- Manter apenas **uma** faixa superior (`Toolbar`, `h-12`) e mover o `MasterMenuFloat` para *dentro* dela (slot central), eliminando o `position: fixed; top-2 left-1/2; z-[70]` que hoje passa por cima de tudo.
-- `MasterMenuFloat` vira um botão inline (mesma altura do Toolbar). Atalho `⌘M` preservado, palette continua igual (`FullscreenCommandMenu`).
-- `UserAvatarFloat` muda de "bottom-right above timeline" para o **canto direito do Toolbar**, ao lado do Studio mode (popover de profile/sign-out preservado). O float bottom-right é removido — o avatar disputava espaço com `ViewportNavControls` e com o painel de tools verticais.
-- Z-index padronizado: Toolbar e tudo que vive nela em `z-50`. Painéis flutuantes em `z-40`. Dock vertical de segmentos em `z-30`. Timeline em `z-30`. Modais (palette) em `z-[80]`.
-
-### 2. Deletar UI antiga
-
-- Remover **import e mount** de `PanelTabBar` em `src/pages/Index.tsx` (Layer 2 inteiro). O arquivo `PanelTabBar.tsx` permanece no projeto porque exporta `PANEL_SECTIONS` + tipo `PanelId` consumidos por `UnifiedPanelMenu` (mobile) e `MobileTabBar`. Apenas o **componente default** vira não-renderizado no desktop (já é o estado atual via flag, mas o gate condicional e a flag são removidos: comportamento passa a ser definitivo).
-- Remover a flag `floating_chrome` de `src/lib/featureFlags.ts` — o novo layout vira o único caminho, simplificando os condicionais espalhados em `Index.tsx`.
-- Remover o branch `'horizontal-top'` da `ViewportSegmentToolbar`: hoje só existe para o `ShowEngineHost` legacy. Ajustar o `ShowEngineHost` para sempre usar `vertical-right` no desktop (mobile já tem caminho próprio via `MobileTabBar`).
-- Remover a "Layer 4: Left Foundation Rail" comment órfão e os condicionais `!floatingChrome` agora mortos.
-
-### 3. Timeline retrátil polida
+## Routes
 
 ```text
-                                                   ┌──────────┐
-viewport ............................              │ ▾ Timeline│  ← alça migra para
-─────────────────────────────────────              └──────────┘     o canto direito
-| Timeline (drag-resize 4px no topo)                              da barra
-─────────────────────────────────────
+/                  → redirect /studio (kept; default landing for logged-in)
+/landing           → existing public Landing (CTA → /office)
+/office            → Office hub (NEW: blueprint cards + existing tabs)
+/create            → NEW: Action Layer (4 cards)
+/create/blank      → NEW: segment picker + Continue
+/create/template   → NEW: template gallery
+/create/generate   → NEW: AI wizard
+/editor/:showId    → NEW alias of /studio that hydrates by showId
+/studio            → existing Index (kept as canonical viewport)
 ```
 
-- Alça de collapse/reset migra de `left-1/2` (centro) para `right-3` na borda superior do bloco da timeline — afastada do play-head, igual ao mockup.
-- Adicionar zona de hover de 4px no topo do bloco da timeline com `cursor: ns-resize` que aciona o drag-resize já existente (handler `handleTimelineResize*`). Hoje a zona não tem affordance visual.
-- Estado collapsed continua persistido em `timelineViewState` (já existe). Adicionar persistência da **altura** (vh) quando o usuário arrasta — campo `timelineHeightVh` no mesmo `loadTimelineView/saveTimelineView`.
-- Quando colapsada, a barra fica `h-7` (apenas a alça), liberando viewport.
+`/editor` (no id) keeps redirecting to `/studio` for backward compat.
 
-### 4. Drag-and-drop dos menus flutuantes
+## Data flow
 
-Novo hook utilitário `src/components/editor/useDraggableFloat.ts`:
+Single new module `src/features/create-flow/createShowPlan.ts`:
 
-```ts
-export function useDraggableFloat(opts: {
-  id: string;                       // chave de persistência localStorage
-  defaultPos: { x: number; y: number; anchor: 'tl'|'tr'|'bl'|'br' };
-  handleSelector?: string;          // só elementos casando o seletor iniciam drag
-  bounds?: 'viewport';              // clamp na janela
-}): {
-  ref: React.RefObject<HTMLDivElement>;
-  style: React.CSSProperties;       // posição absoluta calculada
-  dragHandleProps: { onPointerDown: ... };
-  resetPosition: () => void;
-};
+```text
+createShowPlan({ mode, segments?, templateId?, eventType?, scale?, duration? })
+  ├─ generates showId (crypto.randomUUID)
+  ├─ resets project store via useProjectStore.replaceProjectState({...})
+  ├─ writes meta to localStorage: fxk:show:<id> = { mode, segments, createdAt, name }
+  ├─ for "template": loads JSON from src/features/create-flow/templates/<id>.json
+  ├─ for "generated": calls aiChoreography/expander.ts with the wizard inputs
+  └─ returns showId → caller navigates(`/editor/${showId}`)
 ```
 
-Características:
-- Pointer events (mouse + touch unificado), `setPointerCapture`.
-- Dead-zone de 4px antes de iniciar drag (não interfere com clicks).
-- Clamp dentro da viewport (5px de margem).
-- Persiste posição em `localStorage` (`fxk:float-pos:<id>`); reset com double-click no handle.
-- Snap-to-edge a 16px da borda (visual feedback discreto + persistência ancorada na borda mais próxima, sobrevive a resize de janela).
+`/editor/:showId` reads `fxk:show:<id>` on mount; if missing, falls back to current store (legacy behavior). Studio reads `segments` to drive the segmented topbar.
 
-Aplicar em:
-- **`ViewportSegmentToolbar`** (vertical-right): handle = a barrinha do topo (chevron). Default ancorado em `right`.
-- **Floating panel ativo** (Layer 3 em `Index.tsx`, `420px` à direita): adicionar header `h-7` glass com ícone de grip (`GripVertical`) que serve de handle. Preserva botão `X` e conteúdo.
-- **`StudioPromptModal`** e **`MasterMenu` palette**: ficam como estão (não são floats, são modais).
-- **Timeline**: NÃO entra em DnD (ancorada por design, só resize vertical).
-- **`UserAvatarFloat`**: deixa de ser float (vira inline no Toolbar), portanto não precisa de DnD.
+State extension on `useProjectStore`:
+- add `segments: SegmentType[]` (default `['PYRO']`) to `replaceProjectState` and as a top-level field.
+- add `setSegments(s: SegmentType[])`.
 
-Cada float ganha pequeno botão "Reset position" no menu de contexto (right-click no handle).
+## Files to create
 
-## Detalhes técnicos
+```text
+src/pages/
+├─ Create.tsx                     // Action Layer hub (4 cards)
+├─ create/
+│  ├─ CreateBlank.tsx             // segment picker + Continue
+│  ├─ CreateTemplate.tsx          // gallery grid
+│  └─ CreateGenerate.tsx          // wizard (4 steps)
 
-**Arquivos novos**
-- `src/components/editor/useDraggableFloat.ts` — hook de drag/persist/clamp/snap.
-- `src/components/editor/FloatHandle.tsx` — header reutilizável (grip + close + reset).
+src/features/create-flow/
+├─ createShowPlan.ts              // factory described above
+├─ types.ts                       // CreateMode, ShowPlanMeta
+├─ showMetaStore.ts               // localStorage helpers (fxk:show:<id>)
+├─ templates/
+│  ├─ index.ts                    // template registry (id → meta + loader)
+│  ├─ pyro-sequence.json
+│  ├─ drone-logo.json
+│  ├─ light-chase.json
+│  ├─ festival-full.json
+│  └─ wedding-fx.json
+└─ components/
+   ├─ ActionCard.tsx              // reusable big card w/ icon + title + desc
+   ├─ SegmentChips.tsx            // multi-select PYRO/SFX/DRONES/LIGHT/DMX
+   └─ TemplateCard.tsx
 
-**Arquivos editados**
-- `src/pages/Index.tsx`
-  - Remove `PanelTabBar` import + Layer 2 inteiro.
-  - Remove uso de `floating_chrome` (sempre on).
-  - Remove `UserAvatarFloat` do bottom-right (move para Toolbar).
-  - Layer 3 (panel flutuante) recebe `useDraggableFloat({ id: 'panel-' + activePanel, ... })` + `FloatHandle`.
-  - Layer 7 (timeline): alça vai para `right-3`; adiciona barra de hover-resize 4px no topo; persiste altura.
-- `src/components/editor/Toolbar.tsx`
-  - Adiciona slot central que renderiza `<MasterMenuFloat inline />` e slot direito com `<UserAvatarFloat inline />`.
-- `src/components/editor/MasterMenuFloat.tsx`
-  - Aceita prop `inline?: boolean`. Quando `true`: sem `fixed/z-[70]/top-2 left-1/2`, vira pill normal dentro do flow do Toolbar.
-- `src/components/editor/UserAvatarFloat.tsx`
-  - Mesma ideia: prop `inline`. Quando inline, sem `bottomOffset`/`fixed`.
-- `src/features/viewport-tools/components/ViewportSegmentToolbar.tsx`
-  - Remove branch `horizontal-top`.
-  - Wrapper externo passa a usar `useDraggableFloat({ id: 'segment-dock', defaultPos: { anchor: 'tr', x: 12, y: 0.5 } })`.
-  - Handle = botão chevron já existente.
-- `src/components/show-engine/ShowEngineHost.tsx`
-  - Drop do parâmetro `orientation` (sempre vertical agora) — ou aceita e ignora para evitar churn.
-- `src/lib/featureFlags.ts`
-  - Remove `floating_chrome` (cleanup).
-- `src/lib/timelineViewState.ts`
-  - Adiciona campo opcional `heightVh: number` ao `loadTimelineView/saveTimelineView`.
-
-**Z-index canon (aplicado consistentemente)**
-```
-Toolbar / inline floats         z-50
-Floating panel (Layer 3)        z-40
-Segment dock (vertical)         z-30
-Timeline                        z-30
-ViewportNavControls             z-20
-Modais (palette, prompts)       z-[80]
-Toasts                          z-[90]
+src/features/office/
+└─ OfficeHubCards.tsx             // 6-card hub strip rendered above current tabs
 ```
 
-## Fora de escopo
+## Files to edit
 
-- `ShowPlan`, `CommandBus`, `SafetyStateMachine`, validators, viewport-tools registry, plugins — intocados.
-- Mobile shell — gated por `useIsMobile()`, sem mudança.
-- Lógica de painéis individuais (effects, racks, addressing, DMX) — intocada.
-- MVP 2 parte 2 (DMX patch UI + conflict checker) e MVP 3 (validators FireOne/Showven) — próximas etapas, não entram nesse refactor.
+- `src/App.tsx` — add lazy imports + 5 new routes (`/create`, `/create/blank`, `/create/template`, `/create/generate`, `/editor/:showId`).
+- `src/pages/Office.tsx` — render `<OfficeHubCards />` above the tab nav; `New Show` card → `navigate('/create')`, `Open Project` → opens existing project list, others link to existing tabs.
+- `src/pages/Index.tsx` — read `:showId` param, hydrate from `showMetaStore` if present, expose `segments` to the topbar.
+- `src/store/useProjectStore.ts` — add `segments` field + `setSegments` + include in `replaceProjectState`.
+- `src/pages/Landing.tsx` — add 4-step "Como funciona" section before pricing; wire primary CTA to `/office` (auth-gated via existing `AuthRoute`/`ProtectedRoute`).
 
-## Aceitação
+## Editor topbar (segment-aware)
 
-- Topo do viewport mostra **uma única faixa** com `[FXK] [⌘ Master Menu] ……… [Studio ▼] [👤]`. Sem sobreposição visual, sem pills "voando" sobre o Toolbar.
-- `PanelTabBar` legado some completamente do desktop (zero render). `floating_chrome` é removido como flag.
-- Dock vertical PYRO/SFX/DRONES/LIGHT/DMX e o painel flutuante de qualquer painel aberto podem ser **arrastados** com pointer/touch, com snap-to-edge e posição persistida entre sessões. Right-click no handle reseta posição.
-- Timeline: alça de collapse/reset no canto direito; banda 4px no topo com cursor `ns-resize` para drag-resize; altura persistida; collapsed → 28px de banda + alça.
-- Sem regressões mobile (`useIsMobile()` continua entregando o `MobileTabBar` + `UnifiedPanelMenu`).
-- Nenhuma chamada nova ao `commandBus` ou ao `ShowPlan`. Build limpo.
+The viewport-tools registry already exists (`src/features/viewport-tools/ViewportToolPanel.tsx`). Add a thin top strip in `Index.tsx`:
+
+```text
+[ PYRO ] [ SFX ] [ DRONES ] [ LIGHT ] [ DMX ]   [ Guide ON ] [ Validate ] [ Export ]
+```
+
+- Chips reflect `segments` from the store; clicking a chip sets the active segment that `ViewportToolPanel` already consumes.
+- `Guide ON` toggles a local `useProjectStore.uiHelpers` flag (already present, reused).
+- `Validate` and `Export` reuse existing buttons from the current Studio header (no new logic).
+
+## AI Generator Wizard
+
+`CreateGenerate.tsx` — 4 sequential steps using the existing UI primitives (`Card`, `Button`, segmented chips):
+
+1. Event type: Festival / Casamento / Arena / Corporativo
+2. Scale: Pequeno / Médio / Grande
+3. Segments: multi-select chips
+4. Duration: 30s / 1min / 3min / Custom
+
+`Generate Show` button → `createShowPlan({ mode: 'generated', ... })` which delegates to `src/modules/aiChoreography/expander.ts` (already implemented and used by `AIShowBuilderPanel`). On success → `navigate(\`/editor/\${showId}\`)`.
+
+## ASCII map of the flow
+
+```text
+Landing  ──CTA──►  /auth?next=/office  ──►  /office
+                                              │
+                            ┌─────────────────┼─────────────────┐
+                            ▼                 ▼                 ▼
+                       New Show          Templates           Open
+                            │                 │                 │
+                            ▼                 ▼                 ▼
+                        /create  ──►  /create/template ──►  picker
+                            │
+            ┌───────────────┼───────────────┬───────────────┐
+            ▼               ▼               ▼               ▼
+         blank          template        generate         import
+            │               │               │               │
+            └───────────────┴──► createShowPlan() ──► /editor/:showId
+```
+
+## Acceptance criteria
+
+- From a fresh session, user can: land on `/landing`, click CTA, log in, reach `/office`, click `New Show`, choose `Generate Automatically`, run the 4-step wizard, and arrive on `/editor/<uuid>` with the Studio already populated by the AI expander.
+- `Use Template` flow loads one of the 5 starter JSONs and seeds the project store atomically (no merge with prior state).
+- `Blank` flow seeds an empty plan with the chosen segments and the editor topbar reflects them.
+- `/editor/:showId` survives a hard reload (meta lives in `localStorage`).
+- Existing routes (`/studio`, `/office?tab=...`, `/command`, `/field`) keep working unchanged.
+
+## Non-goals
+
+- No backend persistence in this PR (showId lives in `localStorage`); Supabase persistence stays in `useProjectPersistence` as today.
+- No marketplace, no Academy content, no Digital Twin report.
+- No safety/ARM changes — `createShowPlan` only writes to the design-time store; never touches `SafetyStateMachine`.
