@@ -86,10 +86,21 @@ function interpolateFov(kfs: CameraKeyframe[], time: number): number {
 const CameraAnimator = React.forwardRef<any>(function CameraAnimator(_props, _ref) {
   const { camera } = useThree();
   const lookAtTarget = useRef(new THREE.Vector3());
+  const lastAppliedTimeRef = useRef<number>(-1);
 
   useFrame(() => {
     const { cameraKeyframes, cameraAnimationEnabled, currentTime, isPlaying } = useProjectStore.getState();
-    if (!cameraAnimationEnabled || cameraKeyframes.length < 2 || !isPlaying) return;
+    if (!cameraAnimationEnabled || cameraKeyframes.length < 2) return;
+
+    // Sync the camera while playing (driven by audio/lockstep clock) AND
+    // while scrubbing (isPlaying=false but currentTime changed). The scrub
+    // path lets the operator preview camera moves by dragging the playhead
+    // without pressing Play. We gate on a time delta to avoid fighting
+    // OrbitControls when the user is manipulating the camera at a stationary
+    // playhead.
+    const timeChanged = Math.abs(currentTime - lastAppliedTimeRef.current) > 1e-4;
+    if (!isPlaying && !timeChanged) return;
+    lastAppliedTimeRef.current = currentTime;
 
     const pos = interpolateVec3(cameraKeyframes, currentTime, (kf) => kf.position);
     const look = interpolateVec3(cameraKeyframes, currentTime, (kf) => kf.lookAt);
