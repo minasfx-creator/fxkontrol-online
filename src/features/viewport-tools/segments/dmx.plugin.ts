@@ -14,6 +14,7 @@
 import { registerSegmentPlugin } from '../registry';
 import type { ViewportSegmentPlugin, ViewportOperation } from '../types';
 import { auditDmxPatch } from '../dmx/dmxConflictChecker';
+import { useSafetyOverlayStore } from '../safetyOverlayStore';
 
 function uid(p: string) {
   return `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -48,6 +49,15 @@ const plugin: ViewportSegmentPlugin = {
       icon: 'AlertTriangle',
       hint: 'Scan address overlaps, range errors and unpatched cues.',
     },
+    {
+      id: 'dmx.toggle-heatmap',
+      label: 'Toggle Heatmap',
+      segment: 'DMX',
+      scope: 'preview',
+      command: 'DMX_TOGGLE_HEATMAP',
+      icon: 'Activity',
+      hint: 'Show/hide live per-universe channel intensity overlay.',
+    },
   ],
   commandHandlers: {
     DMX_UNIVERSE_PATCH(): ViewportOperation {
@@ -75,6 +85,20 @@ const plugin: ViewportSegmentPlugin = {
           totals: report.totals,
         },
         description: `DMX conflict scan: ${report.totals.errors} error(s), ${report.totals.warnings} warning(s).`,
+      };
+    },
+    DMX_TOGGLE_HEATMAP(): ViewportOperation {
+      const before = useSafetyOverlayStore.getState().dmxHeatmapVisible;
+      useSafetyOverlayStore.getState().toggleDmxHeatmap();
+      const after = useSafetyOverlayStore.getState().dmxHeatmapVisible;
+      return {
+        id: uid('op'),
+        segment: 'DMX',
+        command: 'DMX_TOGGLE_HEATMAP',
+        timestamp: Date.now(),
+        before: { visible: before },
+        after: { visible: after },
+        description: `DMX heatmap ${after ? 'shown' : 'hidden'}.`,
       };
     },
   },
