@@ -131,6 +131,8 @@ export default function EditorShellPreview() {
   return (
     <div className="h-[100dvh] w-full bg-ds-background text-ds-text-primary"
          style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      {/* Semantic H1 for SEO — visually hidden, narrated by screen readers. */}
+      <h1 className="sr-only">Editor DS — Shell Preview · FX KONTROL</h1>
       <EditorShell
         topbar={
           <div className="flex h-full items-center justify-between px-ds-4">
