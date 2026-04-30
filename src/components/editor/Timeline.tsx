@@ -1478,6 +1478,9 @@ const Timeline = React.forwardRef<HTMLDivElement, Record<string, never>>(functio
   const cloneDragOffsetSec = useProjectStore(s => s.cloneDragOffsetSec);
   const setCloneDragOffsetSec = useProjectStore(s => s.setCloneDragOffsetSec);
   const selectedTimelineItemIds = useProjectStore(s => s.selectedTimelineItemIds);
+  const audioStartOffset = useProjectStore(s => s.audioStartOffset);
+  const setAudioStartOffset = useProjectStore(s => s.setAudioStartOffset);
+  const { user } = useAuth();
   const clearTimelineItemSelection = useProjectStore(s => s.clearTimelineItemSelection);
   const duplicateTimelineItems = useProjectStore(s => s.duplicateTimelineItems);
   const removeMultipleTimelineItems = useProjectStore(s => s.removeMultipleTimelineItems);
