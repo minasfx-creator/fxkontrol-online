@@ -7,7 +7,7 @@
  * Not linked from any nav. Safe to ship — no hardware, no ARM, no FIRE.
  */
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { CanvasErrorBoundary } from '@/components/editor/skycanvas/sharedState';
+import { WebGLErrorBoundary } from '@/components/editor/skycanvas/sharedState';
 import StudioErrorBoundary from '@/components/errors/StudioErrorBoundary';
 
 const SkyCanvas = lazy(() => import('@/components/editor/SkyCanvas'));
@@ -25,7 +25,7 @@ export default function SkyCanvasSmoke() {
         SKYCANVAS · SMOKE · t={tick}s · open devtools for diagnostics
       </div>
       <StudioErrorBoundary area="3D viewport (smoke)">
-        <CanvasErrorBoundary>
+        <WebGLErrorBoundary>
           <Suspense
             fallback={
               <div className="absolute inset-0 grid place-items-center text-cyan-400/70 text-sm">
@@ -35,7 +35,7 @@ export default function SkyCanvasSmoke() {
           >
             <SkyCanvas />
           </Suspense>
-        </CanvasErrorBoundary>
+        </WebGLErrorBoundary>
       </StudioErrorBoundary>
     </div>
   );
