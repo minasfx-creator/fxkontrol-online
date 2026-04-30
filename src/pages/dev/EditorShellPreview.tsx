@@ -10,13 +10,14 @@ import {
   Save, ShieldCheck, Upload, User2,
   Flame, Sparkles, Send, Lightbulb, Sliders,
   MousePointer2, Pencil, Wrench, AlertTriangle,
-  Move3d, RotateCcw, Clock, Cable,
+  Move3d, RotateCcw, Clock, Cable, HelpCircle,
 } from 'lucide-react';
 import {
   EditorShell, DsButton, DsPanel, DsPanelTitle,
   DsSegmentTabs, DsToolItem, type SegmentItem,
   DsSkeleton, DsPanelSkeleton, DsViewportSkeleton,
 } from '@/components/ds';
+import EditorShellOnboardingDialog, { ONBOARDING_KEY } from './EditorShellOnboardingDialog';
 
 const SEGMENTS: SegmentItem[] = [
   { id: 'pyro',   label: 'PYRO',   icon: Flame,
