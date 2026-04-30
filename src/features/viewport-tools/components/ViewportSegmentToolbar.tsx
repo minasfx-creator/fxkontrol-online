@@ -220,6 +220,11 @@ export default function ViewportSegmentToolbar({
           onClose={() => setDroneDialog((d) => ({ ...d, open: false }))}
           positionId={droneDialog.positionId}
         />
+        <VdlPickerDialog
+          open={vdlDialog.open}
+          onClose={() => setVdlDialog((d) => ({ ...d, open: false }))}
+          timelineItemId={vdlDialog.timelineItemId}
+        />
       </div>
     );
   }
@@ -273,6 +278,11 @@ export default function ViewportSegmentToolbar({
         open={droneDialog.open}
         onClose={() => setDroneDialog((d) => ({ ...d, open: false }))}
         positionId={droneDialog.positionId}
+      />
+      <VdlPickerDialog
+        open={vdlDialog.open}
+        onClose={() => setVdlDialog((d) => ({ ...d, open: false }))}
+        timelineItemId={vdlDialog.timelineItemId}
       />
     </div>
   );
