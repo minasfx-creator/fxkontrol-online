@@ -158,6 +158,7 @@ export interface ProjectState {
   setBpm: (bpm: number | null) => void;
   setSnapToBeat: (snap: boolean) => void;
   setSnapMode: (mode: 'auto' | 'beat' | 'frame' | 'off') => void;
+  setCloneDragOffsetSec: (sec: number) => void;
   setPlaybackSpeed: (speed: number) => void;
   setProjectId: (id: string | null) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -231,6 +232,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   bpm: null,
   snapToBeat: false,
   snapMode: 'auto',
+  cloneDragOffsetSec: 0,
   playbackSpeed: 1,
   projectId: null,
   cameraKeyframes: [],
@@ -634,6 +636,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setBpm: (bpm) => set({ bpm }),
   setSnapToBeat: (snap) => set({ snapToBeat: snap, snapMode: snap ? 'auto' : 'off' }),
   setSnapMode: (mode) => set({ snapMode: mode, snapToBeat: mode !== 'off' }),
+  setCloneDragOffsetSec: (sec) => {
+    // Sanitize: NaN/negative falls back to 0; clamp to a sane upper bound (60s).
+    const safe = Number.isFinite(sec) && sec >= 0 ? Math.min(sec, 60) : 0;
+    set({ cloneDragOffsetSec: safe });
+  },
   setPlaybackSpeed: (speed) => {
     // Sanitize: NaN, negative or non-finite values fall back to 1×.
     // Speed=0 is a valid technical state (external sync hold) and is preserved,
