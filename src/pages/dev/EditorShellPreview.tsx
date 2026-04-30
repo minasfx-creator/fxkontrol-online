@@ -94,6 +94,14 @@ export default function EditorShellPreview() {
         }
         left={
           <div className="flex h-full flex-col gap-ds-4 p-ds-4 overflow-y-auto">
+            {!chromeReady && (
+              <>
+                <DsPanelSkeleton rows={3} />
+                <DsPanelSkeleton rows={3} />
+                <DsPanelSkeleton rows={2} />
+              </>
+            )}
+            {chromeReady && (<></>)}
             <DsPanel>
               <DsPanelTitle>Selection</DsPanelTitle>
               <div className="flex flex-col gap-1">
