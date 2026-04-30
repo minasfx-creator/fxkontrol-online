@@ -18,6 +18,7 @@ import { loadTimelineView, saveTimelineView, resetTimelineView } from '@/lib/tim
 
 // ── Critical-path (static): shell chrome loaded immediately ──
 import Toolbar from '@/components/editor/Toolbar';
+import ViewportSegmentToolbar from '@/features/viewport-tools/components/ViewportSegmentToolbar';
 import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import SelectionModeBar from '@/components/editor/SelectionModeBar';
