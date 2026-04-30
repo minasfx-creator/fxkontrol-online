@@ -26,6 +26,8 @@ import {
   Square,
   Lock,
   Zap,
+  Clock,
+  Activity,
 } from 'lucide-react';
 import { useFXK16Bridge } from '@/hooks/useFXK16Bridge';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -33,6 +35,8 @@ import {
   getCueQueueRunner,
   type CueRunEvent,
   type CueRunStatus,
+  type CueClockSource,
+  type CueRunDiagnostics,
 } from '../hardware/cueQueueRunner';
 import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
 
