@@ -50,6 +50,51 @@ export default function EditorShellPreview() {
     return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
   }, []);
 
+  // SEO — title/description/canonical + OpenGraph/Twitter for /editor-ds.
+  // Same direct-DOM pattern used by /pricing and /legal/* (no helmet dep).
+  useEffect(() => {
+    const prevTitle = document.title;
+    const TITLE = 'Editor DS — Shell Preview · FX KONTROL';
+    const DESC =
+      'Editor DS v1: shell de edição (Topbar/Tabs/Inspector/Timeline) do FX KONTROL para shows pirotécnicos, drones e laser.';
+    const URL = 'https://www.fxkontrol.online/editor-ds';
+
+    document.title = TITLE;
+
+    const ensureMeta = (selectorAttr: 'name' | 'property', key: string, content: string) => {
+      let el = document.querySelector<HTMLMetaElement>(`meta[${selectorAttr}="${key}"]`);
+      if (!el) {
+        el = document.createElement('meta');
+        el.setAttribute(selectorAttr, key);
+        document.head.appendChild(el);
+      }
+      el.content = content;
+    };
+
+    ensureMeta('name', 'description', DESC);
+    ensureMeta('property', 'og:title', TITLE);
+    ensureMeta('property', 'og:description', DESC);
+    ensureMeta('property', 'og:type', 'website');
+    ensureMeta('property', 'og:url', URL);
+    ensureMeta('name', 'twitter:card', 'summary_large_image');
+    ensureMeta('name', 'twitter:title', TITLE);
+    ensureMeta('name', 'twitter:description', DESC);
+
+    let canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement('link');
+      canonical.rel = 'canonical';
+      document.head.appendChild(canonical);
+    }
+    const prevCanonical = canonical.href;
+    canonical.href = URL;
+
+    return () => {
+      document.title = prevTitle;
+      if (canonical) canonical.href = prevCanonical;
+    };
+  }, []);
+
   const chromeReady = stage >= 1;
   const viewportReady = stage >= 2;
 
@@ -86,6 +131,8 @@ export default function EditorShellPreview() {
   return (
     <div className="h-[100dvh] w-full bg-ds-background text-ds-text-primary"
          style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      {/* Semantic H1 for SEO — visually hidden, narrated by screen readers. */}
+      <h1 className="sr-only">Editor DS — Shell Preview · FX KONTROL</h1>
       <EditorShell
         topbar={
           <div className="flex h-full items-center justify-between px-ds-4">
