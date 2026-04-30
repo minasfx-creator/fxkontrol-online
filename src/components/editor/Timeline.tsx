@@ -1134,6 +1134,7 @@ function LaserTrackRow({ pixelsPerSecond, duration, scrollRef }: { pixelsPerSeco
       </div>
       {!collapsed && (
         <div
+          data-timeline-track={4}
           className="flex-1 relative h-8"
           style={{ background: 'hsl(var(--background) / 0.4)' }}
           onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
