@@ -22,6 +22,8 @@ import CrashRecoveryBanner from '@/components/editor/CrashRecoveryBanner';
 import BoxSelectOverlay from '@/components/editor/BoxSelectOverlay';
 import SelectionModeBar from '@/components/editor/SelectionModeBar';
 import RadialMenu from '@/components/editor/RadialMenu';
+import MasterMenuFloat from '@/components/editor/MasterMenuFloat';
+import UserAvatarFloat from '@/components/editor/UserAvatarFloat';
 // EngineProvider moved to MainLayout (boots once, all routes, mobile + desktop).
 import LiveCard from '@/components/editor/LiveCard';
 import { StudioErrorBoundary } from '@/components/errors/StudioErrorBoundary';
