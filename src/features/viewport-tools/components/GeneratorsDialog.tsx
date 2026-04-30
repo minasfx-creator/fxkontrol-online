@@ -130,14 +130,7 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
   };
 
   const submitDrone = () => {
-    dispatch('viewport-tools:generate-drone-formation', {
-      shape,
-      droneCount,
-      radius: droneRadius,
-      spacing: droneSpacing,
-      height: droneHeight,
-      startTime: droneStart,
-    });
+    dispatch('viewport-tools:generate-drone-formation', droneParams);
     onClose();
   };
 
