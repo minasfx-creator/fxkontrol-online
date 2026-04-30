@@ -142,15 +142,38 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
         // ── Apple semantic radius scale ──
-        // Use these in chrome (Dock, Header, Sidebar, popovers) instead of
-        // ad-hoc `rounded-xl` / `rounded-2xl`. Concentric rule: outer radius
-        // should be ≥ inner radius + padding (e.g. dock with `radius-island`
-        // 16px and `p-2` 8px → items use `radius-control` 8px so corners
-        // stay parallel).
-        control: "var(--radius-control)", // 8px  — buttons, chips, inputs
-        panel:   "var(--radius-panel)",   // 12px — cards, popovers, tooltips
-        island:  "var(--radius-island)",  // 16px — dock, sidebar items
-        sheet:   "var(--radius-sheet)",   // 20px — modals, sheets
+        control: "var(--radius-control)", // 8px
+        panel:   "var(--radius-panel)",   // 12px
+        island:  "var(--radius-island)",  // 16px
+        sheet:   "var(--radius-sheet)",   // 20px
+        // ── DS v1 radius scale (spec: sm 6 / md 10 / lg 16) ──
+        "ds-sm": "var(--ds-radius-sm)",
+        "ds-md": "var(--ds-radius-md)",
+        "ds-lg": "var(--ds-radius-lg)",
+      },
+      spacing: {
+        // ── DS v1 8pt scale (4/8/12/16/24/32/48/64) ──
+        "ds-1":  "var(--ds-space-1)",
+        "ds-2":  "var(--ds-space-2)",
+        "ds-3":  "var(--ds-space-3)",
+        "ds-4":  "var(--ds-space-4)",
+        "ds-6":  "var(--ds-space-6)",
+        "ds-8":  "var(--ds-space-8)",
+        "ds-12": "var(--ds-space-12)",
+        "ds-16": "var(--ds-space-16)",
+        // Editor layout dimensions (use with h-/w-)
+        "ds-topbar":   "var(--ds-layout-topbar)",
+        "ds-tabs":     "var(--ds-layout-tabs)",
+        "ds-left":     "var(--ds-layout-left)",
+        "ds-right":    "var(--ds-layout-right)",
+        "ds-timeline": "var(--ds-layout-timeline)",
+      },
+      fontSize: {
+        "ds-h1":      ["var(--ds-font-h1)",      { lineHeight: "var(--ds-lh-tight)",  fontWeight: "700" }],
+        "ds-h2":      ["var(--ds-font-h2)",      { lineHeight: "var(--ds-lh-tight)",  fontWeight: "600" }],
+        "ds-h3":      ["var(--ds-font-h3)",      { lineHeight: "var(--ds-lh-tight)",  fontWeight: "500" }],
+        "ds-body":    ["var(--ds-font-body)",    { lineHeight: "var(--ds-lh-normal)", fontWeight: "400" }],
+        "ds-caption": ["var(--ds-font-caption)", { lineHeight: "var(--ds-lh-normal)", fontWeight: "400" }],
       },
       transitionTimingFunction: {
         'spring': 'cubic-bezier(0, 0.55, 0.45, 1)',
