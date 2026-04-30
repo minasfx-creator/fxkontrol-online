@@ -72,6 +72,9 @@ export interface ProjectState {
    *  - `frame`: always frame (uses `timecodeProvider.getFPS()`).
    *  - `off`: no snapping. */
   snapMode: 'auto' | 'beat' | 'frame' | 'off';
+  /** Time offset (seconds) applied to Alt+drag clones. 0 = clone at original timestamp,
+   *  >0 = nudge clone forward by this amount when user releases without horizontal drag. */
+  cloneDragOffsetSec: number;
   playbackSpeed: number;
   projectId: string | null;
   cameraKeyframes: CameraKeyframe[];
