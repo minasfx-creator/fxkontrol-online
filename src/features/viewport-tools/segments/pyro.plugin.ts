@@ -67,6 +67,15 @@ const plugin: ViewportSegmentPlugin = {
       safetyCritical: true,
       hint: 'Duplicate cues on selected positions, +1 s later.',
     },
+    {
+      id: 'pyro.configure-effect',
+      label: 'Configure Effect',
+      segment: 'PYRO',
+      scope: 'edit',
+      command: 'PYRO_CONFIGURE_EFFECT',
+      icon: 'SlidersHorizontal',
+      hint: 'Open the parameter editor for the selected cue / effect.',
+    },
   ],
   commandHandlers: {
     PYRO_SELECT_ALL(): ViewportOperation | null {
