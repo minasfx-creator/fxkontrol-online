@@ -260,6 +260,17 @@ export function useDraggableFloat(opts: UseDraggableFloatOptions): DraggableFloa
         marginPx,
       );
       setPos(next);
+      // Snap edge detection — for visible guides during drag.
+      if (snapPx > 0) {
+        const dLeft = newTopLeftX;
+        const dRight = vw - (newTopLeftX + ds.width);
+        const dTop = newTopLeftY;
+        const dBottom = vh - (newTopLeftY + ds.height);
+        setSnappedEdges({
+          h: dLeft <= snapPx ? 'l' : dRight <= snapPx ? 'r' : null,
+          v: dTop <= snapPx ? 't' : dBottom <= snapPx ? 'b' : null,
+        });
+      }
     },
     [deadZonePx, marginPx, snapPx],
   );
@@ -275,6 +286,7 @@ export function useDraggableFloat(opts: UseDraggableFloatOptions): DraggableFloa
       if (ds.armed) {
         ds.armed = false;
         setDragging(false);
+        setSnappedEdges({ h: null, v: null });
         // Persist final position.
         setPos((p) => {
           writePersisted(id, p);
@@ -371,5 +383,5 @@ export function useDraggableFloat(opts: UseDraggableFloatOptions): DraggableFloa
     [onPointerDown, resetPosition, dragging],
   );
 
-  return { ref, style, dragHandleProps, dragging, resetPosition };
+  return { ref, style, dragHandleProps, dragging, snappedEdges, resetPosition };
 }
