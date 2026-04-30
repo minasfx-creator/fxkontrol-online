@@ -209,6 +209,8 @@ export { EFFECT_LIBRARY } from '@/data/effectLibrary';
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
   projectName: 'Untitled Show',
+  segments: ['PYRO'],
+  setSegments: (segments) => set({ segments: segments.length > 0 ? segments : ['PYRO'] }),
   isPlaying: false,
   activeLockouts: [],
   setActiveLockouts: (lockouts) => set({ activeLockouts: lockouts }),
