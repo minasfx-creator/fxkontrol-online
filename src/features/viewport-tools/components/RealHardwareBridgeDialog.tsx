@@ -53,6 +53,13 @@ export default function RealHardwareBridgeDialog({ open, onClose }: Props) {
   const [status, setStatus] = useState<CueRunStatus>(runner.getStatus());
   const [progress, setProgress] = useState(runner.getProgress());
   const [log, setLog] = useState<CueRunEvent[]>([]);
+  const [clockSource, setClockSource] = useState<CueClockSource>(
+    () => runner.getOptions().clockSource,
+  );
+  const [lookaheadMs, setLookaheadMs] = useState<number>(
+    () => runner.getOptions().lookaheadMs,
+  );
+  const [diag, setDiag] = useState<CueRunDiagnostics>(() => runner.getDiagnostics());
 
   // Subscribe to runner status + events while open.
   useEffect(() => {
@@ -60,16 +67,31 @@ export default function RealHardwareBridgeDialog({ open, onClose }: Props) {
     const offS = runner.onStatus((s) => {
       setStatus(s);
       setProgress(runner.getProgress());
+      setDiag(runner.getDiagnostics());
     });
     const offE = runner.onEvent((e) => {
       setLog((l) => [...l.slice(-49), e]);
       setProgress(runner.getProgress());
+      setDiag(runner.getDiagnostics());
     });
     return () => {
       offS();
       offE();
     };
   }, [open, runner]);
+
+  // Live diagnostics polling (drift refreshes between events)
+  useEffect(() => {
+    if (!open || status !== 'running' || clockSource !== 'timeline') return;
+    const id = setInterval(() => setDiag(runner.getDiagnostics()), 200);
+    return () => clearInterval(id);
+  }, [open, runner, status, clockSource]);
+
+  // Sync UI selection back into runner (only when idle-ish)
+  useEffect(() => {
+    if (status === 'running') return;
+    try { runner.setOptions({ clockSource, lookaheadMs }); } catch { /* mid-run guard */ }
+  }, [runner, clockSource, lookaheadMs, status]);
 
   // Compile the addressable batch every time the dialog opens.
   const addressable = useMemo(() => {
