@@ -5,7 +5,7 @@
  * Source of truth: src/lib/vdlQuantizer.ts (VDL_PALETTE).
  * We re-export a minimal shape here to avoid importing internal entries.
  */
-import { quantizeRgbToVdl, type VdlMatch } from '@/lib/vdlQuantizer';
+import { rgbToNearestVdl, type VdlMatch } from '@/lib/vdlQuantizer';
 
 // Mirror of VDL_PALETTE (kept in sync intentionally — the quantizer file
 // keeps its array private). If a color is added there, add it here too.
@@ -52,7 +52,7 @@ export default function VdlColorPicker({ selectedHex, onPick }: Props) {
     const r = parseInt(norm.slice(1, 3), 16);
     const g = parseInt(norm.slice(3, 5), 16);
     const b = parseInt(norm.slice(5, 7), 16);
-    nearest = quantizeRgbToVdl(r, g, b);
+    nearest = rgbToNearestVdl(r, g, b);
   }
 
   return (
