@@ -523,9 +523,13 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       });
     }
 
-    // Waveform
+    // Waveform — drawn starting at `audioStartOffset` so the operator sees
+    // the audio entering at the timestamp where they dropped it on the ruler.
     if (waveformData) {
       const mid = height / 2;
+      const offsetPx = Math.max(0, audioStartOffset) * pixelsPerSecond;
+      const trimWindowSec = (audioOutPoint ?? audioOriginalDuration ?? 0) - audioInPoint;
+      const waveWidth = Math.max(0, trimWindowSec * pixelsPerSecond);
       // Gradient for waveform
       const grad = ctx.createLinearGradient(0, 0, 0, height);
       grad.addColorStop(0, 'hsla(207, 90%, 64%, 0.6)');
@@ -534,9 +538,10 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       ctx.fillStyle = grad;
 
       for (let i = 0; i < waveformData.length; i++) {
-        const x = (i / waveformData.length) * width;
+        const x = offsetPx + (i / waveformData.length) * waveWidth;
+        if (x > width) break;
         const barHeight = waveformData[i] * height * 0.85;
-        ctx.fillRect(x, mid - barHeight / 2, Math.max(1, width / waveformData.length - 0.5), barHeight);
+        ctx.fillRect(x, mid - barHeight / 2, Math.max(1, waveWidth / waveformData.length - 0.5), barHeight);
       }
 
       // Played region overlay
