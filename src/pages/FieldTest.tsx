@@ -1027,6 +1027,12 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
             </div>
           )}
 
+          {/* FXK16 end-to-end command harness — shares the singleton bridge
+              with PyroFireOnePanel and the /field#fxk16 tab. */}
+          <div className="shrink-0 px-2 pt-2">
+            <FXK16FieldTestPanel />
+          </div>
+
           <div className="flex-1 p-2 overflow-hidden">
             <div className="grid grid-cols-8 grid-rows-4 gap-1 h-full">
               {channels.map(ch => {
