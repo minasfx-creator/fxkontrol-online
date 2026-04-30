@@ -305,6 +305,10 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
         open={validatorsDialog}
         onClose={() => setValidatorsDialog(false)}
       />
+      <ExportCenterDialog
+        open={exportDialog}
+        onClose={() => setExportDialog(false)}
+      />
     </div>
   );
 }
