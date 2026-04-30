@@ -246,6 +246,7 @@ export default function EditorShellPreview() {
             </div>
           </div>
         </div>
+        )}
       </EditorShell>
     </div>
   );
