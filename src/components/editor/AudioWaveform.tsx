@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { Upload, Music, Zap, Volume2, VolumeX, GripHorizontal, Minus, Plus, Flag, Trash2, Scissors, Check, X, RotateCcw } from 'lucide-react';
+import { Upload, Music, Zap, Volume2, VolumeX, GripHorizontal, Minus, Plus, Flag, Trash2, Scissors, Check, X, RotateCcw, Hand, RefreshCw } from 'lucide-react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { useAuth } from '@/hooks/useAuth';
@@ -127,6 +127,93 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   // Cache the decoded AudioBuffer so re-trimming only re-runs the
   // downsample (cheap), never a re-fetch + decodeAudioData (slow, network).
   const audioBufferRef = useRef<AudioBuffer | null>(null);
+
+  // Tap-tempo: rolling window of recent tap timestamps (ms). We average the
+  // last N intervals to derive BPM. Window is cleared after 2s of inactivity
+  // so the operator can restart cleanly between songs.
+  const tapTimesRef = useRef<number[]>([]);
+  const tapResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [tapHint, setTapHint] = useState<string | null>(null);
+  const [bpmDraft, setBpmDraft] = useState<string>('');
+
+  // Keep the input draft in sync with the canonical store BPM whenever it
+  // changes from outside (auto-detect, project load, tap-tempo).
+  useEffect(() => {
+    setBpmDraft(bpm != null ? String(bpm) : '');
+  }, [bpm]);
+
+  useEffect(() => () => {
+    if (tapResetTimerRef.current) clearTimeout(tapResetTimerRef.current);
+  }, []);
+
+  const clampBpm = useCallback((v: number) => {
+    if (!Number.isFinite(v)) return null;
+    return Math.max(20, Math.min(300, Math.round(v)));
+  }, []);
+
+  const commitBpm = useCallback((next: number | null) => {
+    if (next == null) { setBpm(null); return; }
+    const clamped = clampBpm(next);
+    if (clamped == null) return;
+    setBpm(clamped);
+  }, [setBpm, clampBpm]);
+
+  const nudgeBpm = useCallback((delta: number) => {
+    const base = bpm ?? 120;
+    commitBpm(base + delta);
+  }, [bpm, commitBpm]);
+
+  const scaleBpm = useCallback((factor: number) => {
+    if (!bpm) return;
+    commitBpm(bpm * factor);
+  }, [bpm, commitBpm]);
+
+  const handleTap = useCallback(() => {
+    const now = performance.now();
+    if (tapResetTimerRef.current) clearTimeout(tapResetTimerRef.current);
+    const taps = tapTimesRef.current;
+    taps.push(now);
+    // Keep only the last 8 taps to stay responsive to tempo changes.
+    if (taps.length > 8) taps.shift();
+
+    if (taps.length >= 2) {
+      const intervals: number[] = [];
+      for (let i = 1; i < taps.length; i++) intervals.push(taps[i] - taps[i - 1]);
+      const avgMs = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+      const computed = clampBpm(60000 / avgMs);
+      if (computed != null) {
+        commitBpm(computed);
+        setTapHint(`${taps.length} taps · ${computed} BPM`);
+      }
+    } else {
+      setTapHint('tap…');
+    }
+    tapResetTimerRef.current = setTimeout(() => {
+      tapTimesRef.current = [];
+      setTapHint(null);
+    }, 2000);
+  }, [commitBpm, clampBpm]);
+
+  const handleRedetect = useCallback(() => {
+    const buf = audioBufferRef.current;
+    if (!buf) {
+      toast.info('Carregue um áudio primeiro');
+      return;
+    }
+    const detected = detectBPM(buf);
+    commitBpm(detected);
+    toast.success(`BPM redetectado · ${detected}`);
+  }, [commitBpm]);
+
+  const handleBpmInputCommit = useCallback(() => {
+    const parsed = parseFloat(bpmDraft);
+    if (Number.isNaN(parsed)) {
+      setBpmDraft(bpm != null ? String(bpm) : '');
+      return;
+    }
+    commitBpm(parsed);
+  }, [bpmDraft, bpm, commitBpm]);
+
 
   // Resize via drag handle
   const onResizeStart = useCallback((e: React.MouseEvent) => {
@@ -738,11 +825,92 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
           )}
         </div>
 
-        {/* Height controls + BPM */}
+        {/* BPM controls + Height controls */}
         <div className="flex items-center gap-1 mt-1">
-          {bpm && (
-            <span className="text-[8px] font-mono-code text-safety">{bpm}</span>
-          )}
+          {/* BPM editor — controls the timeline grid via getActiveGrid({ bpm }). */}
+          <div className="flex items-center gap-0.5 rounded-sm border border-border bg-surface-2 px-1 py-0.5">
+            <span className="text-[7px] font-mono-code uppercase text-muted-foreground/60">BPM</span>
+            <button
+              type="button"
+              onClick={() => nudgeBpm(-1)}
+              className="text-muted-foreground/70 hover:text-safety disabled:opacity-30"
+              disabled={!bpm}
+              title="−1 BPM"
+              aria-label="Diminuir BPM em 1"
+            >
+              <Minus className="h-2.5 w-2.5" />
+            </button>
+            <input
+              type="number"
+              min={20}
+              max={300}
+              step={1}
+              value={bpmDraft}
+              onChange={(e) => setBpmDraft(e.target.value)}
+              onBlur={handleBpmInputCommit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); }
+                if (e.key === 'Escape') { setBpmDraft(bpm != null ? String(bpm) : ''); (e.target as HTMLInputElement).blur(); }
+              }}
+              placeholder="—"
+              className="w-9 bg-transparent text-[9px] font-mono-code text-safety text-center tabular-nums outline-none focus:text-safety focus:ring-1 focus:ring-safety/40 rounded-sm"
+              title="Editar BPM (Enter para confirmar). Recalcula a grid da timeline."
+              aria-label="BPM manual"
+            />
+            <button
+              type="button"
+              onClick={() => nudgeBpm(1)}
+              className="text-muted-foreground/70 hover:text-safety disabled:opacity-30"
+              disabled={!bpm}
+              title="+1 BPM"
+              aria-label="Aumentar BPM em 1"
+            >
+              <Plus className="h-2.5 w-2.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scaleBpm(0.5)}
+              className="text-[8px] font-mono-code px-1 text-muted-foreground/70 hover:text-safety disabled:opacity-30"
+              disabled={!bpm}
+              title="Dividir BPM por 2 (octave down)"
+              aria-label="Dividir BPM por 2"
+            >
+              ÷2
+            </button>
+            <button
+              type="button"
+              onClick={() => scaleBpm(2)}
+              className="text-[8px] font-mono-code px-1 text-muted-foreground/70 hover:text-safety disabled:opacity-30"
+              disabled={!bpm}
+              title="Multiplicar BPM por 2 (octave up)"
+              aria-label="Multiplicar BPM por 2"
+            >
+              ×2
+            </button>
+            <button
+              type="button"
+              onClick={handleTap}
+              className="text-muted-foreground/70 hover:text-safety"
+              title="Tap-tempo (toque no ritmo da música)"
+              aria-label="Tap tempo"
+            >
+              <Hand className="h-2.5 w-2.5" />
+            </button>
+            <button
+              type="button"
+              onClick={handleRedetect}
+              className="text-muted-foreground/70 hover:text-safety disabled:opacity-30"
+              disabled={!audioBufferRef.current}
+              title="Redetectar BPM do áudio"
+              aria-label="Redetectar BPM"
+            >
+              <RefreshCw className="h-2.5 w-2.5" />
+            </button>
+            {tapHint && (
+              <span className="text-[7px] font-mono-code text-warning ml-0.5">{tapHint}</span>
+            )}
+          </div>
+
           <div className="flex-1" />
           <button
             onClick={shrink}
