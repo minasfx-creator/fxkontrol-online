@@ -185,9 +185,19 @@ export default function EditorShellPreview() {
                 ))}
               </div>
               {/* Tracks */}
-              {SEGMENTS.map((seg, idx) => (
-                <Track key={seg.id} label={seg.label} colorVar={`--segment-${seg.id}`} active={seg.id === active} offset={idx} />
-              ))}
+              {!viewportReady
+                ? SEGMENTS.map((seg, idx) => (
+                    <div
+                      key={seg.id}
+                      className="relative flex h-7 items-center gap-ds-2 border-b border-ds-border-default/60 px-ds-4"
+                    >
+                      <DsSkeleton h="h-3" w="w-16" />
+                      <DsSkeleton h="h-4" w={`w-[${20 + idx * 8}%]`} />
+                    </div>
+                  ))
+                : SEGMENTS.map((seg, idx) => (
+                    <Track key={seg.id} label={seg.label} colorVar={`--segment-${seg.id}`} active={seg.id === active} offset={idx} />
+                  ))}
               {/* Playhead */}
               <div className="pointer-events-none absolute top-0 bottom-0" style={{ left: '24%' }}>
                 <div className="h-full w-px bg-status-sync" />
