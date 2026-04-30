@@ -18,6 +18,7 @@
  */
 
 import { getFXK16Bridge, channelsToMask } from '@/hooks/useFXK16Bridge';
+import { timelineClock } from '@/core/timeline/TimelineClock';
 import type { TimelineItem } from '@/types/projectTypes';
 
 export type CueRunStatus =
@@ -29,11 +30,31 @@ export type CueRunStatus =
   | 'aborted';
 
 export interface CueRunEvent {
-  type: 'fired' | 'skipped' | 'started' | 'finished' | 'aborted' | 'error';
+  type: 'fired' | 'skipped' | 'started' | 'finished' | 'aborted' | 'error' | 'drift';
   cueIndex: number;
   channel?: number;
   time?: number;
+  /** Drift in ms (timeline_clock - wall_clock_baseline) — populated on 'drift' events. */
+  driftMs?: number;
   message?: string;
+}
+
+/** Where the scheduler reads "now" from when computing fire times. */
+export type CueClockSource = 'wall' | 'timeline';
+
+/** Diagnostics surfaced for the SMPTE-locked path. */
+export interface CueRunDiagnostics {
+  clockSource: CueClockSource;
+  /** Last measured drift between timeline clock and wall baseline (ms). */
+  lastDriftMs: number;
+  /** Peak |drift| observed during this run (ms). */
+  peakDriftMs: number;
+  /** Number of cues actually fired. */
+  fired: number;
+  /** Number of cues dropped because they were already in the past on dispatch. */
+  lateDropped: number;
+  /** Look-ahead window currently in use (ms). */
+  lookaheadMs: number;
 }
 
 interface ScheduledCue {
@@ -53,6 +74,24 @@ export interface CueQueueOptions {
    * Default: 8ms (well under FXK16 PWM resolution).
    */
   coalesceWindowMs?: number;
+  /**
+   * Clock source for scheduling.
+   *   • 'wall'     → setTimeout from performance.now() at run start (legacy).
+   *   • 'timeline' → SMPTE-locked rAF look-ahead loop driven by
+   *                  `timelineClock.getTime()` (master playback). Drift between
+   *                  the wall clock and the timeline (audio/SMPTE) is corrected
+   *                  every frame, keeping fires inside a ±50 ms envelope even
+   *                  if the timeline is paused, scrubbed or chasing LTC.
+   * Default: 'wall'.
+   */
+  clockSource?: CueClockSource;
+  /**
+   * Look-ahead window for the SMPTE-locked scheduler — cues whose timeline
+   * timestamp is within this window from "now" are armed via setTimeout for
+   * the exact remaining delta. Smaller = lower latency but more rAF chatter;
+   * larger = smoother under jank but coarser. Default 50 ms (sub-50 ms target).
+   */
+  lookaheadMs?: number;
 }
 
 export class CueQueueRunner {
