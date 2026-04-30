@@ -63,7 +63,7 @@ export function clearSegmentSelection(_segment: SegmentType): void {
   // segment slice is equivalent to dropping any id of that segment.
   const wantedType = _segment ? POSITION_TYPE_BY_SEGMENT[_segment] : undefined;
   if (!wantedType) {
-    getStore().clearSelection();
+    getStore().selectMultiplePositions([]);
     return;
   }
   const { positions, selectedPositionIds } = getStore();
