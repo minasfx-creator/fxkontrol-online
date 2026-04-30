@@ -109,6 +109,10 @@ export default defineConfig(({ mode }) => ({
       },
     }),
     guard.plugin,
+    // Auto-generates public/sitemap.xml from src/seo/publicRoutes.ts on
+    // every build AND on dev-server boot. Add a new entry to that registry
+    // and the sitemap stays in sync — no manual XML edits ever again.
+    sitemapFromRegistry(),
     // Bundle budget gate: target 180 KB gzip for initial public-route JS.
     // Currently in WARN-ONLY mode during the code-splitting refactor — the
     // plugin still measures and prints the per-chunk breakdown on every build,
