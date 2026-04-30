@@ -227,6 +227,94 @@ export default function RealHardwareBridgeDialog({ open, onClose }: Props) {
           </div>
         </div>
 
+        {/* Sync source — wall vs SMPTE-locked timeline scheduler */}
+        <div className="rounded-lg border border-cyan-500/15 bg-cyan-500/5 p-2 space-y-2">
+          <div className="flex items-center gap-2 text-xs text-cyan-200 font-semibold">
+            <Clock className="h-3.5 w-3.5" />
+            Sync Source
+            <span className="text-[10px] font-normal text-muted-foreground/70 normal-case">
+              · SMPTE-locked schedules fires against the master timeline clock
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <ClockButton
+              active={clockSource === 'wall'}
+              disabled={status === 'running'}
+              onClick={() => setClockSource('wall')}
+              label="Wall"
+              hint="performance.now() baseline"
+            />
+            <ClockButton
+              active={clockSource === 'timeline'}
+              disabled={status === 'running'}
+              onClick={() => setClockSource('timeline')}
+              label="SMPTE / Timeline"
+              hint="rAF look-ahead, drift-corrected"
+            />
+          </div>
+          {clockSource === 'timeline' && (
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                <span className="flex items-center justify-between text-cyan-200/90">
+                  <span>Look-ahead</span>
+                  <span className="font-mono text-cyan-300">{lookaheadMs}<span className="text-muted-foreground/60 ml-0.5">ms</span></span>
+                </span>
+                <input
+                  type="range"
+                  min={10}
+                  max={120}
+                  step={5}
+                  value={lookaheadMs}
+                  disabled={status === 'running'}
+                  onChange={(e) => setLookaheadMs(Number(e.target.value))}
+                  className="w-full accent-cyan-400 disabled:opacity-40"
+                />
+                <span className="text-[10px] text-muted-foreground/60">
+                  Sub-50 ms target · lower = tighter latency, higher = smoother under jank
+                </span>
+              </label>
+              <div className="flex flex-col gap-1 text-[11px]">
+                <div className="flex items-center justify-between text-cyan-200/90">
+                  <span className="flex items-center gap-1">
+                    <Activity className="h-3 w-3" /> Drift
+                  </span>
+                  <span
+                    className={
+                      'font-mono ' +
+                      (Math.abs(diag.lastDriftMs) > 50
+                        ? 'text-red-300'
+                        : Math.abs(diag.lastDriftMs) > 20
+                        ? 'text-amber-300'
+                        : 'text-green-300')
+                    }
+                  >
+                    {diag.lastDriftMs >= 0 ? '+' : ''}
+                    {diag.lastDriftMs.toFixed(1)} ms
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground/80">
+                  <span>peak</span>
+                  <span className="font-mono">
+                    {diag.peakDriftMs >= 0 ? '+' : ''}
+                    {diag.peakDriftMs.toFixed(1)} ms
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground/80">
+                  <span>late-dropped</span>
+                  <span className={'font-mono ' + (diag.lateDropped > 0 ? 'text-amber-300' : 'text-cyan-300/60')}>
+                    {diag.lateDropped}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+          {status === 'running' && (
+            <div className="text-[10px] text-amber-300/80">
+              ⚠ Sync source is locked while RUN is active.
+            </div>
+          )}
+        </div>
+
         {/* Cue load summary */}
         <div className="rounded-lg border border-cyan-500/15 bg-cyan-500/5 p-2 flex items-center gap-3">
           <div className="text-xs text-cyan-200">
