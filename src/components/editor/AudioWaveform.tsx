@@ -503,7 +503,10 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = duration * pixelsPerSecond;
+    // Audio-only horizontal zoom: stretches the waveform without affecting
+    // the rest of the timeline. `audioZoom === 1` ⇒ behaves like before.
+    const pps = pixelsPerSecond * audioZoom;
+    const width = duration * pps;
     const height = trackHeight;
     canvas.width = width;
     canvas.height = height;
@@ -513,7 +516,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     // Beat markers
     if (beats.length > 0) {
       beats.forEach((beat, idx) => {
-        const x = beat * pixelsPerSecond;
+        const x = beat * pps;
         const isMeasure = idx % 4 === 0;
         ctx.strokeStyle = isMeasure ? 'hsla(24, 95%, 53%, 0.4)' : 'hsla(24, 95%, 53%, 0.15)';
         ctx.lineWidth = isMeasure ? 1.5 : 0.5;
@@ -523,7 +526,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
         ctx.stroke();
 
         // Measure number
-        if (isMeasure && pixelsPerSecond > 8) {
+        if (isMeasure && pps > 8) {
           ctx.fillStyle = 'hsla(24, 95%, 53%, 0.5)';
           ctx.font = '7px monospace';
           ctx.fillText(`${Math.floor(idx / 4) + 1}`, x + 2, 8);
@@ -535,9 +538,9 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     // the audio entering at the timestamp where they dropped it on the ruler.
     if (waveformData) {
       const mid = height / 2;
-      const offsetPx = Math.max(0, audioStartOffset) * pixelsPerSecond;
+      const offsetPx = Math.max(0, audioStartOffset) * pps;
       const trimWindowSec = (audioOutPoint ?? audioOriginalDuration ?? 0) - audioInPoint;
-      const waveWidth = Math.max(0, trimWindowSec * pixelsPerSecond);
+      const waveWidth = Math.max(0, trimWindowSec * pps);
       // Gradient for waveform
       const grad = ctx.createLinearGradient(0, 0, 0, height);
       grad.addColorStop(0, 'hsla(207, 90%, 64%, 0.6)');
@@ -553,14 +556,14 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       }
 
       // Played region overlay
-      const playX = currentTime * pixelsPerSecond;
+      const playX = currentTime * pps;
       ctx.fillStyle = 'hsla(207, 90%, 54%, 0.12)';
       ctx.fillRect(0, 0, playX, height);
     }
 
     // Cue markers
     cueMarkers.forEach((cue) => {
-      const cx = cue.time * pixelsPerSecond;
+      const cx = cue.time * pps;
       // Vertical line
       ctx.strokeStyle = cue.color;
       ctx.lineWidth = 2;
@@ -593,7 +596,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     // Playhead
     ctx.strokeStyle = 'hsl(207, 90%, 54%)';
     ctx.lineWidth = 2;
-    const playX = currentTime * pixelsPerSecond;
+    const playX = currentTime * pps;
     ctx.beginPath();
     ctx.moveTo(playX, 0);
     ctx.lineTo(playX, height);
