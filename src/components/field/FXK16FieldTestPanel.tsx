@@ -33,6 +33,8 @@ import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useFxk16FieldConfig } from '@/hooks/useFxk16FieldConfig';
+import FXK16StatusBar from '@/components/field/FXK16StatusBar';
+import FXK16ActivityFeed from '@/components/field/FXK16ActivityFeed';
 
 interface E2eStep {
   id: string;
