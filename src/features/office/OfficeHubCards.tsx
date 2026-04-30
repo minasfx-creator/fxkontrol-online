@@ -7,7 +7,7 @@
  */
 import { useNavigate } from 'react-router-dom';
 import {
-  Plus, FolderOpen, LayoutTemplate, GraduationCap, BarChart3, Cable,
+  Plus, FolderOpen, LayoutTemplate, GraduationCap, BarChart3, Cable, LayoutGrid,
   type LucideIcon,
 } from 'lucide-react';
 import { DsCard, DsCardTitle, DsCardDescription, DsCardCta } from '@/components/ds';
