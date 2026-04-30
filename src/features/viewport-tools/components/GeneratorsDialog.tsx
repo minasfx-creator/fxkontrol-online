@@ -225,7 +225,7 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
         </DialogHeader>
 
         <Tabs defaultValue="cake" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-[#0a0f1a] border border-cyan-500/20">
+          <TabsList className="grid w-full grid-cols-4 bg-[#0a0f1a] border border-cyan-500/20">
             <TabsTrigger value="cake" className="text-xs data-[state=active]:bg-cyan-500/15 data-[state=active]:text-cyan-300">
               Cake
             </TabsTrigger>
@@ -234,6 +234,9 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
             </TabsTrigger>
             <TabsTrigger value="drone" className="text-xs data-[state=active]:bg-cyan-500/15 data-[state=active]:text-cyan-300">
               Drone Formation
+            </TabsTrigger>
+            <TabsTrigger value="templates" className="text-xs data-[state=active]:bg-cyan-500/15 data-[state=active]:text-cyan-300">
+              Templates
             </TabsTrigger>
           </TabsList>
 
