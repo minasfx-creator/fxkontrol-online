@@ -209,6 +209,10 @@ export default function EffectConfigDialog({
   };
 
   const overrideTabDisabled = !targetItem;
+  const [tab, setTab] = useState<'cue' | 'variant'>(overrideTabDisabled ? 'variant' : 'cue');
+  useEffect(() => {
+    if (open) setTab(overrideTabDisabled ? 'variant' : 'cue');
+  }, [open, overrideTabDisabled]);
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -222,7 +226,7 @@ export default function EffectConfigDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue={overrideTabDisabled ? 'variant' : 'cue'} className="w-full">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'cue' | 'variant')} className="w-full">
           <TabsList className="bg-background/60">
             <TabsTrigger value="cue" disabled={overrideTabDisabled}>
               This Cue
