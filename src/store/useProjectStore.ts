@@ -18,8 +18,8 @@ export type {
 import type {
   DepthLayer, TimelineItem, Position, PositionType, BezierHandle, Waypoint, Trajectory,
   EditorMode, SelectionMode, DroneFormation, CueMarker, CameraKeyframe, WindSettings,
-  SegmentType,
 } from '@/types/projectTypes';
+import type { SegmentType } from '@/features/viewport-tools/types';
 
 export interface ProjectState {
   projectName: string;
