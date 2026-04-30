@@ -69,6 +69,24 @@ export default function GeneratorsDialog({ open, onClose }: Props) {
   const [droneSpacing, setDroneSpacing] = useState(2);
   const [droneHeight, setDroneHeight] = useState(30);
   const [droneStart, setDroneStart] = useState(0);
+  const [droneRotation, setDroneRotation] = useState(0);
+  const [droneText, setDroneText] = useState('FXK');
+  const [droneStarPoints, setDroneStarPoints] = useState(5);
+  const [showPreview, setShowPreview] = useState(true);
+
+  const droneParams: FormationParams = useMemo(() => ({
+    shape,
+    droneCount,
+    radius: droneRadius,
+    spacing: droneSpacing,
+    height: droneHeight,
+    rotation: droneRotation,
+    startTime: droneStart,
+    text: droneText,
+    starPoints: droneStarPoints,
+  }), [shape, droneCount, droneRadius, droneSpacing, droneHeight, droneRotation, droneStart, droneText, droneStarPoints]);
+
+  const droneReport = useMemo(() => generateDroneFormationDetailed(droneParams), [droneParams]);
 
   useEffect(() => {
     if (!open) return;
