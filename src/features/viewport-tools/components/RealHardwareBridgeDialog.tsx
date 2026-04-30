@@ -26,6 +26,8 @@ import {
   Square,
   Lock,
   Zap,
+  Clock,
+  Activity,
 } from 'lucide-react';
 import { useFXK16Bridge } from '@/hooks/useFXK16Bridge';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -33,6 +35,8 @@ import {
   getCueQueueRunner,
   type CueRunEvent,
   type CueRunStatus,
+  type CueClockSource,
+  type CueRunDiagnostics,
 } from '../hardware/cueQueueRunner';
 import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
 
@@ -49,6 +53,13 @@ export default function RealHardwareBridgeDialog({ open, onClose }: Props) {
   const [status, setStatus] = useState<CueRunStatus>(runner.getStatus());
   const [progress, setProgress] = useState(runner.getProgress());
   const [log, setLog] = useState<CueRunEvent[]>([]);
+  const [clockSource, setClockSource] = useState<CueClockSource>(
+    () => runner.getOptions().clockSource,
+  );
+  const [lookaheadMs, setLookaheadMs] = useState<number>(
+    () => runner.getOptions().lookaheadMs,
+  );
+  const [diag, setDiag] = useState<CueRunDiagnostics>(() => runner.getDiagnostics());
 
   // Subscribe to runner status + events while open.
   useEffect(() => {
@@ -56,16 +67,31 @@ export default function RealHardwareBridgeDialog({ open, onClose }: Props) {
     const offS = runner.onStatus((s) => {
       setStatus(s);
       setProgress(runner.getProgress());
+      setDiag(runner.getDiagnostics());
     });
     const offE = runner.onEvent((e) => {
       setLog((l) => [...l.slice(-49), e]);
       setProgress(runner.getProgress());
+      setDiag(runner.getDiagnostics());
     });
     return () => {
       offS();
       offE();
     };
   }, [open, runner]);
+
+  // Live diagnostics polling (drift refreshes between events)
+  useEffect(() => {
+    if (!open || status !== 'running' || clockSource !== 'timeline') return;
+    const id = setInterval(() => setDiag(runner.getDiagnostics()), 200);
+    return () => clearInterval(id);
+  }, [open, runner, status, clockSource]);
+
+  // Sync UI selection back into runner (only when idle-ish)
+  useEffect(() => {
+    if (status === 'running') return;
+    try { runner.setOptions({ clockSource, lookaheadMs }); } catch { /* mid-run guard */ }
+  }, [runner, clockSource, lookaheadMs, status]);
 
   // Compile the addressable batch every time the dialog opens.
   const addressable = useMemo(() => {
@@ -201,6 +227,94 @@ export default function RealHardwareBridgeDialog({ open, onClose }: Props) {
           </div>
         </div>
 
+        {/* Sync source — wall vs SMPTE-locked timeline scheduler */}
+        <div className="rounded-lg border border-cyan-500/15 bg-cyan-500/5 p-2 space-y-2">
+          <div className="flex items-center gap-2 text-xs text-cyan-200 font-semibold">
+            <Clock className="h-3.5 w-3.5" />
+            Sync Source
+            <span className="text-[10px] font-normal text-muted-foreground/70 normal-case">
+              · SMPTE-locked schedules fires against the master timeline clock
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <ClockButton
+              active={clockSource === 'wall'}
+              disabled={status === 'running'}
+              onClick={() => setClockSource('wall')}
+              label="Wall"
+              hint="performance.now() baseline"
+            />
+            <ClockButton
+              active={clockSource === 'timeline'}
+              disabled={status === 'running'}
+              onClick={() => setClockSource('timeline')}
+              label="SMPTE / Timeline"
+              hint="rAF look-ahead, drift-corrected"
+            />
+          </div>
+          {clockSource === 'timeline' && (
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                <span className="flex items-center justify-between text-cyan-200/90">
+                  <span>Look-ahead</span>
+                  <span className="font-mono text-cyan-300">{lookaheadMs}<span className="text-muted-foreground/60 ml-0.5">ms</span></span>
+                </span>
+                <input
+                  type="range"
+                  min={10}
+                  max={120}
+                  step={5}
+                  value={lookaheadMs}
+                  disabled={status === 'running'}
+                  onChange={(e) => setLookaheadMs(Number(e.target.value))}
+                  className="w-full accent-cyan-400 disabled:opacity-40"
+                />
+                <span className="text-[10px] text-muted-foreground/60">
+                  Sub-50 ms target · lower = tighter latency, higher = smoother under jank
+                </span>
+              </label>
+              <div className="flex flex-col gap-1 text-[11px]">
+                <div className="flex items-center justify-between text-cyan-200/90">
+                  <span className="flex items-center gap-1">
+                    <Activity className="h-3 w-3" /> Drift
+                  </span>
+                  <span
+                    className={
+                      'font-mono ' +
+                      (Math.abs(diag.lastDriftMs) > 50
+                        ? 'text-red-300'
+                        : Math.abs(diag.lastDriftMs) > 20
+                        ? 'text-amber-300'
+                        : 'text-green-300')
+                    }
+                  >
+                    {diag.lastDriftMs >= 0 ? '+' : ''}
+                    {diag.lastDriftMs.toFixed(1)} ms
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground/80">
+                  <span>peak</span>
+                  <span className="font-mono">
+                    {diag.peakDriftMs >= 0 ? '+' : ''}
+                    {diag.peakDriftMs.toFixed(1)} ms
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground/80">
+                  <span>late-dropped</span>
+                  <span className={'font-mono ' + (diag.lateDropped > 0 ? 'text-amber-300' : 'text-cyan-300/60')}>
+                    {diag.lateDropped}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+          {status === 'running' && (
+            <div className="text-[10px] text-amber-300/80">
+              ⚠ Sync source is locked while RUN is active.
+            </div>
+          )}
+        </div>
+
         {/* Cue load summary */}
         <div className="rounded-lg border border-cyan-500/15 bg-cyan-500/5 p-2 flex items-center gap-3">
           <div className="text-xs text-cyan-200">
@@ -312,5 +426,32 @@ export default function RealHardwareBridgeDialog({ open, onClose }: Props) {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface ClockButtonProps {
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  label: string;
+  hint: string;
+}
+
+function ClockButton({ active, disabled, onClick, label, hint }: ClockButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={
+        'flex-1 rounded-md border px-2 py-1.5 text-left transition-all disabled:opacity-40 ' +
+        (active
+          ? 'border-cyan-400/70 bg-cyan-500/15 text-cyan-100'
+          : 'border-cyan-500/20 bg-transparent text-cyan-200/70 hover:bg-cyan-500/5')
+      }
+    >
+      <div className="text-[11px] font-semibold tracking-wide">{label}</div>
+      <div className="text-[9px] text-muted-foreground/70">{hint}</div>
+    </button>
   );
 }
