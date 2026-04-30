@@ -104,7 +104,16 @@ export default function EditorShellPreview() {
               <DsButton variant="ghost" size="sm"><Save className="size-4" />Save</DsButton>
               <DsButton variant="secondary" size="sm"><ShieldCheck className="size-4" />Validate</DsButton>
               <DsButton variant="primary" size="sm"><Upload className="size-4" />Export</DsButton>
-              <button className="ml-ds-2 flex size-8 items-center justify-center rounded-full border border-ds-border-default bg-ds-surface-elevated text-ds-text-secondary hover:text-ds-text-primary">
+              <button
+                type="button"
+                onClick={() => setOnboardingOpen(true)}
+                title="Tour & atalhos (?)"
+                aria-label="Abrir tour e atalhos"
+                className="ml-ds-2 flex size-8 items-center justify-center rounded-full border border-ds-border-default bg-ds-surface-elevated text-ds-text-secondary hover:text-status-sync hover:border-status-sync/40 transition-colors"
+              >
+                <HelpCircle className="size-4" />
+              </button>
+              <button className="flex size-8 items-center justify-center rounded-full border border-ds-border-default bg-ds-surface-elevated text-ds-text-secondary hover:text-ds-text-primary">
                 <User2 className="size-4" />
               </button>
             </div>
