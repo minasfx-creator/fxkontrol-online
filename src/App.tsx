@@ -218,6 +218,7 @@ function App() {
                           handshake (VERSION+STATUS), shows per-attempt status. */}
                       <Route path="/pairing/ble" element={<BlePairingWizard />} />
                       <Route path="/field-test" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#field-test" replace /> : <Navigate to="/office" replace />} />
+                      <Route path="/fxk16" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#fxk16" replace /> : <Navigate to="/office" replace />} />
 
                       {/* ── Settings & sistema ────────────────────────────────── */}
                       <Route path="/settings" element={<Settings />} />
