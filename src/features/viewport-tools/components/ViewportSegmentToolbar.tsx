@@ -13,6 +13,10 @@ import VdlPickerDialog from './VdlPickerDialog';
 import DmxPatchDialog from './DmxPatchDialog';
 import ValidatorsReportDialog from './ValidatorsReportDialog';
 import ExportCenterDialog from './ExportCenterDialog';
+import GeneratorsDialog from './GeneratorsDialog';
+import { generateCake, type CakeParams } from '@/features/viewport-tools/generators/cakeGenerator';
+import { generateMortarFan, type MortarFanParams } from '@/features/viewport-tools/generators/mortarFanGenerator';
+import { generateDroneFormation, type FormationParams } from '@/features/viewport-tools/generators/droneFormationGenerator';
 import type { SegmentType } from '@/features/viewport-tools/types';
 
 // Side-effect import: registers all 5 segment plugins exactly once.
@@ -80,6 +84,7 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
   });
   const [validatorsDialog, setValidatorsDialog] = useState(false);
   const [exportDialog, setExportDialog] = useState(false);
+  const [generatorsDialog, setGeneratorsDialog] = useState(false);
 
   useEffect(() => operationLog.subscribe(() => force((n) => n + 1)), []);
   useEffect(() => viewportToolRegistry.subscribe(() => force((n) => n + 1)), []);
