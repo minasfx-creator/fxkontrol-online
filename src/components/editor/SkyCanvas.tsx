@@ -2148,7 +2148,7 @@ export default function SkyCanvas() {
         <PositionTransformGizmo />
         {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
-        {!google3DTilesEnabled && !isLowTierMobile && <PyroSafetyZones />}
+        {!google3DTilesEnabled && !isLowTierMobile && useSafetyOverlayStore.getState().pyroSafetyVisible && <PyroSafetyZones />}
         <SubsystemBoundary name="DroneSwarm">
           <DroneRendererSwitch />
         </SubsystemBoundary>
