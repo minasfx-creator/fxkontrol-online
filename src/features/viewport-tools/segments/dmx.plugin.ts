@@ -49,6 +49,15 @@ const plugin: ViewportSegmentPlugin = {
       icon: 'AlertTriangle',
       hint: 'Scan address overlaps, range errors and unpatched cues.',
     },
+    {
+      id: 'dmx.toggle-heatmap',
+      label: 'Toggle Heatmap',
+      segment: 'DMX',
+      scope: 'preview',
+      command: 'DMX_TOGGLE_HEATMAP',
+      icon: 'Activity',
+      hint: 'Show/hide live per-universe channel intensity overlay.',
+    },
   ],
   commandHandlers: {
     DMX_UNIVERSE_PATCH(): ViewportOperation {
