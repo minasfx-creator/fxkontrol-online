@@ -13,6 +13,10 @@ import VdlPickerDialog from './VdlPickerDialog';
 import DmxPatchDialog from './DmxPatchDialog';
 import ValidatorsReportDialog from './ValidatorsReportDialog';
 import ExportCenterDialog from './ExportCenterDialog';
+import GeneratorsDialog from './GeneratorsDialog';
+import { generateCake, type CakeParams } from '@/features/viewport-tools/generators/cakeGenerator';
+import { generateMortarFan, type MortarFanParams } from '@/features/viewport-tools/generators/mortarFanGenerator';
+import { generateDroneFormation, type FormationParams } from '@/features/viewport-tools/generators/droneFormationGenerator';
 import type { SegmentType } from '@/features/viewport-tools/types';
 
 // Side-effect import: registers all 5 segment plugins exactly once.
@@ -80,6 +84,7 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
   });
   const [validatorsDialog, setValidatorsDialog] = useState(false);
   const [exportDialog, setExportDialog] = useState(false);
+  const [generatorsDialog, setGeneratorsDialog] = useState(false);
 
   useEffect(() => operationLog.subscribe(() => force((n) => n + 1)), []);
   useEffect(() => viewportToolRegistry.subscribe(() => force((n) => n + 1)), []);
@@ -111,12 +116,71 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
     };
     const onValidators = () => setValidatorsDialog(true);
     const onExport = () => setExportDialog(true);
+    const onOpenGenerators = () => setGeneratorsDialog(true);
+
+    // ── Generator commit handlers (mutate store + record undo) ──
+    const uid = (p: string) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const onGenCake = (e: Event) => {
+      const params = (e as CustomEvent).detail as CakeParams;
+      const items = generateCake(params);
+      if (items.length === 0) return;
+      useProjectStore.setState((s) => ({ timelineItems: [...s.timelineItems, ...items] }));
+      operationLog.push({
+        id: uid('op'),
+        segment: 'PYRO',
+        command: 'PYRO_GENERATE_CAKE',
+        timestamp: Date.now(),
+        before: null,
+        after: { addedIds: items.map((i) => i.id) },
+        description: `Generated cake: ${items.length} shots @${params.staggerMs}ms / ${params.spreadDeg}°.`,
+      });
+    };
+
+    const onGenFan = (e: Event) => {
+      const params = (e as CustomEvent).detail as MortarFanParams;
+      const { positions, items } = generateMortarFan(params);
+      if (items.length === 0) return;
+      useProjectStore.setState((s) => ({
+        positions: [...s.positions, ...positions],
+        timelineItems: [...s.timelineItems, ...items],
+      }));
+      operationLog.push({
+        id: uid('op'),
+        segment: 'PYRO',
+        command: 'PYRO_GENERATE_MORTAR_FAN',
+        timestamp: Date.now(),
+        before: null,
+        after: { addedPositionIds: positions.map((p) => p.id), addedItemIds: items.map((i) => i.id) },
+        description: `Generated mortar fan: ${positions.length} mortars / ${params.spacingM}m.`,
+      });
+    };
+
+    const onGenDrone = (e: Event) => {
+      const params = (e as CustomEvent).detail as FormationParams;
+      const formation = generateDroneFormation(params);
+      useProjectStore.getState().addDroneFormation(formation);
+      operationLog.push({
+        id: uid('op'),
+        segment: 'DRONES',
+        command: 'DRONES_GENERATE_FORMATION',
+        timestamp: Date.now(),
+        before: null,
+        after: { formationId: formation.id },
+        description: `Generated ${formation.formationType} formation: ${formation.droneCount} drones.`,
+      });
+    };
+
     window.addEventListener('viewport-tools:open-effect-config', onEffect);
     window.addEventListener('viewport-tools:open-drone-config', onDrone);
     window.addEventListener('viewport-tools:open-vdl-picker', onVdl);
     window.addEventListener('viewport-tools:open-dmx-patch', onDmx);
     window.addEventListener('viewport-tools:open-validators-report', onValidators);
     window.addEventListener('viewport-tools:open-export-center', onExport);
+    window.addEventListener('viewport-tools:open-generators', onOpenGenerators);
+    window.addEventListener('viewport-tools:generate-cake', onGenCake);
+    window.addEventListener('viewport-tools:generate-mortar-fan', onGenFan);
+    window.addEventListener('viewport-tools:generate-drone-formation', onGenDrone);
     return () => {
       window.removeEventListener('viewport-tools:open-effect-config', onEffect);
       window.removeEventListener('viewport-tools:open-drone-config', onDrone);
@@ -124,6 +188,10 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       window.removeEventListener('viewport-tools:open-dmx-patch', onDmx);
       window.removeEventListener('viewport-tools:open-validators-report', onValidators);
       window.removeEventListener('viewport-tools:open-export-center', onExport);
+      window.removeEventListener('viewport-tools:open-generators', onOpenGenerators);
+      window.removeEventListener('viewport-tools:generate-cake', onGenCake);
+      window.removeEventListener('viewport-tools:generate-mortar-fan', onGenFan);
+      window.removeEventListener('viewport-tools:generate-drone-formation', onGenDrone);
     };
   }, []);
 
@@ -183,6 +251,22 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       import('@/features/viewport-tools/safetyOverlayStore').then((m) =>
         m.useSafetyOverlayStore.getState().setDronesCollision(before),
       );
+    } else if (op.command === 'PYRO_GENERATE_CAKE') {
+      const ids = new Set((op.after as { addedIds: string[] }).addedIds);
+      useProjectStore.setState((s) => ({
+        timelineItems: s.timelineItems.filter((it) => !ids.has(it.id)),
+      }));
+    } else if (op.command === 'PYRO_GENERATE_MORTAR_FAN') {
+      const after = op.after as { addedPositionIds: string[]; addedItemIds: string[] };
+      const posIds = new Set(after.addedPositionIds);
+      const itemIds = new Set(after.addedItemIds);
+      useProjectStore.setState((s) => ({
+        positions: s.positions.filter((p) => !posIds.has(p.id)),
+        timelineItems: s.timelineItems.filter((it) => !itemIds.has(it.id)),
+      }));
+    } else if (op.command === 'DRONES_GENERATE_FORMATION') {
+      const formationId = (op.after as { formationId: string }).formationId;
+      useProjectStore.getState().removeDroneFormation(formationId);
     }
   };
 
@@ -308,6 +392,10 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       <ExportCenterDialog
         open={exportDialog}
         onClose={() => setExportDialog(false)}
+      />
+      <GeneratorsDialog
+        open={generatorsDialog}
+        onClose={() => setGeneratorsDialog(false)}
       />
     </div>
   );
