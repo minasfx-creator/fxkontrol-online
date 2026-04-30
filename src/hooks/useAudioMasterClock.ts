@@ -104,6 +104,19 @@ export function useAudioMasterClock(
       lockstep.setEnabled(PLAYBACK_SUBSYSTEM_ID, true);
     };
 
+    // ─── Eager engage (Apr-2026) ─────────────────────────────────────
+    // O AudioWaveform já chama `lockstep.setEnabled('playback', false)` +
+    // `timelineClock.syncExternalTime(currentTime)` no mesmo frame em que
+    // chama `audio.play()`. Aqui a gente apenas marca o pump como master
+    // imediatamente — sem esperar o "advanced detection" de 1–2 RAFs —
+    // pra que o estado interno do hook esteja consistente com o que o
+    // AudioWaveform já fez. O fallback de stall continua valendo: se o
+    // áudio realmente não avançar dentro de STALL_TIMEOUT_MS, a gente
+    // disengage e o lockstep reassume.
+    if (!audio.paused && audio.readyState >= 2) {
+      engageMaster();
+    }
+
     const pump = () => {
       const a = audioRef.current;
       // Stale-frame guard: bail immediately if Play was toggled off between
