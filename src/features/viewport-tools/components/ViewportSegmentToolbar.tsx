@@ -393,6 +393,10 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
         open={exportDialog}
         onClose={() => setExportDialog(false)}
       />
+      <GeneratorsDialog
+        open={generatorsDialog}
+        onClose={() => setGeneratorsDialog(false)}
+      />
     </div>
   );
 }
