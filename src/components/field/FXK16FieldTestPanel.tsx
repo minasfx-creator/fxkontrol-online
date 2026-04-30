@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useFXK16Bridge, FXK16_MAX_CHANNEL } from '@/hooks/useFXK16Bridge';
 import { useFXK16Commands } from '@/hooks/useFXK16Commands';
+import { useFXK16Sync } from '@/hooks/useFXK16Sync';
 import type { CommandResponse } from '@/lib/fxk16/commandApi';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
@@ -49,6 +50,9 @@ const MAX_LOG = 80;
 export default function FXK16FieldTestPanel() {
   const bridge = useFXK16Bridge();
   const { api, ready, armed } = useFXK16Commands();
+  // Cross-surface sync — FIRE/BATCH/E-STOP routed through here are
+  // broadcast to FieldOps, Live Firing, and any other mounted panel.
+  const sync = useFXK16Sync();
   const { config } = useFxk16FieldConfig();
   const [open, setOpen] = useState(true);
   // Local field state seeded from config; user can override per session.
