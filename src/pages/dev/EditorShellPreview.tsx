@@ -81,7 +81,15 @@ export default function EditorShellPreview() {
         }
         tabs={
           <div className="flex h-full items-center px-ds-4">
-            <DsSegmentTabs items={SEGMENTS} activeId={active} onChange={setActive} colorPerSegment />
+            {chromeReady ? (
+              <DsSegmentTabs items={SEGMENTS} activeId={active} onChange={setActive} colorPerSegment />
+            ) : (
+              <div className="flex items-center gap-ds-2">
+                {SEGMENTS.map((_, i) => (
+                  <DsSkeleton key={i} h="h-7" w="w-20" rounded="md" />
+                ))}
+              </div>
+            )}
           </div>
         }
         left={
