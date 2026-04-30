@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import { Cable, ShieldCheck, Wand2, Activity } from 'lucide-react';
 import { FXK16ConnectionPanel } from '@/components/editor/live-firing/FXK16ConnectionPanel';
 import FXK16FieldSettingsPanel from '@/components/field/FXK16FieldSettingsPanel';
+import FXK16ActivityFeed from '@/components/field/FXK16ActivityFeed';
 
 export default function FXK16FieldPanel() {
   return (
