@@ -51,6 +51,7 @@ const BlePairingWizard = lazy(lazyRetry(() => import("./pages/BlePairingWizard")
 const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
 const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage")));
 const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")));
+const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
 const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
@@ -173,6 +174,9 @@ function App() {
                     {/* Public SkyCanvas smoke route — mounts the 3D viewport in
                         isolation for E2E QA. No auth, no hardware, no ARM. */}
                     <Route path="/dev/skycanvas-smoke" element={<SkyCanvasSmoke />} />
+                    {/* FXKONTROL DS v1 — public reference page (tokens, segments, status,
+                        components, states). No hardware, no auth. */}
+                    <Route path="/dev/design-system" element={<DesignSystemShowcase />} />
                     {/* Public legal pages — required by Paddle (Merchant of Record) and must be crawlable without auth. */}
                     <Route path="/legal/terms" element={<Terms />} />
                     <Route path="/legal/refund" element={<Refund />} />
