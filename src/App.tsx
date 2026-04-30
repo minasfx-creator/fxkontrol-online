@@ -192,7 +192,15 @@ function App() {
                       {/* Studio = editor 3D. /editor mantido como alias legacy. */}
                       <Route path="/studio" element={<Index />} />
                       <Route path="/editor" element={<Navigate to="/studio" replace />} />
+                      <Route path="/editor/:showId" element={<Index />} />
                       <Route path="/command" element={<CommandCenter />} />
+
+                      {/* ── Create flow (Action Layer) ────────────────────────── */}
+                      <Route path="/create" element={<Create />} />
+                      <Route path="/create/blank" element={<CreateBlank />} />
+                      <Route path="/create/template" element={<CreateTemplate />} />
+                      <Route path="/create/generate" element={<CreateGenerate />} />
+
 
                       {/* ── Redirects: rotas antigas → nova estrutura ─────────── */}
                       <Route path="/agenda" element={<Navigate to="/office?tab=agenda" replace />} />
