@@ -17,6 +17,7 @@ import type { ViewportSegmentPlugin, ViewportOperation } from '../types';
 import { selectAllBySegment } from '../selection-engine';
 import { pyroValidators } from '../validators/pyro.validator';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useSafetyOverlayStore } from '../safetyOverlayStore';
 import type { TimelineItem } from '@/types/projectTypes';
 
 function uid(prefix: string): string {
@@ -75,6 +76,24 @@ const plugin: ViewportSegmentPlugin = {
       command: 'PYRO_CONFIGURE_EFFECT',
       icon: 'SlidersHorizontal',
       hint: 'Open the parameter editor for the selected cue / effect.',
+    },
+    {
+      id: 'pyro.pick-vdl',
+      label: 'VDL Color Picker',
+      segment: 'PYRO',
+      scope: 'edit',
+      command: 'PYRO_PICK_VDL',
+      icon: 'Palette',
+      hint: 'Pick a canonical Finale 3D VDL color for the selected cue.',
+    },
+    {
+      id: 'pyro.toggle-safety-overlay',
+      label: 'Toggle Safety Overlay',
+      segment: 'PYRO',
+      scope: 'safety',
+      command: 'PYRO_TOGGLE_SAFETY_OVERLAY',
+      icon: 'ShieldAlert',
+      hint: 'Show / hide the geofence + ballistic preview overlays.',
     },
   ],
   commandHandlers: {
@@ -199,6 +218,41 @@ const plugin: ViewportSegmentPlugin = {
         );
       }
       return null; // dialog handles its own ops
+    },
+
+    PYRO_PICK_VDL(_payload, ctx): ViewportOperation | null {
+      const state = useProjectStore.getState();
+      let timelineItemId: string | null = state.selectedTimelineItemId ?? null;
+      if (!timelineItemId && ctx.selectionIds.length > 0) {
+        const sel = new Set(ctx.selectionIds);
+        const first = state.timelineItems.find(
+          (t) => t.positionId && sel.has(t.positionId)
+        );
+        timelineItemId = first?.id ?? null;
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('viewport-tools:open-vdl-picker', {
+            detail: { timelineItemId },
+          })
+        );
+      }
+      return null; // dialog handles its own op
+    },
+
+    PYRO_TOGGLE_SAFETY_OVERLAY(): ViewportOperation | null {
+      const before = useSafetyOverlayStore.getState().pyroSafetyVisible;
+      useSafetyOverlayStore.getState().togglePyroSafety();
+      const after = useSafetyOverlayStore.getState().pyroSafetyVisible;
+      return {
+        id: uid('op'),
+        segment: 'PYRO',
+        command: 'PYRO_TOGGLE_SAFETY_OVERLAY',
+        timestamp: Date.now(),
+        before: { visible: before },
+        after: { visible: after },
+        description: `Safety overlay ${after ? 'shown' : 'hidden'}.`,
+      };
     },
   },
 };

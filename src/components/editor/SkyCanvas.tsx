@@ -28,6 +28,7 @@ import Rack3DView from './Rack3DView';
 import BoidsVisualizer from './BoidsVisualizer';
 import CollisionAvoidanceOverlay from './CollisionAvoidanceOverlay';
 import PyroSafetyZones from './skycanvas/PyroSafetyZones';
+import { useSafetyOverlayStore } from '@/features/viewport-tools/safetyOverlayStore';
 import GoogleTilesFallback from './skycanvas/GoogleTilesFallback';
 import AudioSpectrumVisualizer from './AudioSpectrumVisualizer';
 import LaserPreviewBeams from './LaserPreviewBeams';
@@ -1707,6 +1708,7 @@ export default function SkyCanvas() {
   const isLowTierMobile = isMobile && deviceProfile.tier === 'low';
   const environment = useSceneStore(st => st.environment);
   const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
+  const pyroSafetyVisible = useSafetyOverlayStore((s) => s.pyroSafetyVisible);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const presentationMode = useSceneStore(st => st.settings.presentationMode);
   // MissionSetupOverlay removed — scene loads immediately
@@ -2148,7 +2150,7 @@ export default function SkyCanvas() {
         <PositionTransformGizmo />
         {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
-        {!google3DTilesEnabled && !isLowTierMobile && <PyroSafetyZones />}
+        {!google3DTilesEnabled && !isLowTierMobile && pyroSafetyVisible && <PyroSafetyZones />}
         <SubsystemBoundary name="DroneSwarm">
           <DroneRendererSwitch />
         </SubsystemBoundary>

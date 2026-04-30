@@ -8,6 +8,7 @@ import { effectVariantStore } from '@/features/viewport-tools/effectVariants';
 import ViewportToolPanel from './ViewportToolPanel';
 import EffectConfigDialog from './EffectConfigDialog';
 import DroneConfigDialog from './DroneConfigDialog';
+import VdlPickerDialog from './VdlPickerDialog';
 import type { SegmentType } from '@/features/viewport-tools/types';
 
 // Side-effect import: registers all 5 segment plugins exactly once.
@@ -50,6 +51,10 @@ export default function ViewportSegmentToolbar({
     open: false,
     positionId: null,
   });
+  const [vdlDialog, setVdlDialog] = useState<{ open: boolean; timelineItemId: string | null }>({
+    open: false,
+    timelineItemId: null,
+  });
 
   useEffect(() => operationLog.subscribe(() => force((n) => n + 1)), []);
   useEffect(() => viewportToolRegistry.subscribe(() => force((n) => n + 1)), []);
@@ -71,11 +76,17 @@ export default function ViewportSegmentToolbar({
       const detail = (e as CustomEvent).detail as { positionId: string };
       setDroneDialog({ open: true, positionId: detail.positionId });
     };
+    const onVdl = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { timelineItemId: string | null };
+      setVdlDialog({ open: true, timelineItemId: detail.timelineItemId });
+    };
     window.addEventListener('viewport-tools:open-effect-config', onEffect);
     window.addEventListener('viewport-tools:open-drone-config', onDrone);
+    window.addEventListener('viewport-tools:open-vdl-picker', onVdl);
     return () => {
       window.removeEventListener('viewport-tools:open-effect-config', onEffect);
       window.removeEventListener('viewport-tools:open-drone-config', onDrone);
+      window.removeEventListener('viewport-tools:open-vdl-picker', onVdl);
     };
   }, []);
 
@@ -120,6 +131,18 @@ export default function ViewportSegmentToolbar({
     } else if (op.command === 'DRONES_CREATE_FORMATION') {
       const formationId = (op.after as { formationId: string }).formationId;
       useProjectStore.getState().removeDroneFormation(formationId);
+    } else if (op.command === 'PYRO_VDL_PICK') {
+      const before = (op.before as { item: import('@/types/projectTypes').TimelineItem }).item;
+      useProjectStore.setState((s) => ({
+        timelineItems: s.timelineItems.map((it) => (it.id === before.id ? before : it)),
+      }));
+    } else if (op.command === 'PYRO_TOGGLE_SAFETY_OVERLAY') {
+      // Restore previous visibility state.
+      const before = (op.before as { visible: boolean }).visible;
+      // Lazy import to avoid circular ref.
+      import('@/features/viewport-tools/safetyOverlayStore').then((m) =>
+        m.useSafetyOverlayStore.getState().setPyroSafety(before),
+      );
     }
   };
 
@@ -197,6 +220,11 @@ export default function ViewportSegmentToolbar({
           onClose={() => setDroneDialog((d) => ({ ...d, open: false }))}
           positionId={droneDialog.positionId}
         />
+        <VdlPickerDialog
+          open={vdlDialog.open}
+          onClose={() => setVdlDialog((d) => ({ ...d, open: false }))}
+          timelineItemId={vdlDialog.timelineItemId}
+        />
       </div>
     );
   }
@@ -250,6 +278,11 @@ export default function ViewportSegmentToolbar({
         open={droneDialog.open}
         onClose={() => setDroneDialog((d) => ({ ...d, open: false }))}
         positionId={droneDialog.positionId}
+      />
+      <VdlPickerDialog
+        open={vdlDialog.open}
+        onClose={() => setVdlDialog((d) => ({ ...d, open: false }))}
+        timelineItemId={vdlDialog.timelineItemId}
       />
     </div>
   );
