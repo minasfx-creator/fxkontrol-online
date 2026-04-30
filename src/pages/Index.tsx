@@ -796,6 +796,17 @@ function Index() {
 
       {/* ─── Layer 4: Left Foundation Rail removed (duplicava Toolbar/PanelTabBar) ─── */}
 
+      {/* ─── Layer 5: User Avatar Float (Bottom-Right, above timeline) ── */}
+      {!viewportMaximized && floatingChrome && (
+        <UserAvatarFloat
+          bottomOffset={
+            typeof desktopTimelineHeight === 'string' && desktopTimelineHeight.endsWith('vh')
+              ? Math.round(window.innerHeight * (parseFloat(desktopTimelineHeight) / 100)) + 12
+              : parseInt(desktopTimelineHeight, 10) + 12
+          }
+        />
+      )}
+
       {/* ─── Layer 6: Nav Controls (Bottom-Right) ──── */}
       {!viewportMaximized && <ViewportNavControls />}
 
