@@ -416,8 +416,22 @@ const Pin = forwardRef<THREE.Group, { position: Position; terrainY: number; onRi
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 768;
   const showLabel = labelsVisible && (isMobileView ? (isSelected || isDragging) : (isHovered || isSelected || isDragging));
 
+  // Surface-aware Y resolution:
+  //   • Legacy positions store `y` as a SMALL OFFSET above the terrain
+  //     (added on top of the cached terrainY).
+  //   • Mesh-snapped positions (placed on a stadium roof, deck, etc.)
+  //     store `y` as the ABSOLUTE world Y of the picked surface — already
+  //     above the terrain by several meters. In that case we render at
+  //     `position.y` directly to keep the icon glued to the elevated mesh.
+  // Heuristic: if position.y is meaningfully above terrainY (>1.5m), treat
+  // it as an absolute surface Y; otherwise sum as offset (legacy behavior).
+  const SURFACE_THRESHOLD_M = 1.5;
+  const renderY = (position.y - terrainY) > SURFACE_THRESHOLD_M
+    ? position.y
+    : position.y + terrainY;
+
   return (
-    <group ref={(node) => { (groupRef as any).current = node; if (typeof ref === 'function') ref(node); else if (ref) (ref as any).current = node; }} position={[position.x, position.y + terrainY, position.z]}>
+    <group ref={(node) => { (groupRef as any).current = node; if (typeof ref === 'function') ref(node); else if (ref) (ref as any).current = node; }} position={[position.x, renderY, position.z]}>
       {/* Base disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <circleGeometry args={[isSelected ? 0.65 : 0.5, 32]} />
