@@ -11,13 +11,17 @@ import {
   Flame, Sparkles, Send, Lightbulb, Sliders,
   MousePointer2, Pencil, Wrench, AlertTriangle,
   Move3d, RotateCcw, Clock, Cable, HelpCircle,
+  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
+  PanelBottomClose, PanelBottomOpen, RotateCw,
 } from 'lucide-react';
 import {
   EditorShell, DsButton, DsPanel, DsPanelTitle,
   DsSegmentTabs, DsToolItem, type SegmentItem,
   DsSkeleton, DsPanelSkeleton, DsViewportSkeleton,
+  EditorLayoutResizers,
 } from '@/components/ds';
 import EditorShellOnboardingDialog, { ONBOARDING_KEY } from './EditorShellOnboardingDialog';
+import { useEditorLayout } from '@/hooks/editor/useEditorLayout';
 
 const SEGMENTS: SegmentItem[] = [
   { id: 'pyro',   label: 'PYRO',   icon: Flame,
