@@ -160,6 +160,39 @@ export default function EditorShellPreview() {
               </span>
             </div>
             <div className="flex items-center gap-ds-2">
+              {/* Layout controls — collapse rails / timeline + reset (persisted). */}
+              <div className="hidden sm:flex items-center gap-1 rounded-ds-md border border-ds-border-default bg-ds-surface-elevated/60 p-0.5">
+                <LayoutIconButton
+                  ariaLabel={layout.leftCollapsed ? 'Expandir painel esquerdo' : 'Recolher painel esquerdo'}
+                  onClick={layout.toggleLeft}
+                  active={!layout.leftCollapsed}
+                >
+                  {layout.leftCollapsed ? <PanelLeftOpen className="size-3.5" /> : <PanelLeftClose className="size-3.5" />}
+                </LayoutIconButton>
+                <LayoutIconButton
+                  ariaLabel={layout.timelineCollapsed ? 'Expandir timeline' : 'Recolher timeline'}
+                  onClick={layout.toggleTimeline}
+                  active={!layout.timelineCollapsed}
+                >
+                  {layout.timelineCollapsed ? <PanelBottomOpen className="size-3.5" /> : <PanelBottomClose className="size-3.5" />}
+                </LayoutIconButton>
+                <LayoutIconButton
+                  ariaLabel={layout.rightCollapsed ? 'Expandir painel direito' : 'Recolher painel direito'}
+                  onClick={layout.toggleRight}
+                  active={!layout.rightCollapsed}
+                >
+                  {layout.rightCollapsed ? <PanelRightOpen className="size-3.5" /> : <PanelRightClose className="size-3.5" />}
+                </LayoutIconButton>
+                <button
+                  type="button"
+                  onClick={layout.reset}
+                  title="Resetar layout"
+                  aria-label="Resetar layout"
+                  className="flex size-7 items-center justify-center rounded-ds-sm text-ds-text-muted hover:text-status-sync hover:bg-ds-surface-deep transition-colors"
+                >
+                  <RotateCw className="size-3.5" />
+                </button>
+              </div>
               <DsButton variant="ghost" size="sm"><Save className="size-4" />Save</DsButton>
               <DsButton variant="secondary" size="sm"><ShieldCheck className="size-4" />Validate</DsButton>
               <DsButton variant="primary" size="sm"><Upload className="size-4" />Export</DsButton>
