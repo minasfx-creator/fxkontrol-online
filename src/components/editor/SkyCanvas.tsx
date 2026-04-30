@@ -1708,6 +1708,7 @@ export default function SkyCanvas() {
   const isLowTierMobile = isMobile && deviceProfile.tier === 'low';
   const environment = useSceneStore(st => st.environment);
   const google3DTilesEnabled = useSceneStore(st => st.settings.google3DTilesEnabled);
+  const pyroSafetyVisible = useSafetyOverlayStore((s) => s.pyroSafetyVisible);
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   const presentationMode = useSceneStore(st => st.settings.presentationMode);
   // MissionSetupOverlay removed — scene loads immediately
@@ -2149,7 +2150,7 @@ export default function SkyCanvas() {
         <PositionTransformGizmo />
         {!isMobile && <Rack3DView />}
         <TrajectoryPaths />
-        {!google3DTilesEnabled && !isLowTierMobile && useSafetyOverlayStore.getState().pyroSafetyVisible && <PyroSafetyZones />}
+        {!google3DTilesEnabled && !isLowTierMobile && pyroSafetyVisible && <PyroSafetyZones />}
         <SubsystemBoundary name="DroneSwarm">
           <DroneRendererSwitch />
         </SubsystemBoundary>
