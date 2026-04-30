@@ -131,26 +131,37 @@ export default function EditorShellPreview() {
         }
         right={
           <div className="flex h-full flex-col gap-ds-4 p-ds-4 overflow-y-auto">
-            <DsPanel>
-              <DsPanelTitle>Inspector</DsPanelTitle>
-              <Field label="Cue ID"   value="PYRO.045" mono />
-              <Field label="Channel"  value="CH 12" mono />
-              <Field label="Type"     value="Comet · 30°" />
-            </DsPanel>
-            <DsPanel>
-              <DsPanelTitle>Position (YZX)</DsPanelTitle>
-              <NumRow a="Y" b="Z" c="X" va="0.00" vb="1.70" vc="-12.40" />
-            </DsPanel>
-            <DsPanel>
-              <DsPanelTitle>Rotation (P/T/S)</DsPanelTitle>
-              <NumRow a="Pan" b="Tilt" c="Spin" va="180°" vb="62°" vc="0°" />
-            </DsPanel>
-            <DsPanel>
-              <DsPanelTitle>Timing</DsPanelTitle>
-              <Field label="Start"    value="00:00:12.400" mono />
-              <Field label="Duration" value="0.85 s"        mono />
-              <Field label="Pre-fire" value="120 ms"        mono />
-            </DsPanel>
+            {!chromeReady ? (
+              <>
+                <DsPanelSkeleton rows={3} />
+                <DsPanelSkeleton rows={3} />
+                <DsPanelSkeleton rows={3} />
+                <DsPanelSkeleton rows={3} />
+              </>
+            ) : (
+              <div className="flex flex-col gap-ds-4 animate-in fade-in duration-300">
+                <DsPanel>
+                  <DsPanelTitle>Inspector</DsPanelTitle>
+                  <Field label="Cue ID"   value="PYRO.045" mono />
+                  <Field label="Channel"  value="CH 12" mono />
+                  <Field label="Type"     value="Comet · 30°" />
+                </DsPanel>
+                <DsPanel>
+                  <DsPanelTitle>Position (YZX)</DsPanelTitle>
+                  <NumRow a="Y" b="Z" c="X" va="0.00" vb="1.70" vc="-12.40" />
+                </DsPanel>
+                <DsPanel>
+                  <DsPanelTitle>Rotation (P/T/S)</DsPanelTitle>
+                  <NumRow a="Pan" b="Tilt" c="Spin" va="180°" vb="62°" vc="0°" />
+                </DsPanel>
+                <DsPanel>
+                  <DsPanelTitle>Timing</DsPanelTitle>
+                  <Field label="Start"    value="00:00:12.400" mono />
+                  <Field label="Duration" value="0.85 s"        mono />
+                  <Field label="Pre-fire" value="120 ms"        mono />
+                </DsPanel>
+              </div>
+            )}
           </div>
         }
         timeline={
