@@ -68,15 +68,15 @@ const TABS: TabDef[] = [
 
 const Loader = () => (
   <div className="flex items-center justify-center py-24">
-    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    <div className="size-6 rounded-full border-2 border-status-sync border-t-transparent animate-spin" />
   </div>
 );
 
 const Placeholder = ({ title, desc }: { title: string; desc: string }) => (
-  <div className="max-w-2xl mx-auto px-6 py-24 text-center">
-    <h2 className="text-xl font-bold text-foreground mb-2">{title}</h2>
-    <p className="text-sm text-muted-foreground">{desc}</p>
-    <p className="mt-6 text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60">
+  <div className="mx-auto max-w-2xl px-ds-6 py-24 text-center">
+    <h2 className="text-[24px] font-semibold text-ds-text-primary mb-ds-2">{title}</h2>
+    <p className="text-[14px] text-ds-text-secondary">{desc}</p>
+    <p className="mt-ds-6 text-[10px] font-mono uppercase tracking-[0.2em] text-ds-text-muted">
       Em desenvolvimento — próxima etapa do refactor
     </p>
   </div>
