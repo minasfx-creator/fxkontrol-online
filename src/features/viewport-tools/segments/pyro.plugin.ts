@@ -106,6 +106,15 @@ const plugin: ViewportSegmentPlugin = {
       icon: 'ShieldCheck',
       hint: 'FireOne stagger + Showven device limits + base PYRO checks.',
     },
+    {
+      id: 'pyro.export-center',
+      label: 'Export Center',
+      segment: 'PYRO',
+      scope: 'patch',
+      command: 'EXPORT_OPEN_CENTER',
+      icon: 'Download',
+      hint: 'FireOne / Showven / MAVLink exports (gated by validators).',
+    },
   ],
   commandHandlers: {
     PYRO_SELECT_ALL(): ViewportOperation | null {
