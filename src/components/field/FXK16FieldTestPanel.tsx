@@ -87,7 +87,7 @@ export default function FXK16FieldTestPanel() {
     try {
       const ok = await bridge.connectUSB();
       log({ op: 'CONNECT_USB', status: ok ? 'ok' : 'error', detail: ok ? 'handshake OK' : 'handshake failed' });
-      if (ok) haptics.success(); else haptics.error?.();
+      if (ok) haptics.success();
     } catch (e: any) {
       log({ op: 'CONNECT_USB', status: 'error', detail: e?.message ?? 'unknown error' });
     }
