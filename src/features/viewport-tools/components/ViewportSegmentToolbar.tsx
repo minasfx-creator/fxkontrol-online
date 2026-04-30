@@ -150,6 +150,18 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
           <ViewportToolPanel segment={active} />
         </div>
       )}
+
+      <EffectConfigDialog
+        open={effectDialog.open}
+        onClose={() => setEffectDialog((d) => ({ ...d, open: false }))}
+        effectId={effectDialog.effectId}
+        targetTimelineItemId={effectDialog.timelineItemId}
+      />
+      <DroneConfigDialog
+        open={droneDialog.open}
+        onClose={() => setDroneDialog((d) => ({ ...d, open: false }))}
+        positionId={droneDialog.positionId}
+      />
     </div>
   );
 }
