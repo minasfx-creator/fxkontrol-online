@@ -31,6 +31,7 @@ import type { CommandResponse } from '@/lib/fxk16/commandApi';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useFxk16FieldConfig } from '@/hooks/useFxk16FieldConfig';
 
 interface E2eStep {
   id: string;
