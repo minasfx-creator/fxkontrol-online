@@ -94,37 +94,39 @@ export default function EditorShellPreview() {
         }
         left={
           <div className="flex h-full flex-col gap-ds-4 p-ds-4 overflow-y-auto">
-            {!chromeReady && (
+            {!chromeReady ? (
               <>
                 <DsPanelSkeleton rows={3} />
                 <DsPanelSkeleton rows={3} />
                 <DsPanelSkeleton rows={2} />
               </>
+            ) : (
+              <div className="flex flex-col gap-ds-4 animate-in fade-in duration-300">
+                <DsPanel>
+                  <DsPanelTitle>Selection</DsPanelTitle>
+                  <div className="flex flex-col gap-1">
+                    <DsToolItem icon={MousePointer2} label="Select" shortcut="V" active />
+                    <DsToolItem icon={Move3d}        label="Move"   shortcut="W" />
+                    <DsToolItem icon={RotateCcw}     label="Rotate" shortcut="E" />
+                  </div>
+                </DsPanel>
+                <DsPanel>
+                  <DsPanelTitle>Edit</DsPanelTitle>
+                  <div className="flex flex-col gap-1">
+                    <DsToolItem icon={Pencil} label="Sketch"  shortcut="K" />
+                    <DsToolItem icon={Wrench} label="Patch"   shortcut="P" />
+                    <DsToolItem icon={Cable}  label="Channel" shortcut="C" />
+                  </div>
+                </DsPanel>
+                <DsPanel>
+                  <DsPanelTitle>Safety</DsPanelTitle>
+                  <div className="flex flex-col gap-1">
+                    <DsToolItem icon={ShieldCheck}   label="Continuity" shortcut="G" />
+                    <DsToolItem icon={AlertTriangle} label="E-Stop"     shortcut="␣" critical />
+                  </div>
+                </DsPanel>
+              </div>
             )}
-            {chromeReady && (<></>)}
-            <DsPanel>
-              <DsPanelTitle>Selection</DsPanelTitle>
-              <div className="flex flex-col gap-1">
-                <DsToolItem icon={MousePointer2} label="Select" shortcut="V" active />
-                <DsToolItem icon={Move3d}        label="Move"   shortcut="W" />
-                <DsToolItem icon={RotateCcw}     label="Rotate" shortcut="E" />
-              </div>
-            </DsPanel>
-            <DsPanel>
-              <DsPanelTitle>Edit</DsPanelTitle>
-              <div className="flex flex-col gap-1">
-                <DsToolItem icon={Pencil} label="Sketch"  shortcut="K" />
-                <DsToolItem icon={Wrench} label="Patch"   shortcut="P" />
-                <DsToolItem icon={Cable}  label="Channel" shortcut="C" />
-              </div>
-            </DsPanel>
-            <DsPanel>
-              <DsPanelTitle>Safety</DsPanelTitle>
-              <div className="flex flex-col gap-1">
-                <DsToolItem icon={ShieldCheck}   label="Continuity" shortcut="G" />
-                <DsToolItem icon={AlertTriangle} label="E-Stop"     shortcut="␣" critical />
-              </div>
-            </DsPanel>
           </div>
         }
         right={
