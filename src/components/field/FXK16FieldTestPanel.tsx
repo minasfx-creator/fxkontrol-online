@@ -70,7 +70,7 @@ export default function FXK16FieldTestPanel() {
     });
   }, []);
 
-  const settle = useCallback(<T,>(label: string, t0: number, res: CommandResponse<T>) => {
+  const settle = useCallback(function settleFn<T>(label: string, t0: number, res: CommandResponse<T>): CommandResponse<T> {
     const latencyMs = Math.round(performance.now() - t0);
     if (res.ok) {
       log({ op: label, status: 'ok', detail: 'success', latencyMs });
