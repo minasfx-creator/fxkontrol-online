@@ -434,7 +434,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
       downsampled[i] = sum / Math.max(1, end - start);
     }
     setWaveformData(downsampled);
-  }, [pixelsPerSecond]);
+  }, [pixelsPerSecond, audioZoom]);
 
   // Load and decode audio for waveform + BPM
   const loadAudio = useCallback(async (url: string) => {
@@ -486,7 +486,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     if (audioBufferRef.current && !draggingHandle) {
       rebuildWaveform(audioBufferRef.current);
     }
-  }, [audioInPoint, audioOutPoint, pixelsPerSecond, draggingHandle, rebuildWaveform]);
+  }, [audioInPoint, audioOutPoint, pixelsPerSecond, audioZoom, draggingHandle, rebuildWaveform]);
 
   useEffect(() => {
     if (audioUrl) loadAudio(audioUrl);
