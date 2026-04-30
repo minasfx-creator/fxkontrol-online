@@ -56,8 +56,9 @@ function isFxk16Entry(e: PortRegistryEntry): boolean {
 }
 
 function entryTransport(e: PortRegistryEntry): FXK16Device['transport'] {
-  if (e.preferredTransport === 'serial' || e.preferredTransport === 'webusb') return 'usb';
-  if (e.preferredTransport === 'ble') return 'ble';
+  const t = e.preferredTransport as string | undefined;
+  if (t === 'webserial' || t === 'serial' || t === 'webusb') return 'usb';
+  if (t === 'webble' || t === 'ble') return 'ble';
   if (e.host) return 'usb'; // net-attached not relevant for FXK16; treat as wired
   return 'unknown';
 }
