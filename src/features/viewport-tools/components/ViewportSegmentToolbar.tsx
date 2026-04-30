@@ -6,6 +6,8 @@ import { operationLog } from '@/features/viewport-tools/command-dispatcher';
 import { useProjectStore } from '@/store/useProjectStore';
 import { effectVariantStore } from '@/features/viewport-tools/effectVariants';
 import { useDraggableFloat } from '@/components/editor/useDraggableFloat';
+import EdgeSnapGuides from '@/components/editor/EdgeSnapGuides';
+import FloatTooltip from '@/components/editor/FloatTooltip';
 import ViewportToolPanel from './ViewportToolPanel';
 import EffectConfigDialog from './EffectConfigDialog';
 import DroneConfigDialog from './DroneConfigDialog';
@@ -317,46 +319,48 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
           {SEGMENTS.map((seg) => {
             const isActive = active === seg;
             return (
-              <Button
-                key={seg}
-                size="sm"
-                variant="ghost"
-                data-no-drag
-                className={
-                  'h-9 w-9 p-0 rounded-lg text-[10px] font-bold tracking-wider transition-all ' +
-                  (isActive
-                    ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/60 hover:bg-cyan-500/25'
-                    : 'text-muted-foreground border border-transparent hover:text-cyan-300 hover:border-cyan-500/30')
-                }
-                onClick={() => setActive(isActive ? null : seg)}
-                title={seg}
-              >
-                {seg.slice(0, 3)}
-              </Button>
+              <FloatTooltip key={seg} label={seg} side={panelOnLeft ? 'left' : 'right'}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  data-no-drag
+                  className={
+                    'h-9 w-9 p-0 rounded-lg text-[10px] font-bold tracking-wider transition-all ' +
+                    (isActive
+                      ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/60 hover:bg-cyan-500/25'
+                      : 'text-muted-foreground border border-transparent hover:text-cyan-300 hover:border-cyan-500/30')
+                  }
+                  onClick={() => setActive(isActive ? null : seg)}
+                >
+                  {seg.slice(0, 3)}
+                </Button>
+              </FloatTooltip>
             );
           })}
           <div className="w-6 h-px bg-cyan-500/20 my-0.5" />
-          <Button
-            size="sm"
-            variant="ghost"
-            data-no-drag
-            className="h-7 w-9 p-0 text-[10px] text-muted-foreground hover:text-cyan-300"
-            onClick={undo}
-            disabled={!operationLog.canUndo()}
-            title="Undo"
-          >
-            ↶
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            data-no-drag
-            className="h-6 w-9 p-0 text-[9px] text-muted-foreground/60 hover:text-cyan-300"
-            onClick={drag.resetPosition}
-            title="Reset dock position"
-          >
-            ⌖
-          </Button>
+          <FloatTooltip label="Undo" shortcut="⌘Z" side={panelOnLeft ? 'left' : 'right'}>
+            <Button
+              size="sm"
+              variant="ghost"
+              data-no-drag
+              className="h-7 w-9 p-0 text-[10px] text-muted-foreground hover:text-cyan-300"
+              onClick={undo}
+              disabled={!operationLog.canUndo()}
+            >
+              ↶
+            </Button>
+          </FloatTooltip>
+          <FloatTooltip label="Reset Dock" side={panelOnLeft ? 'left' : 'right'}>
+            <Button
+              size="sm"
+              variant="ghost"
+              data-no-drag
+              className="h-6 w-9 p-0 text-[9px] text-muted-foreground/60 hover:text-cyan-300"
+              onClick={drag.resetPosition}
+            >
+              ⌖
+            </Button>
+          </FloatTooltip>
         </div>
       )}
 
