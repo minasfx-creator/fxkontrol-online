@@ -8,6 +8,13 @@ import { installInteractionFpsGuard } from "@/lib/interactionFpsGuard";
 import { migrateLegacyStores } from "@/stores/migration";
 import { assertRuntimeEnv } from "@/lib/envGuard";
 import { startSmpteTicker } from "@/store/useSMPTEStore";
+import { installChunkErrorRecovery } from "@/lib/installChunkErrorRecovery";
+
+// Global safety net for stale-chunk failures (Vite HMR / CDN hash rotation).
+// MUST run before React mounts so we catch import() rejections that fire
+// during the very first render — those are the ones that leave the viewport
+// stuck on a black/white screen on desktop after a deploy or dev-server restart.
+installChunkErrorRecovery();
 
 // Fail fast on misconfigured deploys (missing VITE_SUPABASE_URL etc).
 // Throws in prod with a visible banner; warns in dev.
