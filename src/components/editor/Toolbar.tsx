@@ -25,6 +25,7 @@ import { artnetModuleService } from '@/services/artnetModuleService';
 import { timelineClock } from '@/core/timeline/TimelineClock';
 import { timelineTransport } from '@/core/transport/timelineTransport';
 import TimelineClockPanel from './TimelineClockPanel';
+import UserAvatarFloat from './UserAvatarFloat';
 
 // ── Lazy-loaded modals (only fetched when user opens them) ──
 const lz = (loader: () => Promise<{ default: React.ComponentType<any> }>) => lazy(loader);
@@ -685,9 +686,7 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
         )}
 
         {!isMobile && (
-          <button onClick={signOut} className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-red-400 hover:bg-red-500/5 transition-all" title="Logout">
-            <LogOut className="h-3.5 w-3.5" />
-          </button>
+          <UserAvatarFloat inline />
         )}
       </div>
 
