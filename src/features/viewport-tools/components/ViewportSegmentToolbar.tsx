@@ -12,6 +12,7 @@ import DroneConfigDialog from './DroneConfigDialog';
 import VdlPickerDialog from './VdlPickerDialog';
 import DmxPatchDialog from './DmxPatchDialog';
 import ValidatorsReportDialog from './ValidatorsReportDialog';
+import ExportCenterDialog from './ExportCenterDialog';
 import type { SegmentType } from '@/features/viewport-tools/types';
 
 // Side-effect import: registers all 5 segment plugins exactly once.
@@ -78,6 +79,7 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
     tab: 'patch',
   });
   const [validatorsDialog, setValidatorsDialog] = useState(false);
+  const [exportDialog, setExportDialog] = useState(false);
 
   useEffect(() => operationLog.subscribe(() => force((n) => n + 1)), []);
   useEffect(() => viewportToolRegistry.subscribe(() => force((n) => n + 1)), []);
@@ -108,17 +110,20 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       setDmxDialog({ open: true, tab: detail?.tab ?? 'patch' });
     };
     const onValidators = () => setValidatorsDialog(true);
+    const onExport = () => setExportDialog(true);
     window.addEventListener('viewport-tools:open-effect-config', onEffect);
     window.addEventListener('viewport-tools:open-drone-config', onDrone);
     window.addEventListener('viewport-tools:open-vdl-picker', onVdl);
     window.addEventListener('viewport-tools:open-dmx-patch', onDmx);
     window.addEventListener('viewport-tools:open-validators-report', onValidators);
+    window.addEventListener('viewport-tools:open-export-center', onExport);
     return () => {
       window.removeEventListener('viewport-tools:open-effect-config', onEffect);
       window.removeEventListener('viewport-tools:open-drone-config', onDrone);
       window.removeEventListener('viewport-tools:open-vdl-picker', onVdl);
       window.removeEventListener('viewport-tools:open-dmx-patch', onDmx);
       window.removeEventListener('viewport-tools:open-validators-report', onValidators);
+      window.removeEventListener('viewport-tools:open-export-center', onExport);
     };
   }, []);
 
@@ -299,6 +304,10 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       <ValidatorsReportDialog
         open={validatorsDialog}
         onClose={() => setValidatorsDialog(false)}
+      />
+      <ExportCenterDialog
+        open={exportDialog}
+        onClose={() => setExportDialog(false)}
       />
     </div>
   );

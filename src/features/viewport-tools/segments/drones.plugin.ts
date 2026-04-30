@@ -71,6 +71,15 @@ const plugin: ViewportSegmentPlugin = {
       icon: 'ShieldCheck',
       hint: 'Run all validators (PYRO + FireOne + Showven + DRONES proximity).',
     },
+    {
+      id: 'drones.export-mavlink',
+      label: 'Export MAVLink Plan',
+      segment: 'DRONES',
+      scope: 'patch',
+      command: 'EXPORT_OPEN_CENTER',
+      icon: 'Download',
+      hint: 'Open Export Center to download QGC WPL 110 / JSON for the swarm.',
+    },
   ],
   commandHandlers: {
     DRONES_SELECT_ALL(): ViewportOperation | null {
@@ -169,6 +178,21 @@ const plugin: ViewportSegmentPlugin = {
         before: null,
         after: null,
         description: 'Opened advanced validators report.',
+      };
+    },
+
+    EXPORT_OPEN_CENTER(): ViewportOperation | null {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('viewport-tools:open-export-center'));
+      }
+      return {
+        id: uid('op'),
+        segment: 'DRONES',
+        command: 'EXPORT_OPEN_CENTER',
+        timestamp: Date.now(),
+        before: null,
+        after: null,
+        description: 'Opened export center.',
       };
     },
   },
