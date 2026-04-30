@@ -33,6 +33,25 @@ const SEGMENTS: SegmentItem[] = [
 export default function EditorShellPreview() {
   const [active, setActive] = useState('pyro');
 
+  /**
+   * Staged boot for honest perceived performance:
+   *   stage 0 (0–220ms)  → chrome skeletons (panels grayed)
+   *   stage 1 (220–650ms)→ chrome ready, viewport still loading
+   *   stage 2 (≥650ms)   → fully painted, fade-in viewport content
+   *
+   * Mirrors what a real Studio mount does (assets, GPGPU warmup, ShowPlan
+   * hydration). Pure presentation here — no real async work.
+   */
+  const [stage, setStage] = useState<0 | 1 | 2>(0);
+  useEffect(() => {
+    const t1 = window.setTimeout(() => setStage(1), 220);
+    const t2 = window.setTimeout(() => setStage(2), 650);
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
+  }, []);
+
+  const chromeReady = stage >= 1;
+  const viewportReady = stage >= 2;
+
   return (
     <div className="h-[100dvh] w-full bg-ds-background text-ds-text-primary"
          style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
