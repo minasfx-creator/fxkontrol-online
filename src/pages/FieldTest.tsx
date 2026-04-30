@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import FXK16FieldTestPanel from '@/components/field/FXK16FieldTestPanel';
+import FXK16FieldSettingsPanel from '@/components/field/FXK16FieldSettingsPanel';
 
 // ─── Transport Config ─────────────────────────────
 const TRANSPORTS: { id: TestTransport; label: string; desc: string; icon: React.ReactNode; color: string }[] = [
