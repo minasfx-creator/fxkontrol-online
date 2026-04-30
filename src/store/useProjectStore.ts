@@ -18,10 +18,14 @@ export type {
 import type {
   DepthLayer, TimelineItem, Position, PositionType, BezierHandle, Waypoint, Trajectory,
   EditorMode, SelectionMode, DroneFormation, CueMarker, CameraKeyframe, WindSettings,
+  SegmentType,
 } from '@/types/projectTypes';
 
 export interface ProjectState {
   projectName: string;
+  /** Active segments enabled for this show (drives the editor topbar). */
+  segments: SegmentType[];
+  setSegments: (segments: SegmentType[]) => void;
   activeLockouts: string[];
   setActiveLockouts: (lockouts: string[]) => void;
   toggleLockout: (riskGroup: string) => void;
