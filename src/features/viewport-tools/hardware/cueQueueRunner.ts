@@ -408,6 +408,23 @@ export class CueQueueRunner {
   private clearTimers() {
     for (const t of this.timers) clearTimeout(t);
     this.timers = [];
+    this.pendingTimers.clear();
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+  }
+
+  /** SMPTE-locked diagnostics (also valid for wall mode — drift fields stay 0). */
+  getDiagnostics(): CueRunDiagnostics {
+    return {
+      clockSource: this.opts.clockSource,
+      lastDriftMs: this.lastDrift,
+      peakDriftMs: this.peakDrift,
+      fired: this.currentIndex,
+      lateDropped: this.lateDropped,
+      lookaheadMs: this.opts.lookaheadMs,
+    };
   }
 
   // ── Reactive surface ────────────────────────────────────────────
