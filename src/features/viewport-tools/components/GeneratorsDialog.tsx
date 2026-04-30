@@ -26,8 +26,15 @@ import {
   type FormationShape,
   type FormationParams,
 } from '@/features/viewport-tools/generators/droneFormationGenerator';
+import {
+  generateCakeDetailed,
+  FIREONE_MIN_STAGGER_MS,
+  type CakeParams,
+  type SweepMode,
+} from '@/features/viewport-tools/generators/cakeGenerator';
 
 const FormationPreview3D = lazy(() => import('./FormationPreview3D'));
+const CakePreview2D = lazy(() => import('./CakePreview2D'));
 
 interface Props {
   open: boolean;
