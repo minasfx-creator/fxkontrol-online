@@ -423,3 +423,59 @@ export default function ShowvenBridgeDialog({ open, onClose }: Props) {
     </Dialog>
   );
 }
+
+interface ProfileNumberFieldProps {
+  label: string;
+  unit: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  disabled?: boolean;
+  hint?: string;
+  onChange: (v: number) => void;
+}
+
+function ProfileNumberField({
+  label, unit, value, min, max, step, disabled, hint, onChange,
+}: ProfileNumberFieldProps) {
+  return (
+    <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+      <span className="flex items-center justify-between text-cyan-200/90">
+        <span>{label}</span>
+        <span className="font-mono text-cyan-300">
+          {value}
+          <span className="text-muted-foreground/60 ml-0.5">{unit}</span>
+        </span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-cyan-400 disabled:opacity-40"
+      />
+      <div className="flex items-center gap-1.5">
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          disabled={disabled}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            if (Number.isFinite(n)) onChange(n);
+          }}
+          className="h-6 w-20 rounded border border-cyan-500/30 bg-[#020407] px-1.5 text-[11px] text-cyan-200 font-mono focus:outline-none focus:border-cyan-400 disabled:opacity-40"
+        />
+        {hint && (
+          <span className="text-[10px] text-muted-foreground/60 truncate">{hint}</span>
+        )}
+      </div>
+    </label>
+  );
+}
