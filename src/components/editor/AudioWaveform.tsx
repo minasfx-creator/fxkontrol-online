@@ -825,11 +825,92 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
           )}
         </div>
 
-        {/* Height controls + BPM */}
+        {/* BPM controls + Height controls */}
         <div className="flex items-center gap-1 mt-1">
-          {bpm && (
-            <span className="text-[8px] font-mono-code text-safety">{bpm}</span>
-          )}
+          {/* BPM editor — controls the timeline grid via getActiveGrid({ bpm }). */}
+          <div className="flex items-center gap-0.5 rounded-sm border border-border bg-surface-2 px-1 py-0.5">
+            <span className="text-[7px] font-mono-code uppercase text-muted-foreground/60">BPM</span>
+            <button
+              type="button"
+              onClick={() => nudgeBpm(-1)}
+              className="text-muted-foreground/70 hover:text-safety disabled:opacity-30"
+              disabled={!bpm}
+              title="−1 BPM"
+              aria-label="Diminuir BPM em 1"
+            >
+              <Minus className="h-2.5 w-2.5" />
+            </button>
+            <input
+              type="number"
+              min={20}
+              max={300}
+              step={1}
+              value={bpmDraft}
+              onChange={(e) => setBpmDraft(e.target.value)}
+              onBlur={handleBpmInputCommit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); }
+                if (e.key === 'Escape') { setBpmDraft(bpm != null ? String(bpm) : ''); (e.target as HTMLInputElement).blur(); }
+              }}
+              placeholder="—"
+              className="w-9 bg-transparent text-[9px] font-mono-code text-safety text-center tabular-nums outline-none focus:text-safety focus:ring-1 focus:ring-safety/40 rounded-sm"
+              title="Editar BPM (Enter para confirmar). Recalcula a grid da timeline."
+              aria-label="BPM manual"
+            />
+            <button
+              type="button"
+              onClick={() => nudgeBpm(1)}
+              className="text-muted-foreground/70 hover:text-safety disabled:opacity-30"
+              disabled={!bpm}
+              title="+1 BPM"
+              aria-label="Aumentar BPM em 1"
+            >
+              <Plus className="h-2.5 w-2.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scaleBpm(0.5)}
+              className="text-[8px] font-mono-code px-1 text-muted-foreground/70 hover:text-safety disabled:opacity-30"
+              disabled={!bpm}
+              title="Dividir BPM por 2 (octave down)"
+              aria-label="Dividir BPM por 2"
+            >
+              ÷2
+            </button>
+            <button
+              type="button"
+              onClick={() => scaleBpm(2)}
+              className="text-[8px] font-mono-code px-1 text-muted-foreground/70 hover:text-safety disabled:opacity-30"
+              disabled={!bpm}
+              title="Multiplicar BPM por 2 (octave up)"
+              aria-label="Multiplicar BPM por 2"
+            >
+              ×2
+            </button>
+            <button
+              type="button"
+              onClick={handleTap}
+              className="text-muted-foreground/70 hover:text-safety"
+              title="Tap-tempo (toque no ritmo da música)"
+              aria-label="Tap tempo"
+            >
+              <Hand className="h-2.5 w-2.5" />
+            </button>
+            <button
+              type="button"
+              onClick={handleRedetect}
+              className="text-muted-foreground/70 hover:text-safety disabled:opacity-30"
+              disabled={!audioBufferRef.current}
+              title="Redetectar BPM do áudio"
+              aria-label="Redetectar BPM"
+            >
+              <RefreshCw className="h-2.5 w-2.5" />
+            </button>
+            {tapHint && (
+              <span className="text-[7px] font-mono-code text-warning ml-0.5">{tapHint}</span>
+            )}
+          </div>
+
           <div className="flex-1" />
           <button
             onClick={shrink}
