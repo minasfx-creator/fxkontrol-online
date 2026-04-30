@@ -348,24 +348,12 @@ export default function EffectConfigDialog({
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Tabs defaultValue={overrideTabDisabled ? 'variant' : 'cue'}>
-            {/* mirror tab state via two buttons */}
-          </Tabs>
           <Button
-            onClick={overrideTabDisabled ? applyVariant : applyOverride}
+            onClick={tab === 'variant' ? applyVariant : applyOverride}
             className="bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/60"
           >
-            {overrideTabDisabled ? 'Save Variant' : 'Apply to Cue'}
+            {tab === 'variant' ? 'Save Variant' : 'Apply to Cue'}
           </Button>
-          {!overrideTabDisabled && (
-            <Button
-              variant="outline"
-              onClick={applyVariant}
-              className="border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10"
-            >
-              Save Variant
-            </Button>
-          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
