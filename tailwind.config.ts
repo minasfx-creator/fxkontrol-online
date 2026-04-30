@@ -96,6 +96,36 @@ export default {
           info:    "hsl(var(--fxk-blue))",
           accent:  "hsl(var(--fxk-violet))",
         },
+        // ── FXKONTROL Design System v1 (additive, opt-in) ──
+        // Use `bg-ds-surface-panel`, `text-segment-pyro`, `text-status-sync`
+        // in NEW components. Legacy components keep using `primary`/`fxk-*`.
+        ds: {
+          background:         "hsl(var(--ds-background))",
+          "surface-deep":     "hsl(var(--ds-surface-deep))",
+          "surface-panel":    "hsl(var(--ds-surface-panel))",
+          "surface-elevated": "hsl(var(--ds-surface-elevated))",
+          "border-default":   "hsl(var(--ds-border-default))",
+          "border-subtle":    "hsl(var(--ds-border-subtle))",
+          "border-active":    "hsl(var(--ds-border-active))",
+          "text-primary":     "hsl(var(--ds-text-primary))",
+          "text-secondary":   "hsl(var(--ds-text-secondary))",
+          "text-muted":       "hsl(var(--ds-text-muted))",
+          "text-disabled":    "hsl(var(--ds-text-disabled))",
+        },
+        segment: {
+          pyro:   "hsl(var(--segment-pyro))",
+          sfx:    "hsl(var(--segment-sfx))",
+          drones: "hsl(var(--segment-drones))",
+          light:  "hsl(var(--segment-light))",
+          dmx:    "hsl(var(--segment-dmx))",
+        },
+        status: {
+          ok:       "hsl(var(--status-ok))",
+          sync:     "hsl(var(--status-sync))",
+          warn:     "hsl(var(--status-warn))",
+          fail:     "hsl(var(--status-fail))",
+          disabled: "hsl(var(--status-disabled))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

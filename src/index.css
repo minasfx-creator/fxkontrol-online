@@ -133,6 +133,49 @@
     --radius-panel:   0.75rem;  /* 12px — cards, popovers, tooltips */
     --radius-island:  1rem;     /* 16px — dock, sidebar items, segmented controls */
     --radius-sheet:   1.25rem;  /* 20px — modals, sheets, large surfaces */
+
+    /* ═══════════════════════════════════════════════════════════════════
+     * FXKONTROL Design System v1 — Night Mode (NASA Control Room)
+     * ───────────────────────────────────────────────────────────────────
+     * Additive token layer. Does NOT replace the legacy tactical orange
+     * palette — components opt-in via `text-segment-pyro`, `bg-ds-surface-panel`,
+     * `text-status-sync`, etc. Existing components keep using --primary
+     * (orange) and --fxk-* tokens.
+     *
+     * Reference: design system spec — backgrounds, segments, status,
+     * borders. All HSL.
+     * ═══════════════════════════════════════════════════════════════════ */
+
+    /* Backgrounds (Vantablack stack) */
+    --ds-background:        220 60% 4%;    /* #050810 App */
+    --ds-surface-deep:      220 40% 7%;    /* #0B1220 Deep */
+    --ds-surface-panel:     220 30% 12%;   /* #111827 Panel */
+    --ds-surface-elevated:  220 30% 15%;   /* #172033 Elevated */
+
+    /* Borders */
+    --ds-border-default:    220 20% 17%;   /* #1F2937 */
+    --ds-border-subtle:     218 22% 21%;   /* #273244 */
+    --ds-border-active:     189 94% 55%;   /* #22D3EE Cyan */
+
+    /* Text */
+    --ds-text-primary:      220 14% 90%;   /* #E5E7EB */
+    --ds-text-secondary:    220 9%  64%;   /* #9CA3AF */
+    --ds-text-muted:        220 9%  46%;   /* #6B7280 */
+    --ds-text-disabled:     220 9%  34%;   /* #4B5563 */
+
+    /* Segment colors (PYRO/SFX/DRONES/LIGHT/DMX) */
+    --segment-pyro:    0   84% 60%;        /* #EF4444 */
+    --segment-sfx:     38  92% 50%;        /* #F59E0B */
+    --segment-drones:  189 94% 55%;        /* #22D3EE */
+    --segment-light:   48  96% 55%;        /* #FACC15 */
+    --segment-dmx:     258 90% 66%;        /* #8B5CF6 */
+
+    /* Status (functional) */
+    --status-ok:       142 71% 45%;        /* #22C55E */
+    --status-sync:     189 94% 55%;        /* #22D3EE */
+    --status-warn:     38  92% 50%;        /* #F59E0B */
+    --status-fail:     0   84% 60%;        /* #EF4444 */
+    --status-disabled: 220 9%  46%;        /* #6B7280 */
   }
 }
 
