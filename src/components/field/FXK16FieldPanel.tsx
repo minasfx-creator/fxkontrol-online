@@ -12,6 +12,7 @@ import { Cable, ShieldCheck, Wand2, Activity } from 'lucide-react';
 import { FXK16ConnectionPanel } from '@/components/editor/live-firing/FXK16ConnectionPanel';
 import FXK16FieldSettingsPanel from '@/components/field/FXK16FieldSettingsPanel';
 import FXK16ActivityFeed from '@/components/field/FXK16ActivityFeed';
+import FXK16StatusBar from '@/components/field/FXK16StatusBar';
 
 export default function FXK16FieldPanel() {
   return (
@@ -30,6 +31,9 @@ export default function FXK16FieldPanel() {
             BLE. Handshake VERSION + STATUS validates link before any ARM/FIRE.
           </p>
         </div>
+
+        {/* Always-visible status strip — same source as FieldTest + Live Firing. */}
+        <FXK16StatusBar />
 
         {/* The actual connection card (singleton bridge). */}
         <FXK16ConnectionPanel compact={false} />

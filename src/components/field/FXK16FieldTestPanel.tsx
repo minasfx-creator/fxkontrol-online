@@ -33,6 +33,8 @@ import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useFxk16FieldConfig } from '@/hooks/useFxk16FieldConfig';
+import FXK16StatusBar from '@/components/field/FXK16StatusBar';
+import FXK16ActivityFeed from '@/components/field/FXK16ActivityFeed';
 
 interface E2eStep {
   id: string;
@@ -259,8 +261,13 @@ export default function FXK16FieldTestPanel() {
         </span>
       </button>
 
+      {/* Always-visible status strip — visible even when collapsed. */}
+      <div className="px-3 pt-2">
+        <FXK16StatusBar compact />
+      </div>
+
       {open && (
-        <div className="border-t border-border/30 p-3 space-y-3">
+        <div className="border-t border-border/30 p-3 space-y-3 mt-2">
           {/* Connect row */}
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={connectUSB} disabled={bridge.isConnected} className="h-7 text-[10px] gap-1.5">
@@ -415,6 +422,9 @@ export default function FXK16FieldTestPanel() {
               </ul>
             )}
           </div>
+
+          {/* Cross-surface activity feed — mirrors FieldOps + Live Firing. */}
+          <FXK16ActivityFeed title="Shared Activity" limit={16} />
         </div>
       )}
 
