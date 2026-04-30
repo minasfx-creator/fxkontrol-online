@@ -10,13 +10,14 @@ import {
   Save, ShieldCheck, Upload, User2,
   Flame, Sparkles, Send, Lightbulb, Sliders,
   MousePointer2, Pencil, Wrench, AlertTriangle,
-  Move3d, RotateCcw, Clock, Cable,
+  Move3d, RotateCcw, Clock, Cable, HelpCircle,
 } from 'lucide-react';
 import {
   EditorShell, DsButton, DsPanel, DsPanelTitle,
   DsSegmentTabs, DsToolItem, type SegmentItem,
   DsSkeleton, DsPanelSkeleton, DsViewportSkeleton,
 } from '@/components/ds';
+import EditorShellOnboardingDialog, { ONBOARDING_KEY } from './EditorShellOnboardingDialog';
 
 const SEGMENTS: SegmentItem[] = [
   { id: 'pyro',   label: 'PYRO',   icon: Flame,
@@ -52,6 +53,36 @@ export default function EditorShellPreview() {
   const chromeReady = stage >= 1;
   const viewportReady = stage >= 2;
 
+  /**
+   * Onboarding modal — first visit only (persisted in localStorage).
+   * Reopen via Help button (?) in topbar or "?" key.
+   */
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(ONBOARDING_KEY)) setOnboardingOpen(true);
+    } catch {
+      // localStorage may be blocked (private mode) — fail open: show once per session.
+      setOnboardingOpen(true);
+    }
+  }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Avoid stealing "?" from inputs/textareas.
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      if (e.key === '?') {
+        e.preventDefault();
+        setOnboardingOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  const markOnboarded = () => {
+    try { localStorage.setItem(ONBOARDING_KEY, '1'); } catch { /* ignore */ }
+  };
+
   return (
     <div className="h-[100dvh] w-full bg-ds-background text-ds-text-primary"
          style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
@@ -73,7 +104,16 @@ export default function EditorShellPreview() {
               <DsButton variant="ghost" size="sm"><Save className="size-4" />Save</DsButton>
               <DsButton variant="secondary" size="sm"><ShieldCheck className="size-4" />Validate</DsButton>
               <DsButton variant="primary" size="sm"><Upload className="size-4" />Export</DsButton>
-              <button className="ml-ds-2 flex size-8 items-center justify-center rounded-full border border-ds-border-default bg-ds-surface-elevated text-ds-text-secondary hover:text-ds-text-primary">
+              <button
+                type="button"
+                onClick={() => setOnboardingOpen(true)}
+                title="Tour & atalhos (?)"
+                aria-label="Abrir tour e atalhos"
+                className="ml-ds-2 flex size-8 items-center justify-center rounded-full border border-ds-border-default bg-ds-surface-elevated text-ds-text-secondary hover:text-status-sync hover:border-status-sync/40 transition-colors"
+              >
+                <HelpCircle className="size-4" />
+              </button>
+              <button className="flex size-8 items-center justify-center rounded-full border border-ds-border-default bg-ds-surface-elevated text-ds-text-secondary hover:text-ds-text-primary">
                 <User2 className="size-4" />
               </button>
             </div>
@@ -258,6 +298,12 @@ export default function EditorShellPreview() {
         </div>
         )}
       </EditorShell>
+
+      <EditorShellOnboardingDialog
+        open={onboardingOpen}
+        onOpenChange={setOnboardingOpen}
+        onDontShowAgain={markOnboarded}
+      />
     </div>
   );
 }
