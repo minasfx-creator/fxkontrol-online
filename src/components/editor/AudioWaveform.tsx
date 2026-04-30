@@ -85,6 +85,7 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   const duration = useProjectStore(s => s.duration);
   const audioUrl = useProjectStore(s => s.audioUrl);
   const audioInPoint = useProjectStore(s => s.audioInPoint);
+  const audioStartOffset = useProjectStore(s => s.audioStartOffset);
   const audioOutPoint = useProjectStore(s => s.audioOutPoint);
   const audioOriginalDuration = useProjectStore(s => s.audioOriginalDuration);
   const setAudioOriginalDuration = useProjectStore(s => s.setAudioOriginalDuration);
@@ -333,8 +334,11 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
     if (isPlaying) {
       // Show-time → file-time conversion: the store's `currentTime` runs
       // 0..duration relative to `audioInPoint`; the audio element runs in
-      // the original file's coordinate system.
-      const targetFileTime = currentTime + audioInPoint;
+      // the original file's coordinate system. `audioStartOffset` shifts
+      // when the file enters the show — clamp to 0 so we never seek before
+      // the in-point when the playhead is in the silent prelude.
+      const audioInputTime = Math.max(0, currentTime - audioStartOffset);
+      const targetFileTime = audioInputTime + audioInPoint;
       if (Math.abs(audio.currentTime - targetFileTime) > 0.15) {
         audio.currentTime = targetFileTime;
       }
@@ -392,11 +396,12 @@ export default function AudioWaveform({ pixelsPerSecond }: { pixelsPerSecond: nu
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const targetFileTime = currentTime + audioInPoint;
+    const audioInputTime = Math.max(0, currentTime - audioStartOffset);
+    const targetFileTime = audioInputTime + audioInPoint;
     if (Math.abs(audio.currentTime - targetFileTime) > 0.15) {
       audio.currentTime = targetFileTime;
     }
-  }, [currentTime, audioInPoint]);
+  }, [currentTime, audioInPoint, audioStartOffset]);
 
   // Build the visible waveform from a decoded AudioBuffer, restricted to
   // the active trim window `[in..out]`. Extracted so re-trim only re-runs
