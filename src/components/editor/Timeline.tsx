@@ -730,6 +730,7 @@ function TimelineTrackRow({
       </div>
       <div
         ref={trackAreaRef}
+        data-timeline-track={trackIndex}
         className={cn("flex-1 relative h-8 transition-colors", isDragOver && "ring-1 ring-primary/30 bg-primary/[0.03]")}
         style={{ background: 'hsl(var(--background) / 0.4)' }}
         onDragOver={handleDragOver} onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDrop={handleDrop}
