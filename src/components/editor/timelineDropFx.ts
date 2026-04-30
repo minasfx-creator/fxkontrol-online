@@ -21,6 +21,42 @@ import {
 
 export type SnapReason = 'free' | 'beat' | 'edge' | 'playhead' | 'frame' | 'force' | 'forced-free';
 
+/**
+ * Single source of truth for the effect-type × track-index validation.
+ * Used by:
+ *   - library → timeline drop (TimelineTrackRow.handleDrop)
+ *   - existing item move between tracks (TimelineTrackRow.handleItemDragStart)
+ *   - context-menu "move to track" actions
+ *
+ * Track layout (current):
+ *   0 = Pyro/SFX (firework, sfx, laser-cue)
+ *   1 = Drone (drone)
+ *   2 = Light  (light, laser-cue)
+ *   3 = Drone FX (drone-fx — handled by dedicated DroneFXTrackRow)
+ *   4 = Laser  (laser — handled by dedicated LaserTrackRow)
+ */
+export type EffectType = 'firework' | 'sfx' | 'drone' | 'light' | 'laser' | 'drone-fx';
+
+export function isEffectAllowedOnTrack(effectType: string | undefined, trackIndex: number): boolean {
+  if (!effectType) return false;
+  switch (effectType) {
+    case 'firework':
+    case 'sfx':
+      return trackIndex === 0;
+    case 'drone':
+      return trackIndex === 1;
+    case 'light':
+      return trackIndex === 2;
+    case 'laser':
+      // laser cues can live on the pyro row (0), the light row (2) or the dedicated laser row (4)
+      return trackIndex === 0 || trackIndex === 2 || trackIndex === 4;
+    case 'drone-fx':
+      return trackIndex === 3;
+    default:
+      return false;
+  }
+}
+
 export interface ResolvedDropTime {
   time: number;
   snap: SnapReason;
