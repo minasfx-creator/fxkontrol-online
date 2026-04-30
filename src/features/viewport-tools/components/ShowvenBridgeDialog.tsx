@@ -28,6 +28,8 @@ import {
   Zap,
   Search,
   BatteryMedium,
+  Sliders,
+  RotateCcw,
 } from 'lucide-react';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { useProjectStore } from '@/store/useProjectStore';
@@ -36,6 +38,11 @@ import {
   type ShowvenRunEvent,
   type ShowvenRunStatus,
 } from '../hardware/showvenCueRunner';
+import {
+  useShowvenBridgeStore,
+  SHOWVEN_BRIDGE_DEFAULTS,
+  SHOWVEN_BRIDGE_LIMITS,
+} from '../hardware/showvenBridgeSettings';
 import { useHoldToConfirm } from '@/hooks/useHoldToConfirm';
 
 interface Props {
@@ -46,7 +53,21 @@ interface Props {
 export default function ShowvenBridgeDialog({ open, onClose }: Props) {
   const pbus = usePBusHardware();
   const items = useProjectStore((s) => s.timelineItems);
+  const projectId = useProjectStore((s) => s.projectId);
   const runner = getShowvenCueRunner();
+
+  // Per-project bridge profile (coalesce window + cue duration).
+  const profileKey = projectId || '__global__';
+  const profile =
+    useShowvenBridgeStore((s) => s.profiles[profileKey]) ?? SHOWVEN_BRIDGE_DEFAULTS;
+  const setProfile = useShowvenBridgeStore((s) => s.setProfile);
+  const resetProfile = useShowvenBridgeStore((s) => s.reset);
+
+  // Mirror profile into runner whenever it changes (and runner is idle-ish).
+  useEffect(() => {
+    if (runner.getStatus() === 'running') return;
+    try { runner.setOptions(profile); } catch { /* mid-run guard */ }
+  }, [runner, profile.coalesceWindowMs, profile.defaultDurationMs]);
 
   const [status, setStatus] = useState<ShowvenRunStatus>(runner.getStatus());
   const [progress, setProgress] = useState(runner.getProgress());
@@ -236,6 +257,54 @@ export default function ShowvenBridgeDialog({ open, onClose }: Props) {
           )}
         </div>
 
+        {/* Dispatch profile (per-project, persisted) */}
+        <div className="rounded-lg border border-cyan-500/15 bg-cyan-500/5 p-2 space-y-2">
+          <div className="flex items-center gap-2 text-xs text-cyan-200 font-semibold">
+            <Sliders className="h-3.5 w-3.5" />
+            Dispatch Profile
+            <span className="text-[10px] font-normal text-muted-foreground/70 normal-case">
+              · saved to {projectId ? `project ${projectId.slice(0, 8)}…` : 'global default'}
+            </span>
+            <button
+              type="button"
+              onClick={() => resetProfile(profileKey)}
+              disabled={status === 'running'}
+              className="ml-auto inline-flex items-center gap-1 text-[10px] text-cyan-300/70 hover:text-cyan-200 disabled:opacity-30"
+            >
+              <RotateCcw className="h-3 w-3" /> reset
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <ProfileNumberField
+              label="Default cue duration"
+              unit="ms"
+              value={profile.defaultDurationMs}
+              min={SHOWVEN_BRIDGE_LIMITS.defaultDurationMs.min}
+              max={SHOWVEN_BRIDGE_LIMITS.defaultDurationMs.max}
+              step={10}
+              disabled={status === 'running'}
+              onChange={(v) => setProfile(profileKey, { defaultDurationMs: v })}
+              hint={`pulse width per cue · ${SHOWVEN_BRIDGE_LIMITS.defaultDurationMs.min}–${SHOWVEN_BRIDGE_LIMITS.defaultDurationMs.max}`}
+            />
+            <ProfileNumberField
+              label="Coalesce window"
+              unit="ms"
+              value={profile.coalesceWindowMs}
+              min={SHOWVEN_BRIDGE_LIMITS.coalesceWindowMs.min}
+              max={SHOWVEN_BRIDGE_LIMITS.coalesceWindowMs.max}
+              step={1}
+              disabled={status === 'running'}
+              onChange={(v) => setProfile(profileKey, { coalesceWindowMs: v })}
+              hint={`same-device salvo into FIRE_SEQ · 0=off · max ${SHOWVEN_BRIDGE_LIMITS.coalesceWindowMs.max}`}
+            />
+          </div>
+          {status === 'running' && (
+            <div className="text-[10px] text-amber-300/80">
+              ⚠ Profile changes are locked while RUN is active.
+            </div>
+          )}
+        </div>
+
         {/* Cue load summary */}
         <div className="rounded-lg border border-cyan-500/15 bg-cyan-500/5 p-2 flex items-center gap-3 flex-wrap">
           <div className="text-xs text-cyan-200">
@@ -352,5 +421,61 @@ export default function ShowvenBridgeDialog({ open, onClose }: Props) {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface ProfileNumberFieldProps {
+  label: string;
+  unit: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  disabled?: boolean;
+  hint?: string;
+  onChange: (v: number) => void;
+}
+
+function ProfileNumberField({
+  label, unit, value, min, max, step, disabled, hint, onChange,
+}: ProfileNumberFieldProps) {
+  return (
+    <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+      <span className="flex items-center justify-between text-cyan-200/90">
+        <span>{label}</span>
+        <span className="font-mono text-cyan-300">
+          {value}
+          <span className="text-muted-foreground/60 ml-0.5">{unit}</span>
+        </span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-cyan-400 disabled:opacity-40"
+      />
+      <div className="flex items-center gap-1.5">
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          disabled={disabled}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            if (Number.isFinite(n)) onChange(n);
+          }}
+          className="h-6 w-20 rounded border border-cyan-500/30 bg-[#020407] px-1.5 text-[11px] text-cyan-200 font-mono focus:outline-none focus:border-cyan-400 disabled:opacity-40"
+        />
+        {hint && (
+          <span className="text-[10px] text-muted-foreground/60 truncate">{hint}</span>
+        )}
+      </div>
+    </label>
   );
 }
