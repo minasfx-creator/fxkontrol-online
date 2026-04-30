@@ -21,3 +21,5 @@ export { DsToolItem } from './DsToolItem';
 export type { DsToolItemProps } from './DsToolItem';
 
 export { DsSkeleton, DsSkeletonText, DsPanelSkeleton, DsViewportSkeleton } from './DsSkeleton';
+
+export { default as EditorLayoutResizers } from './EditorLayoutResizers';

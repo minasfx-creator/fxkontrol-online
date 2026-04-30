@@ -11,13 +11,17 @@ import {
   Flame, Sparkles, Send, Lightbulb, Sliders,
   MousePointer2, Pencil, Wrench, AlertTriangle,
   Move3d, RotateCcw, Clock, Cable, HelpCircle,
+  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
+  PanelBottomClose, PanelBottomOpen, RotateCw,
 } from 'lucide-react';
 import {
   EditorShell, DsButton, DsPanel, DsPanelTitle,
   DsSegmentTabs, DsToolItem, type SegmentItem,
   DsSkeleton, DsPanelSkeleton, DsViewportSkeleton,
+  EditorLayoutResizers,
 } from '@/components/ds';
 import EditorShellOnboardingDialog, { ONBOARDING_KEY } from './EditorShellOnboardingDialog';
+import { useEditorLayout } from '@/hooks/editor/useEditorLayout';
 
 const SEGMENTS: SegmentItem[] = [
   { id: 'pyro',   label: 'PYRO',   icon: Flame,
@@ -33,6 +37,9 @@ const SEGMENTS: SegmentItem[] = [
 
 export default function EditorShellPreview() {
   const [active, setActive] = useState('pyro');
+
+  // Persistent shell layout (per-project; demo shell uses 'editor-ds-demo').
+  const layout = useEditorLayout('editor-ds-demo');
 
   /**
    * Staged boot for honest perceived performance:
@@ -129,11 +136,16 @@ export default function EditorShellPreview() {
   };
 
   return (
-    <div className="h-[100dvh] w-full bg-ds-background text-ds-text-primary"
+    <div className="relative h-[100dvh] w-full bg-ds-background text-ds-text-primary"
          style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Semantic H1 for SEO — visually hidden, narrated by screen readers. */}
       <h1 className="sr-only">Editor DS — Shell Preview · FX KONTROL</h1>
       <EditorShell
+        layout={{
+          leftWidth: layout.effective.leftWidth,
+          rightWidth: layout.effective.rightWidth,
+          timelineHeight: layout.effective.timelineHeight,
+        }}
         topbar={
           <div className="flex h-full items-center justify-between px-ds-4">
             <div className="flex items-center gap-ds-3">
@@ -148,6 +160,39 @@ export default function EditorShellPreview() {
               </span>
             </div>
             <div className="flex items-center gap-ds-2">
+              {/* Layout controls — collapse rails / timeline + reset (persisted). */}
+              <div className="hidden sm:flex items-center gap-1 rounded-ds-md border border-ds-border-default bg-ds-surface-elevated/60 p-0.5">
+                <LayoutIconButton
+                  ariaLabel={layout.leftCollapsed ? 'Expandir painel esquerdo' : 'Recolher painel esquerdo'}
+                  onClick={layout.toggleLeft}
+                  active={!layout.leftCollapsed}
+                >
+                  {layout.leftCollapsed ? <PanelLeftOpen className="size-3.5" /> : <PanelLeftClose className="size-3.5" />}
+                </LayoutIconButton>
+                <LayoutIconButton
+                  ariaLabel={layout.timelineCollapsed ? 'Expandir timeline' : 'Recolher timeline'}
+                  onClick={layout.toggleTimeline}
+                  active={!layout.timelineCollapsed}
+                >
+                  {layout.timelineCollapsed ? <PanelBottomOpen className="size-3.5" /> : <PanelBottomClose className="size-3.5" />}
+                </LayoutIconButton>
+                <LayoutIconButton
+                  ariaLabel={layout.rightCollapsed ? 'Expandir painel direito' : 'Recolher painel direito'}
+                  onClick={layout.toggleRight}
+                  active={!layout.rightCollapsed}
+                >
+                  {layout.rightCollapsed ? <PanelRightOpen className="size-3.5" /> : <PanelRightClose className="size-3.5" />}
+                </LayoutIconButton>
+                <button
+                  type="button"
+                  onClick={layout.reset}
+                  title="Resetar layout"
+                  aria-label="Resetar layout"
+                  className="flex size-7 items-center justify-center rounded-ds-sm text-ds-text-muted hover:text-status-sync hover:bg-ds-surface-deep transition-colors"
+                >
+                  <RotateCw className="size-3.5" />
+                </button>
+              </div>
               <DsButton variant="ghost" size="sm"><Save className="size-4" />Save</DsButton>
               <DsButton variant="secondary" size="sm"><ShieldCheck className="size-4" />Validate</DsButton>
               <DsButton variant="primary" size="sm"><Upload className="size-4" />Export</DsButton>
@@ -346,6 +391,16 @@ export default function EditorShellPreview() {
         )}
       </EditorShell>
 
+      {/* Drag gutters between rails / above timeline (overlay). */}
+      <EditorLayoutResizers
+        leftWidth={layout.effective.leftWidth}
+        rightWidth={layout.effective.rightWidth}
+        timelineHeight={layout.effective.timelineHeight}
+        onLeftChange={layout.setLeftWidth}
+        onRightChange={layout.setRightWidth}
+        onTimelineChange={layout.setTimelineHeight}
+      />
+
       <EditorShellOnboardingDialog
         open={onboardingOpen}
         onOpenChange={setOnboardingOpen}
@@ -404,5 +459,35 @@ function Track({ label, colorVar, active, offset }: { label: string; colorVar: s
         ))}
       </div>
     </div>
+  );
+}
+
+function LayoutIconButton({
+  ariaLabel,
+  onClick,
+  active,
+  children,
+}: {
+  ariaLabel: string;
+  onClick: () => void;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={ariaLabel}
+      aria-label={ariaLabel}
+      aria-pressed={active}
+      className={
+        'flex size-7 items-center justify-center rounded-ds-sm transition-colors ' +
+        (active
+          ? 'bg-status-sync/15 text-status-sync'
+          : 'text-ds-text-muted hover:text-ds-text-primary hover:bg-ds-surface-deep')
+      }
+    >
+      {children}
+    </button>
   );
 }

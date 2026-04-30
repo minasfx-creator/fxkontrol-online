@@ -6,19 +6,22 @@
  *
  * Pure presentation — slots only. No store, no business logic.
  *
- * Usage:
- *   <EditorShell
- *     topbar={<MyTopbar/>}
- *     tabs={<SegmentTabs ...>}
- *     left={<ToolPanel/>}
- *     right={<Inspector/>}
- *     timeline={<Timeline/>}
- *   >
- *     <Viewport/>
- *   </EditorShell>
+ * Optional `layout` prop overrides the default DS layout CSS variables
+ * (--ds-layout-left/right/timeline) per-instance, enabling persistent
+ * resize/collapse driven by useEditorLayout(). When a value is 0 the
+ * corresponding slot is not rendered (true collapse, removes border too).
  */
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+
+export interface EditorShellLayout {
+  /** Left rail width in px. 0 ⇒ slot hidden. */
+  leftWidth?: number;
+  /** Right rail width in px. 0 ⇒ slot hidden. */
+  rightWidth?: number;
+  /** Timeline strip height in px. 0 ⇒ slot hidden. */
+  timelineHeight?: number;
+}
 
 export interface EditorShellProps {
   topbar?: React.ReactNode;
@@ -29,6 +32,8 @@ export interface EditorShellProps {
   /** Viewport content (fills remaining space) */
   children?: React.ReactNode;
   className?: string;
+  /** Optional per-instance layout overrides (persisted by useEditorLayout). */
+  layout?: EditorShellLayout;
 }
 
 export function EditorShell({
@@ -39,15 +44,36 @@ export function EditorShell({
   timeline,
   children,
   className,
+  layout,
 }: EditorShellProps) {
+  const showLeft = left != null && (layout?.leftWidth ?? 1) > 0;
+  const showRight = right != null && (layout?.rightWidth ?? 1) > 0;
+  const showTimeline = timeline != null && (layout?.timelineHeight ?? 1) > 0;
+
+  // Inline CSS variables override the defaults from index.css. When a slot
+  // is collapsed we set its track to 0 so the grid recovers the space.
+  const style: React.CSSProperties = {};
+  if (layout?.leftWidth != null) {
+    (style as Record<string, string>)['--ds-layout-left'] =
+      showLeft ? `${layout.leftWidth}px` : '0px';
+  }
+  if (layout?.rightWidth != null) {
+    (style as Record<string, string>)['--ds-layout-right'] =
+      showRight ? `${layout.rightWidth}px` : '0px';
+  }
+  if (layout?.timelineHeight != null) {
+    (style as Record<string, string>)['--ds-layout-timeline'] =
+      showTimeline ? `${layout.timelineHeight}px` : '0px';
+  }
+
   return (
-    <div className={cn('ds-editor-grid', className)}>
+    <div className={cn('ds-editor-grid', className)} style={style}>
       {topbar && <div className="ds-area-topbar bg-ds-surface-deep">{topbar}</div>}
       {tabs && <div className="ds-area-tabs bg-ds-surface-panel">{tabs}</div>}
-      {left && <aside className="ds-area-left bg-ds-surface-deep">{left}</aside>}
+      {showLeft && <aside className="ds-area-left bg-ds-surface-deep">{left}</aside>}
       <main className="ds-area-viewport bg-ds-background">{children}</main>
-      {right && <aside className="ds-area-right bg-ds-surface-deep">{right}</aside>}
-      {timeline && <div className="ds-area-timeline bg-ds-surface-panel">{timeline}</div>}
+      {showRight && <aside className="ds-area-right bg-ds-surface-deep">{right}</aside>}
+      {showTimeline && <div className="ds-area-timeline bg-ds-surface-panel">{timeline}</div>}
     </div>
   );
 }
