@@ -198,7 +198,10 @@ export default function EditorShellPreview() {
         }
       >
         {/* Viewport — placeholder com grade técnica */}
-        <div className="relative h-full w-full overflow-hidden">
+        {!viewportReady ? (
+          <DsViewportSkeleton label="Booting viewport · DS" />
+        ) : (
+        <div className="relative h-full w-full overflow-hidden animate-in fade-in duration-500">
           <div className="absolute inset-0 opacity-[0.18]"
                style={{
                  backgroundImage:
