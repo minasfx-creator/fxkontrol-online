@@ -391,6 +391,16 @@ export default function EditorShellPreview() {
         )}
       </EditorShell>
 
+      {/* Drag gutters between rails / above timeline (overlay). */}
+      <EditorLayoutResizers
+        leftWidth={layout.effective.leftWidth}
+        rightWidth={layout.effective.rightWidth}
+        timelineHeight={layout.effective.timelineHeight}
+        onLeftChange={layout.setLeftWidth}
+        onRightChange={layout.setRightWidth}
+        onTimelineChange={layout.setTimelineHeight}
+      />
+
       <EditorShellOnboardingDialog
         open={onboardingOpen}
         onOpenChange={setOnboardingOpen}
