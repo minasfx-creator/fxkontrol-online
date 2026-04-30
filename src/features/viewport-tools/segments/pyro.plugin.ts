@@ -17,6 +17,7 @@ import type { ViewportSegmentPlugin, ViewportOperation } from '../types';
 import { selectAllBySegment } from '../selection-engine';
 import { pyroValidators } from '../validators/pyro.validator';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useSafetyOverlayStore } from '../safetyOverlayStore';
 import type { TimelineItem } from '@/types/projectTypes';
 
 function uid(prefix: string): string {
@@ -75,6 +76,24 @@ const plugin: ViewportSegmentPlugin = {
       command: 'PYRO_CONFIGURE_EFFECT',
       icon: 'SlidersHorizontal',
       hint: 'Open the parameter editor for the selected cue / effect.',
+    },
+    {
+      id: 'pyro.pick-vdl',
+      label: 'VDL Color Picker',
+      segment: 'PYRO',
+      scope: 'edit',
+      command: 'PYRO_PICK_VDL',
+      icon: 'Palette',
+      hint: 'Pick a canonical Finale 3D VDL color for the selected cue.',
+    },
+    {
+      id: 'pyro.toggle-safety-overlay',
+      label: 'Toggle Safety Overlay',
+      segment: 'PYRO',
+      scope: 'safety',
+      command: 'PYRO_TOGGLE_SAFETY_OVERLAY',
+      icon: 'ShieldAlert',
+      hint: 'Show / hide the geofence + ballistic preview overlays.',
     },
   ],
   commandHandlers: {
