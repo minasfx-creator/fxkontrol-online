@@ -33,6 +33,9 @@ export default function FXK16FieldPanel() {
         {/* The actual connection card (singleton bridge). */}
         <FXK16ConnectionPanel compact={false} />
 
+        {/* Operator config — shared with FieldTest via fxk16FieldConfigStore. */}
+        <FXK16FieldSettingsPanel />
+
         {/* Help / context */}
         <div className="rounded-lg border border-border/40 bg-card/30 p-3 space-y-2">
           <div className="flex items-center gap-2">
