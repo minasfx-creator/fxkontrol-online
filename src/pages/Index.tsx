@@ -285,6 +285,62 @@ function CanvasLoader() {
 
 /* ── Nav Controls extracted to src/components/editor/ViewportNavControls.tsx ── */
 
+/**
+ * DraggableFloatingPanel — wraps the right-side floating panel in a
+ * draggable glass shell. Position is per-panel (so each panel remembers
+ * where the operator parked it). Drag the header to move; double-click
+ * to reset.
+ */
+function DraggableFloatingPanel({
+  panelId,
+  onClose,
+  children,
+}: {
+  panelId: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const drag = useDraggableFloat({
+    id: `panel-${panelId}`,
+    defaultPos: { anchor: 'tr', x: 12, y: 64 },
+    snapPx: 16,
+  });
+  return (
+    <div
+      ref={drag.ref}
+      style={{
+        ...drag.style,
+        zIndex: 40,
+        width: 420,
+        maxWidth: '40vw',
+        maxHeight: 'calc(100vh - 96px)',
+        background:
+          'linear-gradient(to right, hsl(var(--background) / 0.96) 0%, hsl(var(--background) / 0.88) 100%)',
+        backdropFilter: 'blur(18px) saturate(1.4)',
+        WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
+        border: '1px solid hsl(var(--border) / 0.35)',
+        borderRadius: 12,
+        boxShadow:
+          '0 20px 60px -20px hsl(var(--background) / 0.9), inset 0 1px 0 hsl(var(--primary) / 0.18)',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <FloatHandle
+        title={panelId}
+        onClose={onClose}
+        onResetPosition={drag.resetPosition}
+        {...drag.dragHandleProps}
+      />
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+
 /* ══════════════════════════════════════════════════════════════════
    INDEX — Immersive Full-Viewport Layout
    ══════════════════════════════════════════════════════════════════ */
