@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useCallback, useEffect, useRef, Component, type ReactNode, type ErrorInfo } from 'react';
+import React, { lazy, Suspense, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { lazyRetry } from '@/lib/lazyRetry';
 import { isEnabled } from '@/lib/featureFlags';
 import { commandBus } from '@/core/command/CommandBus';
@@ -153,118 +153,12 @@ const SACNMonitorPanel = lz(() => import('@/components/editor/SACNMonitorPanel')
 const VenueQuickSelector = lz(() => import('@/components/editor/VenueQuickSelector'));
 const VenueShowOverlay = lz(() => import('@/components/editor/VenueShowOverlay'));
 
-// SkyCanvas: wrapped with lazyRetry so stale-chunk errors after deploy/HMR
-// trigger a single auto-reload (handled by LazyChunkBoundary in App.tsx).
-// Do NOT add a .catch() here — it would swallow the error and prevent retry.
-const SkyCanvas = lazy(lazyRetry(() => import('@/components/editor/SkyCanvas')));
-
-interface CanvasErrorState {
-  hasError: boolean;
-  error?: Error;
-  componentStack?: string;
-  extras: string[]; // captured window errors / unhandled rejections
-}
-
-class CanvasErrorBoundary extends Component<{ children: ReactNode }, CanvasErrorState> {
-  state: CanvasErrorState = { hasError: false, extras: [] };
-  private onWindowError = (e: ErrorEvent) => {
-    const line = `[window.error] ${e.message} @ ${e.filename}:${e.lineno}:${e.colno}${e.error?.stack ? '\n' + e.error.stack : ''}`;
-    this.setState((s) => ({ ...s, extras: [...s.extras, line].slice(-20) }));
-  };
-  private onRejection = (e: PromiseRejectionEvent) => {
-    const reason = e.reason;
-    const text = reason instanceof Error ? `${reason.message}\n${reason.stack ?? ''}` : String(reason);
-    this.setState((s) => ({ ...s, extras: [...s.extras, `[unhandledrejection] ${text}`].slice(-20) }));
-  };
-  componentDidMount() {
-    window.addEventListener('error', this.onWindowError);
-    window.addEventListener('unhandledrejection', this.onRejection);
-  }
-  componentWillUnmount() {
-    window.removeEventListener('error', this.onWindowError);
-    window.removeEventListener('unhandledrejection', this.onRejection);
-  }
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[FXK] Canvas failed to load:', error, info.componentStack);
-    this.setState({ componentStack: info.componentStack ?? undefined });
-  }
-  private copyReport = async () => {
-    const { error, componentStack, extras } = this.state;
-    const report = [
-      `FX Kontrol — SkyCanvas Error Report`,
-      `When: ${new Date().toISOString()}`,
-      `UA: ${navigator.userAgent}`,
-      ``,
-      `== Error ==`,
-      error?.message ?? '(no message)',
-      ``,
-      `== Stack ==`,
-      error?.stack ?? '(no stack)',
-      ``,
-      `== Component Stack ==`,
-      componentStack ?? '(none)',
-      ``,
-      `== Window Events ==`,
-      extras.length ? extras.join('\n\n') : '(none)',
-    ].join('\n');
-    try { await navigator.clipboard.writeText(report); } catch { /* ignore */ }
-  };
-  render() {
-    if (this.state.hasError) {
-      const { error, componentStack, extras } = this.state;
-      return (
-        <div className="w-full h-full flex flex-col bg-background text-foreground overflow-auto p-4 gap-3 font-mono text-[11px]">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-destructive">SkyCanvas crashed</p>
-              <p className="text-[10px] text-muted-foreground">React/Three.js error captured below — share with support.</p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                className="px-2 py-1 rounded border border-border bg-card hover:bg-accent text-[10px]"
-                onClick={this.copyReport}
-              >Copy report</button>
-              <button
-                className="px-2 py-1 rounded border border-border bg-card hover:bg-accent text-[10px]"
-                onClick={() => this.setState({ hasError: false, error: undefined, componentStack: undefined })}
-              >Retry</button>
-              <button
-                className="px-2 py-1 rounded border border-border bg-card hover:bg-accent text-[10px]"
-                onClick={() => window.location.reload()}
-              >Reload</button>
-            </div>
-          </div>
-
-          <section className="border border-border rounded p-2 bg-card/40">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Error</p>
-            <p className="text-destructive whitespace-pre-wrap break-words">{error?.message ?? '(no message)'}</p>
-          </section>
-
-          <section className="border border-border rounded p-2 bg-card/40">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Stack trace</p>
-            <pre className="whitespace-pre-wrap break-words text-muted-foreground">{error?.stack ?? '(no stack available)'}</pre>
-          </section>
-
-          <section className="border border-border rounded p-2 bg-card/40">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">React component stack</p>
-            <pre className="whitespace-pre-wrap break-words text-muted-foreground">{componentStack ?? '(none — error thrown outside React tree)'}</pre>
-          </section>
-
-          {extras.length > 0 && (
-            <section className="border border-border rounded p-2 bg-card/40">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Window errors / promise rejections ({extras.length})</p>
-              <pre className="whitespace-pre-wrap break-words text-muted-foreground">{extras.join('\n\n')}</pre>
-            </section>
-          )}
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+// SkyCanvasMount: unified mount adopted from /dev/skycanvas-smoke pattern.
+// Encapsulates StudioErrorBoundary + WebGLErrorBoundary + Suspense + CanvasLoaderWithTimeout(8s).
+// Removed legacy in-file CanvasErrorBoundary + CanvasLoader + direct SkyCanvas lazy ref —
+// all three editor mount points (mobile-live, mobile-design, desktop) now route through
+// SkyCanvasMount, matching the proven /dev/skycanvas-smoke pattern.
+import SkyCanvasMount from '@/components/editor/SkyCanvasMount';
 
 function PanelLoader() {
   return (
@@ -272,14 +166,6 @@ function PanelLoader() {
       <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
     </div>
   );
-}
-
-// CanvasLoader: spinner with an 8s safety timeout that surfaces a "Reload Studio"
-// button if a dynamic import for SkyCanvas (or any deep chunk) silently stalls.
-// Prevents the infinite-spinner trap when Vite/HMR drops a module after restart.
-import CanvasLoaderWithTimeout from '@/components/editor/CanvasLoaderWithTimeout';
-function CanvasLoader() {
-  return <CanvasLoaderWithTimeout timeoutMs={8000} label="Loading 3D Engine..." />;
 }
 
 // Drop extensions and logic moved to useViewportDrop hook
@@ -710,7 +596,7 @@ function Index() {
     return (
        <div className="absolute inset-0 w-full h-full overflow-hidden bg-background">
         <div className="absolute inset-0 w-full h-full br2049-atmosphere">
-          <StudioErrorBoundary area="3D viewport"><CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas /></Suspense></CanvasErrorBoundary></StudioErrorBoundary>
+          <SkyCanvasMount instanceKey="mobile-live" />
         </div>
         <LiveModeOverlay />
       </div>
@@ -719,7 +605,7 @@ function Index() {
     return (
     <div className="absolute inset-0 w-full h-full overflow-hidden bg-background">
         <div className="absolute inset-0 w-full h-full">
-          <StudioErrorBoundary area="3D viewport"><CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas key="mobile-skycanvas" /></Suspense></CanvasErrorBoundary></StudioErrorBoundary>
+          <SkyCanvasMount instanceKey="mobile-skycanvas" />
           <BoxSelectOverlay />
         </div>
 
@@ -830,13 +716,7 @@ function Index() {
             </div>
           </div>
           <div className="absolute inset-0 top-9">
-            <StudioErrorBoundary area="3D viewport">
-              <CanvasErrorBoundary>
-                <Suspense fallback={<CanvasLoader />}>
-                  <SkyCanvas />
-                </Suspense>
-              </CanvasErrorBoundary>
-            </StudioErrorBoundary>
+            <SkyCanvasMount instanceKey="desktop" />
             <BoxSelectOverlay />
             <SelectionModeBar />
             {isDragOver && (
