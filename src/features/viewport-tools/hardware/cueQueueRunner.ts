@@ -104,12 +104,46 @@ export class CueQueueRunner {
   private statusListeners = new Set<(s: CueRunStatus) => void>();
   private opts: Required<CueQueueOptions>;
 
+  // ── SMPTE-locked scheduler state (only used when clockSource='timeline')
+  private rafId: number | null = null;
+  private timelineStartTime = 0;        // timelineClock.getTime() captured at run()
+  private wallStartMs = 0;              // performance.now() captured at run()
+  private nextGroupIndex = 0;           // monotonically advances; never re-fires
+  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private firedGroupCount = 0;
+  private lateDropped = 0;
+  private peakDrift = 0;
+  private lastDrift = 0;
+  private compiledGroups: Array<{
+    fireAtMs: number; durationMs: number; channels: number[]; firstIndex: number;
+  }> = [];
+
   constructor(opts: CueQueueOptions = {}) {
     this.opts = {
       defaultDurationMs: opts.defaultDurationMs ?? DEFAULT_DURATION_MS,
       coalesceWindowMs: opts.coalesceWindowMs ?? 8,
+      clockSource: opts.clockSource ?? 'wall',
+      lookaheadMs: opts.lookaheadMs ?? 50,
     };
   }
+
+  /**
+   * Update tunables. Coalesce/duration take effect on next load(); clockSource
+   * + lookahead take effect on next run(). Disallowed mid-run.
+   */
+  setOptions(opts: Partial<CueQueueOptions>): void {
+    if (this.status === 'running') {
+      throw new Error('Cannot change options while a run is in progress.');
+    }
+    this.opts = {
+      defaultDurationMs: opts.defaultDurationMs ?? this.opts.defaultDurationMs,
+      coalesceWindowMs: opts.coalesceWindowMs ?? this.opts.coalesceWindowMs,
+      clockSource: opts.clockSource ?? this.opts.clockSource,
+      lookaheadMs: opts.lookaheadMs ?? this.opts.lookaheadMs,
+    };
+  }
+
+  getOptions(): Readonly<Required<CueQueueOptions>> { return this.opts; }
 
   /** Compile a TimelineItem list into a fire schedule. Pure / non-destructive. */
   load(items: ReadonlyArray<TimelineItem>): { loaded: number; skipped: number } {
