@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import { Cable, ShieldCheck, Wand2, Activity } from 'lucide-react';
 import { FXK16ConnectionPanel } from '@/components/editor/live-firing/FXK16ConnectionPanel';
 import FXK16FieldSettingsPanel from '@/components/field/FXK16FieldSettingsPanel';
+import FXK16ActivityFeed from '@/components/field/FXK16ActivityFeed';
 
 export default function FXK16FieldPanel() {
   return (
@@ -35,6 +36,9 @@ export default function FXK16FieldPanel() {
 
         {/* Operator config — shared with FieldTest via fxk16FieldConfigStore. */}
         <FXK16FieldSettingsPanel />
+
+        {/* Live activity feed — mirrors FieldTest + Live Firing in real time. */}
+        <FXK16ActivityFeed title="Live Activity" />
 
         {/* Help / context */}
         <div className="rounded-lg border border-border/40 bg-card/30 p-3 space-y-2">

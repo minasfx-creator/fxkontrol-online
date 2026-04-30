@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useFXK16Bridge, FXK16_MAX_CHANNEL } from '@/hooks/useFXK16Bridge';
 import { useFXK16Commands } from '@/hooks/useFXK16Commands';
+import { useFXK16Sync } from '@/hooks/useFXK16Sync';
 import type { CommandResponse } from '@/lib/fxk16/commandApi';
 import { haptics } from '@/lib/haptics';
 import { toast } from 'sonner';
@@ -49,6 +50,9 @@ const MAX_LOG = 80;
 export default function FXK16FieldTestPanel() {
   const bridge = useFXK16Bridge();
   const { api, ready, armed } = useFXK16Commands();
+  // Cross-surface sync — FIRE/BATCH/E-STOP routed through here are
+  // broadcast to FieldOps, Live Firing, and any other mounted panel.
+  const sync = useFXK16Sync();
   const { config } = useFxk16FieldConfig();
   const [open, setOpen] = useState(true);
   // Local field state seeded from config; user can override per session.
@@ -153,11 +157,12 @@ export default function FXK16FieldTestPanel() {
       bumpAutoDisarm();
       const t0 = performance.now();
       log({ op: `FIRE ch=${channel} ${durationMs}ms`, status: 'pending', detail: 'dispatching…' });
-      const res = await api.fire(channel, durationMs);
+      // Route through sync so FieldOps + Live Firing see the same span.
+      const res = await sync.fire(channel, durationMs);
       settle(`FIRE ch=${channel}`, t0, res);
       if (res.ok) haptics.fire?.();
     }, HOLD_MS);
-  }, [api, armed, bumpAutoDisarm, channel, durationMs, log, ready, settle]);
+  }, [armed, bumpAutoDisarm, channel, durationMs, log, ready, settle, sync]);
 
   const cancelHoldFire = useCallback(() => {
     if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null; }
@@ -185,19 +190,19 @@ export default function FXK16FieldTestPanel() {
     bumpAutoDisarm();
     const t0 = performance.now();
     log({ op: `BATCH [${channels.join(',')}] ${durationMs}ms`, status: 'pending', detail: 'dispatching…' });
-    const res = await api.fireBatch(channels, durationMs);
+    const res = await sync.batch(channels, durationMs);
     settle(`BATCH n=${channels.length}`, t0, res);
     if (res.ok) haptics.fire?.();
-  }, [api, armed, batchInput, bumpAutoDisarm, config.confirmBatch, durationMs, log, ready, settle]);
+  }, [armed, batchInput, bumpAutoDisarm, config.confirmBatch, durationMs, log, ready, settle, sync]);
 
   // ── E-STOP ────────────────────────────────────────────────
   const eStop = useCallback(async () => {
     const t0 = performance.now();
     log({ op: 'E-STOP', status: 'pending', detail: 'broadcast…' });
-    const res = await api.stop();
+    const res = await sync.eStop();
     settle('E-STOP', t0, res);
     haptics.panic?.();
-  }, [api, log, settle]);
+  }, [log, settle, sync]);
 
   // ── Sequential round-trip self-test ───────────────────────
   const runSelfTest = useCallback(async () => {
@@ -206,12 +211,13 @@ export default function FXK16FieldTestPanel() {
     const armRes = api.arm(); settle('SELFTEST/arm', performance.now(), armRes);
     if (!armRes.ok) return;
     const t0 = performance.now();
-    const fireRes = await api.fire(1, 5);
+    // Use sync.fire so the broadcast feed records this self-test span too.
+    const fireRes = await sync.fire(1, 5);
     settle('SELFTEST/fire ch1', t0, fireRes);
     const disRes = api.disarm(); settle('SELFTEST/disarm', performance.now(), disRes);
     if (fireRes.ok) toast.success(`Self-test OK (${Math.round(performance.now() - t0)}ms)`);
-    else toast.error(`Self-test falhou: ${(fireRes as any).message}`);
-  }, [api, log, ready, settle]);
+    else toast.error(`Self-test falhou: ${(fireRes as Extract<CommandResponse<unknown>, { ok: false }>).message}`);
+  }, [api, log, ready, settle, sync]);
 
   // ── Render ────────────────────────────────────────────────
   const transport = bridge.status.transport ?? 'none';
