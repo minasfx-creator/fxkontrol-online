@@ -49,18 +49,38 @@ const MAX_LOG = 80;
 export default function FXK16FieldTestPanel() {
   const bridge = useFXK16Bridge();
   const { api, ready, armed } = useFXK16Commands();
+  const { config } = useFxk16FieldConfig();
   const [open, setOpen] = useState(true);
-  const [channel, setChannel] = useState<number>(1);
-  const [durationMs, setDurationMs] = useState<number>(50);
+  // Local field state seeded from config; user can override per session.
+  const [channel, setChannel] = useState<number>(config.defaultChannel);
+  const [durationMs, setDurationMs] = useState<number>(config.durationMs);
   const [batchInput, setBatchInput] = useState<string>('1,3,5,7');
   const [steps, setSteps] = useState<E2eStep[]>([]);
   const [holding, setHolding] = useState<null | 'fire' | 'batch'>(null);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdProgress = useRef<HTMLDivElement | null>(null);
+  const autoDisarmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup any hold timer on unmount.
+  // Resync local fields when the operator changes config defaults.
+  useEffect(() => { setChannel(config.defaultChannel); }, [config.defaultChannel]);
+  useEffect(() => { setDurationMs(config.durationMs); }, [config.durationMs]);
+
+  // Auto-disarm safety: arm any timer reset on each command via `bumpAutoDisarm`.
+  const bumpAutoDisarm = useCallback(() => {
+    if (autoDisarmTimer.current) clearTimeout(autoDisarmTimer.current);
+    if (!armed || config.autoDisarmAfterMs <= 0) return;
+    autoDisarmTimer.current = setTimeout(() => {
+      const res = api.disarm();
+      if (res.ok) toast.info(`Auto-disarm após ${config.autoDisarmAfterMs}ms ociosos`);
+    }, config.autoDisarmAfterMs);
+  }, [api, armed, config.autoDisarmAfterMs]);
+
+  useEffect(() => { bumpAutoDisarm(); }, [bumpAutoDisarm]);
+
+  // Cleanup any hold/disarm timer on unmount.
   useEffect(() => () => {
     if (holdTimer.current) clearTimeout(holdTimer.current);
+    if (autoDisarmTimer.current) clearTimeout(autoDisarmTimer.current);
   }, []);
 
   const log = useCallback((entry: Omit<E2eStep, 'id' | 'ts'>) => {
