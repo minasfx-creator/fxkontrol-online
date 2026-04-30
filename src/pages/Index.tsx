@@ -153,7 +153,11 @@ const SACNMonitorPanel = lz(() => import('@/components/editor/SACNMonitorPanel')
 const VenueQuickSelector = lz(() => import('@/components/editor/VenueQuickSelector'));
 const VenueShowOverlay = lz(() => import('@/components/editor/VenueShowOverlay'));
 
-// SkyCanvas: wrapped with lazyRetry so stale-chunk errors after deploy/HMR
+// SkyCanvasMount: unified mount adopted from /dev/skycanvas-smoke pattern.
+// Encapsulates StudioErrorBoundary + WebGLErrorBoundary + Suspense+Loader.
+import SkyCanvasMount from '@/components/editor/SkyCanvasMount';
+
+// SkyCanvas (legacy direct ref): wrapped with lazyRetry so stale-chunk errors after deploy/HMR
 // trigger a single auto-reload (handled by LazyChunkBoundary in App.tsx).
 // Do NOT add a .catch() here — it would swallow the error and prevent retry.
 const SkyCanvas = lazy(lazyRetry(() => import('@/components/editor/SkyCanvas')));
@@ -710,7 +714,7 @@ function Index() {
     return (
        <div className="absolute inset-0 w-full h-full overflow-hidden bg-background">
         <div className="absolute inset-0 w-full h-full br2049-atmosphere">
-          <StudioErrorBoundary area="3D viewport"><CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas /></Suspense></CanvasErrorBoundary></StudioErrorBoundary>
+          <SkyCanvasMount instanceKey="mobile-live" />
         </div>
         <LiveModeOverlay />
       </div>
@@ -719,7 +723,7 @@ function Index() {
     return (
     <div className="absolute inset-0 w-full h-full overflow-hidden bg-background">
         <div className="absolute inset-0 w-full h-full">
-          <StudioErrorBoundary area="3D viewport"><CanvasErrorBoundary><Suspense fallback={<CanvasLoader />}><SkyCanvas key="mobile-skycanvas" /></Suspense></CanvasErrorBoundary></StudioErrorBoundary>
+          <SkyCanvasMount instanceKey="mobile-skycanvas" />
           <BoxSelectOverlay />
         </div>
 
@@ -830,13 +834,7 @@ function Index() {
             </div>
           </div>
           <div className="absolute inset-0 top-9">
-            <StudioErrorBoundary area="3D viewport">
-              <CanvasErrorBoundary>
-                <Suspense fallback={<CanvasLoader />}>
-                  <SkyCanvas />
-                </Suspense>
-              </CanvasErrorBoundary>
-            </StudioErrorBoundary>
+            <SkyCanvasMount instanceKey="desktop" />
             <BoxSelectOverlay />
             <SelectionModeBar />
             {isDragOver && (
