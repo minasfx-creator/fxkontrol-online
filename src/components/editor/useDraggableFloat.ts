@@ -196,6 +196,8 @@ export interface DraggableFloatHandle {
   };
   /** True while the user is actively dragging. */
   dragging: boolean;
+  /** Edges currently in snap zone — `null` when none. */
+  snappedEdges: { h: 'l' | 'r' | null; v: 't' | 'b' | null };
   /** Programmatic reset to default position (clears persistence). */
   resetPosition: () => void;
 }
@@ -205,6 +207,10 @@ export function useDraggableFloat(opts: UseDraggableFloatOptions): DraggableFloa
 
   const [pos, setPos] = useState<FloatPosition>(() => readPersisted(id) ?? defaultPos);
   const [dragging, setDragging] = useState(false);
+  const [snappedEdges, setSnappedEdges] = useState<{ h: 'l' | 'r' | null; v: 't' | 'b' | null }>({
+    h: null,
+    v: null,
+  });
   const ref = useRef<HTMLDivElement>(null);
 
   // Mutable drag state — kept in a ref so handlers don't re-bind every move.
