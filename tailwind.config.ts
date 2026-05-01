@@ -126,6 +126,29 @@ export default {
           fail:     "hsl(var(--status-fail))",
           disabled: "hsl(var(--status-disabled))",
         },
+        // ── Field-grade tokens (src/styles/field-tokens.css) ──
+        // Use estes em componentes NOVOS p/ garantir paleta operacional.
+        // Ex: bg-field-surface-1, text-field-fg-muted, ring-field-cyan.
+        field: {
+          bg:           "hsl(var(--field-bg))",
+          "surface-0":  "hsl(var(--field-surface-0))",
+          "surface-1":  "hsl(var(--field-surface-1))",
+          "surface-2":  "hsl(var(--field-surface-2))",
+          "surface-3":  "hsl(var(--field-surface-3))",
+          "surface-4":  "hsl(var(--field-surface-4))",
+          "fg-primary":   "hsl(var(--field-fg-primary))",
+          "fg-secondary": "hsl(var(--field-fg-secondary))",
+          "fg-muted":     "hsl(var(--field-fg-muted))",
+          "fg-disabled":  "hsl(var(--field-fg-disabled))",
+          cyan:        "hsl(var(--field-cyan))",
+          "cyan-hover": "hsl(var(--field-cyan-hover))",
+          "cyan-press": "hsl(var(--field-cyan-press))",
+        },
+        // Estados canônicos — não use cores soltas em hover/focus/selected.
+        state: {
+          "selected-fg":     "hsl(var(--state-selected-fg))",
+          "disabled-fg":     "hsl(var(--state-disabled-fg))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
