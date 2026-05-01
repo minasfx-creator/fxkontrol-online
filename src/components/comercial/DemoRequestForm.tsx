@@ -156,7 +156,8 @@ export default function DemoRequestForm() {
           ? crypto.randomUUID()
           : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-      const { error: insertError } = await supabase.from("demo_requests").insert({
+      // Tipos regenerarão após próxima sync; cast local para destravar build agora.
+      const { error: insertError } = await (supabase as any).from("demo_requests").insert({
         id: requestId,
         name: parsed.data.name,
         email: parsed.data.email,
