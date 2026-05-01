@@ -485,12 +485,90 @@ export default function Comercial() {
         </div>
       </section>
 
+      {/* ── Provas Técnicas ─────────────────────────────────────────────── */}
+      <section id="provas" className="max-w-7xl mx-auto px-6 py-24">
+        <div className="text-center mb-16">
+          <div className="text-[10px] c-mono c-cyan uppercase tracking-widest mb-4">Provas técnicas</div>
+          <h2 className="c-display c-fs-h2 font-bold mb-4 c-text">Números que você pode auditar.</h2>
+          <p className="c-text-muted c-fs-lead max-w-2xl mx-auto">
+            Cada métrica é instrumentada, exportada no black box e validada em bancada antes do piloto.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {PROOFS.map(({ icon: Icon, metric, label, desc }) => (
+            <div key={label} className="c-card rounded-lg p-6 flex flex-col">
+              <Icon className="w-6 h-6 c-cyan mb-4" />
+              <div className="c-display c-fs-h3 font-bold c-text mb-1">{metric}</div>
+              <div className="c-mono c-fs-eyebrow c-amber uppercase tracking-widest mb-3">{label}</div>
+              <p className="c-text-muted c-fs-small leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Stack de Confiança ──────────────────────────────────────────── */}
+      <section id="stack" className="border-y border-[hsl(var(--c-border-soft))] bg-[hsl(var(--c-bg-elevated))]">
+        <div className="max-w-7xl mx-auto px-6 py-24">
+          <div className="text-center mb-16">
+            <div className="text-[10px] c-mono c-amber uppercase tracking-widest mb-4">Stack de confiança</div>
+            <h2 className="c-display c-fs-h2 font-bold mb-4 c-text">Engenharia que aguenta evento real.</h2>
+            <p className="c-text-muted c-fs-lead max-w-2xl mx-auto">
+              Diferenciais técnicos defensáveis — cada um cobre uma falha comum do mercado.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {STACK.map((s) => (
+              <div key={s.title} className="c-card-overlay rounded-lg p-6">
+                <h3 className="c-display c-fs-h3 font-bold c-text mb-2">{s.title}</h3>
+                <p className="c-text-muted c-fs-small leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ─────────────────────────────────────────────────────────── */}
+      <section id="faq" className="max-w-4xl mx-auto px-6 py-24">
+        <div className="text-center mb-16">
+          <div className="text-[10px] c-mono c-cyan uppercase tracking-widest mb-4">Perguntas frequentes</div>
+          <h2 className="c-display c-fs-h2 font-bold mb-4 c-text">As objeções que sempre aparecem.</h2>
+        </div>
+
+        <div className="space-y-3">
+          {FAQ.map((item, i) => {
+            const isOpen = openFaq === i;
+            return (
+              <div key={i} className="c-card rounded-lg overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setOpenFaq(isOpen ? null : i)}
+                  aria-expanded={isOpen}
+                  className="w-full flex items-center justify-between gap-4 p-5 text-left hover:bg-[hsl(var(--c-bg-overlay))] transition-colors"
+                >
+                  <span className="c-display c-fs-h3 font-semibold c-text">{item.q}</span>
+                  <ChevronDown
+                    className={`w-5 h-5 c-cyan shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="px-5 pb-5 c-text-muted c-fs-body leading-relaxed border-t border-[hsl(var(--c-border-soft))] pt-4">
+                    {item.a}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       {/* ── CTA Final ───────────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-6 py-24 text-center">
         <h2 className="c-display c-fs-h2 font-bold mb-6 c-text">
           Pronto para um <span className="c-cyan">GO formal</span>?
         </h2>
-        <p className="c-text-muted text-lg mb-10 max-w-2xl mx-auto">
+        <p className="c-text-muted c-fs-lead mb-10 max-w-2xl mx-auto">
           Demo guiada de 15 minutos com previs 3D, hardware real e Go-Live Center.
         </p>
         <div className="flex flex-wrap gap-4 justify-center">
@@ -504,17 +582,87 @@ export default function Comercial() {
         </div>
       </section>
 
-      {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="border-t border-[hsl(var(--c-border-soft))]">
-        <div className="max-w-7xl mx-auto px-6 py-8 flex flex-wrap items-center justify-between gap-4">
-          <div className="text-xs c-text-subtle c-mono uppercase tracking-widest">
-            FX KONTROL · MinasFX · Reliability Engineering
+      {/* ── Footer expandido ────────────────────────────────────────────── */}
+      <footer className="border-t border-[hsl(var(--c-border-soft))] bg-[hsl(var(--c-bg-elevated))]">
+        <div className="max-w-7xl mx-auto px-6 py-16">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+            {/* Brand */}
+            <div className="col-span-2 md:col-span-1">
+              <Link to="/comercial" className="flex items-center gap-2 c-display text-lg font-bold tracking-wider mb-4">
+                <span className="c-cyan-pure">FX</span>
+                <span className="c-text">KONTROL</span>
+              </Link>
+              <p className="c-text-muted c-fs-small leading-relaxed mb-4">
+                Sistema operacional técnico para eventos ao vivo. Codificar imaginação; garantir precisão.
+              </p>
+              <div className="flex gap-3">
+                <a href="https://github.com" target="_blank" rel="noopener noreferrer"
+                   aria-label="GitHub" className="c-text-subtle hover:c-text transition-colors">
+                  <Github className="w-4 h-4" />
+                </a>
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer"
+                   aria-label="LinkedIn" className="c-text-subtle hover:c-text transition-colors">
+                  <Linkedin className="w-4 h-4" />
+                </a>
+                <a href="https://fxkontrol.online" target="_blank" rel="noopener noreferrer"
+                   aria-label="Website" className="c-text-subtle hover:c-text transition-colors">
+                  <Globe className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+
+            {/* Produto */}
+            <div>
+              <div className="c-mono c-fs-eyebrow c-text-subtle uppercase tracking-widest mb-4">Produto</div>
+              <ul className="space-y-2 c-fs-small">
+                <li><a href="#pacotes" className="c-text-muted hover:c-text transition-colors">Pacotes</a></li>
+                <li><a href="#fluxo"   className="c-text-muted hover:c-text transition-colors">Fluxo vendável</a></li>
+                <li><a href="#go-no-go" className="c-text-muted hover:c-text transition-colors">GO/NO-GO</a></li>
+                <li><a href="#provas"  className="c-text-muted hover:c-text transition-colors">Provas técnicas</a></li>
+                <li><a href="#stack"   className="c-text-muted hover:c-text transition-colors">Stack</a></li>
+              </ul>
+            </div>
+
+            {/* Recursos */}
+            <div>
+              <div className="c-mono c-fs-eyebrow c-text-subtle uppercase tracking-widest mb-4">Recursos</div>
+              <ul className="space-y-2 c-fs-small">
+                <li><Link to="/studio"    className="c-text-muted hover:c-text transition-colors">Studio</Link></li>
+                <li><Link to="/manifesto" className="c-text-muted hover:c-text transition-colors">Manifesto</Link></li>
+                <li><Link to="/pricing"   className="c-text-muted hover:c-text transition-colors">Pricing público</Link></li>
+                <li><a href="#faq"        className="c-text-muted hover:c-text transition-colors">FAQ</a></li>
+                <li><Link to="/auth"      className="c-text-muted hover:c-text transition-colors">Entrar</Link></li>
+              </ul>
+            </div>
+
+            {/* Contato */}
+            <div>
+              <div className="c-mono c-fs-eyebrow c-text-subtle uppercase tracking-widest mb-4">Contato</div>
+              <ul className="space-y-3 c-fs-small">
+                <li className="flex items-start gap-2 c-text-muted">
+                  <Mail className="w-4 h-4 c-cyan shrink-0 mt-0.5" />
+                  <a href="mailto:vendas@fxkontrol.online" className="hover:c-text transition-colors break-all">
+                    vendas@fxkontrol.online
+                  </a>
+                </li>
+                <li className="flex items-start gap-2 c-text-muted">
+                  <MapPin className="w-4 h-4 c-cyan shrink-0 mt-0.5" />
+                  <span>Belo Horizonte, MG · Brasil</span>
+                </li>
+              </ul>
+            </div>
           </div>
-          <div className="flex gap-6 text-xs c-text-muted">
-            <Link to="/legal/terms"   className="hover:c-text transition-colors">Termos</Link>
-            <Link to="/legal/privacy" className="hover:c-text transition-colors">Privacidade</Link>
-            <Link to="/legal/refund"  className="hover:c-text transition-colors">Reembolso</Link>
-            <Link to="/pricing"       className="hover:c-text transition-colors">Pricing público</Link>
+
+          {/* Bottom bar */}
+          <div className="border-t border-[hsl(var(--c-border-soft))] pt-6 flex flex-wrap items-center justify-between gap-4">
+            <div className="c-fs-eyebrow c-text-subtle c-mono uppercase tracking-widest">
+              © {new Date().getFullYear()} FX KONTROL · MinasFX · Reliability Engineering
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 c-fs-small">
+              <Link to="/legal/terms"   className="c-text-muted hover:c-text transition-colors">Termos</Link>
+              <Link to="/legal/privacy" className="c-text-muted hover:c-text transition-colors">Privacidade</Link>
+              <Link to="/legal/refund"  className="c-text-muted hover:c-text transition-colors">Reembolso</Link>
+            </div>
           </div>
         </div>
       </footer>
