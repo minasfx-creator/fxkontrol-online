@@ -583,6 +583,11 @@ function TimelineTrackRow({
       placing: { effectId: effect.id },
     });
 
+    // Provenance opcional vinda do SupplierCatalogPanel: gravamos em `notes`
+    // pra rastreabilidade FFIC/UN/classe sem precisar estender o schema.
+    const supplier = readSupplierPayload(e.dataTransfer);
+    const notes = supplier ? formatSupplierProvenance(supplier) : undefined;
+
     const targetIds = selectedPositionIds.length > 0
       ? selectedPositionIds.filter(id => positions.find(p => p.id === id)?.type === 'pyro')
       : selectedPositionId && positions.find(p => p.id === selectedPositionId)?.type === 'pyro'
@@ -600,6 +605,7 @@ function TimelineTrackRow({
           id, effectId: effect.id, startTime: time, trackIndex,
           position: { x: pos.x, y: pos.y, z: pos.z },
           positionId: posId, positionIds: targetIds.length > 1 ? targetIds : undefined, positionName: pos.name,
+          ...(notes ? { notes } : {}),
         });
       });
       if (firstId) markRecentDrop(firstId);
@@ -608,6 +614,7 @@ function TimelineTrackRow({
       addTimelineItem({
         id, effectId: effect.id, startTime: time, trackIndex,
         position: { x: (Math.random() - 0.5) * 16, y: effect.type === 'firework' ? 0 : 5 + Math.random() * 10, z: (Math.random() - 0.5) * 8 },
+        ...(notes ? { notes } : {}),
       });
       markRecentDrop(id);
     }
