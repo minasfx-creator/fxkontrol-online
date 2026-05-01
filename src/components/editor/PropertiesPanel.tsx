@@ -64,12 +64,27 @@ const ExportSection = React.memo(function ExportSection() {
 
   return (
     <div className="space-y-1.5">
+      {/* Show bundle — full export with X/Y/Z/Heading per cue */}
+      <div className="rounded-xl p-2 space-y-1" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 px-1 font-display">Show Bundle</p>
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportShowJSON}>
+          <FileJson className="h-3.5 w-3.5 text-primary" />
+          <span className="flex-1 text-left">Show JSON (X/Y/Z/H)</span>
+          <span className="text-[9px] text-muted-foreground/40 font-mono-code">{timelineItems.length}</span>
+        </Button>
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportShowCSV}>
+          <FileSpreadsheet className="h-3.5 w-3.5 text-accent" />
+          <span className="flex-1 text-left">Show CSV (all cues)</span>
+          <span className="text-[9px] text-muted-foreground/40 font-mono-code">{timelineItems.length}</span>
+        </Button>
+      </div>
+
       {/* Drone export */}
       <div className="rounded-xl p-2 space-y-1" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
         <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 px-1 font-display">Drone Show</p>
         <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportVVIZ}>
           <Box className="h-3.5 w-3.5 text-primary" />
-          <span className="flex-1 text-left">Export .VVIZ</span>
+          <span className="flex-1 text-left">Export .VVIZ (Finale 3D)</span>
           <span className="text-[9px] text-muted-foreground/40 font-mono-code">{droneCount}</span>
         </Button>
       </div>
@@ -84,10 +99,10 @@ const ExportSection = React.memo(function ExportSection() {
         </Button>
       </div>
 
-      {/* Generic */}
+      {/* Raw project dump */}
       <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportJSON}>
         <FileJson className="h-3.5 w-3.5 text-muted-foreground/40" />
-        <span className="flex-1 text-left">Export Project JSON</span>
+        <span className="flex-1 text-left">Raw Project JSON</span>
       </Button>
     </div>
   );
