@@ -7,7 +7,7 @@ import { Slider } from '@/components/ui/slider';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { Separator } from '@/components/ui/separator';
-import { exportVVIZ, exportFiringCSV, downloadFile } from '@/lib/exportEngine';
+import { exportVVIZ, exportFiringCSV, exportShowJSON, exportShowCSV, downloadFile } from '@/lib/exportEngine';
 import SafetyPanel from './SafetyPanel';
 
 const ExportSection = React.memo(function ExportSection() {
