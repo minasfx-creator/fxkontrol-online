@@ -94,6 +94,8 @@ class SafetyGate {
   }
 
   get anyEnforced(): boolean {
+    // Sim-bypass: design/simulation never shows the "blocking" banner.
+    if (!workMode.isRealOperation()) return false;
     if (isStrict()) return true;
     if (!this._cfg.masterEnabled) return false;
     return this._cfg.lockoutGroups || this._cfg.interlockChain ||
