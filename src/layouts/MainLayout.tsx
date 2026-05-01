@@ -1,7 +1,7 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { PanelLeftClose, PanelLeft, AlertOctagon, Menu } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Menu } from 'lucide-react';
 import minasfxLogo from '@/assets/minasfx-logo-white.png';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useDisplayStore } from '@/store/useDisplayStore';
@@ -28,6 +28,10 @@ const RenderCounterOverlay = import.meta.env.DEV
 const AppSidebar = lazy(lazyRetry(() => import('@/components/AppSidebar').then(m => ({ default: m.AppSidebar }))));
 const FXKAssistant = lazy(lazyRetry(() => import('@/components/FXKAssistant').then(m => ({ default: m.FXKAssistant }))));
 const AutoControllerLauncher = lazy(lazyRetry(() => import('@/components/hardware/AutoControllerLauncher').then(m => ({ default: m.AutoControllerLauncher }))));
+// Global E-STOP — always-visible top-right safety button. Routes through
+// uiCommandGateway → CommandBus → SafetyStateMachine. Hold-to-confirm 600ms
+// when idle; instant fire when ARMED/FIRING (life-safety <50ms).
+const GlobalEStopButton = lazy(lazyRetry(() => import('@/components/safety/GlobalEStopButton')));
 // Deterministic kernel (timeline clock pump, lockstep, persistence) — must
 // mount on EVERY protected route AND on mobile so Play actually advances time.
 // Previously this was nested inside <Index> desktop branch only, which left
