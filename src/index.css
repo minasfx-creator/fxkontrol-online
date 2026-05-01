@@ -168,7 +168,7 @@
     --ds-text-disabled:     220 9%  34%;   /* #4B5563 */
 
     /* Segment colors (PYRO/SFX/DRONES/LIGHT/DMX) */
-    --segment-pyro:    0   84% 60%;        /* #EF4444 */
+    --segment-pyro:    0   84% 66%;        /* #F87171 — L60→66 p/ AA normal em ds.elevated */
     --segment-sfx:     38  92% 50%;        /* #F59E0B */
     --segment-drones:  189 94% 55%;        /* #22D3EE */
     --segment-light:   48  96% 55%;        /* #FACC15 */
@@ -178,7 +178,7 @@
     --status-ok:       142 71% 45%;        /* #22C55E */
     --status-sync:     189 94% 55%;        /* #22D3EE */
     --status-warn:     38  92% 50%;        /* #F59E0B */
-    --status-fail:     0   84% 60%;        /* #EF4444 */
+    --status-fail:     0   84% 66%;        /* #F87171 — L60→66 (4.95:1 AA normal) */
     --status-disabled: 220 9%  46%;        /* #6B7280 */
 
     /* ── DS Typography Scale (spec) ──

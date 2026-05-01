@@ -43,7 +43,7 @@ export const dsTokens = {
 
   // ── Operational segments (PYRO/SFX/DRONES/LIGHT/DMX) ───────────
   segment: {
-    pyro:   '0 84% 60%',      // #EF4444
+    pyro:   '0 84% 66%',      // #F87171 — WCAG AA on bg.elevated
     sfx:    '38 92% 50%',     // #F59E0B
     drones: '189 94% 55%',    // #22D3EE
     light:  '48 96% 55%',     // #FACC15
@@ -55,7 +55,7 @@ export const dsTokens = {
     ok:       '142 71% 45%',  // #22C55E
     sync:     '189 94% 55%',  // #22D3EE
     warn:     '38 92% 50%',   // #F59E0B
-    fail:     '0 84% 60%',    // #EF4444
+    fail:     '0 84% 66%',    // #F87171 — WCAG AA on bg.elevated
     disabled: '220 9% 46%',   // #6B7280
   },
 
