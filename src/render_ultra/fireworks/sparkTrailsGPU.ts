@@ -103,12 +103,60 @@ export function createSparkTrailSystem() {
 }
 
 /**
- * Update spark trail — pushes current position into history buffer.
+ * Cheap pseudo-3D curl-like turbulence (no noise texture).
+ * Uses interfering trig fields for divergence-free-ish swirl.
+ * Cost: ~12 ops/spark/frame — safe at 2k sparks.
  */
-export function updateSparkTrail(spark: SparkState, dt: number, drag: number, gravity: number) {
+function turbulence(p: THREE.Vector3, t: number, out: THREE.Vector3) {
+  const f = 0.18; // spatial frequency
+  const a = 0.65; // amplitude (m/s²)
+  const x = p.x * f, y = p.y * f, z = p.z * f;
+  out.x = a * (Math.sin(y + t * 1.3) - Math.cos(z * 1.7 - t * 0.9));
+  out.y = a * (Math.sin(z + t * 1.1) - Math.cos(x * 1.5 + t * 0.7));
+  out.z = a * (Math.sin(x + t * 0.8) - Math.cos(y * 1.3 + t * 1.2));
+}
+
+const _turb = new THREE.Vector3();
+const _step = new THREE.Vector3();
+
+/**
+ * Update spark trail — pushes current position into history buffer.
+ * Now models quadratic drag (more realistic at low Reynolds for embers)
+ * and adds cheap curl-like turbulence so trails don't look ballistic.
+ *
+ * @param spark   the spark
+ * @param dt      seconds since last update
+ * @param drag    quadratic drag coefficient (try 0.04..0.12)
+ * @param gravity m/s² (negative for downward in Y-up; e.g. -9.81)
+ * @param time    elapsed seconds — used to advect turbulence over time
+ * @param turbAmt 0..1 turbulence strength multiplier (0 disables)
+ */
+export function updateSparkTrail(
+  spark: SparkState,
+  dt: number,
+  drag: number,
+  gravity: number,
+  time: number = 0,
+  turbAmt: number = 1
+) {
+  // Quadratic drag: F_drag ∝ |v| · v  (more honest than linear damp)
+  const speed = spark.velocity.length();
+  const dragCoef = Math.min(0.95, drag * speed * dt);
+  spark.velocity.multiplyScalar(1 - dragCoef);
+
+  // Gravity
   spark.velocity.y += gravity * dt;
-  spark.velocity.multiplyScalar(1 - drag * dt);
-  spark.position.add(spark.velocity.clone().multiplyScalar(dt));
+
+  // Turbulence — fades as the spark cools (using life ratio as proxy)
+  if (turbAmt > 0) {
+    turbulence(spark.position, time, _turb);
+    const cool = Math.max(0, spark.life / spark.maxLife);
+    spark.velocity.addScaledVector(_turb, turbAmt * cool * dt);
+  }
+
+  // Integrate position (no allocation)
+  _step.copy(spark.velocity).multiplyScalar(dt);
+  spark.position.add(_step);
   spark.life -= dt;
 
   spark.trailHistory.push(spark.position.clone());
