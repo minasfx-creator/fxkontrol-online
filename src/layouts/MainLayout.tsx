@@ -149,10 +149,20 @@ export default function MainLayout() {
     };
   }, [location.pathname]);
 
-  const handlePanic = () => {
-    clearAll();
-    haptics.panic();
-  };
+  // Bridge: when ANY E-STOP fires through the CommandBus (e.g. global
+  // GlobalEStopButton, SafetyConsole, hardware panel), drop all live SFX
+  // and trigger panic haptics. Runs once at mount; cleans up on unmount.
+  useEffect(() => {
+    let unsub: (() => void) | undefined;
+    (async () => {
+      const { commandBus } = await import('@/core/command/CommandBus');
+      unsub = commandBus.on('E_STOP', () => {
+        clearAll();
+        try { haptics.panic(); } catch { /* */ }
+      });
+    })();
+    return () => { unsub?.(); };
+  }, [clearAll]);
 
   return (
     <SidebarProvider defaultOpen={!isMobile}>
