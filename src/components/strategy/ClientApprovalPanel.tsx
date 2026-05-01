@@ -93,14 +93,14 @@ export function ClientApprovalPanel() {
             placeholder="Add a comment…"
             className="flex-1 bg-background/40 border border-border rounded-md px-2 py-1.5 text-xs"
           />
-          <button onClick={addComment} className="rounded-md bg-primary/10 border border-primary/40 px-3 py-1.5 text-xs ds-mono uppercase tracking-wider text-primary hover:bg-primary/20">
+          <button type="button" onClick={addComment} className="rounded-md bg-primary/10 border border-primary/40 px-3 py-1.5 text-xs ds-mono uppercase tracking-wider text-primary hover:bg-primary/20">
             Send
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <button
+        <button type="button"
           onClick={() => setApproved(!approved)}
           className={`rounded-md border p-3 text-sm ds-mono uppercase tracking-wider transition-colors ${
             approved
@@ -110,7 +110,7 @@ export function ClientApprovalPanel() {
         >
           {approved ? '✓ Preview approved by client' : 'Mark preview as approved'}
         </button>
-        <button
+        <button type="button"
           onClick={async () => {
             const report = buildClientApprovalReport({
               scope, preview_version: version,
