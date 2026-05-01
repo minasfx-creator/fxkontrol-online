@@ -224,15 +224,18 @@ export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="w-full grid grid-cols-3 h-8">
+          <TabsList className="w-full grid grid-cols-4 h-8">
             <TabsTrigger value="firing" className="text-[10px]">
-              <Download className="w-3 h-3 mr-1" /> Firing Script
+              <Download className="w-3 h-3 mr-1" /> Firing
             </TabsTrigger>
             <TabsTrigger value="setup" className="text-[10px]">
-              <MapPin className="w-3 h-3 mr-1" /> Setup Report
+              <MapPin className="w-3 h-3 mr-1" /> Setup
             </TabsTrigger>
             <TabsTrigger value="vviz" className="text-[10px]">
-              <Plane className="w-3 h-3 mr-1" /> VVIZ Drones
+              <Plane className="w-3 h-3 mr-1" /> VVIZ
+            </TabsTrigger>
+            <TabsTrigger value="bundle" className="text-[10px]">
+              <FileJson className="w-3 h-3 mr-1" /> Bundle
             </TabsTrigger>
           </TabsList>
 
