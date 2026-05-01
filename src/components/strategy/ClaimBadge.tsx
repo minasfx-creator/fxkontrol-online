@@ -1,7 +1,8 @@
+import type { ComponentType } from 'react';
 import { CLAIM_STATUS_META, type ClaimStatus } from '@/lib/claims';
 import { ShieldCheck, FlaskConical, Sparkles } from 'lucide-react';
 
-const ICONS: Record<ClaimStatus, React.ComponentType<{ className?: string }>> = {
+const ICONS: Record<ClaimStatus, ComponentType<{ className?: string }>> = {
   validated: ShieldCheck,
   pilot: FlaskConical,
   marketing_hypothesis: Sparkles,
