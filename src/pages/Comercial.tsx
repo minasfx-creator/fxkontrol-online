@@ -193,6 +193,52 @@ const HARDWARE_BADGES = [
   { icon: Cpu,   label: "FXK16 / Showven" },
 ];
 
+/* Provas técnicas — métricas verificáveis (alinhadas à memória de safety/perf) */
+const PROOFS = [
+  { icon: Zap,   metric: "<50ms",  label: "Latência ESTOP global", desc: "Hot path com Hold-to-Confirm e lockout visual imediato." },
+  { icon: Lock,  metric: "100ms",  label: "Black box de auditoria", desc: "Snapshot de comando, transporte, ACK e estado físico." },
+  { icon: Gauge, metric: "33 PPS", label: "DMX / Art-Net broadcast", desc: "Budget presets safe / standard / aggressive." },
+  { icon: Users, metric: "3 papéis", label: "Engenharia · Operação · Cliente", desc: "Signoffs separados, evidências por papel." },
+];
+
+/* Stack de confiança — diferenciais técnicos defensáveis */
+const STACK = [
+  { title: "WebGPU + WebGL2 fallback",   desc: "Render GPGPU com seleção automática; nunca quebra em hardware antigo." },
+  { title: "Multi-transport agregado",   desc: "Web Serial + USB + BLE + Art-Net no mesmo dispositivo, com auto-fallback." },
+  { title: "Honest Hardware Layer",      desc: "Adapters honestos: NO_HARDWARE é estado válido, não fingimos conexão." },
+  { title: "Real-Only Mode",             desc: "Telemetria só conta com handshake verificado — sem dado sintético." },
+  { title: "iPhone-aware",               desc: "Pareamento USB/BLE assistido em Safari + Capacitor com fallback dual-device." },
+  { title: "Zero-GC timeline",           desc: "ECS/DOD com SoA, busca binária e batch eval para shows densos." },
+];
+
+/* FAQ comercial — objeções recorrentes mapeadas */
+const FAQ = [
+  {
+    q: "Substitui Finale 3D, FireOne ou Showven?",
+    a: "Não. FX KONTROL orquestra esses sistemas. Importamos VVIZ, MAVLink, layouts FireOne e protocolo PBUS Showven — você mantém o ecossistema atual e ganha previs, GO/NO-GO e auditoria.",
+  },
+  {
+    q: "Funciona offline / em campo sem internet?",
+    a: "Sim. O editor, simulação e operação rodam localmente. Sincronização de evidências e relatórios é assíncrona quando a conexão volta.",
+  },
+  {
+    q: "Como vocês garantem que o ESTOP é realmente <50ms?",
+    a: "O caminho UI → uiCommandGateway → CommandBus → SafetyStateMachine → FieldBus é instrumentado. Medimos cada ciclo, exportamos no black box e validamos em bancada antes de cada piloto.",
+  },
+  {
+    q: "Posso usar só para previs sem comprar o LiveOps?",
+    a: "Sim — esse é exatamente o pacote Previs. Aprovação remota com Pixel Streaming, sem hardware real, sem compromisso operacional.",
+  },
+  {
+    q: "Quem opera o sistema no evento? Vocês ou minha equipe?",
+    a: "Sua equipe. Treinamos seus operadores e ficamos disponíveis on-call (Enterprise inclui on-site no piloto). O sistema foi desenhado para o operador técnico ser o usuário diário.",
+  },
+  {
+    q: "Como vocês cobram?",
+    a: "Previs e LiveOps por evento ou assinatura mensal. Enterprise é contrato anual com SLA. Pricing final depende de escopo — agendamos uma call de 15min para dimensionar.",
+  },
+];
+
 /* ─── Página ────────────────────────────────────────────────────────────── */
 export default function Comercial() {
   useEffect(() => {
