@@ -241,6 +241,8 @@ const FAQ = [
 
 /* ─── Página ────────────────────────────────────────────────────────────── */
 export default function Comercial() {
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+
   useEffect(() => {
     document.title = "FX KONTROL — Codificar imaginação; garantir precisão";
     upsertMeta("name", "description",
