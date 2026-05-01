@@ -80,11 +80,12 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
     setConnectingId(null);
   };
 
+  const cdsTimer = useImperativeTimeout();
   const handleTestCDS = async () => {
     setCdsTesting(true);
     try {
       await fieldTestEngine.bleTestCDS();
-      setTimeout(() => {
+      cdsTimer.set(() => {
         const status = fieldTestEngine.bleCdsStatus;
         setCdsStatus([...status]);
         setCdsLastTest(Date.now());
@@ -92,7 +93,7 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
         const active = status.filter(Boolean).length;
         toast.success(`CDS: ${active}/32 ignitores detectados`);
         haptics.success();
-      }, 800);
+      }, 800, 'cds-result');
     } catch (err: any) {
       setCdsTesting(false);
       toast.error(err.message || 'Erro no teste CDS');
