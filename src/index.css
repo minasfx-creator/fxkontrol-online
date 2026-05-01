@@ -8,6 +8,11 @@
    Importado APÓS @tailwind para vencer cascade do shadcn legacy. */
 @import "./styles/field-tokens.css";
 
+/* Marketing tokens — APENAS dentro de [data-theme="commercial"]. Não vaza
+   para o app operacional (memória: brief #121214/#00FFFF/#FF7700 rejeitado
+   em chrome operacional). */
+@import "./styles/commercial-tokens.css";
+
 @layer base {
   :root {
     /* FX KONTROL — Tactical Command Interface */
