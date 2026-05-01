@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { ambientSound } from '@/lib/ambientSound';
 import minasfxLogo from '@/assets/minasfx-logo-tactical.webp';
-import fxkLogo from '@/assets/fxk-logo-tactical.webp';
+import { FxkLogo } from '@/components/brand/FxkLogo';
 
 const BOOT_LINES = [
   'NEXUS AUTH v4.2 · SECURE CHANNEL',
@@ -153,22 +153,13 @@ export default function Auth() {
           <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-30" />
 
           <div className="text-center relative z-10">
-            {/* FXK Logo */}
+            {/* FXK Logo — canonical pentagon XLR mark (vector) */}
             <div className="flex justify-center mb-3">
-              <img
-                src={fxkLogo}
-                alt="FX Kontrol"
-                width={64}
-                height={64}
-                decoding="async"
-                {...({ fetchpriority: 'high' } as Record<string, string>)}
-                className="h-16 w-16 object-contain"
-                style={{ filter: 'drop-shadow(0 0 12px hsl(32 100% 50% / 0.3))' }}
-              />
+              <FxkLogo size={64} tone="sync" className="drop-shadow-[0_0_14px_hsl(var(--field-cyan)/0.35)]" />
             </div>
 
             <h1 className="text-lg font-bold text-foreground tracking-[0.15em] uppercase">FX KONTROL</h1>
-            <p className="text-[9px] mt-0.5 font-mono tracking-[0.15em] uppercase" style={{ color: 'hsl(32 100% 50% / 0.5)' }}>
+            <p className="ds-mono text-[9px] mt-0.5 tracking-[0.15em] uppercase text-status-sync/60">
               NEXUS AUTHENTICATION
             </p>
             <p className="text-xs text-muted-foreground mt-3">
