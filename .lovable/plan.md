@@ -1,73 +1,135 @@
-# Strategic Command Hub — Round 2
+# Plano · Go-Live Center + Pacotes SaaS
 
-Round 1 delivered the `/strategy` hub with Asset Library, AI Choreography stub, DockTwin Pilot, Client Approval and 90-Day Plan. Round 2 unlocks the **Days 16–35** roadmap items: use the Hub in real demos, generate reports, and ship a segmented public landing.
+## Objetivo
 
-## Goals
+Transformar o roadmap dos 90 dias em produto vendável agora. O "Go-Live Center" hoje é só uma promessa nos textos — vou torná-lo o coração da demo: checklist com regras GO/NO-GO reais, anexos de evidência, signoffs, runbook de rollback e exportação de relatório.
 
-1. **Demo Sessions** — log every time the Hub is used in front of a prospect, with audience, assets shown, objections and outcome.
-2. **Client Approval Report (PDF)** — exportable artifact from `ClientApprovalPanel` (scope, version, comments, approval status, claim disclaimers).
-3. **Strategy Report after each demo** — extends the existing JSON export with the demo session context and an HTML/PDF rendering for sales follow-up.
-4. **Segmented Public Landing `/pitch/us`** — top-of-funnel page derived from the US Pitch Package asset, no auth, with claim-policy footer.
+A página /strategy continua sendo o GTM hub. /go-live é a tela operacional vendável: ela é o que o operador técnico vai usar todo dia, e o que sustenta os pacotes Previs / LiveOps / Enterprise.
 
-## What gets built
+## Escopo da rodada (R3 Pass 3)
 
-### Backend (Lovable Cloud)
-- `demo_sessions` table:
-  - `id, created_at, owner_id, prospect_company, prospect_audience (enterprise|producer|operator|investor), asset_ids[], objections, next_step, outcome (pending|won|lost|nurture), notes`
-  - RLS: owner read/write; admin read-all (uses existing `has_role(uid,'admin')` pattern).
-- `client_approvals` table:
-  - `id, demo_session_id (nullable), scope, preview_version, comments_jsonb, approved boolean, approved_at, approver_email`
-  - RLS: owner read/write; admin read-all.
-- No new buckets; PDFs are generated client-side and downloaded directly (no storage cost, no email path here — reuse existing `send-transactional-email` only when the user explicitly clicks "Email to client" in a follow-up round).
+### 1. Página `/go-live` (sidebar Office, ícone ShieldCheck)
 
-### Frontend
-- New tab in `/strategy`: **Demo Sessions** (`src/components/strategy/DemoSessionsPanel.tsx`)
-  - Form: prospect, audience, assets shown (multi-select from `SEED_ASSETS`), objections, outcome
-  - List of past sessions with filters
-  - "Generate strategy report" per session → PDF
-- `ClientApprovalPanel` extended:
-  - Persists scope/version/comments/approval to `client_approvals`
-  - "Export approval report (PDF)" button
-- `src/lib/strategyReport.ts` — pure builder that takes `{session, assets, claims}` and produces the report data structure
-- `src/lib/pdfRenderer.ts` — thin wrapper around `pdf-lib` (already lightweight) to render both report types from a shared template
+```text
+┌─ topbar: show name · platform badge · GO/NO-GO chip ──────────┐
+│ left 280:                  center:                  right 320:│
+│  Show selector             Checklist (blockers +    Signoffs  │
+│  Bug list                   non-blockers, agrupados Engenharia│
+│  Critical risks             por seção do PDF)       Operação  │
+│                                                     Cliente   │
+│  ─ rollback runbook         Evidence column:                  │
+│    + validation status        prints, logs, vídeo, sig        │
+│                                                               │
+│ bottom: GO / NO-GO panel + reasons + "Export report (PDF)"    │
+└───────────────────────────────────────────────────────────────┘
+```
 
-### Public landing
-- New route `/pitch/us` (public, no auth) — `src/pages/PitchUS.tsx`
-  - Hero: "The Operating System for Massive Spectacles"
-  - Three core messages
-  - Asset highlights (filtered from `SEED_ASSETS` where `audience` includes `enterprise|producer|investor` and `funnel = 'top'`)
-  - Claim policy footer (validated/pilot/marketing_hypothesis legend)
-  - CTA → existing `/comercial#demo-form`
-- Registered in `src/App.tsx` and `src/seo/publicRoutes.ts`
+### 2. Modelo de dados (Lovable Cloud)
 
-## Architecture notes
+Quatro tabelas com RLS owner-scoped + admin read-all (mesmo padrão de demo_sessions):
 
-- PDFs generated client-side with `pdf-lib` to keep the surface dependency-free of edge functions for v1.
-- Strategy export JSON (`fxkontrol.strategy.v1`) gets a new optional `session` field when exported from a demo session row.
-- All claim disclaimers from `src/lib/claims.ts` are auto-attached to PDFs whenever a referenced asset has `claimStatus !== 'validated'`.
-- No operational coupling: Demo Sessions and Client Approvals never touch `commandBus`, `safetyStateMachine` or hardware. Pure GTM surface (per `mem://funcionalidades/strategic-command-hub-gtm`).
+- `go_live_checklists` — id, owner, show_name, venue, scheduled_at, platform_target, status (`draft|in_review|go|no_go|completed`), no_go_reasons jsonb
+- `go_live_items` — checklist_id, section, label, is_blocker, is_critical, status (`pending|pass|fail|n_a|mitigated`), evidence_required boolean, notes
+- `go_live_evidence` — item_id, kind (`screenshot|log|video|signature|other`), url, sha256, captured_at, captured_by
+- `go_live_signoffs` — checklist_id, role (`engineering|operations|client`), signer_name, signer_email, signed_at, signature_text
 
-## Out of scope (later rounds)
+Bucket de storage privado `go-live-evidence` com RLS por checklist owner.
 
-- Email-to-client of the approval PDF (Days 36–60, ties into existing `send-transactional-email`)
-- AI Choreography Studio "Generate" wiring (Days 36–60)
-- DockTwin live companion telemetry (Days 36–60)
-- Pricing/objection analytics dashboard (Days 61–90)
+### 3. Engine GO/NO-GO (`src/lib/goLiveEngine.ts`)
 
-## Files
+Função pura `evaluateChecklist(items, signoffs, openCriticalBugs)` retorna:
 
-**Created**
-- `src/components/strategy/DemoSessionsPanel.tsx`
-- `src/lib/strategyReport.ts`
-- `src/lib/pdfRenderer.ts`
-- `src/pages/PitchUS.tsx`
+```ts
+{ result: 'GO' | 'NO_GO', reasons: NoGoReason[] }
+```
 
-**Modified**
-- `src/pages/Strategy.tsx` (new "Demo Sessions" tab)
-- `src/components/strategy/ClientApprovalPanel.tsx` (persist + PDF export)
-- `src/App.tsx` (`/pitch/us` route)
-- `src/seo/publicRoutes.ts`
-- `mem://index.md` (extend the Strategic Hub memory entry)
+Aplica todas as regras do brief:
+- bloqueador sem `pass` → NO-GO
+- bloqueador `pass` com `evidence_required` mas sem evidência → NO-GO
+- rollback runbook não validado → NO-GO
+- signoff Engenharia ou Operação faltando → NO-GO
+- bug crítico aberto → NO-GO
+- item crítico `fail` sem `mitigated=true` → NO-GO
 
-**Database migration**
-- create `demo_sessions`, `client_approvals` with RLS policies (owner + admin pattern)
+100% determinístico. Testável.
+
+### 4. Seed do checklist (PDF do brief virou dados)
+
+`src/lib/goLiveSeed.ts` com seções:
+- Plataforma & Compatibilidade (links para `/ios-readiness`)
+- Hardware Conectado (handshake, ACK em dummy load, heartbeat 5min)
+- DMX/Art-Net Output (universos, refresh rate, timing budget)
+- Pirotecnia (FXK16 ARM/DISARM, continuity check, exclusion zones)
+- Drones (FAA 120m AGL, spacing 2m, swarm health)
+- Segurança (E-STOP <50ms, lockout visual, audit log)
+- Rollback (runbook responsável + validado pós-reversão)
+- Signoffs (Engenharia, Operação, Cliente)
+
+Cada item marca `is_blocker`, `is_critical`, `evidence_required`.
+
+### 5. Painel de evidências
+
+Por item: anexar screenshot/log/vídeo/assinatura. Upload para storage. SHA-256 client-side (Web Crypto) gravado para auditoria. Preview inline (img/video) ou link (log/sig).
+
+### 6. Runbook de rollback
+
+Componente dedicado com lista de passos editáveis, responsável por passo, e botão "Validar pós-reversão" que grava timestamp + signer. Sem isso, GO-Live engine retorna NO-GO.
+
+### 7. Relatório PDF (reusa `src/lib/pdfRenderer.ts`)
+
+`buildGoLiveReport(checklist, items, evidence, signoffs, evaluation)` gera PDF com:
+- Capa: show, venue, data, GO/NO-GO + reasons
+- Resumo: contagem pass/fail/pending por seção
+- Lista completa de itens com status e evidências (thumbs ou hashes)
+- Signoffs com nome/email/timestamp
+- Bug list crítica e runbook de rollback
+- Disclaimer de claim conforme `src/lib/claims.ts`
+
+### 8. Pacotes SaaS na landing comercial
+
+Em `/pricing` (ou seção em `/comercial`), três cards (Previs / LiveOps / Enterprise) com bullets exatos do brief e CTA "Solicitar demo" → `/comercial#demo-form`. Sem checkout real (sem Stripe nesta rodada — pricing inicial vem na rodada 4).
+
+### 9. Polish + bug hunt (continua linha do Pass 2)
+
+- Substituir tabs do Strategy por design system `.ds-segment-*-bar` (hoje usa botões custom).
+- Converter `useState` arrays grandes (Strategy/AssetLibrary) para `useMemo` onde for derivado puro.
+- Audit visual em `/strategy` viewport mobile 390×844 — cards muitos provavelmente quebram.
+- Encontrar 3 bugs adicionais por `rg` em padrões comuns (setInterval sem clear, useEffect sem deps array, missing key prop).
+
+## Detalhes técnicos
+
+**Migration única** com 4 tabelas + bucket + RLS + trigger updated_at. Segue padrão das migrations existentes (`gen_random_uuid()`, `auth.uid()`, sem FK para `auth.users`, owner via uuid).
+
+**Sem barrels** para o módulo go-live (regra de reliability). Imports diretos.
+
+**Componentes em** `src/components/golive/`:
+- `GoLiveChecklist.tsx` — render itens agrupados
+- `GoLiveItemRow.tsx` — toggle status + abre painel evidência
+- `EvidenceUploader.tsx` — file input + SHA-256 + upload
+- `RollbackRunbook.tsx`
+- `SignoffPanel.tsx`
+- `GoNoGoPanel.tsx` — chamada para `evaluateChecklist`, mostra reasons
+- `BugListPanel.tsx`
+
+**Página** `src/pages/GoLive.tsx` orquestra dentro de `MainLayout`. Adiciona rota em `App.tsx` e item na sidebar (Office). Sem auto-arm, sem comando físico — apenas leitura de status + entrada de evidências/signoffs (consistente com hub GTM).
+
+**Relatório PDF** com `pdf-lib` (já instalado). Usa fontes Helvetica/Courier. Vantablack na capa. Cyan/Amber/Red conforme tokens canônicos. Disclaimer claim em rodapé toda página.
+
+**E-STOP global continua visível** (regra core) — não é escondido em /go-live.
+
+## Fora de escopo (próxima rodada)
+
+- Captura automática de evidências do hardware real (vai exigir adapters honestos por família — pesado).
+- DockTwin telemetria mock — fica para rodada seguinte se você quiser priorizar.
+- Stripe checkout dos pacotes — deixar como CTA até validar pricing nos pilots.
+- Migração física dos `src/features/` (F5.B continua adiada).
+
+## Ordem de entrega
+
+1. Migration (tabelas + bucket + RLS).
+2. Engine + seed + tipos.
+3. Componentes + página `/go-live` + sidebar.
+4. PDF report.
+5. Pacotes SaaS na landing.
+6. Polish/bugs (Pass 2 continuation).
+7. Memory update.
