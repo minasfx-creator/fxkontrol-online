@@ -14,7 +14,7 @@
  * que aplicam o brief #121214/#00FFFF/#FF7700 SEM contaminar o app operacional
  * (que mantém Vantablack + cyan-dessat por OLED/WCAG/semântica).
  */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -32,6 +32,16 @@ import {
   Cpu,
   Layers,
   Activity,
+  Mail,
+  MapPin,
+  Github,
+  Linkedin,
+  Globe,
+  Zap,
+  Lock,
+  Gauge,
+  Users,
+  ChevronDown,
 } from "lucide-react";
 
 /* ─── SEO helpers (idênticos ao Landing.tsx para coerência) ─────────────── */
@@ -183,8 +193,56 @@ const HARDWARE_BADGES = [
   { icon: Cpu,   label: "FXK16 / Showven" },
 ];
 
+/* Provas técnicas — métricas verificáveis (alinhadas à memória de safety/perf) */
+const PROOFS = [
+  { icon: Zap,   metric: "<50ms",  label: "Latência ESTOP global", desc: "Hot path com Hold-to-Confirm e lockout visual imediato." },
+  { icon: Lock,  metric: "100ms",  label: "Black box de auditoria", desc: "Snapshot de comando, transporte, ACK e estado físico." },
+  { icon: Gauge, metric: "33 PPS", label: "DMX / Art-Net broadcast", desc: "Budget presets safe / standard / aggressive." },
+  { icon: Users, metric: "3 papéis", label: "Engenharia · Operação · Cliente", desc: "Signoffs separados, evidências por papel." },
+];
+
+/* Stack de confiança — diferenciais técnicos defensáveis */
+const STACK = [
+  { title: "WebGPU + WebGL2 fallback",   desc: "Render GPGPU com seleção automática; nunca quebra em hardware antigo." },
+  { title: "Multi-transport agregado",   desc: "Web Serial + USB + BLE + Art-Net no mesmo dispositivo, com auto-fallback." },
+  { title: "Honest Hardware Layer",      desc: "Adapters honestos: NO_HARDWARE é estado válido, não fingimos conexão." },
+  { title: "Real-Only Mode",             desc: "Telemetria só conta com handshake verificado — sem dado sintético." },
+  { title: "iPhone-aware",               desc: "Pareamento USB/BLE assistido em Safari + Capacitor com fallback dual-device." },
+  { title: "Zero-GC timeline",           desc: "ECS/DOD com SoA, busca binária e batch eval para shows densos." },
+];
+
+/* FAQ comercial — objeções recorrentes mapeadas */
+const FAQ = [
+  {
+    q: "Substitui Finale 3D, FireOne ou Showven?",
+    a: "Não. FX KONTROL orquestra esses sistemas. Importamos VVIZ, MAVLink, layouts FireOne e protocolo PBUS Showven — você mantém o ecossistema atual e ganha previs, GO/NO-GO e auditoria.",
+  },
+  {
+    q: "Funciona offline / em campo sem internet?",
+    a: "Sim. O editor, simulação e operação rodam localmente. Sincronização de evidências e relatórios é assíncrona quando a conexão volta.",
+  },
+  {
+    q: "Como vocês garantem que o ESTOP é realmente <50ms?",
+    a: "O caminho UI → uiCommandGateway → CommandBus → SafetyStateMachine → FieldBus é instrumentado. Medimos cada ciclo, exportamos no black box e validamos em bancada antes de cada piloto.",
+  },
+  {
+    q: "Posso usar só para previs sem comprar o LiveOps?",
+    a: "Sim — esse é exatamente o pacote Previs. Aprovação remota com Pixel Streaming, sem hardware real, sem compromisso operacional.",
+  },
+  {
+    q: "Quem opera o sistema no evento? Vocês ou minha equipe?",
+    a: "Sua equipe. Treinamos seus operadores e ficamos disponíveis on-call (Enterprise inclui on-site no piloto). O sistema foi desenhado para o operador técnico ser o usuário diário.",
+  },
+  {
+    q: "Como vocês cobram?",
+    a: "Previs e LiveOps por evento ou assinatura mensal. Enterprise é contrato anual com SLA. Pricing final depende de escopo — agendamos uma call de 15min para dimensionar.",
+  },
+];
+
 /* ─── Página ────────────────────────────────────────────────────────────── */
 export default function Comercial() {
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+
   useEffect(() => {
     document.title = "FX KONTROL — Codificar imaginação; garantir precisão";
     upsertMeta("name", "description",
@@ -223,11 +281,11 @@ export default function Comercial() {
             <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--c-cyan))] animate-pulse" />
             Sistema operacional técnico para eventos ao vivo
           </div>
-          <h1 className="c-display text-5xl md:text-7xl font-bold leading-[1.05] mb-6 max-w-5xl">
+          <h1 className="c-display c-fs-h1 font-bold mb-6 max-w-5xl">
             <span className="c-text">Codificar imaginação;</span><br/>
             <span className="c-cyan">garantir precisão.</span>
           </h1>
-          <p className="c-text-muted text-lg md:text-xl max-w-2xl leading-relaxed mb-10">
+          <p className="c-text-muted c-fs-lead max-w-2xl mb-10">
             FX KONTROL é o cockpit técnico para produtoras premium operarem DMX, Art-Net, drones e pirotecnia
             com previs 3D, validação automática e decisão GO/NO-GO auditável.
           </p>
@@ -270,7 +328,7 @@ export default function Comercial() {
       <section id="pacotes" className="max-w-7xl mx-auto px-6 py-24">
         <div className="text-center mb-16">
           <div className="text-[10px] c-mono c-amber uppercase tracking-widest mb-4">Pacotes SaaS</div>
-          <h2 className="c-display text-4xl md:text-5xl font-bold mb-4 c-text">Três modos de operar.</h2>
+          <h2 className="c-display c-fs-h2 font-bold mb-4 c-text">Três modos de operar.</h2>
           <p className="c-text-muted max-w-2xl mx-auto">Do design até o piloto comercial, com compliance e auditoria a cada passo.</p>
         </div>
 
@@ -318,7 +376,7 @@ export default function Comercial() {
         <div className="max-w-7xl mx-auto px-6 py-24">
           <div className="text-center mb-16">
             <div className="text-[10px] c-mono c-cyan uppercase tracking-widest mb-4">Fluxo Vendável</div>
-            <h2 className="c-display text-4xl md:text-5xl font-bold mb-4 c-text">Da ideia ao GO formal.</h2>
+            <h2 className="c-display c-fs-h2 font-bold mb-4 c-text">Da ideia ao GO formal.</h2>
             <p className="c-text-muted max-w-2xl mx-auto">Seis passos. Cada um com evidência, log e signoff.</p>
           </div>
 
@@ -338,7 +396,7 @@ export default function Comercial() {
       <section id="go-no-go" className="max-w-7xl mx-auto px-6 py-24">
         <div className="text-center mb-16">
           <div className="text-[10px] c-mono c-amber uppercase tracking-widest mb-4">Regras GO/NO-GO</div>
-          <h2 className="c-display text-4xl md:text-5xl font-bold mb-4 c-text">Decisão automática, auditável.</h2>
+          <h2 className="c-display c-fs-h2 font-bold mb-4 c-text">Decisão automática, auditável.</h2>
           <p className="c-text-muted max-w-2xl mx-auto">
             O Go-Live Center calcula o resultado a partir de regras determinísticas — sem subjetividade.
           </p>
@@ -405,7 +463,7 @@ export default function Comercial() {
             <div className="text-[10px] c-mono c-cyan uppercase tracking-widest mb-4 inline-flex items-center gap-2">
               <Calendar className="w-3 h-3" /> Roadmap 90 dias
             </div>
-            <h2 className="c-display text-4xl md:text-5xl font-bold mb-4 c-text">Da fundação ao piloto comercial.</h2>
+            <h2 className="c-display c-fs-h2 font-bold mb-4 c-text">Da fundação ao piloto comercial.</h2>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -427,12 +485,90 @@ export default function Comercial() {
         </div>
       </section>
 
+      {/* ── Provas Técnicas ─────────────────────────────────────────────── */}
+      <section id="provas" className="max-w-7xl mx-auto px-6 py-24">
+        <div className="text-center mb-16">
+          <div className="text-[10px] c-mono c-cyan uppercase tracking-widest mb-4">Provas técnicas</div>
+          <h2 className="c-display c-fs-h2 font-bold mb-4 c-text">Números que você pode auditar.</h2>
+          <p className="c-text-muted c-fs-lead max-w-2xl mx-auto">
+            Cada métrica é instrumentada, exportada no black box e validada em bancada antes do piloto.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {PROOFS.map(({ icon: Icon, metric, label, desc }) => (
+            <div key={label} className="c-card rounded-lg p-6 flex flex-col">
+              <Icon className="w-6 h-6 c-cyan mb-4" />
+              <div className="c-display c-fs-h3 font-bold c-text mb-1">{metric}</div>
+              <div className="c-mono c-fs-eyebrow c-amber uppercase tracking-widest mb-3">{label}</div>
+              <p className="c-text-muted c-fs-small leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Stack de Confiança ──────────────────────────────────────────── */}
+      <section id="stack" className="border-y border-[hsl(var(--c-border-soft))] bg-[hsl(var(--c-bg-elevated))]">
+        <div className="max-w-7xl mx-auto px-6 py-24">
+          <div className="text-center mb-16">
+            <div className="text-[10px] c-mono c-amber uppercase tracking-widest mb-4">Stack de confiança</div>
+            <h2 className="c-display c-fs-h2 font-bold mb-4 c-text">Engenharia que aguenta evento real.</h2>
+            <p className="c-text-muted c-fs-lead max-w-2xl mx-auto">
+              Diferenciais técnicos defensáveis — cada um cobre uma falha comum do mercado.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {STACK.map((s) => (
+              <div key={s.title} className="c-card-overlay rounded-lg p-6">
+                <h3 className="c-display c-fs-h3 font-bold c-text mb-2">{s.title}</h3>
+                <p className="c-text-muted c-fs-small leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ─────────────────────────────────────────────────────────── */}
+      <section id="faq" className="max-w-4xl mx-auto px-6 py-24">
+        <div className="text-center mb-16">
+          <div className="text-[10px] c-mono c-cyan uppercase tracking-widest mb-4">Perguntas frequentes</div>
+          <h2 className="c-display c-fs-h2 font-bold mb-4 c-text">As objeções que sempre aparecem.</h2>
+        </div>
+
+        <div className="space-y-3">
+          {FAQ.map((item, i) => {
+            const isOpen = openFaq === i;
+            return (
+              <div key={i} className="c-card rounded-lg overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setOpenFaq(isOpen ? null : i)}
+                  aria-expanded={isOpen}
+                  className="w-full flex items-center justify-between gap-4 p-5 text-left hover:bg-[hsl(var(--c-bg-overlay))] transition-colors"
+                >
+                  <span className="c-display c-fs-h3 font-semibold c-text">{item.q}</span>
+                  <ChevronDown
+                    className={`w-5 h-5 c-cyan shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="px-5 pb-5 c-text-muted c-fs-body leading-relaxed border-t border-[hsl(var(--c-border-soft))] pt-4">
+                    {item.a}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       {/* ── CTA Final ───────────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-6 py-24 text-center">
-        <h2 className="c-display text-4xl md:text-5xl font-bold mb-6 c-text">
+        <h2 className="c-display c-fs-h2 font-bold mb-6 c-text">
           Pronto para um <span className="c-cyan">GO formal</span>?
         </h2>
-        <p className="c-text-muted text-lg mb-10 max-w-2xl mx-auto">
+        <p className="c-text-muted c-fs-lead mb-10 max-w-2xl mx-auto">
           Demo guiada de 15 minutos com previs 3D, hardware real e Go-Live Center.
         </p>
         <div className="flex flex-wrap gap-4 justify-center">
@@ -446,17 +582,87 @@ export default function Comercial() {
         </div>
       </section>
 
-      {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="border-t border-[hsl(var(--c-border-soft))]">
-        <div className="max-w-7xl mx-auto px-6 py-8 flex flex-wrap items-center justify-between gap-4">
-          <div className="text-xs c-text-subtle c-mono uppercase tracking-widest">
-            FX KONTROL · MinasFX · Reliability Engineering
+      {/* ── Footer expandido ────────────────────────────────────────────── */}
+      <footer className="border-t border-[hsl(var(--c-border-soft))] bg-[hsl(var(--c-bg-elevated))]">
+        <div className="max-w-7xl mx-auto px-6 py-16">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+            {/* Brand */}
+            <div className="col-span-2 md:col-span-1">
+              <Link to="/comercial" className="flex items-center gap-2 c-display text-lg font-bold tracking-wider mb-4">
+                <span className="c-cyan-pure">FX</span>
+                <span className="c-text">KONTROL</span>
+              </Link>
+              <p className="c-text-muted c-fs-small leading-relaxed mb-4">
+                Sistema operacional técnico para eventos ao vivo. Codificar imaginação; garantir precisão.
+              </p>
+              <div className="flex gap-3">
+                <a href="https://github.com" target="_blank" rel="noopener noreferrer"
+                   aria-label="GitHub" className="c-text-subtle hover:c-text transition-colors">
+                  <Github className="w-4 h-4" />
+                </a>
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer"
+                   aria-label="LinkedIn" className="c-text-subtle hover:c-text transition-colors">
+                  <Linkedin className="w-4 h-4" />
+                </a>
+                <a href="https://fxkontrol.online" target="_blank" rel="noopener noreferrer"
+                   aria-label="Website" className="c-text-subtle hover:c-text transition-colors">
+                  <Globe className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+
+            {/* Produto */}
+            <div>
+              <div className="c-mono c-fs-eyebrow c-text-subtle uppercase tracking-widest mb-4">Produto</div>
+              <ul className="space-y-2 c-fs-small">
+                <li><a href="#pacotes" className="c-text-muted hover:c-text transition-colors">Pacotes</a></li>
+                <li><a href="#fluxo"   className="c-text-muted hover:c-text transition-colors">Fluxo vendável</a></li>
+                <li><a href="#go-no-go" className="c-text-muted hover:c-text transition-colors">GO/NO-GO</a></li>
+                <li><a href="#provas"  className="c-text-muted hover:c-text transition-colors">Provas técnicas</a></li>
+                <li><a href="#stack"   className="c-text-muted hover:c-text transition-colors">Stack</a></li>
+              </ul>
+            </div>
+
+            {/* Recursos */}
+            <div>
+              <div className="c-mono c-fs-eyebrow c-text-subtle uppercase tracking-widest mb-4">Recursos</div>
+              <ul className="space-y-2 c-fs-small">
+                <li><Link to="/studio"    className="c-text-muted hover:c-text transition-colors">Studio</Link></li>
+                <li><Link to="/manifesto" className="c-text-muted hover:c-text transition-colors">Manifesto</Link></li>
+                <li><Link to="/pricing"   className="c-text-muted hover:c-text transition-colors">Pricing público</Link></li>
+                <li><a href="#faq"        className="c-text-muted hover:c-text transition-colors">FAQ</a></li>
+                <li><Link to="/auth"      className="c-text-muted hover:c-text transition-colors">Entrar</Link></li>
+              </ul>
+            </div>
+
+            {/* Contato */}
+            <div>
+              <div className="c-mono c-fs-eyebrow c-text-subtle uppercase tracking-widest mb-4">Contato</div>
+              <ul className="space-y-3 c-fs-small">
+                <li className="flex items-start gap-2 c-text-muted">
+                  <Mail className="w-4 h-4 c-cyan shrink-0 mt-0.5" />
+                  <a href="mailto:vendas@fxkontrol.online" className="hover:c-text transition-colors break-all">
+                    vendas@fxkontrol.online
+                  </a>
+                </li>
+                <li className="flex items-start gap-2 c-text-muted">
+                  <MapPin className="w-4 h-4 c-cyan shrink-0 mt-0.5" />
+                  <span>Belo Horizonte, MG · Brasil</span>
+                </li>
+              </ul>
+            </div>
           </div>
-          <div className="flex gap-6 text-xs c-text-muted">
-            <Link to="/legal/terms"   className="hover:c-text transition-colors">Termos</Link>
-            <Link to="/legal/privacy" className="hover:c-text transition-colors">Privacidade</Link>
-            <Link to="/legal/refund"  className="hover:c-text transition-colors">Reembolso</Link>
-            <Link to="/pricing"       className="hover:c-text transition-colors">Pricing público</Link>
+
+          {/* Bottom bar */}
+          <div className="border-t border-[hsl(var(--c-border-soft))] pt-6 flex flex-wrap items-center justify-between gap-4">
+            <div className="c-fs-eyebrow c-text-subtle c-mono uppercase tracking-widest">
+              © {new Date().getFullYear()} FX KONTROL · MinasFX · Reliability Engineering
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 c-fs-small">
+              <Link to="/legal/terms"   className="c-text-muted hover:c-text transition-colors">Termos</Link>
+              <Link to="/legal/privacy" className="c-text-muted hover:c-text transition-colors">Privacidade</Link>
+              <Link to="/legal/refund"  className="c-text-muted hover:c-text transition-colors">Reembolso</Link>
+            </div>
           </div>
         </div>
       </footer>
