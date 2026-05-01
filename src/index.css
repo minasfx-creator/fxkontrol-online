@@ -172,7 +172,7 @@
     --segment-sfx:     38  92% 50%;        /* #F59E0B */
     --segment-drones:  189 94% 55%;        /* #22D3EE */
     --segment-light:   48  96% 55%;        /* #FACC15 */
-    --segment-dmx:     258 90% 66%;        /* #8B5CF6 */
+    --segment-dmx:     258 90% 72%;        /* #A78BFA — L66→72 p/ AA em ds bg.elevated */
 
     /* Status (functional) */
     --status-ok:       142 71% 45%;        /* #22C55E */

@@ -47,7 +47,7 @@ export const dsTokens = {
     sfx:    '38 92% 50%',     // #F59E0B
     drones: '189 94% 55%',    // #22D3EE
     light:  '48 96% 55%',     // #FACC15
-    dmx:    '258 90% 66%',    // #8B5CF6
+    dmx:    '258 90% 72%',    // #A78BFA — WCAG AA on bg.elevated
   },
 
   // ── Functional status (immutable across themes) ────────────────
