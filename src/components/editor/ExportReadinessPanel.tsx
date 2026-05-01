@@ -155,13 +155,13 @@ export default function ExportReadinessPanel() {
           canExport={canExport} target="drone" />
       </div>
 
-      {/* Blocking issues */}
+      {/* Verification issues — advisory in simulation, blocking in real_operation */}
       {failedIssues.length > 0 && (
         <div className="border border-border/10 rounded p-3 space-y-1 flex-1">
           <div className="flex items-center gap-2 mb-2">
             <Shield className="w-3 h-3 text-muted-foreground/60" />
             <span className="text-[8px] font-mono text-muted-foreground/60 tracking-widest">
-              {failedIssues.length} ISSUE(S) DETECTED
+              {failedIssues.length} {sim ? 'ADVISORY ISSUE(S) — não bloqueiam simulação' : 'ISSUE(S) DETECTED'}
             </span>
           </div>
           <ScrollArea className="max-h-60">
