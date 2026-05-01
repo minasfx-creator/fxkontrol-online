@@ -41,37 +41,50 @@ export function createSparkTrailSystem() {
       attribute float opacity;
       attribute vec3 color;
       attribute vec3 aVelocity;
-      
+
       uniform float uVelocityStretchFactor;
-      
+
       varying float vOpacity;
       varying vec3 vColor;
-      
+
       void main() {
         vOpacity = opacity;
         vColor = color;
-        
+
         vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
         gl_Position = projectionMatrix * mvPos;
-        
-        // Base point size
-        float baseSize = max(1.0, 4.0 * opacity);
-        
-        // Velocity stretching — elongate point along velocity direction
+
+        // Base point size — tapered: head thicker, tail thinner.
+        // opacity already encodes (trailFade * lifeRatio), so size follows
+        // a non-linear curve to keep the head punchy while the tail
+        // pinches to a single pixel before vanishing.
+        float baseSize = max(0.6, 4.5 * pow(opacity, 0.65));
+
+        // Velocity stretching — elongate along velocity (Niagara-style).
         vec3 viewVel = (modelViewMatrix * vec4(aVelocity, 0.0)).xyz;
         float speed = length(viewVel);
         float stretchFactor = 1.0 + speed * uVelocityStretchFactor;
-        
-        gl_PointSize = baseSize * stretchFactor;
+
+        // Distance attenuation: clamp so far sparks remain visible
+        // without bloating near sparks.
+        float distAtten = clamp(80.0 / max(0.001, -mvPos.z), 0.5, 1.4);
+
+        gl_PointSize = baseSize * stretchFactor * distAtten;
       }
     `,
     fragmentShader: `
       varying float vOpacity;
       varying vec3 vColor;
       void main() {
-        float d = length(gl_PointCoord - 0.5) * 2.0;
-        float glow = exp(-d * d * 3.0);
-        gl_FragColor = vec4(vColor * (1.0 + vOpacity * 2.0), glow * vOpacity);
+        vec2 uv = gl_PointCoord - 0.5;
+        float d2 = dot(uv, uv) * 4.0;
+        // Sharper hot core + softer halo (two-lobe gaussian)
+        float core = exp(-d2 * 6.0);
+        float halo = exp(-d2 * 1.6) * 0.45;
+        float glow = core + halo;
+        // Hot core pushes color toward white at peak opacity
+        vec3 hot = mix(vColor, vec3(1.0), core * vOpacity * 0.85);
+        gl_FragColor = vec4(hot * (1.0 + vOpacity * 1.6), glow * vOpacity);
       }
     `,
     uniforms: {
