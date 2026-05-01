@@ -886,7 +886,7 @@ export function exportFormationsToKML(
 // Coordinates use the editor's Three.js frame (X right, Y up, Z toward viewer).
 // Heading is reported per-cue: linked position heading > position default > 0.
 
-export interface ShowExportJSON {
+export interface ShowBundleJSON {
   schemaVersion: '1.0';
   generator: 'FXKontrol';
   generatedAt: string;
@@ -950,7 +950,7 @@ function resolveCueGeometry(item: TimelineItem, positions: Position[]) {
   return { x, y, z, heading, pitch, positionName };
 }
 
-export function exportShowJSON(
+export function exportShowBundleJSON(
   projectName: string,
   duration: number,
   timelineItems: TimelineItem[],
@@ -958,7 +958,7 @@ export function exportShowJSON(
   trajectories: Trajectory[] = [],
   droneFormations: DroneFormation[] = [],
 ): string {
-  const cues: ShowExportJSON['cues'] = timelineItems.map((item) => {
+  const cues: ShowBundleJSON['cues'] = timelineItems.map((item) => {
     const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
     const geom = resolveCueGeometry(item, positions);
     const color = item.colorOverride ?? effect?.color ?? '#FFFFFF';
@@ -967,7 +967,7 @@ export function exportShowJSON(
       id: item.id,
       effectId: item.effectId,
       effectName: effect?.name ?? 'Unknown',
-      type: (effect?.type ?? 'sfx') as ShowExportJSON['cues'][number]['type'],
+      type: (effect?.type ?? 'sfx') as ShowBundleJSON['cues'][number]['type'],
       category: effect?.category ?? 'unknown',
       startTime: Math.round(item.startTime * 1000) / 1000,
       duration: Math.round(dur * 1000) / 1000,
@@ -995,7 +995,7 @@ export function exportShowJSON(
   const droneCount = (droneFormations[0]?.droneCount ?? 0) + trajectories.length +
     cues.filter(c => c.type === 'drone').length;
 
-  const doc: ShowExportJSON = {
+  const doc: ShowBundleJSON = {
     schemaVersion: '1.0',
     generator: 'FXKontrol',
     generatedAt: new Date().toISOString(),
@@ -1027,7 +1027,7 @@ export function exportShowJSON(
  * one row with X/Y/Z/Heading. Suitable for spreadsheets, audits, and
  * downstream import in Excel / Google Sheets.
  */
-export function exportShowCSV(
+export function exportShowBundleCSV(
   timelineItems: TimelineItem[],
   positions: Position[],
 ): string {
