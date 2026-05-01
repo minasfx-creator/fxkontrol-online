@@ -46,7 +46,7 @@ export function DemoSessionsPanel() {
   const reload = async () => {
     if (!user) { setLoading(false); return; }
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('demo_sessions')
       .select('*')
       .order('created_at', { ascending: false })
@@ -67,7 +67,7 @@ export function DemoSessionsPanel() {
       toast({ title: 'Prospect required', description: 'Add a company name.', variant: 'destructive' });
       return;
     }
-    const { error } = await supabase.from('demo_sessions').insert({
+    const { error } = await (supabase as any).from('demo_sessions').insert({
       owner_id: user.id,
       prospect_company: draft.prospect_company.trim(),
       prospect_audience: draft.prospect_audience,
@@ -87,7 +87,7 @@ export function DemoSessionsPanel() {
   };
 
   const remove = async (id: string) => {
-    const { error } = await supabase.from('demo_sessions').delete().eq('id', id);
+    const { error } = await (supabase as any).from('demo_sessions').delete().eq('id', id);
     if (error) {
       toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
     } else {
