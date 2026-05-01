@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Helmet } from 'react-helmet-async';
+import { useEffect, useState } from 'react';
 import { Download, Layers, Wand2, Wrench, ClipboardCheck, Calendar } from 'lucide-react';
 import { AssetLibrary, SEED_ASSETS } from '@/components/strategy/AssetLibrary';
 import { AIChoreographyStudioStub } from '@/components/strategy/AIChoreographyStudioStub';
