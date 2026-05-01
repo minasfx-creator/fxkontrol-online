@@ -82,6 +82,10 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
     useFXK16Bridge();
   const { api, armed, ready } = useFXK16Commands();
   const caps = useMemo(() => detectPlatformCapabilities(), []);
+  // Per-transport availability (iOS Safari/desktop Safari/Firefox/Capacitor sem plugin).
+  // Centralizado em transportAvailability — fonte única de verdade p/ disabled+tooltip.
+  const usbAvail = useMemo(() => getTransportAvailability('webserial', caps), [caps]);
+  const bleAvail = useMemo(() => getTransportAvailability('webble', caps), [caps]);
   const usbHint = usbErrorHint((status as any).lastErrorCode, status.lastError);
 
   const [busy, setBusy] = useState<'usb' | 'ble' | 'disc' | null>(null);
