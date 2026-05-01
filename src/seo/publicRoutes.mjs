@@ -39,6 +39,7 @@ export const PUBLIC_ROUTES = [
   { path: '/legal/refund',  changefreq: 'monthly', priority: 0.8 },
   { path: '/legal/privacy', changefreq: 'monthly', priority: 0.8 },
   { path: '/editor-ds',     changefreq: 'weekly',  priority: 0.7 },
+  { path: '/pitch/us',      changefreq: 'weekly',  priority: 0.9 },
 ];
 
 /** Today as YYYY-MM-DD in UTC (stable across machines/timezones). */

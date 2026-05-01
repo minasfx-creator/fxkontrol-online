@@ -87,6 +87,7 @@ const Comercial = lazy(lazyRetry(() => import("./pages/Comercial")));
 const IOSReadiness = lazy(lazyRetry(() => import("./pages/IOSReadiness")));
 const Unsubscribe = lazy(lazyRetry(() => import("./pages/Unsubscribe")));
 const Strategy = lazy(lazyRetry(() => import("./pages/Strategy")));
+const PitchUS = lazy(lazyRetry(() => import("./pages/PitchUS")));
 
 const queryClient = new QueryClient();
 
@@ -201,6 +202,7 @@ function App() {
                         (Previs / LiveOps / Enterprise + GO/NO-GO + 90d roadmap). Uses
                         data-theme="commercial" tokens isolated from operational palette. */}
                     <Route path="/comercial" element={<Comercial />} />
+                    <Route path="/pitch/us" element={<PitchUS />} />
                     <Route path="/unsubscribe" element={<Unsubscribe />} />
                     {/* Checkout success — auth-gated but standalone (no MainLayout chrome) so the
                         confirmation screen is the only thing visible while the webhook lands. */}
