@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
+import { useImperativeTimeout } from '@/hooks/useInterval';
 import FXK16FieldTestPanel from '@/components/field/FXK16FieldTestPanel';
 import FXK16FieldSettingsPanel from '@/components/field/FXK16FieldSettingsPanel';
 
