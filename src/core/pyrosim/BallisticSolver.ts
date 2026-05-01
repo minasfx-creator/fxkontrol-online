@@ -107,6 +107,13 @@ export function integrateParticles(
     pool.velY[i] -= relVy * dragFactor;
     pool.velZ[i] -= relVz * dragFactor;
 
+    // ── Terminal velocity cap (queda livre realista) ──
+    // Stars de charcoal/willow podem acelerar indefinidamente sem isso.
+    // Corpo humano ~55 m/s, granizo ~40 m/s; stars pirotécnicos ~30-100 m/s.
+    if (pool.velY[i] < -TERMINAL_VEL_CAP) {
+      pool.velY[i] = -TERMINAL_VEL_CAP;
+    }
+
     // ── Position update ──
     pool.posX[i] += pool.velX[i] * dt;
     pool.posY[i] += pool.velY[i] * dt;
