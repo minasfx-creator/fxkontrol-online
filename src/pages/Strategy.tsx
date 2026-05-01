@@ -94,16 +94,23 @@ export default function Strategy() {
     URL.revokeObjectURL(url);
   };
 
+  useEffect(() => {
+    const prev = document.title;
+    document.title = 'Strategic Command Hub — FXKONTROL';
+    const meta = document.querySelector('meta[name="description"]');
+    const prevDesc = meta?.getAttribute('content') ?? '';
+    meta?.setAttribute(
+      'content',
+      'GTM hub: asset library, AI choreography, DockTwin pilot and client approval. Strategy package for investor and client demos.',
+    );
+    return () => {
+      document.title = prev;
+      if (meta) meta.setAttribute('content', prevDesc);
+    };
+  }, []);
+
   return (
     <>
-      <Helmet>
-        <title>Strategic Command Hub · FXKONTROL</title>
-        <meta
-          name="description"
-          content="GTM hub: asset library, AI choreography, DockTwin pilot and client approval. Strategy package for investor and client demos."
-        />
-      </Helmet>
-
       <div className="min-h-[100dvh] p-4 md:p-6 space-y-4">
         {/* Header */}
         <header className="space-y-2">
