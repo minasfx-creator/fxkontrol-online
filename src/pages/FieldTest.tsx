@@ -756,6 +756,7 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
     Object.fromEntries(channels.map(ch => [ch, { status: 'idle' as const }]))
   );
   const [fireAllRunning, setFireAllRunning] = useState(false);
+  const xl4Timer = useImperativeTimeout();
 
   // Simulate module scan (BLE or Realtime discovery)
   const handleScanModules = useCallback(async () => {
@@ -821,7 +822,7 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
     haptics.fire();
     setLastFired(ch);
     setChannelResults(prev => ({ ...prev, [ch]: { status: 'fired' } }));
-    setTimeout(() => setLastFired(null), 300);
+    xl4Timer.set(() => setLastFired(null), 300, `last-fired-${ch}`);
   }, [selectedModule]);
 
   // Track ACKs from session logs
