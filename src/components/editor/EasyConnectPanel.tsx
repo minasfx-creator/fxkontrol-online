@@ -95,6 +95,13 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
   const [devices, setDevices] = useState<DiscoveredDevice[]>([]);
   const [testingAll, setTestingAll] = useState(false);
 
+  // iOS Safari/desktop Safari = nenhum transporte físico disponível.
+  // SimMode continua livre (operador pode demonstrar UI sem hardware), mas
+  // Real scan precisa de pelo menos uma API — senão SCAN é falso-positivo.
+  const platformCaps = useMemo(() => detectPlatformCapabilities(), []);
+  const platformHasHardware = useMemo(() => hasAnyHardwareTransport(platformCaps), [platformCaps]);
+  const realScanBlocked = !simMode && !platformHasHardware;
+
   // Track mount state + pending timers so we never setState after unmount.
   const mountedRef = useRef(true);
   const pendingTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
