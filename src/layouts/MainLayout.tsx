@@ -1,7 +1,7 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { PanelLeftClose, PanelLeft, Menu } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, AlertOctagon, Menu } from 'lucide-react';
 import minasfxLogo from '@/assets/minasfx-logo-white.png';
 import { useLiveSfxStore } from '@/store/useLiveSfxStore';
 import { useDisplayStore } from '@/store/useDisplayStore';
@@ -260,26 +260,14 @@ export default function MainLayout() {
         <AutoControllerLauncher />
       </Suspense>
 
-      {isArmed && !commandImmersive && (
-        <button
-          onClick={handlePanic}
-          className="fixed z-[9999] flex items-center justify-center rounded-xl border-2 border-destructive/60 transition-all active:scale-90 armed-pulse"
-          style={{
-            bottom: '80px',
-            right: '16px',
-            width: '64px',
-            height: '64px',
-            background: 'hsl(var(--destructive) / 0.9)',
-            boxShadow: '0 0 24px hsl(var(--destructive) / 0.4), 0 0 64px hsl(var(--destructive) / 0.15)',
-          }}
-          title="EMERGENCY STOP — ALL CHANNELS"
-          aria-label="Emergency stop — all channels"
-        >
-          <div className="flex flex-col items-center">
-            <AlertOctagon className="w-6 h-6 text-white" />
-            <span className="text-[7px] font-mono-code font-black text-white tracking-widest mt-0.5">PANIC</span>
-          </div>
-        </button>
+      {/* Global E-STOP — always visible top-right, above all overlays.
+          Replaces the legacy isArmed-conditional PANIC button. Routes
+          through uiCommandGateway → CommandBus → SafetyStateMachine.
+          Hidden on /command (immersive mode has its own dedicated UI). */}
+      {!commandImmersive && (
+        <Suspense fallback={null}>
+          <GlobalEStopButton />
+        </Suspense>
       )}
 
       {(showDock || showMobileDock) && <DockBar />}
