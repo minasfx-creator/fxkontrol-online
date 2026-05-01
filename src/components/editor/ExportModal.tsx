@@ -6,7 +6,7 @@ import { useState, useMemo } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type TimelineItem, type Position } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
-import { exportFiringCSV, exportFiringJSON, exportVVIZ, downloadFile } from '@/lib/exportEngine';
+import { exportFiringCSV, exportFiringJSON, exportVVIZ, exportShowBundleJSON, exportShowBundleCSV, downloadFile } from '@/lib/exportEngine';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
