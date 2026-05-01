@@ -46,7 +46,10 @@ export default function FieldOpsPage() {
       {/* Tab Header */}
       <div
         className="shrink-0 flex border-b sticky top-0 z-20 backdrop-blur-md"
-        style={{ background: 'hsl(220 12% 5% / 0.92)', borderColor: 'hsl(32 100% 50% / 0.12)' }}
+        style={{
+          background: 'hsl(var(--field-bg, 220 30% 4%) / 0.92)',
+          borderColor: 'hsl(var(--field-cyan, 190 70% 58%) / 0.18)',
+        }}
       >
         {TABS.map(t => {
           const isActive = tab === t.key;
@@ -58,18 +61,31 @@ export default function FieldOpsPage() {
               className={cn(
                 'flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-all relative',
                 'text-[10px] font-mono font-bold tracking-[0.18em] uppercase',
-                isActive ? 'text-[hsl(32_100%_65%)]' : 'text-muted-foreground/45 hover:text-muted-foreground/70'
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--field-cyan,190_70%_58%)/0.6)]',
+                isActive
+                  ? 'text-[hsl(var(--field-cyan,190_70%_58%))]'
+                  : 'text-muted-foreground/55 hover:text-muted-foreground/85'
               )}
+              aria-pressed={isActive}
+              aria-label={`${t.label} — ${t.sub}`}
             >
               <div className="flex items-center gap-1.5">
-                <Icon className={cn('w-3.5 h-3.5', isActive && 'drop-shadow-[0_0_4px_hsl(32_100%_50%/0.5)]')} />
+                <Icon
+                  className={cn(
+                    'w-3.5 h-3.5',
+                    isActive && 'drop-shadow-[0_0_4px_hsl(var(--field-cyan,190_70%_58%)/0.55)]'
+                  )}
+                />
                 <span>{t.label}</span>
               </div>
               <span className="text-[7px] tracking-[0.25em] opacity-60">{t.sub}</span>
               {isActive && (
                 <div
                   className="absolute bottom-0 left-[15%] right-[15%] h-[2px]"
-                  style={{ background: 'linear-gradient(90deg, transparent, hsl(32 100% 50% / 0.6), transparent)' }}
+                  style={{
+                    background:
+                      'linear-gradient(90deg, transparent, hsl(var(--field-cyan, 190 70% 58%) / 0.7), transparent)',
+                  }}
                 />
               )}
             </button>
