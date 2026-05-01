@@ -83,6 +83,7 @@ const CheckoutSuccess = lazy(lazyRetry(() => import("./pages/CheckoutSuccess")))
 const Pricing = lazy(lazyRetry(() => import("./pages/Pricing")));
 const Landing = lazy(lazyRetry(() => import("./pages/Landing")));
 const Manifesto = lazy(lazyRetry(() => import("./pages/Manifesto")));
+const Comercial = lazy(lazyRetry(() => import("./pages/Comercial")));
 
 const queryClient = new QueryClient();
 
@@ -193,6 +194,10 @@ function App() {
                     <Route path="/landing" element={<Landing />} />
                     {/* Public brand manifesto — positioning, key messages, tone of voice. */}
                     <Route path="/manifesto" element={<Manifesto />} />
+                    {/* Public commercial deck — B2B sales narrative for premium producers
+                        (Previs / LiveOps / Enterprise + GO/NO-GO + 90d roadmap). Uses
+                        data-theme="commercial" tokens isolated from operational palette. */}
+                    <Route path="/comercial" element={<Comercial />} />
                     {/* Checkout success — auth-gated but standalone (no MainLayout chrome) so the
                         confirmation screen is the only thing visible while the webhook lands. */}
                     <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
