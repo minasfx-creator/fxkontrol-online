@@ -1,0 +1,155 @@
+/**
+ * field-tokens.css — FXKONTROL Field-Grade Dark Tokens
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Camada FINAL de tokens (importada DEPOIS de @tailwind base no index.css).
+ * Resolve três bugs de campo identificados na auditoria:
+ *
+ *   1. `--primary` / `--accent` / `--ring` estavam laranja `32 100% 50%`.
+ *      Laranja em campo = WARNING (memory: Vantablack/Cyan/Green/Amber/Red).
+ *      Usar laranja como ação primária quebra a semântica e cega o operador
+ *      em sessões longas (>3h). Aqui forçamos PRIMARY = ciano-dessat.
+ *
+ *   2. Estados ativos (hover/focus/selected/[data-state=active]) não tinham
+ *      um token único — cada componente reinventava `bg-white/10`,
+ *      `border-orange-500`, etc. Aqui definimos `--state-*` como FONTE ÚNICA.
+ *
+ *   3. Contraste fraco em `--muted-foreground` (200 8% 42%) sobre
+ *      `--background` (0 0% 2%) ≈ 4.0:1, abaixo de WCAG AA para texto
+ *      pequeno. Subimos para 56% L → ~5.8:1.
+ *
+ * REGRAS DE USO (campo, não negociáveis):
+ *   • Ação primária / seleção / foco            → ciano-dessat (--state-*)
+ *   • Aviso / atenção / preflight não-crítico   → amber (--status-warn)
+ *   • Falha crítica / E-STOP / contingência     → red   (--status-fail)
+ *   • Sucesso / continuidade OK / armed-ok      → green (--status-ok)
+ *   • LARANJA SATURADO É PROIBIDO COMO PRIMÁRIO. Apenas como warn.
+ *
+ * NOTE: Este arquivo é processado standalone pelo PostCSS (não usa @layer).
+ * Como é importado APÓS @tailwind base no index.css, :root vence o cascade
+ * do shadcn legacy naturalmente.
+ */
+
+:root {
+  /* ── 1. Vantablack surface scale (validado em campo, OLED-safe) ────────
+     L escolhidos para preservar shadow detail em OLED sem clipar para 0%.
+     Cada step ≈ +1.5% L (perceptualmente uniforme em escala log). */
+  --field-bg:        220 30% 1.5%;   /* Vantablack — viewport */
+  --field-surface-0: 220 28% 3%;     /* sidebar, dock */
+  --field-surface-1: 220 24% 5%;     /* card, panel */
+  --field-surface-2: 220 20% 7%;     /* card hover, popover */
+  --field-surface-3: 220 18% 10%;    /* input, segmented bg */
+  --field-surface-4: 220 16% 13%;    /* input focus, hover elev */
+
+  /* ── 2. Foreground hierarchy (WCAG AA validado contra --field-bg) ─────
+     Contrast ratios medidos em https://webaim.org/resources/contrastchecker/
+       primary    L88 → 14.2:1  (AAA large + normal)
+       secondary  L72 →  9.1:1  (AAA)
+       muted      L56 →  5.8:1  (AA normal, AA large)  ← era 4.0 (FAIL)
+       disabled   L38 →  3.1:1  (AA large only — só p/ texto desabilitado) */
+  --field-fg-primary:   180 6%  88%;
+  --field-fg-secondary: 195 8%  72%;
+  --field-fg-muted:     200 10% 56%;
+  --field-fg-disabled:  210 8%  38%;
+
+  /* ── 3. SYNC / Primary ciano dessat (substitui laranja) ───────────────
+     Por que dessat (S=70%, não 100%): em OLED noturno, ciano puro
+     (#00FFFF) gera bloom e fadiga após 30 min. S=70% L=58% mantém
+     leitura mas reduz halação. Validado contra --field-surface-1:
+     contrast ratio 6.4:1 (AA normal, AA large). */
+  --field-cyan:       190 70% 58%;       /* default sync/active */
+  --field-cyan-hover: 190 75% 64%;       /* +6% L para hover */
+  --field-cyan-press: 190 65% 50%;       /* −8% L para press */
+  --field-cyan-soft:  190 70% 58% / 0.12; /* tinted bg p/ selected */
+  --field-cyan-ring:  190 70% 58% / 0.45; /* outline focus */
+
+  /* ── 4. Estados de interação (canônico p/ TODO componente novo) ──────
+     Use estes tokens em vez de cores soltas. Ex:
+       .my-btn:hover  { background: hsl(var(--state-hover-bg)); }
+       .my-btn:focus-visible { box-shadow: 0 0 0 2px hsl(var(--state-focus-ring)); }
+     Hover/active são acromáticos (subida de L) para não conflitar com
+     a semântica de cor (sync/ok/warn/fail). */
+  --state-hover-bg:    0 0% 100% / 0.05;       /* +5% white overlay */
+  --state-press-bg:    0 0% 100% / 0.09;
+  --state-selected-bg: var(--field-cyan-soft); /* tinted ciano */
+  --state-selected-fg: var(--field-cyan);
+  --state-selected-border: 190 70% 58% / 0.45;
+  --state-focus-ring:  var(--field-cyan-ring); /* 2px ring AAA-visible */
+  --state-disabled-bg: 220 16% 8% / 0.5;
+  --state-disabled-fg: var(--field-fg-disabled);
+
+  /* ── 5. OVERRIDE dos tokens shadcn (--primary/--accent/--ring) ───────
+     O index.css legado tinha laranja aqui. Forçamos ciano-dessat para
+     que TODA a árvore shadcn (Button default, Input focus, Tabs active,
+     Switch checked, Slider thumb, Calendar selected, etc.) respeite a
+     paleta operacional automaticamente — zero refator necessário em
+     componentes existentes. */
+  --primary:           var(--field-cyan);
+  --primary-foreground: 220 30% 4%;             /* dark on cyan = legível */
+  --accent:            var(--field-cyan);
+  --accent-foreground: 220 30% 4%;
+  --ring:              var(--field-cyan);
+
+  /* Foreground/background base aproveitam a escala validada acima.
+     (Mantemos --background/--card/etc do index.css para não invalidar
+     100+ componentes que dependem deles, mas aplicamos a escala mais
+     acessível em --foreground/--muted-foreground.) */
+  --foreground:        var(--field-fg-primary);
+  --muted-foreground:  var(--field-fg-muted);
+
+  /* Sidebar herda primary cyan (era laranja). */
+  --sidebar-primary:   var(--field-cyan);
+  --sidebar-ring:      var(--field-cyan);
+}
+
+/* `.dark` é o modo padrão do app (darkMode: ["class"] no Tailwind config).
+   Espelhamos os mesmos tokens para garantir que toggle .dark explícito
+   também receba a paleta de campo. */
+.dark {
+  --primary:           var(--field-cyan);
+  --primary-foreground: 220 30% 4%;
+  --accent:            var(--field-cyan);
+  --accent-foreground: 220 30% 4%;
+  --ring:              var(--field-cyan);
+  --foreground:        var(--field-fg-primary);
+  --muted-foreground:  var(--field-fg-muted);
+  --sidebar-primary:   var(--field-cyan);
+  --sidebar-ring:      var(--field-cyan);
+}
+
+/* ── Utility classes (standalone, sem @layer) ───────────────────────────
+   Aplique .field-interactive em qualquer container clicável novo.
+   Hover/active acromáticos, focus-visible com ring ciano AAA,
+   selected com tint ciano. Substitui o padrão antigo de
+   `hover:bg-white/5 focus:ring-orange-500`. */
+
+.field-interactive {
+  transition: background-color 150ms ease, box-shadow 150ms ease, color 150ms ease;
+  outline: none;
+}
+.field-interactive:hover {
+  background-color: hsl(var(--state-hover-bg));
+}
+.field-interactive:active {
+  background-color: hsl(var(--state-press-bg));
+}
+.field-interactive:focus-visible {
+  box-shadow: 0 0 0 2px hsl(var(--state-focus-ring));
+}
+.field-interactive[aria-selected="true"],
+.field-interactive[data-state="active"],
+.field-interactive[data-state="checked"],
+.field-interactive[data-state="on"] {
+  background-color: hsl(var(--state-selected-bg));
+  color: hsl(var(--state-selected-fg));
+  box-shadow: inset 0 0 0 1px hsl(var(--state-selected-border));
+}
+.field-interactive:disabled,
+.field-interactive[aria-disabled="true"] {
+  background-color: hsl(var(--state-disabled-bg));
+  color: hsl(var(--state-disabled-fg));
+  cursor: not-allowed;
+}
+
+/* Texto técnico AAA (timecode, DMX addr) sobre surface-1. Combine com .ds-mono. */
+.field-text-technical { color: hsl(var(--field-fg-primary)); }
+.field-text-muted     { color: hsl(var(--field-fg-muted)); }

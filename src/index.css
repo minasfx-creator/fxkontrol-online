@@ -4,6 +4,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Field-grade dark tokens (Vantablack + cyan-dessat states).
+   Importado APÓS @tailwind para vencer cascade do shadcn legacy. */
+@import "./styles/field-tokens.css";
+
 @layer base {
   :root {
     /* FX KONTROL — Tactical Command Interface */
