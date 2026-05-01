@@ -14,7 +14,8 @@
  * que aplicam o brief #121214/#00FFFF/#FF7700 SEM contaminar o app operacional
  * (que mantém Vantablack + cyan-dessat por OLED/WCAG/semântica).
  */
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+const DemoRequestForm = lazy(() => import("@/components/comercial/DemoRequestForm"));
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -359,7 +360,7 @@ export default function Comercial() {
                   ))}
                 </ul>
                 <a
-                  href="mailto:vendas@fxkontrol.online?subject=Demo%20FX%20KONTROL%20"
+                  href="#solicitar-demo"
                   className={pkg.highlight ? 'c-cta-secondary' : 'c-cta-primary'}
                   style={{ padding: '12px 16px', borderRadius: 6, textAlign: 'center', fontSize: 13 }}
                 >
@@ -368,6 +369,31 @@ export default function Comercial() {
               </div>
             );
           })}
+        </div>
+
+        {/* ── Formulário de demo ─────────────────────────────────────── */}
+        <div id="solicitar-demo" className="mt-24 scroll-mt-24">
+          <div className="text-center mb-10">
+            <div className="text-[10px] c-mono c-cyan uppercase tracking-widest mb-4">
+              Solicitar demo guiada
+            </div>
+            <h3 className="c-display c-fs-h2 font-bold mb-4 c-text">
+              Conte sua stack. Anexe evidências.
+            </h3>
+            <p className="c-text-muted max-w-2xl mx-auto">
+              Resposta técnica em até 1 dia útil com proposta de demo de 15 minutos
+              alinhada ao seu show e ao seu hardware atual.
+            </p>
+          </div>
+          <Suspense
+            fallback={
+              <div className="c-card rounded-lg p-10 max-w-3xl mx-auto text-center c-text-muted text-sm">
+                Carregando formulário…
+              </div>
+            }
+          >
+            <DemoRequestForm />
+          </Suspense>
         </div>
       </section>
 

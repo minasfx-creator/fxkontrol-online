@@ -146,3 +146,41 @@
   color: hsl(var(--c-fail));
   border: 1px solid hsl(var(--c-fail) / 0.4);
 }
+
+/* ── Form inputs (DemoRequestForm) ───────────────────────────────────── */
+[data-theme="commercial"] .c-input {
+  width: 100%;
+  background: hsl(var(--c-bg-elevated));
+  color: hsl(var(--c-text));
+  border: 1px solid hsl(var(--c-border-soft));
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.4;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+[data-theme="commercial"] .c-input::placeholder {
+  color: hsl(var(--c-text-subtle));
+  opacity: 1;
+}
+[data-theme="commercial"] .c-input:hover:not(:disabled) {
+  border-color: hsl(var(--c-cyan) / 0.4);
+}
+[data-theme="commercial"] .c-input:focus,
+[data-theme="commercial"] .c-input:focus-visible {
+  outline: none;
+  border-color: hsl(var(--c-cyan));
+  box-shadow: 0 0 0 3px hsl(var(--c-cyan) / 0.18);
+  background: hsl(var(--c-bg));
+}
+[data-theme="commercial"] textarea.c-input { resize: vertical; min-height: 84px; }
+[data-theme="commercial"] select.c-input {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, hsl(var(--c-text-muted)) 50%),
+                    linear-gradient(135deg, hsl(var(--c-text-muted)) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 32px;
+}
