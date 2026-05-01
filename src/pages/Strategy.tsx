@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Download, Layers, Wand2, Wrench, ClipboardCheck, Calendar, Briefcase } from 'lucide-react';
+import { Download, Layers, Wand2, Wrench, ClipboardCheck, Calendar, Briefcase, Activity } from 'lucide-react';
 import { AssetLibrary, SEED_ASSETS } from '@/components/strategy/AssetLibrary';
 import { AIChoreographyStudioStub } from '@/components/strategy/AIChoreographyStudioStub';
 import { DockTwinPilotPanel } from '@/components/strategy/DockTwinPilotPanel';
 import { ClientApprovalPanel } from '@/components/strategy/ClientApprovalPanel';
 import { DemoSessionsPanel } from '@/components/strategy/DemoSessionsPanel';
+import { MaturityMatrixPanel } from '@/components/strategy/MaturityMatrixPanel';
 import { ClaimBadge } from '@/components/strategy/ClaimBadge';
 import { CLAIMS } from '@/lib/claims';
+import { MATURITY_MATRIX } from '@/lib/productMaturity';
 
-type TabId = 'assets' | 'ai' | 'docktwin' | 'approval' | 'sessions' | 'plan';
+type TabId = 'assets' | 'maturity' | 'ai' | 'docktwin' | 'approval' | 'sessions' | 'plan';
 
 const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'assets', label: 'Asset Library', icon: Layers },
+  { id: 'maturity', label: 'Maturity', icon: Activity },
   { id: 'ai', label: 'AI Choreography', icon: Wand2 },
   { id: 'docktwin', label: 'DockTwin Pilot', icon: Wrench },
   { id: 'approval', label: 'Client Approval', icon: ClipboardCheck },
@@ -78,6 +81,7 @@ export default function Strategy() {
       pillars: ['Strategic Command Hub', 'Go-Live Center', 'AI Choreography Studio', 'DockTwin Pilot', 'Client Approval Flow'],
       assets: selected,
       claims: CLAIMS,
+      maturity: MATURITY_MATRIX,
       plan90: PLAN,
       claimPolicy: {
         validated: 'safe to use as factual or source-backed',
@@ -179,6 +183,7 @@ export default function Strategy() {
         {/* Body */}
         <section className="rounded-md border border-border bg-background/20 p-3 md:p-4">
           {tab === 'assets' && <AssetLibrary onSelectionChange={setSelectedAssetIds} />}
+          {tab === 'maturity' && <MaturityMatrixPanel />}
           {tab === 'ai' && <AIChoreographyStudioStub />}
           {tab === 'docktwin' && <DockTwinPilotPanel />}
           {tab === 'approval' && <ClientApprovalPanel />}

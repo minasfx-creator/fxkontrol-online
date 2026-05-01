@@ -1,69 +1,33 @@
 import { useMemo, useState } from 'react';
 import { ClaimBadge } from './ClaimBadge';
-import { Wand2, ShieldAlert, Lock, FileDown, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { Wand2, ShieldAlert, FileDown, CheckCircle2, AlertTriangle, XCircle, Sparkles, SlidersHorizontal } from 'lucide-react';
 import {
   validateScene,
   exportSkybrushPackage,
   downloadBlob,
-  type ChoreoScene,
 } from '@/lib/skybrushExport';
+import { TEMPLATES, getTemplate, type TemplateId } from '@/lib/aiChoreographyTemplates';
 
-interface SceneCard {
-  id: string;
-  title: string;
-  beats: string[];
-  formation: string;
-  dmxLook: string;
-}
-
-const SAMPLE_SCENES: SceneCard[] = [
-  {
-    id: 'sc-001',
-    title: 'Opening — Cyan Bloom',
-    beats: ['00:00 fade-in', '00:08 swarm rise', '00:16 cyan bloom'],
-    formation: 'spiral · 80 drones · 60m radius',
-    dmxLook: 'wash 100% cyan @ 30fps · strobe off',
-  },
-  {
-    id: 'sc-002',
-    title: 'Climax — Amber Pulse',
-    beats: ['00:00 dark hold', '00:04 amber pulse x3', '00:12 burst'],
-    formation: 'sphere collapse · 120 drones',
-    dmxLook: 'wash amber pulse 4Hz · beam pan ±45°',
-  },
-];
-
-/** Build a deterministic spiral demo scene we can validate + export. */
-function buildDemoChoreo(droneCount = 80, durationSec = 16): ChoreoScene {
-  const drones = Array.from({ length: droneCount }, (_, i) => {
-    const phase = (i / droneCount) * Math.PI * 2;
-    const radius = 30 + (i % 8) * 3;
-    const path = [0, 4, 8, 12, 16].map((t) => ({
-      t,
-      x: Math.cos(phase + t * 0.15) * radius,
-      y: Math.sin(phase + t * 0.15) * radius,
-      z: 20 + Math.sin(t * 0.4 + phase) * 15 + i * 0.05,
-    }));
-    return {
-      id: `d${String(i + 1).padStart(3, '0')}`,
-      path,
-      color: [
-        { t: 0, r: 0, g: 0.6, b: 1 },
-        { t: 8, r: 0, g: 1, b: 0.9 },
-        { t: 16, r: 1, g: 0.6, b: 0 },
-      ],
-    };
-  });
-  return { title: 'FXK Demo · Spiral Bloom', drones, duration: durationSec };
-}
+type Mode = 'beginner' | 'expert';
 
 export function AIChoreographyStudioStub() {
-  const [prompt, setPrompt] = useState('');
-  const [scenes] = useState(SAMPLE_SCENES);
+  const [mode, setMode] = useState<Mode>('beginner');
+  const [templateId, setTemplateId] = useState<TemplateId>('stadium-opener');
+  const [droneCount, setDroneCount] = useState(120);
+  const [duration, setDuration] = useState(20);
   const [exporting, setExporting] = useState(false);
 
-  const demoScene = useMemo(() => buildDemoChoreo(80, 16), []);
-  const report = useMemo(() => validateScene(demoScene), [demoScene]);
+  const tmpl = getTemplate(templateId)!;
+
+  // Lock parameters to template defaults in beginner mode.
+  const effDrones = mode === 'beginner' ? tmpl.defaultDrones : droneCount;
+  const effDuration = mode === 'beginner' ? tmpl.durationSec : duration;
+
+  const scene = useMemo(
+    () => tmpl.build(effDrones, effDuration),
+    [tmpl, effDrones, effDuration],
+  );
+  const report = useMemo(() => validateScene(scene), [scene]);
 
   const errorCount = report.issues.filter((i) => i.severity === 'error').length;
   const warnCount = report.issues.filter((i) => i.severity === 'warn').length;
@@ -71,8 +35,8 @@ export function AIChoreographyStudioStub() {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const blob = exportSkybrushPackage(demoScene, report);
-      downloadBlob(blob, `fxk-skybrush-preview-${new Date().toISOString().slice(0, 10)}.zip`);
+      const blob = exportSkybrushPackage(scene, report);
+      downloadBlob(blob, `fxk-${templateId}-${new Date().toISOString().slice(0, 10)}.zip`);
     } finally {
       setExporting(false);
     }
@@ -80,44 +44,77 @@ export function AIChoreographyStudioStub() {
 
   return (
     <div className="space-y-4">
+      {/* Mode toggle */}
+      <div className="flex items-center gap-1 rounded-md border border-border bg-background/40 p-1 w-fit">
+        <ModeBtn active={mode === 'beginner'} onClick={() => setMode('beginner')} icon={<Sparkles className="h-3.5 w-3.5" />} label="Beginner" />
+        <ModeBtn active={mode === 'expert'} onClick={() => setMode('expert')} icon={<SlidersHorizontal className="h-3.5 w-3.5" />} label="Expert" />
+      </div>
+
       <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 flex items-start gap-2">
         <ShieldAlert className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
         <div className="text-[11px] text-foreground/90 space-y-1">
           <p className="font-semibold">AI Guardrails active</p>
           <p className="text-muted-foreground">
-            The AI generates editable scenes, drone formations and DMX looks. It does <strong>not</strong> produce
-            chemical recipes, manufacturing instructions, ignition sequences or any unsafe real-world firing steps.
+            Editable scenes, drone formations and DMX looks only. <strong>No</strong> chemical recipes,
+            manufacturing instructions or ignition sequences are ever produced.
           </p>
           <ClaimBadge status="validated" />
         </div>
       </div>
 
-      <div>
-        <label className="text-[10px] ds-mono uppercase tracking-wider text-muted-foreground">Prompt</label>
-        <div className="flex gap-2 mt-1">
-          <input
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="e.g. NYE 8 minutes, 200 drones, cinematic build to amber finale"
-            className="flex-1 bg-background/40 border border-border rounded-md px-3 py-2 text-xs ds-mono focus:outline-none focus:border-primary/50"
-          />
-          <button
-            type="button"
-            disabled
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background/40 px-3 py-2 text-xs ds-mono uppercase tracking-wider text-muted-foreground cursor-not-allowed"
-            title="Pilot — wired in next milestone"
-          >
-            <Lock className="h-3 w-3" />
-            Generate
-          </button>
+      {/* Template picker (Beginner) */}
+      {mode === 'beginner' && (
+        <div className="space-y-2">
+          <label className="text-[10px] ds-mono uppercase tracking-wider text-muted-foreground">Choose a template</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {TEMPLATES.map((t) => {
+              const active = templateId === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTemplateId(t.id)}
+                  className={`text-left rounded-md border p-3 transition-colors ${
+                    active ? 'border-primary/60 bg-primary/5' : 'border-border bg-background/30 hover:border-border-strong'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Wand2 className="h-3.5 w-3.5 text-primary" />
+                    <h4 className="text-xs font-semibold">{t.title}</h4>
+                    <span className="ml-auto text-[9px] ds-mono text-muted-foreground">{t.defaultDrones}d · {t.durationSec}s</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">{t.description}</p>
+                  <p className="text-[10px] ds-mono text-cyan-400 mt-1">DMX: {t.dmxLook}</p>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-1">Generation wires in milestone day 36–60. Sample output below.</p>
-      </div>
+      )}
 
-      {/* Validation + Skybrush export — R3 honest stub */}
+      {/* Expert overrides */}
+      {mode === 'expert' && (
+        <div className="rounded-md border border-border bg-background/30 p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
+            <h4 className="text-xs font-semibold">Expert overrides</h4>
+            <ClaimBadge status="pilot" className="ml-auto" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <Select label="Template" value={templateId} onChange={(v) => setTemplateId(v as TemplateId)} options={TEMPLATES.map(t => ({ value: t.id, label: t.title }))} />
+            <NumInput label="Drones" value={droneCount} min={10} max={500} onChange={setDroneCount} />
+            <NumInput label="Duration (s)" value={duration} min={4} max={300} onChange={setDuration} />
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Overrides are saved per-session only. Export carries all values into the validation report.
+          </p>
+        </div>
+      )}
+
+      {/* Validation + Export */}
       <div className="rounded-md border border-border bg-background/30 p-3 space-y-3">
-        <div className="flex items-center gap-2">
-          <h4 className="text-xs font-semibold ds-mono uppercase tracking-wider">Demo scene · validation</h4>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h4 className="text-xs font-semibold ds-mono uppercase tracking-wider">Validation</h4>
           <ClaimBadge status="marketing_hypothesis" />
           <span className="ml-auto text-[10px] text-muted-foreground">
             {report.totals.drones} drones · {report.totals.waypoints} waypoints · {report.totals.durationSec}s
@@ -125,24 +122,9 @@ export function AIChoreographyStudioStub() {
         </div>
 
         <div className="grid grid-cols-3 gap-2">
-          <Stat
-            icon={errorCount > 0 ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-            tone={errorCount > 0 ? 'error' : 'ok'}
-            label="Errors"
-            value={errorCount}
-          />
-          <Stat
-            icon={<AlertTriangle className="h-3.5 w-3.5" />}
-            tone={warnCount > 0 ? 'warn' : 'ok'}
-            label="Warnings"
-            value={warnCount}
-          />
-          <Stat
-            icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-            tone={report.ok ? 'ok' : 'error'}
-            label="Status"
-            value={report.ok ? 'PASS' : 'BLOCK'}
-          />
+          <Stat icon={errorCount > 0 ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />} tone={errorCount > 0 ? 'error' : 'ok'} label="Errors" value={errorCount} />
+          <Stat icon={<AlertTriangle className="h-3.5 w-3.5" />} tone={warnCount > 0 ? 'warn' : 'ok'} label="Warnings" value={warnCount} />
+          <Stat icon={<CheckCircle2 className="h-3.5 w-3.5" />} tone={report.ok ? 'ok' : 'error'} label="Status" value={report.ok ? 'PASS' : 'BLOCK'} />
         </div>
 
         {report.issues.length > 0 && (
@@ -177,51 +159,65 @@ export function AIChoreographyStudioStub() {
           {exporting ? 'Building package…' : 'Export Skybrush preview (.zip)'}
         </button>
         <p className="text-[10px] text-muted-foreground">
-          Honest preview · contains <code className="ds-mono">_FXK_DISCLAIMER.txt</code>. Do not fly without re-export from a
-          validated Skybrush session.
+          Honest preview · contains <code className="ds-mono">_FXK_DISCLAIMER.txt</code>. Do not fly without re-export from a validated Skybrush session.
         </p>
       </div>
-
-      <div className="space-y-2">
-        {scenes.map((s) => (
-          <div key={s.id} className="rounded-md border border-border bg-background/30 p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Wand2 className="h-3.5 w-3.5 text-primary" />
-              <h4 className="text-xs font-semibold">{s.title}</h4>
-              <span className="ds-mono text-[9px] text-muted-foreground ml-auto">{s.id}</span>
-            </div>
-            <dl className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px]">
-              <Field label="Beats" value={s.beats.join(' → ')} />
-              <Field label="Formation" value={s.formation} />
-              <Field label="DMX Look" value={s.dmxLook} />
-            </dl>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function ModeBtn({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
   return (
-    <div>
-      <dt className="text-[9px] ds-mono uppercase tracking-wider text-muted-foreground">{label}</dt>
-      <dd className="text-foreground mt-0.5">{value}</dd>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-[11px] ds-mono uppercase tracking-wider transition-colors ${
+        active ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
 
-function Stat({
-  icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number | string;
-  tone: 'ok' | 'warn' | 'error';
-}) {
+function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: Array<{ value: string; label: string }> }) {
+  return (
+    <label className="block">
+      <span className="text-[9px] ds-mono uppercase tracking-wider text-muted-foreground">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full bg-background/40 border border-border rounded-md px-2 py-1.5 text-xs ds-mono focus:outline-none focus:border-primary/50"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function NumInput({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (v: number) => void }) {
+  return (
+    <label className="block">
+      <span className="text-[9px] ds-mono uppercase tracking-wider text-muted-foreground">{label}</span>
+      <input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        onChange={(e) => {
+          const n = Number(e.target.value);
+          if (Number.isFinite(n)) onChange(Math.max(min, Math.min(max, n)));
+        }}
+        className="mt-1 w-full bg-background/40 border border-border rounded-md px-2 py-1.5 text-xs ds-mono focus:outline-none focus:border-primary/50"
+      />
+    </label>
+  );
+}
+
+function Stat({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: number | string; tone: 'ok' | 'warn' | 'error' }) {
   const cls =
     tone === 'ok'
       ? 'border-green-500/40 bg-green-500/5 text-green-400'
