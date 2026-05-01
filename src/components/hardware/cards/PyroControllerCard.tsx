@@ -93,7 +93,7 @@ export function PyroControllerCard({ controller, onClose, onOpenConsole }: PyroC
   const onEStop = useCallback(() => {
     const t0 = performance.now();
     try {
-      uiCommandGateway.eStop({ source: 'PyroControllerCard', detail: controller.id });
+      uiCommandGateway.eStop({ source: 'PyroControllerCard', detail: controller.aggregateId });
     } catch (err) {
       // Never let gateway throws hide the relay-open attempt.
       // eslint-disable-next-line no-console
@@ -103,7 +103,7 @@ export function PyroControllerCard({ controller, onClose, onOpenConsole }: PyroC
     toast.error(`E-STOP enviado (${sysMs}ms)`, { duration: 4000 });
     // Fire-and-forget physical relay open — UI already reacted.
     void api.stop().catch(() => { /* state machine already SAFE */ });
-  }, [api, controller.id]);
+  }, [api, controller.aggregateId]);
 
   return (
     <div
