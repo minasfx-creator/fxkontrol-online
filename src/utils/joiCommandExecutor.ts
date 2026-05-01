@@ -605,7 +605,7 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
         const rows = [
           `ShowPlan: ${store.positions.length > 0 ? 'ACTIVE' : 'EMPTY'} | evidence: adapter_only | source: ProjectStore`,
           `VerificationPass: ${vResult2.level} | evidence: adapter_only | checks: ${vResult2.summary.passed}/${vResult2.summary.total}`,
-          `ExportCoordinator: ${readiness2.allowed_operations.includes('export') ? 'READY' : 'BLOCKED'} | mode: ${mode}`,
+          `ExportCoordinator: ${(!workMode.isRealOperation() || readiness2.allowed_operations.includes('export')) ? 'READY' : 'BLOCKED'} | mode: ${mode} | workMode: ${workMode.get()}`,
           ...devices2.map(d => {
             const im = (d.metadata?.integration_mode as IntegrationMode) || 'simulated';
             const ev = d.metadata?.evidence_level || 'adapter_only';
