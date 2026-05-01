@@ -20,6 +20,7 @@ import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
 import useGenerativeStore from '@/store/useGenerativeStore';
 import { getPreFireTime } from '@/lib/safetyEngine';
 import { cn } from '@/lib/utils';
+import { readSupplierPayload, formatSupplierProvenance } from '@/lib/catalogDragMapping';
 import AudioWaveform from './AudioWaveform';
 import { isAudioFile, uploadAudioForProject } from '@/lib/audioUpload';
 import { useAuth } from '@/hooks/useAuth';
