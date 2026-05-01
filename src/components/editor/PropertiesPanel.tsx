@@ -352,6 +352,127 @@ export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor
                 );
               })()}
 
+              {/* ── EFFECT PARAMETERS — intensity / prefire / aim / type-specific ── */}
+              {selectedItem && (() => {
+                const intensity = selectedItem.intensity ?? 100;
+                const prefire = selectedItem.prefireOverride ?? selectedEffect.prefire ?? 0;
+                const isFirework = selectedEffect.type === 'firework';
+                const isLaser = selectedEffect.type === 'laser';
+                const isDrone = selectedEffect.type === 'drone';
+                const caliber = selectedItem.caliberOverride ?? selectedEffect.caliber ?? 0;
+                const beamCount = selectedItem.beamCountOverride ?? selectedEffect.beamCount ?? 0;
+                return (
+                  <div className="rounded-xl p-2.5 space-y-2.5" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+                    <div className="flex items-center gap-1.5">
+                      <Sliders className="w-3 h-3 text-primary/60" />
+                      <p className="text-[10px] text-muted-foreground/50 font-semibold uppercase tracking-wider font-display">Effect Parameters</p>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-[9px] text-muted-foreground/60 font-display">Intensity</p>
+                        <span className="text-[10px] font-mono-code text-foreground">{Math.round(intensity)}%</span>
+                      </div>
+                      <Slider
+                        value={[intensity]}
+                        min={0}
+                        max={150}
+                        step={1}
+                        onValueChange={(v) => updateTimelineItem(selectedItem.id, { intensity: v[0] })}
+                        aria-label="Effect intensity"
+                      />
+                      {selectedItem.intensity !== undefined && selectedItem.intensity !== 100 && (
+                        <button
+                          className="mt-1 text-[9px] text-muted-foreground/60 hover:text-foreground"
+                          onClick={() => updateTimelineItem(selectedItem.id, { intensity: undefined })}
+                        >
+                          Reset to 100%
+                        </button>
+                      )}
+                    </div>
+
+                    {(isFirework || selectedEffect.prefire !== undefined) && (
+                      <div>
+                        <p className="text-[9px] text-muted-foreground/60 mb-1 font-display">Prefire / Lift (s)</p>
+                        <NumberField
+                          label="L"
+                          value={prefire}
+                          step={0.1}
+                          onChange={(v) => updateTimelineItem(selectedItem.id, { prefireOverride: Math.max(0, v) })}
+                          color="hsl(48 96% 53%)"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <p className="text-[9px] text-muted-foreground/60 mb-1 font-display">Aim (°)</p>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <NumberField label="Pn" value={selectedItem.pan ?? 0} step={1} onChange={(v) => updateTimelineItem(selectedItem.id, { pan: v })} color="hsl(207 90% 54%)" />
+                        <NumberField label="Tl" value={selectedItem.tilt ?? 0} step={1} onChange={(v) => updateTimelineItem(selectedItem.id, { tilt: v })} color="hsl(142 70% 45%)" />
+                        <NumberField label="Sp" value={selectedItem.spin ?? 0} step={1} onChange={(v) => updateTimelineItem(selectedItem.id, { spin: v })} color="hsl(280 70% 60%)" />
+                      </div>
+                    </div>
+
+                    {isFirework && (
+                      <div>
+                        <p className="text-[9px] text-muted-foreground/60 mb-1 font-display">Caliber (in) — apex height</p>
+                        <NumberField
+                          label="C"
+                          value={caliber}
+                          step={0.5}
+                          onChange={(v) => updateTimelineItem(selectedItem.id, { caliberOverride: Math.max(1, v) })}
+                          color="hsl(24 95% 53%)"
+                        />
+                      </div>
+                    )}
+
+                    {isLaser && (
+                      <div>
+                        <p className="text-[9px] text-muted-foreground/60 mb-1 font-display">Beam Count</p>
+                        <NumberField
+                          label="B"
+                          value={beamCount}
+                          step={1}
+                          onChange={(v) => updateTimelineItem(selectedItem.id, { beamCountOverride: Math.max(1, Math.round(v)) })}
+                          color="hsl(142 70% 45%)"
+                        />
+                      </div>
+                    )}
+
+                    {isDrone && (
+                      <p className="text-[9px] text-muted-foreground/50 italic">
+                        Drone count: use "Unit Count" above (per-formation).
+                      </p>
+                    )}
+
+                    {(selectedItem.intensity !== undefined ||
+                      selectedItem.prefireOverride !== undefined ||
+                      selectedItem.caliberOverride !== undefined ||
+                      selectedItem.beamCountOverride !== undefined ||
+                      selectedItem.pan !== undefined ||
+                      selectedItem.tilt !== undefined ||
+                      selectedItem.spin !== undefined) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full h-6 text-[9px] text-muted-foreground hover:text-foreground"
+                        onClick={() => updateTimelineItem(selectedItem.id, {
+                          intensity: undefined,
+                          prefireOverride: undefined,
+                          caliberOverride: undefined,
+                          beamCountOverride: undefined,
+                          pan: undefined,
+                          tilt: undefined,
+                          spin: undefined,
+                        })}
+                      >
+                        Reset effect parameters
+                      </Button>
+                    )}
+                  </div>
+                );
+              })()}
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-xl p-2.5" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
                   <p className="text-[10px] text-muted-foreground/40 mb-0.5 font-display">Library Duration</p>
