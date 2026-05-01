@@ -10,6 +10,18 @@ import type { ParticlePool } from './ParticleStateModel';
 import type { WindFieldSystem } from './WindFieldSystem';
 
 const GRAVITY = -9.81; // m/s²
+// ── Atmosfera ISA simplificada ──
+// Densidade ao nível do mar e gradiente exponencial (escala de altura ~8400m).
+// Para shells ≤300m a variação é <4% mas torna o solver mais correto fisicamente
+// e abre caminho pra altas atitudes (drone+pirotecnia em 200-300m).
+const RHO_0 = 1.225;          // kg/m³ ao nível do mar
+const SCALE_HEIGHT = 8400;    // m
+const TERMINAL_VEL_CAP = 120; // m/s — limita stars caindo (charcoal/willow)
+
+function airDensity(altitude: number): number {
+  // ρ(h) = ρ₀ · exp(-h / H)
+  return RHO_0 * Math.exp(-Math.max(0, altitude) / SCALE_HEIGHT);
+}
 
 // Pre-allocated wind sample output
 const _windSample = [0, 0, 0] as [number, number, number];
@@ -57,14 +69,19 @@ export function integrateParticles(
     const relVy = pool.velY[i] - windY;
     const relVz = pool.velZ[i] - windZ;
 
-    // ── Quadratic drag: F_drag = -Cd * |v_rel| * v_rel ──
+    // ── Quadratic drag escalado por densidade do ar local ──
+    // F_drag = -½ · ρ(h) · Cd · |v_rel| · v_rel
+    // Como `cd` aqui já agrega A/m em coeficiente normalizado, usamos
+    // dragEffective = cd · (ρ(h) / ρ₀) preservando a calibração existente.
     const speed = Math.sqrt(relVx * relVx + relVy * relVy + relVz * relVz);
     const cd = pool.dragCoefficient[i];
+    const rhoRatio = airDensity(pool.posY[i]) / RHO_0;
+    const cdEff = cd * rhoRatio;
 
     let dragFactor = 0;
     if (speed > 0.01) {
-      // Deceleration = Cd * speed * dt, capped to prevent sign flip
-      dragFactor = Math.min(cd * speed * dt, 0.95);
+      // Deceleration = Cd_eff * speed * dt, capped to prevent sign flip
+      dragFactor = Math.min(cdEff * speed * dt, 0.95);
     }
 
     // ── Acceleration from gravity ──
