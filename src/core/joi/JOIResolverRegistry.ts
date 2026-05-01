@@ -15,6 +15,8 @@ import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
 import { getProvenanceBadge } from '@/core/hardware/provenance';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
+import { vdlToEffectSpec, explainVdl } from '@/lib/vdlEffectMapper';
+import { EFFECT_FAMILIES } from '@/core/pyrosim/CalibrationLayer';
 
 export interface JOIResolver {
   name: string;
@@ -352,6 +354,89 @@ const showDesignResolver: JOIResolver = {
   },
 };
 
+// ── VDL Effect Resolver — ensina JOI a ler/criar efeitos via VDL ──
+const vdlEffectResolver: JOIResolver = {
+  name: 'VDLEffectResolver',
+  description: 'Interpreta strings VDL (Visual Descriptive Language) e propõe efeitos pirotécnicos físicos',
+  categories: ['show_design', 'explain', 'generate_visual'],
+  canHandle: (input, cat) =>
+    /\bvdl\b|peony|chrysanthemum|kamuro|willow|brocade|salute|crossette|crackle|glitter|strobe|pistil|\d{2,3}\s?mm|"[^"]*(red|blue|gold|silver|green|purple)[^"]*"/i.test(input),
+  resolve() {
+    // Tenta extrair candidatos a VDL do input do usuário ou propor exemplos canônicos.
+    // Como o resolver não tem acesso direto ao input, retorna a base de conhecimento
+    // + exemplos exemplares que o LLM pode adaptar.
+    const exemplares = [
+      '4" Red Peony',
+      '6" Gold Brocade Crown w/ Red Pistil',
+      '5" Silver Kamuro w/ Crackling',
+      '8" Blue Chrysanthemum w/ Glitter',
+      '3" Green Strobe Peony',
+      '4" White Salute w/ Report',
+      '6" Gold Willow R30',
+      '5" Red to Blue Peony',
+    ];
+
+    const explained = exemplares.map(v => {
+      try {
+        return `• \`${v}\` → ${explainVdl(v)}`;
+      } catch {
+        return `• \`${v}\` → (parse error)`;
+      }
+    });
+
+    const families = Object.entries(EFFECT_FAMILIES).map(([k, f]) =>
+      `${k}: ${f.description}`,
+    );
+
+    const knowledge = [
+      '## VDL Quick Reference (Finale 3D spec)',
+      '**Forma**: `<caliber>" <color(s)> <type> [w/ <modifier>] [angle]`',
+      '**Caliber**: 2"–12" (50mm–300mm). Energia escala com caliber^2.5.',
+      '**Cores canônicas (35)**: Red, Blue, Green, Gold, Silver, White, Purple, Orange, Yellow, Pink, Cyan, Magenta, Aqua, Lime, Fuchsia, Indigo, Lavender, Lemon, Ruby, Plum, Peach, Violet, Turquoise, Sea Blue, Sky Blue, Grass Green, Charcoal, Dark, Gamboge, Brocade, Nishiki, Crackling, Strobe (modifiers usados como cor implícita).',
+      '**Trail-implying** (sparks de cauda automáticos): Charcoal, Gamboge, Gold, Silver, Nishiki, Brocade, Titanium. Use sufixo `Tip` ou `No Trail` para suprimir.',
+      '**Transição**: `Red to Blue` (cor muda no meio da queima).',
+      '**Multi-cor**: `Red & Blue` (stars de cor alternada).',
+      '**Tipos (família física)**: Peony (limpo), Chrysanthemum (cauda longa), Willow (gota extrema), Kamuro (glitter pendurado), Brocade (dourado denso), Palm (tronco+coroa), Salute (flash+bang), Crossette (split em 4), Ring (anel), Dahlia (poucos stars rápidos), Horsetail (queda dirigida).',
+      '**Modificadores**: Strobe, Blink, Crackle/Crackling, Glitter, Pistil, Twinkle, Falling Leaves, Rising, Whistle, Hummer, Report, Split.',
+      '**Ângulo**: `R45` = 45° à direita da vertical, `L30` = esquerda. Limite ±90°.',
+      '**Timing**: `FD 2.5` = fuse delay 2.5s, `LFT 4` = lift time, `DLY 0.3` = pre-delay.',
+      '',
+      '## Famílias físicas calibradas',
+      ...families,
+      '',
+      '## Exemplos parsed',
+      ...explained,
+      '',
+      '## Como criar um efeito',
+      '1. Escolha caliber pela cena (3"=urbano, 6"=show médio, 10"=festival).',
+      '2. Escolha tipo pela "forma": Peony=esfera, Willow=lágrima, Kamuro=cortina dourada.',
+      '3. Adicione 1-2 cores (transição "to" cria drama).',
+      '4. Modificadores reforçam textura: Glitter para sparkle, Crackle para som, Strobe para piscar.',
+      '5. Para finale: Salute + Brocade combinados criam impacto sonoro+visual.',
+      '',
+      'Use `vdlToEffectSpec(string)` em `@/lib/vdlEffectMapper` para converter VDL → física pronta para `pyroSimCore.createEvent()`.',
+    ].join('\n');
+
+    const artifact: JOIArtifact = {
+      id: `art-vdl-${Date.now()}`,
+      type: 'report',
+      title: 'VDL Knowledge Pack — Como criar efeitos',
+      content: knowledge,
+      generated_at: Date.now(),
+    };
+
+    return {
+      resolver: 'VDLEffectResolver',
+      confidence: 'high',
+      source_of_truth: ['vdlParser', 'CalibrationLayer', 'vdlEffectMapper'],
+      data_type: 'source_of_truth',
+      summary: `VDL conhecimento ativo: ${exemplares.length} exemplos, ${Object.keys(EFFECT_FAMILIES).length} famílias físicas, ${families.length} perfis calibrados`,
+      detail: knowledge,
+      artifacts: [artifact],
+    };
+  },
+};
+
 // ══════════════════════════════════════════════════════════════════
 // ── Registry ──
 // ══════════════════════════════════════════════════════════════════
@@ -367,6 +452,7 @@ class JOIResolverRegistryImpl {
     documentationResolver,
     styleLearningResolver,
     showDesignResolver,
+    vdlEffectResolver,
   ];
 
   /** Find all resolvers that can handle the given input/category */

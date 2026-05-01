@@ -179,6 +179,34 @@ export const EFFECT_FAMILIES: Record<string, EffectFamilyProfile> = {
     turbulenceFactor: 0.12,
   },
 
+  kamuro: {
+    name: 'Kamuro',
+    description: 'Long-hanging gold/silver glitter trails. Gravity-fed waterfall feel.',
+    energyTotal: 1.0,
+    releaseCurve: 'gradual',
+    releaseDuration: 0.18,
+    starCount: 300,
+    particleMass: 0.0055,
+    dragCoefficient: 0.045,
+    burstVelocity: 38,
+    gravityMultiplier: 3.2, // strong droop, lower than willow
+    decayCurve: 2,
+    trailLength: 1.0,
+    trailDrag: 0.10,
+    trailBrightness: 0.85,
+    smokeYield: 0.55,
+    smokeDensity: 0.6,
+    smokeTemperature: 1700,
+    initialTemperature: 3200,
+    thermalDecayRate: 280,
+    fuelMass: 0.0045,
+    burnRate: 0.00045,
+    flickerIntensity: 0.55, // signature glitter shimmer
+    flashIntensity: 1.8,
+    emberPersistence: 2.2,
+    turbulenceFactor: 0.10,
+  },
+
   salute: {
     name: 'Salute',
     description: 'Massive flash-bang with near-zero stars. Shockwave and heavy smoke.',
