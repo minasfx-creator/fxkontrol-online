@@ -7,6 +7,8 @@ import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { exportCoordinator, type ExportTarget } from '@/core/export/ExportCoordinator';
 import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
+import { isSimulating } from '@/core/safety/simulationGuard';
+import { workMode } from '@/core/safety/workMode';
 import { cn } from '@/lib/utils';
 import {
   FileOutput, Download, CheckCircle2, XOctagon, AlertTriangle, RefreshCw,
