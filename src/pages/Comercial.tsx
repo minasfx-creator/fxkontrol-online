@@ -14,7 +14,7 @@
  * que aplicam o brief #121214/#00FFFF/#FF7700 SEM contaminar o app operacional
  * (que mantém Vantablack + cyan-dessat por OLED/WCAG/semântica).
  */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -32,6 +32,16 @@ import {
   Cpu,
   Layers,
   Activity,
+  Mail,
+  MapPin,
+  Github,
+  Linkedin,
+  Globe,
+  Zap,
+  Lock,
+  Gauge,
+  Users,
+  ChevronDown,
 } from "lucide-react";
 
 /* ─── SEO helpers (idênticos ao Landing.tsx para coerência) ─────────────── */
