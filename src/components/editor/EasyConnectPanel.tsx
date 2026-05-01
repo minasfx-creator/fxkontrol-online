@@ -20,6 +20,8 @@ import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { artnetModuleService } from '@/services/artnetModuleService';
 import { HardwareDiagnosticsBanner } from './hardware/HardwareDiagnosticsBanner';
+import { hasAnyHardwareTransport } from '@/lib/transportAvailability';
+import { detectPlatformCapabilities } from '@/lib/platformCapabilities';
 
 export type EasyConnectContext = 'all' | 'pyro' | 'dmx' | 'light';
 
@@ -92,6 +94,13 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
   const [simMode, setSimMode] = useState(true);
   const [devices, setDevices] = useState<DiscoveredDevice[]>([]);
   const [testingAll, setTestingAll] = useState(false);
+
+  // iOS Safari/desktop Safari = nenhum transporte físico disponível.
+  // SimMode continua livre (operador pode demonstrar UI sem hardware), mas
+  // Real scan precisa de pelo menos uma API — senão SCAN é falso-positivo.
+  const platformCaps = useMemo(() => detectPlatformCapabilities(), []);
+  const platformHasHardware = useMemo(() => hasAnyHardwareTransport(platformCaps), [platformCaps]);
+  const realScanBlocked = !simMode && !platformHasHardware;
 
   // Track mount state + pending timers so we never setState after unmount.
   const mountedRef = useRef(true);
@@ -199,6 +208,15 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
   const activeDevices = simMode ? devices : realDevices;
 
   const handleScanAll = useCallback(async () => {
+    // Bloqueio defensivo: em iOS Safari (sem SIM), não há nada para scanear.
+    // Mostra mensagem orientativa em vez de "Scanning..." que nunca acharia nada.
+    if (realScanBlocked) {
+      toast.warning('Hardware indisponível neste navegador', {
+        description: platformCaps.hint,
+        duration: 8000,
+      });
+      return;
+    }
     setScanning(true);
     toast.info('⚡ Scanning all transports...');
 
@@ -222,7 +240,7 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
       }
     }
     if (mountedRef.current) setScanning(false);
-  }, [simMode, context, realDevices.length]);
+  }, [simMode, context, realDevices.length, realScanBlocked, platformCaps.hint]);
 
   const handleTestAll = useCallback(async () => {
     setTestingAll(true);
@@ -277,8 +295,11 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
           <Button
             size="sm"
             onClick={handleScanAll}
-            disabled={scanning}
-            className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary hover:bg-primary/25 border border-primary/20"
+            disabled={scanning || realScanBlocked}
+            title={realScanBlocked
+              ? 'Hardware indisponível neste navegador — ative SIM ou use Chrome/Edge desktop / Android Chrome.'
+              : 'Descobrir dispositivos em todos os transportes'}
+            className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary hover:bg-primary/25 border border-primary/20 disabled:opacity-50"
           >
             {scanning ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Search className="w-3 h-3 mr-1" />}
             SCAN ALL

@@ -32,6 +32,7 @@ import { useFXK16Bridge, FXK16_MAX_CHANNEL } from '@/hooks/useFXK16Bridge';
 import { useFXK16Commands } from '@/hooks/useFXK16Commands';
 import type { CommandResponse, Fxk16ErrorCode } from '@/lib/fxk16/commandApi';
 import { detectPlatformCapabilities } from '@/lib/platformCapabilities';
+import { getTransportAvailability } from '@/lib/transportAvailability';
 
 const HOLD_MS = 800;
 const PULSE_MS = 50;
@@ -81,6 +82,10 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
     useFXK16Bridge();
   const { api, armed, ready } = useFXK16Commands();
   const caps = useMemo(() => detectPlatformCapabilities(), []);
+  // Per-transport availability (iOS Safari/desktop Safari/Firefox/Capacitor sem plugin).
+  // Centralizado em transportAvailability — fonte única de verdade p/ disabled+tooltip.
+  const usbAvail = useMemo(() => getTransportAvailability('webserial', caps), [caps]);
+  const bleAvail = useMemo(() => getTransportAvailability('webble', caps), [caps]);
   const usbHint = usbErrorHint((status as any).lastErrorCode, status.lastError);
 
   const [busy, setBusy] = useState<'usb' | 'ble' | 'disc' | null>(null);
@@ -244,8 +249,11 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
             variant="outline"
             className="h-10 gap-1.5 text-[11px]"
             onClick={onConnectUSB}
-            disabled={busy !== null || status.connecting || !caps.webSerial}
-            title={caps.webSerial ? 'Conectar FXK16 via USB-CDC (CP210x / CH340 / ESP32-S3)' : 'WebSerial indisponível neste navegador'}
+            disabled={busy !== null || status.connecting || !usbAvail.available}
+            title={usbAvail.available
+              ? 'Conectar FXK16 via USB-CDC (CP210x / CH340 / ESP32-S3)'
+              : (usbAvail.reason ?? 'WebSerial indisponível')}
+            aria-label={usbAvail.available ? 'Conectar via USB' : `USB ${usbAvail.reason}`}
           >
             {busy === 'usb' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Usb className="w-3.5 h-3.5" />}
             USB
@@ -254,18 +262,36 @@ export function FXK16ConnectionPanel({ compact = false }: Props) {
             variant="outline"
             className="h-10 gap-1.5 text-[11px]"
             onClick={onConnectBLE}
-            disabled={busy !== null || status.connecting}
+            // BLE precisa de gate igual USB — em iOS Safari navigator.bluetooth não existe.
+            disabled={busy !== null || status.connecting || !bleAvail.available}
+            title={bleAvail.available
+              ? 'Conectar FXK16 via BLE-UART'
+              : (bleAvail.reason ?? 'Web Bluetooth indisponível')}
+            aria-label={bleAvail.available ? 'Conectar via BLE' : `BLE ${bleAvail.reason}`}
           >
             {busy === 'ble' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bluetooth className="w-3.5 h-3.5" />}
             BLE
           </Button>
-          <Button
-            variant="ghost"
-            className="col-span-2 h-9 gap-1.5 text-[10px] text-muted-foreground"
-            onClick={() => navigate('/pairing/ble')}
-          >
-            <ExternalLink className="w-3 h-3" /> Abrir wizard de pareamento BLE
-          </Button>
+          {/* Quando NENHUM transporte físico está disponível (iOS Safari puro), mostra
+              CTA para a página de readiness em vez do wizard BLE — evita falso-positivo. */}
+          {(!usbAvail.available && !bleAvail.available) ? (
+            <Button
+              variant="ghost"
+              className="col-span-2 h-9 gap-1.5 text-[10px] text-amber-300"
+              onClick={() => navigate(usbAvail.fixRoute ?? '/ios-readiness')}
+            >
+              <HelpCircle className="w-3 h-3" />
+              {usbAvail.fixLabel ?? 'Ver compatibilidade'} — {usbAvail.reason}
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              className="col-span-2 h-9 gap-1.5 text-[10px] text-muted-foreground"
+              onClick={() => navigate('/pairing/ble')}
+            >
+              <ExternalLink className="w-3 h-3" /> Abrir wizard de pareamento BLE
+            </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-2">

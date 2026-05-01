@@ -84,6 +84,7 @@ const Pricing = lazy(lazyRetry(() => import("./pages/Pricing")));
 const Landing = lazy(lazyRetry(() => import("./pages/Landing")));
 const Manifesto = lazy(lazyRetry(() => import("./pages/Manifesto")));
 const Comercial = lazy(lazyRetry(() => import("./pages/Comercial")));
+const IOSReadiness = lazy(lazyRetry(() => import("./pages/IOSReadiness")));
 
 const queryClient = new QueryClient();
 
