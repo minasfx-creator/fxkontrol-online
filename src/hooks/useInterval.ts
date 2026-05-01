@@ -77,3 +77,45 @@ export function useImperativeInterval(): {
 
   return { start, stop, isRunning };
 }
+
+/**
+ * useImperativeTimeout — leak-safe one-shot setTimeout with manual control.
+ * Tracks all live timers so unmount clears them. Returns a `set` that
+ * cancels any prior timer with the same key (or auto key) before scheduling.
+ */
+export function useImperativeTimeout(): {
+  set: (cb: () => void, delay: number, key?: string) => void;
+  clear: (key?: string) => void;
+  clearAll: () => void;
+} {
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  const clear = useCallback((key?: string) => {
+    const k = key ?? '__default__';
+    const id = timersRef.current.get(k);
+    if (id !== undefined) {
+      clearTimeout(id);
+      timersRef.current.delete(k);
+    }
+  }, []);
+
+  const clearAll = useCallback(() => {
+    timersRef.current.forEach((id) => clearTimeout(id));
+    timersRef.current.clear();
+  }, []);
+
+  const set = useCallback((cb: () => void, delay: number, key?: string) => {
+    const k = key ?? '__default__';
+    const existing = timersRef.current.get(k);
+    if (existing !== undefined) clearTimeout(existing);
+    const id = setTimeout(() => {
+      timersRef.current.delete(k);
+      cb();
+    }, delay);
+    timersRef.current.set(k, id);
+  }, []);
+
+  useEffect(() => () => clearAll(), [clearAll]);
+
+  return { set, clear, clearAll };
+}
