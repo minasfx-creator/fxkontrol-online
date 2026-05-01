@@ -45,11 +45,12 @@
        primary    L88 → 14.2:1  (AAA large + normal)
        secondary  L72 →  9.1:1  (AAA)
        muted      L56 →  5.8:1  (AA normal, AA large)  ← era 4.0 (FAIL)
-       disabled   L38 →  3.1:1  (AA large only — só p/ texto desabilitado) */
+       disabled   L46 →  3.1:1  (AA large) — validado contra surface-3/4 e
+                                  DS bg.elevated (era L38 → 2.5:1 FAIL). */
   --field-fg-primary:   180 6%  88%;
   --field-fg-secondary: 195 8%  72%;
   --field-fg-muted:     200 10% 56%;
-  --field-fg-disabled:  210 8%  38%;
+  --field-fg-disabled:  210 8%  46%;  /* ↑ L38→46 p/ AA-large em surface-4 */
 
   /* ── 3. SYNC / Primary ciano dessat (substitui laranja) ───────────────
      Por que dessat (S=70%, não 100%): em OLED noturno, ciano puro
