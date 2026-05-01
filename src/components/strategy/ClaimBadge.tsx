@@ -10,7 +10,7 @@ const ICONS: Record<ClaimStatus, React.ComponentType<{ className?: string }>> = 
 const TONE_CLASS: Record<'ok' | 'warn' | 'info', string> = {
   ok: 'ds-status-ok',
   warn: 'ds-status-warn',
-  info: 'ds-status-info',
+  info: 'ds-status-sync',
 };
 
 interface Props {
