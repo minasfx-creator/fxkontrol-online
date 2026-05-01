@@ -279,11 +279,11 @@ export default function Comercial() {
             <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--c-cyan))] animate-pulse" />
             Sistema operacional técnico para eventos ao vivo
           </div>
-          <h1 className="c-display text-5xl md:text-7xl font-bold leading-[1.05] mb-6 max-w-5xl">
+          <h1 className="c-display c-fs-h1 font-bold mb-6 max-w-5xl">
             <span className="c-text">Codificar imaginação;</span><br/>
             <span className="c-cyan">garantir precisão.</span>
           </h1>
-          <p className="c-text-muted text-lg md:text-xl max-w-2xl leading-relaxed mb-10">
+          <p className="c-text-muted c-fs-lead max-w-2xl mb-10">
             FX KONTROL é o cockpit técnico para produtoras premium operarem DMX, Art-Net, drones e pirotecnia
             com previs 3D, validação automática e decisão GO/NO-GO auditável.
           </p>
