@@ -212,9 +212,9 @@ function App() {
                       {/* Default landing → Studio 3D viewport (entrada principal). */}
                       <Route path="/" element={<Navigate to="/studio" replace />} />
                       <Route path="/office" element={<Office />} />
-                      {/* Studio = editor 3D. /editor mantido como alias legacy. */}
+                      {/* Studio = editor 3D. /editor é endpoint equivalente (mesma página). */}
                       <Route path="/studio" element={<Index />} />
-                      <Route path="/editor" element={<Navigate to="/studio" replace />} />
+                      <Route path="/editor" element={<Index />} />
                       <Route path="/editor/:showId" element={<Index />} />
                       <Route path="/command" element={<CommandCenter />} />
                       <Route path="/strategy" element={<Strategy />} />
