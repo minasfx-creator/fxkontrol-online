@@ -53,17 +53,19 @@ function ExportChannel({ label, icon: Icon, color, count, countLabel, canExport,
     setTimeout(() => setLastResult(null), 4000);
   };
 
+  const sim = isSimulating();
+  const effectiveCanExport = sim || canExport;
   return (
-    <div className={cn('border rounded p-3 space-y-2', canExport ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-border/10 bg-muted/5')}>
+    <div className={cn('border rounded p-3 space-y-2', effectiveCanExport ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-border/10 bg-muted/5')}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon className={cn('w-4 h-4', color)} />
           <span className="text-[10px] font-mono font-bold tracking-widest text-foreground uppercase">{label}</span>
         </div>
         <span className={cn('text-[8px] font-mono font-bold px-1.5 py-0.5 rounded',
-          canExport ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
+          effectiveCanExport ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
         )}>
-          {canExport ? 'READY' : 'BLOCKED'}
+          {sim ? 'SIM' : effectiveCanExport ? 'READY' : 'BLOCKED'}
         </span>
       </div>
       <div className="flex items-center justify-between">
