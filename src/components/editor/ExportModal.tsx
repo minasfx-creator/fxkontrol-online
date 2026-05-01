@@ -194,6 +194,18 @@ export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
     toast.success('VVIZ (X, Y, Z, Heading) exportado!');
   };
 
+  const handleDownloadShowBundleJSON = () => {
+    const content = exportShowBundleJSON(projectName, duration, timelineItems, positions, trajectories, droneFormations);
+    downloadFile(content, `${safeName}_show.json`, 'application/json');
+    toast.success('Show Bundle JSON exportado!');
+  };
+
+  const handleDownloadShowBundleCSV = () => {
+    const content = exportShowBundleCSV(timelineItems, positions);
+    downloadFile(content, `${safeName}_show.csv`, 'text/csv');
+    toast.success('Show Bundle CSV exportado!');
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
