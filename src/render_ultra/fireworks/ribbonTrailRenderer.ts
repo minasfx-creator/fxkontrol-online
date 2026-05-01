@@ -246,8 +246,9 @@ export class RibbonTrail {
       cols[v0 * 3 + 1] = cols[v1 * 3 + 1] = pt.color.g;
       cols[v0 * 3 + 2] = cols[v1 * 3 + 2] = pt.color.b;
 
-      // Opacity (fade with age)
-      const fadeOpacity = pt.opacity * (1 - t);
+      // Opacity fades with age — exponential (Beer-Lambert) so the head
+      // stays bright while the tail dissolves smoothly instead of cliffing.
+      const fadeOpacity = pt.opacity * Math.exp(-t * 2.2);
       opacities[v0] = opacities[v1] = fadeOpacity;
 
       // UVs
