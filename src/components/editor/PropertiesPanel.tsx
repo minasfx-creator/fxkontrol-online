@@ -84,11 +84,6 @@ const ExportSection = React.memo(function ExportSection() {
         </Button>
       </div>
 
-      {/* Raw project dump */}
-      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportJSON}>
-        <FileJson className="h-3.5 w-3.5 text-muted-foreground/40" />
-        <span className="flex-1 text-left">Raw Project JSON</span>
-      </Button>
     </div>
   );
 });
