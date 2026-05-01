@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Store, X, Search, CheckCircle2 } from 'lucide-react';
+import { Store, X, Search, CheckCircle2, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { getRealFormulation } from '@/render_ultra/fireworks/particleChemistry';
+import { setSupplierDragPayload } from '@/lib/catalogDragMapping';
 
 interface SupplierProduct {
   name: string;
