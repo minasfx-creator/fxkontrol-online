@@ -50,7 +50,7 @@
   --field-fg-primary:   180 6%  88%;
   --field-fg-secondary: 195 8%  72%;
   --field-fg-muted:     200 10% 56%;
-  --field-fg-disabled:  210 8%  46%;  /* ↑ L38→46 p/ AA-large em surface-4 */
+  --field-fg-disabled:  210 8%  52%;  /* ↑ L38→52 — 4.7:1 AA normal em surface-3 */
 
   /* ── 3. SYNC / Primary ciano dessat (substitui laranja) ───────────────
      Por que dessat (S=70%, não 100%): em OLED noturno, ciano puro
