@@ -1126,10 +1126,13 @@ function DroneFXTrackRow({ pixelsPerSecond, duration, scrollRef }: { pixelsPerSe
     const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
     if (!effect || effect.type !== 'drone') return;
 
+    const supplier = readSupplierPayload(e.dataTransfer);
+    const notes = supplier ? formatSupplierProvenance(supplier) : undefined;
     const id = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     addTimelineItem({
       id, effectId: effect.id, startTime: time, trackIndex: 3,
       position: { x: 0, y: 20, z: 0 },
+      ...(notes ? { notes } : {}),
     });
     markRecentDrop(id);
   }, [addTimelineItem, computePreview, updateDroneFormation, materializeFormation]);
@@ -1258,10 +1261,13 @@ function LaserTrackRow({ pixelsPerSecond, duration, scrollRef }: { pixelsPerSeco
     const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
     if (!effect || effect.type !== 'laser') return;
     const { time } = computePreview(e);
+    const supplier = readSupplierPayload(e.dataTransfer);
+    const notes = supplier ? formatSupplierProvenance(supplier) : undefined;
     const id = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     addTimelineItem({
       id, effectId: effect.id, startTime: time, trackIndex: 4,
       position: { x: 0, y: 0.5, z: 0 },
+      ...(notes ? { notes } : {}),
     });
     markRecentDrop(id);
   }, [addTimelineItem, computePreview]);
