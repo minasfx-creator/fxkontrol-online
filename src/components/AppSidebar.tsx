@@ -1,6 +1,7 @@
 import { Briefcase, Wand2, Crosshair, LogOut, Volume2, VolumeX, Settings, Shield } from 'lucide-react';
 
 import { NavLink } from '@/components/NavLink';
+import { FxkLogo } from '@/components/brand/FxkLogo';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
