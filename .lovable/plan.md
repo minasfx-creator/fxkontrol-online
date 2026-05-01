@@ -1,64 +1,73 @@
-# Mover FXK16 do FXKPYRO para o Field Test
+# Strategic Command Hub — Round 2
 
-Tira o `FXK16ConnectionPanel` de dentro do `PyroFireOnePanel` (Live Firing) e adiciona como uma nova aba dedicada no console `/field` (FieldOps), ao lado de Pairing / Field Test / Mobile Link.
+Round 1 delivered the `/strategy` hub with Asset Library, AI Choreography stub, DockTwin Pilot, Client Approval and 90-Day Plan. Round 2 unlocks the **Days 16–35** roadmap items: use the Hub in real demos, generate reports, and ship a segmented public landing.
 
-## Por que mudar
+## Goals
 
-- Hoje o painel FXK16 fica embutido no header do `PyroFireOnePanel.tsx` (linhas 1635-1638), o que mistura **conexão de hardware** (USB/BLE) com **operação de cue/Live Firing**. Cada vez que o operador abre o Live Firing carrega o painel mesmo sem precisar reconectar.
-- Field Ops (`/field`) já é o lugar canônico para pareamento e diagnóstico de transporte (NFC, BLE, transports, Mobile Link). FXK16 pertence a essa família.
-- O singleton `useFXK16Bridge` já é compartilhado por todos os consumidores (`PyroControllerCard`, `LiveStatusChip`, `RealHardwareBridgeDialog`, `cueQueueRunner`) — não há acoplamento de estado com o Pyro. Mover só a UI é seguro.
+1. **Demo Sessions** — log every time the Hub is used in front of a prospect, with audience, assets shown, objections and outcome.
+2. **Client Approval Report (PDF)** — exportable artifact from `ClientApprovalPanel` (scope, version, comments, approval status, claim disclaimers).
+3. **Strategy Report after each demo** — extends the existing JSON export with the demo session context and an HTML/PDF rendering for sales follow-up.
+4. **Segmented Public Landing `/pitch/us`** — top-of-funnel page derived from the US Pitch Package asset, no auth, with claim-policy footer.
 
-## Mudanças
+## What gets built
 
-### 1. Remover do PyroFireOnePanel
-Arquivo: `src/components/editor/live-firing/PyroFireOnePanel.tsx`
+### Backend (Lovable Cloud)
+- `demo_sessions` table:
+  - `id, created_at, owner_id, prospect_company, prospect_audience (enterprise|producer|operator|investor), asset_ids[], objections, next_step, outcome (pending|won|lost|nurture), notes`
+  - RLS: owner read/write; admin read-all (uses existing `has_role(uid,'admin')` pattern).
+- `client_approvals` table:
+  - `id, demo_session_id (nullable), scope, preview_version, comments_jsonb, approved boolean, approved_at, approver_email`
+  - RLS: owner read/write; admin read-all.
+- No new buckets; PDFs are generated client-side and downloaded directly (no storage cost, no email path here — reuse existing `send-transactional-email` only when the user explicitly clicks "Email to client" in a follow-up round).
 
-- Remover o bloco `{/* FXK16 ... */}` das linhas 1635-1638.
-- Remover o import `FXK16ConnectionPanel` da linha 33.
+### Frontend
+- New tab in `/strategy`: **Demo Sessions** (`src/components/strategy/DemoSessionsPanel.tsx`)
+  - Form: prospect, audience, assets shown (multi-select from `SEED_ASSETS`), objections, outcome
+  - List of past sessions with filters
+  - "Generate strategy report" per session → PDF
+- `ClientApprovalPanel` extended:
+  - Persists scope/version/comments/approval to `client_approvals`
+  - "Export approval report (PDF)" button
+- `src/lib/strategyReport.ts` — pure builder that takes `{session, assets, claims}` and produces the report data structure
+- `src/lib/pdfRenderer.ts` — thin wrapper around `pdf-lib` (already lightweight) to render both report types from a shared template
 
-O painel continua exatamente igual; o que some é só o card de conexão. Status do hardware continua visível no `LiveStatusChip` que já existe no header do FXKPYRO (lê do mesmo `useFXK16Bridge`).
+### Public landing
+- New route `/pitch/us` (public, no auth) — `src/pages/PitchUS.tsx`
+  - Hero: "The Operating System for Massive Spectacles"
+  - Three core messages
+  - Asset highlights (filtered from `SEED_ASSETS` where `audience` includes `enterprise|producer|investor` and `funnel = 'top'`)
+  - Claim policy footer (validated/pilot/marketing_hypothesis legend)
+  - CTA → existing `/comercial#demo-form`
+- Registered in `src/App.tsx` and `src/seo/publicRoutes.ts`
 
-### 2. Adicionar nova aba no FieldOps
-Arquivo: `src/pages/FieldOps.tsx`
+## Architecture notes
 
-- Estender `TabKey` com `'fxk16'`.
-- Adicionar `{ key: 'fxk16', label: 'FXK16', sub: 'PYRO RELAY', icon: Cable }` ao array `TABS` (entre Pairing e Field Test).
-- Adicionar render condicional `{tab === 'fxk16' && <FXK16Panel />}`.
+- PDFs generated client-side with `pdf-lib` to keep the surface dependency-free of edge functions for v1.
+- Strategy export JSON (`fxkontrol.strategy.v1`) gets a new optional `session` field when exported from a demo session row.
+- All claim disclaimers from `src/lib/claims.ts` are auto-attached to PDFs whenever a referenced asset has `claimStatus !== 'validated'`.
+- No operational coupling: Demo Sessions and Client Approvals never touch `commandBus`, `safetyStateMachine` or hardware. Pure GTM surface (per `mem://funcionalidades/strategic-command-hub-gtm`).
 
-### 3. Novo wrapper de página
-Arquivo novo: `src/components/field/FXK16FieldPanel.tsx`
+## Out of scope (later rounds)
 
-Wrapper leve que:
-- Renderiza o `FXK16ConnectionPanel` em modo `compact={false}` (versão completa, mais espaçada).
-- Adiciona contexto/help text explicando: handshake VERSION+STATUS, USB vs BLE, Hold-to-Confirm 800 ms para teste de canal.
-- Mostra link discreto para `/dev/fxk16-validate` (harness de validação por canal) e `/dev/fxk16-calibrate` (calibração) — rotas que já existem.
-- Usa o mesmo padrão visual de `DevicePairing` (sticky header, padding consistente com as outras abas).
+- Email-to-client of the approval PDF (Days 36–60, ties into existing `send-transactional-email`)
+- AI Choreography Studio "Generate" wiring (Days 36–60)
+- DockTwin live companion telemetry (Days 36–60)
+- Pricing/objection analytics dashboard (Days 61–90)
 
-Não mexe em `useFXK16Bridge`, `useFXK16Commands`, nem em nenhum consumidor downstream — o singleton continua único.
+## Files
 
-### 4. Deep-link
-- Hash `#fxk16` já funciona automaticamente pelo `setTabAndHash` existente do FieldOps.
-- Adicionar shortcut: rota `/fxk16` em `App.tsx` que faz `<Navigate to="/field#fxk16" replace />`, para conveniência.
+**Created**
+- `src/components/strategy/DemoSessionsPanel.tsx`
+- `src/lib/strategyReport.ts`
+- `src/lib/pdfRenderer.ts`
+- `src/pages/PitchUS.tsx`
 
-## Arquivos tocados
+**Modified**
+- `src/pages/Strategy.tsx` (new "Demo Sessions" tab)
+- `src/components/strategy/ClientApprovalPanel.tsx` (persist + PDF export)
+- `src/App.tsx` (`/pitch/us` route)
+- `src/seo/publicRoutes.ts`
+- `mem://index.md` (extend the Strategic Hub memory entry)
 
-```text
-EDIT  src/components/editor/live-firing/PyroFireOnePanel.tsx   (-2 imports/blocos)
-EDIT  src/pages/FieldOps.tsx                                   (+1 aba, +1 import lazy)
-NEW   src/components/field/FXK16FieldPanel.tsx                 (~80 linhas)
-EDIT  src/App.tsx                                              (+1 redirect /fxk16)
-```
-
-## Não-objetivos
-
-- Não muda o protocolo, handshake, comandos, ou flags de feature do FXK16.
-- Não muda nada no `useFXK16Bridge` (singleton continua disponível para o `cueQueueRunner` durante Live Firing).
-- Não toca em segurança/ARM. Hold-to-Confirm 800 ms continua igual.
-- Não remove `FXK16ConnectionPanel` em si — só desacopla do PyroFireOnePanel.
-
-## Critério de aceitação
-
-- Abrir `/studio` → Pyro panel não mostra mais o card de conexão FXK16. `LiveStatusChip` continua refletindo o estado.
-- Abrir `/field#fxk16` → mostra o `FXK16FieldPanel` com o card completo de conexão USB/BLE e botões de Test / Validate / Calibrate.
-- Conectar pelo Field Ops → Live Firing reflete o link imediatamente (singleton compartilhado).
-- `/fxk16` redireciona para `/field#fxk16`.
+**Database migration**
+- create `demo_sessions`, `client_approvals` with RLS policies (owner + admin pattern)

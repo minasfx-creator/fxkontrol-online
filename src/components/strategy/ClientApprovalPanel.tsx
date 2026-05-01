@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Eye, MessageSquare, FileSignature, ShieldOff } from 'lucide-react';
+import { Eye, MessageSquare, FileSignature, ShieldOff, FileDown } from 'lucide-react';
 import { ClaimBadge } from './ClaimBadge';
+import { buildClientApprovalReport } from '@/lib/strategyReport';
+import { renderStrategyReportPDF, downloadPdf } from '@/lib/pdfRenderer';
 
 interface Comment {
   id: string;
@@ -97,16 +99,32 @@ export function ClientApprovalPanel() {
         </div>
       </div>
 
-      <button
-        onClick={() => setApproved(!approved)}
-        className={`w-full rounded-md border p-3 text-sm ds-mono uppercase tracking-wider transition-colors ${
-          approved
-            ? 'border-green-500/50 bg-green-500/10 text-green-500'
-            : 'border-border bg-background/40 text-foreground hover:border-primary/40'
-        }`}
-      >
-        {approved ? '✓ Preview approved by client' : 'Mark preview as approved'}
-      </button>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <button
+          onClick={() => setApproved(!approved)}
+          className={`rounded-md border p-3 text-sm ds-mono uppercase tracking-wider transition-colors ${
+            approved
+              ? 'border-green-500/50 bg-green-500/10 text-green-500'
+              : 'border-border bg-background/40 text-foreground hover:border-primary/40'
+          }`}
+        >
+          {approved ? '✓ Preview approved by client' : 'Mark preview as approved'}
+        </button>
+        <button
+          onClick={async () => {
+            const report = buildClientApprovalReport({
+              scope, preview_version: version,
+              comments: comments.map((c) => ({ author: c.author, text: c.text, at: c.at })),
+              approved, approved_at: approved ? new Date().toISOString() : null,
+            });
+            const bytes = await renderStrategyReportPDF(report);
+            downloadPdf(bytes, `fxk-client-approval-${new Date().toISOString().slice(0, 10)}.pdf`);
+          }}
+          className="inline-flex items-center justify-center gap-2 rounded-md border border-primary/40 bg-primary/10 p-3 text-sm ds-mono uppercase tracking-wider text-primary hover:bg-primary/20"
+        >
+          <FileDown className="h-4 w-4" /> Export approval report (PDF)
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react';
-import { Download, Layers, Wand2, Wrench, ClipboardCheck, Calendar } from 'lucide-react';
+import { Download, Layers, Wand2, Wrench, ClipboardCheck, Calendar, Briefcase } from 'lucide-react';
 import { AssetLibrary, SEED_ASSETS } from '@/components/strategy/AssetLibrary';
 import { AIChoreographyStudioStub } from '@/components/strategy/AIChoreographyStudioStub';
 import { DockTwinPilotPanel } from '@/components/strategy/DockTwinPilotPanel';
 import { ClientApprovalPanel } from '@/components/strategy/ClientApprovalPanel';
+import { DemoSessionsPanel } from '@/components/strategy/DemoSessionsPanel';
 import { ClaimBadge } from '@/components/strategy/ClaimBadge';
 import { CLAIMS } from '@/lib/claims';
 
-type TabId = 'assets' | 'ai' | 'docktwin' | 'approval' | 'plan';
+type TabId = 'assets' | 'ai' | 'docktwin' | 'approval' | 'sessions' | 'plan';
 
 const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'assets', label: 'Asset Library', icon: Layers },
   { id: 'ai', label: 'AI Choreography', icon: Wand2 },
   { id: 'docktwin', label: 'DockTwin Pilot', icon: Wrench },
   { id: 'approval', label: 'Client Approval', icon: ClipboardCheck },
+  { id: 'sessions', label: 'Demo Sessions', icon: Briefcase },
   { id: 'plan', label: '90-Day Plan', icon: Calendar },
 ];
 
@@ -180,6 +182,7 @@ export default function Strategy() {
           {tab === 'ai' && <AIChoreographyStudioStub />}
           {tab === 'docktwin' && <DockTwinPilotPanel />}
           {tab === 'approval' && <ClientApprovalPanel />}
+          {tab === 'sessions' && <DemoSessionsPanel />}
           {tab === 'plan' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {PLAN.map((p) => (
