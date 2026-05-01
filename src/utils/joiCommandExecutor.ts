@@ -578,15 +578,18 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
 
       case 'inspect_exports': {
         const targets = ['fireone', 'artnet', 'drone'] as const;
+        const sim = !workMode.isRealOperation();
         const lines = targets.map(t => {
           const last = exportCoordinator.getLastAttempt(t);
-          return `${t}: ${last ? (last.success ? `OK (${last.cueCount} cues)` : `BLOCKED: ${last.issues[0] || '?'}`) : 'Nunca exportado'}`;
+          if (!last) return `${t}: Nunca exportado`;
+          if (last.success) return `${t}: OK (${last.cueCount} cues)`;
+          return `${t}: ${sim ? 'ADVISORY' : 'BLOCKED'}: ${last.issues[0] || '?'}`;
         });
         const readiness = readinessEvaluator.evaluate();
-        const canExport = readiness.allowed_operations.includes('export');
+        const canExport = sim || readiness.allowed_operations.includes('export');
         return {
           action, success: true,
-          label: `Export ${canExport ? 'PERMITIDO' : 'BLOQUEADO'} (${readiness.status})`,
+          label: `Export ${sim ? 'SIM · LIVRE' : canExport ? 'PERMITIDO' : 'BLOQUEADO'} (${readiness.status})`,
           detail: lines.join(' | '),
         };
       }
