@@ -326,7 +326,7 @@ export default function Comercial() {
       <section id="pacotes" className="max-w-7xl mx-auto px-6 py-24">
         <div className="text-center mb-16">
           <div className="text-[10px] c-mono c-amber uppercase tracking-widest mb-4">Pacotes SaaS</div>
-          <h2 className="c-display text-4xl md:text-5xl font-bold mb-4 c-text">Três modos de operar.</h2>
+          <h2 className="c-display c-fs-h2 font-bold mb-4 c-text">Três modos de operar.</h2>
           <p className="c-text-muted max-w-2xl mx-auto">Do design até o piloto comercial, com compliance e auditoria a cada passo.</p>
         </div>
 
@@ -374,7 +374,7 @@ export default function Comercial() {
         <div className="max-w-7xl mx-auto px-6 py-24">
           <div className="text-center mb-16">
             <div className="text-[10px] c-mono c-cyan uppercase tracking-widest mb-4">Fluxo Vendável</div>
-            <h2 className="c-display text-4xl md:text-5xl font-bold mb-4 c-text">Da ideia ao GO formal.</h2>
+            <h2 className="c-display c-fs-h2 font-bold mb-4 c-text">Da ideia ao GO formal.</h2>
             <p className="c-text-muted max-w-2xl mx-auto">Seis passos. Cada um com evidência, log e signoff.</p>
           </div>
 
@@ -394,7 +394,7 @@ export default function Comercial() {
       <section id="go-no-go" className="max-w-7xl mx-auto px-6 py-24">
         <div className="text-center mb-16">
           <div className="text-[10px] c-mono c-amber uppercase tracking-widest mb-4">Regras GO/NO-GO</div>
-          <h2 className="c-display text-4xl md:text-5xl font-bold mb-4 c-text">Decisão automática, auditável.</h2>
+          <h2 className="c-display c-fs-h2 font-bold mb-4 c-text">Decisão automática, auditável.</h2>
           <p className="c-text-muted max-w-2xl mx-auto">
             O Go-Live Center calcula o resultado a partir de regras determinísticas — sem subjetividade.
           </p>
@@ -461,7 +461,7 @@ export default function Comercial() {
             <div className="text-[10px] c-mono c-cyan uppercase tracking-widest mb-4 inline-flex items-center gap-2">
               <Calendar className="w-3 h-3" /> Roadmap 90 dias
             </div>
-            <h2 className="c-display text-4xl md:text-5xl font-bold mb-4 c-text">Da fundação ao piloto comercial.</h2>
+            <h2 className="c-display c-fs-h2 font-bold mb-4 c-text">Da fundação ao piloto comercial.</h2>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -485,7 +485,7 @@ export default function Comercial() {
 
       {/* ── CTA Final ───────────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-6 py-24 text-center">
-        <h2 className="c-display text-4xl md:text-5xl font-bold mb-6 c-text">
+        <h2 className="c-display c-fs-h2 font-bold mb-6 c-text">
           Pronto para um <span className="c-cyan">GO formal</span>?
         </h2>
         <p className="c-text-muted text-lg mb-10 max-w-2xl mx-auto">
