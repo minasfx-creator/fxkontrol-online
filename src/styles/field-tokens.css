@@ -27,8 +27,10 @@
  * Importado em src/index.css (última linha @import) para vencer cascade.
  */
 
-@layer base {
-  :root {
+/* NOTE: sem @layer porque este arquivo é processado standalone pelo
+   PostCSS antes do bundle final. Importamos APÓS @tailwind base no
+   index.css, então :root vence o cascade do shadcn legacy naturalmente. */
+:root {
     /* ── 1. Vantablack surface scale (validado em campo, OLED-safe) ────────
        L escolhidos para preservar shadow detail em OLED sem clipar para 0%.
        Cada step ≈ +1.5% L (perceptualmente uniforme em escala log). */
