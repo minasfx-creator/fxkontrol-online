@@ -1145,6 +1145,7 @@ function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop:
   const [lastFireChannel, setLastFireChannel] = useState<number | null>(null);
   const [lastFireLatency, setLastFireLatency] = useState<number | null>(null);
   const [flashActive, setFlashActive] = useState(false);
+  const moduleTimer = useImperativeTimeout();
 
   // Track fired channels from logs
   useEffect(() => {
@@ -1162,14 +1163,14 @@ function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop:
           if (ch >= 1 && ch <= 32) next[ch - 1] = 'fired';
           return next;
         });
-        setTimeout(() => {
+        moduleTimer.set(() => {
           setFlashActive(false);
           setChannelStates(prev => {
             const next = [...prev];
             if (ch >= 1 && ch <= 32) next[ch - 1] = 'ack';
             return next;
           });
-        }, 400);
+        }, 400, `flash-${ch}`);
       }
     }
   }, [session.logs.length]); // eslint-disable-line react-hooks/exhaustive-deps
