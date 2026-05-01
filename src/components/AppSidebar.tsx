@@ -72,7 +72,7 @@ export function AppSidebar() {
                 <p className="text-xs font-bold text-foreground tracking-wide ds-mono uppercase" style={{ textShadow: '0 0 8px hsl(190 100% 50% / 0.2)' }}>FXKONTROL</p>
                 <div className="flex items-center gap-1.5">
                   <img src={minasfxLogo} alt="MinasFX" className="h-3 object-contain opacity-70" />
-                  <p className="text-[9px] font-mono-code" style={{ color: 'hsl(32 100% 50% / 0.5)' }}>by MinasFX</p>
+                  <p className="text-[9px] font-mono-code text-muted-foreground">by MinasFX</p>
                 </div>
               </div>
             </div>

@@ -1,51 +1,57 @@
 /**
- * FxkLogo — FXKONTROL pentagon XLR-inspired logo
+ * FxkLogo — FXKONTROL canonical brand mark.
  *
- * Brand identity per branding brief (sec 6.1):
- *  - Pentagon shape evoking XLR connector pin layout
- *  - 5-pin formation = convergence of multiple technologies (DMX/drones/pyro/laser/mesh)
- *  - Cyan stroke = sync/communication semantic (matches operational palette)
+ * Now backed by the vector `<FxkPentagonMark />` (resolution-independent SVG)
+ * so the logo is pixel-perfect at 16px favicon, 28px sidebar header, 64px
+ * auth splash, and any size in between — without raster blur.
  *
- * Use this in headers, splash, login, about pages, and anywhere the brand mark is needed.
- * For favicon/social, use /favicon.png (separate raster export).
+ * Color follows `currentColor` → controlled by Tailwind text-* class.
+ * Defaults to cyan/sync (operational palette).
+ *
+ *   <FxkLogo />                              // mark only, 32px, cyan
+ *   <FxkLogo size={28} variant="full" />     // mark + wordmark
+ *   <FxkLogo variant="compact" />            // mark + "FXK"
+ *
+ * Tone overrides:
+ *   <FxkLogo className="text-foreground" />  // monochrome on hero
  */
-import logoSrc from '@/assets/logo-fxkontrol-pentagon.png';
+import { cn } from '@/lib/utils';
+import { FxkPentagonMark } from './FxkPentagonMark';
 
 interface FxkLogoProps {
-  /** Logo size in px. Square. */
+  /** Mark size in px (square). */
   size?: number;
-  /** Optional className wrapper */
+  /** Optional className wrapper (controls color via text-* utility). */
   className?: string;
-  /** Show "FXKONTROL" wordmark to the right */
+  /** Show "FXKONTROL" wordmark to the right of the mark. */
   withWordmark?: boolean;
-  /** Wordmark variant */
+  /** Wordmark variant. */
   variant?: 'full' | 'mark-only' | 'compact';
-  /** Set to true for hero/LCP usage to avoid lazy-loading penalty */
+  /** Reserved for backward compatibility — SVG is inline so no lazy concern. */
   priority?: boolean;
+  /** Override mark tone (defaults to cyan sync). */
+  tone?: 'sync' | 'foreground' | 'inherit';
 }
+
+const TONE_CLASS: Record<NonNullable<FxkLogoProps['tone']>, string> = {
+  sync: 'text-status-sync',
+  foreground: 'text-foreground',
+  inherit: '',
+};
 
 export function FxkLogo({
   size = 32,
   className = '',
   withWordmark = false,
   variant = 'mark-only',
-  priority = false,
+  tone = 'sync',
 }: FxkLogoProps) {
   const showWordmark = withWordmark || variant === 'full' || variant === 'compact';
   const compact = variant === 'compact';
 
   return (
-    <div className={`inline-flex items-center gap-2 ${className}`} role="img" aria-label="FXKONTROL">
-      <img
-        src={logoSrc}
-        alt="FXKONTROL pentagon mark"
-        width={size}
-        height={size}
-        loading={priority ? 'eager' : 'lazy'}
-        decoding={priority ? 'sync' : 'async'}
-        className="select-none"
-        style={{ width: size, height: size }}
-      />
+    <div className={cn('inline-flex items-center gap-2', className)} role="img" aria-label="FXKONTROL">
+      <FxkPentagonMark size={size} className={cn('select-none shrink-0', TONE_CLASS[tone])} />
       {showWordmark && (
         <span
           className="ds-mono font-semibold uppercase tracking-[0.18em] text-foreground"
