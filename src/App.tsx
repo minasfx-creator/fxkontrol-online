@@ -86,6 +86,7 @@ const Manifesto = lazy(lazyRetry(() => import("./pages/Manifesto")));
 const Comercial = lazy(lazyRetry(() => import("./pages/Comercial")));
 const IOSReadiness = lazy(lazyRetry(() => import("./pages/IOSReadiness")));
 const Unsubscribe = lazy(lazyRetry(() => import("./pages/Unsubscribe")));
+const Strategy = lazy(lazyRetry(() => import("./pages/Strategy")));
 
 const queryClient = new QueryClient();
 
@@ -214,6 +215,7 @@ function App() {
                       <Route path="/editor" element={<Navigate to="/studio" replace />} />
                       <Route path="/editor/:showId" element={<Index />} />
                       <Route path="/command" element={<CommandCenter />} />
+                      <Route path="/strategy" element={<Strategy />} />
 
                       {/* ── Create flow (Action Layer) ────────────────────────── */}
                       <Route path="/create" element={<Create />} />
