@@ -87,12 +87,20 @@ function ExportChannel({ label, icon: Icon, color, count, countLabel, canExport,
 export default function ExportReadinessPanel() {
   const { level, result, runVerification } = useVerificationStore(useShallow((s) => ({ level: s.level, result: s.result, runVerification: s.runVerification })));
   const sp = showPlanManager.current;
-  const canExport = level === 'READY_FOR_EXPORT' || level === 'READY_FOR_FIELD';
+  const sim = isSimulating();
+  // In design/simulation we never block export. Verification info stays
+  // visible as advisory only.
+  const canExport = sim || level === 'READY_FOR_EXPORT' || level === 'READY_FOR_FIELD';
   const mode = operationalModeGuard.mode;
+
+  // Re-render on workMode change so the header badge updates immediately.
+  const [, setWm] = useState(workMode.get());
+  useEffect(() => workMode.subscribe(setWm), []);
 
   useEffect(() => { runVerification(); }, [runVerification]);
 
   const failedIssues = result?.issues.filter(i => !i.passed) ?? [];
+  const displayLevel = sim ? 'SIM · ADVISORY' : level.replace(/_/g, ' ');
 
   return (
     <div className="flex flex-col h-full p-4 gap-4 bg-background/80">
@@ -103,15 +111,16 @@ export default function ExportReadinessPanel() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[7px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase">
-            {mode}
+            {sim ? workMode.get() : mode}
           </span>
           <span className={cn(
             'text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border',
+            sim ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' :
             level === 'READY_FOR_FIELD' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
             level === 'BLOCKED' ? 'bg-red-500/15 text-red-400 border-red-500/30' :
             'bg-amber-500/15 text-amber-400 border-amber-500/30'
           )}>
-            {level.replace(/_/g, ' ')}
+            {displayLevel}
           </span>
           <Button size="sm" variant="outline" onClick={runVerification} className="h-6 text-[9px] font-mono gap-1">
             <RefreshCw className="w-3 h-3" /> VERIFY
