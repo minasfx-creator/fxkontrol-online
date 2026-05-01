@@ -189,11 +189,18 @@ export function writeSparkTrailsToBuffers(
         positions[idx + 1] = pt.y;
         positions[idx + 2] = pt.z;
         
-        const trailFade = 1 - t / trail.length;
+        // Tail thins exponentially (Beer-Lambert-ish absorption along
+        // the trail) instead of linearly — gives the "fading wick" look
+        // and removes the chunky tail boundary.
+        const u = t / trail.length;
+        const trailFade = Math.exp(-u * 2.4);
         const alpha = trailFade * lifeRatio;
-        colors[idx] = spark.color.r * (1 + trailFade);
-        colors[idx + 1] = spark.color.g * (1 + trailFade * 0.5);
-        colors[idx + 2] = spark.color.b * trailFade;
+        // Color cools toward red as it ages (Newton + blackbody hint):
+        // head keeps the source color, tail loses blue first then green.
+        const cool = trailFade;
+        colors[idx]     = spark.color.r * (1 + cool * 0.6);
+        colors[idx + 1] = spark.color.g * (0.4 + cool * 0.6);
+        colors[idx + 2] = spark.color.b * (cool * cool);
         opacities[vertIdx] = alpha;
 
         // Write velocity for stretching
