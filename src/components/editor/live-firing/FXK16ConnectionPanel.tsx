@@ -32,6 +32,7 @@ import { useFXK16Bridge, FXK16_MAX_CHANNEL } from '@/hooks/useFXK16Bridge';
 import { useFXK16Commands } from '@/hooks/useFXK16Commands';
 import type { CommandResponse, Fxk16ErrorCode } from '@/lib/fxk16/commandApi';
 import { detectPlatformCapabilities } from '@/lib/platformCapabilities';
+import { getTransportAvailability } from '@/lib/transportAvailability';
 
 const HOLD_MS = 800;
 const PULSE_MS = 50;
