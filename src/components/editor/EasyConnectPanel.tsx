@@ -208,6 +208,15 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
   const activeDevices = simMode ? devices : realDevices;
 
   const handleScanAll = useCallback(async () => {
+    // Bloqueio defensivo: em iOS Safari (sem SIM), não há nada para scanear.
+    // Mostra mensagem orientativa em vez de "Scanning..." que nunca acharia nada.
+    if (realScanBlocked) {
+      toast.warning('Hardware indisponível neste navegador', {
+        description: platformCaps.hint,
+        duration: 8000,
+      });
+      return;
+    }
     setScanning(true);
     toast.info('⚡ Scanning all transports...');
 
@@ -231,7 +240,7 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
       }
     }
     if (mountedRef.current) setScanning(false);
-  }, [simMode, context, realDevices.length]);
+  }, [simMode, context, realDevices.length, realScanBlocked, platformCaps.hint]);
 
   const handleTestAll = useCallback(async () => {
     setTestingAll(true);
