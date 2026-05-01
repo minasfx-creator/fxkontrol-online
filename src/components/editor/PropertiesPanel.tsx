@@ -7,59 +7,44 @@ import { Slider } from '@/components/ui/slider';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { Separator } from '@/components/ui/separator';
-import { exportVVIZ, exportFiringCSV, exportShowJSON, exportShowCSV, downloadFile } from '@/lib/exportEngine';
+import { exportVVIZ, exportFiringCSV, exportShowBundleJSON, exportShowBundleCSV, downloadFile } from '@/lib/exportEngine';
 import SafetyPanel from './SafetyPanel';
 
 const ExportSection = React.memo(function ExportSection() {
-    const timelineItems = useProjectStore(s => s.timelineItems);
+  const timelineItems = useProjectStore(s => s.timelineItems);
   const positions = useProjectStore(s => s.positions);
   const projectName = useProjectStore(s => s.projectName);
   const duration = useProjectStore(s => s.duration);
   const trajectories = useProjectStore(s => s.trajectories);
   const droneFormations = useProjectStore(s => s.droneFormations);
 
-  const droneCount = useMemo(() => (droneFormations.length > 0 ? droneFormations[0].droneCount : 0) +
-    timelineItems.filter((item) => {
-      const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
-      return effect?.type === 'drone';
-    }).length + trajectories.length, [droneFormations, timelineItems, trajectories]);
+  const safeName = useMemo(() => projectName.replace(/\s+/g, '_'), [projectName]);
 
-  const pyroCount = useMemo(() => timelineItems.filter((item) => {
-    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
-    return effect?.type === 'firework';
-  }).length, [timelineItems]);
+  const droneCount = useMemo(() => (droneFormations[0]?.droneCount ?? 0) +
+    timelineItems.filter((item) => EFFECT_LIBRARY.find((e) => e.id === item.effectId)?.type === 'drone').length +
+    trajectories.length, [droneFormations, timelineItems, trajectories]);
+
+  const pyroCount = useMemo(() => timelineItems.filter((item) =>
+    EFFECT_LIBRARY.find((e) => e.id === item.effectId)?.type === 'firework').length, [timelineItems]);
 
   const handleExportVVIZ = () => {
     const content = exportVVIZ(projectName, duration, timelineItems, positions, trajectories, droneFormations);
-    downloadFile(content, `${projectName.replace(/\s+/g, '_')}.vviz`, 'application/json');
+    downloadFile(content, `${safeName}.vviz`, 'application/json');
   };
 
   const handleExportFiringCSV = () => {
     const content = exportFiringCSV(timelineItems, positions);
-    downloadFile(content, `${projectName.replace(/\s+/g, '_')}_firing.csv`, 'text/csv');
+    downloadFile(content, `${safeName}_firing.csv`, 'text/csv');
   };
 
   const handleExportShowJSON = () => {
-    const content = exportShowJSON(projectName, duration, timelineItems, positions, trajectories, droneFormations);
-    downloadFile(content, `${projectName.replace(/\s+/g, '_')}_show.json`, 'application/json');
+    const content = exportShowBundleJSON(projectName, duration, timelineItems, positions, trajectories, droneFormations);
+    downloadFile(content, `${safeName}_show.json`, 'application/json');
   };
 
   const handleExportShowCSV = () => {
-    const content = exportShowCSV(timelineItems, positions);
-    downloadFile(content, `${projectName.replace(/\s+/g, '_')}_show.csv`, 'text/csv');
-  };
-
-  const handleExportJSON = () => {
-    const data = {
-      project: projectName,
-      exportedAt: new Date().toISOString(),
-      items: timelineItems.map((item) => {
-        const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
-        return { ...item, effectName: effect?.name, effectType: effect?.type };
-      }),
-      positions,
-    };
-    downloadFile(JSON.stringify(data, null, 2), `${projectName.replace(/\s+/g, '_')}.json`, 'application/json');
+    const content = exportShowBundleCSV(timelineItems, positions);
+    downloadFile(content, `${safeName}_show.csv`, 'text/csv');
   };
 
   return (
@@ -99,11 +84,6 @@ const ExportSection = React.memo(function ExportSection() {
         </Button>
       </div>
 
-      {/* Raw project dump */}
-      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportJSON}>
-        <FileJson className="h-3.5 w-3.5 text-muted-foreground/40" />
-        <span className="flex-1 text-left">Raw Project JSON</span>
-      </Button>
     </div>
   );
 });

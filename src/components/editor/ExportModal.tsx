@@ -6,7 +6,7 @@ import { useState, useMemo } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { type TimelineItem, type Position } from '@/types/projectTypes';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
-import { exportFiringCSV, exportFiringJSON, exportVVIZ, downloadFile } from '@/lib/exportEngine';
+import { exportFiringCSV, exportFiringJSON, exportVVIZ, exportShowBundleJSON, exportShowBundleCSV, downloadFile } from '@/lib/exportEngine';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -194,6 +194,18 @@ export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
     toast.success('VVIZ (X, Y, Z, Heading) exportado!');
   };
 
+  const handleDownloadShowBundleJSON = () => {
+    const content = exportShowBundleJSON(projectName, duration, timelineItems, positions, trajectories, droneFormations);
+    downloadFile(content, `${safeName}_show.json`, 'application/json');
+    toast.success('Show Bundle JSON exportado!');
+  };
+
+  const handleDownloadShowBundleCSV = () => {
+    const content = exportShowBundleCSV(timelineItems, positions);
+    downloadFile(content, `${safeName}_show.csv`, 'text/csv');
+    toast.success('Show Bundle CSV exportado!');
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
@@ -212,15 +224,18 @@ export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="w-full grid grid-cols-3 h-8">
+          <TabsList className="w-full grid grid-cols-4 h-8">
             <TabsTrigger value="firing" className="text-[10px]">
-              <Download className="w-3 h-3 mr-1" /> Firing Script
+              <Download className="w-3 h-3 mr-1" /> Firing
             </TabsTrigger>
             <TabsTrigger value="setup" className="text-[10px]">
-              <MapPin className="w-3 h-3 mr-1" /> Setup Report
+              <MapPin className="w-3 h-3 mr-1" /> Setup
             </TabsTrigger>
             <TabsTrigger value="vviz" className="text-[10px]">
-              <Plane className="w-3 h-3 mr-1" /> VVIZ Drones
+              <Plane className="w-3 h-3 mr-1" /> VVIZ
+            </TabsTrigger>
+            <TabsTrigger value="bundle" className="text-[10px]">
+              <FileJson className="w-3 h-3 mr-1" /> Bundle
             </TabsTrigger>
           </TabsList>
 
@@ -319,6 +334,31 @@ export default function ExportModal({ open, onOpenChange }: ExportModalProps) {
             </div>
           </TabsContent>
 
+          {/* ─── SHOW BUNDLE ─── */}
+          <TabsContent value="bundle" className="flex-1 overflow-auto flex flex-col gap-2 mt-2">
+            <p className="text-[10px] text-muted-foreground">
+              Bundle universal do show: positions, cues (firework + drone + sfx + laser + light),
+              formations e trajectories num único documento. Inclui <strong>X, Y, Z, Heading</strong>,
+              Pitch, Pan/Tilt/Spin, intensity e overrides por cue.
+            </p>
+            <div className="grid grid-cols-3 gap-2 text-[9px]">
+              <Badge variant="outline" className="justify-center">{timelineItems.length} cues</Badge>
+              <Badge variant="outline" className="justify-center">{positions.length} positions</Badge>
+              <Badge variant="outline" className="justify-center">schema 1.0</Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={handleDownloadShowBundleJSON} size="sm">
+                <FileJson className="w-3.5 h-3.5 mr-2" /> Show JSON
+              </Button>
+              <Button onClick={handleDownloadShowBundleCSV} variant="secondary" size="sm">
+                <FileSpreadsheet className="w-3.5 h-3.5 mr-2" /> Show CSV
+              </Button>
+            </div>
+            <p className="text-[9px] text-muted-foreground/60">
+              JSON é a fonte canônica para auditoria, re-import e bridges programáticos.
+              CSV abre direto em Excel/Sheets para revisão linha-a-linha de cada cue.
+            </p>
+          </TabsContent>
           {/* ─── VVIZ DRONES ─── */}
           <TabsContent value="vviz" className="flex-1 overflow-auto flex flex-col gap-2 mt-2">
             <p className="text-[10px] text-muted-foreground">
