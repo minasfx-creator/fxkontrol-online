@@ -61,15 +61,18 @@ export function AppSidebar() {
         {/* Brand — 8pt: p-3 inset, gap-2 between logo & title */}
         <div className={`p-3 ${!showLabels ? 'flex justify-center' : ''} animate-holo-materialize`}>
           {!showLabels ? (
-            <div className="h-8 w-8 rounded-control flex items-center justify-center overflow-hidden" style={{ background: 'hsl(32 100% 50% / 0.15)' }}>
-              <img src={minasfxLogo} alt="MinasFX" className="h-5 object-contain" />
+            <div className="h-8 w-8 rounded-control flex items-center justify-center overflow-hidden" style={{ background: 'hsl(190 100% 50% / 0.10)' }}>
+              <FxkLogo size={22} priority />
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <img src={minasfxLogo} alt="MinasFX" className="h-7 object-contain shrink-0" style={{ filter: 'drop-shadow(0 0 6px hsl(32 100% 50% / 0.3))' }} />
+              <FxkLogo size={28} priority />
               <div>
-                <p className="text-xs font-bold text-foreground tracking-wide" style={{ textShadow: '0 0 8px hsl(32 100% 50% / 0.2)' }}>FX KONTROL</p>
-                <p className="text-[9px] font-mono-code" style={{ color: 'hsl(32 100% 50% / 0.5)' }}>by MinasFX</p>
+                <p className="text-xs font-bold text-foreground tracking-wide ds-mono uppercase" style={{ textShadow: '0 0 8px hsl(190 100% 50% / 0.2)' }}>FXKONTROL</p>
+                <div className="flex items-center gap-1.5">
+                  <img src={minasfxLogo} alt="MinasFX" className="h-3 object-contain opacity-70" />
+                  <p className="text-[9px] font-mono-code" style={{ color: 'hsl(32 100% 50% / 0.5)' }}>by MinasFX</p>
+                </div>
               </div>
             </div>
           )}
