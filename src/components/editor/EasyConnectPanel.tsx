@@ -295,8 +295,11 @@ export default function EasyConnectPanel({ context = 'all', compact = false, onC
           <Button
             size="sm"
             onClick={handleScanAll}
-            disabled={scanning}
-            className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary hover:bg-primary/25 border border-primary/20"
+            disabled={scanning || realScanBlocked}
+            title={realScanBlocked
+              ? 'Hardware indisponível neste navegador — ative SIM ou use Chrome/Edge desktop / Android Chrome.'
+              : 'Descobrir dispositivos em todos os transportes'}
+            className="h-7 px-3 text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary hover:bg-primary/25 border border-primary/20 disabled:opacity-50"
           >
             {scanning ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Search className="w-3 h-3 mr-1" />}
             SCAN ALL
