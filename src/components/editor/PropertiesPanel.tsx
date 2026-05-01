@@ -39,6 +39,16 @@ const ExportSection = React.memo(function ExportSection() {
     downloadFile(content, `${projectName.replace(/\s+/g, '_')}_firing.csv`, 'text/csv');
   };
 
+  const handleExportShowJSON = () => {
+    const content = exportShowJSON(projectName, duration, timelineItems, positions, trajectories, droneFormations);
+    downloadFile(content, `${projectName.replace(/\s+/g, '_')}_show.json`, 'application/json');
+  };
+
+  const handleExportShowCSV = () => {
+    const content = exportShowCSV(timelineItems, positions);
+    downloadFile(content, `${projectName.replace(/\s+/g, '_')}_show.csv`, 'text/csv');
+  };
+
   const handleExportJSON = () => {
     const data = {
       project: projectName,
