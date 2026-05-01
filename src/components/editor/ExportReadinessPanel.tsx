@@ -70,7 +70,7 @@ function ExportChannel({ label, icon: Icon, color, count, countLabel, canExport,
       </div>
       <div className="flex items-center justify-between">
         <span className="text-[9px] font-mono text-muted-foreground">{count} {countLabel}</span>
-        <Button size="sm" onClick={handleExport} disabled={!canExport || count === 0}
+        <Button size="sm" onClick={handleExport} disabled={!effectiveCanExport || count === 0}
           className="h-5 text-[8px] font-mono gap-1 px-2 disabled:opacity-30">
           <Download className="w-2.5 h-2.5" /> EXPORT
         </Button>
