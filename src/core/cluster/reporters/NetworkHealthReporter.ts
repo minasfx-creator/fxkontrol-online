@@ -3,7 +3,7 @@
  */
 
 import { networkHealthService } from '@/core/network/NetworkHealthService';
-import { fieldBus } from '@/core/reliability';
+import { fieldBus } from '@/core/network/fieldBus';
 import { serviceRegistry, type HealthReporter } from '../ServiceRegistry';
 import type { SubsystemHealth, HealthLevel } from '../ClusterHealthService';
 
