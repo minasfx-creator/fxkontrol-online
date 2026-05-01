@@ -14,6 +14,7 @@ import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry
 import { exportCoordinator } from '@/core/export/ExportCoordinator';
 import { deviceEventLog } from '@/core/hardware/DeviceEventLog';
 import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
+import { workMode } from '@/core/safety/workMode';
 import { getProvenanceBadge, type IntegrationMode } from '@/core/hardware/provenance';
 import { showStyleManager } from '@/core/joi/ShowStyleManager';
 import { supabase } from '@/integrations/supabase/client';
