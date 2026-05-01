@@ -1,4 +1,4 @@
-import { Briefcase, Wand2, Crosshair, LogOut, Volume2, VolumeX, Settings, Shield } from 'lucide-react';
+import { Briefcase, Wand2, Crosshair, LogOut, Volume2, VolumeX, Settings, Shield, Compass } from 'lucide-react';
 
 import { NavLink } from '@/components/NavLink';
 import { FxkLogo } from '@/components/brand/FxkLogo';
@@ -32,6 +32,7 @@ const navItems = [
   { title: 'Office', url: '/office', icon: Briefcase, desc: 'Produtividade & docs' },
   { title: 'Studio', url: '/studio', icon: Wand2, desc: 'Criação 3D AI-first' },
   { title: 'Command', url: '/command', icon: Crosshair, desc: 'Execução ao vivo' },
+  { title: 'Strategy', url: '/strategy', icon: Compass, desc: 'GTM · assets · pilots' },
 ];
 
 export function AppSidebar() {
