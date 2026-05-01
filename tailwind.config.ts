@@ -96,6 +96,59 @@ export default {
           info:    "hsl(var(--fxk-blue))",
           accent:  "hsl(var(--fxk-violet))",
         },
+        // ── FXKONTROL Design System v1 (additive, opt-in) ──
+        // Use `bg-ds-surface-panel`, `text-segment-pyro`, `text-status-sync`
+        // in NEW components. Legacy components keep using `primary`/`fxk-*`.
+        ds: {
+          background:         "hsl(var(--ds-background))",
+          "surface-deep":     "hsl(var(--ds-surface-deep))",
+          "surface-panel":    "hsl(var(--ds-surface-panel))",
+          "surface-elevated": "hsl(var(--ds-surface-elevated))",
+          "border-default":   "hsl(var(--ds-border-default))",
+          "border-subtle":    "hsl(var(--ds-border-subtle))",
+          "border-active":    "hsl(var(--ds-border-active))",
+          "text-primary":     "hsl(var(--ds-text-primary))",
+          "text-secondary":   "hsl(var(--ds-text-secondary))",
+          "text-muted":       "hsl(var(--ds-text-muted))",
+          "text-disabled":    "hsl(var(--ds-text-disabled))",
+        },
+        segment: {
+          pyro:   "hsl(var(--segment-pyro))",
+          sfx:    "hsl(var(--segment-sfx))",
+          drones: "hsl(var(--segment-drones))",
+          light:  "hsl(var(--segment-light))",
+          dmx:    "hsl(var(--segment-dmx))",
+        },
+        status: {
+          ok:       "hsl(var(--status-ok))",
+          sync:     "hsl(var(--status-sync))",
+          warn:     "hsl(var(--status-warn))",
+          fail:     "hsl(var(--status-fail))",
+          disabled: "hsl(var(--status-disabled))",
+        },
+        // ── Field-grade tokens (src/styles/field-tokens.css) ──
+        // Use estes em componentes NOVOS p/ garantir paleta operacional.
+        // Ex: bg-field-surface-1, text-field-fg-muted, ring-field-cyan.
+        field: {
+          bg:           "hsl(var(--field-bg))",
+          "surface-0":  "hsl(var(--field-surface-0))",
+          "surface-1":  "hsl(var(--field-surface-1))",
+          "surface-2":  "hsl(var(--field-surface-2))",
+          "surface-3":  "hsl(var(--field-surface-3))",
+          "surface-4":  "hsl(var(--field-surface-4))",
+          "fg-primary":   "hsl(var(--field-fg-primary))",
+          "fg-secondary": "hsl(var(--field-fg-secondary))",
+          "fg-muted":     "hsl(var(--field-fg-muted))",
+          "fg-disabled":  "hsl(var(--field-fg-disabled))",
+          cyan:        "hsl(var(--field-cyan))",
+          "cyan-hover": "hsl(var(--field-cyan-hover))",
+          "cyan-press": "hsl(var(--field-cyan-press))",
+        },
+        // Estados canônicos — não use cores soltas em hover/focus/selected.
+        state: {
+          "selected-fg":     "hsl(var(--state-selected-fg))",
+          "disabled-fg":     "hsl(var(--state-disabled-fg))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -112,15 +165,38 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
         // ── Apple semantic radius scale ──
-        // Use these in chrome (Dock, Header, Sidebar, popovers) instead of
-        // ad-hoc `rounded-xl` / `rounded-2xl`. Concentric rule: outer radius
-        // should be ≥ inner radius + padding (e.g. dock with `radius-island`
-        // 16px and `p-2` 8px → items use `radius-control` 8px so corners
-        // stay parallel).
-        control: "var(--radius-control)", // 8px  — buttons, chips, inputs
-        panel:   "var(--radius-panel)",   // 12px — cards, popovers, tooltips
-        island:  "var(--radius-island)",  // 16px — dock, sidebar items
-        sheet:   "var(--radius-sheet)",   // 20px — modals, sheets
+        control: "var(--radius-control)", // 8px
+        panel:   "var(--radius-panel)",   // 12px
+        island:  "var(--radius-island)",  // 16px
+        sheet:   "var(--radius-sheet)",   // 20px
+        // ── DS v1 radius scale (spec: sm 6 / md 10 / lg 16) ──
+        "ds-sm": "var(--ds-radius-sm)",
+        "ds-md": "var(--ds-radius-md)",
+        "ds-lg": "var(--ds-radius-lg)",
+      },
+      spacing: {
+        // ── DS v1 8pt scale (4/8/12/16/24/32/48/64) ──
+        "ds-1":  "var(--ds-space-1)",
+        "ds-2":  "var(--ds-space-2)",
+        "ds-3":  "var(--ds-space-3)",
+        "ds-4":  "var(--ds-space-4)",
+        "ds-6":  "var(--ds-space-6)",
+        "ds-8":  "var(--ds-space-8)",
+        "ds-12": "var(--ds-space-12)",
+        "ds-16": "var(--ds-space-16)",
+        // Editor layout dimensions (use with h-/w-)
+        "ds-topbar":   "var(--ds-layout-topbar)",
+        "ds-tabs":     "var(--ds-layout-tabs)",
+        "ds-left":     "var(--ds-layout-left)",
+        "ds-right":    "var(--ds-layout-right)",
+        "ds-timeline": "var(--ds-layout-timeline)",
+      },
+      fontSize: {
+        "ds-h1":      ["var(--ds-font-h1)",      { lineHeight: "var(--ds-lh-tight)",  fontWeight: "700" }],
+        "ds-h2":      ["var(--ds-font-h2)",      { lineHeight: "var(--ds-lh-tight)",  fontWeight: "600" }],
+        "ds-h3":      ["var(--ds-font-h3)",      { lineHeight: "var(--ds-lh-tight)",  fontWeight: "500" }],
+        "ds-body":    ["var(--ds-font-body)",    { lineHeight: "var(--ds-lh-normal)", fontWeight: "400" }],
+        "ds-caption": ["var(--ds-font-caption)", { lineHeight: "var(--ds-lh-normal)", fontWeight: "400" }],
       },
       transitionTimingFunction: {
         'spring': 'cubic-bezier(0, 0.55, 0.45, 1)',

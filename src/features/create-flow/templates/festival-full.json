@@ -1,0 +1,6 @@
+{
+  "name": "Festival Full Show",
+  "duration": 240,
+  "segments": ["PYRO", "DRONES", "LIGHT", "DMX", "SFX"],
+  "positions": []
+}

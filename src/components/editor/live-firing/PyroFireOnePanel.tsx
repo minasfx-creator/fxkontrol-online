@@ -31,6 +31,7 @@ import { parseFireOneCSV, parseFireOneFIR, exportFireOneCSV, downloadFile, autoD
 import type { WirelessConnectionMode } from '@/lib/fireoneProtocol';
 import { artnetModuleService } from '@/services/artnetModuleService';
 import { FXK16ConnectionPanel } from './FXK16ConnectionPanel';
+import FXK16StatusBar from '@/components/field/FXK16StatusBar';
 
 interface FireLogEntry {
   cueId: string;
@@ -1632,9 +1633,14 @@ export default function PyroFireOnePanel({
       {renderFileInput()}
       {renderHeader()}
       {renderConnectionBar()}
-      {/* FXK16 — 16ch ESP32-S3 relay quick-connect (USB / BLE) */}
+      {/* FXK16 — 16ch ESP32-S3 relay quick-connect (USB / BLE).
+          Singleton useFXK16Bridge: this card and the /field#fxk16 tab share
+          the exact same link. Connecting in either place reflects in both. */}
       <div className={cn(sz === 'xl' ? 'px-6 py-2' : sz === 'fs' ? 'px-4 py-1.5' : 'px-2 py-1')}>
         <FXK16ConnectionPanel compact={sz !== 'xl'} />
+        <div className="mt-1.5">
+          <FXK16StatusBar compact />
+        </div>
       </div>
       {renderMasterArm()}
       {renderStatusStrip()}

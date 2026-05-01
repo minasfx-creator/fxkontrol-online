@@ -1,0 +1,10 @@
+{
+  "name": "Light Chase Pack",
+  "duration": 90,
+  "segments": ["LIGHT", "DMX"],
+  "positions": [
+    { "id": "p-light-1", "name": "Spot1", "x": -6, "y": 4, "z": -4, "type": "light", "section": "A" },
+    { "id": "p-light-2", "name": "Spot2", "x": 0, "y": 4, "z": -4, "type": "light", "section": "A" },
+    { "id": "p-light-3", "name": "Spot3", "x": 6, "y": 4, "z": -4, "type": "light", "section": "A" }
+  ]
+}

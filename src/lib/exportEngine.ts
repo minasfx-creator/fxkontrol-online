@@ -880,6 +880,206 @@ export function exportFormationsToKML(
 </kml>`;
 }
 
+// ─── Unified Show Export — JSON & CSV ────────────────────────────────
+// Bundle the entire show (project meta + positions + timeline cues +
+// drone formations + trajectories) into a single canonical document.
+// Coordinates use the editor's Three.js frame (X right, Y up, Z toward viewer).
+// Heading is reported per-cue: linked position heading > position default > 0.
+
+export interface ShowBundleJSON {
+  schemaVersion: '1.0';
+  generator: 'FXKontrol';
+  generatedAt: string;
+  project: {
+    name: string;
+    durationSec: number;
+    cueCount: number;
+    positionCount: number;
+    droneCount: number;
+  };
+  positions: Array<{
+    id: string;
+    name: string;
+    type: Position['type'];
+    x: number; y: number; z: number;
+    heading: number; pitch: number; roll: number;
+  }>;
+  cues: Array<{
+    id: string;
+    effectId: string;
+    effectName: string;
+    type: 'firework' | 'drone' | 'sfx' | 'laser' | 'light';
+    category: string;
+    startTime: number;
+    duration: number;
+    color: string;
+    x: number; y: number; z: number;
+    heading: number; pitch: number;
+    pan: number; tilt: number; spin: number;
+    intensity: number;
+    positionId?: string;
+    positionName?: string;
+    /** Caliber (in) for fireworks. */
+    caliber?: number;
+    prefire?: number;
+    safetyDistance?: number;
+    pattern?: string;
+    beamCount?: number;
+    flightCount?: number;
+  }>;
+  droneFormations: DroneFormation[];
+  trajectories: Trajectory[];
+}
+
+function resolveCueGeometry(item: TimelineItem, positions: Position[]) {
+  let x = item.position.x;
+  let y = item.position.y;
+  let z = item.position.z;
+  let heading = 0;
+  let pitch = 90;
+  let positionName: string | undefined = item.positionName;
+  if (item.positionId) {
+    const linked = positions.find(p => p.id === item.positionId);
+    if (linked) {
+      x = linked.x; y = linked.y; z = linked.z;
+      heading = item.cueHeading ?? linked.heading ?? 0;
+      pitch = item.cuePitch ?? linked.pitch ?? 90;
+      positionName = linked.name;
+    }
+  }
+  return { x, y, z, heading, pitch, positionName };
+}
+
+export function exportShowBundleJSON(
+  projectName: string,
+  duration: number,
+  timelineItems: TimelineItem[],
+  positions: Position[],
+  trajectories: Trajectory[] = [],
+  droneFormations: DroneFormation[] = [],
+): string {
+  const cues: ShowBundleJSON['cues'] = timelineItems.map((item) => {
+    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+    const geom = resolveCueGeometry(item, positions);
+    const color = item.colorOverride ?? effect?.color ?? '#FFFFFF';
+    const dur = item.durationOverride ?? effect?.duration ?? 0;
+    return {
+      id: item.id,
+      effectId: item.effectId,
+      effectName: effect?.name ?? 'Unknown',
+      type: (effect?.type ?? 'sfx') as ShowBundleJSON['cues'][number]['type'],
+      category: effect?.category ?? 'unknown',
+      startTime: Math.round(item.startTime * 1000) / 1000,
+      duration: Math.round(dur * 1000) / 1000,
+      color,
+      x: Math.round(geom.x * 1000) / 1000,
+      y: Math.round(geom.y * 1000) / 1000,
+      z: Math.round(geom.z * 1000) / 1000,
+      heading: Math.round(geom.heading * 100) / 100,
+      pitch: Math.round(geom.pitch * 100) / 100,
+      pan: item.pan ?? 0,
+      tilt: item.tilt ?? 0,
+      spin: item.spin ?? 0,
+      intensity: item.intensity ?? 100,
+      positionId: item.positionId,
+      positionName: geom.positionName,
+      caliber: item.caliberOverride ?? effect?.caliber,
+      prefire: item.prefireOverride ?? effect?.prefire,
+      safetyDistance: effect?.safetyDistance,
+      pattern: effect?.pattern,
+      beamCount: item.beamCountOverride ?? effect?.beamCount,
+      flightCount: item.flightCount,
+    };
+  });
+
+  const droneCount = (droneFormations[0]?.droneCount ?? 0) + trajectories.length +
+    cues.filter(c => c.type === 'drone').length;
+
+  const doc: ShowBundleJSON = {
+    schemaVersion: '1.0',
+    generator: 'FXKontrol',
+    generatedAt: new Date().toISOString(),
+    project: {
+      name: projectName,
+      durationSec: Math.round(duration * 1000) / 1000,
+      cueCount: cues.length,
+      positionCount: positions.length,
+      droneCount,
+    },
+    positions: positions.map(p => ({
+      id: p.id, name: p.name, type: p.type,
+      x: Math.round(p.x * 1000) / 1000,
+      y: Math.round(p.y * 1000) / 1000,
+      z: Math.round(p.z * 1000) / 1000,
+      heading: p.heading ?? 0,
+      pitch: p.pitch ?? 0,
+      roll: p.roll ?? 0,
+    })),
+    cues,
+    droneFormations,
+    trajectories,
+  };
+  return JSON.stringify(doc, null, 2);
+}
+
+/**
+ * Universal CSV export — every cue (firework, drone, sfx, laser, light) on
+ * one row with X/Y/Z/Heading. Suitable for spreadsheets, audits, and
+ * downstream import in Excel / Google Sheets.
+ */
+export function exportShowBundleCSV(
+  timelineItems: TimelineItem[],
+  positions: Position[],
+): string {
+  const sorted = [...timelineItems].sort((a, b) => a.startTime - b.startTime);
+  const escape = (v: string | number | undefined) => {
+    const s = v === undefined || v === null ? '' : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  const header = [
+    'Cue', 'Type', 'Category', 'EffectName', 'StartTime(s)', 'Duration(s)',
+    'X', 'Y', 'Z', 'Heading(°)', 'Pitch(°)', 'Pan(°)', 'Tilt(°)', 'Spin(°)',
+    'Color', 'Intensity(%)', 'Caliber(in)', 'Prefire(s)', 'SafetyDist(m)',
+    'Pattern', 'BeamCount', 'FlightCount', 'Position', 'PositionId',
+  ].join(',');
+
+  const rows = sorted.map((item, idx) => {
+    const effect = EFFECT_LIBRARY.find(e => e.id === item.effectId);
+    const geom = resolveCueGeometry(item, positions);
+    const color = item.colorOverride ?? effect?.color ?? '';
+    const dur = item.durationOverride ?? effect?.duration ?? 0;
+    return [
+      idx + 1,
+      effect?.type ?? 'sfx',
+      effect?.category ?? 'unknown',
+      escape(effect?.name ?? 'Unknown'),
+      Math.round(item.startTime * 1000) / 1000,
+      Math.round(dur * 1000) / 1000,
+      Math.round(geom.x * 1000) / 1000,
+      Math.round(geom.y * 1000) / 1000,
+      Math.round(geom.z * 1000) / 1000,
+      Math.round(geom.heading * 100) / 100,
+      Math.round(geom.pitch * 100) / 100,
+      item.pan ?? 0,
+      item.tilt ?? 0,
+      item.spin ?? 0,
+      color,
+      item.intensity ?? 100,
+      item.caliberOverride ?? effect?.caliber ?? '',
+      item.prefireOverride ?? effect?.prefire ?? '',
+      effect?.safetyDistance ?? '',
+      escape(effect?.pattern ?? ''),
+      item.beamCountOverride ?? effect?.beamCount ?? '',
+      item.flightCount ?? '',
+      escape(geom.positionName ?? ''),
+      escape(item.positionId ?? ''),
+    ].join(',');
+  });
+
+  return header + '\n' + rows.join('\n');
+}
+
 // ─── Download Helper ─────────────────────────────────────────────────
 
 export function downloadFile(content: string, filename: string, mimeType: string) {

@@ -1,15 +1,26 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronLeft, GripVertical } from 'lucide-react';
+import { ChevronRight, ChevronLeft, GripVertical, Sparkles } from 'lucide-react';
 import { viewportToolRegistry } from '@/features/viewport-tools/registry';
 import { operationLog } from '@/features/viewport-tools/command-dispatcher';
 import { useProjectStore } from '@/store/useProjectStore';
 import { effectVariantStore } from '@/features/viewport-tools/effectVariants';
 import { useDraggableFloat } from '@/components/editor/useDraggableFloat';
+import EdgeSnapGuides from '@/components/editor/EdgeSnapGuides';
+import FloatTooltip from '@/components/editor/FloatTooltip';
 import ViewportToolPanel from './ViewportToolPanel';
 import EffectConfigDialog from './EffectConfigDialog';
 import DroneConfigDialog from './DroneConfigDialog';
 import VdlPickerDialog from './VdlPickerDialog';
+import DmxPatchDialog from './DmxPatchDialog';
+import ValidatorsReportDialog from './ValidatorsReportDialog';
+import ExportCenterDialog from './ExportCenterDialog';
+import GeneratorsDialog from './GeneratorsDialog';
+import GuidedModeDialog from './GuidedModeDialog';
+import DmxHeatmapOverlay from './DmxHeatmapOverlay';
+import { generateCakeDetailed, type CakeParams } from '@/features/viewport-tools/generators/cakeGenerator';
+import { generateMortarFan, type MortarFanParams } from '@/features/viewport-tools/generators/mortarFanGenerator';
+import { generateDroneFormationDetailed, type FormationParams } from '@/features/viewport-tools/generators/droneFormationGenerator';
 import type { SegmentType } from '@/features/viewport-tools/types';
 
 // Side-effect import: registers all 5 segment plugins exactly once.
@@ -71,6 +82,14 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
     open: false,
     timelineItemId: null,
   });
+  const [dmxDialog, setDmxDialog] = useState<{ open: boolean; tab: 'patch' | 'conflicts' }>({
+    open: false,
+    tab: 'patch',
+  });
+  const [validatorsDialog, setValidatorsDialog] = useState(false);
+  const [exportDialog, setExportDialog] = useState(false);
+  const [generatorsDialog, setGeneratorsDialog] = useState(false);
+  const [guidedDialog, setGuidedDialog] = useState(false);
 
   useEffect(() => operationLog.subscribe(() => force((n) => n + 1)), []);
   useEffect(() => viewportToolRegistry.subscribe(() => force((n) => n + 1)), []);
@@ -96,13 +115,97 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       const detail = (e as CustomEvent).detail as { timelineItemId: string | null };
       setVdlDialog({ open: true, timelineItemId: detail.timelineItemId });
     };
+    const onDmx = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { tab?: 'patch' | 'conflicts' };
+      setDmxDialog({ open: true, tab: detail?.tab ?? 'patch' });
+    };
+    const onValidators = () => setValidatorsDialog(true);
+    const onExport = () => setExportDialog(true);
+    const onOpenGenerators = () => setGeneratorsDialog(true);
+    const onOpenGuided = () => setGuidedDialog(true);
+
+    // ── Generator commit handlers (mutate store + record undo) ──
+    const uid = (p: string) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const onGenCake = (e: Event) => {
+      const params = (e as CustomEvent).detail as CakeParams;
+      const { items, report } = generateCakeDetailed(params);
+      if (items.length === 0) return;
+      // Canonical truth: ShowPlan via project store. Audit fan-out happens
+      // through the existing op log (and CommandBus bridge if enabled).
+      useProjectStore.setState((s) => ({ timelineItems: [...s.timelineItems, ...items] }));
+      const tag = report.warnings.length === 0 ? 'ok' : `warn(${report.warnings.length})`;
+      operationLog.push({
+        id: uid('op'),
+        segment: 'PYRO',
+        command: 'PYRO_GENERATE_CAKE',
+        timestamp: Date.now(),
+        before: null,
+        after: { addedIds: items.map((i) => i.id), report },
+        description: `Cake: ${report.shotsTotal} shots · ${report.rows} row(s) · ${report.effectiveStaggerMs}ms · ${tag}.`,
+      });
+    };
+
+    const onGenFan = (e: Event) => {
+      const params = (e as CustomEvent).detail as MortarFanParams;
+      const { positions, items } = generateMortarFan(params);
+      if (items.length === 0) return;
+      useProjectStore.setState((s) => ({
+        positions: [...s.positions, ...positions],
+        timelineItems: [...s.timelineItems, ...items],
+      }));
+      operationLog.push({
+        id: uid('op'),
+        segment: 'PYRO',
+        command: 'PYRO_GENERATE_MORTAR_FAN',
+        timestamp: Date.now(),
+        before: null,
+        after: { addedPositionIds: positions.map((p) => p.id), addedItemIds: items.map((i) => i.id) },
+        description: `Generated mortar fan: ${positions.length} mortars / ${params.spacingM}m.`,
+      });
+    };
+
+    const onGenDrone = (e: Event) => {
+      const params = (e as CustomEvent).detail as FormationParams;
+      // Use detailed generator so we surface collision + warnings in the audit log.
+      // Per WorkMode policy: design/simulation never blocks creative ops, only warns.
+      const { formation, collision, warnings } = generateDroneFormationDetailed(params);
+      useProjectStore.getState().addDroneFormation(formation);
+      const collisionTag = collision.ok ? 'ok' : `risk(${collision.violations})`;
+      operationLog.push({
+        id: uid('op'),
+        segment: 'DRONES',
+        command: 'DRONES_GENERATE_FORMATION',
+        timestamp: Date.now(),
+        before: null,
+        after: { formationId: formation.id, collision, warnings },
+        description: `Generated ${formation.formationType} formation: ${formation.droneCount} drones · collision ${collisionTag}.`,
+      });
+    };
+
     window.addEventListener('viewport-tools:open-effect-config', onEffect);
     window.addEventListener('viewport-tools:open-drone-config', onDrone);
     window.addEventListener('viewport-tools:open-vdl-picker', onVdl);
+    window.addEventListener('viewport-tools:open-dmx-patch', onDmx);
+    window.addEventListener('viewport-tools:open-validators-report', onValidators);
+    window.addEventListener('viewport-tools:open-export-center', onExport);
+    window.addEventListener('viewport-tools:open-generators', onOpenGenerators);
+    window.addEventListener('viewport-tools:open-guided-mode', onOpenGuided);
+    window.addEventListener('viewport-tools:generate-cake', onGenCake);
+    window.addEventListener('viewport-tools:generate-mortar-fan', onGenFan);
+    window.addEventListener('viewport-tools:generate-drone-formation', onGenDrone);
     return () => {
       window.removeEventListener('viewport-tools:open-effect-config', onEffect);
       window.removeEventListener('viewport-tools:open-drone-config', onDrone);
       window.removeEventListener('viewport-tools:open-vdl-picker', onVdl);
+      window.removeEventListener('viewport-tools:open-dmx-patch', onDmx);
+      window.removeEventListener('viewport-tools:open-validators-report', onValidators);
+      window.removeEventListener('viewport-tools:open-export-center', onExport);
+      window.removeEventListener('viewport-tools:open-generators', onOpenGenerators);
+      window.removeEventListener('viewport-tools:open-guided-mode', onOpenGuided);
+      window.removeEventListener('viewport-tools:generate-cake', onGenCake);
+      window.removeEventListener('viewport-tools:generate-mortar-fan', onGenFan);
+      window.removeEventListener('viewport-tools:generate-drone-formation', onGenDrone);
     };
   }, []);
 
@@ -157,6 +260,32 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
       import('@/features/viewport-tools/safetyOverlayStore').then((m) =>
         m.useSafetyOverlayStore.getState().setPyroSafety(before),
       );
+    } else if (op.command === 'DRONES_TOGGLE_COLLISION') {
+      const before = (op.before as { visible: boolean }).visible;
+      import('@/features/viewport-tools/safetyOverlayStore').then((m) =>
+        m.useSafetyOverlayStore.getState().setDronesCollision(before),
+      );
+    } else if (op.command === 'PYRO_GENERATE_CAKE') {
+      const ids = new Set((op.after as { addedIds: string[] }).addedIds);
+      useProjectStore.setState((s) => ({
+        timelineItems: s.timelineItems.filter((it) => !ids.has(it.id)),
+      }));
+    } else if (op.command === 'PYRO_GENERATE_MORTAR_FAN') {
+      const after = op.after as { addedPositionIds: string[]; addedItemIds: string[] };
+      const posIds = new Set(after.addedPositionIds);
+      const itemIds = new Set(after.addedItemIds);
+      useProjectStore.setState((s) => ({
+        positions: s.positions.filter((p) => !posIds.has(p.id)),
+        timelineItems: s.timelineItems.filter((it) => !itemIds.has(it.id)),
+      }));
+    } else if (op.command === 'DRONES_GENERATE_FORMATION') {
+      const formationId = (op.after as { formationId: string }).formationId;
+      useProjectStore.getState().removeDroneFormation(formationId);
+    } else if (op.command === 'DMX_TOGGLE_HEATMAP') {
+      const before = (op.before as { visible: boolean }).visible;
+      import('@/features/viewport-tools/safetyOverlayStore').then((m) =>
+        m.useSafetyOverlayStore.getState().setDmxHeatmap(before),
+      );
     }
   };
 
@@ -201,46 +330,59 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
           {SEGMENTS.map((seg) => {
             const isActive = active === seg;
             return (
-              <Button
-                key={seg}
-                size="sm"
-                variant="ghost"
-                data-no-drag
-                className={
-                  'h-9 w-9 p-0 rounded-lg text-[10px] font-bold tracking-wider transition-all ' +
-                  (isActive
-                    ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/60 hover:bg-cyan-500/25'
-                    : 'text-muted-foreground border border-transparent hover:text-cyan-300 hover:border-cyan-500/30')
-                }
-                onClick={() => setActive(isActive ? null : seg)}
-                title={seg}
-              >
-                {seg.slice(0, 3)}
-              </Button>
+              <FloatTooltip key={seg} label={seg} side={panelOnLeft ? 'left' : 'right'}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  data-no-drag
+                  className={
+                    'h-9 w-9 p-0 rounded-lg text-[10px] font-bold tracking-wider transition-all ' +
+                    (isActive
+                      ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/60 hover:bg-cyan-500/25'
+                      : 'text-muted-foreground border border-transparent hover:text-cyan-300 hover:border-cyan-500/30')
+                  }
+                  onClick={() => setActive(isActive ? null : seg)}
+                >
+                  {seg.slice(0, 3)}
+                </Button>
+              </FloatTooltip>
             );
           })}
           <div className="w-6 h-px bg-cyan-500/20 my-0.5" />
-          <Button
-            size="sm"
-            variant="ghost"
-            data-no-drag
-            className="h-7 w-9 p-0 text-[10px] text-muted-foreground hover:text-cyan-300"
-            onClick={undo}
-            disabled={!operationLog.canUndo()}
-            title="Undo"
-          >
-            ↶
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            data-no-drag
-            className="h-6 w-9 p-0 text-[9px] text-muted-foreground/60 hover:text-cyan-300"
-            onClick={drag.resetPosition}
-            title="Reset dock position"
-          >
-            ⌖
-          </Button>
+          <FloatTooltip label="Modo Guiado" side={panelOnLeft ? 'left' : 'right'}>
+            <Button
+              size="sm"
+              variant="ghost"
+              data-no-drag
+              className="h-7 w-9 p-0 text-cyan-300 hover:text-cyan-100 hover:bg-cyan-500/10"
+              onClick={() => setGuidedDialog(true)}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+            </Button>
+          </FloatTooltip>
+          <FloatTooltip label="Undo" shortcut="⌘Z" side={panelOnLeft ? 'left' : 'right'}>
+            <Button
+              size="sm"
+              variant="ghost"
+              data-no-drag
+              className="h-7 w-9 p-0 text-[10px] text-muted-foreground hover:text-cyan-300"
+              onClick={undo}
+              disabled={!operationLog.canUndo()}
+            >
+              ↶
+            </Button>
+          </FloatTooltip>
+          <FloatTooltip label="Reset Dock" side={panelOnLeft ? 'left' : 'right'}>
+            <Button
+              size="sm"
+              variant="ghost"
+              data-no-drag
+              className="h-6 w-9 p-0 text-[9px] text-muted-foreground/60 hover:text-cyan-300"
+              onClick={drag.resetPosition}
+            >
+              ⌖
+            </Button>
+          </FloatTooltip>
         </div>
       )}
 
@@ -271,6 +413,28 @@ export default function ViewportSegmentToolbar({ defaultSegment = 'PYRO' }: Prop
         onClose={() => setVdlDialog((d) => ({ ...d, open: false }))}
         timelineItemId={vdlDialog.timelineItemId}
       />
+      <DmxPatchDialog
+        open={dmxDialog.open}
+        onClose={() => setDmxDialog((d) => ({ ...d, open: false }))}
+      />
+      <ValidatorsReportDialog
+        open={validatorsDialog}
+        onClose={() => setValidatorsDialog(false)}
+      />
+      <ExportCenterDialog
+        open={exportDialog}
+        onClose={() => setExportDialog(false)}
+      />
+      <GeneratorsDialog
+        open={generatorsDialog}
+        onClose={() => setGeneratorsDialog(false)}
+      />
+      <GuidedModeDialog
+        open={guidedDialog}
+        onClose={() => setGuidedDialog(false)}
+      />
+      <DmxHeatmapOverlay />
+      <EdgeSnapGuides active={drag.dragging} edges={drag.snappedEdges} />
     </div>
   );
 }

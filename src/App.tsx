@@ -50,10 +50,19 @@ const UsbPairingWizard = lazy(lazyRetry(() => import("./pages/UsbPairingWizard")
 const BlePairingWizard = lazy(lazyRetry(() => import("./pages/BlePairingWizard")));
 const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
 const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage")));
+const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")));
+const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
+const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
 const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
 const Office = lazy(lazyRetry(() => import("./pages/Office")));
+
+// Create-flow (Action Layer) — Blueprint UX entry funnel
+const Create = lazy(lazyRetry(() => import("./pages/Create")));
+const CreateBlank = lazy(lazyRetry(() => import("./pages/create/CreateBlank")));
+const CreateTemplate = lazy(lazyRetry(() => import("./pages/create/CreateTemplate")));
+const CreateGenerate = lazy(lazyRetry(() => import("./pages/create/CreateGenerate")));
 
 // Lazy-loaded heavy pages
 const Index = lazy(lazyRetry(() => import("./pages/Index")));
@@ -73,6 +82,12 @@ const Privacy = lazy(lazyRetry(() => import("./pages/legal/Privacy")));
 const CheckoutSuccess = lazy(lazyRetry(() => import("./pages/CheckoutSuccess")));
 const Pricing = lazy(lazyRetry(() => import("./pages/Pricing")));
 const Landing = lazy(lazyRetry(() => import("./pages/Landing")));
+const Manifesto = lazy(lazyRetry(() => import("./pages/Manifesto")));
+const Comercial = lazy(lazyRetry(() => import("./pages/Comercial")));
+const IOSReadiness = lazy(lazyRetry(() => import("./pages/IOSReadiness")));
+const Unsubscribe = lazy(lazyRetry(() => import("./pages/Unsubscribe")));
+const Strategy = lazy(lazyRetry(() => import("./pages/Strategy")));
+const PitchUS = lazy(lazyRetry(() => import("./pages/PitchUS")));
 
 const queryClient = new QueryClient();
 
@@ -163,6 +178,16 @@ function App() {
                     {/* FXK16 calibration & diagnostics — handshake card, detected-channel
                         count, manual hold-to-fire and armed auto-sweep C1..C16. */}
                     <Route path="/dev/fxk16-calibrate" element={<FXK16CalibrationPage />} />
+                    {/* Public SkyCanvas smoke route — mounts the 3D viewport in
+                        isolation for E2E QA. No auth, no hardware, no ARM. */}
+                    <Route path="/dev/skycanvas-smoke" element={<SkyCanvasSmoke />} />
+                    {/* FXKONTROL DS v1 — public reference page (tokens, segments, status,
+                        components, states). No hardware, no auth. */}
+                    <Route path="/dev/design-system" element={<DesignSystemShowcase />} />
+                    {/* Live demo of <EditorShell> w/ DS components — pure presentation. */}
+                    <Route path="/dev/editor-shell" element={<EditorShellPreview />} />
+                    {/* Public alias — promoted shell route. */}
+                    <Route path="/editor-ds" element={<EditorShellPreview />} />
                     {/* Public legal pages — required by Paddle (Merchant of Record) and must be crawlable without auth. */}
                     <Route path="/legal/terms" element={<Terms />} />
                     <Route path="/legal/refund" element={<Refund />} />
@@ -171,6 +196,14 @@ function App() {
                     <Route path="/pricing" element={<Pricing />} />
                     {/* Public marketing landing — Apple-style HTML served via iframe; CTAs navigate parent SPA. */}
                     <Route path="/landing" element={<Landing />} />
+                    {/* Public brand manifesto — positioning, key messages, tone of voice. */}
+                    <Route path="/manifesto" element={<Manifesto />} />
+                    {/* Public commercial deck — B2B sales narrative for premium producers
+                        (Previs / LiveOps / Enterprise + GO/NO-GO + 90d roadmap). Uses
+                        data-theme="commercial" tokens isolated from operational palette. */}
+                    <Route path="/comercial" element={<Comercial />} />
+                    <Route path="/pitch/us" element={<PitchUS />} />
+                    <Route path="/unsubscribe" element={<Unsubscribe />} />
                     {/* Checkout success — auth-gated but standalone (no MainLayout chrome) so the
                         confirmation screen is the only thing visible while the webhook lands. */}
                     <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
@@ -182,7 +215,16 @@ function App() {
                       {/* Studio = editor 3D. /editor mantido como alias legacy. */}
                       <Route path="/studio" element={<Index />} />
                       <Route path="/editor" element={<Navigate to="/studio" replace />} />
+                      <Route path="/editor/:showId" element={<Index />} />
                       <Route path="/command" element={<CommandCenter />} />
+                      <Route path="/strategy" element={<Strategy />} />
+
+                      {/* ── Create flow (Action Layer) ────────────────────────── */}
+                      <Route path="/create" element={<Create />} />
+                      <Route path="/create/blank" element={<CreateBlank />} />
+                      <Route path="/create/template" element={<CreateTemplate />} />
+                      <Route path="/create/generate" element={<CreateGenerate />} />
+
 
                       {/* ── Redirects: rotas antigas → nova estrutura ─────────── */}
                       <Route path="/agenda" element={<Navigate to="/office?tab=agenda" replace />} />
@@ -200,6 +242,7 @@ function App() {
                           handshake (VERSION+STATUS), shows per-attempt status. */}
                       <Route path="/pairing/ble" element={<BlePairingWizard />} />
                       <Route path="/field-test" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#field-test" replace /> : <Navigate to="/office" replace />} />
+                      <Route path="/fxk16" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#fxk16" replace /> : <Navigate to="/office" replace />} />
 
                       {/* ── Settings & sistema ────────────────────────────────── */}
                       <Route path="/settings" element={<Settings />} />

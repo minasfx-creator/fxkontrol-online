@@ -16,6 +16,8 @@ import { registerSegmentPlugin } from '../registry';
 import type { ViewportSegmentPlugin, ViewportOperation } from '../types';
 import { selectAllBySegment } from '../selection-engine';
 import { pyroValidators } from '../validators/pyro.validator';
+import { fireoneValidators } from '../validators/fireone.validator';
+import { showvenValidators } from '../validators/showven.validator';
 import { useProjectStore } from '@/store/useProjectStore';
 import { useSafetyOverlayStore } from '../safetyOverlayStore';
 import type { TimelineItem } from '@/types/projectTypes';
@@ -26,7 +28,7 @@ function uid(prefix: string): string {
 
 const plugin: ViewportSegmentPlugin = {
   segment: 'PYRO',
-  validators: pyroValidators,
+  validators: [...pyroValidators, ...fireoneValidators, ...showvenValidators],
   tools: [
     {
       id: 'pyro.select-all',
@@ -94,6 +96,33 @@ const plugin: ViewportSegmentPlugin = {
       command: 'PYRO_TOGGLE_SAFETY_OVERLAY',
       icon: 'ShieldAlert',
       hint: 'Show / hide the geofence + ballistic preview overlays.',
+    },
+    {
+      id: 'pyro.run-validators',
+      label: 'Run Advanced Validators',
+      segment: 'PYRO',
+      scope: 'safety',
+      command: 'PYRO_RUN_VALIDATORS',
+      icon: 'ShieldCheck',
+      hint: 'FireOne stagger + Showven device limits + base PYRO checks.',
+    },
+    {
+      id: 'pyro.open-generators',
+      label: 'Generators (Cake / Fan)',
+      segment: 'PYRO',
+      scope: 'generate',
+      command: 'PYRO_OPEN_GENERATORS',
+      icon: 'Sparkles',
+      hint: 'Parametric Cake (multi-shot) and Mortar Fan generators.',
+    },
+    {
+      id: 'pyro.export-center',
+      label: 'Export Center',
+      segment: 'PYRO',
+      scope: 'patch',
+      command: 'EXPORT_OPEN_CENTER',
+      icon: 'Download',
+      hint: 'FireOne / Showven / MAVLink exports (gated by validators).',
     },
   ],
   commandHandlers: {
@@ -253,6 +282,43 @@ const plugin: ViewportSegmentPlugin = {
         after: { visible: after },
         description: `Safety overlay ${after ? 'shown' : 'hidden'}.`,
       };
+    },
+
+    PYRO_RUN_VALIDATORS(): ViewportOperation | null {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('viewport-tools:open-validators-report'));
+      }
+      return {
+        id: uid('op'),
+        segment: 'PYRO',
+        command: 'PYRO_RUN_VALIDATORS',
+        timestamp: Date.now(),
+        before: null,
+        after: null,
+        description: 'Opened advanced validators report.',
+      };
+    },
+
+    EXPORT_OPEN_CENTER(): ViewportOperation | null {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('viewport-tools:open-export-center'));
+      }
+      return {
+        id: uid('op'),
+        segment: 'PYRO',
+        command: 'EXPORT_OPEN_CENTER',
+        timestamp: Date.now(),
+        before: null,
+        after: null,
+        description: 'Opened export center.',
+      };
+    },
+
+    PYRO_OPEN_GENERATORS(): ViewportOperation | null {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('viewport-tools:open-generators'));
+      }
+      return null; // dialog dispatches its own ops
     },
   },
 };

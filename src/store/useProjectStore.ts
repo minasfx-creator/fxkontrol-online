@@ -19,9 +19,13 @@ import type {
   DepthLayer, TimelineItem, Position, PositionType, BezierHandle, Waypoint, Trajectory,
   EditorMode, SelectionMode, DroneFormation, CueMarker, CameraKeyframe, WindSettings,
 } from '@/types/projectTypes';
+import type { SegmentType } from '@/features/viewport-tools/types';
 
 export interface ProjectState {
   projectName: string;
+  /** Active segments enabled for this show (drives the editor topbar). */
+  segments: SegmentType[];
+  setSegments: (segments: SegmentType[]) => void;
   activeLockouts: string[];
   setActiveLockouts: (lockouts: string[]) => void;
   toggleLockout: (riskGroup: string) => void;
@@ -205,6 +209,8 @@ export { EFFECT_LIBRARY } from '@/data/effectLibrary';
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
   projectName: 'Untitled Show',
+  segments: ['PYRO'],
+  setSegments: (segments) => set({ segments: segments.length > 0 ? segments : ['PYRO'] }),
   isPlaying: false,
   activeLockouts: [],
   setActiveLockouts: (lockouts) => set({ activeLockouts: lockouts }),
@@ -671,6 +677,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   replaceProjectState: (snap: any) => set(() => ({
     projectId: snap.projectId ?? null,
     projectName: snap.projectName ?? 'Untitled Show',
+    segments: Array.isArray(snap.segments) && snap.segments.length > 0 ? snap.segments : ['PYRO'],
     duration: snap.duration ?? 120,
     audioUrl: snap.audioUrl ?? null,
     bpm: snap.bpm ?? null,

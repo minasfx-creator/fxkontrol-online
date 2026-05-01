@@ -1222,11 +1222,22 @@ export function TimelineEffects() {
       // These let the operator tune individual cues without forking the library
       // effect. Duration override is applied below via `durationOverride` on the
       // item itself (typed-duration computation reads it).
-      if (item.colorOverride || item.flightCount) {
+      if (item.colorOverride || item.flightCount || item.intensity !== undefined || item.caliberOverride || item.prefireOverride !== undefined || item.beamCountOverride) {
+        const intScale = item.intensity !== undefined ? Math.max(0, item.intensity) / 100 : 1;
         effect = {
           ...effect,
           ...(item.colorOverride ? { color: item.colorOverride } : {}),
           ...(item.flightCount && item.flightCount > 0 ? { shotCount: item.flightCount } : {}),
+          ...(item.caliberOverride ? { caliber: item.caliberOverride } : {}),
+          ...(item.prefireOverride !== undefined ? { prefire: item.prefireOverride } : {}),
+          ...(item.beamCountOverride ? { beamCount: item.beamCountOverride } : {}),
+          ...(item.intensity !== undefined && effect.niagaraProfile ? {
+            niagaraProfile: {
+              ...effect.niagaraProfile,
+              glowIntensity: effect.niagaraProfile.glowIntensity * intScale,
+              starCount: Math.max(8, Math.round(effect.niagaraProfile.starCount * (0.4 + 0.6 * intScale))),
+            },
+          } : {}),
         } as typeof effect;
       }
 

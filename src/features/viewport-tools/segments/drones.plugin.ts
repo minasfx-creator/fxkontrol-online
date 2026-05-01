@@ -13,6 +13,7 @@ import type { ViewportSegmentPlugin, ViewportOperation } from '../types';
 import { selectAllBySegment } from '../selection-engine';
 import { dronesValidators } from '../validators/drones.validator';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useSafetyOverlayStore } from '../safetyOverlayStore';
 import type { Position } from '@/types/projectTypes';
 
 function uid(prefix: string): string {
@@ -51,6 +52,42 @@ const plugin: ViewportSegmentPlugin = {
       icon: 'SlidersHorizontal',
       requiresSelection: true,
       hint: 'Edit position + formation parameters for the selected drone pad.',
+    },
+    {
+      id: 'drones.toggle-collision',
+      label: 'Toggle Collision Preview',
+      segment: 'DRONES',
+      scope: 'safety',
+      command: 'DRONES_TOGGLE_COLLISION',
+      icon: 'ShieldAlert',
+      hint: 'Show / hide real-time collision-avoidance lines between drones.',
+    },
+    {
+      id: 'drones.run-validators',
+      label: 'Run Advanced Validators',
+      segment: 'DRONES',
+      scope: 'safety',
+      command: 'DRONES_RUN_VALIDATORS',
+      icon: 'ShieldCheck',
+      hint: 'Run all validators (PYRO + FireOne + Showven + DRONES proximity).',
+    },
+    {
+      id: 'drones.open-generators',
+      label: 'Generators (Formations)',
+      segment: 'DRONES',
+      scope: 'generate',
+      command: 'DRONES_OPEN_GENERATORS',
+      icon: 'Sparkles',
+      hint: 'Parametric drone formations (Circle / Grid / Heart / Spiral / Wave).',
+    },
+    {
+      id: 'drones.export-mavlink',
+      label: 'Export MAVLink Plan',
+      segment: 'DRONES',
+      scope: 'patch',
+      command: 'EXPORT_OPEN_CENTER',
+      icon: 'Download',
+      hint: 'Open Export Center to download QGC WPL 110 / JSON for the swarm.',
     },
   ],
   commandHandlers: {
@@ -119,6 +156,58 @@ const plugin: ViewportSegmentPlugin = {
             detail: { positionId: padId },
           })
         );
+      }
+      return null;
+    },
+
+    DRONES_TOGGLE_COLLISION(): ViewportOperation | null {
+      const before = useSafetyOverlayStore.getState().dronesCollisionVisible;
+      useSafetyOverlayStore.getState().toggleDronesCollision();
+      const after = useSafetyOverlayStore.getState().dronesCollisionVisible;
+      return {
+        id: uid('op'),
+        segment: 'DRONES',
+        command: 'DRONES_TOGGLE_COLLISION',
+        timestamp: Date.now(),
+        before: { visible: before },
+        after: { visible: after },
+        description: `Collision overlay ${after ? 'shown' : 'hidden'}.`,
+      };
+    },
+
+    DRONES_RUN_VALIDATORS(): ViewportOperation | null {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('viewport-tools:open-validators-report'));
+      }
+      return {
+        id: uid('op'),
+        segment: 'DRONES',
+        command: 'DRONES_RUN_VALIDATORS',
+        timestamp: Date.now(),
+        before: null,
+        after: null,
+        description: 'Opened advanced validators report.',
+      };
+    },
+
+    EXPORT_OPEN_CENTER(): ViewportOperation | null {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('viewport-tools:open-export-center'));
+      }
+      return {
+        id: uid('op'),
+        segment: 'DRONES',
+        command: 'EXPORT_OPEN_CENTER',
+        timestamp: Date.now(),
+        before: null,
+        after: null,
+        description: 'Opened export center.',
+      };
+    },
+
+    DRONES_OPEN_GENERATORS(): ViewportOperation | null {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('viewport-tools:open-generators'));
       }
       return null;
     },

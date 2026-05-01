@@ -20,6 +20,7 @@ import { useLaserPreviewStore } from '@/store/useLaserPreviewStore';
 import useGenerativeStore from '@/store/useGenerativeStore';
 import { getPreFireTime } from '@/lib/safetyEngine';
 import { cn } from '@/lib/utils';
+import { readSupplierPayload, formatSupplierProvenance } from '@/lib/catalogDragMapping';
 import AudioWaveform from './AudioWaveform';
 import { isAudioFile, uploadAudioForProject } from '@/lib/audioUpload';
 import { useAuth } from '@/hooks/useAuth';
@@ -582,6 +583,11 @@ function TimelineTrackRow({
       placing: { effectId: effect.id },
     });
 
+    // Provenance opcional vinda do SupplierCatalogPanel: gravamos em `notes`
+    // pra rastreabilidade FFIC/UN/classe sem precisar estender o schema.
+    const supplier = readSupplierPayload(e.dataTransfer);
+    const notes = supplier ? formatSupplierProvenance(supplier) : undefined;
+
     const targetIds = selectedPositionIds.length > 0
       ? selectedPositionIds.filter(id => positions.find(p => p.id === id)?.type === 'pyro')
       : selectedPositionId && positions.find(p => p.id === selectedPositionId)?.type === 'pyro'
@@ -599,6 +605,7 @@ function TimelineTrackRow({
           id, effectId: effect.id, startTime: time, trackIndex,
           position: { x: pos.x, y: pos.y, z: pos.z },
           positionId: posId, positionIds: targetIds.length > 1 ? targetIds : undefined, positionName: pos.name,
+          ...(notes ? { notes } : {}),
         });
       });
       if (firstId) markRecentDrop(firstId);
@@ -607,6 +614,7 @@ function TimelineTrackRow({
       addTimelineItem({
         id, effectId: effect.id, startTime: time, trackIndex,
         position: { x: (Math.random() - 0.5) * 16, y: effect.type === 'firework' ? 0 : 5 + Math.random() * 10, z: (Math.random() - 0.5) * 8 },
+        ...(notes ? { notes } : {}),
       });
       markRecentDrop(id);
     }
@@ -1118,10 +1126,13 @@ function DroneFXTrackRow({ pixelsPerSecond, duration, scrollRef }: { pixelsPerSe
     const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
     if (!effect || effect.type !== 'drone') return;
 
+    const supplier = readSupplierPayload(e.dataTransfer);
+    const notes = supplier ? formatSupplierProvenance(supplier) : undefined;
     const id = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     addTimelineItem({
       id, effectId: effect.id, startTime: time, trackIndex: 3,
       position: { x: 0, y: 20, z: 0 },
+      ...(notes ? { notes } : {}),
     });
     markRecentDrop(id);
   }, [addTimelineItem, computePreview, updateDroneFormation, materializeFormation]);
@@ -1250,10 +1261,13 @@ function LaserTrackRow({ pixelsPerSecond, duration, scrollRef }: { pixelsPerSeco
     const effect = EFFECT_LIBRARY.find((ef) => ef.id === effectId);
     if (!effect || effect.type !== 'laser') return;
     const { time } = computePreview(e);
+    const supplier = readSupplierPayload(e.dataTransfer);
+    const notes = supplier ? formatSupplierProvenance(supplier) : undefined;
     const id = `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     addTimelineItem({
       id, effectId: effect.id, startTime: time, trackIndex: 4,
       position: { x: 0, y: 0.5, z: 0 },
+      ...(notes ? { notes } : {}),
     });
     markRecentDrop(id);
   }, [addTimelineItem, computePreview]);

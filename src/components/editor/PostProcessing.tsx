@@ -1,6 +1,6 @@
 import { EffectComposer, Bloom, Vignette, ChromaticAberration, SMAA, Noise, ToneMapping, SSAO, DepthOfField, BrightnessContrast, HueSaturation, SSR } from '@react-three/postprocessing';
 import { KernelSize, BlendFunction, ToneMappingMode, Effect } from 'postprocessing';
-import { Vector2, Uniform } from 'three';
+import { Vector2, Uniform, HalfFloatType } from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
 import type { ViewTransform } from '@/lib/niagaraBlenderRules';
 import { forwardRef, useMemo } from 'react';
@@ -617,7 +617,20 @@ export default function PostProcessing({ activeBurstCount = 0 }: { activeBurstCo
   const ssrResScale = s.ssrHalfRes ? 0.5 : 1.0;
 
   return (
-    <EffectComposer multisampling={0} enableNormalPass={s.ssaoEnabled} resolutionScale={s.ssrHalfRes && s.ssrEnabled ? 1.0 : 1.0}>
+    <EffectComposer
+      multisampling={0}
+      enableNormalPass={s.ssaoEnabled}
+      resolutionScale={s.ssrHalfRes && s.ssrEnabled ? 1.0 : 1.0}
+      // ── BUG-FIX: glBlitFramebuffer depth/stencil conflict ──
+      // Force a separate (non-packed) depth texture and disable stencil on the
+      // composer's render targets. Previously, EffectComposer allocated a packed
+      // DEPTH24_STENCIL8 attachment that ended up bound as both READ (sampled by
+      // SSAO/SSR/DepthOfField) and WRITE (blit target) inside the same pass,
+      // producing GL_INVALID_OPERATION and a horizontal seam on the horizon.
+      depthBuffer={true}
+      stencilBuffer={false}
+      frameBufferType={HalfFloatType}
+    >
       <SMAA />
 
       {/* ═══ SSR — DISABLED by default for night scenes (heavy GPU cost) ═══ */}

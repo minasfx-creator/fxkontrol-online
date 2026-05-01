@@ -3,62 +3,73 @@ import { useRenderCounter } from '@/hooks/useRenderCounter';
 import { Settings2, Download, FileJson, FileSpreadsheet, Box, Trash2, Zap, Shield, Sliders, MapPin, Link2, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { Separator } from '@/components/ui/separator';
-import { exportVVIZ, exportFiringCSV, downloadFile } from '@/lib/exportEngine';
+import { exportVVIZ, exportFiringCSV, exportShowBundleJSON, exportShowBundleCSV, downloadFile } from '@/lib/exportEngine';
 import SafetyPanel from './SafetyPanel';
 
 const ExportSection = React.memo(function ExportSection() {
-    const timelineItems = useProjectStore(s => s.timelineItems);
+  const timelineItems = useProjectStore(s => s.timelineItems);
   const positions = useProjectStore(s => s.positions);
   const projectName = useProjectStore(s => s.projectName);
   const duration = useProjectStore(s => s.duration);
   const trajectories = useProjectStore(s => s.trajectories);
   const droneFormations = useProjectStore(s => s.droneFormations);
 
-  const droneCount = useMemo(() => (droneFormations.length > 0 ? droneFormations[0].droneCount : 0) +
-    timelineItems.filter((item) => {
-      const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
-      return effect?.type === 'drone';
-    }).length + trajectories.length, [droneFormations, timelineItems, trajectories]);
+  const safeName = useMemo(() => projectName.replace(/\s+/g, '_'), [projectName]);
 
-  const pyroCount = useMemo(() => timelineItems.filter((item) => {
-    const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
-    return effect?.type === 'firework';
-  }).length, [timelineItems]);
+  const droneCount = useMemo(() => (droneFormations[0]?.droneCount ?? 0) +
+    timelineItems.filter((item) => EFFECT_LIBRARY.find((e) => e.id === item.effectId)?.type === 'drone').length +
+    trajectories.length, [droneFormations, timelineItems, trajectories]);
+
+  const pyroCount = useMemo(() => timelineItems.filter((item) =>
+    EFFECT_LIBRARY.find((e) => e.id === item.effectId)?.type === 'firework').length, [timelineItems]);
 
   const handleExportVVIZ = () => {
     const content = exportVVIZ(projectName, duration, timelineItems, positions, trajectories, droneFormations);
-    downloadFile(content, `${projectName.replace(/\s+/g, '_')}.vviz`, 'application/json');
+    downloadFile(content, `${safeName}.vviz`, 'application/json');
   };
 
   const handleExportFiringCSV = () => {
     const content = exportFiringCSV(timelineItems, positions);
-    downloadFile(content, `${projectName.replace(/\s+/g, '_')}_firing.csv`, 'text/csv');
+    downloadFile(content, `${safeName}_firing.csv`, 'text/csv');
   };
 
-  const handleExportJSON = () => {
-    const data = {
-      project: projectName,
-      exportedAt: new Date().toISOString(),
-      items: timelineItems.map((item) => {
-        const effect = EFFECT_LIBRARY.find((e) => e.id === item.effectId);
-        return { ...item, effectName: effect?.name, effectType: effect?.type };
-      }),
-      positions,
-    };
-    downloadFile(JSON.stringify(data, null, 2), `${projectName.replace(/\s+/g, '_')}.json`, 'application/json');
+  const handleExportShowJSON = () => {
+    const content = exportShowBundleJSON(projectName, duration, timelineItems, positions, trajectories, droneFormations);
+    downloadFile(content, `${safeName}_show.json`, 'application/json');
+  };
+
+  const handleExportShowCSV = () => {
+    const content = exportShowBundleCSV(timelineItems, positions);
+    downloadFile(content, `${safeName}_show.csv`, 'text/csv');
   };
 
   return (
     <div className="space-y-1.5">
+      {/* Show bundle — full export with X/Y/Z/Heading per cue */}
+      <div className="rounded-xl p-2 space-y-1" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 px-1 font-display">Show Bundle</p>
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportShowJSON}>
+          <FileJson className="h-3.5 w-3.5 text-primary" />
+          <span className="flex-1 text-left">Show JSON (X/Y/Z/H)</span>
+          <span className="text-[9px] text-muted-foreground/40 font-mono-code">{timelineItems.length}</span>
+        </Button>
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportShowCSV}>
+          <FileSpreadsheet className="h-3.5 w-3.5 text-accent" />
+          <span className="flex-1 text-left">Show CSV (all cues)</span>
+          <span className="text-[9px] text-muted-foreground/40 font-mono-code">{timelineItems.length}</span>
+        </Button>
+      </div>
+
       {/* Drone export */}
       <div className="rounded-xl p-2 space-y-1" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
         <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 px-1 font-display">Drone Show</p>
         <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportVVIZ}>
           <Box className="h-3.5 w-3.5 text-primary" />
-          <span className="flex-1 text-left">Export .VVIZ</span>
+          <span className="flex-1 text-left">Export .VVIZ (Finale 3D)</span>
           <span className="text-[9px] text-muted-foreground/40 font-mono-code">{droneCount}</span>
         </Button>
       </div>
@@ -73,11 +84,6 @@ const ExportSection = React.memo(function ExportSection() {
         </Button>
       </div>
 
-      {/* Generic */}
-      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 h-8 text-xs rounded-lg" onClick={handleExportJSON}>
-        <FileJson className="h-3.5 w-3.5 text-muted-foreground/40" />
-        <span className="flex-1 text-left">Export Project JSON</span>
-      </Button>
     </div>
   );
 });
@@ -345,6 +351,127 @@ export default function PropertiesPanel({ onToggleEffectEditor, showEffectEditor
                         onClick={() => updateTimelineItem(selectedItem.id, { flightCount: undefined, durationOverride: undefined })}
                       >
                         Reset count & duration to defaults
+                      </Button>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* ── EFFECT PARAMETERS — intensity / prefire / aim / type-specific ── */}
+              {selectedItem && (() => {
+                const intensity = selectedItem.intensity ?? 100;
+                const prefire = selectedItem.prefireOverride ?? selectedEffect.prefire ?? 0;
+                const isFirework = selectedEffect.type === 'firework';
+                const isLaser = selectedEffect.type === 'laser';
+                const isDrone = selectedEffect.type === 'drone';
+                const caliber = selectedItem.caliberOverride ?? selectedEffect.caliber ?? 0;
+                const beamCount = selectedItem.beamCountOverride ?? selectedEffect.beamCount ?? 0;
+                return (
+                  <div className="rounded-xl p-2.5 space-y-2.5" style={{ background: 'hsl(var(--surface-0) / 0.5)' }}>
+                    <div className="flex items-center gap-1.5">
+                      <Sliders className="w-3 h-3 text-primary/60" />
+                      <p className="text-[10px] text-muted-foreground/50 font-semibold uppercase tracking-wider font-display">Effect Parameters</p>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-[9px] text-muted-foreground/60 font-display">Intensity</p>
+                        <span className="text-[10px] font-mono-code text-foreground">{Math.round(intensity)}%</span>
+                      </div>
+                      <Slider
+                        value={[intensity]}
+                        min={0}
+                        max={150}
+                        step={1}
+                        onValueChange={(v) => updateTimelineItem(selectedItem.id, { intensity: v[0] })}
+                        aria-label="Effect intensity"
+                      />
+                      {selectedItem.intensity !== undefined && selectedItem.intensity !== 100 && (
+                        <button
+                          className="mt-1 text-[9px] text-muted-foreground/60 hover:text-foreground"
+                          onClick={() => updateTimelineItem(selectedItem.id, { intensity: undefined })}
+                        >
+                          Reset to 100%
+                        </button>
+                      )}
+                    </div>
+
+                    {(isFirework || selectedEffect.prefire !== undefined) && (
+                      <div>
+                        <p className="text-[9px] text-muted-foreground/60 mb-1 font-display">Prefire / Lift (s)</p>
+                        <NumberField
+                          label="L"
+                          value={prefire}
+                          step={0.1}
+                          onChange={(v) => updateTimelineItem(selectedItem.id, { prefireOverride: Math.max(0, v) })}
+                          color="hsl(48 96% 53%)"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <p className="text-[9px] text-muted-foreground/60 mb-1 font-display">Aim (°)</p>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <NumberField label="Pn" value={selectedItem.pan ?? 0} step={1} onChange={(v) => updateTimelineItem(selectedItem.id, { pan: v })} color="hsl(207 90% 54%)" />
+                        <NumberField label="Tl" value={selectedItem.tilt ?? 0} step={1} onChange={(v) => updateTimelineItem(selectedItem.id, { tilt: v })} color="hsl(142 70% 45%)" />
+                        <NumberField label="Sp" value={selectedItem.spin ?? 0} step={1} onChange={(v) => updateTimelineItem(selectedItem.id, { spin: v })} color="hsl(280 70% 60%)" />
+                      </div>
+                    </div>
+
+                    {isFirework && (
+                      <div>
+                        <p className="text-[9px] text-muted-foreground/60 mb-1 font-display">Caliber (in) — apex height</p>
+                        <NumberField
+                          label="C"
+                          value={caliber}
+                          step={0.5}
+                          onChange={(v) => updateTimelineItem(selectedItem.id, { caliberOverride: Math.max(1, v) })}
+                          color="hsl(24 95% 53%)"
+                        />
+                      </div>
+                    )}
+
+                    {isLaser && (
+                      <div>
+                        <p className="text-[9px] text-muted-foreground/60 mb-1 font-display">Beam Count</p>
+                        <NumberField
+                          label="B"
+                          value={beamCount}
+                          step={1}
+                          onChange={(v) => updateTimelineItem(selectedItem.id, { beamCountOverride: Math.max(1, Math.round(v)) })}
+                          color="hsl(142 70% 45%)"
+                        />
+                      </div>
+                    )}
+
+                    {isDrone && (
+                      <p className="text-[9px] text-muted-foreground/50 italic">
+                        Drone count: use "Unit Count" above (per-formation).
+                      </p>
+                    )}
+
+                    {(selectedItem.intensity !== undefined ||
+                      selectedItem.prefireOverride !== undefined ||
+                      selectedItem.caliberOverride !== undefined ||
+                      selectedItem.beamCountOverride !== undefined ||
+                      selectedItem.pan !== undefined ||
+                      selectedItem.tilt !== undefined ||
+                      selectedItem.spin !== undefined) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full h-6 text-[9px] text-muted-foreground hover:text-foreground"
+                        onClick={() => updateTimelineItem(selectedItem.id, {
+                          intensity: undefined,
+                          prefireOverride: undefined,
+                          caliberOverride: undefined,
+                          beamCountOverride: undefined,
+                          pan: undefined,
+                          tilt: undefined,
+                          spin: undefined,
+                        })}
+                      >
+                        Reset effect parameters
                       </Button>
                     )}
                   </div>

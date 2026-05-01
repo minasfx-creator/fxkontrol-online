@@ -20,6 +20,9 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
+import { useImperativeTimeout } from '@/hooks/useInterval';
+import FXK16FieldTestPanel from '@/components/field/FXK16FieldTestPanel';
+import FXK16FieldSettingsPanel from '@/components/field/FXK16FieldSettingsPanel';
 
 // ─── Transport Config ─────────────────────────────
 const TRANSPORTS: { id: TestTransport; label: string; desc: string; icon: React.ReactNode; color: string }[] = [
@@ -77,11 +80,12 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
     setConnectingId(null);
   };
 
+  const cdsTimer = useImperativeTimeout();
   const handleTestCDS = async () => {
     setCdsTesting(true);
     try {
       await fieldTestEngine.bleTestCDS();
-      setTimeout(() => {
+      cdsTimer.set(() => {
         const status = fieldTestEngine.bleCdsStatus;
         setCdsStatus([...status]);
         setCdsLastTest(Date.now());
@@ -89,7 +93,7 @@ function BLEScanner({ onConnected }: { onConnected: () => void }) {
         const active = status.filter(Boolean).length;
         toast.success(`CDS: ${active}/32 ignitores detectados`);
         haptics.success();
-      }, 800);
+      }, 800, 'cds-result');
     } catch (err: any) {
       setCdsTesting(false);
       toast.error(err.message || 'Erro no teste CDS');
@@ -752,6 +756,7 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
     Object.fromEntries(channels.map(ch => [ch, { status: 'idle' as const }]))
   );
   const [fireAllRunning, setFireAllRunning] = useState(false);
+  const xl4Timer = useImperativeTimeout();
 
   // Simulate module scan (BLE or Realtime discovery)
   const handleScanModules = useCallback(async () => {
@@ -817,7 +822,7 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
     haptics.fire();
     setLastFired(ch);
     setChannelResults(prev => ({ ...prev, [ch]: { status: 'fired' } }));
-    setTimeout(() => setLastFired(null), 300);
+    xl4Timer.set(() => setLastFired(null), 300, `last-fired-${ch}`);
   }, [selectedModule]);
 
   // Track ACKs from session logs
@@ -1026,6 +1031,14 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
             </div>
           )}
 
+          {/* FXK16 — operator config (device, transport, mode, parameters)
+              + end-to-end command harness. Both share the singleton bridge
+              with PyroFireOnePanel and the /field#fxk16 tab. */}
+          <div className="shrink-0 px-2 pt-2 space-y-2">
+            <FXK16FieldSettingsPanel />
+            <FXK16FieldTestPanel />
+          </div>
+
           <div className="flex-1 p-2 overflow-hidden">
             <div className="grid grid-cols-8 grid-rows-4 gap-1 h-full">
               {channels.map(ch => {
@@ -1132,6 +1145,7 @@ function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop:
   const [lastFireChannel, setLastFireChannel] = useState<number | null>(null);
   const [lastFireLatency, setLastFireLatency] = useState<number | null>(null);
   const [flashActive, setFlashActive] = useState(false);
+  const moduleTimer = useImperativeTimeout();
 
   // Track fired channels from logs
   useEffect(() => {
@@ -1149,14 +1163,14 @@ function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop:
           if (ch >= 1 && ch <= 32) next[ch - 1] = 'fired';
           return next;
         });
-        setTimeout(() => {
+        moduleTimer.set(() => {
           setFlashActive(false);
           setChannelStates(prev => {
             const next = [...prev];
             if (ch >= 1 && ch <= 32) next[ch - 1] = 'ack';
             return next;
           });
-        }, 400);
+        }, 400, `flash-${ch}`);
       }
     }
   }, [session.logs.length]); // eslint-disable-line react-hooks/exhaustive-deps

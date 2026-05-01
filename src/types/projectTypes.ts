@@ -38,6 +38,14 @@ export interface TimelineItem {
   positionIds?: string[];
   cueHeading?: number;
   cuePitch?: number;
+  /** Per-item intensity 0-100 (default 100). Scales glow/height/beam brightness live. */
+  intensity?: number;
+  /** Per-item prefire override in seconds (visual lift-time). */
+  prefireOverride?: number;
+  /** Per-item caliber override (inches), affects shell apex height. */
+  caliberOverride?: number;
+  /** Per-item beam count for laser cues. */
+  beamCountOverride?: number;
 }
 
 export type PositionType = 'pyro' | 'drone-pad' | 'light';

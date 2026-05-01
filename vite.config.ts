@@ -6,6 +6,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import { visualizer } from "rollup-plugin-visualizer";
 import { precacheGuard } from "./scripts/vite-plugin-precache-guard";
 import { bundleBudget } from "./scripts/vite-plugin-bundle-budget";
+import { sitemapFromRegistry } from "./scripts/vite-plugin-sitemap";
 
 // Build-time guard: arquivos em public/ acima de 2 MiB são EXCLUÍDOS do
 // precache do PWA (Workbox) e logados no console como WARN. Evita que
@@ -108,6 +109,10 @@ export default defineConfig(({ mode }) => ({
       },
     }),
     guard.plugin,
+    // Auto-generates public/sitemap.xml from src/seo/publicRoutes.ts on
+    // every build AND on dev-server boot. Add a new entry to that registry
+    // and the sitemap stays in sync — no manual XML edits ever again.
+    sitemapFromRegistry(),
     // Bundle budget gate: target 180 KB gzip for initial public-route JS.
     // Currently in WARN-ONLY mode during the code-splitting refactor — the
     // plugin still measures and prints the per-chunk breakdown on every build,

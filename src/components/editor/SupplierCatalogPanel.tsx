@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Store, X, Search, CheckCircle2 } from 'lucide-react';
+import { Store, X, Search, CheckCircle2, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { getRealFormulation } from '@/render_ultra/fireworks/particleChemistry';
+import { setSupplierDragPayload } from '@/lib/catalogDragMapping';
 
 interface SupplierProduct {
   name: string;
@@ -170,9 +171,26 @@ export default function SupplierCatalogPanel({ onClose, onSelectProduct }: Suppl
                 {cat.products.map((p, i) => (
                   <button
                     key={i}
+                    draggable
+                    onDragStart={(e) => {
+                      // Atomic drag payload: a Timeline lê 'application/effect-id'
+                      // e cria o cue automaticamente; o supplier-product MIME
+                      // preserva FFIC/UN/classe pra notes (provenance NFPA/ATF).
+                      setSupplierDragPayload(e.dataTransfer, {
+                        name: p.name,
+                        caliber: p.caliber,
+                        unNumber: p.unNumber,
+                        classCode: p.classCode,
+                        type: p.type,
+                        formulationId: p.formulationId,
+                        supplierId: cat.id,
+                      });
+                    }}
                     onClick={() => onSelectProduct?.(p)}
-                    className="w-full text-[8px] text-muted-foreground bg-surface-2/50 rounded px-2 py-1 flex items-center gap-1.5 hover:bg-surface-2 transition-colors text-left"
+                    title="Arraste para a timeline para criar um cue"
+                    className="w-full text-[8px] text-muted-foreground bg-surface-2/50 rounded px-2 py-1 flex items-center gap-1.5 hover:bg-surface-2 active:bg-surface-3 cursor-grab active:cursor-grabbing transition-colors text-left"
                   >
+                    <GripVertical className="w-2.5 h-2.5 text-muted-foreground/40 shrink-0" />
                     <FormulationSwatch formulationId={p.formulationId} />
                     <span className="text-foreground/80 flex-1 truncate">{p.name}</span>
                     {p.formulationId && (

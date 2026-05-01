@@ -1,0 +1,186 @@
+/**
+ * commercial-tokens.css — Tokens de MARKETING (escopo isolado)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Hierarquia de design canônica (memória):
+ *   1. Safety  2. Decisões consolidadas  3. WCAG AA  4. Brief marketing  5. Estética
+ *
+ * O brief comercial "Quiet Technical Luxury" pede:
+ *   • Base escura próxima de #121214
+ *   • Ciano tecnológico #00FFFF
+ *   • Âmbar/laranja #FF7700
+ *
+ * Esses valores são REJEITADOS para o app operacional (memória explícita:
+ * Vantablack #050810 + cyan-dessat 190 70% 58% são canônicos por OLED + WCAG +
+ * semântica WARN). Para não violar a hierarquia, este arquivo aplica o brief
+ * APENAS em containers marcados com [data-theme="commercial"] — usado em
+ * /comercial, /landing, /manifesto, /pricing (deck-de-vendas). O editor
+ * (/studio, /command, /field*) NUNCA recebe esses tokens.
+ *
+ * Regras dentro do escopo commercial:
+ *   • #00FFFF é decorativo (glow, badge, ícone), nunca chrome interativo grande
+ *     — para não cegar em sessões longas. Ações primárias usam --c-cyan-soft
+ *     (mesmo HSL com 78% L) que mantém legibilidade AA sem halação.
+ *   • #FF7700 é ACCENT pontual (pricing highlight, CTA secundário). Nunca como
+ *     status WARN — dentro do app, âmbar é warning; dentro de /comercial é
+ *     "energy/destaque" e o usuário não vai confundir porque está fora do
+ *     contexto operacional.
+ */
+
+[data-theme="commercial"] {
+  /* Base escura premium (brief: #121214) */
+  --c-bg:           240 7% 7%;       /* #121214 */
+  --c-bg-elevated: 240 6% 10%;       /* surface card */
+  --c-bg-overlay:  240 6% 13%;       /* hover, popover */
+  --c-border:      240 4% 18%;
+  --c-border-soft: 240 4% 14%;
+
+  /* Foreground hierarchy (WCAG AA validado contra --c-bg) */
+  --c-fg:          0 0% 96%;         /* 18.8:1 — AAA */
+  --c-fg-muted:    0 0% 70%;         /* 8.7:1  — AAA */
+  --c-fg-subtle:   0 0% 52%;         /* 4.6:1  — AA  */
+
+  /* Cyan tecnológico — brief #00FFFF puro como acento decorativo */
+  --c-cyan:        180 100% 50%;     /* #00FFFF — glow, ícones, traços finos */
+  --c-cyan-soft:   180 75% 78%;      /* leitura confortável, ratio 13.4:1 — AAA */
+  --c-cyan-glow:   180 100% 50% / 0.18;
+
+  /* Âmbar/laranja — brief #FF7700 como destaque de pacote/CTA secundário */
+  --c-amber:       24 100% 50%;      /* #FF7700 — highlight pacote LiveOps */
+  --c-amber-soft:  24 100% 65%;      /* texto sobre dark, ratio 7.1:1 — AAA */
+  --c-amber-glow:  24 100% 50% / 0.20;
+
+  /* Status semântico (alinhado com app operacional para coerência) */
+  --c-ok:          152 64% 56%;
+  --c-warn:        38 95% 60%;
+  --c-fail:        0 84% 66%;
+
+  /* Tipografia */
+  --c-font-display: 'Rajdhani', 'Inter', system-ui, sans-serif;
+  --c-font-body:    'Inter', system-ui, sans-serif;
+  --c-font-mono:    'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  /* Tipografia responsiva (fluid type — clamp(min, vw, max))
+     Mantém legibilidade 320px → 1920px sem media queries. */
+  --c-fs-h1:      clamp(2.25rem, 1.4rem + 4.2vw, 4.75rem);   /* 36 → 76px */
+  --c-fs-h2:      clamp(1.75rem, 1.2rem + 2.6vw, 3rem);      /* 28 → 48px */
+  --c-fs-h3:      clamp(1.125rem, 0.95rem + 0.8vw, 1.5rem);  /* 18 → 24px */
+  --c-fs-lead:    clamp(1rem, 0.92rem + 0.4vw, 1.25rem);     /* 16 → 20px */
+  --c-fs-body:    clamp(0.875rem, 0.84rem + 0.18vw, 1rem);   /* 14 → 16px */
+  --c-fs-small:   clamp(0.75rem, 0.72rem + 0.12vw, 0.8125rem); /* 12 → 13px */
+  --c-fs-eyebrow: clamp(0.625rem, 0.6rem + 0.1vw, 0.6875rem); /* 10 → 11px */
+}
+
+[data-theme="commercial"] .c-fs-h1      { font-size: var(--c-fs-h1);      line-height: 1.05; }
+[data-theme="commercial"] .c-fs-h2      { font-size: var(--c-fs-h2);      line-height: 1.1;  }
+[data-theme="commercial"] .c-fs-h3      { font-size: var(--c-fs-h3);      line-height: 1.25; }
+[data-theme="commercial"] .c-fs-lead    { font-size: var(--c-fs-lead);    line-height: 1.55; }
+[data-theme="commercial"] .c-fs-body    { font-size: var(--c-fs-body);    line-height: 1.6;  }
+[data-theme="commercial"] .c-fs-small   { font-size: var(--c-fs-small);   line-height: 1.5;  }
+[data-theme="commercial"] .c-fs-eyebrow { font-size: var(--c-fs-eyebrow); line-height: 1.4;  }
+
+/* Utilitários escopados — só funcionam dentro de [data-theme="commercial"]   */
+[data-theme="commercial"] .c-surface       { background: hsl(var(--c-bg)); color: hsl(var(--c-fg)); }
+[data-theme="commercial"] .c-card          { background: hsl(var(--c-bg-elevated)); border: 1px solid hsl(var(--c-border)); }
+[data-theme="commercial"] .c-card-overlay  { background: hsl(var(--c-bg-overlay)); border: 1px solid hsl(var(--c-border)); }
+[data-theme="commercial"] .c-text          { color: hsl(var(--c-fg)); }
+[data-theme="commercial"] .c-text-muted    { color: hsl(var(--c-fg-muted)); }
+[data-theme="commercial"] .c-text-subtle   { color: hsl(var(--c-fg-subtle)); }
+[data-theme="commercial"] .c-cyan          { color: hsl(var(--c-cyan-soft)); }
+[data-theme="commercial"] .c-cyan-pure     { color: hsl(var(--c-cyan)); }
+[data-theme="commercial"] .c-amber         { color: hsl(var(--c-amber-soft)); }
+[data-theme="commercial"] .c-mono          { font-family: var(--c-font-mono); letter-spacing: 0.02em; }
+[data-theme="commercial"] .c-display       { font-family: var(--c-font-display); letter-spacing: -0.01em; }
+
+/* CTAs */
+[data-theme="commercial"] .c-cta-primary {
+  background: linear-gradient(135deg, hsl(var(--c-cyan)) 0%, hsl(180 80% 42%) 100%);
+  color: hsl(240 10% 5%);
+  border: 1px solid hsl(var(--c-cyan));
+  box-shadow: 0 0 24px hsl(var(--c-cyan-glow)), inset 0 1px 0 hsl(0 0% 100% / 0.2);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  transition: box-shadow 200ms ease, transform 100ms ease;
+}
+[data-theme="commercial"] .c-cta-primary:hover {
+  box-shadow: 0 0 36px hsl(var(--c-cyan) / 0.45), inset 0 1px 0 hsl(0 0% 100% / 0.3);
+}
+[data-theme="commercial"] .c-cta-primary:active { transform: translateY(1px); }
+
+[data-theme="commercial"] .c-cta-secondary {
+  background: transparent;
+  color: hsl(var(--c-amber-soft));
+  border: 1px solid hsl(var(--c-amber) / 0.5);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  transition: background 200ms ease, border-color 200ms ease;
+}
+[data-theme="commercial"] .c-cta-secondary:hover {
+  background: hsl(var(--c-amber-glow));
+  border-color: hsl(var(--c-amber));
+}
+
+/* Highlight ring (pacote destaque LiveOps) */
+[data-theme="commercial"] .c-highlight-ring {
+  border-color: hsl(var(--c-amber) / 0.6);
+  box-shadow: 0 0 0 1px hsl(var(--c-amber) / 0.3), 0 8px 32px hsl(var(--c-amber-glow));
+}
+
+/* Grid pattern de fundo (XLR-inspired) */
+[data-theme="commercial"] .c-grid-bg {
+  background-image:
+    linear-gradient(hsl(var(--c-cyan) / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--c-cyan) / 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Status pill (GO/NO-GO) */
+[data-theme="commercial"] .c-pill-go {
+  background: hsl(var(--c-ok) / 0.12);
+  color: hsl(var(--c-ok));
+  border: 1px solid hsl(var(--c-ok) / 0.4);
+}
+[data-theme="commercial"] .c-pill-nogo {
+  background: hsl(var(--c-fail) / 0.12);
+  color: hsl(var(--c-fail));
+  border: 1px solid hsl(var(--c-fail) / 0.4);
+}
+
+/* ── Form inputs (DemoRequestForm) ───────────────────────────────────── */
+[data-theme="commercial"] .c-input {
+  width: 100%;
+  background: hsl(var(--c-bg-elevated));
+  color: hsl(var(--c-text));
+  border: 1px solid hsl(var(--c-border-soft));
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.4;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+[data-theme="commercial"] .c-input::placeholder {
+  color: hsl(var(--c-text-subtle));
+  opacity: 1;
+}
+[data-theme="commercial"] .c-input:hover:not(:disabled) {
+  border-color: hsl(var(--c-cyan) / 0.4);
+}
+[data-theme="commercial"] .c-input:focus,
+[data-theme="commercial"] .c-input:focus-visible {
+  outline: none;
+  border-color: hsl(var(--c-cyan));
+  box-shadow: 0 0 0 3px hsl(var(--c-cyan) / 0.18);
+  background: hsl(var(--c-bg));
+}
+[data-theme="commercial"] textarea.c-input { resize: vertical; min-height: 84px; }
+[data-theme="commercial"] select.c-input {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, hsl(var(--c-text-muted)) 50%),
+                    linear-gradient(135deg, hsl(var(--c-text-muted)) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 32px;
+}
