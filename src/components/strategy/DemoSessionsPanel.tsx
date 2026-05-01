@@ -212,7 +212,7 @@ export function DemoSessionsPanel() {
           className="w-full bg-background/40 border border-border rounded-md px-2 py-1.5 text-xs resize-none"
         />
 
-        <button
+        <button type="button"
           onClick={submit}
           className="w-full rounded-md bg-primary/10 border border-primary/40 px-3 py-2 text-xs ds-mono uppercase tracking-wider text-primary hover:bg-primary/20"
         >
@@ -251,13 +251,13 @@ export function DemoSessionsPanel() {
                   <p className="text-[10px] text-muted-foreground mt-1">Assets: {r.asset_ids.length}</p>
                 )}
                 <div className="flex gap-2 mt-2">
-                  <button
+                  <button type="button"
                     onClick={() => exportPdf(r)}
                     className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-[10px] ds-mono uppercase tracking-wider text-primary hover:bg-primary/20"
                   >
                     <FileDown className="h-3 w-3" /> Strategy report
                   </button>
-                  <button
+                  <button type="button"
                     onClick={() => remove(r.id)}
                     className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[10px] ds-mono uppercase tracking-wider text-muted-foreground hover:text-destructive"
                   >

@@ -157,7 +157,7 @@ export function AssetLibrary({ onSelectionChange }: Props) {
           const Icon = KIND_ICON[a.kind];
           const isSel = selected.has(a.id);
           return (
-            <button
+            <button type="button"
               key={a.id}
               onClick={() => toggle(a.id)}
               className={`text-left rounded-md border p-3 transition-colors ${isSel ? 'border-primary/60 bg-primary/5' : 'border-border bg-background/30 hover:border-border-strong'}`}

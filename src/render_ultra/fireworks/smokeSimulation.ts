@@ -217,6 +217,8 @@ export class SmokeSystem {
 
   emit(origin: THREE.Vector3, count: number, smokeColor: THREE.Color, spread = 15) {
     for (let i = 0; i < count && this.particles.length < this.maxParticles; i++) {
+      const maxLife = 4 + Math.random() * 4;
+      const startSize = 15 + Math.random() * 25;
       this.particles.push({
         position: origin.clone().add(new THREE.Vector3(
           (Math.random() - 0.5) * spread,
@@ -228,13 +230,19 @@ export class SmokeSystem {
           1.5 + Math.random() * 2,
           (Math.random() - 0.5) * 2
         ),
-        life: 4 + Math.random() * 4,
-        maxLife: 4 + Math.random() * 4,
-        size: 15 + Math.random() * 25,
-        opacity: 0.15 + Math.random() * 0.15,
+        life: maxLife,
+        maxLife, // ensure life === maxLife at spawn so lifeRatio starts at 1
+        size: startSize,
+        opacity: 0.35 + Math.random() * 0.25, // peak alpha; fade is curve-driven, not cumulative
         color: smokeColor.clone(),
         turbulence: 0.5 + Math.random(),
       });
+      // Stash spawn-time params for stable, framerate-independent curves
+      const p = this.particles[this.particles.length - 1] as SmokeParticle & {
+        _peakOpacity?: number; _startSize?: number;
+      };
+      p._peakOpacity = p.opacity;
+      p._startSize = p.size;
     }
   }
 
@@ -248,13 +256,19 @@ export class SmokeSystem {
     // Remove dead particles
     this.particles = this.particles.filter(p => p.life > 0);
 
-    for (let i = 0; i < this.particles.length; i++) {
-      const p = this.particles[i];
-      p.life -= dt;
-      const lifeRatio = Math.max(0, p.life / p.maxLife);
+    // Framerate-independent drag: equivalent to ~0.98^(60*dt)
+    const dragK = 1.21; // -ln(0.98)*60 ≈ 1.212
+    const dragFactor = Math.exp(-dragK * dt);
 
-      // Buoyancy
-      p.velocity.y += 0.3 * dt;
+    for (let i = 0; i < this.particles.length; i++) {
+      const p = this.particles[i] as SmokeParticle & { _peakOpacity?: number; _startSize?: number };
+      p.life -= dt;
+      const lifeRatio = Math.max(0, p.life / p.maxLife); // 1 → 0
+      const age = 1 - lifeRatio;                          // 0 → 1
+
+      // Buoyancy decays as smoke cools (Newton-style): hot rises, cold drifts
+      const buoyancy = 0.3 * lifeRatio;
+      p.velocity.y += buoyancy * dt;
 
       // Curl noise turbulence (replaces random jitter)
       if (curlNoiseStrength > 0) {
@@ -273,14 +287,25 @@ export class SmokeSystem {
         p.velocity.z += (Math.random() - 0.5) * p.turbulence * dt;
       }
 
-      // Wind
-      p.velocity.x += windX * dt * 0.5;
-      p.velocity.z += windZ * dt * 0.5;
+      // Wind: stronger as particle ages and dissipates into ambient airflow
+      const windFactor = 0.3 + 0.7 * age;
+      p.velocity.x += windX * dt * windFactor;
+      p.velocity.z += windZ * dt * windFactor;
 
-      p.velocity.multiplyScalar(0.98);
-      p.position.add(p.velocity.clone().multiplyScalar(dt));
-      p.size += dt * 3;
-      p.opacity = p.opacity * lifeRatio * lifeRatio;
+      // Framerate-independent drag
+      p.velocity.multiplyScalar(dragFactor);
+      p.position.addScaledVector(p.velocity, dt);
+
+      // Size: bounded growth (sqrt curve, capped at 3.5x start size — diffusion plateaus)
+      const startSize = p._startSize ?? p.size;
+      p.size = startSize * (1 + 2.5 * Math.sqrt(age));
+
+      // Opacity: smooth peak-and-fade curve (ramps up briefly, then exp fade)
+      // Avoids cumulative-multiply flicker at variable framerate.
+      const peak = p._peakOpacity ?? 0.4;
+      const ramp = Math.min(1, age / 0.05);                    // fast ramp-in
+      const fade = Math.pow(lifeRatio, 1.6);                   // smooth tail
+      p.opacity = peak * ramp * fade;
 
       const i3 = i * 3;
       pos[i3] = p.position.x;
