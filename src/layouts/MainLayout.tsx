@@ -28,6 +28,10 @@ const RenderCounterOverlay = import.meta.env.DEV
 const AppSidebar = lazy(lazyRetry(() => import('@/components/AppSidebar').then(m => ({ default: m.AppSidebar }))));
 const FXKAssistant = lazy(lazyRetry(() => import('@/components/FXKAssistant').then(m => ({ default: m.FXKAssistant }))));
 const AutoControllerLauncher = lazy(lazyRetry(() => import('@/components/hardware/AutoControllerLauncher').then(m => ({ default: m.AutoControllerLauncher }))));
+// Global E-STOP — always-visible top-right safety button. Routes through
+// uiCommandGateway → CommandBus → SafetyStateMachine. Hold-to-confirm 600ms
+// when idle; instant fire when ARMED/FIRING (life-safety <50ms).
+const GlobalEStopButton = lazy(lazyRetry(() => import('@/components/safety/GlobalEStopButton')));
 // Deterministic kernel (timeline clock pump, lockstep, persistence) — must
 // mount on EVERY protected route AND on mobile so Play actually advances time.
 // Previously this was nested inside <Index> desktop branch only, which left
@@ -145,10 +149,20 @@ export default function MainLayout() {
     };
   }, [location.pathname]);
 
-  const handlePanic = () => {
-    clearAll();
-    haptics.panic();
-  };
+  // Bridge: when ANY E-STOP fires through the CommandBus (e.g. global
+  // GlobalEStopButton, SafetyConsole, hardware panel), drop all live SFX
+  // and trigger panic haptics. Runs once at mount; cleans up on unmount.
+  useEffect(() => {
+    let unsub: (() => void) | undefined;
+    (async () => {
+      const { commandBus } = await import('@/core/command/CommandBus');
+      unsub = commandBus.on('E_STOP', () => {
+        clearAll();
+        try { haptics.panic(); } catch { /* */ }
+      });
+    })();
+    return () => { unsub?.(); };
+  }, [clearAll]);
 
   return (
     <SidebarProvider defaultOpen={!isMobile}>
@@ -256,26 +270,14 @@ export default function MainLayout() {
         <AutoControllerLauncher />
       </Suspense>
 
-      {isArmed && !commandImmersive && (
-        <button
-          onClick={handlePanic}
-          className="fixed z-[9999] flex items-center justify-center rounded-xl border-2 border-destructive/60 transition-all active:scale-90 armed-pulse"
-          style={{
-            bottom: '80px',
-            right: '16px',
-            width: '64px',
-            height: '64px',
-            background: 'hsl(var(--destructive) / 0.9)',
-            boxShadow: '0 0 24px hsl(var(--destructive) / 0.4), 0 0 64px hsl(var(--destructive) / 0.15)',
-          }}
-          title="EMERGENCY STOP — ALL CHANNELS"
-          aria-label="Emergency stop — all channels"
-        >
-          <div className="flex flex-col items-center">
-            <AlertOctagon className="w-6 h-6 text-white" />
-            <span className="text-[7px] font-mono-code font-black text-white tracking-widest mt-0.5">PANIC</span>
-          </div>
-        </button>
+      {/* Global E-STOP — always visible top-right, above all overlays.
+          Replaces the legacy isArmed-conditional PANIC button. Routes
+          through uiCommandGateway → CommandBus → SafetyStateMachine.
+          Hidden on /command (immersive mode has its own dedicated UI). */}
+      {!commandImmersive && (
+        <Suspense fallback={null}>
+          <GlobalEStopButton />
+        </Suspense>
       )}
 
       {(showDock || showMobileDock) && <DockBar />}

@@ -2,8 +2,9 @@
  * SafetyConsole — Real-time safety state machine monitor + interlock status.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { safetyStateMachine, type SafetyState } from '@/core/safety/SafetyStateMachine';
+import { safetyStateMachine, type SafetyState, type SafetyTransition } from '@/core/safety/SafetyStateMachine';
 import { safetyAuditTrail, type AuditEntry } from '@/core/safety/SafetyAuditTrail';
+import { uiCommandGateway } from '@/core/command/uiCommandGateway';
 import { cn } from '@/lib/utils';
 import { Shield, Lock, Unlock, AlertOctagon, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,8 +33,23 @@ export default function SafetyConsole() {
     return unsub;
   }, []);
 
-  const handleTransition = useCallback((t: string) => {
-    safetyStateMachine.transition(t as any);
+  const handleTransition = useCallback((t: SafetyTransition) => {
+    // Route every operator action through the gateway so it lands on the
+    // CommandBus + audit trail. The SSM is still updated synchronously
+    // by the downstream subscriber (or directly for E_STOP).
+    const src = { source: 'SafetyConsole', detail: t };
+    switch (t) {
+      case 'ARM_SYSTEM':       uiCommandGateway.arm(src); break;
+      case 'DISARM_SYSTEM':    uiCommandGateway.disarm(src); break;
+      case 'LOCK_STATE':       uiCommandGateway.lock(src); break;
+      case 'UNLOCK_STATE':     uiCommandGateway.unlock(src); break;
+      case 'RESET_SAFETY':     uiCommandGateway.reset(src); break;
+      case 'E_STOP':           uiCommandGateway.eStop(src); break;
+      default:
+        // FIRE / FIRE_COMPLETE / COOLDOWN_COMPLETE — internal-only transitions.
+        // Console doesn't expose them; drop silently.
+        return;
+    }
     setState(safetyStateMachine.state);
     setEntries([...safetyAuditTrail.getAll()]);
   }, []);

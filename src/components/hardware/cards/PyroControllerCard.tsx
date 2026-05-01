@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 import type { ActiveController } from '@/hooks/useActiveControllers';
 import { useFXK16Commands } from '@/hooks/useFXK16Commands';
 import { useFXK16Bridge } from '@/hooks/useFXK16Bridge';
-import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
+import { uiCommandGateway } from '@/core/command/uiCommandGateway';
 import { HoldToConfirmButton } from '../shared/HoldToConfirmButton';
 import { LiveStatusChip, type LiveStatus } from '../shared/LiveStatusChip';
 import type { DiscoveryTransport } from '@/core/discovery/types';
@@ -84,24 +84,26 @@ export function PyroControllerCard({ controller, onClose, onOpenConsole }: PyroC
   }, [api, armed]);
 
   // CRITICAL: E-STOP path <50ms.
-  // 1) Sync state-machine transition first — this is what stops drone /
-  //    DMX / scheduled cues regardless of FXK16 bridge status.
+  // 1) Route through uiCommandGateway → CommandBus → SafetyStateMachine.
+  //    The gateway records to BlackBox synchronously and dispatches E_STOP;
+  //    a downstream subscriber forces SSM into SAFE. This is what stops
+  //    drone / DMX / scheduled cues regardless of FXK16 bridge status.
   // 2) Then attempt the typed `api.stop()` to physically open the relays
   //    (best-effort; failure of (2) doesn't undo (1)).
   const onEStop = useCallback(() => {
     const t0 = performance.now();
     try {
-      safetyStateMachine.transition('E_STOP');
+      uiCommandGateway.eStop({ source: 'PyroControllerCard', detail: controller.aggregateId });
     } catch (err) {
-      // Never let safety-machine throws hide the relay-open attempt.
+      // Never let gateway throws hide the relay-open attempt.
       // eslint-disable-next-line no-console
-      console.error('[PyroControllerCard] safetyStateMachine E_STOP threw:', err);
+      console.error('[PyroControllerCard] uiCommandGateway.eStop threw:', err);
     }
     const sysMs = Math.round(performance.now() - t0);
     toast.error(`E-STOP enviado (${sysMs}ms)`, { duration: 4000 });
     // Fire-and-forget physical relay open — UI already reacted.
     void api.stop().catch(() => { /* state machine already SAFE */ });
-  }, [api]);
+  }, [api, controller.aggregateId]);
 
   return (
     <div
