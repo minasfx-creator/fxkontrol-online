@@ -20,6 +20,8 @@ import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { useUSBDeviceStore } from '@/store/useUSBDeviceStore';
 import { artnetModuleService } from '@/services/artnetModuleService';
 import { HardwareDiagnosticsBanner } from './hardware/HardwareDiagnosticsBanner';
+import { hasAnyHardwareTransport } from '@/lib/transportAvailability';
+import { detectPlatformCapabilities } from '@/lib/platformCapabilities';
 
 export type EasyConnectContext = 'all' | 'pyro' | 'dmx' | 'light';
 
