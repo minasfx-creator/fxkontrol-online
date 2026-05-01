@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Eye, MessageSquare, FileSignature, ShieldOff } from 'lucide-react';
+import { Eye, MessageSquare, FileSignature, ShieldOff, FileDown } from 'lucide-react';
 import { ClaimBadge } from './ClaimBadge';
+import { buildClientApprovalReport } from '@/lib/strategyReport';
+import { renderStrategyReportPDF, downloadPdf } from '@/lib/pdfRenderer';
 
 interface Comment {
   id: string;
