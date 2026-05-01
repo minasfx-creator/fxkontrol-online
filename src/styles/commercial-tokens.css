@@ -58,7 +58,25 @@
   --c-font-display: 'Rajdhani', 'Inter', system-ui, sans-serif;
   --c-font-body:    'Inter', system-ui, sans-serif;
   --c-font-mono:    'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  /* Tipografia responsiva (fluid type — clamp(min, vw, max))
+     Mantém legibilidade 320px → 1920px sem media queries. */
+  --c-fs-h1:      clamp(2.25rem, 1.4rem + 4.2vw, 4.75rem);   /* 36 → 76px */
+  --c-fs-h2:      clamp(1.75rem, 1.2rem + 2.6vw, 3rem);      /* 28 → 48px */
+  --c-fs-h3:      clamp(1.125rem, 0.95rem + 0.8vw, 1.5rem);  /* 18 → 24px */
+  --c-fs-lead:    clamp(1rem, 0.92rem + 0.4vw, 1.25rem);     /* 16 → 20px */
+  --c-fs-body:    clamp(0.875rem, 0.84rem + 0.18vw, 1rem);   /* 14 → 16px */
+  --c-fs-small:   clamp(0.75rem, 0.72rem + 0.12vw, 0.8125rem); /* 12 → 13px */
+  --c-fs-eyebrow: clamp(0.625rem, 0.6rem + 0.1vw, 0.6875rem); /* 10 → 11px */
 }
+
+[data-theme="commercial"] .c-fs-h1      { font-size: var(--c-fs-h1);      line-height: 1.05; }
+[data-theme="commercial"] .c-fs-h2      { font-size: var(--c-fs-h2);      line-height: 1.1;  }
+[data-theme="commercial"] .c-fs-h3      { font-size: var(--c-fs-h3);      line-height: 1.25; }
+[data-theme="commercial"] .c-fs-lead    { font-size: var(--c-fs-lead);    line-height: 1.55; }
+[data-theme="commercial"] .c-fs-body    { font-size: var(--c-fs-body);    line-height: 1.6;  }
+[data-theme="commercial"] .c-fs-small   { font-size: var(--c-fs-small);   line-height: 1.5;  }
+[data-theme="commercial"] .c-fs-eyebrow { font-size: var(--c-fs-eyebrow); line-height: 1.4;  }
 
 /* Utilitários escopados — só funcionam dentro de [data-theme="commercial"]   */
 [data-theme="commercial"] .c-surface       { background: hsl(var(--c-bg)); color: hsl(var(--c-fg)); }
