@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useFireOneModuleMode } from '@/hooks/useFireOneModuleMode';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { uiCommandGateway } from '@/core/command/uiCommandGateway';
 import type { FiringMode } from '@/lib/fireoneModuleEmulator';
 import SignalDiagnosticsPanel from './SignalDiagnosticsPanel';
 
@@ -221,7 +222,11 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
                     ? "bg-red-600 hover:bg-red-700 animate-pulse"
                     : "bg-emerald-700 hover:bg-emerald-600"
                 )}
-                onClick={() => status?.firePowerOn ? module.disarm() : module.arm()}
+                onClick={() => {
+                  const src = { source: 'VirtualIFMx32QPanel' };
+                  if (status?.firePowerOn) { uiCommandGateway.disarm(src); module.disarm(); }
+                  else { uiCommandGateway.arm(src); module.arm(); }
+                }}
                 disabled={status?.state === 'safe_sense' || status?.state === 'idle' || status?.state === 'estop_lockout'}
               >
                 {status?.firePowerOn ? (
@@ -230,7 +235,8 @@ export default function VirtualIFMx32QPanel({ fs = false }: VirtualIFMx32QProps)
                   <><Shield className="w-4 h-4 mr-1" /> ARM</>
                 )}
               </Button>
-              <Button size="sm" variant="destructive" className="font-black uppercase text-xs px-4" onClick={module.eStop}>
+              <Button size="sm" variant="destructive" className="font-black uppercase text-xs px-4"
+                onClick={() => { uiCommandGateway.eStop({ source: 'VirtualIFMx32QPanel' }); module.eStop(); }}>
                 <AlertTriangle className="w-4 h-4 mr-1" /> E-STOP
               </Button>
               <Button size="sm" variant="outline" className="text-xs" onClick={handleContinuityCheck}>
