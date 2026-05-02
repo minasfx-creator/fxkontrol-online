@@ -193,6 +193,7 @@ export class Show3DEngine {
     this.graph = adaptShowPlanToSceneGraph(plan);
     this.compiled = compileTimeline(plan);
     this.showTime = 0;
+    this.playing = false;
 
     const sg = validateSceneGraph(this.graph);
     if (!sg.ok) {
@@ -212,10 +213,18 @@ export class Show3DEngine {
     }
 
     this.viewport.set('ready');
+    this.emitPlayback();
   }
 
   // ─── Playback ───────────────────────────────────────────────────────
 
+  /**
+   * Move show time. In `playback` mode (default), only newly-crossed cues
+   * fire — this is what the auto-advance loop calls every frame so that
+   * Particle Explosions / Light Points spawn exactly at their scheduled
+   * `startTime`. In `scrub` mode the effects layer is wiped and all cues
+   * active at `time` are re-spawned (idempotent state for timeline scrub).
+   */
   seek(time: number, opts: { mode: 'playback' | 'scrub' } = { mode: 'playback' }): void {
     if (!this.compiled) return;
     const next = Math.max(0, Math.min(time, this.compiled.duration));
@@ -229,7 +238,75 @@ export class Show3DEngine {
       for (const cue of newly) this.applyCue(cue);
     }
     this.showTime = next;
+    this.emitPlayback();
   }
+
+  /** Begin auto-advancing `showTime` at `rate` (1 = real-time). */
+  play(opts: { rate?: number; loop?: boolean } = {}): void {
+    if (!this.compiled) return;
+    if (typeof opts.rate === 'number' && opts.rate > 0) this.playRate = opts.rate;
+    if (typeof opts.loop === 'boolean') this.playLoop = opts.loop;
+    if (this.showTime >= this.compiled.duration) this.showTime = 0;
+    this.playing = true;
+    this.emitPlayback();
+  }
+
+  pause(): void {
+    if (!this.playing) return;
+    this.playing = false;
+    this.emitPlayback();
+  }
+
+  stop(): void {
+    this.playing = false;
+    if (this.compiled) {
+      this.clearLayer(this.effectsLayer);
+      this.showTime = 0;
+    }
+    this.emitPlayback();
+  }
+
+  setRate(rate: number): void {
+    if (rate > 0) this.playRate = rate;
+    this.emitPlayback();
+  }
+
+  isPlaying(): boolean {
+    return this.playing;
+  }
+
+  getShowTime(): number {
+    return this.showTime;
+  }
+
+  getDuration(): number {
+    return this.compiled?.duration ?? 0;
+  }
+
+  subscribePlayback(listener: (s: PlaybackSnapshot) => void): () => void {
+    this.playbackListeners.add(listener);
+    listener(this.playbackSnapshot());
+    return () => { this.playbackListeners.delete(listener); };
+  }
+
+  private playbackSnapshot(): PlaybackSnapshot {
+    return {
+      time: this.showTime,
+      duration: this.compiled?.duration ?? 0,
+      playing: this.playing,
+      rate: this.playRate,
+      loop: this.playLoop,
+    };
+  }
+
+  private emitPlayback(): void {
+    if (this.playbackListeners.size === 0) return;
+    const snap = this.playbackSnapshot();
+    for (const l of this.playbackListeners) {
+      try { l(snap); } catch { /* listener errors are non-fatal */ }
+    }
+  }
+
 
   recoverContext(): void {
     if (!this.renderer || !this.container) return;
