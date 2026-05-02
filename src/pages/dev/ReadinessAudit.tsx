@@ -295,6 +295,9 @@ export default function ReadinessAudit() {
         )}
       </Card>
 
+      {/* ShowPlan sanitizer (Sprint 2) */}
+      <ShowPlanSanitizerPanel />
+
       {/* Readiness issues */}
       <Card className="p-4 space-y-3">
         <h2 className="ds-h3">ReadinessEvaluator · issues</h2>
