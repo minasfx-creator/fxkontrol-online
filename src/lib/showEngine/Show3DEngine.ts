@@ -371,7 +371,7 @@ export class Show3DEngine {
     // Auto-advance show time when playing. Driven by the same RAF that
     // renders, so cues fire on the very frame their startTime is crossed
     // — no separate timer, no drift.
-    if (this.playing && this.compiled) {
+    if (this.playing && this.compiled && !this.externalClockDriven) {
       const next = this.showTime + delta * this.playRate;
       if (next >= this.compiled.duration) {
         if (this.playLoop) {
