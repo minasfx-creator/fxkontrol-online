@@ -337,6 +337,28 @@ export class Show3DEngine {
 
   renderFrame(delta: number): void {
     if (!this.renderer) return;
+
+    // Auto-advance show time when playing. Driven by the same RAF that
+    // renders, so cues fire on the very frame their startTime is crossed
+    // — no separate timer, no drift.
+    if (this.playing && this.compiled) {
+      const next = this.showTime + delta * this.playRate;
+      if (next >= this.compiled.duration) {
+        if (this.playLoop) {
+          // Wrap: fire any tail cues, then restart from 0.
+          this.seek(this.compiled.duration);
+          this.clearLayer(this.effectsLayer);
+          this.showTime = 0;
+        } else {
+          this.seek(this.compiled.duration);
+          this.playing = false;
+          this.emitPlayback();
+        }
+      } else {
+        this.seek(next);
+      }
+    }
+
     this.tickEffects(performance.now());
     this.renderer.render(this.scene, this.camera);
 
