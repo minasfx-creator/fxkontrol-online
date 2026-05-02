@@ -20,7 +20,7 @@
 
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, FileDown, Package, RefreshCw } from 'lucide-react';
+import { ArrowLeft, FileDown, Package, RefreshCw, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +35,8 @@ import {
   downloadShowPlanPdf,
 } from '@/lib/showSeeds/showPlanPdf';
 import { downloadLibertadoresExportZip } from '@/lib/showSeeds/libertadoresExport';
+import { simulationDryRun } from '@/lib/showSeeds/simulationDryRun';
+import { useWorkMode } from '@/core/safety/workMode';
 
 export default function LibertadoresPage() {
   const { toast } = useToast();
@@ -44,6 +46,8 @@ export default function LibertadoresPage() {
   const sp = useMemo(() => createLibertadoresShowPlan(), [seed]);
   const summary = useMemo(() => summarizeLibertadores(sp), [sp]);
   const inspection = useMemo(() => inspectShowPlan(sp), [sp]);
+  const dryRun = useMemo(() => simulationDryRun(sp), [sp]);
+  const workMode = useWorkMode();
 
   const handleDownloadPdf = async () => {
     setBusy('pdf');
