@@ -142,11 +142,22 @@ export default function GoldenShowsPage() {
                     tone={r.interlockOk ? 'ok' : 'fail'}
                   />
                 </div>
-                {r.entry.id === 'libertadores' && (
-                  <Button asChild size="sm" variant="outline">
-                    <Link to="/dev/libertadores">Open</Link>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleExport(r.entry)}
+                    disabled={busyId === r.entry.id || r.errors > 0}
+                  >
+                    <Package className="h-4 w-4 mr-1" />
+                    {busyId === r.entry.id ? 'Empacotando…' : 'Export ZIP'}
                   </Button>
-                )}
+                  {r.entry.id === 'libertadores' && (
+                    <Button asChild size="sm" variant="ghost">
+                      <Link to="/dev/libertadores">Open</Link>
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
