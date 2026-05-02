@@ -5,7 +5,12 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState } from '../types';
-import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
+import {
+  createSimulatedProvenance,
+  markHandshakeOk,
+  markHandshakeLost,
+  type ProvenanceInfo,
+} from '../provenance';
 import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 export interface DMXUniverseState {
@@ -90,6 +95,25 @@ class DMXUniverseAdapterImpl implements HardwareAdapter<DMXUniverseState> {
   reset(): void {
     this._state = { ...DEFAULT_STATE, link: { ...DEFAULT_STATE.link } };
     this._connectionState = 'disconnected';
+    markHandshakeLost(this._provenance);
+  }
+
+  /**
+   * Promote to LIVE READ-ONLY after a USB-DMX interface (Enttec/USBDMX/uDMX)
+   * is authorized via Web Serial. Called by `discoveryRegistryBridge`.
+   */
+  markHandshakeOk(label?: string): void {
+    this._connectionState = 'connected';
+    this._state.link.connected = true;
+    if (label) this._state.protocol = 'DMX512';
+    markHandshakeOk(this._provenance, 'serial_usb');
+  }
+
+  /** Demote to NOT_INTEGRATED on disconnect / port revoked. */
+  markHandshakeLost(): void {
+    this._connectionState = 'disconnected';
+    this._state.link.connected = false;
+    markHandshakeLost(this._provenance);
   }
 
   /** Test injection */

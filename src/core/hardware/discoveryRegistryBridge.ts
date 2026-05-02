@@ -23,17 +23,22 @@
 import { logger } from '@/lib/logger';
 import { fxk16ModuleAdapter } from './adapters/FXK16ModuleAdapter';
 import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
+import { dmxUniverseAdapter } from './adapters/DMXUniverseAdapter';
 import { unifiedHardwareRegistry } from './UnifiedHardwareRegistry';
 import { subscribeFXK16Bridge } from '@/hooks/useFXK16Bridge';
 import { mdnsArtnetDiscoverer } from '@/core/discovery/MdnsArtnetDiscoverer';
+import { webSerialDiscoverer } from '@/core/discovery/WebSerialDiscoverer';
 import type { TransportType } from './provenance';
 
 let _started = false;
 let _unsubFxk: (() => void) | null = null;
 let _unsubArtnet: (() => void) | null = null;
+let _unsubSerial: (() => void) | null = null;
 let _lastVerified = false;
 /** Track which Art-Net hosts are currently online so we can demote on loss. */
 const _artnetOnline = new Set<string>();
+/** Track DMX-family serial device ids currently online. */
+const _dmxSerialOnline = new Set<string>();
 
 /**
  * Map FXK16 bridge `transport` field to the canonical `TransportType`
@@ -106,15 +111,45 @@ export function startDiscoveryRegistryBridge(): void {
       }
     }
   });
+
+  // ── DMX Universe (USB-DMX via Web Serial) ──────────────────────
+  // Promote when ANY authorized Web Serial port is classified as
+  // family === 'dmx' (Enttec, USBDMX, uDMX, etc.). Demote when none.
+  _unsubSerial = webSerialDiscoverer.watch((event) => {
+    const { device, type } = event;
+    if (device.family !== 'dmx') return;
+
+    if ((type === 'discovered' || type === 'updated') && device.online) {
+      if (!_dmxSerialOnline.has(device.id)) {
+        _dmxSerialOnline.add(device.id);
+        if (_dmxSerialOnline.size === 1) {
+          dmxUniverseAdapter.markHandshakeOk(device.label);
+          logger.info(
+            `[discoveryBridge] DMX universe promoted to LIVE READ-ONLY (label=${device.label})`,
+          );
+          try { unifiedHardwareRegistry.startPolling(1000); }
+          catch (err) { logger.warn('[discoveryBridge] startPolling failed', err); }
+        }
+      }
+    } else if (type === 'lost') {
+      _dmxSerialOnline.delete(device.id);
+      if (_dmxSerialOnline.size === 0) {
+        dmxUniverseAdapter.markHandshakeLost();
+        logger.info('[discoveryBridge] DMX universe demoted to NOT_INTEGRATED');
+      }
+    }
+  });
 }
 
 /** Stop the bridge — primarily for tests. */
 export function stopDiscoveryRegistryBridge(): void {
   if (_unsubFxk) { _unsubFxk(); _unsubFxk = null; }
   if (_unsubArtnet) { _unsubArtnet(); _unsubArtnet = null; }
+  if (_unsubSerial) { _unsubSerial(); _unsubSerial = null; }
   _started = false;
   _lastVerified = false;
   _artnetOnline.clear();
+  _dmxSerialOnline.clear();
 }
 
 /** Diagnostic accessor — read-only. */

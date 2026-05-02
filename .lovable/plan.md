@@ -139,3 +139,4 @@ Próxima ação ao aprovar: começar Fase 0 pelo painel `/dev/readiness-audit` e
 - ✅ `discoveryRegistryBridge` boot em `App.tsx` — promove provenance do FXK16 para `live_read_only` ao detectar handshake real (USB ou BLE) via singleton `useFXK16Bridge`. Demote em disconnect/heartbeat timeout.
 - ⏳ Próximos: equivalente para Art-Net (ArtPollReply → markHandshakeOk) e Battery-12V (piggy-back no controlador host).
 - ✅ ArtNetNodeAdapter agora tem API pública `markHandshakeOk(host)` / `markHandshakeLost()` e a bridge promove no primeiro ArtPollReply real (via `mdnsArtnetDiscoverer.watch`); demote quando todos os hosts somem.
+- ✅ DMXUniverseAdapter agora tem API pública `markHandshakeOk(label)` / `markHandshakeLost()` e a bridge promove no primeiro device autorizado com `family === 'dmx'` via `webSerialDiscoverer.watch`; demote quando todos os ports DMX somem.
