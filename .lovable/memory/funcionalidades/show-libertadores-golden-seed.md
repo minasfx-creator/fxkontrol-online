@@ -1,6 +1,6 @@
 ---
-name: Fase 1 · Show Libertadores Golden Seed
-description: src/lib/showSeeds/libertadores.ts createLibertadoresShowPlan() determinístico 90s 32lo+32hi+8cometas 4xFXK16, dual-key+NFPA70+cap75mm, valida 8 invariantes (no channel-reuse <1s)
+name: Fase 1 · Show Libertadores Golden Seed + Inspector + PDF
+description: src/lib/showSeeds/libertadores.ts (createLibertadoresShowPlan determinístico 90s 32lo+32hi+8cometas 4xFXK16 dual-key+NFPA70+cap75mm) + inspectShowPlan.ts (BoM/sequencing/pinout + min-gap canal interlock) + showPlanPdf.ts (pdf-lib A4 técnico cover+BoM+pinout+seq+disclaimers)
 type: feature
 ---
 
@@ -42,12 +42,18 @@ Reference ShowPlan canônico para validar pipeline simulação→export end-to-e
 - Origem stage no chão (y=0); audiência em z negativo.
 - Pyro line ao longo de x ∈ [-45m, +45m].
 
+## Inspector + PDF (entregue)
+- `src/lib/showSeeds/inspectShowPlan.ts` — pure: `buildBillOfMaterials` (group SKU×caliber, peso `marketing_hypothesis`), `buildSequencing` + `sequencingToCsv`, `buildPinout` (module/channel + `minGapS` por canal), `inspectShowPlan` agrega + flagga `tightReuseChannels` (<1s).
+- `src/lib/showSeeds/showPlanPdf.ts` — pdf-lib A4: cover + safety + BoM + pinout + sequencing preview (40 linhas) + disclaimers; `downloadShowPlanPdf()` p/ UI.
+- Suite `inspectShowPlan.test.ts` (7/7): grupos sem duplicata, monotonia, FXK16 in-range, **min-gap ≥ 1.0s**, determinismo.
+
 ## Próximos passos
-- `inspect_showplan` BoM + PDF técnico.
-- Export FireOne + Skybrush honest (claim `marketing_hypothesis`).
+- Export FireOne + Skybrush honest (claim `marketing_hypothesis`, `_FXK_DISCLAIMER.txt`) ligado a este seed.
 - Loop `play` em workMode=`simulation` validando shaders cinema (ParticleGPGPU + Smoke + Bloom).
 - Critério Fase 1: `readinessEvaluator.evaluate().status === 'READY_FOR_EXPORT'`.
 
 ## Componentes
 - `src/lib/showSeeds/libertadores.ts` — `createLibertadoresShowPlan()`, `summarizeLibertadores()`, `LIBERTADORES_TARGETS`.
-- `src/lib/showSeeds/__tests__/libertadores.test.ts` — 8 invariantes.
+- `src/lib/showSeeds/inspectShowPlan.ts` — `inspectShowPlan()`, `buildBillOfMaterials()`, `buildSequencing()`, `buildPinout()`, `sequencingToCsv()`.
+- `src/lib/showSeeds/showPlanPdf.ts` — `renderShowPlanPdf()`, `downloadShowPlanPdf()`.
+- Tests: `__tests__/libertadores.test.ts` (8) + `__tests__/inspectShowPlan.test.ts` (7).
