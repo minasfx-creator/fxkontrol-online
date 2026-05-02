@@ -25,6 +25,8 @@ import { fxk16ModuleAdapter } from './adapters/FXK16ModuleAdapter';
 import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
 import { dmxUniverseAdapter } from './adapters/DMXUniverseAdapter';
 import { batteryMonitorAdapter } from './adapters/BatteryMonitorAdapter';
+import { muxReaderAdapter } from './adapters/MuxReaderAdapterCD4051';
+import { shiftRegisterAdapter } from './adapters/ShiftRegisterAdapter74HC595';
 import { unifiedHardwareRegistry } from './UnifiedHardwareRegistry';
 import { subscribeFXK16Bridge } from '@/hooks/useFXK16Bridge';
 import { mdnsArtnetDiscoverer } from '@/core/discovery/MdnsArtnetDiscoverer';
