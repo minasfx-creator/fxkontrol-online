@@ -450,26 +450,141 @@ export class Show3DEngine {
    * registers it for automatic cleanup once its TTL expires. The render
    * loop ticks the active flashes each frame.
    */
+  /**
+   * Visualise a compiled cue as a transient effect anchored to the
+   * associated position marker. Strictly visual — no FieldBus / hardware
+   * side-effects.
+   *
+   * Effect kinds:
+   *   - `spawn-pyro` / `finale-burst` → Particle Explosion (radial Points
+   *     burst with per-particle ballistic velocity, gravity, and fade).
+   *   - `move-drone`                  → Light Point (pulsing emissive
+   *     point sprite climbing slightly upward).
+   *
+   * Each cue produces ONE root mesh (the flash anchor) carrying
+   * `userData.cueFlash`, with the particle/light system attached as a
+   * child. This keeps the existing reaper contract (1 child per cue in
+   * the effects layer) intact while delivering richer visuals.
+   */
   private applyCue(cue: import('./timelineCompiler').CompiledCue): void {
-    const ttlMs = Math.max(150, (cue.endTime - cue.startTime) * 1000 || 1500);
+    const ttlBase = (cue.endTime - cue.startTime) * 1000 || 1500;
     for (const cmd of cue.commands) {
       const anchor = cmd.positionId ? this.findPositionMarker(cmd.positionId) : null;
       const px = anchor?.position.x ?? 0;
       const py = anchor?.position.y ?? 1;
       const pz = anchor?.position.z ?? 0;
+
+      const isPyro = cmd.kind === 'spawn-pyro' || cmd.kind === 'finale-burst';
+      const isDrone = cmd.kind === 'move-drone';
       const baseColor = cmd.kind === 'spawn-pyro' ? 0xffaa44
         : cmd.kind === 'finale-burst' ? 0xff66cc
-        : cmd.kind === 'move-drone' ? 0x66ccff
+        : isDrone ? 0x66ccff
         : 0xffffff;
       const intensity = cmd.intensity === 'high' ? 1.6 : cmd.intensity === 'low' ? 0.6 : 1.0;
+      const ttlMs = isPyro
+        ? Math.max(900, ttlBase * (cmd.kind === 'finale-burst' ? 1.6 : 1.2))
+        : Math.max(600, ttlBase);
 
-      const geom = new THREE.SphereGeometry(0.8 + intensity * 0.6, 12, 12);
-      const mat = new THREE.MeshBasicMaterial({ color: baseColor, transparent: true, opacity: 0.85 });
-      const flash = new THREE.Mesh(geom, mat);
+      // Anchor: small invisible-ish flash sphere (preserves cueFlash
+      // contract used by the reaper + tests). Kept very subtle — the real
+      // visual punch comes from the particle system child.
+      const flashR = 0.4 + intensity * 0.3;
+      const flash = new THREE.Mesh(
+        new THREE.SphereGeometry(flashR, 10, 10),
+        new THREE.MeshBasicMaterial({ color: baseColor, transparent: true, opacity: 0.6 }),
+      );
       flash.position.set(px, py + 0.5, pz);
-      flash.userData.cueFlash = { spawnedAt: performance.now(), ttlMs, baseOpacity: 0.85 };
+      flash.userData.cueFlash = { spawnedAt: performance.now(), ttlMs, baseOpacity: 0.6 };
+
+      if (isPyro) {
+        flash.add(this.buildParticleExplosion(baseColor, intensity, ttlMs));
+      } else if (isDrone) {
+        flash.add(this.buildLightPoint(baseColor, intensity, ttlMs));
+      }
+
       this.effectsLayer.add(flash);
     }
+  }
+
+  /**
+   * Particle Explosion — N points launched on a unit sphere with random
+   * speed, then advected each frame by `tickEffects` using v += g·dt and
+   * p += v·dt. Cheap, self-contained, no GPGPU dependency.
+   */
+  private buildParticleExplosion(color: number, intensity: number, ttlMs: number): THREE.Points {
+    const COUNT = Math.max(48, Math.round(96 * intensity));
+    const positions = new Float32Array(COUNT * 3);
+    const velocities = new Float32Array(COUNT * 3);
+    const speedBase = 6 + 4 * intensity;
+    for (let i = 0; i < COUNT; i++) {
+      // Uniform random direction on sphere (Marsaglia).
+      let u: number, v: number, s: number;
+      do {
+        u = Math.random() * 2 - 1;
+        v = Math.random() * 2 - 1;
+        s = u * u + v * v;
+      } while (s >= 1 || s === 0);
+      const factor = 2 * Math.sqrt(1 - s);
+      const dx = u * factor;
+      const dy = v * factor;
+      const dz = 1 - 2 * s;
+      const speed = speedBase * (0.6 + Math.random() * 0.7);
+      velocities[i * 3 + 0] = dx * speed;
+      velocities[i * 3 + 1] = Math.abs(dy * speed) * 0.7 + speed * 0.3; // bias up
+      velocities[i * 3 + 2] = dz * speed;
+      // start near origin (offsets from the anchor flash)
+      positions[i * 3 + 0] = dx * 0.2;
+      positions[i * 3 + 1] = dy * 0.2;
+      positions[i * 3 + 2] = dz * 0.2;
+    }
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.PointsMaterial({
+      color,
+      size: 0.6 + intensity * 0.5,
+      transparent: true,
+      opacity: 1,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true,
+    });
+    const points = new THREE.Points(geom, mat);
+    points.userData.particleBurst = {
+      spawnedAt: performance.now(),
+      ttlMs,
+      velocities,
+      gravity: -9.8,
+      drag: 0.92,
+      baseOpacity: 1,
+    };
+    return points;
+  }
+
+  /**
+   * Light Point — single bright additive point sprite that pulses and
+   * drifts upward, used to visualise `move-drone` cues.
+   */
+  private buildLightPoint(color: number, intensity: number, ttlMs: number): THREE.Points {
+    const positions = new Float32Array(3); // single point
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.PointsMaterial({
+      color,
+      size: 1.6 + intensity * 1.4,
+      transparent: true,
+      opacity: 1,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true,
+    });
+    const points = new THREE.Points(geom, mat);
+    points.userData.lightPoint = {
+      spawnedAt: performance.now(),
+      ttlMs,
+      driftY: 1.4 + intensity * 1.6,
+      baseOpacity: 1,
+    };
+    return points;
   }
 
   private findPositionMarker(positionId: string): THREE.Object3D | null {
@@ -480,7 +595,8 @@ export class Show3DEngine {
   }
 
   private tickEffects(now: number): void {
-    // Fade and reap transient cue flashes. Reverse loop so splice is safe.
+    // Walk effects layer top-level (cue flash anchors) and advect any
+    // attached particle/light children. Reverse loop so splice is safe.
     const children = this.effectsLayer.children;
     for (let i = children.length - 1; i >= 0; i--) {
       const child = children[i] as THREE.Mesh;
@@ -489,11 +605,84 @@ export class Show3DEngine {
       const age = now - meta.spawnedAt;
       if (age >= meta.ttlMs) {
         children.splice(i, 1);
-        child.geometry?.dispose();
-        const m = child.material as THREE.Material | THREE.Material[];
-        if (Array.isArray(m)) m.forEach(x => x.dispose()); else m?.dispose();
+        this.disposeSubtree(child);
         continue;
       }
+      const k = 1 - age / meta.ttlMs;
+      (child.material as THREE.MeshBasicMaterial).opacity = meta.baseOpacity * k;
+      // Gentle anchor pulse for the first 25% of life only.
+      const pulseK = k > 0.75 ? (1 - k) / 0.25 : 1;
+      child.scale.setScalar(1 + pulseK * 0.5);
+
+      // Tick attached particle/light children.
+      for (const sub of child.children) {
+        this.tickEffectChild(sub, now);
+      }
+    }
+  }
+
+  /** Advance a single particle Points / light Points child by one frame. */
+  private tickEffectChild(obj: THREE.Object3D, now: number): void {
+    const burst = obj.userData?.particleBurst as
+      | { spawnedAt: number; ttlMs: number; velocities: Float32Array; gravity: number; drag: number; baseOpacity: number }
+      | undefined;
+    if (burst) {
+      const points = obj as THREE.Points;
+      const geom = points.geometry as THREE.BufferGeometry;
+      const posAttr = geom.getAttribute('position') as THREE.BufferAttribute;
+      const positions = posAttr.array as Float32Array;
+      const last = (obj.userData._lastTick as number) ?? now;
+      const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+      obj.userData._lastTick = now;
+      const v = burst.velocities;
+      for (let i = 0; i < positions.length; i += 3) {
+        // gravity on Y component of velocity
+        v[i + 1] += burst.gravity * dt;
+        // light air drag (frame-rate-aware exp)
+        const dragK = Math.pow(burst.drag, dt * 60);
+        v[i] *= dragK; v[i + 1] *= dragK; v[i + 2] *= dragK;
+        positions[i] += v[i] * dt;
+        positions[i + 1] += v[i + 1] * dt;
+        positions[i + 2] += v[i + 2] * dt;
+      }
+      posAttr.needsUpdate = true;
+      const lifeK = 1 - (now - burst.spawnedAt) / burst.ttlMs;
+      const mat = points.material as THREE.PointsMaterial;
+      mat.opacity = Math.max(0, burst.baseOpacity * Math.pow(lifeK, 1.4));
+      return;
+    }
+    const lp = obj.userData?.lightPoint as
+      | { spawnedAt: number; ttlMs: number; driftY: number; baseOpacity: number }
+      | undefined;
+    if (lp) {
+      const points = obj as THREE.Points;
+      const geom = points.geometry as THREE.BufferGeometry;
+      const posAttr = geom.getAttribute('position') as THREE.BufferAttribute;
+      const positions = posAttr.array as Float32Array;
+      const last = (obj.userData._lastTick as number) ?? now;
+      const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+      obj.userData._lastTick = now;
+      positions[1] += lp.driftY * dt;
+      posAttr.needsUpdate = true;
+      const lifeK = 1 - (now - lp.spawnedAt) / lp.ttlMs;
+      // gentle 4 Hz pulse modulating opacity
+      const pulse = 0.7 + 0.3 * Math.sin(((now - lp.spawnedAt) / 1000) * 2 * Math.PI * 4);
+      const mat = points.material as THREE.PointsMaterial;
+      mat.opacity = Math.max(0, lp.baseOpacity * Math.pow(lifeK, 1.2) * pulse);
+    }
+  }
+
+  private disposeSubtree(root: THREE.Object3D): void {
+    root.traverse((node) => {
+      const mesh = node as THREE.Mesh & THREE.Points;
+      if (mesh.geometry && typeof (mesh.geometry as THREE.BufferGeometry).dispose === 'function') {
+        (mesh.geometry as THREE.BufferGeometry).dispose();
+      }
+      const mat = mesh.material as THREE.Material | THREE.Material[] | undefined;
+      if (Array.isArray(mat)) for (const m of mat) this.disposeMaterial(m);
+      else if (mat) this.disposeMaterial(mat);
+    });
+  }
       const k = 1 - age / meta.ttlMs;
       (child.material as THREE.MeshBasicMaterial).opacity = meta.baseOpacity * k;
       child.scale.setScalar(1 + (1 - k) * 0.8);
