@@ -388,9 +388,31 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
               </Badge>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Adiciona um novo trecho ao final do show, mantendo tudo o que já
-              foi criado. Os tempos do trecho novo começam após o último cue.
+              Adiciona um novo trecho ao show. Por padrão começa após o último
+              cue, mas você pode ancorar em qualquer cue específico da timeline.
             </p>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground shrink-0">Ancorar em:</span>
+              <Select value={anchorCueId} onValueChange={setAnchorCueId} disabled={continuing}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Último cue" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="__last__">
+                    Último cue ({resumeOffsetFor(plan).toFixed(1)}s)
+                  </SelectItem>
+                  {sortedCues.map((cue) => {
+                    const end = cue.startTime + (cue.duration ?? 0);
+                    return (
+                      <SelectItem key={cue.id} value={cue.id}>
+                        {cue.startTime.toFixed(1)}s · {cue.label || cue.type}
+                        {cue.duration ? ` → ${end.toFixed(1)}s` : ''}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
             <Textarea
               value={continuationPrompt}
               onChange={(e) => setContinuationPrompt(e.target.value)}
