@@ -145,6 +145,9 @@ function RouteTracker() {
 
 function App() {
   useHardwareSyncLoop(44);
+  // Boot the Discovery → Registry bridge once. Idempotent.
+  // Promotes FXK16ModuleAdapter provenance on real handshake.
+  startDiscoveryRegistryBridge();
   return (
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
