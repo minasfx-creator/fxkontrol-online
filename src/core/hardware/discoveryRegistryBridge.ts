@@ -22,13 +22,18 @@
 
 import { logger } from '@/lib/logger';
 import { fxk16ModuleAdapter } from './adapters/FXK16ModuleAdapter';
+import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
 import { unifiedHardwareRegistry } from './UnifiedHardwareRegistry';
 import { subscribeFXK16Bridge } from '@/hooks/useFXK16Bridge';
+import { mdnsArtnetDiscoverer } from '@/core/discovery/MdnsArtnetDiscoverer';
 import type { TransportType } from './provenance';
 
 let _started = false;
-let _unsubscribe: (() => void) | null = null;
+let _unsubFxk: (() => void) | null = null;
+let _unsubArtnet: (() => void) | null = null;
 let _lastVerified = false;
+/** Track which Art-Net hosts are currently online so we can demote on loss. */
+const _artnetOnline = new Set<string>();
 
 /**
  * Map FXK16 bridge `transport` field to the canonical `TransportType`
