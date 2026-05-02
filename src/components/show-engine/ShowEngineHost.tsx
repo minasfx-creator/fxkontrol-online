@@ -56,6 +56,7 @@ export default function ShowEngineHost({
   hideSegmentToolbar = false,
   autoPlay = true,
   hideTransport = false,
+  externalClock = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<Show3DEngine | null>(null);
@@ -86,13 +87,21 @@ export default function ShowEngineHost({
     };
   }, []);
 
-  // Load plan whenever it changes; auto-play once ready.
+  // Load plan whenever it changes; auto-play once ready (only when the
+  // engine owns its own clock — in externalClock mode the project store
+  // drives playback via useShow3DEngineSync below).
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine || !plan) return;
     engine.loadPlan(plan);
-    if (autoPlay) engine.play();
-  }, [plan, autoPlay]);
+    if (autoPlay && !externalClock) engine.play();
+  }, [plan, autoPlay, externalClock]);
+
+  // External-clock bridge: while enabled, the project store (timelineClock /
+  // audio master) becomes the sole driver of `showTime`. The engine's
+  // internal RAF auto-advance is gated off; cues fire via explicit seek().
+  useShow3DEngineSync(engineRef, externalClock);
+
 
   return (
     <div ref={containerRef} className={`relative w-full h-full bg-[#050810] ${className ?? ''}`}>
