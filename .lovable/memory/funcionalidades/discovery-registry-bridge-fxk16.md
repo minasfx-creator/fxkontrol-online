@@ -1,39 +1,49 @@
 ---
 name: Discovery → Registry Bridge (Fase 0)
-description: discoveryRegistryBridge promove FXK16ModuleAdapter para live_read_only no handshake real (USB/BLE) via singleton useFXK16Bridge; bootado em App.tsx; idempotente
+description: discoveryRegistryBridge promove FXK16ModuleAdapter (USB/BLE via useFXK16Bridge) e ArtNetNodeAdapter (host via mdnsArtnetDiscoverer.watch) para live_read_only no handshake real; bootado em App.tsx; idempotente
 type: feature
 ---
 
 # Discovery → Registry Bridge
 
-Elo entre a camada de discovery (`useFXK16Bridge` singleton, `FireOneHardwareBridge`) e o `unifiedHardwareRegistry`. Sem este bridge o `FXK16ModuleAdapter` ficava eternamente em `not_integrated` mesmo com hardware conectado.
+Elo entre as camadas de discovery e o `unifiedHardwareRegistry`. Sem este bridge, adapters ficam eternamente em `not_integrated` mesmo com hardware real conectado.
 
-## Componentes
+## Adapters wirados
 
-- **`src/hooks/useFXK16Bridge.ts`** — exporta `subscribeFXK16Bridge(listener)` (não-React) que reaproveita o `_listeners` Set do singleton.
-- **`src/core/hardware/adapters/FXK16ModuleAdapter.ts`** — métodos públicos `markHandshakeOk(transport)` e `markHandshakeLost()` que delegam para `provenance.ts`. `reset()` agora também demote provenance.
-- **`src/core/hardware/discoveryRegistryBridge.ts`** — escuta status do bridge FXK16; quando `connected && deviceModel==='FXK16' && channelCount===16 && linkHealth==='healthy'`, chama `markHandshakeOk(transport mapeado)`. Quando perde, chama `markHandshakeLost()`. Idempotente, com `_lastVerified` para evitar transições duplicadas.
-- **`src/App.tsx`** — `startDiscoveryRegistryBridge()` no boot do `App` componente.
+### FXK16 (USB / BLE)
+- Fonte: `subscribeFXK16Bridge` (singleton de `useFXK16Bridge`).
+- Critério: `connected && deviceModel==='FXK16' && channelCount===16 && linkHealth==='healthy'`.
+- Promove via `fxk16ModuleAdapter.markHandshakeOk(transport mapeado)`.
+- Demote em disconnect/heartbeat timeout.
+- `_lastVerified` evita transições duplicadas.
 
-## Mapeamento de transport
+### Art-Net (UDP via edge ArtPoll)
+- Fonte: `mdnsArtnetDiscoverer.watch()` (proxy via edge `artnet-bridge` action `poll`).
+- Critério: `event.device.family==='artnet-node' && device.host`.
+- Promove no PRIMEIRO host descoberto via `artNetNodeAdapter.markHandshakeOk(host)`.
+- `_artnetOnline: Set<host>` rastreia hosts vivos; demote quando o set esvazia (`type==='lost'`).
 
-`status.transport` (string do bridge) → `TransportType` canônico:
-- `/ble|bluetooth/i` → `'ble'`
-- `/usb|serial|cdc/i` → `'serial_usb'`
-- default → `'serial_usb'`
+## Pendentes
+
+- `battery-12v`, `mux-cd4051-dual`, `sr-74hc595-chain`: piggy-back no controlador host (FXK16/Arduino) — promovem juntos quando firmware reportar VBAT/continuity.
+- `dmx-universe-1`: promove via `webSerialDiscoverer` quando interface USB-DMX (Enttec/USBDMX) for autorizada e identificada.
 
 ## Garantias
 
-- **Honest Hardware Layer**: zero `Math.random`, zero dados sintéticos. Promoção só com `MODEL:FXK16;CH:16` reply verificado.
-- **Read-only no boundary**: bridge só toca provenance + connection state. Nenhum comando físico.
-- **Safety preserved**: AI nunca pode chamar este bridge — não está exposto via `uiCommandGateway`.
+- **Honest Hardware Layer**: zero `Math.random`, zero dados sintéticos.
+- **Read-only no boundary**: bridge só toca provenance + connection state.
+- **Safety preserved**: AI nunca pode chamar — não exposto via `uiCommandGateway`.
+- **Idempotente**: `startDiscoveryRegistryBridge()` 2x é no-op; `stopDiscoveryRegistryBridge()` libera ambos os subs e limpa `_artnetOnline`.
 
-## Próximos adapters a wirear
+## Componentes
 
-- `artnet-node-01`: ArtPollReply válido → `markHandshakeOk('ethernet_udp')`.
-- `battery-12v`: piggy-back via mesma sessão FXK16 quando firmware reportar VBAT.
-- `mux-cd4051-dual` / `sr-74hc595-chain`: idem (host controller reporta).
+- `src/hooks/useFXK16Bridge.ts` — `subscribeFXK16Bridge(listener)` não-React.
+- `src/core/hardware/adapters/FXK16ModuleAdapter.ts` — `markHandshakeOk(transport)` / `markHandshakeLost()`.
+- `src/core/hardware/adapters/ArtNetNodeAdapter.ts` — `markHandshakeOk(host)` / `markHandshakeLost()`.
+- `src/core/hardware/discoveryRegistryBridge.ts` — orquestrador.
+- `src/App.tsx` — `startDiscoveryRegistryBridge()` no boot.
 
 ## Testes
 
-`src/core/hardware/__tests__/fxk16ModuleAdapter.handshake.test.ts` — 5 testes cobrindo promoção USB, promoção BLE, demote, reset.
+- `fxk16ModuleAdapter.handshake.test.ts` (5)
+- `artNetNodeAdapter.handshake.test.ts` (4)
