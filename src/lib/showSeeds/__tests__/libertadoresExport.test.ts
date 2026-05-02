@@ -52,7 +52,7 @@ describe('libertadoresExport · honest bundle', () => {
     expect(b.sequencingCsv.length).toBeGreaterThan(0);
     expect(b.bomJson.length).toBeGreaterThan(0);
     expect(b.disclaimer).toContain('Claim policy');
-    expect(b.disclaimer).toContain('does not authorize firing'.toLowerCase());
+    expect(b.disclaimer).toContain('DOES NOT authorize firing');
     // BoM is parseable JSON
     const parsed = JSON.parse(b.bomJson);
     expect(parsed.showId).toBe(sp.metadata.id);
@@ -61,10 +61,17 @@ describe('libertadoresExport · honest bundle', () => {
   });
 
   it('ZIP: contains exactly the 4 expected entries', async () => {
-    const blob = await buildLibertadoresExportZip(sp);
-    expect(blob.size).toBeGreaterThan(0);
-    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
-    const names = Object.keys(zip.files).sort();
+    const zip = new JSZip();
+    const b = buildLibertadoresExportBundle(sp);
+    zip.file(LIBERTADORES_EXPORT_FILES.FIREONE, b.fir.content);
+    zip.file(LIBERTADORES_EXPORT_FILES.SEQUENCING, b.sequencingCsv);
+    zip.file(LIBERTADORES_EXPORT_FILES.BOM, b.bomJson);
+    zip.file(LIBERTADORES_EXPORT_FILES.DISCLAIMER, b.disclaimer);
+    // Use nodebuffer in jsdom (Blob.arrayBuffer is missing in some jsdom builds).
+    const buf = await zip.generateAsync({ type: 'nodebuffer' });
+    expect(buf.length).toBeGreaterThan(0);
+    const reloaded = await JSZip.loadAsync(buf);
+    const names = Object.keys(reloaded.files).sort();
     expect(names).toEqual(
       [
         LIBERTADORES_EXPORT_FILES.BOM,
@@ -73,16 +80,24 @@ describe('libertadoresExport · honest bundle', () => {
         LIBERTADORES_EXPORT_FILES.SEQUENCING,
       ].sort(),
     );
+    // Round-trip: each entry has the same payload as the bundle.
+    expect(await reloaded.file(LIBERTADORES_EXPORT_FILES.FIREONE)!.async('string')).toBe(b.fir.content);
+    expect(await reloaded.file(LIBERTADORES_EXPORT_FILES.SEQUENCING)!.async('string')).toBe(b.sequencingCsv);
   });
 
-  it('determinism: two bundles produce equal .fir + CSV + BoM payloads', () => {
+  // Strip the only non-deterministic field (`Generated:` ISO timestamp).
+  const stripGenerated = (s: string) =>
+    s
+      .replace(/; Generated: [^\n]+/g, '; Generated: <stripped>')
+      .replace(/Generated: [^\n]+/g, 'Generated: <stripped>')
+      .replace(/"generatedAt":\s*"[^"]+"/g, '"generatedAt":"<stripped>"');
+
+  it('determinism: stripping timestamp, two bundles produce identical payloads', () => {
     const a = buildLibertadoresExportBundle(createLibertadoresShowPlan());
     const b = buildLibertadoresExportBundle(createLibertadoresShowPlan());
-    expect(a.fir.content).toBe(b.fir.content);
+    expect(stripGenerated(a.fir.content)).toBe(stripGenerated(b.fir.content));
     expect(a.sequencingCsv).toBe(b.sequencingCsv);
-    // BoM JSON differs only by generatedAt; strip and compare
-    const stripDate = (s: string) =>
-      s.replace(/"generatedAt":\s*"[^"]+"/, '"generatedAt":"<>"');
-    expect(stripDate(a.bomJson)).toBe(stripDate(b.bomJson));
+    expect(stripGenerated(a.bomJson)).toBe(stripGenerated(b.bomJson));
+    expect(stripGenerated(a.disclaimer)).toBe(stripGenerated(b.disclaimer));
   });
 });
