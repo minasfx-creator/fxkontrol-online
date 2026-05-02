@@ -9,12 +9,13 @@
  * acoplada a um show específico. Cada seed é uma evidência.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Sparkles, Activity } from 'lucide-react';
+import { ArrowLeft, Sparkles, Activity, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import {
   GOLDEN_SHOW_CATALOG,
   type GoldenShowEntry,
@@ -22,6 +23,7 @@ import {
 import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { simulationDryRun } from '@/lib/showSeeds/simulationDryRun';
 import { inspectShowPlan } from '@/lib/showSeeds/inspectShowPlan';
+import { downloadGoldenShowExportZip } from '@/lib/showSeeds/goldenShowExport';
 
 interface SeedRow {
   entry: GoldenShowEntry;
