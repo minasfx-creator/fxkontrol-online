@@ -47,16 +47,18 @@ describe("PyroFireOnePanel — smoke", () => {
 
     expect(() => {
       const { container } = render(
-        <PyroFireOnePanel
-          fs={false}
-          fireChannel={() => {}}
-          channels={[]}
-          pyroArm={false}
-          dmxArm={false}
-          handlePanic={() => {}}
-          artNetConnected={false}
-          relayConnected={false}
-        />,
+        <MemoryRouter>
+          <PyroFireOnePanel
+            fs={false}
+            fireChannel={() => {}}
+            channels={[]}
+            pyroArm={false}
+            dmxArm={false}
+            handlePanic={() => {}}
+            artNetConnected={false}
+            relayConnected={false}
+          />
+        </MemoryRouter>,
       );
       // Sanity: something rendered.
       expect(container.firstChild).not.toBeNull();
