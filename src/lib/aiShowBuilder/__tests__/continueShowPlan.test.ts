@@ -63,13 +63,13 @@ describe('continueShowPlan', () => {
     });
 
     const merged = appendShowPlan(base, next, { gap: 1 });
-    // offset = 29 + 1 = 30
+    // resumeOffsetFor(base) = max(duration=30, lastCue=29) = 30; offset = 30 + gap(1) = 31
     expect(merged.timelineItems).toHaveLength(3);
-    expect(merged.timelineItems[2].startTime).toBe(31);
-    expect(merged.sections[1].startTime).toBe(30);
-    expect(merged.trajectories[0].waypoints[1].time).toBe(32);
+    expect(merged.timelineItems[2].startTime).toBe(32);
+    expect(merged.sections[1].startTime).toBe(31);
+    expect(merged.trajectories[0].waypoints[1].time).toBe(33);
     expect(merged.positions).toHaveLength(2);
-    expect(merged.duration).toBe(50);
+    expect(merged.duration).toBe(51);
     expect(merged.safetyWarnings).toEqual(['w1', 'w2']);
     expect(merged.assumptions).toEqual(['a1', 'a2']);
   });
