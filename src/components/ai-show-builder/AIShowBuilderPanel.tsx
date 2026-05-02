@@ -55,6 +55,16 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
   const [plan, setPlan] = useState<ShowPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [continuationPrompt, setContinuationPrompt] = useState('');
+  const [continuing, setContinuing] = useState(false);
+  const positionsCount = useProjectStore((s) => s.positions.length);
+  const selectedCount = useProjectStore((s) => s.selectedPositionIds.length);
+  const selectAllPositionsInStore = useCallback(() => {
+    const { positions, selectMultiplePositionsAndLinkedEvents } = useProjectStore.getState();
+    const ids = positions.map((p) => p.id);
+    selectMultiplePositionsAndLinkedEvents(ids);
+    toast.success(`${ids.length} posições selecionadas`);
+  }, []);
   const [layoutMode, setLayoutMode] = useState<AiShowBuilderLayoutMode>(() =>
     getAiShowBuilderLayoutMode(),
   );
