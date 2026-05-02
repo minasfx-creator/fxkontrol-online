@@ -6,8 +6,10 @@
  * useProjectStore. Inspecionável antes de aplicar.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info, Pencil } from 'lucide-react';
+import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info, Pencil, MousePointerSquareDashed, ArrowRightCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useProjectStore } from '@/store/useProjectStore';
+import { appendShowPlan, resumeOffsetFor } from '@/lib/aiShowBuilder/continueShowPlan';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
