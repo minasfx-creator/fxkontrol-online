@@ -293,6 +293,34 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
             <MousePointerSquareDashed className="h-4 w-4" />
             Selecionar todas {positionsCount > 0 && `(${selectedCount}/${positionsCount})`}
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => selectCompatibleFromTimeline('all')}
+            disabled={compatibleCounts.total === 0}
+            className="gap-2"
+            title="Posições (pyro+drone) referenciadas pelo timeline + eventos linkados"
+          >
+            <MousePointerSquareDashed className="h-4 w-4" />
+            Compatíveis no timeline {compatibleCounts.total > 0 && `(${compatibleCounts.total})`}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => selectCompatibleFromTimeline('pyro')}
+            disabled={compatibleCounts.pyro === 0}
+            title="Apenas posições pyro do timeline"
+          >
+            Pyro {compatibleCounts.pyro > 0 && `(${compatibleCounts.pyro})`}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => selectCompatibleFromTimeline('drone')}
+            disabled={compatibleCounts.drone === 0}
+            title="Apenas pads de drone do timeline"
+          >
+            Drone {compatibleCounts.drone > 0 && `(${compatibleCounts.drone})`}
+          </Button>
         </div>
 
         {/* Live 3D preview + permanent PromptBar — always visible. */}
