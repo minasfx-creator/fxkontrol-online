@@ -9,12 +9,13 @@
  * acoplada a um show específico. Cada seed é uma evidência.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Sparkles, Activity } from 'lucide-react';
+import { ArrowLeft, Sparkles, Activity, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import {
   GOLDEN_SHOW_CATALOG,
   type GoldenShowEntry,
@@ -22,6 +23,7 @@ import {
 import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { simulationDryRun } from '@/lib/showSeeds/simulationDryRun';
 import { inspectShowPlan } from '@/lib/showSeeds/inspectShowPlan';
+import { downloadGoldenShowExportZip } from '@/lib/showSeeds/goldenShowExport';
 
 interface SeedRow {
   entry: GoldenShowEntry;
@@ -52,10 +54,28 @@ function evaluate(entry: GoldenShowEntry): SeedRow {
 }
 
 export default function GoldenShowsPage() {
+  const { toast } = useToast();
+  const [busyId, setBusyId] = useState<string | null>(null);
   const rows = useMemo(() => GOLDEN_SHOW_CATALOG.map(evaluate), []);
   const allReady = rows.every(
     (r) => r.errors === 0 && (r.level === 'READY_FOR_EXPORT' || r.level === 'READY_FOR_FIELD'),
   );
+
+  const handleExport = async (entry: GoldenShowEntry) => {
+    setBusyId(entry.id);
+    try {
+      await downloadGoldenShowExportZip(entry.build());
+      toast({ title: 'Bundle pronto', description: `${entry.name} · .fir + CSV + BoM + disclaimer.` });
+    } catch (err) {
+      toast({
+        title: 'Falha no export',
+        description: err instanceof Error ? err.message : String(err),
+        variant: 'destructive',
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
     <div className="min-h-dvh bg-background text-foreground p-6">
@@ -122,11 +142,22 @@ export default function GoldenShowsPage() {
                     tone={r.interlockOk ? 'ok' : 'fail'}
                   />
                 </div>
-                {r.entry.id === 'libertadores' && (
-                  <Button asChild size="sm" variant="outline">
-                    <Link to="/dev/libertadores">Open</Link>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleExport(r.entry)}
+                    disabled={busyId === r.entry.id || r.errors > 0}
+                  >
+                    <Package className="h-4 w-4 mr-1" />
+                    {busyId === r.entry.id ? 'Empacotando…' : 'Export ZIP'}
                   </Button>
-                )}
+                  {r.entry.id === 'libertadores' && (
+                    <Button asChild size="sm" variant="ghost">
+                      <Link to="/dev/libertadores">Open</Link>
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
