@@ -285,7 +285,41 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
           />
         )}
 
-        <p className="text-[11px] text-muted-foreground italic pt-1">
+        {plan && !reviewing && (
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <ArrowRightCircle className="h-4 w-4 text-primary" />
+              Continuar coreografia
+              <Badge variant="outline" className="ml-auto text-[10px]">
+                retoma em {resumeAt.toFixed(1)}s
+              </Badge>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Adiciona um novo trecho ao final do show, mantendo tudo o que já
+              foi criado. Os tempos do trecho novo começam após o último cue.
+            </p>
+            <Textarea
+              value={continuationPrompt}
+              onChange={(e) => setContinuationPrompt(e.target.value)}
+              placeholder="Ex: depois do finale, 20s de cometas verdes em leque com cauda dourada"
+              className="min-h-[72px] resize-none text-sm"
+              disabled={continuing}
+              maxLength={2000}
+            />
+            <div className="flex justify-end">
+              <Button
+                onClick={handleContinue}
+                disabled={continuing || continuationPrompt.trim().length < 4}
+                className="gap-2"
+                size="sm"
+              >
+                {continuing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                {continuing ? 'Estendendo…' : 'Estender show'}
+              </Button>
+            </div>
+          </div>
+        )}
+
           Este plano é uma pré-visualização criativa. Revise segurança, distâncias e normas locais antes da execução real.
         </p>
       </CardContent>
