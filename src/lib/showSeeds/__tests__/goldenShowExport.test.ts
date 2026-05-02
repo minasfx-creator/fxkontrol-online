@@ -7,17 +7,10 @@ import JSZip from 'jszip';
 import { GOLDEN_SHOW_CATALOG } from '../catalog';
 import {
   buildGoldenShowExportBundle,
-  buildGoldenShowExportZip,
+  buildGoldenShowExportZipBytes,
   defaultGoldenShowExportFilename,
   GOLDEN_SHOW_EXPORT_FILES,
 } from '../goldenShowExport';
-
-// jsdom's Blob lacks .arrayBuffer(); patch only if missing.
-if (typeof Blob !== 'undefined' && !(Blob.prototype as any).arrayBuffer) {
-  (Blob.prototype as any).arrayBuffer = function arrayBuffer() {
-    return new Response(this).arrayBuffer();
-  };
-}
 
 describe('goldenShowExport · catalog-wide', () => {
   for (const entry of GOLDEN_SHOW_CATALOG) {
@@ -79,8 +72,7 @@ describe('goldenShowExport · catalog-wide', () => {
       });
 
       it('full ZIP embeds fxk_technical.pdf with valid PDF header', async () => {
-        const blob = await buildGoldenShowExportZip(sp);
-        const ab = await (blob as Blob).arrayBuffer();
+        const ab = await buildGoldenShowExportZipBytes(sp);
         const zip = await JSZip.loadAsync(ab);
         const pdfFile = zip.file(GOLDEN_SHOW_EXPORT_FILES.PDF);
         expect(pdfFile).toBeTruthy();
@@ -95,8 +87,7 @@ describe('goldenShowExport · catalog-wide', () => {
       }, 15000);
 
       it('skips PDF when includePdf=false (fast path)', async () => {
-        const blob = await buildGoldenShowExportZip(sp, { includePdf: false });
-        const ab = await (blob as Blob).arrayBuffer();
+        const ab = await buildGoldenShowExportZipBytes(sp, { includePdf: false });
         const zip = await JSZip.loadAsync(ab);
         expect(zip.file(GOLDEN_SHOW_EXPORT_FILES.PDF)).toBeNull();
         expect(zip.file(GOLDEN_SHOW_EXPORT_FILES.BOM)).toBeTruthy();
