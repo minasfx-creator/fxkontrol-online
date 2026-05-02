@@ -72,7 +72,7 @@ export const ADAPTER_TRIAGE: ReadonlyArray<AdapterTriageEntry> = [
     requiredForSync: false,
   },
   {
-    id: 'artnet-node',
+    id: 'artnet-node-01',
     class: 'AWAITING_HANDSHAKE',
     transport: 'ethernet_udp',
     rationale:
@@ -85,7 +85,7 @@ export const ADAPTER_TRIAGE: ReadonlyArray<AdapterTriageEntry> = [
     requiredForSync: false,
   },
   {
-    id: 'battery-monitor',
+    id: 'battery-12v',
     class: 'AWAITING_HANDSHAKE',
     transport: 'serial_usb',
     rationale:
@@ -98,7 +98,7 @@ export const ADAPTER_TRIAGE: ReadonlyArray<AdapterTriageEntry> = [
     requiredForSync: true,
   },
   {
-    id: 'dmx-universe',
+    id: 'dmx-universe-1',
     class: 'AWAITING_HANDSHAKE',
     transport: 'serial_usb',
     rationale:
@@ -133,7 +133,7 @@ export const ADAPTER_TRIAGE: ReadonlyArray<AdapterTriageEntry> = [
     requiredForSync: true,
   },
   {
-    id: 'mux-reader-cd4051',
+    id: 'mux-cd4051-dual',
     class: 'AWAITING_HANDSHAKE',
     transport: 'analog_mux',
     rationale:
@@ -146,7 +146,7 @@ export const ADAPTER_TRIAGE: ReadonlyArray<AdapterTriageEntry> = [
     requiredForSync: false,
   },
   {
-    id: 'relay-bank-32',
+    id: 'relay-bank-32ch',
     class: 'NOT_INTEGRATED_EXPECTED',
     transport: 'spi',
     rationale:
@@ -155,7 +155,7 @@ export const ADAPTER_TRIAGE: ReadonlyArray<AdapterTriageEntry> = [
     requiredForSync: false,
   },
   {
-    id: 'shift-register-74hc595',
+    id: 'sr-74hc595-chain',
     class: 'AWAITING_HANDSHAKE',
     transport: 'spi',
     rationale:
