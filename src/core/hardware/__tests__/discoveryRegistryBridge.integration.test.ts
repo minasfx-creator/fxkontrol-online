@@ -75,7 +75,7 @@ function verifiedStatus(): BridgeStatus {
     channelCount: 16,
     transport: 'usb',
     linkHealth: 'healthy',
-  } as BridgeStatus;
+  } as unknown as BridgeStatus;
 }
 
 function lostStatus(): BridgeStatus {
@@ -85,7 +85,7 @@ function lostStatus(): BridgeStatus {
     channelCount: 0,
     transport: undefined,
     linkHealth: 'lost',
-  } as BridgeStatus;
+  } as unknown as BridgeStatus;
 }
 
 describe('discoveryRegistryBridge · integration · Phase 0 exit criterion', () => {
