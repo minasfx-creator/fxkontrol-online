@@ -14,7 +14,7 @@ import {
 } from '../maracanaHino';
 import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { canonicalToEnginePlan } from '../canonicalToEnginePlan';
-import { runSimulationDryRun } from '../simulationDryRun';
+import { simulationDryRun } from '../simulationDryRun';
 
 const sp = createMaracanaHinoShowPlan();
 const sum = summarizeMaracanaHino(sp);
@@ -97,7 +97,7 @@ describe('Maracanã Hino · pipeline genericity', () => {
   });
 
   it('simulationDryRun fires every cue and reports zero interlock breaches', () => {
-    const dry = runSimulationDryRun(sp);
+    const dry = simulationDryRun(sp);
     expect(dry.cuesFired).toBe(sp.pyroCues.length);
     expect(dry.interlockBreaches).toBe(0);
     expect(dry.peakConcurrentBurns).toBeGreaterThan(0);
