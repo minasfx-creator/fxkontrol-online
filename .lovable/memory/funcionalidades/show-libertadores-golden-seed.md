@@ -55,8 +55,14 @@ Reference ShowPlan canônico para validar pipeline simulação→export end-to-e
   - 4 entradas: `fxk_show.fir`, `fxk_sequencing.csv`, `fxk_bom.json`, `_FXK_DISCLAIMER.txt`.
 - Suite `libertadoresExport.test.ts` (6/6): zero erro de canal no golden seed; header com claim policy; cues time-sorted; ZIP 4 entradas + round-trip; disclaimer com "DOES NOT authorize firing"; determinismo strippando timestamp.
 
+## Simulation Dry-Run (entregue)
+- `src/lib/showSeeds/simulationDryRun.ts` — pure, determinístico, ZERO side-effect (sem CommandBus / fieldBus / Three.js). Walk 60Hz do `play` loop em workMode=`simulation`. Schedule por `pyroCues` com chave `M{module}:C{channel}`. Reporta: `cuesFired`, `peakConcurrentBurns`, `avgLoadCuesPerSec`, `framesSampled`, `interlockBreaches[{channel,gapS}]`, `trace[]` (cap 240 frames).
+- `/dev/libertadores` ganhou painel **Simulation play loop · dry-run** com workMode badge, 4 stats, badge interlock NONE/breach + sparkline SVG de active burns.
+- Suite `simulationDryRun.test.ts` (6/6): determinismo, paridade `cuesFired === pyroCues.length`, **interlockBreaches=0** no golden seed, duração finita ≤120s, trace cap ≤240, peak ≤ totalCues.
+- **Suite showSeeds total: 27/27 verdes.**
+
 ## Próximos passos
-- Loop `play` em workMode=`simulation` validando shaders cinema (ParticleGPGPU + Smoke + Bloom) tocando o golden seed end-to-end.
+- Acoplar dry-run ao `Show3DEngine` real validando ParticleGPGPU + Smoke + Bloom end-to-end.
 - Critério Fase 1: `readinessEvaluator.evaluate().status === 'READY_FOR_EXPORT'`.
 
 ## Componentes
@@ -64,5 +70,6 @@ Reference ShowPlan canônico para validar pipeline simulação→export end-to-e
 - `src/lib/showSeeds/inspectShowPlan.ts` — `inspectShowPlan()`, `buildBillOfMaterials()`, `buildSequencing()`, `buildPinout()`, `sequencingToCsv()`.
 - `src/lib/showSeeds/showPlanPdf.ts` — `renderShowPlanPdf()`, `downloadShowPlanPdf()`.
 - `src/lib/showSeeds/libertadoresExport.ts` — `generateFireOneScriptFromPlan()`, `buildLibertadoresExportBundle()`, `buildLibertadoresExportZip()`, `downloadLibertadoresExportZip()`, `LIBERTADORES_EXPORT_FILES`.
-- Tests: `__tests__/libertadores.test.ts` (8) + `__tests__/inspectShowPlan.test.ts` (7) + `__tests__/libertadoresExport.test.ts` (6) = 21 verdes.
+- `src/lib/showSeeds/simulationDryRun.ts` — `simulationDryRun()`, types `DryRunOptions`/`DryRunResult`/`DryRunFrame`.
+- Tests: `__tests__/libertadores.test.ts` (8) + `__tests__/inspectShowPlan.test.ts` (7) + `__tests__/libertadoresExport.test.ts` (6) + `__tests__/simulationDryRun.test.ts` (6) = **27 verdes**.
 
