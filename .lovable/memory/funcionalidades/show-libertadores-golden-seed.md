@@ -55,15 +55,16 @@ Reference ShowPlan canônico para validar pipeline simulação→export end-to-e
   - 4 entradas: `fxk_show.fir`, `fxk_sequencing.csv`, `fxk_bom.json`, `_FXK_DISCLAIMER.txt`.
 - Suite `libertadoresExport.test.ts` (6/6): zero erro de canal no golden seed; header com claim policy; cues time-sorted; ZIP 4 entradas + round-trip; disclaimer com "DOES NOT authorize firing"; determinismo strippando timestamp.
 
-## Simulation Dry-Run (entregue)
+## Simulation Dry-Run + Phase 1 Exit (entregue)
 - `src/lib/showSeeds/simulationDryRun.ts` — pure, determinístico, ZERO side-effect (sem CommandBus / fieldBus / Three.js). Walk 60Hz do `play` loop em workMode=`simulation`. Schedule por `pyroCues` com chave `M{module}:C{channel}`. Reporta: `cuesFired`, `peakConcurrentBurns`, `avgLoadCuesPerSec`, `framesSampled`, `interlockBreaches[{channel,gapS}]`, `trace[]` (cap 240 frames).
-- `/dev/libertadores` ganhou painel **Simulation play loop · dry-run** com workMode badge, 4 stats, badge interlock NONE/breach + sparkline SVG de active burns.
+- `/dev/libertadores`: painel **Simulation play loop · dry-run** (workMode badge, 4 stats, badge interlock NONE/breach + sparkline SVG de active burns) + card **Verification · Phase 1 exit** (`VerificationEngine.run(sp).level`, summary errors/warnings/passed, falhas error inline). Header carrega badge `Phase 1 · {level}`. Pure read.
 - Suite `simulationDryRun.test.ts` (6/6): determinismo, paridade `cuesFired === pyroCues.length`, **interlockBreaches=0** no golden seed, duração finita ≤120s, trace cap ≤240, peak ≤ totalCues.
-- **Suite showSeeds total: 27/27 verdes.**
+- **Critério de saída Fase 1 PROVADO**: `phase1ExitCriterion.test.ts` (5/5) — `verificationEngine.run(libertadoresShowPlan)` atinge `READY_FOR_EXPORT`/`READY_FOR_FIELD`, 0 errors, `canExport(sp)===true`. Bypass intencional do `ShowPlanManager` singleton via parameter direct-feed.
+- **Suite showSeeds total: 32/32 verdes.**
 
 ## Próximos passos
-- Acoplar dry-run ao `Show3DEngine` real validando ParticleGPGPU + Smoke + Bloom end-to-end.
-- Critério Fase 1: `readinessEvaluator.evaluate().status === 'READY_FOR_EXPORT'`.
+- Acoplar dry-run ao `Show3DEngine` real para validação visual ParticleGPGPU + Smoke + Bloom.
+- Iniciar Fase 2 (hardware físico em mesa) ou expandir biblioteca de golden seeds.
 
 ## Componentes
 - `src/lib/showSeeds/libertadores.ts` — `createLibertadoresShowPlan()`, `summarizeLibertadores()`, `LIBERTADORES_TARGETS`.
@@ -71,5 +72,5 @@ Reference ShowPlan canônico para validar pipeline simulação→export end-to-e
 - `src/lib/showSeeds/showPlanPdf.ts` — `renderShowPlanPdf()`, `downloadShowPlanPdf()`.
 - `src/lib/showSeeds/libertadoresExport.ts` — `generateFireOneScriptFromPlan()`, `buildLibertadoresExportBundle()`, `buildLibertadoresExportZip()`, `downloadLibertadoresExportZip()`, `LIBERTADORES_EXPORT_FILES`.
 - `src/lib/showSeeds/simulationDryRun.ts` — `simulationDryRun()`, types `DryRunOptions`/`DryRunResult`/`DryRunFrame`.
-- Tests: `__tests__/libertadores.test.ts` (8) + `__tests__/inspectShowPlan.test.ts` (7) + `__tests__/libertadoresExport.test.ts` (6) + `__tests__/simulationDryRun.test.ts` (6) = **27 verdes**.
+- Tests: `libertadores.test.ts` (8) + `inspectShowPlan.test.ts` (7) + `libertadoresExport.test.ts` (6) + `simulationDryRun.test.ts` (6) + `phase1ExitCriterion.test.ts` (5) = **32 verdes**.
 
