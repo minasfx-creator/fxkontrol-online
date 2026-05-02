@@ -25,6 +25,8 @@ import { fxk16ModuleAdapter } from './adapters/FXK16ModuleAdapter';
 import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
 import { dmxUniverseAdapter } from './adapters/DMXUniverseAdapter';
 import { batteryMonitorAdapter } from './adapters/BatteryMonitorAdapter';
+import { muxReaderAdapter } from './adapters/MuxReaderAdapterCD4051';
+import { shiftRegisterAdapter } from './adapters/ShiftRegisterAdapter74HC595';
 import { unifiedHardwareRegistry } from './UnifiedHardwareRegistry';
 import { subscribeFXK16Bridge } from '@/hooks/useFXK16Bridge';
 import { mdnsArtnetDiscoverer } from '@/core/discovery/MdnsArtnetDiscoverer';
@@ -74,18 +76,23 @@ export function startDiscoveryRegistryBridge(): void {
     if (verified) {
       const transport = mapTransport(status.transport);
       fxk16ModuleAdapter.markHandshakeOk(transport);
-      // Battery 12V telemetry is piggy-back on the FXK16 host controller —
-      // promote it on the same handshake (read-only; canWrite=false).
+      // Battery 12V, CD4051 mux reading and 74HC595 chain are all
+      // piggy-back on the FXK16 host controller — promote together on
+      // the same handshake (all read-only; canWrite=false).
       batteryMonitorAdapter.markHandshakeOk(transport);
+      muxReaderAdapter.markHandshakeOk(transport);
+      shiftRegisterAdapter.markHandshakeOk(transport);
       logger.info(
-        `[discoveryBridge] FXK16 + Battery-12V promoted to LIVE READ-ONLY (transport=${transport})`,
+        `[discoveryBridge] FXK16 + Battery-12V + Mux + SR promoted to LIVE READ-ONLY (transport=${transport})`,
       );
       try { unifiedHardwareRegistry.startPolling(1000); }
       catch (err) { logger.warn('[discoveryBridge] startPolling failed', err); }
     } else {
       fxk16ModuleAdapter.markHandshakeLost();
       batteryMonitorAdapter.markHandshakeLost();
-      logger.info('[discoveryBridge] FXK16 + Battery-12V demoted to NOT_INTEGRATED');
+      muxReaderAdapter.markHandshakeLost();
+      shiftRegisterAdapter.markHandshakeLost();
+      logger.info('[discoveryBridge] FXK16 + Battery-12V + Mux + SR demoted to NOT_INTEGRATED');
     }
   });
 

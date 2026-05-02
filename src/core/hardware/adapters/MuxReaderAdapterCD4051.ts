@@ -6,7 +6,13 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, MultiplexerState, MuxChannelReading } from '../types';
-import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
+import {
+  createSimulatedProvenance,
+  markHandshakeOk as provenanceMarkHandshakeOk,
+  markHandshakeLost as provenanceMarkHandshakeLost,
+  type ProvenanceInfo,
+  type TransportType,
+} from '../provenance';
 import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 export class MuxReaderAdapterCD4051 implements HardwareAdapter<MultiplexerState[]> {
@@ -108,6 +114,23 @@ export class MuxReaderAdapterCD4051 implements HardwareAdapter<MultiplexerState[
       { mux_id: 'mux-a', selected_channel: 0, sample_count: 0, fault_state: false, channels: this._initChannels(0) },
       { mux_id: 'mux-b', selected_channel: 0, sample_count: 0, fault_state: false, channels: this._initChannels(8) },
     ];
+    provenanceMarkHandshakeLost(this._provenance);
+  }
+
+  /**
+   * Promote to LIVE READ-ONLY. CD4051 reading is piggy-back on the host
+   * controller (FXK16/Arduino) — promoted by the bridge on host handshake.
+   * Read-only by construction (canWrite=false).
+   */
+  markHandshakeOk(transport: TransportType = 'serial_usb'): void {
+    this._connected = 'connected';
+    provenanceMarkHandshakeOk(this._provenance, transport);
+  }
+
+  /** Demote when the host link drops. */
+  markHandshakeLost(): void {
+    this._connected = 'disconnected';
+    provenanceMarkHandshakeLost(this._provenance);
   }
 }
 
