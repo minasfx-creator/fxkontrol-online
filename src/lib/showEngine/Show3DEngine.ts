@@ -683,11 +683,6 @@ export class Show3DEngine {
       else if (mat) this.disposeMaterial(mat);
     });
   }
-      const k = 1 - age / meta.ttlMs;
-      (child.material as THREE.MeshBasicMaterial).opacity = meta.baseOpacity * k;
-      child.scale.setScalar(1 + (1 - k) * 0.8);
-    }
-  }
 
   private clearLayer(group: THREE.Group): void {
     while (group.children.length) {
