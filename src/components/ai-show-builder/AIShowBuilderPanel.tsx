@@ -148,6 +148,37 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     }
   }, [plan, validation, onApplied]);
 
+  const resumeAt = plan ? resumeOffsetFor(plan) : 0;
+
+  const handleContinue = useCallback(async () => {
+    if (!plan) return;
+    const value = continuationPrompt.trim();
+    if (value.length < 4) {
+      toast.error('Descreva como o show deve continuar (mínimo 4 caracteres).');
+      return;
+    }
+    setContinuing(true);
+    try {
+      const seed = (variation + 1) ^ Math.floor(resumeAt);
+      const { plan: addition, fellBack, providerId } = await generateShowPlanWithProviderDetailed({
+        prompt: `Continuação a partir de ${resumeAt.toFixed(1)}s do show "${plan.title}". ${value}`,
+        site,
+        variationSeed: seed,
+      });
+      const merged = appendShowPlan(plan, addition, { gap: 1 });
+      setPlan(merged);
+      setVariation(seed);
+      setContinuationPrompt('');
+      if (fellBack) toast.warning('IA remota indisponível — coreografia continuada via gerador local.');
+      else toast.success(`Coreografia estendida via ${providerId} (+${addition.duration.toFixed(0)}s).`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao continuar coreografia');
+    } finally {
+      setContinuing(false);
+    }
+  }, [plan, continuationPrompt, site, variation, resumeAt]);
+
+
   return (
     <Card className="border-border/40 bg-card/50">
       <CardHeader>
