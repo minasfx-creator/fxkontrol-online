@@ -178,6 +178,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
       });
       setPlan(next);
       setVariation(seed);
+      setExtensionHistory([]);
       if (fellBack) {
         toast.warning('IA remota indisponível — usando gerador local como fallback.');
       } else if (providerId !== 'local-deterministic') {
