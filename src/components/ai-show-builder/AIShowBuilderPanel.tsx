@@ -498,31 +498,57 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
               disabled={continuing}
               maxLength={2000}
             />
-            <div className="flex items-center gap-2 justify-end">
+            <div className="flex items-center gap-2 justify-end flex-wrap">
               {extensionHistory.length > 0 && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowHistory((s) => !s)}
-                    className="gap-1.5 text-muted-foreground hover:text-foreground"
-                    title={`${extensionHistory.length} continuação(ões) no histórico`}
-                  >
-                    <History className="h-3.5 w-3.5" />
-                    Histórico ({extensionHistory.length})
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleUndoExtension}
-                    disabled={continuing}
-                    className="gap-1.5"
-                    title={`Desfazer: ${extensionHistory[0].prompt.slice(0, 50)}`}
-                  >
-                    <Undo2 className="h-3.5 w-3.5" />
-                    Desfazer última
-                  </Button>
-                </>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowHistory((s) => !s)}
+                  className="gap-1.5 text-muted-foreground hover:text-foreground"
+                  title={`${extensionHistory.length} continuação(ões) no histórico`}
+                >
+                  <History className="h-3.5 w-3.5" />
+                  Histórico ({extensionHistory.length})
+                </Button>
+              )}
+              {extensionHistory.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUndoExtension}
+                  disabled={continuing}
+                  className="gap-1.5"
+                  title={`Desfazer: ${extensionHistory[0].prompt.slice(0, 50)}`}
+                >
+                  <Undo2 className="h-3.5 w-3.5" />
+                  Desfazer última
+                </Button>
+              )}
+              {redoStack.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRedoExtension}
+                  disabled={continuing}
+                  className="gap-1.5"
+                  title={`Refazer: ${redoStack[0].entry.prompt.slice(0, 50)}`}
+                >
+                  <Redo2 className="h-3.5 w-3.5" />
+                  Refazer ({redoStack.length})
+                </Button>
+              )}
+              {extensionHistory.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearHistory}
+                  disabled={continuing}
+                  className="gap-1.5 text-muted-foreground hover:text-destructive"
+                  title="Limpar histórico (não altera o plano atual)"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Limpar
+                </Button>
               )}
               <Button
                 onClick={handleContinue}
