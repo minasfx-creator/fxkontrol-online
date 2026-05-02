@@ -3,6 +3,7 @@ import {
   appendShowPlan,
   lastCueEndTime,
   resumeOffsetFor,
+  resumeOffsetAtCue,
 } from '../continueShowPlan';
 import type { ShowPlan, ShowSiteConfig } from '../types';
 
