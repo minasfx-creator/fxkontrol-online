@@ -62,6 +62,35 @@ function wrap(text: string, font: PDFFont, size: number, maxW: number): string[]
   return lines;
 }
 
+/**
+ * Sanitize text for WinAnsi-only Standard fonts (Helvetica/Courier).
+ * Common typographic chars are downgraded to ASCII equivalents so a
+ * deterministic seed never crashes the encoder. Latin-1 accents are
+ * preserved (WinAnsi handles them).
+ */
+const WIN_ANSI_REPLACEMENTS: Record<string, string> = {
+  '→': '->', '←': '<-', '↔': '<->', '⇒': '=>', '⇐': '<=',
+  '•': '-', '·': '-', '─': '-', '–': '-', '—': '-',
+  '…': '...', '“': '"', '”': '"', '‘': "'", '’': "'",
+  '×': 'x', '✓': 'v', '✗': 'x', '►': '>', '◄': '<',
+  '\u00A0': ' ', // NBSP
+};
+function sanitizeForPdf(s: string): string {
+  let out = '';
+  for (const ch of s) {
+    const repl = WIN_ANSI_REPLACEMENTS[ch];
+    if (repl !== undefined) {
+      out += repl;
+      continue;
+    }
+    const code = ch.charCodeAt(0);
+    // Allow ASCII + Latin-1 supplement; drop everything else.
+    if (code <= 0xff) out += ch;
+    else out += '?';
+  }
+  return out;
+}
+
 function drawHeading(ctx: DrawCtx, text: string, size = 13): DrawCtx {
   ctx = ensureSpace(ctx, size + 8);
   ctx.page.drawText(text, {
