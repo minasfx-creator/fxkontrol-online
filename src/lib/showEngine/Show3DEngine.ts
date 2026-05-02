@@ -33,6 +33,19 @@ export interface Show3DEngineOptions {
   diagnostics?: EngineDiagnosticsBus;
 }
 
+/**
+ * Snapshot emitted to playback subscribers each time the play state or
+ * `showTime` changes meaningfully (state flip, end-of-show, or every
+ * render tick while playing).
+ */
+export interface PlaybackSnapshot {
+  time: number;
+  duration: number;
+  playing: boolean;
+  rate: number;
+  loop: boolean;
+}
+
 export class Show3DEngine {
   readonly viewport = new ViewportStateMachine();
   readonly diagnostics: EngineDiagnosticsBus;
