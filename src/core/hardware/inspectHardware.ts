@@ -93,8 +93,8 @@ export function inspectHardware(
   const pending = pendingRequiredAdapters(registry);
   const verif = verificationEngine.run();
   const verifIssues = verif.issues ?? [];
-  const verifErrors = verifIssues.filter((i) => i.severity === 'error').length;
-  const verifWarnings = verifIssues.filter((i) => i.severity === 'warning').length;
+  const verifErrors = verifIssues.filter((i) => !i.passed && i.severity === 'error').length;
+  const verifWarnings = verifIssues.filter((i) => !i.passed && i.severity === 'warning').length;
   const verifPassed = verifIssues.filter((i) => i.passed).length;
   const readiness = readinessEvaluator.evaluate();
   const health = registry.getSystemHealth();
