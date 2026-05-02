@@ -1,6 +1,6 @@
 ---
 name: Discovery → Registry Bridge (Fase 0)
-description: discoveryRegistryBridge promove FXK16 (USB/BLE), ArtNet (UDP ArtPoll), DMXUniverse (USB-DMX) e Battery-12V (piggy-back FXK16) para live_read_only no handshake real; bootado em App.tsx; idempotente; honest-hardware
+description: discoveryRegistryBridge promove FXK16+Battery-12V+CD4051 Mux+74HC595 SR (piggy-back único handshake), Art-Net (UDP ArtPoll) e DMXUniverse (USB-DMX) para live_read_only no handshake real; bootado em App.tsx; idempotente; honest-hardware
 type: feature
 ---
 
