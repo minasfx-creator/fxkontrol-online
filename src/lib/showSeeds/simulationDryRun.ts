@@ -97,7 +97,7 @@ export function simulationDryRun(
 
   // Frame walk
   const totalFrames = Math.max(1, Math.ceil(planDuration * tickHz));
-  const traceStride = Math.max(1, Math.floor(totalFrames / 240));
+  const traceStride = Math.max(1, Math.ceil(totalFrames / 240));
   const trace: DryRunFrame[] = [];
 
   let cursor = 0;
