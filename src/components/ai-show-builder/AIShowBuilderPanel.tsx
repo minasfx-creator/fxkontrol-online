@@ -246,6 +246,18 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
         gap: 1,
         anchorCueId: usingAnchor ? anchorCueId : undefined,
       });
+      const entry: ExtensionHistoryEntry = {
+        id: `ext-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        timestamp: Date.now(),
+        prompt: value,
+        anchorLabel,
+        resumeAt,
+        providerId,
+        fellBack,
+        prevPlan: plan,
+        diff: diffShowPlan(plan, merged),
+      };
+      setExtensionHistory((h) => [entry, ...h].slice(0, 20));
       setPlan(merged);
       setVariation(seed);
       setContinuationPrompt('');
@@ -258,6 +270,16 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
       setContinuing(false);
     }
   }, [plan, continuationPrompt, site, variation, resumeAt, anchorCueId, usingAnchor, sortedCues]);
+
+  const handleUndoExtension = useCallback(() => {
+    setExtensionHistory((h) => {
+      if (h.length === 0) return h;
+      const [last, ...rest] = h;
+      setPlan(last.prevPlan);
+      toast.success(`Continuação revertida (${summarizeDiff(last.diff)})`);
+      return rest;
+    });
+  }, []);
 
 
   return (
