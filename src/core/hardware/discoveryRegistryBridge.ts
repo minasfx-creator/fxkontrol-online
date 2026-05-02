@@ -22,13 +22,18 @@
 
 import { logger } from '@/lib/logger';
 import { fxk16ModuleAdapter } from './adapters/FXK16ModuleAdapter';
+import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
 import { unifiedHardwareRegistry } from './UnifiedHardwareRegistry';
 import { subscribeFXK16Bridge } from '@/hooks/useFXK16Bridge';
+import { mdnsArtnetDiscoverer } from '@/core/discovery/MdnsArtnetDiscoverer';
 import type { TransportType } from './provenance';
 
 let _started = false;
-let _unsubscribe: (() => void) | null = null;
+let _unsubFxk: (() => void) | null = null;
+let _unsubArtnet: (() => void) | null = null;
 let _lastVerified = false;
+/** Track which Art-Net hosts are currently online so we can demote on loss. */
+const _artnetOnline = new Set<string>();
 
 /**
  * Map FXK16 bridge `transport` field to the canonical `TransportType`
@@ -49,7 +54,8 @@ export function startDiscoveryRegistryBridge(): void {
   if (_started) return;
   _started = true;
 
-  _unsubscribe = subscribeFXK16Bridge((status) => {
+  // ── FXK16 (USB / BLE) ──────────────────────────────────────────
+  _unsubFxk = subscribeFXK16Bridge((status) => {
     const verified =
       !!status.connected
       && (status.deviceModel ?? '').toUpperCase() === 'FXK16'
@@ -65,27 +71,50 @@ export function startDiscoveryRegistryBridge(): void {
       logger.info(
         `[discoveryBridge] FXK16 promoted to LIVE READ-ONLY (transport=${transport})`,
       );
-      // Kick the registry so subscribers re-render.
-      try {
-        unifiedHardwareRegistry.startPolling(1000);
-      } catch (err) {
-        logger.warn('[discoveryBridge] startPolling failed', err);
-      }
+      try { unifiedHardwareRegistry.startPolling(1000); }
+      catch (err) { logger.warn('[discoveryBridge] startPolling failed', err); }
     } else {
       fxk16ModuleAdapter.markHandshakeLost();
       logger.info('[discoveryBridge] FXK16 demoted to NOT_INTEGRATED');
+    }
+  });
+
+  // ── Art-Net (UDP via edge ArtPoll) ─────────────────────────────
+  _unsubArtnet = mdnsArtnetDiscoverer.watch((event) => {
+    const { device, type } = event;
+    if (device.family !== 'artnet-node' || !device.host) return;
+    const host = device.host;
+
+    if (type === 'discovered' || type === 'updated') {
+      if (!_artnetOnline.has(host)) {
+        _artnetOnline.add(host);
+        // Promote on FIRST verified ArtPollReply.
+        if (_artnetOnline.size === 1) {
+          artNetNodeAdapter.markHandshakeOk(host);
+          logger.info(
+            `[discoveryBridge] Art-Net node promoted to LIVE READ-ONLY (host=${host})`,
+          );
+          try { unifiedHardwareRegistry.startPolling(1000); }
+          catch (err) { logger.warn('[discoveryBridge] startPolling failed', err); }
+        }
+      }
+    } else if (type === 'lost') {
+      _artnetOnline.delete(host);
+      if (_artnetOnline.size === 0) {
+        artNetNodeAdapter.markHandshakeLost();
+        logger.info('[discoveryBridge] Art-Net node demoted to NOT_INTEGRATED');
+      }
     }
   });
 }
 
 /** Stop the bridge — primarily for tests. */
 export function stopDiscoveryRegistryBridge(): void {
-  if (_unsubscribe) {
-    _unsubscribe();
-    _unsubscribe = null;
-  }
+  if (_unsubFxk) { _unsubFxk(); _unsubFxk = null; }
+  if (_unsubArtnet) { _unsubArtnet(); _unsubArtnet = null; }
   _started = false;
   _lastVerified = false;
+  _artnetOnline.clear();
 }
 
 /** Diagnostic accessor — read-only. */

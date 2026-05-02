@@ -138,3 +138,4 @@ Próxima ação ao aprovar: começar Fase 0 pelo painel `/dev/readiness-audit` e
 - ✅ FXK16ModuleAdapter agora tem API pública `markHandshakeOk(transport)` / `markHandshakeLost()`.
 - ✅ `discoveryRegistryBridge` boot em `App.tsx` — promove provenance do FXK16 para `live_read_only` ao detectar handshake real (USB ou BLE) via singleton `useFXK16Bridge`. Demote em disconnect/heartbeat timeout.
 - ⏳ Próximos: equivalente para Art-Net (ArtPollReply → markHandshakeOk) e Battery-12V (piggy-back no controlador host).
+- ✅ ArtNetNodeAdapter agora tem API pública `markHandshakeOk(host)` / `markHandshakeLost()` e a bridge promove no primeiro ArtPollReply real (via `mdnsArtnetDiscoverer.watch`); demote quando todos os hosts somem.
