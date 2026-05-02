@@ -379,6 +379,8 @@ export default function LibertadoresPage() {
 
         <Card className="p-5">
           <h2 className="text-lg font-semibold mb-2">Honest exports</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Conteúdo do ShowPlan = <code>validated</code>. Aceitação automática FireOne 2.0
             e estimativas de peso = <code>marketing_hypothesis</code>. Disclaimer completo
             embutido em cada artefato.
           </p>
