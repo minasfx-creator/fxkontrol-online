@@ -75,6 +75,13 @@ export class Show3DEngine {
   private playing = false;
   private playRate = 1;
   private playLoop = false;
+  /**
+   * When true, the *external* clock (timelineClock / audio master) is driving
+   * `showTime` via `seek()` calls and the engine's internal RAF must NOT
+   * auto-advance. The play snapshot still reports `playing: true` so the
+   * transport overlay reflects reality.
+   */
+  private externalClockDriven = false;
   private playbackListeners = new Set<(s: PlaybackSnapshot) => void>();
 
   // Frame metrics
