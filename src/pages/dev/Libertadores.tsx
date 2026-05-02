@@ -18,9 +18,9 @@
  * debug em campo (iPhone PWA).
  */
 
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, FileDown, Package, RefreshCw, Activity } from 'lucide-react';
+import { ArrowLeft, FileDown, Package, RefreshCw, Activity, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,17 +38,22 @@ import { downloadLibertadoresExportZip } from '@/lib/showSeeds/libertadoresExpor
 import { simulationDryRun } from '@/lib/showSeeds/simulationDryRun';
 import { useWorkMode } from '@/core/safety/workMode';
 import { verificationEngine } from '@/core/verification/VerificationEngine';
+import { canonicalToEnginePlan } from '@/lib/showSeeds/canonicalToEnginePlan';
+
+const ShowEngineHost = lazy(() => import('@/components/show-engine/ShowEngineHost'));
 
 export default function LibertadoresPage() {
   const { toast } = useToast();
   const [seed, setSeed] = useState(0); // forces re-memo on "Refresh"
   const [busy, setBusy] = useState<null | 'pdf' | 'zip'>(null);
+  const [engineMounted, setEngineMounted] = useState(false);
 
   const sp = useMemo(() => createLibertadoresShowPlan(), [seed]);
   const summary = useMemo(() => summarizeLibertadores(sp), [sp]);
   const inspection = useMemo(() => inspectShowPlan(sp), [sp]);
   const dryRun = useMemo(() => simulationDryRun(sp), [sp]);
   const verification = useMemo(() => verificationEngine.run(sp), [sp]);
+  const enginePlan = useMemo(() => canonicalToEnginePlan(sp), [sp]);
   const workMode = useWorkMode();
 
   const handleDownloadPdf = async () => {
@@ -321,6 +326,56 @@ export default function LibertadoresPage() {
           </div>
         </Card>
 
+        {/* Live engine preview (Show3DEngine) */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              {engineMounted ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+              Live engine preview
+            </h2>
+            <Button
+              size="sm"
+              variant={engineMounted ? 'destructive' : 'default'}
+              onClick={() => setEngineMounted((v) => !v)}
+            >
+              {engineMounted ? 'Unmount engine' : 'Mount Show3DEngine'}
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Carrega o golden seed (via <code>canonicalToEnginePlan</code>) no
+            <code> Show3DEngine</code> real para validar o pipeline ParticleGPGPU
+            + Smoke + Bloom em workMode=<code>{workMode}</code>. Sem CommandBus,
+            sem hardware. Desmonta limpando recursos GPU (M5 Three.js Disposal).
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
+            <Stat label="Engine positions" value={`${enginePlan.positions.length}`} />
+            <Stat label="Engine items" value={`${enginePlan.timelineItems.length}`} />
+            <Stat
+              label="Site"
+              value={`${enginePlan.site.width.toFixed(0)}×${enginePlan.site.depth.toFixed(0)} m`}
+              hint={enginePlan.site.name}
+            />
+            <Stat label="Duration" value={`${enginePlan.duration.toFixed(0)} s`} />
+          </div>
+          {engineMounted ? (
+            <div className="h-80 w-full rounded border border-border overflow-hidden bg-[#050810]">
+              <Suspense
+                fallback={
+                  <div className="h-full w-full flex items-center justify-center text-xs text-muted-foreground">
+                    Loading engine…
+                  </div>
+                }
+              >
+                <ShowEngineHost plan={enginePlan} hideSegmentToolbar />
+              </Suspense>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Engine desmontado · clique em <strong>Mount</strong> para alocar
+              renderer WebGL e carregar o plano.
+            </p>
+          )}
+        </Card>
 
         <Card className="p-5">
           <h2 className="text-lg font-semibold mb-2">Honest exports</h2>

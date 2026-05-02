@@ -60,7 +60,8 @@ Reference ShowPlan canônico para validar pipeline simulação→export end-to-e
 - `/dev/libertadores`: painel **Simulation play loop · dry-run** (workMode badge, 4 stats, badge interlock NONE/breach + sparkline SVG de active burns) + card **Verification · Phase 1 exit** (`VerificationEngine.run(sp).level`, summary errors/warnings/passed, falhas error inline). Header carrega badge `Phase 1 · {level}`. Pure read.
 - Suite `simulationDryRun.test.ts` (6/6): determinismo, paridade `cuesFired === pyroCues.length`, **interlockBreaches=0** no golden seed, duração finita ≤120s, trace cap ≤240, peak ≤ totalCues.
 - **Critério de saída Fase 1 PROVADO**: `phase1ExitCriterion.test.ts` (5/5) — `verificationEngine.run(libertadoresShowPlan)` atinge `READY_FOR_EXPORT`/`READY_FOR_FIELD`, 0 errors, `canExport(sp)===true`. Bypass intencional do `ShowPlanManager` singleton via parameter direct-feed.
-- **Suite showSeeds total: 32/32 verdes.**
+- **Suite showSeeds total: 40/40 verdes** (inclui canonicalToEnginePlan adapter 8/8).
+- `src/lib/showSeeds/canonicalToEnginePlan.ts` — adapter pure ShowPlan canônico → engine ShowPlan (Show3DEngine.loadPlan). Burn proxy 1.2s alinhado ao simulationDryRun. `/dev/libertadores` Mount/Unmount do `ShowEngineHost` lazy.
 
 ## Próximos passos
 - Acoplar dry-run ao `Show3DEngine` real para validação visual ParticleGPGPU + Smoke + Bloom.
