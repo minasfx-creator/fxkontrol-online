@@ -3,6 +3,7 @@ import {
   appendShowPlan,
   lastCueEndTime,
   resumeOffsetFor,
+  resumeOffsetAtCue,
 } from '../continueShowPlan';
 import type { ShowPlan, ShowSiteConfig } from '../types';
 
@@ -82,5 +83,34 @@ describe('continueShowPlan', () => {
     appendShowPlan(base, next);
     expect(JSON.stringify(base)).toBe(baseSnap);
     expect(JSON.stringify(next)).toBe(nextSnap);
+  });
+
+  it('resumeOffsetAtCue uses cue end (start+duration), fallback to last when not found', () => {
+    const p = makePlan();
+    expect(resumeOffsetAtCue(p, 'it1')).toBe(7); // 5 + 2
+    expect(resumeOffsetAtCue(p, 'it2')).toBe(29); // 25 + 4
+    expect(resumeOffsetAtCue(p, 'missing')).toBe(resumeOffsetFor(p));
+  });
+
+  it('appendShowPlan with anchorCueId starts new segment at chosen cue end', () => {
+    const base = makePlan();
+    const next = makePlan({
+      id: 'p2',
+      duration: 10,
+      sections: [],
+      positions: [],
+      timelineItems: [{ id: 'n1', type: 'pyro_effect', label: 'x', startTime: 0, duration: 2 }],
+      trajectories: [],
+      safetyWarnings: [],
+      assumptions: [],
+    });
+    const merged = appendShowPlan(base, next, { gap: 0, anchorCueId: 'it1' });
+    // anchor end = 7; new cue starts at 7
+    const inserted = merged.timelineItems.find((i) => i.id === 'n1')!;
+    expect(inserted.startTime).toBe(7);
+    // existing later cue (it2 @25) is preserved
+    expect(merged.timelineItems.find((i) => i.id === 'it2')!.startTime).toBe(25);
+    // duration = max(base 30, anchor 7 + next 10) = 30
+    expect(merged.duration).toBe(30);
   });
 });

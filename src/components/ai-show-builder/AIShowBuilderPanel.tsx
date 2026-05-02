@@ -9,7 +9,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info, Pencil, MousePointerSquareDashed, ArrowRightCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProjectStore } from '@/store/useProjectStore';
-import { appendShowPlan, resumeOffsetFor } from '@/lib/aiShowBuilder/continueShowPlan';
+import { appendShowPlan, resumeOffsetFor, resumeOffsetAtCue } from '@/lib/aiShowBuilder/continueShowPlan';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -57,6 +58,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
   const [reviewing, setReviewing] = useState(false);
   const [continuationPrompt, setContinuationPrompt] = useState('');
   const [continuing, setContinuing] = useState(false);
+  const [anchorCueId, setAnchorCueId] = useState<string>('__last__');
   const positionsCount = useProjectStore((s) => s.positions.length);
   const selectedCount = useProjectStore((s) => s.selectedPositionIds.length);
   const selectAllPositionsInStore = useCallback(() => {
@@ -195,7 +197,16 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     }
   }, [plan, validation, onApplied]);
 
-  const resumeAt = plan ? resumeOffsetFor(plan) : 0;
+  const usingAnchor = anchorCueId !== '__last__';
+  const resumeAt = plan
+    ? (usingAnchor ? resumeOffsetAtCue(plan, anchorCueId) : resumeOffsetFor(plan))
+    : 0;
+
+  // Cues ordenados por tempo para o seletor de âncora.
+  const sortedCues = useMemo(() => {
+    if (!plan) return [];
+    return [...plan.timelineItems].sort((a, b) => a.startTime - b.startTime);
+  }, [plan]);
 
   const handleContinue = useCallback(async () => {
     if (!plan) return;
@@ -207,15 +218,22 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     setContinuing(true);
     try {
       const seed = (variation + 1) ^ Math.floor(resumeAt);
+      const anchorLabel = usingAnchor
+        ? sortedCues.find((c) => c.id === anchorCueId)?.label ?? 'cue selecionado'
+        : 'último cue';
       const { plan: addition, fellBack, providerId } = await generateShowPlanWithProviderDetailed({
-        prompt: `Continuação a partir de ${resumeAt.toFixed(1)}s do show "${plan.title}". ${value}`,
+        prompt: `Continuação a partir de ${resumeAt.toFixed(1)}s (após ${anchorLabel}) do show "${plan.title}". ${value}`,
         site,
         variationSeed: seed,
       });
-      const merged = appendShowPlan(plan, addition, { gap: 1 });
+      const merged = appendShowPlan(plan, addition, {
+        gap: 1,
+        anchorCueId: usingAnchor ? anchorCueId : undefined,
+      });
       setPlan(merged);
       setVariation(seed);
       setContinuationPrompt('');
+      setAnchorCueId('__last__');
       if (fellBack) toast.warning('IA remota indisponível — coreografia continuada via gerador local.');
       else toast.success(`Coreografia estendida via ${providerId} (+${addition.duration.toFixed(0)}s).`);
     } catch (e) {
@@ -223,7 +241,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     } finally {
       setContinuing(false);
     }
-  }, [plan, continuationPrompt, site, variation, resumeAt]);
+  }, [plan, continuationPrompt, site, variation, resumeAt, anchorCueId, usingAnchor, sortedCues]);
 
 
   return (
@@ -370,9 +388,31 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
               </Badge>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Adiciona um novo trecho ao final do show, mantendo tudo o que já
-              foi criado. Os tempos do trecho novo começam após o último cue.
+              Adiciona um novo trecho ao show. Por padrão começa após o último
+              cue, mas você pode ancorar em qualquer cue específico da timeline.
             </p>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground shrink-0">Ancorar em:</span>
+              <Select value={anchorCueId} onValueChange={setAnchorCueId} disabled={continuing}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Último cue" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="__last__">
+                    Último cue ({resumeOffsetFor(plan).toFixed(1)}s)
+                  </SelectItem>
+                  {sortedCues.map((cue) => {
+                    const end = cue.startTime + (cue.duration ?? 0);
+                    return (
+                      <SelectItem key={cue.id} value={cue.id}>
+                        {cue.startTime.toFixed(1)}s · {cue.label || cue.type}
+                        {cue.duration ? ` → ${end.toFixed(1)}s` : ''}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
             <Textarea
               value={continuationPrompt}
               onChange={(e) => setContinuationPrompt(e.target.value)}
