@@ -594,7 +594,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
                           “{entry.prompt}”
                         </div>
                       </div>
-                      {idx === 0 && (
+                      {idx === 0 ? (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -605,6 +605,18 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
                         >
                           <Undo2 className="h-3 w-3" />
                           Undo
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRestoreToEntry(entry.id)}
+                          disabled={continuing}
+                          className="h-6 px-2 text-[10px] gap-1 shrink-0"
+                          title="Restaurar plano até antes desta continuação (descarta as posteriores)"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          Restaurar
                         </Button>
                       )}
                     </div>
