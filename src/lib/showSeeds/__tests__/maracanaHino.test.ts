@@ -99,7 +99,7 @@ describe('Maracanã Hino · pipeline genericity', () => {
   it('simulationDryRun fires every cue and reports zero interlock breaches', () => {
     const dry = simulationDryRun(sp);
     expect(dry.cuesFired).toBe(sp.pyroCues.length);
-    expect(dry.interlockBreaches).toBe(0);
+    expect(dry.interlockBreaches).toEqual([]);
     expect(dry.peakConcurrentBurns).toBeGreaterThan(0);
   });
 });
