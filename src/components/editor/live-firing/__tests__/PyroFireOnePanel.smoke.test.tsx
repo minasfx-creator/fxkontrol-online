@@ -13,6 +13,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, cleanup } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 
 // jsdom does not implement these — stub before importing the panel.
 beforeEach(() => {
