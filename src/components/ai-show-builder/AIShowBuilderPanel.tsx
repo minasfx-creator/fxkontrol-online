@@ -74,6 +74,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
   const [continuing, setContinuing] = useState(false);
   const [anchorCueId, setAnchorCueId] = useState<string>('__last__');
   const [extensionHistory, setExtensionHistory] = useState<ExtensionHistoryEntry[]>([]);
+  const [redoStack, setRedoStack] = useState<Array<{ entry: ExtensionHistoryEntry; nextPlan: ShowPlan }>>([]);
   const [showHistory, setShowHistory] = useState(false);
   const positionsCount = useProjectStore((s) => s.positions.length);
   const selectedCount = useProjectStore((s) => s.selectedPositionIds.length);
