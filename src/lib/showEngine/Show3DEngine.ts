@@ -59,6 +59,10 @@ export class Show3DEngine {
   private compiled: CompiledTimeline | null = null;
   private graph: SceneGraph | null = null;
   private showTime = 0;
+  private playing = false;
+  private playRate = 1;
+  private playLoop = false;
+  private playbackListeners = new Set<(s: PlaybackSnapshot) => void>();
 
   // Frame metrics
   private lastFrameAt = 0;
