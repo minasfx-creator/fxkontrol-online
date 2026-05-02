@@ -282,6 +282,27 @@ export class Show3DEngine {
     return this.playing;
   }
 
+  /**
+   * Mark the engine as "playing" without starting the internal RAF advance.
+   * Used by `useShow3DEngineSync` when an external clock (timelineClock /
+   * audio master) is driving `showTime` via explicit `seek()` calls. The
+   * playback snapshot still emits `playing: true` so transport overlays
+   * reflect what the operator sees.
+   *
+   * Calling `play()` afterwards re-enables internal auto-advance and turns
+   * external-mirror mode off.
+   */
+  setPlayingMirror(playing: boolean): void {
+    this.externalClockDriven = playing;
+    if (this.playing !== playing) {
+      this.playing = playing;
+      this.emitPlayback();
+    } else if (playing) {
+      // Same flag, but ensure listeners get a refreshed snapshot for UI sync.
+      this.emitPlayback();
+    }
+  }
+
   getShowTime(): number {
     return this.showTime;
   }
