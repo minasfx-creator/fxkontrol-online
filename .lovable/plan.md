@@ -1,135 +1,131 @@
-# Plano · Go-Live Center + Pacotes SaaS
 
-## Objetivo
+# Plano de Implantação · FX KONTROL (derivado do orçamento JOI 02/05/2026)
 
-Transformar o roadmap dos 90 dias em produto vendável agora. O "Go-Live Center" hoje é só uma promessa nos textos — vou torná-lo o coração da demo: checklist com regras GO/NO-GO reais, anexos de evidência, signoffs, runbook de rollback e exportação de relatório.
+Estado atual confirmado no código:
+- `ReadinessEvaluator` retorna `BLOCKED` enquanto `VerificationEngine` falha ou houver erros de hardware.
+- `unifiedHardwareRegistry` reporta 1/9 adapters online (resto `not_integrated`/`simulated`).
+- `real_only_mode = true` (default) — telemetria de adapter sem handshake é dropada por `realOnlyGate`.
+- `safety_gate_strict = true` em produção, mas Modo Testes (`src/_quarantine/safety/`) tem shims neutralizados.
+- ShowPlan canônico, mas `sp.hardwareConfig.modules.length === 0` força `READY_FOR_SIMULATION`.
 
-A página /strategy continua sendo o GTM hub. /go-live é a tela operacional vendável: ela é o que o operador técnico vai usar todo dia, e o que sustenta os pacotes Previs / LiveOps / Enterprise.
+A meta é caminhar `BLOCKED → READY_FOR_SIMULATION → READY_FOR_EXPORT → READY_FOR_HARDWARE_SYNC → LIVE_READ_ONLY` sem violar nenhuma regra core (E-STOP <50ms, AI nunca arma/dispara, simulação ≠ disparo real, hierarquia de design).
 
-## Escopo da rodada (R3 Pass 3)
+---
 
-### 1. Página `/go-live` (sidebar Office, ícone ShieldCheck)
+## Fase 0 · Debug e Integração Básica  (semana 1–2)
+
+Objetivo: sair de `BLOCKED` e atingir `READY_FOR_SIMULATION` estável.
+
+Entregas:
+1. **Diagnóstico consolidado**
+   - Painel `/dev/readiness-audit` que renderiza `verificationEngine.run()` + `readinessEvaluator.evaluate()` + `unifiedHardwareRegistry.getSystemHealth()` lado a lado, com `Provenance` de cada um dos 9 adapters.
+   - Export JSON do snapshot (alimenta o relatório PDF da rodada de Go-Live).
+2. **Triagem dos 8/9 adapters offline**
+   - Para cada adapter (`FXK16ModuleAdapter`, `ArduinoNanoAdapter`, `ArtNetNodeAdapter`, `BatteryMonitorAdapter`, `DMXUniverseAdapter`, `FireOneProfileAdapter`, `MuxReaderAdapterCD4051`, `RelayBankAdapter32`, `ShiftRegisterAdapter74HC595`): classificar como (a) sem hardware presente → manter `not_integrated` honesto; (b) hardware presente sem handshake → roteiro de pareamento; (c) bug no adapter.
+   - Garantir que (a) e (b) **não** emitam telemetria sintética com `dev_hardware_simulator=false` (regra Honest Hardware Layer).
+3. **FXK16 como módulo de referência**
+   - Validar fluxo USB e BLE pelos wizards `/pairing/usb` e `/pairing/ble` já existentes; persistir em `portRegistry`; confirmar handshake via `fxk16BleHandshake` e `useFXK16Bridge`.
+   - Smoke test: `useFXK16Commands.ping()` retornando `CommandResponse.ok` com 1 dispositivo real ou emulador `src/dev/fxk16/fxk16AsciiEmulator`.
+4. **Limpar warnings de Provenance**
+   - Adapters não conectados saem do dashboard de "erros" e entram numa tabela "Não integrado (esperado)" — separação visual exigida pela camada Honesty.
+5. **Critério de saída**
+   - `readinessEvaluator.evaluate().status === 'READY_FOR_SIMULATION'` em sessão limpa (nenhum hardware real, simulator OFF).
+   - 0 erros em `VerificationEngine`, warnings só sobre conteúdo do ShowPlan.
+
+---
+
+## Fase 1 · Readiness para Design de Show  (semana 3–5)
+
+Objetivo: criar e validar shows completos em `simulation` sem hardware, atingindo `READY_FOR_EXPORT`.
+
+Entregas:
+1. **Show Libertadores como golden show**
+   - Seed em `src/lib/showSeeds/libertadores.ts`: 32 pontos altos, 32 baixos, cometas, posicionamento via `PlannedPosition` (YZX HPR), efeitos via `PlannedTimelineItem`.
+   - Validador roda `ShowPlanValidationResult` antes de gravar.
+2. **Loop simulação = execução**
+   - `play` em workMode=`simulation` toca a coreografia 100% — partícula GPGPU, smoke shader, blackbody, com `safetyGate.anyEnforced` respeitando workMode (já implementado em Simulation Guard Defense).
+   - Visual idêntico ao que será exportado: shaders cinema + lens flare + halation já estão no `render_ultra/`.
+3. **Especificações técnicas exportáveis**
+   - `inspect_showplan` → BoM (calibres, contagens, gradientes VDL), diagrama de sequenciamento (CSV + PDF via `pdfRenderer`), pinout proposto por módulo FXK16/74HC595.
+   - Reaproveita `vdlEffectMapper` (já com saturação de calibre validada nos testes da rodada anterior).
+4. **Export honesto**
+   - FireOne `.fdb`-like via adapter existente; Skybrush ZIP com `_FXK_DISCLAIMER.txt` (claim `marketing_hypothesis`).
+   - `ExportCoordinator` em modo Testes vira advisory (já consolidado), mas em produção exige `READY_FOR_EXPORT`.
+5. **Critério de saída**
+   - Show Libertadores gera PDF técnico + export FireOne + export Skybrush sem nenhum erro de Verification.
+   - `readinessEvaluator.evaluate().status === 'READY_FOR_EXPORT'`.
+
+---
+
+## Fase 2 · Expansão de Hardware e Redundância  (semana 6–9)
+
+Objetivo: integrar hardware físico real, atingir `READY_FOR_HARDWARE_SYNC` e operar com segurança em `LIVE_READ_ONLY`.
+
+Entregas:
+1. **Frota FXK16 multi-módulo**
+   - `DeviceAggregator` já agrupa multi-transport; expandir UI `/dev/real-discovery` para mostrar fila de módulos pareados, alias unificados, `linkMode` persistido (single/dual/broadcast).
+   - Auto-fallback de transport via 3 falhas → quarentena (já implementado, expor métricas).
+2. **Hardware auxiliar**
+   - `74HC595` shift register, `CD4051` mux reader e `RelayBank32` ganham handshake real ou ficam `not_integrated` declarado; nada de simulação silenciosa.
+   - `BatteryMonitorAdapter` exigido para sair de `READY_FOR_SIMULATION` (`low_battery_alarm` bloqueia sync — já implementado).
+3. **Art-Net / DMX produção**
+   - `artNetNodeAdapter.link.degraded` deve ser `false`; aplicar preset `dmxTimingHarness` `safe`/`standard` e medir packet loss real no console `DMXBroadcastDiagnostics`.
+   - Patch MA3/GMA2 validado em `/features/artnet`.
+4. **Safety + redundância**
+   - Quarentena de safety **só** em Modo Testes; produção rearma `safetyGate.enableAll()` (regra `safety_gate_strict`).
+   - Continuity Check antes de qualquer ARM, com latência E-STOP medida <50ms (instrumentar via `useTransportDiagnostics`).
+   - Redundância: 2× FXK16 em `linkMode='dual'` para pontos críticos do show Libertadores.
+5. **Live Read-Only**
+   - `OperationalModeGuard` em `live-read-only` durante o ensaio com hardware armado mas barramento sem dispatch (já mapeado em `_isOperationAllowed`).
+6. **Critério de saída**
+   - 9/9 adapters em estado declarado correto (`integrated` ou `not_integrated` honesto).
+   - Ensaio do show Libertadores em LIVE_READ_ONLY com telemetria contínua, 0 erros, latência E-STOP medida <50ms, audit trail 100% gravado em `SafetyAuditTrail`.
+
+---
+
+## Fase 3 · Otimização e Diferenciação  (semana 10+)
+
+Objetivo: feature work depois que a base está sólida. Sem comprometer Fases 0–2.
+
+Entregas (priorizadas, recortáveis):
+1. **Coreografia avançada**
+   - Espelhamento avançado, arcos paramétricos, biblioteca VDL expandida (mantendo os 25 colors canônicos).
+   - `aiShowBuilder` melhora `ShowPlan` antes de tocar no `useProjectStore` (já é o contrato), com guardrails do `aiGuardrail.ts` impedindo qualquer ação física.
+2. **Drone swarm sincronizado**
+   - Pipeline VVIZ + Skybrush export com FAA Part 107 já validado client-side; agora plugar `swarmgpt` (Hungarian + FPS sampling, flags já existentes) na timeline da pirotecnia.
+   - DockTwin pilot (telemetria mock primeiro, real depois).
+3. **ML para style transfer**
+   - `learn_style` extraindo timing/density patterns de shows passados; sugestões aparecem como "ghosts" na timeline, nunca aplicadas sem confirm humano.
+4. **Risco em tempo real**
+   - Weather-vis crítico (<1km) já tripa `useFleetStore.setShowState`; expandir para previsão (vento, umidade) via Google Geo Intelligence edge function existente.
+5. **Pacotes SaaS**
+   - Cards Previs / LiveOps / Enterprise em `/comercial`, CTAs → demo form. Sem checkout real nesta fase (deferido).
+
+---
+
+## Detalhes técnicos transversais (válido para todas as fases)
+
+- **AI**: nunca pode armar/disparar/energizar/mudar workMode. Novos endpoints passam por `aiGuardrail.ts` + `uiCommandGateway`. JOI continua "secretária", nunca executora.
+- **Fluxo de comando**: UI → `uiCommandGateway` → `CommandBus` → `SafetyStateMachine` → `FieldBus`. Zero atalho.
+- **Persistência**: Lovable Cloud — qualquer tabela nova segue padrão `demo_sessions` (owner via uuid, RLS owner-scoped + admin read-all, sem FK para `auth.users`, `gen_random_uuid()`).
+- **Design**: hierarquia canônica (safety > consolidado > WCAG > brief > estética). Tokens `--field-*`, `--status-*`, `--state-*`, `.ds-*`. Rejeitados permanecem rejeitados (#121214 / #00FFFF puro / laranja-CTA chrome).
+- **Sem barrels** em módulos de reliability/safety/hardware. Imports diretos.
+- **Honesty Layer**: nenhuma rota nova pode ler `IngestionLayer` sem provenance verificada com `real_only_mode=true`.
+- **E-STOP global**: `GlobalEStopButton` permanece visível (z-9999) em todas as rotas exceto `/command`.
+- **Testes**: cada fase entrega com Vitest verde (atual: 849/849). Novos módulos exigem teste para path crítico.
+- **Memória**: ao final de cada fase, atualizar `mem://index.md` com referências a memos novas (ex.: `mem://implantacao/fase-0-debug-readiness`).
+
+---
+
+## Sequência de execução proposta
 
 ```text
-┌─ topbar: show name · platform badge · GO/NO-GO chip ──────────┐
-│ left 280:                  center:                  right 320:│
-│  Show selector             Checklist (blockers +    Signoffs  │
-│  Bug list                   non-blockers, agrupados Engenharia│
-│  Critical risks             por seção do PDF)       Operação  │
-│                                                     Cliente   │
-│  ─ rollback runbook         Evidence column:                  │
-│    + validation status        prints, logs, vídeo, sig        │
-│                                                               │
-│ bottom: GO / NO-GO panel + reasons + "Export report (PDF)"    │
-└───────────────────────────────────────────────────────────────┘
+F0  ─►  F1  ─►  F2  ─►  F3
+ │       │       │       │
+ │       │       │       └─ paralelizável depois de F2 estável
+ │       │       └─ exige hardware físico em mesa
+ │       └─ 100% software, paralelo a aquisição de hardware
+ └─ pré-requisito absoluto, bloqueia tudo
 ```
 
-### 2. Modelo de dados (Lovable Cloud)
-
-Quatro tabelas com RLS owner-scoped + admin read-all (mesmo padrão de demo_sessions):
-
-- `go_live_checklists` — id, owner, show_name, venue, scheduled_at, platform_target, status (`draft|in_review|go|no_go|completed`), no_go_reasons jsonb
-- `go_live_items` — checklist_id, section, label, is_blocker, is_critical, status (`pending|pass|fail|n_a|mitigated`), evidence_required boolean, notes
-- `go_live_evidence` — item_id, kind (`screenshot|log|video|signature|other`), url, sha256, captured_at, captured_by
-- `go_live_signoffs` — checklist_id, role (`engineering|operations|client`), signer_name, signer_email, signed_at, signature_text
-
-Bucket de storage privado `go-live-evidence` com RLS por checklist owner.
-
-### 3. Engine GO/NO-GO (`src/lib/goLiveEngine.ts`)
-
-Função pura `evaluateChecklist(items, signoffs, openCriticalBugs)` retorna:
-
-```ts
-{ result: 'GO' | 'NO_GO', reasons: NoGoReason[] }
-```
-
-Aplica todas as regras do brief:
-- bloqueador sem `pass` → NO-GO
-- bloqueador `pass` com `evidence_required` mas sem evidência → NO-GO
-- rollback runbook não validado → NO-GO
-- signoff Engenharia ou Operação faltando → NO-GO
-- bug crítico aberto → NO-GO
-- item crítico `fail` sem `mitigated=true` → NO-GO
-
-100% determinístico. Testável.
-
-### 4. Seed do checklist (PDF do brief virou dados)
-
-`src/lib/goLiveSeed.ts` com seções:
-- Plataforma & Compatibilidade (links para `/ios-readiness`)
-- Hardware Conectado (handshake, ACK em dummy load, heartbeat 5min)
-- DMX/Art-Net Output (universos, refresh rate, timing budget)
-- Pirotecnia (FXK16 ARM/DISARM, continuity check, exclusion zones)
-- Drones (FAA 120m AGL, spacing 2m, swarm health)
-- Segurança (E-STOP <50ms, lockout visual, audit log)
-- Rollback (runbook responsável + validado pós-reversão)
-- Signoffs (Engenharia, Operação, Cliente)
-
-Cada item marca `is_blocker`, `is_critical`, `evidence_required`.
-
-### 5. Painel de evidências
-
-Por item: anexar screenshot/log/vídeo/assinatura. Upload para storage. SHA-256 client-side (Web Crypto) gravado para auditoria. Preview inline (img/video) ou link (log/sig).
-
-### 6. Runbook de rollback
-
-Componente dedicado com lista de passos editáveis, responsável por passo, e botão "Validar pós-reversão" que grava timestamp + signer. Sem isso, GO-Live engine retorna NO-GO.
-
-### 7. Relatório PDF (reusa `src/lib/pdfRenderer.ts`)
-
-`buildGoLiveReport(checklist, items, evidence, signoffs, evaluation)` gera PDF com:
-- Capa: show, venue, data, GO/NO-GO + reasons
-- Resumo: contagem pass/fail/pending por seção
-- Lista completa de itens com status e evidências (thumbs ou hashes)
-- Signoffs com nome/email/timestamp
-- Bug list crítica e runbook de rollback
-- Disclaimer de claim conforme `src/lib/claims.ts`
-
-### 8. Pacotes SaaS na landing comercial
-
-Em `/pricing` (ou seção em `/comercial`), três cards (Previs / LiveOps / Enterprise) com bullets exatos do brief e CTA "Solicitar demo" → `/comercial#demo-form`. Sem checkout real (sem Stripe nesta rodada — pricing inicial vem na rodada 4).
-
-### 9. Polish + bug hunt (continua linha do Pass 2)
-
-- Substituir tabs do Strategy por design system `.ds-segment-*-bar` (hoje usa botões custom).
-- Converter `useState` arrays grandes (Strategy/AssetLibrary) para `useMemo` onde for derivado puro.
-- Audit visual em `/strategy` viewport mobile 390×844 — cards muitos provavelmente quebram.
-- Encontrar 3 bugs adicionais por `rg` em padrões comuns (setInterval sem clear, useEffect sem deps array, missing key prop).
-
-## Detalhes técnicos
-
-**Migration única** com 4 tabelas + bucket + RLS + trigger updated_at. Segue padrão das migrations existentes (`gen_random_uuid()`, `auth.uid()`, sem FK para `auth.users`, owner via uuid).
-
-**Sem barrels** para o módulo go-live (regra de reliability). Imports diretos.
-
-**Componentes em** `src/components/golive/`:
-- `GoLiveChecklist.tsx` — render itens agrupados
-- `GoLiveItemRow.tsx` — toggle status + abre painel evidência
-- `EvidenceUploader.tsx` — file input + SHA-256 + upload
-- `RollbackRunbook.tsx`
-- `SignoffPanel.tsx`
-- `GoNoGoPanel.tsx` — chamada para `evaluateChecklist`, mostra reasons
-- `BugListPanel.tsx`
-
-**Página** `src/pages/GoLive.tsx` orquestra dentro de `MainLayout`. Adiciona rota em `App.tsx` e item na sidebar (Office). Sem auto-arm, sem comando físico — apenas leitura de status + entrada de evidências/signoffs (consistente com hub GTM).
-
-**Relatório PDF** com `pdf-lib` (já instalado). Usa fontes Helvetica/Courier. Vantablack na capa. Cyan/Amber/Red conforme tokens canônicos. Disclaimer claim em rodapé toda página.
-
-**E-STOP global continua visível** (regra core) — não é escondido em /go-live.
-
-## Fora de escopo (próxima rodada)
-
-- Captura automática de evidências do hardware real (vai exigir adapters honestos por família — pesado).
-- DockTwin telemetria mock — fica para rodada seguinte se você quiser priorizar.
-- Stripe checkout dos pacotes — deixar como CTA até validar pricing nos pilots.
-- Migração física dos `src/features/` (F5.B continua adiada).
-
-## Ordem de entrega
-
-1. Migration (tabelas + bucket + RLS).
-2. Engine + seed + tipos.
-3. Componentes + página `/go-live` + sidebar.
-4. PDF report.
-5. Pacotes SaaS na landing.
-6. Polish/bugs (Pass 2 continuation).
-7. Memory update.
+Próxima ação ao aprovar: começar Fase 0 pelo painel `/dev/readiness-audit` e pela triagem dos 8 adapters offline, sem tocar em nada de safety nem em comportamento de produção.

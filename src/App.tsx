@@ -53,6 +53,7 @@ const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage
 const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")));
 const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
 const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
+const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")));
 const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
@@ -186,6 +187,10 @@ function App() {
                     <Route path="/dev/design-system" element={<DesignSystemShowcase />} />
                     {/* Live demo of <EditorShell> w/ DS components — pure presentation. */}
                     <Route path="/dev/editor-shell" element={<EditorShellPreview />} />
+                    {/* Phase 0 deployment plan instrument — read-only consolidated
+                        view of VerificationEngine + ReadinessEvaluator + Hardware
+                        Registry with adapter provenance. No commands sent. */}
+                    <Route path="/dev/readiness-audit" element={<ReadinessAudit />} />
                     {/* Public alias — promoted shell route. */}
                     <Route path="/editor-ds" element={<EditorShellPreview />} />
                     {/* Public legal pages — required by Paddle (Merchant of Record) and must be crawlable without auth. */}
