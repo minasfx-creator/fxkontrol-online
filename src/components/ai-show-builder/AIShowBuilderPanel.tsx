@@ -261,6 +261,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
         diff: diffShowPlan(plan, merged),
       };
       setExtensionHistory((h) => [entry, ...h].slice(0, 20));
+      setRedoStack([]);
       setPlan(merged);
       setVariation(seed);
       setContinuationPrompt('');
