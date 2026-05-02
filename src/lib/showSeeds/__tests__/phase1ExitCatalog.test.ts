@@ -23,7 +23,8 @@ import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { simulationDryRun } from '../simulationDryRun';
 
 interface CueLike {
-  startTime: number;
+  time?: number;
+  startTime?: number;
   module?: string;
   channel?: number;
 }
@@ -31,8 +32,13 @@ interface CueLike {
 function fingerprint(plan: ReturnType<typeof GOLDEN_SHOW_CATALOG[number]['build']>): string {
   const cues = (plan.pyroCues as unknown as CueLike[])
     .slice()
-    .sort((a, b) => a.startTime - b.startTime)
-    .map((c) => `${c.startTime.toFixed(3)}|${c.module ?? '-'}|${c.channel ?? '-'}`)
+    .map((c) => ({
+      t: Number(c.time ?? c.startTime ?? 0),
+      m: c.module ?? '-',
+      ch: c.channel ?? '-',
+    }))
+    .sort((a, b) => a.t - b.t || String(a.m).localeCompare(String(a.m)))
+    .map((c) => `${c.t.toFixed(3)}|${c.m}|${c.ch}`)
     .join(';');
   const mods = plan.hardwareConfig.modules
     .map((m: { id: string }) => m.id)
