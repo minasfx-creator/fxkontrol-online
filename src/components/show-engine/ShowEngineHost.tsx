@@ -118,7 +118,7 @@ export default function ShowEngineHost({
       )}
       {showDiagnostics && <EngineDiagnosticsPanel />}
       {state === 'ready' && !hideSegmentToolbar && <ViewportSegmentToolbar />}
-      {state === 'ready' && !hideTransport && plan && (
+      {state === 'ready' && !hideTransport && !externalClock && plan && (
         <PlaybackTransportOverlay
           snapshot={playback}
           onPlay={() => engineRef.current?.play()}
