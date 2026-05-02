@@ -98,6 +98,26 @@ export class ArtNetNodeAdapter implements HardwareAdapter<ArtNetNodeState> {
       link: { protocol: 'Art-Net 4', connected: false, latency_ms: 0, packet_loss: 0, degraded: false, last_packet: 0 },
       artpoll_responses: 0,
     };
+    markHandshakeLost(this._provenance);
+  }
+
+  /**
+   * Promote to LIVE READ-ONLY after a verified ArtPollReply.
+   * Called by `discoveryRegistryBridge` — never by UI directly.
+   */
+  markHandshakeOk(host: string): void {
+    this._connected = 'connected';
+    this._state.node_ip = host;
+    this._state.link.connected = true;
+    this._state.link.last_packet = Date.now();
+    markHandshakeOk(this._provenance, 'ethernet_udp');
+  }
+
+  /** Demote to NOT_INTEGRATED on lost / no replies. */
+  markHandshakeLost(): void {
+    this._connected = 'disconnected';
+    this._state.link.connected = false;
+    markHandshakeLost(this._provenance);
   }
 }
 
