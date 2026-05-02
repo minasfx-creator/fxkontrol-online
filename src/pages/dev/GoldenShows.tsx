@@ -54,10 +54,28 @@ function evaluate(entry: GoldenShowEntry): SeedRow {
 }
 
 export default function GoldenShowsPage() {
+  const { toast } = useToast();
+  const [busyId, setBusyId] = useState<string | null>(null);
   const rows = useMemo(() => GOLDEN_SHOW_CATALOG.map(evaluate), []);
   const allReady = rows.every(
     (r) => r.errors === 0 && (r.level === 'READY_FOR_EXPORT' || r.level === 'READY_FOR_FIELD'),
   );
+
+  const handleExport = async (entry: GoldenShowEntry) => {
+    setBusyId(entry.id);
+    try {
+      await downloadGoldenShowExportZip(entry.build());
+      toast({ title: 'Bundle pronto', description: `${entry.name} · .fir + CSV + BoM + disclaimer.` });
+    } catch (err) {
+      toast({
+        title: 'Falha no export',
+        description: err instanceof Error ? err.message : String(err),
+        variant: 'destructive',
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
     <div className="min-h-dvh bg-background text-foreground p-6">
