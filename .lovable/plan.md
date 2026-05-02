@@ -140,3 +140,5 @@ Próxima ação ao aprovar: começar Fase 0 pelo painel `/dev/readiness-audit` e
 - ⏳ Próximos: equivalente para Art-Net (ArtPollReply → markHandshakeOk) e Battery-12V (piggy-back no controlador host).
 - ✅ ArtNetNodeAdapter agora tem API pública `markHandshakeOk(host)` / `markHandshakeLost()` e a bridge promove no primeiro ArtPollReply real (via `mdnsArtnetDiscoverer.watch`); demote quando todos os hosts somem.
 - ✅ DMXUniverseAdapter agora tem API pública `markHandshakeOk(label)` / `markHandshakeLost()` e a bridge promove no primeiro device autorizado com `family === 'dmx'` via `webSerialDiscoverer.watch`; demote quando todos os ports DMX somem.
+- ✅ BatteryMonitorAdapter (`battery-12v`, `requiredForSync=true`) ganhou `markHandshakeOk/Lost` e é promovido **piggy-back** no handshake do FXK16 (host controller); read-only por construção (`canWrite=false`). Demote junto com o FXK16.
+- ⏳ Próximos: handshake real para `mux-cd4051-dual` e `sr-74hc595-chain` (também piggy-back FXK16) — opcionais, não são `requiredForSync`.

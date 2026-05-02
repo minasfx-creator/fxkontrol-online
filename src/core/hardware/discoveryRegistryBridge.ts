@@ -24,6 +24,7 @@ import { logger } from '@/lib/logger';
 import { fxk16ModuleAdapter } from './adapters/FXK16ModuleAdapter';
 import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
 import { dmxUniverseAdapter } from './adapters/DMXUniverseAdapter';
+import { batteryMonitorAdapter } from './adapters/BatteryMonitorAdapter';
 import { unifiedHardwareRegistry } from './UnifiedHardwareRegistry';
 import { subscribeFXK16Bridge } from '@/hooks/useFXK16Bridge';
 import { mdnsArtnetDiscoverer } from '@/core/discovery/MdnsArtnetDiscoverer';
@@ -73,14 +74,18 @@ export function startDiscoveryRegistryBridge(): void {
     if (verified) {
       const transport = mapTransport(status.transport);
       fxk16ModuleAdapter.markHandshakeOk(transport);
+      // Battery 12V telemetry is piggy-back on the FXK16 host controller —
+      // promote it on the same handshake (read-only; canWrite=false).
+      batteryMonitorAdapter.markHandshakeOk(transport);
       logger.info(
-        `[discoveryBridge] FXK16 promoted to LIVE READ-ONLY (transport=${transport})`,
+        `[discoveryBridge] FXK16 + Battery-12V promoted to LIVE READ-ONLY (transport=${transport})`,
       );
       try { unifiedHardwareRegistry.startPolling(1000); }
       catch (err) { logger.warn('[discoveryBridge] startPolling failed', err); }
     } else {
       fxk16ModuleAdapter.markHandshakeLost();
-      logger.info('[discoveryBridge] FXK16 demoted to NOT_INTEGRATED');
+      batteryMonitorAdapter.markHandshakeLost();
+      logger.info('[discoveryBridge] FXK16 + Battery-12V demoted to NOT_INTEGRATED');
     }
   });
 

@@ -1,6 +1,6 @@
 ---
 name: Discovery → Registry Bridge (Fase 0)
-description: discoveryRegistryBridge promove FXK16 (USB/BLE), ArtNet (UDP ArtPoll) e DMXUniverse (USB-DMX) para live_read_only no handshake real; bootado em App.tsx; idempotente; honest-hardware
+description: discoveryRegistryBridge promove FXK16 (USB/BLE), ArtNet (UDP ArtPoll), DMXUniverse (USB-DMX) e Battery-12V (piggy-back FXK16) para live_read_only no handshake real; bootado em App.tsx; idempotente; honest-hardware
 type: feature
 ---
 
@@ -29,9 +29,17 @@ Elo entre as camadas de discovery e o `unifiedHardwareRegistry`. Sem este bridge
 - Promove no PRIMEIRO port autorizado via `dmxUniverseAdapter.markHandshakeOk(label)`.
 - `_dmxSerialOnline: Set<deviceId>` rastreia ports vivos; demote quando o set esvazia.
 
+### Battery-12V (piggy-back FXK16)
+- Fonte: mesma assinatura `subscribeFXK16Bridge` — telemetria de bateria vem do mesmo controlador host.
+- Critério: idêntico ao FXK16 (verified handshake).
+- Promove via `batteryMonitorAdapter.markHandshakeOk(transport)` no mesmo edge de subida.
+- Demote junto com o FXK16 quando o link cai.
+- Read-only por construção (`canWrite=false`).
+- **Required for sync**: sim — `low_battery_alarm` bloqueia `READY_FOR_HARDWARE_SYNC`.
+
 ## Pendentes
 
-- `battery-12v`, `mux-cd4051-dual`, `sr-74hc595-chain`: piggy-back no controlador host (FXK16/Arduino) — promovem juntos quando firmware reportar VBAT/continuity.
+- `mux-cd4051-dual`, `sr-74hc595-chain`: piggy-back no controlador host — opcionais, não são `requiredForSync`. Aguardam firmware FXK16 reportar continuity por canal.
 
 ## Garantias
 
@@ -46,7 +54,8 @@ Elo entre as camadas de discovery e o `unifiedHardwareRegistry`. Sem este bridge
 - `src/core/hardware/adapters/FXK16ModuleAdapter.ts` — `markHandshakeOk(transport)` / `markHandshakeLost()`.
 - `src/core/hardware/adapters/ArtNetNodeAdapter.ts` — `markHandshakeOk(host)` / `markHandshakeLost()`.
 - `src/core/hardware/adapters/DMXUniverseAdapter.ts` — `markHandshakeOk(label?)` / `markHandshakeLost()`.
-- `src/core/hardware/discoveryRegistryBridge.ts` — orquestrador de 3 fontes.
+- `src/core/hardware/adapters/BatteryMonitorAdapter.ts` — `markHandshakeOk(transport)` / `markHandshakeLost()`.
+- `src/core/hardware/discoveryRegistryBridge.ts` — orquestrador (FXK16+Battery juntos, Art-Net e DMX independentes).
 - `src/App.tsx` — `startDiscoveryRegistryBridge()` no boot.
 
 ## Testes
@@ -54,3 +63,4 @@ Elo entre as camadas de discovery e o `unifiedHardwareRegistry`. Sem este bridge
 - `fxk16ModuleAdapter.handshake.test.ts` (5)
 - `artNetNodeAdapter.handshake.test.ts` (4)
 - `dmxUniverseAdapter.handshake.test.ts` (4)
+- `batteryMonitorAdapter.handshake.test.ts` (5)
