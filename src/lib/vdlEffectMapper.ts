@@ -214,7 +214,7 @@ export function vdlToEffectSpec(vdlText: string): VDLEffectSpec {
     familyName,
     color,
     colorSecondary,
-    caliberMM: parsed.caliberMM,
+    caliberMM: clampCaliber(parsed.caliberMM),
     tiltRad,
     headingRad: 0,
     modifiers: {
