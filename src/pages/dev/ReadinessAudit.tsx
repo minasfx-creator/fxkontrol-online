@@ -31,6 +31,7 @@ import {
   pendingRequiredAdapters,
   type AdapterTriageEntry,
 } from "@/core/hardware/adapterTriage";
+import { inspectHardware, inspectHardwareToMarkdown } from "@/core/hardware/inspectHardware";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
