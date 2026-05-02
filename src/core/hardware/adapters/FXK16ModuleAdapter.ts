@@ -137,11 +137,6 @@ export class FXK16ModuleAdapter implements HardwareAdapter<RelayBankState> {
   reset(): void {
     this._connected = 'disconnected';
     this._state = this._createDefaultState();
-  }
-
-  reset(): void {
-    this._connected = 'disconnected';
-    this._state = this._createDefaultState();
     markHandshakeLost(this._provenance);
   }
 
