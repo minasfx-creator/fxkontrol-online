@@ -43,6 +43,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import ShowPlanSanitizerPanel from "@/components/dev/ShowPlanSanitizerPanel";
 
 type Snapshot = {
   capturedAt: string;
