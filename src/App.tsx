@@ -34,6 +34,7 @@ import { isEnabled } from "@/lib/featureFlags";
 import { useRouteTracing } from "@/observability/useRouteTracing";
 // Profiler is dev-only and lazy so production rota pública doesn't ship it.
 import { useHardwareSyncLoop } from "@/hooks/useHardwareSyncLoop";
+import { startDiscoveryRegistryBridge } from "@/core/hardware/discoveryRegistryBridge";
 
 const PlaybackProfilerProvider = lazy(() =>
   import("@/core/performance/PlaybackProfilerProvider").then((m) => ({ default: m.PlaybackProfilerProvider })),
