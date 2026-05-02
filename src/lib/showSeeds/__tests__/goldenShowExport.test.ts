@@ -7,7 +7,6 @@ import JSZip from 'jszip';
 import { GOLDEN_SHOW_CATALOG } from '../catalog';
 import {
   buildGoldenShowExportBundle,
-  buildGoldenShowExportZip,
   defaultGoldenShowExportFilename,
   GOLDEN_SHOW_EXPORT_FILES,
 } from '../goldenShowExport';
