@@ -75,6 +75,13 @@ export class Show3DEngine {
   private playing = false;
   private playRate = 1;
   private playLoop = false;
+  /**
+   * When true, the *external* clock (timelineClock / audio master) is driving
+   * `showTime` via `seek()` calls and the engine's internal RAF must NOT
+   * auto-advance. The play snapshot still reports `playing: true` so the
+   * transport overlay reflects reality.
+   */
+  private externalClockDriven = false;
   private playbackListeners = new Set<(s: PlaybackSnapshot) => void>();
 
   // Frame metrics
@@ -247,6 +254,8 @@ export class Show3DEngine {
     if (typeof opts.rate === 'number' && opts.rate > 0) this.playRate = opts.rate;
     if (typeof opts.loop === 'boolean') this.playLoop = opts.loop;
     if (this.showTime >= this.compiled.duration) this.showTime = 0;
+    // Calling play() means "engine owns the clock again" — drop external mirror.
+    this.externalClockDriven = false;
     this.playing = true;
     this.emitPlayback();
   }
@@ -273,6 +282,27 @@ export class Show3DEngine {
 
   isPlaying(): boolean {
     return this.playing;
+  }
+
+  /**
+   * Mark the engine as "playing" without starting the internal RAF advance.
+   * Used by `useShow3DEngineSync` when an external clock (timelineClock /
+   * audio master) is driving `showTime` via explicit `seek()` calls. The
+   * playback snapshot still emits `playing: true` so transport overlays
+   * reflect what the operator sees.
+   *
+   * Calling `play()` afterwards re-enables internal auto-advance and turns
+   * external-mirror mode off.
+   */
+  setPlayingMirror(playing: boolean): void {
+    this.externalClockDriven = playing;
+    if (this.playing !== playing) {
+      this.playing = playing;
+      this.emitPlayback();
+    } else if (playing) {
+      // Same flag, but ensure listeners get a refreshed snapshot for UI sync.
+      this.emitPlayback();
+    }
   }
 
   getShowTime(): number {
@@ -341,7 +371,7 @@ export class Show3DEngine {
     // Auto-advance show time when playing. Driven by the same RAF that
     // renders, so cues fire on the very frame their startTime is crossed
     // — no separate timer, no drift.
-    if (this.playing && this.compiled) {
+    if (this.playing && this.compiled && !this.externalClockDriven) {
       const next = this.showTime + delta * this.playRate;
       if (next >= this.compiled.duration) {
         if (this.playLoop) {

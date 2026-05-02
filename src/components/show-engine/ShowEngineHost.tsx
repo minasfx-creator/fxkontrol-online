@@ -10,6 +10,7 @@ import RecoverWebGLOverlay from './overlays/RecoverWebGLOverlay';
 import EngineDiagnosticsPanel from './overlays/EngineDiagnosticsPanel';
 import ViewportSegmentToolbar, { type ViewportSegmentToolbarOrientation } from '@/features/viewport-tools/components/ViewportSegmentToolbar';
 import PlaybackTransportOverlay from './overlays/PlaybackTransportOverlay';
+import { useShow3DEngineSync } from '@/hooks/useShow3DEngineSync';
 
 interface Props {
   plan: ShowPlan | null;
@@ -27,6 +28,14 @@ interface Props {
   autoPlay?: boolean;
   /** Hide the bottom Play/Pause/Stop transport overlay. Default: false. */
   hideTransport?: boolean;
+  /**
+   * When true, the engine follows `useProjectStore.currentTime` (driven by
+   * `timelineClock` / audio master) instead of running its own auto-advance.
+   * Required in the main editor so the 3D viewport stays locked to the audio
+   * waveform when the operator clicks Play on the timeline. When this is on,
+   * `autoPlay` and the embedded transport overlay are ignored.
+   */
+  externalClock?: boolean;
 }
 
 /**
@@ -47,6 +56,7 @@ export default function ShowEngineHost({
   hideSegmentToolbar = false,
   autoPlay = true,
   hideTransport = false,
+  externalClock = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<Show3DEngine | null>(null);
@@ -77,13 +87,21 @@ export default function ShowEngineHost({
     };
   }, []);
 
-  // Load plan whenever it changes; auto-play once ready.
+  // Load plan whenever it changes; auto-play once ready (only when the
+  // engine owns its own clock — in externalClock mode the project store
+  // drives playback via useShow3DEngineSync below).
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine || !plan) return;
     engine.loadPlan(plan);
-    if (autoPlay) engine.play();
-  }, [plan, autoPlay]);
+    if (autoPlay && !externalClock) engine.play();
+  }, [plan, autoPlay, externalClock]);
+
+  // External-clock bridge: while enabled, the project store (timelineClock /
+  // audio master) becomes the sole driver of `showTime`. The engine's
+  // internal RAF auto-advance is gated off; cues fire via explicit seek().
+  useShow3DEngineSync(engineRef, externalClock);
+
 
   return (
     <div ref={containerRef} className={`relative w-full h-full bg-[#050810] ${className ?? ''}`}>
@@ -100,7 +118,7 @@ export default function ShowEngineHost({
       )}
       {showDiagnostics && <EngineDiagnosticsPanel />}
       {state === 'ready' && !hideSegmentToolbar && <ViewportSegmentToolbar />}
-      {state === 'ready' && !hideTransport && plan && (
+      {state === 'ready' && !hideTransport && !externalClock && plan && (
         <PlaybackTransportOverlay
           snapshot={playback}
           onPlay={() => engineRef.current?.play()}
