@@ -363,6 +363,7 @@ function AdapterTable({
           <TableRow>
             <TableHead>Adapter</TableHead>
             <TableHead>Tipo</TableHead>
+            <TableHead>Triagem</TableHead>
             <TableHead>Conexão</TableHead>
             <TableHead>Modo</TableHead>
             <TableHead>Evidência</TableHead>
@@ -375,10 +376,24 @@ function AdapterTable({
             const badge = getProvenanceBadge(
               a.integrationMode as Parameters<typeof getProvenanceBadge>[0],
             );
+            const triage = getTriageEntry(a.id);
             return (
               <TableRow key={a.id}>
                 <TableCell className="font-medium">{a.label}</TableCell>
                 <TableCell className="text-xs">{a.type}</TableCell>
+                <TableCell className="text-xs">
+                  {triage ? (
+                    <Badge variant="outline" className="text-[10px]">
+                      {triage.class === "NOT_INTEGRATED_EXPECTED"
+                        ? "esperado"
+                        : triage.class === "AWAITING_HANDSHAKE"
+                          ? "aguarda handshake"
+                          : "bug"}
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </TableCell>
                 <TableCell className="text-xs">{a.connection}</TableCell>
                 <TableCell>
                   <Badge
@@ -408,5 +423,29 @@ function AdapterTable({
         </TableBody>
       </Table>
     </div>
+  );
+}
+
+function TriageActionButton({ entry }: { entry: AdapterTriageEntry }) {
+  if (entry.nextAction.kind === "route") {
+    return (
+      <Button asChild size="sm" variant="outline">
+        <Link to={entry.nextAction.path}>{entry.nextAction.label}</Link>
+      </Button>
+    );
+  }
+  if (entry.nextAction.kind === "doc") {
+    return (
+      <Button asChild size="sm" variant="ghost">
+        <a href={entry.nextAction.path} target="_blank" rel="noreferrer">
+          {entry.nextAction.label}
+        </a>
+      </Button>
+    );
+  }
+  return (
+    <span className="text-xs text-muted-foreground">
+      {entry.nextAction.label}
+    </span>
   );
 }
