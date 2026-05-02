@@ -164,6 +164,8 @@ export default function GoldenShowsPage() {
           </div>
         </Card>
 
+        <Phase1TransitionPanel />
+
         <Card className="p-4 text-xs text-muted-foreground">
           Cada linha roda <code>verificationEngine.run()</code> +{' '}
           <code>simulationDryRun()</code> + <code>inspectShowPlan()</code> sobre o
