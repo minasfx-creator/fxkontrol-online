@@ -37,6 +37,7 @@ import {
 import { downloadLibertadoresExportZip } from '@/lib/showSeeds/libertadoresExport';
 import { simulationDryRun } from '@/lib/showSeeds/simulationDryRun';
 import { useWorkMode } from '@/core/safety/workMode';
+import { verificationEngine } from '@/core/verification/VerificationEngine';
 
 export default function LibertadoresPage() {
   const { toast } = useToast();
@@ -47,6 +48,7 @@ export default function LibertadoresPage() {
   const summary = useMemo(() => summarizeLibertadores(sp), [sp]);
   const inspection = useMemo(() => inspectShowPlan(sp), [sp]);
   const dryRun = useMemo(() => simulationDryRun(sp), [sp]);
+  const verification = useMemo(() => verificationEngine.run(sp), [sp]);
   const workMode = useWorkMode();
 
   const handleDownloadPdf = async () => {
