@@ -6,7 +6,7 @@
  * useProjectStore. Inspecionável antes de aplicar.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info, Pencil, MousePointerSquareDashed, ArrowRightCircle, Loader2, Undo2, History } from 'lucide-react';
+import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info, Pencil, MousePointerSquareDashed, ArrowRightCircle, Loader2, Undo2, Redo2, History, Trash2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProjectStore } from '@/store/useProjectStore';
 import { appendShowPlan, resumeOffsetFor, resumeOffsetAtCue } from '@/lib/aiShowBuilder/continueShowPlan';
@@ -74,6 +74,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
   const [continuing, setContinuing] = useState(false);
   const [anchorCueId, setAnchorCueId] = useState<string>('__last__');
   const [extensionHistory, setExtensionHistory] = useState<ExtensionHistoryEntry[]>([]);
+  const [redoStack, setRedoStack] = useState<Array<{ entry: ExtensionHistoryEntry; nextPlan: ShowPlan }>>([]);
   const [showHistory, setShowHistory] = useState(false);
   const positionsCount = useProjectStore((s) => s.positions.length);
   const selectedCount = useProjectStore((s) => s.selectedPositionIds.length);
@@ -179,6 +180,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
       setPlan(next);
       setVariation(seed);
       setExtensionHistory([]);
+      setRedoStack([]);
       if (fellBack) {
         toast.warning('IA remota indisponível — usando gerador local como fallback.');
       } else if (providerId !== 'local-deterministic') {
@@ -259,6 +261,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
         diff: diffShowPlan(plan, merged),
       };
       setExtensionHistory((h) => [entry, ...h].slice(0, 20));
+      setRedoStack([]);
       setPlan(merged);
       setVariation(seed);
       setContinuationPrompt('');
@@ -276,10 +279,45 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     setExtensionHistory((h) => {
       if (h.length === 0) return h;
       const [last, ...rest] = h;
-      setPlan(last.prevPlan);
+      setPlan((current) => {
+        if (current) setRedoStack((r) => [{ entry: last, nextPlan: current }, ...r].slice(0, 20));
+        return last.prevPlan;
+      });
       toast.success(`Continuação revertida (${summarizeDiff(last.diff)})`);
       return rest;
     });
+  }, []);
+
+  const handleRedoExtension = useCallback(() => {
+    setRedoStack((r) => {
+      if (r.length === 0) return r;
+      const [head, ...rest] = r;
+      setPlan(head.nextPlan);
+      setExtensionHistory((h) => [head.entry, ...h].slice(0, 20));
+      toast.success(`Continuação refeita (${summarizeDiff(head.entry.diff)})`);
+      return rest;
+    });
+  }, []);
+
+  /** Restaura o snapshot prevPlan de uma entrada específica do histórico,
+   *  descartando todas as continuações posteriores a ela. */
+  const handleRestoreToEntry = useCallback((entryId: string) => {
+    setExtensionHistory((h) => {
+      const idx = h.findIndex((e) => e.id === entryId);
+      if (idx === -1) return h;
+      const target = h[idx];
+      setPlan(target.prevPlan);
+      setRedoStack([]);
+      toast.success(`Plano restaurado ao estado anterior a “${target.prompt.slice(0, 40)}”`);
+      // remove a entrada-alvo e tudo mais recente que ela (índices 0..idx).
+      return h.slice(idx + 1);
+    });
+  }, []);
+
+  const handleClearHistory = useCallback(() => {
+    setExtensionHistory([]);
+    setRedoStack([]);
+    toast.success('Histórico de extensões limpo');
   }, []);
 
 
@@ -336,7 +374,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
             </Button>
           )}
           {plan && (
-            <Button variant="ghost" onClick={() => { setPlan(null); setExtensionHistory([]); }} disabled={busy}>
+            <Button variant="ghost" onClick={() => { setPlan(null); setExtensionHistory([]); setRedoStack([]); }} disabled={busy}>
               Editar prompt
             </Button>
           )}
@@ -460,31 +498,57 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
               disabled={continuing}
               maxLength={2000}
             />
-            <div className="flex items-center gap-2 justify-end">
+            <div className="flex items-center gap-2 justify-end flex-wrap">
               {extensionHistory.length > 0 && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowHistory((s) => !s)}
-                    className="gap-1.5 text-muted-foreground hover:text-foreground"
-                    title={`${extensionHistory.length} continuação(ões) no histórico`}
-                  >
-                    <History className="h-3.5 w-3.5" />
-                    Histórico ({extensionHistory.length})
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleUndoExtension}
-                    disabled={continuing}
-                    className="gap-1.5"
-                    title={`Desfazer: ${extensionHistory[0].prompt.slice(0, 50)}`}
-                  >
-                    <Undo2 className="h-3.5 w-3.5" />
-                    Desfazer última
-                  </Button>
-                </>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowHistory((s) => !s)}
+                  className="gap-1.5 text-muted-foreground hover:text-foreground"
+                  title={`${extensionHistory.length} continuação(ões) no histórico`}
+                >
+                  <History className="h-3.5 w-3.5" />
+                  Histórico ({extensionHistory.length})
+                </Button>
+              )}
+              {extensionHistory.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUndoExtension}
+                  disabled={continuing}
+                  className="gap-1.5"
+                  title={`Desfazer: ${extensionHistory[0].prompt.slice(0, 50)}`}
+                >
+                  <Undo2 className="h-3.5 w-3.5" />
+                  Desfazer última
+                </Button>
+              )}
+              {redoStack.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRedoExtension}
+                  disabled={continuing}
+                  className="gap-1.5"
+                  title={`Refazer: ${redoStack[0].entry.prompt.slice(0, 50)}`}
+                >
+                  <Redo2 className="h-3.5 w-3.5" />
+                  Refazer ({redoStack.length})
+                </Button>
+              )}
+              {extensionHistory.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearHistory}
+                  disabled={continuing}
+                  className="gap-1.5 text-muted-foreground hover:text-destructive"
+                  title="Limpar histórico (não altera o plano atual)"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Limpar
+                </Button>
               )}
               <Button
                 onClick={handleContinue}
@@ -530,7 +594,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
                           “{entry.prompt}”
                         </div>
                       </div>
-                      {idx === 0 && (
+                      {idx === 0 ? (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -541,6 +605,18 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
                         >
                           <Undo2 className="h-3 w-3" />
                           Undo
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRestoreToEntry(entry.id)}
+                          disabled={continuing}
+                          className="h-6 px-2 text-[10px] gap-1 shrink-0"
+                          title="Restaurar plano até antes desta continuação (descarta as posteriores)"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          Restaurar
                         </Button>
                       )}
                     </div>
