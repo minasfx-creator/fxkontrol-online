@@ -197,7 +197,16 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     }
   }, [plan, validation, onApplied]);
 
-  const resumeAt = plan ? resumeOffsetFor(plan) : 0;
+  const usingAnchor = anchorCueId !== '__last__';
+  const resumeAt = plan
+    ? (usingAnchor ? resumeOffsetAtCue(plan, anchorCueId) : resumeOffsetFor(plan))
+    : 0;
+
+  // Cues ordenados por tempo para o seletor de âncora.
+  const sortedCues = useMemo(() => {
+    if (!plan) return [];
+    return [...plan.timelineItems].sort((a, b) => a.startTime - b.startTime);
+  }, [plan]);
 
   const handleContinue = useCallback(async () => {
     if (!plan) return;
@@ -209,15 +218,22 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     setContinuing(true);
     try {
       const seed = (variation + 1) ^ Math.floor(resumeAt);
+      const anchorLabel = usingAnchor
+        ? sortedCues.find((c) => c.id === anchorCueId)?.label ?? 'cue selecionado'
+        : 'último cue';
       const { plan: addition, fellBack, providerId } = await generateShowPlanWithProviderDetailed({
-        prompt: `Continuação a partir de ${resumeAt.toFixed(1)}s do show "${plan.title}". ${value}`,
+        prompt: `Continuação a partir de ${resumeAt.toFixed(1)}s (após ${anchorLabel}) do show "${plan.title}". ${value}`,
         site,
         variationSeed: seed,
       });
-      const merged = appendShowPlan(plan, addition, { gap: 1 });
+      const merged = appendShowPlan(plan, addition, {
+        gap: 1,
+        anchorCueId: usingAnchor ? anchorCueId : undefined,
+      });
       setPlan(merged);
       setVariation(seed);
       setContinuationPrompt('');
+      setAnchorCueId('__last__');
       if (fellBack) toast.warning('IA remota indisponível — coreografia continuada via gerador local.');
       else toast.success(`Coreografia estendida via ${providerId} (+${addition.duration.toFixed(0)}s).`);
     } catch (e) {
@@ -225,7 +241,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     } finally {
       setContinuing(false);
     }
-  }, [plan, continuationPrompt, site, variation, resumeAt]);
+  }, [plan, continuationPrompt, site, variation, resumeAt, anchorCueId, usingAnchor, sortedCues]);
 
 
   return (
