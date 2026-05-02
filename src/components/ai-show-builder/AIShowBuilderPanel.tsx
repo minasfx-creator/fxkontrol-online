@@ -45,6 +45,19 @@ const QUICK_CHIPS: string[] = [
   'Clímax intenso',
 ];
 
+interface ExtensionHistoryEntry {
+  id: string;
+  timestamp: number;
+  prompt: string;
+  anchorLabel: string;
+  resumeAt: number;
+  providerId: string;
+  fellBack: boolean;
+  /** Snapshot do plano ANTES da extensão — usado pelo Undo. */
+  prevPlan: ShowPlan;
+  diff: ShowPlanDiff;
+}
+
 interface Props {
   site: ShowSiteConfig;
   onApplied?: (summary: { positions: number; cues: number; duration: number }) => void;
