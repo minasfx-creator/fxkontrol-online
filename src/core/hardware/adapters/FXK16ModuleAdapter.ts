@@ -17,7 +17,13 @@ import type {
   DeviceConnectionState,
   RelayBankState,
 } from '../types';
-import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
+import {
+  createSimulatedProvenance,
+  markHandshakeOk,
+  markHandshakeLost,
+  type ProvenanceInfo,
+  type TransportType,
+} from '../provenance';
 import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 export class FXK16ModuleAdapter implements HardwareAdapter<RelayBankState> {
