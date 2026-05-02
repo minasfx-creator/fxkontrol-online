@@ -48,15 +48,10 @@ export interface BuildZipOptions {
   includePdf?: boolean;
 }
 
-/**
- * Async ZIP build for any golden seed. File contents are deterministic
- * except for `Generated:` timestamps inside .fir / disclaimer / PDF
- * (intentional — operator forensic chain).
- */
-export async function buildGoldenShowExportZip(
+async function assembleZip(
   sp: ShowPlan,
-  opts: BuildZipOptions = {},
-): Promise<Blob> {
+  opts: BuildZipOptions,
+): Promise<JSZip> {
   const includePdf = opts.includePdf !== false;
   const bundle = buildGoldenShowExportBundle(sp);
   const zip = new JSZip();
@@ -66,9 +61,31 @@ export async function buildGoldenShowExportZip(
   zip.file(GOLDEN_SHOW_EXPORT_FILES.DISCLAIMER, bundle.disclaimer);
   if (includePdf) {
     const pdfBytes = await renderShowPlanPdf(sp, { inspection: bundle.inspection });
-    zip.file(PDF_FILENAME, pdfBytes);
+    zip.file(GOLDEN_SHOW_EXPORT_FILES.PDF, pdfBytes);
   }
+  return zip;
+}
+
+/**
+ * Async ZIP build for any golden seed (Blob — browser download path).
+ * `Generated:` timestamps in .fir/disclaimer/PDF are intentional for
+ * forensic chain.
+ */
+export async function buildGoldenShowExportZip(
+  sp: ShowPlan,
+  opts: BuildZipOptions = {},
+): Promise<Blob> {
+  const zip = await assembleZip(sp, opts);
   return zip.generateAsync({ type: 'blob' });
+}
+
+/** Same bundle as Uint8Array — for tests / Node / non-DOM contexts. */
+export async function buildGoldenShowExportZipBytes(
+  sp: ShowPlan,
+  opts: BuildZipOptions = {},
+): Promise<Uint8Array> {
+  const zip = await assembleZip(sp, opts);
+  return zip.generateAsync({ type: 'uint8array' });
 }
 
 /** Filename convention: fxk_<sanitized-show-id>_export.zip */
