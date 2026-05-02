@@ -127,11 +127,22 @@ function vdlColorToRgb(name: string): { r: number; g: number; b: number } {
  * - noTrail: trailLength → 0
  * - report: salute-like flash burst adicional (flashIntensity boost)
  */
+// Range industrial real de pyro shells (mm). Fora disso, satura.
+// Mínimo 25mm = menor cake comercial; 450mm = recorde mundial (Steel Beach 1988).
+const CALIBER_MIN_MM = 25;
+const CALIBER_MAX_MM = 450;
+
+function clampCaliber(mm: number): number {
+  if (!Number.isFinite(mm) || mm <= 0) return CALIBER_MIN_MM;
+  return Math.max(CALIBER_MIN_MM, Math.min(CALIBER_MAX_MM, Math.abs(mm)));
+}
+
 function computePhysicsOverrides(parsed: VDLResult): Partial<EffectFamilyProfile> {
   const overrides: Partial<EffectFamilyProfile> = {};
 
-  // Caliber scaling — base = 75mm
-  const caliberRatio = parsed.caliberMM / 75;
+  // Caliber scaling — base = 75mm. Saturação garante físicos sem NaN/explosão.
+  const safeCaliber = clampCaliber(parsed.caliberMM);
+  const caliberRatio = safeCaliber / 75;
   const energyScale = Math.pow(caliberRatio, 2.5); // shells maiores = bem mais energia
   const velocityScale = Math.pow(caliberRatio, 0.4); // velocidade cresce devagar
   const massScale = Math.pow(caliberRatio, 1.2);
@@ -139,7 +150,9 @@ function computePhysicsOverrides(parsed: VDLResult): Partial<EffectFamilyProfile
   overrides.energyTotal = energyScale;
   overrides.burstVelocity = 45 * velocityScale; // base peony 45 m/s
   overrides.particleMass = 0.003 * massScale;
-  overrides.starCount = Math.round(parsed.starCount * Math.max(0.5, caliberRatio * 0.85));
+  // starCount sempre ≥ 24 (mínimo visualmente coerente p/ um shell)
+  const baseStars = Number.isFinite(parsed.starCount) && parsed.starCount > 0 ? parsed.starCount : 150;
+  overrides.starCount = Math.max(24, Math.round(baseStars * Math.max(0.5, caliberRatio * 0.85)));
 
   // Modifiers
   const mods = parsed.modifiers.map(m => m.toLowerCase());
