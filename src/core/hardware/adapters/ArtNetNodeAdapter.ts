@@ -5,7 +5,12 @@
  */
 
 import type { HardwareAdapter, HardwareCapabilities, HardwareStatusSnapshot, DeviceConnectionState, LinkHealthState } from '../types';
-import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
+import {
+  createSimulatedProvenance,
+  markHandshakeOk,
+  markHandshakeLost,
+  type ProvenanceInfo,
+} from '../provenance';
 import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 export interface ArtNetNodeState {
