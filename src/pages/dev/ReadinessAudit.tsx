@@ -25,6 +25,12 @@ import { verificationEngine } from "@/core/verification/VerificationEngine";
 import { readinessEvaluator } from "@/core/hardware/ReadinessEvaluator";
 import { unifiedHardwareRegistry } from "@/core/hardware/UnifiedHardwareRegistry";
 import { getProvenanceBadge } from "@/core/hardware/provenance";
+import {
+  ADAPTER_TRIAGE,
+  getTriageEntry,
+  pendingRequiredAdapters,
+  type AdapterTriageEntry,
+} from "@/core/hardware/adapterTriage";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
