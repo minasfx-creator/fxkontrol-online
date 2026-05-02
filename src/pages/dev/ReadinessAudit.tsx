@@ -161,6 +161,22 @@ export default function ReadinessAudit() {
               Fase 0 · Diagnóstico consolidado · Tick #{tick}
             </p>
           </div>
+          {pending.length === 0 ? (
+            <Badge
+              variant="outline"
+              className="ds-status-ok border-status-ok"
+              style={{ borderColor: "hsl(var(--status-ok))", color: "hsl(var(--status-ok))" }}
+            >
+              ✓ Fase 0 · critério de hardware atendido
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              style={{ borderColor: "hsl(var(--status-warn))", color: "hsl(var(--status-warn))" }}
+            >
+              {pending.length} pendente(s) para sair de SIMULATION
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button
