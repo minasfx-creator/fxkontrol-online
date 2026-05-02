@@ -47,13 +47,22 @@ Reference ShowPlan canônico para validar pipeline simulação→export end-to-e
 - `src/lib/showSeeds/showPlanPdf.ts` — pdf-lib A4: cover + safety + BoM + pinout + sequencing preview (40 linhas) + disclaimers; `downloadShowPlanPdf()` p/ UI.
 - Suite `inspectShowPlan.test.ts` (7/7): grupos sem duplicata, monotonia, FXK16 in-range, **min-gap ≥ 1.0s**, determinismo.
 
+## Honest Export Bundle (entregue)
+- `src/lib/showSeeds/libertadoresExport.ts` — pure ShowPlan→bundle:
+  - `generateFireOneScriptFromPlan(sp)` — `.fir` ASCII tempo-ordenado, valida canal por `module.channelCount` (FXK16=16, legacy=32). Cabeçalho carrega claim policy (ShowPlan content = validated · FireOne 2.0 acceptance = marketing_hypothesis).
+  - `buildLibertadoresExportBundle(sp)` — agrega `.fir` + sequencing CSV + BoM JSON (com claim breakdown por seção) + disclaimer.
+  - `buildLibertadoresExportZip(sp)` (async, JSZip) + `downloadLibertadoresExportZip(sp, filename?)`.
+  - 4 entradas: `fxk_show.fir`, `fxk_sequencing.csv`, `fxk_bom.json`, `_FXK_DISCLAIMER.txt`.
+- Suite `libertadoresExport.test.ts` (6/6): zero erro de canal no golden seed; header com claim policy; cues time-sorted; ZIP 4 entradas + round-trip; disclaimer com "DOES NOT authorize firing"; determinismo strippando timestamp.
+
 ## Próximos passos
-- Export FireOne + Skybrush honest (claim `marketing_hypothesis`, `_FXK_DISCLAIMER.txt`) ligado a este seed.
-- Loop `play` em workMode=`simulation` validando shaders cinema (ParticleGPGPU + Smoke + Bloom).
+- Loop `play` em workMode=`simulation` validando shaders cinema (ParticleGPGPU + Smoke + Bloom) tocando o golden seed end-to-end.
 - Critério Fase 1: `readinessEvaluator.evaluate().status === 'READY_FOR_EXPORT'`.
 
 ## Componentes
 - `src/lib/showSeeds/libertadores.ts` — `createLibertadoresShowPlan()`, `summarizeLibertadores()`, `LIBERTADORES_TARGETS`.
 - `src/lib/showSeeds/inspectShowPlan.ts` — `inspectShowPlan()`, `buildBillOfMaterials()`, `buildSequencing()`, `buildPinout()`, `sequencingToCsv()`.
 - `src/lib/showSeeds/showPlanPdf.ts` — `renderShowPlanPdf()`, `downloadShowPlanPdf()`.
-- Tests: `__tests__/libertadores.test.ts` (8) + `__tests__/inspectShowPlan.test.ts` (7).
+- `src/lib/showSeeds/libertadoresExport.ts` — `generateFireOneScriptFromPlan()`, `buildLibertadoresExportBundle()`, `buildLibertadoresExportZip()`, `downloadLibertadoresExportZip()`, `LIBERTADORES_EXPORT_FILES`.
+- Tests: `__tests__/libertadores.test.ts` (8) + `__tests__/inspectShowPlan.test.ts` (7) + `__tests__/libertadoresExport.test.ts` (6) = 21 verdes.
+
