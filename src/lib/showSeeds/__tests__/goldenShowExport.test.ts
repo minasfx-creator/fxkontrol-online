@@ -7,6 +7,7 @@ import JSZip from 'jszip';
 import { GOLDEN_SHOW_CATALOG } from '../catalog';
 import {
   buildGoldenShowExportBundle,
+  buildGoldenShowExportZipBytes,
   defaultGoldenShowExportFilename,
   GOLDEN_SHOW_EXPORT_FILES,
 } from '../goldenShowExport';
@@ -68,6 +69,28 @@ describe('goldenShowExport · catalog-wide', () => {
         expect(fn).toContain(
           sp.metadata.id.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
         );
+      });
+
+      it('full ZIP embeds fxk_technical.pdf with valid PDF header', async () => {
+        const ab = await buildGoldenShowExportZipBytes(sp);
+        const zip = await JSZip.loadAsync(ab);
+        const pdfFile = zip.file(GOLDEN_SHOW_EXPORT_FILES.PDF);
+        expect(pdfFile).toBeTruthy();
+        const pdfBytes = await pdfFile!.async('uint8array');
+        // PDF magic: %PDF-
+        expect(pdfBytes[0]).toBe(0x25);
+        expect(pdfBytes[1]).toBe(0x50);
+        expect(pdfBytes[2]).toBe(0x44);
+        expect(pdfBytes[3]).toBe(0x46);
+        expect(pdfBytes[4]).toBe(0x2d);
+        expect(pdfBytes.byteLength).toBeGreaterThan(1024);
+      }, 15000);
+
+      it('skips PDF when includePdf=false (fast path)', async () => {
+        const ab = await buildGoldenShowExportZipBytes(sp, { includePdf: false });
+        const zip = await JSZip.loadAsync(ab);
+        expect(zip.file(GOLDEN_SHOW_EXPORT_FILES.PDF)).toBeNull();
+        expect(zip.file(GOLDEN_SHOW_EXPORT_FILES.BOM)).toBeTruthy();
       });
     });
   }
