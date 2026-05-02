@@ -319,7 +319,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
             </div>
           </div>
         )}
-
+        <p className="text-[11px] text-muted-foreground italic pt-1">
           Este plano é uma pré-visualização criativa. Revise segurança, distâncias e normas locais antes da execução real.
         </p>
       </CardContent>
