@@ -10,6 +10,7 @@ import RecoverWebGLOverlay from './overlays/RecoverWebGLOverlay';
 import EngineDiagnosticsPanel from './overlays/EngineDiagnosticsPanel';
 import ViewportSegmentToolbar, { type ViewportSegmentToolbarOrientation } from '@/features/viewport-tools/components/ViewportSegmentToolbar';
 import PlaybackTransportOverlay from './overlays/PlaybackTransportOverlay';
+import { useShow3DEngineSync } from '@/hooks/useShow3DEngineSync';
 
 interface Props {
   plan: ShowPlan | null;
