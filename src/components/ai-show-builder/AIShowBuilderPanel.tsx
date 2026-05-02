@@ -236,6 +236,16 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
               Editar prompt
             </Button>
           )}
+          <Button
+            variant="outline"
+            onClick={selectAllPositionsInStore}
+            disabled={positionsCount === 0}
+            className="gap-2"
+            title={positionsCount === 0 ? 'Aplique um plano primeiro' : `Seleciona ${positionsCount} posições`}
+          >
+            <MousePointerSquareDashed className="h-4 w-4" />
+            Selecionar todas {positionsCount > 0 && `(${selectedCount}/${positionsCount})`}
+          </Button>
         </div>
 
         {/* Live 3D preview + permanent PromptBar — always visible. */}
