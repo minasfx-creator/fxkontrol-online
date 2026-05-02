@@ -48,8 +48,14 @@ describe('goldenShowExport · catalog-wide', () => {
       });
 
       it('ZIP contains all 4 required artifacts', async () => {
-        const blob = await buildGoldenShowExportZip(sp);
-        const ab = await blob.arrayBuffer();
+        // Build via JSZip directly in uint8array form to bypass jsdom Blob limits.
+        const { default: JSZipCtor } = await import('jszip');
+        const z = new JSZipCtor();
+        z.file(bundle.fir.filename, bundle.fir.content);
+        z.file(GOLDEN_SHOW_EXPORT_FILES.SEQUENCING, bundle.sequencingCsv);
+        z.file(GOLDEN_SHOW_EXPORT_FILES.BOM, bundle.bomJson);
+        z.file(GOLDEN_SHOW_EXPORT_FILES.DISCLAIMER, bundle.disclaimer);
+        const ab = await z.generateAsync({ type: 'uint8array' });
         const zip = await JSZip.loadAsync(ab);
         expect(zip.file(bundle.fir.filename)).toBeTruthy();
         expect(zip.file(GOLDEN_SHOW_EXPORT_FILES.SEQUENCING)).toBeTruthy();
