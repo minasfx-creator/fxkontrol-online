@@ -19,7 +19,7 @@ describe('BatteryMonitorAdapter · handshake (piggy-back FXK16)', () => {
     expect(batteryMonitorAdapter.getConnectionState()).toBe('connected');
     const prov = batteryMonitorAdapter.getProvenance();
     expect(prov.integration_mode).toBe('live_read_only');
-    expect(prov.transport).toBe('serial_usb');
+    expect(prov.transport_type).toBe('serial_usb');
   });
 
   it('demotes back to not_integrated on markHandshakeLost', () => {
