@@ -65,6 +65,53 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     selectMultiplePositionsAndLinkedEvents(ids);
     toast.success(`${ids.length} posições selecionadas`);
   }, []);
+
+  /**
+   * Seleciona posições compatíveis (pyro/drone-pad) que estão referenciadas
+   * por algum item do timeline, junto com seus eventos linkados.
+   *
+   * filter='all'    → ambos os tipos
+   * filter='pyro'   → apenas type === 'pyro'
+   * filter='drone'  → apenas type === 'drone-pad'
+   */
+  const selectCompatibleFromTimeline = useCallback((filter: 'all' | 'pyro' | 'drone') => {
+    const { positions, timelineItems, selectMultiplePositionsAndLinkedEvents } = useProjectStore.getState();
+    const referenced = new Set<string>();
+    for (const it of timelineItems) {
+      if (it.positionId) referenced.add(it.positionId);
+      if (it.positionIds) for (const pid of it.positionIds) referenced.add(pid);
+    }
+    const allowedTypes =
+      filter === 'pyro' ? new Set(['pyro'])
+      : filter === 'drone' ? new Set(['drone-pad'])
+      : new Set(['pyro', 'drone-pad']);
+    const ids = positions
+      .filter((p) => referenced.has(p.id) && allowedTypes.has(p.type))
+      .map((p) => p.id);
+    if (ids.length === 0) {
+      toast.info('Nenhuma posição compatível encontrada no timeline.');
+      return;
+    }
+    selectMultiplePositionsAndLinkedEvents(ids);
+    const label = filter === 'all' ? 'compatíveis' : filter === 'pyro' ? 'pyro' : 'drone';
+    toast.success(`${ids.length} posições ${label} + eventos linkados selecionados`);
+  }, []);
+
+  // Contadores reativos (para badges nos botões)
+  const compatibleCounts = useProjectStore((s) => {
+    const referenced = new Set<string>();
+    for (const it of s.timelineItems) {
+      if (it.positionId) referenced.add(it.positionId);
+      if (it.positionIds) for (const pid of it.positionIds) referenced.add(pid);
+    }
+    let pyro = 0, drone = 0;
+    for (const p of s.positions) {
+      if (!referenced.has(p.id)) continue;
+      if (p.type === 'pyro') pyro++;
+      else if (p.type === 'drone-pad') drone++;
+    }
+    return { pyro, drone, total: pyro + drone };
+  });
   const [layoutMode, setLayoutMode] = useState<AiShowBuilderLayoutMode>(() =>
     getAiShowBuilderLayoutMode(),
   );
