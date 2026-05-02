@@ -1,6 +1,6 @@
 ---
-name: Fase 1 · Show Libertadores Golden Seed + Inspector + PDF
-description: src/lib/showSeeds/libertadores.ts (createLibertadoresShowPlan determinístico 90s 32lo+32hi+8cometas 4xFXK16 dual-key+NFPA70+cap75mm) + inspectShowPlan.ts (BoM/sequencing/pinout + min-gap canal interlock) + showPlanPdf.ts (pdf-lib A4 técnico cover+BoM+pinout+seq+disclaimers)
+name: Fase 1 · Show Libertadores Golden Seed + Inspector + PDF + Export
+description: src/lib/showSeeds/libertadores.ts (createLibertadoresShowPlan determinístico 90s 32lo+32hi+8cometas 4xFXK16 dual-key+NFPA70+cap75mm) + inspectShowPlan.ts (BoM/sequencing/pinout + min-gap canal interlock) + showPlanPdf.ts (pdf-lib A4) + libertadoresExport.ts (ZIP honest .fir+.csv+.json+disclaimer, claim policy explícito, ShowPlan por parâmetro)
 type: feature
 ---
 
