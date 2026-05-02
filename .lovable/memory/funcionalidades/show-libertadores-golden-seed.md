@@ -1,6 +1,6 @@
 ---
-name: Golden Show Catalog · Multi-Seed Phase 1
-description: src/lib/showSeeds/catalog.ts registra Libertadores (90s/4×FXK16/64ch) + Maracanã Hino (60s/2×FXK16/32ch); /dev/golden-shows mostra matriz de certificação (verification+dryRun+inspect) por seed; prova generalidade da pipeline canonical→engine→export
+name: Golden Show Catalog · Multi-Seed Phase 1 + Generic Export
+description: catalog.ts (Libertadores 90s/4×FXK16 + Maracanã Hino 60s/2×FXK16) + /dev/golden-shows matriz live com Export ZIP por seed via goldenShowExport.ts (.fir+CSV+BoM+disclaimer, claim policy validated/marketing_hypothesis); 63/63 tests
 type: feature
 ---
 
