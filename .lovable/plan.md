@@ -129,3 +129,12 @@ F0  ─►  F1  ─►  F2  ─►  F3
 ```
 
 Próxima ação ao aprovar: começar Fase 0 pelo painel `/dev/readiness-audit` e pela triagem dos 8 adapters offline, sem tocar em nada de safety nem em comportamento de produção.
+
+---
+
+### Fase 0 · Status atual (rolling)
+- ✅ Painel `/dev/readiness-audit` operacional com export JSON.
+- ✅ Triagem declarativa em `src/core/hardware/adapterTriage.ts` (9/9 adapters classificados).
+- ✅ FXK16ModuleAdapter agora tem API pública `markHandshakeOk(transport)` / `markHandshakeLost()`.
+- ✅ `discoveryRegistryBridge` boot em `App.tsx` — promove provenance do FXK16 para `live_read_only` ao detectar handshake real (USB ou BLE) via singleton `useFXK16Bridge`. Demote em disconnect/heartbeat timeout.
+- ⏳ Próximos: equivalente para Art-Net (ArtPollReply → markHandshakeOk) e Battery-12V (piggy-back no controlador host).
