@@ -254,6 +254,8 @@ export class Show3DEngine {
     if (typeof opts.rate === 'number' && opts.rate > 0) this.playRate = opts.rate;
     if (typeof opts.loop === 'boolean') this.playLoop = opts.loop;
     if (this.showTime >= this.compiled.duration) this.showTime = 0;
+    // Calling play() means "engine owns the clock again" — drop external mirror.
+    this.externalClockDriven = false;
     this.playing = true;
     this.emitPlayback();
   }
