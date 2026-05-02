@@ -24,6 +24,7 @@ import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { simulationDryRun } from '@/lib/showSeeds/simulationDryRun';
 import { inspectShowPlan } from '@/lib/showSeeds/inspectShowPlan';
 import { downloadGoldenShowExportZip } from '@/lib/showSeeds/goldenShowExport';
+import Phase1TransitionPanel from '@/components/dev/Phase1TransitionPanel';
 
 interface SeedRow {
   entry: GoldenShowEntry;
