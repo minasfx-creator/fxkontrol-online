@@ -90,9 +90,9 @@ export function canonicalToEnginePlan(sp: CanonicalShowPlan): EnginePlan {
     x: p.x,
     y: p.y,
     z: p.z,
-    heading: (p as ShowPosition & { heading?: number }).heading ?? 0,
-    pitch: (p as ShowPosition & { pitch?: number }).pitch ?? 0,
-    roll: (p as ShowPosition & { roll?: number }).roll ?? 0,
+    heading: p.heading ?? 0,
+    pitch: p.pitch ?? 0,
+    roll: 0,
     color: defaultColor(p.type),
   }));
 
