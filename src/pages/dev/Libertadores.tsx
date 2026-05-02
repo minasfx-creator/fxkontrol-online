@@ -18,9 +18,9 @@
  * debug em campo (iPhone PWA).
  */
 
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, FileDown, Package, RefreshCw, Activity } from 'lucide-react';
+import { ArrowLeft, FileDown, Package, RefreshCw, Activity, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,11 +38,15 @@ import { downloadLibertadoresExportZip } from '@/lib/showSeeds/libertadoresExpor
 import { simulationDryRun } from '@/lib/showSeeds/simulationDryRun';
 import { useWorkMode } from '@/core/safety/workMode';
 import { verificationEngine } from '@/core/verification/VerificationEngine';
+import { canonicalToEnginePlan } from '@/lib/showSeeds/canonicalToEnginePlan';
+
+const ShowEngineHost = lazy(() => import('@/components/show-engine/ShowEngineHost'));
 
 export default function LibertadoresPage() {
   const { toast } = useToast();
   const [seed, setSeed] = useState(0); // forces re-memo on "Refresh"
   const [busy, setBusy] = useState<null | 'pdf' | 'zip'>(null);
+  const [engineMounted, setEngineMounted] = useState(false);
 
   const sp = useMemo(() => createLibertadoresShowPlan(), [seed]);
   const summary = useMemo(() => summarizeLibertadores(sp), [sp]);
