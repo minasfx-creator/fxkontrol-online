@@ -146,4 +146,8 @@ Próxima ação ao aprovar: começar Fase 0 pelo painel `/dev/readiness-audit` e
 - ✅ Painel `/dev/readiness-audit` ganhou (a) badge no header indicando critério de hardware da Fase 0 atendido/pendente e (b) bloco compacto do **cluster FXK16 piggy-back** mostrando os 6 IDs (4 piggy-back + Art-Net + DMX) com integration_mode ao vivo.
 - ✅ Teste de integração end-to-end (`discoveryRegistryBridge.integration.test.ts`, 4/4): valida que **um único** handshake FXK16 verified promove o cluster inteiro e zera `pendingRequiredAdapters()`; perda de link demote atômico; bridge é idempotente.
 - 🟢 **Fase 0 — software**: pronta. Critério de saída comprovado por teste; resta apenas o smoke test físico com FXK16 real (USB ou BLE) em campo.
-- ⏳ Próximo: abrir Fase 1 — seed do **Show Libertadores** como golden show (32 pontos altos / 32 baixos / cometas, validador `ShowPlanValidationResult`).
+
+### Fase 1 · Status atual (rolling)
+- ✅ Seed `src/lib/showSeeds/libertadores.ts` (`createLibertadoresShowPlan()`) — golden show 90s, 3 movimentos (Build-up · Anthem · Finale), 32 lows + 32 highs + 8 cometas, 4 × FXK16 (64 canais), Maracanã GPS, dual-key + NFPA 70m + cap 75mm. **Determinístico** (zero `Math.random`).
+- ✅ Suite `libertadores.test.ts` (8/8): targets estruturais, posições conhecidas, módulo+canal in-range FXK16, monotonia temporal, **no channel-reuse <1s** (interlock seguro), constraints stadium-grade, determinismo.
+- ⏳ Próximos: (a) `inspect_showplan` → BoM/PDF técnico via `pdfRenderer`; (b) export FireOne + export Skybrush honest desse seed; (c) loop `play` em workMode=`simulation` validando visual cinema; (d) critério de saída Fase 1 — `READY_FOR_EXPORT`.
