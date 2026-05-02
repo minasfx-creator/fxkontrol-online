@@ -460,7 +460,32 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
               disabled={continuing}
               maxLength={2000}
             />
-            <div className="flex justify-end">
+            <div className="flex items-center gap-2 justify-end">
+              {extensionHistory.length > 0 && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowHistory((s) => !s)}
+                    className="gap-1.5 text-muted-foreground hover:text-foreground"
+                    title={`${extensionHistory.length} continuação(ões) no histórico`}
+                  >
+                    <History className="h-3.5 w-3.5" />
+                    Histórico ({extensionHistory.length})
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleUndoExtension}
+                    disabled={continuing}
+                    className="gap-1.5"
+                    title={`Desfazer: ${extensionHistory[0].prompt.slice(0, 50)}`}
+                  >
+                    <Undo2 className="h-3.5 w-3.5" />
+                    Desfazer última
+                  </Button>
+                </>
+              )}
               <Button
                 onClick={handleContinue}
                 disabled={continuing || continuationPrompt.trim().length < 4}
@@ -471,6 +496,58 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
                 {continuing ? 'Estendendo…' : 'Estender show'}
               </Button>
             </div>
+
+            {showHistory && extensionHistory.length > 0 && (
+              <div className="rounded-md border border-border/40 bg-background/40 p-2 space-y-1.5 max-h-56 overflow-auto">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-bold px-1">
+                  Histórico de extensões (mais recente primeiro)
+                </div>
+                {extensionHistory.map((entry, idx) => {
+                  const ago = Math.max(1, Math.floor((Date.now() - entry.timestamp) / 1000));
+                  return (
+                    <div
+                      key={entry.id}
+                      className="flex items-start gap-2 rounded-sm bg-card/40 border border-border/30 px-2 py-1.5 text-[11px]"
+                    >
+                      <Badge variant="outline" className="text-[9px] shrink-0 mt-0.5">
+                        #{extensionHistory.length - idx}
+                      </Badge>
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-[10px] text-primary">
+                            {summarizeDiff(entry.diff)}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground">
+                            @ {entry.resumeAt.toFixed(1)}s · {entry.anchorLabel} · há {ago}s
+                          </span>
+                          {entry.fellBack && (
+                            <Badge variant="outline" className="text-[8px] border-amber-500/40 text-amber-400">
+                              fallback
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-foreground/80 truncate" title={entry.prompt}>
+                          “{entry.prompt}”
+                        </div>
+                      </div>
+                      {idx === 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleUndoExtension}
+                          disabled={continuing}
+                          className="h-6 px-2 text-[10px] gap-1 shrink-0"
+                          title="Reverter esta continuação"
+                        >
+                          <Undo2 className="h-3 w-3" />
+                          Undo
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
         <p className="text-[11px] text-muted-foreground italic pt-1">
