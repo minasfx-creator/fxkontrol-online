@@ -125,6 +125,12 @@ export default function ReadinessAudit() {
       ),
     [snapshot],
   );
+  // Re-evaluate every tick — pending is computed live from registry.
+  const pending = useMemo(
+    () => pendingRequiredAdapters(unifiedHardwareRegistry),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [snapshot],
+  );
 
   const onExport = () => {
     const blob = new Blob([JSON.stringify(snapshot, null, 2)], {
