@@ -300,6 +300,51 @@ export default function ReadinessAudit() {
         )}
       </Card>
 
+      {/* FXK16 piggy-back cluster — 5 adapters promoted by one handshake */}
+      <Card className="p-4 space-y-3">
+        <h2 className="ds-h3">Cluster FXK16 (piggy-back · 1 handshake → 5 adapters)</h2>
+        <p className="text-xs text-muted-foreground">
+          Quando o FXK16 fizer handshake real, o bridge promove em conjunto:
+          <code> fxk16-esp32s3</code>, <code>battery-12v</code>,
+          <code> mux-cd4051-dual</code>, <code>sr-74hc595-chain</code>.
+          Art-Net e DMX-USB são independentes.
+        </p>
+        <ul className="grid gap-1.5 sm:grid-cols-2 text-sm">
+          {[
+            "fxk16-esp32s3",
+            "battery-12v",
+            "mux-cd4051-dual",
+            "sr-74hc595-chain",
+            "artnet-node-01",
+            "dmx-universe-1",
+          ].map((id) => {
+            const row = snapshot.adapters.find((a) => a.id === id);
+            const live = row && row.integrationMode !== "not_integrated";
+            return (
+              <li
+                key={id}
+                className="flex items-center justify-between gap-2 border border-border/40 rounded px-2 py-1"
+              >
+                <span className="font-mono text-xs">{id}</span>
+                <Badge
+                  variant="outline"
+                  style={{
+                    borderColor: live
+                      ? "hsl(var(--status-ok))"
+                      : "hsl(var(--muted-foreground))",
+                    color: live
+                      ? "hsl(var(--status-ok))"
+                      : "hsl(var(--muted-foreground))",
+                  }}
+                >
+                  {row?.integrationMode ?? "—"}
+                </Badge>
+              </li>
+            );
+          })}
+        </ul>
+      </Card>
+
       {/* Phase 0 exit criterion — required adapters still pending */}
       <Card className="p-4 space-y-3">
         <h2 className="ds-h3">
