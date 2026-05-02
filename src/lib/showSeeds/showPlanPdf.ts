@@ -93,7 +93,7 @@ function sanitizeForPdf(s: string): string {
 
 function drawHeading(ctx: DrawCtx, text: string, size = 13): DrawCtx {
   ctx = ensureSpace(ctx, size + 8);
-  ctx.page.drawText(text, {
+  ctx.page.drawText(sanitizeForPdf(text), {
     x: MARGIN, y: ctx.y - size,
     size, font: ctx.bold, color: rgb(0.04, 0.55, 0.7),
   });
@@ -102,7 +102,7 @@ function drawHeading(ctx: DrawCtx, text: string, size = 13): DrawCtx {
 
 function drawText(ctx: DrawCtx, text: string, size = 9, color = rgb(0.12, 0.12, 0.14)): DrawCtx {
   const maxW = A4.w - MARGIN * 2;
-  const lines = wrap(text, ctx.font, size, maxW);
+  const lines = wrap(sanitizeForPdf(text), ctx.font, size, maxW);
   for (const line of lines) {
     ctx = ensureSpace(ctx, LINE);
     ctx.page.drawText(line, { x: MARGIN, y: ctx.y - size, size, font: ctx.font, color });
@@ -113,10 +113,10 @@ function drawText(ctx: DrawCtx, text: string, size = 9, color = rgb(0.12, 0.12, 
 
 function drawKV(ctx: DrawCtx, key: string, value: string): DrawCtx {
   ctx = ensureSpace(ctx, LINE);
-  ctx.page.drawText(`${key}:`, {
+  ctx.page.drawText(`${sanitizeForPdf(key)}:`, {
     x: MARGIN, y: ctx.y - 9, size: 8, font: ctx.bold, color: rgb(0.4, 0.4, 0.45),
   });
-  ctx.page.drawText(value, {
+  ctx.page.drawText(sanitizeForPdf(value), {
     x: MARGIN + 110, y: ctx.y - 9, size: 9, font: ctx.font, color: rgb(0.1, 0.1, 0.12),
   });
   return { ...ctx, y: ctx.y - LINE };
@@ -141,7 +141,7 @@ function drawTableRow(
   ctx = ensureSpace(ctx, LINE);
   for (const c of cols) {
     const f = c.bold ? ctx.bold : ctx.mono;
-    const lines = wrap(c.text, f, size, c.w);
+    const lines = wrap(sanitizeForPdf(c.text), f, size, c.w);
     ctx.page.drawText(lines[0] ?? '', {
       x: c.x, y: ctx.y - size, size, font: f, color: rgb(0.15, 0.15, 0.18),
     });
