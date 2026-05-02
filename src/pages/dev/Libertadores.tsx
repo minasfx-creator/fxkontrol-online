@@ -109,11 +109,55 @@ export default function LibertadoresPage() {
               </p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setSeed((n) => n + 1)}>
-            <RefreshCw className="h-4 w-4 mr-1" />
-            Recompute
-          </Button>
+          <div className="flex items-center gap-2">
+            <Badge
+              variant={
+                verification.level === 'READY_FOR_FIELD'
+                  ? 'default'
+                  : verification.level === 'READY_FOR_EXPORT'
+                    ? 'default'
+                    : 'destructive'
+              }
+              className="text-xs"
+            >
+              Phase 1 · {verification.level}
+            </Badge>
+            <Button variant="outline" size="sm" onClick={() => setSeed((n) => n + 1)}>
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Recompute
+            </Button>
+          </div>
         </header>
+
+        {/* Verification (Phase 1 exit) */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold">Verification · Phase 1 exit</h2>
+            <div className="flex gap-2 text-xs">
+              <Badge variant={verification.summary.errors === 0 ? 'default' : 'destructive'}>
+                {verification.summary.errors} errors
+              </Badge>
+              <Badge variant="secondary">{verification.summary.warnings} warnings</Badge>
+              <Badge variant="outline">{verification.summary.passed} passed</Badge>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">
+            <code>VerificationEngine.run(sp)</code> direto no golden seed (sem
+            ShowPlanManager). Critério Fase 1 = <code>READY_FOR_EXPORT</code> ou superior.
+          </p>
+          {verification.summary.errors > 0 && (
+            <div className="text-sm text-destructive space-y-1">
+              {verification.issues
+                .filter((i) => !i.passed && i.severity === 'error')
+                .slice(0, 5)
+                .map((i) => (
+                  <div key={i.id} className="font-mono text-xs">
+                    ✗ {i.id}: {i.detail}
+                  </div>
+                ))}
+            </div>
+          )}
+        </Card>
 
         {/* Summary */}
         <Card className="p-5">
