@@ -58,6 +58,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
   const [reviewing, setReviewing] = useState(false);
   const [continuationPrompt, setContinuationPrompt] = useState('');
   const [continuing, setContinuing] = useState(false);
+  const [anchorCueId, setAnchorCueId] = useState<string>('__last__');
   const positionsCount = useProjectStore((s) => s.positions.length);
   const selectedCount = useProjectStore((s) => s.selectedPositionIds.length);
   const selectAllPositionsInStore = useCallback(() => {
