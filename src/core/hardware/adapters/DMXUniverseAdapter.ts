@@ -95,11 +95,6 @@ class DMXUniverseAdapterImpl implements HardwareAdapter<DMXUniverseState> {
   reset(): void {
     this._state = { ...DEFAULT_STATE, link: { ...DEFAULT_STATE.link } };
     this._connectionState = 'disconnected';
-  }
-
-  reset(): void {
-    this._state = { ...DEFAULT_STATE, link: { ...DEFAULT_STATE.link } };
-    this._connectionState = 'disconnected';
     markHandshakeLost(this._provenance);
   }
 
