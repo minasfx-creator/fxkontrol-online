@@ -211,7 +211,71 @@ export default function LibertadoresPage() {
           </div>
         </Card>
 
-        {/* Exports */}
+        {/* Simulation dry-run */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Simulation play loop · dry-run
+            </h2>
+            <Badge variant={workMode === 'real_operation' ? 'destructive' : 'secondary'}>
+              workMode: {workMode}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Walk determinístico do <code>play</code> loop em <code>simulation</code>.
+            Sem CommandBus, sem fieldBus, sem Three.js — apenas certifica que o
+            ShowPlan é consumível pela coreografia.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
+            <Stat label="Cues fired" value={`${dryRun.cuesFired} / ${dryRun.totalCues}`} />
+            <Stat label="Peak concurrent" value={`${dryRun.peakConcurrentBurns}`} hint="burns simultâneos" />
+            <Stat
+              label="Avg load"
+              value={`${dryRun.avgLoadCuesPerSec.toFixed(2)} cps`}
+              hint="cues/segundo"
+            />
+            <Stat
+              label="Frames sampled"
+              value={`${dryRun.framesSampled}`}
+              hint="60Hz tick"
+            />
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Interlock breaches:</span>
+            <Badge variant={dryRun.interlockBreaches.length === 0 ? 'default' : 'destructive'}>
+              {dryRun.interlockBreaches.length === 0
+                ? 'NONE · ≥1s respeitado'
+                : `${dryRun.interlockBreaches.length} canal(is) <1s`}
+            </Badge>
+          </div>
+          {/* Sparkline */}
+          <div className="mt-4 h-16 w-full bg-muted/30 rounded relative overflow-hidden">
+            <svg viewBox={`0 0 ${dryRun.trace.length} 100`} preserveAspectRatio="none" className="w-full h-full">
+              <polyline
+                fill="none"
+                stroke="hsl(var(--primary))"
+                strokeWidth="1.5"
+                vectorEffect="non-scaling-stroke"
+                points={dryRun.trace
+                  .map((f, i) => {
+                    const peak = Math.max(1, dryRun.peakConcurrentBurns);
+                    const y = 100 - (f.activeBurns / peak) * 95;
+                    return `${i},${y}`;
+                  })
+                  .join(' ')}
+              />
+            </svg>
+            <div className="absolute bottom-1 left-2 text-[10px] text-muted-foreground">
+              0s
+            </div>
+            <div className="absolute bottom-1 right-2 text-[10px] text-muted-foreground">
+              {dryRun.durationS.toFixed(0)}s
+            </div>
+          </div>
+        </Card>
+
+
         <Card className="p-5">
           <h2 className="text-lg font-semibold mb-2">Honest exports</h2>
           <p className="text-sm text-muted-foreground mb-4">
