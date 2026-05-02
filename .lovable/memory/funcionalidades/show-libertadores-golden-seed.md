@@ -1,6 +1,6 @@
 ---
-name: Fase 1 · Show Libertadores Golden Seed
-description: src/lib/showSeeds/libertadores.ts createLibertadoresShowPlan() determinístico 90s 32lo+32hi+8cometas 4xFXK16, dual-key+NFPA70+cap75mm, valida 8 invariantes (no channel-reuse <1s)
+name: Fase 1 · Show Libertadores Golden Seed + Inspector + PDF
+description: src/lib/showSeeds/libertadores.ts (createLibertadoresShowPlan determinístico 90s 32lo+32hi+8cometas 4xFXK16 dual-key+NFPA70+cap75mm) + inspectShowPlan.ts (BoM/sequencing/pinout + min-gap canal interlock) + showPlanPdf.ts (pdf-lib A4 técnico cover+BoM+pinout+seq+disclaimers)
 type: feature
 ---
 
