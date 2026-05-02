@@ -24,9 +24,26 @@ export function resumeOffsetFor(plan: ShowPlan): number {
   return Math.max(plan.duration, lastCueEndTime(plan));
 }
 
+/**
+ * Ponto de retomada ancorado em um cue específico (fim do cue = startTime + duration).
+ * Se o cue não for encontrado, faz fallback para `resumeOffsetFor(plan)`.
+ */
+export function resumeOffsetAtCue(plan: ShowPlan, cueId: string): number {
+  const cue = plan.timelineItems.find((it) => it.id === cueId);
+  if (!cue) return resumeOffsetFor(plan);
+  return cue.startTime + (cue.duration ?? 0);
+}
+
 interface AppendOptions {
   /** Espaçamento (s) entre o fim do plano atual e o início do novo trecho. */
   gap?: number;
+  /**
+   * Se definido, ancora a continuação no fim deste cue (em vez do último).
+   * Conteúdo posterior ao âncora é PRESERVADO — o novo trecho é inserido
+   * em paralelo a partir do ponto âncora (overlay), e a duração final é
+   * o máximo entre o plano atual e (âncora + duração do trecho novo).
+   */
+  anchorCueId?: string;
 }
 
 /**
@@ -40,7 +57,10 @@ export function appendShowPlan(
   opts: AppendOptions = {},
 ): ShowPlan {
   const gap = Math.max(0, opts.gap ?? 0);
-  const offset = resumeOffsetFor(current) + gap;
+  const base = opts.anchorCueId
+    ? resumeOffsetAtCue(current, opts.anchorCueId)
+    : resumeOffsetFor(current);
+  const offset = base + gap;
 
   const shiftedSections: ShowSection[] = next.sections.map((s) => ({
     ...s,
