@@ -65,6 +65,53 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     selectMultiplePositionsAndLinkedEvents(ids);
     toast.success(`${ids.length} posições selecionadas`);
   }, []);
+
+  /**
+   * Seleciona posições compatíveis (pyro/drone-pad) que estão referenciadas
+   * por algum item do timeline, junto com seus eventos linkados.
+   *
+   * filter='all'    → ambos os tipos
+   * filter='pyro'   → apenas type === 'pyro'
+   * filter='drone'  → apenas type === 'drone-pad'
+   */
+  const selectCompatibleFromTimeline = useCallback((filter: 'all' | 'pyro' | 'drone') => {
+    const { positions, timelineItems, selectMultiplePositionsAndLinkedEvents } = useProjectStore.getState();
+    const referenced = new Set<string>();
+    for (const it of timelineItems) {
+      if (it.positionId) referenced.add(it.positionId);
+      if (it.positionIds) for (const pid of it.positionIds) referenced.add(pid);
+    }
+    const allowedTypes =
+      filter === 'pyro' ? new Set(['pyro'])
+      : filter === 'drone' ? new Set(['drone-pad'])
+      : new Set(['pyro', 'drone-pad']);
+    const ids = positions
+      .filter((p) => referenced.has(p.id) && allowedTypes.has(p.type))
+      .map((p) => p.id);
+    if (ids.length === 0) {
+      toast.info('Nenhuma posição compatível encontrada no timeline.');
+      return;
+    }
+    selectMultiplePositionsAndLinkedEvents(ids);
+    const label = filter === 'all' ? 'compatíveis' : filter === 'pyro' ? 'pyro' : 'drone';
+    toast.success(`${ids.length} posições ${label} + eventos linkados selecionados`);
+  }, []);
+
+  // Contadores reativos (para badges nos botões)
+  const compatibleCounts = useProjectStore((s) => {
+    const referenced = new Set<string>();
+    for (const it of s.timelineItems) {
+      if (it.positionId) referenced.add(it.positionId);
+      if (it.positionIds) for (const pid of it.positionIds) referenced.add(pid);
+    }
+    let pyro = 0, drone = 0;
+    for (const p of s.positions) {
+      if (!referenced.has(p.id)) continue;
+      if (p.type === 'pyro') pyro++;
+      else if (p.type === 'drone-pad') drone++;
+    }
+    return { pyro, drone, total: pyro + drone };
+  });
   const [layoutMode, setLayoutMode] = useState<AiShowBuilderLayoutMode>(() =>
     getAiShowBuilderLayoutMode(),
   );
@@ -245,6 +292,34 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
           >
             <MousePointerSquareDashed className="h-4 w-4" />
             Selecionar todas {positionsCount > 0 && `(${selectedCount}/${positionsCount})`}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => selectCompatibleFromTimeline('all')}
+            disabled={compatibleCounts.total === 0}
+            className="gap-2"
+            title="Posições (pyro+drone) referenciadas pelo timeline + eventos linkados"
+          >
+            <MousePointerSquareDashed className="h-4 w-4" />
+            Compatíveis no timeline {compatibleCounts.total > 0 && `(${compatibleCounts.total})`}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => selectCompatibleFromTimeline('pyro')}
+            disabled={compatibleCounts.pyro === 0}
+            title="Apenas posições pyro do timeline"
+          >
+            Pyro {compatibleCounts.pyro > 0 && `(${compatibleCounts.pyro})`}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => selectCompatibleFromTimeline('drone')}
+            disabled={compatibleCounts.drone === 0}
+            title="Apenas pads de drone do timeline"
+          >
+            Drone {compatibleCounts.drone > 0 && `(${compatibleCounts.drone})`}
           </Button>
         </div>
 
