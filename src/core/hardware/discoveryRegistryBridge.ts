@@ -111,15 +111,45 @@ export function startDiscoveryRegistryBridge(): void {
       }
     }
   });
+
+  // ── DMX Universe (USB-DMX via Web Serial) ──────────────────────
+  // Promote when ANY authorized Web Serial port is classified as
+  // family === 'dmx' (Enttec, USBDMX, uDMX, etc.). Demote when none.
+  _unsubSerial = webSerialDiscoverer.watch((event) => {
+    const { device, type } = event;
+    if (device.family !== 'dmx') return;
+
+    if ((type === 'discovered' || type === 'updated') && device.online) {
+      if (!_dmxSerialOnline.has(device.id)) {
+        _dmxSerialOnline.add(device.id);
+        if (_dmxSerialOnline.size === 1) {
+          dmxUniverseAdapter.markHandshakeOk(device.label);
+          logger.info(
+            `[discoveryBridge] DMX universe promoted to LIVE READ-ONLY (label=${device.label})`,
+          );
+          try { unifiedHardwareRegistry.startPolling(1000); }
+          catch (err) { logger.warn('[discoveryBridge] startPolling failed', err); }
+        }
+      }
+    } else if (type === 'lost') {
+      _dmxSerialOnline.delete(device.id);
+      if (_dmxSerialOnline.size === 0) {
+        dmxUniverseAdapter.markHandshakeLost();
+        logger.info('[discoveryBridge] DMX universe demoted to NOT_INTEGRATED');
+      }
+    }
+  });
 }
 
 /** Stop the bridge — primarily for tests. */
 export function stopDiscoveryRegistryBridge(): void {
   if (_unsubFxk) { _unsubFxk(); _unsubFxk = null; }
   if (_unsubArtnet) { _unsubArtnet(); _unsubArtnet = null; }
+  if (_unsubSerial) { _unsubSerial(); _unsubSerial = null; }
   _started = false;
   _lastVerified = false;
   _artnetOnline.clear();
+  _dmxSerialOnline.clear();
 }
 
 /** Diagnostic accessor — read-only. */
