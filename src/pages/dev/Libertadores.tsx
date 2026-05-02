@@ -53,6 +53,7 @@ export default function LibertadoresPage() {
   const inspection = useMemo(() => inspectShowPlan(sp), [sp]);
   const dryRun = useMemo(() => simulationDryRun(sp), [sp]);
   const verification = useMemo(() => verificationEngine.run(sp), [sp]);
+  const enginePlan = useMemo(() => canonicalToEnginePlan(sp), [sp]);
   const workMode = useWorkMode();
 
   const handleDownloadPdf = async () => {
