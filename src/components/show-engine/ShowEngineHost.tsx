@@ -28,6 +28,14 @@ interface Props {
   autoPlay?: boolean;
   /** Hide the bottom Play/Pause/Stop transport overlay. Default: false. */
   hideTransport?: boolean;
+  /**
+   * When true, the engine follows `useProjectStore.currentTime` (driven by
+   * `timelineClock` / audio master) instead of running its own auto-advance.
+   * Required in the main editor so the 3D viewport stays locked to the audio
+   * waveform when the operator clicks Play on the timeline. When this is on,
+   * `autoPlay` and the embedded transport overlay are ignored.
+   */
+  externalClock?: boolean;
 }
 
 /**
