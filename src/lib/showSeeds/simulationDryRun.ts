@@ -18,7 +18,7 @@
  *   - Result is deterministic given the same ShowPlan + tickHz.
  */
 
-import type { ShowPlan } from '@/types/showPlan';
+import type { ShowPlan } from '@/core/showplan/ShowPlan';
 
 export interface DryRunOptions {
   /** Simulation tick rate. 60Hz mirrors the render loop. */
