@@ -82,8 +82,11 @@ describe('vdlToEffectSpec — defaults sem modificadores exóticos', () => {
 
   it('VDL minimalista ("Peony") não inventa modificadores nem overrides', () => {
     const spec = vdlToEffectSpec('Peony');
-    const allModsFalse = Object.values(spec.modifiers).every(v => v === false);
-    expect(allModsFalse).toBe(true);
+    // forceTrail é derivado da cor (impliesTrail), não é "modificador exótico"
+    const exoticMods = ['crackle', 'glitter', 'strobe', 'noTrail', 'report', 'twinkle', 'splitStars', 'pistil'] as const;
+    for (const k of exoticMods) {
+      expect(spec.modifiers[k]).toBe(false);
+    }
     const o = spec.physicsOverrides;
     expect(o.turbulenceFactor).toBeUndefined();
     expect(o.flickerIntensity).toBeUndefined();
