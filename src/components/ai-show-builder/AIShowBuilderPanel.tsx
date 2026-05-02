@@ -279,10 +279,45 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     setExtensionHistory((h) => {
       if (h.length === 0) return h;
       const [last, ...rest] = h;
-      setPlan(last.prevPlan);
+      setPlan((current) => {
+        if (current) setRedoStack((r) => [{ entry: last, nextPlan: current }, ...r].slice(0, 20));
+        return last.prevPlan;
+      });
       toast.success(`Continuação revertida (${summarizeDiff(last.diff)})`);
       return rest;
     });
+  }, []);
+
+  const handleRedoExtension = useCallback(() => {
+    setRedoStack((r) => {
+      if (r.length === 0) return r;
+      const [head, ...rest] = r;
+      setPlan(head.nextPlan);
+      setExtensionHistory((h) => [head.entry, ...h].slice(0, 20));
+      toast.success(`Continuação refeita (${summarizeDiff(head.entry.diff)})`);
+      return rest;
+    });
+  }, []);
+
+  /** Restaura o snapshot prevPlan de uma entrada específica do histórico,
+   *  descartando todas as continuações posteriores a ela. */
+  const handleRestoreToEntry = useCallback((entryId: string) => {
+    setExtensionHistory((h) => {
+      const idx = h.findIndex((e) => e.id === entryId);
+      if (idx === -1) return h;
+      const target = h[idx];
+      setPlan(target.prevPlan);
+      setRedoStack([]);
+      toast.success(`Plano restaurado ao estado anterior a “${target.prompt.slice(0, 40)}”`);
+      // remove a entrada-alvo e tudo mais recente que ela (índices 0..idx).
+      return h.slice(idx + 1);
+    });
+  }, []);
+
+  const handleClearHistory = useCallback(() => {
+    setExtensionHistory([]);
+    setRedoStack([]);
+    toast.success('Histórico de extensões limpo');
   }, []);
 
 
