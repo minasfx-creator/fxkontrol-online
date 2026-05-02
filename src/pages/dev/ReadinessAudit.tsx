@@ -278,6 +278,36 @@ export default function ReadinessAudit() {
         )}
       </Card>
 
+      {/* Phase 0 exit criterion — required adapters still pending */}
+      <Card className="p-4 space-y-3">
+        <h2 className="ds-h3">
+          Pendentes para sair de SIMULATION ({pending.length})
+        </h2>
+        {pending.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Todos os adapters obrigatórios estão integrados. Critério de saída
+            de hardware da Fase 0 atendido.
+          </p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {pending.map((p) => (
+              <li
+                key={p.id}
+                className="flex items-start justify-between gap-3 border border-border/40 rounded p-2"
+              >
+                <div>
+                  <div className="font-medium">{p.id}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {p.rationale}
+                  </div>
+                </div>
+                <TriageActionButton entry={p} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
       {/* Operational adapters */}
       <Card className="p-4 space-y-3">
         <h2 className="ds-h3">
