@@ -6,8 +6,10 @@
  * useProjectStore. Inspecionável antes de aplicar.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info, Pencil } from 'lucide-react';
+import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info, Pencil, MousePointerSquareDashed, ArrowRightCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useProjectStore } from '@/store/useProjectStore';
+import { appendShowPlan, resumeOffsetFor } from '@/lib/aiShowBuilder/continueShowPlan';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -53,6 +55,16 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
   const [plan, setPlan] = useState<ShowPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [continuationPrompt, setContinuationPrompt] = useState('');
+  const [continuing, setContinuing] = useState(false);
+  const positionsCount = useProjectStore((s) => s.positions.length);
+  const selectedCount = useProjectStore((s) => s.selectedPositionIds.length);
+  const selectAllPositionsInStore = useCallback(() => {
+    const { positions, selectMultiplePositionsAndLinkedEvents } = useProjectStore.getState();
+    const ids = positions.map((p) => p.id);
+    selectMultiplePositionsAndLinkedEvents(ids);
+    toast.success(`${ids.length} posições selecionadas`);
+  }, []);
   const [layoutMode, setLayoutMode] = useState<AiShowBuilderLayoutMode>(() =>
     getAiShowBuilderLayoutMode(),
   );
@@ -136,6 +148,37 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     }
   }, [plan, validation, onApplied]);
 
+  const resumeAt = plan ? resumeOffsetFor(plan) : 0;
+
+  const handleContinue = useCallback(async () => {
+    if (!plan) return;
+    const value = continuationPrompt.trim();
+    if (value.length < 4) {
+      toast.error('Descreva como o show deve continuar (mínimo 4 caracteres).');
+      return;
+    }
+    setContinuing(true);
+    try {
+      const seed = (variation + 1) ^ Math.floor(resumeAt);
+      const { plan: addition, fellBack, providerId } = await generateShowPlanWithProviderDetailed({
+        prompt: `Continuação a partir de ${resumeAt.toFixed(1)}s do show "${plan.title}". ${value}`,
+        site,
+        variationSeed: seed,
+      });
+      const merged = appendShowPlan(plan, addition, { gap: 1 });
+      setPlan(merged);
+      setVariation(seed);
+      setContinuationPrompt('');
+      if (fellBack) toast.warning('IA remota indisponível — coreografia continuada via gerador local.');
+      else toast.success(`Coreografia estendida via ${providerId} (+${addition.duration.toFixed(0)}s).`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao continuar coreografia');
+    } finally {
+      setContinuing(false);
+    }
+  }, [plan, continuationPrompt, site, variation, resumeAt]);
+
+
   return (
     <Card className="border-border/40 bg-card/50">
       <CardHeader>
@@ -193,6 +236,16 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
               Editar prompt
             </Button>
           )}
+          <Button
+            variant="outline"
+            onClick={selectAllPositionsInStore}
+            disabled={positionsCount === 0}
+            className="gap-2"
+            title={positionsCount === 0 ? 'Aplique um plano primeiro' : `Seleciona ${positionsCount} posições`}
+          >
+            <MousePointerSquareDashed className="h-4 w-4" />
+            Selecionar todas {positionsCount > 0 && `(${selectedCount}/${positionsCount})`}
+          </Button>
         </div>
 
         {/* Live 3D preview + permanent PromptBar — always visible. */}
@@ -232,6 +285,40 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
           />
         )}
 
+        {plan && !reviewing && (
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <ArrowRightCircle className="h-4 w-4 text-primary" />
+              Continuar coreografia
+              <Badge variant="outline" className="ml-auto text-[10px]">
+                retoma em {resumeAt.toFixed(1)}s
+              </Badge>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Adiciona um novo trecho ao final do show, mantendo tudo o que já
+              foi criado. Os tempos do trecho novo começam após o último cue.
+            </p>
+            <Textarea
+              value={continuationPrompt}
+              onChange={(e) => setContinuationPrompt(e.target.value)}
+              placeholder="Ex: depois do finale, 20s de cometas verdes em leque com cauda dourada"
+              className="min-h-[72px] resize-none text-sm"
+              disabled={continuing}
+              maxLength={2000}
+            />
+            <div className="flex justify-end">
+              <Button
+                onClick={handleContinue}
+                disabled={continuing || continuationPrompt.trim().length < 4}
+                className="gap-2"
+                size="sm"
+              >
+                {continuing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                {continuing ? 'Estendendo…' : 'Estender show'}
+              </Button>
+            </div>
+          </div>
+        )}
         <p className="text-[11px] text-muted-foreground italic pt-1">
           Este plano é uma pré-visualização criativa. Revise segurança, distâncias e normas locais antes da execução real.
         </p>
