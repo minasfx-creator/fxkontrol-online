@@ -39,9 +39,11 @@ Entregas:
 Objetivo: criar e validar shows completos em `simulation` sem hardware, atingindo `READY_FOR_EXPORT`.
 
 Entregas:
-1. **Show Libertadores como golden show**
+1. **Show Libertadores como golden show** ✅
    - Seed em `src/lib/showSeeds/libertadores.ts`: 32 pontos altos, 32 baixos, cometas, posicionamento via `PlannedPosition` (YZX HPR), efeitos via `PlannedTimelineItem`.
-   - Validador roda `ShowPlanValidationResult` antes de gravar.
+   - **Catálogo central** em `src/lib/showSeeds/catalog.ts` + 2º seed `maracanaHino.ts` (60s, 2×FXK16) provando generalidade da pipeline.
+   - Painel `/dev/golden-shows` mostra matriz Verification × DryRun × Inspect por seed (read-only).
+   - Validador roda `ShowPlanValidationResult` antes de gravar. **51/51 tests passing.**
 2. **Loop simulação = execução**
    - `play` em workMode=`simulation` toca a coreografia 100% — partícula GPGPU, smoke shader, blackbody, com `safetyGate.anyEnforced` respeitando workMode (já implementado em Simulation Guard Defense).
    - Visual idêntico ao que será exportado: shaders cinema + lens flare + halation já estão no `render_ultra/`.
