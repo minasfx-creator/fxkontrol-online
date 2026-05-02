@@ -55,6 +55,7 @@ const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")
 const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
 const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
 const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")));
+const LibertadoresGoldenShow = lazy(lazyRetry(() => import("./pages/dev/Libertadores")));
 const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
@@ -195,6 +196,9 @@ function App() {
                         view of VerificationEngine + ReadinessEvaluator + Hardware
                         Registry with adapter provenance. No commands sent. */}
                     <Route path="/dev/readiness-audit" element={<ReadinessAudit />} />
+                    {/* Phase 1 golden show inspector — pure read of the
+                        Libertadores ShowPlan + PDF + honest export ZIP. */}
+                    <Route path="/dev/libertadores" element={<LibertadoresGoldenShow />} />
                     {/* Public alias — promoted shell route. */}
                     <Route path="/editor-ds" element={<EditorShellPreview />} />
                     {/* Public legal pages — required by Paddle (Merchant of Record) and must be crawlable without auth. */}
