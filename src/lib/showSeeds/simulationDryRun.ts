@@ -56,16 +56,11 @@ const DEFAULT_BURN_S = 1.2; // visual burn proxy when item has no duration
 
 function buildSchedule(sp: ShowPlan): ScheduledCue[] {
   const out: ScheduledCue[] = [];
-  for (const item of sp.timeline ?? []) {
-    const t = Number(item.startTime ?? 0);
+  for (const cue of sp.pyroCues ?? []) {
+    const t = Number(cue.time ?? 0);
     if (!Number.isFinite(t) || t < 0) continue;
-    const dur = Number((item as { duration?: number }).duration ?? DEFAULT_BURN_S);
-    const ch =
-      (item as { channelId?: string; pinId?: string; positionId?: string }).channelId ??
-      (item as { pinId?: string }).pinId ??
-      (item as { positionId?: string }).positionId ??
-      'unassigned';
-    out.push({ t, durationS: Math.max(0.05, dur), channel: String(ch) });
+    const ch = `M${cue.module}:C${cue.channel}`;
+    out.push({ t, durationS: DEFAULT_BURN_S, channel: ch });
   }
   out.sort((a, b) => a.t - b.t);
   return out;
@@ -83,7 +78,7 @@ export function simulationDryRun(
   const planDuration = Math.min(
     maxSeconds,
     Math.max(
-      sp.duration ?? 0,
+      sp.metadata?.duration ?? 0,
       sched.reduce((m, c) => Math.max(m, c.t + c.durationS), 0),
     ),
   );
