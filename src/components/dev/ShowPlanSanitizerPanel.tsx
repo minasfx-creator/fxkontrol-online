@@ -26,11 +26,6 @@ import {
   type ShowPlanSanitizationResult,
 } from '@/core/showplan/sanitizeShowPlan';
 
-function evaluate(): ShowPlanSanitizationResult {
-  return sanitizeShowPlan(showPlanManager.current as ReturnType<
-    typeof showPlanManager.current.valueOf
-  > extends infer _ ? typeof showPlanManager.current : never);
-}
 
 export default function ShowPlanSanitizerPanel() {
   const { toast } = useToast();
