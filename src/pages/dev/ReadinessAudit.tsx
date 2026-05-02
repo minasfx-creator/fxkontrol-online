@@ -43,6 +43,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import ShowPlanSanitizerPanel from "@/components/dev/ShowPlanSanitizerPanel";
 
 type Snapshot = {
   capturedAt: string;
@@ -293,6 +294,9 @@ export default function ReadinessAudit() {
           </ul>
         )}
       </Card>
+
+      {/* ShowPlan sanitizer (Sprint 2) */}
+      <ShowPlanSanitizerPanel />
 
       {/* Readiness issues */}
       <Card className="p-4 space-y-3">
