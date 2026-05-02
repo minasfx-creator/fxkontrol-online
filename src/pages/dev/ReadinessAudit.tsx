@@ -147,6 +147,20 @@ export default function ReadinessAudit() {
     URL.revokeObjectURL(url);
   };
 
+  const onInspectMarkdown = () => {
+    const report = inspectHardware(unifiedHardwareRegistry);
+    const md = inspectHardwareToMarkdown(report);
+    const blob = new Blob([md], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `fxk-inspect-hardware-${report.capturedAt.replace(/[:.]/g, "-")}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <main className="min-h-dvh bg-background text-foreground p-6 space-y-6">
       <header className="flex items-center justify-between gap-4 flex-wrap">
