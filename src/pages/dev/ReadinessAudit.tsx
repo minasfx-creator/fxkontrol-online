@@ -25,6 +25,12 @@ import { verificationEngine } from "@/core/verification/VerificationEngine";
 import { readinessEvaluator } from "@/core/hardware/ReadinessEvaluator";
 import { unifiedHardwareRegistry } from "@/core/hardware/UnifiedHardwareRegistry";
 import { getProvenanceBadge } from "@/core/hardware/provenance";
+import {
+  ADAPTER_TRIAGE,
+  getTriageEntry,
+  pendingRequiredAdapters,
+  type AdapterTriageEntry,
+} from "@/core/hardware/adapterTriage";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -117,6 +123,12 @@ export default function ReadinessAudit() {
       snapshot.adapters.filter(
         (a) => a.integrationMode === "not_integrated",
       ),
+    [snapshot],
+  );
+  // Re-evaluate every tick — pending is computed live from registry.
+  const pending = useMemo(
+    () => pendingRequiredAdapters(unifiedHardwareRegistry),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [snapshot],
   );
 
@@ -272,6 +284,36 @@ export default function ReadinessAudit() {
         )}
       </Card>
 
+      {/* Phase 0 exit criterion — required adapters still pending */}
+      <Card className="p-4 space-y-3">
+        <h2 className="ds-h3">
+          Pendentes para sair de SIMULATION ({pending.length})
+        </h2>
+        {pending.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Todos os adapters obrigatórios estão integrados. Critério de saída
+            de hardware da Fase 0 atendido.
+          </p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {pending.map((p) => (
+              <li
+                key={p.id}
+                className="flex items-start justify-between gap-3 border border-border/40 rounded p-2"
+              >
+                <div>
+                  <div className="font-medium">{p.id}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {p.rationale}
+                  </div>
+                </div>
+                <TriageActionButton entry={p} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
       {/* Operational adapters */}
       <Card className="p-4 space-y-3">
         <h2 className="ds-h3">
@@ -321,6 +363,7 @@ function AdapterTable({
           <TableRow>
             <TableHead>Adapter</TableHead>
             <TableHead>Tipo</TableHead>
+            <TableHead>Triagem</TableHead>
             <TableHead>Conexão</TableHead>
             <TableHead>Modo</TableHead>
             <TableHead>Evidência</TableHead>
@@ -333,10 +376,24 @@ function AdapterTable({
             const badge = getProvenanceBadge(
               a.integrationMode as Parameters<typeof getProvenanceBadge>[0],
             );
+            const triage = getTriageEntry(a.id);
             return (
               <TableRow key={a.id}>
                 <TableCell className="font-medium">{a.label}</TableCell>
                 <TableCell className="text-xs">{a.type}</TableCell>
+                <TableCell className="text-xs">
+                  {triage ? (
+                    <Badge variant="outline" className="text-[10px]">
+                      {triage.class === "NOT_INTEGRATED_EXPECTED"
+                        ? "esperado"
+                        : triage.class === "AWAITING_HANDSHAKE"
+                          ? "aguarda handshake"
+                          : "bug"}
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </TableCell>
                 <TableCell className="text-xs">{a.connection}</TableCell>
                 <TableCell>
                   <Badge
@@ -366,5 +423,29 @@ function AdapterTable({
         </TableBody>
       </Table>
     </div>
+  );
+}
+
+function TriageActionButton({ entry }: { entry: AdapterTriageEntry }) {
+  if (entry.nextAction.kind === "route") {
+    return (
+      <Button asChild size="sm" variant="outline">
+        <Link to={entry.nextAction.path}>{entry.nextAction.label}</Link>
+      </Button>
+    );
+  }
+  if (entry.nextAction.kind === "doc") {
+    return (
+      <Button asChild size="sm" variant="ghost">
+        <a href={entry.nextAction.path} target="_blank" rel="noreferrer">
+          {entry.nextAction.label}
+        </a>
+      </Button>
+    );
+  }
+  return (
+    <span className="text-xs text-muted-foreground">
+      {entry.nextAction.label}
+    </span>
   );
 }
