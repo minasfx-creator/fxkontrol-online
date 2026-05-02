@@ -202,6 +202,10 @@ export default function ReadinessAudit() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Recarregar
           </Button>
+          <Button size="sm" variant="outline" onClick={onInspectMarkdown}>
+            <Download className="h-4 w-4 mr-2" />
+            Inspect (MD)
+          </Button>
           <Button size="sm" onClick={onExport}>
             <Download className="h-4 w-4 mr-2" />
             Export JSON
