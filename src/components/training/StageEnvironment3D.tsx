@@ -628,6 +628,15 @@ const StageEnvironment3D = forwardRef<THREE.Group>(function StageEnvironment3D(_
       {/* ── Ambient stage lighting ── */}
       <pointLight position={[0, 5.5, 0]} color="#221133" intensity={3} distance={12} />
       <pointLight position={[0, 1.2, 6.4]} color="#22ffaa" intensity={0.6} distance={3.5} />
+
+      {/* ── FOH overhead lighting rig clusters (audience-side) ── */}
+      <LightingRigCluster position={[-4.2, 5.6, 4.5]} />
+      <LightingRigCluster position={[4.2, 5.6, 4.5]} />
+
+      {/* ── Stadium stands surrounding (legendary venues) ── */}
+      <StadiumStands position={[0, 0, 8.5]} rows={6} width={26} />
+      <StadiumStands position={[-13, 0, 0]} rotationY={Math.PI / 2} rows={5} width={18} />
+      <StadiumStands position={[13, 0, 0]} rotationY={-Math.PI / 2} rows={5} width={18} />
     </group>
   );
 });
