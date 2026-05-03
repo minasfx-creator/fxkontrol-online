@@ -200,6 +200,7 @@ export default function CinematicTrainingSimulator({
               pointAt={isSpeaking ? activeDialogue?.pointAt ?? null : null}
               closeup={isSpeaking}
               lookAtTarget={[0, 1.6, 0]}
+              voiceLineId={isSpeaking ? activeDialogue?.text ?? null : null}
             />
           );
         })}
