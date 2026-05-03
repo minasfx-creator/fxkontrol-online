@@ -17,6 +17,7 @@ import {
   clearExtensionHistory,
 } from '@/lib/aiShowBuilder/extensionHistoryStorage';
 import { serializeExtensionHistory, parseExtensionHistoryExport } from '@/lib/aiShowBuilder/extensionHistoryIO';
+import { extensionHighlight } from '@/lib/aiShowBuilder/extensionHighlight';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -418,6 +419,9 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     return () => window.removeEventListener('keydown', onKey);
   }, [plan, extensionHistory.length, redoStack.length, handleUndoExtension, handleRedoExtension]);
 
+  // Limpa highlight ao desmontar (evita stale state se o painel sumir).
+  useEffect(() => () => extensionHighlight.clear(), []);
+
   // Persistência leve por plan.id: sobrevive a reload/troca de aba.
   // Hidrata ao trocar de plano; salva (debounced via React batching) a cada mudança.
   useEffect(() => {
@@ -713,7 +717,23 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
                   return (
                     <div
                       key={entry.id}
-                      className="rounded-sm bg-card/40 border border-border/30 px-2 py-1.5 text-[11px]"
+                      className="rounded-sm bg-card/40 border border-border/30 px-2 py-1.5 text-[11px] transition-colors hover:border-primary/50 hover:bg-primary/5"
+                      onMouseEnter={() => extensionHighlight.set({
+                        entryId: entry.id,
+                        cueIds: new Set(entry.diff.addedCueIds),
+                        positionIds: new Set(entry.diff.addedPositionIds),
+                        sectionIds: new Set(entry.diff.addedSectionIds),
+                        trajectoryIds: new Set(entry.diff.addedTrajectoryIds),
+                      })}
+                      onMouseLeave={() => extensionHighlight.clear(entry.id)}
+                      onFocus={() => extensionHighlight.set({
+                        entryId: entry.id,
+                        cueIds: new Set(entry.diff.addedCueIds),
+                        positionIds: new Set(entry.diff.addedPositionIds),
+                        sectionIds: new Set(entry.diff.addedSectionIds),
+                        trajectoryIds: new Set(entry.diff.addedTrajectoryIds),
+                      })}
+                      onBlur={() => extensionHighlight.clear(entry.id)}
                     >
                       <div className="flex items-start gap-2">
                         <button
