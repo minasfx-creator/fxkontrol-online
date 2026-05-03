@@ -11,11 +11,12 @@ import { ClaimBadge } from '@/components/strategy/ClaimBadge';
 import { CLAIMS } from '@/lib/claims';
 import { MATURITY_MATRIX } from '@/lib/productMaturity';
 
-type TabId = 'assets' | 'maturity' | 'ai' | 'docktwin' | 'approval' | 'sessions' | 'plan';
+type TabId = 'assets' | 'maturity' | 'golive' | 'ai' | 'docktwin' | 'approval' | 'sessions' | 'plan';
 
 const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'assets', label: 'Asset Library', icon: Layers },
   { id: 'maturity', label: 'Maturity', icon: Activity },
+  { id: 'golive', label: 'Go-Live Center', icon: ShieldCheck },
   { id: 'ai', label: 'AI Choreography', icon: Wand2 },
   { id: 'docktwin', label: 'DockTwin Pilot', icon: Wrench },
   { id: 'approval', label: 'Client Approval', icon: ClipboardCheck },
