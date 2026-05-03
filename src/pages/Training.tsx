@@ -290,6 +290,17 @@ export default function Training() {
 
   // --- SIMULATOR MODE ---
   if (activeMission) {
+    const script = getMissionScript(activeMission.id);
+    if (script && isEnabled('training_v2_cinematic')) {
+      return (
+        <CinematicTrainingSimulator
+          script={script}
+          allEquipment={EQUIPMENT}
+          onComplete={() => handleMissionComplete(activeMission.id)}
+          onQuit={() => setActiveMission(null)}
+        />
+      );
+    }
     return (
       <TrainingSimulator
         mission={activeMission}
