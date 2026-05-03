@@ -36,6 +36,7 @@ import {
   type AiShowPipelineModel,
 } from '@/lib/aiShowBuilder/pipelineModel';
 import ShowPlanReviewEditor from './ShowPlanReviewEditor';
+import ExtensionDiffStrip from './ExtensionDiffStrip';
 import ShowEngineHost from '@/components/show-engine/ShowEngineHost';
 import PromptBar from '@/components/show-engine/PromptBar';
 
@@ -711,6 +712,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-bold px-1">
                   Histórico de extensões (mais recente primeiro)
                 </div>
+                {plan && <ExtensionDiffStrip plan={plan} />}
                 {extensionHistory.map((entry, idx) => {
                   const ago = Math.max(1, Math.floor((Date.now() - entry.timestamp) / 1000));
                   const expanded = expandedEntryIds.has(entry.id);
