@@ -42,7 +42,7 @@ export function BleSuccessStep({ handshake, deviceName, onPairAnother }: Props) 
       <div className="space-y-2">
         <Button
           className="w-full h-14 text-sm"
-          onClick={() => navigate('/dev/fxk16-validate')}
+          onClick={() => navigate('/dev/fxk16?tab=validate')}
         >
           Abrir console FXK Pyro (validate)
         </Button>
