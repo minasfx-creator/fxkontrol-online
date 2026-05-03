@@ -224,7 +224,7 @@ function App() {
                     <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                       {/* ── 3 grandes áreas ───────────────────────────────────── */}
                       {/* Default landing → Studio 3D viewport (entrada principal). */}
-                      <Route path="/" element={<Navigate to="/studio" replace />} />
+                      <Route path="/" element={<Navigate to="/office?tab=overview" replace />} />
                       <Route path="/office" element={<Office />} />
                       {/* Studio = editor 3D. /editor é endpoint equivalente (mesma página). */}
                       <Route path="/studio" element={<Index />} />
