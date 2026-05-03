@@ -147,6 +147,22 @@ export default function Strategy() {
             ))}
           </div>
 
+          {/* Product Pillars */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            {[
+              { t: 'Strategic Command Hub', d: 'GTM hub. Exports strategy package. Never executes commands.' },
+              { t: 'Go-Live Center', d: 'Source of operational trust. Evidence, rollback, signoff.' },
+              { t: 'AI Choreography Studio', d: 'Safe scenes, formations, DMX looks. No chemistry, no firing.' },
+              { t: 'DockTwin Pilot', d: 'XLR-inspired physical-digital twin. Pilot, not commercial line.' },
+              { t: 'Client Approval Flow', d: 'Visual + contractual. Real commands stay outside.' },
+            ].map((p) => (
+              <div key={p.t} className="rounded-md border border-border bg-background/20 p-2.5">
+                <h4 className="text-[10px] font-semibold text-primary ds-mono uppercase tracking-wider">{p.t}</h4>
+                <p className="text-[10px] text-muted-foreground mt-1 leading-snug">{p.d}</p>
+              </div>
+            ))}
+          </div>
+
           <div className="rounded-md border border-border bg-background/30 p-3">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] ds-mono uppercase tracking-wider text-muted-foreground">Claim policy:</span>
