@@ -1393,7 +1393,13 @@ function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop:
 }
 
 // ─── Main Page ────────────────────────────────────
-export default function FieldTest() {
+/**
+ * FieldTestMobile — original mobile/tablet shell. Kept as the default
+ * fallback when the device is small or touch-coarse. Desktop callers
+ * should mount `FieldTestDesktop` directly via the unified `FieldTest`
+ * entry below.
+ */
+function FieldTestMobile() {
   const navigate = useNavigate();
   const [session, setSession] = useState<FieldTestSession | null>(null);
 
