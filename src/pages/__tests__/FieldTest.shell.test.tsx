@@ -69,7 +69,10 @@ describe('FieldTest polymorphic entry', () => {
     const { default: FieldTest } = await import('@/pages/FieldTest');
     renderWithRouter(<FieldTest />);
     // Header only present in the mobile shell ("FIELD TEST" + back button).
-    expect(await screen.findByText(/FIELD TEST/i)).toBeInTheDocument();
+    // Mobile shell renders the setup screen header. Multiple matches are
+    // fine — the absence of the desktop shell is the discriminator.
+    const matches = await screen.findAllByText(/FIELD TEST/i);
+    expect(matches.length).toBeGreaterThan(0);
     expect(screen.queryByTestId('desktop-shell')).not.toBeInTheDocument();
   });
 
