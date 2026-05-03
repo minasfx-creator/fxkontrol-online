@@ -251,10 +251,11 @@ function App() {
                       {/* ── Field ops (gated) ─────────────────────────────────── */}
                       <Route path="/field" element={isEnabled('module_pairing_mobilelink') ? <FieldOps /> : <Navigate to="/office" replace />} />
                       <Route path="/pairing" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#pairing" replace /> : <Navigate to="/office" replace />} />
-                      {/* iOS-first guided USB authorization wizard. */}
+                      {/* Unified pairing wizard — single configurable route.
+                          /pairing/usb and /pairing/ble are kept as direct routes
+                          for backward-compat (deep links, audit log entries). */}
+                      <Route path="/pairing/:transport" element={<PairingWizard />} />
                       <Route path="/pairing/usb" element={<UsbPairingWizard />} />
-                      {/* BLE pairing wizard — scans for FXK16-XXXXXX, performs
-                          handshake (VERSION+STATUS), shows per-attempt status. */}
                       <Route path="/pairing/ble" element={<BlePairingWizard />} />
                       <Route path="/field-test" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#field-test" replace /> : <Navigate to="/office" replace />} />
                       <Route path="/fxk16" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#fxk16" replace /> : <Navigate to="/office" replace />} />
