@@ -644,7 +644,7 @@ export default function VideoEditor() {
     <TooltipProvider delayDuration={200}>
       <SidebarProvider defaultOpen>
         <div className="flex h-screen w-full bg-[#050810] text-zinc-200">
-          <LeftSidebar />
+          <EffectLibrarySidebar />
 
           <div className="flex-1 flex flex-col min-w-0">
             <Topbar
