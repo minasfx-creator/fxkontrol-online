@@ -1915,7 +1915,48 @@ export default function SkyCanvas() {
 
   // Force R3F to re-measure when resizable panels change size (debounced)
   const containerRef = useRef<HTMLDivElement>(null);
-  // ResizeObserver removed — R3F Canvas resize={{ debounce: 50 }} handles this natively
+  // Orientation/zero-size guard: alguns layouts (mobile rotation, painéis
+  // colapsados durante transição) deixam o container temporariamente com
+  // 0×0. R3F nunca reanexa o canvas nesse caso e a tela fica preta.
+  // Observamos o container e forçamos um remount do <Canvas> assim que ele
+  // sai de zero-size — barato, idempotente, e cobre orientationchange.
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    let wasZero = node.clientWidth === 0 || node.clientHeight === 0;
+    let remountTimer: number | null = null;
+    const scheduleRemount = () => {
+      if (remountTimer != null) return;
+      remountTimer = window.setTimeout(() => {
+        remountTimer = null;
+        setCanvasInstanceKey((k) => k + 1);
+      }, 80);
+    };
+    const ro = new ResizeObserver((entries) => {
+      const e = entries[0];
+      if (!e) return;
+      const w = e.contentRect.width;
+      const h = e.contentRect.height;
+      const isZero = w < 2 || h < 2;
+      if (wasZero && !isZero) scheduleRemount();
+      wasZero = isZero;
+    });
+    ro.observe(node);
+    const onOrient = () => {
+      // Após orientationchange o browser pode demorar 1 frame para reflowar.
+      // Se o canvas continuar com 0 height, força remount.
+      window.setTimeout(() => {
+        const c = node.querySelector('canvas');
+        if (!c || c.clientWidth < 2 || c.clientHeight < 2) scheduleRemount();
+      }, 120);
+    };
+    window.addEventListener('orientationchange', onOrient);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('orientationchange', onOrient);
+      if (remountTimer != null) window.clearTimeout(remountTimer);
+    };
+  }, []);
 
   const [canvasReady, setCanvasReady] = useState(false);
   const [webglRetryKey, setWebglRetryKey] = useState(0);
