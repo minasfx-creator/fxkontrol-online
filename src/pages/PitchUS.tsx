@@ -12,15 +12,15 @@ const CORE = [
   { title: 'Safety-first spectacle OS', body: 'Simulation, evidence, readiness, rollback and audit are sales proof — not afterthoughts.' },
 ];
 
-// External marketing palette (brief): #121214 / #00FFFF / #FF7700.
-// Operational chrome stays Vantablack + cyan-dessat.
+// Canonical operational palette (Vantablack + cyan-dessat). The earlier brief
+// (#121214 / #00FFFF / #FF7700) was rejected by the design priority memory:
+// brand chrome on every public surface MUST match the operator UI.
 const PITCH_STYLE: React.CSSProperties = {
-  // expose as inline CSS vars for this page only
-  ['--pitch-bg' as string]: '#121214',
-  ['--pitch-fg' as string]: '#F5F5F7',
-  ['--pitch-cyan' as string]: '#00FFFF',
-  ['--pitch-orange' as string]: '#FF7700',
-  ['--pitch-muted' as string]: '#9A9AA0',
+  ['--pitch-bg' as string]: 'hsl(var(--ds-background))',
+  ['--pitch-fg' as string]: 'hsl(var(--ds-text-primary))',
+  ['--pitch-cyan' as string]: 'hsl(var(--status-sync))',
+  ['--pitch-cta' as string]: 'hsl(var(--status-sync))',
+  ['--pitch-muted' as string]: 'hsl(var(--ds-text-secondary))',
   background: 'var(--pitch-bg)',
   color: 'var(--pitch-fg)',
 };
