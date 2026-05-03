@@ -80,13 +80,20 @@ export default function CinematicTrainingSimulator({
     });
   }, [runner, script.scoreRules.safetyPenalty]);
 
-  // Drive briefing dialogue
+  // Drive briefing dialogue (also fires briefing-scoped cinematic beats once)
+  const briefingBeatsFired = useRef(false);
   useEffect(() => {
     if (snap.phase !== 'briefing') return;
+    if (!briefingBeatsFired.current) {
+      briefingBeatsFired.current = true;
+      (script.cinematicBeats ?? [])
+        .filter((b) => b.triggerOn === 'briefing')
+        .forEach((b) => directorRef.current?.enqueue(b));
+    }
     const line = script.briefing.lines[briefingIndex];
     if (line) setActiveDialogue(line);
     else { setActiveDialogue(null); runner.startMission(); }
-  }, [snap.phase, briefingIndex, script.briefing.lines, runner]);
+  }, [snap.phase, briefingIndex, script.briefing.lines, script.cinematicBeats, runner]);
 
   // Mission timer
   useEffect(() => {
