@@ -22,6 +22,9 @@ import { Map as MapIcon, Target, User, Trophy, Settings, Lock, Star, ArrowRight 
 import { useNavigate } from 'react-router-dom';
 import { useWorkMode } from '@/core/safety/workMode';
 import { MISSION_SCRIPTS } from '@/components/training/missions/missionScripts';
+import type { MissionScript } from '@/components/training/missions/types';
+import MetaHumanCoachPanel, { type CoachTip } from '@/components/training/coach/MetaHumanCoachPanel';
+import MissionBriefingMetaHuman from '@/components/training/briefing/MissionBriefingMetaHuman';
 import { isEnabled } from '@/lib/featureFlags';
 import { cn } from '@/lib/utils';
 
