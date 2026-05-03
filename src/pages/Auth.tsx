@@ -248,6 +248,11 @@ export default function Auth() {
               {isLogin ? 'Cadastre-se' : 'Faça login'}
             </button>
           </p>
+          <p className="text-center text-[10px] text-muted-foreground/70 relative z-10">
+            <a href="/landing" className="hover:text-status-sync hover:underline transition-colors">
+              Conhecer a plataforma →
+            </a>
+          </p>
         </div>
 
         {/* MinasFX branding */}
