@@ -175,16 +175,6 @@ function LedPanels() {
 // ============================================================================
 // Beams aditivos (cones invertidos com shader fake-volumetric)
 // ============================================================================
-const BEAM_VERT = /* glsl */ `
-  varying float vR;       // raio normalizado (0 no eixo, 1 na borda)
-  varying float vY;       // altura normalizada (0 base, 1 topo)
-  void main() {
-    vR = length(position.xz) / max(uvWidth, 0.0001);
-    vY = (position.y + 0.5);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-// fallback simples sem uniform de width: usa attribute uv.x como proxy
 const BEAM_VERT_SAFE = /* glsl */ `
   varying float vR;
   varying float vY;
@@ -201,7 +191,7 @@ const BEAM_FRAG = /* glsl */ `
   varying float vY;
   void main() {
     float radial = pow(1.0 - clamp(vR, 0.0, 1.0), 2.4);
-    float fade = mix(0.55, 1.0, vY);   // mais brilho perto da fonte
+    float fade = mix(0.55, 1.0, vY);
     float a = radial * fade * intensity;
     gl_FragColor = vec4(color * (radial * 1.2 + 0.2), a);
   }
