@@ -615,8 +615,8 @@ function SyntheticGrassGround({ brightness }: { brightness: number }) {
     uniforms.brightness.value = brightness;
   }, [brightness]);
 
-  useFrame(({ clock, camera }) => {
-    uniforms.time.value = clock.getElapsedTime();
+  useFrame(({ camera }) => {
+    uniforms.time.value = useProjectStore.getState().currentTime;
     uniforms.camPos.value.copy(camera.position);
   });
 
