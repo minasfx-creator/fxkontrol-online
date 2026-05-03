@@ -20,6 +20,7 @@ import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { FxkLogo } from "@/components/brand/FxkLogo";
 
 type Cycle = "monthly" | "annual";
 
