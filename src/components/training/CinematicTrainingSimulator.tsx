@@ -81,6 +81,17 @@ export default function CinematicTrainingSimulator({
   // Event stream → cinematic beats + xp popups + stage flash
   useEffect(() => {
     return runner.onEvent((ev) => {
+      choreographer.ingest(ev, {
+        speakerId: activeDialogue?.npcId ?? script.briefing.npcId,
+        speakerIntent: activeDialogue?.intent,
+        activeNpcIds: Array.from(new Set([
+          script.briefing.npcId,
+          ...(snap.currentStage?.onEnter ?? []).map((e) => e.npcId),
+          ...(snap.currentStage?.dialogue ?? []).map((d) => d.npcId),
+        ].filter(Boolean) as string[])),
+      });
+      setNpcPoses(choreographer.snapshot());
+
       if (ev.kind === 'beat:start') directorRef.current?.enqueue(ev.beat);
       else if (ev.kind === 'objective:complete') {
         setXpPopups((p) => [...p, { id: `xp-${Date.now()}-${Math.random()}`, amount: ev.scoreDelta, label: 'objetivo', variant: 'precision' }]);
@@ -90,7 +101,7 @@ export default function CinematicTrainingSimulator({
         setPassedFlash(true);
       }
     });
-  }, [runner, script.scoreRules.safetyPenalty]);
+  }, [runner, script.scoreRules.safetyPenalty, script.briefing.npcId, snap.currentStage, activeDialogue, choreographer]);
 
   // Drive briefing dialogue (also fires briefing-scoped cinematic beats once)
   const briefingBeatsFired = useRef(false);
