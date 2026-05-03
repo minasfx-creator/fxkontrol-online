@@ -30,7 +30,6 @@ import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { parseFireOneCSV, parseFireOneFIR, exportFireOneCSV, downloadFile, autoDetectAndParse } from '@/lib/fireoneScriptParser';
 import type { WirelessConnectionMode } from '@/lib/fireoneProtocol';
 import { artnetModuleService } from '@/services/artnetModuleService';
-import { FXK16ConnectionPanel } from './FXK16ConnectionPanel';
 import FXK16StatusBar from '@/components/field/FXK16StatusBar';
 
 interface FireLogEntry {
