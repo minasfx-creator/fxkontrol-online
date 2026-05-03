@@ -667,6 +667,30 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
                   Limpar
                 </Button>
               )}
+              {extensionHistory.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleExportHistory}
+                  disabled={continuing}
+                  className="gap-1.5 text-muted-foreground hover:text-foreground"
+                  title="Exportar histórico para JSON (auditoria/portabilidade)"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Exportar
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleImportHistory}
+                disabled={continuing || !plan}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+                title="Importar histórico de JSON (substitui o atual)"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Importar
+              </Button>
               <Button
                 onClick={handleContinue}
                 disabled={continuing || continuationPrompt.trim().length < 4}
