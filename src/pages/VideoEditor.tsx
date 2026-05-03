@@ -15,11 +15,11 @@
  * Tema: Vantablack canônico (#050810) + cyan-dessat 190/70/58 + amber/red
  * para status — mesma paleta operacional. Dark-first, WCAG AA.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Film, Layers, Music2, Sparkles, Wand2, Settings2, Play, Pause, Square,
   SkipBack, SkipForward, Plus, ZoomIn, ZoomOut, Eye, Lock, Trash2,
-  Camera, Sun, Cloud, Activity,
+  Camera, Sun, Cloud, Activity, Volume2, VolumeX,
 } from 'lucide-react';
 
 import {
@@ -40,6 +40,8 @@ import { cn } from '@/lib/utils';
 
 import SkyCanvas3D from '@/components/show3d/SkyCanvas3D';
 import { useProjectStore } from '@/store/useProjectStore';
+import { timelineClock } from '@/core/timeline/TimelineClock';
+import { useAudioMasterClock } from '@/hooks/useAudioMasterClock';
 
 // ──────────────────────────────────────────────────────────────────────────
 // Left sidebar — assets/library
