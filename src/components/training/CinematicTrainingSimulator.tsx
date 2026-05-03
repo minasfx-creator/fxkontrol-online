@@ -33,6 +33,8 @@ import { createNpcChoreographer, type NPCPoseMap } from './ambient/npcChoreograp
 import CinematicCameraDirector, { type CinematicCameraDirectorHandle } from './camera/CinematicCameraDirector';
 import type { MissionScript, DialogueLine } from './missions/types';
 import { createMissionRunner, type RunnerSnapshot } from './missions/missionRunner';
+import { computeDebriefMetrics, type PlacementAttempt } from './missions/debriefMetrics';
+import MissionDebriefPanel from './hud/MissionDebriefPanel';
 import {
   Equipment, SnapPoint, PlacedItem, MISSION_SNAP_POINTS,
 } from './types';
