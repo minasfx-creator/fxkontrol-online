@@ -208,6 +208,10 @@ function MissionsPanel() {
   const navigate = useNavigate();
   const v2 = isEnabled('training_v2_cinematic');
   const [briefing, setBriefing] = useState<MissionScript | null>(null);
+  const unlocked = useAchievementsStore((s) => s.unlockedMissions);
+  const missionRuns = useAchievementsStore((s) => s.missionRuns);
+  const lastBatch = useAchievementsStore((s) => s.lastBatch);
+  const clearLastBatch = useAchievementsStore((s) => s.clearLastBatch);
 
   function handleStart(m: MissionScript) {
     setBriefing(null);
@@ -219,23 +223,67 @@ function MissionsPanel() {
       <div className="flex items-center justify-between">
         <h2 className="text-ds-h3 text-ds-text-primary">Missões</h2>
         <span className="text-[10px] ds-mono uppercase tracking-wider text-ds-text-muted">
-          scroll horizontal · {MISSION_SCRIPTS.length} cenários
+          {unlocked.length}/{MISSION_SCRIPTS.length} desbloqueadas
         </span>
       </div>
+
+      {lastBatch && (lastBatch.achievements.length > 0 || lastBatch.missions.length > 0) && (
+        <div
+          className="rounded-ds-md border border-status-warn/45 bg-status-warn/10 p-ds-3 op-go-pulse flex items-start justify-between gap-ds-3"
+          role="status"
+        >
+          <div className="text-xs text-ds-text-primary">
+            {lastBatch.achievements.length > 0 && (
+              <p>
+                <span className="ds-mono uppercase tracking-wider text-status-warn">Conquistas:</span>{' '}
+                {lastBatch.achievements.map((a) => ACHIEVEMENT_CATALOG[a].label).join(' · ')}
+              </p>
+            )}
+            {lastBatch.missions.length > 0 && (
+              <p className="mt-1">
+                <span className="ds-mono uppercase tracking-wider text-status-sync">Missões liberadas:</span>{' '}
+                {lastBatch.missions.join(' · ')}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={clearLastBatch}
+            className="text-[10px] ds-mono uppercase tracking-wider text-ds-text-muted hover:text-ds-text-primary"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <div
         className="flex gap-ds-3 overflow-x-auto pb-ds-2"
         style={{ scrollSnapType: 'x mandatory' }}
       >
         {MISSION_SCRIPTS.map((m) => {
           const stars = DIFF_STARS[m.difficulty as string] ?? 1;
+          const locked = m.locked && !unlocked.includes(m.id);
+          const completed = Boolean(missionRuns[m.id]);
+          const earnedHere = missionRuns[m.id]?.achievements ?? [];
           return (
             <article
               key={m.id}
               style={{ scrollSnapAlign: 'start', minWidth: 320 }}
-              className="rounded-ds-md border border-ds-border-default bg-ds-surface-panel p-ds-3 hover:bg-ds-surface-elevated hover:border-ds-border-active/60 transition-all"
+              className={cn(
+                'rounded-ds-md border bg-ds-surface-panel p-ds-3 transition-all',
+                locked
+                  ? 'border-ds-border-subtle opacity-60'
+                  : 'border-ds-border-default hover:bg-ds-surface-elevated hover:border-ds-border-active/60',
+              )}
             >
-              <div className="aspect-video rounded-ds-sm bg-ds-surface-deep border border-ds-border-subtle mb-ds-2 grid place-items-center">
-                <Target className="h-8 w-8 text-status-sync/70" />
+              <div className="aspect-video rounded-ds-sm bg-ds-surface-deep border border-ds-border-subtle mb-ds-2 grid place-items-center relative">
+                {locked
+                  ? <Lock className="h-8 w-8 text-ds-text-disabled" />
+                  : <Target className="h-8 w-8 text-status-sync/70" />}
+                {completed && (
+                  <span className="absolute top-1 right-1 text-[9px] ds-mono uppercase tracking-wider text-status-ok bg-status-ok/15 border border-status-ok/40 rounded-ds-sm px-1.5 py-0.5">
+                    OK
+                  </span>
+                )}
               </div>
               <h3 className="text-sm font-semibold text-ds-text-primary">{m.title}</h3>
               <div className="mt-1 flex items-center gap-1.5">
@@ -252,17 +300,34 @@ function MissionsPanel() {
               <p className="text-[11px] text-ds-text-secondary mt-2 line-clamp-2">
                 {m.scenario ?? '—'}
               </p>
+              {earnedHere.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {earnedHere.map((a) => (
+                    <span
+                      key={a}
+                      title={ACHIEVEMENT_CATALOG[a as AchievementId].label}
+                      className="text-[9px] ds-mono uppercase tracking-wider text-status-warn bg-status-warn/10 border border-status-warn/40 rounded-ds-sm px-1.5 py-0.5"
+                    >
+                      ★ {ACHIEVEMENT_CATALOG[a as AchievementId].label}
+                    </span>
+                  ))}
+                </div>
+              )}
               <button
-                disabled={!v2}
+                disabled={!v2 || locked}
                 onClick={() => setBriefing(m)}
                 className={cn(
                   'mt-ds-3 w-full inline-flex items-center justify-center gap-1.5 rounded-ds-sm px-ds-3 py-ds-2 text-[11px] ds-mono uppercase tracking-wider transition-colors',
-                  v2
+                  v2 && !locked
                     ? 'bg-status-sync/10 border border-status-sync/40 text-status-sync hover:bg-status-sync/20'
                     : 'bg-ds-surface-deep border border-ds-border-subtle text-ds-text-disabled cursor-not-allowed',
                 )}
               >
-                {v2 ? <>Briefing MetaHuman <ArrowRight className="h-3 w-3" /></> : <>Indisponível</>}
+                {locked
+                  ? <><Lock className="h-3 w-3" /> Bloqueada</>
+                  : v2
+                    ? <>Briefing MetaHuman <ArrowRight className="h-3 w-3" /></>
+                    : <>Indisponível</>}
               </button>
             </article>
           );
