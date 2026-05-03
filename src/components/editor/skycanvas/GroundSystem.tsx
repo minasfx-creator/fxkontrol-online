@@ -297,9 +297,9 @@ export function AtmosphericParticles() {
     return { positions: pos, sizes: sz, velocities: vel };
   }, []);
 
-  useFrame(({ clock, camera }) => {
+  useFrame(({ camera }) => {
     if (!pointsRef.current) return;
-    const t = clock.getElapsedTime();
+    const t = useProjectStore.getState().currentTime;
     const posAttr = pointsRef.current.geometry.getAttribute('position') as THREE.BufferAttribute;
     const arr = posAttr.array as Float32Array;
     const camX = camera.position.x, camZ = camera.position.z;
