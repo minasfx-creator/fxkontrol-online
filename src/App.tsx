@@ -55,6 +55,7 @@ const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage
 const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")));
 const SkyCanvas3DDemo = lazy(lazyRetry(() => import("./pages/dev/SkyCanvas3DDemo")));
 const SkyCanvas2Demo = lazy(lazyRetry(() => import("./pages/dev/SkyCanvas2Demo")));
+const UE5BridgePage = lazy(lazyRetry(() => import("./pages/dev/UE5BridgePage")));
 const VideoEditor = lazy(lazyRetry(() => import("./pages/VideoEditor")));
 const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
 const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
