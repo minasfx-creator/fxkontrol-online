@@ -10,6 +10,7 @@
  * NUNCA renderiza CTA real (não arma, não dispara). É um espelho GTM do
  * Go-Live runbook descrito em docs/go-live-comercial-90d.md.
  */
+import { useEffect, useRef, useState } from 'react';
 import { ShieldCheck, Activity, Radio, FileCheck2, AlertTriangle } from 'lucide-react';
 
 type GateStatus = 'ok' | 'warn' | 'fail' | 'sync' | 'disabled';
