@@ -547,8 +547,14 @@ export default function VideoEditor() {
   const setCurrentTime = useProjectStore((s) => s.setCurrentTime);
   const audioUrl = useProjectStore((s) => s.audioUrl);
 
-  // ── Demo seed (one-shot) ────────────────────────────────────────────
+  // ── Persistência (localStorage) — hidrata positions/timelineItems/duration
+  // de sessões anteriores antes do demo seed, e auto-salva mudanças com
+  // debounce de 250ms. NÃO persiste playback (currentTime/isPlaying/audio).
+  const { restored } = usePersistedProject();
+
+  // ── Demo seed (one-shot) — apenas se nada foi restaurado do storage ──
   useEffect(() => {
+    if (restored) return;
     if (useProjectStore.getState().positions.length > 0) return;
     useProjectStore.setState({
       positions: [
@@ -565,7 +571,7 @@ export default function VideoEditor() {
       duration: 12,
     });
     timelineClock.setDuration(12);
-  }, []);
+  }, [restored]);
 
   // ── Audio element + master clock binding ────────────────────────────
   // <audio> stays mounted (hidden). When `audioUrl` is set, the element
