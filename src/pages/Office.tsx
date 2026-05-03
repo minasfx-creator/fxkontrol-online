@@ -36,6 +36,7 @@ const Admin = lazy(() => import('./Admin'));
 const AccreditationDashboard = lazy(() => import('./AccreditationDashboard'));
 const JoiPanel = lazy(() => import('@/ai/ui/JoiPanel'));
 import OfficeHubCards from '@/features/office/OfficeHubCards';
+import OfficeKpiHero from '@/features/office/OfficeKpiHero';
 
 type TabKey =
   | 'overview'
