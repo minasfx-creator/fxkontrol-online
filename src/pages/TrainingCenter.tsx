@@ -284,8 +284,15 @@ function OperatorPanel() {
     { label: 'Timing',   value: 80,  color: 'status-sync' as const },
     { label: 'Hardware', value: 60,  color: 'status-warn' as const },
   ];
+  const coachTip: CoachTip = {
+    kind: 'hint',
+    title: 'Próximo passo recomendado',
+    body: 'Sua disciplina de Safety está em 100%. Foque em Hardware Diagnosis — pareie um FXK16 BLE no /pairing/ble e refaça a missão Cap. 3.',
+  };
   return (
-    <div className="grid md:grid-cols-2 gap-ds-3">
+    <div className="space-y-ds-3">
+      <MetaHumanCoachPanel tip={coachTip} />
+      <div className="grid md:grid-cols-2 gap-ds-3">
       <div className="rounded-ds-md border border-ds-border-default bg-ds-surface-panel p-ds-4 space-y-ds-2">
         <p className="text-[10px] ds-mono uppercase tracking-wider text-ds-text-muted">Operador</p>
         <h3 className="text-ds-h3 text-ds-text-primary">Marco Santos</h3>
