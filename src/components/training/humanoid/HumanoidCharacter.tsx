@@ -157,6 +157,10 @@ export default function HumanoidCharacter({
   propOverrides,
   microExpressions = true,
   voiceLineId = null,
+  gesture = 'idle',
+  gestureDurationMs = 1400,
+  walkTo = null,
+  walkSpeed = 1.4,
 }: HumanoidCharacterProps) {
   const groupRef = useRef<THREE.Group>(null);
   const torsoRef = useRef<THREE.Group>(null);
