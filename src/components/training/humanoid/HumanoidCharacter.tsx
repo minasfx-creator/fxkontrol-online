@@ -384,7 +384,11 @@ export default function HumanoidCharacter({
         {outfit.accent && (
           <mesh ref={accentRef} position={[0, LEG_H + TORSO_H * 0.55, 0.125 * body.depth]} castShadow>
             <boxGeometry args={[0.40 * body.width, TORSO_H * 0.85, 0.005]} />
-            <meshPhysicalMaterial color={outfit.accent} emissive={outfit.accent} emissiveIntensity={0.25} />
+            <meshPhysicalMaterial
+              color={po.vestAccentColor ?? outfit.accent}
+              emissive={po.vestAccentColor ?? outfit.accent}
+              emissiveIntensity={po.vestEmissiveIntensity ?? 0.25}
+            />
           </mesh>
         )}
 
@@ -392,7 +396,7 @@ export default function HumanoidCharacter({
         {props.includes('tool-belt') && (
           <mesh position={[0, LEG_H + 0.02, 0]} castShadow>
             <boxGeometry args={[0.46 * body.width, 0.06, 0.28 * body.depth]} />
-            <meshPhysicalMaterial color="#3b2a1a" roughness={0.9} />
+            <meshPhysicalMaterial color={po.toolBeltColor ?? '#3b2a1a'} roughness={0.9} />
           </mesh>
         )}
 
@@ -410,7 +414,7 @@ export default function HumanoidCharacter({
           {props.includes('clipboard') && (
             <mesh position={[-0.02, -0.55, 0.08]} rotation={[Math.PI / 2.6, 0, 0]} castShadow>
               <boxGeometry args={[0.16, 0.22, 0.012]} />
-              <meshPhysicalMaterial color="#e8e2cf" roughness={0.95} />
+              <meshPhysicalMaterial color={po.clipboardColor ?? '#e8e2cf'} roughness={0.95} />
             </mesh>
           )}
         </group>
@@ -427,14 +431,19 @@ export default function HumanoidCharacter({
           {props.includes('walkie-talkie') && (
             <mesh position={[0.04, -0.55, 0.04]} castShadow>
               <boxGeometry args={[0.06, 0.16, 0.04]} />
-              <meshPhysicalMaterial color="#0a0a0a" roughness={0.7} emissive="#ff3b00" emissiveIntensity={0.15} />
+              <meshPhysicalMaterial
+                color="#0a0a0a"
+                roughness={0.7}
+                emissive={po.walkieLedColor ?? '#ff3b00'}
+                emissiveIntensity={po.walkieLedIntensity ?? 0.15}
+              />
             </mesh>
           )}
           {/* Megaphone */}
           {props.includes('megaphone') && (
             <mesh position={[0.06, -0.5, 0.12]} rotation={[0, 0, Math.PI / 4]} castShadow>
               <coneGeometry args={[0.08, 0.18, 12]} />
-              <meshPhysicalMaterial color="#d6d6d6" roughness={0.4} />
+              <meshPhysicalMaterial color={po.megaphoneColor ?? '#d6d6d6'} roughness={0.4} />
             </mesh>
           )}
         </group>
