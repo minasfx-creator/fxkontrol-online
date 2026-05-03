@@ -147,7 +147,7 @@ class SafetyBlackBox {
     const envelope = { seq, at, kind, ok, reason, payload, prevHash };
     const entryHash = await hashCanonical(prevHash + '|' + stableStringify(envelope));
 
-    const entry: SafetyBlackBoxEntry = { ...envelope, payload, entryHash };
+    const entry: SafetyBlackBoxEntry = { ...envelope, id, entryHash };
     this._entries.push(entry);
     this._persist();
     return entry;
