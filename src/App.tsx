@@ -177,12 +177,11 @@ function App() {
                     {/* Public real-hardware discovery probe — loops scanLight() and shows
                         every device the browser sees, with zero simulated data. */}
                     <Route path="/dev/real-discovery" element={<RealDiscoveryProbe />} />
-                    {/* FXK16 hardware validation harness — Web Serial / BLE,
-                        hold-to-fire per channel, diagnostic-only (bypasses ShowPlan). */}
-                    <Route path="/dev/fxk16-validate" element={<FXK16ValidatePage />} />
-                    {/* FXK16 calibration & diagnostics — handshake card, detected-channel
-                        count, manual hold-to-fire and armed auto-sweep C1..C16. */}
-                    <Route path="/dev/fxk16-calibrate" element={<FXK16CalibrationPage />} />
+                    {/* FXK16 unified dev hub — Validate (harness) + Calibrate (latency)
+                        as tabs. Old paths redirect to ?tab=validate|calibrate. */}
+                    <Route path="/dev/fxk16" element={<FXK16Hub />} />
+                    <Route path="/dev/fxk16-validate" element={<Navigate to="/dev/fxk16?tab=validate" replace />} />
+                    <Route path="/dev/fxk16-calibrate" element={<Navigate to="/dev/fxk16?tab=calibrate" replace />} />
                     {/* Public SkyCanvas smoke route — mounts the 3D viewport in
                         isolation for E2E QA. No auth, no hardware, no ARM. */}
                     <Route path="/dev/skycanvas-smoke" element={<SkyCanvasSmoke />} />
