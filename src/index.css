@@ -205,9 +205,12 @@
     --ds-font-h1:      3rem;      /* 48 */
     --ds-font-h2:      2rem;      /* 32 */
     --ds-font-h3:      1.5rem;    /* 24 */
+    --ds-font-h4:      1.25rem;   /* 20 — substitui text-lg/xl */
     --ds-font-body:    1rem;      /* 16 */
-    --ds-font-caption: 0.75rem;   /* 12 */
+    --ds-font-label:   0.875rem;  /* 14 — substitui text-sm */
+    --ds-font-caption: 0.75rem;   /* 12 — substitui text-xs */
     --ds-lh-tight:     1.1;
+    --ds-lh-snug:      1.25;
     --ds-lh-normal:    1.45;
 
     /* ── DS Spacing 8pt (spec: 4/8/12/16/24/32/48/64) ── */
@@ -2537,7 +2540,9 @@ html[data-interacting="true"] .br2049-scanline {
   .ds-h1      { font-size: var(--ds-font-h1);      line-height: var(--ds-lh-tight);  font-weight: 700; letter-spacing: -0.01em; }
   .ds-h2      { font-size: var(--ds-font-h2);      line-height: var(--ds-lh-tight);  font-weight: 600; letter-spacing: -0.005em; }
   .ds-h3      { font-size: var(--ds-font-h3);      line-height: var(--ds-lh-tight);  font-weight: 500; }
+  .ds-h4      { font-size: var(--ds-font-h4);      line-height: var(--ds-lh-snug);   font-weight: 500; }
   .ds-body    { font-size: var(--ds-font-body);    line-height: var(--ds-lh-normal); font-weight: 400; }
+  .ds-label   { font-size: var(--ds-font-label);   line-height: var(--ds-lh-snug);   font-weight: 500; letter-spacing: 0.005em; }
   .ds-caption { font-size: var(--ds-font-caption); line-height: var(--ds-lh-normal); font-weight: 400; color: hsl(var(--ds-text-muted)); }
   .ds-mono    { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em; }
 
