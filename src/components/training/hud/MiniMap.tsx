@@ -33,8 +33,22 @@ export default function MiniMap({ npcs, placedItems, pendingSnapPoints, worldHal
     >
       <p className="text-[8px] uppercase tracking-widest font-mono text-white/50 mb-1">Mini-mapa</p>
       <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="block">
+        {/* Audience pit (between stage and FOH) */}
+        <rect x={SIZE * 0.22} y={SIZE * 0.70} width={SIZE * 0.56} height={SIZE * 0.16}
+              fill="hsl(220 30% 15% / 0.5)" stroke="hsl(220 30% 35% / 0.6)" strokeWidth={0.8} strokeDasharray="2 2" />
         {/* Stage rectangle */}
-        <rect x={SIZE * 0.18} y={SIZE * 0.32} width={SIZE * 0.64} height={SIZE * 0.36} fill="hsl(28 100% 50% / 0.08)" stroke="hsl(28 100% 50% / 0.5)" strokeWidth={1} />
+        <rect x={SIZE * 0.18} y={SIZE * 0.32} width={SIZE * 0.64} height={SIZE * 0.36}
+              fill="hsl(28 100% 50% / 0.08)" stroke="hsl(28 100% 50% / 0.5)" strokeWidth={1} />
+        {/* PA towers L/R */}
+        <rect x={SIZE * 0.10} y={SIZE * 0.36} width={SIZE * 0.05} height={SIZE * 0.10}
+              fill="hsl(190 70% 55% / 0.45)" stroke="hsl(190 70% 75%)" strokeWidth={0.6} />
+        <rect x={SIZE * 0.85} y={SIZE * 0.36} width={SIZE * 0.05} height={SIZE * 0.10}
+              fill="hsl(190 70% 55% / 0.45)" stroke="hsl(190 70% 75%)" strokeWidth={0.6} />
+        {/* FOH desk */}
+        <rect x={SIZE * 0.42} y={SIZE * 0.88} width={SIZE * 0.16} height={SIZE * 0.06}
+              fill="hsl(160 80% 30% / 0.6)" stroke="hsl(160 80% 60%)" strokeWidth={0.7} />
+        <text x={SIZE * 0.50} y={SIZE * 0.935} textAnchor="middle" fontSize={5}
+              fill="hsl(160 80% 80%)" fontFamily="monospace">FOH</text>
         {/* Pending snap points */}
         {pendingSnapPoints.map((sp) => {
           const [u, v] = project(sp.position[0], sp.position[2]);
