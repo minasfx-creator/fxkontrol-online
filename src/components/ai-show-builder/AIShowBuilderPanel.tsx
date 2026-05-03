@@ -605,56 +605,79 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
                 </div>
                 {extensionHistory.map((entry, idx) => {
                   const ago = Math.max(1, Math.floor((Date.now() - entry.timestamp) / 1000));
+                  const expanded = expandedEntryIds.has(entry.id);
                   return (
                     <div
                       key={entry.id}
-                      className="flex items-start gap-2 rounded-sm bg-card/40 border border-border/30 px-2 py-1.5 text-[11px]"
+                      className="rounded-sm bg-card/40 border border-border/30 px-2 py-1.5 text-[11px]"
                     >
-                      <Badge variant="outline" className="text-[9px] shrink-0 mt-0.5">
-                        #{extensionHistory.length - idx}
-                      </Badge>
-                      <div className="flex-1 min-w-0 space-y-0.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-[10px] text-primary">
-                            {summarizeDiff(entry.diff)}
-                          </span>
-                          <span className="text-[9px] text-muted-foreground">
-                            @ {entry.resumeAt.toFixed(1)}s · {entry.anchorLabel} · há {ago}s
-                          </span>
-                          {entry.fellBack && (
-                            <Badge variant="outline" className="text-[8px] border-amber-500/40 text-amber-400">
-                              fallback
-                            </Badge>
-                          )}
+                      <div className="flex items-start gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleEntryExpanded(entry.id)}
+                          className="mt-0.5 text-muted-foreground hover:text-foreground shrink-0"
+                          title={expanded ? 'Recolher detalhes' : 'Expandir detalhes'}
+                          aria-expanded={expanded}
+                        >
+                          {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                        </button>
+                        <Badge variant="outline" className="text-[9px] shrink-0 mt-0.5">
+                          #{extensionHistory.length - idx}
+                        </Badge>
+                        <div className="flex-1 min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono text-[10px] text-primary">
+                              {summarizeDiff(entry.diff)}
+                            </span>
+                            <span className="text-[9px] text-muted-foreground">
+                              @ {entry.resumeAt.toFixed(1)}s · {entry.anchorLabel} · há {ago}s
+                            </span>
+                            {entry.fellBack && (
+                              <Badge variant="outline" className="text-[8px] border-amber-500/40 text-amber-400">
+                                fallback
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-foreground/80 truncate" title={entry.prompt}>
+                            “{entry.prompt}”
+                          </div>
                         </div>
-                        <div className="text-foreground/80 truncate" title={entry.prompt}>
-                          “{entry.prompt}”
-                        </div>
+                        {idx === 0 ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleUndoExtension}
+                            disabled={continuing}
+                            className="h-6 px-2 text-[10px] gap-1 shrink-0"
+                            title="Reverter esta continuação (Ctrl/Cmd+Z)"
+                          >
+                            <Undo2 className="h-3 w-3" />
+                            Undo
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRestoreToEntry(entry.id)}
+                            disabled={continuing}
+                            className="h-6 px-2 text-[10px] gap-1 shrink-0"
+                            title="Restaurar plano até antes desta continuação (descarta as posteriores)"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            Restaurar
+                          </Button>
+                        )}
                       </div>
-                      {idx === 0 ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleUndoExtension}
-                          disabled={continuing}
-                          className="h-6 px-2 text-[10px] gap-1 shrink-0"
-                          title="Reverter esta continuação"
-                        >
-                          <Undo2 className="h-3 w-3" />
-                          Undo
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRestoreToEntry(entry.id)}
-                          disabled={continuing}
-                          className="h-6 px-2 text-[10px] gap-1 shrink-0"
-                          title="Restaurar plano até antes desta continuação (descarta as posteriores)"
-                        >
-                          <RotateCcw className="h-3 w-3" />
-                          Restaurar
-                        </Button>
+                      {expanded && (
+                        <div className="mt-1.5 ml-5 pl-2 border-l border-border/40 space-y-0.5 text-[10px] text-muted-foreground font-mono">
+                          <div>provider: <span className="text-foreground/80">{entry.providerId}</span></div>
+                          <div>duração: {entry.diff.prevDuration.toFixed(1)}s → {entry.diff.nextDuration.toFixed(1)}s ({entry.diff.durationDelta >= 0 ? '+' : ''}{entry.diff.durationDelta.toFixed(1)}s)</div>
+                          {entry.diff.addedSectionIds.length > 0 && <div>+ {entry.diff.addedSectionIds.length} seções</div>}
+                          {entry.diff.addedPositionIds.length > 0 && <div>+ {entry.diff.addedPositionIds.length} posições</div>}
+                          {entry.diff.addedCueIds.length > 0 && <div>+ {entry.diff.addedCueIds.length} cues</div>}
+                          {entry.diff.addedTrajectoryIds.length > 0 && <div>+ {entry.diff.addedTrajectoryIds.length} trajetórias</div>}
+                          {entry.diff.removedCueIds.length > 0 && <div className="text-amber-400/80">− {entry.diff.removedCueIds.length} cues removidos</div>}
+                        </div>
                       )}
                     </div>
                   );
