@@ -145,6 +145,9 @@ export default function HumanoidCharacter({
   intent,
   pointAt = null,
   closeup = false,
+  propOverrides,
+  microExpressions = true,
+  voiceLineId = null,
 }: HumanoidCharacterProps) {
   const groupRef = useRef<THREE.Group>(null);
   const torsoRef = useRef<THREE.Group>(null);
@@ -160,13 +163,20 @@ export default function HumanoidCharacter({
   const rightArmRef = useRef<THREE.Group>(null);
   const accentRef = useRef<THREE.Mesh>(null);
   const startSeed = useMemo(() => Math.random() * Math.PI * 2, []);
-  const blinkClock = useRef({ next: 2 + Math.random() * 4, until: 0 });
+  const blinkClock = useRef({
+    next: 2 + Math.random() * 4,
+    until: 0,
+    pendingDouble: false,
+  });
+  const accentPulse = useRef(0);
+  const lastVoiceLineId = useRef<string | number | null>(voiceLineId);
 
   const skin = SKIN_HEX[persona.skinTone];
   const hair = HAIR_HEX[persona.hair];
   const body = BODY_SCALE[persona.bodyType];
   const outfit = OUTFIT[persona.outfit];
   const props = persona.props ?? [];
+  const po = propOverrides ?? {};
 
   const HEAD_H = 0.24;
   const TORSO_H = 0.6;
@@ -177,8 +187,17 @@ export default function HumanoidCharacter({
   const headWorld = useMemo(() => new THREE.Vector3(), []);
   const armWorld = useMemo(() => new THREE.Vector3(), []);
 
-  useFrame(({ clock }) => {
+  // Microexpression accent on voice-line change.
+  useEffect(() => {
+    if (voiceLineId !== lastVoiceLineId.current) {
+      lastVoiceLineId.current = voiceLineId;
+      accentPulse.current = 1;
+    }
+  }, [voiceLineId]);
+
+  useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime + startSeed;
+    const micro = microExpressions && intent ? INTENT_MICRO[intent] : null;
 
     // Idle motion
     if (torsoRef.current) {
@@ -209,15 +228,19 @@ export default function HumanoidCharacter({
       headRef.current.rotation.y = THREE.MathUtils.lerp(headRef.current.rotation.y, idleYaw, 0.08);
     }
 
-    // Eye saccades
-    const saccade = Math.sin(t * 3) * 0.08;
+    // Eye saccades — faster when urgent/excited
+    const saccadeRate = intent === 'urgent' ? 5.5 : intent === 'excited' ? 4.2 : 3;
+    const saccade = Math.sin(t * saccadeRate) * 0.08;
     if (eyeLRef.current) eyeLRef.current.rotation.y = saccade;
     if (eyeRRef.current) eyeRRef.current.rotation.y = saccade;
 
-    // Eye-blink
+    // Eye-blink — intent rhythm + double-blink + squint baseline
     const elapsed = clock.elapsedTime;
+    const blinkCfg = intent ? INTENT_BLINK[intent] : DEFAULT_BLINK;
+    const squintScale = micro ? Math.max(0.001, 1 - micro.squint * 0.55) : 0.001;
     if (elapsed >= blinkClock.current.next && blinkClock.current.until === 0) {
       blinkClock.current.until = elapsed + 0.1;
+      blinkClock.current.pendingDouble = Math.random() < blinkCfg.doubleChance;
     }
     const blinking = elapsed < blinkClock.current.until;
     if (blinking) {
@@ -225,26 +248,53 @@ export default function HumanoidCharacter({
       if (lidRRef.current) lidRRef.current.scale.y = 1.0;
     } else if (blinkClock.current.until !== 0) {
       blinkClock.current.until = 0;
-      blinkClock.current.next = elapsed + 3 + Math.random() * 3;
-      if (lidLRef.current) lidLRef.current.scale.y = 0.001;
-      if (lidRRef.current) lidRRef.current.scale.y = 0.001;
+      if (blinkClock.current.pendingDouble) {
+        blinkClock.current.pendingDouble = false;
+        blinkClock.current.next = elapsed + 0.15;
+      } else {
+        blinkClock.current.next = elapsed + blinkCfg.minS + Math.random() * (blinkCfg.maxS - blinkCfg.minS);
+      }
+      if (lidLRef.current) lidLRef.current.scale.y = squintScale;
+      if (lidRRef.current) lidRRef.current.scale.y = squintScale;
+    } else {
+      // Continuously enforce squint baseline so intent changes show between blinks.
+      if (lidLRef.current && lidLRef.current.scale.y !== 1) lidLRef.current.scale.y = squintScale;
+      if (lidRRef.current && lidRRef.current.scale.y !== 1) lidRRef.current.scale.y = squintScale;
     }
 
-    // Brow micro-expression by intent
-    const browYBase = HEAD_H * 0.18;
-    const browDelta =
-      intent === 'urgent' ? -0.012 :
-      intent === 'serious' ? -0.006 :
-      intent === 'excited' ? 0.012 :
-      0;
-    if (browLRef.current) browLRef.current.position.y = browYBase + browDelta;
-    if (browRRef.current) browRRef.current.position.y = browYBase + browDelta;
+    // Microexpression accent decay (~400ms)
+    if (accentPulse.current > 0) {
+      accentPulse.current = Math.max(0, accentPulse.current - dt * 2.5);
+    }
+    const accent = accentPulse.current;
 
-    // Lipsync (jaw)
+    // Brow micro-expression: intent baseline + speech bob + voice-line accent flick
+    const browYBase = HEAD_H * 0.18;
+    const browDelta = micro ? micro.browDy : 0;
+    const browTilt = micro ? micro.browTilt : 0;
+    const speechBob = speakingAmplitude > 0.05 ? Math.sin(t * 6) * 0.003 * speakingAmplitude : 0;
+    const accentLift = accent * 0.014;
+    if (browLRef.current) {
+      browLRef.current.position.y = browYBase + browDelta + speechBob + accentLift;
+      browLRef.current.rotation.z = -browTilt;
+    }
+    if (browRRef.current) {
+      browRRef.current.position.y = browYBase + browDelta + speechBob + accentLift;
+      browRRef.current.rotation.z = browTilt;
+    }
+
+    // Lipsync (jaw) — intent scale + jaw tension shortens travel + accent kick
     if (jawRef.current) {
       const intentScale = intent ? INTENT_SCALE[intent] : 1;
-      const targetOpen = speakingAmplitude * intentScale * (0.6 + Math.sin(t * 18) * 0.4) * 0.06;
+      const tension = micro ? micro.jawTension : 0;
+      const travel = 0.06 * (1 - tension * 0.45);
+      const wave = (0.6 + Math.sin(t * 18) * 0.4);
+      const accentKick = accent * 0.015;
+      const targetOpen = (speakingAmplitude * intentScale * wave * travel) + accentKick;
       jawRef.current.position.y = THREE.MathUtils.lerp(jawRef.current.position.y, -targetOpen, 0.4);
+      // Smirk: asymmetric jaw tilt (Z rotation, mouth-corner proxy)
+      const smirk = micro ? micro.smirk : 0;
+      jawRef.current.rotation.z = THREE.MathUtils.lerp(jawRef.current.rotation.z, smirk * 0.06, 0.2);
     }
 
     // Hand-IK pointing
