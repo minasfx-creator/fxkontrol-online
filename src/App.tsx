@@ -234,6 +234,7 @@ function App() {
                       <Route path="/editor/:showId" element={<Index />} />
                       <Route path="/command" element={<CommandCenter />} />
                       <Route path="/strategy" element={<Strategy />} />
+                      <Route path="/training/center" element={<TrainingCenter />} />
 
                       {/* ── Create flow (Action Layer) ────────────────────────── */}
                       <Route path="/create" element={<Create />} />
