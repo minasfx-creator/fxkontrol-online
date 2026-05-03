@@ -63,18 +63,15 @@ export function AppSidebar() {
         {/* Brand — 8pt: p-3 inset, gap-2 between logo & title */}
         <div className={`p-3 ${!showLabels ? 'flex justify-center' : ''} animate-holo-materialize`}>
           {!showLabels ? (
-            <div className="h-8 w-8 rounded-control flex items-center justify-center overflow-hidden" style={{ background: 'hsl(190 100% 50% / 0.10)' }}>
+            <div className="h-8 w-8 rounded-control flex items-center justify-center overflow-hidden" style={{ background: 'hsl(var(--status-sync) / 0.10)' }}>
               <FxkLogo size={22} priority />
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <FxkLogo size={28} priority />
-              <div>
-                <p className="text-xs font-bold text-foreground tracking-wide ds-mono uppercase" style={{ textShadow: '0 0 8px hsl(190 100% 50% / 0.2)' }}>FXKONTROL</p>
-                <div className="flex items-center gap-1.5">
-                  <img src={minasfxLogo} alt="MinasFX" className="h-3 object-contain opacity-70" />
-                  <p className="text-[9px] font-mono-code text-muted-foreground">by MinasFX</p>
-                </div>
+              <FxkLogo size={26} variant="full" tone="sync" priority />
+              <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-border/30">
+                <img src={minasfxLogo} alt="MinasFX" className="h-3 object-contain opacity-70" />
+                <p className="text-[9px] font-mono-code text-muted-foreground">by MinasFX</p>
               </div>
             </div>
           )}
