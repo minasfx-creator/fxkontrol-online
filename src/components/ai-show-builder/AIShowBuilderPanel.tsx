@@ -11,6 +11,11 @@ import { toast } from 'sonner';
 import { useProjectStore } from '@/store/useProjectStore';
 import { appendShowPlan, resumeOffsetFor, resumeOffsetAtCue } from '@/lib/aiShowBuilder/continueShowPlan';
 import { diffShowPlan, summarizeDiff, type ShowPlanDiff } from '@/lib/aiShowBuilder/showPlanDiff';
+import {
+  loadExtensionHistory,
+  saveExtensionHistory,
+  clearExtensionHistory,
+} from '@/lib/aiShowBuilder/extensionHistoryStorage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -319,8 +324,9 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     setExtensionHistory([]);
     setRedoStack([]);
     setExpandedEntryIds(new Set());
+    if (plan?.id) clearExtensionHistory(plan.id);
     toast.success('Histórico de extensões limpo');
-  }, []);
+  }, [plan?.id]);
 
   const toggleEntryExpanded = useCallback((id: string) => {
     setExpandedEntryIds((prev) => {
@@ -355,6 +361,24 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [plan, extensionHistory.length, redoStack.length, handleUndoExtension, handleRedoExtension]);
+
+  // Persistência leve por plan.id: sobrevive a reload/troca de aba.
+  // Hidrata ao trocar de plano; salva (debounced via React batching) a cada mudança.
+  useEffect(() => {
+    if (!plan?.id) return;
+    const persisted = loadExtensionHistory(plan.id);
+    if (persisted) {
+      setExtensionHistory(persisted.history);
+      setRedoStack(persisted.redo);
+    }
+    // Apenas quando o id do plano muda — não rehidrata em cada extensão.
+     
+  }, [plan?.id]);
+
+  useEffect(() => {
+    if (!plan?.id) return;
+    saveExtensionHistory(plan.id, { history: extensionHistory, redo: redoStack });
+  }, [plan?.id, extensionHistory, redoStack]);
 
 
 
@@ -411,7 +435,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
             </Button>
           )}
           {plan && (
-            <Button variant="ghost" onClick={() => { setPlan(null); setExtensionHistory([]); setRedoStack([]); }} disabled={busy}>
+            <Button variant="ghost" onClick={() => { if (plan?.id) clearExtensionHistory(plan.id); setPlan(null); setExtensionHistory([]); setRedoStack([]); }} disabled={busy}>
               Editar prompt
             </Button>
           )}
