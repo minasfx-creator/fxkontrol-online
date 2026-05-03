@@ -156,7 +156,7 @@ export default function IOSReadiness() {
           <h1 className="text-4xl md:text-5xl font-bold mb-4 leading-tight">
             O que funciona <span className="text-cyan-400">em cada plataforma</span>.
           </h1>
-          <p className="text-muted-foreground text-lg max-w-3xl leading-relaxed">
+          <p className="text-muted-foreground text-ds-h4 max-w-3xl leading-relaxed">
             FX KONTROL roda em qualquer browser moderno, mas o acesso a hardware físico
             (DMX, BLE, USB) depende de APIs que <strong className="text-foreground">só algumas plataformas suportam</strong>.
             Esta matriz mostra exatamente o que esperar antes de levar para campo.
@@ -177,7 +177,7 @@ export default function IOSReadiness() {
 
         {/* Matriz */}
         <section className="mb-16">
-          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+          <h2 className="text-ds-h3 font-bold mb-6 flex items-center gap-2">
             <Globe className="w-5 h-5 text-cyan-400" />
             Matriz Plataforma × Transporte
           </h2>
@@ -265,7 +265,7 @@ export default function IOSReadiness() {
 
         {/* Fallback operacional para iPhone Safari */}
         <section className="mb-16 rounded-lg border border-amber-500/30 bg-amber-500/5 p-5 md:p-6">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-amber-200">
+          <h2 className="text-ds-h4 font-bold mb-4 flex items-center gap-2 text-amber-200">
             <AlertTriangle className="w-5 h-5 text-amber-400" />
             Fallback operacional — iPhone em campo sem app nativo
           </h2>
