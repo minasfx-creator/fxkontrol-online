@@ -435,7 +435,7 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
             </Button>
           )}
           {plan && (
-            <Button variant="ghost" onClick={() => { setPlan(null); setExtensionHistory([]); setRedoStack([]); }} disabled={busy}>
+            <Button variant="ghost" onClick={() => { if (plan?.id) clearExtensionHistory(plan.id); setPlan(null); setExtensionHistory([]); setRedoStack([]); }} disabled={busy}>
               Editar prompt
             </Button>
           )}
