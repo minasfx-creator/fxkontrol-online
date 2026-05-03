@@ -85,15 +85,33 @@ export default function CinematicTrainingSimulator({
   // Event stream → cinematic beats + xp popups + stage flash
   useEffect(() => {
     return runner.onEvent((ev) => {
+      const activeIds = Array.from(new Set([
+        script.briefing.npcId,
+        ...(snap.currentStage?.onEnter ?? []).map((e) => e.npcId),
+        ...(snap.currentStage?.dialogue ?? []).map((d) => d.npcId),
+      ].filter(Boolean) as string[]));
+
       choreographer.ingest(ev, {
         speakerId: activeDialogue?.npcId ?? script.briefing.npcId,
         speakerIntent: activeDialogue?.intent,
-        activeNpcIds: Array.from(new Set([
-          script.briefing.npcId,
-          ...(snap.currentStage?.onEnter ?? []).map((e) => e.npcId),
-          ...(snap.currentStage?.dialogue ?? []).map((d) => d.npcId),
-        ].filter(Boolean) as string[])),
+        activeNpcIds: activeIds,
       });
+
+      // Beat-driven NPC formations: stage:start picks a formation that
+      // matches the cinematic shot to add visual rhythm per scene.
+      if (ev.kind === 'stage:start' && activeIds.length >= 2) {
+        const beat = (script.cinematicBeats ?? []).find(
+          (b) => b.triggerOn === 'stage-start' && b.stageId === snap.currentStage?.id,
+        );
+        const focus: [number, number, number] = beat?.focus ?? [0, 0.3, 2];
+        const kind: 'line' | 'arc' | 'cluster' | 'V' =
+          beat?.shot === 'low-angle-hero' ? 'V'
+          : beat?.shot === 'orbit-slow' ? 'arc'
+          : beat?.shot === 'wide-establishing' ? 'line'
+          : 'cluster';
+        choreographer.applyFormation(activeIds, kind, focus, { gesture: 'nod', durationMs: 2500 });
+      }
+
       setNpcPoses(choreographer.snapshot());
 
       if (ev.kind === 'beat:start') directorRef.current?.enqueue(ev.beat);
@@ -105,7 +123,7 @@ export default function CinematicTrainingSimulator({
         setPassedFlash(true);
       }
     });
-  }, [runner, script.scoreRules.safetyPenalty, script.briefing.npcId, snap.currentStage, activeDialogue, choreographer]);
+  }, [runner, script.scoreRules.safetyPenalty, script.briefing.npcId, script.cinematicBeats, snap.currentStage, activeDialogue, choreographer]);
 
   // Drive briefing dialogue (also fires briefing-scoped cinematic beats once)
   const briefingBeatsFired = useRef(false);
