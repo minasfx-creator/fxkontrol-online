@@ -153,7 +153,7 @@ export default function IOSReadiness() {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-500/30 bg-cyan-500/5 text-[10px] font-mono uppercase tracking-widest text-cyan-300 mb-6">
             <Smartphone className="w-3 h-3" /> Compatibilidade & iPhone
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 leading-tight">
+          <h1 className="text-ds-h2 md:text-ds-h1 font-bold mb-4 leading-tight">
             O que funciona <span className="text-cyan-400">em cada plataforma</span>.
           </h1>
           <p className="text-muted-foreground text-ds-h4 max-w-3xl leading-relaxed">
