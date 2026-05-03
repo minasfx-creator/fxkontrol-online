@@ -221,6 +221,7 @@ export default function CinematicTrainingSimulator({
           const persona = getNPC(id);
           if (!persona) return null;
           const isSpeaking = activeDialogue?.npcId === id;
+          const pose = npcPoses[id];
           return (
             <HumanoidCharacter
               key={id}
@@ -231,6 +232,9 @@ export default function CinematicTrainingSimulator({
               closeup={isSpeaking}
               lookAtTarget={[0, 1.6, 0]}
               voiceLineId={isSpeaking ? activeDialogue?.text ?? null : null}
+              gesture={pose?.gesture ?? 'idle'}
+              gestureDurationMs={pose?.durationMs}
+              walkTo={pose?.walkTo ?? null}
             />
           );
         })}
