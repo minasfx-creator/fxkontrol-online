@@ -5,7 +5,7 @@
  * reads `useShowTimeRef.current.time` to decide which pad is in an active
  * cue window and pulses its size. Zero React re-renders at tick rate.
  */
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useDroneStructure } from './useShowSelectors';
@@ -63,6 +63,18 @@ export function LightPointsLayer() {
     }
     return map;
   }, [cues, padIndexById]);
+
+  // Dispose geometry/material when the layer unmounts (M5 disposal).
+  useEffect(() => {
+    return () => {
+      const mesh = pointsRef.current;
+      if (!mesh) return;
+      mesh.geometry?.dispose();
+      const mat = mesh.material as THREE.Material | THREE.Material[] | undefined;
+      if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
+      else mat?.dispose();
+    };
+  }, []);
 
   useFrame(() => {
     const geom = pointsRef.current?.geometry;
