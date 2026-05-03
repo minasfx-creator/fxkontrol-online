@@ -21,15 +21,20 @@
  * Nada de hardware aqui — é só presentation. Não muda contratos do
  * SkyCanvas, do CommandBus, nem da SafetyStateMachine.
  */
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { lazyRetry } from '@/lib/lazyRetry';
 import { WebGLErrorBoundary } from '@/components/editor/skycanvas/sharedState';
 import StudioErrorBoundary from '@/components/errors/StudioErrorBoundary';
 import CanvasLoaderWithTimeout from '@/components/editor/CanvasLoaderWithTimeout';
+import { isSkycanvasV2Enabled } from '@/lib/featureFlags';
 
 // SkyCanvas deferido com lazyRetry — chunk stale após deploy/HMR é
 // retentado uma vez antes de bubbling para o LazyChunkBoundary global.
 const SkyCanvas = lazy(lazyRetry(() => import('@/components/editor/SkyCanvas')));
+
+// SkyCanvas 2.0 — engine leve atrás de feature flag (`fxk.flag.skycanvas_v2`).
+// Lazy também: zero impacto no bundle quando desabilitado.
+const SkyCanvas2 = lazy(lazyRetry(() => import('@/components/show3d/v2/SkyCanvas2')));
 
 export interface SkyCanvasMountProps {
   /** Distinguishing key: 'desktop', 'mobile', 'mobile-live', 'smoke', etc. */
@@ -51,21 +56,31 @@ export default function SkyCanvasMount({
   loaderLabel = 'Loading 3D Engine...',
   children,
 }: SkyCanvasMountProps) {
+  // Read the flag once per mount; if v2 throws, we flip back to legacy in
+  // local state — no full page reload, no risk to the operator.
+  const [useV2, setUseV2] = useState<boolean>(() => isSkycanvasV2Enabled());
+  useEffect(() => { setUseV2(isSkycanvasV2Enabled()); }, [instanceKey]);
+
   return (
     <StudioErrorBoundary area={area}>
       <WebGLErrorBoundary>
         <Suspense
           fallback={
-            <CanvasLoaderWithTimeout
-              timeoutMs={loaderTimeoutMs}
-              label={loaderLabel}
-            />
+            <CanvasLoaderWithTimeout timeoutMs={loaderTimeoutMs} label={loaderLabel} />
           }
         >
-          <SkyCanvas key={instanceKey} />
+          {useV2 ? (
+            <SkyCanvas2
+              key={`v2-${instanceKey ?? 'default'}`}
+              onFatalError={() => setUseV2(false)}
+            />
+          ) : (
+            <SkyCanvas key={instanceKey} />
+          )}
         </Suspense>
       </WebGLErrorBoundary>
       {children}
     </StudioErrorBoundary>
   );
 }
+

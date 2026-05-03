@@ -12,11 +12,12 @@
  * per-frame allocations, deterministic physics preserved (each burst still
  * derives state purely from `showTime - burstStart`).
  */
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { type BurstSpec, useBurstSpecs } from './useShowSelectors';
+import { useBurstSpecs } from './useShowSelectors';
 import { useShowTimeRef } from './useShowTimeRef';
+import { setPerfBursts } from './PerfHUD';
 
 const PARTICLES_PER_BURST = 96;
 const POOL_SIZE = 256; // up to 256 simultaneous bursts on screen
@@ -119,6 +120,13 @@ export function ExplosionsLayer() {
     [],
   );
 
+  // Dispose deterministically on unmount (M5 disposal).
+  useEffect(() => () => {
+    geometry.dispose();
+    material.dispose();
+  }, [geometry, material]);
+
+
   useFrame(() => {
     const showTime = timeRef.current.time;
     const { positions, colors, sizes, alphas, slotOwner, idToSlot, tmpColor } = buffers;
@@ -215,6 +223,9 @@ export function ExplosionsLayer() {
       (geom.attributes.aSize as THREE.BufferAttribute).needsUpdate = true;
       (geom.attributes.aAlpha as THREE.BufferAttribute).needsUpdate = true;
     }
+
+    // Publish active count for the optional PerfHUD.
+    setPerfBursts(activeIds.size);
   });
 
   return (
