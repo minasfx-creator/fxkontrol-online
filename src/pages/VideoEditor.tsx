@@ -200,6 +200,7 @@ function RightInspector() {
 
 function Topbar({
   playing, onTogglePlay, onStop, onSeek, time, duration,
+  hasAudio, onPickAudio,
 }: {
   playing: boolean;
   onTogglePlay: () => void;
@@ -207,7 +208,10 @@ function Topbar({
   onSeek: (delta: number) => void;
   time: number;
   duration: number;
+  hasAudio: boolean;
+  onPickAudio: (file: File) => void;
 }) {
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const fmt = (s: number) => {
     const mm = Math.floor(s / 60).toString().padStart(2, '0');
     const ss = Math.floor(s % 60).toString().padStart(2, '0');
@@ -254,6 +258,41 @@ function Topbar({
       </div>
 
       <Separator orientation="vertical" className="h-6 bg-cyan-500/15" />
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={cn(
+              'gap-2',
+              hasAudio
+                ? 'text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10'
+                : 'text-zinc-300 hover:text-cyan-200 hover:bg-cyan-500/10',
+            )}
+            onClick={() => fileRef.current?.click()}
+          >
+            {hasAudio ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            {hasAudio ? 'Audio master' : 'Load audio'}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {hasAudio
+            ? 'Audio is the master clock — Play follows audio.currentTime'
+            : 'Load an audio file to make it the master clock for the timeline'}
+        </TooltipContent>
+      </Tooltip>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="audio/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onPickAudio(f);
+          e.target.value = '';
+        }}
+      />
 
       <Button size="sm" variant="ghost" className="text-zinc-300 hover:text-cyan-200 hover:bg-cyan-500/10 gap-2">
         <Settings2 className="h-4 w-4" /> Settings
