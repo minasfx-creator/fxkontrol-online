@@ -227,6 +227,8 @@ import { lockstep } from '@/core/reliability/lockstepEngine';
 import { executionBridge } from '@/core/execution/executionBridge';
 import { frameSyncEngine } from '@/core/sync/frameSyncEngine';
 import { useTimelineClockHealthCheck } from '@/hooks/useTimelineClockHealthCheck';
+import { timelineClock } from '@/core/timeline/TimelineClock';
+
 
 /** Invisible component that watches `timelineClock.time` for stalls and forces
  *  the lockstep playback fallback if the clock freezes while `isPlaying`. */
