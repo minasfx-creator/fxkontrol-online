@@ -125,8 +125,8 @@ export function WaterLayer() {
     if (waterRef.current) waterRef.current.mesh.position.y = waterLevel + tideOffset;
   }, [waterLevel, tideOffset]);
 
-  useFrame(({ clock }) => {
-    waterRef.current?.update(clock.getElapsedTime());
+  useFrame(() => {
+    waterRef.current?.update(useProjectStore.getState().currentTime);
   });
 
   return null;
