@@ -16,40 +16,43 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 
 // ─── Mocks ──────────────────────────────────────────
-const gatewayMock = {
-  arm: vi.fn(),
-  disarm: vi.fn(),
-  eStop: vi.fn(),
-  lock: vi.fn(),
-  unlock: vi.fn(),
-  reset: vi.fn(),
-  fire: vi.fn(),
-  continuityCheck: vi.fn(),
-};
+const { gatewayMock, engineMock, engineState } = vi.hoisted(() => {
+  const engineState: { armed: boolean; role: 'controller' | 'module' } = {
+    armed: false,
+    role: 'controller',
+  };
+  const gatewayMock = {
+    arm: vi.fn(),
+    disarm: vi.fn(),
+    eStop: vi.fn(),
+    lock: vi.fn(),
+    unlock: vi.fn(),
+    reset: vi.fn(),
+    fire: vi.fn(),
+    continuityCheck: vi.fn(),
+  };
+  const engineMock = {
+    arm: vi.fn(() => { engineState.armed = true; }),
+    disarm: vi.fn(() => { engineState.armed = false; }),
+    eStop: vi.fn(() => { engineState.armed = false; }),
+    fire: vi.fn(),
+    start: vi.fn(async () => true),
+    stop: vi.fn(async () => {}),
+    runBenchmark: vi.fn(async () => {}),
+    stopBenchmark: vi.fn(),
+    generateReport: vi.fn(() => 'report'),
+    getSuggestions: vi.fn(() => []),
+    subscribe: vi.fn((_fn: (s: unknown) => void) => () => {}),
+    get currentSession() {
+      return { armed: engineState.armed, role: engineState.role };
+    },
+  };
+  return { gatewayMock, engineMock, engineState };
+});
+
 vi.mock('@/core/command/uiCommandGateway', () => ({
   uiCommandGateway: gatewayMock,
 }));
-
-const engineState: { armed: boolean; role: 'controller' | 'module' } = {
-  armed: false,
-  role: 'controller',
-};
-const engineMock = {
-  arm: vi.fn(() => { engineState.armed = true; }),
-  disarm: vi.fn(() => { engineState.armed = false; }),
-  eStop: vi.fn(() => { engineState.armed = false; }),
-  fire: vi.fn(),
-  start: vi.fn(async () => true),
-  stop: vi.fn(async () => {}),
-  runBenchmark: vi.fn(async () => {}),
-  stopBenchmark: vi.fn(),
-  generateReport: vi.fn(() => 'report'),
-  getSuggestions: vi.fn(() => []),
-  subscribe: vi.fn((_fn: (s: unknown) => void) => () => {}),
-  get currentSession() {
-    return { armed: engineState.armed, role: engineState.role };
-  },
-};
 vi.mock('@/services/fieldTestService', () => ({
   fieldTestEngine: engineMock,
   generateSessionCode: () => 'TEST',
