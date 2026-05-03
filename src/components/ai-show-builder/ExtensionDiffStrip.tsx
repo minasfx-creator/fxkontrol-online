@@ -17,9 +17,9 @@ export default function ExtensionDiffStrip({ plan }: Props) {
 
   const ticks = useMemo(() => {
     if (!highlight) return [];
-    const duration = Math.max(0.001, plan.timeline?.duration ?? 0);
-    const cues = plan.cues ?? [];
-    return cues
+    const duration = Math.max(0.001, plan.duration ?? 0);
+    const items = plan.timelineItems ?? [];
+    return items
       .filter((c) => highlight.cueIds.has(c.id))
       .map((c) => ({
         id: c.id,
