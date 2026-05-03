@@ -17,7 +17,13 @@ import type {
   DeviceConnectionState,
   RelayBankState,
 } from '../types';
-import { createSimulatedProvenance, type ProvenanceInfo } from '../provenance';
+import {
+  createSimulatedProvenance,
+  markHandshakeOk,
+  markHandshakeLost,
+  type ProvenanceInfo,
+  type TransportType,
+} from '../provenance';
 import { isHardwareSimulatorEnabled } from '@/lib/featureFlags';
 
 export class FXK16ModuleAdapter implements HardwareAdapter<RelayBankState> {
@@ -131,6 +137,23 @@ export class FXK16ModuleAdapter implements HardwareAdapter<RelayBankState> {
   reset(): void {
     this._connected = 'disconnected';
     this._state = this._createDefaultState();
+    markHandshakeLost(this._provenance);
+  }
+
+  /**
+   * Promote this adapter to LIVE READ-ONLY after a verified handshake
+   * (`MODEL:FXK16;CH:16` reply on USB-CDC or BLE FFE0/FFE1/FFE2).
+   * Called by `discoveryRegistryBridge` — never by UI directly.
+   */
+  markHandshakeOk(transport: TransportType = 'serial_usb'): void {
+    this._connected = 'connected';
+    markHandshakeOk(this._provenance, transport);
+  }
+
+  /** Demote back to NOT_INTEGRATED on disconnect / heartbeat timeout. */
+  markHandshakeLost(): void {
+    this._connected = 'disconnected';
+    markHandshakeLost(this._provenance);
   }
 
   private _updateCounts(): void {

@@ -13,6 +13,8 @@ import { cn } from '@/lib/utils';
 import { useProjectStore } from '@/store/useProjectStore';
 import { RISK_GROUP_COLORS, RISK_GROUP_LABELS, type RiskGroup } from '@/lib/pyroPhysics';
 import { safetyGate } from '@/core/safety/safetyGate';
+import { workMode } from '@/core/safety/workMode';
+import { isSimulating } from '@/core/safety/simulationGuard';
 
 interface LockoutPanelProps {
   fs: boolean;
@@ -24,14 +26,19 @@ export default function LockoutPanel({ fs, mob }: LockoutPanelProps) {
   const toggleLockout = useProjectStore(s => s.toggleLockout);
   const groups: RiskGroup[] = ['A', 'B', 'C', 'D', 'E'];
 
-  // Re-render when the gate config changes.
-  const [enforced, setEnforced] = useState(() => safetyGate.isEnforced('lockoutGroups'));
-  useEffect(
-    () => safetyGate.subscribe(() => setEnforced(safetyGate.isEnforced('lockoutGroups'))),
-    [],
+  // Re-render when gate config OR workMode changes — sim-bypass killswitch.
+  const [enforced, setEnforced] = useState(
+    () => !isSimulating() && safetyGate.isEnforced('lockoutGroups'),
   );
+  useEffect(() => {
+    const recompute = () =>
+      setEnforced(!isSimulating() && safetyGate.isEnforced('lockoutGroups'));
+    const u1 = safetyGate.subscribe(recompute);
+    const u2 = workMode.subscribe(recompute);
+    return () => { u1(); u2(); };
+  }, []);
 
-  // Layer disabled — show a minimal informational chip only.
+  // Layer disabled OR simulating — show a minimal informational chip only.
   if (!enforced) {
     return (
       <div
@@ -44,7 +51,7 @@ export default function LockoutPanel({ fs, mob }: LockoutPanelProps) {
         <div className="flex items-center gap-1.5 text-muted-foreground/50">
           <ShieldOff className={cn(fs ? 'w-3 h-3' : 'w-2.5 h-2.5')} />
           <span className={cn('font-mono uppercase tracking-wider', fs ? 'text-[9px]' : 'text-[8px]')}>
-            Lockout desativado
+            {isSimulating() ? 'Simulação · sem lockout' : 'Lockout desativado'}
           </span>
         </div>
         <Link

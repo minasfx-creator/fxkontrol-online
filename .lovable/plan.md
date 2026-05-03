@@ -1,135 +1,113 @@
-# Plano · Go-Live Center + Pacotes SaaS
+# Training v2.1 — Roadie Academy (Unreal Edition)
 
-## Objetivo
+Refinamento profundo do Training v2 atual. Foco: profundidade de missões, fidelidade visual MetaHuman-style, situações reais de palco, e direção cinemática estilo GTA V (cutscene → gameplay → debrief).
 
-Transformar o roadmap dos 90 dias em produto vendável agora. O "Go-Live Center" hoje é só uma promessa nos textos — vou torná-lo o coração da demo: checklist com regras GO/NO-GO reais, anexos de evidência, signoffs, runbook de rollback e exportação de relatório.
+**Safety:** tudo permanece em `workMode = simulation`. Zero impacto em CommandBus / SafetyStateMachine / FieldBus.
+**Flag:** continua sob `training_v2_cinematic` (já ON).
 
-A página /strategy continua sendo o GTM hub. /go-live é a tela operacional vendável: ela é o que o operador técnico vai usar todo dia, e o que sustenta os pacotes Previs / LiveOps / Enterprise.
+---
 
-## Escopo da rodada (R3 Pass 3)
+## 1. Roteirização aprofundada (missionScripts v2)
 
-### 1. Página `/go-live` (sidebar Office, ícone ShieldCheck)
+Hoje: 6 missões, briefing + 1–3 stages flat.
+Meta: **16 missões** organizadas em 5 capítulos progressivos, com **stages multi-tipo** (`place` → `inspect` → `dialogue` → `fire-check` → `evacuate`), beats narrativos no meio do gameplay, e múltiplos NPCs reagindo dinamicamente.
 
-```text
-┌─ topbar: show name · platform badge · GO/NO-GO chip ──────────┐
-│ left 280:                  center:                  right 320:│
-│  Show selector             Checklist (blockers +    Signoffs  │
-│  Bug list                   non-blockers, agrupados Engenharia│
-│  Critical risks             por seção do PDF)       Operação  │
-│                                                     Cliente   │
-│  ─ rollback runbook         Evidence column:                  │
-│    + validation status        prints, logs, vídeo, sig        │
-│                                                               │
-│ bottom: GO / NO-GO panel + reasons + "Export report (PDF)"    │
-└───────────────────────────────────────────────────────────────┘
-```
+Capítulos:
+- **Cap. 1 — Carga & Montagem** (3 missões): truss H, truss A-frame, ground support
+- **Cap. 2 — Energia & DMX** (3 missões): distribuição AC trifásica, RCD/PE check, patch DMX 2 universos, terminator chain
+- **Cap. 3 — SFX & Pirotecnia** (3 missões): sparkular safe-arc, flamer FR clearance, mortar layout NFPA 1123
+- **Cap. 4 — Caos ao Vivo** (4 missões): bêbado no palco, chuva súbita, queda de fase, dançarino na linha de fogo
+- **Cap. 5 — Show Completo** (3 missões): casamento, festival corporativo, Réveillon legendary
 
-### 2. Modelo de dados (Lovable Cloud)
+Cada missão ganha:
+- `cinematicBeats[]` — momentos para câmera cutscene mid-gameplay (dolly, crane, close-up)
+- `voiceLines[]` (texto + duração + intent: 'urgent'|'calm'|'excited') usados pra modular lipsync amplitude
+- `manualRefs[]` por objective (link real para `MANUALS[]` em Training.tsx)
+- `failureScenarios[]` — narrativas distintas para falhas distintas (tempo, violation, ordem errada)
 
-Quatro tabelas com RLS owner-scoped + admin read-all (mesmo padrão de demo_sessions):
+## 2. NPCs refinados (MetaHuman+ stand-in)
 
-- `go_live_checklists` — id, owner, show_name, venue, scheduled_at, platform_target, status (`draft|in_review|go|no_go|completed`), no_go_reasons jsonb
-- `go_live_items` — checklist_id, section, label, is_blocker, is_critical, status (`pending|pass|fail|n_a|mitigated`), evidence_required boolean, notes
-- `go_live_evidence` — item_id, kind (`screenshot|log|video|signature|other`), url, sha256, captured_at, captured_by
-- `go_live_signoffs` — checklist_id, role (`engineering|operations|client`), signer_name, signer_email, signed_at, signature_text
+Expansão do `HumanoidCharacter.tsx`:
+- **Mesh secondaries**: belt loop, walkie-talkie, prancheta, capacete (props paramétricos por outfit)
+- **Cloth sim leve**: vest/blazer com sway (Three.js bone offset, sem CCD — pseudo-cloth via senoide)
+- **Eye blink** (3–6s aleatório, durabilidade 100ms)
+- **Brow micro-expressions** (preocupação, aprovação) sincronizadas com `voiceLine.intent`
+- **Hand IK simplificado**: mão aponta pra alvo durante `speak` se `pointAt` setado
+- **Footstep IK**: pés grudam no chão durante idle (hoje flutuam)
 
-Bucket de storage privado `go-live-evidence` com RLS por checklist owner.
+Catálogo cresce de 9 → **14 NPCs**: + bombeiro-jovem, eletricista-presente (vs rádio), DJ, cliente-corporativo, segurança-feminina.
 
-### 3. Engine GO/NO-GO (`src/lib/goLiveEngine.ts`)
+## 3. Câmera cinemática GTA-V
 
-Função pura `evaluateChecklist(items, signoffs, openCriticalBugs)` retorna:
+Novo `CinematicCameraDirector.tsx`:
+- **Shot library**: `wide-establishing`, `medium-2shot`, `over-the-shoulder`, `close-up-reaction`, `crane-down`, `dolly-in`
+- Trigger por `cinematicBeats[]` da missão; transição com lerp 1.2s (ease-in-out)
+- Fora de cutscene volta ao OrbitControls do jogador (camera state preservado)
+- Letterbox auto-anima 12vh in/out
+- Depth-of-field sutil (postprocessing `Bokeh` opcional via flag, fallback fog-density bump)
 
-```ts
-{ result: 'GO' | 'NO_GO', reasons: NoGoReason[] }
-```
+## 4. HUD GTA-V refinado
 
-Aplica todas as regras do brief:
-- bloqueador sem `pass` → NO-GO
-- bloqueador `pass` com `evidence_required` mas sem evidência → NO-GO
-- rollback runbook não validado → NO-GO
-- signoff Engenharia ou Operação faltando → NO-GO
-- bug crítico aberto → NO-GO
-- item crítico `fail` sem `mitigated=true` → NO-GO
+`CinematicHUD.tsx` ganha:
+- **Mission triangle pulsante** quando objetivo novo é revelado
+- **Subtitle queue** — múltiplas linhas em fila, não sobrescreve
+- **Floating XP popups** (`+50 XP — perfect snap`) ao completar objetivo
+- **Wasted/Mission Failed screen** (full-bleed vermelho, slow-mo 0.4× fade)
+- **Mission Passed flash** (golden bar sweep)
+- **Mini-map canto inferior-esquerdo** (top-down do palco com NPCs e equipment placeholders)
 
-100% determinístico. Testável.
+## 5. Situações cotidianas de palco
 
-### 4. Seed do checklist (PDF do brief virou dados)
+Novo módulo `ambientChoreographer.ts` que, em **qualquer** missão, agenda micro-eventos (NPCs paralelos):
+- DJ fazendo soundcheck ao fundo (toca beat 4 batidas a cada 30s)
+- Dançarinos passando coreografia em linha reta
+- Cliente checando relógio
+- Roadie carregando case do ponto A→B
+- Walkie-talkie chiando ("rádio interno")
 
-`src/lib/goLiveSeed.ts` com seções:
-- Plataforma & Compatibilidade (links para `/ios-readiness`)
-- Hardware Conectado (handshake, ACK em dummy load, heartbeat 5min)
-- DMX/Art-Net Output (universos, refresh rate, timing budget)
-- Pirotecnia (FXK16 ARM/DISARM, continuity check, exclusion zones)
-- Drones (FAA 120m AGL, spacing 2m, swarm health)
-- Segurança (E-STOP <50ms, lockout visual, audit log)
-- Rollback (runbook responsável + validado pós-reversão)
-- Signoffs (Engenharia, Operação, Cliente)
+Configurável por chapter — Cap. 5 fica caótico, Cap. 1 fica calmo.
 
-Cada item marca `is_blocker`, `is_critical`, `evidence_required`.
+## 6. Arquivos previstos
 
-### 5. Painel de evidências
+**Novos:**
+- `src/components/training/missions/missionScripts.ts` — ampliado para 16 missões (substitui)
+- `src/components/training/missions/types.ts` — adiciona `cinematicBeats`, `voiceLines`, `failureScenarios`
+- `src/components/training/camera/CinematicCameraDirector.tsx`
+- `src/components/training/camera/shotLibrary.ts`
+- `src/components/training/hud/MiniMap.tsx`
+- `src/components/training/hud/XPPopupLayer.tsx`
+- `src/components/training/hud/MissionFailedScreen.tsx`
+- `src/components/training/hud/MissionPassedFlash.tsx`
+- `src/components/training/ambient/ambientChoreographer.ts`
+- `src/components/training/ambient/AmbientNPCLayer.tsx`
+- `src/components/training/npcs/npcCatalog.ts` — +5 NPCs (substitui)
+- `src/components/training/humanoid/HumanoidCharacter.tsx` — refinamento PBR + props + blink + IK
+- `src/components/training/humanoid/HumanoidProps.tsx` — props paramétricos (capacete, prancheta, walkie)
+- `src/components/training/missions/__tests__/missionScripts.coverage.test.ts` — garante 16 missões, todas com briefing+debrief+manualRefs
+- `src/components/training/camera/__tests__/cameraDirector.test.tsx` — transições determinísticas
 
-Por item: anexar screenshot/log/vídeo/assinatura. Upload para storage. SHA-256 client-side (Web Crypto) gravado para auditoria. Preview inline (img/video) ou link (log/sig).
+**Editados:**
+- `src/components/training/CinematicTrainingSimulator.tsx` — monta director + minimap + xp layer + ambient layer; passa `cinematicBeats` ao runner
+- `src/components/training/missions/missionRunner.ts` — emite eventos `beat:start`, `beat:end`, `objective:revealed` para director e XP layer
 
-### 6. Runbook de rollback
+## 7. Testes
 
-Componente dedicado com lista de passos editáveis, responsável por passo, e botão "Validar pós-reversão" que grava timestamp + signer. Sem isso, GO-Live engine retorna NO-GO.
+- 15+ novos unit tests (FSM beats, ambient scheduler, camera director lerp, mission catalog coverage)
+- Mantém suíte atual em verde (1047/1047 → ~1062/1062)
 
-### 7. Relatório PDF (reusa `src/lib/pdfRenderer.ts`)
+## 8. Performance
 
-`buildGoLiveReport(checklist, items, evidence, signoffs, evaluation)` gera PDF com:
-- Capa: show, venue, data, GO/NO-GO + reasons
-- Resumo: contagem pass/fail/pending por seção
-- Lista completa de itens com status e evidências (thumbs ou hashes)
-- Signoffs com nome/email/timestamp
-- Bug list crítica e runbook de rollback
-- Disclaimer de claim conforme `src/lib/claims.ts`
+- HumanoidCharacter cap em **8 NPCs simultâneos** (ambient + scripted); excedentes viram billboards lod
+- Eye blink/IK usam `useFrame` único compartilhado (zero subscriptions extras)
+- Cinematic camera reaproveita o `<Canvas>` existente (sem segundo viewport)
 
-### 8. Pacotes SaaS na landing comercial
+---
 
-Em `/pricing` (ou seção em `/comercial`), três cards (Previs / LiveOps / Enterprise) com bullets exatos do brief e CTA "Solicitar demo" → `/comercial#demo-form`. Sem checkout real (sem Stripe nesta rodada — pricing inicial vem na rodada 4).
+## Fora de escopo (deixar pra v2.2)
 
-### 9. Polish + bug hunt (continua linha do Pass 2)
+- Voice-over real (TTS) — manteremos lipsync proxy + texto
+- MetaHuman vinculado de fato (Quixel runtime) — fora do bundle web; usamos stand-in PBR
+- Multiplayer cooperativo
+- Save/replay de runs
 
-- Substituir tabs do Strategy por design system `.ds-segment-*-bar` (hoje usa botões custom).
-- Converter `useState` arrays grandes (Strategy/AssetLibrary) para `useMemo` onde for derivado puro.
-- Audit visual em `/strategy` viewport mobile 390×844 — cards muitos provavelmente quebram.
-- Encontrar 3 bugs adicionais por `rg` em padrões comuns (setInterval sem clear, useEffect sem deps array, missing key prop).
-
-## Detalhes técnicos
-
-**Migration única** com 4 tabelas + bucket + RLS + trigger updated_at. Segue padrão das migrations existentes (`gen_random_uuid()`, `auth.uid()`, sem FK para `auth.users`, owner via uuid).
-
-**Sem barrels** para o módulo go-live (regra de reliability). Imports diretos.
-
-**Componentes em** `src/components/golive/`:
-- `GoLiveChecklist.tsx` — render itens agrupados
-- `GoLiveItemRow.tsx` — toggle status + abre painel evidência
-- `EvidenceUploader.tsx` — file input + SHA-256 + upload
-- `RollbackRunbook.tsx`
-- `SignoffPanel.tsx`
-- `GoNoGoPanel.tsx` — chamada para `evaluateChecklist`, mostra reasons
-- `BugListPanel.tsx`
-
-**Página** `src/pages/GoLive.tsx` orquestra dentro de `MainLayout`. Adiciona rota em `App.tsx` e item na sidebar (Office). Sem auto-arm, sem comando físico — apenas leitura de status + entrada de evidências/signoffs (consistente com hub GTM).
-
-**Relatório PDF** com `pdf-lib` (já instalado). Usa fontes Helvetica/Courier. Vantablack na capa. Cyan/Amber/Red conforme tokens canônicos. Disclaimer claim em rodapé toda página.
-
-**E-STOP global continua visível** (regra core) — não é escondido em /go-live.
-
-## Fora de escopo (próxima rodada)
-
-- Captura automática de evidências do hardware real (vai exigir adapters honestos por família — pesado).
-- DockTwin telemetria mock — fica para rodada seguinte se você quiser priorizar.
-- Stripe checkout dos pacotes — deixar como CTA até validar pricing nos pilots.
-- Migração física dos `src/features/` (F5.B continua adiada).
-
-## Ordem de entrega
-
-1. Migration (tabelas + bucket + RLS).
-2. Engine + seed + tipos.
-3. Componentes + página `/go-live` + sidebar.
-4. PDF report.
-5. Pacotes SaaS na landing.
-6. Polish/bugs (Pass 2 continuation).
-7. Memory update.
+Posso prosseguir?

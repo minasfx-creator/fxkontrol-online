@@ -34,6 +34,7 @@ import { isEnabled } from "@/lib/featureFlags";
 import { useRouteTracing } from "@/observability/useRouteTracing";
 // Profiler is dev-only and lazy so production rota pública doesn't ship it.
 import { useHardwareSyncLoop } from "@/hooks/useHardwareSyncLoop";
+import { startDiscoveryRegistryBridge } from "@/core/hardware/discoveryRegistryBridge";
 
 const PlaybackProfilerProvider = lazy(() =>
   import("@/core/performance/PlaybackProfilerProvider").then((m) => ({ default: m.PlaybackProfilerProvider })),
@@ -53,6 +54,9 @@ const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage
 const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")));
 const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
 const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
+const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")));
+const LibertadoresGoldenShow = lazy(lazyRetry(() => import("./pages/dev/Libertadores")));
+const GoldenShowsCatalog = lazy(lazyRetry(() => import("./pages/dev/GoldenShows")));
 const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
@@ -143,6 +147,9 @@ function RouteTracker() {
 
 function App() {
   useHardwareSyncLoop(44);
+  // Boot the Discovery → Registry bridge once. Idempotent.
+  // Promotes FXK16ModuleAdapter provenance on real handshake.
+  startDiscoveryRegistryBridge();
   return (
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -186,6 +193,14 @@ function App() {
                     <Route path="/dev/design-system" element={<DesignSystemShowcase />} />
                     {/* Live demo of <EditorShell> w/ DS components — pure presentation. */}
                     <Route path="/dev/editor-shell" element={<EditorShellPreview />} />
+                    {/* Phase 0 deployment plan instrument — read-only consolidated
+                        view of VerificationEngine + ReadinessEvaluator + Hardware
+                        Registry with adapter provenance. No commands sent. */}
+                    <Route path="/dev/readiness-audit" element={<ReadinessAudit />} />
+                    {/* Phase 1 golden show inspector — pure read of the
+                        Libertadores ShowPlan + PDF + honest export ZIP. */}
+                    <Route path="/dev/libertadores" element={<LibertadoresGoldenShow />} />
+                    <Route path="/dev/golden-shows" element={<GoldenShowsCatalog />} />
                     {/* Public alias — promoted shell route. */}
                     <Route path="/editor-ds" element={<EditorShellPreview />} />
                     {/* Public legal pages — required by Paddle (Merchant of Record) and must be crawlable without auth. */}
@@ -212,9 +227,9 @@ function App() {
                       {/* Default landing → Studio 3D viewport (entrada principal). */}
                       <Route path="/" element={<Navigate to="/studio" replace />} />
                       <Route path="/office" element={<Office />} />
-                      {/* Studio = editor 3D. /editor mantido como alias legacy. */}
+                      {/* Studio = editor 3D. /editor é endpoint equivalente (mesma página). */}
                       <Route path="/studio" element={<Index />} />
-                      <Route path="/editor" element={<Navigate to="/studio" replace />} />
+                      <Route path="/editor" element={<Index />} />
                       <Route path="/editor/:showId" element={<Index />} />
                       <Route path="/command" element={<CommandCenter />} />
                       <Route path="/strategy" element={<Strategy />} />

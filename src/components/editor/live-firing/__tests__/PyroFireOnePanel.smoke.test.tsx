@@ -13,6 +13,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, cleanup } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 
 // jsdom does not implement these — stub before importing the panel.
 beforeEach(() => {
@@ -46,16 +47,18 @@ describe("PyroFireOnePanel — smoke", () => {
 
     expect(() => {
       const { container } = render(
-        <PyroFireOnePanel
-          fs={false}
-          fireChannel={() => {}}
-          channels={[]}
-          pyroArm={false}
-          dmxArm={false}
-          handlePanic={() => {}}
-          artNetConnected={false}
-          relayConnected={false}
-        />,
+        <MemoryRouter>
+          <PyroFireOnePanel
+            fs={false}
+            fireChannel={() => {}}
+            channels={[]}
+            pyroArm={false}
+            dmxArm={false}
+            handlePanic={() => {}}
+            artNetConnected={false}
+            relayConnected={false}
+          />
+        </MemoryRouter>,
       );
       // Sanity: something rendered.
       expect(container.firstChild).not.toBeNull();

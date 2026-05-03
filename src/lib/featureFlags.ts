@@ -104,6 +104,13 @@ const FLAGS = {
   // ============================================================
   safety_gate_strict: true,
 
+  /**
+   * Training v2 — Cinematic mission flow (staged objectives, MetaHuman-style
+   * NPCs, GTA V-style HUD, briefing/debrief cutscenes). Falls back to legacy
+   * TrainingSimulator when off.
+   */
+  training_v2_cinematic: true,
+
   // ============================================================
   // (`floating_chrome` removed — Mission Control desktop chrome is the
   // only desktop layout now. Mobile shell is gated separately by

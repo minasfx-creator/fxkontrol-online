@@ -8,6 +8,9 @@ import {
   Palette, AlertTriangle, Ruler, Flame, Sparkles, History
 } from 'lucide-react';
 import TrainingSimulator from '@/components/training/TrainingSimulator';
+import CinematicTrainingSimulator from '@/components/training/CinematicTrainingSimulator';
+import { getMissionScript } from '@/components/training/missions/missionScripts';
+import { isEnabled } from '@/lib/featureFlags';
 import { Equipment, Mission } from '@/components/training/types';
 
 // ── Reference Manual Library ──────────────────────────────────────────
@@ -287,6 +290,17 @@ export default function Training() {
 
   // --- SIMULATOR MODE ---
   if (activeMission) {
+    const script = getMissionScript(activeMission.id);
+    if (script && isEnabled('training_v2_cinematic')) {
+      return (
+        <CinematicTrainingSimulator
+          script={script}
+          allEquipment={EQUIPMENT}
+          onComplete={() => handleMissionComplete(activeMission.id)}
+          onQuit={() => setActiveMission(null)}
+        />
+      );
+    }
     return (
       <TrainingSimulator
         mission={activeMission}

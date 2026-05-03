@@ -7,6 +7,8 @@ import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { exportCoordinator, type ExportTarget } from '@/core/export/ExportCoordinator';
 import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
+import { isSimulating } from '@/core/safety/simulationGuard';
+import { workMode } from '@/core/safety/workMode';
 import { cn } from '@/lib/utils';
 import {
   FileOutput, Download, CheckCircle2, XOctagon, AlertTriangle, RefreshCw,
@@ -51,22 +53,24 @@ function ExportChannel({ label, icon: Icon, color, count, countLabel, canExport,
     setTimeout(() => setLastResult(null), 4000);
   };
 
+  const sim = isSimulating();
+  const effectiveCanExport = sim || canExport;
   return (
-    <div className={cn('border rounded p-3 space-y-2', canExport ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-border/10 bg-muted/5')}>
+    <div className={cn('border rounded p-3 space-y-2', effectiveCanExport ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-border/10 bg-muted/5')}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon className={cn('w-4 h-4', color)} />
           <span className="text-[10px] font-mono font-bold tracking-widest text-foreground uppercase">{label}</span>
         </div>
         <span className={cn('text-[8px] font-mono font-bold px-1.5 py-0.5 rounded',
-          canExport ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
+          effectiveCanExport ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'
         )}>
-          {canExport ? 'READY' : 'BLOCKED'}
+          {sim ? 'SIM' : effectiveCanExport ? 'READY' : 'BLOCKED'}
         </span>
       </div>
       <div className="flex items-center justify-between">
         <span className="text-[9px] font-mono text-muted-foreground">{count} {countLabel}</span>
-        <Button size="sm" onClick={handleExport} disabled={!canExport || count === 0}
+        <Button size="sm" onClick={handleExport} disabled={!effectiveCanExport || count === 0}
           className="h-5 text-[8px] font-mono gap-1 px-2 disabled:opacity-30">
           <Download className="w-2.5 h-2.5" /> EXPORT
         </Button>
@@ -83,12 +87,20 @@ function ExportChannel({ label, icon: Icon, color, count, countLabel, canExport,
 export default function ExportReadinessPanel() {
   const { level, result, runVerification } = useVerificationStore(useShallow((s) => ({ level: s.level, result: s.result, runVerification: s.runVerification })));
   const sp = showPlanManager.current;
-  const canExport = level === 'READY_FOR_EXPORT' || level === 'READY_FOR_FIELD';
+  const sim = isSimulating();
+  // In design/simulation we never block export. Verification info stays
+  // visible as advisory only.
+  const canExport = sim || level === 'READY_FOR_EXPORT' || level === 'READY_FOR_FIELD';
   const mode = operationalModeGuard.mode;
+
+  // Re-render on workMode change so the header badge updates immediately.
+  const [, setWm] = useState(workMode.get());
+  useEffect(() => workMode.subscribe(setWm), []);
 
   useEffect(() => { runVerification(); }, [runVerification]);
 
   const failedIssues = result?.issues.filter(i => !i.passed) ?? [];
+  const displayLevel = sim ? 'SIM · ADVISORY' : level.replace(/_/g, ' ');
 
   return (
     <div className="flex flex-col h-full p-4 gap-4 bg-background/80">
@@ -99,15 +111,16 @@ export default function ExportReadinessPanel() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[7px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 uppercase">
-            {mode}
+            {sim ? workMode.get() : mode}
           </span>
           <span className={cn(
             'text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border',
+            sim ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' :
             level === 'READY_FOR_FIELD' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
             level === 'BLOCKED' ? 'bg-red-500/15 text-red-400 border-red-500/30' :
             'bg-amber-500/15 text-amber-400 border-amber-500/30'
           )}>
-            {level.replace(/_/g, ' ')}
+            {displayLevel}
           </span>
           <Button size="sm" variant="outline" onClick={runVerification} className="h-6 text-[9px] font-mono gap-1">
             <RefreshCw className="w-3 h-3" /> VERIFY
@@ -142,13 +155,13 @@ export default function ExportReadinessPanel() {
           canExport={canExport} target="drone" />
       </div>
 
-      {/* Blocking issues */}
+      {/* Verification issues — advisory in simulation, blocking in real_operation */}
       {failedIssues.length > 0 && (
         <div className="border border-border/10 rounded p-3 space-y-1 flex-1">
           <div className="flex items-center gap-2 mb-2">
             <Shield className="w-3 h-3 text-muted-foreground/60" />
             <span className="text-[8px] font-mono text-muted-foreground/60 tracking-widest">
-              {failedIssues.length} ISSUE(S) DETECTED
+              {failedIssues.length} {sim ? 'ADVISORY ISSUE(S) — não bloqueiam simulação' : 'ISSUE(S) DETECTED'}
             </span>
           </div>
           <ScrollArea className="max-h-60">

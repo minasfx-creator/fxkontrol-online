@@ -128,3 +128,18 @@ export function useFXK16Bridge(): UseFXK16BridgeApi {
 export function getFXK16Bridge(): FireOneHardwareBridge {
   return getBridge();
 }
+
+/**
+ * Non-React subscription to the FXK16 singleton bridge status.
+ * Used by `discoveryRegistryBridge` to promote the FXK16ModuleAdapter
+ * provenance to `live_read_only` once a real handshake completes.
+ * Returns an unsubscriber.
+ */
+export function subscribeFXK16Bridge(
+  listener: (status: BridgeStatus) => void,
+): () => void {
+  // Eagerly create singleton so listener fires when device connects.
+  getBridge();
+  _listeners.add(listener);
+  return () => { _listeners.delete(listener); };
+}
