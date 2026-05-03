@@ -182,7 +182,7 @@ export default function Pricing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div data-theme="commercial" className="min-h-screen c-surface">
       <PaymentTestModeBanner />
 
       {/* Header */}

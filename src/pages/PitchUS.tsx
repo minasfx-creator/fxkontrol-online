@@ -58,7 +58,7 @@ export default function PitchUS() {
   );
 
   return (
-    <main className="min-h-[100dvh]" style={PITCH_STYLE}>
+    <main data-theme="commercial" className="min-h-[100dvh] c-surface" style={PITCH_STYLE}>
       {/* Brand header — canonical FxkLogo */}
       <header className="px-6 md:px-12 h-16 flex items-center justify-between border-b" style={{ borderColor: 'hsl(var(--ds-border-default))' }}>
         <Link to="/pitch/us" aria-label="FXKONTROL — Home">

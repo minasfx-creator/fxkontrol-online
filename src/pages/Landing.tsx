@@ -189,7 +189,7 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[200] overflow-y-auto bg-background text-foreground antialiased">
+    <div data-theme="commercial" className="fixed inset-0 z-[200] overflow-y-auto c-surface antialiased">
       {/* Skip-to-content for keyboard / screen-reader users */}
       <a
         href="#main"

@@ -27,12 +27,12 @@
  */
 
 [data-theme="commercial"] {
-  /* Base escura premium (brief: #121214) */
-  --c-bg:           240 7% 7%;       /* #121214 */
-  --c-bg-elevated: 240 6% 10%;       /* surface card */
-  --c-bg-overlay:  240 6% 13%;       /* hover, popover */
-  --c-border:      240 4% 18%;
-  --c-border-soft: 240 4% 14%;
+  /* Base escura premium — Professional Dark Mode (#1A1A1B → 240 2% 10%) */
+  --c-bg:           240 2% 10%;      /* #1A1A1B — base canvas */
+  --c-bg-elevated: 240 3% 13%;       /* #20201F — surface card */
+  --c-bg-overlay:  240 3% 16%;       /* #28282A — hover, popover */
+  --c-border:      240 3% 22%;       /* #383839 — divisores fortes */
+  --c-border-soft: 240 3% 17%;       /* #2A2A2C — divisores suaves */
 
   /* Foreground hierarchy (WCAG AA validado contra --c-bg) */
   --c-fg:          0 0% 96%;         /* 18.8:1 — AAA */
