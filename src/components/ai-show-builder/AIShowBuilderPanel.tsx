@@ -6,7 +6,7 @@
  * useProjectStore. Inspecionável antes de aplicar.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info, Pencil, MousePointerSquareDashed, ArrowRightCircle, Loader2, Undo2, Redo2, History, Trash2, RotateCcw, ChevronDown, ChevronRight } from 'lucide-react';
+import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info, Pencil, MousePointerSquareDashed, ArrowRightCircle, Loader2, Undo2, Redo2, History, Trash2, RotateCcw, ChevronDown, ChevronRight, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProjectStore } from '@/store/useProjectStore';
 import { appendShowPlan, resumeOffsetFor, resumeOffsetAtCue } from '@/lib/aiShowBuilder/continueShowPlan';
@@ -16,6 +16,7 @@ import {
   saveExtensionHistory,
   clearExtensionHistory,
 } from '@/lib/aiShowBuilder/extensionHistoryStorage';
+import { serializeExtensionHistory, parseExtensionHistoryExport } from '@/lib/aiShowBuilder/extensionHistoryIO';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
