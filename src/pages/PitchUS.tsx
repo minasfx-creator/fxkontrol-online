@@ -60,7 +60,7 @@ export default function PitchUS() {
   return (
     <main className="min-h-[100dvh]" style={PITCH_STYLE}>
       {/* Hero */}
-      <section className="px-6 md:px-12 pt-16 md:pt-24 pb-12 md:pb-16 border-b" style={{ borderColor: '#1f1f23' }}>
+      <section className="px-6 md:px-12 pt-16 md:pt-24 pb-12 md:pb-16 border-b" style={{ borderColor: 'hsl(var(--ds-border-default))' }}>
         <div className="max-w-4xl mx-auto">
           <p className="text-[10px] ds-mono uppercase tracking-[0.3em] mb-4" style={{ color: 'var(--pitch-cyan)' }}>FXKONTROL · US</p>
           <h1 className="text-4xl md:text-6xl font-bold leading-tight">
@@ -73,7 +73,7 @@ export default function PitchUS() {
             <Link
               to="/comercial#demo-form"
               className="inline-flex items-center gap-2 rounded-md px-5 py-3 text-sm ds-mono uppercase tracking-wider hover:opacity-90"
-              style={{ background: 'var(--pitch-orange)', color: '#0a0a0c' }}
+              style={{ background: 'var(--pitch-cta)', color: 'hsl(var(--ds-background))' }}
             >
               Request a demo <ArrowRight className="h-4 w-4" />
             </Link>
@@ -99,7 +99,7 @@ export default function PitchUS() {
       </section>
 
       {/* Core messages */}
-      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: '#1f1f23' }}>
+      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: 'hsl(var(--ds-border-default))' }}>
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold mb-8">Three messages, one surface</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -114,10 +114,10 @@ export default function PitchUS() {
       </section>
 
       {/* Segments */}
-      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: '#1f1f23' }}>
+      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: 'hsl(var(--ds-border-default))' }}>
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold mb-2 flex items-center gap-2">
-            <Layers className="h-5 w-5" style={{ color: 'var(--pitch-orange)' }} /> Three segments. One OS.
+            <Layers className="h-5 w-5" style={{ color: 'var(--pitch-cta)' }} /> Three segments. One OS.
           </h2>
           <p className="text-sm mb-8" style={{ color: 'var(--pitch-muted)' }}>
             Tailored entry points for marketing agencies, producers and enterprise LiveOps.
@@ -125,7 +125,7 @@ export default function PitchUS() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {SEGMENTS.map((s) => (
               <div key={s.id} className="rounded-md border p-5" style={{ borderColor: '#2a2a30', background: '#17171a' }}>
-                <p className="text-[10px] ds-mono uppercase tracking-wider mb-2" style={{ color: 'var(--pitch-orange)' }}>{s.label}</p>
+                <p className="text-[10px] ds-mono uppercase tracking-wider mb-2" style={{ color: 'var(--pitch-cta)' }}>{s.label}</p>
                 <h3 className="text-base font-semibold mb-3">{s.headline}</h3>
                 <ul className="space-y-1.5 text-xs" style={{ color: 'var(--pitch-muted)' }}>
                   {s.bullets.map((b) => (
@@ -139,7 +139,7 @@ export default function PitchUS() {
       </section>
 
       {/* Highlights */}
-      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: '#1f1f23' }}>
+      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: 'hsl(var(--ds-border-default))' }}>
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold mb-2 flex items-center gap-2">
             <Wand2 className="h-5 w-5" style={{ color: 'var(--pitch-cyan)' }} /> What you'll see in the demo
@@ -160,11 +160,11 @@ export default function PitchUS() {
       </section>
 
       {/* AI guardrails */}
-      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: '#1f1f23' }}>
+      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: 'hsl(var(--ds-border-default))' }}>
         <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
           <div>
             <h2 className="text-2xl md:text-3xl font-bold mb-3 flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5" style={{ color: 'var(--pitch-orange)' }} /> Safety-first by design
+              <ShieldCheck className="h-5 w-5" style={{ color: 'var(--pitch-cta)' }} /> Safety-first by design
             </h2>
             <p className="text-sm" style={{ color: 'var(--pitch-muted)' }}>
               The AI Choreography Studio generates editable scenes, drone formations and DMX looks.
