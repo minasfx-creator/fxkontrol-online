@@ -55,6 +55,7 @@ const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage
 const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")));
 const SkyCanvas3DDemo = lazy(lazyRetry(() => import("./pages/dev/SkyCanvas3DDemo")));
 const SkyCanvas2Demo = lazy(lazyRetry(() => import("./pages/dev/SkyCanvas2Demo")));
+const UE5BridgePage = lazy(lazyRetry(() => import("./pages/dev/UE5BridgePage")));
 const VideoEditor = lazy(lazyRetry(() => import("./pages/VideoEditor")));
 const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
 const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
@@ -195,6 +196,8 @@ function App() {
                     <Route path="/dev/skycanvas-3d" element={<SkyCanvas3DDemo />} />
                     {/* SkyCanvas 2.0 — refactored, modular Show Plane viewport. */}
                     <Route path="/dev/skycanvas-2" element={<SkyCanvas2Demo />} />
+                    {/* UE5 Bridge — inspector dos catálogos importados (MVR/Niagara/MRP). */}
+                    <Route path="/dev/ue5-bridge" element={<UE5BridgePage />} />
                     {/* Reference Video Editor surface — sidebars + 3D viewport + timeline. */}
                     <Route path="/dev/video-editor" element={<VideoEditor />} />
                     {/* FXKONTROL DS v1 — public reference page (tokens, segments, status,

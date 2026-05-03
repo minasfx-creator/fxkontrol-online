@@ -37,5 +37,7 @@ export interface SkyCanvas2Props {
   hideStage?: boolean;
   /** Stage variant: 'arch' (full) or 'minimal' (deck only). Default 'arch'. */
   stageVariant?: 'arch' | 'minimal';
+  /** Render UE5 MVR fixtures (838 GDTF). Default follows feature flag. */
+  showFixtures?: boolean;
   className?: string;
 }

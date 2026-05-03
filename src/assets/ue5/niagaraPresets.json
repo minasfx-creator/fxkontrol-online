@@ -1,0 +1,48 @@
+{
+  "source": "NiagaraSystem.zip — Ns_Firework_{Blue,Yellow,Pink}.uasset",
+  "note": "Curated from .uasset string analysis (Niagara emitters use 2-head burst + follow trails). Mapped to 3 burst presets for ExplosionsLayer.",
+  "presets": [
+    {
+      "id": "ue5-firework-blue",
+      "label": "UE5 Firework · Blue",
+      "color": "#3b82ff",
+      "secondaryColor": "#7dd3fc",
+      "particleCount": 220,
+      "lifetimeSec": 2.4,
+      "speed": 18,
+      "coneAngleDeg": 360,
+      "gravity": -8.5,
+      "drag": 1.05,
+      "trail": true,
+      "trailHeads": 2
+    },
+    {
+      "id": "ue5-firework-yellow",
+      "label": "UE5 Firework · Yellow",
+      "color": "#ffd23a",
+      "secondaryColor": "#ff8a3a",
+      "particleCount": 240,
+      "lifetimeSec": 2.6,
+      "speed": 20,
+      "coneAngleDeg": 360,
+      "gravity": -8.8,
+      "drag": 1.1,
+      "trail": true,
+      "trailHeads": 2
+    },
+    {
+      "id": "ue5-firework-pink",
+      "label": "UE5 Fireworks · Pink",
+      "color": "#ff5cad",
+      "secondaryColor": "#ff8ad8",
+      "particleCount": 260,
+      "lifetimeSec": 2.8,
+      "speed": 22,
+      "coneAngleDeg": 360,
+      "gravity": -8.2,
+      "drag": 1.0,
+      "trail": true,
+      "trailHeads": 2
+    }
+  ]
+}

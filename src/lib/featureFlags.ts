@@ -132,6 +132,13 @@ const FLAGS = {
    * 'fxk.flag.skycanvas_v2_stage' = '0' pra esconder em capturas cinematográficas.
    */
   skycanvas_v2_stage: true,
+
+  /**
+   * UE5 FixturesLayer — renderiza 838 fixtures GDTF do MVR (DMXLib_v4)
+   * sobre o palco do SkyCanvas 2.0. Presentation only. Default OFF
+   * (operadores ligam via /dev/ue5-bridge ou localStorage).
+   */
+  ue5_fixtures_layer: false,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
