@@ -450,6 +450,82 @@ function AtmosphereHaze() {
   );
 }
 
+/* ───────────────────── Lighting Rig Cluster (FOH overhead) ───────────────────── */
+function LightingRigCluster({ position }: { position: [number, number, number] }) {
+  const ref = useRef<THREE.PointLight>(null);
+  useFrame(({ clock }) => {
+    if (ref.current) ref.current.intensity = 0.55 + Math.sin(clock.elapsedTime * 1.4) * 0.15;
+  });
+  return (
+    <group position={position}>
+      <mesh>
+        <boxGeometry args={[2.2, 0.1, 2.2]} />
+        <meshStandardMaterial color="#444" metalness={0.85} roughness={0.25} />
+      </mesh>
+      {[[-0.8, -0.3, -0.8], [0.8, -0.3, -0.8], [-0.8, -0.3, 0.8], [0.8, -0.3, 0.8]].map((p, i) => (
+        <group key={i} position={p as [number, number, number]}>
+          <mesh>
+            <cylinderGeometry args={[0.14, 0.18, 0.3, 12]} />
+            <meshStandardMaterial color="#222" metalness={0.7} roughness={0.4} />
+          </mesh>
+          <mesh position={[0, -0.2, 0]}>
+            <cylinderGeometry args={[0.14, 0.05, 0.05, 12]} />
+            <meshStandardMaterial color="#ffaa44" emissive="#ff8822" emissiveIntensity={0.8} />
+          </mesh>
+        </group>
+      ))}
+      <pointLight ref={ref} color="#ffaa55" intensity={0.6} distance={5} decay={2} />
+    </group>
+  );
+}
+
+/* ───────────────────── Stadium Stands (silhouette tiers) ───────────────────── */
+function StadiumStands({ position, rotationY = 0, rows = 6, width = 22 }: {
+  position: [number, number, number]; rotationY?: number; rows?: number; width?: number;
+}) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const count = rows * 60;
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  useMemo(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    let idx = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let i = 0; i < 60; i++) {
+        const x = (i - 30) * (width / 60) + (Math.sin(i * 7.13 + r) * 0.15);
+        const y = 0.6 + r * 0.45;
+        const z = -r * 0.55;
+        dummy.position.set(x, y, z);
+        dummy.scale.set(0.18, 0.6, 0.18);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(idx++, dummy.matrix);
+      }
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  }, [rows, width, dummy, count]);
+
+  useFrame(({ clock }) => {
+    if (!ref.current) return;
+    const mat = ref.current.material as THREE.MeshStandardMaterial;
+    mat.emissiveIntensity = 0.06 + Math.sin(clock.elapsedTime * 0.8) * 0.03;
+  });
+
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      {Array.from({ length: rows }).map((_, r) => (
+        <mesh key={r} position={[0, 0.3 + r * 0.45, -r * 0.55]} receiveShadow>
+          <boxGeometry args={[width, 0.45, 0.55]} />
+          <meshStandardMaterial color="#2a2630" roughness={0.95} metalness={0.05} />
+        </mesh>
+      ))}
+      <instancedMesh ref={ref} args={[undefined, undefined, count]} castShadow>
+        <capsuleGeometry args={[1, 1.2, 4, 6]} />
+        <meshStandardMaterial color="#0a0a14" emissive="#221a30" emissiveIntensity={0.06} roughness={1} />
+      </instancedMesh>
+    </group>
+  );
+}
+
 /* ═══════════════════ MAIN STAGE COMPONENT ═══════════════════ */
 const StageEnvironment3D = forwardRef<THREE.Group>(function StageEnvironment3D(_props, ref) {
   return (
@@ -552,6 +628,15 @@ const StageEnvironment3D = forwardRef<THREE.Group>(function StageEnvironment3D(_
       {/* ── Ambient stage lighting ── */}
       <pointLight position={[0, 5.5, 0]} color="#221133" intensity={3} distance={12} />
       <pointLight position={[0, 1.2, 6.4]} color="#22ffaa" intensity={0.6} distance={3.5} />
+
+      {/* ── FOH overhead lighting rig clusters (audience-side) ── */}
+      <LightingRigCluster position={[-4.2, 5.6, 4.5]} />
+      <LightingRigCluster position={[4.2, 5.6, 4.5]} />
+
+      {/* ── Stadium stands surrounding (legendary venues) ── */}
+      <StadiumStands position={[0, 0, 8.5]} rows={6} width={26} />
+      <StadiumStands position={[-13, 0, 0]} rotationY={Math.PI / 2} rows={5} width={18} />
+      <StadiumStands position={[13, 0, 0]} rotationY={-Math.PI / 2} rows={5} width={18} />
     </group>
   );
 });

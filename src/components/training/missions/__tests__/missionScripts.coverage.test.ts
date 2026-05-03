@@ -3,8 +3,8 @@ import { MISSION_SCRIPTS } from '../missionScripts';
 import { createMissionRunner } from '../missionRunner';
 
 describe('Mission catalog v2.3', () => {
-  it('contains 18 missions across 8 chapters', () => {
-    expect(MISSION_SCRIPTS.length).toBe(18);
+  it('contains 19 missions across 9 chapters', () => {
+    expect(MISSION_SCRIPTS.length).toBe(19);
     const chapters = new Set(MISSION_SCRIPTS.map((m) => m.chapter));
     expect(chapters.size).toBeGreaterThanOrEqual(8);
   });

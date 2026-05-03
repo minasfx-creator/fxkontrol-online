@@ -154,6 +154,18 @@ export const MISSION_SNAP_POINTS: Record<string, SnapPoint[]> = {
     { id: 'sp-3', position: [4.5, 0.9, 5], equipmentType: 'par-can', label: 'Câmera Broadcast R' },
     { id: 'sp-4', position: [0, 12.9, -5.4], equipmentType: 'moving-head', label: 'Key Light Lectern' },
   ],
+  // ── v2.5 — Cap. 9 Maracanã Finale (Legendary) ───────────────────
+  'maracana-finale': [
+    { id: 'sp-1', position: [-13.5, 12.9, -5.4], equipmentType: 'moving-head', label: 'Spot Hero L (Hino)' },
+    { id: 'sp-2', position: [13.5, 12.9, -5.4], equipmentType: 'moving-head', label: 'Spot Hero R (Hino)' },
+    { id: 'sp-3', position: [-9, 12.9, -5.4], equipmentType: 'sparkular', label: 'Sparkular Refrão L' },
+    { id: 'sp-4', position: [9, 12.9, -5.4], equipmentType: 'sparkular', label: 'Sparkular Refrão R' },
+    { id: 'sp-5', position: [0, 12.9, -5.4], equipmentType: 'flamer', label: 'Flamer Climax' },
+    { id: 'sp-6', position: [0, 0.9, 6], equipmentType: 'cryo', label: 'Cryo Coro' },
+    { id: 'sp-7', position: [-12, 0.9, 8], equipmentType: 'mortar', label: 'Morteiro 4" L' },
+    { id: 'sp-8', position: [12, 0.9, 8], equipmentType: 'mortar', label: 'Morteiro 4" R' },
+    { id: 'sp-9', position: [0, 0.9, 9], equipmentType: 'mortar', label: 'Morteiro 4" Centro' },
+  ],
 };
 
 
