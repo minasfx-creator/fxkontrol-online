@@ -447,7 +447,7 @@ export default function Training() {
                 <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary font-mono">MANUAL</span>
               )}
             </div>
-            {missions.filter(m => m.chapter === chapter).map((mission) => {
+            {reconciled.filter(m => m.chapter === chapter).map((mission) => {
               const diff = DIFF_CONFIG[mission.difficulty];
               return (
                 <Card key={mission.id} className={`border transition-all duration-200 ${mission.locked ? 'bg-card/50 border-border/20 opacity-60' : 'bg-card border-border/40 hover:border-primary/30 hover:shadow-[0_0_15px_hsl(var(--primary)/0.05)]'}`}>
