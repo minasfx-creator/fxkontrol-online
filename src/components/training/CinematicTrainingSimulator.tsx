@@ -29,6 +29,7 @@ import XPPopupLayer, { type XPPopup } from './hud/XPPopupLayer';
 import MissionFailedScreen from './hud/MissionFailedScreen';
 import MissionPassedFlash from './hud/MissionPassedFlash';
 import AmbientNPCLayer from './ambient/AmbientNPCLayer';
+import { createNpcChoreographer, type NPCPoseMap } from './ambient/npcChoreographer';
 import CinematicCameraDirector, { type CinematicCameraDirectorHandle } from './camera/CinematicCameraDirector';
 import type { MissionScript, DialogueLine } from './missions/types';
 import { createMissionRunner, type RunnerSnapshot } from './missions/missionRunner';
@@ -63,12 +64,34 @@ export default function CinematicTrainingSimulator({
   const [xpPopups, setXpPopups] = useState<XPPopup[]>([]);
   const [passedFlash, setPassedFlash] = useState(false);
   const tickRef = useRef<number | null>(null);
+  const [npcPoses, setNpcPoses] = useState<NPCPoseMap>({});
+  const choreographer = useMemo(
+    () => createNpcChoreographer({ resolveAnchor: (id) => getNPC(id)?.defaultPosition ?? null }),
+    [],
+  );
 
   useEffect(() => runner.subscribe(setSnap), [runner]);
+
+  // Tick choreographer snapshot ~10Hz so gestures decay back to idle.
+  useEffect(() => {
+    const id = window.setInterval(() => setNpcPoses(choreographer.snapshot()), 100);
+    return () => window.clearInterval(id);
+  }, [choreographer]);
 
   // Event stream → cinematic beats + xp popups + stage flash
   useEffect(() => {
     return runner.onEvent((ev) => {
+      choreographer.ingest(ev, {
+        speakerId: activeDialogue?.npcId ?? script.briefing.npcId,
+        speakerIntent: activeDialogue?.intent,
+        activeNpcIds: Array.from(new Set([
+          script.briefing.npcId,
+          ...(snap.currentStage?.onEnter ?? []).map((e) => e.npcId),
+          ...(snap.currentStage?.dialogue ?? []).map((d) => d.npcId),
+        ].filter(Boolean) as string[])),
+      });
+      setNpcPoses(choreographer.snapshot());
+
       if (ev.kind === 'beat:start') directorRef.current?.enqueue(ev.beat);
       else if (ev.kind === 'objective:complete') {
         setXpPopups((p) => [...p, { id: `xp-${Date.now()}-${Math.random()}`, amount: ev.scoreDelta, label: 'objetivo', variant: 'precision' }]);
@@ -78,7 +101,7 @@ export default function CinematicTrainingSimulator({
         setPassedFlash(true);
       }
     });
-  }, [runner, script.scoreRules.safetyPenalty]);
+  }, [runner, script.scoreRules.safetyPenalty, script.briefing.npcId, snap.currentStage, activeDialogue, choreographer]);
 
   // Drive briefing dialogue (also fires briefing-scoped cinematic beats once)
   const briefingBeatsFired = useRef(false);
@@ -198,6 +221,7 @@ export default function CinematicTrainingSimulator({
           const persona = getNPC(id);
           if (!persona) return null;
           const isSpeaking = activeDialogue?.npcId === id;
+          const pose = npcPoses[id];
           return (
             <HumanoidCharacter
               key={id}
@@ -208,6 +232,9 @@ export default function CinematicTrainingSimulator({
               closeup={isSpeaking}
               lookAtTarget={[0, 1.6, 0]}
               voiceLineId={isSpeaking ? activeDialogue?.text ?? null : null}
+              gesture={pose?.gesture ?? 'idle'}
+              gestureDurationMs={pose?.durationMs}
+              walkTo={pose?.walkTo ?? null}
             />
           );
         })}

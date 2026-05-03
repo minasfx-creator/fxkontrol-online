@@ -22,6 +22,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { NPCPersona, SkinTone, OutfitPreset, HairPreset, BodyType, PropPreset } from '../npcs/npcCatalog';
 import type { DialogueIntent } from '../missions/types';
+import { sampleGesture, type GestureKind } from './gestures';
 
 const SKIN_HEX: Record<SkinTone, string> = {
   fair: '#f1c8a8',
@@ -134,6 +135,14 @@ export interface HumanoidCharacterProps {
    * microexpression "accent" (eyebrow flick + jaw kick) for naturalism.
    */
   voiceLineId?: string | number | null;
+  /** Discrete gesture played once. Changing this prop replays it. */
+  gesture?: GestureKind;
+  /** Gesture duration in ms (default 1400). */
+  gestureDurationMs?: number;
+  /** World-space target position to walk toward. Null = stand still. */
+  walkTo?: [number, number, number] | null;
+  /** Walking speed in m/s (default 1.4). */
+  walkSpeed?: number;
 }
 
 export default function HumanoidCharacter({
@@ -148,6 +157,10 @@ export default function HumanoidCharacter({
   propOverrides,
   microExpressions = true,
   voiceLineId = null,
+  gesture = 'idle',
+  gestureDurationMs = 1400,
+  walkTo = null,
+  walkSpeed = 1.4,
 }: HumanoidCharacterProps) {
   const groupRef = useRef<THREE.Group>(null);
   const torsoRef = useRef<THREE.Group>(null);
@@ -163,6 +176,14 @@ export default function HumanoidCharacter({
   const rightArmRef = useRef<THREE.Group>(null);
   const accentRef = useRef<THREE.Mesh>(null);
   const startSeed = useMemo(() => Math.random() * Math.PI * 2, []);
+  /** Gesture playback clock — set on prop change, advanced per frame. */
+  const gestureClock = useRef<{ kind: GestureKind; startedAt: number; duration: number }>({
+    kind: 'idle', startedAt: 0, duration: 0,
+  });
+  /** Walk state: current world position carried by group + facing yaw. */
+  const walkState = useRef<{ posX: number; posY: number; posZ: number; yaw: number; isWalking: boolean }>(
+    { posX: position[0], posY: position[1], posZ: position[2], yaw: rotationY, isWalking: false },
+  );
   const blinkClock = useRef({
     next: 2 + Math.random() * 4,
     until: 0,
@@ -195,21 +216,82 @@ export default function HumanoidCharacter({
     }
   }, [voiceLineId]);
 
+  // (Re)start gesture playback when prop changes.
+  useEffect(() => {
+    if (gesture && gesture !== 'idle') {
+      gestureClock.current = {
+        kind: gesture,
+        startedAt: performance.now(),
+        duration: gestureDurationMs,
+      };
+    }
+  }, [gesture, gestureDurationMs]);
+
   useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime + startSeed;
     const micro = microExpressions && intent ? INTENT_MICRO[intent] : null;
 
-    // Idle motion
+    // ── Walking (carried on root group; arms/legs swing in arm idle block) ──
+    let walkAmp = 0;
+    if (groupRef.current) {
+      const ws = walkState.current;
+      if (walkTo) {
+        const dx = walkTo[0] - ws.posX;
+        const dz = walkTo[2] - ws.posZ;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist > 0.04) {
+          ws.isWalking = true;
+          const step = Math.min(dist, walkSpeed * dt);
+          ws.posX += (dx / dist) * step;
+          ws.posZ += (dz / dist) * step;
+          // Face direction (smoothed)
+          const targetYaw = Math.atan2(dx, dz);
+          // Wrap-around shortest path
+          let dy = targetYaw - ws.yaw;
+          while (dy >  Math.PI) dy -= Math.PI * 2;
+          while (dy < -Math.PI) dy += Math.PI * 2;
+          ws.yaw += dy * Math.min(1, dt * 6);
+          walkAmp = Math.min(1, dist * 1.5);
+        } else {
+          ws.isWalking = false;
+        }
+      } else {
+        ws.isWalking = false;
+      }
+      groupRef.current.position.set(ws.posX, ws.posY, ws.posZ);
+      groupRef.current.rotation.y = ws.yaw;
+    }
+
+    // Idle motion (with hip bob during walk)
     if (torsoRef.current) {
       const breath = Math.sin(t * 1.2) * 0.012;
+      const walkBob = walkAmp > 0 ? Math.abs(Math.sin(t * 8)) * 0.03 * walkAmp : 0;
       const sway = persona.idleProfile === 'wobbly'
         ? Math.sin(t * 2.5) * 0.08
         : Math.sin(t * 0.6) * 0.012;
-      torsoRef.current.position.y = breath;
+      torsoRef.current.position.y = breath + walkBob;
       torsoRef.current.rotation.z = sway;
       torsoRef.current.rotation.x = persona.idleProfile === 'wobbly'
         ? Math.sin(t * 1.8) * 0.04
         : 0;
+    }
+
+    // ── Gesture pose sample (life ratio 0..1) ──
+    const gc = gestureClock.current;
+    let gPose = null as null | ReturnType<typeof sampleGesture>;
+    if (gc.kind !== 'idle' && gc.duration > 0) {
+      const elapsedMs = performance.now() - gc.startedAt;
+      const lifeT = elapsedMs / gc.duration;
+      if (lifeT >= 1) {
+        gestureClock.current = { kind: 'idle', startedAt: 0, duration: 0 };
+      } else {
+        gPose = sampleGesture(gc.kind, lifeT);
+        // Apply body-level deltas now (arms applied in arm block below).
+        if (torsoRef.current) {
+          torsoRef.current.position.y += gPose.bodyBob;
+          torsoRef.current.rotation.x += gPose.torsoLean;
+        }
+      }
     }
 
     // Eye-tracking
@@ -297,8 +379,15 @@ export default function HumanoidCharacter({
       jawRef.current.rotation.z = THREE.MathUtils.lerp(jawRef.current.rotation.z, smirk * 0.06, 0.2);
     }
 
+    // Apply head gesture deltas (yaw + pitch)
+    if (headRef.current && gPose) {
+      headRef.current.rotation.y += gPose.headYaw;
+      headRef.current.rotation.x = (headRef.current.rotation.x ?? 0) + gPose.headPitch;
+    }
+
     // Hand-IK pointing
     const isPointing = !!pointAt && speakingAmplitude > 0.05;
+    const walking = walkAmp > 0.05;
     if (isPointing && rightArmRef.current && groupRef.current) {
       groupRef.current.getWorldPosition(armWorld);
       armWorld.y += LEG_H + TORSO_H * 0.92;
@@ -308,29 +397,40 @@ export default function HumanoidCharacter({
       const dz = pointAt![2] - armWorld.z;
       const horizDist = Math.sqrt(dx * dx + dz * dz);
       const pitch = -Math.atan2(dy, horizDist);
-      const yaw = Math.atan2(dx, dz) - rotationY;
+      const yaw = Math.atan2(dx, dz) - walkState.current.yaw;
       rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, pitch - 0.4, 0.15);
       rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, -THREE.MathUtils.clamp(yaw, -1, 1) * 0.6, 0.15);
     } else {
-      // Arm idle gesture
-      if (persona.idleProfile === 'gesticulating') {
-        if (leftArmRef.current)  leftArmRef.current.rotation.x  = -0.2 + Math.sin(t * 2.0) * 0.4;
-        if (rightArmRef.current) {
-          rightArmRef.current.rotation.x = -0.5 + Math.cos(t * 1.7) * 0.35;
-          rightArmRef.current.rotation.z = 0;
-        }
+      // Base arm targets — walking cycle dominates idle.
+      let lArmX = 0, rArmX = 0, lArmZ = 0, rArmZ = 0;
+      if (walking) {
+        const swing = Math.sin(t * 8) * 0.6 * walkAmp;
+        lArmX =  swing;
+        rArmX = -swing;
+      } else if (persona.idleProfile === 'gesticulating') {
+        lArmX = -0.2 + Math.sin(t * 2.0) * 0.4;
+        rArmX = -0.5 + Math.cos(t * 1.7) * 0.35;
       } else if (persona.idleProfile === 'pacing') {
-        if (leftArmRef.current)  leftArmRef.current.rotation.x  = Math.sin(t * 2.4) * 0.35;
-        if (rightArmRef.current) {
-          rightArmRef.current.rotation.x = -Math.sin(t * 2.4) * 0.35;
-          rightArmRef.current.rotation.z = 0;
-        }
+        lArmX =  Math.sin(t * 2.4) * 0.35;
+        rArmX = -Math.sin(t * 2.4) * 0.35;
       } else {
-        if (leftArmRef.current)  leftArmRef.current.rotation.x  = Math.sin(t * 0.8) * 0.05;
-        if (rightArmRef.current) {
-          rightArmRef.current.rotation.x = Math.cos(t * 0.8) * 0.05;
-          rightArmRef.current.rotation.z = 0;
-        }
+        lArmX = Math.sin(t * 0.8) * 0.05;
+        rArmX = Math.cos(t * 0.8) * 0.05;
+      }
+      // Gesture overrides additively
+      if (gPose) {
+        lArmX += gPose.lArmX;
+        rArmX += gPose.rArmX;
+        lArmZ += gPose.lArmZ;
+        rArmZ += gPose.rArmZ;
+      }
+      if (leftArmRef.current) {
+        leftArmRef.current.rotation.x = THREE.MathUtils.lerp(leftArmRef.current.rotation.x, lArmX, 0.25);
+        leftArmRef.current.rotation.z = THREE.MathUtils.lerp(leftArmRef.current.rotation.z, lArmZ, 0.25);
+      }
+      if (rightArmRef.current) {
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, rArmX, 0.25);
+        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, rArmZ, 0.25);
       }
     }
 
