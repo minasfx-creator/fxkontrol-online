@@ -4,6 +4,7 @@ import { ClaimBadge } from '@/components/strategy/ClaimBadge';
 import { SEED_ASSETS } from '@/components/strategy/AssetLibrary';
 import { ArrowRight, ShieldCheck, Layers, Wand2, FileDown } from 'lucide-react';
 import { renderOnePagerPDF, downloadOnePager, SEGMENTS } from '@/lib/onePagerPdf';
+import { FxkLogo } from '@/components/brand/FxkLogo';
 
 const CORE = [
   { title: 'End the broken stage', body: 'Replace fragmented drone, pyro, DMX, approval and reporting tools with one command surface.' },
