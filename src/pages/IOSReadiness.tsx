@@ -20,6 +20,7 @@
 
 import { useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { FxkLogo } from '@/components/brand/FxkLogo';
 import {
   Smartphone, Monitor, Globe, ArrowRight, CheckCircle2, XCircle,
   AlertTriangle, Apple, Cable, Bluetooth, Usb, Network, Info,
