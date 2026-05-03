@@ -53,6 +53,7 @@ const PairingWizard = lazy(lazyRetry(() => import("./pages/PairingWizard")));
 const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
 const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage")));
 const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")));
+const SkyCanvas3DDemo = lazy(lazyRetry(() => import("./pages/dev/SkyCanvas3DDemo")));
 const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
 const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
 const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")));
@@ -188,6 +189,8 @@ function App() {
                     {/* Public SkyCanvas smoke route — mounts the 3D viewport in
                         isolation for E2E QA. No auth, no hardware, no ARM. */}
                     <Route path="/dev/skycanvas-smoke" element={<SkyCanvasSmoke />} />
+                    {/* New R3F SkyCanvas3D — clean Show Plane viewport bound to ShowPlan. */}
+                    <Route path="/dev/skycanvas-3d" element={<SkyCanvas3DDemo />} />
                     {/* FXKONTROL DS v1 — public reference page (tokens, segments, status,
                         components, states). No hardware, no auth. */}
                     <Route path="/dev/design-system" element={<DesignSystemShowcase />} />
