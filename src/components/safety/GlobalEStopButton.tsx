@@ -40,9 +40,9 @@ export default function GlobalEStopButton() {
       const to = r.to as SafetyState;
       setState(to);
       const next: 'estop' | 'arm' | 'disarm' | null =
-        to === 'E_STOP' ? 'estop'
+        r.transition === 'E_STOP' ? 'estop'
         : to === 'ARMED' ? 'arm'
-        : (to === 'IDLE' || to === 'LOCKED') ? 'disarm'
+        : (r.transition === 'DISARM_SYSTEM' || to === 'IDLE' || to === 'LOCKED') ? 'disarm'
         : null;
       if (next) {
         setOpFx(next);
