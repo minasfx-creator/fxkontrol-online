@@ -406,8 +406,8 @@ function GroundFog() {
     fogSystem.setIntensity(fogIntensity);
   }, [fogIntensity, fogSystem]);
 
-  useFrame(({ clock }) => {
-    fogSystem.update(clock.getElapsedTime());
+  useFrame(() => {
+    fogSystem.update(useProjectStore.getState().currentTime);
   });
 
   return (
