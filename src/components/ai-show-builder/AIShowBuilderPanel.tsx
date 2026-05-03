@@ -318,8 +318,44 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
   const handleClearHistory = useCallback(() => {
     setExtensionHistory([]);
     setRedoStack([]);
+    setExpandedEntryIds(new Set());
     toast.success('Histórico de extensões limpo');
   }, []);
+
+  const toggleEntryExpanded = useCallback((id: string) => {
+    setExpandedEntryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // Atalhos: Ctrl/Cmd+Z = desfazer última extensão; Ctrl/Cmd+Shift+Z = refazer.
+  // Só ativa quando há plano e o foco NÃO está em campo editável (evita
+  // interferir com o undo nativo do textarea de prompt).
+  useEffect(() => {
+    if (!plan) return;
+    const onKey = (e: KeyboardEvent) => {
+      const meta = e.ctrlKey || e.metaKey;
+      if (!meta || e.key.toLowerCase() !== 'z') return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'TEXTAREA' || tag === 'INPUT' || target?.isContentEditable) return;
+      if (e.shiftKey) {
+        if (redoStack.length === 0) return;
+        e.preventDefault();
+        handleRedoExtension();
+      } else {
+        if (extensionHistory.length === 0) return;
+        e.preventDefault();
+        handleUndoExtension();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [plan, extensionHistory.length, redoStack.length, handleUndoExtension, handleRedoExtension]);
+
 
 
   return (
