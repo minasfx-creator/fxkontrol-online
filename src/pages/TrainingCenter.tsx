@@ -27,6 +27,7 @@ import MetaHumanCoachPanel, { type CoachTip } from '@/components/training/coach/
 import MissionBriefingMetaHuman from '@/components/training/briefing/MissionBriefingMetaHuman';
 import { isEnabled } from '@/lib/featureFlags';
 import { useAchievementsStore } from '@/components/training/achievements/useAchievementsStore';
+import { FxkLogo } from '@/components/brand/FxkLogo';
 import { ACHIEVEMENT_CATALOG, type AchievementId } from '@/components/training/achievements/achievements';
 import { cn } from '@/lib/utils';
 
@@ -88,7 +89,7 @@ export default function TrainingCenter() {
       >
         <div className="px-ds-4 py-ds-3 flex items-center justify-between gap-ds-3 flex-wrap">
           <div className="flex items-center gap-ds-3">
-            <span className="text-[10px] ds-mono uppercase tracking-[0.3em] text-ds-text-muted">FX KONTROL</span>
+            <FxkLogo size={22} variant="full" tone="sync" />
             <span className="h-4 w-px bg-ds-border-default" />
             <h1 className="text-sm font-semibold tracking-wider uppercase">Training Center</h1>
           </div>

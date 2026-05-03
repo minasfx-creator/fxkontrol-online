@@ -153,12 +153,10 @@ export default function Auth() {
           <div className="absolute inset-0 animate-holographic-scan pointer-events-none opacity-30" />
 
           <div className="text-center relative z-10">
-            {/* FXK Logo — canonical pentagon XLR mark (vector) */}
+            {/* Brand block — canonical FxkLogo full variant */}
             <div className="flex justify-center mb-3">
-              <FxkLogo size={64} tone="sync" className="drop-shadow-[0_0_14px_hsl(var(--field-cyan)/0.35)]" />
+              <FxkLogo size={56} variant="full" tone="sync" className="drop-shadow-[0_0_14px_hsl(var(--status-sync)/0.35)]" />
             </div>
-
-            <h1 className="text-lg font-bold text-foreground tracking-[0.15em] uppercase">FX KONTROL</h1>
             <p className="ds-mono text-[9px] mt-0.5 tracking-[0.15em] uppercase text-status-sync/60">
               NEXUS AUTHENTICATION
             </p>

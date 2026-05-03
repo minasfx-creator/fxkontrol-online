@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Zap, Save, FolderOpen, Undo, Redo, Upload, FileJson, FilePlus, Download, ChevronDown, Wand2, PlusCircle, Cog, Paintbrush, Map, Globe, FileBarChart, Cloud, Eye, Volume2, Film, MapPinned, Atom, Share2, Users, History, MessageSquare, BoxSelect, Gauge, Sparkles, FileCode, FileText, Store, Lightbulb, MonitorSpeaker, FileArchive, Mountain, Building2, Command, Copy, Trash2, SkipBack, Navigation, LogOut, MapPin, Target, MousePointer, Shapes, LayoutGrid, Shield, AlertTriangle, Moon, Sun, Maximize2, Minimize2, Settings2 } from 'lucide-react';
-import fxkLogo from '@/assets/fxk-logo.png';
+import { FxkLogo } from '@/components/brand/FxkLogo';
 import { Button } from '@/components/ui/button';
 import { useProjectStore } from '@/store/useProjectStore';
 import { usePlaybackState } from '@/hooks/useEditorUI';
@@ -499,13 +499,8 @@ export default function Toolbar({ onOpenPanel, isMaximized, onToggleMaximize }: 
     }}>
       {/* ─── LEFT: Logo ─────────────────────────── */}
       <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center p-0.5 bg-muted/20 border border-border/20">
-          <img src={fxkLogo} alt="FX Kontrol" className="w-full h-full object-contain opacity-90" />
-        </div>
-        <div className="flex flex-col leading-none">
-          <span className="text-[11px] font-bold text-foreground tracking-[0.18em] uppercase">FX KONTROL</span>
-          <span className="text-[7px] text-muted-foreground/60 tracking-[0.12em] uppercase">by Minas FX</span>
-        </div>
+        <FxkLogo size={26} variant="full" tone="sync" />
+        <span className="text-[7px] text-muted-foreground/60 tracking-[0.12em] uppercase">by Minas FX</span>
       </div>
 
       {/* Separator */}
