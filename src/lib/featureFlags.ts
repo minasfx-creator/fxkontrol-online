@@ -116,6 +116,15 @@ const FLAGS = {
   // only desktop layout now. Mobile shell is gated separately by
   // `useIsMobile()` in src/pages/Index.tsx.)
   // ============================================================
+
+  /**
+   * SkyCanvas 2.0 — lighter presentation engine (single draw call per layer,
+   * pooled bursts, time via ref). Runtime opt-in via localStorage
+   * 'fxk.flag.skycanvas_v2' = '1'. Wrapped by an ErrorBoundary in
+   * SkyCanvasMount so a render fault cleanly falls back to the legacy
+   * SkyCanvas (zero risk to production).
+   */
+  skycanvas_v2: false,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
@@ -137,3 +146,23 @@ export function isHardwareSimulatorEnabled(): boolean {
 export function isRealOnlyMode(): boolean {
   return FLAGS.real_only_mode;
 }
+
+/**
+ * SkyCanvas 2.0 runtime gate.
+ * Order: localStorage override → static flag → false.
+ * Allows ops to flip the new engine on per-device without a deploy.
+ * Safe in SSR/jsdom (guards `typeof window`).
+ */
+export function isSkycanvasV2Enabled(): boolean {
+  if (typeof window !== 'undefined') {
+    try {
+      const v = window.localStorage.getItem('fxk.flag.skycanvas_v2');
+      if (v === '1' || v === 'true') return true;
+      if (v === '0' || v === 'false') return false;
+    } catch {
+      /* localStorage blocked → fall back to static flag */
+    }
+  }
+  return FLAGS.skycanvas_v2;
+}
+
