@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { Shield, Lock, Info, Sparkles, Eye, AlertTriangle } from 'lucide-react';
 import { safetyGate, type SafetyGateConfig, type SafetyLayer } from '@/core/safety/safetyGate';
 import { workMode, type WorkMode } from '@/core/safety/workMode';
+import { requestRealOperation, explainRealOperationReason } from '@/core/safety/realOperationRequest';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 
