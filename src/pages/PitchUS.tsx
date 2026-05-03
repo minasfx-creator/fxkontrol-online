@@ -59,6 +59,13 @@ export default function PitchUS() {
 
   return (
     <main className="min-h-[100dvh]" style={PITCH_STYLE}>
+      {/* Brand header — canonical FxkLogo */}
+      <header className="px-6 md:px-12 h-16 flex items-center justify-between border-b" style={{ borderColor: 'hsl(var(--ds-border-default))' }}>
+        <Link to="/pitch/us" aria-label="FXKONTROL — Home">
+          <FxkLogo size={26} variant="full" tone="sync" />
+        </Link>
+        <Link to="/comercial#demo-form" className="text-[11px] ds-mono uppercase tracking-[0.2em] text-status-sync hover:opacity-80">Request demo →</Link>
+      </header>
       {/* Hero */}
       <section className="px-6 md:px-12 pt-16 md:pt-24 pb-12 md:pb-16 border-b" style={{ borderColor: 'hsl(var(--ds-border-default))' }}>
         <div className="max-w-4xl mx-auto">
