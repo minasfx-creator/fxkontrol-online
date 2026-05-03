@@ -25,6 +25,7 @@ import { simulationDryRun } from '@/lib/showSeeds/simulationDryRun';
 import { inspectShowPlan } from '@/lib/showSeeds/inspectShowPlan';
 import { downloadGoldenShowExportZip } from '@/lib/showSeeds/goldenShowExport';
 import Phase1TransitionPanel from '@/components/dev/Phase1TransitionPanel';
+import Phase2TransitionPanel from '@/components/dev/Phase2TransitionPanel';
 
 interface SeedRow {
   entry: GoldenShowEntry;
@@ -165,6 +166,8 @@ export default function GoldenShowsPage() {
         </Card>
 
         <Phase1TransitionPanel />
+
+        <Phase2TransitionPanel />
 
         <Card className="p-4 text-xs text-muted-foreground">
           Cada linha roda <code>verificationEngine.run()</code> +{' '}
