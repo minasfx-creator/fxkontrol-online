@@ -1,9 +1,10 @@
 /**
- * Training v2.1 — Cinematic Mission Scripts catalog.
+ * Training v2.2 — Cinematic Mission Scripts catalog.
  *
- * 10 missions across 5 chapters. Each mission is a structured MissionScript
- * with briefing, staged objectives, NPC events, cinematic beats and a
- * debrief that links to existing reference manuals.
+ * 16 missions across 7 chapters. Each mission is a structured MissionScript
+ * with briefing, multi-kind staged objectives (place/inspect/patch/
+ * fire-check/dialogue/evacuate), NPC voiceLines, cinematic camera beats
+ * and a debrief that links to existing reference manuals.
  *
  * SAFETY: all stages are simulation-only. No real hardware is armed,
  * fired, or energised by content here.
