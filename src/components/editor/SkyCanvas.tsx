@@ -1944,12 +1944,15 @@ export default function SkyCanvas() {
     setDownloadingScenery(true);
     pushLog('Downloading satellite imagery...', 'info');
     try {
-      // Get the API key from the edge function
-      const { data: keyData, error: keyError } = await supabase.functions.invoke('get-maps-key');
-      const apiKey = keyData?.key;
-      if (keyError || !apiKey) {
-        pushLog('Failed to get Google Maps API key', 'error');
-        toast.error('Falha ao obter chave do Google Maps');
+      // Get the API key from the edge function (requires login)
+      const { fetchGoogleMapsKey } = await import('@/lib/getMapsKey');
+      const { key: apiKey, reason } = await fetchGoogleMapsKey();
+      if (!apiKey) {
+        const msg = reason === 'unauthenticated'
+          ? 'Faça login para baixar imagens do Google Maps'
+          : 'Falha ao obter chave do Google Maps';
+        pushLog(msg, 'error');
+        toast.error(msg);
         return;
       }
 

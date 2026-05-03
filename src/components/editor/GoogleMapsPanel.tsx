@@ -97,14 +97,17 @@ export default function GoogleMapsPanel({ onClose }: { onClose: () => void }) {
 
     async function init() {
       try {
-        const { data, error: fnError } = await supabase.functions.invoke('get-maps-key');
+        const { fetchGoogleMapsKey } = await import('@/lib/getMapsKey');
+        const { key, reason } = await fetchGoogleMapsKey();
         if (cancelled) return;
-        if (fnError || !data?.key) {
-          setError('Google Maps API Key não configurada');
+        if (!key) {
+          setError(reason === 'unauthenticated'
+            ? 'Faça login para carregar o Google Maps'
+            : 'Google Maps API Key não configurada');
           return;
         }
 
-        await loadGoogleMapsScript(data.key);
+        await loadGoogleMapsScript(key);
         if (cancelled || !mapRef.current) return;
 
         const map = new google.maps.Map(mapRef.current, {
