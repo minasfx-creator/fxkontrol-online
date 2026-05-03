@@ -169,7 +169,58 @@ export function createNpcChoreographer(input: ChoreographerInput) {
     }
   }
 
-  return { ingest, snapshot, clear, setPose };
+  return { ingest, snapshot, clear, setPose, applyFormation };
+
+  /**
+   * Place a list of NPCs into a geometric formation around a focal point.
+   * Used on stage:start beats so the crew "blocks" cinematically per scene.
+   */
+  function applyFormation(
+    npcIds: string[],
+    kind: 'line' | 'arc' | 'cluster' | 'V',
+    focus: [number, number, number],
+    opts?: { radius?: number; gesture?: GestureKind; durationMs?: number },
+  ) {
+    const radius = opts?.radius ?? 1.6;
+    const gesture = opts?.gesture ?? 'idle';
+    const durationMs = opts?.durationMs ?? 2000;
+    const n = npcIds.length;
+    if (n === 0) return;
+
+    npcIds.forEach((id, i) => {
+      let dx = 0, dz = 0;
+      switch (kind) {
+        case 'line': {
+          const span = (n - 1) * radius;
+          dx = -span / 2 + i * radius;
+          dz = 0;
+          break;
+        }
+        case 'arc': {
+          const ang = -Math.PI / 3 + (i / Math.max(1, n - 1)) * (2 * Math.PI / 3);
+          dx = Math.sin(ang) * radius * 1.4;
+          dz = Math.cos(ang) * radius * 1.4;
+          break;
+        }
+        case 'V': {
+          const half = (n - 1) / 2;
+          const off = i - half;
+          dx = off * radius * 0.7;
+          dz = Math.abs(off) * radius * 0.6;
+          break;
+        }
+        case 'cluster':
+        default: {
+          const ang = (i / n) * Math.PI * 2;
+          const r = radius * (0.6 + (i % 2) * 0.4);
+          dx = Math.cos(ang) * r;
+          dz = Math.sin(ang) * r;
+          break;
+        }
+      }
+      setPose(id, gesture, durationMs, [focus[0] + dx, focus[1], focus[2] + dz]);
+    });
+  }
 }
 
 function gestureForBeatIntent(beat: CinematicBeat): GestureKind {
