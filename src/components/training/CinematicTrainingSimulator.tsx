@@ -208,7 +208,7 @@ export default function CinematicTrainingSimulator({
         <AmbientNPCLayer preset={ambient} maxNpcs={ambient === 'frantic' ? 4 : 2} exclude={activeNpcIds} />
 
         <CinematicCameraDirector
-          pendingBeat={pendingBeat}
+          ref={directorRef}
           resolveNpcPosition={resolveNpcPosition}
           onActiveChange={(active) => setOrbitEnabled(!active)}
         />
