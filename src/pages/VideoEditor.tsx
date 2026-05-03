@@ -39,6 +39,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/comp
 import { cn } from '@/lib/utils';
 
 import SkyCanvasMount from '@/components/editor/SkyCanvasMount';
+import SkyCanvasDiagnosticsHUD from '@/components/editor/SkyCanvasDiagnosticsHUD';
 import EffectLibrarySidebar, { FXK_EFFECT_DRAG_TYPE } from '@/components/editor/EffectLibrarySidebar';
 import { useProjectStore } from '@/store/useProjectStore';
 import { timelineClock } from '@/core/timeline/TimelineClock';
@@ -669,6 +670,7 @@ export default function VideoEditor() {
               {/* Viewport */}
               <main className="flex-1 relative bg-black min-w-0">
                 <SkyCanvasMount instanceKey="video-editor" area="Video Editor viewport" />
+                <SkyCanvasDiagnosticsHUD />
                 {/* Viewport HUD */}
                 <div className="absolute top-3 left-3 z-10 flex gap-2">
                   <Badge className="bg-black/60 border border-cyan-500/30 text-cyan-300 ds-mono text-[10px]">
