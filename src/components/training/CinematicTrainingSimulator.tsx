@@ -352,16 +352,18 @@ export default function CinematicTrainingSimulator({
 }
 
 function DebriefScreen({
-  script, snap, onContinue, onReplay,
+  script, snap, attempts, onContinue, onReplay,
 }: {
   script: MissionScript;
   snap: RunnerSnapshot;
+  attempts: ReadonlyArray<PlacementAttempt>;
   onContinue: () => void;
   onReplay: () => void;
 }) {
+  const metrics = computeDebriefMetrics({ script, snap, attempts });
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-gradient-to-b from-black via-[hsl(240_25%_5%)] to-black px-4 py-8">
-      <div className="max-w-2xl w-full space-y-6 animate-fxk-fade-up">
+      <div className="max-w-3xl w-full space-y-6 animate-fxk-fade-up">
         <div className="text-center space-y-3">
           <p className="text-[10px] uppercase tracking-[0.3em] font-mono text-[hsl(28_100%_60%)]">{script.chapter}</p>
           <h2 className="text-3xl font-bold text-foreground">{script.debrief.title}</h2>
@@ -381,6 +383,9 @@ function DebriefScreen({
             <p className={`text-xl font-bold font-mono ${snap.safetyViolations > 0 ? 'text-destructive' : 'text-emerald-400'}`}>{snap.safetyViolations}</p>
           </div>
         </div>
+
+        <MissionDebriefPanel metrics={metrics} />
+
         <div className="rounded-lg border border-border/50 bg-card/50 p-4 space-y-2">
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-[hsl(28_100%_60%)]" />
