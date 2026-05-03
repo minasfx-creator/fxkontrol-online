@@ -1,28 +1,34 @@
 /**
- * SkyCanvas 2.0 — ExplosionsLayer (frame-synced).
+ * SkyCanvas 2.0 — ExplosionsLayer (pooled, single draw call).
  *
- * One <OneExplosion> per BurstSpec, mounted ALL THE TIME. Each instance
- * computes its own `age = max(0, showTime - burstStart)` per frame using
- * `useShowTimeRef`, then:
- *   - particles only get written when age ∈ [0, life]
- *   - opacity → 0 outside the burst window (visually invisible)
- * This means scrub jumps to any time and the next frame snaps the burst
- * into the right physics state without any React reconciliation.
+ * Replaces the per-burst <points> approach with ONE merged Points system
+ * sized for POOL_SIZE simultaneous bursts. Each frame we:
+ *   1. Walk the burst specs and assign each currently-active spec to a pool
+ *      slot (LRU eviction if we run out — oldest finishing first).
+ *   2. Write per-particle position/size for active slots only; inactive
+ *      slots get aSize=0 so the GPU draws nothing for them.
  *
- * Pause: `showTime` stops moving → age frozen → particles locked in place.
+ * Result: O(1) <points>/material/geometry regardless of cue count, zero
+ * per-frame allocations, deterministic physics preserved (each burst still
+ * derives state purely from `showTime - burstStart`).
  */
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { type BurstSpec, useBurstSpecs } from './useShowSelectors';
-import { useShowTimeRef, type ShowTimeRef } from './useShowTimeRef';
+import { useShowTimeRef } from './useShowTimeRef';
 
 const PARTICLES_PER_BURST = 96;
+const POOL_SIZE = 256; // up to 256 simultaneous bursts on screen
+const TOTAL_PARTICLES = PARTICLES_PER_BURST * POOL_SIZE;
 const GRAVITY = 9.8;
 const GRAVITY_SCALE = 0.12;
 
-/** djb2 + LCG → deterministic random direction set for an id. */
-function makeDirections(seed: string): Float32Array {
+/** Deterministic per-id direction set, cached across frames. */
+const DIR_CACHE = new Map<string, Float32Array>();
+function getDirections(seed: string): Float32Array {
+  const cached = DIR_CACHE.get(seed);
+  if (cached) return cached;
   let h = 5381;
   for (let i = 0; i < seed.length; i++) h = (h * 33) ^ seed.charCodeAt(i);
   let state = h >>> 0;
@@ -39,103 +45,179 @@ function makeDirections(seed: string): Float32Array {
     arr[i * 3 + 1] = Math.cos(phi) * speed;
     arr[i * 3 + 2] = Math.sin(phi) * Math.sin(theta) * speed;
   }
+  // Cap cache to avoid unbounded growth.
+  if (DIR_CACHE.size > 1024) DIR_CACHE.clear();
+  DIR_CACHE.set(seed, arr);
   return arr;
 }
 
-interface OneExplosionProps {
-  spec: BurstSpec;
-  timeRef: React.MutableRefObject<ShowTimeRef>;
-}
+const VERTEX_SHADER = /* glsl */ `
+  attribute float aSize;
+  attribute float aAlpha;
+  varying float vAlpha;
+  varying vec3 vColor;
+  void main() {
+    vAlpha = aAlpha;
+    vColor = color;
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    gl_Position = projectionMatrix * mv;
+    gl_PointSize = aSize * (300.0 / -mv.z);
+  }
+`;
 
-function OneExplosion({ spec, timeRef }: OneExplosionProps) {
-  const pointsRef = useRef<THREE.Points>(null);
-  const matRef = useRef<THREE.PointsMaterial>(null);
-
-  const directions = useMemo(() => makeDirections(spec.id), [spec.id]);
-  const positions = useMemo(
-    () => new Float32Array(PARTICLES_PER_BURST * 3),
-    [spec.id],
-  );
-
-  // Seed positions at origin so first frame doesn't draw at (0,0,0).
-  useEffect(() => {
-    for (let i = 0; i < PARTICLES_PER_BURST; i++) {
-      positions[i * 3 + 0] = spec.origin[0];
-      positions[i * 3 + 1] = spec.origin[1];
-      positions[i * 3 + 2] = spec.origin[2];
-    }
-    const geom = pointsRef.current?.geometry;
-    if (geom) (geom.attributes.position as THREE.BufferAttribute).needsUpdate = true;
-  }, [spec.id, spec.origin, positions]);
-
-  useFrame(() => {
-    const geom = pointsRef.current?.geometry;
-    const mat = matRef.current;
-    if (!geom || !mat) return;
-
-    const showTime = timeRef.current.time;
-    const t = showTime - spec.burstStart;
-
-    // Outside the burst window → fully transparent. Cheap branch keeps the
-    // points alive in the scene but invisible (no per-frame writes).
-    if (t < 0 || t > spec.life) {
-      if (mat.opacity !== 0) mat.opacity = 0;
-      return;
-    }
-
-    const drag = Math.exp(-1.3 * t);
-    const radius = spec.height * 0.18;
-    const lifeRatio = Math.min(1, t / spec.life);
-    const gravityDrop = 0.5 * GRAVITY * GRAVITY_SCALE * t * t;
-
-    const [ox, oy, oz] = spec.origin;
-    for (let i = 0; i < PARTICLES_PER_BURST; i++) {
-      const dx = directions[i * 3 + 0];
-      const dy = directions[i * 3 + 1];
-      const dz = directions[i * 3 + 2];
-      const expand = radius * (1 - drag);
-      positions[i * 3 + 0] = ox + dx * expand;
-      positions[i * 3 + 1] = oy + dy * expand - gravityDrop;
-      positions[i * 3 + 2] = oz + dz * expand;
-    }
-    (geom.attributes.position as THREE.BufferAttribute).needsUpdate = true;
-    mat.opacity = Math.max(0, 1 - lifeRatio) * 0.95;
-    mat.size = 1.4 + 1.6 * (1 - lifeRatio);
-  });
-
-  return (
-    <points ref={pointsRef} frustumCulled={false}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={PARTICLES_PER_BURST}
-          array={positions}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        ref={matRef}
-        color={spec.color}
-        size={2.2}
-        sizeAttenuation
-        transparent
-        opacity={0}
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-      />
-    </points>
-  );
-}
+const FRAGMENT_SHADER = /* glsl */ `
+  varying float vAlpha;
+  varying vec3 vColor;
+  void main() {
+    if (vAlpha <= 0.0) discard;
+    vec2 c = gl_PointCoord - vec2(0.5);
+    float d = dot(c, c);
+    if (d > 0.25) discard;
+    float falloff = smoothstep(0.25, 0.0, d);
+    gl_FragColor = vec4(vColor * falloff, vAlpha * falloff);
+  }
+`;
 
 export function ExplosionsLayer() {
   const specs = useBurstSpecs();
   const timeRef = useShowTimeRef();
-  if (specs.length === 0) return null;
+  const pointsRef = useRef<THREE.Points>(null);
+
+  // Persistent typed arrays + slot bookkeeping. Allocated once.
+  const buffers = useMemo(() => {
+    const positions = new Float32Array(TOTAL_PARTICLES * 3);
+    const colors = new Float32Array(TOTAL_PARTICLES * 3);
+    const sizes = new Float32Array(TOTAL_PARTICLES);
+    const alphas = new Float32Array(TOTAL_PARTICLES);
+    // slot → spec.id (or null when free). LRU via ascending index on assign.
+    const slotOwner: (string | null)[] = new Array(POOL_SIZE).fill(null);
+    const idToSlot = new Map<string, number>();
+    const tmpColor = new THREE.Color();
+    return { positions, colors, sizes, alphas, slotOwner, idToSlot, tmpColor };
+  }, []);
+
+  const geometry = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(buffers.positions, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(buffers.colors, 3));
+    g.setAttribute('aSize', new THREE.BufferAttribute(buffers.sizes, 1));
+    g.setAttribute('aAlpha', new THREE.BufferAttribute(buffers.alphas, 1));
+    g.setDrawRange(0, TOTAL_PARTICLES);
+    return g;
+  }, [buffers]);
+
+  const material = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        vertexShader: VERTEX_SHADER,
+        fragmentShader: FRAGMENT_SHADER,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        vertexColors: true,
+      }),
+    [],
+  );
+
+  useFrame(() => {
+    const showTime = timeRef.current.time;
+    const { positions, colors, sizes, alphas, slotOwner, idToSlot, tmpColor } = buffers;
+
+    // 1. Build active list and free slots whose owners are no longer active.
+    //    We mutate idToSlot in place to avoid alloc.
+    const activeIds = new Set<string>();
+    for (const spec of specs) {
+      const t = showTime - spec.burstStart;
+      if (t >= 0 && t <= spec.life) activeIds.add(spec.id);
+    }
+    for (const [id, slot] of idToSlot) {
+      if (!activeIds.has(id)) {
+        idToSlot.delete(id);
+        slotOwner[slot] = null;
+        // Zero out sizes for that slot so GPU draws nothing.
+        const base = slot * PARTICLES_PER_BURST;
+        for (let i = 0; i < PARTICLES_PER_BURST; i++) {
+          sizes[base + i] = 0;
+          alphas[base + i] = 0;
+        }
+      }
+    }
+
+    // 2. Assign slots to active specs that don't have one yet.
+    let cursor = 0;
+    for (const spec of specs) {
+      if (!activeIds.has(spec.id)) continue;
+      if (idToSlot.has(spec.id)) continue;
+      // Find next free slot from cursor; if exhausted, evict slot 0 (oldest).
+      let slot = -1;
+      while (cursor < POOL_SIZE) {
+        if (slotOwner[cursor] === null) {
+          slot = cursor;
+          break;
+        }
+        cursor++;
+      }
+      if (slot === -1) {
+        // Pool full → evict oldest (first non-null).
+        for (let i = 0; i < POOL_SIZE; i++) {
+          if (slotOwner[i] !== null) {
+            const evictedId = slotOwner[i]!;
+            idToSlot.delete(evictedId);
+            slot = i;
+            break;
+          }
+        }
+        if (slot === -1) continue;
+      }
+      slotOwner[slot] = spec.id;
+      idToSlot.set(spec.id, slot);
+    }
+
+    // 3. Write per-particle state for each active spec.
+    for (const spec of specs) {
+      const slot = idToSlot.get(spec.id);
+      if (slot === undefined) continue;
+      const t = showTime - spec.burstStart;
+      const drag = Math.exp(-1.3 * t);
+      const radius = spec.height * 0.18;
+      const lifeRatio = Math.min(1, t / spec.life);
+      const gravityDrop = 0.5 * GRAVITY * GRAVITY_SCALE * t * t;
+      const expand = radius * (1 - drag);
+      const alpha = Math.max(0, 1 - lifeRatio) * 0.95;
+      const size = 1.4 + 1.6 * (1 - lifeRatio);
+
+      tmpColor.set(spec.color);
+      const cr = tmpColor.r;
+      const cg = tmpColor.g;
+      const cb = tmpColor.b;
+
+      const dirs = getDirections(spec.id);
+      const [ox, oy, oz] = spec.origin;
+      const base = slot * PARTICLES_PER_BURST;
+      for (let i = 0; i < PARTICLES_PER_BURST; i++) {
+        const p3 = (base + i) * 3;
+        positions[p3 + 0] = ox + dirs[i * 3 + 0] * expand;
+        positions[p3 + 1] = oy + dirs[i * 3 + 1] * expand - gravityDrop;
+        positions[p3 + 2] = oz + dirs[i * 3 + 2] * expand;
+        colors[p3 + 0] = cr;
+        colors[p3 + 1] = cg;
+        colors[p3 + 2] = cb;
+        sizes[base + i] = size;
+        alphas[base + i] = alpha;
+      }
+    }
+
+    // 4. Mark dirty (single flag per attribute per frame).
+    const geom = pointsRef.current?.geometry;
+    if (geom) {
+      (geom.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+      (geom.attributes.color as THREE.BufferAttribute).needsUpdate = true;
+      (geom.attributes.aSize as THREE.BufferAttribute).needsUpdate = true;
+      (geom.attributes.aAlpha as THREE.BufferAttribute).needsUpdate = true;
+    }
+  });
+
   return (
-    <group>
-      {specs.map((spec) => (
-        <OneExplosion key={spec.id} spec={spec} timeRef={timeRef} />
-      ))}
-    </group>
+    <points ref={pointsRef} geometry={geometry} material={material} frustumCulled={false} />
   );
 }
