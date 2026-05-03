@@ -892,6 +892,137 @@ export const MISSION_SCRIPTS: MissionScript[] = [
     scoreRules: { ...DEFAULT_SCORE, baseXP: 180 },
     failureScenarios: COMMON_FAILURES,
   },
+  // ═══ Cap. 8 — VIP & Eventos Corporativos ═══════════════════════
+  {
+    id: 'vip-meet-greet',
+    chapter: 'Cap. 8 — VIP & Corporativo',
+    title: 'Meet & Greet — A Foto Que Vale o Cachê',
+    synopsis: 'Backdrop logado, key light suave, três spots frontais. O cliente quer foto pro Instagram em 2 minutos por convidado.',
+    scenario: '🎤 Camarim VIP. Backdrop chegou amassado. 40 fotos pra tirar em 90min.',
+    difficulty: 'medium',
+    timeLimitSeconds: 200,
+    equipment: ['truss-corner', 'par-can'],
+    locked: false,
+    ambient: 'busy',
+    cinematicBeats: [
+      beatBriefingWide,
+      { id: 'beat-vip-bg-otss', triggerOn: 'stage-start', stageId: 's1', shot: 'over-the-shoulder', npcId: 'cliente-corporativo', durationMs: 2400 },
+      { id: 'beat-vip-key-close', triggerOn: 'stage-start', stageId: 's2', shot: 'close-up-reaction', npcId: 'tecnica-som', durationMs: 2200 },
+      { id: 'beat-vip-hero', triggerOn: 'stage-complete', stageId: 's2', shot: 'low-angle-hero', durationMs: 2400 },
+      beatDebriefCrane,
+    ],
+    briefing: {
+      npcId: 'cliente-corporativo',
+      lines: [
+        { npcId: 'cliente-corporativo', intent: 'urgent', text: 'Os convidados chegam em 40min. Backdrop tem que estar reto e iluminado.' },
+        { npcId: 'tecnica-som', intent: 'calm', text: 'Key light a 45° e dois fill 30% pra tirar sombra dura no rosto.' },
+        { npcId: 'roadie-veterano', intent: 'serious', text: 'Atrás do backdrop sem cabo aparente. Vamos passar por baixo do tapete.' },
+      ],
+    },
+    stages: [
+      {
+        id: 's1', kind: 'place', title: 'Backdrop e estrutura',
+        budgetSeconds: 90,
+        objectives: snapStageObjectives('vip-meet-greet').filter((o) => o.equipmentId === 'truss-corner'),
+        manualRef: 'truss-loading',
+        onEnter: [{ kind: 'spawn', npcId: 'cliente-corporativo', position: [4, 0, 6] }],
+        onComplete: [{ kind: 'speak', npcId: 'cliente-corporativo', intent: 'calm', line: 'Tá ficando profissional. Continua.' }],
+      },
+      {
+        id: 's2', kind: 'place', title: 'Iluminação 3-point (key + 2 fills)',
+        budgetSeconds: 90,
+        objectives: snapStageObjectives('vip-meet-greet').filter((o) => o.equipmentId === 'par-can'),
+        manualRef: 'lighting-3point',
+        onComplete: [{ kind: 'speak', npcId: 'cliente-corporativo', intent: 'excited', line: 'Perfeito. A primeira foto vai bombar.' }],
+      },
+      {
+        id: 's3', kind: 'dialogue', title: 'Brief com fotógrafo',
+        objectives: [{ label: 'Confirmar tempo por convidado', snapPointId: 'sp-1', equipmentId: 'truss-corner' }],
+        dialogue: [
+          { npcId: 'tecnica-som', intent: 'calm', text: '90 segundos por foto, contando troca. Não menos.' },
+          { npcId: 'cliente-corporativo', intent: 'serious', text: 'Combinado. Vou avisar a recepção.' },
+        ],
+      },
+    ],
+    debrief: {
+      title: 'Meet & greet entregue — cliente vira recorrente',
+      takeaways: [
+        '3-point lighting (key 45°/fill 30%/back rim) é padrão de retrato corporativo.',
+        'Backdrop sempre tensionado: ruga aparece em flash de câmera.',
+        'Cabos sob tapete preto fosco — convidado de salto não tropeça.',
+      ],
+    },
+    scoreRules: { ...DEFAULT_SCORE, baseXP: 200 },
+    failureScenarios: COMMON_FAILURES,
+  },
+
+  {
+    id: 'press-conference-arena',
+    chapter: 'Cap. 8 — VIP & Corporativo',
+    title: 'Coletiva de Imprensa — Câmeras Ao Vivo',
+    synopsis: 'Lectern, key light cinemático, dois spots para câmeras broadcast. Transmissão ao vivo em 4 emissoras.',
+    scenario: '📺 Auditório lotado de imprensa. 4 câmeras broadcast. Sinal sai em 12min.',
+    difficulty: 'hard',
+    timeLimitSeconds: 220,
+    equipment: ['moving-head', 'par-can'],
+    locked: false,
+    ambient: 'frantic',
+    cinematicBeats: [
+      beatBriefingWide,
+      { id: 'beat-press-lectern', triggerOn: 'stage-start', stageId: 's1', shot: 'dolly-in', durationMs: 2600 },
+      { id: 'beat-press-cams', triggerOn: 'stage-start', stageId: 's2', shot: 'orbit-slow', durationMs: 3200 },
+      { id: 'beat-press-key', triggerOn: 'stage-start', stageId: 's3', shot: 'close-up-reaction', npcId: 'tecnica-som', durationMs: 2400 },
+      { id: 'beat-press-hero', triggerOn: 'stage-complete', stageId: 's3', shot: 'low-angle-hero', durationMs: 2600 },
+      beatDebriefCrane,
+    ],
+    briefing: {
+      npcId: 'produtor-ansioso',
+      lines: [
+        { npcId: 'produtor-ansioso', intent: 'urgent', text: 'AO VIVO em 12 minutos. Lectern centralizado, sem sombra dupla.' },
+        { npcId: 'tecnica-som', intent: 'serious', text: 'Câmeras broadcast pedem 5600K, sem flicker. Movings em modo no-flicker.' },
+        { npcId: 'roadie-veterano', intent: 'calm', text: 'Marca o piso com tape preto. Falante cega se passar do X.' },
+      ],
+    },
+    stages: [
+      {
+        id: 's1', kind: 'place', title: 'Lectern + marca de chão',
+        budgetSeconds: 60,
+        objectives: snapStageObjectives('press-conference-arena').filter((o) => o.snapPointId === 'sp-1'),
+        manualRef: 'broadcast-lighting',
+      },
+      {
+        id: 's2', kind: 'place', title: 'Posição de câmeras broadcast',
+        budgetSeconds: 70,
+        objectives: snapStageObjectives('press-conference-arena').filter((o) => o.equipmentId === 'par-can'),
+        onComplete: [{ kind: 'speak', npcId: 'produtor-ansioso', intent: 'calm', line: 'Câmeras posicionadas. Bom enquadramento.' }],
+      },
+      {
+        id: 's3', kind: 'place', title: 'Key light cinematográfico',
+        budgetSeconds: 60,
+        objectives: snapStageObjectives('press-conference-arena').filter((o) => o.snapPointId === 'sp-4'),
+        manualRef: 'broadcast-lighting',
+        onComplete: [{ kind: 'speak', npcId: 'tecnica-som', intent: 'excited', line: 'Iluminação broadcast pronta. Sem flicker.' }],
+      },
+      {
+        id: 's4', kind: 'dialogue', title: 'Confirmação ao vivo',
+        objectives: [{ label: 'OK final do diretor', snapPointId: 'sp-1', equipmentId: 'moving-head' }],
+        dialogue: [
+          { npcId: 'produtor-ansioso', intent: 'urgent', text: 'Diretor de TV: enquadramento limpo. Áudio limpo. Estamos no ar.' },
+          { npcId: 'roadie-veterano', intent: 'calm', text: 'Ninguém cruza a linha vermelha durante a coletiva.' },
+        ],
+      },
+    ],
+    debrief: {
+      title: 'Ao vivo entregue sem incidente — credibilidade conquistada',
+      takeaways: [
+        'Movings broadcast em no-flicker (PWM ≥ 25kHz) evitam banding em câmera.',
+        'Key + back rim a 5600K dão "look" de telejornal — fill quente desencaixa.',
+        'Marca de piso com tape fosco preto, nunca branco (reflete em câmera baixa).',
+      ],
+    },
+    scoreRules: { ...DEFAULT_SCORE, baseXP: 320 },
+    failureScenarios: COMMON_FAILURES,
+  },
 ];
 
 export function getMissionScript(id: string): MissionScript | undefined {
