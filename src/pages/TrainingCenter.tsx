@@ -205,6 +205,12 @@ function MapPanel() {
 function MissionsPanel() {
   const navigate = useNavigate();
   const v2 = isEnabled('training_v2_cinematic');
+  const [briefing, setBriefing] = useState<MissionScript | null>(null);
+
+  function handleStart(m: MissionScript) {
+    setBriefing(null);
+    navigate('/training', { state: { missionId: m.id } });
+  }
 
   return (
     <div className="space-y-ds-3">
@@ -246,7 +252,7 @@ function MissionsPanel() {
               </p>
               <button
                 disabled={!v2}
-                onClick={() => navigate('/training', { state: { missionId: m.id } })}
+                onClick={() => setBriefing(m)}
                 className={cn(
                   'mt-ds-3 w-full inline-flex items-center justify-center gap-1.5 rounded-ds-sm px-ds-3 py-ds-2 text-[11px] ds-mono uppercase tracking-wider transition-colors',
                   v2
@@ -254,12 +260,20 @@ function MissionsPanel() {
                     : 'bg-ds-surface-deep border border-ds-border-subtle text-ds-text-disabled cursor-not-allowed',
                 )}
               >
-                {v2 ? <>Iniciar Missão <ArrowRight className="h-3 w-3" /></> : <>Indisponível</>}
+                {v2 ? <>Briefing MetaHuman <ArrowRight className="h-3 w-3" /></> : <>Indisponível</>}
               </button>
             </article>
           );
         })}
       </div>
+
+      {briefing && (
+        <MissionBriefingMetaHuman
+          mission={briefing}
+          onStart={() => handleStart(briefing)}
+          onClose={() => setBriefing(null)}
+        />
+      )}
     </div>
   );
 }
