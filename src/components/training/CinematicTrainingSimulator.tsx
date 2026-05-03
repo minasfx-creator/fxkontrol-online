@@ -150,7 +150,7 @@ export default function CinematicTrainingSimulator({
 
   const replay = () => {
     runner.reset();
-    setPlacedItems([]); setBriefingIndex(0); directorRef.current?.clear();
+    setPlacedItems([]); setBriefingIndex(0); directorRef.current?.clear(); briefingBeatsFired.current = false;
     setXpPopups([]); setPassedFlash(false);
   };
 
