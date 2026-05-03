@@ -49,6 +49,7 @@ import NotFound from "./pages/NotFound";
 const Install = lazy(lazyRetry(() => import("./pages/Install")));
 const UsbPairingWizard = lazy(lazyRetry(() => import("./pages/UsbPairingWizard")));
 const BlePairingWizard = lazy(lazyRetry(() => import("./pages/BlePairingWizard")));
+const PairingWizard = lazy(lazyRetry(() => import("./pages/PairingWizard")));
 const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
 const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage")));
 const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")));
