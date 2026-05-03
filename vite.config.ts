@@ -217,11 +217,25 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    // NOTE: three / @react-three/* removed from include — they're
-    // only used in lazy routes (Studio, SkyCanvas, ru-* chunks) and
-    // pre-bundling them was forcing the dev server to eagerly resolve
-    // them on the public entry, which leaked into the production
-    // modulepreload manifest. Keep this list minimal.
-    include: [],
+    // Pre-bundle deps that are imported eagerly from the public entry.
+    // Without this, the dev server lazily discovers them on the first
+    // request and triggers a full-page re-optimization → during the
+    // ~200–800ms window where the old prebundle file is unlinked but the
+    // browser still requests `/node_modules/.vite/deps/<dep>.js`, Vite
+    // returns a 504 / "Failed to load url" that surfaces as a transient
+    // red error in the preview.
+    //
+    // Listing them here makes the prebundle stable across restarts and
+    // eliminates the cache-invalidation race. We deliberately KEEP three /
+    // @react-three/* OUT (they belong to lazy Studio routes — see note).
+    include: [
+      'react',
+      'react-dom',
+      'react-dom/client',
+      'react-router-dom',
+      '@tanstack/react-query',
+      'zustand',
+      'sonner',
+    ],
   },
 }));
