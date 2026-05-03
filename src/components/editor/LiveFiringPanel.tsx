@@ -405,6 +405,11 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   }, [pyroArm]);
 
   const handlePanic = useCallback(() => {
+    // CRITICAL: route through uiCommandGateway FIRST so SafetyStateMachine
+    // forces SAFE within <50ms and the BlackBox records the trigger. Local
+    // cleanup + hardware fan-out below are best-effort secondary hops.
+    try { uiCommandGateway.eStop({ source: 'LiveFiringPanel', detail: 'PANIC' }); }
+    catch (err) { console.error('[LiveFiringPanel] gateway.eStop threw:', err); }
     // Strong haptic burst for PANIC
     haptics.panic();
     setChannels(prev => { const updated = prev.map(ch => ({ ...ch, firing: false })); sendArtNetPacket(updated); return updated; });
