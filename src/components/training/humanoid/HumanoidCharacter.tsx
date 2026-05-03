@@ -76,6 +76,43 @@ const INTENT_SCALE: Record<DialogueIntent, number> = {
   sarcastic: 0.9,
 };
 
+/** Microexpression deltas per intent (brow Y, brow tilt rad, squint 0..1, smirk -1..1, jaw tension 0..1). */
+const INTENT_MICRO: Record<DialogueIntent, {
+  browDy: number; browTilt: number; squint: number; smirk: number; jawTension: number;
+}> = {
+  urgent:    { browDy: -0.014, browTilt:  0.18, squint: 0.55, smirk:  0.0,  jawTension: 0.7 },
+  serious:   { browDy: -0.008, browTilt:  0.10, squint: 0.30, smirk:  0.0,  jawTension: 0.4 },
+  excited:   { browDy:  0.014, browTilt: -0.12, squint: 0.0,  smirk:  0.4,  jawTension: 0.2 },
+  calm:      { browDy:  0.000, browTilt:  0.00, squint: 0.0,  smirk:  0.1,  jawTension: 0.0 },
+  sarcastic: { browDy:  0.006, browTilt: -0.20, squint: 0.15, smirk:  0.7,  jawTension: 0.1 },
+};
+
+/** Blink rhythm by intent — urgent blinks faster, calm slower. */
+const INTENT_BLINK: Record<DialogueIntent, { minS: number; maxS: number; doubleChance: number }> = {
+  urgent:    { minS: 1.2, maxS: 2.4, doubleChance: 0.35 },
+  excited:   { minS: 1.6, maxS: 3.0, doubleChance: 0.25 },
+  serious:   { minS: 2.5, maxS: 4.5, doubleChance: 0.10 },
+  calm:      { minS: 3.5, maxS: 6.0, doubleChance: 0.05 },
+  sarcastic: { minS: 2.0, maxS: 4.0, doubleChance: 0.20 },
+};
+const DEFAULT_BLINK = { minS: 3, maxS: 6, doubleChance: 0.10 };
+
+/** Parametric prop appearance overrides (all optional). */
+export interface PropOverrides {
+  helmetColor?: string;
+  helmetScale?: number;
+  vestAccentColor?: string;
+  vestEmissiveIntensity?: number;
+  visorTint?: string;
+  visorClearcoat?: number;
+  walkieLedColor?: string;
+  walkieLedIntensity?: number;
+  clipboardColor?: string;
+  headphonesColor?: string;
+  toolBeltColor?: string;
+  megaphoneColor?: string;
+}
+
 export interface HumanoidCharacterProps {
   persona: NPCPersona;
   position?: [number, number, number];
@@ -83,11 +120,20 @@ export interface HumanoidCharacterProps {
   lookAtTarget?: [number, number, number] | null;
   /** 0..1 jaw open amplitude (lipsync proxy). */
   speakingAmplitude?: number;
-  /** Modulates lipsync amplitude + brow micro-expression. */
+  /** Modulates lipsync amplitude + brow micro-expression + blink rhythm. */
   intent?: DialogueIntent;
   /** When set, the right hand IK points at this world position. */
   pointAt?: [number, number, number] | null;
   closeup?: boolean;
+  /** Per-instance prop appearance tweaks. */
+  propOverrides?: PropOverrides;
+  /** Disable microexpression layer (default: enabled). */
+  microExpressions?: boolean;
+  /**
+   * Voice line id — when it changes while speaking, fires a brief
+   * microexpression "accent" (eyebrow flick + jaw kick) for naturalism.
+   */
+  voiceLineId?: string | number | null;
 }
 
 export default function HumanoidCharacter({
@@ -99,6 +145,9 @@ export default function HumanoidCharacter({
   intent,
   pointAt = null,
   closeup = false,
+  propOverrides,
+  microExpressions = true,
+  voiceLineId = null,
 }: HumanoidCharacterProps) {
   const groupRef = useRef<THREE.Group>(null);
   const torsoRef = useRef<THREE.Group>(null);
@@ -114,13 +163,20 @@ export default function HumanoidCharacter({
   const rightArmRef = useRef<THREE.Group>(null);
   const accentRef = useRef<THREE.Mesh>(null);
   const startSeed = useMemo(() => Math.random() * Math.PI * 2, []);
-  const blinkClock = useRef({ next: 2 + Math.random() * 4, until: 0 });
+  const blinkClock = useRef({
+    next: 2 + Math.random() * 4,
+    until: 0,
+    pendingDouble: false,
+  });
+  const accentPulse = useRef(0);
+  const lastVoiceLineId = useRef<string | number | null>(voiceLineId);
 
   const skin = SKIN_HEX[persona.skinTone];
   const hair = HAIR_HEX[persona.hair];
   const body = BODY_SCALE[persona.bodyType];
   const outfit = OUTFIT[persona.outfit];
   const props = persona.props ?? [];
+  const po = propOverrides ?? {};
 
   const HEAD_H = 0.24;
   const TORSO_H = 0.6;
@@ -131,8 +187,17 @@ export default function HumanoidCharacter({
   const headWorld = useMemo(() => new THREE.Vector3(), []);
   const armWorld = useMemo(() => new THREE.Vector3(), []);
 
-  useFrame(({ clock }) => {
+  // Microexpression accent on voice-line change.
+  useEffect(() => {
+    if (voiceLineId !== lastVoiceLineId.current) {
+      lastVoiceLineId.current = voiceLineId;
+      accentPulse.current = 1;
+    }
+  }, [voiceLineId]);
+
+  useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime + startSeed;
+    const micro = microExpressions && intent ? INTENT_MICRO[intent] : null;
 
     // Idle motion
     if (torsoRef.current) {
@@ -163,15 +228,19 @@ export default function HumanoidCharacter({
       headRef.current.rotation.y = THREE.MathUtils.lerp(headRef.current.rotation.y, idleYaw, 0.08);
     }
 
-    // Eye saccades
-    const saccade = Math.sin(t * 3) * 0.08;
+    // Eye saccades — faster when urgent/excited
+    const saccadeRate = intent === 'urgent' ? 5.5 : intent === 'excited' ? 4.2 : 3;
+    const saccade = Math.sin(t * saccadeRate) * 0.08;
     if (eyeLRef.current) eyeLRef.current.rotation.y = saccade;
     if (eyeRRef.current) eyeRRef.current.rotation.y = saccade;
 
-    // Eye-blink
+    // Eye-blink — intent rhythm + double-blink + squint baseline
     const elapsed = clock.elapsedTime;
+    const blinkCfg = intent ? INTENT_BLINK[intent] : DEFAULT_BLINK;
+    const squintScale = micro ? Math.max(0.001, 1 - micro.squint * 0.55) : 0.001;
     if (elapsed >= blinkClock.current.next && blinkClock.current.until === 0) {
       blinkClock.current.until = elapsed + 0.1;
+      blinkClock.current.pendingDouble = Math.random() < blinkCfg.doubleChance;
     }
     const blinking = elapsed < blinkClock.current.until;
     if (blinking) {
@@ -179,26 +248,53 @@ export default function HumanoidCharacter({
       if (lidRRef.current) lidRRef.current.scale.y = 1.0;
     } else if (blinkClock.current.until !== 0) {
       blinkClock.current.until = 0;
-      blinkClock.current.next = elapsed + 3 + Math.random() * 3;
-      if (lidLRef.current) lidLRef.current.scale.y = 0.001;
-      if (lidRRef.current) lidRRef.current.scale.y = 0.001;
+      if (blinkClock.current.pendingDouble) {
+        blinkClock.current.pendingDouble = false;
+        blinkClock.current.next = elapsed + 0.15;
+      } else {
+        blinkClock.current.next = elapsed + blinkCfg.minS + Math.random() * (blinkCfg.maxS - blinkCfg.minS);
+      }
+      if (lidLRef.current) lidLRef.current.scale.y = squintScale;
+      if (lidRRef.current) lidRRef.current.scale.y = squintScale;
+    } else {
+      // Continuously enforce squint baseline so intent changes show between blinks.
+      if (lidLRef.current && lidLRef.current.scale.y !== 1) lidLRef.current.scale.y = squintScale;
+      if (lidRRef.current && lidRRef.current.scale.y !== 1) lidRRef.current.scale.y = squintScale;
     }
 
-    // Brow micro-expression by intent
-    const browYBase = HEAD_H * 0.18;
-    const browDelta =
-      intent === 'urgent' ? -0.012 :
-      intent === 'serious' ? -0.006 :
-      intent === 'excited' ? 0.012 :
-      0;
-    if (browLRef.current) browLRef.current.position.y = browYBase + browDelta;
-    if (browRRef.current) browRRef.current.position.y = browYBase + browDelta;
+    // Microexpression accent decay (~400ms)
+    if (accentPulse.current > 0) {
+      accentPulse.current = Math.max(0, accentPulse.current - dt * 2.5);
+    }
+    const accent = accentPulse.current;
 
-    // Lipsync (jaw)
+    // Brow micro-expression: intent baseline + speech bob + voice-line accent flick
+    const browYBase = HEAD_H * 0.18;
+    const browDelta = micro ? micro.browDy : 0;
+    const browTilt = micro ? micro.browTilt : 0;
+    const speechBob = speakingAmplitude > 0.05 ? Math.sin(t * 6) * 0.003 * speakingAmplitude : 0;
+    const accentLift = accent * 0.014;
+    if (browLRef.current) {
+      browLRef.current.position.y = browYBase + browDelta + speechBob + accentLift;
+      browLRef.current.rotation.z = -browTilt;
+    }
+    if (browRRef.current) {
+      browRRef.current.position.y = browYBase + browDelta + speechBob + accentLift;
+      browRRef.current.rotation.z = browTilt;
+    }
+
+    // Lipsync (jaw) — intent scale + jaw tension shortens travel + accent kick
     if (jawRef.current) {
       const intentScale = intent ? INTENT_SCALE[intent] : 1;
-      const targetOpen = speakingAmplitude * intentScale * (0.6 + Math.sin(t * 18) * 0.4) * 0.06;
+      const tension = micro ? micro.jawTension : 0;
+      const travel = 0.06 * (1 - tension * 0.45);
+      const wave = (0.6 + Math.sin(t * 18) * 0.4);
+      const accentKick = accent * 0.015;
+      const targetOpen = (speakingAmplitude * intentScale * wave * travel) + accentKick;
       jawRef.current.position.y = THREE.MathUtils.lerp(jawRef.current.position.y, -targetOpen, 0.4);
+      // Smirk: asymmetric jaw tilt (Z rotation, mouth-corner proxy)
+      const smirk = micro ? micro.smirk : 0;
+      jawRef.current.rotation.z = THREE.MathUtils.lerp(jawRef.current.rotation.z, smirk * 0.06, 0.2);
     }
 
     // Hand-IK pointing
@@ -288,7 +384,11 @@ export default function HumanoidCharacter({
         {outfit.accent && (
           <mesh ref={accentRef} position={[0, LEG_H + TORSO_H * 0.55, 0.125 * body.depth]} castShadow>
             <boxGeometry args={[0.40 * body.width, TORSO_H * 0.85, 0.005]} />
-            <meshPhysicalMaterial color={outfit.accent} emissive={outfit.accent} emissiveIntensity={0.25} />
+            <meshPhysicalMaterial
+              color={po.vestAccentColor ?? outfit.accent}
+              emissive={po.vestAccentColor ?? outfit.accent}
+              emissiveIntensity={po.vestEmissiveIntensity ?? 0.25}
+            />
           </mesh>
         )}
 
@@ -296,7 +396,7 @@ export default function HumanoidCharacter({
         {props.includes('tool-belt') && (
           <mesh position={[0, LEG_H + 0.02, 0]} castShadow>
             <boxGeometry args={[0.46 * body.width, 0.06, 0.28 * body.depth]} />
-            <meshPhysicalMaterial color="#3b2a1a" roughness={0.9} />
+            <meshPhysicalMaterial color={po.toolBeltColor ?? '#3b2a1a'} roughness={0.9} />
           </mesh>
         )}
 
@@ -314,7 +414,7 @@ export default function HumanoidCharacter({
           {props.includes('clipboard') && (
             <mesh position={[-0.02, -0.55, 0.08]} rotation={[Math.PI / 2.6, 0, 0]} castShadow>
               <boxGeometry args={[0.16, 0.22, 0.012]} />
-              <meshPhysicalMaterial color="#e8e2cf" roughness={0.95} />
+              <meshPhysicalMaterial color={po.clipboardColor ?? '#e8e2cf'} roughness={0.95} />
             </mesh>
           )}
         </group>
@@ -331,14 +431,19 @@ export default function HumanoidCharacter({
           {props.includes('walkie-talkie') && (
             <mesh position={[0.04, -0.55, 0.04]} castShadow>
               <boxGeometry args={[0.06, 0.16, 0.04]} />
-              <meshPhysicalMaterial color="#0a0a0a" roughness={0.7} emissive="#ff3b00" emissiveIntensity={0.15} />
+              <meshPhysicalMaterial
+                color="#0a0a0a"
+                roughness={0.7}
+                emissive={po.walkieLedColor ?? '#ff3b00'}
+                emissiveIntensity={po.walkieLedIntensity ?? 0.15}
+              />
             </mesh>
           )}
           {/* Megaphone */}
           {props.includes('megaphone') && (
             <mesh position={[0.06, -0.5, 0.12]} rotation={[0, 0, Math.PI / 4]} castShadow>
               <coneGeometry args={[0.08, 0.18, 12]} />
-              <meshPhysicalMaterial color="#d6d6d6" roughness={0.4} />
+              <meshPhysicalMaterial color={po.megaphoneColor ?? '#d6d6d6'} roughness={0.4} />
             </mesh>
           )}
         </group>
@@ -389,16 +494,24 @@ export default function HumanoidCharacter({
 
           {/* Helmet */}
           {props.includes('helmet') && (
-            <mesh position={[0, HEAD_H * 0.4, 0]} castShadow>
+            <mesh
+              position={[0, HEAD_H * 0.4, 0]}
+              scale={po.helmetScale ?? 1}
+              castShadow
+            >
               <sphereGeometry args={[HEAD_H * 0.7, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
-              <meshPhysicalMaterial color="#ffcf2e" roughness={0.4} clearcoat={0.6} />
+              <meshPhysicalMaterial color={po.helmetColor ?? '#ffcf2e'} roughness={0.4} clearcoat={0.6} />
             </mesh>
           )}
           {/* Visor (sunglasses) */}
           {props.includes('visor') && (
             <mesh position={[0, HEAD_H * 0.05, HEAD_H * 0.55]}>
               <boxGeometry args={[HEAD_H * 0.95, HEAD_H * 0.18, 0.012]} />
-              <meshPhysicalMaterial color="#0a0a0a" roughness={0.1} clearcoat={1.0} />
+              <meshPhysicalMaterial
+                color={po.visorTint ?? '#0a0a0a'}
+                roughness={0.1}
+                clearcoat={po.visorClearcoat ?? 1.0}
+              />
             </mesh>
           )}
           {/* Headphones */}
@@ -406,15 +519,15 @@ export default function HumanoidCharacter({
             <>
               <mesh position={[0, HEAD_H * 0.45, 0]}>
                 <torusGeometry args={[HEAD_H * 0.55, 0.012, 6, 14, Math.PI]} />
-                <meshPhysicalMaterial color="#0d0d0d" roughness={0.5} />
+                <meshPhysicalMaterial color={po.headphonesColor ?? '#0d0d0d'} roughness={0.5} />
               </mesh>
               <mesh position={[-HEAD_H * 0.55, HEAD_H * 0.05, 0]}>
                 <sphereGeometry args={[HEAD_H * 0.18, 10, 10]} />
-                <meshPhysicalMaterial color="#0d0d0d" roughness={0.5} />
+                <meshPhysicalMaterial color={po.headphonesColor ?? '#0d0d0d'} roughness={0.5} />
               </mesh>
               <mesh position={[HEAD_H * 0.55, HEAD_H * 0.05, 0]}>
                 <sphereGeometry args={[HEAD_H * 0.18, 10, 10]} />
-                <meshPhysicalMaterial color="#0d0d0d" roughness={0.5} />
+                <meshPhysicalMaterial color={po.headphonesColor ?? '#0d0d0d'} roughness={0.5} />
               </mesh>
             </>
           )}
