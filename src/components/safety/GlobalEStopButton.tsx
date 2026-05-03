@@ -126,6 +126,9 @@ export default function GlobalEStopButton() {
       className={cn(
         'fixed z-[9999] flex flex-col items-center justify-center rounded-xl border-2 transition-all active:scale-95 select-none touch-none',
         tierClass,
+        opFx === 'estop' && 'op-estop-shake',
+        opFx === 'arm' && 'op-arm-pulse',
+        opFx === 'disarm' && 'op-disarm-flash',
       )}
       style={{
         top: '12px',
