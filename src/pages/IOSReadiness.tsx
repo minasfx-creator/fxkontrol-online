@@ -140,7 +140,7 @@ export default function IOSReadiness() {
     <div className="min-h-[100dvh] bg-background text-foreground">
       <header className="border-b border-border/30 sticky top-0 backdrop-blur-md bg-background/80 z-10">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link to="/" className="text-sm font-bold tracking-wider">FX KONTROL</Link>
+          <Link to="/" aria-label="FXKONTROL — Home" className="inline-flex"><FxkLogo size={24} variant="full" tone="sync" /></Link>
           <Link to="/comercial" className="text-xs text-muted-foreground hover:text-foreground uppercase tracking-widest">
             Comercial
           </Link>
