@@ -39,9 +39,11 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/comp
 import { cn } from '@/lib/utils';
 
 import SkyCanvas3D from '@/components/show3d/SkyCanvas3D';
+import EffectLibrarySidebar, { FXK_EFFECT_DRAG_TYPE } from '@/components/editor/EffectLibrarySidebar';
 import { useProjectStore } from '@/store/useProjectStore';
 import { timelineClock } from '@/core/timeline/TimelineClock';
 import { useAudioMasterClock } from '@/hooks/useAudioMasterClock';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 
 // ──────────────────────────────────────────────────────────────────────────
 // Left sidebar — assets/library
@@ -302,48 +304,94 @@ function Topbar({
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Timeline
+// Timeline — drop-aware, reads cues from useProjectStore.timelineItems
 // ──────────────────────────────────────────────────────────────────────────
 
-interface ClipItem {
-  id: string;
-  startTime: number;
-  duration: number;
-  label: string;
-  color: string;
-}
-
-const TRACKS: { id: string; label: string; icon: typeof Film; clips: ClipItem[] }[] = [
-  {
-    id: 'video', label: 'Camera', icon: Camera, clips: [
-      { id: 'v1', startTime: 0, duration: 12, label: 'Wide opening', color: '#2dd4ff' },
-    ],
-  },
-  {
-    id: 'pyro', label: 'Pyro', icon: Sparkles, clips: [
-      { id: 'p1', startTime: 1, duration: 2.5, label: 'Chrys 3″', color: '#FFD700' },
-      { id: 'p2', startTime: 4, duration: 3.5, label: 'Willow 4″', color: '#FFA500' },
-      { id: 'p3', startTime: 8, duration: 2.5, label: 'Crossette', color: '#FF4500' },
-    ],
-  },
-  {
-    id: 'drone', label: 'Drones', icon: Layers, clips: [
-      { id: 'd1', startTime: 0, duration: 12, label: 'Formation A', color: '#22ee88' },
-    ],
-  },
-  {
-    id: 'audio', label: 'Audio', icon: Music2, clips: [
-      { id: 'a1', startTime: 0, duration: 12, label: 'Master', color: '#a78bfa' },
-    ],
-  },
+const TRACK_DEFS: { id: 'video' | 'pyro' | 'drone' | 'audio'; label: string; icon: typeof Film; accepts: Set<string> }[] = [
+  { id: 'video', label: 'Camera', icon: Camera, accepts: new Set() },
+  { id: 'pyro',  label: 'Pyro',   icon: Sparkles, accepts: new Set(['firework']) },
+  { id: 'drone', label: 'Drones', icon: Layers,   accepts: new Set(['drone', 'light']) },
+  { id: 'audio', label: 'Audio',  icon: Music2,   accepts: new Set(['sfx']) },
 ];
+
+const EFFECT_BY_ID = Object.fromEntries(EFFECT_LIBRARY.map((e) => [e.id, e]));
+
+function trackAccepts(trackId: string, effectType: string): boolean {
+  const def = TRACK_DEFS.find((t) => t.id === trackId);
+  if (!def || def.accepts.size === 0) return false;
+  return def.accepts.has(effectType);
+}
 
 function Timeline({
   time, duration, onScrub,
 }: { time: number; duration: number; onScrub: (t: number) => void }) {
   const [zoom, setZoom] = useState(40); // px per second
+  const [hoverTrack, setHoverTrack] = useState<string | null>(null);
   const widthPx = duration * zoom;
   const playheadX = time * zoom;
+
+  const timelineItems = useProjectStore((s) => s.timelineItems);
+  const positions = useProjectStore((s) => s.positions);
+  const addTimelineItem = useProjectStore((s) => s.addTimelineItem);
+
+  // Group cues by track for rendering.
+  const clipsByTrack = useMemo(() => {
+    const map: Record<string, typeof timelineItems> = { video: [], pyro: [], drone: [], audio: [] };
+    for (const item of timelineItems) {
+      const eff = EFFECT_BY_ID[item.effectId];
+      if (!eff) continue;
+      if (eff.type === 'firework') map.pyro.push(item);
+      else if (eff.type === 'drone' || eff.type === 'light') map.drone.push(item);
+      else if (eff.type === 'sfx') map.audio.push(item);
+    }
+    return map;
+  }, [timelineItems]);
+
+  const handleDrop = (trackId: string) => (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setHoverTrack(null);
+    const effectId =
+      e.dataTransfer.getData(FXK_EFFECT_DRAG_TYPE) ||
+      e.dataTransfer.getData('text/plain');
+    if (!effectId) return;
+    const effect = EFFECT_BY_ID[effectId];
+    if (!effect) return;
+    if (!trackAccepts(trackId, effect.type)) return;
+
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+    const startTime = Math.max(
+      0,
+      Math.min(duration, (e.clientX - rect.left) / zoom),
+    );
+
+    // Pick a sensible default position for pyro cues (first matching pad).
+    const defaultPyroPad = positions.find((p) => p.type === 'pyro');
+    const defaultDronePad = positions.find(
+      (p) => p.type === 'drone-pad' || p.type === 'light',
+    );
+    const pad =
+      effect.type === 'firework' ? defaultPyroPad :
+      (effect.type === 'drone' || effect.type === 'light') ? defaultDronePad :
+      undefined;
+
+    addTimelineItem({
+      id: `cue-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      effectId,
+      startTime,
+      trackIndex: 0,
+      position: pad ? { x: pad.x, y: pad.y, z: pad.z } : { x: 0, y: 0, z: 0 },
+      positionId: pad?.id,
+      colorOverride: undefined,
+    });
+  };
+
+  const handleDragOver = (trackId: string) => (e: React.DragEvent<HTMLDivElement>) => {
+    const types = Array.from(e.dataTransfer.types);
+    if (!types.includes(FXK_EFFECT_DRAG_TYPE) && !types.includes('text/plain')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    if (hoverTrack !== trackId) setHoverTrack(trackId);
+  };
 
   return (
     <section className="h-48 shrink-0 border-t border-cyan-500/10 bg-[#070b14] flex flex-col">
@@ -360,7 +408,7 @@ function Timeline({
         </Button>
         <div className="flex-1" />
         <Badge variant="outline" className="border-cyan-500/30 text-cyan-300 ds-mono text-[10px]">
-          {duration.toFixed(1)}s · {TRACKS.length} tracks
+          {duration.toFixed(1)}s · {timelineItems.length} cues
         </Badge>
       </div>
 
@@ -368,7 +416,7 @@ function Timeline({
         {/* Track headers */}
         <div className="w-32 shrink-0 border-r border-cyan-500/10">
           <div className="h-6 border-b border-cyan-500/10" />
-          {TRACKS.map((tr) => (
+          {TRACK_DEFS.map((tr) => (
             <div key={tr.id} className="h-9 px-2 flex items-center gap-2 text-[12px] text-zinc-300 border-b border-cyan-500/5">
               <tr.icon className="h-3.5 w-3.5 text-cyan-400/80" />
               <span className="truncate flex-1">{tr.label}</span>
@@ -408,31 +456,47 @@ function Timeline({
             </div>
 
             {/* Track lanes */}
-            {TRACKS.map((tr, idx) => (
-              <div
-                key={tr.id}
-                className={cn(
-                  'h-9 relative border-b border-cyan-500/5',
-                  idx % 2 === 0 ? 'bg-[#080d18]' : 'bg-[#0a1120]',
-                )}
-              >
-                {tr.clips.map((c) => (
-                  <div
-                    key={c.id}
-                    className="absolute top-1 bottom-1 rounded-sm px-2 flex items-center text-[11px] text-black/80 font-medium overflow-hidden cursor-pointer hover:ring-1 hover:ring-white/40"
-                    style={{
-                      left: `${c.startTime * zoom}px`,
-                      width: `${Math.max(c.duration * zoom, 4)}px`,
-                      background: `linear-gradient(180deg, ${c.color}f0, ${c.color}b0)`,
-                      boxShadow: `0 0 8px ${c.color}40`,
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <span className="truncate">{c.label}</span>
-                  </div>
-                ))}
-              </div>
-            ))}
+            {TRACK_DEFS.map((tr, idx) => {
+              const isHover = hoverTrack === tr.id;
+              const clips = clipsByTrack[tr.id] ?? [];
+              return (
+                <div
+                  key={tr.id}
+                  onDragOver={handleDragOver(tr.id)}
+                  onDragLeave={() => isHover && setHoverTrack(null)}
+                  onDrop={handleDrop(tr.id)}
+                  className={cn(
+                    'h-9 relative border-b border-cyan-500/5 transition-colors',
+                    idx % 2 === 0 ? 'bg-[#080d18]' : 'bg-[#0a1120]',
+                    isHover && tr.accepts.size > 0 && 'bg-cyan-500/15 ring-1 ring-cyan-400/40 ring-inset',
+                    isHover && tr.accepts.size === 0 && 'bg-rose-500/10 ring-1 ring-rose-400/30 ring-inset',
+                  )}
+                >
+                  {clips.map((c) => {
+                    const eff = EFFECT_BY_ID[c.effectId];
+                    if (!eff) return null;
+                    const dur = c.durationOverride ?? eff.duration ?? 1;
+                    const color = c.colorOverride ?? eff.color ?? '#2dd4ff';
+                    return (
+                      <div
+                        key={c.id}
+                        className="absolute top-1 bottom-1 rounded-sm px-2 flex items-center text-[11px] text-black/80 font-medium overflow-hidden cursor-pointer hover:ring-1 hover:ring-white/40"
+                        style={{
+                          left: `${c.startTime * zoom}px`,
+                          width: `${Math.max(dur * zoom, 4)}px`,
+                          background: `linear-gradient(180deg, ${color}f0, ${color}b0)`,
+                          boxShadow: `0 0 8px ${color}40`,
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        title={`${eff.name} @ ${c.startTime.toFixed(2)}s`}
+                      >
+                        <span className="truncate">{eff.name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
 
             {/* Playhead */}
             <div
@@ -580,7 +644,7 @@ export default function VideoEditor() {
     <TooltipProvider delayDuration={200}>
       <SidebarProvider defaultOpen>
         <div className="flex h-screen w-full bg-[#050810] text-zinc-200">
-          <LeftSidebar />
+          <EffectLibrarySidebar />
 
           <div className="flex-1 flex flex-col min-w-0">
             <Topbar
