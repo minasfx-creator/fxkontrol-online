@@ -379,8 +379,15 @@ export default function HumanoidCharacter({
       jawRef.current.rotation.z = THREE.MathUtils.lerp(jawRef.current.rotation.z, smirk * 0.06, 0.2);
     }
 
+    // Apply head gesture deltas (yaw + pitch)
+    if (headRef.current && gPose) {
+      headRef.current.rotation.y += gPose.headYaw;
+      headRef.current.rotation.x = (headRef.current.rotation.x ?? 0) + gPose.headPitch;
+    }
+
     // Hand-IK pointing
     const isPointing = !!pointAt && speakingAmplitude > 0.05;
+    const walking = walkAmp > 0.05;
     if (isPointing && rightArmRef.current && groupRef.current) {
       groupRef.current.getWorldPosition(armWorld);
       armWorld.y += LEG_H + TORSO_H * 0.92;
@@ -390,29 +397,40 @@ export default function HumanoidCharacter({
       const dz = pointAt![2] - armWorld.z;
       const horizDist = Math.sqrt(dx * dx + dz * dz);
       const pitch = -Math.atan2(dy, horizDist);
-      const yaw = Math.atan2(dx, dz) - rotationY;
+      const yaw = Math.atan2(dx, dz) - walkState.current.yaw;
       rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, pitch - 0.4, 0.15);
       rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, -THREE.MathUtils.clamp(yaw, -1, 1) * 0.6, 0.15);
     } else {
-      // Arm idle gesture
-      if (persona.idleProfile === 'gesticulating') {
-        if (leftArmRef.current)  leftArmRef.current.rotation.x  = -0.2 + Math.sin(t * 2.0) * 0.4;
-        if (rightArmRef.current) {
-          rightArmRef.current.rotation.x = -0.5 + Math.cos(t * 1.7) * 0.35;
-          rightArmRef.current.rotation.z = 0;
-        }
+      // Base arm targets — walking cycle dominates idle.
+      let lArmX = 0, rArmX = 0, lArmZ = 0, rArmZ = 0;
+      if (walking) {
+        const swing = Math.sin(t * 8) * 0.6 * walkAmp;
+        lArmX =  swing;
+        rArmX = -swing;
+      } else if (persona.idleProfile === 'gesticulating') {
+        lArmX = -0.2 + Math.sin(t * 2.0) * 0.4;
+        rArmX = -0.5 + Math.cos(t * 1.7) * 0.35;
       } else if (persona.idleProfile === 'pacing') {
-        if (leftArmRef.current)  leftArmRef.current.rotation.x  = Math.sin(t * 2.4) * 0.35;
-        if (rightArmRef.current) {
-          rightArmRef.current.rotation.x = -Math.sin(t * 2.4) * 0.35;
-          rightArmRef.current.rotation.z = 0;
-        }
+        lArmX =  Math.sin(t * 2.4) * 0.35;
+        rArmX = -Math.sin(t * 2.4) * 0.35;
       } else {
-        if (leftArmRef.current)  leftArmRef.current.rotation.x  = Math.sin(t * 0.8) * 0.05;
-        if (rightArmRef.current) {
-          rightArmRef.current.rotation.x = Math.cos(t * 0.8) * 0.05;
-          rightArmRef.current.rotation.z = 0;
-        }
+        lArmX = Math.sin(t * 0.8) * 0.05;
+        rArmX = Math.cos(t * 0.8) * 0.05;
+      }
+      // Gesture overrides additively
+      if (gPose) {
+        lArmX += gPose.lArmX;
+        rArmX += gPose.rArmX;
+        lArmZ += gPose.lArmZ;
+        rArmZ += gPose.rArmZ;
+      }
+      if (leftArmRef.current) {
+        leftArmRef.current.rotation.x = THREE.MathUtils.lerp(leftArmRef.current.rotation.x, lArmX, 0.25);
+        leftArmRef.current.rotation.z = THREE.MathUtils.lerp(leftArmRef.current.rotation.z, lArmZ, 0.25);
+      }
+      if (rightArmRef.current) {
+        rightArmRef.current.rotation.x = THREE.MathUtils.lerp(rightArmRef.current.rotation.x, rArmX, 0.25);
+        rightArmRef.current.rotation.z = THREE.MathUtils.lerp(rightArmRef.current.rotation.z, rArmZ, 0.25);
       }
     }
 
