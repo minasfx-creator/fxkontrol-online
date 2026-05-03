@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { haptics } from '@/lib/haptics';
-import { uiCommandGateway } from '@/core/safety/uiCommandGateway';
+import { uiCommandGateway } from '@/core/command/uiCommandGateway';
 import {
   fieldTestEngine,
   type DeviceRole,
