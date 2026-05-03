@@ -8,6 +8,9 @@ import {
   Palette, AlertTriangle, Ruler, Flame, Sparkles, History
 } from 'lucide-react';
 import TrainingSimulator from '@/components/training/TrainingSimulator';
+import CinematicTrainingSimulator from '@/components/training/CinematicTrainingSimulator';
+import { getMissionScript } from '@/components/training/missions/missionScripts';
+import { isEnabled } from '@/lib/featureFlags';
 import { Equipment, Mission } from '@/components/training/types';
 
 // ── Reference Manual Library ──────────────────────────────────────────
