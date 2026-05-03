@@ -892,6 +892,217 @@ export const MISSION_SCRIPTS: MissionScript[] = [
     scoreRules: { ...DEFAULT_SCORE, baseXP: 180 },
     failureScenarios: COMMON_FAILURES,
   },
+  // ═══ Cap. 8 — VIP & Eventos Corporativos ═══════════════════════
+  {
+    id: 'vip-meet-greet',
+    chapter: 'Cap. 8 — VIP & Corporativo',
+    title: 'Meet & Greet — A Foto Que Vale o Cachê',
+    synopsis: 'Backdrop logado, key light suave, três spots frontais. O cliente quer foto pro Instagram em 2 minutos por convidado.',
+    scenario: '🎤 Camarim VIP. Backdrop chegou amassado. 40 fotos pra tirar em 90min.',
+    difficulty: 'medium',
+    timeLimitSeconds: 200,
+    equipment: ['truss-corner', 'par-can'],
+    locked: false,
+    ambient: 'busy',
+    cinematicBeats: [
+      beatBriefingWide,
+      { id: 'beat-vip-bg-otss', triggerOn: 'stage-start', stageId: 's1', shot: 'over-the-shoulder', npcId: 'cliente-corporativo', durationMs: 2400 },
+      { id: 'beat-vip-key-close', triggerOn: 'stage-start', stageId: 's2', shot: 'close-up-reaction', npcId: 'tecnica-som', durationMs: 2200 },
+      { id: 'beat-vip-hero', triggerOn: 'stage-complete', stageId: 's2', shot: 'low-angle-hero', durationMs: 2400 },
+      beatDebriefCrane,
+    ],
+    briefing: {
+      npcId: 'cliente-corporativo',
+      lines: [
+        { npcId: 'cliente-corporativo', intent: 'urgent', text: 'Os convidados chegam em 40min. Backdrop tem que estar reto e iluminado.' },
+        { npcId: 'tecnica-som', intent: 'calm', text: 'Key light a 45° e dois fill 30% pra tirar sombra dura no rosto.' },
+        { npcId: 'roadie-veterano', intent: 'serious', text: 'Atrás do backdrop sem cabo aparente. Vamos passar por baixo do tapete.' },
+      ],
+    },
+    stages: [
+      {
+        id: 's1', kind: 'place', title: 'Backdrop e estrutura',
+        budgetSeconds: 90,
+        objectives: snapStageObjectives('vip-meet-greet').filter((o) => o.equipmentId === 'truss-corner'),
+        manualRef: 'truss-loading',
+        onEnter: [{ kind: 'spawn', npcId: 'cliente-corporativo', position: [4, 0, 6] }],
+        onComplete: [{ kind: 'speak', npcId: 'cliente-corporativo', intent: 'calm', line: 'Tá ficando profissional. Continua.' }],
+      },
+      {
+        id: 's2', kind: 'place', title: 'Iluminação 3-point (key + 2 fills)',
+        budgetSeconds: 90,
+        objectives: snapStageObjectives('vip-meet-greet').filter((o) => o.equipmentId === 'par-can'),
+        manualRef: 'lighting-3point',
+        onComplete: [{ kind: 'speak', npcId: 'cliente-corporativo', intent: 'excited', line: 'Perfeito. A primeira foto vai bombar.' }],
+      },
+      {
+        id: 's3', kind: 'dialogue', title: 'Brief com fotógrafo',
+        objectives: [{ label: 'Confirmar tempo por convidado', snapPointId: 'sp-1', equipmentId: 'truss-corner' }],
+        dialogue: [
+          { npcId: 'tecnica-som', intent: 'calm', text: '90 segundos por foto, contando troca. Não menos.' },
+          { npcId: 'cliente-corporativo', intent: 'serious', text: 'Combinado. Vou avisar a recepção.' },
+        ],
+      },
+    ],
+    debrief: {
+      title: 'Meet & greet entregue — cliente vira recorrente',
+      takeaways: [
+        '3-point lighting (key 45°/fill 30%/back rim) é padrão de retrato corporativo.',
+        'Backdrop sempre tensionado: ruga aparece em flash de câmera.',
+        'Cabos sob tapete preto fosco — convidado de salto não tropeça.',
+      ],
+    },
+    scoreRules: { ...DEFAULT_SCORE, baseXP: 200 },
+    failureScenarios: COMMON_FAILURES,
+  },
+
+  {
+    id: 'press-conference-arena',
+    chapter: 'Cap. 8 — VIP & Corporativo',
+    title: 'Coletiva de Imprensa — Câmeras Ao Vivo',
+    synopsis: 'Lectern, key light cinemático, dois spots para câmeras broadcast. Transmissão ao vivo em 4 emissoras.',
+    scenario: '📺 Auditório lotado de imprensa. 4 câmeras broadcast. Sinal sai em 12min.',
+    difficulty: 'hard',
+    timeLimitSeconds: 220,
+    equipment: ['moving-head', 'par-can'],
+    locked: false,
+    ambient: 'frantic',
+    cinematicBeats: [
+      beatBriefingWide,
+      { id: 'beat-press-lectern', triggerOn: 'stage-start', stageId: 's1', shot: 'dolly-in', durationMs: 2600 },
+      { id: 'beat-press-cams', triggerOn: 'stage-start', stageId: 's2', shot: 'orbit-slow', durationMs: 3200 },
+      { id: 'beat-press-key', triggerOn: 'stage-start', stageId: 's3', shot: 'close-up-reaction', npcId: 'tecnica-som', durationMs: 2400 },
+      { id: 'beat-press-hero', triggerOn: 'stage-complete', stageId: 's3', shot: 'low-angle-hero', durationMs: 2600 },
+      beatDebriefCrane,
+    ],
+    briefing: {
+      npcId: 'produtor-ansioso',
+      lines: [
+        { npcId: 'produtor-ansioso', intent: 'urgent', text: 'AO VIVO em 12 minutos. Lectern centralizado, sem sombra dupla.' },
+        { npcId: 'tecnica-som', intent: 'serious', text: 'Câmeras broadcast pedem 5600K, sem flicker. Movings em modo no-flicker.' },
+        { npcId: 'roadie-veterano', intent: 'calm', text: 'Marca o piso com tape preto. Falante cega se passar do X.' },
+      ],
+    },
+    stages: [
+      {
+        id: 's1', kind: 'place', title: 'Lectern + marca de chão',
+        budgetSeconds: 60,
+        objectives: snapStageObjectives('press-conference-arena').filter((o) => o.snapPointId === 'sp-1'),
+        manualRef: 'broadcast-lighting',
+      },
+      {
+        id: 's2', kind: 'place', title: 'Posição de câmeras broadcast',
+        budgetSeconds: 70,
+        objectives: snapStageObjectives('press-conference-arena').filter((o) => o.equipmentId === 'par-can'),
+        onComplete: [{ kind: 'speak', npcId: 'produtor-ansioso', intent: 'calm', line: 'Câmeras posicionadas. Bom enquadramento.' }],
+      },
+      {
+        id: 's3', kind: 'place', title: 'Key light cinematográfico',
+        budgetSeconds: 60,
+        objectives: snapStageObjectives('press-conference-arena').filter((o) => o.snapPointId === 'sp-4'),
+        manualRef: 'broadcast-lighting',
+        onComplete: [{ kind: 'speak', npcId: 'tecnica-som', intent: 'excited', line: 'Iluminação broadcast pronta. Sem flicker.' }],
+      },
+      {
+        id: 's4', kind: 'dialogue', title: 'Confirmação ao vivo',
+        objectives: [{ label: 'OK final do diretor', snapPointId: 'sp-1', equipmentId: 'moving-head' }],
+        dialogue: [
+          { npcId: 'produtor-ansioso', intent: 'urgent', text: 'Diretor de TV: enquadramento limpo. Áudio limpo. Estamos no ar.' },
+          { npcId: 'roadie-veterano', intent: 'calm', text: 'Ninguém cruza a linha vermelha durante a coletiva.' },
+        ],
+      },
+    ],
+    debrief: {
+      title: 'Ao vivo entregue sem incidente — credibilidade conquistada',
+      takeaways: [
+        'Movings broadcast em no-flicker (PWM ≥ 25kHz) evitam banding em câmera.',
+        'Key + back rim a 5600K dão "look" de telejornal — fill quente desencaixa.',
+        'Marca de piso com tape fosco preto, nunca branco (reflete em câmera baixa).',
+      ],
+    },
+    scoreRules: { ...DEFAULT_SCORE, baseXP: 320 },
+    failureScenarios: COMMON_FAILURES,
+  },
+
+  // ═══ Cap. 9 — Maracanã Finale (Legendary) ════════════════════════
+  {
+    id: 'maracana-finale',
+    chapter: 'Cap. 9 — Estádio Lendário',
+    title: 'Maracanã — Finale do Hino',
+    synopsis: '78.000 pessoas. 4 câmeras de TV. Você tem uma janela: 60s do hino + 30s de refrão. Sem segunda chance.',
+    scenario: '🏟️ Maracanã, 21h47. Bandeira hasteada. Locutor anuncia o cantor. Você é o show.',
+    difficulty: 'legendary',
+    timeLimitSeconds: 420,
+    equipment: ['moving-head', 'sparkular', 'flamer', 'cryo', 'mortar'],
+    locked: true,
+    ambient: 'frantic',
+    cinematicBeats: [
+      { id: 'beat-mar-wide', triggerOn: 'briefing', shot: 'wide-establishing', durationMs: 4500 },
+      { id: 'beat-mar-corp', triggerOn: 'briefing', shot: 'close-up-reaction', npcId: 'cliente-corporativo', durationMs: 2400 },
+      { id: 'beat-mar-orbit-1', triggerOn: 'stage-start', stageId: 's1', shot: 'orbit-slow', durationMs: 4200 },
+      { id: 'beat-mar-otss', triggerOn: 'stage-start', stageId: 's2', shot: 'over-the-shoulder', npcId: 'tecnica-som', durationMs: 2600 },
+      { id: 'beat-mar-low', triggerOn: 'stage-start', stageId: 's3', shot: 'low-angle-hero', durationMs: 2800 },
+      { id: 'beat-mar-crane-fin', triggerOn: 'stage-complete', stageId: 's4', shot: 'crane-down', durationMs: 4000 },
+      beatDebriefCrane,
+    ],
+    briefing: {
+      npcId: 'roadie-veterano',
+      lines: [
+        { npcId: 'roadie-veterano', intent: 'serious', text: 'Maracanã. 78 mil pessoas. Globo broadcasting ao vivo.' },
+        { npcId: 'cliente-corporativo', intent: 'urgent', text: 'O patrocinador investiu R$ 2 milhões. Não pode ter falha.' },
+        { npcId: 'tecnica-som', intent: 'calm', text: 'Hino entra em 5 minutos. Spots hero primeiro, depois refrão, depois climax.' },
+        { npcId: 'bombeiro-fiscal', intent: 'serious', text: 'Pyro liberado. Distância mínima 25m do gramado. Ventos < 8 km/h confirmados.' },
+      ],
+    },
+    stages: [
+      {
+        id: 's1', kind: 'place', title: 'Spots Hero — Hino',
+        budgetSeconds: 75,
+        objectives: snapStageObjectives('maracana-finale').filter((o) => o.snapPointId === 'sp-1' || o.snapPointId === 'sp-2'),
+        manualRef: 'broadcast-lighting',
+        onComplete: [{ kind: 'speak', npcId: 'tecnica-som', intent: 'excited', line: 'Spots travados. Câmera 1 já tem hero shot.' }],
+      },
+      {
+        id: 's2', kind: 'place', title: 'SFX Refrão — Sparkulars laterais',
+        budgetSeconds: 90,
+        objectives: snapStageObjectives('maracana-finale').filter((o) => o.equipmentId === 'sparkular'),
+      },
+      {
+        id: 's3', kind: 'place', title: 'Climax — Flamer + Cryo',
+        budgetSeconds: 80,
+        objectives: snapStageObjectives('maracana-finale').filter((o) => o.equipmentId === 'flamer' || o.equipmentId === 'cryo'),
+        onComplete: [{ kind: 'speak', npcId: 'cliente-corporativo', intent: 'excited', line: 'PERFEITO! Meu chefe vai amar isso!' }],
+      },
+      {
+        id: 's4', kind: 'place', title: 'Morteiros 4" — Finale aéreo',
+        budgetSeconds: 100,
+        objectives: snapStageObjectives('maracana-finale').filter((o) => o.equipmentId === 'mortar'),
+        manualRef: 'nfpa-1123',
+      },
+      {
+        id: 's5', kind: 'dialogue', title: 'Câmera 1 ao vivo',
+        objectives: [{ label: 'OK final do diretor', snapPointId: 'sp-1', equipmentId: 'moving-head' }],
+        dialogue: [
+          { npcId: 'tecnica-som', intent: 'urgent', text: 'Hino começou. Spots no cantor — agora.' },
+          { npcId: 'roadie-veterano', intent: 'calm', text: 'Refrão em 30s. Sparkulars armados, estamos limpos.' },
+          { npcId: 'cliente-corporativo', intent: 'excited', text: 'Climax na palavra "Brasil". Vai ser histórico.' },
+          { npcId: 'bombeiro-fiscal', intent: 'serious', text: 'Vento estável. Liberado para morteiros.' },
+        ],
+      },
+    ],
+    debrief: {
+      title: 'Maracanã entregue ao vivo — você é lenda',
+      takeaways: [
+        '78k pessoas + broadcast = camadas de redundância em TUDO (console, dimmer, igniter, comms).',
+        'Spots hero a 5600K travados antes do hino — reposicionar ao vivo é amador.',
+        'Pyro grande exige checkpoint atmosférico (vento + umidade) menos de 10min antes do disparo.',
+        'Cliente fica calmo quando vê o cronograma cumprido em ondas — não tente "tudo de uma vez".',
+        'Morteiros 4" requerem 25m mínimo de gramado/público (NFPA 1123) — confira fita métrica, não chute.',
+      ],
+    },
+    scoreRules: { ...DEFAULT_SCORE, baseXP: 1500 },
+    failureScenarios: COMMON_FAILURES,
+  },
 ];
 
 export function getMissionScript(id: string): MissionScript | undefined {

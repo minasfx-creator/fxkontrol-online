@@ -63,7 +63,7 @@ export default function FXK16FieldPanel() {
         {/* Tools */}
         <div className="grid grid-cols-2 gap-2">
           <Link
-            to="/dev/fxk16-validate"
+            to="/dev/fxk16?tab=validate"
             className="rounded-lg border border-border/40 bg-card/20 hover:bg-card/40 hover:border-[hsl(32_100%_50%/0.4)] transition-all p-3 group"
           >
             <div className="flex items-center gap-2 mb-1">
@@ -77,7 +77,7 @@ export default function FXK16FieldPanel() {
             </p>
           </Link>
           <Link
-            to="/dev/fxk16-calibrate"
+            to="/dev/fxk16?tab=calibrate"
             className="rounded-lg border border-border/40 bg-card/20 hover:bg-card/40 hover:border-[hsl(32_100%_50%/0.4)] transition-all p-3 group"
           >
             <div className="flex items-center gap-2 mb-1">

@@ -156,7 +156,7 @@ export default function GoldenShowsPage() {
                   </Button>
                   {r.entry.id === 'libertadores' && (
                     <Button asChild size="sm" variant="ghost">
-                      <Link to="/dev/libertadores">Open</Link>
+                      <Link to="/dev/golden-shows">Open</Link>
                     </Button>
                   )}
                 </div>

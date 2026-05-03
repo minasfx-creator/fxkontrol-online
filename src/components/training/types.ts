@@ -140,6 +140,32 @@ export const MISSION_SNAP_POINTS: Record<string, SnapPoint[]> = {
   'blackbox-debrief': [
     { id: 'sp-1', position: [0, 0.9, 0], equipmentType: 'moving-head', label: 'Estação Debrief' },
   ],
+  // ── v2.3 — Cap. 8 VIP & Eventos Corporativos ────────────────────
+  'vip-meet-greet': [
+    { id: 'sp-1', position: [-6, 0.9, 4], equipmentType: 'truss-corner', label: 'Backdrop VIP L' },
+    { id: 'sp-2', position: [6, 0.9, 4], equipmentType: 'truss-corner', label: 'Backdrop VIP R' },
+    { id: 'sp-3', position: [0, 0.9, 5], equipmentType: 'par-can', label: 'Spot Foto Frontal' },
+    { id: 'sp-4', position: [-3, 0.9, 5.5], equipmentType: 'par-can', label: 'Spot Foto Esq.' },
+    { id: 'sp-5', position: [3, 0.9, 5.5], equipmentType: 'par-can', label: 'Spot Foto Dir.' },
+  ],
+  'press-conference-arena': [
+    { id: 'sp-1', position: [0, 0.9, 0], equipmentType: 'moving-head', label: 'Lectern Center' },
+    { id: 'sp-2', position: [-4.5, 0.9, 5], equipmentType: 'par-can', label: 'Câmera Broadcast L' },
+    { id: 'sp-3', position: [4.5, 0.9, 5], equipmentType: 'par-can', label: 'Câmera Broadcast R' },
+    { id: 'sp-4', position: [0, 12.9, -5.4], equipmentType: 'moving-head', label: 'Key Light Lectern' },
+  ],
+  // ── v2.5 — Cap. 9 Maracanã Finale (Legendary) ───────────────────
+  'maracana-finale': [
+    { id: 'sp-1', position: [-13.5, 12.9, -5.4], equipmentType: 'moving-head', label: 'Spot Hero L (Hino)' },
+    { id: 'sp-2', position: [13.5, 12.9, -5.4], equipmentType: 'moving-head', label: 'Spot Hero R (Hino)' },
+    { id: 'sp-3', position: [-9, 12.9, -5.4], equipmentType: 'sparkular', label: 'Sparkular Refrão L' },
+    { id: 'sp-4', position: [9, 12.9, -5.4], equipmentType: 'sparkular', label: 'Sparkular Refrão R' },
+    { id: 'sp-5', position: [0, 12.9, -5.4], equipmentType: 'flamer', label: 'Flamer Climax' },
+    { id: 'sp-6', position: [0, 0.9, 6], equipmentType: 'cryo', label: 'Cryo Coro' },
+    { id: 'sp-7', position: [-12, 0.9, 8], equipmentType: 'mortar', label: 'Morteiro 4" L' },
+    { id: 'sp-8', position: [12, 0.9, 8], equipmentType: 'mortar', label: 'Morteiro 4" R' },
+    { id: 'sp-9', position: [0, 0.9, 9], equipmentType: 'mortar', label: 'Morteiro 4" Centro' },
+  ],
 };
 
 

@@ -1675,6 +1675,57 @@ function CameraBookmarkSaver() {
   return null;
 }
 
+/**
+ * ViewportResizeSync — Inside-Canvas helper. On window resize/orientationchange,
+ * recomputes the parent's box and force-resyncs renderer drawing buffer,
+ * camera aspect + projection matrix, and dispatches a 'resize' so the
+ * EffectComposer (PostProcessing) and GPGPU/FBO listeners re-pick the new size.
+ *
+ * Mitiga o caso de rotação mobile / colapso de painel onde o R3F fica em 0×0
+ * e nunca volta a sincronizar com o container real.
+ */
+function ViewportResizeSync() {
+  const { gl, camera, size, setSize } = useThree();
+  useEffect(() => {
+    const dom = gl.domElement;
+    const parent = dom.parentElement;
+    let raf = 0;
+    const sync = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const w = parent?.clientWidth || window.innerWidth;
+        const h = parent?.clientHeight || window.innerHeight;
+        if (w < 2 || h < 2) return;
+        if (Math.abs(w - size.width) > 0.5 || Math.abs(h - size.height) > 0.5) {
+          try { setSize(w, h); } catch { /* ignore */ }
+          try { gl.setSize(w, h, false); } catch { /* ignore */ }
+        }
+        const cam = camera as THREE.PerspectiveCamera;
+        if (cam.isPerspectiveCamera) {
+          const aspect = w / h;
+          if (Math.abs(cam.aspect - aspect) > 1e-4) {
+            cam.aspect = aspect;
+            cam.updateProjectionMatrix();
+          }
+        }
+        window.dispatchEvent(new Event('resize'));
+      });
+    };
+    window.addEventListener('resize', sync);
+    window.addEventListener('orientationchange', sync);
+    const t1 = window.setTimeout(sync, 60);
+    const t2 = window.setTimeout(sync, 250);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', sync);
+      window.removeEventListener('orientationchange', sync);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [gl, camera, size.width, size.height, setSize]);
+  return null;
+}
+
 export default function SkyCanvas() {
   // Professional keybindings (Finale 3D)
   useKeybindings();
@@ -1915,7 +1966,48 @@ export default function SkyCanvas() {
 
   // Force R3F to re-measure when resizable panels change size (debounced)
   const containerRef = useRef<HTMLDivElement>(null);
-  // ResizeObserver removed — R3F Canvas resize={{ debounce: 50 }} handles this natively
+  // Orientation/zero-size guard: alguns layouts (mobile rotation, painéis
+  // colapsados durante transição) deixam o container temporariamente com
+  // 0×0. R3F nunca reanexa o canvas nesse caso e a tela fica preta.
+  // Observamos o container e forçamos um remount do <Canvas> assim que ele
+  // sai de zero-size — barato, idempotente, e cobre orientationchange.
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    let wasZero = node.clientWidth === 0 || node.clientHeight === 0;
+    let remountTimer: number | null = null;
+    const scheduleRemount = () => {
+      if (remountTimer != null) return;
+      remountTimer = window.setTimeout(() => {
+        remountTimer = null;
+        setCanvasInstanceKey((k) => k + 1);
+      }, 80);
+    };
+    const ro = new ResizeObserver((entries) => {
+      const e = entries[0];
+      if (!e) return;
+      const w = e.contentRect.width;
+      const h = e.contentRect.height;
+      const isZero = w < 2 || h < 2;
+      if (wasZero && !isZero) scheduleRemount();
+      wasZero = isZero;
+    });
+    ro.observe(node);
+    const onOrient = () => {
+      // Após orientationchange o browser pode demorar 1 frame para reflowar.
+      // Se o canvas continuar com 0 height, força remount.
+      window.setTimeout(() => {
+        const c = node.querySelector('canvas');
+        if (!c || c.clientWidth < 2 || c.clientHeight < 2) scheduleRemount();
+      }, 120);
+    };
+    window.addEventListener('orientationchange', onOrient);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('orientationchange', onOrient);
+      if (remountTimer != null) window.clearTimeout(remountTimer);
+    };
+  }, []);
 
   const [canvasReady, setCanvasReady] = useState(false);
   const [webglRetryKey, setWebglRetryKey] = useState(0);
@@ -2093,6 +2185,7 @@ export default function SkyCanvas() {
           }}
         />
         <HardeningWatchdog />
+        <ViewportResizeSync />
         {/* Bootstrap floor — guarantees the operator NEVER sees a pure-black
             viewport even when sky/ground/lighting subsystems are still
             suspended (lazy chunks, GoogleTiles boot, GPGPU warm-up).

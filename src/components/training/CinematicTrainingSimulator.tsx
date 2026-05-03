@@ -10,6 +10,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import StageEnvironment3D from './StageEnvironment3D';
+import StageProps3D from './stageProps/StageProps3D';
+import StagePropsEditorPanel from './stageProps/StagePropsEditorPanel';
 import TechnicianCharacter from './TechnicianCharacter';
 import PlacedEquipment3D from './PlacedEquipment3D';
 import SnapPoints from './SnapPoints';
@@ -29,9 +31,12 @@ import XPPopupLayer, { type XPPopup } from './hud/XPPopupLayer';
 import MissionFailedScreen from './hud/MissionFailedScreen';
 import MissionPassedFlash from './hud/MissionPassedFlash';
 import AmbientNPCLayer from './ambient/AmbientNPCLayer';
+import { createNpcChoreographer, type NPCPoseMap } from './ambient/npcChoreographer';
 import CinematicCameraDirector, { type CinematicCameraDirectorHandle } from './camera/CinematicCameraDirector';
 import type { MissionScript, DialogueLine } from './missions/types';
 import { createMissionRunner, type RunnerSnapshot } from './missions/missionRunner';
+import { computeDebriefMetrics, type PlacementAttempt } from './missions/debriefMetrics';
+import MissionDebriefPanel from './hud/MissionDebriefPanel';
 import {
   Equipment, SnapPoint, PlacedItem, MISSION_SNAP_POINTS,
 } from './types';
@@ -63,12 +68,55 @@ export default function CinematicTrainingSimulator({
   const [xpPopups, setXpPopups] = useState<XPPopup[]>([]);
   const [passedFlash, setPassedFlash] = useState(false);
   const tickRef = useRef<number | null>(null);
+  const missionStartRef = useRef<number>(Date.now());
+  const [attempts, setAttempts] = useState<PlacementAttempt[]>([]);
+  const [npcPoses, setNpcPoses] = useState<NPCPoseMap>({});
+  const [selectedPropId, setSelectedPropId] = useState<string | null>(null);
+  const choreographer = useMemo(
+    () => createNpcChoreographer({ resolveAnchor: (id) => getNPC(id)?.defaultPosition ?? null }),
+    [],
+  );
 
   useEffect(() => runner.subscribe(setSnap), [runner]);
+
+  // Tick choreographer snapshot ~10Hz so gestures decay back to idle.
+  useEffect(() => {
+    const id = window.setInterval(() => setNpcPoses(choreographer.snapshot()), 100);
+    return () => window.clearInterval(id);
+  }, [choreographer]);
 
   // Event stream → cinematic beats + xp popups + stage flash
   useEffect(() => {
     return runner.onEvent((ev) => {
+      const activeIds = Array.from(new Set([
+        script.briefing.npcId,
+        ...(snap.currentStage?.onEnter ?? []).map((e) => e.npcId),
+        ...(snap.currentStage?.dialogue ?? []).map((d) => d.npcId),
+      ].filter(Boolean) as string[]));
+
+      choreographer.ingest(ev, {
+        speakerId: activeDialogue?.npcId ?? script.briefing.npcId,
+        speakerIntent: activeDialogue?.intent,
+        activeNpcIds: activeIds,
+      });
+
+      // Beat-driven NPC formations: stage:start picks a formation that
+      // matches the cinematic shot to add visual rhythm per scene.
+      if (ev.kind === 'stage:start' && activeIds.length >= 2) {
+        const beat = (script.cinematicBeats ?? []).find(
+          (b) => b.triggerOn === 'stage-start' && b.stageId === snap.currentStage?.id,
+        );
+        const focus: [number, number, number] = beat?.focus ?? [0, 0.3, 2];
+        const kind: 'line' | 'arc' | 'cluster' | 'V' =
+          beat?.shot === 'low-angle-hero' ? 'V'
+          : beat?.shot === 'orbit-slow' ? 'arc'
+          : beat?.shot === 'wide-establishing' ? 'line'
+          : 'cluster';
+        choreographer.applyFormation(activeIds, kind, focus, { gesture: 'nod', durationMs: 2500 });
+      }
+
+      setNpcPoses(choreographer.snapshot());
+
       if (ev.kind === 'beat:start') directorRef.current?.enqueue(ev.beat);
       else if (ev.kind === 'objective:complete') {
         setXpPopups((p) => [...p, { id: `xp-${Date.now()}-${Math.random()}`, amount: ev.scoreDelta, label: 'objetivo', variant: 'precision' }]);
@@ -78,7 +126,7 @@ export default function CinematicTrainingSimulator({
         setPassedFlash(true);
       }
     });
-  }, [runner, script.scoreRules.safetyPenalty]);
+  }, [runner, script.scoreRules.safetyPenalty, script.briefing.npcId, script.cinematicBeats, snap.currentStage, activeDialogue, choreographer]);
 
   // Drive briefing dialogue (also fires briefing-scoped cinematic beats once)
   const briefingBeatsFired = useRef(false);
@@ -135,11 +183,14 @@ export default function CinematicTrainingSimulator({
 
   const handleSnapClick = (sp: SnapPoint) => {
     if (snap.phase !== 'running' || !selectedEquipment) return;
+    const tMs = Date.now() - missionStartRef.current;
     if (sp.equipmentType !== selectedEquipment) {
+      setAttempts((prev) => [...prev, { tMs, snapPointId: sp.id, equipmentId: selectedEquipment, correct: false }]);
       runner.reportSafetyViolation();
       return;
     }
     if (placedItems.some((p) => p.snapPointId === sp.id)) return;
+    setAttempts((prev) => [...prev, { tMs, snapPointId: sp.id, equipmentId: selectedEquipment, correct: true }]);
     setPlacedItems((prev) => [...prev, { snapPointId: sp.id, equipmentId: selectedEquipment, position: sp.position }]);
     setActiveVFX((prev) => [...prev, { id: `vfx-${Date.now()}`, position: sp.position }]);
     runner.completeObjective(sp.id);
@@ -152,12 +203,13 @@ export default function CinematicTrainingSimulator({
     runner.reset();
     setPlacedItems([]); setBriefingIndex(0); directorRef.current?.clear(); briefingBeatsFired.current = false;
     setXpPopups([]); setPassedFlash(false);
+    setAttempts([]); missionStartRef.current = Date.now();
   };
 
   // Debrief
   if (snap.phase === 'complete') {
     return (
-      <DebriefScreen script={script} snap={snap} onContinue={() => onComplete(snap.score)} onReplay={replay} />
+      <DebriefScreen script={script} snap={snap} attempts={attempts} onContinue={() => onComplete(snap.score)} onReplay={replay} />
     );
   }
 
@@ -182,6 +234,7 @@ export default function CinematicTrainingSimulator({
         <fog attach="fog" args={['hsl(240 25% 5%)', 50, 150]} />
 
         <StageEnvironment3D />
+        <StageProps3D missionId={script.id} selectedId={selectedPropId} />
         <TechnicianCharacter targetPosition={null} isInteracting={false} onReachTarget={() => {}} />
         <PlacedEquipment3D items={placedItems} />
         <SnapPoints points={stageSnapPoints} placedItems={placedItems} selectedEquipment={selectedEquipment} onSnapClick={handleSnapClick} />
@@ -198,6 +251,7 @@ export default function CinematicTrainingSimulator({
           const persona = getNPC(id);
           if (!persona) return null;
           const isSpeaking = activeDialogue?.npcId === id;
+          const pose = npcPoses[id];
           return (
             <HumanoidCharacter
               key={id}
@@ -208,6 +262,9 @@ export default function CinematicTrainingSimulator({
               closeup={isSpeaking}
               lookAtTarget={[0, 1.6, 0]}
               voiceLineId={isSpeaking ? activeDialogue?.text ?? null : null}
+              gesture={pose?.gesture ?? 'idle'}
+              gestureDurationMs={pose?.durationMs}
+              walkTo={pose?.walkTo ?? null}
             />
           );
         })}
@@ -244,6 +301,12 @@ export default function CinematicTrainingSimulator({
           totalStages={snap.totalStages}
         />
       )}
+
+      <StagePropsEditorPanel
+        missionId={script.id}
+        selectedId={selectedPropId}
+        onSelectedIdChange={setSelectedPropId}
+      />
 
       <EquipmentTray
         equipment={missionEquipment}
@@ -317,16 +380,18 @@ export default function CinematicTrainingSimulator({
 }
 
 function DebriefScreen({
-  script, snap, onContinue, onReplay,
+  script, snap, attempts, onContinue, onReplay,
 }: {
   script: MissionScript;
   snap: RunnerSnapshot;
+  attempts: ReadonlyArray<PlacementAttempt>;
   onContinue: () => void;
   onReplay: () => void;
 }) {
+  const metrics = computeDebriefMetrics({ script, snap, attempts });
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-gradient-to-b from-black via-[hsl(240_25%_5%)] to-black px-4 py-8">
-      <div className="max-w-2xl w-full space-y-6 animate-fxk-fade-up">
+      <div className="max-w-3xl w-full space-y-6 animate-fxk-fade-up">
         <div className="text-center space-y-3">
           <p className="text-[10px] uppercase tracking-[0.3em] font-mono text-[hsl(28_100%_60%)]">{script.chapter}</p>
           <h2 className="text-3xl font-bold text-foreground">{script.debrief.title}</h2>
@@ -346,6 +411,9 @@ function DebriefScreen({
             <p className={`text-xl font-bold font-mono ${snap.safetyViolations > 0 ? 'text-destructive' : 'text-emerald-400'}`}>{snap.safetyViolations}</p>
           </div>
         </div>
+
+        <MissionDebriefPanel metrics={metrics} />
+
         <div className="rounded-lg border border-border/50 bg-card/50 p-4 space-y-2">
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-[hsl(28_100%_60%)]" />

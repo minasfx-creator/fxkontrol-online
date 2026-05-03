@@ -36,6 +36,7 @@ const Admin = lazy(() => import('./Admin'));
 const AccreditationDashboard = lazy(() => import('./AccreditationDashboard'));
 const JoiPanel = lazy(() => import('@/ai/ui/JoiPanel'));
 import OfficeHubCards from '@/features/office/OfficeHubCards';
+import OfficeKpiHero from '@/features/office/OfficeKpiHero';
 
 type TabKey =
   | 'overview'
@@ -137,8 +138,13 @@ export default function Office() {
 
   return (
     <div className="flex flex-col min-h-[calc(100dvh-3rem)] w-full bg-ds-background text-ds-text-primary">
-      {/* Hub cards — Blueprint UX entry points (above the tab strip) */}
-      {activeTab === 'overview' && <OfficeHubCards />}
+      {/* Hero KPI strip + Hub cards — Blueprint UX entry points (above the tab strip) */}
+      {activeTab === 'overview' && (
+        <>
+          <OfficeKpiHero />
+          <OfficeHubCards />
+        </>
+      )}
 
       {/* Tab strip — horizontal, scrollable on mobile (DS tokens) */}
       <nav

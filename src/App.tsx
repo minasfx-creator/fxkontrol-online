@@ -49,15 +49,16 @@ import NotFound from "./pages/NotFound";
 const Install = lazy(lazyRetry(() => import("./pages/Install")));
 const UsbPairingWizard = lazy(lazyRetry(() => import("./pages/UsbPairingWizard")));
 const BlePairingWizard = lazy(lazyRetry(() => import("./pages/BlePairingWizard")));
+const PairingWizard = lazy(lazyRetry(() => import("./pages/PairingWizard")));
 const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
 const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage")));
 const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")));
 const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
 const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
 const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")));
-const LibertadoresGoldenShow = lazy(lazyRetry(() => import("./pages/dev/Libertadores")));
 const GoldenShowsCatalog = lazy(lazyRetry(() => import("./pages/dev/GoldenShows")));
 const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
+const FXK16Hub = lazy(lazyRetry(() => import("./pages/dev/FXK16Hub")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
 const Office = lazy(lazyRetry(() => import("./pages/Office")));
@@ -123,9 +124,8 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   const [params] = useSearchParams();
   if (loading) return null;
   if (user) {
-    // Resume the originally-requested route ONLY when it is a safe deep-link.
-    // Otherwise default to /studio (3D viewport principal) so first-time
-    // signups / Google sign-ins land directly on the editor — never on Office.
+    // New pipeline: post-auth, land on Office Dashboard (overview tab) so the
+    // user always starts from the central hub. Safe deep-links are honored.
     const raw = params.get('next');
     const safe =
       raw &&
@@ -134,7 +134,7 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
       raw !== '/' &&
       !raw.startsWith('/auth') &&
       !raw.startsWith('/landing');
-    const target = safe ? raw! : '/studio';
+    const target = safe ? raw! : '/office?tab=overview';
     return <Navigate to={target} replace />;
   }
   return <>{children}</>;
@@ -179,12 +179,11 @@ function App() {
                     {/* Public real-hardware discovery probe — loops scanLight() and shows
                         every device the browser sees, with zero simulated data. */}
                     <Route path="/dev/real-discovery" element={<RealDiscoveryProbe />} />
-                    {/* FXK16 hardware validation harness — Web Serial / BLE,
-                        hold-to-fire per channel, diagnostic-only (bypasses ShowPlan). */}
-                    <Route path="/dev/fxk16-validate" element={<FXK16ValidatePage />} />
-                    {/* FXK16 calibration & diagnostics — handshake card, detected-channel
-                        count, manual hold-to-fire and armed auto-sweep C1..C16. */}
-                    <Route path="/dev/fxk16-calibrate" element={<FXK16CalibrationPage />} />
+                    {/* FXK16 unified dev hub — Validate (harness) + Calibrate (latency)
+                        as tabs. Old paths redirect to ?tab=validate|calibrate. */}
+                    <Route path="/dev/fxk16" element={<FXK16Hub />} />
+                    <Route path="/dev/fxk16-validate" element={<Navigate to="/dev/fxk16?tab=validate" replace />} />
+                    <Route path="/dev/fxk16-calibrate" element={<Navigate to="/dev/fxk16?tab=calibrate" replace />} />
                     {/* Public SkyCanvas smoke route — mounts the 3D viewport in
                         isolation for E2E QA. No auth, no hardware, no ARM. */}
                     <Route path="/dev/skycanvas-smoke" element={<SkyCanvasSmoke />} />
@@ -199,7 +198,7 @@ function App() {
                     <Route path="/dev/readiness-audit" element={<ReadinessAudit />} />
                     {/* Phase 1 golden show inspector — pure read of the
                         Libertadores ShowPlan + PDF + honest export ZIP. */}
-                    <Route path="/dev/libertadores" element={<LibertadoresGoldenShow />} />
+                    <Route path="/dev/libertadores" element={<Navigate to="/dev/golden-shows" replace />} />
                     <Route path="/dev/golden-shows" element={<GoldenShowsCatalog />} />
                     {/* Public alias — promoted shell route. */}
                     <Route path="/editor-ds" element={<EditorShellPreview />} />
@@ -222,10 +221,11 @@ function App() {
                     {/* Checkout success — auth-gated but standalone (no MainLayout chrome) so the
                         confirmation screen is the only thing visible while the webhook lands. */}
                     <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
+                    {/* Root entry: nunca mostra landing — manda direto pro auth.
+                        AuthRoute redireciona usuários já logados pra /office?tab=overview. */}
+                    <Route path="/" element={<Navigate to="/auth" replace />} />
                     <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                       {/* ── 3 grandes áreas ───────────────────────────────────── */}
-                      {/* Default landing → Studio 3D viewport (entrada principal). */}
-                      <Route path="/" element={<Navigate to="/studio" replace />} />
                       <Route path="/office" element={<Office />} />
                       {/* Studio = editor 3D. /editor é endpoint equivalente (mesma página). */}
                       <Route path="/studio" element={<Index />} />
@@ -251,10 +251,11 @@ function App() {
                       {/* ── Field ops (gated) ─────────────────────────────────── */}
                       <Route path="/field" element={isEnabled('module_pairing_mobilelink') ? <FieldOps /> : <Navigate to="/office" replace />} />
                       <Route path="/pairing" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#pairing" replace /> : <Navigate to="/office" replace />} />
-                      {/* iOS-first guided USB authorization wizard. */}
+                      {/* Unified pairing wizard — single configurable route.
+                          /pairing/usb and /pairing/ble are kept as direct routes
+                          for backward-compat (deep links, audit log entries). */}
+                      <Route path="/pairing/:transport" element={<PairingWizard />} />
                       <Route path="/pairing/usb" element={<UsbPairingWizard />} />
-                      {/* BLE pairing wizard — scans for FXK16-XXXXXX, performs
-                          handshake (VERSION+STATUS), shows per-attempt status. */}
                       <Route path="/pairing/ble" element={<BlePairingWizard />} />
                       <Route path="/field-test" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#field-test" replace /> : <Navigate to="/office" replace />} />
                       <Route path="/fxk16" element={isEnabled('module_pairing_mobilelink') ? <Navigate to="/field#fxk16" replace /> : <Navigate to="/office" replace />} />

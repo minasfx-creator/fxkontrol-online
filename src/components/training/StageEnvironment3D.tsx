@@ -200,6 +200,205 @@ function FloorWash({ position, color }: { position: [number, number, number]; co
   );
 }
 
+/* ───────────────────── PA Line Array ───────────────────── */
+function PALineArray({ position, side }: { position: [number, number, number]; side: 'L' | 'R' }) {
+  // 6 boxes flown, slight curve outward
+  const boxes = [0, 1, 2, 3, 4, 5];
+  return (
+    <group position={position}>
+      {/* Rigging chain */}
+      <mesh position={[0, 0.6, 0]}>
+        <cylinderGeometry args={[0.015, 0.015, 1.2, 6]} />
+        <meshStandardMaterial color="#444" metalness={0.9} roughness={0.4} />
+      </mesh>
+      {boxes.map((i) => {
+        const yaw = (side === 'L' ? 1 : -1) * (i * 0.04);
+        return (
+          <group key={i} position={[0, -i * 0.32, 0]} rotation={[i * 0.05, yaw, 0]}>
+            <mesh castShadow>
+              <boxGeometry args={[0.7, 0.28, 0.45]} />
+              <meshStandardMaterial color="#0a0a0a" roughness={0.6} metalness={0.3} />
+            </mesh>
+            {/* Driver grilles */}
+            <mesh position={[0, 0, 0.226]}>
+              <circleGeometry args={[0.09, 12]} />
+              <meshStandardMaterial color="#1a1a1a" roughness={0.95} />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+/* ───────────────────── Stage Monitor Wedge ───────────────────── */
+function MonitorWedge({ position, rotationY = 0 }: { position: [number, number, number]; rotationY?: number }) {
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      {/* Wedge body — tilted box */}
+      <mesh rotation={[-0.45, 0, 0]} castShadow>
+        <boxGeometry args={[0.55, 0.32, 0.4]} />
+        <meshStandardMaterial color="#0c0c0c" roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 0.18, 0.1]} rotation={[-0.45, 0, 0]}>
+        <circleGeometry args={[0.11, 12]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.95} />
+      </mesh>
+    </group>
+  );
+}
+
+/* ───────────────────── FOH Desk (Front-of-House) ───────────────────── */
+function FOHDesk({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      {/* Riser */}
+      <mesh position={[0, 0.1, 0]} receiveShadow>
+        <boxGeometry args={[2.2, 0.2, 1.4]} />
+        <meshStandardMaterial color="#0a0a0a" roughness={0.9} />
+      </mesh>
+      {/* Desk surface */}
+      <mesh position={[0, 0.42, 0]}>
+        <boxGeometry args={[2.0, 0.04, 1.0]} />
+        <meshStandardMaterial color="#111" roughness={0.5} metalness={0.4} />
+      </mesh>
+      {/* Console (mixer) */}
+      <mesh position={[0, 0.5, -0.05]} rotation={[-0.15, 0, 0]} castShadow>
+        <boxGeometry args={[1.4, 0.08, 0.55]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.6} metalness={0.5} />
+      </mesh>
+      {/* Faders glow strip */}
+      <mesh position={[0, 0.55, -0.05]} rotation={[-0.15, 0, 0]}>
+        <planeGeometry args={[1.3, 0.04]} />
+        <meshStandardMaterial color="#22ffaa" emissive="#22ffaa" emissiveIntensity={0.9} toneMapped={false} />
+      </mesh>
+      {/* Two display monitors */}
+      {[-0.5, 0.5].map((x) => (
+        <mesh key={x} position={[x, 0.78, -0.4]} rotation={[-0.2, 0, 0]}>
+          <planeGeometry args={[0.55, 0.32]} />
+          <meshStandardMaterial color="#001a22" emissive="#0088aa" emissiveIntensity={0.6} toneMapped={false} />
+        </mesh>
+      ))}
+      {/* Operator silhouette (placeholder, very simple) */}
+      <mesh position={[0, 1.05, 0.4]}>
+        <sphereGeometry args={[0.13, 10, 10]} />
+        <meshStandardMaterial color="#1a1410" roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 0.7, 0.4]}>
+        <boxGeometry args={[0.45, 0.55, 0.25]} />
+        <meshStandardMaterial color="#2a1a14" roughness={0.9} />
+      </mesh>
+    </group>
+  );
+}
+
+/* ───────────────────── Audience Pit (silhouettes) ───────────────────── */
+function AudiencePit({ position, count = 60 }: { position: [number, number, number]; count?: number }) {
+  const seed = 7;
+  const heads = useMemo(() => {
+    const arr: { x: number; z: number; h: number; sway: number }[] = [];
+    for (let i = 0; i < count; i++) {
+      // pseudo-random deterministic
+      const r = Math.sin(i * 12.9898 + seed) * 43758.5453;
+      const r2 = Math.sin(i * 78.233 + seed) * 43758.5453;
+      const fx = (r - Math.floor(r)) * 2 - 1;
+      const fz = (r2 - Math.floor(r2)) * 2 - 1;
+      arr.push({
+        x: fx * 5.5,
+        z: fz * 1.8,
+        h: 1.55 + (Math.abs(fx + fz) % 0.25),
+        sway: i * 0.37,
+      });
+    }
+    return arr;
+  }, [count]);
+
+  const groupRef = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return;
+    const t = clock.getElapsedTime();
+    groupRef.current.children.forEach((child, i) => {
+      const sway = Math.sin(t * 1.4 + heads[i]?.sway) * 0.04;
+      child.rotation.z = sway;
+    });
+  });
+
+  return (
+    <group ref={groupRef} position={position}>
+      {heads.map((p, i) => (
+        <group key={i} position={[p.x, 0, p.z]}>
+          {/* Body */}
+          <mesh position={[0, p.h * 0.45, 0]}>
+            <capsuleGeometry args={[0.14, p.h * 0.6, 4, 8]} />
+            <meshStandardMaterial color="#050507" roughness={0.95} />
+          </mesh>
+          {/* Head */}
+          <mesh position={[0, p.h * 0.92, 0]}>
+            <sphereGeometry args={[0.11, 8, 8]} />
+            <meshStandardMaterial color="#08080a" roughness={0.95} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/* ───────────────────── Hazer Machine ───────────────────── */
+function HazerMachine({ position }: { position: [number, number, number] }) {
+  const puffRef = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    if (puffRef.current) {
+      const t = clock.getElapsedTime();
+      const s = 0.6 + (Math.sin(t * 0.5) * 0.5 + 0.5) * 0.6;
+      puffRef.current.scale.set(s, s * 0.6, s);
+      const mat = puffRef.current.material as THREE.MeshStandardMaterial;
+      mat.opacity = 0.04 + Math.sin(t * 0.7) * 0.015;
+    }
+  });
+  return (
+    <group position={position}>
+      <mesh castShadow>
+        <boxGeometry args={[0.3, 0.18, 0.4]} />
+        <meshStandardMaterial color="#161616" roughness={0.6} metalness={0.4} />
+      </mesh>
+      <mesh ref={puffRef} position={[0, 0.5, 0]}>
+        <sphereGeometry args={[0.6, 12, 12]} />
+        <meshStandardMaterial
+          color="#aab8cc"
+          transparent
+          opacity={0.05}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+/* ───────────────────── Hanging Cable Snake ───────────────────── */
+function CableSnake({ from, to, color = '#0a0a0a' }: { from: [number, number, number]; to: [number, number, number]; color?: string }) {
+  const points = useMemo(() => {
+    const pts: THREE.Vector3[] = [];
+    const segs = 12;
+    const sag = Math.abs(to[0] - from[0]) * 0.05 + 0.3;
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs;
+      const x = from[0] + (to[0] - from[0]) * t;
+      const y = from[1] + (to[1] - from[1]) * t - sag * Math.sin(Math.PI * t);
+      const z = from[2] + (to[2] - from[2]) * t;
+      pts.push(new THREE.Vector3(x, y, z));
+    }
+    return pts;
+  }, [from, to]);
+  const curve = useMemo(() => new THREE.CatmullRomCurve3(points), [points]);
+  const geom = useMemo(() => new THREE.TubeGeometry(curve, 24, 0.025, 6, false), [curve]);
+  return (
+    <mesh geometry={geom}>
+      <meshStandardMaterial color={color} roughness={0.85} />
+    </mesh>
+  );
+}
+
 /* ───────────────────── Auditorium Shell ───────────────────── */
 function AuditoriumShell() {
   return (
@@ -248,6 +447,82 @@ function AtmosphereHaze() {
         blending={THREE.AdditiveBlending}
       />
     </mesh>
+  );
+}
+
+/* ───────────────────── Lighting Rig Cluster (FOH overhead) ───────────────────── */
+function LightingRigCluster({ position }: { position: [number, number, number] }) {
+  const ref = useRef<THREE.PointLight>(null);
+  useFrame(({ clock }) => {
+    if (ref.current) ref.current.intensity = 0.55 + Math.sin(clock.elapsedTime * 1.4) * 0.15;
+  });
+  return (
+    <group position={position}>
+      <mesh>
+        <boxGeometry args={[2.2, 0.1, 2.2]} />
+        <meshStandardMaterial color="#444" metalness={0.85} roughness={0.25} />
+      </mesh>
+      {[[-0.8, -0.3, -0.8], [0.8, -0.3, -0.8], [-0.8, -0.3, 0.8], [0.8, -0.3, 0.8]].map((p, i) => (
+        <group key={i} position={p as [number, number, number]}>
+          <mesh>
+            <cylinderGeometry args={[0.14, 0.18, 0.3, 12]} />
+            <meshStandardMaterial color="#222" metalness={0.7} roughness={0.4} />
+          </mesh>
+          <mesh position={[0, -0.2, 0]}>
+            <cylinderGeometry args={[0.14, 0.05, 0.05, 12]} />
+            <meshStandardMaterial color="#ffaa44" emissive="#ff8822" emissiveIntensity={0.8} />
+          </mesh>
+        </group>
+      ))}
+      <pointLight ref={ref} color="#ffaa55" intensity={0.6} distance={5} decay={2} />
+    </group>
+  );
+}
+
+/* ───────────────────── Stadium Stands (silhouette tiers) ───────────────────── */
+function StadiumStands({ position, rotationY = 0, rows = 6, width = 22 }: {
+  position: [number, number, number]; rotationY?: number; rows?: number; width?: number;
+}) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const count = rows * 60;
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  useMemo(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    let idx = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let i = 0; i < 60; i++) {
+        const x = (i - 30) * (width / 60) + (Math.sin(i * 7.13 + r) * 0.15);
+        const y = 0.6 + r * 0.45;
+        const z = -r * 0.55;
+        dummy.position.set(x, y, z);
+        dummy.scale.set(0.18, 0.6, 0.18);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(idx++, dummy.matrix);
+      }
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  }, [rows, width, dummy, count]);
+
+  useFrame(({ clock }) => {
+    if (!ref.current) return;
+    const mat = ref.current.material as THREE.MeshStandardMaterial;
+    mat.emissiveIntensity = 0.06 + Math.sin(clock.elapsedTime * 0.8) * 0.03;
+  });
+
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      {Array.from({ length: rows }).map((_, r) => (
+        <mesh key={r} position={[0, 0.3 + r * 0.45, -r * 0.55]} receiveShadow>
+          <boxGeometry args={[width, 0.45, 0.55]} />
+          <meshStandardMaterial color="#2a2630" roughness={0.95} metalness={0.05} />
+        </mesh>
+      ))}
+      <instancedMesh ref={ref} args={[undefined, undefined, count]} castShadow>
+        <capsuleGeometry args={[1, 1.2, 4, 6]} />
+        <meshStandardMaterial color="#0a0a14" emissive="#221a30" emissiveIntensity={0.06} roughness={1} />
+      </instancedMesh>
+    </group>
   );
 }
 
@@ -324,11 +599,44 @@ const StageEnvironment3D = forwardRef<THREE.Group>(function StageEnvironment3D(_
       <FloorWash position={[0, 0.31, -1.5]} color="#ffffff" />
       <FloorWash position={[2, 0.31, -1.5]} color="#22ffaa" />
 
+      {/* ── PA Line Arrays (flown L+R) ── */}
+      <PALineArray position={[-5.4, 4.1, -1.6]} side="L" />
+      <PALineArray position={[5.4, 4.1, -1.6]} side="R" />
+
+      {/* ── Stage Monitor Wedges (downstage) ── */}
+      <MonitorWedge position={[-2.6, 0.32, 1.85]} rotationY={Math.PI} />
+      <MonitorWedge position={[0, 0.32, 1.95]} rotationY={Math.PI} />
+      <MonitorWedge position={[2.6, 0.32, 1.85]} rotationY={Math.PI} />
+
+      {/* ── Cable snakes FOH → stage ── */}
+      <CableSnake from={[-3.6, 0.45, 5.5]} to={[-3.5, 0.4, 1.7]} />
+      <CableSnake from={[3.6, 0.45, 5.5]} to={[3.5, 0.4, 1.7]} />
+
+      {/* ── Hazers (DSL/DSR) ── */}
+      <HazerMachine position={[-4.4, 0.4, 1.6]} />
+      <HazerMachine position={[4.4, 0.4, 1.6]} />
+
+      {/* ── Audience pit (silhouettes, downstage) ── */}
+      <AudiencePit position={[0, 0, 3.6]} count={56} />
+
+      {/* ── FOH Desk (back of room) ── */}
+      <FOHDesk position={[0, 0, 6.4]} />
+
       {/* ── Atmospheric haze volume ── */}
       <AtmosphereHaze />
 
       {/* ── Ambient stage lighting ── */}
       <pointLight position={[0, 5.5, 0]} color="#221133" intensity={3} distance={12} />
+      <pointLight position={[0, 1.2, 6.4]} color="#22ffaa" intensity={0.6} distance={3.5} />
+
+      {/* ── FOH overhead lighting rig clusters (audience-side) ── */}
+      <LightingRigCluster position={[-4.2, 5.6, 4.5]} />
+      <LightingRigCluster position={[4.2, 5.6, 4.5]} />
+
+      {/* ── Stadium stands surrounding (legendary venues) ── */}
+      <StadiumStands position={[0, 0, 8.5]} rows={6} width={26} />
+      <StadiumStands position={[-13, 0, 0]} rotationY={Math.PI / 2} rows={5} width={18} />
+      <StadiumStands position={[13, 0, 0]} rotationY={-Math.PI / 2} rows={5} width={18} />
     </group>
   );
 });

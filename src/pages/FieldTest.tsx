@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
+const FieldTestDesktop = lazy(() => import('@/components/editor/FieldTestDesktop'));
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { useImperativeTimeout } from '@/hooks/useInterval';
 import FXK16FieldTestPanel from '@/components/field/FXK16FieldTestPanel';
 import FXK16FieldSettingsPanel from '@/components/field/FXK16FieldSettingsPanel';
+import { FXK16ConnectionPanel } from '@/components/editor/live-firing/FXK16ConnectionPanel';
 
 // ─── Transport Config ─────────────────────────────
 const TRANSPORTS: { id: TestTransport; label: string; desc: string; icon: React.ReactNode; color: string }[] = [
@@ -1035,6 +1038,7 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
               + end-to-end command harness. Both share the singleton bridge
               with PyroFireOnePanel and the /field#fxk16 tab. */}
           <div className="shrink-0 px-2 pt-2 space-y-2">
+            <FXK16ConnectionPanel compact />
             <FXK16FieldSettingsPanel />
             <FXK16FieldTestPanel />
           </div>
@@ -1391,7 +1395,13 @@ function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop:
 }
 
 // ─── Main Page ────────────────────────────────────
-export default function FieldTest() {
+/**
+ * FieldTestMobile — original mobile/tablet shell. Kept as the default
+ * fallback when the device is small or touch-coarse. Desktop callers
+ * should mount `FieldTestDesktop` directly via the unified `FieldTest`
+ * entry below.
+ */
+function FieldTestMobile() {
   const navigate = useNavigate();
   const [session, setSession] = useState<FieldTestSession | null>(null);
 
@@ -1434,5 +1444,32 @@ export default function FieldTest() {
       </div>
       <SetupScreen onStart={handleStart} />
     </div>
+  );
+}
+
+// ─── Unified entry — picks shell by device class ──
+
+/**
+ * FieldTest — single canonical entry. Polymorphic shell:
+ *   - mobile / tablet / coarse pointer → `FieldTestMobile` (this file)
+ *   - desktop                          → `FieldTestDesktop` (lazy)
+ *
+ * Both shells share the same `fieldTestEngine` singleton, so session
+ * state and FXK16 bridge stay coherent across breakpoints. CommandCenter
+ * and FieldOps both mount this entry; the device class decides the layout.
+ */
+export default function FieldTest() {
+  const isMobile = useIsMobile();
+  if (isMobile) return <FieldTestMobile />;
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[100dvh] flex items-center justify-center bg-background">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <FieldTestDesktop />
+    </Suspense>
   );
 }

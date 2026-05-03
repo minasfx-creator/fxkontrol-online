@@ -31,6 +31,7 @@ import { useFireOneHardware } from '@/hooks/useFireOneHardware';
 import { usePBusHardware } from '@/hooks/usePBusHardware';
 import { buildBridgeWebSocketProtocols, buildBridgeWebSocketUrl, evaluateBridgeWebSocketConnection, getBridgeSecurityDiagnostic, openBridgeWebSocket, parseBridgeGatewayUrl, saveBridgeGatewayConfig } from '@/lib/bridgeGateway';
 import { bridgePhysicalController, evaluateFireLockout } from '@/lib/bridgePhysicalControl';
+import { uiCommandGateway } from '@/core/command/uiCommandGateway';
 
 import type { SFXChannel, CueEntry, FXCMode, FXCSettings, DeviceLibEntry } from './live-firing/types';
 import { FIRING_RULES, SFX_TYPES, DEFAULT_CHANNELS, DEFAULT_SETTINGS, CUES_PER_PAGE, formatTimecode, SHOWVEN_LIBRARY } from './live-firing/constants';
@@ -404,6 +405,11 @@ export default function LiveFiringPanel({ onClose, initialMode, standalone }: { 
   }, [pyroArm]);
 
   const handlePanic = useCallback(() => {
+    // CRITICAL: route through uiCommandGateway FIRST so SafetyStateMachine
+    // forces SAFE within <50ms and the BlackBox records the trigger. Local
+    // cleanup + hardware fan-out below are best-effort secondary hops.
+    try { uiCommandGateway.eStop({ source: 'LiveFiringPanel', detail: 'PANIC' }); }
+    catch (err) { console.error('[LiveFiringPanel] gateway.eStop threw:', err); }
     // Strong haptic burst for PANIC
     haptics.panic();
     setChannels(prev => { const updated = prev.map(ch => ({ ...ch, firing: false })); sendArtNetPacket(updated); return updated; });
