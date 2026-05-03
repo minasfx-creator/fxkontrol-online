@@ -259,9 +259,8 @@ export default function Comercial() {
       {/* ── Topbar ──────────────────────────────────────────────────────── */}
       <header className="border-b border-[hsl(var(--c-border-soft))] sticky top-0 z-40 backdrop-blur-md bg-[hsl(var(--c-bg)/0.85)]">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/comercial" className="flex items-center gap-2 c-display text-lg font-bold tracking-wider">
-            <span className="c-cyan-pure">FX</span>
-            <span className="c-text">KONTROL</span>
+          <Link to="/comercial" aria-label="FXKONTROL — Home" className="inline-flex">
+            <FxkLogo size={26} variant="full" tone="sync" />
           </Link>
           <nav className="hidden md:flex items-center gap-8 text-xs c-text-muted uppercase tracking-widest">
             <a href="#pacotes" className="hover:c-text transition-colors">Pacotes</a>
