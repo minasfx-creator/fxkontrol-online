@@ -125,6 +125,13 @@ const FLAGS = {
    * SkyCanvas (zero risk to production).
    */
   skycanvas_v2: false,
+
+  /**
+   * SkyCanvas 2.0 StageLayer — palco arco curvo + truss + LEDs + beams.
+   * Default ON (visualmente esperado). Override per-device via localStorage
+   * 'fxk.flag.skycanvas_v2_stage' = '0' pra esconder em capturas cinematográficas.
+   */
+  skycanvas_v2_stage: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
@@ -164,5 +171,22 @@ export function isSkycanvasV2Enabled(): boolean {
     }
   }
   return FLAGS.skycanvas_v2;
+}
+
+/**
+ * StageLayer runtime gate. Default ON (FLAGS.skycanvas_v2_stage=true).
+ * localStorage 'fxk.flag.skycanvas_v2_stage' = '0' esconde; '1' força ON.
+ */
+export function isSkycanvasV2StageEnabled(): boolean {
+  if (typeof window !== 'undefined') {
+    try {
+      const v = window.localStorage.getItem('fxk.flag.skycanvas_v2_stage');
+      if (v === '1' || v === 'true') return true;
+      if (v === '0' || v === 'false') return false;
+    } catch {
+      /* localStorage blocked → fall back to static flag */
+    }
+  }
+  return FLAGS.skycanvas_v2_stage;
 }
 
