@@ -69,7 +69,7 @@ export default function CinematicTrainingSimulator({
   // Event stream → cinematic beats + xp popups + stage flash
   useEffect(() => {
     return runner.onEvent((ev) => {
-      if (ev.kind === 'beat:start') setPendingBeat(ev.beat);
+      if (ev.kind === 'beat:start') directorRef.current?.enqueue(ev.beat);
       else if (ev.kind === 'objective:complete') {
         setXpPopups((p) => [...p, { id: `xp-${Date.now()}-${Math.random()}`, amount: ev.scoreDelta, label: 'objetivo', variant: 'precision' }]);
       } else if (ev.kind === 'safety:violation') {
