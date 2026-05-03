@@ -357,7 +357,7 @@ export default function FieldTestDesktop() {
 
                 <Button size="sm"
                   className="h-8 px-4 bg-red-700 hover:bg-red-600 text-white font-mono font-bold text-xs gap-1.5 shadow-[0_0_12px_hsl(0_70%_50%/0.2)]"
-                  onClick={() => { uiCommandGateway.eStop({ source: 'FieldTestDesktop' }); fieldTestEngine.eStop(); haptics.panic(); }}>
+                  onClick={() => panic('FieldTestDesktop')}>
                   <AlertTriangle className="w-3.5 h-3.5" /> E-STOP
                 </Button>
 
@@ -450,7 +450,7 @@ export default function FieldTestDesktop() {
                 ))}
               </div>
               <Button className="w-full h-10 mt-3 font-bold bg-destructive hover:bg-destructive/80 text-destructive-foreground"
-                onClick={() => { uiCommandGateway.eStop({ source: 'FieldTestDesktop:mobile' }); fieldTestEngine.eStop(); haptics.panic(); }}>
+                onClick={() => panic('FieldTestDesktop:mobile')}>
                 <AlertTriangle className="w-4 h-4 mr-1" /> E-STOP
               </Button>
             </div>
