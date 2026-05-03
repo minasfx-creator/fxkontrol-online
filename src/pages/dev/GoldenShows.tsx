@@ -25,6 +25,7 @@ import { simulationDryRun } from '@/lib/showSeeds/simulationDryRun';
 import { inspectShowPlan } from '@/lib/showSeeds/inspectShowPlan';
 import { downloadGoldenShowExportZip } from '@/lib/showSeeds/goldenShowExport';
 import Phase1TransitionPanel from '@/components/dev/Phase1TransitionPanel';
+import Phase2TransitionPanel from '@/components/dev/Phase2TransitionPanel';
 
 interface SeedRow {
   entry: GoldenShowEntry;
