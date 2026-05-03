@@ -1592,7 +1592,26 @@ export default function PyroFireOnePanel({
         )}
 
         {renderModuleScanner()}
-        {renderPanic()}
+        {/* Fullscreen portal owns its own PANIC button (chrome below is
+            hidden by the portal). Routes to handlePanic prop, which
+            LiveFiringPanel wires to uiCommandGateway.eStop(). */}
+        <div className="border-t-2 border-red-800/30 shrink-0" style={{ background: 'hsl(220 12% 6%)' }}>
+          <div className={cn(sz === 'xl' ? 'px-5 py-3' : 'px-4 py-2')}>
+            <button
+              onClick={handlePanic}
+              className={cn(
+                'w-full rounded-lg font-black uppercase transition-all',
+                'bg-gradient-to-b from-red-700 to-red-900 text-white/90',
+                'hover:from-red-600 hover:to-red-800 active:scale-[0.97]',
+                'border-2 border-red-600/50 flex items-center justify-center gap-2',
+                sz === 'xl' ? 'h-16 text-lg tracking-[0.3em]' : 'h-14 text-base tracking-[0.25em]',
+              )}
+            >
+              <AlertTriangle className="w-6 h-6" />
+              PANIC — ALL STOP
+            </button>
+          </div>
+        </div>
       </div>
     );
 
