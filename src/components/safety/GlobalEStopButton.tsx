@@ -62,6 +62,10 @@ export default function GlobalEStopButton() {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
+    if (fxTimerRef.current !== null) {
+      clearTimeout(fxTimerRef.current);
+      fxTimerRef.current = null;
+    }
   };
 
   // Always cleanup on unmount.
