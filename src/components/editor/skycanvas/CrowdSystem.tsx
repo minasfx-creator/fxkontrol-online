@@ -143,11 +143,12 @@ export default function CrowdSystem() {
     const mesh = meshRef.current;
     const dummy = new THREE.Object3D();
     const dt = Math.min(delta, 0.05);
-    const t = performance.now() * 0.001;
+    // Deterministic clock for crowd reaction oscillators (tied to timeline).
+    const { currentTime, timelineItems } = useProjectStore.getState();
+    const t = currentTime;
     const crowd = crowdRef.current;
 
     // Check if show is playing (energy level)
-    const { currentTime, timelineItems } = useProjectStore.getState();
     const activeCues = timelineItems.filter(item => {
       const elapsed = currentTime - item.startTime;
       return elapsed >= -0.5 && elapsed < 3;
