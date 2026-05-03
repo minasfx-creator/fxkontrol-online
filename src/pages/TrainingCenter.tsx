@@ -27,6 +27,7 @@ import MetaHumanCoachPanel, { type CoachTip } from '@/components/training/coach/
 import MissionBriefingMetaHuman from '@/components/training/briefing/MissionBriefingMetaHuman';
 import { isEnabled } from '@/lib/featureFlags';
 import { useAchievementsStore } from '@/components/training/achievements/useAchievementsStore';
+import { FxkLogo } from '@/components/brand/FxkLogo';
 import { ACHIEVEMENT_CATALOG, type AchievementId } from '@/components/training/achievements/achievements';
 import { cn } from '@/lib/utils';
 
