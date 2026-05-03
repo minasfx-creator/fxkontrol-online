@@ -22,6 +22,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { NPCPersona, SkinTone, OutfitPreset, HairPreset, BodyType, PropPreset } from '../npcs/npcCatalog';
 import type { DialogueIntent } from '../missions/types';
+import { sampleGesture, type GestureKind } from './gestures';
 
 const SKIN_HEX: Record<SkinTone, string> = {
   fair: '#f1c8a8',
