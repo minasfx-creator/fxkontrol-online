@@ -1,13 +1,16 @@
 /**
  * SkyCanvas 2.0 — Pure store selectors.
  *
- * Mantém toda a lógica de leitura do ShowPlan fora dos componentes de render,
- * de modo que cada layer só receba dados prontos e enxutos.
+ * IMPORTANT: selectors here are STRUCTURAL only — they intentionally do NOT
+ * depend on `currentTime`. Time-dependent state (which explosion is in its
+ * burst window, which drone is pulsing) is evaluated per-frame by the
+ * layers themselves through `useShowTimeRef`, so the React tree never
+ * re-renders at the timeline tick rate.
  */
 import { useMemo } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
-import type { ActiveDrone, ActiveExplosion, Vec3 } from './types';
+import type { Vec3 } from './types';
 
 const EFFECT_BY_ID: Record<string, Effect> = Object.fromEntries(
   EFFECT_LIBRARY.map((e) => [e.id, e]),
@@ -15,39 +18,60 @@ const EFFECT_BY_ID: Record<string, Effect> = Object.fromEntries(
 
 const getEffect = (id: string): Effect | undefined => EFFECT_BY_ID[id];
 
-/** Drone/light pads + which ones are firing right now. */
-export function useActiveDrones(): ActiveDrone[] {
+// ──────────────────────────────────────────────────────────────────────────
+// Drones / lights — structural list (per-frame "active" computed in layer)
+// ──────────────────────────────────────────────────────────────────────────
+
+export interface DronePadInfo {
+  id: string;
+  position: Vec3;
+  color: string;
+}
+
+/** Stable cue window per pad (used by layer to decide pulse on/off per frame). */
+export interface DroneCueWindow {
+  positionId: string;
+  start: number;
+  end: number;
+}
+
+export interface DroneStructure {
+  pads: DronePadInfo[];
+  cues: DroneCueWindow[];
+}
+
+export function useDroneStructure(): DroneStructure {
   const positions = useProjectStore((s) => s.positions);
   const timelineItems = useProjectStore((s) => s.timelineItems);
-  const currentTime = useProjectStore((s) => s.currentTime);
 
   return useMemo(() => {
-    const pads = positions.filter(
-      (p) => p.type === 'drone-pad' || p.type === 'light',
-    );
-    if (pads.length === 0) return [];
+    const pads = positions
+      .filter((p) => p.type === 'drone-pad' || p.type === 'light')
+      .map<DronePadInfo>((p) => ({
+        id: p.id,
+        position: [p.x, Math.max(p.y, 1), p.z],
+        color: p.color || '#2dd4ff',
+      }));
 
-    const activeIds = new Set<string>();
+    const cues: DroneCueWindow[] = [];
     for (const item of timelineItems) {
       const eff = getEffect(item.effectId);
       if (!eff || (eff.type !== 'drone' && eff.type !== 'light')) continue;
       const dur = item.durationOverride ?? eff.duration ?? 1;
-      if (currentTime >= item.startTime && currentTime <= item.startTime + dur) {
-        if (item.positionId) activeIds.add(item.positionId);
-        item.positionIds?.forEach((id) => activeIds.add(id));
-      }
+      const end = item.startTime + dur;
+      if (item.positionId) cues.push({ positionId: item.positionId, start: item.startTime, end });
+      item.positionIds?.forEach((id) =>
+        cues.push({ positionId: id, start: item.startTime, end }),
+      );
     }
-
-    return pads.map((p) => ({
-      id: p.id,
-      position: [p.x, Math.max(p.y, 1), p.z] as Vec3,
-      color: p.color || '#2dd4ff',
-      active: activeIds.has(p.id),
-    }));
-  }, [positions, timelineItems, currentTime]);
+    return { pads, cues };
+  }, [positions, timelineItems]);
 }
 
-/** Pyro launch markers on the ground. */
+// ──────────────────────────────────────────────────────────────────────────
+// Pyro launch pads (markers)
+// ──────────────────────────────────────────────────────────────────────────
+
 export function usePyroPads(): Array<{ id: string; position: Vec3 }> {
   const positions = useProjectStore((s) => s.positions);
   return useMemo(
@@ -59,11 +83,27 @@ export function usePyroPads(): Array<{ id: string; position: Vec3 }> {
   );
 }
 
-/** Active firework explosions whose burst window contains currentTime. */
-export function useActiveExplosions(): ActiveExplosion[] {
+// ──────────────────────────────────────────────────────────────────────────
+// Firework bursts — structural (windows + origin), age computed per-frame
+// ──────────────────────────────────────────────────────────────────────────
+
+export interface BurstSpec {
+  id: string;
+  origin: Vec3;
+  color: string;
+  /** Absolute show-time when burst becomes visible. */
+  burstStart: number;
+  /** Absolute show-time when burst fades out. */
+  burstEnd: number;
+  /** Burst lifetime (s). */
+  life: number;
+  /** Apex height (m). */
+  height: number;
+}
+
+export function useBurstSpecs(): BurstSpec[] {
   const positions = useProjectStore((s) => s.positions);
   const timelineItems = useProjectStore((s) => s.timelineItems);
-  const currentTime = useProjectStore((s) => s.currentTime);
 
   return useMemo(() => {
     if (timelineItems.length === 0) return [];
@@ -71,7 +111,7 @@ export function useActiveExplosions(): ActiveExplosion[] {
     const positionMap = new Map<string, { x: number; y: number; z: number }>();
     for (const p of positions) positionMap.set(p.id, { x: p.x, y: p.y, z: p.z });
 
-    const list: ActiveExplosion[] = [];
+    const list: BurstSpec[] = [];
     for (const item of timelineItems) {
       const eff = getEffect(item.effectId);
       if (!eff || eff.type !== 'firework') continue;
@@ -79,7 +119,6 @@ export function useActiveExplosions(): ActiveExplosion[] {
       const burstStart = item.startTime + (eff.prefire ?? 0);
       const life = item.durationOverride ?? eff.duration ?? 2.5;
       const burstEnd = burstStart + life;
-      if (currentTime < burstStart || currentTime > burstEnd) continue;
 
       const pos = item.positionId ? positionMap.get(item.positionId) : undefined;
       const height = eff.heightMeters ?? 60;
@@ -93,11 +132,12 @@ export function useActiveExplosions(): ActiveExplosion[] {
         id: item.id,
         origin,
         color: item.colorOverride || eff.color || '#FFD700',
-        age: currentTime - burstStart,
+        burstStart,
+        burstEnd,
         life,
         height,
       });
     }
     return list;
-  }, [positions, timelineItems, currentTime]);
+  }, [positions, timelineItems]);
 }
