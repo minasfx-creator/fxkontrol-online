@@ -204,15 +204,9 @@ export default function Landing() {
           <Link
             to="/landing"
             aria-label="FX KONTROL — Página inicial"
-            className="flex flex-shrink-0 items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="flex flex-shrink-0 items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            <div
-              aria-hidden="true"
-              className="h-6 w-6 rounded-lg bg-gradient-to-br from-primary to-[hsl(var(--electric-glow))] shadow-[0_0_24px_hsl(var(--primary)/0.4)] sm:h-7 sm:w-7"
-            />
-            <span className="text-xs font-black tracking-[0.18em] sm:text-sm">
-              FX <span className="text-primary">KONTROL</span>
-            </span>
+            <FxkLogo size={26} variant="full" tone="sync" />
           </Link>
           <nav aria-label="Principal" className="hidden items-center gap-6 text-sm text-muted-foreground lg:flex xl:gap-7">
             <a href="#features" className="rounded transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background">Recursos</a>
