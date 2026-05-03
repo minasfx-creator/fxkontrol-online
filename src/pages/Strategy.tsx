@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Download, Layers, Wand2, Wrench, ClipboardCheck, Calendar, Briefcase, Activity } from 'lucide-react';
+import { Download, Layers, Wand2, Wrench, ClipboardCheck, Calendar, Briefcase, Activity, ShieldCheck } from 'lucide-react';
 import { AssetLibrary, SEED_ASSETS } from '@/components/strategy/AssetLibrary';
+import { GoLiveCenterPanel } from '@/components/strategy/GoLiveCenterPanel';
 import { AIChoreographyStudioStub } from '@/components/strategy/AIChoreographyStudioStub';
 import { DockTwinPilotPanel } from '@/components/strategy/DockTwinPilotPanel';
 import { ClientApprovalPanel } from '@/components/strategy/ClientApprovalPanel';
