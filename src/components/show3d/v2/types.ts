@@ -33,5 +33,9 @@ export interface SkyCanvas2Props {
   hideGrid?: boolean;
   /** Disable star field. */
   hideStars?: boolean;
+  /** Hide the stage (deck + truss + panels + beams). Default false. */
+  hideStage?: boolean;
+  /** Stage variant: 'arch' (full) or 'minimal' (deck only). Default 'arch'. */
+  stageVariant?: 'arch' | 'minimal';
   className?: string;
 }
