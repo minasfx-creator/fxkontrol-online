@@ -26,6 +26,8 @@ const ALLOWED_FILES = new Set([
   'src/components/comercial/DemoRequestForm.tsx',
   // App.tsx só contém comentário de documentação
   'src/App.tsx',
+  // index.css apenas importa o arquivo de tokens
+  'src/index.css',
 ]);
 
 function walk(dir: string, acc: string[] = []): string[] {
