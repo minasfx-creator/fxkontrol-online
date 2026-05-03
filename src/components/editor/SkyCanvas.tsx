@@ -2089,18 +2089,20 @@ export default function SkyCanvas() {
         {/* Bootstrap floor — guarantees the operator NEVER sees a pure-black
             viewport even when sky/ground/lighting subsystems are still
             suspended (lazy chunks, GoogleTiles boot, GPGPU warm-up).
-            Pure non-suspended primitives so the first composited frame
-            always shows horizon + ground reference. Cheap, no leaks. */}
-        <hemisphereLight args={[0x6f86ff, 0x0a0e16, 0.55]} />
-        <directionalLight position={[120, 220, 80]} intensity={0.6} />
-        <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow={false}>
+            Uses unlit BasicMaterial with mid-bright tones so ACES tone
+            mapping cannot squash it to black. Always-on, cheap, no leaks. */}
+        <hemisphereLight args={[0x6f86ff, 0x0a0e16, 0.6]} />
+        <directionalLight position={[120, 220, 80]} intensity={0.7} />
+        <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[6000, 6000, 1, 1]} />
-          <meshBasicMaterial color="#0b1220" />
+          <meshBasicMaterial color="#1d2a3c" toneMapped={false} />
         </mesh>
-        <gridHelper args={[2000, 80, 0x1f3a55, 0x0f2030]} position={[0, 0, 0]} />
-        <mesh scale={[-1, 1, 1]}>
-          <sphereGeometry args={[8000, 24, 16]} />
-          <meshBasicMaterial color="#050b18" side={THREE.BackSide} fog={false} depthWrite={false} />
+        <gridHelper args={[2000, 80, 0x2a5a85, 0x18324a]} position={[0, 0.01, 0]} />
+        {/* Solid sky dome — toneMapped=false + far plane inside to guarantee
+            a horizon color even before EnvironmentV2/SceneStars mount. */}
+        <mesh>
+          <sphereGeometry args={[6000, 24, 16]} />
+          <meshBasicMaterial color="#0b1a2c" side={THREE.BackSide} toneMapped={false} fog={false} depthWrite={false} />
         </mesh>
         <FXKQualityController />
         <SceneLighting />
