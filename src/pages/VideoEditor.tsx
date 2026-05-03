@@ -38,7 +38,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
-import SkyCanvas3D from '@/components/show3d/SkyCanvas3D';
+import { SkyCanvas2 } from '@/components/show3d/v2';
 import EffectLibrarySidebar, { FXK_EFFECT_DRAG_TYPE } from '@/components/editor/EffectLibrarySidebar';
 import { useProjectStore } from '@/store/useProjectStore';
 import { timelineClock } from '@/core/timeline/TimelineClock';
@@ -661,7 +661,7 @@ export default function VideoEditor() {
             <div className="flex-1 flex min-h-0">
               {/* Viewport */}
               <main className="flex-1 relative bg-black min-w-0">
-                <SkyCanvas3D />
+                <SkyCanvas2 />
                 {/* Viewport HUD */}
                 <div className="absolute top-3 left-3 z-10 flex gap-2">
                   <Badge className="bg-black/60 border border-cyan-500/30 text-cyan-300 ds-mono text-[10px]">

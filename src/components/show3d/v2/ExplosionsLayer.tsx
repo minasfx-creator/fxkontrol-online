@@ -1,27 +1,28 @@
 /**
- * SkyCanvas 2.0 — ExplosionsLayer.
+ * SkyCanvas 2.0 — ExplosionsLayer (frame-synced).
  *
- * Cada explosão = 96 partículas (Points) com física simples:
- *   pos = origin + dir * radius * (1 - exp(-1.3*t))
- *   y  -= 0.5 * g * t^2  (g=9.8, escala 0.12 para previs cinematográfico)
- *   opacity = (1 - t/life) * 0.95
- *   size    = 1.4 + 1.6 * (1 - t/life)
+ * One <OneExplosion> per BurstSpec, mounted ALL THE TIME. Each instance
+ * computes its own `age = max(0, showTime - burstStart)` per frame using
+ * `useShowTimeRef`, then:
+ *   - particles only get written when age ∈ [0, life]
+ *   - opacity → 0 outside the burst window (visually invisible)
+ * This means scrub jumps to any time and the next frame snaps the burst
+ * into the right physics state without any React reconciliation.
  *
- * Direções são memoizadas por id da cue (estáveis ao longo do burst).
+ * Pause: `showTime` stops moving → age frozen → particles locked in place.
  */
 import { useMemo, useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import type { ActiveExplosion, Vec3 } from './types';
-import { useActiveExplosions } from './useShowSelectors';
+import { type BurstSpec, useBurstSpecs } from './useShowSelectors';
+import { useShowTimeRef, type ShowTimeRef } from './useShowTimeRef';
 
 const PARTICLES_PER_BURST = 96;
 const GRAVITY = 9.8;
-const GRAVITY_SCALE = 0.12; // visual scale; pyro previs, not physics-accurate
+const GRAVITY_SCALE = 0.12;
 
-/** Stable random sphere directions for a given seed. */
+/** djb2 + LCG → deterministic random direction set for an id. */
 function makeDirections(seed: string): Float32Array {
-  // simple djb2 hash → deterministic seed
   let h = 5381;
   for (let i = 0; i < seed.length; i++) h = (h * 33) ^ seed.charCodeAt(i);
   let state = h >>> 0;
@@ -29,7 +30,6 @@ function makeDirections(seed: string): Float32Array {
     state = (state * 1664525 + 1013904223) >>> 0;
     return state / 0xffffffff;
   };
-
   const arr = new Float32Array(PARTICLES_PER_BURST * 3);
   for (let i = 0; i < PARTICLES_PER_BURST; i++) {
     const theta = rand() * Math.PI * 2;
@@ -43,42 +43,52 @@ function makeDirections(seed: string): Float32Array {
 }
 
 interface OneExplosionProps {
-  data: ActiveExplosion;
+  spec: BurstSpec;
+  timeRef: React.MutableRefObject<ShowTimeRef>;
 }
 
-function OneExplosion({ data }: OneExplosionProps) {
+function OneExplosion({ spec, timeRef }: OneExplosionProps) {
   const pointsRef = useRef<THREE.Points>(null);
   const matRef = useRef<THREE.PointsMaterial>(null);
 
-  const directions = useMemo(() => makeDirections(data.id), [data.id]);
+  const directions = useMemo(() => makeDirections(spec.id), [spec.id]);
   const positions = useMemo(
     () => new Float32Array(PARTICLES_PER_BURST * 3),
-    [data.id],
+    [spec.id],
   );
 
-  // Seed initial positions at origin so first frame renders without jitter.
+  // Seed positions at origin so first frame doesn't draw at (0,0,0).
   useEffect(() => {
     for (let i = 0; i < PARTICLES_PER_BURST; i++) {
-      positions[i * 3 + 0] = data.origin[0];
-      positions[i * 3 + 1] = data.origin[1];
-      positions[i * 3 + 2] = data.origin[2];
+      positions[i * 3 + 0] = spec.origin[0];
+      positions[i * 3 + 1] = spec.origin[1];
+      positions[i * 3 + 2] = spec.origin[2];
     }
     const geom = pointsRef.current?.geometry;
     if (geom) (geom.attributes.position as THREE.BufferAttribute).needsUpdate = true;
-  }, [data.id, data.origin, positions]);
+  }, [spec.id, spec.origin, positions]);
 
   useFrame(() => {
     const geom = pointsRef.current?.geometry;
     const mat = matRef.current;
     if (!geom || !mat) return;
 
-    const t = Math.max(0, data.age);
+    const showTime = timeRef.current.time;
+    const t = showTime - spec.burstStart;
+
+    // Outside the burst window → fully transparent. Cheap branch keeps the
+    // points alive in the scene but invisible (no per-frame writes).
+    if (t < 0 || t > spec.life) {
+      if (mat.opacity !== 0) mat.opacity = 0;
+      return;
+    }
+
     const drag = Math.exp(-1.3 * t);
-    const radius = data.height * 0.18;
-    const lifeRatio = Math.min(1, t / data.life);
+    const radius = spec.height * 0.18;
+    const lifeRatio = Math.min(1, t / spec.life);
     const gravityDrop = 0.5 * GRAVITY * GRAVITY_SCALE * t * t;
 
-    const [ox, oy, oz] = data.origin;
+    const [ox, oy, oz] = spec.origin;
     for (let i = 0; i < PARTICLES_PER_BURST; i++) {
       const dx = directions[i * 3 + 0];
       const dy = directions[i * 3 + 1];
@@ -105,11 +115,11 @@ function OneExplosion({ data }: OneExplosionProps) {
       </bufferGeometry>
       <pointsMaterial
         ref={matRef}
-        color={data.color}
+        color={spec.color}
         size={2.2}
         sizeAttenuation
         transparent
-        opacity={1}
+        opacity={0}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
       />
@@ -118,16 +128,14 @@ function OneExplosion({ data }: OneExplosionProps) {
 }
 
 export function ExplosionsLayer() {
-  const explosions = useActiveExplosions();
-  if (explosions.length === 0) return null;
+  const specs = useBurstSpecs();
+  const timeRef = useShowTimeRef();
+  if (specs.length === 0) return null;
   return (
     <group>
-      {explosions.map((e) => (
-        <OneExplosion key={e.id} data={e} />
+      {specs.map((spec) => (
+        <OneExplosion key={spec.id} spec={spec} timeRef={timeRef} />
       ))}
     </group>
   );
 }
-
-// Re-export the Vec3 type so consumers of the layer don't need to import from types.
-export type { Vec3 };
