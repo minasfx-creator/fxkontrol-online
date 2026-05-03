@@ -56,21 +56,31 @@ export default function SkyCanvasMount({
   loaderLabel = 'Loading 3D Engine...',
   children,
 }: SkyCanvasMountProps) {
+  // Read the flag once per mount; if v2 throws, we flip back to legacy in
+  // local state — no full page reload, no risk to the operator.
+  const [useV2, setUseV2] = useState<boolean>(() => isSkycanvasV2Enabled());
+  useEffect(() => { setUseV2(isSkycanvasV2Enabled()); }, [instanceKey]);
+
   return (
     <StudioErrorBoundary area={area}>
       <WebGLErrorBoundary>
         <Suspense
           fallback={
-            <CanvasLoaderWithTimeout
-              timeoutMs={loaderTimeoutMs}
-              label={loaderLabel}
-            />
+            <CanvasLoaderWithTimeout timeoutMs={loaderTimeoutMs} label={loaderLabel} />
           }
         >
-          <SkyCanvas key={instanceKey} />
+          {useV2 ? (
+            <SkyCanvas2
+              key={`v2-${instanceKey ?? 'default'}`}
+              onFatalError={() => setUseV2(false)}
+            />
+          ) : (
+            <SkyCanvas key={instanceKey} />
+          )}
         </Suspense>
       </WebGLErrorBoundary>
       {children}
     </StudioErrorBoundary>
   );
 }
+
