@@ -29,7 +29,7 @@ import XPPopupLayer, { type XPPopup } from './hud/XPPopupLayer';
 import MissionFailedScreen from './hud/MissionFailedScreen';
 import MissionPassedFlash from './hud/MissionPassedFlash';
 import AmbientNPCLayer from './ambient/AmbientNPCLayer';
-import CinematicCameraDirector from './camera/CinematicCameraDirector';
+import CinematicCameraDirector, { type CinematicCameraDirectorHandle } from './camera/CinematicCameraDirector';
 import type { MissionScript, DialogueLine, CinematicBeat } from './missions/types';
 import { createMissionRunner, type RunnerSnapshot } from './missions/missionRunner';
 import {
