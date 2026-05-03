@@ -39,9 +39,11 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/comp
 import { cn } from '@/lib/utils';
 
 import SkyCanvas3D from '@/components/show3d/SkyCanvas3D';
+import EffectLibrarySidebar, { FXK_EFFECT_DRAG_TYPE } from '@/components/editor/EffectLibrarySidebar';
 import { useProjectStore } from '@/store/useProjectStore';
 import { timelineClock } from '@/core/timeline/TimelineClock';
 import { useAudioMasterClock } from '@/hooks/useAudioMasterClock';
+import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 
 // ──────────────────────────────────────────────────────────────────────────
 // Left sidebar — assets/library
