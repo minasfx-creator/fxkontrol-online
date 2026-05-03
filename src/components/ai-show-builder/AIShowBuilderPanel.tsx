@@ -714,7 +714,23 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
                   return (
                     <div
                       key={entry.id}
-                      className="rounded-sm bg-card/40 border border-border/30 px-2 py-1.5 text-[11px]"
+                      className="rounded-sm bg-card/40 border border-border/30 px-2 py-1.5 text-[11px] transition-colors hover:border-primary/50 hover:bg-primary/5"
+                      onMouseEnter={() => extensionHighlight.set({
+                        entryId: entry.id,
+                        cueIds: new Set(entry.diff.addedCueIds),
+                        positionIds: new Set(entry.diff.addedPositionIds),
+                        sectionIds: new Set(entry.diff.addedSectionIds),
+                        trajectoryIds: new Set(entry.diff.addedTrajectoryIds),
+                      })}
+                      onMouseLeave={() => extensionHighlight.clear(entry.id)}
+                      onFocus={() => extensionHighlight.set({
+                        entryId: entry.id,
+                        cueIds: new Set(entry.diff.addedCueIds),
+                        positionIds: new Set(entry.diff.addedPositionIds),
+                        sectionIds: new Set(entry.diff.addedSectionIds),
+                        trajectoryIds: new Set(entry.diff.addedTrajectoryIds),
+                      })}
+                      onBlur={() => extensionHighlight.clear(entry.id)}
                     >
                       <div className="flex items-start gap-2">
                         <button
