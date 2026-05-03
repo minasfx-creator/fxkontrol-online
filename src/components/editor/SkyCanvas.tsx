@@ -1675,6 +1675,57 @@ function CameraBookmarkSaver() {
   return null;
 }
 
+/**
+ * ViewportResizeSync — Inside-Canvas helper. On window resize/orientationchange,
+ * recomputes the parent's box and force-resyncs renderer drawing buffer,
+ * camera aspect + projection matrix, and dispatches a 'resize' so the
+ * EffectComposer (PostProcessing) and GPGPU/FBO listeners re-pick the new size.
+ *
+ * Mitiga o caso de rotação mobile / colapso de painel onde o R3F fica em 0×0
+ * e nunca volta a sincronizar com o container real.
+ */
+function ViewportResizeSync() {
+  const { gl, camera, size, setSize } = useThree();
+  useEffect(() => {
+    const dom = gl.domElement;
+    const parent = dom.parentElement;
+    let raf = 0;
+    const sync = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const w = parent?.clientWidth || window.innerWidth;
+        const h = parent?.clientHeight || window.innerHeight;
+        if (w < 2 || h < 2) return;
+        if (Math.abs(w - size.width) > 0.5 || Math.abs(h - size.height) > 0.5) {
+          try { setSize(w, h); } catch { /* ignore */ }
+          try { gl.setSize(w, h, false); } catch { /* ignore */ }
+        }
+        const cam = camera as THREE.PerspectiveCamera;
+        if (cam.isPerspectiveCamera) {
+          const aspect = w / h;
+          if (Math.abs(cam.aspect - aspect) > 1e-4) {
+            cam.aspect = aspect;
+            cam.updateProjectionMatrix();
+          }
+        }
+        window.dispatchEvent(new Event('resize'));
+      });
+    };
+    window.addEventListener('resize', sync);
+    window.addEventListener('orientationchange', sync);
+    const t1 = window.setTimeout(sync, 60);
+    const t2 = window.setTimeout(sync, 250);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', sync);
+      window.removeEventListener('orientationchange', sync);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [gl, camera, size.width, size.height, setSize]);
+  return null;
+}
+
 export default function SkyCanvas() {
   // Professional keybindings (Finale 3D)
   useKeybindings();
