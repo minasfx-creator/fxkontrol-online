@@ -141,7 +141,7 @@ export default function IOSReadiness() {
       <header className="border-b border-border/30 sticky top-0 backdrop-blur-md bg-background/80 z-10">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link to="/" aria-label="FXKONTROL — Home" className="inline-flex"><FxkLogo size={24} variant="full" tone="sync" /></Link>
-          <Link to="/comercial" className="text-xs text-muted-foreground hover:text-foreground uppercase tracking-widest">
+          <Link to="/comercial" className="text-ds-caption text-muted-foreground hover:text-foreground uppercase tracking-widest">
             Comercial
           </Link>
         </div>
@@ -153,10 +153,10 @@ export default function IOSReadiness() {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-500/30 bg-cyan-500/5 text-[10px] font-mono uppercase tracking-widest text-cyan-300 mb-6">
             <Smartphone className="w-3 h-3" /> Compatibilidade & iPhone
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 leading-tight">
+          <h1 className="text-ds-h2 md:text-ds-h1 font-bold mb-4 leading-tight">
             O que funciona <span className="text-cyan-400">em cada plataforma</span>.
           </h1>
-          <p className="text-muted-foreground text-lg max-w-3xl leading-relaxed">
+          <p className="text-muted-foreground text-ds-h4 max-w-3xl leading-relaxed">
             FX KONTROL roda em qualquer browser moderno, mas o acesso a hardware físico
             (DMX, BLE, USB) depende de APIs que <strong className="text-foreground">só algumas plataformas suportam</strong>.
             Esta matriz mostra exatamente o que esperar antes de levar para campo.
@@ -169,15 +169,15 @@ export default function IOSReadiness() {
             <Info className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
             <div>
               <div className="text-[10px] font-mono uppercase tracking-widest text-cyan-300 mb-1">Você está aqui</div>
-              <div className="text-sm font-semibold mb-1">{platformLabel(caps.platform)}</div>
-              <p className="text-xs text-muted-foreground leading-relaxed">{caps.hint}</p>
+              <div className="text-ds-label font-semibold mb-1">{platformLabel(caps.platform)}</div>
+              <p className="text-ds-caption text-muted-foreground leading-relaxed">{caps.hint}</p>
             </div>
           </div>
         )}
 
         {/* Matriz */}
         <section className="mb-16">
-          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+          <h2 className="text-ds-h3 font-bold mb-6 flex items-center gap-2">
             <Globe className="w-5 h-5 text-cyan-400" />
             Matriz Plataforma × Transporte
           </h2>
@@ -194,7 +194,7 @@ export default function IOSReadiness() {
                 )}>
                   <div className="flex items-center gap-2 mb-3">
                     <Icon className="w-4 h-4 text-foreground" />
-                    <span className="font-semibold text-sm">{row.label}</span>
+                    <span className="font-semibold text-ds-label">{row.label}</span>
                     {isHere && <span className="ml-auto text-[9px] font-mono uppercase text-cyan-400">Atual</span>}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -241,7 +241,7 @@ export default function IOSReadiness() {
                       <td className="py-4 pr-4 align-top">
                         <div className="flex items-center gap-2">
                           <Icon className="w-4 h-4 text-foreground shrink-0" />
-                          <span className="font-semibold text-sm">{row.label}</span>
+                          <span className="font-semibold text-ds-label">{row.label}</span>
                         </div>
                         {isHere && (
                           <span className="inline-block mt-1 text-[9px] font-mono uppercase text-cyan-400">Você está aqui</span>
@@ -252,7 +252,7 @@ export default function IOSReadiness() {
                           <CellBadge cell={row[t.key]} />
                         </td>
                       ))}
-                      <td className="py-4 pl-2 align-top text-xs text-muted-foreground leading-relaxed max-w-xs">
+                      <td className="py-4 pl-2 align-top text-ds-caption text-muted-foreground leading-relaxed max-w-xs">
                         {row.fallback}
                       </td>
                     </tr>
@@ -265,14 +265,14 @@ export default function IOSReadiness() {
 
         {/* Fallback operacional para iPhone Safari */}
         <section className="mb-16 rounded-lg border border-amber-500/30 bg-amber-500/5 p-5 md:p-6">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-amber-200">
+          <h2 className="text-ds-h4 font-bold mb-4 flex items-center gap-2 text-amber-200">
             <AlertTriangle className="w-5 h-5 text-amber-400" />
             Fallback operacional — iPhone em campo sem app nativo
           </h2>
-          <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+          <p className="text-ds-label text-muted-foreground mb-4 leading-relaxed">
             Se você precisa operar com iPhone HOJE sem o build nativo, use este modelo dual:
           </p>
-          <ol className="space-y-3 text-sm">
+          <ol className="space-y-3 text-ds-label">
             <li className="flex gap-3">
               <span className="shrink-0 w-6 h-6 rounded bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-[10px] font-bold">1</span>
               <div>
@@ -283,7 +283,7 @@ export default function IOSReadiness() {
             <li className="flex gap-3">
               <span className="shrink-0 w-6 h-6 rounded bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-[10px] font-bold">2</span>
               <div>
-                <strong className="text-foreground">iPhone Safari:</strong> abre <code className="text-cyan-300 bg-black/30 px-1.5 py-0.5 rounded text-xs">/field</code> em
+                <strong className="text-foreground">iPhone Safari:</strong> abre <code className="text-cyan-300 bg-black/30 px-1.5 py-0.5 rounded text-ds-caption">/field</code> em
                 modo monitor (read-only). Vê telemetria, status de armado, logs e GO/NO-GO em tempo real
                 via Art-Net read + websocket.
               </div>
@@ -309,11 +309,11 @@ export default function IOSReadiness() {
         <section className="grid md:grid-cols-2 gap-4 mb-12">
           <Link to="/install" className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-5 hover:bg-cyan-500/10 transition-colors group">
             <Smartphone className="w-6 h-6 text-cyan-400 mb-3" />
-            <h3 className="font-bold text-sm mb-1">Instalar como PWA</h3>
-            <p className="text-xs text-muted-foreground mb-3">
+            <h3 className="font-bold text-ds-label mb-1">Instalar como PWA</h3>
+            <p className="text-ds-caption text-muted-foreground mb-3">
               Adicione FX KONTROL à tela inicial do iPhone para usar como segunda tela / monitor.
             </p>
-            <span className="text-xs text-cyan-400 inline-flex items-center gap-1 group-hover:gap-2 transition-all">
+            <span className="text-ds-caption text-cyan-400 inline-flex items-center gap-1 group-hover:gap-2 transition-all">
               Ver guia <ArrowRight className="w-3 h-3" />
             </span>
           </Link>
@@ -324,12 +324,12 @@ export default function IOSReadiness() {
             className="rounded-lg border border-border/30 bg-card/30 p-5 hover:bg-card/60 transition-colors group"
           >
             <Apple className="w-6 h-6 text-foreground mb-3" />
-            <h3 className="font-bold text-sm mb-1">Build nativo (Capacitor + Xcode)</h3>
-            <p className="text-xs text-muted-foreground mb-3">
+            <h3 className="font-bold text-ds-label mb-1">Build nativo (Capacitor + Xcode)</h3>
+            <p className="text-ds-caption text-muted-foreground mb-3">
               Para conexão USB MFi e BLE no iPhone: requer Mac + Xcode + plugin serial.
               Veja docs/iphone-usb-serial.md no repositório.
             </p>
-            <span className="text-xs text-foreground/70 inline-flex items-center gap-1 group-hover:gap-2 transition-all">
+            <span className="text-ds-caption text-foreground/70 inline-flex items-center gap-1 group-hover:gap-2 transition-all">
               Documentação Capacitor <ArrowRight className="w-3 h-3" />
             </span>
           </a>
@@ -337,10 +337,10 @@ export default function IOSReadiness() {
 
         {/* Voltar */}
         <div className="flex flex-wrap gap-3 pt-6 border-t border-border/20">
-          <Link to="/studio" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+          <Link to="/studio" className="text-ds-caption text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
             ← Voltar ao Studio
           </Link>
-          <Link to="/comercial" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 ml-auto">
+          <Link to="/comercial" className="text-ds-caption text-muted-foreground hover:text-foreground inline-flex items-center gap-1 ml-auto">
             Ver pacotes comerciais →
           </Link>
         </div>

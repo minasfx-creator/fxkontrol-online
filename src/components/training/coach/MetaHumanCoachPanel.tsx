@@ -142,7 +142,7 @@ export default function MetaHumanCoachPanel({ instructorId = 'capitao-vega', tip
               {KIND_META[active.kind].label}
             </span>
           </div>
-          <h3 className="text-sm font-semibold text-ds-text-primary">{active.title}</h3>
+          <h3 className="text-ds-label font-semibold text-ds-text-primary">{active.title}</h3>
           <p className="text-[12px] leading-relaxed text-ds-text-secondary min-h-[5em]">
             {typed}
             {typed.length < active.body.length && (

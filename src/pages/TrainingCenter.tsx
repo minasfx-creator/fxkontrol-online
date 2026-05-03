@@ -64,14 +64,14 @@ export default function TrainingCenter() {
         <div className="max-w-md text-center space-y-ds-3 rounded-ds-md border border-status-warn/40 bg-ds-surface-panel p-ds-6">
           <Lock className="h-8 w-8 mx-auto text-status-warn" />
           <h1 className="text-ds-h2 text-ds-text-primary">Training Center indisponível</h1>
-          <p className="text-sm text-ds-text-secondary">
+          <p className="text-ds-label text-ds-text-secondary">
             O HUD de treinamento estilo cinemático é restrito a <strong>design</strong> e{' '}
             <strong>simulation</strong>. O modo atual é <span className="ds-mono uppercase text-status-warn">real_operation</span>.
             Use o console industrial para operações em campo.
           </p>
           <button
             onClick={() => navigate('/command')}
-            className="inline-flex items-center gap-ds-2 rounded-ds-sm border border-ds-border-active/60 bg-ds-surface-elevated px-ds-3 py-ds-2 text-xs ds-mono uppercase tracking-wider text-status-sync hover:bg-status-sync/10 transition-colors"
+            className="inline-flex items-center gap-ds-2 rounded-ds-sm border border-ds-border-active/60 bg-ds-surface-elevated px-ds-3 py-ds-2 text-ds-caption ds-mono uppercase tracking-wider text-status-sync hover:bg-status-sync/10 transition-colors"
           >
             Abrir Command Center <ArrowRight className="h-3.5 w-3.5" />
           </button>
@@ -91,7 +91,7 @@ export default function TrainingCenter() {
           <div className="flex items-center gap-ds-3">
             <FxkLogo size={22} variant="full" tone="sync" />
             <span className="h-4 w-px bg-ds-border-default" />
-            <h1 className="text-sm font-semibold tracking-wider uppercase">Training Center</h1>
+            <h1 className="text-ds-label font-semibold tracking-wider uppercase">Training Center</h1>
           </div>
           <div className="flex items-center gap-ds-3 text-[10px] ds-mono uppercase tracking-wider">
             <span className="text-ds-text-secondary">WorkMode</span>
@@ -186,7 +186,7 @@ function MapPanel() {
       <div className="rounded-ds-md border border-ds-border-default bg-ds-surface-panel min-h-[420px] grid place-items-center text-ds-text-muted">
         <div className="text-center space-y-ds-2">
           <MapIcon className="h-10 w-10 mx-auto text-status-sync/70" />
-          <p className="text-xs ds-mono uppercase tracking-wider">3D Arena · Free Roam</p>
+          <p className="text-ds-caption ds-mono uppercase tracking-wider">3D Arena · Free Roam</p>
           <p className="text-[11px] text-ds-text-secondary max-w-md">
             WASD para navegar · Click em props para inspecionar · Scroll para zoom.
             Stub visual — reusará Show3DEngine quando integrado.
@@ -196,7 +196,7 @@ function MapPanel() {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-ds-2">
         {['Maracanã', 'Galpão Ensaio', 'Show Space'].map((v) => (
           <div key={v} className="rounded-ds-sm border border-ds-border-default bg-ds-surface-panel p-ds-3 hover:bg-ds-surface-elevated transition-colors cursor-pointer">
-            <p className="text-xs font-semibold text-ds-text-primary">{v}</p>
+            <p className="text-ds-caption font-semibold text-ds-text-primary">{v}</p>
             <p className="text-[10px] ds-mono uppercase tracking-wider text-ds-text-muted mt-1">free roam</p>
           </div>
         ))}
@@ -233,7 +233,7 @@ function MissionsPanel() {
           className="rounded-ds-md border border-status-warn/45 bg-status-warn/10 p-ds-3 op-go-pulse flex items-start justify-between gap-ds-3"
           role="status"
         >
-          <div className="text-xs text-ds-text-primary">
+          <div className="text-ds-caption text-ds-text-primary">
             {lastBatch.achievements.length > 0 && (
               <p>
                 <span className="ds-mono uppercase tracking-wider text-status-warn">Conquistas:</span>{' '}
@@ -286,7 +286,7 @@ function MissionsPanel() {
                   </span>
                 )}
               </div>
-              <h3 className="text-sm font-semibold text-ds-text-primary">{m.title}</h3>
+              <h3 className="text-ds-label font-semibold text-ds-text-primary">{m.title}</h3>
               <div className="mt-1 flex items-center gap-1.5">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <Star
@@ -365,7 +365,7 @@ function OperatorPanel() {
         <p className="text-[10px] ds-mono uppercase tracking-wider text-ds-text-muted">Operador</p>
         <h3 className="text-ds-h3 text-ds-text-primary">Marco Santos</h3>
         <p className="text-[11px] ds-mono uppercase tracking-wider text-status-sync">Elite Operator</p>
-        <p className="text-xs text-ds-text-secondary mt-ds-2">Devices conectados: <span className="text-ds-text-primary">0</span></p>
+        <p className="text-ds-caption text-ds-text-secondary mt-ds-2">Devices conectados: <span className="text-ds-text-primary">0</span></p>
       </div>
       <div className="rounded-ds-md border border-ds-border-default bg-ds-surface-panel p-ds-4 space-y-ds-3">
         <p className="text-[10px] ds-mono uppercase tracking-wider text-ds-text-muted">Skills</p>
@@ -449,7 +449,7 @@ function ProgressPanel() {
                   {earned
                     ? <Trophy className={cn('h-4 w-4', TONE_TEXT[a.tone])} />
                     : <Lock className="h-4 w-4 text-ds-text-disabled" />}
-                  <p className={cn('text-xs font-semibold', earned ? 'text-ds-text-primary' : 'text-ds-text-disabled')}>
+                  <p className={cn('text-ds-caption font-semibold', earned ? 'text-ds-text-primary' : 'text-ds-text-disabled')}>
                     {a.label}
                   </p>
                 </div>
@@ -488,7 +488,7 @@ function SettingsPanel({ mode }: { mode: 'design' | 'simulation' | 'real_operati
     <div className="space-y-ds-3 max-w-xl">
       <div className="rounded-ds-md border border-ds-border-default bg-ds-surface-panel p-ds-4">
         <p className="text-[10px] ds-mono uppercase tracking-wider text-ds-text-muted">WorkMode atual</p>
-        <p className="text-sm font-semibold text-ds-text-primary mt-1">{mode}</p>
+        <p className="text-ds-label font-semibold text-ds-text-primary mt-1">{mode}</p>
         <p className="text-[11px] text-ds-text-secondary mt-2">
           Para alternar para <span className="ds-mono uppercase">real_operation</span> use o painel Phase 2 em
           <span className="ds-mono"> /dev/golden-shows</span> (Hold-1.2s, exige grant fresco ≤5min).
@@ -497,7 +497,7 @@ function SettingsPanel({ mode }: { mode: 'design' | 'simulation' | 'real_operati
       </div>
       <div className="rounded-ds-md border border-status-warn/40 bg-ds-surface-panel p-ds-4">
         <p className="text-[10px] ds-mono uppercase tracking-wider text-status-warn">Real Operation</p>
-        <p className="text-sm font-semibold text-ds-text-primary mt-1 inline-flex items-center gap-1.5">
+        <p className="text-ds-label font-semibold text-ds-text-primary mt-1 inline-flex items-center gap-1.5">
           <Lock className="h-3.5 w-3.5" /> LOCKED
         </p>
         <p className="text-[11px] text-ds-text-secondary mt-2">Grant necessário (≤5min) — Hold-to-Confirm + dual sign-off.</p>

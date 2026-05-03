@@ -195,7 +195,9 @@ export default {
         "ds-h1":      ["var(--ds-font-h1)",      { lineHeight: "var(--ds-lh-tight)",  fontWeight: "700" }],
         "ds-h2":      ["var(--ds-font-h2)",      { lineHeight: "var(--ds-lh-tight)",  fontWeight: "600" }],
         "ds-h3":      ["var(--ds-font-h3)",      { lineHeight: "var(--ds-lh-tight)",  fontWeight: "500" }],
+        "ds-h4":      ["var(--ds-font-h4)",      { lineHeight: "var(--ds-lh-snug)",   fontWeight: "500" }],
         "ds-body":    ["var(--ds-font-body)",    { lineHeight: "var(--ds-lh-normal)", fontWeight: "400" }],
+        "ds-label":   ["var(--ds-font-label)",   { lineHeight: "var(--ds-lh-snug)",   fontWeight: "500" }],
         "ds-caption": ["var(--ds-font-caption)", { lineHeight: "var(--ds-lh-normal)", fontWeight: "400" }],
       },
       transitionTimingFunction: {

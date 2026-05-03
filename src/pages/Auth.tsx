@@ -173,7 +173,7 @@ export default function Auth() {
               ))}
             </div>
 
-            <p className="text-xs text-muted-foreground mt-3">
+            <p className="text-ds-caption text-muted-foreground mt-3">
               {isLogin ? 'Entre para acessar seus projetos' : 'Crie sua conta'}
             </p>
           </div>
@@ -185,7 +185,7 @@ export default function Auth() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.12)] rounded-xl h-10 text-sm focus:border-[hsl(32_100%_50%/0.35)] focus:ring-1 focus:ring-[hsl(32_100%_50%/0.15)]"
+              className="bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.12)] rounded-xl h-10 text-ds-label focus:border-[hsl(32_100%_50%/0.35)] focus:ring-1 focus:ring-[hsl(32_100%_50%/0.15)]"
             />
             <Input
               type="password"
@@ -194,9 +194,9 @@ export default function Auth() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.12)] rounded-xl h-10 text-sm focus:border-[hsl(32_100%_50%/0.35)] focus:ring-1 focus:ring-[hsl(32_100%_50%/0.15)]"
+              className="bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.12)] rounded-xl h-10 text-ds-label focus:border-[hsl(32_100%_50%/0.35)] focus:ring-1 focus:ring-[hsl(32_100%_50%/0.15)]"
             />
-            <Button type="submit" className="w-full h-10 rounded-xl font-semibold text-sm" style={{
+            <Button type="submit" className="w-full h-10 rounded-xl font-semibold text-ds-label" style={{
               background: 'linear-gradient(135deg, hsl(32 100% 50%), hsl(38 100% 55%))',
               color: 'hsl(220 20% 3%)',
             }} disabled={loading}>
@@ -215,7 +215,7 @@ export default function Auth() {
             onClick={handleGoogleSignIn}
             disabled={loading}
             variant="outline"
-            className="relative z-10 w-full h-10 rounded-xl font-medium text-sm bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.15)] hover:bg-[hsl(var(--surface-0)/0.9)] hover:border-[hsl(32_100%_50%/0.3)] gap-2"
+            className="relative z-10 w-full h-10 rounded-xl font-medium text-ds-label bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.15)] hover:bg-[hsl(var(--surface-0)/0.9)] hover:border-[hsl(32_100%_50%/0.3)] gap-2"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
               <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.4 14.6 2.5 12 2.5 6.8 2.5 2.6 6.7 2.6 12s4.2 9.5 9.4 9.5c5.4 0 9-3.8 9-9.2 0-.6-.1-1.1-.2-1.6H12z"/>
@@ -228,7 +228,7 @@ export default function Auth() {
             onClick={handleAppleSignIn}
             disabled={loading}
             variant="outline"
-            className="relative z-10 w-full h-10 rounded-xl font-medium text-sm bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.15)] hover:bg-[hsl(var(--surface-0)/0.9)] hover:border-[hsl(32_100%_50%/0.3)] gap-2"
+            className="relative z-10 w-full h-10 rounded-xl font-medium text-ds-label bg-[hsl(var(--surface-0)/0.6)] border-[hsl(32_100%_50%/0.15)] hover:bg-[hsl(var(--surface-0)/0.9)] hover:border-[hsl(32_100%_50%/0.3)] gap-2"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
               <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
@@ -236,7 +236,7 @@ export default function Auth() {
             Continuar com Apple
           </Button>
 
-          <p className="text-center text-xs text-muted-foreground relative z-10">
+          <p className="text-center text-ds-caption text-muted-foreground relative z-10">
             {isLogin ? 'Não tem conta? ' : 'Já tem conta? '}
             <button
               type="button"
