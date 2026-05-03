@@ -38,7 +38,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
-import SkyCanvas3D from '@/components/show3d/SkyCanvas3D';
+import { SkyCanvas2 } from '@/components/show3d/v2';
 import EffectLibrarySidebar, { FXK_EFFECT_DRAG_TYPE } from '@/components/editor/EffectLibrarySidebar';
 import { useProjectStore } from '@/store/useProjectStore';
 import { timelineClock } from '@/core/timeline/TimelineClock';
