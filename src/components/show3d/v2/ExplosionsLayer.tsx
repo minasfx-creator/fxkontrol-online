@@ -117,11 +117,15 @@ export function ExplosionsLayer() {
         blending: THREE.AdditiveBlending,
         vertexColors: true,
       }),
+    [],
+  );
+
   // Dispose deterministically on unmount (M5 disposal).
   useEffect(() => () => {
     geometry.dispose();
     material.dispose();
   }, [geometry, material]);
+
 
   useFrame(() => {
     const showTime = timeRef.current.time;
