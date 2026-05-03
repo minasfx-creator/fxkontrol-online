@@ -10,6 +10,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
+import { useProjectStore } from '@/store/useProjectStore';
 import { createVolumetricFogPlane } from '@/render_ultra/environment/volumetricFog';
 import CrowdSystem from './CrowdSystem';
 import StageFlameJets from './StageFlameJets';
