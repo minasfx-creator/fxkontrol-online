@@ -67,7 +67,7 @@ export function useFieldTestSession(): FieldTestSessionApi {
   }, []);
 
   const toggleArm = useCallback((source: string) => {
-    const armed = fieldTestEngine.session?.armed ?? false;
+    const armed = fieldTestEngine.currentSession?.armed ?? false;
     if (armed) {
       uiCommandGateway.disarm({ source });
       fieldTestEngine.disarm();
@@ -84,14 +84,14 @@ export function useFieldTestSession(): FieldTestSessionApi {
   }, []);
 
   const fire = useCallback((channel: number) => {
-    const s = fieldTestEngine.session;
+    const s = fieldTestEngine.currentSession;
     if (!s?.armed || s.role !== 'controller') return;
     fieldTestEngine.fire(channel);
     haptics.fire();
   }, []);
 
   const runBenchmark = useCallback(async (channels: number) => {
-    if (!fieldTestEngine.session?.armed) {
+    if (!fieldTestEngine.currentSession?.armed) {
       toast.error('Arme primeiro');
       return;
     }
