@@ -316,6 +316,7 @@ function OperatorPanel() {
           </div>
         ))}
       </div>
+      </div>
     </div>
   );
 }
