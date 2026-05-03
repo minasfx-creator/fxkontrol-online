@@ -17,6 +17,7 @@ import {
   clearExtensionHistory,
 } from '@/lib/aiShowBuilder/extensionHistoryStorage';
 import { serializeExtensionHistory, parseExtensionHistoryExport } from '@/lib/aiShowBuilder/extensionHistoryIO';
+import { extensionHighlight } from '@/lib/aiShowBuilder/extensionHighlight';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
