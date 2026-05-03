@@ -324,8 +324,9 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     setExtensionHistory([]);
     setRedoStack([]);
     setExpandedEntryIds(new Set());
+    if (plan?.id) clearExtensionHistory(plan.id);
     toast.success('Histórico de extensões limpo');
-  }, []);
+  }, [plan?.id]);
 
   const toggleEntryExpanded = useCallback((id: string) => {
     setExpandedEntryIds((prev) => {
