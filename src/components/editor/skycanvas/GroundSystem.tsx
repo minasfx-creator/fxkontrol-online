@@ -253,8 +253,9 @@ function GrassGround() {
     camPos: { value: new THREE.Vector3() },
   }), []);
 
-  useFrame(({ clock, camera }) => {
-    uniforms.time.value = clock.getElapsedTime();
+  useFrame(({ camera }) => {
+    // Deterministic clock: tied to timeline so terrain shimmer freezes on pause/scrub.
+    uniforms.time.value = useProjectStore.getState().currentTime;
     uniforms.camPos.value.copy(camera.position);
   });
 
