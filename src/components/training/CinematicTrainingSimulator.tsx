@@ -234,6 +234,7 @@ export default function CinematicTrainingSimulator({
         <fog attach="fog" args={['hsl(240 25% 5%)', 50, 150]} />
 
         <StageEnvironment3D />
+        <StageProps3D missionId={script.id} selectedId={selectedPropId} />
         <TechnicianCharacter targetPosition={null} isInteracting={false} onReachTarget={() => {}} />
         <PlacedEquipment3D items={placedItems} />
         <SnapPoints points={stageSnapPoints} placedItems={placedItems} selectedEquipment={selectedEquipment} onSnapClick={handleSnapClick} />
