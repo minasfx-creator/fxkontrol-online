@@ -64,14 +64,14 @@ export function LightPointsLayer() {
     return map;
   }, [cues, padIndexById]);
 
-  useFrame((state) => {
+  useFrame(() => {
     const geom = pointsRef.current?.geometry;
     if (!geom || count === 0) return;
 
     const showTime = timeRef.current.time;
-    // Wallclock drives pulse phase; frozen feel when paused happens
-    // automatically because activity flag depends on showTime.
-    const pulse = 0.5 + 0.5 * Math.sin(state.clock.getElapsedTime() * PULSE_HZ);
+    // Deterministic pulse phase: tied to timeline (showTime) so pulses freeze
+    // on pause and scrub coherently with the playhead.
+    const pulse = 0.5 + 0.5 * Math.sin(showTime * PULSE_HZ);
 
     const sizesArr = (geom.attributes.size as THREE.BufferAttribute).array as Float32Array;
     let dirty = false;

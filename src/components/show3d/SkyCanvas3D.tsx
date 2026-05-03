@@ -99,9 +99,10 @@ function LightPoint({ position, color, active }: LightPointProps) {
   const ref = useRef<THREE.Mesh>(null);
   const matRef = useRef<THREE.MeshBasicMaterial>(null);
 
-  useFrame((state) => {
+  useFrame(() => {
     if (!matRef.current || !ref.current) return;
-    const t = state.clock.getElapsedTime();
+    // Deterministic clock: tied to timeline so pulses freeze on pause/scrub.
+    const t = useProjectStore.getState().currentTime;
     const pulse = active ? 0.6 + 0.4 * Math.sin(t * 8) : 0.18;
     matRef.current.opacity = pulse;
     const scale = active ? 1 + 0.25 * Math.sin(t * 8) : 0.7;
