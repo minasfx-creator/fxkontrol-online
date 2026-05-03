@@ -361,6 +361,24 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     return () => window.removeEventListener('keydown', onKey);
   }, [plan, extensionHistory.length, redoStack.length, handleUndoExtension, handleRedoExtension]);
 
+  // Persistência leve por plan.id: sobrevive a reload/troca de aba.
+  // Hidrata ao trocar de plano; salva (debounced via React batching) a cada mudança.
+  useEffect(() => {
+    if (!plan?.id) return;
+    const persisted = loadExtensionHistory(plan.id);
+    if (persisted) {
+      setExtensionHistory(persisted.history);
+      setRedoStack(persisted.redo);
+    }
+    // Apenas quando o id do plano muda — não rehidrata em cada extensão.
+     
+  }, [plan?.id]);
+
+  useEffect(() => {
+    if (!plan?.id) return;
+    saveExtensionHistory(plan.id, { history: extensionHistory, redo: redoStack });
+  }, [plan?.id, extensionHistory, redoStack]);
+
 
 
   return (
