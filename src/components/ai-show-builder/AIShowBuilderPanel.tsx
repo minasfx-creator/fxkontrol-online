@@ -36,6 +36,7 @@ import {
   type AiShowPipelineModel,
 } from '@/lib/aiShowBuilder/pipelineModel';
 import ShowPlanReviewEditor from './ShowPlanReviewEditor';
+import ExtensionDiffStrip from './ExtensionDiffStrip';
 import ShowEngineHost from '@/components/show-engine/ShowEngineHost';
 import PromptBar from '@/components/show-engine/PromptBar';
 
