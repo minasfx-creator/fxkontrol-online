@@ -442,6 +442,21 @@ function DebriefScreen({
 
         <MissionDebriefPanel metrics={metrics} />
 
+        {achResult && (
+          <>
+            <AchievementsBadgeStrip
+              awarded={achResult.awarded}
+              newlyAwarded={achResult.newly}
+              newlyUnlockedMissions={achResult.newlyUnlockedMissions}
+            />
+            {achResult.bonusXP > 0 && (
+              <div className="text-center text-xs ds-mono uppercase tracking-wider text-status-warn">
+                +{achResult.bonusXP} XP de conquistas
+              </div>
+            )}
+          </>
+        )}
+
         <div className="rounded-lg border border-border/50 bg-card/50 p-4 space-y-2">
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-[hsl(28_100%_60%)]" />
