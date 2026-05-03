@@ -86,6 +86,30 @@ export const MISSION_SNAP_POINTS: Record<string, SnapPoint[]> = {
     { id: 'sp-5', position: [0, 12.9, -5.4], equipmentType: 'flamer', label: 'Flamer Central' },
     { id: 'sp-6', position: [0, 0.9, 6], equipmentType: 'cryo', label: 'Cryo Show' },
   ],
+  // ── v2.1 — novas missões ───────────────────────────────────────
+  'ground-support': [
+    { id: 'sp-1', position: [-10.5, 0.9, -5.4], equipmentType: 'truss-corner', label: 'GS Coluna FL' },
+    { id: 'sp-2', position: [10.5, 0.9, -5.4], equipmentType: 'truss-corner', label: 'GS Coluna FR' },
+    { id: 'sp-3', position: [-10.5, 0.9, 5.4], equipmentType: 'truss-corner', label: 'GS Coluna BL' },
+    { id: 'sp-4', position: [10.5, 0.9, 5.4], equipmentType: 'truss-corner', label: 'GS Coluna BR' },
+    { id: 'sp-5', position: [0, 12.9, -5.4], equipmentType: 'truss-straight', label: 'Header Frontal' },
+  ],
+  'ac-distro-check': [
+    { id: 'sp-1', position: [-13.5, 0.9, 7], equipmentType: 'par-can', label: 'PE Bomba Esq.' },
+    { id: 'sp-2', position: [13.5, 0.9, 7], equipmentType: 'par-can', label: 'PE Bomba Dir.' },
+    { id: 'sp-3', position: [0, 0.9, 7], equipmentType: 'moving-head', label: 'RCD Centro' },
+  ],
+  'nfpa-mortar-layout': [
+    { id: 'sp-1', position: [-12, 0.9, 8], equipmentType: 'mortar', label: 'Morteiro 3" L' },
+    { id: 'sp-2', position: [12, 0.9, 8], equipmentType: 'mortar', label: 'Morteiro 3" R' },
+    { id: 'sp-3', position: [0, 0.9, 9], equipmentType: 'mortar', label: 'Morteiro 3" C' },
+  ],
+  'rain-emergency': [
+    { id: 'sp-1', position: [-9, 12.9, -5.4], equipmentType: 'sparkular', label: 'Cobrir Sparkular L' },
+    { id: 'sp-2', position: [9, 12.9, -5.4], equipmentType: 'sparkular', label: 'Cobrir Sparkular R' },
+    { id: 'sp-3', position: [0, 12.9, -5.4], equipmentType: 'flamer', label: 'Desligar Flamer' },
+    { id: 'sp-4', position: [0, 0.9, 6], equipmentType: 'cryo', label: 'Reposicionar Cryo' },
+  ],
 };
 
 

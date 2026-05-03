@@ -1,19 +1,23 @@
 ---
-name: training-v2-cinematic
-description: Training mode v2 — GTA V-style staged missions, MetaHuman-style HumanoidCharacter NPCs, briefing/debrief cutscenes, MissionRunner FSM
+name: Training v2.1 Cinematic Roadie Academy
+description: GTA-V style staged missions + MetaHuman+ NPCs + cinematic camera director + ambient layer + GTA HUD (failed/passed/minimap/xp); 10 missions in 5 chapters; flag training_v2_cinematic
 type: feature
 ---
 
-Training mode 2.0 ("GTA V Roadie Edition"):
+**Catálogo**: 10 missões em 5 capítulos (Carga&Montagem, Energia&DMX, SFX&Pirotecnia, Caos ao Vivo, Show Completo). Cada missão tem `cinematicBeats[]`, `failureScenarios[]`, `ambient` preset, `voice intent` por linha.
 
-- **MissionScript** (src/components/training/missions/types.ts) substitui `Mission` flat: briefing → stages[] → debrief, com `NPCEvent`, `DialogueLine`, `realWorldFact` linkado a `MANUALS[]`.
-- **MissionRunner FSM** (src/components/training/missions/missionRunner.ts): pure state machine — `briefing`/`running`/`cutscene`/`complete`/`failed`, `tick(dt)`, `completeObjective(id)`, `reportSafetyViolation()`, `reset()`. Stars calculados via tempo restante − violações.
-- **6 scripts** em MISSION_SCRIPTS (tutorial-truss, sfx-setup, dmx-config, drunk-invasion, producer-late, full-reveillon) com stages segmentados — snap points revelados por estágio (não tudo de uma vez).
-- **HumanoidCharacter** (src/components/training/humanoid/HumanoidCharacter.tsx): MetaHuman stand-in em R3F — proporções 7.5-head, MeshPhysicalMaterial PBR (clearcoat skin + sheen tecido), eye-tracking, jaw-open lipsync proxy, idle blend (breath+sway+gesticulating/wobbly/pacing/alert/still), rim light em closeup.
-- **NPC catalog** (src/components/training/npcs/npcCatalog.ts): 9 personas — roadie-veterano, produtor-ansioso, cliente-indeciso, convidado-bebado, seguranca, bombeiro-fiscal, dancarino-passagem, tecnica-som, eletricista-radio. Cada persona com bodyType/skinTone/hair/outfit/idleProfile/voiceProfile/subtitleColor.
-- **HUD GTA-style** (src/components/training/hud/CinematicHUD.tsx): CinematicLetterbox (12vh top/bottom), MissionTriangle (chapter+title+stage X/Y), DialogueSubtitle (typewriter 22ms/char + ESPAÇO skip + speakerName colorido), ScorePopup, StarRating.
-- **CinematicTrainingSimulator** (src/components/training/CinematicTrainingSimulator.tsx): wrapper que substitui o legacy quando `featureFlags.training_v2_cinematic` ativo. DebriefScreen com stars + takeaways técnicos + replay.
-- **Feature flag**: `training_v2_cinematic` (default ON em src/lib/featureFlags.ts) — Training.tsx faz fallback para legacy `TrainingSimulator` se script não existe ou flag OFF.
-- **Wire-up**: src/pages/Training.tsx detecta script via `getMissionScript(activeMission.id)`.
-- **Safety**: zero impacto em workMode/SafetyStateMachine/CommandBus — pure simulation, nenhum hardware armed/fired.
-- **Tests**: 15 testes em src/components/training/missions/__tests__/missionRunner.test.ts (FSM advance, fail conditions, idempotência, catalog integrity).
+**FSM (`missionRunner.ts`)**: agora emite eventos `stage:start`, `stage:complete`, `objective:revealed`, `objective:complete`, `beat:start`, `mission:complete`, `mission:failed`, `safety:violation`. 5 violações = fail automático. `onEvent()` separado de `subscribe()`.
+
+**HumanoidCharacter v2.1**: blink (3-6s rand 100ms), brow micro-expressions por intent, hand-IK pointing quando `pointAt` setado, foot grounding (sapatos), pseudo-cloth sway no accent, props (helmet/clipboard/walkie/headphones/visor/megaphone/tool-belt), 3 novos cabelos (crew/ponytail/fauxhawk), 5 novos outfits.
+
+**NPC catalog**: 14 personas (9 originais + paulo eletricista, dj-residente, cliente-corporativo, seguranca-feminina, bombeiro-jovem) com `defaultIntent` e `props[]`.
+
+**Camera**: `CinematicCameraDirector` lerpa entre OrbitControls e shots de `SHOT_LIBRARY` (8 shots: wide-establishing, medium-2shot, OTS, close-up-reaction, crane-down, dolly-in, low-angle-hero, orbit-slow). Disabled OrbitControls enquanto beat ativo. Resolve focus via `npcId` ou `focus` posição.
+
+**Ambient**: `ambientChoreographer.pickAmbientHints({preset})` deterministico (calm=1/busy=3/frantic=5). `AmbientNPCLayer` walks NPCs por waypoints loop em background, exclude lista de NPCs scripted.
+
+**HUD GTA**: MissionTriangle + DialogueSubtitle (typewriter+SPACE skip) + StarRating + MiniMap (top-down SVG, NPC dots, snap points pendentes) + XPPopupLayer (floating +N XP fade-up) + MissionFailedScreen ("WASTED" red overlay com flavor+lesson) + MissionPassedFlash (golden sweep entre stages).
+
+**Safety**: zero impacto em CommandBus / SafetyStateMachine / FieldBus / workMode. Tudo em `simulation`. 
+
+**Tests**: 25/25 (3 files): missionRunner.test (15) + missionScripts.coverage.test (7) + ambientChoreographer.test (3).

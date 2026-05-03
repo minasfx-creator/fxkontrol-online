@@ -1,7 +1,8 @@
 /**
- * Training v2 — Cinematic Mission types.
+ * Training v2.1 — Cinematic Mission types.
  *
- * Pure data. Zero THREE/React imports. Drives MissionRunner FSM.
+ * Pure data. Zero THREE/React imports. Drives MissionRunner FSM
+ * + CinematicCameraDirector + AmbientChoreographer.
  */
 
 export type StageKind =
@@ -16,109 +17,128 @@ export type StageKind =
 
 export type DifficultyTier = 'easy' | 'medium' | 'hard' | 'legendary';
 
+export type DialogueIntent = 'urgent' | 'calm' | 'excited' | 'serious' | 'sarcastic';
+
 export interface DialogueLine {
-  /** NPC catalog id (see npcs/npcCatalog.ts). */
   npcId: string;
-  /** Line of speech. Plain text (no markdown). */
   text: string;
-  /** Display duration in ms. Auto-derived from text length if omitted. */
   durationMs?: number;
+  intent?: DialogueIntent;
+  /** Optional world point the NPC will point at while speaking. */
+  pointAt?: [number, number, number];
 }
 
 export interface NPCEvent {
   kind: 'spawn' | 'despawn' | 'speak' | 'move';
   npcId: string;
-  /** For 'speak'. */
   line?: string;
-  /** For 'move' / 'spawn'. World position (StageEnvironment3D space). */
+  intent?: DialogueIntent;
   position?: [number, number, number];
 }
 
 export interface StageObjective {
-  /** Snap point id (matches MISSION_SNAP_POINTS). */
   snapPointId?: string;
-  /** Required equipment id. */
   equipmentId?: string;
-  /** Free-form objective label (when not a snap-point task). */
   label: string;
-  /** Real-world fact shown in the debrief. */
   realWorldFact?: string;
-  /** Manual reference id (links to MANUALS array in Training.tsx). */
+  /** Manual id (matches MANUALS[] in Training.tsx). */
   manualRef?: string;
+}
+
+export type CinematicShot =
+  | 'wide-establishing'
+  | 'medium-2shot'
+  | 'over-the-shoulder'
+  | 'close-up-reaction'
+  | 'crane-down'
+  | 'dolly-in'
+  | 'low-angle-hero'
+  | 'orbit-slow';
+
+export interface CinematicBeat {
+  id: string;
+  /** Triggers when this stage starts. Use 'briefing' or 'debrief' for global beats. */
+  triggerOn: 'briefing' | 'stage-start' | 'stage-complete' | 'debrief';
+  /** Stage id this beat targets (ignored for briefing/debrief). */
+  stageId?: string;
+  shot: CinematicShot;
+  /** ms — defaults to shot library duration. */
+  durationMs?: number;
+  /** Focus target world position (overrides shot default). */
+  focus?: [number, number, number];
+  /** Optional NPC id used to anchor the shot (e.g. close-up-reaction). */
+  npcId?: string;
+}
+
+export interface FailureScenario {
+  /** Why the mission failed. */
+  trigger: 'timeout' | 'safety-violations-exceeded' | 'wrong-order' | 'manual';
+  title: string;
+  /** GTA-V "Wasted"-style line. */
+  flavor: string;
+  /** Tactical lesson shown post-fail. */
+  lesson: string;
 }
 
 export interface MissionStage {
   id: string;
   kind: StageKind;
   title: string;
-  /** Hint shown if player idles >15s. */
   hint?: string;
-  /** Soft time budget for star scoring. Hard fail = mission timeLimit. */
   budgetSeconds?: number;
   objectives: StageObjective[];
-  /** NPCs entering / speaking when stage starts. */
   onEnter?: NPCEvent[];
-  /** NPCs leaving / final lines when stage completes. */
   onComplete?: NPCEvent[];
-  /** Pure dialogue stages skip placement. */
+  /** Pure dialogue stages skip placement; auto-advance on last line. */
   dialogue?: DialogueLine[];
+  /** Manual reference key shown on the stage card. */
+  manualRef?: string;
 }
 
 export interface MissionScoreRules {
-  /** Base XP awarded on completion. */
   baseXP: number;
-  /** XP per second remaining at end. */
   timeBonusPerSecond: number;
-  /** Penalty per safety violation (NPC contact, wrong order, etc). */
   safetyPenalty: number;
-  /** Max stars (typically 5). */
   maxStars: number;
 }
+
+export type AmbientPreset = 'calm' | 'busy' | 'frantic';
 
 export interface MissionScript {
   id: string;
   chapter: string;
   title: string;
-  /** One-line synopsis shown in mission card. */
   synopsis: string;
-  /** Mission scenario flavour (briefing context). */
   scenario: string;
   difficulty: DifficultyTier;
-  /** Hard time limit (mission fails on 0). */
   timeLimitSeconds: number;
-  /** Equipment ids available in tray. */
   equipment: string[];
   stages: MissionStage[];
   briefing: {
-    /** NPC who delivers the briefing. */
     npcId: string;
     lines: DialogueLine[];
   };
   debrief: {
-    /** Title shown over star rating. */
     title: string;
-    /** Bullet takeaways shown post-mission. */
     takeaways: string[];
   };
   scoreRules: MissionScoreRules;
-  /** Whether mission starts unlocked or requires progression. */
   locked: boolean;
+  /** Cinematic camera beats — empty array = pure player POV. */
+  cinematicBeats?: CinematicBeat[];
+  /** Ambient NPC density preset. */
+  ambient?: AmbientPreset;
+  /** Mission-specific failure scenarios. */
+  failureScenarios?: FailureScenario[];
 }
 
 export interface MissionRuntimeState {
   scriptId: string;
-  /** Index in script.stages. */
   stageIndex: number;
-  /** Snap points completed in current stage. */
   completedObjectiveIds: ReadonlySet<string>;
-  /** Score accumulated. */
   score: number;
-  /** Safety violations counted. */
   safetyViolations: number;
-  /** Total time elapsed (seconds). */
   elapsedSeconds: number;
-  /** Time remaining (seconds). */
   remainingSeconds: number;
-  /** 'briefing' | 'running' | 'cutscene' | 'complete' | 'failed' */
   phase: 'briefing' | 'running' | 'cutscene' | 'complete' | 'failed';
 }
