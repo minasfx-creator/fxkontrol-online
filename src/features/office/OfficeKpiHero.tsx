@@ -70,16 +70,16 @@ export default function OfficeKpiHero() {
   useEffect(() => {
     const recompute = () => {
       try {
-        const list = deviceAggregator.list?.() ?? [];
-        setDevicesOnline(list.filter((d: any) => d?.online).length);
+        const list = deviceAggregator.getDevices();
+        setDevicesOnline(list.filter((d) => d.online).length);
       } catch {
         setDevicesOnline(0);
       }
     };
     recompute();
-    const unsub = deviceAggregator.watch?.(recompute);
+    const unsub = deviceAggregator.watch(recompute);
     return () => {
-      try { unsub?.(); } catch { /* noop */ }
+      try { unsub(); } catch { /* noop */ }
     };
   }, []);
 
