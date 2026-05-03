@@ -202,6 +202,7 @@ export default function Strategy() {
         <section className="rounded-md border border-border bg-background/20 p-3 md:p-4">
           {tab === 'assets' && <AssetLibrary onSelectionChange={setSelectedAssetIds} />}
           {tab === 'maturity' && <MaturityMatrixPanel />}
+          {tab === 'golive' && <GoLiveCenterPanel />}
           {tab === 'ai' && <AIChoreographyStudioStub />}
           {tab === 'docktwin' && <DockTwinPilotPanel />}
           {tab === 'approval' && <ClientApprovalPanel />}
