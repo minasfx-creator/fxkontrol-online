@@ -24,6 +24,7 @@ import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { useImperativeTimeout } from '@/hooks/useInterval';
 import FXK16FieldTestPanel from '@/components/field/FXK16FieldTestPanel';
+import { useFieldTestSession } from '@/hooks/useFieldTestSession';
 import FXK16FieldSettingsPanel from '@/components/field/FXK16FieldSettingsPanel';
 import { FXK16ConnectionPanel } from '@/components/editor/live-firing/FXK16ConnectionPanel';
 
@@ -1403,34 +1404,21 @@ function ModuleConsole({ session, onStop }: { session: FieldTestSession; onStop:
  */
 function FieldTestMobile() {
   const navigate = useNavigate();
-  const [session, setSession] = useState<FieldTestSession | null>(null);
+  const { session, start, stop } = useFieldTestSession();
 
-  useEffect(() => {
-    const unsub = fieldTestEngine.subscribe(setSession);
-    return () => { unsub(); };
-  }, []);
-
-  const handleStart = useCallback(async (code: string, role: DeviceRole, transport: TestTransport) => {
-    const ok = await fieldTestEngine.start(code, role, transport);
-    if (ok) {
-      haptics.success();
-      toast.success(`Sessão iniciada como ${role.toUpperCase()}`);
-    } else {
-      toast.error('Falha ao iniciar sessão');
-    }
-  }, []);
-
-  const handleStop = useCallback(async () => {
-    await fieldTestEngine.stop();
-    toast.info('Sessão encerrada');
-  }, []);
+  const handleStart = useCallback(
+    async (code: string, role: DeviceRole, transport: TestTransport) => {
+      await start(code, role, transport);
+    },
+    [start],
+  );
 
   if (session?.role === 'controller') {
-    return <XL4ControllerConsole session={session} onStop={handleStop} />;
+    return <XL4ControllerConsole session={session} onStop={stop} />;
   }
 
   if (session?.role === 'module') {
-    return <ModuleConsole session={session} onStop={handleStop} />;
+    return <ModuleConsole session={session} onStop={stop} />;
   }
 
   return (
