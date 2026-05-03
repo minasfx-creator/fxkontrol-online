@@ -216,6 +216,17 @@ export default function HumanoidCharacter({
     }
   }, [voiceLineId]);
 
+  // (Re)start gesture playback when prop changes.
+  useEffect(() => {
+    if (gesture && gesture !== 'idle') {
+      gestureClock.current = {
+        kind: gesture,
+        startedAt: performance.now(),
+        duration: gestureDurationMs,
+      };
+    }
+  }, [gesture, gestureDurationMs]);
+
   useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime + startSeed;
     const micro = microExpressions && intent ? INTENT_MICRO[intent] : null;
