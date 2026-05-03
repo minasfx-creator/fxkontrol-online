@@ -182,12 +182,13 @@ export default function CinematicTrainingSimulator({
     runner.reset();
     setPlacedItems([]); setBriefingIndex(0); directorRef.current?.clear(); briefingBeatsFired.current = false;
     setXpPopups([]); setPassedFlash(false);
+    setAttempts([]); missionStartRef.current = Date.now();
   };
 
   // Debrief
   if (snap.phase === 'complete') {
     return (
-      <DebriefScreen script={script} snap={snap} onContinue={() => onComplete(snap.score)} onReplay={replay} />
+      <DebriefScreen script={script} snap={snap} attempts={attempts} onContinue={() => onComplete(snap.score)} onReplay={replay} />
     );
   }
 
