@@ -135,6 +135,14 @@ export interface HumanoidCharacterProps {
    * microexpression "accent" (eyebrow flick + jaw kick) for naturalism.
    */
   voiceLineId?: string | number | null;
+  /** Discrete gesture played once. Changing this prop replays it. */
+  gesture?: GestureKind;
+  /** Gesture duration in ms (default 1400). */
+  gestureDurationMs?: number;
+  /** World-space target position to walk toward. Null = stand still. */
+  walkTo?: [number, number, number] | null;
+  /** Walking speed in m/s (default 1.4). */
+  walkSpeed?: number;
 }
 
 export default function HumanoidCharacter({
