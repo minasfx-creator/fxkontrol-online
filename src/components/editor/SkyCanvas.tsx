@@ -2028,8 +2028,15 @@ export default function SkyCanvas() {
         shadows={isLowTierMobile ? false : { type: THREE.BasicShadowMap, enabled: true }}
         gl={{
           antialias: !isLowTierMobile,
-          toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.2,
+          // ── BUG-FIX (viewport preto no desktop): double tone-mapping. ──
+          // O EffectComposer (PostProcessing.tsx) já aplica ACES/AGX como passe
+          // final. Quando o composer mounted (~1.2s após o boot) o segundo
+          // tonemap do renderer esmagava o output para preto. Mantemos
+          // NoToneMapping aqui — o composer é a única autoridade de tonemap.
+          // Bootstrap floor + sky dome usam toneMapped={false}, então
+          // permanecem visíveis durante a janela 0–1.2s antes do composer.
+          toneMapping: THREE.NoToneMapping,
+          toneMappingExposure: 1.0,
           powerPreference: isLowTierMobile ? 'default' : 'high-performance',
           alpha: false,
           stencil: false,
