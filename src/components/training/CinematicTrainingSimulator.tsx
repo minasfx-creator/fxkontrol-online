@@ -10,6 +10,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import StageEnvironment3D from './StageEnvironment3D';
+import StageProps3D from './stageProps/StageProps3D';
+import StagePropsEditorPanel from './stageProps/StagePropsEditorPanel';
 import TechnicianCharacter from './TechnicianCharacter';
 import PlacedEquipment3D from './PlacedEquipment3D';
 import SnapPoints from './SnapPoints';
@@ -69,6 +71,7 @@ export default function CinematicTrainingSimulator({
   const missionStartRef = useRef<number>(Date.now());
   const [attempts, setAttempts] = useState<PlacementAttempt[]>([]);
   const [npcPoses, setNpcPoses] = useState<NPCPoseMap>({});
+  const [selectedPropId, setSelectedPropId] = useState<string | null>(null);
   const choreographer = useMemo(
     () => createNpcChoreographer({ resolveAnchor: (id) => getNPC(id)?.defaultPosition ?? null }),
     [],
@@ -231,6 +234,7 @@ export default function CinematicTrainingSimulator({
         <fog attach="fog" args={['hsl(240 25% 5%)', 50, 150]} />
 
         <StageEnvironment3D />
+        <StageProps3D missionId={script.id} selectedId={selectedPropId} />
         <TechnicianCharacter targetPosition={null} isInteracting={false} onReachTarget={() => {}} />
         <PlacedEquipment3D items={placedItems} />
         <SnapPoints points={stageSnapPoints} placedItems={placedItems} selectedEquipment={selectedEquipment} onSnapClick={handleSnapClick} />
@@ -297,6 +301,12 @@ export default function CinematicTrainingSimulator({
           totalStages={snap.totalStages}
         />
       )}
+
+      <StagePropsEditorPanel
+        missionId={script.id}
+        selectedId={selectedPropId}
+        onSelectedIdChange={setSelectedPropId}
+      />
 
       <EquipmentTray
         equipment={missionEquipment}
