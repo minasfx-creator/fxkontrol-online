@@ -494,16 +494,24 @@ export default function HumanoidCharacter({
 
           {/* Helmet */}
           {props.includes('helmet') && (
-            <mesh position={[0, HEAD_H * 0.4, 0]} castShadow>
+            <mesh
+              position={[0, HEAD_H * 0.4, 0]}
+              scale={po.helmetScale ?? 1}
+              castShadow
+            >
               <sphereGeometry args={[HEAD_H * 0.7, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
-              <meshPhysicalMaterial color="#ffcf2e" roughness={0.4} clearcoat={0.6} />
+              <meshPhysicalMaterial color={po.helmetColor ?? '#ffcf2e'} roughness={0.4} clearcoat={0.6} />
             </mesh>
           )}
           {/* Visor (sunglasses) */}
           {props.includes('visor') && (
             <mesh position={[0, HEAD_H * 0.05, HEAD_H * 0.55]}>
               <boxGeometry args={[HEAD_H * 0.95, HEAD_H * 0.18, 0.012]} />
-              <meshPhysicalMaterial color="#0a0a0a" roughness={0.1} clearcoat={1.0} />
+              <meshPhysicalMaterial
+                color={po.visorTint ?? '#0a0a0a'}
+                roughness={0.1}
+                clearcoat={po.visorClearcoat ?? 1.0}
+              />
             </mesh>
           )}
           {/* Headphones */}
@@ -511,15 +519,15 @@ export default function HumanoidCharacter({
             <>
               <mesh position={[0, HEAD_H * 0.45, 0]}>
                 <torusGeometry args={[HEAD_H * 0.55, 0.012, 6, 14, Math.PI]} />
-                <meshPhysicalMaterial color="#0d0d0d" roughness={0.5} />
+                <meshPhysicalMaterial color={po.headphonesColor ?? '#0d0d0d'} roughness={0.5} />
               </mesh>
               <mesh position={[-HEAD_H * 0.55, HEAD_H * 0.05, 0]}>
                 <sphereGeometry args={[HEAD_H * 0.18, 10, 10]} />
-                <meshPhysicalMaterial color="#0d0d0d" roughness={0.5} />
+                <meshPhysicalMaterial color={po.headphonesColor ?? '#0d0d0d'} roughness={0.5} />
               </mesh>
               <mesh position={[HEAD_H * 0.55, HEAD_H * 0.05, 0]}>
                 <sphereGeometry args={[HEAD_H * 0.18, 10, 10]} />
-                <meshPhysicalMaterial color="#0d0d0d" roughness={0.5} />
+                <meshPhysicalMaterial color={po.headphonesColor ?? '#0d0d0d'} roughness={0.5} />
               </mesh>
             </>
           )}
