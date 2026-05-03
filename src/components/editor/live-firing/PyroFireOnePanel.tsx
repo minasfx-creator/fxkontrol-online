@@ -1633,14 +1633,11 @@ export default function PyroFireOnePanel({
       {renderFileInput()}
       {renderHeader()}
       {renderConnectionBar()}
-      {/* FXK16 — 16ch ESP32-S3 relay quick-connect (USB / BLE).
-          Singleton useFXK16Bridge: this card and the /field#fxk16 tab share
-          the exact same link. Connecting in either place reflects in both. */}
-      <div className={cn(sz === 'xl' ? 'px-6 py-2' : sz === 'fs' ? 'px-4 py-1.5' : 'px-2 py-1')}>
-        <FXK16ConnectionPanel compact={sz !== 'xl'} />
-        <div className="mt-1.5">
-          <FXK16StatusBar compact />
-        </div>
+      {/* FXK16 status (read-only): connection card lives in /field#fxk16 by
+          consolidated decision — duplicating it here caused two bridges to
+          coexist and confused the launcher. We still surface live status. */}
+      <div className={cn(sz === 'xl' ? 'px-6 py-1.5' : sz === 'fs' ? 'px-4 py-1' : 'px-2 py-1')}>
+        <FXK16StatusBar compact />
       </div>
       {renderMasterArm()}
       {renderStatusStrip()}
@@ -1649,7 +1646,9 @@ export default function PyroFireOnePanel({
       {renderModuleInfo()}
       <ScrollArea className="flex-1">{renderModeContent()}</ScrollArea>
       {renderModuleScanner()}
-      {renderPanic()}
+      {/* PANIC bar removed — LiveFiringPanel chrome owns the unified PANIC
+          and routes through uiCommandGateway. Standalone callers should use
+          handlePanic prop themselves if they wrap this panel. */}
     </div>
   );
 }
