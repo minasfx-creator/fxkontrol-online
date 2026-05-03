@@ -64,8 +64,19 @@ export default function CinematicTrainingSimulator({
   const [xpPopups, setXpPopups] = useState<XPPopup[]>([]);
   const [passedFlash, setPassedFlash] = useState(false);
   const tickRef = useRef<number | null>(null);
+  const [npcPoses, setNpcPoses] = useState<NPCPoseMap>({});
+  const choreographer = useMemo(
+    () => createNpcChoreographer({ resolveAnchor: (id) => getNPC(id)?.defaultPosition ?? null }),
+    [],
+  );
 
   useEffect(() => runner.subscribe(setSnap), [runner]);
+
+  // Tick choreographer snapshot ~10Hz so gestures decay back to idle.
+  useEffect(() => {
+    const id = window.setInterval(() => setNpcPoses(choreographer.snapshot()), 100);
+    return () => window.clearInterval(id);
+  }, [choreographer]);
 
   // Event stream → cinematic beats + xp popups + stage flash
   useEffect(() => {
