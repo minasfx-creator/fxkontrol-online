@@ -1,21 +1,41 @@
 /**
  * Training v2.1 — CinematicCameraDirector.
  *
- * Subscribes to the MissionRunner event stream. When a `beat:start`
- * fires, it pushes a queued shot. The camera lerps from the player's
- * OrbitControls position to the shot, holds for `durationMs`, then
- * releases back to the player.
+ * Imperative camera director driven by MissionRunner cinematic beats.
  *
- * Mounted INSIDE the existing <Canvas> (sibling to OrbitControls).
- * Disables OrbitControls while a shot is active by toggling its
- * `enabled` prop via the `onActiveChange` callback on the parent.
+ * Pipeline:
+ *   runner.onEvent('beat:start') → director.enqueue(beat)
+ *
+ * Behaviour:
+ *   • Each enqueued beat reserves a slot in a FIFO queue (no dedup —
+ *     beats with same id can stack legitimately).
+ *   • While the head beat is active, the camera lerps from its current
+ *     pose toward the shot's offset/lookOffset around the resolved
+ *     focus, with FOV interpolation. Ease is shot-defined.
+ *   • When the queue drains, the director records a return pose
+ *     (the OrbitControls target snapshot it captured) and lerps back
+ *     to it for `RETURN_MS`, then releases full control to OrbitControls.
+ *   • `onActiveChange(true)` fires the moment the first beat becomes
+ *     head (so parent can disable OrbitControls). `onActiveChange(false)`
+ *     fires AFTER the return-lerp completes — never mid-flight.
+ *
+ * Mounted INSIDE <Canvas>, sibling to <OrbitControls />.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { CinematicBeat } from '../missions/types';
 import { SHOT_LIBRARY } from './shotLibrary';
+
+const RETURN_MS = 650;
 
 interface QueueItem {
   beat: CinematicBeat;
@@ -23,82 +43,151 @@ interface QueueItem {
   endsAt: number;
 }
 
+export interface CinematicCameraDirectorHandle {
+  enqueue: (beat: CinematicBeat) => void;
+  /** Drop everything; release control immediately on next frame. */
+  clear: () => void;
+  /** True while a beat is active OR the return-lerp is running. */
+  isActive: () => boolean;
+}
+
 interface Props {
-  /** Pulled from runner.onEvent('beat:start'). */
-  pendingBeat: CinematicBeat | null;
-  /** Resolve world position of an NPC by id (for close-up shots). */
+  /** Resolve world position of an NPC by id (close-up shots). */
   resolveNpcPosition?: (npcId: string) => [number, number, number] | null;
-  /** Notify parent so it can disable OrbitControls. */
+  /** Notify parent so it can disable OrbitControls / dim HUD. */
   onActiveChange?: (active: boolean) => void;
+  /** Notify per-beat lifecycle (debug / HUD letterbox sync). */
+  onBeatEnd?: (beat: CinematicBeat) => void;
 }
 
-export default function CinematicCameraDirector({
-  pendingBeat,
-  resolveNpcPosition,
-  onActiveChange,
-}: Props) {
-  const camera = useThree((s) => s.camera);
-  const queue = useRef<QueueItem[]>([]);
-  const lastBeatId = useRef<string | null>(null);
-  const [active, setActive] = useState(false);
-  const targetPos = useMemo(() => new THREE.Vector3(), []);
-  const targetLook = useMemo(() => new THREE.Vector3(), []);
-  const tmpFocus = useMemo(() => new THREE.Vector3(), []);
+const CinematicCameraDirector = forwardRef<CinematicCameraDirectorHandle, Props>(
+  function CinematicCameraDirector({ resolveNpcPosition, onActiveChange, onBeatEnd }, ref) {
+    const camera = useThree((s) => s.camera);
+    const queue = useRef<QueueItem[]>([]);
+    const [active, setActive] = useState(false);
+    const activeRef = useRef(false);
+    const targetPos = useMemo(() => new THREE.Vector3(), []);
+    const targetLook = useMemo(() => new THREE.Vector3(), []);
+    const tmpFocus = useMemo(() => new THREE.Vector3(), []);
+    const lookCurrent = useMemo(() => new THREE.Vector3(), []);
+    const returnPos = useMemo(() => new THREE.Vector3(), []);
+    const returnLook = useMemo(() => new THREE.Vector3(), []);
+    const returnFov = useRef<number | null>(null);
+    const returnStartedAt = useRef<number | null>(null);
+    const captured = useRef(false);
 
-  // Push beat into queue when prop changes
-  useEffect(() => {
-    if (!pendingBeat || pendingBeat.id === lastBeatId.current) return;
-    lastBeatId.current = pendingBeat.id;
-    const def = SHOT_LIBRARY[pendingBeat.shot];
-    const now = performance.now();
-    const dur = pendingBeat.durationMs ?? def.durationMs;
-    queue.current.push({ beat: pendingBeat, startedAt: now, endsAt: now + dur });
-  }, [pendingBeat]);
+    useImperativeHandle(ref, () => ({
+      enqueue(beat: CinematicBeat) {
+        const def = SHOT_LIBRARY[beat.shot] ?? SHOT_LIBRARY['medium-2shot'];
+        const now = performance.now();
+        const dur = beat.durationMs ?? def.durationMs;
+        queue.current.push({ beat, startedAt: now, endsAt: now + dur });
+      },
+      clear() {
+        queue.current.length = 0;
+        returnStartedAt.current = null;
+        captured.current = false;
+      },
+      isActive() {
+        return activeRef.current;
+      },
+    }), []);
 
-  useFrame(() => {
-    const now = performance.now();
-    // Drop expired
-    while (queue.current.length && queue.current[0].endsAt <= now) {
-      queue.current.shift();
-    }
-    const head = queue.current[0];
-    const isActive = !!head;
-    if (isActive !== active) {
-      setActive(isActive);
-      onActiveChange?.(isActive);
-    }
-    if (!head) return;
+    const setActiveBoth = (next: boolean) => {
+      activeRef.current = next;
+      setActive(next);
+      onActiveChange?.(next);
+    };
 
-    const def = SHOT_LIBRARY[head.beat.shot];
-    // Resolve focus
-    if (head.beat.focus) {
-      tmpFocus.set(head.beat.focus[0], head.beat.focus[1], head.beat.focus[2]);
-    } else if (head.beat.npcId && resolveNpcPosition) {
-      const p = resolveNpcPosition(head.beat.npcId);
-      if (p) tmpFocus.set(p[0], p[1], p[2]);
-      else tmpFocus.set(0, 1.5, 0);
-    } else {
-      tmpFocus.set(0, 1.5, 0);
-    }
+    useEffect(() => {
+      // Sync ref with state (defensive — should already match).
+      activeRef.current = active;
+    }, [active]);
 
-    targetPos.set(
-      tmpFocus.x + def.offset[0],
-      tmpFocus.y + def.offset[1],
-      tmpFocus.z + def.offset[2],
-    );
-    targetLook.set(
-      tmpFocus.x + def.lookOffset[0],
-      tmpFocus.y + def.lookOffset[1],
-      tmpFocus.z + def.lookOffset[2],
-    );
-    camera.position.lerp(targetPos, def.ease);
-    camera.lookAt(targetLook);
-    if ('fov' in camera && (camera as THREE.PerspectiveCamera).fov !== def.fov) {
-      const pc = camera as THREE.PerspectiveCamera;
-      pc.fov = THREE.MathUtils.lerp(pc.fov, def.fov, def.ease);
-      pc.updateProjectionMatrix();
-    }
-  });
+    useFrame(() => {
+      const now = performance.now();
 
-  return null;
-}
+      // Expire & emit beat:end
+      while (queue.current.length && queue.current[0].endsAt <= now) {
+        const finished = queue.current.shift()!;
+        try { onBeatEnd?.(finished.beat); } catch { /* swallow */ }
+      }
+
+      const head = queue.current[0];
+
+      // ── Active beat path ───────────────────────────────────
+      if (head) {
+        if (!activeRef.current) {
+          // Capture the player's pose so we can restore later.
+          returnPos.copy(camera.position);
+          camera.getWorldDirection(lookCurrent);
+          returnLook.copy(camera.position).add(lookCurrent.multiplyScalar(8));
+          returnFov.current = (camera as THREE.PerspectiveCamera).fov ?? 50;
+          captured.current = true;
+          setActiveBoth(true);
+        }
+
+        const def = SHOT_LIBRARY[head.beat.shot] ?? SHOT_LIBRARY['medium-2shot'];
+
+        // Resolve focus
+        if (head.beat.focus) {
+          tmpFocus.set(head.beat.focus[0], head.beat.focus[1], head.beat.focus[2]);
+        } else if (head.beat.npcId && resolveNpcPosition) {
+          const p = resolveNpcPosition(head.beat.npcId);
+          if (p) tmpFocus.set(p[0], p[1], p[2]);
+          else tmpFocus.set(0, 1.5, 0);
+        } else {
+          tmpFocus.set(0, 1.5, 0);
+        }
+
+        targetPos.set(
+          tmpFocus.x + def.offset[0],
+          tmpFocus.y + def.offset[1],
+          tmpFocus.z + def.offset[2],
+        );
+        targetLook.set(
+          tmpFocus.x + def.lookOffset[0],
+          tmpFocus.y + def.lookOffset[1],
+          tmpFocus.z + def.lookOffset[2],
+        );
+        camera.position.lerp(targetPos, def.ease);
+        camera.lookAt(targetLook);
+        if ('fov' in camera) {
+          const pc = camera as THREE.PerspectiveCamera;
+          if (pc.fov !== def.fov) {
+            pc.fov = THREE.MathUtils.lerp(pc.fov, def.fov, def.ease);
+            pc.updateProjectionMatrix();
+          }
+        }
+        return;
+      }
+
+      // ── Return path (queue drained) ────────────────────────
+      if (activeRef.current && captured.current) {
+        if (returnStartedAt.current === null) returnStartedAt.current = now;
+        const elapsed = now - returnStartedAt.current;
+        const t = Math.min(1, elapsed / RETURN_MS);
+        // Smooth (cosine ease-in-out)
+        const k = 0.5 - 0.5 * Math.cos(Math.PI * t);
+        camera.position.lerp(returnPos, Math.min(1, k * 0.85));
+        camera.lookAt(returnLook);
+        if ('fov' in camera && returnFov.current != null) {
+          const pc = camera as THREE.PerspectiveCamera;
+          pc.fov = THREE.MathUtils.lerp(pc.fov, returnFov.current, Math.min(1, k * 0.6));
+          pc.updateProjectionMatrix();
+        }
+        if (t >= 1) {
+          // Fully restored — release.
+          captured.current = false;
+          returnStartedAt.current = null;
+          returnFov.current = null;
+          setActiveBoth(false);
+        }
+      }
+    });
+
+    return null;
+  },
+);
+
+export default CinematicCameraDirector;

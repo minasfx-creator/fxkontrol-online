@@ -29,8 +29,8 @@ import XPPopupLayer, { type XPPopup } from './hud/XPPopupLayer';
 import MissionFailedScreen from './hud/MissionFailedScreen';
 import MissionPassedFlash from './hud/MissionPassedFlash';
 import AmbientNPCLayer from './ambient/AmbientNPCLayer';
-import CinematicCameraDirector from './camera/CinematicCameraDirector';
-import type { MissionScript, DialogueLine, CinematicBeat } from './missions/types';
+import CinematicCameraDirector, { type CinematicCameraDirectorHandle } from './camera/CinematicCameraDirector';
+import type { MissionScript, DialogueLine } from './missions/types';
 import { createMissionRunner, type RunnerSnapshot } from './missions/missionRunner';
 import {
   Equipment, SnapPoint, PlacedItem, MISSION_SNAP_POINTS,
@@ -58,7 +58,7 @@ export default function CinematicTrainingSimulator({
   const [activeVFX, setActiveVFX] = useState<{ id: string; position: [number, number, number] }[]>([]);
   const [activeDialogue, setActiveDialogue] = useState<DialogueLine | null>(null);
   const [briefingIndex, setBriefingIndex] = useState(0);
-  const [pendingBeat, setPendingBeat] = useState<CinematicBeat | null>(null);
+  const directorRef = useRef<CinematicCameraDirectorHandle | null>(null);
   const [orbitEnabled, setOrbitEnabled] = useState(true);
   const [xpPopups, setXpPopups] = useState<XPPopup[]>([]);
   const [passedFlash, setPassedFlash] = useState(false);
@@ -69,7 +69,7 @@ export default function CinematicTrainingSimulator({
   // Event stream → cinematic beats + xp popups + stage flash
   useEffect(() => {
     return runner.onEvent((ev) => {
-      if (ev.kind === 'beat:start') setPendingBeat(ev.beat);
+      if (ev.kind === 'beat:start') directorRef.current?.enqueue(ev.beat);
       else if (ev.kind === 'objective:complete') {
         setXpPopups((p) => [...p, { id: `xp-${Date.now()}-${Math.random()}`, amount: ev.scoreDelta, label: 'objetivo', variant: 'precision' }]);
       } else if (ev.kind === 'safety:violation') {
@@ -80,13 +80,20 @@ export default function CinematicTrainingSimulator({
     });
   }, [runner, script.scoreRules.safetyPenalty]);
 
-  // Drive briefing dialogue
+  // Drive briefing dialogue (also fires briefing-scoped cinematic beats once)
+  const briefingBeatsFired = useRef(false);
   useEffect(() => {
     if (snap.phase !== 'briefing') return;
+    if (!briefingBeatsFired.current) {
+      briefingBeatsFired.current = true;
+      (script.cinematicBeats ?? [])
+        .filter((b) => b.triggerOn === 'briefing')
+        .forEach((b) => directorRef.current?.enqueue(b));
+    }
     const line = script.briefing.lines[briefingIndex];
     if (line) setActiveDialogue(line);
     else { setActiveDialogue(null); runner.startMission(); }
-  }, [snap.phase, briefingIndex, script.briefing.lines, runner]);
+  }, [snap.phase, briefingIndex, script.briefing.lines, script.cinematicBeats, runner]);
 
   // Mission timer
   useEffect(() => {
@@ -143,7 +150,7 @@ export default function CinematicTrainingSimulator({
 
   const replay = () => {
     runner.reset();
-    setPlacedItems([]); setBriefingIndex(0); setPendingBeat(null);
+    setPlacedItems([]); setBriefingIndex(0); directorRef.current?.clear(); briefingBeatsFired.current = false;
     setXpPopups([]); setPassedFlash(false);
   };
 
@@ -208,7 +215,7 @@ export default function CinematicTrainingSimulator({
         <AmbientNPCLayer preset={ambient} maxNpcs={ambient === 'frantic' ? 4 : 2} exclude={activeNpcIds} />
 
         <CinematicCameraDirector
-          pendingBeat={pendingBeat}
+          ref={directorRef}
           resolveNpcPosition={resolveNpcPosition}
           onActiveChange={(active) => setOrbitEnabled(!active)}
         />
