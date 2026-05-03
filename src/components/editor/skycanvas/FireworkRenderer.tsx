@@ -493,7 +493,18 @@ export const FireworkBurst = React.forwardRef<THREE.Group, {
     const trailDt = (pattern === 'willow' || pattern === 'kamuro' || pattern === 'brocade') ? 0.020
       : pattern === 'palm' ? 0.025 : 0.035;
     const w = getWindForce('ember', position[1]);
-    const time = clock.getElapsedTime();
+    // ── Stable twinkle/swing clock ──────────────────────────────────────
+    // Anti-flicker contract: when the timeline is paused or being scrubbed,
+    // every cosmetic oscillator (twinkle, frond sway, hang drift, blink)
+    // MUST freeze with the rest of the burst. We previously used
+    // `clock.getElapsedTime()` (wall RAF), which kept ticking on pause and
+    // produced visible flicker / dancing stars while the playhead stood
+    // still. Driving `time` from the canonical `currentTime` makes every
+    // oscillator a pure function of (seed, timelineTime) — deterministic
+    // at any scrub position, naturally animated during playback (because
+    // currentTime advances smoothly via audio master / RAF), and perfectly
+    // frozen on pause.
+    const time = useProjectStore.getState().currentTime;
     const _adaptiveExposure = getAdaptiveExposure();
     
     // Reduced drag for larger calibers — heavier stars travel further
