@@ -9,7 +9,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { fieldTestEngine } from '@/services/fieldTestService';
-import { _getFXK16Singleton } from '@/hooks/useFXK16Bridge';
+import { getFXK16Bridge } from '@/hooks/useFXK16Bridge';
 
 describe('FieldTest cross-shell singleton coherence', () => {
   it('exports a single fieldTestEngine instance per process', async () => {
@@ -20,8 +20,8 @@ describe('FieldTest cross-shell singleton coherence', () => {
   });
 
   it('shares the same FXK16 bridge across multiple lookups', () => {
-    const a = _getFXK16Singleton();
-    const b = _getFXK16Singleton();
+    const a = getFXK16Bridge();
+    const b = getFXK16Bridge();
     expect(a).toBe(b);
   });
 
