@@ -500,12 +500,72 @@
     background-color: hsl(var(--muted-foreground) / 0.25);
   }
 
-  /* ARMED pulse */
+  /* ─── Operational micro-interactions ──────────────────────────────
+     Reservadas EXCLUSIVAMENTE para feedback de estado operacional
+     (ARM, DISARM, E-STOP, GO/NO-GO). Usam apenas tokens semânticos de
+     STATUS (--status-warn/ok/fail) — NUNCA tokens de marca (--field-cyan,
+     --primary). Marca = identidade; status = leitura operacional crítica.
+     Memória: UI Palette Vantablack + Cyan(Sync)/Green(OK)/Amber(Warn)/Red(Fail).
+     Respeita prefers-reduced-motion (degrada para opacity-only). */
+
+  /* ARM transitório (700ms) — amber warn enquanto SSM caminha p/ ARMED. */
+  @keyframes op-arm-pulse {
+    0%   { box-shadow: 0 0 0 0 hsl(var(--status-warn) / 0.55); }
+    60%  { box-shadow: 0 0 0 8px hsl(var(--status-warn) / 0); }
+    100% { box-shadow: 0 0 0 0 hsl(var(--status-warn) / 0); }
+  }
+  .op-arm-pulse { animation: op-arm-pulse 700ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+  /* DISARM (500ms) — pulse verde curto confirmando estado seguro. */
+  @keyframes op-disarm-flash {
+    0%   { box-shadow: 0 0 0 0 hsl(var(--status-ok) / 0.5); background-color: hsl(var(--status-ok) / 0.18); }
+    100% { box-shadow: 0 0 0 6px hsl(var(--status-ok) / 0); background-color: transparent; }
+  }
+  .op-disarm-flash { animation: op-disarm-flash 500ms ease-out; }
+
+  /* ARMED contínuo (1.2s loop) — vermelho fail. Mesma curva do legado
+     `armed-pulse` mas tokenizado em --status-fail (não hsl literal). */
   @keyframes armed-pulse {
-    0%, 100% { box-shadow: 0 0 4px hsl(0 80% 50% / 0.3); }
-    50% { box-shadow: 0 0 16px hsl(0 80% 50% / 0.6), 0 0 32px hsl(0 80% 50% / 0.2); }
+    0%, 100% { box-shadow: 0 0 4px hsl(var(--status-fail) / 0.3); }
+    50%      { box-shadow: 0 0 16px hsl(var(--status-fail) / 0.6), 0 0 32px hsl(var(--status-fail) / 0.2); }
   }
   .armed-pulse { animation: armed-pulse 1.2s ease-in-out infinite; }
+
+  /* E-STOP shake (320ms) — disparado no momento da confirmação E-STOP. */
+  @keyframes op-estop-shake {
+    0%, 100% { transform: translateX(0); }
+    20%      { transform: translateX(-3px); }
+    40%      { transform: translateX(3px); }
+    60%      { transform: translateX(-2px); }
+    80%      { transform: translateX(2px); }
+  }
+  .op-estop-shake { animation: op-estop-shake 320ms cubic-bezier(0.36,0.07,0.19,0.97); }
+
+  /* GO (validação aprovada, 600ms) — pulse verde ok no card de gate. */
+  @keyframes op-go-pulse {
+    0%   { box-shadow: 0 0 0 0 hsl(var(--status-ok) / 0.55); }
+    70%  { box-shadow: 0 0 0 10px hsl(var(--status-ok) / 0); }
+    100% { box-shadow: 0 0 0 0 hsl(var(--status-ok) / 0); }
+  }
+  .op-go-pulse { animation: op-go-pulse 600ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+  /* NO-GO shake (380ms) — gate bloqueado, vermelho fail. */
+  @keyframes op-nogo-shake {
+    0%, 100% { transform: translateX(0); border-color: hsl(var(--status-fail)); }
+    25%      { transform: translateX(-4px); }
+    50%      { transform: translateX(4px); }
+    75%      { transform: translateX(-2px); }
+  }
+  .op-nogo-shake { animation: op-nogo-shake 380ms cubic-bezier(0.36,0.07,0.19,0.97); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .op-arm-pulse, .op-disarm-flash, .op-estop-shake,
+    .op-go-pulse, .op-nogo-shake, .armed-pulse {
+      animation: none !important;
+    }
+    .op-estop-shake, .op-nogo-shake { transform: none !important; }
+  }
+
 
   /* Timeline drop-flash — fired briefly on a freshly dropped item to confirm
      placement at the snapped timestamp. */
