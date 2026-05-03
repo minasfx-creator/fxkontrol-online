@@ -52,6 +52,7 @@ export default function SkyCanvas2({
   hideStars = false,
   hideStage = false,
   stageVariant = 'arch',
+  showFixtures,
   className,
   showPerfHud = false,
   onFatalError,
@@ -60,6 +61,7 @@ export default function SkyCanvas2({
   const dprRef = useRef<number>(typeof dpr === 'number' ? dpr : dpr[1]);
   const [minDpr, maxDpr] = Array.isArray(dpr) ? dpr : [dpr, dpr];
   const stageEnabled = !hideStage && isSkycanvasV2StageEnabled();
+  const fixturesEnabled = showFixtures ?? isEnabled('ue5_fixtures_layer');
 
   const handleDpr = useCallback((v: number) => { dprRef.current = v; }, []);
 
@@ -101,6 +103,7 @@ export default function SkyCanvas2({
             <NightSky stars={!hideStars} />
             <GroundPlane grid={!hideGrid} />
             {stageEnabled && <StageLayer variant={stageVariant} />}
+            {fixturesEnabled && <FixturesLayer />}
             {!contextLost && (
               <>
                 <PyroPadsLayer />
