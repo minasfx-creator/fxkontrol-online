@@ -140,6 +140,20 @@ export const MISSION_SNAP_POINTS: Record<string, SnapPoint[]> = {
   'blackbox-debrief': [
     { id: 'sp-1', position: [0, 0.9, 0], equipmentType: 'moving-head', label: 'Estação Debrief' },
   ],
+  // ── v2.3 — Cap. 8 VIP & Eventos Corporativos ────────────────────
+  'vip-meet-greet': [
+    { id: 'sp-1', position: [-6, 0.9, 4], equipmentType: 'truss-corner', label: 'Backdrop VIP L' },
+    { id: 'sp-2', position: [6, 0.9, 4], equipmentType: 'truss-corner', label: 'Backdrop VIP R' },
+    { id: 'sp-3', position: [0, 0.9, 5], equipmentType: 'par-can', label: 'Spot Foto Frontal' },
+    { id: 'sp-4', position: [-3, 0.9, 5.5], equipmentType: 'par-can', label: 'Spot Foto Esq.' },
+    { id: 'sp-5', position: [3, 0.9, 5.5], equipmentType: 'par-can', label: 'Spot Foto Dir.' },
+  ],
+  'press-conference-arena': [
+    { id: 'sp-1', position: [0, 0.9, 0], equipmentType: 'moving-head', label: 'Lectern Center' },
+    { id: 'sp-2', position: [-4.5, 0.9, 5], equipmentType: 'par-can', label: 'Câmera Broadcast L' },
+    { id: 'sp-3', position: [4.5, 0.9, 5], equipmentType: 'par-can', label: 'Câmera Broadcast R' },
+    { id: 'sp-4', position: [0, 12.9, -5.4], equipmentType: 'moving-head', label: 'Key Light Lectern' },
+  ],
 };
 
 
