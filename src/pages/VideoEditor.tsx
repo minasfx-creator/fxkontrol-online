@@ -43,6 +43,7 @@ import EffectLibrarySidebar, { FXK_EFFECT_DRAG_TYPE } from '@/components/editor/
 import { useProjectStore } from '@/store/useProjectStore';
 import { timelineClock } from '@/core/timeline/TimelineClock';
 import { useAudioMasterClock } from '@/hooks/useAudioMasterClock';
+import { usePersistedProject } from '@/pages/videoEditor/usePersistedProject';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 
 // ──────────────────────────────────────────────────────────────────────────
