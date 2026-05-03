@@ -86,8 +86,8 @@ export function VolumetricCloudLayer() {
     c.setWindSpeed(cloudWindSpeed);
   }, [cloudCoverage, cloudDensity, cloudWindSpeed]);
 
-  useFrame(({ clock }) => {
-    cloudRef.current?.update(clock.getElapsedTime());
+  useFrame(() => {
+    cloudRef.current?.update(useProjectStore.getState().currentTime);
   });
 
   return null;
