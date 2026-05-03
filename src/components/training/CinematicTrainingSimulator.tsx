@@ -302,6 +302,12 @@ export default function CinematicTrainingSimulator({
         />
       )}
 
+      <StagePropsEditorPanel
+        missionId={script.id}
+        selectedId={selectedPropId}
+        onSelectedIdChange={setSelectedPropId}
+      />
+
       <EquipmentTray
         equipment={missionEquipment}
         selectedEquipment={selectedEquipment}
