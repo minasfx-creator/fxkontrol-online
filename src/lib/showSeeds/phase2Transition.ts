@@ -170,6 +170,13 @@ export interface Phase2AuditEntry {
   operatorConfirmed: boolean;
   granted: boolean;
   reasons: Phase2BlockReason[];
+  /**
+   * SHA-256 fingerprint of the canonical ShowPlan that was authorised.
+   * Optional for backwards compatibility — older entries may omit it.
+   * When present, `requestRealOperation()` enforces a strict equality
+   * check against the plan being executed.
+   */
+  planHash?: string;
 }
 
 function safeStorage(): Storage | null {
@@ -198,7 +205,10 @@ export function getPhase2AuditLog(): Phase2AuditEntry[] {
   }
 }
 
-export function recordPhase2Transition(result: Phase2GateResult): Phase2AuditEntry {
+export function recordPhase2Transition(
+  result: Phase2GateResult,
+  opts: { planHash?: string } = {},
+): Phase2AuditEntry {
   const entry: Phase2AuditEntry = {
     id: `ph2-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     at: result.evaluatedAt,
@@ -211,6 +221,7 @@ export function recordPhase2Transition(result: Phase2GateResult): Phase2AuditEnt
     operatorConfirmed: result.operatorConfirmed,
     granted: result.ok,
     reasons: result.reasons,
+    ...(opts.planHash ? { planHash: opts.planHash } : {}),
   };
   const s = safeStorage();
   if (!s) return entry;
