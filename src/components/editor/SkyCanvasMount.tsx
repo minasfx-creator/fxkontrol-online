@@ -21,15 +21,20 @@
  * Nada de hardware aqui — é só presentation. Não muda contratos do
  * SkyCanvas, do CommandBus, nem da SafetyStateMachine.
  */
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { lazyRetry } from '@/lib/lazyRetry';
 import { WebGLErrorBoundary } from '@/components/editor/skycanvas/sharedState';
 import StudioErrorBoundary from '@/components/errors/StudioErrorBoundary';
 import CanvasLoaderWithTimeout from '@/components/editor/CanvasLoaderWithTimeout';
+import { isSkycanvasV2Enabled } from '@/lib/featureFlags';
 
 // SkyCanvas deferido com lazyRetry — chunk stale após deploy/HMR é
 // retentado uma vez antes de bubbling para o LazyChunkBoundary global.
 const SkyCanvas = lazy(lazyRetry(() => import('@/components/editor/SkyCanvas')));
+
+// SkyCanvas 2.0 — engine leve atrás de feature flag (`fxk.flag.skycanvas_v2`).
+// Lazy também: zero impacto no bundle quando desabilitado.
+const SkyCanvas2 = lazy(lazyRetry(() => import('@/components/show3d/v2/SkyCanvas2')));
 
 export interface SkyCanvasMountProps {
   /** Distinguishing key: 'desktop', 'mobile', 'mobile-live', 'smoke', etc. */
