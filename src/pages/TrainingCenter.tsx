@@ -389,27 +389,95 @@ function OperatorPanel() {
 }
 
 function ProgressPanel() {
+  const lifetime = useAchievementsStore((s) => s.lifetime);
+  const missionRuns = useAchievementsStore((s) => s.missionRuns);
+  const unlocked = useAchievementsStore((s) => s.unlockedMissions);
+  const resetAll = useAchievementsStore((s) => s.resetAll);
+
+  const totalAch = Object.keys(ACHIEVEMENT_CATALOG).length;
+  const completedMissions = Object.keys(missionRuns).length;
+  const totalMissions = MISSION_SCRIPTS.length;
+  const progressPct = Math.round((completedMissions / Math.max(1, totalMissions)) * 100);
+  const totalBonusXP = Object.values(missionRuns).reduce((s, r) => s + r.bonusXP, 0);
+
+  const TONE_BORDER: Record<string, string> = {
+    ok: 'border-status-ok/45 bg-status-ok/10',
+    sync: 'border-status-sync/45 bg-status-sync/10',
+    warn: 'border-status-warn/45 bg-status-warn/10',
+    fail: 'border-status-fail/45 bg-status-fail/10',
+  };
+  const TONE_TEXT: Record<string, string> = {
+    ok: 'text-status-ok',
+    sync: 'text-status-sync',
+    warn: 'text-status-warn',
+    fail: 'text-status-fail',
+  };
+
   return (
     <div className="space-y-ds-3">
       <div className="rounded-ds-md border border-ds-border-default bg-ds-surface-panel p-ds-4">
-        <p className="text-[10px] ds-mono uppercase tracking-wider text-ds-text-muted">Capítulo 3 · Stadium Ops</p>
-        <div className="mt-ds-2 h-2 rounded-full bg-ds-surface-deep overflow-hidden">
-          <div className="h-full bg-status-sync" style={{ width: '75%' }} />
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] ds-mono uppercase tracking-wider text-ds-text-muted">
+            Progresso geral · {completedMissions}/{totalMissions} missões · {unlocked.length} desbloqueadas
+          </p>
+          <p className="text-[10px] ds-mono uppercase tracking-wider text-status-warn">
+            +{totalBonusXP} XP bônus
+          </p>
         </div>
-        <p className="text-[11px] ds-mono uppercase tracking-wider text-status-sync mt-1">75%</p>
+        <div className="mt-ds-2 h-2 rounded-full bg-ds-surface-deep overflow-hidden">
+          <div className="h-full bg-status-sync transition-all" style={{ width: `${progressPct}%` }} />
+        </div>
+        <p className="text-[11px] ds-mono uppercase tracking-wider text-status-sync mt-1">{progressPct}%</p>
       </div>
-      <div className="grid sm:grid-cols-3 gap-ds-2">
-        {[
-          { t: 'Zero Safety Violations', s: 'status-ok' as const },
-          { t: 'Perfect Timing <20ms',   s: 'status-sync' as const },
-          { t: 'Hardware Master',         s: 'status-warn' as const },
-        ].map((a) => (
-          <div key={a.t} className="rounded-ds-sm border border-ds-border-default bg-ds-surface-panel p-ds-3">
-            <Trophy className={`h-4 w-4 text-${a.s}`} />
-            <p className="text-xs font-semibold text-ds-text-primary mt-1">{a.t}</p>
-          </div>
-        ))}
+
+      <div className="grid sm:grid-cols-2 gap-ds-2">
+        {Object.values(ACHIEVEMENT_CATALOG).map((a) => {
+          const earned = lifetime.includes(a.id);
+          return (
+            <div
+              key={a.id}
+              data-testid={`progress-achievement-${a.id}`}
+              data-earned={earned ? 'true' : 'false'}
+              className={cn(
+                'rounded-ds-sm border p-ds-3 transition-colors',
+                earned ? TONE_BORDER[a.tone] : 'border-ds-border-subtle bg-ds-surface-deep/40',
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  {earned
+                    ? <Trophy className={cn('h-4 w-4', TONE_TEXT[a.tone])} />
+                    : <Lock className="h-4 w-4 text-ds-text-disabled" />}
+                  <p className={cn('text-xs font-semibold', earned ? 'text-ds-text-primary' : 'text-ds-text-disabled')}>
+                    {a.label}
+                  </p>
+                </div>
+                <span className="text-[9px] ds-mono uppercase tracking-wider text-ds-text-muted">
+                  +{a.xpBonus} XP
+                </span>
+              </div>
+              <p className="text-[11px] text-ds-text-secondary mt-1 leading-snug">{a.description}</p>
+            </div>
+          );
+        })}
       </div>
+
+      <p className="text-[10px] ds-mono uppercase tracking-wider text-ds-text-muted">
+        {lifetime.length}/{totalAch} conquistas distintas · 3+ libera{' '}
+        <span className="text-status-sync">producer-late</span> · 4 libera{' '}
+        <span className="text-status-sync">full-reveillon</span>
+      </p>
+
+      <button
+        onClick={() => {
+          if (confirm('Resetar progresso de treinamento? Isso apaga conquistas e desbloqueios.')) {
+            resetAll();
+          }
+        }}
+        className="text-[10px] ds-mono uppercase tracking-wider text-ds-text-muted hover:text-status-fail transition-colors"
+      >
+        Resetar progresso
+      </button>
     </div>
   );
 }
