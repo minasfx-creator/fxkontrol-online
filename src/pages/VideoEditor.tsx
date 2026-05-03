@@ -15,11 +15,11 @@
  * Tema: Vantablack canônico (#050810) + cyan-dessat 190/70/58 + amber/red
  * para status — mesma paleta operacional. Dark-first, WCAG AA.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Film, Layers, Music2, Sparkles, Wand2, Settings2, Play, Pause, Square,
   SkipBack, SkipForward, Plus, ZoomIn, ZoomOut, Eye, Lock, Trash2,
-  Camera, Sun, Cloud, Activity,
+  Camera, Sun, Cloud, Activity, Volume2, VolumeX,
 } from 'lucide-react';
 
 import {
@@ -40,6 +40,8 @@ import { cn } from '@/lib/utils';
 
 import SkyCanvas3D from '@/components/show3d/SkyCanvas3D';
 import { useProjectStore } from '@/store/useProjectStore';
+import { timelineClock } from '@/core/timeline/TimelineClock';
+import { useAudioMasterClock } from '@/hooks/useAudioMasterClock';
 
 // ──────────────────────────────────────────────────────────────────────────
 // Left sidebar — assets/library
@@ -198,6 +200,7 @@ function RightInspector() {
 
 function Topbar({
   playing, onTogglePlay, onStop, onSeek, time, duration,
+  hasAudio, onPickAudio,
 }: {
   playing: boolean;
   onTogglePlay: () => void;
@@ -205,7 +208,10 @@ function Topbar({
   onSeek: (delta: number) => void;
   time: number;
   duration: number;
+  hasAudio: boolean;
+  onPickAudio: (file: File) => void;
 }) {
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const fmt = (s: number) => {
     const mm = Math.floor(s / 60).toString().padStart(2, '0');
     const ss = Math.floor(s % 60).toString().padStart(2, '0');
@@ -252,6 +258,41 @@ function Topbar({
       </div>
 
       <Separator orientation="vertical" className="h-6 bg-cyan-500/15" />
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={cn(
+              'gap-2',
+              hasAudio
+                ? 'text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10'
+                : 'text-zinc-300 hover:text-cyan-200 hover:bg-cyan-500/10',
+            )}
+            onClick={() => fileRef.current?.click()}
+          >
+            {hasAudio ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            {hasAudio ? 'Audio master' : 'Load audio'}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {hasAudio
+            ? 'Audio is the master clock — Play follows audio.currentTime'
+            : 'Load an audio file to make it the master clock for the timeline'}
+        </TooltipContent>
+      </Tooltip>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="audio/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onPickAudio(f);
+          e.target.value = '';
+        }}
+      />
 
       <Button size="sm" variant="ghost" className="text-zinc-300 hover:text-cyan-200 hover:bg-cyan-500/10 gap-2">
         <Settings2 className="h-4 w-4" /> Settings
@@ -430,57 +471,110 @@ function StatusBar() {
 // ──────────────────────────────────────────────────────────────────────────
 
 export default function VideoEditor() {
-  // Local playback (presentation only — does NOT touch SafetyStateMachine).
+  // Canonical store reads — currentTime is driven by `timelineClock`,
+  // which itself is driven by either:
+  //   a) `useAudioMasterClock` when an <audio> is loaded + playing (master), or
+  //   b) the local RAF below (`timelineClock.tick(dt)`) when no audio.
   const currentTime = useProjectStore((s) => s.currentTime);
   const duration = useProjectStore((s) => s.duration) || 12;
   const isPlaying = useProjectStore((s) => s.isPlaying);
+  const setPlaying = useProjectStore((s) => s.setPlaying);
+  const setCurrentTime = useProjectStore((s) => s.setCurrentTime);
+  const audioUrl = useProjectStore((s) => s.audioUrl);
 
-  const seedDemo = useMemo(() => {
-    if (useProjectStore.getState().positions.length === 0) {
-      useProjectStore.setState({
-        positions: [
-          { id: 'pyro-L', name: 'Pyro L', type: 'pyro', x: -20, y: 0, z: 0, heading: 0, pitch: 0, roll: 0, color: '#ff7700' },
-          { id: 'pyro-R', name: 'Pyro R', type: 'pyro', x: 20, y: 0, z: 0, heading: 0, pitch: 0, roll: 0, color: '#ff7700' },
-          { id: 'drone-A', name: 'Drone A', type: 'drone-pad', x: -10, y: 12, z: -10, heading: 0, pitch: 0, roll: 0, color: '#2dd4ff' },
-          { id: 'drone-B', name: 'Drone B', type: 'drone-pad', x: 10, y: 12, z: -10, heading: 0, pitch: 0, roll: 0, color: '#22ee88' },
-        ],
-        timelineItems: [
-          { id: 'p1', effectId: 'mort-01', startTime: 1, trackIndex: 0, position: { x: -20, y: 0, z: 0 }, positionId: 'pyro-L' },
-          { id: 'p2', effectId: 'mort-02', startTime: 4, trackIndex: 0, position: { x: 20, y: 0, z: 0 }, positionId: 'pyro-R' },
-          { id: 'p3', effectId: 'shell-04', startTime: 8, trackIndex: 0, position: { x: -20, y: 0, z: 0 }, positionId: 'pyro-L' },
-        ],
-        duration: 12,
-      });
-    }
-    return true;
+  // ── Demo seed (one-shot) ────────────────────────────────────────────
+  useEffect(() => {
+    if (useProjectStore.getState().positions.length > 0) return;
+    useProjectStore.setState({
+      positions: [
+        { id: 'pyro-L', name: 'Pyro L', type: 'pyro', x: -20, y: 0, z: 0, heading: 0, pitch: 0, roll: 0, color: '#ff7700' },
+        { id: 'pyro-R', name: 'Pyro R', type: 'pyro', x: 20, y: 0, z: 0, heading: 0, pitch: 0, roll: 0, color: '#ff7700' },
+        { id: 'drone-A', name: 'Drone A', type: 'drone-pad', x: -10, y: 12, z: -10, heading: 0, pitch: 0, roll: 0, color: '#2dd4ff' },
+        { id: 'drone-B', name: 'Drone B', type: 'drone-pad' as const, x: 10, y: 12, z: -10, heading: 0, pitch: 0, roll: 0, color: '#22ee88' },
+      ],
+      timelineItems: [
+        { id: 'p1', effectId: 'mort-01', startTime: 1, trackIndex: 0, position: { x: -20, y: 0, z: 0 }, positionId: 'pyro-L' },
+        { id: 'p2', effectId: 'mort-02', startTime: 4, trackIndex: 0, position: { x: 20, y: 0, z: 0 }, positionId: 'pyro-R' },
+        { id: 'p3', effectId: 'shell-04', startTime: 8, trackIndex: 0, position: { x: -20, y: 0, z: 0 }, positionId: 'pyro-L' },
+      ],
+      duration: 12,
+    });
+    timelineClock.setDuration(12);
   }, []);
-  void seedDemo;
 
-  // Local play loop (no audio bridge, no Show3DEngine RAF)
-  const togglePlay = () => {
-    const s = useProjectStore.getState();
-    useProjectStore.setState({ isPlaying: !s.isPlaying });
-    if (!s.isPlaying) tick();
-  };
-  const stop = () => useProjectStore.setState({ isPlaying: false, currentTime: 0 });
-  const seek = (t: number) => useProjectStore.setState({ currentTime: Math.max(0, Math.min(duration, t)) });
+  // ── Audio element + master clock binding ────────────────────────────
+  // <audio> stays mounted (hidden). When `audioUrl` is set, the element
+  // streams it; `useAudioMasterClock` then makes `audio.currentTime` the
+  // master clock for the whole timeline (source becomes 'external').
+  // Without audio it stays local and the RAF below ticks the clock.
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  useAudioMasterClock(audioRef, audioUrl);
+
+  // Drive <audio> play/pause to mirror the store. When the operator hits
+  // Play and an audio is loaded, we call `audio.play()` so the master
+  // clock has something to follow. If the play promise rejects (autoplay
+  // gesture not present yet), the lockstep fallback below keeps showing
+  // the show — exactly like the editor's hardened path.
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a || !audioUrl) return;
+    if (isPlaying) {
+      const p = a.play();
+      if (p && typeof p.catch === 'function') p.catch(() => { /* fallback to RAF */ });
+    } else {
+      a.pause();
+    }
+  }, [isPlaying, audioUrl]);
+
+  // Mirror scrubs from the store back to the audio element.
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a || !audioUrl) return;
+    // Only push scrubs when the delta is significant (>120 ms) — we don't
+    // want to fight the master pump's per-RAF writes.
+    if (Math.abs(a.currentTime - currentTime) > 0.12) {
+      try { a.currentTime = currentTime; } catch { /* not seekable yet */ }
+    }
+  }, [currentTime, audioUrl]);
+
+  // ── Local RAF fallback: ticks `timelineClock.tick(dt)` while playing
+  // and the clock is *local* (no audio master). This is what spawns the
+  // Particle Explosions / Light Points in SkyCanvas3D in the no-audio
+  // case — by advancing `currentTime` through the canonical clock so
+  // every subscriber (3D viewport, timeline playhead, transport time)
+  // moves in lockstep.
+  useEffect(() => {
+    if (!isPlaying) return;
+    let rafId = 0;
+    let last = performance.now();
+    const pump = () => {
+      const now = performance.now();
+      const dt = (now - last) / 1000;
+      last = now;
+      // Skip ticking when audio owns the clock — `useAudioMasterClock`
+      // pushes `syncExternalTime` every RAF and source flips to 'external'.
+      if (timelineClock.getState().source === 'local') {
+        timelineClock.tick(dt);
+      }
+      if (useProjectStore.getState().isPlaying) {
+        rafId = requestAnimationFrame(pump);
+      }
+    };
+    rafId = requestAnimationFrame(pump);
+    return () => cancelAnimationFrame(rafId);
+  }, [isPlaying]);
+
+  // ── Transport actions (canonical, never touch SafetyStateMachine) ──
+  const togglePlay = () => setPlaying(!isPlaying);
+  const stop = () => { setPlaying(false); setCurrentTime(0); };
+  const seek = (t: number) => setCurrentTime(Math.max(0, Math.min(duration, t)));
   const seekDelta = (d: number) => seek(currentTime + d);
 
-  function tick() {
-    const startWall = performance.now();
-    const startTime = useProjectStore.getState().currentTime;
-    const dur = useProjectStore.getState().duration || 12;
-    const id = window.setInterval(() => {
-      const s = useProjectStore.getState();
-      if (!s.isPlaying) { window.clearInterval(id); return; }
-      const t = startTime + (performance.now() - startWall) / 1000;
-      if (t >= dur) {
-        useProjectStore.setState({ currentTime: 0 });
-      } else {
-        useProjectStore.setState({ currentTime: t });
-      }
-    }, 33);
-  }
+  // ── Audio file picker (operator drops/loads music) ─────────────────
+  const onPickAudio = (file: File) => {
+    const url = URL.createObjectURL(file);
+    useProjectStore.setState({ audioUrl: url });
+  };
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -496,6 +590,8 @@ export default function VideoEditor() {
               onSeek={seekDelta}
               time={currentTime}
               duration={duration}
+              hasAudio={!!audioUrl}
+              onPickAudio={onPickAudio}
             />
 
             <div className="flex-1 flex min-h-0">
@@ -508,7 +604,7 @@ export default function VideoEditor() {
                     PREVIEW · 1080p
                   </Badge>
                   <Badge className="bg-black/60 border border-emerald-500/30 text-emerald-300 ds-mono text-[10px]">
-                    LIVE
+                    {audioUrl ? 'AUDIO MASTER' : 'LOCAL CLOCK'}
                   </Badge>
                 </div>
                 <div className="absolute bottom-3 left-3 z-10 ds-mono text-[10px] text-cyan-300/80 bg-black/60 px-2 py-1 rounded border border-cyan-500/20">
@@ -522,6 +618,14 @@ export default function VideoEditor() {
             <Timeline time={currentTime} duration={duration} onScrub={seek} />
             <StatusBar />
           </div>
+
+          {/* Hidden audio element — master clock source when loaded. */}
+          <audio
+            ref={audioRef}
+            src={audioUrl ?? undefined}
+            preload="auto"
+            className="sr-only"
+          />
         </div>
       </SidebarProvider>
     </TooltipProvider>
