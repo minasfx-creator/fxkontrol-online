@@ -1448,10 +1448,6 @@ function FieldTestMobile() {
 }
 
 // ─── Unified entry — picks shell by device class ──
-import { lazy, Suspense } from 'react';
-import { useIsMobile } from '@/hooks/use-mobile';
-
-const FieldTestDesktop = lazy(() => import('@/components/editor/FieldTestDesktop'));
 
 /**
  * FieldTest — single canonical entry. Polymorphic shell:
