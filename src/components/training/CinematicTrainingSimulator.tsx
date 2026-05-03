@@ -162,11 +162,14 @@ export default function CinematicTrainingSimulator({
 
   const handleSnapClick = (sp: SnapPoint) => {
     if (snap.phase !== 'running' || !selectedEquipment) return;
+    const tMs = Date.now() - missionStartRef.current;
     if (sp.equipmentType !== selectedEquipment) {
+      setAttempts((prev) => [...prev, { tMs, snapPointId: sp.id, equipmentId: selectedEquipment, correct: false }]);
       runner.reportSafetyViolation();
       return;
     }
     if (placedItems.some((p) => p.snapPointId === sp.id)) return;
+    setAttempts((prev) => [...prev, { tMs, snapPointId: sp.id, equipmentId: selectedEquipment, correct: true }]);
     setPlacedItems((prev) => [...prev, { snapPointId: sp.id, equipmentId: selectedEquipment, position: sp.position }]);
     setActiveVFX((prev) => [...prev, { id: `vfx-${Date.now()}`, position: sp.position }]);
     runner.completeObjective(sp.id);
