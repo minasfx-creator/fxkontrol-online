@@ -329,6 +329,61 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     toast.success('Histórico de extensões limpo');
   }, [plan?.id]);
 
+  /** Exporta histórico+redo como JSON download. */
+  const handleExportHistory = useCallback(() => {
+    if (!plan?.id) return;
+    if (extensionHistory.length === 0 && redoStack.length === 0) {
+      toast.info('Nada para exportar — histórico vazio.');
+      return;
+    }
+    try {
+      const payload = serializeExtensionHistory(plan.id, {
+        history: extensionHistory,
+        redo: redoStack,
+      });
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fxk-ext-history-${plan.id}-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Histórico exportado (${extensionHistory.length} entradas)`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao exportar histórico');
+    }
+  }, [plan?.id, extensionHistory, redoStack]);
+
+  /** Importa histórico+redo de JSON. Substitui os stacks atuais. */
+  const handleImportHistory = useCallback(() => {
+    if (!plan?.id) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const json = JSON.parse(text);
+        const parsed = parseExtensionHistoryExport(json);
+        if (!parsed.ok || !parsed.data) {
+          toast.error(`JSON inválido: ${parsed.error ?? 'formato desconhecido'}`);
+          return;
+        }
+        if (parsed.data.planId !== plan.id) {
+          toast.warning(`Importando histórico de outro plano (${parsed.data.planId.slice(0, 12)}…)`);
+        }
+        setExtensionHistory(parsed.data.history);
+        setRedoStack(parsed.data.redo);
+        toast.success(`Histórico importado (${parsed.data.history.length} entradas)`);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Falha ao ler arquivo');
+      }
+    };
+    input.click();
+  }, [plan?.id]);
+
   const toggleEntryExpanded = useCallback((id: string) => {
     setExpandedEntryIds((prev) => {
       const next = new Set(prev);
