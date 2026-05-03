@@ -20,6 +20,7 @@ import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { FxkLogo } from "@/components/brand/FxkLogo";
 
 type Cycle = "monthly" | "annual";
 
@@ -187,9 +188,8 @@ export default function Pricing() {
       {/* Header */}
       <header className="border-b border-border/40">
         <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 font-bold text-foreground">
-            <Sparkles className="h-5 w-5 text-primary" />
-            FX KONTROL
+          <Link to="/" aria-label="FXKONTROL — Home" className="inline-flex">
+            <FxkLogo size={26} variant="full" tone="sync" />
           </Link>
           <nav className="flex items-center gap-3 text-sm">
             {user ? (
