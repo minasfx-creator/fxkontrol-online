@@ -26,6 +26,8 @@ import type { MissionScript } from '@/components/training/missions/types';
 import MetaHumanCoachPanel, { type CoachTip } from '@/components/training/coach/MetaHumanCoachPanel';
 import MissionBriefingMetaHuman from '@/components/training/briefing/MissionBriefingMetaHuman';
 import { isEnabled } from '@/lib/featureFlags';
+import { useAchievementsStore } from '@/components/training/achievements/useAchievementsStore';
+import { ACHIEVEMENT_CATALOG, type AchievementId } from '@/components/training/achievements/achievements';
 import { cn } from '@/lib/utils';
 
 type TabId = 'map' | 'missions' | 'operator' | 'progress' | 'settings';
