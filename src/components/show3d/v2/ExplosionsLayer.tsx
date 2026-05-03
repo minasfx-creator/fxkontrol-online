@@ -12,11 +12,12 @@
  * per-frame allocations, deterministic physics preserved (each burst still
  * derives state purely from `showTime - burstStart`).
  */
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { type BurstSpec, useBurstSpecs } from './useShowSelectors';
+import { useBurstSpecs } from './useShowSelectors';
 import { useShowTimeRef } from './useShowTimeRef';
+import { setPerfBursts } from './PerfHUD';
 
 const PARTICLES_PER_BURST = 96;
 const POOL_SIZE = 256; // up to 256 simultaneous bursts on screen
