@@ -162,6 +162,19 @@ export default function Auth() {
             <p className="ds-mono text-[9px] mt-0.5 tracking-[0.15em] uppercase text-status-sync/60">
               NEXUS AUTHENTICATION
             </p>
+
+            {/* Capability badges — quick value-prop strip */}
+            <div className="mt-3 flex items-center justify-center gap-1.5 flex-wrap">
+              {['Pyro · DMX · Drones', 'Live Read-Only', 'NFPA 1123'].map((b) => (
+                <span
+                  key={b}
+                  className="ds-mono text-[8px] tracking-[0.12em] uppercase px-1.5 py-0.5 rounded border border-status-sync/20 text-status-sync/70 bg-status-sync/5"
+                >
+                  {b}
+                </span>
+              ))}
+            </div>
+
             <p className="text-xs text-muted-foreground mt-3">
               {isLogin ? 'Entre para acessar seus projetos' : 'Crie sua conta'}
             </p>
