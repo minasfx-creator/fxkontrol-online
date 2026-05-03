@@ -29,11 +29,12 @@ import { LightPointsLayer } from './LightPointsLayer';
 import { PyroPadsLayer } from './PyroPadsLayer';
 import { ExplosionsLayer } from './ExplosionsLayer';
 import { StageLayer } from './StageLayer';
+import { FixturesLayer } from './FixturesLayer';
 import { SkyCanvas2ErrorBoundary } from './SkyCanvas2ErrorBoundary';
 import { WebGLContextRecovery } from './WebGLContextRecovery';
 import { AdaptiveDPRController } from './AdaptiveDPRController';
 import { PerfHUDProbe, PerfHUDOverlay } from './PerfHUD';
-import { isSkycanvasV2StageEnabled } from '@/lib/featureFlags';
+import { isSkycanvasV2StageEnabled, isEnabled } from '@/lib/featureFlags';
 import type { SkyCanvas2Props } from './types';
 
 interface SkyCanvas2ExtraProps {
