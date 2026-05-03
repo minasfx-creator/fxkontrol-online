@@ -176,6 +176,14 @@ export default function HumanoidCharacter({
   const rightArmRef = useRef<THREE.Group>(null);
   const accentRef = useRef<THREE.Mesh>(null);
   const startSeed = useMemo(() => Math.random() * Math.PI * 2, []);
+  /** Gesture playback clock — set on prop change, advanced per frame. */
+  const gestureClock = useRef<{ kind: GestureKind; startedAt: number; duration: number }>({
+    kind: 'idle', startedAt: 0, duration: 0,
+  });
+  /** Walk state: current world position carried by group + facing yaw. */
+  const walkState = useRef<{ posX: number; posY: number; posZ: number; yaw: number; isWalking: boolean }>(
+    { posX: position[0], posY: position[1], posZ: position[2], yaw: rotationY, isWalking: false },
+  );
   const blinkClock = useRef({
     next: 2 + Math.random() * 4,
     until: 0,
