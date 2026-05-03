@@ -6,7 +6,7 @@
  * useProjectStore. Inspecionável antes de aplicar.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info, Pencil, MousePointerSquareDashed, ArrowRightCircle, Loader2, Undo2, Redo2, History, Trash2, RotateCcw, ChevronDown, ChevronRight } from 'lucide-react';
+import { Sparkles, Wand2, Shuffle, AlertTriangle, CheckCircle2, Info, Pencil, MousePointerSquareDashed, ArrowRightCircle, Loader2, Undo2, Redo2, History, Trash2, RotateCcw, ChevronDown, ChevronRight, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProjectStore } from '@/store/useProjectStore';
 import { appendShowPlan, resumeOffsetFor, resumeOffsetAtCue } from '@/lib/aiShowBuilder/continueShowPlan';
@@ -16,6 +16,7 @@ import {
   saveExtensionHistory,
   clearExtensionHistory,
 } from '@/lib/aiShowBuilder/extensionHistoryStorage';
+import { serializeExtensionHistory, parseExtensionHistoryExport } from '@/lib/aiShowBuilder/extensionHistoryIO';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -328,6 +329,61 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     toast.success('Histórico de extensões limpo');
   }, [plan?.id]);
 
+  /** Exporta histórico+redo como JSON download. */
+  const handleExportHistory = useCallback(() => {
+    if (!plan?.id) return;
+    if (extensionHistory.length === 0 && redoStack.length === 0) {
+      toast.info('Nada para exportar — histórico vazio.');
+      return;
+    }
+    try {
+      const payload = serializeExtensionHistory(plan.id, {
+        history: extensionHistory,
+        redo: redoStack,
+      });
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fxk-ext-history-${plan.id}-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Histórico exportado (${extensionHistory.length} entradas)`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao exportar histórico');
+    }
+  }, [plan?.id, extensionHistory, redoStack]);
+
+  /** Importa histórico+redo de JSON. Substitui os stacks atuais. */
+  const handleImportHistory = useCallback(() => {
+    if (!plan?.id) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const json = JSON.parse(text);
+        const parsed = parseExtensionHistoryExport(json);
+        if (!parsed.ok || !parsed.data) {
+          toast.error(`JSON inválido: ${parsed.error ?? 'formato desconhecido'}`);
+          return;
+        }
+        if (parsed.data.planId !== plan.id) {
+          toast.warning(`Importando histórico de outro plano (${parsed.data.planId.slice(0, 12)}…)`);
+        }
+        setExtensionHistory(parsed.data.history);
+        setRedoStack(parsed.data.redo);
+        toast.success(`Histórico importado (${parsed.data.history.length} entradas)`);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Falha ao ler arquivo');
+      }
+    };
+    input.click();
+  }, [plan?.id]);
+
   const toggleEntryExpanded = useCallback((id: string) => {
     setExpandedEntryIds((prev) => {
       const next = new Set(prev);
@@ -611,6 +667,30 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
                   Limpar
                 </Button>
               )}
+              {extensionHistory.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleExportHistory}
+                  disabled={continuing}
+                  className="gap-1.5 text-muted-foreground hover:text-foreground"
+                  title="Exportar histórico para JSON (auditoria/portabilidade)"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Exportar
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleImportHistory}
+                disabled={continuing || !plan}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+                title="Importar histórico de JSON (substitui o atual)"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Importar
+              </Button>
               <Button
                 onClick={handleContinue}
                 disabled={continuing || continuationPrompt.trim().length < 4}
