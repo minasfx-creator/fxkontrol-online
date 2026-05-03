@@ -12,6 +12,7 @@ import CinematicTrainingSimulator from '@/components/training/CinematicTrainingS
 import { getMissionScript } from '@/components/training/missions/missionScripts';
 import { isEnabled } from '@/lib/featureFlags';
 import { Equipment, Mission } from '@/components/training/types';
+import { useAchievementsStore } from '@/components/training/achievements/useAchievementsStore';
 
 // ── Reference Manual Library ──────────────────────────────────────────
 
@@ -272,21 +273,26 @@ export default function Training() {
   const [missions, setMissions] = useState<Mission[]>(INITIAL_MISSIONS);
   const [activeMission, setActiveMission] = useState<Mission | null>(null);
   const [showLibrary, setShowLibrary] = useState(false);
+  const unlockedFromAch = useAchievementsStore((s) => s.unlockedMissions);
+  const missionRuns = useAchievementsStore((s) => s.missionRuns);
 
-  const completedCount = missions.filter((m) => m.completed).length;
-  const totalXP = missions.filter((m) => m.completed).reduce((s, m) => s + m.xp, 0);
-  const maxXP = missions.reduce((s, m) => s + m.xp, 0);
-  const chapters = [...new Set(missions.map(m => m.chapter))];
+  // Reconcile static mission list with persisted unlock state from achievements store.
+  const reconciled = missions.map((m) => ({
+    ...m,
+    locked: m.locked && !unlockedFromAch.includes(m.id),
+    completed: m.completed || Boolean(missionRuns[m.id]),
+  }));
+
+  const completedCount = reconciled.filter((m) => m.completed).length;
+  const totalXP = reconciled.filter((m) => m.completed).reduce((s, m) => s + m.xp, 0);
+  const maxXP = reconciled.reduce((s, m) => s + m.xp, 0);
+  const chapters = [...new Set(reconciled.map(m => m.chapter))];
 
   const handleMissionComplete = (missionId: string) => {
-    setMissions((prev) => {
-      const updated = prev.map((m) => (m.id === missionId ? { ...m, completed: true } : m));
-      const firstLocked = updated.findIndex((m) => m.locked);
-      if (firstLocked !== -1) updated[firstLocked] = { ...updated[firstLocked], locked: false };
-      return updated;
-    });
+    setMissions((prev) => prev.map((m) => (m.id === missionId ? { ...m, completed: true } : m)));
     setActiveMission(null);
   };
+
 
   // --- SIMULATOR MODE ---
   if (activeMission) {
@@ -441,7 +447,7 @@ export default function Training() {
                 <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary font-mono">MANUAL</span>
               )}
             </div>
-            {missions.filter(m => m.chapter === chapter).map((mission) => {
+            {reconciled.filter(m => m.chapter === chapter).map((mission) => {
               const diff = DIFF_CONFIG[mission.difficulty];
               return (
                 <Card key={mission.id} className={`border transition-all duration-200 ${mission.locked ? 'bg-card/50 border-border/20 opacity-60' : 'bg-card border-border/40 hover:border-primary/30 hover:shadow-[0_0_15px_hsl(var(--primary)/0.05)]'}`}>
