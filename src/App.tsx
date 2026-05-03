@@ -57,6 +57,7 @@ const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellP
 const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")));
 const GoldenShowsCatalog = lazy(lazyRetry(() => import("./pages/dev/GoldenShows")));
 const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
+const FXK16Hub = lazy(lazyRetry(() => import("./pages/dev/FXK16Hub")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
 const Office = lazy(lazyRetry(() => import("./pages/Office")));
