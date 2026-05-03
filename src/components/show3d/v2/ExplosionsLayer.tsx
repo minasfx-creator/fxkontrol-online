@@ -223,6 +223,9 @@ export function ExplosionsLayer() {
       (geom.attributes.aSize as THREE.BufferAttribute).needsUpdate = true;
       (geom.attributes.aAlpha as THREE.BufferAttribute).needsUpdate = true;
     }
+
+    // Publish active count for the optional PerfHUD.
+    setPerfBursts(activeIds.size);
   });
 
   return (
