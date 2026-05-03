@@ -66,6 +66,8 @@ export default function CinematicTrainingSimulator({
   const [xpPopups, setXpPopups] = useState<XPPopup[]>([]);
   const [passedFlash, setPassedFlash] = useState(false);
   const tickRef = useRef<number | null>(null);
+  const missionStartRef = useRef<number>(Date.now());
+  const [attempts, setAttempts] = useState<PlacementAttempt[]>([]);
   const [npcPoses, setNpcPoses] = useState<NPCPoseMap>({});
   const choreographer = useMemo(
     () => createNpcChoreographer({ resolveAnchor: (id) => getNPC(id)?.defaultPosition ?? null }),
