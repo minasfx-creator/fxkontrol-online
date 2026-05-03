@@ -661,7 +661,7 @@ export default function VideoEditor() {
             <div className="flex-1 flex min-h-0">
               {/* Viewport */}
               <main className="flex-1 relative bg-black min-w-0">
-                <SkyCanvas3D />
+                <SkyCanvas2 />
                 {/* Viewport HUD */}
                 <div className="absolute top-3 left-3 z-10 flex gap-2">
                   <Badge className="bg-black/60 border border-cyan-500/30 text-cyan-300 ds-mono text-[10px]">
