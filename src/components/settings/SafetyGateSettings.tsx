@@ -39,12 +39,16 @@ export default function SafetyGateSettings() {
   useEffect(() => workMode.subscribe(setMode), []);
 
   const requestRealMode = () => {
-    const ok = window.confirm(
-      'Ativar OPERAÇÃO REAL?\n\n' +
-      'Todos os intertravamentos físicos serão aplicados. Saídas reais ' +
-      'podem ser energizadas. Operador autorizado deve estar presente.',
+    const r = requestRealOperation();
+    if (r.ok) return;
+    const why = r.reason ? `\n\nMotivo: ${explainRealOperationReason(r.reason)}` : '';
+    window.alert(
+      'Operação Real bloqueada.\n\n' +
+        'O switch para real_operation exige autorização Phase 2 recente ' +
+        '(últimos 5 minutos). Abra /dev/golden-shows e conclua o ' +
+        'Hold-to-Confirm da seção "Phase 2 transition gate".' +
+        why,
     );
-    if (ok) workMode.set('real_operation');
   };
 
   return (
