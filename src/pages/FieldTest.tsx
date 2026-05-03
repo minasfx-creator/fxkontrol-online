@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { useImperativeTimeout } from '@/hooks/useInterval';
 import FXK16FieldTestPanel from '@/components/field/FXK16FieldTestPanel';
 import FXK16FieldSettingsPanel from '@/components/field/FXK16FieldSettingsPanel';
+import { FXK16ConnectionPanel } from '@/components/editor/live-firing/FXK16ConnectionPanel';
 
 // ─── Transport Config ─────────────────────────────
 const TRANSPORTS: { id: TestTransport; label: string; desc: string; icon: React.ReactNode; color: string }[] = [
@@ -1035,6 +1036,7 @@ function XL4ControllerConsole({ session, onStop }: { session: FieldTestSession; 
               + end-to-end command harness. Both share the singleton bridge
               with PyroFireOnePanel and the /field#fxk16 tab. */}
           <div className="shrink-0 px-2 pt-2 space-y-2">
+            <FXK16ConnectionPanel compact />
             <FXK16FieldSettingsPanel />
             <FXK16FieldTestPanel />
           </div>
