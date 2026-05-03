@@ -1444,3 +1444,34 @@ function FieldTestMobile() {
     </div>
   );
 }
+
+// ─── Unified entry — picks shell by device class ──
+import { lazy, Suspense } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+const FieldTestDesktop = lazy(() => import('@/components/editor/FieldTestDesktop'));
+
+/**
+ * FieldTest — single canonical entry. Polymorphic shell:
+ *   - mobile / tablet / coarse pointer → `FieldTestMobile` (this file)
+ *   - desktop                          → `FieldTestDesktop` (lazy)
+ *
+ * Both shells share the same `fieldTestEngine` singleton, so session
+ * state and FXK16 bridge stay coherent across breakpoints. CommandCenter
+ * and FieldOps both mount this entry; the device class decides the layout.
+ */
+export default function FieldTest() {
+  const isMobile = useIsMobile();
+  if (isMobile) return <FieldTestMobile />;
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[100dvh] flex items-center justify-center bg-background">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <FieldTestDesktop />
+    </Suspense>
+  );
+}
