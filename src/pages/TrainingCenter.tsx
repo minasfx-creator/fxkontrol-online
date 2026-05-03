@@ -22,6 +22,9 @@ import { Map as MapIcon, Target, User, Trophy, Settings, Lock, Star, ArrowRight 
 import { useNavigate } from 'react-router-dom';
 import { useWorkMode } from '@/core/safety/workMode';
 import { MISSION_SCRIPTS } from '@/components/training/missions/missionScripts';
+import type { MissionScript } from '@/components/training/missions/types';
+import MetaHumanCoachPanel, { type CoachTip } from '@/components/training/coach/MetaHumanCoachPanel';
+import MissionBriefingMetaHuman from '@/components/training/briefing/MissionBriefingMetaHuman';
 import { isEnabled } from '@/lib/featureFlags';
 import { cn } from '@/lib/utils';
 
@@ -202,6 +205,12 @@ function MapPanel() {
 function MissionsPanel() {
   const navigate = useNavigate();
   const v2 = isEnabled('training_v2_cinematic');
+  const [briefing, setBriefing] = useState<MissionScript | null>(null);
+
+  function handleStart(m: MissionScript) {
+    setBriefing(null);
+    navigate('/training', { state: { missionId: m.id } });
+  }
 
   return (
     <div className="space-y-ds-3">
@@ -243,7 +252,7 @@ function MissionsPanel() {
               </p>
               <button
                 disabled={!v2}
-                onClick={() => navigate('/training', { state: { missionId: m.id } })}
+                onClick={() => setBriefing(m)}
                 className={cn(
                   'mt-ds-3 w-full inline-flex items-center justify-center gap-1.5 rounded-ds-sm px-ds-3 py-ds-2 text-[11px] ds-mono uppercase tracking-wider transition-colors',
                   v2
@@ -251,12 +260,20 @@ function MissionsPanel() {
                     : 'bg-ds-surface-deep border border-ds-border-subtle text-ds-text-disabled cursor-not-allowed',
                 )}
               >
-                {v2 ? <>Iniciar Missão <ArrowRight className="h-3 w-3" /></> : <>Indisponível</>}
+                {v2 ? <>Briefing MetaHuman <ArrowRight className="h-3 w-3" /></> : <>Indisponível</>}
               </button>
             </article>
           );
         })}
       </div>
+
+      {briefing && (
+        <MissionBriefingMetaHuman
+          mission={briefing}
+          onStart={() => handleStart(briefing)}
+          onClose={() => setBriefing(null)}
+        />
+      )}
     </div>
   );
 }
@@ -267,8 +284,15 @@ function OperatorPanel() {
     { label: 'Timing',   value: 80,  color: 'status-sync' as const },
     { label: 'Hardware', value: 60,  color: 'status-warn' as const },
   ];
+  const coachTip: CoachTip = {
+    kind: 'hint',
+    title: 'Próximo passo recomendado',
+    body: 'Sua disciplina de Safety está em 100%. Foque em Hardware Diagnosis — pareie um FXK16 BLE no /pairing/ble e refaça a missão Cap. 3.',
+  };
   return (
-    <div className="grid md:grid-cols-2 gap-ds-3">
+    <div className="space-y-ds-3">
+      <MetaHumanCoachPanel tip={coachTip} />
+      <div className="grid md:grid-cols-2 gap-ds-3">
       <div className="rounded-ds-md border border-ds-border-default bg-ds-surface-panel p-ds-4 space-y-ds-2">
         <p className="text-[10px] ds-mono uppercase tracking-wider text-ds-text-muted">Operador</p>
         <h3 className="text-ds-h3 text-ds-text-primary">Marco Santos</h3>
@@ -291,6 +315,7 @@ function OperatorPanel() {
             </div>
           </div>
         ))}
+      </div>
       </div>
     </div>
   );

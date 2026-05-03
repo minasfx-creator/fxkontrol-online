@@ -272,6 +272,22 @@ export const NPC_CATALOG: Record<string, NPCPersona> = {
     props: ['helmet', 'walkie-talkie'],
     defaultIntent: 'calm',
   },
+  // ── MetaHuman Edition: Capitão Vega — instrutor canônico ────────
+  'capitao-vega': {
+    id: 'capitao-vega',
+    displayName: 'Capitão Vega',
+    role: 'Instrutor-chefe · FX KONTROL Academy',
+    subtitleColor: 'hsl(190 70% 70%)',
+    voiceProfile: 'baritone',
+    bodyType: 'athletic',
+    skinTone: 'olive',
+    hair: 'short-grey',
+    outfit: 'corporate-suit',
+    defaultPosition: [0, 0.3, 0],
+    idleProfile: 'alert',
+    props: ['walkie-talkie', 'clipboard'],
+    defaultIntent: 'serious',
+  },
 };
 
 export function getNPC(id: string): NPCPersona | undefined {
