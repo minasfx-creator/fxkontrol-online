@@ -1,113 +1,261 @@
-# Training v2.1 — Roadie Academy (Unreal Edition)
+# FXKONTROL — Arquitetura Consolidada v6 (Master Architect Pass)
 
-Refinamento profundo do Training v2 atual. Foco: profundidade de missões, fidelidade visual MetaHuman-style, situações reais de palco, e direção cinemática estilo GTA V (cutscene → gameplay → debrief).
+## Princípio organizador
 
-**Safety:** tudo permanece em `workMode = simulation`. Zero impacto em CommandBus / SafetyStateMachine / FieldBus.
-**Flag:** continua sob `training_v2_cinematic` (já ON).
+Quatro planos ortogonais, cada um com fronteiras de confiança explícitas:
 
----
+1. **Safety Plane** (determinístico, auditável, latência <50ms)
+2. **Show Plane** (ShowPlan canônico, IA, simulação, render)
+3. **Hardware Plane** (transports reais, discovery, telemetria honesta)
+4. **Experience Plane** (UI/UX, design system, marketing, training)
 
-## 1. Roteirização aprofundada (missionScripts v2)
-
-Hoje: 6 missões, briefing + 1–3 stages flat.
-Meta: **16 missões** organizadas em 5 capítulos progressivos, com **stages multi-tipo** (`place` → `inspect` → `dialogue` → `fire-check` → `evacuate`), beats narrativos no meio do gameplay, e múltiplos NPCs reagindo dinamicamente.
-
-Capítulos:
-- **Cap. 1 — Carga & Montagem** (3 missões): truss H, truss A-frame, ground support
-- **Cap. 2 — Energia & DMX** (3 missões): distribuição AC trifásica, RCD/PE check, patch DMX 2 universos, terminator chain
-- **Cap. 3 — SFX & Pirotecnia** (3 missões): sparkular safe-arc, flamer FR clearance, mortar layout NFPA 1123
-- **Cap. 4 — Caos ao Vivo** (4 missões): bêbado no palco, chuva súbita, queda de fase, dançarino na linha de fogo
-- **Cap. 5 — Show Completo** (3 missões): casamento, festival corporativo, Réveillon legendary
-
-Cada missão ganha:
-- `cinematicBeats[]` — momentos para câmera cutscene mid-gameplay (dolly, crane, close-up)
-- `voiceLines[]` (texto + duração + intent: 'urgent'|'calm'|'excited') usados pra modular lipsync amplitude
-- `manualRefs[]` por objective (link real para `MANUALS[]` em Training.tsx)
-- `failureScenarios[]` — narrativas distintas para falhas distintas (tempo, violation, ordem errada)
-
-## 2. NPCs refinados (MetaHuman+ stand-in)
-
-Expansão do `HumanoidCharacter.tsx`:
-- **Mesh secondaries**: belt loop, walkie-talkie, prancheta, capacete (props paramétricos por outfit)
-- **Cloth sim leve**: vest/blazer com sway (Three.js bone offset, sem CCD — pseudo-cloth via senoide)
-- **Eye blink** (3–6s aleatório, durabilidade 100ms)
-- **Brow micro-expressions** (preocupação, aprovação) sincronizadas com `voiceLine.intent`
-- **Hand IK simplificado**: mão aponta pra alvo durante `speak` se `pointAt` setado
-- **Footstep IK**: pés grudam no chão durante idle (hoje flutuam)
-
-Catálogo cresce de 9 → **14 NPCs**: + bombeiro-jovem, eletricista-presente (vs rádio), DJ, cliente-corporativo, segurança-feminina.
-
-## 3. Câmera cinemática GTA-V
-
-Novo `CinematicCameraDirector.tsx`:
-- **Shot library**: `wide-establishing`, `medium-2shot`, `over-the-shoulder`, `close-up-reaction`, `crane-down`, `dolly-in`
-- Trigger por `cinematicBeats[]` da missão; transição com lerp 1.2s (ease-in-out)
-- Fora de cutscene volta ao OrbitControls do jogador (camera state preservado)
-- Letterbox auto-anima 12vh in/out
-- Depth-of-field sutil (postprocessing `Bokeh` opcional via flag, fallback fog-density bump)
-
-## 4. HUD GTA-V refinado
-
-`CinematicHUD.tsx` ganha:
-- **Mission triangle pulsante** quando objetivo novo é revelado
-- **Subtitle queue** — múltiplas linhas em fila, não sobrescreve
-- **Floating XP popups** (`+50 XP — perfect snap`) ao completar objetivo
-- **Wasted/Mission Failed screen** (full-bleed vermelho, slow-mo 0.4× fade)
-- **Mission Passed flash** (golden bar sweep)
-- **Mini-map canto inferior-esquerdo** (top-down do palco com NPCs e equipment placeholders)
-
-## 5. Situações cotidianas de palco
-
-Novo módulo `ambientChoreographer.ts` que, em **qualquer** missão, agenda micro-eventos (NPCs paralelos):
-- DJ fazendo soundcheck ao fundo (toca beat 4 batidas a cada 30s)
-- Dançarinos passando coreografia em linha reta
-- Cliente checando relógio
-- Roadie carregando case do ponto A→B
-- Walkie-talkie chiando ("rádio interno")
-
-Configurável por chapter — Cap. 5 fica caótico, Cap. 1 fica calmo.
-
-## 6. Arquivos previstos
-
-**Novos:**
-- `src/components/training/missions/missionScripts.ts` — ampliado para 16 missões (substitui)
-- `src/components/training/missions/types.ts` — adiciona `cinematicBeats`, `voiceLines`, `failureScenarios`
-- `src/components/training/camera/CinematicCameraDirector.tsx`
-- `src/components/training/camera/shotLibrary.ts`
-- `src/components/training/hud/MiniMap.tsx`
-- `src/components/training/hud/XPPopupLayer.tsx`
-- `src/components/training/hud/MissionFailedScreen.tsx`
-- `src/components/training/hud/MissionPassedFlash.tsx`
-- `src/components/training/ambient/ambientChoreographer.ts`
-- `src/components/training/ambient/AmbientNPCLayer.tsx`
-- `src/components/training/npcs/npcCatalog.ts` — +5 NPCs (substitui)
-- `src/components/training/humanoid/HumanoidCharacter.tsx` — refinamento PBR + props + blink + IK
-- `src/components/training/humanoid/HumanoidProps.tsx` — props paramétricos (capacete, prancheta, walkie)
-- `src/components/training/missions/__tests__/missionScripts.coverage.test.ts` — garante 16 missões, todas com briefing+debrief+manualRefs
-- `src/components/training/camera/__tests__/cameraDirector.test.tsx` — transições determinísticas
-
-**Editados:**
-- `src/components/training/CinematicTrainingSimulator.tsx` — monta director + minimap + xp layer + ambient layer; passa `cinematicBeats` ao runner
-- `src/components/training/missions/missionRunner.ts` — emite eventos `beat:start`, `beat:end`, `objective:revealed` para director e XP layer
-
-## 7. Testes
-
-- 15+ novos unit tests (FSM beats, ambient scheduler, camera director lerp, mission catalog coverage)
-- Mantém suíte atual em verde (1047/1047 → ~1062/1062)
-
-## 8. Performance
-
-- HumanoidCharacter cap em **8 NPCs simultâneos** (ambient + scripted); excedentes viram billboards lod
-- Eye blink/IK usam `useFrame` único compartilhado (zero subscriptions extras)
-- Cinematic camera reaproveita o `<Canvas>` existente (sem segundo viewport)
+Cada plano tem **uma única porta de entrada** e barrels eliminados nos críticos. Tudo que existe hoje (47 memórias) se encaixa sem reescrita — esta é a ordenação canônica, não um rewrite.
 
 ---
 
-## Fora de escopo (deixar pra v2.2)
+## 1. Safety Plane — núcleo determinístico
 
-- Voice-over real (TTS) — manteremos lipsync proxy + texto
-- MetaHuman vinculado de fato (Quixel runtime) — fora do bundle web; usamos stand-in PBR
-- Multiplayer cooperativo
-- Save/replay de runs
+```text
+UI ──► uiCommandGateway ──► CommandBus ──► SafetyStateMachine ──► FieldBus
+                                  │                                   │
+                                  ├──► simulationGuard (workMode)     │
+                                  ├──► aiGuardrail (caller=agent ✗)   │
+                                  ├──► productionSafetyOath           │
+                                  ├──► pyroTransportPolicy            │
+                                  └──► safetyBlackBox (SHA-256 chain) │
+                                                                      ▼
+                              GlobalEStopButton ──► commandBus.E_STOP (drop SFX)
+```
 
-Posso prosseguir?
+**Invariantes (não negociáveis):**
+- UI **nunca** chama `safetyStateMachine.transition()`, `fieldBus.send()`, `executor.fire()` direto
+- IA **nunca** atinge ARM/FIRE/E_STOP/workMode (bloqueado por `caller`)
+- E-STOP global sempre visível `z-[9999]`, exceto `/command`
+- `real_operation` exige Phase 2 grant fresco (≤5min) + production oath + plan hash
+- Black box ring 500 com cadeia SHA-256 (tamper-evident)
+- Quarentena ativa `__FXK_SAFETY_QUARANTINE__` → recusa real_operation
+
+**Modos de trabalho:**
+| Modo | Bloqueios físicos | Uso |
+|---|---|---|
+| `design` | nenhum | criação livre, IA, render |
+| `simulation` | advisory only (não bloqueia) | dry-run, golden shows, training |
+| `real_operation` | TODOS intertravamentos | campo, voo real |
+
+---
+
+## 2. Show Plane — ShowPlan como verdade canônica
+
+```text
+                     ┌──────── AI Show Builder (extend/diff/undo) ────────┐
+                     │                                                     │
+  Templates ─────────┤                                                     │
+  Golden Catalog ────┤──► ShowPlan (canonical) ──► VerificationEngine ──► Phase Gates
+  VVIZ/VDL Import ───┤         │                          │                     │
+  SwarmGPT/JOI ──────┘         │                          │                  Phase 1 ─► READY_FOR_FIELD
+                               │                          │                  Phase 2 ─► READY_FOR_HARDWARE_SYNC
+                               ▼                          ▼                  Real    ─► requestRealOperation()
+                          Show3DEngine ◄──── Timeline (audio master clock)
+                               │                          │
+                  ┌────────────┼──────────────┐           │
+                  ▼            ▼              ▼           ▼
+            PyroSim         Drones        Lasers     Exporters
+        (GPGPU+WebGPU)   (formations)  (ILDA/laser)  (Skybrush/MAVLink/PDF/ZIP)
+```
+
+**Decisões consolidadas:**
+- ShowPlan é **a** fonte; DMXLAYOUT.ini é puramente visual
+- Rotação: Position=YZX (HPR), Effect=PTS (Pan/Tilt/Spin)
+- VDL: 25 cores Euclidean, LRU 256
+- Timeline: ECS/SoA, zero-GC, 4px dead-zone, snap 30/50/90
+- Show3D ↔ Timeline ↔ Audio: master clock unidirecional via `useAudioMasterClock`
+- Exports honestos com claim policy (`validated` / `pilot` / `marketing_hypothesis`) + disclaimers
+
+**Render pipeline (11 layers):**
+WebGPU compute unified kernel → Bitonic sort → Fire (blackbody) → Smoke (Beer-Lambert) → Wind (Curl Noise 3D) → Scatter → Bloom/Halation → ACES Hue-Preserve → Lens Flare → Film Grain → Atmospheric Depth. Fallback WebGL2 (FBO ParticleGPGPU) gated por flag.
+
+---
+
+## 3. Hardware Plane — honest, multi-transport, identity-unified
+
+```text
+       ┌─ Web Serial ─┐
+       ├─ WebUSB ─────┤
+       ├─ Web BLE ────┤──► UnifiedDiscovery ──► PortRegistry (aliases[])
+       ├─ Art-Net/sACN┤        │                      │
+       └─ Capacitor ──┘        ▼                      ▼
+                       DeviceAggregator ──► PhysicalDevice (1:N transports)
+                              │                      │
+                              ▼                      ▼
+                  MultiTransportLink         LinkHealth (EMA, txOk/Err)
+                  (single/dual/broadcast)         │
+                              │                   ▼
+                              ▼            Auto-Fallback (3 fails → quarantine)
+                       TransportSenderRegistry
+                              │
+                              ▼
+                     IngestionLayer ──► realOnlyGate ──► live_read_only
+                              │                                  │
+                              ▼                                  ▼
+                       Discovery→Registry Bridge          DeviceEventLog
+                       (FXK16+Battery+Mux+SR auto-promote)
+```
+
+**Hardware estendido:**
+- **FXK16**: BLE (ffe0/ffe1/ffe2 handshake) + USB; typed Command API com client-ARM gate, auto-disarm on link loss; field config persistido (mode/duration/sweep/burst)
+- **FireOne FXK-PYRO 2.0**: array/pin stagger
+- **Showven**: Sonicboom, SPARKULAR, PyroAdaptor, FX Commander Pro (128 cues, dual-band)
+- **Tuya**: BLE Mesh + Wi-Fi (low-precision, NUNCA pyro <50ms)
+- **CubeMesh RE168 + GalaxyLED**
+- **Lasers**: Maiman 16/39CH, ILDA 30-60k PPS
+- **DMX/Art-Net**: 33 PPS limit, MA3/GMA2 patch
+
+**Hard rules:**
+- Pyro real_operation: priority `[serial, usb, artnet]`, BLE banido
+- Stub default: `NO_REAL_SENDER` + `disconnected/unknown` (zero dados sintéticos)
+- Identity: `portRegistry.aliases[]` colapsa duplicatas cross-transport
+- Hot-plug auto-reopen, persistent authorization por VID/PID
+
+---
+
+## 4. Experience Plane — DS unificado, opt-in marketing
+
+```text
+src/
+├─ pages/             ◄── routes (Editor, Command, Field, Training, Pairing, Strategy, Marketing)
+├─ features/          ◄── 12 buckets (barrels READ-ONLY hoje, físico depois)
+│   ├─ safety/ timeline/ cue-editor/ showplan/ dockstation/
+│   ├─ wfd/ artnet/ fieldbus/ logs/ settings/ nexus/ shared/
+│   └─ viewport-tools/ create-flow/
+├─ components/editor/ ◄── home física atual (F5.B migra depois)
+├─ core/              ◄── safety, pyrosim, system/eventBus
+├─ render_ultra/      ◄── WebGPU pipeline + fallbacks
+├─ hardware/          ◄── transports, scheduler
+├─ ai/                ◄── JOI, Joi compiler v2, runtime, replay
+├─ stores/            ◄── slim macro (hardwareSync, uiWorkspace)
+├─ store/             ◄── per-domain (fleet, scene, viewport, undo, …)
+├─ lib/featureFlags/  ◄── flags canônicas
+└─ styles/            ◄── tokens
+```
+
+**Design System (FXKONTROL DS v1):**
+- Tokens `--ds-*`, `--status-*`, `--segment-*`, `--state-*`
+- Tipografia única: `text-ds-{h1 48 / h2 32 / h3 24 / h4 20 / body 16 / label 14 / caption 12}` + `.ds-mono` (JetBrains)
+- Fontes: Rajdhani + JetBrains Mono apenas (guard test allow-list)
+- Grid editor: topbar 64 / tabs 48 / left 280 / right 320 / timeline 180
+
+**Theming (dois temas, fronteira explícita):**
+
+| Tema | Aplicação | Paleta | Justificativa |
+|---|---|---|---|
+| **Operacional (default)** | Editor, Command, Field, Training, Pairing, /dev | Vantablack `#050810`, Cyan-dessat `190 70% 58%`, status semantics (Green/Amber/Red) | OLED smear, E-STOP visibility, WCAG AA campo |
+| **Commercial (opt-in)** | Landing, Pricing, Comercial, PitchUS, Unsubscribe | `#1A1A1B`, Electric Blue, Safety Orange | Brief marketing premium |
+
+Guard test `commercialThemeScope.guard.spec.ts` impede vazamento.
+
+**Hierarquia de decisão de design:** safety > consolidado > WCAG AA > brief marketing > estética. Brief perde em 1-3.
+
+**Brand:** `FxkLogo` pentágono XLR 5-pin cyan + wordmark `.ds-mono`.
+
+---
+
+## 5. Mapa de fluxos críticos
+
+```text
+COMANDO REAL (worst case, 5 gates):
+ UI button
+  └► uiCommandGateway.fire(cueId)
+      └► simulationGuard (workMode != real_operation? advisory)
+          └► safetyGate.anyEnforced()
+              └► CommandBus.dispatch
+                  └► SafetyStateMachine (ARMED required, caller != 'agent')
+                      └► verdictForPyroFire (planHash, pyroTransportPolicy)
+                          └► safetyBlackBox.append (SHA-256 chain)
+                              └► FieldBus.send → MultiTransportLink (priority serial/usb/artnet)
+                                  └► LinkHealth track + auto-fallback
+                                      └► DeviceEventLog
+```
+
+```text
+DESIGN/SIM (zero bloqueios):
+ UI ─► uiCommandGateway ─► simulationGuard.withSimBypass ─► CommandBus
+                                                              └► Show3DEngine (Particle Explosion / Light Point)
+```
+
+```text
+PHASE GATES:
+ ShowPlan ─► VerificationEngine ─► Phase 0 (readiness audit, adapters)
+                                ─► Phase 1 (catalog coverage, dry-run)
+                                ─► Phase 2 (operator confirmed, hold 1.2s)
+                                ─► requestRealOperation (oath + freshness + plan hash)
+```
+
+---
+
+## 6. Otimizações estruturais propostas (delta vs hoje)
+
+Mudanças **aditivas e seguras**, sem quebrar invariantes:
+
+1. **Documentar os 4 planos** num único `docs/architecture/v6-overview.md` com diagramas Mermaid (fonte única de verdade arquitetural; substitui leitura de 47 memórias para onboarding).
+
+2. **Mapa de portas (`docs/architecture/entry-points.md`)** listando as únicas portas válidas: `uiCommandGateway`, `aiGuardrail`, `requestRealOperation`, `safetyBlackBox.append`, `unifiedDiscovery`, `deviceAggregator`. Ferramenta de auditoria (test) que falha se algo importar caminhos proibidos.
+
+3. **Ativar fase F5.B incremental** (1 bucket/sprint): mover físico de `components/editor/` para `features/<bucket>/` mantendo barrel re-export por 1 release. Começar por `safety` e `timeline` (mais coesos, já têm guard de barrel proibido).
+
+4. **Render plane: extrair `render_ultra` para `core/render`** alinhando com `core/safety` e `core/pyrosim` (consistência semântica — "core" = motores determinísticos críticos).
+
+5. **Adapter triage como serviço de 1ª classe**: promover `pendingRequiredAdapters` para um `AdapterReadinessService` com pub/sub no `eventBus` (`HARDWARE.READINESS_CHANGED`). HUD passa a reagir em vez de pollar.
+
+6. **safetyBlackBox como stream**: além do ring 500 in-memory, append-only para IndexedDB com export `.fxk-blackbox.jsonl` assinado (forensics pós-show).
+
+7. **Test plane unificado**: hoje há `__tests__`, `test/`, `*.spec.ts`, `*.test.ts`. Padronizar em `*.test.ts` co-located + `__tests__/guard/` para guards arquiteturais (typography, commercial-theme, barrels-proibidos, entry-points).
+
+8. **Feature flags como documento vivo**: gerar `docs/architecture/feature-flags.md` automaticamente de `lib/featureFlags` listando flag, default, owner, status (experimental/stable/deprecated).
+
+9. **Strategic Command Hub fica isolado em Experience Plane** — confirmar que NUNCA importa de `core/safety` ou `hardware/`. Adicionar guard test.
+
+10. **Unreal bridge**: documentar em `docs/architecture/unreal-bridge.md` que `Pixel Streaming = review-only`, voo real exclusivo via `uiCommandGateway`. Universos DMX U6=drone LED preview, U7=pyro preview reservados no exporter.
+
+---
+
+## 7. O que NÃO mudar (invariantes preservadas)
+
+- Quatro planos e suas portas únicas
+- 3 modos de trabalho (design/simulation/real_operation)
+- Tema operacional Vantablack canônico
+- Tipografia DS scale + allow-list
+- Guard tests existentes (commercial scope, typography, barrels)
+- ShowPlan como canonical truth
+- Identity unification + multi-transport
+- Honest hardware layer (zero dados sintéticos)
+- Black box SHA-256 chain
+- AI guardrail (caller=agent banido em ARM/FIRE)
+
+---
+
+## 8. Entregáveis desta arquitetura (se aprovado)
+
+**Documentação (não toca código de produção):**
+- `docs/architecture/v6-overview.md` — visão dos 4 planos + Mermaid
+- `docs/architecture/entry-points.md` — portas únicas + tabela de proibições
+- `docs/architecture/feature-flags.md` — gerador + snapshot atual
+- `docs/architecture/unreal-bridge.md` — fronteira review/comando
+- `mem://arquitetura/v6-quatro-planos.md` — memória core do projeto
+
+**Guards arquiteturais (testes novos, falham CI se violado):**
+- `entryPoints.guard.spec.ts` — proíbe imports cross-plano não autorizados
+- `strategicHubIsolation.guard.spec.ts` — Strategy hub não importa core/safety nem hardware
+- `renderCoreLocation.guard.spec.ts` — preparar movimentação render_ultra → core/render
+
+**Refactors aditivos (zero breaking):**
+- `AdapterReadinessService` (novo arquivo, pub/sub)
+- `safetyBlackBox` IndexedDB sink (opt-in via flag)
+
+**F5.B piloto:**
+- Mover fisicamente `safety` (1 bucket) — re-export shim no editor por 1 release
+
+---
+
+## Resumo de uma linha
+
+Quatro planos ortogonais (Safety / Show / Hardware / Experience), portas únicas auditadas por guard tests, documentação consolidada como fonte de onboarding, e migração F5.B incremental — sem reescrever uma linha de runtime crítico.
