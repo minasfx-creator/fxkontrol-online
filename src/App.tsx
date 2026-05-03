@@ -221,10 +221,11 @@ function App() {
                     {/* Checkout success — auth-gated but standalone (no MainLayout chrome) so the
                         confirmation screen is the only thing visible while the webhook lands. */}
                     <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
+                    {/* Root entry: nunca mostra landing — manda direto pro auth.
+                        AuthRoute redireciona usuários já logados pra /office?tab=overview. */}
+                    <Route path="/" element={<Navigate to="/auth" replace />} />
                     <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
                       {/* ── 3 grandes áreas ───────────────────────────────────── */}
-                      {/* Default landing → Studio 3D viewport (entrada principal). */}
-                      <Route path="/" element={<Navigate to="/office?tab=overview" replace />} />
                       <Route path="/office" element={<Office />} />
                       {/* Studio = editor 3D. /editor é endpoint equivalente (mesma página). */}
                       <Route path="/studio" element={<Index />} />
