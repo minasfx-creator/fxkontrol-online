@@ -419,6 +419,9 @@ export default function AIShowBuilderPanel({ site, onApplied, onEditSite }: Prop
     return () => window.removeEventListener('keydown', onKey);
   }, [plan, extensionHistory.length, redoStack.length, handleUndoExtension, handleRedoExtension]);
 
+  // Limpa highlight ao desmontar (evita stale state se o painel sumir).
+  useEffect(() => () => extensionHighlight.clear(), []);
+
   // Persistência leve por plan.id: sobrevive a reload/troca de aba.
   // Hidrata ao trocar de plano; salva (debounced via React batching) a cada mudança.
   useEffect(() => {
