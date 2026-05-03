@@ -55,7 +55,6 @@ const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")
 const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
 const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
 const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")));
-const LibertadoresGoldenShow = lazy(lazyRetry(() => import("./pages/dev/Libertadores")));
 const GoldenShowsCatalog = lazy(lazyRetry(() => import("./pages/dev/GoldenShows")));
 const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
 
