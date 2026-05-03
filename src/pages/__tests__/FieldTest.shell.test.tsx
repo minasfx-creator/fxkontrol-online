@@ -15,7 +15,7 @@ import { MemoryRouter } from 'react-router-dom';
 import React, { Suspense } from 'react';
 
 // ─── Mocks ──────────────────────────────────────────
-const mockIsMobile = vi.fn<[], boolean>();
+const mockIsMobile = vi.fn(() => false);
 vi.mock('@/hooks/use-mobile', () => ({
   useIsMobile: () => mockIsMobile(),
 }));
