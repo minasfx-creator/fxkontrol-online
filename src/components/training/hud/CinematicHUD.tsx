@@ -68,16 +68,22 @@ interface DialogueSubtitleProps {
   text: string;
   /** ms */
   duration?: number;
+  /** "1 / 3" indicator when used inside a queue. */
+  position?: { index: number; total: number };
   onSkip?: () => void;
   onComplete?: () => void;
+  /** Disable global key handler (queue owns it). */
+  disableKey?: boolean;
 }
 export function DialogueSubtitle({
   speakerName,
   speakerColor,
   text,
   duration,
+  position,
   onSkip,
   onComplete,
+  disableKey = false,
 }: DialogueSubtitleProps) {
   const [shown, setShown] = useState('');
 
@@ -98,6 +104,7 @@ export function DialogueSubtitle({
   }, [text, duration, onComplete]);
 
   useEffect(() => {
+    if (disableKey) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
@@ -107,18 +114,88 @@ export function DialogueSubtitle({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [text, onSkip]);
+  }, [text, onSkip, disableKey]);
 
   return (
     <div className="absolute bottom-[14vh] left-1/2 z-50 -translate-x-1/2 max-w-[80vw]">
       <div className="rounded-lg bg-black/85 backdrop-blur-md border border-white/15 px-4 py-2.5 shadow-2xl">
-        <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: speakerColor }}>
-          {speakerName}
-        </p>
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: speakerColor }}>
+            {speakerName}
+          </p>
+          {position && (
+            <span className="text-[9px] font-mono text-white/45">
+              {position.index + 1} / {position.total}
+            </span>
+          )}
+        </div>
         <p className="text-sm text-white leading-snug font-medium">{shown}</p>
-        <p className="text-[9px] text-white/40 mt-1.5 font-mono">[ESPAÇO] pular</p>
+        <p className="text-[9px] text-white/40 mt-1.5 font-mono">
+          [ESPAÇO] {position && position.index < position.total - 1 ? 'próxima' : 'pular'}
+        </p>
       </div>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+export interface QueuedSubtitle {
+  id: string;
+  speakerName: string;
+  speakerColor: string;
+  text: string;
+  durationMs?: number;
+}
+interface QueueProps {
+  queue: QueuedSubtitle[];
+  onComplete?: (id: string) => void;
+  onDrained?: () => void;
+}
+/**
+ * Plays subtitles sequentially. SPACE skips to the next; if last,
+ * fires onDrained. Safe with rapid prop changes (resets to head).
+ */
+export function DialogueSubtitleQueue({ queue, onComplete, onDrained }: QueueProps) {
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => { setIdx(0); }, [queue]);
+
+  const advance = () => {
+    const current = queue[idx];
+    if (current) onComplete?.(current.id);
+    if (idx + 1 >= queue.length) {
+      onDrained?.();
+      setIdx(queue.length); // move past last (component renders nothing)
+    } else {
+      setIdx(idx + 1);
+    }
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        advance();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx, queue]);
+
+  if (queue.length === 0 || idx >= queue.length) return null;
+  const cur = queue[idx];
+  return (
+    <DialogueSubtitle
+      key={cur.id}
+      speakerName={cur.speakerName}
+      speakerColor={cur.speakerColor}
+      text={cur.text}
+      duration={cur.durationMs}
+      position={{ index: idx, total: queue.length }}
+      disableKey
+      onComplete={advance}
+    />
   );
 }
 
