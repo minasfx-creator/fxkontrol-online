@@ -11,6 +11,11 @@ import { toast } from 'sonner';
 import { useProjectStore } from '@/store/useProjectStore';
 import { appendShowPlan, resumeOffsetFor, resumeOffsetAtCue } from '@/lib/aiShowBuilder/continueShowPlan';
 import { diffShowPlan, summarizeDiff, type ShowPlanDiff } from '@/lib/aiShowBuilder/showPlanDiff';
+import {
+  loadExtensionHistory,
+  saveExtensionHistory,
+  clearExtensionHistory,
+} from '@/lib/aiShowBuilder/extensionHistoryStorage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
