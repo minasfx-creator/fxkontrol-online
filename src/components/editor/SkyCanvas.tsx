@@ -2185,6 +2185,7 @@ export default function SkyCanvas() {
           }}
         />
         <HardeningWatchdog />
+        <ViewportResizeSync />
         {/* Bootstrap floor — guarantees the operator NEVER sees a pure-black
             viewport even when sky/ground/lighting subsystems are still
             suspended (lazy chunks, GoogleTiles boot, GPGPU warm-up).
