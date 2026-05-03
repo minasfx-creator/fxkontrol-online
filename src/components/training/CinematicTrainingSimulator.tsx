@@ -58,7 +58,7 @@ export default function CinematicTrainingSimulator({
   const [activeVFX, setActiveVFX] = useState<{ id: string; position: [number, number, number] }[]>([]);
   const [activeDialogue, setActiveDialogue] = useState<DialogueLine | null>(null);
   const [briefingIndex, setBriefingIndex] = useState(0);
-  const [pendingBeat, setPendingBeat] = useState<CinematicBeat | null>(null);
+  const directorRef = useRef<CinematicCameraDirectorHandle | null>(null);
   const [orbitEnabled, setOrbitEnabled] = useState(true);
   const [xpPopups, setXpPopups] = useState<XPPopup[]>([]);
   const [passedFlash, setPassedFlash] = useState(false);
