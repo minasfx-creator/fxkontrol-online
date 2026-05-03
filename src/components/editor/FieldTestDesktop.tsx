@@ -350,11 +350,7 @@ export default function FieldTestDesktop() {
                       ? "bg-amber-600 hover:bg-amber-500 text-white shadow-[0_0_16px_hsl(32_100%_50%/0.3)]"
                       : "bg-amber-600/15 hover:bg-amber-600/25 text-amber-400 border border-amber-600/30"
                   )}
-                  onClick={() => {
-                    const src = { source: 'FieldTestDesktop' };
-                    if (session.armed) { uiCommandGateway.disarm(src); fieldTestEngine.disarm(); }
-                    else { uiCommandGateway.arm(src); fieldTestEngine.arm(); }
-                  }}>
+                  onClick={() => toggleArm('FieldTestDesktop')}>
                   <Shield className="w-3.5 h-3.5" />
                   {session.armed ? 'DISARM' : 'ARM'}
                 </Button>
