@@ -69,7 +69,7 @@ export function FixturesLayer({
   origin = [0, 0, 0],
 }: FixturesLayerProps) {
   const list = useMemo<MvrFixture[]>(
-    () => (fixtures ?? (mvrCatalog as { fixtures: MvrFixture[] }).fixtures),
+    () => (fixtures ?? ((mvrCatalog as unknown) as { fixtures: MvrFixture[] }).fixtures),
     [fixtures],
   );
 
