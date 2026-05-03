@@ -24,6 +24,7 @@ import { haptics } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { useImperativeTimeout } from '@/hooks/useInterval';
 import FXK16FieldTestPanel from '@/components/field/FXK16FieldTestPanel';
+import { useFieldTestSession } from '@/hooks/useFieldTestSession';
 import FXK16FieldSettingsPanel from '@/components/field/FXK16FieldSettingsPanel';
 import { FXK16ConnectionPanel } from '@/components/editor/live-firing/FXK16ConnectionPanel';
 
