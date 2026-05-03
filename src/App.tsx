@@ -55,7 +55,6 @@ const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")
 const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
 const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
 const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")));
-const LibertadoresGoldenShow = lazy(lazyRetry(() => import("./pages/dev/Libertadores")));
 const GoldenShowsCatalog = lazy(lazyRetry(() => import("./pages/dev/GoldenShows")));
 const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
 
@@ -198,7 +197,7 @@ function App() {
                     <Route path="/dev/readiness-audit" element={<ReadinessAudit />} />
                     {/* Phase 1 golden show inspector — pure read of the
                         Libertadores ShowPlan + PDF + honest export ZIP. */}
-                    <Route path="/dev/libertadores" element={<LibertadoresGoldenShow />} />
+                    <Route path="/dev/libertadores" element={<Navigate to="/dev/golden-shows" replace />} />
                     <Route path="/dev/golden-shows" element={<GoldenShowsCatalog />} />
                     {/* Public alias — promoted shell route. */}
                     <Route path="/editor-ds" element={<EditorShellPreview />} />
