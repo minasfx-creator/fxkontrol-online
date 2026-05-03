@@ -523,11 +523,35 @@ const StageEnvironment3D = forwardRef<THREE.Group>(function StageEnvironment3D(_
       <FloorWash position={[0, 0.31, -1.5]} color="#ffffff" />
       <FloorWash position={[2, 0.31, -1.5]} color="#22ffaa" />
 
+      {/* ── PA Line Arrays (flown L+R) ── */}
+      <PALineArray position={[-5.4, 4.1, -1.6]} side="L" />
+      <PALineArray position={[5.4, 4.1, -1.6]} side="R" />
+
+      {/* ── Stage Monitor Wedges (downstage) ── */}
+      <MonitorWedge position={[-2.6, 0.32, 1.85]} rotationY={Math.PI} />
+      <MonitorWedge position={[0, 0.32, 1.95]} rotationY={Math.PI} />
+      <MonitorWedge position={[2.6, 0.32, 1.85]} rotationY={Math.PI} />
+
+      {/* ── Cable snakes FOH → stage ── */}
+      <CableSnake from={[-3.6, 0.45, 5.5]} to={[-3.5, 0.4, 1.7]} />
+      <CableSnake from={[3.6, 0.45, 5.5]} to={[3.5, 0.4, 1.7]} />
+
+      {/* ── Hazers (DSL/DSR) ── */}
+      <HazerMachine position={[-4.4, 0.4, 1.6]} />
+      <HazerMachine position={[4.4, 0.4, 1.6]} />
+
+      {/* ── Audience pit (silhouettes, downstage) ── */}
+      <AudiencePit position={[0, 0, 3.6]} count={56} />
+
+      {/* ── FOH Desk (back of room) ── */}
+      <FOHDesk position={[0, 0, 6.4]} />
+
       {/* ── Atmospheric haze volume ── */}
       <AtmosphereHaze />
 
       {/* ── Ambient stage lighting ── */}
       <pointLight position={[0, 5.5, 0]} color="#221133" intensity={3} distance={12} />
+      <pointLight position={[0, 1.2, 6.4]} color="#22ffaa" intensity={0.6} distance={3.5} />
     </group>
   );
 });
