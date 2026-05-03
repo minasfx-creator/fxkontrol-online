@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { MISSION_SCRIPTS } from '../missionScripts';
 import { createMissionRunner } from '../missionRunner';
 
-describe('Mission catalog v2.1', () => {
-  it('contains 10 missions across 5 chapters', () => {
-    expect(MISSION_SCRIPTS.length).toBe(10);
+describe('Mission catalog v2.2', () => {
+  it('contains 16 missions across 7 chapters', () => {
+    expect(MISSION_SCRIPTS.length).toBe(16);
     const chapters = new Set(MISSION_SCRIPTS.map((m) => m.chapter));
-    expect(chapters.size).toBeGreaterThanOrEqual(5);
+    expect(chapters.size).toBeGreaterThanOrEqual(7);
   });
 
   it('every mission has briefing + debrief + at least 1 stage with objectives', () => {
