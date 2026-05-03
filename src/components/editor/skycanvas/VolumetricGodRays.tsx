@@ -117,7 +117,7 @@ export default function VolumetricGodRays({
   }), []);
 
   // Project light position to screen space each frame
-  useFrame(({ clock }) => {
+  useFrame(() => {
     if (!enabled) return;
 
     _lightWorldPos.set(lightPosition[0], lightPosition[1], lightPosition[2]);
@@ -129,7 +129,8 @@ export default function VolumetricGodRays({
     );
 
     uniforms.uLightScreenPos.value.copy(_lightScreenPos);
-    uniforms.uTime.value = clock.elapsedTime;
+    // Deterministic clock: tied to timeline so god-ray noise freezes on pause/scrub.
+    uniforms.uTime.value = useProjectStore.getState().currentTime;
     uniforms.uDensity.value = density;
     uniforms.uWeight.value = weight;
     uniforms.uDecay.value = decay;
