@@ -123,11 +123,13 @@ function SafetyVolumeMesh({
   const baseColor = useMemo(() => new THREE.Color(volume.color), [volume.color]);
   const violationColor = useMemo(() => new THREE.Color('hsl(0, 85%, 50%)'), []);
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     if (!meshRef.current) return;
     const mat = meshRef.current.material as THREE.MeshBasicMaterial;
     if (isViolated) {
-      const pulse = 0.12 + Math.sin(clock.elapsedTime * 6) * 0.08;
+      // Deterministic pulse tied to timeline (freezes on pause/scrub).
+      const t = useProjectStore.getState().currentTime;
+      const pulse = 0.12 + Math.sin(t * 6) * 0.08;
       mat.opacity = pulse;
       mat.color.copy(violationColor);
     } else {
