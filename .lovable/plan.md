@@ -1,168 +1,195 @@
 
-# Plano de Implantação · FX KONTROL (derivado do orçamento JOI 02/05/2026)
+# Training Mode 2.0 — "GTA V Roadie Edition"
 
-Estado atual confirmado no código:
-- `ReadinessEvaluator` retorna `BLOCKED` enquanto `VerificationEngine` falha ou houver erros de hardware.
-- `unifiedHardwareRegistry` reporta 1/9 adapters online (resto `not_integrated`/`simulated`).
-- `real_only_mode = true` (default) — telemetria de adapter sem handshake é dropada por `realOnlyGate`.
-- `safety_gate_strict = true` em produção, mas Modo Testes (`src/_quarantine/safety/`) tem shims neutralizados.
-- ShowPlan canônico, mas `sp.hardwareConfig.modules.length === 0` força `READY_FOR_SIMULATION`.
+Atuando como dev de Unreal Engine 5, vou elevar o módulo `/training` de "puzzle de snap-points" para uma experiência **narrativa, cinemática e tecnicamente útil** — estilo GTA V (briefing → execução → debrief), com NPCs no estilo "stand-in MetaHuman" (proporções humanóides, materiais PBR, eyelines, lipsync básico, idle animado), missões em capítulos com objetivos staged e foco real em montagem de palco profissional.
 
-A meta é caminhar `BLOCKED → READY_FOR_SIMULATION → READY_FOR_EXPORT → READY_FOR_HARDWARE_SYNC → LIVE_READ_ONLY` sem violar nenhuma regra core (E-STOP <50ms, AI nunca arma/dispara, simulação ≠ disparo real, hierarquia de design).
+> Restrição: continuamos em **Three.js / R3F** (não há UE5 runtime no browser). "Estilo MetaHuman / UE5" = **pipeline de aparência** (proporções corretas, skinning simulado por bones, materiais PBR, SSS aproximado, rim light, DOF leve no closeup, motion-matching de idle). Nada de armar/disparar pirotecnia real — segue 100% `workMode = simulation`.
 
 ---
 
-## Fase 0 · Debug e Integração Básica  (semana 1–2)
+## 1. Arquitetura de Missões (Cinematic Mission Spec)
 
-Objetivo: sair de `BLOCKED` e atingir `READY_FOR_SIMULATION` estável.
-
-Entregas:
-1. **Diagnóstico consolidado**
-   - Painel `/dev/readiness-audit` que renderiza `verificationEngine.run()` + `readinessEvaluator.evaluate()` + `unifiedHardwareRegistry.getSystemHealth()` lado a lado, com `Provenance` de cada um dos 9 adapters.
-   - Export JSON do snapshot (alimenta o relatório PDF da rodada de Go-Live).
-2. **Triagem dos 8/9 adapters offline**
-   - Para cada adapter (`FXK16ModuleAdapter`, `ArduinoNanoAdapter`, `ArtNetNodeAdapter`, `BatteryMonitorAdapter`, `DMXUniverseAdapter`, `FireOneProfileAdapter`, `MuxReaderAdapterCD4051`, `RelayBankAdapter32`, `ShiftRegisterAdapter74HC595`): classificar como (a) sem hardware presente → manter `not_integrated` honesto; (b) hardware presente sem handshake → roteiro de pareamento; (c) bug no adapter.
-   - Garantir que (a) e (b) **não** emitam telemetria sintética com `dev_hardware_simulator=false` (regra Honest Hardware Layer).
-3. **FXK16 como módulo de referência**
-   - Validar fluxo USB e BLE pelos wizards `/pairing/usb` e `/pairing/ble` já existentes; persistir em `portRegistry`; confirmar handshake via `fxk16BleHandshake` e `useFXK16Bridge`.
-   - Smoke test: `useFXK16Commands.ping()` retornando `CommandResponse.ok` com 1 dispositivo real ou emulador `src/dev/fxk16/fxk16AsciiEmulator`.
-4. **Limpar warnings de Provenance**
-   - Adapters não conectados saem do dashboard de "erros" e entram numa tabela "Não integrado (esperado)" — separação visual exigida pela camada Honesty.
-5. **Critério de saída**
-   - `readinessEvaluator.evaluate().status === 'READY_FOR_SIMULATION'` em sessão limpa (nenhum hardware real, simulator OFF).
-   - 0 erros em `VerificationEngine`, warnings só sobre conteúdo do ShowPlan.
-
----
-
-## Fase 1 · Readiness para Design de Show  (semana 3–5)
-
-Objetivo: criar e validar shows completos em `simulation` sem hardware, atingindo `READY_FOR_EXPORT`.
-
-Entregas:
-1. **Show Libertadores como golden show** ✅
-   - Seed em `src/lib/showSeeds/libertadores.ts`: 32 pontos altos, 32 baixos, cometas, posicionamento via `PlannedPosition` (YZX HPR), efeitos via `PlannedTimelineItem`.
-   - **Catálogo central** em `src/lib/showSeeds/catalog.ts` + 2º seed `maracanaHino.ts` (60s, 2×FXK16) provando generalidade da pipeline.
-   - Painel `/dev/golden-shows` mostra matriz Verification × DryRun × Inspect por seed (read-only).
-   - Validador roda `ShowPlanValidationResult` antes de gravar. **51/51 tests passing.**
-2. **Loop simulação = execução**
-   - `play` em workMode=`simulation` toca a coreografia 100% — partícula GPGPU, smoke shader, blackbody, com `safetyGate.anyEnforced` respeitando workMode (já implementado em Simulation Guard Defense).
-   - Visual idêntico ao que será exportado: shaders cinema + lens flare + halation já estão no `render_ultra/`.
-3. **Especificações técnicas exportáveis**
-   - `inspect_showplan` → BoM (calibres, contagens, gradientes VDL), diagrama de sequenciamento (CSV + PDF via `pdfRenderer`), pinout proposto por módulo FXK16/74HC595.
-   - Reaproveita `vdlEffectMapper` (já com saturação de calibre validada nos testes da rodada anterior).
-4. **Export honesto**
-   - FireOne `.fdb`-like via adapter existente; Skybrush ZIP com `_FXK_DISCLAIMER.txt` (claim `marketing_hypothesis`).
-   - `ExportCoordinator` em modo Testes vira advisory (já consolidado), mas em produção exige `READY_FOR_EXPORT`.
-5. **Critério de saída**
-   - Show Libertadores gera PDF técnico + export FireOne + export Skybrush sem nenhum erro de Verification.
-   - `readinessEvaluator.evaluate().status === 'READY_FOR_EXPORT'`.
-
----
-
-## Fase 2 · Expansão de Hardware e Redundância  (semana 6–9)
-
-Objetivo: integrar hardware físico real, atingir `READY_FOR_HARDWARE_SYNC` e operar com segurança em `LIVE_READ_ONLY`.
-
-Entregas:
-1. **Frota FXK16 multi-módulo**
-   - `DeviceAggregator` já agrupa multi-transport; expandir UI `/dev/real-discovery` para mostrar fila de módulos pareados, alias unificados, `linkMode` persistido (single/dual/broadcast).
-   - Auto-fallback de transport via 3 falhas → quarentena (já implementado, expor métricas).
-2. **Hardware auxiliar**
-   - `74HC595` shift register, `CD4051` mux reader e `RelayBank32` ganham handshake real ou ficam `not_integrated` declarado; nada de simulação silenciosa.
-   - `BatteryMonitorAdapter` exigido para sair de `READY_FOR_SIMULATION` (`low_battery_alarm` bloqueia sync — já implementado).
-3. **Art-Net / DMX produção**
-   - `artNetNodeAdapter.link.degraded` deve ser `false`; aplicar preset `dmxTimingHarness` `safe`/`standard` e medir packet loss real no console `DMXBroadcastDiagnostics`.
-   - Patch MA3/GMA2 validado em `/features/artnet`.
-4. **Safety + redundância**
-   - Quarentena de safety **só** em Modo Testes; produção rearma `safetyGate.enableAll()` (regra `safety_gate_strict`).
-   - Continuity Check antes de qualquer ARM, com latência E-STOP medida <50ms (instrumentar via `useTransportDiagnostics`).
-   - Redundância: 2× FXK16 em `linkMode='dual'` para pontos críticos do show Libertadores.
-5. **Live Read-Only**
-   - `OperationalModeGuard` em `live-read-only` durante o ensaio com hardware armado mas barramento sem dispatch (já mapeado em `_isOperationAllowed`).
-6. **Critério de saída**
-   - 9/9 adapters em estado declarado correto (`integrated` ou `not_integrated` honesto).
-   - Ensaio do show Libertadores em LIVE_READ_ONLY com telemetria contínua, 0 erros, latência E-STOP medida <50ms, audit trail 100% gravado em `SafetyAuditTrail`.
-
----
-
-## Fase 3 · Otimização e Diferenciação  (semana 10+)
-
-Objetivo: feature work depois que a base está sólida. Sem comprometer Fases 0–2.
-
-Entregas (priorizadas, recortáveis):
-1. **Coreografia avançada**
-   - Espelhamento avançado, arcos paramétricos, biblioteca VDL expandida (mantendo os 25 colors canônicos).
-   - `aiShowBuilder` melhora `ShowPlan` antes de tocar no `useProjectStore` (já é o contrato), com guardrails do `aiGuardrail.ts` impedindo qualquer ação física.
-2. **Drone swarm sincronizado**
-   - Pipeline VVIZ + Skybrush export com FAA Part 107 já validado client-side; agora plugar `swarmgpt` (Hungarian + FPS sampling, flags já existentes) na timeline da pirotecnia.
-   - DockTwin pilot (telemetria mock primeiro, real depois).
-3. **ML para style transfer**
-   - `learn_style` extraindo timing/density patterns de shows passados; sugestões aparecem como "ghosts" na timeline, nunca aplicadas sem confirm humano.
-4. **Risco em tempo real**
-   - Weather-vis crítico (<1km) já tripa `useFleetStore.setShowState`; expandir para previsão (vento, umidade) via Google Geo Intelligence edge function existente.
-5. **Pacotes SaaS**
-   - Cards Previs / LiveOps / Enterprise em `/comercial`, CTAs → demo form. Sem checkout real nesta fase (deferido).
-
----
-
-## Detalhes técnicos transversais (válido para todas as fases)
-
-- **AI**: nunca pode armar/disparar/energizar/mudar workMode. Novos endpoints passam por `aiGuardrail.ts` + `uiCommandGateway`. JOI continua "secretária", nunca executora.
-- **Fluxo de comando**: UI → `uiCommandGateway` → `CommandBus` → `SafetyStateMachine` → `FieldBus`. Zero atalho.
-- **Persistência**: Lovable Cloud — qualquer tabela nova segue padrão `demo_sessions` (owner via uuid, RLS owner-scoped + admin read-all, sem FK para `auth.users`, `gen_random_uuid()`).
-- **Design**: hierarquia canônica (safety > consolidado > WCAG > brief > estética). Tokens `--field-*`, `--status-*`, `--state-*`, `.ds-*`. Rejeitados permanecem rejeitados (#121214 / #00FFFF puro / laranja-CTA chrome).
-- **Sem barrels** em módulos de reliability/safety/hardware. Imports diretos.
-- **Honesty Layer**: nenhuma rota nova pode ler `IngestionLayer` sem provenance verificada com `real_only_mode=true`.
-- **E-STOP global**: `GlobalEStopButton` permanece visível (z-9999) em todas as rotas exceto `/command`.
-- **Testes**: cada fase entrega com Vitest verde (atual: 849/849). Novos módulos exigem teste para path crítico.
-- **Memória**: ao final de cada fase, atualizar `mem://index.md` com referências a memos novas (ex.: `mem://implantacao/fase-0-debug-readiness`).
-
----
-
-## Sequência de execução proposta
+Substituo a `Mission` flat atual por um **MissionScript** estruturado, inspirado em mission flows de Rockstar:
 
 ```text
-F0  ─►  F1  ─►  F2  ─►  F3
- │       │       │       │
- │       │       │       └─ paralelizável depois de F2 estável
- │       │       └─ exige hardware físico em mesa
- │       └─ 100% software, paralelo a aquisição de hardware
- └─ pré-requisito absoluto, bloqueia tudo
+MissionScript
+├─ briefing        (cutscene curta + diálogo NPC)
+├─ stages[]        (objetivos sequenciais, não paralelos)
+│   ├─ stage.kind  ("place" | "patch" | "inspect" | "evacuate" | "fire-check" | "dialogue")
+│   ├─ snapPoints  (subset, revelados por stage)
+│   ├─ npcEvents   (entradas/saídas de NPCs, falas, gatilhos)
+│   ├─ failConds   (timeout, contato com NPC, ordem errada)
+│   └─ scoreRules  (precisão, tempo, segurança)
+├─ debrief         (relatório técnico real: o que aprendeu)
+└─ realWorldRefs   (links para manuais já existentes em MANUALS[])
 ```
 
-Próxima ação ao aprovar: começar Fase 0 pelo painel `/dev/readiness-audit` e pela triagem dos 8 adapters offline, sem tocar em nada de safety nem em comportamento de produção.
+Arquivos novos:
+- `src/components/training/missions/missionScripts.ts` — catálogo de scripts.
+- `src/components/training/missions/types.ts` — tipos `MissionScript`, `MissionStage`, `NPCEvent`, `DialogueLine`.
+- `src/components/training/missions/missionRunner.ts` — máquina de estados pura (stage advance, fail, score), testável.
+
+## 2. Novas Missões (treinamento técnico real)
+
+10 missões reescritas + 6 novas, cobrindo o ciclo real de produção:
+
+| # | Missão | Capítulo | O que treina (real) |
+|---|---|---|---|
+| 1 | **"6 da Manhã, Galpão Vazio"** | Cap.1 Montagem | Sequência de montagem de truss em H, torque de parafusos, conferência de níveis |
+| 2 | **"Rigging Vertical"** | Cap.1 | Rigging de motor, ponto de carga, ângulo seguro de cabo (≤30°), CWLL |
+| 3 | **"O Eletricista Sumiu"** | Cap.2 SFX | Distribuição AC, balanço de fases, PE/aterramento, RCD trip teste |
+| 4 | **"Patch DMX na Correria"** | Cap.2 | Universo/endereçamento, terminator 120Ω, daisy chain ≤32 fixtures |
+| 5 | **"Sparkular Safety Brief"** *(nova)* | Cap.3 SFX | Distância 3m, cone 7m, FR pano, MSDS Ti grão, leitura de display |
+| 6 | **"Flame Bar Wind Check"** *(nova)* | Cap.3 SFX | Anemômetro, vento ≤16km/h, abort threshold, comunicação com SM |
+| 7 | **"Cryo CO₂ — Asfixia"** *(nova)* | Cap.3 | Ventilação, sensor CO₂ 5000ppm, posicionamento longe de pit |
+| 8 | **"Bêbado no Palco"** | Cap.4 Caos | Protocolo de evacuação técnica, kill switch SFX, comunicação rádio |
+| 9 | **"Produtor Atrasou 3h"** | Cap.4 | Triagem de prioridade, plano B, comunicação com cliente |
+| 10 | **"Chuva 30min Antes"** *(nova)* | Cap.4 | IP rating, lonas, hold/cancel decision tree, salva-show |
+| 11 | **"Dimmer com Cheiro"** *(nova)* | Cap.4 | Reconhecer falha térmica, isolar circuito, redundância |
+| 12 | **"Soundcheck + Pyro Briefing"** *(nova)* | Cap.5 Pré-show | Walk-through com banda, no-go zones, hand signals |
+| 13 | **"Chefe-de-Pista Inspeciona"** | Cap.6 NFPA | Checklist NFPA 1123 ao vivo, raios por calibre, fallout zone |
+| 14 | **"Fiscal PHMSA na Porta"** | Cap.6 | Classificação 1.1G–1.4G, manifesto, lacres |
+| 15 | **"Réveillon — 5.000 Pessoas"** | Cap.7 Show | Run de 8 stages encadeados, todos os sistemas anteriores |
+| 16 | **"Debrief & Lessons Learned"** *(nova)* | Cap.7 | Pós-show: relatório de incidentes, devolução, contagem de invendidos |
+
+Cada missão tem:
+- **Briefing cinemático** (3–6s) com câmera dolly e NPC falando.
+- **Objetivos revelados em stages** (não tudo de uma vez) — estilo GTA V "Mission Triangle".
+- **Diálogo contextual** durante a execução (hint NPC se travar 15s).
+- **Debrief técnico** com link para o manual real (`MANUALS[]` já existente).
+- **Score breakdown**: precisão (%), tempo, segurança, comunicação.
+
+## 3. NPCs estilo MetaHuman / UE5 (aparência)
+
+Substituo os NPCs box-art atuais por um **HumanoidCharacter** unificado e parametrizável.
+
+`src/components/training/humanoid/HumanoidCharacter.tsx`:
+- Esqueleto canônico (16 bones) com `THREE.SkinnedMesh` simulado via grupos hierárquicos.
+- **Proporções MetaHuman**: 7.5 heads tall, ombros 2.2 head-widths, etc.
+- **Materiais PBR**: `MeshPhysicalMaterial` com `clearcoat` (pele), `sheen` (tecido), `transmission` (óculos).
+- **SSS aproximado** via `emissive` modulado pelo dot(N,L) — fake mas convincente em closeup.
+- **Eye-tracking**: olhos seguem câmera ou alvo via `lookAt` em meshes oculares separadas.
+- **Lipsync básico**: amplitude de boca segue envelope da string falada (chars/s + jaw open).
+- **Idle motion-matching**: mistura 3 idle loops (peso, breath, fidget) com Perlin noise.
+- **Rim light** dedicada por NPC quando em closeup (cinematográfico).
+
+Personagens:
+| ID | Papel | Vibe |
+|---|---|---|
+| `roadie-veterano` | Mentor (técnico-chefe) | "Big Smoke roadie", barba grisalha, colete fluorescente |
+| `produtor-ansioso` | Produtor atrasado | Headset, prancheta, tablet, andando rápido |
+| `cliente-indeciso` | Cliente luxo | Blazer, óculos, gesticula |
+| `convidado-bebado` | Caos | Camisa florida (mantém vibe atual mas refinado) |
+| `eletricista-sumido` | Cameo (off-screen rádio) | Apenas voz |
+| `seguranca` | Reage a invasão | Polo preto, rádio |
+| `bombeiro-fiscal` | Inspeção NFPA | Capacete branco, prancheta |
+| `dancarino-passagem` | Atravessa palco em soundcheck | Risco real de tropeçar em cabo |
+| `tecnica-som` | Colega de palco | Headset, fone monitor |
+
+Todos partilham `HumanoidCharacter` — só mudam **skin params** (`outfitPreset`, `bodyType`, `skinTone`, `hairPreset`).
+
+## 4. Cinematografia / Câmera (estilo GTA V cutscene)
+
+`src/components/training/cinema/CinematicCamera.tsx`:
+- **Briefing camera**: dolly + crane pré-canned por missão, easing cubic.
+- **Mission camera**: orbit padrão (já existe).
+- **Closeup camera**: durante diálogos NPC, corta para shot ombro com DOF (fakeBokeh via PostProcessing já no projeto).
+- **Letterbox**: barras pretas top/bottom em cutscenes (`<CinematicLetterbox />`).
+- **Title card**: nome da missão tipo "MICHAEL" GTA V (canto inferior esq, fade-in).
+- **Color grading** (LUT leve): missão noturna = teal/orange, missão dia = neutro.
+
+## 5. UI / HUD refinado
+
+- **Mission Triangle** (canto superior esq): ícone + título + stage atual.
+- **Objective list**: stage-aware, mostra próximo objetivo só após completar atual (já não cospe tudo).
+- **Dialogue subtitles**: legenda inferior com nome do NPC em cor (estilo GTA), animação typewriter, suporte a skip (Espaço).
+- **Radio chatter**: balão lateral quando NPC fala fora de tela.
+- **Score popups**: "+50 SAFETY", "+30 SPEED" estilo Rockstar.
+- **Star rating final**: 1–5 estrelas calculadas no debrief.
+
+Componentes:
+- `src/components/training/hud/MissionTriangle.tsx`
+- `src/components/training/hud/DialogueSubtitle.tsx`
+- `src/components/training/hud/ScorePopup.tsx`
+- `src/components/training/hud/StarRating.tsx`
+- `src/components/training/hud/Letterbox.tsx`
+
+## 6. Conteúdo educacional (treinamento real)
+
+Cada stage tem `realWorldFact: string` que aparece no debrief, ex.:
+
+> "**NFPA 1123**: morteiros 6" exigem raio mínimo de 175m até público. Você posicionou a 178m — APROVADO. (Veja Manual NFPA 1123 / 1124 Reference.)"
+
+Linkado ao array `MANUALS[]` já existente em `Training.tsx` — fechamos o loop entre simulador e biblioteca.
+
+## 7. Áudio (opcional, gated)
+
+- **Briefing sting**: synth pad curto no fade-in (Web Audio API, 1 osc + reverb).
+- **Diálogo TTS**: usar `useJoiSpeech` (já existe) com vozes diferentes por NPC.
+- **Ambient stage**: loop low-freq murmurinho público (gerado via noise filtrado, sem asset).
+- Tudo opt-in via toggle "Audio FX" no HUD.
+
+## 8. Testes
+
+- `missionRunner.test.ts` — máquina de estados (stage advance, fail conditions, score calc).
+- `missionScripts.test.ts` — todo script tem ≥1 stage, score ≤ 1000, durations coerentes.
+- `humanoidCharacter.test.tsx` — render snapshot, props (skinTone, outfit) aplicadas.
+- `dialogueSubtitle.test.tsx` — typewriter, skip, multi-line.
+
+Meta: **+25 testes**, suite total >1057 verde.
+
+## 9. Performance
+
+- HumanoidCharacter usa `InstancedMesh` para roupas/acessórios quando >3 NPCs em cena.
+- LOD: NPC fora do frustum → idle freeze + materiais simplificados.
+- Cutscenes pausam timer da missão (não penaliza jogador).
+
+## 10. Compatibilidade & Rollout
+
+- **Feature flag** `training_v2_cinematic` (default ON) — fallback para fluxo atual se OFF.
+- Missions existentes mantêm `id` — progresso do usuário (localStorage) preservado.
+- Sem mudanças em `workMode`, `safetyStateMachine`, `commandBus` — 100% simulação.
+
+## 11. Estrutura final de arquivos
+
+```text
+src/components/training/
+├── humanoid/
+│   ├── HumanoidCharacter.tsx        (novo, base)
+│   ├── humanoidPresets.ts           (outfits, skin, hair)
+│   └── humanoidAnimation.ts         (idle blend, lipsync, eye-track)
+├── cinema/
+│   ├── CinematicCamera.tsx          (novo)
+│   ├── CinematicLetterbox.tsx
+│   └── cameraScripts.ts             (presets de dolly por missão)
+├── hud/
+│   ├── MissionTriangle.tsx
+│   ├── DialogueSubtitle.tsx
+│   ├── ScorePopup.tsx
+│   ├── StarRating.tsx
+│   └── Letterbox.tsx
+├── missions/
+│   ├── types.ts                     (MissionScript, Stage, NPCEvent)
+│   ├── missionRunner.ts             (FSM testável)
+│   ├── missionScripts.ts            (16 missions detalhadas)
+│   └── __tests__/
+├── npcs/
+│   ├── NPCRegistry.ts               (substitui NPCs.tsx)
+│   └── npcCatalog.ts                (9 NPCs com presets MetaHuman)
+├── TrainingSimulator.tsx            (refatora para usar missionRunner)
+└── (antigos mantidos como fallback v1)
+```
+
+## 12. Entregáveis
+
+1. ✅ 16 missões escritas (10 refinadas + 6 novas) — cinematic, staged, com debrief técnico.
+2. ✅ HumanoidCharacter unificado (estilo MetaHuman dentro do limite Three.js).
+3. ✅ 9 NPCs catalogados com personalidade, diálogos e blocking.
+4. ✅ Cutscenes briefing/debrief com letterbox + title card + closeup.
+5. ✅ HUD GTA-style (triangle, subtitles, score popups, stars).
+6. ✅ Conteúdo educacional real linkado aos manuais existentes.
+7. ✅ Feature flag, testes, zero impacto em safety-critical.
 
 ---
 
-### Fase 0 · Status atual (rolling)
-- ✅ Painel `/dev/readiness-audit` operacional com export JSON.
-- ✅ Triagem declarativa em `src/core/hardware/adapterTriage.ts` (9/9 adapters classificados).
-- ✅ FXK16ModuleAdapter agora tem API pública `markHandshakeOk(transport)` / `markHandshakeLost()`.
-- ✅ `discoveryRegistryBridge` boot em `App.tsx` — promove provenance do FXK16 para `live_read_only` ao detectar handshake real (USB ou BLE) via singleton `useFXK16Bridge`. Demote em disconnect/heartbeat timeout.
-- ⏳ Próximos: equivalente para Art-Net (ArtPollReply → markHandshakeOk) e Battery-12V (piggy-back no controlador host).
-- ✅ ArtNetNodeAdapter agora tem API pública `markHandshakeOk(host)` / `markHandshakeLost()` e a bridge promove no primeiro ArtPollReply real (via `mdnsArtnetDiscoverer.watch`); demote quando todos os hosts somem.
-- ✅ DMXUniverseAdapter agora tem API pública `markHandshakeOk(label)` / `markHandshakeLost()` e a bridge promove no primeiro device autorizado com `family === 'dmx'` via `webSerialDiscoverer.watch`; demote quando todos os ports DMX somem.
-- ✅ BatteryMonitorAdapter (`battery-12v`, `requiredForSync=true`) ganhou `markHandshakeOk/Lost` e é promovido **piggy-back** no handshake do FXK16 (host controller); read-only por construção (`canWrite=false`). Demote junto com o FXK16.
-- ✅ MuxReaderAdapterCD4051 (`mux-cd4051-dual`) e ShiftRegisterAdapter74HC595 (`sr-74hc595-chain`) ganharam `markHandshakeOk/Lost` e também são promovidos **piggy-back** no handshake do FXK16 (mesma ADC/SPI bus reportada pelo host). Read-only.
-- ✅ Bridge agora promove **5 adapters** num único handshake FXK16 (FXK16 + Battery + Mux + SR) + Art-Net independente + DMX-USB independente. Restam `arduino-nano-01`, `fireone-profile` e `relay-bank-32ch` em `NOT_INTEGRATED_EXPECTED` (esperado, não bloqueia Fase 0).
-- ✅ Painel `/dev/readiness-audit` ganhou (a) badge no header indicando critério de hardware da Fase 0 atendido/pendente e (b) bloco compacto do **cluster FXK16 piggy-back** mostrando os 6 IDs (4 piggy-back + Art-Net + DMX) com integration_mode ao vivo.
-- ✅ Teste de integração end-to-end (`discoveryRegistryBridge.integration.test.ts`, 4/4): valida que **um único** handshake FXK16 verified promove o cluster inteiro e zera `pendingRequiredAdapters()`; perda de link demote atômico; bridge é idempotente.
-- 🟢 **Fase 0 — software**: pronta. Critério de saída comprovado por teste; resta apenas o smoke test físico com FXK16 real (USB ou BLE) em campo.
-
-### Fase 1 · Status atual (rolling)
-- ✅ Seed `src/lib/showSeeds/libertadores.ts` (`createLibertadoresShowPlan()`) — golden show 90s, 3 movimentos (Build-up · Anthem · Finale), 32 lows + 32 highs + 8 cometas, 4 × FXK16 (64 canais), Maracanã GPS, dual-key + NFPA 70m + cap 75mm. **Determinístico** (zero `Math.random`).
-- ✅ Suite `libertadores.test.ts` (8/8): targets estruturais, posições conhecidas, módulo+canal in-range FXK16, monotonia temporal, **no channel-reuse <1s** (interlock seguro), constraints stadium-grade, determinismo.
-- ✅ `inspect_showplan` puro: `src/lib/showSeeds/inspectShowPlan.ts` produz BoM (SKU × calibre × peso estimado, claim `marketing_hypothesis`), sequenciamento ordenado por tempo + helper `sequencingToCsv`, e pinout proposto module→channel→posição com **min gap por canal** (interlock anti cross-fire). Suite `inspectShowPlan.test.ts` (7/7) garante grupos sem duplicata, monotonia, FXK16 in-range, **min-gap ≥ 1.0s** e determinismo.
-- ✅ PDF técnico A4 via `src/lib/showSeeds/showPlanPdf.ts` (pdf-lib, mesmo padrão do `pdfRenderer.ts` da Strategy): cover + safety constraints + BoM + pinout + sequencing preview (40 linhas) + disclaimers. `downloadShowPlanPdf()` p/ UI; pure-on-data fora do download.
-- ✅ Honest export bundle Libertadores: `src/lib/showSeeds/libertadoresExport.ts` (`buildLibertadoresExportBundle` + `buildLibertadoresExportZip` + `generateFireOneScriptFromPlan` que aceita `ShowPlan` por parâmetro — não depende do singleton). ZIP contém `fxk_show.fir` (FireOne ASCII tempo-ordenado, validação de canal por `module.channelCount` → 0..15 em FXK16), `fxk_sequencing.csv`, `fxk_bom.json` (claim breakdown explícito por seção), `_FXK_DISCLAIMER.txt`. Suite `libertadoresExport.test.ts` (6/6): zero erro de canal no golden seed, header com claim policy, time-sort, 4 entradas no ZIP com round-trip, determinismo strippando timestamp.
-- ✅ Rota dev `/dev/libertadores` (`src/pages/dev/Libertadores.tsx`, lazy + público): summary determinístico, safety + interlock min channel-reuse com badge OK/TIGHT, BoM table top SKUs, dois botões — **PDF técnico** (`renderShowPlanPdf` + `downloadShowPlanPdf`) e **Bundle ZIP** (`downloadLibertadoresExportZip`). Pure read; nunca toca `setWorkMode`/`safetyStateMachine`/CommandBus. Linkada via voltar p/ `/dev/readiness-audit`. 21/21 testes do bundle showSeeds permanecem verdes.
-- ✅ Simulação dry-run determinística: `src/lib/showSeeds/simulationDryRun.ts` certifica que o ShowPlan é consumível pelo `play` loop em `simulation` sem nenhum side-effect (zero CommandBus, zero fieldBus, zero Three.js). Schedule por `pyroCues` com chave `M{module}:C{channel}`, tick 60Hz, audita interlock ≥1s, reporta cuesFired/peakConcurrent/avgLoad/trace (cap 240 frames). Suite `simulationDryRun.test.ts` (6/6).
-- ✅ `/dev/libertadores` ganhou painel **Simulation play loop · dry-run** (workMode badge, 4 stats, badge interlock NONE/breach + sparkline SVG) + card **Verification · Phase 1 exit** (mostra ao vivo `VerificationEngine.run(sp).level`, summary errors/warnings/passed, lista das primeiras 5 falhas error). Pure read.
-- ✅ **Critério de saída Fase 1 (eixo software) PROVADO**: `src/lib/showSeeds/__tests__/phase1ExitCriterion.test.ts` (5/5) garante que `verificationEngine.run(libertadoresShowPlan)` atinge `READY_FOR_EXPORT` ou `READY_FOR_FIELD`, **0 errors**, e que `verificationEngine.canExport(sp) === true`. Bypass intencional do `ShowPlanManager` singleton (parameter direct-feed) — readiness global continua refletindo o show carregado pelo usuário, mas o golden seed em si é certificadamente exportável.
-- ✅ Suite showSeeds total: **32/32 verdes** (libertadores 8 + inspectShowPlan 7 + libertadoresExport 6 + simulationDryRun 6 + phase1ExitCriterion 5).
-- ✅ **Show3DEngine acoplado**: `src/lib/showSeeds/canonicalToEnginePlan.ts` converte ShowPlan canônico (pyroCues/hardwareConfig/positions) em ShowPlan do engine (timelineItems/positions/site). Pure, determinístico, burn proxy 1.2s alinhado ao simulationDryRun. `/dev/libertadores` ganhou card **Live engine preview** com botão Mount/Unmount do `ShowEngineHost` lazy-loaded — valida ParticleGPGPU+Smoke+Bloom em workMode=`simulation`, sem CommandBus/hardware. Suite `canonicalToEnginePlan.test.ts` (8/8): determinismo, cardinalidade, ordem temporal, site bounds, SceneAdapter+compileTimeline+cuesActivatedBetween+cuesAt aceitam o plano convertido.
-- ✅ Suite showSeeds total: **40/40 verdes** (libertadores 8 + inspect 7 + export 6 + dryRun 6 + phase1Exit 5 + canonicalToEngine 8).
-- ✅ **Catálogo multi-seed certificado**: `phase1ExitCatalog.test.ts` (13/13) parametriza o critério de saída sobre **todo** `GOLDEN_SHOW_CATALOG` — Libertadores (90s/4×FXK16) + Maracanã Hino (60s/2×FXK16). Cada seed prova: pyroCues+modules canônicos, zero erros de Verification, level ∈ {READY_FOR_EXPORT, READY_FOR_FIELD}, `canExport`=true, dry-run completo (cuesFired===totalCues), `build()` determinístico via fingerprint (cues sorted-by-time + modules sorted). Pipeline genérica, não acoplada ao Libertadores.
-- ✅ **Phase 1 Transition Gate** (`src/lib/showSeeds/phase1Transition.ts` + painel `/dev/golden-shows`): combina Verification + `pendingRequiredAdapters(registry)` + dry-run, audit trail localStorage (ring 50), abre `ShowEngineHost(canonicalToEnginePlan(seed))` inline ao validar. Disparado por seed escolhido via dropdown.
-- ✅ **Show3D ↔ Timeline Sync** (`useShow3DEngineSync` + `Show3DEngine.setPlayingMirror` + flag `externalClockDriven`): no editor (`<ShowEngineHost externalClock />`) o engine 3D segue `useProjectStore.currentTime`, que é dirigido pelo `timelineClock` pinado a `audio.currentTime` via `useAudioMasterClock`. Cues disparam exatamente quando o áudio cruza o startTime; backward/big-jump = scrub (efeitos rebuild). 10/10 tests.
-- 🟢 **Fase 1 fechada no software**: catálogo inteiro → VerificationEngine.READY_FOR_EXPORT, Show3DEngine consome qualquer seed via `canonicalToEnginePlan`, transição para preview live auditada, sincronia áudio↔3D no editor. Pronto para Fase 2 (hardware físico em mesa).
+**Posso seguir e implementar?** Se sim, ao aprovar saio do plan mode e construo na ordem: tipos+runner → HumanoidCharacter → cinema → HUD → missionScripts → wire-up no `TrainingSimulator` → testes.
