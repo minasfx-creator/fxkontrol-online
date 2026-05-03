@@ -231,17 +231,67 @@ export default function HumanoidCharacter({
     const t = clock.elapsedTime + startSeed;
     const micro = microExpressions && intent ? INTENT_MICRO[intent] : null;
 
-    // Idle motion
+    // ── Walking (carried on root group; arms/legs swing in arm idle block) ──
+    let walkAmp = 0;
+    if (groupRef.current) {
+      const ws = walkState.current;
+      if (walkTo) {
+        const dx = walkTo[0] - ws.posX;
+        const dz = walkTo[2] - ws.posZ;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist > 0.04) {
+          ws.isWalking = true;
+          const step = Math.min(dist, walkSpeed * dt);
+          ws.posX += (dx / dist) * step;
+          ws.posZ += (dz / dist) * step;
+          // Face direction (smoothed)
+          const targetYaw = Math.atan2(dx, dz);
+          // Wrap-around shortest path
+          let dy = targetYaw - ws.yaw;
+          while (dy >  Math.PI) dy -= Math.PI * 2;
+          while (dy < -Math.PI) dy += Math.PI * 2;
+          ws.yaw += dy * Math.min(1, dt * 6);
+          walkAmp = Math.min(1, dist * 1.5);
+        } else {
+          ws.isWalking = false;
+        }
+      } else {
+        ws.isWalking = false;
+      }
+      groupRef.current.position.set(ws.posX, ws.posY, ws.posZ);
+      groupRef.current.rotation.y = ws.yaw;
+    }
+
+    // Idle motion (with hip bob during walk)
     if (torsoRef.current) {
       const breath = Math.sin(t * 1.2) * 0.012;
+      const walkBob = walkAmp > 0 ? Math.abs(Math.sin(t * 8)) * 0.03 * walkAmp : 0;
       const sway = persona.idleProfile === 'wobbly'
         ? Math.sin(t * 2.5) * 0.08
         : Math.sin(t * 0.6) * 0.012;
-      torsoRef.current.position.y = breath;
+      torsoRef.current.position.y = breath + walkBob;
       torsoRef.current.rotation.z = sway;
       torsoRef.current.rotation.x = persona.idleProfile === 'wobbly'
         ? Math.sin(t * 1.8) * 0.04
         : 0;
+    }
+
+    // ── Gesture pose sample (life ratio 0..1) ──
+    const gc = gestureClock.current;
+    let gPose = null as null | ReturnType<typeof sampleGesture>;
+    if (gc.kind !== 'idle' && gc.duration > 0) {
+      const elapsedMs = performance.now() - gc.startedAt;
+      const lifeT = elapsedMs / gc.duration;
+      if (lifeT >= 1) {
+        gestureClock.current = { kind: 'idle', startedAt: 0, duration: 0 };
+      } else {
+        gPose = sampleGesture(gc.kind, lifeT);
+        // Apply body-level deltas now (arms applied in arm block below).
+        if (torsoRef.current) {
+          torsoRef.current.position.y += gPose.bodyBob;
+          torsoRef.current.rotation.x += gPose.torsoLean;
+        }
+      }
     }
 
     // Eye-tracking
