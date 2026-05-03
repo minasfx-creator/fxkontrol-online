@@ -110,6 +110,36 @@ export const MISSION_SNAP_POINTS: Record<string, SnapPoint[]> = {
     { id: 'sp-3', position: [0, 12.9, -5.4], equipmentType: 'flamer', label: 'Desligar Flamer' },
     { id: 'sp-4', position: [0, 0.9, 6], equipmentType: 'cryo', label: 'Reposicionar Cryo' },
   ],
+  // ── v2.2 — Cap. 6 Soundcheck & Cap. 7 Pós-Show ─────────────────
+  'soundcheck-runthrough': [
+    { id: 'sp-1', position: [-9, 12.9, -5.4], equipmentType: 'moving-head', label: 'Cue 1 — Moving L' },
+    { id: 'sp-2', position: [9, 12.9, -5.4], equipmentType: 'moving-head', label: 'Cue 2 — Moving R' },
+    { id: 'sp-3', position: [0, 12.9, -5.4], equipmentType: 'sparkular', label: 'Cue 3 — Sparkular C' },
+  ],
+  'doors-open': [
+    { id: 'sp-1', position: [0, 0.9, 8], equipmentType: 'mortar', label: 'Sweep Frente Palco' },
+    { id: 'sp-2', position: [-10.5, 0.9, 5.4], equipmentType: 'truss-corner', label: 'Sweep Canto Esq.' },
+    { id: 'sp-3', position: [10.5, 0.9, 5.4], equipmentType: 'truss-corner', label: 'Sweep Canto Dir.' },
+  ],
+  'cue-call-live': [
+    { id: 'sp-1', position: [-4.5, 12.9, -5.4], equipmentType: 'moving-head', label: 'Patch Movings A' },
+    { id: 'sp-2', position: [4.5, 12.9, -5.4], equipmentType: 'par-can', label: 'Patch PARs B' },
+    { id: 'sp-3', position: [0, 12.9, -5.4], equipmentType: 'sparkular', label: 'Cue Sparkular Refrão' },
+  ],
+  'encore-improv': [
+    { id: 'sp-1', position: [-9, 12.9, -5.4], equipmentType: 'sparkular', label: 'Sparkular Bis L' },
+    { id: 'sp-2', position: [9, 12.9, -5.4], equipmentType: 'sparkular', label: 'Sparkular Bis R' },
+    { id: 'sp-3', position: [0, 0.9, 6], equipmentType: 'cryo', label: 'Cryo Bis Final' },
+  ],
+  'teardown-rush': [
+    { id: 'sp-1', position: [0, 0.9, 6], equipmentType: 'cryo', label: 'Recolher Cryo' },
+    { id: 'sp-2', position: [-9, 12.9, -5.4], equipmentType: 'sparkular', label: 'Descer Sparkular L' },
+    { id: 'sp-3', position: [9, 12.9, -5.4], equipmentType: 'sparkular', label: 'Descer Sparkular R' },
+    { id: 'sp-4', position: [-10.5, 0.9, -5.4], equipmentType: 'truss-straight', label: 'Truss Frontal' },
+  ],
+  'blackbox-debrief': [
+    { id: 'sp-1', position: [0, 0.9, 0], equipmentType: 'moving-head', label: 'Estação Debrief' },
+  ],
 };
 
 
