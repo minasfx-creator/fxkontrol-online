@@ -17,6 +17,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 const DemoRequestForm = lazy(() => import("@/components/comercial/DemoRequestForm"));
 import { Link } from "react-router-dom";
+import { FxkLogo } from "@/components/brand/FxkLogo";
 import {
   ArrowRight,
   CheckCircle2,
