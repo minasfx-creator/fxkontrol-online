@@ -123,9 +123,8 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   const [params] = useSearchParams();
   if (loading) return null;
   if (user) {
-    // Resume the originally-requested route ONLY when it is a safe deep-link.
-    // Otherwise default to /studio (3D viewport principal) so first-time
-    // signups / Google sign-ins land directly on the editor — never on Office.
+    // New pipeline: post-auth, land on Office Dashboard (overview tab) so the
+    // user always starts from the central hub. Safe deep-links are honored.
     const raw = params.get('next');
     const safe =
       raw &&
@@ -134,7 +133,7 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
       raw !== '/' &&
       !raw.startsWith('/auth') &&
       !raw.startsWith('/landing');
-    const target = safe ? raw! : '/studio';
+    const target = safe ? raw! : '/office?tab=overview';
     return <Navigate to={target} replace />;
   }
   return <>{children}</>;
