@@ -278,7 +278,7 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, Record<string, nev
   });
   const clockTimeRef = useClockTimeRef();
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     if (!meshRef.current) return;
     // sfx-stage mode: skip reflection updates entirely (performance optimization)
     if (groundStyle === 'sfx-stage') {
@@ -287,7 +287,8 @@ export const GroundReflections = React.forwardRef<THREE.Mesh, Record<string, nev
     }
     meshRef.current.visible = true;
     const u = uniformsRef.current;
-    u.uTime.value = clock.getElapsedTime();
+    // Deterministic clock: freezes ripples on pause/scrub.
+    u.uTime.value = useProjectStore.getState().currentTime;
 
     const { timelineItems } = useProjectStore.getState();
     const currentTime = clockTimeRef.current;
