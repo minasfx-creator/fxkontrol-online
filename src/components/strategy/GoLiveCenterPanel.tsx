@@ -70,11 +70,41 @@ export function GoLiveCenterPanel() {
   const okCount = GATES.filter((g) => g.status === 'ok' || g.status === 'sync').length;
   const total = GATES.length;
   const blockers = GATES.filter((g) => g.status === 'fail' || g.status === 'warn');
+  const hasFail = GATES.some((g) => g.status === 'fail');
+  const allGo = okCount === total;
+
+  // Verdict micro-interaction (status colors only — never brand).
+  // Replays whenever the verdict transitions GO ↔ NO-GO ↔ partial.
+  const [verdictFx, setVerdictFx] = useState<null | 'go' | 'nogo'>(null);
+  const lastVerdictRef = useRef<'go' | 'nogo' | 'partial'>(
+    hasFail ? 'nogo' : allGo ? 'go' : 'partial',
+  );
+  const fxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    const next: 'go' | 'nogo' | 'partial' = hasFail ? 'nogo' : allGo ? 'go' : 'partial';
+    if (next !== lastVerdictRef.current) {
+      lastVerdictRef.current = next;
+      if (next === 'go' || next === 'nogo') {
+        setVerdictFx(next);
+        if (fxTimerRef.current) clearTimeout(fxTimerRef.current);
+        fxTimerRef.current = setTimeout(() => setVerdictFx(null), 700);
+      }
+    }
+    return () => {
+      if (fxTimerRef.current) clearTimeout(fxTimerRef.current);
+    };
+  }, [hasFail, allGo]);
 
   return (
     <div className="space-y-ds-4">
       {/* Header strip */}
-      <div className="rounded-ds-md border border-ds-border-active/40 bg-ds-surface-deep p-ds-3">
+      <div
+        className={[
+          'rounded-ds-md border border-ds-border-active/40 bg-ds-surface-deep p-ds-3',
+          verdictFx === 'go' ? 'op-go-pulse' : '',
+          verdictFx === 'nogo' ? 'op-nogo-shake' : '',
+        ].filter(Boolean).join(' ')}
+      >
         <div className="flex items-center justify-between gap-ds-3 flex-wrap">
           <div className="flex items-center gap-ds-3">
             <ShieldCheck className="h-5 w-5 text-status-sync" />
