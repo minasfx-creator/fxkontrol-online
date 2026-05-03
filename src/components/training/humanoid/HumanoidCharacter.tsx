@@ -76,6 +76,43 @@ const INTENT_SCALE: Record<DialogueIntent, number> = {
   sarcastic: 0.9,
 };
 
+/** Microexpression deltas per intent (brow Y, brow tilt rad, squint 0..1, smirk -1..1, jaw tension 0..1). */
+const INTENT_MICRO: Record<DialogueIntent, {
+  browDy: number; browTilt: number; squint: number; smirk: number; jawTension: number;
+}> = {
+  urgent:    { browDy: -0.014, browTilt:  0.18, squint: 0.55, smirk:  0.0,  jawTension: 0.7 },
+  serious:   { browDy: -0.008, browTilt:  0.10, squint: 0.30, smirk:  0.0,  jawTension: 0.4 },
+  excited:   { browDy:  0.014, browTilt: -0.12, squint: 0.0,  smirk:  0.4,  jawTension: 0.2 },
+  calm:      { browDy:  0.000, browTilt:  0.00, squint: 0.0,  smirk:  0.1,  jawTension: 0.0 },
+  sarcastic: { browDy:  0.006, browTilt: -0.20, squint: 0.15, smirk:  0.7,  jawTension: 0.1 },
+};
+
+/** Blink rhythm by intent — urgent blinks faster, calm slower. */
+const INTENT_BLINK: Record<DialogueIntent, { minS: number; maxS: number; doubleChance: number }> = {
+  urgent:    { minS: 1.2, maxS: 2.4, doubleChance: 0.35 },
+  excited:   { minS: 1.6, maxS: 3.0, doubleChance: 0.25 },
+  serious:   { minS: 2.5, maxS: 4.5, doubleChance: 0.10 },
+  calm:      { minS: 3.5, maxS: 6.0, doubleChance: 0.05 },
+  sarcastic: { minS: 2.0, maxS: 4.0, doubleChance: 0.20 },
+};
+const DEFAULT_BLINK = { minS: 3, maxS: 6, doubleChance: 0.10 };
+
+/** Parametric prop appearance overrides (all optional). */
+export interface PropOverrides {
+  helmetColor?: string;
+  helmetScale?: number;
+  vestAccentColor?: string;
+  vestEmissiveIntensity?: number;
+  visorTint?: string;
+  visorClearcoat?: number;
+  walkieLedColor?: string;
+  walkieLedIntensity?: number;
+  clipboardColor?: string;
+  headphonesColor?: string;
+  toolBeltColor?: string;
+  megaphoneColor?: string;
+}
+
 export interface HumanoidCharacterProps {
   persona: NPCPersona;
   position?: [number, number, number];
@@ -83,11 +120,20 @@ export interface HumanoidCharacterProps {
   lookAtTarget?: [number, number, number] | null;
   /** 0..1 jaw open amplitude (lipsync proxy). */
   speakingAmplitude?: number;
-  /** Modulates lipsync amplitude + brow micro-expression. */
+  /** Modulates lipsync amplitude + brow micro-expression + blink rhythm. */
   intent?: DialogueIntent;
   /** When set, the right hand IK points at this world position. */
   pointAt?: [number, number, number] | null;
   closeup?: boolean;
+  /** Per-instance prop appearance tweaks. */
+  propOverrides?: PropOverrides;
+  /** Disable microexpression layer (default: enabled). */
+  microExpressions?: boolean;
+  /**
+   * Voice line id — when it changes while speaking, fires a brief
+   * microexpression "accent" (eyebrow flick + jaw kick) for naturalism.
+   */
+  voiceLineId?: string | number | null;
 }
 
 export default function HumanoidCharacter({
