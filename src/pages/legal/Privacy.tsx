@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-const LEGAL_NAME = '[LEGAL_BUSINESS_NAME]';
+const LEGAL_NAME = 'MINASFX PRODUÇÃO DE EVENTOS LTDA';
 const TRADING_NAME = 'FX Kontrol';
 const CONTACT_EMAIL = 'support@fxkontrol.online';
 
