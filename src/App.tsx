@@ -203,6 +203,9 @@ function App() {
                     <Route path="/dev/fxk16" element={<FXK16Hub />} />
                     <Route path="/dev/fxk16-validate" element={<Navigate to="/dev/fxk16?tab=validate" replace />} />
                     <Route path="/dev/fxk16-calibrate" element={<Navigate to="/dev/fxk16?tab=calibrate" replace />} />
+                    {/* FXK32Q dev hub — Control (bench) + Snapshot (read-only adapter). */}
+                    <Route path="/dev/fxk32q" element={<FXK32QHub />} />
+                    <Route path="/dev/fxk32" element={<Navigate to="/dev/fxk32q" replace />} />
                     {/* SkyCanvas dev lab — variantes smoke / r3f / v2 sob um único
                         chunk lazy. Rotas legadas redirecionam preservando a variante. */}
                     <Route path="/dev/skycanvas-lab" element={<SkyCanvasLab />} />
