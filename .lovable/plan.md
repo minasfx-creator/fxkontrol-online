@@ -1,79 +1,74 @@
-# Migração SkyCanvas → EditorShell DS v1
+## Round 1 — Integrar módulos do SkyCanvas legado ao novo `/skycanvas`
 
-## Objetivo
-Adotar no `/skycanvas` o **mesmo layout estruturado do editor antigo** (`<EditorShell>` da DS v1: Topbar 64 · Tabs 48 · Left 280 · Right 320 · Timeline 180 · Viewport fill), aposentando o dock flutuante de vidro. Toda a funcionalidade existente (viewport WebGL, transporte, áudio, cues, persistência, Master Menu, drag-drop) é preservada; só muda o **chrome** (estrutura).
+Você subiu o `Index.tsx` legado (861 linhas, ~80 painéis lazy). Vou puxar **só os módulos do plane Show/Experience** (criação, edição, simulação, render). Tudo do plane Hardware/Safety (LiveFiring, DMXOutput, Bluetooth, NFC, Radio, MA3, SACN, Fleet, Geofence, MAVLink, FlightLog, Telemetry, FlightCheck) **fica fora** — esses já vivem em `/command`, `/field`, `/pairing/*`.
 
-Nada de Safety/CommandBus/FieldBus/workMode é tocado — segue 100% surface Show/Experience.
+### O que entra agora (Round 1 — núcleo de criação)
 
-## Layout final
+**Library (Left 280) — passa de 4 → 7 abas**
+- Catalog → `SupplierCatalogPanel`
+- Marketplace → `TemplateMarketplace`
+- Templates legado → `ShowTemplatesPanel` (substitui o stub atual)
 
-```text
-┌─────────────────── Topbar 64 (glass) ─────────────────┐
-│ FXK · SIM · WorkMode · Master ⌘K · Audio · ▶ · TC · E│
-├──────── Tabs 48 (DsSegmentTabs PYRO/SFX/…) ───────────┤
-│ Left 280   │                                │ Right  │
-│ Library    │       VIEWPORT WebGL2          │ 320    │
-│ (Effects/  │       (SkyCanvas2 / 2D)        │ Inspect│
-│  Fixtures/ │                                │ (Cue/  │
-│  Tpl/Geo)  │                                │  Cena/ │
-│            │                                │  Rend/ │
-│            │                                │  HW/   │
-│            │                                │  Strat)│
-├────────── Timeline 180 (Cues/SMPTE/Validation) ───────┤
-└───────────────────────────────────────────────────────┘
-```
+**Inspector (Right 320) — passa de 5 → 11 abas**
+- Effect → `EffectEditor`
+- Chain → `ChainEditorPanel`
+- Light → `LightProgramPanel`
+- Laser → `LaserControlPanel`
+- Boids → `BoidsPanel`
+- Particle → `ParticleEditorPanel`
 
-Mobile (<lg): grid colapsa em pilha vertical (regra já no `index.css` linha 2620+); `MobilePanelSwitcher` continua trocando qual painel (Library/Inspector/Timeline) é renderizado abaixo do viewport.
+**Timeline (180) — passa de 3 → 5 abas**
+- Waveform → `AudioWaveform` (já existe, alimentado pelo audio master clock)
+- Storyboard → `StoryboardPanel`
 
-## Mudanças
+### O que NÃO entra (decisão consciente, justificada)
 
-### 1. `src/pages/SkyCanvas.tsx` — refator estrutural
-- Remover `FloatingPanel` + `useFloatingDock`/`dockStore` (e os efeitos de auto-collapse/cinema/reset-dock que dependem deles).
-- Importar `EditorShell` + `useEditorLayout('skycanvas')` da DS.
-- Renderizar `<EditorShell layout={…}>` com slots:
-  - **topbar**: `<GlassTopbar …>` (sem mudar markup); injetar à direita os 3 botões `PanelLeftClose/PanelRightClose/PanelBottomClose` + reset (mesmo padrão do `EditorShellPreview`, escondidos `<lg`).
-  - **tabs**: novo `<SkyCanvasSegmentTabs>` simples — chips PYRO/SFX/DRONES/LIGHT/DMX só visuais por enquanto (segmento ativo persistido em `useState`, sem mudar lógica de cues). Reusa `DsSegmentTabs`.
-  - **left**: `<TabbedDockPanel>` Library (Effects/Fixtures/Templates/Geo) — exatamente as mesmas 4 tabs de hoje.
-  - **right**: `<TabbedDockPanel dense>` Inspector (Cue/Cena/Render/Hardware/Strategy).
-  - **timeline**: `<TimelineCuesProvider>` envolvendo `<TabbedDockPanel dense>` (Cues/SMPTE/Validation).
-  - **children (viewport)**: bloco atual com `StudioErrorBoundary` + Suspense + `SkyCanvas2`/`SkyFallback2D`, mantendo `data-fxk-viewport`, drag-over e drop de cues no playhead.
-- Manter: clock áudio/RAF, transport (Space/Arrow/Home/End), persistência `useSkyCanvasShowPersistence`, Master Menu (`SkyCanvasCommandPalette`), import VDL, export JSON, reset show, atalho ⌘K/⌘M, audio picker oculto, `<audio>` master clock, `MobileTransportFab`, `MobilePanelSwitcher`.
-- Remover atalhos `Cmd+1/2/3` (focus dock) e `Cmd+\` (cinema) — substituídos pelos botões de colapso na Topbar (`useEditorLayout.toggleLeft/Right/Timeline`). Atalho `Shift+Cmd+0` passa a chamar `layout.reset()`.
-- `buildSkyActions`: substituir `focusPanel`/`toggleCinema`/`resetDock` por `toggleLeft/toggleRight/toggleTimeline/resetLayout` (Master Menu reflete novo modelo).
-- `skyActions.ts` e `SkyCanvasCommandPalette.tsx`: ajustar tipo das actions p/ refletir nova API (rename de chaves; remover entradas mortas de cinema/dock-reset, adicionar entradas Layout/Painéis).
+| Painel | Motivo |
+|---|---|
+| `LiveFiringPanel`, `DMXOutputPanel`, `BluetoothPanel`, `NFCPairPanel`, `RadioControlPanel`, `MA3ControlPanel`, `SACNMonitorPanel`, `RemoteControlPanel`, `MAVLinkPanel` | Hardware live → `/command` + `/pairing` |
+| `SafetyPanel`, `FlightCheckTab`, `DiagnosticPanel`, `CollisionPanel`, `WeatherPanel`, `GeofencePanel` | Safety/preflight → `/command` |
+| `FleetManagementPanel`, `BatteryPanel`, `TelemetryDashboard`, `FlightLogPanel`, `MobileLinkMonitor` | Telemetria/frota → `/field` |
+| `ShowCommanderPanel`, `VirtualControllerHub`, `HardwareHubPanel`, `ShowvenEquipmentPanel` | Operação → `/command` |
+| `SwarmGPTPanel`, `SmartScriptAssistant`, `StudioPromptModal` | IA dedicada → `/ai-builder` (já no Master Menu) |
+| `MobileTabBar`, `MobileFloatingPanel`, `MobileHUD`, `MobileQuickActions`, `MobileWelcomeScreen`, `MobileConsoleFullscreen`, `LiveModeOverlay`, `UnifiedPanelMenu` | Mobile shell legado → substituídos por `MobilePanelSwitcher` v2 atual |
+| `CinematicIntro`, `SplashScreen` | Já desativados no legado |
+| `VenueShowOverlay`, `VenueQuickSelector` | Já cobertos por `LibraryGeoTab` |
+| `GoogleMapsPanel`, `IndoorSimPanel`, `SiteLayoutPanel`, `SiteModelsPanel`, `FieldMap2D` | Geo já coberto por `LibraryGeoTab` (consolidar depois, sem duplicar) |
+| `AROverlayPanel` | Adiado para Round 2 (overlay de viewport, não tab) |
+| `ScriptWindow`, `WaypointEditor`, `PositionWindow`, `EffectLibrary` (antigo), `Timeline` (antigo) | Já substituídos por equivalentes DS v1 (TimelineStripView, EffectLibrarySidebar usado em LibraryEffectsTab, etc.) |
+| `ReportsPanel`, `RackManager`, `AddressingPanel`, `InventoryPanel`, `LogisticsPanel`, `FiringExportPanel`, `LabelsPanel`, `VideoRecorderPanel`, `ModelImportPanel`, `ScriptingToolsPanel`, `AudienceAnalyzerPanel`, `PIDPanel`, `PositionGroupsPanel`, `SceneEditorPanel`, `SoundLevelPanel`, `ShowSharePanel`, `VersioningPanel`, `ClientApprovalPanel`, `TrajectoryOptimizerPanel`, `ManufacturerCalibrationPanel`, `TakeoffGridPanel`, `TransitionPlannerPanel`, `VideoChoreoPanel`, `GenerativeEffectsPanel`, `SetlistPanel`, `RiderPanel`, `BudgetPanel`, `ShowPreviewPanel`, `MobileLinkPanel`, `ShowSettingsPanel`, `ShowInspectorPanel`, `SynesthesiaPanel`, `QAStudioPanel`, `DMXPanel`, `SMPTEPanel` | **Round 2** (avalio individualmente — alguns são ferramentas grandes que merecem `/dev/*` ou rota própria; outros viram aba) |
 
-### 2. `src/components/skycanvas/MobilePanelSwitcher.tsx`
-- Mudar contrato: além de `onChange`, expor o painel ativo como **estado local da página** que passa a `EditorShell` — em mobile a página renderiza só Left **OU** Right **OU** Timeline conforme `mobileActive`, escondendo os outros via `layout.{left,right,timeline}Width=0`. Isso elimina a necessidade do `dockStore` no mobile.
+### Implementação técnica
 
-### 3. Arquivos a podar (não removidos neste passo, só desreferenciados)
-- `src/components/skycanvas/FloatingPanel.tsx`
-- `src/hooks/useFloatingDock.ts` + `dockStore`
-Marcar com TODO de remoção em uma rodada futura (após `rg` confirmar 0 imports). Sem deleções nesta migração para não cascatear quebras.
+1. **10 wrappers `*Tab.tsx` novos** em `src/components/skycanvas/tabs/`:
+   - `LibraryCatalogTab.tsx`, `LibraryMarketplaceTab.tsx`, `LibraryTemplatesTab.tsx` (substitui o atual stub)
+   - `InspectorEffectTab.tsx`, `InspectorChainTab.tsx`, `InspectorLightTab.tsx`, `InspectorLaserTab.tsx`, `InspectorBoidsTab.tsx`, `InspectorParticleTab.tsx`
+   - `TimelineWaveformTab.tsx`, `TimelineStoryboardTab.tsx`
+   
+   Padrão: `<section role="region" aria-label tabIndex={-1}>` + lazy boundary externa via `TabbedDockPanel`. `onClose` passado como no-op (a aba não fecha).
 
-### 4. Testes
-- Atualizar `src/__tests__/skycanvas.safetyImports.guard.spec.ts` se ele afirmar presença de `FloatingPanel` (verificar antes de mexer; mais provável que só blacklist safety imports — nesse caso, intacto).
-- Adicionar smoke test `src/__tests__/skycanvas.editorShell.spec.tsx`: render `/skycanvas`, asserir `.ds-editor-grid` presente, viewport e os 3 `TabbedDockPanel` montados.
+2. **`SkyCanvas.tsx`** — registra as novas abas em cada `TabbedDockPanel`. Mantém defaultValue atual.
 
-### 5. Persistência
-- Layout persistido em `fxk:editor-layout:v1:skycanvas` (via `useEditorLayout('skycanvas')`).
-- Chaves antigas `fxk.skycanvas.dock.v2`/`v1` ficam órfãs (zero migração — UI-only, sem perda de show data).
+3. **`skyActions.ts`** — adiciona ações de Master Menu para abrir cada aba nova (Library/Marketplace/Inspector/Boids/Lasers etc.) com kbd opcional.
 
-## Detalhes técnicos
-- Sem alteração em `useProjectStore`, `Show3DEngine`, `useSkyCanvasShowPersistence`, capability detection.
-- Topbar continua **flutuando glass** sobre a Topbar slot (mantém a estética); o slot da `EditorShell` recebe a `<GlassTopbar>` direto — `position: absolute` antigo é trocado por `relative` para encaixar no grid (1 prop extra ou wrapper). Glassmorphism preservado.
-- `data-theme="dark"` no root mantido; tokens DS já assumem dark.
-- Mobile: `layout.effective.{left,right}Width=0` quando `mobileActive !== painel`, e `timelineHeight=0` quando `mobileActive !== 'timeline'`. Em mobile a Topbar de colapso é escondida (`hidden lg:flex`, mesmo padrão do preview).
-- Drag-drop de efeitos no viewport continua funcionando (children do EditorShell = viewport).
-- Sem mudança em rotas, navegação `/command`, `/ai-builder`, `/strategy`.
+4. **`skycanvas.safetyImports.guard.spec.ts`** — sem mudança; ele já cobre `src/components/skycanvas/**` recursivamente. Os wrappers passam porque importam só de `@/components/editor/*` (que não tem regex banido nos arquivos puxados — vou validar antes de finalizar).
 
-## Ordem de execução
-1. Refator `SkyCanvas.tsx` (estrutura + remoção dock/cinema/focusPanel).
-2. Ajuste `skyActions.ts` + `SkyCanvasCommandPalette.tsx` (novas entradas Layout).
-3. `MobilePanelSwitcher` controla quais slots da EditorShell ficam visíveis.
-4. Smoke test novo + verificar guard test existente.
-5. Build + typecheck (auto pelo harness).
+5. **Smoke test** — estendo `skycanvas.editorShell.smoke.spec.ts`: assert dos 10 novos wrappers existirem e serem referenciados em `SkyCanvas.tsx`.
 
-## Fora de escopo
-- Deletar fisicamente `FloatingPanel`/`useFloatingDock` (rodada de cleanup futura).
-- Migrar segmento PYRO/SFX/DRONES p/ filtrar cues (placeholder visual nesta rodada).
-- Resizers da EditorShell (`EditorLayoutResizers`) — adiados; toggles no Topbar são suficientes p/ esta migração.
+### O que FICA igual
+
+- Contrato Plane Show/Experience: zero CommandBus / FieldBus / SafetyStateMachine / workMode.
+- A11y já entregue (roving tabindex, aria-controls, tooltips kbd, skip-link, focus-on-toggle).
+- Persistência de layout cloud + localStorage.
+- Audio master clock + Show3D Engine sync.
+- `Index.tsx` legado **não** é deletado nesta rodada (rota `/editor/*` segue funcionando — DELETE entra na Rodada 2 do `ROUTE_AUDIT.md`).
+
+### Próximas rodadas (não nesta resposta)
+
+- **Round 2**: viewport overlays (AR Compass, BoxSelect, EdgeSnap, Alignment), 4º chip mobile "HUD", `SelectionStatusBar` na topbar, persistência da aba ativa por slot no cloud.
+- **Round 3**: triagem dos ~30 painéis "Round 2" listados acima — cada um vira aba, ferramenta `/dev/*` ou é descartado.
+- **Round 4**: deletar `Index.tsx` + redirect `/editor` → `/skycanvas`.
+
+### Aprovar?
+
+Posso executar o **Round 1** (10 wrappers + SkyCanvas wiring + skyActions + smoke test). Vai ficar tudo verde no mesmo loop. Confirma?
