@@ -11,7 +11,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Play, Pause, Square, SkipBack, SkipForward,
-  Camera, Sun, Activity, ChevronsLeft, ChevronsRight,
+  Camera, Sun, Activity, ChevronsLeft, ChevronsRight, Music,
 } from 'lucide-react';
 
 import { lazyRetry } from '@/lib/lazyRetry';
