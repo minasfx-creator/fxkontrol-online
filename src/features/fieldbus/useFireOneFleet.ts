@@ -22,6 +22,8 @@ import { SerialTransport } from '@/lib/fireoneTransport';
 import { markDeviceClassified } from '@/core/discovery/controllerRegistry';
 import { uiCommandGateway } from '@/core/command/uiCommandGateway';
 import { recordSafetyNote } from '@/core/safety/safetyBlackBox';
+import { registerCableLink } from '@/core/network/realTransports';
+import { fieldBus } from '@/core/network/fieldBus';
 
 type LinkState = 'disconnected' | 'connecting' | 'connected' | 'error';
 
@@ -94,6 +96,16 @@ export function useFireOneFleet() {
       markDeviceClassified(t.id, 'fireone');
       setState(s => ({ ...s, lastIdentifyAt: Date.now(), identifyCount: s.identifyCount + 1 }));
       void recordSafetyNote('fireone-xl4-connect', { transportId: t.id });
+      // Wire FieldBus rs485 transport to this real cable link so pyroExecutor
+      // can dispatch through it. Honest contract: revoked on disconnect.
+      registerCableLink({
+        id: t.id,
+        isAlive: () => transportRef.current === t,
+        send: (bytes: Uint8Array) => {
+          try { void t.send(bytes); fieldBus.heartbeat('rs485'); return true; }
+          catch { return false; }
+        },
+      });
     } catch (err: any) {
       setLink('error', err?.message);
       transportRef.current = null;
@@ -103,6 +115,7 @@ export function useFireOneFleet() {
   const disconnect = useCallback(async () => {
     const t = transportRef.current;
     transportRef.current = null;
+    registerCableLink(null);
     if (pollRef.current) { window.clearInterval(pollRef.current); pollRef.current = null; }
     if (t) { try { await t.disconnect(); } catch { /* ignore */ } }
     setState({

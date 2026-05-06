@@ -1,184 +1,206 @@
 
-# FireOne XL4-3 — Integração Total (Plano v4 final)
+# FX KONTROL — Integração Total + Disparos Reais · Plano v3 (final)
 
-Refinamento sobre v3 incorporando achados da última auditoria (`ExportCoordinator` real, `OperationalModeGuard` sem allowlist explícita, `joiCommandExecutor` usa array literal `['fireone',...]`, `MegafireExporter` independente).
+Esta revisão fecha o **gap mais grave** descoberto auditando o command path real:
 
----
+> `uiCommandGateway.fire()` faz `commandBus.dispatch({ type:'FIRE', payload })` — **mas nenhum consumidor escuta `'FIRE'` no commandBus**. O único caminho que chega ao hardware hoje é `executionBridge → pyroExecutor.fire(cue, fieldBus)`, e `fieldBus` tem **3 transports stub** (`send: () => false`) sem nenhuma rotina de write real registrada. Resultado: hoje não dispara nada de verdade — o app está honesto sobre isso (retorna `false` + buffer offline), mas precisa de fechamento ponta-a-ponta.
 
-## Decisões de design ratificadas
-
-1. **Compatibilidade retroativa total**: `ExportTarget = 'fireone'` continua válido como **alias** que mapeia para `'fireone-csv'` (CSV é a rota oficial UltraFire — única que importa de verdade no XLII+ XL4-3). Nenhum chamador legado quebra.
-2. **`.fir` como audit-log**: o atual `FireOneExporter.ts` é mantido **sem deletar**, apenas rebatizado (header marca "NOT for UltraFire import"). Vira anexo do ZIP, nunca arquivo solitário entregue ao operador.
-3. **Painel XL4-3** ocupa nova **tab `FIREONE`** dentro de `/field-ops` (consistente com FXK16/Pairing/Field Test) — sem rota nova, sem fragmentação de UX.
-4. **Toda escrita real** passa por `uiCommandGateway` (memória `ui-command-gateway-global-estop`); zero bypass para `fireoneProtocol.build*` na UI.
-5. **Honest hardware**: nada de número sintético. Sem módulo IDENTIFY-replied → painel mostra "no live module" e adapter fica `simulated/logical` (memória `honest-hardware-layer`).
+O v3 mantém todo o que já foi planejado (discovery/bridge/UI da matriz JOI) **e** adiciona o fechamento do circuito de comando até as portas físicas.
 
 ---
 
-## Pacote A — Camada de Export (CSV oficial + audit + ZIP)
+## 0. Princípios invioláveis (inalterados)
 
-### A1. NEW `src/core/export/FireOneCsvExporter.ts`
-Consome **`showPlanManager.current`** (não `useProjectStore`). Header oficial UltraFire:
-```text
-Launch Time,Event,Slat,Cue,Length,Description,Comment,Priority,Position,Quantity,Product Number,Vendor Number
-```
-Regras invioláveis:
-- `Launch Time` = `HH:MM:SS.X` (1 casa decimal, bate com `.sem` MDB inspecionado).
-- `Slat` = `cue.module + 1` (1–40). `Cue` = `cue.channel + 1` (1–32). Fora do range → erro.
-- `Length` = `clamp(cue.fuseDelay || 50, 20, 1000)` ms.
-- `Priority` = `cue.priorityGroup ?? 1` (nunca 0; UltraFire rejeita 0).
-- `Event` = 1 (Auto) ou `cue.eventNumber` (Semi-Auto).
-- Limite hard: `pyroCues.length ≤ FIREONE_MAX_FIRINGS (4000)`.
-- `verificationEngine.run()` + `simulationGuard.shouldEnforce('export-blocked')` — em design/simulation vira **advisory** (memória `simulation-guard-defense-in-depth`).
-- `safetyBlackBox.recordSafetyNote('fireone-csv-export', { planHash, cueCount, slats })` (memória `p2-unified-safety-blackbox`).
+- ShowPlan = fonte canônica.
+- Caminho único: `UI → uiCommandGateway → commandBus → SafetyStateMachine → FieldBus → real transport`. **Toda a v3 só preenche os elos vazios** desse caminho — não cria atalho novo.
+- Honest hardware: nenhum estado sintético; provenance só sobe a `live_read_only` após handshake real.
+- BLE banido para pyro em `real_operation` (`pyroTransportPolicy`).
+- E-STOP `<50ms` via `GlobalEStopButton` (mantido).
+- `_quarantine/safety` intocado; `productionSafetyOath` + `safetyBlackBox` continuam mandatórios.
+- IA jamais arma/dispara/muda workMode (`aiGuardrail`).
 
-### A2. EDIT `src/core/export/FireOneExporter.ts`
-- Header inicial muda para `; FX KONTROL audit log — NOT for UltraFire import. Use the .csv companion file (File ▸ Import ▸ CSV File).`
-- `downloadFireOneScript(filename = '<show>_audit.txt')` (era `.fir`).
-- Mantém colunas atuais (auditoria humana).
+---
 
-### A3. EDIT `src/core/export/exportEngine.ts`
-- `exportFireOneScript()` deprecated → delega a `FireOneCsvExporter`.
-- `eventBus.emit('SYSTEM.EXPORT', { format: 'fireone-csv' })`.
+## 1. Discovery e Bridge (cabo + wireless) — do v2
 
-### A4. EDIT `src/features/viewport-tools/exporters/fireOneExporter.ts`
-Stub deprecated — re-exporta canônico (não pode mais gerar a partir de `useProjectStore`, viola `showplan-canonical-source-truth`).
+Mantido na íntegra:
 
-### A5. NEW `src/core/export/fireOneImportPackage.ts`
-ZIP via `jszip` (já no bundle de `goldenShowExport`):
-```text
-<show>.csv                      ← UltraFire CSV Import (rota oficial)
-<show>_positions.csv            ← Position ↔ Slat map (alimenta "By Position")
-<show>_audit.txt                ← log humano (do A2)
-_FXK_FIREONE_README.md          ← passo-a-passo File ▸ Import ▸ CSV File
-_FXK_DISCLAIMER.txt             ← claim policy padrão
-```
-Função `downloadFireOneImportPackage()`.
+- **EDIT** `controllerRegistry.ts`: famílias novas `arduino-nano`, `fireone-cable`, `fireone-radio` com regex.
+- **NEW** `FireOneRadioDiscoverer.ts`: Web Serial 38400 8N1 do dock TNC USB-RF, classifica `family:'fireone-radio'`, broadcast `IDENTIFY 0xFF` para enumerar os módulos wireless e popular `wirelessChildren:[{addr,rssi,ch}]`.
+- **EDIT** `UnifiedDiscoveryService.ts`: registra o novo discoverer.
+- **EDIT** `discoveryRegistryBridge.ts`: 3 watchers novos (Nano + cable + radio) com fan-out piggy-back para os 4 sub-adapters do Nano (Battery / Mux / SR / RelayBank32). Cada attach/detach grava `safetyBlackBox.recordSafetyNote('hw-attach' | 'hw-detach', …)`.
 
-### A6. EDIT `src/core/export/ExportCoordinator.ts`
+---
+
+## 2. Caminho de comando real — fechamento dos 2 elos vazios
+
+### 2.1 NEW `src/core/command/commandFireRouter.ts`
+Único consumidor de `commandBus.on('FIRE', …)` no app. Resolve o cue alvo a partir do payload (`{ cueId }` ou `{ moduleAddress, channel, duration, effectId }`), valida com `safetyStateMachine.canFire()` e delega:
+
 ```ts
-export type ExportTarget =
-  | 'fireone'         // alias retrocompat → 'fireone-csv'
-  | 'fireone-csv'     // ZIP UltraFire (CSV+positions+audit+README+disclaimer)
-  | 'fireone-audit'   // só audit.txt (anexo, raramente usado isolado)
-  | 'artnet' | 'drone' | 'megafire'
-  | 'rj-traditional' | 'rj-timecode' | 'galaxis-gs2';
+commandBus.on('FIRE', (cmd) => {
+  // 1. Verdict (já cobre productionSafetyOath + planHash + Phase2 + transportPolicy)
+  const verdict = evaluatePyroDispatchVerdict(cmd.payload);
+  if (verdict.outcome !== 'allow') {
+    safetyBlackBox.recordSafetyNote('fire-blocked', verdict);
+    return;
+  }
+  // 2. Resolve cue (one-shot manual fire OR scheduled cue lookup)
+  const cue = resolvePyroCue(cmd.payload);
+  // 3. Single delegation point — same path executionBridge already uses
+  pyroExecutor.fire(cue, fieldBus);
+});
 ```
-- `_runExporter`: `case 'fireone' | 'fireone-csv'` chama `downloadFireOneImportPackage()`.
-- `case 'fireone-audit'` chama `downloadFireOneScript()` legado.
-- `cueCount` vem do `FireOneCsvExporter` (Slat válido, dentro de limites).
 
-### A7. EDIT `src/components/editor/FireOneExportConsole.tsx`
-Três botões em ordem:
-1. **EXPORT CSV (UltraFire)** — primário, gera ZIP. Disabled se `cueCount === 0`.
-2. **DOWNLOAD AUDIT.TXT** — secundário, log humano.
-3. **PREVIEW** — mostra CSV (não `.fir`).
-Badge `SIM · ADVISORY` em design/simulation, `BLOCKED` em real_operation se errors.
+Com isso o `uiCommandGateway.fire()` finalmente leva a um disparo real — sem inventar caminho novo.
 
-### A8. Sweep de consumidores
-EDIT em paralelo (sem mudanças semânticas, só re-roteamento):
-- `src/lib/firingSystemExports.ts` → CSV first.
-- `src/lib/showSeeds/goldenShowExport.ts` → ZIP UltraFire substitui o `.fir` atual.
-- `src/utils/joiCommandExecutor.ts` linha 581 → `const targets = ['fireone-csv', 'artnet', 'drone'] as const;`
-- `src/core/joi/JOIResolverRegistry.ts`, `src/core/joi/JOIArtifactGenerator.ts` → trocam `'fireone'` literal por `'fireone-csv'`.
-- `src/core/hardware/adapters/FireOneProfileAdapter.ts` → `protocols: ['fireone-csv','fireone-audit']`.
+### 2.2 EDIT `src/core/network/fieldBus.ts`
+Adiciona método público (faltante) `setTransport(id: TransportId, impl: Pick<Transport,'send'|'isAlive'>)` e `heartbeat(id)`. Nada mais muda no roteamento existente (failover wifi → rs485 → relay).
 
-> **Não mexer**: `MegafireExporter.ts` (apenas comentário menciona FireOne; gerador independente).
+### 2.3 NEW `src/core/network/realTransports.ts`
+Implementações reais que chamam o que já existe — sem duplicar protocolo:
 
----
+```ts
+// 'wifi'   → Art-Net UDP via supabase edge `artnet-bridge` (já presente)
+fieldBus.setTransport('wifi', {
+  send: msg => artnetBridge.sendDmx(msg.payload.universe, msg.payload.bytes),
+  isAlive: () => artnetBridge.isHealthy(),
+});
 
-## Pacote B — Discovery + Adapter promovido a live
+// 'rs485'  → FireOne cable XLII+ via FireOnePanel link (Web Serial 9600 8N1)
+fieldBus.setTransport('rs485', {
+  send: msg => fireOneCableLink.send(buildFire(msg.payload)),
+  isAlive: () => fireOneCableLink.state === 'connected',
+});
 
-### B1. EDIT `src/core/discovery/controllerRegistry.ts`
-- Cache `deviceClassificationCache: Record<deviceId, ControllerKind>` (in-mem + `localStorage` `fxk.controller.classify.v1`, hidratado no boot).
-- Exporta `markDeviceClassified(deviceId: string, kind: ControllerKind): void` — persiste em registry e em `portRegistry.addAlias(deviceId, 'fireone-xlii:<serial>')` quando aplicável (memória `identity-unification-portregistry`).
-- `resolveControllerProfile`: consulta cache **antes** das `FAMILY_RULES` → resolve falso-positivo de FTDI/CH340/CP210x → `dmx-generic`.
+// 'relay'  → FXK16 / FireOne wireless (TNC dock 38400 ou BLE quando NÃO real_operation)
+fieldBus.setTransport('relay', {
+  send: msg => relayLink.send(buildFire(msg.payload)),
+  isAlive: () => relayLink.state === 'connected',
+});
+```
 
-### B2. EDIT `src/core/hardware/adapters/FireOneProfileAdapter.ts`
-- `protocols: ['fireone-csv', 'fireone-audit']`.
-- Subscreve `unifiedDiscovery.watch`: quando algum device tem `resolveControllerProfile().kind === 'fireone' && online` → `_provenance = createLiveReadOnlyProvenance('fireone-xlii')`, snapshot inclui `slatCount`, `wirelessConnected`, `lastIdentifyAt`. Volta a `simulated/logical` quando some. **Sem `canWrite:true`** (escrita fica no painel via gateway).
+`relayLink` é escolhido em ordem `serial > usb > artnet > ble` segundo `pyroTransportPolicy` para o módulo alvo (BLE é bloqueado em `real_operation` automaticamente — política já existente).
 
-### B3. `AutoControllerLauncher` (memória `auto-controller-launcher`)
-Já abre card automático para profile `fireone` — apenas garantir `consoleRoute: '/field-ops#fireone'` na entrada do registry.
-
----
-
-## Pacote C — Painel Operação Real XL4-3
-
-### C1. NEW `src/features/fieldbus/useFireOneFleet.ts` (hook)
-- `connect()` reusa `SerialTransport` de `src/lib/fireoneTransport.ts` com `{ baudRate:9600, dataBits:8, stopBits:1, parity:'none', bufferSize:8192, flowControl:'none' }` — **zero duplicação** de `navigator.serial`.
-- **IDENTIFY probe** (broadcast `0x49`) por 1.5 s na conexão. Cada resposta válida → `markDeviceClassified(deviceId, 'fireone')` + `portRegistry.addAlias`. Sem resposta → estado `no-modules-detected` (honest).
-- Telemetria 2 Hz: `STATUS` por slat → `parseStatusPayload` (já existe). Map `Record<slatAddr, FireOneModuleStatus>`.
-- **Continuity**: `buildContinuityCheck` por slat → grid 32 OK/OPEN/SHORT.
-- **Wireless**: `buildWirelessStatusQuery` por slat com link wireless → RSSI dBm / canal RF / packet-loss / AES status.
-- **UltraFire download**: particiona ShowPlan por slat → `buildDownloadModule` em chunks (limite payload do protocolo) → `buildVerifyUltraFire` final → mismatch → `aborted` + `safetyBlackBox.recordSafetyNote('ultrafire-verify-mismatch', { slat, expected, got })`.
-- Cleanup determinístico (memória `gestao-recursos-memoria-v2`): timers em `useRef`, `clearInterval` no unmount.
-
-### C2. NEW `src/features/fieldbus/FireOnePanel.tsx`
-- Header: connect/disconnect, status do transport (latência, txOk/txErr — usa `LinkHealth` de `multi-transport-concurrent` se disponível).
-- Cards por slat: bateria, temperatura, RSSI, 32 igniters (verde OK / vermelho OPEN / amarelo SHORT).
-- Subseção **Radio Antenna**: RSSI dBm, canal RF, packet-loss, AES on/off, botão "Configure radio" (`buildWirelessConfigCommand` com canal/TX-power/AES key).
-- Botão **Push show to modules** com progress bar (cobertura da pilha download+verify).
-- Comandos críticos **somente via `uiCommandGateway`**:
-  - `arm()` — Hold-1.2 s (real_operation) / single tap (sim/design). Dispara `requestRealOperation` → `productionSafetyOath` → Phase 2 grant ≤ 5 min (memórias `real-operation-request-gate` + `p0-safety-hardening-trio`).
-  - `fire(cueId)` — Hold-1.2 s, carimba `evaluatePyroDispatchVerdict({ available:true, mode:'auto', planHash, cueId })`.
-  - `eStop()` — single tap quando ARMED/FIRING (consistente com `GlobalEStopButton` global).
-  - `continuityCheck()` — sem hold.
-- BLE banido por `pyroTransportPolicy` em real_operation — UI mostra motivo se transport ativo for BLE.
-- Em design/simulation: badge "SIM · ADVISORY", comandos viram dry-run via `simulationGuard.withSimBypass`.
-
-### C3. EDIT `src/pages/FieldOps.tsx`
-- Tab `FIREONE` (icon `Cable`) entre `FXK16` e `FIELD TEST`.
-- Auto-revelada quando `isFireOneXL43RealOpsEnabled()` ON **ou** `useActiveControllers().some(c => c.kind === 'fireone')`.
-- Hash deep-link `#fireone` para `AutoControllerLauncher`.
-
-### C4. EDIT `src/lib/featureFlags.ts`
-- `isFireOneXL43RealOpsEnabled()` (default OFF, override `localStorage.fxk.flag.fireone_xl43_realops`).
-- Export CSV **NÃO** fica atrás de flag (sempre disponível — é só geração de arquivo).
+### 2.4 EDIT `discoveryRegistryBridge.ts`
+Além dos `markHandshakeOk`, agora também:
+- Registra senders no `transportSenderRegistry` (Web Serial / WebUSB / BLE / Art-Net) — fecha o stub `NO_REAL_SENDER` para o `MultiTransportLink`.
+- Quando o handshake confirma uma família relevante (`fxk16` / `fireone-cable` / `fireone-radio` / `artnet-node`), faz `fieldBus.setTransport(...)` com o link daquele dispositivo (auto-failover continua nativo do FieldBus).
+- No `markHandshakeLost` correspondente, faz `fieldBus.setTransport(id, stub)` de volta — nunca deixa um transport "morto pensando que está vivo".
 
 ---
 
-## Pacote D — Testes (vitest)
+## 3. Senders reais → `transportSenderRegistry` (do v2)
 
-| Arquivo | Cobertura |
+Boot do bridge registra os 4 senders reais (`webserial`, `webusb`, `webble`, `mdns-artnet`). Stub `NO_REAL_SENDER` permanece como salvaguarda honesta.
+
+---
+
+## 4. UI
+
+### 4.1 NEW `src/pages/dev/HardwareIntegrationPage.tsx` (`/dev/hardware-integration`)
+Matriz JOI viva (9 linhas, mesma ordem do PDF) + botão **Snapshot JSON** (output byte-idêntico ao PDF) + botão **Connect everyone** (`unifiedDiscovery.scanDeep`) + health score `100·live/9 − 5·verification.errors`.
+
+### 4.2 NEW `src/lib/joiMatrixSnapshotter.ts`
+Função pura `snapshotJoiMatrix()` que lê `unifiedHardwareRegistry.getAllSnapshots()` e produz o bloco `[JOI_MATRIX] … [JOI_STATUS]` no formato literal do PDF — reusada por essa página, por `JoiReport` e por `joiCommandExecutor.tools.get_system_state`.
+
+### 4.3 EDIT `src/features/fieldbus/FireOnePanel.tsx`
+Toggle **CABLE / WIRELESS / AUTO**. AUTO tenta cable; se 3s sem reply, cai em radio; se ambos morrem → `disconnected` (nunca fake).
+
+### 4.4 EDIT `src/pages/FieldOps.tsx`
+Pill espelho do toggle no header da aba FIREONE.
+
+### 4.5 NEW `src/components/safety/RealFiringReadinessBadge.tsx`
+Badge global (junto do `GlobalEStopButton`) mostrando:
+- `READY · transport=rs485` (verde) — quando há transport vivo + Phase 2 fresco + workMode=`real_operation`.
+- `SIMULATION` (cyan) — qualquer outro caso.
+
+Lê `fieldBus.activeTransport`, `phase2.lastGrant`, `workMode.current`. Sem efeitos colaterais.
+
+---
+
+## 5. Safety / Provenance / Auditoria
+
+- `evaluatePyroDispatchVerdict(payload, { planHash, cueId })` chamado em **todo** `commandBus.on('FIRE')` (já existe — só passa a ter consumidor real).
+- `safetyBlackBox.recordSafetyNote('fire-dispatched' | 'fire-blocked' | 'hw-attach' | 'hw-detach', envelope)` em cada transição.
+- `realOnlyGate` continua filtrando ingestão de telemetria não verificada.
+- `pyroTransportPolicy.PYRO_FIRE_PRIORITY = [serial, usb, artnet]` aplicado **dentro** do `realTransports.ts` quando escolhe `relayLink`.
+- Em `real_operation`: BLE rejeitado para pyro; `productionSafetyOath` + `phase2 grant ≤ 5 min` exigidos pelo `evaluatePyroDispatchVerdict` antes de qualquer `fieldBus.send`.
+
+---
+
+## 6. Testes (vitest)
+
+| Spec | Cobertura |
 |---|---|
-| `core/export/__tests__/fireoneCsvExporter.spec.ts` | Header exato; Slat/Cue 1-based; Length clamp 20–1000; Priority≥1; rejeita Slat>40, Cue>32, firings>4000; advisory em design/simulation × bloqueio em real_operation; carimbo no `safetyBlackBox`. |
-| `core/export/__tests__/fireoneImportPackage.spec.ts` | ZIP contém os 5 arquivos; README cita `File ▸ Import ▸ CSV File`. |
-| `core/export/__tests__/exportCoordinatorFireOneTargets.spec.ts` | `'fireone'` (alias), `'fireone-csv'`, `'fireone-audit'` retornam `success/issues/cueCount` corretos. |
-| `features/fieldbus/__tests__/fireOnePanel.gateway.spec.ts` | Painel **nunca** importa `fireoneProtocol.build*` direto — só `uiCommandGateway`. |
-| `features/fieldbus/__tests__/useFireOneFleet.identifyProbe.spec.ts` | Probe reclassifica + persiste em `portRegistry`; sobrevive a reload. |
-| `features/fieldbus/__tests__/useFireOneFleet.ultrafireVerify.spec.ts` | Download ok = success; mismatch = aborted + nota no black box. |
-| `core/discovery/__tests__/markDeviceClassified.spec.ts` | Cache cross-session; FTDI cai em `fireone` se classificado (não em `dmx-generic`). |
-| `core/hardware/adapters/__tests__/fireoneProfileAdapter.liveReadOnly.spec.ts` | Provenance flipa simulated→live_read_only quando device aparece e volta quando some. |
+| `core/command/__tests__/commandFireRouter.spec.ts` | `commandBus.dispatch('FIRE')` chama `pyroExecutor.fire` exatamente 1×; bloqueio se verdict ≠ allow; cueId resolvido corretamente; manual fire (sem cueId) também funciona. |
+| `core/network/__tests__/fieldBus.setTransport.spec.ts` | `setTransport` substitui stub sem reset do contador de failover; heartbeat retoma; `setTransport(id, stub)` revoga sem fake. |
+| `core/network/__tests__/realTransports.spec.ts` | wifi → artnet edge; rs485 → fireone cable; relay → preference order respeita `pyroTransportPolicy` em real_operation (BLE removido). |
+| `core/discovery/__tests__/fireOneRadioDiscoverer.spec.ts` | classificação + broadcast IDENTIFY + `wirelessChildren` populado a partir de bytes mockados. |
+| `core/hardware/__tests__/discoveryRegistryBridge.arduinoNano.spec.ts` | watcher Nano promove os 5 adapters de uma vez; demote idempotente; `safetyBlackBox` registrado. |
+| `core/hardware/__tests__/discoveryRegistryBridge.fireone.spec.ts` | cable + radio simultâneos não duplicam handshake; só um demote quando o último some. |
+| `core/discovery/__tests__/transportSenderRegistry.realSenders.spec.ts` | senders registrados → `getSender('webserial')` ≠ stub; sem registro continua stub honest. |
+| `lib/__tests__/joiMatrixSnapshotter.spec.ts` | output bate com fixture do PDF (linha-a-linha) p/ adapters em estado simulado E em estado live. |
+| `features/fieldbus/__tests__/FireOnePanel.transportToggle.spec.tsx` | AUTO cai pra radio após 3s sem reply do cable. |
+| `core/safety/__tests__/realFiring.endToEnd.spec.ts` | em `real_operation` + Phase 2 fresco + transport vivo: `uiCommandGateway.fire(src, {cueId})` resulta em **um** byte-stream gravado no transport mock; em qualquer pré-condição faltando, **zero** bytes saem. |
 
-Mantidos intactos: 5× `fireoneModuleHardwareBridge.*`, `fireoneTelemetryParser.test.ts`, `phase1ExitCatalog.test.ts`.
-
----
-
-## Pacote E — Garantias de não-regressão
-
-**Zero alteração** em:
-`uiCommandGateway`, `commandBus`, `safetyStateMachine`, `fireoneProtocol.ts` (já completo), `fireoneTransport.SerialTransport`, `fireoneModuleHardwareBridge.ts`, `GlobalEStopButton`, `MainLayout`, `workMode`, `simulationGuard`, `safetyBlackBox`, `productionSafetyOath`, `pyroTransportPolicy`, `phase2Transition`, `requestRealOperation`, `MegafireExporter`.
+Critério de aceite: 1000+ tests atuais continuam verde + os 10 novos verde.
 
 ---
 
-## Resumo de superfície
+## 7. Escopo de superfície
 
 ```text
-NOVO   8 arquivos   (CSV exporter + ZIP package + 2 hooks/painel + 4 testes)
-EDIT  ~14 arquivos  (FireOneExporter, exportEngine, viewport stub,
-                    ExportCoordinator, FireOneProfileAdapter, controllerRegistry,
-                    FieldOps, FireOneExportConsole, featureFlags,
-                    firingSystemExports, goldenShowExport, joiCommandExecutor,
-                    JOIResolverRegistry, JOIArtifactGenerator)
-ZERO  alteração em superfície de safety / commandBus / protocol
+NEW   ~6 arquivos    commandFireRouter, realTransports, FireOneRadioDiscoverer,
+                      joiMatrixSnapshotter, HardwareIntegrationPage,
+                      RealFiringReadinessBadge, +10 specs
+EDIT  ~8 arquivos    discoveryRegistryBridge (3 watchers + senders +
+                      setTransport calls), controllerRegistry (regex+kinds),
+                      UnifiedDiscoveryService (+1 discoverer),
+                      ArduinoNanoAdapter (ingestStatusLine),
+                      FireOneProfileAdapter (cable/radio fields),
+                      FireOnePanel (toggle), FieldOps (pill),
+                      fieldBus (setTransport public method)
+ZERO  mudança       uiCommandGateway, commandBus, safetyStateMachine,
+                      pyroExecutor, fireoneProtocol wire, productionSafetyOath,
+                      pyroTransportPolicy, GlobalEStopButton, _quarantine,
+                      adapters Battery/Mux/SR/RelayBank/DMX/Art-Net APIs
 ```
 
-## Premissas confirmadas pelo usuário
+---
 
-- Formatos export: **CSV oficial UltraFire** (rota oficial) + `.fir` rebatizado **audit.txt** (não-import).
-- Hardware: **FireOne XL4-3 / XLII+** via **USB-FTDI direto** (WebSerial 9600 8N1, FT232R 0x0403/0x6001).
-- Wireless / **rádio antena**: monitorado via `WIRELESS_STATUS`, configurável via `WIRELESS_CONFIG`.
-- ARM/FIRE/E-STOP exclusivamente via `uiCommandGateway` + Hold-1.2 s + Phase 2 + production oath em real_operation. Em design/simulation tudo é advisory.
+## 8. Resultado esperado
 
-Pronto para aprovação. Após o **Approve**, executo na ordem: A1→A2→A3→A4→A5→A6→A7→A8 (export pipeline), B1→B2→B3 (discovery+adapter), C1→C2→C3→C4 (painel), D (testes).
+**Matriz JOI** (após bridge rodar com hardware real, qualquer combinação cabo+wireless):
+
+```text
+Arduino Nano - FXK Controller       LIVE READ-ONLY | ONLINE  telemetry_verified
+74HC595 x 4 - Output Expansion       LIVE READ-ONLY | ONLINE  telemetry_verified (piggy)
+CD4051 x 2 - 16ch Analog MUX         LIVE READ-ONLY | ONLINE  telemetry_verified (piggy)
+32ch Relay Bank - Field Output       LIVE READ-ONLY | ONLINE  telemetry_verified (piggy)
+FXK16 - 16ch (ESP32-S3)              LIVE READ-ONLY | ONLINE  telemetry_verified
+12V Field Battery                    LIVE READ-ONLY | ONLINE  telemetry_verified (piggy)
+Art-Net Node - DMX Bridge            LIVE READ-ONLY | ONLINE  telemetry_verified
+FireOne Profile  (cable + radio)     LIVE READ-ONLY | ONLINE  telemetry_verified
+DMX Universe 1                       LIVE READ-ONLY | ONLINE  telemetry_verified
+Health score                          ≥ 90 (de 20 → 90+)
+```
+
+**Disparos reais** (cenário real_operation autorizado):
+
+```text
+Operador toca FIRE no PyroControllerCard
+  → uiCommandGateway.fire(src, {cueId:'C42'})
+  → commandBus.dispatch('FIRE')
+  → commandFireRouter:
+       evaluatePyroDispatchVerdict(...) = allow   ✓ Phase2 + planHash + oath + policy
+  → pyroExecutor.fire(cue, fieldBus)
+  → fieldBus.send → activeTransport=rs485
+  → realTransports['rs485'].send(buildFire(...))
+  → fireOneCableLink.send(bytes)  →  FTDI → módulo XLII+ slat 1 cue 7
+  → safetyBlackBox: 'fire-dispatched' { cueId, planHash, transport, latencyMs }
+```
+
+E-STOP global e pyroTransportPolicy continuam intactos.
+
+Pronto para Approve. Após aprovação, executo na ordem **2.1 → 2.2 → 2.3 → 2.4 → 1 (discovery) → 4 → 5 → 6**.

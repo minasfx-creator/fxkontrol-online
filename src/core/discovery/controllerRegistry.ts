@@ -98,7 +98,10 @@ const PROFILES: Record<ControllerKind, ControllerProfile> = {
 /** Family-string → ControllerKind. Match by lower-cased substring. */
 const FAMILY_RULES: Array<{ test: RegExp; kind: ControllerKind }> = [
   { test: /fxk[\s-]*16|fxkpyro/i,           kind: 'fxk16' },
-  { test: /fireone|fxk[\s-]*pyro/i,          kind: 'fireone' },
+  { test: /arduino|fxk[\s-]*nano|nano[\s-]*relay/i, kind: 'fxk16' },
+  // FireOne family: cable (XLII+), radio (TNC USB-RF dock), legacy
+  { test: /fireone[\s-]*(cable|wired|xlii|xl[\s-]*ii)?|fxk[\s-]*pyro/i, kind: 'fireone' },
+  { test: /fireone[\s-]*(radio|tnc|wireless|rf)|transceiver/i, kind: 'fireone' },
   { test: /showven|sonicboom|sparkular|fx[\s-]*commander|pyromote/i, kind: 'showven' },
   { test: /tuya/i,                           kind: 'tuya' },
   { test: /cubemesh|re168/i,                 kind: 'cubemesh' },
