@@ -1,9 +1,9 @@
 /**
  * QuickJumpMenu — Tiny global navigation pill (top-right).
  *
- * Visible only on immersive routes (/studio, /command) where the AppSidebar
+ * Visible only on immersive routes (/skycanvas, /command) where the AppSidebar
  * is hidden. Provides one-click access between the three creative surfaces:
- *   • Studio          → 3D editor
+ *   • SkyCanvas       → 3D editor
  *   • FXK-DRONES      → Drone command panel (deep-link via ?panel=drones)
  *   • AI Choreography → Grok Vision generator
  *
