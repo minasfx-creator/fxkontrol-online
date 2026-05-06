@@ -96,6 +96,7 @@ function GlassIconButton({
 function GlassTopbar({
   cap, playing, onTogglePlay, onStop, onSeek, time, duration,
   onPickAudio, audioName, onOpenMaster, onEStop,
+  workModeLabel, sessionMeta,
 }: {
   cap: SkyCapability;
   playing: boolean;
@@ -108,6 +109,8 @@ function GlassTopbar({
   audioName: string | null;
   onOpenMaster: () => void;
   onEStop: () => void;
+  workModeLabel: string;
+  sessionMeta: { id: string; clientName?: string; claim?: 'validated' | 'pilot' | 'marketing_hypothesis' } | null;
 }) {
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -131,6 +134,16 @@ function GlassTopbar({
       <Badge variant="outline" className="border-cyan-500/30 text-cyan-300 ds-mono text-[10px]">
         SIM · ADVISORY
       </Badge>
+      <Badge variant="outline" className="border-white/20 text-zinc-300 ds-mono text-[10px] hidden md:inline-flex"
+             title="WorkMode atual (real_operation só via /command)">
+        {workModeLabel}
+      </Badge>
+      {sessionMeta && (
+        <Badge variant="outline" className="border-amber-500/30 text-amber-200 ds-mono text-[10px] hidden lg:inline-flex"
+               title={`Strategic Hub · sessão ativa ${sessionMeta.id}`}>
+          ★ {sessionMeta.clientName ?? sessionMeta.id.slice(0, 6)}
+        </Badge>
+      )}
       <Badge
         variant="outline"
         className={cn('ds-mono text-[10px] hidden md:inline-flex',
