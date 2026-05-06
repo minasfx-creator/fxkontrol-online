@@ -810,24 +810,7 @@ export default function SkyCanvasPage() {
                 dense
                 value={layout.activeTabs?.right ?? 'cue'}
                 onValueChange={(v) => layout.setActiveTab('right', v)}
-                tabs={[
-                   { value: 'cue',          label: 'Cue',          load: () => import('@/components/skycanvas/tabs/InspectorCueTab') },
-                   { value: 'scene',        label: 'Cena',         load: () => import('@/components/skycanvas/tabs/InspectorSceneTab') },
-                   { value: 'sceneEditor',  label: 'Cena+',        load: () => import('@/components/skycanvas/tabs/InspectorSceneEditorTab') },
-                   { value: 'effect',       label: 'Efeito',       load: () => import('@/components/skycanvas/tabs/InspectorEffectTab') },
-                   { value: 'generative',   label: 'Generative',   load: () => import('@/components/skycanvas/tabs/InspectorGenerativeTab') },
-                   { value: 'chain',        label: 'Chain',        load: () => import('@/components/skycanvas/tabs/InspectorChainTab') },
-                   { value: 'light',        label: 'Light',        load: () => import('@/components/skycanvas/tabs/InspectorLightTab') },
-                   { value: 'laser',        label: 'Laser',        load: () => import('@/components/skycanvas/tabs/InspectorLaserTab') },
-                   { value: 'boids',        label: 'Boids',        load: () => import('@/components/skycanvas/tabs/InspectorBoidsTab') },
-                   { value: 'particle',     label: 'Particle',     load: () => import('@/components/skycanvas/tabs/InspectorParticleTab') },
-                   { value: 'trajectory',   label: 'Trajectory',   load: () => import('@/components/skycanvas/tabs/InspectorTrajectoryTab') },
-                   { value: 'transition',   label: 'Transition',   load: () => import('@/components/skycanvas/tabs/InspectorTransitionTab') },
-                   { value: 'synesthesia',  label: 'Synesthesia',  load: () => import('@/components/skycanvas/tabs/InspectorSynesthesiaTab') },
-                   { value: 'render',       label: 'Render',       load: () => import('@/components/skycanvas/tabs/InspectorRenderTab') },
-                   { value: 'hardware',     label: 'Hardware',     load: () => import('@/components/skycanvas/tabs/HardwareObserverTab') },
-                   { value: 'strategy',     label: 'Strategy',     load: () => import('@/components/skycanvas/tabs/StrategyContextTab') },
-                 ]}
+                tabs={INSPECTOR_TABS}
               />
             </section>
           </StudioErrorBoundary>
