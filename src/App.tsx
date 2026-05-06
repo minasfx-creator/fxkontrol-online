@@ -57,6 +57,7 @@ const SkyCanvas3DDemo = lazy(lazyRetry(() => import("./pages/dev/SkyCanvas3DDemo
 const SkyCanvas2Demo = lazy(lazyRetry(() => import("./pages/dev/SkyCanvas2Demo")));
 const UE5BridgePage = lazy(lazyRetry(() => import("./pages/dev/UE5BridgePage")));
 const VideoEditor = lazy(lazyRetry(() => import("./pages/VideoEditor")));
+const SkyCanvasPage = lazy(lazyRetry(() => import("./pages/SkyCanvas")));
 const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
 const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
 const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")));
@@ -250,6 +251,8 @@ function App() {
                       <Route path="/editor/:showId" element={<Index />} />
                       <Route path="/command" element={<CommandCenter />} />
                       <Route path="/strategy" element={<Strategy />} />
+                      {/* SkyCanvas v3 — surface canônica, capability-driven, isolada do Index.tsx pesado. */}
+                      <Route path="/skycanvas" element={<SkyCanvasPage />} />
                       <Route path="/training/center" element={<TrainingCenter />} />
 
                       {/* ── Create flow (Action Layer) ────────────────────────── */}
