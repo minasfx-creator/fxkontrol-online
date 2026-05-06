@@ -19,21 +19,18 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useNavigate } from 'react-router-dom';
 import {
   Play, Pause, Square, SkipBack, SkipForward,
-  Camera, Sun, Activity, Music, Command as CommandIcon, OctagonAlert,
+  Music, Command as CommandIcon, OctagonAlert,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { lazyRetry } from '@/lib/lazyRetry';
 import StudioErrorBoundary from '@/components/errors/StudioErrorBoundary';
 import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 import { useProjectStore } from '@/store/useProjectStore';
 import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { detectSkyCapability, profileBudget, type SkyCapability } from '@/lib/skycanvasCapability';
-import EffectLibrarySidebar, { FXK_EFFECT_DRAG_TYPE } from '@/components/editor/EffectLibrarySidebar';
+import { FXK_EFFECT_DRAG_TYPE } from '@/components/editor/EffectLibrarySidebar';
 import SkyFallback2D from '@/components/skycanvas/SkyFallback2D';
 import WaveformLayer from '@/components/skycanvas/WaveformLayer';
 import { decodeAudioPeaks } from '@/lib/skycanvasAudioPeaks';
