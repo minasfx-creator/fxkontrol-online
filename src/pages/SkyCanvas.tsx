@@ -245,7 +245,7 @@ export default function SkyCanvasPage() {
   const playing = useProjectStore((s) => s.isPlaying);
   const time = useProjectStore((s) => s.currentTime);
   const duration = useProjectStore((s) => s.duration) || 60;
-  const setIsPlaying = useProjectStore((s) => s.setIsPlaying);
+  const setPlaying = useProjectStore((s) => s.setPlaying);
   const setCurrentTime = useProjectStore((s) => s.setCurrentTime);
 
   // RAF loop for playback when transport is active. Self-contained — no
@@ -261,7 +261,7 @@ export default function SkyCanvasPage() {
       const next = useProjectStore.getState().currentTime + dt;
       if (next >= duration) {
         setCurrentTime(0);
-        setIsPlaying(false);
+        setPlaying(false);
         return;
       }
       setCurrentTime(next);
@@ -269,14 +269,14 @@ export default function SkyCanvasPage() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [playing, duration, setCurrentTime, setIsPlaying]);
+  }, [playing, duration, setCurrentTime, setPlaying]);
 
   // Spacebar play/pause (skip when typing in inputs).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-      if (e.code === 'Space') { e.preventDefault(); setIsPlaying(!useProjectStore.getState().isPlaying); }
+      if (e.code === 'Space') { e.preventDefault(); setPlaying(!useProjectStore.getState().isPlaying); }
       else if (e.key === 'ArrowLeft') { setCurrentTime(Math.max(0, useProjectStore.getState().currentTime - (e.shiftKey ? 1 : 1 / 30))); }
       else if (e.key === 'ArrowRight') { setCurrentTime(Math.min(duration, useProjectStore.getState().currentTime + (e.shiftKey ? 1 : 1 / 30))); }
       else if (e.key === 'Home') { setCurrentTime(0); }
@@ -284,7 +284,7 @@ export default function SkyCanvasPage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [duration, setIsPlaying, setCurrentTime]);
+  }, [duration, setPlaying, setCurrentTime]);
 
   // Sidebar collapse state (landscape phone friendly).
   const [leftOpen, setLeftOpen] = useState(true);
@@ -295,8 +295,8 @@ export default function SkyCanvasPage() {
     }
   }, [cap.landscapePhone, cap.portraitPhone]);
 
-  const togglePlay = () => setIsPlaying(!playing);
-  const stop = () => { setIsPlaying(false); setCurrentTime(0); };
+  const togglePlay = () => setPlaying(!playing);
+  const stop = () => { setPlaying(false); setCurrentTime(0); };
   const seek = (delta: number) => setCurrentTime(Math.max(0, Math.min(duration, time + delta)));
   const seekAbs = (t: number) => setCurrentTime(t);
 
