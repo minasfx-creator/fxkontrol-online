@@ -56,6 +56,7 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
   const [delimiter, setDelimiter] = useState(',');
   const [selectedEffects, setSelectedEffects] = useState<Set<number>>(new Set());
   const [currentFile, setCurrentFile] = useState<File | null>(null);
+  const [cueSpread, setCueSpread] = useState<CueSpreadMode>('none');
   const fileRef = useRef<HTMLInputElement>(null);
   const { saveToLibrary } = useMyLibrary();
 
