@@ -890,14 +890,13 @@ export default function SkyCanvasPage() {
             }}
           >
             {cap.renderer === 'webgl2' ? (
-              <Suspense fallback={<ViewportLoader />}>
-                <SkyCanvas2
-                  hideStage={!profileBudget(cap).showStage}
-                  showFixtures={profileBudget(cap).showFixtures}
-                  hideStars={!profileBudget(cap).showStars}
-                  dpr={profileBudget(cap).dpr}
-                />
-              </Suspense>
+              <SkyCanvasMount
+                instanceKey="skycanvas-page"
+                engine="v2"
+                area="SkyCanvas · Viewport"
+                loaderLabel="Booting SkyCanvas…"
+                v2Props={v2Props}
+              />
             ) : (
               <SkyFallback2D reason={cap.reasons[0]} />
             )}
