@@ -70,3 +70,26 @@ As 6 páginas-de-tab foram movidas pra suas pastas de domínio. `src/pages/` ago
 - `src/pages/` (root): **32 arquivos** (era 38) — só rotas reais + subpastas `create/`, `dev/`, `legal/`, `videoEditor/`, `__tests__/`
 - Componentes-de-tab agora vivem em `src/components/{office,command,field,dev/fxk16}/`
 - Build TS: ✅ sem erros
+
+---
+
+## Rodada 4 — Aposentadoria do Index.tsx legado (executada)
+
+`src/pages/Index.tsx` (861 linhas, ~80 painéis lazy) foi **deletado**. Toda a funcionalidade de criação/edição/simulação foi migrada para `SkyCanvas` (DS v1 EditorShell) nos Rounds 1-3, com 23 wrappers de aba e 4 viewport overlays.
+
+### Mudanças
+
+| Antes | Depois |
+|---|---|
+| `/studio` → `<Index />` | `<Navigate to="/skycanvas" replace />` |
+| `/editor` → `<Index />` | `<Navigate to="/skycanvas" replace />` |
+| `/editor/:showId` → `<Index />` | `<Navigate to="/skycanvas" replace />` |
+
+**Arquivos editados:** `src/App.tsx`, `src/lib/prefetchRoutes.ts` (`/`, `/editor`, `/studio` apontam pra `Auth`/`SkyCanvas`).
+
+### Métricas finais
+
+- `src/pages/` (root): **31 arquivos** (era 32)
+- LOC removidos: **−861** (Index.tsx)
+- Testes: **57/57 verde** (`skycanvas.safetyImports.guard` + `skycanvas.editorShell.smoke` + `skyCanvas3d.smoke`)
+- Surface canônica de criação 3D: `/skycanvas` (única)
