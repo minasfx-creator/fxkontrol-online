@@ -4,6 +4,7 @@ import { ClaimBadge } from '@/components/strategy/ClaimBadge';
 import { SEED_ASSETS } from '@/components/strategy/AssetLibrary';
 import { ArrowRight, ShieldCheck, Layers, Wand2, FileDown } from 'lucide-react';
 import { renderOnePagerPDF, downloadOnePager, SEGMENTS } from '@/lib/onePagerPdf';
+import { FxkLogo } from '@/components/brand/FxkLogo';
 
 const CORE = [
   { title: 'End the broken stage', body: 'Replace fragmented drone, pyro, DMX, approval and reporting tools with one command surface.' },
@@ -11,15 +12,15 @@ const CORE = [
   { title: 'Safety-first spectacle OS', body: 'Simulation, evidence, readiness, rollback and audit are sales proof — not afterthoughts.' },
 ];
 
-// External marketing palette (brief): #121214 / #00FFFF / #FF7700.
-// Operational chrome stays Vantablack + cyan-dessat.
+// Canonical operational palette (Vantablack + cyan-dessat). The earlier brief
+// (#121214 / #00FFFF / #FF7700) was rejected by the design priority memory:
+// brand chrome on every public surface MUST match the operator UI.
 const PITCH_STYLE: React.CSSProperties = {
-  // expose as inline CSS vars for this page only
-  ['--pitch-bg' as string]: '#121214',
-  ['--pitch-fg' as string]: '#F5F5F7',
-  ['--pitch-cyan' as string]: '#00FFFF',
-  ['--pitch-orange' as string]: '#FF7700',
-  ['--pitch-muted' as string]: '#9A9AA0',
+  ['--pitch-bg' as string]: 'hsl(var(--ds-background))',
+  ['--pitch-fg' as string]: 'hsl(var(--ds-text-primary))',
+  ['--pitch-cyan' as string]: 'hsl(var(--status-sync))',
+  ['--pitch-cta' as string]: 'hsl(var(--status-sync))',
+  ['--pitch-muted' as string]: 'hsl(var(--ds-text-secondary))',
   background: 'var(--pitch-bg)',
   color: 'var(--pitch-fg)',
 };
@@ -57,9 +58,16 @@ export default function PitchUS() {
   );
 
   return (
-    <main className="min-h-[100dvh]" style={PITCH_STYLE}>
+    <main data-theme="commercial" className="min-h-[100dvh] c-surface" style={PITCH_STYLE}>
+      {/* Brand header — canonical FxkLogo */}
+      <header className="px-6 md:px-12 h-16 flex items-center justify-between border-b" style={{ borderColor: 'hsl(var(--ds-border-default))' }}>
+        <Link to="/pitch/us" aria-label="FXKONTROL — Home">
+          <FxkLogo size={26} variant="full" tone="sync" />
+        </Link>
+        <Link to="/comercial#demo-form" className="text-[11px] ds-mono uppercase tracking-[0.2em] text-status-sync hover:opacity-80">Request demo →</Link>
+      </header>
       {/* Hero */}
-      <section className="px-6 md:px-12 pt-16 md:pt-24 pb-12 md:pb-16 border-b" style={{ borderColor: '#1f1f23' }}>
+      <section className="px-6 md:px-12 pt-16 md:pt-24 pb-12 md:pb-16 border-b" style={{ borderColor: 'hsl(var(--ds-border-default))' }}>
         <div className="max-w-4xl mx-auto">
           <p className="text-[10px] ds-mono uppercase tracking-[0.3em] mb-4" style={{ color: 'var(--pitch-cyan)' }}>FXKONTROL · US</p>
           <h1 className="text-4xl md:text-6xl font-bold leading-tight">
@@ -72,7 +80,7 @@ export default function PitchUS() {
             <Link
               to="/comercial#demo-form"
               className="inline-flex items-center gap-2 rounded-md px-5 py-3 text-sm ds-mono uppercase tracking-wider hover:opacity-90"
-              style={{ background: 'var(--pitch-orange)', color: '#0a0a0c' }}
+              style={{ background: 'var(--pitch-cta)', color: 'hsl(var(--ds-background))' }}
             >
               Request a demo <ArrowRight className="h-4 w-4" />
             </Link>
@@ -98,7 +106,7 @@ export default function PitchUS() {
       </section>
 
       {/* Core messages */}
-      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: '#1f1f23' }}>
+      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: 'hsl(var(--ds-border-default))' }}>
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold mb-8">Three messages, one surface</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -113,10 +121,10 @@ export default function PitchUS() {
       </section>
 
       {/* Segments */}
-      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: '#1f1f23' }}>
+      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: 'hsl(var(--ds-border-default))' }}>
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold mb-2 flex items-center gap-2">
-            <Layers className="h-5 w-5" style={{ color: 'var(--pitch-orange)' }} /> Three segments. One OS.
+            <Layers className="h-5 w-5" style={{ color: 'var(--pitch-cta)' }} /> Three segments. One OS.
           </h2>
           <p className="text-sm mb-8" style={{ color: 'var(--pitch-muted)' }}>
             Tailored entry points for marketing agencies, producers and enterprise LiveOps.
@@ -124,7 +132,7 @@ export default function PitchUS() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {SEGMENTS.map((s) => (
               <div key={s.id} className="rounded-md border p-5" style={{ borderColor: '#2a2a30', background: '#17171a' }}>
-                <p className="text-[10px] ds-mono uppercase tracking-wider mb-2" style={{ color: 'var(--pitch-orange)' }}>{s.label}</p>
+                <p className="text-[10px] ds-mono uppercase tracking-wider mb-2" style={{ color: 'var(--pitch-cta)' }}>{s.label}</p>
                 <h3 className="text-base font-semibold mb-3">{s.headline}</h3>
                 <ul className="space-y-1.5 text-xs" style={{ color: 'var(--pitch-muted)' }}>
                   {s.bullets.map((b) => (
@@ -138,7 +146,7 @@ export default function PitchUS() {
       </section>
 
       {/* Highlights */}
-      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: '#1f1f23' }}>
+      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: 'hsl(var(--ds-border-default))' }}>
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold mb-2 flex items-center gap-2">
             <Wand2 className="h-5 w-5" style={{ color: 'var(--pitch-cyan)' }} /> What you'll see in the demo
@@ -159,11 +167,11 @@ export default function PitchUS() {
       </section>
 
       {/* AI guardrails */}
-      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: '#1f1f23' }}>
+      <section className="px-6 md:px-12 py-16 border-b" style={{ borderColor: 'hsl(var(--ds-border-default))' }}>
         <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
           <div>
             <h2 className="text-2xl md:text-3xl font-bold mb-3 flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5" style={{ color: 'var(--pitch-orange)' }} /> Safety-first by design
+              <ShieldCheck className="h-5 w-5" style={{ color: 'var(--pitch-cta)' }} /> Safety-first by design
             </h2>
             <p className="text-sm" style={{ color: 'var(--pitch-muted)' }}>
               The AI Choreography Studio generates editable scenes, drone formations and DMX looks.

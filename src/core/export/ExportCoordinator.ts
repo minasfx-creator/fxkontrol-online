@@ -13,6 +13,8 @@ import { deviceEventLog } from '@/core/hardware/DeviceEventLog';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { recordVerificationReport } from '@/core/journal/reportBridge';
 import { generateFireOneScript, downloadFireOneScript } from './FireOneExporter';
+import { downloadFireOneImportPackage } from './fireOneImportPackage';
+import { generateFireOneCsv } from './FireOneCsvExporter';
 import { generateArtNetPatchCSV, downloadArtNetPatch } from './ArtNetPatchExporter';
 import { generateDroneCSV, downloadDroneCSV } from './DroneCSVExporter';
 import { generateMegafireScript, downloadMegafireScript } from './MegafireExporter';
@@ -20,7 +22,16 @@ import { generateRJEquipamentosScript, downloadRJEquipamentosScript } from './RJ
 import { generateGalaxisGS2Script, downloadGalaxisGS2Script } from './GalaxisGS2Exporter';
 import { runRJPreflight, type RJPreflightReport, type RJVariant } from './RJPreflightChecker';
 
-export type ExportTarget = 'fireone' | 'artnet' | 'drone' | 'megafire' | 'rj-traditional' | 'rj-timecode' | 'galaxis-gs2';
+export type ExportTarget =
+  | 'fireone'        // alias retro-compat → 'fireone-csv' (UltraFire ZIP package)
+  | 'fireone-csv'    // UltraFire ZIP (CSV + positions + audit + README + disclaimer)
+  | 'fireone-audit'  // audit.txt only (rare, attach for journals)
+  | 'artnet'
+  | 'drone'
+  | 'megafire'
+  | 'rj-traditional'
+  | 'rj-timecode'
+  | 'galaxis-gs2';
 
 export interface ExportAttemptResult {
   target: ExportTarget;
@@ -75,7 +86,21 @@ class ExportCoordinator {
   private _runExporter(target: ExportTarget, timestamp: number): ExportAttemptResult {
     try {
       switch (target) {
-        case 'fireone': {
+        case 'fireone':
+        case 'fireone-csv': {
+          const csv = generateFireOneCsv();
+          if (csv.blocked) {
+            return { target, success: false, timestamp, issues: csv.errors, cueCount: csv.cueCount };
+          }
+          // Fire-and-forget the ZIP download; report sync result for UI.
+          void downloadFireOneImportPackage().catch(() => { /* black-boxed */ });
+          return {
+            target, success: true, timestamp,
+            issues: csv.errors, cueCount: csv.cueCount,
+            warnings: csv.warnings.length > 0 ? csv.warnings : undefined,
+          };
+        }
+        case 'fireone-audit': {
           const r = generateFireOneScript();
           if (!r.verified || r.errors.length > 0) {
             return { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };

@@ -12,6 +12,7 @@ import type { BridgeStatus } from '@/lib/fireoneModuleHardwareBridge';
 
 // Capture listeners from each source so we can fire synthetic events.
 const fxkListeners = new Set<(s: BridgeStatus) => void>();
+const fxk32qListeners = new Set<(s: BridgeStatus) => void>();
 const artnetListeners = new Set<(e: unknown) => void>();
 const serialListeners = new Set<(e: unknown) => void>();
 
@@ -19,6 +20,13 @@ vi.mock('@/hooks/useFXK16Bridge', () => ({
   subscribeFXK16Bridge: (fn: (s: BridgeStatus) => void) => {
     fxkListeners.add(fn);
     return () => fxkListeners.delete(fn);
+  },
+}));
+
+vi.mock('@/hooks/useFXK32QBridge', () => ({
+  subscribeFXK32QBridge: (fn: (s: BridgeStatus) => void) => {
+    fxk32qListeners.add(fn);
+    return () => fxk32qListeners.delete(fn);
   },
 }));
 

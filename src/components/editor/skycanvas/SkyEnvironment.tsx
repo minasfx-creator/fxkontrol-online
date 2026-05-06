@@ -8,6 +8,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSceneStore } from '@/store/useSceneStore';
+import { useProjectStore } from '@/store/useProjectStore';
 import { createSkyAtmosphereV2 } from '@/render_ultra/environment/skyAtmosphereV2';
 import { createVolumetricCloudLayer } from '@/render_ultra/environment/volumetricClouds';
 import { createWaterSystem, WATER_PRESETS } from '@/render_ultra/environment/waterRendering';
@@ -85,8 +86,8 @@ export function VolumetricCloudLayer() {
     c.setWindSpeed(cloudWindSpeed);
   }, [cloudCoverage, cloudDensity, cloudWindSpeed]);
 
-  useFrame(({ clock }) => {
-    cloudRef.current?.update(clock.getElapsedTime());
+  useFrame(() => {
+    cloudRef.current?.update(useProjectStore.getState().currentTime);
   });
 
   return null;
@@ -124,8 +125,8 @@ export function WaterLayer() {
     if (waterRef.current) waterRef.current.mesh.position.y = waterLevel + tideOffset;
   }, [waterLevel, tideOffset]);
 
-  useFrame(({ clock }) => {
-    waterRef.current?.update(clock.getElapsedTime());
+  useFrame(() => {
+    waterRef.current?.update(useProjectStore.getState().currentTime);
   });
 
   return null;

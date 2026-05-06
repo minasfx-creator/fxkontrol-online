@@ -22,6 +22,7 @@
 
 import { logger } from '@/lib/logger';
 import { fxk16ModuleAdapter } from './adapters/FXK16ModuleAdapter';
+import { fxk32qModuleAdapter } from './adapters/FXK32QModuleAdapter';
 import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
 import { dmxUniverseAdapter } from './adapters/DMXUniverseAdapter';
 import { batteryMonitorAdapter } from './adapters/BatteryMonitorAdapter';
@@ -29,28 +30,38 @@ import { muxReaderAdapter } from './adapters/MuxReaderAdapterCD4051';
 import { shiftRegisterAdapter } from './adapters/ShiftRegisterAdapter74HC595';
 import { unifiedHardwareRegistry } from './UnifiedHardwareRegistry';
 import { subscribeFXK16Bridge } from '@/hooks/useFXK16Bridge';
+import { subscribeFXK32QBridge } from '@/hooks/useFXK32QBridge';
+import { isFxk32q } from '@/lib/fxk32q/pinmap';
 import { mdnsArtnetDiscoverer } from '@/core/discovery/MdnsArtnetDiscoverer';
 import { webSerialDiscoverer } from '@/core/discovery/WebSerialDiscoverer';
 import type { TransportType } from './provenance';
 
 let _started = false;
 let _unsubFxk: (() => void) | null = null;
+let _unsubFxk32q: (() => void) | null = null;
 let _unsubArtnet: (() => void) | null = null;
 let _unsubSerial: (() => void) | null = null;
 let _lastVerified = false;
+let _lastFxk32qVerified = false;
 /** Track which Art-Net hosts are currently online so we can demote on loss. */
 const _artnetOnline = new Set<string>();
 /** Track DMX-family serial device ids currently online. */
 const _dmxSerialOnline = new Set<string>();
 
 /**
- * Map FXK16 bridge `transport` field to the canonical `TransportType`
- * used by `provenance.ts`. Defaults to `serial_usb`.
+ * Map FireOneHardwareBridge `transport` to the canonical `TransportType`.
+ * Cobre TODOS os 6 transports usados em FXK16/FXK32Q:
+ *  ble | ble_lr → 'ble'
+ *  usb | direct_relay → 'serial_usb' (RS-485 via USB↔RS485 cai aqui)
+ *  websocket → 'ethernet_tcp'
+ *  wifi_direct → 'wifi'
  */
 function mapTransport(t?: string | null): TransportType {
   if (!t) return 'serial_usb';
+  if (/wifi_direct/i.test(t)) return 'wifi';
+  if (/websocket/i.test(t)) return 'ethernet_tcp';
   if (/ble|bluetooth/i.test(t)) return 'ble';
-  if (/usb|serial|cdc/i.test(t)) return 'serial_usb';
+  if (/usb|serial|cdc|relay/i.test(t)) return 'serial_usb';
   return 'serial_usb';
 }
 
@@ -93,6 +104,32 @@ export function startDiscoveryRegistryBridge(): void {
       muxReaderAdapter.markHandshakeLost();
       shiftRegisterAdapter.markHandshakeLost();
       logger.info('[discoveryBridge] FXK16 + Battery-12V + Mux + SR demoted to NOT_INTEGRATED');
+    }
+  });
+
+  // ── FXK32Q (USB / BLE / BLE-LR / WebSocket / Wi-Fi Direct / RS-485) ──
+  // Espelho do FXK16 — mesmo handshake VERSION/STATUS, mas espera
+  // `MODEL:FXK32Q;CH:32`. Promovido em qualquer dos 6 transports.
+  _unsubFxk32q = subscribeFXK32QBridge((status) => {
+    const verified =
+      !!status.connected
+      && isFxk32q(status.deviceModel, status.channelCount)
+      && status.linkHealth === 'healthy';
+
+    if (verified === _lastFxk32qVerified) return;
+    _lastFxk32qVerified = verified;
+
+    if (verified) {
+      const transport = mapTransport(status.transport);
+      fxk32qModuleAdapter.markHandshakeOk(transport);
+      logger.info(
+        `[discoveryBridge] FXK32Q promoted to LIVE READ-ONLY (transport=${transport}, fw=${status.firmwareVersion ?? '?'})`,
+      );
+      try { unifiedHardwareRegistry.startPolling(1000); }
+      catch (err) { logger.warn('[discoveryBridge] startPolling failed', err); }
+    } else {
+      fxk32qModuleAdapter.markHandshakeLost();
+      logger.info('[discoveryBridge] FXK32Q demoted to NOT_INTEGRATED');
     }
   });
 
@@ -156,10 +193,12 @@ export function startDiscoveryRegistryBridge(): void {
 /** Stop the bridge — primarily for tests. */
 export function stopDiscoveryRegistryBridge(): void {
   if (_unsubFxk) { _unsubFxk(); _unsubFxk = null; }
+  if (_unsubFxk32q) { _unsubFxk32q(); _unsubFxk32q = null; }
   if (_unsubArtnet) { _unsubArtnet(); _unsubArtnet = null; }
   if (_unsubSerial) { _unsubSerial(); _unsubSerial = null; }
   _started = false;
   _lastVerified = false;
+  _lastFxk32qVerified = false;
   _artnetOnline.clear();
   _dmxSerialOnline.clear();
 }

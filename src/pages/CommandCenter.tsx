@@ -32,7 +32,7 @@ const ShowCommanderPanel = lazy(() => import('@/components/editor/ShowCommanderP
 const FXKNetPanel = lazy(() => import('@/components/editor/live-firing/FXKNetPanel'));
 const DMXMonitorPanel = lazy(() => import('@/components/editor/dmx/DMXMonitorPanel'));
 // FieldTest unified entry — polymorphic (desktop ↔ mobile by device class).
-const FieldTestDesktop = lazy(() => import('@/pages/FieldTest'));
+const FieldTestDesktop = lazy(() => import('@/components/command/FieldTestPanel'));
 const QuickHardwarePanel = lazy(() => import('@/components/editor/QuickHardwarePanel'));
 const VerificationConsole = lazy(() => import('@/components/editor/VerificationBar'));
 import { isEnabled } from '@/lib/featureFlags';

@@ -116,6 +116,29 @@ const FLAGS = {
   // only desktop layout now. Mobile shell is gated separately by
   // `useIsMobile()` in src/pages/Index.tsx.)
   // ============================================================
+
+  /**
+   * SkyCanvas 2.0 — lighter presentation engine (single draw call per layer,
+   * pooled bursts, time via ref). Runtime opt-in via localStorage
+   * 'fxk.flag.skycanvas_v2' = '1'. Wrapped by an ErrorBoundary in
+   * SkyCanvasMount so a render fault cleanly falls back to the legacy
+   * SkyCanvas (zero risk to production).
+   */
+  skycanvas_v2: false,
+
+  /**
+   * SkyCanvas 2.0 StageLayer — palco arco curvo + truss + LEDs + beams.
+   * Default ON (visualmente esperado). Override per-device via localStorage
+   * 'fxk.flag.skycanvas_v2_stage' = '0' pra esconder em capturas cinematográficas.
+   */
+  skycanvas_v2_stage: true,
+
+  /**
+   * UE5 FixturesLayer — renderiza 838 fixtures GDTF do MVR (DMXLib_v4)
+   * sobre o palco do SkyCanvas 2.0. Presentation only. Default OFF
+   * (operadores ligam via /dev/ue5-bridge ou localStorage).
+   */
+  ue5_fixtures_layer: false,
 } as const;
 
 export type FeatureFlag = keyof typeof FLAGS;
@@ -136,4 +159,57 @@ export function isHardwareSimulatorEnabled(): boolean {
 /** Convenience: real-only mode (only verified-handshake adapters emit data). */
 export function isRealOnlyMode(): boolean {
   return FLAGS.real_only_mode;
+}
+
+/**
+ * SkyCanvas 2.0 runtime gate.
+ * Order: localStorage override → static flag → false.
+ * Allows ops to flip the new engine on per-device without a deploy.
+ * Safe in SSR/jsdom (guards `typeof window`).
+ */
+export function isSkycanvasV2Enabled(): boolean {
+  if (typeof window !== 'undefined') {
+    try {
+      const v = window.localStorage.getItem('fxk.flag.skycanvas_v2');
+      if (v === '1' || v === 'true') return true;
+      if (v === '0' || v === 'false') return false;
+    } catch {
+      /* localStorage blocked → fall back to static flag */
+    }
+  }
+  return FLAGS.skycanvas_v2;
+}
+
+/**
+ * StageLayer runtime gate. Default ON (FLAGS.skycanvas_v2_stage=true).
+ * localStorage 'fxk.flag.skycanvas_v2_stage' = '0' esconde; '1' força ON.
+ */
+export function isSkycanvasV2StageEnabled(): boolean {
+  if (typeof window !== 'undefined') {
+    try {
+      const v = window.localStorage.getItem('fxk.flag.skycanvas_v2_stage');
+      if (v === '1' || v === 'true') return true;
+      if (v === '0' || v === 'false') return false;
+    } catch {
+      /* localStorage blocked → fall back to static flag */
+    }
+  }
+  return FLAGS.skycanvas_v2_stage;
+}
+
+
+/**
+ * FireOne XL4-3 / XLII+ live ops gate. Default OFF.
+ * localStorage 'fxk.flag.fireone_xl43_realops' = '1' → reveals tab.
+ * The CSV/ZIP exporter is NOT gated by this flag.
+ */
+export function isFireOneXL43RealOpsEnabled(): boolean {
+  if (typeof window !== 'undefined') {
+    try {
+      const v = window.localStorage.getItem('fxk.flag.fireone_xl43_realops');
+      if (v === '1' || v === 'true') return true;
+      if (v === '0' || v === 'false') return false;
+    } catch { /* fall through */ }
+  }
+  return false;
 }

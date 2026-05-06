@@ -227,6 +227,8 @@ import { lockstep } from '@/core/reliability/lockstepEngine';
 import { executionBridge } from '@/core/execution/executionBridge';
 import { frameSyncEngine } from '@/core/sync/frameSyncEngine';
 import { useTimelineClockHealthCheck } from '@/hooks/useTimelineClockHealthCheck';
+import { timelineClock } from '@/core/timeline/TimelineClock';
+
 
 /** Invisible component that watches `timelineClock.time` for stalls and forces
  *  the lockstep playback fallback if the clock freezes while `isPlaying`. */
@@ -254,10 +256,19 @@ const PlaybackClock = React.forwardRef<any>(function PlaybackClock(_props, _ref)
     if (registeredRef.current) return;
     registeredRef.current = true;
 
-    // Playback advancement — runs at fixed 60Hz via lockstep
+    // Playback advancement — runs at fixed 60Hz via lockstep.
+    //
+    // CRITICAL: only advances when the canonical timelineClock is in
+    // 'local' source mode. When an <audio> is mounted, useAudioMasterClock
+    // pumps `syncExternalTime(audio.currentTime)` every RAF and the source
+    // flips to 'external' — *that* is the master. If we kept ticking here
+    // we'd race the audio pump and drift Particle Explosions / drone pulses
+    // out of sync with the waveform within a few seconds.
     lockstep.register('playback', (_simTime: number, dt: number) => {
       const store = useProjectStore.getState();
       if (!store.isPlaying) return;
+      // Audio (or any external pump) owns the clock — do not advance.
+      if (timelineClock.getState().source !== 'local') return;
       const delta = dt * store.playbackSpeed;
       const next = store.currentTime + delta;
       if (next >= store.duration) {
@@ -1933,12 +1944,15 @@ export default function SkyCanvas() {
     setDownloadingScenery(true);
     pushLog('Downloading satellite imagery...', 'info');
     try {
-      // Get the API key from the edge function
-      const { data: keyData, error: keyError } = await supabase.functions.invoke('get-maps-key');
-      const apiKey = keyData?.key;
-      if (keyError || !apiKey) {
-        pushLog('Failed to get Google Maps API key', 'error');
-        toast.error('Falha ao obter chave do Google Maps');
+      // Get the API key from the edge function (requires login)
+      const { fetchGoogleMapsKey } = await import('@/lib/getMapsKey');
+      const { key: apiKey, reason } = await fetchGoogleMapsKey();
+      if (!apiKey) {
+        const msg = reason === 'unauthenticated'
+          ? 'Faça login para baixar imagens do Google Maps'
+          : 'Falha ao obter chave do Google Maps';
+        pushLog(msg, 'error');
+        toast.error(msg);
         return;
       }
 

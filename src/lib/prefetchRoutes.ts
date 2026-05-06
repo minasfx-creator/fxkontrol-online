@@ -28,14 +28,14 @@ function canPrefetch(): boolean {
 }
 
 const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
-  '/': () => import('@/pages/Index'),
+  '/': () => import('@/pages/Auth'),
   '/command': () => import('@/pages/CommandCenter'),
-  '/editor': () => import('@/pages/Index'),
-  '/agenda': () => import('@/pages/Agenda'),
-  '/training': () => import('@/pages/Training'),
-  
+  '/skycanvas': () => import('@/pages/SkyCanvas'),
+  '/editor': () => import('@/pages/SkyCanvas'),
+  '/studio': () => import('@/pages/SkyCanvas'),
+  '/office': () => import('@/pages/Office'),
+  '/training/center': () => import('@/pages/TrainingCenter'),
   '/settings': () => import('@/pages/Settings'),
-  '/admin': () => import('@/pages/Admin'),
   '/field': () => import('@/pages/FieldOps'),
 };
 

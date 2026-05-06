@@ -1,113 +1,74 @@
-# Training v2.1 — Roadie Academy (Unreal Edition)
+## Round 1 — Integrar módulos do SkyCanvas legado ao novo `/skycanvas`
 
-Refinamento profundo do Training v2 atual. Foco: profundidade de missões, fidelidade visual MetaHuman-style, situações reais de palco, e direção cinemática estilo GTA V (cutscene → gameplay → debrief).
+Você subiu o `Index.tsx` legado (861 linhas, ~80 painéis lazy). Vou puxar **só os módulos do plane Show/Experience** (criação, edição, simulação, render). Tudo do plane Hardware/Safety (LiveFiring, DMXOutput, Bluetooth, NFC, Radio, MA3, SACN, Fleet, Geofence, MAVLink, FlightLog, Telemetry, FlightCheck) **fica fora** — esses já vivem em `/command`, `/field`, `/pairing/*`.
 
-**Safety:** tudo permanece em `workMode = simulation`. Zero impacto em CommandBus / SafetyStateMachine / FieldBus.
-**Flag:** continua sob `training_v2_cinematic` (já ON).
+### O que entra agora (Round 1 — núcleo de criação)
 
----
+**Library (Left 280) — passa de 4 → 7 abas**
+- Catalog → `SupplierCatalogPanel`
+- Marketplace → `TemplateMarketplace`
+- Templates legado → `ShowTemplatesPanel` (substitui o stub atual)
 
-## 1. Roteirização aprofundada (missionScripts v2)
+**Inspector (Right 320) — passa de 5 → 11 abas**
+- Effect → `EffectEditor`
+- Chain → `ChainEditorPanel`
+- Light → `LightProgramPanel`
+- Laser → `LaserControlPanel`
+- Boids → `BoidsPanel`
+- Particle → `ParticleEditorPanel`
 
-Hoje: 6 missões, briefing + 1–3 stages flat.
-Meta: **16 missões** organizadas em 5 capítulos progressivos, com **stages multi-tipo** (`place` → `inspect` → `dialogue` → `fire-check` → `evacuate`), beats narrativos no meio do gameplay, e múltiplos NPCs reagindo dinamicamente.
+**Timeline (180) — passa de 3 → 5 abas**
+- Waveform → `AudioWaveform` (já existe, alimentado pelo audio master clock)
+- Storyboard → `StoryboardPanel`
 
-Capítulos:
-- **Cap. 1 — Carga & Montagem** (3 missões): truss H, truss A-frame, ground support
-- **Cap. 2 — Energia & DMX** (3 missões): distribuição AC trifásica, RCD/PE check, patch DMX 2 universos, terminator chain
-- **Cap. 3 — SFX & Pirotecnia** (3 missões): sparkular safe-arc, flamer FR clearance, mortar layout NFPA 1123
-- **Cap. 4 — Caos ao Vivo** (4 missões): bêbado no palco, chuva súbita, queda de fase, dançarino na linha de fogo
-- **Cap. 5 — Show Completo** (3 missões): casamento, festival corporativo, Réveillon legendary
+### O que NÃO entra (decisão consciente, justificada)
 
-Cada missão ganha:
-- `cinematicBeats[]` — momentos para câmera cutscene mid-gameplay (dolly, crane, close-up)
-- `voiceLines[]` (texto + duração + intent: 'urgent'|'calm'|'excited') usados pra modular lipsync amplitude
-- `manualRefs[]` por objective (link real para `MANUALS[]` em Training.tsx)
-- `failureScenarios[]` — narrativas distintas para falhas distintas (tempo, violation, ordem errada)
+| Painel | Motivo |
+|---|---|
+| `LiveFiringPanel`, `DMXOutputPanel`, `BluetoothPanel`, `NFCPairPanel`, `RadioControlPanel`, `MA3ControlPanel`, `SACNMonitorPanel`, `RemoteControlPanel`, `MAVLinkPanel` | Hardware live → `/command` + `/pairing` |
+| `SafetyPanel`, `FlightCheckTab`, `DiagnosticPanel`, `CollisionPanel`, `WeatherPanel`, `GeofencePanel` | Safety/preflight → `/command` |
+| `FleetManagementPanel`, `BatteryPanel`, `TelemetryDashboard`, `FlightLogPanel`, `MobileLinkMonitor` | Telemetria/frota → `/field` |
+| `ShowCommanderPanel`, `VirtualControllerHub`, `HardwareHubPanel`, `ShowvenEquipmentPanel` | Operação → `/command` |
+| `SwarmGPTPanel`, `SmartScriptAssistant`, `StudioPromptModal` | IA dedicada → `/ai-builder` (já no Master Menu) |
+| `MobileTabBar`, `MobileFloatingPanel`, `MobileHUD`, `MobileQuickActions`, `MobileWelcomeScreen`, `MobileConsoleFullscreen`, `LiveModeOverlay`, `UnifiedPanelMenu` | Mobile shell legado → substituídos por `MobilePanelSwitcher` v2 atual |
+| `CinematicIntro`, `SplashScreen` | Já desativados no legado |
+| `VenueShowOverlay`, `VenueQuickSelector` | Já cobertos por `LibraryGeoTab` |
+| `GoogleMapsPanel`, `IndoorSimPanel`, `SiteLayoutPanel`, `SiteModelsPanel`, `FieldMap2D` | Geo já coberto por `LibraryGeoTab` (consolidar depois, sem duplicar) |
+| `AROverlayPanel` | Adiado para Round 2 (overlay de viewport, não tab) |
+| `ScriptWindow`, `WaypointEditor`, `PositionWindow`, `EffectLibrary` (antigo), `Timeline` (antigo) | Já substituídos por equivalentes DS v1 (TimelineStripView, EffectLibrarySidebar usado em LibraryEffectsTab, etc.) |
+| `ReportsPanel`, `RackManager`, `AddressingPanel`, `InventoryPanel`, `LogisticsPanel`, `FiringExportPanel`, `LabelsPanel`, `VideoRecorderPanel`, `ModelImportPanel`, `ScriptingToolsPanel`, `AudienceAnalyzerPanel`, `PIDPanel`, `PositionGroupsPanel`, `SceneEditorPanel`, `SoundLevelPanel`, `ShowSharePanel`, `VersioningPanel`, `ClientApprovalPanel`, `TrajectoryOptimizerPanel`, `ManufacturerCalibrationPanel`, `TakeoffGridPanel`, `TransitionPlannerPanel`, `VideoChoreoPanel`, `GenerativeEffectsPanel`, `SetlistPanel`, `RiderPanel`, `BudgetPanel`, `ShowPreviewPanel`, `MobileLinkPanel`, `ShowSettingsPanel`, `ShowInspectorPanel`, `SynesthesiaPanel`, `QAStudioPanel`, `DMXPanel`, `SMPTEPanel` | **Round 2** (avalio individualmente — alguns são ferramentas grandes que merecem `/dev/*` ou rota própria; outros viram aba) |
 
-## 2. NPCs refinados (MetaHuman+ stand-in)
+### Implementação técnica
 
-Expansão do `HumanoidCharacter.tsx`:
-- **Mesh secondaries**: belt loop, walkie-talkie, prancheta, capacete (props paramétricos por outfit)
-- **Cloth sim leve**: vest/blazer com sway (Three.js bone offset, sem CCD — pseudo-cloth via senoide)
-- **Eye blink** (3–6s aleatório, durabilidade 100ms)
-- **Brow micro-expressions** (preocupação, aprovação) sincronizadas com `voiceLine.intent`
-- **Hand IK simplificado**: mão aponta pra alvo durante `speak` se `pointAt` setado
-- **Footstep IK**: pés grudam no chão durante idle (hoje flutuam)
+1. **10 wrappers `*Tab.tsx` novos** em `src/components/skycanvas/tabs/`:
+   - `LibraryCatalogTab.tsx`, `LibraryMarketplaceTab.tsx`, `LibraryTemplatesTab.tsx` (substitui o atual stub)
+   - `InspectorEffectTab.tsx`, `InspectorChainTab.tsx`, `InspectorLightTab.tsx`, `InspectorLaserTab.tsx`, `InspectorBoidsTab.tsx`, `InspectorParticleTab.tsx`
+   - `TimelineWaveformTab.tsx`, `TimelineStoryboardTab.tsx`
+   
+   Padrão: `<section role="region" aria-label tabIndex={-1}>` + lazy boundary externa via `TabbedDockPanel`. `onClose` passado como no-op (a aba não fecha).
 
-Catálogo cresce de 9 → **14 NPCs**: + bombeiro-jovem, eletricista-presente (vs rádio), DJ, cliente-corporativo, segurança-feminina.
+2. **`SkyCanvas.tsx`** — registra as novas abas em cada `TabbedDockPanel`. Mantém defaultValue atual.
 
-## 3. Câmera cinemática GTA-V
+3. **`skyActions.ts`** — adiciona ações de Master Menu para abrir cada aba nova (Library/Marketplace/Inspector/Boids/Lasers etc.) com kbd opcional.
 
-Novo `CinematicCameraDirector.tsx`:
-- **Shot library**: `wide-establishing`, `medium-2shot`, `over-the-shoulder`, `close-up-reaction`, `crane-down`, `dolly-in`
-- Trigger por `cinematicBeats[]` da missão; transição com lerp 1.2s (ease-in-out)
-- Fora de cutscene volta ao OrbitControls do jogador (camera state preservado)
-- Letterbox auto-anima 12vh in/out
-- Depth-of-field sutil (postprocessing `Bokeh` opcional via flag, fallback fog-density bump)
+4. **`skycanvas.safetyImports.guard.spec.ts`** — sem mudança; ele já cobre `src/components/skycanvas/**` recursivamente. Os wrappers passam porque importam só de `@/components/editor/*` (que não tem regex banido nos arquivos puxados — vou validar antes de finalizar).
 
-## 4. HUD GTA-V refinado
+5. **Smoke test** — estendo `skycanvas.editorShell.smoke.spec.ts`: assert dos 10 novos wrappers existirem e serem referenciados em `SkyCanvas.tsx`.
 
-`CinematicHUD.tsx` ganha:
-- **Mission triangle pulsante** quando objetivo novo é revelado
-- **Subtitle queue** — múltiplas linhas em fila, não sobrescreve
-- **Floating XP popups** (`+50 XP — perfect snap`) ao completar objetivo
-- **Wasted/Mission Failed screen** (full-bleed vermelho, slow-mo 0.4× fade)
-- **Mission Passed flash** (golden bar sweep)
-- **Mini-map canto inferior-esquerdo** (top-down do palco com NPCs e equipment placeholders)
+### O que FICA igual
 
-## 5. Situações cotidianas de palco
+- Contrato Plane Show/Experience: zero CommandBus / FieldBus / SafetyStateMachine / workMode.
+- A11y já entregue (roving tabindex, aria-controls, tooltips kbd, skip-link, focus-on-toggle).
+- Persistência de layout cloud + localStorage.
+- Audio master clock + Show3D Engine sync.
+- `Index.tsx` legado **não** é deletado nesta rodada (rota `/editor/*` segue funcionando — DELETE entra na Rodada 2 do `ROUTE_AUDIT.md`).
 
-Novo módulo `ambientChoreographer.ts` que, em **qualquer** missão, agenda micro-eventos (NPCs paralelos):
-- DJ fazendo soundcheck ao fundo (toca beat 4 batidas a cada 30s)
-- Dançarinos passando coreografia em linha reta
-- Cliente checando relógio
-- Roadie carregando case do ponto A→B
-- Walkie-talkie chiando ("rádio interno")
+### Próximas rodadas (não nesta resposta)
 
-Configurável por chapter — Cap. 5 fica caótico, Cap. 1 fica calmo.
+- **Round 2**: viewport overlays (AR Compass, BoxSelect, EdgeSnap, Alignment), 4º chip mobile "HUD", `SelectionStatusBar` na topbar, persistência da aba ativa por slot no cloud.
+- **Round 3**: triagem dos ~30 painéis "Round 2" listados acima — cada um vira aba, ferramenta `/dev/*` ou é descartado.
+- **Round 4**: deletar `Index.tsx` + redirect `/editor` → `/skycanvas`.
 
-## 6. Arquivos previstos
+### Aprovar?
 
-**Novos:**
-- `src/components/training/missions/missionScripts.ts` — ampliado para 16 missões (substitui)
-- `src/components/training/missions/types.ts` — adiciona `cinematicBeats`, `voiceLines`, `failureScenarios`
-- `src/components/training/camera/CinematicCameraDirector.tsx`
-- `src/components/training/camera/shotLibrary.ts`
-- `src/components/training/hud/MiniMap.tsx`
-- `src/components/training/hud/XPPopupLayer.tsx`
-- `src/components/training/hud/MissionFailedScreen.tsx`
-- `src/components/training/hud/MissionPassedFlash.tsx`
-- `src/components/training/ambient/ambientChoreographer.ts`
-- `src/components/training/ambient/AmbientNPCLayer.tsx`
-- `src/components/training/npcs/npcCatalog.ts` — +5 NPCs (substitui)
-- `src/components/training/humanoid/HumanoidCharacter.tsx` — refinamento PBR + props + blink + IK
-- `src/components/training/humanoid/HumanoidProps.tsx` — props paramétricos (capacete, prancheta, walkie)
-- `src/components/training/missions/__tests__/missionScripts.coverage.test.ts` — garante 16 missões, todas com briefing+debrief+manualRefs
-- `src/components/training/camera/__tests__/cameraDirector.test.tsx` — transições determinísticas
-
-**Editados:**
-- `src/components/training/CinematicTrainingSimulator.tsx` — monta director + minimap + xp layer + ambient layer; passa `cinematicBeats` ao runner
-- `src/components/training/missions/missionRunner.ts` — emite eventos `beat:start`, `beat:end`, `objective:revealed` para director e XP layer
-
-## 7. Testes
-
-- 15+ novos unit tests (FSM beats, ambient scheduler, camera director lerp, mission catalog coverage)
-- Mantém suíte atual em verde (1047/1047 → ~1062/1062)
-
-## 8. Performance
-
-- HumanoidCharacter cap em **8 NPCs simultâneos** (ambient + scripted); excedentes viram billboards lod
-- Eye blink/IK usam `useFrame` único compartilhado (zero subscriptions extras)
-- Cinematic camera reaproveita o `<Canvas>` existente (sem segundo viewport)
-
----
-
-## Fora de escopo (deixar pra v2.2)
-
-- Voice-over real (TTS) — manteremos lipsync proxy + texto
-- MetaHuman vinculado de fato (Quixel runtime) — fora do bundle web; usamos stand-in PBR
-- Multiplayer cooperativo
-- Save/replay de runs
-
-Posso prosseguir?
+Posso executar o **Round 1** (10 wrappers + SkyCanvas wiring + skyActions + smoke test). Vai ficar tudo verde no mesmo loop. Confirma?

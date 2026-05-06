@@ -32,6 +32,7 @@ const AutoControllerLauncher = lazy(lazyRetry(() => import('@/components/hardwar
 // uiCommandGateway → CommandBus → SafetyStateMachine. Hold-to-confirm 600ms
 // when idle; instant fire when ARMED/FIRING (life-safety <50ms).
 const GlobalEStopButton = lazy(lazyRetry(() => import('@/components/safety/GlobalEStopButton')));
+const RealFiringReadinessBadge = lazy(lazyRetry(() => import('@/components/safety/RealFiringReadinessBadge')));
 // Deterministic kernel (timeline clock pump, lockstep, persistence) — must
 // mount on EVERY protected route AND on mobile so Play actually advances time.
 // Previously this was nested inside <Index> desktop branch only, which left
@@ -277,6 +278,7 @@ export default function MainLayout() {
       {!commandImmersive && (
         <Suspense fallback={null}>
           <GlobalEStopButton />
+          <RealFiringReadinessBadge />
         </Suspense>
       )}
 

@@ -51,13 +51,21 @@ const UsbPairingWizard = lazy(lazyRetry(() => import("./pages/UsbPairingWizard")
 const BlePairingWizard = lazy(lazyRetry(() => import("./pages/BlePairingWizard")));
 const PairingWizard = lazy(lazyRetry(() => import("./pages/PairingWizard")));
 const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
-const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage")));
-const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")));
+
+// SkyCanvas dev lab — unified harness for smoke / r3f / v2 variants.
+// Substitui as 3 rotas dev (/dev/skycanvas-{smoke,3d,2}) com um único
+// chunk lazy + toggle de variante na própria UI (Rodada 6).
+const SkyCanvasLab = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasLab")));
+const UE5BridgePage = lazy(lazyRetry(() => import("./pages/dev/UE5BridgePage")));
+const VideoEditor = lazy(lazyRetry(() => import("./pages/VideoEditor")));
+const SkyCanvasPage = lazy(lazyRetry(() => import("./pages/SkyCanvas")));
 const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSystemShowcase")));
 const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
 const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")));
+const ModuleRoster = lazy(lazyRetry(() => import("./pages/dev/ModuleRoster")));
+const E2ETestPage = lazy(lazyRetry(() => import("./pages/dev/E2ETestPage")));
 const GoldenShowsCatalog = lazy(lazyRetry(() => import("./pages/dev/GoldenShows")));
-const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
+
 const FXK16Hub = lazy(lazyRetry(() => import("./pages/dev/FXK16Hub")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
@@ -70,7 +78,8 @@ const CreateTemplate = lazy(lazyRetry(() => import("./pages/create/CreateTemplat
 const CreateGenerate = lazy(lazyRetry(() => import("./pages/create/CreateGenerate")));
 
 // Lazy-loaded heavy pages
-const Index = lazy(lazyRetry(() => import("./pages/Index")));
+// NOTE: legacy `pages/Index.tsx` aposentado na Rodada 4. /studio, /editor e
+// /editor/:showId agora redirecionam para /skycanvas (surface canônica DS v1).
 const CommandCenter = lazy(lazyRetry(() => import("./pages/CommandCenter")));
 
 // Field ops console — wraps DevicePairing + FieldTest + MobileLinkPanel as tabs.
@@ -92,6 +101,7 @@ const Comercial = lazy(lazyRetry(() => import("./pages/Comercial")));
 const IOSReadiness = lazy(lazyRetry(() => import("./pages/IOSReadiness")));
 const Unsubscribe = lazy(lazyRetry(() => import("./pages/Unsubscribe")));
 const Strategy = lazy(lazyRetry(() => import("./pages/Strategy")));
+const TrainingCenter = lazy(lazyRetry(() => import("./pages/TrainingCenter")));
 const PitchUS = lazy(lazyRetry(() => import("./pages/PitchUS")));
 
 const queryClient = new QueryClient();
@@ -184,9 +194,16 @@ function App() {
                     <Route path="/dev/fxk16" element={<FXK16Hub />} />
                     <Route path="/dev/fxk16-validate" element={<Navigate to="/dev/fxk16?tab=validate" replace />} />
                     <Route path="/dev/fxk16-calibrate" element={<Navigate to="/dev/fxk16?tab=calibrate" replace />} />
-                    {/* Public SkyCanvas smoke route — mounts the 3D viewport in
-                        isolation for E2E QA. No auth, no hardware, no ARM. */}
-                    <Route path="/dev/skycanvas-smoke" element={<SkyCanvasSmoke />} />
+                    {/* SkyCanvas dev lab — variantes smoke / r3f / v2 sob um único
+                        chunk lazy. Rotas legadas redirecionam preservando a variante. */}
+                    <Route path="/dev/skycanvas-lab" element={<SkyCanvasLab />} />
+                    <Route path="/dev/skycanvas-smoke" element={<Navigate to="/dev/skycanvas-lab?v=smoke" replace />} />
+                    <Route path="/dev/skycanvas-3d" element={<Navigate to="/dev/skycanvas-lab?v=r3f" replace />} />
+                    <Route path="/dev/skycanvas-2" element={<Navigate to="/dev/skycanvas-lab?v=v2" replace />} />
+                    {/* UE5 Bridge — inspector dos catálogos importados (MVR/Niagara/MRP). */}
+                    <Route path="/dev/ue5-bridge" element={<UE5BridgePage />} />
+                    {/* Reference Video Editor surface — sidebars + 3D viewport + timeline. */}
+                    <Route path="/dev/video-editor" element={<VideoEditor />} />
                     {/* FXKONTROL DS v1 — public reference page (tokens, segments, status,
                         components, states). No hardware, no auth. */}
                     <Route path="/dev/design-system" element={<DesignSystemShowcase />} />
@@ -196,6 +213,8 @@ function App() {
                         view of VerificationEngine + ReadinessEvaluator + Hardware
                         Registry with adapter provenance. No commands sent. */}
                     <Route path="/dev/readiness-audit" element={<ReadinessAudit />} />
+                    <Route path="/dev/module-roster" element={<ModuleRoster />} />
+                    <Route path="/dev/e2e-test" element={<E2ETestPage />} />
                     {/* Phase 1 golden show inspector — pure read of the
                         Libertadores ShowPlan + PDF + honest export ZIP. */}
                     <Route path="/dev/libertadores" element={<Navigate to="/dev/golden-shows" replace />} />
@@ -228,11 +247,15 @@ function App() {
                       {/* ── 3 grandes áreas ───────────────────────────────────── */}
                       <Route path="/office" element={<Office />} />
                       {/* Studio = editor 3D. /editor é endpoint equivalente (mesma página). */}
-                      <Route path="/studio" element={<Index />} />
-                      <Route path="/editor" element={<Index />} />
-                      <Route path="/editor/:showId" element={<Index />} />
+                      {/* Studio/editor → SkyCanvas (Rodada 4: Index.tsx legado aposentado). */}
+                      <Route path="/studio" element={<Navigate to="/skycanvas" replace />} />
+                      <Route path="/editor" element={<Navigate to="/skycanvas" replace />} />
+                      <Route path="/editor/:showId" element={<Navigate to="/skycanvas" replace />} />
                       <Route path="/command" element={<CommandCenter />} />
                       <Route path="/strategy" element={<Strategy />} />
+                      {/* SkyCanvas v3 — surface canônica, capability-driven, isolada do Index.tsx pesado. */}
+                      <Route path="/skycanvas" element={<SkyCanvasPage />} />
+                      <Route path="/training/center" element={<TrainingCenter />} />
 
                       {/* ── Create flow (Action Layer) ────────────────────────── */}
                       <Route path="/create" element={<Create />} />

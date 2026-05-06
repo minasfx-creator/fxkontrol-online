@@ -14,6 +14,13 @@
  * the last non-zero width (so the user's preferred panel size survives).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+export interface EditorActiveTabs {
+  left?: string;
+  right?: string;
+  timeline?: string;
+}
 
 export interface EditorLayoutState {
   leftWidth: number;
@@ -22,6 +29,8 @@ export interface EditorLayoutState {
   leftCollapsed: boolean;
   rightCollapsed: boolean;
   timelineCollapsed: boolean;
+  /** Optional active tab id per dock slot (Round 2 — persisted). */
+  activeTabs?: EditorActiveTabs;
 }
 
 export const EDITOR_LAYOUT_DEFAULTS: EditorLayoutState = {
@@ -31,6 +40,7 @@ export const EDITOR_LAYOUT_DEFAULTS: EditorLayoutState = {
   leftCollapsed: false,
   rightCollapsed: false,
   timelineCollapsed: false,
+  activeTabs: {},
 };
 
 export const EDITOR_LAYOUT_LIMITS = {
@@ -74,6 +84,13 @@ function readPersisted(projectId: string): EditorLayoutState {
       leftCollapsed: Boolean(parsed.leftCollapsed),
       rightCollapsed: Boolean(parsed.rightCollapsed),
       timelineCollapsed: Boolean(parsed.timelineCollapsed),
+      activeTabs: (parsed.activeTabs && typeof parsed.activeTabs === 'object')
+        ? {
+            left: typeof parsed.activeTabs.left === 'string' ? parsed.activeTabs.left : undefined,
+            right: typeof parsed.activeTabs.right === 'string' ? parsed.activeTabs.right : undefined,
+            timeline: typeof parsed.activeTabs.timeline === 'string' ? parsed.activeTabs.timeline : undefined,
+          }
+        : {},
     };
   } catch {
     return EDITOR_LAYOUT_DEFAULTS;
@@ -90,6 +107,8 @@ export interface UseEditorLayoutResult extends EditorLayoutState {
   toggleRight: () => void;
   toggleTimeline: () => void;
   reset: () => void;
+  /** Round 2 — set the active tab id for a given dock slot. */
+  setActiveTab: (slot: keyof EditorActiveTabs, tabId: string) => void;
 }
 
 /**
@@ -97,6 +116,8 @@ export interface UseEditorLayoutResult extends EditorLayoutState {
  */
 export function useEditorLayout(projectId: string): UseEditorLayoutResult {
   const [state, setState] = useState<EditorLayoutState>(() => readPersisted(projectId));
+  // Skip the very next cloud write after we hydrate from cloud (avoids echo).
+  const skipNextCloudWriteRef = useRef(false);
 
   // Re-hydrate when projectId changes (different project ⇒ different layout).
   const lastProjectRef = useRef(projectId);
@@ -107,7 +128,62 @@ export function useEditorLayout(projectId: string): UseEditorLayoutResult {
     }
   }, [projectId]);
 
-  // Debounced persist — coalesces drag bursts into a single write.
+  // ── Cloud hydrate (per user + project_key) ────────────────────────────────
+  // Loads any saved layout from Supabase on mount/project change. localStorage
+  // remains the offline-first cache; cloud value wins on hydrate.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        if (!auth?.user) return;
+        const { data, error } = await (supabase as any)
+          .from('editor_layouts')
+          .select('state')
+          .eq('user_id', auth.user.id)
+          .eq('project_key', projectId)
+          .maybeSingle();
+        if (cancelled || error || !data?.state) return;
+        const cloud = data.state as Partial<EditorLayoutState>;
+        skipNextCloudWriteRef.current = true;
+        setState({
+          leftWidth: clamp(
+            Number(cloud.leftWidth ?? EDITOR_LAYOUT_DEFAULTS.leftWidth),
+            EDITOR_LAYOUT_LIMITS.left.min,
+            EDITOR_LAYOUT_LIMITS.left.max,
+          ),
+          rightWidth: clamp(
+            Number(cloud.rightWidth ?? EDITOR_LAYOUT_DEFAULTS.rightWidth),
+            EDITOR_LAYOUT_LIMITS.right.min,
+            EDITOR_LAYOUT_LIMITS.right.max,
+          ),
+          timelineHeight: clamp(
+            Number(cloud.timelineHeight ?? EDITOR_LAYOUT_DEFAULTS.timelineHeight),
+            EDITOR_LAYOUT_LIMITS.timeline.min,
+            EDITOR_LAYOUT_LIMITS.timeline.max,
+          ),
+          leftCollapsed: Boolean(cloud.leftCollapsed),
+          rightCollapsed: Boolean(cloud.rightCollapsed),
+          timelineCollapsed: Boolean(cloud.timelineCollapsed),
+          activeTabs: (cloud.activeTabs && typeof cloud.activeTabs === 'object')
+            ? {
+                left: typeof cloud.activeTabs.left === 'string' ? cloud.activeTabs.left : undefined,
+                right: typeof cloud.activeTabs.right === 'string' ? cloud.activeTabs.right : undefined,
+                timeline: typeof cloud.activeTabs.timeline === 'string' ? cloud.activeTabs.timeline : undefined,
+              }
+            : {},
+        });
+      } catch {
+        // Network/auth issues — silently fall back to localStorage cache.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  // Debounced persist — coalesces drag bursts into a single write to BOTH
+  // localStorage (always) and Supabase (when authenticated).
   const writeTimerRef = useRef<number | null>(null);
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -118,7 +194,31 @@ export function useEditorLayout(projectId: string): UseEditorLayoutResult {
       } catch {
         // Quota or private mode — ignore; in-memory state still works.
       }
-    }, 120);
+      // Cloud upsert (debounced 600ms via outer timeout). Skip the echo right
+      // after a cloud-driven hydrate to avoid pointless round-trips.
+      if (skipNextCloudWriteRef.current) {
+        skipNextCloudWriteRef.current = false;
+        return;
+      }
+      void (async () => {
+        try {
+          const { data: auth } = await supabase.auth.getUser();
+          if (!auth?.user) return;
+          await (supabase as any)
+            .from('editor_layouts')
+            .upsert(
+              {
+                user_id: auth.user.id,
+                project_key: projectId,
+                state: state as unknown as Record<string, unknown>,
+              },
+              { onConflict: 'user_id,project_key' },
+            );
+        } catch {
+          // Offline / auth missing — localStorage already covers this session.
+        }
+      })();
+    }, 600);
     return () => {
       if (writeTimerRef.current != null) {
         window.clearTimeout(writeTimerRef.current);
@@ -163,6 +263,14 @@ export function useEditorLayout(projectId: string): UseEditorLayoutResult {
     setState(EDITOR_LAYOUT_DEFAULTS);
   }, []);
 
+  const setActiveTab = useCallback((slot: keyof EditorActiveTabs, tabId: string) => {
+    setState((s) => {
+      const prev = s.activeTabs ?? {};
+      if (prev[slot] === tabId) return s;
+      return { ...s, activeTabs: { ...prev, [slot]: tabId } };
+    });
+  }, []);
+
   return {
     ...state,
     effective: {
@@ -177,5 +285,6 @@ export function useEditorLayout(projectId: string): UseEditorLayoutResult {
     toggleRight,
     toggleTimeline,
     reset,
+    setActiveTab,
   };
 }

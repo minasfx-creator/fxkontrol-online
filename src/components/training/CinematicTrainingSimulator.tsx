@@ -37,6 +37,9 @@ import type { MissionScript, DialogueLine } from './missions/types';
 import { createMissionRunner, type RunnerSnapshot } from './missions/missionRunner';
 import { computeDebriefMetrics, type PlacementAttempt } from './missions/debriefMetrics';
 import MissionDebriefPanel from './hud/MissionDebriefPanel';
+import AchievementsBadgeStrip from './achievements/AchievementsBadgeStrip';
+import { useAchievementsStore } from './achievements/useAchievementsStore';
+import type { AchievementId } from './achievements/achievements';
 import {
   Equipment, SnapPoint, PlacedItem, MISSION_SNAP_POINTS,
 } from './types';
@@ -389,6 +392,31 @@ function DebriefScreen({
   onReplay: () => void;
 }) {
   const metrics = computeDebriefMetrics({ script, snap, attempts });
+  const recordCompletion = useAchievementsStore((s) => s.recordMissionCompletion);
+  const lifetime = useAchievementsStore((s) => s.lifetime);
+  const [achResult, setAchResult] = useState<{
+    awarded: AchievementId[];
+    newly: AchievementId[];
+    newlyUnlockedMissions: string[];
+    bonusXP: number;
+  } | null>(null);
+
+  // Record once on mount of debrief — store is idempotent per-mount via guard.
+  const recordedRef = useRef(false);
+  useEffect(() => {
+    if (recordedRef.current) return;
+    recordedRef.current = true;
+    const prevLifetime = new Set(lifetime);
+    const result = recordCompletion({ script, snap, attempts });
+    setAchResult({
+      awarded: result.awarded,
+      newly: result.awarded.filter((a) => !prevLifetime.has(a)),
+      newlyUnlockedMissions: result.newlyUnlockedMissions,
+      bonusXP: result.bonusXP,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-gradient-to-b from-black via-[hsl(240_25%_5%)] to-black px-4 py-8">
       <div className="max-w-3xl w-full space-y-6 animate-fxk-fade-up">
@@ -413,6 +441,21 @@ function DebriefScreen({
         </div>
 
         <MissionDebriefPanel metrics={metrics} />
+
+        {achResult && (
+          <>
+            <AchievementsBadgeStrip
+              awarded={achResult.awarded}
+              newlyAwarded={achResult.newly}
+              newlyUnlockedMissions={achResult.newlyUnlockedMissions}
+            />
+            {achResult.bonusXP > 0 && (
+              <div className="text-center text-xs ds-mono uppercase tracking-wider text-status-warn">
+                +{achResult.bonusXP} XP de conquistas
+              </div>
+            )}
+          </>
+        )}
 
         <div className="rounded-lg border border-border/50 bg-card/50 p-4 space-y-2">
           <div className="flex items-center gap-2">

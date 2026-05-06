@@ -26,15 +26,29 @@ export default function GlobalEStopButton() {
   const [state, setState] = useState<SafetyState>(safetyStateMachine.state);
   const [holding, setHolding] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
+  // Operational micro-interaction flash (status-only colors, never brand).
+  const [opFx, setOpFx] = useState<null | 'estop' | 'arm' | 'disarm'>(null);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rafRef = useRef<number | null>(null);
+  const fxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startRef = useRef<number>(0);
 
   // Subscribe to SSM transitions so the visual reflects ARMED/FIRING.
   useEffect(() => {
     const unsub = safetyStateMachine.onTransition((r) => {
-      setState(r.to as SafetyState);
+      const to = r.to as SafetyState;
+      setState(to);
+      const next: 'estop' | 'arm' | 'disarm' | null =
+        r.transition === 'E_STOP' ? 'estop'
+        : to === 'ARMED' ? 'arm'
+        : (r.transition === 'DISARM_SYSTEM' || to === 'IDLE' || to === 'LOCKED') ? 'disarm'
+        : null;
+      if (next) {
+        setOpFx(next);
+        if (fxTimerRef.current) clearTimeout(fxTimerRef.current);
+        fxTimerRef.current = setTimeout(() => setOpFx(null), 800);
+      }
     });
     return unsub;
   }, []);
@@ -47,6 +61,10 @@ export default function GlobalEStopButton() {
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
+    }
+    if (fxTimerRef.current !== null) {
+      clearTimeout(fxTimerRef.current);
+      fxTimerRef.current = null;
     }
   };
 
@@ -108,6 +126,9 @@ export default function GlobalEStopButton() {
       className={cn(
         'fixed z-[9999] flex flex-col items-center justify-center rounded-xl border-2 transition-all active:scale-95 select-none touch-none',
         tierClass,
+        opFx === 'estop' && 'op-estop-shake',
+        opFx === 'arm' && 'op-arm-pulse',
+        opFx === 'disarm' && 'op-disarm-flash',
       )}
       style={{
         top: '12px',

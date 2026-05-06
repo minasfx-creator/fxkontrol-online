@@ -44,7 +44,7 @@ function isStaleChunkError(reason: unknown): boolean {
         ? reason
         : (reason as { message?: string } | null)?.message ?? '';
   if (!msg) return false;
-  return /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|ChunkLoadError|Loading chunk \d+ failed|Loading CSS chunk/i.test(
+  return /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|ChunkLoadError|Loading chunk \d+ failed|Loading CSS chunk|Failed to load url .*\/\.vite\/deps\/|504 \(Outdated Optimize Dep\)/i.test(
     msg,
   );
 }
