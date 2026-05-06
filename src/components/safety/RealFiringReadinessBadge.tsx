@@ -30,8 +30,9 @@ export default function RealFiringReadinessBadge() {
   const bus = useFieldBusSnapshot();
   const [ssm, setSsm] = useState(() => safetyStateMachine.state);
   useEffect(() => {
-    const unsub = safetyStateMachine.subscribe?.((st: any) => setSsm(st));
-    return () => { try { unsub?.(); } catch { /* noop */ } };
+    const unsub = safetyStateMachine.onTransition?.((_t, _r, to: any) => setSsm(to));
+    const id = window.setInterval(() => setSsm(safetyStateMachine.state), 1000);
+    return () => { try { unsub?.(); } catch { /* noop */ } window.clearInterval(id); };
   }, []);
 
   const aliveTransports = (Object.entries(bus.transports) as Array<[string, { alive: boolean }]>)
