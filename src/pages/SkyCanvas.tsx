@@ -42,6 +42,7 @@ import { dockStore, useFloatingDock } from '@/hooks/useFloatingDock';
 import { useSmallViewport } from '@/hooks/useSmallViewport';
 import { buildSkyActions } from '@/components/skycanvas/skyActions';
 import TabbedDockPanel from '@/components/skycanvas/TabbedDockPanel';
+import { TimelineCuesProvider } from '@/components/skycanvas/tabs/TimelineCuesTab';
 import { useActiveDemoSession } from '@/hooks/useActiveDemoSession';
 import { ClaimBadge } from '@/components/strategy/ClaimBadge';
 import { useWorkMode } from '@/core/safety/workMode';
@@ -49,6 +50,7 @@ import { cn } from '@/lib/utils';
 
 const SkyCanvas2 = lazy(lazyRetry(() => import('@/components/show3d/v2/SkyCanvas2')));
 const SkyCanvasCommandPalette = lazy(() => import('@/components/skycanvas/SkyCanvasCommandPalette'));
+const CatalogImportDialog = lazy(() => import('@/components/editor/CatalogImportDialog'));
 
 // ─────────────────────────────────────────────────────────────────────
 // Helpers
@@ -95,6 +97,7 @@ function GlassIconButton({
 function GlassTopbar({
   cap, playing, onTogglePlay, onStop, onSeek, time, duration,
   onPickAudio, audioName, onOpenMaster, onEStop,
+  workModeLabel, sessionMeta,
 }: {
   cap: SkyCapability;
   playing: boolean;
@@ -107,6 +110,8 @@ function GlassTopbar({
   audioName: string | null;
   onOpenMaster: () => void;
   onEStop: () => void;
+  workModeLabel: string;
+  sessionMeta: { id: string; clientName?: string; claim?: 'validated' | 'pilot' | 'marketing_hypothesis' } | null;
 }) {
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -130,6 +135,16 @@ function GlassTopbar({
       <Badge variant="outline" className="border-cyan-500/30 text-cyan-300 ds-mono text-[10px]">
         SIM · ADVISORY
       </Badge>
+      <Badge variant="outline" className="border-white/20 text-zinc-300 ds-mono text-[10px] hidden md:inline-flex"
+             title="WorkMode atual (real_operation só via /command)">
+        {workModeLabel}
+      </Badge>
+      {sessionMeta && (
+        <Badge variant="outline" className="border-amber-500/30 text-amber-200 ds-mono text-[10px] hidden lg:inline-flex"
+               title={`Strategic Hub · sessão ativa ${sessionMeta.id}`}>
+          ★ {sessionMeta.clientName ?? sessionMeta.id.slice(0, 6)}
+        </Badge>
+      )}
       <Badge
         variant="outline"
         className={cn('ds-mono text-[10px] hidden md:inline-flex',
@@ -470,6 +485,9 @@ export default function SkyCanvasPage() {
   }, []);
 
   const cap = useMemo(() => detectSkyCapability(), []);
+  const workMode = useWorkMode();
+  const workModeLabel = workMode === 'design' ? 'DESIGN' : workMode === 'simulation' ? 'SIM' : 'REAL OP';
+  const session = useActiveDemoSession();
 
   // Transport
   const playing = useProjectStore((s) => s.isPlaying);
@@ -557,6 +575,27 @@ export default function SkyCanvasPage() {
   }, [dropEffectAt]);
 
   // Master Menu actions
+  const [importOpen, setImportOpen] = useState(false);
+  const exportShowJson = useCallback(() => {
+    try {
+      const cues = useProjectStore.getState().cueMarkers;
+      const blob = new Blob([JSON.stringify({
+        kind: 'fxk.skycanvas.showbundle.v1',
+        exportedAt: new Date().toISOString(),
+        duration,
+        cues,
+      }, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `skycanvas-show-${Date.now()}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success(`Exportado · ${cues.length} cue${cues.length === 1 ? '' : 's'}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Falha ao exportar');
+    }
+  }, [duration]);
+
   const actions = useMemo(() => buildSkyActions({
     togglePlay, stop, seekTo: seekAbs, pickAudio,
     focusPanel,
@@ -567,7 +606,11 @@ export default function SkyCanvasPage() {
     },
     resetDock: () => { dockStore.reset(); toast.success('Layout restaurado'); },
     goCommand: () => navigate('/command'),
-  }), [togglePlay, stop, seekAbs, pickAudio, focusPanel, cinema, navigate]);
+    goAiBuilder: () => navigate('/ai-builder'),
+    goStrategy: () => navigate('/strategy'),
+    openImportVdl: () => setImportOpen(true),
+    exportShowJson,
+  }), [togglePlay, stop, seekAbs, pickAudio, focusPanel, cinema, navigate, exportShowJson]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -712,6 +755,8 @@ export default function SkyCanvasPage() {
         audioName={audioName}
         onOpenMaster={() => setPaletteOpen(true)}
         onEStop={() => navigate('/command')}
+        workModeLabel={workModeLabel}
+        sessionMeta={session}
       />
 
       {/* FLOATING PANELS */}
@@ -752,16 +797,27 @@ export default function SkyCanvasPage() {
       <div data-panel-id="timeline">
         <StudioErrorBoundary area="SkyCanvas · Timeline">
           <FloatingPanel id="timeline" title="Timeline" state={dock.panels.timeline} bottomStrip>
-            <TimelineStrip
-              time={time}
-              duration={duration}
-              onSeekAbs={seekAbs}
-              onDropEffect={dropEffectAt}
-              peaks={peaks}
-            />
+            <TimelineCuesProvider value={{ time, duration, onSeekAbs: seekAbs, onDropEffect: dropEffectAt, peaks }}>
+              <TabbedDockPanel
+                defaultValue="cues"
+                dense
+                tabs={[
+                  { value: 'cues',       label: 'Cues',       load: () => import('@/components/skycanvas/tabs/TimelineCuesTab') },
+                  { value: 'smpte',      label: 'SMPTE',      load: () => import('@/components/skycanvas/tabs/TimelineSmpteTab') },
+                  { value: 'validation', label: 'Validation', load: () => import('@/components/skycanvas/tabs/TimelineValidationTab') },
+                ]}
+              />
+            </TimelineCuesProvider>
           </FloatingPanel>
         </StudioErrorBoundary>
       </div>
+
+      {/* IMPORT VDL/CSV DIALOG (Master Menu → Project) */}
+      <Suspense fallback={null}>
+        {importOpen && (
+          <CatalogImportDialog open={importOpen} onOpenChange={setImportOpen} />
+        )}
+      </Suspense>
 
       {/* MOBILE TRANSPORT */}
       <MobileTransportFab
