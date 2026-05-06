@@ -31,11 +31,9 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   '/': () => import('@/pages/Index'),
   '/command': () => import('@/pages/CommandCenter'),
   '/editor': () => import('@/pages/Index'),
-  '/agenda': () => import('@/pages/Agenda'),
-  '/training': () => import('@/pages/Training'),
-  
+  '/office': () => import('@/pages/Office'),
+  '/training/center': () => import('@/pages/TrainingCenter'),
   '/settings': () => import('@/pages/Settings'),
-  '/admin': () => import('@/pages/Admin'),
   '/field': () => import('@/pages/FieldOps'),
 };
 
