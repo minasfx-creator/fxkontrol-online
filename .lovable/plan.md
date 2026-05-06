@@ -1,68 +1,103 @@
-## Objetivo
-Criar `/dev/fxk32q` como hub dev unificado pro FXK32Q (32ch ESP32-S3), com 2 tabs: **CONTROL** (painel de bancada já existente) e **SNAPSHOT** (read-only do adapter). Padrão idêntico ao `/dev/fxk16` (deep-link `?tab=`, lazy-load, sem mutação de workMode).
+## Adapter FireOne XL4+ — promoção a hardware de 1ª classe
 
-## Mudanças
+Hoje o `useFireOneFleet` (XLII+/XL4-3) já fala o protocolo serial real (RS-485 9600 8N1 + TNC 38400) com `IDENTIFY`, `STATUS`, `CONTINUITY`, `EMERGENCY_STOP` etc. e o `FireOneProfileAdapter` só cobre o lado de **export profile** (logical, sem hardware). O que falta é tratar o XL4+ como o FXK16/FXK32Q: adapter físico no `UnifiedHardwareRegistry` + promoção via `discoveryRegistryBridge` + presence hook honesto + adoção pelo `AutoControllerLauncher` com gates pyro de safety.
 
-### Novo: `src/pages/dev/FXK32QHub.tsx`
-Shell idêntico ao `FXK16Hub`:
-- `useSearchParams` → `tab=control|snapshot` (default `control`).
-- Tabs: CONTROL (icon `Zap`, sub "BENCH") + SNAPSHOT (icon `Activity`, sub "READ-ONLY").
-- Lazy import: `FXK32QControlPanel` (já existe) + `FXK32QAdapterPanel` (novo).
-- Paleta cyan-dessat canônica (`hsl(190 70% 58%)`) — não copia o laranja do FXK16Hub (rejeitado por memory Design Decision Priority).
+### Objetivo
 
-### Novo: `src/components/dev/fxk32q/FXK32QAdapterPanel.tsx`
-Painel **read-only** (zero comando, zero mutation):
-- Importa `fxk32qModuleAdapter` (singleton já exportado).
-- `useEffect` polling 1s: `getSnapshot()` + `getProvenance()` + `getCapabilities()` + `runDiagnostics()` + `getState()`.
-- Usa `useRef<NodeJS.Timeout>` p/ timer (clear on unmount — Core memory).
-- Layout DS:
-  - Header: `label`, `deviceId`, `firmwareModel`, `compatibleWith`, badge connection state (`ds-status-ok` quando online, `ds-status-warn` se simulação, `ds-status-fail` se disconnected).
-  - Provenance card: `ProvenanceBadge` + `last_seen_at` + `data_freshness_ms` + `transport`.
-  - Metrics grid 2×3: total/healthy/faults/ok/open/short.
-  - Capabilities chips: `protocols[]` enumerados + read/write/diagnose/telemetry flags.
-  - Diagnostics box: lista de `issues` ou green-check "all clear".
-  - Channel matrix 4×8: cor por `continuity` (ok=green/open=amber/short=red/unknown=neutral) com tooltip de `resistance_ohms`.
-- Banner amber se `getProvenance().is_simulated` (memory Honesty Layer).
+Sair do "console funciona, mas a frota XL4+ vive fora do registry" para "qualquer XL4+/XLII+ ligado é um `PhysicalDevice` reconhecido, com provenance LIVE READ-ONLY após handshake, presence hook real, e disponível no AutoControllerLauncher com Hold-800ms e respeitando `pyroTransportPolicy` (BLE banido em `real_operation`)."
 
-### Editar: `src/App.tsx`
-Adicionar lazy import + 2 rotas (logo abaixo de `/dev/fxk16`):
-```tsx
-const FXK32QHub = lazy(lazyRetry(() => import("./pages/dev/FXK32QHub")));
-// ...
-<Route path="/dev/fxk32q" element={<FXK32QHub />} />
-<Route path="/dev/fxk32" element={<Navigate to="/dev/fxk32q" replace />} />
+### Arquivos novos
+
 ```
-(O legacy `/dev/fxk32` já estava previsto mas nunca registrado — redirect evita 404.)
-
-### Editar: `src/pages/dev/DevIndex.tsx`
-Adicionar card no grupo Hardware logo abaixo do FXK16:
-```ts
-{ to: '/dev/fxk32q', title: 'FXK32Q Hub', desc: '32ch ESP32-S3 — bench control + adapter snapshot', Icon: Zap, status: 'LIVE' }
+src/core/hardware/adapters/FireOneXL4Adapter.ts
+src/hooks/useFireOneXL4Bridge.ts          (subscribe não-React do useFireOneFleet)
+src/hooks/useFireOneXL4Presence.ts
+src/__tests__/fireOneXL4Adapter.spec.ts
+src/__tests__/useFireOneXL4Presence.spec.ts
+src/__tests__/fireOneXL4DiscoveryBridge.integration.test.ts
 ```
 
-### Novo test: `src/__tests__/fxk32qHub.smoke.spec.tsx`
-RTL smoke (~40 linhas):
-- Render `<FXK32QHub />` com `MemoryRouter initialEntries={['/dev/fxk32q']}`.
-- Assert: ambos botões "CONTROL" e "SNAPSHOT" no DOM.
-- Click SNAPSHOT → URL muda pra `?tab=snapshot` e `FXK32QAdapterPanel` monta (await `findByText` de label do adapter, ex: "FXK32Q — 32ch").
-- Click CONTROL → volta pro painel de controle.
-- Sem mutação de workMode/SafetyStateMachine: spy em `safetyStateMachine.transition` confirma 0 calls.
+### Arquivos editados
 
-### Editar: `src/__tests__/mocksErradicated.guard.spec.ts`
-Adicionar `FXK32QAdapterPanel.tsx` ao array `FILES` (proibir `MOCK_/FAKE_/SIMULATED_DATA/mockData/fakeData`).
+```
+src/core/hardware/discoveryRegistryBridge.ts   (+ subscribeFireOneXL4Bridge wiring)
+src/core/discovery/controllerRegistry.ts        (refinar consoleRoute do kind 'fireone')
+src/__tests__/mocksErradicated.guard.spec.ts    (incluir os novos arquivos no allowlist honest-hw)
+src/features/fieldbus/useFireOneFleet.ts        (expor snapshot p/ subscribe externo)
+```
 
-## Arquivos
-**Novos (3)**: `src/pages/dev/FXK32QHub.tsx`, `src/components/dev/fxk32q/FXK32QAdapterPanel.tsx`, `src/__tests__/fxk32qHub.smoke.spec.tsx`.
-**Editados (3)**: `src/App.tsx`, `src/pages/dev/DevIndex.tsx`, `src/__tests__/mocksErradicated.guard.spec.ts`.
+### O que cada parte faz
 
-## Critérios de aceite
-- `/dev/fxk32q` carrega sem 404 (cobre `routesNo404.guard`).
-- Tab CONTROL renderiza `FXK32QControlPanel` existente (sem regressão).
-- Tab SNAPSHOT mostra dados reais do `fxk32qModuleAdapter` (snapshot/provenance/diagnostics) — sem mocks, sem `Math.random`, sem comandos.
-- Polling 1s tem teardown limpo (sem leak).
-- Smoke + guard verdes.
+**1. `FireOneXL4Adapter`** — espelha `FXK16ModuleAdapter`:
 
-## Fora de escopo
-- Telemetry write-back / firing pelo SnapshotPanel (read-only).
-- Substituir o ControlPanel existente.
-- Tabs adicionais (Calibrate/E2E) — futuras rondas.
+- `deviceType: 'pyro-master'`, `firmwareModel: 'FireOne-XL4'`, `protocolFamily: 'fireone-xlii-plus'`
+- `getCapabilities`: `canRead/canDiagnose/supportsTelemetry/supportsContinuity = true`, `canWrite = false` (escrita só via `uiCommandGateway`), `maxChannels = 40 × 32 = 1280`, protocolos `['serial-9600', 'serial-38400-tnc']`
+- Estado: `Map<moduleAddr, FireOneModuleStatus>` + agregados (`armed_modules`, `total_modules`, `wireless_modules`, `fault_modules`)
+- `markHandshakeOk(transport)` / `markHandshakeLost()` ⇒ atualiza `_provenance` via `markHandshakeOk`/`markHandshakeLost` do `provenance.ts`
+- `pollTelemetry()` no-op (dados chegam pelo `useFireOneFleet`); `runDiagnostics()` reporta `wireless_fallback`, `low_battery <11.5V`, `temp >55°C`
+
+**2. `useFireOneXL4Bridge`** — singleton subscribable não-React:
+
+- Padrão idêntico a `subscribeFXK32QBridge` (Set de listeners + getter da última snapshot)
+- `useFireOneFleet` publica via `_publishFleetSnapshot()` (export pequeno) sempre que `state.modules`, `cable.state` ou `radio.state` mudam
+- Snapshot exposto: `{ connected, transport: 'cable'|'radio'|null, moduleCount, identifyCount, lastReplyAt, latencyMs, modules }`
+
+**3. `discoveryRegistryBridge`** — adicionar bloco análogo ao FXK32Q:
+
+```text
+_unsubFireOneXL4 = subscribeFireOneXL4Bridge((snap) => {
+  const verified = snap.connected && snap.identifyCount > 0 && snap.moduleCount > 0;
+  if (verified === _lastFireOneXL4Verified) return;
+  _lastFireOneXL4Verified = verified;
+  if (verified) {
+    fireOneXL4Adapter.markHandshakeOk(snap.transport === 'radio' ? 'rf_lora' : 'serial_usb');
+    unifiedHardwareRegistry.startPolling(1000);
+  } else {
+    fireOneXL4Adapter.markHandshakeLost();
+  }
+});
+```
+
+`stopDiscoveryRegistryBridge` desfaz tudo; `_lastFireOneXL4Verified` reseta.
+
+**4. `useFireOneXL4Presence`** — espelha `useFXK32QPresence`:
+
+- Combina 3 sinais: `useActiveControllers().controllers.find(kind==='fireone')` + `fireOneXL4Adapter.getConnectionState()` + `isProvenanceVerified(fireOneXL4Adapter.getProvenance())`
+- `reason`: `'no-device' | 'device-only' | 'connected-unverified' | 'present'`
+- Polling 1s no adapter; aggregator é reativo
+
+**5. `controllerRegistry`** — manter `kind: 'fireone'`, atualizar `consoleRoute` para `/studio?panel=pyro-fireone` (já está OK), garantir que regras de `FAMILY_RULES` cobrem `fireone-xl4-3` (regex já cobre).
+
+**6. AutoControllerLauncher** — não precisa de mudança: já lê `controllerProfile.capabilities.safetyCritical: true` e força Hold-800ms para `kind: 'fireone'`. Validar via teste integração.
+
+### Garantias preservadas (não mexer)
+
+- ✅ Comando físico continua **exclusivo** via `uiCommandGateway → CommandBus → SafetyStateMachine → FieldBus`. O adapter é READ-ONLY no registry; `canWrite: false`.
+- ✅ `pyroTransportPolicy` já tem `[serial, usb, artnet]` e bane BLE em `real_operation` — XL4+ via `cable` (serial 9600) está em `serial`, via `radio` (TNC 38400) está em `serial` também (não-BLE).
+- ✅ `realOnlyGate` rejeita telemetria sem handshake verificado; o snapshot do XL4+ só é aceito após `markHandshakeOk`.
+- ✅ `safetyBlackBox` já registra `fireone-cable-connect` / `fireone-radio-connect` via `recordSafetyNote` no `useFireOneFleet`.
+- ✅ Zero `Math.random`, zero mock — guard `mocksErradicated.guard.spec.ts` cobre os novos arquivos.
+
+### Testes (vitest)
+
+- `fireOneXL4Adapter.spec.ts` — handshake ok/lost atualiza `connected/disconnected` e `provenance.integration_mode`; snapshot reporta `online`, `metrics.modules`, `metrics.faults`; `runDiagnostics` flagga low-battery e wireless-fallback
+- `useFireOneXL4Presence.spec.ts` — 5 cenários idênticos ao FXK32Q (no-device/device-only/connected-unverified/present/cleanup-no-leak)
+- `fireOneXL4DiscoveryBridge.integration.test.ts` — publica snapshot mockado e verifica que o adapter sai de `not_integrated` → `live_read_only` (e volta)
+
+### Não-objetivos desta rodada
+
+- Não tocar no `FireOneProfileAdapter` (export profile permanece como está).
+- Não escrever no FXK-PYRO 2.0 array por aqui — escrita continua via panel `/studio?panel=pyro-fireone`.
+- Não adicionar UI nova de status — o XL4+ já aparece no `FieldDiagnosticsDock` automaticamente assim que o adapter está no `unifiedHardwareRegistry`.
+- Não promover M1 / FX Commander Pro / Maiman — esses são as próximas rodadas.
+
+### Critério de pronto
+
+```text
+1. Registry tem entrada 'fireone-xl4' com provenance live_read_only após handshake real
+2. /dev/real-discovery mostra o XL4+ como PhysicalDevice kind='fireone'
+3. AutoControllerLauncher exibe card "FireOne FXK-PYRO 2.0" com Hold-800ms
+4. FieldDiagnosticsDock lista o XL4+ com transport e idade
+5. useFireOneXL4Presence retorna present=true ⇒ hook pronto para gating em FieldOps
+6. Testes 3/3 + integration 1/1 verde, suite total mantém 1263+
+```
