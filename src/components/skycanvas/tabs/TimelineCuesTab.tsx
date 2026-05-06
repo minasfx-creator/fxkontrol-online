@@ -5,7 +5,7 @@
  */
 import { createContext, useContext, type ReactNode } from 'react';
 import type { TimelineStripProps } from '../timelineStripTypes';
-import TimelineStripView from '../TimelineStripView';
+import TimelineStripView from '@/components/skycanvas/TimelineStripView';
 
 const Ctx = createContext<TimelineStripProps | null>(null);
 
