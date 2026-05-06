@@ -40,6 +40,13 @@ import { buildSkyActions } from '@/components/skycanvas/skyActions';
 import TabbedDockPanel from '@/components/skycanvas/TabbedDockPanel';
 import MobilePanelSwitcher, { type MobilePanelKey } from '@/components/skycanvas/MobilePanelSwitcher';
 import { TimelineCuesProvider } from '@/components/skycanvas/tabs/TimelineCuesTab';
+
+// Round 2 — viewport overlays from legacy SkyCanvas (no commands, pure UI/HUD).
+const BoxSelectOverlay = lazy(() => import('@/components/editor/BoxSelectOverlay'));
+const SelectionModeBar = lazy(() => import('@/components/editor/SelectionModeBar'));
+const ARCompassHUD = lazy(() => import('@/components/editor/ARCompassHUD'));
+const ViewportTransitionOverlay = lazy(() => import('@/components/editor/ViewportTransitionOverlay'));
+
 import { useActiveDemoSession } from '@/hooks/useActiveDemoSession';
 
 import { EditorShell, DsSegmentTabs, type SegmentItem } from '@/components/ds';
