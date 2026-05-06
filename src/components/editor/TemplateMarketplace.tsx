@@ -4,7 +4,7 @@
  * Browse tab is wired to `public.effect_packages` via
  * `marketplace-online/registryClient`. Empty state directs users to the
  * Golden Catalog (`/dev/golden-shows`) which contains exportable, verified
- * shows. No more SAMPLE_CLOUD_TEMPLATES.
+ * shows. No more hardcoded sample data.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
