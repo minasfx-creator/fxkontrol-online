@@ -1,57 +1,35 @@
 
 ## Objetivo
 
-Conectar toda a plataforma ao novo `/skycanvas` como **surface canônica do editor**, eliminando o item "Studio" duplicado da sidebar e fazendo todos os links/atalhos/transições reconhecerem `/skycanvas`.
+Adicionar **dois testes guard automatizados** que protegem o consolidação `/skycanvas`:
 
-Zero alteração em rotas operacionais (`/command`, `/pairing/*`), zero toque em CommandBus/FieldBus/safety/workMode.
+1. **`routesIntegrity.guard.spec.ts`** — varre todo `src/`, extrai cada referência interna de navegação (`to="/x"`, `navigate('/x')`, `path: '/x'`, `<Navigate to="/x">`, `href="/x"`) e falha se algum path não casa com uma `<Route>` registrada em `src/App.tsx` (literal ou padrão dinâmico tipo `/pairing/:transport`). Inclui asserts dedicados garantindo zero referência viva a `/studio` ou `/editor` fora dos redirects.
 
----
+2. **`isEditorState.spec.tsx`** — testa o predicado `isEditor` do `MainLayout`:
+   - `TRUE` apenas para `/skycanvas`
+   - `FALSE` para 14 rotas concretas (`/`, `/auth`, `/office`, `/command`, `/strategy`, `/field`, `/pairing/usb`, `/training/center`, `/dev/skycanvas-lab`, `/comercial`, `/landing`, `/pricing`, `/skycanvas/extra`, etc.)
+   - Lê `MainLayout.tsx` e regex-asserta que a fonte canônica usa `=== '/skycanvas'` e **não** menciona `'/studio'` ou `'/editor'`.
 
-## Mudanças
+## Mecânica
 
-### 1. Sidebar — remover duplicata "Studio"
-`src/components/AppSidebar.tsx` (linhas 31-37): remover `{ title: 'Studio', url: '/studio', … }`. Restam: Office · **SkyCanvas** · Command · Strategy. Redirect `/studio → /skycanvas` em `App.tsx` continua, então bookmarks legacy seguem funcionando.
+- Sem React mount nem Browser. Pure-Node fs scan + regex → rápido, determinístico.
+- Skip dirs: `__tests__`, `_quarantine`, `test`, `node_modules`. Skip arquivos `*.test.*` / `*.spec.*`.
+- Allowlist `src/App.tsx` para conter as declarações `<Route>` legacy (redirects).
+- Allowlist regex `NEVER_ROUTES_RE`: `https?:`, `mailto:`, `#`, `/api/`, `/wasm/`, `/assets/`, `/static/`, `/auth?…`, raiz `/`.
+- Patterns dinâmicos (`/pairing/:transport`) viram `^/pairing/[^/]+$`.
 
-### 2. MainLayout — reconhecer `/skycanvas` como editor
-`src/layouts/MainLayout.tsx` linha 76:
-```ts
-const isEditor = location.pathname === '/skycanvas' || location.pathname === '/studio';
-```
-Garante que dissolves/transições/HUD usem o mesmo modo "editor immersive" que era exclusivo de `/studio`.
+## Arquivos a criar
 
-### 3. Links e atalhos — apontar canonicamente para `/skycanvas`
-Sweep nos arquivos abaixo (todos `to="/studio"` / `navigate('/studio')` / `path: '/studio'` / `path: '/editor'` viram `/skycanvas`):
-- `src/pages/NotFound.tsx`
-- `src/pages/Landing.tsx` (4 ocorrências CTA)
-- `src/pages/Comercial.tsx`
-- `src/pages/AIBuilder.tsx`
-- `src/pages/IOSReadiness.tsx`
-- `src/components/pairing/SuccessStep.tsx`
-- `src/components/QuickJumpMenu.tsx`
-- `src/components/office/DashboardPanel.tsx` (8 ocorrências, incluindo `?panel=`)
-- `src/components/DockBar.tsx` (label "Editor 3D" → "SkyCanvas", path `/editor` → `/skycanvas`)
-
-### 4. QueryString legacy
-SkyCanvas hoje **não consome** `?panel=remotecontrol` / `?panel=drones` / `?panel=aroverlay`. Manter apenas o path canônico `/skycanvas` — os parâmetros viram no-op e não quebram (DashboardPanel passa a navegar pra `/skycanvas?panel=…` mas SkyCanvas ignora). Sem erro nem warning.
-
-### 5. Ajuste de teste
-`src/lib/__tests__/lazyRetry.resilience.test.ts` e `installChunkErrorRecovery.e2e.test.ts` mockam `pathname: '/studio'` — manter (ainda funciona via redirect e os testes não validam pathname final).
-
----
-
-## Não tocar
-
-- `src/App.tsx` redirects (já consolidados)
-- `src/integrations/supabase/*`
-- `src/store/useProjectStore.ts`
-- Qualquer rota operacional / safety / pairing
-- `src/components/show3d/v2/*` (já refinado na rodada anterior)
-- `src/index.css` (glassmorphism já aplicado)
+- `src/__tests__/routesIntegrity.guard.spec.ts` (≈140 linhas)
+- `src/__tests__/isEditorState.spec.tsx` (≈55 linhas)
 
 ## Critério de aceite
 
-- Sidebar mostra **um único** entry de editor (SkyCanvas)
-- Todos os CTAs ("Voltar ao Studio", "Abrir Editor", AIBuilder onClose etc.) abrem `/skycanvas`
-- Bookmarks de `/studio` e `/editor` continuam funcionando (redirect 301)
-- MainLayout dispara modo editor para `/skycanvas`
-- Suite de testes verde
+- Ambos passam ao rodar `vitest run`.
+- Se alguém adicionar um `to="/foo"` para rota inexistente, o test falha com mensagem clara `unresolved internal routes: src/components/Foo.tsx:42 → /foo`.
+- Se alguém reintroduzir `to="/studio"` ou `navigate('/editor')`, falha imediatamente com a localização.
+- Se `MainLayout.isEditor` voltar a referenciar `/studio` ou `/editor`, falha com regex.
+
+## Não tocar
+
+Nenhum arquivo de produção. Zero impacto em runtime.
