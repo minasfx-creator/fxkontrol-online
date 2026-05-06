@@ -108,15 +108,36 @@ function downsample(wp: Waypoint[], limit: number): Waypoint[] {
   return out;
 }
 
-// ── Coordinate frame transform ────────────────────────────────────
+// ── Coordinate frame transform (canonical: Finale 3D ENU → Three.js) ─
+// Implementation lives in @/modules/vviz/vvizCoordinateTransform but the
+// worker bundle is isolated, so the math is duplicated here. Keep both in
+// sync — `vvizCoordinateTransform.spec.ts` is the source of truth.
 
-type CoordMode = 'flip' | 'pass';
+type CoordMode = 'enu_to_three' | 'legacy_zflip' | 'pass';
 
 function resolveCoordMode(frame: string | undefined): CoordMode {
-  if (!frame) return 'flip'; // default VVIZ = Z-forward → Three.js Z-toward-viewer
+  if (!frame) return 'enu_to_three';
   const f = frame.toLowerCase().trim();
   if (f === 'threejs' || f === 'opengl' || f === 'r3f') return 'pass';
-  return 'flip'; // "standard", "vviz", or anything else
+  if (f === 'legacy' || f === 'zflip') return 'legacy_zflip';
+  return 'enu_to_three';
+}
+
+function mapPoint(x: number, y: number, z: number, mode: CoordMode): [number, number, number] {
+  switch (mode) {
+    case 'pass': return [x, y, z];
+    case 'legacy_zflip': return [x, y, -z];
+    case 'enu_to_three':
+    default: return [x, z, -y];
+  }
+}
+
+function mapHeadingDeg(h: number, mode: CoordMode): number {
+  if (!Number.isFinite(h)) return 0;
+  const raw = mode === 'pass' ? h : -h;
+  let n = raw % 360;
+  if (n > 180) n -= 360; else if (n <= -180) n += 360;
+  return n;
 }
 
 // ── Process single performance ─────────────────────────────────────
