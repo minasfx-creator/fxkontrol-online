@@ -72,6 +72,7 @@ const PerfBenchPage = lazy(lazyRetry(() => import("./pages/dev/PerfBench")));
 const EffectsLibrariesPage = lazy(lazyRetry(() => import("./pages/dev/EffectsLibraries")));
 
 const FXK16Hub = lazy(lazyRetry(() => import("./pages/dev/FXK16Hub")));
+const FXK32QHub = lazy(lazyRetry(() => import("./pages/dev/FXK32QHub")));
 const DevIndex = lazy(lazyRetry(() => import("./pages/dev/DevIndex")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)
@@ -202,6 +203,9 @@ function App() {
                     <Route path="/dev/fxk16" element={<FXK16Hub />} />
                     <Route path="/dev/fxk16-validate" element={<Navigate to="/dev/fxk16?tab=validate" replace />} />
                     <Route path="/dev/fxk16-calibrate" element={<Navigate to="/dev/fxk16?tab=calibrate" replace />} />
+                    {/* FXK32Q dev hub — Control (bench) + Snapshot (read-only adapter). */}
+                    <Route path="/dev/fxk32q" element={<FXK32QHub />} />
+                    <Route path="/dev/fxk32" element={<Navigate to="/dev/fxk32q" replace />} />
                     {/* SkyCanvas dev lab — variantes smoke / r3f / v2 sob um único
                         chunk lazy. Rotas legadas redirecionam preservando a variante. */}
                     <Route path="/dev/skycanvas-lab" element={<SkyCanvasLab />} />

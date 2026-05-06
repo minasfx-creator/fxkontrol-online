@@ -11,7 +11,7 @@
 import { Link } from 'react-router-dom';
 import {
   Activity, Radar, Cpu, Wand2, FlaskConical, Layers, Boxes,
-  CheckCircle2, Sparkles, FileCode2, Beaker, Network, Compass,
+  CheckCircle2, Sparkles, FileCode2, Beaker, Network, Compass, Zap,
 } from 'lucide-react';
 
 type Status = 'LIVE' | 'READ-ONLY' | 'SMOKE' | 'PUBLIC';
@@ -36,6 +36,7 @@ const GROUPS: Group[] = [
       { to: '/dev/real-discovery', title: 'Real Discovery', desc: 'Web Serial + USB + BLE + ArtPoll loop honesto', Icon: Radar, status: 'LIVE' },
       { to: '/dev/module-roster', title: 'Module Roster', desc: 'FireOne fleet (slat/RSSI/battery/COM)', Icon: Network, status: 'LIVE' },
       { to: '/dev/fxk16', title: 'FXK16 Hub', desc: 'Validate harness + Calibrate latency', Icon: Activity, status: 'LIVE' },
+      { to: '/dev/fxk32q', title: 'FXK32Q Hub', desc: '32ch ESP32-S3 — bench control + adapter snapshot', Icon: Zap, status: 'LIVE' },
       { to: '/diagnostics/dmx-pyro', title: 'DMX/Pyro Diagnostics', desc: 'Broadcast budget + timing', Icon: Beaker, status: 'PUBLIC' },
     ],
   },

@@ -1,42 +1,68 @@
 ## Objetivo
-Eliminar do `MobileLinkMode.tsx` (XL4+ remote firing console) **todo** hardware simulado e qualquer uso de `Math.random()`. Após o round, o painel só reflete estado real do `FireOneController` (USB-CDC RS-485) — sem botão SIM, sem mock de baterias/RSSI/igniters, sem `createSimulatedModuleStatus`.
+Criar `/dev/fxk32q` como hub dev unificado pro FXK32Q (32ch ESP32-S3), com 2 tabs: **CONTROL** (painel de bancada já existente) e **SNAPSHOT** (read-only do adapter). Padrão idêntico ao `/dev/fxk16` (deep-link `?tab=`, lazy-load, sem mutação de workMode).
 
 ## Mudanças
 
-### `src/components/editor/live-firing/MobileLinkMode.tsx`
-1. **Imports**: remover `createSimulatedModuleStatus`. Adicionar gerador honesto de id de evento (`_evtSeq` monotônico) — substitui as 4 ocorrências de `Math.random().toString(36)` em `setEvents([...])`.
-2. **`createDefaultModules()` → `EMPTY_MODULES`**: passa a retornar `[]`. Sem voltagem/RSSI/resistência/conexão sintéticas. O state `modules` arranca vazio (a menos que `localStorage[MODULES_KEY]` já tenha dado real persistido pelo operador).
-3. **State `hwSimulated` REMOVIDO** (`useState` + setter + dependency arrays).
-4. **Handlers**: remover branch `if (hwSimulated) { ... }` em `handleHwScan`, `handleHwFire`, `handleHwArmModule`, `handleHwEmergencyStop`, `handleHwContinuity`. Cada handler passa a executar **apenas** o caminho real (`fireoneRef.current.*`); se `!hwConnected`, mostra `toast.error('Hardware FireOne desconectado — conecte via USB.')` e retorna sem efeito colateral.
-5. **UI Hardware Serial Mode (linhas ~960–995)**:
-   - Remover botão "SIM" e badge `(Simulado)` / `Modo simulação ativo`.
-   - Estado conectado/desconectado lê só `hwConnected`. Texto "○ Desconectado" / "● Conectado · 9600 8N1".
-   - Empty-state passa a ser `'Conecte o hardware FireOne via USB para descobrir módulos'`.
-6. **Continuity refresh (linha 917)**: troca `setModules(createDefaultModules())` por `setModules([])` (limpa cache local; só reaparece via dado real persistido).
-7. **`handleHwFire` mock-fallback**: deletar `broadcastModuleFire(modAddr, igniterPos, 'HW-...')` no caminho simulado (já some com #4).
+### Novo: `src/pages/dev/FXK32QHub.tsx`
+Shell idêntico ao `FXK16Hub`:
+- `useSearchParams` → `tab=control|snapshot` (default `control`).
+- Tabs: CONTROL (icon `Zap`, sub "BENCH") + SNAPSHOT (icon `Activity`, sub "READ-ONLY").
+- Lazy import: `FXK32QControlPanel` (já existe) + `FXK32QAdapterPanel` (novo).
+- Paleta cyan-dessat canônica (`hsl(190 70% 58%)`) — não copia o laranja do FXK16Hub (rejeitado por memory Design Decision Priority).
 
-### Guard test
-**Editar `src/__tests__/mocksErradicated.guard.spec.ts`** (já existe — adicionar bloco):
-- `MobileLinkMode.tsx` **não** pode conter `Math.random`, `hwSimulated`, `createSimulatedModuleStatus`, `MOCK_`, ou as strings `'Modo simulação'` / `'Simulado'`.
-- Falha o build se reaparecer.
+### Novo: `src/components/dev/fxk32q/FXK32QAdapterPanel.tsx`
+Painel **read-only** (zero comando, zero mutation):
+- Importa `fxk32qModuleAdapter` (singleton já exportado).
+- `useEffect` polling 1s: `getSnapshot()` + `getProvenance()` + `getCapabilities()` + `runDiagnostics()` + `getState()`.
+- Usa `useRef<NodeJS.Timeout>` p/ timer (clear on unmount — Core memory).
+- Layout DS:
+  - Header: `label`, `deviceId`, `firmwareModel`, `compatibleWith`, badge connection state (`ds-status-ok` quando online, `ds-status-warn` se simulação, `ds-status-fail` se disconnected).
+  - Provenance card: `ProvenanceBadge` + `last_seen_at` + `data_freshness_ms` + `transport`.
+  - Metrics grid 2×3: total/healthy/faults/ok/open/short.
+  - Capabilities chips: `protocols[]` enumerados + read/write/diagnose/telemetry flags.
+  - Diagnostics box: lista de `issues` ou green-check "all clear".
+  - Channel matrix 4×8: cor por `continuity` (ok=green/open=amber/short=red/unknown=neutral) com tooltip de `resistance_ohms`.
+- Banner amber se `getProvenance().is_simulated` (memory Honesty Layer).
 
-### Smoke test novo
-**`src/__tests__/mobileLinkModeHonest.spec.tsx`** (~50 linhas, RTL):
-- Render em modo `xl4Mode='hardware'` com `hwConnected=false`: empty-state mostra "Conecte o hardware FireOne via USB" e **não** existe botão "SIM" no DOM.
-- `modules` state arranca `[]` quando `localStorage[MODULES_KEY]` está limpo (sem 6 módulos sintéticos).
-- `handleHwFire` chamado sem conexão dispara toast de erro e não muta `hwModules`.
+### Editar: `src/App.tsx`
+Adicionar lazy import + 2 rotas (logo abaixo de `/dev/fxk16`):
+```tsx
+const FXK32QHub = lazy(lazyRetry(() => import("./pages/dev/FXK32QHub")));
+// ...
+<Route path="/dev/fxk32q" element={<FXK32QHub />} />
+<Route path="/dev/fxk32" element={<Navigate to="/dev/fxk32q" replace />} />
+```
+(O legacy `/dev/fxk32` já estava previsto mas nunca registrado — redirect evita 404.)
+
+### Editar: `src/pages/dev/DevIndex.tsx`
+Adicionar card no grupo Hardware logo abaixo do FXK16:
+```ts
+{ to: '/dev/fxk32q', title: 'FXK32Q Hub', desc: '32ch ESP32-S3 — bench control + adapter snapshot', Icon: Zap, status: 'LIVE' }
+```
+
+### Novo test: `src/__tests__/fxk32qHub.smoke.spec.tsx`
+RTL smoke (~40 linhas):
+- Render `<FXK32QHub />` com `MemoryRouter initialEntries={['/dev/fxk32q']}`.
+- Assert: ambos botões "CONTROL" e "SNAPSHOT" no DOM.
+- Click SNAPSHOT → URL muda pra `?tab=snapshot` e `FXK32QAdapterPanel` monta (await `findByText` de label do adapter, ex: "FXK32Q — 32ch").
+- Click CONTROL → volta pro painel de controle.
+- Sem mutação de workMode/SafetyStateMachine: spy em `safetyStateMachine.transition` confirma 0 calls.
+
+### Editar: `src/__tests__/mocksErradicated.guard.spec.ts`
+Adicionar `FXK32QAdapterPanel.tsx` ao array `FILES` (proibir `MOCK_/FAKE_/SIMULATED_DATA/mockData/fakeData`).
 
 ## Arquivos
-**Editados (3)**: `src/components/editor/live-firing/MobileLinkMode.tsx`, `src/__tests__/mocksErradicated.guard.spec.ts`.
-**Criado (1)**: `src/__tests__/mobileLinkModeHonest.spec.tsx`.
+**Novos (3)**: `src/pages/dev/FXK32QHub.tsx`, `src/components/dev/fxk32q/FXK32QAdapterPanel.tsx`, `src/__tests__/fxk32qHub.smoke.spec.tsx`.
+**Editados (3)**: `src/App.tsx`, `src/pages/dev/DevIndex.tsx`, `src/__tests__/mocksErradicated.guard.spec.ts`.
 
 ## Critérios de aceite
-- `rg "Math.random|hwSimulated|createSimulatedModuleStatus" src/components/editor/live-firing/MobileLinkMode.tsx` → **zero matches**.
-- Tab "Hardware" do MobileLinkMode mostra apenas connect/disconnect reais; sem SIM, sem dados sintéticos.
-- Suite verde + 2 specs novos passam.
-- Zero impacto em `uiCommandGateway`, `SafetyStateMachine`, `workMode`, FireOneController, ou outros painéis.
+- `/dev/fxk32q` carrega sem 404 (cobre `routesNo404.guard`).
+- Tab CONTROL renderiza `FXK32QControlPanel` existente (sem regressão).
+- Tab SNAPSHOT mostra dados reais do `fxk32qModuleAdapter` (snapshot/provenance/diagnostics) — sem mocks, sem `Math.random`, sem comandos.
+- Polling 1s tem teardown limpo (sem leak).
+- Smoke + guard verdes.
 
 ## Fora de escopo
-- Migrar handlers FireOne pra `uiCommandGateway` (auditoria honesty rodada futura).
-- Hub `/dev/fxk32q` + DevIndex card.
-- Limpeza dos demais painéis em `live-firing/` (XL43RemoteMode, FXKMobileMode, etc.) — ronda própria.
+- Telemetry write-back / firing pelo SnapshotPanel (read-only).
+- Substituir o ControlPanel existente.
+- Tabs adicionais (Calibrate/E2E) — futuras rondas.
