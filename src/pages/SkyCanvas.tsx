@@ -573,6 +573,13 @@ export default function SkyCanvasPage() {
 
   // Keyboard shortcuts
   useEffect(() => {
+    const focusPanel = (id: string) => {
+      // Defer to next frame so the panel has been laid out (uncollapsed) first.
+      requestAnimationFrame(() => {
+        const el = document.getElementById(id);
+        if (el) (el as HTMLElement).focus({ preventScroll: true });
+      });
+    };
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       const inField = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
@@ -585,9 +592,9 @@ export default function SkyCanvasPage() {
       // Panel toggles (only outside form fields)
       if (!inField && ctrl && (e.key === '1' || e.key === '2' || e.key === '3')) {
         e.preventDefault();
-        if (e.key === '1') layout.toggleLeft();
-        else if (e.key === '2') layout.toggleRight();
-        else layout.toggleTimeline();
+        if (e.key === '1') { layout.toggleLeft(); focusPanel('panel-library'); }
+        else if (e.key === '2') { layout.toggleRight(); focusPanel('panel-inspector'); }
+        else { layout.toggleTimeline(); focusPanel('panel-timeline'); }
         return;
       }
       // Reset layout (Shift+Cmd+0 — destrutivo, exige Shift)
