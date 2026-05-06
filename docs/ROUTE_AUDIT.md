@@ -1,64 +1,50 @@
-# Auditoria de Rotas e Páginas — Rodada 1
+# Auditoria de Rotas e Páginas — Rodada 2 (executada)
 
-Base: `src/App.tsx` (49 rotas) × `src/pages/` (43 arquivos `.tsx` + 3 subpastas).
-Convenção: **KEEP** mantém · **MERGE** funde em outra · **DELETE** remove fisicamente.
-
----
-
-## Páginas a DELETAR (10) — execução na Rodada 2
-
-| Arquivo | Rota viva? | Referenciada em | Recomendação |
-|---|---|---|---|
-| `pages/AIChoreography.tsx` | ❌ (rota → `Navigate /ai-builder`) | nenhuma | **DELETE** |
-| `pages/AccreditationDashboard.tsx` | ❌ | nenhuma | **DELETE** |
-| `pages/SwarmGPT.tsx` | ❌ (rota → `Navigate /ai-builder`) | nenhuma | **DELETE** |
-| `pages/Admin.tsx` | ❌ (rota → `Navigate /office?tab=compliance`) | só `prefetchRoutes.ts` | **DELETE** + limpar prefetch |
-| `pages/Agenda.tsx` | ❌ (rota → `Navigate /office?tab=agenda`) | só `prefetchRoutes.ts` | **DELETE** + limpar prefetch |
-| `pages/Training.tsx` | ❌ | só `prefetchRoutes.ts` | **DELETE** + limpar prefetch (substituída por TrainingCenter) |
-| `pages/Dashboard.tsx` | ❌ | só `features/shared/index.ts` re-export | **DELETE** + limpar barrel |
-| `pages/DevicePairing.tsx` | ❌ (substituída por wizards) | `FXKNetPanel.tsx` (re-export legado) | **DELETE** + limpar import |
-| `pages/FieldTest.tsx` | ❌ | `pages/__tests__/FieldTest.shell.test.tsx`, `CommandCenter.tsx` | **MERGE** → `/dev/fxk16?tab=field-test` então **DELETE** |
-| `pages/FXK16ValidatePage.tsx` | ✅ (rota redireciona p/ `/dev/fxk16?tab=validate`) | `App.tsx` | **DELETE** (rota fica como `Navigate` direto) |
-| `pages/FXK16CalibrationPage.tsx` | ✅ (mesma situação) | `App.tsx` | **DELETE** (idem) |
-
-Total: **10 deleções** + ajustes em `prefetchRoutes.ts`, `features/shared/index.ts`, `FXKNetPanel.tsx`, `CommandCenter.tsx`, `App.tsx`.
+Base pós-execução. Conclusões iniciais da Rodada 1 foram **revisadas** após auditoria precisa de uso real.
 
 ---
 
-## Páginas a MANTER (33)
+## Páginas DELETADAS na Rodada 2 (5)
 
-**Auth/Core:** `Auth`, `NotFound`, `Office`, `Index`, `CommandCenter`, `Strategy`, `TrainingCenter`, `FieldOps`, `Settings`, `NetworkSettings`, `PlatformStatus`, `AIBuilder`, `IOSReadiness`, `Install`, `RealDiscoveryProbe`, `VideoEditor`.
+| Arquivo | Justificativa |
+|---|---|
+| `pages/AIChoreography.tsx` | Rota → `Navigate /ai-builder`; zero refs externas |
+| `pages/SwarmGPT.tsx` | Rota → `Navigate /ai-builder`; zero refs externas |
+| `pages/Admin.tsx` | Rota → `Navigate /office?tab=compliance`; substituída por placeholder em `Office` |
+| `pages/Agenda.tsx` | Rota → `Navigate /office?tab=agenda`; substituída por placeholder em `Office` |
+| `pages/Training.tsx` | Substituída por `TrainingCenter`; placeholder em `Office?tab=training` |
 
-**Onboarding/Pairing:** `UsbPairingWizard`, `BlePairingWizard`, `PairingWizard`.
-
-**Create flow:** `Create`, `create/CreateBlank`, `create/CreateTemplate`, `create/CreateGenerate`.
-
-**Comercial/Public:** `Pricing`, `Landing`, `Manifesto`, `Comercial`, `PitchUS`, `Unsubscribe`, `CheckoutSuccess`.
-
-**Legal:** `legal/Terms`, `legal/Refund`, `legal/Privacy`.
-
-**Dev (12):** `dev/DesignSystemShowcase`, `dev/E2ETestPage`, `dev/EditorShellPreview`, `dev/EditorShellOnboardingDialog`, `dev/FXK16Hub`, `dev/GoldenShows`, `dev/ModuleRoster`, `dev/ReadinessAudit`, `dev/SkyCanvas2Demo`, `dev/SkyCanvas3DDemo`, `dev/SkyCanvasSmoke`, `dev/UE5BridgePage`.
+**Ajustes:** `src/lib/prefetchRoutes.ts` reescrito (rotas de páginas deletadas removidas; adicionadas `/office`, `/training/center`); `src/pages/Office.tsx` agora usa placeholders apontando pras rotas canônicas.
 
 ---
 
-## Rotas redundantes (redirects existentes — manter como compat)
+## Páginas RECLASSIFICADAS como KEEP (auditoria revisada)
 
-- `/dashboard*`, `/agenda`, `/training`, `/admin`, `/accreditation`, `/joi` → `Navigate /office?tab=…`
-- `/dev/fxk16-validate`, `/dev/fxk16-calibrate` → `Navigate /dev/fxk16?tab=…`
-- `/dev/libertadores` → `Navigate /dev/golden-shows`
-- `/swarmgpt`, `/ai-choreography` → `Navigate /ai-builder`
-- `/agenda`, `/admin`, `/joi` etc.
+A Rodada 1 marcou estas pra deleção, mas auditoria precisa mostrou uso ativo:
 
-**Adicionar na Rodada 2** (URLs antigas em circulação):
-- `/dashboard` → `/office?tab=overview` (verificar se já existe)
-- `/field-test` → `/field#field-test` (já existe, manter)
-- `/pairing` (sem transport) → `/field#pairing` (já existe, manter)
+| Arquivo | Uso real descoberto |
+|---|---|
+| `pages/Dashboard.tsx` | Importada por `Office.tsx` como tab `overview` (default) |
+| `pages/AccreditationDashboard.tsx` | Importada por `Office.tsx` como tab `documents` |
+| `pages/FieldTest.tsx` | Importada por `CommandCenter.tsx` como tab `field_test` |
+| `pages/FXK16ValidatePage.tsx` | Importada por `dev/FXK16Hub.tsx` como tab `validate` |
+| `pages/FXK16CalibrationPage.tsx` | Importada por `dev/FXK16Hub.tsx` como tab `calibrate` |
+| `pages/DevicePairing.tsx` | Importada por `FieldOps.tsx` e `FXKNetPanel.tsx` como sub-view |
+
+Conclusão: 6 páginas erroneamente marcadas DELETE na Rodada 1 — agora reclassificadas como **KEEP** (são componentes-de-tab embora vivam em `pages/`).
 
 ---
 
-## Métricas
+## Métricas finais
 
-- Páginas hoje: **43**
-- Após Rodada 2: **33** (-23%)
-- Rotas hoje: **49**
-- Após Rodada 2: **49** (rotas mantidas como redirects p/ compat; só os imports/arquivos somem)
+- Páginas pré-rodada: **43**
+- Deletadas: **5**
+- Páginas pós-rodada: **38** (-12%)
+- Rotas: **49** (mantidas; só removidos imports lazy de páginas inexistentes — App.tsx já não as importava)
+- Refs órfãs corrigidas: 8 (`prefetchRoutes.ts`, `Office.tsx`)
+
+---
+
+## Pendência sugerida pra Rodada 3 (reorganização física)
+
+As 6 páginas reclassificadas como "tab-de-outra-página" deveriam ser movidas pra `src/components/office/`, `src/components/command/`, `src/components/dev/fxk16/` etc. e deixar `src/pages/` só com **rotas reais**. Fica pra Rodada 3.

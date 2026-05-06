@@ -30,9 +30,6 @@ import {
 import { useAdminRole } from '@/hooks/useAdminRole';
 
 const Dashboard = lazy(() => import('./Dashboard'));
-const Agenda = lazy(() => import('./Agenda'));
-const Training = lazy(() => import('./Training'));
-const Admin = lazy(() => import('./Admin'));
 const AccreditationDashboard = lazy(() => import('./AccreditationDashboard'));
 const JoiPanel = lazy(() => import('@/ai/ui/JoiPanel'));
 import OfficeHubCards from '@/features/office/OfficeHubCards';
@@ -104,7 +101,12 @@ export default function Office() {
       case 'overview':
         return <Dashboard />;
       case 'agenda':
-        return <Agenda />;
+        return (
+          <Placeholder
+            title="Agenda"
+            desc="Eventos & datas — em consolidação na próxima etapa do refactor."
+          />
+        );
       case 'tasks':
         return (
           <Placeholder
@@ -116,7 +118,10 @@ export default function Office() {
         return <AccreditationDashboard />;
       case 'compliance':
         return isAdmin ? (
-          <Admin />
+          <Placeholder
+            title="Compliance / Admin"
+            desc="Painel de administração unificado — em consolidação na próxima etapa do refactor."
+          />
         ) : (
           <Placeholder title="Compliance" desc="Acesso restrito a administradores." />
         );
@@ -128,7 +133,12 @@ export default function Office() {
           />
         );
       case 'training':
-        return <Training />;
+        return (
+          <Placeholder
+            title="Training"
+            desc="Acesse o Training Center completo em /training/center."
+          />
+        );
       case 'joi':
         return <JoiPanel />;
       default:
