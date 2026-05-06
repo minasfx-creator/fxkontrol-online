@@ -55,11 +55,39 @@ function FloatingPanelImpl({ id, title, state, bottomStrip, className, children 
   });
   const [dragging, setDragging] = useState(false);
   const [snapHint, setSnapHint] = useState<DockSlot | null>(null);
+  const [sheetDrag, setSheetDrag] = useState(0); // mobile bottom-sheet drag offset (px, ≥0)
   const reducedMotion = useReducedMotion();
+  const isMobile = useSmallViewport(900);
+
+  // ── Mobile bottom-sheet drag (swipe down to collapse) ───────────────
+  const sheetDragRef = useRef<{ active: boolean; sy: number; pid: number | null }>({
+    active: false, sy: 0, pid: null,
+  });
+  const onSheetPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-no-drag]')) return;
+    sheetDragRef.current = { active: true, sy: e.clientY, pid: e.pointerId };
+    try { (e.currentTarget as Element).setPointerCapture(e.pointerId); } catch { /* iOS quirk */ }
+  }, []);
+  const onSheetPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const d = sheetDragRef.current;
+    if (!d.active) return;
+    const dy = e.clientY - d.sy;
+    setSheetDrag(dy > 0 ? dy : dy * 0.25); // rubber-band upward
+  }, []);
+  const finishSheetDrag = useCallback((e?: React.PointerEvent<HTMLDivElement>) => {
+    const d = sheetDragRef.current;
+    if (!d.active) return;
+    const dy = e ? e.clientY - d.sy : 0;
+    sheetDragRef.current = { active: false, sy: 0, pid: null };
+    if (e) { try { (e.currentTarget as Element).releasePointerCapture(e.pointerId); } catch { /* */ } }
+    setSheetDrag(0);
+    if (dy > MOBILE_DISMISS_DRAG_PX) dockStore.toggleCollapsed(id);
+  }, [id]);
 
   // Drag handlers — store delta in ref, commit on pointerup (no re-render mid-drag).
   const onPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (bottomStrip) return;
+    if (bottomStrip || isMobile) return;
     const target = e.target as HTMLElement;
     if (target.closest('[data-no-drag]')) return;
     dragRef.current = {
