@@ -103,11 +103,11 @@ export function attachCommandFireRouter(): () => void {
 
     // Compute plan hash (best-effort — non-blocking on canonical sims).
     let planHash: string | undefined;
-    try { planHash = await computeShowPlanHash(showPlanManager.current); } catch { /* noop */ }
+    try { planHash = await hashShowPlan(showPlanManager.current); } catch { /* noop */ }
 
     const verdict = await evaluatePyroDispatchVerdict({
       available: listAvailableTransports(),
-      mode: workMode.current,
+      mode: workMode.get(),
       planHash,
       cueId: payload?.cueId,
     });
@@ -115,7 +115,7 @@ export function attachCommandFireRouter(): () => void {
     if (!verdict.ok) {
       void recordSafetyNote('fire-blocked', {
         reason: verdict.reason,
-        mode: workMode.current,
+        mode: workMode.get(),
         cueId: payload?.cueId,
       });
       return;
