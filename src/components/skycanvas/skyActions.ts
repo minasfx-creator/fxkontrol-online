@@ -30,6 +30,7 @@ export interface SkyActionContext {
   goStrategy: () => void;
   openImportVdl: () => void;
   exportShowJson: () => void;
+  resetShow: () => void;
 }
 
 export function buildSkyActions(ctx: SkyActionContext): SkyAction[] {
