@@ -39,6 +39,7 @@ import WaveformLayer from '@/components/skycanvas/WaveformLayer';
 import { decodeAudioPeaks } from '@/lib/skycanvasAudioPeaks';
 import { FloatingPanel } from '@/components/skycanvas/FloatingPanel';
 import { dockStore, useFloatingDock } from '@/hooks/useFloatingDock';
+import { useSmallViewport } from '@/hooks/useSmallViewport';
 import { buildSkyActions } from '@/components/skycanvas/skyActions';
 import { cn } from '@/lib/utils';
 
@@ -610,6 +611,30 @@ export default function SkyCanvasPage() {
 
   // Floating dock state
   const dock = useFloatingDock();
+  const isMobile = useSmallViewport(900);
+
+  // On mobile, only ONE expanded sheet at a time — others auto-collapse.
+  const [mobileActive, setMobileActive] = useState<'library' | 'inspector' | 'timeline'>('library');
+  useEffect(() => {
+    if (!isMobile) return;
+    (['library', 'inspector', 'timeline'] as const).forEach((key) => {
+      const cur = dock.panels[key];
+      const shouldCollapse = key !== mobileActive;
+      if (cur && cur.collapsed !== shouldCollapse) {
+        dockStore.updatePanel(key, { collapsed: shouldCollapse });
+      }
+    });
+  }, [isMobile, mobileActive, dock.panels]);
+
+  // Detect user un-collapsing a sheet on mobile → make it the active one.
+  useEffect(() => {
+    if (!isMobile) return;
+    (['library', 'inspector', 'timeline'] as const).forEach((key) => {
+      if (dock.panels[key] && !dock.panels[key].collapsed && key !== mobileActive) {
+        setMobileActive(key);
+      }
+    });
+  }, [isMobile, dock.panels, mobileActive]);
 
   return (
     <div
