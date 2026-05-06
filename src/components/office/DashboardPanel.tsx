@@ -80,6 +80,7 @@ const MASTER_EDITOR_TOOLS: HubTool[] = [
   { label: 'Storyboard', icon: Layers, panel: 'storyboard' },
   { label: 'Timeline', icon: Clapperboard, panel: '' },
   { label: 'Templates', icon: LayoutTemplate, panel: 'templates' },
+  { label: 'Golden', icon: Sparkles, panel: 'golden' },
 ];
 
 /* ── Transport Availability Indicator ─────────────────── */
