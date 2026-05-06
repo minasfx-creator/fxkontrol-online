@@ -483,6 +483,7 @@ export default function SkyCanvasPage() {
   const [peaks, setPeaks] = useState<Float32Array | null>(null);
   const [audioName, setAudioName] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
   const [decoding, setDecoding] = useState(false);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
 
@@ -554,7 +555,9 @@ export default function SkyCanvasPage() {
       setAudioName(file.name);
       setAudioUrl((prev) => {
         if (prev) { try { URL.revokeObjectURL(prev); } catch { /* */ } }
-        return URL.createObjectURL(file);
+        const next = URL.createObjectURL(file);
+        audioUrlRef.current = next;
+        return next;
       });
       setDuration(result.durationSec);
       setCurrentTime(0);
@@ -565,10 +568,11 @@ export default function SkyCanvasPage() {
     } finally { setDecoding(false); }
   };
 
-  // Revoke audio object URL on unmount
+  // Revoke audio object URL on unmount via ref (avoid stale-closure on audioUrl).
   useEffect(() => () => {
-    if (audioUrl) { try { URL.revokeObjectURL(audioUrl); } catch { /* */ } }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    const u = audioUrlRef.current;
+    if (u) { try { URL.revokeObjectURL(u); } catch { /* */ } }
+    audioUrlRef.current = null;
   }, []);
 
   // Cue drop handlers
@@ -764,7 +768,7 @@ export default function SkyCanvasPage() {
           />
         }
         tabs={
-          <div className="flex h-full items-center px-ds-4">
+          <div className="h-full glass-pane mx-3 my-1 rounded-xl flex items-center px-ds-4">
             <DsSegmentTabs
               items={SEGMENTS}
               activeId={activeSegment}
