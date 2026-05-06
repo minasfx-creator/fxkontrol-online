@@ -61,7 +61,7 @@ export default function ContinuityMatrix() {
     useContinuityMatrix(1000);
 
   // Map row → FXK16 module label when available.
-  const fxk16s = useActiveControllers().filter(c => c.profile.kind === 'fxk16');
+  const fxk16s = useActiveControllers().controllers.filter(c => c.profile.kind === 'fxk16');
   const [mode, setMode] = useState(workMode.get());
   useEffect(() => workMode.subscribe(setMode), []);
   const advisory = mode !== 'real_operation';
