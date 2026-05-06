@@ -147,7 +147,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   const [xl4Mode, setXl4Mode] = useState<XL4Mode>('manual');
   const [keyInserted, setKeyInserted] = useState(false);
   const [selectedModule, setSelectedModule] = useState(1);
-  const [selectedOutput, setSelectedOutput] = useState(0); // 0-3 for 4 outputs
+  
   const [modules, setModules] = useState<FieldModule[]>(() => {
     try {
       const saved = localStorage.getItem(MODULES_KEY);
