@@ -296,25 +296,24 @@ export default function Dashboard() {
         <div className="p-3 md:p-7 relative z-10">
           <div className="flex items-start justify-between">
             <div>
-              {/* Status line */}
-              <div className="flex items-center gap-2 mb-1">
-                <div className="h-2 w-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
-                <p className="text-[10px] font-mono text-primary tracking-[0.3em] uppercase font-bold">
-                  SYS::ONLINE
+              {/* Live status line — reflects deviceAggregator (no synthetic SYS::ONLINE) */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className={cn(
+                  'h-2 w-2 rounded-full',
+                  devicesOnline > 0
+                    ? 'bg-status-ok animate-pulse shadow-[0_0_8px_hsl(var(--status-ok)/0.5)]'
+                    : 'bg-muted-foreground/40'
+                )} />
+                <p className={cn(
+                  'text-[10px] font-mono tracking-[0.3em] uppercase font-bold',
+                  devicesOnline > 0 ? 'text-status-ok' : 'text-muted-foreground/60'
+                )}>
+                  {devicesOnline > 0 ? `${devicesOnline} DEVICE${devicesOnline === 1 ? '' : 'S'} ONLINE` : 'NO HARDWARE'}
                 </p>
-                <div className="h-[1px] w-8 bg-primary/20" />
+                <div className="h-[1px] w-8 bg-border/40" />
                 <p className="text-[8px] font-mono text-muted-foreground/40 tracking-wider">
-                  FXK v2.0 // {new Date().toLocaleDateString('pt-BR')}
+                  FXK · {new Date().toLocaleDateString('pt-BR')}
                 </p>
-              </div>
-              
-              {/* Telemetry readouts */}
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-[8px] font-mono-code text-muted-foreground/30 tracking-wider">PROJ: {projects.length}</span>
-                <span className="text-[8px] font-mono-code text-muted-foreground/30">|</span>
-                <span className="text-[8px] font-mono-code text-muted-foreground/30 tracking-wider">EVT: {events.length}</span>
-                <span className="text-[8px] font-mono-code text-muted-foreground/30">|</span>
-                <span className="text-[8px] font-mono-code text-muted-foreground/30 tracking-wider">T: {totalMinutes}min</span>
               </div>
 
               <h1 className="text-xl md:text-3xl font-bold font-display tracking-[0.04em] text-foreground uppercase leading-[1.1]">
