@@ -1,206 +1,66 @@
 
-# FX KONTROL — Integração Total + Disparos Reais · Plano v3 (final)
+# FireOne Wireless — Toggle CABLE/WIRELESS/AUTO + RSSI/Bateria
 
-Esta revisão fecha o **gap mais grave** descoberto auditando o command path real:
+Adiciona suporte explícito a módulos FireOne via rádio (TNC USB-RF dock) ao lado do cabo XLII+ existente, expondo no painel a alternância entre os modos e os indicadores ao vivo de sinal e bateria por slat — sem inventar dados.
 
-> `uiCommandGateway.fire()` faz `commandBus.dispatch({ type:'FIRE', payload })` — **mas nenhum consumidor escuta `'FIRE'` no commandBus**. O único caminho que chega ao hardware hoje é `executionBridge → pyroExecutor.fire(cue, fieldBus)`, e `fieldBus` tem **3 transports stub** (`send: () => false`) sem nenhuma rotina de write real registrada. Resultado: hoje não dispara nada de verdade — o app está honesto sobre isso (retorna `false` + buffer offline), mas precisa de fechamento ponta-a-ponta.
+## Escopo (cirúrgico)
 
-O v3 mantém todo o que já foi planejado (discovery/bridge/UI da matriz JOI) **e** adiciona o fechamento do circuito de comando até as portas físicas.
+### 1. `src/features/fieldbus/useFireOneFleet.ts` — refactor
+Hoje o hook abre um único `SerialTransport` 9600 (cabo). Vai virar fleet de **dois** transports independentes:
 
----
+- `cable` — `SerialTransport` 9600 8N1 (XLII+/XL4-3 direto via FTDI).
+- `radio` — `SerialTransport` **38400 8N1** (dock USB-RF do TNC FireOne).
 
-## 0. Princípios invioláveis (inalterados)
-
-- ShowPlan = fonte canônica.
-- Caminho único: `UI → uiCommandGateway → commandBus → SafetyStateMachine → FieldBus → real transport`. **Toda a v3 só preenche os elos vazios** desse caminho — não cria atalho novo.
-- Honest hardware: nenhum estado sintético; provenance só sobe a `live_read_only` após handshake real.
-- BLE banido para pyro em `real_operation` (`pyroTransportPolicy`).
-- E-STOP `<50ms` via `GlobalEStopButton` (mantido).
-- `_quarantine/safety` intocado; `productionSafetyOath` + `safetyBlackBox` continuam mandatórios.
-- IA jamais arma/dispara/muda workMode (`aiGuardrail`).
-
----
-
-## 1. Discovery e Bridge (cabo + wireless) — do v2
-
-Mantido na íntegra:
-
-- **EDIT** `controllerRegistry.ts`: famílias novas `arduino-nano`, `fireone-cable`, `fireone-radio` com regex.
-- **NEW** `FireOneRadioDiscoverer.ts`: Web Serial 38400 8N1 do dock TNC USB-RF, classifica `family:'fireone-radio'`, broadcast `IDENTIFY 0xFF` para enumerar os módulos wireless e popular `wirelessChildren:[{addr,rssi,ch}]`.
-- **EDIT** `UnifiedDiscoveryService.ts`: registra o novo discoverer.
-- **EDIT** `discoveryRegistryBridge.ts`: 3 watchers novos (Nano + cable + radio) com fan-out piggy-back para os 4 sub-adapters do Nano (Battery / Mux / SR / RelayBank32). Cada attach/detach grava `safetyBlackBox.recordSafetyNote('hw-attach' | 'hw-detach', …)`.
-
----
-
-## 2. Caminho de comando real — fechamento dos 2 elos vazios
-
-### 2.1 NEW `src/core/command/commandFireRouter.ts`
-Único consumidor de `commandBus.on('FIRE', …)` no app. Resolve o cue alvo a partir do payload (`{ cueId }` ou `{ moduleAddress, channel, duration, effectId }`), valida com `safetyStateMachine.canFire()` e delega:
-
+Estado novo:
 ```ts
-commandBus.on('FIRE', (cmd) => {
-  // 1. Verdict (já cobre productionSafetyOath + planHash + Phase2 + transportPolicy)
-  const verdict = evaluatePyroDispatchVerdict(cmd.payload);
-  if (verdict.outcome !== 'allow') {
-    safetyBlackBox.recordSafetyNote('fire-blocked', verdict);
-    return;
-  }
-  // 2. Resolve cue (one-shot manual fire OR scheduled cue lookup)
-  const cue = resolvePyroCue(cmd.payload);
-  // 3. Single delegation point — same path executionBridge already uses
-  pyroExecutor.fire(cue, fieldBus);
-});
+mode: 'cable' | 'wireless' | 'auto'  // persistido em fxk.fireone.linkMode.v1
+cable: { state, error, txBytes, rxBytes, lastReplyAt }
+radio: { state, error, txBytes, rxBytes, lastReplyAt }
+link:  // agregado: 'connected' se qualquer link up
 ```
 
-Com isso o `uiCommandGateway.fire()` finalmente leva a um disparo real — sem inventar caminho novo.
+Comportamento por modo:
+- **cable**: abre só o transport 9600 → registra `cableLink` no `realTransports` (rs485).
+- **wireless**: abre só o transport 38400 → registra `radioLink` no `realTransports` (relay).
+- **auto**: abre cabo primeiro; se em 3s nenhum slat respondeu, abre radio em paralelo. Ambos podem coexistir.
 
-### 2.2 EDIT `src/core/network/fieldBus.ts`
-Adiciona método público (faltante) `setTransport(id: TransportId, impl: Pick<Transport,'send'|'isAlive'>)` e `heartbeat(id)`. Nada mais muda no roteamento existente (failover wifi → rs485 → relay).
+Cada slat recebido é taggeado com `connectionMode: 'wired' | 'wireless'` segundo o link de origem da resposta. O polling 2 Hz prioriza o link de origem do slat.
 
-### 2.3 NEW `src/core/network/realTransports.ts`
-Implementações reais que chamam o que já existe — sem duplicar protocolo:
+API pública: + `setMode(mode)`. Mantém `connect/disconnect/arm/disarm/eStop/fire/continuityCheck/queryWireless` (assinaturas inalteradas).
 
-```ts
-// 'wifi'   → Art-Net UDP via supabase edge `artnet-bridge` (já presente)
-fieldBus.setTransport('wifi', {
-  send: msg => artnetBridge.sendDmx(msg.payload.universe, msg.payload.bytes),
-  isAlive: () => artnetBridge.isHealthy(),
-});
+### 2. `src/features/fieldbus/FireOnePanel.tsx` — UI
+- **Header**: troca o badge único por **três badges** independentes (CABLE / RADIO / agregado), cada um com cor por estado.
+- **Toggle CABLE / WIRELESS / AUTO** (segmented control de 3 botões) na barra de conexão. Persiste e dispara reconnect.
+- **Identifiers visuais**: lucide `Cable` para cabo, `RadioTower` para rádio, `Wifi` para AUTO.
+- **Strip global** mostrando contagem de slats por modo (`5 wired · 3 wireless`) + RSSI médio dos wireless + bateria mínima da fleet (alerta se < 11.0 V).
+- **Card por slat** já tem `Bat`, RSSI e ícone Wifi/WifiOff — reorganizado para destacar `connectionMode` (chip "WIRED"/"WIRELESS"/"FALLBACK") e usa cor amber se RSSI < −85 dBm ou bateria < 11.0 V.
+- **Botão RADIO** existente em cada slat continua chamando `queryWireless()` (já implementado no protocolo via `buildWirelessStatusQuery`).
 
-// 'rs485'  → FireOne cable XLII+ via FireOnePanel link (Web Serial 9600 8N1)
-fieldBus.setTransport('rs485', {
-  send: msg => fireOneCableLink.send(buildFire(msg.payload)),
-  isAlive: () => fireOneCableLink.state === 'connected',
-});
+### 3. `src/core/network/realTransports.ts` — sem mudança lógica
+Já tem `registerCableLink` + `registerRadioLink` separados. O hook só passa a chamá-los segundo o transport ativo.
 
-// 'relay'  → FXK16 / FireOne wireless (TNC dock 38400 ou BLE quando NÃO real_operation)
-fieldBus.setTransport('relay', {
-  send: msg => relayLink.send(buildFire(msg.payload)),
-  isAlive: () => relayLink.state === 'connected',
-});
-```
+### 4. Testes
+- `useFireOneFleet.modeToggle.spec.ts` (vitest):
+  - `setMode('wireless')` persiste em localStorage e abre transport 38400.
+  - `setMode('auto')` programa fallback de 3s para abrir radio se cabo silenciar.
+  - Disconnect revoga `cableLink` e `radioLink` no `realTransports`.
+- `FireOnePanel.modeToggle.spec.tsx` (RTL):
+  - Click em "WIRELESS" chama `setMode('wireless')` e mostra badge de rádio ativo.
+  - Slat com `connectionMode='wireless'` renderiza chip WIRELESS + RSSI.
 
-`relayLink` é escolhido em ordem `serial > usb > artnet > ble` segundo `pyroTransportPolicy` para o módulo alvo (BLE é bloqueado em `real_operation` automaticamente — política já existente).
+## Fora de escopo
+- `FireOneRadioDiscoverer` standalone (auto-detectar dock TNC entre as portas serial sem operador clicar Connect) — fica para a próxima.
+- Página `/dev/hardware-integration` (matriz JOI) — fica para a próxima.
 
-### 2.4 EDIT `discoveryRegistryBridge.ts`
-Além dos `markHandshakeOk`, agora também:
-- Registra senders no `transportSenderRegistry` (Web Serial / WebUSB / BLE / Art-Net) — fecha o stub `NO_REAL_SENDER` para o `MultiTransportLink`.
-- Quando o handshake confirma uma família relevante (`fxk16` / `fireone-cable` / `fireone-radio` / `artnet-node`), faz `fieldBus.setTransport(...)` com o link daquele dispositivo (auto-failover continua nativo do FieldBus).
-- No `markHandshakeLost` correspondente, faz `fieldBus.setTransport(id, stub)` de volta — nunca deixa um transport "morto pensando que está vivo".
-
----
-
-## 3. Senders reais → `transportSenderRegistry` (do v2)
-
-Boot do bridge registra os 4 senders reais (`webserial`, `webusb`, `webble`, `mdns-artnet`). Stub `NO_REAL_SENDER` permanece como salvaguarda honesta.
-
----
-
-## 4. UI
-
-### 4.1 NEW `src/pages/dev/HardwareIntegrationPage.tsx` (`/dev/hardware-integration`)
-Matriz JOI viva (9 linhas, mesma ordem do PDF) + botão **Snapshot JSON** (output byte-idêntico ao PDF) + botão **Connect everyone** (`unifiedDiscovery.scanDeep`) + health score `100·live/9 − 5·verification.errors`.
-
-### 4.2 NEW `src/lib/joiMatrixSnapshotter.ts`
-Função pura `snapshotJoiMatrix()` que lê `unifiedHardwareRegistry.getAllSnapshots()` e produz o bloco `[JOI_MATRIX] … [JOI_STATUS]` no formato literal do PDF — reusada por essa página, por `JoiReport` e por `joiCommandExecutor.tools.get_system_state`.
-
-### 4.3 EDIT `src/features/fieldbus/FireOnePanel.tsx`
-Toggle **CABLE / WIRELESS / AUTO**. AUTO tenta cable; se 3s sem reply, cai em radio; se ambos morrem → `disconnected` (nunca fake).
-
-### 4.4 EDIT `src/pages/FieldOps.tsx`
-Pill espelho do toggle no header da aba FIREONE.
-
-### 4.5 NEW `src/components/safety/RealFiringReadinessBadge.tsx`
-Badge global (junto do `GlobalEStopButton`) mostrando:
-- `READY · transport=rs485` (verde) — quando há transport vivo + Phase 2 fresco + workMode=`real_operation`.
-- `SIMULATION` (cyan) — qualquer outro caso.
-
-Lê `fieldBus.activeTransport`, `phase2.lastGrant`, `workMode.current`. Sem efeitos colaterais.
-
----
-
-## 5. Safety / Provenance / Auditoria
-
-- `evaluatePyroDispatchVerdict(payload, { planHash, cueId })` chamado em **todo** `commandBus.on('FIRE')` (já existe — só passa a ter consumidor real).
-- `safetyBlackBox.recordSafetyNote('fire-dispatched' | 'fire-blocked' | 'hw-attach' | 'hw-detach', envelope)` em cada transição.
-- `realOnlyGate` continua filtrando ingestão de telemetria não verificada.
-- `pyroTransportPolicy.PYRO_FIRE_PRIORITY = [serial, usb, artnet]` aplicado **dentro** do `realTransports.ts` quando escolhe `relayLink`.
-- Em `real_operation`: BLE rejeitado para pyro; `productionSafetyOath` + `phase2 grant ≤ 5 min` exigidos pelo `evaluatePyroDispatchVerdict` antes de qualquer `fieldBus.send`.
-
----
-
-## 6. Testes (vitest)
-
-| Spec | Cobertura |
-|---|---|
-| `core/command/__tests__/commandFireRouter.spec.ts` | `commandBus.dispatch('FIRE')` chama `pyroExecutor.fire` exatamente 1×; bloqueio se verdict ≠ allow; cueId resolvido corretamente; manual fire (sem cueId) também funciona. |
-| `core/network/__tests__/fieldBus.setTransport.spec.ts` | `setTransport` substitui stub sem reset do contador de failover; heartbeat retoma; `setTransport(id, stub)` revoga sem fake. |
-| `core/network/__tests__/realTransports.spec.ts` | wifi → artnet edge; rs485 → fireone cable; relay → preference order respeita `pyroTransportPolicy` em real_operation (BLE removido). |
-| `core/discovery/__tests__/fireOneRadioDiscoverer.spec.ts` | classificação + broadcast IDENTIFY + `wirelessChildren` populado a partir de bytes mockados. |
-| `core/hardware/__tests__/discoveryRegistryBridge.arduinoNano.spec.ts` | watcher Nano promove os 5 adapters de uma vez; demote idempotente; `safetyBlackBox` registrado. |
-| `core/hardware/__tests__/discoveryRegistryBridge.fireone.spec.ts` | cable + radio simultâneos não duplicam handshake; só um demote quando o último some. |
-| `core/discovery/__tests__/transportSenderRegistry.realSenders.spec.ts` | senders registrados → `getSender('webserial')` ≠ stub; sem registro continua stub honest. |
-| `lib/__tests__/joiMatrixSnapshotter.spec.ts` | output bate com fixture do PDF (linha-a-linha) p/ adapters em estado simulado E em estado live. |
-| `features/fieldbus/__tests__/FireOnePanel.transportToggle.spec.tsx` | AUTO cai pra radio após 3s sem reply do cable. |
-| `core/safety/__tests__/realFiring.endToEnd.spec.ts` | em `real_operation` + Phase 2 fresco + transport vivo: `uiCommandGateway.fire(src, {cueId})` resulta em **um** byte-stream gravado no transport mock; em qualquer pré-condição faltando, **zero** bytes saem. |
-
-Critério de aceite: 1000+ tests atuais continuam verde + os 10 novos verde.
-
----
-
-## 7. Escopo de superfície
-
+## Arquivos
 ```text
-NEW   ~6 arquivos    commandFireRouter, realTransports, FireOneRadioDiscoverer,
-                      joiMatrixSnapshotter, HardwareIntegrationPage,
-                      RealFiringReadinessBadge, +10 specs
-EDIT  ~8 arquivos    discoveryRegistryBridge (3 watchers + senders +
-                      setTransport calls), controllerRegistry (regex+kinds),
-                      UnifiedDiscoveryService (+1 discoverer),
-                      ArduinoNanoAdapter (ingestStatusLine),
-                      FireOneProfileAdapter (cable/radio fields),
-                      FireOnePanel (toggle), FieldOps (pill),
-                      fieldBus (setTransport public method)
-ZERO  mudança       uiCommandGateway, commandBus, safetyStateMachine,
-                      pyroExecutor, fireoneProtocol wire, productionSafetyOath,
-                      pyroTransportPolicy, GlobalEStopButton, _quarantine,
-                      adapters Battery/Mux/SR/RelayBank/DMX/Art-Net APIs
+EDIT  src/features/fieldbus/useFireOneFleet.ts        (~200 linhas, refactor)
+EDIT  src/features/fieldbus/FireOnePanel.tsx          (~70 linhas: header, toggle, badges, strip)
+NEW   src/features/fieldbus/__tests__/useFireOneFleet.modeToggle.spec.ts
+NEW   src/features/fieldbus/__tests__/FireOnePanel.modeToggle.spec.tsx
+ZERO  uiCommandGateway, commandBus, SafetyStateMachine, fieldBus, pyroExecutor,
+      pyroTransportPolicy, _quarantine, fireoneProtocol, realTransports
 ```
 
----
-
-## 8. Resultado esperado
-
-**Matriz JOI** (após bridge rodar com hardware real, qualquer combinação cabo+wireless):
-
-```text
-Arduino Nano - FXK Controller       LIVE READ-ONLY | ONLINE  telemetry_verified
-74HC595 x 4 - Output Expansion       LIVE READ-ONLY | ONLINE  telemetry_verified (piggy)
-CD4051 x 2 - 16ch Analog MUX         LIVE READ-ONLY | ONLINE  telemetry_verified (piggy)
-32ch Relay Bank - Field Output       LIVE READ-ONLY | ONLINE  telemetry_verified (piggy)
-FXK16 - 16ch (ESP32-S3)              LIVE READ-ONLY | ONLINE  telemetry_verified
-12V Field Battery                    LIVE READ-ONLY | ONLINE  telemetry_verified (piggy)
-Art-Net Node - DMX Bridge            LIVE READ-ONLY | ONLINE  telemetry_verified
-FireOne Profile  (cable + radio)     LIVE READ-ONLY | ONLINE  telemetry_verified
-DMX Universe 1                       LIVE READ-ONLY | ONLINE  telemetry_verified
-Health score                          ≥ 90 (de 20 → 90+)
-```
-
-**Disparos reais** (cenário real_operation autorizado):
-
-```text
-Operador toca FIRE no PyroControllerCard
-  → uiCommandGateway.fire(src, {cueId:'C42'})
-  → commandBus.dispatch('FIRE')
-  → commandFireRouter:
-       evaluatePyroDispatchVerdict(...) = allow   ✓ Phase2 + planHash + oath + policy
-  → pyroExecutor.fire(cue, fieldBus)
-  → fieldBus.send → activeTransport=rs485
-  → realTransports['rs485'].send(buildFire(...))
-  → fireOneCableLink.send(bytes)  →  FTDI → módulo XLII+ slat 1 cue 7
-  → safetyBlackBox: 'fire-dispatched' { cueId, planHash, transport, latencyMs }
-```
-
-E-STOP global e pyroTransportPolicy continuam intactos.
-
-Pronto para Approve. Após aprovação, executo na ordem **2.1 → 2.2 → 2.3 → 2.4 → 1 (discovery) → 4 → 5 → 6**.
+## Resultado
+Operador no painel FireOne escolhe **CABLE** (XLII+ via FTDI), **WIRELESS** (TNC USB-RF) ou **AUTO** (cabo prioritário, rádio como fallback automático). Cada slat exibe RSSI e tensão de bateria reais (ou nada — sem fake), com chip indicando por qual link respondeu. O caminho de FIRE permanece exatamente o mesmo: `uiCommandGateway → commandBus → commandFireRouter → pyroExecutor → fieldBus → realTransports.{rs485|relay}` — a única diferença é qual link estará vivo.

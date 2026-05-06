@@ -9,11 +9,24 @@
 import { useMemo, useState } from 'react';
 import {
   Cable, ShieldCheck, ShieldOff, Wifi, WifiOff, Activity, Zap,
-  PlugZap, Power, AlertTriangle, RadioTower, CircleDot,
+  PlugZap, Power, AlertTriangle, RadioTower, CircleDot, Battery,
 } from 'lucide-react';
-import { useFireOneFleet } from '@/features/fieldbus/useFireOneFleet';
+import { useFireOneFleet, type FireOneLinkMode } from '@/features/fieldbus/useFireOneFleet';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+const MODE_OPTIONS: { value: FireOneLinkMode; label: string; icon: typeof Cable }[] = [
+  { value: 'cable',    label: 'CABLE',    icon: Cable      },
+  { value: 'wireless', label: 'WIRELESS', icon: RadioTower },
+  { value: 'auto',     label: 'AUTO',     icon: Wifi       },
+];
+
+const STATE_TONE: Record<string, string> = {
+  connected:    'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  connecting:   'bg-amber-500/15 text-amber-400 border-amber-500/30',
+  error:        'bg-red-500/15 text-red-400 border-red-500/30',
+  disconnected: 'bg-muted/15 text-muted-foreground border-border/30',
+};
 
 export default function FireOnePanel() {
   const fleet = useFireOneFleet();
@@ -25,12 +38,18 @@ export default function FireOnePanel() {
   const [selectedSlat, setSelectedSlat] = useState<number | null>(null);
 
   const linkOk = state.link === 'connected';
-  const linkLabel: Record<string, string> = {
-    disconnected: 'OFFLINE',
-    connecting:   'CONNECTING…',
-    connected:    'LIVE · USB-FTDI',
-    error:        'ERROR',
-  };
+
+  // Fleet-wide aggregates (honest: only over actually-replied slats)
+  const wired    = slats.filter(s => (s as any).connectionMode === 'wired').length;
+  const wireless = slats.filter(s => (s as any).connectionMode === 'wireless').length;
+  const wlSlats  = slats.filter(s => typeof s.rssiDbm === 'number');
+  const avgRssi  = wlSlats.length
+    ? Math.round(wlSlats.reduce((a, s) => a + (s.rssiDbm ?? 0), 0) / wlSlats.length)
+    : null;
+  const minBat   = slats.length
+    ? Math.min(...slats.map(s => s.batteryVoltage || 99))
+    : null;
+  const batLow   = minBat !== null && minBat < 11.0;
 
   return (
     <div className="w-full h-full overflow-y-auto">
@@ -50,43 +69,64 @@ export default function FireOnePanel() {
           </p>
         </div>
 
-        {/* Connection bar */}
-        <div className="rounded-lg border border-border/40 bg-card/30 p-3 flex items-center gap-3 flex-wrap">
-          <span className={cn(
-            'text-[10px] font-mono font-bold tracking-[0.18em] px-2 py-1 rounded border',
-            linkOk
-              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-              : state.link === 'error'
-                ? 'bg-red-500/15 text-red-400 border-red-500/30'
-                : 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-          )}>
-            {linkLabel[state.link]}
-          </span>
-          {state.error && (
-            <span className="text-[10px] font-mono text-red-400 flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" /> {state.error}
+        {/* Connection bar — per-link badges + mode toggle */}
+        <div className="rounded-lg border border-border/40 bg-card/30 p-3 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={cn('text-[10px] font-mono font-bold tracking-[0.18em] px-2 py-1 rounded border inline-flex items-center gap-1', STATE_TONE[state.cable.state])}>
+              <Cable className="w-3 h-3" /> CABLE · {state.cable.state.toUpperCase()}
             </span>
-          )}
-          <span className="text-[10px] font-mono text-muted-foreground">
-            Slats: <span className="text-foreground">{slats.length}</span>
-          </span>
-          <span className="text-[10px] font-mono text-muted-foreground">
-            RX: <span className="text-foreground">{state.rxBytes}B</span>
-          </span>
-          <span className="text-[10px] font-mono text-muted-foreground">
-            Identify: <span className="text-foreground">{state.identifyCount}</span>
-          </span>
-          <div className="ml-auto flex items-center gap-2">
-            {!linkOk && (
-              <Button size="sm" onClick={() => void fleet.connect()} className="h-7 text-[10px] font-mono">
-                <PlugZap className="w-3 h-3 mr-1" /> CONNECT (USB-FTDI)
-              </Button>
+            <span className={cn('text-[10px] font-mono font-bold tracking-[0.18em] px-2 py-1 rounded border inline-flex items-center gap-1', STATE_TONE[state.radio.state])}>
+              <RadioTower className="w-3 h-3" /> RADIO · {state.radio.state.toUpperCase()}
+            </span>
+            {state.error && (
+              <span className="text-[10px] font-mono text-red-400 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> {state.error}
+              </span>
             )}
-            {linkOk && (
-              <Button size="sm" variant="outline" onClick={() => void fleet.disconnect()} className="h-7 text-[10px] font-mono">
-                <Power className="w-3 h-3 mr-1" /> DISCONNECT
-              </Button>
+            <div className="ml-auto inline-flex rounded border border-border/40 overflow-hidden">
+              {MODE_OPTIONS.map(({ value, label, icon: Icon }) => (
+                <button key={value}
+                  onClick={() => fleet.setMode(value)}
+                  aria-pressed={state.mode === value}
+                  className={cn(
+                    'px-2 py-1 text-[10px] font-mono inline-flex items-center gap-1 border-r border-border/40 last:border-r-0 transition-colors',
+                    state.mode === value
+                      ? 'bg-[hsl(190_70%_58%)]/20 text-[hsl(190_70%_58%)]'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-card/40',
+                  )}
+                >
+                  <Icon className="w-3 h-3" /> {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Fleet aggregates strip */}
+          <div className="flex items-center gap-3 flex-wrap text-[10px] font-mono text-muted-foreground">
+            <span>Slats: <span className="text-foreground">{slats.length}</span></span>
+            <span>Wired: <span className="text-foreground">{wired}</span></span>
+            <span>Wireless: <span className="text-foreground">{wireless}</span></span>
+            {avgRssi !== null && (
+              <span className={cn('inline-flex items-center gap-1', avgRssi < -85 && 'text-amber-400')}>
+                <Wifi className="w-3 h-3" /> avg {avgRssi} dBm
+              </span>
             )}
+            {minBat !== null && (
+              <span className={cn('inline-flex items-center gap-1', batLow && 'text-amber-400')}>
+                <Battery className="w-3 h-3" /> min {minBat.toFixed(1)} V
+              </span>
+            )}
+            <span className="ml-auto inline-flex items-center gap-2">
+              {!linkOk ? (
+                <Button size="sm" onClick={() => void fleet.connect()} className="h-7 text-[10px] font-mono">
+                  <PlugZap className="w-3 h-3 mr-1" /> CONNECT
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" onClick={() => void fleet.disconnect()} className="h-7 text-[10px] font-mono">
+                  <Power className="w-3 h-3 mr-1" /> DISCONNECT
+                </Button>
+              )}
+            </span>
           </div>
         </div>
 
@@ -133,16 +173,35 @@ export default function FireOnePanel() {
                   <span className="text-[11px] font-mono font-bold tracking-[0.18em] text-foreground">
                     SLAT {slat.moduleAddress.toString().padStart(2, '0')}
                   </span>
+                  {slat.connectionMode && (
+                    <span className={cn(
+                      'text-[8px] font-mono font-bold tracking-[0.16em] px-1.5 py-0.5 rounded border',
+                      slat.connectionMode === 'wired'
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                        : slat.connectionMode === 'fallback'
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                          : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
+                    )}>
+                      {slat.connectionMode.toUpperCase()}
+                    </span>
+                  )}
                   <span className="ml-auto text-[9px] font-mono text-muted-foreground">
                     fw {slat.firmwareVersion || '?'}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-1 text-[9px] font-mono text-muted-foreground">
-                  <span>Bat <span className="text-foreground">{slat.batteryVoltage.toFixed(1)}V</span></span>
+                  <span className={cn(slat.batteryVoltage > 0 && slat.batteryVoltage < 11.0 && 'text-amber-400')}>
+                    Bat <span className="text-foreground">{slat.batteryVoltage.toFixed(1)}V</span>
+                  </span>
                   <span>T <span className="text-foreground">{slat.temperature.toFixed(0)}°C</span></span>
-                  <span className="flex items-center gap-1">
+                  <span className={cn(
+                    'flex items-center gap-1',
+                    typeof slat.rssiDbm === 'number' && slat.rssiDbm < -85 && 'text-amber-400',
+                  )}>
                     {slat.wireless ? <Wifi className="w-3 h-3 text-cyan-400" /> : <WifiOff className="w-3 h-3" />}
-                    <span className="text-foreground">{slat.rssiDbm ?? slat.signalStrength}dBm</span>
+                    <span className="text-foreground">
+                      {typeof slat.rssiDbm === 'number' ? `${slat.rssiDbm}dBm` : '—'}
+                    </span>
                   </span>
                 </div>
 
