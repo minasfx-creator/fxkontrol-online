@@ -93,21 +93,32 @@ function GlassIconButton({
 }
 
 // Small icon button for layout toggles (matches EditorShellPreview).
+/** Render a keyboard chord like ⌘1 / ⇧⌘0 inside tooltips. */
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="ds-mono text-[10px] text-cyan-200/90 border border-white/15 rounded px-1.5 py-0.5 bg-black/40">
+      {children}
+    </kbd>
+  );
+}
+
 function LayoutIconButton({
-  ariaLabel, onClick, active, children, shortcut, controls,
+  ariaLabel, onClick, active, children, shortcut, shortcutLabel, controls,
 }: {
   ariaLabel: string; onClick: () => void; active: boolean; children: React.ReactNode;
   /** ARIA keyboard shortcut hint, e.g. "Control+1". */
   shortcut?: string;
+  /** Display label rendered inside the tooltip kbd, e.g. "⌘1". */
+  shortcutLabel?: string;
   /** id of the panel region this button toggles (aria-controls). */
   controls?: string;
 }) {
-  const title = shortcut ? `${ariaLabel} (${shortcut.replace('Control', '⌘')})` : ariaLabel;
-  return (
+  const titleHint = shortcutLabel ?? shortcut?.replace('Control', '⌘');
+  const button = (
     <button
       type="button"
       aria-label={ariaLabel}
-      title={title}
+      title={titleHint ? `${ariaLabel} (${titleHint})` : ariaLabel}
       aria-pressed={active}
       aria-keyshortcuts={shortcut}
       aria-controls={controls}
@@ -122,6 +133,16 @@ function LayoutIconButton({
     >
       {children}
     </button>
+  );
+  if (!shortcutLabel) return button;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipContent side="bottom" className="flex items-center gap-2 ds-mono text-[11px]">
+        <span>{ariaLabel}</span>
+        <Kbd>{shortcutLabel}</Kbd>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
