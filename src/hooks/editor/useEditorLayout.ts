@@ -165,6 +165,13 @@ export function useEditorLayout(projectId: string): UseEditorLayoutResult {
           leftCollapsed: Boolean(cloud.leftCollapsed),
           rightCollapsed: Boolean(cloud.rightCollapsed),
           timelineCollapsed: Boolean(cloud.timelineCollapsed),
+          activeTabs: (cloud.activeTabs && typeof cloud.activeTabs === 'object')
+            ? {
+                left: typeof cloud.activeTabs.left === 'string' ? cloud.activeTabs.left : undefined,
+                right: typeof cloud.activeTabs.right === 'string' ? cloud.activeTabs.right : undefined,
+                timeline: typeof cloud.activeTabs.timeline === 'string' ? cloud.activeTabs.timeline : undefined,
+              }
+            : {},
         });
       } catch {
         // Network/auth issues — silently fall back to localStorage cache.
@@ -256,6 +263,14 @@ export function useEditorLayout(projectId: string): UseEditorLayoutResult {
     setState(EDITOR_LAYOUT_DEFAULTS);
   }, []);
 
+  const setActiveTab = useCallback((slot: keyof EditorActiveTabs, tabId: string) => {
+    setState((s) => {
+      const prev = s.activeTabs ?? {};
+      if (prev[slot] === tabId) return s;
+      return { ...s, activeTabs: { ...prev, [slot]: tabId } };
+    });
+  }, []);
+
   return {
     ...state,
     effective: {
@@ -270,5 +285,6 @@ export function useEditorLayout(projectId: string): UseEditorLayoutResult {
     toggleRight,
     toggleTimeline,
     reset,
+    setActiveTab,
   };
 }
