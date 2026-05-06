@@ -228,7 +228,7 @@ export default function Dashboard() {
     const seen = sessionStorage.getItem('fxk-intro-seen');
     return !seen;
   });
-  const [feedFilter, setFeedFilter] = useState<NewsItem['category'] | 'all'>('all');
+  // Industry feed removed — see EmptyHardwareHint for the new honest empty state.
 
   const handleIntroComplete = useCallback(() => {
     setShowIntro(false);
