@@ -11,7 +11,7 @@
 import { Link } from 'react-router-dom';
 import {
   Activity, Radar, Cpu, Wand2, FlaskConical, Layers, Boxes,
-  CheckCircle2, Sparkles, FileCode2, Beaker, Network, Compass,
+  CheckCircle2, Sparkles, FileCode2, Beaker, Network, Compass, Zap,
 } from 'lucide-react';
 
 type Status = 'LIVE' | 'READ-ONLY' | 'SMOKE' | 'PUBLIC';
