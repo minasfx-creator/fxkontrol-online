@@ -557,6 +557,27 @@ export default function SkyCanvasPage() {
   }, [dropEffectAt]);
 
   // Master Menu actions
+  const [importOpen, setImportOpen] = useState(false);
+  const exportShowJson = useCallback(() => {
+    try {
+      const cues = useProjectStore.getState().cueMarkers;
+      const blob = new Blob([JSON.stringify({
+        kind: 'fxk.skycanvas.showbundle.v1',
+        exportedAt: new Date().toISOString(),
+        duration,
+        cues,
+      }, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `skycanvas-show-${Date.now()}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success(`Exportado · ${cues.length} cue${cues.length === 1 ? '' : 's'}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Falha ao exportar');
+    }
+  }, [duration]);
+
   const actions = useMemo(() => buildSkyActions({
     togglePlay, stop, seekTo: seekAbs, pickAudio,
     focusPanel,
@@ -567,7 +588,11 @@ export default function SkyCanvasPage() {
     },
     resetDock: () => { dockStore.reset(); toast.success('Layout restaurado'); },
     goCommand: () => navigate('/command'),
-  }), [togglePlay, stop, seekAbs, pickAudio, focusPanel, cinema, navigate]);
+    goAiBuilder: () => navigate('/ai-builder'),
+    goStrategy: () => navigate('/strategy'),
+    openImportVdl: () => setImportOpen(true),
+    exportShowJson,
+  }), [togglePlay, stop, seekAbs, pickAudio, focusPanel, cinema, navigate, exportShowJson]);
 
   // Keyboard shortcuts
   useEffect(() => {
