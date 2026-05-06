@@ -7,8 +7,10 @@ import { generateFireOneCsv } from '@/core/export/FireOneCsvExporter';
 import { downloadFireOneImportPackage } from '@/core/export/fireOneImportPackage';
 import { downloadFireOneScript } from '@/core/export/FireOneExporter';
 import { useVerificationStore } from '@/core/verification/useVerificationStore';
-import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { isSimulating } from '@/core/safety/simulationGuard';
+import { useShowPlanProjection } from '@/hooks/useShowPlanProjection';
+import { useConsoleProvenance } from '@/hooks/useConsoleProvenance';
+import { ProvenanceBadge } from '@/components/safety/ProvenanceBadge';
 import { cn } from '@/lib/utils';
 import { FileOutput, Download, CheckCircle2, XOctagon, RefreshCw, AlertTriangle, Package, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,8 +26,9 @@ export default function FireOneExportConsole() {
   const { level, result, runVerification } = useVerificationStore(
     useShallow((s) => ({ level: s.level, result: s.result, runVerification: s.runVerification })),
   );
-  const sp = showPlanManager.current;
+  const sp = useShowPlanProjection().plan;
   const sim = isSimulating();
+  const provenance = useConsoleProvenance(['fxk16', 'fireone']);
 
   const refresh = useCallback(() => {
     runVerification();
@@ -67,6 +70,7 @@ export default function FireOneExportConsole() {
           <span className="text-xs font-mono font-bold tracking-widest text-foreground uppercase">FireOne Export · UltraFire CSV</span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <ProvenanceBadge mode={provenance} compact />
           <span className={cn('text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border', badgeClass)}>
             {badgeLabel}
           </span>
