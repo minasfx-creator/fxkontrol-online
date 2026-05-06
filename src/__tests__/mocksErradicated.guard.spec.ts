@@ -43,4 +43,13 @@ describe('mocksErradicated guard', () => {
       }
     });
   }
+
+  for (const rel of HARDWARE_HONEST_FILES) {
+    it(`${rel} is free from simulated-hardware tokens`, () => {
+      const src = readFileSync(resolve(process.cwd(), rel), 'utf8');
+      for (const re of HARDWARE_FORBIDDEN) {
+        expect(src, `${rel} contains forbidden hardware token ${re}`).not.toMatch(re);
+      }
+    });
+  }
 });
