@@ -11,14 +11,15 @@ import PwaInstallCard from '@/components/pwa/PwaInstallCard';
 import {
   Clapperboard, CalendarDays, Plus, FolderOpen,
   Zap, Rocket, Flame, Target, Clock, ArrowRight, Sparkles,
-  Radio, Cpu, Activity, Heart, MessageCircle, Share2,
-  TrendingUp, TrendingDown, Minus, Circle, Bookmark,
+  Radio, Cpu, Activity,
   Smartphone, Wand2, Layers,
   Lightbulb, Pencil, LayoutTemplate,
   Bluetooth, Usb, Wifi, ScanEye,
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { lazy, Suspense } from 'react';
+import { deviceAggregator } from '@/core/discovery/DeviceAggregator';
+import EmptyHardwareHint from '@/components/office/EmptyHardwareHint';
 const CinematicIntro = lazy(() => import('@/components/editor/CinematicIntro'));
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -39,34 +40,10 @@ interface Event {
   client_name: string;
 }
 
-interface NewsItem {
-  id: number;
-  title: string;
-  category: 'pyro' | 'drones' | 'sfx' | 'lighting' | 'festivals';
-  sentiment: 'positive' | 'negative' | 'neutral';
-  time: string;
-  image: string;
-  source: string;
-  avatar: string;
-}
-
-/* ── Constants ──────────────────────────────────────── */
-// News feed is fed from real sources. Until a live ingest pipeline is wired,
-// we render an empty state instead of placeholder/mock items.
-const MOCK_NEWS: NewsItem[] = [];
-
-const CATEGORY_FILTERS: Array<{ key: NewsItem['category'] | 'all'; label: string; emoji: string }> = [
-  { key: 'all', label: 'Tudo', emoji: '🌐' },
-  { key: 'pyro', label: 'Pyro', emoji: '🎆' },
-  { key: 'drones', label: 'FXK-DRONES', emoji: '🤖' },
-  { key: 'sfx', label: 'SFX', emoji: '🔥' },
-  { key: 'lighting', label: 'Light', emoji: '💡' },
-  { key: 'festivals', label: 'Festivals', emoji: '🎪' },
-];
-
 const TYPE_ICONS: Record<string, string> = {
   pyro: '🎆', drone: '🤖', sfx: '🔥', mixed: '🎯',
 };
+
 
 /* ── Console Launcher Cards ─────────────────────────── */
 const CONSOLE_CARDS = [
@@ -166,52 +143,8 @@ function TransportIndicator() {
   );
 }
 
-/* ── Feed Card (Instagram-style) ─────────────────────── */
-function FeedCard({ item, compact }: { item: NewsItem; compact?: boolean }) {
-  const [liked, setLiked] = useState(false);
-  const [saved, setSaved] = useState(false);
+/* FeedCard removed — Industry Feed not yet wired to a real ingest pipeline. */
 
-  return (
-    <div className="bg-card border border-border/50 rounded overflow-hidden group relative">
-      {/* Scanline overlay */}
-      <div className="absolute inset-0 tactical-scanline z-10" />
-      <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-border/30 relative z-20">
-        <div className="h-7 w-7 rounded bg-muted/30 flex items-center justify-center text-sm border border-border/30">
-          {item.avatar}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold text-foreground truncate font-display tracking-wide">{item.source}</p>
-          <p className="text-[9px] text-muted-foreground font-mono">{item.time}</p>
-        </div>
-        {item.sentiment === 'positive' && <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />}
-        {item.sentiment === 'negative' && <TrendingDown className="h-3.5 w-3.5 text-red-400" />}
-        {item.sentiment === 'neutral' && <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
-      </div>
-      <div className={cn("relative overflow-hidden", compact ? "aspect-[16/9]" : "aspect-[4/3]")}>
-        <img src={item.image} alt={item.title} className="w-full h-full object-cover brightness-[0.85]" loading="lazy" decoding="async" />
-        <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
-      </div>
-      <div className="px-3 pt-2.5 pb-1 flex items-center justify-between relative z-20">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setLiked(!liked)} className="active:scale-90 transition-transform">
-            <Heart className={`h-4.5 w-4.5 ${liked ? 'fill-red-500 text-red-500' : 'text-foreground/60 hover:text-foreground'} transition-colors`} />
-          </button>
-          <MessageCircle className="h-4.5 w-4.5 text-foreground/60 hover:text-foreground cursor-pointer transition-colors" />
-          <Share2 className="h-4.5 w-4.5 text-foreground/60 hover:text-foreground cursor-pointer transition-colors" />
-        </div>
-        <button onClick={() => setSaved(!saved)} className="active:scale-90 transition-transform">
-          <Bookmark className={`h-4.5 w-4.5 ${saved ? 'fill-foreground text-foreground' : 'text-foreground/60 hover:text-foreground'} transition-colors`} />
-        </button>
-      </div>
-      <div className="px-3 pb-3 pt-1 relative z-20">
-        <p className="text-[11px] leading-relaxed text-foreground/85 font-tech">
-          <span className="font-bold mr-1 text-primary/80">{item.source}</span>
-          {item.title}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 /* ── Hub Card Component — Tactical ──── */
 function HubCard({
@@ -231,7 +164,7 @@ function HubCard({
   const baseDelay = parseFloat(delay);
   const goToTool = (panel: string) => {
     if (panel === 'swarmgpt') {
-      navigate('/swarmgpt');
+      navigate('/ai-builder');
       return;
     }
     if (commandRoute) {
@@ -295,7 +228,18 @@ export default function Dashboard() {
     const seen = sessionStorage.getItem('fxk-intro-seen');
     return !seen;
   });
-  const [feedFilter, setFeedFilter] = useState<NewsItem['category'] | 'all'>('all');
+  // Industry feed removed — see EmptyHardwareHint for the new honest empty state.
+  const [devicesOnline, setDevicesOnline] = useState(0);
+
+  useEffect(() => {
+    const recompute = () => {
+      try { setDevicesOnline(deviceAggregator.getDevices().filter((d) => d.online).length); }
+      catch { setDevicesOnline(0); }
+    };
+    recompute();
+    const unsub = deviceAggregator.watch(recompute);
+    return () => { try { unsub(); } catch { /* noop */ } };
+  }, []);
 
   const handleIntroComplete = useCallback(() => {
     setShowIntro(false);
@@ -330,8 +274,6 @@ export default function Dashboard() {
     ? differenceInDays(new Date(nextEvent.event_date), new Date())
     : null;
 
-  const filteredNews = feedFilter === 'all' ? MOCK_NEWS : MOCK_NEWS.filter(n => n.category === feedFilter);
-  const visibleNews = isMobile ? filteredNews.slice(0, 4) : filteredNews;
 
   if (showIntro) {
     return <Suspense fallback={<div className="min-h-[100dvh] w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><CinematicIntro onComplete={handleIntroComplete} /></Suspense>;
@@ -340,6 +282,7 @@ export default function Dashboard() {
   return (
     <div className="max-w-7xl mx-auto pb-10 relative br2049-rain">
       <PwaInstallCard />
+      <EmptyHardwareHint />
       {/* ── Hero Banner — Military Cyberpunk HUD ──── */}
       <div className="relative overflow-hidden rounded border bg-surface-1 mb-5 animate-fxk-fade-up"
         style={{ borderColor: 'hsl(32 100% 50% / 0.15)' }}>
@@ -365,25 +308,24 @@ export default function Dashboard() {
         <div className="p-3 md:p-7 relative z-10">
           <div className="flex items-start justify-between">
             <div>
-              {/* Status line */}
-              <div className="flex items-center gap-2 mb-1">
-                <div className="h-2 w-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary)/0.5)]" />
-                <p className="text-[10px] font-mono text-primary tracking-[0.3em] uppercase font-bold">
-                  SYS::ONLINE
+              {/* Live status line — reflects deviceAggregator (no synthetic SYS::ONLINE) */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className={cn(
+                  'h-2 w-2 rounded-full',
+                  devicesOnline > 0
+                    ? 'bg-status-ok animate-pulse shadow-[0_0_8px_hsl(var(--status-ok)/0.5)]'
+                    : 'bg-muted-foreground/40'
+                )} />
+                <p className={cn(
+                  'text-[10px] font-mono tracking-[0.3em] uppercase font-bold',
+                  devicesOnline > 0 ? 'text-status-ok' : 'text-muted-foreground/60'
+                )}>
+                  {devicesOnline > 0 ? `${devicesOnline} DEVICE${devicesOnline === 1 ? '' : 'S'} ONLINE` : 'NO HARDWARE'}
                 </p>
-                <div className="h-[1px] w-8 bg-primary/20" />
+                <div className="h-[1px] w-8 bg-border/40" />
                 <p className="text-[8px] font-mono text-muted-foreground/40 tracking-wider">
-                  FXK v2.0 // {new Date().toLocaleDateString('pt-BR')}
+                  FXK · {new Date().toLocaleDateString('pt-BR')}
                 </p>
-              </div>
-              
-              {/* Telemetry readouts */}
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-[8px] font-mono-code text-muted-foreground/30 tracking-wider">PROJ: {projects.length}</span>
-                <span className="text-[8px] font-mono-code text-muted-foreground/30">|</span>
-                <span className="text-[8px] font-mono-code text-muted-foreground/30 tracking-wider">EVT: {events.length}</span>
-                <span className="text-[8px] font-mono-code text-muted-foreground/30">|</span>
-                <span className="text-[8px] font-mono-code text-muted-foreground/30 tracking-wider">T: {totalMinutes}min</span>
               </div>
 
               <h1 className="text-xl md:text-3xl font-bold font-display tracking-[0.04em] text-foreground uppercase leading-[1.1]">
@@ -541,7 +483,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Main Grid: Left (ops) + Center (feed) + Right ─ */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* ─ Left Column ─ */}
         <div className="space-y-4 order-2 lg:order-1">
@@ -651,40 +593,8 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* ─ Center Column: Instagram Feed ─ */}
-        <div className="order-1 lg:order-2 animate-fxk-stagger" style={{ animationDelay: '0.15s' }}>
-          <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
-            {CATEGORY_FILTERS.map(f => (
-              <button
-                key={f.key}
-                onClick={() => setFeedFilter(f.key)}
-                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200 shrink-0 active:scale-[0.95] ${
-                  feedFilter === f.key
-                    ? 'bg-primary/15 ring-1 ring-primary/30'
-                    : 'bg-card border border-border/30 hover:border-primary/20'
-                }`}
-              >
-                <span className="text-base">{f.emoji}</span>
-                <span className={`text-[9px] font-semibold ${feedFilter === f.key ? 'text-primary' : 'text-muted-foreground'}`}>
-                  {f.label}
-                </span>
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2 mb-3">
-            <Circle className="h-2 w-2 fill-current animate-pulse" style={{ color: 'hsl(32 100% 50%)' }} />
-            <span className="text-[9px] font-mono-code text-muted-foreground tracking-widest uppercase" style={{ color: 'hsl(32 100% 50% / 0.5)' }}>
-              Industry Feed · {filteredNews.length} posts
-            </span>
-          </div>
-          <div className="space-y-4">
-            {visibleNews.map((item, i) => (
-              <div key={item.id} className="animate-fxk-stagger" style={{ animationDelay: `${0.2 + i * 0.08}s` }}>
-                <FeedCard item={item} compact={isMobile} />
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Center column (Industry Feed) removed — placeholder data eliminated. */}
+
 
         {/* ─ Right Column ─ */}
         <div className="space-y-4 order-3">
