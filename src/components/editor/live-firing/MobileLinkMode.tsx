@@ -147,7 +147,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   const [xl4Mode, setXl4Mode] = useState<XL4Mode>('manual');
   const [keyInserted, setKeyInserted] = useState(false);
   const [selectedModule, setSelectedModule] = useState(1);
-  const [selectedOutput, setSelectedOutput] = useState(0); // 0-3 for 4 outputs
+  
   const [modules, setModules] = useState<FieldModule[]>(() => {
     try {
       const saved = localStorage.getItem(MODULES_KEY);
@@ -528,17 +528,23 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          {/* Connection LEDs */}
+        <div className="flex items-center gap-2">
+          {/* Real link/transport indicators only */}
           {[
-            { label: 'ArtN', on: artNetConnected, color: 'green' },
-            { label: 'UDP', on: relayConnected, color: 'cyan' },
-            { label: 'RT', on: connected, color: 'green' },
+            { label: 'Art-Net', on: artNetConnected },
+            { label: 'Relay', on: relayConnected },
+            { label: 'Realtime', on: connected },
+            { label: 'Serial', on: hwConnected },
           ].map(led => (
-            <div key={led.label} className="flex items-center gap-0.5" title={led.label}>
-              <div className={cn("rounded-full w-1.5 h-1.5", led.on ? `bg-${led.color}-500` : "bg-muted-foreground/20")}
-                style={led.on ? { boxShadow: `0 0 4px ${led.color === 'cyan' ? 'rgba(0,220,255,0.5)' : 'rgba(34,197,94,0.5)'}` } : undefined} />
-              <span className={cn("font-mono", tsS, led.on ? `text-${led.color}-500/60` : "text-muted-foreground/20")}>{led.label}</span>
+            <div key={led.label} className="flex items-center gap-1" title={`${led.label} ${led.on ? 'online' : 'offline'}`}>
+              <div className={cn(
+                "rounded-full w-1.5 h-1.5",
+                led.on ? "bg-green-500" : "bg-muted-foreground/25"
+              )}
+                style={led.on ? { boxShadow: '0 0 4px rgba(34,197,94,0.5)' } : undefined} />
+              <span className={cn("font-mono", tsS, led.on ? "text-green-500/70" : "text-muted-foreground/30")}>
+                {led.label}
+              </span>
             </div>
           ))}
         </div>
@@ -610,20 +616,18 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
               {connectedModules.length} MOD · {totalIgniters} IGN · {firedIgniters} FIRED
             </span>
           </div>
-          {/* 4 Output LEDs */}
-          <div className="flex items-center gap-1">
-            <span className={cn("font-mono text-muted-foreground/20 mr-1", tsS)}>OUT:</span>
-            {[0, 1, 2, 3].map(i => (
-              <button key={i} onClick={() => setSelectedOutput(i)}
-                className={cn(
-                  "rounded-full transition-all",
-                  mob ? "w-3 h-3" : "w-2.5 h-2.5",
-                  selectedOutput === i
-                    ? masterArmed ? "bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]" : "bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]"
-                    : "bg-muted-foreground/15 hover:bg-muted-foreground/30"
-                )} title={`Output ${i + 1}`} />
-            ))}
+          {/* Hardware presence (real signals only) */}
+          <div className="flex items-center gap-2">
+            <span className={cn("font-mono", tsS, hwConnected ? "text-green-500/70" : "text-muted-foreground/40")}>
+              HW {hwConnected ? 'ONLINE' : 'OFFLINE'}
+            </span>
+            {hwConnected && (
+              <span className={cn("font-mono text-muted-foreground/40", tsS)}>
+                · {hwModules.length} MOD
+              </span>
+            )}
           </div>
+
         </div>
       </div>
 
@@ -835,16 +839,14 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
               </button>
             </div>
 
-            {/* Timecode source */}
+            {/* Timecode source — internal clock only (real sources not wired) */}
             <div className="flex items-center gap-2">
               <span className={cn("font-mono text-muted-foreground/30", tsS)}>Source:</span>
-              {['Internal', 'LTC', 'MTC', 'GPS'].map(src => (
-                <span key={src} className={cn("font-mono rounded px-1.5 py-0.5 border", tsS,
-                  src === 'Internal' ? "border-primary/30 bg-primary/10 text-primary/70" : "border-border/10 text-muted-foreground/20")}>
-                  {src}
-                </span>
-              ))}
+              <span className={cn("font-mono rounded px-1.5 py-0.5 border border-primary/30 bg-primary/10 text-primary/70", tsS)}>
+                Internal
+              </span>
             </div>
+
 
             {/* Cue list */}
             <div className={cn("rounded border border-border/10 bg-[hsl(220_10%_5%)]", mob ? "p-2" : "p-1.5")}>
