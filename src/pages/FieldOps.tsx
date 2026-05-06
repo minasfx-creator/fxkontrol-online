@@ -14,6 +14,7 @@ import { Nfc, Activity, Smartphone, Cable, Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isFireOneXL43RealOpsEnabled, isFxk32qFieldOpsEnabled } from '@/lib/featureFlags';
 import { useActiveControllers } from '@/hooks/useActiveControllers';
+import { useFXK32QPresence } from '@/hooks/useFXK32QPresence';
 
 const DevicePairing = lazy(() => import('@/components/field/DevicePairingPanel'));
 const FieldTest = lazy(() => import('@/components/command/FieldTestPanel'));
