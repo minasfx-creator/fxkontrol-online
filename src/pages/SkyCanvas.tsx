@@ -38,6 +38,7 @@ import { decodeAudioPeaks } from '@/lib/skycanvasAudioPeaks';
 import { useSmallViewport } from '@/hooks/useSmallViewport';
 import { buildSkyActions } from '@/components/skycanvas/skyActions';
 import TabbedDockPanel from '@/components/skycanvas/TabbedDockPanel';
+import { LIBRARY_TABS, INSPECTOR_TABS, TIMELINE_TABS } from '@/components/skycanvas/skyTabsConfig';
 import MobilePanelSwitcher, { type MobilePanelKey } from '@/components/skycanvas/MobilePanelSwitcher';
 import { TimelineCuesProvider } from '@/components/skycanvas/tabs/TimelineCuesTab';
 
