@@ -224,7 +224,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   useEffect(() => {
     const last = hwEvents[0];
     if (!last) return;
-    if (last.type === 'error' || last.type === 'timeout' || last.type === 'emergency-stop') {
+    if (last.type === 'error' || last.type === 'emergency-stop') {
       recordTransition('serial', 'error');
     }
   }, [hwEvents, recordTransition]);
