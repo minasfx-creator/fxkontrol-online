@@ -5,7 +5,7 @@
  * register anything else. Real-operation commands MUST go through
  * uiCommandGateway in the /command surface, never here.
  */
-export type SkyActionGroup = 'Navigation' | 'Audio' | 'Cues' | 'Layout' | 'Help';
+export type SkyActionGroup = 'Navigation' | 'Audio' | 'Cues' | 'Layout' | 'Project' | 'Help';
 
 export interface SkyAction {
   id: string;
@@ -26,6 +26,10 @@ export interface SkyActionContext {
   toggleCinema: () => void;
   resetDock: () => void;
   goCommand: () => void;
+  goAiBuilder: () => void;
+  goStrategy: () => void;
+  openImportVdl: () => void;
+  exportShowJson: () => void;
 }
 
 export function buildSkyActions(ctx: SkyActionContext): SkyAction[] {
@@ -43,8 +47,23 @@ export function buildSkyActions(ctx: SkyActionContext): SkyAction[] {
     { id: 'layout.cinema',group: 'Layout',     label: 'Modo cinema (ocultar painéis)',kbd: '⌘\\',safety: 'inert', run: ctx.toggleCinema },
     { id: 'layout.reset', group: 'Layout',     label: 'Restaurar layout padrão',      kbd: '⇧⌘0',safety: 'inert', run: ctx.resetDock },
 
+    // ── Project ──
+    { id: 'project.importVdl', group: 'Project', label: 'Importar catálogo VDL/CSV…',
+      hint: 'Drop-in catalog importer (RFC 4180)',
+      safety: 'inert', run: ctx.openImportVdl },
+    { id: 'project.exportJson', group: 'Project', label: 'Exportar show (JSON bundle)',
+      hint: 'Inspect-only download — não dispara hardware',
+      safety: 'inert', run: ctx.exportShowJson },
+
     // ── Navigation ──
-    { id: 'nav.command',  group: 'Navigation', label: 'Ir para Centro de Comando…', hint: 'Operação real via uiCommandGateway',
+    { id: 'nav.aiBuilder', group: 'Navigation', label: 'Abrir AI Show Builder…',
+      hint: 'Geração assistida (LLM, sandboxed)',
+      safety: 'inert', run: ctx.goAiBuilder },
+    { id: 'nav.strategy',  group: 'Navigation', label: 'Strategic Command Hub…',
+      hint: 'GTM · demo sessions · client approval',
+      safety: 'inert', run: ctx.goStrategy },
+    { id: 'nav.command',   group: 'Navigation', label: 'Ir para Centro de Comando…',
+      hint: 'Operação real via uiCommandGateway',
       safety: 'inert', run: ctx.goCommand },
 
     // ── Help ──
