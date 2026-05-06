@@ -41,6 +41,7 @@ const EngineProvider = lazy(lazyRetry(() => import('@/orchestration/EngineProvid
 // Mission Control cockpit strip — read-only chips (work mode, safety state,
 // readiness, devices, plan hash). Hidden in /command and /pairing/*.
 const GlobalSafetyBar = lazy(lazyRetry(() => import('@/components/safety/GlobalSafetyBar')));
+const FieldDiagnosticsDock = lazy(lazyRetry(() => import('@/components/safety/FieldDiagnosticsDock')));
 
 function SidebarToggleButton() {
   const { state, toggleSidebar } = useSidebar();
