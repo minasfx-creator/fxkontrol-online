@@ -1,75 +1,87 @@
-## Rodada 15 — §2.3 Erradicar Mocks dos Consoles
+# Livrarias de Efeitos — Padrão Finale 3D (527 parts)
 
-**Objetivo**: substituir os 4 consoles que hoje exibem dados estáticos/simulados por wiring real ao `ShowPlan` canônico + `deviceAggregator`, sem violar a cadeia de safety (zero `uiCommandGateway`/`fieldBus`/`SafetyStateMachine.transition`).
+## Inspeção dos uploads
 
-### Frentes
+| Arquivo | Manufacturer | Parts | Schema |
+|---|---|---:|---|
+| Showven_✔️Finale_Verified | Showven | 181 | 35 cols canônicas |
+| Lidu_USA | Lidu | 112 | 35 cols canônicas |
+| Magic_Fireworks | Magic Fireworks | 40 | 35 cols canônicas |
+| Winda_Fireworks | Winda | 85 | 31 cols **Display Names** (precisa map) |
+| Amazon_Fireworks_V2.1 | Amazon Fireworks | 109 | 35 cols canônicas |
+| **Total** | | **527** | |
 
-1. **Hook canônico `useShowPlanProjection`**
-   - Deriva `ShowPlan` (pyroCues, droneCues, modules, art-net universes) a partir de `useProjectStore` via memo estável.
-   - Fonte única para todos os consoles desta rodada — elimina drift entre UI e ShowPlan.
+Schema canônico Finale 3D Part Library:
+`partNumber, qoh, available, description, size, internalDelay, duration, height, numDevices, color, subtype, vdl, manufacturerPartNumber, manufacturer, partType, stdPrice, stdLocation, lockoutDefault, numTubes, category, customPartField, rackType, partNotes, dmxPatch, exNumber, ceNumber, unNumber, stdCost, safetyDistance, fuseDelay, weight, neq, physicalSpecifications, dmxFixtureDefinition, ematches`
 
-2. **`FireOneExportConsole` (real)**
-   - Remove fixtures `MOCK_FIRE_CUES`.
-   - Consome projeção e gera preview `.fir` reaproveitando `goldenShowExport.ts`.
-   - `<ProvenanceBadge>`: SIMULATED se sem FXK16 online, LIVE-RO quando módulo aparece em `deviceAggregator`.
+Winda usa cabeçalhos por extenso ("Product ID", "Effect height", …) — mapa de tradução já validado.
 
-3. **`DMXArtNetConsole` (real)**
-   - Universos derivados de `ShowPlan.modules` + ArtPoll entries do aggregator.
-   - Tabela 512ch × N universos com colunas "ShowPlan" vs "Live (read-only)".
-   - Sem broadcast (zero send). Reaproveita `dmxTimingHarness` só para exibir budget atual.
+## O que será criado
 
-4. **`CueConflictsConsole` (novo)**
-   - Wrapper read-only do `verificationEngine.run()` filtrado por severidade `error|warn`, agrupado por `cueId`.
-   - Rota `/dev/cue-conflicts`.
-   - Slot opcional na `GlobalSafetyBar` exibindo contador quando `errors > 0` (não bloqueia).
+### 1. Schema canônico — `src/data/effectsLibraries/finalePart.ts`
+- `interface FinalePart` (35 campos opcionais, `partNumber` obrigatório)
+- `interface FinaleLibrary { manufacturer, slug, count, parts }`
+- `FINALE_PART_COLUMNS` (ordem oficial p/ export XLSX 1:1 com Finale 3D)
+- `WINDA_DISPLAY_TO_CANONICAL` (mapa de import)
 
-5. **`AddressingPanel` reativado**
-   - Rota `/dev/addressing` lendo `ArtNetUniverseEntry[]` da projeção.
-   - Mostra start_address + fixture_type quando os campos existirem (gracioso se ausentes — depende da §2.4 futura).
+### 2. Seeds JSON — `src/data/effectsLibraries/{showven,lidu,magic,winda,amazon}.json`
+Conversão XLSX→JSON já executada (NaN strip, ints onde aplicável, Winda renomeado). 527 parts validadas. Manifest em `index.json`.
 
-### Guard test
+### 3. Adapter VDL render-accurate — `src/data/effectsLibraries/adapter.ts`
+- `finalePartToEffect(part, { librarySlug })`:
+  1. Sniff de cor a partir de `color + vdl + description` (PT/EN: red/vermelho, gold/dourado, …)
+  2. RGB hint → **`quantizeRgbToVdl()`** (pipeline LED-accurate já canônico — `mem://funcionalidades/vdl-color-pipeline-render-led-accurate`)
+  3. `effect.color = vdl.renderHex` (palette × luminância de input — dim fica dim)
+  4. `parseCaliberInches("3"" | "30mm" | "1.2"")` → polegadas
+  5. Pattern sniff via VDL (chrysanthemum/willow/strobe/crackle/comet/mine/…)
+  6. `partType` mapeia `flame/sfx/laser/light/drone/formation` → `Effect.type`
+- `ledAccurateHex(hex)` — re-tinta hex existente
 
-- `mocksErradicated.guard.spec.ts`: ripgrep proíbe identificadores `MOCK_`/`FAKE_`/`SIMULATED_DATA`/`STATIC_FIXTURE` nos 4 arquivos de console.
+### 4. Registry runtime — `src/data/effectsLibraries/registry.ts`
+- 5 imports estáticos (tree-shake friendly)
+- `listFinaleLibraries()`, `getFinaleLibrary(slug)`, `getFinalePart(id)`
+- `searchFinaleParts({ query, manufacturers, partTypes, minCaliberIn, maxCaliberIn, limit })`
+- `buildImportedEffects()` → `Effect[]` para o `EffectLibrarySidebar`
+- `getRegistrySummary()` — contagem por fabricante
 
-### Testes funcionais
+### 5. Importador unificado XLSX/JSON — `src/data/effectsLibraries/import.ts`
+- `parseFinalePartsXlsx(file: File): Promise<FinaleLibrary>` (usando `xlsx` já no projeto)
+  - Detecta header canônico vs Winda Display Names automaticamente
+  - Coage tipos numéricos, drop NaN, valida `partNumber` único
+  - Retorna `{ manufacturer, slug, count, parts, warnings[] }`
+- `parseFinalePartsJson(text): FinaleLibrary` — mesmo contrato
+- **Estabelece como padrão único de import**: qualquer novo XLSX/JSON entra por essa porta
 
-- `useShowPlanProjection.spec.ts` — estabilidade de referência + recomputação on cue change.
-- `fireOneExportConsole.honesty.spec.tsx` — provenance correto sem device, com device.
-- `dmxArtNetConsole.honesty.spec.tsx` — universos espelham `ShowPlan.modules`.
-- `cueConflictsConsole.spec.tsx` — agrupamento por cueId, contador na bar.
+### 6. UI: `EffectLibrarySidebar` consome registry
+- Patch mínimo: combinar `EFFECT_LIBRARY` (legacy) + `buildImportedEffects()`
+- Filtros já existentes (categoria/tipo) ganham 5 manufacturers
+- Cores no sidebar passam pelo VDL pipeline → preview = LED real
 
-### Não-objetivos (rodadas seguintes)
+### 7. Inspeção: `/dev/effects-libraries`
+- Painel read-only:
+  - Resumo (5 libs × 527 parts)
+  - Tabela: partNumber · description · partType · caliber · color (chip renderHex) · VDL · prefire · duration
+  - Search box (query/manufacturer/type)
+  - Botão "Import XLSX" valida e mostra `FinaleLibrary` parseado (não persiste — modo dev)
 
-- §2.1 Auto-invocar `fromProjectStore()` no ciclo de vida (Rodada 16 candidata).
-- §2.2 Bloquear writes diretos VVIZ/CSV no ProjectStore (Rodada 17 candidata).
-- §2.4 Expandir tipos `SafetyInterlockState`/`IgnitionChannel.relay_state`/etc.
+### 8. Render: VDL → engine
+Os efeitos importados já carregam `Effect.color = renderHex` + `impliesTrail` + `pattern`. O `Show3DEngine` consome essa cor diretamente em `Particle Explosion` (mem `show3d-engine-playback-auto-fire`), garantindo paridade simulação ↔ realidade LED.
 
-### Invariantes preservados
+### 9. Memory + testes
+- Atualizar `mem://index.md` + nova entrada `mem://funcionalidades/finale-libraries-import-canonical`
+- Tests:
+  - `finalePartAdapter.spec.ts` — color quantize, caliber parser PT/EN/inch/mm, pattern sniff
+  - `effectsLibrariesRegistry.spec.ts` — totais (527), search filters, lookup por id
+  - `windaDisplayMap.spec.ts` — todos os 30 cabeçalhos Winda mapeiam
 
-- Zero import de `uiCommandGateway`, `fieldBus`, `safetyStateMachine.transition` nos novos componentes.
-- Cadeia E-STOP <50ms intocada.
-- WorkMode/SSM inalterados.
-- DS tokens canônicos (Vantablack + cyan-dessat + ds-status-*).
+## Fora de escopo (proposto)
+- Persistência das livrarias em backend (hoje vivem em JSON estático bundled)
+- Editor de parts (criar/alterar) — só leitura por enquanto
+- Export XLSX 1:1 Finale 3D (separável; viável depois com `xlsx` writer + `FINALE_PART_COLUMNS`)
 
-### Entregáveis
-
-```text
-src/
-  hooks/useShowPlanProjection.ts                  (novo)
-  components/editor/FireOneExportConsole.tsx      (refactor)
-  components/editor/DMXArtNetConsole.tsx          (refactor)
-  components/editor/AddressingPanel.tsx           (refactor + montar rota)
-  components/safety/CueConflictsConsole.tsx       (novo)
-  pages/dev/CueConflicts.tsx                      (novo)
-  pages/dev/Addressing.tsx                        (novo)
-  __tests__/
-    useShowPlanProjection.spec.ts
-    fireOneExportConsole.honesty.spec.tsx
-    dmxArtNetConsole.honesty.spec.tsx
-    cueConflictsConsole.spec.tsx
-    mocksErradicated.guard.spec.ts
-src/App.tsx                                       (+2 rotas /dev)
-mem://index.md                                    (+1 entrada Rodada 15)
-```
-
-Suite alvo: 1263 → ~1273 testes verdes.
+## Critério de aceite
+- 527 parts disponíveis no `EffectLibrarySidebar`
+- Cores no preview = `renderHex` (VDL pipeline)
+- `/dev/effects-libraries` lista as 5 livrarias com totais corretos
+- XLSX dropado no painel é parseado em FinaleLibrary sem perda de campos
+- Suite verde (3 specs novos)
