@@ -158,7 +158,7 @@ function LightPointsLayer() {
         <LightPoint
           key={p.id}
           position={[p.x, Math.max(p.y, 1), p.z]}
-          color={p.color || '#2dd4ff'}
+          color={ledAccurateColor(p.color, '#2dd4ff')}
           active={activeIds.has(p.id)}
         />
       ))}
