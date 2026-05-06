@@ -187,6 +187,8 @@ function App() {
                     {/* Public diagnostics — intentionally outside ProtectedRoute so it can
                         be opened without login while debugging Live Firing / DMX issues. */}
                     <Route path="/diagnostics/dmx-pyro" element={<DmxPyroDiagnostics />} />
+                    {/* Public dev hub — visual index of all dev surfaces. */}
+                    <Route path="/dev" element={<DevIndex />} />
                     {/* Public real-hardware discovery probe — loops scanLight() and shows
                         every device the browser sees, with zero simulated data. */}
                     <Route path="/dev/real-discovery" element={<RealDiscoveryProbe />} />
