@@ -52,9 +52,10 @@ const BlePairingWizard = lazy(lazyRetry(() => import("./pages/BlePairingWizard")
 const PairingWizard = lazy(lazyRetry(() => import("./pages/PairingWizard")));
 const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
 
-const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")));
-const SkyCanvas3DDemo = lazy(lazyRetry(() => import("./pages/dev/SkyCanvas3DDemo")));
-const SkyCanvas2Demo = lazy(lazyRetry(() => import("./pages/dev/SkyCanvas2Demo")));
+// SkyCanvas dev lab — unified harness for smoke / r3f / v2 variants.
+// Substitui as 3 rotas dev (/dev/skycanvas-{smoke,3d,2}) com um único
+// chunk lazy + toggle de variante na própria UI (Rodada 6).
+const SkyCanvasLab = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasLab")));
 const UE5BridgePage = lazy(lazyRetry(() => import("./pages/dev/UE5BridgePage")));
 const VideoEditor = lazy(lazyRetry(() => import("./pages/VideoEditor")));
 const SkyCanvasPage = lazy(lazyRetry(() => import("./pages/SkyCanvas")));
