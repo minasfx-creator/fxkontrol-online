@@ -718,7 +718,15 @@ export default function SkyCanvasPage() {
       <div data-panel-id="library">
         <StudioErrorBoundary area="SkyCanvas · Library">
           <FloatingPanel id="library" title="Biblioteca" state={dock.panels.library}>
-            <EffectLibrarySidebar />
+            <TabbedDockPanel
+              defaultValue="effects"
+              tabs={[
+                { value: 'effects',   label: 'Efeitos',  load: () => import('@/components/skycanvas/tabs/LibraryEffectsTab') },
+                { value: 'fixtures',  label: 'Fixtures', load: () => import('@/components/skycanvas/tabs/LibraryFixturesTab') },
+                { value: 'templates', label: 'Templates',load: () => import('@/components/skycanvas/tabs/LibraryTemplatesTab') },
+                { value: 'geo',       label: 'Local',    load: () => import('@/components/skycanvas/tabs/LibraryGeoTab') },
+              ]}
+            />
           </FloatingPanel>
         </StudioErrorBoundary>
       </div>
@@ -726,7 +734,17 @@ export default function SkyCanvasPage() {
       <div data-panel-id="inspector">
         <StudioErrorBoundary area="SkyCanvas · Inspector">
           <FloatingPanel id="inspector" title="Inspector" state={dock.panels.inspector}>
-            <Inspector cap={cap} />
+            <TabbedDockPanel
+              defaultValue="cue"
+              dense
+              tabs={[
+                { value: 'cue',      label: 'Cue',      load: () => import('@/components/skycanvas/tabs/InspectorCueTab') },
+                { value: 'scene',    label: 'Cena',     load: () => import('@/components/skycanvas/tabs/InspectorSceneTab') },
+                { value: 'render',   label: 'Render',   load: () => import('@/components/skycanvas/tabs/InspectorRenderTab') },
+                { value: 'hardware', label: 'Hardware', load: () => import('@/components/skycanvas/tabs/HardwareObserverTab') },
+                { value: 'strategy', label: 'Strategy', load: () => import('@/components/skycanvas/tabs/StrategyContextTab') },
+              ]}
+            />
           </FloatingPanel>
         </StudioErrorBoundary>
       </div>
