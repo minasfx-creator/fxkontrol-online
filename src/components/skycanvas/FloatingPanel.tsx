@@ -251,7 +251,8 @@ function FloatingPanelImpl({ id, title, state, bottomStrip, className, variant =
         aria-label={title}
         aria-expanded
         className={cn(
-          'glass-pane absolute z-40 flex flex-col overflow-hidden text-zinc-200',
+          variant === 'v2' ? 'glass-pane-v2' : 'glass-pane',
+          'absolute z-40 flex flex-col overflow-hidden text-zinc-200',
           isMobile ? 'rounded-t-3xl border-t border-white/[0.08]' : 'rounded-2xl',
           dragging ? 'cursor-grabbing select-none' : '',
           reducedMotion ? '' : 'transition-shadow duration-300',
