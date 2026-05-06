@@ -41,6 +41,10 @@ import { FloatingPanel } from '@/components/skycanvas/FloatingPanel';
 import { dockStore, useFloatingDock } from '@/hooks/useFloatingDock';
 import { useSmallViewport } from '@/hooks/useSmallViewport';
 import { buildSkyActions } from '@/components/skycanvas/skyActions';
+import TabbedDockPanel from '@/components/skycanvas/TabbedDockPanel';
+import { useActiveDemoSession } from '@/hooks/useActiveDemoSession';
+import { ClaimBadge } from '@/components/strategy/ClaimBadge';
+import { useWorkMode } from '@/core/safety/workMode';
 import { cn } from '@/lib/utils';
 
 const SkyCanvas2 = lazy(lazyRetry(() => import('@/components/show3d/v2/SkyCanvas2')));
