@@ -38,8 +38,10 @@ export default function FieldOpsPage() {
   const controllers = useActiveControllers();
   const fireoneOnline = controllers.controllers.some(c => c.profile.kind === 'fireone');
   const fireoneVisible = isFireOneXL43RealOpsEnabled() || fireoneOnline;
-  const fxk32qOnline = controllers.controllers.some(c => c.profile.kind === 'fxk32q');
-  const fxk32qVisible = isFxk32qFieldOpsEnabled() || fxk32qOnline;
+  // FXK32Q presence: aggregator + adapter handshake + verified provenance.
+  // Bench/preflight override stays via the localStorage flag.
+  const fxk32qPresence = useFXK32QPresence();
+  const fxk32qVisible = isFxk32qFieldOpsEnabled() || fxk32qPresence.deviceOnline;
   const TABS = ALL_TABS.filter(t =>
        (t.key !== 'fireone' || fireoneVisible)
     && (t.key !== 'fxk32q'  || fxk32qVisible)
