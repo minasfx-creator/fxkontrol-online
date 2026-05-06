@@ -26,7 +26,16 @@ import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { recordSafetyNote } from '@/core/safety/safetyBlackBox';
 import { isSimulating } from '@/core/safety/simulationGuard';
-import { showPlanHash } from '@/core/showplan/showPlanHash';
+import { canonicalizeShowPlan } from '@/core/showplan/showPlanHash';
+
+function fnv1a(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return ('00000000' + h.toString(16)).slice(-8);
+}
 import {
   FIREONE_MAX_MODULES,
   FIREONE_MIN_FIRE_DURATION,
@@ -74,14 +83,14 @@ function safeFilename(name: string): string {
 
 export function generateFireOneCsv(): FireOneCsvResult {
   const sp = showPlanManager.current;
-  const planHash = showPlanHash(sp);
+  const planHash = `fnv1a:${fnv1a(canonicalizeShowPlan(sp))}`;
   const errors: string[] = [];
   const warnings: string[] = [];
 
   const v = verificationEngine.run();
   const verified = v.level === 'READY_FOR_EXPORT' || v.level === 'READY_FOR_FIELD';
   if (!verified) {
-    const blocking = v.checks?.filter(c => !c.passed && c.severity === 'error') ?? [];
+    const blocking = (v.issues ?? []).filter(c => !c.passed && c.severity === 'error');
     blocking.forEach(c => errors.push(`[VERIFY] ${c.label}: ${c.detail}`));
   }
 
