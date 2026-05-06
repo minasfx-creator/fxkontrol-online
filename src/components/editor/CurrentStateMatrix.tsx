@@ -9,6 +9,7 @@ import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { useHardwareRegistry } from '@/core/hardware/useHardwareRegistry';
 import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry';
 import { getProvenanceBadge, type IntegrationMode, type EvidenceLevel } from '@/core/hardware/provenance';
+import { ProvenanceBadge } from '@/components/safety/ProvenanceBadge';
 import { cn } from '@/lib/utils';
 import { Activity, CheckCircle2, AlertTriangle, MinusCircle, XCircle } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
@@ -156,7 +157,7 @@ export default function CurrentStateMatrix() {
                 <span className={cn('text-[7px] font-mono px-1.5 py-0.5 rounded', cfg.bg, cfg.color)}>{cfg.label}</span>
               </div>
               <div className="flex justify-center">
-                <span className={cn('text-[7px] font-mono px-1.5 py-0.5 rounded', MODE_COLORS[row.integrationMode])}>{badge.label}</span>
+                <ProvenanceBadge mode={row.integrationMode} compact />
               </div>
               <div className="flex justify-center">
                 <span className={cn('text-[7px] font-mono', EVIDENCE_COLORS[row.evidenceLevel])}>{row.evidenceLevel.replace(/_/g, ' ')}</span>

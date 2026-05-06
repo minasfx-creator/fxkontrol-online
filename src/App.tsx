@@ -65,6 +65,7 @@ const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")
 const ModuleRoster = lazy(lazyRetry(() => import("./pages/dev/ModuleRoster")));
 const E2ETestPage = lazy(lazyRetry(() => import("./pages/dev/E2ETestPage")));
 const GoldenShowsCatalog = lazy(lazyRetry(() => import("./pages/dev/GoldenShows")));
+const BlackBoxInspector = lazy(lazyRetry(() => import("./pages/dev/BlackBoxInspector")));
 
 const FXK16Hub = lazy(lazyRetry(() => import("./pages/dev/FXK16Hub")));
 const DevIndex = lazy(lazyRetry(() => import("./pages/dev/DevIndex")));
@@ -222,6 +223,9 @@ function App() {
                         Libertadores ShowPlan + PDF + honest export ZIP. */}
                     <Route path="/dev/libertadores" element={<Navigate to="/dev/golden-shows" replace />} />
                     <Route path="/dev/golden-shows" element={<GoldenShowsCatalog />} />
+                    {/* Forensic, read-only view of the unified Safety Black Box
+                        (hash-chained gate verdicts). Never arms; never writes. */}
+                    <Route path="/dev/blackbox-inspector" element={<BlackBoxInspector />} />
                     {/* Public alias — promoted shell route. */}
                     <Route path="/editor-ds" element={<EditorShellPreview />} />
                     {/* Public legal pages — required by Paddle (Merchant of Record) and must be crawlable without auth. */}
