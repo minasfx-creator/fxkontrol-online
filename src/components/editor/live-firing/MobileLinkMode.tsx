@@ -20,7 +20,7 @@ import {
   Shield, ShieldAlert, Lock, Unlock, Key, Radio, Signal, Timer,
   Play, Square, SkipForward, Hand, AlertTriangle, Check, X,
   Wifi, WifiOff, ChevronLeft, ChevronRight, Activity, Eye, Usb,
-  RefreshCw, Search, CircuitBoard
+  RefreshCw, Search, CircuitBoard, History
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -185,6 +185,57 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   const [hwEvents, setHwEvents] = useState<FireOneEvent[]>([]);
   const [hwScanning, setHwScanning] = useState(false);
   // Hardware honesty: real FireOne only — no synthetic toggle.
+
+  // ─── Link transition mini-history (last 60s) ───
+  type LinkName = 'artnet' | 'relay' | 'realtime' | 'serial';
+  type LinkState = 'online' | 'offline' | 'error';
+  interface LinkTransition {
+    id: string;
+    timestamp: number;
+    link: LinkName;
+    from: LinkState;
+    to: LinkState;
+  }
+  const HISTORY_WINDOW_MS = 60_000;
+  const [linkHistory, setLinkHistory] = useState<LinkTransition[]>([]);
+  const [historyWindow, setHistoryWindow] = useState<30 | 60>(60);
+  const [showHistory, setShowHistory] = useState(false);
+  const prevLinkRef = useRef<Record<LinkName, LinkState>>({
+    artnet: 'offline', relay: 'offline', realtime: 'offline', serial: 'offline',
+  });
+  const recordTransition = useCallback((link: LinkName, to: LinkState) => {
+    const from = prevLinkRef.current[link];
+    if (from === to) return;
+    prevLinkRef.current[link] = to;
+    setLinkHistory(prev => {
+      const next = [...prev, {
+        id: nextEvtId(), timestamp: Date.now(), link, from, to,
+      }];
+      // cap at 200 entries to bound memory; window filtering happens at render
+      return next.length > 200 ? next.slice(-200) : next;
+    });
+  }, []);
+  // Watch real signals → transition log
+  useEffect(() => { recordTransition('artnet',   artNetConnected ? 'online' : 'offline'); }, [artNetConnected, recordTransition]);
+  useEffect(() => { recordTransition('relay',    relayConnected  ? 'online' : 'offline'); }, [relayConnected,  recordTransition]);
+  useEffect(() => { recordTransition('realtime', connected       ? 'online' : 'offline'); }, [connected,       recordTransition]);
+  useEffect(() => { recordTransition('serial',   hwConnected     ? 'online' : 'offline'); }, [hwConnected,     recordTransition]);
+  // Map FireOne hardware errors into the serial link history
+  useEffect(() => {
+    const last = hwEvents[0];
+    if (!last) return;
+    if (last.type === 'error' || last.type === 'emergency-stop') {
+      recordTransition('serial', 'error');
+    }
+  }, [hwEvents, recordTransition]);
+  // Periodic prune to keep linkHistory bounded to current window
+  useEffect(() => {
+    const id = setInterval(() => {
+      const cutoff = Date.now() - HISTORY_WINDOW_MS;
+      setLinkHistory(prev => prev[0] && prev[0].timestamp < cutoff ? prev.filter(e => e.timestamp >= cutoff) : prev);
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
 
   // Persist
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(fixtures)); }, [fixtures]);
@@ -626,9 +677,81 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
                 · {hwModules.length} MOD
               </span>
             )}
+            <button
+              onClick={() => setShowHistory(v => !v)}
+              title="Histórico de transições de link"
+              className={cn(
+                "ml-1 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono uppercase transition-colors",
+                tsS,
+                showHistory
+                  ? "border-primary/40 text-primary bg-primary/10"
+                  : "border-border/20 text-muted-foreground/50 hover:text-muted-foreground"
+              )}>
+              <History className="w-3 h-3" />
+              HIST {linkHistory.filter(e => e.timestamp >= Date.now() - historyWindow * 1000).length}
+            </button>
           </div>
 
         </div>
+        {showHistory && (() => {
+          const cutoff = Date.now() - historyWindow * 1000;
+          const recent = linkHistory.filter(e => e.timestamp >= cutoff).slice().reverse();
+          const linkColor: Record<LinkName, string> = {
+            artnet: 'text-cyan-400', relay: 'text-amber-400',
+            realtime: 'text-violet-400', serial: 'text-green-400',
+          };
+          const stateColor: Record<LinkState, string> = {
+            online: 'text-green-400', offline: 'text-muted-foreground/60', error: 'text-red-400',
+          };
+          return (
+            <div className="border-t border-border/10 px-2 py-1.5">
+              <div className="flex items-center justify-between mb-1">
+                <span className={cn("font-mono uppercase tracking-wider text-muted-foreground/60", tsS)}>
+                  Link history · last {historyWindow}s
+                </span>
+                <div className="flex items-center gap-1">
+                  {[30, 60].map(w => (
+                    <button key={w} onClick={() => setHistoryWindow(w as 30 | 60)}
+                      className={cn(
+                        "rounded px-1.5 py-0.5 font-mono border", tsS,
+                        historyWindow === w
+                          ? "border-primary/40 text-primary bg-primary/10"
+                          : "border-border/15 text-muted-foreground/40 hover:text-muted-foreground/70"
+                      )}>{w}s</button>
+                  ))}
+                  <button onClick={() => setLinkHistory([])}
+                    className={cn("rounded px-1.5 py-0.5 font-mono border border-border/15 text-muted-foreground/40 hover:text-red-400", tsS)}>
+                    Clear
+                  </button>
+                </div>
+              </div>
+              {recent.length === 0 ? (
+                <div className={cn("font-mono text-muted-foreground/30 py-1", tsS)}>
+                  Sem transições nos últimos {historyWindow}s — links estáveis.
+                </div>
+              ) : (
+                <ScrollArea className="max-h-24">
+                  <div className="flex flex-col gap-0.5">
+                    {recent.map(e => {
+                      const ageS = Math.max(0, Math.round((Date.now() - e.timestamp) / 1000));
+                      const tStr = new Date(e.timestamp).toLocaleTimeString('pt-BR', { hour12: false });
+                      return (
+                        <div key={e.id} className={cn("flex items-center gap-2 font-mono", tsS)}>
+                          <span className="text-muted-foreground/40 w-16 shrink-0">{tStr}</span>
+                          <span className="text-muted-foreground/30 w-8 shrink-0">-{ageS}s</span>
+                          <span className={cn("uppercase font-bold w-16 shrink-0", linkColor[e.link])}>{e.link}</span>
+                          <span className={cn("uppercase", stateColor[e.from])}>{e.from}</span>
+                          <span className="text-muted-foreground/30">→</span>
+                          <span className={cn("uppercase font-bold", stateColor[e.to])}>{e.to}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {masterArmed && (
