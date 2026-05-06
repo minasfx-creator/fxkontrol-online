@@ -381,10 +381,25 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
               </div>
             )}
 
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => setStep('mapping')}>
-                ← Mapping
-              </Button>
+            {/* Cue spread selector — drops the imported effects as cue markers on the timeline */}
+            <div className="flex items-center gap-2 bg-muted/30 border border-border/60 rounded-md px-2 py-1.5">
+              <Clock className="w-3 h-3 text-primary flex-shrink-0" />
+              <span className="text-[10px] text-muted-foreground flex-shrink-0">Drop como cues:</span>
+              <Select value={cueSpread} onValueChange={(v) => setCueSpread(v as CueSpreadMode)}>
+                <SelectTrigger className="h-7 text-[10px] flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" className="text-[10px]">— Não criar cues —</SelectItem>
+                  <SelectItem value="evenly" className="text-[10px]">Distribuir uniformemente (5–95%)</SelectItem>
+                  <SelectItem value="at-playhead" className="text-[10px]">No playhead atual</SelectItem>
+                  <SelectItem value="fixed-1s" className="text-[10px]">A cada 1s a partir do playhead</SelectItem>
+                  <SelectItem value="fixed-2s" className="text-[10px]">A cada 2s a partir do playhead</SelectItem>
+                  <SelectItem value="fixed-5s" className="text-[10px]">A cada 5s a partir do playhead</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
               <div className="flex-1" />
               <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => onOpenChange(false)}>
                 <X className="w-3 h-3 mr-1" /> Cancel
