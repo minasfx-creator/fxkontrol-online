@@ -9,6 +9,7 @@ import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { useHardwareRegistry } from '@/core/hardware/useHardwareRegistry';
 import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry';
 import { getProvenanceBadge, type IntegrationMode, type EvidenceLevel } from '@/core/hardware/provenance';
+import { ProvenanceBadge } from '@/components/safety/ProvenanceBadge';
 import { cn } from '@/lib/utils';
 import { Activity, CheckCircle2, AlertTriangle, MinusCircle, XCircle } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
