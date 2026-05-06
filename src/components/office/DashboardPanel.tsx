@@ -80,6 +80,7 @@ const MASTER_EDITOR_TOOLS: HubTool[] = [
   { label: 'Storyboard', icon: Layers, panel: 'storyboard' },
   { label: 'Timeline', icon: Clapperboard, panel: '' },
   { label: 'Templates', icon: LayoutTemplate, panel: 'templates' },
+  { label: 'Golden', icon: Sparkles, panel: 'golden' },
 ];
 
 /* ── Transport Availability Indicator ─────────────────── */
@@ -167,12 +168,16 @@ function HubCard({
       navigate('/ai-builder');
       return;
     }
+    if (panel === 'golden') {
+      navigate('/dev/golden-shows');
+      return;
+    }
     if (commandRoute) {
       navigate(panel ? `/command?mode=${panel}` : '/command');
     } else if (panel) {
       navigate(`/editor?panel=${panel}`);
     } else {
-      navigate('/studio');
+      navigate('/skycanvas');
     }
   };
 
@@ -340,7 +345,7 @@ export default function Dashboard() {
                 variant="outline"
                 size="sm"
                 className="hidden md:flex gap-1.5 text-[10px] font-mono tracking-wider border-primary/20 text-primary hover:bg-primary/10 rounded uppercase"
-                onClick={() => navigate('/studio')}
+                onClick={() => navigate('/skycanvas')}
               >
                 <ArrowRight className="h-3 w-3" />
                 RESUME
@@ -504,7 +509,7 @@ export default function Dashboard() {
           {/* Mobile Command Launcher */}
           <div className="space-y-2 animate-fxk-stagger" style={{ animationDelay: '0.2s' }}>
             <button
-              onClick={() => navigate('/studio?panel=remotecontrol')}
+              onClick={() => navigate('/skycanvas?panel=remotecontrol')}
               className="w-full group relative overflow-hidden rounded-xl border border-accent/20 bg-gradient-to-r from-accent/5 via-card to-primary/5 p-4 text-left transition-all duration-300 hover:border-accent/40 hover:shadow-[0_0_20px_hsl(var(--accent)/0.1)] active:scale-[0.98]"
             >
               <div className="flex items-center gap-3">
@@ -525,13 +530,13 @@ export default function Dashboard() {
             </button>
             <div className="flex gap-2">
               <button
-                onClick={() => navigate('/studio?panel=remotecontrol&mode=wifi')}
+                onClick={() => navigate('/skycanvas?panel=remotecontrol&mode=wifi')}
                 className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent/20 bg-accent/5 text-[9px] font-semibold text-accent hover:bg-accent/10 transition-colors active:scale-95"
               >
                 📶 WiFi
               </button>
               <button
-                onClick={() => navigate('/studio?panel=remotecontrol&mode=cloud')}
+                onClick={() => navigate('/skycanvas?panel=remotecontrol&mode=cloud')}
                 className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/20 bg-primary/5 text-[9px] font-semibold text-primary hover:bg-primary/10 transition-colors active:scale-95"
               >
                 ☁️ Cloud
@@ -640,7 +645,7 @@ export default function Dashboard() {
                 <FolderOpen className="h-3.5 w-3.5 text-primary" />
                 <span className="text-xs font-semibold text-foreground">Projetos</span>
               </div>
-              <Button variant="ghost" size="sm" className="text-[10px] h-5 text-muted-foreground" onClick={() => navigate('/studio')}>
+              <Button variant="ghost" size="sm" className="text-[10px] h-5 text-muted-foreground" onClick={() => navigate('/skycanvas')}>
                 Todos
               </Button>
             </div>
@@ -649,7 +654,7 @@ export default function Dashboard() {
                 <div className="py-6 text-center">
                   <Rocket className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2" />
                   <p className="text-[10px] text-muted-foreground">Nenhum projeto.</p>
-                  <Button variant="outline" size="sm" className="mt-2 text-[10px] h-7" onClick={() => navigate('/studio')}>
+                  <Button variant="outline" size="sm" className="mt-2 text-[10px] h-7" onClick={() => navigate('/skycanvas')}>
                     <Plus className="h-3 w-3 mr-1" /> Criar
                   </Button>
                 </div>
@@ -658,7 +663,7 @@ export default function Dashboard() {
                 <div
                   key={p.id}
                   className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 cursor-pointer transition-colors group"
-                  onClick={() => { localStorage.setItem('fxk-last-project', p.id); navigate('/studio'); }}
+                  onClick={() => { localStorage.setItem('fxk-last-project', p.id); navigate('/skycanvas'); }}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
@@ -679,7 +684,7 @@ export default function Dashboard() {
           {/* AR Preview Card */}
           <Card className="bg-card border-border/50 hover:border-[hsl(var(--fxk-magenta)/0.3)] transition-colors animate-fxk-stagger cursor-pointer group"
             style={{ animationDelay: '0.55s' }}
-            onClick={() => navigate('/studio?panel=aroverlay')}
+            onClick={() => navigate('/skycanvas?panel=aroverlay')}
           >
             <CardContent className="p-3">
               <div className="flex items-center gap-2 mb-2">
@@ -703,7 +708,7 @@ export default function Dashboard() {
 
           {/* Enter Editor CTA */}
           <button
-            onClick={() => navigate('/studio')}
+            onClick={() => navigate('/skycanvas')}
             className="w-full group relative overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-4 text-center transition-all duration-300 hover:border-primary/40 hover:shadow-[0_0_30px_hsl(var(--primary)/0.1)] active:scale-[0.98] animate-fxk-stagger"
             style={{ animationDelay: '0.6s' }}
           >

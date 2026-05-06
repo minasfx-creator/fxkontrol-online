@@ -75,7 +75,8 @@ const FRAGMENT_SHADER = /* glsl */ `
     float d = dot(c, c);
     if (d > 0.25) discard;
     float falloff = smoothstep(0.25, 0.0, d);
-    gl_FragColor = vec4(vColor * falloff, vAlpha * falloff);
+    float shimmer = 1.0 + 0.15 * sin(d * 40.0);
+    gl_FragColor = vec4(vColor * falloff * shimmer, vAlpha * falloff);
   }
 `;
 
@@ -156,21 +157,28 @@ export function ExplosionsLayer() {
     for (const spec of specs) {
       if (!activeIds.has(spec.id)) continue;
       if (idToSlot.has(spec.id)) continue;
-      // Find next free slot from cursor; if exhausted, evict slot 0 (oldest).
+      // Find next free slot from cursor; if exhausted, evict oldest.
       let slot = -1;
       while (cursor < POOL_SIZE) {
         if (slotOwner[cursor] === null) {
           slot = cursor;
+          cursor++; // advance so next spec doesn't collide on same frame
           break;
         }
         cursor++;
       }
       if (slot === -1) {
-        // Pool full → evict oldest (first non-null).
+        // Pool full → evict oldest (first non-null) and zero its buffers
+        // so resíduo do slot anterior não vaza 1 frame.
         for (let i = 0; i < POOL_SIZE; i++) {
           if (slotOwner[i] !== null) {
             const evictedId = slotOwner[i]!;
             idToSlot.delete(evictedId);
+            const base = i * PARTICLES_PER_BURST;
+            for (let k = 0; k < PARTICLES_PER_BURST; k++) {
+              sizes[base + k] = 0;
+              alphas[base + k] = 0;
+            }
             slot = i;
             break;
           }

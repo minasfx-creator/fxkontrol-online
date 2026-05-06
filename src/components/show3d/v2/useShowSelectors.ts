@@ -9,14 +9,16 @@
  */
 import { useMemo } from 'react';
 import { useProjectStore } from '@/store/useProjectStore';
-import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
+import type { Effect } from '@/data/effectLibrary';
+import {
+  resolveEffectLedAccurate,
+  ledAccurateColor,
+} from '@/data/effectsLibraries/resolveEffect';
 import type { Vec3 } from './types';
 
-const EFFECT_BY_ID: Record<string, Effect> = Object.fromEntries(
-  EFFECT_LIBRARY.map((e) => [e.id, e]),
-);
-
-const getEffect = (id: string): Effect | undefined => EFFECT_BY_ID[id];
+// Unified lookup: legacy EFFECT_LIBRARY ∪ Finale-imported parts (527),
+// with Effect.color already passed through the VDL render-accurate pipeline.
+const getEffect = (id: string): Effect | undefined => resolveEffectLedAccurate(id);
 
 // ──────────────────────────────────────────────────────────────────────────
 // Drones / lights — structural list (per-frame "active" computed in layer)
@@ -50,7 +52,7 @@ export function useDroneStructure(): DroneStructure {
       .map<DronePadInfo>((p) => ({
         id: p.id,
         position: [p.x, Math.max(p.y, 1), p.z],
-        color: p.color || '#2dd4ff',
+        color: ledAccurateColor(p.color, '#2dd4ff'),
       }));
 
     const cues: DroneCueWindow[] = [];
@@ -131,7 +133,9 @@ export function useBurstSpecs(): BurstSpec[] {
       list.push({
         id: item.id,
         origin,
-        color: item.colorOverride || eff.color || '#FFD700',
+        color: item.colorOverride
+          ? ledAccurateColor(item.colorOverride)
+          : (eff.color || '#FFD700'),
         burstStart,
         burstEnd,
         life,

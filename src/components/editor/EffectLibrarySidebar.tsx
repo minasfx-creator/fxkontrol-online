@@ -30,6 +30,12 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
+import { buildImportedEffects } from '@/data/effectsLibraries/registry';
+
+// Combined catalog: legacy hand-authored EFFECT_LIBRARY + Finale 3D part
+// libraries (Showven, Lidu, Magic, Winda, Amazon — 527 parts), with VDL
+// render-accurate colors via vdlColorPipeline.
+const FULL_LIBRARY: Effect[] = [...EFFECT_LIBRARY, ...buildImportedEffects()];
 
 // ──────────────────────────────────────────────────────────────────────────
 // Category registry — order + label + icon. Values match Effect.category.
@@ -155,12 +161,13 @@ export default function EffectLibrarySidebar() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return EFFECT_LIBRARY;
-    return EFFECT_LIBRARY.filter(
+    if (!q) return FULL_LIBRARY;
+    return FULL_LIBRARY.filter(
       (e) =>
         e.name.toLowerCase().includes(q) ||
         e.category.toLowerCase().includes(q) ||
-        (e.pattern ?? '').toLowerCase().includes(q),
+        (e.pattern ?? '').toLowerCase().includes(q) ||
+        (e.vdl ?? '').toLowerCase().includes(q),
     );
   }, [query]);
 

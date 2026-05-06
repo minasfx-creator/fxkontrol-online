@@ -30,8 +30,7 @@ import minasfxLogo from '@/assets/minasfx-logo-white.png';
 // via redirects em App.tsx (zero quebra para bookmarks).
 const navItems = [
   { title: 'Office', url: '/office', icon: Briefcase, desc: 'Produtividade & docs' },
-  { title: 'SkyCanvas', url: '/skycanvas', icon: Sparkles, desc: 'Editor 3D otimizado' },
-  { title: 'Studio', url: '/studio', icon: Wand2, desc: 'Editor 3D legado' },
+  { title: 'SkyCanvas', url: '/skycanvas', icon: Sparkles, desc: 'Editor 3D canônico' },
   { title: 'Command', url: '/command', icon: Crosshair, desc: 'Execução ao vivo' },
   { title: 'Strategy', url: '/strategy', icon: Compass, desc: 'GTM · assets · pilots' },
 ];

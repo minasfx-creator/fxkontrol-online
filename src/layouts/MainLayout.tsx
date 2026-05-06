@@ -38,6 +38,10 @@ const RealFiringReadinessBadge = lazy(lazyRetry(() => import('@/components/safet
 // Previously this was nested inside <Index> desktop branch only, which left
 // the timeline frozen on mobile and on routes other than /studio.
 const EngineProvider = lazy(lazyRetry(() => import('@/orchestration/EngineProvider')));
+// Mission Control cockpit strip — read-only chips (work mode, safety state,
+// readiness, devices, plan hash). Hidden in /command and /pairing/*.
+const GlobalSafetyBar = lazy(lazyRetry(() => import('@/components/safety/GlobalSafetyBar')));
+const FieldDiagnosticsDock = lazy(lazyRetry(() => import('@/components/safety/FieldDiagnosticsDock')));
 
 function SidebarToggleButton() {
   const { state, toggleSidebar } = useSidebar();
@@ -69,7 +73,7 @@ function MobileSidebarTrigger() {
 export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const isEditor = location.pathname === '/studio';
+  const isEditor = location.pathname === '/skycanvas';
   const isCommand = location.pathname === '/command';
   const commandImmersive = isCommand;
   const isMobile = useIsMobile();
@@ -228,6 +232,12 @@ export default function MainLayout() {
 
           <main role="main" className={`${(isEditor || isCommand) ? 'flex-1 min-h-0 overflow-hidden' : 'flex-1 overflow-auto p-4 md:p-6'} relative`}
             style={showDock || showMobileDock ? { paddingBottom: '72px' } : undefined}>
+            {!commandImmersive && (
+              <Suspense fallback={null}>
+                <GlobalSafetyBar />
+                <FieldDiagnosticsDock />
+              </Suspense>
+            )}
             {(isEditor || isCommand) ? (
               <Outlet />
             ) : (

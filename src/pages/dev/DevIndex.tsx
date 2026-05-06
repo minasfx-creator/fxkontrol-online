@@ -45,6 +45,7 @@ const GROUPS: Group[] = [
     cards: [
       { to: '/dev/readiness-audit', title: 'Readiness Audit', desc: 'Fase 0 — engines + 9 provenances', Icon: CheckCircle2, status: 'READ-ONLY' },
       { to: '/dev/golden-shows', title: 'Golden Shows', desc: 'Catalog matrix + Phase 1/2 gates + export ZIP', Icon: Layers, status: 'READ-ONLY' },
+      { to: '/dev/blackbox-inspector', title: 'Black Box Inspector', desc: 'Hash-chained gate verdicts (forensic, read-only)', Icon: FileCode2, status: 'READ-ONLY' },
       { to: '/dev/e2e-test', title: 'E2E Test', desc: 'Cenários de ponta-a-ponta automatizados', Icon: FlaskConical },
     ],
   },

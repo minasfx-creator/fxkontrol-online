@@ -52,37 +52,44 @@ export default function TabbedDockPanel({ defaultValue, tabs, dense, value, onVa
   }, [tabs]);
 
   return (
-    <Tabs value={active} onValueChange={setActive} className="flex h-full flex-col min-h-0">
-      <TabsList
-        className={`mx-2 mt-2 grid bg-white/[0.03] border border-white/[0.06] rounded-lg`}
-        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
-      >
-        {tabs.map((t) => (
-          <TabsTrigger
-            key={t.value}
-            value={t.value}
-            className={dense ? 'text-[10px] px-1' : 'text-[11px]'}
-          >
-            {t.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-      {tabs.map((t) => {
-        const Comp = lazyMap.get(t.value)!;
-        return (
-          <TabsContent
-            key={t.value}
-            value={t.value}
-            className="flex-1 min-h-0 mt-2 outline-none"
-          >
-            <ScrollArea className="h-full px-2 pb-3">
-              <Suspense fallback={<TabSkeleton label={t.label} />}>
-                {active === t.value ? <Comp /> : null}
-              </Suspense>
-            </ScrollArea>
-          </TabsContent>
-        );
-      })}
-    </Tabs>
+    <div className="glass-pane glass-pane-strong rounded-2xl mx-1.5 my-1.5 h-[calc(100%-12px)] overflow-hidden flex flex-col min-h-0">
+      <Tabs value={active} onValueChange={setActive} className="flex h-full flex-col min-h-0">
+        <TabsList
+          className={`mx-2 mt-2 grid bg-transparent border border-white/[0.08] rounded-lg backdrop-blur-sm`}
+          style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+        >
+          {tabs.map((t) => (
+            <TabsTrigger
+              key={t.value}
+              value={t.value}
+              className={[
+                dense ? 'text-[10px] px-1' : 'text-[11px]',
+                'data-[state=active]:bg-cyan-500/15 data-[state=active]:text-cyan-100',
+                'data-[state=active]:shadow-[inset_0_-2px_0_0_hsl(189_94%_55%/0.6)]',
+                'transition-colors duration-200',
+              ].join(' ')}
+            >
+              {t.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {tabs.map((t) => {
+          const Comp = lazyMap.get(t.value)!;
+          return (
+            <TabsContent
+              key={t.value}
+              value={t.value}
+              className="flex-1 min-h-0 mt-2 outline-none"
+            >
+              <ScrollArea className="h-full px-2 pb-3">
+                <Suspense fallback={<TabSkeleton label={t.label} />}>
+                  {active === t.value ? <Comp /> : null}
+                </Suspense>
+              </ScrollArea>
+            </TabsContent>
+          );
+        })}
+      </Tabs>
+    </div>
   );
 }
