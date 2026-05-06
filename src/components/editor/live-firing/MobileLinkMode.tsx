@@ -34,9 +34,15 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import type { SFXChannel } from './types';
 import {
   FireOneController, getFireOneController,
-  createSimulatedModuleStatus,
   type FireOneModuleStatus, type FireOneEvent,
 } from '@/lib/fireoneProtocol';
+
+// ─── Honest event-id generator (deterministic monotonic counter) ───
+let _evtSeq = 0;
+function nextEvtId(): string {
+  _evtSeq = (_evtSeq + 1) & 0xffff;
+  return `evt-${Date.now()}-${_evtSeq.toString(36).padStart(3, '0')}`;
+}
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
@@ -115,23 +121,9 @@ function fmtTC(ms: number): string {
 // ═══════════════════════════════════════════════════════════
 // DEFAULT FIELD MODULES (simulated)
 // ═══════════════════════════════════════════════════════════
-function createDefaultModules(): FieldModule[] {
-  return Array.from({ length: 6 }, (_, i) => ({
-    id: i + 1,
-    name: `FM-${String(i + 1).padStart(2, '0')}`,
-    connected: i < 4,
-    wireless: i >= 2,
-    batteryVoltage: 11.5 + Math.random() * 1.5,
-    signalStrength: 60 + Math.floor(Math.random() * 40),
-    igniters: Array.from({ length: 32 }, (_, j) => ({
-      position: j + 1,
-      connected: Math.random() > 0.15,
-      fired: false,
-      resistance: 1.5 + Math.random() * 3,
-    })),
-    armed: false,
-  }));
-}
+// Field modules now arrive ONLY from real hardware (FireOneController) or
+// from operator-persisted state in localStorage. No synthetic seed.
+function loadEmptyModules(): FieldModule[] { return []; }
 
 // ═══════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -159,8 +151,8 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   const [modules, setModules] = useState<FieldModule[]>(() => {
     try {
       const saved = localStorage.getItem(MODULES_KEY);
-      return saved ? JSON.parse(saved) : createDefaultModules();
-    } catch { return createDefaultModules(); }
+      return saved ? JSON.parse(saved) : loadEmptyModules();
+    } catch { return loadEmptyModules(); }
   });
 
   // ─── Semi-Auto state ───
@@ -192,7 +184,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   const [hwModules, setHwModules] = useState<FireOneModuleStatus[]>([]);
   const [hwEvents, setHwEvents] = useState<FireOneEvent[]>([]);
   const [hwScanning, setHwScanning] = useState(false);
-  const [hwSimulated, setHwSimulated] = useState(false);
+  // Hardware honesty: real FireOne only — no synthetic toggle.
 
   // Persist
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(fixtures)); }, [fixtures]);
@@ -206,7 +198,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     ch.on('broadcast', { event: 'fxc-fire' }, (msg) => {
       const p = msg.payload as any;
       setEvents(prev => [{
-        id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
+        id: nextEvtId(),
         timestamp: Date.now(), source: 'remote' as const,
         fixtureName: p.name || p.type, type: p.type,
         color: p.color || '#fff', intensity: p.intensity || 200,
@@ -317,7 +309,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     ));
 
     setEvents(prev => [{
-      id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
+      id: nextEvtId(),
       timestamp: Date.now(), source: 'local' as const,
       fixtureName: label, type: 'fire', color: '#ff4400', intensity: 255,
     }, ...prev].slice(0, 80));
@@ -386,75 +378,56 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     toast.info('Hardware desconectado');
   }, []);
 
+  const requireHw = useCallback((): boolean => {
+    if (!hwConnected) {
+      toast.error('Hardware FireOne desconectado — conecte via USB.');
+      return false;
+    }
+    return true;
+  }, [hwConnected]);
+
   const handleHwScan = useCallback(async () => {
+    if (!requireHw()) return;
     setHwScanning(true);
-    if (hwSimulated) {
-      const sims = Array.from({ length: 6 }, (_, i) => createSimulatedModuleStatus(i + 1, i >= 3));
-      setHwModules(sims);
-      toast.success(`${sims.length} módulos simulados carregados`);
-    } else {
-      try {
-        await fireoneRef.current.discoverModules(20);
-        setHwModules([...fireoneRef.current.discoveredModules]);
-        toast.success(`${fireoneRef.current.discoveredModules.length} módulos encontrados`);
-      } catch (err: any) {
-        toast.error(`Scan falhou: ${err.message}`);
-      }
+    try {
+      await fireoneRef.current.discoverModules(20);
+      setHwModules([...fireoneRef.current.discoveredModules]);
+      toast.success(`${fireoneRef.current.discoveredModules.length} módulos encontrados`);
+    } catch (err: any) {
+      toast.error(`Scan falhou: ${err.message}`);
     }
     setHwScanning(false);
-  }, [hwSimulated]);
+  }, [requireHw]);
 
   const handleHwFire = useCallback(async (modAddr: number, igniterPos: number) => {
     if (!masterArmed || !deadmanHeld) return;
-    if (hwSimulated) {
-      setHwModules(prev => prev.map(m =>
-        m.moduleAddress === modAddr
-          ? { ...m, igniters: m.igniters.map(ig => ig.position === igniterPos ? { ...ig, fired: true } : ig) }
-          : m
-      ));
-      broadcastModuleFire(modAddr, igniterPos, `HW-M${modAddr}-I${igniterPos}`);
-      toast.success(`🔥 HW Fire M${modAddr} I${igniterPos}`);
-    } else {
-      try {
-        await fireoneRef.current.fireIgniter(modAddr, igniterPos, 500);
-      } catch (err: any) {
-        toast.error(`Fire falhou: ${err.message}`);
-      }
+    if (!requireHw()) return;
+    try {
+      await fireoneRef.current.fireIgniter(modAddr, igniterPos, 500);
+    } catch (err: any) {
+      toast.error(`Fire falhou: ${err.message}`);
     }
-  }, [masterArmed, deadmanHeld, hwSimulated, broadcastModuleFire]);
+  }, [masterArmed, deadmanHeld, requireHw]);
 
   const handleHwArmModule = useCallback(async (modAddr: number, arm: boolean) => {
-    if (hwSimulated) {
-      setHwModules(prev => prev.map(m => m.moduleAddress === modAddr ? { ...m, armed: arm } : m));
-    } else {
-      try {
-        if (arm) await fireoneRef.current.armModule(modAddr);
-        else await fireoneRef.current.disarmModule(modAddr);
-      } catch (err: any) { toast.error(err.message); }
-    }
-  }, [hwSimulated]);
+    if (!requireHw()) return;
+    try {
+      if (arm) await fireoneRef.current.armModule(modAddr);
+      else await fireoneRef.current.disarmModule(modAddr);
+    } catch (err: any) { toast.error(err.message); }
+  }, [requireHw]);
 
   const handleHwEmergencyStop = useCallback(async () => {
-    if (hwSimulated) {
-      setHwModules(prev => prev.map(m => ({ ...m, armed: false })));
-    } else {
+    if (hwConnected) {
       try { await fireoneRef.current.emergencyStop(); } catch { /* ignore */ }
     }
     handlePanic();
-  }, [hwSimulated, handlePanic]);
+  }, [hwConnected, handlePanic]);
 
   const handleHwContinuity = useCallback(async (modAddr: number) => {
-    if (hwSimulated) {
-      setHwModules(prev => prev.map(m =>
-        m.moduleAddress === modAddr
-          ? { ...m, igniters: m.igniters.map(ig => ({ ...ig, continuityOk: ig.connected && ig.resistance > 0.5 && ig.resistance < 10 })) }
-          : m
-      ));
-      toast.success(`Continuity check M${modAddr} completo`);
-    } else {
-      try { await fireoneRef.current.requestContinuity(modAddr); } catch (err: any) { toast.error(err.message); }
-    }
-  }, [hwSimulated]);
+    if (!requireHw()) return;
+    try { await fireoneRef.current.requestContinuity(modAddr); } catch (err: any) { toast.error(err.message); }
+  }, [requireHw]);
 
 
   const broadcastFire = useCallback((fixture: VirtualFixture) => {
@@ -462,7 +435,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     haptics.fire();
 
     setEvents(prev => [{
-      id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
+      id: nextEvtId(),
       timestamp: Date.now(), source: 'local' as const,
       fixtureName: fixture.name, type: fixture.type,
       color: fixture.color, intensity: fixture.intensity,
@@ -914,7 +887,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className={cn("font-bold text-muted-foreground/40 uppercase tracking-wider", tsS)}>Continuity Check</span>
-              <button onClick={() => setModules(createDefaultModules())}
+              <button onClick={() => setModules([])}
                 className={cn("text-primary/50 font-bold uppercase", tsS)}>Refresh</button>
             </div>
             {modules.filter(m => m.connected).map(mod => {
@@ -960,36 +933,29 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
         {xl4Mode === 'hardware' && (
           <div className="space-y-2">
             {/* Connection */}
-            <div className={cn("rounded-lg border bg-[hsl(220_10%_7%)]", hwConnected || hwSimulated ? "border-green-500/30" : "border-border/15")}>
+            <div className={cn("rounded-lg border bg-[hsl(220_10%_7%)]", hwConnected ? "border-green-500/30" : "border-border/15")}>
               <div className={cn("flex items-center gap-2 p-2")}>
-                <CircuitBoard className={cn("shrink-0", mob ? "w-5 h-5" : "w-4 h-4", hwConnected || hwSimulated ? "text-green-400" : "text-muted-foreground/30")} />
+                <CircuitBoard className={cn("shrink-0", mob ? "w-5 h-5" : "w-4 h-4", hwConnected ? "text-green-400" : "text-muted-foreground/30")} />
                 <div className="flex-1 min-w-0">
                   <div className={cn("font-bold uppercase tracking-wider text-foreground/70", tsL)}>
-                    FireOne RS-485 {hwSimulated ? '(Simulado)' : ''}
+                    FireOne RS-485
                   </div>
                   <div className={cn("font-mono text-muted-foreground/40", tsS)}>
-                    {hwConnected ? '● Conectado · 9600 8N1' : hwSimulated ? '● Modo simulação ativo' : '○ Desconectado'}
+                    {hwConnected ? '● Conectado · 9600 8N1' : '○ Desconectado'}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => setHwSimulated(!hwSimulated)}
-                    className={cn("rounded border font-bold transition-all", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[8px]",
-                      hwSimulated ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : "border-border/15 text-muted-foreground/30")}>
-                    SIM
-                  </button>
-                  {!hwSimulated ? (
-                    hwConnected ? (
-                      <Button size="sm" variant="outline" onClick={handleHwDisconnect}
-                        className={cn(mob ? "h-8 text-[10px]" : "h-6 text-[8px]", "border-red-500/30 text-red-400")}>
-                        Desconectar
-                      </Button>
-                    ) : (
-                      <Button size="sm" onClick={handleHwConnect}
-                        className={cn(mob ? "h-8 text-[10px]" : "h-6 text-[8px]")}>
-                        <Usb className="w-3 h-3 mr-1" /> Conectar
-                      </Button>
-                    )
-                  ) : null}
+                  {hwConnected ? (
+                    <Button size="sm" variant="outline" onClick={handleHwDisconnect}
+                      className={cn(mob ? "h-8 text-[10px]" : "h-6 text-[8px]", "border-red-500/30 text-red-400")}>
+                      Desconectar
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={handleHwConnect}
+                      className={cn(mob ? "h-8 text-[10px]" : "h-6 text-[8px]")}>
+                      <Usb className="w-3 h-3 mr-1" /> Conectar
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1008,7 +974,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
 
             {hwModules.length === 0 ? (
               <div className={cn("text-center text-muted-foreground/20 py-4 font-mono rounded border border-dashed border-border/10", tsS)}>
-                {hwSimulated || hwConnected ? 'Clique em Scan para descobrir módulos' : 'Conecte o hardware ou ative o modo SIM'}
+                {hwConnected ? 'Clique em Scan para descobrir módulos' : 'Conecte o hardware FireOne via USB para descobrir módulos'}
               </div>
             ) : (
               <div className="space-y-1.5">
