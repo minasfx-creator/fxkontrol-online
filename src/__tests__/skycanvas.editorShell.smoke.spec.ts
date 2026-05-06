@@ -109,4 +109,24 @@ describe('SkyCanvas → EditorShell DS v1 wiring (smoke)', () => {
       expect(src, `${w} must not import safety/dispatch`).not.toMatch(FORBIDDEN);
     }
   });
+
+  it('Round 2 — viewport mounts legacy HUD overlays (lazy, no commands)', () => {
+    for (const overlay of [
+      'BoxSelectOverlay',
+      'SelectionModeBar',
+      'ARCompassHUD',
+      'ViewportTransitionOverlay',
+    ]) {
+      expect(page, `SkyCanvas.tsx missing overlay ${overlay}`).toContain(overlay);
+    }
+  });
+
+  it('Round 2 — TabbedDockPanel slots are controlled by useEditorLayout.activeTabs', () => {
+    expect(page).toMatch(/layout\.activeTabs\?\.left/);
+    expect(page).toMatch(/layout\.activeTabs\?\.right/);
+    expect(page).toMatch(/layout\.activeTabs\?\.timeline/);
+    expect(page).toMatch(/layout\.setActiveTab\(\s*'left'/);
+    expect(page).toMatch(/layout\.setActiveTab\(\s*'right'/);
+    expect(page).toMatch(/layout\.setActiveTab\(\s*'timeline'/);
+  });
 });
