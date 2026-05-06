@@ -726,7 +726,14 @@ export default function SkyCanvasPage() {
         }
         right={
           <StudioErrorBoundary area="SkyCanvas · Inspector">
-            <div className="h-full flex flex-col" data-panel-id="inspector">
+            <section
+              id="panel-inspector"
+              role="region"
+              aria-label="Inspector"
+              tabIndex={-1}
+              className="h-full flex flex-col outline-none"
+              data-panel-id="inspector"
+            >
               <TabbedDockPanel
                 defaultValue="cue"
                 dense
@@ -738,7 +745,7 @@ export default function SkyCanvasPage() {
                   { value: 'strategy', label: 'Strategy', load: () => import('@/components/skycanvas/tabs/StrategyContextTab') },
                 ]}
               />
-            </div>
+            </section>
           </StudioErrorBoundary>
         }
         timeline={
