@@ -20,7 +20,7 @@ import {
   Shield, ShieldAlert, Lock, Unlock, Key, Radio, Signal, Timer,
   Play, Square, SkipForward, Hand, AlertTriangle, Check, X,
   Wifi, WifiOff, ChevronLeft, ChevronRight, Activity, Eye, Usb,
-  RefreshCw, Search, CircuitBoard
+  RefreshCw, Search, CircuitBoard, History
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
