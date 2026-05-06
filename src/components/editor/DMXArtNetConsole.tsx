@@ -62,6 +62,7 @@ export default function DMXArtNetConsole() {
           <span className="text-xs font-mono font-bold tracking-widest text-foreground uppercase">DMX / Art-Net Console</span>
         </div>
         <div className="flex items-center gap-2">
+          <ProvenanceBadge mode={provenance} compact />
           <span className={cn(
             'text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border',
             canExport ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
