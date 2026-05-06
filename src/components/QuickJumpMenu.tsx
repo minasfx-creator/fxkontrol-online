@@ -26,12 +26,12 @@ type Item = {
 
 const ITEMS: readonly Item[] = [
   {
-    label: 'Studio',
+    label: 'SkyCanvas',
     path: '/skycanvas',
     icon: Wand2,
     desc: 'Editor 3D',
-    // Active on /studio when no special panel param is targeting another item.
-    match: (p, q) => p === '/studio' && q.get('panel') !== 'drones',
+    // Active on /skycanvas when no special panel param is targeting another item.
+    match: (p, q) => p === '/skycanvas' && q.get('panel') !== 'drones',
   },
   {
     label: 'FXK-DRONES',
@@ -39,10 +39,10 @@ const ITEMS: readonly Item[] = [
     icon: Plane,
     desc: 'Console de drones',
     // Active when explicitly targeting the drones panel via deep-link.
-    // Note: Index.tsx clears ?panel= shortly after handling it, so this
+    // Note: SkyCanvas clears ?panel= shortly after handling it, so this
     // primarily highlights during the navigation tick — that's intentional
     // and matches what URL-driven nav can observe.
-    match: (p, q) => p === '/studio' && q.get('panel') === 'drones',
+    match: (p, q) => p === '/skycanvas' && q.get('panel') === 'drones',
   },
   {
     label: 'AI Choreography',
