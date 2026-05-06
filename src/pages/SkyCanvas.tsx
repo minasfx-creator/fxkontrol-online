@@ -865,15 +865,8 @@ export default function SkyCanvasPage() {
               <SkyFallback2D reason={cap.reasons[0]} />
             )}
 
-            {/* Round 2 — viewport HUD overlays (lazy, pure presentation). */}
-            <Suspense fallback={null}>
-              <ViewportTransitionOverlay />
-              <BoxSelectOverlay />
-              <ARCompassHUD />
-              <div className="absolute top-3 left-3 z-[35] pointer-events-auto">
-                <SelectionModeBar />
-              </div>
-            </Suspense>
+            {/* Round 8 — viewport HUD overlays consolidated. */}
+            <ViewportOverlays />
           </div>
         </StudioErrorBoundary>
       </EditorShell>
