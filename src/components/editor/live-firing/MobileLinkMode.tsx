@@ -37,7 +37,7 @@ import {
   type FireOneModuleStatus, type FireOneEvent,
 } from '@/lib/fireoneProtocol';
 
-// ─── Honest event-id generator (no Math.random) ───────────────────
+// ─── Honest event-id generator (deterministic monotonic counter) ───
 let _evtSeq = 0;
 function nextEvtId(): string {
   _evtSeq = (_evtSeq + 1) & 0xffff;
