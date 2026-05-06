@@ -11,6 +11,8 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useSystemReadiness } from '@/hooks/useSystemReadiness';
+import { useFrameBudget } from '@/hooks/useFrameBudget';
+import { FRAME_BUDGET_TARGET_MS, FRAME_BUDGET_WARN_MS } from '@/ecs/frameBudget';
 import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { hashShowPlan } from '@/core/showplan/showPlanHash';
 import { toast } from 'sonner';
@@ -101,6 +103,7 @@ function Chip({ label, value, tone, title, onClick }: {
 export default function GlobalSafetyBar() {
   const location = useLocation();
   const r = useSystemReadiness();
+  const fb = useFrameBudget();
   const [hash, setHash] = useState<string>('—');
 
   // Recompute hash when plan identity changes (best-effort, async).
@@ -175,6 +178,17 @@ export default function GlobalSafetyBar() {
         tone={provTone}
         title={`Dominant provenance: ${r.dominantProvenance}`}
       />
+      {fb.backend !== 'idle' && (
+        <Chip
+          label="BUDGET"
+          value={`${fb.p95Ms.toFixed(1)}ms ${fb.backend.toUpperCase()}`}
+          tone={
+            fb.p95Ms >= FRAME_BUDGET_TARGET_MS ? 'fail' :
+            fb.p95Ms >= FRAME_BUDGET_WARN_MS ? 'warn' : 'ok'
+          }
+          title={`ECS step p95 (target <${FRAME_BUDGET_TARGET_MS}ms, warn ≥${FRAME_BUDGET_WARN_MS}ms)\nEMA: ${fb.emaMs.toFixed(2)}ms · live: ${fb.liveCount}`}
+        />
+      )}
       <div className="ml-auto">
         <Chip
           label="HASH"
