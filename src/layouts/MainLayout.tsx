@@ -235,6 +235,7 @@ export default function MainLayout() {
             {!commandImmersive && (
               <Suspense fallback={null}>
                 <GlobalSafetyBar />
+                <FieldDiagnosticsDock />
               </Suspense>
             )}
             {(isEditor || isCommand) ? (
