@@ -197,3 +197,19 @@ export function isSkycanvasV2StageEnabled(): boolean {
   return FLAGS.skycanvas_v2_stage;
 }
 
+
+/**
+ * FireOne XL4-3 / XLII+ live ops gate. Default OFF.
+ * localStorage 'fxk.flag.fireone_xl43_realops' = '1' → reveals tab.
+ * The CSV/ZIP exporter is NOT gated by this flag.
+ */
+export function isFireOneXL43RealOpsEnabled(): boolean {
+  if (typeof window !== 'undefined') {
+    try {
+      const v = window.localStorage.getItem('fxk.flag.fireone_xl43_realops');
+      if (v === '1' || v === 'true') return true;
+      if (v === '0' || v === 'false') return false;
+    } catch { /* fall through */ }
+  }
+  return false;
+}
