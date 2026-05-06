@@ -14,7 +14,7 @@
  * semântica WARN). Para não violar a hierarquia, este arquivo aplica o brief
  * APENAS em containers marcados com [data-theme="commercial"] — usado em
  * /comercial, /landing, /manifesto, /pricing (deck-de-vendas). O editor
- * (/studio, /command, /field*) NUNCA recebe esses tokens.
+ * (/skycanvas, /command, /field*) NUNCA recebe esses tokens.
  *
  * Regras dentro do escopo commercial:
  *   • #00FFFF é decorativo (glow, badge, ícone), nunca chrome interativo grande
