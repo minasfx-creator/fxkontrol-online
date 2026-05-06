@@ -26,8 +26,9 @@ export default function FireOneExportConsole() {
   const { level, result, runVerification } = useVerificationStore(
     useShallow((s) => ({ level: s.level, result: s.result, runVerification: s.runVerification })),
   );
-  const sp = showPlanManager.current;
+  const sp = useShowPlanProjection().plan;
   const sim = isSimulating();
+  const provenance = useConsoleProvenance(['fxk16', 'fireone']);
 
   const refresh = useCallback(() => {
     runVerification();
