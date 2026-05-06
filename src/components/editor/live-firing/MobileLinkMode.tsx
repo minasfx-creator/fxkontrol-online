@@ -184,7 +184,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   const [hwModules, setHwModules] = useState<FireOneModuleStatus[]>([]);
   const [hwEvents, setHwEvents] = useState<FireOneEvent[]>([]);
   const [hwScanning, setHwScanning] = useState(false);
-  const [hwSimulated, setHwSimulated] = useState(false);
+  // hwSimulated removed — hardware honesty: real FireOne only.
 
   // Persist
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(fixtures)); }, [fixtures]);
