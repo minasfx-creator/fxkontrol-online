@@ -1,231 +1,131 @@
-# SkyCanvas v3 — Plano revisado (engenharia sênior · WebGL/UX/HW)
+## Revisão v3 — Apple Glass + Floating Dock para `/skycanvas`
 
-## 1. Diagnóstico de causa-raiz (o que realmente quebra)
+Terceira passada. Mantém v2 + cobre **gaps adicionais** identificados em produção/edge cases (input, sync, perf, segurança, regressão).
 
-| # | Sintoma | Causa real | Onde corrigir |
-|---|---------|-----------|---------------|
-| A | Splash preto com logo laranja não sai | Vários `import()` retornam **502** mid-session (SkyCanvas, Timeline, KeybindingCheatSheet, safetyEngine, NiagaraVFXController, GeoToolsR3F, ViewportRulers, PositionTransformGizmo, ARScanEffect, BoidsVisualizer, activeRendererRegistry…). `lazyRetry` reload-once não recupera todos. React nunca termina de montar → splash do `index.html` permanece. | Boot mínimo + reduzir grafo de imports; `__splashDone` no `useEffect` da página, não no `requestIdleCallback`. |
-| B | "Loading is taking longer than expected · Force WebGL2 / Reload Studio" no /office | `CanvasLoaderWithTimeout` está sendo herdado por rotas que não montam canvas. | Loader contextual; só Suspense de canvas usa esse fallback. |
-| C | Desktop não carrega | GPU fallback SwiftShader (Chrome avisa: *"Automatic fallback to software WebGL has been deprecated"*) + chunk 502 = double whammy. | Detector de SwiftShader → modo 2D automático; budget DPR=0.75. |
-| D | Celular landscape não carrega | `useIsMobile` está correto (h≤500 + coarse), mas o branch mobile do `Index.tsx` ainda lazy-carrega EngineProvider, AutoControllerLauncher, FXKAssistant, useHardwareSyncLoop(44). | Página nova não importa nada disso. |
-| E | Sandbox preview não tem `navigator.gpu` | WebGPU indisponível em sandboxes/headless. | Capability matrix antes de escolher renderer. |
-| F | Splash dismiss frágil | `requestIdleCallback` nunca dispara sob R3F load. | Triple fallback já existe, mas a rota nova vai dispatcher manual no primeiro `useEffect`. |
+### Gaps adicionais cobertos
 
-## 2. Arquitetura SkyCanvas v3
+| # | Gap (não coberto na v2) | Solução |
+|---|---|---|
+| G17 | `pointermove` global durante drag pode travar input do canvas (orbit/pan WebGL) | Drag handler monta `pointer-events:none` no `<div data-fxk-viewport>` enquanto `dragging=true`; restaura on `pointerup`. |
+| G18 | `setPointerCapture` em iOS Safari falha silenciosamente em alguns casos | Fallback para listeners em `window` + `releasePointerCapture` em `try/catch`; documentado em comentário. |
+| G19 | Resize do painel pode esconder o conteúdo abaixo do safe-area no iPhone landscape (notch) | `useFloatingDock` clamp `y + h ≤ window.innerHeight - safeBottom`, `x + w ≤ window.innerWidth - safeRight`. Recalcula no `resize` e `orientationchange`. |
+| G20 | Painel arrastado para fora da viewport vira inalcançável após reload | `clampPanelInsideViewport()` roda no `useEffect` de mount + após hidratação do localStorage. |
+| G21 | Glass com fundo radial pode "cantar" sobre céu noturno (banding em 8-bit) | Adicionar `dither` via `background-image` SVG noise (já no plano) + `image-rendering: pixelated` no layer noise; alpha 0.04 mantém invisibilidade do ruído. |
+| G22 | Foco visual do `cmdk` sobre glass pode sumir (low contrast) | Item ativo do palette: `bg-cyan-500/15 ring-1 ring-inset ring-cyan-400/40` + `ds-focus`. |
+| G23 | Sem teste de guarda contra regressão (alguém pode reintroduzir `commandBus` em SkyCanvas) | Novo `src/__tests__/skycanvas.safetyImports.guard.spec.ts`: rg em `src/pages/SkyCanvas.tsx` + `src/components/skycanvas/**` proibindo `commandBus`, `fieldBus`, `safetyStateMachine`, `workMode.set`, `uiCommandGateway.fire`, `uiCommandGateway.arm`. |
+| G24 | Master Menu palette pode disparar áudio decoder pesado e travar UI thread | `decodeAudioPeaks` já é async; ação `loadAudio` no palette delega ao input file existente (reusa pipeline + toast progress). |
+| G25 | Sem batch de undo para drops de cue (cada drop é um commit isolado) | Fora de escopo desta entrega visual; **anotar no plan como follow-up** ("CueDrop undo via useUndoStore — separate task"). |
+| G26 | Topbar transport sumindo no mobile sem aviso → operador perde controle | < 900px transport vira **FAB pill bottom-center** persistente (h-14, glass, 3 botões: prev/play/next, swipe-up expande timecode). |
+| G27 | `prefers-reduced-transparency` ainda desconhecido em alguns navegadores antigos | Detecção defensiva: `window.matchMedia('(prefers-reduced-transparency: reduce)').matches` em try/catch, default `false`. |
+| G28 | Chave de localStorage colide com testes (vitest jsdom mantém estado entre suítes) | Hook `useFloatingDock` usa `__resetForTests()` exposto em `import.meta.env.MODE === 'test'`. |
+| G29 | Quando palette aberto + ⌘K novamente, deve **fechar** (toggle), não acumular | Estado controlado, `Cmd+K` chama `setOpen(o => !o)`. |
+| G30 | Drag handle e botão collapse no mesmo header podem competir pelo `pointerdown` | `data-no-drag` no botão; handler ignora drag quando `event.target.closest('[data-no-drag]')`. |
+| G31 | Sem feedback ao tocar pill colapsado (mobile) | Tap no pill expande com `animate-in zoom-in-95 fade-in` (300ms easing iOS); ARIA `aria-expanded`. |
+| G32 | Glass falha visualmente sobre fundo branco (modo claro futuro) | CSS gates em `[data-theme="dark"]` (default no projeto). Modo claro = no-op (cai para DS surface). |
+| G33 | `cmdk` lazy import pode bloquear primeiro `Cmd+K` por 200–400ms em conexões lentas | Pré-carregar palette via `link rel="modulepreload"` injetado on hover do Master Menu pill (intent-based prefetch). |
+| G34 | Animações de drag interferem com RAF do WebGL (jank perceptível) | Drag usa `transform` puro (não muda layout), `will-change: transform` set on dragstart, removed on dragend. |
+| G35 | Sem indicador "estado salvo" para o dock (operador não sabe se persistiu) | Toast silencioso `sonner` 1s "Layout salvo" ao primeiro snap após drag, debounced 800ms. |
+| G36 | Ação "Reset dock" pode ser disparada acidentalmente | `⌘0` exige `Shift+⌘0`; menu palette mostra confirmação inline (botão "Reset" com hover destrutivo). |
+| G37 | Painéis com `position:absolute` quebram tab order natural | Documentar tab order via `tabIndex={0}` no header de cada painel + ordem DOM: Library → Inspector → Timeline → Topbar (a11y "Skip to viewport" link `<a href="#viewport">` no topo, sr-only até foco). |
+| G38 | Sem tratamento de visibility — Glass + animações continuam ao trocar de aba | `document.visibilitychange` pausa transições não-essenciais (CSS classe `.is-hidden-tab` com `animation-play-state: paused`). |
+| G39 | Falta documentação de que `/skycanvas` é uma surface "Show/Experience" sem MainLayout | Adicionar header comment em `SkyCanvas.tsx` linkando `mem://arquitetura/v6-quatro-planos` + nota sobre E-STOP cosmético/redirect. |
+| G40 | Bundle delta sem orçamento explícito vs `vite-plugin-bundle-budget.ts` | Declarar budget local: `/skycanvas` chunk +18KB gz max; CI fail se exceder. |
 
-Surface enxuta, isolada do `Index.tsx`. Reusa o que já é estável.
+### Decisões consolidadas (v1 + v2 + v3)
 
-```text
-┌──── Topbar 56 (logo · transport · status · clock · E-STOP) ──────┐
-│ Library 280 │   Viewport (SkyCanvas2 ou SkyFallback2D)   │ Insp 320│
-│  effects    │                                            │ cue     │
-│  positions  │                                            │ scene   │
-│  strategy   │                                            │ render  │
-├─────────────┴─── Timeline 180 (waveform + playhead) ───────────────┤
-└────────────────────────────────────────────────────────────────────┘
-```
+**Layout**
+- Edge-to-edge viewport, painéis `position:absolute` em layer isolado.
+- 6 slots magnéticos (TL/TR/BL/BR/T/B) + free-float, snap 24px, ghost preview.
+- Z-map: viewport=0, dock=40, topbar=50, palette=60, toast=70, GlobalEStop=9999.
 
-Princípios:
-- **Show/Experience plane only**. Zero CommandBus / FieldBus / SafetyStateMachine / workMode.
-- `EditorShell` (constraints, não auto-layout) já provado em `/dev/editor-shell`.
-- Engine: **SkyCanvas2** (modular, instanced, com `WebGLContextRecovery` + `AdaptiveDPRController` + `SkyCanvas2ErrorBoundary` próprio).
-- Estado: `useProjectStore` + `usePersistedProject`. Sem `EngineProvider` nesta rota.
-- Safety: `GlobalEStopButton` continua via `MainLayout`.
+**Glass**
+- Default GPU-cheap (radial gradient + noise SVG, zero `backdrop-filter`).
+- Upgrade automático para `backdrop-filter blur(24px) saturate(170%)` quando `prefers-reduced-transparency: no-preference` E `@supports (backdrop-filter)`.
+- `prefers-reduced-transparency: reduce` → cai para `bg-ds-surface-deep` puro.
+- Gated em `[data-theme="dark"]` (no-op em modo claro futuro).
 
-## 3. Capability matrix · escolha de renderer (gap crítico)
+**Master Menu**
+- Pill central no topbar, abre `SkyCanvasCommandPalette` (cmdk + Radix Dialog) com `⌘K`/`⌘M` (toggle).
+- Modulepreload em `mouseenter` (intent prefetch).
+- Catálogo `SkyAction[]` com `safety: 'inert'` enforced; ações `sim-only` rejeitadas no registro.
 
-```text
-                 WebGPU?  WebGL2?  SwiftShader?  →  Renderer escolhido
-desktop hi-end    sim      sim       não          →  SkyCanvas2 (DPR 1–1.75)
-desktop low/iGPU  não      sim       não          →  SkyCanvas2 (DPR 1–1.25)
-sandbox/preview   não      sim       sim          →  SkyFallback2D
-iOS Safari        não      sim*      não          →  SkyCanvas2 (DPR 1, no MSAA)
-landscape phone   não      sim       não          →  SkyCanvas2 leve (no fixtures, no stage extras)
-no WebGL          não      não       —            →  SkyFallback2D
-```
+**Painéis flutuantes**
+- Pointer Events API (mouse/touch/pen unificado).
+- Drag em `transform` puro + `will-change` toggle.
+- `setPointerCapture` em try/catch + fallback window listeners.
+- Resize 2 bordas, double-click resize-handle = reset.
+- Clamp dentro da viewport pós-mount/resize/orientationchange.
+- Persist `fxk.skycanvas.dock.v2` com migração silenciosa de v1 + `__resetForTests()`.
+- Toast "Layout salvo" debounced 800ms.
 
-Detecções:
-- `navigator.gpu` (WebGPU)
-- `canvas.getContext('webgl2')` (real ctx, não só feature)
-- WEBGL_debug_renderer_info → string contém `SwiftShader|llvmpipe|Software`
-- `pointer: coarse` + `max-height: 500px` (mobile landscape)
-- `prefers-reduced-motion` (corta partículas/bloom)
-- Battery API + Network Information API (modo econômico)
+**Mobile/Touch (< 900px)**
+- Painéis viram bottom Sheet com swipe-down handle.
+- Transport vira **FAB bottom-center** sempre visível.
+- Hit targets ≥ 44px, safe-area respeitado.
+- iOS `setPointerCapture` fallback ativo.
 
-Resultado vai pra um `RenderProfile` (low/mid/high) que controla:
-- DPR clamp
-- AA on/off
-- Stage layer on/off
-- Fixtures layer on/off
-- Particle cap
-- Shadow off (já é off no v2)
+**Acessibilidade**
+- `role="dialog"` + `aria-label` + `aria-expanded` por painel.
+- Foco trap nos painéis expandidos via teclado.
+- Skip-link sr-only "Pular para viewport".
+- Reduced motion: drag instantâneo, sem snap animation.
+- Contraste 7.1:1 mínimo sobre glass.
+- Item ativo do palette com ring cyan visível.
 
-## 4. Boot sequence (rota `/skycanvas`)
+**Safety / contrato**
+- Zero import de `commandBus`, `fieldBus`, `safetyStateMachine`, `workMode`, `uiCommandGateway.{arm,fire,disarm}`.
+- Badge `SIM · ADVISORY` permanente no topbar.
+- Botão E-STOP visual no topbar redireciona para `/command` (cosmético, não dispara nada local).
+- **Guard test** `skycanvas.safetyImports.guard.spec.ts` previne regressão.
 
-1. **HTML splash** (já existe).
-2. Página monta → `useEffect` chama `__splashDone()` na hora.
-3. `EditorShell` desenha topbar + sidebars com placeholders (skeletons DS).
-4. Capability detect (síncrono, <5ms).
-5. Decide renderer.
-6. Suspense do viewport carrega `SkyCanvas2` OU `SkyFallback2D`.
-7. Sidebars hidratam dados em paralelo (não bloqueiam viewport).
-8. Timeline conecta `useAudioMasterClock` só após primeiro paint.
+**Performance**
+- Glass overhead ≤0.5ms/frame.
+- Drag em refs (zero re-render durante move).
+- Palette code-split + modulepreload on intent.
+- `visibilitychange` pausa animações em background.
+- Bundle budget local: +18KB gz max.
 
-**Telemetria de boot**: marca `skycanvas:boot:start`, `skycanvas:viewport:ready`, `skycanvas:interactive`. Vai pra `runtimeMonitor` (já existe).
+**Keyboard**
+- `Space` play/pause, `←/→` seek frame, `Home/End` start/end (já existe).
+- `⌘K` / `⌘M` toggle Master Menu.
+- `⌘1/2/3` foco Library/Inspector/Timeline.
+- `Shift+⌘0` reset dock (com confirmação destrutiva).
+- `⌘\` modo cinema (toggle todos painéis).
+- `Esc` fecha palette / sai modo cinema.
 
-## 5. Performance budgets (engenharia, não wishful thinking)
+### Arquivos finais
 
-| Métrica | Desktop | Mobile landscape | Sandbox |
-|---|---|---|---|
-| TTI da rota | <2.5s | <3.5s | <4s |
-| FPS viewport | 60 | 30 | 30 (2D) |
-| DPR | 1.0–1.75 | 1.0–1.25 | 0.75 |
-| Draw calls | <12 | <8 | n/a |
-| JS heap | <120MB | <80MB | <60MB |
-| Bundle inicial da rota | <180KB gzip | mesmo | mesmo |
+**Novos (7)**
+1. `src/components/skycanvas/FloatingPanel.tsx` — wrapper Pointer Events + glass + drag/resize/snap/persist.
+2. `src/components/skycanvas/SkyCanvasCommandPalette.tsx` — Dialog + cmdk + ações `inert`.
+3. `src/components/skycanvas/skyActions.ts` — catálogo tipado `SkyAction[]`.
+4. `src/components/skycanvas/GlassTopbar.tsx` — topbar + Master Menu pill + transport responsivo + FAB mobile.
+5. `src/hooks/useFloatingDock.ts` — Zustand slice v2 + migração v1 + clamp + `__resetForTests`.
+6. `src/hooks/useReducedMotion.ts` — wrap `matchMedia` defensivo.
+7. `src/__tests__/skycanvas.safetyImports.guard.spec.ts` — guard regressão.
 
-Defesas:
-- `Page Visibility API` → `frameloop='never'` quando aba escondida.
-- `IntersectionObserver` no canvas → pausa quando fora de viewport.
-- `requestIdleCallback` para waveform decode.
-- Web Worker para waveform PCM (não bloqueia main).
-- `dispose()` rigoroso de geometry/material/texture no unmount.
+**Editados (2)**
+- `src/index.css` — tokens `.glass-pane` (radial+noise default, backdrop-filter upgrade gated).
+- `src/pages/SkyCanvas.tsx` — abandona `EditorShell`, monta layout absolute + GlassTopbar + 3 FloatingPanel + palette + skip-link + header comment.
 
-## 6. Resiliência (cobre as 502 reais)
+### Aceitação consolidada (12)
 
-- **Imports paralelos pré-warmados** dos módulos críticos via `<link rel="modulepreload">` injetado dinamicamente.
-- **Fallback duplo por chunk**: `lazyRetry` (existe) + componente `<ChunkBoundary>` que mostra "recarregando módulo X · botão retry".
-- **Service worker desligado em preview** (já está).
-- **Error boundary por zona** (topbar, library, viewport, inspector, timeline) — uma zona quebrada não derruba a página.
-- **WebGL context-loss** → `SkyCanvas2` já recupera; no v3, ao 3º loss em 30s, degrada para 2D.
-- **Splash safety net extra**: se React monta mas error-boundary trip antes do canvas, splash sai mesmo assim.
+1. Viewport edge-to-edge; 4 ilhas glass arrastáveis em 6 slots + free.
+2. Master Menu pill central, `⌘K/⌘M` toggle, modulepreload on intent.
+3. Layout persiste em `fxk.skycanvas.dock.v2`; clamp pós-resize garante painéis sempre alcançáveis.
+4. Touch/Pencil/mouse unificados via Pointer Events; iOS fallback ativo.
+5. `prefers-reduced-motion` desabilita transições; `prefers-reduced-transparency` cai para sólido; sem `backdrop-filter` → radial+noise idêntico GPU-free.
+6. FPS WebGL2 não cai >2fps com painéis abertos (low-tier mobile aferido).
+7. Mobile <900px: painéis viram bottom Sheets; transport vira FAB persistente.
+8. Tab order coerente, skip-link funciona, contraste WCAG AA+ sobre glass.
+9. Guard test impede regressão de imports de safety; **zero** `commandBus`/`fieldBus`/`workMode`/`uiCommandGateway.fire`.
+10. Badge `SIM · ADVISORY` sempre visível; E-STOP cosmético redireciona `/command`.
+11. Bundle delta `/skycanvas` ≤18KB gz; CI guarda.
+12. Paleta canônica Vantablack + cyan-dessat preservada — glass é linguagem de superfície, não troca de paleta.
 
-## 7. UX/UI (premium, real)
+### Follow-ups fora de escopo (anotar)
 
-- **Tema**: Vantablack `#050810` + cyan-dessat 190/70/58 (canônico). Sem `--primary` laranja no chrome.
-- **Tipografia**: escala DS (`text-ds-h1..caption`, `.ds-mono`).
-- **Hierarquia**: status > conteúdo > decoração. WCAG AA em todos os pares.
-- **Estados**: skeleton (DS) → fade-in 200ms → conteúdo. Sem CLS.
-- **Microinterações**: hover 120ms, click 80ms, snap timeline 4px dead-zone.
-- **Transport**: spacebar play/pause, J/K/L (RV cinema), Home/End, ←/→ ±1 frame, Shift+←/→ ±10.
-- **Drag&drop**: `application/x-fxk-effect` (canônico) da library pra timeline e pra viewport.
-- **Inspector colapsável** (drawer em landscape mobile).
-- **Reduced motion**: corta partículas, mantém transport.
-- **Color-blind safe**: status sempre tem ícone + cor, nunca só cor.
-- **Foco visível**: ring DS em todo elemento interativo.
-- **Empty state**: "Arraste um efeito ou peça pra IA gerar uma sequência" — sem ficar branco.
-
-## 8. Acessibilidade
-
-- Canvas com `role="img"` + `aria-label` dinâmico.
-- Atalhos com `aria-keyshortcuts`.
-- Foco trap em modais, não no canvas.
-- `prefers-reduced-motion` respeitado.
-- Touch targets ≥44px (iOS HIG).
-- `min-h-dvh` + `env(safe-area-inset-*)` em todo container raiz.
-
-## 9. Mobile / landscape (resolve o "celular deitado")
-
-Três modos resolvidos por `RenderProfile` + container queries:
-
-- **landscape phone (h≤500 + coarse)**: topbar 44, viewport full, drawers laterais escondidos (toggle), timeline 96 colapsável.
-- **portrait phone (<768w)**: viewport + bottom tabbar com Library/Inspector/Timeline.
-- **tablet/desktop**: layout completo.
-
-Sem dependência do branch mobile pesado do `Index.tsx`.
-
-## 10. Renderer: hardening WebGL
-
-- `gl: { antialias: profile==='high', alpha: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false, preserveDrawingBuffer: false }`
-- Tone mapping ACES (já no v2).
-- Color space sRGB out / Linear work.
-- Frustum culling agressivo.
-- InstancedMesh para pads, Points para drones, pool fixo (256) para bursts. (já no v2)
-- `THREE.Cache.enabled = true`.
-- Texture max 1024px no perfil low.
-- Stage e Fixtures atrás de flag por perfil.
-
-## 11. Hardware (engineer hat)
-
-Esta página **não toca em hardware real**. Mas:
-- Não bloqueia E-STOP global.
-- Não importa transports (`pyroUsb`, `artnet`, `ltc`).
-- Quando o usuário quiser executar de verdade, ele vai pro `/command` (caminho canônico via `uiCommandGateway`).
-- Garante que o `runtimeMonitor` registra qualquer crash pra correlação com o Black Box.
-
-## 12. Limpeza arquitetural (cumpre o pedido de organizar)
-
-Aplicado em paralelo, commits separados:
-- Aplicar `docs/ROUTE_AUDIT.md` — remover 10 rotas órfãs (AIChoreography, Accreditation, SwarmGPT, Admin, Agenda, Training duplicado, Dashboard, DevicePairing, FieldTest duplicado, FXK16Validate/Calibrate).
-- Consolidar `EffectLibrary` + `EffectLibrarySidebar` → 1 componente.
-- Consolidar `/dev/skycanvas-3d`, `/dev/skycanvas-2`, `/dev/skycanvas-smoke`, `/dev/video-editor` → manter só `/dev/skycanvas-smoke` (QA isolado) e `/skycanvas` (canônico).
-- `AppSidebar`: item "SkyCanvas" aponta `/skycanvas` (Studio fica como rota legacy interna).
-- Remover imports órfãos detectados na análise.
-- ESLint: regra para proibir import de `Index.tsx` fora de `/studio`.
-
-## 13. Testes
-
-- **Smoke**: rota monta sem erro em viewport 1366×768, 1024×768, 834×1194, 414×896, 360×800.
-- **Capability**: simula `navigator.gpu` undef, SwiftShader, no-WebGL → cada um cai no path certo.
-- **Boot timing**: TTI <2.5s desktop em CI.
-- **Memory**: heap snapshot antes/depois de mount/unmount (delta <5MB).
-- **Visual regression**: Playwright screenshot dos 3 modos.
-- **Safety guard**: teste que falha se a rota importar `commandBus`, `fieldBus`, `safetyStateMachine`.
-- **A11y**: axe-core sem violações nos chrome elements.
-
-## 14. Documentação
-
-- `docs/architecture/skycanvas-v3.md` — overview, capability matrix, perfis, fluxo de boot.
-- Atualizar `docs/architecture/entry-points.md`.
-- Atualizar `docs/ROUTE_AUDIT.md` com as remoções aplicadas.
-- Memória: criar `mem://funcionalidades/skycanvas-v3` no índice.
-
-## 15. Plano de execução (faseado, entregável por fase)
-
-**Fase 1 — Surface viva (≈1 sessão)**
-1. Rota `/skycanvas` + `SkyCanvas.tsx` com `EditorShell`.
-2. Capability detect + RenderProfile.
-3. SkyCanvas2 mount + SkyFallback2D.
-4. `__splashDone` no mount + telemetria boot.
-
-**Fase 2 — Editor real**
-5. EffectLibrary (esquerda).
-6. Inspector (direita) com 3 abas.
-7. Timeline com waveform (Web Worker) + sync `useAudioMasterClock`.
-8. Drag&drop library → timeline → viewport.
-
-**Fase 3 — Resiliência + responsividade**
-9. Error boundary por zona + ChunkBoundary visível.
-10. Modo landscape/portrait/tablet com container queries.
-11. Reduced motion, color-blind, ARIA, atalhos completos.
-12. Tests (smoke + capability + a11y + safety guard).
-
-**Fase 4 — Limpeza**
-13. Aplicar ROUTE_AUDIT.md.
-14. Consolidar EffectLibrary.
-15. Apontar AppSidebar pra /skycanvas.
-16. Documentar.
-
-## 16. O que NÃO faço (escopo trancado)
-
-- Não toco em safety, command, FieldBus, workMode, CommandBus.
-- Não removo `/studio` antigo agora — só desvio o tráfego principal.
-- Não promovo essa surface pra `real_operation`.
-- Não troco palette canônica (Vantablack/cyan-dessat).
-- Não introduzo dependências novas (sem react-three/postprocessing extra, sem styled-components, sem framer-motion novo).
-
-## 17. Riscos e mitigações
-
-| Risco | Mitigação |
-|---|---|
-| 502 voltam em chunks novos | Lazy boundaries por zona + retry visível + boot mínimo |
-| GPU sandbox SwiftShader | Detector + 2D fallback automático |
-| iOS Safari WebGL2 quirks | Profile iOS específico (DPR 1, no MSAA, no fixtures) |
-| Audio gesture requirement | Transport pede 1 click do usuário antes de tocar |
-| Splash não sai se boundary trip | Dismiss no `<App>`, não na página |
-| Memory leak no canvas | Disposal canônico no unmount + Page Visibility pause |
-| Container queries em browsers antigos | Fallback `useIsMobile` (já existe) |
-
----
-
-Aprovando, começo pela **Fase 1** (rota viva + capability detect + viewport com fallback) e te entrego funcionando antes de seguir para editor real, resiliência e limpeza.
+- F1. CueDrop undo via `useUndoStore` (atualmente cada drop é commit isolado).
+- F2. Modo cinema (⌘\) com auto-hide topbar após 3s sem mouse.
+- F3. Compartilhar layout dock entre dispositivos via Lovable Cloud (sync `fxk.skycanvas.dock.v2`).
+- F4. Migrar `/skycanvas/*` para subrotas (clip editor, render queue) reusando o mesmo shell glass.
