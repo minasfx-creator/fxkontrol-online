@@ -829,7 +829,19 @@ export default function SkyCanvasPage() {
         time={time}
         duration={duration}
       />
-      <MobilePanelSwitcher active={mobileActive} onChange={setMobileActive} />
+      <MobilePanelSwitcher
+        active={mobileActive}
+        onChange={(key) => {
+          setMobileActive(key);
+          requestAnimationFrame(() => {
+            const id = key === 'library' ? 'panel-library'
+              : key === 'inspector' ? 'panel-inspector'
+              : 'panel-timeline';
+            document.getElementById(id)?.focus({ preventScroll: true });
+          });
+        }}
+        panelIds={{ library: 'panel-library', inspector: 'panel-inspector', timeline: 'panel-timeline' }}
+      />
 
       {/* MASTER MENU PALETTE */}
       <Suspense fallback={null}>
