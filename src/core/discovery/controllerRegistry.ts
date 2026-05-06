@@ -106,8 +106,51 @@ const FAMILY_RULES: Array<{ test: RegExp; kind: ControllerKind }> = [
   { test: /ftdi|wch|ch340|silabs|cp210/i,    kind: 'dmx-generic' },
 ];
 
+// ── Operator/probe-driven classification cache ────────────────────
+// Persistent map deviceId → ControllerKind, populated by:
+//   • USB pairing wizard ("classify" step)
+//   • IDENTIFY probe replies (e.g. FireOne XLII+)
+// Survives reload, takes precedence over FAMILY_RULES so a generic
+// FTDI device can be promoted to 'fireone' once we have proof.
+const STORAGE_KEY = 'fxk.controller.classify.v1';
+const _cache: Record<string, ControllerKind> = (() => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === 'object') ? parsed as Record<string, ControllerKind> : {};
+  } catch { return {}; }
+})();
+
+function _persist() {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(_cache)); } catch { /* quota */ }
+}
+
+export function markDeviceClassified(deviceId: string, kind: ControllerKind): void {
+  if (!deviceId) return;
+  if (_cache[deviceId] === kind) return;
+  _cache[deviceId] = kind;
+  _persist();
+}
+
+export function getClassification(deviceId: string): ControllerKind | undefined {
+  return _cache[deviceId];
+}
+
+export function clearClassification(deviceId?: string): void {
+  if (deviceId) delete _cache[deviceId];
+  else for (const k of Object.keys(_cache)) delete _cache[k];
+  _persist();
+}
+
 /** Resolve a `PhysicalDevice` to its controller profile. */
 export function resolveControllerProfile(dev: PhysicalDevice): ControllerProfile {
+  // 1) Operator/probe override always wins.
+  const cached = _cache[dev.id];
+  if (cached) return PROFILES[cached];
+
   // mDNS Art-Net nodes always map to Art-Net regardless of family text.
   if (dev.activeTransport === 'mdns-artnet' || dev.links['mdns-artnet']) {
     return PROFILES['artnet-node'];
