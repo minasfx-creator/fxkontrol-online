@@ -887,7 +887,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className={cn("font-bold text-muted-foreground/40 uppercase tracking-wider", tsS)}>Continuity Check</span>
-              <button onClick={() => setModules(createDefaultModules())}
+              <button onClick={() => setModules([])}
                 className={cn("text-primary/50 font-bold uppercase", tsS)}>Refresh</button>
             </div>
             {modules.filter(m => m.connected).map(mod => {
