@@ -46,7 +46,12 @@ class CommandBus {
    * Called once per tick by LockstepEngine.
    */
   drain(): Command[] {
-    if (this._queue.length === 0) return this._drain; // empty — reuse last drain ref
+    if (this._queue.length === 0) {
+      // Empty tick: keep the stable drain array reference, but make sure
+      // stale commands from the previous tick cannot be re-applied.
+      this._drain.length = 0;
+      return this._drain;
+    }
     // Swap buffers
     const tmp = this._drain;
     this._drain = this._queue;
