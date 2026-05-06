@@ -186,6 +186,57 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
   const [hwScanning, setHwScanning] = useState(false);
   // Hardware honesty: real FireOne only — no synthetic toggle.
 
+  // ─── Link transition mini-history (last 60s) ───
+  type LinkName = 'artnet' | 'relay' | 'realtime' | 'serial';
+  type LinkState = 'online' | 'offline' | 'error';
+  interface LinkTransition {
+    id: string;
+    timestamp: number;
+    link: LinkName;
+    from: LinkState;
+    to: LinkState;
+  }
+  const HISTORY_WINDOW_MS = 60_000;
+  const [linkHistory, setLinkHistory] = useState<LinkTransition[]>([]);
+  const [historyWindow, setHistoryWindow] = useState<30 | 60>(60);
+  const [showHistory, setShowHistory] = useState(false);
+  const prevLinkRef = useRef<Record<LinkName, LinkState>>({
+    artnet: 'offline', relay: 'offline', realtime: 'offline', serial: 'offline',
+  });
+  const recordTransition = useCallback((link: LinkName, to: LinkState) => {
+    const from = prevLinkRef.current[link];
+    if (from === to) return;
+    prevLinkRef.current[link] = to;
+    setLinkHistory(prev => {
+      const next = [...prev, {
+        id: nextEvtId(), timestamp: Date.now(), link, from, to,
+      }];
+      // cap at 200 entries to bound memory; window filtering happens at render
+      return next.length > 200 ? next.slice(-200) : next;
+    });
+  }, []);
+  // Watch real signals → transition log
+  useEffect(() => { recordTransition('artnet',   artNetConnected ? 'online' : 'offline'); }, [artNetConnected, recordTransition]);
+  useEffect(() => { recordTransition('relay',    relayConnected  ? 'online' : 'offline'); }, [relayConnected,  recordTransition]);
+  useEffect(() => { recordTransition('realtime', connected       ? 'online' : 'offline'); }, [connected,       recordTransition]);
+  useEffect(() => { recordTransition('serial',   hwConnected     ? 'online' : 'offline'); }, [hwConnected,     recordTransition]);
+  // Map FireOne hardware errors into the serial link history
+  useEffect(() => {
+    const last = hwEvents[0];
+    if (!last) return;
+    if (last.type === 'error' || last.type === 'timeout' || last.type === 'emergency-stop') {
+      recordTransition('serial', 'error');
+    }
+  }, [hwEvents, recordTransition]);
+  // Periodic prune to keep linkHistory bounded to current window
+  useEffect(() => {
+    const id = setInterval(() => {
+      const cutoff = Date.now() - HISTORY_WINDOW_MS;
+      setLinkHistory(prev => prev[0] && prev[0].timestamp < cutoff ? prev.filter(e => e.timestamp >= cutoff) : prev);
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
+
   // Persist
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(fixtures)); }, [fixtures]);
   useEffect(() => { localStorage.setItem(MODULES_KEY, JSON.stringify(modules)); }, [modules]);
