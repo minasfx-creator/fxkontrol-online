@@ -132,6 +132,8 @@ export function startDiscoveryRegistryBridge(): void {
       logger.info('[discoveryBridge] FXK32Q demoted to NOT_INTEGRATED');
     }
   });
+
+  // ── Art-Net (UDP via edge ArtPoll) ─────────────────────────────
   _unsubArtnet = mdnsArtnetDiscoverer.watch((event) => {
     const { device, type } = event;
     if (device.family !== 'artnet-node' || !device.host) return;
