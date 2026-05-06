@@ -14,6 +14,7 @@ import type { PhysicalDevice, DiscoveryTransport } from './types';
 
 export type ControllerKind =
   | 'fxk16'        // FXK16 16-ch ESP32-S3 pyro relay (USB-CDC or BLE-UART)
+  | 'fxk32q'       // FXK32Q 32-ch ESP32-S3 + 2×16-relay pyro controller
   | 'fireone'      // FireOne FXK-PYRO 2.0 array
   | 'showven'      // Showven FX Commander Pro / Sonicboom / SPARKULAR
   | 'tuya'         // Tuya BLE-mesh / Wi-Fi smart outlets (low-precision SFX)
