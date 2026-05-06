@@ -93,3 +93,28 @@ As 6 páginas-de-tab foram movidas pra suas pastas de domínio. `src/pages/` ago
 - LOC removidos: **−861** (Index.tsx)
 - Testes: **57/57 verde** (`skycanvas.safetyImports.guard` + `skycanvas.editorShell.smoke` + `skyCanvas3d.smoke`)
 - Surface canônica de criação 3D: `/skycanvas` (única)
+
+---
+
+## Rodada 5 — Limpeza de órfãos pós-Index.tsx (executada)
+
+Auditoria de imports em `src/components/editor/*.tsx` (239 arquivos) detectou **11 candidatos a órfão**, dos quais **5 confirmados sem nenhuma referência viva** (eram importados apenas pelo extinto `pages/Index.tsx`):
+
+| Componente | LOC aprox. | Substituto canônico |
+|---|---|---|
+| `DiagnosticPanel.tsx` | ~ | `SkyCanvasDiagnosticsPanel` (in-viewport) |
+| `FlightLogPanel.tsx` | ~ | `/field` telemetry surface |
+| `LogisticsPanel.tsx` | ~ | `/office?tab=logistics` (a integrar) |
+| `ReportsPanel.tsx` | ~ | `/strategy` reports + PDF gen |
+| `TelemetryDashboard.tsx` | ~ | `TelemetryBar` + `/field` |
+
+Os outros 6 (PerformanceHUD, RenderDebugOverlay, SkyCanvasDiagnosticsPanel, TelemetryBar, TerrainCacheMetricsPanel, TerrainDebugOverlay) **foram preservados** — ainda são consumidos pelo `components/editor/SkyCanvas.tsx` (motor 3D legado, separado do `pages/SkyCanvas.tsx` DS v1).
+
+### Métricas
+
+- `src/components/editor/`: **239 → 234** arquivos (−2.1%)
+- Testes: **63/63 verde** (skycanvas guards + smoke + commercial theme + typography DS)
+
+### Pendência Rodada 6 (sugerida)
+
+Consolidar mounts duplicados de `SkyCanvas2`/`SkyCanvas3D` em `/dev/skycanvas-{smoke,3d,2}` — hoje há 3 demos isoladas + 2 importações em produção (`SkyCanvasMount.tsx` + `pages/SkyCanvas.tsx`). Avaliar se as 3 rotas dev podem virar um único `/dev/skycanvas-lab` com toggle.
