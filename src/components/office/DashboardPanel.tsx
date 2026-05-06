@@ -40,34 +40,10 @@ interface Event {
   client_name: string;
 }
 
-interface NewsItem {
-  id: number;
-  title: string;
-  category: 'pyro' | 'drones' | 'sfx' | 'lighting' | 'festivals';
-  sentiment: 'positive' | 'negative' | 'neutral';
-  time: string;
-  image: string;
-  source: string;
-  avatar: string;
-}
-
-/* ── Constants ──────────────────────────────────────── */
-// News feed is fed from real sources. Until a live ingest pipeline is wired,
-// we render an empty state instead of placeholder/mock items.
-const MOCK_NEWS: NewsItem[] = [];
-
-const CATEGORY_FILTERS: Array<{ key: NewsItem['category'] | 'all'; label: string; emoji: string }> = [
-  { key: 'all', label: 'Tudo', emoji: '🌐' },
-  { key: 'pyro', label: 'Pyro', emoji: '🎆' },
-  { key: 'drones', label: 'FXK-DRONES', emoji: '🤖' },
-  { key: 'sfx', label: 'SFX', emoji: '🔥' },
-  { key: 'lighting', label: 'Light', emoji: '💡' },
-  { key: 'festivals', label: 'Festivals', emoji: '🎪' },
-];
-
 const TYPE_ICONS: Record<string, string> = {
   pyro: '🎆', drone: '🤖', sfx: '🔥', mixed: '🎯',
 };
+
 
 /* ── Console Launcher Cards ─────────────────────────── */
 const CONSOLE_CARDS = [
