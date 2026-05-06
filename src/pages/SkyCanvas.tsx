@@ -751,6 +751,8 @@ export default function SkyCanvasPage() {
         audioName={audioName}
         onOpenMaster={() => setPaletteOpen(true)}
         onEStop={() => navigate('/command')}
+        workModeLabel={workModeLabel}
+        sessionMeta={session}
       />
 
       {/* FLOATING PANELS */}
@@ -791,16 +793,27 @@ export default function SkyCanvasPage() {
       <div data-panel-id="timeline">
         <StudioErrorBoundary area="SkyCanvas · Timeline">
           <FloatingPanel id="timeline" title="Timeline" state={dock.panels.timeline} bottomStrip>
-            <TimelineStrip
-              time={time}
-              duration={duration}
-              onSeekAbs={seekAbs}
-              onDropEffect={dropEffectAt}
-              peaks={peaks}
-            />
+            <TimelineCuesProvider value={{ time, duration, onSeekAbs: seekAbs, onDropEffect: dropEffectAt, peaks }}>
+              <TabbedDockPanel
+                defaultValue="cues"
+                dense
+                tabs={[
+                  { value: 'cues',       label: 'Cues',       load: () => import('@/components/skycanvas/tabs/TimelineCuesTab') },
+                  { value: 'smpte',      label: 'SMPTE',      load: () => import('@/components/skycanvas/tabs/TimelineSmpteTab') },
+                  { value: 'validation', label: 'Validation', load: () => import('@/components/skycanvas/tabs/TimelineValidationTab') },
+                ]}
+              />
+            </TimelineCuesProvider>
           </FloatingPanel>
         </StudioErrorBoundary>
       </div>
+
+      {/* IMPORT VDL/CSV DIALOG (Master Menu → Project) */}
+      <Suspense fallback={null}>
+        {importOpen && (
+          <CatalogImportDialog open={importOpen} onOpenChange={setImportOpen} />
+        )}
+      </Suspense>
 
       {/* MOBILE TRANSPORT */}
       <MobileTransportFab
