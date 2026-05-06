@@ -73,6 +73,9 @@ describe('SkyCanvas → EditorShell DS v1 wiring (smoke)', () => {
   });
 
   it('Round 1 — registers all legacy creation tabs in SkyCanvas.tsx', () => {
+    // Round 7: tab specs extracted to skyTabsConfig — search both files.
+    const tabsConfig = readFileSync('src/components/skycanvas/skyTabsConfig.ts', 'utf8');
+    const haystack = `${page}\n${tabsConfig}`;
     const refs = [
       'LibraryCatalogTab',
       'LibraryMarketplaceTab',
@@ -86,7 +89,7 @@ describe('SkyCanvas → EditorShell DS v1 wiring (smoke)', () => {
       'TimelineStoryboardTab',
     ];
     for (const r of refs) {
-      expect(page, `SkyCanvas.tsx missing tab wiring for ${r}`).toContain(`/tabs/${r}`);
+      expect(haystack, `Missing tab wiring for ${r}`).toContain(`/tabs/${r}`);
     }
   });
 
