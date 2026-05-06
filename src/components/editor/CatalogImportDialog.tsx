@@ -400,6 +400,10 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
               </Select>
             </div>
 
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => setStep('mapping')}>
+                ← Mapping
+              </Button>
               <div className="flex-1" />
               <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => onOpenChange(false)}>
                 <X className="w-3 h-3 mr-1" /> Cancel
@@ -410,7 +414,8 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
                 onClick={handleImport}
                 disabled={selectedEffects.size === 0}
               >
-                <Check className="w-3 h-3 mr-1" /> Import {selectedEffects.size} Effects
+                <Check className="w-3 h-3 mr-1" />
+                Import {selectedEffects.size}{cueSpread !== 'none' ? ' + Cues' : ''}
               </Button>
             </div>
           </div>
