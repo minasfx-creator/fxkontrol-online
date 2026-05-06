@@ -71,7 +71,7 @@ function computeDominantProvenance(): {
   try {
     const devs = deviceAggregator.getDevices?.() ?? [];
     total = devs.length;
-    for (const d of devs as Array<Record<string, unknown>>) {
+    for (const d of devs as unknown as Array<Record<string, unknown>>) {
       const status = String(d.status ?? d.connection_state ?? '');
       if (status === 'connected' || status === 'online') online++;
       const prov = String(
