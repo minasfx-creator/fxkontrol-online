@@ -10,6 +10,19 @@ const FILES = [
   'src/components/editor/DMXArtNetConsole.tsx',
   'src/components/editor/AddressingPanel.tsx',
   'src/components/safety/CueConflictsConsole.tsx',
+  'src/components/editor/live-firing/MobileLinkMode.tsx',
+];
+
+const HARDWARE_HONEST_FILES = [
+  'src/components/editor/live-firing/MobileLinkMode.tsx',
+];
+
+const HARDWARE_FORBIDDEN = [
+  /\bMath\.random\b/,
+  /\bhwSimulated\b/,
+  /\bcreateSimulatedModuleStatus\b/,
+  /'Modo simulação/,
+  /\(Simulado\)/,
 ];
 
 const FORBIDDEN = [
