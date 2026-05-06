@@ -115,23 +115,54 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
     }
 
     const effects = catalogToEffects(selected);
-    
-    // Add to the store's custom effects (we'll add them to EFFECT_LIBRARY dynamically)
-    const store = useProjectStore.getState();
-    // For now, add as timeline-compatible effects by extending the library
-    // We store them in a way they can be used
-    
-    // Also push to EFFECT_LIBRARY (mutable operation for runtime)
+
+    // 1) Push to runtime EFFECT_LIBRARY (drag-source for the editor & SkyCanvas)
     effects.forEach(eff => {
       if (!EFFECT_LIBRARY.find(e => e.id === eff.id)) {
         EFFECT_LIBRARY.push(eff);
       }
     });
 
-    toast.success(`${effects.length} efeitos importados do catálogo "${fileName}"`, {
-      icon: '📦',
-      description: `Disponíveis na Asset Palette`,
-    });
+    // 2) Optionally drop selected effects as cue markers on the timeline
+    let cuesAdded = 0;
+    if (cueSpread !== 'none') {
+      const store = useProjectStore.getState();
+      const duration = store.duration || 60;
+      const playhead = store.currentTime || 0;
+      const n = effects.length;
+
+      const timeFor = (i: number): number => {
+        switch (cueSpread) {
+          case 'evenly': {
+            // Evenly distribute with margin (5% padding both sides), clamped to duration
+            if (n === 1) return duration / 2;
+            const start = duration * 0.05;
+            const end = duration * 0.95;
+            return start + ((end - start) * i) / (n - 1);
+          }
+          case 'fixed-1s': return Math.min(duration, playhead + i * 1);
+          case 'fixed-2s': return Math.min(duration, playhead + i * 2);
+          case 'fixed-5s': return Math.min(duration, playhead + i * 5);
+          case 'at-playhead': return Math.min(duration, playhead + i * 0.05);
+          default: return playhead;
+        }
+      };
+
+      effects.forEach((fx, i) => {
+        store.addCueMarker({
+          id: `cue-${Date.now().toString(36)}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+          time: Math.max(0, timeFor(i)),
+          label: `${fx.icon} ${fx.name}`,
+          color: fx.color,
+        });
+        cuesAdded++;
+      });
+    }
+
+    toast.success(
+      `${effects.length} efeitos importados${cuesAdded ? ` · ${cuesAdded} cues no timeline` : ''}`,
+      { icon: '📦', description: fileName ? `Catálogo "${fileName}"` : undefined },
+    );
 
     // Auto-save to library
     if (currentFile) {
@@ -145,7 +176,8 @@ export default function CatalogImportDialog({ open, onOpenChange }: { open: bool
     setColumns([]);
     setFileName(null);
     setCurrentFile(null);
-  }, [parsedEffects, selectedEffects, fileName, onOpenChange, currentFile, saveToLibrary]);
+    setCueSpread('none');
+  }, [parsedEffects, selectedEffects, fileName, onOpenChange, currentFile, saveToLibrary, cueSpread]);
 
   const toggleSelectAll = () => {
     if (selectedEffects.size === parsedEffects.length) {
