@@ -394,6 +394,10 @@ export default function SkyCanvasPage() {
 
   // Master Menu actions
   const [importOpen, setImportOpen] = useState(false);
+
+  // Local persistence (cues + duration + audio name) — no playback, no buffer.
+  useSkyCanvasShowPersistence({ audioName });
+
   const exportShowJson = useCallback(() => {
     try {
       const cues = useProjectStore.getState().cueMarkers;
@@ -414,6 +418,15 @@ export default function SkyCanvasPage() {
     }
   }, [duration]);
 
+  const resetShow = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const ok = window.confirm('Apagar todos os cues e limpar show salvo? Esta ação não pode ser desfeita.');
+    if (!ok) return;
+    useProjectStore.getState().clearCueMarkers();
+    clearPersistedSkyCanvasShow();
+    toast.success('Show restaurado');
+  }, []);
+
   const actions = useMemo(() => buildSkyActions({
     togglePlay, stop, seekTo: seekAbs, pickAudio,
     focusPanel,
@@ -428,7 +441,8 @@ export default function SkyCanvasPage() {
     goStrategy: () => navigate('/strategy'),
     openImportVdl: () => setImportOpen(true),
     exportShowJson,
-  }), [togglePlay, stop, seekAbs, pickAudio, focusPanel, cinema, navigate, exportShowJson]);
+    resetShow,
+  }), [togglePlay, stop, seekAbs, pickAudio, focusPanel, cinema, navigate, exportShowJson, resetShow, audioName]);
 
   // Keyboard shortcuts
   useEffect(() => {
