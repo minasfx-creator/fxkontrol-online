@@ -113,14 +113,18 @@ describe('SkyCanvas → EditorShell DS v1 wiring (smoke)', () => {
     }
   });
 
-  it('Round 2 — viewport mounts legacy HUD overlays (lazy, no commands)', () => {
+  it('Round 2/8 — viewport mounts legacy HUD overlays (lazy, no commands)', () => {
+    // Round 8: overlays consolidated into ViewportOverlays.tsx — search both files.
+    const overlays = readFileSync('src/components/skycanvas/ViewportOverlays.tsx', 'utf8');
+    const haystack = `${page}\n${overlays}`;
+    expect(page, 'SkyCanvas.tsx must mount <ViewportOverlays />').toContain('ViewportOverlays');
     for (const overlay of [
       'BoxSelectOverlay',
       'SelectionModeBar',
       'ARCompassHUD',
       'ViewportTransitionOverlay',
     ]) {
-      expect(page, `SkyCanvas.tsx missing overlay ${overlay}`).toContain(overlay);
+      expect(haystack, `Missing overlay ${overlay}`).toContain(overlay);
     }
   });
 
