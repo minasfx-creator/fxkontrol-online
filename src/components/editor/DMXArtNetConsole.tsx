@@ -4,16 +4,17 @@
  * Gated by VerificationEngine.
  */
 import { useState, useCallback } from 'react';
-import { showPlanManager } from '@/core/showplan/ShowPlanManager';
 import { generateArtNetPatchCSV, downloadArtNetPatch } from '@/core/export/ArtNetPatchExporter';
 import { useVerificationStore } from '@/core/verification/useVerificationStore';
 import { artNetBridge } from '@/core/protocols/ArtNetBridge';
 import { linkFailoverPolicy } from '@/core/protocols/LinkFailoverPolicy';
+import { useShowPlanProjection } from '@/hooks/useShowPlanProjection';
+import { useConsoleProvenance } from '@/hooks/useConsoleProvenance';
+import { ProvenanceBadge } from '@/components/safety/ProvenanceBadge';
 import { cn } from '@/lib/utils';
 import { Radio, RefreshCw, Wifi, WifiOff, Download, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useShallow } from 'zustand/react/shallow';
 
 export default function DMXArtNetConsole() {
   const [, setTick] = useState(0);
