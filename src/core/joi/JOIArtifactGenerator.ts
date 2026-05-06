@@ -10,6 +10,7 @@ import { verificationEngine } from '@/core/verification/VerificationEngine';
 import { readinessEvaluator } from '@/core/hardware/ReadinessEvaluator';
 import { unifiedHardwareRegistry } from '@/core/hardware/UnifiedHardwareRegistry';
 import { operationalModeGuard } from '@/core/hardware/OperationalModeGuard';
+import { safetyStateMachine } from '@/core/safety/SafetyStateMachine';
 
 class JOIArtifactGeneratorImpl {
 
