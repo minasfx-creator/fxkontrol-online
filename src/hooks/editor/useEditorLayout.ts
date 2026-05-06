@@ -107,6 +107,8 @@ export interface UseEditorLayoutResult extends EditorLayoutState {
   toggleRight: () => void;
   toggleTimeline: () => void;
   reset: () => void;
+  /** Round 2 — set the active tab id for a given dock slot. */
+  setActiveTab: (slot: keyof EditorActiveTabs, tabId: string) => void;
 }
 
 /**
