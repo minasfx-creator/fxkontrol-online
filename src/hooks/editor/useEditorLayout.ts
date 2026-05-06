@@ -119,7 +119,7 @@ export function useEditorLayout(projectId: string): UseEditorLayoutResult {
       try {
         const { data: auth } = await supabase.auth.getUser();
         if (!auth?.user) return;
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('editor_layouts')
           .select('state')
           .eq('user_id', auth.user.id)
