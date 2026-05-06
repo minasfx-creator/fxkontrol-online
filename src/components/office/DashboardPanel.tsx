@@ -582,40 +582,8 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* ─ Center Column: Instagram Feed ─ */}
-        <div className="order-1 lg:order-2 animate-fxk-stagger" style={{ animationDelay: '0.15s' }}>
-          <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
-            {CATEGORY_FILTERS.map(f => (
-              <button
-                key={f.key}
-                onClick={() => setFeedFilter(f.key)}
-                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200 shrink-0 active:scale-[0.95] ${
-                  feedFilter === f.key
-                    ? 'bg-primary/15 ring-1 ring-primary/30'
-                    : 'bg-card border border-border/30 hover:border-primary/20'
-                }`}
-              >
-                <span className="text-base">{f.emoji}</span>
-                <span className={`text-[9px] font-semibold ${feedFilter === f.key ? 'text-primary' : 'text-muted-foreground'}`}>
-                  {f.label}
-                </span>
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2 mb-3">
-            <Circle className="h-2 w-2 fill-current animate-pulse" style={{ color: 'hsl(32 100% 50%)' }} />
-            <span className="text-[9px] font-mono-code text-muted-foreground tracking-widest uppercase" style={{ color: 'hsl(32 100% 50% / 0.5)' }}>
-              Industry Feed · {filteredNews.length} posts
-            </span>
-          </div>
-          <div className="space-y-4">
-            {visibleNews.map((item, i) => (
-              <div key={item.id} className="animate-fxk-stagger" style={{ animationDelay: `${0.2 + i * 0.08}s` }}>
-                <FeedCard item={item} compact={isMobile} />
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Center column (Industry Feed) removed — placeholder data eliminated. */}
+
 
         {/* ─ Right Column ─ */}
         <div className="space-y-4 order-3">
