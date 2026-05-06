@@ -704,7 +704,14 @@ export default function SkyCanvasPage() {
         }
         left={
           <StudioErrorBoundary area="SkyCanvas · Library">
-            <div className="h-full flex flex-col" data-panel-id="library">
+            <section
+              id="panel-library"
+              role="region"
+              aria-label="Biblioteca"
+              tabIndex={-1}
+              className="h-full flex flex-col outline-none"
+              data-panel-id="library"
+            >
               <TabbedDockPanel
                 defaultValue="effects"
                 tabs={[
@@ -714,7 +721,7 @@ export default function SkyCanvasPage() {
                   { value: 'geo',       label: 'Local',    load: () => import('@/components/skycanvas/tabs/LibraryGeoTab') },
                 ]}
               />
-            </div>
+            </section>
           </StudioErrorBoundary>
         }
         right={
