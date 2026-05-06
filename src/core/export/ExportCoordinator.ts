@@ -86,7 +86,21 @@ class ExportCoordinator {
   private _runExporter(target: ExportTarget, timestamp: number): ExportAttemptResult {
     try {
       switch (target) {
-        case 'fireone': {
+        case 'fireone':
+        case 'fireone-csv': {
+          const csv = generateFireOneCsv();
+          if (csv.blocked) {
+            return { target, success: false, timestamp, issues: csv.errors, cueCount: csv.cueCount };
+          }
+          // Fire-and-forget the ZIP download; report sync result for UI.
+          void downloadFireOneImportPackage().catch(() => { /* black-boxed */ });
+          return {
+            target, success: true, timestamp,
+            issues: csv.errors, cueCount: csv.cueCount,
+            warnings: csv.warnings.length > 0 ? csv.warnings : undefined,
+          };
+        }
+        case 'fireone-audit': {
           const r = generateFireOneScript();
           if (!r.verified || r.errors.length > 0) {
             return { target, success: false, timestamp, issues: r.errors, cueCount: r.cueCount };
