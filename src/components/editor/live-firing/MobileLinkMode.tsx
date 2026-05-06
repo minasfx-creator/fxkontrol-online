@@ -378,75 +378,56 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     toast.info('Hardware desconectado');
   }, []);
 
+  const requireHw = useCallback((): boolean => {
+    if (!hwConnected) {
+      toast.error('Hardware FireOne desconectado — conecte via USB.');
+      return false;
+    }
+    return true;
+  }, [hwConnected]);
+
   const handleHwScan = useCallback(async () => {
+    if (!requireHw()) return;
     setHwScanning(true);
-    if (hwSimulated) {
-      const sims = Array.from({ length: 6 }, (_, i) => createSimulatedModuleStatus(i + 1, i >= 3));
-      setHwModules(sims);
-      toast.success(`${sims.length} módulos simulados carregados`);
-    } else {
-      try {
-        await fireoneRef.current.discoverModules(20);
-        setHwModules([...fireoneRef.current.discoveredModules]);
-        toast.success(`${fireoneRef.current.discoveredModules.length} módulos encontrados`);
-      } catch (err: any) {
-        toast.error(`Scan falhou: ${err.message}`);
-      }
+    try {
+      await fireoneRef.current.discoverModules(20);
+      setHwModules([...fireoneRef.current.discoveredModules]);
+      toast.success(`${fireoneRef.current.discoveredModules.length} módulos encontrados`);
+    } catch (err: any) {
+      toast.error(`Scan falhou: ${err.message}`);
     }
     setHwScanning(false);
-  }, [hwSimulated]);
+  }, [requireHw]);
 
   const handleHwFire = useCallback(async (modAddr: number, igniterPos: number) => {
     if (!masterArmed || !deadmanHeld) return;
-    if (hwSimulated) {
-      setHwModules(prev => prev.map(m =>
-        m.moduleAddress === modAddr
-          ? { ...m, igniters: m.igniters.map(ig => ig.position === igniterPos ? { ...ig, fired: true } : ig) }
-          : m
-      ));
-      broadcastModuleFire(modAddr, igniterPos, `HW-M${modAddr}-I${igniterPos}`);
-      toast.success(`🔥 HW Fire M${modAddr} I${igniterPos}`);
-    } else {
-      try {
-        await fireoneRef.current.fireIgniter(modAddr, igniterPos, 500);
-      } catch (err: any) {
-        toast.error(`Fire falhou: ${err.message}`);
-      }
+    if (!requireHw()) return;
+    try {
+      await fireoneRef.current.fireIgniter(modAddr, igniterPos, 500);
+    } catch (err: any) {
+      toast.error(`Fire falhou: ${err.message}`);
     }
-  }, [masterArmed, deadmanHeld, hwSimulated, broadcastModuleFire]);
+  }, [masterArmed, deadmanHeld, requireHw]);
 
   const handleHwArmModule = useCallback(async (modAddr: number, arm: boolean) => {
-    if (hwSimulated) {
-      setHwModules(prev => prev.map(m => m.moduleAddress === modAddr ? { ...m, armed: arm } : m));
-    } else {
-      try {
-        if (arm) await fireoneRef.current.armModule(modAddr);
-        else await fireoneRef.current.disarmModule(modAddr);
-      } catch (err: any) { toast.error(err.message); }
-    }
-  }, [hwSimulated]);
+    if (!requireHw()) return;
+    try {
+      if (arm) await fireoneRef.current.armModule(modAddr);
+      else await fireoneRef.current.disarmModule(modAddr);
+    } catch (err: any) { toast.error(err.message); }
+  }, [requireHw]);
 
   const handleHwEmergencyStop = useCallback(async () => {
-    if (hwSimulated) {
-      setHwModules(prev => prev.map(m => ({ ...m, armed: false })));
-    } else {
+    if (hwConnected) {
       try { await fireoneRef.current.emergencyStop(); } catch { /* ignore */ }
     }
     handlePanic();
-  }, [hwSimulated, handlePanic]);
+  }, [hwConnected, handlePanic]);
 
   const handleHwContinuity = useCallback(async (modAddr: number) => {
-    if (hwSimulated) {
-      setHwModules(prev => prev.map(m =>
-        m.moduleAddress === modAddr
-          ? { ...m, igniters: m.igniters.map(ig => ({ ...ig, continuityOk: ig.connected && ig.resistance > 0.5 && ig.resistance < 10 })) }
-          : m
-      ));
-      toast.success(`Continuity check M${modAddr} completo`);
-    } else {
-      try { await fireoneRef.current.requestContinuity(modAddr); } catch (err: any) { toast.error(err.message); }
-    }
-  }, [hwSimulated]);
+    if (!requireHw()) return;
+    try { await fireoneRef.current.requestContinuity(modAddr); } catch (err: any) { toast.error(err.message); }
+  }, [requireHw]);
 
 
   const broadcastFire = useCallback((fixture: VirtualFixture) => {
