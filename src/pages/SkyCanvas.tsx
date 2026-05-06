@@ -923,14 +923,3 @@ export default function SkyCanvasPage() {
     </div>
   );
 }
-
-function ViewportLoader() {
-  return (
-    <div className="absolute inset-0 flex items-center justify-center bg-[#050810]">
-      <div className="text-center">
-        <div className="w-7 h-7 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="ds-mono text-[11px] text-cyan-300/80">Booting SkyCanvas viewport…</p>
-      </div>
-    </div>
-  );
-}
