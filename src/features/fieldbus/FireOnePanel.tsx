@@ -69,43 +69,64 @@ export default function FireOnePanel() {
           </p>
         </div>
 
-        {/* Connection bar */}
-        <div className="rounded-lg border border-border/40 bg-card/30 p-3 flex items-center gap-3 flex-wrap">
-          <span className={cn(
-            'text-[10px] font-mono font-bold tracking-[0.18em] px-2 py-1 rounded border',
-            linkOk
-              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-              : state.link === 'error'
-                ? 'bg-red-500/15 text-red-400 border-red-500/30'
-                : 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-          )}>
-            {linkLabel[state.link]}
-          </span>
-          {state.error && (
-            <span className="text-[10px] font-mono text-red-400 flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" /> {state.error}
+        {/* Connection bar — per-link badges + mode toggle */}
+        <div className="rounded-lg border border-border/40 bg-card/30 p-3 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={cn('text-[10px] font-mono font-bold tracking-[0.18em] px-2 py-1 rounded border inline-flex items-center gap-1', STATE_TONE[state.cable.state])}>
+              <Cable className="w-3 h-3" /> CABLE · {state.cable.state.toUpperCase()}
             </span>
-          )}
-          <span className="text-[10px] font-mono text-muted-foreground">
-            Slats: <span className="text-foreground">{slats.length}</span>
-          </span>
-          <span className="text-[10px] font-mono text-muted-foreground">
-            RX: <span className="text-foreground">{state.rxBytes}B</span>
-          </span>
-          <span className="text-[10px] font-mono text-muted-foreground">
-            Identify: <span className="text-foreground">{state.identifyCount}</span>
-          </span>
-          <div className="ml-auto flex items-center gap-2">
-            {!linkOk && (
-              <Button size="sm" onClick={() => void fleet.connect()} className="h-7 text-[10px] font-mono">
-                <PlugZap className="w-3 h-3 mr-1" /> CONNECT (USB-FTDI)
-              </Button>
+            <span className={cn('text-[10px] font-mono font-bold tracking-[0.18em] px-2 py-1 rounded border inline-flex items-center gap-1', STATE_TONE[state.radio.state])}>
+              <RadioTower className="w-3 h-3" /> RADIO · {state.radio.state.toUpperCase()}
+            </span>
+            {state.error && (
+              <span className="text-[10px] font-mono text-red-400 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> {state.error}
+              </span>
             )}
-            {linkOk && (
-              <Button size="sm" variant="outline" onClick={() => void fleet.disconnect()} className="h-7 text-[10px] font-mono">
-                <Power className="w-3 h-3 mr-1" /> DISCONNECT
-              </Button>
+            <div className="ml-auto inline-flex rounded border border-border/40 overflow-hidden">
+              {MODE_OPTIONS.map(({ value, label, icon: Icon }) => (
+                <button key={value}
+                  onClick={() => fleet.setMode(value)}
+                  aria-pressed={state.mode === value}
+                  className={cn(
+                    'px-2 py-1 text-[10px] font-mono inline-flex items-center gap-1 border-r border-border/40 last:border-r-0 transition-colors',
+                    state.mode === value
+                      ? 'bg-[hsl(190_70%_58%)]/20 text-[hsl(190_70%_58%)]'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-card/40',
+                  )}
+                >
+                  <Icon className="w-3 h-3" /> {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Fleet aggregates strip */}
+          <div className="flex items-center gap-3 flex-wrap text-[10px] font-mono text-muted-foreground">
+            <span>Slats: <span className="text-foreground">{slats.length}</span></span>
+            <span>Wired: <span className="text-foreground">{wired}</span></span>
+            <span>Wireless: <span className="text-foreground">{wireless}</span></span>
+            {avgRssi !== null && (
+              <span className={cn('inline-flex items-center gap-1', avgRssi < -85 && 'text-amber-400')}>
+                <Wifi className="w-3 h-3" /> avg {avgRssi} dBm
+              </span>
             )}
+            {minBat !== null && (
+              <span className={cn('inline-flex items-center gap-1', batLow && 'text-amber-400')}>
+                <Battery className="w-3 h-3" /> min {minBat.toFixed(1)} V
+              </span>
+            )}
+            <span className="ml-auto inline-flex items-center gap-2">
+              {!linkOk ? (
+                <Button size="sm" onClick={() => void fleet.connect()} className="h-7 text-[10px] font-mono">
+                  <PlugZap className="w-3 h-3 mr-1" /> CONNECT
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" onClick={() => void fleet.disconnect()} className="h-7 text-[10px] font-mono">
+                  <Power className="w-3 h-3 mr-1" /> DISCONNECT
+                </Button>
+              )}
+            </span>
           </div>
         </div>
 
