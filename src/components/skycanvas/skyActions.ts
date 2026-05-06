@@ -55,6 +55,9 @@ export function buildSkyActions(ctx: SkyActionContext): SkyAction[] {
     { id: 'project.exportJson', group: 'Project', label: 'Exportar show (JSON bundle)',
       hint: 'Inspect-only download — não dispara hardware',
       safety: 'inert', run: ctx.exportShowJson },
+    { id: 'project.resetShow', group: 'Project', label: 'Apagar show e limpar autosave…',
+      hint: 'Limpa cues e fxk.skycanvas.show.v1 (confirmação)',
+      safety: 'inert', run: ctx.resetShow },
 
     // ── Navigation ──
     { id: 'nav.aiBuilder', group: 'Navigation', label: 'Abrir AI Show Builder…',
