@@ -122,7 +122,7 @@ export default function FXK32QControlPanel() {
       toast.info('FXK32Q DISARMED');
     } else {
       const r = api.arm();
-      if (!r.ok) toast.error(`ARM rejeitado: ${r.message}`);
+      if (r.ok === false) toast.error(`ARM rejeitado: ${r.message}`);
       else toast.success('FXK32Q ARMED · Hold-1s pra disparar');
     }
   };
@@ -130,7 +130,7 @@ export default function FXK32QControlPanel() {
   const handleEStop = async () => {
     clearHold();
     const r = await api.eStop();
-    if (!r.ok) toast.error(`E-STOP falhou: ${r.message}`);
+    if (r.ok === false) toast.error(`E-STOP falhou: ${r.message}`);
     else toast.success('E-STOP enviado');
   };
 
@@ -150,7 +150,7 @@ export default function FXK32QControlPanel() {
       setBusy(true);
       try {
         const r = await api.fireBatch(channels, pulseMs);
-        if (!r.ok) toast.error(`BATCH rejeitado [${r.code}]: ${r.message}`);
+        if (r.ok === false) toast.error(`BATCH rejeitado [${r.code}]: ${r.message}`);
         else toast.success(`BATCH 0x${r.value.mask.toString(16).padStart(8, '0')} → ${pulseMs}ms`);
       } finally {
         setBusy(false);
@@ -179,7 +179,7 @@ export default function FXK32QControlPanel() {
           {br.isFXK32Q
             ? <Badge variant="outline" className="border bg-cyan-500/15 text-cyan-300 border-cyan-500/40">MODEL:FXK32Q · CH:32</Badge>
             : <Badge variant="outline" className="border bg-muted/20 text-muted-foreground">no handshake</Badge>}
-          {br.status.deviceFw && <span className="text-muted-foreground">FW {br.status.deviceFw}</span>}
+          {br.status.firmwareVersion && <span className="text-muted-foreground">FW {br.status.firmwareVersion}</span>}
         </div>
       </div>
 
