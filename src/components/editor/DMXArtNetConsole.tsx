@@ -26,7 +26,7 @@ export default function DMXArtNetConsole() {
   const refresh = useCallback(() => setTick(t => t + 1), []);
 
   const sp = useShowPlanProjection().plan;
-  const provenance = useConsoleProvenance(['enttec-pro', 'dmxking', 'artnet-node', 'fxk16'] as any);
+  const provenance = useConsoleProvenance(['enttec', 'dmx-generic', 'artnet-node']);
   const artnetState = artNetBridge.getState();
   const isConnected = artnetState === 'connected';
   const artnetStats = artNetBridge.getStats();
