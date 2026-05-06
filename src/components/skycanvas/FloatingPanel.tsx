@@ -51,6 +51,7 @@ function FloatingPanelImpl({ id, title, state, bottomStrip, className, children 
     active: false, sx: 0, sy: 0, ox: 0, oy: 0, pid: null,
   });
   const [dragging, setDragging] = useState(false);
+  const [snapHint, setSnapHint] = useState<DockSlot | null>(null);
   const reducedMotion = useReducedMotion();
 
   // Drag handlers — store delta in ref, commit on pointerup (no re-render mid-drag).
@@ -75,18 +76,26 @@ function FloatingPanelImpl({ id, title, state, bottomStrip, className, children 
     const dx = e.clientX - d.sx;
     const dy = e.clientY - d.sy;
     ref.current.style.transform = `translate(${dx}px, ${dy}px)`;
-  }, []);
+    // live snap hint
+    const nx = d.ox + dx;
+    const ny = d.oy + dy;
+    const snap = nearestSlot(nx, ny, state.w, state.h, window.innerWidth, window.innerHeight);
+    setSnapHint(snap ? snap.slot : null);
+  }, [state.w, state.h]);
 
   const finishDrag = useCallback((e?: React.PointerEvent<HTMLDivElement>) => {
     const d = dragRef.current;
     if (!d.active) return;
     const el = ref.current;
     let nx = state.x, ny = state.y;
+    let nextSlot: DockSlot = 'free';
     if (e && el) {
       nx = d.ox + (e.clientX - d.sx);
       ny = d.oy + (e.clientY - d.sy);
-      // clamp to viewport
       const vw = window.innerWidth, vh = window.innerHeight;
+      const snap = nearestSlot(nx, ny, state.w, state.h, vw, vh);
+      if (snap) { nx = snap.x; ny = snap.y; nextSlot = snap.slot; }
+      // clamp to viewport
       nx = Math.max(8, Math.min(nx, vw - state.w - 8));
       ny = Math.max(8, Math.min(ny, vh - state.h - 8));
       el.style.transform = '';
@@ -94,10 +103,11 @@ function FloatingPanelImpl({ id, title, state, bottomStrip, className, children 
     }
     dragRef.current = { active: false, sx: 0, sy: 0, ox: 0, oy: 0, pid: null };
     setDragging(false);
+    setSnapHint(null);
     if (e) {
       try { (e.currentTarget as Element).releasePointerCapture(e.pointerId); } catch { /* */ }
     }
-    dockStore.updatePanel(id, { x: nx, y: ny, slot: 'free' });
+    dockStore.updatePanel(id, { x: nx, y: ny, slot: nextSlot });
 
     // Debounced silent save toast (deferred import to avoid SSR)
     const now = Date.now();
