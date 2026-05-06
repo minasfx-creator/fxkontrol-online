@@ -933,36 +933,29 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
         {xl4Mode === 'hardware' && (
           <div className="space-y-2">
             {/* Connection */}
-            <div className={cn("rounded-lg border bg-[hsl(220_10%_7%)]", hwConnected || hwSimulated ? "border-green-500/30" : "border-border/15")}>
+            <div className={cn("rounded-lg border bg-[hsl(220_10%_7%)]", hwConnected ? "border-green-500/30" : "border-border/15")}>
               <div className={cn("flex items-center gap-2 p-2")}>
-                <CircuitBoard className={cn("shrink-0", mob ? "w-5 h-5" : "w-4 h-4", hwConnected || hwSimulated ? "text-green-400" : "text-muted-foreground/30")} />
+                <CircuitBoard className={cn("shrink-0", mob ? "w-5 h-5" : "w-4 h-4", hwConnected ? "text-green-400" : "text-muted-foreground/30")} />
                 <div className="flex-1 min-w-0">
                   <div className={cn("font-bold uppercase tracking-wider text-foreground/70", tsL)}>
-                    FireOne RS-485 {hwSimulated ? '(Simulado)' : ''}
+                    FireOne RS-485
                   </div>
                   <div className={cn("font-mono text-muted-foreground/40", tsS)}>
-                    {hwConnected ? '● Conectado · 9600 8N1' : hwSimulated ? '● Modo simulação ativo' : '○ Desconectado'}
+                    {hwConnected ? '● Conectado · 9600 8N1' : '○ Desconectado'}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => setHwSimulated(!hwSimulated)}
-                    className={cn("rounded border font-bold transition-all", mob ? "px-2 py-1 text-[9px]" : "px-1.5 py-0.5 text-[8px]",
-                      hwSimulated ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : "border-border/15 text-muted-foreground/30")}>
-                    SIM
-                  </button>
-                  {!hwSimulated ? (
-                    hwConnected ? (
-                      <Button size="sm" variant="outline" onClick={handleHwDisconnect}
-                        className={cn(mob ? "h-8 text-[10px]" : "h-6 text-[8px]", "border-red-500/30 text-red-400")}>
-                        Desconectar
-                      </Button>
-                    ) : (
-                      <Button size="sm" onClick={handleHwConnect}
-                        className={cn(mob ? "h-8 text-[10px]" : "h-6 text-[8px]")}>
-                        <Usb className="w-3 h-3 mr-1" /> Conectar
-                      </Button>
-                    )
-                  ) : null}
+                  {hwConnected ? (
+                    <Button size="sm" variant="outline" onClick={handleHwDisconnect}
+                      className={cn(mob ? "h-8 text-[10px]" : "h-6 text-[8px]", "border-red-500/30 text-red-400")}>
+                      Desconectar
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={handleHwConnect}
+                      className={cn(mob ? "h-8 text-[10px]" : "h-6 text-[8px]")}>
+                      <Usb className="w-3 h-3 mr-1" /> Conectar
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
