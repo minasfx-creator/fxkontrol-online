@@ -77,7 +77,8 @@ const CreateTemplate = lazy(lazyRetry(() => import("./pages/create/CreateTemplat
 const CreateGenerate = lazy(lazyRetry(() => import("./pages/create/CreateGenerate")));
 
 // Lazy-loaded heavy pages
-const Index = lazy(lazyRetry(() => import("./pages/Index")));
+// NOTE: legacy `pages/Index.tsx` aposentado na Rodada 4. /studio, /editor e
+// /editor/:showId agora redirecionam para /skycanvas (surface canônica DS v1).
 const CommandCenter = lazy(lazyRetry(() => import("./pages/CommandCenter")));
 
 // Field ops console — wraps DevicePairing + FieldTest + MobileLinkPanel as tabs.
