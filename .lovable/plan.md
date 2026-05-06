@@ -1,54 +1,83 @@
-# Rodada 10 — UI Honesta + Discovery Inline
+# Rodada 13 — Cockpit Mission Control: SafetyBar + Readiness Unificada
 
-## Diagnóstico
-Código já está limpo de telemetria sintética nas camadas críticas (deviceAggregator, FXK16, FireOne usam dados reais). Os pontos restantes de "informação enganosa" são puramente de chrome no `DashboardPanel.tsx`:
+## Estado real (auditado agora)
 
-- **`MOCK_NEWS = []`** — feed Instagram-style dead code (nunca renderiza nada útil) ocupando 200+ linhas (FeedCard, filtros, estado liked/saved).
-- **Hero "SYS::ONLINE"** — chip estático que mente: pisca verde mesmo sem hardware. `PROJ:`/`EVT:`/`T:` duplicam o que `OfficeKpiHero` já mostra honestamente acima.
-- **`MOCK_NEWS` import paths** — `feedFilter`, `CATEGORY_FILTERS`, `FeedCard`, `Heart/Bookmark/Share2/MessageCircle/TrendingUp/TrendingDown/Minus/Circle` lucides, todos dead.
-- **Sem empty state** quando 0 hardware: layout assume sempre que tem device, painéis Field Ops viram cliques sem destino.
+Três itens do "Próxima ação certa" do relatório **já estão implementados** no repo:
 
-`OfficeKpiHero` já é a fonte canônica honesta (Shows real do Supabase, devices via `deviceAggregator`, missions via localStorage, mode via `workMode.subscribe`).
+- **ProvenanceBadge** canônico — `src/components/safety/ProvenanceBadge.tsx` (Rodada 12) com 4 labels honestos (SIMULATED/REPLAY/LIVE READ-ONLY/NOT INTEGRATED) sobre tokens `ds-status-*`.
+- **ShowPlan SSoT** — `ShowPlanManager.fromProjectStore()` é invocado por `useShowPlanSync()` automaticamente, montado em `src/orchestration/EngineProvider.tsx`. Toda mutação do `useProjectStore` propaga ao ShowPlan canônico.
+- **BlackBox forensic** — `/dev/blackbox-inspector` com chain verify + 100 entries + record note (Rodada 12).
 
-## Mudanças
+O que **falta** para virar cockpit C2 de verdade:
 
-### 1. Novo: `src/components/office/EmptyHardwareHint.tsx`
-Cartão de estado vazio que aparece quando `deviceAggregator.getDevices().filter(online).length === 0`:
-- Texto honesto: "Nenhum hardware detectado · conecte FXK16/FireOne/Art-Net/DMX-USB"
-- Botão **Iniciar Discovery** → chama `unifiedDiscovery.scanLight()` inline com spinner
-- Link **Pareamento** → `/pairing`
-- Subscribe ao `deviceAggregator.watch` — auto-some quando 1º device fica online
+1. Estado de prontidão derivado, **único e consumível por toda UI**.
+2. **GlobalSafetyBar** sempre visível no topo do `MainLayout` agregando E-STOP, work mode, readiness, safety state, provenance dominante.
+3. **"Ready" hardcoded** removido de surfaces que mentem (Index/dashboard/headers que mostram OK sem checar `readinessEvaluator`).
 
-### 2. `src/components/office/DashboardPanel.tsx` — limpeza
-- **Remove** `MOCK_NEWS`, `NewsItem`, `CATEGORY_FILTERS`, `FeedCard`, `feedFilter`, `filteredNews`, `visibleNews` e a coluna central "feed" inteira do grid (~250 linhas dead).
-- **Remove** o bloco "telemetria readouts" (PROJ/EVT/T) duplicado — vive em `OfficeKpiHero`.
-- **Substitui** chip estático "SYS::ONLINE / FXK v2.0" por:
-  - Chip dinâmico que reflete `deviceAggregator` (verde "X DEVICES ONLINE" quando >0, cinza "OFFLINE" quando 0).
-- **Monta** `<EmptyHardwareHint />` logo após o hero, dentro do contêiner principal.
-- **Reduz grid** de `[1fr_420px_1fr]` para `[1fr_1fr]` (sem coluna central).
-- Imports lucide enxutos (remove Heart/Bookmark/Share2/MessageCircle/Trending*/Minus/Circle).
-- Corrige: rota `'/swarmgpt'` no `goToTool` agora aponta para `/ai-builder` (já redireciona, mas evita hop extra).
+## O que será construído
 
-### 3. Tests
-- Adicionar `src/__tests__/dashboardPanel.honesty.spec.tsx` (smoke):
-  - garante zero `MOCK_NEWS` no DashboardPanel
-  - garante presença de `EmptyHardwareHint` import
-  - garante hero não contém string `'SYS::ONLINE'` literal estática
+### A. `useSystemReadiness()` — hook canônico
+`src/hooks/useSystemReadiness.ts`. Pure read agregando, em poll de 1s + subscribe quando disponível:
+- `readinessEvaluator.evaluate()` → status + canExport + blockingReasons.
+- `safetyStateMachine.state` → IDLE/LOCKED/ARMED/FIRING/FAULT/E_STOPPED.
+- `useWorkMode()` → design / simulation / real_operation.
+- `verificationEngine.lastResult()` → erros bloqueantes.
+- `deviceAggregator.getDevices()` → contagem online + provenance dominante (live_read_only > replay > simulated > not_integrated).
+
+Retorna `SystemReadiness` com 6 estados visuais oficiais (`EMPTY/INVALID/BLOCKED/READY/ARMED/FIRING/FAULT/E_STOPPED`) + `dominantProvenance` + `blockingReasons[]`. **Nunca chama** `uiCommandGateway`/`fieldBus`. Cleanup garantido (clearInterval no unmount).
+
+### B. `<GlobalSafetyBar>` — topo soberano
+`src/components/safety/GlobalSafetyBar.tsx`. Faixa fixa 36px topo (acima do conteúdo, abaixo do `GlobalEStopButton` z-[9999]) com chips:
+
+```text
+[ MODE: SIM ] [ STATE: ARMED ] [ READINESS: READY ] [ DEV: 3/4 LIVE-RO ] [ HASH: a91…f02 ]
+```
+
+- Cores: tokens `ds-status-*` (sync/ok/warn/fail). Tipografia `ds-mono`.
+- Click no chip de readiness abre tooltip com `blockingReasons[]`.
+- Click no hash copia para clipboard (`showPlanHash` já existe).
+- Esconde-se em `/command` e nas rotas `pairing/*` (replicar regra do `GlobalEStopButton`).
+
+Montado em `src/layouts/MainLayout.tsx` logo abaixo do header.
+
+### C. Expurgo "Ready" hardcoded
+`rg -n "SYS::ONLINE|status.*=.*['\"]ready['\"]|>READY<"` para localizar; substituir por leitura do `useSystemReadiness().status`. Alvos prováveis (a confirmar na implementação):
+- `src/pages/Index.tsx` (topo do SkyCanvas)
+- `src/components/office/DashboardPanel.tsx` (já parcialmente honesto na Rodada 10)
+- Qualquer chip "READY" estático em headers de página.
+
+### D. Testes
+- `useSystemReadiness.spec.ts`: empty plan → `EMPTY`; plan + verification fail → `INVALID`; SSM=ARMED → `ARMED`; E-STOP → `E_STOPPED`; merge de provenances dominantes.
+- `GlobalSafetyBar.render.spec.tsx`: renderiza chips conforme hook mockado, esconde em `/command`.
+
+## Restrições inegociáveis
+
+- **Zero** chamadas a `uiCommandGateway`, `safetyStateMachine.transition`, `fieldBus.send`, `executor.fire` a partir do hook ou da bar. **Read-only puro**.
+- IA / agentes nunca disparam mudanças de workMode via essa bar.
+- Não introduzir novo store; consumir os existentes (`readinessEvaluator`, `safetyStateMachine`, `useWorkMode`, `deviceAggregator`).
+- Tokens canônicos `--field-*` / `--status-*` apenas. Sem cores hardcoded.
+- Esconder em `/command` (cockpit já tem própria barra) e em wizards de pairing (foco modal).
 
 ## Arquivos
-- **Novo**: `src/components/office/EmptyHardwareHint.tsx` (~85 linhas)
-- **Editado**: `src/components/office/DashboardPanel.tsx` (~808 → ~520 linhas)
-- **Novo**: `src/__tests__/dashboardPanel.honesty.spec.tsx`
-- **Memória**: `mem://funcionalidades/dashboard-honesty-empty-state` + index update
 
-## Garantias
-- Zero impacto em CommandBus/FieldBus/SafetyStateMachine/workMode.
-- Zero mudança em rotas existentes.
-- `OfficeKpiHero` permanece autoridade dos KPIs honestos.
-- Golden shows, fxk16 emulator (gated por flag), workMode=simulation, smoke physics, weather particles — TODOS preservados (são prova/render legítimos, não UI enganosa).
-- Tests existentes (1238/1238) devem continuar verde + 1-3 novos.
+- `src/hooks/useSystemReadiness.ts` (novo)
+- `src/components/safety/GlobalSafetyBar.tsx` (novo)
+- `src/layouts/MainLayout.tsx` (mount)
+- `src/__tests__/useSystemReadiness.spec.ts` (novo)
+- `src/__tests__/globalSafetyBar.render.spec.tsx` (novo)
+- Edits cirúrgicos onde "Ready" estiver hardcoded (lista final no commit)
 
-## Fora de escopo
-- Não toca `fireoneModuleEmulator`/`indoorSimulation`/`grandMA3Node` (escopo "UI + emulators" foi rejeitado).
-- Não força `real_only_mode` (escopo agressivo rejeitado).
-- Não altera `simulationGuard` nem o trio de modos (design/simulation/real_operation continua intacto).
+## Critérios de aceite
+
+- `useSystemReadiness()` retorna estado válido em todas as 8 condições mapeadas.
+- GlobalSafetyBar visível em `/office`, `/editor`, `/dev/*`; oculta em `/command` e `/pairing/*`.
+- `rg "SYS::ONLINE"` retorna vazio.
+- Suite verde (esperado 1242+/1242+).
+- Zero novos imports de `safetyStateMachine.transition` ou `fieldBus`.
+
+## Fora do escopo (próximas rodadas)
+
+- Refatorar VVIZ/CSV importers (já passam pelo ShowPlan via `useShowPlanSync`; auditoria fina é Rodada 14).
+- Continuity Matrix 4×8 e FieldDiagnostics dedicados (Rodada 15).
+- Tipos `SafetyInterlockState`/`IgnitionChannel`/`ContinuitySample`/`PowerState`/`ArtNetUniverseEntry` expandidos (Rodada 16 — mexe em adapters reais).
+- ECS / WASM / Web Workers (Fase 4 do roadmap mestre, multi-rodada).
