@@ -39,6 +39,7 @@ import { dockStore, useFloatingDock } from '@/hooks/useFloatingDock';
 import { useSmallViewport } from '@/hooks/useSmallViewport';
 import { buildSkyActions } from '@/components/skycanvas/skyActions';
 import TabbedDockPanel from '@/components/skycanvas/TabbedDockPanel';
+import MobilePanelSwitcher from '@/components/skycanvas/MobilePanelSwitcher';
 import { TimelineCuesProvider } from '@/components/skycanvas/tabs/TimelineCuesTab';
 import { useActiveDemoSession } from '@/hooks/useActiveDemoSession';
 import { ClaimBadge } from '@/components/strategy/ClaimBadge';
