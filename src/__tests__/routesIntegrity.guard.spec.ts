@@ -30,7 +30,7 @@ const LEGACY_ALLOWED = new Set([join(ROOT, 'App.tsx')]);
 
 // Paths legitimately external/router-handled but never registered as routes.
 const NEVER_ROUTES_RE =
-  /^(https?:|mailto:|tel:|#|\/api\/|\/wasm\/|\/assets\/|\/static\/|\/auth\?|\/auth#|\/$)/;
+  /^(https?:|mailto:|tel:|#|\/api\/|\/wasm\/|\/assets\/|\/static\/|\/auth\?|\/auth#|\/ws$|\/ws\/|\/$)/;
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
