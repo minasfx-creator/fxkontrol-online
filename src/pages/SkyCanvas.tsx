@@ -54,7 +54,7 @@ function fmtTime(s: number) {
 // ─────────────────────────────────────────────────────────────────────────
 
 function Topbar({
-  cap, playing, onTogglePlay, onStop, onSeek, time, duration,
+  cap, playing, onTogglePlay, onStop, onSeek, time, duration, onPickAudio, audioName,
 }: {
   cap: SkyCapability;
   playing: boolean;
@@ -63,7 +63,10 @@ function Topbar({
   onSeek: (delta: number) => void;
   time: number;
   duration: number;
+  onPickAudio: (file: File) => void;
+  audioName: string | null;
 }) {
+  const fileRef = useRef<HTMLInputElement | null>(null);
   return (
     <header className="flex h-full items-center gap-3 px-3">
       <div className="ds-mono text-[12px] tracking-wider text-cyan-300/90">
@@ -82,6 +85,28 @@ function Topbar({
         {cap.renderer === 'webgl2' ? `WEBGL2 · ${cap.tier.toUpperCase()}` : '2D FALLBACK'}
       </Badge>
       <div className="flex-1" />
+
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-8 px-2 text-zinc-300 hover:text-cyan-200 hover:bg-cyan-500/10 ds-mono text-[11px] gap-1"
+        onClick={() => fileRef.current?.click()}
+        title={audioName ?? 'Carregar trilha de áudio'}
+      >
+        <Music className="h-4 w-4" />
+        <span className="hidden md:inline truncate max-w-[140px]">{audioName ?? 'Áudio'}</span>
+      </Button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="audio/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onPickAudio(f);
+          e.target.value = '';
+        }}
+      />
 
       <div className="flex items-center gap-1">
         <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-300 hover:text-cyan-200 hover:bg-cyan-500/10" onClick={() => onSeek(-5)} aria-label="Voltar 5 segundos">
