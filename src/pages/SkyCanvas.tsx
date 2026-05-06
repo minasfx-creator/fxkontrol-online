@@ -11,7 +11,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Play, Pause, Square, SkipBack, SkipForward,
-  Camera, Sun, Activity, ChevronsLeft, ChevronsRight,
+  Camera, Sun, Activity, ChevronsLeft, ChevronsRight, Music,
 } from 'lucide-react';
 
 import { lazyRetry } from '@/lib/lazyRetry';
@@ -28,6 +28,9 @@ import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { detectSkyCapability, profileBudget, type SkyCapability } from '@/lib/skycanvasCapability';
 import EffectLibrarySidebar, { FXK_EFFECT_DRAG_TYPE } from '@/components/editor/EffectLibrarySidebar';
 import SkyFallback2D from '@/components/skycanvas/SkyFallback2D';
+import WaveformLayer from '@/components/skycanvas/WaveformLayer';
+import { decodeAudioPeaks } from '@/lib/skycanvasAudioPeaks';
+import { toast } from 'sonner';
 
 // SkyCanvas2 é nossa engine canônica para esta surface — modular, instanced,
 // com WebGLContextRecovery + AdaptiveDPRController + SkyCanvas2ErrorBoundary.
@@ -51,7 +54,7 @@ function fmtTime(s: number) {
 // ─────────────────────────────────────────────────────────────────────────
 
 function Topbar({
-  cap, playing, onTogglePlay, onStop, onSeek, time, duration,
+  cap, playing, onTogglePlay, onStop, onSeek, time, duration, onPickAudio, audioName,
 }: {
   cap: SkyCapability;
   playing: boolean;
@@ -60,7 +63,10 @@ function Topbar({
   onSeek: (delta: number) => void;
   time: number;
   duration: number;
+  onPickAudio: (file: File) => void;
+  audioName: string | null;
 }) {
+  const fileRef = useRef<HTMLInputElement | null>(null);
   return (
     <header className="flex h-full items-center gap-3 px-3">
       <div className="ds-mono text-[12px] tracking-wider text-cyan-300/90">
@@ -79,6 +85,28 @@ function Topbar({
         {cap.renderer === 'webgl2' ? `WEBGL2 · ${cap.tier.toUpperCase()}` : '2D FALLBACK'}
       </Badge>
       <div className="flex-1" />
+
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-8 px-2 text-zinc-300 hover:text-cyan-200 hover:bg-cyan-500/10 ds-mono text-[11px] gap-1"
+        onClick={() => fileRef.current?.click()}
+        title={audioName ?? 'Carregar trilha de áudio'}
+      >
+        <Music className="h-4 w-4" />
+        <span className="hidden md:inline truncate max-w-[140px]">{audioName ?? 'Áudio'}</span>
+      </Button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="audio/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onPickAudio(f);
+          e.target.value = '';
+        }}
+      />
 
       <div className="flex items-center gap-1">
         <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-300 hover:text-cyan-200 hover:bg-cyan-500/10" onClick={() => onSeek(-5)} aria-label="Voltar 5 segundos">
@@ -192,12 +220,13 @@ function Row({ k, v }: { k: string; v: string }) {
 // ─────────────────────────────────────────────────────────────────────────
 
 function TimelineStrip({
-  time, duration, onSeekAbs, onDropEffect,
+  time, duration, onSeekAbs, onDropEffect, peaks,
 }: {
   time: number;
   duration: number;
   onSeekAbs: (t: number) => void;
   onDropEffect: (effectId: string, t: number) => void;
+  peaks: Float32Array | null;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -253,7 +282,9 @@ function TimelineStrip({
             </div>
           ))}
         </div>
-        {/* Cue markers */}
+        {/* Waveform */}
+        <WaveformLayer peaks={peaks} height={80} />
+
         {cueMarkers.map((c) => {
           const left = duration > 0 ? (c.time / duration) * 100 : 0;
           return (
@@ -374,6 +405,31 @@ export default function SkyCanvasPage() {
   };
   const dropEffectAtPlayhead = (effectId: string) => dropEffectAt(effectId, time);
 
+  // Audio loading → peaks for waveform + sets project duration.
+  const setDuration = useProjectStore((s) => s.setDuration);
+  const [peaks, setPeaks] = useState<Float32Array | null>(null);
+  const [audioName, setAudioName] = useState<string | null>(null);
+  const [decoding, setDecoding] = useState(false);
+  const onPickAudio = async (file: File) => {
+    if (decoding) return;
+    setDecoding(true);
+    const tid = toast.loading(`Decodificando ${file.name}…`);
+    try {
+      const result = await decodeAudioPeaks(file, 1024);
+      setPeaks(result.peaks);
+      setAudioName(file.name);
+      setDuration(result.durationSec);
+      setCurrentTime(0);
+      setPlaying(false);
+      toast.success(`Áudio carregado · ${result.durationSec.toFixed(1)}s · ${result.sampleRate} Hz`, { id: tid });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Falha ao decodificar áudio';
+      toast.error(msg, { id: tid });
+    } finally {
+      setDecoding(false);
+    }
+  };
+
   return (
     <div className="relative h-[100dvh] w-full bg-[#050810] text-zinc-200 overflow-hidden"
          style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
@@ -400,7 +456,7 @@ export default function SkyCanvasPage() {
           timelineHeight: cap.landscapePhone ? 96 : 180,
         }}
         topbar={
-          <Topbar cap={cap} playing={playing} onTogglePlay={togglePlay} onStop={stop} onSeek={seek} time={time} duration={duration} />
+          <Topbar cap={cap} playing={playing} onTogglePlay={togglePlay} onStop={stop} onSeek={seek} time={time} duration={duration} onPickAudio={onPickAudio} audioName={audioName} />
         }
         left={
           <StudioErrorBoundary area="SkyCanvas · Library">
@@ -414,7 +470,7 @@ export default function SkyCanvasPage() {
         }
         timeline={
           <StudioErrorBoundary area="SkyCanvas · Timeline">
-            <TimelineStrip time={time} duration={duration} onSeekAbs={seekAbs} onDropEffect={dropEffectAt} />
+            <TimelineStrip time={time} duration={duration} onSeekAbs={seekAbs} onDropEffect={dropEffectAt} peaks={peaks} />
           </StudioErrorBoundary>
         }
       >
