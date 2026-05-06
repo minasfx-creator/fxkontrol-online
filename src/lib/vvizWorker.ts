@@ -149,20 +149,23 @@ function processPerf(
   const agent = perf.agentDescription;
   if (!agent) return null;
 
-  const zSign = coordMode === 'flip' ? -1 : 1;
-  const home = {
+  // Accumulate in source (VVIZ ENU) frame, transform at emission.
+  const homeSrc = {
     x: agent.homeX || 0,
     y: agent.homeY || 0,
-    z: (agent.homeZ || 0) * zSign,
+    z: agent.homeZ || 0,
     h: agent.homeH || 0,
   };
   const color = extractColor(perf.payloadDescription || []);
   const posId = uid('vp');
 
+  const homeOut = mapPoint(homeSrc.x, homeSrc.y, homeSrc.z, coordMode);
+  const headingOut = mapHeadingDeg(homeSrc.h, coordMode);
+
   const pos: Position = {
     id: posId, name: `Drone ${idx + 1}`, type: 'drone-pad',
-    x: home.x, y: home.y, z: home.z,
-    heading: home.h, pitch: 0, roll: 0, color,
+    x: homeOut[0], y: homeOut[1], z: homeOut[2],
+    heading: headingOut, pitch: 0, roll: 0, color,
   };
 
   const samples = agent.agentTraversal;
@@ -172,30 +175,33 @@ function processPerf(
   const defaultDt = 1 / rate;
   const cfg = getSimplifyConfig(inputSamples, defaultDt);
 
-  let x = home.x, y = home.y, z = home.z, h = home.h, t = 0;
-  let started = false, lx = home.x, ly = home.y, lz = home.z, lt = 0;
+  // Source-frame state (East/North/Up).
+  let sx = homeSrc.x, sy = homeSrc.y, sz = homeSrc.z, t = 0;
+  let started = false, lsx = sx, lsy = sy, lsz = sz, lt = 0;
   const waypoints: Waypoint[] = [];
 
   for (let i = 0; i < inputSamples; i++) {
     const s = samples[i];
     const dt = s.dt ?? defaultDt;
-    x += s.dx; y += s.dy; z += s.dz * zSign; h += s.dh ?? 0; t += dt;
+    sx += s.dx; sy += s.dy; sz += s.dz; t += dt;
 
     if (!started) {
-      const dsq = (x - home.x) ** 2 + (y - home.y) ** 2 + (z - home.z) ** 2;
+      const dsq = (sx - homeSrc.x) ** 2 + (sy - homeSrc.y) ** 2 + (sz - homeSrc.z) ** 2;
       if (dsq < HOME_SKIP_SQ && i < inputSamples - 1) continue;
-      waypoints.push({ id: uid('vw'), position: { x, y, z }, time: t + timeOffset });
-      started = true; lx = x; ly = y; lz = z; lt = t;
+      const [ox, oy, oz] = mapPoint(sx, sy, sz, coordMode);
+      waypoints.push({ id: uid('vw'), position: { x: ox, y: oy, z: oz }, time: t + timeOffset });
+      started = true; lsx = sx; lsy = sy; lsz = sz; lt = t;
       continue;
     }
 
     const dtS = t - lt;
-    const mvSq = (x - lx) ** 2 + (y - ly) ** 2 + (z - lz) ** 2;
+    const mvSq = (sx - lsx) ** 2 + (sy - lsy) ** 2 + (sz - lsz) ** 2;
     const isLast = i === inputSamples - 1;
 
     if (isLast || dtS >= cfg.maxGap || (dtS >= cfg.minTimeStep && mvSq >= cfg.minDistanceSq)) {
-      waypoints.push({ id: uid('vw'), position: { x, y, z }, time: t + timeOffset });
-      lx = x; ly = y; lz = z; lt = t;
+      const [ox, oy, oz] = mapPoint(sx, sy, sz, coordMode);
+      waypoints.push({ id: uid('vw'), position: { x: ox, y: oy, z: oz }, time: t + timeOffset });
+      lsx = sx; lsy = sy; lsz = sz; lt = t;
     }
   }
 
