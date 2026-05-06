@@ -105,20 +105,23 @@ export function attachCommandFireRouter(): () => void {
     let planHash: string | undefined;
     try { planHash = await hashShowPlan(showPlanManager.current); } catch { /* noop */ }
 
-    const verdict = await evaluatePyroDispatchVerdict({
-      available: listAvailableTransports(),
-      mode: workMode.get(),
-      planHash,
-      cueId: payload?.cueId,
-    });
-
-    if (!verdict.ok) {
-      void recordSafetyNote('fire-blocked', {
-        reason: verdict.reason,
-        mode: workMode.get(),
+    // Verdict gate is only enforced in real_operation. In design/simulation
+    // we still record an audit note but never block (canonical: SIMULATION = ok).
+    if (workMode.get() === 'real_operation') {
+      const verdict = await evaluatePyroDispatchVerdict({
+        available: listAvailableTransports(),
+        mode: 'real_operation',
+        planHash,
         cueId: payload?.cueId,
       });
-      return;
+      if (!verdict.ok) {
+        void recordSafetyNote('fire-blocked', {
+          reason: verdict.reason,
+          mode: 'real_operation',
+          cueId: payload?.cueId,
+        });
+        return;
+      }
     }
 
     const cue = resolveCue(payload);
