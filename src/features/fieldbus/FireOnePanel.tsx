@@ -9,11 +9,24 @@
 import { useMemo, useState } from 'react';
 import {
   Cable, ShieldCheck, ShieldOff, Wifi, WifiOff, Activity, Zap,
-  PlugZap, Power, AlertTriangle, RadioTower, CircleDot,
+  PlugZap, Power, AlertTriangle, RadioTower, CircleDot, Battery,
 } from 'lucide-react';
-import { useFireOneFleet } from '@/features/fieldbus/useFireOneFleet';
+import { useFireOneFleet, type FireOneLinkMode } from '@/features/fieldbus/useFireOneFleet';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+const MODE_OPTIONS: { value: FireOneLinkMode; label: string; icon: typeof Cable }[] = [
+  { value: 'cable',    label: 'CABLE',    icon: Cable      },
+  { value: 'wireless', label: 'WIRELESS', icon: RadioTower },
+  { value: 'auto',     label: 'AUTO',     icon: Wifi       },
+];
+
+const STATE_TONE: Record<string, string> = {
+  connected:    'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  connecting:   'bg-amber-500/15 text-amber-400 border-amber-500/30',
+  error:        'bg-red-500/15 text-red-400 border-red-500/30',
+  disconnected: 'bg-muted/15 text-muted-foreground border-border/30',
+};
 
 export default function FireOnePanel() {
   const fleet = useFireOneFleet();
@@ -25,12 +38,18 @@ export default function FireOnePanel() {
   const [selectedSlat, setSelectedSlat] = useState<number | null>(null);
 
   const linkOk = state.link === 'connected';
-  const linkLabel: Record<string, string> = {
-    disconnected: 'OFFLINE',
-    connecting:   'CONNECTING…',
-    connected:    'LIVE · USB-FTDI',
-    error:        'ERROR',
-  };
+
+  // Fleet-wide aggregates (honest: only over actually-replied slats)
+  const wired    = slats.filter(s => (s as any).connectionMode === 'wired').length;
+  const wireless = slats.filter(s => (s as any).connectionMode === 'wireless').length;
+  const wlSlats  = slats.filter(s => typeof s.rssiDbm === 'number');
+  const avgRssi  = wlSlats.length
+    ? Math.round(wlSlats.reduce((a, s) => a + (s.rssiDbm ?? 0), 0) / wlSlats.length)
+    : null;
+  const minBat   = slats.length
+    ? Math.min(...slats.map(s => s.batteryVoltage || 99))
+    : null;
+  const batLow   = minBat !== null && minBat < 11.0;
 
   return (
     <div className="w-full h-full overflow-y-auto">
