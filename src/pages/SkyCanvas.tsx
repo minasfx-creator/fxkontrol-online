@@ -40,6 +40,13 @@ import { buildSkyActions } from '@/components/skycanvas/skyActions';
 import TabbedDockPanel from '@/components/skycanvas/TabbedDockPanel';
 import MobilePanelSwitcher, { type MobilePanelKey } from '@/components/skycanvas/MobilePanelSwitcher';
 import { TimelineCuesProvider } from '@/components/skycanvas/tabs/TimelineCuesTab';
+
+// Round 2 — viewport overlays from legacy SkyCanvas (no commands, pure UI/HUD).
+const BoxSelectOverlay = lazy(() => import('@/components/editor/BoxSelectOverlay'));
+const SelectionModeBar = lazy(() => import('@/components/editor/SelectionModeBar'));
+const ARCompassHUD = lazy(() => import('@/components/editor/ARCompassHUD'));
+const ViewportTransitionOverlay = lazy(() => import('@/components/editor/ViewportTransitionOverlay'));
+
 import { useActiveDemoSession } from '@/hooks/useActiveDemoSession';
 
 import { EditorShell, DsSegmentTabs, type SegmentItem } from '@/components/ds';
@@ -764,6 +771,8 @@ export default function SkyCanvasPage() {
             >
               <TabbedDockPanel
                 defaultValue="effects"
+                value={layout.activeTabs?.left ?? 'effects'}
+                onValueChange={(v) => layout.setActiveTab('left', v)}
                 tabs={[
                    { value: 'effects',     label: 'Efeitos',     load: () => import('@/components/skycanvas/tabs/LibraryEffectsTab') },
                    { value: 'fixtures',    label: 'Fixtures',    load: () => import('@/components/skycanvas/tabs/LibraryFixturesTab') },
@@ -789,6 +798,8 @@ export default function SkyCanvasPage() {
               <TabbedDockPanel
                 defaultValue="cue"
                 dense
+                value={layout.activeTabs?.right ?? 'cue'}
+                onValueChange={(v) => layout.setActiveTab('right', v)}
                 tabs={[
                    { value: 'cue',      label: 'Cue',      load: () => import('@/components/skycanvas/tabs/InspectorCueTab') },
                    { value: 'scene',    label: 'Cena',     load: () => import('@/components/skycanvas/tabs/InspectorSceneTab') },
@@ -820,6 +831,8 @@ export default function SkyCanvasPage() {
                 <TabbedDockPanel
                   defaultValue="cues"
                   dense
+                  value={layout.activeTabs?.timeline ?? 'cues'}
+                  onValueChange={(v) => layout.setActiveTab('timeline', v)}
                   tabs={[
                      { value: 'cues',       label: 'Cues',       load: () => import('@/components/skycanvas/tabs/TimelineCuesTab') },
                      { value: 'waveform',   label: 'Waveform',   load: () => import('@/components/skycanvas/tabs/TimelineWaveformTab') },
@@ -863,6 +876,16 @@ export default function SkyCanvasPage() {
             ) : (
               <SkyFallback2D reason={cap.reasons[0]} />
             )}
+
+            {/* Round 2 — viewport HUD overlays (lazy, pure presentation). */}
+            <Suspense fallback={null}>
+              <ViewportTransitionOverlay />
+              <BoxSelectOverlay />
+              <ARCompassHUD />
+              <div className="absolute top-3 left-3 z-[35] pointer-events-auto">
+                <SelectionModeBar />
+              </div>
+            </Suspense>
           </div>
         </StudioErrorBoundary>
       </EditorShell>

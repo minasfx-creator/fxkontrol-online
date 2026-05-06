@@ -19,6 +19,9 @@ interface Props {
   tabs: DockTabSpec[];
   /** Optional dense mode for narrow panels. */
   dense?: boolean;
+  /** Optional controlled mode: when provided, parent owns the active tab. */
+  value?: string;
+  onValueChange?: (next: string) => void;
 }
 
 function TabSkeleton({ label }: { label: string }) {
@@ -32,8 +35,14 @@ function TabSkeleton({ label }: { label: string }) {
   );
 }
 
-export default function TabbedDockPanel({ defaultValue, tabs, dense }: Props) {
-  const [active, setActive] = useState(defaultValue);
+export default function TabbedDockPanel({ defaultValue, tabs, dense, value, onValueChange }: Props) {
+  const [internal, setInternal] = useState(defaultValue);
+  const isControlled = value !== undefined;
+  const active = isControlled ? value : internal;
+  const setActive = (next: string) => {
+    if (!isControlled) setInternal(next);
+    onValueChange?.(next);
+  };
 
   // Cache lazy components per tab so they don't reset on tab switch.
   const lazyMap = useMemo(() => {

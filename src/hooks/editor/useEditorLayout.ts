@@ -16,6 +16,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface EditorActiveTabs {
+  left?: string;
+  right?: string;
+  timeline?: string;
+}
+
 export interface EditorLayoutState {
   leftWidth: number;
   rightWidth: number;
@@ -23,6 +29,8 @@ export interface EditorLayoutState {
   leftCollapsed: boolean;
   rightCollapsed: boolean;
   timelineCollapsed: boolean;
+  /** Optional active tab id per dock slot (Round 2 — persisted). */
+  activeTabs?: EditorActiveTabs;
 }
 
 export const EDITOR_LAYOUT_DEFAULTS: EditorLayoutState = {
@@ -32,6 +40,7 @@ export const EDITOR_LAYOUT_DEFAULTS: EditorLayoutState = {
   leftCollapsed: false,
   rightCollapsed: false,
   timelineCollapsed: false,
+  activeTabs: {},
 };
 
 export const EDITOR_LAYOUT_LIMITS = {
@@ -75,6 +84,13 @@ function readPersisted(projectId: string): EditorLayoutState {
       leftCollapsed: Boolean(parsed.leftCollapsed),
       rightCollapsed: Boolean(parsed.rightCollapsed),
       timelineCollapsed: Boolean(parsed.timelineCollapsed),
+      activeTabs: (parsed.activeTabs && typeof parsed.activeTabs === 'object')
+        ? {
+            left: typeof parsed.activeTabs.left === 'string' ? parsed.activeTabs.left : undefined,
+            right: typeof parsed.activeTabs.right === 'string' ? parsed.activeTabs.right : undefined,
+            timeline: typeof parsed.activeTabs.timeline === 'string' ? parsed.activeTabs.timeline : undefined,
+          }
+        : {},
     };
   } catch {
     return EDITOR_LAYOUT_DEFAULTS;
@@ -91,6 +107,8 @@ export interface UseEditorLayoutResult extends EditorLayoutState {
   toggleRight: () => void;
   toggleTimeline: () => void;
   reset: () => void;
+  /** Round 2 — set the active tab id for a given dock slot. */
+  setActiveTab: (slot: keyof EditorActiveTabs, tabId: string) => void;
 }
 
 /**
@@ -147,6 +165,13 @@ export function useEditorLayout(projectId: string): UseEditorLayoutResult {
           leftCollapsed: Boolean(cloud.leftCollapsed),
           rightCollapsed: Boolean(cloud.rightCollapsed),
           timelineCollapsed: Boolean(cloud.timelineCollapsed),
+          activeTabs: (cloud.activeTabs && typeof cloud.activeTabs === 'object')
+            ? {
+                left: typeof cloud.activeTabs.left === 'string' ? cloud.activeTabs.left : undefined,
+                right: typeof cloud.activeTabs.right === 'string' ? cloud.activeTabs.right : undefined,
+                timeline: typeof cloud.activeTabs.timeline === 'string' ? cloud.activeTabs.timeline : undefined,
+              }
+            : {},
         });
       } catch {
         // Network/auth issues — silently fall back to localStorage cache.
@@ -238,6 +263,14 @@ export function useEditorLayout(projectId: string): UseEditorLayoutResult {
     setState(EDITOR_LAYOUT_DEFAULTS);
   }, []);
 
+  const setActiveTab = useCallback((slot: keyof EditorActiveTabs, tabId: string) => {
+    setState((s) => {
+      const prev = s.activeTabs ?? {};
+      if (prev[slot] === tabId) return s;
+      return { ...s, activeTabs: { ...prev, [slot]: tabId } };
+    });
+  }, []);
+
   return {
     ...state,
     effective: {
@@ -252,5 +285,6 @@ export function useEditorLayout(projectId: string): UseEditorLayoutResult {
     toggleRight,
     toggleTimeline,
     reset,
+    setActiveTab,
   };
 }
