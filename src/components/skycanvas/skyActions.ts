@@ -22,9 +22,10 @@ export interface SkyActionContext {
   stop: () => void;
   seekTo: (t: number) => void;
   pickAudio: () => void;
-  focusPanel: (id: 'library' | 'inspector' | 'timeline') => void;
-  toggleCinema: () => void;
-  resetDock: () => void;
+  toggleLeft: () => void;
+  toggleRight: () => void;
+  toggleTimeline: () => void;
+  resetLayout: () => void;
   goCommand: () => void;
   goAiBuilder: () => void;
   goStrategy: () => void;
@@ -42,11 +43,10 @@ export function buildSkyActions(ctx: SkyActionContext): SkyAction[] {
     { id: 'audio.seek0',  group: 'Audio',      label: 'Ir para o início',          kbd: 'Home',  safety: 'inert', run: () => ctx.seekTo(0) },
 
     // ── Layout ──
-    { id: 'layout.lib',   group: 'Layout',     label: 'Foco · Biblioteca de efeitos', kbd: '⌘1', safety: 'inert', run: () => ctx.focusPanel('library') },
-    { id: 'layout.insp',  group: 'Layout',     label: 'Foco · Inspector',             kbd: '⌘2', safety: 'inert', run: () => ctx.focusPanel('inspector') },
-    { id: 'layout.tl',    group: 'Layout',     label: 'Foco · Timeline',              kbd: '⌘3', safety: 'inert', run: () => ctx.focusPanel('timeline') },
-    { id: 'layout.cinema',group: 'Layout',     label: 'Modo cinema (ocultar painéis)',kbd: '⌘\\',safety: 'inert', run: ctx.toggleCinema },
-    { id: 'layout.reset', group: 'Layout',     label: 'Restaurar layout padrão',      kbd: '⇧⌘0',safety: 'inert', run: ctx.resetDock },
+    { id: 'layout.left',  group: 'Layout',     label: 'Alternar painel · Biblioteca', kbd: '⌘1', safety: 'inert', run: ctx.toggleLeft },
+    { id: 'layout.right', group: 'Layout',     label: 'Alternar painel · Inspector',  kbd: '⌘2', safety: 'inert', run: ctx.toggleRight },
+    { id: 'layout.tl',    group: 'Layout',     label: 'Alternar painel · Timeline',   kbd: '⌘3', safety: 'inert', run: ctx.toggleTimeline },
+    { id: 'layout.reset', group: 'Layout',     label: 'Restaurar layout padrão',      kbd: '⇧⌘0',safety: 'inert', run: ctx.resetLayout },
 
     // ── Project ──
     { id: 'project.importVdl', group: 'Project', label: 'Importar catálogo VDL/CSV…',
@@ -72,10 +72,10 @@ export function buildSkyActions(ctx: SkyActionContext): SkyAction[] {
 
     // ── Help ──
     { id: 'help.keys',    group: 'Help',       label: 'Atalhos de teclado',
-      hint: 'Space · ←/→ · ⌘K · ⌘1/2/3 · ⌘\\',
+      hint: 'Space · ←/→ · ⌘K · ⌘1/2/3 · ⇧⌘0',
       safety: 'inert',
       run: () => void import('sonner').then(({ toast }) =>
-        toast('Space play · ←/→ frame · ⌘K menu · ⌘1/2/3 painéis · ⌘\\ cinema', { duration: 4000 }),
+        toast('Space play · ←/→ frame · ⌘K menu · ⌘1/2/3 painéis · ⇧⌘0 reset', { duration: 4000 }),
       ),
     },
   ];
