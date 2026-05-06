@@ -11,9 +11,12 @@ import { GripVertical, Minus, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { dockStore, type PanelState, type DockSlot } from '@/hooks/useFloatingDock';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useSmallViewport } from '@/hooks/useSmallViewport';
 
 const SNAP_RADIUS = 56; // px to corner before magnetic pull engages
 const SNAP_MARGIN = 16;
+const MOBILE_SHEET_HEIGHT_RATIO = 0.55; // 55dvh
+const MOBILE_DISMISS_DRAG_PX = 80;      // swipe-down threshold to collapse
 
 function nearestSlot(x: number, y: number, w: number, h: number, vw: number, vh: number): { slot: DockSlot; x: number; y: number } | null {
   const corners: Array<{ slot: DockSlot; cx: number; cy: number }> = [
