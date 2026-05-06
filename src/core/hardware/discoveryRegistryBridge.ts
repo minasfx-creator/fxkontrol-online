@@ -107,7 +107,31 @@ export function startDiscoveryRegistryBridge(): void {
     }
   });
 
-  // ── Art-Net (UDP via edge ArtPoll) ─────────────────────────────
+  // ── FXK32Q (USB / BLE / BLE-LR / WebSocket / Wi-Fi Direct / RS-485) ──
+  // Espelho do FXK16 — mesmo handshake VERSION/STATUS, mas espera
+  // `MODEL:FXK32Q;CH:32`. Promovido em qualquer dos 6 transports.
+  _unsubFxk32q = subscribeFXK32QBridge((status) => {
+    const verified =
+      !!status.connected
+      && isFxk32q(status.deviceModel, status.channelCount)
+      && status.linkHealth === 'healthy';
+
+    if (verified === _lastFxk32qVerified) return;
+    _lastFxk32qVerified = verified;
+
+    if (verified) {
+      const transport = mapTransport(status.transport);
+      fxk32qModuleAdapter.markHandshakeOk(transport);
+      logger.info(
+        `[discoveryBridge] FXK32Q promoted to LIVE READ-ONLY (transport=${transport}, fw=${status.firmwareVersion ?? '?'})`,
+      );
+      try { unifiedHardwareRegistry.startPolling(1000); }
+      catch (err) { logger.warn('[discoveryBridge] startPolling failed', err); }
+    } else {
+      fxk32qModuleAdapter.markHandshakeLost();
+      logger.info('[discoveryBridge] FXK32Q demoted to NOT_INTEGRATED');
+    }
+  });
   _unsubArtnet = mdnsArtnetDiscoverer.watch((event) => {
     const { device, type } = event;
     if (device.family !== 'artnet-node' || !device.host) return;
