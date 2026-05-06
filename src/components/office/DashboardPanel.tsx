@@ -164,7 +164,7 @@ function HubCard({
   const baseDelay = parseFloat(delay);
   const goToTool = (panel: string) => {
     if (panel === 'swarmgpt') {
-      navigate('/swarmgpt');
+      navigate('/ai-builder');
       return;
     }
     if (commandRoute) {
