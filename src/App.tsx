@@ -69,6 +69,7 @@ const BlackBoxInspector = lazy(lazyRetry(() => import("./pages/dev/BlackBoxInspe
 const CueConflictsPage = lazy(lazyRetry(() => import("./pages/dev/CueConflicts")));
 const AddressingPage = lazy(lazyRetry(() => import("./pages/dev/Addressing")));
 const PerfBenchPage = lazy(lazyRetry(() => import("./pages/dev/PerfBench")));
+const EffectsLibrariesPage = lazy(lazyRetry(() => import("./pages/dev/EffectsLibraries")));
 
 const FXK16Hub = lazy(lazyRetry(() => import("./pages/dev/FXK16Hub")));
 const DevIndex = lazy(lazyRetry(() => import("./pages/dev/DevIndex")));
@@ -232,6 +233,7 @@ function App() {
                     <Route path="/dev/cue-conflicts" element={<CueConflictsPage />} />
                     <Route path="/dev/addressing" element={<AddressingPage />} />
                     <Route path="/dev/perf-bench" element={<PerfBenchPage />} />
+                    <Route path="/dev/effects-libraries" element={<EffectsLibrariesPage />} />
                     {/* Public alias — promoted shell route. */}
                     <Route path="/editor-ds" element={<EditorShellPreview />} />
                     {/* Public legal pages — required by Paddle (Merchant of Record) and must be crawlable without auth. */}
