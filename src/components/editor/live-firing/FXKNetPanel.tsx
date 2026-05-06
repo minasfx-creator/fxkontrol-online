@@ -15,7 +15,7 @@ import MA3NetworkPanel from './MA3NetworkPanel';
 
 // Heavy panels — lazy so opening Networks doesn't pull NFC/BLE/Realtime code upfront.
 const MobileLinkPanel = lazy(() => import('../MobileLinkPanel'));
-const DevicePairingPage = lazy(() => import('@/pages/DevicePairing'));
+const DevicePairingPage = lazy(() => import('@/components/field/DevicePairingPanel'));
 
 interface FXKNetPanelProps {
   fs?: boolean;

@@ -29,8 +29,8 @@ import {
 } from 'lucide-react';
 import { useAdminRole } from '@/hooks/useAdminRole';
 
-const Dashboard = lazy(() => import('./Dashboard'));
-const AccreditationDashboard = lazy(() => import('./AccreditationDashboard'));
+const Dashboard = lazy(() => import('@/components/office/DashboardPanel'));
+const AccreditationDashboard = lazy(() => import('@/components/office/AccreditationPanel'));
 const JoiPanel = lazy(() => import('@/ai/ui/JoiPanel'));
 import OfficeHubCards from '@/features/office/OfficeHubCards';
 import OfficeKpiHero from '@/features/office/OfficeKpiHero';
