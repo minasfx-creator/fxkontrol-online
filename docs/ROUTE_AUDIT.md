@@ -118,3 +118,31 @@ Os outros 6 (PerformanceHUD, RenderDebugOverlay, SkyCanvasDiagnosticsPanel, Tele
 ### Pendência Rodada 6 (sugerida)
 
 Consolidar mounts duplicados de `SkyCanvas2`/`SkyCanvas3D` em `/dev/skycanvas-{smoke,3d,2}` — hoje há 3 demos isoladas + 2 importações em produção (`SkyCanvasMount.tsx` + `pages/SkyCanvas.tsx`). Avaliar se as 3 rotas dev podem virar um único `/dev/skycanvas-lab` com toggle.
+
+---
+
+## Rodada 6 — Consolidação SkyCanvas dev lab (executada)
+
+3 rotas dev distintas (`/dev/skycanvas-{smoke,3d,2}`) consolidadas em um único harness `/dev/skycanvas-lab` com toggle de variante (smoke/r3f/v2). Reduz 3 chunks lazy → 1 e simplifica QA.
+
+### Mudanças
+
+| Antes | Depois |
+|---|---|
+| `pages/dev/SkyCanvasSmoke.tsx` | DELETADO |
+| `pages/dev/SkyCanvas3DDemo.tsx` | DELETADO |
+| `pages/dev/SkyCanvas2Demo.tsx` | DELETADO |
+| 3 lazy imports + 3 rotas `<Route element=…>` | 1 lazy `SkyCanvasLab` + 3 `<Navigate>` legacy |
+
+`SkyCanvasLab.tsx` mantém todas as features:
+- Variant pinned via `?v=smoke|r3f|v2` (URL persistida via `useSearchParams`)
+- Smoke usa `SkyCanvasMount` (mesmo de produção)
+- R3F seed determinístico (4 positions + 4 cues) preservado
+- v2 query flags `?perf ?nostars ?nogrid ?nostage ?stage=minimal` preservadas
+- Toggle UI inline (3 chips top-left) com `aria-pressed`
+
+### Métricas
+
+- `src/pages/dev/`: **12 → 10** arquivos
+- `src/App.tsx`: −2 lazy roots, +3 redirects
+- Testes: **57/57 verde**
