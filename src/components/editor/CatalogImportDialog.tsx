@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Upload, FileSpreadsheet, X, Check, ArrowRight, RefreshCw, Database, AlertCircle } from 'lucide-react';
+import { Upload, FileSpreadsheet, X, Check, ArrowRight, RefreshCw, Database, AlertCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -17,6 +17,8 @@ import { parseCatalogFile, catalogToEffects, parseAnyFormat, parseCatalogFileWit
 import { useMyLibrary } from '@/hooks/useMyLibrary';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+type CueSpreadMode = 'none' | 'evenly' | 'fixed-1s' | 'fixed-2s' | 'fixed-5s' | 'at-playhead';
 
 const FIELD_OPTIONS = [
   { value: 'none', label: '— Skip —' },
