@@ -166,7 +166,7 @@ export async function runE2ETest(
     return finalize(steps, opts.modules ?? [], false, startedAt);
   }
   emit(close(discoveryStep, 'pass', `${devices.length} device(s) ativo(s)`, {
-    devices: devices.map((d) => ({ id: d.aggregateId, kind: d.kind })),
+    devices: devices.map((d) => ({ id: d.aggregateId, family: (d as any).family ?? null })),
   }));
 
   // 2. ROUTING ──────────────────────────────────────────────────────
