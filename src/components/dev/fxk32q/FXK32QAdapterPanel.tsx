@@ -66,7 +66,7 @@ export default function FXK32QAdapterPanel() {
   const connBadgeClass =
     conn === 'connected'
       ? 'ds-status-ok'
-      : conn === 'connecting' || conn === 'reconnecting'
+      : conn === 'degraded'
         ? 'ds-status-warn'
         : 'ds-status-fail';
 
