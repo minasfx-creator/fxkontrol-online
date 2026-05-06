@@ -39,10 +39,12 @@ import { dockStore, useFloatingDock } from '@/hooks/useFloatingDock';
 import { useSmallViewport } from '@/hooks/useSmallViewport';
 import { buildSkyActions } from '@/components/skycanvas/skyActions';
 import TabbedDockPanel from '@/components/skycanvas/TabbedDockPanel';
+import MobilePanelSwitcher from '@/components/skycanvas/MobilePanelSwitcher';
 import { TimelineCuesProvider } from '@/components/skycanvas/tabs/TimelineCuesTab';
 import { useActiveDemoSession } from '@/hooks/useActiveDemoSession';
-import { ClaimBadge } from '@/components/strategy/ClaimBadge';
+
 import { useWorkMode } from '@/core/safety/workMode';
+import { useSkyCanvasShowPersistence, clearPersistedSkyCanvasShow } from '@/hooks/useSkyCanvasShowPersistence';
 import { cn } from '@/lib/utils';
 
 const SkyCanvas2 = lazy(lazyRetry(() => import('@/components/show3d/v2/SkyCanvas2')));
@@ -314,9 +316,37 @@ export default function SkyCanvasPage() {
   const setCurrentTime = useProjectStore((s) => s.setCurrentTime);
   const setDuration = useProjectStore((s) => s.setDuration);
 
-  // RAF playback
+  // Audio buffer / waveform
+  const [peaks, setPeaks] = useState<Float32Array | null>(null);
+  const [audioName, setAudioName] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [decoding, setDecoding] = useState(false);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+
+  // ── Playback clock ──
+  // When an audio file is loaded, the <audio> element drives currentTime
+  // (audio is master clock). Otherwise, fall back to a wall-clock RAF so the
+  // operator can still scrub/play the timeline without a soundtrack.
   useEffect(() => {
     if (!playing) return;
+    const el = audioElRef.current;
+    const hasAudio = !!audioUrl && !!el;
+
+    if (hasAudio && el) {
+      // Mirror play/pause and pump store from audio.currentTime each RAF.
+      void el.play().catch(() => { /* autoplay block — fall back to RAF below */ });
+      let raf = 0;
+      const tick = () => {
+        const t = el.currentTime;
+        if (t >= duration) { el.pause(); setCurrentTime(0); setPlaying(false); return; }
+        setCurrentTime(t);
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => { cancelAnimationFrame(raf); el.pause(); };
+    }
+
+    // Fallback: wall-clock RAF (no audio loaded)
     let raf = 0; let last = performance.now();
     const tick = () => {
       const now = performance.now();
@@ -328,15 +358,23 @@ export default function SkyCanvasPage() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [playing, duration, setCurrentTime, setPlaying]);
+  }, [playing, duration, audioUrl, setCurrentTime, setPlaying]);
 
   const togglePlay = useCallback(() => setPlaying(!useProjectStore.getState().isPlaying), [setPlaying]);
-  const stop = useCallback(() => { setPlaying(false); setCurrentTime(0); }, [setPlaying, setCurrentTime]);
+  const stop = useCallback(() => {
+    setPlaying(false); setCurrentTime(0);
+    const el = audioElRef.current; if (el) { el.pause(); el.currentTime = 0; }
+  }, [setPlaying, setCurrentTime]);
   const seek = useCallback((delta: number) => {
     const t = useProjectStore.getState().currentTime;
-    setCurrentTime(Math.max(0, Math.min(duration, t + delta)));
+    const next = Math.max(0, Math.min(duration, t + delta));
+    setCurrentTime(next);
+    const el = audioElRef.current; if (el) el.currentTime = next;
   }, [duration, setCurrentTime]);
-  const seekAbs = useCallback((t: number) => setCurrentTime(t), [setCurrentTime]);
+  const seekAbs = useCallback((t: number) => {
+    setCurrentTime(t);
+    const el = audioElRef.current; if (el) el.currentTime = t;
+  }, [setCurrentTime]);
 
   // Master Menu palette
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -355,10 +393,6 @@ export default function SkyCanvasPage() {
   const audioInputRef = useRef<HTMLInputElement | null>(null);
   const pickAudio = useCallback(() => audioInputRef.current?.click(), []);
 
-  // Audio decoding
-  const [peaks, setPeaks] = useState<Float32Array | null>(null);
-  const [audioName, setAudioName] = useState<string | null>(null);
-  const [decoding, setDecoding] = useState(false);
   const onPickAudio = async (file: File) => {
     if (decoding) return;
     setDecoding(true);
@@ -367,6 +401,11 @@ export default function SkyCanvasPage() {
       const result = await decodeAudioPeaks(file, 1024);
       setPeaks(result.peaks);
       setAudioName(file.name);
+      // Replace previous object URL (if any) — revoke the old one to free memory.
+      setAudioUrl((prev) => {
+        if (prev) { try { URL.revokeObjectURL(prev); } catch { /* */ } }
+        return URL.createObjectURL(file);
+      });
       setDuration(result.durationSec);
       setCurrentTime(0);
       setPlaying(false);
@@ -375,6 +414,13 @@ export default function SkyCanvasPage() {
       toast.error(err instanceof Error ? err.message : 'Falha ao decodificar áudio', { id: tid });
     } finally { setDecoding(false); }
   };
+
+  // Revoke audio object URL on unmount
+  useEffect(() => () => {
+    if (audioUrl) { try { URL.revokeObjectURL(audioUrl); } catch { /* */ } }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   // Cue drop handlers
   const dropEffectAt = useCallback((effectId: string, t: number) => {
@@ -393,6 +439,10 @@ export default function SkyCanvasPage() {
 
   // Master Menu actions
   const [importOpen, setImportOpen] = useState(false);
+
+  // Local persistence (cues + duration + audio name) — no playback, no buffer.
+  useSkyCanvasShowPersistence({ audioName });
+
   const exportShowJson = useCallback(() => {
     try {
       const cues = useProjectStore.getState().cueMarkers;
@@ -413,6 +463,15 @@ export default function SkyCanvasPage() {
     }
   }, [duration]);
 
+  const resetShow = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const ok = window.confirm('Apagar todos os cues e limpar show salvo? Esta ação não pode ser desfeita.');
+    if (!ok) return;
+    useProjectStore.getState().clearCueMarkers();
+    clearPersistedSkyCanvasShow();
+    toast.success('Show restaurado');
+  }, []);
+
   const actions = useMemo(() => buildSkyActions({
     togglePlay, stop, seekTo: seekAbs, pickAudio,
     focusPanel,
@@ -427,7 +486,8 @@ export default function SkyCanvasPage() {
     goStrategy: () => navigate('/strategy'),
     openImportVdl: () => setImportOpen(true),
     exportShowJson,
-  }), [togglePlay, stop, seekAbs, pickAudio, focusPanel, cinema, navigate, exportShowJson]);
+    resetShow,
+  }), [togglePlay, stop, seekAbs, pickAudio, focusPanel, cinema, navigate, exportShowJson, resetShow, audioName]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -525,6 +585,17 @@ export default function SkyCanvasPage() {
           e.target.value = '';
         }}
       />
+
+      {/* Audio master clock element — drives currentTime when a track is loaded */}
+      {audioUrl && (
+        <audio
+          ref={audioElRef}
+          src={audioUrl}
+          preload="auto"
+          className="hidden"
+          aria-hidden="true"
+        />
+      )}
 
       {/* VIEWPORT — edge-to-edge */}
       <StudioErrorBoundary area="SkyCanvas · Viewport">
@@ -636,7 +707,7 @@ export default function SkyCanvasPage() {
         )}
       </Suspense>
 
-      {/* MOBILE TRANSPORT */}
+      {/* MOBILE TRANSPORT + PANEL SWITCHER */}
       <MobileTransportFab
         playing={playing}
         onTogglePlay={togglePlay}
@@ -644,6 +715,7 @@ export default function SkyCanvasPage() {
         time={time}
         duration={duration}
       />
+      <MobilePanelSwitcher active={mobileActive} onChange={setMobileActive} />
 
       {/* MASTER MENU PALETTE */}
       <Suspense fallback={null}>
