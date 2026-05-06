@@ -528,17 +528,23 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          {/* Connection LEDs */}
+        <div className="flex items-center gap-2">
+          {/* Real link/transport indicators only */}
           {[
-            { label: 'ArtN', on: artNetConnected, color: 'green' },
-            { label: 'UDP', on: relayConnected, color: 'cyan' },
-            { label: 'RT', on: connected, color: 'green' },
+            { label: 'Art-Net', on: artNetConnected },
+            { label: 'Relay', on: relayConnected },
+            { label: 'Realtime', on: connected },
+            { label: 'Serial', on: hwConnected },
           ].map(led => (
-            <div key={led.label} className="flex items-center gap-0.5" title={led.label}>
-              <div className={cn("rounded-full w-1.5 h-1.5", led.on ? `bg-${led.color}-500` : "bg-muted-foreground/20")}
-                style={led.on ? { boxShadow: `0 0 4px ${led.color === 'cyan' ? 'rgba(0,220,255,0.5)' : 'rgba(34,197,94,0.5)'}` } : undefined} />
-              <span className={cn("font-mono", tsS, led.on ? `text-${led.color}-500/60` : "text-muted-foreground/20")}>{led.label}</span>
+            <div key={led.label} className="flex items-center gap-1" title={`${led.label} ${led.on ? 'online' : 'offline'}`}>
+              <div className={cn(
+                "rounded-full w-1.5 h-1.5",
+                led.on ? "bg-green-500" : "bg-muted-foreground/25"
+              )}
+                style={led.on ? { boxShadow: '0 0 4px rgba(34,197,94,0.5)' } : undefined} />
+              <span className={cn("font-mono", tsS, led.on ? "text-green-500/70" : "text-muted-foreground/30")}>
+                {led.label}
+              </span>
             </div>
           ))}
         </div>
