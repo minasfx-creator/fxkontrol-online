@@ -31,7 +31,7 @@ interface DockItem {
 const DOCK_MAIN_ALL: DockItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
   { icon: Crosshair, label: 'Command', path: '/command', accent: 'hsl(0 85% 48%)' },
-  { icon: Clapperboard, label: 'Editor 3D', path: '/editor', accent: 'hsl(32 100% 50%)' },
+  { icon: Clapperboard, label: 'SkyCanvas', path: '/skycanvas', accent: 'hsl(32 100% 50%)' },
   { icon: CalendarDays, label: 'Agenda', path: '/agenda' },
   { icon: Gamepad2, label: 'Training', path: '/training' },
   { icon: Activity, label: 'Field Test', path: '/field-test', accent: 'hsl(165 100% 42%)', flag: 'module_pairing_mobilelink' },
@@ -204,7 +204,7 @@ export default function DockBar() {
                         />
                       )}
                       {/* AR Mode badge on Editor 3D */}
-                      {arMode && item.path === '/editor' && (
+                      {arMode && item.path === '/skycanvas' && (
                         <div className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full animate-pulse"
                           style={{ background: 'hsl(var(--fxk-magenta))', boxShadow: '0 0 6px hsl(var(--fxk-magenta) / 0.6)' }}
                         />

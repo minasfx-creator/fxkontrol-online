@@ -221,7 +221,7 @@ export default function Landing() {
               <Link to="/auth">Entrar</Link>
             </Button>
             <Button asChild size="sm" className="rounded-full px-3 text-xs sm:px-4 sm:text-sm">
-              <Link to="/studio" aria-label="Abrir o editor 3D Studio">
+              <Link to="/skycanvas" aria-label="Abrir o editor 3D Studio">
                 <span className="hidden sm:inline">Abrir Studio</span>
                 <span className="inline sm:hidden">Studio</span>
                 <ArrowRight aria-hidden="true" className="ml-1 h-3.5 w-3.5" />
@@ -260,7 +260,7 @@ export default function Landing() {
             </p>
             <div className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:mt-9 sm:flex-row sm:items-center">
               <Button asChild size="lg" className="h-12 rounded-full px-6 text-sm font-bold shadow-[0_10px_40px_hsl(var(--primary)/0.3)] sm:px-7">
-                <Link to="/studio">
+                <Link to="/skycanvas">
                   <Rocket aria-hidden="true" className="mr-2 h-4 w-4" />
                   Abrir editor 3D
                 </Link>
@@ -396,7 +396,7 @@ export default function Landing() {
 
               <div className="mt-10 flex gap-3">
                 <Button asChild size="lg" className="rounded-full">
-                  <Link to="/studio">
+                  <Link to="/skycanvas">
                     <Sparkles aria-hidden="true" className="mr-2 h-4 w-4" />
                     Testar agora
                   </Link>
@@ -580,7 +580,7 @@ export default function Landing() {
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button asChild size="lg" className="h-12 rounded-full px-8 text-sm font-bold shadow-[0_10px_40px_hsl(var(--primary)/0.35)]">
-              <Link to="/studio">
+              <Link to="/skycanvas">
                 <Rocket aria-hidden="true" className="mr-2 h-4 w-4" />
                 Abrir editor 3D
               </Link>

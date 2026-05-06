@@ -294,7 +294,7 @@ export default function Comercial() {
             <a href="#pacotes" className="c-cta-primary px-6 py-3 rounded text-sm inline-flex items-center gap-2">
               Solicitar demo guiada <ArrowRight className="w-4 h-4" />
             </a>
-            <Link to="/studio" className="c-cta-secondary px-6 py-3 rounded text-sm inline-flex items-center gap-2">
+            <Link to="/skycanvas" className="c-cta-secondary px-6 py-3 rounded text-sm inline-flex items-center gap-2">
               Abrir Studio
             </Link>
           </div>
@@ -653,7 +653,7 @@ export default function Comercial() {
             <div>
               <div className="c-mono c-fs-eyebrow c-text-subtle uppercase tracking-widest mb-4">Recursos</div>
               <ul className="space-y-2 c-fs-small">
-                <li><Link to="/studio"    className="c-text-muted hover:c-text transition-colors">Studio</Link></li>
+                <li><Link to="/skycanvas"    className="c-text-muted hover:c-text transition-colors">Studio</Link></li>
                 <li><Link to="/manifesto" className="c-text-muted hover:c-text transition-colors">Manifesto</Link></li>
                 <li><Link to="/pricing"   className="c-text-muted hover:c-text transition-colors">Pricing público</Link></li>
                 <li><a href="#faq"        className="c-text-muted hover:c-text transition-colors">FAQ</a></li>

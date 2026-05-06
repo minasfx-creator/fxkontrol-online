@@ -27,7 +27,7 @@ type Item = {
 const ITEMS: readonly Item[] = [
   {
     label: 'Studio',
-    path: '/studio',
+    path: '/skycanvas',
     icon: Wand2,
     desc: 'Editor 3D',
     // Active on /studio when no special panel param is targeting another item.
