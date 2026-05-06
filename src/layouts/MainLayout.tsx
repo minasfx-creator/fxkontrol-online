@@ -38,6 +38,9 @@ const RealFiringReadinessBadge = lazy(lazyRetry(() => import('@/components/safet
 // Previously this was nested inside <Index> desktop branch only, which left
 // the timeline frozen on mobile and on routes other than /studio.
 const EngineProvider = lazy(lazyRetry(() => import('@/orchestration/EngineProvider')));
+// Mission Control cockpit strip — read-only chips (work mode, safety state,
+// readiness, devices, plan hash). Hidden in /command and /pairing/*.
+const GlobalSafetyBar = lazy(lazyRetry(() => import('@/components/safety/GlobalSafetyBar')));
 
 function SidebarToggleButton() {
   const { state, toggleSidebar } = useSidebar();
