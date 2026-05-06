@@ -42,7 +42,7 @@ import TabbedDockPanel from '@/components/skycanvas/TabbedDockPanel';
 import MobilePanelSwitcher from '@/components/skycanvas/MobilePanelSwitcher';
 import { TimelineCuesProvider } from '@/components/skycanvas/tabs/TimelineCuesTab';
 import { useActiveDemoSession } from '@/hooks/useActiveDemoSession';
-import { ClaimBadge } from '@/components/strategy/ClaimBadge';
+
 import { useWorkMode } from '@/core/safety/workMode';
 import { useSkyCanvasShowPersistence, clearPersistedSkyCanvasShow } from '@/hooks/useSkyCanvasShowPersistence';
 import { cn } from '@/lib/utils';
