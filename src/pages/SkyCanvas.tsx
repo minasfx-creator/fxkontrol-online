@@ -414,13 +414,26 @@ export default function SkyCanvasPage() {
         }
         timeline={
           <StudioErrorBoundary area="SkyCanvas · Timeline">
-            <TimelineStrip time={time} duration={duration} onSeekAbs={seekAbs} />
+            <TimelineStrip time={time} duration={duration} onSeekAbs={seekAbs} onDropEffect={dropEffectAt} />
           </StudioErrorBoundary>
         }
       >
-        {/* Viewport — capability-driven renderer. */}
+        {/* Viewport — capability-driven renderer. Drop = inserir cue no playhead. */}
         <StudioErrorBoundary area="SkyCanvas · Viewport">
-          <div className="relative h-full w-full" data-fxk-effect-drop="viewport">
+          <div
+            className="relative h-full w-full"
+            data-fxk-effect-drop="viewport"
+            onDragOver={(e) => {
+              if (e.dataTransfer.types.includes(FXK_EFFECT_DRAG_TYPE)) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+              }
+            }}
+            onDrop={(e) => {
+              const id = e.dataTransfer.getData(FXK_EFFECT_DRAG_TYPE);
+              if (id) { e.preventDefault(); dropEffectAtPlayhead(id); }
+            }}
+          >
             {cap.renderer === 'webgl2' ? (
               <Suspense fallback={<ViewportLoader />}>
                 <SkyCanvas2
