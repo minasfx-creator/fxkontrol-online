@@ -61,6 +61,7 @@ const DesignSystemShowcase = lazy(lazyRetry(() => import("./pages/dev/DesignSyst
 const EditorShellPreview = lazy(lazyRetry(() => import("./pages/dev/EditorShellPreview")));
 const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")));
 const ModuleRoster = lazy(lazyRetry(() => import("./pages/dev/ModuleRoster")));
+const E2ETestPage = lazy(lazyRetry(() => import("./pages/dev/E2ETestPage")));
 const GoldenShowsCatalog = lazy(lazyRetry(() => import("./pages/dev/GoldenShows")));
 const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
 const FXK16Hub = lazy(lazyRetry(() => import("./pages/dev/FXK16Hub")));
@@ -211,6 +212,7 @@ function App() {
                         Registry with adapter provenance. No commands sent. */}
                     <Route path="/dev/readiness-audit" element={<ReadinessAudit />} />
                     <Route path="/dev/module-roster" element={<ModuleRoster />} />
+                    <Route path="/dev/e2e-test" element={<E2ETestPage />} />
                     {/* Phase 1 golden show inspector — pure read of the
                         Libertadores ShowPlan + PDF + honest export ZIP. */}
                     <Route path="/dev/libertadores" element={<Navigate to="/dev/golden-shows" replace />} />
