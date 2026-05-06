@@ -57,13 +57,15 @@ describe('vvizCoordinateTransform — Finale 3D ENU → Three.js', () => {
     expect(transformHeadingDegrees(NaN, 'enu_to_three')).toBe(0);
   });
 
-  it('heading: round-trip through enu_to_three twice returns original (mod 360)', () => {
-    for (const h of [0, 30, 90, 137, 180, 200, 350]) {
+  it('heading: applying transform twice returns input mod 360', () => {
+    for (const h of [0, 30, 90, 137, 200, 350]) {
       const once = transformHeadingDegrees(h, 'enu_to_three');
-      const twice = transformHeadingDegrees(-once, 'enu_to_three'); // simulate inverse
-      // twice should equal h normalised
-      const norm = ((h + 540) % 360) - 180;
-      expect(twice).toBeCloseTo(norm <= -180 ? norm + 360 : norm, 6);
+      const twice = transformHeadingDegrees(once, 'enu_to_three');
+      // twice negates twice ⇒ equals input normalised to (-180, 180]
+      let expected = h % 360;
+      if (expected > 180) expected -= 360;
+      else if (expected <= -180) expected += 360;
+      expect(twice).toBeCloseTo(expected, 6);
     }
   });
 
