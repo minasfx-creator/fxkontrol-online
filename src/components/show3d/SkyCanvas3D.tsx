@@ -303,7 +303,9 @@ function ParticleExplosionsLayer() {
       list.push({
         key: item.id,
         origin,
-        color: item.colorOverride || eff.color || '#FFD700',
+        color: item.colorOverride
+          ? ledAccurateColor(item.colorOverride)
+          : (eff.color || '#FFD700'),
         age: currentTime - burstStart,
         life,
         height: eff.heightMeters ?? 60,
