@@ -839,16 +839,14 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
               </button>
             </div>
 
-            {/* Timecode source */}
+            {/* Timecode source — internal clock only (real sources not wired) */}
             <div className="flex items-center gap-2">
               <span className={cn("font-mono text-muted-foreground/30", tsS)}>Source:</span>
-              {['Internal', 'LTC', 'MTC', 'GPS'].map(src => (
-                <span key={src} className={cn("font-mono rounded px-1.5 py-0.5 border", tsS,
-                  src === 'Internal' ? "border-primary/30 bg-primary/10 text-primary/70" : "border-border/10 text-muted-foreground/20")}>
-                  {src}
-                </span>
-              ))}
+              <span className={cn("font-mono rounded px-1.5 py-0.5 border border-primary/30 bg-primary/10 text-primary/70", tsS)}>
+                Internal
+              </span>
             </div>
+
 
             {/* Cue list */}
             <div className={cn("rounded border border-border/10 bg-[hsl(220_10%_5%)]", mob ? "p-2" : "p-1.5")}>
