@@ -21,6 +21,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CircleDot, Cable, RadioTower, Wifi, Battery, Activity } from 'lucide-react';
 import { useFireOneFleet } from '@/features/fieldbus/useFireOneFleet';
 import { cn } from '@/lib/utils';
+import FXK32QControlPanel from '@/components/dev/fxk32q/FXK32QControlPanel';
 
 const STALE_MS = 5000;
 
@@ -219,6 +220,9 @@ export default function ModuleRoster() {
           ONLINE = telemetry within {STALE_MS / 1000}s · OFFLINE = telemetry stale ·
           NOT INTEGRATED = address slot inside fleet range that never replied · COM LED pulses on each frame.
         </p>
+
+        {/* FXK32Q dedicated bench panel */}
+        <FXK32QControlPanel />
       </div>
     </div>
   );
