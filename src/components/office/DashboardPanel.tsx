@@ -483,7 +483,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Main Grid: Left (ops) + Center (feed) + Right ─ */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* ─ Left Column ─ */}
         <div className="space-y-4 order-2 lg:order-1">
