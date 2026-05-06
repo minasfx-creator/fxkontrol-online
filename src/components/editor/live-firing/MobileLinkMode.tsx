@@ -610,20 +610,18 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
               {connectedModules.length} MOD · {totalIgniters} IGN · {firedIgniters} FIRED
             </span>
           </div>
-          {/* 4 Output LEDs */}
-          <div className="flex items-center gap-1">
-            <span className={cn("font-mono text-muted-foreground/20 mr-1", tsS)}>OUT:</span>
-            {[0, 1, 2, 3].map(i => (
-              <button key={i} onClick={() => setSelectedOutput(i)}
-                className={cn(
-                  "rounded-full transition-all",
-                  mob ? "w-3 h-3" : "w-2.5 h-2.5",
-                  selectedOutput === i
-                    ? masterArmed ? "bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]" : "bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]"
-                    : "bg-muted-foreground/15 hover:bg-muted-foreground/30"
-                )} title={`Output ${i + 1}`} />
-            ))}
+          {/* Hardware presence (real signals only) */}
+          <div className="flex items-center gap-2">
+            <span className={cn("font-mono", tsS, hwConnected ? "text-green-500/70" : "text-muted-foreground/40")}>
+              HW {hwConnected ? 'ONLINE' : 'OFFLINE'}
+            </span>
+            {hwConnected && (
+              <span className={cn("font-mono text-muted-foreground/40", tsS)}>
+                · {hwModules.length} MOD
+              </span>
+            )}
           </div>
+
         </div>
       </div>
 
