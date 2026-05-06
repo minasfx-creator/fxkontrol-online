@@ -831,16 +831,7 @@ export default function SkyCanvasPage() {
                   dense
                   value={layout.activeTabs?.timeline ?? 'cues'}
                   onValueChange={(v) => layout.setActiveTab('timeline', v)}
-                  tabs={[
-                     { value: 'cues',       label: 'Cues',       load: () => import('@/components/skycanvas/tabs/TimelineCuesTab') },
-                     { value: 'waveform',   label: 'Waveform',   load: () => import('@/components/skycanvas/tabs/TimelineWaveformTab') },
-                     { value: 'storyboard', label: 'Storyboard', load: () => import('@/components/skycanvas/tabs/TimelineStoryboardTab') },
-                     { value: 'preview',    label: 'Preview',    load: () => import('@/components/skycanvas/tabs/TimelinePreviewTab') },
-                     { value: 'scripting',  label: 'Scripting',  load: () => import('@/components/skycanvas/tabs/TimelineScriptingTab') },
-                     { value: 'export',     label: 'Export',     load: () => import('@/components/skycanvas/tabs/TimelineExportTab') },
-                     { value: 'smpte',      label: 'SMPTE',      load: () => import('@/components/skycanvas/tabs/TimelineSmpteTab') },
-                     { value: 'validation', label: 'Validation', load: () => import('@/components/skycanvas/tabs/TimelineValidationTab') },
-                   ]}
+                  tabs={TIMELINE_TABS}
                 />
               </TimelineCuesProvider>
             </section>
