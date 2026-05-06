@@ -198,7 +198,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     ch.on('broadcast', { event: 'fxc-fire' }, (msg) => {
       const p = msg.payload as any;
       setEvents(prev => [{
-        id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
+        id: nextEvtId(),
         timestamp: Date.now(), source: 'remote' as const,
         fixtureName: p.name || p.type, type: p.type,
         color: p.color || '#fff', intensity: p.intensity || 200,
@@ -309,7 +309,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     ));
 
     setEvents(prev => [{
-      id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
+      id: nextEvtId(),
       timestamp: Date.now(), source: 'local' as const,
       fixtureName: label, type: 'fire', color: '#ff4400', intensity: 255,
     }, ...prev].slice(0, 80));
@@ -435,7 +435,7 @@ export default function MobileLinkMode({ fs, fireChannel, channels, artNetConnec
     haptics.fire();
 
     setEvents(prev => [{
-      id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 4)}`,
+      id: nextEvtId(),
       timestamp: Date.now(), source: 'local' as const,
       fixtureName: fixture.name, type: fixture.type,
       color: fixture.color, intensity: fixture.intensity,
