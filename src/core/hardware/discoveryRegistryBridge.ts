@@ -47,8 +47,6 @@ let _unsubSerial: (() => void) | null = null;
 let _lastVerified = false;
 let _lastFxk32qVerified = false;
 let _lastXl4Verified = false;
-let _lastVerified = false;
-let _lastFxk32qVerified = false;
 /** Track which Art-Net hosts are currently online so we can demote on loss. */
 const _artnetOnline = new Set<string>();
 /** Track DMX-family serial device ids currently online. */
