@@ -41,10 +41,12 @@ static void handleLine(char* line, ResponseSink sink) {
   if (strcmp(line, "STATUS") == 0) {
     const uint32_t pins = pinsMask32();
     emitf(sink,
-          "BAT:0.0;PINS:%lu;RSSI:-30;MODEL:%s;CH:%u;ART:%u;START:%u;RS485:%u",
+          "BAT:0.0;PINS:%lu;RSSI:-30;MODEL:%s;CH:%u;ART:%u;START:%u;RS485:%u;ARM:%u;ESTOP:%u",
           (unsigned long)pins, FXK32Q_MODEL, (unsigned)FXK32Q_CHANNELS,
           (unsigned)s_cfg.artnetUniverse, (unsigned)s_cfg.artnetStartCh,
-          (unsigned)s_cfg.rs485Address);
+          (unsigned)s_cfg.rs485Address,
+          (unsigned)(isArmed() ? 1 : 0),
+          (unsigned)(isEstopLatched() ? 1 : 0));
     return;
   }
   if (strcmp(line, "IDENTIFY") == 0) {
@@ -61,6 +63,20 @@ static void handleLine(char* line, ResponseSink sink) {
             (unsigned)row.channel, (unsigned)row.gpio, row.terminal);
     }
     sink("OK:PINMAP");
+    return;
+  }
+
+  // ── ARM / DISARM (defense-in-depth firmware-side gate) ───────
+  // ARM é negado se ESTOP estiver latched; DISARM sempre aceita.
+  if (strcmp(line, "ARM") == 0) {
+    if (isEstopLatched()) { sink("ERR:ARM:ESTOP_LATCHED"); return; }
+    armSet(true);
+    emitf(sink, "OK:ARM:%u", (unsigned)(isArmed() ? 1 : 0));
+    return;
+  }
+  if (strcmp(line, "DISARM") == 0) {
+    armSet(false);
+    sink("OK:DISARM");
     return;
   }
 
@@ -92,10 +108,11 @@ static void handleLine(char* line, ResponseSink sink) {
     *sep = '\0';
     unsigned long mask = strtoul(p, nullptr, 0);
     int ms = atoi(sep + 1);
-    if (fireMask32((uint32_t)mask, (uint16_t)ms)) {
+    const char* err = nullptr;
+    if (fireMask32((uint32_t)mask, (uint16_t)ms, &err)) {
       emitf(sink, "OK:BATCH:%lu", mask);
     } else {
-      emitf(sink, "ERR:BATCH:%lu:REJECTED", mask);
+      emitf(sink, "ERR:BATCH:%lu:%s", mask, err ? err : "REJECTED");
     }
     return;
   }
@@ -115,9 +132,12 @@ static void handleLine(char* line, ResponseSink sink) {
     return;
   }
 
-  // ── CONT:<pin> stub (sem ADC dedicado no v1.0) ──────────────
+  // ── CONT:<pin> — leitura de continuidade ────────────────────
+  // Sem ADC dedicado no v1.0: relata 9999Ω (open) honestamente.
+  // Hardware r2 com mux CD4051 substituirá esse stub.
   if (strncmp(line, "CONT:", 5) == 0) {
     int pin = atoi(line + 5);
+    if (pin < 1 || pin > FXK32Q_CHANNELS) { emitf(sink, "ERR:CONT:%d:OUT_OF_RANGE", pin); return; }
     emitf(sink, "CONT:%d:9999", pin);
     return;
   }

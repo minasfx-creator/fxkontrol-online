@@ -59,17 +59,20 @@ Mesmas regras do FXK16 + comandos de configuração:
 | Comando                                    | Resposta                                                                          |
 |--------------------------------------------|-----------------------------------------------------------------------------------|
 | `HEARTBEAT`                                | `PONG`                                                                            |
-| `VERSION`                                  | `VER:FXK32Q-1.0.0` + `MODEL:FXK32Q;CH:32;FW:1.0.0`                                |
-| `STATUS`                                   | `BAT:<v>;PINS:<mask32>;RSSI:<dbm>;MODEL:FXK32Q;CH:32;ART:<u>;START:<s>;RS485:<a>` |
-| `IDENTIFY`                                 | `MODEL:FXK32Q;CH:32;FW:1.0.0;ID:FXK32Q`                                           |
+| `VERSION`                                  | `VER:FXK32Q-1.1.0` + `MODEL:FXK32Q;CH:32;FW:1.1.0`                                |
+| `STATUS`                                   | `BAT:<v>;PINS:<mask32>;RSSI:<dbm>;MODEL:FXK32Q;CH:32;ART:<u>;START:<s>;RS485:<a>;ARM:<0\|1>;ESTOP:<0\|1>` |
+| `IDENTIFY`                                 | `MODEL:FXK32Q;CH:32;FW:1.1.0;ID:FXK32Q`                                           |
 | `PINMAP`                                   | 32× `MAP:<n>:GPIO<g>:<terminal>` + `OK:PINMAP`                                    |
-| `FIRE:<1..32>:<ms>`                        | `OK:FIRE:<n>` ou `ERR:FIRE:<n>:<reason>`                                          |
-| `BATCH:<mask32>:<ms>`                      | `OK:BATCH:<mask32>` (mask hex/dec, até 32 bits)                                   |
-| `CONT:<1..32>`                             | `CONT:<n>:<ohms>` (stub 9999)                                                     |
+| `ARM` / `DISARM`                           | `OK:ARM:1` (ou `ERR:ARM:ESTOP_LATCHED`) / `OK:DISARM`                             |
+| `FIRE:<1..32>:<ms>`                        | `OK:FIRE:<n>` ou `ERR:FIRE:<n>:<NOT_ARMED\|ESTOP_LATCHED\|OUT_OF_RANGE\|BAD_DURATION>` |
+| `BATCH:<mask32>:<ms>`                      | `OK:BATCH:<mask32>` ou `ERR:BATCH:<mask>:<NOT_ARMED\|ESTOP_LATCHED\|EMPTY_MASK\|BAD_DURATION>` |
+| `CONT:<1..32>`                             | `CONT:<n>:<ohms>` (stub 9999 — open) ou `ERR:CONT:<n>:OUT_OF_RANGE`               |
 | `GPIO:<n>:HIGH\|LOW`                       | `OK:GPIO:<n>` (apenas com jumper UNSAFE)                                          |
 | `SET_ARTNET:<universe>:<startCh>`          | `OK:ART:<u>:<s>`                                                                  |
 | `SET_RS485:<addr1..40>`                    | `OK:RS485:<addr>`                                                                 |
-| `ESTOP` / `RESET`                          | `OK:ESTOP` (latch) / `OK:RESET` (libera)                                          |
+| `ESTOP` / `RESET`                          | `OK:ESTOP` (latch + DISARM) / `OK:RESET` (libera; ARM precisa ser refeito)        |
+
+> **ARM gate firmware-side** (defense-in-depth): o app já gateia ARM em `fxk32q/commandApi.ts`, mas o firmware **também** exige `ARM` antes de aceitar `FIRE`/`BATCH`. ESTOP latch desarma automaticamente; ARM auto-expira após 30s sem comando válido (proteção contra link-fantasma). Art-Net e RS-485 também respeitam o gate.
 
 ## 4. Transportes simultâneos
 
@@ -101,20 +104,28 @@ Ver `docs/ARTNET_MAP.md` para o mapa universo→canal.
 
 ```text
 > VERSION
-VER:FXK32Q-1.0.0
-MODEL:FXK32Q;CH:32;FW:1.0.0
+VER:FXK32Q-1.1.0
+MODEL:FXK32Q;CH:32;FW:1.1.0
 > STATUS
-BAT:0.0;PINS:0;RSSI:-30;MODEL:FXK32Q;CH:32;ART:0;START:1;RS485:1
+BAT:0.0;PINS:0;RSSI:-30;MODEL:FXK32Q;CH:32;ART:0;START:1;RS485:1;ARM:0;ESTOP:0
+> FIRE:1:50
+ERR:FIRE:1:NOT_ARMED              # gate firmware-side
+> ARM
+OK:ARM:1
 > SET_ARTNET:1:1
 OK:ART:1:1
 > FIRE:17:50
-OK:FIRE:17     # GPIO 38 vai LOW por 50ms (Banco B IN1)
+OK:FIRE:17                        # GPIO 38 vai LOW por 50ms (Banco B IN1)
 > BATCH:0xFFFF0000:80
-OK:BATCH:4294901760    # dispara C17..C32 simultâneos
+OK:BATCH:4294901760               # dispara C17..C32 simultâneos
 > ESTOP
 OK:ESTOP
 > FIRE:1:50
 ERR:FIRE:1:ESTOP_LATCHED
+> ARM
+ERR:ARM:ESTOP_LATCHED
 > RESET
 OK:RESET
+> ARM
+OK:ARM:1
 ```

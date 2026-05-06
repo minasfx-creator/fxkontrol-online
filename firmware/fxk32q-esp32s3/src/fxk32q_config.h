@@ -16,7 +16,7 @@
 #include <Arduino.h>
 
 #ifndef FXK32Q_FW_VERSION
-#define FXK32Q_FW_VERSION "1.0.0"
+#define FXK32Q_FW_VERSION "1.1.0"
 #endif
 
 #define FXK32Q_MODEL          "FXK32Q"
