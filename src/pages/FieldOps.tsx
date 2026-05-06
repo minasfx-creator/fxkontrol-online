@@ -32,11 +32,21 @@ const ALL_TABS: { key: TabKey; label: string; sub: string; icon: typeof Nfc }[] 
 ];
 
 export default function FieldOpsPage() {
+  const controllers = useActiveControllers();
+  const fireoneOnline = controllers.controllers.some(c => c.kind === 'fireone');
+  const fireoneVisible = isFireOneXL43RealOpsEnabled() || fireoneOnline;
+  const TABS = ALL_TABS.filter(t => t.key !== 'fireone' || fireoneVisible);
+
   const [tab, setTab] = useState<TabKey>(() => {
     if (typeof window === 'undefined') return 'pairing';
     const hash = window.location.hash.replace('#', '') as TabKey;
-    return TABS.some(t => t.key === hash) ? hash : 'pairing';
+    return ALL_TABS.some(t => t.key === hash) ? hash : 'pairing';
   });
+
+  // If the device disappears, snap away from the now-hidden tab.
+  useEffect(() => {
+    if (tab === 'fireone' && !fireoneVisible) setTab('pairing');
+  }, [tab, fireoneVisible]);
 
   const setTabAndHash = (k: TabKey) => {
     setTab(k);
@@ -108,6 +118,7 @@ export default function FieldOpsPage() {
         >
           {tab === 'pairing'     && <DevicePairing />}
           {tab === 'fxk16'       && <FXK16FieldPanel />}
+          {tab === 'fireone'     && fireoneVisible && <FireOnePanel />}
           {tab === 'field-test'  && <FieldTest />}
           {tab === 'mobile-link' && <MobileLinkPanel onClose={() => setTabAndHash('pairing')} />}
         </Suspense>
