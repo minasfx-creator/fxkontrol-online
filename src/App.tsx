@@ -194,13 +194,12 @@ function App() {
                     <Route path="/dev/fxk16" element={<FXK16Hub />} />
                     <Route path="/dev/fxk16-validate" element={<Navigate to="/dev/fxk16?tab=validate" replace />} />
                     <Route path="/dev/fxk16-calibrate" element={<Navigate to="/dev/fxk16?tab=calibrate" replace />} />
-                    {/* Public SkyCanvas smoke route — mounts the 3D viewport in
-                        isolation for E2E QA. No auth, no hardware, no ARM. */}
-                    <Route path="/dev/skycanvas-smoke" element={<SkyCanvasSmoke />} />
-                    {/* New R3F SkyCanvas3D — clean Show Plane viewport bound to ShowPlan. */}
-                    <Route path="/dev/skycanvas-3d" element={<SkyCanvas3DDemo />} />
-                    {/* SkyCanvas 2.0 — refactored, modular Show Plane viewport. */}
-                    <Route path="/dev/skycanvas-2" element={<SkyCanvas2Demo />} />
+                    {/* SkyCanvas dev lab — variantes smoke / r3f / v2 sob um único
+                        chunk lazy. Rotas legadas redirecionam preservando a variante. */}
+                    <Route path="/dev/skycanvas-lab" element={<SkyCanvasLab />} />
+                    <Route path="/dev/skycanvas-smoke" element={<Navigate to="/dev/skycanvas-lab?v=smoke" replace />} />
+                    <Route path="/dev/skycanvas-3d" element={<Navigate to="/dev/skycanvas-lab?v=r3f" replace />} />
+                    <Route path="/dev/skycanvas-2" element={<Navigate to="/dev/skycanvas-lab?v=v2" replace />} />
                     {/* UE5 Bridge — inspector dos catálogos importados (MVR/Niagara/MRP). */}
                     <Route path="/dev/ue5-bridge" element={<UE5BridgePage />} />
                     {/* Reference Video Editor surface — sidebars + 3D viewport + timeline. */}
