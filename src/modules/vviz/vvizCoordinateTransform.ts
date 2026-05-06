@@ -39,14 +39,15 @@ export function resolveAxesMode(coordinateFrame: string | undefined): VvizAxesMo
 
 /** Transform a point from the VVIZ source frame into Three.js render space. */
 export function transformPoint(x: number, y: number, z: number, mode: VvizAxesMode): Vec3 {
+  // `+ 0` collapses negative-zero so equality checks remain stable.
   switch (mode) {
     case 'pass':
-      return { x, y, z };
+      return { x: x + 0, y: y + 0, z: z + 0 };
     case 'legacy_zflip':
-      return { x, y, z: -z };
+      return { x: x + 0, y: y + 0, z: -z + 0 };
     case 'enu_to_three':
     default:
-      return { x: x, y: z, z: -y };
+      return { x: x + 0, y: z + 0, z: -y + 0 };
   }
 }
 
