@@ -229,6 +229,17 @@ export default function Dashboard() {
     return !seen;
   });
   // Industry feed removed — see EmptyHardwareHint for the new honest empty state.
+  const [devicesOnline, setDevicesOnline] = useState(0);
+
+  useEffect(() => {
+    const recompute = () => {
+      try { setDevicesOnline(deviceAggregator.getDevices().filter((d) => d.online).length); }
+      catch { setDevicesOnline(0); }
+    };
+    recompute();
+    const unsub = deviceAggregator.watch(recompute);
+    return () => { try { unsub(); } catch { /* noop */ } };
+  }, []);
 
   const handleIntroComplete = useCallback(() => {
     setShowIntro(false);
