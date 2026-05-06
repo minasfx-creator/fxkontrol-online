@@ -23,6 +23,7 @@
 import { logger } from '@/lib/logger';
 import { fxk16ModuleAdapter } from './adapters/FXK16ModuleAdapter';
 import { fxk32qModuleAdapter } from './adapters/FXK32QModuleAdapter';
+import { fireOneXL4Adapter } from './adapters/FireOneXL4Adapter';
 import { artNetNodeAdapter } from './adapters/ArtNetNodeAdapter';
 import { dmxUniverseAdapter } from './adapters/DMXUniverseAdapter';
 import { batteryMonitorAdapter } from './adapters/BatteryMonitorAdapter';
@@ -31,6 +32,7 @@ import { shiftRegisterAdapter } from './adapters/ShiftRegisterAdapter74HC595';
 import { unifiedHardwareRegistry } from './UnifiedHardwareRegistry';
 import { subscribeFXK16Bridge } from '@/hooks/useFXK16Bridge';
 import { subscribeFXK32QBridge } from '@/hooks/useFXK32QBridge';
+import { subscribeFireOneXL4Bridge } from '@/hooks/useFireOneXL4Bridge';
 import { isFxk32q } from '@/lib/fxk32q/pinmap';
 import { mdnsArtnetDiscoverer } from '@/core/discovery/MdnsArtnetDiscoverer';
 import { webSerialDiscoverer } from '@/core/discovery/WebSerialDiscoverer';
@@ -39,8 +41,12 @@ import type { TransportType } from './provenance';
 let _started = false;
 let _unsubFxk: (() => void) | null = null;
 let _unsubFxk32q: (() => void) | null = null;
+let _unsubXl4: (() => void) | null = null;
 let _unsubArtnet: (() => void) | null = null;
 let _unsubSerial: (() => void) | null = null;
+let _lastVerified = false;
+let _lastFxk32qVerified = false;
+let _lastXl4Verified = false;
 let _lastVerified = false;
 let _lastFxk32qVerified = false;
 /** Track which Art-Net hosts are currently online so we can demote on loss. */
