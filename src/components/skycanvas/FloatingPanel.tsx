@@ -9,8 +9,28 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { GripVertical, Minus, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { dockStore, type PanelState } from '@/hooks/useFloatingDock';
+import { dockStore, type PanelState, type DockSlot } from '@/hooks/useFloatingDock';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+
+const SNAP_RADIUS = 56; // px to corner before magnetic pull engages
+const SNAP_MARGIN = 16;
+
+function nearestSlot(x: number, y: number, w: number, h: number, vw: number, vh: number): { slot: DockSlot; x: number; y: number } | null {
+  const corners: Array<{ slot: DockSlot; cx: number; cy: number }> = [
+    { slot: 'TL', cx: SNAP_MARGIN,            cy: SNAP_MARGIN },
+    { slot: 'TR', cx: vw - w - SNAP_MARGIN,   cy: SNAP_MARGIN },
+    { slot: 'BL', cx: SNAP_MARGIN,            cy: vh - h - SNAP_MARGIN },
+    { slot: 'BR', cx: vw - w - SNAP_MARGIN,   cy: vh - h - SNAP_MARGIN },
+  ];
+  let best: { slot: DockSlot; x: number; y: number; d: number } | null = null;
+  for (const c of corners) {
+    const d = Math.hypot(x - c.cx, y - c.cy);
+    if (d < SNAP_RADIUS && (!best || d < best.d)) {
+      best = { slot: c.slot, x: c.cx, y: c.cy, d };
+    }
+  }
+  return best ? { slot: best.slot, x: best.x, y: best.y } : null;
+}
 
 interface Props {
   id: string;
