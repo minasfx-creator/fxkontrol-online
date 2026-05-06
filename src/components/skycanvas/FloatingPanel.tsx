@@ -42,13 +42,15 @@ interface Props {
   /** When true, panel docks to bottom edge as a full-width strip (timeline). */
   bottomStrip?: boolean;
   className?: string;
+  /** Visual variant — v2 uses the aprimorado specular glass. */
+  variant?: 'v1' | 'v2';
   children: React.ReactNode;
 }
 
 const SAVE_TOAST_DEBOUNCE = 800;
 let lastSaveToast = 0;
 
-function FloatingPanelImpl({ id, title, state, bottomStrip, className, children }: Props) {
+function FloatingPanelImpl({ id, title, state, bottomStrip, className, variant = 'v2', children }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ active: boolean; sx: number; sy: number; ox: number; oy: number; pid: number | null }>({
     active: false, sx: 0, sy: 0, ox: 0, oy: 0, pid: null,
@@ -180,7 +182,8 @@ function FloatingPanelImpl({ id, title, state, bottomStrip, className, children 
         aria-expanded={false}
         onClick={() => dockStore.toggleCollapsed(id)}
         className={cn(
-          'glass-pane glass-pill absolute z-40 px-3 inline-flex items-center gap-2',
+          variant === 'v2' ? 'glass-pane-v2' : 'glass-pane',
+          'glass-pill absolute z-40 px-3 inline-flex items-center gap-2 rounded-full',
           'text-cyan-200/90 ds-mono text-[11px] tracking-wider uppercase',
           'hover:text-cyan-100 transition-colors duration-300',
           reducedMotion ? '' : 'animate-in fade-in zoom-in-95',
@@ -248,7 +251,8 @@ function FloatingPanelImpl({ id, title, state, bottomStrip, className, children 
         aria-label={title}
         aria-expanded
         className={cn(
-          'glass-pane absolute z-40 flex flex-col overflow-hidden text-zinc-200',
+          variant === 'v2' ? 'glass-pane-v2' : 'glass-pane',
+          'absolute z-40 flex flex-col overflow-hidden text-zinc-200',
           isMobile ? 'rounded-t-3xl border-t border-white/[0.08]' : 'rounded-2xl',
           dragging ? 'cursor-grabbing select-none' : '',
           reducedMotion ? '' : 'transition-shadow duration-300',
