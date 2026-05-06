@@ -67,9 +67,8 @@ export function transformDelta(dx: number, dy: number, dz: number, mode: VvizAxe
 export function transformHeadingDegrees(headingDeg: number, mode: VvizAxesMode): number {
   if (!Number.isFinite(headingDeg)) return 0;
   const raw = mode === 'pass' ? headingDeg : -headingDeg;
-  // Normalise to (-180, 180]
   let h = raw % 360;
   if (h > 180) h -= 360;
   else if (h <= -180) h += 360;
-  return h;
+  return h + 0; // collapse -0 → 0
 }
