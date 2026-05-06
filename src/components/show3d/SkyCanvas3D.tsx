@@ -23,18 +23,20 @@ import { OrbitControls, Stars, Grid, PerspectiveCamera } from '@react-three/drei
 import { useMemo, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useProjectStore } from '@/store/useProjectStore';
-import { EFFECT_LIBRARY, type Effect } from '@/data/effectLibrary';
+import { type Effect } from '@/data/effectLibrary';
+import {
+  resolveEffectLedAccurate,
+  ledAccurateColor,
+} from '@/data/effectsLibraries/resolveEffect';
 
 // ──────────────────────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────
 
-const EFFECT_BY_ID: Record<string, Effect> = Object.fromEntries(
-  EFFECT_LIBRARY.map((e) => [e.id, e]),
-);
-
+// Unified lookup: legacy EFFECT_LIBRARY ∪ Finale-imported parts (527),
+// with Effect.color already passed through the VDL render-accurate pipeline.
 function getEffect(id: string): Effect | undefined {
-  return EFFECT_BY_ID[id];
+  return resolveEffectLedAccurate(id);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -156,7 +158,7 @@ function LightPointsLayer() {
         <LightPoint
           key={p.id}
           position={[p.x, Math.max(p.y, 1), p.z]}
-          color={p.color || '#2dd4ff'}
+          color={ledAccurateColor(p.color, '#2dd4ff')}
           active={activeIds.has(p.id)}
         />
       ))}
@@ -301,7 +303,9 @@ function ParticleExplosionsLayer() {
       list.push({
         key: item.id,
         origin,
-        color: item.colorOverride || eff.color || '#FFD700',
+        color: item.colorOverride
+          ? ledAccurateColor(item.colorOverride)
+          : (eff.color || '#FFD700'),
         age: currentTime - burstStart,
         life,
         height: eff.heightMeters ?? 60,
