@@ -38,6 +38,8 @@ import '@/core/cluster/reporters/NetworkHealthReporter';
 import { autoRecoveryService } from '@/core/reliability/AutoRecoveryService';
 import { ReplayOverlay } from '@/components/editor/ReplayOverlay';
 import { useProjectStore } from '@/store/useProjectStore';
+import { attachCommandFireRouter } from '@/core/command/commandFireRouter';
+import { attachRealTransports, detachRealTransports } from '@/core/network/realTransports';
 import { toast } from 'sonner';
 
 const FLUSH_INTERVAL_TICKS = 1800; // ~30s at 60Hz
@@ -128,6 +130,12 @@ export default function EngineProvider() {
     const unsubContinuity = commandBus.on('CONTINUITY_CHECK', () => {
       continuityCheckService.runFullCheck();
     });
+
+    // ── Register FIRE consumer (UI → safety verdict → pyroExecutor → fieldBus) ──
+    const unsubFire = attachCommandFireRouter();
+
+    // ── Wire real transports into the FieldBus (artnet / fireone-cable / wireless) ──
+    attachRealTransports();
 
     // ── Command processing subsystem (priority 0) ──
     // Safety validator gates commands before they reach handlers
@@ -279,6 +287,8 @@ export default function EngineProvider() {
       unsubExport();
       unsubImport();
       unsubContinuity();
+      unsubFire();
+      detachRealTransports();
       lockstep.unregister('commandBus');
       lockstep.unregister('timelineClock');
       lockstep.unregister('executionBridge');
