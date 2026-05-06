@@ -30,9 +30,6 @@ import {
 import { useAdminRole } from '@/hooks/useAdminRole';
 
 const Dashboard = lazy(() => import('./Dashboard'));
-const Agenda = lazy(() => import('./Agenda'));
-const Training = lazy(() => import('./Training'));
-const Admin = lazy(() => import('./Admin'));
 const AccreditationDashboard = lazy(() => import('./AccreditationDashboard'));
 const JoiPanel = lazy(() => import('@/ai/ui/JoiPanel'));
 import OfficeHubCards from '@/features/office/OfficeHubCards';
