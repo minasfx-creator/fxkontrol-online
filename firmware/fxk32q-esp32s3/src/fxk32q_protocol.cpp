@@ -132,9 +132,12 @@ static void handleLine(char* line, ResponseSink sink) {
     return;
   }
 
-  // ── CONT:<pin> stub (sem ADC dedicado no v1.0) ──────────────
+  // ── CONT:<pin> — leitura de continuidade ────────────────────
+  // Sem ADC dedicado no v1.0: relata 9999Ω (open) honestamente.
+  // Hardware r2 com mux CD4051 substituirá esse stub.
   if (strncmp(line, "CONT:", 5) == 0) {
     int pin = atoi(line + 5);
+    if (pin < 1 || pin > FXK32Q_CHANNELS) { emitf(sink, "ERR:CONT:%d:OUT_OF_RANGE", pin); return; }
     emitf(sink, "CONT:%d:9999", pin);
     return;
   }
