@@ -1,18 +1,17 @@
 /**
- * /skycanvas — SkyCanvas v3 surface (Apple-glass · floating dock).
+ * /skycanvas — SkyCanvas v4 surface (EditorShell DS v1).
  *
  * Plane: Show / Experience (mem://arquitetura/v6-quatro-planos).
  * Zero CommandBus / FieldBus / SafetyStateMachine / workMode.
  * Real operation lives on /command via uiCommandGateway.
  *
  * Surface contract:
- *   - Edge-to-edge WebGL2 viewport (or 2D fallback)
- *   - 3 floating glass panels: Library · Inspector · Timeline
- *   - GlassTopbar with central Master Menu pill (⌘K / ⌘M)
+ *   - <EditorShell> grid (Topbar 64 · Tabs 48 · Left 280 · Right 320 · Timeline 180 · Viewport fill)
+ *   - Glass topbar with Master Menu pill (⌘K / ⌘M)
  *   - SIM · ADVISORY badge always visible
  *   - E-STOP cosmetic — links to /command (no local dispatch)
  *
- * Persistence: layout in fxk.skycanvas.dock.v2 (silent v1 migration).
+ * Persistence: layout in fxk:editor-layout:v1:skycanvas (DS shared hook).
  * Guard test: src/__tests__/skycanvas.safetyImports.guard.spec.ts
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -20,6 +19,9 @@ import { useNavigate } from 'react-router-dom';
 import {
   Play, Pause, Square, SkipBack, SkipForward,
   Music, Command as CommandIcon, OctagonAlert,
+  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
+  PanelBottomClose, PanelBottomOpen, RotateCw,
+  Flame, Sparkles, Send, Lightbulb, Sliders,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -32,16 +34,16 @@ import { EFFECT_LIBRARY } from '@/data/effectLibrary';
 import { detectSkyCapability, profileBudget, type SkyCapability } from '@/lib/skycanvasCapability';
 import { FXK_EFFECT_DRAG_TYPE } from '@/components/editor/EffectLibrarySidebar';
 import SkyFallback2D from '@/components/skycanvas/SkyFallback2D';
-import WaveformLayer from '@/components/skycanvas/WaveformLayer';
 import { decodeAudioPeaks } from '@/lib/skycanvasAudioPeaks';
-import { FloatingPanel } from '@/components/skycanvas/FloatingPanel';
-import { dockStore, useFloatingDock } from '@/hooks/useFloatingDock';
 import { useSmallViewport } from '@/hooks/useSmallViewport';
 import { buildSkyActions } from '@/components/skycanvas/skyActions';
 import TabbedDockPanel from '@/components/skycanvas/TabbedDockPanel';
-import MobilePanelSwitcher from '@/components/skycanvas/MobilePanelSwitcher';
+import MobilePanelSwitcher, { type MobilePanelKey } from '@/components/skycanvas/MobilePanelSwitcher';
 import { TimelineCuesProvider } from '@/components/skycanvas/tabs/TimelineCuesTab';
 import { useActiveDemoSession } from '@/hooks/useActiveDemoSession';
+
+import { EditorShell, DsSegmentTabs, type SegmentItem } from '@/components/ds';
+import { useEditorLayout } from '@/hooks/editor/useEditorLayout';
 
 import { useWorkMode } from '@/core/safety/workMode';
 import { useSkyCanvasShowPersistence, clearPersistedSkyCanvasShow } from '@/hooks/useSkyCanvasShowPersistence';
@@ -89,6 +91,43 @@ function GlassIconButton({
   );
 }
 
+// Small icon button for layout toggles (matches EditorShellPreview).
+function LayoutIconButton({
+  ariaLabel, onClick, active, children,
+}: {
+  ariaLabel: string; onClick: () => void; active: boolean; children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      title={ariaLabel}
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        'flex size-7 items-center justify-center rounded-ds-sm transition-colors ds-focus',
+        active
+          ? 'text-status-sync hover:bg-ds-surface-deep'
+          : 'text-ds-text-muted hover:text-status-sync hover:bg-ds-surface-deep',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Tabs strip — segment selector (visual only for now)
+// ─────────────────────────────────────────────────────────────────────
+
+const SEGMENTS: SegmentItem[] = [
+  { id: 'pyro',   label: 'PYRO',   icon: Flame },
+  { id: 'sfx',    label: 'SFX',    icon: Sparkles },
+  { id: 'drones', label: 'DRONES', icon: Send },
+  { id: 'light',  label: 'LIGHT',  icon: Lightbulb },
+  { id: 'dmx',    label: 'DMX',    icon: Sliders },
+];
+
 // ─────────────────────────────────────────────────────────────────────
 // Topbar (glass) + Master Menu pill + transport
 // ─────────────────────────────────────────────────────────────────────
@@ -97,6 +136,7 @@ function GlassTopbar({
   cap, playing, onTogglePlay, onStop, onSeek, time, duration,
   onPickAudio, audioName, onOpenMaster, onEStop,
   workModeLabel, sessionMeta,
+  layoutControls,
 }: {
   cap: SkyCapability;
   playing: boolean;
@@ -111,6 +151,11 @@ function GlassTopbar({
   onEStop: () => void;
   workModeLabel: string;
   sessionMeta: { id: string; clientName?: string; claim?: 'validated' | 'pilot' | 'marketing_hypothesis' } | null;
+  layoutControls: {
+    leftCollapsed: boolean; rightCollapsed: boolean; timelineCollapsed: boolean;
+    toggleLeft: () => void; toggleRight: () => void; toggleTimeline: () => void;
+    reset: () => void;
+  };
 }) {
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -120,12 +165,10 @@ function GlassTopbar({
   }, []);
 
   return (
-    <header
+    <div
       className={cn(
-        'glass-pane glass-pane-strong absolute top-3 left-3 right-3 z-50',
-        'h-14 rounded-2xl px-3 flex items-center gap-3',
+        'glass-pane glass-pane-strong h-full mx-3 my-1.5 rounded-2xl px-3 flex items-center gap-3',
       )}
-      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
     >
       {/* Brand + status */}
       <div className="ds-mono text-[12px] tracking-wider text-cyan-300/90 hidden sm:block">
@@ -178,6 +221,40 @@ function GlassTopbar({
 
       <div className="flex-1" />
 
+      {/* Layout toggles — desktop only */}
+      <div className="hidden lg:flex items-center gap-1 rounded-ds-md border border-ds-border-default bg-ds-surface-elevated/60 p-0.5">
+        <LayoutIconButton
+          ariaLabel={layoutControls.leftCollapsed ? 'Expandir Biblioteca' : 'Recolher Biblioteca'}
+          onClick={layoutControls.toggleLeft}
+          active={!layoutControls.leftCollapsed}
+        >
+          {layoutControls.leftCollapsed ? <PanelLeftOpen className="size-3.5" /> : <PanelLeftClose className="size-3.5" />}
+        </LayoutIconButton>
+        <LayoutIconButton
+          ariaLabel={layoutControls.timelineCollapsed ? 'Expandir Timeline' : 'Recolher Timeline'}
+          onClick={layoutControls.toggleTimeline}
+          active={!layoutControls.timelineCollapsed}
+        >
+          {layoutControls.timelineCollapsed ? <PanelBottomOpen className="size-3.5" /> : <PanelBottomClose className="size-3.5" />}
+        </LayoutIconButton>
+        <LayoutIconButton
+          ariaLabel={layoutControls.rightCollapsed ? 'Expandir Inspector' : 'Recolher Inspector'}
+          onClick={layoutControls.toggleRight}
+          active={!layoutControls.rightCollapsed}
+        >
+          {layoutControls.rightCollapsed ? <PanelRightOpen className="size-3.5" /> : <PanelRightClose className="size-3.5" />}
+        </LayoutIconButton>
+        <button
+          type="button"
+          onClick={layoutControls.reset}
+          title="Resetar layout"
+          aria-label="Resetar layout"
+          className="flex size-7 items-center justify-center rounded-ds-sm text-ds-text-muted hover:text-status-sync hover:bg-ds-surface-deep transition-colors ds-focus"
+        >
+          <RotateCw className="size-3.5" />
+        </button>
+      </div>
+
       {/* Audio picker */}
       <button
         type="button"
@@ -204,7 +281,7 @@ function GlassTopbar({
         }}
       />
 
-      {/* Transport — visible ≥900px; mobile uses FAB below */}
+      {/* Transport — visible ≥md */}
       <div className="hidden md:flex items-center gap-1">
         <GlassIconButton onClick={() => onSeek(-5)} label="Voltar 5s"><SkipBack className="h-4 w-4" /></GlassIconButton>
         <button
@@ -243,7 +320,7 @@ function GlassTopbar({
         <OctagonAlert className="h-3.5 w-3.5" />
         <span className="hidden lg:inline">E-STOP</span>
       </button>
-    </header>
+    </div>
   );
 }
 
@@ -259,7 +336,7 @@ function MobileTransportFab({
   duration: number;
 }) {
   return (
-    <div className="md:hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-50">
+    <div className="md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-50">
       <div className="glass-pane glass-pill h-14 px-4 flex items-center gap-3"
            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <GlassIconButton onClick={() => onSeek(-5)} label="Voltar 5s"><SkipBack className="h-5 w-5" /></GlassIconButton>
@@ -285,9 +362,6 @@ function MobileTransportFab({
   );
 }
 
-// Dead code removed: Inspector / Row / TimelineStrip now live as lazy tabs
-// (see src/components/skycanvas/tabs/* and TabbedDockPanel).
-
 // ─────────────────────────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────────────────────────
@@ -307,6 +381,12 @@ export default function SkyCanvasPage() {
   const workMode = useWorkMode();
   const workModeLabel = workMode === 'design' ? 'DESIGN' : workMode === 'simulation' ? 'SIM' : 'REAL OP';
   const session = useActiveDemoSession();
+
+  // Persistent shell layout (per-surface, key 'skycanvas').
+  const layout = useEditorLayout('skycanvas');
+
+  // Tabs segment (visual only for now)
+  const [activeSegment, setActiveSegment] = useState<string>('pyro');
 
   // Transport
   const playing = useProjectStore((s) => s.isPlaying);
@@ -333,7 +413,6 @@ export default function SkyCanvasPage() {
     const hasAudio = !!audioUrl && !!el;
 
     if (hasAudio && el) {
-      // Mirror play/pause and pump store from audio.currentTime each RAF.
       void el.play().catch(() => { /* autoplay block — fall back to RAF below */ });
       let raf = 0;
       const tick = () => {
@@ -378,17 +457,6 @@ export default function SkyCanvasPage() {
 
   // Master Menu palette
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [cinema, setCinema] = useState(false);
-
-  const focusPanel = useCallback((id: 'library' | 'inspector' | 'timeline') => {
-    const cur = dockStore.get().panels[id];
-    if (cur?.collapsed) dockStore.toggleCollapsed(id);
-    // Defer focus to next paint when panel re-renders
-    requestAnimationFrame(() => {
-      const el = document.querySelector<HTMLElement>(`[data-panel-id="${id}"]`);
-      el?.focus();
-    });
-  }, []);
 
   const audioInputRef = useRef<HTMLInputElement | null>(null);
   const pickAudio = useCallback(() => audioInputRef.current?.click(), []);
@@ -401,7 +469,6 @@ export default function SkyCanvasPage() {
       const result = await decodeAudioPeaks(file, 1024);
       setPeaks(result.peaks);
       setAudioName(file.name);
-      // Replace previous object URL (if any) — revoke the old one to free memory.
       setAudioUrl((prev) => {
         if (prev) { try { URL.revokeObjectURL(prev); } catch { /* */ } }
         return URL.createObjectURL(file);
@@ -420,7 +487,6 @@ export default function SkyCanvasPage() {
     if (audioUrl) { try { URL.revokeObjectURL(audioUrl); } catch { /* */ } }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
 
   // Cue drop handlers
   const dropEffectAt = useCallback((effectId: string, t: number) => {
@@ -474,20 +540,17 @@ export default function SkyCanvasPage() {
 
   const actions = useMemo(() => buildSkyActions({
     togglePlay, stop, seekTo: seekAbs, pickAudio,
-    focusPanel,
-    toggleCinema: () => {
-      const next = !cinema;
-      setCinema(next);
-      dockStore.setAllCollapsed(next);
-    },
-    resetDock: () => { dockStore.reset(); toast.success('Layout restaurado'); },
+    toggleLeft: layout.toggleLeft,
+    toggleRight: layout.toggleRight,
+    toggleTimeline: layout.toggleTimeline,
+    resetLayout: () => { layout.reset(); toast.success('Layout restaurado'); },
     goCommand: () => navigate('/command'),
     goAiBuilder: () => navigate('/ai-builder'),
     goStrategy: () => navigate('/strategy'),
     openImportVdl: () => setImportOpen(true),
     exportShowJson,
     resetShow,
-  }), [togglePlay, stop, seekAbs, pickAudio, focusPanel, cinema, navigate, exportShowJson, resetShow, audioName]);
+  }), [togglePlay, stop, seekAbs, pickAudio, layout, navigate, exportShowJson, resetShow]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -500,24 +563,18 @@ export default function SkyCanvasPage() {
       if (ctrl && (e.key.toLowerCase() === 'k' || e.key.toLowerCase() === 'm')) {
         e.preventDefault(); setPaletteOpen((o) => !o); return;
       }
-      // Panel focus (only outside form fields)
+      // Panel toggles (only outside form fields)
       if (!inField && ctrl && (e.key === '1' || e.key === '2' || e.key === '3')) {
         e.preventDefault();
-        focusPanel(e.key === '1' ? 'library' : e.key === '2' ? 'inspector' : 'timeline');
+        if (e.key === '1') layout.toggleLeft();
+        else if (e.key === '2') layout.toggleRight();
+        else layout.toggleTimeline();
         return;
       }
-      // Cinema
-      if (!inField && ctrl && e.key === '\\') {
-        e.preventDefault();
-        const next = !cinema;
-        setCinema(next);
-        dockStore.setAllCollapsed(next);
-        return;
-      }
-      // Reset dock (Shift+Cmd+0 — destrutivo, exige Shift)
+      // Reset layout (Shift+Cmd+0 — destrutivo, exige Shift)
       if (!inField && ctrl && e.shiftKey && e.key === '0') {
         e.preventDefault();
-        dockStore.reset();
+        layout.reset();
         toast.success('Layout restaurado');
         return;
       }
@@ -527,38 +584,29 @@ export default function SkyCanvasPage() {
       else if (e.key === 'ArrowRight') { setCurrentTime(Math.min(duration, useProjectStore.getState().currentTime + (e.shiftKey ? 1 : 1 / 30))); }
       else if (e.key === 'Home') { setCurrentTime(0); }
       else if (e.key === 'End')  { setCurrentTime(duration); }
-      else if (e.key === 'Escape' && cinema) { setCinema(false); dockStore.setAllCollapsed(false); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [duration, setPlaying, setCurrentTime, focusPanel, cinema]);
+  }, [duration, setPlaying, setCurrentTime, layout]);
 
-  // Floating dock state
-  const dock = useFloatingDock();
   const isMobile = useSmallViewport(900);
+  const [mobileActive, setMobileActive] = useState<MobilePanelKey>('library');
 
-  // On mobile, only ONE expanded sheet at a time — others auto-collapse.
-  const [mobileActive, setMobileActive] = useState<'library' | 'inspector' | 'timeline'>('library');
-  useEffect(() => {
-    if (!isMobile) return;
-    (['library', 'inspector', 'timeline'] as const).forEach((key) => {
-      const cur = dock.panels[key];
-      const shouldCollapse = key !== mobileActive;
-      if (cur && cur.collapsed !== shouldCollapse) {
-        dockStore.updatePanel(key, { collapsed: shouldCollapse });
-      }
-    });
-  }, [isMobile, mobileActive, dock.panels]);
-
-  // Detect user un-collapsing a sheet on mobile → make it the active one.
-  useEffect(() => {
-    if (!isMobile) return;
-    (['library', 'inspector', 'timeline'] as const).forEach((key) => {
-      if (dock.panels[key] && !dock.panels[key].collapsed && key !== mobileActive) {
-        setMobileActive(key);
-      }
-    });
-  }, [isMobile, dock.panels, mobileActive]);
+  // Effective layout: on mobile, only one rail/timeline visible at a time.
+  const effectiveLayout = useMemo(() => {
+    if (!isMobile) {
+      return {
+        leftWidth: layout.effective.leftWidth,
+        rightWidth: layout.effective.rightWidth,
+        timelineHeight: layout.effective.timelineHeight,
+      };
+    }
+    return {
+      leftWidth: mobileActive === 'library' ? layout.leftWidth : 0,
+      rightWidth: mobileActive === 'inspector' ? layout.rightWidth : 0,
+      timelineHeight: mobileActive === 'timeline' ? layout.timelineHeight : 0,
+    };
+  }, [isMobile, mobileActive, layout.effective, layout.leftWidth, layout.rightWidth, layout.timelineHeight]);
 
   return (
     <div
@@ -597,108 +645,127 @@ export default function SkyCanvasPage() {
         />
       )}
 
-      {/* VIEWPORT — edge-to-edge */}
-      <StudioErrorBoundary area="SkyCanvas · Viewport">
-        <div
-          id="viewport"
-          tabIndex={-1}
-          data-fxk-viewport
-          className="absolute inset-0 z-0"
-          onDragOver={(e) => {
-            if (e.dataTransfer.types.includes(FXK_EFFECT_DRAG_TYPE)) {
-              e.preventDefault();
-              e.dataTransfer.dropEffect = 'copy';
-            }
-          }}
-          onDrop={(e) => {
-            const id = e.dataTransfer.getData(FXK_EFFECT_DRAG_TYPE);
-            if (id) { e.preventDefault(); dropEffectAtPlayhead(id); }
-          }}
-        >
-          {cap.renderer === 'webgl2' ? (
-            <Suspense fallback={<ViewportLoader />}>
-              <SkyCanvas2
-                hideStage={!profileBudget(cap).showStage}
-                showFixtures={profileBudget(cap).showFixtures}
-                hideStars={!profileBudget(cap).showStars}
-                dpr={profileBudget(cap).dpr}
-              />
-            </Suspense>
-          ) : (
-            <SkyFallback2D reason={cap.reasons[0]} />
-          )}
-        </div>
-      </StudioErrorBoundary>
-
-      {/* TOPBAR (glass) */}
-      <GlassTopbar
-        cap={cap}
-        playing={playing}
-        onTogglePlay={togglePlay}
-        onStop={stop}
-        onSeek={seek}
-        time={time}
-        duration={duration}
-        onPickAudio={onPickAudio}
-        audioName={audioName}
-        onOpenMaster={() => setPaletteOpen(true)}
-        onEStop={() => navigate('/command')}
-        workModeLabel={workModeLabel}
-        sessionMeta={session}
-      />
-
-      {/* FLOATING PANELS */}
-      <div data-panel-id="library">
-        <StudioErrorBoundary area="SkyCanvas · Library">
-          <FloatingPanel id="library" title="Biblioteca" state={dock.panels.library}>
-            <TabbedDockPanel
-              defaultValue="effects"
-              tabs={[
-                { value: 'effects',   label: 'Efeitos',  load: () => import('@/components/skycanvas/tabs/LibraryEffectsTab') },
-                { value: 'fixtures',  label: 'Fixtures', load: () => import('@/components/skycanvas/tabs/LibraryFixturesTab') },
-                { value: 'templates', label: 'Templates',load: () => import('@/components/skycanvas/tabs/LibraryTemplatesTab') },
-                { value: 'geo',       label: 'Local',    load: () => import('@/components/skycanvas/tabs/LibraryGeoTab') },
-              ]}
+      <EditorShell
+        layout={effectiveLayout}
+        topbar={
+          <GlassTopbar
+            cap={cap}
+            playing={playing}
+            onTogglePlay={togglePlay}
+            onStop={stop}
+            onSeek={seek}
+            time={time}
+            duration={duration}
+            onPickAudio={onPickAudio}
+            audioName={audioName}
+            onOpenMaster={() => setPaletteOpen(true)}
+            onEStop={() => navigate('/command')}
+            workModeLabel={workModeLabel}
+            sessionMeta={session}
+            layoutControls={{
+              leftCollapsed: layout.leftCollapsed,
+              rightCollapsed: layout.rightCollapsed,
+              timelineCollapsed: layout.timelineCollapsed,
+              toggleLeft: layout.toggleLeft,
+              toggleRight: layout.toggleRight,
+              toggleTimeline: layout.toggleTimeline,
+              reset: layout.reset,
+            }}
+          />
+        }
+        tabs={
+          <div className="flex h-full items-center px-ds-4">
+            <DsSegmentTabs
+              items={SEGMENTS}
+              activeId={activeSegment}
+              onChange={setActiveSegment}
+              colorPerSegment
             />
-          </FloatingPanel>
-        </StudioErrorBoundary>
-      </div>
-
-      <div data-panel-id="inspector">
-        <StudioErrorBoundary area="SkyCanvas · Inspector">
-          <FloatingPanel id="inspector" title="Inspector" state={dock.panels.inspector}>
-            <TabbedDockPanel
-              defaultValue="cue"
-              dense
-              tabs={[
-                { value: 'cue',      label: 'Cue',      load: () => import('@/components/skycanvas/tabs/InspectorCueTab') },
-                { value: 'scene',    label: 'Cena',     load: () => import('@/components/skycanvas/tabs/InspectorSceneTab') },
-                { value: 'render',   label: 'Render',   load: () => import('@/components/skycanvas/tabs/InspectorRenderTab') },
-                { value: 'hardware', label: 'Hardware', load: () => import('@/components/skycanvas/tabs/HardwareObserverTab') },
-                { value: 'strategy', label: 'Strategy', load: () => import('@/components/skycanvas/tabs/StrategyContextTab') },
-              ]}
-            />
-          </FloatingPanel>
-        </StudioErrorBoundary>
-      </div>
-
-      <div data-panel-id="timeline">
-        <StudioErrorBoundary area="SkyCanvas · Timeline">
-          <FloatingPanel id="timeline" title="Timeline" state={dock.panels.timeline} bottomStrip>
-            <TimelineCuesProvider value={{ time, duration, onSeekAbs: seekAbs, onDropEffect: dropEffectAt, peaks }}>
+          </div>
+        }
+        left={
+          <StudioErrorBoundary area="SkyCanvas · Library">
+            <div className="h-full flex flex-col" data-panel-id="library">
               <TabbedDockPanel
-                defaultValue="cues"
-                dense
+                defaultValue="effects"
                 tabs={[
-                  { value: 'cues',       label: 'Cues',       load: () => import('@/components/skycanvas/tabs/TimelineCuesTab') },
-                  { value: 'smpte',      label: 'SMPTE',      load: () => import('@/components/skycanvas/tabs/TimelineSmpteTab') },
-                  { value: 'validation', label: 'Validation', load: () => import('@/components/skycanvas/tabs/TimelineValidationTab') },
+                  { value: 'effects',   label: 'Efeitos',  load: () => import('@/components/skycanvas/tabs/LibraryEffectsTab') },
+                  { value: 'fixtures',  label: 'Fixtures', load: () => import('@/components/skycanvas/tabs/LibraryFixturesTab') },
+                  { value: 'templates', label: 'Templates',load: () => import('@/components/skycanvas/tabs/LibraryTemplatesTab') },
+                  { value: 'geo',       label: 'Local',    load: () => import('@/components/skycanvas/tabs/LibraryGeoTab') },
                 ]}
               />
-            </TimelineCuesProvider>
-          </FloatingPanel>
+            </div>
+          </StudioErrorBoundary>
+        }
+        right={
+          <StudioErrorBoundary area="SkyCanvas · Inspector">
+            <div className="h-full flex flex-col" data-panel-id="inspector">
+              <TabbedDockPanel
+                defaultValue="cue"
+                dense
+                tabs={[
+                  { value: 'cue',      label: 'Cue',      load: () => import('@/components/skycanvas/tabs/InspectorCueTab') },
+                  { value: 'scene',    label: 'Cena',     load: () => import('@/components/skycanvas/tabs/InspectorSceneTab') },
+                  { value: 'render',   label: 'Render',   load: () => import('@/components/skycanvas/tabs/InspectorRenderTab') },
+                  { value: 'hardware', label: 'Hardware', load: () => import('@/components/skycanvas/tabs/HardwareObserverTab') },
+                  { value: 'strategy', label: 'Strategy', load: () => import('@/components/skycanvas/tabs/StrategyContextTab') },
+                ]}
+              />
+            </div>
+          </StudioErrorBoundary>
+        }
+        timeline={
+          <StudioErrorBoundary area="SkyCanvas · Timeline">
+            <div className="h-full flex flex-col" data-panel-id="timeline">
+              <TimelineCuesProvider value={{ time, duration, onSeekAbs: seekAbs, onDropEffect: dropEffectAt, peaks }}>
+                <TabbedDockPanel
+                  defaultValue="cues"
+                  dense
+                  tabs={[
+                    { value: 'cues',       label: 'Cues',       load: () => import('@/components/skycanvas/tabs/TimelineCuesTab') },
+                    { value: 'smpte',      label: 'SMPTE',      load: () => import('@/components/skycanvas/tabs/TimelineSmpteTab') },
+                    { value: 'validation', label: 'Validation', load: () => import('@/components/skycanvas/tabs/TimelineValidationTab') },
+                  ]}
+                />
+              </TimelineCuesProvider>
+            </div>
+          </StudioErrorBoundary>
+        }
+      >
+        {/* VIEWPORT — fills remaining grid cell */}
+        <StudioErrorBoundary area="SkyCanvas · Viewport">
+          <div
+            id="viewport"
+            tabIndex={-1}
+            data-fxk-viewport
+            className="relative h-full w-full"
+            onDragOver={(e) => {
+              if (e.dataTransfer.types.includes(FXK_EFFECT_DRAG_TYPE)) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+              }
+            }}
+            onDrop={(e) => {
+              const id = e.dataTransfer.getData(FXK_EFFECT_DRAG_TYPE);
+              if (id) { e.preventDefault(); dropEffectAtPlayhead(id); }
+            }}
+          >
+            {cap.renderer === 'webgl2' ? (
+              <Suspense fallback={<ViewportLoader />}>
+                <SkyCanvas2
+                  hideStage={!profileBudget(cap).showStage}
+                  showFixtures={profileBudget(cap).showFixtures}
+                  hideStars={!profileBudget(cap).showStars}
+                  dpr={profileBudget(cap).dpr}
+                />
+              </Suspense>
+            ) : (
+              <SkyFallback2D reason={cap.reasons[0]} />
+            )}
+          </div>
         </StudioErrorBoundary>
-      </div>
+      </EditorShell>
 
       {/* IMPORT VDL/CSV DIALOG (Master Menu → Project) */}
       <Suspense fallback={null}>
