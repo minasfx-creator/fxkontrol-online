@@ -147,7 +147,7 @@ export default function FireOnePanel() {
                 </div>
 
                 {/* Igniter grid 32 */}
-                <div className="grid grid-cols-16 gap-0.5">
+                <div className="grid gap-0.5" style={{ gridTemplateColumns: 'repeat(16, minmax(0, 1fr))' }}>
                   {Array.from({ length: 32 }, (_, i) => {
                     const ig = slat.igniters.find(x => x.position === i + 1);
                     const cls = !ig
