@@ -14,6 +14,7 @@ import type { PhysicalDevice, DiscoveryTransport } from './types';
 
 export type ControllerKind =
   | 'fxk16'        // FXK16 16-ch ESP32-S3 pyro relay (USB-CDC or BLE-UART)
+  | 'fxk32q'       // FXK32Q 32-ch ESP32-S3 + 2×16-relay pyro controller
   | 'fireone'      // FireOne FXK-PYRO 2.0 array
   | 'showven'      // Showven FX Commander Pro / Sonicboom / SPARKULAR
   | 'tuya'         // Tuya BLE-mesh / Wi-Fi smart outlets (low-precision SFX)
@@ -44,7 +45,13 @@ const PROFILES: Record<ControllerKind, ControllerProfile> = {
     kind: 'fxk16',
     label: 'FXK16 Pyro Controller',
     capabilities: { arm: true, fire: true, eStop: true, safetyCritical: true },
-    consoleRoute: '/studio?panel=pyro-fireone',
+    consoleRoute: '/field#fxk16',
+  },
+  fxk32q: {
+    kind: 'fxk32q',
+    label: 'FXK32Q 32ch Pyro Controller',
+    capabilities: { arm: true, fire: true, eStop: true, safetyCritical: true },
+    consoleRoute: '/field#fxk32q',
   },
   fireone: {
     kind: 'fireone',
@@ -97,6 +104,8 @@ const PROFILES: Record<ControllerKind, ControllerProfile> = {
 
 /** Family-string → ControllerKind. Match by lower-cased substring. */
 const FAMILY_RULES: Array<{ test: RegExp; kind: ControllerKind }> = [
+  // FXK32Q first — more specific than the generic FXK16 rule below.
+  { test: /fxk[\s-]*32q?|ifmx[\s-]*i?32q/i, kind: 'fxk32q' },
   { test: /fxk[\s-]*16|fxkpyro/i,           kind: 'fxk16' },
   { test: /arduino|fxk[\s-]*nano|nano[\s-]*relay/i, kind: 'fxk16' },
   // FireOne family: cable (XLII+), radio (TNC USB-RF dock), legacy

@@ -12,20 +12,22 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { Nfc, Activity, Smartphone, Cable, Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { isFireOneXL43RealOpsEnabled } from '@/lib/featureFlags';
+import { isFireOneXL43RealOpsEnabled, isFxk32qFieldOpsEnabled } from '@/lib/featureFlags';
 import { useActiveControllers } from '@/hooks/useActiveControllers';
 
 const DevicePairing = lazy(() => import('@/components/field/DevicePairingPanel'));
 const FieldTest = lazy(() => import('@/components/command/FieldTestPanel'));
 const MobileLinkPanel = lazy(() => import('@/components/editor/MobileLinkPanel'));
 const FXK16FieldPanel = lazy(() => import('@/components/field/FXK16FieldPanel'));
+const FXK32QFieldPanel = lazy(() => import('@/components/field/FXK32QFieldPanel'));
 const FireOnePanel = lazy(() => import('@/features/fieldbus/FireOnePanel'));
 
-type TabKey = 'pairing' | 'fxk16' | 'fireone' | 'field-test' | 'mobile-link';
+type TabKey = 'pairing' | 'fxk16' | 'fxk32q' | 'fireone' | 'field-test' | 'mobile-link';
 
 const ALL_TABS: { key: TabKey; label: string; sub: string; icon: typeof Nfc }[] = [
   { key: 'pairing',     label: 'PAIRING',     sub: 'NFC · BLE',      icon: Nfc },
   { key: 'fxk16',       label: 'FXK16',       sub: 'PYRO RELAY',     icon: Cable },
+  { key: 'fxk32q',      label: 'FXK32Q',      sub: 'PYRO 32CH',      icon: Cable },
   { key: 'fireone',     label: 'FIREONE',     sub: 'XL4-3 · USB',    icon: Flame },
   { key: 'field-test',  label: 'FIELD TEST',  sub: 'TRANSPORTS',     icon: Activity },
   { key: 'mobile-link', label: 'MOBILE LINK', sub: 'PHONE · BRIDGE', icon: Smartphone },
@@ -35,7 +37,12 @@ export default function FieldOpsPage() {
   const controllers = useActiveControllers();
   const fireoneOnline = controllers.controllers.some(c => c.profile.kind === 'fireone');
   const fireoneVisible = isFireOneXL43RealOpsEnabled() || fireoneOnline;
-  const TABS = ALL_TABS.filter(t => t.key !== 'fireone' || fireoneVisible);
+  const fxk32qOnline = controllers.controllers.some(c => c.profile.kind === 'fxk32q');
+  const fxk32qVisible = isFxk32qFieldOpsEnabled() || fxk32qOnline;
+  const TABS = ALL_TABS.filter(t =>
+       (t.key !== 'fireone' || fireoneVisible)
+    && (t.key !== 'fxk32q'  || fxk32qVisible)
+  );
 
   const [tab, setTab] = useState<TabKey>(() => {
     if (typeof window === 'undefined') return 'pairing';
@@ -46,7 +53,8 @@ export default function FieldOpsPage() {
   // If the device disappears, snap away from the now-hidden tab.
   useEffect(() => {
     if (tab === 'fireone' && !fireoneVisible) setTab('pairing');
-  }, [tab, fireoneVisible]);
+    if (tab === 'fxk32q'  && !fxk32qVisible)  setTab('pairing');
+  }, [tab, fireoneVisible, fxk32qVisible]);
 
   const setTabAndHash = (k: TabKey) => {
     setTab(k);
@@ -118,6 +126,7 @@ export default function FieldOpsPage() {
         >
           {tab === 'pairing'     && <DevicePairing />}
           {tab === 'fxk16'       && <FXK16FieldPanel />}
+          {tab === 'fxk32q'      && fxk32qVisible && <FXK32QFieldPanel />}
           {tab === 'fireone'     && fireoneVisible && <FireOnePanel />}
           {tab === 'field-test'  && <FieldTest />}
           {tab === 'mobile-link' && <MobileLinkPanel onClose={() => setTabAndHash('pairing')} />}
