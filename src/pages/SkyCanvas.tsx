@@ -451,6 +451,18 @@ export default function SkyCanvasPage() {
   }, []);
 
   const cap = useMemo(() => detectSkyCapability(), []);
+  const budget = useMemo(() => profileBudget(cap), [cap]);
+  // Memoized so the memoized SkyCanvasMount doesn't re-render the canvas tree
+  // on unrelated parent state changes (panel toggles, tab switches, etc).
+  const v2Props = useMemo(
+    () => ({
+      hideStage: !budget.showStage,
+      showFixtures: budget.showFixtures,
+      hideStars: !budget.showStars,
+      dpr: budget.dpr,
+    }),
+    [budget],
+  );
   const workMode = useWorkMode();
   const workModeLabel = workMode === 'design' ? 'DESIGN' : workMode === 'simulation' ? 'SIM' : 'REAL OP';
   const session = useActiveDemoSession();
