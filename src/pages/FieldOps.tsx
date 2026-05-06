@@ -126,6 +126,7 @@ export default function FieldOpsPage() {
         >
           {tab === 'pairing'     && <DevicePairing />}
           {tab === 'fxk16'       && <FXK16FieldPanel />}
+          {tab === 'fxk32q'      && fxk32qVisible && <FXK32QFieldPanel />}
           {tab === 'fireone'     && fireoneVisible && <FireOnePanel />}
           {tab === 'field-test'  && <FieldTest />}
           {tab === 'mobile-link' && <MobileLinkPanel onClose={() => setTabAndHash('pairing')} />}
