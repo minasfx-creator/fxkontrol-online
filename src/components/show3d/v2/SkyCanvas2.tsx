@@ -58,8 +58,12 @@ export default function SkyCanvas2({
   onFatalError,
 }: SkyCanvas2Props & SkyCanvas2ExtraProps) {
   const [contextLost, setContextLost] = useState(false);
-  const dprRef = useRef<number>(typeof dpr === 'number' ? dpr : dpr[1]);
   const [minDpr, maxDpr] = Array.isArray(dpr) ? dpr : [dpr, dpr];
+  // Mobile high-DPI (>2.5) starts at minDpr to avoid first-frame jank;
+  // AdaptiveDPRController will probe and raise as headroom allows.
+  const initialDpr = (typeof window !== 'undefined' && window.devicePixelRatio > 2.5)
+    ? minDpr : maxDpr;
+  const dprRef = useRef<number>(initialDpr);
   const stageEnabled = !hideStage && isSkycanvasV2StageEnabled();
   const fixturesEnabled = showFixtures ?? isEnabled('ue5_fixtures_layer');
 
