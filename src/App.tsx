@@ -247,9 +247,10 @@ function App() {
                       {/* ── 3 grandes áreas ───────────────────────────────────── */}
                       <Route path="/office" element={<Office />} />
                       {/* Studio = editor 3D. /editor é endpoint equivalente (mesma página). */}
-                      <Route path="/studio" element={<Index />} />
-                      <Route path="/editor" element={<Index />} />
-                      <Route path="/editor/:showId" element={<Index />} />
+                      {/* Studio/editor → SkyCanvas (Rodada 4: Index.tsx legado aposentado). */}
+                      <Route path="/studio" element={<Navigate to="/skycanvas" replace />} />
+                      <Route path="/editor" element={<Navigate to="/skycanvas" replace />} />
+                      <Route path="/editor/:showId" element={<Navigate to="/skycanvas" replace />} />
                       <Route path="/command" element={<CommandCenter />} />
                       <Route path="/strategy" element={<Strategy />} />
                       {/* SkyCanvas v3 — surface canônica, capability-driven, isolada do Index.tsx pesado. */}
