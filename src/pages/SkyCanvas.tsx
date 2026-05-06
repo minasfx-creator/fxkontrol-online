@@ -230,24 +230,35 @@ function GlassTopbar({
       <div className="flex-1" />
 
       {/* Master Menu pill — center */}
-      <button
-        type="button"
-        onClick={onOpenMaster}
-        onMouseEnter={prefetchMaster}
-        onFocus={prefetchMaster}
-        className={cn(
-          'glass-pane glass-pill',
-          'inline-flex items-center gap-2 h-9 px-4',
-          'text-[12px] ds-mono uppercase tracking-wider text-cyan-200/90',
-          'hover:text-cyan-100 transition-colors duration-200 ds-focus',
-        )}
-        title="Master Menu (⌘K / ⌘M)"
-        aria-haspopup="dialog"
-      >
-        <CommandIcon className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">Master Menu</span>
-        <kbd className="ds-mono text-[10px] text-cyan-300/50 hidden md:inline">⌘K</kbd>
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={onOpenMaster}
+            onMouseEnter={prefetchMaster}
+            onFocus={prefetchMaster}
+            className={cn(
+              'glass-pane glass-pill',
+              'inline-flex items-center gap-2 h-9 px-4',
+              'text-[12px] ds-mono uppercase tracking-wider text-cyan-200/90',
+              'hover:text-cyan-100 transition-colors duration-200 ds-focus',
+            )}
+            aria-label="Abrir Master Menu"
+            aria-haspopup="dialog"
+            aria-keyshortcuts="Control+K Control+M"
+          >
+            <CommandIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">Master Menu</span>
+            <kbd className="ds-mono text-[10px] text-cyan-300/50 hidden md:inline">⌘K</kbd>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="flex items-center gap-2 ds-mono text-[11px]">
+          <span>Master Menu</span>
+          <Kbd>⌘K</Kbd>
+          <span className="text-zinc-500">ou</span>
+          <Kbd>⌘M</Kbd>
+        </TooltipContent>
+      </Tooltip>
 
       <div className="flex-1" />
 
@@ -262,6 +273,7 @@ function GlassTopbar({
           onClick={layoutControls.toggleLeft}
           active={!layoutControls.leftCollapsed}
           shortcut="Control+1"
+          shortcutLabel="⌘1"
           controls="panel-library"
         >
           {layoutControls.leftCollapsed ? <PanelLeftOpen className="size-3.5" /> : <PanelLeftClose className="size-3.5" />}
@@ -271,6 +283,7 @@ function GlassTopbar({
           onClick={layoutControls.toggleTimeline}
           active={!layoutControls.timelineCollapsed}
           shortcut="Control+3"
+          shortcutLabel="⌘3"
           controls="panel-timeline"
         >
           {layoutControls.timelineCollapsed ? <PanelBottomOpen className="size-3.5" /> : <PanelBottomClose className="size-3.5" />}
@@ -280,20 +293,28 @@ function GlassTopbar({
           onClick={layoutControls.toggleRight}
           active={!layoutControls.rightCollapsed}
           shortcut="Control+2"
+          shortcutLabel="⌘2"
           controls="panel-inspector"
         >
           {layoutControls.rightCollapsed ? <PanelRightOpen className="size-3.5" /> : <PanelRightClose className="size-3.5" />}
         </LayoutIconButton>
-        <button
-          type="button"
-          onClick={layoutControls.reset}
-          title="Resetar layout (⇧⌘0)"
-          aria-label="Resetar layout"
-          aria-keyshortcuts="Control+Shift+0"
-          className="flex size-7 items-center justify-center rounded-ds-sm text-ds-text-muted hover:text-status-sync hover:bg-ds-surface-deep transition-colors ds-focus"
-        >
-          <RotateCw className="size-3.5" aria-hidden="true" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={layoutControls.reset}
+              aria-label="Resetar layout"
+              aria-keyshortcuts="Control+Shift+0"
+              className="flex size-7 items-center justify-center rounded-ds-sm text-ds-text-muted hover:text-status-sync hover:bg-ds-surface-deep transition-colors ds-focus"
+            >
+              <RotateCw className="size-3.5" aria-hidden="true" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="flex items-center gap-2 ds-mono text-[11px]">
+            <span>Restaurar layout padrão</span>
+            <Kbd>⇧⌘0</Kbd>
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Audio picker */}
