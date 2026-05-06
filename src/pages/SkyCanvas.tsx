@@ -790,15 +790,7 @@ export default function SkyCanvasPage() {
                 defaultValue="effects"
                 value={layout.activeTabs?.left ?? 'effects'}
                 onValueChange={(v) => layout.setActiveTab('left', v)}
-                tabs={[
-                   { value: 'effects',     label: 'Efeitos',     load: () => import('@/components/skycanvas/tabs/LibraryEffectsTab') },
-                   { value: 'fixtures',    label: 'Fixtures',    load: () => import('@/components/skycanvas/tabs/LibraryFixturesTab') },
-                   { value: 'models',      label: 'Modelos',     load: () => import('@/components/skycanvas/tabs/LibraryModelsTab') },
-                   { value: 'templates',   label: 'Templates',   load: () => import('@/components/skycanvas/tabs/LibraryTemplatesTab') },
-                   { value: 'catalog',     label: 'Catálogo',    load: () => import('@/components/skycanvas/tabs/LibraryCatalogTab') },
-                   { value: 'marketplace', label: 'Marketplace', load: () => import('@/components/skycanvas/tabs/LibraryMarketplaceTab') },
-                   { value: 'geo',         label: 'Local',       load: () => import('@/components/skycanvas/tabs/LibraryGeoTab') },
-                 ]}
+                tabs={LIBRARY_TABS}
               />
             </section>
           </StudioErrorBoundary>
