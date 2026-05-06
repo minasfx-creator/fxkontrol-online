@@ -133,6 +133,19 @@ export const ADAPTER_TRIAGE: ReadonlyArray<AdapterTriageEntry> = [
     requiredForSync: true,
   },
   {
+    id: 'fxk32q-esp32s3',
+    class: 'AWAITING_HANDSHAKE',
+    transport: 'serial_usb',
+    rationale:
+      'Réplica melhorada do FireOne IFMx-i32Q (32ch, ESP32-S3 + 2×16-relay). Espera linha "MODEL:FXK32Q;CH:32" via USB-CDC, BLE (FFE0/FFE1/FFE2), BLE-LR, WebSocket, Wi-Fi Direct ou RS-485 XLII+ slave (USB↔RS485). Mesmo handshake VERSION/STATUS do FXK16.',
+    nextAction: {
+      kind: 'route',
+      path: '/pairing/usb',
+      label: 'Parear FXK32Q (USB / BLE / Wi-Fi)',
+    },
+    requiredForSync: false,
+  },
+  {
     id: 'mux-cd4051-dual',
     class: 'AWAITING_HANDSHAKE',
     transport: 'analog_mux',
