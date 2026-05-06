@@ -34,9 +34,15 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import type { SFXChannel } from './types';
 import {
   FireOneController, getFireOneController,
-  createSimulatedModuleStatus,
   type FireOneModuleStatus, type FireOneEvent,
 } from '@/lib/fireoneProtocol';
+
+// ─── Honest event-id generator (no Math.random) ───────────────────
+let _evtSeq = 0;
+function nextEvtId(): string {
+  _evtSeq = (_evtSeq + 1) & 0xffff;
+  return `evt-${Date.now()}-${_evtSeq.toString(36).padStart(3, '0')}`;
+}
 
 // ═══════════════════════════════════════════════════════════
 // TYPES
