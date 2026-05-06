@@ -48,3 +48,25 @@ Conclusão: 6 páginas erroneamente marcadas DELETE na Rodada 1 — agora reclas
 ## Pendência sugerida pra Rodada 3 (reorganização física)
 
 As 6 páginas reclassificadas como "tab-de-outra-página" deveriam ser movidas pra `src/components/office/`, `src/components/command/`, `src/components/dev/fxk16/` etc. e deixar `src/pages/` só com **rotas reais**. Fica pra Rodada 3.
+
+---
+
+## Rodada 3 — Reorganização física (executada)
+
+As 6 páginas-de-tab foram movidas pra suas pastas de domínio. `src/pages/` agora contém só rotas reais.
+
+| Origem | Destino |
+|---|---|
+| `src/pages/Dashboard.tsx` | `src/components/office/DashboardPanel.tsx` |
+| `src/pages/AccreditationDashboard.tsx` | `src/components/office/AccreditationPanel.tsx` |
+| `src/pages/FieldTest.tsx` | `src/components/command/FieldTestPanel.tsx` |
+| `src/pages/FXK16ValidatePage.tsx` | `src/components/dev/fxk16/ValidatePanel.tsx` |
+| `src/pages/FXK16CalibrationPage.tsx` | `src/components/dev/fxk16/CalibrationPanel.tsx` |
+| `src/pages/DevicePairing.tsx` | `src/components/field/DevicePairingPanel.tsx` |
+
+**Imports atualizados:** `src/App.tsx` (lazy imports mortos removidos), `src/pages/Office.tsx`, `src/pages/CommandCenter.tsx`, `src/pages/FieldOps.tsx`, `src/pages/dev/FXK16Hub.tsx`, `src/components/editor/live-firing/FXKNetPanel.tsx`, `src/pages/__tests__/FieldTest.shell.test.tsx`.
+
+### Métricas finais (pós-Rodada 3)
+- `src/pages/` (root): **32 arquivos** (era 38) — só rotas reais + subpastas `create/`, `dev/`, `legal/`, `videoEditor/`, `__tests__/`
+- Componentes-de-tab agora vivem em `src/components/{office,command,field,dev/fxk16}/`
+- Build TS: ✅ sem erros

@@ -51,7 +51,7 @@ const UsbPairingWizard = lazy(lazyRetry(() => import("./pages/UsbPairingWizard")
 const BlePairingWizard = lazy(lazyRetry(() => import("./pages/BlePairingWizard")));
 const PairingWizard = lazy(lazyRetry(() => import("./pages/PairingWizard")));
 const RealDiscoveryProbe = lazy(lazyRetry(() => import("./pages/RealDiscoveryProbe")));
-const FXK16ValidatePage = lazy(lazyRetry(() => import("./pages/FXK16ValidatePage")));
+
 const SkyCanvasSmoke = lazy(lazyRetry(() => import("./pages/dev/SkyCanvasSmoke")));
 const SkyCanvas3DDemo = lazy(lazyRetry(() => import("./pages/dev/SkyCanvas3DDemo")));
 const SkyCanvas2Demo = lazy(lazyRetry(() => import("./pages/dev/SkyCanvas2Demo")));
@@ -63,7 +63,7 @@ const ReadinessAudit = lazy(lazyRetry(() => import("./pages/dev/ReadinessAudit")
 const ModuleRoster = lazy(lazyRetry(() => import("./pages/dev/ModuleRoster")));
 const E2ETestPage = lazy(lazyRetry(() => import("./pages/dev/E2ETestPage")));
 const GoldenShowsCatalog = lazy(lazyRetry(() => import("./pages/dev/GoldenShows")));
-const FXK16CalibrationPage = lazy(lazyRetry(() => import("./pages/FXK16CalibrationPage")));
+
 const FXK16Hub = lazy(lazyRetry(() => import("./pages/dev/FXK16Hub")));
 
 // Office — consolidated productivity area (Etapa 1 do refactor 3-áreas)

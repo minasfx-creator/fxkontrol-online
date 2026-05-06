@@ -14,8 +14,8 @@ import { useSearchParams } from 'react-router-dom';
 import { Activity, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const FXK16ValidatePage    = lazy(() => import('@/pages/FXK16ValidatePage'));
-const FXK16CalibrationPage = lazy(() => import('@/pages/FXK16CalibrationPage'));
+const FXK16ValidatePage    = lazy(() => import('@/components/dev/fxk16/ValidatePanel'));
+const FXK16CalibrationPage = lazy(() => import('@/components/dev/fxk16/CalibrationPanel'));
 
 type Tab = 'validate' | 'calibrate';
 

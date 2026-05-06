@@ -15,8 +15,8 @@ import { cn } from '@/lib/utils';
 import { isFireOneXL43RealOpsEnabled } from '@/lib/featureFlags';
 import { useActiveControllers } from '@/hooks/useActiveControllers';
 
-const DevicePairing = lazy(() => import('./DevicePairing'));
-const FieldTest = lazy(() => import('./FieldTest'));
+const DevicePairing = lazy(() => import('@/components/field/DevicePairingPanel'));
+const FieldTest = lazy(() => import('@/components/command/FieldTestPanel'));
 const MobileLinkPanel = lazy(() => import('@/components/editor/MobileLinkPanel'));
 const FXK16FieldPanel = lazy(() => import('@/components/field/FXK16FieldPanel'));
 const FireOnePanel = lazy(() => import('@/features/fieldbus/FireOnePanel'));
