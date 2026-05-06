@@ -168,6 +168,10 @@ function HubCard({
       navigate('/ai-builder');
       return;
     }
+    if (panel === 'golden') {
+      navigate('/dev/golden-shows');
+      return;
+    }
     if (commandRoute) {
       navigate(panel ? `/command?mode=${panel}` : '/command');
     } else if (panel) {
