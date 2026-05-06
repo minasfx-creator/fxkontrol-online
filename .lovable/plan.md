@@ -1,67 +1,79 @@
-# Próximo incremento — SkyCanvas v3 + plataforma refatorada
+# Migração SkyCanvas → EditorShell DS v1
 
-A entrega anterior cobriu TabbedDockPanel + 12 abas + CatalogImportDialog + SMPTE tab + Group A safety hardening. O arquivo `src/pages/SkyCanvas.tsx` agora carrega tudo no novo dock, mas ainda **carrega ~150 linhas de código morto** (`Inspector`, `TimelineStrip`, `Row`) que foram substituídos pelas tabs. Também faltam três coisas que aparecem no plan.md como pendências reais: persistência local do show, mobile sheet switcher claro, e sincronia audio→Show3DEngine.
+## Objetivo
+Adotar no `/skycanvas` o **mesmo layout estruturado do editor antigo** (`<EditorShell>` da DS v1: Topbar 64 · Tabs 48 · Left 280 · Right 320 · Timeline 180 · Viewport fill), aposentando o dock flutuante de vidro. Toda a funcionalidade existente (viewport WebGL, transporte, áudio, cues, persistência, Master Menu, drag-drop) é preservada; só muda o **chrome** (estrutura).
 
-Vou agrupar em 4 lotes pequenos. Cada um é independente — paro entre lotes pra você revisar.
+Nada de Safety/CommandBus/FieldBus/workMode é tocado — segue 100% surface Show/Experience.
 
-## Lote 1 — Limpeza de código morto em `SkyCanvas.tsx`
-
-Remover:
-- `function Inspector({ cap })` (linhas 293–353) — substituído por `InspectorCueTab/SceneTab/RenderTab`.
-- `function Row({ k, v })` (355–361) — usado só pelo Inspector.
-- `function TimelineStrip({ ... })` (367–470) — substituído por `TimelineStripView` + `TimelineCuesTab`.
-- Imports órfãos: `Slider`, `Tabs/TabsList/TabsTrigger/TabsContent`, `ScrollArea`, `EffectLibrarySidebar`, `Sun`, `Camera`, `Activity` (se nenhum outro caller).
-
-Ganho: ~160 linhas removidas, bundle do chunk SkyCanvas menor, leitura mais clara.
-
-## Lote 2 — Persistência local do show (`fxk.skycanvas.show.v1`)
-
-Hoje cues e duração se perdem em refresh. Adicionar:
-- Hook `useSkyCanvasShowPersistence()` em `src/hooks/useSkyCanvasShowPersistence.ts`:
-  - Lê `cueMarkers + duration + audioName` de `useProjectStore` com `subscribeWithSelector`.
-  - Debounce 500ms → grava em localStorage `fxk.skycanvas.show.v1` (≤32KB, quota-safe).
-  - Hidrata 1× no mount via `useProjectStore.getState().setCueMarkers/setDuration` (idempotente, não chama setPlaying).
-- Toast discreto "Show salvo localmente" na 1ª gravação (sessão).
-- Botão "Reset show" no Master Menu (`skyActions.ts`) ao lado de "Reset layout", com confirmação `window.confirm`.
-
-Não persiste: playhead `currentTime`, `isPlaying`, áudio em si (só nome).
-
-## Lote 3 — Mobile sheet switcher (chip bar)
-
-Hoje `mobileActive` controla qual painel está aberto, mas a única forma de trocar é colapsar/expandir manualmente. Adicionar:
-- Chip bar fixo no rodapé (acima do `MobileTransportFab`) só em `<md`:
-  - 3 chips glass: BIBLIOTECA · INSPECTOR · TIMELINE.
-  - Active chip: cyan-300 + ring; inactive: zinc-400 muted.
-  - Click → `setMobileActive(key)` (já invalida os outros via `useEffect` existente).
-- Componente isolado `<MobilePanelSwitcher active onChange />` em `src/components/skycanvas/MobilePanelSwitcher.tsx`.
-- Z-index 50 (mesmo do FAB), `bottom-20` pra não colidir com o transport.
-
-## Lote 4 — Show3DEngine ↔ audio clock sync no SkyCanvas
-
-A memória `mem://funcionalidades/show3d-timeline-audio-sync` documenta o pipeline (`useAudioMasterClock → useProjectStore → engine.seek`), mas SkyCanvas v3 ainda usa um RAF próprio que avança `currentTime` (linhas 501–514). Isso compete com o relógio mestre quando há áudio carregado.
-
-Mudança cirúrgica:
-- Quando `audioName != null` E `peaks != null` → desativar o RAF local e plugar `useAudioMasterClock(audioElementRef)`.
-- Manter o RAF atual como fallback (sem áudio → comportamento idêntico).
-- Audio tag `<audio ref={audioRef} src={audioObjectUrl} />` invisível (criada quando `onPickAudio` faz decode); seu `play()/pause()` espelha `setPlaying`.
-- Zero impacto em CommandBus/SafetyStateMachine (SkyCanvas é Plano Show, não Hardware).
-
-## Resumo técnico
+## Layout final
 
 ```text
-SkyCanvas.tsx          -160 lines  (lote 1: dead code)
-+useSkyCanvasShowPersistence.ts    (lote 2: localStorage)
-+MobilePanelSwitcher.tsx           (lote 3: UX mobile)
-SkyCanvas.tsx playback hook        (lote 4: audio master clock)
+┌─────────────────── Topbar 64 (glass) ─────────────────┐
+│ FXK · SIM · WorkMode · Master ⌘K · Audio · ▶ · TC · E│
+├──────── Tabs 48 (DsSegmentTabs PYRO/SFX/…) ───────────┤
+│ Left 280   │                                │ Right  │
+│ Library    │       VIEWPORT WebGL2          │ 320    │
+│ (Effects/  │       (SkyCanvas2 / 2D)        │ Inspect│
+│  Fixtures/ │                                │ (Cue/  │
+│  Tpl/Geo)  │                                │  Cena/ │
+│            │                                │  Rend/ │
+│            │                                │  HW/   │
+│            │                                │  Strat)│
+├────────── Timeline 180 (Cues/SMPTE/Validation) ───────┤
+└───────────────────────────────────────────────────────┘
 ```
 
-Nenhum lote toca: CommandBus, FieldBus, uiCommandGateway, SafetyStateMachine, workMode, fxk16Bridge, portRegistry, deviceAggregator. SkyCanvas continua plano Show puro (mem://arquitetura/v6-quatro-planos), SIM · ADVISORY preservado, E-STOP global continua roteando pra `/command`.
+Mobile (<lg): grid colapsa em pilha vertical (regra já no `index.css` linha 2620+); `MobilePanelSwitcher` continua trocando qual painel (Library/Inspector/Timeline) é renderizado abaixo do viewport.
 
-## Sequência de execução
+## Mudanças
 
-1. Lote 1 (limpeza) — primeiro porque destrava leitura.
-2. Lote 2 (persistência) — ganho imediato pro operador.
-3. Lote 3 (mobile switcher) — paraleliza sem dependência.
-4. Lote 4 (audio sync) — exige Show3DEngine montado + audio tag, mais cirúrgico.
+### 1. `src/pages/SkyCanvas.tsx` — refator estrutural
+- Remover `FloatingPanel` + `useFloatingDock`/`dockStore` (e os efeitos de auto-collapse/cinema/reset-dock que dependem deles).
+- Importar `EditorShell` + `useEditorLayout('skycanvas')` da DS.
+- Renderizar `<EditorShell layout={…}>` com slots:
+  - **topbar**: `<GlassTopbar …>` (sem mudar markup); injetar à direita os 3 botões `PanelLeftClose/PanelRightClose/PanelBottomClose` + reset (mesmo padrão do `EditorShellPreview`, escondidos `<lg`).
+  - **tabs**: novo `<SkyCanvasSegmentTabs>` simples — chips PYRO/SFX/DRONES/LIGHT/DMX só visuais por enquanto (segmento ativo persistido em `useState`, sem mudar lógica de cues). Reusa `DsSegmentTabs`.
+  - **left**: `<TabbedDockPanel>` Library (Effects/Fixtures/Templates/Geo) — exatamente as mesmas 4 tabs de hoje.
+  - **right**: `<TabbedDockPanel dense>` Inspector (Cue/Cena/Render/Hardware/Strategy).
+  - **timeline**: `<TimelineCuesProvider>` envolvendo `<TabbedDockPanel dense>` (Cues/SMPTE/Validation).
+  - **children (viewport)**: bloco atual com `StudioErrorBoundary` + Suspense + `SkyCanvas2`/`SkyFallback2D`, mantendo `data-fxk-viewport`, drag-over e drop de cues no playhead.
+- Manter: clock áudio/RAF, transport (Space/Arrow/Home/End), persistência `useSkyCanvasShowPersistence`, Master Menu (`SkyCanvasCommandPalette`), import VDL, export JSON, reset show, atalho ⌘K/⌘M, audio picker oculto, `<audio>` master clock, `MobileTransportFab`, `MobilePanelSwitcher`.
+- Remover atalhos `Cmd+1/2/3` (focus dock) e `Cmd+\` (cinema) — substituídos pelos botões de colapso na Topbar (`useEditorLayout.toggleLeft/Right/Timeline`). Atalho `Shift+Cmd+0` passa a chamar `layout.reset()`.
+- `buildSkyActions`: substituir `focusPanel`/`toggleCinema`/`resetDock` por `toggleLeft/toggleRight/toggleTimeline/resetLayout` (Master Menu reflete novo modelo).
+- `skyActions.ts` e `SkyCanvasCommandPalette.tsx`: ajustar tipo das actions p/ refletir nova API (rename de chaves; remover entradas mortas de cinema/dock-reset, adicionar entradas Layout/Painéis).
 
-Aprova para executar os 4 em sequência, ou prefere parar depois do lote 2?
+### 2. `src/components/skycanvas/MobilePanelSwitcher.tsx`
+- Mudar contrato: além de `onChange`, expor o painel ativo como **estado local da página** que passa a `EditorShell` — em mobile a página renderiza só Left **OU** Right **OU** Timeline conforme `mobileActive`, escondendo os outros via `layout.{left,right,timeline}Width=0`. Isso elimina a necessidade do `dockStore` no mobile.
+
+### 3. Arquivos a podar (não removidos neste passo, só desreferenciados)
+- `src/components/skycanvas/FloatingPanel.tsx`
+- `src/hooks/useFloatingDock.ts` + `dockStore`
+Marcar com TODO de remoção em uma rodada futura (após `rg` confirmar 0 imports). Sem deleções nesta migração para não cascatear quebras.
+
+### 4. Testes
+- Atualizar `src/__tests__/skycanvas.safetyImports.guard.spec.ts` se ele afirmar presença de `FloatingPanel` (verificar antes de mexer; mais provável que só blacklist safety imports — nesse caso, intacto).
+- Adicionar smoke test `src/__tests__/skycanvas.editorShell.spec.tsx`: render `/skycanvas`, asserir `.ds-editor-grid` presente, viewport e os 3 `TabbedDockPanel` montados.
+
+### 5. Persistência
+- Layout persistido em `fxk:editor-layout:v1:skycanvas` (via `useEditorLayout('skycanvas')`).
+- Chaves antigas `fxk.skycanvas.dock.v2`/`v1` ficam órfãs (zero migração — UI-only, sem perda de show data).
+
+## Detalhes técnicos
+- Sem alteração em `useProjectStore`, `Show3DEngine`, `useSkyCanvasShowPersistence`, capability detection.
+- Topbar continua **flutuando glass** sobre a Topbar slot (mantém a estética); o slot da `EditorShell` recebe a `<GlassTopbar>` direto — `position: absolute` antigo é trocado por `relative` para encaixar no grid (1 prop extra ou wrapper). Glassmorphism preservado.
+- `data-theme="dark"` no root mantido; tokens DS já assumem dark.
+- Mobile: `layout.effective.{left,right}Width=0` quando `mobileActive !== painel`, e `timelineHeight=0` quando `mobileActive !== 'timeline'`. Em mobile a Topbar de colapso é escondida (`hidden lg:flex`, mesmo padrão do preview).
+- Drag-drop de efeitos no viewport continua funcionando (children do EditorShell = viewport).
+- Sem mudança em rotas, navegação `/command`, `/ai-builder`, `/strategy`.
+
+## Ordem de execução
+1. Refator `SkyCanvas.tsx` (estrutura + remoção dock/cinema/focusPanel).
+2. Ajuste `skyActions.ts` + `SkyCanvasCommandPalette.tsx` (novas entradas Layout).
+3. `MobilePanelSwitcher` controla quais slots da EditorShell ficam visíveis.
+4. Smoke test novo + verificar guard test existente.
+5. Build + typecheck (auto pelo harness).
+
+## Fora de escopo
+- Deletar fisicamente `FloatingPanel`/`useFloatingDock` (rodada de cleanup futura).
+- Migrar segmento PYRO/SFX/DRONES p/ filtrar cues (placeholder visual nesta rodada).
+- Resizers da EditorShell (`EditorLayoutResizers`) — adiados; toggles no Topbar são suficientes p/ esta migração.
