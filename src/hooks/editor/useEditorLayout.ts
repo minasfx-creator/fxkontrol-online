@@ -84,6 +84,13 @@ function readPersisted(projectId: string): EditorLayoutState {
       leftCollapsed: Boolean(parsed.leftCollapsed),
       rightCollapsed: Boolean(parsed.rightCollapsed),
       timelineCollapsed: Boolean(parsed.timelineCollapsed),
+      activeTabs: (parsed.activeTabs && typeof parsed.activeTabs === 'object')
+        ? {
+            left: typeof parsed.activeTabs.left === 'string' ? parsed.activeTabs.left : undefined,
+            right: typeof parsed.activeTabs.right === 'string' ? parsed.activeTabs.right : undefined,
+            timeline: typeof parsed.activeTabs.timeline === 'string' ? parsed.activeTabs.timeline : undefined,
+          }
+        : {},
     };
   } catch {
     return EDITOR_LAYOUT_DEFAULTS;
