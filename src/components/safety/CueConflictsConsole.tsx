@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { verificationEngine } from '@/core/verification/VerificationEngine';
-import type { VerificationResult } from '@/core/verification/types';
+import type { VerificationIssue, VerificationResult } from '@/core/verification/types';
 import { useShowPlanProjection } from '@/hooks/useShowPlanProjection';
 import { ProvenanceBadge } from '@/components/safety/ProvenanceBadge';
 import { useConsoleProvenance } from '@/hooks/useConsoleProvenance';
