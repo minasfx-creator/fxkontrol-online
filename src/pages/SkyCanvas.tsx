@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { lazyRetry } from '@/lib/lazyRetry';
+
 import StudioErrorBoundary from '@/components/errors/StudioErrorBoundary';
 import { Badge } from '@/components/ui/badge';
 
