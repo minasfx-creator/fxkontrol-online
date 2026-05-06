@@ -35,7 +35,7 @@ const ITEMS: readonly Item[] = [
   },
   {
     label: 'FXK-DRONES',
-    path: '/studio?panel=drones',
+    path: '/skycanvas?panel=drones',
     icon: Plane,
     desc: 'Console de drones',
     // Active when explicitly targeting the drones panel via deep-link.

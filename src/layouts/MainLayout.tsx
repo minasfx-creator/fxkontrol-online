@@ -73,7 +73,7 @@ function MobileSidebarTrigger() {
 export default function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const isEditor = location.pathname === '/studio';
+  const isEditor = location.pathname === '/skycanvas' || location.pathname === '/studio';
   const isCommand = location.pathname === '/command';
   const commandImmersive = isCommand;
   const isMobile = useIsMobile();
