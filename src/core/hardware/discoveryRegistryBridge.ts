@@ -49,13 +49,19 @@ const _artnetOnline = new Set<string>();
 const _dmxSerialOnline = new Set<string>();
 
 /**
- * Map FXK16 bridge `transport` field to the canonical `TransportType`
- * used by `provenance.ts`. Defaults to `serial_usb`.
+ * Map FireOneHardwareBridge `transport` to the canonical `TransportType`.
+ * Cobre TODOS os 6 transports usados em FXK16/FXK32Q:
+ *  ble | ble_lr → 'ble'
+ *  usb | direct_relay → 'serial_usb' (RS-485 via USB↔RS485 cai aqui)
+ *  websocket → 'ethernet_tcp'
+ *  wifi_direct → 'wifi'
  */
 function mapTransport(t?: string | null): TransportType {
   if (!t) return 'serial_usb';
+  if (/wifi_direct/i.test(t)) return 'wifi';
+  if (/websocket/i.test(t)) return 'ethernet_tcp';
   if (/ble|bluetooth/i.test(t)) return 'ble';
-  if (/usb|serial|cdc/i.test(t)) return 'serial_usb';
+  if (/usb|serial|cdc|relay/i.test(t)) return 'serial_usb';
   return 'serial_usb';
 }
 
