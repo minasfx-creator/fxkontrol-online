@@ -133,7 +133,9 @@ export function useBurstSpecs(): BurstSpec[] {
       list.push({
         id: item.id,
         origin,
-        color: item.colorOverride || eff.color || '#FFD700',
+        color: item.colorOverride
+          ? ledAccurateColor(item.colorOverride)
+          : (eff.color || '#FFD700'),
         burstStart,
         burstEnd,
         life,
