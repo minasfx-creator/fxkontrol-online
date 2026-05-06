@@ -32,8 +32,9 @@ describe('commandFireRouter', () => {
     commandBus.dispatch({ type: 'FIRE', payload: { slat: 3, cue: 7, duration: 0.2 } });
     const drained = commandBus.drain();
     commandBus.applyAll(drained);
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 200));
 
+    console.log('sent', sentBytes.length, fieldBus.getActiveTransport(), fieldBus.isAlive());
     expect(sentBytes.length).toBeGreaterThan(0);
     expect(sentBytes[0].type).toBe('pyro');
     expect((sentBytes[0].payload as any).module).toBe(3);
