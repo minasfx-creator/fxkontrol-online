@@ -578,7 +578,7 @@ function executeCommand(cmd: JoiCommand): JoiCommandResult {
       }
 
       case 'inspect_exports': {
-        const targets = ['fireone', 'artnet', 'drone'] as const;
+        const targets = ['fireone-csv', 'artnet', 'drone'] as const;
         const sim = !workMode.isRealOperation();
         const lines = targets.map(t => {
           const last = exportCoordinator.getLastAttempt(t);
