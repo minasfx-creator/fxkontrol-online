@@ -129,4 +129,24 @@ describe('SkyCanvas → EditorShell DS v1 wiring (smoke)', () => {
     expect(page).toMatch(/layout\.setActiveTab\(\s*'right'/);
     expect(page).toMatch(/layout\.setActiveTab\(\s*'timeline'/);
   });
+
+  it('Round 3 — registers extended creation tabs and they pass safety guard', () => {
+    const FORBIDDEN = /commandBus|fieldBus|safetyStateMachine|workMode\.set|uiCommandGateway\.(arm|fire|disarm|eStop)/;
+    const wrappers = [
+      'LibraryModelsTab',
+      'InspectorGenerativeTab',
+      'InspectorSceneEditorTab',
+      'InspectorTrajectoryTab',
+      'InspectorTransitionTab',
+      'InspectorSynesthesiaTab',
+      'TimelinePreviewTab',
+      'TimelineExportTab',
+      'TimelineScriptingTab',
+    ];
+    for (const w of wrappers) {
+      expect(page, `SkyCanvas.tsx missing tab wiring for ${w}`).toContain(`/tabs/${w}`);
+      const src = readFileSync(`src/components/skycanvas/tabs/${w}.tsx`, 'utf8');
+      expect(src, `${w} must not import safety/dispatch`).not.toMatch(FORBIDDEN);
+    }
+  });
 });
