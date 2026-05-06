@@ -14,6 +14,7 @@
  * the last non-zero width (so the user's preferred panel size survives).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface EditorLayoutState {
   leftWidth: number;
