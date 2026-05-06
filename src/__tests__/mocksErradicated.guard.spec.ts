@@ -11,6 +11,7 @@ const FILES = [
   'src/components/editor/AddressingPanel.tsx',
   'src/components/safety/CueConflictsConsole.tsx',
   'src/components/editor/live-firing/MobileLinkMode.tsx',
+  'src/components/dev/fxk32q/FXK32QAdapterPanel.tsx',
 ];
 
 const HARDWARE_HONEST_FILES = [
