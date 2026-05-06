@@ -1,23 +1,30 @@
 /**
- * /skycanvas — SkyCanvas v3 surface.
+ * /skycanvas — SkyCanvas v3 surface (Apple-glass · floating dock).
  *
- * Boot enxuto: NÃO importa Index.tsx, NÃO importa EngineProvider, NÃO depende
- * do shell pesado do Studio. Capability-driven: WebGL2 → SkyCanvas2;
- * sem WebGL/SwiftShader → SkyFallback2D.
+ * Plane: Show / Experience (mem://arquitetura/v6-quatro-planos).
+ * Zero CommandBus / FieldBus / SafetyStateMachine / workMode.
+ * Real operation lives on /command via uiCommandGateway.
  *
- * Plano: Show/Experience plane. Zero CommandBus / FieldBus / SafetyStateMachine
- * / workMode. Operação real continua via /command + uiCommandGateway.
+ * Surface contract:
+ *   - Edge-to-edge WebGL2 viewport (or 2D fallback)
+ *   - 3 floating glass panels: Library · Inspector · Timeline
+ *   - GlassTopbar with central Master Menu pill (⌘K / ⌘M)
+ *   - SIM · ADVISORY badge always visible
+ *   - E-STOP cosmetic — links to /command (no local dispatch)
+ *
+ * Persistence: layout in fxk.skycanvas.dock.v2 (silent v1 migration).
+ * Guard test: src/__tests__/skycanvas.safetyImports.guard.spec.ts
  */
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Play, Pause, Square, SkipBack, SkipForward,
-  Camera, Sun, Activity, ChevronsLeft, ChevronsRight, Music,
+  Camera, Sun, Activity, Music, Command as CommandIcon, OctagonAlert,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { lazyRetry } from '@/lib/lazyRetry';
-import { EditorShell } from '@/components/ds/EditorShell';
 import StudioErrorBoundary from '@/components/errors/StudioErrorBoundary';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -30,15 +37,17 @@ import EffectLibrarySidebar, { FXK_EFFECT_DRAG_TYPE } from '@/components/editor/
 import SkyFallback2D from '@/components/skycanvas/SkyFallback2D';
 import WaveformLayer from '@/components/skycanvas/WaveformLayer';
 import { decodeAudioPeaks } from '@/lib/skycanvasAudioPeaks';
-import { toast } from 'sonner';
+import { FloatingPanel } from '@/components/skycanvas/FloatingPanel';
+import { dockStore, useFloatingDock } from '@/hooks/useFloatingDock';
+import { buildSkyActions } from '@/components/skycanvas/skyActions';
+import { cn } from '@/lib/utils';
 
-// SkyCanvas2 é nossa engine canônica para esta surface — modular, instanced,
-// com WebGLContextRecovery + AdaptiveDPRController + SkyCanvas2ErrorBoundary.
 const SkyCanvas2 = lazy(lazyRetry(() => import('@/components/show3d/v2/SkyCanvas2')));
+const SkyCanvasCommandPalette = lazy(() => import('@/components/skycanvas/SkyCanvasCommandPalette'));
 
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
 // Helpers
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
 
 function fmtTime(s: number) {
   const sign = s < 0 ? '-' : '';
@@ -49,12 +58,38 @@ function fmtTime(s: number) {
   return `${sign}${mm}:${ss}:${ff}`;
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Topbar
-// ─────────────────────────────────────────────────────────────────────────
+function GlassIconButton({
+  onClick, label, children, className, danger, title,
+}: {
+  onClick: () => void; label: string; children: React.ReactNode;
+  className?: string; danger?: boolean; title?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={title ?? label}
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center justify-center h-8 w-8 rounded-full',
+        'text-zinc-300 hover:text-cyan-200 hover:bg-white/[0.06] transition-colors duration-200',
+        'ds-focus',
+        danger && 'hover:text-rose-300 hover:bg-rose-500/10',
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
-function Topbar({
-  cap, playing, onTogglePlay, onStop, onSeek, time, duration, onPickAudio, audioName,
+// ─────────────────────────────────────────────────────────────────────
+// Topbar (glass) + Master Menu pill + transport
+// ─────────────────────────────────────────────────────────────────────
+
+function GlassTopbar({
+  cap, playing, onTogglePlay, onStop, onSeek, time, duration,
+  onPickAudio, audioName, onOpenMaster, onEStop,
 }: {
   cap: SkyCapability;
   playing: boolean;
@@ -65,11 +100,26 @@ function Topbar({
   duration: number;
   onPickAudio: (file: File) => void;
   audioName: string | null;
+  onOpenMaster: () => void;
+  onEStop: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement | null>(null);
+
+  // Intent-based prefetch: hovering Master Menu warms the chunk.
+  const prefetchMaster = useCallback(() => {
+    void import('@/components/skycanvas/SkyCanvasCommandPalette');
+  }, []);
+
   return (
-    <header className="flex h-full items-center gap-3 px-3">
-      <div className="ds-mono text-[12px] tracking-wider text-cyan-300/90">
+    <header
+      className={cn(
+        'glass-pane glass-pane-strong absolute top-3 left-3 right-3 z-50',
+        'h-14 rounded-2xl px-3 flex items-center gap-3',
+      )}
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+    >
+      {/* Brand + status */}
+      <div className="ds-mono text-[12px] tracking-wider text-cyan-300/90 hidden sm:block">
         FXKONTROL · SKYCANVAS
       </div>
       <Badge variant="outline" className="border-cyan-500/30 text-cyan-300 ds-mono text-[10px]">
@@ -77,25 +127,52 @@ function Topbar({
       </Badge>
       <Badge
         variant="outline"
-        className={cap.renderer === 'webgl2'
-          ? 'border-emerald-500/40 text-emerald-300 ds-mono text-[10px]'
-          : 'border-amber-500/40 text-amber-300 ds-mono text-[10px]'}
+        className={cn('ds-mono text-[10px] hidden md:inline-flex',
+          cap.renderer === 'webgl2' ? 'border-emerald-500/40 text-emerald-300'
+            : 'border-amber-500/40 text-amber-300')}
         title={cap.reasons.join(' · ') || 'webgl2 ok'}
       >
         {cap.renderer === 'webgl2' ? `WEBGL2 · ${cap.tier.toUpperCase()}` : '2D FALLBACK'}
       </Badge>
+
       <div className="flex-1" />
 
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-8 px-2 text-zinc-300 hover:text-cyan-200 hover:bg-cyan-500/10 ds-mono text-[11px] gap-1"
+      {/* Master Menu pill — center */}
+      <button
+        type="button"
+        onClick={onOpenMaster}
+        onMouseEnter={prefetchMaster}
+        onFocus={prefetchMaster}
+        className={cn(
+          'glass-pane glass-pill',
+          'inline-flex items-center gap-2 h-9 px-4',
+          'text-[12px] ds-mono uppercase tracking-wider text-cyan-200/90',
+          'hover:text-cyan-100 transition-colors duration-200 ds-focus',
+        )}
+        title="Master Menu (⌘K / ⌘M)"
+        aria-haspopup="dialog"
+      >
+        <CommandIcon className="h-3.5 w-3.5" />
+        <span className="hidden sm:inline">Master Menu</span>
+        <kbd className="ds-mono text-[10px] text-cyan-300/50 hidden md:inline">⌘K</kbd>
+      </button>
+
+      <div className="flex-1" />
+
+      {/* Audio picker */}
+      <button
+        type="button"
         onClick={() => fileRef.current?.click()}
+        className={cn(
+          'inline-flex items-center gap-1 h-8 px-3 rounded-full',
+          'ds-mono text-[11px] text-zinc-300 hover:text-cyan-200',
+          'hover:bg-white/[0.06] transition-colors duration-200 ds-focus',
+        )}
         title={audioName ?? 'Carregar trilha de áudio'}
       >
-        <Music className="h-4 w-4" />
-        <span className="hidden md:inline truncate max-w-[140px]">{audioName ?? 'Áudio'}</span>
-      </Button>
+        <Music className="h-3.5 w-3.5" />
+        <span className="hidden lg:inline truncate max-w-[140px]">{audioName ?? 'Áudio'}</span>
+      </button>
       <input
         ref={fileRef}
         type="file"
@@ -108,39 +185,90 @@ function Topbar({
         }}
       />
 
-      <div className="flex items-center gap-1">
-        <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-300 hover:text-cyan-200 hover:bg-cyan-500/10" onClick={() => onSeek(-5)} aria-label="Voltar 5 segundos">
-          <SkipBack className="h-4 w-4" />
-        </Button>
-        <Button
-          size="icon"
-          className={`h-9 w-9 rounded-full border ${playing
-            ? 'bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 border-amber-500/40'
-            : 'bg-cyan-500/20 text-cyan-200 hover:bg-cyan-500/30 border-cyan-500/40'}`}
+      {/* Transport — visible ≥900px; mobile uses FAB below */}
+      <div className="hidden md:flex items-center gap-1">
+        <GlassIconButton onClick={() => onSeek(-5)} label="Voltar 5s"><SkipBack className="h-4 w-4" /></GlassIconButton>
+        <button
+          type="button"
           onClick={onTogglePlay}
           aria-label={playing ? 'Pausar' : 'Tocar'}
           aria-keyshortcuts="Space"
+          className={cn(
+            'inline-flex h-9 w-9 items-center justify-center rounded-full border ds-focus transition-all duration-200',
+            playing
+              ? 'bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 border-amber-500/40'
+              : 'bg-cyan-500/20 text-cyan-100 hover:bg-cyan-500/30 border-cyan-500/40',
+          )}
         >
           {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-        </Button>
-        <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-300 hover:text-rose-300 hover:bg-rose-500/10" onClick={onStop} aria-label="Parar">
-          <Square className="h-4 w-4" />
-        </Button>
-        <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-300 hover:text-cyan-200 hover:bg-cyan-500/10" onClick={() => onSeek(5)} aria-label="Avançar 5 segundos">
-          <SkipForward className="h-4 w-4" />
-        </Button>
+        </button>
+        <GlassIconButton onClick={onStop} label="Parar" danger><Square className="h-4 w-4" /></GlassIconButton>
+        <GlassIconButton onClick={() => onSeek(5)} label="Avançar 5s"><SkipForward className="h-4 w-4" /></GlassIconButton>
       </div>
 
-      <div className="ds-mono text-[12px] text-cyan-300 tabular-nums w-[150px] text-center px-2 py-1 rounded border border-cyan-500/20 bg-[#0c1322]" aria-live="off">
+      {/* Timecode */}
+      <div className="ds-mono text-[12px] text-cyan-300 tabular-nums px-3 py-1 rounded-md border border-white/[0.06] bg-black/20 hidden md:block">
         {fmtTime(time)} / {fmtTime(duration)}
       </div>
+
+      {/* E-STOP cosmético — redireciona /command */}
+      <button
+        type="button"
+        onClick={onEStop}
+        title="Operação real → Centro de Comando"
+        className={cn(
+          'inline-flex items-center gap-1 h-8 px-3 rounded-full ds-mono text-[10px] uppercase tracking-wider',
+          'border border-rose-500/40 text-rose-300 hover:bg-rose-500/10 transition-colors duration-200 ds-focus',
+        )}
+      >
+        <OctagonAlert className="h-3.5 w-3.5" />
+        <span className="hidden lg:inline">E-STOP</span>
+      </button>
     </header>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Inspector (right rail)
-// ─────────────────────────────────────────────────────────────────────────
+// Mobile transport FAB (visible <md). Always reachable so operator
+// never loses play control on phones.
+function MobileTransportFab({
+  playing, onTogglePlay, onSeek, time, duration,
+}: {
+  playing: boolean;
+  onTogglePlay: () => void;
+  onSeek: (d: number) => void;
+  time: number;
+  duration: number;
+}) {
+  return (
+    <div className="md:hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-50">
+      <div className="glass-pane glass-pill h-14 px-4 flex items-center gap-3"
+           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <GlassIconButton onClick={() => onSeek(-5)} label="Voltar 5s"><SkipBack className="h-5 w-5" /></GlassIconButton>
+        <button
+          type="button"
+          onClick={onTogglePlay}
+          aria-label={playing ? 'Pausar' : 'Tocar'}
+          className={cn(
+            'inline-flex h-12 w-12 items-center justify-center rounded-full border ds-focus',
+            playing ? 'bg-amber-500/20 text-amber-200 border-amber-500/40'
+                    : 'bg-cyan-500/20 text-cyan-100 border-cyan-500/40',
+          )}
+        >
+          {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+        </button>
+        <GlassIconButton onClick={() => onSeek(5)} label="Avançar 5s"><SkipForward className="h-5 w-5" /></GlassIconButton>
+        <span className="ds-mono text-[11px] text-cyan-300 tabular-nums hidden xs:inline">
+          {fmtTime(time)}
+        </span>
+        <span className="sr-only">{fmtTime(time)} de {fmtTime(duration)}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Inspector
+// ─────────────────────────────────────────────────────────────────────
 
 function Inspector({ cap }: { cap: SkyCapability }) {
   const [exposure, setExposure] = useState([60]);
@@ -148,18 +276,15 @@ function Inspector({ cap }: { cap: SkyCapability }) {
   const budget = profileBudget(cap);
   return (
     <div className="flex h-full flex-col">
-      <div className="px-4 h-12 flex items-center border-b border-cyan-500/10">
-        <span className="ds-mono text-[11px] tracking-wider text-cyan-300/80">INSPECTOR</span>
-      </div>
       <Tabs defaultValue="cue" className="flex-1 flex flex-col min-h-0">
-        <TabsList className="mx-3 mt-3 grid grid-cols-3 bg-[#0c1322] border border-cyan-500/10">
+        <TabsList className="mx-3 mt-3 grid grid-cols-3 bg-white/[0.04] border border-white/[0.06]">
           <TabsTrigger value="cue">Cue</TabsTrigger>
           <TabsTrigger value="scene">Scene</TabsTrigger>
           <TabsTrigger value="render">Render</TabsTrigger>
         </TabsList>
         <ScrollArea className="flex-1 px-4 py-4">
           <TabsContent value="cue" className="space-y-4 mt-0">
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] text-zinc-400">
               Selecione um cue na timeline ou arraste um efeito da biblioteca para editar.
             </p>
             <div>
@@ -193,7 +318,7 @@ function Inspector({ cap }: { cap: SkyCapability }) {
             <Row k="MSAA" v={budget.antialias ? 'on' : 'off'} />
             <Row k="Burst pool" v={String(budget.burstPoolCap)} />
             {cap.reasons.length > 0 && (
-              <div className="pt-2 border-t border-cyan-500/10">
+              <div className="pt-2 border-t border-white/[0.06]">
                 <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1">Reasons</div>
                 <ul className="space-y-0.5">
                   {cap.reasons.map((r) => <li key={r} className="ds-mono text-[10px] text-cyan-300/80">· {r}</li>)}
@@ -209,15 +334,15 @@ function Inspector({ cap }: { cap: SkyCapability }) {
 
 function Row({ k, v }: { k: string; v: string }) {
   return (
-    <div className="flex justify-between border-b border-cyan-500/5 py-1 last:border-0">
+    <div className="flex justify-between border-b border-white/[0.05] py-1 last:border-0">
       <span>{k}</span><span className="ds-mono text-cyan-300">{v}</span>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Timeline strip (lite — Phase 2 will add waveform/Web Worker)
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// Timeline
+// ─────────────────────────────────────────────────────────────────────
 
 function TimelineStrip({
   time, duration, onSeekAbs, onDropEffect, peaks,
@@ -257,9 +382,13 @@ function TimelineStrip({
   const pct = duration > 0 ? (time / duration) * 100 : 0;
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-8 items-center justify-between px-3 border-b border-cyan-500/10">
-        <span className="ds-mono text-[10px] tracking-wider text-cyan-300/80">TIMELINE · {cueMarkers.length} cue{cueMarkers.length === 1 ? '' : 's'}</span>
-        <span className="ds-mono text-[10px] text-zinc-500">FPS 30 · SMPTE 29.97 · arraste efeitos aqui</span>
+      <div className="flex h-7 items-center justify-between px-3 border-b border-white/[0.06]">
+        <span className="ds-mono text-[10px] tracking-wider text-cyan-300/80">
+          TIMELINE · {cueMarkers.length} cue{cueMarkers.length === 1 ? '' : 's'}
+        </span>
+        <span className="ds-mono text-[10px] text-zinc-500 hidden sm:inline">
+          FPS 30 · SMPTE 29.97 · arraste efeitos aqui
+        </span>
       </div>
       <div
         ref={ref}
@@ -267,22 +396,23 @@ function TimelineStrip({
         onDragOver={onDragOver}
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
-        className={`relative flex-1 cursor-crosshair bg-[#070b14] transition-colors ${dragOver ? 'bg-cyan-500/10 ring-1 ring-inset ring-cyan-400/40' : ''}`}
+        className={cn(
+          'relative flex-1 cursor-crosshair transition-colors duration-200',
+          dragOver && 'bg-cyan-500/[0.08] ring-1 ring-inset ring-cyan-400/40',
+        )}
         role="slider"
         aria-label="Timeline"
         aria-valuemin={0}
         aria-valuemax={Math.round(duration)}
         aria-valuenow={Math.round(time)}
       >
-        {/* Ruler */}
-        <div className="absolute inset-x-0 top-0 h-5 border-b border-cyan-500/10 flex">
+        <div className="absolute inset-x-0 top-0 h-5 border-b border-white/[0.06] flex">
           {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="flex-1 border-l border-cyan-500/10 ds-mono text-[9px] text-zinc-500 pl-1">
+            <div key={i} className="flex-1 border-l border-white/[0.04] ds-mono text-[9px] text-zinc-500 pl-1">
               {fmtTime((duration / 12) * i).slice(0, 5)}
             </div>
           ))}
         </div>
-        {/* Waveform */}
         <WaveformLayer peaks={peaks} height={80} />
 
         {cueMarkers.map((c) => {
@@ -306,56 +436,53 @@ function TimelineStrip({
             </button>
           );
         })}
-        {/* Playhead */}
-        <div className="pointer-events-none absolute top-0 bottom-0 w-px bg-cyan-300" style={{ left: `${pct}%` }} />
-        <div className="pointer-events-none absolute top-0 -translate-x-1/2 size-2 rotate-45 bg-cyan-300" style={{ left: `${pct}%` }} />
+        <div
+          className="pointer-events-none absolute top-0 bottom-0 w-px bg-cyan-300"
+          style={{ left: `${pct}%`, filter: 'drop-shadow(0 0 4px hsl(189 94% 55% / 0.6))' }}
+        />
+        <div
+          className="pointer-events-none absolute top-0 -translate-x-1/2 size-2 rotate-45 bg-cyan-300"
+          style={{ left: `${pct}%`, filter: 'drop-shadow(0 0 4px hsl(189 94% 55% / 0.6))' }}
+        />
       </div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
 // Page
-// ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
 
 export default function SkyCanvasPage() {
-  // SEO + splash dismiss on mount (defense layer 4 — runs as soon as the
-  // route's first effect fires, regardless of HTML splash IIFE state).
+  const navigate = useNavigate();
+
   useEffect(() => {
     const prevTitle = document.title;
     document.title = 'SkyCanvas — FX KONTROL';
     try { (window as Window & { __splashDone?: () => void }).__splashDone?.(); } catch { /* */ }
-    const splash = document.getElementById('splash');
-    if (splash) splash.remove();
+    document.getElementById('splash')?.remove();
     return () => { document.title = prevTitle; };
   }, []);
 
-  // Capability detection — runs once, sync, ~5ms.
   const cap = useMemo(() => detectSkyCapability(), []);
 
-  // Local-only transport (no EngineProvider on this surface).
+  // Transport
   const playing = useProjectStore((s) => s.isPlaying);
   const time = useProjectStore((s) => s.currentTime);
   const duration = useProjectStore((s) => s.duration) || 60;
   const setPlaying = useProjectStore((s) => s.setPlaying);
   const setCurrentTime = useProjectStore((s) => s.setCurrentTime);
+  const setDuration = useProjectStore((s) => s.setDuration);
 
-  // RAF loop for playback when transport is active. Self-contained — no
-  // dependence on the heavy Studio EngineProvider.
+  // RAF playback
   useEffect(() => {
     if (!playing) return;
-    let raf = 0;
-    let last = performance.now();
+    let raf = 0; let last = performance.now();
     const tick = () => {
       const now = performance.now();
-      const dt = (now - last) / 1000;
-      last = now;
+      const dt = (now - last) / 1000; last = now;
       const next = useProjectStore.getState().currentTime + dt;
-      if (next >= duration) {
-        setCurrentTime(0);
-        setPlaying(false);
-        return;
-      }
+      if (next >= duration) { setCurrentTime(0); setPlaying(false); return; }
       setCurrentTime(next);
       raf = requestAnimationFrame(tick);
     };
@@ -363,50 +490,32 @@ export default function SkyCanvasPage() {
     return () => cancelAnimationFrame(raf);
   }, [playing, duration, setCurrentTime, setPlaying]);
 
-  // Spacebar play/pause (skip when typing in inputs).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-      if (e.code === 'Space') { e.preventDefault(); setPlaying(!useProjectStore.getState().isPlaying); }
-      else if (e.key === 'ArrowLeft') { setCurrentTime(Math.max(0, useProjectStore.getState().currentTime - (e.shiftKey ? 1 : 1 / 30))); }
-      else if (e.key === 'ArrowRight') { setCurrentTime(Math.min(duration, useProjectStore.getState().currentTime + (e.shiftKey ? 1 : 1 / 30))); }
-      else if (e.key === 'Home') { setCurrentTime(0); }
-      else if (e.key === 'End') { setCurrentTime(duration); }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [duration, setPlaying, setCurrentTime]);
+  const togglePlay = useCallback(() => setPlaying(!useProjectStore.getState().isPlaying), [setPlaying]);
+  const stop = useCallback(() => { setPlaying(false); setCurrentTime(0); }, [setPlaying, setCurrentTime]);
+  const seek = useCallback((delta: number) => {
+    const t = useProjectStore.getState().currentTime;
+    setCurrentTime(Math.max(0, Math.min(duration, t + delta)));
+  }, [duration, setCurrentTime]);
+  const seekAbs = useCallback((t: number) => setCurrentTime(t), [setCurrentTime]);
 
-  // Sidebar collapse state (landscape phone friendly).
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
-  useEffect(() => {
-    if (cap.landscapePhone || cap.portraitPhone) {
-      setLeftOpen(false); setRightOpen(false);
-    }
-  }, [cap.landscapePhone, cap.portraitPhone]);
+  // Master Menu palette
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [cinema, setCinema] = useState(false);
 
-  const togglePlay = () => setPlaying(!playing);
-  const stop = () => { setPlaying(false); setCurrentTime(0); };
-  const seek = (delta: number) => setCurrentTime(Math.max(0, Math.min(duration, time + delta)));
-  const seekAbs = (t: number) => setCurrentTime(t);
-
-  // Drop an effect from the library onto the timeline → CueMarker.
-  const dropEffectAt = (effectId: string, t: number) => {
-    const fx = EFFECT_LIBRARY.find((e) => e.id === effectId);
-    if (!fx) return;
-    useProjectStore.getState().addCueMarker({
-      id: `cue-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-      time: Math.max(0, Math.min(duration, t)),
-      label: `${fx.icon} ${fx.name}`,
-      color: fx.color,
+  const focusPanel = useCallback((id: 'library' | 'inspector' | 'timeline') => {
+    const cur = dockStore.get().panels[id];
+    if (cur?.collapsed) dockStore.toggleCollapsed(id);
+    // Defer focus to next paint when panel re-renders
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(`[data-panel-id="${id}"]`);
+      el?.focus();
     });
-  };
-  const dropEffectAtPlayhead = (effectId: string) => dropEffectAt(effectId, time);
+  }, []);
 
-  // Audio loading → peaks for waveform + sets project duration.
-  const setDuration = useProjectStore((s) => s.setDuration);
+  const audioInputRef = useRef<HTMLInputElement | null>(null);
+  const pickAudio = useCallback(() => audioInputRef.current?.click(), []);
+
+  // Audio decoding
   const [peaks, setPeaks] = useState<Float32Array | null>(null);
   const [audioName, setAudioName] = useState<string | null>(null);
   const [decoding, setDecoding] = useState(false);
@@ -423,88 +532,209 @@ export default function SkyCanvasPage() {
       setPlaying(false);
       toast.success(`Áudio carregado · ${result.durationSec.toFixed(1)}s · ${result.sampleRate} Hz`, { id: tid });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Falha ao decodificar áudio';
-      toast.error(msg, { id: tid });
-    } finally {
-      setDecoding(false);
-    }
+      toast.error(err instanceof Error ? err.message : 'Falha ao decodificar áudio', { id: tid });
+    } finally { setDecoding(false); }
   };
 
-  return (
-    <div className="relative h-[100dvh] w-full bg-[#050810] text-zinc-200 overflow-hidden"
-         style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-      {/* Sticky rail toggles for narrow viewports */}
-      <button
-        onClick={() => setLeftOpen((v) => !v)}
-        className="absolute left-2 top-2 z-20 rounded-md border border-cyan-500/20 bg-[#0c1322]/80 p-1.5 text-cyan-300 hover:bg-cyan-500/10 lg:hidden"
-        aria-label={leftOpen ? 'Esconder biblioteca' : 'Mostrar biblioteca'}
-      >
-        {leftOpen ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
-      </button>
-      <button
-        onClick={() => setRightOpen((v) => !v)}
-        className="absolute right-2 top-2 z-20 rounded-md border border-cyan-500/20 bg-[#0c1322]/80 p-1.5 text-cyan-300 hover:bg-cyan-500/10 lg:hidden"
-        aria-label={rightOpen ? 'Esconder inspector' : 'Mostrar inspector'}
-      >
-        {rightOpen ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
-      </button>
+  // Cue drop handlers
+  const dropEffectAt = useCallback((effectId: string, t: number) => {
+    const fx = EFFECT_LIBRARY.find((e) => e.id === effectId);
+    if (!fx) return;
+    useProjectStore.getState().addCueMarker({
+      id: `cue-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      time: Math.max(0, Math.min(duration, t)),
+      label: `${fx.icon} ${fx.name}`,
+      color: fx.color,
+    });
+  }, [duration]);
+  const dropEffectAtPlayhead = useCallback((effectId: string) => {
+    dropEffectAt(effectId, useProjectStore.getState().currentTime);
+  }, [dropEffectAt]);
 
-      <EditorShell
-        layout={{
-          leftWidth: leftOpen ? 280 : 0,
-          rightWidth: rightOpen ? 320 : 0,
-          timelineHeight: cap.landscapePhone ? 96 : 180,
-        }}
-        topbar={
-          <Topbar cap={cap} playing={playing} onTogglePlay={togglePlay} onStop={stop} onSeek={seek} time={time} duration={duration} onPickAudio={onPickAudio} audioName={audioName} />
-        }
-        left={
-          <StudioErrorBoundary area="SkyCanvas · Library">
-            <EffectLibrarySidebar />
-          </StudioErrorBoundary>
-        }
-        right={
-          <StudioErrorBoundary area="SkyCanvas · Inspector">
-            <Inspector cap={cap} />
-          </StudioErrorBoundary>
-        }
-        timeline={
-          <StudioErrorBoundary area="SkyCanvas · Timeline">
-            <TimelineStrip time={time} duration={duration} onSeekAbs={seekAbs} onDropEffect={dropEffectAt} peaks={peaks} />
-          </StudioErrorBoundary>
-        }
+  // Master Menu actions
+  const actions = useMemo(() => buildSkyActions({
+    togglePlay, stop, seekTo: seekAbs, pickAudio,
+    focusPanel,
+    toggleCinema: () => {
+      const next = !cinema;
+      setCinema(next);
+      dockStore.setAllCollapsed(next);
+    },
+    resetDock: () => { dockStore.reset(); toast.success('Layout restaurado'); },
+    goCommand: () => navigate('/command'),
+  }), [togglePlay, stop, seekAbs, pickAudio, focusPanel, cinema, navigate]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const inField = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+      const ctrl = e.metaKey || e.ctrlKey;
+
+      // Master menu (toggle)
+      if (ctrl && (e.key.toLowerCase() === 'k' || e.key.toLowerCase() === 'm')) {
+        e.preventDefault(); setPaletteOpen((o) => !o); return;
+      }
+      // Panel focus (only outside form fields)
+      if (!inField && ctrl && (e.key === '1' || e.key === '2' || e.key === '3')) {
+        e.preventDefault();
+        focusPanel(e.key === '1' ? 'library' : e.key === '2' ? 'inspector' : 'timeline');
+        return;
+      }
+      // Cinema
+      if (!inField && ctrl && e.key === '\\') {
+        e.preventDefault();
+        const next = !cinema;
+        setCinema(next);
+        dockStore.setAllCollapsed(next);
+        return;
+      }
+      // Reset dock (Shift+Cmd+0 — destrutivo, exige Shift)
+      if (!inField && ctrl && e.shiftKey && e.key === '0') {
+        e.preventDefault();
+        dockStore.reset();
+        toast.success('Layout restaurado');
+        return;
+      }
+      if (inField) return;
+      if (e.code === 'Space') { e.preventDefault(); setPlaying(!useProjectStore.getState().isPlaying); }
+      else if (e.key === 'ArrowLeft')  { setCurrentTime(Math.max(0, useProjectStore.getState().currentTime - (e.shiftKey ? 1 : 1 / 30))); }
+      else if (e.key === 'ArrowRight') { setCurrentTime(Math.min(duration, useProjectStore.getState().currentTime + (e.shiftKey ? 1 : 1 / 30))); }
+      else if (e.key === 'Home') { setCurrentTime(0); }
+      else if (e.key === 'End')  { setCurrentTime(duration); }
+      else if (e.key === 'Escape' && cinema) { setCinema(false); dockStore.setAllCollapsed(false); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [duration, setPlaying, setCurrentTime, focusPanel, cinema]);
+
+  // Floating dock state
+  const dock = useFloatingDock();
+
+  return (
+    <div
+      className="relative h-[100dvh] w-full bg-[#050810] text-zinc-200 overflow-hidden"
+      data-theme="dark"
+      style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      {/* Skip-link for keyboard users */}
+      <a
+        href="#viewport"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[80] focus:px-3 focus:py-2 focus:rounded-md focus:bg-cyan-500/20 focus:text-cyan-100 focus:ds-focus"
       >
-        {/* Viewport — capability-driven renderer. Drop = inserir cue no playhead. */}
-        <StudioErrorBoundary area="SkyCanvas · Viewport">
-          <div
-            className="relative h-full w-full"
-            data-fxk-effect-drop="viewport"
-            onDragOver={(e) => {
-              if (e.dataTransfer.types.includes(FXK_EFFECT_DRAG_TYPE)) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'copy';
-              }
-            }}
-            onDrop={(e) => {
-              const id = e.dataTransfer.getData(FXK_EFFECT_DRAG_TYPE);
-              if (id) { e.preventDefault(); dropEffectAtPlayhead(id); }
-            }}
-          >
-            {cap.renderer === 'webgl2' ? (
-              <Suspense fallback={<ViewportLoader />}>
-                <SkyCanvas2
-                  hideStage={!profileBudget(cap).showStage}
-                  showFixtures={profileBudget(cap).showFixtures}
-                  hideStars={!profileBudget(cap).showStars}
-                  dpr={profileBudget(cap).dpr}
-                />
-              </Suspense>
-            ) : (
-              <SkyFallback2D reason={cap.reasons[0]} />
-            )}
-          </div>
+        Pular para viewport
+      </a>
+
+      {/* Hidden global audio input (picked from palette) */}
+      <input
+        ref={audioInputRef}
+        type="file"
+        accept="audio/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0]; if (f) onPickAudio(f);
+          e.target.value = '';
+        }}
+      />
+
+      {/* VIEWPORT — edge-to-edge */}
+      <StudioErrorBoundary area="SkyCanvas · Viewport">
+        <div
+          id="viewport"
+          tabIndex={-1}
+          data-fxk-viewport
+          className="absolute inset-0 z-0"
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes(FXK_EFFECT_DRAG_TYPE)) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'copy';
+            }
+          }}
+          onDrop={(e) => {
+            const id = e.dataTransfer.getData(FXK_EFFECT_DRAG_TYPE);
+            if (id) { e.preventDefault(); dropEffectAtPlayhead(id); }
+          }}
+        >
+          {cap.renderer === 'webgl2' ? (
+            <Suspense fallback={<ViewportLoader />}>
+              <SkyCanvas2
+                hideStage={!profileBudget(cap).showStage}
+                showFixtures={profileBudget(cap).showFixtures}
+                hideStars={!profileBudget(cap).showStars}
+                dpr={profileBudget(cap).dpr}
+              />
+            </Suspense>
+          ) : (
+            <SkyFallback2D reason={cap.reasons[0]} />
+          )}
+        </div>
+      </StudioErrorBoundary>
+
+      {/* TOPBAR (glass) */}
+      <GlassTopbar
+        cap={cap}
+        playing={playing}
+        onTogglePlay={togglePlay}
+        onStop={stop}
+        onSeek={seek}
+        time={time}
+        duration={duration}
+        onPickAudio={onPickAudio}
+        audioName={audioName}
+        onOpenMaster={() => setPaletteOpen(true)}
+        onEStop={() => navigate('/command')}
+      />
+
+      {/* FLOATING PANELS */}
+      <div data-panel-id="library">
+        <StudioErrorBoundary area="SkyCanvas · Library">
+          <FloatingPanel id="library" title="Biblioteca" state={dock.panels.library}>
+            <EffectLibrarySidebar />
+          </FloatingPanel>
         </StudioErrorBoundary>
-      </EditorShell>
+      </div>
+
+      <div data-panel-id="inspector">
+        <StudioErrorBoundary area="SkyCanvas · Inspector">
+          <FloatingPanel id="inspector" title="Inspector" state={dock.panels.inspector}>
+            <Inspector cap={cap} />
+          </FloatingPanel>
+        </StudioErrorBoundary>
+      </div>
+
+      <div data-panel-id="timeline">
+        <StudioErrorBoundary area="SkyCanvas · Timeline">
+          <FloatingPanel id="timeline" title="Timeline" state={dock.panels.timeline} bottomStrip>
+            <TimelineStrip
+              time={time}
+              duration={duration}
+              onSeekAbs={seekAbs}
+              onDropEffect={dropEffectAt}
+              peaks={peaks}
+            />
+          </FloatingPanel>
+        </StudioErrorBoundary>
+      </div>
+
+      {/* MOBILE TRANSPORT */}
+      <MobileTransportFab
+        playing={playing}
+        onTogglePlay={togglePlay}
+        onSeek={seek}
+        time={time}
+        duration={duration}
+      />
+
+      {/* MASTER MENU PALETTE */}
+      <Suspense fallback={null}>
+        {paletteOpen && (
+          <SkyCanvasCommandPalette
+            open={paletteOpen}
+            onOpenChange={setPaletteOpen}
+            actions={actions}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }
