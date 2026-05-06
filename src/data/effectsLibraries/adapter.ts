@@ -59,7 +59,7 @@ const PATTERN_HINTS: Array<[RegExp, string]> = [
   [/crackle|crackling/i, 'crackle'],
   [/glitter/i, 'glitter'],
   [/brocade/i, 'brocade'],
-  [/ring|saturn/i, 'ring'],
+  [/\bring\b|saturn/i, 'ring'],
   [/heart/i, 'heart'],
   [/\bmine\b/i, 'mine'],
   [/\bfan\b/i, 'fan'],

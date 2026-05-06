@@ -61,7 +61,8 @@ describe('finalePartsImporter (JSON)', () => {
         { partNumber: 'A2', size: '30mm' },
       ],
     }));
-    expect(r.library.count).toBe(2);
+    // dedup keeps "last wins" → 2 unique partNumbers (A1, A2) but A1 gets duplicated raw entries
+    expect(new Set(r.library.parts.map(p => p.partNumber)).size).toBe(2);
     expect(r.warnings.some((w) => w.includes('Duplicate'))).toBe(true);
   });
 });
